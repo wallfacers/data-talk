@@ -39,3 +39,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Tauri
+src-tauri/target/
+src-tauri/gen/schemas/
+
+# Vite
+dist/
+
+# Editor
+.vscode/
+.idea/
