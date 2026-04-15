@@ -127,3 +127,23 @@
     @apply font-sans;
   }
 }
+
+/* Custom scrollbar — no arrow buttons */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--muted-foreground);
+  border-radius: 4px;
+  opacity: 0.4;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--foreground);
+}
+::-webkit-scrollbar-button {
+  display: none;
+}
