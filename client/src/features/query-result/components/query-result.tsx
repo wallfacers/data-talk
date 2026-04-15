@@ -1,6 +1,14 @@
 import { Badge } from "@/components/ui/badge"
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
 import { ResultTable } from "@/features/query-result/components/result-table"
 import type { QueryResultData } from "@/features/query-result/types"
+import { DatabaseIcon } from "lucide-react"
 
 interface QueryResultProps {
   data: QueryResultData | null
@@ -9,8 +17,16 @@ interface QueryResultProps {
 export function QueryResult({ data }: QueryResultProps) {
   if (!data || data.rows.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-        执行查询后结果将显示在这里
+      <div className="flex h-full items-center justify-center p-4">
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <DatabaseIcon />
+            </EmptyMedia>
+            <EmptyTitle>暂无查询结果</EmptyTitle>
+            <EmptyDescription>执行查询后结果将显示在这里</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       </div>
     )
   }

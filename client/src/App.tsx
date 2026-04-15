@@ -18,15 +18,15 @@ function App() {
 
   return (
     <Layout>
-      <div className="flex h-[calc(100vh-3rem)]">
-        <div className="w-1/2 border-r">
+      <div className="grid flex-1 gap-4 overflow-hidden md:grid-cols-2">
+        <div className="overflow-hidden rounded-xl border bg-card">
           <ChatArea
             messages={messages}
             isLoading={isLoading}
             onSend={sendMessage}
           />
         </div>
-        <div className="w-1/2">
+        <div className="overflow-hidden rounded-xl border bg-card">
           <QueryResult data={resultData} />
         </div>
       </div>

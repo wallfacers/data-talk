@@ -13,7 +13,7 @@ export function ChatArea({ messages, isLoading, onSend }: ChatAreaProps) {
   return (
     <div className="flex h-full flex-col">
       <ScrollArea className="flex-1 p-4">
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4">
           {messages.map((msg) => (
             <MessageItem
               key={msg.id}

@@ -1,7 +1,10 @@
 import { useState } from "react"
-import { InputGroup } from "@/components/input-group"
-import { AutosizeTextarea } from "@/components/autosize-textarea"
-import { Button } from "@/components/ui/button"
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupTextarea,
+} from "@/components/ui/input-group"
 import { ArrowUpIcon } from "lucide-react"
 
 interface ChatInputProps {
@@ -33,27 +36,25 @@ export function ChatInput({ onSubmit, disabled = false }: ChatInputProps) {
   return (
     <form onSubmit={handleSubmit} className="w-full">
       <InputGroup>
-        <AutosizeTextarea
+        <InputGroupTextarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="输入查询，例如：查询 users 表的所有数据"
-          minRows={1}
-          maxRows={5}
-          className="resize-none"
           disabled={disabled}
         />
-        <div className="flex items-center justify-end p-2">
-          <Button
+        <InputGroupAddon align="block-end">
+          <InputGroupButton
             type="submit"
-            size="icon"
-            variant="ghost"
-            className="rounded-full"
+            variant="default"
+            size="icon-sm"
+            className="ml-auto rounded-full"
             disabled={!prompt.trim() || disabled}
+            aria-label="发送"
           >
-            <ArrowUpIcon className="h-4 w-4" />
-          </Button>
-        </div>
+            <ArrowUpIcon />
+          </InputGroupButton>
+        </InputGroupAddon>
       </InputGroup>
     </form>
   )

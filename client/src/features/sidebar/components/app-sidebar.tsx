@@ -32,7 +32,7 @@ const sidebarData = {
     {
       title: "Playground",
       url: "#",
-      icon: <TerminalSquareIcon className="size-4" />,
+      icon: <TerminalSquareIcon />,
       isActive: true,
       items: [
         { title: "History", url: "#" },
@@ -43,7 +43,7 @@ const sidebarData = {
     {
       title: "Models",
       url: "#",
-      icon: <BotIcon className="size-4" />,
+      icon: <BotIcon />,
       items: [
         { title: "Genesis", url: "#" },
         { title: "Explorer", url: "#" },
@@ -53,7 +53,7 @@ const sidebarData = {
     {
       title: "Documentation",
       url: "#",
-      icon: <BookOpenIcon className="size-4" />,
+      icon: <BookOpenIcon />,
       items: [
         { title: "Introduction", url: "#" },
         { title: "Get Started", url: "#" },
@@ -64,7 +64,7 @@ const sidebarData = {
     {
       title: "Settings",
       url: "#",
-      icon: <Settings2Icon className="size-4" />,
+      icon: <Settings2Icon />,
       items: [
         { title: "General", url: "#" },
         { title: "Team", url: "#" },
@@ -76,7 +76,7 @@ const sidebarData = {
   ] as { name: string; url: string; icon: LucideIcon }[],
 }
 
-interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {}
+type AppSidebarProps = React.ComponentProps<typeof Sidebar>
 
 export function AppSidebar({ ...props }: AppSidebarProps) {
   return (
