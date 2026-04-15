@@ -1,0 +1,34 @@
+spring:
+  application:
+    name: chat-database-tool-server
+
+  datasource:
+    url: jdbc:h2:mem:demo;DB_CLOSE_DELAY=-1;MODE=MySQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema-demo.sql
+      data-locations: classpath:data-demo.sql
+
+  sqlite-datasource:
+    url: jdbc:sqlite:./data/metadata.db
+    driver-class-name: org.sqlite.JDBC
+
+  jdbc:
+    template:
+      query-timeout: 30
+
+server:
+  port: 8080
+
+logging:
+  level:
+    com.datatalk.chatdb: DEBUG
