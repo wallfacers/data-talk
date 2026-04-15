@@ -24,17 +24,16 @@ function App() {
   return (
     <Layout>
       {isInitialState ? (
-        <div className="flex flex-1 flex-col items-center justify-center p-4">
-          <div className="w-full max-w-3xl space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="flex flex-1 flex-col items-center justify-center">
+          <div className="w-full max-w-3xl space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-1000 ease-out">
             <Empty className="border-0">
               <EmptyHeader>
-                <div className="mb-4 flex size-16 items-center justify-center rounded-3xl bg-primary/5 text-primary shadow-sm ring-1 ring-primary/10">
-                  <DatabaseIcon className="size-8" />
+                <div className="mb-6 flex size-20 items-center justify-center rounded-[2.5rem] bg-primary/5 text-primary shadow-sm ring-1 ring-primary/10">
+                  <DatabaseIcon className="size-10" />
                 </div>
-                <EmptyTitle className="text-3xl font-bold tracking-tight text-center">您好，我是数据对话助手</EmptyTitle>
-                <EmptyDescription className="text-lg text-muted-foreground mt-2 text-center">
-                  我可以帮您查询数据库、分析数据并提供洞察。<br />
-                  试着输入：“查询最近一周的新用户”
+                <EmptyTitle className="text-4xl font-bold tracking-tight text-center">Data Talk</EmptyTitle>
+                <EmptyDescription className="text-xl text-muted-foreground mt-4 text-center max-w-md">
+                  随时为您提供数据库查询、分析与洞察
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
@@ -44,15 +43,15 @@ function App() {
           </div>
         </div>
       ) : (
-        <div className="grid flex-1 gap-4 overflow-hidden md:grid-cols-2 animate-in fade-in duration-500">
-          <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+        <div className="grid flex-1 gap-0 overflow-hidden md:grid-cols-2 animate-in fade-in duration-700">
+          <div className="flex flex-col overflow-hidden bg-background">
             <ChatArea
               messages={messages}
               isLoading={isLoading}
               onSend={sendMessage}
             />
           </div>
-          <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+          <div className="flex flex-col overflow-hidden border-l bg-muted/5">
             <QueryResult data={resultData} />
           </div>
         </div>

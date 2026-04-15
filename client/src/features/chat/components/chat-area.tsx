@@ -24,7 +24,7 @@ export function ChatArea({ messages, isLoading, onSend }: ChatAreaProps) {
   return (
     <div className="flex h-full flex-col bg-background">
       <ScrollArea className="flex-1">
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-4">
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
           {messages.map((msg) => (
             <MessageItem
               key={msg.id}
@@ -38,7 +38,7 @@ export function ChatArea({ messages, isLoading, onSend }: ChatAreaProps) {
           <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
-      <div className="p-4 pt-0">
+      <div className="p-6">
         <div className="mx-auto w-full max-w-3xl">
           <ChatInput onSubmit={onSend} disabled={isLoading} />
         </div>
