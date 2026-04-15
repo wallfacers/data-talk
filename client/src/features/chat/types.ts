@@ -1,4 +1,6 @@
-export type MessageRole = 'user' | 'assistant' | 'system'
+import type { MessageRole } from '@/services/api/chat'
+
+export type { MessageRole }
 
 export type ChatMessage = {
   id: string

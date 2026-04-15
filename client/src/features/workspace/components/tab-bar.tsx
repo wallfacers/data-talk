@@ -3,10 +3,7 @@ import { cn } from '@/lib/utils'
 import { useWorkspaceStore } from '../store'
 
 export function TabBar() {
-  const tabs = useWorkspaceStore((s) => s.tabs)
-  const activeTabId = useWorkspaceStore((s) => s.activeTabId)
-  const setActive = useWorkspaceStore((s) => s.setActive)
-  const closeTab = useWorkspaceStore((s) => s.closeTab)
+  const { tabs, activeTabId, setActive, closeTab } = useWorkspaceStore((s) => s)
 
   if (tabs.length === 0) return null
 

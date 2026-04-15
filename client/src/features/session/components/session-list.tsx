@@ -7,8 +7,7 @@ import { useConnectionStore } from '@/features/connection/store'
 export function SessionList() {
   const connectionId = useConnectionStore((s) => s.activeConnectionId)
   const { data, isLoading, isError } = useSessions()
-  const activeId = useSessionStore((s) => s.activeSessionId)
-  const setActive = useSessionStore((s) => s.setActive)
+  const { activeSessionId: activeId, setActive } = useSessionStore((s) => s)
 
   if (!connectionId) {
     return (

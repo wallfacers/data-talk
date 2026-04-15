@@ -6,8 +6,7 @@ import { useConnectionStore } from '../store'
 
 export function ConnectionList() {
   const { data, isLoading, isError } = useConnections()
-  const activeId = useConnectionStore((s) => s.activeConnectionId)
-  const setActive = useConnectionStore((s) => s.setActive)
+  const { activeConnectionId: activeId, setActive } = useConnectionStore((s) => s)
 
   return (
     <section className="flex flex-col border-b">

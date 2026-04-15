@@ -4,8 +4,7 @@ import { EmptyState } from './empty-state'
 import { QueryResultTab } from './query-result-tab'
 
 export function Workspace() {
-  const tabs = useWorkspaceStore((s) => s.tabs)
-  const activeTabId = useWorkspaceStore((s) => s.activeTabId)
+  const { tabs, activeTabId } = useWorkspaceStore((s) => s)
   const activeTab = tabs.find((t) => t.id === activeTabId)
 
   return (
@@ -15,10 +14,10 @@ export function Workspace() {
         {!activeTab && <EmptyState />}
         {activeTab?.kind === 'query-result' && <QueryResultTab tab={activeTab} />}
         {activeTab?.kind === 'er-diagram' && (
-          <div className="p-4 text-sm text-muted-foreground">ER 图（未实装）</div>
+          <div className="p-4 text-sm text-muted-foreground">ER 图</div>
         )}
         {activeTab?.kind === 'sql-editor' && (
-          <div className="p-4 text-sm text-muted-foreground">SQL 编辑器（未实装）</div>
+          <div className="p-4 text-sm text-muted-foreground">SQL 编辑器</div>
         )}
       </div>
     </div>
