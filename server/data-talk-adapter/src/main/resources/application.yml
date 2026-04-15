@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: data-talk
+
+  # H2 demo datasource (primary)
+  datasource:
+    url: jdbc:h2:mem:placeholder
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  sqlite-datasource:
+    url: jdbc:sqlite:./data/metadata.db
+    driver-class-name: org.sqlite.JDBC
+
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema-demo.sql
+      data-locations: classpath:data-demo.sql
+      continue-on-error: false
+
+  jdbc:
+    template:
+      query-timeout: 30
+
+server:
+  port: 8080
+
+logging:
+  level:
+    com.datatalk: DEBUG

@@ -1,0 +1,9 @@
+/home/wallfacers/project/data-talk/server/data-talk-domain/src/main/java/com/datatalk/entity/DbConnection.java
+/home/wallfacers/project/data-talk/server/data-talk-domain/src/main/java/com/datatalk/entity/DbType.java
+/home/wallfacers/project/data-talk/server/data-talk-domain/src/main/java/com/datatalk/entity/Session.java
+/home/wallfacers/project/data-talk/server/data-talk-domain/src/main/java/com/datatalk/exception/ConnectionNotFoundException.java
+/home/wallfacers/project/data-talk/server/data-talk-domain/src/main/java/com/datatalk/exception/SqlExecutionException.java
+/home/wallfacers/project/data-talk/server/data-talk-domain/src/main/java/com/datatalk/repository/DbConnectionRepository.java
+/home/wallfacers/project/data-talk/server/data-talk-domain/src/main/java/com/datatalk/repository/SessionRepository.java
+/home/wallfacers/project/data-talk/server/data-talk-domain/src/main/java/com/datatalk/repository/SqlExecutionRepository.java
+/home/wallfacers/project/data-talk/server/data-talk-domain/src/main/java/com/datatalk/valueobject/QueryResult.java
