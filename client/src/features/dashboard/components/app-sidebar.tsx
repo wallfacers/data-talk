@@ -1,5 +1,3 @@
-"use client"
-
 import * as React from "react"
 
 import { NavDocuments } from "./nav-documents"
