@@ -209,6 +209,8 @@ export type { QueryResponse, QueryRequest, ApiError }
 `client/src/features/chat/types.ts`:
 
 ```ts
+import type { QueryResponse } from "@/services/api"
+
 export interface ChatMessage {
   id: number
   role: "user" | "ai"
@@ -219,6 +221,7 @@ export interface UseChatReturn {
   messages: ChatMessage[]
   isLoading: boolean
   error: string | null
+  queryResult: QueryResponse | null
   sendMessage: (sql: string) => Promise<void>
 }
 ```
@@ -266,6 +269,7 @@ git commit -m "refactor: create feature-based directory structure and types, rem
 ```ts
 import { useState, useCallback } from "react"
 import { executeQuery } from "@/services/api"
+import type { QueryResponse } from "@/services/api"
 import type { ChatMessage, UseChatReturn } from "@/features/chat/types"
 
 export function useChat(): UseChatReturn {
@@ -278,6 +282,7 @@ export function useChat(): UseChatReturn {
   ])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [queryResult, setQueryResult] = useState<QueryResponse | null>(null)
 
   const sendMessage = useCallback(async (sql: string) => {
     if (!sql.trim() || isLoading) return
@@ -297,6 +302,8 @@ export function useChat(): UseChatReturn {
         sql,
       })
 
+      setQueryResult(result)
+
       const aiMsg: ChatMessage = {
         id: Date.now() + 1,
         role: "ai",
@@ -307,6 +314,7 @@ export function useChat(): UseChatReturn {
       const errorMessage =
         err instanceof Error ? err.message : "未知错误"
       setError(errorMessage)
+      setQueryResult(null)
 
       const errorMsg: ChatMessage = {
         id: Date.now() + 1,
@@ -319,7 +327,7 @@ export function useChat(): UseChatReturn {
     }
   }, [isLoading])
 
-  return { messages, isLoading, error, sendMessage }
+  return { messages, isLoading, error, queryResult, sendMessage }
 }
 ```
 
@@ -662,30 +670,26 @@ export function NavMain({ items }: NavMainProps) {
             key={item.title}
             defaultOpen={item.isActive}
             className="group/collapsible"
-            asChild
+            render={<SidebarMenuItem />}
           >
-            <SidebarMenuItem>
-              <CollapsibleTrigger asChild>
-                <SidebarMenuButton tooltip={item.title}>
-                  {item.icon}
-                  <span>{item.title}</span>
-                  <ChevronRightIcon className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                </SidebarMenuButton>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <SidebarMenuSub>
-                  {item.items?.map((subItem) => (
-                    <SidebarMenuSubItem key={subItem.title}>
-                      <SidebarMenuSubButton asChild>
-                        <a href={subItem.url}>
-                          <span>{subItem.title}</span>
-                        </a>
-                      </SidebarMenuSubButton>
-                    </SidebarMenuSubItem>
-                  ))}
-                </SidebarMenuSub>
-              </CollapsibleContent>
-            </SidebarMenuItem>
+            <CollapsibleTrigger
+              render={<SidebarMenuButton tooltip={item.title} />}
+            >
+              {item.icon}
+              <span>{item.title}</span>
+              <ChevronRightIcon className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <SidebarMenuSub>
+                {item.items?.map((subItem) => (
+                  <SidebarMenuSubItem key={subItem.title}>
+                    <SidebarMenuSubButton render={<a href={subItem.url} />}>
+                      <span>{subItem.title}</span>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                ))}
+              </SidebarMenuSub>
+            </CollapsibleContent>
           </Collapsible>
         ))}
       </SidebarMenu>
@@ -736,11 +740,14 @@ export function NavUser({ user }: NavUserProps) {
     <SidebarMenu>
       <SidebarMenuItem>
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
-              className="data-[state=open]:bg-sidebar-accent"
-            >
+          <DropdownMenuTrigger
+            render={
+              <SidebarMenuButton
+                size="lg"
+                className="aria-expanded:bg-sidebar-accent"
+              />
+            }
+          >
               <Avatar className="h-8 w-8 rounded-lg">
                 <AvatarImage src={user.avatar} alt={user.name} />
                 <AvatarFallback className="rounded-lg">
@@ -841,11 +848,9 @@ export function NavProjects({ projects }: NavProjectsProps) {
       <SidebarMenu>
         {projects.map((item) => (
           <SidebarMenuItem key={item.name}>
-            <SidebarMenuButton asChild>
-              <a href={item.url}>
-                <item.icon />
-                <span>{item.name}</span>
-              </a>
+            <SidebarMenuButton render={<a href={item.url} />}>
+              <item.icon />
+              <span>{item.name}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         ))}
@@ -899,11 +904,14 @@ export function TeamSwitcher({ teams }: TeamSwitcherProps) {
     <SidebarMenu>
       <SidebarMenuItem>
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
-              className="data-[state=open]:bg-sidebar-accent"
-            >
+          <DropdownMenuTrigger
+            render={
+              <SidebarMenuButton
+                size="lg"
+                className="data-open:bg-sidebar-accent data-open:text-sidebar-accent-foreground"
+              />
+            }
+          >
               <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
                 <activeTeam.logo className="size-4" />
               </div>
@@ -1115,129 +1123,6 @@ export function Layout({ children }: LayoutProps) {
 `client/src/App.tsx`:
 
 ```tsx
-import { useState } from "react"
-import { Layout } from "@/app/layout"
-import { useChat } from "@/features/chat/hooks/use-chat"
-import { ChatArea } from "@/features/chat/components/chat-area"
-import { QueryResult } from "@/features/query-result/components/query-result"
-import type { QueryResultData } from "@/features/query-result/types"
-import type { QueryResponse } from "@/services/api"
-
-function App() {
-  const { messages, isLoading, sendMessage } = useChat()
-  const [queryResult, setQueryResult] = useState<QueryResultData | null>(null)
-
-  const handleSend = async (sql: string) => {
-    // We need to intercept the query result to pass to QueryResult panel
-    // For now, useChat manages its own state, and we track result separately
-    await sendMessage(sql)
-  }
-
-  return (
-    <Layout>
-      <div className="flex h-[calc(100vh-3rem)]">
-        <div className="w-1/2 border-r">
-          <ChatArea
-            messages={messages}
-            isLoading={isLoading}
-            onSend={handleSend}
-          />
-        </div>
-        <div className="w-1/2">
-          <QueryResult data={queryResult} />
-        </div>
-      </div>
-    </Layout>
-  )
-}
-
-export default App
-```
-
-> **注意**: 当前 App.tsx 中 queryResult 和 ChatArea 是分离的。useChat 内部调用 API 但不返回 queryResult。下一步 Step 3 会修复这个数据桥接问题。
-
-- [ ] **Step 3: 修复 useChat hook 以返回查询结果**
-
-更新 `client/src/features/chat/hooks/use-chat.ts`，增加 `queryResult` 状态：
-
-```ts
-import { useState, useCallback } from "react"
-import { executeQuery } from "@/services/api"
-import type { QueryResponse } from "@/services/api"
-import type { ChatMessage, UseChatReturn } from "@/features/chat/types"
-
-export interface UseChatReturn {
-  messages: ChatMessage[]
-  isLoading: boolean
-  error: string | null
-  queryResult: QueryResponse | null
-  sendMessage: (sql: string) => Promise<void>
-}
-
-export function useChat(): UseChatReturn {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 0,
-      role: "ai",
-      content: "你好！我是数据库助手，请输入你的查询。",
-    },
-  ])
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [queryResult, setQueryResult] = useState<QueryResponse | null>(null)
-
-  const sendMessage = useCallback(async (sql: string) => {
-    if (!sql.trim() || isLoading) return
-
-    const userMsg: ChatMessage = {
-      id: Date.now(),
-      role: "user",
-      content: sql,
-    }
-    setMessages((prev) => [...prev, userMsg])
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      const result = await executeQuery({
-        connectionId: "demo",
-        sql,
-      })
-
-      setQueryResult(result)
-
-      const aiMsg: ChatMessage = {
-        id: Date.now() + 1,
-        role: "ai",
-        content: `查询完成，返回 ${result.rowCount} 行数据，耗时 ${result.durationMs}ms。`,
-      }
-      setMessages((prev) => [...prev, aiMsg])
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "未知错误"
-      setError(errorMessage)
-      setQueryResult(null)
-
-      const errorMsg: ChatMessage = {
-        id: Date.now() + 1,
-        role: "ai",
-        content: `查询失败: ${errorMessage}`,
-      }
-      setMessages((prev) => [...prev, errorMsg])
-    } finally {
-      setIsLoading(false)
-    }
-  }, [isLoading])
-
-  return { messages, isLoading, error, queryResult, sendMessage }
-}
-```
-
-- [ ] **Step 4: 更新 App.tsx 桥接查询结果**
-
-更新 `client/src/App.tsx`：
-
-```tsx
 import { Layout } from "@/app/layout"
 import { useChat } from "@/features/chat/hooks/use-chat"
 import { ChatArea } from "@/features/chat/components/chat-area"
@@ -1276,6 +1161,17 @@ function App() {
 
 export default App
 ```
+
+- [ ] **Step 3: 确认 useChat hook 已包含 queryResult**
+
+> `useChat` hook 已在 Task 3 中包含 `queryResult` 状态和返回，无需额外修改。
+> 直接继续到 Step 4。
+
+- [ ] **Step 4: 确认 App.tsx 已正确桥接**
+
+> App.tsx 已在 Task 7 Step 2 中包含 `queryResult` 到 `QueryResult` 的数据桥接。
+> `QueryResponse` → `QueryResultData` 的映射已完整实现。
+> 无需额外修改。
 
 - [ ] **Step 5: 更新 main.tsx**
 
@@ -1413,5 +1309,5 @@ git commit -m "refactor: complete frontend refactor to feature-based architectur
 
 1. **社区组件安装失败**: `InputGroup` 和 `AutosizeTextarea` 来自 originui.com registry，URL 可能变化。Task 1 已包含手动创建作为降级方案。
 2. **shadcn 组件版本**: 当前项目使用 shadcn 4.2.0 + `base-nova` 风格，新安装组件应与此风格一致。
-3. **旧 sidebar 的 `render` prop 语法**: 旧代码使用了 `render` prop（base-ui mergeProps 模式），新组件统一使用 `asChild` 替代，减少依赖。
+3. **旧 sidebar 的 `render` prop 语法**: 当前项目使用 `base-nova` 风格的 sidebar，组件（SidebarMenuButton 等）通过 `render` prop 接收元素，而非 `asChild`。计划中已统一使用 `render` prop。
 4. **TypeScript strict 模式**: 项目启用 `noUnusedLocals` 和 `noUnusedParameters`，确保无未使用变量。
