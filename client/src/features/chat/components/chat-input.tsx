@@ -10,9 +10,10 @@ import { ArrowUpIcon } from "lucide-react"
 interface ChatInputProps {
   onSubmit: (value: string) => void
   disabled?: boolean
+  autoFocus?: boolean
 }
 
-export function ChatInput({ onSubmit, disabled = false }: ChatInputProps) {
+export function ChatInput({ onSubmit, disabled = false, autoFocus = false }: ChatInputProps) {
   const [prompt, setPrompt] = useState("")
 
   const submit = () => {
@@ -42,6 +43,7 @@ export function ChatInput({ onSubmit, disabled = false }: ChatInputProps) {
           onKeyDown={handleKeyDown}
           placeholder="输入查询，例如：查询 users 表的所有数据"
           disabled={disabled}
+          autoFocus={autoFocus}
           className="min-h-[100px] px-4 py-3 text-base"
         />
         <InputGroupAddon align="block-end" className="px-3 pb-3">
