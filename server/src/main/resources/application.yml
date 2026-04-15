@@ -3,7 +3,7 @@ spring:
     name: chat-database-tool-server
 
   datasource:
-    url: jdbc:h2:mem:demo;DB_CLOSE_DELAY=-1;MODE=MySQL
+    url: jdbc:h2:mem:placeholder
     driver-class-name: org.h2.Driver
     username: sa
     password:
@@ -17,6 +17,7 @@ spring:
       mode: always
       schema-locations: classpath:schema-demo.sql
       data-locations: classpath:data-demo.sql
+      continue-on-error: false
 
   sqlite-datasource:
     url: jdbc:sqlite:./data/metadata.db
