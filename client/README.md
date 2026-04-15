@@ -1,36 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# client
 
-## Getting Started
+data-talk 桌面端：Tauri v2 + Vite + React 19 + TypeScript，界面用 shadcn/ui。
 
-First, run the development server:
+## 依赖
+
+- Node.js ≥ 20
+- pnpm ≥ 9
+- Rust ≥ 1.77（`rustup` 安装）
+- Linux 还需：`sudo apt install libwebkit2gtk-4.1-dev build-essential libssl-dev libayatana-appindicator3-dev librsvg2-dev`
+- macOS 需要 Xcode Command Line Tools
+- Windows 需要 Microsoft Edge WebView2（Windows 10+ 自带）
+
+## 开发
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
+pnpm tauri dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+首次启动会编译 Rust 侧，耗时较长。之后热重载在秒级。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 脚本
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `pnpm dev` — 仅启动 Vite 开发服务器（端口 1420）
+- `pnpm tauri dev` — Vite + Tauri 同时起，打开桌面窗口
+- `pnpm build` — 前端生产构建
+- `pnpm tauri build` — 打包桌面应用（.dmg/.msi/.deb）
+- `pnpm typecheck` — TypeScript 检查
+- `pnpm lint` — ESLint
+- `pnpm format` — Prettier 格式化
+- `pnpm gen:routes` — 重新生成 `src/routeTree.gen.ts`（一般由 Vite 插件自动跑）
 
-## Learn More
+## 目录
 
-To learn more about Next.js, take a look at the following resources:
+- `src/routes/` — TanStack Router 文件路由（`__root.tsx`, `index.tsx`, `dashboard.tsx`）
+- `src/layouts/` — 页面级骨架（三栏工作台、dashboard）
+- `src/features/<domain>/` — 业务域：chat / connection / session / workspace / data-grid / dashboard / (chart / diagram 预留)
+- `src/components/ui/` — shadcn 原子组件
+- `src/services/` — HTTP (ky) + Tauri IPC 封装
+- `src/stores/` — 跨 feature 的全局 zustand store
+- `src/lib/` — 纯工具（`cn`、`queryClient`）
+- `src-tauri/` — Rust 侧
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 路由
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `/` — 三栏工作台（连接+会话 / 对话 / 工作区 Tab）
+- `/dashboard` — 保留的 shadcn dashboard demo
 
-## Deploy on Vercel
+## 环境变量
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `VITE_API_BASE_URL` — 后端 Spring Boot 基址，默认 `http://localhost:8080/api`
