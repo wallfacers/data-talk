@@ -1,5 +1,0 @@
-com/datatalk/config/JdbcConfig.class
-com/datatalk/config/ApplicationServiceConfig.class
-com/datatalk/controller/QueryController.class
-com/datatalk/DataTalkApplication.class
-com/datatalk/config/CorsConfig.class

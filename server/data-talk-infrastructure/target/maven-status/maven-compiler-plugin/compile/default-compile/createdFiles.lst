@@ -1,4 +1,0 @@
-com/datatalk/config/DataSourcesConfig.class
-com/datatalk/repository/DynamicSqlExecutionRepository.class
-com/datatalk/repository/JdbcDbConnectionRepository.class
-com/datatalk/repository/DynamicSqlExecutionRepository$1.class

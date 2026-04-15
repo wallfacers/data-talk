@@ -30,3 +30,4 @@ server/data/*.db-wal
 
 # Logs
 *.log
+server/*/target/
