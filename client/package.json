@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "lint": "eslint .",
-    "typecheck": "tsc -b --noEmit",
+    "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "gen:routes": "tsr generate"
   },

@@ -8,7 +8,7 @@ export const http = ky.create({
     beforeError: [
       async (error) => {
         try {
-          const body = await error.response.clone().json<{ message?: string }>()
+          const body = (await error.response.clone().json()) as { message?: string }
           if (body?.message) error.message = body.message
         } catch {
           // response 不是 JSON，忽略

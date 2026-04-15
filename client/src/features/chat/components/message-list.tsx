@@ -7,7 +7,7 @@ export function MessageList() {
   if (messages.length === 0) {
     return (
       <div className="flex flex-1 items-center justify-center text-muted-foreground">
-        <p className="text-sm">问点什么，比如"查询用户表最近一周的注册趋势"</p>
+        <p className="text-sm">问点什么，比如&apos;查询用户表最近一周的注册趋势&apos;</p>
       </div>
     )
   }
