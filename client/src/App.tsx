@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
+import { AppSidebar } from "@/features/sidebar/components/app-sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChatArea } from "@/components/ChatArea";
 import { QueryResult } from "@/components/QueryResult";

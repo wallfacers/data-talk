@@ -15,20 +15,19 @@ import {
 } from "@/components/ui/sidebar"
 import { ChevronRightIcon } from "lucide-react"
 
-export function NavMain({
-  items,
-}: {
-  items: {
-    title: string
-    url: string
-    icon?: React.ReactNode
-    isActive?: boolean
-    items?: {
-      title: string
-      url: string
-    }[]
-  }[]
-}) {
+export interface NavItem {
+  title: string
+  url: string
+  icon?: React.ReactNode
+  isActive?: boolean
+  items?: { title: string; url: string }[]
+}
+
+interface NavMainProps {
+  items: NavItem[]
+}
+
+export function NavMain({ items }: NavMainProps) {
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
@@ -45,7 +44,7 @@ export function NavMain({
             >
               {item.icon}
               <span>{item.title}</span>
-              <ChevronRightIcon className="ml-auto transition-transform duration-200 group-data-open/collapsible:rotate-90" />
+              <ChevronRightIcon className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
             </CollapsibleTrigger>
             <CollapsibleContent>
               <SidebarMenuSub>
