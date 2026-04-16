@@ -161,18 +161,26 @@ public class SessionBus implements AutoCloseable {
         // mirror @JsonSubTypes name attribute mapping
         return switch (e) {
             case DtEvent.Connected c              -> "connected";
+            case DtEvent.Disconnected d           -> "disconnected";
             case DtEvent.SessionStatus s          -> "session.status";
             case DtEvent.MessageCreated mc        -> "message.created";
             case DtEvent.MessageUpdated mu        -> "message.updated";
+            case DtEvent.MessageCompleted mc      -> "message.completed";
             case DtEvent.MessagePartCreated pc    -> "message.part.created";
             case DtEvent.MessagePartUpdated pu    -> "message.part.updated";
             case DtEvent.MessagePartDelta pd      -> "message.part.delta";
             case DtEvent.MessagePartRemoved pr    -> "message.part.removed";
+            case DtEvent.SessionStarted ss        -> "session.started";
+            case DtEvent.SessionEnded se          -> "session.ended";
+            case DtEvent.AgentStatus as           -> "agent.status";
+            case DtEvent.TaskComplete tc          -> "task.complete";
             case DtEvent.ActionInvoke ai          -> "action.invoke";
             case DtEvent.ActionCancel ac          -> "action.cancel";
+            case DtEvent.ActionResponse ar        -> "action.response";
             case DtEvent.ArtifactSnapshot as      -> "artifact.snapshot";
             case DtEvent.OntologyUpdated ou       -> "ontology.updated";
             case DtEvent.Heartbeat hb             -> "heartbeat";
+            case DtEvent.PingPong pp              -> "ping";
             case DtEvent.StreamError se           -> "error";
         };
     }
