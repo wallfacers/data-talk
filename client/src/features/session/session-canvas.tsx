@@ -4,6 +4,7 @@ import { HeroView } from './hero-view'
 import { SplitView } from './split-view'
 import { PromptComposer } from './prompt-composer'
 import { ConnectionOverlay } from './connection-overlay'
+import { WelcomeEmpty } from './welcome-empty'
 
 export function SessionCanvas() {
   const { mode } = useSessionMode()
@@ -12,7 +13,7 @@ export function SessionCanvas() {
     <div className="relative h-full">
       {mode === 'HERO' && <HeroView />}
       {mode === 'SPLIT' && <SplitView />}
-      {mode === 'NOSESS' && <div className="flex h-full items-center justify-center text-muted-foreground">请从侧边栏选择或新建会话</div>}
+      {mode === 'NOSESS' && <WelcomeEmpty />}
       <PromptComposer />
       <ConnectionOverlay />
     </div>

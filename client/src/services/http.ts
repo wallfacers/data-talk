@@ -1,7 +1,7 @@
 import ky from 'ky'
 
 export const http = ky.create({
-  prefixUrl: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api',
+  prefixUrl: import.meta.env.VITE_API_BASE_URL ?? '/api',
   timeout: 30_000,
   retry: { limit: 1 },
   hooks: {
