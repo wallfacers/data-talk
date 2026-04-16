@@ -4,7 +4,6 @@ import com.datatalk.domain.event.ErrorInfo;
 import com.datatalk.domain.part.Part;
 
 import java.util.List;
-import java.util.Map;
 
 /** Inbound JSON-RPC request over Streamable HTTP. See spec §3.3. */
 public sealed interface RpcRequest {

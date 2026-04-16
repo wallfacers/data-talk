@@ -2,11 +2,9 @@ package com.datatalk.application.channel;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.stereotype.Component;
 
-/**
- * Encodes and decodes JSON-RPC 2.0 request/response envelopes for the
- * Streamable HTTP channel.
- */
+@Component
 public class JsonRpcCodec {
 
     private final ObjectMapper om;
