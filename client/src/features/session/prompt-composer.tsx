@@ -21,6 +21,7 @@ import { Switch } from '@/components/ui/switch'
 import { useSessionStore } from '@/stores/session-store'
 import { useChannel } from '@/services/channel/use-channel'
 import { createTextPart } from '@/services/channel/types'
+import { StageToggleButton } from '@/features/stage/components/stage-toggle-button'
 
 const MODELS = ['Claude Opus 4.6', 'Claude Sonnet 4.6', 'Claude Haiku 4.5'] as const
 
@@ -120,6 +121,9 @@ function InnerComposer() {
               />
               Auto
             </InputGroupText>
+
+            {/* Stage 开关：手动打开/关闭右侧"电脑"窗体 */}
+            <StageToggleButton />
 
             {/* Spacer */}
             <div className="flex-1" />
