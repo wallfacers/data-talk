@@ -1,0 +1,105 @@
+package com.datatalk.application.registry;
+
+import com.datatalk.domain.action.ActionContext;
+import com.datatalk.domain.action.ActionHandler;
+import com.datatalk.domain.action.DataTalkAction;
+import com.datatalk.domain.action.Executor;
+import com.datatalk.domain.action.OntologyEffect;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+@SpringBootTest(classes = {ActionRegistry.class, JsonSchemaLoader.class, ActionRegistryTest.TestActions.class})
+class ActionRegistryTest {
+
+    @Autowired
+    ActionRegistry registry;
+
+    @Test
+    void discoversAnnotatedHandlers() {
+        assertThat(registry.all()).extracting("id").containsExactlyInAnyOrder("test.alpha", "test.beta");
+    }
+
+    @Test
+    void returnsDescriptorWithAnnotationMetadata() {
+        var d = registry.require("test.alpha");
+        assertThat(d.executor()).isEqualTo(Executor.SERVER);
+        assertThat(d.description()).isEqualTo("Alpha");
+        assertThat(d.timeoutMs()).isEqualTo(12_345);
+    }
+
+    @Test
+    void throwsForUnknownActionId() {
+        assertThatThrownBy(() -> registry.require("test.missing"))
+            .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("test.missing");
+    }
+
+    @Test
+    void lookupHandlerReturnsBean() {
+        ActionHandler<?, ?> h = registry.handler("test.alpha");
+        assertThat(h).isInstanceOf(AlphaHandler.class);
+    }
+
+    @Configuration
+    static class TestActions {
+        @Bean
+        ObjectMapper objectMapper() { return new ObjectMapper(); }
+
+        @Bean
+        AlphaHandler alpha() { return new AlphaHandler(); }
+
+        @Bean
+        BetaHandler beta() { return new BetaHandler(); }
+    }
+
+    @DataTalkAction(id = "test.alpha", executor = Executor.SERVER, description = "Alpha", timeoutMs = 12_345)
+    static class AlphaHandler implements ActionHandler<Map, Map> {
+        @Override
+        public Map<String, Object> inputSchema() { return Map.of("type", "object"); }
+
+        @Override
+        public Map<String, Object> outputSchema() { return Map.of("type", "object"); }
+
+        @Override
+        public List<OntologyEffect> sideEffects() { return List.of(OntologyEffect.NONE); }
+
+        @Override
+        public Class<Map> inputType() { return Map.class; }
+
+        @Override
+        public CompletionStage<Map> handle(ActionContext ctx, Map input) {
+            return CompletableFuture.completedFuture(input);
+        }
+    }
+
+    @DataTalkAction(id = "test.beta", executor = Executor.CLIENT, description = "Beta", requiresConnection = true)
+    static class BetaHandler implements ActionHandler<Map, Map> {
+        @Override
+        public Map<String, Object> inputSchema() { return Map.of("type", "object"); }
+
+        @Override
+        public Map<String, Object> outputSchema() { return Map.of("type", "object"); }
+
+        @Override
+        public List<OntologyEffect> sideEffects() { return List.of(OntologyEffect.NONE); }
+
+        @Override
+        public Class<Map> inputType() { return Map.class; }
+
+        @Override
+        public CompletionStage<Map> handle(ActionContext ctx, Map input) {
+            return CompletableFuture.completedFuture(Map.of());
+        }
+    }
+}
