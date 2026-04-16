@@ -33,3 +33,6 @@ server/data-talk-adapter/data/
 # Logs
 *.log
 server/*/target/
+
+# Worktrees
+.worktrees/
