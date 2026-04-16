@@ -4,8 +4,9 @@ export type Session = {
   id: string
   connectionId: string
   title: string
-  createdAt: string
-  updatedAt: string
+  hasEverSent: boolean
+  createdAt: number
+  updatedAt: number
 }
 
 export function listSessions(connectionId?: string) {

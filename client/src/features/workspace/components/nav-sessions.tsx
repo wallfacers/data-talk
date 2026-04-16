@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useSessions } from '@/features/session/hooks/use-sessions'
-import { useSessionStore } from '@/features/session/store'
+import { useSessionStore } from '@/stores/session-store'
 import type { Session } from '@/services/api/session'
 
 type SessionGroup = {
@@ -76,7 +76,7 @@ function EmptyHint({ text }: { text: string }) {
 
 export function NavSessions() {
   const activeSessionId = useSessionStore((s) => s.activeSessionId)
-  const setActive = useSessionStore((s) => s.setActive)
+  const openSession = useSessionStore((s) => s.openSession)
   const sessions = useSessions()
 
   if (sessions.isLoading) {
@@ -114,7 +114,10 @@ export function NavSessions() {
           label={g.label}
           items={g.items}
           activeId={activeSessionId}
-          onSelect={setActive}
+          onSelect={(id) => {
+            const target = (sessions.data ?? []).find((x) => x.id === id)
+            openSession(id, target?.hasEverSent ?? false)
+          }}
         />
       ))}
     </>

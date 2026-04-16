@@ -2,27 +2,51 @@ import { create } from 'zustand'
 import type { Part } from '@/services/channel/types'
 
 type ChatPartsState = {
-  partsByMessage: Map<string, Part[]>
-  upsertPart: (part: Part) => void
-  removePart: (messageId: string, partId: string) => void
-  clear: () => void
+  partsBySession: Map<string, Map<string, Part[]>>  // sessionId → messageId → Part[]
+  upsertPart: (sessionId: string, part: Part) => void
+  upsertMany: (sessionId: string, parts: Part[]) => void
+  removePart: (sessionId: string, messageId: string, partId: string) => void
+  clearSession: (sessionId: string) => void
+  getParts: (sessionId: string) => Part[]
 }
 
-export const useChatPartsStore = create<ChatPartsState>((set) => ({
-  partsByMessage: new Map(),
-  upsertPart: (part) => set(s => {
-    const next = new Map(s.partsByMessage)
-    const list = [...(next.get(part.messageID) ?? [])]
-    const idx = list.findIndex(p => p.id === part.id)
+export const useChatPartsStore = create<ChatPartsState>((set, get) => ({
+  partsBySession: new Map(),
+
+  upsertPart: (sessionId, part) => set((s) => {
+    const bySession = new Map(s.partsBySession)
+    const byMessage = new Map(bySession.get(sessionId) ?? new Map())
+    const list = [...(byMessage.get(part.messageID) ?? [])]
+    const idx = list.findIndex((p) => p.id === part.id)
     if (idx >= 0) list[idx] = part
     else list.push(part)
-    next.set(part.messageID, list)
-    return { partsByMessage: next }
+    byMessage.set(part.messageID, list)
+    bySession.set(sessionId, byMessage)
+    return { partsBySession: bySession }
   }),
-  removePart: (messageId, partId) => set(s => {
-    const next = new Map(s.partsByMessage)
-    next.set(messageId, (next.get(messageId) ?? []).filter(p => p.id !== partId))
-    return { partsByMessage: next }
+
+  upsertMany: (sessionId, parts) => {
+    for (const p of parts) get().upsertPart(sessionId, p)
+  },
+
+  removePart: (sessionId, messageId, partId) => set((s) => {
+    const bySession = new Map(s.partsBySession)
+    const byMessage = new Map(bySession.get(sessionId) ?? new Map())
+    const list = (byMessage.get(messageId) ?? []).filter((p: Part) => p.id !== partId)
+    byMessage.set(messageId, list)
+    bySession.set(sessionId, byMessage)
+    return { partsBySession: bySession }
   }),
-  clear: () => set({ partsByMessage: new Map() }),
+
+  clearSession: (sessionId) => set((s) => {
+    const bySession = new Map(s.partsBySession)
+    bySession.delete(sessionId)
+    return { partsBySession: bySession }
+  }),
+
+  getParts: (sessionId) => {
+    const byMessage = get().partsBySession.get(sessionId)
+    if (!byMessage) return []
+    return Array.from(byMessage.values()).flat()
+  },
 }))

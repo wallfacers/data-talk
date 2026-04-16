@@ -9,9 +9,9 @@ type SessionState = {
   pendingPrompt: string | null
   pendingConnectionPrompt: boolean
 
-  setActive: (id: string | null) => void
+  openSession: (id: string, hasEverSent: boolean) => void
+  closeSession: () => void
   enterSplit: (id: string) => void
-  seedFromServer: (id: string, hasEverSent: boolean) => void
   setPendingPrompt: (text: string | null) => void
   setPendingConnectionPrompt: (on: boolean) => void
 }
@@ -23,25 +23,22 @@ export const useSessionStore = create<SessionState>((set) => ({
   pendingPrompt: null,
   pendingConnectionPrompt: false,
 
-  setActive: (id) => set(s => {
-    if (!id) return { activeSessionId: null }
-    const mode = s.modeBySession.get(id)
-        ?? (s.hasEverSentBySession.get(id) ? 'SPLIT' : 'HERO')
-    const next = new Map(s.modeBySession); next.set(id, mode)
-    return { activeSessionId: id, modeBySession: next }
+  openSession: (id, hasEverSent) => set((s) => {
+    // Cache wins: once we've observed hasEverSent=true locally, never demote.
+    const cachedSent = s.hasEverSentBySession.get(id) ?? false
+    const effectiveSent = cachedSent || hasEverSent
+    const mode: SessionMode = effectiveSent ? 'SPLIT' : 'HERO'
+    const modes = new Map(s.modeBySession); modes.set(id, mode)
+    const sent = new Map(s.hasEverSentBySession); sent.set(id, effectiveSent)
+    return { activeSessionId: id, modeBySession: modes, hasEverSentBySession: sent }
   }),
 
-  enterSplit: (id) => set(s => {
-    const next = new Map(s.modeBySession); next.set(id, 'SPLIT')
+  closeSession: () => set({ activeSessionId: null }),
+
+  enterSplit: (id) => set((s) => {
+    const modes = new Map(s.modeBySession); modes.set(id, 'SPLIT')
     const sent = new Map(s.hasEverSentBySession); sent.set(id, true)
-    return { modeBySession: next, hasEverSentBySession: sent }
-  }),
-
-  seedFromServer: (id, hasEverSent) => set(s => {
-    const mode = hasEverSent ? 'SPLIT' : 'HERO'
-    const next = new Map(s.modeBySession); next.set(id, mode)
-    const sent = new Map(s.hasEverSentBySession); sent.set(id, hasEverSent)
-    return { modeBySession: next, hasEverSentBySession: sent }
+    return { modeBySession: modes, hasEverSentBySession: sent }
   }),
 
   setPendingPrompt: (text) => set({ pendingPrompt: text }),

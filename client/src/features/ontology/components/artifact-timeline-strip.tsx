@@ -8,7 +8,7 @@ export function ArtifactTimelineStrip() {
   const order = useTimelineStore(s => sessionId ? (s.orderBySession.get(sessionId) ?? []) : [])
   const active = useTimelineStore(s => sessionId ? s.activeBySession.get(sessionId) : null)
   const setActive = useTimelineStore(s => s.setActive)
-  const artifacts = useOntologyStore(s => s.artifacts)
+  const artifacts = useOntologyStore((s) => (sessionId ? (s.artifactsBySession.get(sessionId) ?? new Map()) : new Map()))
 
   return (
     <div className="flex gap-1 overflow-x-auto border-b p-2">

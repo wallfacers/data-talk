@@ -26,12 +26,12 @@ export function useChannel() {
       await client.sendMessage(parts, evt => {
         const { event, data } = evt
         if (event === 'message.part.created' || event === 'message.part.updated') {
-          upsertPart((data as any).part)
+          upsertPart(sessionId, (data as any).part)
         }
         if (event === 'ontology.updated') {
           const d = data as any
           if (d.objectType === 'datatalk.artifact') {
-            upsertArtifact({ id: d.id, version: d.patch?.version ?? 1,
+            upsertArtifact(sessionId, { id: d.id, version: d.patch?.version ?? 1,
               kind: d.patch?.kind ?? 'table',
               supersedesId: d.patch?.supersedesId,
               payload: d.patch })
