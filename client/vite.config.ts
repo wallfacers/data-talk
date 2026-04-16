@@ -27,4 +27,8 @@ export default defineConfig({
     watch: { ignored: ['**/src-tauri/**'] },
   },
   envPrefix: ['VITE_', 'TAURI_ENV_*'],
+  test: {
+    environment: 'jsdom',
+    globals: true,
+  },
 })
