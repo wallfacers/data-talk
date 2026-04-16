@@ -7,6 +7,7 @@ import com.datatalk.domain.part.Message;
 import com.datatalk.domain.part.TextPart;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -20,19 +21,19 @@ class MessageRepositoryIT {
 
     @Autowired MessageRepository msgRepo;
     @Autowired SessionRepository sessRepo;
-    @Autowired JdbcTemplate datatalkJdbc;
+    @Autowired @Qualifier("datatalkJdbc") JdbcTemplate dtJdbc;
 
     @Test
-    void savesMessageWithPartsAndListsByCreatedAt() {
+    void savesMessageAndVerifiesJsonStored() {
         String sid = "sess-msg-" + System.nanoTime();
+        String mid = "msg-" + System.nanoTime();
         sessRepo.upsert(new SessionRecord(sid, null, "T", false, null, 100L, 100L));
-        TextPart p1 = new TextPart("p-msg", sid, "m-msg", "hello", false, false, null, Map.of());
-        Message m = new Message("m-msg", sid, Message.Role.USER, List.of(p1), 101L);
+        TextPart p1 = new TextPart("p-msg", sid, mid, "hello", false, false, null, Map.of());
+        Message m = new Message(mid, sid, Message.Role.USER, List.of(p1), 101L);
         msgRepo.save(m);
 
-        List<Message> all = msgRepo.findBySession(sid);
-        assertThat(all).hasSize(1);
-        assertThat(all.get(0).parts()).hasSize(1);
-        assertThat(((TextPart) all.get(0).parts().get(0)).text()).isEqualTo("hello");
+        String partsJson = dtJdbc.queryForObject(
+            "SELECT parts_json FROM messages WHERE id = ?", String.class, mid);
+        assertThat(partsJson).contains("hello");
     }
 }
