@@ -1368,11 +1368,14 @@ git commit -m "feat(server): add Streamable HTTP ChannelController (POST-as-SSE 
 
 ### 阻塞项
 
-| 阻塞项 | 原因 | 解决方 |
+| 阻塞项 | 状态 | 解决方 |
 |--------|------|--------|
-| 编译通过 | data-talk-application 模块编译问题 | 其他智能体处理 |
-| 测试 PASS | 需编译通过 | 阻塞于编译 |
-| Task 20 IT 集成测试 | 需 WebFlux 依赖 + Spring Boot 上下文 | 阻塞于编译 + pom.xml 变更 |
+| 编译通过 | ✅ 已通过 | — |
+| 单元测试 44/44 PASS | ✅ 全部通过 | — |
+| Task 20 IT 集成测试 | ✅ 1/1 通过 | ChannelControllerIT sendMessageReturnsSseStreamWithAtLeastConnected 验证通过 |
+| pom.xml 依赖 | ✅ 已加 `spring-boot-starter-webflux` test scope + `spring-jdbc` | — |
+| infrastructure 依赖确认 | ✅ 编译通过，无问题 | — |
+| ChannelController SSE 流修复 | ✅ 已修复并提交 `5721ec7` | StreamingResponseBody → ResponseBodyEmitter |
 
 ### Part 2 适配状态
 
