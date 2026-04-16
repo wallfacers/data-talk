@@ -73,43 +73,14 @@ public class ChannelController {
             new EmitterOutputStream(emitter), om, "connected");
         String clientId = "read-" + System.nanoTime();
 
-        // Complete the emitter when the client disconnects
-        emitter.onCompletion(() -> bus.unsubscribe(clientId));
-        emitter.onTimeout(() -> bus.unsubscribe(clientId));
-
-        // Publish connected
+        // Publish connected and subscribe
         bus.publish(new DtEvent.Connected(sessionId, 1));
         bus.subscribe(clientId, lastEventId == null ? 0L : lastEventId, sub);
 
-        // Heartbeat loop on a daemon thread
-        var running = new boolean[]{true};
-        emitter.onCompletion(() -> { running[0] = false; bus.unsubscribe(clientId); });
-        emitter.onTimeout(() -> { running[0] = false; bus.unsubscribe(clientId); });
-
-        // Publish connected
-        bus.publish(new DtEvent.Connected(sessionId, 1));
-        bus.subscribe(clientId, lastEventId == null ? 0L : lastEventId, sub);
-
-        Thread t = new Thread(() -> {
-            try {
-                while (running[0]) {
-                    try {
-                        Thread.sleep(1_000);
-                        if (!sub.isBroken()) {
-                            bus.publish(new DtEvent.Heartbeat(System.currentTimeMillis()));
-                        }
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        break;
-                    }
-                }
-            } finally {
-                running[0] = false;
-                bus.unsubscribe(clientId);
-            }
-        }, "channel-heartbeat-" + sessionId);
-        t.setDaemon(true);
-        t.start();
+        // Unsubscribe on disconnect; trigger eviction when last subscriber leaves
+        Runnable onDisconnect = () -> { bus.unsubscribe(clientId); buses.onUnsubscribe(sessionId); };
+        emitter.onCompletion(onDisconnect);
+        emitter.onTimeout(onDisconnect);
 
         return emitter;
     }
@@ -123,8 +94,10 @@ public class ChannelController {
             new EmitterOutputStream(emitter), om, "connected");
         String clientId = "post-" + System.nanoTime();
 
-        emitter.onCompletion(() -> bus.unsubscribe(clientId));
-        emitter.onTimeout(() -> bus.unsubscribe(clientId));
+        // Unsubscribe on disconnect; trigger eviction when last subscriber leaves
+        Runnable onDisconnect = () -> { bus.unsubscribe(clientId); buses.onUnsubscribe(sessionId); };
+        emitter.onCompletion(onDisconnect);
+        emitter.onTimeout(onDisconnect);
 
         // Publish connected and subscribe
         bus.publish(new DtEvent.Connected(sessionId, 1));
@@ -148,9 +121,8 @@ public class ChannelController {
                 emitter.complete();
             } catch (Exception e) {
                 emitter.completeWithError(e);
-            } finally {
-                bus.unsubscribe(clientId);
             }
+            // onCompletion/onTimeout callbacks already handled unsubscribe
         }, "channel-stream-" + sessionId);
         t.setDaemon(true);
         t.start();

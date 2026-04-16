@@ -4,6 +4,9 @@ import com.datatalk.domain.event.DtEvent;
 import com.datatalk.domain.event.NumberedEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayDeque;
@@ -34,6 +37,8 @@ import java.util.function.Consumer;
  * {@code bufferTtl}, whichever is shorter) are kept in memory for replay.</p>
  */
 public class SessionBus implements AutoCloseable {
+
+    private static final Logger log = LoggerFactory.getLogger(SessionBus.class);
 
     public interface Persister {
         void persist(String sessionId, long eventId, String eventType, String payloadJson, long ts);
@@ -78,16 +83,12 @@ public class SessionBus implements AutoCloseable {
     }
 
     public void subscribe(String clientId, long lastEventId, Consumer<NumberedEvent> sink) {
-        // Replay first from buffer
-        List<NumberedEvent> backfill;
         synchronized (buffer) {
-            backfill = new ArrayList<>();
+            subscribers.put(clientId, sink);
             for (NumberedEvent n : buffer) {
-                if (n.eventId() > lastEventId) backfill.add(n);
+                if (n.eventId() > lastEventId) sink.accept(n);
             }
         }
-        backfill.forEach(sink);
-        subscribers.put(clientId, sink);
     }
 
     public void unsubscribe(String clientId) {
@@ -109,9 +110,9 @@ public class SessionBus implements AutoCloseable {
                 NumberedEvent n = new NumberedEvent(id, sessionId, evt, now);
                 emitted.add(n);
                 try {
-                    persister.persist(sessionId, id, typeName(evt), om.writeValueAsString(evt), now);
-                } catch (Exception ignore) {
-                    // persistence failures are logged by concrete impl; bus keeps going
+                    persister.persist(sessionId, id, evt.typeName(), om.writeValueAsString(evt), now);
+                } catch (Exception e) {
+                    log.warn("Failed to persist event id={} for session={}", id, sessionId, e);
                 }
             }
 
@@ -128,7 +129,9 @@ public class SessionBus implements AutoCloseable {
 
             for (NumberedEvent n : emitted) {
                 for (Consumer<NumberedEvent> sub : subscribers.values()) {
-                    try { sub.accept(n); } catch (Exception ignore) {}
+                    try { sub.accept(n); } catch (Exception e) {
+                        log.warn("Subscriber threw during flush for session={}", sessionId, e);
+                    }
                 }
             }
         } catch (Throwable t) {
@@ -155,34 +158,6 @@ public class SessionBus implements AutoCloseable {
             out.add(e);
         }
         return out;
-    }
-
-    private static String typeName(DtEvent e) {
-        // mirror @JsonSubTypes name attribute mapping
-        return switch (e) {
-            case DtEvent.Connected c              -> "connected";
-            case DtEvent.Disconnected d           -> "disconnected";
-            case DtEvent.SessionStatus s          -> "session.status";
-            case DtEvent.MessageCreated mc        -> "message.created";
-            case DtEvent.MessageUpdated mu        -> "message.updated";
-            case DtEvent.MessageCompleted mc      -> "message.completed";
-            case DtEvent.MessagePartCreated pc    -> "message.part.created";
-            case DtEvent.MessagePartUpdated pu    -> "message.part.updated";
-            case DtEvent.MessagePartDelta pd      -> "message.part.delta";
-            case DtEvent.MessagePartRemoved pr    -> "message.part.removed";
-            case DtEvent.SessionStarted ss        -> "session.started";
-            case DtEvent.SessionEnded se          -> "session.ended";
-            case DtEvent.AgentStatus as           -> "agent.status";
-            case DtEvent.TaskComplete tc          -> "task.complete";
-            case DtEvent.ActionInvoke ai          -> "action.invoke";
-            case DtEvent.ActionCancel ac          -> "action.cancel";
-            case DtEvent.ActionResponse ar        -> "action.response";
-            case DtEvent.ArtifactSnapshot as      -> "artifact.snapshot";
-            case DtEvent.OntologyUpdated ou       -> "ontology.updated";
-            case DtEvent.Heartbeat hb             -> "heartbeat";
-            case DtEvent.PingPong pp              -> "ping";
-            case DtEvent.StreamError se           -> "error";
-        };
     }
 
     @Override

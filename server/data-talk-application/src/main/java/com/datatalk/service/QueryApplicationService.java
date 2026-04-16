@@ -30,12 +30,7 @@ public class QueryApplicationService {
         DbConnection connection = connectionRepository.findById(command.connectionId())
                 .orElseThrow(() -> new ConnectionNotFoundException(command.connectionId()));
 
-        QueryResult result;
-        try {
-            result = sqlExecutionRepository.execute(connection, command.sql());
-        } catch (SqlExecutionException e) {
-            throw e;
-        }
+        QueryResult result = sqlExecutionRepository.execute(connection, command.sql());
 
         return new QueryResponseDto(
                 result.columns(),

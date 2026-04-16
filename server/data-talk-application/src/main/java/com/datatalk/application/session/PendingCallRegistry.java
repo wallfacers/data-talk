@@ -18,17 +18,29 @@ public class PendingCallRegistry {
         });
 
     public void register(String callId, CompletableFuture<Object> future, int timeoutMs) {
+        // Put entry first so complete()/fail()/cancel() can find it.
+        // If the entry is already completed by a concurrent call, the timer
+        // will remove it harmlessly. If complete() runs between put and schedule,
+        // the entry will be gone and the timer's remove returns null.
+        Entry placeholder = new Entry(future, null);
+        Entry prev = byCallId.put(callId, placeholder);
+        if (prev != null) prev.timer.cancel(false);
+
         ScheduledFuture<?> timer = watchdog.schedule(() -> {
             Entry e = byCallId.remove(callId);
             if (e != null) e.future.completeExceptionally(new TimeoutException("action.timeout after " + timeoutMs + "ms"));
         }, timeoutMs, TimeUnit.MILLISECONDS);
-        byCallId.put(callId, new Entry(future, timer));
+
+        Entry current = byCallId.get(callId);
+        if (current != null && current.future == future) {
+            byCallId.replace(callId, current, new Entry(future, timer));
+        }
     }
 
     public boolean complete(String callId, Object output) {
         Entry e = byCallId.remove(callId);
         if (e == null) return false;
-        e.timer.cancel(false);
+        if (e.timer != null) e.timer.cancel(false);
         e.future.complete(output);
         return true;
     }
@@ -36,7 +48,7 @@ public class PendingCallRegistry {
     public boolean fail(String callId, Throwable error) {
         Entry e = byCallId.remove(callId);
         if (e == null) return false;
-        e.timer.cancel(false);
+        if (e.timer != null) e.timer.cancel(false);
         e.future.completeExceptionally(error);
         return true;
     }
@@ -44,13 +56,9 @@ public class PendingCallRegistry {
     public boolean cancel(String callId, String reason) {
         Entry e = byCallId.remove(callId);
         if (e == null) return false;
-        e.timer.cancel(false);
+        if (e.timer != null) e.timer.cancel(false);
         e.future.completeExceptionally(new CancelledException(reason));
         return true;
-    }
-
-    public boolean hasPending(String callId) {
-        return byCallId.containsKey(callId);
     }
 
     private record Entry(CompletableFuture<Object> future, ScheduledFuture<?> timer) {}

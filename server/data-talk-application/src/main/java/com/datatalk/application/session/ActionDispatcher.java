@@ -10,6 +10,8 @@ import com.datatalk.domain.action.ActionHandler;
 import com.datatalk.domain.action.OntologyEffect;
 import com.datatalk.domain.event.DtEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
@@ -19,6 +21,8 @@ import java.util.concurrent.CompletionStage;
 
 @Component
 public class ActionDispatcher {
+
+    private static final Logger log = LoggerFactory.getLogger(ActionDispatcher.class);
 
     private final ActionRegistry registry;
     private final JsonSchemaLoader schemas;
@@ -66,14 +70,18 @@ public class ActionDispatcher {
                     applyEffects(desc, output, ctx, bus);
                     try {
                         invocations.complete(callId, om.writeValueAsString(output), clock.millis());
-                    } catch (Exception ignore) {}
+                    } catch (Exception e) {
+                        log.warn("Failed to record action completion for callId={}", callId, e);
+                    }
                     return output;
                 }).whenComplete((res, err) -> {
                     if (err != null) {
                         try {
                             invocations.fail(callId, om.writeValueAsString(
                                 Map.of("message", err.getMessage())), clock.millis());
-                        } catch (Exception ignore) {}
+                        } catch (Exception e) {
+                            log.warn("Failed to record action failure for callId={}", callId, e);
+                        }
                     }
                 });
             }
@@ -83,7 +91,9 @@ public class ActionDispatcher {
                     validate(desc.outputSchema(), output, "output", actionId);
                     try {
                         invocations.complete(callId, om.writeValueAsString(output), clock.millis());
-                    } catch (Exception ignore) {}
+                    } catch (Exception e) {
+                        log.warn("Failed to record opencode action completion for callId={}", callId, e);
+                    }
                     return output;
                 });
             }
@@ -98,11 +108,15 @@ public class ActionDispatcher {
                         try {
                             invocations.fail(callId, om.writeValueAsString(
                                 Map.of("message", err.getMessage())), t);
-                        } catch (Exception ignore) {}
+                        } catch (Exception e) {
+                            log.warn("Failed to record client action failure for callId={}", callId, e);
+                        }
                     } else {
                         try {
                             invocations.complete(callId, om.writeValueAsString(res), t);
-                        } catch (Exception ignore) {}
+                        } catch (Exception e) {
+                            log.warn("Failed to record client action completion for callId={}", callId, e);
+                        }
                     }
                 });
             }

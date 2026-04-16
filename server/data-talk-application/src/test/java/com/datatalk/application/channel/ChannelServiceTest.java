@@ -1,5 +1,7 @@
 package com.datatalk.application.channel;
 
+import com.datatalk.application.opencode.OpenCodeGateway;
+import com.datatalk.application.opencode.OpenCodeSessionMap;
 import com.datatalk.application.persistence.MessageRepository;
 import com.datatalk.application.persistence.SessionRecord;
 import com.datatalk.application.persistence.SessionRepository;
@@ -37,6 +39,9 @@ class ChannelServiceTest {
     SessionBusRegistry busRegistry;
     PendingCallRegistry pending;
     IdGenerator ids;
+    OpenCodeGateway gateway;
+    OpenCodeSessionMap sessionMap;
+    ObjectMapper om = new ObjectMapper();
     Clock clock = Clock.fixed(Instant.ofEpochMilli(1000L), ZoneOffset.UTC);
     ChannelService svc;
 
@@ -47,7 +52,9 @@ class ChannelServiceTest {
         busRegistry = mock(SessionBusRegistry.class);
         pending = mock(PendingCallRegistry.class);
         ids = mock(IdGenerator.class);
-        svc = new ChannelService(sessionRepo, msgRepo, busRegistry, pending, ids, clock);
+        gateway = mock(OpenCodeGateway.class);
+        sessionMap = mock(OpenCodeSessionMap.class);
+        svc = new ChannelService(sessionRepo, msgRepo, busRegistry, pending, ids, clock, gateway, sessionMap, om);
     }
 
     @Test

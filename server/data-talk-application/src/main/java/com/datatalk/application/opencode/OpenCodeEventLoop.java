@@ -31,6 +31,7 @@ import java.util.function.Consumer;
  */
 public class OpenCodeEventLoop {
 
+    private final HttpClient httpClient;
     private final String baseUrl;
     private final ObjectMapper om;
     private final OpenCodeEventTranslator translator;
@@ -51,6 +52,9 @@ public class OpenCodeEventLoop {
         this.buses = buses;
         this.sessionMap = sessionMap;
         this.tap = tap == null ? e -> {} : tap;
+        this.httpClient = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .build();
     }
 
     public void start() {
@@ -94,35 +98,33 @@ public class OpenCodeEventLoop {
             .GET()
             .build();
 
-            HttpResponse<InputStream> response = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(10))
-                .build()
-                .send(request, HttpResponse.BodyHandlers.ofInputStream());
+        HttpResponse<InputStream> response = httpClient
+            .send(request, HttpResponse.BodyHandlers.ofInputStream());
 
-            if (response.statusCode() != 200) {
-                throw new IOException("Unexpected status " + response.statusCode());
-            }
+        if (response.statusCode() != 200) {
+            throw new IOException("Unexpected status " + response.statusCode());
+        }
 
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(response.body()))) {
-                String line;
-                StringBuilder dataBuilder = new StringBuilder();
-                String event = null;
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(response.body()))) {
+            String line;
+            StringBuilder dataBuilder = new StringBuilder();
+            String event = null;
 
-                while (running.get() && (line = reader.readLine()) != null) {
-                    if (line.isEmpty()) {
-                        // End of frame
-                        if (event != null) {
-                            handleOcEvent(event, dataBuilder.toString());
-                        }
-                        event = null;
-                        dataBuilder.setLength(0);
-                    } else if (line.startsWith("event:")) {
-                        event = line.substring(6).trim();
-                    } else if (line.startsWith("data:")) {
-                        dataBuilder.append(line.substring(5).trim());
+            while (running.get() && (line = reader.readLine()) != null) {
+                if (line.isEmpty()) {
+                    // End of frame
+                    if (event != null) {
+                        handleOcEvent(event, dataBuilder.toString());
                     }
+                    event = null;
+                    dataBuilder.setLength(0);
+                } else if (line.startsWith("event:")) {
+                    event = line.substring(6).trim();
+                } else if (line.startsWith("data:")) {
+                    dataBuilder.append(line.substring(5).trim());
                 }
             }
+        }
     }
 
     private void handleOcEvent(String eventName, String json) {
