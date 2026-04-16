@@ -34,3 +34,16 @@ logging:
 datatalk:
   persistence:
     sqlite-path: ./data/datatalk.db
+  opencode:
+    base-url: http://localhost:4096
+    plugin-callback-base: http://localhost:8080
+    shared-secret: ""
+    required: false
+    serve:
+      enabled: true
+      auto-upgrade: false
+      version: 1.4.6
+      base-port: 4096
+      port-retries: 100
+      hostname: 127.0.0.1
+      cors: http://localhost:8080

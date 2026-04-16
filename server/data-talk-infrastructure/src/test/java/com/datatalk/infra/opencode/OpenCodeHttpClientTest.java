@@ -55,11 +55,8 @@ class OpenCodeHttpClientTest {
             Map.of("type", "object"),
             "http://localhost:8080/api/opencode-tool/datatalk.demo.echo");
 
+        String expectedJson = "{\"name\":\"datatalk.demo.echo\",\"description\":\"echo\",\"parameters\":{\"type\":\"object\"},\"callbackUrl\":\"http://localhost:8080/api/opencode-tool/datatalk.demo.echo\"}";
         wm.verify(postRequestedFor(urlPathEqualTo("/plugin/register-tool"))
-            .withRequestBody(equalToJson("""
-                {"name":"datatalk.demo.echo","description":"echo",
-                 "parameters":{"type":"object"},
-                 "callbackUrl":"http://localhost:8080/api/opencode-tool/datatalk.demo.echo"}
-                """, true, true)));
+            .withRequestBody(equalToJson(expectedJson, true, true)));
     }
 }

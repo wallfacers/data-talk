@@ -32,7 +32,7 @@ import java.util.function.Consumer;
 public class OpenCodeEventLoop {
 
     private final HttpClient httpClient;
-    private final String baseUrl;
+    private volatile String baseUrl;
     private final ObjectMapper om;
     private final OpenCodeEventTranslator translator;
     private final SessionBusRegistry buses;
@@ -55,6 +55,10 @@ public class OpenCodeEventLoop {
         this.httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .build();
+    }
+
+    public void setBaseUrl(String url) {
+        this.baseUrl = url;
     }
 
     public void start() {

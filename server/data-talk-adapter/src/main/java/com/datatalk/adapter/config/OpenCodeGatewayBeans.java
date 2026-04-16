@@ -8,14 +8,20 @@ import com.datatalk.application.registry.ActionRegistry;
 import com.datatalk.application.session.SessionBusRegistry;
 import com.datatalk.infra.opencode.OpenCodeConfig;
 import com.datatalk.infra.opencode.OpenCodeHttpClient;
+import com.datatalk.infra.opencode.process.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.event.EventListener;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 @Configuration
+@EnableConfigurationProperties(OpenCodeServeProperties.class)
 public class OpenCodeGatewayBeans {
 
     private final OpenCodeHttpClient client;
@@ -25,7 +31,8 @@ public class OpenCodeGatewayBeans {
     private final OpenCodeEventTranslator translator;
     private final SessionBusRegistry buses;
     private final OpenCodeSessionMap sessionMap;
-    private final String opencodeBaseUrl;
+    private final OpenCodeServeProperties serveProps;
+    private final OpenCodeProcessManager processManager;
     private OpenCodeGateway gateway;
     private OpenCodeEventLoop eventLoop;
 
@@ -36,7 +43,9 @@ public class OpenCodeGatewayBeans {
                                 OpenCodeEventTranslator translator,
                                 SessionBusRegistry buses,
                                 OpenCodeSessionMap sessionMap,
-                                @Value("${datatalk.opencode.base-url:http://localhost:4096}") String opencodeBaseUrl) {
+                                OpenCodeServeProperties serveProps,
+                                @Value("${datatalk.opencode.required:false}") boolean required,
+                                @Value("${datatalk.opencode.base-url:http://localhost:4096}") String defaultBaseUrl) {
         this.client = client;
         this.props = props;
         this.registry = registry;
@@ -44,7 +53,17 @@ public class OpenCodeGatewayBeans {
         this.translator = translator;
         this.buses = buses;
         this.sessionMap = sessionMap;
-        this.opencodeBaseUrl = opencodeBaseUrl;
+        this.serveProps = serveProps;
+
+        Path homeDir = Paths.get(System.getProperty("user.home"));
+        OpenCodeBinaryResolver resolver = new OpenCodeBinaryResolver();
+        OpenCodePortAllocator allocator = new OpenCodePortAllocator();
+        eventLoop = new OpenCodeEventLoop(
+            defaultBaseUrl, om, translator, buses, sessionMap, null);
+
+        this.processManager = new OpenCodeProcessManager(
+            serveProps, resolver, allocator,
+            homeDir, client, eventLoop, required, defaultBaseUrl);
     }
 
     @Bean
@@ -60,22 +79,31 @@ public class OpenCodeGatewayBeans {
     }
 
     @Bean
-    public OpenCodeEventLoop openCodeEventLoop() {
-        this.eventLoop = new OpenCodeEventLoop(
-            opencodeBaseUrl, om, translator, buses, sessionMap, null);
+    public OpenCodeEventLoop openCodeEventLoopBean() {
         return eventLoop;
     }
 
+    @Bean
+    public OpenCodeProcessManager openCodeProcessManager() {
+        return processManager;
+    }
+
     /**
-     * Registers tools shortly after startup and starts the OpenCode SSE event loop.
-     * If OpenCode is unreachable (Plan A scope: fine), the app keeps running in degraded mode.
+     * Registers tools and starts the OpenCode SSE event loop after startup.
+     * If the embedded server is enabled and running, it's required for tool registration.
+     * If the embedded server is disabled, requires an external OpenCode instance.
      */
     @EventListener(ApplicationReadyEvent.class)
     public void registerOnStartup() {
+        // If embedded serve is enabled but manager didn't start (failure), skip
+        if (serveProps.isEnabled() && !processManager.isRunning()) {
+            System.err.println("OpenCode embedded server failed to start - skipping tool registration (degraded mode)");
+            return;
+        }
+
         try {
             gateway.registerTools();
         } catch (Exception e) {
-            // Plan B: retry with backoff. Plan A logs and continues.
             System.err.println("OpenCode tool registration failed (degraded mode): " + e.getMessage());
         }
         try {

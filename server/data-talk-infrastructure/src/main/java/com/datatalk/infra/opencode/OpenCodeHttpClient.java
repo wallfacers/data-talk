@@ -14,12 +14,22 @@ import java.util.Map;
  */
 public class OpenCodeHttpClient {
 
+    private volatile String baseUrl;
     private final WebClient wc;
     private final ObjectMapper om;
 
     public OpenCodeHttpClient(String baseUrl, ObjectMapper om) {
+        this.baseUrl = baseUrl;
         this.wc = WebClient.builder().baseUrl(baseUrl).build();
         this.om = om;
+    }
+
+    public void setBaseUrl(String url) {
+        this.baseUrl = url;
+    }
+
+    public String getBaseUrl() {
+        return this.baseUrl;
     }
 
     public String createSession() {
