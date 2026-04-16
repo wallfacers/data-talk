@@ -1,0 +1,28 @@
+CREATE TABLE connections (
+  id TEXT PRIMARY KEY, kind TEXT NOT NULL, host TEXT NOT NULL, port INTEGER NOT NULL,
+  database_name TEXT, username TEXT NOT NULL, password_enc BLOB NOT NULL,
+  schema_digest TEXT, created_at INTEGER NOT NULL
+);
+CREATE TABLE sessions (
+  id TEXT PRIMARY KEY, connection_id TEXT, title TEXT NOT NULL,
+  has_ever_sent INTEGER NOT NULL DEFAULT 0, opencode_sid TEXT,
+  created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
+);
+CREATE TABLE messages (
+  id TEXT PRIMARY KEY, session_id TEXT NOT NULL,
+  role TEXT NOT NULL, parts_json TEXT NOT NULL, created_at INTEGER NOT NULL
+);
+CREATE TABLE artifacts (
+  id TEXT NOT NULL, version INTEGER NOT NULL, session_id TEXT NOT NULL,
+  kind TEXT NOT NULL, produced_by TEXT NOT NULL,
+  payload_ref TEXT NOT NULL, payload_size INTEGER NOT NULL, supersedes_id TEXT,
+  supersedes_ver INTEGER, pinned INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL,
+  PRIMARY KEY (id, version)
+);
+CREATE TABLE action_invocations (
+  call_id TEXT PRIMARY KEY, session_id TEXT NOT NULL, action_id TEXT NOT NULL,
+  input_json TEXT, output_json TEXT, error_json TEXT, started_at INTEGER NOT NULL, completed_at INTEGER
+);
+CREATE TABLE pending_calls (
+  call_id TEXT PRIMARY KEY, expires_at INTEGER NOT NULL
+);

@@ -10,13 +10,24 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
+import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.reactive.function.client.WebClient;
+
+import javax.sql.DataSource;
+
+import org.h2.jdbcx.JdbcDataSource;
+
+import com.datatalk.config.DataSourcesConfig;
 
 import java.util.Map;
 
@@ -28,8 +39,37 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+    classes = EndToEndSmokeIT.TestApp.class,
+    properties = {
+        "spring.main.allow-bean-definition-overriding=true",
+        "spring.sql.init.mode=always",
+        "spring.sql.init.schema-locations=classpath:schema.sql",
+        "spring.sql.init.data-locations="
+    }
+)
 class EndToEndSmokeIT {
+
+    @SpringBootApplication(
+        scanBasePackages = "com.datatalk"
+        
+    )
+    @ComponentScan(
+        basePackages = "com.datatalk",
+        excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = DataSourcesConfig.class)
+    )
+    static class TestApp {
+        @Primary
+        @Bean(name = "demoDataSource")
+        public DataSource testDataSource() {
+            JdbcDataSource ds = new JdbcDataSource();
+            ds.setURL("jdbc:h2:mem:smoketest;DB_CLOSE_DELAY=-1;MODE=MySQL");
+            ds.setUser("sa");
+            ds.setPassword("");
+            return ds;
+        }
+    }
 
     static WireMockServer openCode;
 
