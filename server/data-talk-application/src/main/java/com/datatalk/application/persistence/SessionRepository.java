@@ -1,0 +1,53 @@
+package com.datatalk.application.persistence;
+
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+
+@Repository
+public class SessionRepository {
+
+    private final JdbcTemplate jdbc;
+
+    public SessionRepository(@Qualifier("datatalkJdbc") JdbcTemplate jdbc) {
+        this.jdbc = jdbc;
+    }
+
+    private static final RowMapper<SessionRecord> MAPPER = (rs, i) -> new SessionRecord(
+        rs.getString("id"),
+        rs.getString("connection_id"),
+        rs.getString("title"),
+        rs.getInt("has_ever_sent") == 1,
+        rs.getString("opencode_sid"),
+        rs.getLong("created_at"),
+        rs.getLong("updated_at")
+    );
+
+    public void upsert(SessionRecord s) {
+        jdbc.update("""
+            INSERT INTO sessions(id, connection_id, title, has_ever_sent, opencode_sid, created_at, updated_at)
+            VALUES(?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+              connection_id = excluded.connection_id,
+              title         = excluded.title,
+              has_ever_sent = excluded.has_ever_sent,
+              opencode_sid  = excluded.opencode_sid,
+              updated_at    = excluded.updated_at
+            """,
+            s.id(), s.connectionId(), s.title(), s.hasEverSent() ? 1 : 0,
+            s.openCodeSid(), s.createdAt(), s.updatedAt()
+        );
+    }
+
+    public Optional<SessionRecord> findById(String id) {
+        var list = jdbc.query("SELECT * FROM sessions WHERE id = ?", MAPPER, id);
+        return list.isEmpty() ? Optional.empty() : Optional.of(list.get(0));
+    }
+
+    public void markHasEverSent(String id, long now) {
+        jdbc.update("UPDATE sessions SET has_ever_sent = 1, updated_at = ? WHERE id = ?", now, id);
+    }
+}

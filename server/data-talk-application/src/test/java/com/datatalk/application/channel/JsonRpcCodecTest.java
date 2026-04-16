@@ -14,8 +14,8 @@ class JsonRpcCodecTest {
     void decodesSendMessageRequest() {
         String json = """
             {"jsonrpc":"2.0","id":"r1","method":"send_message",
-             "params":{"parts":[{"type":"text","id":"p1","sessionId":"s1","messageId":"m1",
-                                 "content":"hi","metadata":{}}]}}
+             "params":{"parts":[{"type":"text","id":"p1","sessionID":"s1","messageID":"m1",
+                                 "text":"hi","metadata":{}}]}}
             """;
         RpcRequest req = codec.decodeRequest(json);
         assertThat(req).isInstanceOf(RpcRequest.SendMessage.class);

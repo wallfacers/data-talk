@@ -4,7 +4,6 @@ import com.datatalk.domain.event.DtEvent;
 import com.datatalk.domain.part.Part;
 import org.springframework.stereotype.Component;
 
-import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -34,9 +33,7 @@ public class OpenCodeEventTranslator {
                 if (msgs.add(m.message().id())) {
                     yield List.of(new DtEvent.MessageCreated(m.message()));
                 }
-                yield List.of(new DtEvent.MessageUpdated(
-                    m.message().sessionId(), m.message().id(),
-                    m.message().role().name(), Instant.ofEpochMilli(m.message().createdAt())));
+                yield List.of(new DtEvent.MessageUpdated(m.message()));
             }
 
             case OcEvent.MessagePartUpdated p -> {

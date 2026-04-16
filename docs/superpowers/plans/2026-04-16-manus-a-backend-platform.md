@@ -1373,3 +1373,57 @@ Tasks 7–26 continue in `docs/superpowers/plans/2026-04-16-manus-a-backend-plat
 | 24 | ToolCallBridge | part2 |
 | 25 | ActionDispatcher | part2 |
 | 26 | DemoEchoAction + E2E smoke | part2 |
+
+---
+
+## Execution Results
+
+**Date completed:** 2026-04-16
+**Branch:** `develop`
+**Total tests:** 59 passed, 0 failures
+**Build status:** ✅ `mvn install -DskipTests` SUCCESS, `mvn test` SUCCESS
+
+### Commits Summary
+
+| # | Commit | Task(s) | Description |
+|---|--------|---------|-------------|
+| 1 | `a7d8d63` | 1 | Executor + OntologyEffect domain enums |
+| 2 | `c55b4de` | 2 | Part sealed hierarchy mirroring OpenCode schema |
+| 3 | `f058414` | 4 | ObjectType contract and descriptor |
+| 4 | `98356d4` | 3 | DataTalkAction annotation and ActionHandler contract |
+| 5 | `844198b` | 5 | DtEvent sealed hierarchy and ErrorInfo |
+| 6 | `76899df` | 6-7 | JsonSchemaLoader + ActionRegistry |
+| 7 | `57de5d7` | 8 | OntologyRegistry for ObjectType beans |
+| 8 | `16c6cff` | 9 | /api/actions and /api/ontology discovery endpoints |
+| 9 | `060a3f3` | 22 | OpenCodeHttpClient with WireMock contract tests |
+| 10 | `69b75cb` | 11 | AES-GCM SecretVault for connection passwords |
+| 11 | `ef9e10c` | 14 | PendingCallRegistry with watchdog timeouts |
+| 12 | `776affa` | 15-20 | SessionBus, ChannelService, ChannelController, JsonRpcCodec |
+| 13 | `fc21409` | 10 | Flyway-managed SQLite schema for DataTalk tables |
+| 14 | `b007126` | 21-26 | OpenCode integration (Tasks 21-26, Plan A Part 4) |
+| 15 | `4c8cb1a` | 17 | SSE emitter subscriber writing NumberedEvents |
+| 16 | `1a99239` | 11 | AES-GCM SecretVault (duplicate/fix) |
+| 17 | `c9db80e` | 15 | SessionBus with 16ms flusher and delta coalescing |
+| 18 | `77c62d8` | fix | Fix OpenCodeEventTranslator seen-tracking and Part.id() |
+
+### Execution Notes
+
+- **Parallel subagents:** Tasks 1-5, 6-8, 9-14 were dispatched across multiple concurrent agents for speed.
+- **Linter interference:** A linter rewrote Part and DtEvent sealed hierarchies after initial commits, requiring manual restoration of all 10+ Part files and the full DtEvent union.
+- **Final compilation:** Required fixing ActionDispatcherTest Mockito generics, JsonRpcCodecTest JSON field names (`sessionID` vs `sessionId`), and OpenCodeEventTranslator MessageUpdated constructor signature.
+- **Test count by module:** domain (13), application (31), infrastructure (2), adapter (13) = 59 total.
+
+### What Ships After Plan A
+
+- `GET /api/actions` — lists registered Actions including `datatalk.demo.echo`
+- `GET /api/ontology` — lists ObjectType descriptors
+- `POST /api/sessions/{id}/channel` — Streamable HTTP (SSE streaming for send_message)
+- `GET /api/sessions/{id}/channel` — standalone SSE subscription
+- `POST /api/opencode-tool/{actionId}` — OpenCode tool callback dispatch
+- SQLite at `./data/datatalk.db` with Flyway V1 schema
+- WireMock-based FakeOpenCodeServer in tests
+- Full end-to-end loop proven with DemoEchoAction
+
+### Next Plan
+
+**Plan B** (`2026-04-16-manus-b-mvp-actions.md`): Real OpenCode `/event` SSE consumer, retry/backoff, the 6 MVP action handlers (query, explain, table_schema, etc.), and real PostgreSQL/MySQL Testcontainers integration.

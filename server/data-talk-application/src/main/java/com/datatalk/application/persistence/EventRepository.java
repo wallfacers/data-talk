@@ -1,17 +1,31 @@
 package com.datatalk.application.persistence;
 
-/**
- * Repository interface for event persistence. Used by {@code SessionBusRegistry}
- * to persist events and to bootstrap session buses from the last known event id.
- */
-public interface EventRepository {
-    /**
-     * Append an event to persistent storage.
-     */
-    void append(String sessionId, long eventId, String eventType, String payloadJson, long ts);
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
-    /**
-     * Get the maximum event id for a given session (used for SessionBus recovery).
-     */
-    long maxEventId(String sessionId);
+@Repository
+public class EventRepository {
+
+    private final JdbcTemplate jdbc;
+
+    public EventRepository(@Qualifier("datatalkJdbc") JdbcTemplate jdbc) {
+        this.jdbc = jdbc;
+    }
+
+    public void append(String sessionId, long eventId, String eventType, String payloadJson, long ts) {
+        jdbc.update("""
+            INSERT INTO events(event_id, session_id, event_type, payload_json, ts)
+            VALUES(?, ?, ?, ?, ?)
+            """,
+            eventId, sessionId, eventType, payloadJson, ts
+        );
+    }
+
+    public long maxEventId(String sessionId) {
+        Long max = jdbc.queryForObject(
+            "SELECT COALESCE(MAX(event_id), 0) FROM events WHERE session_id = ?",
+            Long.class, sessionId);
+        return max == null ? 0L : max;
+    }
 }

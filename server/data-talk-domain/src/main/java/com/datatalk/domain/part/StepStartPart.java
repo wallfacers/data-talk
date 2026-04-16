@@ -1,4 +1,10 @@
 package com.datatalk.domain.part;
 
-public record StepStartPart(String stepName, String description) implements Part {
-}
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+public record StepStartPart(
+    String id,
+    @JsonProperty("sessionID") String sessionID,
+    @JsonProperty("messageID") String messageID,
+    String snapshot
+) implements Part {}

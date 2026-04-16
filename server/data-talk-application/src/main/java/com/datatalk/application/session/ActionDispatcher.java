@@ -126,7 +126,9 @@ public class ActionDispatcher {
                 if (artifactIdObj instanceof String artifactId) {
                     Object versionObj = m.get("version");
                     int version = versionObj instanceof Number n ? ((Number) versionObj).intValue() : 1;
-                    bus.publish(new DtEvent.OntologyUpdated(artifactId, version));
+                    bus.publish(new DtEvent.OntologyUpdated(
+                        "datatalk.artifact", artifactId, "upsert",
+                        Map.of("version", version, "producedBy", ctx.callId(), "full", m)));
                 }
             }
         }

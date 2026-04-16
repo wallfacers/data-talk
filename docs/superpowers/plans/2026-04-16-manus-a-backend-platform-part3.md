@@ -1347,6 +1347,47 @@ git commit -m "feat(server): add Streamable HTTP ChannelController (POST-as-SSE 
 
 ---
 
+## 执行结果
+
+**执行日期:** 2026-04-16
+**分支:** `develop`
+**Commit:** `776affa`
+
+### Task 状态汇总
+
+| Task | 状态 | 文件数 | 行数 | 说明 |
+|------|------|--------|------|------|
+| 15 SessionBus | ✅ 代码完成 | 2 | 277 | SessionBus.java + SessionBusTest.java |
+| 16 SessionBusRegistry | ✅ 代码完成 | 3 | 120 | SessionBusRegistry.java + SessionBusRegistryTest.java + ClockConfig.java |
+| 17 SseEmitterSubscriber | ✅ 代码完成 | 2 | 114 | SseEmitterSubscriber.java + SseEmitterSubscriberTest.java |
+| 18 JsonRpcCodec | ✅ 代码完成 | 4 | 154 | RpcRequest + RpcResponse + JsonRpcCodec + JsonRpcCodecTest |
+| 19 ChannelService | ✅ 代码完成 | 3 | 175 | ChannelService + IdGenerator + ChannelServiceTest |
+| 20 ChannelController | ✅ 代码完成 | 2 | 209 | ChannelController + ChannelControllerIT |
+| 依赖 persistence 层 | ✅ 代码完成 | 2 | 31 | EventRepository + SessionRecord |
+| **总计** | **代码 100%** | **18** | **1072** | 已提交 `776affa` |
+
+### 阻塞项
+
+| 阻塞项 | 原因 | 解决方 |
+|--------|------|--------|
+| 编译通过 | data-talk-application 模块编译问题 | 其他智能体处理 |
+| 测试 PASS | 需编译通过 | 阻塞于编译 |
+| Task 20 IT 集成测试 | 需 WebFlux 依赖 + Spring Boot 上下文 | 阻塞于编译 + pom.xml 变更 |
+
+### Part 2 适配状态
+
+| 适配项 | 状态 | 说明 |
+|--------|------|------|
+| DtEvent 补 8 个类型 | ✅ 已完成 | Heartbeat, MessagePartDelta, SessionStatus, MessageUpdated, MessagePartRemoved, ActionCancel, ArtifactSnapshot, OntologyUpdated |
+| NumberedEvent ts→long | ✅ 已完成 | Instant → long，of() 用 System.currentTimeMillis() |
+| TextPart 8 参数构造 | ✅ 已完成 | 含向后兼容的单参便捷构造 |
+| Message 5 参数构造 | ✅ 已完成 | id, sessionId, Role, parts, createdAt(long) |
+| EventRepository | ✅ 已完成 | append() + maxEventId() 已实现 |
+| SessionRepository | ✅ 已完成 | findById() + upsert() + markHasEverSent() |
+| MessageRepository | ✅ 已完成 | save(Message) 含 JSON 序列化 |
+
+---
+
 ## Continuation
 
 Tasks 21–26 continue in `docs/superpowers/plans/2026-04-16-manus-a-backend-platform-part4.md`:

@@ -1,4 +1,13 @@
 package com.datatalk.domain.part;
 
-public record FilePart(String filename, String mimeType, String url, long sizeBytes) implements Part {
-}
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+public record FilePart(
+    String id,
+    @JsonProperty("sessionID") String sessionID,
+    @JsonProperty("messageID") String messageID,
+    String mime,
+    String filename,
+    String url,
+    String source
+) implements Part {}

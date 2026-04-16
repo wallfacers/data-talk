@@ -49,7 +49,7 @@ class ActionDispatcherTest {
                 Map.of("type","object"), Map.of("type","object"),
                 List.of(), List.of(OntologyEffect.NONE), false, 1000)
         );
-        when(registry.handler("x.ok")).thenReturn(new AlwaysOkHandler());
+        Mockito.doReturn(new AlwaysOkHandler()).when(registry).handler("x.ok");
 
         ActionDispatcher disp = new ActionDispatcher(registry, schemas, buses,
             invocations, artifacts, pending, new ObjectMapper(),
@@ -81,7 +81,7 @@ class ActionDispatcherTest {
                 Map.of("type","object"), Map.of("type","object"),
                 List.of(), List.of(OntologyEffect.NONE), false, 500)
         );
-        when(registry.handler("x.client")).thenReturn(new AlwaysOkHandler());
+        Mockito.doReturn(new AlwaysOkHandler()).when(registry).handler("x.client");
 
         ActionDispatcher disp = new ActionDispatcher(registry, schemas, buses,
             invocations, artifacts, pending, new ObjectMapper(),

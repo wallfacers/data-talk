@@ -21,10 +21,10 @@ class DtEventTest {
 
     @Test
     void serializesMessagePartCreated() throws Exception {
-        TextPart p = new TextPart("hi");
+        TextPart p = new TextPart("p1", "s1", "m1", "hi", false, false, null, Map.of());
         DtEvent e = new DtEvent.MessagePartCreated(p);
         String json = om.writeValueAsString(e);
-        assertThat(json).contains("\"type\":\"message.part.created\"").contains("\"content\":\"hi\"");
+        assertThat(json).contains("\"type\":\"message.part.created\"").contains("\"text\":\"hi\"");
     }
 
     @Test

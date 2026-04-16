@@ -1,4 +1,12 @@
 package com.datatalk.domain.part;
 
-public record SubtaskPart(String subtaskName, String subtaskId) implements Part {
-}
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+public record SubtaskPart(
+    String id,
+    @JsonProperty("sessionID") String sessionID,
+    @JsonProperty("messageID") String messageID,
+    String prompt,
+    String description,
+    String agent
+) implements Part {}
