@@ -50,4 +50,14 @@ public class SessionRepository {
     public void markHasEverSent(String id, long now) {
         jdbc.update("UPDATE sessions SET has_ever_sent = 1, updated_at = ? WHERE id = ?", now, id);
     }
+
+    public java.util.List<SessionRecord> listAll() {
+        return jdbc.query("SELECT * FROM sessions ORDER BY updated_at DESC", MAPPER);
+    }
+
+    public java.util.List<SessionRecord> listByConnection(String connectionId) {
+        return jdbc.query(
+            "SELECT * FROM sessions WHERE connection_id = ? ORDER BY updated_at DESC",
+            MAPPER, connectionId);
+    }
 }
