@@ -270,6 +270,10 @@ public class OpenCodeBinaryResolver {
     }
 
     private void deleteRecursively(Path path) {
-        FileSystemUtils.deleteRecursively(path);
+        try {
+            FileSystemUtils.deleteRecursively(path);
+        } catch (IOException e) {
+            log.warn("Failed to delete {}: {}", path, e.getMessage());
+        }
     }
 }
