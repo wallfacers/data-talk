@@ -1,4 +1,4 @@
-import type { ComponentProps } from 'react'
+import { useEffect, useState, type ComponentProps } from 'react'
 import { DatabaseIcon, PlusIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -33,6 +33,18 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
   const openSession = useSessionStore((s) => s.openSession)
   const { state } = useSidebar()
 
+  // 浮动按钮组：等 sidebar 收起动画完成（200ms，与 sidebar-container 的 duration-200 对齐）后再 fade-in；
+  // 展开时立刻隐藏，避免按钮挡住展开动画造成卡顿感。
+  // 初始化若已是 collapsed（刷新时从 cookie 读出）则直接显示，因为此时没有收起动画要等。
+  const [showFloating, setShowFloating] = useState(state === 'collapsed')
+  useEffect(() => {
+    if (state === 'collapsed') {
+      const t = window.setTimeout(() => setShowFloating(true), 200)
+      return () => window.clearTimeout(t)
+    }
+    setShowFloating(false)
+  }, [state])
+
   const createMut = useMutation({
     mutationFn: async () => {
       if (!activeConnectionId) throw new Error('请先在连接列表中选择一个连接')
@@ -47,9 +59,9 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
 
   return (
     <>
-      {/* 浮动按钮组：边栏收起时显示在左上角 */}
-      {state === 'collapsed' && (
-        <div className="fixed left-4 top-4 z-50 flex items-center gap-1 rounded-full bg-sidebar p-1 shadow-lg ring-1 ring-sidebar-border">
+      {/* 浮动按钮组：边栏完全收起后才 fade-in 显示在左上角 */}
+      {showFloating && (
+        <div className="fixed left-4 top-4 z-50 flex items-center gap-1 rounded-full bg-sidebar p-1 shadow-lg ring-1 ring-sidebar-border animate-in fade-in-0 duration-150">
           <SidebarTrigger className="size-8 rounded-full" />
           <Button
             variant="ghost"
@@ -64,8 +76,8 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
       )}
 
       <Sidebar collapsible="offcanvas" {...props}>
-        <SidebarHeader>
-          <SidebarMenu>
+        <SidebarHeader className="flex-row items-center gap-1">
+          <SidebarMenu className="flex-1">
             <SidebarMenuItem>
               <SidebarMenuButton
                 className="data-[slot=sidebar-menu-button]:p-1.5!"
@@ -73,10 +85,10 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
               >
                 <DatabaseIcon className="size-5!" />
                 <span className="text-base font-semibold">DataTalk</span>
-                <SidebarTrigger className="ml-auto size-7" />
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
+          <SidebarTrigger className="size-7 shrink-0" />
         </SidebarHeader>
 
       <SidebarContent>
