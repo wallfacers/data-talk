@@ -1,14 +1,26 @@
+import type { Artifact } from '@/services/channel/event-reducer'
 import { useTimelineStore } from '@/stores/timeline-store'
 import { useOntologyStore } from '@/stores/ontology-store'
 import { useSessionStore } from '@/stores/session-store'
 import { cn } from '@/lib/utils'
 
+// 稳定的空引用，避免 selector 每次返回 `?? []` / `?? new Map()` 导致
+// useSyncExternalStore 认为 snapshot 永远在变，从而触发 "Maximum update depth".
+const EMPTY_ORDER: string[] = []
+const EMPTY_ARTIFACTS: Map<string, Artifact> = new Map()
+
 export function ArtifactTimelineStrip() {
   const sessionId = useSessionStore(s => s.activeSessionId)
-  const order = useTimelineStore(s => sessionId ? (s.orderBySession.get(sessionId) ?? []) : [])
+  const order = useTimelineStore(s => {
+    if (!sessionId) return EMPTY_ORDER
+    return s.orderBySession.get(sessionId) ?? EMPTY_ORDER
+  })
   const active = useTimelineStore(s => sessionId ? s.activeBySession.get(sessionId) : null)
   const setActive = useTimelineStore(s => s.setActive)
-  const artifacts = useOntologyStore((s) => (sessionId ? (s.artifactsBySession.get(sessionId) ?? new Map()) : new Map()))
+  const artifacts = useOntologyStore(s => {
+    if (!sessionId) return EMPTY_ARTIFACTS
+    return s.artifactsBySession.get(sessionId) ?? EMPTY_ARTIFACTS
+  })
 
   return (
     <div className="flex gap-1 overflow-x-auto border-b p-2">

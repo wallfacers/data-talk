@@ -8,7 +8,6 @@ import { HeroView } from './hero-view'
 import { SplitView } from './split-view'
 import { PromptComposer } from './prompt-composer'
 import { ConnectionOverlay } from './connection-overlay'
-import { WelcomeEmpty } from './welcome-empty'
 import { useRef, useLayoutEffect, useState } from 'react'
 
 // clip-path 裂开动画 keyframes（注入一次）
@@ -59,7 +58,6 @@ export function SessionCanvas() {
       )}
       {mode === 'HERO' && <HeroView />}
       {mode === 'SPLIT' && <SplitView />}
-      {mode === 'NOSESS' && <WelcomeEmpty />}
       <PromptComposer />
       <ConnectionOverlay />
     </div>

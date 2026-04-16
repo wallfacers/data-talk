@@ -1,11 +1,28 @@
+"use client"
+
 import { useEffect, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
+import { ArrowUpIcon, Loader2Icon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupText,
+  InputGroupTextarea,
+} from '@/components/ui/input-group'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { useSessionStore } from '@/stores/session-store'
 import { useChannel } from '@/services/channel/use-channel'
-import { classifyIntent } from '@/features/actions/classify-intent'
-import { useConnectionStore } from '@/features/connection/store'
 import { createTextPart } from '@/services/channel/types'
+
+const MODELS = ['Claude Opus 4.6', 'Claude Sonnet 4.6', 'Claude Haiku 4.5'] as const
 
 function useComposerSlot(): HTMLElement | null {
   const [slot, setSlot] = useState<HTMLElement | null>(
@@ -14,9 +31,6 @@ function useComposerSlot(): HTMLElement | null {
 
   useEffect(() => {
     if (slot) return
-    // Poll once per animation frame until the slot node mounts; stop as soon
-    // as we find it. In practice this resolves within 1-2 frames of the
-    // parent's first commit.
     let raf = 0
     const tick = () => {
       const el = document.getElementById('composer-slot')
@@ -33,27 +47,30 @@ function useComposerSlot(): HTMLElement | null {
 export function PromptComposer() {
   const slot = useComposerSlot()
   if (!slot) return null
-  return createPortal(<Inner />, slot)
+  return createPortal(<InnerComposer />, slot)
 }
 
-function Inner() {
+function InnerComposer() {
   const [text, setText] = useState('')
+  const [selectedModel, setSelectedModel] = useState(MODELS[1])
+  const [autoMode, setAutoMode] = useState(true)
   const { sendMessage, abort, isStreaming } = useChannel()
-  const activeConn = useConnectionStore((s) => s.activeConnectionId)
+  const activeSessionId = useSessionStore((s) => s.activeSessionId)
   const setPendingPrompt = useSessionStore((s) => s.setPendingPrompt)
   const setPendingConnectionPrompt = useSessionStore((s) => s.setPendingConnectionPrompt)
-  const activeSessionId = useSessionStore((s) => s.activeSessionId)
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
     const t = text.trim()
-    if (!t || isStreaming || !activeSessionId) return
-    setText('')
-    if (classifyIntent(t) === 'db_related' && !activeConn) {
+    if (!t || isStreaming) return
+
+    if (!activeSessionId) {
       setPendingPrompt(t)
       setPendingConnectionPrompt(true)
       return
     }
+
+    setText('')
     await sendMessage([createTextPart(activeSessionId, t)])
   }
 
@@ -64,29 +81,74 @@ function Inner() {
     }
   }
 
+  const canSend = text.trim().length > 0 && !isStreaming
+
   return (
-    <form onSubmit={onSubmit} className="border-t bg-background p-3">
-      <div className="flex items-end gap-2">
-        <textarea
+    <form onSubmit={onSubmit} className="w-full">
+      <InputGroup className="rounded-2xl !border-foreground/20 shadow-sm transition-shadow focus-within:!border-foreground/40 focus-within:shadow-md dark:!border-white/25 dark:focus-within:!border-white/40">
+        <InputGroupTextarea
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={onKey}
-          placeholder="Enter 发送，Shift+Enter 换行"
-          rows={2}
-          disabled={!activeSessionId}
-          className="flex-1 resize-none rounded-md border bg-background px-3 py-2 text-sm
-                     focus:outline-none focus:ring-2 focus:ring-ring"
+          placeholder="用自然语言查询你的数据库..."
+          className="h-[100px] resize-none overflow-y-auto px-4 py-4 text-base leading-relaxed [&::-webkit-scrollbar]:w-[6px] [&::-webkit-scrollbar-track]:my-3 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-foreground/20"
+          rows={3}
         />
-        {isStreaming ? (
-          <Button type="button" variant="destructive" onClick={() => void abort()}>
-            停止
-          </Button>
-        ) : (
-          <Button type="submit" disabled={!text.trim() || !activeSessionId}>
-            发送
-          </Button>
-        )}
-      </div>
+        <InputGroupAddon align="block-end" className="pt-2">
+          <div className="flex w-full items-center gap-2">
+            {/* Model selector */}
+            <Select value={selectedModel} onValueChange={(v) => v && setSelectedModel(v)}>
+              <SelectTrigger size="sm" className="h-7 min-w-0 shrink-0 gap-1 rounded-md border-0 bg-transparent px-2 text-xs text-muted-foreground hover:bg-accent/50 [&>svg]:size-3">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent side="bottom">
+                {MODELS.map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {m}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Auto toggle */}
+            <InputGroupText className="gap-1.5 text-xs">
+              <Switch
+                size="sm"
+                checked={autoMode}
+                onCheckedChange={setAutoMode}
+                className="data-[size=sm]:h-[14px] data-[size=sm]:w-[24px]"
+              />
+              Auto
+            </InputGroupText>
+
+            {/* Spacer */}
+            <div className="flex-1" />
+
+            {/* Send / Stop button */}
+            {isStreaming ? (
+              <Button
+                type="button"
+                variant="destructive"
+                size="icon-xs"
+                className="rounded-full"
+                onClick={() => void abort()}
+              >
+                <Loader2Icon className="size-3.5 animate-spin" />
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                size="icon-xs"
+                data-disabled={!canSend || undefined}
+                aria-disabled={!canSend}
+                className="rounded-full bg-black text-white hover:bg-black/90 data-disabled:opacity-40"
+              >
+                <ArrowUpIcon className="size-3.5" />
+              </Button>
+            )}
+          </div>
+        </InputGroupAddon>
+      </InputGroup>
     </form>
   )
 }
