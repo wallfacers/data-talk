@@ -12,7 +12,10 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarTrigger,
+  useSidebar,
 } from '@/components/ui/sidebar'
+import { Button } from '@/components/ui/button'
 import { createSession } from '@/services/api/session'
 import { useConnectionStore } from '@/features/connection/store'
 import { useSessionStore } from '@/stores/session-store'
@@ -28,6 +31,7 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
   const qc = useQueryClient()
   const activeConnectionId = useConnectionStore((s) => s.activeConnectionId)
   const openSession = useSessionStore((s) => s.openSession)
+  const { state } = useSidebar()
 
   const createMut = useMutation({
     mutationFn: async () => {
@@ -42,20 +46,38 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
   })
 
   return (
-    <Sidebar collapsible="offcanvas" {...props}>
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              className="data-[slot=sidebar-menu-button]:p-1.5!"
-              render={<a href="/" />}
-            >
-              <DatabaseIcon className="size-5!" />
-              <span className="text-base font-semibold">DataTalk</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarHeader>
+    <>
+      {/* 浮动按钮组：边栏收起时显示在左上角 */}
+      {state === 'collapsed' && (
+        <div className="fixed left-4 top-4 z-50 flex items-center gap-1 rounded-full bg-sidebar p-1 shadow-lg ring-1 ring-sidebar-border">
+          <SidebarTrigger className="size-8 rounded-full" />
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="size-8 rounded-full"
+            onClick={() => createMut.mutate()}
+            disabled={createMut.isPending}
+          >
+            <PlusIcon className="size-4" />
+          </Button>
+        </div>
+      )}
+
+      <Sidebar collapsible="offcanvas" {...props}>
+        <SidebarHeader>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                className="data-[slot=sidebar-menu-button]:p-1.5!"
+                render={<a href="/" />}
+              >
+                <DatabaseIcon className="size-5!" />
+                <span className="text-base font-semibold">DataTalk</span>
+                <SidebarTrigger className="ml-auto size-7" />
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarHeader>
 
       <SidebarContent>
         <SidebarGroup>
@@ -83,5 +105,6 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
         <NavUser user={USER} />
       </SidebarFooter>
     </Sidebar>
+    </>
   )
 }
