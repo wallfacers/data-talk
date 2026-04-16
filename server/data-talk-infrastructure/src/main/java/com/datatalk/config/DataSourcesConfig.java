@@ -49,18 +49,27 @@ public class DataSourcesConfig {
         return dir;
     }
 
+    @Bean
+    @ConfigurationProperties("spring.datasource")
+    public DataSourceProperties demoDataSourceProperties() {
+        return new DataSourceProperties();
+    }
+
     @Primary
     @Bean(name = "demoDataSource")
-    public HikariDataSource demoDataSource() {
-        Path dataDir = resolveDataDir();
-        Path h2File = dataDir.resolve("datatalk-db");
-        String jdbcUrl = "jdbc:h2:file:" + h2File.toAbsolutePath() + ";DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL";
-
+    public HikariDataSource demoDataSource(DataSourceProperties demoDataSourceProperties) {
+        String url = demoDataSourceProperties.determineUrl();
+        if (url != null && url.contains("placeholder")) {
+            // Production default: use file-based H2 when URL is the placeholder
+            Path dataDir = resolveDataDir();
+            Path h2File = dataDir.resolve("datatalk-db");
+            url = "jdbc:h2:file:" + h2File.toAbsolutePath() + ";DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL";
+        }
         HikariConfig config = new HikariConfig();
-        config.setJdbcUrl(jdbcUrl);
-        config.setDriverClassName("org.h2.Driver");
-        config.setUsername("sa");
-        config.setPassword("");
+        config.setJdbcUrl(url);
+        config.setDriverClassName(demoDataSourceProperties.getDriverClassName());
+        config.setUsername(demoDataSourceProperties.determineUsername());
+        config.setPassword(demoDataSourceProperties.determinePassword());
         return new HikariDataSource(config);
     }
 
