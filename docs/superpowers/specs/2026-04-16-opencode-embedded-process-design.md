@@ -101,6 +101,8 @@ SmartLifecycle.start() [phase=-100]
   │     └─ Runtime.addShutdownHook(new Thread(() -> process.destroyForcibly()))
   │
   └─ 6. 将实际 base-url 注入 OpenCodeHttpClient
+        └─ OpenCodeHttpClient 通过 setter `setBaseUrl(String url)` 或构造函数参数接收动态地址
+           （具体注入机制：ProcessManager 持有 HttpClient 引用，在 start() 末尾调用 setBaseUrl）
 ```
 
 ## 5. 关闭生命周期
