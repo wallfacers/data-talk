@@ -23,7 +23,7 @@ export default defineConfig({
     port: 1420,
     strictPort: true,
     host: host || '0.0.0.0',
-    hmr: host ? { protocol: 'ws', host, port: 1421 } : { protocol: 'ws', host: '0.0.0.0', port: 1421 },
+    hmr: host ? { protocol: 'ws', host, port: 1421 } : undefined,
     watch: { ignored: ['**/src-tauri/**'] },
     proxy: {
       '/api': {
