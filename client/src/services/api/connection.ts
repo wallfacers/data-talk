@@ -15,7 +15,7 @@ export type Connection = {
 export type CreateConnectionInput = Omit<Connection, 'id'> & { password: string }
 
 export function listConnections() {
-  return http.get('connections').json<Connection[]>()
+  return http.get('connections').json<{ connections: Connection[] }>().then((r) => r.connections)
 }
 
 export function createConnection(input: CreateConnectionInput) {
