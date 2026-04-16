@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react-swc';
 import tailwindcss from '@tailwindcss/vite';
@@ -25,4 +26,8 @@ export default defineConfig({
         watch: { ignored: ['**/src-tauri/**'] },
     },
     envPrefix: ['VITE_', 'TAURI_ENV_*'],
+    test: {
+        environment: 'jsdom',
+        globals: true,
+    },
 });
