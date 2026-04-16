@@ -2,11 +2,15 @@ import type { CSSProperties } from 'react'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { useBootstrapActions } from '@/features/actions/use-bootstrap-actions'
 import { SessionCanvas } from '@/features/session/session-canvas'
+import { useSessionMode } from '@/features/session/use-session-mode'
 import { AppSidebar } from './components/app-sidebar'
 import { SiteHeader } from './components/site-header'
+import { cn } from '@/lib/utils'
 
 export function HomePage() {
   useBootstrapActions()
+  const { mode } = useSessionMode()
+  const heroQuiet = mode === 'HERO' || mode === 'NOSESS'
 
   return (
     <SidebarProvider
@@ -17,9 +21,13 @@ export function HomePage() {
         } as CSSProperties
       }
     >
-      <AppSidebar variant="inset" />
+      <AppSidebar
+        variant="inset"
+        className={cn('transition-opacity duration-200',
+          heroQuiet ? 'opacity-60' : 'opacity-100')}
+      />
       <SidebarInset>
-        <SiteHeader />
+        {!heroQuiet && <SiteHeader />}
         <div className="relative min-h-0 flex-1">
           <SessionCanvas />
         </div>

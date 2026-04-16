@@ -34,6 +34,11 @@ export function useSessionHistory(sessionId: string | null) {
         const partsApi = useChatPartsStore.getState()
         partsApi.clearSession(sessionId)
         for (const m of mRes.messages ?? []) {
+          partsApi.upsertMeta(sessionId, {
+            id: m.id,
+            role: (m.role ?? 'assistant') as 'user' | 'assistant' | 'system',
+            createdAt: Number((m as any).createdAt ?? Date.now()),
+          })
           for (const part of m.parts ?? []) partsApi.upsertPart(sessionId, part)
         }
 

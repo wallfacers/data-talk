@@ -1,9 +1,17 @@
 import { create } from 'zustand'
 import type { Part } from '@/services/channel/types'
 
+export type MessageMeta = {
+  id: string
+  role: 'user' | 'assistant' | 'system'
+  createdAt: number
+}
+
 type ChatPartsState = {
-  partsBySession: Map<string, Map<string, Part[]>>  // sessionId → messageId → Part[]
+  partsBySession: Map<string, Map<string, Part[]>>
+  metaBySession: Map<string, Map<string, MessageMeta>>
   upsertPart: (sessionId: string, part: Part) => void
+  upsertMeta: (sessionId: string, meta: MessageMeta) => void
   upsertMany: (sessionId: string, parts: Part[]) => void
   removePart: (sessionId: string, messageId: string, partId: string) => void
   clearSession: (sessionId: string) => void
@@ -12,6 +20,7 @@ type ChatPartsState = {
 
 export const useChatPartsStore = create<ChatPartsState>((set, get) => ({
   partsBySession: new Map(),
+  metaBySession: new Map(),
 
   upsertPart: (sessionId, part) => set((s) => {
     const bySession = new Map(s.partsBySession)
@@ -23,6 +32,14 @@ export const useChatPartsStore = create<ChatPartsState>((set, get) => ({
     byMessage.set(part.messageID, list)
     bySession.set(sessionId, byMessage)
     return { partsBySession: bySession }
+  }),
+
+  upsertMeta: (sessionId, meta) => set((s) => {
+    const bySession = new Map(s.metaBySession)
+    const map = new Map(bySession.get(sessionId) ?? new Map())
+    map.set(meta.id, { ...(map.get(meta.id) ?? meta), ...meta })
+    bySession.set(sessionId, map)
+    return { metaBySession: bySession }
   }),
 
   upsertMany: (sessionId, parts) => {
@@ -39,9 +56,9 @@ export const useChatPartsStore = create<ChatPartsState>((set, get) => ({
   }),
 
   clearSession: (sessionId) => set((s) => {
-    const bySession = new Map(s.partsBySession)
-    bySession.delete(sessionId)
-    return { partsBySession: bySession }
+    const parts = new Map(s.partsBySession); parts.delete(sessionId)
+    const meta = new Map(s.metaBySession); meta.delete(sessionId)
+    return { partsBySession: parts, metaBySession: meta }
   }),
 
   getParts: (sessionId) => {

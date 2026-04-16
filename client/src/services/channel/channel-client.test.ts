@@ -53,3 +53,17 @@ describe('ChannelClient', () => {
     expect(events[1].data.delta).toBe('hi')
   })
 })
+
+describe('ChannelClient baseUrl', () => {
+  it('strips trailing slash', () => {
+    const c = new ChannelClient({ baseUrl: 'http://test/', sessionId: 's', clientId: 'c' })
+    // @ts-expect-error — private access for verification
+    expect(c.baseUrl).toBe('http://test')
+  })
+
+  it('accepts empty baseUrl (same-origin)', () => {
+    const c = new ChannelClient({ baseUrl: '', sessionId: 's', clientId: 'c' })
+    // @ts-expect-error — private access for verification
+    expect(c.baseUrl).toBe('')
+  })
+})

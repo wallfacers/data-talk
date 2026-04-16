@@ -16,7 +16,14 @@ function getApiBaseUrl(): string {
 export function buildEventSink(sessionId: string, client: ChannelClient | null) {
   return (evt: StreamEvent) => {
     const { event, data } = evt
-    if (event === 'message.part.created' || event === 'message.part.updated') {
+    if (event === 'message.created') {
+      const m = (data as any).message
+      useChatPartsStore.getState().upsertMeta(sessionId, {
+        id: m.id,
+        role: (m.role ?? 'assistant') as 'user' | 'assistant' | 'system',
+        createdAt: Number(m.createdAt ?? Date.now()),
+      })
+    } else if (event === 'message.part.created' || event === 'message.part.updated') {
       useChatPartsStore.getState().upsertPart(sessionId, (data as any).part)
     } else if (event === 'message.part.delta') {
       const { partId, field, delta } = data as any
