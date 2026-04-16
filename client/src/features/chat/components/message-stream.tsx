@@ -6,23 +6,20 @@ import { cn } from '@/lib/utils'
 
 export function MessageStream() {
   const sessionId = useSessionStore((s) => s.activeSessionId)
-  const partsBySession = useChatPartsStore((s) => s.partsBySession)
-  const metaBySession = useChatPartsStore((s) => s.metaBySession)
+  const partsByMessage = useChatPartsStore((s) => sessionId ? s.partsBySession.get(sessionId) : undefined)
+  const metaMap = useChatPartsStore((s) => sessionId ? s.metaBySession.get(sessionId) : undefined)
 
   const groups = useMemo(() => {
-    if (!sessionId) return []
-    const byMessage = partsBySession.get(sessionId)
-    const metaMap = metaBySession.get(sessionId)
-    if (!byMessage) return []
+    if (!sessionId || !partsByMessage) return []
 
-    const entries = Array.from(byMessage.entries()).map(([messageId, parts]) => ({
+    const entries = Array.from(partsByMessage.entries()).map(([messageId, parts]) => ({
       messageId,
       parts,
       meta: metaMap?.get(messageId),
     }))
     entries.sort((a, b) => (a.meta?.createdAt ?? 0) - (b.meta?.createdAt ?? 0))
     return entries
-  }, [sessionId, partsBySession, metaBySession])
+  }, [sessionId, partsByMessage, metaMap])
 
   return (
     <div className="flex flex-col gap-4">

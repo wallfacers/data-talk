@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { ChannelClient } from './channel-client'
-import type { StreamEvent } from './types'
+import type { StreamEvent, Part } from './types'
 import { useChatPartsStore } from '@/stores/chat-parts-store'
 import { useOntologyStore } from '@/stores/ontology-store'
 import { useTimelineStore } from '@/stores/timeline-store'
@@ -26,26 +26,21 @@ export function buildEventSink(sessionId: string, client: ChannelClient | null) 
     } else if (event === 'message.part.created' || event === 'message.part.updated') {
       useChatPartsStore.getState().upsertPart(sessionId, (data as any).part)
     } else if (event === 'message.part.delta') {
-      const { partId, field, delta } = data as any
-      const byMessage = useChatPartsStore.getState().partsBySession.get(sessionId)
-      if (byMessage) {
-        for (const [, list] of byMessage) {
-          const idx = list.findIndex((p) => p.id === partId)
-          if (idx >= 0) {
-            const before = list[idx] as any
-            const next: any = { ...before, [field]: (before[field] ?? '') + delta }
-            useChatPartsStore.getState().upsertPart(sessionId, next)
-            break
-          }
-        }
+      const { partId, field, delta } = data as { partId: string; field: string; delta: string }
+      const store = useChatPartsStore.getState()
+      const existing = store.findPart(sessionId, partId)
+      if (existing) {
+        const prev = (existing as Record<string, unknown>)[field] ?? ''
+        const next = { ...existing, [field]: String(prev) + delta }
+        store.upsertPart(sessionId, next as Part)
       }
     } else if (event === 'message.part.removed') {
       const { partId } = data as any
-      const byMessage = useChatPartsStore.getState().partsBySession.get(sessionId)
-      if (byMessage) {
-        for (const [mid2] of byMessage) {
-          useChatPartsStore.getState().removePart(sessionId, mid2, partId)
-        }
+      const store = useChatPartsStore.getState()
+      const index = store.partIndexBySession.get(sessionId)
+      if (index) {
+        const entry = index.get(partId)
+        if (entry) store.removePart(sessionId, entry.messageId, partId)
       }
     } else if (event === 'ontology.updated') {
       const d = data as any

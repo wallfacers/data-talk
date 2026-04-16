@@ -10,10 +10,17 @@ export type RpcRequest =
   | { jsonrpc: '2.0'; id: string; method: 'abort';         params: Record<string, never> }
   | { jsonrpc: '2.0'; id: string; method: 'hello';         params: { clientRev: number; lastEventId?: number } }
 
-export type Part = {
-  type: string
+export type TextPart = {
+  type: 'text'
   id: string
   sessionID: string
   messageID: string
-  [k: string]: unknown
+  text: string
+  metadata: Record<string, unknown>
+}
+
+export type Part = TextPart | { type: string; id: string; sessionID: string; messageID: string; [k: string]: unknown }
+
+export function createTextPart(sessionId: string, text: string): TextPart {
+  return { type: 'text', id: crypto.randomUUID(), sessionID: sessionId, messageID: '', text, metadata: {} }
 }

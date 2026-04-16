@@ -2,13 +2,8 @@ import { useEffect } from 'react'
 import { useSessionStore } from '@/stores/session-store'
 import { useConnectionStore } from '@/features/connection/store'
 import { useChannel } from '@/services/channel/use-channel'
+import { createTextPart } from '@/services/channel/types'
 
-/**
- * When the user has typed a DB-related prompt but has no connection, we store
- * the draft in `pendingPrompt` and show `ConnectionOverlay`. Once they pick a
- * connection and `pendingConnectionPrompt` goes false, this hook re-fires the
- * draft as a real send_message and clears it.
- */
 export function usePendingPromptResume() {
   const pendingPrompt = useSessionStore((s) => s.pendingPrompt)
   const overlayOn = useSessionStore((s) => s.pendingConnectionPrompt)
@@ -18,17 +13,10 @@ export function usePendingPromptResume() {
   const { sendMessage, isStreaming } = useChannel()
 
   useEffect(() => {
-    if (overlayOn) return           // still asking the user
-    if (!pendingPrompt) return      // nothing queued
-    if (!activeConn) return         // user closed overlay without picking
-    if (!activeSessionId) return
-    if (isStreaming) return         // don't race another send
+    if (overlayOn || !pendingPrompt || !activeConn || !activeSessionId || isStreaming) return
 
     const draft = pendingPrompt
-    setPendingPrompt(null)          // clear first so we don't re-enter
-    void sendMessage([
-      { type: 'text', id: crypto.randomUUID(), sessionID: activeSessionId,
-        messageID: '', text: draft, metadata: {} } as any,
-    ])
+    setPendingPrompt(null)
+    void sendMessage([createTextPart(activeSessionId, draft)])
   }, [overlayOn, pendingPrompt, activeConn, activeSessionId, isStreaming, setPendingPrompt, sendMessage])
 }

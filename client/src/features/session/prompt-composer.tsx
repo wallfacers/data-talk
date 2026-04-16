@@ -5,6 +5,7 @@ import { useSessionStore } from '@/stores/session-store'
 import { useChannel } from '@/services/channel/use-channel'
 import { classifyIntent } from '@/features/actions/classify-intent'
 import { useConnectionStore } from '@/features/connection/store'
+import { createTextPart } from '@/services/channel/types'
 
 function useComposerSlot(): HTMLElement | null {
   const [slot, setSlot] = useState<HTMLElement | null>(
@@ -53,10 +54,7 @@ function Inner() {
       setPendingConnectionPrompt(true)
       return
     }
-    await sendMessage([
-      { type: 'text', id: crypto.randomUUID(), sessionID: activeSessionId,
-        messageID: '', text: t, metadata: {} } as any,
-    ])
+    await sendMessage([createTextPart(activeSessionId, t)])
   }
 
   const onKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
