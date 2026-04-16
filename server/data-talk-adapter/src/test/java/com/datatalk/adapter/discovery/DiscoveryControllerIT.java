@@ -14,9 +14,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @TestPropertySource(properties = {
-    "datatalk.persistence.enabled=false",
     "spring.sql.init.mode=never",
-    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration"
+    "spring.datasource.url=jdbc:h2:mem:discovery-test;DB_CLOSE_DELAY=-1",
+    "spring.datasource.driver-class-name=org.h2.Driver",
+    "spring.datasource.username=sa",
+    "spring.datasource.password=",
+    "spring.sqlite-datasource.url=jdbc:sqlite::memory:",
+    "spring.sqlite-datasource.driver-class-name=org.sqlite.JDBC",
+    "datatalk.master-key-hex=0000000000000000000000000000000000000000000000000000000000000000",
+    "datatalk.opencode.base-url=http://localhost:4096",
+    "datatalk.opencode.callback-base=http://localhost:8080"
 })
 class DiscoveryControllerIT {
 

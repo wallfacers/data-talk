@@ -22,4 +22,5 @@ public sealed interface Part
                 StepStartPart, StepFinishPart, SubtaskPart {
 
     String id();
+    String sessionID();
 }

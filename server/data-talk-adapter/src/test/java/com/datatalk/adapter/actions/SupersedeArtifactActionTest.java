@@ -3,15 +3,19 @@ package com.datatalk.adapter.actions;
 import com.datatalk.application.persistence.ArtifactRecord;
 import com.datatalk.application.persistence.ArtifactRepository;
 import com.datatalk.domain.action.ActionContext;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.annotation.DirtiesContext;
 
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
+@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
 class SupersedeArtifactActionTest {
 
     @Autowired
@@ -19,6 +23,15 @@ class SupersedeArtifactActionTest {
 
     @Autowired
     ArtifactRepository artifacts;
+
+    @Autowired
+    JdbcTemplate datatalkJdbc;
+
+    @BeforeEach
+    void clean() {
+        datatalkJdbc.update("DELETE FROM artifacts");
+        datatalkJdbc.update("DELETE FROM sessions");
+    }
 
     @Test
     @SuppressWarnings("unchecked")

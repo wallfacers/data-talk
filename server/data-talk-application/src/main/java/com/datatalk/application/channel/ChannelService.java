@@ -1,5 +1,7 @@
 package com.datatalk.application.channel;
 
+import com.datatalk.application.opencode.OpenCodeGateway;
+import com.datatalk.application.opencode.OpenCodeSessionMap;
 import com.datatalk.application.persistence.MessageRepository;
 import com.datatalk.application.persistence.SessionRepository;
 import com.datatalk.application.session.PendingCallRegistry;
@@ -9,6 +11,7 @@ import com.datatalk.domain.event.DtEvent;
 import com.datatalk.domain.event.ErrorInfo;
 import com.datatalk.domain.part.Message;
 import com.datatalk.domain.part.Part;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
@@ -27,16 +30,24 @@ public class ChannelService {
     private final PendingCallRegistry pending;
     private final IdGenerator ids;
     private final Clock clock;
+    private final OpenCodeGateway gateway;
+    private final OpenCodeSessionMap sessionMap;
+    private final ObjectMapper om;
 
     public ChannelService(SessionRepository sessions, MessageRepository messages,
                           SessionBusRegistry buses, PendingCallRegistry pending,
-                          IdGenerator ids, Clock clock) {
+                          IdGenerator ids, Clock clock,
+                          OpenCodeGateway gateway, OpenCodeSessionMap sessionMap,
+                          ObjectMapper om) {
         this.sessions = sessions;
         this.messages = messages;
         this.buses = buses;
         this.pending = pending;
         this.ids = ids;
         this.clock = clock;
+        this.gateway = gateway;
+        this.sessionMap = sessionMap;
+        this.om = om;
     }
 
     /**
@@ -58,6 +69,17 @@ public class ChannelService {
         bus.publish(new DtEvent.MessageCreated(m));
         for (Part p : parts) bus.publish(new DtEvent.MessagePartCreated(p));
         bus.publish(new DtEvent.SessionStatus("busy", Map.of()));
+
+        // Forward to OpenCode
+        String ocSid = sessionMap.openCodeFor(sessionId);
+        if (ocSid == null) {
+            ocSid = gateway.createOpenCodeSession();
+            sessionMap.bind(sessionId, ocSid);
+        }
+        gateway.forwardUserMessage(ocSid, Map.of(
+            "parts", parts.stream().map(p -> om.convertValue(p, Map.class)).toList()
+        ));
+
         return messageId;
     }
 

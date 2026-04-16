@@ -64,4 +64,32 @@ public sealed interface DtEvent {
     record PingPong(long ts) implements DtEvent {}
 
     record StreamError(ErrorInfo error, boolean fatal) implements DtEvent {}
+
+    /** SSE wire event name / persistence type name. Exhaustive switch on sealed interface. */
+    default String typeName() {
+        return switch (this) {
+            case Connected c              -> "connected";
+            case Disconnected d           -> "disconnected";
+            case SessionStatus s          -> "session.status";
+            case SessionStarted ss        -> "session.started";
+            case SessionEnded se          -> "session.ended";
+            case AgentStatus as           -> "agent.status";
+            case TaskComplete tc          -> "task.complete";
+            case MessageCreated mc        -> "message.created";
+            case MessageUpdated mu        -> "message.updated";
+            case MessageCompleted mc      -> "message.completed";
+            case MessagePartCreated pc    -> "message.part.created";
+            case MessagePartUpdated pu    -> "message.part.updated";
+            case MessagePartDelta pd      -> "message.part.delta";
+            case MessagePartRemoved pr    -> "message.part.removed";
+            case ActionInvoke ai          -> "action.invoke";
+            case ActionCancel ac          -> "action.cancel";
+            case ActionResponse ar        -> "action.response";
+            case ArtifactSnapshot as      -> "artifact.snapshot";
+            case OntologyUpdated ou       -> "ontology.updated";
+            case Heartbeat hb             -> "heartbeat";
+            case PingPong pp              -> "ping";
+            case StreamError se           -> "error";
+        };
+    }
 }

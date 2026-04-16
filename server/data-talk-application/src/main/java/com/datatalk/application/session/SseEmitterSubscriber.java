@@ -1,6 +1,5 @@
 package com.datatalk.application.session;
 
-import com.datatalk.domain.event.DtEvent;
 import com.datatalk.domain.event.NumberedEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -36,7 +35,7 @@ public class SseEmitterSubscriber implements Consumer<NumberedEvent> {
     public void accept(NumberedEvent n) {
         if (broken) return;
         try {
-            String name = eventName(n.event());
+            String name = n.event().typeName();
             if (firstFrame && expectedFirstEventName != null && !expectedFirstEventName.equals(name)) {
                 // soft warning; don't break the stream just for this
             }
@@ -53,31 +52,4 @@ public class SseEmitterSubscriber implements Consumer<NumberedEvent> {
     }
 
     public boolean isBroken() { return broken; }
-
-    private static String eventName(DtEvent e) {
-        return switch (e) {
-            case DtEvent.Connected c              -> "connected";
-            case DtEvent.Disconnected d           -> "disconnected";
-            case DtEvent.SessionStatus s          -> "session.status";
-            case DtEvent.SessionStarted ss        -> "session.started";
-            case DtEvent.SessionEnded se2         -> "session.ended";
-            case DtEvent.AgentStatus as2          -> "agent.status";
-            case DtEvent.TaskComplete tc          -> "task.complete";
-            case DtEvent.MessageCreated mc        -> "message.created";
-            case DtEvent.MessageUpdated mu        -> "message.updated";
-            case DtEvent.MessageCompleted mco     -> "message.completed";
-            case DtEvent.MessagePartCreated pc    -> "message.part.created";
-            case DtEvent.MessagePartUpdated pu    -> "message.part.updated";
-            case DtEvent.MessagePartDelta pd      -> "message.part.delta";
-            case DtEvent.MessagePartRemoved pr    -> "message.part.removed";
-            case DtEvent.ActionInvoke ai          -> "action.invoke";
-            case DtEvent.ActionCancel ac          -> "action.cancel";
-            case DtEvent.ActionResponse ar        -> "action.response";
-            case DtEvent.ArtifactSnapshot as      -> "artifact.snapshot";
-            case DtEvent.OntologyUpdated ou       -> "ontology.updated";
-            case DtEvent.Heartbeat hb             -> "heartbeat";
-            case DtEvent.PingPong pp              -> "ping";
-            case DtEvent.StreamError se           -> "error";
-        };
-    }
 }
