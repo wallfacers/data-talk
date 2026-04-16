@@ -12,7 +12,6 @@ import java.io.InputStreamReader;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.regex.Pattern;
 
 /**
  * Manages the embedded OpenCode process lifecycle as a Spring SmartLifecycle bean.
@@ -21,7 +20,6 @@ import java.util.regex.Pattern;
 public class OpenCodeProcessManager implements SmartLifecycle {
 
     private static final Logger log = LoggerFactory.getLogger(OpenCodeProcessManager.class);
-    private static final Pattern PORT_PATTERN = Pattern.compile("port[:\\s]+(\\d+)", Pattern.CASE_INSENSITIVE);
 
     private final OpenCodeServeProperties serveProps;
     private final OpenCodeBinaryResolver binaryResolver;
@@ -30,7 +28,6 @@ public class OpenCodeProcessManager implements SmartLifecycle {
     private final OpenCodeHttpClient httpClient;
     private final OpenCodeEventLoop eventLoop;
     private final boolean required;
-    private final String defaultBaseUrl;
 
     private Process process;
     private Thread shutdownHook;
@@ -43,8 +40,7 @@ public class OpenCodeProcessManager implements SmartLifecycle {
                                   Path homeDir,
                                   OpenCodeHttpClient httpClient,
                                   OpenCodeEventLoop eventLoop,
-                                  boolean required,
-                                  String defaultBaseUrl) {
+                                  boolean required) {
         this.serveProps = serveProps;
         this.binaryResolver = binaryResolver;
         this.portAllocator = portAllocator;
@@ -52,7 +48,6 @@ public class OpenCodeProcessManager implements SmartLifecycle {
         this.httpClient = httpClient;
         this.eventLoop = eventLoop;
         this.required = required;
-        this.defaultBaseUrl = defaultBaseUrl;
     }
 
     @Override
@@ -96,7 +91,7 @@ public class OpenCodeProcessManager implements SmartLifecycle {
         log.info("Starting OpenCode: {}", String.join(" ", cmd));
 
         ProcessBuilder pb = new ProcessBuilder(cmd)
-            .directory(homeDir.resolve(".data-talk/opencode").toFile())
+            .directory(homeDir.resolve(OpenCodeBinaryResolver.OPENCODE_DIR).toFile())
             .redirectErrorStream(true);
 
         process = pb.start();

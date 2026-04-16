@@ -2,6 +2,7 @@ package com.datatalk.infra.opencode.process;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.util.FileSystemUtils;
 
 import java.io.*;
 import java.net.URI;
@@ -20,8 +21,8 @@ import java.util.zip.ZipInputStream;
 public class OpenCodeBinaryResolver {
 
     private static final Logger log = LoggerFactory.getLogger(OpenCodeBinaryResolver.class);
-    private static final String DATA_DIR = ".data-talk";
-    private static final String OPENCODE_DIR = DATA_DIR + "/opencode";
+    static final String DATA_DIR = ".data-talk";
+    static final String OPENCODE_DIR = DATA_DIR + "/opencode";
     private static final String CURRENT_FILE = ".current";
 
     /**
@@ -113,7 +114,6 @@ public class OpenCodeBinaryResolver {
             Path tempDir = opencodeDir.resolve("temp-" + UUID.randomUUID());
             Files.createDirectories(tempDir);
 
-            // Detect archive type and extract accordingly
             if (assetName.endsWith(".zip")) {
                 extractZip(response.body(), tempDir);
             } else if (assetName.endsWith(".tar.gz")) {
@@ -270,11 +270,6 @@ public class OpenCodeBinaryResolver {
     }
 
     private void deleteRecursively(Path path) {
-        try (var stream = Files.walk(path)) {
-            stream.sorted((a, b) -> b.compareTo(a))
-                .forEach(p -> {
-                    try { Files.delete(p); } catch (IOException ignored) {}
-                });
-        } catch (IOException ignored) {}
+        FileSystemUtils.deleteRecursively(path);
     }
 }

@@ -63,7 +63,7 @@ public class OpenCodeGatewayBeans {
 
         this.processManager = new OpenCodeProcessManager(
             serveProps, resolver, allocator,
-            homeDir, client, eventLoop, required, defaultBaseUrl);
+            homeDir, client, eventLoop, required);
     }
 
     @Bean
@@ -95,7 +95,6 @@ public class OpenCodeGatewayBeans {
      */
     @EventListener(ApplicationReadyEvent.class)
     public void registerOnStartup() {
-        // If embedded serve is enabled but manager didn't start (failure), skip
         if (serveProps.isEnabled() && !processManager.isRunning()) {
             System.err.println("OpenCode embedded server failed to start - skipping tool registration (degraded mode)");
             return;
