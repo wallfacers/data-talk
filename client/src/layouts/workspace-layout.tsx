@@ -1,19 +1,22 @@
-import { useNavigate } from '@tanstack/react-router'
 import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels'
 import { Button } from '@/components/ui/button'
 import { ConnectionList } from '@/features/connection/components/connection-list'
 import { SessionList } from '@/features/session/components/session-list'
-import { ChatPanel } from '@/features/chat/components/chat-panel'
-import { Workspace } from '@/features/workspace/components/workspace'
+import { SessionCanvas } from '@/features/session/session-canvas'
+import { useBootstrapActions } from '@/features/actions/use-bootstrap-actions'
+import { useSessionMode } from '@/features/session/use-session-mode'
 import { LayoutDashboardIcon } from 'lucide-react'
+import { useNavigate } from '@tanstack/react-router'
 
 export function WorkspaceLayout() {
+  useBootstrapActions()
+  const { mode } = useSessionMode()
   const navigate = useNavigate()
 
   return (
     <PanelGroup direction="horizontal" className="h-screen w-screen">
       <Panel defaultSize={18} minSize={12} maxSize={30}>
-        <aside className="flex h-full flex-col border-r">
+        <aside className={`flex h-full flex-col border-r transition-opacity ${mode === 'HERO' ? 'opacity-50' : 'opacity-100'}`}>
           <ConnectionList />
           <SessionList />
           <div className="border-t px-2 py-2">
@@ -30,12 +33,8 @@ export function WorkspaceLayout() {
         </aside>
       </Panel>
       <PanelResizeHandle className="w-px bg-border transition-colors hover:bg-primary/50" />
-      <Panel defaultSize={42} minSize={25}>
-        <ChatPanel />
-      </Panel>
-      <PanelResizeHandle className="w-px bg-border transition-colors hover:bg-primary/50" />
-      <Panel defaultSize={40} minSize={25}>
-        <Workspace />
+      <Panel>
+        <SessionCanvas />
       </Panel>
     </PanelGroup>
   )
