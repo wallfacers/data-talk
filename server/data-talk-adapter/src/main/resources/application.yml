@@ -30,3 +30,7 @@ server:
 logging:
   level:
     com.datatalk: DEBUG
+
+datatalk:
+  persistence:
+    sqlite-path: ./data/datatalk.db
