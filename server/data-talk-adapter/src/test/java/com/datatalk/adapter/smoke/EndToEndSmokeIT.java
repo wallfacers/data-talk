@@ -7,7 +7,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,22 +39,18 @@ class EndToEndSmokeIT {
     @Autowired OpenCodeSessionMap map;
     @Autowired JdbcTemplate datatalkJdbc;
 
-    @BeforeAll
-    void startFake() {
+    @DynamicPropertySource
+    static void wireOpenCodeBaseUrl(DynamicPropertyRegistry reg) {
         openCode = new WireMockServer(WireMockConfiguration.options().dynamicPort());
         openCode.start();
         openCode.stubFor(post(urlPathEqualTo("/plugin/register-tool"))
             .willReturn(aResponse().withStatus(204)));
+        reg.add("datatalk.opencode.base-url", () -> "http://localhost:" + openCode.port());
+        reg.add("datatalk.opencode.plugin-callback-base", () -> "http://localhost:8080");
     }
 
     @AfterAll
     void stop() { openCode.stop(); }
-
-    @DynamicPropertySource
-    static void wireOpenCodeBaseUrl(DynamicPropertyRegistry reg) {
-        reg.add("datatalk.opencode.base-url", () -> "http://localhost:" + openCode.port());
-        reg.add("datatalk.opencode.plugin-callback-base", () -> "http://localhost:8080");
-    }
 
     @Test
     void toolsAreRegisteredOnStartup() {
