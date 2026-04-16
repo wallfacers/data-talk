@@ -1,12 +1,9 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { ProviderIcon } from './provider-icon'
 import { ProviderItem } from './provider-item'
 import { ConnectProviderDialog } from './connect-provider-dialog'
-import { CustomProviderDialog } from './custom-provider-dialog'
+import { CustomProviderForm } from './custom-provider-form'
 import { useModelConfigStore } from './store'
 import { sortByProviderOrder } from './mock-data'
 import type { Provider } from './types'
@@ -18,17 +15,12 @@ export function ProvidersPanel() {
   const addCustomProvider = useModelConfigStore((s) => s.addCustomProvider)
 
   const [connectDialogOpen, setConnectDialogOpen] = useState(false)
-  const [customDialogOpen, setCustomDialogOpen] = useState(false)
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null)
 
-  const connectedProviders = useMemo(
-    () => providers.filter((p) => p.connected),
-    [providers]
-  )
+  const connectedProviders = providers.filter((p) => p.connected)
 
-  const unconnectedProviders = useMemo(
-    () => sortByProviderOrder(providers.filter((p) => !p.connected && p.type === 'builtin')),
-    [providers]
+  const unconnectedProviders = sortByProviderOrder(
+    providers.filter((p) => !p.connected && p.type === 'builtin')
   )
 
   const handleConnect = (provider: Provider) => {
@@ -54,13 +46,12 @@ export function ProvidersPanel() {
   const handleAddCustom = (provider: Provider) => {
     addCustomProvider(provider)
     toast.success(`已添加自定义提供商 ${provider.name}`)
-    setCustomDialogOpen(false)
   }
 
   return (
-    <div className="flex flex-col gap-6 max-w-2xl">
+    <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium text-foreground">Connected</h2>
+        <h2 className="text-sm font-medium text-foreground">已连接</h2>
         <Card>
           <CardContent className="px-4">
             {connectedProviders.length === 0 ? (
@@ -79,7 +70,7 @@ export function ProvidersPanel() {
       </div>
 
       <div className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium text-foreground">Popular Providers</h2>
+        <h2 className="text-sm font-medium text-foreground">可用提供商</h2>
         <Card>
           <CardContent className="px-4">
             {unconnectedProviders.map((provider) => (
@@ -90,21 +81,8 @@ export function ProvidersPanel() {
               />
             ))}
 
-            <div className="flex items-center justify-between gap-4 py-3 border-b border-border last:border-none">
-              <div className="flex flex-col min-w-0 gap-1">
-                <div className="flex items-center gap-3">
-                  <ProviderIcon id="custom" />
-                  <span className="text-sm font-medium">Custom Provider</span>
-                  <Badge variant="secondary" className="text-xs">Custom</Badge>
-                </div>
-                <span className="text-xs text-muted-foreground pl-8">
-                  添加自定义 API 端点
-                </span>
-              </div>
-              <Button variant="secondary" size="sm" onClick={() => setCustomDialogOpen(true)}>
-                + Connect
-              </Button>
-            </div>
+            {/* Custom Provider inline form */}
+            <CustomProviderForm onSubmit={handleAddCustom} />
           </CardContent>
         </Card>
       </div>
@@ -117,12 +95,6 @@ export function ProvidersPanel() {
           onSubmit={handleConnectSubmit}
         />
       )}
-
-      <CustomProviderDialog
-        open={customDialogOpen}
-        onOpenChange={setCustomDialogOpen}
-        onSubmit={handleAddCustom}
-      />
     </div>
   )
 }

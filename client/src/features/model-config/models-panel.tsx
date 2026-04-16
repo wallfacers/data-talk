@@ -14,7 +14,7 @@ export function ModelsPanel() {
 
   const filteredProviders = useMemo(() => {
     const query = search.toLowerCase().trim()
-    if (!query) return sortByProviderOrder([...providers])
+    if (!query) return sortByProviderOrder(providers)
 
     return sortByProviderOrder(
       providers
@@ -38,15 +38,15 @@ export function ModelsPanel() {
   const clearSearch = () => setSearch('')
 
   return (
-    <div className="flex flex-col gap-6 max-w-2xl h-full overflow-hidden">
-      <div className="sticky top-0 z-10 bg-gradient-to-b from-background to-background/0 pb-2">
+    <div className="flex flex-col gap-6 max-w-2xl h-full">
+      <div className="sticky top-0 z-10 bg-gradient-to-b from-background via-background to-background/0 pt-2 pb-4">
         <div className="relative flex items-center gap-2">
           <SearchIcon className="size-4 text-muted-foreground absolute left-3" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="搜索模型..."
-            className="pl-9 pr-9"
+            className="pl-9 pr-9 focus-visible:ring-2"
           />
           {search && (
             <button
@@ -59,7 +59,7 @@ export function ModelsPanel() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-4 overflow-y-auto">
+      <div className="flex flex-col gap-4 overflow-y-auto flex-1">
         {filteredProviders.length === 0 ? (
           <div className="py-8 text-center text-sm text-muted-foreground">
             没有找到匹配的模型
