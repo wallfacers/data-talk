@@ -2,6 +2,7 @@ import { useSessionStore } from '@/stores/session-store'
 import { useSessionMode } from './use-session-mode'
 import { useFlipComposer } from './use-flip-composer'
 import { useSessionHistory } from './hooks/use-session-history'
+import { useSessionSubscribe } from './hooks/use-session-subscribe'
 import { HeroView } from './hero-view'
 import { SplitView } from './split-view'
 import { PromptComposer } from './prompt-composer'
@@ -13,6 +14,7 @@ export function SessionCanvas() {
   const { mode } = useSessionMode()
   useFlipComposer()
   useSessionHistory(sessionId)
+  useSessionSubscribe(sessionId)
 
   return (
     <div className="relative h-full">
