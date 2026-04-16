@@ -3,6 +3,7 @@ import { useSessionMode } from './use-session-mode'
 import { useFlipComposer } from './use-flip-composer'
 import { useSessionHistory } from './hooks/use-session-history'
 import { useSessionSubscribe } from './hooks/use-session-subscribe'
+import { usePendingPromptResume } from './hooks/use-pending-prompt-resume'
 import { HeroView } from './hero-view'
 import { SplitView } from './split-view'
 import { PromptComposer } from './prompt-composer'
@@ -15,6 +16,7 @@ export function SessionCanvas() {
   useFlipComposer()
   useSessionHistory(sessionId)
   useSessionSubscribe(sessionId)
+  usePendingPromptResume()
 
   return (
     <div className="relative h-full">
