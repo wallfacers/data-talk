@@ -11,7 +11,9 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
-    "gen:routes": "tsr generate"
+    "gen:routes": "tsr generate",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.0",
@@ -26,6 +28,7 @@
     "@tauri-apps/plugin-shell": "^2.0.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "eventsource-parser": "^3.0.6",
     "ky": "^1.7.2",
     "lucide-react": "^1.8.0",
     "react": "19.2.4",
@@ -45,6 +48,8 @@
     "@tanstack/router-cli": "^1.87.0",
     "@tanstack/router-vite-plugin": "^1.87.0",
     "@tauri-apps/cli": "^2.1.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^20.17.10",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
@@ -53,10 +58,12 @@
     "eslint-plugin-react": "^7.37.2",
     "eslint-plugin-react-hooks": "^5.1.0",
     "globals": "^15.14.0",
+    "jsdom": "^29.0.2",
     "prettier": "^3.4.2",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.18.1",
-    "vite": "^5.4.11"
+    "vite": "^5.4.11",
+    "vitest": "^2.1.9"
   }
 }
