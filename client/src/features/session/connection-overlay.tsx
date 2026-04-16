@@ -2,12 +2,8 @@ import { useSessionStore } from '@/stores/session-store'
 import { useConnectionStore } from '@/features/connection/store'
 
 export function ConnectionOverlay() {
-  const pending = useSessionStore(s => s.pendingConnectionPrompt)
-  const pendingPrompt = useSessionStore(s => s.pendingPrompt)
-  const setPending = useSessionStore(s => s.setPendingConnectionPrompt)
-  const setPrompt = useSessionStore(s => s.setPendingPrompt)
-  const connections = useConnectionStore(s => s.connections)
-  const setActive = useConnectionStore(s => s.setActive)
+  const { pendingConnectionPrompt: pending, pendingPrompt, setPendingConnectionPrompt: setPending, setPendingPrompt: setPrompt } = useSessionStore()
+  const { connections, setActive } = useConnectionStore()
 
   if (!pending) return null
   return (

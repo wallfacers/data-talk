@@ -1,3 +1,3 @@
-export function StepDivider({ part: _part }: { part: any }) {
+export function StepDivider() {
   return <div className="my-1 border-t border-dashed opacity-50" />
 }
