@@ -8,9 +8,7 @@ import com.datatalk.application.session.SessionBusRegistry;
 import com.datatalk.application.session.SseEmitterSubscriber;
 import com.datatalk.domain.event.DtEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -18,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
 
 import java.io.IOException;
 import java.util.Map;
@@ -44,71 +42,96 @@ public class ChannelController {
         this.om = om;
     }
 
-    @PostMapping
-    public ResponseEntity<?> post(@PathVariable String sessionId,
-                                  @RequestBody String rawBody,
-                                  @RequestHeader(value = "Last-Event-ID", required = false) Long lastEventId) {
+    @PostMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Object post(@PathVariable String sessionId,
+                       @RequestBody String rawBody,
+                       @RequestHeader(value = "Last-Event-ID", required = false) Long lastEventId) {
         RpcRequest req = codec.decodeRequest(rawBody);
         return switch (req) {
             case RpcRequest.SendMessage m -> stream(sessionId, m, lastEventId);
             case RpcRequest.ActionResult ar -> {
                 svc.completeActionResult(ar.params().callId(), ar.params().ok(),
                     ar.params().output(), ar.params().error());
-                yield ResponseEntity.ok()
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(codec.encodeAck(ar.id()));
+                yield codec.encodeAck(ar.id());
             }
             case RpcRequest.Abort a -> {
                 svc.abort(sessionId);
-                yield ResponseEntity.ok()
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(codec.encodeAck(a.id()));
+                yield codec.encodeAck(a.id());
             }
-            case RpcRequest.Hello h -> ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(codec.encodeAck(h.id()));
+            case RpcRequest.Hello h -> codec.encodeAck(h.id());
         };
     }
 
-    @GetMapping
-    public ResponseEntity<StreamingResponseBody> subscribe(
+    @GetMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public ResponseBodyEmitter subscribe(
         @PathVariable String sessionId,
         @RequestHeader(value = "Last-Event-ID", required = false) Long lastEventId
     ) {
         SessionBus bus = buses.getOrCreate(sessionId);
-        StreamingResponseBody body = os -> {
-            SseEmitterSubscriber sub = new SseEmitterSubscriber(os, om, "connected");
-            String clientId = "read-" + System.nanoTime();
-            bus.publish(new DtEvent.Connected(sessionId, 1));
-            bus.subscribe(clientId, lastEventId == null ? 0L : lastEventId, sub);
+        ResponseBodyEmitter emitter = new ResponseBodyEmitter();
+        SseEmitterSubscriber sub = new SseEmitterSubscriber(
+            new EmitterOutputStream(emitter), om, "connected");
+        String clientId = "read-" + System.nanoTime();
+
+        // Complete the emitter when the client disconnects
+        emitter.onCompletion(() -> bus.unsubscribe(clientId));
+        emitter.onTimeout(() -> bus.unsubscribe(clientId));
+
+        // Publish connected
+        bus.publish(new DtEvent.Connected(sessionId, 1));
+        bus.subscribe(clientId, lastEventId == null ? 0L : lastEventId, sub);
+
+        // Heartbeat loop on a daemon thread
+        var running = new boolean[]{true};
+        emitter.onCompletion(() -> { running[0] = false; bus.unsubscribe(clientId); });
+        emitter.onTimeout(() -> { running[0] = false; bus.unsubscribe(clientId); });
+
+        // Publish connected
+        bus.publish(new DtEvent.Connected(sessionId, 1));
+        bus.subscribe(clientId, lastEventId == null ? 0L : lastEventId, sub);
+
+        Thread t = new Thread(() -> {
             try {
-                while (!sub.isBroken()) {
+                while (running[0]) {
                     try {
                         Thread.sleep(1_000);
-                        bus.publish(new DtEvent.Heartbeat(System.currentTimeMillis()));
+                        if (!sub.isBroken()) {
+                            bus.publish(new DtEvent.Heartbeat(System.currentTimeMillis()));
+                        }
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                         break;
                     }
                 }
             } finally {
+                running[0] = false;
                 bus.unsubscribe(clientId);
             }
-        };
-        return ResponseEntity.ok()
-            .contentType(MediaType.valueOf("text/event-stream"))
-            .body(body);
+        }, "channel-heartbeat-" + sessionId);
+        t.setDaemon(true);
+        t.start();
+
+        return emitter;
     }
 
-    private ResponseEntity<StreamingResponseBody> stream(String sessionId,
-                                                         RpcRequest.SendMessage m,
-                                                         Long lastEventId) {
+    private ResponseBodyEmitter stream(String sessionId,
+                                       RpcRequest.SendMessage m,
+                                       Long lastEventId) {
         SessionBus bus = buses.getOrCreate(sessionId);
-        StreamingResponseBody body = os -> {
-            SseEmitterSubscriber sub = new SseEmitterSubscriber(os, om, "connected");
-            String clientId = "post-" + System.nanoTime();
-            bus.publish(new DtEvent.Connected(sessionId, 1));
-            bus.subscribe(clientId, lastEventId == null ? 0L : lastEventId, sub);
+        ResponseBodyEmitter emitter = new ResponseBodyEmitter();
+        SseEmitterSubscriber sub = new SseEmitterSubscriber(
+            new EmitterOutputStream(emitter), om, "connected");
+        String clientId = "post-" + System.nanoTime();
+
+        emitter.onCompletion(() -> bus.unsubscribe(clientId));
+        emitter.onTimeout(() -> bus.unsubscribe(clientId));
+
+        // Publish connected and subscribe
+        bus.publish(new DtEvent.Connected(sessionId, 1));
+        bus.subscribe(clientId, lastEventId == null ? 0L : lastEventId, sub);
+
+        // Run the send + grace period on a background thread
+        Thread t = new Thread(() -> {
             try {
                 svc.sendMessage(sessionId, m.params().parts());
                 // Hold the stream briefly so tests observe initial frames.
@@ -121,15 +144,40 @@ public class ChannelController {
                     }
                 }
                 bus.publish(new DtEvent.SessionStatus("idle", Map.of()));
-                try { Thread.sleep(50); } catch (InterruptedException ex) {
-                    Thread.currentThread().interrupt();
-                }
+                Thread.sleep(50);
+                emitter.complete();
+            } catch (Exception e) {
+                emitter.completeWithError(e);
             } finally {
                 bus.unsubscribe(clientId);
             }
-        };
-        return ResponseEntity.ok()
-            .contentType(MediaType.valueOf("text/event-stream"))
-            .body(body);
+        }, "channel-stream-" + sessionId);
+        t.setDaemon(true);
+        t.start();
+
+        return emitter;
+    }
+
+    /** Wraps a {@link ResponseBodyEmitter} as an {@link java.io.OutputStream}. */
+    private static final class EmitterOutputStream extends java.io.OutputStream {
+        private final ResponseBodyEmitter emitter;
+        EmitterOutputStream(ResponseBodyEmitter emitter) { this.emitter = emitter; }
+        @Override
+        public void write(int b) throws IOException {
+            try { emitter.send(new byte[]{(byte) b}); }
+            catch (Exception e) { throw new IOException(e); }
+        }
+        @Override
+        public void write(byte[] b, int off, int len) throws IOException {
+            try {
+                byte[] copy = new byte[len];
+                System.arraycopy(b, off, copy, 0, len);
+                emitter.send(copy);
+            } catch (Exception e) { throw new IOException(e); }
+        }
+        @Override
+        public void flush() {
+            // no-op; ResponseBodyEmitter flushes automatically
+        }
     }
 }
