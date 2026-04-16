@@ -91,7 +91,7 @@ function InnerComposer() {
           onChange={(e) => setText(e.target.value)}
           onKeyDown={onKey}
           placeholder="用自然语言查询你的数据库..."
-          className="h-[100px] resize-none overflow-y-auto px-4 py-4 text-base leading-relaxed [&::-webkit-scrollbar]:w-[6px] [&::-webkit-scrollbar-track]:my-3 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-foreground/20"
+          className="h-[100px] resize-none overflow-y-auto px-4 py-4 text-base leading-relaxed [&::-webkit-scrollbar-track]:my-3"
           rows={3}
         />
         <InputGroupAddon align="block-end" className="pt-2">
