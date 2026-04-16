@@ -15,6 +15,12 @@ client/dist/
 client/src-tauri/target/
 client/src-tauri/gen/
 
+# TS composite build artifacts — must not leak into source dirs (Vite
+# picks up vite.config.js over vite.config.ts, causing bogus reloads)
+client/vite.config.js
+client/vite.config.d.ts
+client/*.tsbuildinfo
+
 # Node
 client/node_modules/
 package-lock.json
