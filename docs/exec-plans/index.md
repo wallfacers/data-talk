@@ -8,6 +8,7 @@
 |------|------|------|------|
 | [Plan B: MVP Actions](../superpowers/plans/2026-04-16-manus-b-mvp-actions.md) | 规划 | pending | 6 个 MVP Action Handler: read_schema, execute_sql, render_chart, render_erd, pin_artifact, supersede_artifact |
 | [Plan C: Client Split View](../superpowers/plans/2026-04-16-manus-c-client-split-view.md) | 规划 | pending | Manus 风格前端分屏交互、HERO→SPLIT 动画、工件时间线 |
+| [Plan C2: Client Wiring Fixes](../superpowers/plans/2026-04-16-manus-c2-client-wiring-fixes.md) | 规划 | pending | 合并重复的 session store、补后端 sessions 端点、portal race、历史加载、SSE 常驻、死代码清理 |
 
 ## 已完成计划
 
