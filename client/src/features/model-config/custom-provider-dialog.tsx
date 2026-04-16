@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { PlusIcon, Trash2Icon, EyeIcon, EyeOffIcon } from 'lucide-react'
+import { PlusIcon, Trash2Icon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { PasswordInput } from '@/components/ui/password-input'
 import {
   Dialog,
   DialogContent,
@@ -38,7 +39,6 @@ export function CustomProviderDialog({
   const [name, setName] = useState('')
   const [baseURL, setBaseURL] = useState('')
   const [apiKey, setApiKey] = useState('')
-  const [showKey, setShowKey] = useState(false)
   const [models, setModels] = useState<ModelEntry[]>([{ id: '', name: '' }])
   const [headers, setHeaders] = useState<HeaderEntry[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -132,7 +132,6 @@ export function CustomProviderDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          {/* Provider ID */}
           <div className="flex flex-col gap-2">
             <Label htmlFor="provider-id">Provider ID</Label>
             <Input
@@ -150,7 +149,6 @@ export function CustomProviderDialog({
             <span className="text-xs text-muted-foreground">唯一标识符</span>
           </div>
 
-          {/* Name */}
           <div className="flex flex-col gap-2">
             <Label htmlFor="name">名称</Label>
             <Input
@@ -165,7 +163,6 @@ export function CustomProviderDialog({
             {errors.name && <span className="text-xs text-destructive">{errors.name}</span>}
           </div>
 
-          {/* Base URL */}
           <div className="flex flex-col gap-2">
             <Label htmlFor="base-url">Base URL</Label>
             <Input
@@ -182,32 +179,19 @@ export function CustomProviderDialog({
             )}
           </div>
 
-          {/* API Key */}
           <div className="flex flex-col gap-2">
             <Label htmlFor="api-key">API Key（可选）</Label>
-            <div className="relative">
-              <Input
-                id="api-key"
-                type={showKey ? 'text' : 'password'}
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="your-api-key"
-                className="pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowKey(!showKey)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                {showKey ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
-              </button>
-            </div>
+            <PasswordInput
+              id="api-key"
+              value={apiKey}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setApiKey(e.target.value)}
+              placeholder="your-api-key"
+            />
             <span className="text-xs text-muted-foreground">
               如果端点无需认证可不填
             </span>
           </div>
 
-          {/* Models */}
           <div className="flex flex-col gap-2">
             <Label>模型列表</Label>
             {models.map((model, index) => (
@@ -249,7 +233,6 @@ export function CustomProviderDialog({
             )}
           </div>
 
-          {/* Headers */}
           <div className="flex flex-col gap-2">
             <Label>请求头（可选）</Label>
             {headers.map((header, index) => (

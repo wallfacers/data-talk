@@ -37,3 +37,15 @@ export const MOCK_PROVIDERS: Provider[] = [
 ]
 
 export const POPULAR_PROVIDER_ORDER = ['anthropic', 'openai', 'google', 'openrouter', 'vercel']
+
+export function sortByProviderOrder<T extends { id: string }>(items: T[]): T[] {
+  return items.sort((a, b) => {
+    const aIdx = POPULAR_PROVIDER_ORDER.indexOf(a.id)
+    const bIdx = POPULAR_PROVIDER_ORDER.indexOf(b.id)
+    const aPopular = aIdx >= 0
+    const bPopular = bIdx >= 0
+    if (aPopular && !bPopular) return -1
+    if (!aPopular && bPopular) return 1
+    return aIdx - bIdx
+  })
+}

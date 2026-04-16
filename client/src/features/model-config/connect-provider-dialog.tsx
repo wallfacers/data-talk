@@ -1,8 +1,7 @@
 import { useState } from 'react'
-import { EyeIcon, EyeOffIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { PasswordInput } from '@/components/ui/password-input'
 import {
   Dialog,
   DialogContent,
@@ -27,7 +26,6 @@ export function ConnectProviderDialog({
   onSubmit,
 }: ConnectProviderDialogProps) {
   const [apiKey, setApiKey] = useState('')
-  const [showKey, setShowKey] = useState(false)
   const [error, setError] = useState('')
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -65,26 +63,15 @@ export function ConnectProviderDialog({
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Label htmlFor="api-key">API Key</Label>
-            <div className="relative">
-              <Input
-                id="api-key"
-                type={showKey ? 'text' : 'password'}
-                value={apiKey}
-                onChange={(e) => {
-                  setApiKey(e.target.value)
-                  setError('')
-                }}
-                placeholder="sk-..."
-                className="pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowKey(!showKey)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                {showKey ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
-              </button>
-            </div>
+            <PasswordInput
+              id="api-key"
+              value={apiKey}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                setApiKey(e.target.value)
+                setError('')
+              }}
+              placeholder="sk-..."
+            />
             {error && <span className="text-xs text-destructive">{error}</span>}
           </div>
 

@@ -10,21 +10,20 @@ interface ProviderItemProps {
 }
 
 export function ProviderItem({ provider, onConnect, onDisconnect }: ProviderItemProps) {
-  const sourceLabel = () => {
-    if (provider.source === 'env') return 'Environment'
-    if (provider.source === 'api') return 'API Key'
-    if (provider.type === 'custom') return 'Custom'
-    return null
-  }
+  const label =
+    provider.source === 'env' ? 'Environment'
+    : provider.source === 'api' ? 'API Key'
+    : provider.type === 'custom' ? 'Custom'
+    : null
 
   return (
     <div className="flex items-center justify-between gap-4 py-3 border-b border-border last:border-none">
       <div className="flex items-center gap-3 min-w-0">
         <ProviderIcon id={provider.id} />
         <span className="text-sm font-medium truncate">{provider.name}</span>
-        {sourceLabel() && (
+        {label && (
           <Badge variant="secondary" className="text-xs">
-            {sourceLabel()}
+            {label}
           </Badge>
         )}
       </div>

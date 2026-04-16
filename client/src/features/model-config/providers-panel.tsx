@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -8,7 +8,7 @@ import { ProviderItem } from './provider-item'
 import { ConnectProviderDialog } from './connect-provider-dialog'
 import { CustomProviderDialog } from './custom-provider-dialog'
 import { useModelConfigStore } from './store'
-import { POPULAR_PROVIDER_ORDER } from './mock-data'
+import { sortByProviderOrder } from './mock-data'
 import type { Provider } from './types'
 
 export function ProvidersPanel() {
@@ -21,7 +21,15 @@ export function ProvidersPanel() {
   const [customDialogOpen, setCustomDialogOpen] = useState(false)
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null)
 
-  const connectedProviders = providers.filter((p) => p.connected)
+  const connectedProviders = useMemo(
+    () => providers.filter((p) => p.connected),
+    [providers]
+  )
+
+  const unconnectedProviders = useMemo(
+    () => sortByProviderOrder(providers.filter((p) => !p.connected && p.type === 'builtin')),
+    [providers]
+  )
 
   const handleConnect = (provider: Provider) => {
     setSelectedProvider(provider)
@@ -51,7 +59,6 @@ export function ProvidersPanel() {
 
   return (
     <div className="flex flex-col gap-6 max-w-2xl">
-      {/* Connected Section */}
       <div className="flex flex-col gap-2">
         <h2 className="text-sm font-medium text-foreground">Connected</h2>
         <Card>
@@ -71,27 +78,18 @@ export function ProvidersPanel() {
         </Card>
       </div>
 
-      {/* Popular Providers Section */}
       <div className="flex flex-col gap-2">
         <h2 className="text-sm font-medium text-foreground">Popular Providers</h2>
         <Card>
           <CardContent className="px-4">
-            {providers
-              .filter((p) => !p.connected && p.type === 'builtin')
-              .sort((a, b) => {
-                const aIdx = POPULAR_PROVIDER_ORDER.indexOf(a.id)
-                const bIdx = POPULAR_PROVIDER_ORDER.indexOf(b.id)
-                return aIdx - bIdx
-              })
-              .map((provider) => (
-                <ProviderItem
-                  key={provider.id}
-                  provider={provider}
-                  onConnect={() => handleConnect(provider)}
-                />
-              ))}
+            {unconnectedProviders.map((provider) => (
+              <ProviderItem
+                key={provider.id}
+                provider={provider}
+                onConnect={() => handleConnect(provider)}
+              />
+            ))}
 
-            {/* Custom Provider Entry */}
             <div className="flex items-center justify-between gap-4 py-3 border-b border-border last:border-none">
               <div className="flex flex-col min-w-0 gap-1">
                 <div className="flex items-center gap-3">
@@ -111,7 +109,6 @@ export function ProvidersPanel() {
         </Card>
       </div>
 
-      {/* Connect Dialog */}
       {selectedProvider && (
         <ConnectProviderDialog
           open={connectDialogOpen}
@@ -121,7 +118,6 @@ export function ProvidersPanel() {
         />
       )}
 
-      {/* Custom Provider Dialog */}
       <CustomProviderDialog
         open={customDialogOpen}
         onOpenChange={setCustomDialogOpen}
