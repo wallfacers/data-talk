@@ -20,4 +20,6 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 public sealed interface Part
         permits TextPart, ReasoningPart, ToolPart, FilePart,
                 StepStartPart, StepFinishPart, SubtaskPart {
+
+    String id();
 }

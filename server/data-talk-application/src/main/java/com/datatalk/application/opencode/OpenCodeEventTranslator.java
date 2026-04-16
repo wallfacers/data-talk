@@ -41,8 +41,8 @@ public class OpenCodeEventTranslator {
 
             case OcEvent.MessagePartUpdated p -> {
                 Set<String> parts = seenParts.computeIfAbsent(sessionId, k -> ConcurrentHashMap.newKeySet());
-                String partKey = String.valueOf(System.identityHashCode(p.part()));
-                if (parts.add(partKey)) {
+                String partId = p.part().id();
+                if (parts.add(partId)) {
                     yield List.of(new DtEvent.MessagePartCreated(p.part()));
                 }
                 yield List.of(new DtEvent.MessagePartUpdated(p.part()));
