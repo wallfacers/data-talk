@@ -14,6 +14,7 @@
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [Stage As Computer](../superpowers/plans/2026-04-17-stage-as-computer-plan.md) | 2026-04-17 | 右栏外壳化（macOS 风格 titlebar）+ 小电脑按钮可关可开 + 智能自弹 + 删 /preview |
 | [Plan A: Backend Platform (Part 1)](../superpowers/plans/2026-04-16-manus-a-backend-platform.md) | 2026-04-16 | Ontology/Action Registry, Domain 模型 |
 | [Plan A Part 2](../superpowers/plans/2026-04-16-manus-a-backend-platform-part2.md) | 2026-04-16 | SessionBus, ChannelService, JSON-RPC |
 | [Plan A Part 2→3 Adapter](../superpowers/plans/2026-04-16-manus-a-backend-platform-part2-to-part3-adapter.md) | 2026-04-16 | 适配层集成桥接 |
