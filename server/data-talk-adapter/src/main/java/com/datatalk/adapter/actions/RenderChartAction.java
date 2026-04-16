@@ -1,8 +1,9 @@
 package com.datatalk.adapter.actions;
 
+import com.datatalk.application.channel.IdGenerator;
 import com.datatalk.application.persistence.ArtifactRecord;
 import com.datatalk.application.persistence.ArtifactRepository;
-import com.datatalk.application.persistence.SessionRecord;
+import com.datatalk.application.persistence.PayloadRef;
 import com.datatalk.application.persistence.SessionRepository;
 import com.datatalk.domain.action.*;
 import com.datatalk.domain.error.DataTalkErrorCodes;
@@ -13,7 +14,6 @@ import org.springframework.stereotype.Component;
 import java.time.Clock;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
@@ -32,13 +32,15 @@ public class RenderChartAction implements ActionHandler<Map, Map> {
     private final SessionRepository sessions;
     private final ObjectMapper om;
     private final Clock clock;
+    private final IdGenerator ids;
 
     public RenderChartAction(ArtifactRepository artifacts, SessionRepository sessions,
-                              ObjectMapper om, Clock clock) {
+                              ObjectMapper om, Clock clock, IdGenerator ids) {
         this.artifacts = artifacts;
         this.sessions = sessions;
         this.om = om;
         this.clock = clock;
+        this.ids = ids;
     }
 
     @Override public Map<String, Object> inputSchema() {
@@ -89,7 +91,7 @@ public class RenderChartAction implements ActionHandler<Map, Map> {
             supersedesVer = prev.get().version();
         }
 
-        String artifactId = "art-" + UUID.randomUUID();
+        String artifactId = ids.nextArtifactId();
         String payloadJson;
         try { payloadJson = om.writeValueAsString(Map.of(
             "sourceArtifactId", source,
@@ -100,7 +102,7 @@ public class RenderChartAction implements ActionHandler<Map, Map> {
 
         artifacts.insert(new ArtifactRecord(
             artifactId, 1, ctx.sessionId(), "chart", ctx.callId(),
-            "INLINE:" + payloadJson, payloadJson.length(),
+            PayloadRef.INLINE_PREFIX + payloadJson, payloadJson.length(),
             supersedes, supersedesVer, false, clock.millis()
         ));
 

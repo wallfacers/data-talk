@@ -1,6 +1,8 @@
 package com.datatalk.adapter.actions;
 
+import com.datatalk.application.channel.IdGenerator;
 import com.datatalk.application.connection.ConnectionService;
+import com.datatalk.application.connection.JdbcUrlBuilder;
 import com.datatalk.application.persistence.*;
 import com.datatalk.application.sql.SqlStatementGuard;
 import com.datatalk.domain.action.*;
@@ -14,6 +16,7 @@ import java.time.Clock;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.stream.Collectors;
 
 @Component
 @DataTalkAction(
@@ -36,10 +39,12 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
     private final QueryResultRepository queryResults;
     private final ObjectMapper om;
     private final Clock clock;
+    private final IdGenerator ids;
 
     public ExecuteSqlAction(ConnectionRepository connRepo, ConnectionService connSvc,
                             SqlStatementGuard guard, ArtifactRepository artifacts,
-                            QueryResultRepository queryResults, ObjectMapper om, Clock clock) {
+                            QueryResultRepository queryResults, ObjectMapper om, Clock clock,
+                            IdGenerator ids) {
         this.connRepo = connRepo;
         this.connSvc = connSvc;
         this.guard = guard;
@@ -47,6 +52,7 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
         this.queryResults = queryResults;
         this.om = om;
         this.clock = clock;
+        this.ids = ids;
     }
 
     @Override public Map<String, Object> inputSchema() {
@@ -95,7 +101,7 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
         List<String> columns = new ArrayList<>();
         List<Map<String, Object>> rows = new ArrayList<>();
 
-        try (Connection c = DriverManager.getConnection(jdbcUrl(cr), cr.username(),
+        try (Connection c = DriverManager.getConnection(JdbcUrlBuilder.build(cr), cr.username(),
                 connSvc.decryptPassword(connectionId));
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setQueryTimeout(30);
@@ -115,34 +121,32 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
         }
 
         long duration = clock.millis() - started;
-        String artifactId = "art-" + UUID.randomUUID();
+        String artifactId = ids.nextArtifactId();
         int version = 1;
-        long createdAt = clock.millis();
 
-        String rowsJson;
-        try { rowsJson = om.writeValueAsString(rows); }
-        catch (Exception e) { throw new RuntimeException(e); }
+        // Serialize rows once in NDJSON format (efficient for large payloads)
+        String rowsNdjson = rows.stream()
+            .map(r -> jsonToString(r))
+            .collect(Collectors.joining("\n"));
+        int payloadSize = rowsNdjson.getBytes().length;
 
         String payloadRef;
-        int payloadSize = rowsJson.getBytes().length;
+        String handle = "";
         if (payloadSize <= INLINE_LIMIT_BYTES) {
-            payloadRef = "INLINE:" + rowsJson;
+            payloadRef = PayloadRef.INLINE_PREFIX + "[" + rowsNdjson.replace("\n", ",") + "]";
         } else {
-            String handle = "qr-" + UUID.randomUUID();
+            handle = ids.nextQueryHandleId();
             try {
                 queryResults.insert(handle, ctx.sessionId(),
-                    om.writeValueAsString(columns),
-                    String.join("\n", rows.stream().map(r -> {
-                        try { return om.writeValueAsString(r); } catch (Exception e) { throw new RuntimeException(e); }
-                    }).toList()),
-                    rows.size(), createdAt, createdAt + 7L * 24 * 3600 * 1000);
+                    jsonToString(columns), rowsNdjson,
+                    rows.size(), started, started + 7L * 24 * 3600 * 1000);
             } catch (Exception e) { throw new RuntimeException(e); }
-            payloadRef = "HANDLE:" + handle;
+            payloadRef = PayloadRef.HANDLE_PREFIX + handle;
         }
 
         artifacts.insert(new ArtifactRecord(
             artifactId, version, ctx.sessionId(), "table", ctx.callId(),
-            payloadRef, payloadSize, null, null, false, createdAt));
+            payloadRef, payloadSize, null, null, false, started));
 
         List<Map<String, Object>> preview = rows.size() > PREVIEW_ROWS
             ? rows.subList(0, PREVIEW_ROWS) : rows;
@@ -150,7 +154,7 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
         return Map.of(
             "artifactId", artifactId,
             "version", version,
-            "handle", payloadRef.startsWith("HANDLE:") ? payloadRef.substring(7) : "",
+            "handle", handle,
             "columns", columns,
             "preview", preview,
             "rowCount", rows.size(),
@@ -158,12 +162,8 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
         );
     }
 
-    private static String jdbcUrl(ConnectionRecord c) {
-        return switch (c.kind()) {
-            case "postgresql" -> "jdbc:postgresql://" + c.host() + ":" + c.port() + "/" + c.databaseName();
-            case "mysql"      -> "jdbc:mysql://" + c.host() + ":" + c.port() + "/" + c.databaseName();
-            default           -> throw new DataTalkException(DataTalkErrorCodes.CONNECTION_MISSING,
-                "unsupported kind: " + c.kind(), false);
-        };
+    private String jsonToString(Object obj) {
+        try { return om.writeValueAsString(obj); }
+        catch (Exception e) { throw new RuntimeException(e); }
     }
 }

@@ -68,7 +68,10 @@ public class SupersedeArtifactAction implements ActionHandler<Map, Map> {
         String newId = String.valueOf(input.get("newArtifactId"));
         String oldId = String.valueOf(input.get("oldArtifactId"));
 
-        if (artifacts.findLatestById(oldId).isEmpty() || artifacts.findLatestById(newId).isEmpty()) {
+        var oldArtifact = artifacts.findLatestById(oldId);
+        var newArtifact = artifacts.findLatestById(newId);
+
+        if (oldArtifact.isEmpty() || newArtifact.isEmpty()) {
             return CompletableFuture.failedStage(
                 new DataTalkException(
                     DataTalkErrorCodes.ARTIFACT_SUPERSEDES_NOT_FOUND,
@@ -77,6 +80,8 @@ public class SupersedeArtifactAction implements ActionHandler<Map, Map> {
                 )
             );
         }
+
+        artifacts.updateSupersedes(oldId, oldArtifact.get().version(), newId);
 
         return CompletableFuture.completedFuture(Map.of("ok", true));
     }

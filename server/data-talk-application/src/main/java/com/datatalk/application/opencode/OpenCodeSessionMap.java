@@ -24,4 +24,9 @@ public class OpenCodeSessionMap {
     public String dataTalkFor(String openCodeSessionId) {
         return ocToDt.get(openCodeSessionId);
     }
+
+    public void unbind(String dataTalkSessionId) {
+        String oc = dtToOc.remove(dataTalkSessionId);
+        if (oc != null) ocToDt.remove(oc);
+    }
 }

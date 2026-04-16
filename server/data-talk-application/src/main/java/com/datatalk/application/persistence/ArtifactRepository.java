@@ -48,6 +48,11 @@ public class ArtifactRepository {
             pinned ? 1 : 0, id, version);
     }
 
+    public void updateSupersedes(String oldId, int oldVersion, String newId) {
+        jdbc.update("UPDATE artifacts SET supersedes_id = ?, supersedes_ver = ? WHERE id = ? AND version = ?",
+            newId, oldVersion, oldId, oldVersion);
+    }
+
     public Optional<ArtifactRecord> findLatestById(String id) {
         var list = jdbc.query(
             "SELECT * FROM artifacts WHERE id = ? ORDER BY version DESC LIMIT 1", MAPPER, id);

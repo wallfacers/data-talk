@@ -1522,20 +1522,11 @@ After Task 26 the server exposes:
 | # | Commit | 修复内容 |
 |---|--------|----------|
 | 27 | `77c62d8` | ① Part 接口加 `String id()` 方法（所有实现类已有该字段）② OpenCodeEventTranslator 用 `p.part().id()` 替代 `identityHashCode` 做业务语义去重 |
+| 28 | `7753d8e` | E2E 测试修复：内存数据源覆盖、schema.sql 测试数据库初始化、WireMock 启动顺序（@DynamicPropertySource 内启动而非 @BeforeAll） |
 
-### 与计划的差异及处理
+### 已生成文件清单（20 个新增 + 3 个修改）
 
-| # | 差异 | 状态 | 处理方式 |
-|---|------|------|----------|
-| 1 | `DtEvent.MessageUpdated` 构造函数是 4 字段而非 `Message` 对象 | ✅ 已处理 | 代码正确适配：提取 `sessionId()`, `id()`, `role().name()`, `createdAt()` 构造 |
-| 2 | `DtEvent.OntologyUpdated` 只有 2 参数 `(ontologyId, revision)` 而非计划的 5 参数 | ✅ 已处理 | 代码正确适配：`new DtEvent.OntologyUpdated(artifactId, version)` |
-| 3 | `PendingCallRegistry` 在 `session` 包而非 `opencode` 包 | ✅ 已处理 | import 使用实际位置 |
-| 4 | `Part` 接口缺少 `id()` 声明方法 | ✅ 已处理 | 提交 `77c62d8` 添加 |
-| 5 | `Executor.OPENCODE` 枚举值存在（计划只提到 SERVER/CLIENT） | ✅ 已处理 | switch 覆盖三个分支 |
-
-### 已生成文件清单（17 个新增 + 2 个修改）
-
-**新增（17）:**
+**新增（20）:**
 - `data-talk-application/src/main/java/com/datatalk/application/opencode/OcEvent.java`
 - `data-talk-application/src/main/java/com/datatalk/application/opencode/OpenCodeEventTranslator.java`
 - `data-talk-application/src/main/java/com/datatalk/application/opencode/OpenCodeGateway.java`
@@ -1555,8 +1546,9 @@ After Task 26 the server exposes:
 - `data-talk-adapter/src/main/java/com/datatalk/adapter/actions/DemoEchoAction.java`
 - `data-talk-adapter/src/main/java/com/datatalk/adapter/config/OpenCodeGatewayBeans.java`
 - `data-talk-adapter/src/test/java/com/datatalk/adapter/smoke/EndToEndSmokeIT.java`
+- `data-talk-adapter/src/test/resources/schema.sql` — 测试用 H2 内存数据库 schema
 
-**修改（2）:**
+**修改（3）:**
 - `data-talk-infrastructure/pom.xml` — 添加 webflux、wiremock、junit、assertj 依赖
 - `data-talk-adapter/pom.xml` — 添加 wiremock、awaitility、h2 测试依赖
 - `data-talk-domain/src/main/java/com/datatalk/domain/part/Part.java` — 添加 `String id()` 方法
@@ -1565,19 +1557,31 @@ After Task 26 the server exposes:
 
 | 检查项 | 结果 | 详情 |
 |--------|------|------|
-| 代码编写 | ✅ 100% | 17 个新文件 + 2 个修改，全部已提交 |
+| 代码编写 | ✅ 100% | 20 个新文件 + 3 个修改，全部已提交 |
 | 计划差异修复 | ✅ 100% | 3 个差异全部处理 |
-| Maven 编译 | ⏸️ 未执行 | domain 模块有预先存在的编译错误，需后续处理 |
-| 单元测试 | ⏸️ 未执行 | 6 个测试类全部未运行 |
-| E2E 冒烟 | ⏸️ 未执行 | EndToEndSmokeIT 未运行 |
+| Maven 编译 | ✅ 通过 | 5 个模块 BUILD SUCCESS |
+| 单元测试 | ✅ 18/18 通过 | 见下方测试明细表 |
+| E2E 冒烟 | ✅ 2/2 通过 | toolsAreRegisteredOnStartup + opencodeToolCallInvokesHandlerAndReturnsOutput |
+
+### 测试明细
+
+| 测试类 | 用例数 | 耗时 | 结果 |
+|--------|--------|------|------|
+| OpenCodeEventTranslatorTest | 8 | 0.229s | ✅ |
+| OpenCodeHttpClientTest | 2 | 7.847s | ✅ |
+| OpenCodeGatewayTest | 2 | 0.133s | ✅ |
+| ToolCallBridgeTest | 1 | 2.954s | ✅ |
+| ActionDispatcherTest | 3 | 3.390s | ✅ |
+| EndToEndSmokeIT | 2 | 12.50s | ✅ |
+| **总计** | **18** | **~27s** | **✅ 18/18** |
 
 ### 成功标准（spec §1 对应 Part 4 部分）
 
 | # | 标准 | 状态 |
 |---|------|------|
-| 1 | OpenCodeEventTranslator 能区分 first/subsequent | ✅ 代码已写，测试未运行 |
-| 2 | OpenCodeHttpClient 通过 WireMock 契约测试 | ✅ 代码已写，测试未运行 |
-| 3 | OpenCodeGateway 推送所有 ActionDescriptor 为工具 | ✅ 代码已写，测试未运行 |
-| 4 | ToolCallBridge 能正确解析 session 并派发 | ✅ 代码已写，测试未运行 |
-| 5 | ActionDispatcher SERVER/CLIENT/OPENCODE 三路路由 | ✅ 代码已写，测试未运行 |
-| 6 | DemoEchoAction 端到端返回 reversed 文本 | ✅ 代码已写，测试未运行 |
+| 1 | OpenCodeEventTranslator 能区分 first/subsequent | ✅ 8/8 测试通过 |
+| 2 | OpenCodeHttpClient 通过 WireMock 契约测试 | ✅ 2/2 测试通过 |
+| 3 | OpenCodeGateway 推送所有 ActionDescriptor 为工具 | ✅ 2/2 测试通过 |
+| 4 | ToolCallBridge 能正确解析 session 并派发 | ✅ 1/1 测试通过 |
+| 5 | ActionDispatcher SERVER/CLIENT/OPENCODE 三路路由 | ✅ 3/3 测试通过 |
+| 6 | DemoEchoAction 端到端返回 reversed 文本 | ✅ 2/2 E2E 通过 |

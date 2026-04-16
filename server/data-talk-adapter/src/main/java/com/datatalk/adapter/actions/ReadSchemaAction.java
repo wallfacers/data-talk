@@ -1,6 +1,7 @@
 package com.datatalk.adapter.actions;
 
 import com.datatalk.application.connection.ConnectionService;
+import com.datatalk.application.connection.JdbcUrlBuilder;
 import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.domain.action.*;
@@ -58,10 +59,9 @@ public class ReadSchemaAction implements ActionHandler<Map, Map> {
         ConnectionRecord cr = connRepo.findById(connectionId)
             .orElseThrow(() -> new IllegalArgumentException("unknown connection " + connectionId));
         String password = conn.decryptPassword(connectionId);
-        String url = jdbcUrl(cr);
 
         List<Map<String, Object>> tables = new ArrayList<>();
-        try (Connection c = DriverManager.getConnection(url, cr.username(), password)) {
+        try (Connection c = DriverManager.getConnection(JdbcUrlBuilder.build(cr), cr.username(), password)) {
             var meta = c.getMetaData();
             try (ResultSet tbl = meta.getTables(null, null, "%", new String[]{"TABLE"})) {
                 while (tbl.next()) {
@@ -83,13 +83,5 @@ public class ReadSchemaAction implements ActionHandler<Map, Map> {
             return CompletableFuture.failedStage(new RuntimeException("schema read failed", e));
         }
         return CompletableFuture.completedFuture(Map.of("schema", tables));
-    }
-
-    private static String jdbcUrl(ConnectionRecord c) {
-        return switch (c.kind()) {
-            case "postgresql" -> "jdbc:postgresql://" + c.host() + ":" + c.port() + "/" + c.databaseName();
-            case "mysql"      -> "jdbc:mysql://" + c.host() + ":" + c.port() + "/" + c.databaseName();
-            default           -> throw new IllegalArgumentException("unsupported kind: " + c.kind());
-        };
     }
 }

@@ -1,6 +1,8 @@
 package com.datatalk.adapter.actions;
 
+import com.datatalk.application.channel.IdGenerator;
 import com.datatalk.application.connection.ConnectionService;
+import com.datatalk.application.connection.JdbcUrlBuilder;
 import com.datatalk.application.persistence.*;
 import com.datatalk.domain.action.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,11 +30,14 @@ public class LayoutErdAction implements ActionHandler<Map, Map> {
     private final ArtifactRepository artifacts;
     private final ObjectMapper om;
     private final Clock clock;
+    private final IdGenerator ids;
 
     public LayoutErdAction(ConnectionRepository connRepo, ConnectionService conn,
-                           ArtifactRepository artifacts, ObjectMapper om, Clock clock) {
+                           ArtifactRepository artifacts, ObjectMapper om, Clock clock,
+                           IdGenerator ids) {
         this.connRepo = connRepo; this.conn = conn;
         this.artifacts = artifacts; this.om = om; this.clock = clock;
+        this.ids = ids;
     }
 
     @Override public Map<String, Object> inputSchema() {
@@ -69,7 +74,7 @@ public class LayoutErdAction implements ActionHandler<Map, Map> {
         List<Map<String, Object>> nodes = new ArrayList<>();
         List<Map<String, Object>> edges = new ArrayList<>();
 
-        try (Connection c = DriverManager.getConnection(jdbcUrl(cr), cr.username(), pw)) {
+        try (Connection c = DriverManager.getConnection(JdbcUrlBuilder.build(cr), cr.username(), pw)) {
             var meta = c.getMetaData();
             int i = 0;
             for (String table : tables) {
@@ -102,14 +107,14 @@ public class LayoutErdAction implements ActionHandler<Map, Map> {
             return CompletableFuture.failedStage(e);
         }
 
-        String artifactId = "art-" + UUID.randomUUID();
+        String artifactId = ids.nextArtifactId();
         String payloadJson;
         try {
             payloadJson = om.writeValueAsString(Map.of("nodes", nodes, "edges", edges));
         } catch (Exception e) { return CompletableFuture.failedStage(e); }
         artifacts.insert(new ArtifactRecord(
             artifactId, 1, ctx.sessionId(), "erd", ctx.callId(),
-            "INLINE:" + payloadJson, payloadJson.length(),
+            PayloadRef.INLINE_PREFIX + payloadJson, payloadJson.length(),
             null, null, false, clock.millis()));
 
         return CompletableFuture.completedFuture(Map.of(
@@ -118,13 +123,5 @@ public class LayoutErdAction implements ActionHandler<Map, Map> {
             "nodes", nodes,
             "edges", edges
         ));
-    }
-
-    private static String jdbcUrl(ConnectionRecord c) {
-        return switch (c.kind()) {
-            case "postgresql" -> "jdbc:postgresql://" + c.host() + ":" + c.port() + "/" + c.databaseName();
-            case "mysql"      -> "jdbc:mysql://" + c.host() + ":" + c.port() + "/" + c.databaseName();
-            default -> throw new IllegalArgumentException("unsupported: " + c.kind());
-        };
     }
 }

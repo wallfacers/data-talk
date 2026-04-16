@@ -79,3 +79,36 @@ This file is the map. Deep knowledge lives in `docs/`:
 - **Plan C** (Client Split-View): pending
 
 See [docs/exec-plans/index.md](docs/exec-plans/index.md) for details.
+
+## Working Rules
+
+### Bug Fixes
+
+- Proactively inspect related code when fixing a bug. In this 4-layer architecture, pay special attention: changes to domain sealed interfaces/records require checking application-layer exhaustive switches for sync updates
+
+### Post-Edit Verification
+
+- **Backend**: after every edit, run `cd server && mvn compile -q` — confirm zero compilation errors before proceeding
+- **Frontend**: after every edit, run `cd client && npx tsc --noEmit` — confirm zero type errors before proceeding
+
+### Response Style
+
+- Be concise and direct. No filler
+
+### Plan Mode
+
+- Multi-step changes **MUST** use `/plan` to align on approach before writing code. Follow the existing plan workflow in [docs/PLANS.md](docs/PLANS.md)
+
+### Brainstorming
+
+- Major changes (new modules, architecture adjustments, cross-layer refactors spanning domain/application/infrastructure/adapter) **MUST** invoke the `brainstorming` skill first
+
+### Testing
+
+- New features **MUST** have corresponding tests. No tests = not done
+- Backend: JUnit 5 + AssertJ. For OpenCode protocol interactions, use WireMock (FakeOpenCodeServer)
+- Frontend: vitest
+
+### Clarify Before Acting
+
+- If requirements, scope, or implementation approach are unclear, **MUST** ask for clarification first. Never guess

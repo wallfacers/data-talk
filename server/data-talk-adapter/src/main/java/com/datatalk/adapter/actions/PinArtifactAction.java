@@ -6,11 +6,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
 
-/**
- * CLIENT-executor action. The handler must not be called by the dispatcher
- * (dispatch routes CLIENT executors through SessionBus.invoke); if it is,
- * surface a clear error.
- */
 @org.springframework.stereotype.Component
 @DataTalkAction(
     id = "datatalk.pin_artifact",
