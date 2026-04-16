@@ -1,5 +1,7 @@
+import { useSessionStore } from '@/stores/session-store'
 import { useSessionMode } from './use-session-mode'
 import { useFlipComposer } from './use-flip-composer'
+import { useSessionHistory } from './hooks/use-session-history'
 import { HeroView } from './hero-view'
 import { SplitView } from './split-view'
 import { PromptComposer } from './prompt-composer'
@@ -7,8 +9,11 @@ import { ConnectionOverlay } from './connection-overlay'
 import { WelcomeEmpty } from './welcome-empty'
 
 export function SessionCanvas() {
+  const sessionId = useSessionStore((s) => s.activeSessionId)
   const { mode } = useSessionMode()
   useFlipComposer()
+  useSessionHistory(sessionId)
+
   return (
     <div className="relative h-full">
       {mode === 'HERO' && <HeroView />}
