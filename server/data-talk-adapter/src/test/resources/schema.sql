@@ -1,3 +1,10 @@
+DROP TABLE IF EXISTS pending_calls;
+DROP TABLE IF EXISTS action_invocations;
+DROP TABLE IF EXISTS artifacts;
+DROP TABLE IF EXISTS messages;
+DROP TABLE IF EXISTS sessions;
+DROP TABLE IF EXISTS connections;
+
 CREATE TABLE connections (
   id TEXT PRIMARY KEY, kind TEXT NOT NULL, host TEXT NOT NULL, port INTEGER NOT NULL,
   database_name TEXT, username TEXT NOT NULL, password_enc BLOB NOT NULL,

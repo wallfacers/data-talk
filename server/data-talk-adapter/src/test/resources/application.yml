@@ -6,7 +6,8 @@ spring:
     password:
   sql:
     init:
-      mode: never
+      mode: always
+      schema-locations: classpath:schema.sql
   jdbc:
     template:
       query-timeout: 30
