@@ -21,6 +21,8 @@ export type TextPart = {
 
 export type Part = TextPart | { type: string; id: string; sessionID: string; messageID: string; [k: string]: unknown }
 
+import { generateUuid } from '@/lib/uuid'
+
 export function createTextPart(sessionId: string, text: string): TextPart {
-  return { type: 'text', id: crypto.randomUUID(), sessionID: sessionId, messageID: '', text, metadata: {} }
+  return { type: 'text', id: generateUuid(), sessionID: sessionId, messageID: '', text, metadata: {} }
 }

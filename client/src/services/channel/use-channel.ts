@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { ChannelClient } from './channel-client'
 import type { StreamEvent, Part } from './types'
+import { generateUuid } from '@/lib/uuid'
 import { useChatPartsStore } from '@/stores/chat-parts-store'
 import { useOntologyStore } from '@/stores/ontology-store'
 import { useTimelineStore } from '@/stores/timeline-store'
@@ -68,7 +69,7 @@ export function buildEventSink(sessionId: string, client: ChannelClient | null) 
 }
 
 export function useChannelClient(sessionId: string | null): ChannelClient | null {
-  const clientId = useMemo(() => crypto.randomUUID(), [])
+  const clientId = useMemo(() => generateUuid(), [])
   return useMemo(() => {
     if (!sessionId) return null
     return new ChannelClient({ baseUrl: getApiBaseUrl(), sessionId, clientId })

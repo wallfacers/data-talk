@@ -1,5 +1,6 @@
 import { createParser, type EventSourceMessage } from 'eventsource-parser'
 import type { RpcRequest, StreamEvent, Part } from './types'
+import { generateUuid } from '@/lib/uuid'
 
 export type ChannelClientOptions = {
   baseUrl: string
@@ -23,7 +24,7 @@ export class ChannelClient {
 
   async sendMessage(parts: Part[], onEvent: (e: StreamEvent) => void): Promise<void> {
     const body: RpcRequest = {
-      jsonrpc: '2.0', id: crypto.randomUUID(),
+      jsonrpc: '2.0', id: generateUuid(),
       method: 'send_message',
       params: { parts },
     }
@@ -32,7 +33,7 @@ export class ChannelClient {
 
   async actionResult(callId: string, ok: boolean, output?: unknown, error?: unknown): Promise<void> {
     const body: RpcRequest = {
-      jsonrpc: '2.0', id: crypto.randomUUID(),
+      jsonrpc: '2.0', id: generateUuid(),
       method: 'action_result',
       params: { callId, ok, output, error },
     }
@@ -41,7 +42,7 @@ export class ChannelClient {
 
   async abort(): Promise<void> {
     const body: RpcRequest = {
-      jsonrpc: '2.0', id: crypto.randomUUID(),
+      jsonrpc: '2.0', id: generateUuid(),
       method: 'abort', params: {},
     }
     await this.plainPost(body)
