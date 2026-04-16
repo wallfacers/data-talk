@@ -5,7 +5,6 @@ import { SessionCanvas } from '@/features/session/session-canvas'
 import { useSessionMode } from '@/features/session/use-session-mode'
 import { AppSidebar } from './components/app-sidebar'
 import { SiteHeader } from './components/site-header'
-import { cn } from '@/lib/utils'
 
 export function HomePage() {
   useBootstrapActions()
@@ -21,11 +20,7 @@ export function HomePage() {
         } as CSSProperties
       }
     >
-      <AppSidebar
-        variant="inset"
-        className={cn('transition-opacity duration-200',
-          heroQuiet ? 'opacity-60' : 'opacity-100')}
-      />
+      <AppSidebar variant="inset" />
       <SidebarInset>
         {!heroQuiet && <SiteHeader />}
         <div className="relative min-h-0 flex-1">
