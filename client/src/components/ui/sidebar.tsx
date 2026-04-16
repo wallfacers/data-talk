@@ -32,6 +32,15 @@ const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
+function readSidebarCookie(fallback: boolean): boolean {
+  if (typeof document === "undefined") return fallback
+  const match = document.cookie
+    .split("; ")
+    .find((c) => c.startsWith(`${SIDEBAR_COOKIE_NAME}=`))
+  if (!match) return fallback
+  return match.slice(SIDEBAR_COOKIE_NAME.length + 1) === "true"
+}
+
 type SidebarContextProps = {
   state: "expanded" | "collapsed"
   open: boolean
@@ -69,7 +78,7 @@ function SidebarProvider({
   const isMobile = useIsMobile()
   const [openMobile, setOpenMobile] = React.useState(false)
 
-  const [_open, _setOpen] = React.useState(defaultOpen)
+  const [_open, _setOpen] = React.useState(() => readSidebarCookie(defaultOpen))
   const open = openProp ?? _open
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
