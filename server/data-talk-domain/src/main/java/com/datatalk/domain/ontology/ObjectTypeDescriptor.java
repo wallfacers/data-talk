@@ -7,8 +7,8 @@ import java.util.Optional;
 public record ObjectTypeDescriptor(
         String id,
         String displayName,
-        Map<String, String> properties,
+        Map<String, Object> propertySchema,
         List<String> primaryKey,
         Optional<String> titleField,
-        String className
+        String javaTypeName
 ) {}

@@ -18,7 +18,10 @@ class ObjectTypeDescriptorTest {
             "com.datatalk.domain.ontology.Artifact");
 
         assertThat(d.id()).isEqualTo("datatalk.artifact");
+        assertThat(d.displayName()).isEqualTo("Artifact");
+        assertThat(d.propertySchema()).containsEntry("type", "object");
         assertThat(d.primaryKey()).containsExactly("id", "version");
         assertThat(d.titleField()).hasValue("title");
+        assertThat(d.javaTypeName()).isEqualTo("com.datatalk.domain.ontology.Artifact");
     }
 }
