@@ -17,6 +17,7 @@ client/src-tauri/gen/
 
 # Node
 client/node_modules/
+package-lock.json
 
 # Java
 *.class
@@ -27,6 +28,7 @@ client/node_modules/
 server/data/*.db
 server/data/*.db-shm
 server/data/*.db-wal
+server/data-talk-adapter/data/
 
 # Logs
 *.log
