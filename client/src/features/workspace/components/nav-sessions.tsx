@@ -1,4 +1,5 @@
 import {
+  MessageSquareOffIcon,
   MoreHorizontalIcon,
   PencilIcon,
   Share2Icon,
@@ -66,10 +67,10 @@ function groupSessions(sessions: Session[]): SessionGroup[] {
 
 function EmptyHint({ text }: { text: string }) {
   return (
-    <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-      <SidebarGroupLabel>会话</SidebarGroupLabel>
-      <div className="px-3 text-xs text-muted-foreground">{text}</div>
-    </SidebarGroup>
+    <div className="flex h-full w-full flex-col items-center justify-center text-muted-foreground">
+      <MessageSquareOffIcon className="mb-3 h-10 w-10 opacity-40" />
+      <div className="text-sm">{text}</div>
+    </div>
   )
 }
 
