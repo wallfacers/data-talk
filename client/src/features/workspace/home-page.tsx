@@ -21,7 +21,7 @@ export function HomePage() {
       }
     >
       <AppSidebar variant="inset" />
-      <SidebarInset>
+      <SidebarInset className="md:m-0! md:ml-0! md:rounded-none! md:shadow-none!">
         {!heroQuiet && <SiteHeader />}
         <div className="relative min-h-0 flex-1">
           <SessionCanvas />
