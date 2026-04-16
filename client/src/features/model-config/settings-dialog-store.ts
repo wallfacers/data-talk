@@ -1,19 +1,24 @@
 import { create } from 'zustand'
 
-type SettingsTab = 'providers' | 'models' | 'general'
+type MainTab = 'general' | 'providers' | 'models'
+type GeneralSubTab = 'general-settings' | 'account' | 'data' | 'terms'
 
 interface SettingsDialogState {
   open: boolean
-  tab: SettingsTab
-  openDialog: (tab?: SettingsTab) => void
+  tab: MainTab
+  generalSubTab: GeneralSubTab
+  openDialog: (tab?: MainTab) => void
   closeDialog: () => void
-  setTab: (tab: SettingsTab) => void
+  setTab: (tab: MainTab) => void
+  setGeneralSubTab: (subTab: GeneralSubTab) => void
 }
 
 export const useSettingsDialogStore = create<SettingsDialogState>((set) => ({
   open: false,
-  tab: 'providers',
-  openDialog: (tab) => set({ open: true, tab: tab ?? 'providers' }),
+  tab: 'general',
+  generalSubTab: 'general-settings',
+  openDialog: (tab) => set({ open: true, tab: tab ?? 'general', generalSubTab: 'general-settings' }),
   closeDialog: () => set({ open: false }),
-  setTab: (tab) => set({ tab }),
+  setTab: (tab) => set({ tab, generalSubTab: 'general-settings' }),
+  setGeneralSubTab: (generalSubTab) => set({ generalSubTab }),
 }))
