@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useSidebar } from '@/components/ui/sidebar'
 import { useSessionStore } from '@/stores/session-store'
 import { useSessions } from './hooks/use-sessions'
 import { deleteSession, renameSession } from '@/services/api/session'
@@ -18,6 +19,7 @@ export function ChatHeader() {
   const session = sessions?.find((s) => s.id === sid)
   const title = session?.title ?? (sid ? '会话' : '演示模式')
   const qc = useQueryClient()
+  const { state } = useSidebar()
 
   const rename = useMutation({
     mutationFn: ({ id, title }: { id: string; title: string }) => renameSession(id, title),
@@ -52,7 +54,7 @@ export function ChatHeader() {
   }
 
   return (
-    <div className="flex h-11 shrink-0 items-center justify-between px-3">
+    <div className={`flex h-12 shrink-0 items-center justify-between px-3 ${state === 'collapsed' ? 'pl-24' : ''}`}>
       <span className="truncate text-sm font-medium">{title}</span>
       <DropdownMenu>
         <DropdownMenuTrigger
