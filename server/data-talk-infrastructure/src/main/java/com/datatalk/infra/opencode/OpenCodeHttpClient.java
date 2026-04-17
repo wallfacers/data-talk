@@ -1,5 +1,6 @@
 package com.datatalk.infra.opencode;
 
+import com.datatalk.application.ai.OpenCodeProviderClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.MediaType;
@@ -12,7 +13,7 @@ import java.util.Map;
  * operations Plan A needs: session creation, tool registration, and message
  * send (fire-and-forget; events arrive via the separate /event stream).
  */
-public class OpenCodeHttpClient {
+public class OpenCodeHttpClient implements OpenCodeProviderClient {
 
     private volatile String baseUrl;
     private final WebClient wc;
@@ -71,6 +72,39 @@ public class OpenCodeHttpClient {
 
     public void abort(String sessionId) {
         wc.post().uri("/session/{id}/abort", sessionId)
+            .retrieve()
+            .toBodilessEntity()
+            .block();
+    }
+
+    public JsonNode listProviders() {
+        String body = wc.get().uri("/provider")
+            .retrieve()
+            .bodyToMono(String.class)
+            .block();
+        try {
+            return om.readTree(body);
+        } catch (Exception e) {
+            throw new IllegalStateException("cannot parse OpenCode /provider response", e);
+        }
+    }
+
+    public JsonNode getProviderAuth() {
+        String body = wc.get().uri("/provider/auth")
+            .retrieve()
+            .bodyToMono(String.class)
+            .block();
+        try {
+            return om.readTree(body);
+        } catch (Exception e) {
+            throw new IllegalStateException("cannot parse OpenCode /provider/auth response", e);
+        }
+    }
+
+    public void putAuth(String providerId, Map<String, Object> payload) {
+        wc.put().uri("/auth/{id}", providerId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(payload)
             .retrieve()
             .toBodilessEntity()
             .block();
