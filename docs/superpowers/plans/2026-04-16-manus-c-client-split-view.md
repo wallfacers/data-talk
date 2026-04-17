@@ -1,6 +1,6 @@
 # Plan C — Client Tauri Split-View UI Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Replace the current placeholder workspace UI with the Manus split-view experience: `HERO` (centered composer) → `SPLIT` (left thought-stream + right artifact canvas) with FLIP animation, Part-rendering chat, and an artifact timeline that honors the supersedes chain.
 
@@ -54,7 +54,7 @@ Plan A (backend platform) + Plan B (real OpenCode + MVP actions) merged and runn
 - Create: `client/src/services/channel/types.ts`
 - Test: `client/src/services/channel/channel-client.test.ts`
 
-- [ ] **Step 1.1: Add `eventsource-parser` to `client/package.json`**
+- [x] **Step 1.1: Add `eventsource-parser` to `client/package.json`**
 
 ```
 pnpm add eventsource-parser
@@ -62,7 +62,7 @@ pnpm add eventsource-parser
 
 (Vitest + RTL are already in devDeps via the existing setup; confirm and add if missing.)
 
-- [ ] **Step 1.2: Add vitest config** `client/vitest.config.ts`:
+- [x] **Step 1.2: Add vitest config** `client/vitest.config.ts`:
 
 ```ts
 import { defineConfig } from 'vitest/config'
@@ -91,7 +91,7 @@ Add pnpm scripts:
 "test:watch": "vitest"
 ```
 
-- [ ] **Step 1.3: Write failing test**
+- [x] **Step 1.3: Write failing test**
 
 `client/src/services/channel/channel-client.test.ts`:
 
@@ -153,7 +153,7 @@ describe('ChannelClient', () => {
 })
 ```
 
-- [ ] **Step 1.4: Implement `types.ts` and `channel-client.ts`**
+- [x] **Step 1.4: Implement `types.ts` and `channel-client.ts`**
 
 `client/src/services/channel/types.ts`:
 
@@ -302,7 +302,7 @@ async function consumeSseStream(res: Response, onEvent: (e: StreamEvent) => void
 }
 ```
 
-- [ ] **Step 1.5: Run vitest — PASS, commit**
+- [x] **Step 1.5: Run vitest — PASS, commit**
 
 ```
 pnpm -C client test
@@ -317,7 +317,7 @@ git commit -m "feat(client): add Streamable HTTP ChannelClient with SSE parsing"
 
 **File:** `client/src/services/channel/event-reducer.ts` + test
 
-- [ ] **Step 2.1: Write failing test**
+- [x] **Step 2.1: Write failing test**
 
 ```ts
 // event-reducer.test.ts
@@ -380,7 +380,7 @@ describe('event-reducer', () => {
 })
 ```
 
-- [ ] **Step 2.2: Implement**
+- [x] **Step 2.2: Implement**
 
 ```ts
 // event-reducer.ts

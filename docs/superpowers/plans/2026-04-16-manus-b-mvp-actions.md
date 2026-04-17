@@ -1,6 +1,6 @@
 # Plan B — MVP Actions + Real OpenCode Integration Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Build on Plan A's platform by (1) adding the 6 MVP ObjectTypes and Action handlers, (2) swapping the Plan-A FakeOpenCodeServer wiring for a real OpenCode `/event` SSE consumer with retry/backoff, and (3) hardening SQL safety and error paths.
 
@@ -56,7 +56,7 @@ Plan A (`2026-04-16-manus-a-backend-platform.md` + parts 2–4) must be merged: 
 - Create: `data-talk-domain/src/main/java/com/datatalk/domain/error/DataTalkException.java`
 - Test: `data-talk-domain/src/test/java/com/datatalk/domain/error/DataTalkErrorCodesTest.java`
 
-- [ ] **Step 1.1: Write failing test**
+- [x] **Step 1.1: Write failing test**
 
 ```java
 // data-talk-domain/src/test/java/com/datatalk/domain/error/DataTalkErrorCodesTest.java
@@ -81,13 +81,13 @@ class DataTalkErrorCodesTest {
 }
 ```
 
-- [ ] **Step 1.2: Run — FAIL**
+- [x] **Step 1.2: Run — FAIL**
 
 ```
 ./mvnw -pl data-talk-domain test -Dtest=DataTalkErrorCodesTest
 ```
 
-- [ ] **Step 1.3: Implement DataTalkErrorCodes**
+- [x] **Step 1.3: Implement DataTalkErrorCodes**
 
 ```java
 // data-talk-domain/src/main/java/com/datatalk/domain/error/DataTalkErrorCodes.java
@@ -117,7 +117,7 @@ public final class DataTalkErrorCodes {
 }
 ```
 
-- [ ] **Step 1.4: Implement DataTalkException**
+- [x] **Step 1.4: Implement DataTalkException**
 
 ```java
 // data-talk-domain/src/main/java/com/datatalk/domain/error/DataTalkException.java
@@ -146,7 +146,7 @@ public class DataTalkException extends RuntimeException {
 }
 ```
 
-- [ ] **Step 1.5: Run — PASS, commit**
+- [x] **Step 1.5: Run — PASS, commit**
 
 ```
 ./mvnw -pl data-talk-domain test -Dtest=DataTalkErrorCodesTest
@@ -194,7 +194,7 @@ Commit `error-codes.md` in the same step.
 - Create: `data-talk-adapter/src/main/java/com/datatalk/adapter/ontology/ActionInvocationObjectType.java`
 - Test: `data-talk-adapter/src/test/java/com/datatalk/adapter/ontology/OntologyRegistrationIT.java`
 
-- [ ] **Step 2.1: Write failing integration test**
+- [x] **Step 2.1: Write failing integration test**
 
 ```java
 // OntologyRegistrationIT.java
@@ -231,7 +231,7 @@ class OntologyRegistrationIT {
 }
 ```
 
-- [ ] **Step 2.2: Implement the four ObjectType beans**
+- [x] **Step 2.2: Implement the four ObjectType beans**
 
 ```java
 // ConnectionObjectType.java
@@ -420,7 +420,7 @@ public class ActionInvocationObjectType implements ObjectType<ActionInvocationOb
 }
 ```
 
-- [ ] **Step 2.3: Run — PASS, commit**
+- [x] **Step 2.3: Run — PASS, commit**
 
 ```
 ./mvnw -pl data-talk-adapter -am test -Dtest=OntologyRegistrationIT
@@ -440,7 +440,7 @@ git commit -m "feat(server): register four MVP ObjectType beans"
 - Create: `data-talk-infrastructure/src/main/java/com/datatalk/infra/connection/ConnectionController.java`
 - Test: `data-talk-adapter/src/test/java/com/datatalk/adapter/connection/ConnectionCrudIT.java`
 
-- [ ] **Step 3.1: Write failing test**
+- [x] **Step 3.1: Write failing test**
 
 ```java
 // ConnectionCrudIT.java
@@ -502,7 +502,7 @@ class ConnectionCrudIT {
 }
 ```
 
-- [ ] **Step 3.2: Implement ConnectionRecord + repository**
+- [x] **Step 3.2: Implement ConnectionRecord + repository**
 
 ```java
 // ConnectionRecord.java
@@ -643,7 +643,7 @@ public class ConnectionController {
 }
 ```
 
-- [ ] **Step 3.3: Provide a test master-key for SecretVault**
+- [x] **Step 3.3: Provide a test master-key for SecretVault**
 
 In `data-talk-adapter/src/test/resources/application.yml` (create if missing):
 
@@ -674,7 +674,7 @@ public class SecretVaultConfig {
 }
 ```
 
-- [ ] **Step 3.4: Run — PASS, commit**
+- [x] **Step 3.4: Run — PASS, commit**
 
 ```
 ./mvnw -pl data-talk-adapter -am test -Dtest=ConnectionCrudIT
@@ -696,7 +696,7 @@ git commit -m "feat(server): add Connection CRUD with encrypted password storage
 - Create: `data-talk-application/src/main/java/com/datatalk/application/sql/SqlStatementGuard.java`
 - Test: `data-talk-application/src/test/java/com/datatalk/application/sql/SqlStatementGuardTest.java`
 
-- [ ] **Step 4.1: Write failing test**
+- [x] **Step 4.1: Write failing test**
 
 ```java
 package com.datatalk.application.sql;
@@ -746,7 +746,7 @@ class SqlStatementGuardTest {
 }
 ```
 
-- [ ] **Step 4.2: Implement SqlStatementGuard**
+- [x] **Step 4.2: Implement SqlStatementGuard**
 
 ```java
 package com.datatalk.application.sql;
@@ -800,7 +800,7 @@ public class SqlStatementGuard {
 }
 ```
 
-- [ ] **Step 4.3: Run — PASS, commit**
+- [x] **Step 4.3: Run — PASS, commit**
 
 ```
 ./mvnw -pl data-talk-application test -Dtest=SqlStatementGuardTest
@@ -818,7 +818,7 @@ git commit -m "feat(server): add SELECT-only SQL safety guard for MVP"
 - Modify: `data-talk-adapter/src/main/java/com/datatalk/adapter/config/OpenCodeGatewayBeans.java`
 - Test: `data-talk-application/src/test/java/com/datatalk/application/opencode/OpenCodeEventLoopTest.java`
 
-- [ ] **Step 5.1: Write failing test**
+- [x] **Step 5.1: Write failing test**
 
 ```java
 // OpenCodeEventLoopTest.java
@@ -883,7 +883,7 @@ class OpenCodeEventLoopTest {
 }
 ```
 
-- [ ] **Step 5.2: Implement OpenCodeEventLoop**
+- [x] **Step 5.2: Implement OpenCodeEventLoop**
 
 ```java
 // OpenCodeEventLoop.java
@@ -1031,7 +1031,7 @@ public class OpenCodeEventLoop {
 }
 ```
 
-- [ ] **Step 5.3: Wire the event loop into OpenCodeGatewayBeans**
+- [x] **Step 5.3: Wire the event loop into OpenCodeGatewayBeans**
 
 Modify `OpenCodeGatewayBeans.java` (from Plan A Task 26):
 
@@ -1059,7 +1059,7 @@ public OpenCodeEventLoop openCodeEventLoop(
 }
 ```
 
-- [ ] **Step 5.4: Run — PASS, commit**
+- [x] **Step 5.4: Run — PASS, commit**
 
 ```
 ./mvnw -pl data-talk-application test -Dtest=OpenCodeEventLoopTest
@@ -1077,7 +1077,7 @@ git commit -m "feat(server): add real OpenCode /event SSE loop with retry/backof
 - Create: `data-talk-adapter/src/main/java/com/datatalk/adapter/actions/ReadSchemaAction.java`
 - Test: `data-talk-adapter/src/test/java/com/datatalk/adapter/actions/ReadSchemaActionIT.java`
 
-- [ ] **Step 6.1: Add Testcontainers deps to `data-talk-adapter/pom.xml`**
+- [x] **Step 6.1: Add Testcontainers deps to `data-talk-adapter/pom.xml`**
 
 ```xml
 <dependency>
@@ -1099,7 +1099,7 @@ git commit -m "feat(server): add real OpenCode /event SSE loop with retry/backof
 </dependency>
 ```
 
-- [ ] **Step 6.2: Write failing IT**
+- [x] **Step 6.2: Write failing IT**
 
 ```java
 // ReadSchemaActionIT.java
@@ -1164,7 +1164,7 @@ class ReadSchemaActionIT {
 }
 ```
 
-- [ ] **Step 6.3: Implement ReadSchemaAction**
+- [x] **Step 6.3: Implement ReadSchemaAction**
 
 ```java
 package com.datatalk.adapter.actions;
@@ -1264,7 +1264,7 @@ public class ReadSchemaAction implements ActionHandler<Map, Map> {
 }
 ```
 
-- [ ] **Step 6.4: Run — PASS, commit**
+- [x] **Step 6.4: Run — PASS, commit**
 
 ```
 ./mvnw -pl data-talk-adapter -am test -Dtest=ReadSchemaActionIT
@@ -1282,7 +1282,7 @@ git commit -m "feat(server): add datatalk.read_schema action with Testcontainers
 - Create: `data-talk-adapter/src/main/java/com/datatalk/adapter/actions/ExecuteSqlAction.java`
 - Test: `data-talk-adapter/src/test/java/com/datatalk/adapter/actions/ExecuteSqlActionIT.java`
 
-- [ ] **Step 7.1: Write failing IT**
+- [x] **Step 7.1: Write failing IT**
 
 ```java
 // ExecuteSqlActionIT.java — same Testcontainers pattern as Task 6.
@@ -1366,7 +1366,7 @@ class ExecuteSqlActionIT {
 }
 ```
 
-- [ ] **Step 7.2: Implement ExecuteSqlAction**
+- [x] **Step 7.2: Implement ExecuteSqlAction**
 
 ```java
 package com.datatalk.adapter.actions;
@@ -1540,7 +1540,7 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
 }
 ```
 
-- [ ] **Step 7.3: Run — PASS, commit**
+- [x] **Step 7.3: Run — PASS, commit**
 
 ```
 ./mvnw -pl data-talk-adapter -am test -Dtest=ExecuteSqlActionIT
@@ -1557,7 +1557,7 @@ git commit -m "feat(server): add datatalk.execute_sql action with artifact persi
 - Create: `data-talk-adapter/src/main/java/com/datatalk/adapter/actions/RenderChartAction.java`
 - Test: `data-talk-adapter/src/test/java/com/datatalk/adapter/actions/RenderChartActionTest.java`
 
-- [ ] **Step 8.1: Write failing test**
+- [x] **Step 8.1: Write failing test**
 
 ```java
 // RenderChartActionTest.java
@@ -1649,7 +1649,7 @@ class RenderChartActionTest {
 }
 ```
 
-- [ ] **Step 8.2: Implement RenderChartAction**
+- [x] **Step 8.2: Implement RenderChartAction**
 
 ```java
 package com.datatalk.adapter.actions;
@@ -1762,7 +1762,7 @@ public class RenderChartAction implements ActionHandler<Map, Map> {
 }
 ```
 
-- [ ] **Step 8.3: Run — PASS, commit**
+- [x] **Step 8.3: Run — PASS, commit**
 
 ```
 ./mvnw -pl data-talk-adapter -am test -Dtest=RenderChartActionTest
@@ -1779,7 +1779,7 @@ git commit -m "feat(server): add datatalk.render_chart action with supersedes ch
 - Create: `data-talk-adapter/src/main/java/com/datatalk/adapter/actions/LayoutErdAction.java`
 - Test: `data-talk-adapter/src/test/java/com/datatalk/adapter/actions/LayoutErdActionIT.java`
 
-- [ ] **Step 9.1: Implementation (abbreviated — follow Tasks 6/7 TDD pattern)**
+- [x] **Step 9.1: Implementation (abbreviated — follow Tasks 6/7 TDD pattern)**
 
 ```java
 package com.datatalk.adapter.actions;
@@ -2047,7 +2047,7 @@ Commit.
 - Create: `data-talk-infrastructure/src/main/java/com/datatalk/infra/channel/HistoryController.java`
 - Create: `data-talk-application/src/main/java/com/datatalk/application/channel/HistoryService.java`
 
-- [ ] **Step 12.1**: In `ChannelService.sendMessage`, after writing the user message and publishing events, forward to OpenCode:
+- [x] **Step 12.1**: In `ChannelService.sendMessage`, after writing the user message and publishing events, forward to OpenCode:
 
 ```java
 // Inject OpenCodeGateway + OpenCodeSessionMap into ChannelService (field + constructor arg).
@@ -2062,7 +2062,7 @@ gateway.forwardUserMessage(ocSid, Map.of(
 ));
 ```
 
-- [ ] **Step 12.2**: Create `HistoryController` exposing `GET /api/sessions/{id}/messages` and `GET /api/sessions/{id}/artifacts`:
+- [x] **Step 12.2**: Create `HistoryController` exposing `GET /api/sessions/{id}/messages` and `GET /api/sessions/{id}/artifacts`:
 
 ```java
 // HistoryController.java

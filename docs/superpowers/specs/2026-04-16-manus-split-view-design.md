@@ -1,7 +1,7 @@
 # Manus 风格分屏交互 + Action Registry + 本体层（Ontology）设计
 
 > 日期：2026-04-16
-> 状态：待评审
+> 状态：已完成
 > 上一份前置 spec：`2026-04-16-client-rebuild-tauri-vite-design.md`（本 spec 基于其已落地的三栏骨架继续改造）
 
 ---

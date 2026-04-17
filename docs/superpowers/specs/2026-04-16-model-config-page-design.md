@@ -1,7 +1,7 @@
 # 模型配置页面设计
 
 > 日期：2026-04-16
-> 状态：待评审
+> 状态：已完成
 > 参考：opencode 模型配置页面风格（settings-providers.tsx / settings-models.tsx）
 
 ---

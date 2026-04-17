@@ -1,6 +1,6 @@
 # OpenCode 嵌入式进程管理 Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Spring Boot 启动时自动下载/提取、启动 OpenCode 进程，父进程退出时确保子进程被清理。
 
@@ -36,7 +36,7 @@
 - Create: `server/data-talk-infrastructure/src/test/java/com/datatalk/infra/opencode/process/OpenCodePlatformTest.java`
 - Create: `server/data-talk-infrastructure/src/main/java/com/datatalk/infra/opencode/process/OpenCodePlatform.java`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```java
 // server/data-talk-infrastructure/src/test/java/com/datatalk/infra/opencode/process/OpenCodePlatformTest.java
@@ -98,12 +98,12 @@ class OpenCodePlatformTest {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd server && mvn test -pl data-talk-infrastructure -Dtest=OpenCodePlatformTest -q`
 Expected: FAIL — classes don't exist
 
-- [ ] **Step 3: Write implementation**
+- [x] **Step 3: Write implementation**
 
 ```java
 // server/data-talk-infrastructure/src/main/java/com/datatalk/infra/opencode/process/OpenCodePlatform.java
@@ -168,12 +168,12 @@ public enum OpenCodePlatform {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd server && mvn test -pl data-talk-infrastructure -Dtest=OpenCodePlatformTest -q`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd server
@@ -189,7 +189,7 @@ git commit -m "feat(server): add OpenCodePlatform enum for cross-platform binary
 - Create: `server/data-talk-infrastructure/src/test/java/com/datatalk/infra/opencode/process/OpenCodePortAllocatorTest.java`
 - Create: `server/data-talk-infrastructure/src/main/java/com/datatalk/infra/opencode/process/OpenCodePortAllocator.java`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```java
 // server/data-talk-infrastructure/src/test/java/com/datatalk/infra/opencode/process/OpenCodePortAllocatorTest.java
@@ -247,12 +247,12 @@ class OpenCodePortAllocatorTest {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd server && mvn test -pl data-talk-infrastructure -Dtest=OpenCodePortAllocatorTest -q`
 Expected: FAIL — class doesn't exist
 
-- [ ] **Step 3: Write implementation**
+- [x] **Step 3: Write implementation**
 
 ```java
 // server/data-talk-infrastructure/src/main/java/com/datatalk/infra/opencode/process/OpenCodePortAllocator.java
@@ -296,12 +296,12 @@ public class OpenCodePortAllocator {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd server && mvn test -pl data-talk-infrastructure -Dtest=OpenCodePortAllocatorTest -q`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd server
@@ -316,7 +316,7 @@ git commit -m "feat(server): add OpenCodePortAllocator for dynamic port detectio
 **Files:**
 - Create: `server/data-talk-infrastructure/src/main/java/com/datatalk/infra/opencode/process/OpenCodeServeProperties.java`
 
-- [ ] **Step 1: Write configuration properties class**
+- [x] **Step 1: Write configuration properties class**
 
 ```java
 // server/data-talk-infrastructure/src/main/java/com/datatalk/infra/opencode/process/OpenCodeServeProperties.java
@@ -369,12 +369,12 @@ public class OpenCodeServeProperties {
 }
 ```
 
-- [ ] **Step 2: Verify compilation**
+- [x] **Step 2: Verify compilation**
 
 Run: `cd server && mvn compile -pl data-talk-infrastructure -q`
 Expected: zero errors
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 cd server
@@ -390,7 +390,7 @@ git commit -m "feat(server): add OpenCodeServeProperties configuration class"
 - Create: `server/data-talk-infrastructure/src/test/java/com/datatalk/infra/opencode/process/OpenCodeBinaryResolverTest.java`
 - Create: `server/data-talk-infrastructure/src/main/java/com/datatalk/infra/opencode/process/OpenCodeBinaryResolver.java`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```java
 // server/data-talk-infrastructure/src/test/java/com/datatalk/infra/opencode/process/OpenCodeBinaryResolverTest.java
@@ -543,12 +543,12 @@ class OpenCodeBinaryResolverTest {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd server && mvn test -pl data-talk-infrastructure -Dtest=OpenCodeBinaryResolverTest -q`
 Expected: FAIL — class doesn't exist
 
-- [ ] **Step 3: Write implementation**
+- [x] **Step 3: Write implementation**
 
 ```java
 // server/data-talk-infrastructure/src/main/java/com/datatalk/infra/opencode/process/OpenCodeBinaryResolver.java
@@ -839,12 +839,12 @@ public class OpenCodeBinaryResolver {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd server && mvn test -pl data-talk-infrastructure -Dtest=OpenCodeBinaryResolverTest -q`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd server
@@ -860,7 +860,7 @@ git commit -m "feat(server): add OpenCodeBinaryResolver for binary management"
 - Create: `server/data-talk-infrastructure/src/test/java/com/datatalk/infra/opencode/process/OpenCodeProcessManagerTest.java`
 - Create: `server/data-talk-infrastructure/src/main/java/com/datatalk/infra/opencode/process/OpenCodeProcessManager.java`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```java
 // server/data-talk-infrastructure/src/test/java/com/datatalk/infra/opencode/process/OpenCodeProcessManagerTest.java
@@ -946,12 +946,12 @@ class OpenCodeProcessManagerTest {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd server && mvn test -pl data-talk-infrastructure -Dtest=OpenCodeProcessManagerTest -q`
 Expected: FAIL — class doesn't exist
 
-- [ ] **Step 3: Write implementation**
+- [x] **Step 3: Write implementation**
 
 ```java
 // server/data-talk-infrastructure/src/main/java/com/datatalk/infra/opencode/process/OpenCodeProcessManager.java
@@ -1200,12 +1200,12 @@ public class OpenCodeProcessManager implements SmartLifecycle {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd server && mvn test -pl data-talk-infrastructure -Dtest=OpenCodeProcessManagerTest -q`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd server
@@ -1220,7 +1220,7 @@ git commit -m "feat(server): add OpenCodeProcessManager SmartLifecycle for proce
 **Files:**
 - Modify: `server/data-talk-infrastructure/src/main/java/com/datatalk/infra/opencode/OpenCodeHttpClient.java`
 
-- [ ] **Step 1: Add setBaseUrl method**
+- [x] **Step 1: Add setBaseUrl method**
 
 ```java
 // In OpenCodeHttpClient.java — add this field and method
@@ -1334,12 +1334,12 @@ public class OpenCodeHttpClient {
 }
 ```
 
-- [ ] **Step 2: Verify compilation and existing tests**
+- [x] **Step 2: Verify compilation and existing tests**
 
 Run: `cd server && mvn test -pl data-talk-infrastructure -q`
 Expected: All existing tests pass, zero compilation errors
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 cd server
@@ -1354,7 +1354,7 @@ git commit -m "refactor(server): add setBaseUrl to OpenCodeHttpClient for dynami
 **Files:**
 - Modify: `server/data-talk-application/src/main/java/com/datatalk/application/opencode/OpenCodeEventLoop.java`
 
-- [ ] **Step 1: Add volatile baseUrl and setBaseUrl method**
+- [x] **Step 1: Add volatile baseUrl and setBaseUrl method**
 
 The change: make `baseUrl` volatile and add a setter so `OpenCodeProcessManager` can update it before the event loop starts.
 
@@ -1380,12 +1380,12 @@ URI uri = URI.create(baseUrl + "/event");
 ```
 So updating it via setter is safe — the next reconnection uses the new URL.
 
-- [ ] **Step 2: Verify compilation**
+- [x] **Step 2: Verify compilation**
 
 Run: `cd server && mvn compile -pl data-talk-application -q`
 Expected: zero errors
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 cd server
@@ -1400,7 +1400,7 @@ git commit -m "refactor(server): add setBaseUrl to OpenCodeEventLoop for dynamic
 **Files:**
 - Modify: `server/data-talk-adapter/src/main/java/com/datatalk/adapter/config/OpenCodeGatewayBeans.java`
 
-- [ ] **Step 1: Rewrite OpenCodeGatewayBeans with ProcessManager integration**
+- [x] **Step 1: Rewrite OpenCodeGatewayBeans with ProcessManager integration**
 
 Full new file content:
 
@@ -1522,21 +1522,21 @@ public class OpenCodeGatewayBeans {
 }
 ```
 
-- [ ] **Step 2: Add @EnableConfigurationProperties for OpenCodeServeProperties**
+- [x] **Step 2: Add @EnableConfigurationProperties for OpenCodeServeProperties**
 
 The `@EnableConfigurationProperties(OpenCodeServeProperties.class)` annotation is already included in the file above.
 
-- [ ] **Step 3: Verify compilation**
+- [x] **Step 3: Verify compilation**
 
 Run: `cd server && mvn compile -pl data-talk-adapter -q`
 Expected: zero errors
 
-- [ ] **Step 4: Run all server tests**
+- [x] **Step 4: Run all server tests**
 
 Run: `cd server && mvn test -q`
 Expected: all tests pass (existing + new)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd server
@@ -1551,7 +1551,7 @@ git commit -m "feat(server): wire OpenCodeProcessManager and update startup sequ
 **Files:**
 - Modify: `server/data-talk-adapter/src/main/resources/application.yml`
 
-- [ ] **Step 1: Add OpenCode serve configuration to application.yml**
+- [x] **Step 1: Add OpenCode serve configuration to application.yml**
 
 Append to the existing `datatalk:` section:
 
@@ -1628,12 +1628,12 @@ datatalk:
       cors: http://localhost:8080
 ```
 
-- [ ] **Step 2: Full build verification**
+- [x] **Step 2: Full build verification**
 
 Run: `cd server && mvn clean verify -q`
 Expected: zero compilation errors, all tests pass
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 cd server
@@ -1645,7 +1645,7 @@ git commit -m "chore(server): add OpenCode serve configuration to application.ym
 
 ### Task 10: Clean up and push waiting screen
 
-- [ ] **Step 1: Write waiting screen to browser companion**
+- [x] **Step 1: Write waiting screen to browser companion**
 
 ```html
 <div style="display:flex;align-items:center;justify-content:center;min-height:60vh">
@@ -1653,7 +1653,7 @@ git commit -m "chore(server): add OpenCode serve configuration to application.ym
 </div>
 ```
 
-- [ ] **Step 2: Run final spec self-review**
+- [x] **Step 2: Run final spec self-review**
 
 Check the design spec at `docs/superpowers/specs/2026-04-16-opencode-embedded-process-design.md`:
 

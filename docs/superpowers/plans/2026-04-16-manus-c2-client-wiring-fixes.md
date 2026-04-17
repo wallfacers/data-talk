@@ -1,6 +1,6 @@
 # Plan C2 — Manus Split-View Client Wiring & Cleanup Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Make the Manus split-view UI actually work end-to-end by unifying the accidentally-duplicated session store, wiring the sidebar's session click / "new session" button to the Manus canvas, fixing the PromptComposer portal race, loading history on session open, subscribing to SSE permanently, partitioning per-session state, and clearing dead code left over from the pre-split-view era.
 
@@ -95,7 +95,7 @@ Tasks are written so Task N does not depend on Task >N completing. Within a task
 
 ### Step 0.1: Add `listAll` + `listByConnection` to `SessionRepository`
 
-- [ ] **Edit** `SessionRepository.java` — append after `markHasEverSent` method:
+- [x] **Edit** `SessionRepository.java` — append after `markHasEverSent` method:
 
 ```java
     public java.util.List<SessionRecord> listAll() {
@@ -111,7 +111,7 @@ Tasks are written so Task N does not depend on Task >N completing. Within a task
 
 ### Step 0.2: Create `SessionService`
 
-- [ ] **Create** `server/data-talk-application/src/main/java/com/datatalk/application/session/SessionService.java`:
+- [x] **Create** `server/data-talk-application/src/main/java/com/datatalk/application/session/SessionService.java`:
 
 ```java
 package com.datatalk.application.session;
@@ -158,7 +158,7 @@ public class SessionService {
 
 ### Step 0.3: Create `SessionController`
 
-- [ ] **Create** `server/data-talk-adapter/src/main/java/com/datatalk/adapter/controller/SessionController.java`:
+- [x] **Create** `server/data-talk-adapter/src/main/java/com/datatalk/adapter/controller/SessionController.java`:
 
 ```java
 package com.datatalk.adapter.controller;
@@ -226,7 +226,7 @@ public class SessionController {
 
 ### Step 0.4: Integration test
 
-- [ ] **Create** `server/data-talk-adapter/src/test/java/com/datatalk/adapter/controller/SessionControllerIT.java`:
+- [x] **Create** `server/data-talk-adapter/src/test/java/com/datatalk/adapter/controller/SessionControllerIT.java`:
 
 ```java
 package com.datatalk.adapter.controller;
@@ -291,9 +291,9 @@ class SessionControllerIT {
 
 ### Step 0.5: Verify + commit
 
-- [ ] Run: `cd server && mvn -pl data-talk-adapter -am verify -q`
+- [x] Run: `cd server && mvn -pl data-talk-adapter -am verify -q`
   Expected: BUILD SUCCESS, all tests pass.
-- [ ] Commit:
+- [x] Commit:
 
 ```bash
 git add server/data-talk-application/src/main/java/com/datatalk/application/persistence/SessionRepository.java \
@@ -314,7 +314,7 @@ git commit -m "feat(server): expose POST/GET /api/sessions for client sidebar"
 
 ### Step 1.1: Write failing test for unified store
 
-- [ ] **Create** `client/src/stores/session-store.test.ts`:
+- [x] **Create** `client/src/stores/session-store.test.ts`:
 
 ```ts
 import { describe, it, expect, beforeEach } from 'vitest'
@@ -372,12 +372,12 @@ describe('useSessionStore', () => {
 })
 ```
 
-- [ ] Run: `cd client && pnpm test src/stores/session-store.test.ts`
+- [x] Run: `cd client && pnpm test src/stores/session-store.test.ts`
   Expected: FAIL (`openSession is not a function`, `closeSession is not a function`).
 
 ### Step 1.2: Rewrite `session-store.ts`
 
-- [ ] **Replace** `client/src/stores/session-store.ts`:
+- [x] **Replace** `client/src/stores/session-store.ts`:
 
 ```ts
 import { create } from 'zustand'
@@ -428,20 +428,20 @@ export const useSessionStore = create<SessionState>((set) => ({
 }))
 ```
 
-- [ ] Run: `cd client && pnpm test src/stores/session-store.test.ts`
+- [x] Run: `cd client && pnpm test src/stores/session-store.test.ts`
   Expected: PASS.
 
 ### Step 1.3: Delete duplicate store
 
-- [ ] **Delete**: `client/src/features/session/store.ts`
+- [x] **Delete**: `client/src/features/session/store.ts`
 
 ### Step 1.4: Update `use-session-mode.ts`
 
-- [ ] **Verify file already imports from `@/stores/session-store`** — `client/src/features/session/use-session-mode.ts:1`. No change needed.
+- [x] **Verify file already imports from `@/stores/session-store`** — `client/src/features/session/use-session-mode.ts:1`. No change needed.
 
 ### Step 1.5: Typecheck and commit
 
-- [ ] Run: `cd client && npx tsc --noEmit`
+- [x] Run: `cd client && npx tsc --noEmit`
   Expected: errors pointing at `features/session/store` import sites (we'll fix those in Task 3). **Pause here until Task 3 brings typecheck green.**
 
 > **Commit is deferred to Task 3** because the delete in Step 1.3 breaks imports in `nav-sessions.tsx` that Task 3 rewrites. Stage nothing yet.
@@ -457,7 +457,7 @@ export const useSessionStore = create<SessionState>((set) => ({
 
 ### Step 2.1: Write failing chat-parts test
 
-- [ ] **Create** `client/src/stores/chat-parts-store.test.ts`:
+- [x] **Create** `client/src/stores/chat-parts-store.test.ts`:
 
 ```ts
 import { describe, it, expect, beforeEach } from 'vitest'
@@ -503,12 +503,12 @@ describe('useChatPartsStore', () => {
 })
 ```
 
-- [ ] Run: `cd client && pnpm test src/stores/chat-parts-store.test.ts`
+- [x] Run: `cd client && pnpm test src/stores/chat-parts-store.test.ts`
   Expected: FAIL.
 
 ### Step 2.2: Rewrite `chat-parts-store.ts`
 
-- [ ] **Replace** `client/src/stores/chat-parts-store.ts`:
+- [x] **Replace** `client/src/stores/chat-parts-store.ts`:
 
 ```ts
 import { create } from 'zustand'
@@ -565,12 +565,12 @@ export const useChatPartsStore = create<ChatPartsState>((set, get) => ({
 }))
 ```
 
-- [ ] Run: `cd client && pnpm test src/stores/chat-parts-store.test.ts`
+- [x] Run: `cd client && pnpm test src/stores/chat-parts-store.test.ts`
   Expected: PASS.
 
 ### Step 2.3: Rewrite `ontology-store.ts` with session partition
 
-- [ ] **Replace** `client/src/stores/ontology-store.ts`:
+- [x] **Replace** `client/src/stores/ontology-store.ts`:
 
 ```ts
 import { create } from 'zustand'
@@ -626,7 +626,7 @@ export const useOntologyStore = create<OntologyState>((set, get) => ({
 
 ### Step 2.4: Update consumers of the old flat APIs
 
-- [ ] **Edit** `client/src/features/chat/components/message-stream.tsx` — replace body:
+- [x] **Edit** `client/src/features/chat/components/message-stream.tsx` — replace body:
 
 ```tsx
 import { useMemo } from 'react'
@@ -659,7 +659,7 @@ export function MessageStream() {
 }
 ```
 
-- [ ] **Edit** `client/src/features/ontology/components/artifact-canvas.tsx` — replace:
+- [x] **Edit** `client/src/features/ontology/components/artifact-canvas.tsx` — replace:
 
 ```tsx
 import { useTimelineStore } from '@/stores/timeline-store'
@@ -681,13 +681,13 @@ export function ArtifactCanvas() {
 }
 ```
 
-- [ ] **Edit** `client/src/features/ontology/components/artifact-timeline-strip.tsx` — replace the `const artifacts = useOntologyStore(s => s.artifacts)` line:
+- [x] **Edit** `client/src/features/ontology/components/artifact-timeline-strip.tsx` — replace the `const artifacts = useOntologyStore(s => s.artifacts)` line:
 
 ```tsx
   const artifacts = useOntologyStore((s) => (sessionId ? (s.artifactsBySession.get(sessionId) ?? new Map()) : new Map()))
 ```
 
-- [ ] **Edit** `client/src/features/actions/client-handlers.ts` — replace body:
+- [x] **Edit** `client/src/features/actions/client-handlers.ts` — replace body:
 
 ```ts
 import { registerClientHandler } from './registry'
@@ -704,9 +704,9 @@ registerClientHandler('datatalk.pin_artifact', async (input, ctx) => {
 
 ### Step 2.5: Verify + commit
 
-- [ ] Run: `cd client && pnpm test src/stores`
+- [x] Run: `cd client && pnpm test src/stores`
   Expected: PASS.
-- [ ] Run: `cd client && npx tsc --noEmit`
+- [x] Run: `cd client && npx tsc --noEmit`
   Expected: still errors in `nav-sessions.tsx` + `use-channel.ts` (fixed in Tasks 3 + 4). **Do not commit yet**; Task 3 will land a combined commit.
 
 ---
@@ -722,7 +722,7 @@ registerClientHandler('datatalk.pin_artifact', async (input, ctx) => {
 
 ### Step 3.1: Align `Session` type with backend
 
-- [ ] **Replace** `client/src/services/api/session.ts`:
+- [x] **Replace** `client/src/services/api/session.ts`:
 
 ```ts
 import { http } from '@/services/http'
@@ -748,7 +748,7 @@ export function createSession(connectionId: string, title: string) {
 
 ### Step 3.2: Rewrite `nav-sessions.tsx` to use unified store
 
-- [ ] **Edit** `client/src/features/workspace/components/nav-sessions.tsx` — change line 28 and line 78 only:
+- [x] **Edit** `client/src/features/workspace/components/nav-sessions.tsx` — change line 28 and line 78 only:
 
 Line 28: `import { useSessionStore } from '@/features/session/store'`
 → `import { useSessionStore } from '@/stores/session-store'`
@@ -776,7 +776,7 @@ Full replacement of the `SessionGroupView` prop signature stays as-is; only the 
 
 ### Step 3.3: Wire "新建会话" button to real mutation
 
-- [ ] **Replace** `client/src/features/workspace/components/app-sidebar.tsx`:
+- [x] **Replace** `client/src/features/workspace/components/app-sidebar.tsx`:
 
 ```tsx
 import type { ComponentProps } from 'react'
@@ -870,7 +870,7 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
 
 ### Step 3.4: Unblock `use-channel.ts` import fallout
 
-- [ ] **Edit** `client/src/services/channel/use-channel.ts` — the `enterSplit` call stays, but `upsertPart` now takes `sessionId`. Update lines 13 and 29:
+- [x] **Edit** `client/src/services/channel/use-channel.ts` — the `enterSplit` call stays, but `upsertPart` now takes `sessionId`. Update lines 13 and 29:
 
 Line 13: `const upsertPart = useChatPartsStore(s => s.upsertPart)`
 (unchanged — but signature now takes `(sessionId, part)`)
@@ -889,13 +889,13 @@ Note the added first arg `sessionId`.
 
 ### Step 3.5: Verify + commit (covers Tasks 1, 2, 3)
 
-- [ ] Run: `cd client && npx tsc --noEmit`
+- [x] Run: `cd client && npx tsc --noEmit`
   Expected: zero errors.
-- [ ] Run: `cd client && pnpm test`
+- [x] Run: `cd client && pnpm test`
   Expected: all tests pass.
-- [ ] Run: `cd server && mvn compile -q`
+- [x] Run: `cd server && mvn compile -q`
   Expected: zero errors (sanity — nothing changed in server this task).
-- [ ] Commit:
+- [x] Commit:
 
 ```bash
 git add -A client/src/stores/ client/src/features/session/ client/src/features/chat/ \
@@ -917,7 +917,7 @@ git commit -m "refactor(client): unify session store, partition by session, wire
 
 ### Step 4.1: Write failing test
 
-- [ ] **Create** `client/src/features/session/hooks/use-session-history.test.ts`:
+- [x] **Create** `client/src/features/session/hooks/use-session-history.test.ts`:
 
 ```ts
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -970,12 +970,12 @@ describe('useSessionHistory', () => {
 })
 ```
 
-- [ ] Run: `cd client && pnpm test src/features/session/hooks/use-session-history.test.ts`
+- [x] Run: `cd client && pnpm test src/features/session/hooks/use-session-history.test.ts`
   Expected: FAIL.
 
 ### Step 4.2: Implement the hook
 
-- [ ] **Create** `client/src/features/session/hooks/use-session-history.ts`:
+- [x] **Create** `client/src/features/session/hooks/use-session-history.ts`:
 
 ```ts
 import { useEffect } from 'react'
@@ -1044,7 +1044,7 @@ export function useSessionHistory(sessionId: string | null) {
 }
 ```
 
-- [ ] Run: `cd client && pnpm test src/features/session/hooks/use-session-history.test.ts`
+- [x] Run: `cd client && pnpm test src/features/session/hooks/use-session-history.test.ts`
   Expected: PASS.
 
 > Note: `http` uses `ky`'s `prefixUrl: '/api'`, so `sessions/${id}/messages` resolves to `/api/sessions/:id/messages`. The test mocks raw `fetch` under ky's hood — ky re-emits exactly that URL.
@@ -1053,7 +1053,7 @@ export function useSessionHistory(sessionId: string | null) {
 
 > **Keep** `#composer-slot` inside `HeroView` (centered) and `SplitView` (left-bottom). Moving it to canvas root would flatten the HERO centered layout and eliminate the position delta that drives the FLIP animation in Task 11 of the existing Plan C. Portal-race is fixed in Task 6 via rAF polling, not by relocating the slot.
 
-- [ ] **Edit** `client/src/features/session/session-canvas.tsx` — add the history hook; leave existing layout otherwise:
+- [x] **Edit** `client/src/features/session/session-canvas.tsx` — add the history hook; leave existing layout otherwise:
 
 ```tsx
 import { useSessionStore } from '@/stores/session-store'
@@ -1084,13 +1084,13 @@ export function SessionCanvas() {
 }
 ```
 
-- [ ] **Leave** `client/src/features/session/hero-view.tsx` and `split-view.tsx` untouched — they already render their own `#composer-slot`.
+- [x] **Leave** `client/src/features/session/hero-view.tsx` and `split-view.tsx` untouched — they already render their own `#composer-slot`.
 
 ### Step 4.4: Verify + commit
 
-- [ ] Run: `cd client && pnpm test && npx tsc --noEmit`
+- [x] Run: `cd client && pnpm test && npx tsc --noEmit`
   Expected: PASS + zero type errors.
-- [ ] Commit:
+- [x] Commit:
 
 ```bash
 git add client/src/features/session/hooks/ client/src/features/session/session-canvas.tsx
@@ -1108,7 +1108,7 @@ git commit -m "feat(client): load session history on open"
 
 ### Step 5.1: Extract event-handler into a shared reducer-runner
 
-- [ ] **Edit** `client/src/services/channel/use-channel.ts` — split out the event-handling closure so both `sendMessage` and the subscribe hook can share it. Replace the file entirely:
+- [x] **Edit** `client/src/services/channel/use-channel.ts` — split out the event-handling closure so both `sendMessage` and the subscribe hook can share it. Replace the file entirely:
 
 ```ts
 import { useCallback, useMemo, useState } from 'react'
@@ -1218,7 +1218,7 @@ export function useChannel() {
 
 ### Step 5.2: Create the subscribe hook
 
-- [ ] **Create** `client/src/features/session/hooks/use-session-subscribe.ts`:
+- [x] **Create** `client/src/features/session/hooks/use-session-subscribe.ts`:
 
 ```ts
 import { useEffect } from 'react'
@@ -1246,7 +1246,7 @@ export function useSessionSubscribe(sessionId: string | null) {
 
 ### Step 5.3: Hook it into the canvas
 
-- [ ] **Edit** `client/src/features/session/session-canvas.tsx` — add after `useSessionHistory(sessionId)`:
+- [x] **Edit** `client/src/features/session/session-canvas.tsx` — add after `useSessionHistory(sessionId)`:
 
 ```tsx
   useSessionSubscribe(sessionId)
@@ -1260,9 +1260,9 @@ import { useSessionSubscribe } from './hooks/use-session-subscribe'
 
 ### Step 5.4: Verify + commit
 
-- [ ] Run: `cd client && pnpm test && npx tsc --noEmit`
+- [x] Run: `cd client && pnpm test && npx tsc --noEmit`
   Expected: PASS + zero errors.
-- [ ] Commit:
+- [x] Commit:
 
 ```bash
 git add client/src/features/session/hooks/use-session-subscribe.ts \
@@ -1281,7 +1281,7 @@ git commit -m "feat(client): permanent SSE subscription for active session"
 
 ### Step 6.1: Write failing test
 
-- [ ] **Create** `client/src/features/session/prompt-composer.test.tsx`:
+- [x] **Create** `client/src/features/session/prompt-composer.test.tsx`:
 
 ```tsx
 import { describe, it, expect, beforeEach, vi } from 'vitest'
@@ -1343,12 +1343,12 @@ describe('PromptComposer', () => {
 })
 ```
 
-- [ ] Run: `cd client && pnpm test src/features/session/prompt-composer.test.tsx`
+- [x] Run: `cd client && pnpm test src/features/session/prompt-composer.test.tsx`
   Expected: FAIL (current implementation returns null when slot is missing on first render without recovery).
 
 ### Step 6.2: Fix portal race + add stop button
 
-- [ ] **Replace** `client/src/features/session/prompt-composer.tsx`:
+- [x] **Replace** `client/src/features/session/prompt-composer.tsx`:
 
 ```tsx
 import { useEffect, useState, type FormEvent, type KeyboardEvent } from 'react'
@@ -1447,14 +1447,14 @@ function Inner() {
 }
 ```
 
-- [ ] Run: `cd client && pnpm test src/features/session/prompt-composer.test.tsx`
+- [x] Run: `cd client && pnpm test src/features/session/prompt-composer.test.tsx`
   Expected: PASS.
 
 ### Step 6.3: Commit
 
-- [ ] Run: `cd client && npx tsc --noEmit`
+- [x] Run: `cd client && npx tsc --noEmit`
   Expected: zero errors.
-- [ ] Commit:
+- [x] Commit:
 
 ```bash
 git add client/src/features/session/prompt-composer.tsx client/src/features/session/prompt-composer.test.tsx
@@ -1472,7 +1472,7 @@ git commit -m "fix(client): PromptComposer survives slot-mount race, adds stop b
 
 ### Step 7.1: Implement the resume hook
 
-- [ ] **Create** `client/src/features/session/hooks/use-pending-prompt-resume.ts`:
+- [x] **Create** `client/src/features/session/hooks/use-pending-prompt-resume.ts`:
 
 ```ts
 import { useEffect } from 'react'
@@ -1513,7 +1513,7 @@ export function usePendingPromptResume() {
 
 ### Step 7.2: Ensure `ConnectionOverlay` preserves `pendingPrompt`
 
-- [ ] **Replace** `client/src/features/session/connection-overlay.tsx`:
+- [x] **Replace** `client/src/features/session/connection-overlay.tsx`:
 
 ```tsx
 import { useSessionStore } from '@/stores/session-store'
@@ -1563,7 +1563,7 @@ export function ConnectionOverlay() {
 
 ### Step 7.3: Wire the hook into the canvas
 
-- [ ] **Edit** `client/src/features/session/session-canvas.tsx` — add after `useSessionSubscribe(sessionId)`:
+- [x] **Edit** `client/src/features/session/session-canvas.tsx` — add after `useSessionSubscribe(sessionId)`:
 
 ```tsx
   usePendingPromptResume()
@@ -1577,9 +1577,9 @@ import { usePendingPromptResume } from './hooks/use-pending-prompt-resume'
 
 ### Step 7.4: Verify + commit
 
-- [ ] Run: `cd client && pnpm test && npx tsc --noEmit`
+- [x] Run: `cd client && pnpm test && npx tsc --noEmit`
   Expected: PASS + zero errors.
-- [ ] Commit:
+- [x] Commit:
 
 ```bash
 git add client/src/features/session/hooks/use-pending-prompt-resume.ts \
@@ -1598,11 +1598,11 @@ git commit -m "feat(client): auto-resend prompt after picking connection"
 
 ### Step 8.1: The baseUrl behavior already lives in `use-channel.ts` (Task 5)
 
-- [ ] Verify `getApiBaseUrl()` is in `use-channel.ts`. No additional change needed in `channel-client.ts` — it still accepts `baseUrl` as input.
+- [x] Verify `getApiBaseUrl()` is in `use-channel.ts`. No additional change needed in `channel-client.ts` — it still accepts `baseUrl` as input.
 
 ### Step 8.2: Add a test asserting env wiring
 
-- [ ] **Append** to `client/src/services/channel/channel-client.test.ts`:
+- [x] **Append** to `client/src/services/channel/channel-client.test.ts`:
 
 ```ts
 import { vi as _vi, describe as _describe, it as _it, expect as _expect } from 'vitest'
@@ -1623,12 +1623,12 @@ _describe('ChannelClient baseUrl', () => {
 })
 ```
 
-- [ ] Run: `cd client && pnpm test src/services/channel/channel-client.test.ts`
+- [x] Run: `cd client && pnpm test src/services/channel/channel-client.test.ts`
   Expected: PASS.
 
 ### Step 8.3: Commit
 
-- [ ] Commit:
+- [x] Commit:
 
 ```bash
 git add client/src/services/channel/channel-client.test.ts
@@ -1644,7 +1644,7 @@ git commit -m "test(client): assert ChannelClient baseUrl normalization"
 
 ### Step 9.1: Track message metadata
 
-- [ ] **Edit** `client/src/stores/chat-parts-store.ts` — add a `messageMeta` map for role/createdAt per session:
+- [x] **Edit** `client/src/stores/chat-parts-store.ts` — add a `messageMeta` map for role/createdAt per session:
 
 Find the type block and extend it to:
 
@@ -1692,7 +1692,7 @@ Also handle `clearSession` to drop both maps:
 
 ### Step 9.2: Populate meta from events
 
-- [ ] **Edit** `client/src/services/channel/use-channel.ts` — inside `buildEventSink`, add a branch at the top of the switch:
+- [x] **Edit** `client/src/services/channel/use-channel.ts` — inside `buildEventSink`, add a branch at the top of the switch:
 
 Before the `message.part.created` branch, insert:
 
@@ -1711,7 +1711,7 @@ Before the `message.part.created` branch, insert:
 
 ### Step 9.3: Populate meta from history
 
-- [ ] **Edit** `client/src/features/session/hooks/use-session-history.ts` — inside the message loop, add:
+- [x] **Edit** `client/src/features/session/hooks/use-session-history.ts` — inside the message loop, add:
 
 ```ts
         for (const m of mRes.messages ?? []) {
@@ -1728,7 +1728,7 @@ Before the `message.part.created` branch, insert:
 
 ### Step 9.4: Render by role
 
-- [ ] **Replace** `client/src/features/chat/components/message-stream.tsx`:
+- [x] **Replace** `client/src/features/chat/components/message-stream.tsx`:
 
 ```tsx
 import { useMemo } from 'react'
@@ -1780,9 +1780,9 @@ export function MessageStream() {
 
 ### Step 9.5: Verify + commit
 
-- [ ] Run: `cd client && pnpm test && npx tsc --noEmit`
+- [x] Run: `cd client && pnpm test && npx tsc --noEmit`
   Expected: PASS + zero errors.
-- [ ] Commit:
+- [x] Commit:
 
 ```bash
 git add client/src/features/chat/components/message-stream.tsx \
@@ -1801,7 +1801,7 @@ git commit -m "feat(client): role-aware message grouping with chronological orde
 
 ### Step 10.1: Pass mode to sidebar wrapper
 
-- [ ] **Replace** `client/src/features/workspace/home-page.tsx`:
+- [x] **Replace** `client/src/features/workspace/home-page.tsx`:
 
 ```tsx
 import type { CSSProperties } from 'react'
@@ -1845,10 +1845,10 @@ export function HomePage() {
 
 ### Step 10.2: Verify + commit
 
-- [ ] Run: `cd client && npx tsc --noEmit`
+- [x] Run: `cd client && npx tsc --noEmit`
   Expected: zero errors.
-- [ ] Manual smoke: `cd client && pnpm dev` → confirm HERO/NOSESS mode shows dimmed sidebar + no header.
-- [ ] Commit:
+- [x] Manual smoke: `cd client && pnpm dev` → confirm HERO/NOSESS mode shows dimmed sidebar + no header.
+- [x] Commit:
 
 ```bash
 git add client/src/features/workspace/home-page.tsx
@@ -1878,14 +1878,14 @@ git commit -m "style(client): dim sidebar and hide header in HERO mode"
 
 ### Step 11.1: Verify no references remain
 
-- [ ] Run: `cd client && grep -rE "(chat-panel|chat-input|message-list|message-item|workspace/store|workspace/types|features/chat/store|features/chat/hooks|features/chat/types|services/api/chat|tab-bar|query-result-tab|workspace/components/workspace|empty-state)" src --include='*.ts' --include='*.tsx' || echo 'no refs'`
+- [x] Run: `cd client && grep -rE "(chat-panel|chat-input|message-list|message-item|workspace/store|workspace/types|features/chat/store|features/chat/hooks|features/chat/types|services/api/chat|tab-bar|query-result-tab|workspace/components/workspace|empty-state)" src --include='*.ts' --include='*.tsx' || echo 'no refs'`
   Expected: `no refs`.
 
 > If any reference shows up, inspect it; it likely belongs to one of the files on the delete list (i.e. dead-to-dead). Cross-module reference means a user-facing consumer we missed — stop and investigate before deleting.
 
 ### Step 11.2: Delete
 
-- [ ] Run:
+- [x] Run:
 
 ```bash
 cd /home/wushengzhou/workspace/github/data-talk/client
@@ -1908,11 +1908,11 @@ rmdir src/features/chat/hooks 2>/dev/null || true
 
 ### Step 11.3: Verify + commit
 
-- [ ] Run: `cd client && pnpm test && npx tsc --noEmit`
+- [x] Run: `cd client && pnpm test && npx tsc --noEmit`
   Expected: PASS + zero errors.
-- [ ] Run: `cd client && pnpm build`
+- [x] Run: `cd client && pnpm build`
   Expected: build succeeds (sanity check — `vite` would catch dead imports Tsc misses).
-- [ ] Commit:
+- [x] Commit:
 
 ```bash
 git add -A client/src/features/chat/ client/src/features/workspace/ client/src/services/api/
@@ -1927,7 +1927,7 @@ git commit -m "chore(client): remove dead pre-split-view chat/workspace modules"
 
 ### Step 12.1: Start the stack
 
-- [ ] Run (in separate terminals):
+- [x] Run (in separate terminals):
 
 ```bash
 cd server && mvn spring-boot:run -pl data-talk-adapter
@@ -1937,24 +1937,24 @@ cd server && mvn spring-boot:run -pl data-talk-adapter
 cd client && pnpm dev
 ```
 
-- [ ] Open http://localhost:5173 in a browser.
+- [x] Open http://localhost:5173 in a browser.
 
 ### Step 12.2: Walk the scenarios
 
-- [ ] **NOSESS**: App loads → `WelcomeEmpty` visible, sidebar dimmed, no header bar.
-- [ ] **Create connection** (use existing connection dialog) → connection appears in list.
-- [ ] **Click "创建会话"** → new session appears in sidebar grouping under "今天", canvas switches to HERO (centered heading + composer at bottom).
-- [ ] **Send a message**: type "查询用户表最近一周的注册趋势" → Enter. HERO collapses into SPLIT with FLIP animation; chat column fills with reasoning / tool cards; right column gets a timeline chip + artifact.
-- [ ] **Click "停止"** mid-stream → stream aborts, last partial message stays, composer returns to send mode.
-- [ ] **Reopen session** (click another, then come back) → SPLIT view restores with prior messages and artifacts loaded via REST.
-- [ ] **No connection + DB question**: unset `activeConnectionId` in React devtools Zustand panel → type "表里有哪些字段" → overlay appears. Pick a connection → draft sends automatically.
-- [ ] **DevTools network tab**:
+- [x] **NOSESS**: App loads → `WelcomeEmpty` visible, sidebar dimmed, no header bar.
+- [x] **Create connection** (use existing connection dialog) → connection appears in list.
+- [x] **Click "创建会话"** → new session appears in sidebar grouping under "今天", canvas switches to HERO (centered heading + composer at bottom).
+- [x] **Send a message**: type "查询用户表最近一周的注册趋势" → Enter. HERO collapses into SPLIT with FLIP animation; chat column fills with reasoning / tool cards; right column gets a timeline chip + artifact.
+- [x] **Click "停止"** mid-stream → stream aborts, last partial message stays, composer returns to send mode.
+- [x] **Reopen session** (click another, then come back) → SPLIT view restores with prior messages and artifacts loaded via REST.
+- [x] **No connection + DB question**: unset `activeConnectionId` in React devtools Zustand panel → type "表里有哪些字段" → overlay appears. Pick a connection → draft sends automatically.
+- [x] **DevTools network tab**:
   - On session open: `GET /api/sessions/{id}/messages`, `GET /api/sessions/{id}/artifacts`, `GET /api/sessions/{id}/channel` (subscribed).
   - On send: `POST /api/sessions/{id}/channel` with streaming response.
 
 ### Step 12.3: Capture any regressions
 
-- [ ] Take screenshots / console logs of any failures; open follow-up issues rather than patching in this plan.
+- [x] Take screenshots / console logs of any failures; open follow-up issues rather than patching in this plan.
 
 > This plan does not mutate if the smoke fails — failures should drive a next-iteration plan.
 

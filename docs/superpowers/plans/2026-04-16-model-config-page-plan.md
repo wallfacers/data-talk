@@ -1,6 +1,6 @@
 # Model Config Page Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 实现模型配置页面 UI，包含提供商管理、模型管理、自定义提供商功能，使用 Mock 数据。
 
@@ -43,7 +43,7 @@ client/src/
 - Create: `client/src/components/ui/switch.tsx`
 - Create: `client/src/components/ui/dialog.tsx`
 
-- [ ] **Step 1: 运行 shadcn CLI 添加组件**
+- [x] **Step 1: 运行 shadcn CLI 添加组件**
 
 ```bash
 cd /home/wushengzhou/workspace/github/data-talk/client && npx shadcn@latest add switch dialog
@@ -51,7 +51,7 @@ cd /home/wushengzhou/workspace/github/data-talk/client && npx shadcn@latest add 
 
 Expected: 两个组件文件创建成功
 
-- [ ] **Step 2: 验证组件存在**
+- [x] **Step 2: 验证组件存在**
 
 ```bash
 ls -la /home/wushengzhou/workspace/github/data-talk/client/src/components/ui/switch.tsx
@@ -60,7 +60,7 @@ ls -la /home/wushengzhou/workspace/github/data-talk/client/src/components/ui/dia
 
 Expected: 两个文件存在
 
-- [ ] **Step 3: 验证 TypeScript 编译**
+- [x] **Step 3: 验证 TypeScript 编译**
 
 ```bash
 cd /home/wushengzhou/workspace/github/data-talk/client && npx tsc --noEmit
@@ -75,7 +75,7 @@ Expected: 无类型错误
 **Files:**
 - Create: `client/src/features/model-config/types.ts`
 
-- [ ] **Step 1: 创建类型定义文件**
+- [x] **Step 1: 创建类型定义文件**
 
 ```typescript
 // client/src/features/model-config/types.ts
@@ -106,7 +106,7 @@ export interface ModelConfigState {
 }
 ```
 
-- [ ] **Step 2: 验证 TypeScript 编译**
+- [x] **Step 2: 验证 TypeScript 编译**
 
 ```bash
 cd /home/wushengzhou/workspace/github/data-talk/client && npx tsc --noEmit
@@ -121,7 +121,7 @@ Expected: 无类型错误
 **Files:**
 - Create: `client/src/features/model-config/mock-data.ts`
 
-- [ ] **Step 1: 创建 Mock 数据文件**
+- [x] **Step 1: 创建 Mock 数据文件**
 
 ```typescript
 // client/src/features/model-config/mock-data.ts
@@ -167,7 +167,7 @@ export const MOCK_PROVIDERS: Provider[] = [
 export const POPULAR_PROVIDER_ORDER = ['anthropic', 'openai', 'google', 'openrouter', 'vercel']
 ```
 
-- [ ] **Step 2: 验证 TypeScript 编译**
+- [x] **Step 2: 验证 TypeScript 编译**
 
 ```bash
 cd /home/wushengzhou/workspace/github/data-talk/client && npx tsc --noEmit
@@ -182,7 +182,7 @@ Expected: 无类型错误
 **Files:**
 - Create: `client/src/features/model-config/store.ts`
 
-- [ ] **Step 1: 创建 Store 文件**
+- [x] **Step 1: 创建 Store 文件**
 
 ```typescript
 // client/src/features/model-config/store.ts
@@ -244,7 +244,7 @@ export const useModelConfigStore = create<ModelConfigStore>((set) => ({
 }))
 ```
 
-- [ ] **Step 2: 验证 TypeScript 编译**
+- [x] **Step 2: 验证 TypeScript 编译**
 
 ```bash
 cd /home/wushengzhou/workspace/github/data-talk/client && npx tsc --noEmit
@@ -259,7 +259,7 @@ Expected: 无类型错误
 **Files:**
 - Create: `client/src/features/model-config/provider-icon.tsx`
 
-- [ ] **Step 1: 创建 ProviderIcon 组件**
+- [x] **Step 1: 创建 ProviderIcon 组件**
 
 ```tsx
 // client/src/features/model-config/provider-icon.tsx
@@ -303,7 +303,7 @@ export function ProviderIcon({ id, className }: { id: string; className?: string
 }
 ```
 
-- [ ] **Step 2: 验证 TypeScript 编译**
+- [x] **Step 2: 验证 TypeScript 编译**
 
 ```bash
 cd /home/wushengzhou/workspace/github/data-talk/client && npx tsc --noEmit
@@ -318,7 +318,7 @@ Expected: 无类型错误
 **Files:**
 - Modify: `client/src/features/workspace/components/nav-user.tsx`
 
-- [ ] **Step 1: 添加路由导航 import**
+- [x] **Step 1: 添加路由导航 import**
 
 在文件顶部添加：
 
@@ -326,7 +326,7 @@ Expected: 无类型错误
 import { useNavigate } from '@tanstack/react-router'
 ```
 
-- [ ] **Step 2: 在 NavUser 函数内添加 navigate hook**
+- [x] **Step 2: 在 NavUser 函数内添加 navigate hook**
 
 在 `const { isMobile } = useSidebar()` 后添加：
 
@@ -334,7 +334,7 @@ import { useNavigate } from '@tanstack/react-router'
 const navigate = useNavigate()
 ```
 
-- [ ] **Step 3: 替换菜单项 onClick 为路由导航**
+- [x] **Step 3: 替换菜单项 onClick 为路由导航**
 
 将三个 DropdownMenuItem 的 onClick 替换为：
 
@@ -362,7 +362,7 @@ const navigate = useNavigate()
 </DropdownMenuItem>
 ```
 
-- [ ] **Step 4: 验证 TypeScript 编译**
+- [x] **Step 4: 验证 TypeScript 编译**
 
 ```bash
 cd /home/wushengzhou/workspace/github/data-talk/client && npx tsc --noEmit
@@ -377,7 +377,7 @@ Expected: 无类型错误（可能有路由未定义错误，下一步解决）
 **Files:**
 - Create: `client/src/routes/settings.tsx`
 
-- [ ] **Step 1: 创建设置页面路由文件**
+- [x] **Step 1: 创建设置页面路由文件**
 
 ```tsx
 // client/src/routes/settings.tsx
@@ -393,7 +393,7 @@ export const Route = createFileRoute('/settings')({
 })
 ```
 
-- [ ] **Step 2: 创建 SettingsPage 组件**
+- [x] **Step 2: 创建 SettingsPage 组件**
 
 ```tsx
 // client/src/features/model-config/settings-page.tsx
@@ -456,7 +456,7 @@ export function SettingsPage() {
 }
 ```
 
-- [ ] **Step 3: 验证 TypeScript 编译**
+- [x] **Step 3: 验证 TypeScript 编译**
 
 ```bash
 cd /home/wushengzhou/workspace/github/data-talk/client && npx tsc --noEmit
@@ -471,7 +471,7 @@ Expected: 无类型错误
 **Files:**
 - Create: `client/src/features/model-config/provider-item.tsx`
 
-- [ ] **Step 1: 创建 ProviderItem 组件**
+- [x] **Step 1: 创建 ProviderItem 组件**
 
 ```tsx
 // client/src/features/model-config/provider-item.tsx
@@ -526,7 +526,7 @@ export function ProviderItem({ provider, onConnect, onDisconnect }: ProviderItem
 }
 ```
 
-- [ ] **Step 2: 验证 TypeScript 编译**
+- [x] **Step 2: 验证 TypeScript 编译**
 
 ```bash
 cd /home/wushengzhou/workspace/github/data-talk/client && npx tsc --noEmit
@@ -541,7 +541,7 @@ Expected: 无类型错误
 **Files:**
 - Create: `client/src/features/model-config/providers-panel.tsx`
 
-- [ ] **Step 1: 创建 ProvidersPanel 组件**
+- [x] **Step 1: 创建 ProvidersPanel 组件**
 
 ```tsx
 // client/src/features/model-config/providers-panel.tsx
@@ -682,7 +682,7 @@ export function ProvidersPanel() {
 }
 ```
 
-- [ ] **Step 2: 验证 TypeScript 编译**
+- [x] **Step 2: 验证 TypeScript 编译**
 
 ```bash
 cd /home/wushengzhou/workspace/github/data-talk/client && npx tsc --noEmit
@@ -697,7 +697,7 @@ Expected: 无类型错误（ConnectProviderDialog 和 CustomProviderDialog 未�
 **Files:**
 - Create: `client/src/features/model-config/model-item.tsx`
 
-- [ ] **Step 1: 创建 ModelItem 组件**
+- [x] **Step 1: 创建 ModelItem 组件**
 
 ```tsx
 // client/src/features/model-config/model-item.tsx
@@ -728,7 +728,7 @@ export function ModelItem({ model, onVisibilityChange }: ModelItemProps) {
 }
 ```
 
-- [ ] **Step 2: 验证 TypeScript 编译**
+- [x] **Step 2: 验证 TypeScript 编译**
 
 ```bash
 cd /home/wushengzhou/workspace/github/data-talk/client && npx tsc --noEmit
@@ -743,7 +743,7 @@ Expected: 无类型错误
 **Files:**
 - Create: `client/src/features/model-config/models-panel.tsx`
 
-- [ ] **Step 1: 创建 ModelsPanel 组件**
+- [x] **Step 1: 创建 ModelsPanel 组件**
 
 ```tsx
 // client/src/features/model-config/models-panel.tsx
@@ -853,7 +853,7 @@ export function ModelsPanel() {
 }
 ```
 
-- [ ] **Step 2: 验证 TypeScript 编译**
+- [x] **Step 2: 验证 TypeScript 编译**
 
 ```bash
 cd /home/wushengzhou/workspace/github/data-talk/client && npx tsc --noEmit
@@ -861,7 +861,7 @@ cd /home/wushengzhou/workspace/github/data-talk/client && npx tsc --noEmit
 
 Expected: 无类型错误（IconButton 可能不存在，使用 button 替代）
 
-- [ ] **Step 3: 检查是否有 IconButton 组件，如果没有则修改**
+- [x] **Step 3: 检查是否有 IconButton 组件，如果没有则修改**
 
 ```bash
 ls /home/wushengzhou/workspace/github/data-talk/client/src/components/ui/icon-button.tsx
@@ -887,7 +887,7 @@ Expected: 文件不存在
 **Files:**
 - Create: `client/src/features/model-config/connect-provider-dialog.tsx`
 
-- [ ] **Step 1: 创建 ConnectProviderDialog 组件**
+- [x] **Step 1: 创建 ConnectProviderDialog 组件**
 
 ```tsx
 // client/src/features/model-config/connect-provider-dialog.tsx
@@ -996,7 +996,7 @@ export function ConnectProviderDialog({
 }
 ```
 
-- [ ] **Step 2: 验证 TypeScript 编译**
+- [x] **Step 2: 验证 TypeScript 编译**
 
 ```bash
 cd /home/wushengzhou/workspace/github/data-talk/client && npx tsc --noEmit
@@ -1011,7 +1011,7 @@ Expected: 无类型错误
 **Files:**
 - Create: `client/src/features/model-config/custom-provider-dialog.tsx`
 
-- [ ] **Step 1: 创建 CustomProviderDialog 组件**
+- [x] **Step 1: 创建 CustomProviderDialog 组件**
 
 ```tsx
 // client/src/features/model-config/custom-provider-dialog.tsx
@@ -1315,7 +1315,7 @@ export function CustomProviderDialog({
 }
 ```
 
-- [ ] **Step 2: 验证 TypeScript 编译**
+- [x] **Step 2: 验证 TypeScript 编译**
 
 ```bash
 cd /home/wushengzhou/workspace/github/data-talk/client && npx tsc --noEmit
@@ -1330,7 +1330,7 @@ Expected: 无类型错误
 **Files:**
 - 无新文件创建
 
-- [ ] **Step 1: 启动 dev server**
+- [x] **Step 1: 启动 dev server**
 
 ```bash
 cd /home/wushengzhou/workspace/github/data-talk/client && npm run dev
@@ -1338,7 +1338,7 @@ cd /home/wushengzhou/workspace/github/data-talk/client && npm run dev
 
 Expected: Dev server 启动成功，显示 localhost URL
 
-- [ ] **Step 2: 打开浏览器验证页面**
+- [x] **Step 2: 打开浏览器验证页面**
 
 访问 http://localhost:5173/settings
 
@@ -1348,7 +1348,7 @@ Expected: Dev server 启动成功，显示 localhost URL
 3. 点击 Connect 弹出对话框
 4. Models Tab 搜索和 Switch 开关正常
 
-- [ ] **Step 3: 验证 Sidebar 用户菜单**
+- [x] **Step 3: 验证 Sidebar 用户菜单**
 
 在主页点击 Sidebar Footer 用户头像，验证：
 1. 下拉菜单显示"系统设置"、"连接配置"、"模型配置"
@@ -1361,7 +1361,7 @@ Expected: Dev server 启动成功，显示 localhost URL
 **Files:**
 - 所有新增和修改的文件
 
-- [ ] **Step 1: 查看 git status**
+- [x] **Step 1: 查看 git status**
 
 ```bash
 cd /home/wushengzhou/workspace/github/data-talk && git status
@@ -1369,7 +1369,7 @@ cd /home/wushengzhou/workspace/github/data-talk && git status
 
 Expected: 显示所有新增和修改的文件
 
-- [ ] **Step 2: 添加文件并提交**
+- [x] **Step 2: 添加文件并提交**
 
 ```bash
 git add client/src/routes/settings.tsx \
@@ -1398,7 +1398,7 @@ EOF
 
 Expected: Commit 成功
 
-- [ ] **Step 3: 验证 git log**
+- [x] **Step 3: 验证 git log**
 
 ```bash
 git log --oneline -1
