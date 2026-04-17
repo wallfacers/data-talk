@@ -4,6 +4,8 @@ DROP TABLE IF EXISTS artifacts;
 DROP TABLE IF EXISTS messages;
 DROP TABLE IF EXISTS sessions;
 DROP TABLE IF EXISTS connections;
+DROP TABLE IF EXISTS ai_model_prefs;
+DROP TABLE IF EXISTS ai_user_prefs;
 
 CREATE TABLE connections (
   id TEXT PRIMARY KEY, kind TEXT NOT NULL, host TEXT NOT NULL, port INTEGER NOT NULL,
@@ -32,4 +34,21 @@ CREATE TABLE action_invocations (
 );
 CREATE TABLE pending_calls (
   call_id TEXT PRIMARY KEY, expires_at INTEGER NOT NULL
+);
+
+CREATE TABLE ai_user_prefs (
+  id            TEXT PRIMARY KEY,
+  current_model TEXT,
+  updated_at    INTEGER NOT NULL
+);
+
+INSERT INTO ai_user_prefs(id, current_model, updated_at)
+VALUES ('default', NULL, 0);
+
+CREATE TABLE ai_model_prefs (
+  provider_id TEXT    NOT NULL,
+  model_id    TEXT    NOT NULL,
+  enabled     INTEGER NOT NULL,
+  updated_at  INTEGER NOT NULL,
+  PRIMARY KEY (provider_id, model_id)
 );
