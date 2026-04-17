@@ -90,6 +90,7 @@ See [docs/exec-plans/index.md](docs/exec-plans/index.md) for details.
 
 - **Backend**: after every edit, run `cd server && mvn compile -q` — confirm zero compilation errors before proceeding
 - **Frontend**: after every edit, run `cd client && npx tsc --noEmit` — confirm zero type errors before proceeding
+- **Exception**: for trivial edits where you're highly confident (e.g. comment/string tweaks, doc-only changes, single-line literal swaps with no type/signature impact), the compile/type-check step may be skipped. When in doubt, run it
 
 ### Backend Run vs Compile
 
@@ -102,6 +103,12 @@ See [docs/exec-plans/index.md](docs/exec-plans/index.md) for details.
 ### Plan Mode
 
 - Multi-step changes **MUST** use `/plan` to align on approach before writing code. Follow the existing plan workflow in [docs/PLANS.md](docs/PLANS.md)
+
+### Parallel Plan Execution
+
+- When executing an implementation plan from `docs/exec-plans/`, write code for independent tasks in **concurrent batches** (dispatch parallel subagents — see the `superpowers:dispatching-parallel-agents` and `superpowers:subagent-driven-development` skills), not sequentially one task at a time
+- Within a batch, **skip per-edit `mvn compile` / `tsc --noEmit`**. Run a single consolidated verification pass — full compile, integration tests, end-to-end smoke — only after every task in the batch has its code written
+- Tasks with explicit ordering dependencies declared in the plan document **MUST** still execute in declared order; only mutually independent tasks are eligible for batching
 
 ### Brainstorming
 
