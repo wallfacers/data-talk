@@ -135,7 +135,7 @@ public class SessionBus implements AutoCloseable {
                 }
             }
         } catch (Throwable t) {
-            // swallow to keep the flusher alive
+            log.error("Event flusher failed for session={}", sessionId, t);
         }
     }
 
