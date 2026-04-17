@@ -151,3 +151,10 @@
 ::-webkit-scrollbar-button {
   display: none;
 }
+
+/* Reduced motion: Stage bubble reveal 降级为瞬切 */
+@media (prefers-reduced-motion: reduce) {
+  [data-stage-panel] {
+    transition: none !important;
+  }
+}
