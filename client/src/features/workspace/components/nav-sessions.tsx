@@ -1,5 +1,5 @@
 import {
-  MessageSquareOffIcon,
+  MessageSquare,
   MoreHorizontalIcon,
   PencilIcon,
   Share2Icon,
@@ -68,7 +68,7 @@ function groupSessions(sessions: Session[]): SessionGroup[] {
 function EmptyHint({ text }: { text: string }) {
   return (
     <div className="flex h-full w-full flex-col items-center justify-center text-muted-foreground">
-      <MessageSquareOffIcon className="mb-2 h-5 w-5 text-muted-foreground/50" />
+      <MessageSquare className="mb-2 h-5 w-5 text-muted-foreground/50" />
       <div className="text-sm">{text}</div>
     </div>
   )

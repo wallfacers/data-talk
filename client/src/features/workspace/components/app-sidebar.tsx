@@ -1,5 +1,5 @@
 import { useEffect, useState, type ComponentProps } from 'react'
-import { DatabaseIcon, PlusIcon } from 'lucide-react'
+import { MessageSquare, PlusIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -86,7 +86,7 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                 className="data-[slot=sidebar-menu-button]:p-1.5!"
                 render={<a href="/" />}
               >
-                <DatabaseIcon className="size-5!" />
+                <MessageSquare className="size-5!" />
                 <span className="text-base font-semibold">DataTalk</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
