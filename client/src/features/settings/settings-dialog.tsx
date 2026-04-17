@@ -20,7 +20,7 @@ export function SettingsDialog() {
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && closeDialog()}>
-      <DialogContent className="flex flex-col !p-0 overflow-hidden max-w-[960px] max-h-[540px] sm:max-w-[960px]">
+      <DialogContent className="flex flex-col !p-0 overflow-hidden w-[960px] h-[540px] max-w-[960px] max-h-[540px] sm:max-w-[960px]" style={{ height: '540px' }}>
         <DialogHeader className="px-6 py-4 border-b">
           <DialogTitle className="text-lg font-medium">设置</DialogTitle>
         </DialogHeader>
