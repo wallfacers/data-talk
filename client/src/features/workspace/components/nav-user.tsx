@@ -1,5 +1,7 @@
 'use client'
 
+import { useState } from 'react'
+
 import { cn } from '@/lib/utils'
 import { DatabaseIcon, EllipsisVerticalIcon, Settings2Icon, SlidersHorizontalIcon, BoxIcon } from 'lucide-react'
 import { useSettingsDialogStore } from '@/features/settings/settings-dialog-store'
@@ -44,12 +46,13 @@ export function NavUser({
 }) {
   const { isMobile } = useSidebar()
   const openDialog = useSettingsDialogStore((s) => s.openDialog)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
   const initials = user.name.slice(0, 2).toUpperCase()
 
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <DropdownMenu>
+        <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
           <DropdownMenuTrigger
             render={
               <SidebarMenuButton size="lg" className="aria-expanded:bg-muted" />
@@ -98,7 +101,10 @@ export function NavUser({
                     <button
                       key={it.key}
                       type="button"
-                      onClick={() => openDialog(it.section)}
+                      onClick={() => {
+                        setDropdownOpen(false)
+                        requestAnimationFrame(() => openDialog(it.section))
+                      }}
                       className={cn(
                         'flex w-full items-center gap-2 rounded px-2 py-1.5 hover:bg-accent text-left text-sm',
                       )}
