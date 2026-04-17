@@ -91,6 +91,10 @@ See [docs/exec-plans/index.md](docs/exec-plans/index.md) for details.
 - **Backend**: after every edit, run `cd server && mvn compile -q` — confirm zero compilation errors before proceeding
 - **Frontend**: after every edit, run `cd client && npx tsc --noEmit` — confirm zero type errors before proceeding
 
+### Backend Run vs Compile
+
+- `mvn spring-boot:run` loads non-adapter modules from `~/.m2`, not `target/classes`. After editing `domain`/`application`/`infrastructure`, use `mvn install -pl <module> -am -DskipTests` — `mvn compile` won't refresh the jar and the running process keeps the old class
+
 ### Response Style
 
 - Be concise and direct. No filler
