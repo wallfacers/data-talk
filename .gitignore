@@ -37,6 +37,7 @@ server/data/*.db-wal
 server/data-talk-adapter/data/
 
 # Logs
+logs/
 *.log
 server/*/target/
 
