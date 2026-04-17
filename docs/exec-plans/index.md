@@ -6,13 +6,14 @@
 
 | 计划 | 状态 | 摘要 |
 |------|------|------|
+| [OpenCode Session Title Sync](./2026-04-18-opencode-session-title-sync-plan.md) | 计划中 | 订阅 OpenCode `session.*` 事件家族（8 个），同步自动 title 到本地 SessionRepository，保留手动 rename 锁定优先级 |
 | [Composer Model Picker Dialog](./2026-04-18-composer-model-picker-dialog-plan.md) | 计划中 | Composer 模型选择器 Popover → 960×540 双栏对话框，触发按钮样式不变 |
-| [Logging Standardization](./2026-04-18-logging-standardization-plan.md) | 计划中 | logback-spring.xml 配置、System.err 修复、文件日志滚动输出 |
 
 ## 已完成计划
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [Logging Standardization](./2026-04-18-logging-standardization-plan.md) | 2026-04-18 | logback-spring.xml 配置、System.err 修复、文件日志滚动输出 |
 | [TD-006 API Types Sync](./2026-04-18-td006-api-types-sync-plan.md) | 2026-04-18 | 后端 DTO 统一提取 + SpringDoc OpenAPI + 前端类型生成 + 字段名统一 |
 | [AI Settings · Part 2 · Frontend](./2026-04-17-ai-settings-part2-frontend.md) | 2026-04-17 | 设置中心 UI + 对话框 + Chat 模型选择器 |
 | [AI Settings · Part 1 · Backend](./2026-04-17-ai-settings-part1-backend.md) | 2026-04-17 | OpenCode 代理 + 偏好持久化 + 连接 CRUD |

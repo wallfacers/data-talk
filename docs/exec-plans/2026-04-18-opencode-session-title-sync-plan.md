@@ -843,19 +843,43 @@ private static String extractSessionId(OcEvent e) {
 
 - [ ] **Step 4: 扩展 OpenCodeEventLoopTest 加 session.updated 端到端用例**
 
-在现有测试里追加（如需新 WireMock stub 按现有用法推 `event: session.updated\ndata: {"info":{"id":"oc-1","title":"AI","version":2}}`）：
+参照现有 `parsesSseFramesIntoOcEvents` 的 WireMock 模式（dynamicPort + stubFor /event + awaitility）。在 `OpenCodeEventLoopTest` 类内追加：
 
 ```java
 @Test
-void sessionUpdatedReachesSessionBus() throws Exception {
-    // 前置：sessionMap.bind("dt-1", "oc-1") 已做
-    // WireMock /event 推 session.updated frame（按现有 OpenCodeEventLoopTest 构造方式）
-    // 断言：buses.getOrCreate("dt-1") 收到 DtEvent.SessionMetaUpdated
-    // 细节参考现有 messageUpdatedReachesSessionBus 测试的脚手架
+void sessionUpdatedReachesSessionBus() {
+    String sse = """
+        event: session.updated
+        data: {"info":{"id":"oc-1","title":"AI 标题","version":2}}
+
+        """;
+    wm.stubFor(get(urlEqualTo("/event"))
+        .willReturn(aResponse().withHeader("Content-Type", "text/event-stream").withBody(sse)));
+
+    List<OcEvent> received = new ArrayList<>();
+    OpenCodeSessionMap map = new OpenCodeSessionMap();
+    map.bind("dt-1", "oc-1");
+
+    SessionBus mockBus = Mockito.mock(SessionBus.class);
+    SessionBusRegistry buses = Mockito.mock(SessionBusRegistry.class);
+    when(buses.getOrCreate("dt-1")).thenReturn(mockBus);
+
+    SessionTitleSyncer syncer = Mockito.mock(SessionTitleSyncer.class);
+    OpenCodeEventTranslator tr = new OpenCodeEventTranslator(syncer);
+    OpenCodeEventLoop loop = new OpenCodeEventLoop(
+        "http://localhost:" + wm.port(), new ObjectMapper(), tr, buses, map, received::add);
+
+    loop.start();
+    await().atMost(Duration.ofSeconds(3)).until(() -> !received.isEmpty());
+    loop.stop();
+
+    assertThat(received.get(0)).isInstanceOf(OcEvent.SessionUpdated.class);
+    Mockito.verify(syncer).apply("oc-1", "AI 标题");
+    Mockito.verify(mockBus).publish(any(DtEvent.SessionMetaUpdated.class));
 }
 ```
 
-（实际实现参照现有 test case 的 WireMock stub + CountDownLatch 模式；关键是 bind 后 publish 一条 session.updated。）
+Imports 补充：`import static org.mockito.ArgumentMatchers.any;`（文件顶部已有 `any`，确认即可）。
 
 - [ ] **Step 5: 运行测试 + install**
 
@@ -994,34 +1018,87 @@ git commit -m "feat(client): invalidate sessions query on session.meta.updated S
 
 ## Task 8: ChannelControllerIT 端到端集成验证
 
+现有 `ChannelControllerIT` **未启动 fake OpenCode**（它直接跑 Spring Boot context，send_message 的 SSE 响应靠 `ChannelService` 内部事件 + 1000ms 恩典期）。要端到端测"OpenCode 推 session.updated → DB 持久化 + 前端 SSE"，最直接的做法是在 IT 里直接 `@Autowired` `OpenCodeEventTranslator` 作为"OpenCode 推送"的代理触发器，避免起外部 HTTP mock。
+
 **Files:**
 - Modify: `server/data-talk-adapter/src/test/java/com/datatalk/adapter/channel/ChannelControllerIT.java`
 
-- [ ] **Step 1: 加端到端用例**
+- [ ] **Step 1: 确认 setUp 构造 SessionRecord 已用 Task 1 的 8 参数版本**
 
-在 ChannelControllerIT 内新增一个测试：发起 `send_message` 后，通过 WireMock FakeOpenCodeServer 的 `/event` stub 推送一条 `session.updated` frame；断言：
+Task 1 已改过 `setUp` 里的 `new SessionRecord("s-1", null, "T", false, null, 100L, 100L)` → `..., false)`。这里再确认一次编译通过。
 
-1. 客户端收到的 SSE 流里包含一条 `event: session.meta.updated` 的帧；
-2. DB 里 `sessions.title` 已更新为新值；
-3. 再跑同样 case 但预先 `INSERT INTO sessions ... title_locked=1` 的 session，验证 title 不变。
+- [ ] **Step 2: 追加 3 个测试 + 新的 @Autowired 字段**
+
+在 ChannelControllerIT 类体顶部加新字段：
+
+```java
+@Autowired com.datatalk.application.opencode.OpenCodeEventTranslator translator;
+@Autowired com.datatalk.application.opencode.OpenCodeSessionMap ocSessionMap;
+@Autowired com.datatalk.application.session.SessionBusRegistry buses;
+```
+
+然后追加 3 个测试方法：
 
 ```java
 @Test
-void sessionUpdatedFromOpenCodeSyncsTitleAndEmitsMetaUpdated() throws Exception {
-    // 1. 插入一条 session (title_locked=0)，bind ocSid
-    // 2. 通过 WireMock 预置 /event stub：推 "event: session.updated\ndata: {\"info\":{\"id\":\"oc-1\",\"title\":\"AI 标题\",\"version\":2}}"
-    // 3. 发起 POST /api/sessions/{id}/channel (send_message)，收集 SSE 响应
-    // 4. 断言 SSE 响应包含 type=session.meta.updated 的事件
-    // 5. 断言 DB 该 session.title = "AI 标题"
+void sessionUpdatedFromTranslatorSyncsTitle() {
+    ocSessionMap.bind("s-1", "oc-1");
+    var info = new com.datatalk.application.opencode.SessionInfo("oc-1", "AI 标题", 2L);
+    translator.translate("s-1", new com.datatalk.application.opencode.OcEvent.SessionUpdated(info));
+
+    SessionRecord reloaded = sessions.findById("s-1").orElseThrow();
+    assertThat(reloaded.title()).isEqualTo("AI 标题");
+    assertThat(reloaded.titleLocked()).isFalse();
 }
 
 @Test
-void sessionUpdatedRespectsTitleLocked() throws Exception {
-    // 同上但 title_locked=1；断言 DB title 不变
+void sessionUpdatedRespectsTitleLocked() {
+    // 覆盖 s-1 为锁定状态
+    sessions.upsert(new SessionRecord("s-1", null, "手动命名", false, null, 100L, 100L, true));
+    ocSessionMap.bind("s-1", "oc-1");
+
+    var info = new com.datatalk.application.opencode.SessionInfo("oc-1", "AI 标题", 2L);
+    translator.translate("s-1", new com.datatalk.application.opencode.OcEvent.SessionUpdated(info));
+
+    SessionRecord reloaded = sessions.findById("s-1").orElseThrow();
+    assertThat(reloaded.title()).isEqualTo("手动命名");
+    assertThat(reloaded.titleLocked()).isTrue();
+}
+
+@Test
+void sendMessageForwardsSessionMetaUpdatedToClient() throws Exception {
+    // 后台线程：客户端连上 SSE 后 publish SessionMetaUpdated 到 session bus
+    new Thread(() -> {
+        try { Thread.sleep(200); } catch (InterruptedException ignored) { return; }
+        buses.getOrCreate("s-1").publish(
+            new com.datatalk.domain.event.DtEvent.SessionMetaUpdated(
+                "s-1", "AI 标题", false, 2L));
+    }).start();
+
+    String body = om.writeValueAsString(Map.of(
+        "jsonrpc", "2.0", "id", "r1", "method", "send_message",
+        "params", Map.of("parts", List.of(Map.of(
+            "type", "text", "id", "p1", "sessionID", "s-1",
+            "messageID", "ignored", "text", "hello", "metadata", Map.of()
+        )))
+    ));
+
+    List<String> lines = new CopyOnWriteArrayList<>();
+    client.post()
+        .uri("/api/sessions/s-1/channel")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(body)
+        .retrieve()
+        .bodyToFlux(String.class)
+        .take(Duration.ofSeconds(2))
+        .doOnNext(lines::add)
+        .blockLast(Duration.ofSeconds(3));
+
+    String all = String.join("\n", lines);
+    assertThat(all).contains("session.meta.updated");
+    assertThat(all).contains("\"title\":\"AI 标题\"");
 }
 ```
-
-> 具体 WireMock stub 构造按 ChannelControllerIT 现有 pattern；关键接入点在 FakeOpenCodeServer 的 `/event` SSE endpoint（如该 IT 已启动它）。
 
 - [ ] **Step 2: 运行 IT**
 
@@ -1047,16 +1124,28 @@ git commit -m "test(channel): verify session.updated syncs title + emits session
 
 - [ ] **Step 1: 扩展 chat-header.test.tsx**
 
-加一个 test：`useSessions` 初始返回 title=`"新会话"`，重新渲染后返回 title=`"AI 标题"`，断言 ChatHeader 文本已更新。
+参考现有 `chat-header.test.tsx` 的 setUp（mock `useSessions` + `useSessionStore.setState`）。加一个测试：
 
 ```tsx
-it('reflects updated session title after useSessions refetch', async () => {
-  // mock useSessions 依次返回两个不同 title 的结果
-  // render ChatHeader，断言初始展示 "新会话"
-  // trigger refetch（通常通过 queryClient.invalidateQueries）
-  // 等待 rerender，断言展示 "AI 标题"
+import { rerender } from '@testing-library/react' // 如已用 render 的 rerender API
+import * as useSessionsModule from './hooks/use-sessions'
+
+it('reflects updated session title when useSessions returns new title', () => {
+  // 初始 useSessions 返回 title="新会话"
+  const spy = vi.spyOn(useSessionsModule, 'useSessions')
+  spy.mockReturnValue({ data: [{ id: 's1', connectionId: 'c1', title: '新会话', hasEverSent: true, createdAt: 0, updatedAt: 0, titleLocked: false }] } as any)
+
+  const { rerender } = render(<ChatHeader />)
+  expect(screen.getByText('新会话')).toBeInTheDocument()
+
+  // 模拟 invalidate 后 useSessions 返回新 title
+  spy.mockReturnValue({ data: [{ id: 's1', connectionId: 'c1', title: 'AI 标题', hasEverSent: true, createdAt: 0, updatedAt: 0, titleLocked: false }] } as any)
+  rerender(<ChatHeader />)
+  expect(screen.getByText('AI 标题')).toBeInTheDocument()
 })
 ```
+
+> 注：`screen` 和 `render` 已在现有测试顶部 import；`vi.spyOn(useSessionsModule, 'useSessions')` 需要 useSessions 是 named export（已确认 `client/src/features/session/hooks/use-sessions.ts:5` 是 named export）。
 
 - [ ] **Step 2: 运行前端测试 + 类型**
 
