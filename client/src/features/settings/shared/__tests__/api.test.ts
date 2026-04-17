@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { fetchProviders, fetchModels, patchModelEnabled,
+import { fetchProviders, fetchProviderAuth, fetchModels, patchModelEnabled,
          getCurrentModel, setCurrentModel, putCredentials } from '../api'
 
 describe('settings api', () => {
@@ -13,6 +13,14 @@ describe('settings api', () => {
     })
     await fetchProviders()
     expect(globalThis.fetch).toHaveBeenCalledWith('/api/ai/providers')
+  })
+
+  it('fetchProviderAuth calls /api/ai/providers/auth', async () => {
+    (globalThis.fetch as any).mockResolvedValue({
+      ok: true, json: async () => ({ openai: [{ type: 'api' }] })
+    })
+    await fetchProviderAuth()
+    expect(globalThis.fetch).toHaveBeenCalledWith('/api/ai/providers/auth')
   })
 
   it('patchModelEnabled posts to correct path', async () => {
