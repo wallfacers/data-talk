@@ -44,7 +44,7 @@
 - Create: `server/data-talk-infrastructure/src/main/resources/db/migration/V2__ai_prefs.sql`
 - Create: `server/data-talk-adapter/src/test/java/com/datatalk/adapter/persistence/AiPrefsMigrationIT.java`
 
-- [ ] **Step 1：写失败的迁移集成测试**
+- [x] **Step 1：写失败的迁移集成测试**
 
 ```java
 // AiPrefsMigrationIT.java
@@ -79,14 +79,14 @@ class AiPrefsMigrationIT {
 }
 ```
 
-- [ ] **Step 2：运行测试确认失败**
+- [x] **Step 2：运行测试确认失败**
 
 ```
 cd server && mvn -pl data-talk-adapter test -Dtest=AiPrefsMigrationIT
 ```
 期望：`no such table: ai_user_prefs`
 
-- [ ] **Step 3：写 V2 迁移**
+- [x] **Step 3：写 V2 迁移**
 
 ```sql
 -- V2__ai_prefs.sql
@@ -108,14 +108,14 @@ CREATE TABLE ai_model_prefs (
 );
 ```
 
-- [ ] **Step 4：运行测试确认通过**
+- [x] **Step 4：运行测试确认通过**
 
 ```
 cd server && mvn -pl data-talk-adapter test -Dtest=AiPrefsMigrationIT
 ```
 期望：两个测试 PASS。
 
-- [ ] **Step 5：提交**
+- [x] **Step 5：提交**
 
 ```
 cd server && mvn compile -q
@@ -133,7 +133,7 @@ git commit -m "feat(db): add V2 migration for ai_user_prefs and ai_model_prefs"
 - Create: `server/data-talk-infrastructure/src/main/java/com/datatalk/infra/ai/AiUserPrefsRepositoryJdbc.java`
 - Create: `server/data-talk-adapter/src/test/java/com/datatalk/adapter/persistence/AiPrefsRepositoryIT.java`
 
-- [ ] **Step 1：写失败的仓储测试（先只覆盖 user prefs 部分）**
+- [x] **Step 1：写失败的仓储测试（先只覆盖 user prefs 部分）**
 
 ```java
 // AiPrefsRepositoryIT.java
@@ -180,14 +180,14 @@ class AiPrefsRepositoryIT {
 }
 ```
 
-- [ ] **Step 2：运行测试确认失败**
+- [x] **Step 2：运行测试确认失败**
 
 ```
 cd server && mvn -pl data-talk-adapter test -Dtest=AiPrefsRepositoryIT
 ```
 期望：编译错误（类不存在）。
 
-- [ ] **Step 3：写接口**
+- [x] **Step 3：写接口**
 
 ```java
 // AiUserPrefsRepository.java
@@ -199,7 +199,7 @@ public interface AiUserPrefsRepository {
 }
 ```
 
-- [ ] **Step 4：写 JDBC 实现**
+- [x] **Step 4：写 JDBC 实现**
 
 ```java
 // AiUserPrefsRepositoryJdbc.java
@@ -240,14 +240,14 @@ public class AiUserPrefsRepositoryJdbc implements AiUserPrefsRepository {
 }
 ```
 
-- [ ] **Step 5：运行测试确认通过**
+- [x] **Step 5：运行测试确认通过**
 
 ```
 cd server && mvn compile -q && mvn -pl data-talk-adapter test -Dtest=AiPrefsRepositoryIT
 ```
 期望：3 个测试 PASS。
 
-- [ ] **Step 6：提交**
+- [x] **Step 6：提交**
 
 ```
 git add server/data-talk-application/src/main/java/com/datatalk/application/ai/AiUserPrefsRepository.java \
@@ -265,7 +265,7 @@ git commit -m "feat(ai): add AiUserPrefsRepository for current-model persistence
 - Create: `server/data-talk-infrastructure/src/main/java/com/datatalk/infra/ai/AiModelPrefsRepositoryJdbc.java`
 - Modify: `server/data-talk-adapter/src/test/java/com/datatalk/adapter/persistence/AiPrefsRepositoryIT.java`
 
-- [ ] **Step 1：追加 model prefs 测试到 AiPrefsRepositoryIT**
+- [x] **Step 1：追加 model prefs 测试到 AiPrefsRepositoryIT**
 
 在 `AiPrefsRepositoryIT` 内追加：
 
@@ -300,14 +300,14 @@ git commit -m "feat(ai): add AiUserPrefsRepository for current-model persistence
     }
 ```
 
-- [ ] **Step 2：运行测试确认失败**
+- [x] **Step 2：运行测试确认失败**
 
 ```
 cd server && mvn -pl data-talk-adapter test -Dtest=AiPrefsRepositoryIT
 ```
 期望：编译失败（`AiModelPrefsRepository` 不存在）。
 
-- [ ] **Step 3：写接口**
+- [x] **Step 3：写接口**
 
 ```java
 // AiModelPrefsRepository.java
@@ -323,7 +323,7 @@ public interface AiModelPrefsRepository {
 }
 ```
 
-- [ ] **Step 4：写 JDBC 实现**
+- [x] **Step 4：写 JDBC 实现**
 
 ```java
 // AiModelPrefsRepositoryJdbc.java
@@ -377,14 +377,14 @@ public class AiModelPrefsRepositoryJdbc implements AiModelPrefsRepository {
 }
 ```
 
-- [ ] **Step 5：运行测试确认通过**
+- [x] **Step 5：运行测试确认通过**
 
 ```
 cd server && mvn compile -q && mvn -pl data-talk-adapter test -Dtest=AiPrefsRepositoryIT
 ```
 期望：6 个测试全 PASS。
 
-- [ ] **Step 6：提交**
+- [x] **Step 6：提交**
 
 ```
 git add server/data-talk-application/src/main/java/com/datatalk/application/ai/AiModelPrefsRepository.java \
@@ -403,7 +403,7 @@ git commit -m "feat(ai): add AiModelPrefsRepository with disable-only persistenc
 
 查阅现有 `FakeOpenCodeServer` 模式（位于 `data-talk-adapter` 测试 resources），新增方法直接返 `JsonNode` 而非强类型 DTO——OpenCode 响应字段多、变动可能，前端也期望透传。
 
-- [ ] **Step 1：写失败的集成测试（沿用 FakeOpenCodeServer 模式）**
+- [x] **Step 1：写失败的集成测试（沿用 FakeOpenCodeServer 模式）**
 
 ```java
 // OpenCodeHttpClientIT.java（若已有则追加 case；否则创建）
@@ -450,14 +450,14 @@ class OpenCodeHttpClientIT {
 }
 ```
 
-- [ ] **Step 2：运行测试确认失败**
+- [x] **Step 2：运行测试确认失败**
 
 ```
 cd server && mvn -pl data-talk-infrastructure test -Dtest=OpenCodeHttpClientIT
 ```
 期望：方法 `listProviders` 不存在。
 
-- [ ] **Step 3：在 OpenCodeHttpClient 新增方法**
+- [x] **Step 3：在 OpenCodeHttpClient 新增方法**
 
 ```java
 // 在 OpenCodeHttpClient.java 文件末尾（}前）追加：
@@ -475,14 +475,14 @@ cd server && mvn -pl data-talk-infrastructure test -Dtest=OpenCodeHttpClientIT
     }
 ```
 
-- [ ] **Step 4：运行测试确认通过**
+- [x] **Step 4：运行测试确认通过**
 
 ```
 cd server && mvn compile -q && mvn -pl data-talk-infrastructure test -Dtest=OpenCodeHttpClientIT
 ```
 期望：PASS。
 
-- [ ] **Step 5：提交**
+- [x] **Step 5：提交**
 
 ```
 git add server/data-talk-infrastructure/src/main/java/com/datatalk/infra/opencode/OpenCodeHttpClient.java \
@@ -498,7 +498,7 @@ git commit -m "feat(opencode): add listProviders() to OpenCodeHttpClient"
 - Modify: `server/data-talk-infrastructure/src/main/java/com/datatalk/infra/opencode/OpenCodeHttpClient.java`
 - Modify: `server/data-talk-infrastructure/src/test/java/com/datatalk/infra/opencode/OpenCodeHttpClientIT.java`
 
-- [ ] **Step 1：追加测试**
+- [x] **Step 1：追加测试**
 
 ```java
     @Test
@@ -512,14 +512,14 @@ git commit -m "feat(opencode): add listProviders() to OpenCodeHttpClient"
     }
 ```
 
-- [ ] **Step 2：运行测试确认失败**
+- [x] **Step 2：运行测试确认失败**
 
 ```
 cd server && mvn -pl data-talk-infrastructure test -Dtest=OpenCodeHttpClientIT
 ```
 期望：方法不存在。
 
-- [ ] **Step 3：实现**
+- [x] **Step 3：实现**
 
 ```java
     public com.fasterxml.jackson.databind.JsonNode getProviderAuth() {
@@ -535,13 +535,13 @@ cd server && mvn -pl data-talk-infrastructure test -Dtest=OpenCodeHttpClientIT
     }
 ```
 
-- [ ] **Step 4：运行测试确认通过**
+- [x] **Step 4：运行测试确认通过**
 
 ```
 cd server && mvn -pl data-talk-infrastructure test -Dtest=OpenCodeHttpClientIT
 ```
 
-- [ ] **Step 5：提交**
+- [x] **Step 5：提交**
 
 ```
 git add server/data-talk-infrastructure/src/main/java/com/datatalk/infra/opencode/OpenCodeHttpClient.java \
@@ -557,7 +557,7 @@ git commit -m "feat(opencode): add getProviderAuth() to OpenCodeHttpClient"
 - Modify: `server/data-talk-infrastructure/src/main/java/com/datatalk/infra/opencode/OpenCodeHttpClient.java`
 - Modify: `server/data-talk-infrastructure/src/test/java/com/datatalk/infra/opencode/OpenCodeHttpClientIT.java`
 
-- [ ] **Step 1：追加测试（包含 happy path + 4xx 错误透传）**
+- [x] **Step 1：追加测试（包含 happy path + 4xx 错误透传）**
 
 ```java
     @Test
@@ -580,13 +580,13 @@ git commit -m "feat(opencode): add getProviderAuth() to OpenCodeHttpClient"
     }
 ```
 
-- [ ] **Step 2：运行测试确认失败**
+- [x] **Step 2：运行测试确认失败**
 
 ```
 cd server && mvn -pl data-talk-infrastructure test -Dtest=OpenCodeHttpClientIT
 ```
 
-- [ ] **Step 3：实现**
+- [x] **Step 3：实现**
 
 ```java
     public void putAuth(String providerId, java.util.Map<String, Object> payload) {
@@ -599,13 +599,13 @@ cd server && mvn -pl data-talk-infrastructure test -Dtest=OpenCodeHttpClientIT
     }
 ```
 
-- [ ] **Step 4：运行测试确认通过**
+- [x] **Step 4：运行测试确认通过**
 
 ```
 cd server && mvn -pl data-talk-infrastructure test -Dtest=OpenCodeHttpClientIT
 ```
 
-- [ ] **Step 5：提交**
+- [x] **Step 5：提交**
 
 ```
 git add server/data-talk-infrastructure/src/main/java/com/datatalk/infra/opencode/OpenCodeHttpClient.java \
@@ -620,7 +620,7 @@ git commit -m "feat(opencode): add putAuth() to OpenCodeHttpClient"
 **Files:**
 - Create: `server/data-talk-application/src/main/java/com/datatalk/application/ai/AiSettingsService.java`
 
-- [ ] **Step 1：写失败的单元测试（用 Mockito 替身仓储 + client）**
+- [x] **Step 1：写失败的单元测试（用 Mockito 替身仓储 + client）**
 
 ```java
 // server/data-talk-application/src/test/java/com/datatalk/application/ai/AiSettingsServiceTest.java
@@ -684,14 +684,14 @@ class AiSettingsServiceTest {
 }
 ```
 
-- [ ] **Step 2：运行测试确认失败**
+- [x] **Step 2：运行测试确认失败**
 
 ```
 cd server && mvn -pl data-talk-application test -Dtest=AiSettingsServiceTest
 ```
 期望：类不存在。
 
-- [ ] **Step 3：实现 AiSettingsService**
+- [x] **Step 3：实现 AiSettingsService**
 
 ```java
 // AiSettingsService.java
@@ -770,13 +770,13 @@ public class AiSettingsService {
 }
 ```
 
-- [ ] **Step 4：运行测试确认通过**
+- [x] **Step 4：运行测试确认通过**
 
 ```
 cd server && mvn compile -q && mvn -pl data-talk-application test -Dtest=AiSettingsServiceTest
 ```
 
-- [ ] **Step 5：提交**
+- [x] **Step 5：提交**
 
 ```
 git add server/data-talk-application/src/main/java/com/datatalk/application/ai/AiSettingsService.java \
@@ -794,7 +794,7 @@ git commit -m "feat(ai): add AiSettingsService for provider/model aggregation"
 
 集成测试用 WireMock 模拟 OpenCode（沿用项目里 `@SpringBootTest + dynamic WireMock` 模式，参考 `EndToEndSmokeIT`）。
 
-- [ ] **Step 1：写失败的 IT**
+- [x] **Step 1：写失败的 IT**
 
 ```java
 // AiSettingsControllerIT.java
@@ -892,14 +892,14 @@ class AiSettingsControllerIT {
 }
 ```
 
-- [ ] **Step 2：运行测试确认失败**
+- [x] **Step 2：运行测试确认失败**
 
 ```
 cd server && mvn -pl data-talk-adapter test -Dtest=AiSettingsControllerIT
 ```
 期望：所有 endpoint 404。
 
-- [ ] **Step 3：写 Controller**
+- [x] **Step 3：写 Controller**
 
 ```java
 // AiSettingsController.java
@@ -934,7 +934,7 @@ public class AiSettingsController {
 }
 ```
 
-- [ ] **Step 4：写 `AiSettingsExceptionHandler` 归一化 503**
+- [x] **Step 4：写 `AiSettingsExceptionHandler` 归一化 503**
 
 ```java
 // AiSettingsExceptionHandler.java
@@ -973,14 +973,14 @@ public class AiSettingsExceptionHandler {
 }
 ```
 
-- [ ] **Step 5：运行测试确认通过**
+- [x] **Step 5：运行测试确认通过**
 
 ```
 cd server && mvn compile -q && mvn -pl data-talk-adapter test -Dtest=AiSettingsControllerIT
 ```
 期望：4 个测试 PASS。
 
-- [ ] **Step 6：提交**
+- [x] **Step 6：提交**
 
 ```
 git add server/data-talk-adapter/src/main/java/com/datatalk/adapter/api/AiSettingsController.java \
@@ -997,7 +997,7 @@ git commit -m "feat(ai): add AiSettingsController provider/auth/credentials endp
 - Modify: `server/data-talk-adapter/src/main/java/com/datatalk/adapter/api/AiSettingsController.java`
 - Modify: `server/data-talk-adapter/src/test/java/com/datatalk/adapter/controller/AiSettingsControllerIT.java`
 
-- [ ] **Step 1：追加测试 case**
+- [x] **Step 1：追加测试 case**
 
 ```java
     @Test
@@ -1041,13 +1041,13 @@ git commit -m "feat(ai): add AiSettingsController provider/auth/credentials endp
     }
 ```
 
-- [ ] **Step 2：运行测试确认失败**
+- [x] **Step 2：运行测试确认失败**
 
 ```
 cd server && mvn -pl data-talk-adapter test -Dtest=AiSettingsControllerIT
 ```
 
-- [ ] **Step 3：在 AiSettingsController 追加端点**
+- [x] **Step 3：在 AiSettingsController 追加端点**
 
 ```java
     // path 要支持形如 openai/gpt-5 的 modelId —— 用 {id:.+}
@@ -1078,13 +1078,13 @@ cd server && mvn -pl data-talk-adapter test -Dtest=AiSettingsControllerIT
     }
 ```
 
-- [ ] **Step 4：运行测试确认通过**
+- [x] **Step 4：运行测试确认通过**
 
 ```
 cd server && mvn compile -q && mvn -pl data-talk-adapter test -Dtest=AiSettingsControllerIT
 ```
 
-- [ ] **Step 5：提交**
+- [x] **Step 5：提交**
 
 ```
 git add server/data-talk-adapter/src/main/java/com/datatalk/adapter/api/AiSettingsController.java \
@@ -1099,7 +1099,7 @@ git commit -m "feat(ai): add models list/patch and current-model endpoints"
 **Files:**
 - Modify: `server/data-talk-application/src/main/java/com/datatalk/application/persistence/ConnectionRepository.java`
 
-- [ ] **Step 1：查找现有 `ConnectionRepositoryIT`（若有）或创建**
+- [x] **Step 1：查找现有 `ConnectionRepositoryIT`（若有）或创建**
 
 ```
 find server -name "ConnectionRepositoryIT.java"
@@ -1147,14 +1147,14 @@ class ConnectionRepositoryIT {
 }
 ```
 
-- [ ] **Step 2：运行测试确认失败**
+- [x] **Step 2：运行测试确认失败**
 
 ```
 cd server && mvn -pl data-talk-adapter test -Dtest=ConnectionRepositoryIT
 ```
 期望：编译失败（`update` / `deleteById` 不存在）。
 
-- [ ] **Step 3：实现 `update` + `deleteById`**
+- [x] **Step 3：实现 `update` + `deleteById`**
 
 在 `ConnectionRepository.java` 追加：
 
@@ -1175,13 +1175,13 @@ cd server && mvn -pl data-talk-adapter test -Dtest=ConnectionRepositoryIT
     }
 ```
 
-- [ ] **Step 4：运行测试确认通过**
+- [x] **Step 4：运行测试确认通过**
 
 ```
 cd server && mvn compile -q && mvn -pl data-talk-adapter test -Dtest=ConnectionRepositoryIT
 ```
 
-- [ ] **Step 5：提交**
+- [x] **Step 5：提交**
 
 ```
 git add server/data-talk-application/src/main/java/com/datatalk/application/persistence/ConnectionRepository.java \
@@ -1196,7 +1196,7 @@ git commit -m "feat(connection): add update and deleteById to ConnectionReposito
 **Files:**
 - Modify: `server/data-talk-application/src/main/java/com/datatalk/application/connection/ConnectionService.java`
 
-- [ ] **Step 1：写测试**
+- [x] **Step 1：写测试**
 
 ```java
 // server/data-talk-application/src/test/java/com/datatalk/application/connection/ConnectionServiceTest.java
@@ -1246,13 +1246,13 @@ class ConnectionServiceTest {
 }
 ```
 
-- [ ] **Step 2：运行测试确认失败**
+- [x] **Step 2：运行测试确认失败**
 
 ```
 cd server && mvn -pl data-talk-application test -Dtest=ConnectionServiceTest
 ```
 
-- [ ] **Step 3：实现三个方法**
+- [x] **Step 3：实现三个方法**
 
 在 `ConnectionService.java` 追加（末尾 `}` 前）：
 
@@ -1300,13 +1300,13 @@ cd server && mvn -pl data-talk-application test -Dtest=ConnectionServiceTest
     public record TestResult(boolean ok, long latencyMs, String reason) {}
 ```
 
-- [ ] **Step 4：运行测试确认通过**
+- [x] **Step 4：运行测试确认通过**
 
 ```
 cd server && mvn compile -q && mvn -pl data-talk-application test -Dtest=ConnectionServiceTest
 ```
 
-- [ ] **Step 5：提交**
+- [x] **Step 5：提交**
 
 ```
 git add server/data-talk-application/src/main/java/com/datatalk/application/connection/ConnectionService.java \
@@ -1322,7 +1322,7 @@ git commit -m "feat(connection): add update/deleteById/testConnection to service
 - Modify: `server/data-talk-infrastructure/src/main/java/com/datatalk/infra/connection/ConnectionController.java`
 - Create: `server/data-talk-adapter/src/test/java/com/datatalk/adapter/controller/ConnectionControllerIT.java`
 
-- [ ] **Step 1：写 IT**
+- [x] **Step 1：写 IT**
 
 ```java
 // ConnectionControllerIT.java
@@ -1393,13 +1393,13 @@ class ConnectionControllerIT {
 }
 ```
 
-- [ ] **Step 2：运行测试确认失败**
+- [x] **Step 2：运行测试确认失败**
 
 ```
 cd server && mvn -pl data-talk-adapter test -Dtest=ConnectionControllerIT
 ```
 
-- [ ] **Step 3：扩展 Controller**
+- [x] **Step 3：扩展 Controller**
 
 ```java
 // ConnectionController.java 在现有 create/list 之后追加：
@@ -1436,13 +1436,13 @@ cd server && mvn -pl data-talk-adapter test -Dtest=ConnectionControllerIT
     }
 ```
 
-- [ ] **Step 4：运行测试确认通过**
+- [x] **Step 4：运行测试确认通过**
 
 ```
 cd server && mvn compile -q && mvn -pl data-talk-adapter test -Dtest=ConnectionControllerIT
 ```
 
-- [ ] **Step 5：提交**
+- [x] **Step 5：提交**
 
 ```
 git add server/data-talk-infrastructure/src/main/java/com/datatalk/infra/connection/ConnectionController.java \
@@ -1457,7 +1457,7 @@ git commit -m "feat(connection): add PUT/DELETE/test endpoints"
 **Files:**
 - Modify: `server/data-talk-application/src/main/java/com/datatalk/application/channel/ChannelService.java`
 
-- [ ] **Step 1：查现有 ChannelService 测试（应有），追加 case**
+- [x] **Step 1：查现有 ChannelService 测试（应有），追加 case**
 
 ```
 find server -name "ChannelServiceTest*" -o -name "ChannelServiceIT*"
@@ -1492,13 +1492,13 @@ find server -name "ChannelServiceTest*" -o -name "ChannelServiceIT*"
     }
 ```
 
-- [ ] **Step 2：运行测试确认失败**
+- [x] **Step 2：运行测试确认失败**
 
 ```
 cd server && mvn -pl data-talk-application test -Dtest=ChannelService*
 ```
 
-- [ ] **Step 3：修改 ChannelService，注入 `AiUserPrefsRepository` 并在 forward 时合并 model**
+- [x] **Step 3：修改 ChannelService，注入 `AiUserPrefsRepository` 并在 forward 时合并 model**
 
 在构造器和字段追加：
 
@@ -1528,14 +1528,14 @@ cd server && mvn -pl data-talk-application test -Dtest=ChannelService*
         gateway.forwardUserMessage(ocSid, body);
 ```
 
-- [ ] **Step 4：运行测试确认通过**
+- [x] **Step 4：运行测试确认通过**
 
 ```
 cd server && mvn compile -q && mvn -pl data-talk-application test -Dtest=ChannelService*
 ```
 若构造器签名变动导致其他测试编译失败，逐一补 `userPrefs` mock。
 
-- [ ] **Step 5：提交**
+- [x] **Step 5：提交**
 
 ```
 git add server/data-talk-application/src/main/java/com/datatalk/application/channel/ChannelService.java \
@@ -1550,21 +1550,21 @@ git commit -m "feat(channel): forward current_model to OpenCode when set"
 **Files:**
 - Modify: `docs/exec-plans/index.md`
 
-- [ ] **Step 1：后端全量测试**
+- [x] **Step 1：后端全量测试**
 
 ```
 cd server && mvn clean verify
 ```
 期望：BUILD SUCCESS，所有测试 PASS。
 
-- [ ] **Step 2：编译前端类型检查（无代码变更但确认无破坏）**
+- [x] **Step 2：编译前端类型检查（无代码变更但确认无破坏）**
 
 ```
 cd client && npx tsc --noEmit
 ```
 期望：0 error。
 
-- [ ] **Step 3：在 `docs/exec-plans/index.md` 的活跃计划表追加**
+- [x] **Step 3：在 `docs/exec-plans/index.md` 的活跃计划表追加**
 
 ```markdown
 ## 活跃计划
@@ -1575,7 +1575,7 @@ cd client && npx tsc --noEmit
 | [AI Settings · Part 2 · Frontend](../exec-plans/2026-04-17-ai-settings-part2-frontend.md) | ⚪ 待启动 | 设置中心 UI + 对话框 + Chat 模型选择器 |
 ```
 
-- [ ] **Step 4：提交**
+- [x] **Step 4：提交**
 
 ```
 git add docs/exec-plans/index.md

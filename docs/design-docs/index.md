@@ -21,6 +21,8 @@
 | [model-config-page-design](../product-specs/2026-04-16-model-config-page-design.md) | shipped | 模型配置页面：提供商管理 / 模型可见性 / 自定义提供商 |
 | [opencode-embedded-process-design](../product-specs/2026-04-16-opencode-embedded-process-design.md) | shipped | Spring Boot 嵌入管理 OpenCode 进程：自动下载 / 动态端口 / 生命周期 |
 | [stage-as-computer-design](../product-specs/2026-04-17-stage-as-computer-design.md) | shipped | Stage 外壳化（macOS titlebar）+ 可关可开 + 智能自弹 + 删 /preview |
+| [stage-reveal-animation-design](../product-specs/2026-04-17-stage-reveal-animation-design.md) | shipped | Stage 气泡式开/关动画（clip-path circle）+ 圆角内 bg-muted 色差 |
+| [ai-settings-opencode-port](../product-specs/2026-04-17-ai-settings-opencode-port.md) | shipped | AI 设置中心：数据源 / 提供商 / 模型三页，对齐 OpenCode Desktop |
 
 ## 核心理念
 

@@ -63,7 +63,7 @@ client/src/
 - Create: `client/src/stores/stage-store.ts`
 - Test: `client/src/stores/stage-store.test.ts`
 
-- [ ] **Step 1: 写失败测试** `client/src/stores/stage-store.test.ts`
+- [x] **Step 1: 写失败测试** `client/src/stores/stage-store.test.ts`
 
 ```ts
 import { describe, it, expect, beforeEach } from 'vitest'
@@ -134,12 +134,12 @@ describe('stage-store', () => {
 })
 ```
 
-- [ ] **Step 2: 跑测试确认 fail**
+- [x] **Step 2: 跑测试确认 fail**
 
 `cd client && npm test -- src/stores/stage-store.test.ts`
 Expected: FAIL（store 文件不存在）
 
-- [ ] **Step 3: 写实现** `client/src/stores/stage-store.ts`
+- [x] **Step 3: 写实现** `client/src/stores/stage-store.ts`
 
 ```ts
 import { create } from 'zustand'
@@ -225,14 +225,14 @@ syncCollapsed: (sid, collapsed) => set((s) => {
 }),
 ```
 
-- [ ] **Step 4: 跑测试确认 pass + typecheck**
+- [x] **Step 4: 跑测试确认 pass + typecheck**
 
 ```bash
 cd client && npm test -- src/stores/stage-store.test.ts && npx tsc --noEmit
 ```
 Expected: 7 tests passed; typecheck 0 errors
 
-- [ ] **Step 5: commit**
+- [x] **Step 5: commit**
 
 ```bash
 git add client/src/stores/stage-store.ts client/src/stores/stage-store.test.ts
@@ -256,7 +256,7 @@ EOF
 
 跳过 TDD（纯组合 hook，无业务逻辑），直接写实现 + 在 stage-window 测试中覆盖。
 
-- [ ] **Step 1: 写实现** `client/src/features/stage/use-active-artifact-title.tsx`
+- [x] **Step 1: 写实现** `client/src/features/stage/use-active-artifact-title.tsx`
 
 ```tsx
 import { Table2Icon, LineChartIcon, NetworkIcon } from 'lucide-react'
@@ -280,14 +280,14 @@ export function useActiveArtifactTitle(sessionId: string | null) {
 }
 ```
 
-- [ ] **Step 2: typecheck**
+- [x] **Step 2: typecheck**
 
 ```bash
 cd client && npx tsc --noEmit
 ```
 Expected: 0 errors
 
-- [ ] **Step 3: commit**
+- [x] **Step 3: commit**
 
 ```bash
 git add client/src/features/stage/use-active-artifact-title.tsx
@@ -309,7 +309,7 @@ EOF
 - Create: `client/src/features/stage/use-stage-auto-open.ts`
 - Test: `client/src/features/stage/use-stage-auto-open.test.ts`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```ts
 import { describe, it, expect, beforeEach, vi } from 'vitest'
@@ -360,14 +360,14 @@ describe('use-stage-auto-open', () => {
 })
 ```
 
-- [ ] **Step 2: 跑测试确认 fail**
+- [x] **Step 2: 跑测试确认 fail**
 
 ```bash
 cd client && npm test -- src/features/stage/use-stage-auto-open.test.ts
 ```
 Expected: FAIL（模块不存在）
 
-- [ ] **Step 3: 写实现** `client/src/features/stage/use-stage-auto-open.ts`
+- [x] **Step 3: 写实现** `client/src/features/stage/use-stage-auto-open.ts`
 
 ```ts
 import { useOntologyStore } from '@/stores/ontology-store'
@@ -411,14 +411,14 @@ beforeEach(async () => {
 })
 ```
 
-- [ ] **Step 4: 跑测试确认 pass + typecheck**
+- [x] **Step 4: 跑测试确认 pass + typecheck**
 
 ```bash
 cd client && npm test -- src/features/stage/use-stage-auto-open.test.ts && npx tsc --noEmit
 ```
 Expected: 3 tests passed; typecheck 0 errors
 
-- [ ] **Step 5: commit**
+- [x] **Step 5: commit**
 
 ```bash
 git add client/src/features/stage/use-stage-auto-open.ts client/src/features/stage/use-stage-auto-open.test.ts
@@ -441,7 +441,7 @@ EOF
 - Create: `client/src/features/stage/components/stage-window.tsx`
 - Test: `client/src/features/stage/components/stage-window.test.tsx`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```tsx
 import { describe, it, expect, beforeEach } from 'vitest'
@@ -493,14 +493,14 @@ describe('StageWindow', () => {
 })
 ```
 
-- [ ] **Step 2: 跑测试确认 fail**
+- [x] **Step 2: 跑测试确认 fail**
 
 ```bash
 cd client && npm test -- src/features/stage/components/stage-window.test.tsx
 ```
 Expected: FAIL（组件不存在）
 
-- [ ] **Step 3: 写实现** `client/src/features/stage/components/stage-window.tsx`
+- [x] **Step 3: 写实现** `client/src/features/stage/components/stage-window.tsx`
 
 ```tsx
 import type { ReactNode } from 'react'
@@ -538,14 +538,14 @@ export function StageWindow({ sessionId, children }: Props) {
 }
 ```
 
-- [ ] **Step 4: 跑测试确认 pass + typecheck**
+- [x] **Step 4: 跑测试确认 pass + typecheck**
 
 ```bash
 cd client && npm test -- src/features/stage/components/stage-window.test.tsx && npx tsc --noEmit
 ```
 Expected: 4 tests passed; typecheck 0 errors
 
-- [ ] **Step 5: commit**
+- [x] **Step 5: commit**
 
 ```bash
 git add client/src/features/stage/components/stage-window.tsx client/src/features/stage/components/stage-window.test.tsx
@@ -568,7 +568,7 @@ EOF
 - Create: `client/src/features/stage/components/stage-toggle-button.tsx`
 - Test: `client/src/features/stage/components/stage-toggle-button.test.tsx`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```tsx
 import { describe, it, expect, beforeEach } from 'vitest'
@@ -619,14 +619,14 @@ describe('StageToggleButton', () => {
 })
 ```
 
-- [ ] **Step 2: 跑测试确认 fail**
+- [x] **Step 2: 跑测试确认 fail**
 
 ```bash
 cd client && npm test -- src/features/stage/components/stage-toggle-button.test.tsx
 ```
 Expected: FAIL（组件不存在）
 
-- [ ] **Step 3: 写实现** `client/src/features/stage/components/stage-toggle-button.tsx`
+- [x] **Step 3: 写实现** `client/src/features/stage/components/stage-toggle-button.tsx`
 
 ```tsx
 import { MonitorIcon } from 'lucide-react'
@@ -668,14 +668,14 @@ export function StageToggleButton() {
 }
 ```
 
-- [ ] **Step 4: 跑测试确认 pass + typecheck**
+- [x] **Step 4: 跑测试确认 pass + typecheck**
 
 ```bash
 cd client && npm test -- src/features/stage/components/stage-toggle-button.test.tsx && npx tsc --noEmit
 ```
 Expected: 4 tests passed; typecheck 0 errors
 
-- [ ] **Step 5: commit**
+- [x] **Step 5: commit**
 
 ```bash
 git add client/src/features/stage/components/stage-toggle-button.tsx client/src/features/stage/components/stage-toggle-button.test.tsx
@@ -697,7 +697,7 @@ EOF
 **Files:**
 - Modify: `client/src/features/session/split-view.tsx`
 
-- [ ] **Step 1: 写实现** 全文替换 `client/src/features/session/split-view.tsx`
+- [x] **Step 1: 写实现** 全文替换 `client/src/features/session/split-view.tsx`
 
 ```tsx
 import { useEffect, useRef } from 'react'
@@ -756,14 +756,14 @@ export function SplitView() {
 }
 ```
 
-- [ ] **Step 2: typecheck**
+- [x] **Step 2: typecheck**
 
 ```bash
 cd client && npx tsc --noEmit
 ```
 Expected: 0 errors
 
-- [ ] **Step 3: commit**
+- [x] **Step 3: commit**
 
 ```bash
 git add client/src/features/session/split-view.tsx
@@ -785,7 +785,7 @@ EOF
 **Files:**
 - Modify: `client/src/features/session/prompt-composer.tsx`
 
-- [ ] **Step 1: 改文件**
+- [x] **Step 1: 改文件**
 
 在 `import` 区追加：
 
@@ -799,14 +799,14 @@ import { StageToggleButton } from '@/features/stage/components/stage-toggle-butt
 <StageToggleButton />
 ```
 
-- [ ] **Step 2: typecheck**
+- [x] **Step 2: typecheck**
 
 ```bash
 cd client && npx tsc --noEmit
 ```
 Expected: 0 errors
 
-- [ ] **Step 3: commit**
+- [x] **Step 3: commit**
 
 ```bash
 git add client/src/features/session/prompt-composer.tsx
@@ -827,7 +827,7 @@ EOF
 **Files:**
 - Modify: `client/src/features/workspace/home-page.tsx`
 
-- [ ] **Step 1: 改文件**
+- [x] **Step 1: 改文件**
 
 在 import 区加：
 
@@ -842,14 +842,14 @@ import { ensureStageAutoOpenSubscribed } from '@/features/stage/use-stage-auto-o
 useEffect(() => { ensureStageAutoOpenSubscribed() }, [])
 ```
 
-- [ ] **Step 2: typecheck**
+- [x] **Step 2: typecheck**
 
 ```bash
 cd client && npx tsc --noEmit
 ```
 Expected: 0 errors
 
-- [ ] **Step 3: commit**
+- [x] **Step 3: commit**
 
 ```bash
 git add client/src/features/workspace/home-page.tsx
@@ -872,35 +872,35 @@ EOF
 - Delete: `client/src/routes/preview.tsx`
 - Delete: `client/src/features/preview/` 整个目录（7 文件）
 
-- [ ] **Step 1: 删除文件**
+- [x] **Step 1: 删除文件**
 
 ```bash
 rm client/src/routes/preview.tsx
 rm -rf client/src/features/preview
 ```
 
-- [ ] **Step 2: 重新生成 routeTree**
+- [x] **Step 2: 重新生成 routeTree**
 
 ```bash
 cd client && npm run gen:routes
 ```
 Expected: routeTree.gen.ts 自动剔除 PreviewRoute 引用
 
-- [ ] **Step 3: typecheck**
+- [x] **Step 3: typecheck**
 
 ```bash
 cd client && npx tsc --noEmit
 ```
 Expected: 0 errors
 
-- [ ] **Step 4: 全量 vitest**
+- [x] **Step 4: 全量 vitest**
 
 ```bash
 cd client && npm test
 ```
 Expected: 全部 passed（包括之前的 part-renderer.test 等）
 
-- [ ] **Step 5: commit**
+- [x] **Step 5: commit**
 
 ```bash
 git add -A client/src/routes client/src/features client/src/routeTree.gen.ts
@@ -922,7 +922,7 @@ EOF
 **Files:**
 - Modify: `docs/exec-plans/index.md`
 
-- [ ] **Step 1: 更新 index.md**
+- [x] **Step 1: 更新 index.md**
 
 把本 plan 加入"已完成"区块（在所有实施 commit 之后做）：
 
@@ -930,14 +930,14 @@ EOF
 | [Stage As Computer](../exec-plans/2026-04-17-stage-as-computer-plan.md) | 2026-04-17 | 右栏外壳化 + 小电脑按钮可关可开 + 智能自弹 + 删 /preview |
 ```
 
-- [ ] **Step 2: 最终 typecheck + 全量 vitest**
+- [x] **Step 2: 最终 typecheck + 全量 vitest**
 
 ```bash
 cd client && npx tsc --noEmit && npm test
 ```
 Expected: 0 errors; all tests passed
 
-- [ ] **Step 3: commit + push**
+- [x] **Step 3: commit + push**
 
 ```bash
 git add docs/exec-plans/index.md

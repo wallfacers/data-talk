@@ -60,7 +60,7 @@ client/src/features/session/model-picker/
 
 这一步先落地 fetch + query keys，后续页面依赖。
 
-- [ ] **Step 1：写失败测试**
+- [x] **Step 1：写失败测试**
 
 ```ts
 // client/src/features/settings/shared/__tests__/api.test.ts
@@ -108,14 +108,14 @@ describe('settings api', () => {
 })
 ```
 
-- [ ] **Step 2：运行测试确认失败**
+- [x] **Step 2：运行测试确认失败**
 
 ```
 cd client && npx vitest run src/features/settings/shared/__tests__/api.test.ts
 ```
 期望：模块不存在。
 
-- [ ] **Step 3：实现 api.ts**
+- [x] **Step 3：实现 api.ts**
 
 ```ts
 // client/src/features/settings/shared/api.ts
@@ -187,7 +187,7 @@ export const aiQueryKeys = {
 }
 ```
 
-- [ ] **Step 4：实现 recommended-providers.ts**
+- [x] **Step 4：实现 recommended-providers.ts**
 
 ```ts
 // client/src/features/settings/shared/recommended-providers.ts
@@ -207,13 +207,13 @@ export const PROVIDER_DESCRIPTIONS: Record<string, string> = {
 }
 ```
 
-- [ ] **Step 5：运行测试确认通过**
+- [x] **Step 5：运行测试确认通过**
 
 ```
 cd client && npx tsc --noEmit && npx vitest run src/features/settings/shared/__tests__/api.test.ts
 ```
 
-- [ ] **Step 6：提交**
+- [x] **Step 6：提交**
 
 ```
 git add client/src/features/settings/shared/
@@ -228,7 +228,7 @@ git commit -m "feat(settings): add shared api layer and recommended providers li
 - Create: `client/src/features/settings/settings-layout.tsx`
 - Create: `client/src/features/settings/settings-nav.tsx`
 
-- [ ] **Step 1：写组件测试**
+- [x] **Step 1：写组件测试**
 
 ```tsx
 // client/src/features/settings/__tests__/settings-layout.test.tsx
@@ -251,13 +251,13 @@ describe('SettingsLayout', () => {
 })
 ```
 
-- [ ] **Step 2：运行测试确认失败**
+- [x] **Step 2：运行测试确认失败**
 
 ```
 cd client && npx vitest run src/features/settings/__tests__/settings-layout.test.tsx
 ```
 
-- [ ] **Step 3：实现 SettingsNav**
+- [x] **Step 3：实现 SettingsNav**
 
 ```tsx
 // settings-nav.tsx
@@ -309,7 +309,7 @@ export function SettingsNav() {
 }
 ```
 
-- [ ] **Step 4：实现 SettingsLayout**
+- [x] **Step 4：实现 SettingsLayout**
 
 ```tsx
 // settings-layout.tsx
@@ -350,7 +350,7 @@ export function ProvidersPage() { return <div>提供商</div> }
 export function ModelsPage() { return <div>模型</div> }
 ```
 
-- [ ] **Step 5：更新路由**
+- [x] **Step 5：更新路由**
 
 ```ts
 // client/src/routes/settings.tsx
@@ -365,13 +365,13 @@ export const Route = createFileRoute('/settings')({
 })
 ```
 
-- [ ] **Step 6：运行测试 + 类型检查**
+- [x] **Step 6：运行测试 + 类型检查**
 
 ```
 cd client && npx tsc --noEmit && npx vitest run src/features/settings/__tests__/settings-layout.test.tsx
 ```
 
-- [ ] **Step 7：提交**
+- [x] **Step 7：提交**
 
 ```
 git add client/src/features/settings/ client/src/routes/settings.tsx
@@ -386,7 +386,7 @@ git commit -m "feat(settings): add sidebar layout with nav and section stubs"
 - Create: `client/src/features/settings/shared/provider-icon.tsx`
 - Modify: `client/src/features/settings/general/general-page.tsx`
 
-- [ ] **Step 1：移动 provider-icon**
+- [x] **Step 1：移动 provider-icon**
 
 ```
 cp client/src/features/model-config/provider-icon.tsx \
@@ -395,7 +395,7 @@ cp client/src/features/model-config/provider-icon.tsx \
 
 检查并调整 import（去掉相对路径依赖 mock-data 的部分，如有）。
 
-- [ ] **Step 2：GeneralPage 复用既有 `GeneralSettingsPanel`**
+- [x] **Step 2：GeneralPage 复用既有 `GeneralSettingsPanel`**
 
 ```tsx
 // general/general-page.tsx
@@ -413,13 +413,13 @@ export function GeneralPage() {
 
 **NOTE：** Task 10 会从 `features/model-config/` 搬走 `general-panel.tsx` 到 `features/settings/general/` 内部文件。本步先复用旧路径，Task 10 统一清理。
 
-- [ ] **Step 3：类型检查**
+- [x] **Step 3：类型检查**
 
 ```
 cd client && npx tsc --noEmit
 ```
 
-- [ ] **Step 4：提交**
+- [x] **Step 4：提交**
 
 ```
 git add client/src/features/settings/shared/provider-icon.tsx \
@@ -436,7 +436,7 @@ git commit -m "feat(settings): wire general page to existing settings panel"
 - Create: `client/src/features/settings/data-sources/connection-form-dialog.tsx`
 - Create: `client/src/features/settings/data-sources/api.ts`
 
-- [ ] **Step 1：写 api 层**
+- [x] **Step 1：写 api 层**
 
 ```ts
 // data-sources/api.ts
@@ -495,7 +495,7 @@ export async function testConnection(id: string): Promise<{ ok: boolean; latency
 export const connectionsKey = ['connections'] as const
 ```
 
-- [ ] **Step 2：写页面组件**
+- [x] **Step 2：写页面组件**
 
 ```tsx
 // data-sources-page.tsx
@@ -588,7 +588,7 @@ export function DataSourcesPage() {
 }
 ```
 
-- [ ] **Step 3：写表单对话框**
+- [x] **Step 3：写表单对话框**
 
 ```tsx
 // connection-form-dialog.tsx
@@ -698,13 +698,13 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 ```
 
-- [ ] **Step 4：类型检查 + 编译**
+- [x] **Step 4：类型检查 + 编译**
 
 ```
 cd client && npx tsc --noEmit && npm run build --if-present
 ```
 
-- [ ] **Step 5：基础组件测试**
+- [x] **Step 5：基础组件测试**
 
 ```tsx
 // data-sources/__tests__/data-sources-page.test.tsx
@@ -731,7 +731,7 @@ describe('DataSourcesPage', () => {
 cd client && npx vitest run src/features/settings/data-sources/__tests__/
 ```
 
-- [ ] **Step 6：提交**
+- [x] **Step 6：提交**
 
 ```
 git add client/src/features/settings/data-sources/
@@ -746,7 +746,7 @@ git commit -m "feat(settings): implement data sources page with CRUD and test co
 - Create: `client/src/features/settings/providers/providers-page.tsx`
 - Create: `client/src/features/settings/providers/connect-dialog.tsx`
 
-- [ ] **Step 1：写页面（连接 / 推荐两 section）**
+- [x] **Step 1：写页面（连接 / 推荐两 section）**
 
 ```tsx
 // providers-page.tsx
@@ -838,7 +838,7 @@ function Row({ p, action, onClick }: { p: RawProvider; action: 'connect' | 'reco
 }
 ```
 
-- [ ] **Step 2：写连接对话框（仅 api 类型；oauth 置灰）**
+- [x] **Step 2：写连接对话框（仅 api 类型；oauth 置灰）**
 
 ```tsx
 // connect-dialog.tsx
@@ -934,7 +934,7 @@ export function ConnectDialog({ providerId, providerName, onClose }: Props) {
 }
 ```
 
-- [ ] **Step 3：基础测试**
+- [x] **Step 3：基础测试**
 
 ```tsx
 // providers/__tests__/providers-page.test.tsx
@@ -972,7 +972,7 @@ describe('ProvidersPage', () => {
 cd client && npx vitest run src/features/settings/providers/__tests__/
 ```
 
-- [ ] **Step 4：类型检查 + 提交**
+- [x] **Step 4：类型检查 + 提交**
 
 ```
 cd client && npx tsc --noEmit
@@ -988,7 +988,7 @@ git commit -m "feat(settings): implement providers page with connect dialog"
 - Create: `client/src/features/settings/models/models-page.tsx`
 - Create: `client/src/features/settings/models/models-group.tsx`
 
-- [ ] **Step 1：页面组件**
+- [x] **Step 1：页面组件**
 
 ```tsx
 // models-page.tsx
@@ -1039,7 +1039,7 @@ export function ModelsPage() {
 }
 ```
 
-- [ ] **Step 2：分组组件**
+- [x] **Step 2：分组组件**
 
 ```tsx
 // models-group.tsx
@@ -1074,7 +1074,7 @@ export function ModelsGroup({ provider }: { provider: ProviderDto }) {
 }
 ```
 
-- [ ] **Step 3：基础测试**
+- [x] **Step 3：基础测试**
 
 ```tsx
 // models/__tests__/models-page.test.tsx
@@ -1114,7 +1114,7 @@ describe('ModelsPage', () => {
 cd client && npx vitest run src/features/settings/models/__tests__/
 ```
 
-- [ ] **Step 4：类型检查 + 提交**
+- [x] **Step 4：类型检查 + 提交**
 
 ```
 cd client && npx tsc --noEmit
@@ -1131,7 +1131,7 @@ git commit -m "feat(settings): implement models page with search and enable togg
 - Create: `client/src/features/session/model-picker/model-picker-popover.tsx`
 - Modify: `client/src/features/session/prompt-composer.tsx`
 
-- [ ] **Step 1：写触发器 + Popover（分组 + 搜索）**
+- [x] **Step 1：写触发器 + Popover（分组 + 搜索）**
 
 ```tsx
 // model-picker.tsx
@@ -1256,7 +1256,7 @@ export function ModelPickerPopover({ providers, currentModelId, onPick }: Props)
 }
 ```
 
-- [ ] **Step 2：替换 prompt-composer 内的模型选择器**
+- [x] **Step 2：替换 prompt-composer 内的模型选择器**
 
 修改 `client/src/features/session/prompt-composer.tsx`：
 
@@ -1267,7 +1267,7 @@ export function ModelPickerPopover({ providers, currentModelId, onPick }: Props)
 
 结果：composer 不再持有 `selectedModel` 状态；所有模型选择都通过 React Query `getCurrentModel / setCurrentModel` 与后端同步。
 
-- [ ] **Step 3：vitest 基础测试**
+- [x] **Step 3：vitest 基础测试**
 
 ```tsx
 // model-picker/__tests__/model-picker.test.tsx
@@ -1301,13 +1301,13 @@ describe('ModelPicker', () => {
 cd client && npx vitest run src/features/session/model-picker/__tests__/
 ```
 
-- [ ] **Step 4：类型检查**
+- [x] **Step 4：类型检查**
 
 ```
 cd client && npx tsc --noEmit
 ```
 
-- [ ] **Step 5：提交**
+- [x] **Step 5：提交**
 
 ```
 git add client/src/features/session/model-picker/ \
@@ -1324,7 +1324,7 @@ git commit -m "feat(session): replace hard-coded model select with data-driven p
 - Delete: `client/src/features/model-config/**`
 - Modify: `client/src/features/settings/general/general-page.tsx`（把 `GeneralSettingsPanel` 搬进来）
 
-- [ ] **Step 1：搬 `GeneralSettingsPanel` 源码到 settings/general/**
+- [x] **Step 1：搬 `GeneralSettingsPanel` 源码到 settings/general/**
 
 ```bash
 cp client/src/features/model-config/general-panel.tsx \
@@ -1339,7 +1339,7 @@ import { GeneralSettingsPanel } from './general-panel'
 
 类型检查通过后再删旧文件。
 
-- [ ] **Step 2：移除 `<SettingsDialog />`**
+- [x] **Step 2：移除 `<SettingsDialog />`**
 
 ```tsx
 // __root.tsx
@@ -1369,20 +1369,20 @@ cd client && grep -r "features/model-config" src/
 
 凡是引用都改到 `features/settings/` 下新位置，或直接删除（如 MOCK 数据）。
 
-- [ ] **Step 3：删除旧目录**
+- [x] **Step 3：删除旧目录**
 
 ```
 rm -rf client/src/features/model-config/
 ```
 
-- [ ] **Step 4：类型检查 + 全量测试**
+- [x] **Step 4：类型检查 + 全量测试**
 
 ```
 cd client && npx tsc --noEmit && npx vitest run
 ```
 期望：0 type error，所有测试 PASS。
 
-- [ ] **Step 5：提交**
+- [x] **Step 5：提交**
 
 ```
 git add -A client/src/features/ client/src/routes/__root.tsx
@@ -1396,7 +1396,7 @@ git commit -m "refactor(client): remove legacy model-config and settings dialog"
 **Files:**
 - Modify: `docs/exec-plans/index.md`
 
-- [ ] **Step 1：前端 + 后端同时起**
+- [x] **Step 1：前端 + 后端同时起**
 
 ```
 # Terminal 1
@@ -1406,7 +1406,7 @@ cd client && npm run tauri dev
 # Terminal 3（确保 OpenCode 本地跑在 :4096）
 ```
 
-- [ ] **Step 2：手动 smoke 走位**
+- [x] **Step 2：手动 smoke 走位**
 
 - 打开 `/settings` → 侧边栏四项都在（通用 / 数据源 / 提供商 / 模型）
 - 数据源：新增一条 MySQL → 测试连接（预期失败，正常 → 新增 H2 in-memory 测试）→ 编辑 → 删除
@@ -1415,11 +1415,11 @@ cd client && npm run tauri dev
 - 回到 chat 页面 → prompt composer 模型选择器 `[icon][name][▼]` 展示正确 → 点开 Popover 能看到启用的模型 → 选中一个
 - 在 chat 发送一条 "你好" → OpenCode 日志能看到 body 里带 `model` 字段
 
-- [ ] **Step 3：登记计划完成**
+- [x] **Step 3：登记计划完成**
 
 修改 `docs/exec-plans/index.md`：将 Part 1 + Part 2 从活跃移到已完成，附完成日期。
 
-- [ ] **Step 4：提交**
+- [x] **Step 4：提交**
 
 ```
 git add docs/exec-plans/index.md

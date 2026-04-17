@@ -36,7 +36,7 @@
 - Modify: `client/src/stores/stage-store.ts`
 - Test: `client/src/stores/stage-store.test.ts`
 
-- [ ] **Step 1：追加失败测试**
+- [x] **Step 1：追加失败测试**
 
 在 `client/src/stores/stage-store.test.ts` 文件末尾的 `describe` 块**内部**（最后一个 `it` 之后、`})` 之前）追加：
 
@@ -82,7 +82,7 @@
   })
 ```
 
-- [ ] **Step 2：运行测试确认失败**
+- [x] **Step 2：运行测试确认失败**
 
 ```bash
 cd client && npx vitest run src/stores/stage-store.test.ts
@@ -90,7 +90,7 @@ cd client && npx vitest run src/stores/stage-store.test.ts
 
 Expected：前 4 条新测试 FAIL，原因 `useStageStore.getState().setRevealOrigin is not a function`。
 
-- [ ] **Step 3：实现 store 扩展**
+- [x] **Step 3：实现 store 扩展**
 
 编辑 `client/src/stores/stage-store.ts`，在 `StageState` 类型里追加两行（放在 `maximizedBySession` 后、`openStage` 前）：
 
@@ -129,7 +129,7 @@ type StageState = {
   setRevealOrigin: (origin) => set({ revealOrigin: origin }),
 ```
 
-- [ ] **Step 4：运行测试确认通过**
+- [x] **Step 4：运行测试确认通过**
 
 ```bash
 cd client && npx vitest run src/stores/stage-store.test.ts
@@ -137,7 +137,7 @@ cd client && npx vitest run src/stores/stage-store.test.ts
 
 Expected：全部测试 PASS（包含新加的 4 条 + 既有 7 条）。
 
-- [ ] **Step 5：提交**
+- [x] **Step 5：提交**
 
 ```bash
 cd .. && git add client/src/stores/stage-store.ts client/src/stores/stage-store.test.ts
@@ -152,7 +152,7 @@ git commit -m "feat(stage-store): add revealOrigin field for bubble animation"
 - Modify: `client/src/features/stage/components/stage-toggle-button.tsx`
 - Test: `client/src/features/stage/components/stage-toggle-button.test.tsx`
 
-- [ ] **Step 1：追加失败测试**
+- [x] **Step 1：追加失败测试**
 
 在 `client/src/features/stage/components/stage-toggle-button.test.tsx` 文件末尾 `describe` 块**内部**追加：
 
@@ -182,7 +182,7 @@ git commit -m "feat(stage-store): add revealOrigin field for bubble animation"
     })
 ```
 
-- [ ] **Step 2：运行测试确认失败**
+- [x] **Step 2：运行测试确认失败**
 
 ```bash
 cd client && npx vitest run src/features/stage/components/stage-toggle-button.test.tsx
@@ -190,7 +190,7 @@ cd client && npx vitest run src/features/stage/components/stage-toggle-button.te
 
 Expected：新加的测试 FAIL —— `revealOrigin` 仍为 `null`。
 
-- [ ] **Step 3：实现按钮 ref + 测量逻辑**
+- [x] **Step 3：实现按钮 ref + 测量逻辑**
 
 编辑 `client/src/features/stage/components/stage-toggle-button.tsx`，完整替换为：
 
@@ -254,7 +254,7 @@ export function StageToggleButton() {
 }
 ```
 
-- [ ] **Step 4：运行测试确认通过**
+- [x] **Step 4：运行测试确认通过**
 
 ```bash
 cd client && npx vitest run src/features/stage/components/stage-toggle-button.test.tsx
@@ -262,7 +262,7 @@ cd client && npx vitest run src/features/stage/components/stage-toggle-button.te
 
 Expected：全部 PASS（新加 1 条 + 既有 5 条）。
 
-- [ ] **Step 5：类型检查**
+- [x] **Step 5：类型检查**
 
 ```bash
 cd client && npm run typecheck
@@ -270,7 +270,7 @@ cd client && npm run typecheck
 
 Expected：0 error。
 
-- [ ] **Step 6：提交**
+- [x] **Step 6：提交**
 
 ```bash
 cd .. && git add client/src/features/stage/components/stage-toggle-button.tsx client/src/features/stage/components/stage-toggle-button.test.tsx
@@ -285,7 +285,7 @@ git commit -m "feat(stage-toggle): capture button center as reveal origin on cli
 - Modify: `client/src/features/session/split-view.tsx`
 - Test: `client/src/features/session/split-view.test.tsx`（新建）
 
-- [ ] **Step 1：写失败测试（新建文件）**
+- [x] **Step 1：写失败测试（新建文件）**
 
 创建 `client/src/features/session/split-view.test.tsx`，完整内容：
 
@@ -380,7 +380,7 @@ describe('SplitView clip-path reveal', () => {
 })
 ```
 
-- [ ] **Step 2：运行测试确认失败**
+- [x] **Step 2：运行测试确认失败**
 
 ```bash
 cd client && npx vitest run src/features/session/split-view.test.tsx
@@ -388,7 +388,7 @@ cd client && npx vitest run src/features/session/split-view.test.tsx
 
 Expected：FAIL —— 因为 `SplitView` 尚未渲染 `data-stage-panel` / 正确 clip-path / translateLatched 行为。
 
-- [ ] **Step 3：改 SplitView 实现**
+- [x] **Step 3：改 SplitView 实现**
 
 编辑 `client/src/features/session/split-view.tsx`，**完整替换**为：
 
@@ -538,7 +538,7 @@ export function SplitView() {
 - Stage 容器 `<div>` 加 `ref + data-stage-panel`，style 直接内联（不再用既有的 `translateX` 动画，改由 `translateLatched` 切换）
 - clip-path 作为核心动画走 transition；transform 不走 transition（瞬切）
 
-- [ ] **Step 4：运行测试确认通过**
+- [x] **Step 4：运行测试确认通过**
 
 ```bash
 cd client && npx vitest run src/features/session/split-view.test.tsx
@@ -546,7 +546,7 @@ cd client && npx vitest run src/features/session/split-view.test.tsx
 
 Expected：4 条测试全部 PASS。
 
-- [ ] **Step 5：回归跑整个 vitest + typecheck**
+- [x] **Step 5：回归跑整个 vitest + typecheck**
 
 ```bash
 cd client && npm run typecheck && npm run test
@@ -554,7 +554,7 @@ cd client && npm run typecheck && npm run test
 
 Expected：typecheck 0 error；所有既有测试（含 stage-store、stage-toggle-button、stage-window、session 其他测试）都 PASS。
 
-- [ ] **Step 6：提交**
+- [x] **Step 6：提交**
 
 ```bash
 cd .. && git add client/src/features/session/split-view.tsx client/src/features/session/split-view.test.tsx
@@ -570,7 +570,7 @@ git commit -m "feat(split-view): clip-path bubble reveal animation for stage pan
 
 此改动纯视觉，不走 TDD（`bg-card` vs `bg-muted` 在 jsdom 下无法断言像素色值；既有 `stage-window.test.tsx` 已覆盖交互行为，本步仅需确保它们仍 PASS）。
 
-- [ ] **Step 1：改 className**
+- [x] **Step 1：改 className**
 
 编辑 `client/src/features/stage/components/stage-window.tsx` 第 27 行：
 
@@ -582,7 +582,7 @@ git commit -m "feat(split-view): clip-path bubble reveal animation for stage pan
 <div className="flex h-full w-full flex-col overflow-hidden rounded-2xl border bg-muted shadow-xl ring-1 ring-black/5 dark:ring-white/10">
 ```
 
-- [ ] **Step 2：跑 stage-window 既有测试确认不破坏**
+- [x] **Step 2：跑 stage-window 既有测试确认不破坏**
 
 ```bash
 cd client && npx vitest run src/features/stage/components/stage-window.test.tsx
@@ -590,7 +590,7 @@ cd client && npx vitest run src/features/stage/components/stage-window.test.tsx
 
 Expected：既有测试全部 PASS。
 
-- [ ] **Step 3：类型检查**
+- [x] **Step 3：类型检查**
 
 ```bash
 cd client && npm run typecheck
@@ -598,7 +598,7 @@ cd client && npm run typecheck
 
 Expected：0 error。
 
-- [ ] **Step 4：提交**
+- [x] **Step 4：提交**
 
 ```bash
 cd .. && git add client/src/features/stage/components/stage-window.tsx
@@ -612,7 +612,7 @@ git commit -m "style(stage-window): bg-card -> bg-muted to separate from outer b
 **Files:**
 - Modify: `client/src/styles/globals.css`
 
-- [ ] **Step 1：追加媒体查询**
+- [x] **Step 1：追加媒体查询**
 
 编辑 `client/src/styles/globals.css`，在文件**末尾**追加：
 
@@ -625,7 +625,7 @@ git commit -m "style(stage-window): bg-card -> bg-muted to separate from outer b
 }
 ```
 
-- [ ] **Step 2：类型检查 + 测试回归**
+- [x] **Step 2：类型检查 + 测试回归**
 
 ```bash
 cd client && npm run typecheck && npm run test
@@ -633,7 +633,7 @@ cd client && npm run typecheck && npm run test
 
 Expected：typecheck 0 error；全部测试 PASS。
 
-- [ ] **Step 3：提交**
+- [x] **Step 3：提交**
 
 ```bash
 cd .. && git add client/src/styles/globals.css
@@ -646,28 +646,28 @@ git commit -m "style(globals): disable stage transitions under prefers-reduced-m
 
 无自动化，依次操作确认。**每条不通过则停下排查，不继续**。
 
-- [ ] **Step 1：启动 dev**
+- [x] **Step 1：启动 dev**
 
 ```bash
 cd client && npm run dev
 ```
 
-- [ ] **Step 2：按清单验收**
+- [x] **Step 2：按清单验收**
 
 打开浏览器（或 `npm run tauri dev`）后：
 
-- [ ] 先建/选一个 session，处于 HERO → 点 composer 里的小电脑按钮 → stage 从按钮位置圆形膨胀展开，chat 同步让位到 46%
-- [ ] 在 SPLIT + open 态再次点按钮 → stage 从按钮位置收缩回零
-- [ ] 点 titlebar X 关闭 → stage 仍从"上一次按钮位置"为圆心收缩（非 X 按钮位置），属预期
-- [ ] 首次 artifact 自动弹出：
+- [x] 先建/选一个 session，处于 HERO → 点 composer 里的小电脑按钮 → stage 从按钮位置圆形膨胀展开，chat 同步让位到 46%
+- [x] 在 SPLIT + open 态再次点按钮 → stage 从按钮位置收缩回零
+- [x] 点 titlebar X 关闭 → stage 仍从"上一次按钮位置"为圆心收缩（非 X 按钮位置），属预期
+- [x] 首次 artifact 自动弹出：
   - 场景 A（从未点过按钮）→ stage 从右侧滑入（fallback 行为）
   - 场景 B（点过按钮一次再关闭后）→ stage 从上次按钮位置气泡膨胀
-- [ ] 切换 session → stage 状态独立保持
-- [ ] Stage 圆角内部 light 模式微灰 vs 外层纯白；dark 模式明显亮一档 vs 外层近黑
-- [ ] DevTools Rendering → Emulate CSS → `prefers-reduced-motion: reduce` 开启 → 切换 stage 即时无动画
-- [ ] maximized → 退出 maximized 时 stage 宽度平滑缩回 54%，clip-path 不产生气泡
+- [x] 切换 session → stage 状态独立保持
+- [x] Stage 圆角内部 light 模式微灰 vs 外层纯白；dark 模式明显亮一档 vs 外层近黑
+- [x] DevTools Rendering → Emulate CSS → `prefers-reduced-motion: reduce` 开启 → 切换 stage 即时无动画
+- [x] maximized → 退出 maximized 时 stage 宽度平滑缩回 54%，clip-path 不产生气泡
 
-- [ ] **Step 3：停 dev**
+- [x] **Step 3：停 dev**
 
 `Ctrl+C` 停 `npm run dev`。
 
@@ -678,7 +678,7 @@ cd client && npm run dev
 **Files:**
 - Modify: `docs/exec-plans/index.md`
 
-- [ ] **Step 1：更新索引**
+- [x] **Step 1：更新索引**
 
 编辑 `docs/exec-plans/index.md`，在「活跃计划」或「已完成计划」表中追加一行（完成后归入已完成；此处假设完成）：
 
@@ -688,7 +688,7 @@ cd client && npm run dev
 
 放置位置：在 `[Stage As Computer]` 行**之前**（日期相同，按相关性排在一起）。
 
-- [ ] **Step 2：提交**
+- [x] **Step 2：提交**
 
 ```bash
 git add docs/exec-plans/index.md docs/exec-plans/2026-04-17-stage-reveal-animation-plan.md
@@ -701,10 +701,10 @@ git commit -m "docs(exec-plan): register stage reveal animation plan"
 
 完成 Task 1–7 后：
 
-- [ ] `cd client && npm run typecheck` → 0 error
-- [ ] `cd client && npm run test` → 全绿
-- [ ] 手动验收清单（Task 6 Step 2）全部 ✅
-- [ ] `git log --oneline -10` 看到 6 个 feat/style/docs commit（Task 1–5 + Task 7）
+- [x] `cd client && npm run typecheck` → 0 error
+- [x] `cd client && npm run test` → 全绿
+- [x] 手动验收清单（Task 6 Step 2）全部 ✅
+- [x] `git log --oneline -10` 看到 6 个 feat/style/docs commit（Task 1–5 + Task 7）
 
 ---
 

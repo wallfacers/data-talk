@@ -6,7 +6,7 @@
 
 | 计划 | 状态 | 摘要 |
 |------|------|------|
-| [AI Settings · Part 2 · Frontend](./2026-04-17-ai-settings-part2-frontend.md) | ✅ 已完成 | 设置中心 UI + 对话框 + Chat 模型选择器 |
+| *(无)* | | |
 
 ## 已完成计划
 
@@ -27,6 +27,8 @@
 | [Plan A Part 3](./2026-04-16-manus-a-backend-platform-part3.md) | 2026-04-16 | Flyway SQLite, 持久化仓储 |
 | [Plan A Part 4](./2026-04-16-manus-a-backend-platform-part4.md) | 2026-04-16 | OpenCode Gateway, ToolCallBridge, E2E Smoke Test |
 | [Client Rebuild](./2026-04-16-client-rebuild-tauri-vite-plan.md) | 2026-04-16 | Tauri v2 + React 19 + Vite 客户端骨架 |
+| [Tech Debt Tracker](./tech-debt-tracker.md) | — | 已知技术债务集中记录（P0/P1/P2 优先级） |
+| [UI Demo Stage Animation Debt](./ui-demo-stage-animation-debt.md) | 2026-04-17 | Demo 预览模式与 Stage 滑动动画技术债 |
 
 ## 工作流
 
