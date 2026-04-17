@@ -6,12 +6,13 @@
 
 | 计划 | 状态 | 摘要 |
 |------|------|------|
-| [AI Settings · Part 2 · Frontend](./2026-04-17-ai-settings-part2-frontend.md) | ⚪ 待启动 | 设置中心 UI + 对话框 + Chat 模型选择器 |
+| [AI Settings · Part 2 · Frontend](./2026-04-17-ai-settings-part2-frontend.md) | ✅ 已完成 | 设置中心 UI + 对话框 + Chat 模型选择器 |
 
 ## 已完成计划
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [AI Settings · Part 2 · Frontend](./2026-04-17-ai-settings-part2-frontend.md) | 2026-04-17 | 设置中心 UI + 对话框 + Chat 模型选择器 |
 | [AI Settings · Part 1 · Backend](./2026-04-17-ai-settings-part1-backend.md) | 2026-04-17 | OpenCode 代理 + 偏好持久化 + 连接 CRUD |
 | [Plan B: MVP Actions](./2026-04-16-manus-b-mvp-actions.md) | 2026-04-17 | 6 个 MVP Action Handler + 真实 OpenCode SSE 集成 |
 | [Plan C: Client Split View](./2026-04-16-manus-c-client-split-view.md) | 2026-04-17 | Manus 风格前端分屏交互、HERO→SPLIT 动画、工件时间线 |
