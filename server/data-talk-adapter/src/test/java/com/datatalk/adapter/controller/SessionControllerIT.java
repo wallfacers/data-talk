@@ -1,6 +1,10 @@
 package com.datatalk.adapter.controller;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
@@ -14,6 +18,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class SessionControllerIT {
 
     @Autowired MockMvc mvc;
+    @Autowired ObjectMapper om;
+    @Autowired @Qualifier("datatalkJdbc") JdbcTemplate jdbc;
 
     @Test
     void create_then_list_returns_session() throws Exception {
@@ -54,5 +60,84 @@ class SessionControllerIT {
         mvc.perform(get("/api/sessions"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.length()").value(org.hamcrest.Matchers.greaterThanOrEqualTo(2)));
+    }
+
+    @Test
+    void patch_updates_title() throws Exception {
+        String id = createSession("conn-patch", "旧标题");
+
+        mvc.perform(patch("/api/sessions/" + id)
+                .contentType("application/json")
+                .content("{\"title\":\"新标题\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(id))
+            .andExpect(jsonPath("$.title").value("新标题"));
+
+        mvc.perform(get("/api/sessions/" + id))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.title").value("新标题"));
+    }
+
+    @Test
+    void patch_rejects_blank_title() throws Exception {
+        String id = createSession("conn-patch-blank", "原标题");
+
+        mvc.perform(patch("/api/sessions/" + id)
+                .contentType("application/json")
+                .content("{\"title\":\"  \"}"))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void patch_missing_returns_404() throws Exception {
+        mvc.perform(patch("/api/sessions/nope")
+                .contentType("application/json")
+                .content("{\"title\":\"x\"}"))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void delete_returns_204_then_404() throws Exception {
+        String id = createSession("conn-del", "待删");
+
+        mvc.perform(delete("/api/sessions/" + id))
+            .andExpect(status().isNoContent());
+
+        mvc.perform(get("/api/sessions/" + id))
+            .andExpect(status().isNotFound());
+
+        mvc.perform(delete("/api/sessions/" + id))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void delete_cascades_messages() throws Exception {
+        String id = createSession("conn-cascade", "含消息");
+
+        jdbc.update("""
+            INSERT INTO messages(id, session_id, role, parts_json, created_at)
+            VALUES(?, ?, ?, ?, ?)
+            """, "msg-" + id, id, "USER", "[]", System.currentTimeMillis());
+
+        Integer before = jdbc.queryForObject(
+            "SELECT COUNT(*) FROM messages WHERE session_id = ?", Integer.class, id);
+        org.assertj.core.api.Assertions.assertThat(before).isEqualTo(1);
+
+        mvc.perform(delete("/api/sessions/" + id))
+            .andExpect(status().isNoContent());
+
+        Integer after = jdbc.queryForObject(
+            "SELECT COUNT(*) FROM messages WHERE session_id = ?", Integer.class, id);
+        org.assertj.core.api.Assertions.assertThat(after).isZero();
+    }
+
+    private String createSession(String connectionId, String title) throws Exception {
+        String body = "{\"connectionId\":\"" + connectionId + "\",\"title\":\"" + title + "\"}";
+        String json = mvc.perform(post("/api/sessions")
+                .contentType("application/json").content(body))
+            .andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString();
+        JsonNode node = om.readTree(json);
+        return node.get("id").asText();
     }
 }

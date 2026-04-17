@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 @RestController
 @RequestMapping("/api/sessions")
@@ -38,7 +39,29 @@ public class SessionController {
             .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    @PatchMapping("/{id}")
+    public ResponseEntity<SessionDto> rename(@PathVariable String id, @RequestBody RenameRequest req) {
+        try {
+            SessionRecord rec = svc.rename(id, req == null ? null : req.title());
+            return ResponseEntity.ok(SessionDto.from(rec));
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable String id) {
+        try {
+            svc.delete(id);
+            return ResponseEntity.noContent().build();
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
     public record CreateSessionRequest(String connectionId, String title) {}
+
+    public record RenameRequest(String title) {}
 
     public record SessionDto(
         String id,

@@ -51,6 +51,20 @@ public class SessionRepository {
         jdbc.update("UPDATE sessions SET has_ever_sent = 1, updated_at = ? WHERE id = ?", now, id);
     }
 
+    public int updateTitle(String id, String title, long now) {
+        return jdbc.update(
+            "UPDATE sessions SET title = ?, updated_at = ? WHERE id = ?",
+            title, now, id);
+    }
+
+    public int deleteById(String id) {
+        return jdbc.update("DELETE FROM sessions WHERE id = ?", id);
+    }
+
+    public int deleteMessagesBySession(String id) {
+        return jdbc.update("DELETE FROM messages WHERE session_id = ?", id);
+    }
+
     public java.util.List<SessionRecord> listAll() {
         return jdbc.query("SELECT * FROM sessions ORDER BY updated_at DESC", MAPPER);
     }
