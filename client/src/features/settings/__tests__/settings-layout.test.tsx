@@ -1,48 +1,34 @@
-import { render, screen, waitFor } from '@testing-library/react'
-import { describe, it, expect } from 'vitest'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { createMemoryHistory, createRouter, RouterProvider } from '@tanstack/react-router'
-import { routeTree } from '@/routeTree.gen'
-import { SettingsLayout } from '../settings-layout'
+import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest'
+import { SettingsNav } from '../settings-nav'
 
-const qc = new QueryClient({
-  defaultOptions: { queries: { retry: false, gcTime: 0 } },
-})
-
-function renderWithRouter(initialEntries: string[] = ['/settings']) {
-  const memoryHistory = createMemoryHistory({ initialEntries })
-  const router = createRouter({ routeTree, history: memoryHistory })
-  void SettingsLayout
-  render(
-    <QueryClientProvider client={qc}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
-  )
-  return router
-}
-
-describe('SettingsLayout', () => {
-  it('renders all top-level nav entries', async () => {
-    renderWithRouter()
-    await waitFor(() => {
-      expect(screen.getAllByText('通用').length).toBeGreaterThanOrEqual(1)
-      expect(screen.getAllByText('数据源').length).toBeGreaterThanOrEqual(1)
-      expect(screen.getAllByText('提供商').length).toBeGreaterThanOrEqual(1)
-      expect(screen.getAllByText('模型').length).toBeGreaterThanOrEqual(1)
-    })
+describe('SettingsNav', () => {
+  it('renders all top-level nav entries', () => {
+    render(<SettingsNav activeSection="general" onSectionChange={() => {}} />)
+    expect(screen.getByText('通用')).toBeInTheDocument()
+    expect(screen.getByText('数据源')).toBeInTheDocument()
+    expect(screen.getByText('提供商')).toBeInTheDocument()
+    expect(screen.getByText('模型')).toBeInTheDocument()
   })
 
-  it('renders the default section (general) content', async () => {
-    renderWithRouter()
-    await waitFor(() => {
-      expect(screen.getAllByText('通用').length).toBeGreaterThanOrEqual(1)
-    })
+  it('highlights the active section', () => {
+    render(<SettingsNav activeSection="data-sources" onSectionChange={() => {}} />)
+    const dataSourcesBtn = screen.getByRole('button', { name: /数据源/ })
+    const generalBtn = screen.getByRole('button', { name: /通用/ })
+    expect(dataSourcesBtn).toHaveClass('bg-accent')
+    expect(generalBtn).not.toHaveClass('bg-accent')
   })
 
-  it('navigates to data-sources section', async () => {
-    renderWithRouter(['/settings?section=data-sources'])
-    await waitFor(() => {
-      expect(screen.getAllByText('数据源').length).toBeGreaterThanOrEqual(1)
-    })
+  it('calls onSectionChange when a nav item is clicked', () => {
+    const handler = vi.fn()
+    render(<SettingsNav activeSection="general" onSectionChange={handler} />)
+    fireEvent.click(screen.getByRole('button', { name: /模型/ }))
+    expect(handler).toHaveBeenCalledWith('models')
+  })
+
+  it('shows section groups with titles', () => {
+    render(<SettingsNav activeSection="general" onSectionChange={() => {}} />)
+    expect(screen.getByText('桌面')).toBeInTheDocument()
+    expect(screen.getByText('服务器')).toBeInTheDocument()
   })
 })

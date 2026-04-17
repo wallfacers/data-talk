@@ -1,4 +1,3 @@
-import { Link, useSearch } from '@tanstack/react-router'
 import { cn } from '@/lib/utils'
 import { Settings, Database, Box, Sparkles } from 'lucide-react'
 
@@ -15,9 +14,12 @@ const GROUPS: { title: string; items: { key: Section; label: string; icon: React
   ]},
 ]
 
-export function SettingsNav() {
-  const search = useSearch({ from: '/settings' }) as { section?: Section }
-  const current = search.section ?? 'general'
+interface SettingsNavProps {
+  activeSection: Section
+  onSectionChange: (section: Section) => void
+}
+
+export function SettingsNav({ activeSection, onSectionChange }: SettingsNavProps) {
   return (
     <nav className="flex w-48 flex-col gap-4 border-r p-4 text-sm">
       {GROUPS.map(g => (
@@ -26,17 +28,17 @@ export function SettingsNav() {
           {g.items.map(it => {
             const Icon = it.icon
             return (
-              <Link
+              <button
                 key={it.key}
-                to="/settings"
-                search={{ section: it.key }}
+                type="button"
+                onClick={() => onSectionChange(it.key)}
                 className={cn(
-                  'flex items-center gap-2 rounded px-2 py-1.5 hover:bg-accent',
-                  current === it.key && 'bg-accent font-medium',
+                  'flex w-full items-center gap-2 rounded px-2 py-1.5 hover:bg-accent text-left',
+                  activeSection === it.key && 'bg-accent font-medium',
                 )}
               >
                 <Icon className="size-4" />{it.label}
-              </Link>
+              </button>
             )
           })}
         </div>

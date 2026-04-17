@@ -1,7 +1,7 @@
 'use client'
 
 import { DatabaseIcon, EllipsisVerticalIcon, Settings2Icon, SlidersHorizontalIcon } from 'lucide-react'
-import { useNavigate } from '@tanstack/react-router'
+import { useSettingsDialogStore } from '@/features/settings/settings-dialog-store'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   DropdownMenu,
@@ -28,7 +28,7 @@ export function NavUser({
   }
 }) {
   const { isMobile } = useSidebar()
-  const navigate = useNavigate()
+  const openDialog = useSettingsDialogStore((s) => s.openDialog)
   const initials = user.name.slice(0, 2).toUpperCase()
 
   return (
@@ -76,21 +76,21 @@ export function NavUser({
             <DropdownMenuGroup>
               <DropdownMenuItem
                 className="gap-2 px-2 py-1.5"
-                onClick={() => navigate({ to: '/settings', search: { section: 'general' } })}
+                onClick={() => openDialog('general')}
               >
                 <Settings2Icon />
                 <span>系统设置</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="gap-2 px-2 py-1.5"
-                onClick={() => navigate({ to: '/settings', search: { section: 'data-sources' } })}
+                onClick={() => openDialog('data-sources')}
               >
                 <DatabaseIcon />
                 <span>连接配置</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="gap-2 px-2 py-1.5"
-                onClick={() => navigate({ to: '/settings', search: { section: 'models' } })}
+                onClick={() => openDialog('models')}
               >
                 <SlidersHorizontalIcon />
                 <span>模型配置</span>
