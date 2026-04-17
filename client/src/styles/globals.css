@@ -139,13 +139,13 @@
 ::-webkit-scrollbar-thumb {
   /* 3px transparent border + padding-box clip => thumb visually 4px wide,
      leaving a 3px gap on each side so it never kisses the container border */
-  background: var(--border);
+  background: var(--muted-foreground);
   background-clip: padding-box;
   border: 3px solid transparent;
   border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--ring);
+  background: var(--foreground);
   background-clip: padding-box;
 }
 ::-webkit-scrollbar-button {

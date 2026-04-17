@@ -29,8 +29,8 @@ export function StageToggleButton() {
       disabled={disabled}
       onClick={() => sid && toggle(sid)}
       className={cn(
-        'rounded-md text-muted-foreground hover:bg-accent/50',
-        open && 'bg-accent/70 text-foreground',
+        'cursor-pointer rounded-md text-black hover:bg-accent/50 disabled:cursor-not-allowed disabled:pointer-events-auto dark:text-white',
+        open && 'bg-accent/70',
       )}
     >
       <MonitorIcon className="size-3.5" />

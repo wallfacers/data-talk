@@ -86,20 +86,23 @@ function InnerComposer() {
 
   return (
     <form onSubmit={onSubmit} className="w-full">
-      <InputGroup className="rounded-2xl !border-foreground/20 shadow-sm transition-shadow focus-within:!border-foreground/40 focus-within:shadow-md dark:!border-white/25 dark:focus-within:!border-white/40">
+      <InputGroup
+        className="rounded-2xl !border-foreground/20 shadow-sm transition-shadow focus-within:!border-foreground/40 focus-within:shadow-md dark:!border-white/25 dark:focus-within:!border-white/40"
+        style={{ backgroundColor: 'var(--background)' }}
+      >
         <InputGroupTextarea
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={onKey}
           placeholder="用自然语言查询你的数据库..."
-          className="h-[100px] resize-none overflow-y-auto px-4 py-4 text-base leading-relaxed [&::-webkit-scrollbar-track]:my-3"
+          className="h-[100px] resize-none overflow-y-auto px-4 py-4 text-base leading-relaxed text-black dark:text-white [&::-webkit-scrollbar-track]:my-3"
           rows={3}
         />
         <InputGroupAddon align="block-end" className="pt-2">
           <div className="flex w-full items-center gap-2">
             {/* Model selector */}
             <Select value={selectedModel} onValueChange={(v) => v && setSelectedModel(v)}>
-              <SelectTrigger size="sm" className="h-7 min-w-0 shrink-0 gap-1 rounded-md border-0 bg-transparent px-2 text-xs text-muted-foreground hover:bg-accent/50 [&>svg]:size-3">
+              <SelectTrigger size="sm" className="h-7 min-w-0 shrink-0 cursor-pointer gap-1 rounded-md border-0 bg-transparent px-2 text-xs text-black hover:bg-accent/50 dark:text-white [&>svg]:size-3 [&>svg]:text-black dark:[&>svg]:text-white">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent side="bottom">
@@ -112,7 +115,15 @@ function InnerComposer() {
             </Select>
 
             {/* Auto toggle */}
-            <InputGroupText className="gap-1.5 text-xs">
+            <InputGroupText
+              className="cursor-pointer gap-1.5 text-xs"
+              style={{ color: 'var(--foreground)' }}
+              onClick={(e) => {
+                e.stopPropagation()
+                if ((e.target as HTMLElement).closest('[data-slot=switch]')) return
+                setAutoMode((v) => !v)
+              }}
+            >
               <Switch
                 size="sm"
                 checked={autoMode}
