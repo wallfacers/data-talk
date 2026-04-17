@@ -4,6 +4,7 @@ import com.datatalk.application.ai.OpenCodeProviderClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.MediaType;
+import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.Map;
@@ -21,7 +22,13 @@ public class OpenCodeHttpClient implements OpenCodeProviderClient {
 
     public OpenCodeHttpClient(String baseUrl, ObjectMapper om) {
         this.baseUrl = baseUrl;
-        this.wc = WebClient.builder().baseUrl(baseUrl).build();
+        ExchangeStrategies strategies = ExchangeStrategies.builder()
+            .codecs(cfg -> cfg.defaultCodecs().maxInMemorySize(16 * 1024 * 1024))
+            .build();
+        this.wc = WebClient.builder()
+            .baseUrl(baseUrl)
+            .exchangeStrategies(strategies)
+            .build();
         this.om = om;
     }
 
