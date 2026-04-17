@@ -11,14 +11,16 @@ type Props = {
 
 export function StageWindow({ sessionId, children }: Props) {
   const closeStage = useStageStore((s) => s.closeStage)
-  const toggleGlobal = useStageStore((s) => s.toggleGlobal)
-  const maximized = useStageStore((s) => s.maximized)
+  const maximized = useStageStore((s) => sessionId ? !!s.maximizedBySession.get(sessionId) : false)
   const toggleMaximized = useStageStore((s) => s.toggleMaximized)
   const { Icon, label } = useActiveArtifactTitle(sessionId ?? '')
 
   function handleClose() {
     if (sessionId) closeStage(sessionId)
-    else toggleGlobal()
+  }
+
+  function handleToggleMaximized() {
+    if (sessionId) toggleMaximized(sessionId)
   }
 
   return (
@@ -34,7 +36,7 @@ export function StageWindow({ sessionId, children }: Props) {
             variant="ghost"
             size="icon-xs"
             aria-label={maximized ? '还原' : '放大'}
-            onClick={toggleMaximized}
+            onClick={handleToggleMaximized}
           >
             {maximized
               ? <Minimize2Icon className="size-3.5" />

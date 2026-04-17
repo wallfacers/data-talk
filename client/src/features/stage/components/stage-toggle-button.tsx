@@ -9,21 +9,14 @@ export function StageToggleButton() {
   const sid = useSessionStore((s) => s.activeSessionId)
   const enterSplit = useSessionStore((s) => s.enterSplit)
   const { mode } = useSessionMode()
-  const sessionOpen = useStageStore((s) => (sid ? !!s.openBySession.get(sid) : false))
-  const globalOpen = useStageStore((s) => s.globalOpen)
-  const open = sid ? sessionOpen : globalOpen
+  const open = useStageStore((s) => (sid ? !!s.openBySession.get(sid) : false))
   const openStage = useStageStore((s) => s.openStage)
   const toggle = useStageStore((s) => s.toggleStage)
-  const toggleGlobal = useStageStore((s) => s.toggleGlobal)
 
   const title = open ? '关闭 Stage 面板' : '打开 Stage 面板'
 
   function handleClick() {
-    if (!sid) {
-      // TODO(test): 无 session 全局预览，接通正式 session 流程后可移除
-      toggleGlobal()
-      return
-    }
+    if (!sid) return
     if (mode === 'HERO') {
       enterSplit(sid)
       openStage(sid)
@@ -40,10 +33,10 @@ export function StageToggleButton() {
       aria-pressed={open}
       aria-label={title}
       title={title}
-      disabled={false}
+      disabled={!sid}
       onClick={handleClick}
       className={cn(
-        'cursor-pointer rounded-md text-black hover:bg-accent/50 disabled:cursor-not-allowed disabled:pointer-events-auto dark:text-white',
+        'cursor-pointer rounded-md text-black hover:bg-accent/50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-white',
         open && 'bg-accent/70',
       )}
     >

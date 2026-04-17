@@ -6,7 +6,11 @@ import { useSessionStore } from '@/stores/session-store'
 
 describe('StageToggleButton', () => {
   beforeEach(() => {
-    useStageStore.setState({ openBySession: new Map(), autoOpenedSessions: new Set() })
+    useStageStore.setState({
+      openBySession: new Map(),
+      autoOpenedSessions: new Set(),
+      maximizedBySession: new Map(),
+    })
     useSessionStore.setState({
       activeSessionId: null,
       modeBySession: new Map(),
@@ -16,10 +20,17 @@ describe('StageToggleButton', () => {
     })
   })
 
-  it('HERO 模式下按钮 disabled', () => {
-    useSessionStore.getState().openSession('s1', false)
+  it('无 activeSessionId → 按钮 disabled', () => {
     render(<StageToggleButton />)
     expect(screen.getByRole('button')).toBeDisabled()
+  })
+
+  it('HERO 模式下点击 → 进入 SPLIT + 打开 Stage', () => {
+    useSessionStore.getState().openSession('s1', false)
+    render(<StageToggleButton />)
+    fireEvent.click(screen.getByRole('button'))
+    expect(useSessionStore.getState().modeBySession.get('s1')).toBe('SPLIT')
+    expect(useStageStore.getState().openBySession.get('s1')).toBe(true)
   })
 
   it('SPLIT 关闭态下点击 → 打开', () => {

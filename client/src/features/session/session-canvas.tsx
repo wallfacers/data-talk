@@ -6,6 +6,7 @@ import { useSessionSubscribe } from './hooks/use-session-subscribe'
 import { usePendingPromptResume } from './hooks/use-pending-prompt-resume'
 import { SplitView } from './split-view'
 import { PromptComposer } from './prompt-composer'
+import { ConnectionOverlay } from './connection-overlay'
 import { useRef, useLayoutEffect, useState } from 'react'
 
 // clip-path 裂开动画 keyframes（注入一次）
@@ -56,6 +57,7 @@ export function SessionCanvas() {
       )}
       <SplitView />
       <PromptComposer />
+      <ConnectionOverlay />
     </div>
   )
 }

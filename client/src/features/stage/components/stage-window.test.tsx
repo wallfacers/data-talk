@@ -7,7 +7,11 @@ import { useTimelineStore } from '@/stores/timeline-store'
 
 describe('StageWindow', () => {
   beforeEach(() => {
-    useStageStore.setState({ openBySession: new Map([['s1', true]]), autoOpenedSessions: new Set() })
+    useStageStore.setState({
+      openBySession: new Map([['s1', true]]),
+      autoOpenedSessions: new Set(),
+      maximizedBySession: new Map(),
+    })
     useOntologyStore.setState({ artifactsBySession: new Map() })
     useTimelineStore.setState({
       orderBySession: new Map(),
@@ -16,17 +20,25 @@ describe('StageWindow', () => {
     })
   })
 
-  it('渲染 3 圆点 + 默认标题 Stage', () => {
+  it('渲染默认标题 Stage + 关闭 / 放大 按钮', () => {
     render(<StageWindow sessionId="s1"><div>body</div></StageWindow>)
-    const close = screen.getByLabelText('关闭 Stage')
-    expect(close).toBeTruthy()
+    expect(screen.getByLabelText('关闭')).toBeTruthy()
+    expect(screen.getByLabelText('放大')).toBeTruthy()
     expect(screen.getByText('Stage')).toBeTruthy()
   })
 
-  it('点红圆点触发 closeStage', () => {
+  it('点关闭触发 closeStage(sessionId)', () => {
     render(<StageWindow sessionId="s1"><div>body</div></StageWindow>)
-    fireEvent.click(screen.getByLabelText('关闭 Stage'))
+    fireEvent.click(screen.getByLabelText('关闭'))
     expect(useStageStore.getState().openBySession.get('s1')).toBe(false)
+  })
+
+  it('点放大切换 maximizedBySession', () => {
+    render(<StageWindow sessionId="s1"><div>body</div></StageWindow>)
+    fireEvent.click(screen.getByLabelText('放大'))
+    expect(useStageStore.getState().maximizedBySession.get('s1')).toBe(true)
+    fireEvent.click(screen.getByLabelText('还原'))
+    expect(useStageStore.getState().maximizedBySession.get('s1')).toBe(false)
   })
 
   it('标题随 active artifact 变化', () => {

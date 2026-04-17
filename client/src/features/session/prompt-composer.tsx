@@ -19,7 +19,6 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { useSessionStore } from '@/stores/session-store'
-import { useStageStore } from '@/stores/stage-store'
 import { useChannel } from '@/services/channel/use-channel'
 import { createTextPart } from '@/services/channel/types'
 import { StageToggleButton } from '@/features/stage/components/stage-toggle-button'
@@ -51,7 +50,8 @@ function InnerComposer() {
   const [autoMode, setAutoMode] = useState(true)
   const { sendMessage, abort, isStreaming } = useChannel()
   const activeSessionId = useSessionStore((s) => s.activeSessionId)
-  const addDemoMessage = useStageStore((s) => s.addDemoMessage)
+  const setPendingPrompt = useSessionStore((s) => s.setPendingPrompt)
+  const setPendingConnectionPrompt = useSessionStore((s) => s.setPendingConnectionPrompt)
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -59,9 +59,8 @@ function InnerComposer() {
     if (!t || isStreaming) return
 
     if (!activeSessionId) {
-      setText('')
-      addDemoMessage('user', t)
-      setTimeout(() => addDemoMessage('assistant', '好的，我来处理你的请求。（演示模式）'), 600)
+      setPendingPrompt(t)
+      setPendingConnectionPrompt(true)
       return
     }
 

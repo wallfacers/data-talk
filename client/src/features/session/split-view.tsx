@@ -13,13 +13,12 @@ const EASE = 'cubic-bezier(0.32, 0.72, 0.24, 1)'
 
 export function SplitView() {
   const sid = useSessionStore((s) => s.activeSessionId)
-  const open = useStageStore((s) => sid ? !!s.openBySession.get(sid) : s.globalOpen)
-  const maximized = useStageStore((s) => s.maximized)
+  const open = useStageStore((s) => sid ? !!s.openBySession.get(sid) : false)
+  const maximized = useStageStore((s) => sid ? !!s.maximizedBySession.get(sid) : false)
   const hasMessages = useChatPartsStore((s) => {
     const parts = sid ? s.partsBySession.get(sid) : undefined
     return parts ? parts.size > 0 : false
   })
-  const hasDemoMessages = useStageStore((s) => s.demoMessages.length > 0)
 
   // Chat：width 从 100% 收缩到 46%（右侧让位），内容居中 → 视觉上整体平滑左移
   const chatWidth = maximized ? '0%' : open ? '46%' : '100%'
@@ -42,7 +41,7 @@ export function SplitView() {
           willChange: 'width',
         }}
       >
-        {(hasMessages || hasDemoMessages) ? (
+        {hasMessages ? (
           <div className="flex h-full flex-col">
             <ChatHeader />
             <div className="flex-1 overflow-y-auto px-2 py-4">

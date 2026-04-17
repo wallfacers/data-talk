@@ -46,16 +46,21 @@
 
 ### 3.1 P1 — 阻塞真实业务接入
 
-- [ ] **Demo 提交路径绕过了连接选择**
+- [x] **Demo 提交路径绕过了连接选择**
   `prompt-composer.tsx` 无 session 时 `setTimeout` 加入假 AI 回复，真实路径需恢复：检测 `!activeSessionId` → 弹出连接选择 → 建 session → `sendMessage`。被移除的 `ConnectionOverlay` 仍在文件 `features/session/connection-overlay.tsx`，但未被 import。
-- [ ] **`StageToggleButton` 硬编码 `disabled={false}`**
+  ✅ 2026-04-17 清理：`prompt-composer.onSubmit` 改为 `setPendingPrompt + setPendingConnectionPrompt`；`session-canvas.tsx` 重新挂载 `<ConnectionOverlay />`。
+- [x] **`StageToggleButton` 硬编码 `disabled={false}`**
   真实流程下应该是：未选中 session 时禁用，或者点击时引导用户先选 session/连接。
-- [ ] **`ChatHeader` 重命名/删除只是 toast 占位**
+  ✅ 2026-04-17 清理：改为 `disabled={!sid}`；无 session 时不响应点击。测试新增 `无 activeSessionId → 按钮 disabled` case。
+- [x] **`ChatHeader` 重命名/删除只是 toast 占位**
   `services/api/session.ts` 里没有 `renameSession` / `deleteSession`。对接后端 API 后要：新增 HTTP 方法、在 ChatHeader 里用 `useMutation` 调用、同步 `useSessions` 缓存。
-- [ ] **`stage-store.ts` 的 demo 字段需移除**
+  ✅ 2026-04-17 清理：后端 `SessionController` 加 `PATCH /{id}` + `DELETE /{id}`；前端 `session.ts` 加 `renameSession` / `deleteSession`；`chat-header.tsx` 用 `useMutation` 接通（`window.prompt` / `window.confirm`）。
+- [x] **`stage-store.ts` 的 demo 字段需移除**
   `globalOpen` / `demoMessages` / `addDemoMessage` / `toggleGlobal` 都是临时预览态。正式 Stage 开关只应由 per-session 的 `openBySession` 控制。`maximized` 建议保留但改为 per-session。
-- [ ] **`MessageStream` 的 `DemoBubbles` 分支需移除**
+  ✅ 2026-04-17 清理：删除四个 demo 字段；`maximized` 改为 `maximizedBySession: Map<string, boolean>`；`toggleMaximized` 改为 `(sid) => void`。
+- [x] **`MessageStream` 的 `DemoBubbles` 分支需移除**
   真正的空消息态应显示"空会话"提示或直接留白，而不是占位气泡。
+  ✅ 2026-04-17 清理：删除 `DemoBubbles` 组件；空态直接 `return null`（上层 `SplitView` else 分支渲染欢迎页）。
 
 ### 3.2 P2 — 功能回归 / UX 补全
 

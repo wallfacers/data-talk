@@ -17,3 +17,11 @@ export function listSessions(connectionId?: string) {
 export function createSession(connectionId: string, title: string) {
   return http.post('sessions', { json: { connectionId, title } }).json<Session>()
 }
+
+export function renameSession(id: string, title: string) {
+  return http.patch(`sessions/${id}`, { json: { title } }).json<Session>()
+}
+
+export function deleteSession(id: string) {
+  return http.delete(`sessions/${id}`).then(() => undefined)
+}

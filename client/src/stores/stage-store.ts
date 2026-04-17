@@ -3,17 +3,12 @@ import { create } from 'zustand'
 type StageState = {
   openBySession: Map<string, boolean>
   autoOpenedSessions: Set<string>
-  // TODO(test): 无 session 时的全局预览开关，正式 session 流程接通后可移除
-  globalOpen: boolean
-  maximized: boolean
-  demoMessages: { role: 'user' | 'assistant'; text: string }[]
+  maximizedBySession: Map<string, boolean>
 
   openStage: (sessionId: string) => void
   closeStage: (sessionId: string) => void
   toggleStage: (sessionId: string) => void
-  toggleGlobal: () => void
-  toggleMaximized: () => void
-  addDemoMessage: (role: 'user' | 'assistant', text: string) => void
+  toggleMaximized: (sessionId: string) => void
   notifyArtifactArrived: (sessionId: string) => void
   syncCollapsed: (sessionId: string, collapsed: boolean) => void
   clear: (sessionId: string) => void
@@ -22,9 +17,7 @@ type StageState = {
 export const useStageStore = create<StageState>((set, get) => ({
   openBySession: new Map(),
   autoOpenedSessions: new Set(),
-  globalOpen: false,
-  maximized: false,
-  demoMessages: [],
+  maximizedBySession: new Map(),
 
   openStage: (sid) => set((s) => {
     const m = new Map(s.openBySession); m.set(sid, true)
@@ -43,12 +36,11 @@ export const useStageStore = create<StageState>((set, get) => ({
     else get().openStage(sid)
   },
 
-  toggleGlobal: () => set((s) => ({ globalOpen: !s.globalOpen })),
-  toggleMaximized: () => set((s) => ({ maximized: !s.maximized })),
-
-  addDemoMessage: (role, text) => set((s) => ({
-    demoMessages: [...s.demoMessages, { role, text }],
-  })),
+  toggleMaximized: (sid) => set((s) => {
+    const m = new Map(s.maximizedBySession)
+    m.set(sid, !m.get(sid))
+    return { maximizedBySession: m }
+  }),
 
   notifyArtifactArrived: (sid) => set((s) => {
     if (s.autoOpenedSessions.has(sid)) return s
@@ -71,8 +63,9 @@ export const useStageStore = create<StageState>((set, get) => ({
   }),
 
   clear: (sid) => set((s) => {
-    const m = new Map(s.openBySession); m.delete(sid)
+    const openMap = new Map(s.openBySession); openMap.delete(sid)
     const a = new Set(s.autoOpenedSessions); a.delete(sid)
-    return { openBySession: m, autoOpenedSessions: a }
+    const maxMap = new Map(s.maximizedBySession); maxMap.delete(sid)
+    return { openBySession: openMap, autoOpenedSessions: a, maximizedBySession: maxMap }
   }),
 }))
