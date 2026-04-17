@@ -56,7 +56,7 @@ class ChannelServiceModelParamTest {
     @Test
     void sendMessage_forwards_current_model_when_set() {
         when(sessions.findById("s1")).thenReturn(Optional.of(
-            new SessionRecord("s1", "test", "T", false, null, 100L, 100L)));
+            new SessionRecord("s1", "test", "T", false, null, 100L, 100L, false)));
         when(sessionMap.openCodeFor("s1")).thenReturn("oc-1");
         when(userPrefs.getCurrentModel()).thenReturn("openai/gpt-5");
         SessionBus bus = mock(SessionBus.class);
@@ -74,7 +74,7 @@ class ChannelServiceModelParamTest {
     @Test
     void sendMessage_omits_model_when_null() {
         when(sessions.findById("s1")).thenReturn(Optional.of(
-            new SessionRecord("s1", "test", "T", false, null, 100L, 100L)));
+            new SessionRecord("s1", "test", "T", false, null, 100L, 100L, false)));
         when(sessionMap.openCodeFor("s1")).thenReturn("oc-1");
         when(userPrefs.getCurrentModel()).thenReturn(null);
         SessionBus bus = mock(SessionBus.class);
@@ -92,7 +92,7 @@ class ChannelServiceModelParamTest {
     @Test
     void sendMessage_omits_model_when_blank() {
         when(sessions.findById("s1")).thenReturn(Optional.of(
-            new SessionRecord("s1", "test", "T", false, null, 100L, 100L)));
+            new SessionRecord("s1", "test", "T", false, null, 100L, 100L, false)));
         when(sessionMap.openCodeFor("s1")).thenReturn("oc-1");
         when(userPrefs.getCurrentModel()).thenReturn("   ");
         SessionBus bus = mock(SessionBus.class);

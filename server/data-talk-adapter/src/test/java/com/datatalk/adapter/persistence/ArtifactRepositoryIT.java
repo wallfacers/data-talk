@@ -22,7 +22,7 @@ class ArtifactRepositoryIT {
     @Test
     void insertAndList() {
         String sid = "sess-art-" + System.nanoTime();
-        sessRepo.upsert(new SessionRecord(sid, null, "T", true, null, 100L, 100L));
+        sessRepo.upsert(new SessionRecord(sid, null, "T", true, null, 100L, 100L, false));
         String aid = "art-insert-" + System.nanoTime();
         repo.insert(new ArtifactRecord(aid, 1, sid, "table", "call-1",
             "INLINE:{}", 20, null, null, false, 101L));
@@ -34,7 +34,7 @@ class ArtifactRepositoryIT {
     @Test
     void findLatestByIdReturnsHighestVersion() {
         String sid = "sess-artl-" + System.nanoTime();
-        sessRepo.upsert(new SessionRecord(sid, null, "T", true, null, 100L, 100L));
+        sessRepo.upsert(new SessionRecord(sid, null, "T", true, null, 100L, 100L, false));
         String aid = "art-latest-" + System.nanoTime();
         repo.insert(new ArtifactRecord(aid, 1, sid, "chart", "call-1", "INLINE:{}", 2, null, null, false, 100L));
         repo.insert(new ArtifactRecord(aid, 2, sid, "chart", "call-2", "INLINE:{}", 2, aid, 1, false, 200L));

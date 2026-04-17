@@ -32,7 +32,7 @@ class RenderChartActionTest {
     void clean() {
         datatalkJdbc.update("DELETE FROM artifacts");
         datatalkJdbc.update("DELETE FROM sessions");
-        sessions.upsert(new SessionRecord("s-1", null, "T", true, null, 0L, 0L));
+        sessions.upsert(new SessionRecord("s-1", null, "T", true, null, 0L, 0L, false));
         artifacts.insert(new ArtifactRecord("art-src", 1, "s-1", "table", "c-1",
             "INLINE:[]", 2, null, null, false, 0L));
     }

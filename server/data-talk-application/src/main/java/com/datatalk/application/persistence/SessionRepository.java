@@ -23,22 +23,24 @@ public class SessionRepository {
         rs.getInt("has_ever_sent") == 1,
         rs.getString("opencode_sid"),
         rs.getLong("created_at"),
-        rs.getLong("updated_at")
+        rs.getLong("updated_at"),
+        rs.getInt("title_locked") == 1
     );
 
     public void upsert(SessionRecord s) {
         jdbc.update("""
-            INSERT INTO sessions(id, connection_id, title, has_ever_sent, opencode_sid, created_at, updated_at)
-            VALUES(?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO sessions(id, connection_id, title, has_ever_sent, opencode_sid, created_at, updated_at, title_locked)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
               connection_id = excluded.connection_id,
               title         = excluded.title,
               has_ever_sent = excluded.has_ever_sent,
               opencode_sid  = excluded.opencode_sid,
-              updated_at    = excluded.updated_at
+              updated_at    = excluded.updated_at,
+              title_locked  = excluded.title_locked
             """,
             s.id(), s.connectionId(), s.title(), s.hasEverSent() ? 1 : 0,
-            s.openCodeSid(), s.createdAt(), s.updatedAt()
+            s.openCodeSid(), s.createdAt(), s.updatedAt(), s.titleLocked() ? 1 : 0
         );
     }
 
@@ -54,6 +56,20 @@ public class SessionRepository {
     public int updateTitle(String id, String title, long now) {
         return jdbc.update(
             "UPDATE sessions SET title = ?, updated_at = ? WHERE id = ?",
+            title, now, id);
+    }
+
+    /** Only updates title when title_locked=0; returns affected rows (0 means locked/skipped). */
+    public int applyAutoTitle(String id, String title, long now) {
+        return jdbc.update(
+            "UPDATE sessions SET title = ?, updated_at = ? WHERE id = ? AND title_locked = 0",
+            title, now, id);
+    }
+
+    /** Atomically sets title + lock; avoids race condition of separate updateTitle + lockTitle. */
+    public int updateTitleAndLock(String id, String title, long now) {
+        return jdbc.update(
+            "UPDATE sessions SET title = ?, title_locked = 1, updated_at = ? WHERE id = ?",
             title, now, id);
     }
 

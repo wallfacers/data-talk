@@ -1,4 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import type { QueryClient } from '@tanstack/react-query'
 import { ChannelClient } from './channel-client'
 import type { StreamEvent, Part } from './types'
 import { generateUuid } from '@/lib/uuid'
@@ -14,7 +16,7 @@ function getApiBaseUrl(): string {
   return ''
 }
 
-export function buildEventSink(sessionId: string, client: ChannelClient | null) {
+export function buildEventSink(sessionId: string, client: ChannelClient | null, queryClient: QueryClient) {
   return (evt: StreamEvent) => {
     const { event, data } = evt
     if (event === 'message.created') {
@@ -24,6 +26,8 @@ export function buildEventSink(sessionId: string, client: ChannelClient | null) 
         role: (m.role ?? 'assistant') as 'user' | 'assistant' | 'system',
         createdAt: Number(m.createdAt ?? Date.now()),
       })
+    } else if (event === 'session.meta.updated') {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
     } else if (event === 'message.part.created' || event === 'message.part.updated') {
       useChatPartsStore.getState().upsertPart(sessionId, (data as any).part)
     } else if (event === 'message.part.delta') {
@@ -78,6 +82,7 @@ export function useChannelClient(sessionId: string | null): ChannelClient | null
 
 export function useChannel() {
   const [isStreaming, setIsStreaming] = useState(false)
+  const queryClient = useQueryClient()
   const sessionId = useSessionStore((s) => s.activeSessionId)
   const enterSplit = useSessionStore((s) => s.enterSplit)
   const client = useChannelClient(sessionId)
@@ -87,14 +92,14 @@ export function useChannel() {
       if (!client || !sessionId) return
       setIsStreaming(true)
       enterSplit(sessionId)
-      const sink = buildEventSink(sessionId, client)
+      const sink = buildEventSink(sessionId, client, queryClient)
       try {
         await client.sendMessage(parts, sink)
       } finally {
         setIsStreaming(false)
       }
     },
-    [client, sessionId, enterSplit],
+    [client, sessionId, enterSplit, queryClient],
   )
 
   const abort = useCallback(async () => {

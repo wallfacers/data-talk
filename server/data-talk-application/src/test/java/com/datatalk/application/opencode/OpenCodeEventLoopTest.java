@@ -52,7 +52,7 @@ class OpenCodeEventLoopTest {
         SessionBusRegistry buses = Mockito.mock(SessionBusRegistry.class);
         when(buses.getOrCreate("dt-1")).thenReturn(mockBus);
 
-        OpenCodeEventTranslator tr = new OpenCodeEventTranslator();
+        OpenCodeEventTranslator tr = new OpenCodeEventTranslator(Mockito.mock(SessionTitleSyncer.class));
         OpenCodeEventLoop loop = new OpenCodeEventLoop(
             "http://localhost:" + wm.port(), new ObjectMapper(), tr, buses, map, received::add);
 
@@ -62,5 +62,37 @@ class OpenCodeEventLoopTest {
 
         assertThat(received.get(0)).isInstanceOf(OcEvent.ServerConnected.class);
         assertThat(received.get(1)).isInstanceOf(OcEvent.MessagePartDelta.class);
+    }
+
+    @Test
+    void sessionUpdatedReachesSessionBus() {
+        String sse = """
+            event: session.updated
+            data: {"info":{"id":"oc-1","title":"AI 标题","version":2}}
+
+            """;
+        wm.stubFor(get(urlEqualTo("/event"))
+            .willReturn(aResponse().withHeader("Content-Type", "text/event-stream").withBody(sse)));
+
+        List<OcEvent> received = new ArrayList<>();
+        OpenCodeSessionMap map = new OpenCodeSessionMap();
+        map.bind("dt-1", "oc-1");
+
+        SessionBus mockBus = Mockito.mock(SessionBus.class);
+        SessionBusRegistry buses = Mockito.mock(SessionBusRegistry.class);
+        when(buses.getOrCreate("dt-1")).thenReturn(mockBus);
+
+        SessionTitleSyncer syncer = Mockito.mock(SessionTitleSyncer.class);
+        OpenCodeEventTranslator tr = new OpenCodeEventTranslator(syncer);
+        OpenCodeEventLoop loop = new OpenCodeEventLoop(
+            "http://localhost:" + wm.port(), new ObjectMapper(), tr, buses, map, received::add);
+
+        loop.start();
+        await().atMost(Duration.ofSeconds(3)).until(() -> !received.isEmpty());
+        loop.stop();
+
+        assertThat(received.get(0)).isInstanceOf(OcEvent.SessionUpdated.class);
+        Mockito.verify(syncer).apply("oc-1", "AI 标题");
+        Mockito.verify(mockBus).publish(any(DtEvent.SessionMetaUpdated.class));
     }
 }

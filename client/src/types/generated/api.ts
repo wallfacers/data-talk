@@ -39,6 +39,7 @@ export interface SessionDto {
   hasEverSent: boolean
   createdAt: number
   updatedAt: number
+  titleLocked: boolean
 }
 
 export interface SessionCreateRequest {

@@ -20,6 +20,11 @@ public class OpenCodeEventTranslator {
 
     private final Map<String, Set<String>> seenParts = new ConcurrentHashMap<>();
     private final Map<String, Set<String>> seenMessages = new ConcurrentHashMap<>();
+    private final SessionTitleSyncer titleSyncer;
+
+    public OpenCodeEventTranslator(SessionTitleSyncer titleSyncer) {
+        this.titleSyncer = titleSyncer;
+    }
 
     public List<DtEvent> translate(String sessionId, OcEvent in) {
         return switch (in) {
@@ -27,6 +32,29 @@ public class OpenCodeEventTranslator {
 
             case OcEvent.SessionStatus s ->
                 List.of(new DtEvent.SessionStatus(s.status(), s.retryInfo()));
+
+            case OcEvent.SessionCreated c ->
+                List.of(new DtEvent.SessionCreated(c.info().id(), c.info().title(), c.info().version()));
+
+            case OcEvent.SessionUpdated u -> {
+                titleSyncer.apply(u.info().id(), u.info().title());
+                yield List.of(new DtEvent.SessionMetaUpdated(u.info().id(), u.info().title(), false, u.info().version()));
+            }
+
+            case OcEvent.SessionDeleted d ->
+                List.of(new DtEvent.SessionDeleted(d.info().id()));
+
+            case OcEvent.SessionIdle i ->
+                List.of(new DtEvent.SessionIdle(i.info().id()));
+
+            case OcEvent.SessionError e ->
+                List.of(new DtEvent.SessionError(e.info().id(), e.error()));
+
+            case OcEvent.SessionCompacted c ->
+                List.of(new DtEvent.SessionCompacted(c.info().id()));
+
+            case OcEvent.SessionDiff d ->
+                List.of(new DtEvent.SessionDiff(d.info().id(), d.payload()));
 
             case OcEvent.MessageUpdated m -> {
                 Set<String> msgs = seenMessages.computeIfAbsent(sessionId, k -> ConcurrentHashMap.newKeySet());

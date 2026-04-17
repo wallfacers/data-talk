@@ -10,5 +10,6 @@ public record SessionRecord(
     boolean hasEverSent,
     String openCodeSid,
     long createdAt,
-    long updatedAt
+    long updatedAt,
+    boolean titleLocked
 ) {}

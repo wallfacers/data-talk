@@ -46,7 +46,7 @@ class ExecuteSqlActionIT {
         conn.deleteAll();
         conn.create("postgresql", pg.getHost(), pg.getFirstMappedPort(),
             pg.getDatabaseName(), pg.getUsername(), pg.getPassword());
-        sessRepo.upsert(new SessionRecord("s-exec", "pg-exec", "T", true, "oc-e", 0L, 0L));
+        sessRepo.upsert(new SessionRecord("s-exec", "pg-exec", "T", true, "oc-e", 0L, 0L, false));
     }
 
     @Test

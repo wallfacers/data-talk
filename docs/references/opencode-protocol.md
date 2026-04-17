@@ -15,6 +15,13 @@ OpenCode 推送的原始事件通过 `OpenCodeEventTranslator` 转换为 DataTal
 
 | OpenCode 事件 | DtEvent | 说明 |
 |--------------|---------|------|
+| session.created | SessionCreated | 会话创建（多客户端协作） |
+| session.updated | SessionMetaUpdated | OpenCode 自动生成 / 更新 title；持久化到本地 SessionRepository（title_locked=0 时） |
+| session.deleted | SessionDeleted | 会话删除 |
+| session.idle | SessionIdle | 响应完成信号（用于流生命周期判定） |
+| session.error | SessionError | 会话级错误 |
+| session.compacted | SessionCompacted | 上下文压缩 |
+| session.diff | SessionDiff | diff 事件（payload 待调研） |
 | message.created | MessageCreated | 新消息（含 Part[] 内容） |
 | message.updated | MessageUpdated | 消息内容更新 |
 | message.completed | MessageCompleted | 消息处理完毕 |

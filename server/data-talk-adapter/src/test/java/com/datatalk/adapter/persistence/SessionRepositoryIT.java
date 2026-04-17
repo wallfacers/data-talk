@@ -20,7 +20,7 @@ class SessionRepositoryIT {
     @Test
     void savesAndLoadsSession() {
         String id = "sess-saveload-" + System.nanoTime();
-        SessionRecord s = new SessionRecord(id, null, "Untitled", false, null, 100L, 100L);
+        SessionRecord s = new SessionRecord(id, null, "Untitled", false, null, 100L, 100L, false);
         repo.upsert(s);
         Optional<SessionRecord> found = repo.findById(id);
         assertThat(found).isPresent();
@@ -31,7 +31,7 @@ class SessionRepositoryIT {
     @Test
     void markHasEverSentFlipsFlag() {
         String id = "sess-mark-" + System.nanoTime();
-        repo.upsert(new SessionRecord(id, null, "T", false, null, 100L, 100L));
+        repo.upsert(new SessionRecord(id, null, "T", false, null, 100L, 100L, false));
         repo.markHasEverSent(id, 200L);
         assertThat(repo.findById(id).orElseThrow().hasEverSent()).isTrue();
     }

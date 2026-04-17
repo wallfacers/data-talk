@@ -63,7 +63,7 @@ public class SessionController {
 
     private static SessionDto toDto(SessionRecord r) {
         return new SessionDto(r.id(), r.connectionId(), r.title(),
-            r.hasEverSent(), r.createdAt(), r.updatedAt());
+            r.hasEverSent(), r.createdAt(), r.updatedAt(), r.titleLocked());
     }
 
 }

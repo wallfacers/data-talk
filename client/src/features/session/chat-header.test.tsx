@@ -1,9 +1,15 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ChatHeader } from './chat-header'
 import { useSessionStore } from '@/stores/session-store'
 import * as api from '@/services/api/session'
+import { useConnectionStore } from '@/features/connection/store'
+
+// Mock useSidebar since ChatHeader uses it
+vi.mock('@/components/ui/sidebar', () => ({
+  useSidebar: () => ({ state: 'expanded' }),
+}))
 
 function renderWithClient(ui: React.ReactElement) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -24,7 +30,7 @@ describe('ChatHeader', () => {
   it('重命名 → 调用 renameSession PATCH', async () => {
     const spy = vi.spyOn(api, 'renameSession').mockResolvedValue({
       id: 's1', connectionId: 'c1', title: '新名', hasEverSent: true,
-      createdAt: 0, updatedAt: 1,
+      createdAt: 0, updatedAt: 1, titleLocked: false,
     })
     vi.spyOn(window, 'prompt').mockReturnValue('新名')
 
@@ -66,5 +72,49 @@ describe('ChatHeader', () => {
     fireEvent.click(screen.getByText('删除'))
 
     expect(spy).not.toHaveBeenCalled()
+  })
+
+  it('reflects updated session title when useSessions returns new title', async () => {
+    // Setup: enable the connection so useSessions is enabled
+    useConnectionStore.setState({ activeConnectionId: 'c1' })
+
+    const initialSession: api.Session = {
+      id: 's1',
+      connectionId: 'c1',
+      title: '新会话',
+      hasEverSent: true,
+      createdAt: 0,
+      updatedAt: 0,
+      titleLocked: false,
+    }
+
+    const listSpy = vi.spyOn(api, 'listSessions').mockResolvedValue([initialSession])
+
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={qc}>
+        <ChatHeader />
+      </QueryClientProvider>
+    )
+
+    // Wait for initial render with title "新会话"
+    await waitFor(() => expect(screen.getByText('新会话')).toBeInTheDocument())
+
+    // Simulate API returning updated title (after invalidate + refetch)
+    const updatedSession: api.Session = {
+      ...initialSession,
+      title: 'AI 标题',
+    }
+    listSpy.mockResolvedValue([updatedSession])
+
+    // Invalidate the query to trigger refetch
+    await act(async () => {
+      await qc.invalidateQueries({ queryKey: ['sessions'] })
+    })
+
+    // Title should update to "AI 标题"
+    await waitFor(() => expect(screen.getByText('AI 标题')).toBeInTheDocument())
+
+    listSpy.mockRestore()
   })
 })

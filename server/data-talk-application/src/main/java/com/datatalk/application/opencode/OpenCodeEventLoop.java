@@ -154,6 +154,15 @@ public class OpenCodeEventLoop {
                     node.path("status").asText("idle"),
                     om.convertValue(node.path("retryInfo"), Map.class)
                 );
+                case "session.created"   -> new OcEvent.SessionCreated(parseSessionInfo(node));
+                case "session.updated"   -> new OcEvent.SessionUpdated(parseSessionInfo(node));
+                case "session.deleted"   -> new OcEvent.SessionDeleted(parseSessionInfo(node));
+                case "session.idle"      -> new OcEvent.SessionIdle(parseSessionInfo(node));
+                case "session.error"     -> new OcEvent.SessionError(
+                    parseSessionInfo(node), node.path("error").asText(""));
+                case "session.compacted" -> new OcEvent.SessionCompacted(parseSessionInfo(node));
+                case "session.diff"      -> new OcEvent.SessionDiff(
+                    parseSessionInfo(node), om.convertValue(node, Map.class));
                 case "message.updated"  -> new OcEvent.MessageUpdated(
                     om.treeToValue(node.path("info"), Message.class));
                 case "message.part.updated" -> new OcEvent.MessagePartUpdated(
@@ -171,12 +180,31 @@ public class OpenCodeEventLoop {
         }
     }
 
+    private SessionInfo parseSessionInfo(JsonNode node) {
+        JsonNode info = node.path("info");
+        if (info.isMissingNode() || info.isNull()) {
+            return new SessionInfo(null, null, 0L);
+        }
+        return new SessionInfo(
+            info.path("id").asText(null),
+            info.hasNonNull("title") ? info.path("title").asText() : null,
+            info.path("version").asLong(0L)
+        );
+    }
+
     private static String extractSessionId(OcEvent e) {
         return switch (e) {
-            case OcEvent.MessageUpdated m   -> m.message().sessionId();
+            case OcEvent.MessageUpdated m    -> m.message().sessionId();
             case OcEvent.MessagePartUpdated p -> p.part().sessionID();
-            case OcEvent.SessionStatus s    -> null;
-            default                         -> null;
+            case OcEvent.SessionCreated s    -> s.info().id();
+            case OcEvent.SessionUpdated s    -> s.info().id();
+            case OcEvent.SessionDeleted s    -> s.info().id();
+            case OcEvent.SessionIdle s       -> s.info().id();
+            case OcEvent.SessionError s      -> s.info().id();
+            case OcEvent.SessionCompacted s  -> s.info().id();
+            case OcEvent.SessionDiff s       -> s.info().id();
+            case OcEvent.SessionStatus s     -> null;
+            default                          -> null;
         };
     }
 }

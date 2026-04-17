@@ -103,7 +103,7 @@ class EndToEndSmokeIT {
     @Test
     void opencodeToolCallInvokesHandlerAndReturnsOutput() throws Exception {
         datatalkJdbc.update("DELETE FROM sessions");
-        sessions.upsert(new SessionRecord("s-smoke", null, "T", true, "oc-smoke", 0L, 0L));
+        sessions.upsert(new SessionRecord("s-smoke", null, "T", true, "oc-smoke", 0L, 0L, false));
         map.bind("s-smoke", "oc-smoke");
 
         WebClient client = WebClient.create("http://localhost:" + port);

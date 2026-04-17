@@ -25,7 +25,7 @@ public class SessionService {
         long now = clock.millis();
         String id = UUID.randomUUID().toString();
         String safeTitle = (title == null || title.isBlank()) ? "新会话" : title;
-        SessionRecord rec = new SessionRecord(id, connectionId, safeTitle, false, null, now, now);
+        SessionRecord rec = new SessionRecord(id, connectionId, safeTitle, false, null, now, now, false);
         repo.upsert(rec);
         return rec;
     }
@@ -46,9 +46,9 @@ public class SessionService {
         SessionRecord existing = repo.findById(id)
             .orElseThrow(() -> new NoSuchElementException("session not found: " + id));
         long now = clock.millis();
-        repo.updateTitle(id, title, now);
+        repo.updateTitleAndLock(id, title, now);
         return new SessionRecord(existing.id(), existing.connectionId(), title,
-            existing.hasEverSent(), existing.openCodeSid(), existing.createdAt(), now);
+            existing.hasEverSent(), existing.openCodeSid(), existing.createdAt(), now, true);
     }
 
     public void delete(String id) {

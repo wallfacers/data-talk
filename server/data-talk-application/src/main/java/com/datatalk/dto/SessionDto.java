@@ -6,5 +6,6 @@ public record SessionDto(
     String title,
     boolean hasEverSent,
     long createdAt,
-    long updatedAt
+    long updatedAt,
+    boolean titleLocked
 ) {}

@@ -63,7 +63,7 @@ class ChannelServiceTest {
     void sendMessagePersistsAndPublishes() {
         when(ids.next()).thenReturn("m-new");
         when(sessionRepo.findById("s-1")).thenReturn(Optional.of(
-            new SessionRecord("s-1", null, "T", false, null, 100L, 100L)));
+            new SessionRecord("s-1", null, "T", false, null, 100L, 100L, false)));
         SessionBus bus = mock(SessionBus.class);
         when(busRegistry.getOrCreate("s-1")).thenReturn(bus);
 

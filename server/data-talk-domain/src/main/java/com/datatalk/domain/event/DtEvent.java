@@ -2,6 +2,7 @@ package com.datatalk.domain.event;
 
 import com.datatalk.domain.part.Message;
 import com.datatalk.domain.part.Part;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
@@ -9,6 +10,37 @@ import java.util.List;
 import java.util.Map;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
+@JsonSubTypes({
+        @JsonSubTypes.Type(value = DtEvent.Connected.class, name = "connected"),
+        @JsonSubTypes.Type(value = DtEvent.Disconnected.class, name = "disconnected"),
+        @JsonSubTypes.Type(value = DtEvent.SessionStatus.class, name = "session.status"),
+        @JsonSubTypes.Type(value = DtEvent.SessionCreated.class, name = "session.created"),
+        @JsonSubTypes.Type(value = DtEvent.SessionMetaUpdated.class, name = "session.meta.updated"),
+        @JsonSubTypes.Type(value = DtEvent.SessionDeleted.class, name = "session.deleted"),
+        @JsonSubTypes.Type(value = DtEvent.SessionIdle.class, name = "session.idle"),
+        @JsonSubTypes.Type(value = DtEvent.SessionError.class, name = "session.error"),
+        @JsonSubTypes.Type(value = DtEvent.SessionCompacted.class, name = "session.compacted"),
+        @JsonSubTypes.Type(value = DtEvent.SessionDiff.class, name = "session.diff"),
+        @JsonSubTypes.Type(value = DtEvent.SessionStarted.class, name = "session.started"),
+        @JsonSubTypes.Type(value = DtEvent.SessionEnded.class, name = "session.ended"),
+        @JsonSubTypes.Type(value = DtEvent.AgentStatus.class, name = "agent.status"),
+        @JsonSubTypes.Type(value = DtEvent.TaskComplete.class, name = "task.complete"),
+        @JsonSubTypes.Type(value = DtEvent.MessageCreated.class, name = "message.created"),
+        @JsonSubTypes.Type(value = DtEvent.MessageUpdated.class, name = "message.updated"),
+        @JsonSubTypes.Type(value = DtEvent.MessageCompleted.class, name = "message.completed"),
+        @JsonSubTypes.Type(value = DtEvent.MessagePartCreated.class, name = "message.part.created"),
+        @JsonSubTypes.Type(value = DtEvent.MessagePartUpdated.class, name = "message.part.updated"),
+        @JsonSubTypes.Type(value = DtEvent.MessagePartDelta.class, name = "message.part.delta"),
+        @JsonSubTypes.Type(value = DtEvent.MessagePartRemoved.class, name = "message.part.removed"),
+        @JsonSubTypes.Type(value = DtEvent.ActionInvoke.class, name = "action.invoke"),
+        @JsonSubTypes.Type(value = DtEvent.ActionCancel.class, name = "action.cancel"),
+        @JsonSubTypes.Type(value = DtEvent.ActionResponse.class, name = "action.response"),
+        @JsonSubTypes.Type(value = DtEvent.ArtifactSnapshot.class, name = "artifact.snapshot"),
+        @JsonSubTypes.Type(value = DtEvent.OntologyUpdated.class, name = "ontology.updated"),
+        @JsonSubTypes.Type(value = DtEvent.Heartbeat.class, name = "heartbeat"),
+        @JsonSubTypes.Type(value = DtEvent.PingPong.class, name = "ping"),
+        @JsonSubTypes.Type(value = DtEvent.StreamError.class, name = "error")
+})
 public sealed interface DtEvent {
 
     @JsonTypeName("connected")
@@ -18,6 +50,20 @@ public sealed interface DtEvent {
 
     @JsonTypeName("session.status")
     record SessionStatus(String status, Map<String, Object> retryInfo) implements DtEvent {}
+    @JsonTypeName("session.created")
+    record SessionCreated(String sessionId, String title, long version) implements DtEvent {}
+    @JsonTypeName("session.meta.updated")
+    record SessionMetaUpdated(String sessionId, String title, boolean titleLocked, long version) implements DtEvent {}
+    @JsonTypeName("session.deleted")
+    record SessionDeleted(String sessionId) implements DtEvent {}
+    @JsonTypeName("session.idle")
+    record SessionIdle(String sessionId) implements DtEvent {}
+    @JsonTypeName("session.error")
+    record SessionError(String sessionId, String error) implements DtEvent {}
+    @JsonTypeName("session.compacted")
+    record SessionCompacted(String sessionId) implements DtEvent {}
+    @JsonTypeName("session.diff")
+    record SessionDiff(String sessionId, Map<String, Object> payload) implements DtEvent {}
     @JsonTypeName("session.started")
     record SessionStarted(String sessionId, String userId) implements DtEvent {}
     @JsonTypeName("session.ended")
@@ -69,6 +115,13 @@ public sealed interface DtEvent {
             case Connected c              -> "connected";
             case Disconnected d           -> "disconnected";
             case SessionStatus s          -> "session.status";
+            case SessionCreated sCreated     -> "session.created";
+            case SessionMetaUpdated sMetaUpd -> "session.meta.updated";
+            case SessionDeleted sDeleted     -> "session.deleted";
+            case SessionIdle sIdle           -> "session.idle";
+            case SessionError sError          -> "session.error";
+            case SessionCompacted sCompacted -> "session.compacted";
+            case SessionDiff sDiff            -> "session.diff";
             case SessionStarted ss        -> "session.started";
             case SessionEnded se          -> "session.ended";
             case AgentStatus as           -> "agent.status";

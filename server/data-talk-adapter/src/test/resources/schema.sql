@@ -1,5 +1,7 @@
 DROP TABLE IF EXISTS pending_calls;
 DROP TABLE IF EXISTS action_invocations;
+DROP TABLE IF EXISTS query_results;
+DROP TABLE IF EXISTS events;
 DROP TABLE IF EXISTS artifacts;
 DROP TABLE IF EXISTS messages;
 DROP TABLE IF EXISTS sessions;
@@ -15,7 +17,8 @@ CREATE TABLE connections (
 CREATE TABLE sessions (
   id TEXT PRIMARY KEY, connection_id TEXT, title TEXT NOT NULL,
   has_ever_sent INTEGER NOT NULL DEFAULT 0, opencode_sid TEXT,
-  created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
+  created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL,
+  title_locked INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE messages (
   id TEXT PRIMARY KEY, session_id TEXT NOT NULL,
@@ -31,6 +34,16 @@ CREATE TABLE artifacts (
 CREATE TABLE action_invocations (
   call_id TEXT PRIMARY KEY, session_id TEXT NOT NULL, action_id TEXT NOT NULL,
   input_json TEXT, output_json TEXT, error_json TEXT, started_at INTEGER NOT NULL, completed_at INTEGER
+);
+CREATE TABLE events (
+  event_id INTEGER NOT NULL, session_id TEXT NOT NULL,
+  event_type TEXT NOT NULL, payload_json TEXT NOT NULL, ts INTEGER NOT NULL,
+  PRIMARY KEY (session_id, event_id)
+);
+CREATE TABLE query_results (
+  handle TEXT PRIMARY KEY, session_id TEXT NOT NULL,
+  columns_json TEXT NOT NULL, rows_ndjson TEXT NOT NULL, row_count INTEGER NOT NULL,
+  created_at INTEGER NOT NULL, ttl_at INTEGER NOT NULL
 );
 CREATE TABLE pending_calls (
   call_id TEXT PRIMARY KEY, expires_at INTEGER NOT NULL

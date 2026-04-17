@@ -27,7 +27,7 @@ class MessageRepositoryIT {
     void savesMessageAndVerifiesJsonStored() {
         String sid = "sess-msg-" + System.nanoTime();
         String mid = "msg-" + System.nanoTime();
-        sessRepo.upsert(new SessionRecord(sid, null, "T", false, null, 100L, 100L));
+        sessRepo.upsert(new SessionRecord(sid, null, "T", false, null, 100L, 100L, false));
         TextPart p1 = new TextPart("p-msg", sid, mid, "hello", false, false, null, Map.of());
         Message m = new Message(mid, sid, Message.Role.USER, List.of(p1), 101L);
         msgRepo.save(m);
