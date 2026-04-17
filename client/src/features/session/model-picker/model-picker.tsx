@@ -22,7 +22,7 @@ export function ModelPicker() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        className="flex h-7 items-center gap-1.5 rounded px-2 text-xs hover:bg-accent/50"
+        className="flex h-7 items-center gap-1.5 rounded px-2 text-xs text-foreground hover:bg-accent/50"
       >
         {selected ? (
           <>

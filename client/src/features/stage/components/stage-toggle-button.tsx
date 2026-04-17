@@ -44,10 +44,10 @@ export function StageToggleButton() {
       aria-pressed={open}
       aria-label={title}
       title={title}
-      disabled={!sid}
+      aria-disabled={!sid}
       onClick={handleClick}
       className={cn(
-        'cursor-pointer rounded-md text-black hover:bg-accent/50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-white',
+        'cursor-pointer rounded-md text-black hover:bg-accent/50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 dark:text-white',
         open && 'bg-accent/70',
       )}
     >

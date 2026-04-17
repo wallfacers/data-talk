@@ -84,3 +84,10 @@ features/xxx/
 - HTTP 客户端：`ky`（轻量 fetch 封装）
 - SSE 流：通过 `EventSource` 或 fetch streaming 接收 `DtEvent`
 - API 类型定义集中在 `src/types/api.ts`
+
+### 样式调试经验
+
+- **"整体发灰"先查 `opacity`，不是 `color`**：若一组元素（文字、图标、开关、按钮）**同时**显灰且对比度一致降低，大概率是父级被 `opacity` 降调，不是文字颜色继承。`opacity` 作为合成层属性会让所有后代一起半透明，伪装成"颜色都变了"
+- **警惕 `has-*` 的连锁效应**：shadcn 基础组件（`InputGroup`、`Form` 等）常带 `has-disabled:opacity-50`、`has-[...]:...` 这类 `&:has()` 选择器规则——**容器内任意子元素带 `disabled` 属性，整个容器被拖累**。排查时先看容器的完整 class 串，再排查内部谁带了 `disabled`
+- **按钮禁用优先用 `aria-disabled` + `aria-disabled:*` class**，而不是 HTML `disabled` 属性。`disabled` 会触发父级 `has-disabled` 连锁；`aria-disabled` 保留无障碍语义和视觉（配合 `aria-disabled:opacity-50 aria-disabled:cursor-not-allowed`）但不污染父级。点击行为在 handler 里手动早退即可
+- **视觉症状对不上单一变量解释时，先开 DevTools 看 Computed**：不要凭代码推理反复改 class。例如 Switch 的 thumb 位置（右=checked）和底色（灰=unchecked）互相矛盾 → 立刻查父级 `opacity`，比猜 10 次快
