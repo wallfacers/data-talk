@@ -20,13 +20,12 @@ import { useHasActiveModel } from './hooks/use-has-active-model'
 
 function useComposerSlot(): HTMLElement | null {
   const [slot, setSlot] = useState<HTMLElement | null>(null)
+  const activeSessionId = useSessionStore((s) => s.activeSessionId)
 
-  // No dependency array: re-check after every render so we pick up the new
-  // composer-slot when HeroView ↔ SplitView swaps the DOM node.
   useLayoutEffect(() => {
     const el = document.getElementById('composer-slot')
     if (el !== slot) setSlot(el)
-  })
+  }, [activeSessionId, slot])
 
   return slot
 }

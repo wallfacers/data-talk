@@ -1,5 +1,6 @@
 package com.datatalk.application.connection;
 
+import com.datatalk.dto.ConnectionDto;
 import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.persistence.SecretVault;
@@ -21,15 +22,15 @@ public class ConnectionService {
         this.clock = clock;
     }
 
-    public void create(String id, String kind, String host, int port, String database,
+    public void create(String id, String kind, String host, int port, String databaseName,
                        String username, String password) {
         byte[] enc = vault.seal(password);
-        repo.insert(new ConnectionRecord(id, kind, host, port, database, username, enc, null, clock.millis()));
+        repo.insert(new ConnectionRecord(id, kind, host, port, databaseName, username, enc, null, clock.millis()));
     }
 
-    public List<ConnectionView> list() {
+    public List<ConnectionDto> list() {
         return repo.findAll().stream()
-            .map(c -> new ConnectionView(c.id(), c.kind(), c.host(), c.port(),
+            .map(c -> new ConnectionDto(c.id(), c.kind(), c.host(), c.port(),
                 c.databaseName(), c.username(), c.createdAt()))
             .toList();
     }
@@ -44,12 +45,12 @@ public class ConnectionService {
         repo.deleteAll();
     }
 
-    public void update(String id, String kind, String host, int port, String database,
+    public void update(String id, String kind, String host, int port, String databaseName,
                        String username, String password) {
         var existing = repo.findById(id)
             .orElseThrow(() -> new java.util.NoSuchElementException("unknown connection: " + id));
         byte[] enc = password != null ? vault.seal(password) : existing.passwordEnc();
-        repo.update(new ConnectionRecord(id, kind, host, port, database, username,
+        repo.update(new ConnectionRecord(id, kind, host, port, databaseName, username,
             enc, existing.schemaDigest(), existing.createdAt()));
     }
 
@@ -83,10 +84,6 @@ public class ConnectionService {
             default -> throw new IllegalArgumentException("unsupported kind: " + c.kind());
         };
     }
-
-    /** Safe-to-serialize view. Omits password_enc. */
-    public record ConnectionView(String id, String kind, String host, int port,
-                                 String databaseName, String username, long createdAt) {}
 
     public record TestResult(boolean ok, long latencyMs, String reason) {}
 }

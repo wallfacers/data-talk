@@ -1,6 +1,4 @@
 import type { ReactNode } from 'react'
-import { Maximize2Icon, Minimize2Icon, XIcon } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { useStageStore } from '@/stores/stage-store'
 import { useActiveArtifactTitle } from '../use-active-artifact-title'
 
@@ -30,27 +28,25 @@ export function StageWindow({ sessionId, children }: Props) {
           {Icon && <Icon className="size-3.5" />}
           {label || '工作台'}
         </span>
-        <div className="flex items-center gap-1">
-          <Button
+        <div className="flex items-center gap-2">
+          <button
             type="button"
-            variant="ghost"
-            size="icon-xs"
-            aria-label={maximized ? '还原' : '放大'}
-            onClick={handleToggleMaximized}
-          >
-            {maximized
-              ? <Minimize2Icon className="size-3.5" />
-              : <Maximize2Icon className="size-3.5" />}
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-xs"
+            className="size-3 rounded-full bg-[#ff5f56] transition-colors hover:bg-[#ff3b30]"
             aria-label="关闭"
             onClick={handleClose}
-          >
-            <XIcon className="size-3.5" />
-          </Button>
+          />
+          <button
+            type="button"
+            className="size-3 rounded-full bg-[#ffbd2e] opacity-60 cursor-default"
+            aria-label="最小化（暂不可用）"
+            disabled
+          />
+          <button
+            type="button"
+            className="size-3 rounded-full bg-[#27c93f] transition-colors hover:bg-[#1ebe2f]"
+            aria-label={maximized ? '还原' : '放大'}
+            onClick={handleToggleMaximized}
+          />
         </div>
       </div>
       <div className="flex flex-1 min-h-0 flex-col">{children}</div>

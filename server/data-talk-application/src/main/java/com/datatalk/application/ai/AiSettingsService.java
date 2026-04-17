@@ -1,5 +1,8 @@
 package com.datatalk.application.ai;
 
+import com.datatalk.dto.AiModelDto;
+import com.datatalk.dto.AiModelsDto;
+import com.datatalk.dto.AiProviderDto;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
@@ -32,31 +35,31 @@ public class AiSettingsService {
         oc.putAuth(providerId, payload);
     }
 
-    public ModelsDto listModels() {
+    public AiModelsDto listModels() {
         JsonNode root = oc.listProviders();
         Set<String> connected = new HashSet<>();
         if (root.has("connected")) root.get("connected").forEach(n -> connected.add(n.asText()));
         Set<String> disabled = modelPrefs.disabledSet();
 
-        List<ProviderDto> providers = new ArrayList<>();
+        List<AiProviderDto> providers = new ArrayList<>();
         if (root.has("all")) {
             for (JsonNode p : root.get("all")) {
                 String pid = p.get("id").asText();
                 String name = p.has("name") ? p.get("name").asText() : pid;
-                List<ModelDto> models = new ArrayList<>();
+                List<AiModelDto> models = new ArrayList<>();
                 JsonNode m = p.get("models");
                 if (m != null && m.isObject()) {
                     m.fields().forEachRemaining(e -> {
                         String mid = e.getKey();
                         String mname = e.getValue().has("name") ? e.getValue().get("name").asText() : mid;
                         boolean enabled = !disabled.contains(pid + "/" + mid);
-                        models.add(new ModelDto(mid, mname, enabled));
+                        models.add(new AiModelDto(mid, mname, enabled));
                     });
                 }
-                providers.add(new ProviderDto(pid, name, connected.contains(pid), models));
+                providers.add(new AiProviderDto(pid, name, connected.contains(pid), models));
             }
         }
-        return new ModelsDto(providers);
+        return new AiModelsDto(providers);
     }
 
     public void setModelEnabled(String providerId, String modelId, boolean enabled) {
@@ -65,8 +68,4 @@ public class AiSettingsService {
 
     public String getCurrentModel() { return userPrefs.getCurrentModel(); }
     public void setCurrentModel(String modelId) { userPrefs.setCurrentModel(modelId); }
-
-    public record ModelsDto(List<ProviderDto> providers) {}
-    public record ProviderDto(String id, String name, boolean connected, List<ModelDto> models) {}
-    public record ModelDto(String id, String name, boolean enabled) {}
 }

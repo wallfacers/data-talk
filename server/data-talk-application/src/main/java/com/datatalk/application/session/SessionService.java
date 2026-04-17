@@ -55,7 +55,7 @@ public class SessionService {
         if (repo.findById(id).isEmpty()) {
             throw new NoSuchElementException("session not found: " + id);
         }
-        repo.deleteMessagesBySession(id);
         repo.deleteById(id);
+        // FK ON DELETE CASCADE handles messages, artifacts, action_invocations, events, query_results
     }
 }

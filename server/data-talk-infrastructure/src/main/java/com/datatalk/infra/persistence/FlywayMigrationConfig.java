@@ -47,6 +47,7 @@ public class FlywayMigrationConfig {
         cfg.setJdbcUrl("jdbc:sqlite:" + path);
         cfg.setMaximumPoolSize(1); // SQLite serializes writes
         cfg.setPoolName("datatalk-sqlite");
+        cfg.setConnectionInitSql("PRAGMA foreign_keys=ON");
         return new HikariDataSource(cfg);
     }
 

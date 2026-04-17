@@ -11,6 +11,15 @@ import { ChatHeader } from './chat-header'
 
 const DURATION = 400
 const EASE = 'cubic-bezier(0.32, 0.72, 0.24, 1)'
+const SPLIT_RATIO_KEY = 'split-view-ratio'
+
+function loadSavedRatio(): number {
+  try {
+    const v = localStorage.getItem(SPLIT_RATIO_KEY)
+    if (v) { const n = parseFloat(v); if (!isNaN(n) && n >= 0.2 && n <= 0.8) return n }
+  } catch { /* ignore */ }
+  return 0.46
+}
 
 export function SplitView() {
   const sid = useSessionStore((s) => s.activeSessionId)
@@ -23,8 +32,11 @@ export function SplitView() {
   })
 
   const stageContainerRef = useRef<HTMLDivElement>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
   const [clipGeom, setClipGeom] = useState<{ r: number; x: number; y: number } | null>(null)
   const [translateLatched, setTranslateLatched] = useState<boolean>(!open)
+  const [dragRatio, setDragRatio] = useState<number | null>(null)
+  const isDraggingRef = useRef(false)
 
   useLayoutEffect(() => {
     if (!revealOrigin) { setClipGeom(null); return }
@@ -50,8 +62,12 @@ export function SplitView() {
     return () => clearTimeout(t)
   }, [open])
 
-  const chatWidth = maximized ? '0%' : open ? '46%' : '100%'
-  const stageWidth = maximized ? '100%' : '54%'
+  // Load saved ratio on mount
+  useEffect(() => { setDragRatio(loadSavedRatio()) }, [])
+
+  const effectiveRatio = dragRatio ?? 0.46
+  const chatWidth = maximized ? '0%' : open ? `${effectiveRatio * 100}%` : '100%'
+  const stageWidth = maximized ? '100%' : open ? `${(1 - effectiveRatio) * 100}%` : '0%'
   const stageTransform = translateLatched ? 'translateX(100%)' : 'translateX(0px)'
 
   const clipPath = clipGeom
@@ -71,7 +87,11 @@ export function SplitView() {
   }
 
   return (
-    <div className="relative h-full overflow-hidden">
+    <div
+      ref={rootRef}
+      className="relative h-full overflow-hidden"
+      data-dragging={isDraggingRef.current || undefined}
+    >
       {/* chat 列 */}
       <div
         style={{
@@ -113,6 +133,35 @@ export function SplitView() {
           </div>
         )}
       </div>
+
+      {/* drag handle */}
+      {open && !maximized && (
+        <div
+          className="group absolute top-0 bottom-0 z-20 w-1 cursor-col-resize -translate-x-1/2 hover:bg-primary/20 transition-colors"
+          style={{ left: chatWidth }}
+          onPointerDown={(e) => {
+            isDraggingRef.current = true
+            e.currentTarget.setPointerCapture(e.pointerId)
+          }}
+          onPointerMove={(e) => {
+            if (!isDraggingRef.current) return
+            const container = rootRef.current
+            if (!container) return
+            const rect = container.getBoundingClientRect()
+            const ratio = (e.clientX - rect.left) / rect.width
+            setDragRatio(Math.min(0.8, Math.max(0.2, ratio)))
+          }}
+          onPointerUp={() => {
+            if (!isDraggingRef.current) return
+            isDraggingRef.current = false
+            if (dragRatio !== null) {
+              try { localStorage.setItem(SPLIT_RATIO_KEY, String(dragRatio)) } catch { /* ignore */ }
+            }
+          }}
+        >
+          <div className="absolute inset-y-0 left-1/2 w-px bg-border group-hover:bg-primary/50" />
+        </div>
+      )}
 
       {/* stage 列：clip-path 气泡 + translateLatched 双段 */}
       <div ref={stageContainerRef} data-stage-panel style={stageStyle}>

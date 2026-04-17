@@ -33,16 +33,8 @@ public class QueryController {
      * 执行 SQL 查询
      */
     @PostMapping("/query")
-    public ResponseEntity<?> executeQuery(@Valid @RequestBody ExecuteSqlCommand command) {
-        try {
-            QueryResponseDto response = queryApplicationService.executeQuery(command);
-            return ResponseEntity.ok(response);
-        } catch (ConnectionNotFoundException e) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("error", e.getMessage(), "code", "CONNECTION_NOT_FOUND"));
-        } catch (SqlExecutionException e) {
-            return ResponseEntity.internalServerError()
-                    .body(Map.of("error", e.getMessage(), "code", "QUERY_FAILED"));
-        }
+    public ResponseEntity<QueryResponseDto> executeQuery(@Valid @RequestBody ExecuteSqlCommand command) {
+        QueryResponseDto response = queryApplicationService.executeQuery(command);
+        return ResponseEntity.ok(response);
     }
 }

@@ -1,5 +1,8 @@
 package com.datatalk.adapter.api;
 
+import com.datatalk.dto.AiCurrentModelDto;
+import com.datatalk.dto.AiModelPatchRequest;
+import com.datatalk.dto.AiModelsDto;
 import com.datatalk.application.ai.AiSettingsService;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.http.ResponseEntity;
@@ -35,29 +38,25 @@ public class AiSettingsController {
     }
 
     @GetMapping("/models")
-    public AiSettingsService.ModelsDto listModels() {
+    public AiModelsDto listModels() {
         return svc.listModels();
     }
-
-    public record ModelPatchBody(boolean enabled) {}
 
     @PatchMapping("/models/{providerId}/{modelId:.+}")
     public ResponseEntity<Void> patchModel(@PathVariable String providerId,
                                            @PathVariable String modelId,
-                                           @RequestBody ModelPatchBody body) {
+                                           @RequestBody AiModelPatchRequest body) {
         svc.setModelEnabled(providerId, modelId, body.enabled());
         return ResponseEntity.noContent().build();
     }
 
-    public record CurrentModelDto(String modelId) {}
-
     @GetMapping("/current-model")
-    public CurrentModelDto getCurrentModel() {
-        return new CurrentModelDto(svc.getCurrentModel());
+    public AiCurrentModelDto getCurrentModel() {
+        return new AiCurrentModelDto(svc.getCurrentModel());
     }
 
     @PatchMapping("/current-model")
-    public ResponseEntity<Void> patchCurrentModel(@RequestBody CurrentModelDto body) {
+    public ResponseEntity<Void> patchCurrentModel(@RequestBody AiCurrentModelDto body) {
         svc.setCurrentModel(body.modelId());
         return ResponseEntity.noContent().build();
     }
