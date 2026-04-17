@@ -209,6 +209,7 @@ DataTalk 的差异化在于 **AI 直接操作数据库**，但不能让 AI 蛮�
 
 | 设计文档 | 日期 | 主题 |
 |----------|------|------|
+| [Composer Model Picker Dialog](./2026-04-18-composer-model-picker-dialog-design.md) | 2026-04-18 | Composer 模型选择器由 Popover 改为 960×540 双栏对话框，触发按钮视觉不变 |
 | [Stage Reveal Animation](./2026-04-17-stage-reveal-animation-design.md) | 2026-04-17 | Stage 气泡式开/关动画（clip-path circle）+ 圆角内 bg-muted 色差 |
 | [AI Settings · OpenCode Port](./2026-04-17-ai-settings-opencode-port.md) | 2026-04-17 | AI 设置中心：数据源 / 提供商 / 模型三页，对齐 OpenCode Desktop |
 | [Stage As Computer](./2026-04-17-stage-as-computer-design.md) | 2026-04-17 | 右栏外壳化（macOS titlebar）+ 可关可开 + 智能自弹 + 删 /preview |
