@@ -12,7 +12,7 @@ export function HeroView() {
           用自然语言和你的数据库对话
         </p>
       </div>
-      <div className="mt-8 w-full max-w-2xl">
+      <div className="mt-8 w-full max-w-3xl">
         <div id="composer-slot" />
       </div>
     </div>

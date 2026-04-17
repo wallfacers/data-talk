@@ -4,10 +4,8 @@ import { useFlipComposer } from './use-flip-composer'
 import { useSessionHistory } from './hooks/use-session-history'
 import { useSessionSubscribe } from './hooks/use-session-subscribe'
 import { usePendingPromptResume } from './hooks/use-pending-prompt-resume'
-import { HeroView } from './hero-view'
 import { SplitView } from './split-view'
 import { PromptComposer } from './prompt-composer'
-import { ConnectionOverlay } from './connection-overlay'
 import { useRef, useLayoutEffect, useState } from 'react'
 
 // clip-path 裂开动画 keyframes（注入一次）
@@ -56,10 +54,8 @@ export function SessionCanvas() {
           style={{ animation: 'manus-clip-unlock 260ms cubic-bezier(.22,.61,.36,1) forwards' }}
         />
       )}
-      {mode === 'HERO' && <HeroView />}
-      {mode === 'SPLIT' && <SplitView />}
+      <SplitView />
       <PromptComposer />
-      <ConnectionOverlay />
     </div>
   )
 }
