@@ -1,4 +1,4 @@
-import { GeneralSettingsPanel } from '@/features/model-config/general-panel'
+import { GeneralSettingsPanel } from './general-panel'
 
 export function GeneralPage() {
   return (
