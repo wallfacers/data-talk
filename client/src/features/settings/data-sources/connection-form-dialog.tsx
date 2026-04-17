@@ -28,7 +28,7 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
     if (editing) {
       setForm({
         kind: editing.kind, host: editing.host,
-        port: editing.port, database: editing.databaseName,
+        port: editing.port, database: editing.databaseName ?? '',
         username: editing.username, password: '',
       })
     } else {
@@ -39,16 +39,17 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
 
   const save = useMutation({
     mutationFn: async () => {
+      const dbName = form.database.trim() || null
       if (editing) {
         await updateConnection(editing.id, {
           kind: form.kind, host: form.host, port: form.port,
-          databaseName: form.database, username: form.username,
+          databaseName: dbName, username: form.username,
           password: form.password.length > 0 ? form.password : null,
         })
       } else {
         await createConnection({
           kind: form.kind, host: form.host, port: form.port,
-          databaseName: form.database, username: form.username, password: form.password,
+          databaseName: dbName, username: form.username, password: form.password,
         })
       }
     },
@@ -85,8 +86,8 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
           <Input type="number" value={form.port}
             onChange={(e) => setForm(f => ({ ...f, port: Number(e.target.value) }))} />
         </Field>
-        <Field label="数据库">
-          <Input value={form.database}
+        <Field label="数据库（可选）">
+          <Input value={form.database} placeholder="留空则连接服务器级别"
             onChange={(e) => setForm(f => ({ ...f, database: e.target.value }))} />
         </Field>
         <Field label="用户名">

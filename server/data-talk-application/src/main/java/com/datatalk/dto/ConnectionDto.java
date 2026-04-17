@@ -5,7 +5,7 @@ public record ConnectionDto(
     String kind,
     String host,
     int port,
-    String databaseName,
+    String databaseName,  // nullable
     String username,
     long createdAt
 ) {}

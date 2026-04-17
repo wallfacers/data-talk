@@ -44,13 +44,12 @@ export function DataSourcesPage() {
       ) : (
         <table className="w-full text-sm">
           <thead className="text-left text-muted-foreground">
-            <tr><th className="pb-2">ID</th><th>类型</th><th>地址</th><th>数据库</th><th>用户</th><th></th></tr>
+            <tr><th className="pb-2">类型</th><th>地址</th><th>数据库</th><th>用户</th><th></th></tr>
           </thead>
           <tbody>
             {connections.map((c) => (
               <tr key={c.id} className="border-t">
-                <td className="py-2">{c.id}</td>
-                <td>{c.kind}</td>
+                <td className="py-2">{c.kind}</td>
                 <td>{c.host}:{c.port}</td>
                 <td>{c.databaseName}</td>
                 <td>{c.username}</td>

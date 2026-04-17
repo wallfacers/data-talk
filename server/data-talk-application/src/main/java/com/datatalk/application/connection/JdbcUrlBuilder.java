@@ -8,15 +8,16 @@ import com.datatalk.domain.error.DataTalkException;
 public final class JdbcUrlBuilder {
 
     public static String build(ConnectionRecord c) {
+        String db = c.databaseName();
         return switch (c.kind()) {
             case ConnectionKind.POSTGRESQL ->
-                "jdbc:postgresql://" + c.host() + ":" + c.port() + "/" + c.databaseName();
+                "jdbc:postgresql://" + c.host() + ":" + c.port() + "/" + (db != null ? db : "postgres");
             case ConnectionKind.MYSQL ->
-                "jdbc:mysql://" + c.host() + ":" + c.port() + "/" + c.databaseName();
+                "jdbc:mysql://" + c.host() + ":" + c.port() + "/" + (db != null ? db : "");
             case ConnectionKind.H2 ->
-                "jdbc:h2:" + c.databaseName();
+                "jdbc:h2:" + (db != null ? db : "mem:test");
             case ConnectionKind.SQLITE ->
-                "jdbc:sqlite:" + c.databaseName();
+                "jdbc:sqlite:" + (db != null ? db : "memory");
             default ->
                 throw new DataTalkException(DataTalkErrorCodes.CONNECTION_MISSING,
                     "unsupported database kind: " + c.kind(), false);

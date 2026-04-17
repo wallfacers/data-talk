@@ -3,7 +3,7 @@ export interface ConnectionDto {
   kind: string
   host: string
   port: number
-  databaseName: string
+  databaseName: string | null  // nullable - null for server-level connection
   username: string
   createdAt: number
 }
@@ -12,7 +12,7 @@ export interface ConnectionCreateRequest {
   kind: string
   host: string
   port: number
-  databaseName: string
+  databaseName?: string | null  // optional
   username: string
   password: string
 }
@@ -21,7 +21,7 @@ export interface ConnectionUpdateRequest {
   kind: string
   host: string
   port: number
-  databaseName: string
+  databaseName?: string | null  // optional
   username: string
   password: string | null
 }

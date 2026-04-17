@@ -76,12 +76,15 @@ public class ConnectionService {
     }
 
     private static String jdbcUrl(ConnectionRecord c) {
+        String db = c.databaseName();
         return switch (c.kind()) {
-            case "mysql" -> "jdbc:mysql://" + c.host() + ":" + c.port() + "/" + c.databaseName()
+            case "mysql" -> "jdbc:mysql://" + c.host() + ":" + c.port() + "/"
+                + (db != null ? db : "")
                 + "?connectTimeout=3000&socketTimeout=3000";
-            case "postgres", "postgresql" -> "jdbc:postgresql://" + c.host() + ":" + c.port() + "/" + c.databaseName()
+            case "postgres", "postgresql" -> "jdbc:postgresql://" + c.host() + ":" + c.port() + "/"
+                + (db != null ? db : "postgres")
                 + "?connectTimeout=3&socketTimeout=3";
-            case "h2" -> "jdbc:h2:" + c.databaseName();
+            case "h2" -> "jdbc:h2:" + (db != null ? db : "mem:test");
             default -> throw new IllegalArgumentException("unsupported kind: " + c.kind());
         };
     }
