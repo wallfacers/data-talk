@@ -33,4 +33,32 @@ public class AiSettingsController {
         svc.putCredentials(id, body);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/models")
+    public AiSettingsService.ModelsDto listModels() {
+        return svc.listModels();
+    }
+
+    public record ModelPatchBody(boolean enabled) {}
+
+    @PatchMapping("/models/{providerId}/{modelId:.+}")
+    public ResponseEntity<Void> patchModel(@PathVariable String providerId,
+                                           @PathVariable String modelId,
+                                           @RequestBody ModelPatchBody body) {
+        svc.setModelEnabled(providerId, modelId, body.enabled());
+        return ResponseEntity.noContent().build();
+    }
+
+    public record CurrentModelDto(String modelId) {}
+
+    @GetMapping("/current-model")
+    public CurrentModelDto getCurrentModel() {
+        return new CurrentModelDto(svc.getCurrentModel());
+    }
+
+    @PatchMapping("/current-model")
+    public ResponseEntity<Void> patchCurrentModel(@RequestBody CurrentModelDto body) {
+        svc.setCurrentModel(body.modelId());
+        return ResponseEntity.noContent().build();
+    }
 }

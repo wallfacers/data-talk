@@ -97,4 +97,44 @@ class AiSettingsControllerIT {
             .expectStatus().isEqualTo(503)
             .expectBody().jsonPath("$.error").isEqualTo("OPENCODE_UNAVAILABLE");
     }
+
+    @Test
+    void list_models_merges_prefs() {
+        oc.stubFor(get("/provider").willReturn(okJson("""
+            {"all":[{"id":"openai","name":"OpenAI","models":{
+                "gpt-5":{"id":"gpt-5","name":"GPT-5"}}}],
+             "connected":["openai"]}
+            """)));
+        web.get().uri("/api/ai/models").exchange()
+            .expectStatus().isOk()
+            .expectBody()
+            .jsonPath("$.providers[0].id").isEqualTo("openai")
+            .jsonPath("$.providers[0].connected").isEqualTo(true)
+            .jsonPath("$.providers[0].models[0].enabled").isEqualTo(true);
+    }
+
+    @Test
+    void patch_model_disables() {
+        oc.stubFor(get("/provider").willReturn(okJson("""
+            {"all":[{"id":"openai","name":"OpenAI","models":{"gpt-5":{"id":"gpt-5","name":"GPT-5"}}}],
+             "connected":["openai"]}
+            """)));
+        web.patch().uri("/api/ai/models/openai/gpt-5")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("{\"enabled\":false}")
+            .exchange()
+            .expectStatus().isNoContent();
+        web.get().uri("/api/ai/models").exchange()
+            .expectBody().jsonPath("$.providers[0].models[0].enabled").isEqualTo(false);
+    }
+
+    @Test
+    void current_model_round_trip() {
+        web.patch().uri("/api/ai/current-model")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("{\"modelId\":\"openai/gpt-5\"}")
+            .exchange().expectStatus().isNoContent();
+        web.get().uri("/api/ai/current-model").exchange()
+            .expectBody().jsonPath("$.modelId").isEqualTo("openai/gpt-5");
+    }
 }
