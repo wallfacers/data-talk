@@ -18,4 +18,7 @@ public interface OpenCodeProviderClient {
 
     /** Stores credentials for the given provider. */
     void putAuth(String providerId, Map<String, Object> payload);
+
+    /** Removes credentials for the given provider. */
+    void deleteAuth(String providerId);
 }

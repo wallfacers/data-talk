@@ -3,8 +3,8 @@ import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ArrowLeftIcon, PlusIcon, RotateCwIcon } from 'lucide-react'
-import { fetchProviders, fetchProviderAuth, putCredentials, aiQueryKeys } from '../shared/api'
+import { ArrowLeftIcon, PlusIcon, RotateCwIcon, Trash2Icon } from 'lucide-react'
+import { fetchProviders, fetchProviderAuth, putCredentials, deleteCredentials, aiQueryKeys } from '../shared/api'
 import { ProviderIcon } from '../shared/provider-icon'
 import { RECOMMENDED_PROVIDERS, PROVIDER_DESCRIPTIONS } from '../shared/recommended-providers'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -52,7 +52,9 @@ export function ProvidersPage() {
       <h1 className="mb-6 text-2xl font-semibold">提供商</h1>
 
       <Section title="已连接的提供商" empty="没有已连接的提供商">
-        {connected.map(p => <Row key={p.id} p={p} action="reconfigure" onClick={() => setConnecting(p)} />)}
+        {connected.map(p => (
+          <Row key={p.id} p={p} action="reconfigure" onClick={() => setConnecting(p)} onRemove={p.id} />
+        ))}
       </Section>
 
       <Section title="热门提供商">
@@ -87,7 +89,13 @@ function ConnectPage({ provider, onBack, onSaved }: {
       await putCredentials(provider.id, payload)
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: aiQueryKeys.providers })
+      // 乐观更新：把刚保存的 provider 加入已连接列表
+      qc.setQueryData(aiQueryKeys.providers, (old: any) => {
+        if (!old) return old
+        const existing = old.connected ?? []
+        if (existing.includes(provider.id)) return old
+        return { ...old, connected: [...existing, provider.id] }
+      })
       qc.invalidateQueries({ queryKey: aiQueryKeys.models })
       toast.success('已保存凭证')
       onSaved()
@@ -192,9 +200,26 @@ function Section({ title, empty, children }: { title: string; empty?: string; ch
   )
 }
 
-function Row({ p, action, onClick }: { p: RawProvider; action: 'connect' | 'reconfigure'; onClick: () => void }) {
+function Row({ p, action, onClick, onRemove }: {
+  p: RawProvider
+  action: 'connect' | 'reconfigure'
+  onClick: () => void
+  onRemove?: string
+}) {
+  const qc = useQueryClient()
   const recommended = RECOMMENDED_PROVIDERS.has(p.id)
   const desc = PROVIDER_DESCRIPTIONS[p.id] ?? '使用 API 密钥连接'
+
+  const remove = useMutation({
+    mutationFn: () => deleteCredentials(onRemove!),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: aiQueryKeys.providers })
+      qc.invalidateQueries({ queryKey: aiQueryKeys.models })
+      toast.success('已移除凭证')
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+
   return (
     <div className="flex items-center gap-3 p-3">
       <ProviderIcon id={p.id} className="size-6" />
@@ -205,10 +230,23 @@ function Row({ p, action, onClick }: { p: RawProvider; action: 'connect' | 'reco
         </div>
         <div className="text-xs text-muted-foreground">{desc}</div>
       </div>
-      <Button size="sm" variant="outline" onClick={onClick}>
-        {action === 'connect' ? <><PlusIcon className="size-4" />连接</>
-                               : <><RotateCwIcon className="size-4" />重新配置</>}
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button size="sm" variant="outline" onClick={onClick}>
+          {action === 'connect' ? <><PlusIcon className="size-4" />连接</>
+                                 : <><RotateCwIcon className="size-4" />重新配置</>}
+        </Button>
+        {onRemove && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            onClick={() => remove.mutate()}
+            disabled={remove.isPending}
+          >
+            <Trash2Icon className="size-4" />
+          </Button>
+        )}
+      </div>
     </div>
   )
 }

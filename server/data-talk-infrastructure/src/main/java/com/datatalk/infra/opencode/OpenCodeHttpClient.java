@@ -116,4 +116,11 @@ public class OpenCodeHttpClient implements OpenCodeProviderClient {
             .toBodilessEntity()
             .block();
     }
+
+    public void deleteAuth(String providerId) {
+        wc.delete().uri("/auth/{id}", providerId)
+            .retrieve()
+            .toBodilessEntity()
+            .block();
+    }
 }

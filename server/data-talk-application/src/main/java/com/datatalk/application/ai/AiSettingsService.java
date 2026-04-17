@@ -7,6 +7,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 
 @Service
@@ -27,7 +30,36 @@ public class AiSettingsService {
         this.om = om;
     }
 
-    public JsonNode listProviders() { return oc.listProviders(); }
+    public JsonNode listProviders() {
+        JsonNode root = oc.listProviders();
+        Set<String> configured = readConfiguredProviders();
+        // Merge auth.json configured providers into connected array
+        if (root.has("connected")) {
+            root.get("connected").forEach(n -> configured.add(n.asText()));
+        }
+        // Build a new JsonNode with the merged connected array
+        var merged = om.createObjectNode();
+        if (root.has("all")) merged.set("all", root.get("all"));
+        var connectedArray = merged.putArray("connected");
+        configured.forEach(connectedArray::add);
+        return merged;
+    }
+
+    /** Reads ~/.local/share/opencode/auth.json and returns provider IDs that have credentials. */
+    private Set<String> readConfiguredProviders() {
+        Set<String> ids = new LinkedHashSet<>();
+        String home = System.getProperty("user.home");
+        if (home == null) return ids;
+        Path authFile = Path.of(home, ".local", "share", "opencode", "auth.json");
+        if (!Files.exists(authFile)) return ids;
+        try {
+            JsonNode auth = om.readTree(Files.readString(authFile));
+            auth.fieldNames().forEachRemaining(ids::add);
+        } catch (IOException e) {
+            // Silently ignore — auth.json may be locked or malformed
+        }
+        return ids;
+    }
 
     public JsonNode providerAuth() { return oc.getProviderAuth(); }
 
@@ -35,10 +67,16 @@ public class AiSettingsService {
         oc.putAuth(providerId, payload);
     }
 
+    public void deleteCredentials(String providerId) {
+        oc.deleteAuth(providerId);
+    }
+
     public AiModelsDto listModels() {
         JsonNode root = oc.listProviders();
         Set<String> connected = new HashSet<>();
         if (root.has("connected")) root.get("connected").forEach(n -> connected.add(n.asText()));
+        // Merge with locally configured providers from auth.json
+        connected.addAll(readConfiguredProviders());
         Set<String> disabled = modelPrefs.disabledSet();
 
         List<AiProviderDto> providers = new ArrayList<>();

@@ -24,6 +24,10 @@ export async function putCredentials(providerId: string, payload: unknown): Prom
   await http.put(`ai/providers/${providerId}/credentials`, { json: payload })
 }
 
+export async function deleteCredentials(providerId: string): Promise<void> {
+  await http.delete(`ai/providers/${providerId}/credentials`)
+}
+
 export async function fetchModels(): Promise<ProvidersDto> {
   return http.get('ai/models').json<ProvidersDto>()
 }

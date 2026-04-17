@@ -37,6 +37,12 @@ public class AiSettingsController {
         return ResponseEntity.noContent().build();
     }
 
+    @DeleteMapping("/providers/{id}/credentials")
+    public ResponseEntity<Void> deleteCredentials(@PathVariable String id) {
+        svc.deleteCredentials(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/models")
     public AiModelsDto listModels() {
         return svc.listModels();

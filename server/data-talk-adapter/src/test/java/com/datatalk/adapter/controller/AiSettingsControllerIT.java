@@ -62,7 +62,10 @@ class AiSettingsControllerIT {
         web.get().uri("/api/ai/providers").exchange()
             .expectStatus().isOk()
             .expectBody()
-            .jsonPath("$.connected[0]").isEqualTo("openai");
+            .jsonPath("$.all[0].id").isEqualTo("openai")
+            .jsonPath("$.connected").isArray()
+            // connected may include auth.json entries, but must contain openai
+            .jsonPath("$.connected[?(@ == 'openai')]").isNotEmpty();
     }
 
     @Test
