@@ -10,6 +10,8 @@ import com.datatalk.infra.opencode.OpenCodeConfig;
 import com.datatalk.infra.opencode.OpenCodeHttpClient;
 import com.datatalk.infra.opencode.process.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,6 +25,8 @@ import java.nio.file.Paths;
 @Configuration
 @EnableConfigurationProperties(OpenCodeServeProperties.class)
 public class OpenCodeGatewayBeans {
+
+    private static final Logger log = LoggerFactory.getLogger(OpenCodeGatewayBeans.class);
 
     private final OpenCodeHttpClient client;
     private final OpenCodeConfig.OpenCodeProperties props;
@@ -95,7 +99,12 @@ public class OpenCodeGatewayBeans {
      */
     @EventListener(ApplicationReadyEvent.class)
     public void registerOnStartup() {
-        if (serveProps.isEnabled() && !processManager.isRunning()) {
+        if (!serveProps.isEnabled()) {
+            log.info("OpenCode embedded server is disabled - skipping tool registration");
+            return;
+        }
+
+        if (!processManager.isRunning()) {
             System.err.println("OpenCode embedded server failed to start - skipping tool registration (degraded mode)");
             return;
         }

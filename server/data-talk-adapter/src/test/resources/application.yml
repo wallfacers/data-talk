@@ -22,3 +22,5 @@ datatalk:
   opencode:
     base-url: http://localhost:4096
     callback-base: http://localhost:8080
+    serve:
+      enabled: false
