@@ -21,7 +21,7 @@ public class ConnectionController {
 
     @PostMapping
     public ResponseEntity<Void> create(@RequestBody ConnectionCreateRequest body) {
-        svc.create(body.id(), body.kind(), body.host(), body.port(),
+        svc.create(body.kind(), body.host(), body.port(),
             body.databaseName(), body.username(), body.password());
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }

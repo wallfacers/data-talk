@@ -1,16 +1,16 @@
 import { http } from '@/services/http'
+import type { AiModelsDto, AiProviderDto, AiModelDto } from '@/types/generated/api'
 
+export type { AiProviderDto, AiModelDto } from '@/types/generated/api'
+
+// Aliases matching frontend naming conventions
+export type ProvidersDto = AiModelsDto
+export type ProviderDto = AiProviderDto
+export type ModelDto = AiModelDto
+
+// Provider list (raw OpenCode response)
 export type ProviderListItem = { id: string; name: string }
 export type ProvidersListDto = { all: ProviderListItem[]; connected: string[] }
-
-export type ProviderDto = {
-  id: string
-  name: string
-  connected: boolean
-  models: { id: string; name: string; enabled: boolean }[]
-}
-
-export type ProvidersDto = { providers: ProviderDto[] }
 
 export async function fetchProviders(): Promise<ProvidersListDto> {
   return http.get('ai/providers').json<ProvidersListDto>()

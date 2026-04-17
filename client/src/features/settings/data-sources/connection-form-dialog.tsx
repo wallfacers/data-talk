@@ -20,19 +20,19 @@ type Props = { editing: Connection | null; onCancel: () => void; onSaved: () => 
 export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
   const qc = useQueryClient()
   const [form, setForm] = useState({
-    id: '', kind: 'mysql', host: 'localhost', port: 3306,
+    kind: 'mysql', host: 'localhost', port: 3306,
     database: '', username: '', password: '',
   })
 
   useEffect(() => {
     if (editing) {
       setForm({
-        id: editing.id, kind: editing.kind, host: editing.host,
+        kind: editing.kind, host: editing.host,
         port: editing.port, database: editing.databaseName,
         username: editing.username, password: '',
       })
     } else {
-      setForm({ id: '', kind: 'mysql', host: 'localhost', port: 3306,
+      setForm({ kind: 'mysql', host: 'localhost', port: 3306,
         database: '', username: '', password: '' })
     }
   }, [editing])
@@ -42,11 +42,14 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
       if (editing) {
         await updateConnection(editing.id, {
           kind: form.kind, host: form.host, port: form.port,
-          database: form.database, username: form.username,
+          databaseName: form.database, username: form.username,
           password: form.password.length > 0 ? form.password : null,
         })
       } else {
-        await createConnection(form)
+        await createConnection({
+          kind: form.kind, host: form.host, port: form.port,
+          databaseName: form.database, username: form.username, password: form.password,
+        })
       }
     },
     onSuccess: () => {
@@ -63,10 +66,6 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
         {editing ? '编辑数据源' : '新增数据源'}
       </h2>
       <div className="grid gap-4">
-        <Field label="ID">
-          <Input value={form.id} disabled={!!editing}
-            onChange={(e) => setForm(f => ({ ...f, id: e.target.value }))} />
-        </Field>
         <Field label="类型">
           <Select value={form.kind}
             onValueChange={(v) => { if (v && v in DATABASE_TYPES) setForm(f => ({ ...f, kind: v as DatabaseKind, port: DATABASE_TYPES[v as DatabaseKind].port })) }}>

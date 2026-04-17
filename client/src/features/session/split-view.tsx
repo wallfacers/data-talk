@@ -87,11 +87,7 @@ export function SplitView() {
   }
 
   return (
-    <div
-      ref={rootRef}
-      className="relative h-full overflow-hidden"
-      data-dragging={isDraggingRef.current || undefined}
-    >
+    <div ref={rootRef} className="relative h-full overflow-hidden">
       {/* chat 列 */}
       <div
         style={{

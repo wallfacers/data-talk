@@ -1,18 +1,11 @@
 import { http } from '@/services/http'
+import type { Connection, ConnectionCreateInput } from '@/types/generated/api'
 
-export type DbType = 'mysql' | 'postgres' | 'sqlserver' | 'oracle' | 'sqlite'
+export type { Connection } from '@/types/generated/api'
+export type DbType = 'mysql' | 'postgres' | 'h2'
 
-export type Connection = {
-  id: string
-  name: string
-  dbType: DbType
-  host: string
-  port: number
-  database: string
-  username: string
-}
-
-export type CreateConnectionInput = Omit<Connection, 'id'> & { password: string }
+// Alias for create input with password
+export type CreateConnectionInput = ConnectionCreateInput
 
 export function listConnections() {
   return http.get('connections').json<{ connections: Connection[] }>().then((r) => r.connections)

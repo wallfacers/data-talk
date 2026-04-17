@@ -1,1 +1,1 @@
-export type { Connection, CreateConnectionInput, DbType } from '@/services/api/connection'
+export type { Connection } from '@/services/api/connection'

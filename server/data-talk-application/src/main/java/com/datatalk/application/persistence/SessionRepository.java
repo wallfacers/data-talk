@@ -61,10 +61,6 @@ public class SessionRepository {
         return jdbc.update("DELETE FROM sessions WHERE id = ?", id);
     }
 
-    public int deleteMessagesBySession(String id) {
-        return jdbc.update("DELETE FROM messages WHERE session_id = ?", id);
-    }
-
     public java.util.List<SessionRecord> listAll() {
         return jdbc.query("SELECT * FROM sessions ORDER BY updated_at DESC", MAPPER);
     }

@@ -1,13 +1,7 @@
 import { http } from '@/services/http'
+import type { Session } from '@/types/generated/api'
 
-export type Session = {
-  id: string
-  connectionId: string
-  title: string
-  hasEverSent: boolean
-  createdAt: number
-  updatedAt: number
-}
+export type { Session } from '@/types/generated/api'
 
 export function listSessions(connectionId?: string) {
   const search = connectionId ? { connectionId } : undefined

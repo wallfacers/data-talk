@@ -30,7 +30,7 @@ export function ConnectionOverlay() {
                 // leave pendingPrompt untouched — resume hook will consume it
               }}
             >
-              {c.name} ({c.dbType})
+              {c.id} ({c.kind})
             </button>
           </li>
         ))}
