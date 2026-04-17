@@ -12,7 +12,7 @@
 
 ## Spec Mapping
 
-This plan implements these sections of `docs/superpowers/specs/2026-04-16-manus-split-view-design.md`:
+This plan implements these sections of `docs/product-specs/2026-04-16-manus-split-view-design.md`:
 
 - §1 High-level architecture
 - §2 Ontology & Action Registry (everything except the 6 MVP action handlers — those move to Plan B)
@@ -1088,7 +1088,7 @@ package com.datatalk.domain.event;
 
 /**
  * Structured error body used across Streamable HTTP and tool responses.
- * The {@code code} field is a stable string id; see {@code docs/superpowers/specs/error-codes.md}.
+ * The {@code code} field is a stable string id; see {@code docs/product-specs/error-codes.md}.
  */
 public record ErrorInfo(
     String code,
@@ -1347,7 +1347,7 @@ git commit -m "feat(server): add JsonSchemaLoader backed by networknt validator"
 
 ## Continuation
 
-Tasks 7–26 continue in `docs/superpowers/plans/2026-04-16-manus-a-backend-platform-part2.md`. The split is purely for file-size reasons; treat the two files as a single plan executed in numeric task order.
+Tasks 7–26 continue in `docs/exec-plans/2026-04-16-manus-a-backend-platform-part2.md`. The split is purely for file-size reasons; treat the two files as a single plan executed in numeric task order.
 
 **Index of continuation:**
 

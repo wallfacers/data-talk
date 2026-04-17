@@ -202,3 +202,16 @@ DataTalk 的差异化在于 **AI 直接操作数据库**，但不能让 AI 蛮�
 - 执行计划索引：[docs/exec-plans/index.md](../exec-plans/index.md)
 - 后端开发指南：[docs/BACKEND.md](../BACKEND.md)
 - 前端开发指南：[docs/FRONTEND.md](../FRONTEND.md)
+
+## 8. 个别设计文档
+
+按时间倒序列出本目录下的单功能设计 spec。Superpowers brainstorming 产出的新 spec 应写入本目录并在此登记。
+
+| 设计文档 | 日期 | 主题 |
+|----------|------|------|
+| [AI Settings · OpenCode Port](./2026-04-17-ai-settings-opencode-port.md) | 2026-04-17 | AI 设置中心：数据源 / 提供商 / 模型三页，对齐 OpenCode Desktop |
+| [Stage As Computer](./2026-04-17-stage-as-computer-design.md) | 2026-04-17 | 右栏外壳化（macOS titlebar）+ 可关可开 + 智能自弹 + 删 /preview |
+| [Client Rebuild (Tauri + Vite)](./2026-04-16-client-rebuild-tauri-vite-design.md) | 2026-04-16 | Tauri v2 + React 19 + Vite 客户端骨架重建方案 |
+| [Manus Split View](./2026-04-16-manus-split-view-design.md) | 2026-04-16 | Manus 风格分屏交互 + Action Registry + Ontology 层 |
+| [Model Config Page](./2026-04-16-model-config-page-design.md) | 2026-04-16 | 模型配置页面：提供商管理 / 模型可见性 / 自定义提供商 |
+| [OpenCode Embedded Process](./2026-04-16-opencode-embedded-process-design.md) | 2026-04-16 | Spring Boot 嵌入管理 OpenCode 进程：自动下载 / 动态端口 / 生命周期 |

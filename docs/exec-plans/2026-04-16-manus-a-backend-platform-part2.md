@@ -1818,7 +1818,7 @@ git commit -m "feat(server): add PendingCallRegistry with watchdog timeouts"
 
 ## Continuation
 
-Tasks 15–26 continue in `docs/superpowers/plans/2026-04-16-manus-a-backend-platform-part3.md`:
+Tasks 15–26 continue in `docs/exec-plans/2026-04-16-manus-a-backend-platform-part3.md`:
 
 - Task 15: SessionBus (ring buffer + flusher)
 - Task 16: SessionBusRegistry

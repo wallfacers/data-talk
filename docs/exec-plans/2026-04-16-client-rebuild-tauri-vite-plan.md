@@ -8,7 +8,7 @@
 
 **Tech Stack:** Tauri v2, Vite 5, React 19, TypeScript strict, TanStack Router (file-based), TanStack Query, zustand, ky, react-resizable-panels, Tailwind v4, shadcn/ui (style: base-nova), Recharts, pnpm.
 
-**Spec:** `docs/superpowers/specs/2026-04-16-client-rebuild-tauri-vite-design.md`
+**Spec:** `docs/product-specs/2026-04-16-client-rebuild-tauri-vite-design.md`
 
 ---
 

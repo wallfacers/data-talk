@@ -112,3 +112,9 @@ See [docs/exec-plans/index.md](docs/exec-plans/index.md) for details.
 ### Clarify Before Acting
 
 - If requirements, scope, or implementation approach are unclear, **MUST** ask for clarification first. Never guess
+
+### Documentation Paths
+
+- Superpowers `brainstorming` 技能生成的设计 spec 写入 `docs/product-specs/YYYY-MM-DD-<topic>-design.md`，并在 [docs/product-specs/index.md](docs/product-specs/index.md) 第 8 节「个别设计文档」中登记
+- Superpowers `writing-plans` 技能生成的执行计划写入 `docs/exec-plans/YYYY-MM-DD-<topic>-plan.md`，并在 [docs/exec-plans/index.md](docs/exec-plans/index.md) 对应章节（活跃 / 已完成）中登记
+- 调用这两个技能时**必须**将默认路径 `docs/superpowers/specs/` 与 `docs/superpowers/plans/` 替换为上述路径（`docs/superpowers/` 已废弃）

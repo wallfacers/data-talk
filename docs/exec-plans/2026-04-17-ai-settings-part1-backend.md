@@ -1571,8 +1571,8 @@ cd client && npx tsc --noEmit
 
 | 计划 | 状态 | 摘要 |
 |------|------|------|
-| [AI Settings · Part 1 · Backend](../superpowers/plans/2026-04-17-ai-settings-part1-backend.md) | 🟡 进行中 | OpenCode 代理 + 偏好持久化 + 连接 CRUD |
-| [AI Settings · Part 2 · Frontend](../superpowers/plans/2026-04-17-ai-settings-part2-frontend.md) | ⚪ 待启动 | 设置中心 UI + 对话框 + Chat 模型选择器 |
+| [AI Settings · Part 1 · Backend](../exec-plans/2026-04-17-ai-settings-part1-backend.md) | 🟡 进行中 | OpenCode 代理 + 偏好持久化 + 连接 CRUD |
+| [AI Settings · Part 2 · Frontend](../exec-plans/2026-04-17-ai-settings-part2-frontend.md) | ⚪ 待启动 | 设置中心 UI + 对话框 + Chat 模型选择器 |
 ```
 
 - [ ] **Step 4：提交**

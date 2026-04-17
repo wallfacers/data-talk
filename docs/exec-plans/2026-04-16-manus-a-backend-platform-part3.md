@@ -1393,7 +1393,7 @@ git commit -m "feat(server): add Streamable HTTP ChannelController (POST-as-SSE 
 
 ## Continuation
 
-Tasks 21–26 continue in `docs/superpowers/plans/2026-04-16-manus-a-backend-platform-part4.md`:
+Tasks 21–26 continue in `docs/exec-plans/2026-04-16-manus-a-backend-platform-part4.md`:
 
 - Task 21: OpenCodeEventTranslator (pure function)
 - Task 22: OpenCodeHttpClient + WireMock

@@ -155,7 +155,7 @@ git add data-talk-domain/src/main/java/com/datatalk/domain/error/ \
 git commit -m "feat(server): add stable error code catalog and typed exception"
 ```
 
-Also create `docs/superpowers/specs/error-codes.md` referencing these constants (spec §7.3 contract):
+Also create `docs/product-specs/error-codes.md` referencing these constants (spec §7.3 contract):
 
 ```
 # DataTalk Error Codes

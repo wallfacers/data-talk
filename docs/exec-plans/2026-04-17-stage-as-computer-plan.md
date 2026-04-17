@@ -927,7 +927,7 @@ EOF
 把本 plan 加入"已完成"区块（在所有实施 commit 之后做）：
 
 ```markdown
-| [Stage As Computer](../superpowers/plans/2026-04-17-stage-as-computer-plan.md) | 2026-04-17 | 右栏外壳化 + 小电脑按钮可关可开 + 智能自弹 + 删 /preview |
+| [Stage As Computer](../exec-plans/2026-04-17-stage-as-computer-plan.md) | 2026-04-17 | 右栏外壳化 + 小电脑按钮可关可开 + 智能自弹 + 删 /preview |
 ```
 
 - [ ] **Step 2: 最终 typecheck + 全量 vitest**

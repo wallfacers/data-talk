@@ -1655,7 +1655,7 @@ git commit -m "chore(server): add OpenCode serve configuration to application.ym
 
 - [x] **Step 2: Run final spec self-review**
 
-Check the design spec at `docs/superpowers/specs/2026-04-16-opencode-embedded-process-design.md`:
+Check the design spec at `docs/product-specs/2026-04-16-opencode-embedded-process-design.md`:
 
 1. **Spec coverage:** All sections covered by tasks:
    - §2 配置 → Task 3 (ServeProperties) + Task 9 (application.yml)

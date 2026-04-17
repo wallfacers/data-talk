@@ -16,11 +16,11 @@
 
 | 文档 | 状态 | 摘要 |
 |------|------|------|
-| [client-rebuild-tauri-vite-design](../superpowers/specs/2026-04-16-client-rebuild-tauri-vite-design.md) | shipped | Tauri v2 + React 19 + Vite 客户端重建方案 |
-| [manus-split-view-design](../superpowers/specs/2026-04-16-manus-split-view-design.md) | shipped | Manus 风格分屏交互 + Action Registry + Ontology 层 |
-| [model-config-page-design](../superpowers/specs/2026-04-16-model-config-page-design.md) | shipped | 模型配置页面：提供商管理 / 模型可见性 / 自定义提供商 |
-| [opencode-embedded-process-design](../superpowers/specs/2026-04-16-opencode-embedded-process-design.md) | shipped | Spring Boot 嵌入管理 OpenCode 进程：自动下载 / 动态端口 / 生命周期 |
-| [stage-as-computer-design](../superpowers/specs/2026-04-17-stage-as-computer-design.md) | shipped | Stage 外壳化（macOS titlebar）+ 可关可开 + 智能自弹 + 删 /preview |
+| [client-rebuild-tauri-vite-design](../product-specs/2026-04-16-client-rebuild-tauri-vite-design.md) | shipped | Tauri v2 + React 19 + Vite 客户端重建方案 |
+| [manus-split-view-design](../product-specs/2026-04-16-manus-split-view-design.md) | shipped | Manus 风格分屏交互 + Action Registry + Ontology 层 |
+| [model-config-page-design](../product-specs/2026-04-16-model-config-page-design.md) | shipped | 模型配置页面：提供商管理 / 模型可见性 / 自定义提供商 |
+| [opencode-embedded-process-design](../product-specs/2026-04-16-opencode-embedded-process-design.md) | shipped | Spring Boot 嵌入管理 OpenCode 进程：自动下载 / 动态端口 / 生命周期 |
+| [stage-as-computer-design](../product-specs/2026-04-17-stage-as-computer-design.md) | shipped | Stage 外壳化（macOS titlebar）+ 可关可开 + 智能自弹 + 删 /preview |
 
 ## 核心理念
 
@@ -28,7 +28,7 @@
 
 ## 新增设计文档
 
-1. 在 `docs/superpowers/specs/` 中创建 `YYYY-MM-DD-<topic>-design.md`
+1. 在 `docs/product-specs/` 中创建 `YYYY-MM-DD-<topic>-design.md`
 2. 在本文件中添加索引条目
 3. 标注初始状态为 `draft`
 4. 经评审后更新状态

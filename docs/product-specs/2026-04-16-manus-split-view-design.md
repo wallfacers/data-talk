@@ -895,7 +895,7 @@ type ErrorInfo = {
 | `upstream.unavailable` | OpenCode 不可达 | true (L2) | N/A | 全局 Banner + retry |
 | `channel.resume_out_of_window` | Last-Event-ID 过期 | false | N/A | 前端切冷启动 |
 
-**错误码稳定性**：`docs/superpowers/specs/error-codes.md` 单独维护；只增不删不改语义。
+**错误码稳定性**：`docs/product-specs/error-codes.md` 单独维护；只增不删不改语义。
 
 ### 7.4 并发与竞态
 
