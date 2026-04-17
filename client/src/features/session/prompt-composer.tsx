@@ -10,21 +10,13 @@ import {
   InputGroupText,
   InputGroupTextarea,
 } from '@/components/ui/input-group'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { ModelPicker } from './model-picker/model-picker'
 import { Switch } from '@/components/ui/switch'
 import { useSessionStore } from '@/stores/session-store'
 import { useStageStore } from '@/stores/stage-store'
 import { useChannel } from '@/services/channel/use-channel'
 import { createTextPart } from '@/services/channel/types'
 import { StageToggleButton } from '@/features/stage/components/stage-toggle-button'
-
-const MODELS = ['Claude Opus 4.6', 'Claude Sonnet 4.6', 'Claude Haiku 4.5'] as const
 
 function useComposerSlot(): HTMLElement | null {
   const [slot, setSlot] = useState<HTMLElement | null>(null)
@@ -47,7 +39,6 @@ export function PromptComposer() {
 
 function InnerComposer() {
   const [text, setText] = useState('')
-  const [selectedModel, setSelectedModel] = useState(MODELS[1])
   const [autoMode, setAutoMode] = useState(true)
   const { sendMessage, abort, isStreaming } = useChannel()
   const activeSessionId = useSessionStore((s) => s.activeSessionId)
@@ -95,18 +86,7 @@ function InnerComposer() {
         <InputGroupAddon align="block-end" className="pt-2">
           <div className="flex w-full items-center gap-2">
             {/* Model selector */}
-            <Select value={selectedModel} onValueChange={(v) => v && setSelectedModel(v)}>
-              <SelectTrigger size="sm" className="h-7 min-w-0 shrink-0 cursor-pointer gap-1 rounded-md border-0 bg-transparent px-2 text-xs text-black hover:bg-accent/50 dark:text-white [&>svg]:size-3 [&>svg]:text-black dark:[&>svg]:text-white">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent side="bottom">
-                {MODELS.map((m) => (
-                  <SelectItem key={m} value={m}>
-                    {m}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <ModelPicker />
 
             {/* Auto toggle */}
             <InputGroupText
