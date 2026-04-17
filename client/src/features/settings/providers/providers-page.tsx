@@ -68,7 +68,7 @@ function ConnectPage({ provider, onBack, onSaved }: {
   onSaved: () => void
 }) {
   const qc = useQueryClient()
-  const { data: auth } = useQuery({
+  const { data: auth } = useQuery<Record<string, { type: string; label?: string }[]>>({
     queryKey: aiQueryKeys.providerAuth,
     queryFn: fetchProviderAuth,
   })
@@ -76,7 +76,7 @@ function ConnectPage({ provider, onBack, onSaved }: {
   const [baseUrl, setBaseUrl] = useState('')
 
   const methods = auth?.[provider.id] ?? []
-  const hasApi = methods.some(m => m.type === 'api')
+  const hasApi = methods.some(m => m.type === 'api') || methods.length === 0
   const hasOauth = methods.some(m => m.type === 'oauth')
   const desc = PROVIDER_DESCRIPTIONS[provider.id] || '使用 API 密钥连接此服务'
 
@@ -96,71 +96,82 @@ function ConnectPage({ provider, onBack, onSaved }: {
   })
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-2xl">
       <button
-        className="mb-4 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
         onClick={onBack}
       >
-        <ArrowLeftIcon className="size-4" />
+        <ArrowLeftIcon className="size-3.5" />
         返回提供商列表
       </button>
 
-      <div className="rounded-lg border bg-card p-6">
-        <div className="mb-6 flex items-center gap-3">
-          <ProviderIcon id={provider.id} className="size-8" />
-          <div>
-            <h2 className="text-lg font-medium">连接 {provider.name}</h2>
-            <p className="text-sm text-muted-foreground">{desc}</p>
+      <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+        {/* 头部 */}
+        <div className="border-b bg-muted/40 px-6 py-5">
+          <div className="flex items-center gap-3">
+            <ProviderIcon id={provider.id} className="size-9" />
+            <div>
+              <h2 className="text-base font-medium">连接 {provider.name}</h2>
+              <p className="mt-0.5 text-sm text-muted-foreground">{desc}</p>
+            </div>
           </div>
         </div>
 
         {hasOauth && !hasApi && (
-          <div className="mb-4 rounded border border-dashed p-4 text-sm text-muted-foreground">
+          <div className="mx-6 mt-4 rounded-lg border border-dashed border-border/60 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
             此提供商仅支持 OAuth 登录。请在终端运行：
-            <pre className="mt-2 rounded bg-muted p-2 text-xs">opencode auth login {provider.id}</pre>
+            <pre className="mt-2 rounded-md bg-muted px-3 py-1.5 text-xs font-mono">opencode auth login {provider.id}</pre>
           </div>
         )}
 
         {hasApi && (
-          <div className="grid gap-4">
-            <div>
-              <Label>API Key</Label>
-              <Input
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="输入你的 API 密钥"
-                autoFocus
-              />
+          <div className="px-6 py-6">
+            <div className="space-y-5">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">API Key</Label>
+                <Input
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="输入你的 API 密钥"
+                  className="font-mono"
+                  autoFocus
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Base URL<span className="text-muted-foreground font-normal">（可选）</span></Label>
+                <Input
+                  value={baseUrl}
+                  placeholder="https://api.example.com"
+                  onChange={(e) => setBaseUrl(e.target.value)}
+                  className="font-mono"
+                />
+              </div>
             </div>
-            <div>
-              <Label>Base URL（可选）</Label>
-              <Input
-                value={baseUrl}
-                placeholder="自定义或兼容网关地址"
-                onChange={(e) => setBaseUrl(e.target.value)}
-              />
-            </div>
+
             {hasOauth && (
-              <p className="text-xs text-muted-foreground">
-                如需使用 OAuth 登录，请在 CLI 运行 <code>opencode auth login {provider.id}</code>
+              <p className="mt-5 text-xs text-muted-foreground">
+                如需使用 OAuth 登录，请在 CLI 运行 <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px]">opencode auth login {provider.id}</code>
               </p>
             )}
-            <p className="text-xs text-muted-foreground">
-              注：凭证存储在 OpenCode（<code>~/.local/share/opencode/auth.json</code>）。
-              如需移除请编辑该文件或使用 opencode CLI。
-            </p>
           </div>
         )}
 
-        <div className="mt-6 flex justify-end gap-2">
-          <Button variant="ghost" onClick={onBack}>取消</Button>
-          <Button
-            onClick={() => save.mutate()}
-            disabled={!hasApi || apiKey.length === 0 || save.isPending}
-          >
-            {save.isPending ? '保存中…' : '保存'}
-          </Button>
+        {/* 底部操作栏 */}
+        <div className="flex items-center justify-between border-t bg-muted/20 px-6 py-4">
+          <p className="text-[11px] text-muted-foreground/70 leading-relaxed max-w-sm">
+            凭证存储在 OpenCode <code className="rounded bg-muted/50 px-1 font-mono text-[10px]">auth.json</code>
+          </p>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={onBack}>取消</Button>
+            <Button
+              size="sm"
+              onClick={() => save.mutate()}
+              disabled={!hasApi || apiKey.length === 0 || save.isPending}
+            >
+              {save.isPending ? '保存中…' : '保存'}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
