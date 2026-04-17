@@ -8,9 +8,13 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { createConnection, updateConnection, connectionsKey, type Connection } from './api'
 
-const DEFAULTS: Record<string, { port: number }> = {
-  mysql: { port: 3306 }, postgres: { port: 5432 }, h2: { port: 9092 },
-}
+export const DATABASE_TYPES = {
+  mysql: { label: 'MySQL', port: 3306 },
+  postgres: { label: 'PostgreSQL', port: 5432 },
+  h2: { label: 'H2', port: 9092 },
+} as const
+
+export type DatabaseKind = keyof typeof DATABASE_TYPES
 
 type Props = { open: boolean; editing: Connection | null; onClose: () => void }
 
@@ -28,11 +32,11 @@ export function ConnectionFormDialog({ open, editing, onClose }: Props) {
         port: editing.port, database: editing.databaseName,
         username: editing.username, password: '',
       })
-    } else {
+    } else if (!editing) {
       setForm({ id: '', kind: 'mysql', host: 'localhost', port: 3306,
         database: '', username: '', password: '' })
     }
-  }, [editing, open])
+  }, [editing])
 
   const save = useMutation({
     mutationFn: async () => {
@@ -64,12 +68,12 @@ export function ConnectionFormDialog({ open, editing, onClose }: Props) {
           <Field label="ID"><Input value={form.id} disabled={!!editing}
             onChange={(e) => setForm(f => ({ ...f, id: e.target.value }))} /></Field>
           <Field label="类型">
-            <Select value={form.kind} onValueChange={(v) => { if (v) setForm(f => ({ ...f, kind: v, port: DEFAULTS[v]?.port ?? f.port })) }}>
+            <Select value={form.kind} onValueChange={(v) => { if (v && v in DATABASE_TYPES) setForm(f => ({ ...f, kind: v as DatabaseKind, port: DATABASE_TYPES[v as DatabaseKind].port })) }}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="mysql">MySQL</SelectItem>
-                <SelectItem value="postgres">PostgreSQL</SelectItem>
-                <SelectItem value="h2">H2</SelectItem>
+                {(Object.keys(DATABASE_TYPES) as DatabaseKind[]).map(k => (
+                  <SelectItem key={k} value={k}>{DATABASE_TYPES[k].label}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </Field>

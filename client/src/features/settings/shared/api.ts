@@ -1,3 +1,8 @@
+import { http } from '@/services/http'
+
+export type ProviderListItem = { id: string; name: string }
+export type ProvidersListDto = { all: ProviderListItem[]; connected: string[] }
+
 export type ProviderDto = {
   id: string
   name: string
@@ -7,55 +12,32 @@ export type ProviderDto = {
 
 export type ProvidersDto = { providers: ProviderDto[] }
 
-export async function fetchProviders(): Promise<any> {
-  const res = await fetch('/api/ai/providers')
-  if (!res.ok) throw new Error(`fetchProviders ${res.status}`)
-  return res.json()
+export async function fetchProviders(): Promise<ProvidersListDto> {
+  return http.get('ai/providers').json<ProvidersListDto>()
 }
 
 export async function fetchProviderAuth(): Promise<Record<string, { type: string; label?: string }[]>> {
-  const res = await fetch('/api/ai/providers/auth')
-  if (!res.ok) throw new Error(`fetchProviderAuth ${res.status}`)
-  return res.json()
+  return http.get('ai/providers/auth').json<Record<string, { type: string; label?: string }[]>>()
 }
 
 export async function putCredentials(providerId: string, payload: unknown): Promise<void> {
-  const res = await fetch(`/api/ai/providers/${providerId}/credentials`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  })
-  if (!res.ok) throw new Error(`putCredentials ${res.status}: ${await res.text()}`)
+  await http.put(`ai/providers/${providerId}/credentials`, { json: payload })
 }
 
 export async function fetchModels(): Promise<ProvidersDto> {
-  const res = await fetch('/api/ai/models')
-  if (!res.ok) throw new Error(`fetchModels ${res.status}`)
-  return res.json()
+  return http.get('ai/models').json<ProvidersDto>()
 }
 
 export async function patchModelEnabled(providerId: string, modelId: string, enabled: boolean): Promise<void> {
-  const res = await fetch(`/api/ai/models/${providerId}/${modelId}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ enabled }),
-  })
-  if (!res.ok) throw new Error(`patchModelEnabled ${res.status}`)
+  await http.patch(`ai/models/${providerId}/${modelId}`, { json: { enabled } })
 }
 
 export async function getCurrentModel(): Promise<{ modelId: string | null }> {
-  const res = await fetch('/api/ai/current-model')
-  if (!res.ok) throw new Error(`getCurrentModel ${res.status}`)
-  return res.json()
+  return http.get('ai/current-model').json<{ modelId: string | null }>()
 }
 
 export async function setCurrentModel(modelId: string | null): Promise<void> {
-  const res = await fetch('/api/ai/current-model', {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ modelId }),
-  })
-  if (!res.ok) throw new Error(`setCurrentModel ${res.status}`)
+  await http.patch('ai/current-model', { json: { modelId } })
 }
 
 export const aiQueryKeys = {

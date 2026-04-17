@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { ProviderIcon } from '@/features/settings/shared/provider-icon'
 import type { ProviderDto } from '@/features/settings/shared/api'
+import { filterProvidersBySearch, formatModelId } from '@/features/settings/shared/utils'
 import { cn } from '@/lib/utils'
 
 type Props = {
@@ -13,15 +14,7 @@ type Props = {
 export function ModelPickerPopover({ providers, currentModelId, onPick }: Props) {
   const [q, setQ] = useState('')
   const groups = useMemo(() => {
-    const needle = q.trim().toLowerCase()
-    return providers.filter(p => p.connected)
-      .map(p => ({
-        ...p,
-        models: p.models
-          .filter(m => m.enabled)
-          .filter(m => !needle || m.name.toLowerCase().includes(needle) || m.id.toLowerCase().includes(needle))
-      }))
-      .filter(p => p.models.length > 0)
+    return filterProvidersBySearch(providers, q, { enabledOnly: true })
   }, [providers, q])
 
   return (
@@ -42,7 +35,7 @@ export function ModelPickerPopover({ providers, currentModelId, onPick }: Props)
               <ProviderIcon id={p.id} className="size-3.5" />{p.name}
             </div>
             {p.models.map(m => {
-              const id = `${p.id}/${m.id}`
+              const id = formatModelId(p.id, m.id)
               const active = id === currentModelId
               return (
                 <button key={id} type="button" onClick={() => onPick(id)}

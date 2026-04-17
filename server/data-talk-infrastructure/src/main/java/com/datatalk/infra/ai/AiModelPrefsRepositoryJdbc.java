@@ -37,7 +37,6 @@ public class AiModelPrefsRepositoryJdbc implements AiModelPrefsRepository {
                 providerId, modelId);
         } else {
             long now = clock.millis();
-            // SQLite upsert
             jdbc.update("""
                 INSERT INTO ai_model_prefs(provider_id, model_id, enabled, updated_at)
                 VALUES(?, ?, 0, ?)

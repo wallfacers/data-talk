@@ -2,65 +2,64 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { fetchProviders, fetchProviderAuth, fetchModels, patchModelEnabled,
          getCurrentModel, setCurrentModel, putCredentials } from '../api'
 
+const mockResponse = <T>(data: T) => ({ json: async () => data })
+
+vi.mock('@/services/http', () => ({
+  http: {
+    get: vi.fn(),
+    put: vi.fn(),
+    patch: vi.fn(),
+    post: vi.fn(),
+    delete: vi.fn(),
+  }
+}))
+
+import { http } from '@/services/http'
+
 describe('settings api', () => {
   beforeEach(() => {
-    vi.stubGlobal('fetch', vi.fn())
+    vi.clearAllMocks()
   })
 
-  it('fetchProviders calls /api/ai/providers', async () => {
-    (globalThis.fetch as any).mockResolvedValue({
-      ok: true, json: async () => ({ all: [], connected: [] })
-    })
+  it('fetchProviders calls ai/providers', async () => {
+    vi.mocked(http.get).mockReturnValue(mockResponse({ all: [], connected: [] }) as any)
     await fetchProviders()
-    expect(globalThis.fetch).toHaveBeenCalledWith('/api/ai/providers')
+    expect(http.get).toHaveBeenCalledWith('ai/providers')
   })
 
-  it('fetchProviderAuth calls /api/ai/providers/auth', async () => {
-    (globalThis.fetch as any).mockResolvedValue({
-      ok: true, json: async () => ({ openai: [{ type: 'api' }] })
-    })
+  it('fetchProviderAuth calls ai/providers/auth', async () => {
+    vi.mocked(http.get).mockReturnValue(mockResponse({ openai: [{ type: 'api' }] }) as any)
     await fetchProviderAuth()
-    expect(globalThis.fetch).toHaveBeenCalledWith('/api/ai/providers/auth')
+    expect(http.get).toHaveBeenCalledWith('ai/providers/auth')
   })
 
-  it('patchModelEnabled posts to correct path', async () => {
-    (globalThis.fetch as any).mockResolvedValue({ ok: true })
+  it('patchModelEnabled patches correct path', async () => {
+    vi.mocked(http.patch).mockReturnValue({} as any)
     await patchModelEnabled('openai', 'gpt-5', false)
-    const [url, opts] = (globalThis.fetch as any).mock.calls[0]
-    expect(url).toBe('/api/ai/models/openai/gpt-5')
-    expect(opts.method).toBe('PATCH')
-    expect(JSON.parse(opts.body)).toEqual({ enabled: false })
+    expect(http.patch).toHaveBeenCalledWith('ai/models/openai/gpt-5', { json: { enabled: false } })
   })
 
-  it('setCurrentModel patches /api/ai/current-model', async () => {
-    (globalThis.fetch as any).mockResolvedValue({ ok: true })
+  it('setCurrentModel patches ai/current-model', async () => {
+    vi.mocked(http.patch).mockReturnValue({} as any)
     await setCurrentModel('openai/gpt-5')
-    const [url, opts] = (globalThis.fetch as any).mock.calls[0]
-    expect(url).toBe('/api/ai/current-model')
-    expect(JSON.parse(opts.body)).toEqual({ modelId: 'openai/gpt-5' })
+    expect(http.patch).toHaveBeenCalledWith('ai/current-model', { json: { modelId: 'openai/gpt-5' } })
   })
 
-  it('fetchModels calls /api/ai/models', async () => {
-    (globalThis.fetch as any).mockResolvedValue({
-      ok: true, json: async () => ({ providers: [] })
-    })
+  it('fetchModels calls ai/models', async () => {
+    vi.mocked(http.get).mockReturnValue(mockResponse({ providers: [] }) as any)
     await fetchModels()
-    expect(globalThis.fetch).toHaveBeenCalledWith('/api/ai/models')
+    expect(http.get).toHaveBeenCalledWith('ai/models')
   })
 
-  it('getCurrentModel calls /api/ai/current-model', async () => {
-    (globalThis.fetch as any).mockResolvedValue({
-      ok: true, json: async () => ({ modelId: null })
-    })
+  it('getCurrentModel calls ai/current-model', async () => {
+    vi.mocked(http.get).mockReturnValue(mockResponse({ modelId: null }) as any)
     await getCurrentModel()
-    expect(globalThis.fetch).toHaveBeenCalledWith('/api/ai/current-model')
+    expect(http.get).toHaveBeenCalledWith('ai/current-model')
   })
 
   it('putCredentials forwards payload', async () => {
-    (globalThis.fetch as any).mockResolvedValue({ ok: true })
+    vi.mocked(http.put).mockReturnValue({} as any)
     await putCredentials('openai', { type: 'api', key: 'sk-x' })
-    const [url, opts] = (globalThis.fetch as any).mock.calls[0]
-    expect(url).toBe('/api/ai/providers/openai/credentials')
-    expect(opts.method).toBe('PUT')
+    expect(http.put).toHaveBeenCalledWith('ai/providers/openai/credentials', { json: { type: 'api', key: 'sk-x' } })
   })
 })

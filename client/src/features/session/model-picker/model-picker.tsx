@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ChevronDownIcon } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ProviderIcon } from '@/features/settings/shared/provider-icon'
-import { aiQueryKeys, fetchModels, getCurrentModel, setCurrentModel } from '@/features/settings/shared/api'
+import { aiQueryKeys, fetchModels, getCurrentModel, setCurrentModel, type ProviderDto } from '@/features/settings/shared/api'
+import { parseModelId } from '@/features/settings/shared/utils'
 import { ModelPickerPopover } from './model-picker-popover'
 
 export function ModelPicker() {
@@ -44,11 +45,11 @@ export function ModelPicker() {
   )
 }
 
-function resolveSelected(providers: { id: string; connected: boolean; models: { id: string; name: string; enabled: boolean }[] }[], modelId: string | null) {
+function resolveSelected(providers: ProviderDto[], modelId: string | null) {
   if (!modelId) return null
-  const [providerId, ...rest] = modelId.split('/')
-  const mid = rest.join('/')
-  const p = providers.find(x => x.id === providerId && x.connected)
-  const m = p?.models.find(x => x.id === mid && x.enabled)
+  const parsed = parseModelId(modelId)
+  if (!parsed) return null
+  const p = providers.find(x => x.id === parsed.providerId && x.connected)
+  const m = p?.models.find(x => x.id === parsed.modelId && x.enabled)
   return p && m ? { providerId: p.id, modelName: m.name } : null
 }

@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Input } from '@/components/ui/input'
 import { SearchIcon } from 'lucide-react'
 import { fetchModels, aiQueryKeys } from '../shared/api'
+import { filterProvidersBySearch } from '../shared/utils'
 import { ModelsGroup } from './models-group'
 
 export function ModelsPage() {
@@ -14,19 +15,7 @@ export function ModelsPage() {
 
   const filtered = useMemo(() => {
     if (!data) return []
-    const needle = q.trim().toLowerCase()
-    return data.providers
-      .filter(p => p.connected)
-      .map(p => ({
-        ...p,
-        models: needle
-          ? p.models.filter(m =>
-              m.name.toLowerCase().includes(needle) ||
-              m.id.toLowerCase().includes(needle),
-            )
-          : p.models,
-      }))
-      .filter(p => p.models.length > 0)
+    return filterProvidersBySearch(data.providers, q)
   }, [data, q])
 
   if (isLoading)
