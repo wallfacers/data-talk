@@ -1,5 +1,6 @@
 package com.datatalk.application.channel;
 
+import com.datatalk.application.ai.AiUserPrefsRepository;
 import com.datatalk.application.opencode.OpenCodeGateway;
 import com.datatalk.application.opencode.OpenCodeSessionMap;
 import com.datatalk.application.persistence.MessageRepository;
@@ -15,6 +16,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -33,12 +35,13 @@ public class ChannelService {
     private final OpenCodeGateway gateway;
     private final OpenCodeSessionMap sessionMap;
     private final ObjectMapper om;
+    private final AiUserPrefsRepository userPrefs;
 
     public ChannelService(SessionRepository sessions, MessageRepository messages,
                           SessionBusRegistry buses, PendingCallRegistry pending,
                           IdGenerator ids, Clock clock,
                           OpenCodeGateway gateway, OpenCodeSessionMap sessionMap,
-                          ObjectMapper om) {
+                          ObjectMapper om, AiUserPrefsRepository userPrefs) {
         this.sessions = sessions;
         this.messages = messages;
         this.buses = buses;
@@ -48,6 +51,7 @@ public class ChannelService {
         this.gateway = gateway;
         this.sessionMap = sessionMap;
         this.om = om;
+        this.userPrefs = userPrefs;
     }
 
     /**
@@ -76,9 +80,13 @@ public class ChannelService {
             ocSid = gateway.createOpenCodeSession();
             sessionMap.bind(sessionId, ocSid);
         }
-        gateway.forwardUserMessage(ocSid, Map.of(
-            "parts", parts.stream().map(p -> om.convertValue(p, Map.class)).toList()
-        ));
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("parts", parts.stream().map(p -> om.convertValue(p, Map.class)).toList());
+        String model = userPrefs.getCurrentModel();
+        if (model != null && !model.isBlank()) {
+            body.put("model", model);
+        }
+        gateway.forwardUserMessage(ocSid, body);
 
         return messageId;
     }
