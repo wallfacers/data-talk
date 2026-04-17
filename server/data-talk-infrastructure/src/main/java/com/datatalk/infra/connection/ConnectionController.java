@@ -28,4 +28,35 @@ public class ConnectionController {
     public Map<String, Object> list() {
         return Map.of("connections", svc.list());
     }
+
+    public record UpdateBody(String kind, String host, int port, String database,
+                             String username, String password) {}
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Void> update(@PathVariable String id, @RequestBody UpdateBody body) {
+        try {
+            svc.update(id, body.kind(), body.host(), body.port(),
+                body.database(), body.username(), body.password());
+            return ResponseEntity.noContent().build();
+        } catch (java.util.NoSuchElementException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable String id) {
+        return svc.deleteById(id)
+            ? ResponseEntity.noContent().build()
+            : ResponseEntity.notFound().build();
+    }
+
+    @PostMapping("/{id}/test")
+    public ResponseEntity<?> test(@PathVariable String id) {
+        try {
+            var r = svc.testConnection(id);
+            return ResponseEntity.ok(r);
+        } catch (java.util.NoSuchElementException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
 }

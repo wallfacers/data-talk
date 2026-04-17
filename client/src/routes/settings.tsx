@@ -1,9 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { SettingsPage } from '@/features/model-config/settings-page'
+import { SettingsLayout } from '@/features/settings/settings-layout'
 
 export const Route = createFileRoute('/settings')({
-  component: SettingsPage,
+  component: SettingsLayout,
   validateSearch: (search: Record<string, unknown>) => ({
-    tab: (search.tab as string) ?? 'providers',
+    section: (search.section as string) ?? 'general',
   }),
 })
