@@ -1,3 +1,4 @@
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { DatabaseIcon } from 'lucide-react'
 import { MessageStream } from '@/features/chat/components/message-stream'
 import { ArtifactTimelineStrip } from '@/features/ontology/components/artifact-timeline-strip'
@@ -13,30 +14,71 @@ const EASE = 'cubic-bezier(0.32, 0.72, 0.24, 1)'
 
 export function SplitView() {
   const sid = useSessionStore((s) => s.activeSessionId)
-  const open = useStageStore((s) => sid ? !!s.openBySession.get(sid) : false)
-  const maximized = useStageStore((s) => sid ? !!s.maximizedBySession.get(sid) : false)
+  const open = useStageStore((s) => (sid ? !!s.openBySession.get(sid) : false))
+  const maximized = useStageStore((s) => (sid ? !!s.maximizedBySession.get(sid) : false))
+  const revealOrigin = useStageStore((s) => s.revealOrigin)
   const hasMessages = useChatPartsStore((s) => {
     const parts = sid ? s.partsBySession.get(sid) : undefined
     return parts ? parts.size > 0 : false
   })
 
-  // Chat：width 从 100% 收缩到 46%（右侧让位），内容居中 → 视觉上整体平滑左移
-  const chatWidth = maximized ? '0%' : open ? '46%' : '100%'
-  // Stage：固定 54% 宽度，translateX 从屏幕右外侧滑入到原位
-  const stageWidth = maximized ? '100%' : '54%'
-  const stageTranslate = maximized ? 'translateX(0)' : open ? 'translateX(0)' : 'translateX(100%)'
+  const stageContainerRef = useRef<HTMLDivElement>(null)
+  const [clipGeom, setClipGeom] = useState<{ r: number; x: number; y: number } | null>(null)
+  const [translateLatched, setTranslateLatched] = useState<boolean>(!open)
 
-  const transition = `width ${DURATION}ms ${EASE}, transform ${DURATION}ms ${EASE}`
+  useLayoutEffect(() => {
+    if (!revealOrigin) { setClipGeom(null); return }
+    const rect = stageContainerRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const localX = revealOrigin.x - rect.left
+    const localY = revealOrigin.y - rect.top
+    const r = Math.max(
+      Math.hypot(localX, localY),
+      Math.hypot(rect.width - localX, localY),
+      Math.hypot(localX, rect.height - localY),
+      Math.hypot(rect.width - localX, rect.height - localY),
+    )
+    setClipGeom({ r, x: localX, y: localY })
+  }, [revealOrigin, open])
+
+  useEffect(() => {
+    if (open) {
+      setTranslateLatched(false)
+      return
+    }
+    const t = setTimeout(() => setTranslateLatched(true), DURATION)
+    return () => clearTimeout(t)
+  }, [open])
+
+  const chatWidth = maximized ? '0%' : open ? '46%' : '100%'
+  const stageWidth = maximized ? '100%' : '54%'
+  const stageTransform = translateLatched ? 'translateX(100%)' : 'translateX(0px)'
+
+  const clipPath = clipGeom
+    ? `circle(${open ? clipGeom.r : 0}px at ${clipGeom.x}px ${clipGeom.y}px)`
+    : `circle(${open ? 2000 : 0}px at 100% 100%)`
+
+  const transition = `clip-path ${DURATION}ms ${EASE}, width ${DURATION}ms ${EASE}`
+
+  const stageStyle: CSSProperties = {
+    position: 'absolute',
+    top: 0, right: 0, bottom: 0,
+    width: stageWidth,
+    transform: stageTransform,
+    clipPath,
+    transition,
+    willChange: 'clip-path, transform',
+  }
 
   return (
     <div className="relative h-full overflow-hidden">
-      {/* ── Chat 窗体：width 动画，右侧让出空间，内容随之平滑左移 ── */}
+      {/* chat 列 */}
       <div
         style={{
           position: 'absolute',
           top: 0, left: 0, bottom: 0,
           width: chatWidth,
-          transition,
+          transition: `width ${DURATION}ms ${EASE}`,
           overflow: 'hidden',
           willChange: 'width',
         }}
@@ -72,17 +114,8 @@ export function SplitView() {
         )}
       </div>
 
-      {/* ── Stage 窗体：绝对定位，translateX 从屏幕外平滑滑入/滑出 ── */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 0, right: 0, bottom: 0,
-          width: stageWidth,
-          transform: stageTranslate,
-          transition,
-          willChange: 'transform',
-        }}
-      >
+      {/* stage 列：clip-path 气泡 + translateLatched 双段 */}
+      <div ref={stageContainerRef} data-stage-panel style={stageStyle}>
         <div className="h-full w-full p-2">
           <StageWindow sessionId={sid ?? undefined}>
             {sid && <ArtifactTimelineStrip />}
