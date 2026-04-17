@@ -105,19 +105,19 @@ public class OpenCodeGatewayBeans {
         }
 
         if (!processManager.isRunning()) {
-            System.err.println("OpenCode embedded server failed to start - skipping tool registration (degraded mode)");
+            log.error("OpenCode embedded server failed to start - skipping tool registration (degraded mode)");
             return;
         }
 
         try {
             gateway.registerTools();
         } catch (Exception e) {
-            System.err.println("OpenCode tool registration failed (degraded mode): " + e.getMessage());
+            log.error("OpenCode tool registration failed (degraded mode): {}", e.getMessage(), e);
         }
         try {
             eventLoop.start();
         } catch (Exception e) {
-            System.err.println("OpenCode SSE event loop failed to start (degraded mode): " + e.getMessage());
+            log.error("OpenCode SSE event loop failed to start (degraded mode): {}", e.getMessage(), e);
         }
     }
 }
