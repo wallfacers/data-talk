@@ -19,15 +19,20 @@ export function ProvidersPage() {
   })
   const [connecting, setConnecting] = useState<{ id: string; name: string } | null>(null)
 
+  const [search, setSearch] = useState('')
+
   const { connected, popular } = useMemo(() => {
     if (!data) return { connected: [], popular: [] }
     const connSet = new Set<string>(data.connected ?? [])
     const all: RawProvider[] = data.all ?? []
     return {
       connected: all.filter(p => connSet.has(p.id)),
-      popular: all.filter(p => !connSet.has(p.id) && p.id !== 'anthropic').sort((a, b) => a.name.localeCompare(b.name)),
+      popular: all
+        .filter(p => !connSet.has(p.id) && p.id !== 'anthropic')
+        .filter(p => p.name.toLowerCase().includes(search.toLowerCase()))
+        .sort((a, b) => a.name.localeCompare(b.name)),
     }
-  }, [data])
+  }, [data, search])
 
   if (isLoading) return <div className="text-sm text-muted-foreground">加载中...</div>
 
@@ -57,7 +62,14 @@ export function ProvidersPage() {
         ))}
       </Section>
 
-      <Section title="热门提供商">
+      <Section title="热门提供商" headerRight={
+        <Input
+          placeholder="搜索提供商…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="h-7 w-48 text-sm"
+        />
+      }>
         {popular.map(p => <Row key={p.id} p={p} action="connect" onClick={() => setConnecting(p)} />)}
       </Section>
     </div>
@@ -186,11 +198,14 @@ function ConnectPage({ provider, onBack, onSaved }: {
   )
 }
 
-function Section({ title, empty, children }: { title: string; empty?: string; children: React.ReactNode }) {
+function Section({ title, empty, headerRight, children }: { title: string; empty?: string; headerRight?: React.ReactNode; children: React.ReactNode }) {
   const isEmpty = !Array.isArray(children) || (children as any[]).length === 0
   return (
     <section className="mb-8">
-      <h2 className="mb-3 text-sm font-medium">{title}</h2>
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-sm font-medium">{title}</h2>
+        {headerRight}
+      </div>
       {isEmpty && empty ? (
         <div className="rounded border border-dashed p-6 text-center text-sm text-muted-foreground">
           {empty}
