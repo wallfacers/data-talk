@@ -25,7 +25,7 @@ export function ProvidersPage() {
     const all: RawProvider[] = data.all ?? []
     return {
       connected: all.filter(p => connSet.has(p.id)),
-      popular: all.filter(p => !connSet.has(p.id)),
+      popular: all.filter(p => !connSet.has(p.id) && p.id !== 'anthropic').sort((a, b) => a.name.localeCompare(b.name)),
     }
   }, [data])
 
