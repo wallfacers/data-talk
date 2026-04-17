@@ -59,7 +59,7 @@ This file is the map. Deep knowledge lives in `docs/`:
 |------------------------------|--------------------------------------------------------------|
 | System architecture & layers | [ARCHITECTURE.md](ARCHITECTURE.md)                           |
 | Design docs & core beliefs   | [docs/design-docs/index.md](docs/design-docs/index.md)      |
-| Execution plans (active/done)| [docs/exec-plans/index.md](docs/exec-plans/index.md)         |
+| Current status & exec plans  | [docs/exec-plans/index.md](docs/exec-plans/index.md)         |
 | Product specs & features     | [docs/product-specs/index.md](docs/product-specs/index.md)   |
 | DB schema reference          | [docs/generated/db-schema.md](docs/generated/db-schema.md)   |
 | External protocol references | [docs/references/](docs/references/)                         |
@@ -71,14 +71,6 @@ This file is the map. Deep knowledge lives in `docs/`:
 | Reliability practices        | [docs/RELIABILITY.md](docs/RELIABILITY.md)                   |
 | Security guide               | [docs/SECURITY.md](docs/SECURITY.md)                         |
 | Tech debt tracker            | [docs/exec-plans/tech-debt-tracker.md](docs/exec-plans/tech-debt-tracker.md) |
-
-## Current Status
-
-- **Plan A** (Backend Platform Foundation): **completed** — 4-module skeleton, Action/Ontology Registry, SessionBus, Streamable HTTP Channel, SQLite persistence, OpenCode Gateway
-- **Plan B** (MVP Actions): pending
-- **Plan C** (Client Split-View): pending
-
-See [docs/exec-plans/index.md](docs/exec-plans/index.md) for details.
 
 ## Working Rules
 
