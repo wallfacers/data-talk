@@ -8,7 +8,7 @@ type Props = {
 }
 
 export function StageWindow({ sessionId, children }: Props) {
-  const close = useStageStore((s) => s.closeStage)
+  const close = useStageStore(s => s.closeStage)
   const { Icon, label } = useActiveArtifactTitle(sessionId)
   return (
     <div className="flex h-full w-full flex-col overflow-hidden rounded-xl border bg-card shadow-sm">
@@ -16,17 +16,14 @@ export function StageWindow({ sessionId, children }: Props) {
         <button
           type="button"
           aria-label="关闭 Stage"
-          onClick={(e) => {
-            e.stopPropagation()
-            close(sessionId)
-          }}
+          onClick={(e) => { e.stopPropagation(); close(sessionId) }}
           className="size-3 rounded-full bg-[#ff5f56] hover:opacity-80"
         />
         <span aria-hidden className="size-3 rounded-full bg-[#ffbd2e]" />
         <span aria-hidden className="size-3 rounded-full bg-[#27c93f]" />
         <div className="flex-1" />
         <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-          {Icon ? <Icon className="size-3.5" /> : null}
+          {Icon && <Icon className="size-3.5" />}
           {label}
         </span>
       </div>

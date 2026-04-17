@@ -7,10 +7,7 @@ import { useTimelineStore } from '@/stores/timeline-store'
 
 describe('StageWindow', () => {
   beforeEach(() => {
-    useStageStore.setState({
-      openBySession: new Map([['s1', true]]),
-      autoOpenedSessions: new Set(),
-    })
+    useStageStore.setState({ openBySession: new Map([['s1', true]]), autoOpenedSessions: new Set() })
     useOntologyStore.setState({ artifactsBySession: new Map() })
     useTimelineStore.setState({
       orderBySession: new Map(),
@@ -19,22 +16,15 @@ describe('StageWindow', () => {
     })
   })
 
-  it('渲染 close 按钮 + 默认标题 Stage', () => {
-    render(
-      <StageWindow sessionId="s1">
-        <div>body</div>
-      </StageWindow>,
-    )
-    expect(screen.getByLabelText('关闭 Stage')).toBeTruthy()
+  it('渲染 3 圆点 + 默认标题 Stage', () => {
+    render(<StageWindow sessionId="s1"><div>body</div></StageWindow>)
+    const close = screen.getByLabelText('关闭 Stage')
+    expect(close).toBeTruthy()
     expect(screen.getByText('Stage')).toBeTruthy()
   })
 
   it('点红圆点触发 closeStage', () => {
-    render(
-      <StageWindow sessionId="s1">
-        <div>body</div>
-      </StageWindow>,
-    )
+    render(<StageWindow sessionId="s1"><div>body</div></StageWindow>)
     fireEvent.click(screen.getByLabelText('关闭 Stage'))
     expect(useStageStore.getState().openBySession.get('s1')).toBe(false)
   })
@@ -46,20 +36,12 @@ describe('StageWindow', () => {
       activeBySession: new Map([['s1', 'a1']]),
       manualBySession: new Map(),
     })
-    render(
-      <StageWindow sessionId="s1">
-        <div>body</div>
-      </StageWindow>,
-    )
+    render(<StageWindow sessionId="s1"><div>body</div></StageWindow>)
     expect(screen.getByText(/Stage · 图 v2/)).toBeTruthy()
   })
 
   it('children 渲染在 body slot', () => {
-    render(
-      <StageWindow sessionId="s1">
-        <div data-testid="child">CHILD</div>
-      </StageWindow>,
-    )
+    render(<StageWindow sessionId="s1"><div data-testid="child">CHILD</div></StageWindow>)
     expect(screen.getByTestId('child')).toBeTruthy()
   })
 })
