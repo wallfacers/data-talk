@@ -5,7 +5,7 @@ import { PlusIcon, RotateCwIcon } from 'lucide-react'
 import { fetchProviders, aiQueryKeys } from '../shared/api'
 import { ProviderIcon } from '../shared/provider-icon'
 import { RECOMMENDED_PROVIDERS, PROVIDER_DESCRIPTIONS } from '../shared/recommended-providers'
-import { ConnectDialog } from './connect-dialog'
+import { ConnectPanel } from './connect-dialog'
 
 type RawProvider = { id: string; name: string }
 
@@ -14,7 +14,7 @@ export function ProvidersPage() {
     queryKey: aiQueryKeys.providers,
     queryFn: fetchProviders,
   })
-  const [editing, setEditing] = useState<{ id: string; name: string } | null>(null)
+  const [connecting, setConnecting] = useState<{ id: string; name: string } | null>(null)
 
   const { connected, popular } = useMemo(() => {
     if (!data) return { connected: [], popular: [] }
@@ -37,16 +37,24 @@ export function ProvidersPage() {
     <div className="max-w-3xl">
       <h1 className="mb-6 text-2xl font-semibold">提供商</h1>
 
+      {connecting && (
+        <div className="mb-6">
+          <ConnectPanel
+            providerId={connecting.id}
+            providerName={connecting.name}
+            onCancel={() => setConnecting(null)}
+            onSaved={() => setConnecting(null)}
+          />
+        </div>
+      )}
+
       <Section title="已连接的提供商" empty="没有已连接的提供商">
-        {connected.map(p => <Row key={p.id} p={p} action="reconfigure" onClick={() => setEditing(p)} />)}
+        {connected.map(p => <Row key={p.id} p={p} action="reconfigure" onClick={() => setConnecting(p)} />)}
       </Section>
 
       <Section title="热门提供商">
-        {popular.map(p => <Row key={p.id} p={p} action="connect" onClick={() => setEditing(p)} />)}
+        {popular.map(p => <Row key={p.id} p={p} action="connect" onClick={() => setConnecting(p)} />)}
       </Section>
-
-      <ConnectDialog providerId={editing?.id ?? null} providerName={editing?.name ?? ''}
-        onClose={() => setEditing(null)} />
     </div>
   )
 }

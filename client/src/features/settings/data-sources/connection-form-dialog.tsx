@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -16,9 +15,9 @@ export const DATABASE_TYPES = {
 
 export type DatabaseKind = keyof typeof DATABASE_TYPES
 
-type Props = { open: boolean; editing: Connection | null; onClose: () => void }
+type Props = { editing: Connection | null; onCancel: () => void; onSaved: () => void }
 
-export function ConnectionFormDialog({ open, editing, onClose }: Props) {
+export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
   const qc = useQueryClient()
   const [form, setForm] = useState({
     id: '', kind: 'mysql', host: 'localhost', port: 3306,
@@ -32,7 +31,7 @@ export function ConnectionFormDialog({ open, editing, onClose }: Props) {
         port: editing.port, database: editing.databaseName,
         username: editing.username, password: '',
       })
-    } else if (!editing) {
+    } else {
       setForm({ id: '', kind: 'mysql', host: 'localhost', port: 3306,
         database: '', username: '', password: '' })
     }
@@ -53,56 +52,67 @@ export function ConnectionFormDialog({ open, editing, onClose }: Props) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: connectionsKey })
       toast.success(editing ? '已更新' : '已创建')
-      onClose()
+      onSaved()
     },
     onError: (e: Error) => toast.error(e.message),
   })
 
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{editing ? '编辑数据源' : '新增数据源'}</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-3">
-          <Field label="ID"><Input value={form.id} disabled={!!editing}
-            onChange={(e) => setForm(f => ({ ...f, id: e.target.value }))} /></Field>
-          <Field label="类型">
-            <Select value={form.kind} onValueChange={(v) => { if (v && v in DATABASE_TYPES) setForm(f => ({ ...f, kind: v as DatabaseKind, port: DATABASE_TYPES[v as DatabaseKind].port })) }}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {(Object.keys(DATABASE_TYPES) as DatabaseKind[]).map(k => (
-                  <SelectItem key={k} value={k}>{DATABASE_TYPES[k].label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-          <Field label="主机"><Input value={form.host}
-            onChange={(e) => setForm(f => ({ ...f, host: e.target.value }))} /></Field>
-          <Field label="端口"><Input type="number" value={form.port}
-            onChange={(e) => setForm(f => ({ ...f, port: Number(e.target.value) }))} /></Field>
-          <Field label="数据库"><Input value={form.database}
-            onChange={(e) => setForm(f => ({ ...f, database: e.target.value }))} /></Field>
-          <Field label="用户名"><Input value={form.username}
-            onChange={(e) => setForm(f => ({ ...f, username: e.target.value }))} /></Field>
-          <Field label={editing ? '密码（留空保持不变）' : '密码'}>
-            <Input type="password" value={form.password}
-              onChange={(e) => setForm(f => ({ ...f, password: e.target.value }))} />
-          </Field>
-        </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>取消</Button>
-          <Button onClick={() => save.mutate()} disabled={save.isPending}>
-            {save.isPending ? '保存中…' : '保存'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <div className="rounded-lg border bg-card p-6">
+      <h2 className="mb-4 text-lg font-medium">
+        {editing ? '编辑数据源' : '新增数据源'}
+      </h2>
+      <div className="grid gap-4">
+        <Field label="ID">
+          <Input value={form.id} disabled={!!editing}
+            onChange={(e) => setForm(f => ({ ...f, id: e.target.value }))} />
+        </Field>
+        <Field label="类型">
+          <Select value={form.kind}
+            onValueChange={(v) => { if (v && v in DATABASE_TYPES) setForm(f => ({ ...f, kind: v as DatabaseKind, port: DATABASE_TYPES[v as DatabaseKind].port })) }}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {(Object.keys(DATABASE_TYPES) as DatabaseKind[]).map(k => (
+                <SelectItem key={k} value={k}>{DATABASE_TYPES[k].label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+        <Field label="主机">
+          <Input value={form.host}
+            onChange={(e) => setForm(f => ({ ...f, host: e.target.value }))} />
+        </Field>
+        <Field label="端口">
+          <Input type="number" value={form.port}
+            onChange={(e) => setForm(f => ({ ...f, port: Number(e.target.value) }))} />
+        </Field>
+        <Field label="数据库">
+          <Input value={form.database}
+            onChange={(e) => setForm(f => ({ ...f, database: e.target.value }))} />
+        </Field>
+        <Field label="用户名">
+          <Input value={form.username}
+            onChange={(e) => setForm(f => ({ ...f, username: e.target.value }))} />
+        </Field>
+        <Field label={editing ? '密码（留空保持不变）' : '密码'}>
+          <Input type="password" value={form.password}
+            onChange={(e) => setForm(f => ({ ...f, password: e.target.value }))} />
+        </Field>
+      </div>
+      <div className="mt-6 flex justify-end gap-2">
+        <Button variant="ghost" onClick={onCancel}>取消</Button>
+        <Button onClick={() => save.mutate()} disabled={save.isPending}>
+          {save.isPending ? '保存中…' : '保存'}
+        </Button>
+      </div>
+    </div>
   )
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (<div className="grid grid-cols-[120px_1fr] items-center gap-2">
-    <Label>{label}</Label>{children}
-  </div>)
+  return (
+    <div className="grid grid-cols-[120px_1fr] items-center gap-2">
+      <Label>{label}</Label>{children}
+    </div>
+  )
 }

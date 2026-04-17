@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { TrashIcon, PencilIcon, PlusIcon, CheckCircle2Icon, XCircleIcon } from 'lucide-react'
 import { listConnections, deleteConnection, testConnection, connectionsKey, type Connection } from './api'
-import { ConnectionFormDialog } from './connection-form-dialog'
+import { ConnectionFormPanel } from './connection-form-dialog'
 
 export function DataSourcesPage() {
   const qc = useQueryClient()
@@ -12,7 +12,7 @@ export function DataSourcesPage() {
     queryKey: connectionsKey, queryFn: listConnections,
   })
   const [editing, setEditing] = useState<Connection | null>(null)
-  const [creating, setCreating] = useState(false)
+  const [showForm, setShowForm] = useState(false)
   const [testResult, setTestResult] = useState<Record<string, 'ok' | 'fail' | 'loading'>>({})
 
   const del = useMutation({
@@ -33,15 +33,8 @@ export function DataSourcesPage() {
     }
   }
 
-  return (
-    <div className="max-w-4xl">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">数据源</h1>
-        <Button onClick={() => setCreating(true)} size="sm">
-          <PlusIcon className="size-4" /> 新增
-        </Button>
-      </div>
-
+  const listContent = (
+    <>
       {isLoading ? (
         <div className="text-sm text-muted-foreground">加载中...</div>
       ) : connections.length === 0 ? (
@@ -76,12 +69,35 @@ export function DataSourcesPage() {
           </tbody>
         </table>
       )}
+    </>
+  )
 
-      <ConnectionFormDialog
-        open={creating || !!editing}
-        editing={editing}
-        onClose={() => { setCreating(false); setEditing(null) }}
-      />
+  return (
+    <div className="max-w-4xl">
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">数据源</h1>
+        <Button onClick={() => setShowForm(true)} size="sm" disabled={showForm || !!editing}>
+          <PlusIcon className="size-4" /> 新增
+        </Button>
+      </div>
+
+      {showForm ? (
+        <ConnectionFormPanel
+          editing={editing}
+          onCancel={() => { setShowForm(false); setEditing(null) }}
+          onSaved={() => { setShowForm(false); setEditing(null) }}
+        />
+      ) : listContent}
+
+      {!showForm && editing && (
+        <div className="mt-6">
+          <ConnectionFormPanel
+            editing={editing}
+            onCancel={() => setEditing(null)}
+            onSaved={() => setEditing(null)}
+          />
+        </div>
+      )}
     </div>
   )
 }
