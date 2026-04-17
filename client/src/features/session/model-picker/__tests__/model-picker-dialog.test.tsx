@@ -55,4 +55,21 @@ describe('ModelPickerDialog', () => {
     expect(screen.getByRole('button', { name: 'Claude Opus 4.7' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'GPT-5' })).not.toBeInTheDocument()
   })
+
+  it('点击模型触发 onPick 并关闭对话框', () => {
+    const onPick = vi.fn()
+    const onOpenChange = vi.fn()
+    render(
+      <ModelPickerDialog
+        open
+        onOpenChange={onOpenChange}
+        providers={providers}
+        currentModelId={null}
+        onPick={onPick}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'GPT-5' }))
+    expect(onPick).toHaveBeenCalledWith('openai/gpt-5')
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
 })
