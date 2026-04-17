@@ -14,7 +14,7 @@
     "gen:routes": "tsr generate",
     "test": "vitest run",
     "test:watch": "vitest",
-    "gen:api": "openapi-typescript http://localhost:8080/v3/api-docs -o src/types/api-generated.ts"
+    "gen:api": "openapi-typescript http://localhost:8080/v3/api-docs -o src/types/generated/api.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.0",

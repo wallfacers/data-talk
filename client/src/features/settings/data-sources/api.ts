@@ -1,5 +1,5 @@
 import { http } from '@/services/http'
-import type { Connection, ConnectionTestResult } from '@/types/generated/api'
+import type { Connection, ConnectionTestResult, ConnectionCreateInput, ConnectionUpdateInput } from '@/types/generated/api'
 
 export type { Connection, ConnectionTestResult } from '@/types/generated/api'
 
@@ -8,25 +8,11 @@ export async function listConnections(): Promise<Connection[]> {
   return data.connections
 }
 
-export async function createConnection(body: {
-  kind: string
-  host: string
-  port: number
-  databaseName: string
-  username: string
-  password: string
-}): Promise<void> {
+export async function createConnection(body: ConnectionCreateInput): Promise<void> {
   await http.post('connections', { json: body })
 }
 
-export async function updateConnection(id: string, body: {
-  kind: string
-  host: string
-  port: number
-  databaseName: string
-  username: string
-  password: string | null
-}): Promise<void> {
+export async function updateConnection(id: string, body: ConnectionUpdateInput): Promise<void> {
   await http.put(`connections/${id}`, { json: body })
 }
 

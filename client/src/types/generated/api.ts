@@ -1,8 +1,3 @@
-/**
- * Auto-generated API types from backend DTOs.
- * Run `npm run gen:api` to regenerate from OpenAPI spec.
- */
-
 export interface ConnectionDto {
   id: string
   kind: string
@@ -14,9 +9,8 @@ export interface ConnectionDto {
 }
 
 export interface ConnectionCreateRequest {
-  id: string
   kind: string
-  host: number
+  host: string
   port: number
   databaseName: string
   username: string
@@ -29,7 +23,7 @@ export interface ConnectionUpdateRequest {
   port: number
   databaseName: string
   username: string
-  password: string
+  password: string | null
 }
 
 export interface ConnectionTestResultDto {
@@ -74,7 +68,7 @@ export interface AiModelDto {
 }
 
 export interface AiCurrentModelDto {
-  modelId: string
+  modelId: string | null
 }
 
 export interface AiModelPatchRequest {
@@ -88,7 +82,6 @@ export interface QueryResponseDto {
   rowCount: number
 }
 
-// Type aliases for frontend convenience
 export type Connection = ConnectionDto
 export type ConnectionCreateInput = ConnectionCreateRequest
 export type ConnectionUpdateInput = ConnectionUpdateRequest
