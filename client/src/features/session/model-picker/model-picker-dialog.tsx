@@ -2,10 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { SearchIcon } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 import { ProviderIcon } from '@/features/settings/shared/provider-icon'
 import type { ProviderDto } from '@/features/settings/shared/api'
 import { filterProvidersBySearch, formatModelId, parseModelId } from '@/features/settings/shared/utils'
 import { cn } from '@/lib/utils'
+import { useSettingsDialogStore } from '@/features/settings/settings-dialog-store'
 
 type Props = {
   open: boolean
@@ -103,7 +105,27 @@ export function ModelPickerDialog({ open, onOpenChange, providers, currentModelI
                   )
                 })}
               </div>
-            ) : null}
+            ) : q ? (
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                没有匹配的模型
+              </div>
+            ) : (
+              <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+                <p className="text-sm text-muted-foreground">
+                  尚未启用任何模型，请先在设置 → 模型中启用
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    onOpenChange(false)
+                    useSettingsDialogStore.getState().openDialog('models')
+                  }}
+                >
+                  前往设置
+                </Button>
+              </div>
+            )}
           </main>
         </div>
       </DialogContent>

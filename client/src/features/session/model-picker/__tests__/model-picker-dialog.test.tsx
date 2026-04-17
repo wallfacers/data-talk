@@ -2,6 +2,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import { ModelPickerDialog } from '../model-picker-dialog'
 import type { ProviderDto } from '@/features/settings/shared/api'
+import * as settingsStore from '@/features/settings/settings-dialog-store'
 
 const providers: ProviderDto[] = [
   { id: 'openai', name: 'OpenAI', connected: true, models: [
@@ -71,5 +72,51 @@ describe('ModelPickerDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'GPT-5' }))
     expect(onPick).toHaveBeenCalledWith('openai/gpt-5')
     expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it('无任何可选模型时，右侧显示引导并提供"前往设置"按钮', () => {
+    const openDialog = vi.fn()
+    vi.spyOn(settingsStore, 'useSettingsDialogStore').mockReturnValue({
+      open: false, activeSection: 'general',
+      openDialog, closeDialog: vi.fn(), setActiveSection: vi.fn(),
+    } as never)
+    const prevGetState = settingsStore.useSettingsDialogStore.getState
+    settingsStore.useSettingsDialogStore.getState = () => ({
+      open: false, activeSection: 'general',
+      openDialog, closeDialog: vi.fn(), setActiveSection: vi.fn(),
+    } as never)
+
+    const onOpenChange = vi.fn()
+    render(
+      <ModelPickerDialog
+        open
+        onOpenChange={onOpenChange}
+        providers={[{ id: 'openai', name: 'OpenAI', connected: true, models: [{ id: 'gpt-5', name: 'GPT-5', enabled: false }] }]}
+        currentModelId={null}
+        onPick={vi.fn()}
+      />,
+    )
+    expect(screen.getByText(/尚未启用任何模型/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '前往设置' }))
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+    expect(openDialog).toHaveBeenCalledWith('models')
+
+    settingsStore.useSettingsDialogStore.getState = prevGetState
+  })
+
+  it('搜索无命中时显示"没有匹配的模型"，不显示"前往设置"按钮', () => {
+    const onOpenChange = vi.fn()
+    render(
+      <ModelPickerDialog
+        open
+        onOpenChange={onOpenChange}
+        providers={providers}
+        currentModelId="openai/gpt-5"
+        onPick={vi.fn()}
+      />,
+    )
+    fireEvent.change(screen.getByPlaceholderText('搜索模型'), { target: { value: '不存在的模型xxxxx' } })
+    expect(screen.getByText('没有匹配的模型')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '前往设置' })).not.toBeInTheDocument()
   })
 })
