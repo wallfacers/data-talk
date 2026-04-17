@@ -8,12 +8,14 @@ type SessionState = {
   hasEverSentBySession: Map<string, boolean>
   pendingPrompt: string | null
   pendingConnectionPrompt: boolean
+  pendingModelPrompt: boolean
 
   openSession: (id: string, hasEverSent: boolean) => void
   closeSession: () => void
   enterSplit: (id: string) => void
   setPendingPrompt: (text: string | null) => void
   setPendingConnectionPrompt: (on: boolean) => void
+  setPendingModelPrompt: (on: boolean) => void
 }
 
 export const useSessionStore = create<SessionState>((set) => ({
@@ -22,6 +24,7 @@ export const useSessionStore = create<SessionState>((set) => ({
   hasEverSentBySession: new Map(),
   pendingPrompt: null,
   pendingConnectionPrompt: false,
+  pendingModelPrompt: false,
 
   openSession: (id, hasEverSent) => set((s) => {
     // Cache wins: once we've observed hasEverSent=true locally, never demote.
@@ -43,4 +46,5 @@ export const useSessionStore = create<SessionState>((set) => ({
 
   setPendingPrompt: (text) => set({ pendingPrompt: text }),
   setPendingConnectionPrompt: (on) => set({ pendingConnectionPrompt: on }),
+  setPendingModelPrompt: (on) => set({ pendingModelPrompt: on }),
 }))

@@ -1,6 +1,14 @@
 import { useSessionStore } from '@/stores/session-store'
 import { useConnectionStore } from '@/features/connection/store'
 
+/**
+ * ConnectionOverlay — 当 AI 需要查询数据库但用户未选择连接时弹出。
+ *
+ * TODO (tech debt): 最终应由后端/运行时在数据库相关 action 执行时检测连接缺失，
+ * 并返回结构化错误，前端据此展示提示。当前在 prompt-composer 层做前置拦截是临时方案。
+ * See: docs/exec-plans/tech-debt-tracker.md
+ */
+
 export function ConnectionOverlay() {
   const pending = useSessionStore((s) => s.pendingConnectionPrompt)
   const setPending = useSessionStore((s) => s.setPendingConnectionPrompt)

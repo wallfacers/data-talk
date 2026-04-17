@@ -16,6 +16,7 @@ import { useSessionStore } from '@/stores/session-store'
 import { useChannel } from '@/services/channel/use-channel'
 import { createTextPart } from '@/services/channel/types'
 import { StageToggleButton } from '@/features/stage/components/stage-toggle-button'
+import { useHasActiveModel } from './hooks/use-has-active-model'
 
 function useComposerSlot(): HTMLElement | null {
   const [slot, setSlot] = useState<HTMLElement | null>(null)
@@ -43,6 +44,8 @@ function InnerComposer() {
   const activeSessionId = useSessionStore((s) => s.activeSessionId)
   const setPendingPrompt = useSessionStore((s) => s.setPendingPrompt)
   const setPendingConnectionPrompt = useSessionStore((s) => s.setPendingConnectionPrompt)
+  const setPendingModelPrompt = useSessionStore((s) => s.setPendingModelPrompt)
+  const hasActiveModel = useHasActiveModel()
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -50,6 +53,11 @@ function InnerComposer() {
     if (!t || isStreaming) return
 
     if (!activeSessionId) {
+      if (!hasActiveModel) {
+        setPendingPrompt(t)
+        setPendingModelPrompt(true)
+        return
+      }
       setPendingPrompt(t)
       setPendingConnectionPrompt(true)
       return

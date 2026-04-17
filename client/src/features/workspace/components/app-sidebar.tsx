@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button'
 import { createSession } from '@/services/api/session'
 import { useConnectionStore } from '@/features/connection/store'
 import { useSessionStore } from '@/stores/session-store'
+import { useHasActiveModel } from '@/features/session/hooks/use-has-active-model'
 import { NavSessions } from './nav-sessions'
 import { NavUser } from './nav-user'
 
@@ -31,6 +32,7 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
   const qc = useQueryClient()
   const activeConnectionId = useConnectionStore((s) => s.activeConnectionId)
   const openSession = useSessionStore((s) => s.openSession)
+  const hasActiveModel = useHasActiveModel()
   const { state } = useSidebar()
 
   // 浮动按钮组：等 sidebar 收起动画完成（200ms，与 sidebar-container 的 duration-200 对齐）后再 fade-in；
@@ -47,6 +49,7 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
 
   const createMut = useMutation({
     mutationFn: async () => {
+      if (!hasActiveModel) throw new Error('请先在设置中配置模型')
       if (!activeConnectionId) throw new Error('请先在连接列表中选择一个连接')
       return createSession(activeConnectionId, '新会话')
     },
