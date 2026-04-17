@@ -42,7 +42,7 @@ datatalk:
     serve:
       enabled: true
       auto-upgrade: false
-      version: 1.4.6
+      version: 1.4.7
       base-port: 4096
       port-retries: 100
       hostname: 127.0.0.1

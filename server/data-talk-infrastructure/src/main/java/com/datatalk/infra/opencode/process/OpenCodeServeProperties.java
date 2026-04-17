@@ -11,7 +11,7 @@ public class OpenCodeServeProperties {
 
     private boolean enabled = true;
     private boolean autoUpgrade = false;
-    private String version = "1.4.6";
+    private String version = "1.4.7";
     private int basePort = 4096;
     private int portRetries = 100;
     private String hostname = "127.0.0.1";
