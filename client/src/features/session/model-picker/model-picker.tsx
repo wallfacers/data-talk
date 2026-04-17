@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ChevronDownIcon } from 'lucide-react'
 import { ProviderIcon } from '@/features/settings/shared/provider-icon'
@@ -16,7 +16,10 @@ export function ModelPicker() {
     onSuccess: () => qc.invalidateQueries({ queryKey: aiQueryKeys.currentModel }),
   })
 
-  const selected = resolveSelected(models?.providers ?? [], current?.modelId ?? null)
+  const selected = useMemo(
+    () => resolveSelected(models?.providers ?? [], current?.modelId ?? null),
+    [models?.providers, current?.modelId],
+  )
 
   return (
     <>

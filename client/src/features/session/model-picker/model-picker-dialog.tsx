@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useLayoutEffect, useMemo, useState } from 'react'
 import { SearchIcon } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { ProviderIcon } from '@/features/settings/shared/provider-icon'
 import type { ProviderDto } from '@/features/settings/shared/api'
-import { filterProvidersBySearch, formatModelId, parseModelId } from '@/features/settings/shared/utils'
+import { filterProvidersBySearch, formatModelId, parseModelId, SETTINGS_DIALOG_DIMENSIONS } from '@/features/settings/shared/utils'
 import { cn } from '@/lib/utils'
 import { useSettingsDialogStore } from '@/features/settings/settings-dialog-store'
 
@@ -20,32 +20,30 @@ type Props = {
 export function ModelPickerDialog({ open, onOpenChange, providers, currentModelId, onPick }: Props) {
   const [q, setQ] = useState('')
   const [activeProviderId, setActiveProviderId] = useState<string | null>(null)
-  const prevOpenRef = useRef(false)
 
   const filteredProviders = useMemo(
     () => filterProvidersBySearch(providers, q, { enabledOnly: true }),
     [providers, q],
   )
 
-  // 打开时：清空搜索、按 currentModelId 推导默认 activeProviderId（同步计算，避免时序问题）
-  if (open && !prevOpenRef.current) {
+  // 打开时：清空搜索并初始化 activeProviderId（useLayoutEffect 确保在渲染前执行）
+  useLayoutEffect(() => {
+    if (!open) return
     setQ('')
     const fromCurrent = currentModelId ? parseModelId(currentModelId)?.providerId ?? null : null
     const defaults = filterProvidersBySearch(providers, '', { enabledOnly: true })
     const fallback = defaults[0]?.id ?? null
-    const match = defaults.find(p => p.id === fromCurrent)?.id ?? null
-    const next = match ?? fallback
-    if (next !== activeProviderId) {
-      setActiveProviderId(next)
-    }
-  }
-  prevOpenRef.current = open
+    const next = defaults.find(p => p.id === fromCurrent)?.id ?? fallback
+    setActiveProviderId(next)
+  }, [open, currentModelId, providers])
 
-  // 当前 provider 若被搜索过滤掉则自动修正为第一个
-  useEffect(() => {
+  // 当前 provider 若被搜索过滤掉则自动修正为第一个（跳过 null，由初始化 effect 处理）
+  useLayoutEffect(() => {
     if (!open) return
     if (!filteredProviders.length) return
-    if (!filteredProviders.find(p => p.id === activeProviderId)) {
+    if (activeProviderId === null) return
+    const activeProvider = filteredProviders.find(p => p.id === activeProviderId)
+    if (!activeProvider) {
       setActiveProviderId(filteredProviders[0].id)
     }
   }, [open, filteredProviders, activeProviderId])
@@ -54,7 +52,7 @@ export function ModelPickerDialog({ open, onOpenChange, providers, currentModelI
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex flex-col !p-0 overflow-hidden w-[960px] h-[540px] max-w-[960px] max-h-[540px] sm:max-w-[960px]">
+      <DialogContent className={`flex flex-col !p-0 overflow-hidden ${SETTINGS_DIALOG_DIMENSIONS}`}>
         <DialogHeader className="flex flex-row items-center justify-between gap-4 px-6 py-4 border-b">
           <DialogTitle className="text-lg font-medium">选择模型</DialogTitle>
           <div className="relative w-60">
