@@ -17,7 +17,6 @@ describe('ChatHeader', () => {
       modeBySession: new Map([['s1', 'SPLIT']]),
       hasEverSentBySession: new Map([['s1', true]]),
       pendingPrompt: null,
-      pendingConnectionPrompt: false,
     })
     vi.restoreAllMocks()
   })

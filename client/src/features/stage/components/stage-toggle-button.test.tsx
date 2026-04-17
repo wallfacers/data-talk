@@ -17,7 +17,6 @@ describe('StageToggleButton', () => {
       modeBySession: new Map(),
       hasEverSentBySession: new Map(),
       pendingPrompt: null,
-      pendingConnectionPrompt: false,
     })
   })
 

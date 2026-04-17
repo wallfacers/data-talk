@@ -35,7 +35,6 @@ describe('SplitView clip-path reveal', () => {
       modeBySession: new Map([['s1', 'SPLIT']]),
       hasEverSentBySession: new Map(),
       pendingPrompt: null,
-      pendingConnectionPrompt: false,
     })
     useChatPartsStore.setState({ partsBySession: new Map() })
   })

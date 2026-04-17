@@ -3,6 +3,8 @@
 import { useLayoutEffect, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowUpIcon, Loader2Icon } from 'lucide-react'
+import { toast } from 'sonner'
+import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import {
   InputGroup,
@@ -13,8 +15,10 @@ import {
 import { ModelPicker } from './model-picker/model-picker'
 import { Switch } from '@/components/ui/switch'
 import { useSessionStore } from '@/stores/session-store'
+import { useConnectionStore } from '@/features/connection/store'
 import { useChannel } from '@/services/channel/use-channel'
 import { createTextPart } from '@/services/channel/types'
+import { createSession } from '@/services/api/session'
 import { StageToggleButton } from '@/features/stage/components/stage-toggle-button'
 import { useHasActiveModel } from './hooks/use-has-active-model'
 
@@ -41,10 +45,12 @@ function InnerComposer() {
   const [autoMode, setAutoMode] = useState(true)
   const { sendMessage, abort, isStreaming } = useChannel()
   const activeSessionId = useSessionStore((s) => s.activeSessionId)
+  const openSession = useSessionStore((s) => s.openSession)
   const setPendingPrompt = useSessionStore((s) => s.setPendingPrompt)
-  const setPendingConnectionPrompt = useSessionStore((s) => s.setPendingConnectionPrompt)
   const setPendingModelPrompt = useSessionStore((s) => s.setPendingModelPrompt)
+  const activeConnectionId = useConnectionStore((s) => s.activeConnectionId)
   const hasActiveModel = useHasActiveModel()
+  const qc = useQueryClient()
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -57,8 +63,22 @@ function InnerComposer() {
         setPendingModelPrompt(true)
         return
       }
+      if (!activeConnectionId) {
+        toast.error('请先在侧边栏选择或创建连接')
+        return
+      }
+      setText('')
       setPendingPrompt(t)
-      setPendingConnectionPrompt(true)
+      try {
+        const sess = await createSession(activeConnectionId, '新会话')
+        qc.invalidateQueries({ queryKey: ['sessions', activeConnectionId] })
+        openSession(sess.id, sess.hasEverSent)
+        // resume hook 会在 activeSessionId 就绪后消费 pendingPrompt
+      } catch (err) {
+        setPendingPrompt(null)
+        setText(t)
+        toast.error(err instanceof Error ? err.message : '创建会话失败')
+      }
       return
     }
 

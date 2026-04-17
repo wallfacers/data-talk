@@ -6,7 +6,8 @@
 
 | 计划 | 状态 | 摘要 |
 |------|------|------|
-| *(无)* | | |
+| [Composer Model Picker Dialog](./2026-04-18-composer-model-picker-dialog-plan.md) | 计划中 | Composer 模型选择器 Popover → 960×540 双栏对话框，触发按钮样式不变 |
+| [Logging Standardization](./2026-04-18-logging-standardization-plan.md) | 计划中 | logback-spring.xml 配置、System.err 修复、文件日志滚动输出 |
 
 ## 已完成计划
 

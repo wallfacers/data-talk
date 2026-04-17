@@ -7,14 +7,12 @@ type SessionState = {
   modeBySession: Map<string, SessionMode>
   hasEverSentBySession: Map<string, boolean>
   pendingPrompt: string | null
-  pendingConnectionPrompt: boolean
   pendingModelPrompt: boolean
 
   openSession: (id: string, hasEverSent: boolean) => void
   closeSession: () => void
   enterSplit: (id: string) => void
   setPendingPrompt: (text: string | null) => void
-  setPendingConnectionPrompt: (on: boolean) => void
   setPendingModelPrompt: (on: boolean) => void
 }
 
@@ -23,7 +21,6 @@ export const useSessionStore = create<SessionState>((set) => ({
   modeBySession: new Map(),
   hasEverSentBySession: new Map(),
   pendingPrompt: null,
-  pendingConnectionPrompt: false,
   pendingModelPrompt: false,
 
   openSession: (id, hasEverSent) => set((s) => {
@@ -45,6 +42,5 @@ export const useSessionStore = create<SessionState>((set) => ({
   }),
 
   setPendingPrompt: (text) => set({ pendingPrompt: text }),
-  setPendingConnectionPrompt: (on) => set({ pendingConnectionPrompt: on }),
   setPendingModelPrompt: (on) => set({ pendingModelPrompt: on }),
 }))

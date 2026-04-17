@@ -17,7 +17,9 @@ export function ChatHeader() {
   const sid = useSessionStore((s) => s.activeSessionId)
   const { data: sessions } = useSessions()
   const session = sessions?.find((s) => s.id === sid)
-  const title = session?.title ?? (sid ? '会话' : '演示模式')
+  // TODO: title 应从 OpenCode 拉取（后端需新增 GET /session/{id} 同步）。
+  // 当前先用本地 SessionDto.title 占位。
+  const title = session?.title ?? ''
   const qc = useQueryClient()
   const { state } = useSidebar()
 
@@ -55,7 +57,11 @@ export function ChatHeader() {
 
   return (
     <div className={`flex h-12 shrink-0 items-center justify-between px-3 ${state === 'collapsed' ? 'pl-24' : ''}`}>
-      <span className="truncate text-sm font-medium">{title}</span>
+      {sid ? (
+        <span className="truncate text-sm font-medium">{title}</span>
+      ) : (
+        <span />
+      )}
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
