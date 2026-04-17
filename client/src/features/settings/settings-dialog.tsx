@@ -4,9 +4,7 @@ import { GeneralPage } from './general/general-page'
 import { DataSourcesPage } from './data-sources/data-sources-page'
 import { ProvidersPage } from './providers/providers-page'
 import { ModelsPage } from './models/models-page'
-import { useSettingsDialogStore } from './settings-dialog-store'
-
-type Section = 'general' | 'data-sources' | 'providers' | 'models'
+import { useSettingsDialogStore, type Section } from './settings-dialog-store'
 
 const PAGE_BY_SECTION: Record<Section, React.ReactNode> = {
   'general': <GeneralPage />,
@@ -20,7 +18,7 @@ export function SettingsDialog() {
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && closeDialog()}>
-      <DialogContent className="flex flex-col !p-0 overflow-hidden w-[960px] h-[540px] max-w-[960px] max-h-[540px] sm:max-w-[960px]" style={{ height: '540px' }}>
+      <DialogContent className="flex flex-col !p-0 overflow-hidden w-[960px] h-[540px] max-w-[960px] max-h-[540px] sm:max-w-[960px]">
         <DialogHeader className="px-6 py-4 border-b">
           <DialogTitle className="text-lg font-medium">设置</DialogTitle>
         </DialogHeader>

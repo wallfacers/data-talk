@@ -44,7 +44,49 @@ public class ConnectionService {
         repo.deleteAll();
     }
 
+    public void update(String id, String kind, String host, int port, String database,
+                       String username, String password) {
+        var existing = repo.findById(id)
+            .orElseThrow(() -> new java.util.NoSuchElementException("unknown connection: " + id));
+        byte[] enc = password != null ? vault.seal(password) : existing.passwordEnc();
+        repo.update(new ConnectionRecord(id, kind, host, port, database, username,
+            enc, existing.schemaDigest(), existing.createdAt()));
+    }
+
+    public boolean deleteById(String id) {
+        return repo.deleteById(id);
+    }
+
+    public TestResult testConnection(String id) {
+        var c = repo.findById(id)
+            .orElseThrow(() -> new java.util.NoSuchElementException("unknown connection: " + id));
+        String password = vault.open(c.passwordEnc());
+        String url = jdbcUrl(c);
+        long started = System.nanoTime();
+        try (var conn = java.sql.DriverManager.getConnection(url, c.username(), password)) {
+            boolean ok = conn.isValid(3);
+            long ms = (System.nanoTime() - started) / 1_000_000L;
+            return new TestResult(ok, ms, ok ? null : "connection reported invalid");
+        } catch (Throwable t) {
+            long ms = (System.nanoTime() - started) / 1_000_000L;
+            return new TestResult(false, ms, t.getClass().getSimpleName() + ": " + t.getMessage());
+        }
+    }
+
+    private static String jdbcUrl(ConnectionRecord c) {
+        return switch (c.kind()) {
+            case "mysql" -> "jdbc:mysql://" + c.host() + ":" + c.port() + "/" + c.databaseName()
+                + "?connectTimeout=3000&socketTimeout=3000";
+            case "postgres", "postgresql" -> "jdbc:postgresql://" + c.host() + ":" + c.port() + "/" + c.databaseName()
+                + "?connectTimeout=3&socketTimeout=3";
+            case "h2" -> "jdbc:h2:" + c.databaseName();
+            default -> throw new IllegalArgumentException("unsupported kind: " + c.kind());
+        };
+    }
+
     /** Safe-to-serialize view. Omits password_enc. */
     public record ConnectionView(String id, String kind, String host, int port,
                                  String databaseName, String username, long createdAt) {}
+
+    public record TestResult(boolean ok, long latencyMs, String reason) {}
 }

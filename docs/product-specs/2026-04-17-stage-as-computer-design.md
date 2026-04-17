@@ -28,7 +28,8 @@
 
 ### 0.2 非目标
 
-- 三圆点的"最小化"（黄）和"最大化"（绿）功能 —— MVP 仅红圆点真关闭，黄绿装饰位
+- 三圆点的"最小化"（黄）功能 —— 黄圆点装饰位，无操作
+- 三圆点的"最大化"（绿）功能作为 green dot 触发 —— **已在实现阶段扩展为独立的 `maximized` 状态**（见 §3.5），但未接入绿圆点，目前仍为装饰位
 - stage 状态持久化到 SQLite（沿用 manus spec §1.2"hero/split 是前端本地状态"原则）
 - "电脑屏幕拟物"风格（外壳/底座/屏幕反光），仅 macOS 风格圆角 + titlebar
 - stage 浮动 / Dock 化（关闭后并入右下角小标）
@@ -174,66 +175,56 @@ export function StageToggleButton() {
 
 ### 2.4 `<SplitView>` 改造
 
+> **实现偏差（2026-04-17）**：实际实现放弃了 react-resizable-panels 方案，改用 **CSS absolute positioning + width/translateX transition**。理由是用户拖动分栏带来的边界情况（minSize/collapsedSize 竞态、ref 时序）在 Tauri WebView 下难以稳定测试，CSS 方案更可控、可预期。不再支持用户手动拖动分栏宽度（非目标）。
+
+实际实现概要：
+
 ```tsx
+const DURATION = 400
+const EASE = 'cubic-bezier(0.32, 0.72, 0.24, 1)'
+
 export function SplitView() {
   const sid = useSessionStore(s => s.activeSessionId)
-  const open = useStageStore(s => sid ? !!s.openBySession.get(sid) : false)
-  const stagePanelRef = useRef<ImperativePanelHandle>(null)
+  const open = useStageStore(s => sid ? !!s.openBySession.get(sid) : s.globalOpen)
+  const maximized = useStageStore(s => s.maximized)
 
-  // open 状态 → panel collapse/expand 命令
-  useEffect(() => {
-    const p = stagePanelRef.current
-    if (!p) return
-    if (open && p.isCollapsed()) p.expand()
-    if (!open && !p.isCollapsed()) p.collapse()
-  }, [open])
+  // Chat: 宽度动画（100% → 46% → 0% 最大化时）
+  const chatWidth = maximized ? '0%' : open ? '46%' : '100%'
+  // Stage: 固定 54%，translateX 从右外侧滑入
+  const stageWidth = maximized ? '100%' : '54%'
+  const stageTranslate = maximized ? 'translateX(0)' : open ? 'translateX(0)' : 'translateX(100%)'
 
   return (
-    <PanelGroup direction="horizontal" className="h-full">
-      <Panel defaultSize={48} minSize={25}>
-        <div className="flex h-full flex-col">
-          <div className="flex-1 overflow-y-auto p-4"><MessageStream /></div>
-          <div id="composer-slot" />
+    <div className="relative h-full overflow-hidden">
+      <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: chatWidth, transition, ... }}>
+        {/* chat + composer-slot */}
+      </div>
+      <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: stageWidth, transform: stageTranslate, transition, ... }}>
+        <div className="h-full w-full p-2">
+          <StageWindow sessionId={sid ?? undefined}>
+            {sid && <ArtifactTimelineStrip />}
+            {sid && <ArtifactCanvas />}
+          </StageWindow>
         </div>
-      </Panel>
-      <PanelResizeHandle className="w-px bg-border hover:bg-primary/50 data-[panel-collapsed]:hidden" />
-      <Panel
-        ref={stagePanelRef}
-        defaultSize={52}
-        minSize={25}
-        collapsible
-        collapsedSize={0}
-        onCollapse={() => sid && useStageStore.getState().syncCollapsed(sid, true)}
-        onExpand={() => sid && useStageStore.getState().syncCollapsed(sid, false)}
-      >
-        {sid && (
-          <div
-            data-stage-open={open}
-            className="h-full w-full p-2 transition-opacity duration-180 data-[stage-open=false]:opacity-0 data-[stage-open=true]:opacity-100"
-          >
-            <StageWindow sessionId={sid}>
-              <ArtifactTimelineStrip />
-              <div className="flex-1 overflow-hidden"><ArtifactCanvas /></div>
-            </StageWindow>
-          </div>
-        )}
-      </Panel>
-    </PanelGroup>
+      </div>
+    </div>
   )
 }
 ```
 
-注意：
-
-- `p-2` 给电脑外壳留呼吸感（与 SidebarInset 的 inset margin 风格一致）
-- `<PanelResizeHandle>` 在右 panel collapsed 时隐藏（避免出现"看似可拖但拖了没用"）
-- 真正的状态源是 `useStageStore.openBySession`；`onCollapse/onExpand` 回调仅作"事实校准"（用户拖动 handle 跨过 minSize 触发的 collapse 也能反向同步到 store）
+动画逻辑：
+- `open: false → true`：chat 宽 100% → 46%，stage translateX(100%) → 0（滑入）
+- `open: true → false`：chat 宽 46% → 100%，stage translateX(0) → 100%（滑出）
+- `maximized: true`：chat 宽 → 0%，stage 宽 → 100%（Stage 全屏），见 §3.5
+- transition 统一 `width 400ms + transform 400ms cubic-bezier(0.32, 0.72, 0.24, 1)`
 
 ---
 
 ## 3. 状态层 `stage-store`
 
 ### 3.1 形态
+
+> **实现扩展（2026-04-17）**：store 在实施阶段新增了三个字段（`globalOpen`、`maximized`、`demoMessages`）。其中 `maximized` 是正式功能（§3.5）；`globalOpen` 和 `demoMessages` 是 tech debt，待后续清理（§3.6）。
 
 ```ts
 // client/src/stores/stage-store.ts
@@ -242,10 +233,16 @@ import { create } from 'zustand'
 type StageState = {
   openBySession: Map<string, boolean>      // 用户当前是否打开
   autoOpenedSessions: Set<string>          // 已经为该 session 自动弹过一次
+  maximized: boolean                       // Stage 全屏模式（chat 宽度归零）— 见 §3.5
+  globalOpen: boolean                      // [TECH DEBT] 无 session 时的兜底开关 — 见 §3.6
+  demoMessages: { role: 'user' | 'assistant'; text: string }[]  // [TECH DEBT] demo 遗留 — 见 §3.6
 
   openStage: (sessionId: string) => void
   closeStage: (sessionId: string) => void
   toggleStage: (sessionId: string) => void
+  toggleMaximized: () => void              // 见 §3.5
+  toggleGlobal: () => void                 // [TECH DEBT]
+  addDemoMessage: (...) => void            // [TECH DEBT]
   notifyArtifactArrived: (sessionId: string) => void  // §4 订阅器调用
   syncCollapsed: (sessionId: string, collapsed: boolean) => void  // SplitView 反向同步
   clear: (sessionId: string) => void
@@ -333,6 +330,32 @@ export function useActiveArtifactTitle(sessionId: string): ReactNode {
   return <><Icon className="size-3.5" /> Stage · {label} v{artifact.version}</>
 }
 ```
+
+### 3.5 maximized：Stage 全屏模式
+
+> 实施阶段扩展，不在原始 spec 范围内。
+
+**功能**：`maximized: true` 时 chat 列宽度归零（`'0%'`），stage 宽度扩展到 `'100%'`，Stage 窗体独占整个视口。
+
+**状态不变量**：
+- `maximized` 与 `open` 正交；`maximized=true` 隐含 stage 可见，不需要额外判断 `open`
+- `toggleMaximized()` 仅翻转 `maximized`，不影响 `openBySession`
+- 没有"maximized 且 closed"这个有意义的组合 —— SplitView 的宽度计算中 `maximized` 优先级高于 `open`
+
+**入口**：`toggleMaximized()` 目前无 UI 入口（绿圆点仍为装饰位）。预留接口，待后续迭代接入。
+
+**动画**：与普通 open/close 共用同一套 CSS transition（width + transform 400ms），无需额外代码。
+
+### 3.6 Tech Debt：globalOpen 与 demoMessages
+
+以下字段是实施过程中的临时代码，后续应清理：
+
+| 字段 | 来源 | 清理条件 |
+|------|------|---------|
+| `globalOpen: boolean` + `toggleGlobal()` | 无 active session 时 `split-view.tsx` 的 null 兜底（`s.globalOpen`）| session 初始化流程稳定后删除；届时 `split-view.tsx:16` 的三元直接改为 `!!s.openBySession.get(sid)` |
+| `demoMessages` + `addDemoMessage()` | `/preview` 沙盒删除后的 store 残留；`split-view.tsx` 用 `hasDemoMessages` 判断空态渲染 | 替换为 `useChatPartsStore` 的 `partsBySession` 检查（已部分实现）后删除 |
+
+> `demoMessages` 已不是主要逻辑路径（`split-view.tsx:18-22` 的 `hasDemoMessages` 是辅助逻辑），不影响核心功能，但存在 dead-code 风险。建议在 Plan B（MVP Actions）实施期间随 session 流程稳定一并清理。
 
 ---
 

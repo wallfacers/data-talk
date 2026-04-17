@@ -1,7 +1,6 @@
 import { cn } from '@/lib/utils'
 import { Settings, Database, Box, Sparkles } from 'lucide-react'
-
-type Section = 'general' | 'data-sources' | 'providers' | 'models'
+import type { Section } from './settings-dialog-store'
 
 const GROUPS: { title: string; items: { key: Section; label: string; icon: React.ComponentType<{ className?: string }> }[] }[] = [
   { title: '桌面', items: [

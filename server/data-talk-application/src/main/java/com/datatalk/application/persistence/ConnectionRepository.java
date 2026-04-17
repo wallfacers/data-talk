@@ -37,6 +37,21 @@ public class ConnectionRepository {
         return list.isEmpty() ? Optional.empty() : Optional.of(list.get(0));
     }
 
+    public void update(ConnectionRecord c) {
+        int n = jdbc.update("""
+            UPDATE connections
+               SET kind = ?, host = ?, port = ?, database_name = ?, username = ?,
+                   password_enc = ?, schema_digest = ?
+             WHERE id = ?
+            """, c.kind(), c.host(), c.port(), c.databaseName(), c.username(),
+            c.passwordEnc(), c.schemaDigest(), c.id());
+        if (n == 0) throw new java.util.NoSuchElementException("unknown connection: " + c.id());
+    }
+
+    public boolean deleteById(String id) {
+        return jdbc.update("DELETE FROM connections WHERE id = ?", id) > 0;
+    }
+
     public void deleteAll() {
         jdbc.update("DELETE FROM connections");
     }

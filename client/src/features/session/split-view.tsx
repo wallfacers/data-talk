@@ -39,7 +39,7 @@ export function SplitView() {
       Math.hypot(rect.width - localX, rect.height - localY),
     )
     setClipGeom({ r, x: localX, y: localY })
-  }, [revealOrigin, open])
+  }, [revealOrigin])
 
   useEffect(() => {
     if (open) {
