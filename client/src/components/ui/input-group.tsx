@@ -10,7 +10,8 @@ import { Textarea } from "@/components/ui/textarea"
 
 function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if ((e.target as HTMLElement).closest("button, select, [data-slot=switch], [data-slot=select-trigger], [data-slot=select-content]")) {
+    // 仅在点击 InputGroup 自身的空白区域时聚焦 textarea，排除内部控件和弹窗
+    if ((e.target as HTMLElement).closest("button, select, [data-slot=switch], [data-slot=select-trigger], [data-slot=select-content], [role=dialog]")) {
       return
     }
     props.onClick?.(e)

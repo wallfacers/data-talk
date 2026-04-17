@@ -53,7 +53,7 @@ export function ModelPickerDialog({ open, onOpenChange, providers, currentModelI
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={`flex flex-col !p-0 overflow-hidden ${SETTINGS_DIALOG_DIMENSIONS}`}>
-        <DialogHeader className="flex flex-row items-center justify-between gap-4 px-6 py-4 border-b">
+        <DialogHeader className="flex flex-row items-center justify-between gap-4 px-6 py-4 border-b pr-12">
           <DialogTitle className="text-lg font-medium">选择模型</DialogTitle>
           <div className="relative w-60">
             <SearchIcon className="absolute left-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
