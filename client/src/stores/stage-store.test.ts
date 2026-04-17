@@ -3,7 +3,12 @@ import { useStageStore } from './stage-store'
 
 describe('stage-store', () => {
   beforeEach(() => {
-    useStageStore.setState({ openBySession: new Map(), autoOpenedSessions: new Set() })
+    useStageStore.setState({
+      openBySession: new Map(),
+      autoOpenedSessions: new Set(),
+      maximizedBySession: new Map(),
+      revealOrigin: null,
+    })
   })
 
   it('openStage / closeStage 切换 openBySession', () => {
@@ -61,5 +66,32 @@ describe('stage-store', () => {
     clear('s1')
     expect(useStageStore.getState().openBySession.has('s1')).toBe(false)
     expect(useStageStore.getState().openBySession.get('s2')).toBe(true)
+  })
+
+  it('setRevealOrigin 写入 revealOrigin 字段', () => {
+    const { setRevealOrigin } = useStageStore.getState()
+    setRevealOrigin({ x: 100, y: 200 })
+    expect(useStageStore.getState().revealOrigin).toEqual({ x: 100, y: 200 })
+  })
+
+  it('setRevealOrigin(null) 清空 revealOrigin', () => {
+    const { setRevealOrigin } = useStageStore.getState()
+    setRevealOrigin({ x: 100, y: 200 })
+    setRevealOrigin(null)
+    expect(useStageStore.getState().revealOrigin).toBeNull()
+  })
+
+  it('closeStage 不触碰 revealOrigin（供关闭动画复用）', () => {
+    const { setRevealOrigin, closeStage } = useStageStore.getState()
+    setRevealOrigin({ x: 50, y: 50 })
+    closeStage('s1')
+    expect(useStageStore.getState().revealOrigin).toEqual({ x: 50, y: 50 })
+  })
+
+  it('notifyArtifactArrived 不触碰 revealOrigin', () => {
+    const { setRevealOrigin, notifyArtifactArrived } = useStageStore.getState()
+    setRevealOrigin({ x: 50, y: 50 })
+    notifyArtifactArrived('s1')
+    expect(useStageStore.getState().revealOrigin).toEqual({ x: 50, y: 50 })
   })
 })

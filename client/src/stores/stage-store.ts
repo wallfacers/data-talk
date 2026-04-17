@@ -1,14 +1,18 @@
 import { create } from 'zustand'
 
+type RevealOrigin = { x: number; y: number }
+
 type StageState = {
   openBySession: Map<string, boolean>
   autoOpenedSessions: Set<string>
   maximizedBySession: Map<string, boolean>
+  revealOrigin: RevealOrigin | null
 
   openStage: (sessionId: string) => void
   closeStage: (sessionId: string) => void
   toggleStage: (sessionId: string) => void
   toggleMaximized: (sessionId: string) => void
+  setRevealOrigin: (origin: RevealOrigin | null) => void
   notifyArtifactArrived: (sessionId: string) => void
   syncCollapsed: (sessionId: string, collapsed: boolean) => void
   clear: (sessionId: string) => void
@@ -18,6 +22,7 @@ export const useStageStore = create<StageState>((set, get) => ({
   openBySession: new Map(),
   autoOpenedSessions: new Set(),
   maximizedBySession: new Map(),
+  revealOrigin: null,
 
   openStage: (sid) => set((s) => {
     const m = new Map(s.openBySession); m.set(sid, true)
@@ -41,6 +46,8 @@ export const useStageStore = create<StageState>((set, get) => ({
     m.set(sid, !m.get(sid))
     return { maximizedBySession: m }
   }),
+
+  setRevealOrigin: (origin) => set({ revealOrigin: origin }),
 
   notifyArtifactArrived: (sid) => set((s) => {
     if (s.autoOpenedSessions.has(sid)) return s
