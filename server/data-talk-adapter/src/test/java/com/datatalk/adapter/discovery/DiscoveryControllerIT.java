@@ -7,6 +7,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -48,5 +49,17 @@ class DiscoveryControllerIT {
     void getUnknownActionReturns404() throws Exception {
         mvc.perform(get("/api/actions/does.not.exist"))
             .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void actionsPayloadCarriesRiskLevelAndCategory() throws Exception {
+        mvc.perform(get("/api/actions"))
+           .andExpect(status().isOk())
+           .andExpect(jsonPath("$.actions[?(@.id == 'datatalk.execute_sql')].riskLevel")
+               .value(hasItem("L1")))
+           .andExpect(jsonPath("$.actions[?(@.id == 'datatalk.execute_sql')].category")
+               .value(hasItem("QUERY")))
+           .andExpect(jsonPath("$.actions[?(@.id == 'datatalk.read_schema')].category")
+               .value(hasItem("METADATA")));
     }
 }
