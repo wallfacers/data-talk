@@ -127,6 +127,7 @@ public class OpenCodeProcessManager implements SmartLifecycle {
             catch (IllegalStateException ignored) {}
         }
 
+        eventLoop.stop();
         stopProcess();
     }
 
