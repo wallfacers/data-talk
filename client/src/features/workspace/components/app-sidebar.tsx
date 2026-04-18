@@ -1,6 +1,5 @@
 import { useEffect, useState, type ComponentProps } from 'react'
 import { MessageSquare, PlusIcon } from 'lucide-react'
-import { toast } from 'sonner'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Sidebar,
@@ -56,7 +55,6 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
       openSession(sess.id, sess.hasEverSent)
       qc.invalidateQueries({ queryKey: ['sessions', activeConnectionId ?? null] })
     },
-    onError: (e: Error) => toast.error(e.message),
   })
 
   return (

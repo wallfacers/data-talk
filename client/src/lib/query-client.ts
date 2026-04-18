@@ -1,4 +1,10 @@
 import { QueryClient } from '@tanstack/react-query'
+import { normalizeError, showErrorToast } from '@/services/http-error'
+
+const globalErrorHandler = (error: unknown) => {
+  const normalized = normalizeError(error)
+  showErrorToast(normalized)
+}
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -13,3 +19,6 @@ export const queryClient = new QueryClient({
     },
   },
 })
+
+queryClient.getQueryCache().config.onError = globalErrorHandler
+queryClient.getMutationCache().config.onError = globalErrorHandler

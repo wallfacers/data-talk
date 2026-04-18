@@ -112,7 +112,6 @@ function ConnectPage({ provider, onBack, onSaved }: {
       toast.success('已保存凭证')
       onSaved()
     },
-    onError: (e: Error) => toast.error(e.message),
   })
 
   return (
@@ -232,7 +231,6 @@ function Row({ p, action, onClick, onRemove }: {
       qc.invalidateQueries({ queryKey: aiQueryKeys.models })
       toast.success('已移除凭证')
     },
-    onError: (e: Error) => toast.error(e.message),
   })
 
   return (

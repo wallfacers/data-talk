@@ -26,8 +26,8 @@ export function useSessionHistory(sessionId: string | null) {
     const load = async () => {
       try {
         const [mRes, aRes] = await Promise.all([
-          http.get(`sessions/${sessionId}/messages`).json<{ messages: MessageDto[] }>(),
-          http.get(`sessions/${sessionId}/artifacts`).json<{ artifacts: ArtifactDto[] }>(),
+          http.get(`sessions/${sessionId}/messages`, { silent: true } as any).json<{ messages: MessageDto[] }>(),
+          http.get(`sessions/${sessionId}/artifacts`, { silent: true } as any).json<{ artifacts: ArtifactDto[] }>(),
         ])
         if (cancelled) return
 
@@ -36,7 +36,7 @@ export function useSessionHistory(sessionId: string | null) {
         for (const m of mRes.messages ?? []) {
           partsApi.upsertMeta(sessionId, {
             id: m.id,
-            role: (m.role ?? 'assistant') as 'user' | 'assistant' | 'system',
+            role: String(m.role ?? 'assistant').toLowerCase() as 'user' | 'assistant' | 'system',
             createdAt: Number((m as any).createdAt ?? Date.now()),
           })
           for (const part of m.parts ?? []) partsApi.upsertPart(sessionId, part)

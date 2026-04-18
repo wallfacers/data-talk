@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { QueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
 import { ChannelClient } from './channel-client'
 import type { StreamEvent, Part } from './types'
 import { generateUuid } from '@/lib/uuid'
@@ -10,6 +9,7 @@ import { useOntologyStore } from '@/stores/ontology-store'
 import { useTimelineStore } from '@/stores/timeline-store'
 import { useSessionStore } from '@/stores/session-store'
 import { getClientHandler } from '@/features/actions/registry'
+import { normalizeError, showErrorToast } from '@/services/http-error'
 
 function getApiBaseUrl(): string {
   const env = (import.meta as any).env?.VITE_API_BASE_URL
@@ -24,7 +24,8 @@ export function buildEventSink(sessionId: string, client: ChannelClient | null, 
       const m = (data as any).message
       useChatPartsStore.getState().upsertMeta(sessionId, {
         id: m.id,
-        role: (m.role ?? 'assistant') as 'user' | 'assistant' | 'system',
+        // Backend sends enum names ("USER"); store lowercases so UI comparison holds.
+        role: String(m.role ?? 'assistant').toLowerCase() as 'user' | 'assistant' | 'system',
         createdAt: Number(m.createdAt ?? Date.now()),
       })
     } else if (event === 'session.meta.updated') {
@@ -97,7 +98,7 @@ export function useChannel() {
       try {
         await client.sendMessage(parts, sink)
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : '发送失败')
+        showErrorToast(normalizeError(err))
       } finally {
         setIsStreaming(false)
       }

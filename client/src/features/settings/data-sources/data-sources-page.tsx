@@ -22,7 +22,6 @@ export function DataSourcesPage() {
   const del = useMutation({
     mutationFn: deleteConnection,
     onSuccess: () => { qc.invalidateQueries({ queryKey: connectionsKey }); toast.success('已删除') },
-    onError: (e: Error) => toast.error(e.message),
   })
 
   async function runTest(id: string) {
@@ -31,9 +30,8 @@ export function DataSourcesPage() {
       const r = await testConnection(id)
       setTestResult(s => ({ ...s, [id]: r.ok ? 'ok' : 'fail' }))
       toast[r.ok ? 'success' : 'error'](r.ok ? `连接成功 (${r.latencyMs}ms)` : r.reason ?? '失败')
-    } catch (e) {
+    } catch {
       setTestResult(s => ({ ...s, [id]: 'fail' }))
-      toast.error((e as Error).message)
     }
   }
 

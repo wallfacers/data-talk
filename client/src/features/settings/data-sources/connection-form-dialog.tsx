@@ -62,7 +62,6 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
       toast.success(editing ? '已更新' : '已创建')
       onSaved()
     },
-    onError: (e: Error) => toast.error(e.message),
   })
 
   return (

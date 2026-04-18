@@ -57,16 +57,23 @@ export class ChannelClient {
   subscribe(lastEventId: number | undefined, onEvent: (e: StreamEvent) => void): () => void {
     const ctrl = new AbortController()
     void (async () => {
-      const res = await fetch(this.url(), {
-        method: 'GET',
-        signal: ctrl.signal,
-        headers: {
-          'DataTalk-Session-Id': this.clientId,
-          'DataTalk-Client-Rev': String(this.clientRev),
-          ...(lastEventId !== undefined ? { 'Last-Event-ID': String(lastEventId) } : {}),
-        },
-      })
-      await consumeSseStream(res, onEvent)
+      try {
+        const res = await fetch(this.url(), {
+          method: 'GET',
+          signal: ctrl.signal,
+          headers: {
+            'DataTalk-Session-Id': this.clientId,
+            'DataTalk-Client-Rev': String(this.clientRev),
+            ...(lastEventId !== undefined ? { 'Last-Event-ID': String(lastEventId) } : {}),
+          },
+        })
+        await consumeSseStream(res, onEvent)
+      } catch (err) {
+        // Expected when the caller calls the returned disposer: session switch,
+        // component unmount, or HMR. Anything else is a real network failure.
+        if (ctrl.signal.aborted) return
+        console.warn('[channel-client] subscribe stream failed', err)
+      }
     })()
     return () => ctrl.abort()
   }

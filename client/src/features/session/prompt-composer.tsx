@@ -3,7 +3,6 @@
 import { useLayoutEffect, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowUpIcon, Loader2Icon } from 'lucide-react'
-import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import {
@@ -20,6 +19,7 @@ import { useConnectionStore } from '@/features/connection/store'
 import { useChannel } from '@/services/channel/use-channel'
 import { createTextPart } from '@/services/channel/types'
 import { createSession } from '@/services/api/session'
+import { normalizeError, showErrorToast } from '@/services/http-error'
 import { StageToggleButton } from '@/features/stage/components/stage-toggle-button'
 import { useHasActiveModel } from './hooks/use-has-active-model'
 
@@ -80,7 +80,7 @@ function InnerComposer() {
       } catch (err) {
         setPendingPrompt(null)
         setText(t)
-        toast.error(err instanceof Error ? err.message : '创建会话失败')
+        showErrorToast(normalizeError(err))
       }
       return
     }

@@ -29,7 +29,6 @@ export function ChatHeader() {
       qc.invalidateQueries({ queryKey: ['sessions'] })
       toast.success('已重命名')
     },
-    onError: (e: Error) => toast.error(e.message),
   })
 
   const del = useMutation({
@@ -39,7 +38,6 @@ export function ChatHeader() {
       useSessionStore.getState().closeSession()
       toast.success('已删除')
     },
-    onError: (e: Error) => toast.error(e.message),
   })
 
   function handleRename() {
