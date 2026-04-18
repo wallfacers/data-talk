@@ -52,7 +52,7 @@ export function DataSourcesPage() {
               <th className="pb-2">地址</th>
               <th className="pb-2">数据库</th>
               <th className="pb-2">用户</th>
-              <th className="pb-2 w-fit whitespace-nowrap">操作</th>
+              <th className="pb-2">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -65,15 +65,17 @@ export function DataSourcesPage() {
                 <td>{c.host}:{c.port}</td>
                 <td>{c.databaseName}</td>
                 <td>{c.username}</td>
-                <td className="py-2 w-fit whitespace-nowrap">
-                  <Button size="sm" variant="ghost" onClick={() => runTest(c.id)} className="min-w-16 h-8">
-                    {status === 'loading' ? '测试中…'
-                      : status === 'ok' ? <CheckCircle2Icon className="size-4 text-green-600" />
-                      : status === 'fail' ? <XCircleIcon className="size-4 text-red-600" />
-                      : '测试'}
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => setEditing(c)}><PencilIcon className="size-4" /></Button>
-                  <Button size="sm" variant="ghost" onClick={() => del.mutate(c.id)}><TrashIcon className="size-4" /></Button>
+                <td className="py-2">
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="ghost" onClick={() => runTest(c.id)} className="h-8 px-3">
+                      {status === 'loading' ? '测试中…'
+                        : status === 'ok' ? <CheckCircle2Icon className="size-4 text-green-600" />
+                        : status === 'fail' ? <XCircleIcon className="size-4 text-red-600" />
+                        : '测试'}
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setEditing(c)} className="h-8 w-8 p-0"><PencilIcon className="size-4" /></Button>
+                    <Button size="sm" variant="ghost" onClick={() => del.mutate(c.id)} className="h-8 w-8 p-0"><TrashIcon className="size-4" /></Button>
+                  </div>
                 </td>
               </tr>
             )})}
