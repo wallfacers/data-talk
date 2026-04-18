@@ -6,6 +6,7 @@ import com.datatalk.dto.ConnectionDto;
 import com.datatalk.dto.ConnectionTestResultDto;
 import com.datatalk.dto.ConnectionUpdateRequest;
 import com.datatalk.application.connection.ConnectionService;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -26,7 +27,7 @@ public class ConnectionController {
             String id = svc.create(body.name(), body.kind(), body.host(), body.port(),
                 body.databaseName(), body.username(), body.password(), body.connectTimeout());
             return ResponseEntity.status(HttpStatus.CREATED).body(new ConnectionCreatedDto(id));
-        } catch (org.springframework.dao.DuplicateKeyException e) {
+        } catch (DataAccessException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).build();
         }
     }
@@ -44,7 +45,7 @@ public class ConnectionController {
             return ResponseEntity.noContent().build();
         } catch (java.util.NoSuchElementException e) {
             return ResponseEntity.notFound().build();
-        } catch (org.springframework.dao.DuplicateKeyException e) {
+        } catch (DataAccessException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).build();
         }
     }

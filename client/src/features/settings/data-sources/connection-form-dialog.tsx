@@ -64,6 +64,13 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
       toast.success(editing ? '已更新' : '已创建')
       onSaved()
     },
+    onError: (err: any) => {
+      if (err?.response?.status === 409) {
+        toast.error('名称已存在，请使用其他名称')
+      } else {
+        toast.error('保存失败')
+      }
+    },
   })
 
   return (
