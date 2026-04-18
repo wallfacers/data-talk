@@ -48,9 +48,12 @@ public class RequestLogInterceptor implements HandlerInterceptor {
             String uaPart = (ua != null && !ua.isEmpty()) ? " | ua=" + truncate(ua, 80) : "";
 
             String suffix = "";
-            if (status >= 400) {
-                String errorMsg = ex != null ? ex.getClass().getSimpleName() + ": " + truncate(ex.getMessage(), 100) : "";
-                suffix = " [ERROR]" + (errorMsg.isEmpty() ? "" : " " + errorMsg);
+            if (ex != null) {
+                String errorMsg = ex.getClass().getSimpleName() + ": " + truncate(ex.getMessage(), 100);
+                suffix = " [ERROR] " + errorMsg;
+                log.error("{} {} | ip={}{} → {} | {}ms{}", method, uri, ip, uaPart, status, elapsedMs, suffix);
+            } else if (status >= 400) {
+                suffix = " [ERROR]";
                 log.error("{} {} | ip={}{} → {} | {}ms{}", method, uri, ip, uaPart, status, elapsedMs, suffix);
             } else if (elapsedMs >= slowRequestThresholdMs) {
                 suffix = " [SLOW]";
