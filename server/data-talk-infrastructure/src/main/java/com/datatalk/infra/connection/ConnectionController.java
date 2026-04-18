@@ -22,9 +22,13 @@ public class ConnectionController {
 
     @PostMapping
     public ResponseEntity<ConnectionCreatedDto> create(@RequestBody ConnectionCreateRequest body) {
-        String id = svc.create(body.kind(), body.host(), body.port(),
-            body.databaseName(), body.username(), body.password(), body.connectTimeout());
-        return ResponseEntity.status(HttpStatus.CREATED).body(new ConnectionCreatedDto(id));
+        try {
+            String id = svc.create(body.name(), body.kind(), body.host(), body.port(),
+                body.databaseName(), body.username(), body.password(), body.connectTimeout());
+            return ResponseEntity.status(HttpStatus.CREATED).body(new ConnectionCreatedDto(id));
+        } catch (org.springframework.dao.DuplicateKeyException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        }
     }
 
     @GetMapping
@@ -35,11 +39,13 @@ public class ConnectionController {
     @PutMapping("/{id}")
     public ResponseEntity<Void> update(@PathVariable String id, @RequestBody ConnectionUpdateRequest body) {
         try {
-            svc.update(id, body.kind(), body.host(), body.port(),
+            svc.update(id, body.name(), body.kind(), body.host(), body.port(),
                 body.databaseName(), body.username(), body.password(), body.connectTimeout());
             return ResponseEntity.noContent().build();
         } catch (java.util.NoSuchElementException e) {
             return ResponseEntity.notFound().build();
+        } catch (org.springframework.dao.DuplicateKeyException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
         }
     }
 

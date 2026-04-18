@@ -24,18 +24,18 @@ public class ConnectionService {
 
     private static final int DEFAULT_CONNECT_TIMEOUT = 3000;
 
-    public String create(String kind, String host, int port, String databaseName,
+    public String create(String name, String kind, String host, int port, String databaseName,
                          String username, String password, Integer connectTimeout) {
         byte[] enc = vault.seal(password);
         String id = java.util.UUID.randomUUID().toString();
         int timeout = connectTimeout != null ? connectTimeout : DEFAULT_CONNECT_TIMEOUT;
-        repo.insert(new ConnectionRecord(id, kind, host, port, databaseName, username, enc, null, clock.millis(), timeout, null, null));
+        repo.insert(new ConnectionRecord(id, name, kind, host, port, databaseName, username, enc, null, clock.millis(), timeout, null, null));
         return id;
     }
 
     public List<ConnectionDto> list() {
         return repo.findAll().stream()
-            .map(c -> new ConnectionDto(c.id(), c.kind(), c.host(), c.port(),
+            .map(c -> new ConnectionDto(c.id(), c.name(), c.kind(), c.host(), c.port(),
                 c.databaseName(), c.username(), c.createdAt(), c.connectTimeout(),
                 c.lastTestStatus(), c.lastTestAt()))
             .toList();
@@ -51,13 +51,13 @@ public class ConnectionService {
         repo.deleteAll();
     }
 
-    public void update(String id, String kind, String host, int port, String databaseName,
+    public void update(String id, String name, String kind, String host, int port, String databaseName,
                        String username, String password, Integer connectTimeout) {
         var existing = repo.findById(id)
             .orElseThrow(() -> new java.util.NoSuchElementException("unknown connection: " + id));
         byte[] enc = password != null ? vault.seal(password) : existing.passwordEnc();
         int timeout = connectTimeout != null ? connectTimeout : existing.connectTimeout();
-        repo.update(new ConnectionRecord(id, kind, host, port, databaseName, username,
+        repo.update(new ConnectionRecord(id, name, kind, host, port, databaseName, username,
             enc, existing.schemaDigest(), existing.createdAt(), timeout,
             existing.lastTestStatus(), existing.lastTestAt()));
     }

@@ -15,7 +15,7 @@ public class ConnectionRepository {
     public ConnectionRepository(@Qualifier("datatalkJdbc") JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
     private static final RowMapper<ConnectionRecord> MAPPER = (rs, i) -> new ConnectionRecord(
-        rs.getString("id"), rs.getString("kind"), rs.getString("host"),
+        rs.getString("id"), rs.getString("name"), rs.getString("kind"), rs.getString("host"),
         rs.getInt("port"), rs.getString("database_name"), rs.getString("username"),
         rs.getBytes("password_enc"), rs.getString("schema_digest"), rs.getLong("created_at"),
         rs.getInt("connect_timeout"),
@@ -25,9 +25,9 @@ public class ConnectionRepository {
 
     public void insert(ConnectionRecord c) {
         jdbc.update("""
-            INSERT INTO connections(id, kind, host, port, database_name, username, password_enc, schema_digest, created_at, connect_timeout)
-            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, c.id(), c.kind(), c.host(), c.port(), c.databaseName(), c.username(),
+            INSERT INTO connections(id, name, kind, host, port, database_name, username, password_enc, schema_digest, created_at, connect_timeout)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, c.id(), c.name(), c.kind(), c.host(), c.port(), c.databaseName(), c.username(),
             c.passwordEnc(), c.schemaDigest(), c.createdAt(), c.connectTimeout());
     }
 
@@ -43,10 +43,10 @@ public class ConnectionRepository {
     public void update(ConnectionRecord c) {
         int n = jdbc.update("""
             UPDATE connections
-               SET kind = ?, host = ?, port = ?, database_name = ?, username = ?,
+               SET name = ?, kind = ?, host = ?, port = ?, database_name = ?, username = ?,
                    password_enc = ?, schema_digest = ?, connect_timeout = ?
              WHERE id = ?
-            """, c.kind(), c.host(), c.port(), c.databaseName(), c.username(),
+            """, c.name(), c.kind(), c.host(), c.port(), c.databaseName(), c.username(),
             c.passwordEnc(), c.schemaDigest(), c.connectTimeout(), c.id());
         if (n == 0) throw new java.util.NoSuchElementException("unknown connection: " + c.id());
     }
