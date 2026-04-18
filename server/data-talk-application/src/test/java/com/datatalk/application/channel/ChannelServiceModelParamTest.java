@@ -68,7 +68,55 @@ class ChannelServiceModelParamTest {
         @SuppressWarnings("unchecked")
         ArgumentCaptor<Map<String, Object>> cap = ArgumentCaptor.forClass(Map.class);
         verify(gateway).forwardUserMessage(eq("oc-1"), cap.capture());
-        assertThat(cap.getValue()).containsEntry("model", "openai/gpt-5");
+        assertThat(cap.getValue())
+            .containsEntry("model", Map.of("providerID", "openai", "modelID", "gpt-5"));
+    }
+
+    @Test
+    void sendMessage_model_without_slash_uses_modelID_only() {
+        when(sessions.findById("s1")).thenReturn(Optional.of(
+            new SessionRecord("s1", "test", "T", false, null, 100L, 100L, false)));
+        when(sessionMap.openCodeFor("s1")).thenReturn("oc-1");
+        when(userPrefs.getCurrentModel()).thenReturn("gpt-5");
+        SessionBus bus = mock(SessionBus.class);
+        when(buses.getOrCreate("s1")).thenReturn(bus);
+
+        TextPart p = new TextPart("p1", "s1", "m1", "hi", null, null, null, Map.of());
+        svc.sendMessage("s1", List.of(p));
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> cap = ArgumentCaptor.forClass(Map.class);
+        verify(gateway).forwardUserMessage(eq("oc-1"), cap.capture());
+        assertThat(cap.getValue())
+            .containsEntry("model", Map.of("providerID", "", "modelID", "gpt-5"));
+    }
+
+    @Test
+    void sendMessage_forwards_only_type_and_text_for_text_part() {
+        // OpenCode 1.4.7's POST /session/:id/message applies strict Zod validation:
+        // any extra field (id, synthetic, ignored, time, sessionID, messageID, metadata)
+        // that doesn't match the schema causes the whole request to be rejected. The
+        // open-db-studio Rust reference client only sends {type, text} and lets
+        // OpenCode generate the rest server-side.
+        when(sessions.findById("s1")).thenReturn(Optional.of(
+            new SessionRecord("s1", "test", "T", false, null, 100L, 100L, false)));
+        when(sessionMap.openCodeFor("s1")).thenReturn("oc-1");
+        when(userPrefs.getCurrentModel()).thenReturn(null);
+        SessionBus bus = mock(SessionBus.class);
+        when(buses.getOrCreate("s1")).thenReturn(bus);
+        when(ids.next()).thenReturn("msg-123");
+
+        TextPart p = new TextPart("abc-123", "s1", null, "hi", null, null, null, Map.of());
+        svc.sendMessage("s1", List.of(p));
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> cap = ArgumentCaptor.forClass(Map.class);
+        verify(gateway).forwardUserMessage(eq("oc-1"), cap.capture());
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> parts = (List<Map<String, Object>>) cap.getValue().get("parts");
+        assertThat(parts).hasSize(1);
+        assertThat(parts.get(0))
+            .isEqualTo(Map.of("type", "text", "text", "hi"));
     }
 
     @Test

@@ -76,4 +76,14 @@ class SessionRepositoryTest {
         assertThat(r.title()).isEqualTo("我的查询");
         assertThat(r.titleLocked()).isTrue();
     }
+
+    @Test
+    void updateOpenCodeSid_writesColumnAndBumpsUpdatedAt() {
+        repo.upsert(new SessionRecord("s1", "c1", "新会话", false, null, 100L, 100L, false));
+        int rows = repo.updateOpenCodeSid("s1", "ses_xyz", 200L);
+        assertThat(rows).isEqualTo(1);
+        SessionRecord r = repo.findById("s1").orElseThrow();
+        assertThat(r.openCodeSid()).isEqualTo("ses_xyz");
+        assertThat(r.updatedAt()).isEqualTo(200L);
+    }
 }

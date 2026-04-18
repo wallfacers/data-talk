@@ -4,6 +4,7 @@ import com.datatalk.application.ai.AiUserPrefsRepository;
 import com.datatalk.application.opencode.OpenCodeGateway;
 import com.datatalk.application.opencode.OpenCodeSessionMap;
 import com.datatalk.application.persistence.MessageRepository;
+import com.datatalk.application.persistence.SessionRecord;
 import com.datatalk.application.persistence.SessionRepository;
 import com.datatalk.application.session.PendingCallRegistry;
 import com.datatalk.application.session.SessionBus;
@@ -68,9 +69,8 @@ public class ChannelService {
      * — that's the gateway's job (Task 23).
      */
     public String sendMessage(String sessionId, List<Part> parts) {
-        if (sessions.findById(sessionId).isEmpty()) {
-            throw new IllegalArgumentException("unknown session: " + sessionId);
-        }
+        SessionRecord session = sessions.findById(sessionId)
+            .orElseThrow(() -> new IllegalArgumentException("unknown session: " + sessionId));
         long now = clock.millis();
         String messageId = ids.next();
         List<Part> stamped = parts.stream().map(p -> p.withMessageId(messageId)).toList();
@@ -83,12 +83,20 @@ public class ChannelService {
         for (Part p : stamped) bus.publish(new DtEvent.MessagePartCreated(p));
         bus.publish(new DtEvent.SessionStatus("busy", Map.of()));
 
-        // Forward to OpenCode
-        String ocSid = sessionMap.openCodeFor(sessionId);
-        if (ocSid == null) {
-            ocSid = gateway.createOpenCodeSession();
-            sessionMap.bind(sessionId, ocSid);
+        // Forward to OpenCode — prefer the persisted opencode_sid so the
+        // binding survives backend restarts (otherwise the AI loses context
+        // on restart because a fresh OpenCode session gets created).
+        String ocSid = session.openCodeSid();
+        if (Strings.isBlank(ocSid)) {
+            ocSid = sessionMap.openCodeFor(sessionId);
         }
+        if (Strings.isBlank(ocSid)) {
+            ocSid = gateway.createOpenCodeSession();
+            sessions.updateOpenCodeSid(sessionId, ocSid, now);
+        }
+        // Keep the in-memory map in sync (idempotent) so OpenCodeEventLoop's
+        // reverse lookup ocSid→dtSid works for the incoming event stream.
+        sessionMap.bind(sessionId, ocSid);
         Map<String, Object> body = new LinkedHashMap<>();
         List<Map<String, Object>> wireParts = stamped.stream()
             .map(this::partForWire)

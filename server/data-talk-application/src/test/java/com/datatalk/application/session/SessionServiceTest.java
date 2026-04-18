@@ -1,5 +1,7 @@
 package com.datatalk.application.session;
 
+import com.datatalk.application.opencode.OpenCodeGateway;
+import com.datatalk.application.opencode.OpenCodeSessionMap;
 import com.datatalk.application.persistence.SessionRecord;
 import com.datatalk.application.persistence.SessionRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -18,11 +20,16 @@ import java.util.NoSuchElementException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 class SessionServiceTest {
 
     private SessionRepository repo;
     private SessionService svc;
+    private OpenCodeGateway gateway;
+    private OpenCodeSessionMap sessionMap;
     private Connection conn;
     private DataSource ds;
 
@@ -49,7 +56,10 @@ class SessionServiceTest {
         ds = new SingleConnectionDataSource(conn, true);
         JdbcTemplate jdbc = new JdbcTemplate(ds);
         repo = new SessionRepository(jdbc);
-        svc = new SessionService(repo, Clock.fixed(Instant.ofEpochMilli(500L), ZoneOffset.UTC));
+        gateway = mock(OpenCodeGateway.class);
+        sessionMap = mock(OpenCodeSessionMap.class);
+        svc = new SessionService(repo, Clock.fixed(Instant.ofEpochMilli(500L), ZoneOffset.UTC),
+            gateway, sessionMap);
     }
 
     @AfterEach
@@ -92,5 +102,53 @@ class SessionServiceTest {
         assertThatThrownBy(() -> svc.rename("nonexistent", "title"))
             .isInstanceOf(NoSuchElementException.class)
             .hasMessage("session not found: nonexistent");
+    }
+
+    @Test
+    void create_defaultsBlankTitleToNewSession() {
+        SessionRecord fromNull = svc.create(null, null);
+        SessionRecord fromBlank = svc.create(null, "   ");
+        SessionRecord fromEmpty = svc.create(null, "");
+
+        assertThat(fromNull.title()).isEqualTo("新会话");
+        assertThat(fromBlank.title()).isEqualTo("新会话");
+        assertThat(fromEmpty.title()).isEqualTo("新会话");
+    }
+
+    @Test
+    void create_preservesExplicitTitle() {
+        SessionRecord rec = svc.create(null, "我的会话");
+        assertThat(rec.title()).isEqualTo("我的会话");
+    }
+
+    @Test
+    void delete_cascadesToOpenCodeWhenOcSidPresent() {
+        repo.upsert(new SessionRecord("s1", "c1", "t", true, "ses_xxx", 100L, 100L, false));
+        svc.delete("s1");
+        assertThat(repo.findById("s1")).isEmpty();
+        verify(gateway).deleteOpenCodeSession("ses_xxx");
+        verify(sessionMap).unbind("s1");
+    }
+
+    @Test
+    void delete_skipsOpenCodeWhenOcSidNull() {
+        repo.upsert(new SessionRecord("s1", "c1", "t", false, null, 100L, 100L, false));
+        svc.delete("s1");
+        assertThat(repo.findById("s1")).isEmpty();
+        verify(gateway, never()).deleteOpenCodeSession(org.mockito.ArgumentMatchers.anyString());
+        verify(sessionMap, never()).unbind(org.mockito.ArgumentMatchers.anyString());
+    }
+
+    @Test
+    void delete_swallowsOpenCodeGatewayFailure() {
+        repo.upsert(new SessionRecord("s1", "c1", "t", true, "ses_xxx", 100L, 100L, false));
+        org.mockito.Mockito.doThrow(new RuntimeException("oc down"))
+            .when(gateway).deleteOpenCodeSession("ses_xxx");
+
+        // Local delete must still succeed despite gateway failure
+        svc.delete("s1");
+
+        assertThat(repo.findById("s1")).isEmpty();
+        verify(sessionMap).unbind("s1");
     }
 }

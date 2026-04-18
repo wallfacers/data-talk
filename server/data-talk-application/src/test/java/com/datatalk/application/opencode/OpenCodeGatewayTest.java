@@ -30,7 +30,7 @@ class OpenCodeGatewayTest {
 
         StubToolPusher pusher = new StubToolPusher();
         OpenCodeGateway gw = new OpenCodeGateway(registry, pusher,
-            (sessionId, body) -> {}, () -> "ocsid-1", "http://localhost:8080");
+            (sessionId, body) -> {}, () -> "ocsid-1", sid -> {}, "http://localhost:8080");
 
         gw.registerTools();
 
@@ -45,8 +45,19 @@ class OpenCodeGatewayTest {
         ActionRegistry registry = mock(ActionRegistry.class);
         when(registry.all()).thenReturn(List.of());
         OpenCodeGateway gw = new OpenCodeGateway(registry, new StubToolPusher(),
-            (s, body) -> {}, () -> "oc-42", "http://x");
+            (s, body) -> {}, () -> "oc-42", sid -> {}, "http://x");
         assertThat(gw.createOpenCodeSession()).isEqualTo("oc-42");
+    }
+
+    @Test
+    void deleteOpenCodeSessionInvokesDeleter() {
+        ActionRegistry registry = mock(ActionRegistry.class);
+        when(registry.all()).thenReturn(List.of());
+        List<String> deleted = new ArrayList<>();
+        OpenCodeGateway gw = new OpenCodeGateway(registry, new StubToolPusher(),
+            (s, body) -> {}, () -> "oc-1", deleted::add, "http://x");
+        gw.deleteOpenCodeSession("ses_zzz");
+        assertThat(deleted).containsExactly("ses_zzz");
     }
 
     static class StubToolPusher implements OpenCodeGateway.ToolPusher {

@@ -33,15 +33,16 @@ class OpenCodeEventLoopTest {
 
     @Test
     void parsesSseFramesIntoOcEvents() {
+        // OpenCode 1.4.7 /global/event wraps each frame as
+        // {"directory":"...","payload":{"type":"...","properties":{...}}}
+        // and carries the event name inside payload.type (no SSE event: field).
         String sse = """
-            event: server.connected
-            data: {}
+            data: {"directory":"/tmp","payload":{"type":"server.connected","properties":{}}}
 
-            event: message.part.delta
-            data: {"partID":"p1","field":"text","delta":"hi"}
+            data: {"directory":"/tmp","payload":{"type":"message.part.delta","properties":{"sessionID":"oc-1","partID":"p1","field":"text","delta":"hi"}}}
 
             """;
-        wm.stubFor(get(urlEqualTo("/event"))
+        wm.stubFor(get(urlEqualTo("/global/event"))
             .willReturn(aResponse().withHeader("Content-Type", "text/event-stream").withBody(sse)));
 
         List<OcEvent> received = new ArrayList<>();
@@ -66,12 +67,13 @@ class OpenCodeEventLoopTest {
 
     @Test
     void sessionUpdatedReachesSessionBus() {
+        // OpenCode 1.4.7 wraps payload under properties and uses time.updated
+        // (millis epoch) instead of a monotonic version integer.
         String sse = """
-            event: session.updated
-            data: {"info":{"id":"oc-1","title":"AI 标题","version":2}}
+            data: {"directory":"/tmp","payload":{"type":"session.updated","properties":{"sessionID":"oc-1","info":{"id":"oc-1","title":"AI 标题","time":{"created":1000,"updated":2000}}}}}
 
             """;
-        wm.stubFor(get(urlEqualTo("/event"))
+        wm.stubFor(get(urlEqualTo("/global/event"))
             .willReturn(aResponse().withHeader("Content-Type", "text/event-stream").withBody(sse)));
 
         List<OcEvent> received = new ArrayList<>();

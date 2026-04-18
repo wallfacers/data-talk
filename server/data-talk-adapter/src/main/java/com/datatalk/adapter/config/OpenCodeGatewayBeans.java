@@ -4,6 +4,8 @@ import com.datatalk.application.opencode.OpenCodeEventLoop;
 import com.datatalk.application.opencode.OpenCodeEventTranslator;
 import com.datatalk.application.opencode.OpenCodeGateway;
 import com.datatalk.application.opencode.OpenCodeSessionMap;
+import com.datatalk.application.persistence.SessionRecord;
+import com.datatalk.application.persistence.SessionRepository;
 import com.datatalk.application.registry.ActionRegistry;
 import com.datatalk.application.session.SessionBusRegistry;
 import com.datatalk.infra.opencode.OpenCodeConfig;
@@ -35,6 +37,7 @@ public class OpenCodeGatewayBeans {
     private final OpenCodeEventTranslator translator;
     private final SessionBusRegistry buses;
     private final OpenCodeSessionMap sessionMap;
+    private final SessionRepository sessionRepository;
     private final OpenCodeServeProperties serveProps;
     private final OpenCodeProcessManager processManager;
     private OpenCodeGateway gateway;
@@ -47,6 +50,7 @@ public class OpenCodeGatewayBeans {
                                 OpenCodeEventTranslator translator,
                                 SessionBusRegistry buses,
                                 OpenCodeSessionMap sessionMap,
+                                SessionRepository sessionRepository,
                                 OpenCodeServeProperties serveProps,
                                 @Value("${datatalk.opencode.required:false}") boolean required,
                                 @Value("${datatalk.opencode.base-url:http://localhost:4096}") String defaultBaseUrl) {
@@ -57,6 +61,7 @@ public class OpenCodeGatewayBeans {
         this.translator = translator;
         this.buses = buses;
         this.sessionMap = sessionMap;
+        this.sessionRepository = sessionRepository;
         this.serveProps = serveProps;
 
         Path homeDir = Paths.get(System.getProperty("user.home"));
@@ -77,6 +82,7 @@ public class OpenCodeGatewayBeans {
             (name, desc, params, cb) -> client.registerTool(name, desc, params, cb),
             (ocSid, body) -> client.sendMessage(ocSid, body),
             client::createSession,
+            client::deleteSession,
             props.callbackBase()
         );
         return gateway;
@@ -99,6 +105,8 @@ public class OpenCodeGatewayBeans {
      */
     @EventListener(ApplicationReadyEvent.class)
     public void registerOnStartup() {
+        preloadSessionMap();
+
         if (!serveProps.isEnabled()) {
             log.info("OpenCode embedded server is disabled - skipping tool registration");
             return;
@@ -119,5 +127,28 @@ public class OpenCodeGatewayBeans {
         } catch (Exception e) {
             log.error("OpenCode SSE event loop failed to start (degraded mode): {}", e.getMessage(), e);
         }
+    }
+
+    /**
+     * Rehydrate DataTalk↔OpenCode session bindings from SQLite into the
+     * in-memory {@link OpenCodeSessionMap}. Without this, a fresh backend
+     * process starts with an empty map and {@code OpenCodeEventLoop} can't
+     * reverse-lookup ocSid→dtSid until the user sends a new message —
+     * meaning AI responses to existing sessions disappear after restart.
+     */
+    private void preloadSessionMap() {
+        int loaded = 0;
+        try {
+            for (SessionRecord s : sessionRepository.listAll()) {
+                if (s.openCodeSid() != null && !s.openCodeSid().isBlank()) {
+                    sessionMap.bind(s.id(), s.openCodeSid());
+                    loaded++;
+                }
+            }
+        } catch (Exception e) {
+            log.warn("[session-map] preload failed (continuing with empty map): {}", e.toString());
+            return;
+        }
+        log.info("[session-map] preloaded {} DataTalk↔OpenCode bindings from DB", loaded);
     }
 }

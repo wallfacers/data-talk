@@ -25,19 +25,25 @@ public class OpenCodeGateway {
         void send(String openCodeSessionId, Map<String, Object> requestBody);
     }
 
+    public interface SessionDeleter {
+        void delete(String openCodeSessionId);
+    }
+
     private final ActionRegistry registry;
     private final ToolPusher pusher;
     private final MessageSender sender;
     private final Supplier<String> sessionCreator;
+    private final SessionDeleter deleter;
     private final String callbackBase;
 
     public OpenCodeGateway(ActionRegistry registry, ToolPusher pusher,
                            MessageSender sender, Supplier<String> sessionCreator,
-                           String callbackBase) {
+                           SessionDeleter deleter, String callbackBase) {
         this.registry = registry;
         this.pusher = pusher;
         this.sender = sender;
         this.sessionCreator = sessionCreator;
+        this.deleter = deleter;
         this.callbackBase = callbackBase;
     }
 
@@ -58,5 +64,9 @@ public class OpenCodeGateway {
 
     public void forwardUserMessage(String openCodeSessionId, Map<String, Object> requestBody) {
         sender.send(openCodeSessionId, requestBody);
+    }
+
+    public void deleteOpenCodeSession(String openCodeSessionId) {
+        deleter.delete(openCodeSessionId);
     }
 }

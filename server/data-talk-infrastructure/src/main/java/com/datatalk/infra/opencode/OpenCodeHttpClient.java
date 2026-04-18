@@ -77,6 +77,13 @@ public class OpenCodeHttpClient implements OpenCodeProviderClient {
             .block();
     }
 
+    public void deleteSession(String sessionId) {
+        wc.delete().uri("/session/{id}", sessionId)
+            .retrieve()
+            .toBodilessEntity()
+            .block();
+    }
+
     public void abort(String sessionId) {
         wc.post().uri("/session/{id}/abort", sessionId)
             .retrieve()

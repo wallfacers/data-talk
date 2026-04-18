@@ -53,6 +53,12 @@ public class SessionRepository {
         jdbc.update("UPDATE sessions SET has_ever_sent = 1, updated_at = ? WHERE id = ?", now, id);
     }
 
+    public int updateOpenCodeSid(String id, String openCodeSid, long now) {
+        return jdbc.update(
+            "UPDATE sessions SET opencode_sid = ?, updated_at = ? WHERE id = ?",
+            openCodeSid, now, id);
+    }
+
     public int updateTitle(String id, String title, long now) {
         return jdbc.update(
             "UPDATE sessions SET title = ?, updated_at = ? WHERE id = ?",
