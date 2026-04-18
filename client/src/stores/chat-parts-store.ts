@@ -9,6 +9,7 @@ type ChatPartsState = {
   upsertPart: (sessionId: string, part: Part) => void
   upsertInfo: (sessionId: string, info: MessageInfo) => void
   upsertMany: (sessionId: string, parts: Part[]) => void
+  replaceSession: (sessionId: string, list: Array<{ info: MessageInfo; parts: Part[] }>) => void
   removePart: (sessionId: string, messageId: string, partId: string) => void
   clearSession: (sessionId: string) => void
   getParts: (sessionId: string) => Part[]
@@ -51,6 +52,27 @@ export const useChatPartsStore = create<ChatPartsState>((set, get) => ({
   upsertMany: (sessionId, parts) => {
     for (const p of parts) get().upsertPart(sessionId, p)
   },
+
+  replaceSession: (sessionId, list) => set((s) => {
+    const partsBySession = new Map(s.partsBySession)
+    const infoBySession = new Map(s.infoBySession)
+    const partIndexBySession = new Map(s.partIndexBySession)
+
+    const byMessage = new Map<string, Part[]>()
+    const byInfo = new Map<string, MessageInfo>()
+    const index = new Map<string, { messageId: string; idx: number }>()
+
+    for (const { info, parts } of list) {
+      byInfo.set(info.id, info)
+      byMessage.set(info.id, [...parts])
+      parts.forEach((p, i) => index.set(p.id, { messageId: info.id, idx: i }))
+    }
+
+    partsBySession.set(sessionId, byMessage)
+    infoBySession.set(sessionId, byInfo)
+    partIndexBySession.set(sessionId, index)
+    return { partsBySession, infoBySession, partIndexBySession }
+  }),
 
   removePart: (sessionId, messageId, partId) => set((s) => {
     const bySession = new Map(s.partsBySession)
