@@ -6,7 +6,7 @@ const SWAP_MS = 220
 export function TextShimmer(props: { text: string; active?: boolean; className?: string; offset?: number }) {
   const active = props.active ?? true
   const [run, setRun] = useState(active)
-  const timerRef = useRef<ReturnType<typeof setTimeout>>()
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
     if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = undefined }

@@ -32,7 +32,10 @@ export function stream(text: string, live: boolean): Block[] {
   if (!text) return [{ raw: text, src, mode: 'live' }]
   if (refs(text)) return [{ raw: text, src, mode: 'live' }]
   const tokens = marked.lexer(text)
-  const tail = tokens.findLastIndex((token: any) => token.type !== 'space')
+  let tail = -1
+  for (let i = tokens.length - 1; i >= 0; i--) {
+    if ((tokens[i] as any).type !== 'space') { tail = i; break }
+  }
   if (tail < 0) return [{ raw: text, src, mode: 'live' }]
   const last = tokens[tail]
   if (!last || last.type !== 'code') return [{ raw: text, src, mode: 'live' }]
