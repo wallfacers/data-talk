@@ -44,15 +44,15 @@ export function DataSourcesPage() {
           还没有数据源，点击"新增"创建第一个
         </div>
       ) : (
-        <table className="w-full text-sm">
+        <table className="w-full text-sm table-fixed">
           <thead className="text-left text-muted-foreground">
             <tr>
               <th className="pb-2">名称</th>
-              <th className="pb-2">类型</th>
-              <th className="pb-2">地址</th>
-              <th className="pb-2">数据库</th>
-              <th className="pb-2">用户</th>
-              <th className="pb-2">操作</th>
+              <th className="pb-2 w-16">类型</th>
+              <th className="pb-2 w-24">地址</th>
+              <th className="pb-2 w-20">数据库</th>
+              <th className="pb-2 w-20">用户</th>
+              <th className="pb-2 w-[140px]">操作</th>
             </tr>
           </thead>
           <tbody>
