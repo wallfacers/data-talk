@@ -1,18 +1,13 @@
 import { create } from 'zustand'
-import type { Part } from '@/services/channel/types'
-
-export type MessageMeta = {
-  id: string
-  role: 'user' | 'assistant' | 'system'
-  createdAt: number
-}
+import type { Part, MessageInfo } from '@/services/channel/types'
 
 type ChatPartsState = {
   partsBySession: Map<string, Map<string, Part[]>>
-  metaBySession: Map<string, Map<string, MessageMeta>>
+  infoBySession: Map<string, Map<string, MessageInfo>>
   partIndexBySession: Map<string, Map<string, { messageId: string; idx: number }>>
+
   upsertPart: (sessionId: string, part: Part) => void
-  upsertMeta: (sessionId: string, meta: MessageMeta) => void
+  upsertInfo: (sessionId: string, info: MessageInfo) => void
   upsertMany: (sessionId: string, parts: Part[]) => void
   removePart: (sessionId: string, messageId: string, partId: string) => void
   clearSession: (sessionId: string) => void
@@ -22,7 +17,7 @@ type ChatPartsState = {
 
 export const useChatPartsStore = create<ChatPartsState>((set, get) => ({
   partsBySession: new Map(),
-  metaBySession: new Map(),
+  infoBySession: new Map(),
   partIndexBySession: new Map(),
 
   upsertPart: (sessionId, part) => set((s) => {
@@ -45,12 +40,12 @@ export const useChatPartsStore = create<ChatPartsState>((set, get) => ({
     return { partsBySession: bySession, partIndexBySession: indexBySession }
   }),
 
-  upsertMeta: (sessionId, meta) => set((s) => {
-    const bySession = new Map(s.metaBySession)
+  upsertInfo: (sessionId, info) => set((s) => {
+    const bySession = new Map(s.infoBySession)
     const map = new Map(bySession.get(sessionId) ?? new Map())
-    map.set(meta.id, { ...(map.get(meta.id) ?? meta), ...meta })
+    map.set(info.id, { ...(map.get(info.id) ?? info), ...info })
     bySession.set(sessionId, map)
-    return { metaBySession: bySession }
+    return { infoBySession: bySession }
   }),
 
   upsertMany: (sessionId, parts) => {
@@ -72,9 +67,9 @@ export const useChatPartsStore = create<ChatPartsState>((set, get) => ({
 
   clearSession: (sessionId) => set((s) => {
     const parts = new Map(s.partsBySession); parts.delete(sessionId)
-    const meta = new Map(s.metaBySession); meta.delete(sessionId)
+    const info = new Map(s.infoBySession); info.delete(sessionId)
     const index = new Map(s.partIndexBySession); index.delete(sessionId)
-    return { partsBySession: parts, metaBySession: meta, partIndexBySession: index }
+    return { partsBySession: parts, infoBySession: info, partIndexBySession: index }
   }),
 
   getParts: (sessionId) => {
