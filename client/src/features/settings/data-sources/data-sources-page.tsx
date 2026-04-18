@@ -47,12 +47,12 @@ export function DataSourcesPage() {
         <table className="w-full text-sm table-fixed">
           <thead className="text-left text-muted-foreground">
             <tr>
-              <th className="pb-2">名称</th>
-              <th className="pb-2 w-16">类型</th>
-              <th className="pb-2 w-24">地址</th>
-              <th className="pb-2 w-20">数据库</th>
-              <th className="pb-2 w-20">用户</th>
-              <th className="pb-2 w-[140px]">操作</th>
+              <th className="pb-2 align-middle">名称</th>
+              <th className="pb-2 w-16 align-middle">类型</th>
+              <th className="pb-2 w-24 align-middle">地址</th>
+              <th className="pb-2 w-20 align-middle">数据库</th>
+              <th className="pb-2 w-20 align-middle">用户</th>
+              <th className="pb-2 w-[140px] align-middle">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -60,13 +60,13 @@ export function DataSourcesPage() {
                 const status = getStatus(c)
                 return (
               <tr key={c.id} className="border-t">
-                <td className="py-2">{c.name}</td>
-                <td className="py-2">{c.kind}</td>
-                <td>{c.host}:{c.port}</td>
-                <td>{c.databaseName}</td>
-                <td>{c.username}</td>
-                <td className="py-2">
-                  <div className="flex gap-1">
+                <td className="py-2 align-middle">{c.name}</td>
+                <td className="py-2 align-middle">{c.kind}</td>
+                <td className="align-middle">{c.host}:{c.port}</td>
+                <td className="align-middle">{c.databaseName}</td>
+                <td className="align-middle">{c.username}</td>
+                <td className="py-2 align-middle">
+                  <div className="flex gap-1 items-center">
                     <Button size="sm" variant="ghost" onClick={() => runTest(c.id)} className="h-8 min-w-[60px] px-3 justify-center">
                       {status === 'loading' ? '测试中…'
                         : status === 'ok' ? <CheckCircle2Icon className="size-4 text-green-600" />
