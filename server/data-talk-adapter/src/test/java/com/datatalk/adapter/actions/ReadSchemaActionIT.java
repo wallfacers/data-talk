@@ -32,6 +32,8 @@ class ReadSchemaActionIT {
     @Autowired ReadSchemaAction action;
     @Autowired JdbcTemplate datatalkJdbc;
 
+    String connectionId;
+
     @BeforeAll
     void seedDb() throws Exception {
         try (var c = DriverManager.getConnection(pg.getJdbcUrl(), pg.getUsername(), pg.getPassword());
@@ -40,7 +42,7 @@ class ReadSchemaActionIT {
             st.execute("CREATE TABLE orders (id SERIAL PRIMARY KEY, user_id INT REFERENCES users(id))");
         }
         conn.deleteAll();
-        conn.create("postgresql", pg.getHost(), pg.getFirstMappedPort(),
+        connectionId = conn.create("postgresql", pg.getHost(), pg.getFirstMappedPort(),
             pg.getDatabaseName(), pg.getUsername(), pg.getPassword());
     }
 
@@ -48,8 +50,8 @@ class ReadSchemaActionIT {
     @SuppressWarnings("unchecked")
     void readSchemaReturnsBothTables() throws Exception {
         Map<String, Object> out = (Map<String, Object>) action.handle(
-            new ActionContext("s-1", "c-1", "pg-test", "oc-1"),
-            Map.of("connectionId", "pg-test")
+            new ActionContext("s-1", "c-1", connectionId, "oc-1"),
+            Map.of("connectionId", connectionId)
         ).toCompletableFuture().get();
 
         List<Map<String, Object>> schema = (List<Map<String, Object>>) out.get("schema");

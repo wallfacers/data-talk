@@ -36,6 +36,8 @@ class ExecuteSqlActionIT {
     @Autowired ExecuteSqlAction action;
     @Autowired ArtifactRepository artifacts;
 
+    String connectionId;
+
     @BeforeAll
     void seed() throws Exception {
         try (var c = DriverManager.getConnection(pg.getJdbcUrl(), pg.getUsername(), pg.getPassword());
@@ -44,17 +46,17 @@ class ExecuteSqlActionIT {
             st.execute("INSERT INTO t VALUES(1,'a'),(2,'b'),(3,'c')");
         }
         conn.deleteAll();
-        conn.create("postgresql", pg.getHost(), pg.getFirstMappedPort(),
+        connectionId = conn.create("postgresql", pg.getHost(), pg.getFirstMappedPort(),
             pg.getDatabaseName(), pg.getUsername(), pg.getPassword());
-        sessRepo.upsert(new SessionRecord("s-exec", "pg-exec", "T", true, "oc-e", 0L, 0L, false));
+        sessRepo.upsert(new SessionRecord("s-exec", connectionId, "T", true, "oc-e", 0L, 0L, false));
     }
 
     @Test
     @SuppressWarnings("unchecked")
     void returnsPreviewAndPersistsArtifact() throws Exception {
         Map<String, Object> out = (Map<String, Object>) action.handle(
-            new ActionContext("s-exec", "c-1", "pg-exec", "oc-e"),
-            Map.of("connectionId", "pg-exec", "sql", "SELECT * FROM t ORDER BY id")
+            new ActionContext("s-exec", "c-1", connectionId, "oc-e"),
+            Map.of("connectionId", connectionId, "sql", "SELECT * FROM t ORDER BY id")
         ).toCompletableFuture().get();
 
         assertThat(out).containsKeys("artifactId", "columns", "preview", "rowCount");
@@ -66,8 +68,8 @@ class ExecuteSqlActionIT {
     void rejectsDelete() {
         assertThat(
             action.handle(
-                new ActionContext("s-exec", "c-1", "pg-exec", "oc-e"),
-                Map.of("connectionId", "pg-exec", "sql", "DELETE FROM t")
+                new ActionContext("s-exec", "c-1", connectionId, "oc-e"),
+                Map.of("connectionId", connectionId, "sql", "DELETE FROM t")
             ).toCompletableFuture()
         ).isCompletedExceptionally();
     }

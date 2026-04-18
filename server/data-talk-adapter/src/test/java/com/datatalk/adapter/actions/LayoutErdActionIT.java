@@ -30,6 +30,8 @@ class LayoutErdActionIT {
     @Autowired ConnectionService conn;
     @Autowired LayoutErdAction action;
 
+    String connectionId;
+
     @BeforeAll
     void seed() throws Exception {
         try (var c = DriverManager.getConnection(pg.getJdbcUrl(), pg.getUsername(), pg.getPassword());
@@ -38,7 +40,7 @@ class LayoutErdActionIT {
             st.execute("CREATE TABLE orders (id SERIAL PRIMARY KEY, user_id INT REFERENCES users(id), amount DECIMAL)");
         }
         conn.deleteAll();
-        conn.create("postgresql", pg.getHost(), pg.getFirstMappedPort(),
+        connectionId = conn.create("postgresql", pg.getHost(), pg.getFirstMappedPort(),
             pg.getDatabaseName(), pg.getUsername(), pg.getPassword());
     }
 
@@ -46,8 +48,8 @@ class LayoutErdActionIT {
     @SuppressWarnings("unchecked")
     void createsTwoNodesAndOneEdge() throws Exception {
         Map<String, Object> out = (Map<String, Object>) action.handle(
-            new ActionContext("s-1", "c-erd", "pg-erd", "oc-1"),
-            Map.of("connectionId", "pg-erd", "tables", List.of("users", "orders"))
+            new ActionContext("s-1", "c-erd", connectionId, "oc-1"),
+            Map.of("connectionId", connectionId, "tables", List.of("users", "orders"))
         ).toCompletableFuture().get();
 
         List<Map<String, Object>> nodes = (List<Map<String, Object>>) out.get("nodes");

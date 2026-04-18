@@ -1,30 +1,44 @@
 package com.datatalk.adapter.controller;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
+import java.util.Objects;
+
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class ConnectionControllerIT {
 
     @LocalServerPort int port;
+    @Autowired ObjectMapper om;
+
     WebTestClient web() {
         return WebTestClient.bindToServer().baseUrl("http://localhost:" + port).build();
     }
 
-    @Test
-    void put_updates_existing_connection() {
-        var w = web();
-        w.post().uri("/api/connections").contentType(MediaType.APPLICATION_JSON)
-            .bodyValue("""
-                {"id":"u1","kind":"mysql","host":"h","port":3306,
-                 "database":"d","username":"u","password":"p"}
-                """)
-            .exchange().expectStatus().isCreated();
+    private String createConnection(WebTestClient w, String body) throws Exception {
+        byte[] res = w.post().uri("/api/connections").contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(body)
+            .exchange().expectStatus().isCreated()
+            .expectBody().returnResult().getResponseBody();
+        JsonNode node = om.readTree(Objects.requireNonNull(res));
+        return node.get("id").asText();
+    }
 
-        w.put().uri("/api/connections/u1").contentType(MediaType.APPLICATION_JSON)
+    @Test
+    void put_updates_existing_connection() throws Exception {
+        var w = web();
+        String id = createConnection(w, """
+            {"kind":"mysql","host":"h","port":3306,
+             "database":"d","username":"u","password":"p"}
+            """);
+
+        w.put().uri("/api/connections/" + id).contentType(MediaType.APPLICATION_JSON)
             .bodyValue("""
                 {"kind":"postgres","host":"h2","port":5432,
                  "database":"d2","username":"u2","password":"p2"}
@@ -32,33 +46,29 @@ class ConnectionControllerIT {
             .exchange().expectStatus().isNoContent();
 
         w.get().uri("/api/connections").exchange()
-            .expectBody().jsonPath("$.connections[0].host").isEqualTo("h2");
+            .expectBody().jsonPath("$.connections[?(@.id=='" + id + "')].host").isEqualTo("h2");
     }
 
     @Test
-    void delete_returns_204_on_success_404_on_missing() {
+    void delete_returns_204_on_success_404_on_missing() throws Exception {
         var w = web();
-        w.post().uri("/api/connections").contentType(MediaType.APPLICATION_JSON)
-            .bodyValue("""
-                {"id":"d1","kind":"mysql","host":"h","port":3306,
-                 "database":"d","username":"u","password":"p"}
-                """)
-            .exchange().expectStatus().isCreated();
+        String id = createConnection(w, """
+            {"kind":"mysql","host":"h","port":3306,
+             "database":"d","username":"u","password":"p"}
+            """);
 
-        w.delete().uri("/api/connections/d1").exchange().expectStatus().isNoContent();
-        w.delete().uri("/api/connections/d1").exchange().expectStatus().isNotFound();
+        w.delete().uri("/api/connections/" + id).exchange().expectStatus().isNoContent();
+        w.delete().uri("/api/connections/" + id).exchange().expectStatus().isNotFound();
     }
 
     @Test
-    void test_endpoint_returns_ok_false_for_bad_target() {
+    void test_endpoint_returns_ok_false_for_bad_target() throws Exception {
         var w = web();
-        w.post().uri("/api/connections").contentType(MediaType.APPLICATION_JSON)
-            .bodyValue("""
-                {"id":"t1","kind":"mysql","host":"127.0.0.1","port":1,
-                 "database":"x","username":"u","password":"p"}
-                """)
-            .exchange().expectStatus().isCreated();
-        w.post().uri("/api/connections/t1/test").exchange()
+        String id = createConnection(w, """
+            {"kind":"mysql","host":"127.0.0.1","port":1,
+             "database":"x","username":"u","password":"p"}
+            """);
+        w.post().uri("/api/connections/" + id + "/test").exchange()
             .expectStatus().isOk()
             .expectBody().jsonPath("$.ok").isEqualTo(false);
     }

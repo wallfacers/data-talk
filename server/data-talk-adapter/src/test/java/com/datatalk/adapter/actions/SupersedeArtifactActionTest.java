@@ -6,6 +6,7 @@ import com.datatalk.domain.action.ActionContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
@@ -25,12 +26,22 @@ class SupersedeArtifactActionTest {
     ArtifactRepository artifacts;
 
     @Autowired
+    @Qualifier("datatalkJdbc")
     JdbcTemplate datatalkJdbc;
 
     @BeforeEach
     void clean() {
         datatalkJdbc.update("DELETE FROM artifacts");
         datatalkJdbc.update("DELETE FROM sessions");
+        datatalkJdbc.update("DELETE FROM connections");
+        datatalkJdbc.update("""
+            INSERT INTO connections(id, kind, host, port, username, password_enc, created_at)
+            VALUES('c-default', 'mysql', 'h', 3306, 'u', x'00', 0)
+            """);
+        datatalkJdbc.update("""
+            INSERT INTO sessions(id, connection_id, title, created_at, updated_at)
+            VALUES('s-1', 'c-default', 't', 0, 0)
+            """);
     }
 
     @Test

@@ -1,6 +1,7 @@
 package com.datatalk.infra.connection;
 
 import com.datatalk.dto.ConnectionCreateRequest;
+import com.datatalk.dto.ConnectionCreatedDto;
 import com.datatalk.dto.ConnectionDto;
 import com.datatalk.dto.ConnectionTestResultDto;
 import com.datatalk.dto.ConnectionUpdateRequest;
@@ -20,10 +21,10 @@ public class ConnectionController {
     public ConnectionController(ConnectionService svc) { this.svc = svc; }
 
     @PostMapping
-    public ResponseEntity<Void> create(@RequestBody ConnectionCreateRequest body) {
-        svc.create(body.kind(), body.host(), body.port(),
+    public ResponseEntity<ConnectionCreatedDto> create(@RequestBody ConnectionCreateRequest body) {
+        String id = svc.create(body.kind(), body.host(), body.port(),
             body.databaseName(), body.username(), body.password());
-        return ResponseEntity.status(HttpStatus.CREATED).build();
+        return ResponseEntity.status(HttpStatus.CREATED).body(new ConnectionCreatedDto(id));
     }
 
     @GetMapping

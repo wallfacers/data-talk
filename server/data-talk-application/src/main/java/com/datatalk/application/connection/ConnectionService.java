@@ -22,11 +22,12 @@ public class ConnectionService {
         this.clock = clock;
     }
 
-    public void create(String kind, String host, int port, String databaseName,
-                       String username, String password) {
+    public String create(String kind, String host, int port, String databaseName,
+                         String username, String password) {
         byte[] enc = vault.seal(password);
         String id = java.util.UUID.randomUUID().toString();
         repo.insert(new ConnectionRecord(id, kind, host, port, databaseName, username, enc, null, clock.millis()));
+        return id;
     }
 
     public List<ConnectionDto> list() {
