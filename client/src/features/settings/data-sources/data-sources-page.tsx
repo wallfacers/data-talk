@@ -52,7 +52,7 @@ export function DataSourcesPage() {
               <th className="pb-2 w-24 align-middle">地址</th>
               <th className="pb-2 w-20 align-middle">数据库</th>
               <th className="pb-2 w-20 align-middle">用户</th>
-              <th className="pb-2 w-[140px] align-middle">操作</th>
+              <th className="pb-2 w-[140px] align-middle pl-3">操作</th>
             </tr>
           </thead>
           <tbody>
