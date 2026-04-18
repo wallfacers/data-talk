@@ -1,7 +1,8 @@
 import ky from 'ky'
+import { API_PREFIX } from './api-prefix'
 
 export const http = ky.create({
-  prefixUrl: import.meta.env.VITE_API_BASE_URL ?? '/api',
+  prefixUrl: `${import.meta.env.VITE_API_BASE_URL ?? ''}${API_PREFIX}`,
   timeout: 30_000,
   retry: { limit: 1 },
   hooks: {

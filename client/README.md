@@ -49,4 +49,4 @@ pnpm tauri dev
 
 ## 环境变量
 
-- `VITE_API_BASE_URL` — 后端 Spring Boot 基址，默认 `http://localhost:8080/api`
+- `VITE_API_BASE_URL` — 后端 Spring Boot origin（仅协议+主机+端口，**不含 `/api`**），默认 `http://localhost:8080`。`/api` 路径前缀由 `src/services/api-prefix.ts` 的 `API_PREFIX` 统一管理

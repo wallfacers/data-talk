@@ -7,6 +7,7 @@
 | 计划 | 状态 | 摘要 |
 |------|------|------|
 | [Composer Model Picker Dialog](./2026-04-18-composer-model-picker-dialog-plan.md) | 计划中 | Composer 模型选择器 Popover → 960×540 双栏对话框，触发按钮样式不变 |
+| [API Prefix Decouple](./2026-04-18-api-prefix-decouple-plan.md) | 计划中 | `VITE_API_BASE_URL` 只存 origin，前端集中管理 `/api` 前缀常量，防止 `/api/api` 重复 |
 
 ## 已完成计划
 

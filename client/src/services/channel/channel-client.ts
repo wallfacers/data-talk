@@ -1,6 +1,7 @@
 import { createParser, type EventSourceMessage } from 'eventsource-parser'
 import type { RpcRequest, StreamEvent, Part } from './types'
 import { generateUuid } from '@/lib/uuid'
+import { API_PREFIX } from '../api-prefix'
 
 export type ChannelClientOptions = {
   baseUrl: string
@@ -9,6 +10,11 @@ export type ChannelClientOptions = {
   clientRev?: number
 }
 
+/**
+ * `baseUrl` must be an origin only (e.g. `http://host:port`, or `''` for
+ * same-origin). The `/api` path prefix is appended internally from
+ * `API_PREFIX` — do not pre-concatenate it in callers or env vars.
+ */
 export class ChannelClient {
   private readonly baseUrl: string
   private readonly sessionId: string
@@ -95,7 +101,7 @@ export class ChannelClient {
     await consumeSseStream(res, onEvent)
   }
 
-  private url() { return `${this.baseUrl}/api/sessions/${this.sessionId}/channel` }
+  private url() { return `${this.baseUrl}${API_PREFIX}/sessions/${this.sessionId}/channel` }
 }
 
 async function consumeSseStream(res: Response, onEvent: (e: StreamEvent) => void): Promise<void> {
