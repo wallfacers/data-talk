@@ -50,7 +50,7 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
   const createMut = useMutation({
     mutationFn: async () => {
       if (!hasActiveModel) throw new Error('请先在设置中配置模型')
-      return createSession(activeConnectionId, '新会话')
+      return createSession(activeConnectionId ?? undefined)
     },
     onSuccess: (sess) => {
       openSession(sess.id, sess.hasEverSent)

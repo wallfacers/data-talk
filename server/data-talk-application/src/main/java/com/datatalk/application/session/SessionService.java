@@ -24,8 +24,7 @@ public class SessionService {
     public SessionRecord create(String connectionId, String title) {
         long now = clock.millis();
         String id = UUID.randomUUID().toString();
-        String safeTitle = (title == null || title.isBlank()) ? "新会话" : title;
-        SessionRecord rec = new SessionRecord(id, connectionId, safeTitle, false, null, now, now, false);
+        SessionRecord rec = new SessionRecord(id, connectionId, title, false, null, now, now, false);
         repo.upsert(rec);
         return rec;
     }

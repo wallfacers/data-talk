@@ -1,18 +1,29 @@
+import { useState, useRef, useEffect, type KeyboardEvent } from 'react'
 import {
   MessageSquare,
   MoreHorizontalIcon,
   PencilIcon,
-  Share2Icon,
   Trash2Icon,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Input } from '@/components/ui/input'
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -26,7 +37,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { useSessions } from '@/features/session/hooks/use-sessions'
 import { useSessionStore } from '@/stores/session-store'
-import type { Session } from '@/services/api/session'
+import { renameSession, deleteSession, type Session } from '@/services/api/session'
 
 type SessionGroup = {
   label: string
@@ -78,6 +89,23 @@ export function NavSessions() {
   const activeSessionId = useSessionStore((s) => s.activeSessionId)
   const openSession = useSessionStore((s) => s.openSession)
   const sessions = useSessions()
+  const qc = useQueryClient()
+
+  const renameMut = useMutation({
+    mutationFn: ({ id, title }: { id: string; title: string }) => renameSession(id, title),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sessions'] })
+      toast.success('已重命名')
+    },
+  })
+
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => deleteSession(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sessions'] })
+      toast.success('已删除')
+    },
+  })
 
   if (sessions.isLoading) {
     return (
@@ -118,6 +146,8 @@ export function NavSessions() {
             const target = (sessions.data ?? []).find((x) => x.id === id)
             openSession(id, target?.hasEverSent ?? false)
           }}
+          onRename={(id, title) => renameMut.mutate({ id, title })}
+          onDelete={(id) => deleteMut.mutate(id)}
         />
       ))}
     </>
@@ -129,69 +159,131 @@ function SessionGroupView({
   items,
   activeId,
   onSelect,
+  onRename,
+  onDelete,
 }: {
   label: string
   items: Session[]
   activeId: string | null
   onSelect: (id: string) => void
+  onRename: (id: string, title: string) => void
+  onDelete: (id: string) => void
 }) {
   const { isMobile } = useSidebar()
+  const [deleteTarget, setDeleteTarget] = useState<Session | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editTitle, setEditTitle] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (editingId) inputRef.current?.focus()
+  }, [editingId])
+
+  const commitRename = (id: string) => {
+    const t = editTitle.trim()
+    if (t) {
+      onRename(id, t)
+    }
+    setEditingId(null)
+  }
+
   return (
-    <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-      <SidebarGroupLabel>{label}</SidebarGroupLabel>
-      <SidebarMenu>
-        {items.map((s) => (
-          <SidebarMenuItem key={s.id}>
-            <SidebarMenuButton
-              isActive={s.id === activeId}
-              onClick={() => onSelect(s.id)}
-              tooltip={s.title}
-              className="data-active:bg-border data-active:ring-1 data-active:ring-border"
-            >
-              <span className="truncate">{s.title}</span>
-            </SidebarMenuButton>
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <SidebarMenuAction
-                    showOnHover
-                    className="aria-expanded:bg-muted"
-                  />
+    <>
+      <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+        <SidebarGroupLabel>{label}</SidebarGroupLabel>
+        <SidebarMenu>
+          {items.map((s) => (
+            <SidebarMenuItem key={s.id}>
+              {editingId === s.id ? (
+                <Input
+                  ref={inputRef}
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+                    if (e.key === 'Enter') commitRename(s.id)
+                    if (e.key === 'Escape') setEditingId(null)
+                  }}
+                  onBlur={() => commitRename(s.id)}
+                  className="h-8 text-sm"
+                />
+              ) : (
+                <>
+                  <SidebarMenuButton
+                    isActive={s.id === activeId}
+                    onClick={() => onSelect(s.id)}
+                    tooltip={s.title}
+                    className="data-active:bg-border data-active:ring-1 data-active:ring-border"
+                  >
+                    <span className="truncate">{s.title}</span>
+                  </SidebarMenuButton>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <SidebarMenuAction
+                          showOnHover
+                          className="aria-expanded:bg-muted"
+                        />
+                      }
+                    >
+                      <MoreHorizontalIcon />
+                      <span className="sr-only">更多</span>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      className="w-32"
+                      side={isMobile ? 'bottom' : 'right'}
+                      align={isMobile ? 'end' : 'start'}
+                    >
+                      <DropdownMenuItem onClick={() => {
+                        setEditingId(s.id)
+                        setEditTitle(s.title)
+                      }}>
+                        <PencilIcon />
+                        <span>重命名</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={() => setDeleteTarget(s)}
+                      >
+                        <Trash2Icon />
+                        <span>删除</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </>
+              )}
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
+      </SidebarGroup>
+
+      {/* 删除确认框 */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => {
+        if (!open) setDeleteTarget(null)
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认删除</AlertDialogTitle>
+            <AlertDialogDescription>
+              确定要删除「{deleteTarget?.title}」吗？此操作不可撤销。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="bg-transparent border-t-0 pt-2">
+            <AlertDialogCancel className="border-0 bg-transparent hover:bg-muted/50">取消</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              className="border-0 bg-transparent"
+              onClick={() => {
+                if (deleteTarget) {
+                  onDelete(deleteTarget.id)
                 }
-              >
-                <MoreHorizontalIcon />
-                <span className="sr-only">更多</span>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                className="w-32"
-                side={isMobile ? 'bottom' : 'right'}
-                align={isMobile ? 'end' : 'start'}
-              >
-                <DropdownMenuItem
-                  onClick={() => toast.info(`重命名 "${s.title}"：占位`)}
-                >
-                  <PencilIcon />
-                  <span>重命名</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => toast.info(`分享 "${s.title}"：占位`)}
-                >
-                  <Share2Icon />
-                  <span>分享</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  variant="destructive"
-                  onClick={() => toast.info(`删除 "${s.title}"：占位`)}
-                >
-                  <Trash2Icon />
-                  <span>删除</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarMenuItem>
-        ))}
-      </SidebarMenu>
-    </SidebarGroup>
+                setDeleteTarget(null)
+              }}
+            >
+              删除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }

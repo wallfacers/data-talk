@@ -73,7 +73,7 @@ function InnerComposer() {
       setText('')
       setPendingPrompt(t)
       try {
-        const sess = await createSession(activeConnectionId, '新会话')
+        const sess = await createSession(activeConnectionId ?? undefined)
         qc.invalidateQueries({ queryKey: ['sessions', activeConnectionId ?? null] })
         openSession(sess.id, sess.hasEverSent)
         // resume hook 会在 activeSessionId 就绪后消费 pendingPrompt
