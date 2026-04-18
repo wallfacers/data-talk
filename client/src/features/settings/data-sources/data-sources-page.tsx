@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -15,15 +15,9 @@ export function DataSourcesPage() {
   const [showForm, setShowForm] = useState(false)
   const [testResult, setTestResult] = useState<Record<string, 'ok' | 'fail' | 'loading'>>({})
 
-  useEffect(() => {
-    const seeded: Record<string, 'ok' | 'fail' | 'loading'> = {}
-    for (const c of connections) {
-      if (c.lastTestStatus === 'ok' || c.lastTestStatus === 'fail') {
-        seeded[c.id] = c.lastTestStatus
-      }
-    }
-    setTestResult(seeded)
-  }, [connections])
+  function getStatus(c: Connection): 'ok' | 'fail' | 'loading' | null {
+    return testResult[c.id] ?? (c.lastTestStatus === 'ok' || c.lastTestStatus === 'fail' ? c.lastTestStatus : null)
+  }
 
   const del = useMutation({
     mutationFn: deleteConnection,
@@ -57,7 +51,9 @@ export function DataSourcesPage() {
             <tr><th className="pb-2">类型</th><th>地址</th><th>数据库</th><th>用户</th><th></th></tr>
           </thead>
           <tbody>
-            {connections.map((c) => (
+            {connections.map((c) => {
+                const status = getStatus(c)
+                return (
               <tr key={c.id} className="border-t">
                 <td className="py-2">{c.kind}</td>
                 <td>{c.host}:{c.port}</td>
@@ -65,16 +61,16 @@ export function DataSourcesPage() {
                 <td>{c.username}</td>
                 <td className="text-right">
                   <Button size="sm" variant="ghost" onClick={() => runTest(c.id)} className="min-w-16 h-8">
-                    {testResult[c.id] === 'loading' ? '测试中…'
-                      : testResult[c.id] === 'ok' ? <CheckCircle2Icon className="size-4 text-green-600" />
-                      : testResult[c.id] === 'fail' ? <XCircleIcon className="size-4 text-red-600" />
+                    {status === 'loading' ? '测试中…'
+                      : status === 'ok' ? <CheckCircle2Icon className="size-4 text-green-600" />
+                      : status === 'fail' ? <XCircleIcon className="size-4 text-red-600" />
                       : '测试'}
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => setEditing(c)}><PencilIcon className="size-4" /></Button>
                   <Button size="sm" variant="ghost" onClick={() => del.mutate(c.id)}><TrashIcon className="size-4" /></Button>
                 </td>
               </tr>
-            ))}
+            )})}
           </tbody>
         </table>
       )}
