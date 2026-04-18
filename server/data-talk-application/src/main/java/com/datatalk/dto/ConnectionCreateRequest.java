@@ -1,6 +1,7 @@
 package com.datatalk.dto;
 
 public record ConnectionCreateRequest(
+    String name,
     String kind,
     String host,
     int port,
