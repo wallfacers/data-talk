@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 export function MessageStream() {
   const sessionId = useSessionStore((s) => s.activeSessionId)
   const partsByMessage = useChatPartsStore((s) => sessionId ? s.partsBySession.get(sessionId) : undefined)
-  const metaMap = useChatPartsStore((s) => sessionId ? s.metaBySession.get(sessionId) : undefined)
+  const infoMap = useChatPartsStore((s) => sessionId ? s.infoBySession.get(sessionId) : undefined)
 
   const groups = useMemo(() => {
     if (!sessionId || !partsByMessage) return []
@@ -15,11 +15,11 @@ export function MessageStream() {
     const entries = Array.from(partsByMessage.entries()).map(([messageId, parts]) => ({
       messageId,
       parts,
-      meta: metaMap?.get(messageId),
+      meta: infoMap?.get(messageId),
     }))
-    entries.sort((a, b) => (a.meta?.createdAt ?? 0) - (b.meta?.createdAt ?? 0))
+    entries.sort((a, b) => (a.meta?.time?.created ?? 0) - (b.meta?.time?.created ?? 0))
     return entries
-  }, [sessionId, partsByMessage, metaMap])
+  }, [sessionId, partsByMessage, infoMap])
 
   if (groups.length === 0) return null
 
