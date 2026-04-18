@@ -26,7 +26,10 @@ export function MessageStream() {
   return (
     <div className="flex flex-col gap-4">
       {groups.map((g) => {
-        const role = g.meta?.role ?? 'assistant'
+        // Wait for message.created meta before rendering — without it we'd
+        // paint user messages as assistant bubbles (role defaults would lie).
+        if (!g.meta) return null
+        const role = g.meta.role
         const align = role === 'user' ? 'items-end' : 'items-start'
         const bubble = role === 'user'
           ? 'bg-primary text-primary-foreground'

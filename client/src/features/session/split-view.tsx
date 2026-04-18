@@ -103,12 +103,12 @@ export function SplitView() {
           <div className="flex h-full flex-col">
             <ChatHeader />
             <div className="flex-1 overflow-y-auto px-2 py-4">
-              <div className="w-full max-w-3xl mx-auto">
+              <div className="mx-auto w-full max-w-3xl">
                 <MessageStream />
               </div>
             </div>
             <div className="px-2 pb-4">
-              <div id="composer-slot" className="w-full max-w-3xl mx-auto" />
+              <div id="composer-slot" className="mx-auto w-full max-w-3xl" />
             </div>
           </div>
         ) : (

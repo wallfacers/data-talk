@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { QueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { ChannelClient } from './channel-client'
 import type { StreamEvent, Part } from './types'
 import { generateUuid } from '@/lib/uuid'
@@ -95,6 +96,8 @@ export function useChannel() {
       const sink = buildEventSink(sessionId, client, queryClient)
       try {
         await client.sendMessage(parts, sink)
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : '发送失败')
       } finally {
         setIsStreaming(false)
       }

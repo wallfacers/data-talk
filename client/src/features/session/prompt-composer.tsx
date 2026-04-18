@@ -15,6 +15,7 @@ import {
 import { ModelPicker } from './model-picker/model-picker'
 import { Switch } from '@/components/ui/switch'
 import { useSessionStore } from '@/stores/session-store'
+import { useChatPartsStore } from '@/stores/chat-parts-store'
 import { useConnectionStore } from '@/features/connection/store'
 import { useChannel } from '@/services/channel/use-channel'
 import { createTextPart } from '@/services/channel/types'
@@ -25,11 +26,17 @@ import { useHasActiveModel } from './hooks/use-has-active-model'
 function useComposerSlot(): HTMLElement | null {
   const [slot, setSlot] = useState<HTMLElement | null>(null)
   const activeSessionId = useSessionStore((s) => s.activeSessionId)
+  // SplitView renders different slot DOM nodes for empty/has-messages states;
+  // re-query when hasMessages flips so the portal target stays current.
+  const hasMessages = useChatPartsStore((s) => {
+    const parts = activeSessionId ? s.partsBySession.get(activeSessionId) : undefined
+    return parts ? parts.size > 0 : false
+  })
 
   useLayoutEffect(() => {
     const el = document.getElementById('composer-slot')
     if (el !== slot) setSlot(el)
-  }, [activeSessionId, slot])
+  }, [activeSessionId, hasMessages, slot])
 
   return slot
 }

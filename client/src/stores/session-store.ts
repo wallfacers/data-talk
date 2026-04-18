@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist, createJSONStorage } from 'zustand/middleware'
 
 export type SessionMode = 'NOSESS' | 'HERO' | 'SPLIT'
 
@@ -16,31 +17,41 @@ type SessionState = {
   setPendingModelPrompt: (on: boolean) => void
 }
 
-export const useSessionStore = create<SessionState>((set) => ({
-  activeSessionId: null,
-  modeBySession: new Map(),
-  hasEverSentBySession: new Map(),
-  pendingPrompt: null,
-  pendingModelPrompt: false,
+export const useSessionStore = create<SessionState>()(
+  persist(
+    (set) => ({
+      activeSessionId: null,
+      modeBySession: new Map(),
+      hasEverSentBySession: new Map(),
+      pendingPrompt: null,
+      pendingModelPrompt: false,
 
-  openSession: (id, hasEverSent) => set((s) => {
-    // Cache wins: once we've observed hasEverSent=true locally, never demote.
-    const cachedSent = s.hasEverSentBySession.get(id) ?? false
-    const effectiveSent = cachedSent || hasEverSent
-    const mode: SessionMode = effectiveSent ? 'SPLIT' : 'HERO'
-    const modes = new Map(s.modeBySession); modes.set(id, mode)
-    const sent = new Map(s.hasEverSentBySession); sent.set(id, effectiveSent)
-    return { activeSessionId: id, modeBySession: modes, hasEverSentBySession: sent }
-  }),
+      openSession: (id, hasEverSent) => set((s) => {
+        // Cache wins: once we've observed hasEverSent=true locally, never demote.
+        const cachedSent = s.hasEverSentBySession.get(id) ?? false
+        const effectiveSent = cachedSent || hasEverSent
+        const mode: SessionMode = effectiveSent ? 'SPLIT' : 'HERO'
+        const modes = new Map(s.modeBySession); modes.set(id, mode)
+        const sent = new Map(s.hasEverSentBySession); sent.set(id, effectiveSent)
+        return { activeSessionId: id, modeBySession: modes, hasEverSentBySession: sent }
+      }),
 
-  closeSession: () => set({ activeSessionId: null }),
+      closeSession: () => set({ activeSessionId: null }),
 
-  enterSplit: (id) => set((s) => {
-    const modes = new Map(s.modeBySession); modes.set(id, 'SPLIT')
-    const sent = new Map(s.hasEverSentBySession); sent.set(id, true)
-    return { modeBySession: modes, hasEverSentBySession: sent }
-  }),
+      enterSplit: (id) => set((s) => {
+        const modes = new Map(s.modeBySession); modes.set(id, 'SPLIT')
+        const sent = new Map(s.hasEverSentBySession); sent.set(id, true)
+        return { modeBySession: modes, hasEverSentBySession: sent }
+      }),
 
-  setPendingPrompt: (text) => set({ pendingPrompt: text }),
-  setPendingModelPrompt: (on) => set({ pendingModelPrompt: on }),
-}))
+      setPendingPrompt: (text) => set({ pendingPrompt: text }),
+      setPendingModelPrompt: (on) => set({ pendingModelPrompt: on }),
+    }),
+    {
+      name: 'data-talk.session',
+      storage: createJSONStorage(() => localStorage),
+      // Only the active session id survives reload; Maps/transient state stay in-memory.
+      partialize: (s) => ({ activeSessionId: s.activeSessionId }),
+    },
+  ),
+)
