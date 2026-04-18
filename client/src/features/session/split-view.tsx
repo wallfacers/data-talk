@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { DatabaseIcon } from 'lucide-react'
-import { MessageStream } from '@/features/chat/components/message-stream'
+import { TurnList } from '@/features/chat/components/turn/turn-list'
 import { ArtifactTimelineStrip } from '@/features/ontology/components/artifact-timeline-strip'
 import { ArtifactCanvas } from '@/features/ontology/components/artifact-canvas'
 import { StageWindow } from '@/features/stage/components/stage-window'
@@ -27,8 +27,8 @@ export function SplitView() {
   const open = useStageStore((s) => (sid ? !!s.openBySession.get(sid) : false))
   const maximized = useStageStore((s) => (sid ? !!s.maximizedBySession.get(sid) : false))
   const hasMessages = useChatPartsStore((s) => {
-    const parts = sid ? s.partsBySession.get(sid) : undefined
-    return parts ? parts.size > 0 : false
+    const info = sid ? s.infoBySession.get(sid) : undefined
+    return info ? info.size > 0 : false
   })
 
   const splitResizable = useUISettingsStore((s) => s.splitResizable)
@@ -84,7 +84,7 @@ export function SplitView() {
             <ChatHeader />
             <div className="flex-1 overflow-y-auto px-2 py-4">
               <div className="mx-auto w-full max-w-3xl">
-                <MessageStream />
+                <TurnList sessionId={sid} />
               </div>
             </div>
             <div className="px-2 pb-4">
