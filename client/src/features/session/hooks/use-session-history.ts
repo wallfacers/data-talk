@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { http } from '@/services/http'
+import { normalizeRole } from '@/services/http-error'
 import { useChatPartsStore } from '@/stores/chat-parts-store'
 import { useOntologyStore } from '@/stores/ontology-store'
 import { useTimelineStore } from '@/stores/timeline-store'
@@ -36,7 +37,7 @@ export function useSessionHistory(sessionId: string | null) {
         for (const m of mRes.messages ?? []) {
           partsApi.upsertMeta(sessionId, {
             id: m.id,
-            role: String(m.role ?? 'assistant').toLowerCase() as 'user' | 'assistant' | 'system',
+            role: normalizeRole(m.role),
             createdAt: Number((m as any).createdAt ?? Date.now()),
           })
           for (const part of m.parts ?? []) partsApi.upsertPart(sessionId, part)

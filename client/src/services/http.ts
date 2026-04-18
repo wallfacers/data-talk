@@ -33,8 +33,4 @@ export const http = ky.create({
   },
 })
 
-export function isSilentError(error: unknown): boolean {
-  return (error as unknown as Record<string, unknown>)?.silent === true
-}
-
 export { HTTPError }

@@ -45,9 +45,16 @@ export function getDedupeKey(error: NormalizedError): string {
   return `msg:${error.message.slice(0, 50)}`
 }
 
+export type MessageRole = 'user' | 'assistant' | 'system'
+
+export function normalizeRole(role: unknown): MessageRole {
+  return String(role ?? 'assistant').toLowerCase() as MessageRole
+}
+
 export function normalizeError(error: unknown, silent = false): NormalizedError {
   const normalized = new Error() as NormalizedError
-  normalized.silent = silent
+  const incomingSilent = (error as Record<string, unknown>)?.silent === true
+  normalized.silent = silent || incomingSilent
 
   if (error instanceof Error && error.name === 'TimeoutError') {
     normalized.type = 'timeout'
