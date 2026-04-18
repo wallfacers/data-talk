@@ -83,6 +83,7 @@ public class OpenCodeGatewayBeans {
             (ocSid, body) -> client.sendMessage(ocSid, body),
             client::createSession,
             client::deleteSession,
+            (ocSid, limit) -> client.listMessages(ocSid, limit),
             props.callbackBase()
         );
         return gateway;

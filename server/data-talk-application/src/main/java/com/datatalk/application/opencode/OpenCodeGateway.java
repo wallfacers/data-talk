@@ -2,6 +2,7 @@ package com.datatalk.application.opencode;
 
 import com.datatalk.application.registry.ActionRegistry;
 import com.datatalk.domain.action.ActionDescriptor;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import java.util.Map;
 import java.util.function.Supplier;
@@ -29,21 +30,28 @@ public class OpenCodeGateway {
         void delete(String openCodeSessionId);
     }
 
+    public interface MessageLister {
+        JsonNode list(String openCodeSessionId, Integer limit);
+    }
+
     private final ActionRegistry registry;
     private final ToolPusher pusher;
     private final MessageSender sender;
     private final Supplier<String> sessionCreator;
     private final SessionDeleter deleter;
+    private final MessageLister lister;
     private final String callbackBase;
 
     public OpenCodeGateway(ActionRegistry registry, ToolPusher pusher,
                            MessageSender sender, Supplier<String> sessionCreator,
-                           SessionDeleter deleter, String callbackBase) {
+                           SessionDeleter deleter, MessageLister lister,
+                           String callbackBase) {
         this.registry = registry;
         this.pusher = pusher;
         this.sender = sender;
         this.sessionCreator = sessionCreator;
         this.deleter = deleter;
+        this.lister = lister;
         this.callbackBase = callbackBase;
     }
 
@@ -68,5 +76,9 @@ public class OpenCodeGateway {
 
     public void deleteOpenCodeSession(String openCodeSessionId) {
         deleter.delete(openCodeSessionId);
+    }
+
+    public JsonNode listMessages(String openCodeSessionId, Integer limit) {
+        return lister.list(openCodeSessionId, limit);
     }
 }
