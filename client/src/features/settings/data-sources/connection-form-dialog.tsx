@@ -94,7 +94,7 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
           <Input value={form.username}
             onChange={(e) => setForm(f => ({ ...f, username: e.target.value }))} />
         </Field>
-        <Field label={editing ? '密码（留空保持不变）' : '密码'}>
+        <Field label="密码">
           <Input type="password" value={form.password}
             onChange={(e) => setForm(f => ({ ...f, password: e.target.value }))} />
         </Field>
