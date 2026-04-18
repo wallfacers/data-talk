@@ -52,7 +52,7 @@ export function DataSourcesPage() {
               <th className="pb-2">地址</th>
               <th className="pb-2">数据库</th>
               <th className="pb-2">用户</th>
-              <th className="pb-2 whitespace-nowrap">操作</th>
+              <th className="pb-2 w-fit whitespace-nowrap">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -65,7 +65,7 @@ export function DataSourcesPage() {
                 <td>{c.host}:{c.port}</td>
                 <td>{c.databaseName}</td>
                 <td>{c.username}</td>
-                <td className="py-2 whitespace-nowrap">
+                <td className="py-2 w-fit whitespace-nowrap">
                   <Button size="sm" variant="ghost" onClick={() => runTest(c.id)} className="min-w-16 h-8">
                     {status === 'loading' ? '测试中…'
                       : status === 'ok' ? <CheckCircle2Icon className="size-4 text-green-600" />
