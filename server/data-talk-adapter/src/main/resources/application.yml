@@ -27,13 +27,12 @@ spring:
     template:
       query-timeout: 30
 
+  lifecycle:
+    timeout-per-shutdown-phase: 3s
+
 server:
   port: 8080
   shutdown: graceful
-
-spring:
-  lifecycle:
-    timeout-per-shutdown-phase: 3s
 
 datatalk:
   persistence:
