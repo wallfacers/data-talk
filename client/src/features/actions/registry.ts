@@ -15,6 +15,8 @@ export type ActionDescriptor = {
   sideEffects: string[]
   requiresConnection: boolean
   timeoutMs: number
+  riskLevel?: 'L1' | 'L2' | 'L3' | null
+  category?: 'metadata' | 'query' | 'mutation' | 'artifact' | 'ddl' | 'question' | 'misc'
 }
 
 export type ActionRenderers = {
