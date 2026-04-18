@@ -23,4 +23,7 @@ public sealed interface Part
 
     String id();
     String sessionID();
+
+    /** Returns a copy of this part with the given messageID. */
+    Part withMessageId(String mid);
 }

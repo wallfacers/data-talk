@@ -10,4 +10,10 @@ public record FilePart(
     String filename,
     String url,
     String source
-) implements Part {}
+) implements Part {
+
+    @Override
+    public Part withMessageId(String mid) {
+        return new FilePart(id, sessionID, mid, mime, filename, url, source);
+    }
+}

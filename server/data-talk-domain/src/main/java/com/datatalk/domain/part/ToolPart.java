@@ -11,4 +11,10 @@ public record ToolPart(
     String tool,
     ToolState state,
     Map<String, Object> metadata
-) implements Part {}
+) implements Part {
+
+    @Override
+    public Part withMessageId(String mid) {
+        return new ToolPart(id, sessionID, mid, callID, tool, state, metadata);
+    }
+}

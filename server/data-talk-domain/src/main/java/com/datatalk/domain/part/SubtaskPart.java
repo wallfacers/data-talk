@@ -9,4 +9,10 @@ public record SubtaskPart(
     String prompt,
     String description,
     String agent
-) implements Part {}
+) implements Part {
+
+    @Override
+    public Part withMessageId(String mid) {
+        return new SubtaskPart(id, sessionID, mid, prompt, description, agent);
+    }
+}

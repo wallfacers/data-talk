@@ -2,6 +2,7 @@ package com.datatalk.application.session;
 
 import com.datatalk.application.persistence.SessionRecord;
 import com.datatalk.application.persistence.SessionRepository;
+import com.datatalk.domain.util.Strings;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
@@ -24,13 +25,14 @@ public class SessionService {
     public SessionRecord create(String connectionId, String title) {
         long now = clock.millis();
         String id = UUID.randomUUID().toString();
-        SessionRecord rec = new SessionRecord(id, connectionId, title, false, null, now, now, false);
+        String effectiveTitle = Strings.defaultIfBlank(title, "新会话");
+        SessionRecord rec = new SessionRecord(id, connectionId, effectiveTitle, false, null, now, now, false);
         repo.upsert(rec);
         return rec;
     }
 
     public List<SessionRecord> list(String connectionId) {
-        if (connectionId == null || connectionId.isBlank()) return repo.listAll();
+        if (Strings.isBlank(connectionId)) return repo.listAll();
         return repo.listByConnection(connectionId);
     }
 
@@ -39,7 +41,7 @@ public class SessionService {
     }
 
     public SessionRecord rename(String id, String title) {
-        if (title == null || title.isBlank()) {
+        if (Strings.isBlank(title)) {
             throw new IllegalArgumentException("title must not be blank");
         }
         SessionRecord existing = repo.findById(id)

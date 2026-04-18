@@ -7,4 +7,10 @@ public record StepStartPart(
     @JsonProperty("sessionID") String sessionID,
     @JsonProperty("messageID") String messageID,
     String snapshot
-) implements Part {}
+) implements Part {
+
+    @Override
+    public Part withMessageId(String mid) {
+        return new StepStartPart(id, sessionID, mid, snapshot);
+    }
+}

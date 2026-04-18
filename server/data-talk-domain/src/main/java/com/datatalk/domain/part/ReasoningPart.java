@@ -11,4 +11,10 @@ public record ReasoningPart(
     Map<String, Object> metadata,
     long timeStart,
     Long timeEnd
-) implements Part {}
+) implements Part {
+
+    @Override
+    public Part withMessageId(String mid) {
+        return new ReasoningPart(id, sessionID, mid, text, metadata, timeStart, timeEnd);
+    }
+}

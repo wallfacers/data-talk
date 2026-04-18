@@ -29,6 +29,9 @@ import java.util.Map;
 @RequestMapping("/api/sessions/{sessionId}/channel")
 public class ChannelController {
 
+    /** SSE streams need long idle timeout for slow model responses. Spring's default 30s triggers AsyncRequestTimeoutException. */
+    private static final long SSE_STREAM_TIMEOUT_MS = 10L * 60_000L; // 10 minutes
+
     private final JsonRpcCodec codec;
     private final ChannelService svc;
     private final SessionBusRegistry buses;
@@ -68,7 +71,7 @@ public class ChannelController {
         @RequestHeader(value = "Last-Event-ID", required = false) Long lastEventId
     ) {
         SessionBus bus = buses.getOrCreate(sessionId);
-        ResponseBodyEmitter emitter = new ResponseBodyEmitter();
+        ResponseBodyEmitter emitter = new ResponseBodyEmitter(SSE_STREAM_TIMEOUT_MS);
         SseEmitterSubscriber sub = new SseEmitterSubscriber(
             new EmitterOutputStream(emitter), om, "connected");
         String clientId = "read-" + System.nanoTime();
@@ -89,7 +92,7 @@ public class ChannelController {
                                        RpcRequest.SendMessage m,
                                        Long lastEventId) {
         SessionBus bus = buses.getOrCreate(sessionId);
-        ResponseBodyEmitter emitter = new ResponseBodyEmitter();
+        ResponseBodyEmitter emitter = new ResponseBodyEmitter(SSE_STREAM_TIMEOUT_MS);
         SseEmitterSubscriber sub = new SseEmitterSubscriber(
             new EmitterOutputStream(emitter), om, "connected");
         String clientId = "post-" + System.nanoTime();

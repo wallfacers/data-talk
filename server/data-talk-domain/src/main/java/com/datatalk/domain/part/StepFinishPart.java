@@ -13,4 +13,9 @@ public record StepFinishPart(
 ) implements Part {
 
     public record Tokens(long input, long output, long reasoning, long cacheRead, long cacheWrite) {}
+
+    @Override
+    public Part withMessageId(String mid) {
+        return new StepFinishPart(id, sessionID, mid, reason, snapshot, cost, tokens);
+    }
 }

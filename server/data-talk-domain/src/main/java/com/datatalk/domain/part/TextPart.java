@@ -16,6 +16,11 @@ public record TextPart(
 
     public record Time(long start, Long end) {}
 
+    @Override
+    public Part withMessageId(String mid) {
+        return new TextPart(id, sessionID, mid, text, synthetic, ignored, time, metadata);
+    }
+
     /** Convenience constructor for simple text content. */
     public TextPart(String text) {
         this(null, null, null, text, false, false, null, Map.of());
