@@ -27,15 +27,18 @@ public class SessionTitleSyncer {
         this.clock = clock;
     }
 
-    /** 经 OpenCodeSessionMap 查 dtSessionId，若能映射则尝试 applyAutoTitle；title_locked=1 时 DB 层自行跳过。 */
-    public void apply(String ocSessionId, String newTitle) {
-        if (ocSessionId == null || newTitle == null || newTitle.isBlank()) return;
+    /** 经 OpenCodeSessionMap 查 dtSessionId，若能映射则尝试 applyAutoTitle；title_locked=1 时 DB 层自行跳过。
+     *  @return true if title was actually updated, false if skipped or failed */
+    public boolean apply(String ocSessionId, String newTitle) {
+        if (ocSessionId == null || newTitle == null || newTitle.isBlank()) return false;
         String dtSessionId = sessionMap.dataTalkFor(ocSessionId);
-        if (dtSessionId == null) return;
+        if (dtSessionId == null) return false;
         try {
-            repo.applyAutoTitle(dtSessionId, newTitle, clock.millis());
+            int rows = repo.applyAutoTitle(dtSessionId, newTitle, clock.millis());
+            return rows > 0;
         } catch (RuntimeException e) {
             log.warn("applyAutoTitle failed for session={} title='{}'", dtSessionId, newTitle, e);
+            return false;
         }
     }
 }

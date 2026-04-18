@@ -13,6 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 class OpenCodeEventTranslatorTest {
@@ -89,9 +90,17 @@ class OpenCodeEventTranslatorTest {
     @Test
     void sessionUpdatedTriggersSyncerAndEmitsMetaUpdated() {
         var info = new SessionInfo("oc-1", "AI 标题", 2L);
+        when(syncer.apply("oc-1", "AI 标题")).thenReturn(true);
         List<DtEvent> out = tr.translate("dt-1", new OcEvent.SessionUpdated(info));
-        verify(syncer).apply(eq("oc-1"), eq("AI 标题"));
         assertThat(out).singleElement().isInstanceOf(DtEvent.SessionMetaUpdated.class);
+    }
+
+    @Test
+    void sessionUpdatedSkippedWhenSyncerReturnsFalse() {
+        var info = new SessionInfo("oc-1", "AI 标题", 2L);
+        when(syncer.apply("oc-1", "AI 标题")).thenReturn(false);
+        List<DtEvent> out = tr.translate("dt-1", new OcEvent.SessionUpdated(info));
+        assertThat(out).isEmpty();
     }
 
     @Test

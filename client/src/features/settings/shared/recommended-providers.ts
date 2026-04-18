@@ -3,6 +3,10 @@ export const RECOMMENDED_PROVIDERS: ReadonlySet<string> = new Set([
   'opencode-zen',
 ])
 
+export const EXCLUDED_PROVIDERS: ReadonlySet<string> = new Set([
+  'anthropic',
+])
+
 export const PROVIDER_DESCRIPTIONS: Record<string, string> = {
   'opencode-zen': '使用 OpenCode Zen 或 API 密钥连接',
   'opencode-go': '适合所有人的低成本订阅',

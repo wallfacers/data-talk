@@ -28,8 +28,8 @@
         </rollingPolicy>
     </appender>
 
-    <!-- Dev profile: console only -->
-    <springProfile name="dev">
+    <!-- Dev profile (also default when no profile specified): console only -->
+    <springProfile name="dev,default">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
         </root>
@@ -44,19 +44,10 @@
             <appender-ref ref="CONSOLE"/>
             <appender-ref ref="FILE"/>
         </root>
-        <logger name="com.datatalk" level="DEBUG"/>
+        <logger name="com.datatalk" level="INFO"/>
         <logger name="org.springframework" level="INFO"/>
         <logger name="org.hibernate" level="WARN"/>
     </springProfile>
 
-    <!-- Default (no profile specified): same as dev -->
-    <springProfile name="default">
-        <root level="INFO">
-            <appender-ref ref="CONSOLE"/>
-        </root>
-        <logger name="com.datatalk" level="DEBUG"/>
-        <logger name="org.springframework" level="INFO"/>
-        <logger name="org.hibernate" level="WARN"/>
-    </springProfile>
 
 </configuration>

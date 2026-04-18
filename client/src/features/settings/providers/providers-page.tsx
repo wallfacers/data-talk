@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label'
 import { ArrowLeftIcon, PlusIcon, RotateCwIcon, Trash2Icon } from 'lucide-react'
 import { fetchProviders, fetchProviderAuth, putCredentials, deleteCredentials, aiQueryKeys } from '../shared/api'
 import { ProviderIcon } from '../shared/provider-icon'
-import { RECOMMENDED_PROVIDERS, PROVIDER_DESCRIPTIONS } from '../shared/recommended-providers'
+import { RECOMMENDED_PROVIDERS, PROVIDER_DESCRIPTIONS, EXCLUDED_PROVIDERS } from '../shared/recommended-providers'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
@@ -28,7 +28,7 @@ export function ProvidersPage() {
     return {
       connected: all.filter(p => connSet.has(p.id)),
       popular: all
-        .filter(p => !connSet.has(p.id) && p.id !== 'anthropic')
+        .filter(p => !connSet.has(p.id) && !EXCLUDED_PROVIDERS.has(p.id))
         .filter(p => p.name.toLowerCase().includes(search.toLowerCase()))
         .sort((a, b) => a.name.localeCompare(b.name)),
     }

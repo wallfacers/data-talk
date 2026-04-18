@@ -37,8 +37,11 @@ public class OpenCodeEventTranslator {
                 List.of(new DtEvent.SessionCreated(c.info().id(), c.info().title(), c.info().version()));
 
             case OcEvent.SessionUpdated u -> {
-                titleSyncer.apply(u.info().id(), u.info().title());
-                yield List.of(new DtEvent.SessionMetaUpdated(u.info().id(), u.info().title(), false, u.info().version()));
+                boolean applied = titleSyncer.apply(u.info().id(), u.info().title());
+                if (applied) {
+                    yield List.of(new DtEvent.SessionMetaUpdated(u.info().id(), u.info().title(), false, u.info().version()));
+                }
+                yield Collections.emptyList();
             }
 
             case OcEvent.SessionDeleted d ->
