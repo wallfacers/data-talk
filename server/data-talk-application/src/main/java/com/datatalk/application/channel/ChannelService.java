@@ -3,7 +3,6 @@ package com.datatalk.application.channel;
 import com.datatalk.application.ai.AiUserPrefsRepository;
 import com.datatalk.application.opencode.OpenCodeGateway;
 import com.datatalk.application.opencode.OpenCodeSessionMap;
-import com.datatalk.application.persistence.MessageRepository;
 import com.datatalk.application.persistence.SessionRecord;
 import com.datatalk.application.persistence.SessionRepository;
 import com.datatalk.application.session.PendingCallRegistry;
@@ -12,11 +11,9 @@ import com.datatalk.application.session.SessionBusRegistry;
 import com.datatalk.domain.event.DtEvent;
 import com.datatalk.domain.event.ErrorInfo;
 import com.datatalk.domain.part.FilePart;
-import com.datatalk.domain.part.Message;
 import com.datatalk.domain.part.Part;
 import com.datatalk.domain.part.TextPart;
 import com.datatalk.domain.util.Strings;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -36,51 +33,40 @@ public class ChannelService {
     private static final Logger log = LoggerFactory.getLogger(ChannelService.class);
 
     private final SessionRepository sessions;
-    private final MessageRepository messages;
     private final SessionBusRegistry buses;
     private final PendingCallRegistry pending;
-    private final IdGenerator ids;
     private final Clock clock;
     private final OpenCodeGateway gateway;
     private final OpenCodeSessionMap sessionMap;
-    private final ObjectMapper om;
     private final AiUserPrefsRepository userPrefs;
 
-    public ChannelService(SessionRepository sessions, MessageRepository messages,
+    public ChannelService(SessionRepository sessions,
                           SessionBusRegistry buses, PendingCallRegistry pending,
-                          IdGenerator ids, Clock clock,
+                          Clock clock,
                           OpenCodeGateway gateway, OpenCodeSessionMap sessionMap,
-                          ObjectMapper om, AiUserPrefsRepository userPrefs) {
+                          AiUserPrefsRepository userPrefs) {
         this.sessions = sessions;
-        this.messages = messages;
         this.buses = buses;
         this.pending = pending;
-        this.ids = ids;
         this.clock = clock;
         this.gateway = gateway;
         this.sessionMap = sessionMap;
-        this.om = om;
         this.userPrefs = userPrefs;
     }
 
     /**
-     * Persist a user message, emit message.created + part.created + session.status:busy,
-     * and flip the session's {@code has_ever_sent} flag. Does NOT forward to OpenCode
-     * — that's the gateway's job (Task 23).
+     * Forward a user message to OpenCode, emit session.status:busy, and flip the
+     * session's {@code has_ever_sent} flag. The USER message is NOT persisted locally
+     * — OpenCode echoes it back via message.created / message.part.created events,
+     * which the frontend renders.
      */
-    public String sendMessage(String sessionId, List<Part> parts) {
+    public void sendMessage(String sessionId, List<Part> parts) {
         SessionRecord session = sessions.findById(sessionId)
             .orElseThrow(() -> new IllegalArgumentException("unknown session: " + sessionId));
         long now = clock.millis();
-        String messageId = ids.next();
-        List<Part> stamped = parts.stream().map(p -> p.withMessageId(messageId)).toList();
-        Message m = new Message(messageId, sessionId, Message.Role.USER, stamped, now);
-        messages.save(m);
         sessions.markHasEverSent(sessionId, now);
 
         SessionBus bus = buses.getOrCreate(sessionId);
-        bus.publish(new DtEvent.MessageCreated(m));
-        for (Part p : stamped) bus.publish(new DtEvent.MessagePartCreated(p));
         bus.publish(new DtEvent.SessionStatus("busy", Map.of()));
 
         // Forward to OpenCode — prefer the persisted opencode_sid so the
@@ -98,7 +84,7 @@ public class ChannelService {
         // reverse lookup ocSid→dtSid works for the incoming event stream.
         sessionMap.bind(sessionId, ocSid);
         Map<String, Object> body = new LinkedHashMap<>();
-        List<Map<String, Object>> wireParts = stamped.stream()
+        List<Map<String, Object>> wireParts = parts.stream()
             .map(this::partForWire)
             .filter(Objects::nonNull)
             .toList();
@@ -108,8 +94,6 @@ public class ChannelService {
             body.put("model", normalizeModel(model));
         }
         gateway.forwardUserMessage(ocSid, body);
-
-        return messageId;
     }
 
     /**

@@ -3,15 +3,12 @@ package com.datatalk.application.channel;
 import com.datatalk.application.ai.AiUserPrefsRepository;
 import com.datatalk.application.opencode.OpenCodeGateway;
 import com.datatalk.application.opencode.OpenCodeSessionMap;
-import com.datatalk.application.persistence.MessageRepository;
 import com.datatalk.application.persistence.SessionRecord;
 import com.datatalk.application.persistence.SessionRepository;
 import com.datatalk.application.session.PendingCallRegistry;
 import com.datatalk.application.session.SessionBusRegistry;
 import com.datatalk.application.session.SessionBus;
-import com.datatalk.domain.part.Part;
 import com.datatalk.domain.part.TextPart;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -26,31 +23,25 @@ import static org.mockito.Mockito.*;
 class ChannelServiceModelParamTest {
 
     private SessionRepository sessions;
-    private MessageRepository messages;
     private SessionBusRegistry buses;
     private PendingCallRegistry pending;
-    private IdGenerator ids;
     private Clock clock;
     private OpenCodeGateway gateway;
     private OpenCodeSessionMap sessionMap;
-    private ObjectMapper om;
     private AiUserPrefsRepository userPrefs;
     private ChannelService svc;
 
     @BeforeEach
     void setUp() {
         sessions = mock(SessionRepository.class);
-        messages = mock(MessageRepository.class);
         buses = mock(SessionBusRegistry.class);
         pending = mock(PendingCallRegistry.class);
-        ids = mock(IdGenerator.class);
         clock = Clock.systemUTC();
         gateway = mock(OpenCodeGateway.class);
         sessionMap = mock(OpenCodeSessionMap.class);
-        om = new ObjectMapper();
         userPrefs = mock(AiUserPrefsRepository.class);
 
-        svc = new ChannelService(sessions, messages, buses, pending, ids, clock, gateway, sessionMap, om, userPrefs);
+        svc = new ChannelService(sessions, buses, pending, clock, gateway, sessionMap, userPrefs);
     }
 
     @Test
@@ -104,7 +95,6 @@ class ChannelServiceModelParamTest {
         when(userPrefs.getCurrentModel()).thenReturn(null);
         SessionBus bus = mock(SessionBus.class);
         when(buses.getOrCreate("s1")).thenReturn(bus);
-        when(ids.next()).thenReturn("msg-123");
 
         TextPart p = new TextPart("abc-123", "s1", null, "hi", null, null, null, Map.of());
         svc.sendMessage("s1", List.of(p));
