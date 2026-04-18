@@ -22,6 +22,7 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
   const [form, setForm] = useState({
     kind: 'mysql', host: 'localhost', port: 3306,
     database: '', username: '', password: '',
+    connectTimeout: 3000,
   })
 
   useEffect(() => {
@@ -30,10 +31,11 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
         kind: editing.kind, host: editing.host,
         port: editing.port, database: editing.databaseName ?? '',
         username: editing.username, password: '',
+        connectTimeout: editing.connectTimeout ?? 3000,
       })
     } else {
       setForm({ kind: 'mysql', host: 'localhost', port: 3306,
-        database: '', username: '', password: '' })
+        database: '', username: '', password: '', connectTimeout: 3000 })
     }
   }, [editing])
 
@@ -45,11 +47,13 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
           kind: form.kind, host: form.host, port: form.port,
           databaseName: dbName, username: form.username,
           password: form.password.length > 0 ? form.password : null,
+          connectTimeout: form.connectTimeout,
         })
       } else {
         await createConnection({
           kind: form.kind, host: form.host, port: form.port,
           databaseName: dbName, username: form.username, password: form.password,
+          connectTimeout: form.connectTimeout,
         })
       }
     },
@@ -97,6 +101,10 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
         <Field label="密码">
           <Input type="password" value={form.password}
             onChange={(e) => setForm(f => ({ ...f, password: e.target.value }))} />
+        </Field>
+        <Field label="连接超时（毫秒）">
+          <Input type="number" value={form.connectTimeout}
+            onChange={(e) => setForm(f => ({ ...f, connectTimeout: Number(e.target.value) }))} />
         </Field>
       </div>
       <div className="mt-6 flex justify-end gap-2">

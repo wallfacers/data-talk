@@ -6,6 +6,7 @@ export interface ConnectionDto {
   databaseName: string | null  // nullable - null for server-level connection
   username: string
   createdAt: number
+  connectTimeout: number
 }
 
 export interface ConnectionCreateRequest {
@@ -15,6 +16,7 @@ export interface ConnectionCreateRequest {
   databaseName?: string | null  // optional
   username: string
   password: string
+  connectTimeout?: number  // optional, defaults to 3000ms
 }
 
 export interface ConnectionUpdateRequest {
@@ -24,6 +26,7 @@ export interface ConnectionUpdateRequest {
   databaseName?: string | null  // optional
   username: string
   password: string | null
+  connectTimeout?: number  // optional, defaults to 3000ms
 }
 
 export interface ConnectionTestResultDto {

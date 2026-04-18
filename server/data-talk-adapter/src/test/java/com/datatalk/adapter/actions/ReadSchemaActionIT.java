@@ -43,7 +43,7 @@ class ReadSchemaActionIT {
         }
         conn.deleteAll();
         connectionId = conn.create("postgresql", pg.getHost(), pg.getFirstMappedPort(),
-            pg.getDatabaseName(), pg.getUsername(), pg.getPassword());
+            pg.getDatabaseName(), pg.getUsername(), pg.getPassword(), null);
     }
 
     @Test

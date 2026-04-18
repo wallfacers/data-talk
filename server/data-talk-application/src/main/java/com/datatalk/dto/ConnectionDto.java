@@ -7,5 +7,6 @@ public record ConnectionDto(
     int port,
     String databaseName,  // nullable
     String username,
-    long createdAt
+    long createdAt,
+    int connectTimeout
 ) {}

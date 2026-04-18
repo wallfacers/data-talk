@@ -22,18 +22,21 @@ public class ConnectionService {
         this.clock = clock;
     }
 
+    private static final int DEFAULT_CONNECT_TIMEOUT = 3000;
+
     public String create(String kind, String host, int port, String databaseName,
-                         String username, String password) {
+                         String username, String password, Integer connectTimeout) {
         byte[] enc = vault.seal(password);
         String id = java.util.UUID.randomUUID().toString();
-        repo.insert(new ConnectionRecord(id, kind, host, port, databaseName, username, enc, null, clock.millis()));
+        int timeout = connectTimeout != null ? connectTimeout : DEFAULT_CONNECT_TIMEOUT;
+        repo.insert(new ConnectionRecord(id, kind, host, port, databaseName, username, enc, null, clock.millis(), timeout));
         return id;
     }
 
     public List<ConnectionDto> list() {
         return repo.findAll().stream()
             .map(c -> new ConnectionDto(c.id(), c.kind(), c.host(), c.port(),
-                c.databaseName(), c.username(), c.createdAt()))
+                c.databaseName(), c.username(), c.createdAt(), c.connectTimeout()))
             .toList();
     }
 
@@ -48,12 +51,13 @@ public class ConnectionService {
     }
 
     public void update(String id, String kind, String host, int port, String databaseName,
-                       String username, String password) {
+                       String username, String password, Integer connectTimeout) {
         var existing = repo.findById(id)
             .orElseThrow(() -> new java.util.NoSuchElementException("unknown connection: " + id));
         byte[] enc = password != null ? vault.seal(password) : existing.passwordEnc();
+        int timeout = connectTimeout != null ? connectTimeout : existing.connectTimeout();
         repo.update(new ConnectionRecord(id, kind, host, port, databaseName, username,
-            enc, existing.schemaDigest(), existing.createdAt()));
+            enc, existing.schemaDigest(), existing.createdAt(), timeout));
     }
 
     public boolean deleteById(String id) {
@@ -66,12 +70,13 @@ public class ConnectionService {
         String password = vault.open(c.passwordEnc());
         String url = JdbcUrlBuilder.build(c);
         String kind = c.kind();
+        int timeoutSeconds = c.connectTimeout() / 1000;
         if (kind.equals(ConnectionKind.MYSQL) || kind.equals(ConnectionKind.POSTGRESQL)) {
-            url += (url.contains("?") ? "&" : "?") + "connectTimeout=3&socketTimeout=3";
+            url += (url.contains("?") ? "&" : "?") + "connectTimeout=" + timeoutSeconds + "&socketTimeout=" + timeoutSeconds;
         }
         long started = clock.millis();
         try (var conn = java.sql.DriverManager.getConnection(url, c.username(), password)) {
-            boolean ok = conn.isValid(3);
+            boolean ok = conn.isValid(timeoutSeconds);
             long ms = clock.millis() - started;
             return new TestResult(ok, ms, ok ? null : "connection reported invalid");
         } catch (Throwable t) {

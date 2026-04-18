@@ -19,18 +19,19 @@ class ConnectionRepositoryIT {
     @Test
     void update_overwrites_fields_and_keeps_id() {
         repo.insert(new ConnectionRecord("c1", "mysql", "h1", 3306, "db1", "u1",
-            new byte[]{1}, null, 100));
+            new byte[]{1}, null, 100, 3000));
         repo.update(new ConnectionRecord("c1", "postgres", "h2", 5432, "db2", "u2",
-            new byte[]{2}, null, 100));
+            new byte[]{2}, null, 100, 5000));
         var rec = repo.findById("c1").orElseThrow();
         assertThat(rec.host()).isEqualTo("h2");
         assertThat(rec.port()).isEqualTo(5432);
         assertThat(rec.kind()).isEqualTo("postgres");
+        assertThat(rec.connectTimeout()).isEqualTo(5000);
     }
 
     @Test
     void deleteById_returns_true_when_deleted_false_when_absent() {
-        repo.insert(new ConnectionRecord("c1", "mysql", "h", 1, "d", "u", new byte[]{1}, null, 1));
+        repo.insert(new ConnectionRecord("c1", "mysql", "h", 1, "d", "u", new byte[]{1}, null, 1, 3000));
         assertThat(repo.deleteById("c1")).isTrue();
         assertThat(repo.deleteById("c1")).isFalse();
     }

@@ -44,7 +44,7 @@ class TypicalQueryE2EIT {
         }
         conn.deleteAll();
         String connectionId = conn.create("postgresql", pg.getHost(), pg.getFirstMappedPort(),
-            pg.getDatabaseName(), pg.getUsername(), pg.getPassword());
+            pg.getDatabaseName(), pg.getUsername(), pg.getPassword(), null);
         sessRepo.upsert(new SessionRecord("s-e2e", connectionId, "E2E Test", false, null, 0L, 0L, false));
     }
 

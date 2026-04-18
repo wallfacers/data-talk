@@ -23,7 +23,7 @@ public class ConnectionController {
     @PostMapping
     public ResponseEntity<ConnectionCreatedDto> create(@RequestBody ConnectionCreateRequest body) {
         String id = svc.create(body.kind(), body.host(), body.port(),
-            body.databaseName(), body.username(), body.password());
+            body.databaseName(), body.username(), body.password(), body.connectTimeout());
         return ResponseEntity.status(HttpStatus.CREATED).body(new ConnectionCreatedDto(id));
     }
 
@@ -36,7 +36,7 @@ public class ConnectionController {
     public ResponseEntity<Void> update(@PathVariable String id, @RequestBody ConnectionUpdateRequest body) {
         try {
             svc.update(id, body.kind(), body.host(), body.port(),
-                body.databaseName(), body.username(), body.password());
+                body.databaseName(), body.username(), body.password(), body.connectTimeout());
             return ResponseEntity.noContent().build();
         } catch (java.util.NoSuchElementException e) {
             return ResponseEntity.notFound().build();

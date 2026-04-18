@@ -12,7 +12,7 @@ DROP TABLE IF EXISTS ai_user_prefs;
 CREATE TABLE connections (
   id TEXT PRIMARY KEY, kind TEXT NOT NULL, host TEXT NOT NULL, port INTEGER NOT NULL,
   database_name TEXT, username TEXT NOT NULL, password_enc BLOB NOT NULL,
-  schema_digest TEXT, created_at INTEGER NOT NULL
+  schema_digest TEXT, created_at INTEGER NOT NULL, connect_timeout INTEGER NOT NULL DEFAULT 3000
 );
 CREATE TABLE sessions (
   id TEXT PRIMARY KEY, connection_id TEXT, title TEXT NOT NULL,

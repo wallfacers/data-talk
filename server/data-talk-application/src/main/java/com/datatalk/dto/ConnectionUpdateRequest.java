@@ -6,5 +6,6 @@ public record ConnectionUpdateRequest(
     int port,
     String databaseName,  // optional - null for server-level connection
     String username,
-    String password
+    String password,
+    Integer connectTimeout  // optional, defaults to 3000ms
 ) {}
