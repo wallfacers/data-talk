@@ -22,7 +22,9 @@ import java.util.concurrent.CompletionStage;
     executor = Executor.OPENCODE,
     description = "Return table + column metadata for the given connection. Read-only context tool.",
     requiresConnection = true,
-    timeoutMs = 10_000
+    timeoutMs = 10_000,
+    riskLevel = { RiskLevel.L1 },
+    category = { Category.METADATA }
 )
 public class ReadSchemaAction implements ActionHandler<Map, Map> {
 

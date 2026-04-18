@@ -21,7 +21,9 @@ import java.util.concurrent.CompletionStage;
     description = "Generate an ER diagram (nodes + edges + grid layout) for the given tables.",
     produces = {"datatalk.artifact"},
     requiresConnection = true,
-    timeoutMs = 15_000
+    timeoutMs = 15_000,
+    riskLevel = { RiskLevel.L1 },
+    category = { Category.MISC }
 )
 public class LayoutErdAction implements ActionHandler<Map, Map> {
 

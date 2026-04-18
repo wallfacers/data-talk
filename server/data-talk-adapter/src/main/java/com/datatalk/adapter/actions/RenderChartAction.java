@@ -24,7 +24,9 @@ import java.util.concurrent.CompletionStage;
     description = "Render an ECharts-option chart. Set supersedes to replace a previous chart.",
     produces = {"datatalk.artifact"},
     requiresConnection = false,
-    timeoutMs = 5_000
+    timeoutMs = 5_000,
+    riskLevel = { RiskLevel.L1 },
+    category = { Category.ARTIFACT }
 )
 public class RenderChartAction implements ActionHandler<Map, Map> {
 

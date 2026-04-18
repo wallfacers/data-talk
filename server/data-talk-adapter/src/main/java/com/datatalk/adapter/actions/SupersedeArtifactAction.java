@@ -3,9 +3,11 @@ package com.datatalk.adapter.actions;
 import com.datatalk.application.persistence.ArtifactRepository;
 import com.datatalk.domain.action.ActionContext;
 import com.datatalk.domain.action.ActionHandler;
+import com.datatalk.domain.action.Category;
 import com.datatalk.domain.action.DataTalkAction;
 import com.datatalk.domain.action.Executor;
 import com.datatalk.domain.action.OntologyEffect;
+import com.datatalk.domain.action.RiskLevel;
 import com.datatalk.domain.error.DataTalkErrorCodes;
 import com.datatalk.domain.error.DataTalkException;
 import org.springframework.stereotype.Component;
@@ -20,7 +22,9 @@ import java.util.concurrent.CompletionStage;
     id = "datatalk.supersede_artifact",
     executor = Executor.SERVER,
     description = "Explicitly mark one artifact as superseded by another.",
-    timeoutMs = 3_000
+    timeoutMs = 3_000,
+    riskLevel = { RiskLevel.L1 },
+    category = { Category.ARTIFACT }
 )
 public class SupersedeArtifactAction implements ActionHandler<Map, Map> {
 

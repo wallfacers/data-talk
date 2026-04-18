@@ -11,7 +11,9 @@ import java.util.concurrent.CompletionStage;
     id = "datatalk.pin_artifact",
     executor = Executor.CLIENT,
     description = "Pin an artifact in the client's timeline so it survives scroll-away.",
-    timeoutMs = 2_000
+    timeoutMs = 2_000,
+    riskLevel = { RiskLevel.L1 },
+    category = { Category.ARTIFACT }
 )
 public class PinArtifactAction implements ActionHandler<Map, Map> {
 

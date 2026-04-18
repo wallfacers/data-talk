@@ -14,4 +14,6 @@ public @interface DataTalkAction {
     String[] produces() default {};
     boolean requiresConnection() default false;
     int timeoutMs() default 30_000;
+    RiskLevel[] riskLevel() default {};
+    Category[] category() default {};
 }

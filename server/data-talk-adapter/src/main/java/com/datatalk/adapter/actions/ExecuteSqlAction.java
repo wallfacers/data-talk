@@ -25,7 +25,9 @@ import java.util.stream.Collectors;
     description = "Run a SELECT query on the given connection and persist the result as a table Artifact.",
     produces = {"datatalk.artifact"},
     requiresConnection = true,
-    timeoutMs = 30_000
+    timeoutMs = 30_000,
+    riskLevel = { RiskLevel.L1 },
+    category = { Category.QUERY }
 )
 public class ExecuteSqlAction implements ActionHandler<Map, Map> {
 

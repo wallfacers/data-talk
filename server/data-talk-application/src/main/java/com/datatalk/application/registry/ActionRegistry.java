@@ -2,7 +2,9 @@ package com.datatalk.application.registry;
 
 import com.datatalk.domain.action.ActionDescriptor;
 import com.datatalk.domain.action.ActionHandler;
+import com.datatalk.domain.action.Category;
 import com.datatalk.domain.action.DataTalkAction;
+import com.datatalk.domain.action.RiskLevel;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
@@ -49,6 +51,8 @@ public class ActionRegistry implements InitializingBean {
     }
 
     private ActionDescriptor buildDescriptor(DataTalkAction meta, ActionHandler<?, ?> handler) {
+        RiskLevel riskLevel = meta.riskLevel().length > 0 ? meta.riskLevel()[0] : null;
+        Category category = meta.category().length > 0 ? meta.category()[0] : null;
         return new ActionDescriptor(
             meta.id(),
             meta.executor(),
@@ -58,7 +62,9 @@ public class ActionRegistry implements InitializingBean {
             Arrays.asList(meta.produces()),
             List.copyOf(handler.sideEffects()),
             meta.requiresConnection(),
-            meta.timeoutMs()
+            meta.timeoutMs(),
+            riskLevel,
+            category
         );
     }
 

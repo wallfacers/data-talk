@@ -2,6 +2,7 @@ package com.datatalk.adapter.actions;
 
 import com.datatalk.domain.action.ActionContext;
 import com.datatalk.domain.action.ActionHandler;
+import com.datatalk.domain.action.Category;
 import com.datatalk.domain.action.DataTalkAction;
 import com.datatalk.domain.action.Executor;
 import com.datatalk.domain.action.OntologyEffect;
@@ -22,7 +23,8 @@ import java.util.concurrent.CompletionStage;
     id = "datatalk.demo.echo",
     executor = Executor.SERVER,
     description = "Return the reverse of the provided text. Used for smoke testing.",
-    timeoutMs = 3_000
+    timeoutMs = 3_000,
+    category = { Category.MISC }
 )
 public class DemoEchoAction implements ActionHandler<Map, Map> {
 
