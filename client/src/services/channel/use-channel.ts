@@ -118,12 +118,20 @@ export function useChannel() {
   const sendMessage = useCallback(
     async (parts: any[]) => {
       if (!client || !sessionId) return
+
+      // 抽取首个 text part 的 text 作为 pending 文本
+      const firstText = parts.find((p) => p?.type === 'text') as { text?: string } | undefined
+      const pendingText = typeof firstText?.text === 'string' ? firstText.text : ''
+      const pendingId = useChatPartsStore.getState().upsertPendingUser(sessionId, pendingText)
+
       setIsStreaming(true)
       enterSplit(sessionId)
       const sink = buildEventSink(sessionId, client, queryClient, connectionId)
       try {
         await client.sendMessage(parts, sink)
       } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        useChatPartsStore.getState().markPendingUserFailed(sessionId, pendingId, msg)
         showErrorToast(normalizeError(err))
       } finally {
         setIsStreaming(false)
@@ -132,10 +140,44 @@ export function useChannel() {
     [client, sessionId, enterSplit, queryClient, connectionId],
   )
 
+  const retryPendingUser = useCallback(
+    async (pendingId: string, parts: any[]) => {
+      if (!client || !sessionId) return
+      useChatPartsStore.setState((s) => {
+        const byInfo = new Map(s.infoBySession.get(sessionId) ?? new Map())
+        const info = byInfo.get(pendingId)
+        if (!info) return {}
+        byInfo.set(pendingId, { ...info, __failed: false, __retrying: true, __failReason: undefined })
+        const infoBySession = new Map(s.infoBySession); infoBySession.set(sessionId, byInfo)
+        return { infoBySession }
+      })
+      setIsStreaming(true)
+      const sink = buildEventSink(sessionId, client, queryClient, connectionId)
+      try {
+        await client.sendMessage(parts, sink)
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        useChatPartsStore.getState().markPendingUserFailed(sessionId, pendingId, msg)
+        showErrorToast(normalizeError(err))
+      } finally {
+        setIsStreaming(false)
+      }
+    },
+    [client, sessionId, queryClient, connectionId],
+  )
+
+  const removePendingUser = useCallback(
+    (pendingId: string) => {
+      if (!sessionId) return
+      useChatPartsStore.getState().removePendingUser(sessionId, pendingId)
+    },
+    [sessionId],
+  )
+
   const abort = useCallback(async () => {
     if (!client) return
     await client.abort()
   }, [client])
 
-  return { sendMessage, abort, isStreaming, client }
+  return { sendMessage, abort, isStreaming, client, retryPendingUser, removePendingUser }
 }
