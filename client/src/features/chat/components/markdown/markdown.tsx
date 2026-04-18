@@ -3,6 +3,7 @@ import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import morphdom from 'morphdom'
 import { stream } from './markdown-stream'
+import { decorateSqlBlocks } from './sql-code-block'
 import './markdown.css'
 
 type Entry = { hash: string; html: string }
@@ -108,6 +109,10 @@ export function Markdown(props: {
     const temp = document.createElement('div')
     temp.innerHTML = html
     decorateCodeBlocks(temp)
+    decorateSqlBlocks(temp, {
+      onExecute: (sql) => window.dispatchEvent(new CustomEvent('datatalk.sql.execute', { detail: { sql } })),
+      onExplain: (sql) => window.dispatchEvent(new CustomEvent('datatalk.sql.explain', { detail: { sql } })),
+    })
     try {
       morphdom(container, temp, { childrenOnly: true })
     } catch (err) {
