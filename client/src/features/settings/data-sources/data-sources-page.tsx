@@ -46,13 +46,14 @@ export function DataSourcesPage() {
       ) : (
         <table className="w-full text-sm">
           <thead className="text-left text-muted-foreground">
-            <tr><th className="pb-2">类型</th><th>地址</th><th>数据库</th><th>用户</th><th></th></tr>
+            <tr><th className="pb-2">名称</th><th className="pb-2">类型</th><th className="pb-2">地址</th><th className="pb-2">数据库</th><th className="pb-2">用户</th><th className="pb-2">操作</th></tr>
           </thead>
           <tbody>
             {connections.map((c) => {
                 const status = getStatus(c)
                 return (
               <tr key={c.id} className="border-t">
+                <td className="py-2">{c.name}</td>
                 <td className="py-2">{c.kind}</td>
                 <td>{c.host}:{c.port}</td>
                 <td>{c.databaseName}</td>

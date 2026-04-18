@@ -20,7 +20,7 @@ type Props = { editing: Connection | null; onCancel: () => void; onSaved: () => 
 export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
   const qc = useQueryClient()
   const [form, setForm] = useState({
-    kind: 'mysql', host: 'localhost', port: 3306,
+    name: '', kind: 'mysql', host: 'localhost', port: 3306,
     database: '', username: '', password: '',
     connectTimeout: 3000,
   })
@@ -28,13 +28,14 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
   useEffect(() => {
     if (editing) {
       setForm({
+        name: editing.name ?? '',
         kind: editing.kind, host: editing.host,
         port: editing.port, database: editing.databaseName ?? '',
         username: editing.username, password: '',
         connectTimeout: editing.connectTimeout ?? 3000,
       })
     } else {
-      setForm({ kind: 'mysql', host: 'localhost', port: 3306,
+      setForm({ name: '', kind: 'mysql', host: 'localhost', port: 3306,
         database: '', username: '', password: '', connectTimeout: 3000 })
     }
   }, [editing])
@@ -42,16 +43,17 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
   const save = useMutation({
     mutationFn: async () => {
       const dbName = form.database.trim() || null
+      const connName = form.name.trim() || '未命名数据源'
       if (editing) {
         await updateConnection(editing.id, {
-          kind: form.kind, host: form.host, port: form.port,
+          name: connName, kind: form.kind, host: form.host, port: form.port,
           databaseName: dbName, username: form.username,
           password: form.password.length > 0 ? form.password : null,
           connectTimeout: form.connectTimeout,
         })
       } else {
         await createConnection({
-          kind: form.kind, host: form.host, port: form.port,
+          name: connName, kind: form.kind, host: form.host, port: form.port,
           databaseName: dbName, username: form.username, password: form.password,
           connectTimeout: form.connectTimeout,
         })
@@ -70,6 +72,10 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
         {editing ? '编辑数据源' : '新增数据源'}
       </h2>
       <div className="grid gap-4">
+        <Field label="名称">
+          <Input value={form.name} placeholder="未命名数据源"
+            onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))} />
+        </Field>
         <Field label="类型">
           <Select value={form.kind}
             onValueChange={(v) => { if (v && v in DATABASE_TYPES) setForm(f => ({ ...f, kind: v as DatabaseKind, port: DATABASE_TYPES[v as DatabaseKind].port })) }}>

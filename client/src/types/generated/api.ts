@@ -1,5 +1,6 @@
 export interface ConnectionDto {
   id: string
+  name: string
   kind: string
   host: string
   port: number
@@ -12,6 +13,7 @@ export interface ConnectionDto {
 }
 
 export interface ConnectionCreateRequest {
+  name: string
   kind: string
   host: string
   port: number
@@ -22,6 +24,7 @@ export interface ConnectionCreateRequest {
 }
 
 export interface ConnectionUpdateRequest {
+  name: string
   kind: string
   host: string
   port: number
