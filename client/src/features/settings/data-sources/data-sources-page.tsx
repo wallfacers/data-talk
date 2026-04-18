@@ -54,7 +54,7 @@ export function DataSourcesPage() {
                 <td>{c.databaseName}</td>
                 <td>{c.username}</td>
                 <td className="text-right">
-                  <Button size="sm" variant="ghost" onClick={() => runTest(c.id)}>
+                  <Button size="sm" variant="ghost" onClick={() => runTest(c.id)} className="min-w-16 h-8">
                     {testResult[c.id] === 'loading' ? '测试中…'
                       : testResult[c.id] === 'ok' ? <CheckCircle2Icon className="size-4 text-green-600" />
                       : testResult[c.id] === 'fail' ? <XCircleIcon className="size-4 text-red-600" />
