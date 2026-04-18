@@ -10,7 +10,7 @@ import { useTimelineStore } from '@/stores/timeline-store'
 import { useSessionStore } from '@/stores/session-store'
 import { useConnectionStore } from '@/features/connection/store'
 import { getClientHandler } from '@/features/actions/registry'
-import { normalizeError, normalizeRole, showErrorToast } from '@/services/http-error'
+import { normalizeError, showErrorToast } from '@/services/http-error'
 
 function getApiBaseUrl(): string {
   const env = (import.meta as any).env?.VITE_API_BASE_URL
@@ -22,16 +22,41 @@ export function buildEventSink(sessionId: string, client: ChannelClient | null, 
   return (evt: StreamEvent) => {
     const { event, data } = evt
     if (event === 'message.created') {
-      const m = (data as any).message
-      useChatPartsStore.getState().upsertMeta(sessionId, {
+      const m = (data as any).info ?? (data as any).message   // 兼容过渡
+      if (!m) return
+      useChatPartsStore.getState().upsertInfo(sessionId, {
         id: m.id,
-        role: normalizeRole(m.role),
-        createdAt: Number(m.createdAt ?? Date.now()),
+        role: m.role,
+        sessionID: m.sessionID ?? sessionId,
+        time: m.time ?? { created: Date.now() },
+        providerID: m.providerID,
+        modelID: m.modelID,
+        parentID: m.parentID,
+        agent: m.agent,
+        mode: m.mode,
+        error: m.error,
+        finish: m.finish,
+        tokens: m.tokens,
       })
     } else if (event === 'session.meta.updated') {
       queryClient.invalidateQueries({ queryKey: ['sessions', connectionId] })
     } else if (event === 'message.part.created' || event === 'message.part.updated') {
-      useChatPartsStore.getState().upsertPart(sessionId, (data as any).part)
+      const part = (data as any).part
+      useChatPartsStore.getState().upsertPart(sessionId, part)
+
+      // 检测首个 role=user 且 messageID 非 pending_* 的 part，触发 promote
+      if (part?.messageID && !part.messageID.startsWith('pending_')) {
+        const infoMap = useChatPartsStore.getState().infoBySession.get(sessionId)
+        const info = infoMap?.get(part.messageID)
+        if (info?.role === 'user' && infoMap) {
+          for (const [id, i] of infoMap) {
+            if (i.__pending && id.startsWith('pending_')) {
+              useChatPartsStore.getState().promotePendingUser(sessionId, id, part.messageID)
+              break
+            }
+          }
+        }
+      }
     } else if (event === 'message.part.delta') {
       const { partId, field, delta } = data as { partId: string; field: string; delta: string }
       const store = useChatPartsStore.getState()
