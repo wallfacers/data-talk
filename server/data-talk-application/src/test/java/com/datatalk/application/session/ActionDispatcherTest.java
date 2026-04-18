@@ -47,7 +47,8 @@ class ActionDispatcherTest {
         when(registry.require("x.ok")).thenReturn(
             new ActionDescriptor("x.ok", com.datatalk.domain.action.Executor.SERVER, "",
                 Map.of("type","object"), Map.of("type","object"),
-                List.of(), List.of(OntologyEffect.NONE), false, 1000)
+                List.of(), List.of(OntologyEffect.NONE), false, 1000,
+                null, null)
         );
         Mockito.doReturn(new AlwaysOkHandler()).when(registry).handler("x.ok");
 
@@ -79,7 +80,8 @@ class ActionDispatcherTest {
         when(registry.require("x.client")).thenReturn(
             new ActionDescriptor("x.client", com.datatalk.domain.action.Executor.CLIENT, "",
                 Map.of("type","object"), Map.of("type","object"),
-                List.of(), List.of(OntologyEffect.NONE), false, 500)
+                List.of(), List.of(OntologyEffect.NONE), false, 500,
+                null, null)
         );
         Mockito.doReturn(new AlwaysOkHandler()).when(registry).handler("x.client");
 

@@ -1,7 +1,8 @@
 package com.datatalk.application.opencode;
 
 import com.datatalk.domain.event.DtEvent;
-import com.datatalk.domain.part.TextPart;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -20,16 +21,28 @@ class OpenCodeEventTranslatorTest {
 
     private SessionTitleSyncer syncer;
     private OpenCodeEventTranslator tr;
+    private ObjectMapper om;
 
     @BeforeEach
     void setUp() {
         syncer = Mockito.mock(SessionTitleSyncer.class);
         tr = new OpenCodeEventTranslator(syncer);
+        om = new ObjectMapper();
+    }
+
+    private JsonNode textPartJson(String partId, String sessionId, String messageId, String text) {
+        return om.valueToTree(Map.of(
+            "type", "text",
+            "id", partId,
+            "sessionID", sessionId,
+            "messageID", messageId,
+            "text", text
+        ));
     }
 
     @Test
     void firstPartUpdatedBecomesPartCreated() {
-        TextPart p = new TextPart("p1","s1","m1","hi",null,null,null, Map.of());
+        JsonNode p = textPartJson("p1", "s1", "m1", "hi");
         List<DtEvent> out = tr.translate("s1", new OcEvent.MessagePartUpdated(p));
         assertThat(out).hasSize(1);
         assertThat(out.get(0)).isInstanceOf(DtEvent.MessagePartCreated.class);
@@ -37,7 +50,7 @@ class OpenCodeEventTranslatorTest {
 
     @Test
     void subsequentPartUpdatedStaysUpdated() {
-        TextPart p = new TextPart("p1","s1","m1","hi",null,null,null, Map.of());
+        JsonNode p = textPartJson("p1", "s1", "m1", "hi");
         tr.translate("s1", new OcEvent.MessagePartUpdated(p));
         List<DtEvent> out = tr.translate("s1", new OcEvent.MessagePartUpdated(p));
         assertThat(out.get(0)).isInstanceOf(DtEvent.MessagePartUpdated.class);
@@ -71,16 +84,16 @@ class OpenCodeEventTranslatorTest {
 
     @Test
     void partIsolatedBySessionId() {
-        TextPart p = new TextPart("p1","s-a","m1","hi",null,null,null, Map.of());
+        JsonNode p = textPartJson("p1", "s-a", "m1", "hi");
         tr.translate("s-a", new OcEvent.MessagePartUpdated(p));
-        TextPart q = new TextPart("p1","s-b","m1","hi",null,null,null, Map.of());
+        JsonNode q = textPartJson("p1", "s-b", "m1", "hi");
         List<DtEvent> out = tr.translate("s-b", new OcEvent.MessagePartUpdated(q));
         assertThat(out.get(0)).isInstanceOf(DtEvent.MessagePartCreated.class);
     }
 
     @Test
     void forgetClearsSeenSet() {
-        TextPart p = new TextPart("p1","s1","m1","hi",null,null,null, Map.of());
+        JsonNode p = textPartJson("p1", "s1", "m1", "hi");
         tr.translate("s1", new OcEvent.MessagePartUpdated(p));
         tr.forget("s1");
         List<DtEvent> out = tr.translate("s1", new OcEvent.MessagePartUpdated(p));
@@ -156,5 +169,42 @@ class OpenCodeEventTranslatorTest {
         DtEvent.SessionDiff diff = (DtEvent.SessionDiff) out.get(0);
         assertThat(diff.sessionId()).isEqualTo("dt-1");
         assertThat(diff.payload()).isEqualTo(payload);
+    }
+
+    @Test
+    void messagePartUpdatedPayloadIsPassedThroughAsRawJson() throws Exception {
+        JsonNode rawPart = om.readTree("""
+            { "type": "step-start",
+              "id": "prt_1",
+              "sessionID": "ses_abc",
+              "messageID": "msg_1" }
+            """);
+        OpenCodeEventTranslator t = new OpenCodeEventTranslator(syncer);
+
+        var events = t.translate("dt-session-1", new OcEvent.MessagePartUpdated(rawPart));
+
+        assertThat(events).hasSize(1);
+        DtEvent.MessagePartCreated created = (DtEvent.MessagePartCreated) events.get(0);
+        assertThat(created.part().path("type").asText()).isEqualTo("step-start");
+        assertThat(created.part().path("sessionID").asText()).isEqualTo("ses_abc");
+        assertThat(created.part().path("messageID").asText()).isEqualTo("msg_1");
+    }
+
+    @Test
+    void messagePartPreservesRiskLevelMetadataForPartLevelChannel() throws Exception {
+        JsonNode rawPart = om.readTree("""
+            { "type": "tool",
+              "id": "prt_t",
+              "sessionID": "ses_abc",
+              "messageID": "msg_1",
+              "state": { "status": "completed", "metadata": { "riskLevel": "L3" } } }
+            """);
+        OpenCodeEventTranslator t = new OpenCodeEventTranslator(syncer);
+
+        var events = t.translate("dt-session-1", new OcEvent.MessagePartUpdated(rawPart));
+
+        DtEvent.MessagePartCreated created = (DtEvent.MessagePartCreated) events.get(0);
+        assertThat(created.part().path("state").path("metadata").path("riskLevel").asText())
+            .isEqualTo("L3");
     }
 }

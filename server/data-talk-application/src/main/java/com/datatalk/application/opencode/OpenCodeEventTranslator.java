@@ -1,7 +1,6 @@
 package com.datatalk.application.opencode;
 
 import com.datatalk.domain.event.DtEvent;
-import com.datatalk.domain.part.Part;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
@@ -69,7 +68,7 @@ public class OpenCodeEventTranslator {
 
             case OcEvent.MessagePartUpdated p -> {
                 Set<String> parts = seenParts.computeIfAbsent(sessionId, k -> ConcurrentHashMap.newKeySet());
-                String partId = p.part().id();
+                String partId = p.part().path("id").asText();
                 if (parts.add(partId)) {
                     yield List.of(new DtEvent.MessagePartCreated(p.part()));
                 }

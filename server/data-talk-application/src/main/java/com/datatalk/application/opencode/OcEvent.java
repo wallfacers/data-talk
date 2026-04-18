@@ -1,7 +1,7 @@
 package com.datatalk.application.opencode;
 
 import com.datatalk.domain.part.Message;
-import com.datatalk.domain.part.Part;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import java.util.Map;
 
@@ -21,7 +21,7 @@ public sealed interface OcEvent {
     record SessionCompacted(SessionInfo info) implements OcEvent {}
     record SessionDiff(SessionInfo info, java.util.Map<String, Object> payload) implements OcEvent {}
     record MessageUpdated(Message message) implements OcEvent {}
-    record MessagePartUpdated(Part part) implements OcEvent {}
+    record MessagePartUpdated(JsonNode part) implements OcEvent {}
     record MessagePartDelta(String partId, String field, String delta) implements OcEvent {}
     record MessagePartRemoved(String partId) implements OcEvent {}
     record Unknown(String type, Map<String, Object> payload) implements OcEvent {}

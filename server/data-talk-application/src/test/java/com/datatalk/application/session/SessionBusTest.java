@@ -2,6 +2,7 @@ package com.datatalk.application.session;
 
 import com.datatalk.domain.event.DtEvent;
 import com.datatalk.domain.event.NumberedEvent;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,6 +13,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -63,10 +65,13 @@ class SessionBusTest {
     @Test
     void doesNotCoalesceWholePartReplaces() {
         // Two MessagePartUpdated with same partId: both should go through (no merge)
-        var part1 = new com.datatalk.domain.part.TextPart(
-            "p1","s-1","m-1","a",null,null,null,java.util.Map.of());
-        var part2 = new com.datatalk.domain.part.TextPart(
-            "p1","s-1","m-1","a b",null,null,null,java.util.Map.of());
+        ObjectMapper om = new ObjectMapper();
+        JsonNode part1 = om.valueToTree(Map.of(
+            "type", "text", "id", "p1", "sessionID", "s-1", "messageID", "m-1", "text", "a"
+        ));
+        JsonNode part2 = om.valueToTree(Map.of(
+            "type", "text", "id", "p1", "sessionID", "s-1", "messageID", "m-1", "text", "a b"
+        ));
         bus.publish(new DtEvent.MessagePartUpdated(part1));
         bus.publish(new DtEvent.MessagePartUpdated(part2));
         await().atMost(Duration.ofSeconds(1)).until(() ->

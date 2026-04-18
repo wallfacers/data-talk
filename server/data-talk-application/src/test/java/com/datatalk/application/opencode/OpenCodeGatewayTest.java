@@ -26,10 +26,12 @@ class OpenCodeGatewayTest {
         when(registry.all()).thenReturn(List.of(
             new ActionDescriptor("a.one", Executor.SERVER, "First",
                 Map.of("type","object"), Map.of("type","object"),
-                List.of(), List.of(OntologyEffect.NONE), false, 1000),
+                List.of(), List.of(OntologyEffect.NONE), false, 1000,
+                null, null),
             new ActionDescriptor("a.two", Executor.CLIENT, "Second",
                 Map.of("type","object"), Map.of("type","object"),
-                List.of(), List.of(OntologyEffect.NONE), false, 1000)
+                List.of(), List.of(OntologyEffect.NONE), false, 1000,
+                null, null)
         ));
 
         StubToolPusher pusher = new StubToolPusher();

@@ -4,7 +4,6 @@ import com.datatalk.application.session.SessionBus;
 import com.datatalk.application.session.SessionBusRegistry;
 import com.datatalk.domain.event.DtEvent;
 import com.datatalk.domain.part.Message;
-import com.datatalk.domain.part.Part;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -208,8 +207,13 @@ public class OpenCodeEventLoop {
                 case "session.diff"      -> new OcEvent.SessionDiff(
                     parseSessionInfo(props), om.convertValue(props, Map.class));
                 case "message.updated"  -> new OcEvent.MessageUpdated(parseMessage(props.path("info")));
-                case "message.part.updated" -> new OcEvent.MessagePartUpdated(
-                    om.treeToValue(props.path("part"), Part.class));
+                case "message.part.updated" -> {
+                    JsonNode part = props.path("part");
+                    if (part.isMissingNode() || part.isNull()) {
+                        yield new OcEvent.Unknown("message.part.updated", Map.of());
+                    }
+                    yield new OcEvent.MessagePartUpdated(part);
+                }
                 case "message.part.delta"   -> new OcEvent.MessagePartDelta(
                     props.path("partID").asText(),
                     props.path("field").asText(),
@@ -273,7 +277,7 @@ public class OpenCodeEventLoop {
     private static String extractSessionId(OcEvent e) {
         return switch (e) {
             case OcEvent.MessageUpdated m    -> m.message().sessionId();
-            case OcEvent.MessagePartUpdated p -> p.part().sessionID();
+            case OcEvent.MessagePartUpdated p -> p.part().path("sessionID").asText(null);
             case OcEvent.SessionCreated s    -> s.info().id();
             case OcEvent.SessionUpdated s    -> s.info().id();
             case OcEvent.SessionDeleted s    -> s.info().id();

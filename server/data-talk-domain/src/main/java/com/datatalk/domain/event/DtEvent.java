@@ -1,10 +1,10 @@
 package com.datatalk.domain.event;
 
 import com.datatalk.domain.part.Message;
-import com.datatalk.domain.part.Part;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import java.util.List;
 import java.util.Map;
@@ -81,9 +81,9 @@ public sealed interface DtEvent {
     record MessageCompleted(String sessionId, String messageId) implements DtEvent {}
 
     @JsonTypeName("message.part.created")
-    record MessagePartCreated(Part part) implements DtEvent {}
+    record MessagePartCreated(JsonNode part) implements DtEvent {}
     @JsonTypeName("message.part.updated")
-    record MessagePartUpdated(Part part) implements DtEvent {}
+    record MessagePartUpdated(JsonNode part) implements DtEvent {}
     @JsonTypeName("message.part.delta")
     record MessagePartDelta(String partId, String field, String delta) implements DtEvent {}
     @JsonTypeName("message.part.removed")

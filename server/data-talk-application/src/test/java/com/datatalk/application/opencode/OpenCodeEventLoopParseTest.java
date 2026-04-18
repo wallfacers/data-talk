@@ -1,7 +1,7 @@
 package com.datatalk.application.opencode;
 
 import com.datatalk.domain.part.Message;
-import com.datatalk.domain.part.TextPart;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -110,10 +110,10 @@ class OpenCodeEventLoopParseTest {
         // 1.4.7 wire: properties.part = {type, text, messageID, sessionID, id}
         OcEvent e = loop.parseOcEvent("message.part.updated", load("message-part-updated-text.json"));
         assertThat(e).isInstanceOf(OcEvent.MessagePartUpdated.class);
-        TextPart p = (TextPart) ((OcEvent.MessagePartUpdated) e).part();
-        assertThat(p.id()).isEqualTo("prt_da05448a40014UHfnwy01c40ZL");
-        assertThat(p.text()).isEqualTo("你好");
-        assertThat(p.messageID()).isEqualTo("msg_da05448a30013tKskYObsKxSSw");
+        JsonNode p = ((OcEvent.MessagePartUpdated) e).part();
+        assertThat(p.path("id").asText()).isEqualTo("prt_da05448a40014UHfnwy01c40ZL");
+        assertThat(p.path("text").asText()).isEqualTo("你好");
+        assertThat(p.path("messageID").asText()).isEqualTo("msg_da05448a30013tKskYObsKxSSw");
     }
 
     @Test

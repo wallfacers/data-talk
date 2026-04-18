@@ -1,6 +1,6 @@
 package com.datatalk.domain.event;
 
-import com.datatalk.domain.part.TextPart;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
@@ -21,7 +21,13 @@ class DtEventTest {
 
     @Test
     void serializesMessagePartCreated() throws Exception {
-        TextPart p = new TextPart("p1", "s1", "m1", "hi", false, false, null, Map.of());
+        JsonNode p = om.valueToTree(Map.of(
+            "type", "text",
+            "id", "p1",
+            "sessionID", "s1",
+            "messageID", "m1",
+            "text", "hi"
+        ));
         DtEvent e = new DtEvent.MessagePartCreated(p);
         String json = om.writeValueAsString(e);
         assertThat(json).contains("\"type\":\"message.part.created\"").contains("\"text\":\"hi\"");
