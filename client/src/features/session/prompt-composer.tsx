@@ -1,9 +1,10 @@
 "use client"
 
-import { useLayoutEffect, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowUpIcon, Loader2Icon } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
   InputGroup,
@@ -59,9 +60,8 @@ function InnerComposer() {
   const hasActiveModel = useHasActiveModel()
   const qc = useQueryClient()
 
-  const onSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-    const t = text.trim()
+  const submitText = async (raw: string) => {
+    const t = raw.trim()
     if (!t || isStreaming) return
 
     if (!activeSessionId) {
@@ -89,12 +89,66 @@ function InnerComposer() {
     await sendMessage([createTextPart(activeSessionId, t)])
   }
 
+  const onSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    await submitText(text)
+  }
+
   const onKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault()
       void onSubmit(e as unknown as FormEvent)
     }
   }
+
+  // 使 ref 同步最新值，供 window 事件 handler 避开闭包陷阱
+  const textRef = useRef<string>('')
+  const submitRef = useRef<(raw: string) => Promise<void>>(submitText)
+  useEffect(() => {
+    textRef.current = text
+  }, [text])
+  useEffect(() => {
+    submitRef.current = submitText
+  })
+
+  useEffect(() => {
+    const onExecute = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { sql?: string } | undefined
+      const sql = detail?.sql
+      if (!sql) return
+      const current = textRef.current
+      if (!current.trim()) {
+        // composer 空：填入并自动 submit（用 override 绕过 stale state）
+        setText(sql)
+        textRef.current = sql
+        queueMicrotask(() => {
+          void submitRef.current(sql)
+        })
+      } else {
+        // 非空：追加，不 submit
+        const next = current.endsWith('\n') ? current + sql : current + '\n' + sql
+        setText(next)
+        textRef.current = next
+        toast('已追加 SQL，请确认后发送')
+      }
+    }
+    const onExplain = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { sql?: string } | undefined
+      const sql = detail?.sql
+      if (!sql) return
+      const current = textRef.current
+      const prefix = '解释这条 SQL：\n'
+      const next = current ? current + '\n' + prefix + sql : prefix + sql
+      setText(next)
+      textRef.current = next
+    }
+    window.addEventListener('datatalk.sql.execute', onExecute)
+    window.addEventListener('datatalk.sql.explain', onExplain)
+    return () => {
+      window.removeEventListener('datatalk.sql.execute', onExecute)
+      window.removeEventListener('datatalk.sql.explain', onExplain)
+    }
+  }, [])
 
   const canSend = text.trim().length > 0 && !isStreaming
 
