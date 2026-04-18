@@ -56,7 +56,7 @@ export function ChatHeader() {
   }
 
   return (
-    <div className={`flex h-12 shrink-0 items-center justify-between px-3 ${state === 'collapsed' ? 'pl-24' : ''}`}>
+    <div className={`flex h-9 shrink-0 items-center justify-between px-3 ${state === 'collapsed' ? 'pl-24' : ''}`}>
       {sid ? (
         <span className="truncate text-sm font-medium">{title}</span>
       ) : (
