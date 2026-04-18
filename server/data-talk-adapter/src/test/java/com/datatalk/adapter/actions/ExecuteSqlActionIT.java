@@ -46,7 +46,7 @@ class ExecuteSqlActionIT {
             st.execute("INSERT INTO t VALUES(1,'a'),(2,'b'),(3,'c')");
         }
         conn.deleteAll();
-        connectionId = conn.create("postgresql", pg.getHost(), pg.getFirstMappedPort(),
+        connectionId = conn.create("Execute SQL Test", "postgresql", pg.getHost(), pg.getFirstMappedPort(),
             pg.getDatabaseName(), pg.getUsername(), pg.getPassword(), null);
         sessRepo.upsert(new SessionRecord("s-exec", connectionId, "T", true, "oc-e", 0L, 0L, false));
     }

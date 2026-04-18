@@ -42,7 +42,7 @@ class ReadSchemaActionIT {
             st.execute("CREATE TABLE orders (id SERIAL PRIMARY KEY, user_id INT REFERENCES users(id))");
         }
         conn.deleteAll();
-        connectionId = conn.create("postgresql", pg.getHost(), pg.getFirstMappedPort(),
+        connectionId = conn.create("Read Schema Test", "postgresql", pg.getHost(), pg.getFirstMappedPort(),
             pg.getDatabaseName(), pg.getUsername(), pg.getPassword(), null);
     }
 
