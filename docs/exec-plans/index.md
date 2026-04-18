@@ -9,6 +9,7 @@
 | [Composer Model Picker Dialog](./2026-04-18-composer-model-picker-dialog-plan.md) | 计划中 | Composer 模型选择器 Popover → 960×540 双栏对话框，触发按钮样式不变 |
 | [API Prefix Decouple](./2026-04-18-api-prefix-decouple-plan.md) | 计划中 | `VITE_API_BASE_URL` 只存 origin，前端集中管理 `/api` 前缀常量，防止 `/api/api` 重复 |
 | [Session Canvas UX Fixes](./2026-04-18-session-canvas-ux-fixes-plan.md) | 计划中 | 4 个前端 bug：composer 消失/位置/持久化/气泡样式（SplitView 统一底部 slot + session-store persist + meta-gated 渲染 + 错误 toast） |
+| [Message Parts Jackson Fix](./2026-04-18-message-parts-jackson-fix-plan.md) | 计划中 | 修 `MessageRepository.save` 泛型擦除丢 `@JsonTypeInfo` 判别符，GET `/messages` 500 的根因 |
 
 ## 已完成计划
 

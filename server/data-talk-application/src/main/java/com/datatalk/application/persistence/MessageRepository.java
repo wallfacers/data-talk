@@ -13,6 +13,14 @@ import java.util.List;
 @Repository
 public class MessageRepository {
 
+    /**
+     * Preserves the {@code List<Part>} element type through writeValueAsString so
+     * Jackson honors Part's @JsonTypeInfo and emits the "type" discriminator —
+     * without this, generic erasure would produce type-less JSON that can't be
+     * read back by findBySession.
+     */
+    private static final TypeReference<List<Part>> PARTS_TYPE = new TypeReference<>() {};
+
     private final JdbcTemplate jdbc;
     private final ObjectMapper om;
 
@@ -24,7 +32,7 @@ public class MessageRepository {
     public void save(Message m) {
         String partsJson;
         try {
-            partsJson = om.writeValueAsString(m.parts());
+            partsJson = om.writerFor(PARTS_TYPE).writeValueAsString(m.parts());
         } catch (Exception e) {
             throw new IllegalStateException("cannot serialize parts", e);
         }
@@ -45,10 +53,7 @@ public class MessageRepository {
             """,
             (rs, i) -> {
                 try {
-                    List<Part> parts = om.readValue(
-                        rs.getString("parts_json"),
-                        new TypeReference<List<Part>>() {}
-                    );
+                    List<Part> parts = om.readValue(rs.getString("parts_json"), PARTS_TYPE);
                     return new Message(
                         rs.getString("id"),
                         rs.getString("session_id"),

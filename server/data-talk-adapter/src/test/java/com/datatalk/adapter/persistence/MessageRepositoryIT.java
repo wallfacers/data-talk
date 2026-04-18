@@ -35,5 +35,22 @@ class MessageRepositoryIT {
         String partsJson = dtJdbc.queryForObject(
             "SELECT parts_json FROM messages WHERE id = ?", String.class, mid);
         assertThat(partsJson).contains("hello");
+        // Polymorphic discriminator MUST be written so findBySession can read it back.
+        assertThat(partsJson).contains("\"type\":\"text\"");
+    }
+
+    @Test
+    void savedMessageRoundTripsThroughFindBySession() {
+        String sid = "sess-rt-" + System.nanoTime();
+        String mid = "msg-rt-" + System.nanoTime();
+        sessRepo.upsert(new SessionRecord(sid, null, "T", false, null, 100L, 100L, false));
+        TextPart p1 = new TextPart("p-rt", sid, mid, "roundtrip", false, false, null, Map.of());
+        msgRepo.save(new Message(mid, sid, Message.Role.USER, List.of(p1), 101L));
+
+        List<Message> out = msgRepo.findBySession(sid);
+        assertThat(out).hasSize(1);
+        assertThat(out.get(0).parts()).hasSize(1);
+        assertThat(out.get(0).parts().get(0)).isInstanceOf(TextPart.class);
+        assertThat(((TextPart) out.get(0).parts().get(0)).text()).isEqualTo("roundtrip");
     }
 }
