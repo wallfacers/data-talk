@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { DatabaseIcon } from 'lucide-react'
 import { MessageStream } from '@/features/chat/components/message-stream'
 import { ArtifactTimelineStrip } from '@/features/ontology/components/artifact-timeline-strip'
@@ -7,6 +7,7 @@ import { StageWindow } from '@/features/stage/components/stage-window'
 import { useSessionStore } from '@/stores/session-store'
 import { useStageStore } from '@/stores/stage-store'
 import { useChatPartsStore } from '@/stores/chat-parts-store'
+import { useUISettingsStore } from '@/stores/ui-settings-store'
 import { ChatHeader } from './chat-header'
 
 const DURATION = 400
@@ -25,65 +26,43 @@ export function SplitView() {
   const sid = useSessionStore((s) => s.activeSessionId)
   const open = useStageStore((s) => (sid ? !!s.openBySession.get(sid) : false))
   const maximized = useStageStore((s) => (sid ? !!s.maximizedBySession.get(sid) : false))
-  const revealOrigin = useStageStore((s) => s.revealOrigin)
   const hasMessages = useChatPartsStore((s) => {
     const parts = sid ? s.partsBySession.get(sid) : undefined
     return parts ? parts.size > 0 : false
   })
 
-  const stageContainerRef = useRef<HTMLDivElement>(null)
+  const splitResizable = useUISettingsStore((s) => s.splitResizable)
   const rootRef = useRef<HTMLDivElement>(null)
-  const [clipGeom, setClipGeom] = useState<{ r: number; x: number; y: number } | null>(null)
-  const [translateLatched, setTranslateLatched] = useState<boolean>(!open)
   const [dragRatio, setDragRatio] = useState<number | null>(null)
   const isDraggingRef = useRef(false)
-
-  useLayoutEffect(() => {
-    if (!revealOrigin) { setClipGeom(null); return }
-    const rect = stageContainerRef.current?.getBoundingClientRect()
-    if (!rect) return
-    const localX = revealOrigin.x - rect.left
-    const localY = revealOrigin.y - rect.top
-    const r = Math.max(
-      Math.hypot(localX, localY),
-      Math.hypot(rect.width - localX, localY),
-      Math.hypot(localX, rect.height - localY),
-      Math.hypot(rect.width - localX, rect.height - localY),
-    )
-    setClipGeom({ r, x: localX, y: localY })
-  }, [revealOrigin])
-
-  useEffect(() => {
-    if (open) {
-      setTranslateLatched(false)
-      return
-    }
-    const t = setTimeout(() => setTranslateLatched(true), DURATION)
-    return () => clearTimeout(t)
-  }, [open])
 
   // Load saved ratio on mount
   useEffect(() => { setDragRatio(loadSavedRatio()) }, [])
 
   const effectiveRatio = dragRatio ?? 0.46
-  const chatWidth = maximized ? '0%' : open ? `${effectiveRatio * 100}%` : '100%'
-  const stageWidth = maximized ? '100%' : open ? `${(1 - effectiveRatio) * 100}%` : '0%'
-  const stageTransform = translateLatched ? 'translateX(100%)' : 'translateX(0px)'
+  // Chat width never collapses to 0 — use translateX to slide it off screen during
+  // maximize so inner content doesn't reflow (which caused message jitter).
+  const chatWidth = open ? `${effectiveRatio * 100}%` : '100%'
+  const chatTransform = maximized ? 'translateX(-100%)' : 'translateX(0)'
+  const stageWidth = maximized ? '100%' : `${(1 - effectiveRatio) * 100}%`
+  const stageTransform = open ? 'translateX(0)' : 'translateX(100%)'
 
-  const clipPath = clipGeom
-    ? `circle(${open ? clipGeom.r : 0}px at ${clipGeom.x}px ${clipGeom.y}px)`
-    : `circle(${open ? 2000 : 0}px at 100% 100%)`
-
-  const transition = `clip-path ${DURATION}ms ${EASE}, width ${DURATION}ms ${EASE}`
+  // Maximize: chat slides out first (220ms), stage expands after 60ms delay (320ms).
+  // Restore: stage shrinks immediately (DURATION), chat slides back after 80ms delay.
+  const chatTransition = maximized
+    ? 'transform 220ms ease-in'
+    : `transform 350ms ${EASE} 80ms, width ${DURATION}ms ${EASE}`
+  const stageTransition = maximized
+    ? `width 320ms ${EASE} 60ms`
+    : `transform ${DURATION}ms ${EASE}, width 320ms ${EASE}`
 
   const stageStyle: CSSProperties = {
     position: 'absolute',
     top: 0, right: 0, bottom: 0,
     width: stageWidth,
     transform: stageTransform,
-    clipPath,
-    transition,
-    willChange: 'clip-path, transform',
+    transition: stageTransition,
+    willChange: 'transform, width',
   }
 
   return (
@@ -94,9 +73,10 @@ export function SplitView() {
           position: 'absolute',
           top: 0, left: 0, bottom: 0,
           width: chatWidth,
-          transition: `width ${DURATION}ms ${EASE}`,
+          transform: chatTransform,
+          transition: chatTransition,
           overflow: 'hidden',
-          willChange: 'width',
+          willChange: 'transform, width',
         }}
       >
         {hasMessages ? (
@@ -130,8 +110,8 @@ export function SplitView() {
         )}
       </div>
 
-      {/* drag handle */}
-      {open && !maximized && (
+      {/* drag handle：仅在通用设置中开启分栏拖拽调整时显示 */}
+      {splitResizable && open && !maximized && (
         <div
           className="group absolute top-0 bottom-0 z-20 w-1 cursor-col-resize -translate-x-1/2 hover:bg-primary/20 transition-colors"
           style={{ left: chatWidth }}
@@ -159,8 +139,8 @@ export function SplitView() {
         </div>
       )}
 
-      {/* stage 列：clip-path 气泡 + translateLatched 双段 */}
-      <div ref={stageContainerRef} data-stage-panel style={stageStyle}>
+      {/* stage 列：translateX 滑入/滑出 */}
+      <div data-stage-panel style={stageStyle}>
         <div className="h-full w-full p-2">
           <StageWindow sessionId={sid ?? undefined}>
             {sid && <ArtifactTimelineStrip />}

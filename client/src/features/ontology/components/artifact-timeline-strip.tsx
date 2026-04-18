@@ -29,7 +29,7 @@ export function ArtifactTimelineStrip() {
   }, [artifacts])
 
   return (
-    <div className="flex gap-1 overflow-x-auto border-b p-2">
+    <div className="flex gap-1 overflow-x-auto p-2">
       {order.map(id => {
         const a = artifacts.get(id)
         if (!a) return null

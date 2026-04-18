@@ -7,6 +7,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
+import { useUISettingsStore } from '@/stores/ui-settings-store'
 
 type ThemeOption = 'light' | 'dark' | 'system'
 type LanguageOption = 'zh-CN' | 'en-US'
@@ -35,6 +37,9 @@ export function GeneralSettingsPanel({
   onThemeChange,
   onLanguageChange,
 }: GeneralPanelProps) {
+  const splitResizable = useUISettingsStore((s) => s.splitResizable)
+  const setSplitResizable = useUISettingsStore((s) => s.setSplitResizable)
+
   return (
     <div className="space-y-8">
       {/* Theme selection */}
@@ -79,6 +84,19 @@ export function GeneralSettingsPanel({
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      {/* Split view resizable */}
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-foreground">分栏拖拽调整</p>
+          <p className="text-xs text-muted-foreground mt-0.5">开启后可拖动分割线调整左右宽度比例</p>
+        </div>
+        <Switch
+          checked={splitResizable}
+          onCheckedChange={setSplitResizable}
+          aria-label="分栏拖拽调整"
+        />
       </div>
     </div>
   )
