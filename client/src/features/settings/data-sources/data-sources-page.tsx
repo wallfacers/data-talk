@@ -46,7 +46,14 @@ export function DataSourcesPage() {
       ) : (
         <table className="w-full text-sm">
           <thead className="text-left text-muted-foreground">
-            <tr><th className="pb-2">名称</th><th className="pb-2">类型</th><th className="pb-2">地址</th><th className="pb-2">数据库</th><th className="pb-2">用户</th><th className="pb-2">操作</th></tr>
+            <tr>
+              <th className="pb-2">名称</th>
+              <th className="pb-2">类型</th>
+              <th className="pb-2">地址</th>
+              <th className="pb-2">数据库</th>
+              <th className="pb-2">用户</th>
+              <th className="pb-2 whitespace-nowrap">操作</th>
+            </tr>
           </thead>
           <tbody>
             {connections.map((c) => {
@@ -58,7 +65,7 @@ export function DataSourcesPage() {
                 <td>{c.host}:{c.port}</td>
                 <td>{c.databaseName}</td>
                 <td>{c.username}</td>
-                <td className="text-right">
+                <td className="py-2 whitespace-nowrap">
                   <Button size="sm" variant="ghost" onClick={() => runTest(c.id)} className="min-w-16 h-8">
                     {status === 'loading' ? '测试中…'
                       : status === 'ok' ? <CheckCircle2Icon className="size-4 text-green-600" />
