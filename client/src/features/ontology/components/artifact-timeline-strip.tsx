@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import type { Artifact } from '@/services/channel/event-reducer'
 import { useTimelineStore } from '@/stores/timeline-store'
 import { useOntologyStore } from '@/stores/ontology-store'
@@ -21,19 +22,23 @@ export function ArtifactTimelineStrip() {
     if (!sessionId) return EMPTY_ARTIFACTS
     return s.artifactsBySession.get(sessionId) ?? EMPTY_ARTIFACTS
   })
+  const supersededIds = useMemo(() => {
+    const s = new Set<string>()
+    for (const a of artifacts.values()) if (a.supersedesId) s.add(a.supersedesId)
+    return s
+  }, [artifacts])
 
   return (
     <div className="flex gap-1 overflow-x-auto border-b p-2">
       {order.map(id => {
         const a = artifacts.get(id)
         if (!a) return null
-        const superseded = Array.from(artifacts.values()).some(x => x.supersedesId === id)
         return (
           <button key={id} onClick={() => sessionId && setActive(sessionId, id)}
             className={cn(
               'rounded-full px-3 py-1 text-xs border',
               id === active ? 'bg-primary text-primary-foreground' : 'bg-background',
-              superseded && 'opacity-40'
+              supersededIds.has(id) && 'opacity-40'
             )}>
             {a.kind === 'table' ? '表' : a.kind === 'chart' ? '图' : 'ER'} · v{a.version}
           </button>

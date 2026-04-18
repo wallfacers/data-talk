@@ -21,17 +21,11 @@ public class QueryController {
         this.queryApplicationService = queryApplicationService;
     }
 
-    /**
-     * 健康检查
-     */
     @GetMapping("/health")
     public ResponseEntity<Map<String, String>> health() {
         return ResponseEntity.ok(Map.of("status", "ok"));
     }
 
-    /**
-     * 执行 SQL 查询
-     */
     @PostMapping("/query")
     public ResponseEntity<QueryResponseDto> executeQuery(@Valid @RequestBody ExecuteSqlCommand command) {
         QueryResponseDto response = queryApplicationService.executeQuery(command);

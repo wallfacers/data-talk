@@ -63,30 +63,20 @@ public class ConnectionService {
         var c = repo.findById(id)
             .orElseThrow(() -> new java.util.NoSuchElementException("unknown connection: " + id));
         String password = vault.open(c.passwordEnc());
-        String url = jdbcUrl(c);
-        long started = System.nanoTime();
+        String url = JdbcUrlBuilder.build(c);
+        String kind = c.kind();
+        if (kind.equals(ConnectionKind.MYSQL) || kind.equals(ConnectionKind.POSTGRESQL)) {
+            url += (url.contains("?") ? "&" : "?") + "connectTimeout=3&socketTimeout=3";
+        }
+        long started = clock.millis();
         try (var conn = java.sql.DriverManager.getConnection(url, c.username(), password)) {
             boolean ok = conn.isValid(3);
-            long ms = (System.nanoTime() - started) / 1_000_000L;
+            long ms = clock.millis() - started;
             return new TestResult(ok, ms, ok ? null : "connection reported invalid");
         } catch (Throwable t) {
-            long ms = (System.nanoTime() - started) / 1_000_000L;
+            long ms = clock.millis() - started;
             return new TestResult(false, ms, t.getClass().getSimpleName() + ": " + t.getMessage());
         }
-    }
-
-    private static String jdbcUrl(ConnectionRecord c) {
-        String db = c.databaseName();
-        return switch (c.kind()) {
-            case "mysql" -> "jdbc:mysql://" + c.host() + ":" + c.port() + "/"
-                + (db != null ? db : "")
-                + "?connectTimeout=3000&socketTimeout=3000";
-            case "postgres", "postgresql" -> "jdbc:postgresql://" + c.host() + ":" + c.port() + "/"
-                + (db != null ? db : "postgres")
-                + "?connectTimeout=3&socketTimeout=3";
-            case "h2" -> "jdbc:h2:" + (db != null ? db : "mem:test");
-            default -> throw new IllegalArgumentException("unsupported kind: " + c.kind());
-        };
     }
 
     public record TestResult(boolean ok, long latencyMs, String reason) {}

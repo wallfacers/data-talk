@@ -124,7 +124,6 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
         String artifactId = ids.nextArtifactId();
         int version = 1;
 
-        // Serialize rows once in NDJSON format (efficient for large payloads)
         String rowsNdjson = rows.stream()
             .map(r -> jsonToString(r))
             .collect(Collectors.joining("\n"));
