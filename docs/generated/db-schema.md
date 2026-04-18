@@ -3,6 +3,9 @@
 > 自动生成自 `server/data-talk-infrastructure/src/main/resources/db/migration/V1__init.sql`
 > 最后更新：2026-04-16
 
+**版本历史**
+- V8 (2026-04-19): dropped `messages` table — OpenCode is now authoritative for message persistence; DataTalk only stores `events` for SSE resume.
+
 SQLite 元数据库，由 Flyway 管理迁移。
 
 ## connections — 数据库连接配置
@@ -30,18 +33,6 @@ SQLite 元数据库，由 Flyway 管理迁移。
 | opencode_sid | TEXT | | OpenCode 会话 ID |
 | created_at | INTEGER | NOT NULL | 创建时间 |
 | updated_at | INTEGER | NOT NULL | 更新时间 |
-
-## messages — 消息
-
-| 列 | 类型 | 约束 | 说明 |
-|----|------|------|------|
-| id | TEXT | PK | UUID |
-| session_id | TEXT | FK → sessions, NOT NULL | 所属会话 |
-| role | TEXT | NOT NULL | user / assistant / system |
-| parts_json | TEXT | NOT NULL | Part[] JSON，兼容 OpenCode Part union |
-| created_at | INTEGER | NOT NULL | 创建时间 |
-
-索引：`idx_messages_session(session_id, created_at)`
 
 ## artifacts — 工件（表格/图表/ER 图）
 

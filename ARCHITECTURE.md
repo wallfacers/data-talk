@@ -96,6 +96,7 @@ public class ReadSchemaHandler implements ActionHandler<Input, Output> { ... }
 - One Action = one `@DataTalkAction`-annotated Spring Bean
 - `ActionRegistry` auto-scans and registers at startup
 - Three `Executor` types: `SERVER` (backend), `CLIENT` (frontend), `AI` (OpenCode)
+- `ActionDescriptor` extended with `riskLevel` and `category` for AI decision support
 - Adding a capability = new Handler class, zero core code changes
 
 ### Ontology — Domain object type system
@@ -112,8 +113,9 @@ public class ReadSchemaHandler implements ActionHandler<Input, Output> { ... }
 
 ## Data Storage
 
-- **Metadata DB**: SQLite — stores connections, sessions, messages, artifacts, events, action_invocations, query_results
+- **Metadata DB**: SQLite — stores connections, sessions, artifacts, events, action_invocations, query_results
 - **User DBs**: dynamic JDBC connections to MySQL/PostgreSQL/H2 etc. for user queries
+- **AI Messages**: OpenCode is the authoritative persistence layer; DataTalk proxies via `GET /session/:id/message` for client access
 - Schema management: Flyway (`V1__init.sql`)
 - Password encryption: AES-GCM via `SecretVault`
 
