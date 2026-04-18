@@ -26,6 +26,7 @@
 | TD-015 | P2 | client | `DtEvent.SessionCreated / SessionDeleted` 定义但未消费（多客户端协作场景） | 同上 |
 | TD-016 | P2 | client | `DtEvent.SessionCompacted` 定义但未消费（OpenCode 上下文压缩提示） | 同上 |
 | TD-017 | P2 | client | `DtEvent.SessionDiff` 定义但未消费；payload 语义待调研 | 同上 |
+| TD-020 | P2 | application | `preview_sql` 等 mutation Action 的风险判级本期靠前端正则粗判（仅看 SQL 首关键字，不识别 WHERE 缺失 / 批量 DELETE / CTE 内含 DML）。目标：后端引入 SQL AST 解析器（JSqlParser / Calcite）在 ActionHandler 执行前完成真实判级，通过 `part.state.metadata.riskLevel` 回传前端；前端 `resolveRisk` 优先级链（part-level > descriptor > 正则）保证前端零改动升级 | Plan 2026-04-19 AI Message Rendering Migration |
 
 ## 已清除债务
 
