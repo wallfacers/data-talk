@@ -24,7 +24,7 @@ export function StageWindow({ sessionId, children }: Props) {
   }
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden rounded-2xl bg-sidebar shadow-lg ring-1 ring-sidebar-border">
+    <div className="flex h-full w-full flex-col overflow-hidden rounded-2xl bg-sidebar shadow-2xl ring-1 ring-sidebar-border">
       <div className="flex h-9 shrink-0 items-center justify-between px-3 select-none">
         <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
           {Icon && <Icon className="size-3.5" />}
