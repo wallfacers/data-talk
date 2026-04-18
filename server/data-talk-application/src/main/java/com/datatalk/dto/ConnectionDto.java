@@ -8,5 +8,7 @@ public record ConnectionDto(
     String databaseName,  // nullable
     String username,
     long createdAt,
-    int connectTimeout
+    int connectTimeout,
+    String lastTestStatus,
+    Long lastTestAt
 ) {}

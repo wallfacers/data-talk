@@ -20,7 +20,7 @@ class ConnectionServiceTest {
 
         when(repo.findById("c1")).thenReturn(Optional.of(
             new ConnectionRecord("c1", "h2", "localhost", 9999,
-                "mem:it;DB_CLOSE_DELAY=-1", "sa", new byte[]{}, null, 0, 3000)));
+                "mem:it;DB_CLOSE_DELAY=-1", "sa", new byte[]{}, null, 0, 3000, null, null)));
         when(vault.open(any())).thenReturn("");
 
         var r = svc.testConnection("c1");
@@ -34,11 +34,46 @@ class ConnectionServiceTest {
         var vault = mock(SecretVault.class);
         var svc = new ConnectionService(repo, vault, Clock.systemUTC());
         when(repo.findById("c1")).thenReturn(Optional.of(
-            new ConnectionRecord("c1", "mysql", "127.0.0.1", 1, "x", "u", new byte[]{}, null, 0, 3000)));
+            new ConnectionRecord("c1", "mysql", "127.0.0.1", 1, "x", "u", new byte[]{}, null, 0, 3000, null, null)));
         when(vault.open(any())).thenReturn("p");
 
         var r = svc.testConnection("c1");
         assertThat(r.ok()).isFalse();
         assertThat(r.reason()).isNotBlank();
+    }
+
+    @Test
+    void testConnection_persists_ok_status_on_success() {
+        var repo = mock(ConnectionRepository.class);
+        var vault = mock(SecretVault.class);
+        var clock = Clock.systemUTC();
+        var svc = new ConnectionService(repo, vault, clock);
+
+        when(repo.findById("c1")).thenReturn(Optional.of(
+            new ConnectionRecord("c1", "h2", "localhost", 9999,
+                "mem:it;DB_CLOSE_DELAY=-1", "sa", new byte[]{}, null, 0, 3000, null, null)));
+        when(vault.open(any())).thenReturn("");
+
+        var r = svc.testConnection("c1");
+
+        assertThat(r.ok()).isTrue();
+        verify(repo).updateTestStatus(eq("c1"), eq("ok"), anyLong());
+    }
+
+    @Test
+    void testConnection_persists_fail_status_on_failure() {
+        var repo = mock(ConnectionRepository.class);
+        var vault = mock(SecretVault.class);
+        var clock = Clock.systemUTC();
+        var svc = new ConnectionService(repo, vault, clock);
+
+        when(repo.findById("c1")).thenReturn(Optional.of(
+            new ConnectionRecord("c1", "mysql", "127.0.0.1", 1, "x", "u", new byte[]{}, null, 0, 3000, null, null)));
+        when(vault.open(any())).thenReturn("p");
+
+        var r = svc.testConnection("c1");
+
+        assertThat(r.ok()).isFalse();
+        verify(repo).updateTestStatus(eq("c1"), eq("fail"), anyLong());
     }
 }

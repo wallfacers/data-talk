@@ -18,7 +18,9 @@ public class ConnectionRepository {
         rs.getString("id"), rs.getString("kind"), rs.getString("host"),
         rs.getInt("port"), rs.getString("database_name"), rs.getString("username"),
         rs.getBytes("password_enc"), rs.getString("schema_digest"), rs.getLong("created_at"),
-        rs.getInt("connect_timeout")
+        rs.getInt("connect_timeout"),
+        rs.getString("last_test_status"),
+        rs.getObject("last_test_at", Long.class)
     );
 
     public void insert(ConnectionRecord c) {
@@ -55,5 +57,11 @@ public class ConnectionRepository {
 
     public void deleteAll() {
         jdbc.update("DELETE FROM connections");
+    }
+
+    public void updateTestStatus(String id, String status, long timestamp) {
+        jdbc.update("""
+            UPDATE connections SET last_test_status = ?, last_test_at = ? WHERE id = ?
+            """, status, timestamp, id);
     }
 }

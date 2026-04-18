@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -14,6 +14,16 @@ export function DataSourcesPage() {
   const [editing, setEditing] = useState<Connection | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [testResult, setTestResult] = useState<Record<string, 'ok' | 'fail' | 'loading'>>({})
+
+  useEffect(() => {
+    const seeded: Record<string, 'ok' | 'fail' | 'loading'> = {}
+    for (const c of connections) {
+      if (c.lastTestStatus === 'ok' || c.lastTestStatus === 'fail') {
+        seeded[c.id] = c.lastTestStatus
+      }
+    }
+    setTestResult(seeded)
+  }, [connections])
 
   const del = useMutation({
     mutationFn: deleteConnection,

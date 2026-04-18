@@ -29,14 +29,15 @@ public class ConnectionService {
         byte[] enc = vault.seal(password);
         String id = java.util.UUID.randomUUID().toString();
         int timeout = connectTimeout != null ? connectTimeout : DEFAULT_CONNECT_TIMEOUT;
-        repo.insert(new ConnectionRecord(id, kind, host, port, databaseName, username, enc, null, clock.millis(), timeout));
+        repo.insert(new ConnectionRecord(id, kind, host, port, databaseName, username, enc, null, clock.millis(), timeout, null, null));
         return id;
     }
 
     public List<ConnectionDto> list() {
         return repo.findAll().stream()
             .map(c -> new ConnectionDto(c.id(), c.kind(), c.host(), c.port(),
-                c.databaseName(), c.username(), c.createdAt(), c.connectTimeout()))
+                c.databaseName(), c.username(), c.createdAt(), c.connectTimeout(),
+                c.lastTestStatus(), c.lastTestAt()))
             .toList();
     }
 
@@ -57,7 +58,8 @@ public class ConnectionService {
         byte[] enc = password != null ? vault.seal(password) : existing.passwordEnc();
         int timeout = connectTimeout != null ? connectTimeout : existing.connectTimeout();
         repo.update(new ConnectionRecord(id, kind, host, port, databaseName, username,
-            enc, existing.schemaDigest(), existing.createdAt(), timeout));
+            enc, existing.schemaDigest(), existing.createdAt(), timeout,
+            existing.lastTestStatus(), existing.lastTestAt()));
     }
 
     public boolean deleteById(String id) {
@@ -78,9 +80,11 @@ public class ConnectionService {
         try (var conn = java.sql.DriverManager.getConnection(url, c.username(), password)) {
             boolean ok = conn.isValid(timeoutSeconds);
             long ms = clock.millis() - started;
+            repo.updateTestStatus(id, ok ? "ok" : "fail", clock.millis());
             return new TestResult(ok, ms, ok ? null : "connection reported invalid");
         } catch (Throwable t) {
             long ms = clock.millis() - started;
+            repo.updateTestStatus(id, "fail", clock.millis());
             return new TestResult(false, ms, t.getClass().getSimpleName() + ": " + t.getMessage());
         }
     }

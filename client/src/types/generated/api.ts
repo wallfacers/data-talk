@@ -7,6 +7,8 @@ export interface ConnectionDto {
   username: string
   createdAt: number
   connectTimeout: number
+  lastTestStatus: string | null
+  lastTestAt: number | null
 }
 
 export interface ConnectionCreateRequest {
