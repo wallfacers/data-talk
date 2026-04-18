@@ -22,6 +22,7 @@ client/vite.config.d.ts
 client/*.tsbuildinfo
 
 # Node
+node_modules/
 client/node_modules/
 package-lock.json
 
