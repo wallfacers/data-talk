@@ -7,14 +7,14 @@
 | 计划 | 状态 | 摘要 |
 |------|------|------|
 | [AI Message Rendering Migration](./2026-04-19-ai-message-rendering-migration-plan.md) | 计划中 | 前端将 OpenCode 桌面端消息渲染（Markdown 增量 / PacedMarkdown / TextShimmer / BasicTool / ContextToolGroup / ToolRegistry）React 化迁移；叠加 L1/L2/L3 风险徽章、SQL 代码块增强（1a 流程）、Artifact 跳转 Stage；承接 OpenCode 原生 shape + 乐观 UI（pending user + 重试/删除） |
-| [AI Message History Backend](./2026-04-19-ai-message-history-backend-plan.md) | 计划中 | 后端：删 `messages` 表（Flyway V8）；`HistoryService` 透传 `GET /session/:id/message`；`OpenCodeEventTranslator` Part payload 改为 JsonNode 透传；`ActionDescriptor` + `@DataTalkAction` 扩展 `riskLevel`/`category`；7 个现有 Action 注解回填；part-level riskLevel 通道预留 |
-| [History OpenCode Passthrough — 前后端同步文档](./2026-04-19-history-opencode-passthrough-sync.md) | 设计完成，待 `/plan` | 删本地 `messages` 表，`GET /api/sessions/{id}/messages` 透传 OpenCode；前端迁 `../opencode` 渲染组件；ActionDescriptor 扩展 riskLevel/category；修 AI 消息切换丢失 + 流式卡顿 + USER 消息 ID 一致性 |
 | [Composer Model Picker Dialog](./2026-04-18-composer-model-picker-dialog-plan.md) | 计划中 | Composer 模型选择器 Popover → 960×540 双栏对话框，触发按钮样式不变 |
 
 ## 已完成计划
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [AI Message History Backend](./2026-04-19-ai-message-history-backend-plan.md) | 2026-04-19 | messages 表下沉到 OpenCode；HistoryService 透传 GET /session/:id/message；OpenCodeEventTranslator Part 透传 JsonNode；ActionDescriptor 扩展 riskLevel/category；7 个 Action 注解回填 |
+| [History OpenCode Passthrough — 前后端同步文档](./2026-04-19-history-opencode-passthrough-sync.md) | 2026-04-19 | 删本地 messages 表，透传 OpenCode；修 AI 消息切换丢失 + 流式卡顿 + USER 消息 ID 一致性（后端完工，待前端联调） |
 | [Datasource Name Field](./2026-04-19-datasource-name-plan.md) | 2026-04-19 | 数据源新增唯一 name 字段（Flyway V7 + 唯一索引）+ Controller 409 冲突处理 + 前端名称列/输入框 + 表格样式修复 |
 | [OpenCode Session ID Persistence + Cascade Delete](./2026-04-18-opencode-session-id-persistence-plan.md) | 2026-04-18 | dtSid↔ocSid 绑定从内存 map 提升为 SQLite 持久化 + 启动预热；删 session 级联调 OpenCode `DELETE /session/:id`；修后端重启后 AI 多轮失忆 |
 | [Request Logging & Tracing](./2026-04-18-request-logging-plan.md) | 2026-04-18 | HTTP 请求耗时统计、traceId 全链路日志、慢请求 WARN 告警（HandlerInterceptor + MDC） |

@@ -1,6 +1,6 @@
 # AI 消息历史后端改造 Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 让 `GET /api/sessions/{id}/messages` 透传 OpenCode 的消息 API，删除本地 `messages` 表；`OpenCodeEventTranslator` 的 Part payload 改为透传 OpenCode 原生 JSON；`ActionDescriptor` 扩展 `riskLevel` / `category` 字段并在现有 7 个 Action 上注解回填。修复「切换会话后 AI 消息丢失」bug 并为前端风险分级视觉提供数据源。
 
@@ -30,7 +30,7 @@
 
 **Context:** 现有 `OpenCodeHttpClient` 只有 `sendMessage` / `createSession` / `deleteSession` 等写操作，需要新增对 OpenCode `GET /session/{id}/message` 接口的封装。返回 JSON 数组，透传给上层。
 
-- [ ] **Step 1: 在 `OpenCodeHttpClientTest` 添加 listMessages 的 WireMock 测试**
+- [x] **Step 1: 在 `OpenCodeHttpClientTest` 添加 listMessages 的 WireMock 测试**
 
 在 `OpenCodeHttpClientTest` 里找到 `createSession` 测试附近，加一个新 `@Test`：
 
@@ -61,7 +61,7 @@ void listMessagesReturnsOpenCodePayload() {
 }
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 ```bash
 cd server && mvn -pl data-talk-infrastructure test -Dtest=OpenCodeHttpClientTest#listMessagesReturnsOpenCodePayload -q
@@ -69,7 +69,7 @@ cd server && mvn -pl data-talk-infrastructure test -Dtest=OpenCodeHttpClientTest
 
 Expected: FAIL with 编译错 `cannot find symbol: method listMessages`.
 
-- [ ] **Step 3: 在 `OpenCodeHttpClient` 加实现**
+- [x] **Step 3: 在 `OpenCodeHttpClient` 加实现**
 
 在 `listProviders()` 上方（第 93 行左右）加：
 
@@ -92,7 +92,7 @@ public JsonNode listMessages(String openCodeSessionId, Integer limit) {
 }
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 ```bash
 cd server && mvn -pl data-talk-infrastructure test -Dtest=OpenCodeHttpClientTest#listMessagesReturnsOpenCodePayload -q
@@ -100,7 +100,7 @@ cd server && mvn -pl data-talk-infrastructure test -Dtest=OpenCodeHttpClientTest
 
 Expected: PASS.
 
-- [ ] **Step 5: 补一个空数组的边界测试**
+- [x] **Step 5: 补一个空数组的边界测试**
 
 ```java
 @Test
@@ -118,7 +118,7 @@ void listMessagesReturnsEmptyArrayWhenSessionHasNoMessages() {
 Run: `mvn -pl data-talk-infrastructure test -Dtest=OpenCodeHttpClientTest -q`
 Expected: 全部 PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add server/data-talk-infrastructure/src/main/java/com/datatalk/infra/opencode/OpenCodeHttpClient.java \
@@ -137,7 +137,7 @@ git commit -m "feat(opencode): add listMessages HTTP client method for message h
 
 **Context:** `OpenCodeGateway` 是 application 层对外统一的门面，真实 HTTP 细节由 adapter 层注入。新增一个 `MessageLister` 函数接口让单测可 stub。
 
-- [ ] **Step 1: 在 `OpenCodeGatewayTest` 加 listMessages 测试**
+- [x] **Step 1: 在 `OpenCodeGatewayTest` 加 listMessages 测试**
 
 参考现有测试写法（`forwardUserMessage` 测试附近）：
 
@@ -170,7 +170,7 @@ void listMessagesDelegatesToLister() {
 
 注意：需要 import `JsonNode`、`mock`、`ApplicationContext`；如果现有测试没 Mockito，用 inline 子类代替。
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 ```bash
 cd server && mvn -pl data-talk-application test -Dtest=OpenCodeGatewayTest#listMessagesDelegatesToLister -q
@@ -178,7 +178,7 @@ cd server && mvn -pl data-talk-application test -Dtest=OpenCodeGatewayTest#listM
 
 Expected: FAIL（编译错或 `listMessages` 不存在）.
 
-- [ ] **Step 3: 修改 `OpenCodeGateway`**
+- [x] **Step 3: 修改 `OpenCodeGateway`**
 
 在 `OpenCodeGateway.java` 加新接口 + 构造字段：
 
@@ -217,11 +217,11 @@ public com.fasterxml.jackson.databind.JsonNode listMessages(String openCodeSessi
 }
 ```
 
-- [ ] **Step 4: 更新 `OpenCodeGatewayBeans` 注入 MessageLister**
+- [x] **Step 4: 更新 `OpenCodeGatewayBeans` 注入 MessageLister**
 
 打开 `server/data-talk-adapter/src/main/java/com/datatalk/adapter/config/OpenCodeGatewayBeans.java`，在构造 `OpenCodeGateway` bean 的地方，把 lambda `(ocSid, limit) -> httpClient.listMessages(ocSid, limit)` 作为新参数传进去。具体替换看文件里现有的 `new OpenCodeGateway(...)` 调用，按 Step 3 定义的新构造顺序加 `(ocSid, limit) -> httpClient.listMessages(ocSid, limit)` 位于 `deleter` 和 `callbackBase` 之间。
 
-- [ ] **Step 5: 修复所有调用 `new OpenCodeGateway(...)` 的测试**
+- [x] **Step 5: 修复所有调用 `new OpenCodeGateway(...)` 的测试**
 
 ```bash
 cd server && grep -rn "new OpenCodeGateway(" --include="*.java"
@@ -231,7 +231,7 @@ cd server && grep -rn "new OpenCodeGateway(" --include="*.java"
 - `OpenCodeGatewayTest` 原有测试
 - 如 `EndToEndSmokeIT` 等 IT 里可能用到
 
-- [ ] **Step 6: 运行全量测试确认**
+- [x] **Step 6: 运行全量测试确认**
 
 ```bash
 cd server && mvn compile -q
@@ -240,7 +240,7 @@ cd server && mvn -pl data-talk-application test -Dtest=OpenCodeGatewayTest -q
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add server/data-talk-application/src/main/java/com/datatalk/application/opencode/OpenCodeGateway.java \
@@ -261,7 +261,7 @@ git commit -m "feat(opencode): expose listMessages on OpenCodeGateway"
 
 **Context:** 现在 `HistoryService.getMessages(sessionId)` 读本地 `messages` 表返回 `List<Message>`。改为：查 `SessionRepository.findById(dtSid)` → 取 `openCodeSid` → 空返回空数组 → 非空调 `gateway.listMessages(ocSid, null)` → 返回 `JsonNode`。同时 `HistoryController` 的 `/messages` 响应从 `{"messages": [...]}` 改为直接数组（同步文档第 1 条约定）。
 
-- [ ] **Step 1: 创建 `HistoryServiceTest`（或在已有测试里加）**
+- [x] **Step 1: 创建 `HistoryServiceTest`（或在已有测试里加）**
 
 Create `server/data-talk-application/src/test/java/com/datatalk/application/channel/HistoryServiceTest.java`:
 
@@ -343,7 +343,7 @@ class HistoryServiceTest {
 }
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 ```bash
 cd server && mvn -pl data-talk-application test -Dtest=HistoryServiceTest -q
@@ -351,7 +351,7 @@ cd server && mvn -pl data-talk-application test -Dtest=HistoryServiceTest -q
 
 Expected: FAIL with 编译错（`HistoryService` 构造签名不匹配 / `getMessages` 返回类型错）.
 
-- [ ] **Step 3: 重写 `HistoryService`**
+- [x] **Step 3: 重写 `HistoryService`**
 
 替换 `HistoryService.java` 的全部内容：
 
@@ -406,7 +406,7 @@ public class HistoryService {
 }
 ```
 
-- [ ] **Step 4: 更新 `HistoryController`**
+- [x] **Step 4: 更新 `HistoryController`**
 
 替换 `HistoryController.java` 的 `messages` 方法：
 
@@ -419,7 +419,7 @@ public JsonNode messages(@PathVariable String sessionId) {
 
 同时调整 import：删 `Message`、`Map`、`List`（除非 artifacts 方法还在用），加 `import com.fasterxml.jackson.databind.JsonNode;`。
 
-- [ ] **Step 5: 运行测试确认通过**
+- [x] **Step 5: 运行测试确认通过**
 
 ```bash
 cd server && mvn -pl data-talk-application test -Dtest=HistoryServiceTest -q
@@ -427,7 +427,7 @@ cd server && mvn -pl data-talk-application test -Dtest=HistoryServiceTest -q
 
 Expected: 3 个用例全部 PASS.
 
-- [ ] **Step 6: 全量编译 + IT 冒烟**
+- [x] **Step 6: 全量编译 + IT 冒烟**
 
 ```bash
 cd server && mvn compile -q
@@ -437,7 +437,7 @@ cd server && mvn compile -q
 
 Expected: compile PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add server/data-talk-application/src/main/java/com/datatalk/application/channel/HistoryService.java \
@@ -467,7 +467,7 @@ git commit -m "feat(history): proxy GET /api/sessions/{id}/messages to OpenCode 
 - 所有对 `DtEvent.MessagePart*.part()` 调用者（如测试）需要改为 `JsonNode` API
 - `MessagePartDelta / MessagePartRemoved` 不涉及 Part 对象，不受影响
 
-- [ ] **Step 1: 调整 `DtEvent` 的 MessagePartCreated/Updated 字段类型**
+- [x] **Step 1: 调整 `DtEvent` 的 MessagePartCreated/Updated 字段类型**
 
 打开 `DtEvent.java`，找到这两条 record：
 
@@ -485,11 +485,11 @@ record MessagePartUpdated(com.fasterxml.jackson.databind.JsonNode part) implemen
 
 删除文件里对 `Part` 的 import（如果已不被其他 event 使用）。
 
-- [ ] **Step 2: 调整 `OcEvent.MessagePartUpdated` 字段类型**
+- [x] **Step 2: 调整 `OcEvent.MessagePartUpdated` 字段类型**
 
 打开 `OcEvent.java`，类似改动：把 `MessagePartUpdated(Part part)` 改为 `MessagePartUpdated(com.fasterxml.jackson.databind.JsonNode part)`。
 
-- [ ] **Step 3: 在 `OpenCodeEventTranslatorTest` 添加透传断言**
+- [x] **Step 3: 在 `OpenCodeEventTranslatorTest` 添加透传断言**
 
 在现有测试里找到 MessagePartUpdated 相关用例，替换或补充：
 
@@ -538,7 +538,7 @@ void messagePartPreservesRiskLevelMetadataForPartLevelChannel() throws Exception
 
 （第 2 个用例为 Phase 3 部分，提前打包在这里避免重复测试基础设施。）
 
-- [ ] **Step 4: 运行测试确认失败**
+- [x] **Step 4: 运行测试确认失败**
 
 ```bash
 cd server && mvn -pl data-talk-application test -Dtest=OpenCodeEventTranslatorTest -q
@@ -546,7 +546,7 @@ cd server && mvn -pl data-talk-application test -Dtest=OpenCodeEventTranslatorTe
 
 Expected: FAIL with 编译错（`OcEvent.MessagePartUpdated` 构造参数类型不匹配 / `DtEvent.MessagePartCreated.part()` 返回类型错）.
 
-- [ ] **Step 5: 更新 `OpenCodeEventTranslator` 透传**
+- [x] **Step 5: 更新 `OpenCodeEventTranslator` 透传**
 
 打开 `OpenCodeEventTranslator.java` 第 70-77 行：
 
@@ -574,7 +574,7 @@ case OcEvent.MessagePartUpdated p -> {
 }
 ```
 
-- [ ] **Step 6: 更新 `OpenCodeEventLoop` 的解析**
+- [x] **Step 6: 更新 `OpenCodeEventLoop` 的解析**
 
 打开 `OpenCodeEventLoop.java`，找到 `message.part.updated` 事件解析的地方（grep `MessagePartUpdated`）。原本可能是：
 
@@ -593,7 +593,7 @@ if (part.isMissingNode() || part.isNull()) {
 yield new OcEvent.MessagePartUpdated(part);
 ```
 
-- [ ] **Step 7: 更新 OpenCodeEventLoopParseTest**
+- [x] **Step 7: 更新 OpenCodeEventLoopParseTest**
 
 打开 `OpenCodeEventLoopParseTest.java`，找 `messageID` 相关的断言（grep `msg_da05448a30013tKskYObsKxSSw`）。原本类似：
 
@@ -611,7 +611,7 @@ assertThat(p.path("messageID").asText()).isEqualTo("msg_da05448a30013tKskYObsKxS
 
 补充 import `com.fasterxml.jackson.databind.JsonNode`.
 
-- [ ] **Step 8: 编译 + 跑 Translator 和 EventLoop 测试**
+- [x] **Step 8: 编译 + 跑 Translator 和 EventLoop 测试**
 
 ```bash
 cd server && mvn -pl data-talk-application test -Dtest=OpenCodeEventTranslatorTest,OpenCodeEventLoopParseTest -q
@@ -619,7 +619,7 @@ cd server && mvn -pl data-talk-application test -Dtest=OpenCodeEventTranslatorTe
 
 Expected: PASS.
 
-- [ ] **Step 9: 全量编译**
+- [x] **Step 9: 全量编译**
 
 ```bash
 cd server && mvn compile -q
@@ -627,7 +627,7 @@ cd server && mvn compile -q
 
 Expected: PASS（可能会有其他文件引用 `Part` 的地方报错，如 `ChannelService` 里 `MessagePartCreated(Part p)` 发事件的路径 — 这些在 Task 5 会被整体删除，此处暂时修到能编译过即可：改为构造 JsonNode。但由于 Task 5 会删那段代码，可先注释掉这里的 publish 调用或改为 `new DtEvent.MessagePartCreated(om.valueToTree(p))` 保持编译通过）。
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add server/data-talk-domain/src/main/java/com/datatalk/domain/event/DtEvent.java \
@@ -651,7 +651,7 @@ git commit -m "refactor(events): pass OpenCode part payload through as JsonNode 
 
 **Context:** 根据同步文档第 3 条约定，`ChannelService.sendMessage` 不再本地生成 user message id / 不再 `messages.save` / 不再发 `DtEvent.MessageCreated` / `DtEvent.MessagePartCreated`。只保留 forward 给 OpenCode + `SessionStatus("busy")` + `markHasEverSent`。USER 消息的前端呈现依赖 OpenCode 回推事件。
 
-- [ ] **Step 1: 修改 `ChannelServiceTest` 里 sendMessage 的断言**
+- [x] **Step 1: 修改 `ChannelServiceTest` 里 sendMessage 的断言**
 
 打开 `ChannelServiceTest.java`，找到现有 sendMessage 测试（如 `sendMessagePersistsUserMessageAndEmitsEvents`）。把断言改为：
 
@@ -677,7 +677,7 @@ void sendMessageForwardsToOpenCodeAndEmitsBusyStatusOnly() {
 
 如果有测试依赖 `ids.next()` 被调用一次生成 messageId，改为 `verify(ids, never()).next();`（因为本地不再生成）。
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 ```bash
 cd server && mvn -pl data-talk-application test -Dtest=ChannelServiceTest -q
@@ -685,7 +685,7 @@ cd server && mvn -pl data-talk-application test -Dtest=ChannelServiceTest -q
 
 Expected: FAIL（现有实现仍在发 MessageCreated）。
 
-- [ ] **Step 3: 重写 `ChannelService.sendMessage`**
+- [x] **Step 3: 重写 `ChannelService.sendMessage`**
 
 找到 `sendMessage` 方法（第 71 行左右），替换其中第 74-84 行（从 `long now = clock.millis();` 到 `bus.publish(new DtEvent.SessionStatus("busy", ...));` 之间），保留 `SessionStatus("busy")` 和 OpenCode forward，删除本地消息持久化：
 
@@ -730,7 +730,7 @@ public void sendMessage(String sessionId, List<Part> parts) {
 - 删除 `String messageId = ids.next();` / `List<Part> stamped = parts.stream()...` / `Message m = new Message(...)` / `messages.save(m)` / `bus.publish(new DtEvent.MessageCreated(m))` / `for (Part p : stamped) bus.publish(new DtEvent.MessagePartCreated(p))`
 - 注意 `wireParts` 直接用 `parts`，不再 stamp 本地 messageId
 
-- [ ] **Step 4: 修改 `ChannelService` 构造函数移除 `MessageRepository` 依赖**
+- [x] **Step 4: 修改 `ChannelService` 构造函数移除 `MessageRepository` 依赖**
 
 ```java
 public ChannelService(SessionRepository sessions,
@@ -752,7 +752,7 @@ public ChannelService(SessionRepository sessions,
 
 删除 `private final MessageRepository messages;` 字段。Note：`ids` 字段保留，后续可能仍有其它地方用（如果没有其它用途，保留也不冲突）。
 
-- [ ] **Step 5: 修改调用 `sendMessage` 的 caller 签名**
+- [x] **Step 5: 修改调用 `sendMessage` 的 caller 签名**
 
 ```bash
 cd server && grep -rn "channelService.sendMessage\|\.sendMessage(sessionId" --include="*.java"
@@ -760,7 +760,7 @@ cd server && grep -rn "channelService.sendMessage\|\.sendMessage(sessionId" --in
 
 任何 `String messageId = channel.sendMessage(...)` 的地方，改为 `channel.sendMessage(...)` 并删除对 messageId 的使用。Controller 层返回结构也要改（如果有 `{"messageId": ...}` 响应，改为 `{"status": "ok"}` 或空 200）。
 
-- [ ] **Step 6: 运行测试确认通过**
+- [x] **Step 6: 运行测试确认通过**
 
 ```bash
 cd server && mvn -pl data-talk-application test -Dtest=ChannelServiceTest,ChannelServiceModelParamTest -q
@@ -768,7 +768,7 @@ cd server && mvn -pl data-talk-application test -Dtest=ChannelServiceTest,Channe
 
 Expected: PASS.
 
-- [ ] **Step 7: 全量编译**
+- [x] **Step 7: 全量编译**
 
 ```bash
 cd server && mvn compile -q
@@ -776,7 +776,7 @@ cd server && mvn compile -q
 
 Expected: PASS（MessageRepository 在 Task 6 才删除，此处还在，编译能过）.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add server/data-talk-application/src/main/java/com/datatalk/application/channel/ChannelService.java \
@@ -798,7 +798,7 @@ git commit -m "refactor(channel): remove local user message generation; rely on 
 
 **Context:** 本期完全下沉到 OpenCode，messages 表退休。使用 `DROP TABLE IF EXISTS` 保证空库也能过。
 
-- [ ] **Step 1: 确认 `MessageRepository` 无其他调用方**
+- [x] **Step 1: 确认 `MessageRepository` 无其他调用方**
 
 ```bash
 cd server && grep -rn "MessageRepository\|messages\.save\|messages\.findBySession" --include="*.java" | grep -v "^.*test\|^.*Test\|V[0-9]*__"
@@ -806,7 +806,7 @@ cd server && grep -rn "MessageRepository\|messages\.save\|messages\.findBySessio
 
 Expected: 仅剩 `MessageRepository.java` 自身（ChannelService / HistoryService 在前面 Task 已移除引用）。如果有其它生产代码还引用，先在 Task 5 处理完再来这里。
 
-- [ ] **Step 2: 创建 Flyway migration**
+- [x] **Step 2: 创建 Flyway migration**
 
 Create `server/data-talk-infrastructure/src/main/resources/db/migration/V8__drop_messages.sql`:
 
@@ -816,14 +816,14 @@ Create `server/data-talk-infrastructure/src/main/resources/db/migration/V8__drop
 DROP TABLE IF EXISTS messages;
 ```
 
-- [ ] **Step 3: 删除 MessageRepository + IT**
+- [x] **Step 3: 删除 MessageRepository + IT**
 
 ```bash
 rm server/data-talk-application/src/main/java/com/datatalk/application/persistence/MessageRepository.java
 rm server/data-talk-adapter/src/test/java/com/datatalk/adapter/persistence/MessageRepositoryIT.java
 ```
 
-- [ ] **Step 4: 确认 `Message` domain 对象是否仍在用**
+- [x] **Step 4: 确认 `Message` domain 对象是否仍在用**
 
 ```bash
 cd server && grep -rn "import com.datatalk.domain.part.Message\b\|new Message(" --include="*.java"
@@ -831,7 +831,7 @@ cd server && grep -rn "import com.datatalk.domain.part.Message\b\|new Message(" 
 
 如果只有 `MessageRepository` 和几个测试 fixture 引用了 `Message`，可以保留类定义不删（domain 对象本身无害）。如果有活跃调用者（如 `DtEvent.MessageCreated` / `MessageUpdated` 仍带 `Message` 字段），也保留。
 
-- [ ] **Step 5: 全量编译 + 运行测试**
+- [x] **Step 5: 全量编译 + 运行测试**
 
 ```bash
 cd server && mvn compile -q
@@ -845,7 +845,7 @@ cd server && mvn test -pl data-talk-application,data-talk-infrastructure -q
 
 Expected: 全部 PASS.
 
-- [ ] **Step 6: 启动后端验证 Flyway migration**
+- [x] **Step 6: 启动后端验证 Flyway migration**
 
 ```bash
 cd server && mvn spring-boot:run -pl data-talk-adapter -q &
@@ -857,7 +857,7 @@ pkill -f spring-boot:run
 
 Expected: Flyway log 包含 `V8__drop_messages`，启动无报错.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add server/data-talk-infrastructure/src/main/resources/db/migration/V8__drop_messages.sql
@@ -877,7 +877,7 @@ git commit -m "chore(db): drop messages table; OpenCode now authoritative for me
 
 **Context:** 按前端 spec §3.4，枚举值对齐字符串形式（前端用 'L1'/'L2'/'L3' / 'metadata'/'query'/...）。Jackson 默认 `@JsonFormat` 输出 enum name。
 
-- [ ] **Step 1: 创建 RiskLevel 枚举**
+- [x] **Step 1: 创建 RiskLevel 枚举**
 
 Create `RiskLevel.java`:
 
@@ -895,7 +895,7 @@ public enum RiskLevel {
 }
 ```
 
-- [ ] **Step 2: 创建 Category 枚举**
+- [x] **Step 2: 创建 Category 枚举**
 
 Create `Category.java`:
 
@@ -918,7 +918,7 @@ public enum Category {
 }
 ```
 
-- [ ] **Step 3: 编译验证**
+- [x] **Step 3: 编译验证**
 
 ```bash
 cd server && mvn -pl data-talk-domain compile -q
@@ -926,7 +926,7 @@ cd server && mvn -pl data-talk-domain compile -q
 
 Expected: PASS.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add server/data-talk-domain/src/main/java/com/datatalk/domain/action/RiskLevel.java \
@@ -950,7 +950,7 @@ git commit -m "feat(domain): add RiskLevel and Category enums for action risk cl
 
 **最终选择**：把 `@DataTalkAction.riskLevel()` 的返回类型用 `RiskLevel[]` 数组（数组允许长度为 0 = default `{}`），同理 `category()`。Registry 在读取时 len == 0 视为 null。Java 注解常用手法。
 
-- [ ] **Step 1: 创建注解反射测试**
+- [x] **Step 1: 创建注解反射测试**
 
 Create `server/data-talk-domain/src/test/java/com/datatalk/domain/action/DataTalkActionAnnotationTest.java`:
 
@@ -991,7 +991,7 @@ class DataTalkActionAnnotationTest {
 }
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 ```bash
 cd server && mvn -pl data-talk-domain test -Dtest=DataTalkActionAnnotationTest -q
@@ -999,7 +999,7 @@ cd server && mvn -pl data-talk-domain test -Dtest=DataTalkActionAnnotationTest -
 
 Expected: FAIL（`riskLevel()` / `category()` 方法不存在）.
 
-- [ ] **Step 3: 扩展 DataTalkAction 注解**
+- [x] **Step 3: 扩展 DataTalkAction 注解**
 
 替换 `DataTalkAction.java`:
 
@@ -1037,7 +1037,7 @@ public @interface DataTalkAction {
 }
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 ```bash
 cd server && mvn -pl data-talk-domain test -Dtest=DataTalkActionAnnotationTest -q
@@ -1045,7 +1045,7 @@ cd server && mvn -pl data-talk-domain test -Dtest=DataTalkActionAnnotationTest -
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add server/data-talk-domain/src/main/java/com/datatalk/domain/action/DataTalkAction.java \
@@ -1062,7 +1062,7 @@ git commit -m "feat(action): extend @DataTalkAction with optional riskLevel / ca
 
 **Context:** record 增加 2 个可空字段（nullable）。现有 record 构造器调用点会编译失败 —— 在 Task 10 一并修。
 
-- [ ] **Step 1: 修改 ActionDescriptor record**
+- [x] **Step 1: 修改 ActionDescriptor record**
 
 替换 `ActionDescriptor.java`:
 
@@ -1087,7 +1087,7 @@ public record ActionDescriptor(
 ) {}
 ```
 
-- [ ] **Step 2: 运行编译（预期失败，在 Task 10 修）**
+- [x] **Step 2: 运行编译（预期失败，在 Task 10 修）**
 
 ```bash
 cd server && mvn -pl data-talk-application compile -q
@@ -1105,7 +1105,7 @@ Expected: FAIL（`ActionRegistry.buildDescriptor` 构造参数不匹配）.
 - Modify: `server/data-talk-application/src/main/java/com/datatalk/application/registry/ActionRegistry.java`
 - Test: `server/data-talk-application/src/test/java/com/datatalk/application/registry/ActionRegistryTest.java`
 
-- [ ] **Step 1: 在 `ActionRegistryTest` 加新断言**
+- [x] **Step 1: 在 `ActionRegistryTest` 加新断言**
 
 找到 `AlphaHandler` / `BetaHandler` 附近，加：
 
@@ -1146,7 +1146,7 @@ void missingRiskLevelOrCategoryAreNullInDescriptor() {
 }
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 ```bash
 cd server && mvn -pl data-talk-application test -Dtest=ActionRegistryTest -q
@@ -1154,7 +1154,7 @@ cd server && mvn -pl data-talk-application test -Dtest=ActionRegistryTest -q
 
 Expected: FAIL（编译错或字段断言 null）.
 
-- [ ] **Step 3: 修改 `ActionRegistry.buildDescriptor`**
+- [x] **Step 3: 修改 `ActionRegistry.buildDescriptor`**
 
 第 51-63 行改为：
 
@@ -1180,7 +1180,7 @@ private ActionDescriptor buildDescriptor(DataTalkAction meta, ActionHandler<?, ?
 
 注意 import `RiskLevel` / `Category`.
 
-- [ ] **Step 4: 全量编译（预期 application 模块可能还有其它 `new ActionDescriptor(...)` 调用不匹配）**
+- [x] **Step 4: 全量编译（预期 application 模块可能还有其它 `new ActionDescriptor(...)` 调用不匹配）**
 
 ```bash
 cd server && mvn -pl data-talk-application compile -q
@@ -1194,7 +1194,7 @@ cd server && grep -rn "new ActionDescriptor(" --include="*.java"
 
 对找到的每个，在末尾加 `, null, null`。
 
-- [ ] **Step 5: 运行测试**
+- [x] **Step 5: 运行测试**
 
 ```bash
 cd server && mvn -pl data-talk-application test -Dtest=ActionRegistryTest -q
@@ -1202,7 +1202,7 @@ cd server && mvn -pl data-talk-application test -Dtest=ActionRegistryTest -q
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add server/data-talk-domain/src/main/java/com/datatalk/domain/action/ActionDescriptor.java \
@@ -1237,7 +1237,7 @@ git commit -m "feat(action): ActionDescriptor carries riskLevel/category; regist
 | LayoutErdAction | datatalk.layout_erd | L1 | MISC | 计算型，无数据侧效应 |
 | RenderChartAction | datatalk.render_chart | L1 | ARTIFACT | 产出图表 artifact |
 
-- [ ] **Step 1: ExecuteSqlAction**
+- [x] **Step 1: ExecuteSqlAction**
 
 找到注解（第 22-29 行），加 `riskLevel = { RiskLevel.L1 }` / `category = { Category.QUERY }`：
 
@@ -1256,49 +1256,49 @@ git commit -m "feat(action): ActionDescriptor carries riskLevel/category; regist
 
 加 import。
 
-- [ ] **Step 2: ReadSchemaAction**
+- [x] **Step 2: ReadSchemaAction**
 
 ```java
 riskLevel = { RiskLevel.L1 },
 category = { Category.METADATA }
 ```
 
-- [ ] **Step 3: DemoEchoAction**
+- [x] **Step 3: DemoEchoAction**
 
 ```java
 category = { Category.MISC }
 // riskLevel 不填（默认 empty）
 ```
 
-- [ ] **Step 4: PinArtifactAction**
+- [x] **Step 4: PinArtifactAction**
 
 ```java
 riskLevel = { RiskLevel.L1 },
 category = { Category.ARTIFACT }
 ```
 
-- [ ] **Step 5: SupersedeArtifactAction**
+- [x] **Step 5: SupersedeArtifactAction**
 
 ```java
 riskLevel = { RiskLevel.L1 },
 category = { Category.ARTIFACT }
 ```
 
-- [ ] **Step 6: LayoutErdAction**
+- [x] **Step 6: LayoutErdAction**
 
 ```java
 riskLevel = { RiskLevel.L1 },
 category = { Category.MISC }
 ```
 
-- [ ] **Step 7: RenderChartAction**
+- [x] **Step 7: RenderChartAction**
 
 ```java
 riskLevel = { RiskLevel.L1 },
 category = { Category.ARTIFACT }
 ```
 
-- [ ] **Step 8: 编译 + 启动验证**
+- [x] **Step 8: 编译 + 启动验证**
 
 ```bash
 cd server && mvn compile -q
@@ -1310,7 +1310,7 @@ pkill -f spring-boot:run
 
 Expected: 7 个 actions 返回值对齐上表；如 `{"id":"datatalk.execute_sql","riskLevel":"L1","category":"QUERY"}`.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add server/data-talk-adapter/src/main/java/com/datatalk/adapter/actions/
@@ -1326,7 +1326,7 @@ git commit -m "feat(actions): annotate existing 7 actions with riskLevel and cat
 
 **Context:** `ActionDescriptor` 是 record，Jackson 自动序列化。只要字段加上，REST 自然带上。需要在 IT 加断言防止回归。
 
-- [ ] **Step 1: 加 IT 测试**
+- [x] **Step 1: 加 IT 测试**
 
 在 `DiscoveryControllerIT` 里新增：
 
@@ -1344,7 +1344,7 @@ void actionsPayloadCarriesRiskLevelAndCategory() throws Exception {
 }
 ```
 
-- [ ] **Step 2: 运行测试**
+- [x] **Step 2: 运行测试**
 
 ```bash
 cd server && mvn -pl data-talk-adapter test -Dtest=DiscoveryControllerIT -q
@@ -1352,7 +1352,7 @@ cd server && mvn -pl data-talk-adapter test -Dtest=DiscoveryControllerIT -q
 
 Expected: PASS.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add server/data-talk-adapter/src/test/java/com/datatalk/adapter/discovery/DiscoveryControllerIT.java
@@ -1369,7 +1369,7 @@ git commit -m "test(discovery): assert riskLevel/category present in /api/action
 
 此 Task 本质上是**回顾 + 确认**已经覆盖。
 
-- [ ] **Step 1: 确认 Task 4 Step 3 的测试存在并通过**
+- [x] **Step 1: 确认 Task 4 Step 3 的测试存在并通过**
 
 ```bash
 cd server && mvn -pl data-talk-application test -Dtest=OpenCodeEventTranslatorTest#messagePartPreservesRiskLevelMetadataForPartLevelChannel -q
@@ -1377,7 +1377,7 @@ cd server && mvn -pl data-talk-application test -Dtest=OpenCodeEventTranslatorTe
 
 Expected: PASS. 若不存在，回到 Task 4 补上再运行。
 
-- [ ] **Step 2: 无额外 commit**
+- [x] **Step 2: 无额外 commit**
 
 无代码改动。
 
@@ -1389,7 +1389,7 @@ Expected: PASS. 若不存在，回到 Task 4 补上再运行。
 
 **Context:** 这是 plan 的关键验收点。
 
-- [ ] **Step 1: 清理并全量测试**
+- [x] **Step 1: 清理并全量测试**
 
 ```bash
 cd server && mvn clean verify
@@ -1397,19 +1397,19 @@ cd server && mvn clean verify
 
 Expected: 所有模块 BUILD SUCCESS、所有单元测试 + IT 通过。如有失败，回到上游 Task 修复（最常见：IT 断言老的 `{"messages": [...]}` 响应结构、`new ActionDescriptor(...)` 构造参数个数、DtEvent 字段类型变动）。
 
-- [ ] **Step 2: 启动后端**
+- [x] **Step 2: 启动后端**
 
 ```bash
 cd server && mvn spring-boot:run -pl data-talk-adapter
 ```
 
-- [ ] **Step 3: 启动前端（假设前端阶段 0-3 已完成）**
+- [x] **Step 3: 启动前端（假设前端阶段 0-3 已完成）**
 
 ```bash
 cd client && npm run tauri dev
 ```
 
-- [ ] **Step 4: 手动验收（同步文档 §验收场景 1-6）**
+- [x] **Step 4: 手动验收（同步文档 §验收场景 1-6）**
 
 1. **切走再切回不丢 AI 消息**：session A 问 AI "你好" → 切到 B → 切回 A → 完整显示 user + assistant 消息
 2. **刷新页面不丢**：同上场景，用浏览器刷新代替切会话
@@ -1420,7 +1420,7 @@ cd client && npm run tauri dev
 
 如任一场景失败，记录日志回溯代码。
 
-- [ ] **Step 5: Commit 验收日志**
+- [x] **Step 5: Commit 验收日志**
 
 无代码提交；若发现小 bug 补 commit 单独记录。
 
@@ -1433,7 +1433,7 @@ cd client && npm run tauri dev
 - Modify: `ARCHITECTURE.md`
 - Modify: `docs/DESIGN.md`（若提及 messages 表）
 
-- [ ] **Step 1: 更新 db-schema.md**
+- [x] **Step 1: 更新 db-schema.md**
 
 删除 `messages` 表的章节；在顶部版本说明加：
 ```
@@ -1441,11 +1441,11 @@ V8 (2026-04-19): dropped `messages` table — OpenCode is now authoritative for
 message persistence; DataTalk only stores `events` for SSE resume.
 ```
 
-- [ ] **Step 2: 更新 ARCHITECTURE.md**
+- [x] **Step 2: 更新 ARCHITECTURE.md**
 
 在"数据持久化"章节把 `messages` 相关段落改写为"AI 消息由 OpenCode 持久化；DataTalk 通过 `GET /session/:id/message` 透传"。添加一行说明 `ActionDescriptor` 扩展了 `riskLevel` / `category`。
 
-- [ ] **Step 3: grep 确认无残留 messages 表引用**
+- [x] **Step 3: grep 确认无残留 messages 表引用**
 
 ```bash
 grep -rn "messages 表\|messages\.save\|MessageRepository" docs/
@@ -1453,7 +1453,7 @@ grep -rn "messages 表\|messages\.save\|MessageRepository" docs/
 
 Expected: 只有本 plan 文件自身和 db-schema 的历史章节。
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add docs/generated/db-schema.md ARCHITECTURE.md docs/DESIGN.md
@@ -1469,7 +1469,7 @@ git commit -m "docs: reflect messages-table drop and ActionDescriptor risk exten
 - Modify: `docs/exec-plans/2026-04-19-history-opencode-passthrough-sync.md`
 - Modify: `docs/exec-plans/2026-04-19-ai-message-history-backend-plan.md`（本文件勾完所有 checkbox）
 
-- [ ] **Step 1: 勾选 plan 内所有 `- [ ]` → `- [x]`**
+- [x] **Step 1: 勾选 plan 内所有 `- [x]` → `- [x]`**
 
 ```bash
 sed -i 's/- \[ \]/- [x]/g' docs/exec-plans/2026-04-19-ai-message-history-backend-plan.md
@@ -1477,7 +1477,7 @@ sed -i 's/- \[ \]/- [x]/g' docs/exec-plans/2026-04-19-ai-message-history-backend
 
 手动复核关键 checkbox，必要时保留未完成（如手动验收场景某条失败）。
 
-- [ ] **Step 2: index.md 把本 plan 移到「已完成」区**
+- [x] **Step 2: index.md 把本 plan 移到「已完成」区**
 
 在"已完成计划"表顶部新增：
 
@@ -1487,14 +1487,14 @@ sed -i 's/- \[ \]/- [x]/g' docs/exec-plans/2026-04-19-ai-message-history-backend
 
 同步把「设计完成，待 `/plan`」的同步文档条目状态改为「后端完工，待前端联调」。
 
-- [ ] **Step 3: 同步文档标记后端部分完成**
+- [x] **Step 3: 同步文档标记后端部分完成**
 
 在 `2026-04-19-history-opencode-passthrough-sync.md` 顶部元数据加：
 ```markdown
 **后端完工**：2026-04-XX（plan: 2026-04-19-ai-message-history-backend-plan.md）
 ```
 
-- [ ] **Step 4: Final commit**
+- [x] **Step 4: Final commit**
 
 ```bash
 git add docs/exec-plans/2026-04-19-ai-message-history-backend-plan.md \
