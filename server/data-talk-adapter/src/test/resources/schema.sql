@@ -14,6 +14,7 @@ CREATE TABLE connections (
   database_name TEXT, username TEXT NOT NULL, password_enc BLOB NOT NULL,
   schema_digest TEXT, created_at INTEGER NOT NULL, connect_timeout INTEGER NOT NULL DEFAULT 3000
 );
+CREATE UNIQUE INDEX idx_connections_name ON connections(name);
 CREATE TABLE sessions (
   id TEXT PRIMARY KEY, connection_id TEXT, title TEXT NOT NULL,
   has_ever_sent INTEGER NOT NULL DEFAULT 0, opencode_sid TEXT,
