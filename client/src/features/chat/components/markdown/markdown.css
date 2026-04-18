@@ -1,0 +1,19 @@
+/* markdown.css */
+[data-component="markdown"] { line-height: 1.5; word-wrap: break-word; }
+[data-component="markdown"] h1,
+[data-component="markdown"] h2,
+[data-component="markdown"] h3 { margin: 0.75em 0 0.5em; font-weight: 600; }
+[data-component="markdown"] p { margin: 0.5em 0; }
+[data-component="markdown"] pre { background: var(--muted, #f5f5f5); padding: 12px; border-radius: 6px; overflow-x: auto; }
+[data-component="markdown"] code { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.9em; }
+[data-component="markdown"] :not(pre) > code { background: var(--muted, #f5f5f5); padding: 1px 4px; border-radius: 3px; }
+
+[data-component="markdown-code"] { position: relative; }
+[data-slot="markdown-copy-button"] {
+  position: absolute; top: 6px; right: 6px;
+  padding: 2px 8px; font-size: 12px; border: 1px solid var(--border, #ddd);
+  background: var(--background, #fff); border-radius: 4px; cursor: pointer;
+  opacity: 0; transition: opacity 150ms;
+}
+[data-component="markdown-code"]:hover [data-slot="markdown-copy-button"] { opacity: 1; }
+[data-slot="markdown-copy-button"][data-copied="true"]::after { content: " ✓"; }
