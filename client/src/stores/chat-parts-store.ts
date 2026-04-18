@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { Part, MessageInfo } from '@/services/channel/types'
+import { generateUuid } from '@/lib/uuid'
 
 type ChatPartsState = {
   partsBySession: Map<string, Map<string, Part[]>>
@@ -14,6 +15,11 @@ type ChatPartsState = {
   clearSession: (sessionId: string) => void
   getParts: (sessionId: string) => Part[]
   findPart: (sessionId: string, partId: string) => Part | null
+
+  upsertPendingUser: (sessionId: string, text: string) => string
+  promotePendingUser: (sessionId: string, pendingId: string, realId: string) => void
+  markPendingUserFailed: (sessionId: string, pendingId: string, reason: string) => void
+  removePendingUser: (sessionId: string, pendingId: string) => void
 }
 
 export const useChatPartsStore = create<ChatPartsState>((set, get) => ({
@@ -110,4 +116,78 @@ export const useChatPartsStore = create<ChatPartsState>((set, get) => ({
     const list = byMessage.get(entry.messageId)
     return list?.[entry.idx] ?? null
   },
+
+  upsertPendingUser: (sessionId, text) => {
+    const pendingId = `pending_${generateUuid()}`
+    const partId = `pending_prt_${generateUuid()}`
+    get().upsertInfo(sessionId, {
+      id: pendingId,
+      role: 'user',
+      sessionID: sessionId,
+      time: { created: Date.now() },
+      __pending: true,
+    })
+    get().upsertPart(sessionId, {
+      type: 'text',
+      id: partId,
+      sessionID: sessionId,
+      messageID: pendingId,
+      text,
+      metadata: {},
+    } as Part)
+    return pendingId
+  },
+
+  promotePendingUser: (sessionId, pendingId, realId) => set((s) => {
+    const byInfo = new Map(s.infoBySession.get(sessionId) ?? new Map<string, MessageInfo>())
+    const pendingInfo = byInfo.get(pendingId)
+    if (!pendingInfo) return {}
+
+    const realInfo: MessageInfo = { ...pendingInfo, id: realId }
+    delete realInfo.__pending
+    delete realInfo.__failed
+    delete realInfo.__failReason
+    delete realInfo.__retrying
+    byInfo.delete(pendingId)
+    byInfo.set(realId, realInfo)
+
+    const byMsg = new Map(s.partsBySession.get(sessionId) ?? new Map<string, Part[]>())
+    const pendingParts = byMsg.get(pendingId) ?? []
+    byMsg.delete(pendingId)
+    byMsg.set(realId, pendingParts.map((p) => ({ ...p, messageID: realId })))
+
+    const index = new Map(s.partIndexBySession.get(sessionId) ?? new Map())
+    for (const [pid, entry] of index.entries()) {
+      if (entry.messageId === pendingId) index.set(pid, { ...entry, messageId: realId })
+    }
+
+    const infoBySession = new Map(s.infoBySession); infoBySession.set(sessionId, byInfo)
+    const partsBySession = new Map(s.partsBySession); partsBySession.set(sessionId, byMsg)
+    const partIndexBySession = new Map(s.partIndexBySession); partIndexBySession.set(sessionId, index)
+    return { infoBySession, partsBySession, partIndexBySession }
+  }),
+
+  markPendingUserFailed: (sessionId, pendingId, reason) => set((s) => {
+    const byInfo = new Map(s.infoBySession.get(sessionId) ?? new Map<string, MessageInfo>())
+    const info = byInfo.get(pendingId)
+    if (!info) return {}
+    byInfo.set(pendingId, { ...info, __failed: true, __failReason: reason, __retrying: false })
+    const infoBySession = new Map(s.infoBySession); infoBySession.set(sessionId, byInfo)
+    return { infoBySession }
+  }),
+
+  removePendingUser: (sessionId, pendingId) => set((s) => {
+    const byInfo = new Map(s.infoBySession.get(sessionId) ?? new Map<string, MessageInfo>())
+    byInfo.delete(pendingId)
+    const byMsg = new Map(s.partsBySession.get(sessionId) ?? new Map<string, Part[]>())
+    byMsg.delete(pendingId)
+    const index = new Map(s.partIndexBySession.get(sessionId) ?? new Map())
+    for (const [pid, entry] of Array.from(index.entries())) {
+      if (entry.messageId === pendingId) index.delete(pid)
+    }
+    const infoBySession = new Map(s.infoBySession); infoBySession.set(sessionId, byInfo)
+    const partsBySession = new Map(s.partsBySession); partsBySession.set(sessionId, byMsg)
+    const partIndexBySession = new Map(s.partIndexBySession); partIndexBySession.set(sessionId, index)
+    return { infoBySession, partsBySession, partIndexBySession }
+  }),
 }))

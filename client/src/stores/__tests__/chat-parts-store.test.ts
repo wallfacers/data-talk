@@ -56,4 +56,48 @@ describe('chat-parts-store', () => {
     expect(renderSpy).toHaveBeenCalledTimes(1)
     unsub()
   })
+
+  it('upsertPendingUser writes pending info + text part, returns pendingId', () => {
+    const store = useChatPartsStore.getState()
+    const pendingId = store.upsertPendingUser('ses_a', 'hello')
+    expect(pendingId).toMatch(/^pending_/)
+
+    const info = useChatPartsStore.getState().infoBySession.get('ses_a')?.get(pendingId)
+    expect(info?.__pending).toBe(true)
+    expect(info?.role).toBe('user')
+
+    const parts = useChatPartsStore.getState().partsBySession.get('ses_a')?.get(pendingId)
+    expect(parts).toHaveLength(1)
+    expect((parts?.[0] as any).text).toBe('hello')
+  })
+
+  it('promotePendingUser renames pendingId → realId preserving content', () => {
+    const store = useChatPartsStore.getState()
+    const pendingId = store.upsertPendingUser('ses_a', 'hello')
+    store.promotePendingUser('ses_a', pendingId, 'msg_real_1')
+
+    const byInfo = useChatPartsStore.getState().infoBySession.get('ses_a')!
+    expect(byInfo.get(pendingId)).toBeUndefined()
+    expect(byInfo.get('msg_real_1')?.__pending).toBeFalsy()
+
+    const parts = useChatPartsStore.getState().partsBySession.get('ses_a')?.get('msg_real_1')
+    expect((parts?.[0] as any).text).toBe('hello')
+  })
+
+  it('markPendingUserFailed sets __failed flag', () => {
+    const store = useChatPartsStore.getState()
+    const pendingId = store.upsertPendingUser('ses_a', 'hello')
+    store.markPendingUserFailed('ses_a', pendingId, 'network error')
+    const info = useChatPartsStore.getState().infoBySession.get('ses_a')?.get(pendingId)
+    expect(info?.__failed).toBe(true)
+    expect(info?.__failReason).toBe('network error')
+  })
+
+  it('removePendingUser removes info and parts', () => {
+    const store = useChatPartsStore.getState()
+    const pendingId = store.upsertPendingUser('ses_a', 'hello')
+    store.removePendingUser('ses_a', pendingId)
+    expect(useChatPartsStore.getState().infoBySession.get('ses_a')?.get(pendingId)).toBeUndefined()
+    expect(useChatPartsStore.getState().partsBySession.get('ses_a')?.get(pendingId)).toBeUndefined()
+  })
 })
