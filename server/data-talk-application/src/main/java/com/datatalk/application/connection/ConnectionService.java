@@ -72,13 +72,16 @@ public class ConnectionService {
         String password = vault.open(c.passwordEnc());
         String url = JdbcUrlBuilder.build(c);
         String kind = c.kind();
-        int timeoutSeconds = c.connectTimeout() / 1000;
-        if (kind.equals(ConnectionKind.MYSQL) || kind.equals(ConnectionKind.POSTGRESQL)) {
+        if (kind.equals(ConnectionKind.MYSQL)) {
+            int timeoutMs = c.connectTimeout();
+            url += (url.contains("?") ? "&" : "?") + "connectTimeout=" + timeoutMs + "&socketTimeout=" + timeoutMs;
+        } else if (kind.equals(ConnectionKind.POSTGRESQL)) {
+            int timeoutSeconds = c.connectTimeout() / 1000;
             url += (url.contains("?") ? "&" : "?") + "connectTimeout=" + timeoutSeconds + "&socketTimeout=" + timeoutSeconds;
         }
         long started = clock.millis();
         try (var conn = java.sql.DriverManager.getConnection(url, c.username(), password)) {
-            boolean ok = conn.isValid(timeoutSeconds);
+            boolean ok = conn.isValid(c.connectTimeout() / 1000);
             long ms = clock.millis() - started;
             repo.updateTestStatus(id, ok ? "ok" : "fail", clock.millis());
             return new TestResult(ok, ms, ok ? null : "connection reported invalid");
