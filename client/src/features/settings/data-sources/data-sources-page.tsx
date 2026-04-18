@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { TrashIcon, PencilIcon, PlusIcon, CheckCircle2Icon, XCircleIcon } from 'lucide-react'
+import { TrashIcon, PencilIcon, PlusIcon, CheckCircle2Icon, XCircleIcon, LoaderIcon } from 'lucide-react'
 import { listConnections, deleteConnection, testConnection, connectionsKey, type Connection } from './api'
 import { ConnectionFormPanel } from './connection-form-dialog'
 
@@ -67,14 +67,14 @@ export function DataSourcesPage() {
                 <td className="align-middle">{c.username}</td>
                 <td className="py-2 align-middle">
                   <div className="flex gap-1 items-center">
-                    <Button size="sm" variant="ghost" onClick={() => runTest(c.id)} className="h-8 min-w-[60px] px-3 justify-center">
-                      {status === 'loading' ? '测试中…'
+                    <Button size="sm" variant="ghost" onClick={() => runTest(c.id)} className="h-8 min-w-[60px] px-3 justify-center" disabled={status === 'loading'}>
+                      {status === 'loading' ? <LoaderIcon className="size-4 animate-spin" />
                         : status === 'ok' ? <CheckCircle2Icon className="size-4 text-green-600" />
                         : status === 'fail' ? <XCircleIcon className="size-4 text-red-600" />
                         : '测试'}
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => setEditing(c)} className="h-8 w-8 p-0"><PencilIcon className="size-4" /></Button>
-                    <Button size="sm" variant="ghost" onClick={() => del.mutate(c.id)} className="h-8 w-8 p-0"><TrashIcon className="size-4" /></Button>
+                    <Button size="sm" variant="ghost" onClick={() => del.mutate(c.id)} className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10" disabled={del.isPending}><TrashIcon className="size-4" /></Button>
                   </div>
                 </td>
               </tr>
