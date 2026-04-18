@@ -1,5 +1,7 @@
 package com.datatalk.adapter.api;
 
+import com.datatalk.domain.error.DataTalkErrorCodes;
+import com.datatalk.domain.error.DataTalkException;
 import com.datatalk.exception.ConnectionNotFoundException;
 import com.datatalk.exception.SqlExecutionException;
 import org.springframework.http.HttpStatus;
@@ -41,6 +43,24 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
             "error", e.getMessage(),
             "code", "QUERY_FAILED"));
+    }
+
+    @ExceptionHandler(DataTalkException.class)
+    public ResponseEntity<Map<String, Object>> dataTalkException(DataTalkException e) {
+        HttpStatus status = resolveStatus(e.code());
+        return ResponseEntity.status(status).body(Map.of(
+            "error", e.getMessage(),
+            "code", e.code()));
+    }
+
+    private HttpStatus resolveStatus(String code) {
+        if (code == null) return HttpStatus.INTERNAL_SERVER_ERROR;
+        if (code.startsWith(DataTalkErrorCodes.ARTIFACT_SUPERSEDES_NOT_FOUND)) return HttpStatus.NOT_FOUND;
+        if (code.startsWith(DataTalkErrorCodes.ARTIFACT_TOO_LARGE)) return HttpStatus.PAYLOAD_TOO_LARGE;
+        if (code.startsWith(DataTalkErrorCodes.UPSTREAM_UNAVAILABLE) ||
+            code.startsWith(DataTalkErrorCodes.CLIENT_ACTION_UNREACHABLE)) return HttpStatus.SERVICE_UNAVAILABLE;
+        // connection.*, sql.*, schema.*, action.*, channel.* → 400
+        return HttpStatus.BAD_REQUEST;
     }
 
     @ExceptionHandler(WebClientResponseException.class)

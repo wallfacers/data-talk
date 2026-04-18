@@ -30,8 +30,9 @@ export function DataSourcesPage() {
       const r = await testConnection(id)
       setTestResult(s => ({ ...s, [id]: r.ok ? 'ok' : 'fail' }))
       toast[r.ok ? 'success' : 'error'](r.ok ? `连接成功 (${r.latencyMs}ms)` : r.reason ?? '失败')
-    } catch {
+    } catch (err) {
       setTestResult(s => ({ ...s, [id]: 'fail' }))
+      toast.error(err instanceof Error ? err.message : '连接测试失败')
     }
   }
 

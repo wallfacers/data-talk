@@ -59,9 +59,9 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
         })
       }
       qc.invalidateQueries({ queryKey: connectionsKey })
-      toast.success(editing ? '已更新' : '已创建')
       onSaved()
     },
+    onSuccess: () => toast.success(editing ? '已更新' : '已创建'),
   })
 
   return (
