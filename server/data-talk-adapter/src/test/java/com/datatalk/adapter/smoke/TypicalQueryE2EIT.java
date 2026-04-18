@@ -43,7 +43,7 @@ class TypicalQueryE2EIT {
             st.execute("INSERT INTO users(name) VALUES('Alice'),('Bob')");
         }
         conn.deleteAll();
-        String connectionId = conn.create("postgresql", pg.getHost(), pg.getFirstMappedPort(),
+        String connectionId = conn.create("E2E Test Connection", "postgresql", pg.getHost(), pg.getFirstMappedPort(),
             pg.getDatabaseName(), pg.getUsername(), pg.getPassword(), null);
         sessRepo.upsert(new SessionRecord("s-e2e", connectionId, "E2E Test", false, null, 0L, 0L, false));
     }
