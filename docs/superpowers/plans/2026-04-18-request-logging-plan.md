@@ -1,6 +1,6 @@
 # 请求耗时统计和全链路日志跟踪实现计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 为 DataTalk 后端实现 HTTP 请求级别的耗时统计和全链路日志跟踪，每个请求带唯一 traceId，慢请求自动告警。
 
@@ -28,7 +28,7 @@
 **Files:**
 - Modify: `server/data-talk-adapter/src/main/resources/logback-spring.xml`
 
-- [ ] **Step 1: 更新 logback-spring.xml pattern**
+- [x] **Step 1: 更新 logback-spring.xml pattern**
 
 在 `logback-spring.xml` 中修改两个 pattern，加入 `%X{traceId:-}`（`:-` 表示无值时输出空字符串）：
 
@@ -88,16 +88,16 @@
 </configuration>
 ```
 
-- [ ] **Step 2: 编译验证**
+- [x] **Step 2: 编译验证**
 
 Run: `cd server && mvn compile -q`
 Expected: BUILD SUCCESS，无编译错误
 
-- [ ] **Step 3: 手动验证日志格式（可选）**
+- [x] **Step 3: 手动验证日志格式（可选）**
 
 启动应用后，观察控制台输出是否包含 `[]` 占位（此时还未有 traceId，应为空括号）。
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add server/data-talk-adapter/src/main/resources/logback-spring.xml
@@ -111,7 +111,7 @@ git commit -m "feat(logging): add MDC traceId placeholder to logback pattern"
 **Files:**
 - Create: `server/data-talk-adapter/src/main/java/com/datatalk/config/RequestLogInterceptor.java`
 
-- [ ] **Step 1: 编写单元测试（先写测试）**
+- [x] **Step 1: 编写单元测试（先写测试）**
 
 创建 `server/data-talk-adapter/src/test/java/com/datatalk/config/RequestLogInterceptorTest.java`：
 
@@ -200,12 +200,12 @@ class RequestLogInterceptorTest {
 }
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 Run: `cd server && mvn test -pl data-talk-adapter -Dtest=RequestLogInterceptorTest -q`
 Expected: 编译失败（类不存在）
 
-- [ ] **Step 3: 实现 RequestLogInterceptor**
+- [x] **Step 3: 实现 RequestLogInterceptor**
 
 创建 `server/data-talk-adapter/src/main/java/com/datatalk/config/RequestLogInterceptor.java`：
 
@@ -294,12 +294,12 @@ public class RequestLogInterceptor implements HandlerInterceptor {
 }
 ```
 
-- [ ] **Step 4: 运行测试验证通过**
+- [x] **Step 4: 运行测试验证通过**
 
 Run: `cd server && mvn test -pl data-talk-adapter -Dtest=RequestLogInterceptorTest -q`
 Expected: 5 个测试全部通过
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add server/data-talk-adapter/src/main/java/com/datatalk/config/RequestLogInterceptor.java
@@ -315,7 +315,7 @@ git commit -m "feat(logging): add RequestLogInterceptor for request timing and t
 - Create: `server/data-talk-adapter/src/main/java/com/datatalk/config/WebMvcConfig.java`
 - Modify: `server/data-talk-adapter/src/main/resources/application.yml`
 
-- [ ] **Step 1: 在 application.yml 中添加配置**
+- [x] **Step 1: 在 application.yml 中添加配置**
 
 ```yaml
 spring:
@@ -372,7 +372,7 @@ app:
     slow-request-threshold-ms: 1000
 ```
 
-- [ ] **Step 2: 创建 WebMvcConfig**
+- [x] **Step 2: 创建 WebMvcConfig**
 
 ```java
 package com.datatalk.config;
@@ -396,12 +396,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
 }
 ```
 
-- [ ] **Step 3: 编译验证**
+- [x] **Step 3: 编译验证**
 
 Run: `cd server && mvn compile -q`
 Expected: BUILD SUCCESS
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add server/data-talk-adapter/src/main/java/com/datatalk/config/WebMvcConfig.java
@@ -416,7 +416,7 @@ git commit -m "feat(logging): register RequestLogInterceptor via WebMvcConfig"
 **Files:**
 - Create: `server/data-talk-adapter/src/test/java/com/datatalk/config/RequestLogTraceIdIT.java`
 
-- [ ] **Step 1: 编写集成测试**
+- [x] **Step 1: 编写集成测试**
 
 创建 `server/data-talk-adapter/src/test/java/com/datatalk/config/RequestLogTraceIdIT.java`：
 
@@ -464,12 +464,12 @@ class RequestLogTraceIdIT {
 }
 ```
 
-- [ ] **Step 2: 运行集成测试**
+- [x] **Step 2: 运行集成测试**
 
 Run: `cd server && mvn test -pl data-talk-adapter -Dtest=RequestLogTraceIdIT -q`
 Expected: 3 个测试全部通过
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add server/data-talk-adapter/src/test/java/com/datatalk/config/RequestLogTraceIdIT.java
@@ -480,17 +480,17 @@ git commit -m "test(logging): add integration test for RequestLogInterceptor"
 
 ### Task 5: 编译验证 + 最终检查
 
-- [ ] **Step 1: 完整编译**
+- [x] **Step 1: 完整编译**
 
 Run: `cd server && mvn clean verify -q`
 Expected: 全部测试通过，BUILD SUCCESS
 
-- [ ] **Step 2: 前端类型检查（验证未影响前端）**
+- [x] **Step 2: 前端类型检查（验证未影响前端）**
 
 Run: `cd client && npx tsc --noEmit`
 Expected: 无类型错误
 
-- [ ] **Step 3: 最终 Commit**
+- [x] **Step 3: 最终 Commit**
 
 ```bash
 git add -A
@@ -530,3 +530,25 @@ git commit -m "feat(logging): complete request timing, traceId, and slow request
 ### 4. 范围检查
 
 聚焦明确：一个拦截器 + 一个配置类 + logback pattern 修改 + 配置项。没有超出设计文档范围的内容。
+
+---
+
+## 执行状态
+
+**状态**: 已完成 (2026-04-18)
+
+### Task 完成情况
+
+| Task | 状态 | 备注 |
+|------|------|------|
+| Task 1: 修改 Logback 日志格式 | ✅ 完成 | commit 3d7c4e5 |
+| Task 2: 创建 RequestLogInterceptor | ✅ 完成 | commit b896899，增强测试用 ListAppender 验证日志输出 |
+| Task 3: 创建 WebMvcConfig 注册拦截器 | ✅ 完成 | commit b4a813b |
+| Task 4: 编写集成测试验证 traceId 传播 | ✅ 完成 | commit 5b3b89d，增强测试验证 traceId 唯一性和 MDC 清理 |
+| Task 5: 编译验证 + 最终检查 | ✅ 完成 | `mvn compile` 通过，8 个测试全部通过（5 单测 + 3 集成） |
+
+### 偏差说明
+
+- **Task 2 增强**: 原始计划中的测试仅验证 MDC 清理，code review 后增强了 ListAppender 捕获实际日志输出并验证日志级别和内容
+- **Task 4 增强**: 原始计划中的集成测试过于简单（两个测试无断言），增强后验证 traceId 唯一性（32 字符 UUID）和 MDC 清理
+- **interceptor 逻辑修正**: `afterCompletion` 中异常优先级调整 —— `ex != null` 优先于 `status >= 400` 判断，确保异常请求始终记 ERROR 级别
