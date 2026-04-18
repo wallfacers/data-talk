@@ -67,7 +67,7 @@ export function DataSourcesPage() {
                 <td>{c.username}</td>
                 <td className="py-2">
                   <div className="flex gap-1">
-                    <Button size="sm" variant="ghost" onClick={() => runTest(c.id)} className="h-8 px-3">
+                    <Button size="sm" variant="ghost" onClick={() => runTest(c.id)} className="h-8 min-w-[60px] px-3 justify-center">
                       {status === 'loading' ? '测试中…'
                         : status === 'ok' ? <CheckCircle2Icon className="size-4 text-green-600" />
                         : status === 'fail' ? <XCircleIcon className="size-4 text-red-600" />
