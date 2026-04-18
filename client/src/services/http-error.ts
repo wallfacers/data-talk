@@ -81,6 +81,9 @@ export function normalizeError(error: unknown, silent = false): NormalizedError 
       normalized.code = 'UNAUTHORIZED'
     } else if (error.response.status === 403) {
       normalized.message = '无权限执行此操作'
+    } else if (error.response.status === 409) {
+      normalized.message = '名称已存在，请使用其他名称'
+      normalized.code = 'CONFLICT'
     } else if (error.response.status >= 500) {
       normalized.message = '服务器错误，请稍后重试'
     } else {
