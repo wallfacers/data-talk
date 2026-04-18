@@ -209,6 +209,7 @@ DataTalk 的差异化在于 **AI 直接操作数据库**，但不能让 AI 蛮�
 
 | 设计文档 | 日期 | 主题 |
 |----------|------|------|
+| [Datasource Name Field](./2026-04-19-datasource-name-design.md) | 2026-04-19 | 数据源新增 name 字段（唯一）+ 表格样式修复（列标题间距统一、操作列显示标题） |
 | [Request Logging & Tracing](./2026-04-18-request-logging-design.md) | 2026-04-18 | HTTP 请求耗时统计、traceId 全链路日志跟踪、慢请求告警 |
 | [Connection Test Status Persistence](./2026-04-18-connection-test-status-design.md) | 2026-04-18 | 持久化数据源连接测试结果，重启后可见上次测试状态 |
 | [OpenCode Session Title Sync](./2026-04-18-opencode-session-title-sync-design.md) | 2026-04-18 | 订阅 OpenCode `session.*` 事件家族（8 个），同步自动生成的 session title，保留手动 rename 锁定 |
