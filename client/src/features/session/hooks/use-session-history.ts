@@ -1,14 +1,31 @@
 import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { http } from '@/services/http'
-import { normalizeRole } from '@/services/http-error'
 import { useChatPartsStore } from '@/stores/chat-parts-store'
 import { useOntologyStore } from '@/stores/ontology-store'
 import { useTimelineStore } from '@/stores/timeline-store'
-import type { Part } from '@/services/channel/types'
+import type { MessageInfo, Part } from '@/services/channel/types'
 import type { Artifact } from '@/services/channel/event-reducer'
 
-type MessageDto = { id: string; role: string; parts: Part[] }
+type HistoryItem = { info: MessageInfo; parts: Part[] }
+type HistoryResponse =
+  | HistoryItem[]
+  | { messages: Array<{ id: string; role: string; parts: Part[]; createdAt?: number }> }
+
+function normalizeHistory(raw: HistoryResponse): HistoryItem[] {
+  if (Array.isArray(raw)) return raw
+  // 向后兼容旧响应 {messages:[...]}（后端过渡期）
+  return (raw.messages ?? []).map((m) => ({
+    info: {
+      id: m.id,
+      role: m.role as 'user' | 'assistant' | 'system',
+      sessionID: '', // 旧响应没有
+      time: { created: Number(m.createdAt ?? Date.now()) },
+    },
+    parts: m.parts,
+  }))
+}
+
 type ArtifactDto = {
   id: string
   version: number
@@ -27,10 +44,10 @@ const historyQueryKeys = {
 }
 
 export function useSessionHistory(sessionId: string | null) {
-  const { data: messagesData } = useQuery({
+  const { data: messagesData, error: messagesError } = useQuery({
     queryKey: sessionId ? historyQueryKeys.messages(sessionId) : ['session-history', 'messages', null],
     queryFn: () =>
-      http.get(`sessions/${sessionId}/messages`, { silent: true } as any).json<{ messages: MessageDto[] }>(),
+      http.get(`sessions/${sessionId}/messages`, { silent: true } as any).json<HistoryResponse>(),
     enabled: !!sessionId,
     staleTime: 0,
     retry: 1,
@@ -48,16 +65,8 @@ export function useSessionHistory(sessionId: string | null) {
   useEffect(() => {
     if (!sessionId || !messagesData || !artifactsData) return
 
-    const partsApi = useChatPartsStore.getState()
-    partsApi.clearSession(sessionId)
-    for (const m of messagesData.messages ?? []) {
-      partsApi.upsertMeta(sessionId, {
-        id: m.id,
-        role: normalizeRole(m.role),
-        createdAt: Number((m as any).createdAt ?? Date.now()),
-      })
-      for (const part of m.parts ?? []) partsApi.upsertPart(sessionId, part)
-    }
+    const list = normalizeHistory(messagesData)
+    useChatPartsStore.getState().replaceSession(sessionId, list)
 
     const ontApi = useOntologyStore.getState()
     const artifacts: Artifact[] = (artifactsData.artifacts ?? []).map((a) => ({
@@ -76,4 +85,6 @@ export function useSessionHistory(sessionId: string | null) {
     tApi.clear(sessionId)
     for (const a of artifacts) tApi.addArtifact(sessionId, a.id, a.supersedesId)
   }, [sessionId, messagesData, artifactsData])
+
+  return { error: messagesError }
 }
