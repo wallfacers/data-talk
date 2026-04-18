@@ -2,7 +2,7 @@ package com.datatalk.infra.channel;
 
 import com.datatalk.application.channel.HistoryService;
 import com.datatalk.application.persistence.ArtifactRecord;
-import com.datatalk.domain.part.Message;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,8 +17,8 @@ public class HistoryController {
     public HistoryController(HistoryService svc) { this.svc = svc; }
 
     @GetMapping("/messages")
-    public Map<String, List<Message>> messages(@PathVariable String sessionId) {
-        return Map.of("messages", svc.getMessages(sessionId));
+    public JsonNode messages(@PathVariable String sessionId) {
+        return svc.getMessages(sessionId);
     }
 
     @GetMapping("/artifacts")
