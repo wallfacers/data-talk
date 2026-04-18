@@ -93,6 +93,10 @@ class OpenCodeEventTranslatorTest {
         when(syncer.apply("oc-1", "AI 标题")).thenReturn(true);
         List<DtEvent> out = tr.translate("dt-1", new OcEvent.SessionUpdated(info));
         assertThat(out).singleElement().isInstanceOf(DtEvent.SessionMetaUpdated.class);
+        DtEvent.SessionMetaUpdated emitted = (DtEvent.SessionMetaUpdated) out.get(0);
+        assertThat(emitted.sessionId()).isEqualTo("dt-1");
+        assertThat(emitted.title()).isEqualTo("AI 标题");
+        assertThat(emitted.version()).isEqualTo(2L);
     }
 
     @Test
@@ -114,7 +118,9 @@ class OpenCodeEventTranslatorTest {
         List<DtEvent> out = tr.translate("dt-1",
             new OcEvent.SessionError(new SessionInfo("oc-1", null, 1L), "boom"));
         assertThat(out).singleElement().isInstanceOf(DtEvent.SessionError.class);
-        assertThat(((DtEvent.SessionError) out.get(0)).error()).isEqualTo("boom");
+        DtEvent.SessionError err = (DtEvent.SessionError) out.get(0);
+        assertThat(err.sessionId()).isEqualTo("dt-1");
+        assertThat(err.error()).isEqualTo("boom");
     }
 
     @Test
@@ -122,6 +128,7 @@ class OpenCodeEventTranslatorTest {
         var info = new SessionInfo("oc-1", "T", 1L);
         List<DtEvent> out = tr.translate("dt-1", new OcEvent.SessionCreated(info));
         assertThat(out).singleElement().isInstanceOf(DtEvent.SessionCreated.class);
+        assertThat(((DtEvent.SessionCreated) out.get(0)).sessionId()).isEqualTo("dt-1");
     }
 
     @Test
@@ -129,6 +136,7 @@ class OpenCodeEventTranslatorTest {
         var info = new SessionInfo("oc-1", null, 1L);
         List<DtEvent> out = tr.translate("dt-1", new OcEvent.SessionDeleted(info));
         assertThat(out).singleElement().isInstanceOf(DtEvent.SessionDeleted.class);
+        assertThat(((DtEvent.SessionDeleted) out.get(0)).sessionId()).isEqualTo("dt-1");
     }
 
     @Test
@@ -136,6 +144,7 @@ class OpenCodeEventTranslatorTest {
         var info = new SessionInfo("oc-1", null, 1L);
         List<DtEvent> out = tr.translate("dt-1", new OcEvent.SessionCompacted(info));
         assertThat(out).singleElement().isInstanceOf(DtEvent.SessionCompacted.class);
+        assertThat(((DtEvent.SessionCompacted) out.get(0)).sessionId()).isEqualTo("dt-1");
     }
 
     @Test
@@ -144,6 +153,8 @@ class OpenCodeEventTranslatorTest {
         Map<String, Object> payload = Map.of("changes", List.of());
         List<DtEvent> out = tr.translate("dt-1", new OcEvent.SessionDiff(info, payload));
         assertThat(out).singleElement().isInstanceOf(DtEvent.SessionDiff.class);
-        assertThat(((DtEvent.SessionDiff) out.get(0)).payload()).isEqualTo(payload);
+        DtEvent.SessionDiff diff = (DtEvent.SessionDiff) out.get(0);
+        assertThat(diff.sessionId()).isEqualTo("dt-1");
+        assertThat(diff.payload()).isEqualTo(payload);
     }
 }

@@ -34,30 +34,30 @@ public class OpenCodeEventTranslator {
                 List.of(new DtEvent.SessionStatus(s.status(), s.retryInfo()));
 
             case OcEvent.SessionCreated c ->
-                List.of(new DtEvent.SessionCreated(c.info().id(), c.info().title(), c.info().version()));
+                List.of(new DtEvent.SessionCreated(sessionId, c.info().title(), c.info().version()));
 
             case OcEvent.SessionUpdated u -> {
                 boolean applied = titleSyncer.apply(u.info().id(), u.info().title());
                 if (applied) {
-                    yield List.of(new DtEvent.SessionMetaUpdated(u.info().id(), u.info().title(), false, u.info().version()));
+                    yield List.of(new DtEvent.SessionMetaUpdated(sessionId, u.info().title(), false, u.info().version()));
                 }
                 yield Collections.emptyList();
             }
 
             case OcEvent.SessionDeleted d ->
-                List.of(new DtEvent.SessionDeleted(d.info().id()));
+                List.of(new DtEvent.SessionDeleted(sessionId));
 
             case OcEvent.SessionIdle i ->
-                List.of(new DtEvent.SessionIdle(i.info().id()));
+                List.of(new DtEvent.SessionIdle(sessionId));
 
             case OcEvent.SessionError e ->
-                List.of(new DtEvent.SessionError(e.info().id(), e.error()));
+                List.of(new DtEvent.SessionError(sessionId, e.error()));
 
             case OcEvent.SessionCompacted c ->
-                List.of(new DtEvent.SessionCompacted(c.info().id()));
+                List.of(new DtEvent.SessionCompacted(sessionId));
 
             case OcEvent.SessionDiff d ->
-                List.of(new DtEvent.SessionDiff(d.info().id(), d.payload()));
+                List.of(new DtEvent.SessionDiff(sessionId, d.payload()));
 
             case OcEvent.MessageUpdated m -> {
                 Set<String> msgs = seenMessages.computeIfAbsent(sessionId, k -> ConcurrentHashMap.newKeySet());

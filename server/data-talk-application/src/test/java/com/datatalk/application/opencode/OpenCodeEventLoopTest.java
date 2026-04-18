@@ -83,6 +83,7 @@ class OpenCodeEventLoopTest {
         when(buses.getOrCreate("dt-1")).thenReturn(mockBus);
 
         SessionTitleSyncer syncer = Mockito.mock(SessionTitleSyncer.class);
+        when(syncer.apply("oc-1", "AI 标题")).thenReturn(true);
         OpenCodeEventTranslator tr = new OpenCodeEventTranslator(syncer);
         OpenCodeEventLoop loop = new OpenCodeEventLoop(
             "http://localhost:" + wm.port(), new ObjectMapper(), tr, buses, map, received::add);
