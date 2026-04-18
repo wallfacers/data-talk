@@ -6,15 +6,18 @@
 
 | 计划 | 状态 | 摘要 |
 |------|------|------|
+| [Request Logging & Tracing](./2026-04-18-request-logging-plan.md) | 计划中 | HTTP 请求耗时统计、traceId 全链路日志、慢请求 WARN 告警（HandlerInterceptor + MDC） |
 | [Composer Model Picker Dialog](./2026-04-18-composer-model-picker-dialog-plan.md) | 计划中 | Composer 模型选择器 Popover → 960×540 双栏对话框，触发按钮样式不变 |
-| [API Prefix Decouple](./2026-04-18-api-prefix-decouple-plan.md) | 计划中 | `VITE_API_BASE_URL` 只存 origin，前端集中管理 `/api` 前缀常量，防止 `/api/api` 重复 |
-| [Session Canvas UX Fixes](./2026-04-18-session-canvas-ux-fixes-plan.md) | 计划中 | 4 个前端 bug：composer 消失/位置/持久化/气泡样式（SplitView 统一底部 slot + session-store persist + meta-gated 渲染 + 错误 toast） |
-| [Message Parts Jackson Fix](./2026-04-18-message-parts-jackson-fix-plan.md) | 计划中 | 修 `MessageRepository.save` 泛型擦除丢 `@JsonTypeInfo` 判别符，GET `/messages` 500 的根因 |
 
 ## 已完成计划
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [OpenCode 1.4.7 Outbound Schema Fix](./2026-04-18-opencode-147-outbound-schema-plan.md) | 2026-04-18 | DataTalk→OpenCode 出站 body 规范化：model 拆 `{providerID, modelID}`、part.id 加 `prt_` 前缀、`synthetic`/`ignored`/`time` 补默认 |
+| [OpenCode 1.4.7 Envelope Adapter](./2026-04-18-opencode-147-envelope-adapter-plan.md) | 2026-04-18 | 适配 1.4.7 事件 envelope（payload 在 `properties.*` 下），AI 响应事件重新进 SessionBus；新增 9 份真实 fixture + 11 条 parse 单测 |
+| [Message Parts Jackson Fix](./2026-04-18-message-parts-jackson-fix-plan.md) | 2026-04-18 | 修 `MessageRepository.save` 泛型擦除丢 `@JsonTypeInfo` 判别符，GET `/messages` 500 的根因 |
+| [Session Canvas UX Fixes](./2026-04-18-session-canvas-ux-fixes-plan.md) | 2026-04-18 | 4 个前端 bug：composer 消失/位置/持久化/气泡样式（SplitView 底部 slot + session-store persist + meta-gated 渲染 + 错误 toast） |
+| [API Prefix Decouple](./2026-04-18-api-prefix-decouple-plan.md) | 2026-04-18 | `VITE_API_BASE_URL` 只存 origin，前端集中管理 `/api` 前缀常量，防止 `/api/api` 重复 |
 | [Connection Test Status Persistence](./2026-04-18-connection-test-status-persistence-plan.md) | 2026-04-18 | 持久化连接测试结果到 DB，重启后可见上次测试状态 |
 | [Drop Connection Gate + Default Model](./2026-04-18-drop-connection-gate-default-model-plan.md) | 2026-04-18 | 去掉发消息对 DB 连接的依赖 + 自动选择首个可用模型 |
 | [OpenCode Session Title Sync](./2026-04-18-opencode-session-title-sync-plan.md) | 2026-04-18 | 完整 session.* 事件家族翻译 + title 自动同步 + title_locked 锁定机制 |
