@@ -4,7 +4,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ChatHeader } from './chat-header'
 import { useSessionStore } from '@/stores/session-store'
 import * as api from '@/services/api/session'
-import { useConnectionStore } from '@/features/connection/store'
 
 // Mock useSidebar since ChatHeader uses it
 vi.mock('@/components/ui/sidebar', () => ({
@@ -75,12 +74,9 @@ describe('ChatHeader', () => {
   })
 
   it('reflects updated session title when useSessions returns new title', async () => {
-    // Setup: enable the connection so useSessions is enabled
-    useConnectionStore.setState({ activeConnectionId: 'c1' })
-
     const initialSession: api.Session = {
       id: 's1',
-      connectionId: 'c1',
+      connectionId: null,
       title: '新会话',
       hasEverSent: true,
       createdAt: 0,

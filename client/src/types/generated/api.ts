@@ -34,7 +34,7 @@ export interface ConnectionTestResultDto {
 
 export interface SessionDto {
   id: string
-  connectionId: string
+  connectionId: string | null
   title: string
   hasEverSent: boolean
   createdAt: number
@@ -43,7 +43,7 @@ export interface SessionDto {
 }
 
 export interface SessionCreateRequest {
-  connectionId: string
+  connectionId: string | null
   title: string
 }
 

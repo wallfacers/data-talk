@@ -3,12 +3,14 @@ import { createRootRoute, Outlet } from '@tanstack/react-router'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Toaster } from '@/components/ui/sonner'
 import { SettingsDialog } from '@/features/settings/settings-dialog'
+import { useAutoSelectDefaultModel } from '@/features/session/hooks/use-auto-select-default-model'
 
 export const Route = createRootRoute({
   component: RootComponent,
 })
 
 function RootComponent() {
+  useAutoSelectDefaultModel()
   return (
     <TooltipProvider>
       <Outlet />

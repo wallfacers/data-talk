@@ -8,7 +8,7 @@ export function listSessions(connectionId?: string) {
   return http.get('sessions', { searchParams: search }).json<Session[]>()
 }
 
-export function createSession(connectionId: string, title: string) {
+export function createSession(connectionId: string | null, title: string) {
   return http.post('sessions', { json: { connectionId, title } }).json<Session>()
 }
 

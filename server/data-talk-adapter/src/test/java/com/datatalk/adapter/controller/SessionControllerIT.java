@@ -2,6 +2,7 @@ package com.datatalk.adapter.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -20,6 +21,22 @@ class SessionControllerIT {
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper om;
     @Autowired @Qualifier("datatalkJdbc") JdbcTemplate jdbc;
+
+    private static final String[] CONNECTION_IDS = {
+        "conn-1", "conn-patch", "conn-patch-blank", "conn-del", "conn-cascade", "c-a", "c-b"
+    };
+
+    @BeforeEach
+    void seedConnectionsAndReset() {
+        jdbc.update("DELETE FROM messages");
+        jdbc.update("DELETE FROM sessions");
+        for (String id : CONNECTION_IDS) {
+            jdbc.update("""
+                INSERT OR IGNORE INTO connections(id, kind, host, port, username, password_enc, created_at)
+                VALUES(?, 'mysql', 'h', 3306, 'u', x'00', 0)
+                """, id);
+        }
+    }
 
     @Test
     void create_then_list_returns_session() throws Exception {
@@ -42,10 +59,31 @@ class SessionControllerIT {
     }
 
     @Test
-    void create_rejects_missing_connection() throws Exception {
+    void 创建会话允许省略_connectionId() throws Exception {
         mvc.perform(post("/api/sessions")
-                .contentType("application/json").content("{}"))
-            .andExpect(status().isBadRequest());
+                .contentType("application/json")
+                .content("{\"title\":\"无连接会话\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.title").value("无连接会话"));
+    }
+
+    @Test
+    void 创建会话允许_connectionId_显式为_null() throws Exception {
+        mvc.perform(post("/api/sessions")
+                .contentType("application/json")
+                .content("{\"connectionId\":null,\"title\":\"空连接\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").isNotEmpty());
+    }
+
+    @Test
+    void 创建会话允许_connectionId_为空字符串并视为_null() throws Exception {
+        mvc.perform(post("/api/sessions")
+                .contentType("application/json")
+                .content("{\"connectionId\":\"\",\"title\":\"空串\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").isNotEmpty());
     }
 
     @Test

@@ -6,8 +6,7 @@ export function useSessions() {
   const connectionId = useConnectionStore((s) => s.activeConnectionId)
 
   return useQuery({
-    queryKey: ['sessions', connectionId],
+    queryKey: ['sessions', connectionId ?? null],
     queryFn: () => listSessions(connectionId ?? undefined),
-    enabled: connectionId !== null,
   })
 }

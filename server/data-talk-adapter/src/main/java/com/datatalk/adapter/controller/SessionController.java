@@ -26,10 +26,12 @@ public class SessionController {
 
     @PostMapping
     public SessionDto create(@RequestBody SessionCreateRequest req) {
-        if (req == null || req.connectionId() == null || req.connectionId().isBlank()) {
-            throw new IllegalArgumentException("connectionId is required");
+        if (req == null) {
+            throw new IllegalArgumentException("request body is required");
         }
-        SessionRecord rec = svc.create(req.connectionId(), req.title());
+        String connectionId = (req.connectionId() == null || req.connectionId().isBlank())
+            ? null : req.connectionId();
+        SessionRecord rec = svc.create(connectionId, req.title());
         return toDto(rec);
     }
 

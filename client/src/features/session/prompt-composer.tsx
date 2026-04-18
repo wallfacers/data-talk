@@ -63,15 +63,11 @@ function InnerComposer() {
         setPendingModelPrompt(true)
         return
       }
-      if (!activeConnectionId) {
-        toast.error('请先在侧边栏选择或创建连接')
-        return
-      }
       setText('')
       setPendingPrompt(t)
       try {
         const sess = await createSession(activeConnectionId, '新会话')
-        qc.invalidateQueries({ queryKey: ['sessions', activeConnectionId] })
+        qc.invalidateQueries({ queryKey: ['sessions', activeConnectionId ?? null] })
         openSession(sess.id, sess.hasEverSent)
         // resume hook 会在 activeSessionId 就绪后消费 pendingPrompt
       } catch (err) {
