@@ -20,7 +20,7 @@ public class ConnectionRepository {
         rs.getBytes("password_enc"), rs.getString("schema_digest"), rs.getLong("created_at"),
         rs.getInt("connect_timeout"),
         rs.getString("last_test_status"),
-        rs.getObject("last_test_at", Long.class)
+        rs.getObject("last_test_at") instanceof Number n ? n.longValue() : null
     );
 
     public void insert(ConnectionRecord c) {
