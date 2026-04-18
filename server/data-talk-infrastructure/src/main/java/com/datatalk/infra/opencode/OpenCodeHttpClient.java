@@ -91,6 +91,23 @@ public class OpenCodeHttpClient implements OpenCodeProviderClient {
             .block();
     }
 
+    public JsonNode listMessages(String openCodeSessionId, Integer limit) {
+        String body = wc.get()
+            .uri(uriBuilder -> uriBuilder
+                .path("/session/{id}/message")
+                .queryParamIfPresent("limit", java.util.Optional.ofNullable(limit))
+                .build(openCodeSessionId))
+            .retrieve()
+            .bodyToMono(String.class)
+            .block();
+        try {
+            return om.readTree(body);
+        } catch (Exception e) {
+            throw new IllegalStateException("cannot parse OpenCode /session/"
+                + openCodeSessionId + "/message response", e);
+        }
+    }
+
     public JsonNode listProviders() {
         String body = wc.get().uri("/provider")
             .retrieve()

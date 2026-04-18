@@ -2,6 +2,7 @@ package com.datatalk.infra.opencode;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -108,5 +109,41 @@ class OpenCodeHttpClientTest {
         assertThatThrownBy(() -> client.putAuth("openai",
                 Map.of("type", "api", "key", "x")))
             .isInstanceOf(org.springframework.web.reactive.function.client.WebClientResponseException.class);
+    }
+
+    @Test
+    void listMessagesReturnsOpenCodePayload() {
+        wm.stubFor(get(urlPathEqualTo("/session/ses_abc/message"))
+            .withQueryParam("limit", equalTo("100"))
+            .willReturn(okJson("""
+                [
+                  {
+                    "info": { "id": "msg_1", "role": "user", "sessionID": "ses_abc",
+                              "time": { "created": 1776000000000 } },
+                    "parts": [
+                      { "type": "text", "text": "hi", "id": "prt_1",
+                        "sessionID": "ses_abc", "messageID": "msg_1" }
+                    ]
+                  }
+                ]
+                """)));
+
+        JsonNode node = client.listMessages("ses_abc", 100);
+
+        assertThat(node.isArray()).isTrue();
+        assertThat(node).hasSize(1);
+        assertThat(node.get(0).path("info").path("id").asText()).isEqualTo("msg_1");
+        assertThat(node.get(0).path("parts").get(0).path("text").asText()).isEqualTo("hi");
+    }
+
+    @Test
+    void listMessagesReturnsEmptyArrayWhenSessionHasNoMessages() {
+        wm.stubFor(get(urlPathEqualTo("/session/ses_empty/message"))
+            .willReturn(okJson("[]")));
+
+        JsonNode node = client.listMessages("ses_empty", null);
+
+        assertThat(node.isArray()).isTrue();
+        assertThat(node).hasSize(0);
     }
 }
