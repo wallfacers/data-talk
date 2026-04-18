@@ -33,7 +33,7 @@ class ConnectionCrudIT {
     @Test
     void createListRoundTrip() throws Exception {
         String body = om.writeValueAsString(Map.of(
-            "id", "c1",
+            "name", "测试连接",
             "kind", "postgresql",
             "host", "localhost",
             "port", 5432,
@@ -47,7 +47,8 @@ class ConnectionCrudIT {
 
         mvc.perform(get("/api/connections"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.connections[0].id").value("c1"))
+            .andExpect(jsonPath("$.connections[0].id").exists())
+            .andExpect(jsonPath("$.connections[0].name").value("测试连接"))
             .andExpect(jsonPath("$.connections[0].username").value("alice"));
 
         // password never leaks
