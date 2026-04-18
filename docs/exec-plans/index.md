@@ -6,6 +6,7 @@
 
 | 计划 | 状态 | 摘要 |
 |------|------|------|
+| [Datasource Name Field](./2026-04-19-datasource-name-plan.md) | 计划中 | 数据源新增唯一 name 字段 + 表格样式修复（列标题间距统一、操作列显示标题） |
 | [Composer Model Picker Dialog](./2026-04-18-composer-model-picker-dialog-plan.md) | 计划中 | Composer 模型选择器 Popover → 960×540 双栏对话框，触发按钮样式不变 |
 
 ## 已完成计划
