@@ -10,7 +10,7 @@ DROP TABLE IF EXISTS ai_model_prefs;
 DROP TABLE IF EXISTS ai_user_prefs;
 
 CREATE TABLE connections (
-  id TEXT PRIMARY KEY, kind TEXT NOT NULL, host TEXT NOT NULL, port INTEGER NOT NULL,
+  id TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT '', kind TEXT NOT NULL, host TEXT NOT NULL, port INTEGER NOT NULL,
   database_name TEXT, username TEXT NOT NULL, password_enc BLOB NOT NULL,
   schema_digest TEXT, created_at INTEGER NOT NULL, connect_timeout INTEGER NOT NULL DEFAULT 3000
 );
