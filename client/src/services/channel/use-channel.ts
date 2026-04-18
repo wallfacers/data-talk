@@ -8,6 +8,7 @@ import { useChatPartsStore } from '@/stores/chat-parts-store'
 import { useOntologyStore } from '@/stores/ontology-store'
 import { useTimelineStore } from '@/stores/timeline-store'
 import { useSessionStore } from '@/stores/session-store'
+import { useConnectionStore } from '@/features/connection/store'
 import { getClientHandler } from '@/features/actions/registry'
 import { normalizeError, normalizeRole, showErrorToast } from '@/services/http-error'
 
@@ -17,7 +18,7 @@ function getApiBaseUrl(): string {
   return ''
 }
 
-export function buildEventSink(sessionId: string, client: ChannelClient | null, queryClient: QueryClient) {
+export function buildEventSink(sessionId: string, client: ChannelClient | null, queryClient: QueryClient, connectionId: string | null = null) {
   return (evt: StreamEvent) => {
     const { event, data } = evt
     if (event === 'message.created') {
@@ -28,7 +29,7 @@ export function buildEventSink(sessionId: string, client: ChannelClient | null, 
         createdAt: Number(m.createdAt ?? Date.now()),
       })
     } else if (event === 'session.meta.updated') {
-      queryClient.invalidateQueries({ queryKey: ['sessions'] })
+      queryClient.invalidateQueries({ queryKey: ['sessions', connectionId] })
     } else if (event === 'message.part.created' || event === 'message.part.updated') {
       useChatPartsStore.getState().upsertPart(sessionId, (data as any).part)
     } else if (event === 'message.part.delta') {
@@ -87,13 +88,14 @@ export function useChannel() {
   const sessionId = useSessionStore((s) => s.activeSessionId)
   const enterSplit = useSessionStore((s) => s.enterSplit)
   const client = useChannelClient(sessionId)
+  const connectionId = useConnectionStore((s) => s.activeConnectionId)
 
   const sendMessage = useCallback(
     async (parts: any[]) => {
       if (!client || !sessionId) return
       setIsStreaming(true)
       enterSplit(sessionId)
-      const sink = buildEventSink(sessionId, client, queryClient)
+      const sink = buildEventSink(sessionId, client, queryClient, connectionId)
       try {
         await client.sendMessage(parts, sink)
       } catch (err) {
@@ -102,7 +104,7 @@ export function useChannel() {
         setIsStreaming(false)
       }
     },
-    [client, sessionId, enterSplit, queryClient],
+    [client, sessionId, enterSplit, queryClient, connectionId],
   )
 
   const abort = useCallback(async () => {

@@ -37,6 +37,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { useSessions } from '@/features/session/hooks/use-sessions'
 import { useSessionStore } from '@/stores/session-store'
+import { useConnectionStore } from '@/features/connection/store'
 import { renameSession, deleteSession, type Session } from '@/services/api/session'
 
 type SessionGroup = {
@@ -90,11 +91,12 @@ export function NavSessions() {
   const openSession = useSessionStore((s) => s.openSession)
   const sessions = useSessions()
   const qc = useQueryClient()
+  const connectionId = useConnectionStore((s) => s.activeConnectionId)
 
   const renameMut = useMutation({
     mutationFn: ({ id, title }: { id: string; title: string }) => renameSession(id, title),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['sessions'] })
+      qc.invalidateQueries({ queryKey: ['sessions', connectionId ?? null] })
       toast.success('已重命名')
     },
   })
@@ -102,7 +104,7 @@ export function NavSessions() {
   const deleteMut = useMutation({
     mutationFn: (id: string) => deleteSession(id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['sessions'] })
+      qc.invalidateQueries({ queryKey: ['sessions', connectionId ?? null] })
       toast.success('已删除')
     },
   })

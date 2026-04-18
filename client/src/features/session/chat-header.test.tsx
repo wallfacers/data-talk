@@ -105,7 +105,7 @@ describe('ChatHeader', () => {
 
     // Invalidate the query to trigger refetch
     await act(async () => {
-      await qc.invalidateQueries({ queryKey: ['sessions'] })
+      await qc.invalidateQueries({ queryKey: ['sessions', null] })
     })
 
     // Title should update to "AI 标题"

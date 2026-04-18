@@ -12,21 +12,21 @@ import { useSidebar } from '@/components/ui/sidebar'
 import { useSessionStore } from '@/stores/session-store'
 import { useSessions } from './hooks/use-sessions'
 import { deleteSession, renameSession } from '@/services/api/session'
+import { useConnectionStore } from '@/features/connection/store'
 
 export function ChatHeader() {
   const sid = useSessionStore((s) => s.activeSessionId)
   const { data: sessions } = useSessions()
   const session = sessions?.find((s) => s.id === sid)
-  // TODO: title 应从 OpenCode 拉取（后端需新增 GET /session/{id} 同步）。
-  // 当前先用本地 SessionDto.title 占位。
   const title = session?.title ?? ''
   const qc = useQueryClient()
+  const connectionId = useConnectionStore((s) => s.activeConnectionId)
   const { state } = useSidebar()
 
   const rename = useMutation({
     mutationFn: ({ id, title }: { id: string; title: string }) => renameSession(id, title),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['sessions'] })
+      qc.invalidateQueries({ queryKey: ['sessions', connectionId ?? null] })
       toast.success('已重命名')
     },
   })
@@ -34,7 +34,7 @@ export function ChatHeader() {
   const del = useMutation({
     mutationFn: (id: string) => deleteSession(id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['sessions'] })
+      qc.invalidateQueries({ queryKey: ['sessions', connectionId ?? null] })
       useSessionStore.getState().closeSession()
       toast.success('已删除')
     },
