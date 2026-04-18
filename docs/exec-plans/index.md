@@ -15,6 +15,7 @@
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [Connection Test Status Persistence](./2026-04-18-connection-test-status-persistence-plan.md) | 2026-04-18 | 持久化连接测试结果到 DB，重启后可见上次测试状态 |
 | [Drop Connection Gate + Default Model](./2026-04-18-drop-connection-gate-default-model-plan.md) | 2026-04-18 | 去掉发消息对 DB 连接的依赖 + 自动选择首个可用模型 |
 | [OpenCode Session Title Sync](./2026-04-18-opencode-session-title-sync-plan.md) | 2026-04-18 | 完整 session.* 事件家族翻译 + title 自动同步 + title_locked 锁定机制 |
 | [Logging Standardization](./2026-04-18-logging-standardization-plan.md) | 2026-04-18 | logback-spring.xml 配置、System.err 修复、文件日志滚动输出 |
