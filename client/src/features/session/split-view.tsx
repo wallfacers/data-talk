@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { DatabaseIcon } from 'lucide-react'
 import { TurnList } from '@/features/chat/components/turn/turn-list'
+import { TurnListErrorBoundary } from '@/features/chat/components/turn/turn-list-error-boundary'
 import { ArtifactTimelineStrip } from '@/features/ontology/components/artifact-timeline-strip'
 import { ArtifactCanvas } from '@/features/ontology/components/artifact-canvas'
 import { StageWindow } from '@/features/stage/components/stage-window'
@@ -84,7 +85,9 @@ export function SplitView() {
             <ChatHeader />
             <div className="flex-1 overflow-y-auto px-2 py-4">
               <div className="mx-auto w-full max-w-3xl">
-                <TurnList sessionId={sid} />
+                <TurnListErrorBoundary>
+                  <TurnList sessionId={sid} />
+                </TurnListErrorBoundary>
               </div>
             </div>
             <div className="px-2 pb-4">
