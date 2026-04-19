@@ -28,7 +28,11 @@ export function SessionTurn(props: {
     return partsMap.get(props.userMessageId) ?? []
   }, [props.userMessageId, partsMap])
 
-  const working = props.isLastTurn && assistantMessages.some((m) => typeof m.time.completed !== 'number')
+  const streaming = useChatPartsStore((s) => s.streamingBySession.has(props.sessionId))
+  const working = props.isLastTurn && (
+    streaming ||
+    assistantMessages.some((m) => typeof m.time.completed !== 'number')
+  )
   const interrupted = assistantMessages.some((m) => m.error?.name === 'MessageAbortedError')
   const err = assistantMessages.find((m) => m.error && m.error.name !== 'MessageAbortedError')?.error
 
@@ -66,6 +70,7 @@ export function SessionTurn(props: {
     return null
   }, [assistantMessages, partsMap])
 
+  // working 已含 streaming 分支，因此首包延迟期（assistant message 尚未创建）也能显示"思考中…"。
   const showThinking = working && !err && !anyVisiblePart
 
   const turnDurationMs = useMemo(() => {
