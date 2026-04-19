@@ -179,44 +179,30 @@ export const useChatPartsStore = create<ChatPartsState>()(
   },
 
   promotePendingUser: (sessionId, pendingId, realId) => set((s) => {
-    const oldInfoMap = s.infoBySession.get(sessionId)
-    if (!oldInfoMap || !oldInfoMap.has(pendingId)) return {}
+    const byInfo = new Map(s.infoBySession.get(sessionId) ?? new Map<string, MessageInfo>())
+    const pendingInfo = byInfo.get(pendingId)
+    if (!pendingInfo) return {}
 
-    // Rebuild the info map to preserve insertion order
-    const nextInfoMap = new Map<string, MessageInfo>()
-    for (const [id, info] of oldInfoMap.entries()) {
-      if (id === pendingId) {
-        const realInfo: MessageInfo = { ...info, id: realId }
-        delete realInfo.__pending
-        delete realInfo.__failed
-        delete realInfo.__failReason
-        delete realInfo.__retrying
-        nextInfoMap.set(realId, realInfo)
-      } else {
-        nextInfoMap.set(id, info)
-      }
-    }
+    const realInfo: MessageInfo = { ...pendingInfo, id: realId }
+    delete realInfo.__pending
+    delete realInfo.__failed
+    delete realInfo.__failReason
+    delete realInfo.__retrying
+    byInfo.delete(pendingId)
+    byInfo.set(realId, realInfo)
 
-    // Rebuild the parts map to preserve insertion order
-    const oldPartsMap = s.partsBySession.get(sessionId)
-    const nextPartsMap = new Map<string, Part[]>()
-    if (oldPartsMap) {
-      for (const [mid, parts] of oldPartsMap.entries()) {
-        if (mid === pendingId) {
-          nextPartsMap.set(realId, parts.map((p) => ({ ...p, messageID: realId })))
-        } else {
-          nextPartsMap.set(mid, parts)
-        }
-      }
-    }
+    const byMsg = new Map(s.partsBySession.get(sessionId) ?? new Map<string, Part[]>())
+    const pendingParts = byMsg.get(pendingId) ?? []
+    byMsg.delete(pendingId)
+    byMsg.set(realId, pendingParts.map((p) => ({ ...p, messageID: realId })))
 
     const index = new Map(s.partIndexBySession.get(sessionId) ?? new Map())
     for (const [pid, entry] of index.entries()) {
       if (entry.messageId === pendingId) index.set(pid, { ...entry, messageId: realId })
     }
 
-    const infoBySession = new Map(s.infoBySession); infoBySession.set(sessionId, nextInfoMap)
-    const partsBySession = new Map(s.partsBySession); partsBySession.set(sessionId, nextPartsMap)
+    const infoBySession = new Map(s.infoBySession); infoBySession.set(sessionId, byInfo)
+    const partsBySession = new Map(s.partsBySession); partsBySession.set(sessionId, byMsg)
     const partIndexBySession = new Map(s.partIndexBySession); partIndexBySession.set(sessionId, index)
     return { infoBySession, partsBySession, partIndexBySession }
   }),

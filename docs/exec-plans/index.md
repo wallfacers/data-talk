@@ -6,6 +6,7 @@
 
 | 计划 | 状态 | 摘要 |
 |------|------|------|
+| [Refresh-Resilient Streaming](./2026-04-19-refresh-resilient-streaming-plan.md) | 计划中 | 刷新浏览器不中断 AI 流响应：persist per-session lastEventId + streamingBySession 到 sessionStorage；buildEventSink 消费 session.idle 清零；后端移除 POST 流误发的 session.status=idle（TD-013 后半） |
 | [Composer Model Picker Dialog](./2026-04-18-composer-model-picker-dialog-plan.md) | 计划中 | Composer 模型选择器 Popover → 960×540 双栏对话框，触发按钮样式不变 |
 
 ## 已完成计划

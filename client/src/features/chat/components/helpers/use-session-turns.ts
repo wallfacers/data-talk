@@ -13,11 +13,14 @@ export function useSessionTurns(sessionId: string | null): Turn[] {
 
   return useMemo(() => {
     if (!sessionId || !infoMap) return []
-    const sorted = Array.from(infoMap.values()).sort((a, b) => (a.time.created ?? 0) - (b.time.created ?? 0))
+    // Use insertion order from the Map instead of sorting by time.created.
+    // This avoids issues where local clock skew makes user messages appear "after"
+    // the assistant's response in time, causing a layout flip.
+    const messages = Array.from(infoMap.values())
     const turns: Turn[] = []
     let current: Turn | null = null
 
-    for (const info of sorted) {
+    for (const info of messages) {
       if (info.role === 'user') {
         if (current) turns.push(current)
         current = { userMessageId: info.id, userInfo: info, assistantMessageIds: [] }

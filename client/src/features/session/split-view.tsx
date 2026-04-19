@@ -83,21 +83,21 @@ export function SplitView() {
         {hasMessages ? (
           <div className="flex h-full flex-col">
             <ChatHeader />
-            <div className="flex-1 overflow-y-auto px-2 py-4">
+            <div className="flex-1 overflow-y-auto px-2 py-4" style={{ scrollbarGutter: 'stable' }}>
               <div className="mx-auto w-full max-w-3xl">
                 <TurnListErrorBoundary>
                   <TurnList sessionId={sid} />
                 </TurnListErrorBoundary>
               </div>
             </div>
-            <div className="px-2 pb-4">
+            <div className="px-2 pb-4 overflow-hidden" style={{ scrollbarGutter: 'stable' }}>
               <div id="composer-slot" className="mx-auto w-full max-w-3xl" />
             </div>
           </div>
         ) : (
           <div className="flex h-full flex-col">
             <ChatHeader />
-            <div className="flex flex-1 flex-col items-center justify-center px-2">
+            <div className="flex flex-1 flex-col items-center justify-center px-2 overflow-hidden" style={{ scrollbarGutter: 'stable' }}>
               <div className="flex flex-col items-center gap-3 text-center">
                 <div className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
                   <DatabaseIcon className="size-5" />
@@ -105,8 +105,8 @@ export function SplitView() {
                 <h1 className="text-xl font-semibold tracking-tight">DataTalk</h1>
                 <p className="text-sm text-muted-foreground">用自然语言和你的数据库对话</p>
               </div>
-              <div className="mt-8 w-full max-w-3xl">
-                <div id="composer-slot" />
+              <div className="mt-8 w-full max-w-3xl mx-auto">
+                <div id="composer-slot" className="w-full" />
               </div>
             </div>
           </div>
