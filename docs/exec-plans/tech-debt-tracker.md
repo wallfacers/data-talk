@@ -28,6 +28,7 @@
 | TD-017 | P2 | client | `DtEvent.SessionDiff` 定义但未消费；payload 语义待调研 | 同上 |
 | TD-020 | P2 | application | `preview_sql` 等 mutation Action 的风险判级本期靠前端正则粗判（仅看 SQL 首关键字，不识别 WHERE 缺失 / 批量 DELETE / CTE 内含 DML）。目标：后端引入 SQL AST 解析器（JSqlParser / Calcite）在 ActionHandler 执行前完成真实判级，通过 `part.state.metadata.riskLevel` 回传前端；前端 `resolveRisk` 优先级链（part-level > descriptor > 正则）保证前端零改动升级 | Plan 2026-04-19 AI Message Rendering Migration |
 | TD-SINGLE-EMPTY-SESSION-MULTINODE | P2 | application | `SessionService.create` 的 `synchronized (createLock)` 仅在单 JVM 内有效。若未来扩展为多节点部署，需改为 DB 唯一约束（partial unique index `ON sessions(connection_id) WHERE has_ever_sent = 0`）。SQLite 原生不支持 partial unique，届时需配合数据库类型切换到 PG 一并处理。现状单机桌面应用无此需求 | Plan 2026-04-19 Single Empty Session |
+| TD-MULTI-SESSION-SSE-POOL | P2 | client | `useSessionSubscribe` 当前仅跟随 `activeSessionId` 订阅 GET SSE；`sendMessage` 发起的 POST-SSE 不受影响（切走不断连，数据层正确）。但后端主动推送的 `ontology.updated` / `session.meta.updated` 等事件在用户切走 > 30s（`SessionBusRegistry` eviction-delay）且 ring buffer 溢出（500 条 / 5 min TTL）后可能丢。改造方向：订阅池（pool of subscribed sessionIds + 生命周期策略，如 streaming 常驻 / LRU / 用户 pin）。推迟原因：触发率低，composer 指示丢失这一核心痛点已由 per-session streaming indicator 解决 | Plan 2026-04-19 Per-Session Streaming Indicator |
 
 ## 已清除债务
 

@@ -31,7 +31,7 @@
 - Modify: `client/src/stores/chat-parts-store.ts`
 - Modify: `client/src/stores/chat-parts-store.test.ts`
 
-- [ ] **Step 1: Write failing tests for the new slice**
+- [x] **Step 1: Write failing tests for the new slice**
 
 Append to `client/src/stores/chat-parts-store.test.ts` (inside the existing `describe('useChatPartsStore', ...)` block or a new one):
 
@@ -76,12 +76,12 @@ describe('streamingBySession', () => {
 })
 ```
 
-- [ ] **Step 2: Run tests, confirm they fail**
+- [x] **Step 2: Run tests, confirm they fail**
 
 Run: `cd client && npx vitest run src/stores/chat-parts-store.test.ts`
 Expected: 4 new tests FAIL with "setStreaming is not a function" / "streamingBySession is undefined".
 
-- [ ] **Step 3: Add the slice to the store**
+- [x] **Step 3: Add the slice to the store**
 
 In `client/src/stores/chat-parts-store.ts`:
 
@@ -151,17 +151,17 @@ clearSession: (sessionId) => set((s) => {
 }),
 ```
 
-- [ ] **Step 4: Run tests, confirm they pass**
+- [x] **Step 4: Run tests, confirm they pass**
 
 Run: `cd client && npx vitest run src/stores/chat-parts-store.test.ts`
 Expected: all tests PASS (pre-existing + 4 new).
 
-- [ ] **Step 5: tsc check**
+- [x] **Step 5: tsc check**
 
 Run: `cd client && npx tsc --noEmit`
 Expected: 0 errors.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add client/src/stores/chat-parts-store.ts client/src/stores/chat-parts-store.test.ts
@@ -181,7 +181,7 @@ EOF
 - Modify: `client/src/services/channel/use-channel.ts`
 - Modify: `client/src/services/channel/use-channel.test.ts`
 
-- [ ] **Step 1: Write failing tests for the new multi-session behavior**
+- [x] **Step 1: Write failing tests for the new multi-session behavior**
 
 In `client/src/services/channel/use-channel.test.ts`, add:
 
@@ -239,12 +239,12 @@ describe('useChannel.isStreaming (per-session)', () => {
 
 If a minimal `useChannel.test.ts` already exists (from Phase 0 of AI message rendering), append these two `describe/it` blocks — do not overwrite existing tests. If not, create the file with the imports shown.
 
-- [ ] **Step 2: Run tests, confirm they fail**
+- [x] **Step 2: Run tests, confirm they fail**
 
 Run: `cd client && npx vitest run src/services/channel/use-channel.test.ts`
 Expected: 2 new tests FAIL (isStreaming doesn't react to store changes — it's still local `useState`).
 
-- [ ] **Step 3: Rewrite `useChannel` isStreaming to read from store**
+- [x] **Step 3: Rewrite `useChannel` isStreaming to read from store**
 
 In `client/src/services/channel/use-channel.ts`:
 
@@ -340,22 +340,22 @@ const retryPendingUser = useCallback(
 return { sendMessage, abort, isStreaming, client, retryPendingUser, removePendingUser }
 ```
 
-- [ ] **Step 4: Run tests, confirm they pass**
+- [x] **Step 4: Run tests, confirm they pass**
 
 Run: `cd client && npx vitest run src/services/channel/use-channel.test.ts`
 Expected: all tests PASS (pre-existing `buildEventSink` tests + 2 new).
 
-- [ ] **Step 5: Run the full store test suite to catch regressions**
+- [x] **Step 5: Run the full store test suite to catch regressions**
 
 Run: `cd client && npx vitest run src/stores/ src/services/channel/`
 Expected: all PASS.
 
-- [ ] **Step 6: tsc check**
+- [x] **Step 6: tsc check**
 
 Run: `cd client && npx tsc --noEmit`
 Expected: 0 errors.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add client/src/services/channel/use-channel.ts client/src/services/channel/use-channel.test.ts
@@ -373,17 +373,17 @@ EOF
 
 **Files:** (no code changes, verification only)
 
-- [ ] **Step 1: Full client typecheck**
+- [x] **Step 1: Full client typecheck**
 
 Run: `cd client && npx tsc --noEmit`
 Expected: 0 errors.
 
-- [ ] **Step 2: Full client test run**
+- [x] **Step 2: Full client test run**
 
 Run: `cd client && npx vitest run`
 Expected: zero new failures. Pre-existing failing tests (chat-header / split-view / providers / stage-toggle from the AI message rendering migration epilogue) stay at their current counts — compare to the baseline in `docs/exec-plans/2026-04-19-ai-message-rendering-migration-plan.md` Phase 6 epilogue.
 
-- [ ] **Step 3: Visual sanity (optional but recommended)**
+- [x] **Step 3: Visual sanity (optional but recommended)**
 
 Start `npm run dev` and manually run scenarios M1-M4 from the spec §6:
 - **M1**: send in A → switch to B → B shows send button; back to A → spinner + stop still visible until A completes
@@ -393,7 +393,7 @@ Start `npm run dev` and manually run scenarios M1-M4 from the spec §6:
 
 (If no model is configured locally, skip; CI-level tests cover the state transitions.)
 
-- [ ] **Step 4: No commit for this task** (verification only)
+- [x] **Step 4: No commit for this task** (verification only)
 
 ---
 
@@ -405,7 +405,7 @@ Start `npm run dev` and manually run scenarios M1-M4 from the spec §6:
 - Modify: `docs/product-specs/index.md` §8 (register the new spec — should happen **now** as part of normal registration; see Step 2 below)
 - Modify: `docs/exec-plans/2026-04-19-per-session-streaming-indicator-plan.md` (self — check off tasks)
 
-- [ ] **Step 1: Register tech debt**
+- [x] **Step 1: Register tech debt**
 
 Append to `docs/exec-plans/tech-debt-tracker.md` (follow the existing row format of prior TD-* entries):
 
@@ -424,7 +424,7 @@ Append to `docs/exec-plans/tech-debt-tracker.md` (follow the existing row format
 **推迟原因**：实际用户反馈未触发该边界；当前方案已覆盖 composer 指示丢失这一核心痛点（见 2026-04-19-per-session-streaming-indicator-plan）。
 ```
 
-- [ ] **Step 2: Register spec in product-specs/index.md §8**
+- [x] **Step 2: Register spec in product-specs/index.md §8**
 
 Insert a new row at the top of the §8 table (above the `Single Empty Session` row):
 
@@ -432,7 +432,7 @@ Insert a new row at the top of the §8 table (above the `Single Empty Session` r
 | [Per-Session Streaming Indicator](./2026-04-19-per-session-streaming-indicator-design.md) | 2026-04-19 | `useChannel().isStreaming` 从 hook-local useState 提升到 `chat-parts-store.streamingBySession: Set<string>`；切 session 后回到 A 正确显示"还在跑"指示；不改 SSE 订阅结构 |
 ```
 
-- [ ] **Step 3: Register plan in exec-plans/index.md Active**
+- [x] **Step 3: Register plan in exec-plans/index.md Active**
 
 Insert a new row at the top of the "活跃计划" table:
 
@@ -440,7 +440,7 @@ Insert a new row at the top of the "活跃计划" table:
 | [Per-Session Streaming Indicator](./2026-04-19-per-session-streaming-indicator-plan.md) | 计划中 | `useChannel.isStreaming` 提升到 store 按 sessionId 分片；切回仍在跑的 session 正确显示 spinner / 停止按钮；SSE 订阅池作为 P2 tech debt 登记 |
 ```
 
-- [ ] **Step 4: On plan completion, flip Active → Completed**
+- [x] **Step 4: On plan completion, flip Active → Completed**
 
 After Tasks 1-3 all pass, edit `docs/exec-plans/index.md`:
 
@@ -452,12 +452,12 @@ After Tasks 1-3 all pass, edit `docs/exec-plans/index.md`:
 | [Per-Session Streaming Indicator](./2026-04-19-per-session-streaming-indicator-plan.md) | 2026-04-19 | `useChannel.isStreaming` 提升到 `chat-parts-store.streamingBySession` 按 sessionId 分片；切回后台仍在跑的 session 正确显示 spinner；登记 TD-MULTI-SESSION-SSE-POOL (P2) |
 ```
 
-- [ ] **Step 5: Mark all tasks in this plan complete**
+- [x] **Step 5: Mark all tasks in this plan complete**
 
 Edit `docs/exec-plans/2026-04-19-per-session-streaming-indicator-plan.md`:
 - Flip every `- [ ]` checkbox to `- [x]` for Tasks 1-4 steps that were executed.
 
-- [ ] **Step 6: Commit housekeeping**
+- [x] **Step 6: Commit housekeeping**
 
 ```bash
 git add docs/exec-plans/tech-debt-tracker.md docs/exec-plans/index.md docs/product-specs/index.md docs/exec-plans/2026-04-19-per-session-streaming-indicator-plan.md
