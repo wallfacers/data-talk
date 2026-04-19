@@ -227,6 +227,13 @@ function Row({ p, action, onClick, onRemove }: {
   const remove = useMutation({
     mutationFn: () => deleteCredentials(onRemove!),
     onSuccess: () => {
+      // 乐观更新：从 connected 数组移除该 provider
+      qc.setQueryData(aiQueryKeys.providers, (old: any) => {
+        if (!old) return old
+        const connected = (old.connected ?? []) as string[]
+        if (!connected.includes(onRemove!)) return old
+        return { ...old, connected: connected.filter(id => id !== onRemove) }
+      })
       qc.invalidateQueries({ queryKey: aiQueryKeys.providers })
       qc.invalidateQueries({ queryKey: aiQueryKeys.models })
       toast.success('已移除凭证')
