@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { ChevronRightIcon } from 'lucide-react'
 import { useChatPartsStore } from '@/stores/chat-parts-store'
 import type { MessageInfo, Part } from '@/services/channel/types'
 import { UserBubble } from './user-bubble'
@@ -56,8 +57,8 @@ export function SessionTurn(props: {
     return null
   }, [assistantMessages, partsMap])
 
-  // 只要 assistantMessages 数组长度 > 0，就说明已经进入消息渲染阶段，去掉这个全局的“思考中…”
-  const showThinking = working && !err && assistantMessages.length === 0
+  // working 已含 streaming 分支，因此首包延迟期（assistant message 尚未创建，或没有可见 part 时）也能显示"思考中…"。
+  const showThinking = working && !err && !anyVisiblePart
 
   const turnDurationMs = useMemo(() => {
     const start = props.userInfo?.time.created
@@ -67,7 +68,8 @@ export function SessionTurn(props: {
       const c = m.time.completed
       if (typeof c === 'number') end = end === undefined ? c : Math.max(end, c)
     }
-    return end !== undefined && end >= start ? end - start : undefined
+    // 使用 Math.max(0, ...) 处理可能的时钟回拨或微小误差，确保耗时始终能显示
+    return end !== undefined ? Math.max(0, end - start) : undefined
   }, [props.userInfo, assistantMessages])
 
   return (
@@ -84,8 +86,11 @@ export function SessionTurn(props: {
         <div className="my-2 text-center text-xs text-muted-foreground">— 已中断 —</div>
       )}
       {showThinking && (
-        <div className="my-1 text-sm text-muted-foreground">
-          <TextShimmer text="思考中…" active />
+        <div className="my-2 flex flex-col">
+          <div className="flex w-fit items-center gap-1.5 text-sm font-medium text-muted-foreground">
+            <ChevronRightIcon size={16} className="rotate-90" />
+            <TextShimmer text="思考中…" active />
+          </div>
         </div>
       )}
       {err?.data?.message && <ErrorCard message={err.data.message} />}
