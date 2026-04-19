@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist, createJSONStorage } from 'zustand/middleware'
 import type { Part, MessageInfo } from '@/services/channel/types'
 import { generateUuid } from '@/lib/uuid'
 
@@ -24,7 +25,9 @@ type ChatPartsState = {
   removePendingUser: (sessionId: string, pendingId: string) => void
 }
 
-export const useChatPartsStore = create<ChatPartsState>((set, get) => ({
+export const useChatPartsStore = create<ChatPartsState>()(
+  persist(
+    (set, get) => ({
   partsBySession: new Map(),
   infoBySession: new Map(),
   partIndexBySession: new Map(),
@@ -176,30 +179,44 @@ export const useChatPartsStore = create<ChatPartsState>((set, get) => ({
   },
 
   promotePendingUser: (sessionId, pendingId, realId) => set((s) => {
-    const byInfo = new Map(s.infoBySession.get(sessionId) ?? new Map<string, MessageInfo>())
-    const pendingInfo = byInfo.get(pendingId)
-    if (!pendingInfo) return {}
+    const oldInfoMap = s.infoBySession.get(sessionId)
+    if (!oldInfoMap || !oldInfoMap.has(pendingId)) return {}
 
-    const realInfo: MessageInfo = { ...pendingInfo, id: realId }
-    delete realInfo.__pending
-    delete realInfo.__failed
-    delete realInfo.__failReason
-    delete realInfo.__retrying
-    byInfo.delete(pendingId)
-    byInfo.set(realId, realInfo)
+    // Rebuild the info map to preserve insertion order
+    const nextInfoMap = new Map<string, MessageInfo>()
+    for (const [id, info] of oldInfoMap.entries()) {
+      if (id === pendingId) {
+        const realInfo: MessageInfo = { ...info, id: realId }
+        delete realInfo.__pending
+        delete realInfo.__failed
+        delete realInfo.__failReason
+        delete realInfo.__retrying
+        nextInfoMap.set(realId, realInfo)
+      } else {
+        nextInfoMap.set(id, info)
+      }
+    }
 
-    const byMsg = new Map(s.partsBySession.get(sessionId) ?? new Map<string, Part[]>())
-    const pendingParts = byMsg.get(pendingId) ?? []
-    byMsg.delete(pendingId)
-    byMsg.set(realId, pendingParts.map((p) => ({ ...p, messageID: realId })))
+    // Rebuild the parts map to preserve insertion order
+    const oldPartsMap = s.partsBySession.get(sessionId)
+    const nextPartsMap = new Map<string, Part[]>()
+    if (oldPartsMap) {
+      for (const [mid, parts] of oldPartsMap.entries()) {
+        if (mid === pendingId) {
+          nextPartsMap.set(realId, parts.map((p) => ({ ...p, messageID: realId })))
+        } else {
+          nextPartsMap.set(mid, parts)
+        }
+      }
+    }
 
     const index = new Map(s.partIndexBySession.get(sessionId) ?? new Map())
     for (const [pid, entry] of index.entries()) {
       if (entry.messageId === pendingId) index.set(pid, { ...entry, messageId: realId })
     }
 
-    const infoBySession = new Map(s.infoBySession); infoBySession.set(sessionId, byInfo)
-    const partsBySession = new Map(s.partsBySession); partsBySession.set(sessionId, byMsg)
+    const infoBySession = new Map(s.infoBySession); infoBySession.set(sessionId, nextInfoMap)
+    const partsBySession = new Map(s.partsBySession); partsBySession.set(sessionId, nextPartsMap)
     const partIndexBySession = new Map(s.partIndexBySession); partIndexBySession.set(sessionId, index)
     return { infoBySession, partsBySession, partIndexBySession }
   }),
@@ -227,4 +244,28 @@ export const useChatPartsStore = create<ChatPartsState>((set, get) => ({
     const partIndexBySession = new Map(s.partIndexBySession); partIndexBySession.set(sessionId, index)
     return { infoBySession, partsBySession, partIndexBySession }
   }),
-}))
+    }),
+    {
+      name: 'data-talk.chat-parts',
+      storage: createJSONStorage(() => sessionStorage),
+      // Persist only the streaming flag set. Parts / info are rebuilt on
+      // every mount from history + SSE replay — persisting them would
+      // explode sessionStorage and risk stale state.
+      // Zustand 5: convert Set → array on write so JSON.stringify works.
+      partialize: (s) => ({
+        streamingBySession: Array.from(s.streamingBySession),
+      }) as unknown as ChatPartsState,
+      // Rebuild the Set on read. The other slices (Maps of parts / info /
+      // index) are NOT persisted — we inherit the default empty Maps from
+      // `current` so they're not clobbered to `undefined`.
+      merge: (persisted, current) => {
+        const p = persisted as { streamingBySession?: string[] } | undefined
+        const arr = p?.streamingBySession ?? []
+        return {
+          ...current,
+          streamingBySession: new Set<string>(arr),
+        }
+      },
+    },
+  ),
+)

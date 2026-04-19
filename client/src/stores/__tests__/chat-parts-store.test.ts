@@ -132,3 +132,34 @@ describe('chat-parts-store', () => {
     })
   })
 })
+
+describe('streamingBySession persistence', () => {
+  beforeEach(() => {
+    useChatPartsStore.setState({
+      partsBySession: new Map(),
+      infoBySession: new Map(),
+      partIndexBySession: new Map(),
+      streamingBySession: new Set<string>(),
+    })
+    sessionStorage.clear()
+  })
+
+  it('persists streamingBySession to sessionStorage', () => {
+    useChatPartsStore.getState().setStreaming('ses_a', true)
+    const raw = sessionStorage.getItem('data-talk.chat-parts')
+    expect(raw).toBeTruthy()
+    const parsed = JSON.parse(raw!)
+    expect(parsed.state.streamingBySession).toEqual(['ses_a'])
+  })
+
+  it('does NOT persist the big partsBySession / infoBySession maps', () => {
+    useChatPartsStore.getState().upsertInfo('ses_a', {
+      id: 'm1', role: 'user', sessionID: 'ses_a', time: { created: 1 },
+    })
+    const raw = sessionStorage.getItem('data-talk.chat-parts')
+    expect(raw).toBeTruthy()
+    const parsed = JSON.parse(raw!)
+    expect(parsed.state.partsBySession).toBeUndefined()
+    expect(parsed.state.infoBySession).toBeUndefined()
+  })
+})

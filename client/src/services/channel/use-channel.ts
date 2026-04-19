@@ -50,6 +50,15 @@ export function buildEventSink(sessionId: string, client: ChannelClient | null, 
       if (info && info.time.completed === undefined) {
         store.upsertInfo(sessionId, { ...info, time: { ...info.time, completed: Date.now() } })
       }
+    } else if (event === 'session.idle' || (event === 'session.status' && (data as any)?.status === 'idle')) {
+      // Turn-done signals: OpenCode's native `session.idle` (DtEvent.SessionIdle),
+      // plus the backend's composite `session.status=idle` which ChannelController
+      // now publishes only AFTER observing real turn completion. Consume both so
+      // we clear the streaming flag on whichever arrives first via the bus. The
+      // composer flips back to the send button and the thinking indicator exits.
+      // Message-level time.completed (set via message.updated) drives per-message
+      // UI state separately.
+      useChatPartsStore.getState().setStreaming(sessionId, false)
     } else if (event === 'session.meta.updated') {
       const { sessionId: sid, title, titleLocked } = data as { sessionId: string; title: string; titleLocked: boolean }
       queryClient.setQueryData<Session[]>(['sessions', connectionId ?? null], (old) => {

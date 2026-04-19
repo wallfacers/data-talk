@@ -146,3 +146,54 @@ describe('buildEventSink → lastEventId tracking', () => {
     expect(useChannelStore.getState().lastEventIdBySession.get('ses_a')).toBe(20)
   })
 })
+
+describe('buildEventSink → turn-done clears streamingBySession', () => {
+  beforeEach(() => {
+    useChatPartsStore.setState({
+      partsBySession: new Map(),
+      infoBySession: new Map(),
+      partIndexBySession: new Map(),
+      streamingBySession: new Set<string>(['ses_a']),
+    })
+  })
+
+  it('clears streamingBySession on session.idle event', () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const sink = buildEventSink('ses_a', null, qc, null, null)
+
+    sink({ id: 1, event: 'session.idle', data: { sessionId: 'ses_a' } })
+
+    expect(useChatPartsStore.getState().streamingBySession.has('ses_a')).toBe(false)
+  })
+
+  it('clears streamingBySession on session.status=idle event', () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const sink = buildEventSink('ses_a', null, qc, null, null)
+
+    sink({ id: 1, event: 'session.status', data: { status: 'idle', retryInfo: {} } })
+
+    expect(useChatPartsStore.getState().streamingBySession.has('ses_a')).toBe(false)
+  })
+
+  it('does NOT clear streamingBySession on session.status=busy', () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const sink = buildEventSink('ses_a', null, qc, null, null)
+
+    sink({ id: 1, event: 'session.status', data: { status: 'busy', retryInfo: {} } })
+
+    expect(useChatPartsStore.getState().streamingBySession.has('ses_a')).toBe(true)
+  })
+
+  it('does not touch other sessions when one goes idle', () => {
+    useChatPartsStore.setState({
+      streamingBySession: new Set<string>(['ses_a', 'ses_b']),
+    })
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const sink = buildEventSink('ses_a', null, qc, null, null)
+
+    sink({ id: 1, event: 'session.idle', data: { sessionId: 'ses_a' } })
+
+    expect(useChatPartsStore.getState().streamingBySession.has('ses_a')).toBe(false)
+    expect(useChatPartsStore.getState().streamingBySession.has('ses_b')).toBe(true)
+  })
+})
