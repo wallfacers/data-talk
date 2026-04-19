@@ -60,7 +60,6 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
       if (!sess.reusedEmpty) {
         qc.invalidateQueries({ queryKey: ['sessions', activeConnectionId ?? null] })
       }
-      createInProgressRef.current = false
     },
     onSettled: () => {
       createInProgressRef.current = false

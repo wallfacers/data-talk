@@ -63,8 +63,7 @@ describe('AppSidebar — 创建会话', () => {
 
     fireEvent.click(screen.getByText('创建会话'))
 
-    await new Promise((r) => setTimeout(r, 50))
-    expect(createSession).not.toHaveBeenCalled()
+    await waitFor(() => expect(createSession).not.toHaveBeenCalled(), { timeout: 100 })
   })
 
   it('isPending 期间多次点击仅触发一次 mutate', async () => {
