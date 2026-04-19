@@ -28,10 +28,16 @@ export function SplitView() {
   const sid = useSessionStore((s) => s.activeSessionId)
   const open = useStageStore((s) => (sid ? !!s.openBySession.get(sid) : false))
   const maximized = useStageStore((s) => (sid ? !!s.maximizedBySession.get(sid) : false))
-  const hasMessages = useChatPartsStore((s) => {
+  // 用同步的 hasEverSent 作为主信号，避免会话切换时 infoBySession 还没被 fetch
+  // 填充导致空态分支闪过一帧；chat-parts-store 的判断仅兜底"新空会话里用户刚敲第一条"。
+  const hasEverSent = useSessionStore((s) =>
+    sid ? (s.hasEverSentBySession.get(sid) ?? false) : false,
+  )
+  const hasStoreMessages = useChatPartsStore((s) => {
     const info = sid ? s.infoBySession.get(sid) : undefined
     return info ? info.size > 0 : false
   })
+  const hasMessages = hasEverSent || hasStoreMessages
 
   const splitResizable = useUISettingsStore((s) => s.splitResizable)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -104,14 +110,14 @@ export function SplitView() {
                 </TurnListErrorBoundary>
               </div>
             </div>
-            <div className="px-2 pt-1 pb-4" style={{ scrollbarGutter: 'stable' }}>
+            <div className="overflow-y-auto px-2 pt-1 pb-4" style={{ scrollbarGutter: 'stable' }}>
               <div id="composer-slot" className="mx-auto w-full max-w-3xl" />
             </div>
           </div>
         ) : (
           <div className="flex h-full flex-col">
             <ChatHeader />
-            <div className="flex flex-1 flex-col items-center justify-center px-2 overflow-hidden" style={{ scrollbarGutter: 'stable' }}>
+            <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto px-2" style={{ scrollbarGutter: 'stable' }}>
               <div className="flex flex-col items-center gap-3 text-center">
                 <div className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
                   <DatabaseIcon className="size-5" />
