@@ -9,6 +9,7 @@ import { useOntologyStore } from '@/stores/ontology-store'
 import { useTimelineStore } from '@/stores/timeline-store'
 import { useSessionStore } from '@/stores/session-store'
 import { useConnectionStore } from '@/features/connection/store'
+import { useChannelStore } from '@/stores/channel-store'
 import { getClientHandler } from '@/features/actions/registry'
 import { normalizeError, showErrorToast } from '@/services/http-error'
 import type { Session } from '@/services/api/session'
@@ -22,6 +23,9 @@ function getApiBaseUrl(): string {
 export function buildEventSink(sessionId: string, client: ChannelClient | null, queryClient: QueryClient, connectionId: string | null = null, pendingUserId: string | null = null) {
   return (evt: StreamEvent) => {
     const { event, data } = evt
+    if (typeof evt.id === 'number' && evt.id > 0) {
+      useChannelStore.getState().setLastEventId(sessionId, evt.id)
+    }
     if (event === 'message.created' || event === 'message.updated') {
       const m = (data as any).info ?? (data as any).message   // 兼容过渡
       if (!m) return

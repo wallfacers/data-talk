@@ -4,6 +4,7 @@ import { renderHook, act } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { buildEventSink, useChannel } from './use-channel'
 import { useChatPartsStore } from '@/stores/chat-parts-store'
+import { useChannelStore } from '@/stores/channel-store'
 import { useSessionStore } from '@/stores/session-store'
 
 describe('buildEventSink · session.meta.updated', () => {
@@ -111,5 +112,37 @@ describe('useChannel.isStreaming (per-session)', () => {
     useChatPartsStore.getState().setStreaming('A', true)
     const { result } = renderHook(() => useChannel(), { wrapper })
     expect(result.current.isStreaming).toBe(false)
+  })
+})
+
+describe('buildEventSink → lastEventId tracking', () => {
+  beforeEach(() => {
+    useChannelStore.setState({ lastEventIdBySession: new Map(), isConnected: false })
+    useChatPartsStore.setState({
+      partsBySession: new Map(),
+      infoBySession: new Map(),
+      partIndexBySession: new Map(),
+      streamingBySession: new Set<string>(),
+    })
+  })
+
+  it('updates lastEventIdBySession on every processed event', () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const sink = buildEventSink('ses_a', null, qc, null, null)
+
+    sink({ id: 5, event: 'message.created', data: { message: { id: 'm1', role: 'assistant', sessionId: 'oc', time: { created: 1 } } } })
+    sink({ id: 7, event: 'message.part.delta', data: { partId: 'p1', field: 'text', delta: 'hi' } })
+
+    expect(useChannelStore.getState().lastEventIdBySession.get('ses_a')).toBe(7)
+  })
+
+  it('does not move cursor backward if an out-of-order event slips through', () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const sink = buildEventSink('ses_a', null, qc, null, null)
+
+    sink({ id: 20, event: 'message.created', data: { message: { id: 'm1', role: 'assistant', sessionId: 'oc', time: { created: 1 } } } })
+    sink({ id: 5,  event: 'message.created', data: { message: { id: 'm2', role: 'assistant', sessionId: 'oc', time: { created: 2 } } } })
+
+    expect(useChannelStore.getState().lastEventIdBySession.get('ses_a')).toBe(20)
   })
 })
