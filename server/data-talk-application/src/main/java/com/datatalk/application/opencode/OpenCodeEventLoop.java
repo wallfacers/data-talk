@@ -300,7 +300,7 @@ public class OpenCodeEventLoop {
      */
     private Message parseMessage(JsonNode info) {
         if (info.isMissingNode() || info.isNull()) {
-            return new Message(null, null, Message.Role.ASSISTANT, List.of(), 0L);
+            return new Message(null, null, Message.Role.ASSISTANT, List.of(), 0L, null, null);
         }
         Message.Role role = Message.Role.valueOf(info.path("role").asText("assistant").toUpperCase());
         return new Message(
@@ -308,7 +308,9 @@ public class OpenCodeEventLoop {
             info.path("sessionID").asText(null),
             role,
             List.of(),
-            info.path("time").path("created").asLong(0L)
+            info.path("time").path("created").asLong(0L),
+            null,
+            null
         );
     }
 

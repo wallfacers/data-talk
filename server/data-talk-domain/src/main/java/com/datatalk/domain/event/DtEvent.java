@@ -27,7 +27,6 @@ import java.util.Map;
         @JsonSubTypes.Type(value = DtEvent.TaskComplete.class, name = "task.complete"),
         @JsonSubTypes.Type(value = DtEvent.MessageCreated.class, name = "message.created"),
         @JsonSubTypes.Type(value = DtEvent.MessageUpdated.class, name = "message.updated"),
-        @JsonSubTypes.Type(value = DtEvent.MessageCompleted.class, name = "message.completed"),
         @JsonSubTypes.Type(value = DtEvent.MessagePartCreated.class, name = "message.part.created"),
         @JsonSubTypes.Type(value = DtEvent.MessagePartUpdated.class, name = "message.part.updated"),
         @JsonSubTypes.Type(value = DtEvent.MessagePartDelta.class, name = "message.part.delta"),
@@ -77,8 +76,6 @@ public sealed interface DtEvent {
     record MessageCreated(Message message) implements DtEvent {}
     @JsonTypeName("message.updated")
     record MessageUpdated(Message message) implements DtEvent {}
-    @JsonTypeName("message.completed")
-    record MessageCompleted(String sessionId, String messageId) implements DtEvent {}
 
     @JsonTypeName("message.part.created")
     record MessagePartCreated(JsonNode part) implements DtEvent {}
@@ -128,7 +125,6 @@ public sealed interface DtEvent {
             case TaskComplete tc          -> "task.complete";
             case MessageCreated mc        -> "message.created";
             case MessageUpdated mu        -> "message.updated";
-            case MessageCompleted mc      -> "message.completed";
             case MessagePartCreated pc    -> "message.part.created";
             case MessagePartUpdated pu    -> "message.part.updated";
             case MessagePartDelta pd      -> "message.part.delta";

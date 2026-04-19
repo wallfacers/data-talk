@@ -9,7 +9,9 @@ public record Message(
     String sessionId,
     Role role,
     List<Part> parts,
-    long createdAt
+    long createdAt,
+    String providerID,
+    String modelID
 ) {
     public enum Role {
         USER, ASSISTANT, SYSTEM;
