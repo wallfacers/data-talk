@@ -209,6 +209,7 @@ DataTalk 的差异化在于 **AI 直接操作数据库**，但不能让 AI 蛮�
 
 | 设计文档 | 日期 | 主题 |
 |----------|------|------|
+| [Single Empty Session](./2026-04-19-single-empty-session-design.md) | 2026-04-19 | 全局最多 1 个空白会话（`hasEverSent=false`）：前端本地查重 + `isPending` 短路；后端 `SessionService.create` `synchronized` 幂等 + `reusedEmpty` 响应字段；零 migration |
 | [AI Message Rendering Migration](./2026-04-19-ai-message-rendering-migration-design.md) | 2026-04-19 | 将 OpenCode 桌面端消息渲染（Markdown 增量 / PacedMarkdown / TextShimmer / BasicTool / ContextToolGroup / ToolRegistry）React 化迁移至 DataTalk，叠加风险分级、SQL 代码块增强、Artifact 跳转特化；同步承接 history-passthrough 的 OpenCode 原生 shape + 乐观 UI |
 | [Datasource Name Field](./2026-04-19-datasource-name-design.md) | 2026-04-19 | 数据源新增 name 字段（唯一）+ 表格样式修复（列标题间距统一、操作列显示标题） |
 | [Request Logging & Tracing](./2026-04-18-request-logging-design.md) | 2026-04-18 | HTTP 请求耗时统计、traceId 全链路日志跟踪、慢请求告警 |
