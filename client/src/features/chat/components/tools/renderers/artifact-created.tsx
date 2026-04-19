@@ -30,7 +30,6 @@ export function ArtifactCreated(props: ToolRendererProps) {
       trigger={{
         title: `${KIND_ICONS[kind] ?? '📦'} ${title}`,
         subtitle: '在 Stage 中查看 →',
-        action: null,
       }}
       hideDetails
     >

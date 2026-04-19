@@ -4,7 +4,6 @@ import { useChannel } from '@/services/channel/use-channel'
 import { cn } from '@/lib/utils'
 
 function HighlightedText(props: { text: string }) {
-  // Phase 1 placeholder — pass-through only (tech debt T-1)
   return <>{props.text}</>
 }
 

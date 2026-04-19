@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import morphdom from 'morphdom'
 import { stream } from './markdown-stream'
-import { decorateSqlBlocks } from './sql-code-block'
+import { decorateSqlBlocks, SQL_EXECUTE_EVENT, SQL_EXPLAIN_EVENT } from './sql-code-block'
 import './markdown.css'
 
 type Entry = { hash: string; html: string }
@@ -96,7 +96,6 @@ export function Markdown(props: {
   className?: string
 }) {
   const ref = useRef<HTMLDivElement>(null)
-  const [, setTick] = useState(0)
 
   useEffect(() => {
     const container = ref.current
@@ -110,17 +109,15 @@ export function Markdown(props: {
     temp.innerHTML = html
     decorateCodeBlocks(temp)
     decorateSqlBlocks(temp, {
-      onExecute: (sql) => window.dispatchEvent(new CustomEvent('datatalk.sql.execute', { detail: { sql } })),
-      onExplain: (sql) => window.dispatchEvent(new CustomEvent('datatalk.sql.explain', { detail: { sql } })),
+      onExecute: (sql) => window.dispatchEvent(new CustomEvent(SQL_EXECUTE_EVENT, { detail: { sql } })),
+      onExplain: (sql) => window.dispatchEvent(new CustomEvent(SQL_EXPLAIN_EVENT, { detail: { sql } })),
     })
-    try {
-      morphdom(container, temp, { childrenOnly: true })
-    } catch (err) {
-      // 第 6 节：raise 到 ErrorBoundary，这里允许向上抛
-      throw err
-    }
-    setTick((t) => t + 1)
+    morphdom(container, temp, { childrenOnly: true })
+  }, [props.text, props.cacheKey, props.streaming])
 
+  useEffect(() => {
+    const container = ref.current
+    if (!container) return
     const onClick = async (e: MouseEvent) => {
       const btn = (e.target as Element)?.closest?.('[data-slot="markdown-copy-button"]')
       if (!btn) return
@@ -133,7 +130,7 @@ export function Markdown(props: {
     }
     container.addEventListener('click', onClick)
     return () => container.removeEventListener('click', onClick)
-  }, [props.text, props.cacheKey, props.streaming])
+  }, [])
 
   return <div ref={ref} data-component="markdown" className={props.className} />
 }

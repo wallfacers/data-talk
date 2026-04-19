@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Markdown } from '../markdown/markdown'
 
+
 const PACE_MS = 24
 const SNAP = /[\s.,!?;:)\]]/
 
@@ -23,9 +24,8 @@ function next(text: string, start: number): number {
 export function PacedMarkdown(props: { text: string; cacheKey?: string; streaming: boolean; className?: string }) {
   const [shown, setShown] = useState(props.streaming ? '' : props.text)
   const shownRef = useRef(shown)
+  shownRef.current = shown
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-
-  useEffect(() => { shownRef.current = shown }, [shown])
 
   useEffect(() => {
     const clear = () => { if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = undefined } }
@@ -36,7 +36,6 @@ export function PacedMarkdown(props: { text: string; cacheKey?: string; streamin
       return clear
     }
 
-    // text 回退 / 完全不同 → 立即 sync
     if (!props.text.startsWith(shownRef.current) || props.text.length < shownRef.current.length) {
       clear()
       setShown(props.text)

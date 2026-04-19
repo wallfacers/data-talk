@@ -23,6 +23,7 @@ import { createSession } from '@/services/api/session'
 import { normalizeError, showErrorToast } from '@/services/http-error'
 import { StageToggleButton } from '@/features/stage/components/stage-toggle-button'
 import { useHasActiveModel } from './hooks/use-has-active-model'
+import { SQL_EXECUTE_EVENT, SQL_EXPLAIN_EVENT } from '@/features/chat/components/markdown/sql-code-block'
 
 function useComposerSlot(): HTMLElement | null {
   const [slot, setSlot] = useState<HTMLElement | null>(null)
@@ -142,11 +143,11 @@ function InnerComposer() {
       setText(next)
       textRef.current = next
     }
-    window.addEventListener('datatalk.sql.execute', onExecute)
-    window.addEventListener('datatalk.sql.explain', onExplain)
+    window.addEventListener(SQL_EXECUTE_EVENT, onExecute)
+    window.addEventListener(SQL_EXPLAIN_EVENT, onExplain)
     return () => {
-      window.removeEventListener('datatalk.sql.execute', onExecute)
-      window.removeEventListener('datatalk.sql.explain', onExplain)
+      window.removeEventListener(SQL_EXECUTE_EVENT, onExecute)
+      window.removeEventListener(SQL_EXPLAIN_EVENT, onExplain)
     }
   }, [])
 

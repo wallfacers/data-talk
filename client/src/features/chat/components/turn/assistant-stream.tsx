@@ -17,9 +17,10 @@ export function AssistantStream(props: {
   const infoMap = useChatPartsStore((s) => s.infoBySession.get(props.sessionId))
   const descriptors = useActionRegistryStore((s) => s.descriptors)
 
-  const flat = useMemo(() => {
-    if (!partsMap || !infoMap) return []
+  const { flat, infoByPartId } = useMemo(() => {
     const arr: Array<{ part: Part; info: MessageInfo }> = []
+    const byId = new Map<string, MessageInfo>()
+    if (!partsMap || !infoMap) return { flat: arr, infoByPartId: byId }
     for (const m of props.messages) {
       const parts = partsMap.get(m.id) ?? []
       for (const p of parts) {
@@ -31,9 +32,10 @@ export function AssistantStream(props: {
           if ((p as ToolPart).tool === 'question' && (s === 'pending' || s === 'running')) continue
         }
         arr.push({ part: p, info: m })
+        byId.set(p.id, m)
       }
     }
-    return arr
+    return { flat: arr, infoByPartId: byId }
   }, [partsMap, infoMap, props.messages])
 
   const groups: PartGroup[] = useMemo(
@@ -63,7 +65,7 @@ export function AssistantStream(props: {
             />
           )
         }
-        const info = flat.find((x) => x.part.id === g.ref.id)?.info
+        const info = infoByPartId.get(g.ref.id)
         if (!info) return null
         const showCopy = props.showCopyPartID === g.ref.id
         return <PartDispatcher key={g.ref.id} part={g.ref} info={info} showCopy={showCopy} turnDurationMs={props.turnDurationMs} />
