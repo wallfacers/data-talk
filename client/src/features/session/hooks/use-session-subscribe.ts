@@ -10,7 +10,8 @@ export function useSessionSubscribe(sessionId: string | null) {
   const client = useChannelClient(sessionId)
   const queryClient = useQueryClient()
   const setConnected = useChannelStore((s) => s.setConnected)
-  const lastEventId = useChannelStore((s) => s.lastEventId)
+  const lastEventIdBySession = useChannelStore((s) => s.lastEventIdBySession)
+  const lastEventId = sessionId ? lastEventIdBySession.get(sessionId) : undefined
   const connectionId = useConnectionStore((s) => s.activeConnectionId)
 
   useEffect(() => {
