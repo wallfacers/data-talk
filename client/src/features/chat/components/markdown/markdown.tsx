@@ -104,7 +104,6 @@ export function Markdown(props: {
   useEffect(() => {
     const container = ref.current
     if (!container) return
-    const t0 = performance.now()
     const html = renderHtml(props.text, props.cacheKey, props.streaming ?? false)
     if (!html) {
       container.innerHTML = ''
@@ -118,15 +117,6 @@ export function Markdown(props: {
       onExplain: (sql) => window.dispatchEvent(new CustomEvent(SQL_EXPLAIN_EVENT, { detail: { sql } })),
     })
     morphdom(container, temp, { childrenOnly: true })
-    const ms = performance.now() - t0
-    if (props.streaming && ms > 1) {
-      // eslint-disable-next-line no-console
-      console.debug('[streaming-probe] markdown', {
-        len: props.text.length,
-        ms: ms.toFixed(1),
-        t: performance.now().toFixed(1),
-      })
-    }
   }, [props.text, props.cacheKey, props.streaming])
 
   useEffect(() => {
