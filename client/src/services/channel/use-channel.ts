@@ -2,7 +2,7 @@ import { useCallback, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { QueryClient } from '@tanstack/react-query'
 import { ChannelClient } from './channel-client'
-import type { StreamEvent, Part } from './types'
+import type { StreamEvent, Part, MessageInfo } from './types'
 import { generateUuid } from '@/lib/uuid'
 import { useChatPartsStore } from '@/stores/chat-parts-store'
 import { useOntologyStore } from '@/stores/ontology-store'
@@ -27,7 +27,7 @@ export function buildEventSink(sessionId: string, client: ChannelClient | null, 
       if (!m) return
       useChatPartsStore.getState().upsertInfo(sessionId, {
         id: m.id,
-        role: m.role,
+        role: (typeof m.role === 'string' ? m.role.toLowerCase() : m.role) as MessageInfo['role'],
         sessionID: m.sessionID ?? sessionId,
         time: m.time ?? { created: Date.now() },
         providerID: m.providerID,
@@ -48,7 +48,7 @@ export function buildEventSink(sessionId: string, client: ChannelClient | null, 
       }
     } else if (event === 'session.meta.updated') {
       const { sessionId: sid, title, titleLocked } = data as { sessionId: string; title: string; titleLocked: boolean }
-      queryClient.setQueryData<Session[]>(['sessions', connectionId], (old) => {
+      queryClient.setQueryData<Session[]>(['sessions', connectionId ?? null], (old) => {
         if (!old) return old
         let changed = false
         const next = old.map((s) => {
