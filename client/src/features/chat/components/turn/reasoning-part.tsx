@@ -3,6 +3,7 @@ import { ChevronRightIcon } from 'lucide-react'
 import type { PartComponentProps } from './part-dispatcher'
 import { Markdown } from '../markdown/markdown'
 import { PacedMarkdown } from '../effects/paced-markdown'
+import { TextShimmer } from '../effects/text-shimmer'
 import type { ReasoningPart as RPartType } from '@/services/channel/types'
 import { cn } from '@/lib/utils'
 
@@ -50,10 +51,7 @@ export function ReasoningPart(props: PartComponentProps) {
           className={cn('transition-transform duration-200', open && 'rotate-90')}
         />
         {isPartStreaming ? (
-          <span className="flex items-center">
-            思考中
-            <span className="animate-pulse tracking-widest ml-0.5">...</span>
-          </span>
+          <TextShimmer text="思考中…" active />
         ) : (
           <span>已深度思考{durationText}</span>
         )}

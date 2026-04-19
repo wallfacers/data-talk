@@ -23,7 +23,7 @@ describe('ReasoningPart', () => {
     render(<ReasoningPart part={part} info={info} />)
     // When streaming, it should be open, so we should see the content.
     expect(await screen.findByText('Thought process content')).toBeInTheDocument()
-    expect(screen.getByText(/思考中/)).toBeInTheDocument()
+    expect(screen.getByLabelText('思考中…')).toBeInTheDocument()
   })
 
   it('collapses when clicking the heading', async () => {

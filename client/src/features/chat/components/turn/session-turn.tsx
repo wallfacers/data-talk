@@ -56,8 +56,8 @@ export function SessionTurn(props: {
     return null
   }, [assistantMessages, partsMap])
 
-  // working 已含 streaming 分支，因此首包延迟期（assistant message 尚未创建）也能显示"思考中…"。
-  const showThinking = working && !err && !anyVisiblePart
+  // 只要 assistantMessages 数组长度 > 0，就说明已经进入消息渲染阶段，去掉这个全局的“思考中…”
+  const showThinking = working && !err && assistantMessages.length === 0
 
   const turnDurationMs = useMemo(() => {
     const start = props.userInfo?.time.created
