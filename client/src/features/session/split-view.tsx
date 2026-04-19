@@ -104,7 +104,7 @@ export function SplitView() {
                 </TurnListErrorBoundary>
               </div>
             </div>
-            <div className="px-2 pb-4 overflow-hidden" style={{ scrollbarGutter: 'stable' }}>
+            <div className="px-2 pt-1 pb-4" style={{ scrollbarGutter: 'stable' }}>
               <div id="composer-slot" className="mx-auto w-full max-w-3xl" />
             </div>
           </div>
