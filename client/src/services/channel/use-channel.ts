@@ -58,6 +58,7 @@ export function buildEventSink(sessionId: string, client: ChannelClient | null, 
       // composer flips back to the send button and the thinking indicator exits.
       // Message-level time.completed (set via message.updated) drives per-message
       // UI state separately.
+      useChatPartsStore.getState().markSessionTurnCompleted(sessionId)
       useChatPartsStore.getState().setStreaming(sessionId, false)
     } else if (event === 'session.meta.updated') {
       const { sessionId: sid, title, titleLocked } = data as { sessionId: string; title: string; titleLocked: boolean }

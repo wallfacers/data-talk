@@ -24,6 +24,7 @@ type ChatPartsState = {
   promotePendingUser: (sessionId: string, pendingId: string, realId: string) => void
   markPendingUserFailed: (sessionId: string, pendingId: string, reason: string) => void
   removePendingUser: (sessionId: string, pendingId: string) => void
+  markSessionTurnCompleted: (sessionId: string) => void
 }
 
 export const useChatPartsStore = create<ChatPartsState>()(
@@ -61,7 +62,14 @@ export const useChatPartsStore = create<ChatPartsState>()(
       upsertInfo: (sessionId, info) => set((s) => {
         const bySession = new Map(s.infoBySession)
         const map = new Map(bySession.get(sessionId) ?? new Map())
-        map.set(info.id, { ...(map.get(info.id) ?? info), ...info })
+        const existing = map.get(info.id)
+        
+        let newTime = info.time
+        if (existing && existing.time.completed !== undefined && info.time.completed === undefined) {
+           newTime = { ...info.time, completed: existing.time.completed }
+        }
+
+        map.set(info.id, { ...(existing ?? info), ...info, time: newTime })
         bySession.set(sessionId, map)
         return { infoBySession: bySession, version: s.version + 1 }
       }),
@@ -245,6 +253,20 @@ export const useChatPartsStore = create<ChatPartsState>()(
         const partsBySession = new Map(s.partsBySession); partsBySession.set(sessionId, byMsg)
         const partIndexBySession = new Map(s.partIndexBySession); partIndexBySession.set(sessionId, index)
         return { infoBySession, partsBySession, partIndexBySession, version: s.version + 1 }
+      }),
+
+      markSessionTurnCompleted: (sessionId) => set((s) => {
+        const byInfo = new Map(s.infoBySession.get(sessionId) ?? new Map())
+        let changed = false
+        for (const [id, info] of byInfo.entries()) {
+          if (info.role === 'assistant' && typeof info.time.completed !== 'number') {
+            byInfo.set(id, { ...info, time: { ...info.time, completed: Date.now() } })
+            changed = true
+          }
+        }
+        if (!changed) return {}
+        const infoBySession = new Map(s.infoBySession); infoBySession.set(sessionId, byInfo)
+        return { infoBySession, version: s.version + 1 }
       }),
     }),
     {

@@ -74,7 +74,9 @@ function InnerComposer() {
       setText('')
       setPendingPrompt(t)
       try {
-        const sess = await createSession(activeConnectionId ?? undefined)
+        // 使用用户输入的文本的前 50 个字符作为初始标题，实现标题快速填充
+        const initialTitle = t.slice(0, 50)
+        const sess = await createSession(activeConnectionId ?? undefined, initialTitle)
         qc.invalidateQueries({ queryKey: ['sessions', activeConnectionId ?? null] })
         openSession(sess.id, sess.hasEverSent)
         // resume hook 会在 activeSessionId 就绪后消费 pendingPrompt

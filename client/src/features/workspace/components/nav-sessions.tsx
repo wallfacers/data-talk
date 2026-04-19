@@ -58,8 +58,8 @@ function displayTitle(title: string): string {
 }
 
 function groupSessions(sessions: Session[]): SessionGroup[] {
-  // 过滤掉空白会话（hasEverSent=false），不显示在列表中
-  const realSessions = sessions.filter((s) => s.hasEverSent)
+  // 不再过滤空白会话，始终显示，让用户可以随时切换回来
+  const realSessions = sessions
 
   const now = new Date()
   const todayStart = new Date(

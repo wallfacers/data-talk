@@ -15,7 +15,14 @@ export function useOpenBlankSession() {
     async (excludeId?: string) => {
       const key = ['sessions', connectionId ?? null] as const
       const cached = qc.getQueryData<Session[]>(key) ?? []
-      const empty = cached.find((s) => !s.hasEverSent && s.id !== excludeId)
+      const empty = cached.find((s) => {
+        if (s.id === excludeId) return false
+        if (s.hasEverSent) return false
+        // 检查本地 store，防止后端状态未同步时误判为空白会话
+        const locallySent = useSessionStore.getState().hasEverSentBySession.get(s.id)
+        if (locallySent) return false
+        return true
+      })
       if (empty) {
         openSession(empty.id, empty.hasEverSent)
         return
