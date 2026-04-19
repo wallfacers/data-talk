@@ -10,7 +10,8 @@ function mockProviders() {
   vi.mocked(api.fetchProviders).mockResolvedValue({
     all: [
       { id: 'openai', name: 'OpenAI' },
-      { id: 'anthropic', name: 'Anthropic' }
+      { id: 'anthropic', name: 'Anthropic' },
+      { id: 'google', name: 'Google' },
     ],
     connected: ['openai']
   })
@@ -25,6 +26,7 @@ describe('ProvidersPage', () => {
     render(<QueryClientProvider client={qc}><ProvidersPage /></QueryClientProvider>)
     expect(await screen.findByText('已连接的提供商')).toBeInTheDocument()
     expect(screen.getByText('OpenAI')).toBeInTheDocument()
-    expect(screen.getByText('Anthropic')).toBeInTheDocument()
+    // Anthropic is in EXCLUDED_PROVIDERS so it won't appear; check Google instead
+    expect(screen.getByText('Google')).toBeInTheDocument()
   })
 })

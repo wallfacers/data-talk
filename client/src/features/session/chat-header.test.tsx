@@ -31,11 +31,15 @@ describe('ChatHeader', () => {
       id: 's1', connectionId: 'c1', title: '新名', hasEverSent: true,
       createdAt: 0, updatedAt: 1, titleLocked: false,
     })
-    vi.spyOn(window, 'prompt').mockReturnValue('新名')
 
     renderWithClient(<ChatHeader />)
     fireEvent.click(screen.getByRole('button'))
     fireEvent.click(screen.getByText('重命名'))
+
+    // Inline editing: type new title, press Enter to commit
+    const input = await screen.findByRole('textbox')
+    fireEvent.change(input, { target: { value: '新名' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
 
     await waitFor(() => expect(spy).toHaveBeenCalledWith('s1', '新名'))
   })
@@ -53,11 +57,14 @@ describe('ChatHeader', () => {
 
   it('取消重命名 → 不调用 API', async () => {
     const spy = vi.spyOn(api, 'renameSession')
-    vi.spyOn(window, 'prompt').mockReturnValue(null)
 
     renderWithClient(<ChatHeader />)
     fireEvent.click(screen.getByRole('button'))
     fireEvent.click(screen.getByText('重命名'))
+
+    // Open inline editing, then press Escape to cancel
+    const input = await screen.findByRole('textbox')
+    fireEvent.keyDown(input, { key: 'Escape' })
 
     expect(spy).not.toHaveBeenCalled()
   })

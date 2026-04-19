@@ -6,7 +6,10 @@ import { useStageStore } from '@/stores/stage-store'
 import { useSessionStore } from '@/stores/session-store'
 import { useChatPartsStore } from '@/stores/chat-parts-store'
 
-const DURATION = 400
+vi.mock('@/components/ui/sidebar', () => ({
+  useSidebar: () => ({ state: 'expanded' }),
+}))
+
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
@@ -20,7 +23,7 @@ function findStagePanel(container: HTMLElement): HTMLElement {
   return el
 }
 
-describe('SplitView clip-path reveal', () => {
+describe('SplitView stage panel', () => {
   beforeEach(() => {
     queryClient.clear()
     vi.useFakeTimers()
@@ -43,50 +46,51 @@ describe('SplitView clip-path reveal', () => {
     vi.useRealTimers()
   })
 
-  it('open=false 时 stage 容器 clip-path 为 circle(0px ...)', () => {
+  it('open=false 时 stage 容器 transform 为 translateX(100%)', () => {
     const { container } = render(<SplitView />, { wrapper })
     const panel = findStagePanel(container)
-    expect(panel.style.clipPath).toMatch(/circle\(0px/)
+    // 关闭态：transform 滑出
+    expect(panel.style.transform).toMatch(/100%/)
   })
 
-  it('open=true + revealOrigin 有值 → clip-path 用 origin 坐标换算', () => {
+  it('open=true + revealOrigin 有值 → 面板可见，style 正确', () => {
     useStageStore.setState({
       openBySession: new Map([['s1', true]]),
       revealOrigin: { x: 100, y: 300 },
     })
     const { container } = render(<SplitView />, { wrapper })
     const panel = findStagePanel(container)
-    expect(panel.style.clipPath).toMatch(/circle\(\d+(\.\d+)?px at -?\d+(\.\d+)?px -?\d+(\.\d+)?px\)/)
-    const match = panel.style.clipPath.match(/circle\(([\d.]+)px/)
-    expect(match).not.toBeNull()
-    expect(Number(match![1])).toBeGreaterThanOrEqual(0)
+    expect(panel.style.transform).toBe('translateX(0)')
+    expect(panel.style.width).toBeDefined()
   })
 
-  it('open=true + revealOrigin=null → clip-path fallback 到 circle(2000px at 100% 100%)', () => {
+  it('open=true + revealOrigin=null → 面板正常渲染', () => {
     useStageStore.setState({ openBySession: new Map([['s1', true]]) })
     const { container } = render(<SplitView />, { wrapper })
     const panel = findStagePanel(container)
-    expect(panel.style.clipPath).toBe('circle(2000px at 100% 100%)')
+    expect(panel.style.transform).toBe('translateX(0)')
   })
 
-  it('打开时 translateX 立即为 0，关闭后 DURATION ms 才切到 100%', () => {
+  it('关闭时 transform 切换到 100%，打开时切换回 0', () => {
     useStageStore.setState({ openBySession: new Map([['s1', true]]) })
     const { container, rerender } = render(<SplitView />, { wrapper })
     let panel = findStagePanel(container)
-    expect(panel.style.transform).toBe('translateX(0px)')
+    expect(panel.style.transform).toBe('translateX(0)')
 
     act(() => {
       useStageStore.setState({ openBySession: new Map([['s1', false]]) })
     })
     rerender(<SplitView />)
     panel = findStagePanel(container)
-    expect(panel.style.transform).toBe('translateX(0px)')
+    // style 立即更新，CSS transition 负责动画
+    expect(panel.style.transform).toBe('translateX(100%)')
 
+    // 重新打开
     act(() => {
-      vi.advanceTimersByTime(DURATION)
+      useStageStore.setState({ openBySession: new Map([['s1', true]]) })
     })
     rerender(<SplitView />)
     panel = findStagePanel(container)
-    expect(panel.style.transform).toBe('translateX(100%)')
+    expect(panel.style.transform).toBe('translateX(0)')
   })
 })

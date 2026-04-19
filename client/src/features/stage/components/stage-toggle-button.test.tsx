@@ -20,9 +20,11 @@ describe('StageToggleButton', () => {
     })
   })
 
-  it('无 activeSessionId → 按钮 disabled', () => {
+  it('无 activeSessionId → 按钮 aria-disabled="true"', () => {
     render(<StageToggleButton />)
-    expect(screen.getByRole('button')).toBeDisabled()
+    const btn = screen.getByRole('button')
+    expect(btn.getAttribute('aria-disabled')).toBe('true')
+    expect(btn).toHaveClass('aria-disabled:opacity-50')
   })
 
   it('HERO 模式下点击 → 进入 SPLIT + 打开 Stage', () => {
