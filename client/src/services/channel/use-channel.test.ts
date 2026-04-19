@@ -12,11 +12,68 @@ describe('buildEventSink · session.meta.updated', () => {
     qc = new QueryClient()
   })
 
-  it('triggers sessions query invalidation with connectionId', () => {
-    const spy = vi.spyOn(qc, 'invalidateQueries')
+  it('updates sessions cache in place without triggering a refetch', () => {
+    const invalidateSpy = vi.spyOn(qc, 'invalidateQueries')
+    qc.setQueryData(['sessions', 'conn-1'], [
+      { id: 's1', connectionId: 'conn-1', title: '旧标题', hasEverSent: true, createdAt: 1, updatedAt: 1, titleLocked: false, reusedEmpty: false },
+      { id: 's2', connectionId: 'conn-1', title: '别的', hasEverSent: true, createdAt: 2, updatedAt: 2, titleLocked: false, reusedEmpty: false },
+    ])
     const sink = buildEventSink('s1', null, qc, 'conn-1')
-    sink({ event: 'session.meta.updated', data: { sessionId: 's1', title: 'AI', titleLocked: false, version: 2 } } as any)
-    expect(spy).toHaveBeenCalledWith({ queryKey: ['sessions', 'conn-1'] })
+    sink({ event: 'session.meta.updated', data: { sessionId: 's1', title: 'AI 自动命名', titleLocked: false, version: 2 } } as any)
+
+    const cached = qc.getQueryData<Array<{ id: string; title: string }>>(['sessions', 'conn-1'])!
+    expect(cached.find((s) => s.id === 's1')?.title).toBe('AI 自动命名')
+    expect(cached.find((s) => s.id === 's2')?.title).toBe('别的')
+    expect(invalidateSpy).not.toHaveBeenCalled()
+  })
+
+  it('is a no-op when the session is not in cache', () => {
+    qc.setQueryData(['sessions', 'conn-1'], [
+      { id: 'other', connectionId: 'conn-1', title: 'x', hasEverSent: true, createdAt: 1, updatedAt: 1, titleLocked: false, reusedEmpty: false },
+    ])
+    const sink = buildEventSink('missing', null, qc, 'conn-1')
+    sink({ event: 'session.meta.updated', data: { sessionId: 'missing', title: 'x', titleLocked: false, version: 1 } } as any)
+
+    const cached = qc.getQueryData<Array<{ id: string }>>(['sessions', 'conn-1'])!
+    expect(cached).toHaveLength(1)
+  })
+})
+
+describe('buildEventSink · message lifecycle', () => {
+  let qc: QueryClient
+  beforeEach(() => {
+    qc = new QueryClient()
+    useChatPartsStore.setState({
+      partsBySession: new Map(),
+      infoBySession: new Map(),
+      partIndexBySession: new Map(),
+      streamingBySession: new Set<string>(),
+    })
+  })
+
+  it('message.updated merges error onto existing assistant info', () => {
+    const sink = buildEventSink('s1', null, qc, null)
+    sink({ event: 'message.created', data: { info: { id: 'm1', role: 'assistant', sessionID: 's1', time: { created: 100 } } } } as any)
+    sink({ event: 'message.updated', data: { info: { id: 'm1', role: 'assistant', sessionID: 's1', time: { created: 100 }, error: { name: 'ProviderAuthError', data: { message: 'Invalid access token or token expired' } } } } } as any)
+
+    const info = useChatPartsStore.getState().infoBySession.get('s1')?.get('m1')
+    expect(info?.error?.name).toBe('ProviderAuthError')
+    expect(info?.error?.data?.message).toBe('Invalid access token or token expired')
+  })
+
+  it('message.completed sets time.completed when absent', () => {
+    const sink = buildEventSink('s1', null, qc, null)
+    sink({ event: 'message.created', data: { info: { id: 'm1', role: 'assistant', sessionID: 's1', time: { created: 100 } } } } as any)
+    sink({ event: 'message.completed', data: { sessionId: 's1', messageId: 'm1' } } as any)
+
+    const info = useChatPartsStore.getState().infoBySession.get('s1')?.get('m1')
+    expect(typeof info?.time.completed).toBe('number')
+  })
+
+  it('message.completed is a no-op when info is missing', () => {
+    const sink = buildEventSink('s1', null, qc, null)
+    sink({ event: 'message.completed', data: { sessionId: 's1', messageId: 'ghost' } } as any)
+    expect(useChatPartsStore.getState().infoBySession.get('s1')?.get('ghost')).toBeUndefined()
   })
 })
 

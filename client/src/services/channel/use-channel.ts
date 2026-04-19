@@ -11,6 +11,7 @@ import { useSessionStore } from '@/stores/session-store'
 import { useConnectionStore } from '@/features/connection/store'
 import { getClientHandler } from '@/features/actions/registry'
 import { normalizeError, showErrorToast } from '@/services/http-error'
+import type { Session } from '@/services/api/session'
 
 function getApiBaseUrl(): string {
   const env = (import.meta as any).env?.VITE_API_BASE_URL
@@ -21,7 +22,7 @@ function getApiBaseUrl(): string {
 export function buildEventSink(sessionId: string, client: ChannelClient | null, queryClient: QueryClient, connectionId: string | null = null, pendingUserId: string | null = null) {
   return (evt: StreamEvent) => {
     const { event, data } = evt
-    if (event === 'message.created') {
+    if (event === 'message.created' || event === 'message.updated') {
       const m = (data as any).info ?? (data as any).message   // 兼容过渡
       if (!m) return
       useChatPartsStore.getState().upsertInfo(sessionId, {
@@ -38,8 +39,26 @@ export function buildEventSink(sessionId: string, client: ChannelClient | null, 
         finish: m.finish,
         tokens: m.tokens,
       })
+    } else if (event === 'message.completed') {
+      const { messageId } = data as { sessionId?: string; messageId: string }
+      const store = useChatPartsStore.getState()
+      const info = store.infoBySession.get(sessionId)?.get(messageId)
+      if (info && info.time.completed === undefined) {
+        store.upsertInfo(sessionId, { ...info, time: { ...info.time, completed: Date.now() } })
+      }
     } else if (event === 'session.meta.updated') {
-      queryClient.invalidateQueries({ queryKey: ['sessions', connectionId] })
+      const { sessionId: sid, title, titleLocked } = data as { sessionId: string; title: string; titleLocked: boolean }
+      queryClient.setQueryData<Session[]>(['sessions', connectionId], (old) => {
+        if (!old) return old
+        let changed = false
+        const next = old.map((s) => {
+          if (s.id !== sid) return s
+          if (s.title === title && s.titleLocked === titleLocked) return s
+          changed = true
+          return { ...s, title, titleLocked }
+        })
+        return changed ? next : old
+      })
     } else if (event === 'message.part.created' || event === 'message.part.updated') {
       const part = (data as any).part
       useChatPartsStore.getState().upsertPart(sessionId, part)
