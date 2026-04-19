@@ -26,24 +26,23 @@ export function buildEventSink(sessionId: string, client: ChannelClient | null, 
     if (typeof evt.id === 'number' && evt.id > 0) {
       useChannelStore.getState().setLastEventId(sessionId, evt.id)
     }
-    if (event === 'message.created' || event === 'message.updated' || event === 'message.completed') {
+    if (event === 'message.created' || event === 'message.updated') {
       const m = (data as any).info ?? (data as any).message ?? (data as any)
-      if (!m?.id && !(data as any).messageId) return
-      
-      const mid = m.id ?? (data as any).messageId
+      if (!m?.id) return
+
+      const mid = m.id
       const store = useChatPartsStore.getState()
       const existing = store.infoBySession.get(sessionId)?.get(mid)
 
-      // 提取字段，优先使用驼峰，兼容下划线
       const role = (m.role ? String(m.role).toLowerCase() : existing?.role) as MessageInfo['role']
-      const modelID = m.modelID ?? m.modelId ?? m.model_id ?? existing?.modelID
-      const providerID = m.providerID ?? m.providerId ?? m.provider_id ?? existing?.providerID
-      
+      const modelID = m.modelID ?? existing?.modelID
+      const providerID = m.providerID ?? existing?.providerID
+
       const nextTime = {
-        created: m.time?.created ?? m.createdAt ?? m.created_at ?? existing?.time.created ?? Date.now(),
-        completed: m.time?.completed ?? (event === 'message.completed' ? (m.completedAt ?? m.completed_at ?? Date.now()) : existing?.time.completed)
+        created: m.time?.created ?? existing?.time.created ?? Date.now(),
+        completed: m.time?.completed ?? existing?.time.completed,
       }
-      
+
       const info: MessageInfo = {
         id: mid,
         role: role || 'assistant',
@@ -51,7 +50,7 @@ export function buildEventSink(sessionId: string, client: ChannelClient | null, 
         time: nextTime,
         providerID,
         modelID,
-        parentID: m.parentID ?? m.parentId ?? m.parent_id ?? existing?.parentID,
+        parentID: m.parentID ?? existing?.parentID,
         agent: m.agent ?? existing?.agent,
         mode: m.mode ?? existing?.mode,
         error: m.error ?? existing?.error,

@@ -61,21 +61,6 @@ describe('buildEventSink · message lifecycle', () => {
     expect(info?.error?.name).toBe('ProviderAuthError')
     expect(info?.error?.data?.message).toBe('Invalid access token or token expired')
   })
-
-  it('message.completed sets time.completed when absent', () => {
-    const sink = buildEventSink('s1', null, qc, null)
-    sink({ event: 'message.created', data: { info: { id: 'm1', role: 'assistant', sessionID: 's1', time: { created: 100 } } } } as any)
-    sink({ event: 'message.completed', data: { sessionId: 's1', messageId: 'm1' } } as any)
-
-    const info = useChatPartsStore.getState().infoBySession.get('s1')?.get('m1')
-    expect(typeof info?.time.completed).toBe('number')
-  })
-
-  it('message.completed is a no-op when info is missing', () => {
-    const sink = buildEventSink('s1', null, qc, null)
-    sink({ event: 'message.completed', data: { sessionId: 's1', messageId: 'ghost' } } as any)
-    expect(useChatPartsStore.getState().infoBySession.get('s1')?.get('ghost')).toBeUndefined()
-  })
 })
 
 describe('useChannel.isStreaming (per-session)', () => {
