@@ -10,6 +10,7 @@ import { useStageStore } from '@/stores/stage-store'
 import { useChatPartsStore } from '@/stores/chat-parts-store'
 import { useUISettingsStore } from '@/stores/ui-settings-store'
 import { ChatHeader } from './chat-header'
+import { useAutoScroll } from '@/hooks/use-auto-scroll'
 
 const DURATION = 400
 const EASE = 'cubic-bezier(0.32, 0.72, 0.24, 1)'
@@ -36,6 +37,19 @@ export function SplitView() {
   const rootRef = useRef<HTMLDivElement>(null)
   const [dragRatio, setDragRatio] = useState<number | null>(null)
   const isDraggingRef = useRef(false)
+
+  // Track store version to trigger auto-scroll on any change (including streaming text)
+  const version = useChatPartsStore((s) => s.version)
+
+  const { ref: scrollRef, scrollToBottom, isAtBottom } = useAutoScroll<HTMLDivElement>([version])
+
+  // Scroll to bottom on session change
+  useEffect(() => {
+    if (sid) {
+      isAtBottom.current = true
+      scrollToBottom('auto')
+    }
+  }, [sid, scrollToBottom, isAtBottom])
 
   // Load saved ratio on mount
   useEffect(() => { setDragRatio(loadSavedRatio()) }, [])
@@ -83,7 +97,7 @@ export function SplitView() {
         {hasMessages ? (
           <div className="flex h-full flex-col">
             <ChatHeader />
-            <div className="flex-1 overflow-y-auto px-2 py-4" style={{ scrollbarGutter: 'stable' }}>
+            <div ref={scrollRef} className="flex-1 overflow-y-auto px-2 py-4" style={{ scrollbarGutter: 'stable' }}>
               <div className="mx-auto w-full max-w-3xl">
                 <TurnListErrorBoundary>
                   <TurnList sessionId={sid} />
