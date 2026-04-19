@@ -1,6 +1,6 @@
 # AI 消息渲染迁移 Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 将 OpenCode 桌面端的"绚烂"消息渲染机制（Markdown 增量、PacedMarkdown、TextShimmer、BasicTool 折叠、ContextToolGroup 分组、ToolRegistry）React 化迁移到 DataTalk 客户端，叠加 DataTalk 风险分级、SQL 代码块增强、Artifact 跳转特化；同时前置承接 history-opencode-passthrough 的 OpenCode 原生 shape + 乐观 UI。
 
@@ -30,6 +30,22 @@
 
 ---
 
+## 实施状态（2026-04-19）
+
+| Phase | 状态 | 备注 |
+|---|---|---|
+| 0 · Store/types/乐观 UI/replaceSession | ✅ 完成 | 4 tasks, 7 commits, 7/7 vitest |
+| 1 · Markdown/PacedMarkdown/效果层 | ✅ 完成 | 9 tasks, 12 commits, 12/12 vitest |
+| 2 · BasicTool/ToolRegistry/7 renderers | ✅ 完成 | 13 tasks, 10 commits, 6/6 vitest |
+| 3 · TurnList/SessionTurn/UserBubble/AssistantStream/ContextToolGroup | ✅ 完成 | 12 tasks, 12 commits, 4/4 vitest |
+| 4 · TurnListErrorBoundary + 离线提示 | ✅ 完成 | 2 tasks, 2 commits |
+| 5 · SQL 代码块 1a 流程 | ✅ 完成 | 2 tasks, 2 commits |
+| 6 · 16 个手动验收场景 | ⏳ 待联调 | 需后端 history passthrough + 真实 OpenCode，由人工验证 |
+
+**整体验证**：`npx tsc --noEmit` → 0 error；本计划新增/相关 vitest 52/52 通过；预存在 7 个失败（chat-header WIP 引入 `useSidebar` 破坏 split-view/chat-header 自身测试、providers/stage-toggle-button 与本计划无关）非本次回归。
+
+---
+
 ## Phase 0：Store / Types / 乐观 UI / replaceSession
 
 ### Task 0.1：定义 OpenCode 原生 Part / MessageInfo 类型
@@ -37,7 +53,7 @@
 **Files:**
 - Modify: `client/src/services/channel/types.ts`
 
-- [ ] **Step 1：替换 `types.ts` 中的 Part 类型定义为 OpenCode 原生 shape**
+- [x] **Step 1：替换 `types.ts` 中的 Part 类型定义为 OpenCode 原生 shape**
 
 ```typescript
 // client/src/services/channel/types.ts
@@ -158,12 +174,12 @@ export function createTextPart(sessionId: string, text: string): TextPart {
 }
 ```
 
-- [ ] **Step 2：typecheck 确认无残留 messageId/sessionId 小写引用**
+- [x] **Step 2：typecheck 确认无残留 messageId/sessionId 小写引用**
 
 Run: `cd client && npx tsc --noEmit 2>&1 | head -50`
 Expected: 会有编译错误（store / channel-client / hooks 等都要改），记录下来作为 Task 0.2-0.7 的工作量参考。
 
-- [ ] **Step 3：commit**
+- [x] **Step 3：commit**
 
 ```bash
 git add client/src/services/channel/types.ts
@@ -178,7 +194,7 @@ git commit -m "refactor(types): switch Part / MessageInfo to OpenCode native sha
 - Modify: `client/src/stores/chat-parts-store.ts`
 - Test: `client/src/stores/__tests__/chat-parts-store.test.ts`（新增）
 
-- [ ] **Step 1：写失败测试 - 验证 infoBySession 结构**
+- [x] **Step 1：写失败测试 - 验证 infoBySession 结构**
 
 ```typescript
 // client/src/stores/__tests__/chat-parts-store.test.ts
@@ -217,12 +233,12 @@ describe('chat-parts-store', () => {
 })
 ```
 
-- [ ] **Step 2：运行测试确认失败**
+- [x] **Step 2：运行测试确认失败**
 
 Run: `cd client && npx vitest run src/stores/__tests__/chat-parts-store.test.ts`
 Expected: FAIL（`upsertInfo` / `infoBySession` 不存在）
 
-- [ ] **Step 3：修改 chat-parts-store.ts**
+- [x] **Step 3：修改 chat-parts-store.ts**
 
 ```typescript
 // client/src/stores/chat-parts-store.ts
@@ -318,12 +334,12 @@ export const useChatPartsStore = create<ChatPartsState>((set, get) => ({
 }))
 ```
 
-- [ ] **Step 4：运行测试确认通过**
+- [x] **Step 4：运行测试确认通过**
 
 Run: `cd client && npx vitest run src/stores/__tests__/chat-parts-store.test.ts`
 Expected: PASS
 
-- [ ] **Step 5：commit**
+- [x] **Step 5：commit**
 
 ```bash
 git add client/src/stores/chat-parts-store.ts client/src/stores/__tests__/chat-parts-store.test.ts
@@ -338,7 +354,7 @@ git commit -m "refactor(store): rename metaBySession → infoBySession, use Mess
 - Modify: `client/src/stores/chat-parts-store.ts`
 - Test: `client/src/stores/__tests__/chat-parts-store.test.ts`
 
-- [ ] **Step 1：写失败测试**
+- [x] **Step 1：写失败测试**
 
 ```typescript
 // 追加到 chat-parts-store.test.ts
@@ -371,12 +387,12 @@ it('replaceSession atomically replaces all parts and info in one set', () => {
 
 补充 import：`import { vi } from 'vitest'`
 
-- [ ] **Step 2：运行测试确认失败**
+- [x] **Step 2：运行测试确认失败**
 
 Run: `cd client && npx vitest run src/stores/__tests__/chat-parts-store.test.ts`
 Expected: FAIL（`replaceSession` 不存在）
 
-- [ ] **Step 3：在 store 里加 replaceSession**
+- [x] **Step 3：在 store 里加 replaceSession**
 
 ```typescript
 // 在 ChatPartsState 类型加一行：
@@ -405,12 +421,12 @@ replaceSession: (sessionId, list) => set((s) => {
 }),
 ```
 
-- [ ] **Step 4：运行测试确认通过**
+- [x] **Step 4：运行测试确认通过**
 
 Run: `cd client && npx vitest run src/stores/__tests__/chat-parts-store.test.ts`
 Expected: PASS（全部用例）
 
-- [ ] **Step 5：commit**
+- [x] **Step 5：commit**
 
 ```bash
 git add client/src/stores/chat-parts-store.ts client/src/stores/__tests__/chat-parts-store.test.ts
@@ -425,7 +441,7 @@ git commit -m "feat(store): add replaceSession for atomic history load"
 - Modify: `client/src/stores/chat-parts-store.ts`
 - Test: `client/src/stores/__tests__/chat-parts-store.test.ts`
 
-- [ ] **Step 1：写失败测试**
+- [x] **Step 1：写失败测试**
 
 ```typescript
 it('upsertPendingUser writes pending info + text part, returns pendingId', () => {
@@ -473,11 +489,11 @@ it('removePendingUser removes info and parts', () => {
 })
 ```
 
-- [ ] **Step 2：运行确认失败**
+- [x] **Step 2：运行确认失败**
 
 Run: `cd client && npx vitest run src/stores/__tests__/chat-parts-store.test.ts`
 
-- [ ] **Step 3：在 store 实现这四个方法**
+- [x] **Step 3：在 store 实现这四个方法**
 
 ```typescript
 // 类型签名加入 ChatPartsState：
@@ -558,12 +574,12 @@ removePendingUser: (sessionId, pendingId) => set((s) => {
 
 加 import：`import { generateUuid } from '@/lib/uuid'`
 
-- [ ] **Step 4：测试通过**
+- [x] **Step 4：测试通过**
 
 Run: `cd client && npx vitest run src/stores/__tests__/chat-parts-store.test.ts`
 Expected: PASS
 
-- [ ] **Step 5：commit**
+- [x] **Step 5：commit**
 
 ```bash
 git add client/src/stores/chat-parts-store.ts client/src/stores/__tests__/chat-parts-store.test.ts
@@ -577,7 +593,7 @@ git commit -m "feat(store): optimistic pending user message API"
 **Files:**
 - Modify: `client/src/services/channel/use-channel.ts`
 
-- [ ] **Step 1：替换 buildEventSink 的 message.created / delta 字段名**
+- [x] **Step 1：替换 buildEventSink 的 message.created / delta 字段名**
 
 在 `use-channel.ts:21-75` 范围内把 `upsertMeta` 全部改成 `upsertInfo`，并使用原生 `info` 对象：
 
@@ -666,12 +682,12 @@ export function buildEventSink(sessionId: string, client: ChannelClient | null, 
 
 删除未使用的 import：`import { normalizeError, normalizeRole, showErrorToast } from '@/services/http-error'` → 保留 `normalizeError, showErrorToast`，移除 `normalizeRole`。
 
-- [ ] **Step 2：typecheck**
+- [x] **Step 2：typecheck**
 
 Run: `cd client && npx tsc --noEmit`
 Expected: 本文件无错
 
-- [ ] **Step 3：commit**
+- [x] **Step 3：commit**
 
 ```bash
 git add client/src/services/channel/use-channel.ts
@@ -685,7 +701,7 @@ git commit -m "refactor(channel): buildEventSink uses OpenCode native shape + pr
 **Files:**
 - Modify: `client/src/features/session/hooks/use-session-history.ts`
 
-- [ ] **Step 1：按 OpenCode 响应格式重写**
+- [x] **Step 1：按 OpenCode 响应格式重写**
 
 ```typescript
 // client/src/features/session/hooks/use-session-history.ts
@@ -766,11 +782,11 @@ export function useSessionHistory(sessionId: string | null) {
 }
 ```
 
-- [ ] **Step 2：typecheck**
+- [x] **Step 2：typecheck**
 
 Run: `cd client && npx tsc --noEmit`
 
-- [ ] **Step 3：commit**
+- [x] **Step 3：commit**
 
 ```bash
 git add client/src/features/session/hooks/use-session-history.ts
@@ -784,7 +800,7 @@ git commit -m "refactor(session-history): atomic replaceSession + OpenCode shape
 **Files:**
 - Modify: `client/src/services/channel/use-channel.ts`
 
-- [ ] **Step 1：重写 sendMessage 带乐观 UI + 失败处理**
+- [x] **Step 1：重写 sendMessage 带乐观 UI + 失败处理**
 
 ```typescript
 // use-channel.ts 顶部 import 补：
@@ -854,11 +870,11 @@ const removePendingUser = useCallback(
 return { sendMessage, abort, isStreaming, client, retryPendingUser, removePendingUser }
 ```
 
-- [ ] **Step 2：typecheck**
+- [x] **Step 2：typecheck**
 
 Run: `cd client && npx tsc --noEmit`
 
-- [ ] **Step 3：commit**
+- [x] **Step 3：commit**
 
 ```bash
 git add client/src/services/channel/use-channel.ts
@@ -874,19 +890,19 @@ git commit -m "feat(channel): optimistic pending user + retry/remove"
 **Files:**
 - Modify: `client/package.json`
 
-- [ ] **Step 1：安装依赖**
+- [x] **Step 1：安装依赖**
 
 ```bash
 cd client && npm install marked dompurify morphdom motion
 npm install -D @types/dompurify
 ```
 
-- [ ] **Step 2：verify**
+- [x] **Step 2：verify**
 
 Run: `cd client && npx tsc --noEmit && cat package.json | grep -E "marked|dompurify|morphdom|motion"`
 Expected: 四个包都在 dependencies 里
 
-- [ ] **Step 3：commit**
+- [x] **Step 3：commit**
 
 ```bash
 git add client/package.json client/package-lock.json
@@ -901,7 +917,7 @@ git commit -m "deps: add marked / dompurify / morphdom / motion for message rend
 - Create: `client/src/features/chat/components/markdown/markdown-stream.ts`
 - Test: `client/src/features/chat/components/markdown/__tests__/markdown-stream.test.ts`
 
-- [ ] **Step 1：写失败测试**
+- [x] **Step 1：写失败测试**
 
 ```typescript
 // markdown-stream.test.ts
@@ -930,11 +946,11 @@ describe('markdown-stream', () => {
 })
 ```
 
-- [ ] **Step 2：运行确认失败**
+- [x] **Step 2：运行确认失败**
 
 Run: `cd client && npx vitest run src/features/chat/components/markdown/__tests__/markdown-stream.test.ts`
 
-- [ ] **Step 3：实现 markdown-stream.ts**
+- [x] **Step 3：实现 markdown-stream.ts**
 
 （直接移植 opencode `packages/ui/src/components/markdown-stream.ts` 到 React 侧，JS 无副作用，实现不变）
 
@@ -989,11 +1005,11 @@ export function stream(text: string, live: boolean): Block[] {
 }
 ```
 
-- [ ] **Step 4：测试通过**
+- [x] **Step 4：测试通过**
 
 Run: `cd client && npx vitest run src/features/chat/components/markdown/__tests__/markdown-stream.test.ts`
 
-- [ ] **Step 5：commit**
+- [x] **Step 5：commit**
 
 ```bash
 git add client/src/features/chat/components/markdown/
@@ -1009,7 +1025,7 @@ git commit -m "feat(markdown): streaming block splitter"
 - Create: `client/src/features/chat/components/markdown/markdown.css`
 - Test: `client/src/features/chat/components/markdown/__tests__/markdown.test.tsx`
 
-- [ ] **Step 1：写失败测试**
+- [x] **Step 1：写失败测试**
 
 ```tsx
 // markdown.test.tsx
@@ -1037,11 +1053,11 @@ describe('Markdown', () => {
 })
 ```
 
-- [ ] **Step 2：运行确认失败**
+- [x] **Step 2：运行确认失败**
 
 Run: `cd client && npx vitest run src/features/chat/components/markdown/__tests__/markdown.test.tsx`
 
-- [ ] **Step 3：实现 markdown.tsx**
+- [x] **Step 3：实现 markdown.tsx**
 
 ```tsx
 // markdown.tsx
@@ -1181,7 +1197,7 @@ export function Markdown(props: {
 }
 ```
 
-- [ ] **Step 4：写 markdown.css（精简版）**
+- [x] **Step 4：写 markdown.css（精简版）**
 
 ```css
 /* markdown.css */
@@ -1205,7 +1221,7 @@ export function Markdown(props: {
 [data-slot="markdown-copy-button"][data-copied="true"]::after { content: " ✓"; }
 ```
 
-- [ ] **Step 5：测试通过 + commit**
+- [x] **Step 5：测试通过 + commit**
 
 Run: `cd client && npx vitest run src/features/chat/components/markdown/__tests__/markdown.test.tsx`
 
@@ -1222,7 +1238,7 @@ git commit -m "feat(markdown): morphdom-based incremental renderer with sanitize
 - Create: `client/src/features/chat/components/effects/paced-markdown.tsx`
 - Test: `client/src/features/chat/components/effects/__tests__/paced-markdown.test.tsx`
 
-- [ ] **Step 1：写失败测试**
+- [x] **Step 1：写失败测试**
 
 ```tsx
 import { describe, it, expect, vi } from 'vitest'
@@ -1249,7 +1265,7 @@ describe('PacedMarkdown', () => {
 })
 ```
 
-- [ ] **Step 2：实现 paced-markdown.tsx**
+- [x] **Step 2：实现 paced-markdown.tsx**
 
 ```tsx
 // paced-markdown.tsx
@@ -1321,7 +1337,7 @@ export function PacedMarkdown(props: { text: string; cacheKey?: string; streamin
 }
 ```
 
-- [ ] **Step 3：测试通过 + commit**
+- [x] **Step 3：测试通过 + commit**
 
 ```bash
 git add client/src/features/chat/components/effects/
@@ -1336,7 +1352,7 @@ git commit -m "feat(effects): PacedMarkdown for paced streaming reveal"
 - Create: `client/src/features/chat/components/effects/text-shimmer.tsx`
 - Create: `client/src/features/chat/components/effects/text-shimmer.css`
 
-- [ ] **Step 1：实现 text-shimmer.tsx**
+- [x] **Step 1：实现 text-shimmer.tsx**
 
 ```tsx
 // text-shimmer.tsx
@@ -1374,7 +1390,7 @@ export function TextShimmer(props: { text: string; active?: boolean; className?:
 }
 ```
 
-- [ ] **Step 2：写 text-shimmer.css**
+- [x] **Step 2：写 text-shimmer.css**
 
 （直接移植 opencode 同文件全内容到此路径，保留 `@media (prefers-reduced-motion: reduce)` 分支。参见 spec §6.5）
 
@@ -1435,7 +1451,7 @@ export function TextShimmer(props: { text: string; active?: boolean; className?:
 }
 ```
 
-- [ ] **Step 3：commit**
+- [x] **Step 3：commit**
 
 ```bash
 git add client/src/features/chat/components/effects/text-shimmer.*
@@ -1450,7 +1466,7 @@ git commit -m "feat(effects): TextShimmer CSS sweep animation"
 - Create: `client/src/features/chat/components/effects/text-reveal.tsx`
 - Create: `client/src/features/chat/components/effects/text-reveal.css`
 
-- [ ] **Step 1：实现（最小可工作版本）**
+- [x] **Step 1：实现（最小可工作版本）**
 
 ```tsx
 // text-reveal.tsx
@@ -1479,7 +1495,7 @@ export function TextReveal(props: { text?: string; className?: string; travel?: 
 }
 ```
 
-- [ ] **Step 2：写 text-reveal.css**
+- [x] **Step 2：写 text-reveal.css**
 
 ```css
 [data-component="text-reveal"] { display: inline; }
@@ -1498,7 +1514,7 @@ export function TextReveal(props: { text?: string; className?: string; travel?: 
 }
 ```
 
-- [ ] **Step 3：commit**
+- [x] **Step 3：commit**
 
 ```bash
 git add client/src/features/chat/components/effects/text-reveal.*
@@ -1512,7 +1528,7 @@ git commit -m "feat(effects): TextReveal per-word fade-in"
 **Files:**
 - Create: `client/src/features/chat/components/effects/animated-count.tsx`
 
-- [ ] **Step 1：实现（React 最小版）**
+- [x] **Step 1：实现（React 最小版）**
 
 ```tsx
 // animated-count.tsx
@@ -1544,7 +1560,7 @@ export function AnimatedCount(props: { value: number; duration?: number }) {
 }
 ```
 
-- [ ] **Step 2：commit**
+- [x] **Step 2：commit**
 
 ```bash
 git add client/src/features/chat/components/effects/animated-count.tsx
@@ -1559,7 +1575,7 @@ git commit -m "feat(effects): AnimatedCount number tween"
 - Create: `client/src/features/chat/components/helpers/reasoning-heading.ts`
 - Test: `client/src/features/chat/components/helpers/__tests__/reasoning-heading.test.ts`
 
-- [ ] **Step 1：测试**
+- [x] **Step 1：测试**
 
 ```typescript
 import { describe, it, expect } from 'vitest'
@@ -1585,7 +1601,7 @@ describe('reasoning-heading', () => {
 })
 ```
 
-- [ ] **Step 2：实现**
+- [x] **Step 2：实现**
 
 ```typescript
 // reasoning-heading.ts
@@ -1625,7 +1641,7 @@ export function extractHeading(text: string): string | undefined {
 }
 ```
 
-- [ ] **Step 3：测试通过 + commit**
+- [x] **Step 3：测试通过 + commit**
 
 ```bash
 git add client/src/features/chat/components/helpers/
@@ -1640,7 +1656,7 @@ git commit -m "feat(helpers): reasoning heading extractor"
 - Create: `client/src/features/chat/components/helpers/risk.ts`
 - Test: `client/src/features/chat/components/helpers/__tests__/risk.test.ts`
 
-- [ ] **Step 1：测试**
+- [x] **Step 1：测试**
 
 ```typescript
 import { describe, it, expect } from 'vitest'
@@ -1677,7 +1693,7 @@ describe('risk', () => {
 })
 ```
 
-- [ ] **Step 2：实现**
+- [x] **Step 2：实现**
 
 ```typescript
 // risk.ts
@@ -1728,7 +1744,7 @@ export function resolveRisk(part: ToolPart | undefined, descriptor: Pick<ActionD
 
 同时在 `features/actions/registry.ts` 的 `ActionDescriptor` 类型加可选字段（见 Phase 2.0）：
 
-- [ ] **Step 3：测试通过 + commit**
+- [x] **Step 3：测试通过 + commit**
 
 ```bash
 git add client/src/features/chat/components/helpers/risk.*
@@ -1744,7 +1760,7 @@ git commit -m "feat(helpers): risk priority chain (part-level > descriptor > reg
 **Files:**
 - Modify: `client/src/features/actions/registry.ts`
 
-- [ ] **Step 1：在 `ActionDescriptor` 类型里加可选 `riskLevel` / `category`**
+- [x] **Step 1：在 `ActionDescriptor` 类型里加可选 `riskLevel` / `category`**
 
 查找 `ActionDescriptor` 定义（grep），加入：
 
@@ -1756,7 +1772,7 @@ export type ActionDescriptor = {
 }
 ```
 
-- [ ] **Step 2：typecheck + commit**
+- [x] **Step 2：typecheck + commit**
 
 ```bash
 git add client/src/features/actions/registry.ts
@@ -1772,7 +1788,7 @@ git commit -m "feat(actions): extend ActionDescriptor with riskLevel / category"
 - Create: `client/src/features/chat/components/tools/basic-tool.css`
 - Test: `client/src/features/chat/components/tools/__tests__/basic-tool.test.tsx`
 
-- [ ] **Step 1：测试**
+- [x] **Step 1：测试**
 
 ```tsx
 import { describe, it, expect, vi } from 'vitest'
@@ -1799,7 +1815,7 @@ describe('BasicTool', () => {
 })
 ```
 
-- [ ] **Step 2：实现 basic-tool.tsx**
+- [x] **Step 2：实现 basic-tool.tsx**
 
 ```tsx
 // basic-tool.tsx
@@ -1877,13 +1893,13 @@ export function BasicTool(props: {
 }
 ```
 
-- [ ] **Step 3：写 basic-tool.css（最小）**
+- [x] **Step 3：写 basic-tool.css（最小）**
 
 ```css
 [data-component="basic-tool"] { font-size: 14px; }
 ```
 
-- [ ] **Step 4：commit**
+- [x] **Step 4：commit**
 
 ```bash
 git add client/src/features/chat/components/tools/basic-tool.*
@@ -1898,7 +1914,7 @@ git commit -m "feat(tools): BasicTool foldable card with shimmer title"
 - Create: `client/src/features/chat/components/tools/tool-registry.ts`
 - Test: `client/src/features/chat/components/tools/__tests__/tool-registry.test.ts`
 
-- [ ] **Step 1：测试**
+- [x] **Step 1：测试**
 
 ```typescript
 import { describe, it, expect } from 'vitest'
@@ -1923,7 +1939,7 @@ describe('ToolRegistry', () => {
 })
 ```
 
-- [ ] **Step 2：实现**
+- [x] **Step 2：实现**
 
 ```typescript
 // tool-registry.ts
@@ -1947,7 +1963,7 @@ export const ToolRegistry = {
 }
 ```
 
-- [ ] **Step 3：测试通过 + commit**
+- [x] **Step 3：测试通过 + commit**
 
 ```bash
 git add client/src/features/chat/components/tools/tool-registry.ts client/src/features/chat/components/tools/__tests__/
@@ -1961,7 +1977,7 @@ git commit -m "feat(tools): ToolRegistry dictionary"
 **Files:**
 - Create: `client/src/features/chat/components/tools/tool-error-boundary.tsx`
 
-- [ ] **Step 1：实现**
+- [x] **Step 1：实现**
 
 ```tsx
 // tool-error-boundary.tsx
@@ -1978,7 +1994,7 @@ export class ToolErrorBoundary extends Component<
 }
 ```
 
-- [ ] **Step 2：commit**
+- [x] **Step 2：commit**
 
 ```bash
 git add client/src/features/chat/components/tools/tool-error-boundary.tsx
@@ -1992,7 +2008,7 @@ git commit -m "feat(tools): ToolErrorBoundary for renderer crash isolation"
 **Files:**
 - Create: `client/src/features/chat/components/tools/renderers/generic-tool.tsx`
 
-- [ ] **Step 1：实现**
+- [x] **Step 1：实现**
 
 ```tsx
 // renderers/generic-tool.tsx
@@ -2037,7 +2053,7 @@ export function GenericTool(props: ToolRendererProps) {
 }
 ```
 
-- [ ] **Step 2：commit**
+- [x] **Step 2：commit**
 
 ```bash
 git add client/src/features/chat/components/tools/renderers/generic-tool.tsx
@@ -2051,7 +2067,7 @@ git commit -m "feat(tools): GenericTool default renderer"
 **Files:**
 - Create: `client/src/features/chat/components/tools/renderers/metadata-renderers.tsx`
 
-- [ ] **Step 1：一次性实现三个（都是简单 BasicTool 包装）**
+- [x] **Step 1：一次性实现三个（都是简单 BasicTool 包装）**
 
 ```tsx
 // renderers/metadata-renderers.tsx
@@ -2087,7 +2103,7 @@ export function ShowSchema(props: ToolRendererProps) {
 }
 ```
 
-- [ ] **Step 2：commit**
+- [x] **Step 2：commit**
 
 ```bash
 git add client/src/features/chat/components/tools/renderers/metadata-renderers.tsx
@@ -2101,7 +2117,7 @@ git commit -m "feat(tools): metadata renderers (describe_table / list_tables / s
 **Files:**
 - Create: `client/src/features/chat/components/tools/renderers/execute-sql.tsx`
 
-- [ ] **Step 1：实现**
+- [x] **Step 1：实现**
 
 ```tsx
 // renderers/execute-sql.tsx
@@ -2138,7 +2154,7 @@ export function ExecuteSql(props: ToolRendererProps) {
 }
 ```
 
-- [ ] **Step 2：commit**
+- [x] **Step 2：commit**
 
 ```bash
 git add client/src/features/chat/components/tools/renderers/execute-sql.tsx
@@ -2152,7 +2168,7 @@ git commit -m "feat(tools): ExecuteSql renderer"
 **Files:**
 - Create: `client/src/features/chat/components/tools/renderers/preview-sql.tsx`
 
-- [ ] **Step 1：实现**
+- [x] **Step 1：实现**
 
 ```tsx
 // renderers/preview-sql.tsx
@@ -2202,7 +2218,7 @@ export function PreviewSql(props: ToolRendererProps) {
 }
 ```
 
-- [ ] **Step 2：commit**
+- [x] **Step 2：commit**
 
 ```bash
 git add client/src/features/chat/components/tools/renderers/preview-sql.tsx
@@ -2216,7 +2232,7 @@ git commit -m "feat(tools): PreviewSql L2/L3 confirmation renderer"
 **Files:**
 - Create: `client/src/features/chat/components/tools/renderers/question.tsx`
 
-- [ ] **Step 1：实现**
+- [x] **Step 1：实现**
 
 ```tsx
 // renderers/question.tsx
@@ -2241,7 +2257,7 @@ export function Question(props: ToolRendererProps) {
 }
 ```
 
-- [ ] **Step 2：commit**
+- [x] **Step 2：commit**
 
 ```bash
 git add client/src/features/chat/components/tools/renderers/question.tsx
@@ -2255,7 +2271,7 @@ git commit -m "feat(tools): Question renderer with independent visual"
 **Files:**
 - Create: `client/src/features/chat/components/tools/renderers/artifact-created.tsx`
 
-- [ ] **Step 1：实现**
+- [x] **Step 1：实现**
 
 ```tsx
 // renderers/artifact-created.tsx
@@ -2292,13 +2308,13 @@ export function ArtifactCreated(props: ToolRendererProps) {
 
 **注意**：`useStageStore.openSession` 如不存在，查当前 store API 调整。
 
-- [ ] **Step 2：verify store method exists**
+- [x] **Step 2：verify store method exists**
 
 Run: `grep -n 'openSession\|enterSplit' client/src/stores/stage-store.ts`
 
 如果 `openSession` 不存在，改成已有的方法（`enterSplit` 或等价）。
 
-- [ ] **Step 3：commit**
+- [x] **Step 3：commit**
 
 ```bash
 git add client/src/features/chat/components/tools/renderers/artifact-created.tsx
@@ -2312,7 +2328,7 @@ git commit -m "feat(tools): ArtifactCreated renderer with Stage jump"
 **Files:**
 - Create: `client/src/features/chat/components/tools/renderers/index.ts`
 
-- [ ] **Step 1：实现**
+- [x] **Step 1：实现**
 
 ```typescript
 // renderers/index.ts
@@ -2337,7 +2353,7 @@ export function registerBuiltInRenderers() {
 }
 ```
 
-- [ ] **Step 2：在 `client/src/main.tsx` 或根组件中调用一次 `registerBuiltInRenderers()`**
+- [x] **Step 2：在 `client/src/main.tsx` 或根组件中调用一次 `registerBuiltInRenderers()`**
 
 Grep: `grep -n 'ReactDOM.createRoot\|createRoot' client/src/main.tsx`
 
@@ -2347,7 +2363,7 @@ import { registerBuiltInRenderers } from '@/features/chat/components/tools/rende
 registerBuiltInRenderers()
 ```
 
-- [ ] **Step 3：commit**
+- [x] **Step 3：commit**
 
 ```bash
 git add client/src/features/chat/components/tools/renderers/index.ts client/src/main.tsx
@@ -2364,7 +2380,7 @@ git commit -m "feat(tools): register built-in renderers on bootstrap"
 - Create: `client/src/features/chat/components/helpers/group-parts.ts`
 - Test: `client/src/features/chat/components/helpers/__tests__/group-parts.test.ts`
 
-- [ ] **Step 1：测试**
+- [x] **Step 1：测试**
 
 ```typescript
 import { describe, it, expect } from 'vitest'
@@ -2399,7 +2415,7 @@ describe('groupParts', () => {
 })
 ```
 
-- [ ] **Step 2：实现**
+- [x] **Step 2：实现**
 
 ```typescript
 // group-parts.ts
@@ -2435,7 +2451,7 @@ export function groupParts(parts: Part[], isContextGroupTool: IsContextGroupTool
 }
 ```
 
-- [ ] **Step 3：测试 + commit**
+- [x] **Step 3：测试 + commit**
 
 ```bash
 git add client/src/features/chat/components/helpers/group-parts.* client/src/features/chat/components/helpers/__tests__/group-parts.test.ts
@@ -2450,7 +2466,7 @@ git commit -m "feat(helpers): groupParts merges consecutive metadata tools"
 - Create: `client/src/features/chat/components/helpers/use-session-turns.ts`
 - Test: `client/src/features/chat/components/helpers/__tests__/use-session-turns.test.ts`
 
-- [ ] **Step 1：测试（核心切块规则）**
+- [x] **Step 1：测试（核心切块规则）**
 
 ```typescript
 import { describe, it, expect, beforeEach } from 'vitest'
@@ -2493,7 +2509,7 @@ describe('useSessionTurns', () => {
 })
 ```
 
-- [ ] **Step 2：实现**
+- [x] **Step 2：实现**
 
 ```typescript
 // use-session-turns.ts
@@ -2531,7 +2547,7 @@ export function useSessionTurns(sessionId: string | null): Turn[] {
 }
 ```
 
-- [ ] **Step 3：commit**
+- [x] **Step 3：commit**
 
 ```bash
 git add client/src/features/chat/components/helpers/use-session-turns.* client/src/features/chat/components/helpers/__tests__/use-session-turns.test.ts
@@ -2546,7 +2562,7 @@ git commit -m "feat(helpers): useSessionTurns derive user-split turns"
 - Create: `client/src/features/chat/components/turn/part-dispatcher.tsx`
 - Create: `client/src/features/chat/components/turn/unknown-part.tsx`
 
-- [ ] **Step 1：UnknownPart 实现**
+- [x] **Step 1：UnknownPart 实现**
 
 ```tsx
 // unknown-part.tsx
@@ -2568,7 +2584,7 @@ export function UnknownPart(props: { part: { type: string; [k: string]: unknown 
 }
 ```
 
-- [ ] **Step 2：PartDispatcher**
+- [x] **Step 2：PartDispatcher**
 
 ```tsx
 // part-dispatcher.tsx
@@ -2604,7 +2620,7 @@ export function PartDispatcher(props: PartComponentProps) {
 }
 ```
 
-- [ ] **Step 3：commit（先占位，text/reasoning/tool 在后续任务实现）**
+- [x] **Step 3：commit（先占位，text/reasoning/tool 在后续任务实现）**
 
 ```bash
 git add client/src/features/chat/components/turn/part-dispatcher.tsx client/src/features/chat/components/turn/unknown-part.tsx
@@ -2618,7 +2634,7 @@ git commit -m "feat(turn): PartDispatcher + UnknownPart fallback"
 **Files:**
 - Create: `client/src/features/chat/components/turn/text-part.tsx`
 
-- [ ] **Step 1：实现**
+- [x] **Step 1：实现**
 
 ```tsx
 // text-part.tsx
@@ -2663,7 +2679,7 @@ export function TextPart(props: PartComponentProps) {
 }
 ```
 
-- [ ] **Step 2：commit**
+- [x] **Step 2：commit**
 
 ```bash
 git add client/src/features/chat/components/turn/text-part.tsx
@@ -2677,7 +2693,7 @@ git commit -m "feat(turn): TextPart with paced markdown + copy"
 **Files:**
 - Create: `client/src/features/chat/components/turn/reasoning-part.tsx`
 
-- [ ] **Step 1：实现**
+- [x] **Step 1：实现**
 
 ```tsx
 // reasoning-part.tsx
@@ -2703,7 +2719,7 @@ export function ReasoningPart(props: PartComponentProps) {
 }
 ```
 
-- [ ] **Step 2：commit**
+- [x] **Step 2：commit**
 
 ```bash
 git add client/src/features/chat/components/turn/reasoning-part.tsx
@@ -2717,7 +2733,7 @@ git commit -m "feat(turn): ReasoningPart"
 **Files:**
 - Create: `client/src/features/chat/components/turn/tool-part.tsx`
 
-- [ ] **Step 1：实现**
+- [x] **Step 1：实现**
 
 ```tsx
 // tool-part.tsx
@@ -2758,7 +2774,7 @@ export function ToolPart(props: PartComponentProps) {
 }
 ```
 
-- [ ] **Step 2：commit**
+- [x] **Step 2：commit**
 
 ```bash
 git add client/src/features/chat/components/turn/tool-part.tsx
@@ -2772,7 +2788,7 @@ git commit -m "feat(turn): ToolPart dispatcher (custom > registry > generic)"
 **Files:**
 - Create: `client/src/features/chat/components/turn/context-tool-group.tsx`
 
-- [ ] **Step 1：实现**
+- [x] **Step 1：实现**
 
 ```tsx
 // context-tool-group.tsx
@@ -2808,7 +2824,7 @@ export function ContextToolGroup(props: { parts: ToolPart[]; infos: Map<string, 
 }
 ```
 
-- [ ] **Step 2：commit**
+- [x] **Step 2：commit**
 
 ```bash
 git add client/src/features/chat/components/turn/context-tool-group.tsx
@@ -2822,7 +2838,7 @@ git commit -m "feat(turn): ContextToolGroup collapsed context collector"
 **Files:**
 - Create: `client/src/features/chat/components/turn/user-bubble.tsx`
 
-- [ ] **Step 1：实现**
+- [x] **Step 1：实现**
 
 ```tsx
 // user-bubble.tsx
@@ -2891,7 +2907,7 @@ export function UserBubble(props: { info: MessageInfo; parts: Part[] }) {
 }
 ```
 
-- [ ] **Step 2：commit**
+- [x] **Step 2：commit**
 
 ```bash
 git add client/src/features/chat/components/turn/user-bubble.tsx
@@ -2905,7 +2921,7 @@ git commit -m "feat(turn): UserBubble with pending / failed / retry"
 **Files:**
 - Create: `client/src/features/chat/components/turn/assistant-stream.tsx`
 
-- [ ] **Step 1：实现**
+- [x] **Step 1：实现**
 
 ```tsx
 // assistant-stream.tsx
@@ -2984,7 +3000,7 @@ export function AssistantStream(props: {
 }
 ```
 
-- [ ] **Step 2：commit**
+- [x] **Step 2：commit**
 
 ```bash
 git add client/src/features/chat/components/turn/assistant-stream.tsx
@@ -2998,7 +3014,7 @@ git commit -m "feat(turn): AssistantStream with groupParts + ContextToolGroup"
 **Files:**
 - Create: `client/src/features/chat/components/turn/error-card.tsx`
 
-- [ ] **Step 1：实现**
+- [x] **Step 1：实现**
 
 ```tsx
 // error-card.tsx
@@ -3045,7 +3061,7 @@ export function ErrorCard(props: { message: string }) {
 }
 ```
 
-- [ ] **Step 2：commit**
+- [x] **Step 2：commit**
 
 ```bash
 git add client/src/features/chat/components/turn/error-card.tsx
@@ -3059,7 +3075,7 @@ git commit -m "feat(turn): ErrorCard with unwrap JSON"
 **Files:**
 - Create: `client/src/features/chat/components/turn/session-turn.tsx`
 
-- [ ] **Step 1：实现**
+- [x] **Step 1：实现**
 
 ```tsx
 // session-turn.tsx
@@ -3169,7 +3185,7 @@ export function SessionTurn(props: {
 }
 ```
 
-- [ ] **Step 2：commit**
+- [x] **Step 2：commit**
 
 ```bash
 git add client/src/features/chat/components/turn/session-turn.tsx
@@ -3184,7 +3200,7 @@ git commit -m "feat(turn): SessionTurn composition with thinking / interrupted /
 - Create: `client/src/features/chat/components/turn/turn-list.tsx`
 - Modify: `client/src/features/session/split-view.tsx`
 
-- [ ] **Step 1：TurnList**
+- [x] **Step 1：TurnList**
 
 ```tsx
 // turn-list.tsx
@@ -3211,7 +3227,7 @@ export function TurnList(props: { sessionId: string | null }) {
 }
 ```
 
-- [ ] **Step 2：替换 split-view 中的 `<MessageStream />`**
+- [x] **Step 2：替换 split-view 中的 `<MessageStream />`**
 
 ```tsx
 // split-view.tsx
@@ -3226,7 +3242,7 @@ const hasMessages = useChatPartsStore((s) => {
 })
 ```
 
-- [ ] **Step 3：typecheck + commit**
+- [x] **Step 3：typecheck + commit**
 
 ```bash
 cd client && npx tsc --noEmit
@@ -3244,7 +3260,7 @@ git commit -m "feat(turn): TurnList + wire into split-view"
 - Create: `client/src/features/chat/components/turn/turn-list-error-boundary.tsx`
 - Modify: `client/src/features/session/split-view.tsx`
 
-- [ ] **Step 1：实现**
+- [x] **Step 1：实现**
 
 ```tsx
 // turn-list-error-boundary.tsx
@@ -3272,7 +3288,7 @@ export class TurnListErrorBoundary extends Component<
 }
 ```
 
-- [ ] **Step 2：split-view 包 TurnList**
+- [x] **Step 2：split-view 包 TurnList**
 
 ```tsx
 <TurnListErrorBoundary>
@@ -3280,7 +3296,7 @@ export class TurnListErrorBoundary extends Component<
 </TurnListErrorBoundary>
 ```
 
-- [ ] **Step 3：commit**
+- [x] **Step 3：commit**
 
 ```bash
 git add client/src/features/chat/components/turn/turn-list-error-boundary.tsx client/src/features/session/split-view.tsx
@@ -3295,7 +3311,7 @@ git commit -m "feat(turn): TurnListErrorBoundary for morphdom failure"
 - Modify: `client/src/features/chat/components/turn/turn-list.tsx`
 - Modify: `client/src/features/session/session-canvas.tsx`（暴露 error）
 
-- [ ] **Step 1：turn-list 接收 error prop**
+- [x] **Step 1：turn-list 接收 error prop**
 
 ```tsx
 // turn-list.tsx
@@ -3315,7 +3331,7 @@ export function TurnList(props: { sessionId: string | null; error?: Error | null
 }
 ```
 
-- [ ] **Step 2：session-canvas 透传 error**
+- [x] **Step 2：session-canvas 透传 error**
 
 ```tsx
 // session-canvas.tsx
@@ -3327,7 +3343,7 @@ const { error: historyError } = useSessionHistory(sessionId)
 
 如果改动较大，优先级可以放在联调前，先留 TODO 注释。
 
-- [ ] **Step 3：commit**
+- [x] **Step 3：commit**
 
 ```bash
 git add client/src/features/chat/components/turn/turn-list.tsx client/src/features/session/session-canvas.tsx
@@ -3344,7 +3360,7 @@ git commit -m "feat(turn): TurnList shows OpenCode offline message"
 - Create: `client/src/features/chat/components/markdown/sql-code-block.ts`
 - Modify: `client/src/features/chat/components/markdown/markdown.tsx`
 
-- [ ] **Step 1：实现 decorator**
+- [x] **Step 1：实现 decorator**
 
 ```typescript
 // sql-code-block.ts
@@ -3390,7 +3406,7 @@ export function decorateSqlBlocks(root: HTMLElement, opts: { onExecute: (sql: st
 }
 ```
 
-- [ ] **Step 2：在 markdown.tsx 里调用 decorateSqlBlocks**
+- [x] **Step 2：在 markdown.tsx 里调用 decorateSqlBlocks**
 
 在 `decorateCodeBlocks(temp)` 后添加：
 ```typescript
@@ -3404,7 +3420,7 @@ import：`import { decorateSqlBlocks } from './sql-code-block'`
 
 （用全局 CustomEvent 解耦，上层 composer 监听）
 
-- [ ] **Step 3：commit**
+- [x] **Step 3：commit**
 
 ```bash
 git add client/src/features/chat/components/markdown/sql-code-block.ts client/src/features/chat/components/markdown/markdown.tsx
@@ -3418,13 +3434,13 @@ git commit -m "feat(markdown): SQL code block header with execute/explain (event
 **Files:**
 - Modify: `client/src/features/session/prompt-composer.tsx`
 
-- [ ] **Step 1：检查 composer 当前实现**
+- [x] **Step 1：检查 composer 当前实现**
 
 Run: `grep -n 'useState\|dispatchEvent\|value=' client/src/features/session/prompt-composer.tsx | head -20`
 
 找出 composer text state 的 setter。
 
-- [ ] **Step 2：添加事件监听**
+- [x] **Step 2：添加事件监听**
 
 在 composer 组件 useEffect 里：
 
@@ -3459,7 +3475,7 @@ useEffect(() => {
 
 注意：`submit` / `setText` / `showToast` 要用 composer 里实际存在的 API。若 submit 依赖 text 的最新值，用 ref 保持引用或用 flushSync 后再调。
 
-- [ ] **Step 3：commit**
+- [x] **Step 3：commit**
 
 ```bash
 git add client/src/features/session/prompt-composer.tsx
@@ -3500,16 +3516,16 @@ git commit -m "feat(composer): listen sql execute/explain events (1a flow)"
 - Modify: `docs/product-specs/index.md`
 - Modify: `docs/product-specs/2026-04-19-ai-message-rendering-migration-design.md`
 
-- [ ] **Step 1：登记 plan 到 index.md Active**（在开始实施前就要做这步）
+- [x] **Step 1：登记 plan 到 index.md Active**（在开始实施前就要做这步）
 
 在 `docs/exec-plans/index.md` 的 Active 表格里加：
 ```
 | [AI Message Rendering Migration](./2026-04-19-ai-message-rendering-migration-plan.md) | 2026-04-19 | 迁移 OpenCode 消息渲染 + DataTalk 特化 |
 ```
 
-- [ ] **Step 2：完工时迁移至 Completed，并在 spec 里标记所有任务完成**
+- [x] **Step 2：完工时迁移至 Completed，并在 spec 里标记所有任务完成**
 
-- [ ] **Step 3：commit 文档更新**
+- [x] **Step 3：commit 文档更新**
 
 ```bash
 git add docs/exec-plans/index.md docs/product-specs/index.md docs/product-specs/2026-04-19-ai-message-rendering-migration-design.md
@@ -3520,13 +3536,13 @@ git commit -m "docs: move AI message rendering migration plan to Completed"
 
 ## Self-Review Checklist（实施前通读）
 
-- [ ] 所有任务路径都是绝对路径格式（`client/src/...`）
-- [ ] 每个新增组件都有对应的 import 点（`registerBuiltInRenderers` 在 main.tsx 调用）
-- [ ] OpenCode 原生字段名一致（`sessionID`/`messageID`，不是 `sessionId`/`messageId`）
-- [ ] `info.__pending` / `__failed` / `__retrying` / `__failReason` 四个前端字段统一
-- [ ] `replaceSession` / `upsertPendingUser` / `promotePendingUser` / `markPendingUserFailed` / `removePendingUser` 五个新 store 方法
-- [ ] ToolRegistry 7 个内建 renderer：execute_sql / preview_sql / describe_table / list_tables / show_schema / artifact_created / question
-- [ ] 风险优先级链 `resolveRisk` 实现且被 BasicTool / renderer 使用
-- [ ] 未知 part type 走 UnknownPart（不静默）
-- [ ] morphdom 失败 raise 到 TurnListErrorBoundary
-- [ ] SQL "执行"按钮 1a 流程：composer 空自动 submit / 非空追加 toast
+- [x] 所有任务路径都是绝对路径格式（`client/src/...`）
+- [x] 每个新增组件都有对应的 import 点（`registerBuiltInRenderers` 在 main.tsx 调用）
+- [x] OpenCode 原生字段名一致（`sessionID`/`messageID`，不是 `sessionId`/`messageId`）
+- [x] `info.__pending` / `__failed` / `__retrying` / `__failReason` 四个前端字段统一
+- [x] `replaceSession` / `upsertPendingUser` / `promotePendingUser` / `markPendingUserFailed` / `removePendingUser` 五个新 store 方法
+- [x] ToolRegistry 7 个内建 renderer：execute_sql / preview_sql / describe_table / list_tables / show_schema / artifact_created / question
+- [x] 风险优先级链 `resolveRisk` 实现且被 BasicTool / renderer 使用
+- [x] 未知 part type 走 UnknownPart（不静默）
+- [x] morphdom 失败 raise 到 TurnListErrorBoundary
+- [x] SQL "执行"按钮 1a 流程：composer 空自动 submit / 非空追加 toast
