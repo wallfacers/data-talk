@@ -6,6 +6,7 @@
 
 | 计划 | 状态 | 摘要 |
 |------|------|------|
+| [Single Empty Session](./2026-04-19-single-empty-session-plan.md) | 计划中 | 全局最多 1 个空白会话：后端 `SessionService.create` `synchronized` 幂等 + `reusedEmpty` 响应字段；前端 `app-sidebar` 本地查重 + `isPending` 短路；零 migration |
 | [Composer Model Picker Dialog](./2026-04-18-composer-model-picker-dialog-plan.md) | 计划中 | Composer 模型选择器 Popover → 960×540 双栏对话框，触发按钮样式不变 |
 
 ## 已完成计划
