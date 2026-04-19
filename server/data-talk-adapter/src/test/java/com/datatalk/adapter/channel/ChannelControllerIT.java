@@ -11,6 +11,8 @@ import com.datatalk.domain.event.DtEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -128,5 +130,34 @@ class ChannelControllerIT {
         assertThat(all).contains("event: connected");
         assertThat(all).contains("session.meta.updated");
         assertThat(all).contains("\"title\":\"AI 标题\"");
+    }
+
+    @Test
+    void emitsHeartbeatFramesWhileIdle() {
+        StringBuilder raw = new StringBuilder();
+
+        client.get()
+            .uri("/api/sessions/s-1/channel")
+            .accept(MediaType.TEXT_EVENT_STREAM)
+            .exchangeToFlux(resp -> resp.bodyToFlux(DataBuffer.class))
+            .take(Duration.ofMillis(800))
+            .doOnNext(db -> {
+                byte[] bytes = new byte[db.readableByteCount()];
+                db.read(bytes);
+                DataBufferUtils.release(db);
+                raw.append(new String(bytes, java.nio.charset.StandardCharsets.UTF_8));
+            })
+            .blockLast(Duration.ofSeconds(2));
+
+        // test yml 配置 heartbeat-interval-ms=200，800ms 窗口应收到 ≥2 次
+        // 心跳帧字面量为 ":\n\n" —— 行首冒号后立即换行，区分于 "event: x\n" 类业务帧
+        String s = raw.toString();
+        int count = 0;
+        int idx = 0;
+        while ((idx = s.indexOf(":\n\n", idx)) != -1) {
+            count++;
+            idx += 3;
+        }
+        assertThat(count).isGreaterThanOrEqualTo(2);
     }
 }
