@@ -6,6 +6,7 @@ type ChatPartsState = {
   partsBySession: Map<string, Map<string, Part[]>>
   infoBySession: Map<string, Map<string, MessageInfo>>
   partIndexBySession: Map<string, Map<string, { messageId: string; idx: number }>>
+  streamingBySession: Set<string>
 
   upsertPart: (sessionId: string, part: Part) => void
   upsertInfo: (sessionId: string, info: MessageInfo) => void
@@ -15,6 +16,7 @@ type ChatPartsState = {
   clearSession: (sessionId: string) => void
   getParts: (sessionId: string) => Part[]
   findPart: (sessionId: string, partId: string) => Part | null
+  setStreaming: (sessionId: string, on: boolean) => void
 
   upsertPendingUser: (sessionId: string, text: string) => string
   promotePendingUser: (sessionId: string, pendingId: string, realId: string) => void
@@ -26,6 +28,7 @@ export const useChatPartsStore = create<ChatPartsState>((set, get) => ({
   partsBySession: new Map(),
   infoBySession: new Map(),
   partIndexBySession: new Map(),
+  streamingBySession: new Set<string>(),
 
   upsertPart: (sessionId, part) => set((s) => {
     const existingParts = s.partsBySession.get(sessionId)?.get(part.messageID)
@@ -121,7 +124,17 @@ export const useChatPartsStore = create<ChatPartsState>((set, get) => ({
     const parts = new Map(s.partsBySession); parts.delete(sessionId)
     const info = new Map(s.infoBySession); info.delete(sessionId)
     const index = new Map(s.partIndexBySession); index.delete(sessionId)
-    return { partsBySession: parts, infoBySession: info, partIndexBySession: index }
+    const streaming = new Set(s.streamingBySession); streaming.delete(sessionId)
+    return { partsBySession: parts, infoBySession: info, partIndexBySession: index, streamingBySession: streaming }
+  }),
+
+  setStreaming: (sessionId, on) => set((s) => {
+    const has = s.streamingBySession.has(sessionId)
+    if (on === has) return {}
+    const next = new Set(s.streamingBySession)
+    if (on) next.add(sessionId)
+    else next.delete(sessionId)
+    return { streamingBySession: next }
   }),
 
   getParts: (sessionId) => {

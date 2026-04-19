@@ -8,6 +8,7 @@ describe('chat-parts-store', () => {
       partsBySession: new Map(),
       infoBySession: new Map(),
       partIndexBySession: new Map(),
+      streamingBySession: new Set<string>(),
     })
   })
 
@@ -99,5 +100,35 @@ describe('chat-parts-store', () => {
     store.removePendingUser('ses_a', pendingId)
     expect(useChatPartsStore.getState().infoBySession.get('ses_a')?.get(pendingId)).toBeUndefined()
     expect(useChatPartsStore.getState().partsBySession.get('ses_a')?.get(pendingId)).toBeUndefined()
+  })
+
+  describe('streamingBySession', () => {
+    it('setStreaming(on=true) marks the session as streaming', () => {
+      useChatPartsStore.getState().setStreaming('ses_a', true)
+      expect(useChatPartsStore.getState().streamingBySession.has('ses_a')).toBe(true)
+    })
+
+    it('setStreaming(on=false) clears the session', () => {
+      useChatPartsStore.getState().setStreaming('ses_a', true)
+      useChatPartsStore.getState().setStreaming('ses_a', false)
+      expect(useChatPartsStore.getState().streamingBySession.has('ses_a')).toBe(false)
+    })
+
+    it('streaming flags for different sessions are independent', () => {
+      const { setStreaming } = useChatPartsStore.getState()
+      setStreaming('ses_a', true)
+      setStreaming('ses_b', true)
+      expect(useChatPartsStore.getState().streamingBySession.has('ses_a')).toBe(true)
+      expect(useChatPartsStore.getState().streamingBySession.has('ses_b')).toBe(true)
+      setStreaming('ses_a', false)
+      expect(useChatPartsStore.getState().streamingBySession.has('ses_a')).toBe(false)
+      expect(useChatPartsStore.getState().streamingBySession.has('ses_b')).toBe(true)
+    })
+
+    it('clearSession also removes the streaming flag', () => {
+      useChatPartsStore.getState().setStreaming('ses_a', true)
+      useChatPartsStore.getState().clearSession('ses_a')
+      expect(useChatPartsStore.getState().streamingBySession.has('ses_a')).toBe(false)
+    })
   })
 })
