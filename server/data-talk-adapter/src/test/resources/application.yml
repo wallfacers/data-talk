@@ -24,3 +24,7 @@ datatalk:
     callback-base: http://localhost:8080
     serve:
       enabled: false
+
+app:
+  sse:
+    heartbeat-interval-ms: 200

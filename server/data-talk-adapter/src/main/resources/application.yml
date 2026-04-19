@@ -54,3 +54,5 @@ datatalk:
 app:
   logging:
     slow-request-threshold-ms: 1000
+  sse:
+    heartbeat-interval-ms: 30000
