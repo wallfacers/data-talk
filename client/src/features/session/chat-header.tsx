@@ -13,6 +13,7 @@ import {
 import { useSidebar } from '@/components/ui/sidebar'
 import { useSessionStore } from '@/stores/session-store'
 import { useSessions } from './hooks/use-sessions'
+import { useOpenBlankSession } from './hooks/use-open-blank-session'
 import { deleteSession, renameSession } from '@/services/api/session'
 import { useConnectionStore } from '@/features/connection/store'
 
@@ -23,6 +24,7 @@ export function ChatHeader() {
   const title = session?.title ?? ''
   const qc = useQueryClient()
   const connectionId = useConnectionStore((s) => s.activeConnectionId)
+  const openBlankSession = useOpenBlankSession()
   const { state } = useSidebar()
 
   const [editing, setEditing] = useState(false)
@@ -43,9 +45,9 @@ export function ChatHeader() {
 
   const del = useMutation({
     mutationFn: (id: string) => deleteSession(id),
-    onSuccess: () => {
+    onSuccess: (_, id) => {
       qc.invalidateQueries({ queryKey: ['sessions', connectionId ?? null] })
-      useSessionStore.getState().closeSession()
+      void openBlankSession(id)
       toast.success('已删除')
     },
   })

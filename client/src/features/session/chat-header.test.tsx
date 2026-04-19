@@ -44,15 +44,47 @@ describe('ChatHeader', () => {
     await waitFor(() => expect(spy).toHaveBeenCalledWith('s1', '新名'))
   })
 
-  it('删除 → 调用 deleteSession DELETE', async () => {
-    const spy = vi.spyOn(api, 'deleteSession').mockResolvedValue(undefined)
+  it('删除 → 调用 deleteSession DELETE，并跳转到新建空白会话', async () => {
+    const delSpy = vi.spyOn(api, 'deleteSession').mockResolvedValue(undefined)
+    const createSpy = vi.spyOn(api, 'createSession').mockResolvedValue({
+      id: 'new', connectionId: null, title: '新会话', hasEverSent: false,
+      createdAt: 0, updatedAt: 0, titleLocked: false, reusedEmpty: false,
+    })
     vi.spyOn(window, 'confirm').mockReturnValue(true)
 
     renderWithClient(<ChatHeader />)
     fireEvent.click(screen.getByRole('button'))
     fireEvent.click(screen.getByText('删除'))
 
-    await waitFor(() => expect(spy).toHaveBeenCalledWith('s1'))
+    await waitFor(() => expect(delSpy).toHaveBeenCalledWith('s1'))
+    await waitFor(() => expect(createSpy).toHaveBeenCalledTimes(1))
+    await waitFor(() =>
+      expect(useSessionStore.getState().activeSessionId).toBe('new'),
+    )
+  })
+
+  it('删除 → 缓存中已有空白会话则复用，不触发 createSession', async () => {
+    const delSpy = vi.spyOn(api, 'deleteSession').mockResolvedValue(undefined)
+    const createSpy = vi.spyOn(api, 'createSession')
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    qc.setQueryData(['sessions', null], [
+      { id: 's1', connectionId: null, title: 'a', hasEverSent: true,
+        createdAt: 0, updatedAt: 0, titleLocked: false, reusedEmpty: false },
+      { id: 'empty', connectionId: null, title: '新会话', hasEverSent: false,
+        createdAt: 0, updatedAt: 0, titleLocked: false, reusedEmpty: false },
+    ])
+    render(<QueryClientProvider client={qc}><ChatHeader /></QueryClientProvider>)
+
+    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByText('删除'))
+
+    await waitFor(() => expect(delSpy).toHaveBeenCalledWith('s1'))
+    await waitFor(() =>
+      expect(useSessionStore.getState().activeSessionId).toBe('empty'),
+    )
+    expect(createSpy).not.toHaveBeenCalled()
   })
 
   it('取消重命名 → 不调用 API', async () => {
