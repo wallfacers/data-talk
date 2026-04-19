@@ -24,14 +24,17 @@ public class SessionService {
     private final Clock clock;
     private final OpenCodeGateway gateway;
     private final OpenCodeSessionMap sessionMap;
+    private final SessionBusRegistry buses;
     private final Object createLock = new Object();
 
     public SessionService(SessionRepository repo, Clock clock,
-                          OpenCodeGateway gateway, OpenCodeSessionMap sessionMap) {
+                          OpenCodeGateway gateway, OpenCodeSessionMap sessionMap,
+                          SessionBusRegistry buses) {
         this.repo = repo;
         this.clock = clock;
         this.gateway = gateway;
         this.sessionMap = sessionMap;
+        this.buses = buses;
     }
 
     public CreateSessionResult create(String connectionId, String title) {
@@ -73,13 +76,12 @@ public class SessionService {
     public void delete(String id) {
         SessionRecord rec = repo.findById(id)
             .orElseThrow(() -> new NoSuchElementException("session not found: " + id));
-        repo.deleteById(id);
-        // FK ON DELETE CASCADE handles messages, artifacts, action_invocations, events, query_results
 
-        // Drop the matching OpenCode session so the embedded server doesn't
-        // accumulate orphan sessions on disk. Best-effort: DB delete is the
-        // authoritative step from the user's POV; swallow gateway failures so
-        // a flaky OpenCode process never blocks a local delete.
+        // Order matters: events FK → sessions(id) ON DELETE CASCADE. If we delete
+        // the row first, late events on the bus's flusher thread (or new ones
+        // pushed by OpenCodeEventLoop) try to INSERT and trip the FK constraint.
+        // Stop all sources of new events BEFORE removing the row.
+        sessionMap.unbind(id);
         String ocSid = rec.openCodeSid();
         if (ocSid != null && !ocSid.isBlank()) {
             try {
@@ -88,7 +90,9 @@ public class SessionService {
                 log.warn("[session] OpenCode-side delete failed for {} (ocSid={}): {}",
                     id, ocSid, e.toString());
             }
-            sessionMap.unbind(id);
         }
+        buses.close(id);
+        repo.deleteById(id);
+        // FK ON DELETE CASCADE handles messages, artifacts, action_invocations, events, query_results
     }
 }

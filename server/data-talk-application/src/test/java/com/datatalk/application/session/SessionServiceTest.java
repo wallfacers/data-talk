@@ -23,6 +23,7 @@ import java.util.concurrent.Executors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -33,6 +34,7 @@ class SessionServiceTest {
     private SessionService svc;
     private OpenCodeGateway gateway;
     private OpenCodeSessionMap sessionMap;
+    private SessionBusRegistry buses;
     private Connection conn;
     private DataSource ds;
 
@@ -61,8 +63,9 @@ class SessionServiceTest {
         repo = new SessionRepository(jdbc);
         gateway = mock(OpenCodeGateway.class);
         sessionMap = mock(OpenCodeSessionMap.class);
+        buses = mock(SessionBusRegistry.class);
         svc = new SessionService(repo, Clock.fixed(Instant.ofEpochMilli(500L), ZoneOffset.UTC),
-            gateway, sessionMap);
+            gateway, sessionMap, buses);
     }
 
     @AfterEach
@@ -133,15 +136,19 @@ class SessionServiceTest {
         assertThat(repo.findById("s1")).isEmpty();
         verify(gateway).deleteOpenCodeSession("ses_xxx");
         verify(sessionMap).unbind("s1");
+        verify(buses).close("s1");
     }
 
     @Test
-    void delete_skipsOpenCodeWhenOcSidNull() {
+    void delete_skipsOpenCodeCallWhenOcSidNullButStillUnbindsAndClosesBus() {
         repo.upsert(new SessionRecord("s1", "c1", "t", false, null, 100L, 100L, false));
         svc.delete("s1");
         assertThat(repo.findById("s1")).isEmpty();
         verify(gateway, never()).deleteOpenCodeSession(org.mockito.ArgumentMatchers.anyString());
-        verify(sessionMap, never()).unbind(org.mockito.ArgumentMatchers.anyString());
+        // unbind + bus close are cheap no-ops if no binding/bus exists; we still call them
+        // unconditionally so the cleanup ordering invariant holds for every delete.
+        verify(sessionMap).unbind("s1");
+        verify(buses).close("s1");
     }
 
     @Test
@@ -155,6 +162,29 @@ class SessionServiceTest {
 
         assertThat(repo.findById("s1")).isEmpty();
         verify(sessionMap).unbind("s1");
+        verify(buses).close("s1");
+    }
+
+    @Test
+    void delete_stopsEventSourcesBeforeRemovingRow() {
+        // Guards the FK-violation race: any cleanup that could push more events
+        // (sessionMap unbind, OpenCode delete, bus close) MUST run before the
+        // session row goes away. Otherwise late events INSERT into a dangling
+        // session_id and trip the events→sessions FK.
+        repo.upsert(new SessionRecord("s1", "c1", "t", true, "ses_xxx", 100L, 100L, false));
+
+        SessionRepository repoSpy = org.mockito.Mockito.spy(repo);
+        SessionService spied = new SessionService(repoSpy,
+            Clock.fixed(Instant.ofEpochMilli(500L), ZoneOffset.UTC),
+            gateway, sessionMap, buses);
+
+        spied.delete("s1");
+
+        var order = inOrder(sessionMap, gateway, buses, repoSpy);
+        order.verify(sessionMap).unbind("s1");
+        order.verify(gateway).deleteOpenCodeSession("ses_xxx");
+        order.verify(buses).close("s1");
+        order.verify(repoSpy).deleteById("s1");
     }
 
     @Test
