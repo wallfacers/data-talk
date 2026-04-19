@@ -303,15 +303,35 @@ public class OpenCodeEventLoop {
             return new Message(null, null, Message.Role.ASSISTANT, List.of(), 0L, null, null);
         }
         Message.Role role = Message.Role.valueOf(info.path("role").asText("assistant").toUpperCase());
+
+        // OpenCode 1.4.7 两种形态：
+        //   user 消息     → info.model.{providerID, modelID}（嵌套）
+        //   assistant 消息 → info.{providerID, modelID}（扁平）
+        // 嵌套优先，扁平兜底。
+        String providerID = firstNonBlank(
+            info.path("model").path("providerID").asText(null),
+            info.path("providerID").asText(null)
+        );
+        String modelID = firstNonBlank(
+            info.path("model").path("modelID").asText(null),
+            info.path("modelID").asText(null)
+        );
+
         return new Message(
             info.path("id").asText(null),
             info.path("sessionID").asText(null),
             role,
             List.of(),
             info.path("time").path("created").asLong(0L),
-            null,
-            null
+            providerID,
+            modelID
         );
+    }
+
+    private static String firstNonBlank(String a, String b) {
+        if (a != null && !a.isBlank()) return a;
+        if (b != null && !b.isBlank()) return b;
+        return null;
     }
 
     private String extractSessionId(OcEvent e) {

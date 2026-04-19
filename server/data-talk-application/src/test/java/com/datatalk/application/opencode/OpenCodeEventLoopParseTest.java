@@ -103,6 +103,31 @@ class OpenCodeEventLoopParseTest {
         assertThat(m.role()).isEqualTo(Message.Role.USER);
         assertThat(m.createdAt()).isEqualTo(1776511371427L);
         assertThat(m.parts()).isEmpty();
+        assertThat(m.providerID()).isEqualTo("openai");
+        assertThat(m.modelID()).isEqualTo("gpt-4o-mini");
+    }
+
+    @Test
+    void messageUpdatedAssistantExtractsFlatModel() throws Exception {
+        // 1.4.7 wire: assistant 消息 info.{providerID, modelID} 扁平形态
+        OcEvent e = loop.parseOcEvent("message.updated", load("message-updated-assistant.json"));
+        assertThat(e).isInstanceOf(OcEvent.MessageUpdated.class);
+        Message m = ((OcEvent.MessageUpdated) e).message();
+        assertThat(m.role()).isEqualTo(Message.Role.ASSISTANT);
+        assertThat(m.providerID()).isEqualTo("anthropic");
+        assertThat(m.modelID()).isEqualTo("claude-opus-4-7");
+    }
+
+    @Test
+    void messageUpdatedReturnsNullModelWhenFieldsMissing() throws Exception {
+        // 旧协议 / 未知消息：provider/model 都不存在时，不抛且返回 null
+        String json = """
+            {"type":"message.updated","properties":{"info":{"id":"msg_x","role":"user","sessionID":"s1","time":{"created":0}}}}
+            """;
+        OcEvent e = loop.parseOcEvent("message.updated", json);
+        Message m = ((OcEvent.MessageUpdated) e).message();
+        assertThat(m.providerID()).isNull();
+        assertThat(m.modelID()).isNull();
     }
 
     @Test
