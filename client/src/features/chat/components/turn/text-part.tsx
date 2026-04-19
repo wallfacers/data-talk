@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { CopyIcon, CheckIcon } from 'lucide-react'
 import type { PartComponentProps } from './part-dispatcher'
 import { Markdown } from '../markdown/markdown'
 import { PacedMarkdown } from '../effects/paced-markdown'
@@ -27,7 +28,9 @@ export function TextPart(props: PartComponentProps) {
       )}
       {props.showCopy && (
         <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-          <button onClick={handleCopy} className="hover:text-foreground">{copied ? '✓' : '复制'}</button>
+          <button onClick={handleCopy} className="flex items-center hover:text-foreground" aria-label="Copy">
+            {copied ? <CheckIcon className="size-3.5" /> : <CopyIcon className="size-3.5" />}
+          </button>
           {props.info.role === 'assistant' && props.info.modelID && <span>· {props.info.modelID}</span>}
           {props.turnDurationMs !== undefined && props.turnDurationMs >= 0 && (
             <span>· {Math.round(props.turnDurationMs / 1000)}s</span>

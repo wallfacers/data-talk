@@ -16,4 +16,3 @@
   opacity: 0; transition: opacity 150ms;
 }
 [data-component="markdown-code"]:hover [data-slot="markdown-copy-button"] { opacity: 1; }
-[data-slot="markdown-copy-button"][data-copied="true"]::after { content: " ✓"; }

@@ -47,6 +47,9 @@ function touch(key: string, value: Entry) {
   }
 }
 
+const COPY_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`
+const CHECK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check"><path d="M20 6 9 17l-5-5"/></svg>`
+
 function decorateCodeBlocks(root: HTMLElement) {
   const pres = Array.from(root.querySelectorAll('pre'))
   for (const pre of pres) {
@@ -59,7 +62,7 @@ function decorateCodeBlocks(root: HTMLElement) {
     btn.setAttribute('data-slot', 'markdown-copy-button')
     btn.setAttribute('type', 'button')
     btn.setAttribute('aria-label', 'Copy')
-    btn.textContent = 'Copy'
+    btn.innerHTML = COPY_SVG
     wrapper.appendChild(btn)
   }
 }
@@ -126,7 +129,11 @@ export function Markdown(props: {
       if (!content) return
       await navigator.clipboard?.writeText?.(content)
       btn.setAttribute('data-copied', 'true')
-      setTimeout(() => btn.removeAttribute('data-copied'), 2000)
+      btn.innerHTML = CHECK_SVG
+      setTimeout(() => {
+        btn.removeAttribute('data-copied')
+        btn.innerHTML = COPY_SVG
+      }, 2000)
     }
     container.addEventListener('click', onClick)
     return () => container.removeEventListener('click', onClick)

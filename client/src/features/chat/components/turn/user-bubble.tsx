@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { CopyIcon, CheckIcon } from 'lucide-react'
 import type { MessageInfo, Part, TextPart } from '@/services/channel/types'
 import { useChannel } from '@/services/channel/use-channel'
 import { cn } from '@/lib/utils'
@@ -53,7 +54,9 @@ export function UserBubble(props: { info: MessageInfo; parts: Part[] }) {
       )}
       {!pending && !failed && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <button onClick={handleCopy} className="hover:text-foreground">{copied ? '✓' : '复制'}</button>
+          <button onClick={handleCopy} className="flex items-center hover:text-foreground" aria-label="Copy">
+            {copied ? <CheckIcon className="size-3.5" /> : <CopyIcon className="size-3.5" />}
+          </button>
           {info.time.created && <span>· {new Date(info.time.created).toLocaleTimeString()}</span>}
         </div>
       )}
