@@ -10,6 +10,7 @@ import com.datatalk.domain.event.DtEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,6 +25,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -36,10 +38,12 @@ public class ChannelController {
 
     private static final Logger log = LoggerFactory.getLogger(ChannelController.class);
 
-    /** SSE streams need long idle timeout for slow model responses. Spring's default 30s triggers AsyncRequestTimeoutException. */
-    private static final long SSE_STREAM_TIMEOUT_MS = 10L * 60_000L; // 10 minutes
-    /** Upper bound on how long the POST thread blocks waiting for OpenCode to finish a turn. Matches the SSE idle timeout so the Spring-side timeout catches runaway sessions. */
-    private static final long TURN_WAIT_TIMEOUT_MS = SSE_STREAM_TIMEOUT_MS;
+    /** POST turn 流最长存活时间——单 turn 最长运行时间。 */
+    private static final long POST_STREAM_TIMEOUT_MS = 10L * 60_000L;
+    /** GET 订阅流 timeout——0 = Tomcat 不超时；存活由心跳探活 + 客户端断连决定。 */
+    private static final long GET_STREAM_TIMEOUT_MS = 0L;
+    /** POST 线程等待 OpenCode turn 完成的上限，与 POST emitter timeout 对齐。 */
+    private static final long TURN_WAIT_TIMEOUT_MS = POST_STREAM_TIMEOUT_MS;
     /** Brief grace so the final session.status:idle frame reaches the wire before close. */
     private static final long FINAL_FRAME_GRACE_MS = 50L;
 
@@ -47,13 +51,19 @@ public class ChannelController {
     private final ChannelService svc;
     private final SessionBusRegistry buses;
     private final ObjectMapper om;
+    private final SseHeartbeatScheduler heartbeat;
+    private final long heartbeatIntervalMs;
 
     public ChannelController(JsonRpcCodec codec, ChannelService svc,
-                             SessionBusRegistry buses, ObjectMapper om) {
+                             SessionBusRegistry buses, ObjectMapper om,
+                             SseHeartbeatScheduler heartbeat,
+                             @Value("${app.sse.heartbeat-interval-ms:30000}") long heartbeatIntervalMs) {
         this.codec = codec;
         this.svc = svc;
         this.buses = buses;
         this.om = om;
+        this.heartbeat = heartbeat;
+        this.heartbeatIntervalMs = heartbeatIntervalMs;
     }
 
     @PostMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -82,7 +92,8 @@ public class ChannelController {
         @RequestHeader(value = "Last-Event-ID", required = false) Long lastEventId
     ) {
         SessionBus bus = buses.getOrCreate(sessionId);
-        ResponseBodyEmitter emitter = new ResponseBodyEmitter(SSE_STREAM_TIMEOUT_MS);
+        ResponseBodyEmitter emitter = new ResponseBodyEmitter(GET_STREAM_TIMEOUT_MS);
+        ScheduledFuture<?> hb = heartbeat.register(emitter, heartbeatIntervalMs);
         SseEmitterSubscriber sub = new SseEmitterSubscriber(
             new EmitterOutputStream(emitter), om, "connected");
         String clientId = "read-" + System.nanoTime();
@@ -91,10 +102,15 @@ public class ChannelController {
         bus.publish(new DtEvent.Connected(sessionId, 1));
         bus.subscribe(clientId, lastEventId == null ? 0L : lastEventId, sub);
 
-        // Unsubscribe on disconnect; trigger eviction when last subscriber leaves
-        Runnable onDisconnect = () -> { bus.unsubscribe(clientId); buses.onUnsubscribe(sessionId); };
+        // 断连清理：取消心跳 + 摘订阅 + 触发 bus 驱逐（onError 路径新补）
+        Runnable onDisconnect = () -> {
+            hb.cancel(false);
+            bus.unsubscribe(clientId);
+            buses.onUnsubscribe(sessionId);
+        };
         emitter.onCompletion(onDisconnect);
         emitter.onTimeout(onDisconnect);
+        emitter.onError(ex -> onDisconnect.run());
 
         return emitter;
     }
@@ -103,7 +119,8 @@ public class ChannelController {
                                        RpcRequest.SendMessage m,
                                        Long lastEventId) {
         SessionBus bus = buses.getOrCreate(sessionId);
-        ResponseBodyEmitter emitter = new ResponseBodyEmitter(SSE_STREAM_TIMEOUT_MS);
+        ResponseBodyEmitter emitter = new ResponseBodyEmitter(POST_STREAM_TIMEOUT_MS);
+        ScheduledFuture<?> hb = heartbeat.register(emitter, heartbeatIntervalMs);
         SseEmitterSubscriber sub = new SseEmitterSubscriber(
             new EmitterOutputStream(emitter), om, "connected");
         String clientId = "post-" + System.nanoTime();
@@ -115,6 +132,7 @@ public class ChannelController {
         AtomicBoolean clientGone = new AtomicBoolean(false);
 
         Runnable onDisconnect = () -> {
+            hb.cancel(false);
             clientGone.set(true);
             turnDone.countDown();
             bus.unsubscribe(clientId);
