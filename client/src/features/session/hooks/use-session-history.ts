@@ -7,6 +7,23 @@ import { useTimelineStore } from '@/stores/timeline-store'
 import type { MessageInfo, Part } from '@/services/channel/types'
 import type { Artifact } from '@/services/channel/event-reducer'
 
+/**
+ * Whether the server snapshot is materially emptier than what the store already
+ * holds for this session. Used to avoid wiping optimistic pending messages and
+ * in-flight SSE parts when a re-mounting subscriber triggers a background
+ * refetch that returns before the backend has persisted the new turn.
+ */
+function shouldSkipReplace(sessionId: string, serverMsgCount: number, serverArtifactCount: number): boolean {
+  const partsStore = useChatPartsStore.getState()
+  if (partsStore.streamingBySession.has(sessionId)) return true
+  const storeMsgCount = partsStore.infoBySession.get(sessionId)?.size ?? 0
+  const storeArtifactCount = useOntologyStore.getState().artifactsBySession.get(sessionId)?.size ?? 0
+  return (
+    (serverMsgCount === 0 && storeMsgCount > 0) ||
+    (serverArtifactCount === 0 && storeArtifactCount > 0)
+  )
+}
+
 type HistoryItem = { info: MessageInfo; parts: Part[] }
 type HistoryResponse =
   | HistoryItem[]
@@ -66,9 +83,6 @@ export function useSessionHistory(sessionId: string | null) {
     if (!sessionId || !messagesData || !artifactsData) return
 
     const list = normalizeHistory(messagesData)
-    useChatPartsStore.getState().replaceSession(sessionId, list)
-
-    const ontApi = useOntologyStore.getState()
     const artifacts: Artifact[] = (artifactsData.artifacts ?? []).map((a) => ({
       id: a.id,
       version: a.version,
@@ -79,7 +93,15 @@ export function useSessionHistory(sessionId: string | null) {
       payload: a.payload,
       createdAt: a.createdAt,
     }))
-    ontApi.replaceSession(sessionId, artifacts)
+
+    // Guard: this hook has multiple subscribers (SessionCanvas + TurnList) with
+    // staleTime: 0, so each remount re-fires this effect. Without the guard an
+    // optimistic pending user message or in-flight streamed parts get clobbered
+    // the moment a late subscriber appears with an older cached snapshot.
+    if (shouldSkipReplace(sessionId, list.length, artifacts.length)) return
+
+    useChatPartsStore.getState().replaceSession(sessionId, list)
+    useOntologyStore.getState().replaceSession(sessionId, artifacts)
 
     const tApi = useTimelineStore.getState()
     tApi.clear(sessionId)
