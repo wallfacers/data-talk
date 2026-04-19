@@ -14,6 +14,7 @@
 
 | ID | 优先级 | 模块 | 描述 | 来源 |
 |----|-------|------|------|------|
+| TD-021 | P2 | adapter | `*IT.java` 测试未纳入 CI：surefire 默认 includes `**/*Test*.java`，`ChannelControllerIT` / `TypicalQueryE2EIT` 等 IT 类从未执行。需添加 failsafe plugin 或在 surefire includes 加 `**/*IT.java` | 2026-04-20 评估发现 |
 | TD-001 | P1 | adapter | `application.yml` 使用 H2 内存库作为 placeholder，需替换为正式的数据源配置策略 | Plan A |
 | TD-003 | P2 | domain | `DtEvent` 的 Jackson `@JsonSubTypes` 硬编码了 22 个子类型，新增事件需修改两处（枚举 + 注解） | ~~Plan A~~ 2026-04-18 已改为 `@JsonTypeName` |
 | TD-005 | P2 | adapter | ~~缺少全局异常处理器~~ `AiSettingsExceptionHandler` 已合并到 `GlobalExceptionHandler`，统一错误响应格式 | 2026-04-18 已实现 |
