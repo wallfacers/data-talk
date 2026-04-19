@@ -26,30 +26,39 @@ export function buildEventSink(sessionId: string, client: ChannelClient | null, 
     if (typeof evt.id === 'number' && evt.id > 0) {
       useChannelStore.getState().setLastEventId(sessionId, evt.id)
     }
-    if (event === 'message.created' || event === 'message.updated') {
-      const m = (data as any).info ?? (data as any).message   // 兼容过渡
-      if (!m) return
-      useChatPartsStore.getState().upsertInfo(sessionId, {
-        id: m.id,
-        role: (typeof m.role === 'string' ? m.role.toLowerCase() : m.role) as MessageInfo['role'],
-        sessionID: m.sessionID ?? sessionId,
-        time: m.time ?? { created: Date.now() },
-        providerID: m.providerID,
-        modelID: m.modelID,
-        parentID: m.parentID,
-        agent: m.agent,
-        mode: m.mode,
-        error: m.error,
-        finish: m.finish,
-        tokens: m.tokens,
-      })
-    } else if (event === 'message.completed') {
-      const { messageId } = data as { sessionId?: string; messageId: string }
+    if (event === 'message.created' || event === 'message.updated' || event === 'message.completed') {
+      const m = (data as any).info ?? (data as any).message ?? (data as any)
+      if (!m?.id && !(data as any).messageId) return
+      
+      const mid = m.id ?? (data as any).messageId
       const store = useChatPartsStore.getState()
-      const info = store.infoBySession.get(sessionId)?.get(messageId)
-      if (info && info.time.completed === undefined) {
-        store.upsertInfo(sessionId, { ...info, time: { ...info.time, completed: Date.now() } })
+      const existing = store.infoBySession.get(sessionId)?.get(mid)
+
+      // 提取字段，优先使用驼峰，兼容下划线
+      const role = (m.role ? String(m.role).toLowerCase() : existing?.role) as MessageInfo['role']
+      const modelID = m.modelID ?? m.modelId ?? m.model_id ?? existing?.modelID
+      const providerID = m.providerID ?? m.providerId ?? m.provider_id ?? existing?.providerID
+      
+      const nextTime = {
+        created: m.time?.created ?? m.createdAt ?? m.created_at ?? existing?.time.created ?? Date.now(),
+        completed: m.time?.completed ?? (event === 'message.completed' ? (m.completedAt ?? m.completed_at ?? Date.now()) : existing?.time.completed)
       }
+      
+      const info: MessageInfo = {
+        id: mid,
+        role: role || 'assistant',
+        sessionID: m.sessionID ?? existing?.sessionID ?? sessionId,
+        time: nextTime,
+        providerID,
+        modelID,
+        parentID: m.parentID ?? m.parentId ?? m.parent_id ?? existing?.parentID,
+        agent: m.agent ?? existing?.agent,
+        mode: m.mode ?? existing?.mode,
+        error: m.error ?? existing?.error,
+        finish: m.finish ?? existing?.finish,
+        tokens: m.tokens ?? existing?.tokens,
+      }
+      store.upsertInfo(sessionId, info)
     } else if (event === 'session.idle' || (event === 'session.status' && (data as any)?.status === 'idle')) {
       // Turn-done signals: OpenCode's native `session.idle` (DtEvent.SessionIdle),
       // plus the backend's composite `session.status=idle` which ChannelController

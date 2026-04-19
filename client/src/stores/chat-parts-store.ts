@@ -64,12 +64,30 @@ export const useChatPartsStore = create<ChatPartsState>()(
         const map = new Map(bySession.get(sessionId) ?? new Map())
         const existing = map.get(info.id)
         
-        let newTime = info.time
-        if (existing && existing.time.completed !== undefined && info.time.completed === undefined) {
-           newTime = { ...info.time, completed: existing.time.completed }
+        if (!existing) {
+          map.set(info.id, info)
+        } else {
+          // 增量合并，避免 undefined 覆盖掉已有数据（如 modelID, providerID）
+          const merged: MessageInfo = { ...existing }
+          if (info.role) merged.role = info.role
+          if (info.providerID !== undefined) merged.providerID = info.providerID
+          if (info.modelID !== undefined) merged.modelID = info.modelID
+          if (info.parentID !== undefined) merged.parentID = info.parentID
+          if (info.agent !== undefined) merged.agent = info.agent
+          if (info.mode !== undefined) merged.mode = info.mode
+          if (info.error !== undefined) merged.error = info.error
+          if (info.finish !== undefined) merged.finish = info.finish
+          if (info.tokens !== undefined) merged.tokens = info.tokens
+          
+          // 合并时间
+          merged.time = { 
+            created: info.time?.created ?? existing.time.created,
+            completed: info.time?.completed ?? existing.time.completed
+          }
+          
+          map.set(info.id, merged)
         }
 
-        map.set(info.id, { ...(existing ?? info), ...info, time: newTime })
         bySession.set(sessionId, map)
         return { infoBySession: bySession, version: s.version + 1 }
       }),
