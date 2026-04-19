@@ -27,7 +27,7 @@ export function StageDock() {
           <tool.icon className={cn("size-6 transition-transform duration-200 group-hover:scale-110", tool.color)} />
           
           {/* Tooltip (Mac Dock 风格) */}
-          <span className="absolute -top-10 scale-0 rounded-md border border-border/50 bg-popover px-2 py-1 text-xs font-medium text-popover-foreground shadow-md transition-all duration-200 group-hover:scale-100">
+          <span className="absolute -top-12 left-1/2 -translate-x-1/2 scale-0 whitespace-nowrap rounded-lg border border-border/50 bg-popover px-3 py-1.5 text-xs font-medium text-popover-foreground shadow-lg transition-all duration-200 group-hover:scale-100">
             {tool.name}
             {/* 倒三角小箭头 */}
             <span className="absolute -bottom-1 left-1/2 -z-10 size-2 -translate-x-1/2 rotate-45 border-b border-r border-border/50 bg-popover" />

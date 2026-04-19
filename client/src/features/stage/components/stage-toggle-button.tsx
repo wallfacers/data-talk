@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import { MonitorIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { useStageStore } from '@/stores/stage-store'
 import { useSessionStore } from '@/stores/session-store'
@@ -36,22 +37,28 @@ export function StageToggleButton() {
   }
 
   return (
-    <Button
-      ref={btnRef}
-      type="button"
-      size="icon-xs"
-      variant="ghost"
-      aria-pressed={open}
-      aria-label={title}
-      title={title}
-      aria-disabled={!sid}
-      onClick={handleClick}
-      className={cn(
-        'cursor-pointer rounded-md text-black hover:bg-accent/80 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 dark:text-white',
-        open && 'bg-accent/70',
-      )}
-    >
-      <MonitorIcon className="size-3.5" />
-    </Button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          ref={btnRef}
+          type="button"
+          size="icon-xs"
+          variant="ghost"
+          aria-pressed={open}
+          aria-label={title}
+          aria-disabled={!sid}
+          onClick={handleClick}
+          className={cn(
+            'cursor-pointer rounded-md text-black hover:bg-accent/80 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 dark:text-white',
+            open && 'bg-accent/70',
+          )}
+        >
+          <MonitorIcon className="size-3.5" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" sideOffset={4}>
+        {title}
+      </TooltipContent>
+    </Tooltip>
   )
 }

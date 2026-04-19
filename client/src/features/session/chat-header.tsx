@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -110,13 +111,19 @@ export function ChatHeader() {
           className="h-7 max-w-[240px] text-sm"
         />
       ) : (
-        <span
-          className="truncate text-sm font-medium cursor-text select-text"
-          onDoubleClick={startRename}
-          title="双击重命名"
-        >
-          {title}
-        </span>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span
+              className="truncate text-sm font-medium cursor-text select-text"
+              onDoubleClick={startRename}
+            >
+              {title}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" sideOffset={4}>
+            双击重命名
+          </TooltipContent>
+        </Tooltip>
       )}
       <DropdownMenu>
         <DropdownMenuTrigger
