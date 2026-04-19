@@ -53,14 +53,16 @@ public class GlobalExceptionHandler {
             "code", e.code()));
     }
 
+    private static final Map<String, HttpStatus> CODE_STATUS_MAP = Map.of(
+        DataTalkErrorCodes.ARTIFACT_SUPERSEDES_NOT_FOUND, HttpStatus.NOT_FOUND,
+        DataTalkErrorCodes.ARTIFACT_TOO_LARGE, HttpStatus.PAYLOAD_TOO_LARGE,
+        DataTalkErrorCodes.UPSTREAM_UNAVAILABLE, HttpStatus.SERVICE_UNAVAILABLE,
+        DataTalkErrorCodes.CLIENT_ACTION_UNREACHABLE, HttpStatus.SERVICE_UNAVAILABLE
+    );
+
     private HttpStatus resolveStatus(String code) {
         if (code == null) return HttpStatus.INTERNAL_SERVER_ERROR;
-        if (code.startsWith(DataTalkErrorCodes.ARTIFACT_SUPERSEDES_NOT_FOUND)) return HttpStatus.NOT_FOUND;
-        if (code.startsWith(DataTalkErrorCodes.ARTIFACT_TOO_LARGE)) return HttpStatus.PAYLOAD_TOO_LARGE;
-        if (code.startsWith(DataTalkErrorCodes.UPSTREAM_UNAVAILABLE) ||
-            code.startsWith(DataTalkErrorCodes.CLIENT_ACTION_UNREACHABLE)) return HttpStatus.SERVICE_UNAVAILABLE;
-        // connection.*, sql.*, schema.*, action.*, channel.* → 400
-        return HttpStatus.BAD_REQUEST;
+        return CODE_STATUS_MAP.getOrDefault(code, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(WebClientResponseException.class)

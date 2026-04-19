@@ -175,8 +175,12 @@ public class OpenCodeEventLoop {
             return;
         }
         SessionBus bus = buses.getOrCreate(dataTalkSessionId);
-        for (DtEvent dt : translator.translate(dataTalkSessionId, oc)) {
+        List<DtEvent> events = translator.translate(dataTalkSessionId, oc);
+        for (DtEvent dt : events) {
             bus.publish(dt);
+        }
+        if (oc instanceof OcEvent.SessionDeleted) {
+            translator.forget(dataTalkSessionId);
         }
     }
 

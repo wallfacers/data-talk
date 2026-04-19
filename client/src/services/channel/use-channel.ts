@@ -18,7 +18,7 @@ function getApiBaseUrl(): string {
   return ''
 }
 
-export function buildEventSink(sessionId: string, client: ChannelClient | null, queryClient: QueryClient, connectionId: string | null = null) {
+export function buildEventSink(sessionId: string, client: ChannelClient | null, queryClient: QueryClient, connectionId: string | null = null, pendingUserId: string | null = null) {
   return (evt: StreamEvent) => {
     const { event, data } = evt
     if (event === 'message.created') {
@@ -48,13 +48,8 @@ export function buildEventSink(sessionId: string, client: ChannelClient | null, 
       if (part?.messageID && !part.messageID.startsWith('pending_')) {
         const infoMap = useChatPartsStore.getState().infoBySession.get(sessionId)
         const info = infoMap?.get(part.messageID)
-        if (info?.role === 'user' && infoMap) {
-          for (const [id, i] of infoMap) {
-            if (i.__pending && id.startsWith('pending_')) {
-              useChatPartsStore.getState().promotePendingUser(sessionId, id, part.messageID)
-              break
-            }
-          }
+        if (info?.role === 'user' && pendingUserId) {
+          useChatPartsStore.getState().promotePendingUser(sessionId, pendingUserId, part.messageID)
         }
       }
     } else if (event === 'message.part.delta') {
@@ -126,7 +121,7 @@ export function useChannel() {
 
       setIsStreaming(true)
       enterSplit(sessionId)
-      const sink = buildEventSink(sessionId, client, queryClient, connectionId)
+      const sink = buildEventSink(sessionId, client, queryClient, connectionId, pendingId)
       try {
         await client.sendMessage(parts, sink)
       } catch (err) {

@@ -1,7 +1,9 @@
+import { useState, useRef, useEffect, type KeyboardEvent } from 'react'
 import { MoreHorizontalIcon, PencilIcon, Trash2Icon } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +25,14 @@ export function ChatHeader() {
   const connectionId = useConnectionStore((s) => s.activeConnectionId)
   const { state } = useSidebar()
 
+  const [editing, setEditing] = useState(false)
+  const [editTitle, setEditTitle] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (editing) inputRef.current?.focus()
+  }, [editing])
+
   const rename = useMutation({
     mutationFn: ({ id, title }: { id: string; title: string }) => renameSession(id, title),
     onSuccess: () => {
@@ -40,11 +50,18 @@ export function ChatHeader() {
     },
   })
 
-  function handleRename() {
+  const commitRename = () => {
+    const t = editTitle.trim()
+    if (t && t !== title && sid) {
+      rename.mutate({ id: sid, title: t })
+    }
+    setEditing(false)
+  }
+
+  function startRename() {
     if (!sid) return
-    const next = window.prompt('新标题', title)
-    if (!next || !next.trim() || next.trim() === title) return
-    rename.mutate({ id: sid, title: next.trim() })
+    setEditTitle(title)
+    setEditing(true)
   }
 
   function handleDelete() {
@@ -56,7 +73,28 @@ export function ChatHeader() {
   return (
     <div className={`flex h-9 shrink-0 items-center justify-between px-3 ${state === 'collapsed' ? 'pl-24' : ''}`}>
       {sid ? (
-        <span className="truncate text-sm font-medium">{title}</span>
+        editing ? (
+          <Input
+            ref={inputRef}
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+            onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+              if (e.key === 'Enter') commitRename()
+              if (e.key === 'Escape') setEditing(false)
+            }}
+            onBlur={commitRename}
+            onClick={(e) => e.stopPropagation()}
+            className="h-7 max-w-[240px] text-sm"
+          />
+        ) : (
+          <span
+            className="truncate text-sm font-medium cursor-text select-text"
+            onDoubleClick={startRename}
+            title="双击重命名"
+          >
+            {title}
+          </span>
+        )
       ) : (
         <span />
       )}
@@ -69,7 +107,7 @@ export function ChatHeader() {
           }
         />
         <DropdownMenuContent align="end" className="w-32">
-          <DropdownMenuItem onClick={handleRename}>
+          <DropdownMenuItem onClick={startRename}>
             <PencilIcon />
             <span>重命名</span>
           </DropdownMenuItem>

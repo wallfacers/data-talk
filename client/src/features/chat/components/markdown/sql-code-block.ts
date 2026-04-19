@@ -1,11 +1,7 @@
-import { classifySqlRisk } from '../helpers/risk'
+import { classifySqlRisk, stripComments } from '../helpers/risk'
 
 export const SQL_EXECUTE_EVENT = 'datatalk.sql.execute'
 export const SQL_EXPLAIN_EVENT = 'datatalk.sql.explain'
-
-function stripComments(s: string): string {
-  return s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/--.*$/gm, '').trim()
-}
 
 export function statementType(sql: string): string | null {
   const clean = stripComments(sql).replace(/^\s+/, '')

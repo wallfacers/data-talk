@@ -28,12 +28,15 @@ export const useChatPartsStore = create<ChatPartsState>((set, get) => ({
   partIndexBySession: new Map(),
 
   upsertPart: (sessionId, part) => set((s) => {
+    const existingParts = s.partsBySession.get(sessionId)?.get(part.messageID)
+    const existing = existingParts?.find((p) => p.id === part.id)
+    if (existing && JSON.stringify(existing) === JSON.stringify(part)) return {}
+
     const bySession = new Map(s.partsBySession)
     const byMessage = new Map(bySession.get(sessionId) ?? new Map())
     const index = new Map(s.partIndexBySession.get(sessionId) ?? new Map())
     const list = [...(byMessage.get(part.messageID) ?? [])]
-    const existing = index.get(part.id)
-    const idx = existing ? existing.idx : list.findIndex((p) => p.id === part.id)
+    const idx = existing && existingParts ? existingParts.indexOf(existing) : list.findIndex((p) => p.id === part.id)
     if (idx >= 0) {
       list[idx] = part
     } else {
@@ -55,9 +58,28 @@ export const useChatPartsStore = create<ChatPartsState>((set, get) => ({
     return { infoBySession: bySession }
   }),
 
-  upsertMany: (sessionId, parts) => {
-    for (const p of parts) get().upsertPart(sessionId, p)
-  },
+  upsertMany: (sessionId, parts) => set((s) => {
+    const partsBySession = new Map(s.partsBySession)
+    const byMessage = new Map(partsBySession.get(sessionId) ?? new Map())
+    const index = new Map(s.partIndexBySession.get(sessionId) ?? new Map())
+
+    for (const part of parts) {
+      const list = [...(byMessage.get(part.messageID) ?? [])]
+      const existingIdx = list.findIndex((p) => p.id === part.id)
+      if (existingIdx >= 0) {
+        list[existingIdx] = part
+      } else {
+        list.push(part)
+        index.set(part.id, { messageId: part.messageID, idx: list.length - 1 })
+      }
+      byMessage.set(part.messageID, list)
+    }
+
+    partsBySession.set(sessionId, byMessage)
+    const indexBySession = new Map(s.partIndexBySession)
+    indexBySession.set(sessionId, index)
+    return { partsBySession, partIndexBySession: indexBySession }
+  }),
 
   replaceSession: (sessionId, list) => set((s) => {
     const partsBySession = new Map(s.partsBySession)
@@ -81,15 +103,17 @@ export const useChatPartsStore = create<ChatPartsState>((set, get) => ({
   }),
 
   removePart: (sessionId, messageId, partId) => set((s) => {
+    const index = s.partIndexBySession.get(sessionId)
+    if (!index?.has(partId)) return {}
     const bySession = new Map(s.partsBySession)
     const byMessage = new Map(bySession.get(sessionId) ?? new Map())
     const indexBySession = new Map(s.partIndexBySession)
-    const index = new Map(indexBySession.get(sessionId) ?? new Map())
+    const idx = new Map(indexBySession.get(sessionId) ?? new Map())
     const list = (byMessage.get(messageId) ?? []).filter((p: Part) => p.id !== partId)
-    index.delete(partId)
+    idx.delete(partId)
     byMessage.set(messageId, list)
     bySession.set(sessionId, byMessage)
-    indexBySession.set(sessionId, index)
+    indexBySession.set(sessionId, idx)
     return { partsBySession: bySession, partIndexBySession: indexBySession }
   }),
 
