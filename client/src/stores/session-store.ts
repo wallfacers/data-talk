@@ -31,6 +31,11 @@ export const useSessionStore = create<SessionState>()(
         const cachedSent = s.hasEverSentBySession.get(id) ?? false
         const effectiveSent = cachedSent || hasEverSent
         const mode: SessionMode = effectiveSent ? 'SPLIT' : 'HERO'
+        if (
+          s.activeSessionId === id &&
+          s.modeBySession.get(id) === mode &&
+          s.hasEverSentBySession.get(id) === effectiveSent
+        ) return s
         const modes = new Map(s.modeBySession); modes.set(id, mode)
         const sent = new Map(s.hasEverSentBySession); sent.set(id, effectiveSent)
         return { activeSessionId: id, modeBySession: modes, hasEverSentBySession: sent }

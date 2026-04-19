@@ -17,6 +17,9 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.NoSuchElementException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -181,10 +184,10 @@ class SessionServiceTest {
     @Test
     void create_concurrentInvocations_yieldSingleEmpty() throws Exception {
         int threadCount = 10;
-        java.util.concurrent.CountDownLatch ready = new java.util.concurrent.CountDownLatch(threadCount);
-        java.util.concurrent.CountDownLatch fire = new java.util.concurrent.CountDownLatch(1);
-        java.util.concurrent.CountDownLatch done = new java.util.concurrent.CountDownLatch(threadCount);
-        java.util.concurrent.ExecutorService exec = java.util.concurrent.Executors.newFixedThreadPool(threadCount);
+        CountDownLatch ready = new CountDownLatch(threadCount);
+        CountDownLatch fire = new CountDownLatch(1);
+        CountDownLatch done = new CountDownLatch(threadCount);
+        ExecutorService exec = Executors.newFixedThreadPool(threadCount);
 
         try {
             for (int i = 0; i < threadCount; i++) {

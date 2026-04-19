@@ -66,7 +66,8 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
     },
   })
 
-  // 用 ref 追踪 mutation 状态，确保同步防抖（isPending 是异步更新的）
+  // ref 防抖：mutate() 到 isPending 经 React 渲染生效之间有一窗口，
+  // 同一 tick 内的连点会绕过 disabled。
   const createInProgressRef = useRef(false)
   const handleCreate = () => {
     if (createInProgressRef.current || createMut.isPending) return
