@@ -19,10 +19,12 @@ import { useConnectionStore } from '@/features/connection/store'
 
 export function ChatHeader() {
   const sid = useSessionStore((s) => s.activeSessionId)
+  const localHasEverSent = useSessionStore((s) => s.hasEverSentBySession)
   const { data: sessions } = useSessions()
   const session = sessions?.find((s) => s.id === sid)
   const title = session?.title ?? ''
-  const isBlankSession = session ? !session.hasEverSent : false
+  // 使用本地缓存优先判断：本地 hasEverSent=true 说明用户已发送消息
+  const isBlankSession = sid ? !(localHasEverSent.get(sid) ?? session?.hasEverSent ?? false) : false
   const qc = useQueryClient()
   const connectionId = useConnectionStore((s) => s.activeConnectionId)
   const openBlankSession = useOpenBlankSession()
