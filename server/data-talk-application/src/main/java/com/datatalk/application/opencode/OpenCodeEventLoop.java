@@ -183,8 +183,14 @@ public class OpenCodeEventLoop {
         }
         String dataTalkSessionId = sessionMap.dataTalkFor(openCodeSessionId);
         if (dataTalkSessionId == null) {
-            log.warn("[opencode-event-loop] dropped {} — no DataTalk session mapped for OpenCode sid={}",
-                eventName, openCodeSessionId);
+            // OpenCode 的 /global/event 是**进程级**广播，会带上所有 session 的事件，
+            // 包括 DataTalk 已从本地库删除但 OpenCode 侧仍保留的孤儿 session
+            // （历史遗留 / deleteSession 网络失败等路径都会产生）。这些事件对
+            // DataTalk 毫无意义，丢弃是正确行为 —— 降为 DEBUG 避免日志污染。
+            if (log.isDebugEnabled()) {
+                log.debug("[opencode-event-loop] dropped {} — no DataTalk session mapped for OpenCode sid={}",
+                    eventName, openCodeSessionId);
+            }
             return;
         }
         SessionBus bus = buses.getOrCreate(dataTalkSessionId);
