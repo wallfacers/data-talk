@@ -46,6 +46,17 @@ type SessionGroup = {
   items: Session[]
 }
 
+// OpenCode 生成的临时标题格式，不应展示
+const OPENCODE_TEMP_TITLE_REGEX = /^New session - /
+
+/** 过滤临时标题，返回实际展示的标题 */
+function displayTitle(title: string): string {
+  if (OPENCODE_TEMP_TITLE_REGEX.test(title)) {
+    return '新会话'
+  }
+  return title
+}
+
 function groupSessions(sessions: Session[]): SessionGroup[] {
   // 过滤掉空白会话（hasEverSent=false），不显示在列表中
   const realSessions = sessions.filter((s) => s.hasEverSent)
@@ -221,10 +232,10 @@ function SessionGroupView({
                   <SidebarMenuButton
                     isActive={s.id === activeId}
                     onClick={() => onSelect(s.id)}
-                    tooltip={s.title}
+                    tooltip={displayTitle(s.title)}
                     className="data-active:bg-border data-active:ring-1 data-active:ring-border"
                   >
-                    <span className="truncate">{s.title}</span>
+                    <span className="truncate">{displayTitle(s.title)}</span>
                   </SidebarMenuButton>
                   <DropdownMenu>
                     <DropdownMenuTrigger
@@ -245,7 +256,7 @@ function SessionGroupView({
                     >
                       <DropdownMenuItem onClick={() => {
                         setEditingId(s.id)
-                        setEditTitle(s.title)
+                        setEditTitle(displayTitle(s.title))
                       }}>
                         <PencilIcon />
                         <span>重命名</span>
@@ -274,7 +285,7 @@ function SessionGroupView({
           <AlertDialogHeader>
             <AlertDialogTitle>确认删除</AlertDialogTitle>
             <AlertDialogDescription>
-              确定要删除「{deleteTarget?.title}」吗？此操作不可撤销。
+              确定要删除「{displayTitle(deleteTarget?.title ?? '')}」吗？此操作不可撤销。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="bg-transparent border-t-0 pt-2">

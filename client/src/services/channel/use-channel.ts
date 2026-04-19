@@ -142,6 +142,8 @@ export function useChannel() {
 
       useChatPartsStore.getState().setStreaming(sessionId, true)
       enterSplit(sessionId)
+      // 发送消息后刷新会话列表，让 hasEverSent 更新
+      queryClient.invalidateQueries({ queryKey: ['sessions', connectionId ?? null] })
       const sink = buildEventSink(sessionId, client, queryClient, connectionId, pendingId)
       try {
         await client.sendMessage(parts, sink)

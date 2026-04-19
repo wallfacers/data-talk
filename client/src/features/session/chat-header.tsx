@@ -17,12 +17,24 @@ import { useOpenBlankSession } from './hooks/use-open-blank-session'
 import { deleteSession, renameSession } from '@/services/api/session'
 import { useConnectionStore } from '@/features/connection/store'
 
+// OpenCode 生成的临时标题格式，不应展示
+const OPENCODE_TEMP_TITLE_REGEX = /^New session - /
+
+/** 过滤临时标题，返回实际展示的标题 */
+function displayTitle(title: string): string {
+  if (OPENCODE_TEMP_TITLE_REGEX.test(title)) {
+    return '新会话'
+  }
+  return title
+}
+
 export function ChatHeader() {
   const sid = useSessionStore((s) => s.activeSessionId)
   const localHasEverSent = useSessionStore((s) => s.hasEverSentBySession)
   const { data: sessions } = useSessions()
   const session = sessions?.find((s) => s.id === sid)
-  const title = session?.title ?? ''
+  const rawTitle = session?.title ?? ''
+  const title = displayTitle(rawTitle)
   // 使用本地缓存优先判断：本地 hasEverSent=true 说明用户已发送消息
   const isBlankSession = sid ? !(localHasEverSent.get(sid) ?? session?.hasEverSent ?? false) : false
   const qc = useQueryClient()
