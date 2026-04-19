@@ -4,6 +4,7 @@ import type { PartComponentProps } from './part-dispatcher'
 import { Markdown } from '../markdown/markdown'
 import { PacedMarkdown } from '../effects/paced-markdown'
 import type { TextPart as TextPartType } from '@/services/channel/types'
+import { copyToClipboard } from '@/lib/utils'
 
 export function TextPart(props: PartComponentProps) {
   const part = props.part as TextPartType
@@ -14,9 +15,11 @@ export function TextPart(props: PartComponentProps) {
   if (!text) return null
 
   const handleCopy = async () => {
-    await navigator.clipboard?.writeText?.(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    const success = await copyToClipboard(text)
+    if (success) {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
   }
 
   return (

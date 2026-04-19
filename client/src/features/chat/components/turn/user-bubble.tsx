@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { CopyIcon, CheckIcon } from 'lucide-react'
 import type { MessageInfo, Part, TextPart } from '@/services/channel/types'
 import { useChannel } from '@/services/channel/use-channel'
-import { cn } from '@/lib/utils'
+import { cn, copyToClipboard } from '@/lib/utils'
 
 function HighlightedText(props: { text: string }) {
   return <>{props.text}</>
@@ -19,9 +19,11 @@ export function UserBubble(props: { info: MessageInfo; parts: Part[] }) {
   const retrying = !!info.__retrying
 
   const handleCopy = async () => {
-    await navigator.clipboard?.writeText?.(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    const success = await copyToClipboard(text)
+    if (success) {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
   }
 
   const handleRetry = async () => {

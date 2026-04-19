@@ -4,6 +4,7 @@ import DOMPurify from 'dompurify'
 import morphdom from 'morphdom'
 import { stream } from './markdown-stream'
 import { decorateSqlBlocks, SQL_EXECUTE_EVENT, SQL_EXPLAIN_EVENT } from './sql-code-block'
+import { copyToClipboard } from '@/lib/utils'
 import './markdown.css'
 
 type Entry = { hash: string; html: string }
@@ -103,6 +104,7 @@ export function Markdown(props: {
   useEffect(() => {
     const container = ref.current
     if (!container) return
+    const t0 = performance.now()
     const html = renderHtml(props.text, props.cacheKey, props.streaming ?? false)
     if (!html) {
       container.innerHTML = ''
@@ -116,6 +118,15 @@ export function Markdown(props: {
       onExplain: (sql) => window.dispatchEvent(new CustomEvent(SQL_EXPLAIN_EVENT, { detail: { sql } })),
     })
     morphdom(container, temp, { childrenOnly: true })
+    const ms = performance.now() - t0
+    if (props.streaming && ms > 1) {
+      // eslint-disable-next-line no-console
+      console.debug('[streaming-probe] markdown', {
+        len: props.text.length,
+        ms: ms.toFixed(1),
+        t: performance.now().toFixed(1),
+      })
+    }
   }, [props.text, props.cacheKey, props.streaming])
 
   useEffect(() => {
@@ -127,13 +138,15 @@ export function Markdown(props: {
       const code = btn.closest('[data-component="markdown-code"]')?.querySelector('code')
       const content = code?.textContent ?? ''
       if (!content) return
-      await navigator.clipboard?.writeText?.(content)
-      btn.setAttribute('data-copied', 'true')
-      btn.innerHTML = CHECK_SVG
-      setTimeout(() => {
-        btn.removeAttribute('data-copied')
-        btn.innerHTML = COPY_SVG
-      }, 2000)
+      const success = await copyToClipboard(content)
+      if (success) {
+        btn.setAttribute('data-copied', 'true')
+        btn.innerHTML = CHECK_SVG
+        setTimeout(() => {
+          btn.removeAttribute('data-copied')
+          btn.innerHTML = COPY_SVG
+        }, 2000)
+      }
     }
     container.addEventListener('click', onClick)
     return () => container.removeEventListener('click', onClick)
