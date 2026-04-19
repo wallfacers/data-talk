@@ -1,6 +1,6 @@
 # SSE Heartbeat & Async Timeout 治理 — 实施计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 为 SSE GET 订阅通道加 30s 心跳（SSE 注释帧 `":\n\n"`）+ 无限 async timeout；POST turn 流保留 10 分钟上限；`AsyncRequestTimeoutException` 降级 DEBUG。
 
@@ -24,7 +24,7 @@
 - Create: `server/data-talk-infrastructure/src/main/java/com/datatalk/infra/channel/SseHeartbeatScheduler.java`
 - Test: `server/data-talk-infrastructure/src/test/java/com/datatalk/infra/channel/SseHeartbeatSchedulerTest.java`
 
-- [ ] **Step 1.1: 写失败的单元测试**
+- [x] **Step 1.1: 写失败的单元测试**
 
 创建文件 `server/data-talk-infrastructure/src/test/java/com/datatalk/infra/channel/SseHeartbeatSchedulerTest.java`：
 
@@ -107,7 +107,7 @@ class SseHeartbeatSchedulerTest {
 }
 ```
 
-- [ ] **Step 1.2: 跑测试确认失败**
+- [x] **Step 1.2: 跑测试确认失败**
 
 Run:
 ```
@@ -116,7 +116,7 @@ mvn -pl data-talk-infrastructure test -Dtest=SseHeartbeatSchedulerTest
 
 Expected: 编译失败，`cannot find symbol: class SseHeartbeatScheduler`。
 
-- [ ] **Step 1.3: 实现 `SseHeartbeatScheduler`**
+- [x] **Step 1.3: 实现 `SseHeartbeatScheduler`**
 
 创建文件 `server/data-talk-infrastructure/src/main/java/com/datatalk/infra/channel/SseHeartbeatScheduler.java`：
 
@@ -187,7 +187,7 @@ public class SseHeartbeatScheduler implements DisposableBean {
 }
 ```
 
-- [ ] **Step 1.4: 跑测试确认通过**
+- [x] **Step 1.4: 跑测试确认通过**
 
 Run:
 ```
@@ -196,12 +196,12 @@ mvn -pl data-talk-infrastructure test -Dtest=SseHeartbeatSchedulerTest
 
 Expected: `Tests run: 4, Failures: 0, Errors: 0`.
 
-- [ ] **Step 1.5: 编译校验**
+- [x] **Step 1.5: 编译校验**
 
 Run: `cd server && mvn compile -q`
 Expected: 零错误输出。
 
-- [ ] **Step 1.6: Commit**
+- [x] **Step 1.6: Commit**
 
 ```bash
 git add server/data-talk-infrastructure/src/main/java/com/datatalk/infra/channel/SseHeartbeatScheduler.java \
@@ -217,7 +217,7 @@ git commit -m "feat(channel): add SseHeartbeatScheduler for idle-resilient SSE s
 - Create: `server/data-talk-adapter/src/main/java/com/datatalk/config/AsyncTimeoutHandler.java`
 - Test: `server/data-talk-adapter/src/test/java/com/datatalk/config/AsyncTimeoutHandlerTest.java`
 
-- [ ] **Step 2.1: 写失败的单元测试**
+- [x] **Step 2.1: 写失败的单元测试**
 
 创建文件 `server/data-talk-adapter/src/test/java/com/datatalk/config/AsyncTimeoutHandlerTest.java`：
 
@@ -277,7 +277,7 @@ class AsyncTimeoutHandlerTest {
 }
 ```
 
-- [ ] **Step 2.2: 跑测试确认失败**
+- [x] **Step 2.2: 跑测试确认失败**
 
 Run:
 ```
@@ -286,7 +286,7 @@ mvn -pl data-talk-adapter test -Dtest=AsyncTimeoutHandlerTest
 
 Expected: 编译失败，`cannot find symbol: class AsyncTimeoutHandler`。
 
-- [ ] **Step 2.3: 实现 `AsyncTimeoutHandler`**
+- [x] **Step 2.3: 实现 `AsyncTimeoutHandler`**
 
 创建文件 `server/data-talk-adapter/src/main/java/com/datatalk/config/AsyncTimeoutHandler.java`：
 
@@ -317,7 +317,7 @@ public class AsyncTimeoutHandler {
 }
 ```
 
-- [ ] **Step 2.4: 跑测试确认通过**
+- [x] **Step 2.4: 跑测试确认通过**
 
 Run:
 ```
@@ -326,12 +326,12 @@ mvn -pl data-talk-adapter test -Dtest=AsyncTimeoutHandlerTest
 
 Expected: `Tests run: 1, Failures: 0, Errors: 0`.
 
-- [ ] **Step 2.5: 编译校验**
+- [x] **Step 2.5: 编译校验**
 
 Run: `cd server && mvn compile -q`
 Expected: 零错误。
 
-- [ ] **Step 2.6: Commit**
+- [x] **Step 2.6: Commit**
 
 ```bash
 git add server/data-talk-adapter/src/main/java/com/datatalk/config/AsyncTimeoutHandler.java \
@@ -347,7 +347,7 @@ git commit -m "feat(server): silence AsyncRequestTimeoutException via Controller
 - Modify: `server/data-talk-adapter/src/main/resources/application.yml`
 - Modify: `server/data-talk-adapter/src/test/resources/application.yml`
 
-- [ ] **Step 3.1: 主 yml 加 `app.sse.heartbeat-interval-ms`**
+- [x] **Step 3.1: 主 yml 加 `app.sse.heartbeat-interval-ms`**
 
 Edit `server/data-talk-adapter/src/main/resources/application.yml`，在末尾的 `app:` 块下新增 `sse` 子节：
 
@@ -367,7 +367,7 @@ app:
     heartbeat-interval-ms: 30000
 ```
 
-- [ ] **Step 3.2: 测试 yml 覆盖为短间隔**
+- [x] **Step 3.2: 测试 yml 覆盖为短间隔**
 
 Edit `server/data-talk-adapter/src/test/resources/application.yml`，在末尾追加 `app` 块：
 
@@ -401,11 +401,11 @@ app:
     heartbeat-interval-ms: 200
 ```
 
-- [ ] **Step 3.3: 编译校验（无代码改动，跳过）**
+- [x] **Step 3.3: 编译校验（无代码改动，跳过）**
 
 本步骤为 YAML 改动，无代码变化。跳过编译校验。
 
-- [ ] **Step 3.4: Commit**
+- [x] **Step 3.4: Commit**
 
 ```bash
 git add server/data-talk-adapter/src/main/resources/application.yml \
@@ -422,7 +422,7 @@ git commit -m "chore(config): add app.sse.heartbeat-interval-ms (prod=30s, test=
 **Files:**
 - Modify: `server/data-talk-infrastructure/src/main/java/com/datatalk/infra/channel/ChannelController.java`
 
-- [ ] **Step 4.1: 替换 timeout 常量**
+- [x] **Step 4.1: 替换 timeout 常量**
 
 Edit 第 39-42 行：
 
@@ -444,7 +444,7 @@ new:
     private static final long TURN_WAIT_TIMEOUT_MS = POST_STREAM_TIMEOUT_MS;
 ```
 
-- [ ] **Step 4.2: 引入新 import + 新字段 + 改造构造函数**
+- [x] **Step 4.2: 引入新 import + 新字段 + 改造构造函数**
 
 Edit `ChannelController.java`：
 
@@ -506,7 +506,7 @@ new:
     }
 ```
 
-- [ ] **Step 4.3: 改造 `subscribe()` — GET 无限 timeout + 注册心跳 + 清理路径 cancel**
+- [x] **Step 4.3: 改造 `subscribe()` — GET 无限 timeout + 注册心跳 + 清理路径 cancel**
 
 old（第 79-100 行）：
 ```java
@@ -566,7 +566,7 @@ new:
     }
 ```
 
-- [ ] **Step 4.4: 改造 `stream()` — 注册心跳 + 清理路径 cancel**
+- [x] **Step 4.4: 改造 `stream()` — 注册心跳 + 清理路径 cancel**
 
 **注意**：仅修改 `stream()` 方法**前半部分**（emitter 创建 + `onDisconnect` 定义）。后面的 `Thread t = new Thread(...)` 执行 `svc.sendMessage` / 等待 `turnDone` / `emitter.complete()` 的整块逻辑**保持原样不动**，本 step 不触碰。
 
@@ -630,12 +630,12 @@ new:
         emitter.onError(ex -> onDisconnect.run());
 ```
 
-- [ ] **Step 4.5: 编译校验**
+- [x] **Step 4.5: 编译校验**
 
 Run: `cd server && mvn compile -q`
 Expected: 零错误。
 
-- [ ] **Step 4.6: 跑模块内现有测试确认未破坏原语义**
+- [x] **Step 4.6: 跑模块内现有测试确认未破坏原语义**
 
 Run:
 ```
@@ -644,7 +644,7 @@ mvn -pl data-talk-infrastructure test
 
 Expected: 全部已有测试通过（包含 `ChannelControllerTurnDoneTest` 等），没有新的失败。
 
-- [ ] **Step 4.7: Commit**
+- [x] **Step 4.7: Commit**
 
 ```bash
 git add server/data-talk-infrastructure/src/main/java/com/datatalk/infra/channel/ChannelController.java
@@ -660,7 +660,7 @@ git commit -m "feat(channel): wire heartbeat + make GET subscription timeout inf
 **Files:**
 - Modify: `server/data-talk-adapter/src/test/java/com/datatalk/adapter/channel/ChannelControllerIT.java`
 
-- [ ] **Step 5.1: 追加集成测试用例**
+- [x] **Step 5.1: 追加集成测试用例**
 
 Edit `ChannelControllerIT.java`，在文件顶部 import 区补充：
 
@@ -713,7 +713,7 @@ import org.springframework.core.io.buffer.DataBufferUtils;
     }
 ```
 
-- [ ] **Step 5.2: 跑新测试确认通过**
+- [x] **Step 5.2: 跑新测试确认通过**
 
 Run:
 ```
@@ -724,7 +724,7 @@ Expected: `Tests run: 1, Failures: 0, Errors: 0`.
 
 说明：`-am` 确保 `data-talk-infrastructure` 先编译到最新字节码（带心跳接入），否则 IT 会用 m2 里的旧 jar。
 
-- [ ] **Step 5.3: 跑 IT 全量确认未破坏现有 3 个用例**
+- [x] **Step 5.3: 跑 IT 全量确认未破坏现有 3 个用例**
 
 Run:
 ```
@@ -733,7 +733,7 @@ mvn -pl data-talk-adapter -am test -Dtest=ChannelControllerIT
 
 Expected: `Tests run: 4, Failures: 0, Errors: 0`（原 3 个 + 新增 1 个）。
 
-- [ ] **Step 5.4: Commit**
+- [x] **Step 5.4: Commit**
 
 ```bash
 git add server/data-talk-adapter/src/test/java/com/datatalk/adapter/channel/ChannelControllerIT.java
@@ -746,7 +746,7 @@ git commit -m "test(channel): assert heartbeat frames emitted during idle GET su
 
 **Depends on:** Task 1-5
 
-- [ ] **Step 6.1: 全量 `mvn clean verify`**
+- [x] **Step 6.1: 全量 `mvn clean verify`**
 
 Run:
 ```
@@ -755,7 +755,7 @@ cd server && mvn clean verify
 
 Expected: `BUILD SUCCESS`，所有模块测试全绿。
 
-- [ ] **Step 6.2: 手动冒烟验证（可选，供人工联调）**
+- [x] **Step 6.2: 手动冒烟验证（可选，供人工联调）**
 
 1. 启动后端：`cd server && mvn spring-boot:run -pl data-talk-adapter`
 2. 启动前端 Tauri dev：`cd client && npm run tauri dev`
@@ -763,7 +763,7 @@ Expected: `BUILD SUCCESS`，所有模块测试全绿。
 4. 观察后端日志：应 **不再出现** `AsyncRequestTimeoutException ... response committed already` 这条 WARN
 5. 用浏览器 DevTools Network 看 `GET /api/sessions/:id/channel`，`EventStream` 标签页每 30s 会有一条空行注释（不可见）；响应不会被服务端主动关闭
 
-- [ ] **Step 6.3: 更新 plan 索引到「已完成」**
+- [x] **Step 6.3: 更新 plan 索引到「已完成」**
 
 Edit `docs/exec-plans/index.md`，将本 plan 从活跃移到已完成（保留时间倒序），在 `## 已完成计划` 表格第一行插入：
 
@@ -773,12 +773,12 @@ Edit `docs/exec-plans/index.md`，将本 plan 从活跃移到已完成（保留�
 
 并从 `## 活跃计划` 表格中删除对应条目。
 
-- [ ] **Step 6.4: 同步更新 spec 状态**
+- [x] **Step 6.4: 同步更新 spec 状态**
 
 Edit `docs/product-specs/2026-04-20-sse-heartbeat-design.md` 第 3 行：
 - 把 `> **状态**：待评审` 改为 `> **状态**：已实现（2026-04-20）`
 
-- [ ] **Step 6.5: Commit 文档归档**
+- [x] **Step 6.5: Commit 文档归档**
 
 ```bash
 git add docs/exec-plans/index.md docs/product-specs/2026-04-20-sse-heartbeat-design.md
@@ -797,7 +797,7 @@ git commit -m "docs: mark SSE heartbeat plan complete and archive"
 
 ## 验证清单
 
-- [ ] `mvn clean verify` 在 server/ 根目录通过
-- [ ] 新增 4 个 scheduler 单测、1 个 handler 单测、1 个心跳 IT 全绿
-- [ ] 现有 `ChannelControllerIT` 3 个用例、`ChannelControllerTurnDoneTest` 继续通过
-- [ ] Spec / Plan 索引同步更新
+- [x] `mvn clean verify` 在 server/ 根目录通过
+- [x] 新增 4 个 scheduler 单测、1 个 handler 单测、1 个心跳 IT 全绿
+- [x] 现有 `ChannelControllerIT` 3 个用例、`ChannelControllerTurnDoneTest` 继续通过
+- [x] Spec / Plan 索引同步更新
