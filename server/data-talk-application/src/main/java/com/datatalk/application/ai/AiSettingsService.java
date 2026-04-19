@@ -69,6 +69,26 @@ public class AiSettingsService {
 
     public void deleteCredentials(String providerId) {
         oc.deleteAuth(providerId);
+        // Also remove from local auth.json so listProviders() reflects the change
+        removeFromAuthJson(providerId);
+    }
+
+    private void removeFromAuthJson(String providerId) {
+        String home = System.getProperty("user.home");
+        if (home == null) return;
+        Path authFile = Path.of(home, ".local", "share", "opencode", "auth.json");
+        if (!Files.exists(authFile)) return;
+        try {
+            JsonNode auth = om.readTree(Files.readString(authFile));
+            if (!auth.has(providerId)) return;
+            var updated = om.createObjectNode();
+            auth.fieldNames().forEachRemaining(name -> {
+                if (!name.equals(providerId)) updated.set(name, auth.get(name));
+            });
+            Files.writeString(authFile, om.writeValueAsString(updated));
+        } catch (IOException e) {
+            // Silently ignore — auth.json may be locked or malformed
+        }
     }
 
     public AiModelsDto listModels() {
