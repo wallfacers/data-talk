@@ -6,6 +6,7 @@
 
 | 计划 | 状态 | 摘要 |
 |------|------|------|
+| [Per-Session Streaming Indicator](./2026-04-19-per-session-streaming-indicator-plan.md) | 计划中 | `useChannel.isStreaming` 提升到 store 按 sessionId 分片；切回仍在跑的 session 正确显示 spinner / 停止按钮；SSE 订阅池作为 P2 tech debt 登记 |
 | [Composer Model Picker Dialog](./2026-04-18-composer-model-picker-dialog-plan.md) | 计划中 | Composer 模型选择器 Popover → 960×540 双栏对话框，触发按钮样式不变 |
 
 ## 已完成计划
