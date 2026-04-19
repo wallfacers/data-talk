@@ -47,6 +47,9 @@ type SessionGroup = {
 }
 
 function groupSessions(sessions: Session[]): SessionGroup[] {
+  // 过滤掉空白会话（hasEverSent=false），不显示在列表中
+  const realSessions = sessions.filter((s) => s.hasEverSent)
+
   const now = new Date()
   const todayStart = new Date(
     now.getFullYear(),
@@ -62,7 +65,7 @@ function groupSessions(sessions: Session[]): SessionGroup[] {
   const week: Session[] = []
   const month: Session[] = []
 
-  for (const s of sessions) {
+  for (const s of realSessions) {
     const t = new Date(s.updatedAt).getTime()
     if (t >= todayStart) today.push(s)
     else if (t >= yesterdayStart) yesterday.push(s)

@@ -22,6 +22,7 @@ export function ChatHeader() {
   const { data: sessions } = useSessions()
   const session = sessions?.find((s) => s.id === sid)
   const title = session?.title ?? ''
+  const isBlankSession = session ? !session.hasEverSent : false
   const qc = useQueryClient()
   const connectionId = useConnectionStore((s) => s.activeConnectionId)
   const openBlankSession = useOpenBlankSession()
@@ -61,49 +62,52 @@ export function ChatHeader() {
   }
 
   function startRename() {
-    if (!sid) return
+    if (!sid || isBlankSession) return
     setEditTitle(title)
     setEditing(true)
   }
 
   function handleDelete() {
-    if (!sid) return
+    if (!sid || isBlankSession) return
     if (!window.confirm(`确定删除"${title}"？`)) return
     del.mutate(sid)
   }
 
+  // 空白会话不显示标题和操作按钮
+  if (!sid || isBlankSession) {
+    return (
+      <div className={`flex h-9 shrink-0 items-center justify-end px-3 ${state === 'collapsed' ? 'pl-24' : ''}`} />
+    )
+  }
+
   return (
     <div className={`flex h-9 shrink-0 items-center justify-between px-3 ${state === 'collapsed' ? 'pl-24' : ''}`}>
-      {sid ? (
-        editing ? (
-          <Input
-            ref={inputRef}
-            value={editTitle}
-            onChange={(e) => setEditTitle(e.target.value)}
-            onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
-              if (e.key === 'Enter') commitRename()
-              if (e.key === 'Escape') setEditing(false)
-            }}
-            onBlur={commitRename}
-            onClick={(e) => e.stopPropagation()}
-            className="h-7 max-w-[240px] text-sm"
-          />
-        ) : (
-          <span
-            className="truncate text-sm font-medium cursor-text select-text"
-            onDoubleClick={startRename}
-            title="双击重命名"
-          >
-            {title}
-          </span>
-        )
+      {editing ? (
+        <Input
+          ref={inputRef}
+          value={editTitle}
+          onChange={(e) => setEditTitle(e.target.value)}
+          onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+            if (e.key === 'Enter') commitRename()
+            if (e.key === 'Escape') setEditing(false)
+          }}
+          onBlur={commitRename}
+          onClick={(e) => e.stopPropagation()}
+          className="h-7 max-w-[240px] text-sm"
+        />
       ) : (
-        <span />
+        <span
+          className="truncate text-sm font-medium cursor-text select-text"
+          onDoubleClick={startRename}
+          title="双击重命名"
+        >
+          {title}
+        </span>
       )}
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
-            <Button variant="ghost" size="icon-xs" className="shrink-0" disabled={!sid}>
+            <Button variant="ghost" size="icon-xs" className="shrink-0">
               <MoreHorizontalIcon className="size-4" />
             </Button>
           }
