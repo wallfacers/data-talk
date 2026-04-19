@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { QueryClient } from '@tanstack/react-query'
 import { ChannelClient } from './channel-client'
@@ -103,9 +103,11 @@ export function useChannelClient(sessionId: string | null): ChannelClient | null
 }
 
 export function useChannel() {
-  const [isStreaming, setIsStreaming] = useState(false)
   const queryClient = useQueryClient()
   const sessionId = useSessionStore((s) => s.activeSessionId)
+  const isStreaming = useChatPartsStore((s) =>
+    sessionId ? s.streamingBySession.has(sessionId) : false,
+  )
   const enterSplit = useSessionStore((s) => s.enterSplit)
   const client = useChannelClient(sessionId)
   const connectionId = useConnectionStore((s) => s.activeConnectionId)
@@ -119,7 +121,7 @@ export function useChannel() {
       const pendingText = typeof firstText?.text === 'string' ? firstText.text : ''
       const pendingId = useChatPartsStore.getState().upsertPendingUser(sessionId, pendingText)
 
-      setIsStreaming(true)
+      useChatPartsStore.getState().setStreaming(sessionId, true)
       enterSplit(sessionId)
       const sink = buildEventSink(sessionId, client, queryClient, connectionId, pendingId)
       try {
@@ -129,7 +131,7 @@ export function useChannel() {
         useChatPartsStore.getState().markPendingUserFailed(sessionId, pendingId, msg)
         showErrorToast(normalizeError(err))
       } finally {
-        setIsStreaming(false)
+        useChatPartsStore.getState().setStreaming(sessionId, false)
       }
     },
     [client, sessionId, enterSplit, queryClient, connectionId],
@@ -146,7 +148,7 @@ export function useChannel() {
         const infoBySession = new Map(s.infoBySession); infoBySession.set(sessionId, byInfo)
         return { infoBySession }
       })
-      setIsStreaming(true)
+      useChatPartsStore.getState().setStreaming(sessionId, true)
       const sink = buildEventSink(sessionId, client, queryClient, connectionId)
       try {
         await client.sendMessage(parts, sink)
@@ -155,7 +157,7 @@ export function useChannel() {
         useChatPartsStore.getState().markPendingUserFailed(sessionId, pendingId, msg)
         showErrorToast(normalizeError(err))
       } finally {
-        setIsStreaming(false)
+        useChatPartsStore.getState().setStreaming(sessionId, false)
       }
     },
     [client, sessionId, queryClient, connectionId],
