@@ -106,9 +106,11 @@ class SessionServiceTest {
 
     @Test
     void create_defaultsBlankTitleToNewSession() {
-        SessionRecord fromNull = svc.create(null, null);
-        SessionRecord fromBlank = svc.create(null, "   ");
-        SessionRecord fromEmpty = svc.create(null, "");
+        SessionRecord fromNull = svc.create(null, null).record();
+        repo.markHasEverSent(fromNull.id(), 600L);
+        SessionRecord fromBlank = svc.create(null, "   ").record();
+        repo.markHasEverSent(fromBlank.id(), 601L);
+        SessionRecord fromEmpty = svc.create(null, "").record();
 
         assertThat(fromNull.title()).isEqualTo("新会话");
         assertThat(fromBlank.title()).isEqualTo("新会话");
@@ -117,7 +119,7 @@ class SessionServiceTest {
 
     @Test
     void create_preservesExplicitTitle() {
-        SessionRecord rec = svc.create(null, "我的会话");
+        SessionRecord rec = svc.create(null, "我的会话").record();
         assertThat(rec.title()).isEqualTo("我的会话");
     }
 
@@ -150,5 +152,62 @@ class SessionServiceTest {
 
         assertThat(repo.findById("s1")).isEmpty();
         verify(sessionMap).unbind("s1");
+    }
+
+    @Test
+    void create_reusesExistingEmpty() {
+        long now0 = 100L;
+        repo.upsert(new SessionRecord("existing_empty", "c1", "新会话", false, null, now0, now0, false));
+
+        CreateSessionResult result = svc.create("c2", "任意标题");
+
+        assertThat(result.reusedEmpty()).isTrue();
+        assertThat(result.record().id()).isEqualTo("existing_empty");
+        assertThat(repo.listAll()).hasSize(1);
+    }
+
+    @Test
+    void create_whenNoEmpty_createsNew() {
+        repo.upsert(new SessionRecord("used", "c1", "sent", true, null, 100L, 100L, false));
+
+        CreateSessionResult result = svc.create("c1", null);
+
+        assertThat(result.reusedEmpty()).isFalse();
+        assertThat(result.record().hasEverSent()).isFalse();
+        assertThat(result.record().id()).isNotEqualTo("used");
+        assertThat(repo.listAll()).hasSize(2);
+    }
+
+    @Test
+    void create_concurrentInvocations_yieldSingleEmpty() throws Exception {
+        int threadCount = 10;
+        java.util.concurrent.CountDownLatch ready = new java.util.concurrent.CountDownLatch(threadCount);
+        java.util.concurrent.CountDownLatch fire = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.CountDownLatch done = new java.util.concurrent.CountDownLatch(threadCount);
+        java.util.concurrent.ExecutorService exec = java.util.concurrent.Executors.newFixedThreadPool(threadCount);
+
+        try {
+            for (int i = 0; i < threadCount; i++) {
+                exec.submit(() -> {
+                    ready.countDown();
+                    try {
+                        fire.await();
+                        svc.create(null, null);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    } finally {
+                        done.countDown();
+                    }
+                });
+            }
+            ready.await();
+            fire.countDown();
+            done.await();
+        } finally {
+            exec.shutdown();
+        }
+
+        long emptyCount = repo.listAll().stream().filter(r -> !r.hasEverSent()).count();
+        assertThat(emptyCount).isEqualTo(1L);
     }
 }

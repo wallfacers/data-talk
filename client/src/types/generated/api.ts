@@ -48,6 +48,7 @@ export interface SessionDto {
   createdAt: number
   updatedAt: number
   titleLocked: boolean
+  reusedEmpty: boolean
 }
 
 export interface SessionCreateRequest {

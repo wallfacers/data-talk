@@ -49,6 +49,14 @@ public class SessionRepository {
         return list.isEmpty() ? Optional.empty() : Optional.of(list.get(0));
     }
 
+    /** 查找唯一一个 hasEverSent=false 的空白会话（按创建时间倒序取第一个） */
+    public Optional<SessionRecord> findEmpty() {
+        var list = jdbc.query(
+            "SELECT * FROM sessions WHERE has_ever_sent = 0 ORDER BY created_at DESC LIMIT 1",
+            MAPPER);
+        return list.isEmpty() ? Optional.empty() : Optional.of(list.get(0));
+    }
+
     public void markHasEverSent(String id, long now) {
         jdbc.update("UPDATE sessions SET has_ever_sent = 1, updated_at = ? WHERE id = ?", now, id);
     }

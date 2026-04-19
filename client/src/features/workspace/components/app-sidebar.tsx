@@ -1,4 +1,4 @@
-import { useEffect, useState, type ComponentProps } from 'react'
+import { useEffect, useState, useRef, type ComponentProps } from 'react'
 import { MessageSquare, PlusIcon } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
 import { createSession } from '@/services/api/session'
+import type { Session } from '@/services/api/session'
 import { useConnectionStore } from '@/features/connection/store'
 import { useSessionStore } from '@/stores/session-store'
 import { useHasActiveModel } from '@/features/session/hooks/use-has-active-model'
@@ -49,13 +50,30 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
   const createMut = useMutation({
     mutationFn: async () => {
       if (!hasActiveModel) throw new Error('请先在设置中配置模型')
+      const cached = qc.getQueryData<Session[]>(['sessions', activeConnectionId ?? null]) ?? []
+      const empty = cached.find((s) => !s.hasEverSent)
+      if (empty) return { ...empty, reusedEmpty: true }
       return createSession(activeConnectionId ?? undefined)
     },
     onSuccess: (sess) => {
       openSession(sess.id, sess.hasEverSent)
-      qc.invalidateQueries({ queryKey: ['sessions', activeConnectionId ?? null] })
+      if (!sess.reusedEmpty) {
+        qc.invalidateQueries({ queryKey: ['sessions', activeConnectionId ?? null] })
+      }
+      createInProgressRef.current = false
+    },
+    onSettled: () => {
+      createInProgressRef.current = false
     },
   })
+
+  // 用 ref 追踪 mutation 状态，确保同步防抖（isPending 是异步更新的）
+  const createInProgressRef = useRef(false)
+  const handleCreate = () => {
+    if (createInProgressRef.current || createMut.isPending) return
+    createInProgressRef.current = true
+    createMut.mutate()
+  }
 
   return (
     <>
@@ -67,7 +85,7 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
             variant="ghost"
             size="icon-sm"
             className="size-7 rounded-full"
-            onClick={() => createMut.mutate()}
+            onClick={handleCreate}
             disabled={createMut.isPending}
           >
             <PlusIcon className="size-4" />
@@ -99,7 +117,7 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                 <SidebarMenuButton
                   tooltip="创建会话"
                   className="min-w-8 justify-center bg-primary text-primary-foreground duration-200 ease-linear hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground"
-                  onClick={() => createMut.mutate()}
+                  onClick={handleCreate}
                   disabled={createMut.isPending}
                 >
                   <PlusIcon />

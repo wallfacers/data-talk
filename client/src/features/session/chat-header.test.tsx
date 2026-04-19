@@ -29,7 +29,7 @@ describe('ChatHeader', () => {
   it('重命名 → 调用 renameSession PATCH', async () => {
     const spy = vi.spyOn(api, 'renameSession').mockResolvedValue({
       id: 's1', connectionId: 'c1', title: '新名', hasEverSent: true,
-      createdAt: 0, updatedAt: 1, titleLocked: false,
+      createdAt: 0, updatedAt: 1, titleLocked: false, reusedEmpty: false,
     })
 
     renderWithClient(<ChatHeader />)
@@ -89,6 +89,7 @@ describe('ChatHeader', () => {
       createdAt: 0,
       updatedAt: 0,
       titleLocked: false,
+      reusedEmpty: false,
     }
 
     const listSpy = vi.spyOn(api, 'listSessions').mockResolvedValue([initialSession])

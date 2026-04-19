@@ -4,6 +4,7 @@ import com.datatalk.dto.SessionCreateRequest;
 import com.datatalk.dto.SessionDto;
 import com.datatalk.dto.SessionRenameRequest;
 import com.datatalk.application.persistence.SessionRecord;
+import com.datatalk.application.session.CreateSessionResult;
 import com.datatalk.application.session.SessionService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -31,8 +32,8 @@ public class SessionController {
         }
         String connectionId = (req.connectionId() == null || req.connectionId().isBlank())
             ? null : req.connectionId();
-        SessionRecord rec = svc.create(connectionId, req.title());
-        return toDto(rec);
+        CreateSessionResult r = svc.create(connectionId, req.title());
+        return toDto(r.record(), r.reusedEmpty());
     }
 
     @GetMapping("/{id}")
@@ -64,8 +65,12 @@ public class SessionController {
     }
 
     private static SessionDto toDto(SessionRecord r) {
+        return toDto(r, false);
+    }
+
+    private static SessionDto toDto(SessionRecord r, boolean reusedEmpty) {
         return new SessionDto(r.id(), r.connectionId(), r.title(),
-            r.hasEverSent(), r.createdAt(), r.updatedAt(), r.titleLocked());
+            r.hasEverSent(), r.createdAt(), r.updatedAt(), r.titleLocked(), reusedEmpty);
     }
 
 }

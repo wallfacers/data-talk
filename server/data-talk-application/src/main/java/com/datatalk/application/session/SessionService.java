@@ -24,6 +24,7 @@ public class SessionService {
     private final Clock clock;
     private final OpenCodeGateway gateway;
     private final OpenCodeSessionMap sessionMap;
+    private final Object createLock = new Object();
 
     public SessionService(SessionRepository repo, Clock clock,
                           OpenCodeGateway gateway, OpenCodeSessionMap sessionMap) {
@@ -33,13 +34,19 @@ public class SessionService {
         this.sessionMap = sessionMap;
     }
 
-    public SessionRecord create(String connectionId, String title) {
-        long now = clock.millis();
-        String id = UUID.randomUUID().toString();
-        String effectiveTitle = Strings.defaultIfBlank(title, "新会话");
-        SessionRecord rec = new SessionRecord(id, connectionId, effectiveTitle, false, null, now, now, false);
-        repo.upsert(rec);
-        return rec;
+    public CreateSessionResult create(String connectionId, String title) {
+        synchronized (createLock) {
+            Optional<SessionRecord> existing = repo.findEmpty();
+            if (existing.isPresent()) {
+                return new CreateSessionResult(existing.get(), true);
+            }
+            long now = clock.millis();
+            String id = UUID.randomUUID().toString();
+            String effectiveTitle = Strings.defaultIfBlank(title, "新会话");
+            SessionRecord rec = new SessionRecord(id, connectionId, effectiveTitle, false, null, now, now, false);
+            repo.upsert(rec);
+            return new CreateSessionResult(rec, false);
+        }
     }
 
     public List<SessionRecord> list(String connectionId) {

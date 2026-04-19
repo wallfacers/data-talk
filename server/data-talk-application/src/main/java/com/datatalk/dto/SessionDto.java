@@ -7,5 +7,6 @@ public record SessionDto(
     boolean hasEverSent,
     long createdAt,
     long updatedAt,
-    boolean titleLocked
+    boolean titleLocked,
+    boolean reusedEmpty
 ) {}

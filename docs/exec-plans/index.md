@@ -6,13 +6,13 @@
 
 | 计划 | 状态 | 摘要 |
 |------|------|------|
-| [Single Empty Session](./2026-04-19-single-empty-session-plan.md) | 计划中 | 全局最多 1 个空白会话：后端 `SessionService.create` `synchronized` 幂等 + `reusedEmpty` 响应字段；前端 `app-sidebar` 本地查重 + `isPending` 短路；零 migration |
 | [Composer Model Picker Dialog](./2026-04-18-composer-model-picker-dialog-plan.md) | 计划中 | Composer 模型选择器 Popover → 960×540 双栏对话框，触发按钮样式不变 |
 
 ## 已完成计划
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [Single Empty Session](./2026-04-19-single-empty-session-plan.md) | 2026-04-19 | 全局最多 1 个空白会话：后端 `SessionService.create` `synchronized` 幂等 + `reusedEmpty` 响应字段；前端 `app-sidebar` 本地查重 + `isPending` 短路；零 migration |
 | [AI Message Rendering Migration](./2026-04-19-ai-message-rendering-migration-plan.md) | 2026-04-19 | 前端迁移 OpenCode 消息渲染（Markdown 增量 / PacedMarkdown / TextShimmer / BasicTool / ContextToolGroup / ToolRegistry）+ L1/L2/L3 风险徽章 + SQL 代码块 1a 流程 + Artifact 跳 Stage + 乐观 UI（pending user / 重试 / 删除）。Phase 0-5 完成；Phase 6 共 16 个手动验收场景留给人工联调 |
 | [AI Message History Backend](./2026-04-19-ai-message-history-backend-plan.md) | 2026-04-19 | messages 表下沉到 OpenCode；HistoryService 透传 GET /session/:id/message；OpenCodeEventTranslator Part 透传 JsonNode；ActionDescriptor 扩展 riskLevel/category；7 个 Action 注解回填 |
 | [History OpenCode Passthrough — 前后端同步文档](./2026-04-19-history-opencode-passthrough-sync.md) | 2026-04-19 | 删本地 messages 表，透传 OpenCode；修 AI 消息切换丢失 + 流式卡顿 + USER 消息 ID 一致性（后端完工，待前端联调） |
