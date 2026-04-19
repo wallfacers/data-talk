@@ -20,6 +20,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
@@ -44,6 +45,16 @@ public class OpenCodeEventLoop {
     private final Consumer<OcEvent> tap;
     private final AtomicBoolean running = new AtomicBoolean(false);
     private volatile Thread worker;
+
+    /**
+     * OpenCode's {@code message.part.delta} frame carries only {@code partID},
+     * {@code field}, and {@code delta} — no {@code sessionID}. To route delta
+     * events to the right SessionBus we remember the {@code partId →
+     * openCodeSessionId} binding the first time we see a {@code part.created}
+     * or {@code part.updated} for that part, and look it up on every delta.
+     * Cleared when the part is removed or the OpenCode session is deleted.
+     */
+    private final Map<String, String> partToOpenCodeSession = new ConcurrentHashMap<>();
 
     public OpenCodeEventLoop(String baseUrl, ObjectMapper om,
                              OpenCodeEventTranslator translator,
@@ -164,6 +175,8 @@ public class OpenCodeEventLoop {
         OcEvent oc = parseOcEvent(eventName, json);
         tap.accept(oc);
 
+        rememberPartToSession(oc);
+
         String openCodeSessionId = extractSessionId(oc);
         if (openCodeSessionId == null) {
             return;
@@ -181,6 +194,27 @@ public class OpenCodeEventLoop {
         }
         if (oc instanceof OcEvent.SessionDeleted) {
             translator.forget(dataTalkSessionId);
+        }
+    }
+
+    /**
+     * Maintain the {@code partId → openCodeSessionId} binding so that subsequent
+     * {@link OcEvent.MessagePartDelta}s — which lack a sessionID — can be routed.
+     */
+    private void rememberPartToSession(OcEvent oc) {
+        if (oc instanceof OcEvent.MessagePartUpdated p) {
+            String pid = p.part().path("id").asText(null);
+            String sid = p.part().path("sessionID").asText(null);
+            if (pid != null && sid != null && !pid.isEmpty() && !sid.isEmpty()) {
+                partToOpenCodeSession.put(pid, sid);
+            }
+        } else if (oc instanceof OcEvent.MessagePartRemoved r) {
+            partToOpenCodeSession.remove(r.partId());
+        } else if (oc instanceof OcEvent.SessionDeleted s) {
+            String openCodeSid = s.info().id();
+            if (openCodeSid != null && !openCodeSid.isEmpty()) {
+                partToOpenCodeSession.entrySet().removeIf(e -> openCodeSid.equals(e.getValue()));
+            }
         }
     }
 
@@ -278,10 +312,12 @@ public class OpenCodeEventLoop {
         );
     }
 
-    private static String extractSessionId(OcEvent e) {
+    private String extractSessionId(OcEvent e) {
         return switch (e) {
             case OcEvent.MessageUpdated m    -> m.message().sessionId();
             case OcEvent.MessagePartUpdated p -> p.part().path("sessionID").asText(null);
+            case OcEvent.MessagePartDelta d  -> partToOpenCodeSession.get(d.partId());
+            case OcEvent.MessagePartRemoved r -> partToOpenCodeSession.get(r.partId());
             case OcEvent.SessionCreated s    -> s.info().id();
             case OcEvent.SessionUpdated s    -> s.info().id();
             case OcEvent.SessionDeleted s    -> s.info().id();

@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import org.junit.jupiter.api.*;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 import java.time.Duration;
@@ -63,6 +64,49 @@ class OpenCodeEventLoopTest {
 
         assertThat(received.get(0)).isInstanceOf(OcEvent.ServerConnected.class);
         assertThat(received.get(1)).isInstanceOf(OcEvent.MessagePartDelta.class);
+    }
+
+    @Test
+    void messagePartDeltaWithoutSessionIdRoutesViaPartIdBinding() {
+        // OpenCode 1.4.7's message.part.delta frames carry only partID/field/delta.
+        // To reach the right SessionBus they must inherit the sessionID from the
+        // preceding message.part.updated for the same partID. Regression: prior
+        // to the partToOpenCodeSession map, every delta was dropped because
+        // extractSessionId returned null.
+        String sse = """
+            data: {"directory":"/tmp","payload":{"type":"message.part.updated","properties":{"part":{"id":"p1","sessionID":"oc-1","type":"text","text":""}}}}
+
+            data: {"directory":"/tmp","payload":{"type":"message.part.delta","properties":{"partID":"p1","field":"text","delta":"hi"}}}
+
+            data: {"directory":"/tmp","payload":{"type":"message.part.delta","properties":{"partID":"p1","field":"text","delta":" world"}}}
+
+            """;
+        wm.stubFor(get(urlEqualTo("/global/event"))
+            .willReturn(aResponse().withHeader("Content-Type", "text/event-stream").withBody(sse)));
+
+        OpenCodeSessionMap map = new OpenCodeSessionMap();
+        map.bind("dt-1", "oc-1");
+
+        SessionBus mockBus = Mockito.mock(SessionBus.class);
+        SessionBusRegistry buses = Mockito.mock(SessionBusRegistry.class);
+        when(buses.getOrCreate("dt-1")).thenReturn(mockBus);
+
+        OpenCodeEventTranslator tr = new OpenCodeEventTranslator(Mockito.mock(SessionTitleSyncer.class));
+        List<OcEvent> received = new ArrayList<>();
+        OpenCodeEventLoop loop = new OpenCodeEventLoop(
+            "http://localhost:" + wm.port(), new ObjectMapper(), tr, buses, map, received::add);
+
+        loop.start();
+        await().atMost(Duration.ofSeconds(3)).until(() -> received.size() >= 3);
+        loop.stop();
+
+        ArgumentCaptor<DtEvent> published = ArgumentCaptor.forClass(DtEvent.class);
+        Mockito.verify(mockBus, Mockito.atLeast(3)).publish(published.capture());
+        List<DtEvent.MessagePartDelta> deltas = published.getAllValues().stream()
+            .filter(DtEvent.MessagePartDelta.class::isInstance)
+            .map(DtEvent.MessagePartDelta.class::cast)
+            .toList();
+        assertThat(deltas).extracting(DtEvent.MessagePartDelta::delta).containsExactly("hi", " world");
     }
 
     @Test
