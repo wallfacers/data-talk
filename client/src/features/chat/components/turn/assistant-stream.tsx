@@ -24,7 +24,7 @@ export function AssistantStream(props: {
     for (const m of props.messages) {
       const parts = partsMap.get(m.id) ?? []
       for (const p of parts) {
-        if (p.type === 'reasoning' && !(p as any).text?.trim()) continue
+        // We now allow empty reasoning parts because they render their own "Thinking..." state
         if (p.type === 'text' && !(p as TextPartType).text?.trim()) continue
         if (p.type === 'tool') {
           const s = (p as ToolPart).state?.status

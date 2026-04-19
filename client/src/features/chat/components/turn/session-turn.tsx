@@ -5,8 +5,6 @@ import { UserBubble } from './user-bubble'
 import { AssistantStream } from './assistant-stream'
 import { ErrorCard } from './error-card'
 import { TextShimmer } from '../effects/text-shimmer'
-import { TextReveal } from '../effects/text-reveal'
-import { extractHeading } from '../helpers/reasoning-heading'
 
 export function SessionTurn(props: {
   sessionId: string
@@ -39,24 +37,12 @@ export function SessionTurn(props: {
   const anyVisiblePart = useMemo(
     () => assistantMessages.some((m) => (partsMap?.get(m.id) ?? []).some((p) => {
       if (p.type === 'text') return !!(p as any).text?.trim()
-      if (p.type === 'reasoning') return !!(p as any).text?.trim()
+      // Reasoning parts are now visible immediately even if empty (they show their own "Thinking...")
+      if (p.type === 'reasoning') return true
       return p.type === 'tool'
     })),
     [assistantMessages, partsMap],
   )
-
-  const reasoningHeading = useMemo(() => {
-    for (const m of assistantMessages) {
-      const parts = partsMap?.get(m.id) ?? []
-      for (const p of parts) {
-        if (p.type === 'reasoning') {
-          const h = extractHeading((p as any).text ?? '')
-          if (h) return h
-        }
-      }
-    }
-    return undefined
-  }, [assistantMessages, partsMap])
 
   const lastTextPartId = useMemo(() => {
     for (let i = assistantMessages.length - 1; i >= 0; i--) {
@@ -100,7 +86,6 @@ export function SessionTurn(props: {
       {showThinking && (
         <div className="my-1 text-sm text-muted-foreground">
           <TextShimmer text="思考中…" active />
-          {reasoningHeading && <div className="mt-1 text-xs"><TextReveal text={reasoningHeading} /></div>}
         </div>
       )}
       {err?.data?.message && <ErrorCard message={err.data.message} />}
