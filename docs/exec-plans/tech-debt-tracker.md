@@ -21,7 +21,7 @@
 | TD-010 | P2 | client | ~~自写 SplitView 移除了 `PanelResizeHandle`，用户无法拖拽调整左右面板宽度~~ 已添加 CSS drag handle + localStorage 持久化 | 2026-04-18 已实现 |
 | TD-011 | P2 | client | ~~`StageWindow` 偏离原 Stage-As-Computer spec~~ 已回归 macOS 交通灯（红/黄/绿圆点） | 2026-04-18 已实现 |
 | TD-012 | P2 | infrastructure | ~~SQLite 未启用 `PRAGMA foreign_keys=ON`~~ 已启用外键约束 + V3 迁移添加 `ON DELETE CASCADE`，`SessionService.delete` 简化为单调用 | 2026-04-18 已实现 |
-| TD-013 | P1 | adapter / client | `DtEvent.SessionIdle` 定义但未消费；`ChannelController.java` 流生命周期仍用 1000ms 恩典期 | Plan 2026-04-18 opencode-session-title-sync |
+| TD-013 | P2 | adapter / client | ~~`DtEvent.SessionIdle` 定义但未消费；`ChannelController.java` 流生命周期仍用 1000ms 恩典期~~ 前端 `buildEventSink` 已消费 `session.idle` + `session.status=idle` 清 `streamingBySession`（Plan 2026-04-19 refresh-resilient-streaming Task 4）；后端 `ChannelController.stream` 已由 1000ms 硬编码等待改为 CountDownLatch + turn-done watcher（Plan 同源 Task 5 被 commit bad23aa 的"guard history replace + close POST stream on SessionIdle"取代实现），最终 idle 帧只在真实完成后发布。剩余 P2：POST 流自身的 10 min 超时上限尚未按 AI 工作量做自适应调整 | Plan 2026-04-18 opencode-session-title-sync + Plan 2026-04-19 refresh-resilient-streaming |
 | TD-014 | P2 | client | `DtEvent.SessionError` 定义但未消费 | 同上 |
 | TD-015 | P2 | client | `DtEvent.SessionCreated / SessionDeleted` 定义但未消费（多客户端协作场景） | 同上 |
 | TD-016 | P2 | client | `DtEvent.SessionCompacted` 定义但未消费（OpenCode 上下文压缩提示） | 同上 |

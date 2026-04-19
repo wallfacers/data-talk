@@ -40,7 +40,7 @@
 - Modify: `client/src/stores/channel-store.ts`
 - Create: `client/src/stores/__tests__/channel-store.test.ts`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Create `client/src/stores/__tests__/channel-store.test.ts`:
 
@@ -87,7 +87,7 @@ describe('channel-store', () => {
 })
 ```
 
-- [ ] **Step 2: Run tests, confirm failure**
+- [x] **Step 2: Run tests, confirm failure**
 
 ```bash
 cd client && npx vitest run src/stores/__tests__/channel-store.test.ts
@@ -95,7 +95,7 @@ cd client && npx vitest run src/stores/__tests__/channel-store.test.ts
 
 Expected: 4 FAIL — `setLastEventId is not a function` / `lastEventIdBySession is undefined` / `raw is null`.
 
-- [ ] **Step 3: Implement the slice with persist middleware**
+- [x] **Step 3: Implement the slice with persist middleware**
 
 The codebase uses Zustand 5 (`"zustand": "^5.0.2"` in `client/package.json`). Zustand 5 removed `serialize`/`deserialize` — Map/Set round-trip is done via a custom `storage` adapter with a JSON replacer / reviver, shared across all stores in this project from now on.
 
@@ -218,7 +218,7 @@ export const useChannelStore = create<ChannelState>()(
 
 The `partialize → plain object` + `merge → Map` pattern is the canonical Zustand 5 way for Map/Set round-trip, and is what this plan adopts across channel-store and chat-parts-store (Task 4).
 
-- [ ] **Step 4: Run tests, confirm pass**
+- [x] **Step 4: Run tests, confirm pass**
 
 ```bash
 cd client && npx vitest run src/stores/__tests__/channel-store.test.ts
@@ -226,7 +226,7 @@ cd client && npx vitest run src/stores/__tests__/channel-store.test.ts
 
 Expected: 4 PASS.
 
-- [ ] **Step 5: tsc**
+- [x] **Step 5: tsc**
 
 ```bash
 cd client && npx tsc --noEmit
@@ -234,7 +234,7 @@ cd client && npx tsc --noEmit
 
 Expected: 0 errors. If `serialize`/`deserialize` APIs differ in the project's Zustand version, fall back to the `storage: { getItem, setItem }` shape equivalently — each key under `state.lastEventIdBySession` is serialized as a plain object, deserialized back to a Map.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add client/src/stores/channel-store.ts client/src/stores/__tests__/channel-store.test.ts
@@ -256,7 +256,7 @@ EOF
 - Modify: `client/src/services/channel/use-channel.ts`
 - Modify: `client/src/services/channel/use-channel.test.ts`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Append to `client/src/services/channel/use-channel.test.ts` (inside the existing `describe('buildEventSink')` block or a new sibling `describe`):
 
@@ -297,7 +297,7 @@ describe('buildEventSink → lastEventId tracking', () => {
 })
 ```
 
-- [ ] **Step 2: Run tests, confirm failure**
+- [x] **Step 2: Run tests, confirm failure**
 
 ```bash
 cd client && npx vitest run src/services/channel/use-channel.test.ts
@@ -305,7 +305,7 @@ cd client && npx vitest run src/services/channel/use-channel.test.ts
 
 Expected: the 2 new `lastEventId tracking` tests FAIL (cursor stays at 0).
 
-- [ ] **Step 3: Wire the cursor update**
+- [x] **Step 3: Wire the cursor update**
 
 In `client/src/services/channel/use-channel.ts`, add the import and call:
 
@@ -329,7 +329,7 @@ import { useChannelStore } from '@/stores/channel-store'
 
 `setLastEventId` is already monotonic (Task 1 Step 3), so out-of-order frames are safely ignored.
 
-- [ ] **Step 4: Run tests, confirm pass**
+- [x] **Step 4: Run tests, confirm pass**
 
 ```bash
 cd client && npx vitest run src/services/channel/use-channel.test.ts
@@ -337,7 +337,7 @@ cd client && npx vitest run src/services/channel/use-channel.test.ts
 
 Expected: all PASS (existing + 2 new).
 
-- [ ] **Step 5: tsc**
+- [x] **Step 5: tsc**
 
 ```bash
 cd client && npx tsc --noEmit
@@ -345,7 +345,7 @@ cd client && npx tsc --noEmit
 
 Expected: 0 errors.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add client/src/services/channel/use-channel.ts client/src/services/channel/use-channel.test.ts
@@ -364,7 +364,7 @@ EOF
 **Files:**
 - Modify: `client/src/features/session/hooks/use-session-subscribe.ts`
 
-- [ ] **Step 1: Read the existing hook**
+- [x] **Step 1: Read the existing hook**
 
 Current (`client/src/features/session/hooks/use-session-subscribe.ts`):
 
@@ -398,7 +398,7 @@ export function useSessionSubscribe(sessionId: string | null) {
 }
 ```
 
-- [ ] **Step 2: Swap global cursor for per-session lookup**
+- [x] **Step 2: Swap global cursor for per-session lookup**
 
 Replace the entire file with:
 
@@ -440,7 +440,7 @@ export function useSessionSubscribe(sessionId: string | null) {
 }
 ```
 
-- [ ] **Step 3: tsc**
+- [x] **Step 3: tsc**
 
 ```bash
 cd client && npx tsc --noEmit
@@ -448,7 +448,7 @@ cd client && npx tsc --noEmit
 
 Expected: 0 errors.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add client/src/features/session/hooks/use-session-subscribe.ts
@@ -472,7 +472,7 @@ EOF
 - Modify: `client/src/services/channel/use-channel.ts`
 - Modify: `client/src/services/channel/use-channel.test.ts`
 
-- [ ] **Step 1: Write failing tests for the persist + clear-on-idle behavior**
+- [x] **Step 1: Write failing tests for the persist + clear-on-idle behavior**
 
 (a) Append to `client/src/stores/__tests__/chat-parts-store.test.ts` (inside existing `streamingBySession` describe if present, or a new one):
 
@@ -563,7 +563,7 @@ describe('buildEventSink → turn-done clears streamingBySession', () => {
 })
 ```
 
-- [ ] **Step 2: Run tests, confirm failure**
+- [x] **Step 2: Run tests, confirm failure**
 
 ```bash
 cd client && npx vitest run src/stores/__tests__/chat-parts-store.test.ts src/services/channel/use-channel.test.ts
@@ -571,7 +571,7 @@ cd client && npx vitest run src/stores/__tests__/chat-parts-store.test.ts src/se
 
 Expected: 2 store tests + 2 sink tests FAIL.
 
-- [ ] **Step 3: Add persist middleware to chat-parts-store**
+- [x] **Step 3: Add persist middleware to chat-parts-store**
 
 Open `client/src/stores/chat-parts-store.ts`. Currently it is `create<ChatPartsState>((set, get) => ({...}))`. Wrap it in `persist` using the same Zustand 5 `partialize + merge` pattern established in Task 1.
 
@@ -628,7 +628,7 @@ export const useChatPartsStore = create<ChatPartsState>()(
 
 Keep every existing method body unchanged — only the `create` wrapper and the config block at the bottom differ. Verify by diffing against the previous file; only the opening `create<...>()( persist(` + the `{ name: ..., storage: ..., partialize: ..., merge: ... }` block + the closing `)` should be new.
 
-- [ ] **Step 4: Add turn-done handler in `buildEventSink`**
+- [x] **Step 4: Add turn-done handler in `buildEventSink`**
 
 In `client/src/services/channel/use-channel.ts`, inside `buildEventSink`, add a new branch (place it right after the `message.completed` branch so error / idle handling cluster together):
 
@@ -648,7 +648,7 @@ In `client/src/services/channel/use-channel.ts`, inside `buildEventSink`, add a 
       // … existing handler unchanged
 ```
 
-- [ ] **Step 5: Run tests, confirm pass**
+- [x] **Step 5: Run tests, confirm pass**
 
 ```bash
 cd client && npx vitest run src/stores/__tests__/chat-parts-store.test.ts src/services/channel/use-channel.test.ts
@@ -656,7 +656,7 @@ cd client && npx vitest run src/stores/__tests__/chat-parts-store.test.ts src/se
 
 Expected: all PASS (pre-existing + 4 new).
 
-- [ ] **Step 6: tsc + full vitest**
+- [x] **Step 6: tsc + full vitest**
 
 ```bash
 cd client && npx tsc --noEmit
@@ -665,7 +665,7 @@ cd client && npx vitest run
 
 Expected: 0 tsc errors. Vitest: no new regressions relative to baseline (pre-existing failing tests from earlier epilogues stay at the same count).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add client/src/stores/chat-parts-store.ts \
@@ -821,7 +821,7 @@ EOF
 
 **Files:** (no code changes)
 
-- [ ] **Step 1: Full client tsc + vitest**
+- [x] **Step 1: Full client tsc + vitest**
 
 ```bash
 cd client && npx tsc --noEmit
@@ -830,7 +830,7 @@ cd client && npx vitest run
 
 Expected: 0 tsc errors. Vitest: net-new passes from this plan's added tests; pre-existing failing tests (chat-header / split-view / providers / stage-toggle from earlier epilogues) unchanged.
 
-- [ ] **Step 2: Full backend mvn verify**
+- [x] **Step 2: Full backend mvn verify**
 
 ```bash
 cd server && mvn clean verify -q
@@ -859,7 +859,7 @@ Run scenarios:
 
 - **R4 (late refresh, bus evicted)**: send a prompt → wait for AI completion → wait 60+ seconds (beyond eviction 30s) → refresh → expect: full history loads from OpenCode, no broken state, no spurious "思考中…", no duplicate bubbles.
 
-- [ ] **Step 4: No commit** (verification only)
+- [x] **Step 4: No commit** (verification only)
 
 ---
 
@@ -870,7 +870,7 @@ Run scenarios:
 - Modify: `docs/exec-plans/tech-debt-tracker.md`
 - Modify: `docs/exec-plans/2026-04-19-refresh-resilient-streaming-plan.md` (self)
 
-- [ ] **Step 1: Register as Active in exec-plans/index.md**
+- [x] **Step 1: Register as Active in exec-plans/index.md**
 
 Insert at top of "活跃计划":
 
@@ -878,7 +878,7 @@ Insert at top of "活跃计划":
 | [Refresh-Resilient Streaming](./2026-04-19-refresh-resilient-streaming-plan.md) | 计划中 | 刷新浏览器不中断 AI 流响应：persist per-session lastEventId + streamingBySession 到 sessionStorage；buildEventSink 消费 session.idle 清零；后端移除 POST 流误发的 session.status=idle（TD-013 后半） |
 ```
 
-- [ ] **Step 2: Update TD-013 entry**
+- [x] **Step 2: Update TD-013 entry**
 
 Edit the TD-013 row in `docs/exec-plans/tech-debt-tracker.md`:
 
@@ -886,7 +886,7 @@ Edit the TD-013 row in `docs/exec-plans/tech-debt-tracker.md`:
 | TD-013 | P1 | adapter / client | ~~`DtEvent.SessionIdle` 定义但未消费；`ChannelController.java` 流生命周期仍用 1000ms 恩典期~~ 前端 buildEventSink 已于 Plan 2026-04-19 refresh-resilient-streaming 消费 session.idle；后端误发的 `session.status=idle` 已移除。**剩余：1000ms 恩典期自身未改（POST 流仍按时长关闭，而非按 AI 完成信号关闭）**，属更大的 POST 流架构重构范畴，保留此条以便追踪 | Plan 2026-04-18 opencode-session-title-sync + Plan 2026-04-19 refresh-resilient-streaming |
 ```
 
-- [ ] **Step 3: On plan completion, flip Active → Completed**
+- [x] **Step 3: On plan completion, flip Active → Completed**
 
 After Tasks 1-6 all pass, edit `docs/exec-plans/index.md`:
 
@@ -898,11 +898,11 @@ After Tasks 1-6 all pass, edit `docs/exec-plans/index.md`:
 | [Refresh-Resilient Streaming](./2026-04-19-refresh-resilient-streaming-plan.md) | 2026-04-19 | `lastEventIdBySession` / `streamingBySession` 持久化到 sessionStorage；`buildEventSink` 消费 `session.idle` 清零；后端移除 POST 流误发的 `session.status=idle`（清 TD-013 后半） |
 ```
 
-- [ ] **Step 4: Mark all task checkboxes in this plan as complete**
+- [x] **Step 4: Mark all task checkboxes in this plan as complete**
 
 Edit this plan file: flip every `- [ ]` to `- [x]` for Tasks 1-7 steps that were executed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add docs/exec-plans/index.md \
