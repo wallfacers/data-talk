@@ -5,6 +5,7 @@ import { useConnectionStore } from '@/features/connection/store'
 import { useSessionStore } from '@/stores/session-store'
 import { useHasActiveModel } from './use-has-active-model'
 import { invalidateSessionLists } from './use-sessions'
+import { useSessions } from './use-sessions'
 
 export function usePendingConnectionResume() {
   const queryClient = useQueryClient()
@@ -16,10 +17,21 @@ export function usePendingConnectionResume() {
   const setPendingAction = useSessionStore((s) => s.setPendingActionAfterConnectionPick)
   const activeConnectionId = useConnectionStore((s) => s.activeConnectionId)
   const hasActiveModel = useHasActiveModel()
+  const { data: sessions } = useSessions('all')
+
+  const currentSessionConnectionId = activeSessionId
+    ? sessions?.find((session) => session.id === activeSessionId)?.connectionId
+    : null
 
   useEffect(() => {
-    if (pendingConnectionPrompt || !pendingPrompt || !activeConnectionId || activeSessionId || !hasActiveModel) return
+    if (pendingConnectionPrompt || !pendingPrompt || !activeConnectionId || !hasActiveModel) return
     if (pendingAction?.kind !== 'send') return
+    if (activeSessionId && sessions === undefined) return
+
+    if (activeSessionId && currentSessionConnectionId === activeConnectionId) {
+      setPendingAction(null)
+      return
+    }
 
     const initialTitle = pendingPrompt.slice(0, 50)
     let cancelled = false
@@ -41,6 +53,8 @@ export function usePendingConnectionResume() {
     activeSessionId,
     hasActiveModel,
     pendingAction,
+    sessions,
+    currentSessionConnectionId,
     queryClient,
     openSession,
     setPendingAction,
