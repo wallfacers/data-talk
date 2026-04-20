@@ -1,10 +1,10 @@
 package com.datatalk.service;
 
+import com.datatalk.application.sql.SqlStatementGuard;
 import com.datatalk.command.ExecuteSqlCommand;
 import com.datatalk.dto.QueryResponseDto;
 import com.datatalk.entity.DbConnection;
 import com.datatalk.exception.ConnectionNotFoundException;
-import com.datatalk.exception.SqlExecutionException;
 import com.datatalk.repository.DbConnectionRepository;
 import com.datatalk.repository.SqlExecutionRepository;
 import com.datatalk.valueobject.QueryResult;
@@ -16,17 +16,21 @@ public class QueryApplicationService {
 
     private final DbConnectionRepository connectionRepository;
     private final SqlExecutionRepository sqlExecutionRepository;
+    private final SqlStatementGuard statementGuard;
 
     public QueryApplicationService(DbConnectionRepository connectionRepository,
-                                   SqlExecutionRepository sqlExecutionRepository) {
+                                   SqlExecutionRepository sqlExecutionRepository,
+                                   SqlStatementGuard statementGuard) {
         this.connectionRepository = connectionRepository;
         this.sqlExecutionRepository = sqlExecutionRepository;
+        this.statementGuard = statementGuard;
     }
 
     /**
      * 执行 SQL 查询
      */
     public QueryResponseDto executeQuery(ExecuteSqlCommand command) {
+        statementGuard.assertSelectOnly(command.sql());
         DbConnection connection = connectionRepository.findById(command.connectionId())
                 .orElseThrow(() -> new ConnectionNotFoundException(command.connectionId()));
 

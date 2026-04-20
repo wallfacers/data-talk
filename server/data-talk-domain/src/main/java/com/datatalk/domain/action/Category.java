@@ -12,5 +12,6 @@ public enum Category {
     ARTIFACT,  // artifact_created / pin / supersede
     DDL,       // reserved for future schema-changing actions
     QUESTION,  // AI → user interactive question (independent visual)
+    UI,        // datatalk.ui.* client-side UI object actions
     MISC       // default / unclassified
 }
