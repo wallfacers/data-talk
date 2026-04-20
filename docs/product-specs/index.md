@@ -209,6 +209,7 @@ DataTalk 的差异化在于 **AI 直接操作数据库**，但不能让 AI 蛮�
 
 | 设计文档 | 日期 | 主题 |
 |----------|------|------|
+| [Stage Window Layout Refactor Design](./2026-04-21-stage-window-layout-refactor-design.md) | 2026-04-21 | Stage Window 重构为左侧 Category 目录树 + 右侧 Tabs 工作区的结构化工作台；SQL 编辑器、ER 图设计器等能力统一通过目录树打开 |
 | [Session Data Context & AI Data Source Management Design](./2026-04-21-session-data-context-and-ai-datasource-management-design.md) | 2026-04-21 | 建立 session 级 `connectionId + database + schema` 统一上下文，收敛 `use xxx` 的自动匹配 / 建议 / 歧义处理，打通 `!sql`、AI 对话、Stage Query Editor 与 schema 读取 / SQL 执行的同一解析链路，并补齐 AI 数据源管理能力边界（新增 / 测试 / 选择 / 修改，禁止删除） |
 | [Bang Query Badge Minimization Design](./2026-04-21-bang-query-badge-minimization-design.md) | 2026-04-21 | 将 bang-query 用户气泡从显式 `SQL 直查` 文字 badge 收敛为右上角低存在感小图标，保留语义识别但减少视觉打扰 |
 | [Stage Query Editor Design](./2026-04-21-stage-query-editor-design.md) | 2026-04-21 | Stage 特性全量接通 store + 新增 Query Editor tab（CodeMirror SQL 编辑器 + 结果面板 + 双路径执行：AI 预填直接执行、用户手写经风险判级；高风险拦截并提供"发给 AI 审查"安全阀）+ 后端新增 `POST /api/sql/execute` 端点 |
