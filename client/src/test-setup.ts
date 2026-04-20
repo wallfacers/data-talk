@@ -1,4 +1,6 @@
 import '@testing-library/jest-dom'
+import { vi } from 'vitest'
+import { translateMessage } from '@/i18n/messages'
 
 // jsdom missing matchMedia (needed by sonner Toaster)
 Object.defineProperty(window, 'matchMedia', {
@@ -14,3 +16,12 @@ Object.defineProperty(window, 'matchMedia', {
     dispatchEvent: () => false,
   }),
 })
+
+vi.mock('@/i18n/use-i18n', () => ({
+  useI18n: () => ({
+    language: 'zh-CN',
+    setLanguage: vi.fn(),
+    t: (key: Parameters<typeof translateMessage>[1], values?: Record<string, string | number>) =>
+      translateMessage('zh-CN', key, values),
+  }),
+}))

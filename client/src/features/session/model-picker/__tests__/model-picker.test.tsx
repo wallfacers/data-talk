@@ -3,12 +3,24 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ModelPicker } from '../model-picker'
 import * as api from '@/features/settings/shared/api'
+import { I18nContext } from '@/i18n/provider'
+import { translateMessage } from '@/i18n/messages'
 
 vi.mock('@/features/settings/shared/api')
 
 function renderWithClient(ui: React.ReactElement) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>)
+  return render(
+    <I18nContext.Provider
+      value={{
+        language: 'zh-CN',
+        setLanguage: vi.fn(),
+        t: (key, values) => translateMessage('zh-CN', key, values),
+      }}
+    >
+      <QueryClientProvider client={qc}>{ui}</QueryClientProvider>
+    </I18nContext.Provider>,
+  )
 }
 
 describe('ModelPicker', () => {

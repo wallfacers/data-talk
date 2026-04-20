@@ -3,6 +3,8 @@ import { describe, it, expect, vi } from 'vitest'
 import { ModelPickerDialog } from '../model-picker-dialog'
 import type { ProviderDto } from '@/features/settings/shared/api'
 import * as settingsStore from '@/features/settings/settings-dialog-store'
+import { I18nContext } from '@/i18n/provider'
+import { translateMessage } from '@/i18n/messages'
 
 const providers: ProviderDto[] = [
   { id: 'openai', name: 'OpenAI', connected: true, models: [
@@ -13,9 +15,23 @@ const providers: ProviderDto[] = [
   ]},
 ]
 
+function renderWithI18n(ui: React.ReactElement) {
+  return render(
+    <I18nContext.Provider
+      value={{
+        language: 'zh-CN',
+        setLanguage: vi.fn(),
+        t: (key, values) => translateMessage('zh-CN', key, values),
+      }}
+    >
+      {ui}
+    </I18nContext.Provider>,
+  )
+}
+
 describe('ModelPickerDialog', () => {
   it('打开时默认选中当前模型所属 provider，右侧展示该 provider 的模型', () => {
-    render(
+    renderWithI18n(
       <ModelPickerDialog
         open
         onOpenChange={vi.fn()}
@@ -35,7 +51,7 @@ describe('ModelPickerDialog', () => {
   it('搜索时同时过滤左右两栏；当前 provider 无匹配时自动切到新的第一个', () => {
     const onPick = vi.fn()
     const onOpenChange = vi.fn()
-    render(
+    renderWithI18n(
       <ModelPickerDialog
         open
         onOpenChange={onOpenChange}
@@ -60,7 +76,7 @@ describe('ModelPickerDialog', () => {
   it('点击模型触发 onPick 并关闭对话框', () => {
     const onPick = vi.fn()
     const onOpenChange = vi.fn()
-    render(
+    renderWithI18n(
       <ModelPickerDialog
         open
         onOpenChange={onOpenChange}
@@ -87,7 +103,7 @@ describe('ModelPickerDialog', () => {
     } as never)
 
     const onOpenChange = vi.fn()
-    render(
+    renderWithI18n(
       <ModelPickerDialog
         open
         onOpenChange={onOpenChange}
@@ -106,7 +122,7 @@ describe('ModelPickerDialog', () => {
 
   it('搜索无命中时显示"没有匹配的模型"，不显示"前往设置"按钮', () => {
     const onOpenChange = vi.fn()
-    render(
+    renderWithI18n(
       <ModelPickerDialog
         open
         onOpenChange={onOpenChange}

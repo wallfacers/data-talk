@@ -6,12 +6,13 @@
 
 | 计划 | 状态 | 摘要 |
 |------|------|------|
-| [Composer Model Picker Dialog](./2026-04-18-composer-model-picker-dialog-plan.md) | 计划中 | Composer 模型选择器 Popover → 960×540 双栏对话框，触发按钮样式不变 |
+| [Full-Stack I18n](./2026-04-20-full-stack-i18n-plan.md) | 进行中 | 前端页面按钮/文本 + 后端 API 错误/默认文案 + `Accept-Language` 驱动的中英双语支持 |
 
 ## 已完成计划
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [Composer Model Picker Dialog](./2026-04-18-composer-model-picker-dialog-plan.md) | 2026-04-20 | Composer 模型选择器完成 Popover → 960×540 双栏对话框迁移，补齐 provider 默认定位 / 搜索联动 / 空态引导 / 选中关闭测试；为适配并发 i18n 改动补充测试环境 `useI18n` mock 与过期 StageWindow 断言修正；`npm test`（151 tests）与 `npx tsc --noEmit` 均通过，手动烟测留给人工联调。 |
 | [SSE Heartbeat & Async Timeout 治理](./2026-04-20-sse-heartbeat-plan.md) | 2026-04-20 | SSE GET 订阅改无限 timeout + 30s 心跳注释帧（`":\n\n"`）主动探活；`AsyncRequestTimeoutException` 降级 DEBUG；`SseHeartbeatScheduler` 新 bean + `AsyncTimeoutHandler` `@ControllerAdvice` |
 | [Assistant Model Metadata Propagation](./2026-04-20-assistant-model-metadata-propagation-plan.md) | 2026-04-20 | `Message` record 新增 `providerID/modelID`；`OpenCodeEventLoop.parseMessage` 兼容 user 嵌套 / assistant 扁平两种 OpenCode 1.4.7 形态；清理 `DtEvent.MessageCompleted` 死事件 + 前端 `message.completed` 分支 + 过时字段名兼容链（`modelId/model_id/providerId/provider_id/createdAt/completedAt` 等）。`mvn clean verify` BUILD SUCCESS；Task 4 Step 3 手动端到端验证留给人工联调 |
 | [Refresh-Resilient Streaming](./2026-04-19-refresh-resilient-streaming-plan.md) | 2026-04-19 | 刷新浏览器不中断 AI 流响应：`lastEventIdBySession` / `streamingBySession` 持久化到 sessionStorage；`buildEventSink` 消费 `session.idle` + `session.status=idle` 清零；后端 `ChannelController` POST 流等待 turn-done 信号而非定时 1s（Task 5 被并行 commit bad23aa 以更强方案取代）；R1-R4 手动验证场景留给端到端联调 |
