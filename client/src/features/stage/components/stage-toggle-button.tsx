@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { MonitorIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -13,7 +13,6 @@ export function StageToggleButton() {
   const { t } = useI18n()
   const btnRef = useRef<HTMLButtonElement>(null)
   const sid = useSessionStore((s) => s.activeSessionId)
-  const enterSplit = useSessionStore((s) => s.enterSplit)
   const setSessionMode = useSessionStore((s) => s.setSessionMode)
   const hasEverSent = useSessionStore((s) =>
     sid ? (s.hasEverSentBySession.get(sid) ?? false) : false,
@@ -32,6 +31,14 @@ export function StageToggleButton() {
 
   const title = open ? t('stage.closePanel') : t('stage.openPanel')
 
+  useEffect(() => {
+    if (!sid) return
+    const nextMode = open || hasMessages ? 'SPLIT' : 'HERO'
+    if (mode !== nextMode) {
+      setSessionMode(sid, nextMode)
+    }
+  }, [sid, open, hasMessages, mode, setSessionMode])
+
   function handleClick() {
     if (!sid) return
     const rect = btnRef.current?.getBoundingClientRect()
@@ -41,15 +48,16 @@ export function StageToggleButton() {
         y: rect.top + rect.height / 2,
       })
     }
-    if (mode === 'HERO') {
-      enterSplit(sid)
-      openStage(sid)
-    } else {
-      if (open && !hasMessages) {
+    if (open) {
+      toggle(sid)
+      if (!hasMessages) {
         setSessionMode(sid, 'HERO')
       }
-      toggle(sid)
+      return
     }
+
+    setSessionMode(sid, 'SPLIT')
+    openStage(sid)
   }
 
   return (

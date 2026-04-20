@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { StageToggleButton } from './stage-toggle-button'
 import { useStageStore } from '@/stores/stage-store'
 import { useSessionStore } from '@/stores/session-store'
+import { useChatPartsStore } from '@/stores/chat-parts-store'
 
 describe('StageToggleButton', () => {
   beforeEach(() => {
@@ -17,6 +18,14 @@ describe('StageToggleButton', () => {
       modeBySession: new Map(),
       hasEverSentBySession: new Map(),
       pendingPrompt: null,
+      pendingModelPrompt: false,
+    })
+    useChatPartsStore.setState({
+      partsBySession: new Map(),
+      infoBySession: new Map(),
+      partIndexBySession: new Map(),
+      streamingBySession: new Set<string>(),
+      version: 0,
     })
   })
 
@@ -68,5 +77,34 @@ describe('StageToggleButton', () => {
     }) as DOMRect
     fireEvent.click(btn)
     expect(useStageStore.getState().revealOrigin).toEqual({ x: 110, y: 210 })
+  })
+
+  it('open=true 且 mode 被重置为 HERO 时，点击仍可关闭 Stage', () => {
+    useSessionStore.getState().openSession('s1', false)
+    useStageStore.getState().openStage('s1')
+    useSessionStore.getState().setSessionMode('s1', 'HERO')
+
+    render(<StageToggleButton />)
+    fireEvent.click(screen.getByRole('button'))
+
+    expect(useStageStore.getState().openBySession.get('s1')).toBe(false)
+    expect(useSessionStore.getState().modeBySession.get('s1')).toBe('HERO')
+  })
+
+  it('切回空会话且 Stage 仍打开时，mode 会自动同步回 SPLIT', () => {
+    useSessionStore.getState().openSession('s1', false)
+    useStageStore.getState().openStage('s1')
+
+    render(<StageToggleButton />)
+
+    act(() => {
+      useSessionStore.getState().openSession('s2', false)
+      useSessionStore.getState().openSession('s1', false)
+    })
+
+    expect(useStageStore.getState().openBySession.get('s1')).toBe(true)
+    return waitFor(() => {
+      expect(useSessionStore.getState().modeBySession.get('s1')).toBe('SPLIT')
+    })
   })
 })
