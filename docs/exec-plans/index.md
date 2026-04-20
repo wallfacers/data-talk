@@ -6,6 +6,7 @@
 
 | 计划 | 状态 | 摘要 |
 |------|------|------|
+| [Session Data Context & AI Data Source Management](./2026-04-21-session-data-context-and-ai-datasource-management-plan.md) | pending | 建立 session 级 `connectionId + database + schema` 统一上下文，收敛 `use xxx` 的自动匹配 / 建议 / 歧义处理，打通 Composer `!use/!select`、AI 对话、Stage Query Editor 与 `read_schema` / SQL 执行的同一解析链路，并补齐 AI 数据源管理能力边界（新增 / 测试 / 选择 / 修改，禁止删除）。 |
 | [Composer Data Source Picker](./2026-04-20-composer-data-source-picker-plan.md) | in_progress | 计划为 Composer 增加与模型并列的数据源选择器，接入全局 chooser host、缺库自动补选并恢复原动作、`ui_exec(workspace, choose_connection)` 适配器，以及 Stage 卡片来源数据源固化与显式回切。 |
 | [Stage UI Object Protocol Phase 1](./2026-04-20-stage-ui-object-protocol-plan.md) | in_progress | 前端 `UIRouter` + 4 个 CLIENT Action 桥接已就位；`StageStore` 多 Tab 模型、`WorkspaceAdapter` / `BangQueryAdapter`、StageWindow 多 Tab UI、`BangQueryTab` 组件、Composer `!` 拦截均已落地；后端 `/api/query` 加 `SqlStatementGuard`。客户端 198 tests + 后端 179 tests 全绿。**剩余：手动端到端联调（plan Step 12.5）**。AI 展示路径（QueryEditor + Prompt 注入）归属 P2，不在此 plan。 |
 | [SQL Risk Classification & IT CI Gate](./2026-04-20-sql-risk-classification-it-ci-gate-plan.md) | in_progress | `TD-020`：在 `ActionDispatcher` 统一预处理层引入 Apache Calcite SQL AST 风险判级，并通过 `ActionContext` / action output metadata 透传动态风险；`TD-021`：在 adapter 模块接入 failsafe，让 `mvn clean verify` 自动执行 `*IT.java`。 |
@@ -13,7 +14,11 @@
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [Stage Query Editor](./2026-04-21-stage-query-editor-plan.md) | 2026-04-21 | Stage 特性全量接通 useStageStore，新增 Query Editor tab（CodeMirror SQL 编辑器 + 结果面板 + 双路径执行），后端新增 `POST /api/sql/execute` 端点；关闭 TD-022 / TD-023。 |
 | [OpenCode Event Loop Defenses](./2026-04-21-opencode-event-loop-defenses-plan.md) | 2026-04-21 | `OpenCodeEventLoop` 的 part 绑定索引改为带时间戳的惰性清理缓存，补上 `message.part.removed` 路由时序修复与孤儿 session WARN + 残留绑定清理；`DtEvent` 移除中央 `@JsonSubTypes` 注册，改用 `@JsonTypeName` + sealed subtype resolver。 |
+| [Bang Query Badge Minimization](./2026-04-21-bang-query-badge-minimization-plan.md) | 2026-04-21 | 将 bang-query 用户气泡从显式 `SQL 直查` 文字 badge / 角标图标收敛为正文同一行的弱前缀 `直查 ·`，减少视觉打扰而不改变消息语义。 |
+| [Bang Query Chat Visibility](./2026-04-21-bang-query-chat-visibility-plan.md) | 2026-04-21 | 为 `!select` / `!with` 直查补齐聊天区可见性与持久化：后端持久化 synthetic user message 并与 OpenCode 历史稳定合并排序；前端将直查消息显示为带 `SQL 直查` 标记的普通用户气泡，并在 Composer 命中直查模式时进入变色感知态，同时 bang-query 路径不再依赖 AI model、当前会话即时显示且失败时清理新建空白会话。 |
+| [Query Password Propagation](./2026-04-21-query-password-propagation-plan.md) | 2026-04-21 | 修复 `/api/query` 两处连接参数回归：`DbConnection` 新增运行时密码字段，`QueryApplicationService` 通过 `ConnectionService.decryptPassword()` 注入密码，`DynamicSqlExecutionRepository` 不再固定 `using password: NO`；同时 legacy 直查路径改为复用 `JdbcUrlBuilder`，避免 `databaseName = null` 时拼出字面量 `null`。 |
 | [Data Source Refresh And Query Lookup](./2026-04-21-data-source-refresh-and-query-lookup-plan.md) | 2026-04-21 | 修复两个回归：前端 `useConnectionStore` 现在持久化 `activeConnectionId`，刷新页面后当前活动数据源不再丢失；后端 `/api/query` 改为读取现有 `connections` 仓储并兼容 `postgres`/`postgresql`，不再对有效数据源误报 `CONNECTION_NOT_FOUND`。 |
 | [Session Review Follow-Ups](./2026-04-21-session-review-followups-plan.md) | 2026-04-21 | 修复 `session.created/deleted` 仅失效单一会话列表缓存的问题，并为后台 SSE 恢复增加消息历史活性校验：仅在历史仍存在未完成 assistant turn 时恢复后台订阅，否则清理过期 `streamingBySession`，避免重启后孤儿订阅。 |
 | [Tech Debt Batch — Session Events / POST Timeout / SSE Pool](./2026-04-20-tech-debt-batch-plan.md) | 2026-04-20 | 清除 TD-001/013/014/015/016/017/TD-MULTI-SESSION-SSE-POOL 共 7 项：前端 `buildEventSink` 消费 session.error/created/deleted/compacted/diff；后端 POST 超时提取为可配置项；H2 datasource 语义注释明确；`BackgroundSubscriber` + `useBackgroundSessionSubscribe` 实现多 session SSE 订阅池。19 tests PASS，编译零错误。 |
