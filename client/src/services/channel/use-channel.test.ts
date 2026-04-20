@@ -182,3 +182,59 @@ describe('buildEventSink → turn-done clears streamingBySession', () => {
     expect(useChatPartsStore.getState().streamingBySession.has('ses_b')).toBe(true)
   })
 })
+
+describe('buildEventSink → session.error (TD-014)', () => {
+  beforeEach(() => {
+    useChatPartsStore.setState({
+      partsBySession: new Map(),
+      infoBySession: new Map(),
+      partIndexBySession: new Map(),
+      streamingBySession: new Set<string>(['ses_a']),
+    })
+  })
+
+  it('clears streaming flag on session.error', () => {
+    const qc = new QueryClient()
+    const sink = buildEventSink('ses_a', null, qc, null)
+    sink({ event: 'session.error', data: { error: 'model unavailable' } } as any)
+    expect(useChatPartsStore.getState().streamingBySession.has('ses_a')).toBe(false)
+  })
+})
+
+describe('buildEventSink → session.created / session.deleted (TD-015)', () => {
+  it('invalidates sessions cache on session.created', () => {
+    const qc = new QueryClient()
+    const invalidateSpy = vi.spyOn(qc, 'invalidateQueries')
+    const sink = buildEventSink('s1', null, qc, 'c1')
+    sink({ event: 'session.created', data: { sessionId: 's2', title: 'new', version: 1 } } as any)
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['sessions'] })
+  })
+
+  it('invalidates sessions cache on session.deleted', () => {
+    const qc = new QueryClient()
+    const invalidateSpy = vi.spyOn(qc, 'invalidateQueries')
+    const sink = buildEventSink('s1', null, qc, 'c1')
+    sink({ event: 'session.deleted', data: { sessionId: 's1' } } as any)
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['sessions'] })
+  })
+})
+
+describe('buildEventSink → session.compacted (TD-016)', () => {
+  it('does not throw on session.compacted event', () => {
+    const qc = new QueryClient()
+    const sink = buildEventSink('s1', null, qc, null)
+    expect(() =>
+      sink({ event: 'session.compacted', data: { sessionId: 's1' } } as any)
+    ).not.toThrow()
+  })
+})
+
+describe('buildEventSink → session.diff (TD-017)', () => {
+  it('does not throw on session.diff event with unknown payload', () => {
+    const qc = new QueryClient()
+    const sink = buildEventSink('s1', null, qc, null)
+    expect(() =>
+      sink({ event: 'session.diff', data: { sessionId: 's1', payload: { unknown: true } } } as any)
+    ).not.toThrow()
+  })
+})

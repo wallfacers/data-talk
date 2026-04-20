@@ -5,9 +5,11 @@ spring:
   codec:
     max-in-memory-size: 16MB
 
-  # H2 demo datasource (primary)
+  # Demo / fallback datasource — in-memory H2 initialized from schema-demo.sql + data-demo.sql.
+  # Acts as the @Primary JdbcTemplate when no user-specific connection is active.
+  # Not a placeholder: it seeds explorable demo data for development and smoke tests.
   datasource:
-    url: jdbc:h2:mem:placeholder
+    url: jdbc:h2:mem:demodb;DB_CLOSE_DELAY=-1
     driver-class-name: org.h2.Driver
     username: sa
     password:
@@ -37,6 +39,8 @@ server:
 datatalk:
   persistence:
     sqlite-path: ./data/datatalk.db
+  channel:
+    post-stream-timeout-ms: 600000   # POST SSE 单 turn 最长存活（毫秒），默认 10 分钟
   opencode:
     base-url: http://localhost:4096
     plugin-callback-base: http://localhost:8080

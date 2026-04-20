@@ -21,7 +21,7 @@ OpenCode 推送的原始事件通过 `OpenCodeEventTranslator` 转换为 DataTal
 | session.idle | SessionIdle | 响应完成信号（用于流生命周期判定） |
 | session.error | SessionError | 会话级错误 |
 | session.compacted | SessionCompacted | 上下文压缩 |
-| session.diff | SessionDiff | diff 事件（payload 待调研） |
+| session.diff | SessionDiff | diff 事件（payload 语义未在 OpenCode 1.4.7 文档中公开；前端安全忽略，不影响功能） |
 | message.created | MessageCreated | 新消息（含 Part[] 内容） |
 | message.updated | MessageUpdated | 消息内容更新 |
 | message.completed | MessageCompleted | 消息处理完毕 |

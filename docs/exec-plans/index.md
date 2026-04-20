@@ -9,11 +9,13 @@
 | [Composer Data Source Picker](./2026-04-20-composer-data-source-picker-plan.md) | in_progress | 计划为 Composer 增加与模型并列的数据源选择器，接入全局 chooser host、缺库自动补选并恢复原动作、`ui_exec(workspace, choose_connection)` 适配器，以及 Stage 卡片来源数据源固化与显式回切。 |
 | [Stage UI Object Protocol Phase 1](./2026-04-20-stage-ui-object-protocol-plan.md) | in_progress | 前端 `UIRouter` + 4 个 CLIENT Action 桥接已就位；`StageStore` 多 Tab 模型、`WorkspaceAdapter` / `BangQueryAdapter`、StageWindow 多 Tab UI、`BangQueryTab` 组件、Composer `!` 拦截均已落地；后端 `/api/query` 加 `SqlStatementGuard`。客户端 198 tests + 后端 179 tests 全绿。**剩余：手动端到端联调（plan Step 12.5）**。AI 展示路径（QueryEditor + Prompt 注入）归属 P2，不在此 plan。 |
 | [SQL Risk Classification & IT CI Gate](./2026-04-20-sql-risk-classification-it-ci-gate-plan.md) | in_progress | `TD-020`：在 `ActionDispatcher` 统一预处理层引入 Apache Calcite SQL AST 风险判级，并通过 `ActionContext` / action output metadata 透传动态风险；`TD-021`：在 adapter 模块接入 failsafe，让 `mvn clean verify` 自动执行 `*IT.java`。 |
-
 ## 已完成计划
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [Session Review Follow-Ups](./2026-04-21-session-review-followups-plan.md) | 2026-04-21 | 修复 `session.created/deleted` 仅失效单一会话列表缓存的问题，并为后台 SSE 恢复增加消息历史活性校验：仅在历史仍存在未完成 assistant turn 时恢复后台订阅，否则清理过期 `streamingBySession`，避免重启后孤儿订阅。 |
+| [Tech Debt Batch — Session Events / POST Timeout / SSE Pool](./2026-04-20-tech-debt-batch-plan.md) | 2026-04-20 | 清除 TD-001/013/014/015/016/017/TD-MULTI-SESSION-SSE-POOL 共 7 项：前端 `buildEventSink` 消费 session.error/created/deleted/compacted/diff；后端 POST 超时提取为可配置项；H2 datasource 语义注释明确；`BackgroundSubscriber` + `useBackgroundSessionSubscribe` 实现多 session SSE 订阅池。19 tests PASS，编译零错误。 |
+| [AI Message Table Actions](./2026-04-20-ai-message-table-actions-plan.md) | 2026-04-20 | 统一 Markdown 表格升级为带动作栏的表格卡片，新增 `TableModel` / serializer 层，并支持复制表格、CSV、TSV、Markdown、JSON 与下载 CSV；`npx vitest run src/features/chat/components/markdown` 26 测试全绿，`npx tsc --noEmit` 通过。 |
 | [AI Message Code Window and Table](./2026-04-20-ai-message-code-window-and-table-plan.md) | 2026-04-20 | 前端 Markdown 渲染链路统一升级：代码块收口为带顶部 chrome 的浅色 code window，深色主题下仍保持亮面窗体；AI pipe table 新增窄范围规范化、滚动容器与 token 驱动样式；reasoning 容器改为更轻的承托层。目标测试与 `npx tsc --noEmit` 均通过，手动 light/dark 视觉烟测留给人工。 |
 | [Blank Session List Actions](./2026-04-20-blank-session-list-actions-plan.md) | 2026-04-20 | 会话列表中的空白会话继续显示并可进入，但不再显示“更多”按钮，也不再允许通过列表触发重命名或删除；保持删除当前会话后的空白会话兜底机制不变。 |
 | [Full-Stack I18n](./2026-04-20-full-stack-i18n-plan.md) | 2026-04-20 | 前端接入应用级 i18n provider、语言持久化和 `Accept-Language` 透传，覆盖设置/聊天/Stage/数据源等核心界面；后端增加 `MessageSource` + `Translator`，本地化异常消息、默认标题/名称、连接测试结果和 Action 描述；补齐前后端国际化相关测试与过期 schema 测试修复。 |

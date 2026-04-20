@@ -12,6 +12,7 @@ import { useConnectionStore } from '@/features/connection/store'
 import { useChannelStore } from '@/stores/channel-store'
 import { getClientHandler } from '@/features/actions/registry'
 import { normalizeError, showErrorToast } from '@/services/http-error'
+import { toast } from 'sonner'
 import {
   invalidateSessionLists,
   patchCachedSessionLists,
@@ -121,6 +122,17 @@ export function buildEventSink(
         })
         useTimelineStore.getState().addArtifact(sessionId, d.id, d.patch?.supersedesId)
       }
+    } else if (event === 'session.error') {
+      const { error } = data as { error?: string }
+      useChatPartsStore.getState().markSessionTurnCompleted(sessionId)
+      useChatPartsStore.getState().setStreaming(sessionId, false)
+      showErrorToast(normalizeError(new Error(error ?? 'Session error')))
+    } else if (event === 'session.created' || event === 'session.deleted') {
+      invalidateSessionLists(queryClient)
+    } else if (event === 'session.compacted') {
+      toast.info('AI 上下文已压缩，早期消息可能不再可用')
+    } else if (event === 'session.diff') {
+      // payload semantics undocumented in OpenCode 1.4.7 — safely ignored
     } else if (event === 'action.invoke' && client) {
       const { callId, actionId, input } = data as any
       const handler = getClientHandler(actionId)

@@ -38,12 +38,8 @@ public class ChannelController {
 
     private static final Logger log = LoggerFactory.getLogger(ChannelController.class);
 
-    /** POST turn 流最长存活时间——单 turn 最长运行时间。 */
-    private static final long POST_STREAM_TIMEOUT_MS = 10L * 60_000L;
     /** GET 订阅流 timeout——0 = Tomcat 不超时；存活由心跳探活 + 客户端断连决定。 */
     private static final long GET_STREAM_TIMEOUT_MS = 0L;
-    /** POST 线程等待 OpenCode turn 完成的上限，与 POST emitter timeout 对齐。 */
-    private static final long TURN_WAIT_TIMEOUT_MS = POST_STREAM_TIMEOUT_MS;
     /** Brief grace so the final session.status:idle frame reaches the wire before close. */
     private static final long FINAL_FRAME_GRACE_MS = 50L;
 
@@ -53,17 +49,20 @@ public class ChannelController {
     private final ObjectMapper om;
     private final SseHeartbeatScheduler heartbeat;
     private final long heartbeatIntervalMs;
+    private final long postStreamTimeoutMs;
 
     public ChannelController(JsonRpcCodec codec, ChannelService svc,
                              SessionBusRegistry buses, ObjectMapper om,
                              SseHeartbeatScheduler heartbeat,
-                             @Value("${app.sse.heartbeat-interval-ms:30000}") long heartbeatIntervalMs) {
+                             @Value("${app.sse.heartbeat-interval-ms:30000}") long heartbeatIntervalMs,
+                             @Value("${datatalk.channel.post-stream-timeout-ms:600000}") long postStreamTimeoutMs) {
         this.codec = codec;
         this.svc = svc;
         this.buses = buses;
         this.om = om;
         this.heartbeat = heartbeat;
         this.heartbeatIntervalMs = heartbeatIntervalMs;
+        this.postStreamTimeoutMs = postStreamTimeoutMs;
     }
 
     @PostMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -119,7 +118,7 @@ public class ChannelController {
                                        RpcRequest.SendMessage m,
                                        Long lastEventId) {
         SessionBus bus = buses.getOrCreate(sessionId);
-        ResponseBodyEmitter emitter = new ResponseBodyEmitter(POST_STREAM_TIMEOUT_MS);
+        ResponseBodyEmitter emitter = new ResponseBodyEmitter(postStreamTimeoutMs);
         ScheduledFuture<?> hb = heartbeat.register(emitter, heartbeatIntervalMs);
         SseEmitterSubscriber sub = new SseEmitterSubscriber(
             new EmitterOutputStream(emitter), om, "connected");
@@ -159,7 +158,7 @@ public class ChannelController {
                 // Block until OpenCode reports the turn finished, the client hangs
                 // up, or the hard upper bound elapses. The short-poll loop also
                 // notices broken subscribers (failed SSE writes) in between.
-                long deadline = System.currentTimeMillis() + TURN_WAIT_TIMEOUT_MS;
+                long deadline = System.currentTimeMillis() + postStreamTimeoutMs;
                 while (!clientGone.get() && !sub.isBroken()) {
                     long remaining = deadline - System.currentTimeMillis();
                     if (remaining <= 0) break;
