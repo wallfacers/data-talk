@@ -21,6 +21,8 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.event.EventListener;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -107,6 +109,7 @@ public class OpenCodeGatewayBeans {
     @EventListener(ApplicationReadyEvent.class)
     public void registerOnStartup() {
         preloadSessionMap();
+        writeAgentsMd();
 
         if (!serveProps.isEnabled()) {
             log.info("OpenCode embedded server is disabled - skipping tool registration");
@@ -127,6 +130,26 @@ public class OpenCodeGatewayBeans {
             eventLoop.start();
         } catch (Exception e) {
             log.error("OpenCode SSE event loop failed to start (degraded mode): {}", e.getMessage(), e);
+        }
+    }
+
+    private void writeAgentsMd() {
+        Path workDir = Paths.get(System.getProperty("user.home"), ".data-talk", "opencode");
+        Path target = workDir.resolve("AGENTS.md");
+        try {
+            Files.createDirectories(workDir);
+            String content = loadAgentsMd();
+            Files.writeString(target, content);
+            log.info("AGENTS.md written to {}", target);
+        } catch (IOException e) {
+            log.warn("Failed to write AGENTS.md: {}", e.getMessage());
+        }
+    }
+
+    private String loadAgentsMd() throws IOException {
+        try (var in = getClass().getClassLoader().getResourceAsStream("agents/AGENTS.md")) {
+            if (in == null) throw new IOException("agents/AGENTS.md not found on classpath");
+            return new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
         }
     }
 
