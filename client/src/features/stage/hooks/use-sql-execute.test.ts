@@ -3,7 +3,10 @@ import { renderHook, act } from '@testing-library/react'
 import { useSqlExecute } from './use-sql-execute'
 import * as sqlApi from '@/services/api/sql'
 
-vi.mock('@/services/api/sql')
+vi.mock('@/services/api/sql', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/services/api/sql')>()
+  return { ...actual, executeSql: vi.fn() }
+})
 
 const mockResult: sqlApi.SqlResult = {
   columns: ['id'], rows: [[1]], rowCount: 1, executionMs: 10, truncated: false,

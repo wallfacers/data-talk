@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { SquareIcon, CopyIcon, XIcon } from 'lucide-react'
+import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@/components/ui/button'
 import { useStageStore } from '@/stores/stage-store'
 import { useActiveArtifactTitle } from '../use-active-artifact-title'
@@ -20,7 +21,12 @@ export function StageWindow({ sessionId, children }: Props) {
   const toggleMaximized = useStageStore((s) => s.toggleMaximized)
   const { Icon, label } = useActiveArtifactTitle(sessionId ?? '')
 
-  const tabs = useStageStore((s) => (sessionId ? s.listTabs(sessionId) : []))
+  const tabs = useStageStore(
+    useShallow((s) => {
+      const sessionTabs = sessionId ? (s.tabsBySession.get(sessionId) ?? []) : []
+      return [...s.workspaceTabs, ...sessionTabs]
+    })
+  )
   const activeTabId = useStageStore((s) => {
     if (!sessionId) return s.activeWorkspaceTabId
     return s.activeTabIdBySession.get(sessionId) ?? null

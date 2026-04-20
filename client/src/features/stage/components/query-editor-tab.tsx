@@ -106,7 +106,7 @@ function ResultTable({ result }: { result: SqlResult }) {
 
 export function QueryEditorTab({ tab }: { tab: StageTab }) {
   const payload = tab.payload as QueryEditorPayload
-  const editorRef = useRef<EditorView>()
+  const editorRef = useRef<EditorView | undefined>(undefined)
   const activeConnectionId = useConnectionStore((s) => s.activeConnectionId)
   const connectionId = payload.connectionId ?? tab.connectionId ?? activeConnectionId ?? ''
   const source = payload.source ?? 'user'
