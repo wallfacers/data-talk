@@ -69,7 +69,101 @@ describe('Markdown', () => {
     await waitFor(() => expect(screen.getByRole('table')).toBeInTheDocument())
     await waitFor(() => {
       expect(container.querySelector('[data-component="markdown-table"]')).not.toBeNull()
+      expect(container.querySelector('[data-slot="markdown-table-bar"]')).not.toBeNull()
+      expect(container.querySelector('[data-slot="markdown-table-copy"]')).not.toBeNull()
+      expect(container.querySelector('[data-slot="markdown-table-csv"]')).not.toBeNull()
+      expect(container.querySelector('[data-slot="markdown-table-more"]')).not.toBeNull()
       expect(container.querySelector('[data-slot="markdown-table-scroll"] table')).not.toBeNull()
+    })
+  })
+
+  it('copies table CSV from the action bar', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, {
+      clipboard: {
+        writeText,
+      },
+    })
+
+    const markdown = '| name | value |\n| --- | --- |\n| JAVA_HOME | graalvm |'
+    const { container } = render(<Markdown text={markdown} cacheKey="table-2" />)
+    await waitFor(() => expect(container.querySelector('[data-slot="markdown-table-csv"]')).not.toBeNull())
+
+    fireEvent.click(container.querySelector('[data-slot="markdown-table-csv"]') as HTMLElement)
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith('name,value\r\nJAVA_HOME,graalvm')
+    })
+  })
+
+  it('copies table as html and plain text when rich clipboard support exists', async () => {
+    const write = vi.fn().mockResolvedValue(undefined)
+    const ClipboardItemMock = vi.fn((items: Record<string, Blob>) => items)
+    Object.assign(navigator, {
+      clipboard: {
+        write,
+      },
+    })
+    vi.stubGlobal('ClipboardItem', ClipboardItemMock)
+
+    const markdown = '| name | value |\n| --- | --- |\n| JAVA_HOME | graalvm |'
+    const { container } = render(<Markdown text={markdown} cacheKey="table-3" />)
+    await waitFor(() => expect(container.querySelector('[data-slot="markdown-table-copy"]')).not.toBeNull())
+
+    fireEvent.click(container.querySelector('[data-slot="markdown-table-copy"]') as HTMLElement)
+
+    await waitFor(() => {
+      expect(write).toHaveBeenCalledTimes(1)
+      expect(ClipboardItemMock).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  it('downloads csv from the more menu', async () => {
+    const createObjectURL = vi.fn(() => 'blob:csv')
+    const revokeObjectURL = vi.fn()
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    vi.stubGlobal('URL', {
+      createObjectURL,
+      revokeObjectURL,
+    })
+
+    const markdown = '| name | value |\n| --- | --- |\n| JAVA_HOME | graalvm |'
+    const { container } = render(<Markdown text={markdown} cacheKey="table-4" />)
+    await waitFor(() => expect(container.querySelector('[data-slot="markdown-table-more"]')).not.toBeNull())
+
+    fireEvent.click(container.querySelector('[data-slot="markdown-table-more"]') as HTMLElement)
+    fireEvent.click(
+      container.querySelector('[data-slot="markdown-table-action"][data-format="download-csv"]') as HTMLElement,
+    )
+
+    await waitFor(() => {
+      expect(createObjectURL).toHaveBeenCalledTimes(1)
+      expect(clickSpy).toHaveBeenCalledTimes(1)
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:csv')
+    })
+
+    clickSpy.mockRestore()
+  })
+
+  it('copies normalized JSON from the more menu', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, {
+      clipboard: {
+        writeText,
+      },
+    })
+
+    const markdown = '| 值 | 值 | |\n| --- | --- | --- |\n| 1 | 2 | 3 |'
+    const { container } = render(<Markdown text={markdown} cacheKey="table-5" />)
+    await waitFor(() => expect(container.querySelector('[data-slot="markdown-table-more"]')).not.toBeNull())
+
+    fireEvent.click(container.querySelector('[data-slot="markdown-table-more"]') as HTMLElement)
+    fireEvent.click(
+      container.querySelector('[data-slot="markdown-table-action"][data-format="json"]') as HTMLElement,
+    )
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith('[{"值":"1","值_2":"2","column_3":"3"}]')
     })
   })
 })

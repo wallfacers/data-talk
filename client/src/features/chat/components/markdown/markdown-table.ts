@@ -45,10 +45,61 @@ export function decorateTables(root: HTMLElement) {
     const shell = document.createElement('div')
     shell.setAttribute('data-component', 'markdown-table')
 
+    const bar = document.createElement('div')
+    bar.setAttribute('data-slot', 'markdown-table-bar')
+
+    const label = document.createElement('span')
+    label.setAttribute('data-slot', 'markdown-table-label')
+    label.textContent = 'Table'
+
+    const actions = document.createElement('div')
+    actions.setAttribute('data-slot', 'markdown-table-actions')
+
+    const copy = document.createElement('button')
+    copy.setAttribute('type', 'button')
+    copy.setAttribute('data-slot', 'markdown-table-copy')
+    copy.setAttribute('aria-label', 'Copy table')
+    copy.textContent = 'Copy table'
+
+    const csv = document.createElement('button')
+    csv.setAttribute('type', 'button')
+    csv.setAttribute('data-slot', 'markdown-table-csv')
+    csv.setAttribute('aria-label', 'Copy table as CSV')
+    csv.textContent = 'CSV'
+
+    const more = document.createElement('button')
+    more.setAttribute('type', 'button')
+    more.setAttribute('data-slot', 'markdown-table-more')
+    more.setAttribute('aria-label', 'More table actions')
+    more.setAttribute('aria-expanded', 'false')
+    more.textContent = 'More'
+
+    const menu = document.createElement('div')
+    menu.setAttribute('data-slot', 'markdown-table-menu')
+    menu.hidden = true
+
+    for (const [format, labelText] of [
+      ['tsv', 'TSV'],
+      ['markdown', 'Markdown'],
+      ['json', 'JSON'],
+      ['download-csv', 'Download CSV'],
+    ]) {
+      const item = document.createElement('button')
+      item.setAttribute('type', 'button')
+      item.setAttribute('data-slot', 'markdown-table-action')
+      item.setAttribute('data-format', format)
+      item.textContent = labelText
+      menu.appendChild(item)
+    }
+
+    actions.append(copy, csv, more, menu)
+    bar.append(label, actions)
+
     const scroll = document.createElement('div')
     scroll.setAttribute('data-slot', 'markdown-table-scroll')
 
     table.parentNode?.replaceChild(shell, table)
+    shell.appendChild(bar)
     shell.appendChild(scroll)
     scroll.appendChild(table)
   }

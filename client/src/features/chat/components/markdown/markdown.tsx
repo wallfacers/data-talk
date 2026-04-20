@@ -5,6 +5,8 @@ import morphdom from 'morphdom'
 import { stream } from './markdown-stream'
 import { decorateTables, normalizePipeTables } from './markdown-table'
 import { decorateSqlBlocks, SQL_EXECUTE_EVENT, SQL_EXPLAIN_EVENT } from './sql-code-block'
+import { extractTableModel } from './table-model'
+import { getDownloadFilename, toCsv, toDownloadableCsv, toJson, toMarkdownTable, toTsv } from './table-serializers'
 import { copyToClipboard } from '@/lib/utils'
 import './markdown.css'
 
@@ -38,6 +40,61 @@ function fallback(text: string): string {
 function sanitize(html: string): string {
   if (!DOMPurify.isSupported) return ''
   return DOMPurify.sanitize(html, PURIFY_CONFIG)
+}
+
+async function copyTableHtmlAndText(html: string, text: string): Promise<boolean> {
+  if (
+    navigator.clipboard &&
+    'write' in navigator.clipboard &&
+    typeof ClipboardItem !== 'undefined'
+  ) {
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/html': new Blob([html], { type: 'text/html' }),
+          'text/plain': new Blob([text], { type: 'text/plain' }),
+        }),
+      ])
+      return true
+    } catch {
+      // Fallback to plain-text copy below.
+    }
+  }
+
+  return copyToClipboard(text)
+}
+
+function setCopiedState(btn: HTMLElement) {
+  btn.setAttribute('data-copied', 'true')
+  setTimeout(() => {
+    btn.removeAttribute('data-copied')
+    if (btn.matches('[data-slot="markdown-copy-button"]')) {
+      btn.innerHTML = COPY_SVG
+    }
+  }, 2000)
+}
+
+function closeTableMenus(container: HTMLElement, except?: HTMLElement | null) {
+  for (const menu of Array.from(container.querySelectorAll('[data-slot="markdown-table-menu"]'))) {
+    const owner = menu.parentElement?.querySelector('[data-slot="markdown-table-more"]')
+    const isCurrent = except && menu === except
+    ;(menu as HTMLElement).hidden = !isCurrent
+    if (owner instanceof HTMLElement) {
+      owner.setAttribute('aria-expanded', isCurrent ? 'true' : 'false')
+    }
+  }
+}
+
+function downloadTableCsv(filename: string, content: string) {
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
 }
 
 function touch(key: string, value: Entry) {
@@ -164,24 +221,54 @@ export function Markdown(props: {
     if (!container) return
     const onClick = async (e: MouseEvent) => {
       const btn = (e.target as Element)?.closest?.(
-        '[data-slot="markdown-copy-button"], [data-slot="sql-execute"], [data-slot="sql-explain"]',
+        '[data-slot="markdown-copy-button"], [data-slot="sql-execute"], [data-slot="sql-explain"], [data-slot="markdown-table-copy"], [data-slot="markdown-table-csv"], [data-slot="markdown-table-more"], [data-slot="markdown-table-action"]',
       ) as HTMLElement | null
       if (!btn) return
+      if (btn.matches('[data-slot="markdown-table-more"]')) {
+        const menu = btn.parentElement?.querySelector('[data-slot="markdown-table-menu"]') as HTMLElement | null
+        const open = !(menu?.hidden ?? true)
+        closeTableMenus(container, open ? null : menu)
+        return
+      }
+
       const code = btn.closest('[data-component="markdown-code"]')?.querySelector('code')
       const content = code?.textContent ?? ''
       if (btn.matches('[data-slot="markdown-copy-button"]')) {
         if (!content) return
         const success = await copyToClipboard(content)
         if (success) {
-          btn.setAttribute('data-copied', 'true')
           btn.innerHTML = CHECK_SVG
-          setTimeout(() => {
-            btn.removeAttribute('data-copied')
-            btn.innerHTML = COPY_SVG
-          }, 2000)
+          setCopiedState(btn)
         }
         return
       }
+
+      if (btn.matches('[data-slot="markdown-table-copy"], [data-slot="markdown-table-csv"], [data-slot="markdown-table-action"]')) {
+        const table = btn.closest('[data-component="markdown-table"]')?.querySelector('table') as HTMLTableElement | null
+        if (!table) return
+        const model = extractTableModel(table)
+        let success = false
+
+        if (btn.matches('[data-slot="markdown-table-copy"]')) {
+          success = await copyTableHtmlAndText(model.sourceHtml, toTsv(model))
+        } else if (btn.matches('[data-slot="markdown-table-csv"]')) {
+          success = await copyToClipboard(toCsv(model))
+        } else {
+          const format = btn.getAttribute('data-format')
+          if (format === 'tsv') success = await copyToClipboard(toTsv(model))
+          if (format === 'markdown') success = await copyToClipboard(toMarkdownTable(model))
+          if (format === 'json') success = await copyToClipboard(toJson(model))
+          if (format === 'download-csv') {
+            downloadTableCsv(getDownloadFilename(), toDownloadableCsv(model))
+            success = true
+          }
+          closeTableMenus(container)
+        }
+
+        if (success) setCopiedState(btn)
+        return
+      }
+
       if (!content) return
       if (btn.matches('[data-slot="sql-execute"]')) {
         window.dispatchEvent(new CustomEvent(SQL_EXECUTE_EVENT, { detail: { sql: content } }))
