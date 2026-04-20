@@ -59,7 +59,7 @@ public class SqlExecuteService {
 
         if ("user".equals(source)) {
             SqlRiskAnalysis risk = riskAnalyzer.analyze(sql, Category.QUERY);
-            if (risk.riskLevel() == RiskLevel.L3) {
+            if (RiskLevel.L3.equals(risk.riskLevel())) {
                 throw new SqlRiskBlockedException(new RiskBlocked("HIGH", risk.reason()));
             }
         }
