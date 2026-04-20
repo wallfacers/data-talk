@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
 
 import java.nio.charset.StandardCharsets;
@@ -48,7 +49,10 @@ public class SseHeartbeatScheduler implements DisposableBean {
             try {
                 emitter.send(HEARTBEAT_BYTES, MediaType.APPLICATION_OCTET_STREAM);
             } catch (Exception e) {
-                log.debug("Heartbeat send failed, cancelling task", e);
+                // AsyncRequestNotUsableException 是客户端断连的预期信号（Broken pipe 等），静默取消；其它异常才值得 DEBUG。
+                if (!(e instanceof AsyncRequestNotUsableException)) {
+                    log.debug("Heartbeat send failed, cancelling task", e);
+                }
                 ScheduledFuture<?> self = ref.get();
                 if (self != null) self.cancel(false);
             }
