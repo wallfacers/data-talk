@@ -1,11 +1,12 @@
 package com.datatalk.service;
 
 import com.datatalk.application.sql.SqlStatementGuard;
+import com.datatalk.application.persistence.ConnectionRecord;
+import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.command.ExecuteSqlCommand;
 import com.datatalk.entity.DbConnection;
 import com.datatalk.entity.DbType;
 import com.datatalk.domain.error.DataTalkException;
-import com.datatalk.repository.DbConnectionRepository;
 import com.datatalk.repository.SqlExecutionRepository;
 import com.datatalk.valueobject.QueryResult;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,14 +28,14 @@ import static org.mockito.Mockito.when;
 
 class QueryApplicationServiceTest {
 
-    private DbConnectionRepository connectionRepository;
+    private ConnectionRepository connectionRepository;
     private SqlExecutionRepository sqlExecutionRepository;
     private SqlStatementGuard statementGuard;
     private QueryApplicationService service;
 
     @BeforeEach
     void setUp() {
-        connectionRepository = mock(DbConnectionRepository.class);
+        connectionRepository = mock(ConnectionRepository.class);
         sqlExecutionRepository = mock(SqlExecutionRepository.class);
         statementGuard = spy(new SqlStatementGuard());
         service = new QueryApplicationService(connectionRepository, sqlExecutionRepository, statementGuard);
@@ -53,6 +54,21 @@ class QueryApplicationServiceTest {
 
     @Test
     void validatesSelectBeforeQueryExecution() {
+        var record = new ConnectionRecord(
+                "conn-1",
+                "Primary",
+                "h2",
+                "localhost",
+                3306,
+                "demo",
+                "user",
+                new byte[0],
+                null,
+                Instant.parse("2026-04-20T00:00:00Z").toEpochMilli(),
+                3000,
+                null,
+                null
+        );
         var connection = new DbConnection(
                 "conn-1",
                 "Primary",
@@ -63,7 +79,7 @@ class QueryApplicationServiceTest {
                 "user",
                 Instant.parse("2026-04-20T00:00:00Z")
         );
-        when(connectionRepository.findById("conn-1")).thenReturn(Optional.of(connection));
+        when(connectionRepository.findById("conn-1")).thenReturn(Optional.of(record));
         when(sqlExecutionRepository.execute(connection, "SELECT 1"))
                 .thenReturn(new QueryResult(List.of("c"), List.of(Map.of("c", 1)), 5L));
 

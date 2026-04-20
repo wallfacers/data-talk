@@ -13,6 +13,7 @@
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [Data Source Refresh And Query Lookup](./2026-04-21-data-source-refresh-and-query-lookup-plan.md) | 2026-04-21 | 修复两个回归：前端 `useConnectionStore` 现在持久化 `activeConnectionId`，刷新页面后当前活动数据源不再丢失；后端 `/api/query` 改为读取现有 `connections` 仓储并兼容 `postgres`/`postgresql`，不再对有效数据源误报 `CONNECTION_NOT_FOUND`。 |
 | [Session Review Follow-Ups](./2026-04-21-session-review-followups-plan.md) | 2026-04-21 | 修复 `session.created/deleted` 仅失效单一会话列表缓存的问题，并为后台 SSE 恢复增加消息历史活性校验：仅在历史仍存在未完成 assistant turn 时恢复后台订阅，否则清理过期 `streamingBySession`，避免重启后孤儿订阅。 |
 | [Tech Debt Batch — Session Events / POST Timeout / SSE Pool](./2026-04-20-tech-debt-batch-plan.md) | 2026-04-20 | 清除 TD-001/013/014/015/016/017/TD-MULTI-SESSION-SSE-POOL 共 7 项：前端 `buildEventSink` 消费 session.error/created/deleted/compacted/diff；后端 POST 超时提取为可配置项；H2 datasource 语义注释明确；`BackgroundSubscriber` + `useBackgroundSessionSubscribe` 实现多 session SSE 订阅池。19 tests PASS，编译零错误。 |
 | [AI Message Table Actions](./2026-04-20-ai-message-table-actions-plan.md) | 2026-04-20 | 统一 Markdown 表格升级为带动作栏的表格卡片，新增 `TableModel` / serializer 层，并支持复制表格、CSV、TSV、Markdown、JSON 与下载 CSV；`npx vitest run src/features/chat/components/markdown` 26 测试全绿，`npx tsc --noEmit` 通过。 |
