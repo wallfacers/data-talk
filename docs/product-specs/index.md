@@ -209,6 +209,7 @@ DataTalk 的差异化在于 **AI 直接操作数据库**，但不能让 AI 蛮�
 
 | 设计文档 | 日期 | 主题 |
 |----------|------|------|
+| [Blank Session List Actions](./2026-04-20-blank-session-list-actions-design.md) | 2026-04-20 | 会话列表中的空白会话继续显示并可进入，但不再暴露“更多”按钮，也不支持重命名和删除，避免删除后立刻出现一个可再次操作的新会话 |
 | [SQL Risk Classification & IT CI Gate](./2026-04-20-sql-risk-classification-and-it-ci-gate-design.md) | 2026-04-20 | 用 Apache Calcite 建立后端通用 SQL AST 风险判级能力，挂到 `ActionDispatcher` 统一预处理层；同时将 `*IT.java` 通过 Maven `verify` 纳入真实门禁，并同步更新技术债与质量文档 |
 | [Assistant Model Metadata Propagation](./2026-04-20-assistant-model-metadata-propagation-design.md) | 2026-04-20 | 修复流式 assistant 消息不显示模型名：`Message` record 新增 `providerID / modelID`，`OpenCodeEventLoop.parseMessage` 兼容 user 嵌套 / assistant 扁平两种 OpenCode 1.4.7 形态；清理 `DtEvent.MessageCompleted` 死代码及前端对应分支 |
 | [SSE Heartbeat & Async Timeout 治理](./2026-04-20-sse-heartbeat-design.md) | 2026-04-20 | SSE GET 订阅改无限 timeout + 30s 心跳注释帧（`":\n\n"`）主动探活；POST turn 保留 10 分钟上限；`AsyncRequestTimeoutException` 降级 DEBUG；消除 `response committed already` 误导性 WARN |

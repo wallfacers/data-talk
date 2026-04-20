@@ -58,6 +58,10 @@ function displayTitle(title: string): string {
   return title
 }
 
+function canManageSession(session: Session): boolean {
+  return session.hasEverSent
+}
+
 function groupSessions(sessions: Session[], t: ReturnType<typeof useI18n>['t']): SessionGroup[] {
   // 不再过滤空白会话，始终显示，让用户可以随时切换回来
   const realSessions = sessions
@@ -206,8 +210,9 @@ function SessionGroupView({
   }, [editingId])
 
   const commitRename = (id: string) => {
+    const session = items.find((item) => item.id === id)
     const t = editTitle.trim()
-    if (t) {
+    if (session && canManageSession(session) && t) {
       onRename(id, t)
     }
     setEditingId(null)
@@ -242,39 +247,45 @@ function SessionGroupView({
                   >
                     <span className="truncate">{displayTitle(s.title)}</span>
                   </SidebarMenuButton>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      render={
-                        <SidebarMenuAction
-                          showOnHover
-                          className="aria-expanded:bg-muted"
-                        />
-                      }
-                    >
-                      <MoreHorizontalIcon />
-                      <span className="sr-only">{t('workspace.more')}</span>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      className="w-32"
-                      side={isMobile ? 'bottom' : 'right'}
-                      align={isMobile ? 'end' : 'start'}
-                    >
-                      <DropdownMenuItem onClick={() => {
-                        setEditingId(s.id)
-                        setEditTitle(OPENCODE_TEMP_TITLE_REGEX.test(s.title) ? t('workspace.nav.newSession') : s.title)
-                      }}>
-                        <PencilIcon />
-                        <span>{t('common.rename')}</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        variant="destructive"
-                        onClick={() => setDeleteTarget(s)}
+                  {canManageSession(s) ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        render={
+                          <SidebarMenuAction
+                            showOnHover
+                            className="aria-expanded:bg-muted"
+                          />
+                        }
                       >
-                        <Trash2Icon />
-                        <span>{t('common.delete')}</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                        <MoreHorizontalIcon />
+                        <span className="sr-only">{t('workspace.more')}</span>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        className="w-32"
+                        side={isMobile ? 'bottom' : 'right'}
+                        align={isMobile ? 'end' : 'start'}
+                      >
+                        <DropdownMenuItem onClick={() => {
+                          if (!canManageSession(s)) return
+                          setEditingId(s.id)
+                          setEditTitle(OPENCODE_TEMP_TITLE_REGEX.test(s.title) ? t('workspace.nav.newSession') : s.title)
+                        }}>
+                          <PencilIcon />
+                          <span>{t('common.rename')}</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          variant="destructive"
+                          onClick={() => {
+                            if (!canManageSession(s)) return
+                            setDeleteTarget(s)
+                          }}
+                        >
+                          <Trash2Icon />
+                          <span>{t('common.delete')}</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : null}
                 </>
               )}
             </SidebarMenuItem>
@@ -303,7 +314,7 @@ function SessionGroupView({
               variant="destructive"
               className="border-0 bg-transparent"
               onClick={() => {
-                if (deleteTarget) {
+                if (deleteTarget && canManageSession(deleteTarget)) {
                   onDelete(deleteTarget.id)
                 }
                 setDeleteTarget(null)

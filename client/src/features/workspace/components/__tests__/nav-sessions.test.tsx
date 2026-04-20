@@ -96,4 +96,26 @@ describe('NavSessions — 删除当前活跃会话', () => {
     expect(useSessionStore.getState().activeSessionId).toBe('cur')
     expect(createSpy).not.toHaveBeenCalled()
   })
+
+  it('空白会话不显示更多按钮', () => {
+    renderWithCache([
+      mkSession({ id: 'empty', title: '新会话', hasEverSent: false }),
+    ])
+
+    expect(screen.queryByRole('button', { name: '更多' })).not.toBeInTheDocument()
+    expect(screen.getByText('新会话')).toBeInTheDocument()
+  })
+
+  it('普通会话仍显示更多按钮和删除入口', async () => {
+    renderWithCache([
+      mkSession({ id: 'normal', title: '普通会话', hasEverSent: true }),
+      mkSession({ id: 'empty', title: '新会话', hasEverSent: false }),
+    ])
+
+    expect(screen.getAllByRole('button', { name: '更多' })).toHaveLength(1)
+
+    fireEvent.click(screen.getByRole('button', { name: '更多' }))
+
+    expect(await screen.findByText('删除')).toBeInTheDocument()
+  })
 })
