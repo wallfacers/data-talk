@@ -71,6 +71,7 @@ public class OpenCodeProcessManager implements SmartLifecycle {
     }
 
     private void doStart() throws Exception {
+        binaryResolver.ensureNodeModules();
         Path binary = resolveBinary();
         if (binary == null) {
             throw new IllegalStateException("No OpenCode binary available");
@@ -93,6 +94,11 @@ public class OpenCodeProcessManager implements SmartLifecycle {
         ProcessBuilder pb = new ProcessBuilder(cmd)
             .directory(homeDir.resolve(OpenCodeBinaryResolver.OPENCODE_DIR).toFile())
             .redirectErrorStream(true);
+        // Bun's fetch() chokes on proxy env vars ("proxy.url must be a non-empty string")
+        pb.environment().remove("http_proxy");
+        pb.environment().remove("https_proxy");
+        pb.environment().remove("HTTP_PROXY");
+        pb.environment().remove("HTTPS_PROXY");
 
         process = pb.start();
 

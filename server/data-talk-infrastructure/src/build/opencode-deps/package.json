@@ -1,0 +1,11 @@
+{
+  "name": "datatalk-opencode-deps",
+  "private": true,
+  "scripts": {
+    "package-deps": "npm install --omit=dev && mkdir -p ../../main/resources/opencode && tar -czf ../../main/resources/opencode/opencode-deps.tar.gz -C . node_modules && echo 'Created opencode-deps.tar.gz'"
+  },
+  "dependencies": {
+    "@opencode-ai/plugin": "1.4.6",
+    "@ai-sdk/openai-compatible": "latest"
+  }
+}

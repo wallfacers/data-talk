@@ -10,6 +10,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.*;
+import java.time.Instant;
 import java.util.UUID;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.ZipInputStream;
@@ -24,6 +25,8 @@ public class OpenCodeBinaryResolver {
     static final String DATA_DIR = ".data-talk";
     static final String OPENCODE_DIR = DATA_DIR + "/opencode";
     private static final String CURRENT_FILE = ".current";
+    static final String DEPS_RESOURCE = "opencode/opencode-deps.tar.gz";
+    private static final String DEPS_MARKER = ".datatalk-deps-installed";
 
     /**
      * Resolve local binary from the base directory.
@@ -206,6 +209,78 @@ public class OpenCodeBinaryResolver {
                 }
                 zip.closeEntry();
                 entry = zip.getNextEntry();
+            }
+        }
+    }
+
+    /**
+     * Extracts bundled NPM dependencies from classpath to ~/.config/opencode/
+     * so the OpenCode process can find them without network access.
+     */
+    public void ensureNodeModules() {
+        Path configDir = Paths.get(System.getProperty("user.home"), ".config", "opencode");
+        ensureNodeModulesWithConfigDir(configDir);
+    }
+
+    void ensureNodeModulesWithConfigDir(Path configDir) {
+        Path nodeModules = configDir.resolve("node_modules");
+        Path marker = configDir.resolve(DEPS_MARKER);
+
+        if (Files.exists(marker) && Files.isDirectory(nodeModules)) {
+            return;
+        }
+
+        try (InputStream in = getClass().getClassLoader().getResourceAsStream(DEPS_RESOURCE)) {
+            if (in == null) {
+                log.info("No bundled opencode deps on classpath, skipping extraction");
+                return;
+            }
+            extractDepsTarGz(in, configDir);
+            Files.writeString(marker, Instant.now().toString());
+            log.info("Extracted bundled NPM deps to {}", configDir);
+        } catch (Exception e) {
+            log.warn("Failed to extract bundled NPM deps: {}", e.getMessage());
+        }
+    }
+
+    void extractDepsTarGz(InputStream tarGzStream, Path targetDir) throws IOException {
+        try (GZIPInputStream gzip = new GZIPInputStream(tarGzStream)) {
+            byte[] header = new byte[512];
+            int bytesRead;
+
+            while ((bytesRead = gzip.read(header)) == 512) {
+                if (isZeroBlock(header)) break;
+
+                String filename = parseTarFilename(header);
+                if (filename.isEmpty()) continue;
+
+                long fileSize = parseTarSize(header);
+
+                Path targetPath = targetDir.resolve(filename);
+                if (!targetPath.normalize().startsWith(targetDir.normalize())) {
+                    throw new IOException("Tar entry escapes target directory: " + filename);
+                }
+
+                if (fileSize > 0) {
+                    Files.createDirectories(targetPath.getParent());
+                    try (FileOutputStream fos = new FileOutputStream(targetPath.toFile())) {
+                        long remaining = fileSize;
+                        byte[] buffer = new byte[8192];
+                        while (remaining > 0) {
+                            int toRead = (int) Math.min(buffer.length, remaining);
+                            int read = gzip.read(buffer, 0, toRead);
+                            if (read == -1) break;
+                            fos.write(buffer, 0, read);
+                            remaining -= read;
+                        }
+                        long padding = (512 - (fileSize % 512)) % 512;
+                        gzip.skipNBytes(padding);
+                    }
+                } else {
+                    Files.createDirectories(targetPath);
+                }
+
+                header = new byte[512];
             }
         }
     }
