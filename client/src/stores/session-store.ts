@@ -13,6 +13,8 @@ type SessionState = {
   openSession: (id: string, hasEverSent: boolean) => void
   closeSession: () => void
   enterSplit: (id: string) => void
+  setSessionMode: (id: string, mode: SessionMode) => void
+  markSessionSent: (id: string) => void
   setPendingPrompt: (text: string | null) => void
   setPendingModelPrompt: (on: boolean) => void
 }
@@ -45,8 +47,17 @@ export const useSessionStore = create<SessionState>()(
 
       enterSplit: (id) => set((s) => {
         const modes = new Map(s.modeBySession); modes.set(id, 'SPLIT')
+        return { modeBySession: modes }
+      }),
+
+      setSessionMode: (id, mode) => set((s) => {
+        const modes = new Map(s.modeBySession); modes.set(id, mode)
+        return { modeBySession: modes }
+      }),
+
+      markSessionSent: (id) => set((s) => {
         const sent = new Map(s.hasEverSentBySession); sent.set(id, true)
-        return { modeBySession: modes, hasEverSentBySession: sent }
+        return { hasEverSentBySession: sent }
       }),
 
       setPendingPrompt: (text) => set({ pendingPrompt: text }),

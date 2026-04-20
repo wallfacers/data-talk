@@ -150,6 +150,7 @@ export function useChannel() {
     sessionId ? s.streamingBySession.has(sessionId) : false,
   )
   const enterSplit = useSessionStore((s) => s.enterSplit)
+  const markSessionSent = useSessionStore((s) => s.markSessionSent)
   const client = useChannelClient(sessionId)
   const connectionId = useConnectionStore((s) => s.activeConnectionId)
 
@@ -164,6 +165,7 @@ export function useChannel() {
 
       useChatPartsStore.getState().setStreaming(sessionId, true)
       enterSplit(sessionId)
+      markSessionSent(sessionId)
       // 发送消息后刷新会话列表，让 hasEverSent 更新
       queryClient.invalidateQueries({ queryKey: ['sessions', connectionId ?? null] })
       const sink = buildEventSink(sessionId, client, queryClient, connectionId, pendingId)
@@ -177,7 +179,7 @@ export function useChannel() {
         useChatPartsStore.getState().setStreaming(sessionId, false)
       }
     },
-    [client, sessionId, enterSplit, queryClient, connectionId],
+    [client, sessionId, enterSplit, markSessionSent, queryClient, connectionId],
   )
 
   const retryPendingUser = useCallback(

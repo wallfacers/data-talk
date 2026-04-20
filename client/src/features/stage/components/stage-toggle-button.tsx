@@ -5,6 +5,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils'
 import { useStageStore } from '@/stores/stage-store'
 import { useSessionStore } from '@/stores/session-store'
+import { useChatPartsStore } from '@/stores/chat-parts-store'
 import { useSessionMode } from '@/features/session/use-session-mode'
 import { useI18n } from '@/i18n/use-i18n'
 
@@ -13,6 +14,16 @@ export function StageToggleButton() {
   const btnRef = useRef<HTMLButtonElement>(null)
   const sid = useSessionStore((s) => s.activeSessionId)
   const enterSplit = useSessionStore((s) => s.enterSplit)
+  const setSessionMode = useSessionStore((s) => s.setSessionMode)
+  const hasEverSent = useSessionStore((s) =>
+    sid ? (s.hasEverSentBySession.get(sid) ?? false) : false,
+  )
+  const hasStoreMessages = useChatPartsStore((s) => {
+    const info = sid ? s.infoBySession.get(sid) : undefined
+    return info ? info.size > 0 : false
+  })
+  const hasMessages = hasEverSent || hasStoreMessages
+
   const { mode } = useSessionMode()
   const open = useStageStore((s) => (sid ? !!s.openBySession.get(sid) : false))
   const openStage = useStageStore((s) => s.openStage)
@@ -34,6 +45,9 @@ export function StageToggleButton() {
       enterSplit(sid)
       openStage(sid)
     } else {
+      if (open && !hasMessages) {
+        setSessionMode(sid, 'HERO')
+      }
       toggle(sid)
     }
   }
