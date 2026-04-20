@@ -41,6 +41,8 @@ datatalk:
     sqlite-path: ./data/datatalk.db
   channel:
     post-stream-timeout-ms: 600000   # POST SSE 单 turn 最长存活（毫秒），默认 10 分钟
+  sql:
+    max-rows: 5000
   opencode:
     base-url: http://localhost:4096
     plugin-callback-base: http://localhost:8080
