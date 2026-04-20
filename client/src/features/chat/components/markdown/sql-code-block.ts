@@ -11,41 +11,50 @@ export function statementType(sql: string): string | null {
   return m?.[1]?.toUpperCase() ?? null
 }
 
-export function decorateSqlBlocks(
-  root: HTMLElement,
-  opts: { onExecute: (sql: string) => void; onExplain: (sql: string) => void },
-) {
+export function decorateSqlBlocks(root: HTMLElement) {
   const codes = Array.from(root.querySelectorAll('pre > code.language-sql')) as HTMLElement[]
   for (const code of codes) {
     const pre = code.parentElement
     if (!pre) continue
     const wrapper = pre.parentElement
     if (!wrapper || wrapper.getAttribute('data-component') !== 'markdown-code') continue
-    if (wrapper.querySelector('[data-slot="sql-header"]')) continue
+    if (wrapper.querySelector('[data-slot="sql-execute"], [data-slot="sql-explain"]')) continue
 
     const sql = code.textContent ?? ''
     const kind = statementType(sql)
     const risk = classifySqlRisk(sql)
+    const bar = wrapper.querySelector('[data-slot="markdown-code-bar"]')
+    const actions = wrapper.querySelector('[data-slot="markdown-code-actions"]')
+    if (!bar || !actions) continue
 
-    const header = document.createElement('div')
-    header.setAttribute('data-slot', 'sql-header')
-    header.className = 'flex items-center gap-2 border-b bg-muted/40 px-2 py-1 text-xs'
-    header.innerHTML = `
-      <span class="rounded border px-1.5 font-mono text-[10px]">SQL${kind ? ' · ' + kind : ''}</span>
-      ${risk === 'L1' ? `<button data-slot="sql-execute" type="button" class="rounded border px-2 hover:bg-background">${translateMessage(getCurrentLanguage(), 'chat.executeSql')}</button>` : ''}
-      <button data-slot="sql-explain" type="button" class="rounded border px-2 hover:bg-background">${translateMessage(getCurrentLanguage(), 'chat.explainSql')}</button>
-    `
-    wrapper.insertBefore(header, pre)
+    if (kind) {
+      const badge = document.createElement('span')
+      badge.setAttribute('data-slot', 'sql-kind')
+      badge.textContent = kind
+      bar.insertBefore(badge, actions)
+    }
 
-    const execBtn = wrapper.querySelector('[data-slot="sql-execute"]') as HTMLButtonElement | null
-    execBtn?.addEventListener('click', (e) => {
-      e.stopPropagation()
-      opts.onExecute(sql)
-    })
-    const explainBtn = wrapper.querySelector('[data-slot="sql-explain"]') as HTMLButtonElement | null
-    explainBtn?.addEventListener('click', (e) => {
-      e.stopPropagation()
-      opts.onExplain(sql)
-    })
+    const executeLabel = translateMessage(getCurrentLanguage(), 'chat.executeSql')
+    const explainLabel = translateMessage(getCurrentLanguage(), 'chat.explainSql')
+    const createButton = (slot: string, label: string) => {
+      const button = document.createElement('button')
+      button.setAttribute('type', 'button')
+      button.setAttribute('data-slot', slot)
+      button.textContent = label
+      return button
+    }
+    const copyButton = actions.querySelector('[data-slot="markdown-copy-button"]')
+    const insertAction = (button: HTMLButtonElement) => {
+      if (copyButton) {
+        actions.insertBefore(button, copyButton)
+      } else {
+        actions.appendChild(button)
+      }
+    }
+
+    if (risk === 'L1') {
+      insertAction(createButton('sql-execute', executeLabel))
+    }
+    insertAction(createButton('sql-explain', explainLabel))
   }
 }

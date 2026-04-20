@@ -13,6 +13,7 @@
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [AI Message Code Window and Table](./2026-04-20-ai-message-code-window-and-table-plan.md) | 2026-04-20 | 前端 Markdown 渲染链路统一升级：代码块收口为带顶部 chrome 的浅色 code window，深色主题下仍保持亮面窗体；AI pipe table 新增窄范围规范化、滚动容器与 token 驱动样式；reasoning 容器改为更轻的承托层。目标测试与 `npx tsc --noEmit` 均通过，手动 light/dark 视觉烟测留给人工。 |
 | [Blank Session List Actions](./2026-04-20-blank-session-list-actions-plan.md) | 2026-04-20 | 会话列表中的空白会话继续显示并可进入，但不再显示“更多”按钮，也不再允许通过列表触发重命名或删除；保持删除当前会话后的空白会话兜底机制不变。 |
 | [Full-Stack I18n](./2026-04-20-full-stack-i18n-plan.md) | 2026-04-20 | 前端接入应用级 i18n provider、语言持久化和 `Accept-Language` 透传，覆盖设置/聊天/Stage/数据源等核心界面；后端增加 `MessageSource` + `Translator`，本地化异常消息、默认标题/名称、连接测试结果和 Action 描述；补齐前后端国际化相关测试与过期 schema 测试修复。 |
 | [Composer Model Picker Dialog](./2026-04-18-composer-model-picker-dialog-plan.md) | 2026-04-20 | Composer 模型选择器完成 Popover → 960×540 双栏对话框迁移，补齐 provider 默认定位 / 搜索联动 / 空态引导 / 选中关闭测试；为适配并发 i18n 改动补充测试环境 `useI18n` mock 与过期 StageWindow 断言修正；`npm test`（151 tests）与 `npx tsc --noEmit` 均通过，手动烟测留给人工联调。 |

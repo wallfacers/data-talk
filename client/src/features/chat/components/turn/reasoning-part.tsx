@@ -42,7 +42,7 @@ export function ReasoningPart(props: PartComponentProps) {
   }
 
   return (
-    <div data-component="reasoning-part" className="my-2 flex flex-col">
+    <div data-component="reasoning-part" className="my-2 flex flex-col gap-2">
       <button
         type="button"
         onClick={() => setOpen(!open)}
@@ -59,7 +59,7 @@ export function ReasoningPart(props: PartComponentProps) {
         )}
       </button>
       {open && (
-        <div className="mt-2 mb-2 ml-2 border-l-2 border-border pl-4 py-0.5 text-sm text-muted-foreground">
+        <div className="rounded-2xl border border-border/60 bg-muted/20 px-4 py-3 text-sm text-muted-foreground shadow-sm">
           {isPartStreaming ? (
             <PacedMarkdown text={text} cacheKey={part.id} streaming />
           ) : (

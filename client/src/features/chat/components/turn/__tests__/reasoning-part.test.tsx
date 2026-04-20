@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { ReasoningPart } from '../reasoning-part'
 import type { MessageInfo, ReasoningPart as RPartType } from '@/services/channel/types'
 
@@ -74,5 +74,22 @@ describe('ReasoningPart', () => {
     }
     render(<ReasoningPart part={partWithTime} info={completedInfo} />)
     expect(screen.getByText(/已深度思考（3 秒）/)).toBeInTheDocument()
+  })
+
+  it('renders fenced code in reasoning with the shared code window wrapper', async () => {
+    const codePart = { ...part, text: '```js\nconsole.log(1)\n```' }
+    const { container } = render(<ReasoningPart part={codePart} info={info} />)
+    const renderedCode = await screen.findByText(/console\.log\(1\)/)
+    await waitFor(() =>
+      expect(
+        container.querySelector('[data-component="reasoning-part"] [data-component="markdown-code"]'),
+      ).not.toBeNull(),
+    )
+    expect(screen.getByLabelText('思考中…')).toBeInTheDocument()
+    expect(renderedCode.closest('[data-component="reasoning-part"]')).not.toBeNull()
+    expect(renderedCode.closest('pre')).not.toBeNull()
+    expect(container.querySelector('[data-component="reasoning-part"]')?.textContent).not.toContain(
+      '```js',
+    )
   })
 })

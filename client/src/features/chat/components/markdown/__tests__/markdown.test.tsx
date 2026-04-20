@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { Markdown } from '../markdown'
+import { SQL_EXPLAIN_EVENT, SQL_EXECUTE_EVENT } from '../sql-code-block'
 
 describe('Markdown', () => {
   it('sanitizes script tags', () => {
@@ -13,10 +14,62 @@ describe('Markdown', () => {
     await screen.findByText('Title')
   })
 
-  it('wraps pre blocks with copy button', async () => {
-    const { container } = render(<Markdown text={'```js\nconst x = 1\n```'} cacheKey="t3" />)
-    await new Promise((r) => setTimeout(r, 20))
-    expect(container.querySelector('[data-component="markdown-code"]')).not.toBeNull()
-    expect(container.querySelector('[data-slot="markdown-copy-button"]')).not.toBeNull()
+  it('renders fenced code inside a code window with chrome slots', async () => {
+    const { container } = render(
+      <Markdown text={'```powershell\n$env:JAVA_HOME="D:/software/java"\n```'} cacheKey="code-1" />,
+    )
+    await waitFor(() => {
+      expect(container.querySelector('[data-component="markdown-code"]')).not.toBeNull()
+      expect(container.querySelector('[data-slot="markdown-code-bar"]')).not.toBeNull()
+      expect(container.querySelector('[data-slot="markdown-code-language"]')?.textContent).toMatch(
+        /PowerShell/i,
+      )
+      expect(container.querySelector('[data-slot="markdown-copy-button"]')).not.toBeNull()
+    })
+  })
+
+  it('renders SQL code inside a code window with shared chrome', async () => {
+    const { container } = render(<Markdown text={'```sql\nselect 1;\n```'} cacheKey="sql-1" />)
+    await waitFor(() => {
+      expect(container.querySelector('[data-component="markdown-code"]')).not.toBeNull()
+      expect(container.querySelector('[data-slot="markdown-code-bar"]')).not.toBeNull()
+      expect(container.querySelector('[data-slot="markdown-code-language"]')?.textContent).toBe('SQL')
+      expect(container.querySelector('[data-slot="sql-kind"]')?.textContent).toBe('SELECT')
+      expect(container.querySelector('[data-slot="sql-execute"]')).not.toBeNull()
+      expect(container.querySelector('[data-slot="sql-explain"]')).not.toBeNull()
+      expect(container.querySelector('[data-slot="markdown-copy-button"]')).not.toBeNull()
+    })
+  })
+
+  it('dispatches SQL execute and explain events from the shared chrome', async () => {
+    const onExecute = vi.fn()
+    const onExplain = vi.fn()
+    window.addEventListener(SQL_EXECUTE_EVENT, onExecute)
+    window.addEventListener(SQL_EXPLAIN_EVENT, onExplain)
+
+    const { container } = render(<Markdown text={'```sql\nselect 1;\n```'} cacheKey="sql-2" />)
+    await waitFor(() => {
+      expect(container.querySelector('[data-slot="sql-execute"]')).not.toBeNull()
+      expect(container.querySelector('[data-slot="sql-explain"]')).not.toBeNull()
+    })
+
+    fireEvent.click(container.querySelector('[data-slot="sql-execute"]') as HTMLElement)
+    fireEvent.click(container.querySelector('[data-slot="sql-explain"]') as HTMLElement)
+
+    expect(onExecute).toHaveBeenCalledTimes(1)
+    expect(onExplain).toHaveBeenCalledTimes(1)
+
+    window.removeEventListener(SQL_EXECUTE_EVENT, onExecute)
+    window.removeEventListener(SQL_EXPLAIN_EVENT, onExplain)
+  })
+
+  it('wraps rendered tables with the unified scroll container', async () => {
+    const markdown = '| name | value |\n| --- | --- |\n| JAVA_HOME | graalvm |'
+    const { container } = render(<Markdown text={markdown} cacheKey="table-1" />)
+    await waitFor(() => expect(screen.getByRole('table')).toBeInTheDocument())
+    await waitFor(() => {
+      expect(container.querySelector('[data-component="markdown-table"]')).not.toBeNull()
+      expect(container.querySelector('[data-slot="markdown-table-scroll"] table')).not.toBeNull()
+    })
   })
 })

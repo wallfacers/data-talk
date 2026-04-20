@@ -20,4 +20,12 @@ describe('markdown-stream', () => {
     const result = stream('', true)
     expect(result.length).toBe(1)
   })
+
+  it('keeps reference-style text in a single live block', () => {
+    const text = 'See [the docs][docs]\n\n[docs]: https://example.com/docs'
+    const result = stream(text, true)
+    expect(result).toHaveLength(1)
+    expect(result[0].mode).toBe('live')
+    expect(result[0].raw).toContain('[docs]: https://example.com/docs')
+  })
 })
