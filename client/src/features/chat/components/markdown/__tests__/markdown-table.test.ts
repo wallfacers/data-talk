@@ -27,8 +27,10 @@ describe('normalizePipeTables', () => {
     const root = document.createElement('div')
     root.innerHTML = '<table><tbody><tr><td>1</td></tr></tbody></table>'
 
-    mod.decorateTables(root)
-    mod.decorateTables(root)
+    const t = (key: string) => key
+
+    mod.decorateTables(root, t)
+    mod.decorateTables(root, t)
 
     expect(root.querySelector('[data-component="markdown-table"]')).not.toBeNull()
     expect(root.querySelector('[data-slot="markdown-table-scroll"] table')).not.toBeNull()

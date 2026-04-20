@@ -1,5 +1,6 @@
 package com.datatalk.repository;
 
+import com.datatalk.application.connection.JdbcUrlBuilder;
 import com.datatalk.entity.DbConnection;
 import com.datatalk.entity.DbType;
 import com.datatalk.exception.SqlExecutionException;
@@ -52,24 +53,19 @@ public class DynamicSqlExecutionRepository implements SqlExecutionRepository {
         HikariConfig config = new HikariConfig();
         config.setMaximumPoolSize(1);
         config.setConnectionTimeout(5000);
+        config.setJdbcUrl(JdbcUrlBuilder.build(connection));
 
         switch (connection.dbType()) {
             case MYSQL -> {
-                config.setJdbcUrl(String.format("jdbc:mysql://%s:%d/%s",
-                        connection.host(), connection.port(), connection.databaseName()));
                 config.setDriverClassName("com.mysql.cj.jdbc.Driver");
             }
             case POSTGRESQL -> {
-                config.setJdbcUrl(String.format("jdbc:postgresql://%s:%d/%s",
-                        connection.host(), connection.port(), connection.databaseName()));
                 config.setDriverClassName("org.postgresql.Driver");
             }
             case SQLITE -> {
-                config.setJdbcUrl("jdbc:sqlite:" + connection.databaseName());
                 config.setDriverClassName("org.sqlite.JDBC");
             }
             case H2 -> {
-                config.setJdbcUrl(String.format("jdbc:h2:%s", connection.databaseName()));
                 config.setDriverClassName("org.h2.Driver");
             }
             default -> throw new IllegalArgumentException("Unsupported database type: " + connection.dbType());
@@ -78,7 +74,7 @@ public class DynamicSqlExecutionRepository implements SqlExecutionRepository {
         if (connection.username() != null) {
             config.setUsername(connection.username());
         }
-        config.setPassword("");
+        config.setPassword(connection.password() == null ? "" : connection.password());
 
         return new HikariDataSource(config);
     }

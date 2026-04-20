@@ -8,6 +8,7 @@ import { decorateSqlBlocks, SQL_EXECUTE_EVENT, SQL_EXPLAIN_EVENT } from './sql-c
 import { extractTableModel } from './table-model'
 import { getDownloadFilename, toCsv, toDownloadableCsv, toJson, toMarkdownTable, toTsv } from './table-serializers'
 import { copyToClipboard } from '@/lib/utils'
+import { useI18n } from '@/i18n/use-i18n'
 import './markdown.css'
 
 type Entry = { hash: string; html: string }
@@ -199,6 +200,9 @@ export function Markdown(props: {
   className?: string
 }) {
   const ref = useRef<HTMLDivElement>(null)
+  const { t } = useI18n()
+  const tRef = useRef(t)
+  tRef.current = t
 
   useEffect(() => {
     const container = ref.current
@@ -212,7 +216,7 @@ export function Markdown(props: {
     temp.innerHTML = html
     decorateCodeBlocks(temp)
     decorateSqlBlocks(temp)
-    decorateTables(temp)
+    decorateTables(temp, tRef.current)
     morphdom(container, temp, { childrenOnly: true })
   }, [props.text, props.cacheKey, props.streaming])
 

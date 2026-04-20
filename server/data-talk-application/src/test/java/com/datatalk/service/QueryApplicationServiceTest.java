@@ -1,5 +1,6 @@
 package com.datatalk.service;
 
+import com.datatalk.application.connection.ConnectionService;
 import com.datatalk.application.sql.SqlStatementGuard;
 import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.application.persistence.ConnectionRepository;
@@ -19,16 +20,19 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class QueryApplicationServiceTest {
 
     private ConnectionRepository connectionRepository;
+    private ConnectionService connectionService;
     private SqlExecutionRepository sqlExecutionRepository;
     private SqlStatementGuard statementGuard;
     private QueryApplicationService service;
@@ -36,9 +40,10 @@ class QueryApplicationServiceTest {
     @BeforeEach
     void setUp() {
         connectionRepository = mock(ConnectionRepository.class);
+        connectionService = mock(ConnectionService.class);
         sqlExecutionRepository = mock(SqlExecutionRepository.class);
         statementGuard = spy(new SqlStatementGuard());
-        service = new QueryApplicationService(connectionRepository, sqlExecutionRepository, statementGuard);
+        service = new QueryApplicationService(connectionRepository, connectionService, sqlExecutionRepository, statementGuard);
     }
 
     @Test
@@ -77,9 +82,11 @@ class QueryApplicationServiceTest {
                 3306,
                 "demo",
                 "user",
+                "secret",
                 Instant.parse("2026-04-20T00:00:00Z")
         );
         when(connectionRepository.findById("conn-1")).thenReturn(Optional.of(record));
+        when(connectionService.decryptPassword("conn-1")).thenReturn("secret");
         when(sqlExecutionRepository.execute(connection, "SELECT 1"))
                 .thenReturn(new QueryResult(List.of("c"), List.of(Map.of("c", 1)), 5L));
 
@@ -89,6 +96,9 @@ class QueryApplicationServiceTest {
         var order = inOrder(statementGuard, connectionRepository, sqlExecutionRepository);
         order.verify(statementGuard).assertSelectOnly("SELECT 1");
         order.verify(connectionRepository).findById("conn-1");
-        order.verify(sqlExecutionRepository).execute(connection, "SELECT 1");
+        verify(connectionService).decryptPassword("conn-1");
+        order.verify(sqlExecutionRepository).execute(
+                argThat(actual -> actual != null && "secret".equals(actual.password())),
+                eq("SELECT 1"));
     }
 }

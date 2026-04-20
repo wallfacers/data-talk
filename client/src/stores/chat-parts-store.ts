@@ -188,21 +188,45 @@ export const useChatPartsStore = create<ChatPartsState>()(
       upsertPendingUser: (sessionId, text) => {
         const pendingId = `pending_${generateUuid()}`
         const partId = `pending_prt_${generateUuid()}`
-        get().upsertInfo(sessionId, {
-          id: pendingId,
-          role: 'user',
-          sessionID: sessionId,
-          time: { created: Date.now() },
-          __pending: true,
+        const createdAt = Date.now()
+        set((s) => {
+          const infoBySession = new Map(s.infoBySession)
+          const partsBySession = new Map(s.partsBySession)
+          const partIndexBySession = new Map(s.partIndexBySession)
+
+          const infoMap = new Map(infoBySession.get(sessionId) ?? new Map())
+          infoMap.set(pendingId, {
+            id: pendingId,
+            role: 'user',
+            sessionID: sessionId,
+            time: { created: createdAt },
+            __pending: true,
+          })
+          infoBySession.set(sessionId, infoMap)
+
+          const partsMap = new Map(partsBySession.get(sessionId) ?? new Map())
+          const pendingPart = {
+            type: 'text',
+            id: partId,
+            sessionID: sessionId,
+            messageID: pendingId,
+            text,
+            metadata: {},
+          } as Part
+          partsMap.set(pendingId, [pendingPart])
+          partsBySession.set(sessionId, partsMap)
+
+          const indexMap = new Map(partIndexBySession.get(sessionId) ?? new Map())
+          indexMap.set(partId, { messageId: pendingId, idx: 0 })
+          partIndexBySession.set(sessionId, indexMap)
+
+          return {
+            infoBySession,
+            partsBySession,
+            partIndexBySession,
+            version: s.version + 1,
+          }
         })
-        get().upsertPart(sessionId, {
-          type: 'text',
-          id: partId,
-          sessionID: sessionId,
-          messageID: pendingId,
-          text,
-          metadata: {},
-        } as Part)
         return pendingId
       },
 

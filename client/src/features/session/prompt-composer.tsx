@@ -20,15 +20,17 @@ import { useChatPartsStore } from '@/stores/chat-parts-store'
 import { useConnectionStore } from '@/features/connection/store'
 import { useChannel } from '@/services/channel/use-channel'
 import { createTextPart } from '@/services/channel/types'
-import { createSession } from '@/services/api/session'
+import { createSession, deleteSession } from '@/services/api/session'
 import { normalizeError, showErrorToast } from '@/services/http-error'
 import { StageToggleButton } from '@/features/stage/components/stage-toggle-button'
 import { openBangQueryTab } from '@/features/stage/utils/open-bang-query-tab'
+import { createBangQueryMessage } from '@/services/api/bang-query-message'
 import { useHasActiveModel } from './hooks/use-has-active-model'
 import { invalidateSessionLists } from './hooks/use-sessions'
 import { SQL_EXECUTE_EVENT, SQL_EXPLAIN_EVENT } from '@/features/chat/components/markdown/sql-code-block'
 import { useI18n } from '@/i18n/use-i18n'
 import { useDataSourcePickerStore } from './data-source-picker/data-source-picker-store'
+import { cn } from '@/lib/utils'
 
 function useComposerSlot(): HTMLElement | null {
   const [slot, setSlot] = useState<HTMLElement | null>(null)
@@ -74,15 +76,16 @@ function InnerComposer() {
   const setActiveConnection = useConnectionStore((s) => s.setActive)
   const hasActiveModel = useHasActiveModel()
   const qc = useQueryClient()
+  const isBangQueryMode = /^!\s*(select|with)\b/i.test(text.trim())
 
   const submitText = async (raw: string) => {
-    const t = raw.trim()
-    if (!t || isStreaming) return
+    const trimmed = raw.trim()
+    if (!trimmed || isStreaming) return
 
     // !<sql> direct-query intercept: bypass AI entirely for SELECT/WITH queries.
     // Other '!' prefixed content still routes to AI (compat with natural language use).
-    if (t.startsWith('!')) {
-      const sql = t.slice(1).trim()
+    if (trimmed.startsWith('!')) {
+      const sql = trimmed.slice(1).trim()
       if (sql && /^(select|with)\b/i.test(sql)) {
         let connectionId = activeConnectionId
         if (!connectionId) {
@@ -94,16 +97,63 @@ function InnerComposer() {
           setActiveConnection(picked.connectionId)
           connectionId = picked.connectionId
         }
+
+        let sessionId = activeSessionId
+        let createdSessionId: string | null = null
+        if (!sessionId) {
+          try {
+            // 使用用户输入的文本的前 50 个字符作为初始标题，实现标题快速填充
+            const initialTitle = trimmed.slice(0, 50)
+            const sess = await createSession(connectionId ?? undefined, initialTitle)
+            createdSessionId = sess.id
+            sessionId = sess.id
+          } catch (err) {
+            setText(trimmed)
+            showErrorToast(normalizeError(err))
+            return
+          }
+        }
+        const bangSessionId = sessionId ?? activeSessionId
+        if (!bangSessionId) return
+
         try {
           setText('')
+          const createdAt = Date.now()
+          const persisted = await createBangQueryMessage(bangSessionId, trimmed, createdAt)
+          useChatPartsStore.getState().upsertInfo(bangSessionId, {
+            id: persisted.id,
+            role: 'user',
+            sessionID: bangSessionId,
+            time: { created: persisted.createdAt },
+          })
+          useChatPartsStore.getState().upsertPart(bangSessionId, {
+            type: 'text',
+            id: `prt_${persisted.id}`,
+            sessionID: bangSessionId,
+            messageID: persisted.id,
+            text: trimmed,
+            metadata: { displayKind: persisted.kind, queryMode: 'direct_sql' },
+            synthetic: true,
+          })
+          openSession(bangSessionId, true)
+          invalidateSessionLists(qc)
+          void qc.invalidateQueries({ queryKey: ['session-history', 'messages', bangSessionId] })
           await openBangQueryTab({
-            sessionId: activeSessionId,
+            sessionId: bangSessionId,
             connectionId,
             sql,
           })
         } catch (err) {
+          if (createdSessionId) {
+            try {
+              await deleteSession(createdSessionId)
+              invalidateSessionLists(qc)
+            } catch {
+              // best-effort cleanup: keep the original error for the user
+            }
+          }
           showErrorToast(normalizeError(err))
-          setText(t) // restore user input on failure
+          setText(trimmed) // restore user input on failure
         }
         return
       }
@@ -111,7 +161,7 @@ function InnerComposer() {
     }
 
     if (!activeConnectionId) {
-      setPendingPrompt(t)
+      setPendingPrompt(trimmed)
       setPendingConnectionPrompt(true)
       setPendingActionAfterConnectionPick({ kind: 'send' })
       const picked = await useDataSourcePickerStore.getState().requestPick({
@@ -131,29 +181,29 @@ function InnerComposer() {
 
     if (!activeSessionId) {
       if (!hasActiveModel) {
-        setPendingPrompt(t)
+        setPendingPrompt(trimmed)
         setPendingModelPrompt(true)
         return
       }
       setText('')
-      setPendingPrompt(t)
+      setPendingPrompt(trimmed)
       try {
         // 使用用户输入的文本的前 50 个字符作为初始标题，实现标题快速填充
-        const initialTitle = t.slice(0, 50)
+        const initialTitle = trimmed.slice(0, 50)
         const sess = await createSession(activeConnectionId ?? undefined, initialTitle)
         invalidateSessionLists(qc)
         openSession(sess.id, sess.hasEverSent)
         // resume hook 会在 activeSessionId 就绪后消费 pendingPrompt
       } catch (err) {
         setPendingPrompt(null)
-        setText(t)
+        setText(trimmed)
         showErrorToast(normalizeError(err))
       }
       return
     }
 
     setText('')
-    await sendMessage([createTextPart(activeSessionId, t)])
+    await sendMessage([createTextPart(activeSessionId, trimmed)])
   }
 
   const onSubmit = async (e: FormEvent) => {
@@ -222,19 +272,32 @@ function InnerComposer() {
   return (
     <form onSubmit={onSubmit} className="w-full">
       <InputGroup
-        className="rounded-2xl !border-foreground/20 shadow-sm transition-shadow focus-within:!border-foreground/40 focus-within:shadow-md dark:!border-white/25 dark:focus-within:!border-white/40"
-        style={{ backgroundColor: 'var(--background)' }}
+        data-bang-query-mode={isBangQueryMode ? 'true' : undefined}
+        className={cn(
+          'rounded-2xl !border-foreground/20 shadow-sm transition-all focus-within:!border-foreground/40 focus-within:shadow-md dark:!border-white/25 dark:focus-within:!border-white/40',
+          isBangQueryMode && [
+            '!border-amber-500/50 bg-amber-50/70 shadow-amber-950/5 focus-within:!border-amber-500/70 dark:!border-amber-400/40 dark:bg-amber-950/20 dark:shadow-none',
+          ],
+        )}
       >
         <InputGroupTextarea
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={onKey}
           placeholder={t('chat.promptPlaceholder')}
-          className="h-[90px] resize-none overflow-y-auto px-4 py-4 text-base leading-relaxed text-black dark:text-white [&::-webkit-scrollbar-track]:my-3"
+          className={cn(
+            'h-[90px] resize-none overflow-y-auto px-4 py-4 text-base leading-relaxed text-black dark:text-white [&::-webkit-scrollbar-track]:my-3',
+            isBangQueryMode && 'text-amber-900 placeholder:text-amber-700/60 dark:text-amber-100 dark:placeholder:text-amber-200/55',
+          )}
           rows={3}
         />
         <InputGroupAddon align="block-end" className="pt-2">
           <div className="flex w-full items-center gap-2">
+            {isBangQueryMode && (
+              <InputGroupText className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-200">
+                {t('chat.directQueryMode')}
+              </InputGroupText>
+            )}
             {/* Model selector */}
             <ModelPicker />
 

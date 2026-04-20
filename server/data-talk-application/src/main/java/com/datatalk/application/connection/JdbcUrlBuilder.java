@@ -1,6 +1,8 @@
 package com.datatalk.application.connection;
 
 import com.datatalk.application.persistence.ConnectionRecord;
+import com.datatalk.entity.DbConnection;
+import com.datatalk.entity.DbType;
 import com.datatalk.domain.error.DataTalkErrorCodes;
 import com.datatalk.domain.error.DataTalkException;
 
@@ -21,6 +23,23 @@ public final class JdbcUrlBuilder {
             default ->
                 throw new DataTalkException(DataTalkErrorCodes.CONNECTION_MISSING,
                     "unsupported database kind: " + c.kind(), false);
+        };
+    }
+
+    public static String build(DbConnection c) {
+        String db = c.databaseName();
+        return switch (c.dbType()) {
+            case POSTGRESQL ->
+                "jdbc:postgresql://" + c.host() + ":" + c.port() + "/" + (db != null ? db : "postgres");
+            case MYSQL ->
+                "jdbc:mysql://" + c.host() + ":" + c.port() + "/" + (db != null ? db : "");
+            case H2 ->
+                "jdbc:h2:" + (db != null ? db : "mem:test");
+            case SQLITE ->
+                "jdbc:sqlite:" + (db != null ? db : "memory");
+            default ->
+                throw new DataTalkException(DataTalkErrorCodes.CONNECTION_MISSING,
+                    "unsupported database type: " + c.dbType(), false);
         };
     }
 }

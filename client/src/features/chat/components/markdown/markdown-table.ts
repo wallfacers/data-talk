@@ -1,3 +1,5 @@
+import type { TranslationFn } from '@/i18n/provider'
+
 const PIPE_ALIGN_RE = /^\s*\|?(?:\s*:?-{3,}:?\s*\|)+\s*:?-{3,}:?\s*\|?\s*$/
 
 function looksLikePipeRow(line: string): boolean {
@@ -38,7 +40,7 @@ export function normalizePipeTables(text: string): string {
   return out.join('\n')
 }
 
-export function decorateTables(root: HTMLElement) {
+export function decorateTables(root: HTMLElement, t: TranslationFn) {
   for (const table of Array.from(root.querySelectorAll('table'))) {
     if (table.closest('[data-component="markdown-table"]')) continue
 
@@ -50,7 +52,7 @@ export function decorateTables(root: HTMLElement) {
 
     const label = document.createElement('span')
     label.setAttribute('data-slot', 'markdown-table-label')
-    label.textContent = 'Table'
+    label.textContent = t('table.label')
 
     const actions = document.createElement('div')
     actions.setAttribute('data-slot', 'markdown-table-actions')
@@ -58,21 +60,21 @@ export function decorateTables(root: HTMLElement) {
     const copy = document.createElement('button')
     copy.setAttribute('type', 'button')
     copy.setAttribute('data-slot', 'markdown-table-copy')
-    copy.setAttribute('aria-label', 'Copy table')
-    copy.textContent = 'Copy table'
+    copy.setAttribute('aria-label', t('table.copyAria'))
+    copy.textContent = t('table.copy')
 
     const csv = document.createElement('button')
     csv.setAttribute('type', 'button')
     csv.setAttribute('data-slot', 'markdown-table-csv')
-    csv.setAttribute('aria-label', 'Copy table as CSV')
-    csv.textContent = 'CSV'
+    csv.setAttribute('aria-label', t('table.csvAria'))
+    csv.textContent = t('table.csv')
 
     const more = document.createElement('button')
     more.setAttribute('type', 'button')
     more.setAttribute('data-slot', 'markdown-table-more')
-    more.setAttribute('aria-label', 'More table actions')
+    more.setAttribute('aria-label', t('table.moreAria'))
     more.setAttribute('aria-expanded', 'false')
-    more.textContent = 'More'
+    more.textContent = t('table.more')
 
     const menu = document.createElement('div')
     menu.setAttribute('data-slot', 'markdown-table-menu')
@@ -82,7 +84,7 @@ export function decorateTables(root: HTMLElement) {
       ['tsv', 'TSV'],
       ['markdown', 'Markdown'],
       ['json', 'JSON'],
-      ['download-csv', 'Download CSV'],
+      ['download-csv', t('table.downloadCsv')],
     ]) {
       const item = document.createElement('button')
       item.setAttribute('type', 'button')

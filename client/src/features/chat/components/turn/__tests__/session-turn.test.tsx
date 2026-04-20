@@ -84,4 +84,35 @@ describe('SessionTurn · showThinking', () => {
     expect(screen.queryByLabelText('思考中…')).toBeNull()
     expect(screen.getByText(/Invalid token/)).toBeInTheDocument()
   })
+
+  it('renders bang-query user messages with a subtle top-right icon', () => {
+    useChatPartsStore.getState().upsertInfo('s1', {
+      id: 'u1',
+      role: 'user',
+      sessionID: 's1',
+      time: { created: 1 },
+    })
+    useChatPartsStore.getState().upsertPart('s1', {
+      type: 'text',
+      id: 'p1',
+      sessionID: 's1',
+      messageID: 'u1',
+      text: '!select 1',
+      metadata: { displayKind: 'bang_query_user', queryMode: 'direct_sql' },
+    } as any)
+
+    renderTurn(
+      <SessionTurn
+        sessionId="s1"
+        userMessageId="u1"
+        assistantMessageIds={[]}
+        userInfo={{ id: 'u1', role: 'user', sessionID: 's1', time: { created: 1 } }}
+        isLastTurn
+      />,
+    )
+
+    expect(screen.getByLabelText('SQL 直查消息')).toBeInTheDocument()
+    expect(screen.queryByText('SQL 直查')).toBeNull()
+    expect(screen.getByText('!select 1')).toBeInTheDocument()
+  })
 })

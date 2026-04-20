@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CopyIcon, CheckIcon } from 'lucide-react'
+import { CopyIcon, CheckIcon, TerminalIcon } from 'lucide-react'
 import type { MessageInfo, Part, TextPart } from '@/services/channel/types'
 import { useChannel } from '@/services/channel/use-channel'
 import { cn, copyToClipboard } from '@/lib/utils'
@@ -12,7 +12,10 @@ function HighlightedText(props: { text: string }) {
 export function UserBubble(props: { info: MessageInfo; parts: Part[] }) {
   const { t, language } = useI18n()
   const { info, parts } = props
-  const text = (parts.find((p) => p.type === 'text') as TextPart | undefined)?.text ?? ''
+  const textPart = parts.find((p) => p.type === 'text') as TextPart | undefined
+  const text = textPart?.text ?? ''
+  const displayKind = (textPart?.metadata as { displayKind?: string } | undefined)?.displayKind
+  const isBangQueryUser = displayKind === 'bang_query_user'
   const [copied, setCopied] = useState(false)
   const channel = useChannel()
 
@@ -41,11 +44,21 @@ export function UserBubble(props: { info: MessageInfo; parts: Part[] }) {
   return (
     <div className={cn('flex flex-col items-end gap-1 my-2')}>
       <div className={cn(
-        'max-w-[85%] rounded-lg px-3 py-2 text-sm',
+        'relative max-w-[85%] rounded-lg px-3 py-2 text-sm',
         'bg-primary text-primary-foreground',
+        isBangQueryUser && 'pr-7',
         pending && !failed && 'opacity-85',
         failed && 'border-2 border-red-500',
       )}>
+        {isBangQueryUser && (
+          <span
+            aria-label={t('bangQuery.userMarker')}
+            className="pointer-events-none absolute right-1.5 top-1.5 inline-flex text-white/55"
+            role="img"
+          >
+            <TerminalIcon className="size-3" aria-hidden="true" />
+          </span>
+        )}
         <HighlightedText text={text} />
         {retrying && <span className="ml-2 inline-block animate-spin">⟳</span>}
       </div>

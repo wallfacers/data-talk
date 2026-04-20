@@ -72,6 +72,23 @@ describe('chat-parts-store', () => {
     expect((parts?.[0] as any).text).toBe('hello')
   })
 
+  it('upsertPendingUser updates info and part atomically in one store publish', () => {
+    const store = useChatPartsStore.getState()
+    const renderSpy = vi.fn()
+    const unsub = useChatPartsStore.subscribe(renderSpy)
+
+    const pendingId = store.upsertPendingUser('ses_a', 'hello')
+
+    expect(renderSpy).toHaveBeenCalledTimes(1)
+    expect(useChatPartsStore.getState().infoBySession.get('ses_a')?.get(pendingId)?.__pending).toBe(true)
+    expect(useChatPartsStore.getState().partsBySession.get('ses_a')?.get(pendingId)?.[0]).toMatchObject({
+      type: 'text',
+      text: 'hello',
+      messageID: pendingId,
+    })
+    unsub()
+  })
+
   it('promotePendingUser renames pendingId → realId preserving content', () => {
     const store = useChatPartsStore.getState()
     const pendingId = store.upsertPendingUser('ses_a', 'hello')

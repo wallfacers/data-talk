@@ -13,6 +13,7 @@ public record DbConnection(
         Integer port,
         String databaseName,
         String username,
+        String password,
         Instant createdAt
 ) {
 
@@ -23,6 +24,6 @@ public record DbConnection(
     }
 
     public static DbConnection of(String id, String name, DbType dbType, String host, Integer port, String databaseName, String username) {
-        return new DbConnection(id, name, dbType, host, port, databaseName, username, Instant.now());
+        return new DbConnection(id, name, dbType, host, port, databaseName, username, null, Instant.now());
     }
 }

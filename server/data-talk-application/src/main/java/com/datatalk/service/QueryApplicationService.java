@@ -1,5 +1,6 @@
 package com.datatalk.service;
 
+import com.datatalk.application.connection.ConnectionService;
 import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.sql.SqlStatementGuard;
@@ -20,13 +21,16 @@ import java.util.Locale;
 public class QueryApplicationService {
 
     private final ConnectionRepository connectionRepository;
+    private final ConnectionService connectionService;
     private final SqlExecutionRepository sqlExecutionRepository;
     private final SqlStatementGuard statementGuard;
 
     public QueryApplicationService(ConnectionRepository connectionRepository,
+                                   ConnectionService connectionService,
                                    SqlExecutionRepository sqlExecutionRepository,
                                    SqlStatementGuard statementGuard) {
         this.connectionRepository = connectionRepository;
+        this.connectionService = connectionService;
         this.sqlExecutionRepository = sqlExecutionRepository;
         this.statementGuard = statementGuard;
     }
@@ -37,7 +41,7 @@ public class QueryApplicationService {
     public QueryResponseDto executeQuery(ExecuteSqlCommand command) {
         statementGuard.assertSelectOnly(command.sql());
         DbConnection connection = connectionRepository.findById(command.connectionId())
-                .map(QueryApplicationService::toDbConnection)
+                .map(this::toDbConnection)
                 .orElseThrow(() -> new ConnectionNotFoundException(command.connectionId()));
 
         QueryResult result = sqlExecutionRepository.execute(connection, command.sql());
@@ -50,7 +54,7 @@ public class QueryApplicationService {
         );
     }
 
-    private static DbConnection toDbConnection(ConnectionRecord record) {
+    private DbConnection toDbConnection(ConnectionRecord record) {
         return new DbConnection(
                 record.id(),
                 record.name(),
@@ -59,6 +63,7 @@ public class QueryApplicationService {
                 record.port(),
                 record.databaseName(),
                 record.username(),
+                connectionService.decryptPassword(record.id()),
                 Instant.ofEpochMilli(record.createdAt())
         );
     }

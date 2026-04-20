@@ -99,4 +99,41 @@ describe('useSessionHistory — replace guard', () => {
       expect(useChatPartsStore.getState().infoBySession.get(SID)?.size).toBe(1)
     })
   })
+
+  it('preserves bang query metadata when hydrating synthetic user history', async () => {
+    vi.spyOn(http, 'get').mockImplementation(((input: any) => ({
+      json: async () =>
+        String(input).endsWith('/messages')
+          ? [
+              {
+                info: { id: 'sqm-1', role: 'user', sessionID: SID, time: { created: 1 } },
+                parts: [
+                  {
+                    type: 'text',
+                    id: 'p1',
+                    sessionID: SID,
+                    messageID: 'sqm-1',
+                    text: '!select 1',
+                    metadata: { displayKind: 'bang_query_user', queryMode: 'direct_sql' },
+                  },
+                ],
+              },
+            ]
+          : { artifacts: [] },
+    })) as any)
+
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    renderHook(() => useSessionHistory(SID), { wrapper: wrapper(qc) })
+
+    await waitFor(() => {
+      expect(useChatPartsStore.getState().infoBySession.get(SID)?.size).toBe(1)
+    })
+
+    const parts = useChatPartsStore.getState().partsBySession.get(SID)?.get('sqm-1') ?? []
+    expect(parts[0]).toMatchObject({
+      type: 'text',
+      text: '!select 1',
+      metadata: { displayKind: 'bang_query_user', queryMode: 'direct_sql' },
+    })
+  })
 })

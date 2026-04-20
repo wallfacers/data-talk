@@ -1,5 +1,6 @@
 package com.datatalk.config;
 
+import com.datatalk.application.connection.ConnectionService;
 import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.sql.SqlStatementGuard;
 import com.datatalk.repository.SqlExecutionRepository;
@@ -13,8 +14,9 @@ public class ApplicationServiceConfig {
     @Bean
     public QueryApplicationService queryApplicationService(
             ConnectionRepository connectionRepository,
+            ConnectionService connectionService,
             SqlExecutionRepository sqlExecutionRepository,
             SqlStatementGuard statementGuard) {
-        return new QueryApplicationService(connectionRepository, sqlExecutionRepository, statementGuard);
+        return new QueryApplicationService(connectionRepository, connectionService, sqlExecutionRepository, statementGuard);
     }
 }

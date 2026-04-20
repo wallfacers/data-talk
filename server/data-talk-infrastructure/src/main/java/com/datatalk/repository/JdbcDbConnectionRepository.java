@@ -60,6 +60,7 @@ public class JdbcDbConnectionRepository implements DbConnectionRepository {
                 rs.getObject("port", Integer.class),
                 rs.getString("database_name"),
                 rs.getString("username"),
+                null,
                 rs.getTimestamp("created_at").toInstant());
     }
 }

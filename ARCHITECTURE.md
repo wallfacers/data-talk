@@ -138,6 +138,6 @@ StageWindow 已从单 Artifact 容器升级为 **AI 可操作的多 Tab 工作�
 - **两条 SQL 路径**：
   - **展示路径**（AI `ui_exec(run_sql)` / 用户 `!sql`）—— 前端直接打 `POST /api/query`，结果写入 Tab；`ui_read('state')` 刻意不含 `rows` 字段，AI 只看到 `{columns, rowCount, durationMs}` 元数据。`/api/query` 在 `QueryApplicationService` 首行调 `SqlStatementGuard.assertSelectOnly`，与 AI `execute_sql` 共用同一白名单（仅 SELECT/WITH）
   - **分析路径**（AI `datatalk.execute_sql`）—— 结果以 Artifact 形式回流 AI 上下文；现有行为不变
-- **用户 `!` 直查**：Composer 识别 `!select ...` / `!with ...` 前缀（正则 `/^(select|with)\b/i`），绕过 AI 直接调 util `openBangQueryTab` → 生成 `bang_query` Tab；其他 `!` 开头输入继续走 AI（兼容自然语言）
+- **用户 `!` 直查**：Composer 识别 `!select ...` / `!with ...` 前缀（正则 `/^(select|with)\b/i`），先确保 session 存在并持久化一条 DataTalk synthetic user message（`displayKind=bang_query_user`），再调 util `openBangQueryTab` 生成 `bang_query` Tab；HistoryService 会把这类 synthetic message 与 OpenCode 历史稳定合并，保证当前会话即时可见、刷新后不丢；其他 `!` 开头输入继续走 AI（兼容自然语言）
 
 完整设计见 [docs/product-specs/2026-04-20-stage-ui-object-protocol-design.md](docs/product-specs/2026-04-20-stage-ui-object-protocol-design.md)，执行计划见 [docs/exec-plans/2026-04-20-stage-ui-object-protocol-plan.md](docs/exec-plans/2026-04-20-stage-ui-object-protocol-plan.md)。Phase 2（AI 展示路径 QueryEditor + Prompt 注入）待启动。

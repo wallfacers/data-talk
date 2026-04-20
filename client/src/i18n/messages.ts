@@ -150,6 +150,7 @@ const MESSAGES = {
     'chat.showSchema': '查看 schema',
     'chat.appendSql': '已追加 SQL，请确认后发送',
     'chat.explainSqlPrefix': '解释这条 SQL：\n',
+    'chat.directQueryMode': '直查模式',
     'chat.promptPlaceholder': '用自然语言查询你的数据库...',
 
     'session.heroSubtitle': '用自然语言和你的数据库对话',
@@ -193,6 +194,8 @@ const MESSAGES = {
     'stage.dock.dashboard': '仪表盘',
 
     'bangQuery.label': 'SQL · 直查',
+    'bangQuery.userBadge': 'SQL 直查',
+    'bangQuery.userMarker': 'SQL 直查消息',
     'bangQuery.rerun': '重跑',
     'bangQuery.close': '关闭',
     'bangQuery.useThisSource': '用此数据源继续',
@@ -200,6 +203,15 @@ const MESSAGES = {
     'artifact.preparing': 'AI 正在准备…',
     'artifact.unsupportedChart': '不支持的图表规格',
     'artifact.erdEmpty': 'ER 图暂无节点数据',
+
+    'table.label': '表格',
+    'table.copy': '复制表格',
+    'table.csv': 'CSV',
+    'table.more': '更多',
+    'table.copyAria': '复制表格',
+    'table.csvAria': '复制为 CSV',
+    'table.moreAria': '更多表格操作',
+    'table.downloadCsv': '下载 CSV',
 
     'dataGrid.noColumns': '无列定义',
     'dataGrid.noData': '无数据',
@@ -365,6 +377,7 @@ const MESSAGES = {
     'chat.showSchema': 'Show Schema',
     'chat.appendSql': 'SQL appended. Review it before sending.',
     'chat.explainSqlPrefix': 'Explain this SQL:\n',
+    'chat.directQueryMode': 'Direct query mode',
     'chat.promptPlaceholder': 'Query your database in natural language...',
 
     'session.heroSubtitle': 'Talk to your database in natural language',
@@ -408,6 +421,8 @@ const MESSAGES = {
     'stage.dock.dashboard': 'Dashboard',
 
     'bangQuery.label': 'SQL · Direct',
+    'bangQuery.userBadge': 'SQL Direct',
+    'bangQuery.userMarker': 'SQL direct message',
     'bangQuery.rerun': 'Re-run',
     'bangQuery.close': 'Close',
     'bangQuery.useThisSource': 'Continue with this source',
@@ -415,6 +430,15 @@ const MESSAGES = {
     'artifact.preparing': 'AI is preparing…',
     'artifact.unsupportedChart': 'Unsupported chart specification',
     'artifact.erdEmpty': 'No ER nodes available yet',
+
+    'table.label': 'Table',
+    'table.copy': 'Copy table',
+    'table.csv': 'CSV',
+    'table.more': 'More',
+    'table.copyAria': 'Copy table',
+    'table.csvAria': 'Copy table as CSV',
+    'table.moreAria': 'More table actions',
+    'table.downloadCsv': 'Download CSV',
 
     'dataGrid.noColumns': 'No columns defined',
     'dataGrid.noData': 'No data',
