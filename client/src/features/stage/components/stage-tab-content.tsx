@@ -1,6 +1,7 @@
 import { useStageStore } from '@/stores/stage-store'
 import { useSessionStore } from '@/stores/session-store'
 import { BangQueryTab } from './bang-query-tab'
+import { QueryEditorTab } from './query-editor-tab'
 
 export function StageTabContent() {
   const sid = useSessionStore((s) => s.activeSessionId)
@@ -10,14 +11,19 @@ export function StageTabContent() {
   })
   const tab = useStageStore((s) => {
     if (!activeTabId) return null
-    return s.workspaceTabs.find((t) => t.tabId === activeTabId)
-      ?? (sid ? s.tabsBySession.get(sid)?.find((t) => t.tabId === activeTabId) : undefined)
-      ?? null
+    return (
+      s.workspaceTabs.find((t) => t.tabId === activeTabId) ??
+      (sid ? s.tabsBySession.get(sid)?.find((t) => t.tabId === activeTabId) : undefined) ??
+      null
+    )
   })
 
   if (!tab) return null
   switch (tab.type) {
-    case 'bang_query': return <BangQueryTab tabId={tab.tabId} />
-    default: return <div className="p-4 text-xs text-muted-foreground">Unknown tab type: {tab.type}</div>
+    case 'bang_query':    return <BangQueryTab tabId={tab.tabId} />
+    case 'query_editor':  return <QueryEditorTab tab={tab} />
+    default:              return (
+      <div className="p-4 text-xs text-muted-foreground">Unknown tab type: {tab.type}</div>
+    )
   }
 }

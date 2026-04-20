@@ -56,4 +56,25 @@ describe('StageWindow', () => {
     render(<StageWindow sessionId="s1"><div data-testid="child">CHILD</div></StageWindow>)
     expect(screen.getByTestId('child')).toBeTruthy()
   })
+
+  it('renders tab bar when store has tabs for session', () => {
+    useStageStore.setState({
+      tabsBySession: new Map([['s-1', [
+        { tabId: 'q1', type: 'query_editor', title: 'SQL', scope: 'session' as const,
+          originSessionId: 's-1', createdAt: 0, payload: {} },
+      ]]]),
+      activeTabIdBySession: new Map([['s-1', 'q1']]),
+    })
+    render(<StageWindow sessionId="s-1"><div>ai content</div></StageWindow>)
+    expect(screen.getByText('SQL')).toBeTruthy()
+  })
+
+  it('shows children when store has no tabs', () => {
+    useStageStore.setState({
+      tabsBySession: new Map(),
+      activeTabIdBySession: new Map(),
+    })
+    render(<StageWindow sessionId="s-1"><div>ai content</div></StageWindow>)
+    expect(screen.getByText('ai content')).toBeTruthy()
+  })
 })
