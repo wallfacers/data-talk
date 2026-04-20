@@ -14,11 +14,15 @@ server/
 
 ```bash
 cd server
-mvn clean verify                        # 编译 + 全量测试
+mvn clean verify                        # 编译 + 全量测试（surefire 单测 + failsafe *IT.java）
 mvn test -pl data-talk-domain           # 仅 domain 单元测试
 mvn verify -pl data-talk-adapter        # 含集成测试 (IT)
 mvn spring-boot:run -pl data-talk-adapter  # 启动 (localhost:8080)
 ```
+
+- `mvn clean verify` 是后端完整回归入口。
+- `data-talk-adapter` 的 `*IT.java` 由 `maven-failsafe-plugin` 绑定到 `integration-test` / `verify` 执行。
+- 若集成测试依赖 Testcontainers，本机需要可用 Docker 环境。
 
 ## 添加新 Action
 
@@ -41,6 +45,13 @@ public class MyActionHandler implements ActionHandler<MyInput, MyOutput> {
 
 2. `ActionRegistry` 会在启动时自动扫描并注册，无需手动配置
 3. `GET /api/actions` 可验证注册结果
+
+### SQL-bearing Action 约定
+
+- 任何 input 中显式携带 `sql: string` 的 action，都会在 `ActionDispatcher` 中先经过统一预处理。
+- 预处理层使用 `SqlBearingActionInspector` 提取 SQL，再由 `CalciteSqlRiskAnalyzer` 做 AST 风险判级。
+- handler 不负责重复解析 SQL；如需向前端或 OpenCode 回写风险信息，应消费 `ActionContext.metadata().sqlRisk()`。
+- 静态 `@DataTalkAction.riskLevel` 仍保留，作为非 SQL action 或动态判级不可用时的保底值。
 
 ## 添加新 ObjectType
 

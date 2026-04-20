@@ -20,6 +20,8 @@ DataTalk 项目的质量评分维度和目标。
 - 每个 public 方法至少一个正向测试和一个负向测试
 - 集成测试覆盖所有 API 端点的 happy path
 - E2E smoke test 覆盖核心用户流程
+- 后端完整门禁命令统一为 `cd server && mvn clean verify`
+- `data-talk-adapter/src/test/**/**/*IT.java` 必须由 Maven failsafe 在 `verify` 阶段自动执行，不允许只留在 IDE / 手工命令里
 
 ### 应该
 

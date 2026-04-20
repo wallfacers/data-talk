@@ -4,10 +4,15 @@ import com.datatalk.application.persistence.ActionInvocationRepository;
 import com.datatalk.application.persistence.ArtifactRepository;
 import com.datatalk.application.registry.ActionRegistry;
 import com.datatalk.application.registry.JsonSchemaLoader;
+import com.datatalk.application.sql.SqlBearingActionInspector;
+import com.datatalk.application.sql.SqlRiskAnalysis;
+import com.datatalk.application.sql.SqlRiskAnalyzer;
+import com.datatalk.domain.action.ActionExecutionMetadata;
 import com.datatalk.domain.action.ActionContext;
 import com.datatalk.domain.action.ActionDescriptor;
 import com.datatalk.domain.action.ActionHandler;
 import com.datatalk.domain.action.OntologyEffect;
+import com.datatalk.domain.action.SqlExecutionRisk;
 import com.datatalk.domain.event.DtEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -30,12 +35,15 @@ public class ActionDispatcher {
     private final ActionInvocationRepository invocations;
     private final ArtifactRepository artifacts;
     private final PendingCallRegistry pending;
+    private final SqlRiskAnalyzer sqlRiskAnalyzer;
+    private final SqlBearingActionInspector sqlInspector;
     private final ObjectMapper om;
     private final Clock clock;
 
     public ActionDispatcher(ActionRegistry registry, JsonSchemaLoader schemas,
                             SessionBusRegistry buses, ActionInvocationRepository invocations,
                             ArtifactRepository artifacts, PendingCallRegistry pending,
+                            SqlRiskAnalyzer sqlRiskAnalyzer, SqlBearingActionInspector sqlInspector,
                             ObjectMapper om, Clock clock) {
         this.registry = registry;
         this.schemas = schemas;
@@ -43,6 +51,8 @@ public class ActionDispatcher {
         this.invocations = invocations;
         this.artifacts = artifacts;
         this.pending = pending;
+        this.sqlRiskAnalyzer = sqlRiskAnalyzer;
+        this.sqlInspector = sqlInspector;
         this.om = om;
         this.clock = clock;
     }
@@ -52,6 +62,7 @@ public class ActionDispatcher {
                                             String callId, ActionContext ctx) {
         ActionDescriptor desc = registry.require(actionId);
         validate(desc.inputSchema(), input, "input", actionId);
+        ActionContext execCtx = enrichContext(desc, input, ctx);
 
         long now = clock.millis();
         try {
@@ -65,9 +76,9 @@ public class ActionDispatcher {
         return switch (desc.executor()) {
             case SERVER -> {
                 ActionHandler<Object, Object> handler = (ActionHandler<Object, Object>) registry.handler(actionId);
-                yield handler.handle(ctx, input).thenApply(output -> {
+                yield handler.handle(execCtx, input).thenApply(output -> {
                     validate(desc.outputSchema(), output, "output", actionId);
-                    applyEffects(desc, output, ctx, bus);
+                    applyEffects(desc, output, execCtx, bus);
                     try {
                         invocations.complete(callId, om.writeValueAsString(output), clock.millis());
                     } catch (Exception e) {
@@ -87,7 +98,7 @@ public class ActionDispatcher {
             }
             case OPENCODE -> {
                 ActionHandler<Object, Object> handler = (ActionHandler<Object, Object>) registry.handler(actionId);
-                yield handler.handle(ctx, input).thenApply(output -> {
+                yield handler.handle(execCtx, input).thenApply(output -> {
                     validate(desc.outputSchema(), output, "output", actionId);
                     try {
                         invocations.complete(callId, om.writeValueAsString(output), clock.millis());
@@ -121,6 +132,27 @@ public class ActionDispatcher {
                 });
             }
         };
+    }
+
+    private ActionContext enrichContext(ActionDescriptor desc, Object input, ActionContext ctx) {
+        return sqlInspector.extractSql(input)
+            .map(sql -> {
+                SqlRiskAnalysis analysis = sqlRiskAnalyzer.analyze(sql, desc.category());
+                SqlExecutionRisk risk = new SqlExecutionRisk(
+                    analysis.riskLevel(),
+                    analysis.reason(),
+                    analysis.requiresStrongConfirmation(),
+                    analysis.fallbackUsed()
+                );
+                return new ActionContext(
+                    ctx.sessionId(),
+                    ctx.callId(),
+                    ctx.connectionId(),
+                    ctx.openCodeSessionId(),
+                    new ActionExecutionMetadata(risk)
+                );
+            })
+            .orElse(ctx);
     }
 
     private void validate(Map<String, Object> schema, Object data, String label, String actionId) {

@@ -77,7 +77,15 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
                 "columns",     Map.of("type", "array"),
                 "preview",     Map.of("type", "array"),
                 "rowCount",    Map.of("type", "integer"),
-                "durationMs",  Map.of("type", "integer")
+                "durationMs",  Map.of("type", "integer"),
+                "metadata",    Map.of(
+                    "type", "object",
+                    "properties", Map.of(
+                        "riskLevel", Map.of("type", "string"),
+                        "riskReason", Map.of("type", "string"),
+                        "fallbackUsed", Map.of("type", "boolean")
+                    )
+                )
             ));
     }
 
@@ -159,8 +167,25 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
             "columns", columns,
             "preview", preview,
             "rowCount", rows.size(),
-            "durationMs", (int) duration
+            "durationMs", (int) duration,
+            "metadata", buildMetadata(ctx)
         );
+    }
+
+    private Map<String, Object> buildMetadata(ActionContext ctx) {
+        if (ctx.metadata() == null || ctx.metadata().sqlRisk() == null) {
+            return Map.of();
+        }
+        var risk = ctx.metadata().sqlRisk();
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        if (risk.riskLevel() != null) {
+            metadata.put("riskLevel", risk.riskLevel().name());
+        }
+        if (risk.reason() != null && !risk.reason().isBlank()) {
+            metadata.put("riskReason", risk.reason());
+        }
+        metadata.put("fallbackUsed", risk.fallbackUsed());
+        return metadata;
     }
 
     private String jsonToString(Object obj) {

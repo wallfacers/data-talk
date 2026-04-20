@@ -14,7 +14,6 @@
 
 | ID | 优先级 | 模块 | 描述 | 来源 |
 |----|-------|------|------|------|
-| TD-021 | P2 | adapter | `*IT.java` 测试未纳入 CI：surefire 默认 includes `**/*Test*.java`，`ChannelControllerIT` / `TypicalQueryE2EIT` 等 IT 类从未执行。需添加 failsafe plugin 或在 surefire includes 加 `**/*IT.java` | 2026-04-20 评估发现 |
 | TD-001 | P1 | adapter | `application.yml` 使用 H2 内存库作为 placeholder，需替换为正式的数据源配置策略 | Plan A |
 | TD-003 | P2 | domain | `DtEvent` 的 Jackson `@JsonSubTypes` 硬编码了 22 个子类型，新增事件需修改两处（枚举 + 注解） | ~~Plan A~~ 2026-04-18 已改为 `@JsonTypeName` |
 | TD-005 | P2 | adapter | ~~缺少全局异常处理器~~ `AiSettingsExceptionHandler` 已合并到 `GlobalExceptionHandler`，统一错误响应格式 | 2026-04-18 已实现 |
@@ -27,7 +26,6 @@
 | TD-015 | P2 | client | `DtEvent.SessionCreated / SessionDeleted` 定义但未消费（多客户端协作场景） | 同上 |
 | TD-016 | P2 | client | `DtEvent.SessionCompacted` 定义但未消费（OpenCode 上下文压缩提示） | 同上 |
 | TD-017 | P2 | client | `DtEvent.SessionDiff` 定义但未消费；payload 语义待调研 | 同上 |
-| TD-020 | P2 | application | `preview_sql` 等 mutation Action 的风险判级本期靠前端正则粗判（仅看 SQL 首关键字，不识别 WHERE 缺失 / 批量 DELETE / CTE 内含 DML）。目标：后端引入 SQL AST 解析器（JSqlParser / Calcite）在 ActionHandler 执行前完成真实判级，通过 `part.state.metadata.riskLevel` 回传前端；前端 `resolveRisk` 优先级链（part-level > descriptor > 正则）保证前端零改动升级 | Plan 2026-04-19 AI Message Rendering Migration |
 | TD-SINGLE-EMPTY-SESSION-MULTINODE | P2 | application | `SessionService.create` 的 `synchronized (createLock)` 仅在单 JVM 内有效。若未来扩展为多节点部署，需改为 DB 唯一约束（partial unique index `ON sessions(connection_id) WHERE has_ever_sent = 0`）。SQLite 原生不支持 partial unique，届时需配合数据库类型切换到 PG 一并处理。现状单机桌面应用无此需求 | Plan 2026-04-19 Single Empty Session |
 | TD-MULTI-SESSION-SSE-POOL | P2 | client | `useSessionSubscribe` 当前仅跟随 `activeSessionId` 订阅 GET SSE；`sendMessage` 发起的 POST-SSE 不受影响（切走不断连，数据层正确）。但后端主动推送的 `ontology.updated` / `session.meta.updated` 等事件在用户切走 > 30s（`SessionBusRegistry` eviction-delay）且 ring buffer 溢出（500 条 / 5 min TTL）后可能丢。改造方向：订阅池（pool of subscribed sessionIds + 生命周期策略，如 streaming 常驻 / LRU / 用户 pin）。推迟原因：触发率低，composer 指示丢失这一核心痛点已由 per-session streaming indicator 解决 | Plan 2026-04-19 Per-Session Streaming Indicator |
 
@@ -42,3 +40,5 @@
 | TD-009 | 2026-04-18 | `HeroView` / `ConnectionOverlay` 孤立组件 | 文件已确认删除，无 import 引用 |
 | TD-018 | 2026-04-18 | commit 2bbeb41 启用 `PRAGMA foreign_keys=ON` 后，`SessionControllerIT` / `SupersedeArtifactActionTest` 触发 `SQLITE_CONSTRAINT_FOREIGNKEY` | `SessionControllerIT` 加 `@BeforeEach` 用 `INSERT OR IGNORE` seed 所有连接 id 并清理 sessions/messages；`SupersedeArtifactActionTest` 在 `clean()` seed `c-default` connection + `s-1` session，并给 `datatalkJdbc` 字段补上 `@Qualifier("datatalkJdbc")`（之前被 `@Primary demoJdbcTemplate` 拦截，写到了错误的 H2 库）|
 | TD-019 | 2026-04-18 | commit fc8a450 后 `ConnectionService.create` 不再接受客户端 id，`ConnectionControllerIT` / `LayoutErdActionIT` / `ReadSchemaActionIT` 硬编码 id 失效 | `ConnectionService.create(...)` 改为返回生成的 `String id`；`ConnectionController.POST` 返回新 DTO `ConnectionCreatedDto(id)`；5 处测试调用方（含 `ExecuteSqlActionIT` / `TypicalQueryE2EIT`）消费返回值，不再使用硬编码 id |
+| TD-020 | 2026-04-20 | `preview_sql` 等 SQL-bearing action 的风险判级依赖前端正则粗判，未闭环“后端强制判级”规格 | 在 `ActionDispatcher` 统一预处理层接入 `SqlBearingActionInspector` + `CalciteSqlRiskAnalyzer`；动态风险通过 `ActionContext.metadata().sqlRisk()` 传入 handler，`ExecuteSqlAction` 已把 `riskLevel` / `riskReason` / `fallbackUsed` 回写到输出 metadata；前端正则仅保留为兼容旧数据 fallback。OpenCode `action_result → tool part state.metadata` 的端到端烟测仍待人工联调确认 |
+| TD-021 | 2026-04-20 | `*IT.java` 未纳入 Maven/CI，`ChannelControllerIT` / `TypicalQueryE2EIT` 等默认不执行 | `data-talk-adapter/pom.xml` 接入 `maven-failsafe-plugin` 并显式纳入 `**/*IT.java`，`mvn clean verify` 现为后端完整回归入口 |
