@@ -189,6 +189,10 @@ const MESSAGES = {
     'stage.dock.report': '报表分析器',
     'stage.dock.dashboard': '仪表盘',
 
+    'bangQuery.label': 'SQL · 直查',
+    'bangQuery.rerun': '重跑',
+    'bangQuery.close': '关闭',
+
     'artifact.preparing': 'AI 正在准备…',
     'artifact.unsupportedChart': '不支持的图表规格',
     'artifact.erdEmpty': 'ER 图暂无节点数据',
@@ -395,6 +399,10 @@ const MESSAGES = {
     'stage.dock.er': 'ER Designer',
     'stage.dock.report': 'Report Analyzer',
     'stage.dock.dashboard': 'Dashboard',
+
+    'bangQuery.label': 'SQL · Direct',
+    'bangQuery.rerun': 'Re-run',
+    'bangQuery.close': 'Close',
 
     'artifact.preparing': 'AI is preparing…',
     'artifact.unsupportedChart': 'Unsupported chart specification',

@@ -22,6 +22,7 @@ import { createTextPart } from '@/services/channel/types'
 import { createSession } from '@/services/api/session'
 import { normalizeError, showErrorToast } from '@/services/http-error'
 import { StageToggleButton } from '@/features/stage/components/stage-toggle-button'
+import { openBangQueryTab } from '@/features/stage/utils/open-bang-query-tab'
 import { useHasActiveModel } from './hooks/use-has-active-model'
 import { SQL_EXECUTE_EVENT, SQL_EXPLAIN_EVENT } from '@/features/chat/components/markdown/sql-code-block'
 import { useI18n } from '@/i18n/use-i18n'
@@ -71,6 +72,27 @@ function InnerComposer() {
   const submitText = async (raw: string) => {
     const t = raw.trim()
     if (!t || isStreaming) return
+
+    // !<sql> direct-query intercept: bypass AI entirely for SELECT/WITH queries.
+    // Other '!' prefixed content still routes to AI (compat with natural language use).
+    if (t.startsWith('!')) {
+      const sql = t.slice(1).trim()
+      if (sql && /^(select|with)\b/i.test(sql)) {
+        try {
+          setText('')
+          await openBangQueryTab({
+            sessionId: activeSessionId,
+            connectionId: activeConnectionId,
+            sql,
+          })
+        } catch (err) {
+          showErrorToast(normalizeError(err))
+          setText(t) // restore user input on failure
+        }
+        return
+      }
+      // fall through to AI path for non-SELECT/WITH '!' content
+    }
 
     if (!activeSessionId) {
       if (!hasActiveModel) {

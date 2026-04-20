@@ -614,10 +614,10 @@ function parsePath(path: string): Segment[] {
     if (raw === '-') return { kind: 'tail' } as Segment
     const m = raw.match(/^([^\[]+)\[(\w+)=([^\]]+)\]$/)
     if (m) {
-      // e.g. "columns[name=email]" —— 先进 "columns"，再按 match 寻址
-      // 这里 parsePath 只解析一段；调用点按顺序走两步
-      // 简化：返回一个复合 segment，由 setAt 处理
-      throw new Error('compound segment handled below')
+      // e.g. "columns[name=email]" —— 复合段，最终在 walk() 里按 [key=value] 寻址处理。
+      // parsePath 的返回值在 setAt 里仅作占位（setAt 重新基于 op.path 分段走 walk），
+      // 所以此处返回一个无害的 'match' 段即可，供类型系统闭合。
+      return { kind: 'match', key: m[2], value: m[3] } as Segment
     }
     if (/^\d+$/.test(raw)) return { kind: 'index', value: Number(raw) } as Segment
     return { kind: 'key', value: unescapePointer(raw) } as Segment

@@ -127,4 +127,17 @@ See [docs/FRONTEND.md](docs/FRONTEND.md) for details.
 - **Server state**: TanStack Query
 - **Client state**: Zustand (per-feature store)
 - **UI framework**: shadcn/ui + Tailwind CSS v4
-- **Feature modules**: `features/chat`, `features/session`, `features/connection`, `features/workspace`, `features/data-grid`, `features/dashboard`
+- **Feature modules**: `features/chat`, `features/session`, `features/connection`, `features/workspace`, `features/data-grid`, `features/dashboard`, `features/stage`
+
+### UI Object Protocol (Phase 1 — 2026-04-20)
+
+StageWindow 已从单 Artifact 容器升级为 **AI 可操作的多 Tab 工作屏**，由 `client/src/services/ui-router/` 下的 `UIRouter` 单例支撑：
+
+- **Tab 体系**：每个 Tab 是一个 `UIObject`，由类型化 Adapter 注册（`WorkspaceAdapter` / `ArtifactTabAdapter` / `BangQueryAdapter` / 未来的 `QueryEditorAdapter` 等）。Tab 分两类 scope：工具 Tab 工作台级（跨会话常驻，连接绑在 Tab 自身）、Artifact Tab 会话级（跟随 activeSessionId 投影）
+- **AI 入口**：4 个 `Executor.CLIENT` Action（`datatalk.ui.read / patch / exec / list`）作为 OpenCode → 前端 `UIRouter` 的桥接；前端 `client/src/features/actions/ui-handlers.ts` 通过 `registerClientHandler` 把请求 forward 到 `uiRouter.handle()`；与 `PinArtifactAction` 的 CLIENT 分发模式完全同构
+- **两条 SQL 路径**：
+  - **展示路径**（AI `ui_exec(run_sql)` / 用户 `!sql`）—— 前端直接打 `POST /api/query`，结果写入 Tab；`ui_read('state')` 刻意不含 `rows` 字段，AI 只看到 `{columns, rowCount, durationMs}` 元数据。`/api/query` 在 `QueryApplicationService` 首行调 `SqlStatementGuard.assertSelectOnly`，与 AI `execute_sql` 共用同一白名单（仅 SELECT/WITH）
+  - **分析路径**（AI `datatalk.execute_sql`）—— 结果以 Artifact 形式回流 AI 上下文；现有行为不变
+- **用户 `!` 直查**：Composer 识别 `!select ...` / `!with ...` 前缀（正则 `/^(select|with)\b/i`），绕过 AI 直接调 util `openBangQueryTab` → 生成 `bang_query` Tab；其他 `!` 开头输入继续走 AI（兼容自然语言）
+
+完整设计见 [docs/product-specs/2026-04-20-stage-ui-object-protocol-design.md](docs/product-specs/2026-04-20-stage-ui-object-protocol-design.md)，执行计划见 [docs/exec-plans/2026-04-20-stage-ui-object-protocol-plan.md](docs/exec-plans/2026-04-20-stage-ui-object-protocol-plan.md)。Phase 2（AI 展示路径 QueryEditor + Prompt 注入）待启动。

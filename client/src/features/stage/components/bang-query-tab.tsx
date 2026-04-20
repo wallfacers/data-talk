@@ -1,0 +1,71 @@
+import { useState } from 'react'
+import { RefreshCwIcon, XIcon } from 'lucide-react'
+import { DataGrid } from '@/features/data-grid/components/data-grid'
+import { Button } from '@/components/ui/button'
+import { useStageStore } from '@/stores/stage-store'
+import { BangQueryAdapter } from '@/features/stage/adapters/BangQueryAdapter'
+import { showErrorToast, normalizeError } from '@/services/http-error'
+import { useI18n } from '@/i18n/use-i18n'
+
+interface BangPayload {
+  sql: string
+  rows?: Array<Record<string, unknown>>
+  lastRun?: { columns: string[]; rowCount: number; durationMs: number; truncated: boolean }
+}
+
+export function BangQueryTab({ tabId }: { tabId: string }) {
+  const { t } = useI18n()
+  const tab = useStageStore((s) => s.workspaceTabs.find((x) => x.tabId === tabId))
+  const [expanded, setExpanded] = useState(false)
+  const [rerunning, setRerunning] = useState(false)
+  if (!tab) return null
+
+  const payload = tab.payload as BangPayload
+  const rows = payload.rows ?? []
+  const columns = (payload.lastRun?.columns ?? []).map((c) => ({ key: c, header: c }))
+
+  const onRerun = async () => {
+    setRerunning(true)
+    try {
+      const adapter = new BangQueryAdapter(tabId)
+      const res = await adapter.exec('rerun')
+      if (!res.success) showErrorToast(normalizeError(new Error(res.error ?? 'rerun failed')))
+    } catch (err) {
+      showErrorToast(normalizeError(err))
+    } finally {
+      setRerunning(false)
+    }
+  }
+  const onClose = () => useStageStore.getState().closeTab(tabId)
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex items-center gap-2 border-b px-3 py-2 text-xs">
+        <span className="rounded border px-1.5 font-mono text-[10px]">{t('bangQuery.label')}</span>
+        <div
+          className={`flex-1 min-w-0 font-mono text-xs ${expanded ? 'whitespace-pre-wrap' : 'truncate'}`}
+          onClick={() => setExpanded((v) => !v)}
+          role="button"
+          tabIndex={0}
+        >
+          {payload.sql}
+        </div>
+        {payload.lastRun && (
+          <>
+            <span className="text-muted-foreground whitespace-nowrap">{payload.lastRun.rowCount} rows</span>
+            <span className="text-muted-foreground whitespace-nowrap">{payload.lastRun.durationMs}ms</span>
+          </>
+        )}
+        <Button size="icon-xs" variant="ghost" onClick={onRerun} disabled={rerunning} aria-label={t('bangQuery.rerun')}>
+          <RefreshCwIcon className={`size-3.5 ${rerunning ? 'animate-spin' : ''}`} />
+        </Button>
+        <Button size="icon-xs" variant="ghost" onClick={onClose} aria-label={t('bangQuery.close')}>
+          <XIcon className="size-3.5" />
+        </Button>
+      </div>
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <DataGrid columns={columns} rows={rows} />
+      </div>
+    </div>
+  )
+}

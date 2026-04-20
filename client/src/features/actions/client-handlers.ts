@@ -8,3 +8,6 @@ registerClientHandler('datatalk.pin_artifact', async (input, ctx) => {
   if (a) useOntologyStore.getState().upsertArtifact(ctx.sessionId, { ...a, pinned: true })
   return { pinned: true }
 })
+
+// Trigger registration of datatalk.ui.* handlers
+import './ui-handlers'

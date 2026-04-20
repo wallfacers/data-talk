@@ -6,7 +6,7 @@
 
 | 计划 | 状态 | 摘要 |
 |------|------|------|
-| [Stage UI Object Protocol Phase 1](./2026-04-20-stage-ui-object-protocol-plan.md) | pending | 前端移植 `UIRouter` + 4 个 CLIENT Action 桥接（`datatalk.ui.read/patch/exec/list`）；`StageStore` 扩为多 Tab 模型（工具 Tab 工作台级 + artifact Tab 会话级）；用户 `!<sql>` 直查通道落地（`bang_query` Tab，结果不走 AI）；后端 `/api/query` 补 `SqlStatementGuard`。AI 展示路径（QueryEditor + Prompt 注入）归属 P2，不在此 plan。 |
+| [Stage UI Object Protocol Phase 1](./2026-04-20-stage-ui-object-protocol-plan.md) | in_progress | 前端 `UIRouter` + 4 个 CLIENT Action 桥接已就位；`StageStore` 多 Tab 模型、`WorkspaceAdapter` / `BangQueryAdapter`、StageWindow 多 Tab UI、`BangQueryTab` 组件、Composer `!` 拦截均已落地；后端 `/api/query` 加 `SqlStatementGuard`。客户端 198 tests + 后端 179 tests 全绿。**剩余：手动端到端联调（plan Step 12.5）**。AI 展示路径（QueryEditor + Prompt 注入）归属 P2，不在此 plan。 |
 | [SQL Risk Classification & IT CI Gate](./2026-04-20-sql-risk-classification-it-ci-gate-plan.md) | in_progress | `TD-020`：在 `ActionDispatcher` 统一预处理层引入 Apache Calcite SQL AST 风险判级，并通过 `ActionContext` / action output metadata 透传动态风险；`TD-021`：在 adapter 模块接入 failsafe，让 `mvn clean verify` 自动执行 `*IT.java`。 |
 
 ## 已完成计划

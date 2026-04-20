@@ -95,3 +95,51 @@ describe('stage-store', () => {
     expect(useStageStore.getState().revealOrigin).toEqual({ x: 50, y: 50 })
   })
 })
+
+describe('StageStore tabs', () => {
+  beforeEach(() => { useStageStore.setState({
+    openBySession: new Map(),
+    autoOpenedSessions: new Set(),
+    maximizedBySession: new Map(),
+    revealOrigin: null,
+    workspaceTabs: [], tabsBySession: new Map(),
+    activeTabIdBySession: new Map(), activeWorkspaceTabId: null,
+  } as unknown as Record<string, unknown>) })
+
+  it('openTab(workspace) adds to workspaceTabs and sets activeWorkspaceTabId', () => {
+    useStageStore.getState().openTab({ tabId: 't1', type: 'bang_query', title: 'sql', scope: 'workspace', payload: {}, createdAt: 1 })
+    expect(useStageStore.getState().workspaceTabs).toHaveLength(1)
+    expect(useStageStore.getState().activeWorkspaceTabId).toBe('t1')
+  })
+
+  it('openTab(session) adds to tabsBySession and sets activeTabIdBySession', () => {
+    useStageStore.getState().openTab({ tabId: 'a1', type: 'artifact', title: 'art', scope: 'session', originSessionId: 's1', payload: {}, createdAt: 1 })
+    expect(useStageStore.getState().tabsBySession.get('s1')).toHaveLength(1)
+    expect(useStageStore.getState().activeTabIdBySession.get('s1')).toBe('a1')
+  })
+
+  it('closeTab removes and clears active', () => {
+    const st = useStageStore.getState()
+    st.openTab({ tabId: 't1', type: 'bang_query', title: 'x', scope: 'workspace', payload: {}, createdAt: 1 })
+    st.closeTab('t1')
+    expect(useStageStore.getState().workspaceTabs).toHaveLength(0)
+    expect(useStageStore.getState().activeWorkspaceTabId).toBeNull()
+  })
+
+  it('focusTab switches active', () => {
+    const st = useStageStore.getState()
+    st.openTab({ tabId: 't1', type: 'bang_query', title: 'x', scope: 'workspace', payload: {}, createdAt: 1 })
+    st.openTab({ tabId: 't2', type: 'bang_query', title: 'y', scope: 'workspace', payload: {}, createdAt: 2 })
+    expect(useStageStore.getState().activeWorkspaceTabId).toBe('t2')
+    st.focusTab('t1')
+    expect(useStageStore.getState().activeWorkspaceTabId).toBe('t1')
+  })
+
+  it('listTabs(sid) merges workspace + session tabs', () => {
+    const st = useStageStore.getState()
+    st.openTab({ tabId: 't1', type: 'bang_query', title: 'x', scope: 'workspace', payload: {}, createdAt: 1 })
+    st.openTab({ tabId: 'a1', type: 'artifact', title: 'y', scope: 'session', originSessionId: 's1', payload: {}, createdAt: 2 })
+    const merged = st.listTabs('s1')
+    expect(merged.map(t => t.tabId).sort()).toEqual(['a1', 't1'])
+  })
+})

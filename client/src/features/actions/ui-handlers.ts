@@ -1,0 +1,34 @@
+import { registerClientHandler } from './registry'
+import { uiRouter } from '@/services/ui-router'
+import type { UIRequest } from '@/services/ui-router'
+
+type ReadInput = { object: string; target?: string; mode?: 'state' | 'schema' | 'actions' | 'full' }
+type PatchInput = { object: string; target?: string; ops: unknown[]; reason?: string }
+type ExecInput = { object: string; target?: string; action: string; params?: unknown }
+type ListInput = { filter?: { type?: string; keyword?: string; connectionId?: string; database?: string } }
+
+async function forward(req: UIRequest): Promise<unknown> {
+  const resp = await uiRouter.handle(req)
+  if (resp.error) throw new Error(resp.error)
+  return resp.data
+}
+
+registerClientHandler('datatalk.ui.read', async (input) => {
+  const i = input as ReadInput
+  return forward({ tool: 'ui_read', object: i.object, target: i.target ?? 'active', payload: { mode: i.mode } })
+})
+
+registerClientHandler('datatalk.ui.patch', async (input) => {
+  const i = input as PatchInput
+  return forward({ tool: 'ui_patch', object: i.object, target: i.target ?? 'active', payload: { ops: i.ops, reason: i.reason } })
+})
+
+registerClientHandler('datatalk.ui.exec', async (input) => {
+  const i = input as ExecInput
+  return forward({ tool: 'ui_exec', object: i.object, target: i.target ?? 'active', payload: { action: i.action, params: i.params } })
+})
+
+registerClientHandler('datatalk.ui.list', async (input) => {
+  const i = input as ListInput
+  return forward({ tool: 'ui_list', object: '', target: '', payload: { filter: i.filter } })
+})
