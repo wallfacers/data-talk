@@ -38,24 +38,26 @@ export function StageToggleButton() {
 
   return (
     <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          ref={btnRef}
-          type="button"
-          size="icon-xs"
-          variant="ghost"
-          aria-pressed={open}
-          aria-label={title}
-          aria-disabled={!sid}
-          onClick={handleClick}
-          className={cn(
-            'cursor-pointer rounded-md text-black hover:bg-accent/80 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 dark:text-white',
-            open && 'bg-accent/70',
-          )}
-        >
-          <MonitorIcon className="size-3.5" />
-        </Button>
-      </TooltipTrigger>
+      <TooltipTrigger
+        render={
+          <Button
+            ref={btnRef}
+            type="button"
+            size="icon-xs"
+            variant="ghost"
+            aria-pressed={open}
+            aria-label={title}
+            aria-disabled={!sid}
+            onClick={handleClick}
+            className={cn(
+              'cursor-pointer rounded-md text-foreground hover:bg-accent/80 aria-disabled:cursor-not-allowed aria-disabled:opacity-50',
+              open && 'bg-accent/70',
+            )}
+          >
+            <MonitorIcon className="size-3.5" />
+          </Button>
+        }
+      />
       <TooltipContent side="bottom" sideOffset={4}>
         {title}
       </TooltipContent>

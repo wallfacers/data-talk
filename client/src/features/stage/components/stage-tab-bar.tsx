@@ -43,35 +43,36 @@ export function StageTabBar({ tabs, activeId }: StageTabBarProps) {
             const isActive = tab.id === activeId
             return (
               <ContextMenu key={tab.id}>
-                <ContextMenuTrigger asChild>
-                  {/* data-tab-id 供事件委托使用 */}
-                  <div data-tab-id={tab.id}>
-                    <TabsTrigger
-                      value={tab.id}
-                      className={cn(
-                        "group relative flex h-8 items-center gap-2 rounded-md px-4 text-sm font-medium transition-all duration-200 ease-out select-none",
-                        "data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-border/50",
-                        "data-[state=inactive]:text-muted-foreground hover:data-[state=inactive]:text-foreground"
-                      )}
-                    >
-                      {getTabIcon(tab.type, isActive)}
-                      <span>{tab.title}</span>
-                      
-                      <div
-                        role="button"
+                <ContextMenuTrigger
+                  render={
+                    <div data-tab-id={tab.id}>
+                      <TabsTrigger
+                        value={tab.id}
                         className={cn(
-                          "ml-1 flex size-[18px] items-center justify-center rounded-[4px] transition-all",
-                          isActive ? "opacity-100 hover:bg-muted" : "opacity-0 group-hover:opacity-100 hover:bg-muted-foreground/10"
+                          "group relative flex h-8 items-center gap-2 rounded-md px-4 text-sm font-medium transition-all duration-200 ease-out select-none",
+                          "data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-border/50",
+                          "data-[state=inactive]:text-muted-foreground hover:data-[state=inactive]:text-foreground"
                         )}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                        }}
                       >
-                        <XIcon className="size-3.5" />
-                      </div>
-                    </TabsTrigger>
-                  </div>
-                </ContextMenuTrigger>
+                        {getTabIcon(tab.type, isActive)}
+                        <span>{tab.title}</span>
+
+                        <div
+                          role="button"
+                          className={cn(
+                            "ml-1 flex size-[18px] items-center justify-center rounded-[4px] transition-all",
+                            isActive ? "opacity-100 hover:bg-muted" : "opacity-0 group-hover:opacity-100 hover:bg-muted-foreground/10"
+                          )}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                          }}
+                        >
+                          <XIcon className="size-3.5" />
+                        </div>
+                      </TabsTrigger>
+                    </div>
+                  }
+                />
                 <ContextMenuContent className="w-48 text-xs font-sans">
                   <ContextMenuItem>关闭</ContextMenuItem>
                   <ContextMenuSeparator />
