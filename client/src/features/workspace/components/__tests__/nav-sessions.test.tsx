@@ -12,7 +12,11 @@ vi.mock('@/features/connection/store', () => ({
 
 function renderWithCache(initial: api.Session[]) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  qc.setQueryData(['sessions', 'c1'], initial)
+  qc.setQueryData(['sessions', null], initial)
+  qc.setQueryData(
+    ['sessions', 'c1'],
+    initial.filter((session) => session.connectionId === 'c1'),
+  )
   render(
     <QueryClientProvider client={qc}>
       <SidebarProvider>
@@ -117,5 +121,15 @@ describe('NavSessions — 删除当前活跃会话', () => {
     fireEvent.click(screen.getByRole('button', { name: '更多' }))
 
     expect(await screen.findByText('删除')).toBeInTheDocument()
+  })
+
+  it('切换活动数据源后，侧栏仍显示全量历史会话', () => {
+    renderWithCache([
+      mkSession({ id: 's-null', connectionId: null, title: '无绑定历史' }),
+      mkSession({ id: 's-c2', connectionId: 'c2', title: '另一个库的历史' }),
+    ])
+
+    expect(screen.getByText('无绑定历史')).toBeInTheDocument()
+    expect(screen.getByText('另一个库的历史')).toBeInTheDocument()
   })
 })

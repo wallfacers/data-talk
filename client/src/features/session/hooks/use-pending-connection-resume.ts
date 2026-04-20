@@ -4,6 +4,7 @@ import { createSession } from '@/services/api/session'
 import { useConnectionStore } from '@/features/connection/store'
 import { useSessionStore } from '@/stores/session-store'
 import { useHasActiveModel } from './use-has-active-model'
+import { invalidateSessionLists } from './use-sessions'
 
 export function usePendingConnectionResume() {
   const queryClient = useQueryClient()
@@ -25,7 +26,7 @@ export function usePendingConnectionResume() {
 
     void createSession(activeConnectionId, initialTitle).then((session) => {
       if (cancelled) return
-      queryClient.invalidateQueries({ queryKey: ['sessions', activeConnectionId] })
+      invalidateSessionLists(queryClient)
       openSession(session.id, session.hasEverSent)
       setPendingAction(null)
     })

@@ -1,12 +1,46 @@
-import { useQuery } from '@tanstack/react-query'
-import { listSessions } from '@/services/api/session'
+import { useQuery, type QueryClient } from '@tanstack/react-query'
+import { listSessions, type Session } from '@/services/api/session'
 import { useConnectionStore } from '@/features/connection/store'
 
-export function useSessions() {
+export type SessionsScope = 'active' | 'all'
+
+export function getSessionsQueryKey(connectionId?: string | null) {
+  return ['sessions', connectionId ?? null] as const
+}
+
+export function invalidateSessionLists(queryClient: QueryClient) {
+  return queryClient.invalidateQueries({ queryKey: ['sessions'] })
+}
+
+export function patchCachedSessionLists(
+  queryClient: QueryClient,
+  sessionId: string,
+  patch: Pick<Session, 'title' | 'titleLocked'>,
+) {
+  queryClient.setQueriesData<Session[]>(
+    { queryKey: ['sessions'] },
+    (old) => {
+      if (!old) return old
+      let changed = false
+      const next = old.map((session) => {
+        if (session.id !== sessionId) return session
+        if (session.title === patch.title && session.titleLocked === patch.titleLocked) {
+          return session
+        }
+        changed = true
+        return { ...session, ...patch }
+      })
+      return changed ? next : old
+    },
+  )
+}
+
+export function useSessions(scope: SessionsScope = 'active') {
   const connectionId = useConnectionStore((s) => s.activeConnectionId)
+  const scopedConnectionId = scope === 'all' ? null : connectionId
 
   return useQuery({
-    queryKey: ['sessions', connectionId ?? null],
-    queryFn: () => listSessions(connectionId ?? undefined),
+    queryKey: getSessionsQueryKey(scopedConnectionId),
+    queryFn: () => listSessions(scopedConnectionId ?? undefined),
   })
 }

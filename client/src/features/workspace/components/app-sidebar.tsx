@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button'
 import { createSession } from '@/services/api/session'
 import type { Session } from '@/services/api/session'
 import { useConnectionStore } from '@/features/connection/store'
+import { invalidateSessionLists } from '@/features/session/hooks/use-sessions'
 import { useSessionStore } from '@/stores/session-store'
 import { useHasActiveModel } from '@/features/session/hooks/use-has-active-model'
 import { NavSessions } from './nav-sessions'
@@ -60,7 +61,7 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
     onSuccess: (sess) => {
       openSession(sess.id, sess.hasEverSent)
       if (!sess.reusedEmpty) {
-        qc.invalidateQueries({ queryKey: ['sessions', activeConnectionId ?? null] })
+        invalidateSessionLists(qc)
       }
     },
     onSettled: () => {

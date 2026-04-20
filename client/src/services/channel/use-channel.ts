@@ -12,7 +12,10 @@ import { useConnectionStore } from '@/features/connection/store'
 import { useChannelStore } from '@/stores/channel-store'
 import { getClientHandler } from '@/features/actions/registry'
 import { normalizeError, showErrorToast } from '@/services/http-error'
-import type { Session } from '@/services/api/session'
+import {
+  invalidateSessionLists,
+  patchCachedSessionLists,
+} from '@/features/session/hooks/use-sessions'
 
 function getApiBaseUrl(): string {
   const env = (import.meta as any).env?.VITE_API_BASE_URL
@@ -20,7 +23,13 @@ function getApiBaseUrl(): string {
   return ''
 }
 
-export function buildEventSink(sessionId: string, client: ChannelClient | null, queryClient: QueryClient, connectionId: string | null = null, pendingUserId: string | null = null) {
+export function buildEventSink(
+  sessionId: string,
+  client: ChannelClient | null,
+  queryClient: QueryClient,
+  _connectionId: string | null = null,
+  pendingUserId: string | null = null,
+) {
   return (evt: StreamEvent) => {
     const { event, data } = evt
     if (typeof evt.id === 'number' && evt.id > 0) {
@@ -70,17 +79,7 @@ export function buildEventSink(sessionId: string, client: ChannelClient | null, 
       useChatPartsStore.getState().setStreaming(sessionId, false)
     } else if (event === 'session.meta.updated') {
       const { sessionId: sid, title, titleLocked } = data as { sessionId: string; title: string; titleLocked: boolean }
-      queryClient.setQueryData<Session[]>(['sessions', connectionId ?? null], (old) => {
-        if (!old) return old
-        let changed = false
-        const next = old.map((s) => {
-          if (s.id !== sid) return s
-          if (s.title === title && s.titleLocked === titleLocked) return s
-          changed = true
-          return { ...s, title, titleLocked }
-        })
-        return changed ? next : old
-      })
+      patchCachedSessionLists(queryClient, sid, { title, titleLocked })
     } else if (event === 'message.part.created' || event === 'message.part.updated') {
       const part = (data as any).part
       useChatPartsStore.getState().upsertPart(sessionId, part)
@@ -167,7 +166,7 @@ export function useChannel() {
       enterSplit(sessionId)
       markSessionSent(sessionId)
       // 发送消息后刷新会话列表，让 hasEverSent 更新
-      queryClient.invalidateQueries({ queryKey: ['sessions', connectionId ?? null] })
+      invalidateSessionLists(queryClient)
       const sink = buildEventSink(sessionId, client, queryClient, connectionId, pendingId)
       try {
         await client.sendMessage(parts, sink)

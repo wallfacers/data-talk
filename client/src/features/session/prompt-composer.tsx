@@ -25,6 +25,7 @@ import { normalizeError, showErrorToast } from '@/services/http-error'
 import { StageToggleButton } from '@/features/stage/components/stage-toggle-button'
 import { openBangQueryTab } from '@/features/stage/utils/open-bang-query-tab'
 import { useHasActiveModel } from './hooks/use-has-active-model'
+import { invalidateSessionLists } from './hooks/use-sessions'
 import { SQL_EXECUTE_EVENT, SQL_EXPLAIN_EVENT } from '@/features/chat/components/markdown/sql-code-block'
 import { useI18n } from '@/i18n/use-i18n'
 import { useDataSourcePickerStore } from './data-source-picker/data-source-picker-store'
@@ -140,7 +141,7 @@ function InnerComposer() {
         // 使用用户输入的文本的前 50 个字符作为初始标题，实现标题快速填充
         const initialTitle = t.slice(0, 50)
         const sess = await createSession(activeConnectionId ?? undefined, initialTitle)
-        qc.invalidateQueries({ queryKey: ['sessions', activeConnectionId ?? null] })
+        invalidateSessionLists(qc)
         openSession(sess.id, sess.hasEverSent)
         // resume hook 会在 activeSessionId 就绪后消费 pendingPrompt
       } catch (err) {

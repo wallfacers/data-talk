@@ -35,10 +35,12 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useSessions } from '@/features/session/hooks/use-sessions'
+import {
+  invalidateSessionLists,
+  useSessions,
+} from '@/features/session/hooks/use-sessions'
 import { useOpenBlankSession } from '@/features/session/hooks/use-open-blank-session'
 import { useSessionStore } from '@/stores/session-store'
-import { useConnectionStore } from '@/features/connection/store'
 import { renameSession, deleteSession, type Session } from '@/services/api/session'
 import { useI18n } from '@/i18n/use-i18n'
 
@@ -111,14 +113,13 @@ export function NavSessions() {
   const activeSessionId = useSessionStore((s) => s.activeSessionId)
   const openSession = useSessionStore((s) => s.openSession)
   const openBlankSession = useOpenBlankSession()
-  const sessions = useSessions()
+  const sessions = useSessions('all')
   const qc = useQueryClient()
-  const connectionId = useConnectionStore((s) => s.activeConnectionId)
 
   const renameMut = useMutation({
     mutationFn: ({ id, title }: { id: string; title: string }) => renameSession(id, title),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['sessions', connectionId ?? null] })
+      invalidateSessionLists(qc)
       toast.success(t('common.renamed'))
     },
   })
@@ -126,7 +127,7 @@ export function NavSessions() {
   const deleteMut = useMutation({
     mutationFn: (id: string) => deleteSession(id),
     onSuccess: (_, id) => {
-      qc.invalidateQueries({ queryKey: ['sessions', connectionId ?? null] })
+      invalidateSessionLists(qc)
       if (useSessionStore.getState().activeSessionId === id) {
         void openBlankSession(id)
       }

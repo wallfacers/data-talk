@@ -13,10 +13,9 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useSidebar } from '@/components/ui/sidebar'
 import { useSessionStore } from '@/stores/session-store'
-import { useSessions } from './hooks/use-sessions'
+import { invalidateSessionLists, useSessions } from './hooks/use-sessions'
 import { useOpenBlankSession } from './hooks/use-open-blank-session'
 import { deleteSession, renameSession } from '@/services/api/session'
-import { useConnectionStore } from '@/features/connection/store'
 import { useI18n } from '@/i18n/use-i18n'
 
 // OpenCode 生成的临时标题格式，不应展示
@@ -26,14 +25,13 @@ export function ChatHeader() {
   const { t } = useI18n()
   const sid = useSessionStore((s) => s.activeSessionId)
   const localHasEverSent = useSessionStore((s) => s.hasEverSentBySession)
-  const { data: sessions } = useSessions()
+  const { data: sessions } = useSessions('all')
   const session = sessions?.find((s) => s.id === sid)
   const rawTitle = session?.title ?? ''
   const title = OPENCODE_TEMP_TITLE_REGEX.test(rawTitle) ? t('workspace.nav.newSession') : rawTitle
   // 使用本地缓存优先判断：本地 hasEverSent=true 说明用户已发送消息
   const isBlankSession = sid ? !(localHasEverSent.get(sid) ?? session?.hasEverSent ?? false) : false
   const qc = useQueryClient()
-  const connectionId = useConnectionStore((s) => s.activeConnectionId)
   const openBlankSession = useOpenBlankSession()
   const { state } = useSidebar()
 
@@ -48,7 +46,7 @@ export function ChatHeader() {
   const rename = useMutation({
     mutationFn: ({ id, title }: { id: string; title: string }) => renameSession(id, title),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['sessions', connectionId ?? null] })
+      invalidateSessionLists(qc)
       toast.success(t('common.renamed'))
     },
   })
@@ -56,7 +54,7 @@ export function ChatHeader() {
   const del = useMutation({
     mutationFn: (id: string) => deleteSession(id),
     onSuccess: (_, id) => {
-      qc.invalidateQueries({ queryKey: ['sessions', connectionId ?? null] })
+      invalidateSessionLists(qc)
       void openBlankSession(id)
       toast.success(t('common.deleted'))
     },
