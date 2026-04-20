@@ -1,45 +1,22 @@
 package com.datatalk.domain.event;
 
 import com.datatalk.domain.part.Message;
-import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.databind.DatabindContext;
+import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.annotation.JsonTypeIdResolver;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.jsontype.impl.TypeIdResolverBase;
+import com.fasterxml.jackson.databind.type.TypeFactory;
 
+import java.io.IOException;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
-@JsonSubTypes({
-        @JsonSubTypes.Type(value = DtEvent.Connected.class, name = "connected"),
-        @JsonSubTypes.Type(value = DtEvent.Disconnected.class, name = "disconnected"),
-        @JsonSubTypes.Type(value = DtEvent.SessionStatus.class, name = "session.status"),
-        @JsonSubTypes.Type(value = DtEvent.SessionCreated.class, name = "session.created"),
-        @JsonSubTypes.Type(value = DtEvent.SessionMetaUpdated.class, name = "session.meta.updated"),
-        @JsonSubTypes.Type(value = DtEvent.SessionDeleted.class, name = "session.deleted"),
-        @JsonSubTypes.Type(value = DtEvent.SessionIdle.class, name = "session.idle"),
-        @JsonSubTypes.Type(value = DtEvent.SessionError.class, name = "session.error"),
-        @JsonSubTypes.Type(value = DtEvent.SessionCompacted.class, name = "session.compacted"),
-        @JsonSubTypes.Type(value = DtEvent.SessionDiff.class, name = "session.diff"),
-        @JsonSubTypes.Type(value = DtEvent.SessionStarted.class, name = "session.started"),
-        @JsonSubTypes.Type(value = DtEvent.SessionEnded.class, name = "session.ended"),
-        @JsonSubTypes.Type(value = DtEvent.AgentStatus.class, name = "agent.status"),
-        @JsonSubTypes.Type(value = DtEvent.TaskComplete.class, name = "task.complete"),
-        @JsonSubTypes.Type(value = DtEvent.MessageCreated.class, name = "message.created"),
-        @JsonSubTypes.Type(value = DtEvent.MessageUpdated.class, name = "message.updated"),
-        @JsonSubTypes.Type(value = DtEvent.MessagePartCreated.class, name = "message.part.created"),
-        @JsonSubTypes.Type(value = DtEvent.MessagePartUpdated.class, name = "message.part.updated"),
-        @JsonSubTypes.Type(value = DtEvent.MessagePartDelta.class, name = "message.part.delta"),
-        @JsonSubTypes.Type(value = DtEvent.MessagePartRemoved.class, name = "message.part.removed"),
-        @JsonSubTypes.Type(value = DtEvent.ActionInvoke.class, name = "action.invoke"),
-        @JsonSubTypes.Type(value = DtEvent.ActionCancel.class, name = "action.cancel"),
-        @JsonSubTypes.Type(value = DtEvent.ActionResponse.class, name = "action.response"),
-        @JsonSubTypes.Type(value = DtEvent.ArtifactSnapshot.class, name = "artifact.snapshot"),
-        @JsonSubTypes.Type(value = DtEvent.OntologyUpdated.class, name = "ontology.updated"),
-        @JsonSubTypes.Type(value = DtEvent.Heartbeat.class, name = "heartbeat"),
-        @JsonSubTypes.Type(value = DtEvent.PingPong.class, name = "ping"),
-        @JsonSubTypes.Type(value = DtEvent.StreamError.class, name = "error")
-})
+@JsonTypeIdResolver(DtEventTypeIdResolver.class)
 public sealed interface DtEvent {
 
     @JsonTypeName("connected")
@@ -138,5 +115,55 @@ public sealed interface DtEvent {
             case PingPong pp              -> "ping";
             case StreamError se           -> "error";
         };
+    }
+}
+
+final class DtEventTypeIdResolver extends TypeIdResolverBase {
+
+    private Map<String, JavaType> typeById = Map.of();
+    private Map<Class<?>, String> idByType = Map.of();
+
+    @Override
+    public void init(JavaType baseType) {
+        super.init(baseType);
+        Map<String, JavaType> discoveredTypes = new LinkedHashMap<>();
+        Map<Class<?>, String> discoveredIds = new LinkedHashMap<>();
+        for (Class<?> subtype : DtEvent.class.getPermittedSubclasses()) {
+            JsonTypeName typeName = subtype.getAnnotation(JsonTypeName.class);
+            if (typeName == null || typeName.value().isBlank()) {
+                throw new IllegalStateException("DtEvent subtype missing @JsonTypeName: " + subtype.getName());
+            }
+            if (discoveredTypes.put(typeName.value(), TypeFactory.defaultInstance().constructType(subtype)) != null) {
+                throw new IllegalStateException("Duplicate DtEvent type id: " + typeName.value());
+            }
+            discoveredIds.put(subtype, typeName.value());
+        }
+        this.typeById = Map.copyOf(discoveredTypes);
+        this.idByType = Map.copyOf(discoveredIds);
+    }
+
+    @Override
+    public String idFromValue(Object value) {
+        return idByType.get(value.getClass());
+    }
+
+    @Override
+    public String idFromValueAndType(Object value, Class<?> suggestedType) {
+        return idByType.get(suggestedType);
+    }
+
+    @Override
+    public JavaType typeFromId(DatabindContext context, String id) throws IOException {
+        return typeById.get(id);
+    }
+
+    @Override
+    public com.fasterxml.jackson.annotation.JsonTypeInfo.Id getMechanism() {
+        return JsonTypeInfo.Id.NAME;
+    }
+
+    @Override
+    public String getDescForKnownTypeIds() {
+        return String.join(", ", typeById.keySet());
     }
 }

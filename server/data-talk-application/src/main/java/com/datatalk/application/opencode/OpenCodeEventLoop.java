@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+import java.util.function.LongSupplier;
 
 /**
  * Subscribes to OpenCode's /global/event SSE stream, parses frames into
@@ -35,6 +36,8 @@ import java.util.function.Consumer;
 public class OpenCodeEventLoop {
 
     private static final Logger log = LoggerFactory.getLogger(OpenCodeEventLoop.class);
+    private static final Duration DEFAULT_PART_BINDING_TTL = Duration.ofMinutes(30);
+    private static final Duration DEFAULT_PART_BINDING_CLEANUP_INTERVAL = Duration.ofMinutes(5);
 
     private final HttpClient httpClient;
     private volatile String baseUrl;
@@ -50,23 +53,42 @@ public class OpenCodeEventLoop {
      * OpenCode's {@code message.part.delta} frame carries only {@code partID},
      * {@code field}, and {@code delta} — no {@code sessionID}. To route delta
      * events to the right SessionBus we remember the {@code partId →
-     * openCodeSessionId} binding the first time we see a {@code part.created}
-     * or {@code part.updated} for that part, and look it up on every delta.
-     * Cleared when the part is removed or the OpenCode session is deleted.
+     * openCodeSessionId} binding plus a last-seen timestamp, so stale entries
+     * can be reaped even if {@code message.part.removed} goes missing.
      */
-    private final Map<String, String> partToOpenCodeSession = new ConcurrentHashMap<>();
+    private final Map<String, PartSessionBinding> partToOpenCodeSession = new ConcurrentHashMap<>();
+    private final long partBindingTtlMillis;
+    private final long partBindingCleanupIntervalMillis;
+    private final LongSupplier nowMillisSupplier;
+    private volatile long nextPartBindingCleanupAtMillis;
 
     public OpenCodeEventLoop(String baseUrl, ObjectMapper om,
                              OpenCodeEventTranslator translator,
                              SessionBusRegistry buses,
                              OpenCodeSessionMap sessionMap,
                              Consumer<OcEvent> tap) {
+        this(baseUrl, om, translator, buses, sessionMap, tap,
+            DEFAULT_PART_BINDING_TTL, DEFAULT_PART_BINDING_CLEANUP_INTERVAL, System::currentTimeMillis);
+    }
+
+    OpenCodeEventLoop(String baseUrl, ObjectMapper om,
+                      OpenCodeEventTranslator translator,
+                      SessionBusRegistry buses,
+                      OpenCodeSessionMap sessionMap,
+                      Consumer<OcEvent> tap,
+                      Duration partBindingTtl,
+                      Duration partBindingCleanupInterval,
+                      LongSupplier nowMillisSupplier) {
         this.baseUrl = baseUrl;
         this.om = om;
         this.translator = translator;
         this.buses = buses;
         this.sessionMap = sessionMap;
         this.tap = tap == null ? e -> {} : tap;
+        this.partBindingTtlMillis = requirePositiveMillis(partBindingTtl, "partBindingTtl");
+        this.partBindingCleanupIntervalMillis = requirePositiveMillis(partBindingCleanupInterval, "partBindingCleanupInterval");
+        this.nowMillisSupplier = nowMillisSupplier;
+        this.nextPartBindingCleanupAtMillis = nowMillisSupplier.getAsLong() + this.partBindingCleanupIntervalMillis;
         this.httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .build();
@@ -175,22 +197,17 @@ public class OpenCodeEventLoop {
         OcEvent oc = parseOcEvent(eventName, json);
         tap.accept(oc);
 
-        rememberPartToSession(oc);
-
         String openCodeSessionId = extractSessionId(oc);
+        rememberPartToSession(oc);
+        maybeCleanupPartBindings();
         if (openCodeSessionId == null) {
             return;
         }
         String dataTalkSessionId = sessionMap.dataTalkFor(openCodeSessionId);
         if (dataTalkSessionId == null) {
-            // OpenCode 的 /global/event 是**进程级**广播，会带上所有 session 的事件，
-            // 包括 DataTalk 已从本地库删除但 OpenCode 侧仍保留的孤儿 session
-            // （历史遗留 / deleteSession 网络失败等路径都会产生）。这些事件对
-            // DataTalk 毫无意义，丢弃是正确行为 —— 降为 DEBUG 避免日志污染。
-            if (log.isDebugEnabled()) {
-                log.debug("[opencode-event-loop] dropped {} — no DataTalk session mapped for OpenCode sid={}",
-                    eventName, openCodeSessionId);
-            }
+            removePartBindingsForSession(openCodeSessionId);
+            log.warn("[opencode-event-loop] orphan OpenCode session event dropped: event={}, openCodeSid={}",
+                eventName, openCodeSessionId);
             return;
         }
         SessionBus bus = buses.getOrCreate(dataTalkSessionId);
@@ -212,16 +229,53 @@ public class OpenCodeEventLoop {
             String pid = p.part().path("id").asText(null);
             String sid = p.part().path("sessionID").asText(null);
             if (pid != null && sid != null && !pid.isEmpty() && !sid.isEmpty()) {
-                partToOpenCodeSession.put(pid, sid);
+                rememberPartBinding(pid, sid);
             }
         } else if (oc instanceof OcEvent.MessagePartRemoved r) {
             partToOpenCodeSession.remove(r.partId());
         } else if (oc instanceof OcEvent.SessionDeleted s) {
             String openCodeSid = s.info().id();
             if (openCodeSid != null && !openCodeSid.isEmpty()) {
-                partToOpenCodeSession.entrySet().removeIf(e -> openCodeSid.equals(e.getValue()));
+                removePartBindingsForSession(openCodeSid);
             }
         }
+    }
+
+    private void rememberPartBinding(String partId, String openCodeSessionId) {
+        partToOpenCodeSession.put(partId, new PartSessionBinding(openCodeSessionId, nowMillisSupplier.getAsLong()));
+    }
+
+    private void maybeCleanupPartBindings() {
+        long now = nowMillisSupplier.getAsLong();
+        if (now < nextPartBindingCleanupAtMillis) {
+            return;
+        }
+        partToOpenCodeSession.entrySet().removeIf(e -> now - e.getValue().lastTouchedAtMillis() >= partBindingTtlMillis);
+        nextPartBindingCleanupAtMillis = now + partBindingCleanupIntervalMillis;
+    }
+
+    private void removePartBindingsForSession(String openCodeSessionId) {
+        partToOpenCodeSession.entrySet().removeIf(e -> openCodeSessionId.equals(e.getValue().openCodeSessionId()));
+    }
+
+    private String touchAndGetBoundSessionId(String partId) {
+        if (partId == null || partId.isBlank()) {
+            return null;
+        }
+        PartSessionBinding binding = partToOpenCodeSession.get(partId);
+        if (binding == null) {
+            return null;
+        }
+        partToOpenCodeSession.replace(partId, binding,
+            new PartSessionBinding(binding.openCodeSessionId(), nowMillisSupplier.getAsLong()));
+        return binding.openCodeSessionId();
+    }
+
+    private static long requirePositiveMillis(Duration duration, String name) {
+        if (duration == null || duration.isZero() || duration.isNegative()) {
+            throw new IllegalArgumentException(name + " must be > 0");
+        }
+        return duration.toMillis();
     }
 
     /**
@@ -344,8 +398,8 @@ public class OpenCodeEventLoop {
         return switch (e) {
             case OcEvent.MessageUpdated m    -> m.message().sessionId();
             case OcEvent.MessagePartUpdated p -> p.part().path("sessionID").asText(null);
-            case OcEvent.MessagePartDelta d  -> partToOpenCodeSession.get(d.partId());
-            case OcEvent.MessagePartRemoved r -> partToOpenCodeSession.get(r.partId());
+            case OcEvent.MessagePartDelta d  -> touchAndGetBoundSessionId(d.partId());
+            case OcEvent.MessagePartRemoved r -> touchAndGetBoundSessionId(r.partId());
             case OcEvent.SessionCreated s    -> s.info().id();
             case OcEvent.SessionUpdated s    -> s.info().id();
             case OcEvent.SessionDeleted s    -> s.info().id();
@@ -357,4 +411,6 @@ public class OpenCodeEventLoop {
             default                          -> null;
         };
     }
+
+    private record PartSessionBinding(String openCodeSessionId, long lastTouchedAtMillis) {}
 }

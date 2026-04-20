@@ -6,13 +6,21 @@ import com.datatalk.domain.event.DtEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
@@ -22,6 +30,7 @@ import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(OutputCaptureExtension.class)
 class OpenCodeEventLoopTest {
 
     WireMockServer wm;
@@ -101,12 +110,107 @@ class OpenCodeEventLoopTest {
         loop.stop();
 
         ArgumentCaptor<DtEvent> published = ArgumentCaptor.forClass(DtEvent.class);
-        Mockito.verify(mockBus, Mockito.atLeast(3)).publish(published.capture());
+        Mockito.verify(mockBus, Mockito.atLeast(2)).publish(published.capture());
         List<DtEvent.MessagePartDelta> deltas = published.getAllValues().stream()
             .filter(DtEvent.MessagePartDelta.class::isInstance)
             .map(DtEvent.MessagePartDelta.class::cast)
             .toList();
         assertThat(deltas).extracting(DtEvent.MessagePartDelta::delta).containsExactly("hi", " world");
+    }
+
+    @Test
+    void messagePartRemovedRoutesBeforeBindingIsCleared() {
+        String sse = """
+            data: {"directory":"/tmp","payload":{"type":"message.part.updated","properties":{"part":{"id":"p1","sessionID":"oc-1","type":"text","text":"hello"}}}}
+
+            data: {"directory":"/tmp","payload":{"type":"message.part.removed","properties":{"sessionID":"oc-1","partID":"p1"}}}
+
+            """;
+        wm.stubFor(get(urlEqualTo("/global/event"))
+            .willReturn(aResponse().withHeader("Content-Type", "text/event-stream").withBody(sse)));
+
+        OpenCodeSessionMap map = new OpenCodeSessionMap();
+        map.bind("dt-1", "oc-1");
+
+        SessionBus mockBus = Mockito.mock(SessionBus.class);
+        SessionBusRegistry buses = Mockito.mock(SessionBusRegistry.class);
+        when(buses.getOrCreate("dt-1")).thenReturn(mockBus);
+
+        OpenCodeEventTranslator tr = new OpenCodeEventTranslator(Mockito.mock(SessionTitleSyncer.class));
+        List<OcEvent> received = new ArrayList<>();
+        OpenCodeEventLoop loop = new OpenCodeEventLoop(
+            "http://localhost:" + wm.port(), new ObjectMapper(), tr, buses, map, received::add);
+
+        loop.start();
+        await().atMost(Duration.ofSeconds(3)).until(() -> received.size() >= 2);
+        loop.stop();
+
+        ArgumentCaptor<DtEvent> published = ArgumentCaptor.forClass(DtEvent.class);
+        Mockito.verify(mockBus, Mockito.atLeast(2)).publish(published.capture());
+        assertThat(published.getAllValues())
+            .filteredOn(DtEvent.MessagePartRemoved.class::isInstance)
+            .singleElement()
+            .extracting(e -> ((DtEvent.MessagePartRemoved) e).partId())
+            .isEqualTo("p1");
+    }
+
+    @Test
+    void evictsStalePartBindingsOnPeriodicCleanup() {
+        AtomicLong now = new AtomicLong(1_000L);
+        OpenCodeSessionMap sessionMap = new OpenCodeSessionMap();
+        sessionMap.bind("dt-1", "oc-1");
+        SessionBus mockBus = Mockito.mock(SessionBus.class);
+        SessionBusRegistry buses = Mockito.mock(SessionBusRegistry.class);
+        when(buses.getOrCreate("dt-1")).thenReturn(mockBus);
+        OpenCodeEventLoop loop = new OpenCodeEventLoop(
+            "http://test",
+            new ObjectMapper(),
+            new OpenCodeEventTranslator(Mockito.mock(SessionTitleSyncer.class)),
+            buses,
+            sessionMap,
+            null,
+            Duration.ofMillis(100),
+            Duration.ofMillis(10),
+            now::get
+        );
+
+        ReflectionTestUtils.invokeMethod(loop, "handleOcEvent",
+            "message.part.updated",
+            """
+                {"type":"message.part.updated","properties":{"part":{"id":"p1","sessionID":"oc-1","type":"text","text":""}}}
+                """);
+        assertThat(partBindings(loop)).hasSize(1);
+
+        now.addAndGet(200L);
+        ReflectionTestUtils.invokeMethod(loop, "handleOcEvent",
+            "server.connected",
+            """
+                {"type":"server.connected","properties":{}}
+                """);
+
+        assertThat(partBindings(loop)).isEmpty();
+    }
+
+    @Test
+    void warnsWhenDroppingOrphanSessionEvent(CapturedOutput output) {
+        OpenCodeEventLoop loop = new OpenCodeEventLoop(
+            "http://test",
+            new ObjectMapper(),
+            new OpenCodeEventTranslator(Mockito.mock(SessionTitleSyncer.class)),
+            Mockito.mock(SessionBusRegistry.class),
+            new OpenCodeSessionMap(),
+            null
+        );
+
+        ReflectionTestUtils.invokeMethod(loop, "handleOcEvent",
+            "session.updated",
+            """
+                {"type":"session.updated","properties":{"info":{"id":"oc-orphan","title":"ghost","time":{"updated":1}}}}
+                """);
+
+        assertThat(output).contains("orphan OpenCode session event dropped");
+        assertThat(output).contains("session.updated");
+        assertThat(output).contains("oc-orphan");
     }
 
     @Test
@@ -141,5 +245,10 @@ class OpenCodeEventLoopTest {
         assertThat(received.get(0)).isInstanceOf(OcEvent.SessionUpdated.class);
         Mockito.verify(syncer).apply("oc-1", "AI 标题");
         Mockito.verify(mockBus).publish(any(DtEvent.SessionMetaUpdated.class));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, ?> partBindings(OpenCodeEventLoop loop) {
+        return (Map<String, ?>) ReflectionTestUtils.getField(loop, "partToOpenCodeSession");
     }
 }

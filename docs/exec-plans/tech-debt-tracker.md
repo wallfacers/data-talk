@@ -14,7 +14,6 @@
 
 | ID | 优先级 | 模块 | 描述 | 来源 |
 |----|-------|------|------|------|
-| TD-003 | P2 | domain | `DtEvent` 的 Jackson `@JsonSubTypes` 硬编码了 22 个子类型，新增事件需修改两处（枚举 + 注解） | ~~Plan A~~ 2026-04-18 已改为 `@JsonTypeName` |
 | TD-005 | P2 | adapter | ~~缺少全局异常处理器~~ `AiSettingsExceptionHandler` 已合并到 `GlobalExceptionHandler`，统一错误响应格式 | 2026-04-18 已实现 |
 | TD-007 | P2 | client | ~~Demo 预览模式绕过真实 session/connection 流程~~ §3.1 P1 已于 2026-04-17 清理；§3.2 clip 动画死代码已删除，`useComposerSlot` 依赖已修复 | 2026-04-18 已清理 |
 | TD-010 | P2 | client | ~~自写 SplitView 移除了 `PanelResizeHandle`，用户无法拖拽调整左右面板宽度~~ 已添加 CSS drag handle + localStorage 持久化 | 2026-04-18 已实现 |
@@ -42,3 +41,6 @@
 | TD-019 | 2026-04-18 | commit fc8a450 后 `ConnectionService.create` 不再接受客户端 id，`ConnectionControllerIT` / `LayoutErdActionIT` / `ReadSchemaActionIT` 硬编码 id 失效 | `ConnectionService.create(...)` 改为返回生成的 `String id`；`ConnectionController.POST` 返回新 DTO `ConnectionCreatedDto(id)`；5 处测试调用方（含 `ExecuteSqlActionIT` / `TypicalQueryE2EIT`）消费返回值，不再使用硬编码 id |
 | TD-020 | 2026-04-20 | `preview_sql` 等 SQL-bearing action 的风险判级依赖前端正则粗判，未闭环“后端强制判级”规格 | 在 `ActionDispatcher` 统一预处理层接入 `SqlBearingActionInspector` + `CalciteSqlRiskAnalyzer`；动态风险通过 `ActionContext.metadata().sqlRisk()` 传入 handler，`ExecuteSqlAction` 已把 `riskLevel` / `riskReason` / `fallbackUsed` 回写到输出 metadata；前端正则仅保留为兼容旧数据 fallback。OpenCode `action_result → tool part state.metadata` 的端到端烟测仍待人工联调确认 |
 | TD-021 | 2026-04-20 | `*IT.java` 未纳入 Maven/CI，`ChannelControllerIT` / `TypicalQueryE2EIT` 等默认不执行 | `data-talk-adapter/pom.xml` 接入 `maven-failsafe-plugin` 并显式纳入 `**/*IT.java`，`mvn clean verify` 现为后端完整回归入口 |
+| TD-003 | 2026-04-21 | `DtEvent` 的 Jackson `@JsonSubTypes` 硬编码了 22 个子类型，新增事件需修改两处（枚举 + 注解） | 移除中央 `@JsonSubTypes` 列表，改为每个子类型 `@JsonTypeName` + 基于 sealed `permittedSubclasses` 的 `DtEventTypeIdResolver` 自动发现，新增事件无需再维护中央注册表 |
+| TD-024 | 2026-04-21 | `OpenCodeEventLoop` 的 `partToOpenCodeSession` ConcurrentHashMap 依赖 `message.part.removed` 事件清理；若事件丢失或乱序，映射表持续积累，存在内存泄漏风险 | `partToOpenCodeSession` 升级为带时间戳的临时索引，事件入口按固定周期惰性回收过期绑定；同时保留 `message.part.removed` / `session.deleted` 的即时清理 |
+| TD-025 | 2026-04-21 | `OpenCodeEventLoop` 对孤儿 session 的 global 事件仅静默丢弃，无 WARN 日志，排查困难 | 孤儿 session 事件改为 `WARN` 日志，并在丢弃时同步清理该 OpenCode session 对应的残留 part 绑定 |

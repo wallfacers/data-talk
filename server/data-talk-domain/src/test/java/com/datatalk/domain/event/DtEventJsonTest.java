@@ -1,5 +1,6 @@
 package com.datatalk.domain.event;
 
+import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
@@ -10,6 +11,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 class DtEventJsonTest {
 
     private final ObjectMapper om = new ObjectMapper();
+
+    @Test
+    void dtEventDoesNotUseCentralJsonSubTypesRegistry() {
+        assertThat(DtEvent.class.getAnnotation(JsonSubTypes.class)).isNull();
+    }
 
     @Test
     void sessionMetaUpdated_roundTrip() throws Exception {
