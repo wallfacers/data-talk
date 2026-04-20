@@ -112,6 +112,11 @@ public class SessionBus implements AutoCloseable {
                 try {
                     persister.persist(sessionId, id, evt.typeName(), om.writeValueAsString(evt), now);
                 } catch (Exception e) {
+                    if (isForeignKeyViolation(e)) {
+                        log.warn("Session {} no longer exists, closing bus", sessionId);
+                        flusher.shutdownNow();
+                        return;
+                    }
                     log.warn("Failed to persist event id={} for session={}", id, sessionId, e);
                 }
             }
@@ -137,6 +142,15 @@ public class SessionBus implements AutoCloseable {
         } catch (Throwable t) {
             log.error("Event flusher failed for session={}", sessionId, t);
         }
+    }
+
+    private static boolean isForeignKeyViolation(Throwable t) {
+        while (t != null) {
+            String msg = t.getMessage();
+            if (msg != null && msg.contains("FOREIGN KEY constraint failed")) return true;
+            t = t.getCause();
+        }
+        return false;
     }
 
     private static List<DtEvent> coalesceDeltas(List<DtEvent> in) {

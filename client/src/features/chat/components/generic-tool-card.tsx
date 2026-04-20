@@ -13,10 +13,10 @@ interface PartWithState {
 }
 
 const statusStyles: Record<PartStatus, string> = {
-  pending: 'bg-gray-200 text-gray-800',
-  running: 'bg-blue-200 text-blue-800',
-  completed: 'bg-green-200 text-green-800',
-  error: 'bg-red-200 text-red-800',
+  pending: 'bg-muted text-muted-foreground',
+  running: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300',
+  completed: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300',
+  error: 'bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive-foreground',
 }
 
 export function GenericToolCard({ part, descriptor }: { part: PartWithState; descriptor: ActionDescriptor }) {

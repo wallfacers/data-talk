@@ -28,12 +28,17 @@ import { SQL_EXECUTE_EVENT, SQL_EXPLAIN_EVENT } from '@/features/chat/components
 function useComposerSlot(): HTMLElement | null {
   const [slot, setSlot] = useState<HTMLElement | null>(null)
   const activeSessionId = useSessionStore((s) => s.activeSessionId)
-  // SplitView renders different slot DOM nodes for empty/has-messages states;
-  // re-query when hasMessages flips so the portal target stays current.
-  const hasMessages = useChatPartsStore((s) => {
+  // Must mirror SplitView's hasMessages signal (hasEverSent || hasStoreMessages).
+  // If we only watch chat-parts, enterSplit() flipping hasEverSent causes SplitView
+  // to swap the composer-slot DOM node while our portal still points at the old one.
+  const hasEverSent = useSessionStore((s) =>
+    activeSessionId ? (s.hasEverSentBySession.get(activeSessionId) ?? false) : false,
+  )
+  const hasStoreMessages = useChatPartsStore((s) => {
     const parts = activeSessionId ? s.partsBySession.get(activeSessionId) : undefined
     return parts ? parts.size > 0 : false
   })
+  const hasMessages = hasEverSent || hasStoreMessages
 
   useLayoutEffect(() => {
     const el = document.getElementById('composer-slot')
@@ -216,7 +221,7 @@ function InnerComposer() {
                 size="icon-xs"
                 data-disabled={!canSend || undefined}
                 aria-disabled={!canSend}
-                className="rounded-full bg-black text-white hover:bg-black/90 data-disabled:opacity-40"
+                className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 data-disabled:opacity-40"
               >
                 <ArrowUpIcon className="size-3.5" />
               </Button>

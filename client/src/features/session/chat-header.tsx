@@ -112,14 +112,16 @@ export function ChatHeader() {
         />
       ) : (
         <Tooltip>
-          <TooltipTrigger asChild>
-            <span
-              className="truncate text-sm font-medium cursor-text select-text"
-              onDoubleClick={startRename}
-            >
-              {title}
-            </span>
-          </TooltipTrigger>
+          <TooltipTrigger
+            render={
+              <span
+                className="truncate text-sm font-medium cursor-text select-text"
+                onDoubleClick={startRename}
+              >
+                {title}
+              </span>
+            }
+          />
           <TooltipContent side="bottom" sideOffset={4}>
             双击重命名
           </TooltipContent>

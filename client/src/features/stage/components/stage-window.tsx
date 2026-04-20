@@ -79,7 +79,7 @@ export function StageWindow({ sessionId, children }: Props) {
             <Button
               type="button"
               variant="ghost"
-              className="h-full w-11 rounded-none hover:bg-black/5 dark:hover:bg-white/10 focus-visible:ring-0 text-muted-foreground"
+              className="h-full w-11 rounded-none hover:bg-accent hover:text-accent-foreground focus-visible:ring-0 text-muted-foreground"
               aria-label={maximized ? '还原' : '最大化'}
               onClick={handleToggleMaximized}
             >

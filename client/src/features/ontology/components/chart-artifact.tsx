@@ -22,13 +22,16 @@ export function ChartArtifact({ artifact }: { artifact: Artifact }) {
   const color = spec.colors?.[0] ?? '#3b82f6'
 
   return (
-    <div ref={ref} className="h-full w-full">
-      <ResponsiveContainer>
+    <div ref={ref} className="h-full w-full overflow-hidden min-h-0 min-w-0 [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-hidden [&_.recharts-polar-grid_[stroke='#ccc']]:stroke-border [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_[stroke='#ccc']]:stroke-border [&_.recharts-sector]:outline-hidden [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-surface]:outline-hidden">
+      <ResponsiveContainer width="100%" height="100%">
         {spec.type === 'line' ? (
           <LineChart data={toRechartsData(spec)}>
             <XAxis dataKey="x" />
             <YAxis />
-            <Tooltip />
+            <Tooltip 
+              contentStyle={{ backgroundColor: 'var(--popover)', color: 'var(--popover-foreground)', borderColor: 'var(--border)', borderRadius: '6px' }}
+              itemStyle={{ color: 'var(--popover-foreground)' }}
+            />
             {spec.series.map((_, i) => (
               <Line key={i} type="monotone" dataKey={`s${i}`} stroke={color} dot={false} />
             ))}
@@ -37,7 +40,10 @@ export function ChartArtifact({ artifact }: { artifact: Artifact }) {
           <BarChart data={toRechartsData(spec)}>
             <XAxis dataKey="x" />
             <YAxis />
-            <Tooltip />
+            <Tooltip 
+              contentStyle={{ backgroundColor: 'var(--popover)', color: 'var(--popover-foreground)', borderColor: 'var(--border)', borderRadius: '6px' }}
+              itemStyle={{ color: 'var(--popover-foreground)' }}
+            />
             {spec.series.map((_, i) => <Bar key={i} dataKey={`s${i}`} fill={color} />)}
           </BarChart>
         ) : (
@@ -45,7 +51,10 @@ export function ChartArtifact({ artifact }: { artifact: Artifact }) {
             <Pie data={spec.data} dataKey="value" nameKey="name" outerRadius={120}>
               {spec.data.map((_, i) => <Cell key={i} fill={spec.colors?.[i % (spec.colors?.length ?? 1)] ?? color} />)}
             </Pie>
-            <Tooltip />
+            <Tooltip 
+              contentStyle={{ backgroundColor: 'var(--popover)', color: 'var(--popover-foreground)', borderColor: 'var(--border)', borderRadius: '6px' }}
+              itemStyle={{ color: 'var(--popover-foreground)' }}
+            />
           </PieChart>
         )}
       </ResponsiveContainer>
