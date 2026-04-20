@@ -71,6 +71,7 @@ This file is the map. Deep knowledge lives in `docs/`:
 | Reliability practices        | [docs/RELIABILITY.md](docs/RELIABILITY.md)                   |
 | Security guide               | [docs/SECURITY.md](docs/SECURITY.md)                         |
 | Tech debt tracker            | [docs/exec-plans/tech-debt-tracker.md](docs/exec-plans/tech-debt-tracker.md) |
+| Internationalization guide   | [docs/I18N.md](docs/I18N.md)                             |
 
 ## Working Rules
 
