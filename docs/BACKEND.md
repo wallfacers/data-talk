@@ -84,3 +84,10 @@ public class MyActionHandler implements ActionHandler<MyInput, MyOutput> {
 | `spring.sqlite-datasource.*` | SQLite 元数据库 |
 | `datatalk.persistence.sqlite-path` | SQLite 文件路径 |
 | `server.port` | 服务端口 (默认 8080) |
+
+## 国际化约定
+
+- `data-talk-adapter` 通过 `MessageSource` 和 `AcceptHeaderLocaleResolver` 解析 `Accept-Language`。
+- application / adapter 层统一通过 `Translator` 读取 message key，避免直接写死用户可见文案。
+- 默认会话标题、默认数据源名称、连接测试结果、异常消息、Action 描述都应走 message bundle。
+- 历史持久化数据不做按 locale 回写；需要本地化的默认值在运行时生成。

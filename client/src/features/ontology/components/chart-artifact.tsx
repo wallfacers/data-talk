@@ -3,8 +3,10 @@ import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { echartsOptionToChartSpec } from '../echarts-to-recharts'
 import type { Artifact } from '@/services/channel/event-reducer'
+import { useI18n } from '@/i18n/use-i18n'
 
 export function ChartArtifact({ artifact }: { artifact: Artifact }) {
+  const { t } = useI18n()
   const spec = useMemo(() =>
     echartsOptionToChartSpec((artifact.payload as any)?.echartsOption),
     [artifact.payload]
@@ -16,7 +18,7 @@ export function ChartArtifact({ artifact }: { artifact: Artifact }) {
   }, [artifact.id, artifact.version])
 
   if (spec.type === 'unsupported') {
-    return <div className="p-4 text-xs text-muted-foreground">不支持的图表规格</div>
+    return <div className="p-4 text-xs text-muted-foreground">{t('artifact.unsupportedChart')}</div>
   }
 
   const color = spec.colors?.[0] ?? '#3b82f6'

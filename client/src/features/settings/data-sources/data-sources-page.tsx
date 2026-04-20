@@ -3,10 +3,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { TrashIcon, PencilIcon, PlusIcon, CheckCircle2Icon, XCircleIcon, LoaderIcon } from 'lucide-react'
+import { useI18n } from '@/i18n/use-i18n'
 import { listConnections, deleteConnection, testConnection, connectionsKey, type Connection } from './api'
 import { ConnectionFormPanel } from './connection-form-dialog'
 
 export function DataSourcesPage() {
+  const { t } = useI18n()
   const qc = useQueryClient()
   const { data: connections = [], isLoading } = useQuery({
     queryKey: connectionsKey, queryFn: listConnections,
@@ -21,7 +23,7 @@ export function DataSourcesPage() {
 
   const del = useMutation({
     mutationFn: deleteConnection,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: connectionsKey }); toast.success('已删除') },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: connectionsKey }); toast.success(t('common.deleted')) },
   })
 
   async function runTest(id: string) {
@@ -29,31 +31,31 @@ export function DataSourcesPage() {
     try {
       const r = await testConnection(id)
       setTestResult(s => ({ ...s, [id]: r.ok ? 'ok' : 'fail' }))
-      toast[r.ok ? 'success' : 'error'](r.ok ? `连接成功 (${r.latencyMs}ms)` : r.reason ?? '失败')
+      toast[r.ok ? 'success' : 'error'](r.ok ? t('dataSources.testSuccess', { latencyMs: r.latencyMs }) : r.reason ?? t('dataSources.testFailure'))
     } catch (err) {
       setTestResult(s => ({ ...s, [id]: 'fail' }))
-      toast.error(err instanceof Error ? err.message : '连接测试失败')
+      toast.error(err instanceof Error ? err.message : t('dataSources.testFailed'))
     }
   }
 
   const listContent = (
     <>
       {isLoading ? (
-        <div className="text-sm text-muted-foreground">加载中...</div>
+        <div className="text-sm text-muted-foreground">{t('common.loading')}</div>
       ) : connections.length === 0 ? (
         <div className="rounded border border-dashed p-8 text-center text-sm text-muted-foreground">
-          还没有数据源，点击"新增"创建第一个
+          {t('dataSources.empty')}
         </div>
       ) : (
         <table className="w-full text-sm table-fixed">
           <thead className="text-left text-muted-foreground">
             <tr>
-              <th className="pb-2 align-middle">名称</th>
-              <th className="pb-2 w-16 align-middle">类型</th>
-              <th className="pb-2 w-24 align-middle">地址</th>
-              <th className="pb-2 w-20 align-middle">数据库</th>
-              <th className="pb-2 w-20 align-middle">用户</th>
-              <th className="pb-2 w-[140px] align-middle pl-3">操作</th>
+              <th className="pb-2 align-middle">{t('dataSources.name')}</th>
+              <th className="pb-2 w-16 align-middle">{t('dataSources.type')}</th>
+              <th className="pb-2 w-24 align-middle">{t('dataSources.address')}</th>
+              <th className="pb-2 w-20 align-middle">{t('dataSources.database')}</th>
+              <th className="pb-2 w-20 align-middle">{t('dataSources.user')}</th>
+              <th className="pb-2 w-[140px] align-middle pl-3">{t('dataSources.actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -72,7 +74,7 @@ export function DataSourcesPage() {
                       {status === 'loading' ? <LoaderIcon className="size-4 animate-spin" />
                         : status === 'ok' ? <CheckCircle2Icon className="size-4 text-green-600" />
                         : status === 'fail' ? <XCircleIcon className="size-4 text-red-600" />
-                        : '测试'}
+                        : t('dataSources.test')}
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => setEditing(c)} className="h-8 w-8 p-0"><PencilIcon className="size-4" /></Button>
                     <Button size="sm" variant="ghost" onClick={() => del.mutate(c.id)} className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10" disabled={del.isPending}><TrashIcon className="size-4" /></Button>
@@ -89,9 +91,9 @@ export function DataSourcesPage() {
   return (
     <div className="max-w-4xl">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">数据源</h1>
+        <h1 className="text-2xl font-semibold">{t('dataSources.title')}</h1>
         <Button onClick={() => setShowForm(true)} size="sm" disabled={showForm || !!editing}>
-          <PlusIcon className="size-4" /> 新增
+          <PlusIcon className="size-4" /> {t('dataSources.add')}
         </Button>
       </div>
 

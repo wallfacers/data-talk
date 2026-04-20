@@ -22,7 +22,7 @@ import java.util.concurrent.CompletionStage;
 @DataTalkAction(
     id = "datatalk.demo.echo",
     executor = Executor.SERVER,
-    description = "Return the reverse of the provided text. Used for smoke testing.",
+    description = "action.demo_echo.description",
     timeoutMs = 3_000,
     category = { Category.MISC }
 )

@@ -9,27 +9,16 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { useUISettingsStore } from '@/stores/ui-settings-store'
-
-type ThemeOption = 'light' | 'dark' | 'system'
-type LanguageOption = 'zh-CN' | 'en-US'
+import { useI18n } from '@/i18n/use-i18n'
+import type { LanguageOption } from '@/i18n/messages'
+import type { Theme } from '@/stores/theme-store'
 
 interface GeneralPanelProps {
-  theme?: ThemeOption
+  theme?: Theme
   language?: LanguageOption
-  onThemeChange?: (theme: ThemeOption) => void
+  onThemeChange?: (theme: Theme) => void
   onLanguageChange?: (language: LanguageOption) => void
 }
-
-const themeOptions: { value: ThemeOption; label: string; icon: typeof SunIcon }[] = [
-  { value: 'light', label: '浅色', icon: SunIcon },
-  { value: 'dark', label: '深色', icon: MoonIcon },
-  { value: 'system', label: '跟随系统', icon: MonitorIcon },
-]
-
-const languageOptions: { value: LanguageOption; label: string }[] = [
-  { value: 'zh-CN', label: '简体中文' },
-  { value: 'en-US', label: 'English' },
-]
 
 export function GeneralSettingsPanel({
   theme = 'system',
@@ -37,14 +26,24 @@ export function GeneralSettingsPanel({
   onThemeChange,
   onLanguageChange,
 }: GeneralPanelProps) {
+  const { t } = useI18n()
   const splitResizable = useUISettingsStore((s) => s.splitResizable)
   const setSplitResizable = useUISettingsStore((s) => s.setSplitResizable)
+  const themeOptions: { value: Theme; label: string; icon: typeof SunIcon }[] = [
+    { value: 'light', label: t('general.theme.light'), icon: SunIcon },
+    { value: 'dark', label: t('general.theme.dark'), icon: MoonIcon },
+    { value: 'system', label: t('general.theme.system'), icon: MonitorIcon },
+  ]
+  const languageOptions: { value: LanguageOption; label: string }[] = [
+    { value: 'zh-CN', label: t('general.language.zh-CN') },
+    { value: 'en-US', label: t('general.language.en-US') },
+  ]
 
   return (
     <div className="space-y-8">
       {/* Theme selection */}
       <div>
-        <label className="text-sm font-medium text-foreground mb-3 block">主题</label>
+        <label className="text-sm font-medium text-foreground mb-3 block">{t('general.theme')}</label>
         <div className="grid grid-cols-3 gap-3">
           {themeOptions.map((option) => {
             const Icon = option.icon
@@ -71,7 +70,7 @@ export function GeneralSettingsPanel({
 
       {/* Language selection */}
       <div>
-        <label className="text-sm font-medium text-foreground mb-3 block">语言</label>
+        <label className="text-sm font-medium text-foreground mb-3 block">{t('general.language')}</label>
         <Select value={language} onValueChange={(v) => onLanguageChange?.(v as LanguageOption)}>
           <SelectTrigger className="w-40">
             <SelectValue />
@@ -89,13 +88,13 @@ export function GeneralSettingsPanel({
       {/* Split view resizable */}
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-foreground">分栏拖拽调整</p>
-          <p className="text-xs text-muted-foreground mt-0.5">开启后可拖动分割线调整左右宽度比例</p>
+          <p className="text-sm font-medium text-foreground">{t('general.splitResizable')}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{t('general.splitResizableDesc')}</p>
         </div>
         <Switch
           checked={splitResizable}
           onCheckedChange={setSplitResizable}
-          aria-label="分栏拖拽调整"
+          aria-label={t('general.splitResizable')}
         />
       </div>
     </div>

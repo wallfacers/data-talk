@@ -6,8 +6,10 @@ import { cn } from '@/lib/utils'
 import { useStageStore } from '@/stores/stage-store'
 import { useSessionStore } from '@/stores/session-store'
 import { useSessionMode } from '@/features/session/use-session-mode'
+import { useI18n } from '@/i18n/use-i18n'
 
 export function StageToggleButton() {
+  const { t } = useI18n()
   const btnRef = useRef<HTMLButtonElement>(null)
   const sid = useSessionStore((s) => s.activeSessionId)
   const enterSplit = useSessionStore((s) => s.enterSplit)
@@ -17,7 +19,7 @@ export function StageToggleButton() {
   const toggle = useStageStore((s) => s.toggleStage)
   const setRevealOrigin = useStageStore((s) => s.setRevealOrigin)
 
-  const title = open ? '关闭 Stage 面板' : '打开 Stage 面板'
+  const title = open ? t('stage.closePanel') : t('stage.openPanel')
 
   function handleClick() {
     if (!sid) return

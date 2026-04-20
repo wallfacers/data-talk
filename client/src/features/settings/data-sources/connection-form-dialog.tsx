@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useI18n } from '@/i18n/use-i18n'
 import { createConnection, updateConnection, connectionsKey, type Connection } from './api'
 
 export const DATABASE_TYPES = {
@@ -18,6 +19,7 @@ export type DatabaseKind = keyof typeof DATABASE_TYPES
 type Props = { editing: Connection | null; onCancel: () => void; onSaved: () => void }
 
 export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
+  const { t } = useI18n()
   const qc = useQueryClient()
   const [form, setForm] = useState({
     name: '', kind: 'mysql', host: 'localhost', port: 3306,
@@ -43,7 +45,7 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
   const save = useMutation({
     mutationFn: async () => {
       const dbName = form.database.trim() || null
-      const connName = form.name.trim() || '未命名数据源'
+      const connName = form.name.trim() || t('dataSources.unnamed')
       if (editing) {
         await updateConnection(editing.id, {
           name: connName, kind: form.kind, host: form.host, port: form.port,
@@ -61,20 +63,20 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
       qc.invalidateQueries({ queryKey: connectionsKey })
       onSaved()
     },
-    onSuccess: () => toast.success(editing ? '已更新' : '已创建'),
+    onSuccess: () => toast.success(editing ? t('dataSources.updated') : t('dataSources.created')),
   })
 
   return (
     <div className="rounded-lg border bg-card p-6">
       <h2 className="mb-4 text-lg font-medium">
-        {editing ? '编辑数据源' : '新增数据源'}
+        {editing ? t('dataSources.edit') : t('dataSources.create')}
       </h2>
       <div className="grid gap-4">
-        <Field label="名称">
-          <Input value={form.name} placeholder="未命名数据源"
+        <Field label={t('dataSources.name')}>
+          <Input value={form.name} placeholder={t('dataSources.unnamed')}
             onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))} />
         </Field>
-        <Field label="类型">
+        <Field label={t('dataSources.type')}>
           <Select value={form.kind}
             onValueChange={(v) => { if (v && v in DATABASE_TYPES) setForm(f => ({ ...f, kind: v as DatabaseKind, port: DATABASE_TYPES[v as DatabaseKind].port })) }}>
             <SelectTrigger><SelectValue /></SelectTrigger>
@@ -85,35 +87,35 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
             </SelectContent>
           </Select>
         </Field>
-        <Field label="主机">
+        <Field label={t('dataSources.host')}>
           <Input value={form.host}
             onChange={(e) => setForm(f => ({ ...f, host: e.target.value }))} />
         </Field>
-        <Field label="端口">
+        <Field label={t('dataSources.port')}>
           <Input type="number" value={form.port}
             onChange={(e) => setForm(f => ({ ...f, port: Number(e.target.value) }))} />
         </Field>
-        <Field label="数据库（可选）">
-          <Input value={form.database} placeholder="留空则连接服务器级别"
+        <Field label={t('dataSources.databaseOptional')}>
+          <Input value={form.database} placeholder={t('dataSources.databasePlaceholder')}
             onChange={(e) => setForm(f => ({ ...f, database: e.target.value }))} />
         </Field>
-        <Field label="用户名">
+        <Field label={t('dataSources.username')}>
           <Input value={form.username}
             onChange={(e) => setForm(f => ({ ...f, username: e.target.value }))} />
         </Field>
-        <Field label="密码">
+        <Field label={t('dataSources.password')}>
           <Input type="password" value={form.password}
             onChange={(e) => setForm(f => ({ ...f, password: e.target.value }))} />
         </Field>
-        <Field label="连接超时（毫秒）">
+        <Field label={t('dataSources.connectTimeoutMs')}>
           <Input type="number" value={form.connectTimeout}
             onChange={(e) => setForm(f => ({ ...f, connectTimeout: Number(e.target.value) }))} />
         </Field>
       </div>
       <div className="mt-6 flex justify-end gap-2">
-        <Button variant="ghost" onClick={onCancel}>取消</Button>
+        <Button variant="ghost" onClick={onCancel}>{t('common.cancel')}</Button>
         <Button onClick={() => save.mutate()} disabled={save.isPending}>
-          {save.isPending ? '保存中…' : '保存'}
+          {save.isPending ? t('common.saving') : t('common.save')}
         </Button>
       </div>
     </div>

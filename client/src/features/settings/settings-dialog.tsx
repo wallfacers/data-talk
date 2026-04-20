@@ -1,4 +1,5 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { useI18n } from '@/i18n/use-i18n'
 import { SETTINGS_DIALOG_DIMENSIONS } from './shared/utils'
 import { SettingsNav } from './settings-nav'
 import { GeneralPage } from './general/general-page'
@@ -15,13 +16,14 @@ const PAGE_BY_SECTION: Record<Section, React.ReactNode> = {
 }
 
 export function SettingsDialog() {
+  const { t } = useI18n()
   const { open, activeSection, closeDialog, setActiveSection } = useSettingsDialogStore()
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && closeDialog()}>
       <DialogContent className={`flex flex-col !p-0 overflow-hidden ${SETTINGS_DIALOG_DIMENSIONS}`}>
         <DialogHeader className="px-6 py-4 border-b">
-          <DialogTitle className="text-lg font-medium">设置</DialogTitle>
+          <DialogTitle className="text-lg font-medium">{t('settings.title')}</DialogTitle>
         </DialogHeader>
         <div className="flex flex-1 overflow-hidden">
           <SettingsNav activeSection={activeSection} onSectionChange={setActiveSection} />

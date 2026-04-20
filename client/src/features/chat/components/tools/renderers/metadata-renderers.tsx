@@ -1,5 +1,7 @@
 import { BasicTool } from '../basic-tool'
 import type { ToolRendererProps } from '../tool-registry'
+import { getCurrentLanguage } from '@/stores/ui-settings-store'
+import { translateMessage } from '@/i18n/messages'
 
 function renderOutput(output: unknown) {
   if (output === undefined || output === null) return null
@@ -18,7 +20,7 @@ export function DescribeTable(props: ToolRendererProps) {
       icon="mcp"
       risk="L1"
       status={part.state.status}
-      trigger={{ title: '查看表结构', subtitle: table }}
+      trigger={{ title: translateMessage(getCurrentLanguage(), 'chat.describeTable'), subtitle: table }}
     >
       {renderOutput(part.state.output)}
     </BasicTool>
@@ -32,7 +34,7 @@ export function ListTables(props: ToolRendererProps) {
       icon="mcp"
       risk="L1"
       status={part.state.status}
-      trigger={{ title: '列出表' }}
+      trigger={{ title: translateMessage(getCurrentLanguage(), 'chat.listTables') }}
     >
       {renderOutput(part.state.output)}
     </BasicTool>
@@ -46,7 +48,7 @@ export function ShowSchema(props: ToolRendererProps) {
       icon="mcp"
       risk="L1"
       status={part.state.status}
-      trigger={{ title: '查看 schema' }}
+      trigger={{ title: translateMessage(getCurrentLanguage(), 'chat.showSchema') }}
     >
       {renderOutput(part.state.output)}
     </BasicTool>

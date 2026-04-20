@@ -21,7 +21,7 @@ import java.util.concurrent.CompletionStage;
 @DataTalkAction(
     id = "datatalk.render_chart",
     executor = Executor.SERVER,
-    description = "Render an ECharts-option chart. Set supersedes to replace a previous chart.",
+    description = "action.render_chart.description",
     produces = {"datatalk.artifact"},
     requiresConnection = false,
     timeoutMs = 5_000,

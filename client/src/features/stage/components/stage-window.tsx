@@ -6,6 +6,7 @@ import { useStageStore } from '@/stores/stage-store'
 import { useActiveArtifactTitle } from '../use-active-artifact-title'
 import { StageDock } from './stage-dock'
 import { StageTabBar } from './stage-tab-bar'
+import { useI18n } from '@/i18n/use-i18n'
 
 type Props = {
   sessionId?: string
@@ -13,6 +14,7 @@ type Props = {
 }
 
 export function StageWindow({ sessionId, children }: Props) {
+  const { t } = useI18n()
   const closeStage = useStageStore((s) => s.closeStage)
   const maximized = useStageStore((s) => sessionId ? !!s.maximizedBySession.get(sessionId) : false)
   const toggleMaximized = useStageStore((s) => s.toggleMaximized)
@@ -30,9 +32,9 @@ export function StageWindow({ sessionId, children }: Props) {
   }
 
   const mockTabs = [
-    { id: '1', title: 'AI 实时会话', type: 'artifact' as const },
+    { id: '1', title: t('stage.tab.ai'), type: 'artifact' as const },
     { id: '2', title: 'user_orders.sql', type: 'sql' as const },
-    { id: '3', title: '订单系统 ER图', type: 'er' as const },
+    { id: '3', title: t('stage.tab.erDemo'), type: 'er' as const },
   ]
 
   // 根据当前 Tab 渲染不同内容
@@ -43,13 +45,13 @@ export function StageWindow({ sessionId, children }: Props) {
       case '2':
         return (
           <div className="flex flex-1 items-center justify-center text-muted-foreground italic">
-            [SQL 编辑器组件占位符 - 请在 Dock 中打开]
+            {t('stage.placeholder.sql')}
           </div>
         )
       case '3':
         return (
           <div className="flex flex-1 items-center justify-center text-muted-foreground italic">
-            [ER 图设计器占位符 - 正在加载画布...]
+            {t('stage.placeholder.er')}
           </div>
         )
       default:
@@ -71,7 +73,7 @@ export function StageWindow({ sessionId, children }: Props) {
               <div className="size-2 rounded-full bg-primary" />
             )}
             <span className="text-xs font-medium text-foreground/80 tracking-wide">
-              {label || '工作台'}
+              {label || t('stage.workspace')}
             </span>
           </div>
 
@@ -80,7 +82,7 @@ export function StageWindow({ sessionId, children }: Props) {
               type="button"
               variant="ghost"
               className="h-full w-11 rounded-none hover:bg-accent hover:text-accent-foreground focus-visible:ring-0 text-muted-foreground"
-              aria-label={maximized ? '还原' : '最大化'}
+              aria-label={maximized ? t('stage.restore') : t('stage.maximize')}
               onClick={handleToggleMaximized}
             >
               {maximized ? (
@@ -94,7 +96,7 @@ export function StageWindow({ sessionId, children }: Props) {
               type="button"
               variant="ghost"
               className="h-full w-11 rounded-none hover:bg-[#e81123] hover:text-white focus-visible:ring-0 text-muted-foreground transition-colors"
-              aria-label="关闭"
+              aria-label={t('stage.close')}
               onClick={handleClose}
             >
               <XIcon className="size-4" strokeWidth={1.5} />

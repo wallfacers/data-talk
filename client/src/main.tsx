@@ -5,6 +5,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { routeTree } from './routeTree.gen'
 import { queryClient } from './lib/query-client'
 import { registerBuiltInRenderers } from '@/features/chat/components/tools/renderers'
+import { I18nProvider } from '@/i18n/provider'
 import './styles/globals.css'
 
 registerBuiltInRenderers()
@@ -24,8 +25,10 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
+    <I18nProvider>
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    </I18nProvider>
   </StrictMode>,
 )

@@ -11,6 +11,7 @@ import { useChatPartsStore } from '@/stores/chat-parts-store'
 import { useUISettingsStore } from '@/stores/ui-settings-store'
 import { ChatHeader } from './chat-header'
 import { useAutoScroll } from '@/hooks/use-auto-scroll'
+import { useI18n } from '@/i18n/use-i18n'
 
 const DURATION = 400
 const EASE = 'cubic-bezier(0.32, 0.72, 0.24, 1)'
@@ -25,6 +26,7 @@ function loadSavedRatio(): number {
 }
 
 export function SplitView() {
+  const { t } = useI18n()
   const sid = useSessionStore((s) => s.activeSessionId)
   const open = useStageStore((s) => (sid ? !!s.openBySession.get(sid) : false))
   const maximized = useStageStore((s) => (sid ? !!s.maximizedBySession.get(sid) : false))
@@ -123,7 +125,7 @@ export function SplitView() {
                   <DatabaseIcon className="size-5" />
                 </div>
                 <h1 className="text-xl font-semibold tracking-tight">DataTalk</h1>
-                <p className="text-sm text-muted-foreground">用自然语言和你的数据库对话</p>
+                <p className="text-sm text-muted-foreground">{t('session.heroSubtitle')}</p>
               </div>
               <div className="mt-8 w-full max-w-3xl mx-auto">
                 <div id="composer-slot" className="w-full" />

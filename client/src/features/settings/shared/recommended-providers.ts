@@ -1,3 +1,6 @@
+import { getCurrentLanguage } from '@/stores/ui-settings-store'
+import { translateMessage } from '@/i18n/messages'
+
 export const RECOMMENDED_PROVIDERS: ReadonlySet<string> = new Set([
   'opencode-go',
   'opencode-zen',
@@ -7,10 +10,16 @@ export const EXCLUDED_PROVIDERS: ReadonlySet<string> = new Set([
   'anthropic',
 ])
 
-export const PROVIDER_DESCRIPTIONS: Record<string, string> = {
-  'opencode-zen': '使用 OpenCode Zen 或 API 密钥连接',
-  'opencode-go': '适合所有人的低成本订阅',
-  'github-copilot': '使用 Copilot 或 API 密钥连接',
-  'openai': '使用 ChatGPT Pro/Plus 或 API 密钥连接',
-  'google': '使用 Gemini 或 API 密钥连接',
+const DESCRIPTION_KEYS: Record<string, Parameters<typeof translateMessage>[1]> = {
+  'opencode-zen': 'providers.desc.opencode-zen',
+  'opencode-go': 'providers.desc.opencode-go',
+  'github-copilot': 'providers.desc.github-copilot',
+  'openai': 'providers.desc.openai',
+  'google': 'providers.desc.google',
+}
+
+export function getProviderDescription(id: string, fallbackKey: 'providers.desc.default' | 'providers.desc.defaultShort' = 'providers.desc.default') {
+  const language = getCurrentLanguage()
+  const key = DESCRIPTION_KEYS[id] ?? fallbackKey
+  return translateMessage(language, key)
 }

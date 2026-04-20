@@ -20,21 +20,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar'
-
-const GROUPS = [
-  {
-    title: '桌面',
-    items: [{ key: 'general', label: '通用', icon: Settings2Icon, section: 'general' as const }],
-  },
-  {
-    title: '服务器',
-    items: [
-      { key: 'data-sources', label: '数据源', icon: DatabaseIcon, section: 'data-sources' as const },
-      { key: 'providers', label: '提供商', icon: BoxIcon, section: 'providers' as const },
-      { key: 'models', label: '模型', icon: SlidersHorizontalIcon, section: 'models' as const },
-    ],
-  },
-]
+import { useI18n } from '@/i18n/use-i18n'
 
 export function NavUser({
   user,
@@ -44,10 +30,25 @@ export function NavUser({
     email: string
   }
 }) {
+  const { t } = useI18n()
   const { isMobile } = useSidebar()
   const openDialog = useSettingsDialogStore((s) => s.openDialog)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const initials = user.name.slice(0, 2).toUpperCase()
+  const groups = [
+    {
+      title: t('settings.group.desktop'),
+      items: [{ key: 'general', label: t('settings.general'), icon: Settings2Icon, section: 'general' as const }],
+    },
+    {
+      title: t('settings.group.server'),
+      items: [
+        { key: 'data-sources', label: t('settings.dataSources'), icon: DatabaseIcon, section: 'data-sources' as const },
+        { key: 'providers', label: t('settings.providers'), icon: BoxIcon, section: 'providers' as const },
+        { key: 'models', label: t('settings.models'), icon: SlidersHorizontalIcon, section: 'models' as const },
+      ],
+    },
+  ]
 
   return (
     <SidebarMenu>
@@ -92,7 +93,7 @@ export function NavUser({
               </DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            {GROUPS.map(g => (
+            {groups.map(g => (
               <div key={g.title} className="mb-2 last:mb-0">
                 <div className="px-2 pb-1 text-xs text-muted-foreground">{g.title}</div>
                 {g.items.map(it => {

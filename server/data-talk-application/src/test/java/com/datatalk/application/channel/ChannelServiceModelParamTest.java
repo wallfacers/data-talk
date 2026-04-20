@@ -1,6 +1,7 @@
 package com.datatalk.application.channel;
 
 import com.datatalk.application.ai.AiUserPrefsRepository;
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.opencode.OpenCodeGateway;
 import com.datatalk.application.opencode.OpenCodeSessionMap;
 import com.datatalk.application.persistence.SessionRecord;
@@ -41,7 +42,7 @@ class ChannelServiceModelParamTest {
         sessionMap = mock(OpenCodeSessionMap.class);
         userPrefs = mock(AiUserPrefsRepository.class);
 
-        svc = new ChannelService(sessions, buses, pending, clock, gateway, sessionMap, userPrefs);
+        svc = new ChannelService(sessions, buses, pending, clock, gateway, sessionMap, userPrefs, mock(Translator.class));
     }
 
     @Test

@@ -5,8 +5,10 @@ import { Button } from '@/components/ui/button'
 import type { ToolRendererProps } from '../tool-registry'
 import { resolveRisk } from '../../helpers/risk'
 import { useChannel } from '@/services/channel/use-channel'
+import { useI18n } from '@/i18n/use-i18n'
 
 export function PreviewSql(props: ToolRendererProps) {
+  const { t } = useI18n()
   const { part, descriptor } = props
   const sql = (part.state.input?.sql as string | undefined) ?? ''
   const risk = resolveRisk(part, descriptor)
@@ -30,29 +32,29 @@ export function PreviewSql(props: ToolRendererProps) {
       risk={risk}
       status={status}
       trigger={{
-        title: risk === 'L3' ? '强确认 SQL' : '预览 SQL',
-        subtitle: impactRows !== undefined ? `影响 ${impactRows} 行` : '',
+        title: risk === 'L3' ? t('chat.confirmSql') : t('chat.previewSql'),
+        subtitle: impactRows !== undefined ? t('chat.rowsAffected', { count: impactRows }) : '',
       }}
       forceOpen
       locked={locked}
     >
       {sql && <Markdown text={'```sql\n' + sql + '\n```'} cacheKey={`${part.id}:sql`} />}
       {impactRows !== undefined && (
-        <div className="mt-2 text-lg font-semibold">将影响 {impactRows} 行</div>
+        <div className="mt-2 text-lg font-semibold">{t('chat.willAffectRows', { count: impactRows })}</div>
       )}
       {!decided && (
         <div className="mt-3 flex gap-2">
           <Button size="sm" variant="default" onClick={() => decide(true)}>
-            执行
+            {t('chat.executeSql')}
           </Button>
           <Button size="sm" variant="outline" onClick={() => decide(false)}>
-            取消
+            {t('common.cancel')}
           </Button>
         </div>
       )}
       {decided && (
         <div className="mt-2 text-xs text-muted-foreground">
-          {decided === 'confirmed' ? '已确认执行' : '已取消'}
+          {decided === 'confirmed' ? t('chat.confirmedExecute') : t('chat.cancelled')}
         </div>
       )}
     </BasicTool>

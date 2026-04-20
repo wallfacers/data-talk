@@ -1,5 +1,6 @@
 package com.datatalk.application.session;
 
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.opencode.OpenCodeGateway;
 import com.datatalk.application.opencode.OpenCodeSessionMap;
 import com.datatalk.application.persistence.SessionRecord;
@@ -25,16 +26,18 @@ public class SessionService {
     private final OpenCodeGateway gateway;
     private final OpenCodeSessionMap sessionMap;
     private final SessionBusRegistry buses;
+    private final Translator translator;
     private final Object createLock = new Object();
 
     public SessionService(SessionRepository repo, Clock clock,
                           OpenCodeGateway gateway, OpenCodeSessionMap sessionMap,
-                          SessionBusRegistry buses) {
+                          SessionBusRegistry buses, Translator translator) {
         this.repo = repo;
         this.clock = clock;
         this.gateway = gateway;
         this.sessionMap = sessionMap;
         this.buses = buses;
+        this.translator = translator;
     }
 
     public CreateSessionResult create(String connectionId, String title) {
@@ -45,7 +48,7 @@ public class SessionService {
             }
             long now = clock.millis();
             String id = UUID.randomUUID().toString();
-            String effectiveTitle = Strings.defaultIfBlank(title, "新会话");
+            String effectiveTitle = Strings.defaultIfBlank(title, translator.get("session.default_title"));
             SessionRecord rec = new SessionRecord(id, connectionId, effectiveTitle, false, null, now, now, false);
             repo.upsert(rec);
             return new CreateSessionResult(rec, false);
@@ -63,10 +66,10 @@ public class SessionService {
 
     public SessionRecord rename(String id, String title) {
         if (Strings.isBlank(title)) {
-            throw new IllegalArgumentException("title must not be blank");
+            throw new IllegalArgumentException(translator.get("error.session.title_blank"));
         }
         SessionRecord existing = repo.findById(id)
-            .orElseThrow(() -> new NoSuchElementException("session not found: " + id));
+            .orElseThrow(() -> new NoSuchElementException(translator.get("error.session.not_found", id)));
         long now = clock.millis();
         repo.updateTitleAndLock(id, title, now);
         return new SessionRecord(existing.id(), existing.connectionId(), title,
@@ -75,7 +78,7 @@ public class SessionService {
 
     public void delete(String id) {
         SessionRecord rec = repo.findById(id)
-            .orElseThrow(() -> new NoSuchElementException("session not found: " + id));
+            .orElseThrow(() -> new NoSuchElementException(translator.get("error.session.not_found", id)));
 
         // Order matters: events FK → sessions(id) ON DELETE CASCADE. If we delete
         // the row first, late events on the bus's flusher thread (or new ones
@@ -93,6 +96,6 @@ public class SessionService {
         }
         buses.close(id);
         repo.deleteById(id);
-        // FK ON DELETE CASCADE handles messages, artifacts, action_invocations, events, query_results
+        // FK ON DELETE CASCADE handles artifacts, action_invocations, events, query_results.
     }
 }

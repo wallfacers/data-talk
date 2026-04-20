@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/context-menu'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/i18n/use-i18n'
 
 // 之后可以从 stage-workspace-store 获取
 type TabItem = {
@@ -33,6 +34,7 @@ function getTabIcon(type?: string, isActive?: boolean) {
 }
 
 export function StageTabBar({ tabs, activeId }: StageTabBarProps) {
+  const { t } = useI18n()
   return (
     // 背景色透明，移除外层 Padding 以完全融入标题栏下方
     <div className="flex shrink-0 items-center bg-transparent px-3 py-1">
@@ -74,13 +76,13 @@ export function StageTabBar({ tabs, activeId }: StageTabBarProps) {
                   }
                 />
                 <ContextMenuContent className="w-48 text-xs font-sans">
-                  <ContextMenuItem>关闭</ContextMenuItem>
+                  <ContextMenuItem>{t('stage.menu.close')}</ContextMenuItem>
                   <ContextMenuSeparator />
-                  <ContextMenuItem>关闭其他</ContextMenuItem>
-                  <ContextMenuItem>关闭全部</ContextMenuItem>
+                  <ContextMenuItem>{t('stage.menu.closeOthers')}</ContextMenuItem>
+                  <ContextMenuItem>{t('stage.menu.closeAll')}</ContextMenuItem>
                   <ContextMenuSeparator />
-                  <ContextMenuItem>关闭左侧标签页</ContextMenuItem>
-                  <ContextMenuItem>关闭右侧标签页</ContextMenuItem>
+                  <ContextMenuItem>{t('stage.menu.closeLeft')}</ContextMenuItem>
+                  <ContextMenuItem>{t('stage.menu.closeRight')}</ContextMenuItem>
                 </ContextMenuContent>
               </ContextMenu>
             )

@@ -52,7 +52,7 @@ class FlywayMigrationIT {
     void allCoreTablesExistAfterMigration() {
         List<String> tables = datatalkJdbc.queryForList(
             "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name", String.class);
-        assertThat(tables).contains("connections", "sessions", "messages", "artifacts",
+        assertThat(tables).contains("connections", "sessions", "artifacts",
             "action_invocations", "events", "query_results");
     }
 

@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
@@ -87,5 +88,27 @@ class ConnectionControllerIT {
                  "database":"d2","username":"u2","password":"p2"}
                 """)
             .exchange().expectStatus().isEqualTo(409);
+    }
+
+    @Test
+    void create_uses_en_locale_for_default_name() throws Exception {
+        var w = web();
+        byte[] res = w.post().uri("/api/connections")
+            .header(HttpHeaders.ACCEPT_LANGUAGE, "en-US")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""
+                {"name":"","kind":"mysql","host":"h","port":3306,
+                 "database":"d","username":"u","password":"p"}
+                """)
+            .exchange().expectStatus().isCreated()
+            .expectBody().returnResult().getResponseBody();
+        String id = om.readTree(Objects.requireNonNull(res)).get("id").asText();
+
+        w.get().uri("/api/connections")
+            .header(HttpHeaders.ACCEPT_LANGUAGE, "en-US")
+            .exchange()
+            .expectStatus().isOk()
+            .expectBody()
+            .jsonPath("$.connections[?(@.id=='" + id + "')].name").value(org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.startsWith("Data Source-")));
     }
 }

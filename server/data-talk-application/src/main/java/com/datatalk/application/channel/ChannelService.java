@@ -1,6 +1,7 @@
 package com.datatalk.application.channel;
 
 import com.datatalk.application.ai.AiUserPrefsRepository;
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.opencode.OpenCodeGateway;
 import com.datatalk.application.opencode.OpenCodeSessionMap;
 import com.datatalk.application.persistence.SessionRecord;
@@ -39,12 +40,13 @@ public class ChannelService {
     private final OpenCodeGateway gateway;
     private final OpenCodeSessionMap sessionMap;
     private final AiUserPrefsRepository userPrefs;
+    private final Translator translator;
 
     public ChannelService(SessionRepository sessions,
                           SessionBusRegistry buses, PendingCallRegistry pending,
                           Clock clock,
                           OpenCodeGateway gateway, OpenCodeSessionMap sessionMap,
-                          AiUserPrefsRepository userPrefs) {
+                          AiUserPrefsRepository userPrefs, Translator translator) {
         this.sessions = sessions;
         this.buses = buses;
         this.pending = pending;
@@ -52,6 +54,7 @@ public class ChannelService {
         this.gateway = gateway;
         this.sessionMap = sessionMap;
         this.userPrefs = userPrefs;
+        this.translator = translator;
     }
 
     /**
@@ -62,7 +65,7 @@ public class ChannelService {
      */
     public void sendMessage(String sessionId, List<Part> parts) {
         SessionRecord session = sessions.findById(sessionId)
-            .orElseThrow(() -> new IllegalArgumentException("unknown session: " + sessionId));
+            .orElseThrow(() -> new IllegalArgumentException(translator.get("error.session.unknown", sessionId)));
         long now = clock.millis();
         sessions.markHasEverSent(sessionId, now);
 

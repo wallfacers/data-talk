@@ -1,5 +1,6 @@
 package com.datatalk.application.session;
 
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.opencode.OpenCodeGateway;
 import com.datatalk.application.opencode.OpenCodeSessionMap;
 import com.datatalk.application.persistence.SessionRecord;
@@ -35,6 +36,7 @@ class SessionServiceTest {
     private OpenCodeGateway gateway;
     private OpenCodeSessionMap sessionMap;
     private SessionBusRegistry buses;
+    private Translator translator;
     private Connection conn;
     private DataSource ds;
 
@@ -64,8 +66,13 @@ class SessionServiceTest {
         gateway = mock(OpenCodeGateway.class);
         sessionMap = mock(OpenCodeSessionMap.class);
         buses = mock(SessionBusRegistry.class);
+        translator = mock(Translator.class);
+        org.mockito.Mockito.when(translator.get("session.default_title")).thenReturn("新会话");
+        org.mockito.Mockito.when(translator.get("error.session.title_blank")).thenReturn("title must not be blank");
+        org.mockito.Mockito.when(translator.get(org.mockito.ArgumentMatchers.eq("error.session.not_found"), org.mockito.ArgumentMatchers.any()))
+            .thenAnswer(inv -> "session not found: " + inv.getArgument(1));
         svc = new SessionService(repo, Clock.fixed(Instant.ofEpochMilli(500L), ZoneOffset.UTC),
-            gateway, sessionMap, buses);
+            gateway, sessionMap, buses, translator);
     }
 
     @AfterEach
@@ -176,7 +183,7 @@ class SessionServiceTest {
         SessionRepository repoSpy = org.mockito.Mockito.spy(repo);
         SessionService spied = new SessionService(repoSpy,
             Clock.fixed(Instant.ofEpochMilli(500L), ZoneOffset.UTC),
-            gateway, sessionMap, buses);
+            gateway, sessionMap, buses, translator);
 
         spied.delete("s1");
 

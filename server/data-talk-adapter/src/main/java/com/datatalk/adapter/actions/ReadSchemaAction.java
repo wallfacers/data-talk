@@ -2,6 +2,7 @@ package com.datatalk.adapter.actions;
 
 import com.datatalk.application.connection.ConnectionService;
 import com.datatalk.application.connection.JdbcUrlBuilder;
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.domain.action.*;
@@ -20,7 +21,7 @@ import java.util.concurrent.CompletionStage;
 @DataTalkAction(
     id = "datatalk.read_schema",
     executor = Executor.OPENCODE,
-    description = "Return table + column metadata for the given connection. Read-only context tool.",
+    description = "action.read_schema.description",
     requiresConnection = true,
     timeoutMs = 10_000,
     riskLevel = { RiskLevel.L1 },
@@ -30,10 +31,12 @@ public class ReadSchemaAction implements ActionHandler<Map, Map> {
 
     private final ConnectionRepository connRepo;
     private final ConnectionService conn;
+    private final Translator translator;
 
-    public ReadSchemaAction(ConnectionRepository connRepo, ConnectionService conn) {
+    public ReadSchemaAction(ConnectionRepository connRepo, ConnectionService conn, Translator translator) {
         this.connRepo = connRepo;
         this.conn = conn;
+        this.translator = translator;
     }
 
     @Override public Map<String, Object> inputSchema() {
@@ -59,7 +62,7 @@ public class ReadSchemaAction implements ActionHandler<Map, Map> {
     public CompletionStage<Map> handle(ActionContext ctx, Map input) {
         String connectionId = String.valueOf(input.get("connectionId"));
         ConnectionRecord cr = connRepo.findById(connectionId)
-            .orElseThrow(() -> new IllegalArgumentException("unknown connection " + connectionId));
+            .orElseThrow(() -> new IllegalArgumentException(translator.get("error.connection.unknown", connectionId)));
         String password = conn.decryptPassword(connectionId);
 
         List<Map<String, Object>> tables = new ArrayList<>();

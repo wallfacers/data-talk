@@ -4,9 +4,11 @@ import { ChevronDownIcon } from 'lucide-react'
 import { ProviderIcon } from '@/features/settings/shared/provider-icon'
 import { aiQueryKeys, fetchModels, getCurrentModel, setCurrentModel, type ProviderDto } from '@/features/settings/shared/api'
 import { parseModelId } from '@/features/settings/shared/utils'
+import { useI18n } from '@/i18n/use-i18n'
 import { ModelPickerDialog } from './model-picker-dialog'
 
 export function ModelPicker() {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const qc = useQueryClient()
   const { data: models } = useQuery({ queryKey: aiQueryKeys.models, queryFn: fetchModels })
@@ -34,7 +36,7 @@ export function ModelPicker() {
             <span className="max-w-[140px] truncate">{selected.modelName}</span>
           </>
         ) : (
-          <span className="text-muted-foreground">选择模型</span>
+          <span className="text-muted-foreground">{t('models.select')}</span>
         )}
         <ChevronDownIcon className="size-3" />
       </button>

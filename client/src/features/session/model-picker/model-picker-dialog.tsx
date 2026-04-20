@@ -8,6 +8,7 @@ import type { ProviderDto } from '@/features/settings/shared/api'
 import { filterProvidersBySearch, formatModelId, parseModelId, SETTINGS_DIALOG_DIMENSIONS } from '@/features/settings/shared/utils'
 import { cn } from '@/lib/utils'
 import { useSettingsDialogStore } from '@/features/settings/settings-dialog-store'
+import { useI18n } from '@/i18n/use-i18n'
 
 type Props = {
   open: boolean
@@ -18,6 +19,7 @@ type Props = {
 }
 
 export function ModelPickerDialog({ open, onOpenChange, providers, currentModelId, onPick }: Props) {
+  const { t } = useI18n()
   const [q, setQ] = useState('')
   const [activeProviderId, setActiveProviderId] = useState<string | null>(null)
 
@@ -54,12 +56,12 @@ export function ModelPickerDialog({ open, onOpenChange, providers, currentModelI
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={`flex flex-col !p-0 overflow-hidden ${SETTINGS_DIALOG_DIMENSIONS}`}>
         <DialogHeader className="flex flex-row items-center justify-between gap-4 px-6 py-4 border-b pr-12">
-          <DialogTitle className="text-lg font-medium">选择模型</DialogTitle>
+          <DialogTitle className="text-lg font-medium">{t('models.select')}</DialogTitle>
           <div className="relative w-60">
             <SearchIcon className="absolute left-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               className="pl-8 h-8"
-              placeholder="搜索模型"
+              placeholder={t('models.searchPlaceholder')}
               value={q}
               onChange={e => setQ(e.target.value)}
             />
@@ -105,12 +107,12 @@ export function ModelPickerDialog({ open, onOpenChange, providers, currentModelI
               </div>
             ) : q ? (
               <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                没有匹配的模型
+                {t('models.noMatch')}
               </div>
             ) : (
               <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
                 <p className="text-sm text-muted-foreground">
-                  尚未启用任何模型，请先在设置 → 模型中启用
+                  {t('models.noEnabled')}
                 </p>
                 <Button
                   type="button"
@@ -120,7 +122,7 @@ export function ModelPickerDialog({ open, onOpenChange, providers, currentModelI
                     useSettingsDialogStore.getState().openDialog('models')
                   }}
                 >
-                  前往设置
+                  {t('models.goToSettings')}
                 </Button>
               </div>
             )}

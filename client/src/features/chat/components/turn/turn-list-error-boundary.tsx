@@ -1,4 +1,6 @@
 import { Component, type ReactNode } from 'react'
+import { getCurrentLanguage } from '@/stores/ui-settings-store'
+import { translateMessage } from '@/i18n/messages'
 
 export class TurnListErrorBoundary extends Component<
   { children: ReactNode },
@@ -18,12 +20,12 @@ export class TurnListErrorBoundary extends Component<
     if (this.state.hasError) {
       return (
         <div className="rounded border border-red-500/40 bg-red-50 dark:bg-red-950/20 p-3 text-xs text-red-700 dark:text-red-300">
-          本段渲染出错：<span className="font-mono">{this.state.message}</span>
+          {translateMessage(getCurrentLanguage(), 'chat.renderError', { message: this.state.message ?? '' }).replace(this.state.message ?? '', '')}<span className="font-mono">{this.state.message}</span>
           <button
             onClick={() => this.setState({ hasError: false, message: undefined })}
             className="ml-2 underline"
           >
-            重试
+            {translateMessage(getCurrentLanguage(), 'common.retry')}
           </button>
         </div>
       )

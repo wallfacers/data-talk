@@ -6,12 +6,12 @@
 
 | 计划 | 状态 | 摘要 |
 |------|------|------|
-| [Full-Stack I18n](./2026-04-20-full-stack-i18n-plan.md) | 进行中 | 前端页面按钮/文本 + 后端 API 错误/默认文案 + `Accept-Language` 驱动的中英双语支持 |
 
 ## 已完成计划
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [Full-Stack I18n](./2026-04-20-full-stack-i18n-plan.md) | 2026-04-20 | 前端接入应用级 i18n provider、语言持久化和 `Accept-Language` 透传，覆盖设置/聊天/Stage/数据源等核心界面；后端增加 `MessageSource` + `Translator`，本地化异常消息、默认标题/名称、连接测试结果和 Action 描述；补齐前后端国际化相关测试与过期 schema 测试修复。 |
 | [Composer Model Picker Dialog](./2026-04-18-composer-model-picker-dialog-plan.md) | 2026-04-20 | Composer 模型选择器完成 Popover → 960×540 双栏对话框迁移，补齐 provider 默认定位 / 搜索联动 / 空态引导 / 选中关闭测试；为适配并发 i18n 改动补充测试环境 `useI18n` mock 与过期 StageWindow 断言修正；`npm test`（151 tests）与 `npx tsc --noEmit` 均通过，手动烟测留给人工联调。 |
 | [SSE Heartbeat & Async Timeout 治理](./2026-04-20-sse-heartbeat-plan.md) | 2026-04-20 | SSE GET 订阅改无限 timeout + 30s 心跳注释帧（`":\n\n"`）主动探活；`AsyncRequestTimeoutException` 降级 DEBUG；`SseHeartbeatScheduler` 新 bean + `AsyncTimeoutHandler` `@ControllerAdvice` |
 | [Assistant Model Metadata Propagation](./2026-04-20-assistant-model-metadata-propagation-plan.md) | 2026-04-20 | `Message` record 新增 `providerID/modelID`；`OpenCodeEventLoop.parseMessage` 兼容 user 嵌套 / assistant 扁平两种 OpenCode 1.4.7 形态；清理 `DtEvent.MessageCompleted` 死事件 + 前端 `message.completed` 分支 + 过时字段名兼容链（`modelId/model_id/providerId/provider_id/createdAt/completedAt` 等）。`mvn clean verify` BUILD SUCCESS；Task 4 Step 3 手动端到端验证留给人工联调 |

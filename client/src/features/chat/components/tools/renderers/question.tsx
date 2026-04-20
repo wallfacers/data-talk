@@ -1,5 +1,7 @@
 import { BasicTool } from '../basic-tool'
 import type { ToolRendererProps } from '../tool-registry'
+import { getCurrentLanguage } from '@/stores/ui-settings-store'
+import { translateMessage } from '@/i18n/messages'
 
 export function Question(props: ToolRendererProps) {
   const { part } = props
@@ -17,7 +19,7 @@ export function Question(props: ToolRendererProps) {
       icon="bubble"
       variant="question"
       status={status}
-      trigger={{ title: question || '问题' }}
+      trigger={{ title: question || translateMessage(getCurrentLanguage(), 'common.question') }}
       defaultOpen
     >
       {answerText && <div className="text-sm">{answerText}</div>}

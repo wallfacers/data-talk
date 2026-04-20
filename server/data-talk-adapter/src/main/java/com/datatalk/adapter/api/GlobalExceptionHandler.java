@@ -1,5 +1,6 @@
 package com.datatalk.adapter.api;
 
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.domain.error.DataTalkErrorCodes;
 import com.datatalk.domain.error.DataTalkException;
 import com.datatalk.exception.ConnectionNotFoundException;
@@ -17,24 +18,31 @@ import java.util.NoSuchElementException;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private final Translator translator;
+
+    public GlobalExceptionHandler(Translator translator) {
+        this.translator = translator;
+    }
+
     @ExceptionHandler(NoSuchElementException.class)
     public ResponseEntity<Map<String, Object>> notFound(NoSuchElementException e) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
             "error", "NOT_FOUND",
-            "message", e.getMessage()));
+            "message", e.getMessage() != null ? e.getMessage() : translator.get("error.not_found")));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> badRequest(IllegalArgumentException e) {
         return ResponseEntity.badRequest().body(Map.of(
             "error", "BAD_REQUEST",
-            "message", e.getMessage()));
+            "message", e.getMessage() != null ? e.getMessage() : translator.get("error.bad_request")));
     }
 
     @ExceptionHandler(ConnectionNotFoundException.class)
     public ResponseEntity<Map<String, Object>> connectionNotFound(ConnectionNotFoundException e) {
         return ResponseEntity.badRequest().body(Map.of(
             "error", e.getMessage(),
+            "message", translator.get(DataTalkErrorCodes.CONNECTION_MISSING),
             "code", "CONNECTION_NOT_FOUND"));
     }
 
@@ -42,6 +50,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> sqlExecutionFailed(SqlExecutionException e) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
             "error", e.getMessage(),
+            "message", translator.get("error.bad_request"),
             "code", "QUERY_FAILED"));
     }
 
@@ -50,6 +59,7 @@ public class GlobalExceptionHandler {
         HttpStatus status = resolveStatus(e.code());
         return ResponseEntity.status(status).body(Map.of(
             "error", e.getMessage(),
+            "message", translator.getOrDefault(e.code(), e.getMessage()),
             "code", e.code()));
     }
 
@@ -74,13 +84,15 @@ public class GlobalExceptionHandler {
         }
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of(
             "error", "OPENCODE_UNAVAILABLE",
-            "message", e.getMessage()));
+            "message", translator.get(DataTalkErrorCodes.UPSTREAM_UNAVAILABLE),
+            "code", DataTalkErrorCodes.UPSTREAM_UNAVAILABLE));
     }
 
     @ExceptionHandler(WebClientException.class)
     public ResponseEntity<Map<String, Object>> connectFailure(WebClientException e) {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of(
             "error", "OPENCODE_UNAVAILABLE",
-            "message", e.getMessage()));
+            "message", translator.get(DataTalkErrorCodes.UPSTREAM_UNAVAILABLE),
+            "code", DataTalkErrorCodes.UPSTREAM_UNAVAILABLE));
     }
 }

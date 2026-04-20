@@ -2,6 +2,8 @@ import { BasicTool } from '../basic-tool'
 import type { ToolRendererProps } from '../tool-registry'
 import { useStageStore } from '@/stores/stage-store'
 import { useSessionStore } from '@/stores/session-store'
+import { getCurrentLanguage } from '@/stores/ui-settings-store'
+import { translateMessage } from '@/i18n/messages'
 
 const KIND_ICONS: Record<string, string> = { table: '📊', chart: '📈', erd: '🔗' }
 
@@ -29,7 +31,7 @@ export function ArtifactCreated(props: ToolRendererProps) {
       status={part.state.status}
       trigger={{
         title: `${KIND_ICONS[kind] ?? '📦'} ${title}`,
-        subtitle: '在 Stage 中查看 →',
+        subtitle: translateMessage(getCurrentLanguage(), 'chat.viewInStage'),
       }}
       hideDetails
     >
@@ -37,7 +39,7 @@ export function ArtifactCreated(props: ToolRendererProps) {
         onClick={openStage}
         className="text-xs text-primary hover:underline"
       >
-        打开 Stage
+        {translateMessage(getCurrentLanguage(), 'chat.openStage')}
       </button>
     </BasicTool>
   )

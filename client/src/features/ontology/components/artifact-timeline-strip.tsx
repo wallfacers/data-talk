@@ -4,6 +4,7 @@ import { useTimelineStore } from '@/stores/timeline-store'
 import { useOntologyStore } from '@/stores/ontology-store'
 import { useSessionStore } from '@/stores/session-store'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/i18n/use-i18n'
 
 // 稳定的空引用，避免 selector 每次返回 `?? []` / `?? new Map()` 导致
 // useSyncExternalStore 认为 snapshot 永远在变，从而触发 "Maximum update depth".
@@ -11,6 +12,7 @@ const EMPTY_ORDER: string[] = []
 const EMPTY_ARTIFACTS: Map<string, Artifact> = new Map()
 
 export function ArtifactTimelineStrip() {
+  const { t } = useI18n()
   const sessionId = useSessionStore(s => s.activeSessionId)
   const order = useTimelineStore(s => {
     if (!sessionId) return EMPTY_ORDER
@@ -40,7 +42,7 @@ export function ArtifactTimelineStrip() {
               id === active ? 'bg-primary text-primary-foreground' : 'bg-background',
               supersededIds.has(id) && 'opacity-40'
             )}>
-            {a.kind === 'table' ? '表' : a.kind === 'chart' ? '图' : 'ER'} · v{a.version}
+            {a.kind === 'table' ? t('stage.kind.table') : a.kind === 'chart' ? t('stage.kind.chart') : t('stage.kind.er')} · v{a.version}
           </button>
         )
       })}

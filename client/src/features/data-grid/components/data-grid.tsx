@@ -7,10 +7,12 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import type { DataGridProps } from '../types'
+import { useI18n } from '@/i18n/use-i18n'
 
 export function DataGrid({ columns, rows }: DataGridProps) {
+  const { t } = useI18n()
   if (columns.length === 0) {
-    return <p className="p-4 text-sm text-muted-foreground">无列定义</p>
+    return <p className="p-4 text-sm text-muted-foreground">{t('dataGrid.noColumns')}</p>
   }
 
   return (
@@ -27,7 +29,7 @@ export function DataGrid({ columns, rows }: DataGridProps) {
           {rows.length === 0 && (
             <TableRow>
               <TableCell colSpan={columns.length} className="text-center text-muted-foreground">
-                无数据
+                {t('dataGrid.noData')}
               </TableCell>
             </TableRow>
           )}

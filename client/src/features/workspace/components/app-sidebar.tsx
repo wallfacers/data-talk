@@ -22,6 +22,7 @@ import { useSessionStore } from '@/stores/session-store'
 import { useHasActiveModel } from '@/features/session/hooks/use-has-active-model'
 import { NavSessions } from './nav-sessions'
 import { NavUser } from './nav-user'
+import { useI18n } from '@/i18n/use-i18n'
 
 const USER = {
   name: 'DataTalk',
@@ -29,6 +30,7 @@ const USER = {
 }
 
 export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
+  const { t } = useI18n()
   const qc = useQueryClient()
   const activeConnectionId = useConnectionStore((s) => s.activeConnectionId)
   const openSession = useSessionStore((s) => s.openSession)
@@ -49,7 +51,7 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
 
   const createMut = useMutation({
     mutationFn: async () => {
-      if (!hasActiveModel) throw new Error('请先在设置中配置模型')
+      if (!hasActiveModel) throw new Error(t('workspace.configureModelFirst'))
       const cached = qc.getQueryData<Session[]>(['sessions', activeConnectionId ?? null]) ?? []
       const empty = cached.find((s) => !s.hasEverSent)
       if (empty) return { ...empty, reusedEmpty: true }
@@ -115,13 +117,13 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  tooltip="创建会话"
+                  tooltip={t('workspace.createSession')}
                   className="min-w-8 justify-center bg-primary text-primary-foreground duration-200 ease-linear hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground"
                   onClick={handleCreate}
                   disabled={createMut.isPending}
                 >
                   <PlusIcon />
-                  <span>{createMut.isPending ? '创建中…' : '创建会话'}</span>
+                  <span>{createMut.isPending ? t('workspace.creatingSession') : t('workspace.createSession')}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>

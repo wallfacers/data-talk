@@ -1,6 +1,7 @@
 import ky, { type BeforeErrorHook } from 'ky'
 import { HTTPError } from 'ky'
 import { API_PREFIX } from './api-prefix'
+import { getCurrentLanguage } from '@/stores/ui-settings-store'
 
 const errorNormalizer: BeforeErrorHook = async (error) => {
   const silent = (error.options as unknown as Record<string, unknown>).silent === true
@@ -29,6 +30,11 @@ export const http = ky.create({
   timeout: 30_000,
   retry: { limit: 1 },
   hooks: {
+    beforeRequest: [
+      (request) => {
+        request.headers.set('Accept-Language', getCurrentLanguage())
+      },
+    ],
     beforeError: [errorNormalizer],
   },
 })

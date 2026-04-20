@@ -1,5 +1,7 @@
 import { toast } from 'sonner'
 import { HTTPError } from 'ky'
+import { getCurrentLanguage } from '@/stores/ui-settings-store'
+import { translateMessage, type MessageKey } from '@/i18n/messages'
 
 export interface NormalizedError extends Error {
   message: string
@@ -15,15 +17,15 @@ interface BackendErrorBody {
   code?: string
 }
 
-const ERROR_CODE_HINTS: Record<string, string> = {
-  'connection.unreachable': '数据库连接失败，请检查网络和连接配置',
-  'connection.missing': '请先选择数据源',
-  'sql.timeout': '查询超时，请优化 SQL 或缩小查询范围',
-  'sql.forbidden': '安全限制：仅支持 SELECT 查询',
-  'sql.syntax_error': 'SQL 语法错误',
-  'upstream.unavailable': 'AI 服务暂不可用，请稍后重试',
-  'action.timeout': '操作超时',
-  'action.cancelled': '操作已取消',
+const ERROR_CODE_HINTS: Record<string, MessageKey> = {
+  'connection.unreachable': 'error.connection.unreachable',
+  'connection.missing': 'error.connection.missing',
+  'sql.timeout': 'error.sql.timeout',
+  'sql.forbidden': 'error.sql.forbidden',
+  'sql.syntax_error': 'error.sql.syntax',
+  'upstream.unavailable': 'error.upstream.unavailable',
+  'action.timeout': 'error.action.timeout',
+  'action.cancelled': 'error.action.cancelled',
 }
 
 const DEDUPE_WINDOW_MS = 3000
@@ -45,6 +47,10 @@ export function getDedupeKey(error: NormalizedError): string {
   return `msg:${error.message.slice(0, 50)}`
 }
 
+function t(key: MessageKey, values?: Record<string, string | number>) {
+  return translateMessage(getCurrentLanguage(), key, values)
+}
+
 export function normalizeError(error: unknown, silent = false): NormalizedError {
   const normalized = new Error() as NormalizedError
   const incomingSilent = (error as Record<string, unknown>)?.silent === true
@@ -52,7 +58,7 @@ export function normalizeError(error: unknown, silent = false): NormalizedError 
 
   if (error instanceof Error && error.name === 'TimeoutError') {
     normalized.type = 'timeout'
-    normalized.message = '请求超时，请稍后重试'
+    normalized.message = t('error.requestTimeout')
     normalized.code = 'TIMEOUT'
     return normalized
   }
@@ -65,36 +71,36 @@ export function normalizeError(error: unknown, silent = false): NormalizedError 
     normalized.code = data?.code
 
     if (data?.code && ERROR_CODE_HINTS[data.code]) {
-      normalized.message = ERROR_CODE_HINTS[data.code]
+      normalized.message = t(ERROR_CODE_HINTS[data.code])
     } else if (data?.message) {
       normalized.message = data.message
     } else if (data?.error) {
       normalized.message = data.error
     } else if (error.response.status === 401) {
-      normalized.message = '请重新登录'
+      normalized.message = t('error.unauthorized')
       normalized.code = 'UNAUTHORIZED'
     } else if (error.response.status === 403) {
-      normalized.message = '无权限执行此操作'
+      normalized.message = t('error.forbidden')
     } else if (error.response.status === 409) {
-      normalized.message = '名称已存在，请使用其他名称'
+      normalized.message = t('error.conflict')
       normalized.code = 'CONFLICT'
     } else if (error.response.status >= 500) {
-      normalized.message = '服务器错误，请稍后重试'
+      normalized.message = t('error.server')
     } else {
-      normalized.message = `请求失败 (${error.response.status})`
+      normalized.message = t('error.requestFailed', { status: error.response.status })
     }
     return normalized
   }
 
   if (error instanceof TypeError && error.message.includes('fetch')) {
     normalized.type = 'network'
-    normalized.message = '网络连接失败，请检查网络'
+    normalized.message = t('error.network')
     normalized.code = 'NETWORK_ERROR'
     return normalized
   }
 
   normalized.type = 'unknown'
-  normalized.message = error instanceof Error ? error.message : '未知错误'
+  normalized.message = error instanceof Error ? error.message : t('common.unknownError')
   return normalized
 }
 

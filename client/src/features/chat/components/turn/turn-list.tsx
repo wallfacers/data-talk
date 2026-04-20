@@ -1,8 +1,10 @@
 import { SessionTurn } from './session-turn'
 import { useSessionTurns } from '../helpers/use-session-turns'
 import { useSessionHistory } from '@/features/session/hooks/use-session-history'
+import { useI18n } from '@/i18n/use-i18n'
 
 export function TurnList(props: { sessionId: string | null; error?: Error | null | unknown }) {
+  const { t } = useI18n()
   // React-query cache is shared with session-canvas' top-level prefetch;
   // this second call re-uses the cached result, no extra fetch.
   const { error: historyError } = useSessionHistory(props.sessionId)
@@ -16,7 +18,7 @@ export function TurnList(props: { sessionId: string | null; error?: Error | null
         : String(effectiveError)
     return (
       <div className="rounded border border-amber-500/40 bg-amber-50 dark:bg-amber-950/20 p-3 text-sm text-amber-800 dark:text-amber-300">
-        AI 服务不可用：{message}
+        {t('chat.aiUnavailable', { message })}
       </div>
     )
   }

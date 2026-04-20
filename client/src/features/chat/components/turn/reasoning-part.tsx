@@ -6,8 +6,10 @@ import { PacedMarkdown } from '../effects/paced-markdown'
 import { TextShimmer } from '../effects/text-shimmer'
 import type { ReasoningPart as RPartType } from '@/services/channel/types'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/i18n/use-i18n'
 
 export function ReasoningPart(props: PartComponentProps) {
+  const { t } = useI18n()
   const part = props.part as RPartType
   const isMessageStreaming =
     props.info.role === 'assistant' && typeof props.info.time.completed !== 'number'
@@ -35,7 +37,7 @@ export function ReasoningPart(props: PartComponentProps) {
     const end = part.time?.end || props.info.time.completed
     if (start && end) {
       const secs = Math.ceil((end - start) / 1000)
-      if (secs > 0) durationText = `（${secs} 秒）`
+      if (secs > 0) durationText = t('chat.seconds', { seconds: secs })
     }
   }
 
@@ -51,9 +53,9 @@ export function ReasoningPart(props: PartComponentProps) {
           className={cn('transition-transform duration-200', open && 'rotate-90')}
         />
         {isPartStreaming ? (
-          <TextShimmer text="思考中…" active />
+          <TextShimmer text={t('chat.thinking')} active />
         ) : (
-          <span>已深度思考{durationText}</span>
+          <span>{t('chat.deepThought', { duration: durationText })}</span>
         )}
       </button>
       {open && (

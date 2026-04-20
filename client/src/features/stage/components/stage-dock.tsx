@@ -1,5 +1,6 @@
 import { DatabaseIcon, NetworkIcon, PieChartIcon, LayoutDashboardIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/i18n/use-i18n'
 
 type ToolApp = {
   id: string
@@ -8,17 +9,17 @@ type ToolApp = {
   color: string
 }
 
-const TOOLS: ToolApp[] = [
-  { id: 'sql', name: 'SQL 查询器', icon: DatabaseIcon, color: 'text-blue-500' },
-  { id: 'er', name: 'ER 图设计器', icon: NetworkIcon, color: 'text-emerald-500' },
-  { id: 'report', name: '报表分析器', icon: PieChartIcon, color: 'text-purple-500' },
-  { id: 'dashboard', name: '仪表盘', icon: LayoutDashboardIcon, color: 'text-orange-500' },
-]
-
 export function StageDock() {
+  const { t } = useI18n()
+  const tools: ToolApp[] = [
+    { id: 'sql', name: t('stage.dock.sql'), icon: DatabaseIcon, color: 'text-blue-500' },
+    { id: 'er', name: t('stage.dock.er'), icon: NetworkIcon, color: 'text-emerald-500' },
+    { id: 'report', name: t('stage.dock.report'), icon: PieChartIcon, color: 'text-purple-500' },
+    { id: 'dashboard', name: t('stage.dock.dashboard'), icon: LayoutDashboardIcon, color: 'text-orange-500' },
+  ]
   return (
     <div className="flex items-center gap-2 rounded-2xl bg-background/80 backdrop-blur-md border border-border/50 p-2 shadow-2xl transition-all hover:bg-background/95">
-      {TOOLS.map((tool) => (
+      {tools.map((tool) => (
         <button
           key={tool.id}
           type="button"

@@ -18,7 +18,7 @@ import java.util.concurrent.CompletionStage;
 @DataTalkAction(
     id = "datatalk.layout_erd",
     executor = Executor.SERVER,
-    description = "Generate an ER diagram (nodes + edges + grid layout) for the given tables.",
+    description = "action.layout_erd.description",
     produces = {"datatalk.artifact"},
     requiresConnection = true,
     timeoutMs = 15_000,

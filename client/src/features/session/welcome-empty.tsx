@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { useI18n } from '@/i18n/use-i18n'
 
 type Sample = {
   icon: ComponentType<SVGProps<SVGSVGElement>>
@@ -14,25 +15,25 @@ type Sample = {
   hint: string
 }
 
-const SAMPLES: Sample[] = [
-  {
-    icon: TableIcon,
-    title: '查询用户表',
-    hint: '最近一周的注册趋势',
-  },
-  {
-    icon: LineChartIcon,
-    title: '统计订单金额',
-    hint: '最近 30 天总额并按天分桶',
-  },
-  {
-    icon: SparklesIcon,
-    title: '热销商品榜',
-    hint: '近 90 天销量 Top 10',
-  },
-]
-
 export function WelcomeEmpty() {
+  const { t } = useI18n()
+  const samples: Sample[] = [
+    {
+      icon: TableIcon,
+      title: t('welcome.sample.users.title'),
+      hint: t('welcome.sample.users.hint'),
+    },
+    {
+      icon: LineChartIcon,
+      title: t('welcome.sample.orders.title'),
+      hint: t('welcome.sample.orders.hint'),
+    },
+    {
+      icon: SparklesIcon,
+      title: t('welcome.sample.products.title'),
+      hint: t('welcome.sample.products.hint'),
+    },
+  ]
   return (
     <div className="flex h-full items-center justify-center px-6 py-12">
       <div className="w-full max-w-3xl">
@@ -42,12 +43,12 @@ export function WelcomeEmpty() {
           </div>
           <h1 className="text-3xl font-semibold tracking-tight">DataTalk</h1>
           <p className="max-w-md text-sm text-muted-foreground">
-            用自然语言和你的数据库对话。先从左侧选择一个连接并新建会话，或试试下面的示例。
+            {t('welcome.subtitle')}
           </p>
         </div>
 
         <div className="mb-8 grid gap-3 md:grid-cols-3">
-          {SAMPLES.map((s) => (
+          {samples.map((s) => (
             <Card
               key={s.title}
               className="group cursor-pointer border-dashed transition-colors hover:border-primary hover:bg-accent/40"
@@ -62,8 +63,8 @@ export function WelcomeEmpty() {
         </div>
 
         <div className="flex justify-center gap-2">
-          <Button>新建连接</Button>
-          <Button variant="outline">查看文档</Button>
+          <Button>{t('welcome.newConnection')}</Button>
+          <Button variant="outline">{t('welcome.viewDocs')}</Button>
         </div>
       </div>
     </div>

@@ -24,6 +24,7 @@ import { normalizeError, showErrorToast } from '@/services/http-error'
 import { StageToggleButton } from '@/features/stage/components/stage-toggle-button'
 import { useHasActiveModel } from './hooks/use-has-active-model'
 import { SQL_EXECUTE_EVENT, SQL_EXPLAIN_EVENT } from '@/features/chat/components/markdown/sql-code-block'
+import { useI18n } from '@/i18n/use-i18n'
 
 function useComposerSlot(): HTMLElement | null {
   const [slot, setSlot] = useState<HTMLElement | null>(null)
@@ -55,6 +56,7 @@ export function PromptComposer() {
 }
 
 function InnerComposer() {
+  const { t } = useI18n()
   const [text, setText] = useState('')
   const [autoMode, setAutoMode] = useState(true)
   const { sendMessage, abort, isStreaming } = useChannel()
@@ -137,7 +139,7 @@ function InnerComposer() {
         const next = current.endsWith('\n') ? current + sql : current + '\n' + sql
         setText(next)
         textRef.current = next
-        toast('已追加 SQL，请确认后发送')
+        toast(t('chat.appendSql'))
       }
     }
     const onExplain = (e: Event) => {
@@ -145,7 +147,7 @@ function InnerComposer() {
       const sql = detail?.sql
       if (!sql) return
       const current = textRef.current
-      const prefix = '解释这条 SQL：\n'
+      const prefix = t('chat.explainSqlPrefix')
       const next = current ? current + '\n' + prefix + sql : prefix + sql
       setText(next)
       textRef.current = next
@@ -170,7 +172,7 @@ function InnerComposer() {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={onKey}
-          placeholder="用自然语言查询你的数据库..."
+          placeholder={t('chat.promptPlaceholder')}
           className="h-[90px] resize-none overflow-y-auto px-4 py-4 text-base leading-relaxed text-black dark:text-white [&::-webkit-scrollbar-track]:my-3"
           rows={3}
         />
@@ -195,7 +197,7 @@ function InnerComposer() {
                 onCheckedChange={setAutoMode}
                 className="data-[size=sm]:h-[14px] data-[size=sm]:w-[24px]"
               />
-              Auto
+              {t('session.autoMode')}
             </InputGroupText>
 
             {/* Stage 开关：手动打开/关闭右侧"电脑"窗体 */}

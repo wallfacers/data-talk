@@ -21,7 +21,7 @@ import java.util.concurrent.CompletionStage;
 @DataTalkAction(
     id = "datatalk.supersede_artifact",
     executor = Executor.SERVER,
-    description = "Explicitly mark one artifact as superseded by another.",
+    description = "action.supersede_artifact.description",
     timeoutMs = 3_000,
     riskLevel = { RiskLevel.L1 },
     category = { Category.ARTIFACT }

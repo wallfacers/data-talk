@@ -1,5 +1,6 @@
 package com.datatalk.infra.opencode;
 
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.opencode.ToolCallBridge;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -20,12 +21,15 @@ public class ToolCallController {
 
     private final ToolCallBridge bridge;
     private final String sharedSecret;
+    private final Translator translator;
 
     public ToolCallController(
         ToolCallBridge bridge,
+        Translator translator,
         @Value("${datatalk.opencode.shared-secret:}") String sharedSecret
     ) {
         this.bridge = bridge;
+        this.translator = translator;
         this.sharedSecret = sharedSecret;
     }
 
@@ -38,11 +42,11 @@ public class ToolCallController {
         @RequestBody(required = false) Map<String, Object> input
     ) {
         if (!sharedSecret.isEmpty() && !sharedSecret.equals(secret)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "bad secret"));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", translator.get("error.opencode.bad_secret")));
         }
         if (callId == null || openCodeSessionId == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(Map.of("error", "missing call/session headers"));
+                .body(Map.of("error", translator.get("error.opencode.missing_headers")));
         }
         try {
             Object output = bridge.handle(actionId, callId, openCodeSessionId,
@@ -51,7 +55,7 @@ public class ToolCallController {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of("error", "interrupted"));
+                .body(Map.of("error", translator.get("error.opencode.interrupted")));
         } catch (ExecutionException e) {
             return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
                 .body(Map.of("error", e.getCause() == null ? e.getMessage() : e.getCause().getMessage()));

@@ -1,5 +1,6 @@
 package com.datatalk.application.registry;
 
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.domain.action.ActionDescriptor;
 import com.datatalk.domain.action.ActionHandler;
 import com.datatalk.domain.action.Category;
@@ -20,11 +21,13 @@ import java.util.Map;
 public class ActionRegistry implements InitializingBean {
 
     private final ApplicationContext ctx;
+    private final Translator translator;
     private final Map<String, ActionDescriptor> descriptorsById = new LinkedHashMap<>();
     private final Map<String, ActionHandler<?, ?>> handlersById = new LinkedHashMap<>();
 
-    public ActionRegistry(ApplicationContext ctx) {
+    public ActionRegistry(ApplicationContext ctx, Translator translator) {
         this.ctx = ctx;
+        this.translator = translator;
     }
 
     @Override
@@ -56,7 +59,7 @@ public class ActionRegistry implements InitializingBean {
         return new ActionDescriptor(
             meta.id(),
             meta.executor(),
-            meta.description(),
+            translator.getOrDefault(meta.description(), meta.description()),
             handler.inputSchema(),
             handler.outputSchema(),
             Arrays.asList(meta.produces()),

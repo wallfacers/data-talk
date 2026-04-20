@@ -71,8 +71,10 @@ class ChannelControllerIT {
 
     @BeforeEach
     void setUp() {
-        datatalkJdbc.update("DELETE FROM messages");
         datatalkJdbc.update("DELETE FROM events");
+        datatalkJdbc.update("DELETE FROM action_invocations");
+        datatalkJdbc.update("DELETE FROM artifacts");
+        datatalkJdbc.update("DELETE FROM query_results");
         datatalkJdbc.update("DELETE FROM sessions");
         sessions.upsert(new SessionRecord("s-1", null, "T", false, "ses_test", 100L, 100L, false));
         ocSessionMap.bind("s-1", "ses_test");

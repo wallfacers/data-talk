@@ -40,6 +40,7 @@ import { useOpenBlankSession } from '@/features/session/hooks/use-open-blank-ses
 import { useSessionStore } from '@/stores/session-store'
 import { useConnectionStore } from '@/features/connection/store'
 import { renameSession, deleteSession, type Session } from '@/services/api/session'
+import { useI18n } from '@/i18n/use-i18n'
 
 type SessionGroup = {
   label: string
@@ -52,12 +53,12 @@ const OPENCODE_TEMP_TITLE_REGEX = /^New session - /
 /** 过滤临时标题，返回实际展示的标题 */
 function displayTitle(title: string): string {
   if (OPENCODE_TEMP_TITLE_REGEX.test(title)) {
-    return '新会话'
+    return title
   }
   return title
 }
 
-function groupSessions(sessions: Session[]): SessionGroup[] {
+function groupSessions(sessions: Session[], t: ReturnType<typeof useI18n>['t']): SessionGroup[] {
   // 不再过滤空白会话，始终显示，让用户可以随时切换回来
   const realSessions = sessions
 
@@ -85,10 +86,10 @@ function groupSessions(sessions: Session[]): SessionGroup[] {
   }
 
   return [
-    { label: '今天', items: today },
-    { label: '昨天', items: yesterday },
-    { label: '7 天内', items: week },
-    { label: '一个月内', items: month },
+    { label: t('workspace.today'), items: today },
+    { label: t('workspace.yesterday'), items: yesterday },
+    { label: t('workspace.last7Days'), items: week },
+    { label: t('workspace.last30Days'), items: month },
   ].filter((g) => g.items.length > 0)
 }
 
@@ -102,6 +103,7 @@ function EmptyHint({ text }: { text: string }) {
 }
 
 export function NavSessions() {
+  const { t } = useI18n()
   const activeSessionId = useSessionStore((s) => s.activeSessionId)
   const openSession = useSessionStore((s) => s.openSession)
   const openBlankSession = useOpenBlankSession()
@@ -113,7 +115,7 @@ export function NavSessions() {
     mutationFn: ({ id, title }: { id: string; title: string }) => renameSession(id, title),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['sessions', connectionId ?? null] })
-      toast.success('已重命名')
+      toast.success(t('common.renamed'))
     },
   })
 
@@ -124,14 +126,14 @@ export function NavSessions() {
       if (useSessionStore.getState().activeSessionId === id) {
         void openBlankSession(id)
       }
-      toast.success('已删除')
+      toast.success(t('common.deleted'))
     },
   })
 
   if (sessions.isLoading) {
     return (
       <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-        <SidebarGroupLabel>会话</SidebarGroupLabel>
+        <SidebarGroupLabel>{t('workspace.sessions')}</SidebarGroupLabel>
         <SidebarGroupContent>
           <SidebarMenu>
             {Array.from({ length: 3 }).map((_, i) => (
@@ -146,13 +148,13 @@ export function NavSessions() {
   }
 
   if (sessions.isError) {
-    return <EmptyHint text="加载失败" />
+    return <EmptyHint text={t('workspace.loadFailed')} />
   }
 
-  const groups = groupSessions(sessions.data ?? [])
+  const groups = groupSessions(sessions.data ?? [], t)
 
   if (groups.length === 0) {
-    return <EmptyHint text="暂无历史对话" />
+    return <EmptyHint text={t('workspace.noHistory')} />
   }
 
   return (
@@ -167,6 +169,7 @@ export function NavSessions() {
             const target = (sessions.data ?? []).find((x) => x.id === id)
             openSession(id, target?.hasEverSent ?? false)
           }}
+          t={t}
           onRename={(id, title) => renameMut.mutate({ id, title })}
           onDelete={(id) => deleteMut.mutate(id)}
         />
@@ -180,6 +183,7 @@ function SessionGroupView({
   items,
   activeId,
   onSelect,
+  t,
   onRename,
   onDelete,
 }: {
@@ -187,6 +191,7 @@ function SessionGroupView({
   items: Session[]
   activeId: string | null
   onSelect: (id: string) => void
+  t: ReturnType<typeof useI18n>['t']
   onRename: (id: string, title: string) => void
   onDelete: (id: string) => void
 }) {
@@ -247,7 +252,7 @@ function SessionGroupView({
                       }
                     >
                       <MoreHorizontalIcon />
-                      <span className="sr-only">更多</span>
+                      <span className="sr-only">{t('workspace.more')}</span>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
                       className="w-32"
@@ -256,17 +261,17 @@ function SessionGroupView({
                     >
                       <DropdownMenuItem onClick={() => {
                         setEditingId(s.id)
-                        setEditTitle(displayTitle(s.title))
+                        setEditTitle(OPENCODE_TEMP_TITLE_REGEX.test(s.title) ? t('workspace.nav.newSession') : s.title)
                       }}>
                         <PencilIcon />
-                        <span>重命名</span>
+                        <span>{t('common.rename')}</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         variant="destructive"
                         onClick={() => setDeleteTarget(s)}
                       >
                         <Trash2Icon />
-                        <span>删除</span>
+                        <span>{t('common.delete')}</span>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -283,13 +288,17 @@ function SessionGroupView({
       }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>确认删除</AlertDialogTitle>
+            <AlertDialogTitle>{t('workspace.confirmDeleteTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              确定要删除「{displayTitle(deleteTarget?.title ?? '')}」吗？此操作不可撤销。
+              {t('workspace.confirmDeleteDescription', {
+                title: OPENCODE_TEMP_TITLE_REGEX.test(deleteTarget?.title ?? '')
+                  ? t('workspace.nav.newSession')
+                  : deleteTarget?.title ?? '',
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="bg-transparent border-t-0 pt-2">
-            <AlertDialogCancel className="border-0 bg-transparent hover:bg-muted/50">取消</AlertDialogCancel>
+            <AlertDialogCancel className="border-0 bg-transparent hover:bg-muted/50">{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               className="border-0 bg-transparent"
@@ -300,7 +309,7 @@ function SessionGroupView({
                 setDeleteTarget(null)
               }}
             >
-              删除
+              {t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

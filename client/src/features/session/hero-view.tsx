@@ -1,6 +1,8 @@
 import { DatabaseIcon } from 'lucide-react'
+import { useI18n } from '@/i18n/use-i18n'
 
 export function HeroView() {
+  const { t } = useI18n()
   return (
     <div className="flex h-full flex-col items-center justify-center px-6">
       <div className="flex flex-col items-center gap-3 text-center">
@@ -9,7 +11,7 @@ export function HeroView() {
         </div>
         <h1 className="text-xl font-semibold tracking-tight">DataTalk</h1>
         <p className="text-sm text-muted-foreground">
-          用自然语言和你的数据库对话
+          {t('session.heroSubtitle')}
         </p>
       </div>
       <div className="mt-8 w-full max-w-3xl">

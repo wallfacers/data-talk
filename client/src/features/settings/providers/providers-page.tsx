@@ -6,13 +6,15 @@ import { Label } from '@/components/ui/label'
 import { ArrowLeftIcon, PlusIcon, RotateCwIcon, Trash2Icon } from 'lucide-react'
 import { fetchProviders, fetchProviderAuth, putCredentials, deleteCredentials, aiQueryKeys } from '../shared/api'
 import { ProviderIcon } from '../shared/provider-icon'
-import { RECOMMENDED_PROVIDERS, PROVIDER_DESCRIPTIONS, EXCLUDED_PROVIDERS } from '../shared/recommended-providers'
+import { RECOMMENDED_PROVIDERS, EXCLUDED_PROVIDERS, getProviderDescription } from '../shared/recommended-providers'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { useI18n } from '@/i18n/use-i18n'
 
 type RawProvider = { id: string; name: string }
 
 export function ProvidersPage() {
+  const { t } = useI18n()
   const { data, isLoading, error } = useQuery({
     queryKey: aiQueryKeys.providers,
     queryFn: fetchProviders,
@@ -34,7 +36,7 @@ export function ProvidersPage() {
     }
   }, [data, search])
 
-  if (isLoading) return <div className="text-sm text-muted-foreground">加载中...</div>
+  if (isLoading) return <div className="text-sm text-muted-foreground">{t('common.loading')}</div>
 
   if (connecting) {
     return (
@@ -48,23 +50,23 @@ export function ProvidersPage() {
 
   if (error) return (
     <div className="rounded border border-dashed p-8 text-center text-sm text-red-600">
-      OpenCode 服务未连接，请检查后端 / OpenCode 进程后重试
+      {t('providers.unavailable')}
     </div>
   )
 
   return (
     <div className="max-w-3xl">
-      <h1 className="mb-6 text-2xl font-semibold">提供商</h1>
+      <h1 className="mb-6 text-2xl font-semibold">{t('providers.title')}</h1>
 
-      <Section title="已连接的提供商" empty="没有已连接的提供商">
+      <Section title={t('providers.connected')} empty={t('providers.connectedEmpty')}>
         {connected.map(p => (
           <Row key={p.id} p={p} action="reconfigure" onClick={() => setConnecting(p)} onRemove={p.id} />
         ))}
       </Section>
 
-      <Section title="热门提供商" headerRight={
+      <Section title={t('providers.popular')} headerRight={
         <Input
-          placeholder="搜索提供商…"
+          placeholder={t('providers.searchPlaceholder')}
           value={search}
           onChange={e => setSearch(e.target.value)}
           className="h-7 w-48 text-sm"
@@ -81,6 +83,7 @@ function ConnectPage({ provider, onBack, onSaved }: {
   onBack: () => void
   onSaved: () => void
 }) {
+  const { t } = useI18n()
   const qc = useQueryClient()
   const { data: auth } = useQuery<Record<string, { type: string; label?: string }[]>>({
     queryKey: aiQueryKeys.providerAuth,
@@ -92,7 +95,7 @@ function ConnectPage({ provider, onBack, onSaved }: {
   const methods = auth?.[provider.id] ?? []
   const hasApi = methods.some(m => m.type === 'api') || methods.length === 0
   const hasOauth = methods.some(m => m.type === 'oauth')
-  const desc = PROVIDER_DESCRIPTIONS[provider.id] || '使用 API 密钥连接此服务'
+  const desc = getProviderDescription(provider.id)
 
   const save = useMutation({
     mutationFn: async () => {
@@ -109,7 +112,7 @@ function ConnectPage({ provider, onBack, onSaved }: {
         return { ...old, connected: [...existing, provider.id] }
       })
       qc.invalidateQueries({ queryKey: aiQueryKeys.models })
-      toast.success('已保存凭证')
+      toast.success(t('providers.credentialSaved'))
       onSaved()
     },
   })
@@ -121,7 +124,7 @@ function ConnectPage({ provider, onBack, onSaved }: {
         onClick={onBack}
       >
         <ArrowLeftIcon className="size-3.5" />
-        返回提供商列表
+        {t('providers.backToList')}
       </button>
 
       <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
@@ -130,7 +133,7 @@ function ConnectPage({ provider, onBack, onSaved }: {
           <div className="flex items-center gap-3">
             <ProviderIcon id={provider.id} className="size-9" />
             <div>
-              <h2 className="text-base font-medium">连接 {provider.name}</h2>
+              <h2 className="text-base font-medium">{t('providers.connectTitle', { name: provider.name })}</h2>
               <p className="mt-0.5 text-sm text-muted-foreground">{desc}</p>
             </div>
           </div>
@@ -138,7 +141,7 @@ function ConnectPage({ provider, onBack, onSaved }: {
 
         {hasOauth && !hasApi && (
           <div className="mx-6 mt-4 rounded-lg border border-dashed border-border/60 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
-            此提供商仅支持 OAuth 登录。请在终端运行：
+            {t('providers.oauthOnly')}
             <pre className="mt-2 rounded-md bg-muted px-3 py-1.5 text-xs font-mono">opencode auth login {provider.id}</pre>
           </div>
         )}
@@ -147,18 +150,18 @@ function ConnectPage({ provider, onBack, onSaved }: {
           <div className="px-6 py-6">
             <div className="space-y-5">
               <div className="space-y-2">
-                <Label className="text-sm font-medium">API Key</Label>
+                <Label className="text-sm font-medium">{t('providers.apiKey')}</Label>
                 <Input
                   type="password"
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="输入你的 API 密钥"
+                  placeholder={t('providers.apiKeyPlaceholder')}
                   className="font-mono"
                   autoFocus
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Base URL<span className="text-muted-foreground font-normal">（可选）</span></Label>
+                <Label className="text-sm font-medium">{t('providers.baseUrl')}<span className="text-muted-foreground font-normal">{t('providers.optional')}</span></Label>
                 <Input
                   value={baseUrl}
                   placeholder="https://api.example.com"
@@ -170,7 +173,7 @@ function ConnectPage({ provider, onBack, onSaved }: {
 
             {hasOauth && (
               <p className="mt-5 text-xs text-muted-foreground">
-                如需使用 OAuth 登录，请在 CLI 运行 <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px]">opencode auth login {provider.id}</code>
+                {t('providers.oauthCliHint')} <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px]">opencode auth login {provider.id}</code>
               </p>
             )}
           </div>
@@ -179,16 +182,16 @@ function ConnectPage({ provider, onBack, onSaved }: {
         {/* 底部操作栏 */}
         <div className="flex items-center justify-between border-t bg-muted/20 px-6 py-4">
           <p className="text-[11px] text-muted-foreground/70 leading-relaxed max-w-sm">
-            凭证存储在 OpenCode <code className="rounded bg-muted/50 px-1 font-mono text-[10px]">auth.json</code>
+            {t('providers.authStoredIn', { file: 'auth.json' })}
           </p>
           <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={onBack}>取消</Button>
+            <Button variant="ghost" size="sm" onClick={onBack}>{t('common.cancel')}</Button>
             <Button
               size="sm"
               onClick={() => save.mutate()}
               disabled={!hasApi || apiKey.length === 0 || save.isPending}
             >
-              {save.isPending ? '保存中…' : '保存'}
+              {save.isPending ? t('common.saving') : t('common.save')}
             </Button>
           </div>
         </div>
@@ -220,9 +223,10 @@ function Row({ p, action, onClick, onRemove }: {
   onClick: () => void
   onRemove?: string
 }) {
+  const { t } = useI18n()
   const qc = useQueryClient()
   const recommended = RECOMMENDED_PROVIDERS.has(p.id)
-  const desc = PROVIDER_DESCRIPTIONS[p.id] ?? '使用 API 密钥连接'
+  const desc = getProviderDescription(p.id, 'providers.desc.defaultShort')
 
   const remove = useMutation({
     mutationFn: () => deleteCredentials(onRemove!),
@@ -236,7 +240,7 @@ function Row({ p, action, onClick, onRemove }: {
       })
       qc.invalidateQueries({ queryKey: aiQueryKeys.providers })
       qc.invalidateQueries({ queryKey: aiQueryKeys.models })
-      toast.success('已移除凭证')
+      toast.success(t('providers.credentialRemoved'))
     },
   })
 
@@ -246,14 +250,14 @@ function Row({ p, action, onClick, onRemove }: {
       <div className="flex-1">
         <div className="flex items-center gap-2 text-sm font-medium">
           {p.name}
-          {recommended && <span className="rounded bg-accent px-1.5 py-0.5 text-xs">推荐</span>}
+          {recommended && <span className="rounded bg-accent px-1.5 py-0.5 text-xs">{t('providers.recommended')}</span>}
         </div>
         <div className="text-xs text-muted-foreground">{desc}</div>
       </div>
       <div className="flex items-center gap-2">
         <Button size="sm" variant="outline" onClick={onClick}>
-          {action === 'connect' ? <><PlusIcon className="size-4" />连接</>
-                                 : <><RotateCwIcon className="size-4" />重新配置</>}
+          {action === 'connect' ? <><PlusIcon className="size-4" />{t('providers.connect')}</>
+                                 : <><RotateCwIcon className="size-4" />{t('providers.reconfigure')}</>}
         </Button>
         {onRemove && (
           <Button

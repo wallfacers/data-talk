@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.http.HttpHeaders;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -28,13 +29,16 @@ class SessionControllerIT {
 
     @BeforeEach
     void seedConnectionsAndReset() {
-        jdbc.update("DELETE FROM messages");
+        jdbc.update("DELETE FROM action_invocations");
+        jdbc.update("DELETE FROM artifacts");
+        jdbc.update("DELETE FROM events");
+        jdbc.update("DELETE FROM query_results");
         jdbc.update("DELETE FROM sessions");
         for (String id : CONNECTION_IDS) {
             jdbc.update("""
-                INSERT OR IGNORE INTO connections(id, kind, host, port, username, password_enc, created_at)
-                VALUES(?, 'mysql', 'h', 3306, 'u', x'00', 0)
-                """, id);
+                INSERT OR IGNORE INTO connections(id, name, kind, host, port, username, password_enc, created_at)
+                VALUES(?, ?, 'mysql', 'h', 3306, 'u', x'00', 0)
+                """, id, "seed-" + id);
         }
     }
 
@@ -87,10 +91,20 @@ class SessionControllerIT {
     }
 
     @Test
+    void create_uses_en_locale_for_default_title() throws Exception {
+        mvc.perform(post("/api/sessions")
+                .header(HttpHeaders.ACCEPT_LANGUAGE, "en-US")
+                .contentType("application/json")
+                .content("{\"title\":\"  \"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.title").value("New Session"));
+    }
+
+    @Test
     void list_without_filter_returns_all() throws Exception {
-        mvc.perform(post("/api/sessions").contentType("application/json")
-                .content("{\"connectionId\":\"c-a\",\"title\":\"A\"}"))
-            .andExpect(status().isOk());
+        String firstId = createSession("c-a", "A");
+        jdbc.update("UPDATE sessions SET has_ever_sent = 1 WHERE id = ?", firstId);
+
         mvc.perform(post("/api/sessions").contentType("application/json")
                 .content("{\"connectionId\":\"c-b\",\"title\":\"B\"}"))
             .andExpect(status().isOk());
@@ -149,23 +163,23 @@ class SessionControllerIT {
     }
 
     @Test
-    void delete_cascades_messages() throws Exception {
-        String id = createSession("conn-cascade", "含消息");
+    void delete_cascades_events() throws Exception {
+        String id = createSession("conn-cascade", "含事件");
 
         jdbc.update("""
-            INSERT INTO messages(id, session_id, role, parts_json, created_at)
+            INSERT INTO events(event_id, session_id, event_type, payload_json, ts)
             VALUES(?, ?, ?, ?, ?)
-            """, "msg-" + id, id, "USER", "[]", System.currentTimeMillis());
+            """, 1L, id, "message.created", "{}", System.currentTimeMillis());
 
         Integer before = jdbc.queryForObject(
-            "SELECT COUNT(*) FROM messages WHERE session_id = ?", Integer.class, id);
+            "SELECT COUNT(*) FROM events WHERE session_id = ?", Integer.class, id);
         org.assertj.core.api.Assertions.assertThat(before).isEqualTo(1);
 
         mvc.perform(delete("/api/sessions/" + id))
             .andExpect(status().isNoContent());
 
         Integer after = jdbc.queryForObject(
-            "SELECT COUNT(*) FROM messages WHERE session_id = ?", Integer.class, id);
+            "SELECT COUNT(*) FROM events WHERE session_id = ?", Integer.class, id);
         org.assertj.core.api.Assertions.assertThat(after).isZero();
     }
 

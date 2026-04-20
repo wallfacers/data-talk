@@ -35,8 +35,8 @@ class SupersedeArtifactActionTest {
         datatalkJdbc.update("DELETE FROM sessions");
         datatalkJdbc.update("DELETE FROM connections");
         datatalkJdbc.update("""
-            INSERT INTO connections(id, kind, host, port, username, password_enc, created_at)
-            VALUES('c-default', 'mysql', 'h', 3306, 'u', x'00', 0)
+            INSERT INTO connections(id, name, kind, host, port, username, password_enc, created_at)
+            VALUES('c-default', 'Default Connection', 'mysql', 'h', 3306, 'u', x'00', 0)
             """);
         datatalkJdbc.update("""
             INSERT INTO sessions(id, connection_id, title, created_at, updated_at)

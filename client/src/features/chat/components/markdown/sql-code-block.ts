@@ -1,4 +1,6 @@
 import { classifySqlRisk, stripComments } from '../helpers/risk'
+import { getCurrentLanguage } from '@/stores/ui-settings-store'
+import { translateMessage } from '@/i18n/messages'
 
 export const SQL_EXECUTE_EVENT = 'datatalk.sql.execute'
 export const SQL_EXPLAIN_EVENT = 'datatalk.sql.explain'
@@ -30,8 +32,8 @@ export function decorateSqlBlocks(
     header.className = 'flex items-center gap-2 border-b bg-muted/40 px-2 py-1 text-xs'
     header.innerHTML = `
       <span class="rounded border px-1.5 font-mono text-[10px]">SQL${kind ? ' · ' + kind : ''}</span>
-      ${risk === 'L1' ? '<button data-slot="sql-execute" type="button" class="rounded border px-2 hover:bg-background">执行</button>' : ''}
-      <button data-slot="sql-explain" type="button" class="rounded border px-2 hover:bg-background">解释</button>
+      ${risk === 'L1' ? `<button data-slot="sql-execute" type="button" class="rounded border px-2 hover:bg-background">${translateMessage(getCurrentLanguage(), 'chat.executeSql')}</button>` : ''}
+      <button data-slot="sql-explain" type="button" class="rounded border px-2 hover:bg-background">${translateMessage(getCurrentLanguage(), 'chat.explainSql')}</button>
     `
     wrapper.insertBefore(header, pre)
 

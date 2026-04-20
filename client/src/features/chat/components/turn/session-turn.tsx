@@ -6,6 +6,7 @@ import { UserBubble } from './user-bubble'
 import { AssistantStream } from './assistant-stream'
 import { ErrorCard } from './error-card'
 import { TextShimmer } from '../effects/text-shimmer'
+import { useI18n } from '@/i18n/use-i18n'
 
 export function SessionTurn(props: {
   sessionId: string
@@ -14,6 +15,7 @@ export function SessionTurn(props: {
   userInfo?: MessageInfo
   isLastTurn: boolean
 }) {
+  const { t } = useI18n()
   const partsMap = useChatPartsStore((s) => s.partsBySession.get(props.sessionId))
   const infoMap = useChatPartsStore((s) => s.infoBySession.get(props.sessionId))
 
@@ -83,13 +85,13 @@ export function SessionTurn(props: {
         turnDurationMs={turnDurationMs}
       />
       {interrupted && (
-        <div className="my-2 text-center text-xs text-muted-foreground">— 已中断 —</div>
+        <div className="my-2 text-center text-xs text-muted-foreground">— {t('chat.interrupted')} —</div>
       )}
       {showThinking && (
         <div className="my-2 flex flex-col">
           <div className="flex w-fit items-center gap-1.5 text-sm font-medium text-muted-foreground">
             <ChevronRightIcon size={16} className="rotate-90" />
-            <TextShimmer text="思考中…" active />
+            <TextShimmer text={t('chat.thinking')} active />
           </div>
         </div>
       )}

@@ -1,5 +1,6 @@
 package com.datatalk.application.registry;
 
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.domain.action.ActionContext;
 import com.datatalk.domain.action.ActionHandler;
 import com.datatalk.domain.action.DataTalkAction;
@@ -11,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.support.StaticMessageSource;
 
 import java.util.List;
 import java.util.Map;
@@ -20,7 +22,7 @@ import java.util.concurrent.CompletionStage;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest(classes = {ActionRegistry.class, JsonSchemaLoader.class, ActionRegistryTest.TestActions.class})
+@SpringBootTest(classes = {ActionRegistry.class, JsonSchemaLoader.class, Translator.class, ActionRegistryTest.TestActions.class})
 class ActionRegistryTest {
 
     @Autowired
@@ -35,7 +37,7 @@ class ActionRegistryTest {
     void returnsDescriptorWithAnnotationMetadata() {
         var d = registry.require("test.alpha");
         assertThat(d.executor()).isEqualTo(Executor.SERVER);
-        assertThat(d.description()).isEqualTo("Alpha");
+        assertThat(d.description()).isEqualTo("Alpha Translated");
         assertThat(d.timeoutMs()).isEqualTo(12_345);
     }
 
@@ -57,13 +59,21 @@ class ActionRegistryTest {
         ObjectMapper objectMapper() { return new ObjectMapper(); }
 
         @Bean
+        StaticMessageSource messageSource() {
+            StaticMessageSource source = new StaticMessageSource();
+            source.addMessage("action.test.alpha", java.util.Locale.ENGLISH, "Alpha Translated");
+            source.addMessage("action.test.alpha", java.util.Locale.SIMPLIFIED_CHINESE, "Alpha Translated");
+            return source;
+        }
+
+        @Bean
         AlphaHandler alpha() { return new AlphaHandler(); }
 
         @Bean
         BetaHandler beta() { return new BetaHandler(); }
     }
 
-    @DataTalkAction(id = "test.alpha", executor = Executor.SERVER, description = "Alpha", timeoutMs = 12_345)
+    @DataTalkAction(id = "test.alpha", executor = Executor.SERVER, description = "action.test.alpha", timeoutMs = 12_345)
     static class AlphaHandler implements ActionHandler<Map, Map> {
         @Override
         public Map<String, Object> inputSchema() { return Map.of("type", "object"); }

@@ -17,25 +17,19 @@ import { useSessions } from './hooks/use-sessions'
 import { useOpenBlankSession } from './hooks/use-open-blank-session'
 import { deleteSession, renameSession } from '@/services/api/session'
 import { useConnectionStore } from '@/features/connection/store'
+import { useI18n } from '@/i18n/use-i18n'
 
 // OpenCode 生成的临时标题格式，不应展示
 const OPENCODE_TEMP_TITLE_REGEX = /^New session - /
 
-/** 过滤临时标题，返回实际展示的标题 */
-function displayTitle(title: string): string {
-  if (OPENCODE_TEMP_TITLE_REGEX.test(title)) {
-    return '新会话'
-  }
-  return title
-}
-
 export function ChatHeader() {
+  const { t } = useI18n()
   const sid = useSessionStore((s) => s.activeSessionId)
   const localHasEverSent = useSessionStore((s) => s.hasEverSentBySession)
   const { data: sessions } = useSessions()
   const session = sessions?.find((s) => s.id === sid)
   const rawTitle = session?.title ?? ''
-  const title = displayTitle(rawTitle)
+  const title = OPENCODE_TEMP_TITLE_REGEX.test(rawTitle) ? t('workspace.nav.newSession') : rawTitle
   // 使用本地缓存优先判断：本地 hasEverSent=true 说明用户已发送消息
   const isBlankSession = sid ? !(localHasEverSent.get(sid) ?? session?.hasEverSent ?? false) : false
   const qc = useQueryClient()
@@ -55,7 +49,7 @@ export function ChatHeader() {
     mutationFn: ({ id, title }: { id: string; title: string }) => renameSession(id, title),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['sessions', connectionId ?? null] })
-      toast.success('已重命名')
+      toast.success(t('common.renamed'))
     },
   })
 
@@ -64,7 +58,7 @@ export function ChatHeader() {
     onSuccess: (_, id) => {
       qc.invalidateQueries({ queryKey: ['sessions', connectionId ?? null] })
       void openBlankSession(id)
-      toast.success('已删除')
+      toast.success(t('common.deleted'))
     },
   })
 
@@ -84,7 +78,7 @@ export function ChatHeader() {
 
   function handleDelete() {
     if (!sid || isBlankSession) return
-    if (!window.confirm(`确定删除"${title}"？`)) return
+    if (!window.confirm(t('chat.confirmDelete', { title }))) return
     del.mutate(sid)
   }
 
@@ -123,7 +117,7 @@ export function ChatHeader() {
             }
           />
           <TooltipContent side="bottom" sideOffset={4}>
-            双击重命名
+            {t('chat.doubleClickRename')}
           </TooltipContent>
         </Tooltip>
       )}
@@ -138,11 +132,11 @@ export function ChatHeader() {
         <DropdownMenuContent align="end" className="w-32">
           <DropdownMenuItem onClick={startRename}>
             <PencilIcon />
-            <span>重命名</span>
+            <span>{t('common.rename')}</span>
           </DropdownMenuItem>
           <DropdownMenuItem variant="destructive" onClick={handleDelete}>
             <Trash2Icon />
-            <span>删除</span>
+            <span>{t('common.delete')}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

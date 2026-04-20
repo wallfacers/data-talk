@@ -10,7 +10,7 @@ import java.util.concurrent.CompletionStage;
 @DataTalkAction(
     id = "datatalk.pin_artifact",
     executor = Executor.CLIENT,
-    description = "Pin an artifact in the client's timeline so it survives scroll-away.",
+    description = "action.pin_artifact.description",
     timeoutMs = 2_000,
     riskLevel = { RiskLevel.L1 },
     category = { Category.ARTIFACT }

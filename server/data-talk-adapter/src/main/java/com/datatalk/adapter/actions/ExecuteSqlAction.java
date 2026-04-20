@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 @DataTalkAction(
     id = "datatalk.execute_sql",
     executor = Executor.SERVER,
-    description = "Run a SELECT query on the given connection and persist the result as a table Artifact.",
+    description = "action.execute_sql.description",
     produces = {"datatalk.artifact"},
     requiresConnection = true,
     timeoutMs = 30_000,

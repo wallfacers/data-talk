@@ -85,6 +85,13 @@ features/xxx/
 - SSE 流：通过 `EventSource` 或 fetch streaming 接收 `DtEvent`
 - API 类型定义集中在 `src/types/api.ts`
 
+### 国际化约定
+
+- 全局国际化入口位于 `src/i18n/`，通过 `I18nProvider` + `useI18n()` 提供 `t()`。
+- 当前支持 `zh-CN` 和 `en-US`；语言状态持久化在 `ui-settings-store`。
+- 用户可见文案优先写成 message key；provider 名、model 名、数据库对象名保持原样，不做翻译。
+- HTTP 请求统一附带 `Accept-Language`，用于驱动后端返回同语言错误和默认文案。
+
 ### 样式调试经验
 
 - **"整体发灰"先查 `opacity`，不是 `color`**：若一组元素（文字、图标、开关、按钮）**同时**显灰且对比度一致降低，大概率是父级被 `opacity` 降调，不是文字颜色继承。`opacity` 作为合成层属性会让所有后代一起半透明，伪装成"颜色都变了"
