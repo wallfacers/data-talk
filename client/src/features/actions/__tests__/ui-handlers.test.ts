@@ -1,7 +1,9 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { getClientHandler } from '../registry'
 import { uiRouter } from '@/services/ui-router'
 import type { UIObject } from '@/services/ui-router'
+import { useDataSourcePickerStore } from '@/features/session/data-source-picker/data-source-picker-store'
+import { WorkspaceAdapter } from '@/features/stage/adapters/WorkspaceAdapter'
 import '../ui-handlers'
 
 function stubObject(objectId: string, stateValue: unknown): UIObject {
@@ -16,6 +18,7 @@ function stubObject(objectId: string, stateValue: unknown): UIObject {
 describe('ui-handlers', () => {
   beforeEach(() => {
     uiRouter.registerInstance('stub1', stubObject('stub1', { foo: 'bar' }))
+    uiRouter.registerInstance('workspace', new WorkspaceAdapter(() => 's1'))
   })
 
   it('ui_read handler returns router data', async () => {
@@ -39,5 +42,12 @@ describe('ui-handlers', () => {
     const h = getClientHandler('datatalk.ui.list')!
     const out = await h({ filter: { type: 'stub' } }, { sessionId: 's1' })
     expect(Array.isArray(out)).toBe(true)
+  })
+
+  it('ui_exec returns cancelled result for workspace choose_connection', async () => {
+    vi.spyOn(useDataSourcePickerStore.getState(), 'requestPick').mockResolvedValue({ cancelled: true })
+    const h = getClientHandler('datatalk.ui.exec')!
+    const out = await h({ object: 'workspace', target: 'workspace', action: 'choose_connection' }, { sessionId: 's1' })
+    expect(out).toEqual({ success: true, data: { cancelled: true } })
   })
 })

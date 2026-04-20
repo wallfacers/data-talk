@@ -209,6 +209,7 @@ DataTalk 的差异化在于 **AI 直接操作数据库**，但不能让 AI 蛮�
 
 | 设计文档 | 日期 | 主题 |
 |----------|------|------|
+| [Composer Data Source Picker](./2026-04-20-composer-data-source-picker-design.md) | 2026-04-20 | Composer 底部新增与模型并列的数据源选择器：支持搜索、最近使用排序、高频切换；无当前数据源时直接拉起选择弹框并在选中后自动恢复原动作，而非先报错阻断；同时补齐 `ui_exec choose_connection` 前端适配器能力，并要求 Stage 卡片固化来源数据源、仅提供显式回切 |
 | [AI Message Code Window and Table Design](./2026-04-20-ai-message-code-window-and-table-design.md) | 2026-04-20 | 统一 AI 消息中的代码块窗体视觉与 Markdown 表格渲染：所有代码展示区域收口为带顶部 chrome 的浅色 code window，深色主题下仍保持亮面窗体；同时为 pipe table 增加窄范围规范化、统一滚动容器和 token 驱动的增强样式 |
 | [Blank Session List Actions](./2026-04-20-blank-session-list-actions-design.md) | 2026-04-20 | 会话列表中的空白会话继续显示并可进入，但不再暴露“更多”按钮，也不支持重命名和删除，避免删除后立刻出现一个可再次操作的新会话 |
 | [Stage UI Object Protocol](./2026-04-20-stage-ui-object-protocol-design.md) | 2026-04-20 | StageWindow 升级为 AI 可操作的多 Tab 工作屏：移植 open-db-studio UI Object 协议（`ui_read/patch/exec/list` 四件套 + Adapter 注册表），建立"展示路径（结果不进 AI 上下文）vs 分析路径（结果进 Artifact）"双轨，新增用户 `!<sql>` 直查通道，引入 Global/Session/Tab 三层连接绑定 |

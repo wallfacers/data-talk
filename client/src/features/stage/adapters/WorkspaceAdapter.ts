@@ -1,5 +1,6 @@
 import type { UIObject, ActionDef, ExecResult, PatchResult } from '@/services/ui-router'
 import { execError } from '@/services/ui-router'
+import { useDataSourcePickerStore } from '@/features/session/data-source-picker/data-source-picker-store'
 import { useStageStore, type StageTab } from '@/stores/stage-store'
 
 const ACTIONS: ActionDef[] = [
@@ -18,6 +19,9 @@ const ACTIONS: ActionDef[] = [
   } },
   { name: 'focus', description: 'Focus a tab', paramsSchema: {
     type: 'object', required: ['target'], properties: { target: { type: 'string' } },
+  } },
+  { name: 'choose_connection', description: 'Prompt user to choose a data source', paramsSchema: {
+    type: 'object', properties: { preferredConnectionId: { type: 'string' } },
   } },
 ]
 
@@ -50,7 +54,15 @@ export class WorkspaceAdapter implements UIObject {
   patch(): PatchResult { return { status: 'error', message: 'workspace is read-only; use exec' } }
 
   async exec(action: string, params?: unknown): Promise<ExecResult> {
-    const p = (params ?? {}) as { type?: string; title?: string; connection_id?: string; database?: string; payload?: unknown; target?: string }
+    const p = (params ?? {}) as {
+      type?: string
+      title?: string
+      connection_id?: string
+      database?: string
+      payload?: unknown
+      target?: string
+      preferredConnectionId?: string
+    }
     const store = useStageStore.getState()
     switch (action) {
       case 'open': {
@@ -77,6 +89,13 @@ export class WorkspaceAdapter implements UIObject {
         if (!p.target) return execError('Missing param: target')
         store.focusTab(p.target)
         return { success: true }
+      }
+      case 'choose_connection': {
+        const result = await useDataSourcePickerStore.getState().requestPick({
+          reason: 'ui_exec',
+          preferredConnectionId: p.preferredConnectionId ?? null,
+        })
+        return { success: true, data: result }
       }
       default: return execError(`Unknown action: ${action}`, `Available: [${ACTIONS.map((a) => a.name).join(', ')}]`)
     }

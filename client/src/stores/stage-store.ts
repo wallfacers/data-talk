@@ -7,6 +7,7 @@ export interface StageTab {
   type: string
   title: string
   connectionId?: string
+  connectionName?: string
   database?: string
   schema?: string
   originSessionId?: string

@@ -3,6 +3,7 @@ import { createRootRoute, Outlet } from '@tanstack/react-router'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Toaster } from '@/components/ui/sonner'
 import { SettingsDialog } from '@/features/settings/settings-dialog'
+import { DataSourcePickerDialogHost } from '@/features/session/data-source-picker/data-source-picker-dialog-host'
 import { useAutoSelectDefaultModel } from '@/features/session/hooks/use-auto-select-default-model'
 import { useTheme } from '@/hooks/use-theme'
 
@@ -17,6 +18,7 @@ function RootComponent() {
     <TooltipProvider>
       <Outlet />
       <SettingsDialog />
+      <DataSourcePickerDialogHost />
       <Toaster richColors position="top-right" />
     </TooltipProvider>
   )

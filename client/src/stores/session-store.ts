@@ -9,6 +9,8 @@ type SessionState = {
   hasEverSentBySession: Map<string, boolean>
   pendingPrompt: string | null
   pendingModelPrompt: boolean
+  pendingConnectionPrompt: boolean
+  pendingActionAfterConnectionPick: { kind: 'send' } | null
 
   openSession: (id: string, hasEverSent: boolean) => void
   closeSession: () => void
@@ -17,6 +19,8 @@ type SessionState = {
   markSessionSent: (id: string) => void
   setPendingPrompt: (text: string | null) => void
   setPendingModelPrompt: (on: boolean) => void
+  setPendingConnectionPrompt: (on: boolean) => void
+  setPendingActionAfterConnectionPick: (action: { kind: 'send' } | null) => void
 }
 
 export const useSessionStore = create<SessionState>()(
@@ -27,6 +31,8 @@ export const useSessionStore = create<SessionState>()(
       hasEverSentBySession: new Map(),
       pendingPrompt: null,
       pendingModelPrompt: false,
+      pendingConnectionPrompt: false,
+      pendingActionAfterConnectionPick: null,
 
       openSession: (id, hasEverSent) => set((s) => {
         // Cache wins: once we've observed hasEverSent=true locally, never demote.
@@ -62,6 +68,8 @@ export const useSessionStore = create<SessionState>()(
 
       setPendingPrompt: (text) => set({ pendingPrompt: text }),
       setPendingModelPrompt: (on) => set({ pendingModelPrompt: on }),
+      setPendingConnectionPrompt: (on) => set({ pendingConnectionPrompt: on }),
+      setPendingActionAfterConnectionPick: (action) => set({ pendingActionAfterConnectionPick: action }),
     }),
     {
       name: 'data-talk.session',

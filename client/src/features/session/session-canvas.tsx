@@ -2,6 +2,7 @@ import { useSessionStore } from '@/stores/session-store'
 import { useFlipComposer } from './use-flip-composer'
 import { useSessionHistory } from './hooks/use-session-history'
 import { useSessionSubscribe } from './hooks/use-session-subscribe'
+import { usePendingConnectionResume } from './hooks/use-pending-connection-resume'
 import { usePendingPromptResume } from './hooks/use-pending-prompt-resume'
 import { SplitView } from './split-view'
 import { PromptComposer } from './prompt-composer'
@@ -13,6 +14,7 @@ export function SessionCanvas() {
   useFlipComposer()
   useSessionHistory(sessionId)
   useSessionSubscribe(sessionId)
+  usePendingConnectionResume()
   usePendingPromptResume()
 
   return (

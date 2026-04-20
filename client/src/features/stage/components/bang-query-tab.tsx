@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { RefreshCwIcon, XIcon } from 'lucide-react'
 import { DataGrid } from '@/features/data-grid/components/data-grid'
 import { Button } from '@/components/ui/button'
+import { useConnectionStore } from '@/features/connection/store'
 import { useStageStore } from '@/stores/stage-store'
 import { BangQueryAdapter } from '@/features/stage/adapters/BangQueryAdapter'
 import { showErrorToast, normalizeError } from '@/services/http-error'
@@ -16,6 +17,7 @@ interface BangPayload {
 export function BangQueryTab({ tabId }: { tabId: string }) {
   const { t } = useI18n()
   const tab = useStageStore((s) => s.workspaceTabs.find((x) => x.tabId === tabId))
+  const setActiveConnection = useConnectionStore((s) => s.setActive)
   const [expanded, setExpanded] = useState(false)
   const [rerunning, setRerunning] = useState(false)
   if (!tab) return null
@@ -37,11 +39,29 @@ export function BangQueryTab({ tabId }: { tabId: string }) {
     }
   }
   const onClose = () => useStageStore.getState().closeTab(tabId)
+  const onUseThisSource = () => {
+    if (!tab.connectionId) return
+    setActiveConnection(tab.connectionId)
+  }
 
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2 border-b px-3 py-2 text-xs">
         <span className="rounded border px-1.5 font-mono text-[10px]">{t('bangQuery.label')}</span>
+        {tab.connectionId && (
+          <button
+            type="button"
+            onClick={onUseThisSource}
+            className="rounded border px-1.5 text-[10px] text-muted-foreground hover:bg-accent/50"
+          >
+            {tab.connectionName ?? tab.connectionId}
+          </button>
+        )}
+        {tab.connectionId && (
+          <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px]" onClick={onUseThisSource}>
+            {t('bangQuery.useThisSource')}
+          </Button>
+        )}
         <div
           className={`flex-1 min-w-0 font-mono text-xs ${expanded ? 'whitespace-pre-wrap' : 'truncate'}`}
           onClick={() => setExpanded((v) => !v)}

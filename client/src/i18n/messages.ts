@@ -101,6 +101,9 @@ const MESSAGES = {
     'dataSources.created': '已创建',
     'dataSources.updated': '已更新',
     'dataSources.connectTimeoutMs': '连接超时（毫秒）',
+    'dataSources.select': '选择数据源',
+    'dataSources.searchPlaceholder': '搜索数据源',
+    'dataSources.emptySearch': '没有匹配的数据源',
 
     'workspace.createSession': '创建会话',
     'workspace.creatingSession': '创建中…',
@@ -192,6 +195,7 @@ const MESSAGES = {
     'bangQuery.label': 'SQL · 直查',
     'bangQuery.rerun': '重跑',
     'bangQuery.close': '关闭',
+    'bangQuery.useThisSource': '用此数据源继续',
 
     'artifact.preparing': 'AI 正在准备…',
     'artifact.unsupportedChart': '不支持的图表规格',
@@ -312,6 +316,9 @@ const MESSAGES = {
     'dataSources.created': 'Created',
     'dataSources.updated': 'Updated',
     'dataSources.connectTimeoutMs': 'Connect Timeout (ms)',
+    'dataSources.select': 'Select Data Source',
+    'dataSources.searchPlaceholder': 'Search data sources',
+    'dataSources.emptySearch': 'No matching data sources',
 
     'workspace.createSession': 'Create Session',
     'workspace.creatingSession': 'Creating…',
@@ -403,6 +410,7 @@ const MESSAGES = {
     'bangQuery.label': 'SQL · Direct',
     'bangQuery.rerun': 'Re-run',
     'bangQuery.close': 'Close',
+    'bangQuery.useThisSource': 'Continue with this source',
 
     'artifact.preparing': 'AI is preparing…',
     'artifact.unsupportedChart': 'Unsupported chart specification',

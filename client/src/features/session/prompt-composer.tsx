@@ -12,6 +12,7 @@ import {
   InputGroupText,
   InputGroupTextarea,
 } from '@/components/ui/input-group'
+import { DataSourcePicker } from './data-source-picker/data-source-picker'
 import { ModelPicker } from './model-picker/model-picker'
 import { Switch } from '@/components/ui/switch'
 import { useSessionStore } from '@/stores/session-store'
@@ -26,6 +27,7 @@ import { openBangQueryTab } from '@/features/stage/utils/open-bang-query-tab'
 import { useHasActiveModel } from './hooks/use-has-active-model'
 import { SQL_EXECUTE_EVENT, SQL_EXPLAIN_EVENT } from '@/features/chat/components/markdown/sql-code-block'
 import { useI18n } from '@/i18n/use-i18n'
+import { useDataSourcePickerStore } from './data-source-picker/data-source-picker-store'
 
 function useComposerSlot(): HTMLElement | null {
   const [slot, setSlot] = useState<HTMLElement | null>(null)
@@ -65,7 +67,10 @@ function InnerComposer() {
   const openSession = useSessionStore((s) => s.openSession)
   const setPendingPrompt = useSessionStore((s) => s.setPendingPrompt)
   const setPendingModelPrompt = useSessionStore((s) => s.setPendingModelPrompt)
+  const setPendingConnectionPrompt = useSessionStore((s) => s.setPendingConnectionPrompt)
+  const setPendingActionAfterConnectionPick = useSessionStore((s) => s.setPendingActionAfterConnectionPick)
   const activeConnectionId = useConnectionStore((s) => s.activeConnectionId)
+  const setActiveConnection = useConnectionStore((s) => s.setActive)
   const hasActiveModel = useHasActiveModel()
   const qc = useQueryClient()
 
@@ -78,11 +83,21 @@ function InnerComposer() {
     if (t.startsWith('!')) {
       const sql = t.slice(1).trim()
       if (sql && /^(select|with)\b/i.test(sql)) {
+        let connectionId = activeConnectionId
+        if (!connectionId) {
+          const picked = await useDataSourcePickerStore.getState().requestPick({
+            reason: 'bang_query',
+            preferredConnectionId: null,
+          })
+          if ('cancelled' in picked) return
+          setActiveConnection(picked.connectionId)
+          connectionId = picked.connectionId
+        }
         try {
           setText('')
           await openBangQueryTab({
             sessionId: activeSessionId,
-            connectionId: activeConnectionId,
+            connectionId,
             sql,
           })
         } catch (err) {
@@ -92,6 +107,25 @@ function InnerComposer() {
         return
       }
       // fall through to AI path for non-SELECT/WITH '!' content
+    }
+
+    if (!activeConnectionId) {
+      setPendingPrompt(t)
+      setPendingConnectionPrompt(true)
+      setPendingActionAfterConnectionPick({ kind: 'send' })
+      const picked = await useDataSourcePickerStore.getState().requestPick({
+        reason: 'send',
+        preferredConnectionId: null,
+      })
+      if ('cancelled' in picked) {
+        setPendingPrompt(null)
+        setPendingConnectionPrompt(false)
+        setPendingActionAfterConnectionPick(null)
+        return
+      }
+      setActiveConnection(picked.connectionId)
+      setPendingConnectionPrompt(false)
+      return
     }
 
     if (!activeSessionId) {
@@ -202,6 +236,9 @@ function InnerComposer() {
           <div className="flex w-full items-center gap-2">
             {/* Model selector */}
             <ModelPicker />
+
+            {/* Data source selector */}
+            <DataSourcePicker />
 
             {/* Auto toggle */}
             <InputGroupText

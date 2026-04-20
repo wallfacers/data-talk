@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { openBangQueryTab } from '../open-bang-query-tab'
+import { useConnectionStore } from '@/features/connection/store'
 import { useStageStore } from '@/stores/stage-store'
 
 vi.mock('@/services/api/query', () => ({
@@ -10,6 +11,22 @@ vi.mock('@/services/api/query', () => ({
 
 describe('openBangQueryTab', () => {
   beforeEach(() => {
+    useConnectionStore.setState({
+      activeConnectionId: null,
+      connections: [{
+        id: 'c1',
+        name: 'orders-prod',
+        kind: 'mysql',
+        host: 'prod.db.local',
+        port: 3306,
+        databaseName: 'orders',
+        username: 'root',
+        createdAt: 1,
+        connectTimeout: 3000,
+        lastTestStatus: 'ok',
+        lastTestAt: 1,
+      }],
+    })
     useStageStore.setState({
       workspaceTabs: [],
       tabsBySession: new Map(),
@@ -26,6 +43,7 @@ describe('openBangQueryTab', () => {
     expect(tabs).toHaveLength(1)
     expect(tabs[0].type).toBe('bang_query')
     expect(tabs[0].connectionId).toBe('c1')
+    expect(tabs[0].connectionName).toBe('orders-prod')
     expect(useStageStore.getState().openBySession.get('s1')).toBe(true)
   })
 

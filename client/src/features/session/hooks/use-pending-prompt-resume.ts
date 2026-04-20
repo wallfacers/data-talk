@@ -7,16 +7,17 @@ import { useHasActiveModel } from './use-has-active-model'
 export function usePendingPromptResume() {
   const pendingPrompt = useSessionStore((s) => s.pendingPrompt)
   const modelOverlayOn = useSessionStore((s) => s.pendingModelPrompt)
+  const connectionOverlayOn = useSessionStore((s) => s.pendingConnectionPrompt)
   const activeSessionId = useSessionStore((s) => s.activeSessionId)
   const setPendingPrompt = useSessionStore((s) => s.setPendingPrompt)
   const { sendMessage, isStreaming } = useChannel()
   const hasActiveModel = useHasActiveModel()
 
   useEffect(() => {
-    if (modelOverlayOn || !pendingPrompt || !hasActiveModel || !activeSessionId || isStreaming) return
+    if (modelOverlayOn || connectionOverlayOn || !pendingPrompt || !hasActiveModel || !activeSessionId || isStreaming) return
 
     const draft = pendingPrompt
     setPendingPrompt(null)
     void sendMessage([createTextPart(activeSessionId, draft)])
-  }, [modelOverlayOn, pendingPrompt, hasActiveModel, activeSessionId, isStreaming, setPendingPrompt, sendMessage])
+  }, [modelOverlayOn, connectionOverlayOn, pendingPrompt, hasActiveModel, activeSessionId, isStreaming, setPendingPrompt, sendMessage])
 }

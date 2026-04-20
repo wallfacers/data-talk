@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { WorkspaceAdapter } from '../WorkspaceAdapter'
 import { useStageStore } from '@/stores/stage-store'
+import { useDataSourcePickerStore } from '@/features/session/data-source-picker/data-source-picker-store'
 
 describe('WorkspaceAdapter', () => {
   beforeEach(() => {
@@ -41,5 +42,19 @@ describe('WorkspaceAdapter', () => {
     const adapter = new WorkspaceAdapter(() => 's1')
     const res = await adapter.exec('open', {})
     expect(res.success).toBe(false)
+  })
+
+  it('choose_connection returns selected connection from chooser', async () => {
+    vi.spyOn(useDataSourcePickerStore.getState(), 'requestPick').mockResolvedValue({
+      connectionId: 'c9',
+      connectionName: 'warehouse-prod',
+    })
+    const adapter = new WorkspaceAdapter(() => 's1')
+    const res = await adapter.exec('choose_connection', { preferredConnectionId: 'c1' })
+    expect(res.success).toBe(true)
+    expect(res.data).toEqual({
+      connectionId: 'c9',
+      connectionName: 'warehouse-prod',
+    })
   })
 })

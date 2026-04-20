@@ -49,6 +49,7 @@ export class BangQueryAdapter implements UIObject {
         return {
           sql: payload.sql,
           connectionId: tab?.connectionId,
+          connectionName: tab?.connectionName,
           database: tab?.database,
           schema: tab?.schema,
           lastRun: payload.lastRun,
