@@ -9,7 +9,7 @@ import { useSessionStore } from '@/stores/session-store'
 import * as chooserStore from '@/features/session/data-source-picker/data-source-picker-store'
 import * as sessionApi from '@/services/api/session'
 import * as bangQueryApi from '@/services/api/bang-query-message'
-import * as openBangQueryTabApi from '@/features/stage/utils/open-bang-query-tab'
+import * as openDirectSqlQueryEditorTabApi from '@/features/stage/utils/open-direct-sql-query-editor-tab'
 import * as sessionDataContextApi from '@/services/api/session-data-context'
 import { PromptComposer } from '../prompt-composer'
 import type { Mock } from 'vitest'
@@ -50,7 +50,7 @@ vi.mock('@/services/api/session-data-context', () => ({
   resolveUseTarget: vi.fn(),
   validateSessionDataContext: vi.fn(),
 }))
-vi.mock('@/features/stage/utils/open-bang-query-tab')
+vi.mock('@/features/stage/utils/open-direct-sql-query-editor-tab')
 
 function renderWithClient(ui: React.ReactElement) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -202,14 +202,14 @@ describe('PromptComposer', () => {
   it('persists bang query text before opening the bang query tab', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(1713650000000)
     const createBangQueryMessageMock = bangQueryApi.createBangQueryMessage as unknown as Mock
-    const openBangQueryTabMock = openBangQueryTabApi.openBangQueryTab as unknown as Mock
+    const openDirectSqlQueryEditorTabMock = openDirectSqlQueryEditorTabApi.openDirectSqlQueryEditorTab as unknown as Mock
     createBangQueryMessageMock.mockResolvedValue({
       id: 'sqm-1',
       sessionId: 'sess-1',
       createdAt: 1713650000000,
       kind: 'bang_query_user',
     } as any)
-    openBangQueryTabMock.mockResolvedValue('tab-1')
+    openDirectSqlQueryEditorTabMock.mockResolvedValue('tab-1')
 
     useConnectionStore.setState({ activeConnectionId: 'conn-1', connections: [{ id: 'conn-1', name: 'Main' } as any] })
     useSessionStore.setState({
@@ -232,7 +232,7 @@ describe('PromptComposer', () => {
     await waitFor(() => expect(createBangQueryMessageMock).toHaveBeenCalled())
     expect(channel.sendMessage).not.toHaveBeenCalled()
     expect(createBangQueryMessageMock).toHaveBeenCalledWith('sess-1', '!select 1', 1713650000000)
-    expect(openBangQueryTabMock).toHaveBeenCalledWith({
+    expect(openDirectSqlQueryEditorTabMock).toHaveBeenCalledWith({
       sessionId: 'sess-1',
       connectionId: 'conn-1',
       sql: 'select 1',
@@ -253,7 +253,7 @@ describe('PromptComposer', () => {
     })
     expect(useSessionStore.getState().pendingPrompt).toBeNull()
     expect(createBangQueryMessageMock.mock.invocationCallOrder[0]).toBeLessThan(
-      openBangQueryTabMock.mock.invocationCallOrder[0],
+      openDirectSqlQueryEditorTabMock.mock.invocationCallOrder[0],
     )
   })
 
@@ -261,7 +261,7 @@ describe('PromptComposer', () => {
     vi.spyOn(Date, 'now').mockReturnValue(1713650001234)
     const createSessionMock = sessionApi.createSession as unknown as Mock
     const createBangQueryMessageMock = bangQueryApi.createBangQueryMessage as unknown as Mock
-    const openBangQueryTabMock = openBangQueryTabApi.openBangQueryTab as unknown as Mock
+    const openDirectSqlQueryEditorTabMock = openDirectSqlQueryEditorTabApi.openDirectSqlQueryEditorTab as unknown as Mock
     createSessionMock.mockResolvedValue({ id: 'sess-created', hasEverSent: false } as any)
     createBangQueryMessageMock.mockResolvedValue({
       id: 'sqm-2',
@@ -269,7 +269,7 @@ describe('PromptComposer', () => {
       createdAt: 1713650001234,
       kind: 'bang_query_user',
     } as any)
-    openBangQueryTabMock.mockResolvedValue('tab-2')
+    openDirectSqlQueryEditorTabMock.mockResolvedValue('tab-2')
 
     useConnectionStore.setState({ activeConnectionId: 'conn-1', connections: [{ id: 'conn-1', name: 'Main' } as any] })
     useSessionStore.setState({
@@ -296,7 +296,7 @@ describe('PromptComposer', () => {
       '!with cte as (select 1) select * from cte',
       1713650001234,
     )
-    expect(openBangQueryTabMock).toHaveBeenCalledWith({
+    expect(openDirectSqlQueryEditorTabMock).toHaveBeenCalledWith({
       sessionId: 'sess-created',
       connectionId: 'conn-1',
       sql: 'with cte as (select 1) select * from cte',
@@ -315,7 +315,7 @@ describe('PromptComposer', () => {
     vi.spyOn(Date, 'now').mockReturnValue(1713650005678)
     const createSessionMock = sessionApi.createSession as unknown as Mock
     const createBangQueryMessageMock = bangQueryApi.createBangQueryMessage as unknown as Mock
-    const openBangQueryTabMock = openBangQueryTabApi.openBangQueryTab as unknown as Mock
+    const openDirectSqlQueryEditorTabMock = openDirectSqlQueryEditorTabApi.openDirectSqlQueryEditorTab as unknown as Mock
     createSessionMock.mockResolvedValue({ id: 'sess-no-model', hasEverSent: false } as any)
     createBangQueryMessageMock.mockResolvedValue({
       id: 'sqm-3',
@@ -323,7 +323,7 @@ describe('PromptComposer', () => {
       createdAt: 1713650005678,
       kind: 'bang_query_user',
     } as any)
-    openBangQueryTabMock.mockResolvedValue('tab-3')
+    openDirectSqlQueryEditorTabMock.mockResolvedValue('tab-3')
 
     useConnectionStore.setState({ activeConnectionId: 'conn-1', connections: [{ id: 'conn-1', name: 'Main' } as any] })
     useSessionStore.setState({
@@ -346,7 +346,7 @@ describe('PromptComposer', () => {
     await waitFor(() => expect(createSessionMock).toHaveBeenCalled())
     expect(createSessionMock).toHaveBeenCalledWith('conn-1', '!select 1')
     expect(createBangQueryMessageMock).toHaveBeenCalledWith('sess-no-model', '!select 1', 1713650005678)
-    expect(openBangQueryTabMock).toHaveBeenCalledWith({
+    expect(openDirectSqlQueryEditorTabMock).toHaveBeenCalledWith({
       sessionId: 'sess-no-model',
       connectionId: 'conn-1',
       sql: 'select 1',
@@ -388,7 +388,7 @@ describe('PromptComposer', () => {
     await waitFor(() => expect(deleteSessionMock).toHaveBeenCalledWith('sess-failed'))
     expect(useSessionStore.getState().activeSessionId).toBeNull()
     expect(useSessionStore.getState().hasEverSentBySession.get('sess-failed')).toBeUndefined()
-    expect(openBangQueryTabApi.openBangQueryTab).not.toHaveBeenCalled()
+    expect(openDirectSqlQueryEditorTabApi.openDirectSqlQueryEditorTab).not.toHaveBeenCalled()
   })
 
   it('shows direct query mode state for bang-query inputs without changing AI routing for other bang commands', async () => {
@@ -416,7 +416,7 @@ describe('PromptComposer', () => {
 
     await waitFor(() => expect(channel.sendMessage).toHaveBeenCalled())
     expect(bangQueryApi.createBangQueryMessage).not.toHaveBeenCalled()
-    expect(openBangQueryTabApi.openBangQueryTab).not.toHaveBeenCalled()
+    expect(openDirectSqlQueryEditorTabApi.openDirectSqlQueryEditorTab).not.toHaveBeenCalled()
   })
 
   it('resolves !use commands through the session data context API', async () => {
@@ -472,6 +472,6 @@ describe('PromptComposer', () => {
       selectedLevel: 'schema',
     })
     expect(channel.sendMessage).not.toHaveBeenCalled()
-    expect(openBangQueryTabApi.openBangQueryTab).not.toHaveBeenCalled()
+    expect(openDirectSqlQueryEditorTabApi.openDirectSqlQueryEditorTab).not.toHaveBeenCalled()
   })
 })

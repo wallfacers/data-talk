@@ -39,7 +39,7 @@ describe('UIRouter', () => {
   })
 
   it('does not resolve an explicit target id to the wrong object type', async () => {
-    router.registerInstance('b1', makeStub('b1', { type: 'bang_query', stateValue: { sql: 'select 1' } }))
+    router.registerInstance('b1', makeStub('b1', { type: 'report', stateValue: { sql: 'select 1' } }))
 
     const res = await router.handle({ tool: 'ui_read', object: 'query_editor', target: 'b1', payload: { mode: 'state' } })
 
@@ -54,7 +54,7 @@ describe('UIRouter', () => {
   })
 
   it('does not fall back to an unrelated object type for target=active', async () => {
-    router.registerInstance('b1', makeStub('b1', { type: 'bang_query', stateValue: { sql: 'select 1' } }))
+    router.registerInstance('b1', makeStub('b1', { type: 'report', stateValue: { sql: 'select 1' } }))
     router.registerInstance('q2', makeStub('q2', { stateValue: { content: 'other query' } }))
     router.setActiveTabIdProvider(() => 'b1')
 

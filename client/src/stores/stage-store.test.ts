@@ -113,7 +113,7 @@ describe('StageStore tabs', () => {
   } as unknown as Record<string, unknown>) })
 
   it('openTab(workspace) adds to workspaceTabs and sets activeWorkspaceTabId', () => {
-    useStageStore.getState().openTab({ tabId: 't1', type: 'bang_query', title: 'sql', scope: 'workspace', payload: {}, createdAt: 1 })
+    useStageStore.getState().openTab({ tabId: 't1', type: 'report', title: 'sql', scope: 'workspace', payload: {}, createdAt: 1 })
     expect(useStageStore.getState().workspaceTabs).toHaveLength(1)
     expect(useStageStore.getState().activeWorkspaceTabId).toBe('t1')
   })
@@ -126,7 +126,7 @@ describe('StageStore tabs', () => {
 
   it('closeTab removes and clears active', () => {
     const st = useStageStore.getState()
-    st.openTab({ tabId: 't1', type: 'bang_query', title: 'x', scope: 'workspace', payload: {}, createdAt: 1 })
+    st.openTab({ tabId: 't1', type: 'report', title: 'x', scope: 'workspace', payload: {}, createdAt: 1 })
     st.closeTab('t1')
     expect(useStageStore.getState().workspaceTabs).toHaveLength(0)
     expect(useStageStore.getState().activeWorkspaceTabId).toBeNull()
@@ -134,8 +134,8 @@ describe('StageStore tabs', () => {
 
   it('focusTab switches active', () => {
     const st = useStageStore.getState()
-    st.openTab({ tabId: 't1', type: 'bang_query', title: 'x', scope: 'workspace', payload: {}, createdAt: 1 })
-    st.openTab({ tabId: 't2', type: 'bang_query', title: 'y', scope: 'workspace', payload: {}, createdAt: 2 })
+    st.openTab({ tabId: 't1', type: 'report', title: 'x', scope: 'workspace', payload: {}, createdAt: 1 })
+    st.openTab({ tabId: 't2', type: 'report', title: 'y', scope: 'workspace', payload: {}, createdAt: 2 })
     expect(useStageStore.getState().activeWorkspaceTabId).toBe('t2')
     st.focusTab('t1')
     expect(useStageStore.getState().activeWorkspaceTabId).toBe('t1')
@@ -143,7 +143,7 @@ describe('StageStore tabs', () => {
 
   it('listTabs(sid) merges workspace + session tabs', () => {
     const st = useStageStore.getState()
-    st.openTab({ tabId: 't1', type: 'bang_query', title: 'x', scope: 'workspace', payload: {}, createdAt: 1 })
+    st.openTab({ tabId: 't1', type: 'report', title: 'x', scope: 'workspace', payload: {}, createdAt: 1 })
     st.openTab({ tabId: 'a1', type: 'artifact', title: 'y', scope: 'session', originSessionId: 's1', payload: {}, createdAt: 2 })
     const merged = st.listTabs('s1')
     expect(merged.map(t => t.tabId).sort()).toEqual(['a1', 't1'])

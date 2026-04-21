@@ -153,18 +153,13 @@ describe('StageUIObjectRegistry', () => {
     }))
   })
 
-  it('registers active bang_query tabs and does not misresolve them as active query_editor tabs', async () => {
-    const bangQueryTab: StageTab = {
-      tabId: 'b1',
-      type: 'bang_query',
+  it('registers report tabs and does not misresolve them as active query_editor tabs', async () => {
+    const reportTab: StageTab = {
+      tabId: 'r1',
+      type: 'report',
       title: 'Direct SQL',
       scope: 'workspace',
-      originSessionId: 's1',
-      connectionId: 'conn-bang',
-      payload: {
-        sql: 'select 3',
-        lastRun: { columns: ['n'], rowCount: 1, durationMs: 2, truncated: false },
-      },
+      payload: {},
       createdAt: 0,
     }
     const sessionQueryEditor: StageTab = {
@@ -179,33 +174,24 @@ describe('StageUIObjectRegistry', () => {
     }
 
     useStageStore.setState({
-      workspaceTabs: [bangQueryTab],
+      workspaceTabs: [reportTab],
       tabsBySession: new Map([['s1', [sessionQueryEditor]]]),
-      activeWorkspaceTabId: 'b1',
+      activeWorkspaceTabId: 'r1',
       activeTabIdBySession: new Map([['s1', null]]),
     } as unknown as Record<string, unknown>)
 
-    render(<StageUIObjectRegistry sessionId="s1" tabs={[bangQueryTab, sessionQueryEditor]} />)
+    render(<StageUIObjectRegistry sessionId="s1" tabs={[reportTab, sessionQueryEditor]} />)
 
-    const bangQueries = await uiRouter.handle({
-      tool: 'ui_list',
-      object: '',
-      target: '',
-      payload: { filter: { type: 'bang_query' } },
-    })
-    expect(bangQueries.data).toEqual([
-      expect.objectContaining({ objectId: 'b1', type: 'bang_query' }),
-    ])
-
-    const bangQueryState = await uiRouter.handle({
+    const workspaceState = await uiRouter.handle({
       tool: 'ui_read',
-      object: 'bang_query',
-      target: 'active',
+      object: 'workspace',
+      target: 'workspace',
       payload: { mode: 'state' },
     })
-    expect(bangQueryState.data).toEqual(expect.objectContaining({
-      sql: 'select 3',
-      connectionId: 'conn-bang',
+    expect(workspaceState.data).toEqual(expect.objectContaining({
+      tabs: expect.arrayContaining([
+        expect.objectContaining({ tabId: 'r1', type: 'report' }),
+      ]),
     }))
 
     const wrongQueryEditor = await uiRouter.handle({

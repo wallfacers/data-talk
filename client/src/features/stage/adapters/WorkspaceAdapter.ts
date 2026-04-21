@@ -28,9 +28,7 @@ const ACTIONS: ActionDef[] = [
   } },
 ]
 
-// workspace-level Tab 默认 scope 注册表：允许新增类型时不改 WorkspaceAdapter
 const WORKSPACE_SCOPE_TYPES = new Set<string>(['er_canvas', 'markdown_note', 'report', 'dashboard'])
-const LEGACY_WORKSPACE_SCOPE_TYPES = new Set<string>(['bang_query'])
 
 function clearSessionActiveTab(sessionId: string | null) {
   if (!sessionId) return
@@ -144,7 +142,7 @@ export class WorkspaceAdapter implements UIObject {
         }
 
         const tabId = `${p.type}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-        const scope: StageTab['scope'] = WORKSPACE_SCOPE_TYPES.has(p.type) || LEGACY_WORKSPACE_SCOPE_TYPES.has(p.type)
+        const scope: StageTab['scope'] = WORKSPACE_SCOPE_TYPES.has(p.type)
           ? 'workspace'
           : 'session'
         const tab: StageTab = {

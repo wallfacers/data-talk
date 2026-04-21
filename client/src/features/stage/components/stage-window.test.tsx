@@ -22,10 +22,6 @@ vi.mock('./query-editor-tab', () => ({
   QueryEditorTab: () => <div data-testid="query-editor-tab">query editor tab</div>,
 }))
 
-vi.mock('./bang-query-tab', () => ({
-  BangQueryTab: () => <div data-testid="bang-query-tab">bang query tab</div>,
-}))
-
 vi.mock('../utils/open-or-focus-stage-tool-tab', () => ({
   openOrFocusStageToolTab: openOrFocusStageToolTabMock,
 }))
@@ -245,22 +241,6 @@ describe('StageWindow', () => {
 
     expect(screen.getByText('Global SQL')).toBeTruthy()
     expect(screen.getByTestId('query-editor-tab')).toBeTruthy()
-  })
-
-  it('keeps bang_query tabs on the legacy render path', () => {
-    useStageStore.setState({
-      workspaceTabs: [
-        { tabId: 'b1', type: 'bang_query', title: 'Direct SQL', scope: 'workspace' as const, createdAt: 0, payload: {} },
-      ],
-      activeWorkspaceTabId: 'b1',
-      tabsBySession: new Map(),
-      activeTabIdBySession: new Map([['s1', null]]),
-    })
-
-    render(<StageWindow sessionId="s1" />)
-
-    expect(screen.getByTestId('bang-query-tab')).toBeTruthy()
-    expect(screen.queryByTestId('stage-placeholder-tab')).toBeNull()
   })
 
   it('surfaces unsupported tab types in the placeholder fallback', () => {

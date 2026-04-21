@@ -114,25 +114,6 @@ describe('WorkspaceAdapter', () => {
     expect(res.error).toContain('active session')
   })
 
-  it('exec open preserves legacy bang_query as a workspace-scoped tab', async () => {
-    const adapter = new WorkspaceAdapter(() => 's1')
-    const res = await adapter.exec('open', {
-      type: 'bang_query',
-      title: 'Direct SQL',
-    })
-
-    expect(res.success).toBe(true)
-    expect(useStageStore.getState().workspaceTabs).toEqual([
-      expect.objectContaining({
-        tabId: (res.data as { tabId: string }).tabId,
-        type: 'bang_query',
-        title: 'Direct SQL',
-        scope: 'workspace',
-      }),
-    ])
-    expect(useStageStore.getState().tabsBySession.get('s1') ?? []).toEqual([])
-  })
-
   it('exec open clears the current session-active tab when opening a workspace tab', async () => {
     useStageStore.getState().openTab({
       tabId: 'session-q1',
