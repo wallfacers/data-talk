@@ -243,7 +243,7 @@ Use these four actions to inspect and control the user's visible workspace.
 ### `datatalk.ui.list`
 List all open UI objects in the current workspace.
 
-**Input** `{ "filter": { "type": "bang_query" } }` *(filter is optional)*
+**Input** `{ "filter": { "type": "query_editor" } }` *(filter is optional)*
 **Output** Array of `{ objectId, type, title, connectionId? }`
 
 **Use when** you need to discover which tabs are open before acting on them.
@@ -264,9 +264,9 @@ Read the state, schema, or available actions of a UI object.
 | type | objectId | Description |
 |------|----------|-------------|
 | `workspace` | `workspace` | The tab container; reports open tabs and active tab |
-| `bang_query` | `<tabId>` | A direct-query tab with SQL, last-run stats, and pin status |
+| `query_editor` | `<tabId>` | A SQL workbench tab with SQL text, execution metadata, and focus/close actions |
 
-**`bang_query` state fields**: `sql`, `connectionId`, `connectionName`, `database`, `schema`, `lastRun` (columns/rowCount/durationMs/truncated), `pinned`. Row data is intentionally omitted.
+**`query_editor` state fields**: `sql`, `source`, `entryMode`, `connectionId`, `connectionName`, `database`, `schema`, `lastRun`, `contextNotice`.
 
 **Use when** you need to know the current SQL in a tab, what tabs exist, or which tab is active.
 
@@ -278,18 +278,16 @@ Modify a UI object's properties via JSON Patch operations.
 **Input**
 ```json
 {
-  "object": "bang_query",
+  "object": "query_editor",
   "target": "<tabId>",
-  "ops": [{ "op": "replace", "path": "/pinned", "value": true }],
+  "ops": [{ "op": "replace", "path": "/sql", "value": "select 1" }],
   "reason": "optional explanation"
 }
 ```
 
 **Supported patch paths per object type**
 
-| type | path | ops |
-|------|------|-----|
-| `bang_query` | `/pinned` | replace |
+None currently. `workspace` and `query_editor` are read-only through `datatalk.ui.patch`; edit SQL in the UI and use `datatalk.ui.exec` for supported actions.
 
 ---
 
@@ -309,11 +307,10 @@ Execute a named action on a UI object.
 | `workspace` | `close` | `{ target: tabId }` | Close a tab |
 | `workspace` | `focus` | `{ target: tabId }` | Focus a tab |
 | `workspace` | `choose_connection` | `{ preferredConnectionId? }` | Prompt user to pick a data source; returns selected connection info |
-| `bang_query` | `rerun` | — | Re-execute the tab's SQL |
-| `bang_query` | `focus` | — | Focus this tab |
-| `bang_query` | `close` | — | Close this tab |
+| `query_editor` | `focus` | — | Focus this tab |
+| `query_editor` | `close` | — | Close this tab |
 
-**Valid `type` values for `workspace.open`**: `bang_query`, `query_editor`, `er_canvas`, `markdown_note`
+**Valid `type` values for `workspace.open`**: `query_editor`, `er_canvas`, `markdown_note`, `report`, `dashboard`
 
 ---
 
@@ -338,7 +335,7 @@ Execute a named action on a UI object.
 **Inspect the workspace**
 1. `datatalk.ui.list` → see what is open
 2. `datatalk.ui.read` with `object: workspace` and `mode: state` → get active tab
-3. `datatalk.ui.read` with `object: bang_query` and `mode: full` → inspect a query tab
+3. `datatalk.ui.read` with `object: query_editor` and `mode: full` → inspect a SQL workbench tab
 
 **No active connection / user needs to pick one**
 1. `datatalk.ui.exec` with `object: workspace`, `action: choose_connection` → waits for user selection, returns `{ connectionId, connectionName, ... }`

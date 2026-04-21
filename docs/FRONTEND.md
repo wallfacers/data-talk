@@ -84,6 +84,9 @@ features/xxx/
 - Stage 使用 `左侧 sidebar + 右侧 workspace` 的 workbench 结构，底部 Dock 已移除；新入口统一放在顶部工具行或资源浏览器里。
 - 顶部工具行用于全局工具入口；连接 / database / schema 节点只负责同步 `SessionDataContext` 与选中态，真正打开 tab 的动作发生在工具入口或资源节点下的工具 action 上。
 - Stage 的顶部页签使用浏览器式连续 tab strip；workspace tab 与 session-scoped tab 共用同一条 tab bar，并继续复用 `StageStore` 的 open / focus / close 规则。
+- Stage 的通用控件必须使用 `shadcn/ui`；例外仅限 SQL 编辑器（CodeMirror）与未来 ER 画布（ReactFlow）。
+- `query_editor` 是 Stage 内唯一 SQL 工作页；顶部工具行、资源树 SQL 动作和 `!select` / `!with` 直查都打开它。
+- `bang_query_user` 仍是聊天消息语义，但不再对应独立 Stage tab 类型。
 
 ### 与后端通信
 
