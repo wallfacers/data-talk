@@ -1,5 +1,6 @@
 package com.datatalk.adapter.smoke;
 
+import com.datatalk.DataTalkApplication;
 import com.datatalk.application.opencode.OpenCodeSessionMap;
 import com.datatalk.application.persistence.SessionRecord;
 import com.datatalk.application.persistence.SessionRepository;
@@ -10,24 +11,14 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.FilterType;
-import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.reactive.function.client.WebClient;
-
-import javax.sql.DataSource;
-
-import org.h2.jdbcx.JdbcDataSource;
-
-import com.datatalk.config.DataSourcesConfig;
 
 import java.util.Map;
 
@@ -41,35 +32,9 @@ import static org.awaitility.Awaitility.await;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-    classes = EndToEndSmokeIT.TestApp.class,
-    properties = {
-        "spring.main.allow-bean-definition-overriding=true",
-        "spring.sql.init.mode=always",
-        "spring.sql.init.schema-locations=classpath:schema.sql",
-        "spring.sql.init.data-locations="
-    }
+    classes = DataTalkApplication.class
 )
 class EndToEndSmokeIT {
-
-    @SpringBootApplication(
-        scanBasePackages = "com.datatalk"
-        
-    )
-    @ComponentScan(
-        basePackages = "com.datatalk",
-        excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = DataSourcesConfig.class)
-    )
-    static class TestApp {
-        @Primary
-        @Bean(name = "demoDataSource")
-        public DataSource testDataSource() {
-            JdbcDataSource ds = new JdbcDataSource();
-            ds.setURL("jdbc:h2:mem:smoketest;DB_CLOSE_DELAY=-1;MODE=MySQL");
-            ds.setUser("sa");
-            ds.setPassword("");
-            return ds;
-        }
-    }
 
     static WireMockServer openCode;
 
@@ -77,25 +42,33 @@ class EndToEndSmokeIT {
     @Autowired ObjectMapper om;
     @Autowired SessionRepository sessions;
     @Autowired OpenCodeSessionMap map;
-    @Autowired JdbcTemplate datatalkJdbc;
+    @Autowired @Qualifier("datatalkJdbc") JdbcTemplate datatalkJdbc;
 
     @DynamicPropertySource
     static void wireOpenCodeBaseUrl(DynamicPropertyRegistry reg) {
-        openCode = new WireMockServer(WireMockConfiguration.options().dynamicPort());
-        openCode.start();
-        openCode.stubFor(post(urlPathEqualTo("/plugin/register-tool"))
-            .willReturn(aResponse().withStatus(204)));
+        if (openCode == null) {
+            openCode = new WireMockServer(WireMockConfiguration.options().dynamicPort());
+            openCode.start();
+            openCode.stubFor(post(urlPathEqualTo("/plugin/register-tool"))
+                .willReturn(aResponse().withStatus(204)));
+        }
         reg.add("datatalk.opencode.base-url", () -> "http://localhost:" + openCode.port());
         reg.add("datatalk.opencode.plugin-callback-base", () -> "http://localhost:8080");
     }
 
     @AfterAll
-    void stop() { openCode.stop(); }
+    void stop() {
+        if (openCode != null) {
+            openCode.stop();
+        }
+    }
 
     @Test
-    void toolsAreRegisteredOnStartup() {
-        await().atMost(java.time.Duration.ofSeconds(3))
+    void skipsToolRegistrationWhenEmbeddedServeDisabled() {
+        await().during(java.time.Duration.ofSeconds(1))
+            .atMost(java.time.Duration.ofSeconds(2))
             .untilAsserted(() -> openCode.verify(
+                0,
                 postRequestedFor(urlPathEqualTo("/plugin/register-tool"))
             ));
     }

@@ -4,7 +4,9 @@ import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.application.persistence.ConnectionRepository;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -12,9 +14,14 @@ import static org.assertj.core.api.Assertions.*;
 class ConnectionRepositoryIT {
 
     @Autowired ConnectionRepository repo;
+    @Autowired @Qualifier("datatalkJdbc") JdbcTemplate jdbc;
 
     @BeforeEach
-    void reset() { repo.deleteAll(); }
+    void reset() {
+        jdbc.update("DELETE FROM session_data_contexts");
+        jdbc.update("DELETE FROM sessions");
+        repo.deleteAll();
+    }
 
     @Test
     void update_overwrites_fields_and_keeps_id() {

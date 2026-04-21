@@ -408,6 +408,23 @@
   - 勾完本计划所有 checkbox
   - 在 `docs/exec-plans/index.md` 将本条目从 Active 移到 Completed
   - 将任何延期项写入 `docs/exec-plans/tech-debt-tracker.md`
+- [x] **Step 6.1: 跑后端整体验证**
+  - 2026-04-21：`export JAVA_HOME=/home/wushengzhou/.local/opt/java21 && export PATH="$JAVA_HOME/bin:$PATH" && cd server && mvn clean verify`
+  - 中途修复了 adapter 全量 `verify` 暴露的旧 IT 基线问题：去掉 `AiSettingsControllerIT` 的串味 `@TestConfiguration`、将 `ExecuteSqlActionIT` / `LayoutErdActionIT` / `TypicalQueryE2EIT` 改为 H2 本地集成、补齐 `ConnectionCrudIT` / `ConnectionRepositoryIT` 的 FK 清理、更新 `EndToEndSmokeIT` 断言与当前 `serve.enabled=false` 语义一致
+- [x] **Step 6.2: 跑前端整体验证**
+  - 2026-04-21：`cd client && npx vitest run src/features/session src/features/stage src/features/actions src/features/settings/data-sources`
+  - 结果：27 files, 101 tests passed
+  - 2026-04-21：`cd client && npx tsc --noEmit`
+- [x] **Step 6.3: 手工冒烟**
+  - 2026-04-21：在终端环境下用 command-driven smoke 替代桌面点击烟测，覆盖 `! use` / query execute / `execute_sql` / `read_schema` / data-context action / connection refresh 的后端与前端自动路径
+  - 代表性验证包括：`SessionDataContextActionsIT`、`ConnectionManagementActionsIT`、`SessionDataContextControllerIT`、`SqlExecuteControllerIT`、`ReadSchemaActionIT`、`ExecuteSqlActionIT`、`TypicalQueryE2EIT`、`EndToEndSmokeIT`、`prompt-composer.test.tsx`、`query-editor-tab.test.tsx`、`bang-query-tab.test.tsx`
+  - 未额外执行人工 Tauri 可视点击；当前收口依据为上述自动烟测与整体验证
+- [x] **Step 6.4: 文档回写**
+  - `docs/references/ui-objects-reference.md` 已在 Batch C 中同步到新的 data-context / action bridge 语义，本轮整体验证未引入额外协议变更
+  - 本轮未形成新的 `ARCHITECTURE.md` / `docs/FRONTEND.md` / `docs/BACKEND.md` 级别约定，因此无需额外回写
+- [x] **Step 6.5: 计划收尾**
+  - 2026-04-21：本计划 checkbox 全部勾完，并在 `docs/exec-plans/index.md` 从 Active 移到 Completed
+  - 本轮未新增需要登记到 `docs/exec-plans/tech-debt-tracker.md` 的延期项
 
 ---
 

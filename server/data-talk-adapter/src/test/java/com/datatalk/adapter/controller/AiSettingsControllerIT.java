@@ -1,17 +1,14 @@
 package com.datatalk.adapter.controller;
 
-import com.datatalk.application.ai.OpenCodeProviderClient;
-import com.datatalk.infra.opencode.OpenCodeHttpClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
@@ -28,23 +25,20 @@ class AiSettingsControllerIT {
 
     @Autowired ObjectMapper objectMapper;
 
-    @TestConfiguration
-    static class Override {
-        @Bean @Primary
-        OpenCodeProviderClient openCodeProviderClient(ObjectMapper om) {
-            return new OpenCodeHttpClient("http://localhost:" + oc.port(), om);
+    @DynamicPropertySource
+    static void wireOpenCodeBaseUrl(DynamicPropertyRegistry registry) {
+        if (oc == null) {
+            oc = new WireMockServer(wireMockConfig().dynamicPort());
+            oc.start();
         }
-    }
-
-    @BeforeAll
-    static void up() {
-        oc = new WireMockServer(wireMockConfig().dynamicPort());
-        oc.start();
+        registry.add("datatalk.opencode.base-url", () -> "http://localhost:" + oc.port());
     }
 
     @AfterAll
     static void down() {
-        oc.stop();
+        if (oc != null) {
+            oc.stop();
+        }
     }
 
     @BeforeEach

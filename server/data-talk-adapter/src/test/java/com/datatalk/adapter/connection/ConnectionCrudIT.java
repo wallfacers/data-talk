@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
@@ -24,11 +25,15 @@ class ConnectionCrudIT {
 
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper om;
-    @Autowired JdbcTemplate datatalkJdbc;
+    @Autowired @Qualifier("datatalkJdbc") JdbcTemplate datatalkJdbc;
     @Autowired ConnectionService connSvc;
 
     @BeforeEach
-    void clean() { connSvc.deleteAll(); }
+    void clean() {
+        datatalkJdbc.update("DELETE FROM session_data_contexts");
+        datatalkJdbc.update("DELETE FROM sessions");
+        connSvc.deleteAll();
+    }
 
     @Test
     void createListRoundTrip() throws Exception {
