@@ -39,7 +39,9 @@ export function usePendingConnectionResume() {
     void createSession(activeConnectionId, initialTitle).then((session) => {
       if (cancelled) return
       invalidateSessionLists(queryClient)
-      openSession(session.id, session.hasEverSent)
+      // This branch only runs for a queued send action, so render the target
+      // session in split/message mode immediately instead of flashing HERO.
+      openSession(session.id, true)
       setPendingAction(null)
     })
 

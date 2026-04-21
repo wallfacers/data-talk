@@ -10,6 +10,7 @@ export function usePendingPromptResume() {
   const connectionOverlayOn = useSessionStore((s) => s.pendingConnectionPrompt)
   const activeSessionId = useSessionStore((s) => s.activeSessionId)
   const setPendingPrompt = useSessionStore((s) => s.setPendingPrompt)
+  const setComposerRestoreDraft = useSessionStore((s) => s.setComposerRestoreDraft)
   const { sendMessage, isStreaming } = useChannel()
   const hasActiveModel = useHasActiveModel()
 
@@ -18,6 +19,20 @@ export function usePendingPromptResume() {
 
     const draft = pendingPrompt
     setPendingPrompt(null)
-    void sendMessage([createTextPart(activeSessionId, draft)])
-  }, [modelOverlayOn, connectionOverlayOn, pendingPrompt, hasActiveModel, activeSessionId, isStreaming, setPendingPrompt, sendMessage])
+    void sendMessage([createTextPart(activeSessionId, draft)]).then((ok) => {
+      if (!ok) {
+        setComposerRestoreDraft({ sessionId: activeSessionId, text: draft })
+      }
+    })
+  }, [
+    modelOverlayOn,
+    connectionOverlayOn,
+    pendingPrompt,
+    hasActiveModel,
+    activeSessionId,
+    isStreaming,
+    setPendingPrompt,
+    setComposerRestoreDraft,
+    sendMessage,
+  ])
 }

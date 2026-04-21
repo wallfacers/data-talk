@@ -115,4 +115,41 @@ describe('SessionTurn · showThinking', () => {
     expect(screen.queryByText('SQL 直查')).toBeNull()
     expect(screen.getByText('!select 1')).toBeInTheDocument()
   })
+
+  it('marks pending user bubbles for upward entry motion', () => {
+    useChatPartsStore.getState().upsertInfo('s1', {
+      id: 'u1',
+      role: 'user',
+      sessionID: 's1',
+      time: { created: 1 },
+      __pending: true,
+    })
+    useChatPartsStore.getState().upsertPart('s1', {
+      type: 'text',
+      id: 'p1',
+      sessionID: 's1',
+      messageID: 'u1',
+      text: 'show me orders',
+      metadata: {},
+    } as any)
+
+    renderTurn(
+      <SessionTurn
+        sessionId="s1"
+        userMessageId="u1"
+        assistantMessageIds={[]}
+        userInfo={{ id: 'u1', role: 'user', sessionID: 's1', time: { created: 1 }, __pending: true }}
+        isLastTurn
+      />,
+    )
+
+    const shell = screen.getByText('show me orders').closest('[data-pending-user-motion="true"]')
+    expect(shell).not.toBeNull()
+    expect(shell?.className).not.toContain('slide-in-from-bottom-3')
+    expect(shell?.className).not.toContain('fade-in-0')
+
+    const bubble = screen.getByText('show me orders').closest('[data-pending-user-bubble="true"]')
+    expect(bubble).not.toBeNull()
+    expect(bubble?.className).toContain('slide-in-from-bottom-5')
+  })
 })

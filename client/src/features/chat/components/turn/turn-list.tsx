@@ -28,7 +28,7 @@ export function TurnList(props: { sessionId: string | null; error?: Error | null
     <div className="flex flex-col gap-2">
       {turns.map((t, i) => (
         <SessionTurn
-          key={t.userMessageId ?? `orphan:${i}`}
+          key={t.renderKey}
           sessionId={props.sessionId!}
           userMessageId={t.userMessageId}
           userInfo={t.userInfo}

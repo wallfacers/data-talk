@@ -4,12 +4,24 @@ import type { SessionDataContext } from '@/services/api/session-data-context'
 
 export type SessionMode = 'NOSESS' | 'HERO' | 'SPLIT'
 
+function sameSessionDataContext(a: SessionDataContext | undefined, b: SessionDataContext) {
+  return !!a
+    && a.sessionId === b.sessionId
+    && a.connectionId === b.connectionId
+    && a.connectionNameSnapshot === b.connectionNameSnapshot
+    && a.database === b.database
+    && a.schema === b.schema
+    && a.selectedLevel === b.selectedLevel
+    && a.updatedAt === b.updatedAt
+}
+
 type SessionState = {
   activeSessionId: string | null
   modeBySession: Map<string, SessionMode>
   hasEverSentBySession: Map<string, boolean>
   dataContextBySession: Map<string, SessionDataContext>
   pendingPrompt: string | null
+  composerRestoreDraft: { sessionId: string; text: string } | null
   pendingModelPrompt: boolean
   pendingConnectionPrompt: boolean
   pendingActionAfterConnectionPick: { kind: 'send' } | null
@@ -22,6 +34,7 @@ type SessionState = {
   setSessionDataContext: (context: SessionDataContext) => void
   clearSessionDataContext: (sessionId: string) => void
   setPendingPrompt: (text: string | null) => void
+  setComposerRestoreDraft: (draft: { sessionId: string; text: string } | null) => void
   setPendingModelPrompt: (on: boolean) => void
   setPendingConnectionPrompt: (on: boolean) => void
   setPendingActionAfterConnectionPick: (action: { kind: 'send' } | null) => void
@@ -35,6 +48,7 @@ export const useSessionStore = create<SessionState>()(
       hasEverSentBySession: new Map(),
       dataContextBySession: new Map(),
       pendingPrompt: null,
+      composerRestoreDraft: null,
       pendingModelPrompt: false,
       pendingConnectionPrompt: false,
       pendingActionAfterConnectionPick: null,
@@ -62,6 +76,7 @@ export const useSessionStore = create<SessionState>()(
       }),
 
       setSessionMode: (id, mode) => set((s) => {
+        if ((s.modeBySession.get(id) ?? 'HERO') === mode) return s
         const modes = new Map(s.modeBySession); modes.set(id, mode)
         return { modeBySession: modes }
       }),
@@ -72,6 +87,8 @@ export const useSessionStore = create<SessionState>()(
       }),
 
       setSessionDataContext: (context) => set((s) => {
+        const current = s.dataContextBySession.get(context.sessionId)
+        if (sameSessionDataContext(current, context)) return s
         const next = new Map(s.dataContextBySession)
         next.set(context.sessionId, context)
         return { dataContextBySession: next }
@@ -85,6 +102,7 @@ export const useSessionStore = create<SessionState>()(
       }),
 
       setPendingPrompt: (text) => set({ pendingPrompt: text }),
+      setComposerRestoreDraft: (draft) => set({ composerRestoreDraft: draft }),
       setPendingModelPrompt: (on) => set({ pendingModelPrompt: on }),
       setPendingConnectionPrompt: (on) => set({ pendingConnectionPrompt: on }),
       setPendingActionAfterConnectionPick: (action) => set({ pendingActionAfterConnectionPick: action }),

@@ -72,6 +72,7 @@ describe('PromptComposer', () => {
     vi.restoreAllMocks()
     hasActiveModel = true
     channel.sendMessage.mockReset()
+    channel.sendMessage.mockResolvedValue(true)
     channel.abort.mockReset()
     channel.isStreaming = false
     vi.mocked(sessionDataContextApi.getSessionDataContext).mockResolvedValue(null as any)
@@ -119,6 +120,83 @@ describe('PromptComposer', () => {
       expect(requestPick).toHaveBeenCalled()
       expect(sessionApi.createSession).not.toHaveBeenCalled()
     })
+  })
+
+  it('opens a newly created AI chat session directly in split mode before the pending prompt resumes', async () => {
+    const createSessionMock = sessionApi.createSession as unknown as Mock
+    createSessionMock.mockResolvedValue({ id: 'sess-ai-first', hasEverSent: false } as any)
+
+    useConnectionStore.setState({ activeConnectionId: 'conn-1', connections: [{ id: 'conn-1', name: 'Main' } as any] })
+    useSessionStore.setState({
+      activeSessionId: null,
+      modeBySession: new Map(),
+      hasEverSentBySession: new Map(),
+      dataContextBySession: new Map(),
+      pendingPrompt: null,
+      pendingModelPrompt: false,
+      pendingConnectionPrompt: false,
+      pendingActionAfterConnectionPick: null,
+    } as any)
+
+    renderWithClient(<PromptComposer />)
+    fireEvent.change(screen.getByPlaceholderText('用自然语言查询你的数据库...'), {
+      target: { value: 'show me orders' },
+    })
+    fireEvent.click(document.querySelector('button[type="submit"]') as HTMLButtonElement)
+
+    await waitFor(() => expect(createSessionMock).toHaveBeenCalledWith('conn-1', 'show me orders'))
+    await waitFor(() => expect(useSessionStore.getState().activeSessionId).toBe('sess-ai-first'))
+
+    expect(useSessionStore.getState().activeSessionId).toBe('sess-ai-first')
+    expect(useSessionStore.getState().modeBySession.get('sess-ai-first')).toBe('SPLIT')
+    expect(useSessionStore.getState().hasEverSentBySession.get('sess-ai-first')).toBe(true)
+  })
+
+  it('restores the textarea immediately when an active-session AI send fails', async () => {
+    channel.sendMessage.mockResolvedValueOnce(false)
+
+    useConnectionStore.setState({ activeConnectionId: 'conn-1', connections: [{ id: 'conn-1', name: 'Main' } as any] })
+    useSessionStore.setState({
+      activeSessionId: 'sess-1',
+      modeBySession: new Map([['sess-1', 'SPLIT']]),
+      hasEverSentBySession: new Map([['sess-1', true]]),
+      dataContextBySession: new Map(),
+      pendingPrompt: null,
+      pendingModelPrompt: false,
+      pendingConnectionPrompt: false,
+      pendingActionAfterConnectionPick: null,
+      composerRestoreDraft: null,
+    } as any)
+
+    renderWithClient(<PromptComposer />)
+    const textarea = screen.getByPlaceholderText('用自然语言查询你的数据库...') as HTMLTextAreaElement
+    fireEvent.change(textarea, { target: { value: '你好' } })
+    fireEvent.click(document.querySelector('button[type="submit"]') as HTMLButtonElement)
+
+    await waitFor(() => expect(channel.sendMessage).toHaveBeenCalled())
+    await waitFor(() => expect(textarea.value).toBe('你好'))
+  })
+
+  it('re-hydrates the textarea from a queued restore draft', async () => {
+    useConnectionStore.setState({ activeConnectionId: 'conn-1', connections: [{ id: 'conn-1', name: 'Main' } as any] })
+    useSessionStore.setState({
+      activeSessionId: 'sess-restore',
+      modeBySession: new Map([['sess-restore', 'SPLIT']]),
+      hasEverSentBySession: new Map([['sess-restore', true]]),
+      dataContextBySession: new Map(),
+      pendingPrompt: null,
+      pendingModelPrompt: false,
+      pendingConnectionPrompt: false,
+      pendingActionAfterConnectionPick: null,
+      composerRestoreDraft: { sessionId: 'sess-restore', text: '你好' },
+    } as any)
+
+    renderWithClient(<PromptComposer />)
+
+    await waitFor(() => {
+      expect((screen.getByPlaceholderText('用自然语言查询你的数据库...') as HTMLTextAreaElement).value).toBe('你好')
+    })
+    expect(useSessionStore.getState().composerRestoreDraft).toBeNull()
   })
 
   it('persists bang query text before opening the bang query tab', async () => {

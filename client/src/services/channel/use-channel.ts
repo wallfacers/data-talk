@@ -67,6 +67,10 @@ export function buildEventSink(
         finish: m.finish ?? existing?.finish,
         tokens: m.tokens ?? existing?.tokens,
       }
+
+      if (info.role === 'user' && pendingUserId && mid !== pendingUserId && !mid.startsWith('pending_')) {
+        store.promotePendingUser(sessionId, pendingUserId, mid)
+      }
       store.upsertInfo(sessionId, info)
     } else if (event === 'session.idle' || (event === 'session.status' && (data as any)?.status === 'idle')) {
       // Turn-done signals: OpenCode's native `session.idle` (DtEvent.SessionIdle),
@@ -167,7 +171,7 @@ export function useChannel() {
 
   const sendMessage = useCallback(
     async (parts: any[]) => {
-      if (!client || !sessionId) return
+      if (!client || !sessionId) return false
 
       // 抽取首个 text part 的 text 作为 pending 文本
       const firstText = parts.find((p) => p?.type === 'text') as { text?: string } | undefined
@@ -182,10 +186,12 @@ export function useChannel() {
       const sink = buildEventSink(sessionId, client, queryClient, connectionId, pendingId)
       try {
         await client.sendMessage(parts, sink)
+        return true
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
         useChatPartsStore.getState().markPendingUserFailed(sessionId, pendingId, msg)
         showErrorToast(normalizeError(err))
+        return false
       } finally {
         useChatPartsStore.getState().setStreaming(sessionId, false)
       }
@@ -195,7 +201,7 @@ export function useChannel() {
 
   const retryPendingUser = useCallback(
     async (pendingId: string, parts: any[]) => {
-      if (!client || !sessionId) return
+      if (!client || !sessionId) return false
       useChatPartsStore.setState((s) => {
         const byInfo = new Map(s.infoBySession.get(sessionId) ?? new Map())
         const info = byInfo.get(pendingId)
@@ -208,10 +214,12 @@ export function useChannel() {
       const sink = buildEventSink(sessionId, client, queryClient, connectionId)
       try {
         await client.sendMessage(parts, sink)
+        return true
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
         useChatPartsStore.getState().markPendingUserFailed(sessionId, pendingId, msg)
         showErrorToast(normalizeError(err))
+        return false
       } finally {
         useChatPartsStore.getState().setStreaming(sessionId, false)
       }

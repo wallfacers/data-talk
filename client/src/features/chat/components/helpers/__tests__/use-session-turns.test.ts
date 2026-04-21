@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { renderHook } from '@testing-library/react'
+import { renderHook, act } from '@testing-library/react'
 import { useChatPartsStore } from '@/stores/chat-parts-store'
 import { useSessionTurns } from '../use-session-turns'
 
@@ -34,5 +34,22 @@ describe('useSessionTurns', () => {
     expect(result.current).toHaveLength(1)
     expect(result.current[0].userMessageId).toBeUndefined()
     expect(result.current[0].assistantMessageIds).toEqual(['a1'])
+  })
+
+  it('preserves a stable turn render key when a pending user is promoted', () => {
+    const store = useChatPartsStore.getState()
+    const pendingId = store.upsertPendingUser('s', 'hello')
+
+    const { result } = renderHook(() => useSessionTurns('s'))
+    expect(result.current).toHaveLength(1)
+    expect(result.current[0].renderKey).toBe(pendingId)
+
+    act(() => {
+      store.promotePendingUser('s', pendingId, 'u_real')
+    })
+
+    expect(result.current).toHaveLength(1)
+    expect(result.current[0].userMessageId).toBe('u_real')
+    expect(result.current[0].renderKey).toBe(pendingId)
   })
 })

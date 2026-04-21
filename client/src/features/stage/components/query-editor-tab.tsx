@@ -4,6 +4,7 @@ import { sql } from '@codemirror/lang-sql'
 import { keymap } from '@codemirror/view'
 import { Prec } from '@codemirror/state'
 import { PlayIcon, AlertTriangleIcon } from 'lucide-react'
+import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@/components/ui/button'
 import type { StageTab } from '@/stores/stage-store'
 import { useConnectionStore } from '@/features/connection/store'
@@ -112,10 +113,12 @@ function ResultTable({ result }: { result: SqlResult }) {
 export function QueryEditorTab({ tab }: { tab: StageTab }) {
   const payload = tab.payload as QueryEditorPayload
   const editorRef = useRef<EditorView | undefined>(undefined)
-  const { activeConnectionId, connections } = useConnectionStore((s) => ({
-    activeConnectionId: s.activeConnectionId,
-    connections: s.connections,
-  }))
+  const { activeConnectionId, connections } = useConnectionStore(
+    useShallow((s) => ({
+      activeConnectionId: s.activeConnectionId,
+      connections: s.connections,
+    })),
+  )
   const sessionDataContext = useSessionDataContext(tab.originSessionId ?? null)
   const source = payload.source ?? 'user'
   const isAiSource = source === 'ai'

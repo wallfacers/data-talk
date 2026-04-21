@@ -119,13 +119,15 @@ export const useChatPartsStore = create<ChatPartsState>()(
         const partsBySession = new Map(s.partsBySession)
         const infoBySession = new Map(s.infoBySession)
         const partIndexBySession = new Map(s.partIndexBySession)
+        const existingInfo = s.infoBySession.get(sessionId)
 
         const byMessage = new Map<string, Part[]>()
         const byInfo = new Map<string, MessageInfo>()
         const index = new Map<string, { messageId: string; idx: number }>()
 
         for (const { info, parts } of list) {
-          byInfo.set(info.id, info)
+          const preservedRenderKey = existingInfo?.get(info.id)?.__renderKey
+          byInfo.set(info.id, preservedRenderKey ? { ...info, __renderKey: preservedRenderKey } : info)
           byMessage.set(info.id, [...parts])
           parts.forEach((p, i) => index.set(p.id, { messageId: info.id, idx: i }))
         }
@@ -201,6 +203,7 @@ export const useChatPartsStore = create<ChatPartsState>()(
             sessionID: sessionId,
             time: { created: createdAt },
             __pending: true,
+            __renderKey: pendingId,
           })
           infoBySession.set(sessionId, infoMap)
 
@@ -233,34 +236,54 @@ export const useChatPartsStore = create<ChatPartsState>()(
       promotePendingUser: (sessionId, pendingId, realId) => set((s) => {
         const oldInfoMap = s.infoBySession.get(sessionId)
         if (!oldInfoMap || !oldInfoMap.has(pendingId)) return {}
+        const pendingInfo = oldInfoMap.get(pendingId)
+        if (!pendingInfo) return {}
+        const existingRealInfo = oldInfoMap.get(realId)
+
+        const promotedInfo: MessageInfo = {
+          ...pendingInfo,
+          ...existingRealInfo,
+          id: realId,
+          __renderKey: pendingInfo.__renderKey ?? existingRealInfo?.__renderKey ?? pendingId,
+        }
+        delete promotedInfo.__pending
+        delete promotedInfo.__failed
+        delete promotedInfo.__failReason
+        delete promotedInfo.__retrying
 
         // Rebuild the info map to preserve insertion order
         const nextInfoMap = new Map<string, MessageInfo>()
+        let insertedRealInfo = false
         for (const [id, info] of oldInfoMap.entries()) {
           if (id === pendingId) {
-            const realInfo: MessageInfo = { ...info, id: realId }
-            delete realInfo.__pending
-            delete realInfo.__failed
-            delete realInfo.__failReason
-            delete realInfo.__retrying
-            nextInfoMap.set(realId, realInfo)
-          } else {
-            nextInfoMap.set(id, info)
+            nextInfoMap.set(realId, promotedInfo)
+            insertedRealInfo = true
+            continue
           }
+          if (id === realId) continue
+          nextInfoMap.set(id, info)
         }
+        if (!insertedRealInfo) nextInfoMap.set(realId, promotedInfo)
 
         // Rebuild the parts map to preserve insertion order
         const oldPartsMap = s.partsBySession.get(sessionId)
         const nextPartsMap = new Map<string, Part[]>()
+        let insertedRealParts = false
+        const promotedParts = oldPartsMap?.get(realId)
+          ?? oldPartsMap?.get(pendingId)?.map((p) => ({ ...p, messageID: realId }))
+          ?? []
         if (oldPartsMap) {
           for (const [mid, parts] of oldPartsMap.entries()) {
             if (mid === pendingId) {
-              nextPartsMap.set(realId, parts.map((p) => ({ ...p, messageID: realId })))
-            } else {
-              nextPartsMap.set(mid, parts)
+              nextPartsMap.set(realId, promotedParts)
+              insertedRealParts = true
+              continue
             }
+            if (mid === realId) continue
+            nextPartsMap.set(mid, parts)
           }
         }
+        if (!insertedRealParts && promotedParts.length > 0) nextPartsMap.set(realId, promotedParts)
 
         const index = new Map(s.partIndexBySession.get(sessionId) ?? new Map())
         for (const [pid, entry] of index.entries()) {

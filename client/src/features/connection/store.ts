@@ -2,6 +2,24 @@ import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import type { Connection } from '@/services/api/connection'
 
+function sameConnection(a: Connection, b: Connection) {
+  return a.id === b.id
+    && a.name === b.name
+    && a.kind === b.kind
+    && a.host === b.host
+    && a.port === b.port
+    && a.databaseName === b.databaseName
+    && a.username === b.username
+    && a.createdAt === b.createdAt
+    && a.connectTimeout === b.connectTimeout
+    && a.lastTestStatus === b.lastTestStatus
+    && a.lastTestAt === b.lastTestAt
+}
+
+function sameConnections(a: Connection[], b: Connection[]) {
+  return a.length === b.length && a.every((item, index) => sameConnection(item, b[index]))
+}
+
 type ConnectionState = {
   activeConnectionId: string | null
   connections: Connection[]
@@ -14,8 +32,8 @@ export const useConnectionStore = create<ConnectionState>()(
     (set) => ({
       activeConnectionId: null,
       connections: [],
-      setActive: (id) => set({ activeConnectionId: id }),
-      setConnections: (conns) => set({ connections: conns }),
+      setActive: (id) => set((s) => (s.activeConnectionId === id ? s : { activeConnectionId: id })),
+      setConnections: (conns) => set((s) => (sameConnections(s.connections, conns) ? s : { connections: conns })),
     }),
     {
       name: 'data-talk.connection',

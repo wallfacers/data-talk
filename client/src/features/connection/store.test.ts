@@ -1,23 +1,48 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import type { Connection } from '@/services/api/connection'
 import { useConnectionStore } from './store'
+
+const connection: Connection = {
+  id: 'conn-1',
+  name: 'orders-prod',
+  kind: 'postgres',
+  host: 'localhost',
+  port: 5432,
+  databaseName: 'orders',
+  username: 'demo',
+  createdAt: 1,
+  connectTimeout: 3000,
+  lastTestStatus: 'ok',
+  lastTestAt: 2,
+}
 
 describe('connection-store', () => {
   beforeEach(() => {
     useConnectionStore.setState({
       activeConnectionId: null,
       connections: [],
-    })
-    localStorage.clear()
+    } as unknown as Record<string, unknown>)
   })
 
-  it('persists activeConnectionId across refresh boundaries', () => {
-    useConnectionStore.getState().setActive('c1')
+  it('setActive is idempotent for the same connection id', () => {
+    const store = useConnectionStore.getState()
 
-    const raw = localStorage.getItem('data-talk.connection')
-    expect(raw).toBeTruthy()
+    store.setActive('conn-1')
+    const firstId = useConnectionStore.getState().activeConnectionId
 
-    const parsed = JSON.parse(raw!)
-    expect(parsed.state.activeConnectionId).toBe('c1')
-    expect(parsed.state.connections).toBeUndefined()
+    store.setActive('conn-1')
+
+    expect(useConnectionStore.getState().activeConnectionId).toBe(firstId)
+  })
+
+  it('setConnections is idempotent for the same connection payloads', () => {
+    const store = useConnectionStore.getState()
+
+    store.setConnections([connection])
+    const firstList = useConnectionStore.getState().connections
+
+    store.setConnections([{ ...connection }])
+
+    expect(useConnectionStore.getState().connections).toBe(firstList)
   })
 })

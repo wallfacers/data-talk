@@ -61,6 +61,25 @@ describe('buildEventSink · message lifecycle', () => {
     expect(info?.error?.name).toBe('ProviderAuthError')
     expect(info?.error?.data?.message).toBe('Invalid access token or token expired')
   })
+
+  it('promotes the optimistic user message on echoed message.created instead of creating a duplicate turn', () => {
+    const pendingId = useChatPartsStore.getState().upsertPendingUser('s1', 'hello')
+    const sink = buildEventSink('s1', null, qc, null, pendingId)
+
+    sink({
+      event: 'message.created',
+      data: { info: { id: 'm_user_real', role: 'user', sessionID: 's1', time: { created: 100 } } },
+    } as any)
+
+    const infoMap = useChatPartsStore.getState().infoBySession.get('s1')
+    expect(infoMap?.has(pendingId)).toBe(false)
+    expect(infoMap?.size).toBe(1)
+    expect(infoMap?.get('m_user_real')).toMatchObject({
+      id: 'm_user_real',
+      role: 'user',
+      sessionID: 's1',
+    })
+  })
 })
 
 describe('useChannel.isStreaming (per-session)', () => {

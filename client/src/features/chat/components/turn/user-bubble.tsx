@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CopyIcon, CheckIcon, TerminalIcon } from 'lucide-react'
 import type { MessageInfo, Part, TextPart } from '@/services/channel/types'
 import { useChannel } from '@/services/channel/use-channel'
@@ -22,6 +22,14 @@ export function UserBubble(props: { info: MessageInfo; parts: Part[] }) {
   const pending = !!info.__pending
   const failed = !!info.__failed
   const retrying = !!info.__retrying
+  const [entryMotionActive, setEntryMotionActive] = useState(() => pending && !failed)
+  const hasStartedEntryMotion = useRef(pending && !failed)
+
+  useEffect(() => {
+    if (!pending || failed || hasStartedEntryMotion.current) return
+    hasStartedEntryMotion.current = true
+    setEntryMotionActive(true)
+  }, [pending, failed])
 
   const handleCopy = async () => {
     const success = await copyToClipboard(text)
@@ -42,14 +50,22 @@ export function UserBubble(props: { info: MessageInfo; parts: Part[] }) {
   }
 
   return (
-    <div className={cn('flex flex-col items-end gap-1 my-2')}>
-      <div className={cn(
-        'relative max-w-[85%] rounded-lg px-3 py-2 text-sm',
-        'bg-primary text-primary-foreground',
-        isBangQueryUser && 'pr-7',
-        pending && !failed && 'opacity-85',
-        failed && 'border-2 border-red-500',
-      )}>
+    <div
+      data-pending-user-motion={pending && !failed ? 'true' : undefined}
+      className="my-2 flex flex-col items-end gap-1"
+    >
+      <div
+        data-pending-user-bubble={entryMotionActive ? 'true' : undefined}
+        onAnimationEnd={() => setEntryMotionActive(false)}
+        className={cn(
+          'relative max-w-[85%] rounded-lg px-3 py-2 text-sm',
+          'bg-primary text-primary-foreground',
+          isBangQueryUser && 'pr-7',
+          pending && !failed && 'opacity-85',
+          entryMotionActive && 'motion-safe:animate-in motion-safe:slide-in-from-bottom-5 motion-safe:duration-300 motion-safe:ease-out motion-safe:will-change-transform',
+          failed && 'border-2 border-red-500',
+        )}
+      >
         {isBangQueryUser && (
           <span
             aria-label={t('bangQuery.userMarker')}

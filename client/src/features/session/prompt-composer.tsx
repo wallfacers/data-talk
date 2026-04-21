@@ -70,6 +70,8 @@ function InnerComposer() {
   const activeSessionId = useSessionStore((s) => s.activeSessionId)
   const openSession = useSessionStore((s) => s.openSession)
   const setPendingPrompt = useSessionStore((s) => s.setPendingPrompt)
+  const composerRestoreDraft = useSessionStore((s) => s.composerRestoreDraft)
+  const setComposerRestoreDraft = useSessionStore((s) => s.setComposerRestoreDraft)
   const setPendingModelPrompt = useSessionStore((s) => s.setPendingModelPrompt)
   const setPendingConnectionPrompt = useSessionStore((s) => s.setPendingConnectionPrompt)
   const setPendingActionAfterConnectionPick = useSessionStore((s) => s.setPendingActionAfterConnectionPick)
@@ -79,6 +81,14 @@ function InnerComposer() {
   const sessionDataContext = useSessionDataContext(activeSessionId)
   const qc = useQueryClient()
   const isBangQueryMode = /^!\s*(select|with)\b/i.test(text.trim())
+
+  useEffect(() => {
+    if (!activeSessionId || !composerRestoreDraft) return
+    if (composerRestoreDraft.sessionId !== activeSessionId) return
+
+    setText((current) => current.trim().length > 0 ? current : composerRestoreDraft.text)
+    setComposerRestoreDraft(null)
+  }, [activeSessionId, composerRestoreDraft, setComposerRestoreDraft])
 
   const submitText = async (raw: string) => {
     const trimmed = raw.trim()
@@ -251,7 +261,10 @@ function InnerComposer() {
         const initialTitle = trimmed.slice(0, 50)
         const sess = await createSession(activeConnectionId ?? undefined, initialTitle)
         invalidateSessionLists(qc)
-        openSession(sess.id, sess.hasEverSent)
+        // This session is being created specifically to send the pending prompt.
+        // Open it directly in split/message mode so the composer does not flash
+        // through the HERO slot before the resume hook submits the message.
+        openSession(sess.id, true)
         // resume hook 会在 activeSessionId 就绪后消费 pendingPrompt
       } catch (err) {
         setPendingPrompt(null)
@@ -262,7 +275,8 @@ function InnerComposer() {
     }
 
     setText('')
-    await sendMessage([createTextPart(activeSessionId, trimmed)])
+    const ok = await sendMessage([createTextPart(activeSessionId, trimmed)])
+    if (!ok) setText(trimmed)
   }
 
   const onSubmit = async (e: FormEvent) => {

@@ -98,6 +98,7 @@ export type MessageInfo = {
   __failed?: boolean
   __failReason?: string
   __retrying?: boolean
+  __renderKey?: string
 }
 
 export function createTextPart(sessionId: string, text: string): TextPart {
