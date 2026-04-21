@@ -62,22 +62,77 @@ describe('buildEventSink · message lifecycle', () => {
     expect(info?.error?.data?.message).toBe('Invalid access token or token expired')
   })
 
-  it('promotes the optimistic user message on echoed message.created instead of creating a duplicate turn', () => {
+  it('does not let an older echoed user event steal the latest pending user', () => {
+    useChatPartsStore.getState().upsertInfo('s1', {
+      id: 'u_old',
+      role: 'user',
+      sessionID: 's1',
+      time: { created: 10 },
+    })
+    useChatPartsStore.getState().upsertPart('s1', {
+      type: 'text',
+      id: 'p_old',
+      sessionID: 's1',
+      messageID: 'u_old',
+      text: '你好',
+      metadata: {},
+    } as any)
     const pendingId = useChatPartsStore.getState().upsertPendingUser('s1', 'hello')
     const sink = buildEventSink('s1', null, qc, null, pendingId)
 
     sink({
+      event: 'message.updated',
+      data: { info: { id: 'u_old', role: 'user', sessionID: 's1', time: { created: 10 } } },
+    } as any)
+
+    const infoMap = useChatPartsStore.getState().infoBySession.get('s1')
+    expect(infoMap?.has(pendingId)).toBe(true)
+    expect(infoMap?.get('u_old')?.id).toBe('u_old')
+    expect(useChatPartsStore.getState().partsBySession.get('s1')?.get('u_old')?.[0]).toMatchObject({
+      text: '你好',
+    })
+  })
+
+  it('promotes the optimistic user only when the echoed user text part matches the pending text', () => {
+    const pendingId = useChatPartsStore.getState().upsertPendingUser('s1', 'who are you')
+    const sink = buildEventSink('s1', null, qc, null, pendingId)
+
+    sink({
       event: 'message.created',
-      data: { info: { id: 'm_user_real', role: 'user', sessionID: 's1', time: { created: 100 } } },
+      data: { info: { id: 'u_real', role: 'user', sessionID: 's1', time: { created: 100 } } },
+    } as any)
+    sink({
+      event: 'message.part.created',
+      data: { part: { type: 'text', id: 'p_real', sessionID: 's1', messageID: 'u_real', text: 'who are you', metadata: {} } },
     } as any)
 
     const infoMap = useChatPartsStore.getState().infoBySession.get('s1')
     expect(infoMap?.has(pendingId)).toBe(false)
-    expect(infoMap?.size).toBe(1)
-    expect(infoMap?.get('m_user_real')).toMatchObject({
-      id: 'm_user_real',
+    expect(infoMap?.get('u_real')).toMatchObject({ id: 'u_real', role: 'user' })
+    expect(useChatPartsStore.getState().partsBySession.get('s1')?.get('u_real')?.[0]).toMatchObject({
+      text: 'who are you',
+    })
+  })
+
+  it('does not promote the pending user on an unrelated older user text part', () => {
+    useChatPartsStore.getState().upsertInfo('s1', {
+      id: 'u_old',
       role: 'user',
       sessionID: 's1',
+      time: { created: 10 },
+    })
+    const pendingId = useChatPartsStore.getState().upsertPendingUser('s1', '今天天气怎么样')
+    const sink = buildEventSink('s1', null, qc, null, pendingId)
+
+    sink({
+      event: 'message.part.updated',
+      data: { part: { type: 'text', id: 'p_old', sessionID: 's1', messageID: 'u_old', text: '你好', metadata: {} } },
+    } as any)
+
+    const infoMap = useChatPartsStore.getState().infoBySession.get('s1')
+    expect(infoMap?.has(pendingId)).toBe(true)
+    expect(useChatPartsStore.getState().partsBySession.get('s1')?.get(pendingId)?.[0]).toMatchObject({
+      text: '今天天气怎么样',
     })
   })
 })

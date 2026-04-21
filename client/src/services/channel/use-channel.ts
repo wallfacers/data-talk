@@ -24,6 +24,27 @@ function getApiBaseUrl(): string {
   return ''
 }
 
+function getPendingUserText(sessionId: string, pendingUserId: string | null): string | null {
+  if (!pendingUserId) return null
+  const pendingParts = useChatPartsStore.getState().partsBySession.get(sessionId)?.get(pendingUserId) ?? []
+  const pendingTextPart = pendingParts.find((part) => part.type === 'text') as Part | undefined
+  const text = typeof (pendingTextPart as { text?: unknown } | undefined)?.text === 'string'
+    ? (pendingTextPart as { text: string }).text
+    : null
+  return text
+}
+
+function shouldPromotePendingUserFromPart(
+  sessionId: string,
+  pendingUserId: string | null,
+  part: Part | undefined,
+): boolean {
+  if (!pendingUserId || !part || part.type !== 'text' || part.messageID.startsWith('pending_')) return false
+  const pendingText = getPendingUserText(sessionId, pendingUserId)
+  if (pendingText === null) return false
+  return part.text === pendingText
+}
+
 export function buildEventSink(
   sessionId: string,
   client: ChannelClient | null,
@@ -67,10 +88,6 @@ export function buildEventSink(
         finish: m.finish ?? existing?.finish,
         tokens: m.tokens ?? existing?.tokens,
       }
-
-      if (info.role === 'user' && pendingUserId && mid !== pendingUserId && !mid.startsWith('pending_')) {
-        store.promotePendingUser(sessionId, pendingUserId, mid)
-      }
       store.upsertInfo(sessionId, info)
     } else if (event === 'session.idle' || (event === 'session.status' && (data as any)?.status === 'idle')) {
       // Turn-done signals: OpenCode's native `session.idle` (DtEvent.SessionIdle),
@@ -89,8 +106,9 @@ export function buildEventSink(
       const part = (data as any).part
       useChatPartsStore.getState().upsertPart(sessionId, part)
 
-      // 检测首个 role=user 且 messageID 非 pending_* 的 part，触发 promote
-      if (part?.messageID && !part.messageID.startsWith('pending_')) {
+      // Only promote the optimistic user when the echoed real user text part
+      // matches the pending text. Older replayed user events must not steal it.
+      if (part?.messageID && shouldPromotePendingUserFromPart(sessionId, pendingUserId, part)) {
         const infoMap = useChatPartsStore.getState().infoBySession.get(sessionId)
         const info = infoMap?.get(part.messageID)
         if (info?.role === 'user' && pendingUserId) {

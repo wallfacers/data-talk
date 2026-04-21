@@ -14,6 +14,7 @@
 - 新会话首发普通 AI 消息的创建路径已改为直接进入 `SPLIT`，避免 `PromptComposer` 先挂到 HERO 空态 slot 再切到消息态。
 - pending 用户气泡新增 `motion-safe` 上移动画，并暴露 `data-pending-user-motion="true"` 供测试与后续样式演进使用。
 - 后续回归修正：pending user 在服务端回显真实 `message.id` 时改为直接提升本地 optimistic turn，并保留稳定 render key，避免 turn remount 造成用户气泡自抖；位移动效也改到气泡本体并增强位移幅度。
+- 继续回归修正：`b8c1c5e` 中新增的 `message.created(role=user)` 提前 promote 条件过宽，会让旧 user 事件抢走最新 pending user；现已改为仅在匹配当前 pending 文本的 user text part 到达时才 promote。
 - 验证已通过：`npx vitest run src/features/session/__tests__/prompt-composer.test.tsx src/features/chat/components/turn/__tests__/session-turn.test.tsx`、`npx tsc --noEmit`。
 
 ## File Structure Map
