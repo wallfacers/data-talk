@@ -1,6 +1,6 @@
 # Stage Window SQL Workbench Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 将当前 Stage 重构为基于 `shadcn/ui` 的多面板 SQL 工作台，用统一的 `query_editor` 取代 `bang_query` 页面，并同步收敛 UI Object 协议与资源目录 `AGENTS.md`。
 
@@ -107,7 +107,7 @@
 - Modify: `client/src/i18n/messages.ts`
 - Delete: `client/src/features/stage/components/stage-tab-strip.tsx`
 
-- [ ] **Step 1: Extend `stage-window.test.tsx` with failing shell + empty-state assertions**
+- [x] **Step 1: Extend `stage-window.test.tsx` with failing shell + empty-state assertions**
 
 Add tests that currently fail because the code still renders the legacy children path:
 
@@ -142,7 +142,7 @@ it('routes er/report/dashboard tabs into the shared placeholder scaffold', () =>
 })
 ```
 
-- [ ] **Step 2: Create `stage-workbench-empty-state.tsx`**
+- [x] **Step 2: Create `stage-workbench-empty-state.tsx`**
 
 Implement a reusable empty-state shell that stays inside the Stage workbench visual system:
 
@@ -189,7 +189,7 @@ export function StageWorkbenchEmptyState({
 }
 ```
 
-- [ ] **Step 3: Create `stage-placeholder-tab.tsx`**
+- [x] **Step 3: Create `stage-placeholder-tab.tsx`**
 
 Use a shared placeholder shell for non-SQL tabs so they inherit the same workbench structure:
 
@@ -223,7 +223,7 @@ export function StagePlaceholderTab({ title, kind, description }: Props) {
 }
 ```
 
-- [ ] **Step 4: Rewire `stage-tab-content.tsx`, `split-view.tsx`, and `stage-window.tsx`**
+- [x] **Step 4: Rewire `stage-tab-content.tsx`, `split-view.tsx`, and `stage-window.tsx`**
 
 Make the Stage use the new empty-state and placeholder path:
 
@@ -254,7 +254,7 @@ switch (tab.type) {
 
 Also remove the `StageTabStrip` import and file, and stop passing `ArtifactCanvas` / legacy children as the default Stage body.
 
-- [ ] **Step 5: Add i18n strings for the empty state and placeholder pages**
+- [x] **Step 5: Add i18n strings for the empty state and placeholder pages**
 
 Append new message keys in `client/src/i18n/messages.ts`:
 
@@ -267,7 +267,7 @@ Append new message keys in `client/src/i18n/messages.ts`:
 'stage.placeholder.unknownWorkbench': '此工作页类型尚未实现，但已接入统一 workbench 外壳。',
 ```
 
-- [ ] **Step 6: Run the targeted Stage shell tests**
+- [x] **Step 6: Run the targeted Stage shell tests**
 
 Run:
 
@@ -277,7 +277,7 @@ cd client && npx vitest run src/features/stage/components/stage-window.test.tsx
 
 Expected: the new empty-state and placeholder assertions pass; no references to `StageTabStrip` remain in the render path.
 
-- [ ] **Step 7: Run the batch type check**
+- [x] **Step 7: Run the batch type check**
 
 Run:
 
@@ -287,7 +287,7 @@ cd client && npx tsc --noEmit
 
 Expected: PASS with zero type errors.
 
-- [ ] **Step 8: Commit Batch 1**
+- [x] **Step 8: Commit Batch 1**
 
 ```bash
 git add client/src/features/session/split-view.tsx \
@@ -315,7 +315,7 @@ git commit -m "feat(client): scaffold stage sql workbench shell"
 - Modify: `client/src/features/stage/components/query-editor-tab.test.tsx`
 - Modify: `client/src/i18n/messages.ts`
 
-- [ ] **Step 1: Write failing tests for payload normalization and new `query_editor` modes**
+- [x] **Step 1: Write failing tests for payload normalization and new `query_editor` modes**
 
 Add tests covering:
 
@@ -350,7 +350,7 @@ Extend `query-editor-tab.test.tsx` with failing assertions for:
 - `autoRun` triggering `execute`
 - success state rendering in the embedded result panel
 
-- [ ] **Step 2: Implement `normalize-query-editor-payload.ts`**
+- [x] **Step 2: Implement `normalize-query-editor-payload.ts`**
 
 Create a single normalization source of truth used by the UI and adapter:
 
@@ -397,7 +397,7 @@ export function normalizeQueryEditorPayload(payload: unknown): NormalizedQueryEd
 }
 ```
 
-- [ ] **Step 3: Create the toolbar / result / inspector subcomponents**
+- [x] **Step 3: Create the toolbar / result / inspector subcomponents**
 
 Keep generic controls on `shadcn/ui`:
 
@@ -438,7 +438,7 @@ Keep generic controls on `shadcn/ui`:
 </Card>
 ```
 
-- [ ] **Step 4: Refactor `query-editor-tab.tsx` into the multi-panel workbench**
+- [x] **Step 4: Refactor `query-editor-tab.tsx` into the multi-panel workbench**
 
 Replace the current single-column layout with a grid that uses the new subcomponents and normalized payload:
 
@@ -476,7 +476,7 @@ return (
 
 When `effectiveContext.connectionId` is missing, render an empty-state card inside the editor pane instead of a broken run button.
 
-- [ ] **Step 5: Mirror SQL draft and latest run metadata back into the tab payload**
+- [x] **Step 5: Mirror SQL draft and latest run metadata back into the tab payload**
 
 Use `useStageStore.getState().updateTabPayload(tab.tabId, updater)` so the tab becomes the source of truth for the adapter:
 
@@ -511,7 +511,7 @@ updatePayload({
 })
 ```
 
-- [ ] **Step 6: Run the targeted Query Editor tests**
+- [x] **Step 6: Run the targeted Query Editor tests**
 
 Run:
 
@@ -521,7 +521,7 @@ cd client && npx vitest run src/features/stage/utils/__tests__/normalize-query-e
 
 Expected: PASS with coverage for manual / ai / direct_sql modes and the embedded result / inspector layout.
 
-- [ ] **Step 7: Run the batch type check**
+- [x] **Step 7: Run the batch type check**
 
 Run:
 
@@ -531,7 +531,7 @@ cd client && npx tsc --noEmit
 
 Expected: PASS with zero type errors.
 
-- [ ] **Step 8: Commit Batch 2**
+- [x] **Step 8: Commit Batch 2**
 
 ```bash
 git add client/src/features/stage/utils/normalize-query-editor-payload.ts \
@@ -558,7 +558,7 @@ git commit -m "feat(client): redesign query editor as sql workbench"
 - Modify: `client/src/features/stage/adapters/WorkspaceAdapter.ts`
 - Modify: `client/src/features/stage/adapters/__tests__/WorkspaceAdapter.test.ts`
 
-- [ ] **Step 1: Write failing tests for `QueryEditorAdapter` and runtime registration**
+- [x] **Step 1: Write failing tests for `QueryEditorAdapter` and runtime registration**
 
 Add adapter tests that currently fail because the file does not exist:
 
@@ -606,7 +606,7 @@ it('registers workspace and open query_editor tabs into uiRouter', async () => {
 })
 ```
 
-- [ ] **Step 2: Implement `QueryEditorAdapter.ts`**
+- [x] **Step 2: Implement `QueryEditorAdapter.ts`**
 
 The adapter should read directly from `useStageStore` so it stays in sync with payload updates:
 
@@ -660,7 +660,7 @@ export class QueryEditorAdapter implements UIObject {
 }
 ```
 
-- [ ] **Step 3: Implement `stage-ui-object-registry.tsx` and wire it into `stage-window.tsx`**
+- [x] **Step 3: Implement `stage-ui-object-registry.tsx` and wire it into `stage-window.tsx`**
 
 Register `workspace` plus every open `query_editor` tab:
 
@@ -695,7 +695,7 @@ In `stage-window.tsx` render:
 <StageUIObjectRegistry sessionId={sessionId ?? null} tabs={tabs} />
 ```
 
-- [ ] **Step 4: Update `WorkspaceAdapter.ts` and its tests to remove `bang_query` assumptions**
+- [x] **Step 4: Update `WorkspaceAdapter.ts` and its tests to remove `bang_query` assumptions**
 
 Replace:
 
@@ -715,7 +715,7 @@ Then update tests that opened `bang_query` tabs to use `er_canvas` or another wo
 await adapter.exec('open', { type: 'er_canvas', title: 'ER' })
 ```
 
-- [ ] **Step 5: Run the adapter + registry test slice**
+- [x] **Step 5: Run the adapter + registry test slice**
 
 Run:
 
@@ -725,7 +725,7 @@ cd client && npx vitest run src/features/stage/adapters/__tests__/QueryEditorAda
 
 Expected: PASS; `uiRouter` can list `workspace` and open `query_editor` objects.
 
-- [ ] **Step 6: Run the batch type check**
+- [x] **Step 6: Run the batch type check**
 
 Run:
 
@@ -735,7 +735,7 @@ cd client && npx tsc --noEmit
 
 Expected: PASS with zero type errors.
 
-- [ ] **Step 7: Commit Batch 3**
+- [x] **Step 7: Commit Batch 3**
 
 ```bash
 git add client/src/features/stage/adapters/QueryEditorAdapter.ts \
@@ -766,7 +766,9 @@ git commit -m "feat(client): register query editor ui objects"
 - Delete: `client/src/features/stage/utils/open-bang-query-tab.ts`
 - Delete: `client/src/features/stage/utils/__tests__/open-bang-query-tab.test.ts`
 
-- [ ] **Step 1: Write failing tests for the new direct-SQL helper**
+**Implementation note:** Execution also removed the temporary `bang_query` registry/test compatibility added in Batch 3 (`stage-ui-object-registry*`, `WorkspaceAdapter*`, `UIRouter.test.ts`) and renamed the internal chooser reason from `bang_query` to `direct_sql` so the final protocol sanity search only leaves intentional `bang_query_user` message semantics.
+
+- [x] **Step 1: Write failing tests for the new direct-SQL helper**
 
 Add a helper test that captures the new behavior:
 
@@ -802,7 +804,7 @@ it('opens a new session-scoped query_editor with direct_sql payload and initial 
 })
 ```
 
-- [ ] **Step 2: Implement `open-direct-sql-query-editor-tab.ts`**
+- [x] **Step 2: Implement `open-direct-sql-query-editor-tab.ts`**
 
 Keep the message-persistence API unchanged, but replace the tab opening target:
 
@@ -858,7 +860,7 @@ export async function openDirectSqlQueryEditorTab({ sessionId, connectionId, sql
 }
 ```
 
-- [ ] **Step 3: Update `prompt-composer.tsx` and its tests**
+- [x] **Step 3: Update `prompt-composer.tsx` and its tests**
 
 Keep `createBangQueryMessage(...)` exactly as-is, but swap the opened tab helper:
 
@@ -887,13 +889,13 @@ expect(openDirectSqlQueryEditorTabMock).toHaveBeenCalledWith({
 
 Do **not** rename `createBangQueryMessage` or the `bang_query_user` chat metadata in this task.
 
-- [ ] **Step 4: Remove the `bang_query` page and dead references**
+- [x] **Step 4: Remove the `bang_query` page and dead references**
 
 Perform the deletes listed above and remove the `bang_query` switch branch from `stage-tab-content.tsx`.
 
 Also replace any remaining test fixtures that create `type: 'bang_query'` tabs with `query_editor` or `er_canvas`, depending on the behavior being tested.
 
-- [ ] **Step 5: Run the direct-query + cleanup test slice**
+- [x] **Step 5: Run the direct-query + cleanup test slice**
 
 Run:
 
@@ -903,7 +905,7 @@ cd client && npx vitest run src/features/stage/utils/__tests__/open-direct-sql-q
 
 Expected: PASS; direct SQL still persists chat messages, but now opens a `query_editor`.
 
-- [ ] **Step 6: Run the batch type check**
+- [x] **Step 6: Run the batch type check**
 
 Run:
 
@@ -913,7 +915,7 @@ cd client && npx tsc --noEmit
 
 Expected: PASS with zero type errors.
 
-- [ ] **Step 7: Commit Batch 4**
+- [x] **Step 7: Commit Batch 4**
 
 ```bash
 git add client/src/features/stage/utils/open-direct-sql-query-editor-tab.ts \
@@ -940,7 +942,7 @@ git commit -m "refactor(client): replace bang query page with query editor"
 - Modify: `docs/references/ui-objects-reference.md`
 - Modify: `docs/FRONTEND.md`
 
-- [ ] **Step 1: Update `server/.../resources/agents/AGENTS.md` to describe `query_editor` instead of `bang_query`**
+- [x] **Step 1: Update `server/.../resources/agents/AGENTS.md` to describe `query_editor` instead of `bang_query`**
 
 Replace the current object table and workflow text with the new contract:
 
@@ -955,7 +957,7 @@ Replace the current object table and workflow text with the new contract:
 
 Update the `datatalk.ui.exec` table so `workspace.open` valid values no longer mention `bang_query`, and change the “Inspect the workspace” workflow to `ui_read(query_editor, ...)`.
 
-- [ ] **Step 2: Update `docs/references/ui-objects-reference.md`**
+- [x] **Step 2: Update `docs/references/ui-objects-reference.md`**
 
 Make the protocol doc match the implementation:
 
@@ -976,7 +978,7 @@ Make the protocol doc match the implementation:
 
 Also fix the maintenance note at the top to say the runtime `AGENTS.md` is loaded from `server/data-talk-adapter/src/main/resources/agents/AGENTS.md` by `OpenCodeGatewayBeans.writeAgentsMd()`, rather than a nonexistent inline constant.
 
-- [ ] **Step 3: Update `docs/FRONTEND.md`**
+- [x] **Step 3: Update `docs/FRONTEND.md`**
 
 Append Stage workbench conventions that become canonical after this refactor:
 
@@ -986,7 +988,7 @@ Append Stage workbench conventions that become canonical after this refactor:
 - `bang_query_user` 仍是聊天消息语义，但不再对应独立 Stage tab 类型。
 ```
 
-- [ ] **Step 4: Verify the docs only mention `bang_query` where it is still intentionally valid**
+- [x] **Step 4: Verify the docs only mention `bang_query` where it is still intentionally valid**
 
 Run:
 
@@ -1001,7 +1003,7 @@ Expected:
 - no new Stage-page references in frontend docs
 - allowed remaining matches only in chat message semantics or historical docs outside this edit set
 
-- [ ] **Step 5: Commit Batch 5**
+- [x] **Step 5: Commit Batch 5**
 
 ```bash
 git add server/data-talk-adapter/src/main/resources/agents/AGENTS.md \
@@ -1018,7 +1020,7 @@ git commit -m "docs: align stage protocol with query editor workbench"
 - Modify: `docs/exec-plans/2026-04-21-stage-window-sql-workbench-plan.md`
 - Modify: `docs/exec-plans/index.md`
 
-- [ ] **Step 1: Run the full targeted verification slice**
+- [x] **Step 1: Run the full targeted verification slice**
 
 Run:
 
@@ -1040,7 +1042,7 @@ Expected:
 - all listed vitest files PASS
 - `npx tsc --noEmit` PASS
 
-- [ ] **Step 2: Run the final protocol/documentation sanity search**
+- [x] **Step 2: Run the final protocol/documentation sanity search**
 
 Run:
 
@@ -1050,11 +1052,11 @@ rg -n "bang_query" client/src docs/references/ui-objects-reference.md server/dat
 
 Expected: any remaining hits are limited to intentionally retained chat-message semantics such as `bang_query_user`; there are no remaining `bang_query` page / adapter / UIObject references.
 
-- [ ] **Step 3: Mark this plan file complete**
+- [x] **Step 3: Mark this plan file complete**
 
 Edit this plan file in place so every checkbox is checked and add short notes if any implementation detail intentionally differed from the plan.
 
-- [ ] **Step 4: Move the plan index entry from Active to Completed**
+- [x] **Step 4: Move the plan index entry from Active to Completed**
 
 Update `docs/exec-plans/index.md`:
 
@@ -1062,7 +1064,7 @@ Update `docs/exec-plans/index.md`:
 | [Stage Window SQL Workbench](./2026-04-21-stage-window-sql-workbench-plan.md) | 2026-04-21 | Stage 升级为基于 shadcn/ui 的多面板 SQL 工作台，`query_editor` 成为唯一 SQL 工作页，`bang_query` 页面/adapter/helper 退场，`resources/agents/AGENTS.md` 与 UI Object 协议文档同步完成；相关 vitest 与 `npx tsc --noEmit` 通过。 |
 ```
 
-- [ ] **Step 5: Commit the verified implementation + housekeeping**
+- [x] **Step 5: Commit the verified implementation + housekeeping**
 
 ```bash
 git add docs/exec-plans/2026-04-21-stage-window-sql-workbench-plan.md \
@@ -1078,3 +1080,5 @@ git commit -m "chore: finalize stage sql workbench rollout"
 - Placeholder scan: no `TODO` / `TBD` / “later” implementation gaps remain in executable tasks
 - Type consistency: `entryMode`, `initialSql`, `initialResult`, `lastRun`, `QueryEditorAdapter`, and `openDirectSqlQueryEditorTab` use the same names throughout
 - Scope guard: `createBangQueryMessage` / `bang_query_user` chat semantics are intentionally preserved; only the Stage page / tab / protocol object is removed
+
+**Completion note:** Completed on 2026-04-21. Final verification passed with `8/8` targeted vitest files green (`72` tests), a direct-query cleanup slice green (`78` tests), `client` `npx tsc --noEmit` green, and the final `bang_query` search limited to intentionally retained `bang_query_user` chat-message semantics.
