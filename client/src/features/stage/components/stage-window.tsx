@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import { SquareIcon, CopyIcon, XIcon } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@/components/ui/button'
@@ -11,12 +10,13 @@ import { StageResourceBrowser } from './stage-resource-browser'
 import { StageSidebar } from './stage-sidebar'
 import { StageTabBar } from './stage-tab-bar'
 import { StageTabContent } from './stage-tab-content'
+import { StageUIObjectRegistry } from './stage-ui-object-registry'
+import { StageWorkbenchEmptyState } from './stage-workbench-empty-state'
 import { StageToolRow } from './stage-tool-row'
 import { useI18n } from '@/i18n/use-i18n'
 
 type Props = {
   sessionId?: string
-  children: ReactNode
 }
 
 const EMPTY_EXPANDED_NODES: string[] = []
@@ -46,7 +46,7 @@ function deriveSelectionFromContext(
   }
 }
 
-export function StageWindow({ sessionId, children }: Props) {
+export function StageWindow({ sessionId }: Props) {
   const { t } = useI18n()
   const closeStage = useStageStore((s) => s.closeStage)
   const maximized = useStageStore((s) => (sessionId ? !!s.maximizedBySession.get(sessionId) : false))
@@ -154,9 +154,21 @@ export function StageWindow({ sessionId, children }: Props) {
     const idx = tabs.findIndex((t) => t.tabId === tabId)
     tabs.slice(idx + 1).forEach((t) => closeTab(t.tabId))
   }
+  function handleOpenSqlEditor() {
+    openOrFocusStageToolTab({
+      getState: useStageStore.getState,
+      sessionId: null,
+      target: {
+        kind: 'global_tool',
+        tool: 'sql',
+        title: t('stage.toolRow.sql'),
+      },
+    })
+  }
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden rounded-[20px] border border-border/50 bg-muted/5 shadow-[0_18px_42px_rgba(15,23,42,0.08)] ring-1 ring-white/45 transition-all duration-200">
+      <StageUIObjectRegistry sessionId={sessionId ?? null} tabs={tabs} />
       <div className="flex flex-col bg-transparent">
         <div className="group flex h-10 shrink-0 select-none items-center justify-between border-b border-border/40 bg-background/35">
           <div className="flex items-center gap-2 pl-3 pr-2">
@@ -252,8 +264,13 @@ export function StageWindow({ sessionId, children }: Props) {
                 <StageTabContent />
               </div>
             ) : (
-              <div className="flex min-h-0 flex-1 overflow-auto">
-                {children}
+              <div className="flex min-h-0 flex-1 overflow-hidden">
+                <StageWorkbenchEmptyState
+                  title={t('stage.empty.title')}
+                  description={t('stage.empty.description')}
+                  primaryActionLabel={t('stage.empty.primaryAction')}
+                  onPrimaryAction={handleOpenSqlEditor}
+                />
               </div>
             )}
           </div>

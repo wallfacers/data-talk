@@ -91,14 +91,19 @@ export class UIRouter {
   }
 
   private resolveTarget(objectType: string, target: string): UIObject | null {
-    if (target && target !== 'active') return this.instances.get(target) ?? null
+    if (target && target !== 'active') {
+      const direct = this.instances.get(target) ?? null
+      if (!direct) return null
+      return !objectType || direct.type === objectType ? direct : null
+    }
     const activeTabId = this._getActiveTabId?.()
-    if (activeTabId) {
+    if (target === 'active' && activeTabId) {
       const direct = this.instances.get(activeTabId)
-      if (direct && (!objectType || direct.type === objectType)) return direct
+      if (direct) return !objectType || direct.type === objectType ? direct : null
       for (const [, obj] of this.instances) {
-        if ((!objectType || obj.type === objectType) && obj.tabId === activeTabId) return obj
+        if (obj.tabId === activeTabId) return !objectType || obj.type === objectType ? obj : null
       }
+      return null
     }
     for (const [, obj] of this.instances) {
       if (!objectType || obj.type === objectType) return obj

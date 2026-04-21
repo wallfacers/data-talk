@@ -8,6 +8,8 @@ import { useStageStore } from '@/stores/stage-store'
 import { useOntologyStore } from '@/stores/ontology-store'
 import { useTimelineStore } from '@/stores/timeline-store'
 
+const openOrFocusStageToolTabMock = vi.hoisted(() => vi.fn())
+
 vi.mock('./stage-tool-row', () => ({
   StageToolRow: () => <div data-testid="stage-tool-row">tool row</div>,
 }))
@@ -16,8 +18,12 @@ vi.mock('./stage-resource-browser', () => ({
   StageResourceBrowser: () => <div data-testid="stage-resource-browser">resource browser</div>,
 }))
 
-vi.mock('./stage-tab-content', () => ({
-  StageTabContent: () => <div data-testid="stage-tab-content">tab content</div>,
+vi.mock('./query-editor-tab', () => ({
+  QueryEditorTab: () => <div data-testid="query-editor-tab">query editor tab</div>,
+}))
+
+vi.mock('../utils/open-or-focus-stage-tool-tab', () => ({
+  openOrFocusStageToolTab: openOrFocusStageToolTabMock,
 }))
 
 vi.mock('@/components/ui/context-menu', () => ({
@@ -99,6 +105,7 @@ describe('StageTabBar', () => {
 
 describe('StageWindow', () => {
   beforeEach(() => {
+    openOrFocusStageToolTabMock.mockReset()
     useStageStore.setState({
       openBySession: new Map([['s1', true]]),
       autoOpenedSessions: new Set(),
@@ -120,20 +127,20 @@ describe('StageWindow', () => {
   })
 
   it('渲染默认标题 Stage + 关闭 / 最大化 按钮', () => {
-    render(<StageWindow sessionId="s1"><div>body</div></StageWindow>)
+    render(<StageWindow sessionId="s1" />)
     expect(screen.getByLabelText('关闭')).toBeTruthy()
     expect(screen.getByLabelText('最大化')).toBeTruthy()
     expect(screen.getByText('Stage', { selector: 'span' })).toBeTruthy()
   })
 
   it('点关闭触发 closeStage(sessionId)', () => {
-    render(<StageWindow sessionId="s1"><div>body</div></StageWindow>)
+    render(<StageWindow sessionId="s1" />)
     fireEvent.click(screen.getByLabelText('关闭'))
     expect(useStageStore.getState().openBySession.get('s1')).toBe(false)
   })
 
   it('点最大化切换 maximizedBySession', () => {
-    render(<StageWindow sessionId="s1"><div>body</div></StageWindow>)
+    render(<StageWindow sessionId="s1" />)
     fireEvent.click(screen.getByLabelText('最大化'))
     expect(useStageStore.getState().maximizedBySession.get('s1')).toBe(true)
     fireEvent.click(screen.getByLabelText('还原'))
@@ -147,13 +154,8 @@ describe('StageWindow', () => {
       activeBySession: new Map([['s1', 'a1']]),
       manualBySession: new Map(),
     })
-    render(<StageWindow sessionId="s1"><div>body</div></StageWindow>)
+    render(<StageWindow sessionId="s1" />)
     expect(screen.getByText(/Stage · 图 v2/)).toBeTruthy()
-  })
-
-  it('children 渲染在 body slot', () => {
-    render(<StageWindow sessionId="s1"><div data-testid="child">CHILD</div></StageWindow>)
-    expect(screen.getByTestId('child')).toBeTruthy()
   })
 
   it('renders tab bar when store has tabs for session', () => {
@@ -164,17 +166,65 @@ describe('StageWindow', () => {
       ]]]),
       activeTabIdBySession: new Map([['s-1', 'q1']]),
     })
-    render(<StageWindow sessionId="s-1"><div>ai content</div></StageWindow>)
+    render(<StageWindow sessionId="s-1" />)
     expect(screen.getByText('SQL')).toBeTruthy()
   })
 
-  it('shows children when store has no tabs', () => {
+  it('renders the new Stage empty workbench instead of the legacy child path when there are no tabs', () => {
     useStageStore.setState({
       tabsBySession: new Map(),
       activeTabIdBySession: new Map(),
+      workspaceTabs: [],
+      activeWorkspaceTabId: null,
     })
-    render(<StageWindow sessionId="s-1"><div>ai content</div></StageWindow>)
-    expect(screen.getByText('ai content')).toBeTruthy()
+
+    render(<StageWindow sessionId="s-1" />)
+
+    expect(screen.getByTestId('stage-empty-workbench')).toBeTruthy()
+    expect(screen.getByRole('button', { name: '打开 SQL 编辑器' })).toBeTruthy()
+  })
+
+  it('clicking the empty-state CTA opens the SQL editor via the shared Stage tool path', () => {
+    useStageStore.setState({
+      tabsBySession: new Map(),
+      activeTabIdBySession: new Map([['s1', null]]),
+      workspaceTabs: [],
+      activeWorkspaceTabId: null,
+    })
+
+    render(<StageWindow sessionId="s1" />)
+
+    fireEvent.click(screen.getByRole('button', { name: '打开 SQL 编辑器' }))
+
+    expect(openOrFocusStageToolTabMock).toHaveBeenCalledWith(expect.objectContaining({
+      sessionId: null,
+      target: expect.objectContaining({
+        kind: 'global_tool',
+        tool: 'sql',
+        title: 'SQL 编辑器',
+      }),
+    }))
+  })
+
+  it.each([
+    ['er_canvas', 'ER Canvas'],
+    ['report', 'Report'],
+    ['dashboard', 'Dashboard'],
+  ])('routes %s tabs through the shared placeholder scaffold', (type, title) => {
+    useStageStore.setState({
+      workspaceTabs: [
+        { tabId: 'w1', type: type as 'er_canvas' | 'report' | 'dashboard', title, scope: 'workspace' as const, createdAt: 0, payload: {} },
+      ],
+      activeWorkspaceTabId: 'w1',
+      tabsBySession: new Map(),
+      activeTabIdBySession: new Map([['s1', null]]),
+    })
+
+    render(<StageWindow sessionId="s1" />)
+
+    expect(screen.getByTestId('stage-placeholder-tab')).toBeTruthy()
+    expect(screen.getByTestId('stage-placeholder-tab')).toHaveTextContent(title)
+    expect(screen.queryByText('legacy child')).toBeNull()
   })
 
   it('renders workspace tab content inside a session stage when no session tab is active', () => {
@@ -187,11 +237,26 @@ describe('StageWindow', () => {
       activeTabIdBySession: new Map([['s1', null]]),
     })
 
-    render(<StageWindow sessionId="s1"><div>body</div></StageWindow>)
+    render(<StageWindow sessionId="s1" />)
 
     expect(screen.getByText('Global SQL')).toBeTruthy()
-    expect(screen.getByTestId('stage-tab-content')).toBeTruthy()
-    expect(screen.queryByText('body')).toBeNull()
+    expect(screen.getByTestId('query-editor-tab')).toBeTruthy()
+  })
+
+  it('surfaces unsupported tab types in the placeholder fallback', () => {
+    useStageStore.setState({
+      workspaceTabs: [
+        { tabId: 'u1', type: 'mystery_widget', title: 'Mystery', scope: 'workspace' as const, createdAt: 0, payload: {} },
+      ],
+      activeWorkspaceTabId: 'u1',
+      tabsBySession: new Map(),
+      activeTabIdBySession: new Map([['s1', null]]),
+    })
+
+    render(<StageWindow sessionId="s1" />)
+
+    expect(screen.getByText(/mystery_widget/)).toBeTruthy()
+    expect(screen.getByText('当前工作位尚未实现。')).toBeTruthy()
   })
 
   it('clears the session-scoped active tab when a workspace tab is focused from the shared tab bar', () => {
@@ -206,7 +271,7 @@ describe('StageWindow', () => {
       activeTabIdBySession: new Map([['s1', 's-tab']]),
     })
 
-    render(<StageWindow sessionId="s1"><div>body</div></StageWindow>)
+    render(<StageWindow sessionId="s1" />)
 
     fireEvent.click(screen.getByText('Global SQL'))
 
@@ -256,7 +321,7 @@ describe('StageWindow', () => {
       activeTabIdBySession: new Map([['s1', 'q1']]),
     })
 
-    render(<StageWindow sessionId="s1"><div>body</div></StageWindow>)
+    render(<StageWindow sessionId="s1" />)
 
     expect(screen.getByTestId('stage-sidebar')).toBeTruthy()
     expect(screen.getByTestId('stage-tool-row')).toBeTruthy()
@@ -273,7 +338,7 @@ describe('StageWindow', () => {
       activeTabIdBySession: new Map(),
     })
 
-    render(<StageWindow sessionId="s1"><div>body</div></StageWindow>)
+    render(<StageWindow sessionId="s1" />)
 
     expect(screen.getByRole('button', { name: '展开资源栏' })).toBeTruthy()
   })

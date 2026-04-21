@@ -3,6 +3,7 @@ import { execError } from '@/services/ui-router'
 import { useDataSourcePickerStore } from '@/features/session/data-source-picker/data-source-picker-store'
 import { useStageStore, type StageTab } from '@/stores/stage-store'
 import { openOrFocusStageToolTab } from '@/features/stage/utils/open-or-focus-stage-tool-tab'
+import { normalizeQueryEditorPayload } from '@/features/stage/utils/normalize-query-editor-payload'
 
 const ACTIONS: ActionDef[] = [
   { name: 'open', description: 'Open a new tab', paramsSchema: {
@@ -27,8 +28,14 @@ const ACTIONS: ActionDef[] = [
   } },
 ]
 
-// workspace-level Tab 默认 scope 注册表：允许新增类型时不改 WorkspaceAdapter
-const WORKSPACE_SCOPE_TYPES = new Set<string>(['bang_query', 'er_canvas', 'markdown_note'])
+const WORKSPACE_SCOPE_TYPES = new Set<string>(['er_canvas', 'markdown_note', 'report', 'dashboard'])
+
+function clearSessionActiveTab(sessionId: string | null) {
+  if (!sessionId) return
+  const activeTabIdBySession = new Map(useStageStore.getState().activeTabIdBySession)
+  activeTabIdBySession.set(sessionId, null)
+  useStageStore.setState({ activeTabIdBySession })
+}
 
 export class WorkspaceAdapter implements UIObject {
   type = 'workspace'
@@ -45,7 +52,17 @@ export class WorkspaceAdapter implements UIObject {
         const activeTabId = sid
           ? useStageStore.getState().activeTabIdBySession.get(sid) ?? useStageStore.getState().activeWorkspaceTabId
           : useStageStore.getState().activeWorkspaceTabId
-        return { tabs: tabs.map((t) => ({ tabId: t.tabId, type: t.type, title: t.title, connectionId: t.connectionId })), activeTabId }
+        return {
+          tabs: tabs.map((t) => ({
+            tabId: t.tabId,
+            type: t.type,
+            title: t.title,
+            connectionId: t.type === 'query_editor'
+              ? normalizeQueryEditorPayload(t.payload).connectionId ?? t.connectionId
+              : t.connectionId,
+          })),
+          activeTabId,
+        }
       }
       case 'actions': return ACTIONS
       case 'schema': return { type: 'object', properties: { tabs: { type: 'array' }, activeTabId: { type: ['string', 'null'] } } }
@@ -73,42 +90,61 @@ export class WorkspaceAdapter implements UIObject {
         const sid = this.getSessionId()
         if (p.type === 'query_editor') {
           if (!sid) return execError('Cannot open session-scoped tab without active session')
-          if (!p.connection_id) return execError('Missing param: connection_id')
-          const { tabId, created } = openOrFocusStageToolTab({
-            getState: () => useStageStore.getState(),
-            sessionId: sid,
-            target: {
-              kind: 'resource_tool',
-              tool: 'sql',
-              title: p.title ?? p.type,
-              connectionId: p.connection_id,
-              database: p.database ?? null,
-              schema: p.schema ?? null,
-            },
-          })
-          if (created && p.payload !== undefined) {
-            const tab = useStageStore.getState().tabsBySession.get(sid)?.find((item) => item.tabId === tabId) ?? null
-            if (tab) {
-              useStageStore.setState((s) => {
-                const tabs = new Map(s.tabsBySession)
-                const sessionTabs = tabs.get(sid) ?? []
-                const idx = sessionTabs.findIndex((item) => item.tabId === tabId)
-                if (idx < 0) return s
-                const nextTabs = [...sessionTabs]
-                nextTabs[idx] = {
-                  ...nextTabs[idx],
-                  payload: p.payload ?? nextTabs[idx].payload,
-                }
-                tabs.set(sid, nextTabs)
-                return { tabsBySession: tabs }
-              })
+          if (p.connection_id) {
+            const { tabId } = openOrFocusStageToolTab({
+              getState: () => useStageStore.getState(),
+              sessionId: sid,
+              target: {
+                kind: 'resource_tool',
+                tool: 'sql',
+                title: p.title ?? p.type,
+                connectionId: p.connection_id,
+                database: p.database ?? null,
+                schema: p.schema ?? null,
+              },
+            })
+            if (p.payload !== undefined || p.title !== undefined) {
+              const tab = useStageStore.getState().tabsBySession.get(sid)?.find((item) => item.tabId === tabId) ?? null
+              if (tab) {
+                useStageStore.setState((s) => {
+                  const tabs = new Map(s.tabsBySession)
+                  const sessionTabs = tabs.get(sid) ?? []
+                  const idx = sessionTabs.findIndex((item) => item.tabId === tabId)
+                  if (idx < 0) return s
+                  const nextTabs = [...sessionTabs]
+                  nextTabs[idx] = {
+                    ...nextTabs[idx],
+                    title: p.title ?? nextTabs[idx].title,
+                    payload: p.payload ?? nextTabs[idx].payload,
+                  }
+                  tabs.set(sid, nextTabs)
+                  return { tabsBySession: tabs }
+                })
+              }
             }
+            return { success: true, data: { tabId } }
           }
+
+          const tabId = `query_editor_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+          store.openTab({
+            tabId,
+            type: 'query_editor',
+            title: p.title ?? p.type,
+            scope: 'session',
+            originSessionId: sid,
+            connectionId: undefined,
+            database: undefined,
+            schema: undefined,
+            payload: p.payload ?? {},
+            createdAt: Date.now(),
+          })
           return { success: true, data: { tabId } }
         }
 
         const tabId = `${p.type}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-        const scope: StageTab['scope'] = WORKSPACE_SCOPE_TYPES.has(p.type) ? 'workspace' : 'session'
+        const scope: StageTab['scope'] = WORKSPACE_SCOPE_TYPES.has(p.type)
+          ? 'workspace'
+          : 'session'
         const tab: StageTab = {
           tabId, type: p.type, title: p.title ?? p.type, scope,
           connectionId: p.connection_id, database: p.database, schema: p.schema,
@@ -118,6 +154,7 @@ export class WorkspaceAdapter implements UIObject {
         }
         if (scope === 'session' && !sid) return execError('Cannot open session-scoped tab without active session')
         store.openTab(tab)
+        if (scope === 'workspace') clearSessionActiveTab(sid)
         return { success: true, data: { tabId } }
       }
       case 'close': {
@@ -128,6 +165,7 @@ export class WorkspaceAdapter implements UIObject {
       case 'focus': {
         if (!p.target) return execError('Missing param: target')
         store.focusTab(p.target)
+        if (store.workspaceTabs.some((tab) => tab.tabId === p.target)) clearSessionActiveTab(this.getSessionId())
         return { success: true }
       }
       case 'choose_connection': {

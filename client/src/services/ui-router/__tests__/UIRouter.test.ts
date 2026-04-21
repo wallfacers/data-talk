@@ -6,9 +6,10 @@ function makeStub(objectId: string, opts: {
   stateValue?: unknown,
   actions?: unknown,
   patchCaps?: PatchCapability[],
+  type?: string,
 } = {}): UIObject {
   return {
-    type: 'query_editor',
+    type: opts.type ?? 'query_editor',
     objectId,
     title: `Query ${objectId}`,
     patchCapabilities: opts.patchCaps,
@@ -37,11 +38,29 @@ describe('UIRouter', () => {
     expect(res.error).toContain('No query_editor')
   })
 
+  it('does not resolve an explicit target id to the wrong object type', async () => {
+    router.registerInstance('b1', makeStub('b1', { type: 'report', stateValue: { sql: 'select 1' } }))
+
+    const res = await router.handle({ tool: 'ui_read', object: 'query_editor', target: 'b1', payload: { mode: 'state' } })
+
+    expect(res.error).toContain('No query_editor')
+  })
+
   it('resolves target=active via provider', async () => {
     router.registerInstance('q2', makeStub('q2', { stateValue: { content: 'active!' } }))
     router.setActiveTabIdProvider(() => 'q2')
     const res = await router.handle({ tool: 'ui_read', object: 'query_editor', target: 'active', payload: { mode: 'state' } })
     expect(res.data).toEqual({ content: 'active!' })
+  })
+
+  it('does not fall back to an unrelated object type for target=active', async () => {
+    router.registerInstance('b1', makeStub('b1', { type: 'report', stateValue: { sql: 'select 1' } }))
+    router.registerInstance('q2', makeStub('q2', { stateValue: { content: 'other query' } }))
+    router.setActiveTabIdProvider(() => 'b1')
+
+    const res = await router.handle({ tool: 'ui_read', object: 'query_editor', target: 'active', payload: { mode: 'state' } })
+
+    expect(res.error).toContain('No query_editor')
   })
 
   it('validates patch capability', async () => {

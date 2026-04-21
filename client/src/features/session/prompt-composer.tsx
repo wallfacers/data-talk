@@ -23,7 +23,7 @@ import { createTextPart } from '@/services/channel/types'
 import { createSession, deleteSession } from '@/services/api/session'
 import { normalizeError, showErrorToast } from '@/services/http-error'
 import { StageToggleButton } from '@/features/stage/components/stage-toggle-button'
-import { openBangQueryTab } from '@/features/stage/utils/open-bang-query-tab'
+import { openDirectSqlQueryEditorTab } from '@/features/stage/utils/open-direct-sql-query-editor-tab'
 import { createBangQueryMessage } from '@/services/api/bang-query-message'
 import { useHasActiveModel } from './hooks/use-has-active-model'
 import { useSessionDataContext } from './hooks/use-session-data-context'
@@ -159,7 +159,7 @@ function InnerComposer() {
         let connectionId = activeConnectionId
         if (!connectionId) {
           const picked = await useDataSourcePickerStore.getState().requestPick({
-            reason: 'bang_query',
+            reason: 'direct_sql',
             preferredConnectionId: null,
           })
           if ('cancelled' in picked) return
@@ -207,7 +207,7 @@ function InnerComposer() {
           openSession(bangSessionId, true)
           invalidateSessionLists(qc)
           void qc.invalidateQueries({ queryKey: ['session-history', 'messages', bangSessionId] })
-          await openBangQueryTab({
+          await openDirectSqlQueryEditorTab({
             sessionId: bangSessionId,
             connectionId,
             sql,
