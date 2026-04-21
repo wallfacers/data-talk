@@ -209,6 +209,7 @@ DataTalk 的差异化在于 **AI 直接操作数据库**，但不能让 AI 蛮�
 
 | 设计文档 | 日期 | 主题 |
 |----------|------|------|
+| [Stage Window SQL Workbench Design](./2026-04-21-stage-window-sql-workbench-design.md) | 2026-04-21 | 以 `shadcn/ui` 为硬约束，将 Stage 升级为多面板 SQL 工作台：布局参考原型但不复刻原型控件体系，`query_editor` 收敛为唯一 SQL 工作页，`bang_query` 退场，并同步更新资源目录 `AGENTS.md` 与 UI Object 协议文档 |
 | [Stage Window Layout Refactor Design](./2026-04-21-stage-window-layout-refactor-design.md) | 2026-04-21 | Stage 重构为左侧导航侧栏 + 右侧 Tabs 工作区的浏览器式工作台：顶部轻量工具行、下方连接资源浏览器、资源上下文驱动的工具打开规则，以及 Chrome-inspired 顶部页签，并移除底部 Dock |
 | [Session Data Context & AI Data Source Management Design](./2026-04-21-session-data-context-and-ai-datasource-management-design.md) | 2026-04-21 | 建立 session 级 `connectionId + database + schema` 统一上下文，收敛 `use xxx` 的自动匹配 / 建议 / 歧义处理，打通 `!sql`、AI 对话、Stage Query Editor 与 schema 读取 / SQL 执行的同一解析链路，并补齐 AI 数据源管理能力边界（新增 / 测试 / 选择 / 修改，禁止删除） |
 | [Bang Query Badge Minimization Design](./2026-04-21-bang-query-badge-minimization-design.md) | 2026-04-21 | 将 bang-query 用户气泡从显式 `SQL 直查` 文字 badge 收敛为右上角低存在感小图标，保留语义识别但减少视觉打扰 |
