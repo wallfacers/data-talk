@@ -10,6 +10,7 @@ import { StageResourceBrowser } from './stage-resource-browser'
 import { StageSidebar } from './stage-sidebar'
 import { StageTabBar } from './stage-tab-bar'
 import { StageTabContent } from './stage-tab-content'
+import { StageUIObjectRegistry } from './stage-ui-object-registry'
 import { StageWorkbenchEmptyState } from './stage-workbench-empty-state'
 import { StageToolRow } from './stage-tool-row'
 import { useI18n } from '@/i18n/use-i18n'
@@ -167,6 +168,7 @@ export function StageWindow({ sessionId }: Props) {
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden rounded-[20px] border border-border/50 bg-muted/5 shadow-[0_18px_42px_rgba(15,23,42,0.08)] ring-1 ring-white/45 transition-all duration-200">
+      <StageUIObjectRegistry sessionId={sessionId ?? null} tabs={tabs} />
       <div className="flex flex-col bg-transparent">
         <div className="group flex h-10 shrink-0 select-none items-center justify-between border-b border-border/40 bg-background/35">
           <div className="flex items-center gap-2 pl-3 pr-2">

@@ -22,6 +22,13 @@ interface BangPayload {
   contextNotice?: string | null
 }
 
+function clearSessionActiveTab(sessionId: string | null) {
+  if (!sessionId) return
+  const activeTabIdBySession = new Map(useStageStore.getState().activeTabIdBySession)
+  activeTabIdBySession.set(sessionId, null)
+  useStageStore.setState({ activeTabIdBySession })
+}
+
 export class BangQueryAdapter implements UIObject {
   type = 'bang_query'
   objectId: string
@@ -131,7 +138,10 @@ export class BangQueryAdapter implements UIObject {
         })
         return { success: true, data: { rowCount: result.rowCount, durationMs: result.durationMs } }
       }
-      case 'focus': store.focusTab(this.objectId); return { success: true }
+      case 'focus':
+        store.focusTab(this.objectId)
+        clearSessionActiveTab(tab.originSessionId ?? null)
+        return { success: true }
       case 'close':  store.closeTab(this.objectId); return { success: true }
       default: return execError(`Unknown action: ${action}`)
     }

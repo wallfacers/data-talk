@@ -55,4 +55,17 @@ describe('BangQueryAdapter', () => {
     await adapter.exec('close')
     expect(useStageStore.getState().workspaceTabs).toHaveLength(0)
   })
+
+  it('exec focus clears the current session-active tab for workspace bang_query tabs', async () => {
+    useStageStore.setState({
+      activeTabIdBySession: new Map([['sess-1', 'session-q1']]),
+    } as unknown as Record<string, unknown>)
+
+    const adapter = new BangQueryAdapter('bq1')
+    const result = await adapter.exec('focus')
+
+    expect(result).toEqual({ success: true })
+    expect(useStageStore.getState().activeWorkspaceTabId).toBe('bq1')
+    expect(useStageStore.getState().activeTabIdBySession.get('sess-1')).toBeNull()
+  })
 })

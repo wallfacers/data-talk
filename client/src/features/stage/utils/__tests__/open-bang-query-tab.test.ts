@@ -84,4 +84,15 @@ describe('openBangQueryTab', () => {
   it('throws when no connectionId provided', async () => {
     await expect(openBangQueryTab({ sessionId: 's1', connectionId: null, sql: 'SELECT 1' })).rejects.toThrow()
   })
+
+  it('clears the current session-active tab when opening a bang_query workspace tab', async () => {
+    useStageStore.setState({
+      activeTabIdBySession: new Map([['s1', 'session-q1']]),
+    } as unknown as Record<string, unknown>)
+
+    await openBangQueryTab({ sessionId: 's1', connectionId: 'c1', sql: 'SELECT 1' })
+
+    expect(useStageStore.getState().activeWorkspaceTabId).toBeTruthy()
+    expect(useStageStore.getState().activeTabIdBySession.get('s1')).toBeNull()
+  })
 })

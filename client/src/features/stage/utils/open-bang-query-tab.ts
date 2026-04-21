@@ -9,6 +9,13 @@ interface Args {
   sql: string
 }
 
+function clearSessionActiveTab(sessionId: string | null) {
+  if (!sessionId) return
+  const activeTabIdBySession = new Map(useStageStore.getState().activeTabIdBySession)
+  activeTabIdBySession.set(sessionId, null)
+  useStageStore.setState({ activeTabIdBySession })
+}
+
 export async function openBangQueryTab({ sessionId, connectionId, sql }: Args): Promise<string> {
   if (!connectionId) throw new Error('No active connection — please select a data source')
   const sessionContext = sessionId ? useSessionStore.getState().dataContextBySession.get(sessionId) ?? null : null
@@ -47,6 +54,7 @@ export async function openBangQueryTab({ sessionId, connectionId, sql }: Args): 
   }
   const store = useStageStore.getState()
   store.openTab(tab)
+  clearSessionActiveTab(sessionId)
   if (sessionId) store.openStage(sessionId)
   return tabId
 }
