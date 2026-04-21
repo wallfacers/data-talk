@@ -2,11 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { DatabaseIcon } from 'lucide-react'
 import { TurnList } from '@/features/chat/components/turn/turn-list'
 import { TurnListErrorBoundary } from '@/features/chat/components/turn/turn-list-error-boundary'
-import { ArtifactTimelineStrip } from '@/features/ontology/components/artifact-timeline-strip'
-import { ArtifactCanvas } from '@/features/ontology/components/artifact-canvas'
 import { StageWindow } from '@/features/stage/components/stage-window'
-import { StageTabStrip } from '@/features/stage/components/stage-tab-strip'
-import { StageTabContent } from '@/features/stage/components/stage-tab-content'
 import { useSessionStore } from '@/stores/session-store'
 import { useStageStore } from '@/stores/stage-store'
 import { useChatPartsStore } from '@/stores/chat-parts-store'
@@ -32,10 +28,6 @@ export function SplitView() {
   const sid = useSessionStore((s) => s.activeSessionId)
   const open = useStageStore((s) => (sid ? !!s.openBySession.get(sid) : false))
   const maximized = useStageStore((s) => (sid ? !!s.maximizedBySession.get(sid) : false))
-  const hasTabs = useStageStore((s) => {
-    const sessionTabs = sid ? (s.tabsBySession.get(sid) ?? []) : []
-    return s.workspaceTabs.length + sessionTabs.length > 0
-  })
   // 用同步的 hasEverSent 作为主信号，避免会话切换时 infoBySession 还没被 fetch
   // 填充导致空态分支闪过一帧；chat-parts-store 的判断仅兜底"新空会话里用户刚敲第一条"。
   const hasEverSent = useSessionStore((s) =>
@@ -173,21 +165,7 @@ export function SplitView() {
       {/* stage 列：translateX 滑入/滑出 */}
       <div data-stage-panel style={stageStyle}>
         <div className="h-full w-full p-2">
-          <StageWindow sessionId={sid ?? undefined}>
-            {sid && <ArtifactTimelineStrip />}
-            <StageTabStrip />
-            {hasTabs ? (
-              <div className="flex-1 min-h-0 overflow-hidden">
-                <StageTabContent />
-              </div>
-            ) : (
-              sid && (
-                <div className="flex-1 min-h-0 overflow-hidden">
-                  <ArtifactCanvas />
-                </div>
-              )
-            )}
-          </StageWindow>
+          <StageWindow sessionId={sid ?? undefined} />
         </div>
       </div>
     </div>
