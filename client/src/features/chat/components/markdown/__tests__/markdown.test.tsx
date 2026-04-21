@@ -1,7 +1,16 @@
-import { describe, it, expect, vi } from 'vitest'
+import { afterEach, describe, it, expect, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { Markdown } from '../markdown'
 import { SQL_EXPLAIN_EVENT, SQL_EXECUTE_EVENT } from '../sql-code-block'
+
+afterEach(() => {
+  vi.useRealTimers()
+})
+
+async function flushMicrotasks() {
+  await Promise.resolve()
+  await Promise.resolve()
+}
 
 describe('Markdown', () => {
   it('sanitizes script tags', () => {
@@ -96,6 +105,33 @@ describe('Markdown', () => {
     })
   })
 
+  it('shows a check icon on the table CSV button after copy and restores the label', async () => {
+    vi.useFakeTimers()
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, {
+      clipboard: {
+        writeText,
+      },
+    })
+
+    const markdown = '| name | value |\n| --- | --- |\n| JAVA_HOME | graalvm |'
+    const { container } = render(<Markdown text={markdown} cacheKey="table-csv-feedback" />)
+    expect(container.querySelector('[data-slot="markdown-table-csv"]')).not.toBeNull()
+
+    const button = container.querySelector('[data-slot="markdown-table-csv"]') as HTMLElement
+    fireEvent.click(button)
+    await flushMicrotasks()
+
+    expect(button).toHaveAttribute('data-copied', 'true')
+    expect(button.innerHTML).toContain('lucide-check')
+
+    vi.advanceTimersByTime(2000)
+
+    expect(button).not.toHaveAttribute('data-copied')
+    expect(button.textContent).toBe('CSV')
+    expect(button.innerHTML).not.toContain('lucide-check')
+  })
+
   it('copies table as html and plain text when rich clipboard support exists', async () => {
     const write = vi.fn().mockResolvedValue(undefined)
     const ClipboardItemMock = vi.fn((items: Record<string, Blob>) => items)
@@ -165,5 +201,41 @@ describe('Markdown', () => {
     await waitFor(() => {
       expect(writeText).toHaveBeenCalledWith('[{"值":"1","值_2":"2","column_3":"3"}]')
     })
+  })
+
+  it('keeps the more menu item visible long enough to show copied feedback', async () => {
+    vi.useFakeTimers()
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, {
+      clipboard: {
+        writeText,
+      },
+    })
+
+    const markdown = '| 值 | 值 | |\n| --- | --- | --- |\n| 1 | 2 | 3 |'
+    const { container } = render(<Markdown text={markdown} cacheKey="table-more-feedback" />)
+    expect(container.querySelector('[data-slot="markdown-table-more"]')).not.toBeNull()
+
+    fireEvent.click(container.querySelector('[data-slot="markdown-table-more"]') as HTMLElement)
+
+    const jsonAction = container.querySelector(
+      '[data-slot="markdown-table-action"][data-format="json"]',
+    ) as HTMLElement
+    const menu = container.querySelector('[data-slot="markdown-table-menu"]') as HTMLElement
+
+    expect(menu.hidden).toBe(false)
+
+    fireEvent.click(jsonAction)
+    await flushMicrotasks()
+
+    expect(jsonAction).toHaveAttribute('data-copied', 'true')
+    expect(jsonAction.innerHTML).toContain('lucide-check')
+    expect(menu.hidden).toBe(false)
+
+    vi.advanceTimersByTime(2000)
+
+    expect(jsonAction).not.toHaveAttribute('data-copied')
+    expect(jsonAction.textContent).toBe('JSON')
+    expect(menu.hidden).toBe(true)
   })
 })

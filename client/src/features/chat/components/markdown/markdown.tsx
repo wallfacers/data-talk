@@ -14,6 +14,7 @@ import './markdown.css'
 type Entry = { hash: string; html: string }
 const MAX_CACHE = 200
 const cache = new Map<string, Entry>()
+const copiedResetTimers = new WeakMap<HTMLElement, number>()
 
 const PURIFY_CONFIG = {
   USE_PROFILES: { html: true, mathMl: true },
@@ -65,14 +66,28 @@ async function copyTableHtmlAndText(html: string, text: string): Promise<boolean
   return copyToClipboard(text)
 }
 
-function setCopiedState(btn: HTMLElement) {
+function showCopiedState(btn: HTMLElement, onReset?: () => void) {
+  const existingTimer = copiedResetTimers.get(btn)
+  if (existingTimer) window.clearTimeout(existingTimer)
+
+  if (!btn.hasAttribute('data-copied-original-html')) {
+    btn.setAttribute('data-copied-original-html', btn.innerHTML)
+  }
+  if (!btn.hasAttribute('data-copied-original-width')) {
+    btn.setAttribute('data-copied-original-width', btn.style.width)
+  }
+
+  btn.style.width = `${btn.getBoundingClientRect().width}px`
+  btn.innerHTML = CHECK_SVG
   btn.setAttribute('data-copied', 'true')
-  setTimeout(() => {
+  const timer = window.setTimeout(() => {
     btn.removeAttribute('data-copied')
-    if (btn.matches('[data-slot="markdown-copy-button"]')) {
-      btn.innerHTML = COPY_SVG
-    }
+    btn.innerHTML = btn.getAttribute('data-copied-original-html') ?? btn.innerHTML
+    btn.style.width = btn.getAttribute('data-copied-original-width') ?? ''
+    copiedResetTimers.delete(btn)
+    onReset?.()
   }, 2000)
+  copiedResetTimers.set(btn, timer)
 }
 
 function closeTableMenus(container: HTMLElement, except?: HTMLElement | null) {
@@ -240,10 +255,7 @@ export function Markdown(props: {
       if (btn.matches('[data-slot="markdown-copy-button"]')) {
         if (!content) return
         const success = await copyToClipboard(content)
-        if (success) {
-          btn.innerHTML = CHECK_SVG
-          setCopiedState(btn)
-        }
+        if (success) showCopiedState(btn)
         return
       }
 
@@ -266,10 +278,14 @@ export function Markdown(props: {
             downloadTableCsv(getDownloadFilename(), toDownloadableCsv(model))
             success = true
           }
-          closeTableMenus(container)
         }
 
-        if (success) setCopiedState(btn)
+        if (success) {
+          showCopiedState(
+            btn,
+            btn.matches('[data-slot="markdown-table-action"]') ? () => closeTableMenus(container) : undefined,
+          )
+        }
         return
       }
 
