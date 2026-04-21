@@ -56,34 +56,40 @@ export function StageTabBar({
 }: StageTabBarProps) {
   const { t } = useI18n()
   return (
-    <div className="flex shrink-0 items-center bg-transparent px-3 py-1">
-      <Tabs value={activeId} className="w-auto">
-        <TabsList className="flex h-10 w-fit items-center justify-start rounded-lg bg-muted/60 p-1 ring-1 ring-border/20">
+    <div className="flex shrink-0 items-end border-b border-border/40 bg-transparent px-2 pt-2">
+      <Tabs value={activeId} className="w-full min-w-0">
+        <TabsList className="flex w-full items-end justify-start gap-0 rounded-none bg-transparent p-0">
           {tabs.map((tab) => {
             const isActive = tab.tabId === activeId
             return (
               <ContextMenu key={tab.tabId}>
                 <ContextMenuTrigger
                   render={
-                    <div data-tab-id={tab.tabId}>
+                    <div
+                      data-tab-id={tab.tabId}
+                      data-state={isActive ? 'active' : 'inactive'}
+                      className={cn('group/tab relative -mb-px flex', isActive ? 'z-20' : 'z-10')}
+                    >
                       <TabsTrigger
                         value={tab.tabId}
+                        data-state={isActive ? 'active' : 'inactive'}
                         className={cn(
-                          'group relative flex h-8 items-center gap-2 rounded-md px-4 text-sm font-medium transition-all duration-200 ease-out select-none',
-                          'data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-border/50',
-                          'data-[state=inactive]:text-muted-foreground hover:data-[state=inactive]:text-foreground',
+                          'relative flex h-10 min-w-0 items-center gap-1.5 border border-transparent border-b-transparent px-3 pb-1.5 pt-2 text-[13px] font-medium transition-all duration-200 ease-out select-none',
+                          'data-[state=active]:z-20 data-[state=active]:-mb-px data-[state=active]:rounded-t-[14px] data-[state=active]:border-border/50 data-[state=active]:border-b-background data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-[0_-1px_0_rgba(255,255,255,0.7),0_1px_10px_rgba(15,23,42,0.07)]',
+                          'data-[state=inactive]:mt-[2px] data-[state=inactive]:rounded-t-[12px] data-[state=inactive]:border-border/30 data-[state=inactive]:bg-muted/35 data-[state=inactive]:text-muted-foreground hover:data-[state=inactive]:bg-muted/60 hover:data-[state=inactive]:text-foreground',
+                          'after:content-none focus-visible:outline-none focus-visible:ring-0 [&_svg]:shrink-0',
                         )}
                       >
                         {getTabIcon(tab.type, isActive)}
-                        <span>{tab.title}</span>
+                        <span className="min-w-0 truncate">{tab.title}</span>
                         <div
                           role="button"
                           aria-label={t('stage.menu.close')}
                           className={cn(
-                            'ml-1 flex size-[18px] items-center justify-center rounded-[4px] transition-all',
+                            'ml-0.5 flex size-5 items-center justify-center rounded-md transition-all',
                             isActive
-                              ? 'opacity-100 hover:bg-muted'
-                              : 'opacity-0 group-hover:opacity-100 hover:bg-muted-foreground/10',
+                              ? 'opacity-90 hover:bg-muted/80 hover:opacity-100'
+                              : 'opacity-0 group-hover/tab:opacity-100 hover:bg-muted/70',
                           )}
                           onClick={(e) => {
                             e.stopPropagation()

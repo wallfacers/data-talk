@@ -108,4 +108,58 @@ describe('useSessionDataContext', () => {
     expect(api.validateSessionDataContext).toHaveBeenCalledWith('sess-1')
     expect(useSessionStore.getState().dataContextBySession.get('sess-1')).toEqual(updated)
   })
+
+  it('optimistically updates cached context and rolls back if persistence fails', async () => {
+    const initial: api.SessionDataContext = {
+      sessionId: 'sess-1',
+      connectionId: 'conn-1',
+      connectionNameSnapshot: 'orders-prod',
+      database: 'orders',
+      schema: null,
+      selectedLevel: 'database',
+      updatedAt: 123,
+    }
+    let rejectUpdate: ((reason?: unknown) => void) | null = null
+
+    vi.mocked(api.getSessionDataContext).mockResolvedValue(initial)
+    vi.mocked(api.setSessionDataContext).mockImplementation(
+      () =>
+        new Promise<api.SessionDataContext>((_, reject) => {
+          rejectUpdate = reject
+        }),
+    )
+
+    const { result } = renderHook(() => useSessionDataContext('sess-1'), { wrapper: wrapper() })
+    await waitFor(() => expect(result.current.context).toEqual(initial))
+
+    let pending!: Promise<api.SessionDataContext>
+    act(() => {
+      pending = result.current.setSessionDataContext({
+        connectionId: 'conn-1',
+        database: 'orders',
+        schema: 'public',
+        selectedLevel: 'schema',
+      })
+    })
+
+    await waitFor(() =>
+      expect(result.current.context).toMatchObject({
+        sessionId: 'sess-1',
+        connectionId: 'conn-1',
+        database: 'orders',
+        schema: 'public',
+        selectedLevel: 'schema',
+      }),
+    )
+
+    await act(async () => {
+      if (rejectUpdate) {
+        rejectUpdate(new Error('persist failed'))
+      }
+      await expect(pending).rejects.toThrow('persist failed')
+    })
+
+    await waitFor(() => expect(result.current.context).toEqual(initial))
+    expect(useSessionStore.getState().dataContextBySession.get('sess-1')).toEqual(initial)
+  })
 })

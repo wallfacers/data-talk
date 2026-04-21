@@ -19,11 +19,22 @@ export function StageTabContent() {
   })
 
   if (!tab) return null
-  switch (tab.type) {
-    case 'bang_query':    return <BangQueryTab tabId={tab.tabId} />
-    case 'query_editor':  return <QueryEditorTab tab={tab} />
-    default:              return (
-      <div className="p-4 text-xs text-muted-foreground">Unknown tab type: {tab.type}</div>
-    )
-  }
+  return (
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      {(() => {
+        switch (tab.type) {
+          case 'bang_query':
+            return <BangQueryTab tabId={tab.tabId} />
+          case 'query_editor':
+            return <QueryEditorTab tab={tab} />
+          default:
+            return (
+              <div className="p-4 text-xs text-muted-foreground">
+                Unknown tab type: {tab.type}
+              </div>
+            )
+        }
+      })()}
+    </div>
+  )
 }

@@ -2,6 +2,19 @@ import { create } from 'zustand'
 
 type RevealOrigin = { x: number; y: number }
 
+export type SidebarSelection =
+  | { kind: 'tool'; tool: 'sql' | 'er' | 'report' | 'dashboard' }
+  | { kind: 'connection'; connectionId: string }
+  | { kind: 'database'; connectionId: string; database: string }
+  | { kind: 'schema'; connectionId: string; database?: string | null; schema: string }
+  | {
+      kind: 'resource_tool'
+      tool: 'sql' | 'er'
+      connectionId: string
+      database?: string | null
+      schema?: string | null
+    }
+
 export interface StageTab {
   tabId: string
   type: string
@@ -17,11 +30,14 @@ export interface StageTab {
   createdAt: number
 }
 
-type StageState = {
+export type StageState = {
   openBySession: Map<string, boolean>
   autoOpenedSessions: Set<string>
   maximizedBySession: Map<string, boolean>
   revealOrigin: RevealOrigin | null
+  sidebarCollapsedBySession: Map<string, boolean>
+  sidebarSelectionBySession: Map<string, SidebarSelection | null>
+  resourceTreeExpandedBySession: Map<string, string[]>
 
   workspaceTabs: StageTab[]
   tabsBySession: Map<string, StageTab[]>
@@ -35,6 +51,10 @@ type StageState = {
   setRevealOrigin: (origin: RevealOrigin | null) => void
   notifyArtifactArrived: (sessionId: string) => void
   syncCollapsed: (sessionId: string, collapsed: boolean) => void
+  toggleSidebarCollapsed: (sessionId: string) => void
+  setSidebarSelection: (sessionId: string, selection: SidebarSelection | null) => void
+  toggleResourceExpanded: (sessionId: string, nodeId: string) => void
+  setResourceExpanded: (sessionId: string, nodeIds: string[]) => void
   clear: (sessionId: string) => void
 
   // Tab CRUD（新）
@@ -50,6 +70,9 @@ export const useStageStore = create<StageState>((set, get) => ({
   autoOpenedSessions: new Set(),
   maximizedBySession: new Map(),
   revealOrigin: null,
+  sidebarCollapsedBySession: new Map(),
+  sidebarSelectionBySession: new Map(),
+  resourceTreeExpandedBySession: new Map(),
 
   workspaceTabs: [],
   tabsBySession: new Map(),
@@ -75,13 +98,49 @@ export const useStageStore = create<StageState>((set, get) => ({
     if (collapsed) { const a = new Set(s.autoOpenedSessions); a.add(sid); return { openBySession: m, autoOpenedSessions: a } }
     return { openBySession: m }
   }),
+  toggleSidebarCollapsed: (sid) => set((s) => {
+    const map = new Map(s.sidebarCollapsedBySession)
+    map.set(sid, !map.get(sid))
+    return { sidebarCollapsedBySession: map }
+  }),
+  setSidebarSelection: (sid, selection) => set((s) => {
+    const map = new Map(s.sidebarSelectionBySession)
+    map.set(sid, selection)
+    return { sidebarSelectionBySession: map }
+  }),
+  toggleResourceExpanded: (sid, nodeId) => set((s) => {
+    const current = s.resourceTreeExpandedBySession.get(sid) ?? []
+    const next = current.includes(nodeId)
+      ? current.filter((id) => id !== nodeId)
+      : [...current, nodeId]
+    const map = new Map(s.resourceTreeExpandedBySession)
+    map.set(sid, next)
+    return { resourceTreeExpandedBySession: map }
+  }),
+  setResourceExpanded: (sid, nodeIds) => set((s) => {
+    const map = new Map(s.resourceTreeExpandedBySession)
+    map.set(sid, [...nodeIds])
+    return { resourceTreeExpandedBySession: map }
+  }),
   clear: (sid) => set((s) => {
     const openMap = new Map(s.openBySession); openMap.delete(sid)
     const a = new Set(s.autoOpenedSessions); a.delete(sid)
     const maxMap = new Map(s.maximizedBySession); maxMap.delete(sid)
+    const collapsedMap = new Map(s.sidebarCollapsedBySession); collapsedMap.delete(sid)
+    const selectionMap = new Map(s.sidebarSelectionBySession); selectionMap.delete(sid)
+    const expandedMap = new Map(s.resourceTreeExpandedBySession); expandedMap.delete(sid)
     const ts = new Map(s.tabsBySession); ts.delete(sid)
     const ats = new Map(s.activeTabIdBySession); ats.delete(sid)
-    return { openBySession: openMap, autoOpenedSessions: a, maximizedBySession: maxMap, tabsBySession: ts, activeTabIdBySession: ats }
+    return {
+      openBySession: openMap,
+      autoOpenedSessions: a,
+      maximizedBySession: maxMap,
+      sidebarCollapsedBySession: collapsedMap,
+      sidebarSelectionBySession: selectionMap,
+      resourceTreeExpandedBySession: expandedMap,
+      tabsBySession: ts,
+      activeTabIdBySession: ats,
+    }
   }),
 
   openTab: (tab) => set((s) => {

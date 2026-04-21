@@ -8,6 +8,9 @@ describe('stage-store', () => {
       autoOpenedSessions: new Set(),
       maximizedBySession: new Map(),
       revealOrigin: null,
+      sidebarCollapsedBySession: new Map(),
+      sidebarSelectionBySession: new Map(),
+      resourceTreeExpandedBySession: new Map(),
     })
   })
 
@@ -102,6 +105,9 @@ describe('StageStore tabs', () => {
     autoOpenedSessions: new Set(),
     maximizedBySession: new Map(),
     revealOrigin: null,
+    sidebarCollapsedBySession: new Map(),
+    sidebarSelectionBySession: new Map(),
+    resourceTreeExpandedBySession: new Map(),
     workspaceTabs: [], tabsBySession: new Map(),
     activeTabIdBySession: new Map(), activeWorkspaceTabId: null,
   } as unknown as Record<string, unknown>) })
@@ -141,5 +147,44 @@ describe('StageStore tabs', () => {
     st.openTab({ tabId: 'a1', type: 'artifact', title: 'y', scope: 'session', originSessionId: 's1', payload: {}, createdAt: 2 })
     const merged = st.listTabs('s1')
     expect(merged.map(t => t.tabId).sort()).toEqual(['a1', 't1'])
+  })
+
+  it('toggleSidebarCollapsed persists sidebar collapsed state per session', () => {
+    const st = useStageStore.getState()
+    st.toggleSidebarCollapsed('s1')
+    expect(useStageStore.getState().sidebarCollapsedBySession.get('s1')).toBe(true)
+    st.toggleSidebarCollapsed('s1')
+    expect(useStageStore.getState().sidebarCollapsedBySession.get('s1')).toBe(false)
+  })
+
+  it('setSidebarSelection stores current sidebar selection', () => {
+    const st = useStageStore.getState()
+    st.setSidebarSelection('s1', { kind: 'schema', connectionId: 'c1', database: 'analytics', schema: 'public' })
+    expect(useStageStore.getState().sidebarSelectionBySession.get('s1')).toEqual({
+      kind: 'schema',
+      connectionId: 'c1',
+      database: 'analytics',
+      schema: 'public',
+    })
+  })
+
+  it('toggleResourceExpanded adds and removes expanded node ids', () => {
+    const st = useStageStore.getState()
+    st.toggleResourceExpanded('s1', 'conn:c1')
+    expect(useStageStore.getState().resourceTreeExpandedBySession.get('s1')).toEqual(['conn:c1'])
+    st.toggleResourceExpanded('s1', 'conn:c1')
+    expect(useStageStore.getState().resourceTreeExpandedBySession.get('s1')).toEqual([])
+  })
+
+  it('clear also removes sidebar state for the session', () => {
+    const st = useStageStore.getState()
+    st.toggleSidebarCollapsed('s1')
+    st.setSidebarSelection('s1', { kind: 'connection', connectionId: 'c1' })
+    st.toggleResourceExpanded('s1', 'conn:c1')
+    st.clear('s1')
+
+    expect(useStageStore.getState().sidebarCollapsedBySession.has('s1')).toBe(false)
+    expect(useStageStore.getState().sidebarSelectionBySession.has('s1')).toBe(false)
+    expect(useStageStore.getState().resourceTreeExpandedBySession.has('s1')).toBe(false)
   })
 })

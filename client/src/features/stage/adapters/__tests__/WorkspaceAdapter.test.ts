@@ -11,16 +11,57 @@ describe('WorkspaceAdapter', () => {
     } as unknown as Record<string, unknown>)
   })
 
-  it('exec open creates workspace tab', async () => {
+  it('exec open for query_editor uses the open-or-focus rule', async () => {
     const adapter = new WorkspaceAdapter(() => 's1')
-    const res = await adapter.exec('open', { type: 'bang_query', title: 'SELECT 1', connection_id: 'conn-1', schema: 'public' })
+    const res = await adapter.exec('open', {
+      type: 'query_editor',
+      title: 'SQL',
+      connection_id: 'conn-1',
+      database: 'db-1',
+      schema: 'public',
+    })
     expect(res.success).toBe(true)
-    const tabs = useStageStore.getState().workspaceTabs
+    const tabs = useStageStore.getState().tabsBySession.get('s1') ?? []
     expect(tabs).toHaveLength(1)
-    expect(tabs[0].type).toBe('bang_query')
+    expect(tabs[0].type).toBe('query_editor')
     expect(tabs[0].connectionId).toBe('conn-1')
     expect(tabs[0].schema).toBe('public')
     expect(tabs[0].originSessionId).toBe('s1')
+  })
+
+  it('exec open deduplicates query_editor tabs by type + connection + database + schema', async () => {
+    const adapter = new WorkspaceAdapter(() => 's1')
+    await adapter.exec('open', {
+      type: 'query_editor',
+      title: 'SQL',
+      connection_id: 'conn-1',
+      database: 'db-1',
+      schema: 'public',
+    })
+    await adapter.exec('open', {
+      type: 'query_editor',
+      title: 'SQL',
+      connection_id: 'conn-1',
+      database: 'db-1',
+      schema: 'public',
+    })
+
+    const tabs = useStageStore.getState().tabsBySession.get('s1') ?? []
+    expect(tabs).toHaveLength(1)
+    expect(useStageStore.getState().activeTabIdBySession.get('s1')).toBe(tabs[0].tabId)
+  })
+
+  it('rejects session-scoped query_editor open without an active session', async () => {
+    const adapter = new WorkspaceAdapter(() => null)
+    const res = await adapter.exec('open', {
+      type: 'query_editor',
+      title: 'SQL',
+      connection_id: 'conn-1',
+      database: 'db-1',
+      schema: 'public',
+    })
+    expect(res.success).toBe(false)
+    expect(res.error).toContain('active session')
   })
 
   it('read state returns tabs + active', async () => {

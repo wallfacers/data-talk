@@ -2,6 +2,7 @@ import type { UIObject, ActionDef, ExecResult, PatchResult } from '@/services/ui
 import { execError } from '@/services/ui-router'
 import { useDataSourcePickerStore } from '@/features/session/data-source-picker/data-source-picker-store'
 import { useStageStore, type StageTab } from '@/stores/stage-store'
+import { openOrFocusStageToolTab } from '@/features/stage/utils/open-or-focus-stage-tool-tab'
 
 const ACTIONS: ActionDef[] = [
   { name: 'open', description: 'Open a new tab', paramsSchema: {
@@ -27,7 +28,7 @@ const ACTIONS: ActionDef[] = [
 ]
 
 // workspace-level Tab 默认 scope 注册表：允许新增类型时不改 WorkspaceAdapter
-const WORKSPACE_SCOPE_TYPES = new Set<string>(['bang_query', 'query_editor', 'er_canvas', 'markdown_note'])
+const WORKSPACE_SCOPE_TYPES = new Set<string>(['bang_query', 'er_canvas', 'markdown_note'])
 
 export class WorkspaceAdapter implements UIObject {
   type = 'workspace'
@@ -70,13 +71,50 @@ export class WorkspaceAdapter implements UIObject {
       case 'open': {
         if (!p.type) return execError('Missing param: type')
         const sid = this.getSessionId()
+        if (p.type === 'query_editor') {
+          if (!sid) return execError('Cannot open session-scoped tab without active session')
+          if (!p.connection_id) return execError('Missing param: connection_id')
+          const { tabId, created } = openOrFocusStageToolTab({
+            getState: () => useStageStore.getState(),
+            sessionId: sid,
+            target: {
+              kind: 'resource_tool',
+              tool: 'sql',
+              title: p.title ?? p.type,
+              connectionId: p.connection_id,
+              database: p.database ?? null,
+              schema: p.schema ?? null,
+            },
+          })
+          if (created && p.payload !== undefined) {
+            const tab = useStageStore.getState().tabsBySession.get(sid)?.find((item) => item.tabId === tabId) ?? null
+            if (tab) {
+              useStageStore.setState((s) => {
+                const tabs = new Map(s.tabsBySession)
+                const sessionTabs = tabs.get(sid) ?? []
+                const idx = sessionTabs.findIndex((item) => item.tabId === tabId)
+                if (idx < 0) return s
+                const nextTabs = [...sessionTabs]
+                nextTabs[idx] = {
+                  ...nextTabs[idx],
+                  payload: p.payload ?? nextTabs[idx].payload,
+                }
+                tabs.set(sid, nextTabs)
+                return { tabsBySession: tabs }
+              })
+            }
+          }
+          return { success: true, data: { tabId } }
+        }
+
         const tabId = `${p.type}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
         const scope: StageTab['scope'] = WORKSPACE_SCOPE_TYPES.has(p.type) ? 'workspace' : 'session'
         const tab: StageTab = {
           tabId, type: p.type, title: p.title ?? p.type, scope,
           connectionId: p.connection_id, database: p.database, schema: p.schema,
           originSessionId: sid ?? undefined,
-          payload: p.payload ?? {}, createdAt: Date.now(),
+          payload: p.payload ?? {},
+          createdAt: Date.now(),
         }
         if (scope === 'session' && !sid) return execError('Cannot open session-scoped tab without active session')
         store.openTab(tab)

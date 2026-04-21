@@ -17,10 +17,40 @@ function noSessionError() {
   return new Error('No active session')
 }
 
+function buildOptimisticContext(
+  sessionId: string,
+  previous: SessionDataContext | null,
+  update: SessionDataContextUpdateRequest,
+): SessionDataContext {
+  const connectionId = update.connectionId === undefined
+    ? previous?.connectionId ?? null
+    : update.connectionId ?? null
+  const database = update.database === undefined
+    ? previous?.database ?? null
+    : update.database ?? null
+  const schema = update.schema === undefined
+    ? previous?.schema ?? null
+    : update.schema ?? null
+  const selectedLevel = update.selectedLevel === undefined
+    ? previous?.selectedLevel ?? null
+    : update.selectedLevel ?? null
+
+  return {
+    sessionId,
+    connectionId,
+    connectionNameSnapshot: previous?.connectionId === connectionId ? previous.connectionNameSnapshot : null,
+    database,
+    schema,
+    selectedLevel,
+    updatedAt: Date.now(),
+  }
+}
+
 export function useSessionDataContext(sessionId: string | null) {
   const queryClient = useQueryClient()
   const cachedContext = useSessionStore((s) => (sessionId ? s.dataContextBySession.get(sessionId) ?? null : null))
   const setCachedContext = useSessionStore((s) => s.setSessionDataContext)
+  const clearCachedContext = useSessionStore((s) => s.clearSessionDataContext)
 
   const query = useQuery({
     queryKey: queryKey(sessionId),
@@ -50,12 +80,31 @@ export function useSessionDataContext(sessionId: string | null) {
     async (update: SessionDataContextUpdateRequest, sessionIdOverride?: string | null): Promise<SessionDataContext> => {
       const sid = sessionIdOverride ?? sessionId
       if (!sid) throw noSessionError()
-      const next = await setSessionDataContextApi(sid, update)
-      setCachedContext(next)
-      queryClient.setQueryData(queryKey(sid), next)
-      return next
+      const previous = (queryClient.getQueryData(queryKey(sid)) as SessionDataContext | undefined)
+        ?? (sid === sessionId ? cachedContext : useSessionStore.getState().dataContextBySession.get(sid))
+        ?? null
+      const optimistic = buildOptimisticContext(sid, previous, update)
+
+      setCachedContext(optimistic)
+      queryClient.setQueryData(queryKey(sid), optimistic)
+
+      try {
+        const next = await setSessionDataContextApi(sid, update)
+        setCachedContext(next)
+        queryClient.setQueryData(queryKey(sid), next)
+        return next
+      } catch (error) {
+        if (previous) {
+          setCachedContext(previous)
+          queryClient.setQueryData(queryKey(sid), previous)
+        } else {
+          clearCachedContext(sid)
+          queryClient.removeQueries({ queryKey: queryKey(sid), exact: true })
+        }
+        throw error
+      }
     },
-    [queryClient, sessionId, setCachedContext],
+    [cachedContext, clearCachedContext, queryClient, sessionId, setCachedContext],
   )
 
   const validateSessionDataContext = useCallback(
