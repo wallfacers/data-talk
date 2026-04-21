@@ -167,10 +167,10 @@ export function StageWindow({ sessionId }: Props) {
   }
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden rounded-[20px] border border-border/50 bg-muted/5 shadow-[0_18px_42px_rgba(15,23,42,0.08)] ring-1 ring-white/45 transition-all duration-200">
+    <div className="flex h-full w-full flex-col overflow-hidden rounded-[20px] border border-border/70 bg-muted/20 shadow-[0_18px_42px_rgba(15,23,42,0.10)] ring-1 ring-black/5 transition-all duration-200">
       <StageUIObjectRegistry sessionId={sessionId ?? null} tabs={tabs} />
       <div className="flex flex-col bg-transparent">
-        <div className="group flex h-10 shrink-0 select-none items-center justify-between border-b border-border/40 bg-background/35">
+        <div className="group flex h-10 shrink-0 select-none items-center justify-between border-b border-border/55 bg-background/55">
           <div className="flex items-center gap-2 pl-3 pr-2">
             {Icon ? (
               <Icon className="size-4 text-primary" />
@@ -209,7 +209,7 @@ export function StageWindow({ sessionId }: Props) {
 
       </div>
 
-      <div className="flex min-h-0 flex-1 overflow-hidden bg-background/80">
+      <div className="flex min-h-0 flex-1 overflow-hidden bg-background/88">
         {sessionId && (
           <StageSidebar
             sessionId={sessionId}
@@ -257,7 +257,7 @@ export function StageWindow({ sessionId }: Props) {
 
           <div
             data-testid="stage-workspace-pane"
-            className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background/95"
+            className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background"
           >
             {activeTabId ? (
               <div className="flex min-h-0 flex-1 overflow-hidden">

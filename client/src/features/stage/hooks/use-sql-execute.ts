@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { executeSql, SqlRiskError } from '@/services/api/sql'
-import type { SqlResult, SqlRiskBlocked } from '@/services/api/sql'
+import type { SqlExecuteResponse, SqlRiskBlocked } from '@/services/api/sql'
 
 type Status = 'idle' | 'running' | 'success' | 'risk_blocked' | 'error'
 
@@ -10,8 +10,8 @@ export interface UseSqlExecuteReturn {
     connectionId: string,
     source: 'ai' | 'user',
     context?: { sessionId?: string | null; database?: string | null; schema?: string | null },
-  ) => Promise<SqlResult>
-  result: SqlResult | null
+  ) => Promise<SqlExecuteResponse>
+  result: SqlExecuteResponse | null
   risk: SqlRiskBlocked | null
   status: Status
   errorMessage: string | null
@@ -20,7 +20,7 @@ export interface UseSqlExecuteReturn {
 
 export function useSqlExecute(): UseSqlExecuteReturn {
   const [status, setStatus] = useState<Status>('idle')
-  const [result, setResult] = useState<SqlResult | null>(null)
+  const [result, setResult] = useState<SqlExecuteResponse | null>(null)
   const [risk, setRisk] = useState<SqlRiskBlocked | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 

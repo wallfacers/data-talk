@@ -41,11 +41,12 @@ describe('StageToolRow', () => {
     expect(useStageStore.getState().activeTabIdBySession.get('sess-1')).toBeNull()
   })
 
-  it('shows the other tools as coming soon and does not enable them', () => {
+  it('renders SQL as the only tool action', () => {
     render(<StageToolRow sessionId="sess-1" />)
 
-    expect(screen.getByRole('button', { name: 'ER 图设计器 即将支持' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: '报表 即将支持' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Dashboard 即将支持' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'SQL 编辑器' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /ER 图设计器/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /报表/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Dashboard/i })).toBeNull()
   })
 })

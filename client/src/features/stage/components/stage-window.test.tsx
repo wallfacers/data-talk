@@ -18,8 +18,8 @@ vi.mock('./stage-resource-browser', () => ({
   StageResourceBrowser: () => <div data-testid="stage-resource-browser">resource browser</div>,
 }))
 
-vi.mock('./query-editor-tab', () => ({
-  QueryEditorTab: () => <div data-testid="query-editor-tab">query editor tab</div>,
+vi.mock('./sql-workbench-tab', () => ({
+  SqlWorkbenchTab: () => <div data-testid="sql-workbench-tab">sql workbench tab</div>,
 }))
 
 vi.mock('../utils/open-or-focus-stage-tool-tab', () => ({
@@ -133,6 +133,15 @@ describe('StageWindow', () => {
     expect(screen.getByText('Stage', { selector: 'span' })).toBeTruthy()
   })
 
+  it('uses a stronger shell contrast for the right-side Stage window', () => {
+    const { container } = render(<StageWindow sessionId="s1" />)
+    const shell = container.firstElementChild as HTMLElement | null
+
+    expect(shell).toBeTruthy()
+    expect(shell?.className).toContain('border-border/70')
+    expect(shell?.className).toContain('bg-muted/20')
+  })
+
   it('点关闭触发 closeStage(sessionId)', () => {
     render(<StageWindow sessionId="s1" />)
     fireEvent.click(screen.getByLabelText('关闭'))
@@ -210,7 +219,7 @@ describe('StageWindow', () => {
     ['er_canvas', 'ER Canvas'],
     ['report', 'Report'],
     ['dashboard', 'Dashboard'],
-  ])('routes %s tabs through the shared placeholder scaffold', (type, title) => {
+  ])('does not render legacy %s tabs in Stage content', (type, title) => {
     useStageStore.setState({
       workspaceTabs: [
         { tabId: 'w1', type: type as 'er_canvas' | 'report' | 'dashboard', title, scope: 'workspace' as const, createdAt: 0, payload: {} },
@@ -222,9 +231,9 @@ describe('StageWindow', () => {
 
     render(<StageWindow sessionId="s1" />)
 
-    expect(screen.getByTestId('stage-placeholder-tab')).toBeTruthy()
-    expect(screen.getByTestId('stage-placeholder-tab')).toHaveTextContent(title)
-    expect(screen.queryByText('legacy child')).toBeNull()
+    expect(screen.queryByTestId('stage-placeholder-tab')).toBeNull()
+    expect(screen.queryByTestId('sql-workbench-tab')).toBeNull()
+    expect(screen.queryByText(title)).toBeTruthy()
   })
 
   it('renders workspace tab content inside a session stage when no session tab is active', () => {
@@ -240,23 +249,7 @@ describe('StageWindow', () => {
     render(<StageWindow sessionId="s1" />)
 
     expect(screen.getByText('Global SQL')).toBeTruthy()
-    expect(screen.getByTestId('query-editor-tab')).toBeTruthy()
-  })
-
-  it('surfaces unsupported tab types in the placeholder fallback', () => {
-    useStageStore.setState({
-      workspaceTabs: [
-        { tabId: 'u1', type: 'mystery_widget', title: 'Mystery', scope: 'workspace' as const, createdAt: 0, payload: {} },
-      ],
-      activeWorkspaceTabId: 'u1',
-      tabsBySession: new Map(),
-      activeTabIdBySession: new Map([['s1', null]]),
-    })
-
-    render(<StageWindow sessionId="s1" />)
-
-    expect(screen.getByText(/mystery_widget/)).toBeTruthy()
-    expect(screen.getByText('当前工作位尚未实现。')).toBeTruthy()
+    expect(screen.getByTestId('sql-workbench-tab')).toBeTruthy()
   })
 
   it('clears the session-scoped active tab when a workspace tab is focused from the shared tab bar', () => {

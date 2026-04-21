@@ -8,8 +8,23 @@ vi.mock('@/services/api/sql', async (importOriginal) => {
   return { ...actual, executeSql: vi.fn() }
 })
 
-const mockResult: sqlApi.SqlResult = {
-  columns: ['id'], rows: [[1]], rowCount: 1, executionMs: 10, truncated: false,
+const mockResult: sqlApi.SqlExecuteResponse = {
+  resolvedContext: null,
+  contextNotice: null,
+  results: [
+    {
+      resultId: 'r-1',
+      kind: 'result_set',
+      title: 'Result 1',
+      statementIndex: 0,
+      statementText: 'SELECT 1',
+      columns: ['id'],
+      rows: [[1]],
+      rowCount: 1,
+      executionMs: 10,
+      truncated: false,
+    },
+  ],
 }
 
 describe('useSqlExecute', () => {

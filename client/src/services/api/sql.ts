@@ -20,14 +20,25 @@ export interface ResolvedDataContext {
   selectedLevel: 'connection' | 'database' | 'schema'
 }
 
-export interface SqlResult {
+export interface SqlExecuteResultItem {
+  resultId: string
+  kind: 'result_set' | 'dml_summary' | 'error'
+  title: string
+  statementIndex: number
+  statementText: string
   columns: string[]
   rows: unknown[][]
   rowCount: number
   executionMs: number
   truncated: boolean
-  resolvedContext?: ResolvedDataContext | null
-  contextNotice?: string | null
+  affectedRows?: number | null
+  errorMessage?: string | null
+}
+
+export interface SqlExecuteResponse {
+  resolvedContext: ResolvedDataContext | null
+  contextNotice: string | null
+  results: SqlExecuteResultItem[]
 }
 
 export interface SqlRiskBlocked {
@@ -42,7 +53,9 @@ export class SqlRiskError extends Error {
   }
 }
 
-export async function executeSql(req: SqlExecuteRequest): Promise<SqlResult> {
+export type SqlResult = SqlExecuteResponse
+
+export async function executeSql(req: SqlExecuteRequest): Promise<SqlExecuteResponse> {
   const json: SqlExecuteRequest = { connectionId: req.connectionId, sql: req.sql, source: req.source }
   if (req.sessionId != null) json.sessionId = req.sessionId
   if (req.database != null) json.database = req.database
@@ -60,5 +73,5 @@ export async function executeSql(req: SqlExecuteRequest): Promise<SqlResult> {
     const err = await res.json().catch(() => ({ message: 'SQL execution failed' }))
     throw new Error((err as any).message ?? 'SQL execution failed')
   }
-  return res.json() as Promise<SqlResult>
+  return res.json() as Promise<SqlExecuteResponse>
 }

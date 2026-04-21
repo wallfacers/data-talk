@@ -2,6 +2,7 @@ package com.datatalk.adapter.controller;
 
 import com.datatalk.adapter.dto.SqlExecuteRequest;
 import com.datatalk.adapter.dto.SqlExecuteResult;
+import com.datatalk.adapter.dto.SqlExecuteResultItem;
 import com.datatalk.adapter.dto.SqlRiskBlockedDto;
 import com.datatalk.application.sql.SqlExecuteService;
 import org.springframework.http.ResponseEntity;
@@ -31,15 +32,27 @@ public class SqlExecuteController {
                 req.database(),
                 req.schema()
             );
+            var items = r.results().stream()
+                .map(item -> new SqlExecuteResultItem(
+                    item.resultId(),
+                    item.kind(),
+                    item.title(),
+                    item.statementIndex(),
+                    item.statementText(),
+                    item.columns(),
+                    item.rows(),
+                    item.rowCount(),
+                    item.executionMs(),
+                    item.truncated(),
+                    item.affectedRows(),
+                    item.errorMessage()
+                ))
+                .toList();
             return ResponseEntity.ok(
                 new SqlExecuteResult(
-                    r.columns(),
-                    r.rows(),
-                    r.rowCount(),
-                    r.executionMs(),
-                    r.truncated(),
                     r.resolvedContext(),
-                    r.contextNotice()
+                    r.contextNotice(),
+                    items
                 )
             );
         } catch (SqlExecuteService.SqlRiskBlockedException e) {

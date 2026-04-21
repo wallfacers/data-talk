@@ -209,6 +209,8 @@ DataTalk 的差异化在于 **AI 直接操作数据库**，但不能让 AI 蛮�
 
 | 设计文档 | 日期 | 主题 |
 |----------|------|------|
+| [PostgreSQL SQL Splitter Design](./2026-04-22-postgres-sql-splitter-design.md) | 2026-04-22 | 为 `/api/sql/execute` 的 PostgreSQL 多语句执行引入方言化 splitter：第一阶段以 PgJDBC 内部 `Parser` 作为 PostgreSQL 专用切分器，抽离 `SqlStatementSplitter` 边界，并为后续替换到 `libpg_query` 预留稳定接口 |
+| [Stage SQL Workbench Rebuild Design](./2026-04-21-stage-sql-workbench-rebuild-design.md) | 2026-04-21 | 已落地：Stage SQL 主线彻底重做，以 `open-db-studio` 的 SQL 工作台结构为参考，前端迁移 Monaco + 编辑器顶部工作区 + 结果集 Tab，后端把 `/api/sql/execute` 重构为多语句 / 多结果契约，并删除旧的非 SQL Stage 页面与旧单结果链路 |
 | [Chat Scroll Jitter Reduction Design](./2026-04-21-chat-scroll-jitter-reduction-design.md) | 2026-04-21 | 以“消息视觉与对齐零变化”为硬约束，优先通过单滚动容器、sticky composer 与节流 auto-follow 降低 AI 流式输出在靠近底部输入框时的抖动 |
 | [Stage Window SQL Workbench Design](./2026-04-21-stage-window-sql-workbench-design.md) | 2026-04-21 | 以 `shadcn/ui` 为硬约束，将 Stage 升级为多面板 SQL 工作台：布局参考原型但不复刻原型控件体系，`query_editor` 收敛为唯一 SQL 工作页，`bang_query` 退场，并同步更新资源目录 `AGENTS.md` 与 UI Object 协议文档 |
 | [Stage Window Layout Refactor Design](./2026-04-21-stage-window-layout-refactor-design.md) | 2026-04-21 | Stage 重构为左侧导航侧栏 + 右侧 Tabs 工作区的浏览器式工作台：顶部轻量工具行、下方连接资源浏览器、资源上下文驱动的工具打开规则，以及 Chrome-inspired 顶部页签，并移除底部 Dock |

@@ -15,20 +15,33 @@ import org.springframework.stereotype.Service;
 
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.UUID;
 
 @Service
 public class SqlExecuteService {
 
     public record Result(
+        ResolvedDataContextDto resolvedContext,
+        String contextNotice,
+        List<ResultItem> results
+    ) {}
+
+    public record ResultItem(
+        String resultId,
+        String kind,
+        String title,
+        int statementIndex,
+        String statementText,
         List<String> columns,
         List<List<Object>> rows,
         int rowCount,
         long executionMs,
         boolean truncated,
-        ResolvedDataContextDto resolvedContext,
-        String contextNotice
+        Integer affectedRows,
+        String errorMessage
     ) {}
 
     public record RiskBlocked(String riskLevel, String riskReason) {}
@@ -47,6 +60,7 @@ public class SqlExecuteService {
     private final ConnectionService connSvc;
     private final SessionDataContextService sessionDataContextService;
     private final TableContextAutoResolver tableContextAutoResolver;
+    private final SqlStatementSplitters sqlStatementSplitters;
     private final int maxRows;
 
     public SqlExecuteService(SqlRiskAnalyzer riskAnalyzer,
@@ -54,25 +68,34 @@ public class SqlExecuteService {
                              ConnectionService connSvc,
                              SessionDataContextService sessionDataContextService,
                              TableContextAutoResolver tableContextAutoResolver,
+                             SqlStatementSplitters sqlStatementSplitters,
                              @Value("${datatalk.sql.max-rows:5000}") int maxRows) {
         this.riskAnalyzer = riskAnalyzer;
         this.connRepo = connRepo;
         this.connSvc = connSvc;
         this.sessionDataContextService = sessionDataContextService;
         this.tableContextAutoResolver = tableContextAutoResolver;
+        this.sqlStatementSplitters = sqlStatementSplitters;
         this.maxRows = maxRows;
     }
 
     public Result execute(String connectionId, String sql, String source, String sessionId, String database, String schema) {
         if (sql == null || sql.isBlank())
             throw new IllegalArgumentException("sql required");
+        String normalizedSource = validateSource(source);
+
+        ResolvedExecutionContext requestedContext = resolveExecutionContext(sessionId, connectionId, database, schema);
+        List<String> statements = sqlStatementSplitters.split(requestedContext.connection().kind(), sql);
+        if (statements.isEmpty()) {
+            throw new IllegalArgumentException("sql required");
+        }
 
         ResolvedExecutionContext context = tableContextAutoResolver.resolve(
-            resolveExecutionContext(sessionId, connectionId, database, schema),
+            requestedContext,
             sql
         );
 
-        if ("user".equals(source)) {
+        if ("user".equals(normalizedSource)) {
             SqlRiskAnalysis risk = riskAnalyzer.analyze(sql, Category.QUERY);
             if (RiskLevel.L3.equals(risk.riskLevel())) {
                 throw new SqlRiskBlockedException(new RiskBlocked("HIGH", risk.reason()));
@@ -80,41 +103,98 @@ public class SqlExecuteService {
         }
 
         ConnectionRecord cr = context.connection();
-
-        long started = System.currentTimeMillis();
-        List<String> columns = new ArrayList<>();
-        List<List<Object>> rows = new ArrayList<>();
-        boolean truncated = false;
+        List<ResultItem> results = new ArrayList<>();
+        DmlSummaryAccumulator pendingDmlSummary = null;
 
         try (Connection c = DriverManager.getConnection(
                  JdbcUrlBuilder.build(withDatabase(cr, context.database())),
                  cr.username(),
                  connSvc.decryptPassword(cr.id()))) {
             applyExecutionContext(c, context);
-            try (PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setQueryTimeout(30);
-            try (ResultSet rs = ps.executeQuery()) {
-                ResultSetMetaData md = rs.getMetaData();
-                int colCount = md.getColumnCount();
-                for (int i = 1; i <= colCount; i++) columns.add(md.getColumnLabel(i));
-                while (rs.next()) {
-                    if (rows.size() >= maxRows) { truncated = true; break; }
-                    List<Object> row = new ArrayList<>(colCount);
-                    for (int i = 1; i <= colCount; i++) row.add(rs.getObject(i));
-                    rows.add(row);
+            c.setAutoCommit(false);
+            boolean failed = false;
+            try {
+                for (int i = 0; i < statements.size(); i++) {
+                    String statementText = statements.get(i);
+                    int statementIndex = i + 1;
+                    long started = System.currentTimeMillis();
+                    try (Statement stmt = c.createStatement()) {
+                        stmt.setQueryTimeout(30);
+                        boolean hasResultSet = stmt.execute(statementText);
+                        long executionMs = System.currentTimeMillis() - started;
+                        if (hasResultSet) {
+                            pendingDmlSummary = flushPendingDmlSummary(results, pendingDmlSummary);
+                            try (ResultSet rs = stmt.getResultSet()) {
+                                ResultSetData resultSetData = readResultSet(rs);
+                                results.add(new ResultItem(
+                                    nextResultId(),
+                                    "result_set",
+                                    "Result Set " + statementIndex,
+                                    statementIndex,
+                                    statementText,
+                                    resultSetData.columns(),
+                                    resultSetData.rows(),
+                                    resultSetData.rowCount(),
+                                    executionMs,
+                                    resultSetData.truncated(),
+                                    null,
+                                    null
+                                ));
+                            }
+                        } else {
+                            int affectedRows = Math.max(stmt.getUpdateCount(), 0);
+                            if (pendingDmlSummary == null) {
+                                pendingDmlSummary = new DmlSummaryAccumulator(
+                                    statementIndex,
+                                    statementIndex,
+                                    new ArrayList<>(List.of(statementText)),
+                                    affectedRows,
+                                    executionMs
+                                );
+                            } else {
+                                pendingDmlSummary.statementTexts().add(statementText);
+                                pendingDmlSummary = pendingDmlSummary.with(
+                                    statementIndex,
+                                    pendingDmlSummary.affectedRows() + affectedRows,
+                                    pendingDmlSummary.executionMs() + executionMs
+                                );
+                            }
+                        }
+                    } catch (SQLException e) {
+                        pendingDmlSummary = flushPendingDmlSummary(results, pendingDmlSummary);
+                        long executionMs = System.currentTimeMillis() - started;
+                        results.add(new ResultItem(
+                            nextResultId(),
+                            "error",
+                            "Error " + statementIndex,
+                            statementIndex,
+                            statementText,
+                            List.of(),
+                            List.of(),
+                            0,
+                            executionMs,
+                            false,
+                            null,
+                            sanitizeSqlErrorMessage(e)
+                        ));
+                        c.rollback();
+                        failed = true;
+                        break;
+                    }
                 }
-            }
+                if (!failed) {
+                    flushPendingDmlSummary(results, pendingDmlSummary);
+                    c.commit();
+                }
+            } catch (SQLException e) {
+                rollbackQuietly(c);
+                throw new RuntimeException("SQL execution failed", e);
             }
         } catch (SQLException e) {
-            throw new RuntimeException("SQL execution failed: " + e.getMessage(), e);
+            throw new RuntimeException("SQL execution failed", e);
         }
 
         return new Result(
-            columns,
-            rows,
-            rows.size(),
-            System.currentTimeMillis() - started,
-            truncated,
             new ResolvedDataContextDto(
                 context.connection().id(),
                 context.connection().name(),
@@ -122,8 +202,88 @@ public class SqlExecuteService {
                 context.schema(),
                 context.selectedLevel()
             ),
-            context.contextNotice()
+            context.contextNotice(),
+            results
         );
+    }
+
+    private ResultSetData readResultSet(ResultSet rs) throws SQLException {
+        ResultSetMetaData md = rs.getMetaData();
+        int colCount = md.getColumnCount();
+        List<String> columns = new ArrayList<>(colCount);
+        for (int i = 1; i <= colCount; i++) {
+            columns.add(md.getColumnLabel(i));
+        }
+        List<List<Object>> rows = new ArrayList<>();
+        boolean truncated = false;
+        while (rs.next()) {
+            if (rows.size() >= maxRows) {
+                truncated = true;
+                break;
+            }
+            List<Object> row = new ArrayList<>(colCount);
+            for (int i = 1; i <= colCount; i++) {
+                row.add(rs.getObject(i));
+            }
+            rows.add(row);
+        }
+        return new ResultSetData(columns, rows, rows.size(), truncated);
+    }
+
+    private DmlSummaryAccumulator flushPendingDmlSummary(
+        List<ResultItem> results,
+        DmlSummaryAccumulator pendingDmlSummary
+    ) {
+        if (pendingDmlSummary == null) {
+            return null;
+        }
+        String title = pendingDmlSummary.startIndex() == pendingDmlSummary.endIndex()
+            ? "DML Summary " + pendingDmlSummary.startIndex()
+            : "DML Summary " + pendingDmlSummary.startIndex() + "-" + pendingDmlSummary.endIndex();
+        results.add(new ResultItem(
+            nextResultId(),
+            "dml_summary",
+            title,
+            pendingDmlSummary.startIndex(),
+            String.join(";\n", pendingDmlSummary.statementTexts()),
+            Collections.emptyList(),
+            Collections.emptyList(),
+            pendingDmlSummary.affectedRows(),
+            pendingDmlSummary.executionMs(),
+            false,
+            pendingDmlSummary.affectedRows(),
+            null
+        ));
+        return null;
+    }
+
+    private static String nextResultId() {
+        return UUID.randomUUID().toString();
+    }
+
+    private static String validateSource(String source) {
+        if ("user".equals(source) || "ai".equals(source)) {
+            return source;
+        }
+        throw new IllegalArgumentException("source must be one of: user, ai");
+    }
+
+    private static void rollbackQuietly(Connection connection) {
+        try {
+            connection.rollback();
+        } catch (SQLException ignored) {
+            // Best effort rollback during error path.
+        }
+    }
+
+    private static String sanitizeSqlErrorMessage(SQLException e) {
+        String message = e.getMessage();
+        if (message == null || message.isBlank()) {
+            return "SQL execution failed";
+        }
+        int statementMarker = message.indexOf("; SQL statement:");
+        String sanitized = statementMarker >= 0 ? message.substring(0, statementMarker) : message;
+        return sanitized.trim();
     }
 
     private ResolvedExecutionContext resolveExecutionContext(
@@ -202,5 +362,24 @@ public class SqlExecuteService {
             }
         }
         return null;
+    }
+
+    private record ResultSetData(
+        List<String> columns,
+        List<List<Object>> rows,
+        int rowCount,
+        boolean truncated
+    ) {}
+
+    private record DmlSummaryAccumulator(
+        int startIndex,
+        int endIndex,
+        List<String> statementTexts,
+        int affectedRows,
+        long executionMs
+    ) {
+        private DmlSummaryAccumulator with(int endIndex, int affectedRows, long executionMs) {
+            return new DmlSummaryAccumulator(startIndex, endIndex, statementTexts, affectedRows, executionMs);
+        }
     }
 }

@@ -14,6 +14,8 @@
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [PostgreSQL SQL Splitter](./2026-04-22-postgres-sql-splitter-plan.md) | 2026-04-22 | `/api/sql/execute` 已接入方言化 SQL splitter：`SqlExecuteService` 改为依赖 `SqlStatementSplitters`，PostgreSQL 连接走 PgJDBC parser，其他方言走 generic splitter；splitter 单测全绿，`SqlExecuteControllerIT` 通过且 PostgreSQL procedural case 在无 Docker 环境下自动跳过。 |
+| [Stage SQL Workbench Rebuild](./2026-04-21-stage-sql-workbench-rebuild-plan.md) | 2026-04-21 | Stage SQL 主线已完成替换：前端迁移 Monaco + 编辑器工作区 + 结果集 Tab，后端将 `/api/sql/execute` 重构为多语句 / 多结果契约，并删除旧的非 SQL Stage 页面渲染路径。 |
 | [Stage Window SQL Workbench](./2026-04-21-stage-window-sql-workbench-plan.md) | 2026-04-21 | Stage 升级为基于 shadcn/ui 的多面板 SQL 工作台，`query_editor` 成为唯一 SQL 工作页，`bang_query` 页面 / adapter / helper 退场，`resources/agents/AGENTS.md` 与 UI Object 协议文档同步完成；相关 vitest 与 `npx tsc --noEmit` 通过。 |
 | [Session Data Context & AI Data Source Management](./2026-04-21-session-data-context-and-ai-datasource-management-plan.md) | 2026-04-21 | 建立 session 级 `connectionId + database + schema` 统一上下文，打通 `ResolvedExecutionContext`、`/api/query` / `/api/sql/execute` 自动表定位、前端 `!use/!select` / Query Editor / Bang Query 上下文继承、AI data-context / connection actions 以及连接更新后的 validate + 前端刷新；Batch E 追加修复旧 adapter IT 基线后，`cd server && mvn clean verify`、前端宽覆盖 vitest 与 `npx tsc --noEmit` 全部通过。 |
 | [Send Failure Draft Restore](./2026-04-21-send-failure-draft-restore-plan.md) | 2026-04-21 | 修复普通 AI 消息发送失败后只能靠刷新恢复输入的问题：`useChannel.sendMessage` 返回成功/失败，`PromptComposer` 与 `usePendingPromptResume` 在失败时立即回填 composer 文本；相关 vitest 与 `npx tsc --noEmit` 通过。 |
