@@ -66,7 +66,7 @@ describe('QueryEditorTab', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(useSqlExecuteModule.useSqlExecute).mockReturnValue({
-      execute: mockExecute, result: null, risk: null,
+      execute: mockExecute.mockResolvedValue(undefined as any), result: null, risk: null,
       status: 'idle', errorMessage: null, reset: mockReset,
     })
     vi.mocked(useChannelModule.useChannel).mockReturnValue({
@@ -96,7 +96,7 @@ describe('QueryEditorTab', () => {
 
   it('shows risk warning when risk_blocked', () => {
     vi.mocked(useSqlExecuteModule.useSqlExecute).mockReturnValue({
-      execute: mockExecute, result: null,
+      execute: mockExecute.mockResolvedValue(undefined as any), result: null,
       risk: { riskLevel: 'HIGH', riskReason: 'bulk_delete' },
       status: 'risk_blocked', errorMessage: null, reset: mockReset,
     })
@@ -107,7 +107,7 @@ describe('QueryEditorTab', () => {
 
   it('sends message to AI on risk warning click', () => {
     vi.mocked(useSqlExecuteModule.useSqlExecute).mockReturnValue({
-      execute: mockExecute, result: null,
+      execute: mockExecute.mockResolvedValue(undefined as any), result: null,
       risk: { riskLevel: 'HIGH', riskReason: 'bulk_delete' },
       status: 'risk_blocked', errorMessage: null, reset: mockReset,
     })

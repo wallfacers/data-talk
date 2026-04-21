@@ -1,10 +1,20 @@
 import { http } from '@/services/http'
 
+export type ResolvedDataContext = {
+  connectionId: string
+  connectionName: string
+  database: string | null
+  schema: string | null
+  selectedLevel: 'connection' | 'database' | 'schema'
+}
+
 export type QueryResult = {
   columns: string[]
   rows: Array<Record<string, unknown>>
   durationMs: number
   rowCount: number
+  resolvedContext?: ResolvedDataContext | null
+  contextNotice?: string | null
 }
 
 export type ExecuteQueryInput = {

@@ -61,6 +61,7 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
         })
       }
       qc.invalidateQueries({ queryKey: connectionsKey })
+      qc.invalidateQueries({ queryKey: ['session-data-context'] })
       onSaved()
     },
     onSuccess: () => toast.success(editing ? t('dataSources.updated') : t('dataSources.created')),

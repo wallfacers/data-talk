@@ -19,6 +19,7 @@ interface BangPayload {
   sql: string
   rows?: Array<Record<string, unknown>>
   lastRun?: { columns: string[]; rowCount: number; durationMs: number; truncated: boolean }
+  contextNotice?: string | null
 }
 
 export class BangQueryAdapter implements UIObject {
@@ -112,8 +113,22 @@ export class BangQueryAdapter implements UIObject {
         store.updateTabPayload(this.objectId, () => ({
           sql: payload.sql,
           rows: result.rows,
+          contextNotice: result.contextNotice ?? null,
           lastRun: { columns: result.columns, rowCount: result.rowCount, durationMs: result.durationMs, truncated: result.rows.length < result.rowCount },
         }))
+        useStageStore.setState((s) => {
+          const i = s.workspaceTabs.findIndex((t) => t.tabId === this.objectId)
+          if (i < 0) return s
+          const next = [...s.workspaceTabs]
+          next[i] = {
+            ...next[i],
+            connectionId: result.resolvedContext?.connectionId ?? next[i].connectionId,
+            connectionName: result.resolvedContext?.connectionName ?? next[i].connectionName,
+            database: result.resolvedContext?.database ?? next[i].database,
+            schema: result.resolvedContext?.schema ?? next[i].schema,
+          }
+          return { workspaceTabs: next }
+        })
         return { success: true, data: { rowCount: result.rowCount, durationMs: result.durationMs } }
       }
       case 'focus': store.focusTab(this.objectId); return { success: true }

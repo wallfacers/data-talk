@@ -32,7 +32,15 @@ public class SqlExecuteController {
                 req.schema()
             );
             return ResponseEntity.ok(
-                new SqlExecuteResult(r.columns(), r.rows(), r.rowCount(), r.executionMs(), r.truncated())
+                new SqlExecuteResult(
+                    r.columns(),
+                    r.rows(),
+                    r.rowCount(),
+                    r.executionMs(),
+                    r.truncated(),
+                    r.resolvedContext(),
+                    r.contextNotice()
+                )
             );
         } catch (SqlExecuteService.SqlRiskBlockedException e) {
             return ResponseEntity.unprocessableEntity()

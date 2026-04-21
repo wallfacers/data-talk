@@ -2,10 +2,23 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { openBangQueryTab } from '../open-bang-query-tab'
 import { useConnectionStore } from '@/features/connection/store'
 import { useStageStore } from '@/stores/stage-store'
+import { useSessionStore } from '@/stores/session-store'
+import { executeQuery } from '@/services/api/query'
 
 vi.mock('@/services/api/query', () => ({
-  executeQuery: vi.fn(async (input: { sql: string }) => ({
-    columns: ['c'], rows: [{ c: input.sql.length }], durationMs: 5, rowCount: 1,
+  executeQuery: vi.fn(async () => ({
+    columns: ['c'],
+    rows: [{ c: 1 }],
+    durationMs: 5,
+    rowCount: 1,
+    resolvedContext: {
+      connectionId: 'c1',
+      connectionName: 'orders-prod',
+      database: 'analytics',
+      schema: 'reporting',
+      selectedLevel: 'schema',
+    },
+    contextNotice: '已自动使用 reporting schema',
   })),
 }))
 
@@ -27,6 +40,18 @@ describe('openBangQueryTab', () => {
         lastTestAt: 1,
       }],
     })
+    useSessionStore.setState({
+      activeSessionId: 's1',
+      dataContextBySession: new Map([['s1', {
+        sessionId: 's1',
+        connectionId: 'c1',
+        connectionNameSnapshot: 'orders-prod',
+        database: null,
+        schema: null,
+        selectedLevel: 'connection',
+        updatedAt: 1,
+      }]]),
+    } as any)
     useStageStore.setState({
       workspaceTabs: [],
       tabsBySession: new Map(),
@@ -37,14 +62,23 @@ describe('openBangQueryTab', () => {
     } as unknown as Record<string, unknown>)
   })
 
-  it('creates a bang_query tab on success and opens stage', async () => {
+  it('passes session context to query execution and persists resolved context on tab', async () => {
     await openBangQueryTab({ sessionId: 's1', connectionId: 'c1', sql: 'SELECT 1' })
+
+    expect(executeQuery).toHaveBeenCalledWith({
+      connectionId: 'c1',
+      sql: 'SELECT 1',
+      sessionId: 's1',
+      database: null,
+      schema: null,
+    })
+
     const tabs = useStageStore.getState().workspaceTabs
     expect(tabs).toHaveLength(1)
-    expect(tabs[0].type).toBe('bang_query')
     expect(tabs[0].connectionId).toBe('c1')
-    expect(tabs[0].connectionName).toBe('orders-prod')
-    expect(useStageStore.getState().openBySession.get('s1')).toBe(true)
+    expect(tabs[0].database).toBe('analytics')
+    expect(tabs[0].schema).toBe('reporting')
+    expect((tabs[0].payload as any).contextNotice).toBe('已自动使用 reporting schema')
   })
 
   it('throws when no connectionId provided', async () => {

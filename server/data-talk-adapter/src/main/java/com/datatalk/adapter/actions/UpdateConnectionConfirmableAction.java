@@ -1,6 +1,7 @@
 package com.datatalk.adapter.actions;
 
 import com.datatalk.application.connection.ConnectionService;
+import com.datatalk.application.connection.ConnectionContextRefreshService;
 import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.session.SessionDataContextService;
@@ -36,15 +37,18 @@ import java.util.concurrent.CompletionStage;
 public class UpdateConnectionConfirmableAction implements ActionHandler<Map, Map> {
 
     private final ConnectionService connections;
+    private final ConnectionContextRefreshService contextRefreshService;
     private final ConnectionRepository connectionRepo;
     private final SessionDataContextService sessionContexts;
 
     public UpdateConnectionConfirmableAction(
         ConnectionService connections,
+        ConnectionContextRefreshService contextRefreshService,
         ConnectionRepository connectionRepo,
         SessionDataContextService sessionContexts
     ) {
         this.connections = connections;
+        this.contextRefreshService = contextRefreshService;
         this.connectionRepo = connectionRepo;
         this.sessionContexts = sessionContexts;
     }
@@ -133,6 +137,7 @@ public class UpdateConnectionConfirmableAction implements ActionHandler<Map, Map
             nullableString(input, "password"),
             nullableInteger(input, "connectTimeout")
         );
+        contextRefreshService.refreshByConnectionId(connectionId);
 
         ConnectionDto connection = connections.get(connectionId);
         SessionDataContextDto dataContext = refreshCurrentSessionIfNeeded(ctx.sessionId(), connectionId);

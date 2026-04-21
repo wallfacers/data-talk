@@ -3,6 +3,7 @@ package com.datatalk.service;
 import com.datatalk.application.connection.ConnectionService;
 import com.datatalk.application.persistence.SessionDataContextRecord;
 import com.datatalk.application.sql.SqlStatementGuard;
+import com.datatalk.application.sql.TableContextAutoResolver;
 import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.session.SessionDataContextService;
@@ -22,6 +23,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
@@ -38,6 +40,7 @@ class QueryApplicationServiceTest {
     private SessionDataContextService sessionDataContextService;
     private SqlExecutionRepository sqlExecutionRepository;
     private SqlStatementGuard statementGuard;
+    private TableContextAutoResolver tableContextAutoResolver;
     private QueryApplicationService service;
 
     @BeforeEach
@@ -47,12 +50,15 @@ class QueryApplicationServiceTest {
         sessionDataContextService = mock(SessionDataContextService.class);
         sqlExecutionRepository = mock(SqlExecutionRepository.class);
         statementGuard = spy(new SqlStatementGuard());
+        tableContextAutoResolver = mock(TableContextAutoResolver.class);
+        when(tableContextAutoResolver.resolve(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
         service = new QueryApplicationService(
             connectionRepository,
             connectionService,
             sessionDataContextService,
             sqlExecutionRepository,
-            statementGuard
+            statementGuard,
+            tableContextAutoResolver
         );
     }
 

@@ -228,7 +228,7 @@
   - `SqlExecuteService` 支持 context override
   - `ReadSchemaAction` 在 PG 下返回 schema 感知的元数据
   - `ExecuteSqlAction` 在 session context 存在时使用解析后的上下文
-- [ ] **Step 2.9: 补自动表定位与提示**
+- [x] **Step 2.9: 补自动表定位与提示**
   - `select * from users` 在缺 schema/database 时先轻量探测
   - 唯一命中则自动补全并执行
   - 多命中则返回明确建议，不盲猜
@@ -262,32 +262,32 @@
 
 **Intent:** 让 Composer 的 `! use` / `! select` 和 Stage Query Editor/Bang Query 全部走同一套 session context API；Stage tab 允许临时 override，但不回写 session。
 
-- [ ] **Step 3.1: 写失败测试 — `prompt-composer` 输入 `! use aaa` 时调用 `resolve-use`**
-- [ ] **Step 3.2: 实现 `session-data-context.ts` 与 `use-session-data-context.ts`**
+- [x] **Step 3.1: 写失败测试 — `prompt-composer` 输入 `! use aaa` 时调用 `resolve-use`**
+- [x] **Step 3.2: 实现 `session-data-context.ts` 与 `use-session-data-context.ts`**
   - `getSessionDataContext`
   - `setSessionDataContext`
   - `resolveUseTarget`
   - `validateSessionDataContext`
-- [ ] **Step 3.3: 在 `prompt-composer.tsx` 接入 `! use xxx`**
+- [x] **Step 3.3: 在 `prompt-composer.tsx` 接入 `! use xxx`**
   - 有 active session 时直接 resolve + set
   - 无 active session 时先创建 / 复用 session，再落 context
   - `not_found` / `ambiguous` 走明确提示，不 silent fail
-- [ ] **Step 3.4: 改 `! select` / `! with` 直查路径**
+- [x] **Step 3.4: 改 `! select` / `! with` 直查路径**
   - 请求体带 `sessionId`
   - 若 server 自动补全了 schema/database，则将最新 context 回写到 query result tab 快照或 session cache
-- [ ] **Step 3.5: 为 Stage Query Editor 引入上下文继承**
+- [x] **Step 3.5: 为 Stage Query Editor 引入上下文继承**
   - 新开 tab 默认继承 session context
   - tab payload 支持 `database/schema` override
   - 执行时优先使用 tab override
-- [ ] **Step 3.6: 为 Bang Query 展示更完整上下文**
+- [x] **Step 3.6: 为 Bang Query 展示更完整上下文**
   - badge / 状态区域显示 connection + database/schema
   - rerun 继续走 tab snapshot，不读当前全局连接
-- [ ] **Step 3.7: 写失败测试 — Stage override 不污染 session**
-- [ ] **Step 3.8: 实现 `resolve-tab-data-context.ts` 并接入 Query Editor / Bang Query**
-- [ ] **Step 3.9: 运行前端专项验证**
-  - `cd client && npx vitest run src/features/session/__tests__/prompt-composer.test.tsx src/features/session/hooks src/features/stage/components/query-editor-tab.test.tsx src/features/stage/utils`
-- [ ] **Step 3.10: 运行前端类型检查**
-  - `cd client && npx tsc --noEmit`
+- [x] **Step 3.7: 写失败测试 — Stage override 不污染 session**
+- [x] **Step 3.8: 实现 `resolve-tab-data-context.ts` 并接入 Query Editor / Bang Query**
+- [x] **Step 3.9: 运行前端专项验证**
+  - 2026-04-21：`cd client && npx vitest run src/features/stage/utils/__tests__/open-bang-query-tab.test.ts src/features/stage/hooks/use-sql-execute.test.ts src/features/stage/components/query-editor-tab.test.tsx src/features/stage/components/bang-query-tab.test.tsx src/features/session/__tests__/prompt-composer.test.tsx src/features/settings/data-sources/__tests__/data-sources-page.test.tsx src/features/actions/__tests__/ui-handlers.test.ts src/features/stage/adapters/__tests__/WorkspaceAdapter.test.ts`
+- [x] **Step 3.10: 运行前端类型检查**
+  - 2026-04-21：`cd client && npx tsc --noEmit`
 
 ---
 
@@ -309,30 +309,30 @@
 
 **Intent:** 给 AI 明确的“读 / 设 / 解析数据上下文”工具，不再只靠 `choose_connection`。`AGENTS.md` 要把 `use xxx` 的行为规则写死，保证 AI 不会口头切换但没调工具。
 
-- [ ] **Step 4.1: 写失败测试 — `resolve_use_target` / `get_data_context` / `set_data_context` action 可被发现并执行**
-- [ ] **Step 4.2: 实现数据上下文 actions**
+- [x] **Step 4.1: 写失败测试 — `resolve_use_target` / `get_data_context` / `set_data_context` action 可被发现并执行**
+- [x] **Step 4.2: 实现数据上下文 actions**
   - action id 以 `datatalk.*` 命名
   - 复用 Batch A 服务，不在 action 中重复业务逻辑
-- [ ] **Step 4.3: 实现 `list_connection_targets`**
+- [x] **Step 4.3: 实现 `list_connection_targets`**
   - 返回当前连接可见 databases / schemas
   - 供 AI 在未命中时组织建议
-- [ ] **Step 4.4: 更新 `AGENTS.md`**
+- [x] **Step 4.4: 更新 `AGENTS.md`**
   - 用户说 `use xxx` 时先 `resolve_use_target`
   - `matched` 后再 `set_data_context`
   - `ambiguous/not_found` 时澄清或建议
   - 不允许“假装已切换”
-- [ ] **Step 4.5: 评估 `WorkspaceAdapter` 是否需要新增 `choose_data_context`**
+- [x] **Step 4.5: 评估 `WorkspaceAdapter` 是否需要新增 `choose_data_context`**
   - 如果 `choose_connection` 足够，本期只更新 docs 与测试
   - 如果前端确需补全 database/schema 选择弹框，再加新 action，但避免与 Batch B 冲突
-- [ ] **Step 4.6: 更新 UI 协议文档**
+- [x] **Step 4.6: 更新 UI 协议文档**
   - `docs/references/ui-objects-reference.md`
   - 若新增 action，同步更新描述
-- [ ] **Step 4.7: 运行后端 / 前端专项验证**
-  - `cd server && mvn test -q -pl data-talk-adapter -Dtest=SessionDataContextActionsIT`
-  - `cd client && npx vitest run src/features/actions/__tests__/ui-handlers.test.ts src/features/stage/adapters/__tests__/WorkspaceAdapter.test.ts`
-- [ ] **Step 4.8: 运行编译与类型检查**
-  - `cd server && mvn compile -q`
-  - `cd client && npx tsc --noEmit`
+- [x] **Step 4.7: 运行后端 / 前端专项验证**
+  - 2026-04-21：`export JAVA_HOME=/home/wushengzhou/.local/opt/java21 && export PATH="$JAVA_HOME/bin:$PATH" && cd server && mvn -q -pl data-talk-application,data-talk-adapter -am test -Dtest=TableContextAutoResolverTest,QueryApplicationServiceTest,SqlExecuteControllerIT,ConnectionControllerIT,ConnectionManagementActionsIT,SessionDataContextActionsIT -Dsurefire.failIfNoSpecifiedTests=false`
+  - 2026-04-21：`cd client && npx vitest run src/features/stage/utils/__tests__/open-bang-query-tab.test.ts src/features/stage/hooks/use-sql-execute.test.ts src/features/stage/components/query-editor-tab.test.tsx src/features/stage/components/bang-query-tab.test.tsx src/features/session/__tests__/prompt-composer.test.tsx src/features/settings/data-sources/__tests__/data-sources-page.test.tsx src/features/actions/__tests__/ui-handlers.test.ts src/features/stage/adapters/__tests__/WorkspaceAdapter.test.ts`
+- [x] **Step 4.8: 运行编译与类型检查**
+  - 2026-04-21：`export JAVA_HOME=/home/wushengzhou/.local/opt/java21 && export PATH="$JAVA_HOME/bin:$PATH" && cd server && mvn -q compile`
+  - 2026-04-21：`cd client && npx tsc --noEmit`
 
 ---
 
@@ -357,28 +357,28 @@
 
 **Intent:** 让 AI 具备新增、测试、选择、修改连接的能力，同时把“连接修改后 session context 失效怎么办”这件事收束到 `validate + refresh` 机制。删除连接不给 AI。
 
-- [ ] **Step 5.1: 写失败测试 — AI action 可创建 / 测试 / 选择连接，但没有 delete**
-- [ ] **Step 5.2: 实现 create/test/select actions**
+- [x] **Step 5.1: 写失败测试 — AI action 可创建 / 测试 / 选择连接，但没有 delete**
+- [x] **Step 5.2: 实现 create/test/select actions**
   - 直接复用 `ConnectionService`
   - `select_connection` 只更新 session data context 的 `connectionId` 与 snapshot
-- [ ] **Step 5.3: 设计并实现 `UpdateConnectionConfirmableAction`**
+- [x] **Step 5.3: 设计并实现 `UpdateConnectionConfirmableAction`**
   - 第一次调用返回 `confirm_required`
   - 第二次带 `confirm=true` 或 `confirmationToken` 才真正提交
   - 失败时不得部分落库
-- [ ] **Step 5.4: 写失败测试 — 连接修改后 validate 清空失效 `database/schema`**
-- [ ] **Step 5.5: 在连接更新成功后触发**
+- [x] **Step 5.4: 写失败测试 — 连接修改后 validate 清空失效 `database/schema`**
+- [x] **Step 5.5: 在连接更新成功后触发**
   - 后端 context validate
   - 前端连接列表刷新
   - 当前 session / Stage tab 展示名称刷新
-- [ ] **Step 5.6: 前端设置页与 session 消费层补刷新**
+- [x] **Step 5.6: 前端设置页与 session 消费层补刷新**
   - AI 或手动修改连接后，若当前 session 正在使用该连接，主动 refetch data context
   - 若 `database/schema` 失效，展示明确提示
-- [ ] **Step 5.7: 运行专项验证**
-  - `cd server && mvn test -q -pl data-talk-application,data-talk-adapter -Dtest=ConnectionServiceTest,ConnectionManagementActionsIT,ConnectionControllerIT,SessionDataContextControllerIT`
-  - `cd client && npx vitest run src/features/settings/data-sources`
-- [ ] **Step 5.8: 运行编译与类型检查**
-  - `cd server && mvn compile -q`
-  - `cd client && npx tsc --noEmit`
+- [x] **Step 5.7: 运行专项验证**
+  - 2026-04-21：`export JAVA_HOME=/home/wushengzhou/.local/opt/java21 && export PATH="$JAVA_HOME/bin:$PATH" && cd server && mvn -q -pl data-talk-application,data-talk-adapter -am test -Dtest=TableContextAutoResolverTest,QueryApplicationServiceTest,SqlExecuteControllerIT,ConnectionControllerIT,ConnectionManagementActionsIT,SessionDataContextActionsIT -Dsurefire.failIfNoSpecifiedTests=false`
+  - 2026-04-21：`cd client && npx vitest run src/features/stage/utils/__tests__/open-bang-query-tab.test.ts src/features/stage/hooks/use-sql-execute.test.ts src/features/stage/components/query-editor-tab.test.tsx src/features/stage/components/bang-query-tab.test.tsx src/features/session/__tests__/prompt-composer.test.tsx src/features/settings/data-sources/__tests__/data-sources-page.test.tsx src/features/actions/__tests__/ui-handlers.test.ts src/features/stage/adapters/__tests__/WorkspaceAdapter.test.ts`
+- [x] **Step 5.8: 运行编译与类型检查**
+  - 2026-04-21：`export JAVA_HOME=/home/wushengzhou/.local/opt/java21 && export PATH="$JAVA_HOME/bin:$PATH" && cd server && mvn -q compile`
+  - 2026-04-21：`cd client && npx tsc --noEmit`
 
 ---
 

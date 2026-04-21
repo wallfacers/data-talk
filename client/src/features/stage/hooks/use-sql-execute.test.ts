@@ -36,7 +36,9 @@ describe('useSqlExecute', () => {
       new sqlApi.SqlRiskError({ riskLevel: 'HIGH', riskReason: 'bulk_delete' })
     )
     const { result } = renderHook(() => useSqlExecute())
-    await act(async () => { await result.current.execute('DELETE FROM orders', 'c-1', 'user') })
+    await act(async () => {
+      await expect(result.current.execute('DELETE FROM orders', 'c-1', 'user')).rejects.toBeInstanceOf(sqlApi.SqlRiskError)
+    })
     expect(result.current.status).toBe('risk_blocked')
     expect(result.current.risk).toEqual({ riskLevel: 'HIGH', riskReason: 'bulk_delete' })
     expect(result.current.result).toBeNull()
@@ -45,7 +47,9 @@ describe('useSqlExecute', () => {
   it('network error: sets error status', async () => {
     vi.mocked(sqlApi.executeSql).mockRejectedValue(new Error('network'))
     const { result } = renderHook(() => useSqlExecute())
-    await act(async () => { await result.current.execute('SELECT 1', 'c-1', 'user') })
+    await act(async () => {
+      await expect(result.current.execute('SELECT 1', 'c-1', 'user')).rejects.toThrow('network')
+    })
     expect(result.current.status).toBe('error')
     expect(result.current.errorMessage).toBe('network')
   })

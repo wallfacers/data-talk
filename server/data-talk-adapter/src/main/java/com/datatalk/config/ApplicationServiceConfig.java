@@ -4,6 +4,7 @@ import com.datatalk.application.connection.ConnectionService;
 import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.session.SessionDataContextService;
 import com.datatalk.application.sql.SqlStatementGuard;
+import com.datatalk.application.sql.TableContextAutoResolver;
 import com.datatalk.repository.SqlExecutionRepository;
 import com.datatalk.service.QueryApplicationService;
 import org.springframework.context.annotation.Bean;
@@ -18,13 +19,15 @@ public class ApplicationServiceConfig {
             ConnectionService connectionService,
             SessionDataContextService sessionDataContextService,
             SqlExecutionRepository sqlExecutionRepository,
-            SqlStatementGuard statementGuard) {
+            SqlStatementGuard statementGuard,
+            TableContextAutoResolver tableContextAutoResolver) {
         return new QueryApplicationService(
             connectionRepository,
             connectionService,
             sessionDataContextService,
             sqlExecutionRepository,
-            statementGuard
+            statementGuard,
+            tableContextAutoResolver
         );
     }
 }

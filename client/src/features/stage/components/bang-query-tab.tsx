@@ -17,6 +17,7 @@ interface BangPayload {
   connectionName?: string
   database?: string
   schema?: string
+  contextNotice?: string | null
 }
 
 export function BangQueryTab({ tabId }: { tabId: string }) {
@@ -81,6 +82,9 @@ export function BangQueryTab({ tabId }: { tabId: string }) {
         )}
         {contextDetails && (
           <span className="whitespace-nowrap text-muted-foreground">{contextDetails}</span>
+        )}
+        {payload.contextNotice && (
+          <span className="whitespace-nowrap text-amber-600 dark:text-amber-400">{payload.contextNotice}</span>
         )}
         {tab.connectionId && (
           <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px]" onClick={onUseThisSource}>

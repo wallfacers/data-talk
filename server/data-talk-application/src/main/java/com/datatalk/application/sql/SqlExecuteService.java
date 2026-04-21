@@ -9,6 +9,7 @@ import com.datatalk.application.session.ResolvedExecutionContext;
 import com.datatalk.application.session.SessionDataContextService;
 import com.datatalk.domain.action.Category;
 import com.datatalk.domain.action.RiskLevel;
+import com.datatalk.dto.ResolvedDataContextDto;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -25,7 +26,9 @@ public class SqlExecuteService {
         List<List<Object>> rows,
         int rowCount,
         long executionMs,
-        boolean truncated
+        boolean truncated,
+        ResolvedDataContextDto resolvedContext,
+        String contextNotice
     ) {}
 
     public record RiskBlocked(String riskLevel, String riskReason) {}
@@ -43,17 +46,20 @@ public class SqlExecuteService {
     private final ConnectionRepository connRepo;
     private final ConnectionService connSvc;
     private final SessionDataContextService sessionDataContextService;
+    private final TableContextAutoResolver tableContextAutoResolver;
     private final int maxRows;
 
     public SqlExecuteService(SqlRiskAnalyzer riskAnalyzer,
                              ConnectionRepository connRepo,
                              ConnectionService connSvc,
                              SessionDataContextService sessionDataContextService,
+                             TableContextAutoResolver tableContextAutoResolver,
                              @Value("${datatalk.sql.max-rows:5000}") int maxRows) {
         this.riskAnalyzer = riskAnalyzer;
         this.connRepo = connRepo;
         this.connSvc = connSvc;
         this.sessionDataContextService = sessionDataContextService;
+        this.tableContextAutoResolver = tableContextAutoResolver;
         this.maxRows = maxRows;
     }
 
@@ -61,7 +67,10 @@ public class SqlExecuteService {
         if (sql == null || sql.isBlank())
             throw new IllegalArgumentException("sql required");
 
-        ResolvedExecutionContext context = resolveExecutionContext(sessionId, connectionId, database, schema);
+        ResolvedExecutionContext context = tableContextAutoResolver.resolve(
+            resolveExecutionContext(sessionId, connectionId, database, schema),
+            sql
+        );
 
         if ("user".equals(source)) {
             SqlRiskAnalysis risk = riskAnalyzer.analyze(sql, Category.QUERY);
@@ -80,9 +89,9 @@ public class SqlExecuteService {
         try (Connection c = DriverManager.getConnection(
                  JdbcUrlBuilder.build(withDatabase(cr, context.database())),
                  cr.username(),
-                 connSvc.decryptPassword(cr.id()));
-             PreparedStatement ps = c.prepareStatement(sql)) {
+                 connSvc.decryptPassword(cr.id()))) {
             applyExecutionContext(c, context);
+            try (PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setQueryTimeout(30);
             try (ResultSet rs = ps.executeQuery()) {
                 ResultSetMetaData md = rs.getMetaData();
@@ -95,11 +104,26 @@ public class SqlExecuteService {
                     rows.add(row);
                 }
             }
+            }
         } catch (SQLException e) {
             throw new RuntimeException("SQL execution failed: " + e.getMessage(), e);
         }
 
-        return new Result(columns, rows, rows.size(), System.currentTimeMillis() - started, truncated);
+        return new Result(
+            columns,
+            rows,
+            rows.size(),
+            System.currentTimeMillis() - started,
+            truncated,
+            new ResolvedDataContextDto(
+                context.connection().id(),
+                context.connection().name(),
+                context.database(),
+                context.schema(),
+                context.selectedLevel()
+            ),
+            context.contextNotice()
+        );
     }
 
     private ResolvedExecutionContext resolveExecutionContext(

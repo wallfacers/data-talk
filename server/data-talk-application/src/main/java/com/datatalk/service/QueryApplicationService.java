@@ -7,8 +7,10 @@ import com.datatalk.application.persistence.SessionDataContextRecord;
 import com.datatalk.application.session.ResolvedExecutionContext;
 import com.datatalk.application.session.SessionDataContextService;
 import com.datatalk.application.sql.SqlStatementGuard;
+import com.datatalk.application.sql.TableContextAutoResolver;
 import com.datatalk.command.ExecuteSqlCommand;
 import com.datatalk.dto.QueryResponseDto;
+import com.datatalk.dto.ResolvedDataContextDto;
 import com.datatalk.entity.DbConnection;
 import com.datatalk.entity.DbType;
 import com.datatalk.exception.ConnectionNotFoundException;
@@ -28,17 +30,20 @@ public class QueryApplicationService {
     private final SessionDataContextService sessionDataContextService;
     private final SqlExecutionRepository sqlExecutionRepository;
     private final SqlStatementGuard statementGuard;
+    private final TableContextAutoResolver tableContextAutoResolver;
 
     public QueryApplicationService(ConnectionRepository connectionRepository,
                                    ConnectionService connectionService,
                                    SessionDataContextService sessionDataContextService,
                                    SqlExecutionRepository sqlExecutionRepository,
-                                   SqlStatementGuard statementGuard) {
+                                   SqlStatementGuard statementGuard,
+                                   TableContextAutoResolver tableContextAutoResolver) {
         this.connectionRepository = connectionRepository;
         this.connectionService = connectionService;
         this.sessionDataContextService = sessionDataContextService;
         this.sqlExecutionRepository = sqlExecutionRepository;
         this.statementGuard = statementGuard;
+        this.tableContextAutoResolver = tableContextAutoResolver;
     }
 
     /**
@@ -46,7 +51,7 @@ public class QueryApplicationService {
      */
     public QueryResponseDto executeQuery(ExecuteSqlCommand command) {
         statementGuard.assertSelectOnly(command.sql());
-        ResolvedExecutionContext context = resolveExecutionContext(command);
+        ResolvedExecutionContext context = tableContextAutoResolver.resolve(resolveExecutionContext(command), command.sql());
         DbConnection connection = toDbConnection(context.connection(), context.database());
 
         QueryResult result = sqlExecutionRepository.execute(connection, command.sql(), context.schema());
@@ -55,7 +60,9 @@ public class QueryApplicationService {
                 result.columns(),
                 result.rows(),
                 result.durationMs(),
-                result.rowCount()
+                result.rowCount(),
+                toResolvedContextDto(context),
+                context.contextNotice()
         );
     }
 
@@ -125,5 +132,15 @@ public class QueryApplicationService {
             case "oracle" -> DbType.ORACLE;
             default -> throw new IllegalArgumentException("Unsupported database kind: " + kind);
         };
+    }
+
+    private static ResolvedDataContextDto toResolvedContextDto(ResolvedExecutionContext context) {
+        return new ResolvedDataContextDto(
+            context.connection().id(),
+            context.connection().name(),
+            context.database(),
+            context.schema(),
+            context.selectedLevel()
+        );
     }
 }

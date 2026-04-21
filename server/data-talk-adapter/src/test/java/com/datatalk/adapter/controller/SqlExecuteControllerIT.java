@@ -45,7 +45,7 @@ class SqlExecuteControllerIT {
         // Seed test table in the H2 in-memory database
         try (var c = DriverManager.getConnection("jdbc:h2:mem:sqlit;DB_CLOSE_DELAY=-1", "sa", "");
              var st = c.createStatement()) {
-            st.execute("DROP TABLE IF EXISTS items");
+            st.execute("DROP ALL OBJECTS");
             st.execute("CREATE TABLE items(id INT, name VARCHAR(50))");
             st.execute("INSERT INTO items VALUES(1,'a'),(2,'b'),(3,'c'),(4,'d')");
         }
@@ -84,6 +84,40 @@ class SqlExecuteControllerIT {
             .andExpect(jsonPath("$.columns", hasItems("ID", "NAME")))
             .andExpect(jsonPath("$.rowCount", is(3)))
             .andExpect(jsonPath("$.truncated", is(true)));  // max-rows=3, table has 4 rows
+    }
+
+    @Test
+    void execute_auto_locates_missing_schema_and_returns_resolved_context() throws Exception {
+        try (var c = DriverManager.getConnection("jdbc:h2:mem:sqlit;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false", "sa", "");
+             var st = c.createStatement()) {
+            st.execute("DROP ALL OBJECTS");
+            st.execute("CREATE SCHEMA reporting");
+            st.execute("CREATE TABLE reporting.items(id INT, name VARCHAR(50))");
+            st.execute("INSERT INTO reporting.items VALUES(1,'a'),(2,'b'),(3,'c'),(4,'d')");
+        }
+        connRepo.deleteAll();
+        connRepo.insert(new ConnectionRecord(CONN_ID, "IT DB", "h2",
+            "localhost", 0, "mem:sqlit;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false", "sa", vault.seal(""),
+            null, System.currentTimeMillis(), 10, null, null));
+
+        long now = System.currentTimeMillis();
+        jdbc.update("""
+            INSERT INTO sessions(id, connection_id, title, has_ever_sent, opencode_sid, created_at, updated_at, title_locked)
+            VALUES(?, ?, ?, 0, NULL, ?, ?, 0)
+            """, "s-auto-locate", CONN_ID, "SQL Auto Locate", now, now);
+        jdbc.update("""
+            INSERT INTO session_data_contexts(session_id, connection_id, connection_name_snapshot, database_name, schema_name, selected_level, updated_at)
+            VALUES(?, ?, ?, ?, ?, ?, ?)
+            """, "s-auto-locate", CONN_ID, "IT DB", "mem:sqlit;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false", null, "database", now);
+
+        mvc.perform(post("/api/sql/execute")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"sessionId":"s-auto-locate","sql":"SELECT * FROM items ORDER BY id","source":"user"}
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.resolvedContext.schema", is("REPORTING")))
+            .andExpect(jsonPath("$.contextNotice", containsString("REPORTING")));
     }
 
     @Test

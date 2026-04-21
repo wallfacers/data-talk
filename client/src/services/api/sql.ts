@@ -12,12 +12,22 @@ export interface SqlExecuteRequest {
   schema?: string | null
 }
 
+export interface ResolvedDataContext {
+  connectionId: string
+  connectionName: string
+  database: string | null
+  schema: string | null
+  selectedLevel: 'connection' | 'database' | 'schema'
+}
+
 export interface SqlResult {
   columns: string[]
   rows: unknown[][]
   rowCount: number
   executionMs: number
   truncated: boolean
+  resolvedContext?: ResolvedDataContext | null
+  contextNotice?: string | null
 }
 
 export interface SqlRiskBlocked {

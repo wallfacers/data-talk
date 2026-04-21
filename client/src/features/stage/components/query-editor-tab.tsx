@@ -135,20 +135,28 @@ export function QueryEditorTab({ tab }: { tab: StageTab }) {
     },
   )
   const connectionLabel = resolvedContext.connectionName ?? resolvedContext.connectionId ?? '未选择连接'
-  const contextDetails = [resolvedContext.database, resolvedContext.schema].filter(Boolean).join(' / ')
 
   const { execute, result, risk, status, reset } = useSqlExecute()
   const { sendMessage } = useChannel()
+  const effectiveContext = {
+    sessionId: result?.resolvedContext ? (resolvedContext.sessionId ?? tab.originSessionId ?? null) : resolvedContext.sessionId,
+    connectionId: result?.resolvedContext?.connectionId ?? resolvedContext.connectionId,
+    connectionName: result?.resolvedContext?.connectionName ?? resolvedContext.connectionName,
+    database: result?.resolvedContext?.database ?? resolvedContext.database,
+    schema: result?.resolvedContext?.schema ?? resolvedContext.schema,
+  }
+  const effectiveDetails = [effectiveContext.database, effectiveContext.schema].filter(Boolean).join(' / ')
+  const contextNotice = result?.contextNotice ?? null
 
   const handleRun = useCallback(() => {
     const sqlText = editorRef.current?.state.doc.toString() ?? ''
-    if (!sqlText.trim() || !resolvedContext.connectionId) return
-    execute(sqlText, resolvedContext.connectionId, source, {
-      sessionId: resolvedContext.sessionId ?? undefined,
-      database: resolvedContext.database,
-      schema: resolvedContext.schema,
+    if (!sqlText.trim() || !effectiveContext.connectionId) return
+    execute(sqlText, effectiveContext.connectionId, source, {
+      sessionId: effectiveContext.sessionId ?? undefined,
+      database: effectiveContext.database,
+      schema: effectiveContext.schema,
     })
-  }, [execute, resolvedContext.connectionId, resolvedContext.database, resolvedContext.schema, resolvedContext.sessionId, source])
+  }, [effectiveContext.connectionId, effectiveContext.database, effectiveContext.schema, effectiveContext.sessionId, execute, source])
 
   const handleSendToAi = useCallback(() => {
     const sqlText = editorRef.current?.state.doc.toString() ?? ''
@@ -170,14 +178,15 @@ export function QueryEditorTab({ tab }: { tab: StageTab }) {
             </span>
           )}
           <span>
-            {connectionLabel}
-            {contextDetails ? ` · ${contextDetails}` : ''}
+            {effectiveContext.connectionName ?? connectionLabel}
+            {effectiveDetails ? ` · ${effectiveDetails}` : ''}
           </span>
+          {contextNotice && <span className="text-amber-600 dark:text-amber-400">{contextNotice}</span>}
         </div>
         <Button
           size="sm"
           variant="default"
-          disabled={status === 'running' || !resolvedContext.connectionId}
+          disabled={status === 'running' || !effectiveContext.connectionId}
           onClick={handleRun}
           className="h-7 gap-1.5 text-xs"
         >

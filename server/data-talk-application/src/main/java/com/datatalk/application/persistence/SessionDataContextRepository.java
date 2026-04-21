@@ -5,6 +5,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -33,6 +34,14 @@ public class SessionDataContextRepository {
             sessionId
         );
         return list.isEmpty() ? Optional.empty() : Optional.of(list.get(0));
+    }
+
+    public List<SessionDataContextRecord> findByConnectionId(String connectionId) {
+        return jdbc.query(
+            "SELECT * FROM session_data_contexts WHERE connection_id = ?",
+            MAPPER,
+            connectionId
+        );
     }
 
     public void upsert(SessionDataContextRecord record) {

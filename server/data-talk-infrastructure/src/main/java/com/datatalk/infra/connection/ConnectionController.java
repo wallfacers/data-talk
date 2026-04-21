@@ -5,6 +5,7 @@ import com.datatalk.dto.ConnectionCreatedDto;
 import com.datatalk.dto.ConnectionDto;
 import com.datatalk.dto.ConnectionTestResultDto;
 import com.datatalk.dto.ConnectionUpdateRequest;
+import com.datatalk.application.connection.ConnectionContextRefreshService;
 import com.datatalk.application.connection.ConnectionService;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
@@ -19,7 +20,12 @@ import java.util.Map;
 public class ConnectionController {
 
     private final ConnectionService svc;
-    public ConnectionController(ConnectionService svc) { this.svc = svc; }
+    private final ConnectionContextRefreshService contextRefreshService;
+
+    public ConnectionController(ConnectionService svc, ConnectionContextRefreshService contextRefreshService) {
+        this.svc = svc;
+        this.contextRefreshService = contextRefreshService;
+    }
 
     @PostMapping
     public ResponseEntity<ConnectionCreatedDto> create(@RequestBody ConnectionCreateRequest body) {
@@ -42,6 +48,7 @@ public class ConnectionController {
         try {
             svc.update(id, body.name(), body.kind(), body.host(), body.port(),
                 body.databaseName(), body.username(), body.password(), body.connectTimeout());
+            contextRefreshService.refreshByConnectionId(id);
             return ResponseEntity.noContent().build();
         } catch (java.util.NoSuchElementException e) {
             return ResponseEntity.notFound().build();

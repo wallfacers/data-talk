@@ -10,6 +10,16 @@ public record QueryResponseDto(
         List<String> columns,
         List<Map<String, Object>> rows,
         long durationMs,
-        int rowCount
+        int rowCount,
+        ResolvedDataContextDto resolvedContext,
+        String contextNotice
 ) {
+    public QueryResponseDto(
+        List<String> columns,
+        List<Map<String, Object>> rows,
+        long durationMs,
+        int rowCount
+    ) {
+        this(columns, rows, durationMs, rowCount, null, null);
+    }
 }

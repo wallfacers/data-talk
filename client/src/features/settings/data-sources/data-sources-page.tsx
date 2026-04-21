@@ -29,7 +29,11 @@ export function DataSourcesPage() {
 
   const del = useMutation({
     mutationFn: deleteConnection,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: connectionsKey }); toast.success(t('common.deleted')) },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: connectionsKey })
+      qc.invalidateQueries({ queryKey: ['session-data-context'] })
+      toast.success(t('common.deleted'))
+    },
   })
 
   async function runTest(id: string) {

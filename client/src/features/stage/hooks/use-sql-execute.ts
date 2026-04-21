@@ -10,7 +10,7 @@ export interface UseSqlExecuteReturn {
     connectionId: string,
     source: 'ai' | 'user',
     context?: { sessionId?: string | null; database?: string | null; schema?: string | null },
-  ) => Promise<void>
+  ) => Promise<SqlResult>
   result: SqlResult | null
   risk: SqlRiskBlocked | null
   status: Status
@@ -42,6 +42,7 @@ export function useSqlExecute(): UseSqlExecuteReturn {
       const data = await executeSql(req)
       setResult(data)
       setStatus('success')
+      return data
     } catch (err: unknown) {
       if (err instanceof SqlRiskError) {
         setRisk(err.risk)
@@ -50,6 +51,7 @@ export function useSqlExecute(): UseSqlExecuteReturn {
         setErrorMessage(err instanceof Error ? err.message : 'Unknown error')
         setStatus('error')
       }
+      throw err
     }
   }, [])
 
