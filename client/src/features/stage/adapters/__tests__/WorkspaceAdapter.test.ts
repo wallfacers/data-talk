@@ -13,12 +13,13 @@ describe('WorkspaceAdapter', () => {
 
   it('exec open creates workspace tab', async () => {
     const adapter = new WorkspaceAdapter(() => 's1')
-    const res = await adapter.exec('open', { type: 'bang_query', title: 'SELECT 1', connection_id: 'conn-1' })
+    const res = await adapter.exec('open', { type: 'bang_query', title: 'SELECT 1', connection_id: 'conn-1', schema: 'public' })
     expect(res.success).toBe(true)
     const tabs = useStageStore.getState().workspaceTabs
     expect(tabs).toHaveLength(1)
     expect(tabs[0].type).toBe('bang_query')
     expect(tabs[0].connectionId).toBe('conn-1')
+    expect(tabs[0].schema).toBe('public')
     expect(tabs[0].originSessionId).toBe('s1')
   })
 

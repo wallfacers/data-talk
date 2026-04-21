@@ -417,6 +417,10 @@
 - Task 4 与 Task 5 都会碰 `AGENTS.md` / 连接语义；执行时应先明确文件 ownership，避免冲突
 - Task 6 只能在 Task 1-5 全部落地后执行
 
+## Deferred TODO
+
+- 将 `/api/query`、`/api/sql/execute`、`datatalk.read_schema`、`datatalk.execute_sql` 全量切到 `ResolvedExecutionContext`，让 `sessionId/database/schema` override 真正端到端生效，并补齐 PG schema 缺失时的自动提示/自动补全联动。
+
 ## Open Questions Already Resolved By Spec
 
 - `use xxx` 统一语义，但只能匹配到真实存在的目标

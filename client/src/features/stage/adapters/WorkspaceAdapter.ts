@@ -11,6 +11,7 @@ const ACTIONS: ActionDef[] = [
       title: { type: 'string' },
       connection_id: { type: 'string' },
       database: { type: 'string' },
+      schema: { type: 'string' },
       payload: { type: 'object' },
     },
   } },
@@ -59,6 +60,7 @@ export class WorkspaceAdapter implements UIObject {
       title?: string
       connection_id?: string
       database?: string
+      schema?: string
       payload?: unknown
       target?: string
       preferredConnectionId?: string
@@ -72,7 +74,7 @@ export class WorkspaceAdapter implements UIObject {
         const scope: StageTab['scope'] = WORKSPACE_SCOPE_TYPES.has(p.type) ? 'workspace' : 'session'
         const tab: StageTab = {
           tabId, type: p.type, title: p.title ?? p.type, scope,
-          connectionId: p.connection_id, database: p.database,
+          connectionId: p.connection_id, database: p.database, schema: p.schema,
           originSessionId: sid ?? undefined,
           payload: p.payload ?? {}, createdAt: Date.now(),
         }

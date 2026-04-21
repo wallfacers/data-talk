@@ -45,7 +45,7 @@
 
 | action | 必填参数 | 可选参数 | 效果 |
 |--------|---------|---------|------|
-| `open` | `type: string` | `title`, `connection_id`, `database`, `payload` | 开一个新 Tab；`type` 决定 Tab 类型和 scope（见下表） |
+| `open` | `type: string` | `title`, `connection_id`, `database`, `schema`, `payload` | 开一个新 Tab；`type` 决定 Tab 类型和 scope（见下表） |
 | `close` | `target: tabId` | — | 关闭指定 Tab |
 | `focus` | `target: tabId` | — | 聚焦指定 Tab |
 | `choose_connection` | — | `preferredConnectionId: string` | 弹出数据源选择器，等待用户选择后返回结果 |
