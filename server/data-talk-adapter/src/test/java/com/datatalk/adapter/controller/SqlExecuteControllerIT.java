@@ -6,9 +6,11 @@ import com.datatalk.application.persistence.SecretVault;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -26,11 +28,14 @@ class SqlExecuteControllerIT {
     @Autowired MockMvc mvc;
     @Autowired ConnectionRepository connRepo;
     @Autowired SecretVault vault;
+    @Autowired @Qualifier("datatalkJdbc") JdbcTemplate jdbc;
 
     static final String CONN_ID = "c-sql-it";
 
     @BeforeEach
     void setUp() throws Exception {
+        jdbc.update("DELETE FROM session_data_contexts");
+        jdbc.update("DELETE FROM sessions");
         connRepo.deleteAll();
         // H2 in-memory DB: databaseName field is used by JdbcUrlBuilder for H2 URL suffix
         var cr = new ConnectionRecord(CONN_ID, "IT DB", "h2",
@@ -44,6 +49,28 @@ class SqlExecuteControllerIT {
             st.execute("CREATE TABLE items(id INT, name VARCHAR(50))");
             st.execute("INSERT INTO items VALUES(1,'a'),(2,'b'),(3,'c'),(4,'d')");
         }
+    }
+
+    @Test
+    void session_context_can_supply_connection_for_execute_endpoint() throws Exception {
+        long now = System.currentTimeMillis();
+        jdbc.update("""
+            INSERT INTO sessions(id, connection_id, title, has_ever_sent, opencode_sid, created_at, updated_at, title_locked)
+            VALUES(?, ?, ?, 0, NULL, ?, ?, 0)
+            """, "s-sql-it", null, "SQL Context", now, now);
+        jdbc.update("""
+            INSERT INTO session_data_contexts(session_id, connection_id, connection_name_snapshot, database_name, schema_name, selected_level, updated_at)
+            VALUES(?, ?, ?, ?, ?, ?, ?)
+            """, "s-sql-it", CONN_ID, "IT DB", "mem:sqlit;DB_CLOSE_DELAY=-1", "PUBLIC", "schema", now);
+
+        mvc.perform(post("/api/sql/execute")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"sessionId":"s-sql-it","sql":"SELECT * FROM items ORDER BY id","source":"user"}
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.columns", hasItems("ID", "NAME")))
+            .andExpect(jsonPath("$.rowCount", is(3)));
     }
 
     @Test

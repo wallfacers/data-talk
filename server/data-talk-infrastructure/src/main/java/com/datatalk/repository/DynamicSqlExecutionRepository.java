@@ -17,35 +17,50 @@ import java.util.*;
 public class DynamicSqlExecutionRepository implements SqlExecutionRepository {
 
     @Override
-    public QueryResult execute(DbConnection connection, String sql) {
+    public QueryResult execute(DbConnection connection, String sql, String schema) {
         long start = System.currentTimeMillis();
 
         HikariDataSource ds = createDataSource(connection);
-        try (Connection conn = ds.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+        try (Connection conn = ds.getConnection()) {
+            applyExecutionContext(conn, connection, schema);
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery(sql)) {
 
-            List<Map<String, Object>> rows = new ArrayList<>();
-            ResultSetMetaData meta = rs.getMetaData();
-            int columnCount = meta.getColumnCount();
-            List<String> columns = new ArrayList<>();
-            for (int i = 1; i <= columnCount; i++) {
-                columns.add(meta.getColumnLabel(i).toLowerCase());
-            }
-
-            while (rs.next()) {
-                Map<String, Object> row = new LinkedHashMap<>();
+                List<Map<String, Object>> rows = new ArrayList<>();
+                ResultSetMetaData meta = rs.getMetaData();
+                int columnCount = meta.getColumnCount();
+                List<String> columns = new ArrayList<>();
                 for (int i = 1; i <= columnCount; i++) {
-                    row.put(columns.get(i - 1), rs.getObject(i));
+                    columns.add(meta.getColumnLabel(i).toLowerCase());
                 }
-                rows.add(row);
-            }
 
-            return new QueryResult(columns, rows, System.currentTimeMillis() - start);
+                while (rs.next()) {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    for (int i = 1; i <= columnCount; i++) {
+                        row.put(columns.get(i - 1), rs.getObject(i));
+                    }
+                    rows.add(row);
+                }
+
+                return new QueryResult(columns, rows, System.currentTimeMillis() - start);
+            }
         } catch (SQLException e) {
             throw new SqlExecutionException("Failed to execute SQL: " + e.getMessage(), e);
         } finally {
             ds.close();
+        }
+    }
+
+    private void applyExecutionContext(Connection conn, DbConnection connection, String schema) throws SQLException {
+        if (connection.dbType() == DbType.MYSQL
+            && connection.databaseName() != null
+            && !connection.databaseName().isBlank()) {
+            conn.setCatalog(connection.databaseName());
+        }
+        if ((connection.dbType() == DbType.POSTGRESQL || connection.dbType() == DbType.H2)
+            && schema != null
+            && !schema.isBlank()) {
+            conn.setSchema(schema);
         }
     }
 

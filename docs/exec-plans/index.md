@@ -6,7 +6,7 @@
 
 | 计划 | 状态 | 摘要 |
 |------|------|------|
-| [Session Data Context & AI Data Source Management](./2026-04-21-session-data-context-and-ai-datasource-management-plan.md) | pending | 建立 session 级 `connectionId + database + schema` 统一上下文，收敛 `use xxx` 的自动匹配 / 建议 / 歧义处理，打通 Composer `!use/!select`、AI 对话、Stage Query Editor 与 `read_schema` / SQL 执行的同一解析链路，并补齐 AI 数据源管理能力边界（新增 / 测试 / 选择 / 修改，禁止删除）。 |
+| [Session Data Context & AI Data Source Management](./2026-04-21-session-data-context-and-ai-datasource-management-plan.md) | in_progress | Batch A 已完成：session data context 持久化、`GET/PUT/resolve-use/validate` API、`ResolvedExecutionContext`、`/api/query`、`/api/sql/execute`、`read_schema`、`execute_sql` 已接入统一上下文；`ReadSchemaActionIT` 已改为 H2 PostgreSQL mode，脱离 Docker/Testcontainers。剩余 Batch B/C/D/E：前端消费统一 context、AI 数据源管理闭环、联调与文档收口。 |
 | [Composer Data Source Picker](./2026-04-20-composer-data-source-picker-plan.md) | in_progress | 计划为 Composer 增加与模型并列的数据源选择器，接入全局 chooser host、缺库自动补选并恢复原动作、`ui_exec(workspace, choose_connection)` 适配器，以及 Stage 卡片来源数据源固化与显式回切。 |
 | [Stage UI Object Protocol Phase 1](./2026-04-20-stage-ui-object-protocol-plan.md) | in_progress | 前端 `UIRouter` + 4 个 CLIENT Action 桥接已就位；`StageStore` 多 Tab 模型、`WorkspaceAdapter` / `BangQueryAdapter`、StageWindow 多 Tab UI、`BangQueryTab` 组件、Composer `!` 拦截均已落地；后端 `/api/query` 加 `SqlStatementGuard`。客户端 198 tests + 后端 179 tests 全绿。**剩余：手动端到端联调（plan Step 12.5）**。AI 展示路径（QueryEditor + Prompt 注入）归属 P2，不在此 plan。 |
 | [SQL Risk Classification & IT CI Gate](./2026-04-20-sql-risk-classification-it-ci-gate-plan.md) | in_progress | `TD-020`：在 `ActionDispatcher` 统一预处理层引入 Apache Calcite SQL AST 风险判级，并通过 `ActionContext` / action output metadata 透传动态风险；`TD-021`：在 adapter 模块接入 failsafe，让 `mvn clean verify` 自动执行 `*IT.java`。 |
@@ -14,6 +14,7 @@
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [Design Doc Governance Sync](./2026-04-21-design-doc-governance-sync-plan.md) | 2026-04-21 | 同步 2026-04-20 / 2026-04-21 最近新增设计文档到 `docs/design-docs/index.md`，按执行计划状态补 `draft / approved / shipped` 标记，并对 `Stage Window Layout Refactor Design` 显式标明其仍是需求备忘 / 粗稿。 |
 | [Stage Query Editor](./2026-04-21-stage-query-editor-plan.md) | 2026-04-21 | Stage 特性全量接通 useStageStore，新增 Query Editor tab（CodeMirror SQL 编辑器 + 结果面板 + 双路径执行），后端新增 `POST /api/sql/execute` 端点；关闭 TD-022 / TD-023。 |
 | [OpenCode Event Loop Defenses](./2026-04-21-opencode-event-loop-defenses-plan.md) | 2026-04-21 | `OpenCodeEventLoop` 的 part 绑定索引改为带时间戳的惰性清理缓存，补上 `message.part.removed` 路由时序修复与孤儿 session WARN + 残留绑定清理；`DtEvent` 移除中央 `@JsonSubTypes` 注册，改用 `@JsonTypeName` + sealed subtype resolver。 |
 | [Bang Query Badge Minimization](./2026-04-21-bang-query-badge-minimization-plan.md) | 2026-04-21 | 将 bang-query 用户气泡从显式 `SQL 直查` 文字 badge 调整为右上角低存在感小图标，减少视觉打扰而不改变消息语义。 |

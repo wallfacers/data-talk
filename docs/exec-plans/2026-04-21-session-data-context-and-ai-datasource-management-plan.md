@@ -151,32 +151,32 @@
 
 **Intent:** 先把 session 级上下文落到后端持久化与 REST API，提供 `GET/PUT /api/sessions/{id}/data-context`。这一步不处理 resolver 与 SQL 执行，只建立后续所有批次共同依赖的稳定 API 与存储模型。
 
-- [ ] **Step 1.1: 写失败测试 — `SessionDataContextService` 默认返回空 context 且可 upsert**
-- [ ] **Step 1.2: 新增 Flyway migration**
+- [x] **Step 1.1: 写失败测试 — `SessionDataContextService` 默认返回空 context 且可 upsert**
+- [x] **Step 1.2: 新增 Flyway migration**
   - 建表 `session_data_contexts`
   - `session_id` 主键并 `REFERENCES sessions(id) ON DELETE CASCADE`
   - 字段：`connection_id`, `connection_name_snapshot`, `database_name`, `schema_name`, `selected_level`, `updated_at`
-- [ ] **Step 1.3: 实现 `SessionDataContextRecord` 与 `SessionDataContextRepository`**
+- [x] **Step 1.3: 实现 `SessionDataContextRecord` 与 `SessionDataContextRepository`**
   - 提供 `findBySessionId`
   - 提供 `upsert`
   - 提供 `deleteBySessionId`
-- [ ] **Step 1.4: 实现 `SessionDataContextService`**
+- [x] **Step 1.4: 实现 `SessionDataContextService`**
   - `get(sessionId)`
   - `set(sessionId, updateRequest)`
   - 若 session 不存在，抛 `NoSuchElementException`
   - 若 `connectionId` 为空，清空 `database/schema/selectedLevel`
-- [ ] **Step 1.5: 写失败测试 — `GET/PUT /api/sessions/{id}/data-context`**
-- [ ] **Step 1.6: 实现 DTO 与 `SessionDataContextController`**
+- [x] **Step 1.5: 写失败测试 — `GET/PUT /api/sessions/{id}/data-context`**
+- [x] **Step 1.6: 实现 DTO 与 `SessionDataContextController`**
   - `GET` 返回完整 dto
   - `PUT` 返回更新后的 dto
   - 404 / 400 映射与现有 `SessionController` 风格保持一致
-- [ ] **Step 1.7: 同步 `SessionService.delete()` 的上下文清理预期**
+- [x] **Step 1.7: 同步 `SessionService.delete()` 的上下文清理预期**
   - 依赖 FK cascade 删除，不额外手写 delete SQL
   - 在 IT 中补删除 session 后 context 级联删除断言
-- [ ] **Step 1.8: 运行后端专项验证**
-  - `cd server && mvn test -q -pl data-talk-application,data-talk-adapter -Dtest=SessionDataContextServiceTest,SessionDataContextControllerIT,SessionControllerIT`
-- [ ] **Step 1.9: 运行后端编译**
-  - `cd server && mvn compile -q`
+- [x] **Step 1.8: 运行后端专项验证**
+  - 2026-04-21：`export JAVA_HOME=/home/wushengzhou/.local/opt/java21 && export PATH="$JAVA_HOME/bin:$PATH" && cd server && mvn -q -pl data-talk-application,data-talk-adapter -am test -Dtest=SessionDataContextServiceTest,SessionDataContextControllerIT,SessionControllerIT,UseTargetResolverTest,ConnectionTargetDiscoveryServiceTest,QueryApplicationServiceTest,SqlExecuteControllerIT,ExecuteSqlActionTest,ReadSchemaActionTest,ReadSchemaActionIT -Dsurefire.failIfNoSpecifiedTests=false`
+- [x] **Step 1.9: 运行后端编译**
+  - 2026-04-21：`export JAVA_HOME=/home/wushengzhou/.local/opt/java21 && export PATH="$JAVA_HOME/bin:$PATH" && cd server && mvn -q compile`
 
 ---
 
@@ -203,28 +203,28 @@
 
 **Intent:** 建立 `resolve-use` / `validate` / `ResolvedExecutionContext`，并把 `/api/query`、`/api/sql/execute`、`datatalk.read_schema`、`datatalk.execute_sql` 统一切到解析后的上下文，不再只吃裸 `connectionId`。
 
-- [ ] **Step 2.1: 写失败测试 — resolver 支持 matched / ambiguous / not_found**
+- [x] **Step 2.1: 写失败测试 — resolver 支持 matched / ambiguous / not_found**
   - 覆盖：connection 命中、database 命中、schema 命中、当前连接内优先、歧义候选、未命中建议
-- [ ] **Step 2.2: 实现 `ConnectionTargetDiscoveryService`**
+- [x] **Step 2.2: 实现 `ConnectionTargetDiscoveryService`**
   - 从连接元数据 / JDBC metadata 枚举 database 与 schema 候选
   - PG 下显式区分 database 与 schema
   - MySQL 下将 database 视为主切换层
-- [ ] **Step 2.3: 实现 `UseTargetResolver`**
+- [x] **Step 2.3: 实现 `UseTargetResolver`**
   - 输入 `sessionId + rawTarget`
   - 输出 `matched | ambiguous | not_found`
   - `matched` 时返回可直接写入的 `SessionDataContextRecord`
-- [ ] **Step 2.4: 给 `SessionDataContextController` 增加**
+- [x] **Step 2.4: 给 `SessionDataContextController` 增加**
   - `POST /api/sessions/{id}/data-context/resolve-use`
   - `POST /api/sessions/{id}/data-context/validate`
-- [ ] **Step 2.5: 写失败测试 — 连接修改后 validate 清空失效 `database/schema`，保留 `connectionId`**
-- [ ] **Step 2.6: 引入 `ResolvedExecutionContext`**
+- [x] **Step 2.5: 写失败测试 — 连接修改后 validate 清空失效 `database/schema`，保留 `connectionId`**
+- [x] **Step 2.6: 引入 `ResolvedExecutionContext`**
   - 统一解析 session context 与 tab/request override
   - 解析优先级：override > session context > connection default
-- [ ] **Step 2.7: 改 `/api/query`**
+- [x] **Step 2.7: 改 `/api/query`**
   - `ExecuteSqlCommand` 增加 `sessionId?`, `database?`, `schema?`
   - `QueryApplicationService` 不再只靠 `connectionId`，而是走 `ResolvedExecutionContext`
   - 对 PostgreSQL / MySQL 注入对应 database/schema 执行语义
-- [ ] **Step 2.8: 改 `/api/sql/execute` 与 action `read_schema` / `execute_sql`**
+- [x] **Step 2.8: 改 `/api/sql/execute` 与 action `read_schema` / `execute_sql`**
   - `SqlExecuteService` 支持 context override
   - `ReadSchemaAction` 在 PG 下返回 schema 感知的元数据
   - `ExecuteSqlAction` 在 session context 存在时使用解析后的上下文
@@ -232,10 +232,11 @@
   - `select * from users` 在缺 schema/database 时先轻量探测
   - 唯一命中则自动补全并执行
   - 多命中则返回明确建议，不盲猜
-- [ ] **Step 2.10: 运行后端专项验证**
-  - `cd server && mvn test -q -pl data-talk-application,data-talk-adapter -Dtest=UseTargetResolverTest,ConnectionTargetDiscoveryServiceTest,QueryApplicationServiceTest,SqlExecuteControllerIT,SessionDataContextControllerIT`
-- [ ] **Step 2.11: 运行后端编译**
-  - `cd server && mvn compile -q`
+- [x] **Step 2.10: 运行后端专项验证**
+  - 2026-04-21：`export JAVA_HOME=/home/wushengzhou/.local/opt/java21 && export PATH="$JAVA_HOME/bin:$PATH" && cd server && mvn -q -pl data-talk-application,data-talk-adapter -am test -Dtest=SessionDataContextServiceTest,SessionDataContextControllerIT,SessionControllerIT,UseTargetResolverTest,ConnectionTargetDiscoveryServiceTest,QueryApplicationServiceTest,SqlExecuteControllerIT,ExecuteSqlActionTest,ReadSchemaActionTest,ReadSchemaActionIT -Dsurefire.failIfNoSpecifiedTests=false`
+  - `ReadSchemaActionIT` 已改为 H2 PostgreSQL mode，不再依赖本机 Docker/Testcontainers
+- [x] **Step 2.11: 运行后端编译**
+  - 2026-04-21：`export JAVA_HOME=/home/wushengzhou/.local/opt/java21 && export PATH="$JAVA_HOME/bin:$PATH" && cd server && mvn -q compile`
 
 ---
 

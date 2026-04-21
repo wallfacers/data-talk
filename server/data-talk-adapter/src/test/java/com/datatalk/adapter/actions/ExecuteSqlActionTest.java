@@ -11,6 +11,7 @@ import com.datatalk.domain.action.SqlExecutionRisk;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
@@ -29,7 +30,7 @@ class ExecuteSqlActionTest {
     @Autowired SessionRepository sessRepo;
     @Autowired ExecuteSqlAction action;
     @Autowired ArtifactRepository artifacts;
-    @Autowired JdbcTemplate datatalkJdbc;
+    @Autowired @Qualifier("datatalkJdbc") JdbcTemplate datatalkJdbc;
 
     private String connectionId;
 
@@ -79,5 +80,27 @@ class ExecuteSqlActionTest {
             .containsEntry("fallbackUsed", false);
         assertThat((List<?>) out.get("preview")).hasSize(3);
         assertThat(artifacts.findBySession("s-exec")).hasSize(1);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void falls_back_to_session_data_context_when_input_omits_connection() throws Exception {
+        datatalkJdbc.update("""
+            INSERT INTO session_data_contexts(session_id, connection_id, connection_name_snapshot, database_name, schema_name, selected_level, updated_at)
+            VALUES(?, ?, ?, ?, ?, ?, ?)
+            """, "s-exec", connectionId, "Execute SQL Test", "mem:execsql;MODE=PostgreSQL;DB_CLOSE_DELAY=-1", "PUBLIC", "schema", 1L);
+
+        Map<String, Object> out = (Map<String, Object>) action.handle(
+            new ActionContext(
+                "s-exec",
+                "c-2",
+                null,
+                "oc-e",
+                new ActionExecutionMetadata(new SqlExecutionRisk(RiskLevel.L1, "select", false, false))
+            ),
+            Map.of("sql", "SELECT * FROM t ORDER BY id")
+        ).toCompletableFuture().get();
+
+        assertThat((List<?>) out.get("preview")).hasSize(3);
     }
 }

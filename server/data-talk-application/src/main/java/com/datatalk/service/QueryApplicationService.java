@@ -3,6 +3,9 @@ package com.datatalk.service;
 import com.datatalk.application.connection.ConnectionService;
 import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.application.persistence.ConnectionRepository;
+import com.datatalk.application.persistence.SessionDataContextRecord;
+import com.datatalk.application.session.ResolvedExecutionContext;
+import com.datatalk.application.session.SessionDataContextService;
 import com.datatalk.application.sql.SqlStatementGuard;
 import com.datatalk.command.ExecuteSqlCommand;
 import com.datatalk.dto.QueryResponseDto;
@@ -22,15 +25,18 @@ public class QueryApplicationService {
 
     private final ConnectionRepository connectionRepository;
     private final ConnectionService connectionService;
+    private final SessionDataContextService sessionDataContextService;
     private final SqlExecutionRepository sqlExecutionRepository;
     private final SqlStatementGuard statementGuard;
 
     public QueryApplicationService(ConnectionRepository connectionRepository,
                                    ConnectionService connectionService,
+                                   SessionDataContextService sessionDataContextService,
                                    SqlExecutionRepository sqlExecutionRepository,
                                    SqlStatementGuard statementGuard) {
         this.connectionRepository = connectionRepository;
         this.connectionService = connectionService;
+        this.sessionDataContextService = sessionDataContextService;
         this.sqlExecutionRepository = sqlExecutionRepository;
         this.statementGuard = statementGuard;
     }
@@ -40,11 +46,10 @@ public class QueryApplicationService {
      */
     public QueryResponseDto executeQuery(ExecuteSqlCommand command) {
         statementGuard.assertSelectOnly(command.sql());
-        DbConnection connection = connectionRepository.findById(command.connectionId())
-                .map(this::toDbConnection)
-                .orElseThrow(() -> new ConnectionNotFoundException(command.connectionId()));
+        ResolvedExecutionContext context = resolveExecutionContext(command);
+        DbConnection connection = toDbConnection(context.connection(), context.database());
 
-        QueryResult result = sqlExecutionRepository.execute(connection, command.sql());
+        QueryResult result = sqlExecutionRepository.execute(connection, command.sql(), context.schema());
 
         return new QueryResponseDto(
                 result.columns(),
@@ -54,18 +59,60 @@ public class QueryApplicationService {
         );
     }
 
-    private DbConnection toDbConnection(ConnectionRecord record) {
+    private ResolvedExecutionContext resolveExecutionContext(ExecuteSqlCommand command) {
+        SessionDataContextRecord sessionContext = null;
+        if (hasText(command.sessionId())) {
+            sessionContext = sessionDataContextService.get(command.sessionId());
+        }
+
+        String connectionId = firstNonBlank(
+            command.connectionId(),
+            sessionContext == null ? null : sessionContext.connectionId()
+        );
+        if (!hasText(connectionId)) {
+            throw new IllegalArgumentException("connectionId is required");
+        }
+
+        ConnectionRecord connection = connectionRepository.findById(connectionId)
+            .orElseThrow(() -> new ConnectionNotFoundException(connectionId));
+        boolean inheritsSessionScope = sessionContext != null && connectionId.equals(sessionContext.connectionId());
+        String database = firstNonBlank(
+            command.database(),
+            inheritsSessionScope ? sessionContext.databaseName() : null,
+            connection.databaseName()
+        );
+        String schema = firstNonBlank(
+            command.schema(),
+            inheritsSessionScope ? sessionContext.schemaName() : null
+        );
+        return new ResolvedExecutionContext(connection, database, schema);
+    }
+
+    private DbConnection toDbConnection(ConnectionRecord record, String databaseName) {
         return new DbConnection(
                 record.id(),
                 record.name(),
                 toDbType(record.kind()),
                 record.host(),
                 record.port(),
-                record.databaseName(),
+                databaseName,
                 record.username(),
                 connectionService.decryptPassword(record.id()),
                 Instant.ofEpochMilli(record.createdAt())
         );
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private static String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (hasText(value)) {
+                return value;
+            }
+        }
+        return null;
     }
 
     private static DbType toDbType(String kind) {

@@ -4,6 +4,7 @@ import com.datatalk.application.channel.IdGenerator;
 import com.datatalk.application.connection.ConnectionService;
 import com.datatalk.application.connection.JdbcUrlBuilder;
 import com.datatalk.application.persistence.*;
+import com.datatalk.application.session.SessionDataContextService;
 import com.datatalk.application.sql.SqlStatementGuard;
 import com.datatalk.domain.action.*;
 import com.datatalk.domain.error.DataTalkErrorCodes;
@@ -42,11 +43,13 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
     private final ObjectMapper om;
     private final Clock clock;
     private final IdGenerator ids;
+    private final SessionDataContextService sessionContexts;
 
     public ExecuteSqlAction(ConnectionRepository connRepo, ConnectionService connSvc,
                             SqlStatementGuard guard, ArtifactRepository artifacts,
                             QueryResultRepository queryResults, ObjectMapper om, Clock clock,
-                            IdGenerator ids) {
+                            IdGenerator ids,
+                            SessionDataContextService sessionContexts) {
         this.connRepo = connRepo;
         this.connSvc = connSvc;
         this.guard = guard;
@@ -55,13 +58,16 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
         this.om = om;
         this.clock = clock;
         this.ids = ids;
+        this.sessionContexts = sessionContexts;
     }
 
     @Override public Map<String, Object> inputSchema() {
         return Map.of("type", "object",
-            "required", List.of("connectionId", "sql"),
+            "required", List.of("sql"),
             "properties", Map.of(
                 "connectionId", Map.of("type", "string"),
+                "database",     Map.of("type", "string"),
+                "schema",       Map.of("type", "string"),
                 "sql",          Map.of("type", "string"),
                 "pageSize",     Map.of("type", "integer", "minimum", 1, "maximum", 10_000)
             ));
@@ -102,18 +108,17 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
         String sql = String.valueOf(input.get("sql"));
         guard.assertSelectOnly(sql);
 
-        String connectionId = String.valueOf(input.get("connectionId"));
-        ConnectionRecord cr = connRepo.findById(connectionId)
-            .orElseThrow(() -> new DataTalkException(DataTalkErrorCodes.CONNECTION_MISSING,
-                "unknown connection: " + connectionId, false));
+        var resolved = resolveContext(ctx, input);
+        ConnectionRecord cr = withDatabase(resolved.connection(), resolved.database());
 
         long started = clock.millis();
         List<String> columns = new ArrayList<>();
         List<Map<String, Object>> rows = new ArrayList<>();
 
         try (Connection c = DriverManager.getConnection(JdbcUrlBuilder.build(cr), cr.username(),
-                connSvc.decryptPassword(connectionId));
+                connSvc.decryptPassword(cr.id()));
              PreparedStatement ps = c.prepareStatement(sql)) {
+            applyExecutionContext(c, cr.kind(), resolved.schema());
             ps.setQueryTimeout(30);
             try (ResultSet rs = ps.executeQuery()) {
                 var md = rs.getMetaData();
@@ -171,6 +176,90 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
             "metadata", buildMetadata(ctx)
         );
     }
+
+    private ResolvedSqlContext resolveContext(ActionContext ctx, Map<String, Object> input) {
+        String requestedConnectionId = nullableString(input, "connectionId");
+        String requestedDatabase = nullableString(input, "database");
+        String requestedSchema = nullableString(input, "schema");
+        SessionDataContextRecord sessionContext = sessionContexts.get(ctx.sessionId());
+
+        String connectionId = firstNonBlank(
+            requestedConnectionId,
+            sessionContext.connectionId(),
+            ctx.connectionId()
+        );
+        if (!hasText(connectionId)) {
+            throw new DataTalkException(DataTalkErrorCodes.CONNECTION_MISSING, "no active connection", false);
+        }
+
+        ConnectionRecord connection = connRepo.findById(connectionId)
+            .orElseThrow(() -> new DataTalkException(DataTalkErrorCodes.CONNECTION_MISSING,
+                "unknown connection: " + connectionId, false));
+        boolean inheritsSessionScope = connectionId.equals(sessionContext.connectionId());
+        return new ResolvedSqlContext(
+            connection,
+            firstNonBlank(
+                requestedDatabase,
+                inheritsSessionScope ? sessionContext.databaseName() : null,
+                connection.databaseName()
+            ),
+            firstNonBlank(
+                requestedSchema,
+                inheritsSessionScope ? sessionContext.schemaName() : null
+            )
+        );
+    }
+
+    private void applyExecutionContext(Connection connection, String kind, String schema) throws SQLException {
+        if (("postgres".equalsIgnoreCase(kind)
+            || "postgresql".equalsIgnoreCase(kind)
+            || "h2".equalsIgnoreCase(kind))
+            && hasText(schema)) {
+            connection.setSchema(schema);
+        }
+    }
+
+    private ConnectionRecord withDatabase(ConnectionRecord connection, String database) {
+        return new ConnectionRecord(
+            connection.id(),
+            connection.name(),
+            connection.kind(),
+            connection.host(),
+            connection.port(),
+            database,
+            connection.username(),
+            connection.passwordEnc(),
+            connection.schemaDigest(),
+            connection.createdAt(),
+            connection.connectTimeout(),
+            connection.lastTestStatus(),
+            connection.lastTestAt()
+        );
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private static String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (hasText(value)) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    private static String nullableString(Map<String, Object> input, String key) {
+        Object value = input.get(key);
+        return value == null ? null : String.valueOf(value);
+    }
+
+    private record ResolvedSqlContext(
+        ConnectionRecord connection,
+        String database,
+        String schema
+    ) {}
 
     private Map<String, Object> buildMetadata(ActionContext ctx) {
         if (ctx.metadata() == null || ctx.metadata().sqlRisk() == null) {

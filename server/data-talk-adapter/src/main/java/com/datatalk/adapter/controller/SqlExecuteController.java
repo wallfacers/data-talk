@@ -23,7 +23,14 @@ public class SqlExecuteController {
     @PostMapping("/execute")
     public ResponseEntity<?> execute(@RequestBody SqlExecuteRequest req) {
         try {
-            SqlExecuteService.Result r = service.execute(req.connectionId(), req.sql(), req.source());
+            SqlExecuteService.Result r = service.execute(
+                req.connectionId(),
+                req.sql(),
+                req.source(),
+                req.sessionId(),
+                req.database(),
+                req.schema()
+            );
             return ResponseEntity.ok(
                 new SqlExecuteResult(r.columns(), r.rows(), r.rowCount(), r.executionMs(), r.truncated())
             );

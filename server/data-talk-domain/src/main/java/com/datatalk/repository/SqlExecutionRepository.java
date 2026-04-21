@@ -8,5 +8,9 @@ import com.datatalk.valueobject.QueryResult;
  */
 public interface SqlExecutionRepository {
 
-    QueryResult execute(DbConnection connection, String sql);
+    default QueryResult execute(DbConnection connection, String sql) {
+        return execute(connection, sql, null);
+    }
+
+    QueryResult execute(DbConnection connection, String sql, String schema);
 }

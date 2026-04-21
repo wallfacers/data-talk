@@ -1,9 +1,11 @@
 package com.datatalk.service;
 
 import com.datatalk.application.connection.ConnectionService;
+import com.datatalk.application.persistence.SessionDataContextRecord;
 import com.datatalk.application.sql.SqlStatementGuard;
 import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.application.persistence.ConnectionRepository;
+import com.datatalk.application.session.SessionDataContextService;
 import com.datatalk.command.ExecuteSqlCommand;
 import com.datatalk.entity.DbConnection;
 import com.datatalk.entity.DbType;
@@ -33,6 +35,7 @@ class QueryApplicationServiceTest {
 
     private ConnectionRepository connectionRepository;
     private ConnectionService connectionService;
+    private SessionDataContextService sessionDataContextService;
     private SqlExecutionRepository sqlExecutionRepository;
     private SqlStatementGuard statementGuard;
     private QueryApplicationService service;
@@ -41,9 +44,16 @@ class QueryApplicationServiceTest {
     void setUp() {
         connectionRepository = mock(ConnectionRepository.class);
         connectionService = mock(ConnectionService.class);
+        sessionDataContextService = mock(SessionDataContextService.class);
         sqlExecutionRepository = mock(SqlExecutionRepository.class);
         statementGuard = spy(new SqlStatementGuard());
-        service = new QueryApplicationService(connectionRepository, connectionService, sqlExecutionRepository, statementGuard);
+        service = new QueryApplicationService(
+            connectionRepository,
+            connectionService,
+            sessionDataContextService,
+            sqlExecutionRepository,
+            statementGuard
+        );
     }
 
     @Test
@@ -87,7 +97,7 @@ class QueryApplicationServiceTest {
         );
         when(connectionRepository.findById("conn-1")).thenReturn(Optional.of(record));
         when(connectionService.decryptPassword("conn-1")).thenReturn("secret");
-        when(sqlExecutionRepository.execute(connection, "SELECT 1"))
+        when(sqlExecutionRepository.execute(connection, "SELECT 1", null))
                 .thenReturn(new QueryResult(List.of("c"), List.of(Map.of("c", 1)), 5L));
 
         var response = service.executeQuery(new ExecuteSqlCommand("conn-1", "SELECT 1"));
@@ -99,6 +109,57 @@ class QueryApplicationServiceTest {
         verify(connectionService).decryptPassword("conn-1");
         order.verify(sqlExecutionRepository).execute(
                 argThat(actual -> actual != null && "secret".equals(actual.password())),
-                eq("SELECT 1"));
+                eq("SELECT 1"),
+                eq(null));
+    }
+
+    @Test
+    void resolves_connection_database_and_schema_from_session_context() {
+        var record = new ConnectionRecord(
+            "conn-1",
+            "Primary",
+            "postgres",
+            "localhost",
+            5432,
+            "default_db",
+            "user",
+            new byte[0],
+            null,
+            Instant.parse("2026-04-20T00:00:00Z").toEpochMilli(),
+            3000,
+            null,
+            null
+        );
+        when(sessionDataContextService.get("session-1")).thenReturn(new SessionDataContextRecord(
+            "session-1",
+            "conn-1",
+            "Primary",
+            "analytics",
+            "reporting",
+            "schema",
+            1L
+        ));
+        when(connectionRepository.findById("conn-1")).thenReturn(Optional.of(record));
+        when(connectionService.decryptPassword("conn-1")).thenReturn("secret");
+        when(sqlExecutionRepository.execute(
+            argThat(actual -> actual != null
+                && "analytics".equals(actual.databaseName())
+                && "secret".equals(actual.password())),
+            eq("SELECT 1"),
+            eq("reporting")
+        )).thenReturn(new QueryResult(List.of("c"), List.of(Map.of("c", 1)), 5L));
+
+        var response = service.executeQuery(new ExecuteSqlCommand(null, "SELECT 1", "session-1", null, null));
+
+        assertThat(response.durationMs()).isEqualTo(5L);
+        verify(sessionDataContextService).get("session-1");
+        verify(connectionRepository).findById("conn-1");
+        verify(sqlExecutionRepository).execute(
+            argThat(actual -> actual != null
+                && "analytics".equals(actual.databaseName())
+                && "secret".equals(actual.password())),
+            eq("SELECT 1"),
+            eq("reporting")
+        );
     }
 }
