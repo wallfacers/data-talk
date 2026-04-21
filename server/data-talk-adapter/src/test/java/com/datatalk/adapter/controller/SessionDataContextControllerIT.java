@@ -38,7 +38,7 @@ class SessionDataContextControllerIT {
         jdbc.update("DELETE FROM connections");
         jdbc.update("""
             INSERT INTO connections(id, name, kind, host, port, database_name, username, password_enc, created_at, connect_timeout)
-            VALUES('c1', '主库', 'postgres', 'localhost', 5432, 'app_db', 'u', x'00', 0, 3000)
+            VALUES('c1', '主库', 'h2', 'localhost', 0, 'analytics', 'sa', x'00', 0, 3000)
             """);
     }
 
@@ -117,6 +117,44 @@ class SessionDataContextControllerIT {
             sessionId
         );
         org.assertj.core.api.Assertions.assertThat(count).isZero();
+    }
+
+    @Test
+    void resolve_use_matches_current_connection_database() throws Exception {
+        String sessionId = createSession();
+        mvc.perform(put("/api/sessions/" + sessionId + "/data-context")
+                .contentType("application/json")
+                .content("""
+                    {"connectionId":"c1","selectedLevel":"connection"}
+                    """))
+            .andExpect(status().isOk());
+
+        mvc.perform(post("/api/sessions/" + sessionId + "/data-context/resolve-use")
+                .contentType("application/json")
+                .content("""
+                    {"target":"analytics"}
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("matched"))
+            .andExpect(jsonPath("$.matchedTarget.level").value("database"))
+            .andExpect(jsonPath("$.context.connectionId").value("c1"))
+            .andExpect(jsonPath("$.context.database").value("analytics"));
+    }
+
+    @Test
+    void validate_refreshes_snapshot_and_clears_missing_schema() throws Exception {
+        String sessionId = createSession();
+        jdbc.update("""
+            INSERT INTO session_data_contexts(session_id, connection_id, connection_name_snapshot, database_name, schema_name, selected_level, updated_at)
+            VALUES(?, 'c1', '旧名称', 'analytics', 'missing_schema', 'schema', 123)
+            """, sessionId);
+        jdbc.update("UPDATE connections SET name = '新主库' WHERE id = 'c1'");
+
+        mvc.perform(post("/api/sessions/" + sessionId + "/data-context/validate"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.connectionId").value("c1"))
+            .andExpect(jsonPath("$.connectionNameSnapshot").value("新主库"))
+            .andExpect(jsonPath("$.schema").doesNotExist());
     }
 
     private String createSession() throws Exception {

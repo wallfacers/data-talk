@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
+import type { SessionDataContext } from '@/services/api/session-data-context'
 
 export type SessionMode = 'NOSESS' | 'HERO' | 'SPLIT'
 
@@ -7,6 +8,7 @@ type SessionState = {
   activeSessionId: string | null
   modeBySession: Map<string, SessionMode>
   hasEverSentBySession: Map<string, boolean>
+  dataContextBySession: Map<string, SessionDataContext>
   pendingPrompt: string | null
   pendingModelPrompt: boolean
   pendingConnectionPrompt: boolean
@@ -17,6 +19,8 @@ type SessionState = {
   enterSplit: (id: string) => void
   setSessionMode: (id: string, mode: SessionMode) => void
   markSessionSent: (id: string) => void
+  setSessionDataContext: (context: SessionDataContext) => void
+  clearSessionDataContext: (sessionId: string) => void
   setPendingPrompt: (text: string | null) => void
   setPendingModelPrompt: (on: boolean) => void
   setPendingConnectionPrompt: (on: boolean) => void
@@ -29,6 +33,7 @@ export const useSessionStore = create<SessionState>()(
       activeSessionId: null,
       modeBySession: new Map(),
       hasEverSentBySession: new Map(),
+      dataContextBySession: new Map(),
       pendingPrompt: null,
       pendingModelPrompt: false,
       pendingConnectionPrompt: false,
@@ -64,6 +69,19 @@ export const useSessionStore = create<SessionState>()(
       markSessionSent: (id) => set((s) => {
         const sent = new Map(s.hasEverSentBySession); sent.set(id, true)
         return { hasEverSentBySession: sent }
+      }),
+
+      setSessionDataContext: (context) => set((s) => {
+        const next = new Map(s.dataContextBySession)
+        next.set(context.sessionId, context)
+        return { dataContextBySession: next }
+      }),
+
+      clearSessionDataContext: (id) => set((s) => {
+        if (!s.dataContextBySession.has(id)) return s
+        const next = new Map(s.dataContextBySession)
+        next.delete(id)
+        return { dataContextBySession: next }
       }),
 
       setPendingPrompt: (text) => set({ pendingPrompt: text }),

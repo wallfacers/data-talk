@@ -5,7 +5,12 @@ import type { SqlResult, SqlRiskBlocked } from '@/services/api/sql'
 type Status = 'idle' | 'running' | 'success' | 'risk_blocked' | 'error'
 
 export interface UseSqlExecuteReturn {
-  execute: (sql: string, connectionId: string, source: 'ai' | 'user') => Promise<void>
+  execute: (
+    sql: string,
+    connectionId: string,
+    source: 'ai' | 'user',
+    context?: { sessionId?: string | null; database?: string | null; schema?: string | null },
+  ) => Promise<void>
   result: SqlResult | null
   risk: SqlRiskBlocked | null
   status: Status
@@ -19,13 +24,22 @@ export function useSqlExecute(): UseSqlExecuteReturn {
   const [risk, setRisk] = useState<SqlRiskBlocked | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  const execute = useCallback(async (sql: string, connectionId: string, source: 'ai' | 'user') => {
+  const execute = useCallback(async (
+    sql: string,
+    connectionId: string,
+    source: 'ai' | 'user',
+    context?: { sessionId?: string | null; database?: string | null; schema?: string | null },
+  ) => {
     setStatus('running')
     setResult(null)
     setRisk(null)
     setErrorMessage(null)
     try {
-      const data = await executeSql({ sql, connectionId, source })
+      const req: Parameters<typeof executeSql>[0] = { sql, connectionId, source }
+      if (context?.sessionId != null) req.sessionId = context.sessionId
+      if (context?.database != null) req.database = context.database
+      if (context?.schema != null) req.schema = context.schema
+      const data = await executeSql(req)
       setResult(data)
       setStatus('success')
     } catch (err: unknown) {

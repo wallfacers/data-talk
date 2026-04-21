@@ -3,6 +3,7 @@ import { execError } from '@/services/ui-router'
 import { applyPatch } from '@/services/ui-router'
 import { useStageStore } from '@/stores/stage-store'
 import { executeQuery as defaultExecuteQuery } from '@/services/api/query'
+import { resolveTabDataContext } from '@/features/stage/utils/resolve-tab-data-context'
 
 const CAPS: PatchCapability[] = [
   { pathPattern: '/pinned', ops: ['replace'], description: 'Pin or unpin this tab' },
@@ -90,7 +91,24 @@ export class BangQueryAdapter implements UIObject {
         const payload = tab.payload as BangPayload
         if (!tab.connectionId) return execError('Tab has no connectionId')
         const run = this.deps.executeQuery ?? defaultExecuteQuery
-        const result = await run({ connectionId: tab.connectionId, sql: payload.sql })
+        const resolved = resolveTabDataContext(
+          {
+            originSessionId: tab.originSessionId ?? null,
+            connectionId: tab.connectionId ?? null,
+            connectionName: tab.connectionName ?? null,
+            database: tab.database ?? null,
+            schema: tab.schema ?? null,
+          },
+          null,
+          { inheritSessionContext: false },
+        )
+        const result = await run({
+          connectionId: resolved.connectionId ?? tab.connectionId,
+          sql: payload.sql,
+          sessionId: resolved.sessionId ?? undefined,
+          database: resolved.database,
+          schema: resolved.schema,
+        })
         store.updateTabPayload(this.objectId, () => ({
           sql: payload.sql,
           rows: result.rows,

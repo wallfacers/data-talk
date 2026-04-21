@@ -39,11 +39,13 @@ public class ConnectionService {
     }
 
     public List<ConnectionDto> list() {
-        return repo.findAll().stream()
-            .map(c -> new ConnectionDto(c.id(), c.name(), c.kind(), c.host(), c.port(),
-                c.databaseName(), c.username(), c.createdAt(), c.connectTimeout(),
-                c.lastTestStatus(), c.lastTestAt()))
-            .toList();
+        return repo.findAll().stream().map(this::toDto).toList();
+    }
+
+    public ConnectionDto get(String id) {
+        return repo.findById(id)
+            .map(this::toDto)
+            .orElseThrow(() -> new IllegalArgumentException(translator.get("error.connection.unknown", id)));
     }
 
     public String decryptPassword(String id) {
@@ -100,4 +102,10 @@ public class ConnectionService {
     }
 
     public record TestResult(boolean ok, long latencyMs, String reason) {}
+
+    private ConnectionDto toDto(ConnectionRecord c) {
+        return new ConnectionDto(c.id(), c.name(), c.kind(), c.host(), c.port(),
+            c.databaseName(), c.username(), c.createdAt(), c.connectTimeout(),
+            c.lastTestStatus(), c.lastTestAt());
+    }
 }

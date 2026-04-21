@@ -20,12 +20,41 @@ vi.mock('@codemirror/state', () => ({ Prec: { high: (x: any) => x } }))
 vi.mock('../hooks/use-sql-execute')
 vi.mock('@/services/channel/use-channel')
 vi.mock('@/features/connection/store', () => ({
-  useConnectionStore: (sel: any) => sel({ activeConnectionId: 'c-test' }),
+  useConnectionStore: (sel: any) => sel({
+    activeConnectionId: 'c-fallback',
+    connections: [
+      { id: 'c-tab', name: 'Tab Conn' },
+      { id: 'c-session', name: 'Session Conn' },
+      { id: 'c-fallback', name: 'Fallback Conn' },
+    ],
+  }),
+}))
+vi.mock('@/features/session/hooks/use-session-data-context', () => ({
+  useSessionDataContext: () => ({
+    context: {
+      sessionId: 's-1',
+      connectionId: 'c-session',
+      connectionNameSnapshot: 'Session Conn',
+      database: 'session-db',
+      schema: 'session-schema',
+      selectedLevel: 'schema',
+      updatedAt: 0,
+    },
+    isLoading: false,
+    error: null,
+    refresh: vi.fn(),
+    resolveUseTarget: vi.fn(),
+    setSessionDataContext: vi.fn(),
+    validateSessionDataContext: vi.fn(),
+  }),
 }))
 
 const mockTab: StageTab = {
   tabId: 'qe-1', type: 'query_editor', title: 'SQL 编辑器',
   scope: 'session', originSessionId: 's-1', createdAt: 0,
+  connectionId: 'c-tab',
+  connectionName: 'Tab Conn',
+  database: 'tab-db',
   payload: { sql: 'SELECT 1', source: 'user' },
 }
 
@@ -49,12 +78,20 @@ describe('QueryEditorTab', () => {
   it('renders editor area and Run button', () => {
     render(<QueryEditorTab tab={mockTab} />)
     expect(screen.getByRole('button', { name: /Ctrl\+Enter 运行/i })).toBeTruthy()
+    expect(screen.getByText(/Tab Conn/)).toBeTruthy()
+    expect(screen.getByText(/tab-db/)).toBeTruthy()
+    expect(screen.getByText(/session-schema/)).toBeTruthy()
   })
 
   it('calls execute on Run click', () => {
     render(<QueryEditorTab tab={mockTab} />)
     fireEvent.click(screen.getByRole('button', { name: /Ctrl\+Enter 运行/i }))
-    expect(mockExecute).toHaveBeenCalledWith('SELECT 1', 'c-test', 'user')
+    expect(mockExecute).toHaveBeenCalledWith(
+      'SELECT 1',
+      'c-tab',
+      'user',
+      { sessionId: 's-1', database: 'tab-db', schema: 'session-schema' },
+    )
   })
 
   it('shows risk warning when risk_blocked', () => {

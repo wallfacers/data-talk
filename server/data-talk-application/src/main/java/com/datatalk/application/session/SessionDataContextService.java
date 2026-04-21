@@ -16,17 +16,20 @@ public class SessionDataContextService {
     private final SessionRepository sessions;
     private final ConnectionRepository connections;
     private final SessionDataContextRepository contexts;
+    private final ConnectionTargetDiscoveryService discovery;
     private final Clock clock;
 
     public SessionDataContextService(
         SessionRepository sessions,
         ConnectionRepository connections,
         SessionDataContextRepository contexts,
+        ConnectionTargetDiscoveryService discovery,
         Clock clock
     ) {
         this.sessions = sessions;
         this.connections = connections;
         this.contexts = contexts;
+        this.discovery = discovery;
         this.clock = clock;
     }
 
@@ -66,5 +69,40 @@ public class SessionDataContextService {
         );
         contexts.upsert(record);
         return record;
+    }
+
+    public SessionDataContextRecord validate(String sessionId) {
+        SessionDataContextRecord current = get(sessionId);
+        if (current.connectionId() == null || current.connectionId().isBlank()) {
+            return current;
+        }
+        var connection = connections.findById(current.connectionId())
+            .orElseThrow(() -> new NoSuchElementException("unknown connection: " + current.connectionId()));
+        long now = clock.millis();
+        var targets = discovery.discover(current.connectionId());
+        String databaseName = containsIgnoreCase(targets.databaseNames(), current.databaseName()) ? current.databaseName() : null;
+        String schemaName = containsIgnoreCase(targets.schemaNames(), current.schemaName()) ? current.schemaName() : null;
+        String selectedLevel = switch (current.selectedLevel() == null ? "" : current.selectedLevel()) {
+            case "schema" -> schemaName != null ? "schema" : (databaseName != null ? "database" : "connection");
+            case "database" -> databaseName != null ? "database" : "connection";
+            case "connection" -> "connection";
+            default -> schemaName != null ? "schema" : (databaseName != null ? "database" : "connection");
+        };
+        SessionDataContextRecord refreshed = new SessionDataContextRecord(
+            current.sessionId(),
+            current.connectionId(),
+            connection.name(),
+            databaseName,
+            schemaName,
+            selectedLevel,
+            now
+        );
+        contexts.upsert(refreshed);
+        return refreshed;
+    }
+
+    private boolean containsIgnoreCase(java.util.Set<String> values, String expected) {
+        if (expected == null) return false;
+        return values.stream().anyMatch(v -> v != null && v.equalsIgnoreCase(expected));
     }
 }

@@ -32,6 +32,7 @@ class SessionDataContextServiceTest {
     private ConnectionRepository connectionRepo;
     private SessionDataContextRepository contextRepo;
     private SessionDataContextService service;
+    private ConnectionTargetDiscoveryService discovery;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -84,10 +85,12 @@ class SessionDataContextServiceTest {
         sessionRepo = new SessionRepository(jdbc);
         connectionRepo = new ConnectionRepository(jdbc);
         contextRepo = new SessionDataContextRepository(jdbc);
+        discovery = org.mockito.Mockito.mock(ConnectionTargetDiscoveryService.class);
         service = new SessionDataContextService(
             sessionRepo,
             connectionRepo,
             contextRepo,
+            discovery,
             Clock.fixed(Instant.ofEpochMilli(1_710_000_000_000L), ZoneOffset.UTC)
         );
 

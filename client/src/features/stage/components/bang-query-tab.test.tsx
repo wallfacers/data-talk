@@ -19,6 +19,8 @@ describe('BangQueryTab', () => {
         scope: 'workspace',
         connectionId: 'c1',
         connectionName: 'orders-prod',
+        database: 'orders',
+        schema: 'public',
         payload: {
           sql: 'SELECT 1',
           rows: [{ c: 1 }],
@@ -35,6 +37,7 @@ describe('BangQueryTab', () => {
   it('renders source badge and switches active connection on continue action', () => {
     render(<BangQueryTab tabId="t1" />)
     expect(screen.getByText('orders-prod')).toBeInTheDocument()
+    expect(screen.getByText('orders / public')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: '用此数据源继续' }))
     expect(useConnectionStore.getState().activeConnectionId).toBe('c1')
   })

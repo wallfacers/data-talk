@@ -5,7 +5,7 @@ import { useStageStore, type StageTab } from '@/stores/stage-store'
 function makeTab(tabId: string): StageTab {
   return {
     tabId, type: 'bang_query', title: 'SELECT 1', scope: 'workspace',
-    connectionId: 'conn-1', pinned: false,
+    connectionId: 'conn-1', connectionName: 'conn-name', database: 'analytics', schema: 'public', originSessionId: 'sess-1', pinned: false,
     payload: { sql: 'SELECT 1', lastRun: { columns: ['c'], rowCount: 1, durationMs: 5, truncated: false }, rows: [{ c: 1 }] },
     createdAt: 1,
   }
@@ -39,7 +39,13 @@ describe('BangQueryAdapter', () => {
     const adapter = new BangQueryAdapter('bq1', { executeQuery: spy })
     const res = await adapter.exec('rerun')
     expect(res.success).toBe(true)
-    expect(spy).toHaveBeenCalledWith({ connectionId: 'conn-1', sql: 'SELECT 1' })
+    expect(spy).toHaveBeenCalledWith({
+      connectionId: 'conn-1',
+      sql: 'SELECT 1',
+      sessionId: 'sess-1',
+      database: 'analytics',
+      schema: 'public',
+    })
     const updated = useStageStore.getState().workspaceTabs[0].payload as { rows: unknown[] }
     expect(updated.rows).toEqual([{ c: 2 }])
   })

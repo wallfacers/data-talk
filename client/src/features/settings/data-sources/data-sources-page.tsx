@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -6,6 +6,7 @@ import { TrashIcon, PencilIcon, PlusIcon, CheckCircle2Icon, XCircleIcon, LoaderI
 import { useI18n } from '@/i18n/use-i18n'
 import { listConnections, deleteConnection, testConnection, connectionsKey, type Connection } from './api'
 import { ConnectionFormPanel } from './connection-form-dialog'
+import { useConnectionStore } from '@/features/connection/store'
 
 export function DataSourcesPage() {
   const { t } = useI18n()
@@ -13,9 +14,14 @@ export function DataSourcesPage() {
   const { data: connections = [], isLoading } = useQuery({
     queryKey: connectionsKey, queryFn: listConnections,
   })
+  const setConnections = useConnectionStore((s) => s.setConnections)
   const [editing, setEditing] = useState<Connection | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [testResult, setTestResult] = useState<Record<string, 'ok' | 'fail' | 'loading'>>({})
+
+  useEffect(() => {
+    setConnections(connections)
+  }, [connections, setConnections])
 
   function getStatus(c: Connection): 'ok' | 'fail' | 'loading' | null {
     return testResult[c.id] ?? (c.lastTestStatus === 'ok' || c.lastTestStatus === 'fail' ? c.lastTestStatus : null)
@@ -31,6 +37,7 @@ export function DataSourcesPage() {
     try {
       const r = await testConnection(id)
       setTestResult(s => ({ ...s, [id]: r.ok ? 'ok' : 'fail' }))
+      await qc.invalidateQueries({ queryKey: connectionsKey })
       toast[r.ok ? 'success' : 'error'](r.ok ? t('dataSources.testSuccess', { latencyMs: r.latencyMs }) : r.reason ?? t('dataSources.testFailure'))
     } catch (err) {
       setTestResult(s => ({ ...s, [id]: 'fail' }))

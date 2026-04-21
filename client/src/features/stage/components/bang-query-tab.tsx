@@ -7,22 +7,44 @@ import { useStageStore } from '@/stores/stage-store'
 import { BangQueryAdapter } from '@/features/stage/adapters/BangQueryAdapter'
 import { showErrorToast, normalizeError } from '@/services/http-error'
 import { useI18n } from '@/i18n/use-i18n'
+import { resolveTabDataContext } from '@/features/stage/utils/resolve-tab-data-context'
 
 interface BangPayload {
   sql: string
   rows?: Array<Record<string, unknown>>
   lastRun?: { columns: string[]; rowCount: number; durationMs: number; truncated: boolean }
+  connectionId?: string
+  connectionName?: string
+  database?: string
+  schema?: string
 }
 
 export function BangQueryTab({ tabId }: { tabId: string }) {
   const { t } = useI18n()
   const tab = useStageStore((s) => s.workspaceTabs.find((x) => x.tabId === tabId))
   const setActiveConnection = useConnectionStore((s) => s.setActive)
+  const connections = useConnectionStore((s) => s.connections)
   const [expanded, setExpanded] = useState(false)
   const [rerunning, setRerunning] = useState(false)
   if (!tab) return null
 
   const payload = tab.payload as BangPayload
+  const resolvedContext = resolveTabDataContext(
+    {
+      originSessionId: tab.originSessionId ?? null,
+      connectionId: payload.connectionId ?? tab.connectionId ?? null,
+      connectionName: payload.connectionName ?? tab.connectionName ?? null,
+      database: payload.database ?? tab.database ?? null,
+      schema: payload.schema ?? tab.schema ?? null,
+    },
+    null,
+    {
+      inheritSessionContext: false,
+      connectionNameLookup: (connectionId) => connections.find((connection) => connection.id === connectionId)?.name ?? null,
+    },
+  )
+  const connectionLabel = resolvedContext.connectionName ?? resolvedContext.connectionId ?? ''
+  const contextDetails = [resolvedContext.database, resolvedContext.schema].filter(Boolean).join(' / ')
   const rows = payload.rows ?? []
   const columns = (payload.lastRun?.columns ?? []).map((c) => ({ key: c, header: c }))
 
@@ -54,8 +76,11 @@ export function BangQueryTab({ tabId }: { tabId: string }) {
             onClick={onUseThisSource}
             className="rounded border px-1.5 text-[10px] text-muted-foreground hover:bg-accent/50"
           >
-            {tab.connectionName ?? tab.connectionId}
+            {connectionLabel}
           </button>
+        )}
+        {contextDetails && (
+          <span className="whitespace-nowrap text-muted-foreground">{contextDetails}</span>
         )}
         {tab.connectionId && (
           <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px]" onClick={onUseThisSource}>

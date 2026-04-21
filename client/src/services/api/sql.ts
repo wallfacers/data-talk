@@ -7,6 +7,9 @@ export interface SqlExecuteRequest {
   connectionId: string
   sql: string
   source: 'ai' | 'user'
+  sessionId?: string | null
+  database?: string | null
+  schema?: string | null
 }
 
 export interface SqlResult {
@@ -30,10 +33,14 @@ export class SqlRiskError extends Error {
 }
 
 export async function executeSql(req: SqlExecuteRequest): Promise<SqlResult> {
+  const json: SqlExecuteRequest = { connectionId: req.connectionId, sql: req.sql, source: req.source }
+  if (req.sessionId != null) json.sessionId = req.sessionId
+  if (req.database != null) json.database = req.database
+  if (req.schema != null) json.schema = req.schema
   const res = await fetch(`${BASE}/api/sql/execute`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(req),
+    body: JSON.stringify(json),
   })
   if (res.status === 422) {
     const risk: SqlRiskBlocked = await res.json()

@@ -10,11 +10,16 @@ import { useConnectionStore } from '@/features/connection/store'
 import { useSqlExecute } from '../hooks/use-sql-execute'
 import { useChannel } from '@/services/channel/use-channel'
 import type { SqlResult } from '@/services/api/sql'
+import { useSessionDataContext } from '@/features/session/hooks/use-session-data-context'
+import { resolveTabDataContext } from '@/features/stage/utils/resolve-tab-data-context'
 
 type QueryEditorPayload = {
   sql?: string
   source?: 'ai' | 'user'
   connectionId?: string
+  connectionName?: string
+  database?: string
+  schema?: string
 }
 
 function SqlEditor({
@@ -107,19 +112,43 @@ function ResultTable({ result }: { result: SqlResult }) {
 export function QueryEditorTab({ tab }: { tab: StageTab }) {
   const payload = tab.payload as QueryEditorPayload
   const editorRef = useRef<EditorView | undefined>(undefined)
-  const activeConnectionId = useConnectionStore((s) => s.activeConnectionId)
-  const connectionId = payload.connectionId ?? tab.connectionId ?? activeConnectionId ?? ''
+  const { activeConnectionId, connections } = useConnectionStore((s) => ({
+    activeConnectionId: s.activeConnectionId,
+    connections: s.connections,
+  }))
+  const sessionDataContext = useSessionDataContext(tab.originSessionId ?? null)
   const source = payload.source ?? 'user'
   const isAiSource = source === 'ai'
+  const resolvedContext = resolveTabDataContext(
+    {
+      originSessionId: tab.originSessionId ?? null,
+      connectionId: payload.connectionId ?? tab.connectionId ?? null,
+      connectionName: payload.connectionName ?? tab.connectionName ?? null,
+      database: payload.database ?? tab.database ?? null,
+      schema: payload.schema ?? tab.schema ?? null,
+    },
+    sessionDataContext.context,
+    {
+      inheritSessionContext: true,
+      fallbackConnectionId: activeConnectionId ?? null,
+      connectionNameLookup: (connectionId) => connections.find((connection) => connection.id === connectionId)?.name ?? null,
+    },
+  )
+  const connectionLabel = resolvedContext.connectionName ?? resolvedContext.connectionId ?? '未选择连接'
+  const contextDetails = [resolvedContext.database, resolvedContext.schema].filter(Boolean).join(' / ')
 
   const { execute, result, risk, status, reset } = useSqlExecute()
   const { sendMessage } = useChannel()
 
   const handleRun = useCallback(() => {
     const sqlText = editorRef.current?.state.doc.toString() ?? ''
-    if (!sqlText.trim() || !connectionId) return
-    execute(sqlText, connectionId, source)
-  }, [execute, connectionId, source])
+    if (!sqlText.trim() || !resolvedContext.connectionId) return
+    execute(sqlText, resolvedContext.connectionId, source, {
+      sessionId: resolvedContext.sessionId ?? undefined,
+      database: resolvedContext.database,
+      schema: resolvedContext.schema,
+    })
+  }, [execute, resolvedContext.connectionId, resolvedContext.database, resolvedContext.schema, resolvedContext.sessionId, source])
 
   const handleSendToAi = useCallback(() => {
     const sqlText = editorRef.current?.state.doc.toString() ?? ''
@@ -140,12 +169,15 @@ export function QueryEditorTab({ tab }: { tab: StageTab }) {
               AI 生成
             </span>
           )}
-          <span>{connectionId || '未选择连接'}</span>
+          <span>
+            {connectionLabel}
+            {contextDetails ? ` · ${contextDetails}` : ''}
+          </span>
         </div>
         <Button
           size="sm"
           variant="default"
-          disabled={status === 'running' || !connectionId}
+          disabled={status === 'running' || !resolvedContext.connectionId}
           onClick={handleRun}
           className="h-7 gap-1.5 text-xs"
         >

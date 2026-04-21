@@ -26,6 +26,7 @@ import { StageToggleButton } from '@/features/stage/components/stage-toggle-butt
 import { openBangQueryTab } from '@/features/stage/utils/open-bang-query-tab'
 import { createBangQueryMessage } from '@/services/api/bang-query-message'
 import { useHasActiveModel } from './hooks/use-has-active-model'
+import { useSessionDataContext } from './hooks/use-session-data-context'
 import { invalidateSessionLists } from './hooks/use-sessions'
 import { SQL_EXECUTE_EVENT, SQL_EXPLAIN_EVENT } from '@/features/chat/components/markdown/sql-code-block'
 import { useI18n } from '@/i18n/use-i18n'
@@ -75,6 +76,7 @@ function InnerComposer() {
   const activeConnectionId = useConnectionStore((s) => s.activeConnectionId)
   const setActiveConnection = useConnectionStore((s) => s.setActive)
   const hasActiveModel = useHasActiveModel()
+  const sessionDataContext = useSessionDataContext(activeSessionId)
   const qc = useQueryClient()
   const isBangQueryMode = /^!\s*(select|with)\b/i.test(text.trim())
 
@@ -85,6 +87,63 @@ function InnerComposer() {
     // !<sql> direct-query intercept: bypass AI entirely for SELECT/WITH queries.
     // Other '!' prefixed content still routes to AI (compat with natural language use).
     if (trimmed.startsWith('!')) {
+      const useMatch = /^!\s*use\b(?:\s+(.*))?$/i.exec(trimmed)
+      if (useMatch) {
+        const target = useMatch[1]?.trim() ?? ''
+        if (!target) {
+          showErrorToast(normalizeError(new Error('请输入要切换的数据源名称')))
+          return
+        }
+
+        let sessionId = activeSessionId
+        let createdSessionId: string | null = null
+        if (!sessionId) {
+          try {
+            const initialTitle = trimmed.slice(0, 50)
+            const sess = await createSession(activeConnectionId ?? undefined, initialTitle)
+            createdSessionId = sess.id
+            sessionId = sess.id
+          } catch (err) {
+            setText(trimmed)
+            showErrorToast(normalizeError(err))
+            return
+          }
+        }
+
+        if (!sessionId) return
+
+        try {
+          const resolved = await sessionDataContext.resolveUseTarget(target, sessionId)
+          if (resolved.status !== 'matched' || !resolved.context) {
+            const message = resolved.message ?? `当前数据源下未找到 ${target}`
+            throw new Error(message)
+          }
+          await sessionDataContext.setSessionDataContext({
+            connectionId: resolved.context.connectionId,
+            database: resolved.context.database,
+            schema: resolved.context.schema,
+            selectedLevel: resolved.context.selectedLevel,
+          }, sessionId)
+          if (createdSessionId) {
+            openSession(sessionId, false)
+            invalidateSessionLists(qc)
+          }
+          setText('')
+        } catch (err) {
+          if (createdSessionId) {
+            try {
+              await deleteSession(createdSessionId)
+              invalidateSessionLists(qc)
+            } catch {
+              // best-effort cleanup
+            }
+          }
+          setText(trimmed)
+          showErrorToast(normalizeError(err))
+        }
+        return
+      }
+
       const sql = trimmed.slice(1).trim()
       if (sql && /^(select|with)\b/i.test(sql)) {
         let connectionId = activeConnectionId

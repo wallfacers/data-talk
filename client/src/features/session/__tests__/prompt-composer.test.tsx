@@ -10,6 +10,7 @@ import * as chooserStore from '@/features/session/data-source-picker/data-source
 import * as sessionApi from '@/services/api/session'
 import * as bangQueryApi from '@/services/api/bang-query-message'
 import * as openBangQueryTabApi from '@/features/stage/utils/open-bang-query-tab'
+import * as sessionDataContextApi from '@/services/api/session-data-context'
 import { PromptComposer } from '../prompt-composer'
 import type { Mock } from 'vitest'
 
@@ -43,6 +44,12 @@ vi.mock('@/services/channel/use-channel', () => ({
 
 vi.mock('@/services/api/session')
 vi.mock('@/services/api/bang-query-message')
+vi.mock('@/services/api/session-data-context', () => ({
+  getSessionDataContext: vi.fn(),
+  setSessionDataContext: vi.fn(),
+  resolveUseTarget: vi.fn(),
+  validateSessionDataContext: vi.fn(),
+}))
 vi.mock('@/features/stage/utils/open-bang-query-tab')
 
 function renderWithClient(ui: React.ReactElement) {
@@ -67,12 +74,24 @@ describe('PromptComposer', () => {
     channel.sendMessage.mockReset()
     channel.abort.mockReset()
     channel.isStreaming = false
+    vi.mocked(sessionDataContextApi.getSessionDataContext).mockResolvedValue(null as any)
+    vi.mocked(sessionDataContextApi.resolveUseTarget).mockResolvedValue({
+      status: 'not_found',
+      context: null,
+      matchedTarget: null,
+      candidates: [],
+      suggestions: [],
+      message: null,
+    } as any)
+    vi.mocked(sessionDataContextApi.setSessionDataContext).mockResolvedValue(null as any)
+    vi.mocked(sessionDataContextApi.validateSessionDataContext).mockResolvedValue(null as any)
     document.body.innerHTML = '<div id="composer-slot"></div>'
     useConnectionStore.setState({ activeConnectionId: null, connections: [] })
     useSessionStore.setState({
       activeSessionId: null,
       modeBySession: new Map(),
       hasEverSentBySession: new Map(),
+      dataContextBySession: new Map(),
       pendingPrompt: null,
       pendingModelPrompt: false,
       pendingConnectionPrompt: false,
@@ -119,6 +138,7 @@ describe('PromptComposer', () => {
       activeSessionId: 'sess-1',
       modeBySession: new Map(),
       hasEverSentBySession: new Map([['sess-1', true]]),
+      dataContextBySession: new Map(),
       pendingPrompt: null,
       pendingModelPrompt: false,
       pendingConnectionPrompt: false,
@@ -178,6 +198,7 @@ describe('PromptComposer', () => {
       activeSessionId: null,
       modeBySession: new Map(),
       hasEverSentBySession: new Map(),
+      dataContextBySession: new Map(),
       pendingPrompt: null,
       pendingModelPrompt: false,
       pendingConnectionPrompt: false,
@@ -231,6 +252,7 @@ describe('PromptComposer', () => {
       activeSessionId: null,
       modeBySession: new Map(),
       hasEverSentBySession: new Map(),
+      dataContextBySession: new Map(),
       pendingPrompt: null,
       pendingModelPrompt: false,
       pendingConnectionPrompt: false,
@@ -271,6 +293,7 @@ describe('PromptComposer', () => {
       activeSessionId: null,
       modeBySession: new Map(),
       hasEverSentBySession: new Map(),
+      dataContextBySession: new Map(),
       pendingPrompt: null,
       pendingModelPrompt: false,
       pendingConnectionPrompt: false,
@@ -296,6 +319,7 @@ describe('PromptComposer', () => {
       activeSessionId: 'sess-1',
       modeBySession: new Map(),
       hasEverSentBySession: new Map([['sess-1', true]]),
+      dataContextBySession: new Map(),
       pendingPrompt: null,
       pendingModelPrompt: false,
       pendingConnectionPrompt: false,
@@ -314,6 +338,62 @@ describe('PromptComposer', () => {
 
     await waitFor(() => expect(channel.sendMessage).toHaveBeenCalled())
     expect(bangQueryApi.createBangQueryMessage).not.toHaveBeenCalled()
+    expect(openBangQueryTabApi.openBangQueryTab).not.toHaveBeenCalled()
+  })
+
+  it('resolves !use commands through the session data context API', async () => {
+    vi.mocked(sessionDataContextApi.resolveUseTarget).mockResolvedValueOnce({
+      status: 'matched',
+      context: {
+        sessionId: 'sess-1',
+        connectionId: 'conn-1',
+        connectionNameSnapshot: 'Main',
+        database: 'orders',
+        schema: 'public',
+        selectedLevel: 'schema',
+        updatedAt: 1713650010000,
+      },
+      matchedTarget: { level: 'schema', label: 'public' },
+      candidates: [],
+      suggestions: [],
+      message: null,
+    } as any)
+    vi.mocked(sessionDataContextApi.setSessionDataContext).mockResolvedValueOnce({
+      sessionId: 'sess-1',
+      connectionId: 'conn-1',
+      connectionNameSnapshot: 'Main',
+      database: 'orders',
+      schema: 'public',
+      selectedLevel: 'schema',
+      updatedAt: 1713650010000,
+    } as any)
+
+    useConnectionStore.setState({ activeConnectionId: 'conn-1', connections: [{ id: 'conn-1', name: 'Main' } as any] })
+    useSessionStore.setState({
+      activeSessionId: 'sess-1',
+      modeBySession: new Map(),
+      hasEverSentBySession: new Map([['sess-1', true]]),
+      dataContextBySession: new Map(),
+      pendingPrompt: null,
+      pendingModelPrompt: false,
+      pendingConnectionPrompt: false,
+      pendingActionAfterConnectionPick: null,
+    } as any)
+
+    renderWithClient(<PromptComposer />)
+    fireEvent.change(screen.getByPlaceholderText('用自然语言查询你的数据库...'), {
+      target: { value: '! use public' },
+    })
+    fireEvent.click(document.querySelector('button[type="submit"]') as HTMLButtonElement)
+
+    await waitFor(() => expect(sessionDataContextApi.resolveUseTarget).toHaveBeenCalledWith('sess-1', 'public'))
+    expect(sessionDataContextApi.setSessionDataContext).toHaveBeenCalledWith('sess-1', {
+      connectionId: 'conn-1',
+      database: 'orders',
+      schema: 'public',
+      selectedLevel: 'schema',
+    })
+    expect(channel.sendMessage).not.toHaveBeenCalled()
     expect(openBangQueryTabApi.openBangQueryTab).not.toHaveBeenCalled()
   })
 })

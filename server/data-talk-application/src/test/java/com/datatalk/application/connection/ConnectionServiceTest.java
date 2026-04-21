@@ -86,4 +86,21 @@ class ConnectionServiceTest {
         assertThat(r.ok()).isFalse();
         verify(repo).updateTestStatus(eq("c1"), eq("fail"), anyLong());
     }
+
+    @Test
+    void get_returns_current_connection_details() {
+        var repo = mock(ConnectionRepository.class);
+        var vault = mock(SecretVault.class);
+        var svc = new ConnectionService(repo, vault, Clock.systemUTC(), translator());
+
+        when(repo.findById("c1")).thenReturn(Optional.of(
+            new ConnectionRecord("c1", "测试连接", "mysql", "127.0.0.1", 3306,
+                "analytics", "u", new byte[]{1}, "digest", 123L, 3000, "ok", 456L)));
+
+        var dto = svc.get("c1");
+
+        assertThat(dto.id()).isEqualTo("c1");
+        assertThat(dto.name()).isEqualTo("测试连接");
+        assertThat(dto.lastTestStatus()).isEqualTo("ok");
+    }
 }
