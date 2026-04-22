@@ -1,8 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { translateMessage } from '@/i18n/messages'
 import { SqlEditorToolbar } from './sql-editor-toolbar'
 
 describe('SqlEditorToolbar', () => {
+  const t = (key: Parameters<typeof translateMessage>[1], values?: Record<string, string | number>) =>
+    translateMessage('zh-CN', key, values)
   const onRun = vi.fn()
   const onCancel = vi.fn()
   const onFormat = vi.fn()
@@ -25,17 +28,17 @@ describe('SqlEditorToolbar', () => {
         onFormat={onFormat}
         onLimitChange={onLimitChange}
         onRun={onRun}
-        contextChip={<button type="button">Session context</button>}
+        contextChip={<button type="button">{t('stage.context.label.session')}</button>}
       />,
     )
 
-    expect(screen.getByRole('button', { name: /Run/i })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: /Cancel/i })).toBeNull()
-    expect(screen.getByRole('button', { name: /Format/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: t('stage.toolbar.run') })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: t('stage.toolbar.cancel') })).toBeNull()
+    expect(screen.getByRole('button', { name: t('stage.toolbar.format') })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Save/i })).toBeNull()
     expect(screen.queryByRole('button', { name: /More actions/i })).toBeNull()
-    expect(screen.getByRole('button', { name: /Session context/i })).toBeTruthy()
-    expect(screen.getByRole('combobox', { name: /Execution limit/i })).toHaveTextContent('100 rows')
+    expect(screen.getByRole('button', { name: t('stage.context.label.session') })).toBeTruthy()
+    expect(screen.getByRole('combobox', { name: t('stage.limit.aria') })).toHaveTextContent(t('stage.limit.rows', { count: 100 }))
   })
 
   it('shows cancel while running and forwards the primary actions', () => {
@@ -48,15 +51,15 @@ describe('SqlEditorToolbar', () => {
         onFormat={onFormat}
         onLimitChange={onLimitChange}
         onRun={onRun}
-        contextChip={<button type="button">Tab override</button>}
+        contextChip={<button type="button">{t('stage.context.label.override')}</button>}
       />,
     )
 
-    expect(screen.getByRole('button', { name: /Run/i })).toBeDisabled()
-    expect(screen.getByRole('button', { name: /Cancel/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: t('stage.toolbar.run') })).toBeDisabled()
+    expect(screen.getByRole('button', { name: t('stage.toolbar.cancel') })).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: /Format/i }))
-    fireEvent.click(screen.getByRole('button', { name: /Cancel/i }))
+    fireEvent.click(screen.getByRole('button', { name: t('stage.toolbar.format') }))
+    fireEvent.click(screen.getByRole('button', { name: t('stage.toolbar.cancel') }))
 
     expect(onFormat).toHaveBeenCalledTimes(1)
     expect(onCancel).toHaveBeenCalledTimes(1)

@@ -3,18 +3,22 @@ package com.datatalk.adapter.actions;
 import com.datatalk.application.connection.ConnectionService;
 import org.springframework.beans.factory.annotation.Qualifier;
 import com.datatalk.domain.action.ActionContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.sql.DriverManager;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -26,6 +30,11 @@ class ReadSchemaActionIT {
     @Autowired @Qualifier("datatalkJdbc") JdbcTemplate datatalkJdbc;
 
     String connectionId;
+
+    @AfterEach
+    void resetLocale() {
+        LocaleContextHolder.resetLocaleContext();
+    }
 
     @BeforeEach
     void seedDb() throws Exception {
@@ -83,5 +92,22 @@ class ReadSchemaActionIT {
         List<Map<String, Object>> schema = (List<Map<String, Object>>) out.get("schema");
         assertThat(schema).extracting(t -> t.get("name"))
             .containsExactlyInAnyOrder("users", "orders");
+    }
+
+    @Test
+    void readSchema_requires_active_connection_with_localized_message() {
+        long now = System.currentTimeMillis();
+        datatalkJdbc.update("""
+            INSERT INTO sessions(id, connection_id, title, has_ever_sent, opencode_sid, created_at, updated_at, title_locked)
+            VALUES(?, NULL, ?, 1, ?, ?, ?, 0)
+            """, "s-no-conn", "Read Schema", "oc-missing", now, now);
+        LocaleContextHolder.setLocale(Locale.SIMPLIFIED_CHINESE);
+
+        assertThatThrownBy(() -> action.handle(
+            new ActionContext("s-no-conn", "c-missing", null, "oc-missing"),
+            Map.of()
+        ))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("当前会话没有激活的数据源");
     }
 }

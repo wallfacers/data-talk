@@ -10,15 +10,18 @@ import com.datatalk.application.persistence.SessionRepository;
 import com.datatalk.application.registry.ActionRegistry;
 import com.datatalk.application.session.ConnectionTargetDiscoveryService;
 import com.datatalk.domain.action.ActionContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.sql.DriverManager;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -42,6 +45,11 @@ class ConnectionManagementActionsIT {
     @Autowired UpdateConnectionConfirmableAction updateConnectionConfirmableAction;
 
     @MockBean ConnectionTargetDiscoveryService discovery;
+
+    @AfterEach
+    void resetLocale() {
+        LocaleContextHolder.resetLocaleContext();
+    }
 
     @BeforeEach
     void reset() throws Exception {
@@ -190,5 +198,39 @@ class ConnectionManagementActionsIT {
         assertThat(refreshed.connectionNameSnapshot()).isEqualTo("新名称");
         assertThat(refreshed.databaseName()).isNull();
         assertThat(refreshed.schemaName()).isNull();
+    }
+
+    @Test
+    void update_connection_confirmable_requires_localized_confirmation_token() {
+        String connectionId = connections.create(
+            "原名称",
+            "h2",
+            "localhost",
+            0,
+            "mem:update_confirmable_missing_token;DB_CLOSE_DELAY=-1",
+            "sa",
+            "",
+            3000
+        );
+        sessionRepo.upsert(new SessionRecord("s-update-token", connectionId, "Update", false, null, 1L, 1L, false));
+        LocaleContextHolder.setLocale(Locale.SIMPLIFIED_CHINESE);
+
+        assertThatThrownBy(() -> updateConnectionConfirmableAction.handle(
+            new ActionContext("s-update-token", "call-update-token", connectionId, "oc-update"),
+            Map.of(
+                "connectionId", connectionId,
+                "name", "新名称",
+                "kind", "h2",
+                "host", "localhost",
+                "port", 0,
+                "databaseName", "mem:update_confirmable_missing_token;DB_CLOSE_DELAY=-1",
+                "username", "sa",
+                "password", "",
+                "connectTimeout", 3000,
+                "confirm", true
+            )
+        ))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("必须提供确认令牌");
     }
 }

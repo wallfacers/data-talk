@@ -1,5 +1,6 @@
 package com.datatalk.application.session;
 
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.persistence.SessionDataContextRecord;
 import com.datatalk.application.persistence.SessionDataContextRepository;
 import com.datatalk.application.persistence.SessionRepository;
@@ -20,6 +21,7 @@ public class UseTargetResolver {
     private final ConnectionRepository connections;
     private final SessionDataContextRepository contexts;
     private final ConnectionTargetDiscoveryService discovery;
+    private final Translator translator;
     private final Clock clock;
 
     public UseTargetResolver(
@@ -27,21 +29,23 @@ public class UseTargetResolver {
         ConnectionRepository connections,
         SessionDataContextRepository contexts,
         ConnectionTargetDiscoveryService discovery,
+        Translator translator,
         Clock clock
     ) {
         this.sessions = sessions;
         this.connections = connections;
         this.contexts = contexts;
         this.discovery = discovery;
+        this.translator = translator;
         this.clock = clock;
     }
 
     public ResolveUseResult resolve(String sessionId, String rawTarget) {
         if (rawTarget == null || rawTarget.isBlank()) {
-            throw new IllegalArgumentException("target is required");
+            throw new IllegalArgumentException(translator.get("error.target.required"));
         }
         var session = sessions.findById(sessionId)
-            .orElseThrow(() -> new NoSuchElementException("session not found: " + sessionId));
+            .orElseThrow(() -> new NoSuchElementException(translator.get("error.session.not_found", sessionId)));
         var current = contexts.findBySessionId(sessionId)
             .orElse(new SessionDataContextRecord(sessionId, session.connectionId(), null, null, null, null, session.updatedAt()));
         String target = rawTarget.trim();
@@ -87,7 +91,7 @@ public class UseTargetResolver {
 
         List<TargetOption> suggestions = buildSuggestions(current, target);
         return ResolveUseResult.notFound(
-            "No database target matched '" + target + "'",
+            translator.get("error.use_target.not_found", target),
             suggestions
         );
     }

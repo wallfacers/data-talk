@@ -1,5 +1,6 @@
 package com.datatalk.adapter.actions;
 
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.session.ConnectionTargetDiscoveryService;
 import com.datatalk.application.session.SessionDataContextService;
 import com.datatalk.domain.action.ActionContext;
@@ -30,13 +31,16 @@ public class ListConnectionTargetsAction implements ActionHandler<Map, Map> {
 
     private final ConnectionTargetDiscoveryService discovery;
     private final SessionDataContextService sessionContexts;
+    private final Translator translator;
 
     public ListConnectionTargetsAction(
         ConnectionTargetDiscoveryService discovery,
-        SessionDataContextService sessionContexts
+        SessionDataContextService sessionContexts,
+        Translator translator
     ) {
         this.discovery = discovery;
         this.sessionContexts = sessionContexts;
+        this.translator = translator;
     }
 
     @Override
@@ -79,7 +83,7 @@ public class ListConnectionTargetsAction implements ActionHandler<Map, Map> {
             connectionId = sessionContexts.get(ctx.sessionId()).connectionId();
         }
         if (connectionId == null || connectionId.isBlank()) {
-            throw new IllegalArgumentException("no active connection in current session");
+            throw new IllegalArgumentException(translator.get("error.connection.active_required"));
         }
         var discovered = discovery.discover(connectionId);
         var out = new LinkedHashMap<String, Object>();

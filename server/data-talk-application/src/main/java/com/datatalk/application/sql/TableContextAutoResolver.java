@@ -2,6 +2,7 @@ package com.datatalk.application.sql;
 
 import com.datatalk.application.connection.ConnectionService;
 import com.datatalk.application.connection.JdbcUrlBuilder;
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.application.session.ResolvedExecutionContext;
 import org.springframework.stereotype.Service;
@@ -23,9 +24,11 @@ public class TableContextAutoResolver {
     private static final Set<String> SYSTEM_SCHEMAS = Set.of("information_schema", "pg_catalog", "sys", "system_lobs");
 
     private final ConnectionService connectionService;
+    private final Translator translator;
 
-    public TableContextAutoResolver(ConnectionService connectionService) {
+    public TableContextAutoResolver(ConnectionService connectionService, Translator translator) {
         this.connectionService = connectionService;
+        this.translator = translator;
     }
 
     public ResolvedExecutionContext resolve(ResolvedExecutionContext context, String sql) {
@@ -39,10 +42,14 @@ public class TableContextAutoResolver {
 
         List<Candidate> matches = locateCandidates(context, tableName);
         if (matches.isEmpty()) {
-            throw new IllegalArgumentException("未找到表 " + tableName + "，请先 use 对应的 database/schema 后再执行");
+            throw new IllegalArgumentException(translator.get("error.table.not_found", tableName));
         }
         if (matches.size() > 1) {
-            throw new IllegalArgumentException("表 " + tableName + " 命中多个候选：" + String.join("、", matches.stream().map(Candidate::label).toList()) + "。请先明确选择 database/schema");
+            throw new IllegalArgumentException(translator.get(
+                "error.table.ambiguous",
+                tableName,
+                String.join(", ", matches.stream().map(Candidate::label).toList())
+            ));
         }
 
         Candidate match = matches.get(0);
@@ -76,13 +83,17 @@ public class TableContextAutoResolver {
                     }
                     if (isMysql(connection.kind())) {
                         if (!hasText(catalog)) continue;
-                        matches.add(new Candidate(catalog, null, "已自动使用 " + catalog + " database"));
+                        matches.add(new Candidate(
+                            catalog,
+                            null,
+                            translator.get("sql.context.auto_use.database", catalog)
+                        ));
                     } else {
                         if (!hasText(schema) || isSystemSchema(schema)) continue;
                         matches.add(new Candidate(
                             firstNonBlank(context.database(), connection.databaseName()),
                             schema,
-                            "已自动使用 " + schema + " schema"
+                            translator.get("sql.context.auto_use.schema", schema)
                         ));
                     }
                 }
@@ -90,7 +101,10 @@ public class TableContextAutoResolver {
         } catch (IllegalArgumentException e) {
             throw e;
         } catch (Exception e) {
-            throw new IllegalArgumentException("无法自动定位表 " + tableName + "： " + e.getMessage(), e);
+            throw new IllegalArgumentException(
+                translator.get("error.table.auto_locate_failed", tableName, e.getMessage()),
+                e
+            );
         }
         return new ArrayList<>(new LinkedHashSet<>(matches));
     }

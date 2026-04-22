@@ -1,13 +1,17 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
+import { translateMessage } from '@/i18n/messages'
 import { SqlWorkbenchStatusBar } from './sql-workbench-status-bar'
 
 describe('SqlWorkbenchStatusBar', () => {
+  const t = (key: Parameters<typeof translateMessage>[1], values?: Record<string, string | number>) =>
+    translateMessage('zh-CN', key, values)
+
   it.each([
-    ['running', 'Running'],
-    ['success', 'Success'],
-    ['error', 'Error'],
-    ['risk_blocked', 'Risk blocked'],
+    ['running', 'stage.status.running'],
+    ['success', 'stage.status.success'],
+    ['error', 'stage.status.error'],
+    ['risk_blocked', 'stage.status.riskBlocked'],
   ] as const)('maps %s to %s', (status, label) => {
     render(
       <SqlWorkbenchStatusBar
@@ -17,7 +21,7 @@ describe('SqlWorkbenchStatusBar', () => {
       />,
     )
 
-    expect(screen.getByText(label)).toBeTruthy()
+    expect(screen.getByText(t(label))).toBeTruthy()
   })
 
   it('does not render in idle status', () => {

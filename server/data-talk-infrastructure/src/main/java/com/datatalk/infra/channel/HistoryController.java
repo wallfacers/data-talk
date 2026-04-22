@@ -2,6 +2,7 @@ package com.datatalk.infra.channel;
 
 import com.datatalk.application.channel.HistoryService;
 import com.datatalk.application.channel.SyntheticSessionMessageService;
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.persistence.ArtifactRecord;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.web.bind.annotation.*;
@@ -16,10 +17,16 @@ public class HistoryController {
 
     private final HistoryService svc;
     private final SyntheticSessionMessageService syntheticMessages;
+    private final Translator translator;
 
-    public HistoryController(HistoryService svc, SyntheticSessionMessageService syntheticMessages) {
+    public HistoryController(
+        HistoryService svc,
+        SyntheticSessionMessageService syntheticMessages,
+        Translator translator
+    ) {
         this.svc = svc;
         this.syntheticMessages = syntheticMessages;
+        this.translator = translator;
     }
 
     @GetMapping("/messages")
@@ -31,7 +38,7 @@ public class HistoryController {
     public BangQueryMessageResponse createBangQueryMessage(@PathVariable String sessionId,
                                                            @RequestBody BangQueryMessageCreateRequest req) {
         if (req == null) {
-            throw new IllegalArgumentException("request body is required");
+            throw new IllegalArgumentException(translator.get("error.request_body_required"));
         }
         try {
             var record = syntheticMessages.createBangQueryUserMessage(sessionId, req.text(), req.createdAt());

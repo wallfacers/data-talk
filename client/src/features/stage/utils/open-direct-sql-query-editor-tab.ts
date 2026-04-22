@@ -1,7 +1,9 @@
 import { executeQuery } from '@/services/api/query'
 import { useConnectionStore } from '@/features/connection/store'
+import { getCurrentLanguage } from '@/stores/ui-settings-store'
 import { useSessionStore } from '@/stores/session-store'
 import { useStageStore, type StageTab } from '@/stores/stage-store'
+import { translateMessage } from '@/i18n/messages'
 
 interface Args {
   sessionId: string | null
@@ -64,7 +66,7 @@ export async function openDirectSqlQueryEditorTab({ sessionId, connectionId, sql
   const tab: StageTab = {
     tabId,
     type: 'query_editor',
-    title: 'SQL 编辑器',
+    title: translateMessage(getCurrentLanguage(), 'stage.toolRow.sql'),
     scope: 'session',
     originSessionId: sessionId ?? undefined,
     connectionId: payload.connectionId,

@@ -6,13 +6,16 @@ import com.datatalk.application.persistence.SessionRepository;
 import com.datatalk.application.registry.ActionRegistry;
 import com.datatalk.application.session.ConnectionTargetDiscoveryService;
 import com.datatalk.domain.action.ActionContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -38,6 +41,11 @@ class SessionDataContextActionsIT {
     private String c2Id;
     private String c1Name;
     private String c2Name;
+
+    @AfterEach
+    void resetLocale() {
+        LocaleContextHolder.resetLocaleContext();
+    }
 
     @BeforeEach
     void reset() {
@@ -139,12 +147,14 @@ class SessionDataContextActionsIT {
     @Test
     void list_connection_targets_requires_active_connection_when_not_provided() {
         sessions.upsert(new SessionRecord("s2", null, "无连接会话", false, null, 1L, 1L, false));
+        LocaleContextHolder.setLocale(Locale.SIMPLIFIED_CHINESE);
 
         assertThatThrownBy(() -> listConnectionTargetsAction.handle(
             new ActionContext("s2", "call-targets-3", null, "oc-1"),
             Map.of()
-        ).toCompletableFuture().join())
-            .hasMessageContaining("no active connection");
+        ))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("当前会话没有激活的数据源");
     }
 
     @Test

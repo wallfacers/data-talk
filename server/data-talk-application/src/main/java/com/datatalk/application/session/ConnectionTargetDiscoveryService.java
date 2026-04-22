@@ -2,6 +2,7 @@ package com.datatalk.application.session;
 
 import com.datatalk.application.connection.ConnectionService;
 import com.datatalk.application.connection.JdbcUrlBuilder;
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.persistence.ConnectionRepository;
 import org.springframework.stereotype.Service;
 
@@ -16,15 +17,21 @@ public class ConnectionTargetDiscoveryService {
 
     private final ConnectionRepository connections;
     private final ConnectionService connectionService;
+    private final Translator translator;
 
-    public ConnectionTargetDiscoveryService(ConnectionRepository connections, ConnectionService connectionService) {
+    public ConnectionTargetDiscoveryService(
+        ConnectionRepository connections,
+        ConnectionService connectionService,
+        Translator translator
+    ) {
         this.connections = connections;
         this.connectionService = connectionService;
+        this.translator = translator;
     }
 
     public DiscoveryResult discover(String connectionId) {
         var connection = connections.findById(connectionId)
-            .orElseThrow(() -> new NoSuchElementException("unknown connection: " + connectionId));
+            .orElseThrow(() -> new NoSuchElementException(translator.get("error.connection.unknown", connectionId)));
 
         Set<String> databaseNames = new LinkedHashSet<>();
         if (connection.databaseName() != null && !connection.databaseName().isBlank()) {

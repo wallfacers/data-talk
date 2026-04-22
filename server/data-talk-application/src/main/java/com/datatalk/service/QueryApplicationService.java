@@ -1,6 +1,7 @@
 package com.datatalk.service;
 
 import com.datatalk.application.connection.ConnectionService;
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.persistence.SessionDataContextRecord;
@@ -31,19 +32,22 @@ public class QueryApplicationService {
     private final SqlExecutionRepository sqlExecutionRepository;
     private final SqlStatementGuard statementGuard;
     private final TableContextAutoResolver tableContextAutoResolver;
+    private final Translator translator;
 
     public QueryApplicationService(ConnectionRepository connectionRepository,
                                    ConnectionService connectionService,
                                    SessionDataContextService sessionDataContextService,
                                    SqlExecutionRepository sqlExecutionRepository,
                                    SqlStatementGuard statementGuard,
-                                   TableContextAutoResolver tableContextAutoResolver) {
+                                   TableContextAutoResolver tableContextAutoResolver,
+                                   Translator translator) {
         this.connectionRepository = connectionRepository;
         this.connectionService = connectionService;
         this.sessionDataContextService = sessionDataContextService;
         this.sqlExecutionRepository = sqlExecutionRepository;
         this.statementGuard = statementGuard;
         this.tableContextAutoResolver = tableContextAutoResolver;
+        this.translator = translator;
     }
 
     /**
@@ -77,7 +81,7 @@ public class QueryApplicationService {
             sessionContext == null ? null : sessionContext.connectionId()
         );
         if (!hasText(connectionId)) {
-            throw new IllegalArgumentException("connectionId is required");
+            throw new IllegalArgumentException(translator.get("error.connection.id_required"));
         }
 
         ConnectionRecord connection = connectionRepository.findById(connectionId)
@@ -122,7 +126,7 @@ public class QueryApplicationService {
         return null;
     }
 
-    private static DbType toDbType(String kind) {
+    private DbType toDbType(String kind) {
         return switch (kind == null ? "" : kind.toLowerCase(Locale.ROOT)) {
             case "mysql" -> DbType.MYSQL;
             case "postgres", "postgresql" -> DbType.POSTGRESQL;
@@ -130,7 +134,7 @@ public class QueryApplicationService {
             case "h2" -> DbType.H2;
             case "sqlserver" -> DbType.SQLSERVER;
             case "oracle" -> DbType.ORACLE;
-            default -> throw new IllegalArgumentException("Unsupported database kind: " + kind);
+            default -> throw new IllegalArgumentException(translator.get("error.database.kind.unsupported", kind));
         };
     }
 

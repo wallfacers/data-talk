@@ -2,6 +2,7 @@ package com.datatalk.adapter.actions;
 
 import com.datatalk.application.connection.ConnectionService;
 import com.datatalk.application.connection.ConnectionContextRefreshService;
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.session.SessionDataContextService;
@@ -40,17 +41,20 @@ public class UpdateConnectionConfirmableAction implements ActionHandler<Map, Map
     private final ConnectionContextRefreshService contextRefreshService;
     private final ConnectionRepository connectionRepo;
     private final SessionDataContextService sessionContexts;
+    private final Translator translator;
 
     public UpdateConnectionConfirmableAction(
         ConnectionService connections,
         ConnectionContextRefreshService contextRefreshService,
         ConnectionRepository connectionRepo,
-        SessionDataContextService sessionContexts
+        SessionDataContextService sessionContexts,
+        Translator translator
     ) {
         this.connections = connections;
         this.contextRefreshService = contextRefreshService;
         this.connectionRepo = connectionRepo;
         this.sessionContexts = sessionContexts;
+        this.translator = translator;
     }
 
     @Override
@@ -104,7 +108,7 @@ public class UpdateConnectionConfirmableAction implements ActionHandler<Map, Map
     public CompletionStage<Map> handle(ActionContext ctx, Map input) {
         String connectionId = String.valueOf(input.get("connectionId"));
         ConnectionRecord before = connectionRepo.findById(connectionId)
-            .orElseThrow(() -> new IllegalArgumentException("unknown connection: " + connectionId));
+            .orElseThrow(() -> new IllegalArgumentException(translator.get("error.connection.unknown", connectionId)));
 
         String token = confirmationToken(ctx.sessionId(), before, input);
         boolean confirm = Boolean.TRUE.equals(input.get("confirm"));
@@ -123,7 +127,7 @@ public class UpdateConnectionConfirmableAction implements ActionHandler<Map, Map
         }
 
         if (providedToken == null || !providedToken.equals(token)) {
-            throw new IllegalArgumentException("confirmation token required");
+            throw new IllegalArgumentException(translator.get("error.confirmation_token_required"));
         }
 
         connections.update(

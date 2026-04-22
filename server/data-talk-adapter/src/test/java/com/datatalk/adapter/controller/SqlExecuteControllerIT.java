@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestPropertySource;
@@ -185,6 +186,25 @@ class SqlExecuteControllerIT {
     }
 
     @Test
+    void execute_localizes_result_titles_for_zh_cn() throws Exception {
+        mvc.perform(post("/api/sql/execute")
+                .header(HttpHeaders.ACCEPT_LANGUAGE, "zh-CN")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "connectionId":"%s",
+                      "source":"ai",
+                      "sql":"SELECT id, name FROM items WHERE id <= 2 ORDER BY id; UPDATE items SET name = 'z' WHERE id = 1; DELETE FROM items WHERE id = 4; SELECT missing FROM items"
+                    }
+                    """.formatted(CONN_ID)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.results", hasSize(3)))
+            .andExpect(jsonPath("$.results[0].title", is("结果集 1")))
+            .andExpect(jsonPath("$.results[1].title", is("DML 摘要 2-3")))
+            .andExpect(jsonPath("$.results[2].title", is("错误 4")));
+    }
+
+    @Test
     void postgres_procedural_scripts_execute_without_splitting_inner_semicolons() throws Exception {
         Assumptions.assumeTrue(
             DockerClientFactory.instance().isDockerAvailable(),
@@ -277,6 +297,18 @@ class SqlExecuteControllerIT {
                     """.formatted(CONN_ID)))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message", containsString("source")));
+    }
+
+    @Test
+    void invalid_source_returns_localized_message() throws Exception {
+        mvc.perform(post("/api/sql/execute")
+                .header(HttpHeaders.ACCEPT_LANGUAGE, "zh-CN")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"connectionId":"%s","sql":"SELECT 1","source":"system"}
+                    """.formatted(CONN_ID)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message", is("source 必须是 user 或 ai")));
     }
 
     @Test

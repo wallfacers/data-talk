@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { translateMessage } from '@/i18n/messages'
 import { SqlContextChip } from './sql-context-chip'
 
 const context = {
@@ -10,6 +11,8 @@ const context = {
 }
 
 describe('SqlContextChip', () => {
+  const t = (key: Parameters<typeof translateMessage>[1], values?: Record<string, string | number>) =>
+    translateMessage('zh-CN', key, values)
   const onSetTabContext = vi.fn()
   const onResetTabContext = vi.fn()
 
@@ -28,8 +31,8 @@ describe('SqlContextChip', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /Session context/i }))
-    fireEvent.click(screen.getByRole('menuitem', { name: /Pin current context/i }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(t('stage.context.label.session')) }))
+    fireEvent.click(screen.getByRole('menuitem', { name: t('stage.context.action.pinCurrent') }))
 
     expect(onSetTabContext).toHaveBeenCalledWith(context)
     expect(onResetTabContext).not.toHaveBeenCalled()
@@ -45,8 +48,8 @@ describe('SqlContextChip', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /Tab override/i }))
-    fireEvent.click(screen.getByRole('menuitem', { name: /Use session context/i }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(t('stage.context.label.override')) }))
+    fireEvent.click(screen.getByRole('menuitem', { name: t('stage.context.action.useSession') }))
 
     expect(onResetTabContext).toHaveBeenCalledTimes(1)
     expect(onSetTabContext).not.toHaveBeenCalled()

@@ -1,4 +1,5 @@
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
+import { useI18n } from '@/i18n/use-i18n'
 
 export type SqlLimitValue = 10 | 100 | 1000 | null
 
@@ -7,15 +8,15 @@ type SqlLimitSelectProps = {
   onValueChange: (value: SqlLimitValue) => void
 }
 
-const LIMIT_OPTIONS: Array<{ value: SqlLimitValue; label: string }> = [
-  { value: null, label: 'No limit' },
-  { value: 10, label: '10 rows' },
-  { value: 100, label: '100 rows' },
-  { value: 1000, label: '1,000 rows' },
-]
-
 export function SqlLimitSelect({ value, onValueChange }: SqlLimitSelectProps) {
-  const selectedLabel = LIMIT_OPTIONS.find((option) => option.value === value)?.label ?? 'No limit'
+  const { t } = useI18n()
+  const limitOptions: Array<{ value: SqlLimitValue; label: string }> = [
+    { value: null, label: t('stage.limit.none') },
+    { value: 10, label: t('stage.limit.rows', { count: 10 }) },
+    { value: 100, label: t('stage.limit.rows', { count: 100 }) },
+    { value: 1000, label: t('stage.limit.rows', { count: 1000 }) },
+  ]
+  const selectedLabel = limitOptions.find((option) => option.value === value)?.label ?? t('stage.limit.none')
 
   return (
     <Select
@@ -30,11 +31,11 @@ export function SqlLimitSelect({ value, onValueChange }: SqlLimitSelectProps) {
         }
       }}
     >
-      <SelectTrigger size="sm" aria-label="Execution limit">
+      <SelectTrigger size="sm" aria-label={t('stage.limit.aria')}>
         <span className="flex flex-1 text-left">{selectedLabel}</span>
       </SelectTrigger>
       <SelectContent>
-        {LIMIT_OPTIONS.map((option) => (
+        {limitOptions.map((option) => (
           <SelectItem
             key={option.label}
             value={option.value == null ? 'none' : String(option.value)}

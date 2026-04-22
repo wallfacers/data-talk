@@ -101,6 +101,16 @@ class SessionControllerIT {
     }
 
     @Test
+    void create_rejects_null_body_with_localized_message() throws Exception {
+        mvc.perform(post("/api/sessions")
+                .header(HttpHeaders.ACCEPT_LANGUAGE, "zh-CN")
+                .contentType("application/json")
+                .content("null"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("请求体不能为空"));
+    }
+
+    @Test
     void list_without_filter_returns_all() throws Exception {
         String firstId = createSession("c-a", "A");
         jdbc.update("UPDATE sessions SET has_ever_sent = 1 WHERE id = ?", firstId);

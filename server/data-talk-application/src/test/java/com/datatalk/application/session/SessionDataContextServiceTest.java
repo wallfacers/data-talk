@@ -1,5 +1,6 @@
 package com.datatalk.application.session;
 
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.persistence.SessionDataContextRecord;
@@ -10,6 +11,8 @@ import com.datatalk.dto.SessionDataContextUpdateRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.context.support.StaticMessageSource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.SingleConnectionDataSource;
 import org.sqlite.SQLiteDataSource;
@@ -19,6 +22,7 @@ import java.sql.Connection;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Locale;
 import java.util.NoSuchElementException;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -91,6 +95,7 @@ class SessionDataContextServiceTest {
             connectionRepo,
             contextRepo,
             discovery,
+            translator(),
             Clock.fixed(Instant.ofEpochMilli(1_710_000_000_000L), ZoneOffset.UTC)
         );
 
@@ -103,6 +108,7 @@ class SessionDataContextServiceTest {
 
     @AfterEach
     void tearDown() throws Exception {
+        LocaleContextHolder.resetLocaleContext();
         if (conn != null) conn.close();
     }
 
@@ -160,5 +166,25 @@ class SessionDataContextServiceTest {
             "c1", null, null, "connection"
         )))
             .isInstanceOf(NoSuchElementException.class);
+    }
+
+    @Test
+    void set_rejects_null_body_with_localized_message() {
+        LocaleContextHolder.setLocale(Locale.SIMPLIFIED_CHINESE);
+
+        assertThatThrownBy(() -> service.set("s1", null))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("请求体不能为空");
+    }
+
+    private Translator translator() {
+        StaticMessageSource source = new StaticMessageSource();
+        source.addMessage("error.request_body_required", Locale.ENGLISH, "Request body is required");
+        source.addMessage("error.request_body_required", Locale.SIMPLIFIED_CHINESE, "请求体不能为空");
+        source.addMessage("error.session.not_found", Locale.ENGLISH, "Session not found: {0}");
+        source.addMessage("error.session.not_found", Locale.SIMPLIFIED_CHINESE, "会话不存在：{0}");
+        source.addMessage("error.connection.unknown", Locale.ENGLISH, "Connection not found: {0}");
+        source.addMessage("error.connection.unknown", Locale.SIMPLIFIED_CHINESE, "数据源不存在：{0}");
+        return new Translator(source);
     }
 }

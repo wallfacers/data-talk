@@ -1,6 +1,7 @@
 package com.datatalk.service;
 
 import com.datatalk.application.connection.ConnectionService;
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.persistence.SessionDataContextRecord;
 import com.datatalk.application.sql.SqlStatementGuard;
 import com.datatalk.application.sql.TableContextAutoResolver;
@@ -15,9 +16,11 @@ import com.datatalk.repository.SqlExecutionRepository;
 import com.datatalk.valueobject.QueryResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.support.StaticMessageSource;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -41,6 +44,7 @@ class QueryApplicationServiceTest {
     private SqlExecutionRepository sqlExecutionRepository;
     private SqlStatementGuard statementGuard;
     private TableContextAutoResolver tableContextAutoResolver;
+    private Translator translator;
     private QueryApplicationService service;
 
     @BeforeEach
@@ -51,6 +55,7 @@ class QueryApplicationServiceTest {
         sqlExecutionRepository = mock(SqlExecutionRepository.class);
         statementGuard = spy(new SqlStatementGuard());
         tableContextAutoResolver = mock(TableContextAutoResolver.class);
+        translator = translator();
         when(tableContextAutoResolver.resolve(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
         service = new QueryApplicationService(
             connectionRepository,
@@ -58,7 +63,8 @@ class QueryApplicationServiceTest {
             sessionDataContextService,
             sqlExecutionRepository,
             statementGuard,
-            tableContextAutoResolver
+            tableContextAutoResolver,
+            translator
         );
     }
 
@@ -167,5 +173,12 @@ class QueryApplicationServiceTest {
             eq("SELECT 1"),
             eq("reporting")
         );
+    }
+
+    private Translator translator() {
+        StaticMessageSource source = new StaticMessageSource();
+        source.addMessage("error.connection.id_required", Locale.ENGLISH, "Connection ID is required");
+        source.addMessage("error.database.kind.unsupported", Locale.ENGLISH, "Unsupported database kind: {0}");
+        return new Translator(source);
     }
 }

@@ -1,5 +1,6 @@
 package com.datatalk.adapter.controller;
 
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.dto.SessionCreateRequest;
 import com.datatalk.dto.SessionDto;
 import com.datatalk.dto.SessionRenameRequest;
@@ -17,8 +18,12 @@ import java.util.NoSuchElementException;
 public class SessionController {
 
     private final SessionService svc;
+    private final Translator translator;
 
-    public SessionController(SessionService svc) { this.svc = svc; }
+    public SessionController(SessionService svc, Translator translator) {
+        this.svc = svc;
+        this.translator = translator;
+    }
 
     @GetMapping
     public List<SessionDto> list(@RequestParam(value = "connectionId", required = false) String connectionId) {
@@ -28,7 +33,7 @@ public class SessionController {
     @PostMapping
     public SessionDto create(@RequestBody SessionCreateRequest req) {
         if (req == null) {
-            throw new IllegalArgumentException("request body is required");
+            throw new IllegalArgumentException(translator.get("error.request_body_required"));
         }
         String connectionId = (req.connectionId() == null || req.connectionId().isBlank())
             ? null : req.connectionId();

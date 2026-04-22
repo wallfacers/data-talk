@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { PlayIcon, SquareIcon, SparklesIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/i18n/use-i18n'
 import { SqlLimitSelect, type SqlLimitValue } from './sql-limit-select'
 
 type SqlEditorToolbarProps = {
@@ -24,6 +25,8 @@ export function SqlEditorToolbar({
   limit,
   onLimitChange,
 }: SqlEditorToolbarProps) {
+  const { t } = useI18n()
+
   return (
     <div
       data-testid="sql-editor-toolbar"
@@ -32,17 +35,17 @@ export function SqlEditorToolbar({
       <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" onClick={onRun} disabled={!canRun || isRunning}>
           <PlayIcon />
-          Run
+          {t('stage.toolbar.run')}
         </Button>
         {isRunning ? (
           <Button size="sm" variant="destructive" onClick={onCancel}>
             <SquareIcon />
-            Cancel
+            {t('stage.toolbar.cancel')}
           </Button>
         ) : null}
         <Button size="sm" variant="ghost" onClick={onFormat}>
           <SparklesIcon />
-          Format
+          {t('stage.toolbar.format')}
         </Button>
       </div>
 

@@ -1,4 +1,5 @@
 import { Badge } from '@/components/ui/badge'
+import { useI18n } from '@/i18n/use-i18n'
 import { cn } from '@/lib/utils'
 import type { SqlWorkbenchExecuteStatus } from '../stores/sql-workbench-store'
 
@@ -8,22 +9,26 @@ type SqlWorkbenchStatusBarProps = {
   errorMessage?: string | null
 }
 
-const STATUS_META: Record<SqlWorkbenchExecuteStatus, { label: string; className: string }> = {
-  idle: { label: 'Idle', className: 'bg-secondary text-secondary-foreground' },
-  running: { label: 'Running', className: 'bg-primary text-primary-foreground' },
-  success: { label: 'Success', className: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' },
-  error: { label: 'Error', className: 'bg-destructive/10 text-destructive' },
-  risk_blocked: { label: 'Risk blocked', className: 'bg-amber-500/15 text-amber-700 dark:text-amber-300' },
-}
-
 export function SqlWorkbenchStatusBar({
   status,
   riskReason,
   errorMessage,
 }: SqlWorkbenchStatusBarProps) {
+  const { t } = useI18n()
   if (status === 'idle') return null
 
-  const meta = STATUS_META[status]
+  const statusMeta: Record<SqlWorkbenchExecuteStatus, { label: string; className: string }> = {
+    idle: { label: t('stage.status.idle'), className: 'bg-secondary text-secondary-foreground' },
+    running: { label: t('stage.status.running'), className: 'bg-primary text-primary-foreground' },
+    success: { label: t('stage.status.success'), className: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' },
+    error: { label: t('stage.status.error'), className: 'bg-destructive/10 text-destructive' },
+    risk_blocked: {
+      label: t('stage.status.riskBlocked'),
+      className: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
+    },
+  }
+
+  const meta = statusMeta[status]
   const detail = status === 'error' ? errorMessage : status === 'risk_blocked' ? riskReason : null
 
   return (

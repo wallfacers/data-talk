@@ -1,5 +1,6 @@
 package com.datatalk.application.session;
 
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.persistence.SessionDataContextRecord;
@@ -9,6 +10,7 @@ import com.datatalk.application.persistence.SessionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.springframework.context.support.StaticMessageSource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.SingleConnectionDataSource;
 import org.sqlite.SQLiteDataSource;
@@ -17,6 +19,7 @@ import java.sql.Connection;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -78,7 +81,7 @@ class UseTargetResolverTest {
         connectionRepo = new ConnectionRepository(jdbc);
         contextRepo = new SessionDataContextRepository(jdbc);
         discovery = Mockito.mock(ConnectionTargetDiscoveryService.class);
-        resolver = new UseTargetResolver(sessionRepo, connectionRepo, contextRepo, discovery,
+        resolver = new UseTargetResolver(sessionRepo, connectionRepo, contextRepo, discovery, translator(),
             Clock.fixed(Instant.ofEpochMilli(1_710_000_100_000L), ZoneOffset.UTC));
 
         connectionRepo.insert(new ConnectionRecord("c1", "主库", "h2", "localhost", 0, "app_db", "sa", new byte[]{1}, null, 1L, 3000, null, null));
@@ -130,5 +133,16 @@ class UseTargetResolverTest {
         assertThat(result.status()).isEqualTo("not_found");
         assertThat(result.suggestions()).extracting(UseTargetResolver.TargetOption::label)
             .contains("support");
+    }
+
+    private Translator translator() {
+        StaticMessageSource source = new StaticMessageSource();
+        source.addMessage("error.target.required", Locale.ENGLISH, "Target is required");
+        source.addMessage("error.target.required", Locale.SIMPLIFIED_CHINESE, "必须提供目标");
+        source.addMessage("error.session.not_found", Locale.ENGLISH, "Session not found: {0}");
+        source.addMessage("error.session.not_found", Locale.SIMPLIFIED_CHINESE, "会话不存在：{0}");
+        source.addMessage("error.use_target.not_found", Locale.ENGLISH, "No database, schema, or connection matched ''{0}''");
+        source.addMessage("error.use_target.not_found", Locale.SIMPLIFIED_CHINESE, "没有匹配到数据库、schema 或连接：{0}");
+        return new Translator(source);
     }
 }

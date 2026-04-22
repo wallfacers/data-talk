@@ -6,7 +6,6 @@
 
 | 计划 | 状态 | 摘要 |
 |------|------|------|
-| [Workspace And Backend I18n](./2026-04-22-workspace-backend-i18n-plan.md) | in_progress | 补齐工作台相关前端静态文案、后端 action/object/SQL 结果标题与 API 错误消息的双语支持，保持协议字段、机器消费常量和动态业务数据不变。 |
 | [Implementation Roadmap](./2026-04-21-implementation-roadmap-plan.md) | pending | 作为上层编排计划，先收尾 `Composer Data Source Picker`、`Stage UI Object Protocol Phase 1`、`SQL Risk Classification & IT CI Gate` 这 3 个活跃计划，再启动 `Stage Window Layout Refactor`，最后统一做文档与 backlog 治理。 |
 | [Composer Data Source Picker](./2026-04-20-composer-data-source-picker-plan.md) | in_progress | 计划为 Composer 增加与模型并列的数据源选择器，接入全局 chooser host、缺库自动补选并恢复原动作、`ui_exec(workspace, choose_connection)` 适配器，以及 Stage 卡片来源数据源固化与显式回切。 |
 | [Stage UI Object Protocol Phase 1](./2026-04-20-stage-ui-object-protocol-plan.md) | in_progress | 前端 `UIRouter` + 4 个 CLIENT Action 桥接已就位；`StageStore` 多 Tab 模型、`WorkspaceAdapter` / `BangQueryAdapter`、StageWindow 多 Tab UI、`BangQueryTab` 组件、Composer `!` 拦截均已落地；后端 `/api/query` 加 `SqlStatementGuard`。客户端 198 tests + 后端 179 tests 全绿。**剩余：手动端到端联调（plan Step 12.5）**。AI 展示路径（QueryEditor + Prompt 注入）归属 P2，不在此 plan。 |
@@ -16,6 +15,7 @@
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
 | [Stage SQL Editor Format](./2026-04-22-stage-sql-editor-format-plan.md) | 2026-04-22 | Stage Query Editor 已接入统一 SQL 格式化链路：新增 `format-sql` helper 封装 `sql-formatter` 与方言映射，工具栏 `Format` 与 `Cmd/Ctrl + Shift + F` 共用同一实现；相关 14 个 vitest 测试与 `npx tsc --noEmit` 通过。 |
+| [Workspace And Backend I18n](./2026-04-22-workspace-backend-i18n-plan.md) | 2026-04-22 | 工作台相关前端静态文案、后端 action/object 显示名、SQL 结果标题与关键错误消息已全部接入双语 i18n；前端 stage 相关 vitest 与 `npx tsc --noEmit`、后端定向 JUnit/IT 与 `mvn compile -q` 通过。 |
 | [Stage SQL Workbench Polish](./2026-04-22-stage-sql-workbench-polish-plan.md) | 2026-04-22 | 完成 Stage SQL 打磨：移除旧左侧资源栏并改为右侧 Activity Rail（Schema/History/Outline/AI），接入工具栏 Run/Cancel/Format/Limit/Save、tab override 上下文、Monaco 轮廓解析与 breadcrumb、状态栏、AI Assist 独立会话与会话列表过滤；相关 Stage/adapter/store/hook/workspace 测试全绿且 `npx tsc --noEmit` 通过。 |
 | [PostgreSQL SQL Splitter](./2026-04-22-postgres-sql-splitter-plan.md) | 2026-04-22 | `/api/sql/execute` 已接入方言化 SQL splitter：`SqlExecuteService` 改为依赖 `SqlStatementSplitters`，PostgreSQL 连接走 PgJDBC parser，其他方言走 generic splitter；splitter 单测全绿，`SqlExecuteControllerIT` 通过且 PostgreSQL procedural case 在无 Docker 环境下自动跳过。 |
 | [Stage SQL Workbench Rebuild](./2026-04-21-stage-sql-workbench-rebuild-plan.md) | 2026-04-21 | Stage SQL 主线已完成替换：前端迁移 Monaco + 编辑器工作区 + 结果集 Tab，后端将 `/api/sql/execute` 重构为多语句 / 多结果契约，并删除旧的非 SQL Stage 页面渲染路径。 |

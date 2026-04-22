@@ -1,16 +1,19 @@
 package com.datatalk.application.sql;
 
 import com.datatalk.application.connection.ConnectionService;
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.session.ResolvedExecutionContext;
 import com.datatalk.application.session.SessionDataContextService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.support.StaticMessageSource;
 
 import java.sql.DriverManager;
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -74,6 +77,7 @@ class SqlExecuteServiceSplitterSelectionTest {
             sessionDataContextService,
             tableContextAutoResolver,
             sqlStatementSplitters,
+            translator(),
             100
         );
     }
@@ -86,5 +90,19 @@ class SqlExecuteServiceSplitterSelectionTest {
         assertThat(result.results().get(0).statementText()).isEqualTo("SELECT name FROM items WHERE id = 1");
         assertThat(result.results().get(1).statementText()).isEqualTo("SELECT name FROM items WHERE id = 2");
         verify(sqlStatementSplitters).split("h2", "ignored script");
+    }
+
+    private Translator translator() {
+        StaticMessageSource source = new StaticMessageSource();
+        source.addMessage("error.sql.required", Locale.ENGLISH, "SQL is required");
+        source.addMessage("error.sql.source_invalid", Locale.ENGLISH, "Source must be one of: user, ai");
+        source.addMessage("error.connection.id_required", Locale.ENGLISH, "Connection ID is required");
+        source.addMessage("error.connection.unknown", Locale.ENGLISH, "Connection not found: {0}");
+        source.addMessage("sql.result_set.title", Locale.ENGLISH, "Result Set {0}");
+        source.addMessage("sql.result.error.title", Locale.ENGLISH, "Error {0}");
+        source.addMessage("sql.result.execution_failed", Locale.ENGLISH, "SQL execution failed");
+        source.addMessage("sql.dml_summary.title.single", Locale.ENGLISH, "DML Summary {0}");
+        source.addMessage("sql.dml_summary.title.range", Locale.ENGLISH, "DML Summary {0}-{1}");
+        return new Translator(source);
     }
 }

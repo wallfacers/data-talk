@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -61,5 +62,20 @@ class DiscoveryControllerIT {
                .value(hasItem("QUERY")))
            .andExpect(jsonPath("$.actions[?(@.id == 'datatalk.read_schema')].category")
                .value(hasItem("METADATA")));
+    }
+
+    @Test
+    void actionDescriptionsFollowAcceptLanguage() throws Exception {
+        mvc.perform(get("/api/actions")
+                .header(HttpHeaders.ACCEPT_LANGUAGE, "en-US"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.actions[?(@.id == 'datatalk.ui.read')].description")
+                .value(hasItem("Read UI state or schema from the client.")));
+
+        mvc.perform(get("/api/actions")
+                .header(HttpHeaders.ACCEPT_LANGUAGE, "zh-CN"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.actions[?(@.id == 'datatalk.ui.read')].description")
+                .value(hasItem("从客户端读取 UI 状态或 schema。")));
     }
 }

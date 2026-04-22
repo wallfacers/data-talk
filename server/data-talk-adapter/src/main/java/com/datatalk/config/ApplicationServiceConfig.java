@@ -1,6 +1,7 @@
 package com.datatalk.config;
 
 import com.datatalk.application.connection.ConnectionService;
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.session.SessionDataContextService;
 import com.datatalk.application.sql.SqlStatementGuard;
@@ -20,14 +21,16 @@ public class ApplicationServiceConfig {
             SessionDataContextService sessionDataContextService,
             SqlExecutionRepository sqlExecutionRepository,
             SqlStatementGuard statementGuard,
-            TableContextAutoResolver tableContextAutoResolver) {
+            TableContextAutoResolver tableContextAutoResolver,
+            Translator translator) {
         return new QueryApplicationService(
             connectionRepository,
             connectionService,
             sessionDataContextService,
             sqlExecutionRepository,
             statementGuard,
-            tableContextAutoResolver
+            tableContextAutoResolver,
+            translator
         );
     }
 }

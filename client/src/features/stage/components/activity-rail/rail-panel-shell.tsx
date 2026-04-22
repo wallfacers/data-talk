@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { XIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/i18n/use-i18n'
 import { cn } from '@/lib/utils'
 
 type RailPanelShellProps = {
@@ -11,6 +12,8 @@ type RailPanelShellProps = {
 }
 
 export function RailPanelShell({ title, onClose, children, className }: RailPanelShellProps) {
+  const { t } = useI18n()
+
   return (
     <section
       data-testid="rail-panel-shell"
@@ -26,7 +29,7 @@ export function RailPanelShell({ title, onClose, children, className }: RailPane
           variant="ghost"
           size="icon-sm"
           className="shrink-0"
-          aria-label="Close panel"
+          aria-label={t('stage.activityRail.closePanel')}
           onClick={onClose}
         >
           <XIcon className="size-3.5" />

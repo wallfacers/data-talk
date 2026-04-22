@@ -2,6 +2,7 @@ package com.datatalk.application.sql;
 
 import com.datatalk.application.connection.ConnectionService;
 import com.datatalk.application.connection.JdbcUrlBuilder;
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.persistence.SessionDataContextRecord;
@@ -61,6 +62,7 @@ public class SqlExecuteService {
     private final SessionDataContextService sessionDataContextService;
     private final TableContextAutoResolver tableContextAutoResolver;
     private final SqlStatementSplitters sqlStatementSplitters;
+    private final Translator translator;
     private final int maxRows;
 
     public SqlExecuteService(SqlRiskAnalyzer riskAnalyzer,
@@ -69,6 +71,7 @@ public class SqlExecuteService {
                              SessionDataContextService sessionDataContextService,
                              TableContextAutoResolver tableContextAutoResolver,
                              SqlStatementSplitters sqlStatementSplitters,
+                             Translator translator,
                              @Value("${datatalk.sql.max-rows:5000}") int maxRows) {
         this.riskAnalyzer = riskAnalyzer;
         this.connRepo = connRepo;
@@ -76,18 +79,19 @@ public class SqlExecuteService {
         this.sessionDataContextService = sessionDataContextService;
         this.tableContextAutoResolver = tableContextAutoResolver;
         this.sqlStatementSplitters = sqlStatementSplitters;
+        this.translator = translator;
         this.maxRows = maxRows;
     }
 
     public Result execute(String connectionId, String sql, String source, String sessionId, String database, String schema) {
         if (sql == null || sql.isBlank())
-            throw new IllegalArgumentException("sql required");
+            throw new IllegalArgumentException(translator.get("error.sql.required"));
         String normalizedSource = validateSource(source);
 
         ResolvedExecutionContext requestedContext = resolveExecutionContext(sessionId, connectionId, database, schema);
         List<String> statements = sqlStatementSplitters.split(requestedContext.connection().kind(), sql);
         if (statements.isEmpty()) {
-            throw new IllegalArgumentException("sql required");
+            throw new IllegalArgumentException(translator.get("error.sql.required"));
         }
 
         ResolvedExecutionContext context = tableContextAutoResolver.resolve(
@@ -129,7 +133,7 @@ public class SqlExecuteService {
                                 results.add(new ResultItem(
                                     nextResultId(),
                                     "result_set",
-                                    "Result Set " + statementIndex,
+                                    translator.get("sql.result_set.title", statementIndex),
                                     statementIndex,
                                     statementText,
                                     resultSetData.columns(),
@@ -166,7 +170,7 @@ public class SqlExecuteService {
                         results.add(new ResultItem(
                             nextResultId(),
                             "error",
-                            "Error " + statementIndex,
+                            translator.get("sql.result.error.title", statementIndex),
                             statementIndex,
                             statementText,
                             List.of(),
@@ -188,10 +192,10 @@ public class SqlExecuteService {
                 }
             } catch (SQLException e) {
                 rollbackQuietly(c);
-                throw new RuntimeException("SQL execution failed", e);
+                throw new RuntimeException(translator.get("sql.result.execution_failed"), e);
             }
         } catch (SQLException e) {
-            throw new RuntimeException("SQL execution failed", e);
+            throw new RuntimeException(translator.get("sql.result.execution_failed"), e);
         }
 
         return new Result(
@@ -238,8 +242,12 @@ public class SqlExecuteService {
             return null;
         }
         String title = pendingDmlSummary.startIndex() == pendingDmlSummary.endIndex()
-            ? "DML Summary " + pendingDmlSummary.startIndex()
-            : "DML Summary " + pendingDmlSummary.startIndex() + "-" + pendingDmlSummary.endIndex();
+            ? translator.get("sql.dml_summary.title.single", pendingDmlSummary.startIndex())
+            : translator.get(
+                "sql.dml_summary.title.range",
+                pendingDmlSummary.startIndex(),
+                pendingDmlSummary.endIndex()
+            );
         results.add(new ResultItem(
             nextResultId(),
             "dml_summary",
@@ -261,11 +269,11 @@ public class SqlExecuteService {
         return UUID.randomUUID().toString();
     }
 
-    private static String validateSource(String source) {
+    private String validateSource(String source) {
         if ("user".equals(source) || "ai".equals(source)) {
             return source;
         }
-        throw new IllegalArgumentException("source must be one of: user, ai");
+        throw new IllegalArgumentException(translator.get("error.sql.source_invalid"));
     }
 
     private static void rollbackQuietly(Connection connection) {
@@ -276,10 +284,10 @@ public class SqlExecuteService {
         }
     }
 
-    private static String sanitizeSqlErrorMessage(SQLException e) {
+    private String sanitizeSqlErrorMessage(SQLException e) {
         String message = e.getMessage();
         if (message == null || message.isBlank()) {
-            return "SQL execution failed";
+            return translator.get("sql.result.execution_failed");
         }
         int statementMarker = message.indexOf("; SQL statement:");
         String sanitized = statementMarker >= 0 ? message.substring(0, statementMarker) : message;
@@ -301,11 +309,11 @@ public class SqlExecuteService {
             sessionContext == null ? null : sessionContext.connectionId()
         );
         if (!hasText(resolvedConnectionId)) {
-            throw new IllegalArgumentException("connectionId required");
+            throw new IllegalArgumentException(translator.get("error.connection.id_required"));
         }
 
         ConnectionRecord connection = connRepo.findById(resolvedConnectionId)
-            .orElseThrow(() -> new NoSuchElementException("unknown connection: " + resolvedConnectionId));
+            .orElseThrow(() -> new NoSuchElementException(translator.get("error.connection.unknown", resolvedConnectionId)));
         boolean inheritsSessionScope = sessionContext != null
             && resolvedConnectionId.equals(sessionContext.connectionId());
         String resolvedDatabase = firstNonBlank(

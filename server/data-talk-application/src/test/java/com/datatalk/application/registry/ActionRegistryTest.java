@@ -63,6 +63,8 @@ class ActionRegistryTest {
             StaticMessageSource source = new StaticMessageSource();
             source.addMessage("action.test.alpha", java.util.Locale.ENGLISH, "Alpha Translated");
             source.addMessage("action.test.alpha", java.util.Locale.SIMPLIFIED_CHINESE, "Alpha Translated");
+            source.addMessage("error.action.unknown", java.util.Locale.ENGLISH, "Unknown action: {0}");
+            source.addMessage("error.action.unknown", java.util.Locale.SIMPLIFIED_CHINESE, "未知操作：{0}");
             return source;
         }
 

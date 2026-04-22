@@ -1,5 +1,6 @@
 package com.datatalk.adapter.ontology;
 
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.domain.ontology.ObjectType;
 import com.datatalk.domain.ontology.ObjectTypes;
 import org.springframework.stereotype.Component;
@@ -11,13 +12,19 @@ import java.util.Optional;
 @Component
 public class ConnectionObjectType implements ObjectType {
 
+    private final Translator translator;
+
+    public ConnectionObjectType(Translator translator) {
+        this.translator = translator;
+    }
+
     public record Connection(
         String id, String kind, String host, int port, String databaseName,
         String username, String schemaDigest, long createdAt
     ) {}
 
     @Override public String id() { return ObjectTypes.CONNECTION.id(); }
-    @Override public String displayName() { return "Connection"; }
+    @Override public String displayName() { return translator.get("object.connection.display_name"); }
     @Override public List<String> primaryKey() { return List.of("id"); }
     @Override public Optional<String> titleField() { return Optional.of("id"); }
     @Override public String javaTypeName() { return Connection.class.getName(); }

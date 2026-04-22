@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { translateMessage } from '@/i18n/messages'
 import { StageActivityRail } from './stage-activity-rail'
 import { useStageStore } from '@/stores/stage-store'
 import { useSqlWorkbenchStore } from '../../stores/sql-workbench-store'
@@ -46,6 +47,9 @@ const workspaceTab = {
 }
 
 describe('StageActivityRail', () => {
+  const t = (key: Parameters<typeof translateMessage>[1], values?: Record<string, string | number>) =>
+    translateMessage('zh-CN', key, values)
+
   beforeEach(() => {
     useStageStore.setState({
       openBySession: new Map(),
@@ -81,11 +85,12 @@ describe('StageActivityRail', () => {
   it('renders real panel content and preserves toggle behavior', () => {
     render(<StageActivityRail sessionId="s-1" />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Schema' }))
+    fireEvent.click(screen.getByRole('button', { name: t('stage.activityRail.schema.title') }))
     expect(screen.getByTestId('schema-panel')).toBeTruthy()
     expect(screen.getByText('Session Connection')).toBeTruthy()
+    expect(screen.getByRole('button', { name: t('stage.activityRail.closePanel') })).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Schema' }))
+    fireEvent.click(screen.getByRole('button', { name: t('stage.activityRail.schema.title') }))
     expect(screen.queryByTestId('schema-panel')).toBeNull()
   })
 
@@ -97,7 +102,7 @@ describe('StageActivityRail', () => {
 
     render(<StageActivityRail sessionId="s-1" />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'History' }))
+    fireEvent.click(screen.getByRole('button', { name: t('stage.activityRail.history.title') }))
     fireEvent.click(await screen.findByRole('button', { name: /select 1/i }))
 
     await waitFor(() => {

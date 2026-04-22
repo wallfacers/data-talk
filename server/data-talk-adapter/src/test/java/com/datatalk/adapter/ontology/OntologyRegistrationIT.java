@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -27,5 +28,18 @@ class OntologyRegistrationIT {
                     "datatalk.artifact",
                     "datatalk.action_invocation"
                 )));
+    }
+
+    @Test
+    void objectDisplayNamesFollowAcceptLanguage() throws Exception {
+        mvc.perform(get("/api/ontology/datatalk.connection")
+                .header(HttpHeaders.ACCEPT_LANGUAGE, "en-US"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.displayName").value("Connection"));
+
+        mvc.perform(get("/api/ontology/datatalk.connection")
+                .header(HttpHeaders.ACCEPT_LANGUAGE, "zh-CN"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.displayName").value("数据源连接"));
     }
 }

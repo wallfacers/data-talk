@@ -77,7 +77,7 @@ public class ReadSchemaAction implements ActionHandler<Map, Map> {
             ctx.connectionId()
         );
         if (!hasText(connectionId)) {
-            throw new IllegalArgumentException("no active connection in current session");
+            throw new IllegalArgumentException(translator.get("error.connection.active_required"));
         }
         ConnectionRecord base = connRepo.findById(connectionId)
             .orElseThrow(() -> new IllegalArgumentException(translator.get("error.connection.unknown", connectionId)));
@@ -116,7 +116,7 @@ public class ReadSchemaAction implements ActionHandler<Map, Map> {
                 }
             }
         } catch (Exception e) {
-            return CompletableFuture.failedStage(new RuntimeException("schema read failed", e));
+            return CompletableFuture.failedStage(new RuntimeException(translator.get("error.schema.read_failed"), e));
         }
         return CompletableFuture.completedFuture(Map.of("schema", tables));
     }

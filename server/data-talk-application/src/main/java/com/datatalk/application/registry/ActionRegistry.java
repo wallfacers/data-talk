@@ -22,7 +22,7 @@ public class ActionRegistry implements InitializingBean {
 
     private final ApplicationContext ctx;
     private final Translator translator;
-    private final Map<String, ActionDescriptor> descriptorsById = new LinkedHashMap<>();
+    private final Map<String, RegisteredAction> actionsById = new LinkedHashMap<>();
     private final Map<String, ActionHandler<?, ?>> handlersById = new LinkedHashMap<>();
 
     public ActionRegistry(ApplicationContext ctx, Translator translator) {
@@ -45,15 +45,16 @@ public class ActionRegistry implements InitializingBean {
             if (!(bean instanceof ActionHandler<?, ?> handler)) {
                 throw new IllegalStateException("Bean " + entry.getKey() + " annotated @DataTalkAction but does not implement ActionHandler");
             }
-            ActionDescriptor desc = buildDescriptor(meta, handler);
-            if (descriptorsById.put(desc.id(), desc) != null) {
-                throw new IllegalStateException("Duplicate action id: " + desc.id());
+            if (actionsById.put(meta.id(), new RegisteredAction(meta, handler)) != null) {
+                throw new IllegalStateException("Duplicate action id: " + meta.id());
             }
-            handlersById.put(desc.id(), handler);
+            handlersById.put(meta.id(), handler);
         }
     }
 
-    private ActionDescriptor buildDescriptor(DataTalkAction meta, ActionHandler<?, ?> handler) {
+    private ActionDescriptor buildDescriptor(RegisteredAction registeredAction) {
+        DataTalkAction meta = registeredAction.meta();
+        ActionHandler<?, ?> handler = registeredAction.handler();
         RiskLevel riskLevel = meta.riskLevel().length > 0 ? meta.riskLevel()[0] : null;
         Category category = meta.category().length > 0 ? meta.category()[0] : null;
         return new ActionDescriptor(
@@ -72,18 +73,26 @@ public class ActionRegistry implements InitializingBean {
     }
 
     public Collection<ActionDescriptor> all() {
-        return Collections.unmodifiableCollection(descriptorsById.values());
+        return Collections.unmodifiableList(actionsById.values().stream()
+            .map(this::buildDescriptor)
+            .toList());
     }
 
     public ActionDescriptor require(String id) {
-        ActionDescriptor d = descriptorsById.get(id);
-        if (d == null) throw new IllegalArgumentException("Unknown action: " + id);
-        return d;
+        RegisteredAction action = actionsById.get(id);
+        if (action == null) {
+            throw new IllegalArgumentException(translator.get("error.action.unknown", id));
+        }
+        return buildDescriptor(action);
     }
 
     public ActionHandler<?, ?> handler(String id) {
         ActionHandler<?, ?> h = handlersById.get(id);
-        if (h == null) throw new IllegalArgumentException("Unknown action: " + id);
+        if (h == null) {
+            throw new IllegalArgumentException(translator.get("error.action.unknown", id));
+        }
         return h;
     }
+
+    private record RegisteredAction(DataTalkAction meta, ActionHandler<?, ?> handler) {}
 }

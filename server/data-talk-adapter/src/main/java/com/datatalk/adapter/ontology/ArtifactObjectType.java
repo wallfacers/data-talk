@@ -1,5 +1,6 @@
 package com.datatalk.adapter.ontology;
 
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.domain.ontology.ObjectType;
 import com.datatalk.domain.ontology.ObjectTypes;
 import org.springframework.stereotype.Component;
@@ -11,6 +12,12 @@ import java.util.Optional;
 @Component
 public class ArtifactObjectType implements ObjectType {
 
+    private final Translator translator;
+
+    public ArtifactObjectType(Translator translator) {
+        this.translator = translator;
+    }
+
     public record Artifact(
         String id, int version, String sessionId, String kind, String producedBy,
         String payloadRef, int payloadSize, String supersedesId, Integer supersedesVersion,
@@ -18,7 +25,7 @@ public class ArtifactObjectType implements ObjectType {
     ) {}
 
     @Override public String id() { return ObjectTypes.ARTIFACT.id(); }
-    @Override public String displayName() { return "Artifact"; }
+    @Override public String displayName() { return translator.get("object.artifact.display_name"); }
     @Override public List<String> primaryKey() { return List.of("id", "version"); }
     @Override public Optional<String> titleField() { return Optional.of("id"); }
     @Override public String javaTypeName() { return Artifact.class.getName(); }

@@ -1,5 +1,6 @@
 package com.datatalk.adapter.ontology;
 
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.domain.ontology.ObjectType;
 import com.datatalk.domain.ontology.ObjectTypes;
 import org.springframework.stereotype.Component;
@@ -11,6 +12,12 @@ import java.util.Optional;
 @Component
 public class ActionInvocationObjectType implements ObjectType {
 
+    private final Translator translator;
+
+    public ActionInvocationObjectType(Translator translator) {
+        this.translator = translator;
+    }
+
     public record Invocation(
         String callId, String sessionId, String actionId, String status,
         String inputJson, String outputJson, String errorJson,
@@ -18,7 +25,7 @@ public class ActionInvocationObjectType implements ObjectType {
     ) {}
 
     @Override public String id() { return ObjectTypes.ACTION_INVOCATION.id(); }
-    @Override public String displayName() { return "ActionInvocation"; }
+    @Override public String displayName() { return translator.get("object.action_invocation.display_name"); }
     @Override public List<String> primaryKey() { return List.of("callId"); }
     @Override public Optional<String> titleField() { return Optional.of("actionId"); }
     @Override public String javaTypeName() { return Invocation.class.getName(); }

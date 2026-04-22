@@ -1,5 +1,6 @@
 package com.datatalk.application.registry;
 
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.domain.ontology.ObjectType;
 import com.datatalk.domain.ontology.ObjectTypeDescriptor;
 import org.junit.jupiter.api.Test;
@@ -7,15 +8,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.support.StaticMessageSource;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest(classes = {OntologyRegistry.class, OntologyRegistryTest.TestTypes.class})
+@SpringBootTest(classes = {OntologyRegistry.class, Translator.class, OntologyRegistryTest.TestTypes.class})
 class OntologyRegistryTest {
 
     @Autowired
@@ -41,6 +44,14 @@ class OntologyRegistryTest {
 
         @Bean
         ObjectType barType() { return new BarType(); }
+
+        @Bean
+        StaticMessageSource messageSource() {
+            StaticMessageSource source = new StaticMessageSource();
+            source.addMessage("error.object_type.unknown", Locale.ENGLISH, "Unknown object type: {0}");
+            source.addMessage("error.object_type.unknown", Locale.SIMPLIFIED_CHINESE, "未知对象类型：{0}");
+            return source;
+        }
     }
 
     record FooValue(String id, String title) {}
