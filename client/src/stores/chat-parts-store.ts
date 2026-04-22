@@ -8,6 +8,12 @@ type ChatPartsState = {
   infoBySession: Map<string, Map<string, MessageInfo>>
   partIndexBySession: Map<string, Map<string, { messageId: string; idx: number }>>
   streamingBySession: Set<string>
+  /**
+   * Buffer for `message.part.delta` events that arrive before the part itself
+   * is in the store. Drained into the part on the next `upsertPart` that
+   * matches the same partId. Shape: sessionId → partId → field → accumulated.
+   */
+  pendingDeltasBySession: Map<string, Map<string, Record<string, string>>>
   version: number
 
   upsertPart: (sessionId: string, part: Part) => void
@@ -19,6 +25,7 @@ type ChatPartsState = {
   getParts: (sessionId: string) => Part[]
   findPart: (sessionId: string, partId: string) => Part | null
   setStreaming: (sessionId: string, on: boolean) => void
+  appendPartDelta: (sessionId: string, partId: string, field: string, delta: string) => void
 
   upsertPendingUser: (sessionId: string, text: string) => string
   promotePendingUser: (sessionId: string, pendingId: string, realId: string) => void
@@ -34,29 +41,59 @@ export const useChatPartsStore = create<ChatPartsState>()(
       infoBySession: new Map(),
       partIndexBySession: new Map(),
       streamingBySession: new Set<string>(),
+      pendingDeltasBySession: new Map(),
       version: 0,
 
       upsertPart: (sessionId, part) => set((s) => {
-        const existingParts = s.partsBySession.get(sessionId)?.get(part.messageID)
-        const existing = existingParts?.find((p) => p.id === part.id)
-        if (existing && JSON.stringify(existing) === JSON.stringify(part)) return {}
+        // Drain any deltas that arrived before this part was in the store
+        // (race between the POST send-stream and the GET subscribe-stream
+        // delivering interleaved events to the same sink).
+        const pendingByPart = s.pendingDeltasBySession.get(sessionId)
+        const pending = pendingByPart?.get(part.id)
+        let merged: Part = part
+        if (pending) {
+          const overlay: Record<string, unknown> = { ...part }
+          for (const [field, delta] of Object.entries(pending)) {
+            const prev = overlay[field]
+            overlay[field] = (typeof prev === 'string' ? prev : '') + delta
+          }
+          merged = overlay as Part
+        }
+
+        const existingParts = s.partsBySession.get(sessionId)?.get(merged.messageID)
+        const existing = existingParts?.find((p) => p.id === merged.id)
+        if (!pending && existing && JSON.stringify(existing) === JSON.stringify(merged)) return {}
 
         const bySession = new Map(s.partsBySession)
         const byMessage = new Map(bySession.get(sessionId) ?? new Map())
         const index = new Map(s.partIndexBySession.get(sessionId) ?? new Map())
-        const list = [...(byMessage.get(part.messageID) ?? [])]
-        const idx = existing && existingParts ? existingParts.indexOf(existing) : list.findIndex((p) => p.id === part.id)
+        const list = [...(byMessage.get(merged.messageID) ?? [])]
+        const idx = existing && existingParts ? existingParts.indexOf(existing) : list.findIndex((p) => p.id === merged.id)
         if (idx >= 0) {
-          list[idx] = part
+          list[idx] = merged
         } else {
-          list.push(part)
-          index.set(part.id, { messageId: part.messageID, idx: list.length - 1 })
+          list.push(merged)
+          index.set(merged.id, { messageId: merged.messageID, idx: list.length - 1 })
         }
-        byMessage.set(part.messageID, list)
+        byMessage.set(merged.messageID, list)
         bySession.set(sessionId, byMessage)
         const indexBySession = new Map(s.partIndexBySession)
         indexBySession.set(sessionId, index)
-        return { partsBySession: bySession, partIndexBySession: indexBySession, version: s.version + 1 }
+
+        const patch: Partial<ChatPartsState> = {
+          partsBySession: bySession,
+          partIndexBySession: indexBySession,
+          version: s.version + 1,
+        }
+        if (pending && pendingByPart) {
+          const nextByPart = new Map(pendingByPart)
+          nextByPart.delete(merged.id)
+          const nextPending = new Map(s.pendingDeltasBySession)
+          if (nextByPart.size === 0) nextPending.delete(sessionId)
+          else nextPending.set(sessionId, nextByPart)
+          patch.pendingDeltasBySession = nextPending
+        }
+        return patch
       }),
 
       upsertInfo: (sessionId, info) => set((s) => {
@@ -135,7 +172,13 @@ export const useChatPartsStore = create<ChatPartsState>()(
         partsBySession.set(sessionId, byMessage)
         infoBySession.set(sessionId, byInfo)
         partIndexBySession.set(sessionId, index)
-        return { partsBySession, infoBySession, partIndexBySession, version: s.version + 1 }
+
+        // A full history replace invalidates any stream-in-flight deltas for
+        // this session — the snapshot is authoritative.
+        const pendingDeltasBySession = new Map(s.pendingDeltasBySession)
+        pendingDeltasBySession.delete(sessionId)
+
+        return { partsBySession, infoBySession, partIndexBySession, pendingDeltasBySession, version: s.version + 1 }
       }),
 
       removePart: (sessionId, messageId, partId) => set((s) => {
@@ -150,7 +193,22 @@ export const useChatPartsStore = create<ChatPartsState>()(
         byMessage.set(messageId, list)
         bySession.set(sessionId, byMessage)
         indexBySession.set(sessionId, idx)
-        return { partsBySession: bySession, partIndexBySession: indexBySession, version: s.version + 1 }
+
+        const patch: Partial<ChatPartsState> = {
+          partsBySession: bySession,
+          partIndexBySession: indexBySession,
+          version: s.version + 1,
+        }
+        const pendingByPart = s.pendingDeltasBySession.get(sessionId)
+        if (pendingByPart?.has(partId)) {
+          const nextByPart = new Map(pendingByPart)
+          nextByPart.delete(partId)
+          const nextPending = new Map(s.pendingDeltasBySession)
+          if (nextByPart.size === 0) nextPending.delete(sessionId)
+          else nextPending.set(sessionId, nextByPart)
+          patch.pendingDeltasBySession = nextPending
+        }
+        return patch
       }),
 
       clearSession: (sessionId) => set((s) => {
@@ -158,8 +216,39 @@ export const useChatPartsStore = create<ChatPartsState>()(
         const info = new Map(s.infoBySession); info.delete(sessionId)
         const index = new Map(s.partIndexBySession); index.delete(sessionId)
         const streaming = new Set(s.streamingBySession); streaming.delete(sessionId)
-        return { partsBySession: parts, infoBySession: info, partIndexBySession: index, streamingBySession: streaming, version: s.version + 1 }
+        const pending = new Map(s.pendingDeltasBySession); pending.delete(sessionId)
+        return {
+          partsBySession: parts,
+          infoBySession: info,
+          partIndexBySession: index,
+          streamingBySession: streaming,
+          pendingDeltasBySession: pending,
+          version: s.version + 1,
+        }
       }),
+
+      appendPartDelta: (sessionId, partId, field, delta) => {
+        if (!delta) return
+        const store = get()
+        const existing = store.findPart(sessionId, partId)
+        if (existing) {
+          const prev = (existing as Record<string, unknown>)[field]
+          const next = { ...existing, [field]: (typeof prev === 'string' ? prev : '') + delta } as Part
+          store.upsertPart(sessionId, next)
+          return
+        }
+        // Part hasn't landed yet — buffer by (sessionId, partId, field) so
+        // the next upsertPart can drain accumulated content into it.
+        set((s) => {
+          const nextPending = new Map(s.pendingDeltasBySession)
+          const byPart = new Map(nextPending.get(sessionId) ?? new Map<string, Record<string, string>>())
+          const fields = { ...(byPart.get(partId) ?? {}) }
+          fields[field] = (fields[field] ?? '') + delta
+          byPart.set(partId, fields)
+          nextPending.set(sessionId, byPart)
+          return { pendingDeltasBySession: nextPending, version: s.version + 1 }
+        })
+      },
 
       setStreaming: (sessionId, on) => set((s) => {
         const has = s.streamingBySession.has(sessionId)

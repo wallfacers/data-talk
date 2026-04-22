@@ -9,6 +9,7 @@ describe('chat-parts-store', () => {
       infoBySession: new Map(),
       partIndexBySession: new Map(),
       streamingBySession: new Set<string>(),
+      pendingDeltasBySession: new Map(),
     })
   })
 
@@ -119,6 +120,73 @@ describe('chat-parts-store', () => {
     expect(useChatPartsStore.getState().partsBySession.get('ses_a')?.get(pendingId)).toBeUndefined()
   })
 
+  describe('appendPartDelta (part-not-yet-arrived buffering)', () => {
+    it('applies delta directly when the part already exists', () => {
+      const store = useChatPartsStore.getState()
+      store.upsertPart('ses_a', {
+        type: 'text', id: 'prt_1', sessionID: 'ses_a', messageID: 'msg_1',
+        text: 'hi ', metadata: {},
+      } as Part)
+      store.appendPartDelta('ses_a', 'prt_1', 'text', 'there')
+      const part = useChatPartsStore.getState().findPart('ses_a', 'prt_1')
+      expect((part as any)?.text).toBe('hi there')
+    })
+
+    it('buffers delta when part not yet in store, drains on next upsertPart', () => {
+      const store = useChatPartsStore.getState()
+      store.appendPartDelta('ses_a', 'prt_late', 'text', '你')
+      store.appendPartDelta('ses_a', 'prt_late', 'text', '好')
+      // Part hasn't arrived yet — delta stays buffered, nothing renderable.
+      expect(useChatPartsStore.getState().findPart('ses_a', 'prt_late')).toBeNull()
+
+      store.upsertPart('ses_a', {
+        type: 'text', id: 'prt_late', sessionID: 'ses_a', messageID: 'msg_1',
+        text: '', metadata: {},
+      } as Part)
+
+      const part = useChatPartsStore.getState().findPart('ses_a', 'prt_late')
+      expect((part as any)?.text).toBe('你好')
+      // Buffer cleared after drain so the same partId doesn't double-apply
+      // on a subsequent part.updated echo.
+      expect(useChatPartsStore.getState().pendingDeltasBySession.get('ses_a')).toBeUndefined()
+    })
+
+    it('buffers deltas for multiple fields on the same pending part', () => {
+      const store = useChatPartsStore.getState()
+      store.appendPartDelta('ses_a', 'prt_r1', 'thinking', 'reasoning...')
+      store.appendPartDelta('ses_a', 'prt_r1', 'text', 'answer')
+
+      store.upsertPart('ses_a', {
+        type: 'reasoning', id: 'prt_r1', sessionID: 'ses_a', messageID: 'msg_1',
+        text: '', thinking: '', metadata: {},
+      } as unknown as Part)
+
+      const part = useChatPartsStore.getState().findPart('ses_a', 'prt_r1') as any
+      expect(part?.thinking).toBe('reasoning...')
+      expect(part?.text).toBe('answer')
+    })
+
+    it('clearSession drops buffered deltas for that session', () => {
+      const store = useChatPartsStore.getState()
+      store.appendPartDelta('ses_a', 'prt_x', 'text', 'lost')
+      store.clearSession('ses_a')
+      expect(useChatPartsStore.getState().pendingDeltasBySession.get('ses_a')).toBeUndefined()
+    })
+
+    it('replaceSession drops buffered deltas so history snapshot is authoritative', () => {
+      const store = useChatPartsStore.getState()
+      store.appendPartDelta('ses_a', 'prt_x', 'text', 'stale')
+      store.replaceSession('ses_a', [])
+      expect(useChatPartsStore.getState().pendingDeltasBySession.get('ses_a')).toBeUndefined()
+    })
+
+    it('empty delta is a no-op (no buffer growth)', () => {
+      const store = useChatPartsStore.getState()
+      store.appendPartDelta('ses_a', 'prt_x', 'text', '')
+      expect(useChatPartsStore.getState().pendingDeltasBySession.get('ses_a')).toBeUndefined()
+    })
+  })
+
   describe('streamingBySession', () => {
     it('setStreaming(on=true) marks the session as streaming', () => {
       useChatPartsStore.getState().setStreaming('ses_a', true)
@@ -157,6 +225,7 @@ describe('streamingBySession persistence', () => {
       infoBySession: new Map(),
       partIndexBySession: new Map(),
       streamingBySession: new Set<string>(),
+      pendingDeltasBySession: new Map(),
     })
     sessionStorage.clear()
   })
