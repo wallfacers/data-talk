@@ -1,7 +1,7 @@
 # Stage Window SQL Workbench 设计
 
 **日期**：2026-04-21  
-**范围**：读取 `client/public/prototypes/stage-window-data-tool.html` 的布局结构，重构当前 Stage Window 为多面板 SQL 工作台；所有通用控件必须使用 `shadcn/ui`；`query_editor` 升级为统一 SQL 工作页；移除 `bang_query` 独立模型，并同步更新 `server/data-talk-adapter/src/main/resources/agents/AGENTS.md`
+**范围**：参考 Stage Window 评审原型的布局结构，重构当前 Stage Window 为多面板 SQL 工作台；所有通用控件必须使用 `shadcn/ui`；`query_editor` 升级为统一 SQL 工作页；移除 `bang_query` 独立模型，并同步更新 `server/data-talk-adapter/src/main/resources/agents/AGENTS.md`
 
 ---
 
