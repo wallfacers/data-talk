@@ -209,6 +209,7 @@ DataTalk 的差异化在于 **AI 直接操作数据库**，但不能让 AI 蛮�
 
 | 设计文档 | 日期 | 主题 |
 |----------|------|------|
+| [SQL Tab Internal Activity Rail Design](./2026-04-23-sql-tab-internal-rail-design.md) | 2026-04-23 | 把 Stage 窗口顶层的 Activity Rail（Schema / 历史 / 大纲）下移到 SQL 编辑器 Tab 内部：rail 严格落在 Tab 内容矩形内，仅 `query_editor` 与未来 `er_designer` 挂载；文件预览、Dashboard、报表等 Tab 不再出现这些面板；状态作用域保持按 session 记忆，组件签名不变 |
 | [Read File Preview In Session Stage Design](./2026-04-22-read-file-preview-design.md) | 2026-04-22 | 为固定 `<path><type>file</type><content>` 形态的 `read` 工具文件输出增加专属前端渲染与“同步到工作台”入口：点击后在当前会话 Stage 中创建或聚焦 `file_preview` Tab，以 Tag 区显示语言/类型/截断状态、以只读 Monaco 代码区高亮 `<content>` 正文，同时保持路径与文件属性为普通文本 |
 | [Stage SQL Editor Format Design](./2026-04-22-stage-sql-editor-format-design.md) | 2026-04-22 | 为 Stage Query Editor 增加显式 SQL 格式化能力：工具栏 `Format` 按钮与 `Cmd/Ctrl + Shift + F` 统一走前端 `sql-formatter` helper，按上下文方言映射生成层次分明的 SQL 输出 |
 | [Workspace And Backend I18n Design](./2026-04-22-workspace-i18n-design.md) | 2026-04-22 | 在现有双端 i18n 基础设施上，补齐工作台相关前端页面与组件的全部用户可见静态文案，并将后端静态元数据、对象显示名、SQL 结果标题及错误出口统一接入 `Translator`，同时保持协议字段、枚举值、日志与动态业务数据不变 |

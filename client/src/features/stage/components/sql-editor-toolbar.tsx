@@ -30,19 +30,19 @@ export function SqlEditorToolbar({
   return (
     <div
       data-testid="sql-editor-toolbar"
-      className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 px-3 py-2.5"
+      className="flex min-h-11 flex-wrap items-center justify-between gap-3 border-b border-border/50 px-3 py-2"
     >
-      <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" onClick={onRun} disabled={!canRun || isRunning}>
-          <PlayIcon />
-          {t('stage.toolbar.run')}
+      <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          variant={isRunning ? 'destructive' : 'default'}
+          onClick={isRunning ? onCancel : onRun}
+          disabled={isRunning ? false : !canRun}
+          className="min-w-20 justify-center"
+        >
+          {isRunning ? <SquareIcon /> : <PlayIcon />}
+          {isRunning ? t('stage.toolbar.cancel') : t('stage.toolbar.run')}
         </Button>
-        {isRunning ? (
-          <Button size="sm" variant="destructive" onClick={onCancel}>
-            <SquareIcon />
-            {t('stage.toolbar.cancel')}
-          </Button>
-        ) : null}
         <Button size="sm" variant="ghost" onClick={onFormat}>
           <SparklesIcon />
           {t('stage.toolbar.format')}

@@ -30,19 +30,18 @@ export function SqlResultTable({ result }: SqlResultTableProps) {
     setPage(1)
   }, [result.resultId])
 
+  const summaryLabel = result.truncated
+    ? t('stage.queryEditor.summary.truncated', {
+        count: result.rowCount,
+        executionMs: result.executionMs,
+      })
+    : t('stage.queryEditor.summary.rows', {
+        count: result.rowCount,
+        executionMs: result.executionMs,
+      })
+
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="shrink-0 border-b border-border/50 px-3 py-2 text-xs text-muted-foreground">
-        {result.truncated
-          ? t('stage.queryEditor.summary.truncated', {
-              count: result.rowCount,
-              executionMs: result.executionMs,
-            })
-          : t('stage.queryEditor.summary.rows', {
-              count: result.rowCount,
-              executionMs: result.executionMs,
-            })}
-      </div>
       <div data-testid="sql-result-table-scroll" className="min-h-0 flex-1 overflow-auto">
         <Table className="text-xs">
           <TableHeader className="sticky top-0 bg-muted/40">
@@ -79,19 +78,22 @@ export function SqlResultTable({ result }: SqlResultTableProps) {
           </TableBody>
         </Table>
       </div>
-      {pageCount > 1 ? (
-        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border/50 px-3 py-2">
-          <span className="text-xs text-muted-foreground">
-            {t('stage.queryEditor.result.pageIndicator', { current: page, total: pageCount })}
-          </span>
-          <Button size="sm" variant="outline" disabled={page === 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>
-            {t('stage.queryEditor.result.previousPage')}
-          </Button>
-          <Button size="sm" variant="outline" disabled={page === pageCount} onClick={() => setPage((current) => Math.min(pageCount, current + 1))}>
-            {t('stage.queryEditor.result.nextPage')}
-          </Button>
-        </div>
-      ) : null}
+      <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border/50 px-3 py-2">
+        <span className="text-xs text-muted-foreground">{summaryLabel}</span>
+        {pageCount > 1 ? (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">
+              {t('stage.queryEditor.result.pageIndicator', { current: page, total: pageCount })}
+            </span>
+            <Button size="sm" variant="outline" disabled={page === 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>
+              {t('stage.queryEditor.result.previousPage')}
+            </Button>
+            <Button size="sm" variant="outline" disabled={page === pageCount} onClick={() => setPage((current) => Math.min(pageCount, current + 1))}>
+              {t('stage.queryEditor.result.nextPage')}
+            </Button>
+          </div>
+        ) : null}
+      </div>
     </div>
   )
 }

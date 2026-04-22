@@ -19,7 +19,7 @@ import { SqlEditorToolbar } from './sql-editor-toolbar'
 import { SqlMonacoEditor } from './sql-monaco-editor'
 import { SqlResultTabs } from './sql-result-tabs'
 import { SqlResultPanel } from './sql-result-panel'
-import { SqlWorkbenchStatusBar } from './sql-workbench-status-bar'
+import { StageActivityRail } from './activity-rail/stage-activity-rail'
 import type { SqlLimitValue } from './sql-limit-select'
 
 type TabExecutionContext = {
@@ -259,6 +259,10 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
       source: payload.source,
     })
   }, [ensureTab, payload.initialSql, payload.source, tab.tabId])
+
+  useEffect(() => {
+    autoRunRef.current = false
+  }, [tab.tabId])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -515,9 +519,10 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
 
   useEffect(() => {
     if (!payload.autoRun || autoRunRef.current || !effectiveContext.connectionId) return
+    if (!tabState.sqlText.trim()) return
     autoRunRef.current = true
     void handleRun()
-  }, [effectiveContext.connectionId, handleRun, payload.autoRun])
+  }, [effectiveContext.connectionId, handleRun, payload.autoRun, tabState.sqlText])
 
   const handleFormat = useCallback(() => {
     const rawSql = tabState.sqlText
@@ -665,10 +670,6 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
               ) : null}
             </div>
           </div>
-          <SqlWorkbenchStatusBar
-            status={tabState.executeStatus}
-            riskReason={tabState.risk?.riskReason ?? null}
-          />
         </section>
 
         {showResultPane ? (
@@ -703,6 +704,7 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
           </section>
         ) : null}
       </div>
+      <StageActivityRail sessionId={tab.originSessionId ?? null} />
     </div>
   )
 }

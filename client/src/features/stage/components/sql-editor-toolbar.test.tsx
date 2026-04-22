@@ -55,8 +55,8 @@ describe('SqlEditorToolbar', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: t('stage.toolbar.run') })).toBeDisabled()
-    expect(screen.getByRole('button', { name: t('stage.toolbar.cancel') })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: t('stage.toolbar.run') })).toBeNull()
+    expect(screen.getByRole('button', { name: t('stage.toolbar.cancel') })).toBeEnabled()
 
     fireEvent.click(screen.getByRole('button', { name: t('stage.toolbar.format') }))
     fireEvent.click(screen.getByRole('button', { name: t('stage.toolbar.cancel') }))

@@ -11,7 +11,7 @@ vi.mock('@/i18n/use-i18n', () => ({
     t: (key: string) =>
       ({
         'stage.queryEditor.cell.null': 'NULL',
-        'stage.queryEditor.result.rowNumber': '#',
+        'stage.queryEditor.result.rowNumber': '序号',
         'stage.queryEditor.result.action': 'Action',
         'stage.queryEditor.result.affectedRows': 'Affected Rows',
         'stage.queryEditor.result.duration': 'Duration',
@@ -51,7 +51,7 @@ describe('Sql result displays', () => {
     )
 
     expect(screen.getByText('3 rows · 8ms')).toBeTruthy()
-    expect(screen.getByRole('columnheader', { name: '#' })).toBeTruthy()
+    expect(screen.getByRole('columnheader', { name: '序号' })).toBeTruthy()
     expect(screen.getByRole('columnheader', { name: 'id' })).toBeTruthy()
     expect(screen.getByRole('cell', { name: '1' })).toBeTruthy()
     expect(screen.getByRole('cell', { name: '2' })).toBeTruthy()
@@ -77,7 +77,7 @@ describe('Sql result displays', () => {
       />,
     )
 
-    expect(screen.getByRole('columnheader', { name: '#' })).toBeTruthy()
+    expect(screen.getByRole('columnheader', { name: '序号' })).toBeTruthy()
     expect(screen.getByRole('columnheader', { name: 'Action' })).toBeTruthy()
     expect(screen.getByRole('columnheader', { name: 'Affected Rows' })).toBeTruthy()
     expect(screen.getByRole('columnheader', { name: 'Duration' })).toBeTruthy()

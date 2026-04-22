@@ -109,6 +109,12 @@ vi.mock('@/features/session/hooks/use-session-data-context', () => ({
   }),
 }))
 
+vi.mock('./activity-rail/stage-activity-rail', () => ({
+  StageActivityRail: ({ sessionId }: { sessionId: string | null }) => (
+    <div data-testid="stage-activity-rail-stub" data-session-id={sessionId ?? ''} />
+  ),
+}))
+
 const tab: StageTab = {
   tabId: 'tab-1',
   type: 'query_editor',
@@ -158,6 +164,114 @@ describe('SqlWorkbenchTab', () => {
     expect(screen.queryByRole('tablist')).toBeNull()
     expect(screen.queryByTestId('sql-workbench-result-splitter')).toBeNull()
     expect(screen.queryByTestId('sql-result-shell')).toBeNull()
+  })
+
+  it('auto-runs direct SQL query tabs on mount when payload.autoRun is true', async () => {
+    executeMock.mockResolvedValue({
+      resolvedContext: {
+        connectionId: 'conn-1',
+        connectionName: 'Primary Connection',
+        database: 'db_main',
+        schema: null,
+        selectedLevel: 'database',
+      },
+      contextNotice: null,
+      results: [
+        {
+          resultId: 'r-set',
+          kind: 'result_set',
+          title: 'Result 1',
+          statementIndex: 0,
+          statementText: 'select 1',
+          columns: ['id'],
+          rows: [[1]],
+          rowCount: 1,
+          executionMs: 5,
+          truncated: false,
+        },
+      ],
+    })
+
+    render(
+      <SqlWorkbenchTab
+        tab={{
+          ...tab,
+          tabId: 'tab-auto-run',
+          payload: {
+            initialSql: 'select 1;',
+            source: 'user',
+            entryMode: 'direct_sql',
+            autoRun: true,
+            connectionId: 'conn-1',
+          },
+        }}
+      />,
+    )
+
+    await waitFor(() => expect(executeMock).toHaveBeenCalledTimes(1))
+  })
+
+  it('auto-runs again when switching to another direct SQL tab id', async () => {
+    executeMock.mockResolvedValue({
+      resolvedContext: {
+        connectionId: 'conn-1',
+        connectionName: 'Primary Connection',
+        database: 'db_main',
+        schema: null,
+        selectedLevel: 'database',
+      },
+      contextNotice: null,
+      results: [
+        {
+          resultId: 'r-set',
+          kind: 'result_set',
+          title: 'Result 1',
+          statementIndex: 0,
+          statementText: 'select 1',
+          columns: ['id'],
+          rows: [[1]],
+          rowCount: 1,
+          executionMs: 5,
+          truncated: false,
+        },
+      ],
+    })
+
+    const { rerender } = render(
+      <SqlWorkbenchTab
+        tab={{
+          ...tab,
+          tabId: 'tab-auto-run-1',
+          payload: {
+            initialSql: 'select 1',
+            source: 'user',
+            entryMode: 'direct_sql',
+            autoRun: true,
+            connectionId: 'conn-1',
+          },
+        }}
+      />,
+    )
+
+    await waitFor(() => expect(executeMock).toHaveBeenCalledTimes(1))
+
+    rerender(
+      <SqlWorkbenchTab
+        tab={{
+          ...tab,
+          tabId: 'tab-auto-run-2',
+          payload: {
+            initialSql: 'select 1',
+            source: 'user',
+            entryMode: 'direct_sql',
+            autoRun: true,
+            connectionId: 'conn-1',
+          },
+        }}
+      />,
+    )
+
+    await waitFor(() => expect(executeMock).toHaveBeenCalledTimes(2))
   })
 
   it('tracks cursor position without rendering the removed breadcrumb row', async () => {
@@ -373,7 +487,7 @@ delete from sessions;`,
     expect(screen.getByRole('tab', { name: 'Result 1' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'DML' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Error' })).toBeTruthy()
-    expect(screen.getByRole('columnheader', { name: '#' })).toBeTruthy()
+    expect(screen.getByRole('columnheader', { name: t('stage.queryEditor.result.rowNumber') })).toBeTruthy()
     expect(screen.getByTestId('sql-result-shell').className).toContain('rounded-b-xl')
 
     fireEvent.click(screen.getByRole('tab', { name: 'DML' }))
@@ -616,5 +730,32 @@ delete from sessions;`,
 
     expect(onRun).toHaveBeenCalledTimes(1)
     expect(onFormat).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders the activity rail inside the SQL tab and propagates the origin sessionId', () => {
+    render(
+      <SqlWorkbenchTab
+        tab={{
+          ...tab,
+          tabId: 'tab-rail',
+          originSessionId: 'sess-99',
+        }}
+      />,
+    )
+
+    const rail = screen.getByTestId('stage-activity-rail-stub')
+    expect(rail).toBeTruthy()
+    expect(rail.getAttribute('data-session-id')).toBe('sess-99')
+
+    const tabRoot = screen.getByTestId('sql-workbench-tab')
+    expect(tabRoot.contains(rail)).toBe(true)
+    expect(tabRoot.className).toContain('flex-row')
+  })
+
+  it('passes empty sessionId to the rail when the SQL tab has no origin session', () => {
+    render(<SqlWorkbenchTab tab={{ ...tab, tabId: 'tab-rail-workspace' }} />)
+
+    const rail = screen.getByTestId('stage-activity-rail-stub')
+    expect(rail.getAttribute('data-session-id')).toBe('')
   })
 })

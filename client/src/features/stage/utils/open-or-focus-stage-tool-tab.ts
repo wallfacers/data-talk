@@ -1,4 +1,5 @@
 import type { StageState, StageTab } from '@/stores/stage-store'
+import { resolveUniqueTabTitle } from './unique-tab-title'
 
 type GlobalToolTarget = {
   kind: 'global_tool'
@@ -44,6 +45,7 @@ function resolveTabType(tool: Target['tool']): StageTab['type'] {
 export function openOrFocusStageToolTab({ getState, sessionId, target }: Input): { tabId: string; created: boolean } {
   const latest = getState()
   const tabType = resolveTabType(target.tool)
+  const workspaceTitles = latest.workspaceTabs.map((tab) => tab.title)
 
   if (target.kind === 'global_tool') {
     const existing = latest.workspaceTabs.find((tab) => tab.type === tabType)
@@ -56,7 +58,7 @@ export function openOrFocusStageToolTab({ getState, sessionId, target }: Input):
     const tab: StageTab = {
       tabId,
       type: tabType,
-      title: target.title,
+      title: resolveUniqueTabTitle(target.title, workspaceTitles),
       scope: 'workspace',
       payload: { identity: buildStageTabIdentity(target) },
       createdAt: Date.now(),
@@ -68,6 +70,10 @@ export function openOrFocusStageToolTab({ getState, sessionId, target }: Input):
   if (!sessionId) throw new Error('session-scoped stage tool requires active session')
 
   const sessionTabs = latest.tabsBySession.get(sessionId) ?? []
+  const visibleTitles = [
+    ...workspaceTitles,
+    ...sessionTabs.map((tab) => tab.title),
+  ]
   const existing = sessionTabs.find((tab) =>
     tab.type === tabType &&
     tab.connectionId === target.connectionId &&
@@ -83,7 +89,7 @@ export function openOrFocusStageToolTab({ getState, sessionId, target }: Input):
   const tab: StageTab = {
     tabId,
     type: tabType,
-    title: target.title,
+    title: resolveUniqueTabTitle(target.title, visibleTitles),
     scope: 'session',
     originSessionId: sessionId,
     connectionId: target.connectionId,

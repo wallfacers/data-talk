@@ -194,7 +194,7 @@ describe('StageWindow', () => {
     expect(screen.getByRole('button', { name: /Dashboard/ })).toBeDisabled()
   })
 
-  it('renders a right-side activity rail container and does not render the old sidebar subtree', () => {
+  it('does not render the activity rail at the window level (rail moved into SQL tab)', () => {
     useStageStore.setState({
       tabsBySession: new Map(),
       activeTabIdBySession: new Map(),
@@ -205,7 +205,7 @@ describe('StageWindow', () => {
 
     render(<StageWindow sessionId="s1" />)
 
-    expect(screen.getByTestId('stage-activity-rail')).toBeTruthy()
+    expect(screen.queryByTestId('stage-activity-rail')).toBeNull()
     expect(screen.queryByTestId('stage-sidebar')).toBeNull()
     expect(screen.queryByTestId('stage-resource-browser')).toBeNull()
     expect(screen.queryByTestId('stage-tool-row')).toBeNull()

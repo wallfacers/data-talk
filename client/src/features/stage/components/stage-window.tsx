@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button'
 import { useStageStore } from '@/stores/stage-store'
 import { useActiveArtifactTitle } from '../use-active-artifact-title'
 import { openOrFocusStageToolTab } from '../utils/open-or-focus-stage-tool-tab'
-import { StageActivityRail } from './activity-rail/stage-activity-rail'
 import { StageTabBar } from './stage-tab-bar'
 import { StageTabContent } from './stage-tab-content'
 import { StageUIObjectRegistry } from './stage-ui-object-registry'
@@ -153,8 +152,6 @@ export function StageWindow({ sessionId }: Props) {
             )}
           </div>
         </section>
-
-        <StageActivityRail sessionId={sessionId ?? null} />
       </div>
     </div>
   )

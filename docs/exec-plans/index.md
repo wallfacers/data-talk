@@ -6,6 +6,7 @@
 
 | 计划 | 状态 | 摘要 |
 |------|------|------|
+| [SQL Tab Internal Activity Rail](./2026-04-23-sql-tab-internal-rail-plan.md) | pending | 把 Stage 窗口顶层的 `StageActivityRail`（Schema/历史/大纲）下移到 `SqlWorkbenchTab` 内部：外层 flex-col 改 flex-row，rail 仅在 `query_editor` 类型 Tab 渲染；状态作用域 `activeRailPanelBySession` 与 rail 组件签名不动。对应 spec：`docs/product-specs/2026-04-23-sql-tab-internal-rail-design.md`。 |
 | [Implementation Roadmap](./2026-04-21-implementation-roadmap-plan.md) | pending | 作为上层编排计划，先收尾 `Composer Data Source Picker`、`Stage UI Object Protocol Phase 1`、`SQL Risk Classification & IT CI Gate` 这 3 个活跃计划，再启动 `Stage Window Layout Refactor`，最后统一做文档与 backlog 治理。 |
 | [Composer Data Source Picker](./2026-04-20-composer-data-source-picker-plan.md) | in_progress | 计划为 Composer 增加与模型并列的数据源选择器，接入全局 chooser host、缺库自动补选并恢复原动作、`ui_exec(workspace, choose_connection)` 适配器，以及 Stage 卡片来源数据源固化与显式回切。 |
 | [Stage UI Object Protocol Phase 1](./2026-04-20-stage-ui-object-protocol-plan.md) | in_progress | 前端 `UIRouter` + 4 个 CLIENT Action 桥接已就位；`StageStore` 多 Tab 模型、`WorkspaceAdapter` / `BangQueryAdapter`、StageWindow 多 Tab UI、`BangQueryTab` 组件、Composer `!` 拦截均已落地；后端 `/api/query` 加 `SqlStatementGuard`。客户端 198 tests + 后端 179 tests 全绿。**剩余：手动端到端联调（plan Step 12.5）**。AI 展示路径（QueryEditor + Prompt 注入）归属 P2，不在此 plan。 |

@@ -1,12 +1,26 @@
 import { useEffect, useRef, useState } from 'react'
-import { CopyIcon, CheckIcon, TerminalIcon } from 'lucide-react'
+import { CopyIcon, CheckIcon, PlayIcon, TerminalIcon } from 'lucide-react'
 import type { MessageInfo, Part, TextPart } from '@/services/channel/types'
 import { useChannel } from '@/services/channel/use-channel'
 import { cn, copyToClipboard } from '@/lib/utils'
 import { useI18n } from '@/i18n/use-i18n'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { useConnectionStore } from '@/features/connection/store'
+import { useSessionStore } from '@/stores/session-store'
+import { openDirectSqlQueryEditorTab } from '@/features/stage/utils/open-direct-sql-query-editor-tab'
+import { normalizeError, showErrorToast } from '@/services/http-error'
 
 function HighlightedText(props: { text: string }) {
   return <>{props.text}</>
+}
+
+function extractBangQuerySql(text: string): string | null {
+  const trimmed = text.trim()
+  if (!trimmed.startsWith('!')) return null
+  const sql = trimmed.slice(1).trim()
+  if (!sql) return null
+  if (!/^(select|with)\b/i.test(sql)) return null
+  return sql
 }
 
 export function UserBubble(props: { info: MessageInfo; parts: Part[] }) {
@@ -16,6 +30,7 @@ export function UserBubble(props: { info: MessageInfo; parts: Part[] }) {
   const text = textPart?.text ?? ''
   const displayKind = (textPart?.metadata as { displayKind?: string } | undefined)?.displayKind
   const isBangQueryUser = displayKind === 'bang_query_user'
+  const bangQuerySql = isBangQueryUser ? extractBangQuerySql(text) : null
   const [copied, setCopied] = useState(false)
   const channel = useChannel()
 
@@ -49,6 +64,25 @@ export function UserBubble(props: { info: MessageInfo; parts: Part[] }) {
     channel.removePendingUser?.(info.id)
   }
 
+  const handleRerun = async () => {
+    if (!bangQuerySql) return
+    const sessionId = info.sessionID?.trim().length ? info.sessionID : null
+    const sessionContext = sessionId
+      ? useSessionStore.getState().dataContextBySession.get(sessionId) ?? null
+      : null
+    const connectionId = sessionContext?.connectionId ?? useConnectionStore.getState().activeConnectionId
+
+    try {
+      await openDirectSqlQueryEditorTab({
+        sessionId,
+        connectionId,
+        sql: bangQuerySql,
+      })
+    } catch (error) {
+      showErrorToast(normalizeError(error))
+    }
+  }
+
   return (
     <div
       data-pending-user-motion={pending && !failed ? 'true' : undefined}
@@ -60,22 +94,49 @@ export function UserBubble(props: { info: MessageInfo; parts: Part[] }) {
         className={cn(
           'relative max-w-[85%] rounded-lg px-3 py-2 text-sm',
           'bg-primary text-primary-foreground',
-          isBangQueryUser && 'pr-7',
           pending && !failed && 'opacity-85',
           entryMotionActive && 'motion-safe:animate-in motion-safe:slide-in-from-bottom-5 motion-safe:duration-300 motion-safe:ease-out motion-safe:will-change-transform',
           failed && 'border-2 border-red-500',
         )}
       >
-        {isBangQueryUser && (
-          <span
-            aria-label={t('bangQuery.userMarker')}
-            className="pointer-events-none absolute right-1.5 top-1.5 inline-flex text-white/55"
-            role="img"
-          >
-            <TerminalIcon className="size-3" aria-hidden="true" />
-          </span>
+        {isBangQueryUser ? (
+          <div className="flex items-center gap-1.5">
+            <span
+              aria-label={t('bangQuery.userMarker')}
+              className="pointer-events-none inline-flex shrink-0 text-primary-foreground/65"
+              role="img"
+            >
+              <TerminalIcon className="size-3" aria-hidden="true" />
+            </span>
+            <span className="min-w-0 flex-1 whitespace-pre-wrap break-words leading-5">
+              <HighlightedText text={text} />
+            </span>
+            {bangQuerySql ? (
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <button
+                      type="button"
+                      aria-label={t('bangQuery.rerun')}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        void handleRerun()
+                      }}
+                      className="inline-flex size-5 shrink-0 items-center justify-center rounded-md text-primary-foreground/75 transition-colors hover:bg-primary-foreground/15 hover:text-primary-foreground active:bg-primary-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground/40"
+                    >
+                      <PlayIcon className="size-3" aria-hidden="true" />
+                    </button>
+                  }
+                />
+                <TooltipContent side="top" sideOffset={4}>
+                  {t('bangQuery.rerunHint')}
+                </TooltipContent>
+              </Tooltip>
+            ) : null}
+          </div>
+        ) : (
+          <HighlightedText text={text} />
         )}
-        <HighlightedText text={text} />
         {retrying && <span className="ml-2 inline-block animate-spin">⟳</span>}
       </div>
       {failed && (

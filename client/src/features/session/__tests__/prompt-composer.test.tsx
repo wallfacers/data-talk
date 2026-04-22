@@ -259,6 +259,54 @@ describe('PromptComposer', () => {
     )
   })
 
+  it('supports submitting the same bang query repeatedly', async () => {
+    const createBangQueryMessageMock = bangQueryApi.createBangQueryMessage as unknown as Mock
+    const openDirectSqlQueryEditorTabMock = openDirectSqlQueryEditorTabApi.openDirectSqlQueryEditorTab as unknown as Mock
+    createBangQueryMessageMock.mockImplementation(async (_sessionId: string, _text: string, createdAt: number) => ({
+      id: `sqm-${createdAt}`,
+      sessionId: 'sess-1',
+      createdAt,
+      kind: 'bang_query_user',
+    }))
+    openDirectSqlQueryEditorTabMock.mockResolvedValue('tab-repeat')
+
+    useConnectionStore.setState({ activeConnectionId: 'conn-1', connections: [{ id: 'conn-1', name: 'Main' } as any] })
+    useSessionStore.setState({
+      activeSessionId: 'sess-1',
+      modeBySession: new Map(),
+      hasEverSentBySession: new Map([['sess-1', true]]),
+      dataContextBySession: new Map(),
+      pendingPrompt: null,
+      pendingModelPrompt: false,
+      pendingConnectionPrompt: false,
+      pendingActionAfterConnectionPick: null,
+    } as any)
+
+    renderWithClient(<PromptComposer />)
+    const textarea = screen.getByPlaceholderText('用自然语言查询你的数据库...')
+    const submitButton = document.querySelector('button[type="submit"]') as HTMLButtonElement
+    const sqlText = `! select '你好' as "name"`
+
+    fireEvent.change(textarea, { target: { value: sqlText } })
+    fireEvent.click(submitButton)
+    await waitFor(() => expect(openDirectSqlQueryEditorTabMock).toHaveBeenCalledTimes(1))
+
+    fireEvent.change(textarea, { target: { value: sqlText } })
+    fireEvent.click(submitButton)
+    await waitFor(() => expect(openDirectSqlQueryEditorTabMock).toHaveBeenCalledTimes(2))
+
+    expect(openDirectSqlQueryEditorTabMock).toHaveBeenNthCalledWith(1, {
+      sessionId: 'sess-1',
+      connectionId: 'conn-1',
+      sql: `select '你好' as "name"`,
+    })
+    expect(openDirectSqlQueryEditorTabMock).toHaveBeenNthCalledWith(2, {
+      sessionId: 'sess-1',
+      connectionId: 'conn-1',
+      sql: `select '你好' as "name"`,
+    })
+  })
+
   it('creates a session before persisting a bang query when no active session exists', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(1713650001234)
     const createSessionMock = sessionApi.createSession as unknown as Mock

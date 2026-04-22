@@ -46,7 +46,7 @@ export function StageTabContent() {
   if (tab.type === 'query_editor') {
     return (
       <div className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <SqlWorkbenchTab tab={tab} />
+        <SqlWorkbenchTab key={tab.tabId} tab={tab} />
       </div>
     )
   }
@@ -54,7 +54,7 @@ export function StageTabContent() {
   if (tab.type === 'file_preview') {
     return (
       <div className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <FilePreviewTab tab={tab} />
+        <FilePreviewTab key={tab.tabId} tab={tab} />
       </div>
     )
   }

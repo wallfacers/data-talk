@@ -100,6 +100,10 @@ describe('openOrFocusStageToolTab', () => {
     expect(second.created).toBe(true)
     expect(second.tabId).not.toBe(first.tabId)
     expect(useStageStore.getState().tabsBySession.get('s1')).toHaveLength(2)
+    expect(useStageStore.getState().tabsBySession.get('s1')?.map((tab) => tab.title)).toEqual([
+      'SQL 编辑器',
+      'SQL 编辑器2',
+    ])
   })
 
   it('rejects opening a session resource tool without active session', () => {

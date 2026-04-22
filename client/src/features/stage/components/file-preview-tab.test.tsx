@@ -117,6 +117,24 @@ describe('FilePreviewTab', () => {
     })
   })
 
+  it('does not render the activity rail inside the file preview tab', () => {
+    const tab = buildTabFromRawOutput(
+      [
+        '<path>/workspace/src/app/example.ts</path>',
+        '<type>file</type>',
+        '<content>export const answer = 42\n</content>',
+      ].join('\n'),
+    )
+
+    expect(tab).not.toBeNull()
+    if (!tab) return
+
+    render(<FilePreviewTab tab={tab} />)
+
+    expect(screen.queryByTestId('stage-activity-rail')).toBeNull()
+    expect(screen.queryByTestId('stage-activity-rail-stub')).toBeNull()
+  })
+
   it('fails closed for malformed payloads', () => {
     const tab = {
       tabId: 'file-preview-invalid',
