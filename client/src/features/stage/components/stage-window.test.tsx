@@ -4,6 +4,7 @@ import { render, screen, fireEvent, within } from '@testing-library/react'
 import { StageWindow } from './stage-window'
 import { StageTabBar } from './stage-tab-bar'
 import { useStageStore } from '@/stores/stage-store'
+import { useSessionStore } from '@/stores/session-store'
 import { useOntologyStore } from '@/stores/ontology-store'
 import { useTimelineStore } from '@/stores/timeline-store'
 
@@ -11,6 +12,10 @@ const openOrFocusStageToolTabMock = vi.hoisted(() => vi.fn())
 
 vi.mock('./sql-workbench-tab', () => ({
   SqlWorkbenchTab: () => <div data-testid="sql-workbench-tab">sql workbench tab</div>,
+}))
+
+vi.mock('./file-preview-tab', () => ({
+  FilePreviewTab: () => <div data-testid="file-preview-tab">file preview tab</div>,
 }))
 
 vi.mock('../utils/open-or-focus-stage-tool-tab', () => ({
@@ -97,6 +102,7 @@ describe('StageTabBar', () => {
 describe('StageWindow', () => {
   beforeEach(() => {
     openOrFocusStageToolTabMock.mockReset()
+    useSessionStore.setState({ activeSessionId: null })
     useStageStore.setState({
       openBySession: new Map([['s1', true]]),
       autoOpenedSessions: new Set(),
@@ -262,6 +268,31 @@ describe('StageWindow', () => {
 
     expect(screen.getByText('Global SQL')).toBeTruthy()
     expect(screen.getByTestId('sql-workbench-tab')).toBeTruthy()
+  })
+
+  it('does not fall back to the empty state when a file_preview tab is active', () => {
+    useSessionStore.setState({ activeSessionId: 's1' })
+    useStageStore.setState({
+      tabsBySession: new Map([['s1', [
+        {
+          tabId: 'preview-1',
+          type: 'file_preview',
+          title: 'README.md',
+          scope: 'session' as const,
+          originSessionId: 's1',
+          createdAt: 0,
+          payload: { sourceKey: 'readme' },
+        },
+      ]]]),
+      activeTabIdBySession: new Map([['s1', 'preview-1']]),
+      workspaceTabs: [],
+      activeWorkspaceTabId: null,
+    })
+
+    render(<StageWindow sessionId="s1" />)
+
+    expect(screen.queryByTestId('stage-empty-workbench')).toBeNull()
+    expect(screen.getByTestId('file-preview-tab')).toBeTruthy()
   })
 
   it('clears the session-scoped active tab when a workspace tab is focused from the shared tab bar', () => {

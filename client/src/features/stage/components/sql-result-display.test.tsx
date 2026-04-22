@@ -1,8 +1,9 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import { fireEvent } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { SqlDmlSummaryPanel } from './sql-dml-summary-panel'
 import { SqlErrorResultPanel } from './sql-error-result-panel'
+import { SqlResultPanel } from './sql-result-panel'
 import { SqlResultTable } from './sql-result-table'
 
 vi.mock('@/i18n/use-i18n', () => ({
@@ -20,6 +21,8 @@ vi.mock('@/i18n/use-i18n', () => ({
         'stage.queryEditor.result.pageIndicator': 'Page 1 / 3',
         'stage.queryEditor.summary.rows': '3 rows · 8ms',
         'stage.queryEditor.summary.truncated': 'Top 3 rows · 8ms',
+        'stage.queryEditor.runFailed': 'SQL execution failed',
+        'stage.status.error': 'Error',
       })[key] ?? key,
   }),
 }))
@@ -85,7 +88,7 @@ describe('Sql result displays', () => {
     expect(screen.getByRole('cell', { name: '12ms' })).toBeTruthy()
   })
 
-  it('centers the error message and hides the source sql text', () => {
+  it('renders markdown-formatted errors in a scrollable document shell and hides the source sql text', async () => {
     const { container } = render(
       <SqlErrorResultPanel
         result={{
@@ -99,16 +102,44 @@ describe('Sql result displays', () => {
           rowCount: 0,
           executionMs: 1,
           truncated: false,
-          errorMessage: 'relation "missing_table" does not exist',
+          errorMessage: '## Connection failed\n\n- Host: `127.0.0.1`\n- Port: `3306`\n\n```text\nrelation "missing_table" does not exist\n```',
         }}
       />,
     )
 
+    await waitFor(() =>
+      expect(container.querySelector('[data-component="markdown"]')).not.toBeNull(),
+    )
+    expect(screen.getByRole('heading', { name: 'Connection failed' })).toBeTruthy()
+    expect(screen.getByText('127.0.0.1')).toBeTruthy()
     expect(screen.getByText('relation "missing_table" does not exist')).toBeTruthy()
     expect(screen.queryByText('select * from missing_table')).toBeNull()
-    expect(container.firstElementChild?.className).toContain('items-center')
-    expect(container.firstElementChild?.className).toContain('justify-center')
-    expect(within(container.firstElementChild as HTMLElement).getByText('relation "missing_table" does not exist')).toBeTruthy()
+    expect(container.firstElementChild?.className).toContain('overflow-auto')
+    expect(container.firstElementChild?.className).not.toContain('items-center')
+    expect(container.firstElementChild?.className).not.toContain('justify-center')
+    expect(
+      within(container.firstElementChild as HTMLElement).getByText('relation "missing_table" does not exist'),
+    ).toBeTruthy()
+  })
+
+  it('reuses the markdown error shell for execute-status fallback errors', async () => {
+    const { container } = render(
+      <SqlResultPanel
+        executeStatus="error"
+        activeResult={null}
+        risk={null}
+        errorMessage={'## Connection failed\n\nMySQL is down.'}
+      />,
+    )
+
+    await waitFor(() =>
+      expect(container.querySelector('[data-component="markdown"]')).not.toBeNull(),
+    )
+    expect(screen.getByRole('heading', { name: 'Connection failed' })).toBeTruthy()
+    expect(screen.getByText('MySQL is down.')).toBeTruthy()
+    expect(container.firstElementChild?.className).toContain('overflow-auto')
+    expect(container.firstElementChild?.className).not.toContain('items-center')
+    expect(container.firstElementChild?.className).not.toContain('justify-center')
   })
 
   it('paginates result sets in pages of 100 rows', () => {

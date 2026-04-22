@@ -192,10 +192,20 @@ public class SqlExecuteService {
                 }
             } catch (SQLException e) {
                 rollbackQuietly(c);
-                throw new RuntimeException(translator.get("sql.result.execution_failed"), e);
+                throw executionFailure(
+                    e,
+                    context.connection(),
+                    context.database(),
+                    "sql.result.execution_failed.markdown.stage.batch"
+                );
             }
         } catch (SQLException e) {
-            throw new RuntimeException(translator.get("sql.result.execution_failed"), e);
+            throw executionFailure(
+                e,
+                context.connection(),
+                context.database(),
+                "sql.result.execution_failed.markdown.stage.connect"
+            );
         }
 
         return new Result(
@@ -292,6 +302,123 @@ public class SqlExecuteService {
         int statementMarker = message.indexOf("; SQL statement:");
         String sanitized = statementMarker >= 0 ? message.substring(0, statementMarker) : message;
         return sanitized.trim();
+    }
+
+    private RuntimeException executionFailure(
+        SQLException error,
+        ConnectionRecord connection,
+        String database,
+        String stageKey
+    ) {
+        return new RuntimeException(
+            formatExecutionFailureMarkdown(error, connection, database, stageKey),
+            error
+        );
+    }
+
+    private String formatExecutionFailureMarkdown(
+        SQLException error,
+        ConnectionRecord connection,
+        String database,
+        String stageKey
+    ) {
+        Throwable rootCause = mostSpecificCause(error);
+        String driverMessage = sanitizeDriverMessage(rootCause.getMessage());
+
+        StringBuilder markdown = new StringBuilder();
+        markdown
+            .append("## ")
+            .append(translator.get("sql.result.execution_failed"))
+            .append("\n\n")
+            .append(translator.get("sql.result.execution_failed.markdown.summary"))
+            .append("\n\n")
+            .append("### ")
+            .append(translator.get("sql.result.execution_failed.markdown.connection"))
+            .append("\n\n");
+
+        appendMarkdownBullet(markdown, translator.get("sql.result.execution_failed.markdown.stage"), translator.get(stageKey));
+        appendMarkdownBullet(markdown, translator.get("sql.result.execution_failed.markdown.name"), connection.name());
+        appendMarkdownBullet(markdown, translator.get("sql.result.execution_failed.markdown.kind"), connection.kind());
+        appendMarkdownBullet(markdown, translator.get("sql.result.execution_failed.markdown.host"), connection.host());
+        appendMarkdownBullet(markdown, translator.get("sql.result.execution_failed.markdown.port"), String.valueOf(connection.port()));
+        appendMarkdownBullet(
+            markdown,
+            translator.get("sql.result.execution_failed.markdown.database"),
+            hasText(database) ? database : translator.get("sql.result.execution_failed.markdown.database.unset")
+        );
+        appendMarkdownBullet(markdown, translator.get("sql.result.execution_failed.markdown.username"), connection.username());
+        appendMarkdownBullet(
+            markdown,
+            translator.get("sql.result.execution_failed.markdown.exception"),
+            rootCause.getClass().getSimpleName()
+        );
+
+        markdown
+            .append("\n### ")
+            .append(translator.get("sql.result.execution_failed.markdown.raw"))
+            .append("\n\n```text\n")
+            .append(driverMessage)
+            .append("\n```");
+
+        List<String> hints = executionFailureHints(connection);
+        if (!hints.isEmpty()) {
+            markdown
+                .append("\n\n### ")
+                .append(translator.get("sql.result.execution_failed.markdown.hints"))
+                .append("\n\n");
+            for (String hint : hints) {
+                markdown.append("- ").append(hint).append('\n');
+            }
+        }
+
+        return markdown.toString().trim();
+    }
+
+    private List<String> executionFailureHints(ConnectionRecord connection) {
+        List<String> hints = new ArrayList<>();
+        if ("mysql".equalsIgnoreCase(connection.kind())) {
+            hints.add(translator.get("sql.result.execution_failed.markdown.hint.mysql"));
+        }
+        hints.add(translator.get(
+            "sql.result.execution_failed.markdown.hint.reachability",
+            connection.host(),
+            connection.port()
+        ));
+        if ("localhost".equalsIgnoreCase(connection.host()) || "127.0.0.1".equals(connection.host())) {
+            hints.add(translator.get("sql.result.execution_failed.markdown.hint.localhost_container"));
+        }
+        return hints;
+    }
+
+    private void appendMarkdownBullet(StringBuilder markdown, String label, String value) {
+        markdown
+            .append("- **")
+            .append(label)
+            .append(":** `")
+            .append(escapeMarkdownInline(value))
+            .append("`\n");
+    }
+
+    private static Throwable mostSpecificCause(Throwable throwable) {
+        Throwable current = throwable;
+        while (current.getCause() != null && current.getCause() != current) {
+            current = current.getCause();
+        }
+        return current;
+    }
+
+    private String sanitizeDriverMessage(String message) {
+        if (!hasText(message)) {
+            return translator.get("sql.result.execution_failed");
+        }
+        return message.replace("```", "'''").trim();
+    }
+
+    private static String escapeMarkdownInline(String value) {
+        if (value == null || value.isBlank()) {
+            return "-";
+        }
+        return value.replace("`", "\\`").replace("\r", " ").replace("\n", " ");
     }
 
     private ResolvedExecutionContext resolveExecutionContext(

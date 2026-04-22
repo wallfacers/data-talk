@@ -58,7 +58,7 @@ type SqlWorkbenchState = {
   setRunning: (tabId: string) => void
   applyExecuteSuccess: (tabId: string, response: SqlExecuteResponse) => void
   setRiskBlocked: (tabId: string, risk: SqlRiskBlocked) => void
-  setError: (tabId: string, message: string) => void
+  setError: (tabId: string, message: string, result?: SqlExecuteResultItem | null) => void
   setTabContext: (tabId: string, ctx: Omit<TabContextOverride, 'setAt'>) => void
   resetTabContext: (tabId: string) => void
   appendHistoryEntry: (tabId: string, entry: HistoryEntry) => void
@@ -237,12 +237,14 @@ export const useSqlWorkbenchStore = create<SqlWorkbenchState>((set) => ({
     },
   })),
 
-  setError: (tabId, message) => set((state) => ({
+  setError: (tabId, message, result) => set((state) => ({
     tabsById: {
       ...state.tabsById,
       [tabId]: {
         ...ensureTabState(state.tabsById, tabId),
         executeStatus: 'error',
+        results: result ? [result] : [],
+        activeResultId: result?.resultId ?? null,
         risk: null,
         errorMessage: message,
       },

@@ -209,7 +209,7 @@ DataTalk 的差异化在于 **AI 直接操作数据库**，但不能让 AI 蛮�
 
 | 设计文档 | 日期 | 主题 |
 |----------|------|------|
-| [Read File Preview In Session Stage Design](./2026-04-22-read-file-preview-design.md) | 2026-04-22 | 为 `read` 工具文件型输出增加专属前端渲染与“同步到工作台”入口：点击后在当前会话 Stage 中创建或聚焦 `file_preview` Tab，以 Tag 区显示语言/类型/截断状态、以只读 Monaco 代码区高亮 `<content>` 正文，同时保持路径与文件属性为普通文本 |
+| [Read File Preview In Session Stage Design](./2026-04-22-read-file-preview-design.md) | 2026-04-22 | 为固定 `<path><type>file</type><content>` 形态的 `read` 工具文件输出增加专属前端渲染与“同步到工作台”入口：点击后在当前会话 Stage 中创建或聚焦 `file_preview` Tab，以 Tag 区显示语言/类型/截断状态、以只读 Monaco 代码区高亮 `<content>` 正文，同时保持路径与文件属性为普通文本 |
 | [Stage SQL Editor Format Design](./2026-04-22-stage-sql-editor-format-design.md) | 2026-04-22 | 为 Stage Query Editor 增加显式 SQL 格式化能力：工具栏 `Format` 按钮与 `Cmd/Ctrl + Shift + F` 统一走前端 `sql-formatter` helper，按上下文方言映射生成层次分明的 SQL 输出 |
 | [Workspace And Backend I18n Design](./2026-04-22-workspace-i18n-design.md) | 2026-04-22 | 在现有双端 i18n 基础设施上，补齐工作台相关前端页面与组件的全部用户可见静态文案，并将后端静态元数据、对象显示名、SQL 结果标题及错误出口统一接入 `Translator`，同时保持协议字段、枚举值、日志与动态业务数据不变 |
 | [Stage SQL Workbench Polish Design](./2026-04-22-stage-sql-workbench-polish-design.md) | 2026-04-22 | Stage SQL Workbench 在 Rebuild 之上的 IDE 级打磨：去除左侧资源栏整套渲染，工作台铺满主区；最右侧新增 28px Activity Rail 承载 Schema / History / Outline / AI Assist 四个 280px 面板；工具栏升级（Run · Cancel · Format · Limit · Context chip · Save · overflow）；Monaco 接入补全 / breadcrumb / 折叠 / 多光标 / 当前语句高亮；底部新增 Status Bar；Tabs 统一为 underline-only 扁平风；并引入 tab override + session 继承 + 程序化注入的分层上下文模型 |

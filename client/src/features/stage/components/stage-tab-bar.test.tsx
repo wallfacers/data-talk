@@ -3,6 +3,18 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { StageTabBar } from './stage-tab-bar'
 
+vi.mock('lucide-react', async () => {
+  const actual = await vi.importActual<typeof import('lucide-react')>('lucide-react')
+  const FileTextIcon = (props: any) => <svg data-testid="file-text-icon" {...props} />
+  const SparklesIcon = (props: any) => <svg data-testid="sparkles-icon" {...props} />
+
+  return {
+    ...actual,
+    FileTextIcon,
+    SparklesIcon,
+  }
+})
+
 vi.mock('@/i18n/use-i18n', () => ({
   useI18n: () => ({
     t: (key: string) =>
@@ -32,6 +44,10 @@ const tabs = [
   { tabId: 'left', title: 'Left', type: 'query_editor' as const },
   { tabId: 'active', title: 'Active', type: 'query_editor' as const, dirty: true },
   { tabId: 'right', title: 'Right', type: 'er_canvas' as const },
+]
+
+const filePreviewTabs = [
+  { tabId: 'preview', title: 'README.md', type: 'file_preview' as const },
 ]
 
 describe('StageTabBar', () => {
@@ -98,5 +114,14 @@ describe('StageTabBar', () => {
 
     fireEvent.click(within(menu).getByText('关闭右侧标签页'))
     expect(onCloseRight).toHaveBeenCalledWith('active')
+  })
+
+  it('uses a file icon for file_preview tabs instead of the sparkle fallback', () => {
+    render(<StageTabBar tabs={filePreviewTabs} activeId="preview" />)
+
+    const previewTab = screen.getByText('README.md').closest('[data-tab-id="preview"]') as HTMLElement
+
+    expect(within(previewTab).getByTestId('file-text-icon')).toBeTruthy()
+    expect(within(previewTab).queryByTestId('sparkles-icon')).toBeNull()
   })
 })

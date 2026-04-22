@@ -61,19 +61,19 @@
 - Create: `client/src/features/chat/components/tools/renderers/read-file-output.ts`
 - Create: `client/src/features/chat/components/tools/__tests__/read-file-output.test.ts`
 
-- [ ] Step 1: 先写 failing tests，覆盖：
+- [x] Step 1: 先写 failing tests，覆盖：
   - 正常提取 `<path>`、`<type>`、`<content>`
   - 缺少 `<content>` 时返回 `null`
   - `content` 保留原始换行
   - `callID` 缺失时用 `${messageID}:${part.id}` 回退生成 `sourceKey`
   - 常见后缀映射到 `markdown/json/yaml/typescript/javascript/java/sql/shell/xml/ini/toml/plaintext`
-- [ ] Step 2: 运行 `cd client && npx vitest run src/features/chat/components/tools/__tests__/read-file-output.test.ts`，确认先红。
-- [ ] Step 3: 实现 `read-file-output.ts`，提供最小稳定 API：
+- [x] Step 2: 运行 `cd client && npx vitest run src/features/chat/components/tools/__tests__/read-file-output.test.ts`，确认先红。
+- [x] Step 3: 实现 `read-file-output.ts`，提供最小稳定 API：
   - `export type FilePreviewPayload = { sourceKey: string; filePath: string | null; filename: string; fileType: string; content: string; truncated: boolean; language: string }`
   - `parseReadFileOutput(raw: string): { filePath: string | null; fileType: string; content: string } | null`
   - `inferFilePreviewLanguage(filenameOrPath: string | null): string`
   - `buildReadFilePreviewPayload(input): FilePreviewPayload | null`
-- [ ] Step 4: 重新运行 `cd client && npx vitest run src/features/chat/components/tools/__tests__/read-file-output.test.ts`，确认转绿。
+- [x] Step 4: 重新运行 `cd client && npx vitest run src/features/chat/components/tools/__tests__/read-file-output.test.ts`，确认转绿。
 
 ## Task 2: 建立 session `file_preview` tab 打开/聚焦 helper
 
@@ -81,13 +81,13 @@
 - Create: `client/src/features/stage/utils/open-or-focus-file-preview-tab.ts`
 - Create: `client/src/features/stage/utils/open-or-focus-file-preview-tab.test.ts`
 
-- [ ] Step 1: 写 failing tests，覆盖：
+- [x] Step 1: 写 failing tests，覆盖：
   - 当前 session 下首次同步会创建 `scope='session'`、`type='file_preview'` 的 tab
   - 同一 `sourceKey` 二次同步只 `focusTab`
   - 无 `sessionId` 时抛出明确错误
-- [ ] Step 2: 运行 `cd client && npx vitest run src/features/stage/utils/open-or-focus-file-preview-tab.test.ts`，确认先红。
-- [ ] Step 3: 实现 helper，复用现有 `StageState.openTab/focusTab`，只在当前 session 的 `tabsBySession` 中按 `payload.sourceKey` 去重。
-- [ ] Step 4: 重新运行 `cd client && npx vitest run src/features/stage/utils/open-or-focus-file-preview-tab.test.ts`，确认转绿。
+- [x] Step 2: 运行 `cd client && npx vitest run src/features/stage/utils/open-or-focus-file-preview-tab.test.ts`，确认先红。
+- [x] Step 3: 实现 helper，复用现有 `StageState.openTab/focusTab`，只在当前 session 的 `tabsBySession` 中按 `payload.sourceKey` 去重。
+- [x] Step 4: 重新运行 `cd client && npx vitest run src/features/stage/utils/open-or-focus-file-preview-tab.test.ts`，确认转绿。
 
 ## Task 3: 让 Stage 能承载 `file_preview` tab
 
@@ -98,13 +98,13 @@
 - Modify: `client/src/features/stage/components/stage-tab-bar.test.tsx`
 - Modify: `client/src/features/stage/components/stage-window.test.tsx`
 
-- [ ] Step 1: 先补 failing tests，覆盖：
+- [x] Step 1: 先补 failing tests，覆盖：
   - `StageTabContent` 在 active tab 为 `file_preview` 时渲染 `FilePreviewTab`
   - `StageWindow` 在有 `file_preview` tab 时不落空态
   - `StageTabBar` 为 `file_preview` 使用文件图标，而不是默认 sparkle 图标
-- [ ] Step 2: 运行 `cd client && npx vitest run src/features/stage/components/stage-tab-content.test.tsx src/features/stage/components/stage-tab-bar.test.tsx src/features/stage/components/stage-window.test.tsx`，确认先红。
-- [ ] Step 3: 修改 `StageTabContent` 做 `query_editor/file_preview` 分发；修改 `StageTabBar` 的 `getTabIcon()`，为 `file_preview` 增加 `FileTextIcon` 分支；更新 Stage 相关测试最小通过。
-- [ ] Step 4: 重新运行 `cd client && npx vitest run src/features/stage/components/stage-tab-content.test.tsx src/features/stage/components/stage-tab-bar.test.tsx src/features/stage/components/stage-window.test.tsx`，确认转绿。
+- [x] Step 2: 运行 `cd client && npx vitest run src/features/stage/components/stage-tab-content.test.tsx src/features/stage/components/stage-tab-bar.test.tsx src/features/stage/components/stage-window.test.tsx`，确认先红。
+- [x] Step 3: 修改 `StageTabContent` 做 `query_editor/file_preview` 分发；修改 `StageTabBar` 的 `getTabIcon()`，为 `file_preview` 增加 `FileTextIcon` 分支；更新 Stage 相关测试最小通过。
+- [x] Step 4: 重新运行 `cd client && npx vitest run src/features/stage/components/stage-tab-content.test.tsx src/features/stage/components/stage-tab-bar.test.tsx src/features/stage/components/stage-window.test.tsx`，确认转绿。
 
 ## Task 4: 共享 Monaco 主题并实现 `FilePreviewTab`
 
@@ -114,14 +114,14 @@
 - Create: `client/src/features/stage/components/file-preview-tab.test.tsx`
 - Modify: `client/src/features/stage/components/sql-monaco-editor.tsx`
 
-- [ ] Step 1: 先写 failing tests，覆盖：
+- [x] Step 1: 先写 failing tests，覆盖：
   - `FilePreviewTab` 正确显示语言 / 类型 / 截断 Tag
   - 完整路径作为普通文本显示
   - 正文区只展示 `<content>`，不重复出现结构标签
   - `truncated=true` 时展示提示 Tag
-- [ ] Step 2: 运行 `cd client && npx vitest run src/features/stage/components/file-preview-tab.test.tsx`，确认先红。
-- [ ] Step 3: 抽出 `monaco-theme.ts`，让 `SqlMonacoEditor` 改为复用共享主题注册；实现 `FilePreviewTab`，使用 `@monaco-editor/react` 只读模式加载 `payload.language` 与 `payload.content`。
-- [ ] Step 4: 重新运行 `cd client && npx vitest run src/features/stage/components/file-preview-tab.test.tsx src/features/stage/components/sql-workbench-tab.test.tsx`，确认 `FilePreviewTab` 转绿且未破坏现有 SQL workbench 测试。
+- [x] Step 2: 运行 `cd client && npx vitest run src/features/stage/components/file-preview-tab.test.tsx`，确认先红。
+- [x] Step 3: 抽出 `monaco-theme.ts`，让 `SqlMonacoEditor` 改为复用共享主题注册；实现 `FilePreviewTab`，使用 `@monaco-editor/react` 只读模式加载 `payload.language` 与 `payload.content`。
+- [x] Step 4: 重新运行 `cd client && npx vitest run src/features/stage/components/file-preview-tab.test.tsx src/features/stage/components/sql-workbench-tab.test.tsx`，确认 `FilePreviewTab` 转绿且未破坏现有 SQL workbench 测试。
 
 ## Task 5: 接通聊天 `read` renderer 到 Stage 入口
 
@@ -130,14 +130,16 @@
 - Create: `client/src/features/chat/components/tools/__tests__/read-file.test.tsx`
 - Modify: `client/src/features/chat/components/tools/renderers/index.ts`
 
-- [ ] Step 1: 写 failing tests，覆盖：
+- [x] Step 1: 写 failing tests，覆盖：
   - `tool=read` 且输出可解析为文件时显示“同步到工作台”按钮
   - 解析失败时回退普通工具输出
   - 点击按钮会调用 `openStage(sessionId)` 并通过 helper 创建/聚焦 `file_preview` tab
   - 非 `completed` 状态或非文件输出时不显示按钮
-- [ ] Step 2: 运行 `cd client && npx vitest run src/features/chat/components/tools/__tests__/read-file.test.tsx`，确认先红。
-- [ ] Step 3: 实现 `read-file.tsx`，内部复用 Task 1 的解析 helper 与 Task 2 的 open/focus helper，并在 `renderers/index.ts` 为 `read` 注册专属 renderer。
-- [ ] Step 4: 重新运行 `cd client && npx vitest run src/features/chat/components/tools/__tests__/read-file.test.tsx src/features/chat/components/tools/__tests__/tool-registry.test.ts`，确认转绿。
+- [x] Step 2: 运行 `cd client && npx vitest run src/features/chat/components/tools/__tests__/read-file.test.tsx`，确认先红。
+- [x] Step 3: 实现 `read-file.tsx`，内部复用 Task 1 的解析 helper 与 Task 2 的 open/focus helper，并在 `renderers/index.ts` 为 `read` 注册专属 renderer。
+- [x] Step 4: 重新运行 `cd client && npx vitest run src/features/chat/components/tools/__tests__/read-file.test.tsx src/features/chat/components/tools/__tests__/tool-registry.test.ts`，确认转绿。
+
+执行过程中根据 spec / quality review 反馈，追加收紧了 shipped parser 契约：`read-file-output.ts` 最终仅接受固定有序的 `<path>...</path><type>file</type><content>...</content>` 形态，要求 `path` 非空且必须能解析出 basename；否则聊天 renderer 安全回退到 `GenericTool`。
 
 ## Task 6: 批量验证与文档收尾
 
@@ -146,10 +148,12 @@
 - Modify: `docs/exec-plans/index.md`
 - Modify: `docs/product-specs/2026-04-22-read-file-preview-design.md`
 
-- [ ] Step 1: 运行 `cd client && npx vitest run src/features/chat/components/tools/__tests__/read-file-output.test.ts src/features/chat/components/tools/__tests__/read-file.test.tsx src/features/stage/utils/open-or-focus-file-preview-tab.test.ts src/features/stage/components/stage-tab-content.test.tsx src/features/stage/components/stage-tab-bar.test.tsx src/features/stage/components/file-preview-tab.test.tsx src/features/stage/components/stage-window.test.tsx`
-- [ ] Step 2: 运行 `cd client && npx tsc --noEmit`
-- [ ] Step 3: 将本计划中的 checkbox 全部按实际结果勾完，并补充最终命令结果。
-- [ ] Step 4: 完成后把 `docs/exec-plans/index.md` 中本计划从 Active 移到 Completed；若实现与 spec 有实质偏差，再同步更新 [2026-04-22-read-file-preview-design.md](../product-specs/2026-04-22-read-file-preview-design.md) 状态和说明。
+- [x] Step 1: 运行 `cd client && npx vitest run src/features/chat/components/tools/__tests__/read-file-output.test.ts src/features/chat/components/tools/__tests__/read-file.test.tsx src/features/stage/utils/open-or-focus-file-preview-tab.test.ts src/features/stage/components/stage-tab-content.test.tsx src/features/stage/components/stage-tab-bar.test.tsx src/features/stage/components/file-preview-tab.test.tsx src/features/stage/components/stage-window.test.tsx`
+  Result: 为覆盖共享 Monaco 主题抽取带来的回归风险，实际额外执行了 `src/features/stage/components/sql-workbench-tab.test.tsx`；最终 `8` 个 test files、`62` 个 tests 全绿。
+- [x] Step 2: 运行 `cd client && npx tsc --noEmit`
+  Result: 通过。
+- [x] Step 3: 将本计划中的 checkbox 全部按实际结果勾完，并补充最终命令结果。
+- [x] Step 4: 完成后把 `docs/exec-plans/index.md` 中本计划从 Active 移到 Completed；若实现与 spec 有实质偏差，再同步更新 [2026-04-22-read-file-preview-design.md](../product-specs/2026-04-22-read-file-preview-design.md) 状态和说明。
 
 ## Decisions
 

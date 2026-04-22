@@ -1,4 +1,4 @@
-import { XIcon, SparklesIcon, DatabaseIcon, NetworkIcon } from 'lucide-react'
+import { XIcon, SparklesIcon, DatabaseIcon, NetworkIcon, FileTextIcon } from 'lucide-react'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -40,6 +40,12 @@ function getTabIcon(type?: string, isActive?: boolean) {
       return (
         <NetworkIcon
           className={cn('size-4 transition-colors', isActive ? 'text-emerald-500' : 'text-muted-foreground')}
+        />
+      )
+    case 'file_preview':
+      return (
+        <FileTextIcon
+          className={cn('size-4 transition-colors', isActive ? 'text-sky-500' : 'text-muted-foreground')}
         />
       )
     default:

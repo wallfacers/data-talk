@@ -289,6 +289,36 @@ class SqlExecuteControllerIT {
     }
 
     @Test
+    void broken_connection_returns_markdown_diagnostics_for_execution_failure() throws Exception {
+        connRepo.insert(new ConnectionRecord(
+            "c-sql-it-broken",
+            "Broken MySQL",
+            "mysql",
+            "127.0.0.1",
+            1,
+            null,
+            "root",
+            vault.seal("bad-password"),
+            null,
+            System.currentTimeMillis(),
+            3000,
+            null,
+            null
+        ));
+
+        mvc.perform(post("/api/sql/execute")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"connectionId":"c-sql-it-broken","sql":"SELECT 1","source":"user"}
+                    """))
+            .andExpect(status().isInternalServerError())
+            .andExpect(jsonPath("$.message", containsString("## ")))
+            .andExpect(jsonPath("$.message", containsString("127.0.0.1")))
+            .andExpect(jsonPath("$.message", containsString("```text")))
+            .andExpect(jsonPath("$.message", containsString("- **")));
+    }
+
+    @Test
     void invalid_source_returns_400() throws Exception {
         mvc.perform(post("/api/sql/execute")
                 .contentType(MediaType.APPLICATION_JSON)

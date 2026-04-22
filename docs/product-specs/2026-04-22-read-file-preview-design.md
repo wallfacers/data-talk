@@ -1,7 +1,7 @@
 # Read File Preview In Session Stage Design
 
 - **日期**：2026-04-22
-- **状态**：proposed
+- **状态**：shipped
 - **前置**：
   - [AI Message Rendering Migration](./2026-04-19-ai-message-rendering-migration-design.md)
   - [Stage UI Object Protocol](./2026-04-20-stage-ui-object-protocol-design.md)
@@ -81,7 +81,7 @@
 - `part.tool === 'read'`
 - `part.state.status === 'completed'`
 - `part.state.output` 是字符串
-- 能从该字符串中提取出 `<type>file</type>` 与 `<content>...</content>`
+- 输出满足固定有序形态：`<path>...</path><type>file</type><content>...</content>`，其中 `path` 非空且可解析出文件名
 
 按钮点击行为：
 
@@ -91,7 +91,7 @@
 
 ### 4.2 工作台行为
 
-`file_preview` Tab 的标题使用文件名，如 `AGENTS.md`。若无法从路径解析文件名，则回退为 `read output`。
+`file_preview` Tab 的标题使用文件名，如 `AGENTS.md`。若 `path` 缺失、为空，或无法从路径解析出文件名，则整个 `read` 结果回退为普通工具卡片，不创建 `file_preview`。
 
 Tab 内容由两部分组成：
 
@@ -123,12 +123,13 @@ Tab 内容由两部分组成：
 - `<type>...</type>`
 - `<content>...</content>`
 
-实现策略采用轻量位置提取，而不是引入通用 XML parser：
+实现策略采用固定结构匹配，而不是引入通用 XML parser：
 
-- `path`、`type` 取首个成对标签内容
-- `content` 取首个 `<content>` 与最后一个 `</content>` 之间的原始子串，保留换行与缩进
+- 仅接受有序且完整的 `path -> type=file -> content` 三段结构
+- 允许标签之间存在换行或空白
+- 不接受前后额外文本、标签乱序、缺失标签或无法解析出 basename 的路径
 
-这样可以尽量容忍正文中出现 `<`、`>` 或 markdown 标记，不把文件内容本身误当成结构标签。
+这样可以确保聊天 renderer 只对已批准的 `read` 文件输出契约生效，其他任何变体都安全回退为普通工具卡片。
 
 若解析失败，则 `read` renderer 自动回退为当前普通工具卡片展示，不影响其他工具或其他 `read` 输出形态。
 
@@ -150,8 +151,8 @@ type FilePreviewPayload = {
 
 字段约束：
 
-- `filePath`：来自 `<path>`，允许为空
-- `filename`：由 `filePath` 推导，失败时回退为 `read output`
+- `filePath`：来自 `<path>`，必须存在且非空
+- `filename`：由 `filePath` 推导，若无法解析则视为整体解析失败
 - `fileType`：来自 `<type>`，当前预期固定为 `file`
 - `content`：原始正文
 - `truncated`：来自 `part.state.metadata?.truncated === true`

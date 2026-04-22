@@ -10,11 +10,13 @@
 | [Composer Data Source Picker](./2026-04-20-composer-data-source-picker-plan.md) | in_progress | 计划为 Composer 增加与模型并列的数据源选择器，接入全局 chooser host、缺库自动补选并恢复原动作、`ui_exec(workspace, choose_connection)` 适配器，以及 Stage 卡片来源数据源固化与显式回切。 |
 | [Stage UI Object Protocol Phase 1](./2026-04-20-stage-ui-object-protocol-plan.md) | in_progress | 前端 `UIRouter` + 4 个 CLIENT Action 桥接已就位；`StageStore` 多 Tab 模型、`WorkspaceAdapter` / `BangQueryAdapter`、StageWindow 多 Tab UI、`BangQueryTab` 组件、Composer `!` 拦截均已落地；后端 `/api/query` 加 `SqlStatementGuard`。客户端 198 tests + 后端 179 tests 全绿。**剩余：手动端到端联调（plan Step 12.5）**。AI 展示路径（QueryEditor + Prompt 注入）归属 P2，不在此 plan。 |
 | [SQL Risk Classification & IT CI Gate](./2026-04-20-sql-risk-classification-it-ci-gate-plan.md) | in_progress | `TD-020`：在 `ActionDispatcher` 统一预处理层引入 Apache Calcite SQL AST 风险判级，并通过 `ActionContext` / action output metadata 透传动态风险；`TD-021`：在 adapter 模块接入 failsafe，让 `mvn clean verify` 自动执行 `*IT.java`。 |
-| [Read File Preview In Session Stage](./2026-04-22-read-file-preview-plan.md) | pending | 为 `read` 文件结果增加专属聊天 renderer 与“同步到工作台”入口，在当前会话 Stage 中创建或聚焦 `file_preview` Tab，以只读 Monaco 高亮 `<content>` 正文，并保持路径与文件属性为普通文本。 |
 ## 已完成计划
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [Read File Preview In Session Stage](./2026-04-22-read-file-preview-plan.md) | 2026-04-22 | `read` 文件结果现支持专属聊天 renderer 与当前会话 Stage 文件预览：点击后创建或聚焦 `file_preview` Tab，以只读 Monaco 高亮固定 `<path><type>file</type><content>` 形态中的正文；相关 62 个前端测试与 `npx tsc --noEmit` 通过。 |
+| [Java 21 Build Guard](./2026-04-22-java21-build-guard-plan.md) | 2026-04-22 | `server` 父 POM 已增加 Java 21 fail-fast enforcer，JDK 8 现在会在 `validate` 阶段直接提示“DataTalk server build requires Java 21”，不再把 Java 21 语法误报成源码错误；同时修正了此前错误归因写入的计划说明与技术债记录。 |
+| [SQL Error Markdown Diagnostics](./2026-04-22-sql-error-markdown-plan.md) | 2026-04-22 | `/api/sql/execute` 的连接级失败现在返回包含连接上下文、异常类型、驱动原始消息和排查建议的 Markdown 诊断块；Stage 错误 Tab 改为嵌入共享 Markdown renderer，并统一去掉纯文本居中布局。前端相关 vitest 与 `npx tsc --noEmit` 已通过；后端验证在切到 JDK 21 后可正常运行。 |
 | [Stage SQL Editor Format](./2026-04-22-stage-sql-editor-format-plan.md) | 2026-04-22 | Stage Query Editor 已接入统一 SQL 格式化链路：新增 `format-sql` helper 封装 `sql-formatter` 与方言映射，工具栏 `Format` 与 `Cmd/Ctrl + Shift + F` 共用同一实现；相关 14 个 vitest 测试与 `npx tsc --noEmit` 通过。 |
 | [Workspace And Backend I18n](./2026-04-22-workspace-backend-i18n-plan.md) | 2026-04-22 | 工作台相关前端静态文案、后端 action/object 显示名、SQL 结果标题与关键错误消息已全部接入双语 i18n；前端 stage 相关 vitest 与 `npx tsc --noEmit`、后端定向 JUnit/IT 与 `mvn compile -q` 通过。 |
 | [Stage SQL Workbench Polish](./2026-04-22-stage-sql-workbench-polish-plan.md) | 2026-04-22 | 完成 Stage SQL 打磨：移除旧左侧资源栏并改为右侧 Activity Rail（Schema/History/Outline/AI），接入工具栏 Run/Cancel/Format/Limit/Save、tab override 上下文、Monaco 轮廓解析与 breadcrumb、状态栏、AI Assist 独立会话与会话列表过滤；相关 Stage/adapter/store/hook/workspace 测试全绿且 `npx tsc --noEmit` 通过。 |

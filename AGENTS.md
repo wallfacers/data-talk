@@ -35,6 +35,7 @@ client/                            # Tauri v2 + React 19 + Vite + shadcn/ui
 
 ```bash
 # Backend
+export JAVA_HOME=/path/to/jdk-21                              # or ensure `java -version` is 21.x
 cd server && mvn clean verify                                # compile + full test suite
 cd server && mvn spring-boot:run -pl data-talk-adapter       # start (port 8080)
 

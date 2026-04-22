@@ -4,6 +4,7 @@ import { PreviewSql } from './preview-sql'
 import { DescribeTable, ListTables, ShowSchema } from './metadata-renderers'
 import { ArtifactCreated } from './artifact-created'
 import { Question } from './question'
+import { ReadFile } from './read-file'
 
 let registered = false
 
@@ -17,4 +18,5 @@ export function registerBuiltInRenderers() {
   ToolRegistry.register('show_schema', ShowSchema)
   ToolRegistry.register('artifact_created', ArtifactCreated)
   ToolRegistry.register('question', Question)
+  ToolRegistry.register('read', ReadFile)
 }

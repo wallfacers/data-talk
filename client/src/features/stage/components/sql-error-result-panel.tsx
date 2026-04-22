@@ -1,5 +1,6 @@
 import type { SqlExecuteResultItem } from '@/services/api/sql'
 import { useI18n } from '@/i18n/use-i18n'
+import { Markdown } from '@/features/chat/components/markdown/markdown'
 
 type SqlErrorResultPanelProps = {
   result: SqlExecuteResultItem
@@ -7,12 +8,17 @@ type SqlErrorResultPanelProps = {
 
 export function SqlErrorResultPanel({ result }: SqlErrorResultPanelProps) {
   const { t } = useI18n()
+  const markdown = result.errorMessage ?? t('stage.result.error.default')
 
   return (
-    <div className="flex h-full items-center justify-center px-6 py-6 text-center">
-      <p className="text-sm font-medium text-destructive">
-        {result.errorMessage ?? t('stage.result.error.default')}
-      </p>
+    <div className="h-full overflow-auto px-4 py-4">
+      <div className="rounded-xl border border-destructive/15 bg-destructive/[0.03] p-4">
+        <Markdown
+          text={markdown}
+          cacheKey={`sql-error:${result.resultId}:${markdown}`}
+          className="text-sm text-foreground"
+        />
+      </div>
     </div>
   )
 }

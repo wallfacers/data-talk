@@ -39,15 +39,27 @@ export function SqlResultPanel({
     )
   }
 
-  if (executeStatus === 'error') {
-    return (
-      <div className="flex h-full items-center justify-center px-4 text-xs text-destructive">
-        {errorMessage ?? t('stage.queryEditor.runFailed')}
-      </div>
-    )
-  }
-
   if (!activeResult) {
+    if (executeStatus === 'error') {
+      return (
+        <SqlErrorResultPanel
+          result={{
+            resultId: 'sql-error-fallback',
+            kind: 'error',
+            title: t('stage.status.error'),
+            statementIndex: 0,
+            statementText: '',
+            columns: [],
+            rows: [],
+            rowCount: 0,
+            executionMs: 0,
+            truncated: false,
+            errorMessage: errorMessage ?? t('stage.queryEditor.runFailed'),
+          }}
+        />
+      )
+    }
+
     return (
       <div className="flex h-full items-center justify-center px-4 text-xs text-muted-foreground">
         {t('stage.queryEditor.runToSeeResults')}

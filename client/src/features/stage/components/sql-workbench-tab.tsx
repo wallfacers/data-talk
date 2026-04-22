@@ -410,14 +410,27 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
         })
         return
       }
-      setError(tab.tabId, error instanceof Error ? error.message : t('stage.queryEditor.runFailed'))
+      const errorMessage = error instanceof Error ? error.message : t('stage.queryEditor.runFailed')
+      setError(tab.tabId, errorMessage, {
+        resultId: `error-${startedAt}-${Math.random().toString(36).slice(2, 8)}`,
+        kind: 'error',
+        title: t('stage.status.error'),
+        statementIndex: 0,
+        statementText: executableSql,
+        columns: [],
+        rows: [],
+        rowCount: 0,
+        executionMs: Date.now() - startedAt,
+        truncated: false,
+        errorMessage,
+      })
       appendHistoryEntry(tab.tabId, {
         id: `history-${startedAt}-${Math.random().toString(36).slice(2, 8)}`,
         at: Date.now(),
         sql: executableSql,
         status: 'error',
         elapsedMs: Date.now() - startedAt,
-        errorSummary: error instanceof Error ? error.message : t('stage.queryEditor.runFailed'),
+        errorSummary: errorMessage,
       })
     } finally {
       if (activeControllerRef.current === controller) {
@@ -440,6 +453,7 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     tabState.limit,
     tabState.source,
     tabState.sqlText,
+    t,
   ])
 
   useEffect(() => {
@@ -593,7 +607,6 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
           <SqlWorkbenchStatusBar
             status={tabState.executeStatus}
             riskReason={tabState.risk?.riskReason ?? null}
-            errorMessage={tabState.errorMessage}
           />
         </section>
 

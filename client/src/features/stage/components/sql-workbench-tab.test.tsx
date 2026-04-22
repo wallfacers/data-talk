@@ -529,6 +529,21 @@ delete from sessions;`,
     })
   })
 
+  it('routes execution errors into an error result tab without showing the error status tag', async () => {
+    executeMock.mockRejectedValue(new Error('SQL execution failed'))
+
+    render(<SqlWorkbenchTab tab={tab} />)
+
+    fireEvent.click(screen.getByRole('button', { name: t('stage.toolbar.run') }))
+
+    await waitFor(() => expect(executeMock).toHaveBeenCalled())
+
+    expect(screen.getByRole('tab', { name: t('stage.status.error') })).toBeTruthy()
+    expect(screen.getByText('SQL execution failed')).toBeTruthy()
+    expect(screen.queryAllByText('SQL execution failed')).toHaveLength(1)
+    expect(screen.queryByTestId('sql-workbench-status-bar')).toBeNull()
+  })
+
   it('exposes the Monaco imperative API and current-statement decoration', () => {
     const onChange = vi.fn()
     const onRun = vi.fn()

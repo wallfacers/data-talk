@@ -10,12 +10,10 @@ describe('SqlWorkbenchStatusBar', () => {
   it.each([
     ['running', 'stage.status.running'],
     ['success', 'stage.status.success'],
-    ['error', 'stage.status.error'],
     ['risk_blocked', 'stage.status.riskBlocked'],
   ] as const)('maps %s to %s', (status, label) => {
     render(
       <SqlWorkbenchStatusBar
-        errorMessage={status === 'error' ? 'network failed' : null}
         riskReason={status === 'risk_blocked' ? 'bulk delete' : null}
         status={status}
       />,
@@ -24,12 +22,14 @@ describe('SqlWorkbenchStatusBar', () => {
     expect(screen.getByText(t(label))).toBeTruthy()
   })
 
-  it('does not render in idle status', () => {
+  it.each([
+    ['idle'],
+    ['error'],
+  ] as const)('does not render in %s status', (status) => {
     render(
       <SqlWorkbenchStatusBar
-        errorMessage={null}
         riskReason={null}
-        status="idle"
+        status={status}
       />,
     )
 

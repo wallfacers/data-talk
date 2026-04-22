@@ -1,11 +1,11 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { translateMessage } from '@/i18n/messages'
 import { SqlErrorResultPanel } from './sql-error-result-panel'
 
 describe('SqlErrorResultPanel', () => {
-  it('falls back to the translated default error message', () => {
-    render(
+  it('falls back to the translated default error message inside the markdown shell', async () => {
+    const { container } = render(
       <SqlErrorResultPanel
         result={{
           resultId: 'r-1',
@@ -23,6 +23,9 @@ describe('SqlErrorResultPanel', () => {
       />,
     )
 
+    await waitFor(() =>
+      expect(container.querySelector('[data-component="markdown"]')).not.toBeNull(),
+    )
     expect(screen.getByText(translateMessage('zh-CN', 'stage.result.error.default'))).toBeTruthy()
   })
 })
