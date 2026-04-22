@@ -182,7 +182,10 @@ describe('StageWindow', () => {
     render(<StageWindow sessionId="s-1" />)
 
     expect(screen.getByTestId('stage-empty-workbench')).toBeTruthy()
-    expect(screen.getByRole('button', { name: '打开 SQL 编辑器' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /SQL 编辑器/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /ER 图设计器/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /报表/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /Dashboard/ })).toBeDisabled()
   })
 
   it('renders a right-side activity rail container and does not render the old sidebar subtree', () => {
@@ -212,7 +215,7 @@ describe('StageWindow', () => {
 
     render(<StageWindow sessionId="s1" />)
 
-    fireEvent.click(screen.getByRole('button', { name: '打开 SQL 编辑器' }))
+    fireEvent.click(screen.getByRole('button', { name: /SQL 编辑器/ }))
 
     expect(openOrFocusStageToolTabMock).toHaveBeenCalledWith(expect.objectContaining({
       sessionId: null,

@@ -147,10 +147,7 @@ export function StageWindow({ sessionId }: Props) {
             ) : (
               <div className="flex min-h-0 flex-1 overflow-hidden">
                 <StageWorkbenchEmptyState
-                  title={t('stage.empty.title')}
-                  description={t('stage.empty.description')}
-                  primaryActionLabel={t('stage.empty.primaryAction')}
-                  onPrimaryAction={handleOpenSqlEditor}
+                  onOpenSqlEditor={handleOpenSqlEditor}
                 />
               </div>
             )}

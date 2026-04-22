@@ -148,7 +148,9 @@ describe('SqlWorkbenchTab', () => {
     expect(screen.getByTestId('sql-monaco-editor')).toBeTruthy()
     expect(screen.getByRole('button', { name: /Run/i })).toBeTruthy()
     expect(screen.getByTestId('sql-editor-toolbar')).toBeTruthy()
-    expect(screen.getByTestId('sql-workbench-status-bar')).toBeTruthy()
+    expect(screen.queryByTestId('sql-workbench-status-bar')).toBeNull()
+    expect(screen.getByRole('tablist')).toBeTruthy()
+    expect(screen.getByTestId('sql-workbench-result-splitter')).toBeTruthy()
   })
 
   it('tracks cursor position and shows the current statement kind in the breadcrumb', async () => {
@@ -174,7 +176,6 @@ delete from sessions;`,
 
     await waitFor(() => expect(screen.getByText('Ln 3')).toBeTruthy())
     expect(screen.getByText('UPDATE')).toBeTruthy()
-    expect(screen.getByText('Ln 3, Col 5')).toBeTruthy()
   })
 
   it('formats SQL, saves the draft, and marks the tab as saved', async () => {
@@ -297,7 +298,7 @@ delete from sessions;`,
     expect(screen.getByRole('button', { name: /Cancel/i })).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: /Cancel/i }))
-    await waitFor(() => expect(screen.getByText('Idle')).toBeTruthy())
+    await waitFor(() => expect(screen.queryByTestId('sql-workbench-status-bar')).toBeNull())
     expect(abortHandler).not.toBeNull()
   })
 
@@ -359,6 +360,7 @@ delete from sessions;`,
 
     await waitFor(() => expect(executeMock).toHaveBeenCalled())
 
+    expect(screen.getByTestId('sql-workbench-result-splitter')).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Result 1' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'DML' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Error' })).toBeTruthy()
@@ -369,6 +371,63 @@ delete from sessions;`,
 
     fireEvent.click(screen.getByRole('tab', { name: 'Error' }))
     expect(screen.getByText(/relation missing does not exist/)).toBeTruthy()
+  })
+
+  it('supports dragging the horizontal splitter above result tabs', async () => {
+    executeMock.mockResolvedValue({
+      resolvedContext: {
+        connectionId: 'conn-1',
+        connectionName: 'Primary Connection',
+        database: 'db_main',
+        schema: null,
+        selectedLevel: 'database',
+      },
+      contextNotice: null,
+      results: [
+        {
+          resultId: 'r-set',
+          kind: 'result_set',
+          title: 'Result 1',
+          statementIndex: 0,
+          statementText: 'select 1',
+          columns: ['id'],
+          rows: [[1]],
+          rowCount: 1,
+          executionMs: 5,
+          truncated: false,
+        },
+      ],
+    })
+
+    render(<SqlWorkbenchTab tab={tab} />)
+    fireEvent.click(screen.getByRole('button', { name: /Run/i }))
+
+    const splitter = await screen.findByTestId('sql-workbench-result-splitter')
+    const layout = splitter.parentElement as HTMLElement
+    const resultSection = splitter.nextElementSibling as HTMLElement
+
+    Object.defineProperty(layout, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({
+        x: 0,
+        y: 0,
+        top: 0,
+        left: 0,
+        right: 1000,
+        bottom: 1000,
+        width: 1000,
+        height: 1000,
+        toJSON: () => ({}),
+      }),
+    })
+
+    expect(resultSection.style.flexBasis).toBe('38%')
+
+    fireEvent.mouseDown(splitter, { clientY: 620 })
+    fireEvent.mouseMove(window, { clientY: 760 })
+    fireEvent.mouseUp(window)
+
+    expect(resultSection.style.flexBasis).toBe('24%')
   })
 
   it('appends a history entry after a successful execution', async () => {

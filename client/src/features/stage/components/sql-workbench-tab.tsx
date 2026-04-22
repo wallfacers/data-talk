@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import type { StageTab } from '@/stores/stage-store'
 import { useConnectionStore } from '@/features/connection/store'
 import { useSessionDataContext } from '@/features/session/hooks/use-session-data-context'
 import { useI18n } from '@/i18n/use-i18n'
+import { cn } from '@/lib/utils'
 import { SqlRiskError } from '@/services/api/sql'
 import { resolveTabDataContext } from '@/features/stage/utils/resolve-tab-data-context'
 import { parseSqlOutline, resolveCurrentSqlOutlineStatement } from '../utils/parse-sql-outline'
@@ -52,6 +53,10 @@ const EMPTY_WORKBENCH_STATE = {
 }
 
 const DRAFT_STORAGE_PREFIX = 'data-talk:sql-workbench:draft:'
+const RESULT_PANE_MIN_PERCENT = 22
+const RESULT_PANE_MAX_PERCENT = 64
+const RESULT_PANE_DEFAULT_PERCENT = 38
+const TEMP_FORCE_RESULT_PANE = true
 
 export function getSqlWorkbenchTabActions(tabId: string) {
   return tabActionsById.get(tabId) ?? null
@@ -155,7 +160,10 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
   const autoRunRef = useRef(false)
   const activeControllerRef = useRef<AbortController | null>(null)
   const monacoRef = useRef<SqlMonacoEditorHandle | null>(null)
+  const splitLayoutRef = useRef<HTMLDivElement | null>(null)
+  const resizeCleanupRef = useRef<(() => void) | null>(null)
   const [draftReady, setDraftReady] = useState(false)
+  const [resultPanePercent, setResultPanePercent] = useState(RESULT_PANE_DEFAULT_PERCENT)
   const { execute } = useSqlExecute()
   const { activeConnectionId, connections } = useConnectionStore(
     useShallow((state) => ({
@@ -226,6 +234,7 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     () => tabState.results.find((item) => item.resultId === tabState.activeResultId) ?? null,
     [tabState.activeResultId, tabState.results],
   )
+  const showResultPane = TEMP_FORCE_RESULT_PANE || tabState.results.length > 0
 
   useEffect(() => {
     ensureTab(tab.tabId, {
@@ -303,6 +312,48 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
   const contextMode = tabState.override ? 'override' : 'session'
 
   const applyIdleState = useCallback(() => resetTabExecutionState(tab.tabId), [tab.tabId])
+
+  const stopResize = useCallback(() => {
+    resizeCleanupRef.current?.()
+    resizeCleanupRef.current = null
+  }, [])
+
+  const updateResultPanePercent = useCallback((clientY: number) => {
+    const layout = splitLayoutRef.current
+    if (!layout) return
+
+    const rect = layout.getBoundingClientRect()
+    if (rect.height <= 0) return
+
+    const nextPercent = ((rect.bottom - clientY) / rect.height) * 100
+    const clampedPercent = Math.min(
+      RESULT_PANE_MAX_PERCENT,
+      Math.max(RESULT_PANE_MIN_PERCENT, nextPercent),
+    )
+    setResultPanePercent(clampedPercent)
+  }, [])
+
+  const handleSplitterMouseDown = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    stopResize()
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      updateResultPanePercent(moveEvent.clientY)
+    }
+    const onMouseUp = () => {
+      stopResize()
+    }
+
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp, { once: true })
+
+    resizeCleanupRef.current = () => {
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
+  }, [stopResize, updateResultPanePercent])
+
+  useEffect(() => stopResize, [stopResize])
 
   const handleRun = useCallback(async () => {
     if (!effectiveContext.connectionId || !tabState.sqlText.trim()) return
@@ -480,76 +531,103 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
 
   return (
     <div data-testid="sql-workbench-tab" className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-col bg-background">
-      <section className="flex min-h-0 flex-[3] flex-col border-b border-border/40">
-        <SqlEditorToolbar
-          entryLabel={entryLabel}
-          connectionLabel={effectiveContext.connectionName ?? effectiveContext.connectionId ?? t('stage.queryEditor.connection.unselected')}
-          detailLabel={detailLabel}
-          contextNotice={tabState.contextNotice}
-          canRun={canRun}
-          isRunning={tabState.executeStatus === 'running'}
-          onRun={() => void handleRun()}
-          onCancel={() => activeControllerRef.current?.abort()}
-          onFormat={() => void handleFormat()}
-          onSave={handleSave}
-          limit={tabState.limit}
-          onLimitChange={(value) => setLimit(tab.tabId, value)}
-          contextChip={
-            <SqlContextChip
-              mode={contextMode}
-              context={contextChipContext}
-              onSetTabContext={handleContextPin}
-              onResetTabContext={handleContextReset}
-            />
-          }
-        />
-        <SqlEditorBreadcrumb
-          connectionLabel={effectiveContext.connectionName ?? effectiveContext.connectionId ?? null}
-          database={effectiveContext.database}
-          schema={effectiveContext.schema}
-          line={tabState.cursor.line}
-          kind={currentStatement?.kind ?? null}
-        />
-        <div className="min-h-0 flex-1 bg-background px-2 pb-2 pt-1">
-          <SqlMonacoEditor
-            ref={monacoRef}
-            value={tabState.sqlText}
-            onChange={(next) => setSqlText(tab.tabId, next)}
+      <div ref={splitLayoutRef} className="flex min-h-0 flex-1 flex-col">
+        <section
+          className={cn(
+            'flex min-h-0 flex-col',
+            showResultPane ? 'flex-none' : 'flex-1',
+          )}
+          style={showResultPane ? { flexBasis: `${100 - resultPanePercent}%` } : undefined}
+        >
+          <SqlEditorToolbar
+            entryLabel={entryLabel}
+            connectionLabel={effectiveContext.connectionName ?? effectiveContext.connectionId ?? t('stage.queryEditor.connection.unselected')}
+            detailLabel={detailLabel}
+            contextNotice={tabState.contextNotice}
+            canRun={canRun}
+            isRunning={tabState.executeStatus === 'running'}
             onRun={() => void handleRun()}
-            onCursorChange={handleCursorChange}
-            currentStatementRange={
-              currentStatement
-                ? {
-                    startLine: currentStatement.line,
-                    endLine: currentStatement.endLine,
-                  }
-                : null
+            onCancel={() => activeControllerRef.current?.abort()}
+            onFormat={() => void handleFormat()}
+            onSave={handleSave}
+            limit={tabState.limit}
+            onLimitChange={(value) => setLimit(tab.tabId, value)}
+            contextChip={
+              <SqlContextChip
+                mode={contextMode}
+                context={contextChipContext}
+                onSetTabContext={handleContextPin}
+                onResetTabContext={handleContextReset}
+              />
             }
           />
-        </div>
-        <SqlWorkbenchStatusBar
-          status={tabState.executeStatus}
-          cursor={tabState.cursor}
-          riskReason={tabState.risk?.riskReason ?? null}
-          errorMessage={tabState.errorMessage}
-        />
-      </section>
-
-      <section className="flex min-h-0 flex-[2] flex-col">
-        <SqlResultTabs
-          results={tabState.results}
-          activeResultId={tabState.activeResultId}
-          onSelect={(resultId) => setActiveResult(tab.tabId, resultId)}
-        />
-        <div className="min-h-0 flex-1 overflow-hidden">
-          <SqlResultPanel
-            executeStatus={tabState.executeStatus}
-            activeResult={activeResult}
-            risk={tabState.risk}
+          <SqlEditorBreadcrumb
+            connectionLabel={effectiveContext.connectionName ?? effectiveContext.connectionId ?? null}
+            database={effectiveContext.database}
+            schema={effectiveContext.schema}
+            line={tabState.cursor.line}
+            kind={currentStatement?.kind ?? null}
+          />
+          <div className="min-h-0 flex-1 bg-background px-2 pb-2 pt-1">
+            <SqlMonacoEditor
+              ref={monacoRef}
+              value={tabState.sqlText}
+              onChange={(next) => setSqlText(tab.tabId, next)}
+              onRun={() => void handleRun()}
+              onCursorChange={handleCursorChange}
+              currentStatementRange={
+                currentStatement
+                  ? {
+                      startLine: currentStatement.line,
+                      endLine: currentStatement.endLine,
+                    }
+                  : null
+              }
+            />
+          </div>
+          <SqlWorkbenchStatusBar
+            status={tabState.executeStatus}
+            riskReason={tabState.risk?.riskReason ?? null}
             errorMessage={tabState.errorMessage}
           />
-        </div>
-      </section>
+        </section>
+
+        {showResultPane ? (
+          <>
+            <div
+              data-testid="sql-workbench-result-splitter"
+              role="separator"
+              aria-orientation="horizontal"
+              aria-label="Resize SQL result panel"
+              className="group relative -mb-px h-4 shrink-0 cursor-row-resize bg-transparent"
+              onMouseDown={handleSplitterMouseDown}
+            >
+              <div className="pointer-events-none absolute inset-x-0 bottom-0">
+                <div className="h-px w-full bg-border/65 transition-all duration-150 group-hover:h-1 group-hover:bg-primary/50 group-active:h-1 group-active:bg-primary/50" />
+              </div>
+            </div>
+
+            <section
+              className="flex min-h-0 flex-none flex-col"
+              style={{ flexBasis: `${resultPanePercent}%` }}
+            >
+              <SqlResultTabs
+                results={tabState.results}
+                activeResultId={tabState.activeResultId}
+                onSelect={(resultId) => setActiveResult(tab.tabId, resultId)}
+              />
+              <div className="min-h-0 flex-1 overflow-hidden">
+                <SqlResultPanel
+                  executeStatus={tabState.executeStatus}
+                  activeResult={activeResult}
+                  risk={tabState.risk}
+                  errorMessage={tabState.errorMessage}
+                />
+              </div>
+            </section>
+          </>
+        ) : null}
+      </div>
     </div>
   )
 }

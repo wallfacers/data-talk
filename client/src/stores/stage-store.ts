@@ -15,7 +15,7 @@ export type SidebarSelection =
       schema?: string | null
     }
 
-export type RailPanel = 'schema' | 'history' | 'outline' | 'ai'
+export type RailPanel = 'schema' | 'history' | 'outline'
 
 export interface StageTab {
   tabId: string

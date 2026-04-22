@@ -4,7 +4,6 @@ import { SqlWorkbenchStatusBar } from './sql-workbench-status-bar'
 
 describe('SqlWorkbenchStatusBar', () => {
   it.each([
-    ['idle', 'Idle'],
     ['running', 'Running'],
     ['success', 'Success'],
     ['error', 'Error'],
@@ -12,7 +11,6 @@ describe('SqlWorkbenchStatusBar', () => {
   ] as const)('maps %s to %s', (status, label) => {
     render(
       <SqlWorkbenchStatusBar
-        cursor={{ line: 12, column: 3 }}
         errorMessage={status === 'error' ? 'network failed' : null}
         riskReason={status === 'risk_blocked' ? 'bulk delete' : null}
         status={status}
@@ -20,6 +18,17 @@ describe('SqlWorkbenchStatusBar', () => {
     )
 
     expect(screen.getByText(label)).toBeTruthy()
-    expect(screen.getByText('Ln 12, Col 3')).toBeTruthy()
+  })
+
+  it('does not render in idle status', () => {
+    render(
+      <SqlWorkbenchStatusBar
+        errorMessage={null}
+        riskReason={null}
+        status="idle"
+      />,
+    )
+
+    expect(screen.queryByTestId('sql-workbench-status-bar')).toBeNull()
   })
 })

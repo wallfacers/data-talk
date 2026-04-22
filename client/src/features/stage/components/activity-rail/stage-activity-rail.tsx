@@ -1,5 +1,4 @@
-import { useEffect } from 'react'
-import { DatabaseIcon, HistoryIcon, ListTreeIcon, SparklesIcon } from 'lucide-react'
+import { DatabaseIcon, HistoryIcon, ListTreeIcon } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -10,7 +9,6 @@ import { useSqlWorkbenchStore } from '../../stores/sql-workbench-store'
 import { RailPanelShell } from './rail-panel-shell'
 import { HistoryPanel } from './history-panel'
 import { OutlinePanel } from './outline-panel'
-import { AiAssistPanel, cleanupStageAiSessions } from './ai-assist-panel'
 import { SchemaPanel, type SchemaPanelItem, type SchemaPanelContext } from './schema-panel'
 
 type Props = {
@@ -18,33 +16,16 @@ type Props = {
   className?: string
 }
 
-const EMPTY_TABS: Array<{ tabId: string }> = []
-
 const PANELS: Array<{ panel: RailPanel; label: string; Icon: typeof DatabaseIcon }> = [
   { panel: 'schema', label: 'Schema', Icon: DatabaseIcon },
   { panel: 'history', label: 'History', Icon: HistoryIcon },
   { panel: 'outline', label: 'Outline', Icon: ListTreeIcon },
-  { panel: 'ai', label: 'AI', Icon: SparklesIcon },
 ]
 
 const PANEL_TITLES: Record<RailPanel, string> = {
   schema: 'Schema',
   history: 'History',
   outline: 'Outline',
-  ai: 'AI',
-}
-
-function getPlaceholder(panel: RailPanel) {
-  switch (panel) {
-    case 'schema':
-      return 'Schema panel placeholder'
-    case 'history':
-      return 'History panel placeholder'
-    case 'outline':
-      return 'Outline panel placeholder'
-    case 'ai':
-      return 'AI panel placeholder'
-  }
 }
 
 function buildSchemaItems(
@@ -108,12 +89,6 @@ export function StageActivityRail({ sessionId, className }: Props) {
   const toggleRailPanel = useStageStore((s) => s.toggleRailPanel)
   const setActiveRailPanel = useStageStore((s) => s.setActiveRailPanel)
 
-  const { workspaceTabs, sessionTabs } = useStageStore(
-    useShallow((state) => ({
-      workspaceTabs: state.workspaceTabs,
-      sessionTabs: sessionId ? (state.tabsBySession.get(sessionId) ?? EMPTY_TABS) : EMPTY_TABS,
-    })),
-  )
   const activeTab = useStageStore((state) => {
     const activeTabId = sessionId
       ? state.activeTabIdBySession.get(sessionId) ?? state.activeWorkspaceTabId
@@ -173,23 +148,6 @@ export function StageActivityRail({ sessionId, className }: Props) {
   const schemaItems = buildSchemaItems(schemaContext)
   const historyEntries = activeTab?.type === 'query_editor' ? activeTabState?.history ?? [] : []
   const outlineStatements = parseSqlOutline(activeTabState?.sqlText ?? '')
-  const lastHistoryEntry = activeTabState?.history.at(-1) ?? null
-  const lastRunSummary = lastHistoryEntry
-    ? [
-        lastHistoryEntry.status === 'ok'
-          ? 'Last run succeeded'
-          : lastHistoryEntry.status === 'risk_blocked'
-            ? 'Last run blocked by risk'
-            : 'Last run failed',
-        lastHistoryEntry.resultCount != null ? `${lastHistoryEntry.resultCount} results` : null,
-        lastHistoryEntry.elapsedMs != null ? `${lastHistoryEntry.elapsedMs}ms` : null,
-        lastHistoryEntry.errorSummary ?? null,
-      ].filter(Boolean).join(' · ')
-    : null
-
-  useEffect(() => {
-    void cleanupStageAiSessions(new Set([...workspaceTabs, ...sessionTabs].map((tab) => tab.tabId)))
-  }, [sessionTabs, workspaceTabs])
 
   function handlePanelClick(panel: RailPanel) {
     toggleRailPanel(railScopeId, panel)
@@ -242,38 +200,6 @@ export function StageActivityRail({ sessionId, className }: Props) {
           ) : null}
           {activePanel === 'outline' ? (
             <OutlinePanel statements={outlineStatements} onJumpToLine={handleJumpToLine} />
-          ) : null}
-          {activePanel === 'ai' ? (
-            activeTab?.type === 'query_editor' ? (
-              <AiAssistPanel
-                tabId={activeTab.tabId}
-                tabTitle={activeTab.title}
-                connectionName={
-                  activeTabState?.resolvedContext?.connectionName
-                  ?? payloadContext?.connectionName
-                  ?? activeTab.connectionName
-                  ?? null
-                }
-                database={
-                  activeTabState?.resolvedContext?.database
-                  ?? payloadContext?.database
-                  ?? activeTab.database
-                  ?? null
-                }
-                schema={
-                  activeTabState?.resolvedContext?.schema
-                  ?? payloadContext?.schema
-                  ?? activeTab.schema
-                  ?? null
-                }
-                lastError={activeTabState?.errorMessage ?? activeTabState?.risk?.riskReason ?? null}
-                lastRunSummary={lastRunSummary}
-              />
-            ) : (
-              <div className="rounded-lg border border-dashed border-border/60 bg-background/60 px-3 py-4 text-xs text-muted-foreground">
-                {getPlaceholder(activePanel)}
-              </div>
-            )
           ) : null}
         </RailPanelShell>
       ) : null}

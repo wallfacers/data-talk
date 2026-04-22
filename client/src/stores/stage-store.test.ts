@@ -119,7 +119,7 @@ describe('stage-store', () => {
   it('clear removes active rail panel state for the session', () => {
     const { setActiveRailPanel, clear } = useStageStore.getState()
 
-    setActiveRailPanel('s1', 'ai')
+    setActiveRailPanel('s1', 'schema')
     clear('s1')
 
     expect(useStageStore.getState().activeRailPanelBySession.has('s1')).toBe(false)
