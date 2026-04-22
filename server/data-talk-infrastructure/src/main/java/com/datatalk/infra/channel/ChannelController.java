@@ -78,8 +78,8 @@ public class ChannelController {
                 yield codec.encodeAck(ar.id());
             }
             case RpcRequest.Abort a -> {
-                svc.abort(sessionId);
-                yield codec.encodeAck(a.id());
+                boolean aborted = svc.abort(sessionId);
+                yield codec.encodeResult(a.id(), Map.of("aborted", aborted));
             }
             case RpcRequest.Hello h -> codec.encodeAck(h.id());
         };

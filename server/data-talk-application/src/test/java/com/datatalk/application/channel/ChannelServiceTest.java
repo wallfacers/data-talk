@@ -120,4 +120,37 @@ class ChannelServiceTest {
         verify(sessionMap).bind("s-1", "ses_fresh");
         verify(gateway).forwardUserMessage(eq("ses_fresh"), any());
     }
+
+    @Test
+    void abort_forwards_to_persisted_opencode_session_and_emits_idle() {
+        when(sessionRepo.findById("s-1")).thenReturn(Optional.of(
+            new SessionRecord("s-1", null, "T", true, "ses_abort", 100L, 100L, false)));
+        when(gateway.abortOpenCodeSession("ses_abort")).thenReturn(true);
+        SessionBus bus = mock(SessionBus.class);
+        when(busRegistry.getOrCreate("s-1")).thenReturn(bus);
+
+        boolean aborted = svc.abort("s-1");
+
+        assertThat(aborted).isTrue();
+        verify(gateway).abortOpenCodeSession("ses_abort");
+        ArgumentCaptor<DtEvent> captor = ArgumentCaptor.forClass(DtEvent.class);
+        verify(bus, atLeastOnce()).publish(captor.capture());
+        assertThat(captor.getAllValues())
+            .anyMatch(e -> e instanceof DtEvent.SessionStatus s && "idle".equals(s.status()));
+    }
+
+    @Test
+    void abort_falls_back_to_session_map_when_persisted_open_code_sid_missing() {
+        when(sessionRepo.findById("s-1")).thenReturn(Optional.of(
+            new SessionRecord("s-1", null, "T", true, null, 100L, 100L, false)));
+        when(sessionMap.openCodeFor("s-1")).thenReturn("ses_from_map");
+        when(gateway.abortOpenCodeSession("ses_from_map")).thenReturn(false);
+        SessionBus bus = mock(SessionBus.class);
+        when(busRegistry.getOrCreate("s-1")).thenReturn(bus);
+
+        boolean aborted = svc.abort("s-1");
+
+        assertThat(aborted).isFalse();
+        verify(gateway).abortOpenCodeSession("ses_from_map");
+    }
 }

@@ -52,6 +52,28 @@ describe('ChannelClient', () => {
     expect(events[1].event).toBe('message.part.delta')
     expect(events[1].data.delta).toBe('hi')
   })
+
+  it('parses abort result boolean from JSON-RPC envelope', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: (k: string) => k === 'content-type' ? 'application/json' : null },
+      json: async () => ({ jsonrpc: '2.0', id: 'r-abort', result: { aborted: false } }),
+    }) as any
+
+    const client = new ChannelClient({ baseUrl: 'http://test', sessionId: 's-1', clientId: 'c-1' })
+    await expect(client.abort()).resolves.toBe(false)
+  })
+
+  it('keeps backward compatibility for legacy abort ack payload', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: (k: string) => k === 'content-type' ? 'application/json' : null },
+      json: async () => ({ jsonrpc: '2.0', id: 'r-abort', result: {} }),
+    }) as any
+
+    const client = new ChannelClient({ baseUrl: 'http://test', sessionId: 's-1', clientId: 'c-1' })
+    await expect(client.abort()).resolves.toBe(true)
+  })
 })
 
 describe('ChannelClient baseUrl', () => {

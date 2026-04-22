@@ -30,6 +30,10 @@ public class OpenCodeGateway {
         void delete(String openCodeSessionId);
     }
 
+    public interface SessionAborter {
+        boolean abort(String openCodeSessionId);
+    }
+
     public interface MessageLister {
         JsonNode list(String openCodeSessionId, Integer limit);
     }
@@ -39,6 +43,7 @@ public class OpenCodeGateway {
     private final MessageSender sender;
     private final Supplier<String> sessionCreator;
     private final SessionDeleter deleter;
+    private final SessionAborter aborter;
     private final MessageLister lister;
     private final String callbackBase;
 
@@ -46,11 +51,22 @@ public class OpenCodeGateway {
                            MessageSender sender, Supplier<String> sessionCreator,
                            SessionDeleter deleter, MessageLister lister,
                            String callbackBase) {
+        this(
+            registry, pusher, sender, sessionCreator, deleter,
+            openCodeSessionId -> false, lister, callbackBase
+        );
+    }
+
+    public OpenCodeGateway(ActionRegistry registry, ToolPusher pusher,
+                           MessageSender sender, Supplier<String> sessionCreator,
+                           SessionDeleter deleter, SessionAborter aborter,
+                           MessageLister lister, String callbackBase) {
         this.registry = registry;
         this.pusher = pusher;
         this.sender = sender;
         this.sessionCreator = sessionCreator;
         this.deleter = deleter;
+        this.aborter = aborter;
         this.lister = lister;
         this.callbackBase = callbackBase;
     }
@@ -76,6 +92,10 @@ public class OpenCodeGateway {
 
     public void deleteOpenCodeSession(String openCodeSessionId) {
         deleter.delete(openCodeSessionId);
+    }
+
+    public boolean abortOpenCodeSession(String openCodeSessionId) {
+        return aborter.abort(openCodeSessionId);
     }
 
     public JsonNode listMessages(String openCodeSessionId, Integer limit) {

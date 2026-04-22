@@ -18,6 +18,7 @@ const channel = {
   sendMessage: vi.fn(),
   abort: vi.fn(),
   isStreaming: false,
+  canAbort: true,
 }
 
 let hasActiveModel = true
@@ -75,6 +76,7 @@ describe('PromptComposer', () => {
     channel.sendMessage.mockResolvedValue(true)
     channel.abort.mockReset()
     channel.isStreaming = false
+    channel.canAbort = true
     vi.mocked(sessionDataContextApi.getSessionDataContext).mockResolvedValue(null as any)
     vi.mocked(sessionDataContextApi.resolveUseTarget).mockResolvedValue({
       status: 'not_found',

@@ -37,6 +37,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -215,5 +216,30 @@ class ChannelControllerIT {
             idx += 3;
         }
         assertThat(count).isGreaterThanOrEqualTo(2);
+    }
+
+    @Test
+    void abortRpcForwardsToOpenCodeAbortEndpoint() throws Exception {
+        oc.stubFor(post(urlEqualTo("/session/ses_test/abort"))
+            .willReturn(aResponse().withStatus(204)));
+
+        String body = om.writeValueAsString(Map.of(
+            "jsonrpc", "2.0",
+            "id", "abort-1",
+            "method", "abort",
+            "params", Map.of()
+        ));
+
+        String response = client.post()
+            .uri("/api/sessions/s-1/channel")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(body)
+            .retrieve()
+            .bodyToMono(String.class)
+            .block(Duration.ofSeconds(3));
+
+        assertThat(response).contains("\"id\":\"abort-1\"");
+        assertThat(response).contains("\"aborted\":true");
+        oc.verify(1, postRequestedFor(urlEqualTo("/session/ses_test/abort")));
     }
 }

@@ -66,7 +66,7 @@ function InnerComposer() {
   const { t } = useI18n()
   const [text, setText] = useState('')
   const [autoMode, setAutoMode] = useState(true)
-  const { sendMessage, abort, isStreaming } = useChannel()
+  const { sendMessage, abort, isStreaming, canAbort } = useChannel()
   const activeSessionId = useSessionStore((s) => s.activeSessionId)
   const openSession = useSessionStore((s) => s.openSession)
   const setPendingPrompt = useSessionStore((s) => s.setPendingPrompt)
@@ -409,7 +409,11 @@ function InnerComposer() {
                 variant="destructive"
                 size="icon-xs"
                 className="rounded-full"
-                onClick={() => void abort()}
+                disabled={!canAbort}
+                onClick={() => {
+                  if (!canAbort) return
+                  void abort()
+                }}
               >
                 <Loader2Icon className="size-3.5 animate-spin" />
               </Button>

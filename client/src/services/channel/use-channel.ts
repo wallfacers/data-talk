@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { QueryClient } from '@tanstack/react-query'
 import { ChannelClient } from './channel-client'
@@ -117,13 +117,10 @@ export function buildEventSink(
       }
     } else if (event === 'message.part.delta') {
       const { partId, field, delta } = data as { partId: string; field: string; delta: string }
-      const store = useChatPartsStore.getState()
-      const existing = store.findPart(sessionId, partId)
-      if (existing) {
-        const prev = (existing as Record<string, unknown>)[field] ?? ''
-        const next = { ...existing, [field]: String(prev) + delta }
-        store.upsertPart(sessionId, next as Part)
-      }
+      // Buffers if the part hasn't landed yet; drained on the next upsertPart
+      // for the same partId. Prevents silent loss when deltas race ahead of
+      // their part.created/updated (intermittent on fresh sessions).
+      useChatPartsStore.getState().appendPartDelta(sessionId, partId, field, delta)
     } else if (event === 'message.part.removed') {
       const { partId } = data as any
       const store = useChatPartsStore.getState()
@@ -186,6 +183,7 @@ export function useChannel() {
   const markSessionSent = useSessionStore((s) => s.markSessionSent)
   const client = useChannelClient(sessionId)
   const connectionId = useConnectionStore((s) => s.activeConnectionId)
+  const [isAborting, setIsAborting] = useState(false)
 
   const sendMessage = useCallback(
     async (parts: any[]) => {
@@ -254,9 +252,32 @@ export function useChannel() {
   )
 
   const abort = useCallback(async () => {
-    if (!client) return
-    await client.abort()
-  }, [client])
+    if (!client || !sessionId || isAborting) return false
+    setIsAborting(true)
+    try {
+      const aborted = await client.abort()
+      if (!aborted) {
+        // Backend/OpenCode already has no running turn; clear stale UI state.
+        useChatPartsStore.getState().markSessionTurnCompleted(sessionId)
+        useChatPartsStore.getState().setStreaming(sessionId, false)
+      }
+      return aborted
+    } catch (err) {
+      showErrorToast(normalizeError(err))
+      return false
+    } finally {
+      setIsAborting(false)
+    }
+  }, [client, sessionId, isAborting])
 
-  return { sendMessage, abort, isStreaming, client, retryPendingUser, removePendingUser }
+  return {
+    sendMessage,
+    abort,
+    isStreaming,
+    isAborting,
+    canAbort: isStreaming && !isAborting,
+    client,
+    retryPendingUser,
+    removePendingUser,
+  }
 }

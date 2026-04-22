@@ -46,12 +46,13 @@ export class ChannelClient {
     await this.plainPost(body)
   }
 
-  async abort(): Promise<void> {
+  async abort(): Promise<boolean> {
     const body: RpcRequest = {
       jsonrpc: '2.0', id: generateUuid(),
       method: 'abort', params: {},
     }
-    await this.plainPost(body)
+    const response = await this.plainPost(body)
+    return parseAbortResult(response)
   }
 
   subscribe(lastEventId: number | undefined, onEvent: (e: StreamEvent) => void): () => void {
@@ -109,6 +110,19 @@ export class ChannelClient {
   }
 
   private url() { return `${this.baseUrl}${API_PREFIX}/sessions/${this.sessionId}/channel` }
+}
+
+function parseAbortResult(response: unknown): boolean {
+  if (typeof response !== 'object' || response === null) return true
+  const envelope = response as { result?: unknown; error?: unknown }
+  if (envelope.error != null) throw new Error(`abort RPC returned error: ${JSON.stringify(envelope.error)}`)
+  if (typeof envelope.result === 'boolean') return envelope.result
+  if (typeof envelope.result === 'object' && envelope.result !== null) {
+    const aborted = (envelope.result as { aborted?: unknown }).aborted
+    if (typeof aborted === 'boolean') return aborted
+  }
+  // Backward compatibility with older backend ack shape: {"result":{}}
+  return true
 }
 
 async function consumeSseStream(res: Response, onEvent: (e: StreamEvent) => void): Promise<void> {

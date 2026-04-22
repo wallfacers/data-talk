@@ -84,11 +84,28 @@ public class OpenCodeHttpClient implements OpenCodeProviderClient {
             .block();
     }
 
-    public void abort(String sessionId) {
-        wc.post().uri("/session/{id}/abort", sessionId)
+    public boolean abort(String sessionId) {
+        String body = wc.post().uri("/session/{id}/abort", sessionId)
             .retrieve()
-            .toBodilessEntity()
+            .bodyToMono(String.class)
             .block();
+        if (body == null || body.isBlank()) {
+            // Keep compatibility with older OpenCode builds that returned 204.
+            return true;
+        }
+        String trimmed = body.trim();
+        if ("true".equalsIgnoreCase(trimmed)) return true;
+        if ("false".equalsIgnoreCase(trimmed)) return false;
+        try {
+            JsonNode node = om.readTree(trimmed);
+            if (node.isBoolean()) return node.booleanValue();
+            if (node.has("result") && node.get("result").isBoolean()) {
+                return node.get("result").booleanValue();
+            }
+        } catch (Exception ignored) {
+            // Fall through and treat unknown payload as success for compatibility.
+        }
+        return true;
     }
 
     public JsonNode listMessages(String openCodeSessionId, Integer limit) {

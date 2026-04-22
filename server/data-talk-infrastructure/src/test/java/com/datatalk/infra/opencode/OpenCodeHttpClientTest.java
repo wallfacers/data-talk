@@ -146,4 +146,37 @@ class OpenCodeHttpClientTest {
         assertThat(node.isArray()).isTrue();
         assertThat(node).hasSize(0);
     }
+
+    @Test
+    void abortReturnsTrueWhenOpenCodeRespondsTrue() {
+        wm.stubFor(post(urlEqualTo("/session/ses_1/abort"))
+            .willReturn(okJson("true")));
+
+        boolean aborted = client.abort("ses_1");
+
+        assertThat(aborted).isTrue();
+        wm.verify(postRequestedFor(urlEqualTo("/session/ses_1/abort")));
+    }
+
+    @Test
+    void abortReturnsFalseWhenOpenCodeRespondsFalse() {
+        wm.stubFor(post(urlEqualTo("/session/ses_2/abort"))
+            .willReturn(okJson("false")));
+
+        boolean aborted = client.abort("ses_2");
+
+        assertThat(aborted).isFalse();
+        wm.verify(postRequestedFor(urlEqualTo("/session/ses_2/abort")));
+    }
+
+    @Test
+    void abortTreatsEmptyBodyAsSuccessForCompatibility() {
+        wm.stubFor(post(urlEqualTo("/session/ses_3/abort"))
+            .willReturn(aResponse().withStatus(204)));
+
+        boolean aborted = client.abort("ses_3");
+
+        assertThat(aborted).isTrue();
+        wm.verify(postRequestedFor(urlEqualTo("/session/ses_3/abort")));
+    }
 }

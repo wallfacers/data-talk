@@ -156,9 +156,23 @@ public class ChannelService {
         return pending.fail(callId, new ActionResultError(error));
     }
 
-    public void abort(String sessionId) {
+    public boolean abort(String sessionId) {
+        String ocSid = sessions.findById(sessionId)
+            .map(SessionRecord::openCodeSid)
+            .filter(Strings::isNotBlank)
+            .orElseGet(() -> sessionMap.openCodeFor(sessionId));
+        boolean aborted = false;
+        if (Strings.isNotBlank(ocSid)) {
+            try {
+                aborted = gateway.abortOpenCodeSession(ocSid);
+            } catch (Exception e) {
+                log.warn("[channel] OpenCode abort failed for sessionId={}, ocSid={}: {}",
+                    sessionId, ocSid, e.toString());
+            }
+        }
         SessionBus bus = buses.getOrCreate(sessionId);
         bus.publish(new DtEvent.SessionStatus("idle", Map.of()));
+        return aborted;
     }
 
     public static class ActionResultError extends RuntimeException {

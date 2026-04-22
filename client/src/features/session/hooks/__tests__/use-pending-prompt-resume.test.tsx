@@ -19,6 +19,8 @@ describe('usePendingPromptResume', () => {
       sendMessage,
       abort: vi.fn(),
       isStreaming: false,
+      isAborting: false,
+      canAbort: false,
       client: null as any,
       retryPendingUser: vi.fn(),
       removePendingUser: vi.fn(),

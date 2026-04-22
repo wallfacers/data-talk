@@ -97,6 +97,29 @@ class OpenCodeGatewayTest {
         assertThat(result).hasSize(1);
     }
 
+    @Test
+    void abortOpenCodeSessionInvokesAborter() {
+        ActionRegistry registry = mock(ActionRegistry.class);
+        when(registry.all()).thenReturn(List.of());
+        List<String> abortedSessionIds = new ArrayList<>();
+
+        OpenCodeGateway gateway = new OpenCodeGateway(
+            registry,
+            new StubToolPusher(),
+            (sessionId, body) -> {},
+            () -> "ocsid-1",
+            sid -> {},
+            abortedSessionIds::add,
+            (ocSid, limit) -> { throw new UnsupportedOperationException("lister stub"); },
+            "http://localhost:8080"
+        );
+
+        boolean aborted = gateway.abortOpenCodeSession("ses_abort");
+
+        assertThat(aborted).isTrue();
+        assertThat(abortedSessionIds).containsExactly("ses_abort");
+    }
+
     static class StubToolPusher implements OpenCodeGateway.ToolPusher {
         final List<StubCall> pushed = new ArrayList<>();
         @Override public void push(String name, String description,
