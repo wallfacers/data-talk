@@ -9,6 +9,10 @@ const context = {
   database: 'db_main',
   schema: 'public',
 }
+const connections = [
+  { id: 'conn-1', name: 'Primary Connection', databaseName: 'db_main' },
+  { id: 'conn-2', name: 'Analytics', databaseName: 'analytics' },
+]
 
 describe('SqlContextChip', () => {
   const t = (key: Parameters<typeof translateMessage>[1], values?: Record<string, string | number>) =>
@@ -26,13 +30,36 @@ describe('SqlContextChip', () => {
       <SqlContextChip
         context={context}
         mode="session"
+        connections={connections}
+        databaseOptions={['db_main', 'analytics']}
+        schemaOptions={['public', 'reporting']}
         onResetTabContext={onResetTabContext}
         onSetTabContext={onSetTabContext}
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: new RegExp(t('stage.context.label.session')) }))
-    fireEvent.click(screen.getByRole('menuitem', { name: t('stage.context.action.pinCurrent') }))
+    fireEvent.click(screen.getByRole('button', { name: t('stage.context.tooltip.button') }))
+    fireEvent.click(screen.getByRole('button', { name: t('stage.context.action.pinCurrent') }))
+
+    expect(onSetTabContext).toHaveBeenCalledWith(context)
+    expect(onResetTabContext).not.toHaveBeenCalled()
+  })
+
+  it('can apply a manual override while in session mode', () => {
+    render(
+      <SqlContextChip
+        context={context}
+        mode="session"
+        connections={connections}
+        databaseOptions={['db_main', 'analytics']}
+        schemaOptions={['public', 'reporting']}
+        onResetTabContext={onResetTabContext}
+        onSetTabContext={onSetTabContext}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: t('stage.context.tooltip.button') }))
+    fireEvent.click(screen.getByRole('button', { name: t('stage.context.action.applyOverride') }))
 
     expect(onSetTabContext).toHaveBeenCalledWith(context)
     expect(onResetTabContext).not.toHaveBeenCalled()
@@ -43,15 +70,47 @@ describe('SqlContextChip', () => {
       <SqlContextChip
         context={context}
         mode="override"
+        connections={connections}
+        databaseOptions={['db_main', 'analytics']}
+        schemaOptions={['public', 'reporting']}
         onResetTabContext={onResetTabContext}
         onSetTabContext={onSetTabContext}
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: new RegExp(t('stage.context.label.override')) }))
-    fireEvent.click(screen.getByRole('menuitem', { name: t('stage.context.action.useSession') }))
+    fireEvent.click(screen.getByRole('button', { name: t('stage.context.tooltip.button') }))
+    fireEvent.click(screen.getByRole('button', { name: t('stage.context.action.useSession') }))
 
     expect(onResetTabContext).toHaveBeenCalledTimes(1)
     expect(onSetTabContext).not.toHaveBeenCalled()
+  })
+
+  it('resolves connection name from options when context only has id', () => {
+    render(
+      <SqlContextChip
+        context={{
+          connectionId: 'conn-2',
+          connectionName: null,
+          database: 'analytics',
+          schema: null,
+        }}
+        mode="session"
+        connections={connections}
+        databaseOptions={['db_main', 'analytics']}
+        schemaOptions={['public', 'reporting']}
+        onResetTabContext={onResetTabContext}
+        onSetTabContext={onSetTabContext}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: t('stage.context.tooltip.button') }))
+    fireEvent.click(screen.getByRole('button', { name: t('stage.context.action.pinCurrent') }))
+
+    expect(onSetTabContext).toHaveBeenCalledWith({
+      connectionId: 'conn-2',
+      connectionName: 'Analytics',
+      database: 'analytics',
+      schema: null,
+    })
   })
 })

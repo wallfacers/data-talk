@@ -14,6 +14,7 @@ import { useSqlExecute } from '../hooks/use-sql-execute'
 import { useSqlWorkbenchStore } from '../stores/sql-workbench-store'
 import type { SqlMonacoEditorHandle } from './sql-monaco-editor'
 import { SqlContextChip } from './sql-context-chip'
+import type { SqlContextValue } from './sql-context-chip'
 import { SqlEditorToolbar } from './sql-editor-toolbar'
 import { SqlMonacoEditor } from './sql-monaco-editor'
 import { SqlResultTabs } from './sql-result-tabs'
@@ -133,6 +134,18 @@ function toContextValue(
 ) {
   if (!connectionId) return null
   return { connectionId, connectionName, database, schema }
+}
+
+function collectContextOptionValues(values: Array<string | null | undefined>) {
+  const set = new Set<string>()
+  for (const value of values) {
+    if (value == null) continue
+    const trimmed = value.trim()
+    if (trimmed.length > 0) {
+      set.add(trimmed)
+    }
+  }
+  return Array.from(set)
 }
 
 function resetTabExecutionState(tabId: string) {
@@ -313,6 +326,50 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     effectiveContext.schema,
   )
   const contextMode = tabState.override ? 'override' : 'session'
+  const contextConnectionOptions = useMemo(
+    () => connections.map((connection) => ({
+      id: connection.id,
+      name: connection.name,
+      databaseName: connection.databaseName ?? null,
+    })),
+    [connections],
+  )
+  const contextDatabaseOptions = useMemo(() => collectContextOptionValues([
+    effectiveContext.database,
+    resolvedExecutionContext.database,
+    resolvedContext.database,
+    payload.database,
+    tab.database,
+    tabState.override?.database,
+    sessionDataContext.context?.database,
+    ...connections.map((connection) => connection.databaseName),
+  ]), [
+    connections,
+    effectiveContext.database,
+    payload.database,
+    resolvedContext.database,
+    resolvedExecutionContext.database,
+    sessionDataContext.context?.database,
+    tab.database,
+    tabState.override?.database,
+  ])
+  const contextSchemaOptions = useMemo(() => collectContextOptionValues([
+    effectiveContext.schema,
+    resolvedExecutionContext.schema,
+    resolvedContext.schema,
+    payload.schema,
+    tab.schema,
+    tabState.override?.schema,
+    sessionDataContext.context?.schema,
+  ]), [
+    effectiveContext.schema,
+    payload.schema,
+    resolvedContext.schema,
+    resolvedExecutionContext.schema,
+    sessionDataContext.context?.schema,
+    tab.schema,
+    tabState.override?.schema,
+  ])
   const effectiveConnectionKind = useMemo(
     () => connections.find((connection) => connection.id === effectiveContext.connectionId)?.kind ?? null,
     [connections, effectiveContext.connectionId],
@@ -471,10 +528,11 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     }
   }, [effectiveConnectionKind, setSqlText, tab.tabId, tabState.sqlText])
 
-  const handleContextPin = useCallback(() => {
-    if (!contextChipContext) return
+  const handleContextPin = useCallback((nextContext?: SqlContextValue) => {
+    const contextToPin = nextContext ?? contextChipContext
+    if (!contextToPin) return
     setTabContext(tab.tabId, {
-      ...contextChipContext,
+      ...contextToPin,
       source: 'user_toolbar',
     })
   }, [contextChipContext, setTabContext, tab.tabId])
@@ -539,8 +597,8 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
   ])
 
   return (
-    <div data-testid="sql-workbench-tab" className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-col bg-background">
-      <div ref={splitLayoutRef} data-testid="sql-workbench-layout" className="flex min-h-0 flex-1 flex-col">
+    <div data-testid="sql-workbench-tab" className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-row bg-background">
+      <div ref={splitLayoutRef} data-testid="sql-workbench-layout" className="flex min-h-0 min-w-0 flex-1 flex-col">
         <section
           className={cn(
             'flex min-h-0 flex-col',
@@ -560,6 +618,9 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
               <SqlContextChip
                 mode={contextMode}
                 context={contextChipContext}
+                connections={contextConnectionOptions}
+                databaseOptions={contextDatabaseOptions}
+                schemaOptions={contextSchemaOptions}
                 onSetTabContext={handleContextPin}
                 onResetTabContext={handleContextReset}
               />
