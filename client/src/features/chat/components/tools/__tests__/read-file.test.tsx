@@ -71,7 +71,7 @@ describe('read-file renderer', () => {
       />,
     )
 
-    const button = screen.getByRole('button', { name: 'Open Stage' })
+    const button = screen.getByRole('button', { name: 'Open Workbench' })
     fireEvent.click(button)
     fireEvent.click(button)
 
@@ -97,6 +97,24 @@ describe('read-file renderer', () => {
     }))
   })
 
+  it('uses active session id when opening workbench from header action', () => {
+    useSessionStore.setState({ activeSessionId: 'sess-2' } as any)
+
+    render(
+      <ReadFile
+        part={buildPart({ sessionID: 'sess-1' })}
+        descriptor={{ id: 'read', executor: 'SERVER', description: 'read', inputSchema: {}, outputSchema: {}, produces: [], sideEffects: [], requiresConnection: false, timeoutMs: 30000 } as any}
+      />,
+    )
+
+    const button = screen.getByRole('button', { name: 'Open Workbench' })
+    fireEvent.click(button)
+
+    expect(openStageSpy).toHaveBeenCalledWith('sess-2')
+    const tabs = useStageStore.getState().tabsBySession.get('sess-2') ?? []
+    expect(tabs).toHaveLength(1)
+  })
+
   it('falls back to GenericTool output when parse fails', () => {
     render(
       <ReadFile
@@ -112,7 +130,7 @@ describe('read-file renderer', () => {
       />,
     )
 
-    expect(screen.queryByRole('button', { name: 'Open Stage' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Open Workbench' })).toBeNull()
     expect(screen.getByText('plain text output')).toBeTruthy()
   })
 
@@ -132,7 +150,7 @@ describe('read-file renderer', () => {
       />,
     )
 
-    expect(screen.queryByRole('button', { name: 'Open Stage' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Open Workbench' })).toBeNull()
     expect(screen.getByText('<path>/tmp/readme.md</path><type>file</type><content># Hello</content>')).toBeTruthy()
   })
 
@@ -167,6 +185,6 @@ describe('read-file renderer', () => {
       />,
     )
 
-    expect(screen.queryByRole('button', { name: 'Open Stage' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Open Workbench' })).toBeNull()
   })
 })

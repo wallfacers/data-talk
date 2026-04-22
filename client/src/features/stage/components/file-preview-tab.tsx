@@ -2,7 +2,6 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import Editor, { type BeforeMount } from '@monaco-editor/react'
 import type * as Monaco from 'monaco-editor'
 import type { FilePreviewPayload } from '@/features/chat/components/tools/renderers/read-file-output'
-import { Badge } from '@/components/ui/badge'
 import { useThemeStore } from '@/stores/theme-store'
 import { DARK_MONACO_THEME, LIGHT_MONACO_THEME, registerMonacoThemes } from './monaco-theme'
 import type { StageTab } from '@/stores/stage-store'
@@ -43,27 +42,22 @@ export function FilePreviewTab({ tab }: FilePreviewTabProps) {
   return (
     <div
       data-testid="file-preview-tab"
-      className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-border/50 bg-background"
+      className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-col bg-background"
     >
-      <div className="flex flex-wrap items-center gap-2 border-b border-border/50 px-4 py-3">
-        <Badge variant="outline">Language</Badge>
-        <span className="text-sm text-foreground">{payload.language}</span>
-        <Badge variant="outline">Type</Badge>
-        <span className="text-sm text-foreground">{payload.fileType}</span>
-        {payload.truncated ? <Badge variant="destructive">truncated</Badge> : null}
-      </div>
-      <div className="border-b border-border/50 px-4 py-2 text-sm text-muted-foreground">
+      <div className="flex min-h-12 items-center border-b border-border/50 px-3 py-2.5 text-sm text-muted-foreground">
         {payload.filePath ?? payload.filename}
       </div>
-      <div className="min-h-0 flex-1" style={editorShellStyle}>
-        <Editor
-          height="100%"
-          language={payload.language}
-          beforeMount={handleBeforeMount}
-          theme={editorTheme}
-          value={payload.content}
-          options={readOnlyEditorOptions}
-        />
+      <div className="min-h-0 flex-1 bg-background px-2 pt-1 pb-2">
+        <div className="h-full min-h-0 overflow-hidden rounded-b-xl border border-border/50 bg-background" style={editorShellStyle}>
+          <Editor
+            height="100%"
+            language={payload.language}
+            beforeMount={handleBeforeMount}
+            theme={editorTheme}
+            value={payload.content}
+            options={readOnlyEditorOptions}
+          />
+        </div>
       </div>
     </div>
   )

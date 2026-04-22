@@ -52,61 +52,68 @@ export function BasicTool(props: {
         props.variant === 'question' && 'border-blue-400/50',
       )}
     >
-      <button
-        type="button"
-        data-component="tool-trigger"
-        data-open={open ? 'true' : 'false'}
-        onClick={handleToggle}
-        className="flex w-full items-center gap-2 px-3 py-2 text-left"
-      >
-        {riskStyles && (
-          <span
-            data-slot="risk-dot"
-            className={cn('size-2 rounded-full', riskStyles.dot)}
-            aria-label={riskStyles.label}
-          />
-        )}
-        {props.variant === 'question' && (
-          <span data-slot="question-icon" className="text-blue-500">
-            ?
-          </span>
-        )}
-        {isTriggerTitle(t) ? (
-          <div className="flex min-w-0 flex-1 items-baseline gap-2">
-            <span data-slot="basic-tool-tool-title" className="font-medium">
-              <TextShimmer text={t.title} active={pending} />
+      <div className="flex w-full items-center gap-2 px-3 py-2">
+        <button
+          type="button"
+          data-component="tool-trigger"
+          data-open={open ? 'true' : 'false'}
+          onClick={handleToggle}
+          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+        >
+          {riskStyles && (
+            <span
+              data-slot="risk-dot"
+              className={cn('size-2 rounded-full', riskStyles.dot)}
+              aria-label={riskStyles.label}
+            />
+          )}
+          {props.variant === 'question' && (
+            <span data-slot="question-icon" className="text-blue-500">
+              ?
             </span>
-            {!pending && t.subtitle && (
-              <span
-                data-slot="basic-tool-tool-subtitle"
-                className="text-xs text-muted-foreground truncate"
-              >
-                {t.subtitle}
+          )}
+          {isTriggerTitle(t) ? (
+            <div className="flex min-w-0 flex-1 items-baseline gap-2">
+              <span data-slot="basic-tool-tool-title" className="font-medium">
+                <TextShimmer text={t.title} active={pending} />
               </span>
-            )}
-            {!pending &&
-              t.args?.map((a, i) => (
+              {!pending && t.subtitle && (
                 <span
-                  key={i}
-                  data-slot="basic-tool-tool-arg"
-                  className="text-xs font-mono text-muted-foreground"
+                  data-slot="basic-tool-tool-subtitle"
+                  className="text-xs text-muted-foreground truncate"
                 >
-                  {a}
+                  {t.subtitle}
                 </span>
-              ))}
+              )}
+              {!pending &&
+                t.args?.map((a, i) => (
+                  <span
+                    key={i}
+                    data-slot="basic-tool-tool-arg"
+                    className="text-xs font-mono text-muted-foreground"
+                  >
+                    {a}
+                  </span>
+                ))}
+            </div>
+          ) : (
+            t
+          )}
+          {!pending && !props.hideDetails && !props.locked && props.children && (
+            <span
+              data-slot="basic-tool-arrow"
+              className={cn('transition-transform', open && 'rotate-180')}
+            >
+              ▼
+            </span>
+          )}
+        </button>
+        {!pending && isTriggerTitle(t) && t.action && (
+          <div data-slot="basic-tool-trigger-action" className="relative z-10 shrink-0">
+            {t.action}
           </div>
-        ) : (
-          t
         )}
-        {!pending && !props.hideDetails && !props.locked && props.children && (
-          <span
-            data-slot="basic-tool-arrow"
-            className={cn('transition-transform', open && 'rotate-180')}
-          >
-            ▼
-          </span>
-        )}
-      </button>
+      </div>
       {open && !props.hideDetails && props.children && (
         <div data-slot="basic-tool-body" className="border-t px-3 py-2">
           {props.children}

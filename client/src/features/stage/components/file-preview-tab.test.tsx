@@ -68,9 +68,6 @@ describe('FilePreviewTab', () => {
 
     render(<FilePreviewTab tab={tab} />)
 
-    expect(screen.getByText('typescript')).toBeTruthy()
-    expect(screen.getByText('file')).toBeTruthy()
-    expect(screen.getByText('truncated')).toBeTruthy()
     expect(screen.getByText('/workspace/src/app/example.ts')).toBeTruthy()
     expect(screen.getByText('export const answer = 42')).toBeTruthy()
     expect(screen.queryByText('<path>/workspace/src/app/example.ts</path>')).toBeNull()

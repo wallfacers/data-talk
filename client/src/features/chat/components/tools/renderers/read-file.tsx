@@ -8,7 +8,7 @@ import { useSessionStore } from '@/stores/session-store'
 import { getCurrentLanguage } from '@/stores/ui-settings-store'
 import { translateMessage } from '@/i18n/messages'
 import { resolveRisk } from '../../helpers/risk'
-import { Button } from '@/components/ui/button'
+import { EyeIcon } from 'lucide-react'
 
 export function ReadFile(props: ToolRendererProps) {
   const { part, descriptor } = props
@@ -28,9 +28,12 @@ export function ReadFile(props: ToolRendererProps) {
     return <GenericTool {...props} defaultOpen />
   }
 
-  const sessionId = part.sessionID.trim().length > 0
-    ? part.sessionID
-    : useSessionStore.getState().activeSessionId
+  const activeSessionId = useSessionStore((s) => s.activeSessionId)
+  const sessionId = activeSessionId?.trim().length
+    ? activeSessionId
+    : part.sessionID.trim().length > 0
+      ? part.sessionID
+      : null
 
   if (!sessionId || sessionId.trim().length === 0) {
     return <GenericTool {...props} defaultOpen />
@@ -57,22 +60,26 @@ export function ReadFile(props: ToolRendererProps) {
       trigger={{
         title: payload.filename,
         subtitle: payload.fileType,
+        action: (
+          <button
+            type="button"
+            aria-label={translateMessage(language, 'chat.openStage')}
+            title={translateMessage(language, 'chat.viewInStage')}
+            onClick={(event) => {
+              event.stopPropagation()
+              openInStage()
+            }}
+            className="inline-flex size-6 items-center justify-center rounded-md text-foreground hover:bg-muted hover:text-foreground"
+          >
+            <EyeIcon className="size-3.5" />
+          </button>
+        ),
       }}
       forceOpen
       locked
     >
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <div className="text-xs font-medium text-muted-foreground truncate">
-            {payload.filePath ?? payload.filename}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {translateMessage(language, 'chat.viewInStage')}
-          </div>
-        </div>
-        <Button type="button" size="sm" variant="outline" onClick={openInStage}>
-          {translateMessage(language, 'chat.openStage')}
-        </Button>
+      <div className="min-w-0 text-xs font-medium text-muted-foreground truncate">
+        {payload.filePath ?? payload.filename}
       </div>
     </BasicTool>
   )

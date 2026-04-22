@@ -4,11 +4,13 @@ import { useStageStore } from '@/stores/stage-store'
 import { useSessionStore } from '@/stores/session-store'
 import { getCurrentLanguage } from '@/stores/ui-settings-store'
 import { translateMessage } from '@/i18n/messages'
+import { EyeIcon } from 'lucide-react'
 
 const KIND_ICONS: Record<string, string> = { table: '📊', chart: '📈', erd: '🔗' }
 
 export function ArtifactCreated(props: ToolRendererProps) {
   const { part } = props
+  const language = getCurrentLanguage()
   const output = part.state.output as { kind?: string; title?: string } | undefined
   const kind =
     output?.kind ??
@@ -18,9 +20,14 @@ export function ArtifactCreated(props: ToolRendererProps) {
     output?.title ??
     (part.state.metadata?.title as string | undefined) ??
     `${kind} artifact`
+  const activeSessionId = useSessionStore((s) => s.activeSessionId)
+  const sessionId = activeSessionId?.trim().length
+    ? activeSessionId
+    : part.sessionID.trim().length > 0
+      ? part.sessionID
+      : null
 
   const openStage = () => {
-    const sessionId = useSessionStore.getState().activeSessionId
     if (sessionId) useStageStore.getState().openStage(sessionId)
   }
 
@@ -31,16 +38,23 @@ export function ArtifactCreated(props: ToolRendererProps) {
       status={part.state.status}
       trigger={{
         title: `${KIND_ICONS[kind] ?? '📦'} ${title}`,
-        subtitle: translateMessage(getCurrentLanguage(), 'chat.viewInStage'),
+        action: (
+          <button
+            type="button"
+            aria-label={translateMessage(language, 'chat.openStage')}
+            title={translateMessage(language, 'chat.viewInStage')}
+            disabled={!sessionId}
+            onClick={(event) => {
+              event.stopPropagation()
+              openStage()
+            }}
+            className="inline-flex size-6 items-center justify-center rounded-md text-foreground hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <EyeIcon className="size-3.5" />
+          </button>
+        ),
       }}
       hideDetails
-    >
-      <button
-        onClick={openStage}
-        className="text-xs text-primary hover:underline"
-      >
-        {translateMessage(getCurrentLanguage(), 'chat.openStage')}
-      </button>
-    </BasicTool>
+    />
   )
 }
