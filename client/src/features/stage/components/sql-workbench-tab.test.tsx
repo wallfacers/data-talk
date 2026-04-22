@@ -9,6 +9,12 @@ import { SqlWorkbenchTab } from './sql-workbench-tab'
 
 const executeMock = vi.hoisted(() => vi.fn())
 const formatSqlMock = vi.hoisted(() => vi.fn((sql: string) => `formatted: ${sql}`))
+const listConnectionsMock = vi.hoisted(() => vi.fn())
+const setConnectionsMock = vi.hoisted(() => vi.fn())
+const connectionStoreSnapshot = vi.hoisted(() => ({
+  activeConnectionId: 'conn-1' as string | null,
+  connections: [{ id: 'conn-1', name: 'Primary Connection', kind: 'postgres' }] as Array<{ id: string; name: string; kind: string }>,
+}))
 const editorHarness = vi.hoisted(() => {
   const harness = {
     lastProps: null as null | {
@@ -87,13 +93,19 @@ vi.mock('../utils/format-sql', () => ({
   formatSql: formatSqlMock,
 }))
 
+vi.mock('@/services/api/connection', () => ({
+  listConnections: listConnectionsMock,
+}))
+
 vi.mock('@/features/connection/store', () => ({
   useConnectionStore: (selector: (state: {
     activeConnectionId: string | null
     connections: Array<{ id: string; name: string; kind: string }>
+    setConnections: (connections: Array<{ id: string; name: string; kind: string }>) => void
   }) => unknown) => selector({
-    activeConnectionId: 'conn-1',
-    connections: [{ id: 'conn-1', name: 'Primary Connection', kind: 'postgres' }],
+    activeConnectionId: connectionStoreSnapshot.activeConnectionId,
+    connections: connectionStoreSnapshot.connections,
+    setConnections: setConnectionsMock,
   }),
 }))
 
@@ -137,6 +149,10 @@ describe('SqlWorkbenchTab', () => {
   beforeEach(() => {
     executeMock.mockReset()
     formatSqlMock.mockClear()
+    listConnectionsMock.mockReset()
+    setConnectionsMock.mockReset()
+    connectionStoreSnapshot.activeConnectionId = 'conn-1'
+    connectionStoreSnapshot.connections = [{ id: 'conn-1', name: 'Primary Connection', kind: 'postgres' }]
     editorHarness.lastProps = null
     editorHarness.position = { lineNumber: 1, column: 1 }
     editorHarness.cursorListener = null
@@ -164,6 +180,71 @@ describe('SqlWorkbenchTab', () => {
     expect(screen.queryByRole('tablist')).toBeNull()
     expect(screen.queryByTestId('sql-workbench-result-splitter')).toBeNull()
     expect(screen.queryByTestId('sql-result-shell')).toBeNull()
+  })
+
+  it('loads connections to resolve missing connection names for current tab context', async () => {
+    connectionStoreSnapshot.activeConnectionId = 'conn-2'
+    connectionStoreSnapshot.connections = [{ id: 'conn-1', name: 'Primary Connection', kind: 'postgres' }]
+    listConnectionsMock.mockResolvedValue([
+      { id: 'conn-1', name: 'Primary Connection', kind: 'postgres' },
+      { id: 'conn-2', name: 'Analytics', kind: 'postgres' },
+    ])
+
+    render(
+      <SqlWorkbenchTab
+        tab={{
+          ...tab,
+          tabId: 'tab-conn-name-hydration',
+          connectionId: 'conn-2',
+          connectionName: '',
+          payload: {
+            initialSql: 'select 1;',
+            source: 'user',
+            connectionId: 'conn-2',
+          },
+        }}
+      />,
+    )
+
+    await waitFor(() => expect(listConnectionsMock).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(setConnectionsMock).toHaveBeenCalledWith([
+        { id: 'conn-1', name: 'Primary Connection', kind: 'postgres' },
+        { id: 'conn-2', name: 'Analytics', kind: 'postgres' },
+      ])
+    })
+  })
+
+  it('loads connection options when context is not pinned and selectable', async () => {
+    connectionStoreSnapshot.activeConnectionId = null
+    connectionStoreSnapshot.connections = []
+    listConnectionsMock.mockResolvedValue([
+      { id: 'conn-1', name: 'Primary Connection', kind: 'postgres' },
+      { id: 'conn-2', name: 'Analytics', kind: 'postgres' },
+    ])
+
+    render(
+      <SqlWorkbenchTab
+        tab={{
+          ...tab,
+          tabId: 'tab-selectable-connections',
+          connectionId: '',
+          connectionName: '',
+          payload: {
+            initialSql: 'select 1;',
+            source: 'user',
+          },
+        }}
+      />,
+    )
+
+    await waitFor(() => expect(listConnectionsMock).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(setConnectionsMock).toHaveBeenCalledWith([
+        { id: 'conn-1', name: 'Primary Connection', kind: 'postgres' },
+        { id: 'conn-2', name: 'Analytics', kind: 'postgres' },
+      ])
+    })
   })
 
   it('auto-runs direct SQL query tabs on mount when payload.autoRun is true', async () => {

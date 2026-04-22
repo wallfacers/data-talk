@@ -22,6 +22,7 @@ type Input = {
   getState: () => Pick<StageState, 'workspaceTabs' | 'tabsBySession' | 'activeWorkspaceTabId' | 'activeTabIdBySession' | 'openTab' | 'focusTab'>
   sessionId: string | null
   target: Target
+  reuseExisting?: boolean
 }
 
 export function buildStageTabIdentity(target: Target): string {
@@ -42,16 +43,18 @@ function resolveTabType(tool: Target['tool']): StageTab['type'] {
   }
 }
 
-export function openOrFocusStageToolTab({ getState, sessionId, target }: Input): { tabId: string; created: boolean } {
+export function openOrFocusStageToolTab({ getState, sessionId, target, reuseExisting = true }: Input): { tabId: string; created: boolean } {
   const latest = getState()
   const tabType = resolveTabType(target.tool)
   const workspaceTitles = latest.workspaceTabs.map((tab) => tab.title)
 
   if (target.kind === 'global_tool') {
-    const existing = latest.workspaceTabs.find((tab) => tab.type === tabType)
-    if (existing) {
-      latest.focusTab(existing.tabId)
-      return { tabId: existing.tabId, created: false }
+    if (reuseExisting) {
+      const existing = latest.workspaceTabs.find((tab) => tab.type === tabType)
+      if (existing) {
+        latest.focusTab(existing.tabId)
+        return { tabId: existing.tabId, created: false }
+      }
     }
 
     const tabId = `${tabType}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`

@@ -225,6 +225,7 @@ describe('StageWindow', () => {
 
     expect(openOrFocusStageToolTabMock).toHaveBeenCalledWith(expect.objectContaining({
       sessionId: null,
+      reuseExisting: false,
       target: expect.objectContaining({
         kind: 'global_tool',
         tool: 'sql',
@@ -268,6 +269,24 @@ describe('StageWindow', () => {
 
     expect(screen.getByText('Global SQL')).toBeTruthy()
     expect(screen.getByTestId('sql-workbench-tab')).toBeTruthy()
+  })
+
+  it('switches to the Stage start page when clicking the + button', () => {
+    useStageStore.setState({
+      workspaceTabs: [
+        { tabId: 'w1', type: 'query_editor', title: 'Global SQL', scope: 'workspace' as const, createdAt: 0, payload: {} },
+      ],
+      activeWorkspaceTabId: 'w1',
+      tabsBySession: new Map(),
+      activeTabIdBySession: new Map([['s1', null]]),
+    })
+
+    render(<StageWindow sessionId="s1" />)
+
+    fireEvent.click(screen.getByLabelText('开始页'))
+
+    expect(screen.getByTestId('stage-empty-workbench')).toBeTruthy()
+    expect(screen.queryByTestId('sql-workbench-tab')).toBeNull()
   })
 
   it('does not fall back to the empty state when a file_preview tab is active', () => {

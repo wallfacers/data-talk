@@ -238,6 +238,7 @@ describe('PromptComposer', () => {
       sessionId: 'sess-1',
       connectionId: 'conn-1',
       sql: 'select 1',
+      autoRun: true,
     })
     expect(useSessionStore.getState().hasEverSentBySession.get('sess-1')).toBe(true)
     expect(useSessionStore.getState().modeBySession.get('sess-1')).toBe('SPLIT')
@@ -299,11 +300,13 @@ describe('PromptComposer', () => {
       sessionId: 'sess-1',
       connectionId: 'conn-1',
       sql: `select '你好' as "name"`,
+      autoRun: true,
     })
     expect(openDirectSqlQueryEditorTabMock).toHaveBeenNthCalledWith(2, {
       sessionId: 'sess-1',
       connectionId: 'conn-1',
       sql: `select '你好' as "name"`,
+      autoRun: true,
     })
   })
 
@@ -350,6 +353,7 @@ describe('PromptComposer', () => {
       sessionId: 'sess-created',
       connectionId: 'conn-1',
       sql: 'with cte as (select 1) select * from cte',
+      autoRun: false,
     })
     expect(createSessionMock.mock.invocationCallOrder[0]).toBeLessThan(
       createBangQueryMessageMock.mock.invocationCallOrder[0],
@@ -400,6 +404,7 @@ describe('PromptComposer', () => {
       sessionId: 'sess-no-model',
       connectionId: 'conn-1',
       sql: 'select 1',
+      autoRun: true,
     })
     expect(useSessionStore.getState().hasEverSentBySession.get('sess-no-model')).toBe(true)
     expect(useSessionStore.getState().modeBySession.get('sess-no-model')).toBe('SPLIT')

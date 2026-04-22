@@ -24,6 +24,8 @@ vi.mock('@/i18n/use-i18n', () => ({
         'stage.menu.closeAll': '关闭全部',
         'stage.menu.closeLeft': '关闭左侧标签页',
         'stage.menu.closeRight': '关闭右侧标签页',
+        'stage.tabBar.moreTabs': '更多标签页',
+        'stage.tabBar.startPage': '开始页',
       })[key] ?? key,
   }),
 }))
@@ -50,13 +52,41 @@ const filePreviewTabs = [
   { tabId: 'preview', title: 'README.md', type: 'file_preview' as const },
 ]
 
+function mockTabOverflow() {
+  const scroller = document.querySelector('.overflow-x-auto') as HTMLDivElement | null
+  if (!scroller) return
+  Object.defineProperty(scroller, 'clientWidth', { configurable: true, value: 120 })
+  Object.defineProperty(scroller, 'scrollWidth', { configurable: true, value: 360 })
+  fireEvent(window, new Event('resize'))
+}
+
 describe('StageTabBar', () => {
+  it('scrolls the active tab into view when active tab changes', () => {
+    const requestAnimationFrameSpy = vi
+      .spyOn(window, 'requestAnimationFrame')
+      .mockImplementation((callback: FrameRequestCallback) => {
+        callback(0)
+        return 0
+      })
+    const scrollIntoView = vi.fn()
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+    })
+
+    const { rerender } = render(<StageTabBar tabs={tabs} activeId="left" />)
+    rerender(<StageTabBar tabs={tabs} activeId="right" />)
+
+    expect(scrollIntoView).toHaveBeenCalled()
+    requestAnimationFrameSpy.mockRestore()
+  })
+
   it('renders underline-only tabs with active state, dirty indicator, and hover-close affordance', () => {
     const onClose = vi.fn()
 
     const { container } = render(<StageTabBar tabs={tabs} activeId="active" onClose={onClose} />)
 
-    expect(container.firstElementChild?.className).toContain('overflow-x-auto')
+    expect(container.querySelector('.overflow-x-auto')).toBeTruthy()
 
     const activeTab = screen.getByText('Active').closest('[data-tab-id="active"]') as HTMLElement
     const activeButton = within(activeTab).getByRole('tab', { name: 'Active' })
@@ -79,6 +109,34 @@ describe('StageTabBar', () => {
 
     fireEvent.click(activeClose)
     expect(onClose).toHaveBeenCalledWith('active')
+  })
+
+  it('shows overflow actions and supports selecting/closing tabs plus opening start page', () => {
+    const onSelect = vi.fn()
+    const onClose = vi.fn()
+    const onOpenStartPage = vi.fn()
+
+    render(
+      <StageTabBar
+        tabs={tabs}
+        activeId="active"
+        onSelect={onSelect}
+        onClose={onClose}
+        onOpenStartPage={onOpenStartPage}
+      />,
+    )
+    mockTabOverflow()
+
+    fireEvent.click(screen.getByTestId('stage-tab-start-button'))
+    expect(onOpenStartPage).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(screen.getByTestId('stage-tab-overflow-trigger'))
+    const menu = screen.getByTestId('stage-tab-overflow-menu')
+    fireEvent.click(within(menu).getAllByLabelText('关闭')[0] as HTMLElement)
+    expect(onClose).toHaveBeenCalledWith('left')
+
+    fireEvent.click(within(menu).getByText('Right'))
+    expect(onSelect).toHaveBeenCalledWith('right')
   })
 
   it('keeps the context menu actions wired to the active tab', () => {

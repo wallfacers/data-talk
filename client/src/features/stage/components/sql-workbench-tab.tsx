@@ -6,6 +6,7 @@ import { useSessionDataContext } from '@/features/session/hooks/use-session-data
 import { useI18n } from '@/i18n/use-i18n'
 import { cn } from '@/lib/utils'
 import { SqlRiskError } from '@/services/api/sql'
+import { listConnections } from '@/services/api/connection'
 import { resolveTabDataContext } from '@/features/stage/utils/resolve-tab-data-context'
 import { formatSql } from '../utils/format-sql'
 import { parseSqlOutline, resolveCurrentSqlOutlineStatement } from '../utils/parse-sql-outline'
@@ -177,10 +178,11 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
   const [draftReady, setDraftReady] = useState(false)
   const [resultPanePercent, setResultPanePercent] = useState(RESULT_PANE_DEFAULT_PERCENT)
   const { execute } = useSqlExecute()
-  const { activeConnectionId, connections } = useConnectionStore(
+  const { activeConnectionId, connections, setConnections } = useConnectionStore(
     useShallow((state) => ({
       activeConnectionId: state.activeConnectionId,
       connections: state.connections,
+      setConnections: state.setConnections,
     })),
   )
   const sessionDataContext = useSessionDataContext(tab.originSessionId ?? null)
@@ -322,6 +324,33 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
         database: resolvedExecutionContext.database,
         schema: resolvedExecutionContext.schema,
       }
+  const contextMode = tabState.override ? 'override' : 'session'
+
+  useEffect(() => {
+    const connectionId = effectiveContext.connectionId
+    const hasResolvedName = connectionId
+      ? connections.some((connection) => connection.id === connectionId && connection.name.trim().length > 0)
+      : false
+    const shouldHydrateSelectedConnection = Boolean(connectionId) && !hasResolvedName
+    const shouldHydrateSelectableOptions = contextMode === 'session' && connections.length === 0
+    if (!shouldHydrateSelectedConnection && !shouldHydrateSelectableOptions) return
+
+    let cancelled = false
+    void listConnections()
+      .then((nextConnections) => {
+        if (!cancelled) {
+          setConnections(nextConnections)
+        }
+      })
+      .catch(() => {
+        // best-effort hydration for connection name display
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [connections, contextMode, effectiveContext.connectionId, setConnections])
+
   const canRun = Boolean(effectiveContext.connectionId) && tabState.sqlText.trim().length > 0
   const contextChipContext = toContextValue(
     effectiveContext.connectionId,
@@ -329,7 +358,6 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     effectiveContext.database,
     effectiveContext.schema,
   )
-  const contextMode = tabState.override ? 'override' : 'session'
   const contextConnectionOptions = useMemo(
     () => connections.map((connection) => ({
       id: connection.id,

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { CopyIcon, SquareIcon, XIcon } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@/components/ui/button'
@@ -16,6 +17,7 @@ type Props = {
 
 export function StageWindow({ sessionId }: Props) {
   const { t } = useI18n()
+  const [showStartPage, setShowStartPage] = useState(false)
   const closeStage = useStageStore((s) => s.closeStage)
   const maximized = useStageStore((s) => (sessionId ? !!s.maximizedBySession.get(sessionId) : false))
   const toggleMaximized = useStageStore((s) => s.toggleMaximized)
@@ -34,6 +36,15 @@ export function StageWindow({ sessionId }: Props) {
   })
   const focusTab = useStageStore((s) => s.focusTab)
   const closeTab = useStageStore((s) => s.closeTab)
+
+  useEffect(() => {
+    setShowStartPage(false)
+  }, [sessionId])
+
+  useEffect(() => {
+    if (tabs.length > 0) return
+    setShowStartPage(false)
+  }, [tabs.length])
 
   function handleClose() {
     if (sessionId) closeStage(sessionId)
@@ -63,10 +74,20 @@ export function StageWindow({ sessionId }: Props) {
     tabs.slice(idx + 1).forEach((t) => closeTab(t.tabId))
   }
 
+  const handleSelectTab = (tabId: string) => {
+    focusTab(tabId)
+    setShowStartPage(false)
+    if (workspaceTabs.some((tab) => tab.tabId === tabId)) {
+      focusWorkspaceTabInStage()
+    }
+  }
+
   function handleOpenSqlEditor() {
+    setShowStartPage(false)
     openOrFocusStageToolTab({
       getState: useStageStore.getState,
       sessionId: null,
+      reuseExisting: false,
       target: {
         kind: 'global_tool',
         tool: 'sql',
@@ -115,31 +136,21 @@ export function StageWindow({ sessionId }: Props) {
       <div className="flex min-h-0 flex-1 overflow-hidden bg-background/88">
         <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
           {tabs.length > 0 && (
-            <div
-              onClick={(e) => {
-                const target = e.target as HTMLElement
-                const tabId = target.closest('[data-tab-id]')?.getAttribute('data-tab-id')
-                if (!tabId) return
-                focusTab(tabId)
-                if (workspaceTabs.some((tab) => tab.tabId === tabId)) {
-                  focusWorkspaceTabInStage()
-                }
-              }}
-            >
-              <StageTabBar
-                tabs={tabs.map((t) => ({ tabId: t.tabId, title: t.title, type: t.type }))}
-                activeId={activeTabId ?? undefined}
-                onClose={handleCloseTab}
-                onCloseOthers={handleCloseOthers}
-                onCloseAll={handleCloseAll}
-                onCloseLeft={handleCloseLeft}
-                onCloseRight={handleCloseRight}
-              />
-            </div>
+            <StageTabBar
+              tabs={tabs.map((t) => ({ tabId: t.tabId, title: t.title, type: t.type }))}
+              activeId={activeTabId ?? undefined}
+              onSelect={handleSelectTab}
+              onClose={handleCloseTab}
+              onCloseOthers={handleCloseOthers}
+              onCloseAll={handleCloseAll}
+              onCloseLeft={handleCloseLeft}
+              onCloseRight={handleCloseRight}
+              onOpenStartPage={() => setShowStartPage(true)}
+            />
           )}
 
           <div data-testid="stage-workspace-pane" className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
-            {activeTabId ? (
+            {activeTabId && !showStartPage ? (
               <div className="flex min-h-0 flex-1 overflow-hidden">
                 <StageTabContent />
               </div>

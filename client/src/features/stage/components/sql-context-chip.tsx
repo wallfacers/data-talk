@@ -10,7 +10,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
@@ -101,6 +100,9 @@ export function SqlContextChip({
     }
   }, [connectionMap, context])
   const selectedDraftConnection = draft.connectionId ? connectionMap.get(draft.connectionId) ?? null : null
+  const selectedDraftConnectionLabel = selectedDraftConnection?.name
+    ?? normalizeValue(draft.connectionId)
+    ?? t('stage.context.value.empty')
   const mergedDatabaseOptions = useMemo(
     () => dedupeValues([
       selectedDraftConnection?.databaseName ?? null,
@@ -235,7 +237,7 @@ export function SqlContextChip({
                   className="w-full"
                   aria-label={t('stage.context.field.connection')}
                 >
-                  <SelectValue />
+                  <span className="flex flex-1 text-left">{selectedDraftConnectionLabel}</span>
                 </SelectTrigger>
                 <SelectContent>
                   {connections.map((connection) => (

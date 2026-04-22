@@ -32,6 +32,7 @@ import { SQL_EXECUTE_EVENT, SQL_EXPLAIN_EVENT } from '@/features/chat/components
 import { useI18n } from '@/i18n/use-i18n'
 import { useDataSourcePickerStore } from './data-source-picker/data-source-picker-store'
 import { cn } from '@/lib/utils'
+import { shouldAutoRunDirectSql } from '@/features/stage/utils/direct-sql-auto-run-policy'
 
 function useComposerSlot(): HTMLElement | null {
   const [slot, setSlot] = useState<HTMLElement | null>(null)
@@ -211,6 +212,7 @@ function InnerComposer() {
             sessionId: bangSessionId,
             connectionId,
             sql,
+            autoRun: shouldAutoRunDirectSql(sql),
           })
         } catch (err) {
           if (createdSessionId) {

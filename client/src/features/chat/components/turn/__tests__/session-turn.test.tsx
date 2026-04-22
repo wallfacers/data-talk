@@ -177,6 +177,59 @@ describe('SessionTurn · showThinking', () => {
         sessionId: 's1',
         connectionId: 'conn-1',
         sql: `select '你好' as "name"`,
+        autoRun: true,
+      }),
+    )
+  })
+
+  it('opens WITH bang-query in editor without auto-run from bubble action button', async () => {
+    const openDirectSqlQueryEditorTabMock = openDirectSqlQueryEditorTabApi.openDirectSqlQueryEditorTab as unknown as Mock
+    openDirectSqlQueryEditorTabMock.mockResolvedValue('tab-rerun-with')
+    useSessionStore.setState({
+      dataContextBySession: new Map([['s1', {
+        sessionId: 's1',
+        connectionId: 'conn-1',
+        connectionNameSnapshot: 'Main',
+        database: 'orders',
+        schema: 'public',
+        selectedLevel: 'schema',
+        updatedAt: 1713650010000,
+      }]]),
+    } as any)
+
+    useChatPartsStore.getState().upsertInfo('s1', {
+      id: 'u1',
+      role: 'user',
+      sessionID: 's1',
+      time: { created: 1 },
+    })
+    useChatPartsStore.getState().upsertPart('s1', {
+      type: 'text',
+      id: 'p1',
+      sessionID: 's1',
+      messageID: 'u1',
+      text: '!with cte as (select 1) select * from cte',
+      metadata: { displayKind: 'bang_query_user', queryMode: 'direct_sql' },
+    } as any)
+
+    renderTurn(
+      <SessionTurn
+        sessionId="s1"
+        userMessageId="u1"
+        assistantMessageIds={[]}
+        userInfo={{ id: 'u1', role: 'user', sessionID: 's1', time: { created: 1 } }}
+        isLastTurn
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '重跑' }))
+
+    await waitFor(() =>
+      expect(openDirectSqlQueryEditorTabMock).toHaveBeenCalledWith({
+        sessionId: 's1',
+        connectionId: 'conn-1',
+        sql: 'with cte as (select 1) select * from cte',
+        autoRun: false,
       }),
     )
   })

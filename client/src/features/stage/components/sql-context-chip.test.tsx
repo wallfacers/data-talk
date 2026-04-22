@@ -113,4 +113,28 @@ describe('SqlContextChip', () => {
       schema: null,
     })
   })
+
+  it('shows connection name instead of id in editable select trigger', () => {
+    render(
+      <SqlContextChip
+        context={{
+          connectionId: 'conn-1',
+          connectionName: null,
+          database: 'db_main',
+          schema: null,
+        }}
+        mode="session"
+        connections={connections}
+        databaseOptions={['db_main', 'analytics']}
+        schemaOptions={['public', 'reporting']}
+        onResetTabContext={onResetTabContext}
+        onSetTabContext={onSetTabContext}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: t('stage.context.tooltip.button') }))
+
+    expect(screen.getByRole('combobox', { name: t('stage.context.field.connection') }).textContent).toContain('Primary Connection')
+    expect(screen.getByRole('combobox', { name: t('stage.context.field.connection') }).textContent).not.toContain('conn-1')
+  })
 })

@@ -8,6 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useConnectionStore } from '@/features/connection/store'
 import { useSessionStore } from '@/stores/session-store'
 import { openDirectSqlQueryEditorTab } from '@/features/stage/utils/open-direct-sql-query-editor-tab'
+import { shouldAutoRunDirectSql } from '@/features/stage/utils/direct-sql-auto-run-policy'
 import { normalizeError, showErrorToast } from '@/services/http-error'
 
 function HighlightedText(props: { text: string }) {
@@ -77,6 +78,7 @@ export function UserBubble(props: { info: MessageInfo; parts: Part[] }) {
         sessionId,
         connectionId,
         sql: bangQuerySql,
+        autoRun: shouldAutoRunDirectSql(bangQuerySql),
       })
     } catch (error) {
       showErrorToast(normalizeError(error))

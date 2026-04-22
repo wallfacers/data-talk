@@ -10,6 +10,7 @@ vi.mock('@/i18n/use-i18n', () => ({
         'stage.menu.close': '关闭',
         'stage.menu.closeOthers': '关闭其他',
         'stage.menu.closeAll': '关闭全部',
+        'stage.tabBar.moreTabs': '更多标签页',
       })[key] ?? key,
   }),
 }))
@@ -58,6 +59,14 @@ const results = [
   },
 ]
 
+function mockResultTabOverflow() {
+  const scroller = document.querySelector('.overflow-x-auto') as HTMLDivElement | null
+  if (!scroller) return
+  Object.defineProperty(scroller, 'clientWidth', { configurable: true, value: 120 })
+  Object.defineProperty(scroller, 'scrollWidth', { configurable: true, value: 360 })
+  fireEvent(window, new Event('resize'))
+}
+
 describe('SqlResultTabs', () => {
   it('renders one tab button per result and marks the active one', () => {
     const { container } = render(
@@ -73,7 +82,7 @@ describe('SqlResultTabs', () => {
 
     expect(screen.getByRole('tab', { name: 'Result 1' }).getAttribute('data-state')).toBe('active')
     expect(screen.getByRole('tab', { name: 'Error 2' }).getAttribute('data-state')).toBe('inactive')
-    expect(container.firstElementChild?.className).toContain('overflow-x-auto')
+    expect(container.querySelector('.overflow-x-auto')).toBeTruthy()
   })
 
   it('calls onSelect when a result tab is clicked', () => {
@@ -153,5 +162,30 @@ describe('SqlResultTabs', () => {
     const singleTab = screen.getByText('Result 1').closest('[data-result-id="r1"]') as HTMLElement
     const singleMenu = singleTab.nextElementSibling as HTMLElement
     expect(within(singleMenu).getByText('关闭其他')).toBeDisabled()
+  })
+
+  it('supports selecting and closing results from the overflow dropdown', () => {
+    const onSelect = vi.fn()
+    const onClose = vi.fn()
+
+    render(
+      <SqlResultTabs
+        results={results}
+        activeResultId="r1"
+        onSelect={onSelect}
+        onClose={onClose}
+        onCloseOthers={() => {}}
+        onCloseAll={() => {}}
+      />,
+    )
+    mockResultTabOverflow()
+
+    fireEvent.click(screen.getByTestId('sql-result-overflow-trigger'))
+    const menu = screen.getByTestId('sql-result-overflow-menu')
+    fireEvent.click(within(menu).getAllByLabelText('关闭')[0] as HTMLElement)
+    expect(onClose).toHaveBeenCalledWith('r1')
+
+    fireEvent.click(within(menu).getByText('Error 2'))
+    expect(onSelect).toHaveBeenCalledWith('r2')
   })
 })

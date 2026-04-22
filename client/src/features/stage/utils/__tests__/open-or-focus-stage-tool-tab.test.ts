@@ -38,6 +38,30 @@ describe('openOrFocusStageToolTab', () => {
     expect(useStageStore.getState().activeWorkspaceTabId).toBe(first.tabId)
   })
 
+  it('creates a new workspace tool tab when reuseExisting is false', () => {
+    const first = openOrFocusStageToolTab({
+      getState: useStageStore.getState,
+      sessionId: 's1',
+      target: { kind: 'global_tool', tool: 'sql', title: 'SQL 编辑器' },
+      reuseExisting: false,
+    })
+    const second = openOrFocusStageToolTab({
+      getState: useStageStore.getState,
+      sessionId: 's1',
+      target: { kind: 'global_tool', tool: 'sql', title: 'SQL 编辑器' },
+      reuseExisting: false,
+    })
+
+    expect(first.created).toBe(true)
+    expect(second.created).toBe(true)
+    expect(second.tabId).not.toBe(first.tabId)
+    expect(useStageStore.getState().workspaceTabs).toHaveLength(2)
+    expect(useStageStore.getState().workspaceTabs.map((tab) => tab.title)).toEqual([
+      'SQL 编辑器',
+      'SQL 编辑器2',
+    ])
+  })
+
   it('reuses existing session tool tab for the same resource context', () => {
     const first = openOrFocusStageToolTab({
       getState: useStageStore.getState,

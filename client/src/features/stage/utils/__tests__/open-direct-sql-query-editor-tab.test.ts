@@ -94,4 +94,17 @@ describe('openDirectSqlQueryEditorTab', () => {
       sql: 'SELECT 1',
     })).rejects.toThrow()
   })
+
+  it('respects explicit autoRun override', async () => {
+    await openDirectSqlQueryEditorTab({
+      sessionId: 'sess-1',
+      connectionId: 'conn-1',
+      sql: 'WITH cte AS (SELECT 1) SELECT * FROM cte',
+      autoRun: false,
+    })
+
+    const tabs = useStageStore.getState().tabsBySession.get('sess-1') ?? []
+    expect(tabs).toHaveLength(1)
+    expect((tabs[0]?.payload as { autoRun?: boolean } | undefined)?.autoRun).toBe(false)
+  })
 })

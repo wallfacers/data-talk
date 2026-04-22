@@ -9,9 +9,10 @@ interface Args {
   sessionId: string | null
   connectionId: string | null
   sql: string
+  autoRun?: boolean
 }
 
-export async function openDirectSqlQueryEditorTab({ sessionId, connectionId, sql }: Args): Promise<string> {
+export async function openDirectSqlQueryEditorTab({ sessionId, connectionId, sql, autoRun = true }: Args): Promise<string> {
   if (!connectionId) throw new Error('No active connection — please select a data source')
 
   const sessionContext = sessionId ? useSessionStore.getState().dataContextBySession.get(sessionId) ?? null : null
@@ -29,7 +30,7 @@ export async function openDirectSqlQueryEditorTab({ sessionId, connectionId, sql
     entryMode: 'direct_sql' as const,
     initialSql: sql,
     source: 'user' as const,
-    autoRun: true,
+    autoRun,
     connectionId,
     connectionName,
     database: sessionContext?.database ?? null,
