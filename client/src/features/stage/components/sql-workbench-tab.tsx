@@ -7,6 +7,7 @@ import { useI18n } from '@/i18n/use-i18n'
 import { cn } from '@/lib/utils'
 import { SqlRiskError } from '@/services/api/sql'
 import { resolveTabDataContext } from '@/features/stage/utils/resolve-tab-data-context'
+import { formatSql } from '../utils/format-sql'
 import { parseSqlOutline, resolveCurrentSqlOutlineStatement } from '../utils/parse-sql-outline'
 import { normalizeQueryEditorPayload } from '../utils/normalize-query-editor-payload'
 import { useSqlExecute } from '../hooks/use-sql-execute'
@@ -312,6 +313,10 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     effectiveContext.schema,
   )
   const contextMode = tabState.override ? 'override' : 'session'
+  const effectiveConnectionKind = useMemo(
+    () => connections.find((connection) => connection.id === effectiveContext.connectionId)?.kind ?? null,
+    [connections, effectiveContext.connectionId],
+  )
 
   const applyIdleState = useCallback(() => resetTabExecutionState(tab.tabId), [tab.tabId])
 
@@ -443,19 +448,14 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     void handleRun()
   }, [effectiveContext.connectionId, handleRun, payload.autoRun])
 
-  const handleFormat = useCallback(async () => {
+  const handleFormat = useCallback(() => {
     const rawSql = tabState.sqlText
     if (!rawSql.trim()) return
-    try {
-      const formatter = await import('sql-formatter')
-      const formatted = formatter.format(rawSql)
-      if (formatted !== rawSql) {
-        setSqlText(tab.tabId, formatted)
-      }
-    } catch {
-      // ignore formatter failures and keep the original SQL
+    const formatted = formatSql(rawSql, effectiveConnectionKind)
+    if (formatted !== rawSql) {
+      setSqlText(tab.tabId, formatted)
     }
-  }, [setSqlText, tab.tabId, tabState.sqlText])
+  }, [effectiveConnectionKind, setSqlText, tab.tabId, tabState.sqlText])
 
   const handleContextPin = useCallback(() => {
     if (!contextChipContext) return
@@ -539,7 +539,7 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
             isRunning={tabState.executeStatus === 'running'}
             onRun={() => void handleRun()}
             onCancel={() => activeControllerRef.current?.abort()}
-            onFormat={() => void handleFormat()}
+            onFormat={handleFormat}
             limit={tabState.limit}
             onLimitChange={(value) => setLimit(tab.tabId, value)}
             contextChip={
@@ -558,6 +558,7 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
                 value={tabState.sqlText}
                 onChange={(next) => setSqlText(tab.tabId, next)}
                 onRun={() => void handleRun()}
+                onFormat={handleFormat}
                 onCursorChange={handleCursorChange}
                 currentStatementRange={
                   currentStatement

@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import type { HistoryEntry } from '@/features/stage/stores/sql-workbench-store'
+import { translateMessage } from '@/i18n/messages'
 import { HistoryPanel } from './history-panel'
 
 const history: HistoryEntry[] = [
@@ -10,6 +11,9 @@ const history: HistoryEntry[] = [
 ]
 
 describe('HistoryPanel', () => {
+  const t = (key: Parameters<typeof translateMessage>[1], values?: Record<string, string | number>) =>
+    translateMessage('zh-CN', key, values)
+
   it('renders history entries and appends SQL when an entry is clicked', () => {
     const onAppendSql = vi.fn()
     const onClear = vi.fn()
@@ -36,9 +40,8 @@ describe('HistoryPanel', () => {
     }
 
     render(<Harness />)
+    fireEvent.click(screen.getByRole('button', { name: t('stage.activityRail.history.clear') }))
 
-    fireEvent.click(screen.getByRole('button', { name: /clear history/i }))
-
-    expect(screen.getByText(/No history yet/i)).toBeTruthy()
+    expect(screen.getByText(t('stage.activityRail.history.empty'))).toBeTruthy()
   })
 })

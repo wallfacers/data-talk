@@ -2,12 +2,13 @@ import { fireEvent, render, screen, waitFor, act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { StageTab } from '@/stores/stage-store'
 import { SqlRiskError } from '@/services/api/sql'
+import { translateMessage } from '@/i18n/messages'
 import { useSqlWorkbenchStore } from '../stores/sql-workbench-store'
 import { SqlMonacoEditor } from './sql-monaco-editor'
 import { SqlWorkbenchTab } from './sql-workbench-tab'
 
 const executeMock = vi.hoisted(() => vi.fn())
-const formatMock = vi.hoisted(() => vi.fn((sql: string) => `formatted: ${sql}`))
+const formatSqlMock = vi.hoisted(() => vi.fn((sql: string) => `formatted: ${sql}`))
 const editorHarness = vi.hoisted(() => {
   const harness = {
     lastProps: null as null | {
@@ -18,8 +19,8 @@ const editorHarness = vi.hoisted(() => {
     cursorListener: null as null | ((event: { position?: { lineNumber: number; column: number } }) => void),
     decorations: [] as Array<Record<string, unknown>>,
     fakeMonaco: {
-      KeyMod: { CtrlCmd: 1 },
-      KeyCode: { Enter: 2 },
+      KeyMod: { CtrlCmd: 1024, Shift: 2048 },
+      KeyCode: { Enter: 13, KeyF: 33 },
       editor: {
         defineTheme: vi.fn(),
         registerCompletionItemProvider: vi.fn(),
@@ -82,17 +83,17 @@ vi.mock('@/features/stage/hooks/use-sql-execute', () => ({
   }),
 }))
 
-vi.mock('sql-formatter', () => ({
-  format: formatMock,
+vi.mock('../utils/format-sql', () => ({
+  formatSql: formatSqlMock,
 }))
 
 vi.mock('@/features/connection/store', () => ({
   useConnectionStore: (selector: (state: {
     activeConnectionId: string | null
-    connections: Array<{ id: string; name: string }>
+    connections: Array<{ id: string; name: string; kind: string }>
   }) => unknown) => selector({
     activeConnectionId: 'conn-1',
-    connections: [{ id: 'conn-1', name: 'Primary Connection' }],
+    connections: [{ id: 'conn-1', name: 'Primary Connection', kind: 'postgres' }],
   }),
 }))
 
@@ -124,9 +125,12 @@ const tab: StageTab = {
 }
 
 describe('SqlWorkbenchTab', () => {
+  const t = (key: Parameters<typeof translateMessage>[1], values?: Record<string, string | number>) =>
+    translateMessage('zh-CN', key, values)
+
   beforeEach(() => {
     executeMock.mockReset()
-    formatMock.mockClear()
+    formatSqlMock.mockClear()
     editorHarness.lastProps = null
     editorHarness.position = { lineNumber: 1, column: 1 }
     editorHarness.cursorListener = null
@@ -148,7 +152,7 @@ describe('SqlWorkbenchTab', () => {
     expect(screen.getByTestId('sql-monaco-editor')).toBeTruthy()
     expect(screen.getByTestId('sql-monaco-editor').className).toContain('rounded-b-xl')
     expect(screen.getByTestId('sql-monaco-editor').className).toContain('border border-border/50')
-    expect(screen.getByRole('button', { name: /Run/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: t('stage.toolbar.run') })).toBeTruthy()
     expect(screen.getByTestId('sql-editor-toolbar')).toBeTruthy()
     expect(screen.queryByTestId('sql-workbench-status-bar')).toBeNull()
     expect(screen.queryByRole('tablist')).toBeNull()
@@ -188,9 +192,9 @@ delete from sessions;`,
     render(<SqlWorkbenchTab tab={tab} />)
 
     fireEvent.change(screen.getByTestId('monaco-editor'), { target: { value: 'select id from users' } })
-    fireEvent.click(screen.getByRole('button', { name: /Format/i }))
+    fireEvent.click(screen.getByRole('button', { name: t('stage.toolbar.format') }))
 
-    await waitFor(() => expect(formatMock).toHaveBeenCalled())
+    await waitFor(() => expect(formatSqlMock).toHaveBeenCalledWith('select id from users', 'postgres'))
     await waitFor(() => expect(screen.getByTestId('monaco-editor')).toHaveValue('formatted: select id from users'))
     expect(screen.queryByRole('button', { name: /Save/i })).toBeNull()
     expect(window.localStorage.getItem('data-talk:sql-workbench:draft:tab-1')).toBe(
@@ -255,9 +259,13 @@ delete from sessions;`,
     act(() => {
       useSqlWorkbenchStore.getState().setLimit('tab-1', 10)
     })
-    await waitFor(() => expect(screen.getByRole('combobox', { name: /Execution limit/i })).toHaveTextContent('10 rows'))
+    await waitFor(() =>
+      expect(screen.getByRole('combobox', { name: t('stage.limit.aria') })).toHaveTextContent(
+        t('stage.limit.rows', { count: 10 }),
+      ),
+    )
 
-    fireEvent.click(screen.getByRole('button', { name: /Run/i }))
+    fireEvent.click(screen.getByRole('button', { name: t('stage.toolbar.run') }))
 
     await waitFor(() => expect(executeMock).toHaveBeenCalled())
 
@@ -286,7 +294,7 @@ delete from sessions;`,
     render(<SqlWorkbenchTab tab={tab} />)
 
     fireEvent.change(screen.getByTestId('monaco-editor'), { target: { value: 'select 1 limit 5' } })
-    fireEvent.click(screen.getByRole('button', { name: /Run/i }))
+    fireEvent.click(screen.getByRole('button', { name: t('stage.toolbar.run') }))
 
     await waitFor(() => expect(executeMock).toHaveBeenCalled())
     expect(executeMock).toHaveBeenCalledWith(
@@ -296,9 +304,9 @@ delete from sessions;`,
       expect.any(Object),
       expect.any(AbortSignal),
     )
-    expect(screen.getByRole('button', { name: /Cancel/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: t('stage.toolbar.cancel') })).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: /Cancel/i }))
+    fireEvent.click(screen.getByRole('button', { name: t('stage.toolbar.cancel') }))
     await waitFor(() => expect(screen.queryByTestId('sql-workbench-status-bar')).toBeNull())
     expect(abortHandler).not.toBeNull()
   })
@@ -357,7 +365,7 @@ delete from sessions;`,
 
     render(<SqlWorkbenchTab tab={tab} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /Run/i }))
+    fireEvent.click(screen.getByRole('button', { name: t('stage.toolbar.run') }))
 
     await waitFor(() => expect(executeMock).toHaveBeenCalled())
 
@@ -402,7 +410,7 @@ delete from sessions;`,
     })
 
     render(<SqlWorkbenchTab tab={tab} />)
-    fireEvent.click(screen.getByRole('button', { name: /Run/i }))
+    fireEvent.click(screen.getByRole('button', { name: t('stage.toolbar.run') }))
 
     const splitter = await screen.findByTestId('sql-workbench-result-splitter')
     const layout = screen.getByTestId('sql-workbench-layout')
@@ -463,7 +471,7 @@ delete from sessions;`,
       useSqlWorkbenchStore.getState().setLimit('tab-1', null)
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /Run/i }))
+    fireEvent.click(screen.getByRole('button', { name: t('stage.toolbar.run') }))
 
     await waitFor(() => expect(executeMock).toHaveBeenCalled())
 
@@ -487,7 +495,7 @@ delete from sessions;`,
       useSqlWorkbenchStore.getState().setLimit('tab-1', null)
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /Run/i }))
+    fireEvent.click(screen.getByRole('button', { name: t('stage.toolbar.run') }))
 
     await waitFor(() => expect(executeMock).toHaveBeenCalled())
 
@@ -508,7 +516,7 @@ delete from sessions;`,
       useSqlWorkbenchStore.getState().setLimit('tab-1', null)
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /Run/i }))
+    fireEvent.click(screen.getByRole('button', { name: t('stage.toolbar.run') }))
 
     await waitFor(() => expect(executeMock).toHaveBeenCalled())
 
@@ -524,6 +532,7 @@ delete from sessions;`,
   it('exposes the Monaco imperative API and current-statement decoration', () => {
     const onChange = vi.fn()
     const onRun = vi.fn()
+    const onFormat = vi.fn()
     const onCursorChange = vi.fn()
     const ref = {
       current: null as null | {
@@ -539,12 +548,22 @@ delete from sessions;`,
         value="abc"
         onChange={onChange}
         onRun={onRun}
+        onFormat={onFormat}
         onCursorChange={onCursorChange}
         currentStatementRange={{ startLine: 2, endLine: 3 }}
       />,
     )
 
-    expect(editorHarness.fakeEditor?.addCommand).toHaveBeenCalledWith(3, expect.any(Function))
+    expect(editorHarness.fakeEditor?.addCommand).toHaveBeenNthCalledWith(
+      1,
+      editorHarness.fakeMonaco.KeyMod.CtrlCmd | editorHarness.fakeMonaco.KeyCode.Enter,
+      expect.any(Function),
+    )
+    expect(editorHarness.fakeEditor?.addCommand).toHaveBeenNthCalledWith(
+      2,
+      editorHarness.fakeMonaco.KeyMod.CtrlCmd | editorHarness.fakeMonaco.KeyMod.Shift | editorHarness.fakeMonaco.KeyCode.KeyF,
+      expect.any(Function),
+    )
     expect(screen.getByTestId('sql-monaco-editor').className).toContain('rounded-b-xl')
     expect(screen.getByTestId('sql-monaco-editor').className).toContain('border border-border/50')
     expect(editorHarness.lastProps?.options).toMatchObject({
@@ -574,5 +593,13 @@ delete from sessions;`,
     expect(editorHarness.fakeEditor?.setPosition).toHaveBeenCalledWith({ lineNumber: 1, column: 2 })
     expect(editorHarness.fakeEditor?.revealLineNearTop).toHaveBeenCalledWith(7)
     expect(onChange).toHaveBeenCalledWith('aXbc')
+
+    const runCommand = editorHarness.fakeEditor?.addCommand.mock.calls[0]?.[1] as (() => void) | undefined
+    const formatCommand = editorHarness.fakeEditor?.addCommand.mock.calls[1]?.[1] as (() => void) | undefined
+    runCommand?.()
+    formatCommand?.()
+
+    expect(onRun).toHaveBeenCalledTimes(1)
+    expect(onFormat).toHaveBeenCalledTimes(1)
   })
 })

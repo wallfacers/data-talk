@@ -18,13 +18,14 @@ type SqlMonacoEditorProps = {
   value: string
   onChange: (value: string) => void
   onRun: () => void
+  onFormat?: () => void
   onCursorChange?: (cursor: { line: number; column: number }) => void
   currentStatementRange?: { startLine: number; endLine: number } | null
   shellMode?: 'standalone' | 'connected'
 }
 
 export const SqlMonacoEditor = forwardRef<SqlMonacoEditorHandle, SqlMonacoEditorProps>(function SqlMonacoEditor(
-  { value, onChange, onRun, onCursorChange, currentStatementRange, shellMode = 'standalone' },
+  { value, onChange, onRun, onFormat, onCursorChange, currentStatementRange, shellMode = 'standalone' },
   ref,
 ) {
   const themePreference = useThemeStore((state) => state.theme)
@@ -147,6 +148,9 @@ export const SqlMonacoEditor = forwardRef<SqlMonacoEditorHandle, SqlMonacoEditor
     editorRef.current = editor
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
       onRun()
+    })
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyF, () => {
+      onFormat?.()
     })
     editor.onDidChangeCursorPosition((event) => {
       const position = event.position

@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { translateMessage } from '@/i18n/messages'
 import { SchemaPanel, type SchemaPanelItem } from './schema-panel'
 
 const connectionItem = {
@@ -57,6 +58,9 @@ const items: SchemaPanelItem[] = [
 ]
 
 describe('SchemaPanel', () => {
+  const t = (key: Parameters<typeof translateMessage>[1], values?: Record<string, string | number>) =>
+    translateMessage('zh-CN', key, values)
+
   it('sets the selected override when a context node is clicked', () => {
     const onSetTabContext = vi.fn()
     const onInsertText = vi.fn()
@@ -68,6 +72,13 @@ describe('SchemaPanel', () => {
         onInsertText={onInsertText}
       />,
     )
+
+    expect(screen.getByRole('tree', { name: t('stage.activityRail.schema.tree') })).toBeTruthy()
+    expect(screen.getAllByText(t('stage.activityRail.schema.kind.connection')).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(t('stage.activityRail.schema.kind.database')).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(t('stage.activityRail.schema.kind.schema')).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(t('stage.activityRail.schema.kind.table')).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(t('stage.activityRail.schema.kind.column')).length).toBeGreaterThan(0)
 
     fireEvent.click(screen.getByRole('button', { name: 'Primary Connection' }))
     expect(onSetTabContext).toHaveBeenCalledWith(connectionItem.context)
@@ -97,5 +108,17 @@ describe('SchemaPanel', () => {
 
     expect(onInsertText).toHaveBeenCalledWith('users')
     expect(onInsertText).toHaveBeenCalledWith('email')
+  })
+
+  it('renders the translated empty state when no schema items exist', () => {
+    render(
+      <SchemaPanel
+        items={[]}
+        onSetTabContext={vi.fn()}
+        onInsertText={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText(t('stage.activityRail.schema.empty'))).toBeTruthy()
   })
 })
