@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 're
 import Editor, { type BeforeMount, type OnMount } from '@monaco-editor/react'
 import type * as Monaco from 'monaco-editor'
 import { useThemeStore } from '@/stores/theme-store'
+import { cn } from '@/lib/utils'
 
 const LIGHT_THEME = 'datatalk-sql-light'
 const DARK_THEME = 'datatalk-sql-dark'
@@ -19,10 +20,11 @@ type SqlMonacoEditorProps = {
   onRun: () => void
   onCursorChange?: (cursor: { line: number; column: number }) => void
   currentStatementRange?: { startLine: number; endLine: number } | null
+  shellMode?: 'standalone' | 'connected'
 }
 
 export const SqlMonacoEditor = forwardRef<SqlMonacoEditorHandle, SqlMonacoEditorProps>(function SqlMonacoEditor(
-  { value, onChange, onRun, onCursorChange, currentStatementRange },
+  { value, onChange, onRun, onCursorChange, currentStatementRange, shellMode = 'standalone' },
   ref,
 ) {
   const themePreference = useThemeStore((state) => state.theme)
@@ -80,6 +82,7 @@ export const SqlMonacoEditor = forwardRef<SqlMonacoEditorHandle, SqlMonacoEditor
         'editorIndentGuide.activeBackground1': '#d4d4d4',
         'editorWidget.background': '#ffffff',
         'editorWidget.border': '#e5e5e5',
+        'editorOverviewRuler.border': '#00000000',
         'editorSuggestWidget.background': '#ffffff',
         'editorSuggestWidget.border': '#e5e5e5',
         'editorSuggestWidget.selectedBackground': '#f5f5f5',
@@ -122,6 +125,7 @@ export const SqlMonacoEditor = forwardRef<SqlMonacoEditorHandle, SqlMonacoEditor
         'editorIndentGuide.activeBackground1': '#525252',
         'editorWidget.background': '#1f1f1f',
         'editorWidget.border': '#404040',
+        'editorOverviewRuler.border': '#00000000',
         'editorSuggestWidget.background': '#1f1f1f',
         'editorSuggestWidget.border': '#404040',
         'editorSuggestWidget.selectedBackground': '#262626',
@@ -200,7 +204,12 @@ export const SqlMonacoEditor = forwardRef<SqlMonacoEditorHandle, SqlMonacoEditor
   return (
     <div
       data-testid="sql-monaco-editor"
-      className="h-full min-h-[260px] overflow-hidden rounded-b-xl border border-border/50 bg-background"
+      className={cn(
+        'h-full min-h-[260px] overflow-hidden bg-background',
+        shellMode === 'connected'
+          ? 'rounded-b-none border-x border-t border-border/50'
+          : 'rounded-b-xl border border-border/50',
+      )}
     >
       <Editor
         height="100%"
@@ -218,6 +227,9 @@ export const SqlMonacoEditor = forwardRef<SqlMonacoEditorHandle, SqlMonacoEditor
 
 const monacoOptions: Monaco.editor.IStandaloneEditorConstructionOptions = {
   minimap: { enabled: false },
+  overviewRulerBorder: false,
+  overviewRulerLanes: 0,
+  hideCursorInOverviewRuler: true,
   fontSize: 13,
   lineNumbersMinChars: 3,
   scrollBeyondLastLine: false,

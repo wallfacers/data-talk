@@ -6,11 +6,10 @@ type SqlErrorResultPanelProps = {
 
 export function SqlErrorResultPanel({ result }: SqlErrorResultPanelProps) {
   return (
-    <div className="flex h-full flex-col justify-center gap-2 px-4 py-5">
+    <div className="flex h-full items-center justify-center px-6 py-6 text-center">
       <p className="text-sm font-medium text-destructive">
         {result.errorMessage ?? 'SQL execution failed'}
       </p>
-      <p className="text-xs text-muted-foreground">{result.statementText}</p>
     </div>
   )
 }

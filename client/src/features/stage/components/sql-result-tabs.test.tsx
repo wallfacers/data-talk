@@ -1,6 +1,34 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { SqlResultTabs } from './sql-result-tabs'
+
+vi.mock('@/i18n/use-i18n', () => ({
+  useI18n: () => ({
+    t: (key: string) =>
+      ({
+        'stage.menu.close': '关闭',
+        'stage.menu.closeOthers': '关闭其他',
+        'stage.menu.closeAll': '关闭全部',
+      })[key] ?? key,
+  }),
+}))
+
+vi.mock('@/components/ui/context-menu', () => ({
+  ContextMenu: ({ children }: { children?: ReactNode }) => <>{children}</>,
+  ContextMenuTrigger: ({ render, children }: { render?: ReactNode; children?: ReactNode }) => <>{render ?? children}</>,
+  ContextMenuContent: ({ children }: { children?: ReactNode }) => <div data-testid="context-menu-content">{children}</div>,
+  ContextMenuItem: ({
+    children,
+    onSelect,
+    disabled,
+  }: { children?: ReactNode; onSelect?: () => void; disabled?: boolean }) => (
+    <button type="button" onClick={disabled ? undefined : onSelect} disabled={disabled}>
+      {children}
+    </button>
+  ),
+  ContextMenuSeparator: () => <span data-testid="context-menu-separator" />,
+}))
 
 const results = [
   {
@@ -32,7 +60,16 @@ const results = [
 
 describe('SqlResultTabs', () => {
   it('renders one tab button per result and marks the active one', () => {
-    const { container } = render(<SqlResultTabs results={results} activeResultId="r1" onSelect={() => {}} />)
+    const { container } = render(
+      <SqlResultTabs
+        results={results}
+        activeResultId="r1"
+        onSelect={() => {}}
+        onClose={() => {}}
+        onCloseOthers={() => {}}
+        onCloseAll={() => {}}
+      />,
+    )
 
     expect(screen.getByRole('tab', { name: 'Result 1' }).getAttribute('data-state')).toBe('active')
     expect(screen.getByRole('tab', { name: 'Error 2' }).getAttribute('data-state')).toBe('inactive')
@@ -41,7 +78,16 @@ describe('SqlResultTabs', () => {
 
   it('calls onSelect when a result tab is clicked', () => {
     const onSelect = vi.fn()
-    render(<SqlResultTabs results={results} activeResultId="r1" onSelect={onSelect} />)
+    render(
+      <SqlResultTabs
+        results={results}
+        activeResultId="r1"
+        onSelect={onSelect}
+        onClose={() => {}}
+        onCloseOthers={() => {}}
+        onCloseAll={() => {}}
+      />,
+    )
 
     fireEvent.click(screen.getByRole('tab', { name: 'Error 2' }))
 
@@ -49,11 +95,63 @@ describe('SqlResultTabs', () => {
   })
 
   it('renders a destructive underline for the active error result', () => {
-    render(<SqlResultTabs results={results} activeResultId="r2" onSelect={() => {}} />)
+    render(
+      <SqlResultTabs
+        results={results}
+        activeResultId="r2"
+        onSelect={() => {}}
+        onClose={() => {}}
+        onCloseOthers={() => {}}
+        onCloseAll={() => {}}
+      />,
+    )
 
     const errorTab = screen.getByRole('tab', { name: 'Error 2' })
     expect(errorTab.getAttribute('data-state')).toBe('active')
     expect(errorTab.className).toContain('data-[state=active]:border-b-destructive')
     expect(errorTab.className).toContain('text-destructive')
+  })
+
+  it('wires close actions and disables close others when there is only one sibling set', () => {
+    const onClose = vi.fn()
+    const onCloseOthers = vi.fn()
+    const onCloseAll = vi.fn()
+
+    const { rerender } = render(
+      <SqlResultTabs
+        results={results}
+        activeResultId="r1"
+        onSelect={() => {}}
+        onClose={onClose}
+        onCloseOthers={onCloseOthers}
+        onCloseAll={onCloseAll}
+      />,
+    )
+
+    const activeTab = screen.getByText('Result 1').closest('[data-result-id="r1"]') as HTMLElement
+    fireEvent.click(within(activeTab).getByLabelText('关闭'))
+    expect(onClose).toHaveBeenCalledWith('r1')
+
+    const activeMenu = activeTab.nextElementSibling as HTMLElement
+    fireEvent.click(within(activeMenu).getByText('关闭其他'))
+    expect(onCloseOthers).toHaveBeenCalledWith('r1')
+
+    fireEvent.click(within(activeMenu).getByText('关闭全部'))
+    expect(onCloseAll).toHaveBeenCalledWith()
+
+    rerender(
+      <SqlResultTabs
+        results={[results[0]]}
+        activeResultId="r1"
+        onSelect={() => {}}
+        onClose={onClose}
+        onCloseOthers={onCloseOthers}
+        onCloseAll={onCloseAll}
+      />,
+    )
+
+    const singleTab = screen.getByText('Result 1').closest('[data-result-id="r1"]') as HTMLElement
+    const singleMenu = singleTab.nextElementSibling as HTMLElement
+    expect(within(singleMenu).getByText('关闭其他')).toBeDisabled()
   })
 })

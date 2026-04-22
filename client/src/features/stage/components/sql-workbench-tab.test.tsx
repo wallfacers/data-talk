@@ -144,16 +144,19 @@ describe('SqlWorkbenchTab', () => {
     render(<SqlWorkbenchTab tab={tab} />)
 
     expect(screen.getByTestId('sql-workbench-tab')).toBeTruthy()
-    expect(screen.getByTestId('sql-editor-breadcrumb')).toBeTruthy()
+    expect(screen.queryByTestId('sql-editor-breadcrumb')).toBeNull()
     expect(screen.getByTestId('sql-monaco-editor')).toBeTruthy()
+    expect(screen.getByTestId('sql-monaco-editor').className).toContain('rounded-b-xl')
+    expect(screen.getByTestId('sql-monaco-editor').className).toContain('border border-border/50')
     expect(screen.getByRole('button', { name: /Run/i })).toBeTruthy()
     expect(screen.getByTestId('sql-editor-toolbar')).toBeTruthy()
     expect(screen.queryByTestId('sql-workbench-status-bar')).toBeNull()
-    expect(screen.getByRole('tablist')).toBeTruthy()
-    expect(screen.getByTestId('sql-workbench-result-splitter')).toBeTruthy()
+    expect(screen.queryByRole('tablist')).toBeNull()
+    expect(screen.queryByTestId('sql-workbench-result-splitter')).toBeNull()
+    expect(screen.queryByTestId('sql-result-shell')).toBeNull()
   })
 
-  it('tracks cursor position and shows the current statement kind in the breadcrumb', async () => {
+  it('tracks cursor position without rendering the removed breadcrumb row', async () => {
     render(
       <SqlWorkbenchTab
         tab={{
@@ -174,11 +177,14 @@ delete from sessions;`,
       editorHarness.cursorListener?.({ position: { lineNumber: 3, column: 5 } })
     })
 
-    await waitFor(() => expect(screen.getByText('Ln 3')).toBeTruthy())
-    expect(screen.getByText('UPDATE')).toBeTruthy()
+    await waitFor(() =>
+      expect(useSqlWorkbenchStore.getState().tabsById['tab-outline']?.cursor).toMatchObject({ line: 3, column: 5 }),
+    )
+    expect(screen.queryByText('Ln 3')).toBeNull()
+    expect(screen.queryByText('UPDATE')).toBeNull()
   })
 
-  it('formats SQL, saves the draft, and marks the tab as saved', async () => {
+  it('formats SQL and persists the draft without a save button', async () => {
     render(<SqlWorkbenchTab tab={tab} />)
 
     fireEvent.change(screen.getByTestId('monaco-editor'), { target: { value: 'select id from users' } })
@@ -186,12 +192,7 @@ delete from sessions;`,
 
     await waitFor(() => expect(formatMock).toHaveBeenCalled())
     await waitFor(() => expect(screen.getByTestId('monaco-editor')).toHaveValue('formatted: select id from users'))
-
-    fireEvent.click(screen.getByRole('button', { name: /Save/i }))
-
-    expect(useSqlWorkbenchStore.getState().tabsById['tab-1']?.savedSqlText).toBe(
-      'formatted: select id from users',
-    )
+    expect(screen.queryByRole('button', { name: /Save/i })).toBeNull()
     expect(window.localStorage.getItem('data-talk:sql-workbench:draft:tab-1')).toBe(
       'formatted: select id from users',
     )
@@ -364,7 +365,8 @@ delete from sessions;`,
     expect(screen.getByRole('tab', { name: 'Result 1' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'DML' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Error' })).toBeTruthy()
-    expect(screen.getByText('1')).toBeTruthy()
+    expect(screen.getByRole('columnheader', { name: '#' })).toBeTruthy()
+    expect(screen.getByTestId('sql-result-shell').className).toContain('rounded-b-xl')
 
     fireEvent.click(screen.getByRole('tab', { name: 'DML' }))
     expect(screen.getByText(/3/)).toBeTruthy()
@@ -403,8 +405,8 @@ delete from sessions;`,
     fireEvent.click(screen.getByRole('button', { name: /Run/i }))
 
     const splitter = await screen.findByTestId('sql-workbench-result-splitter')
-    const layout = splitter.parentElement as HTMLElement
-    const resultSection = splitter.nextElementSibling as HTMLElement
+    const layout = screen.getByTestId('sql-workbench-layout')
+    const resultSection = screen.getByTestId('sql-result-pane')
 
     Object.defineProperty(layout, 'getBoundingClientRect', {
       configurable: true,
@@ -543,7 +545,11 @@ delete from sessions;`,
     )
 
     expect(editorHarness.fakeEditor?.addCommand).toHaveBeenCalledWith(3, expect.any(Function))
+    expect(screen.getByTestId('sql-monaco-editor').className).toContain('rounded-b-xl')
+    expect(screen.getByTestId('sql-monaco-editor').className).toContain('border border-border/50')
     expect(editorHarness.lastProps?.options).toMatchObject({
+      overviewRulerLanes: 0,
+      hideCursorInOverviewRuler: true,
       bracketPairColorization: { enabled: true },
       autoClosingBrackets: 'always',
       autoIndent: 'full',

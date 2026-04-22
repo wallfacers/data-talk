@@ -52,6 +52,9 @@ type SqlWorkbenchState = {
   ensureTab: (tabId: string, initial?: EnsureTabInput) => void
   setSqlText: (tabId: string, sqlText: string) => void
   setActiveResult: (tabId: string, resultId: string | null) => void
+  closeResult: (tabId: string, resultId: string) => void
+  closeOtherResults: (tabId: string, resultId: string) => void
+  closeAllResults: (tabId: string) => void
   setRunning: (tabId: string) => void
   applyExecuteSuccess: (tabId: string, response: SqlExecuteResponse) => void
   setRiskBlocked: (tabId: string, risk: SqlRiskBlocked) => void
@@ -94,6 +97,14 @@ function ensureTabState(
   return tabsById[tabId] ?? createDefaultTabState(initial)
 }
 
+function promoteActiveResultId(results: SqlExecuteResultItem[], preferredId: string | null) {
+  if (results.length === 0) return null
+  if (preferredId && results.some((item) => item.resultId === preferredId)) {
+    return preferredId
+  }
+  return results[0]?.resultId ?? null
+}
+
 export const useSqlWorkbenchStore = create<SqlWorkbenchState>((set) => ({
   tabsById: {},
 
@@ -126,6 +137,57 @@ export const useSqlWorkbenchStore = create<SqlWorkbenchState>((set) => ({
         [tabId]: {
           ...tabState,
           activeResultId: hasResult ? resultId : tabState.activeResultId,
+        },
+      },
+    }
+  }),
+
+  closeResult: (tabId, resultId) => set((state) => {
+    const tabState = ensureTabState(state.tabsById, tabId)
+    const nextResults = tabState.results.filter((item) => item.resultId !== resultId)
+    if (nextResults.length === tabState.results.length) return state
+
+    const preferredActiveId = tabState.activeResultId === resultId ? null : tabState.activeResultId
+    return {
+      tabsById: {
+        ...state.tabsById,
+        [tabId]: {
+          ...tabState,
+          results: nextResults,
+          activeResultId: promoteActiveResultId(nextResults, preferredActiveId),
+        },
+      },
+    }
+  }),
+
+  closeOtherResults: (tabId, resultId) => set((state) => {
+    const tabState = ensureTabState(state.tabsById, tabId)
+    const nextResults = tabState.results.filter((item) => item.resultId === resultId)
+    if (nextResults.length === tabState.results.length) return state
+
+    return {
+      tabsById: {
+        ...state.tabsById,
+        [tabId]: {
+          ...tabState,
+          results: nextResults,
+          activeResultId: promoteActiveResultId(nextResults, resultId),
+        },
+      },
+    }
+  }),
+
+  closeAllResults: (tabId) => set((state) => {
+    const tabState = ensureTabState(state.tabsById, tabId)
+    if (tabState.results.length === 0 && tabState.activeResultId == null) return state
+
+    return {
+      tabsById: {
+        ...state.tabsById,
+        [tabId]: {
+          ...tabState,
+          results: [],
+          activeResultId: null,
         },
       },
     }

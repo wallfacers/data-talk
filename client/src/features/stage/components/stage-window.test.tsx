@@ -118,11 +118,11 @@ describe('StageWindow', () => {
     })
   })
 
-  it('渲染默认标题 Stage + 关闭 / 最大化 按钮', () => {
+  it('渲染默认标题 工作台 + 关闭 / 最大化 按钮', () => {
     render(<StageWindow sessionId="s1" />)
     expect(screen.getByLabelText('关闭')).toBeTruthy()
     expect(screen.getByLabelText('最大化')).toBeTruthy()
-    expect(screen.getByText('Stage', { selector: 'span' })).toBeTruthy()
+    expect(screen.getByText('工作台', { selector: 'span' })).toBeTruthy()
   })
 
   it('uses a stronger shell contrast for the right-side Stage window', () => {
@@ -156,7 +156,7 @@ describe('StageWindow', () => {
       manualBySession: new Map(),
     })
     render(<StageWindow sessionId="s1" />)
-    expect(screen.getByText(/Stage · 图 v2/)).toBeTruthy()
+    expect(screen.getByText(/工作台 · 图 v2/)).toBeTruthy()
   })
 
   it('renders tab bar when store has tabs for session', () => {

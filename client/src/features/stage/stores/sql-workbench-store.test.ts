@@ -172,6 +172,31 @@ describe('useSqlWorkbenchStore', () => {
     expect(useSqlWorkbenchStore.getState().tabsById['tab-a']?.activeResultId).toBe('r-dml')
   })
 
+  it('closes results and promotes a stable active result', () => {
+    const store = useSqlWorkbenchStore.getState()
+    store.ensureTab('tab-a')
+    store.applyExecuteSuccess('tab-a', {
+      resolvedContext: null,
+      contextNotice: null,
+      results: [resultSet, dmlSummary, { ...resultSet, resultId: 'r-last', title: 'Result 3' }],
+    })
+
+    store.closeResult('tab-a', 'r-set')
+    let tab = useSqlWorkbenchStore.getState().tabsById['tab-a']
+    expect(tab?.results.map((item) => item.resultId)).toEqual(['r-dml', 'r-last'])
+    expect(tab?.activeResultId).toBe('r-dml')
+
+    store.closeOtherResults('tab-a', 'r-last')
+    tab = useSqlWorkbenchStore.getState().tabsById['tab-a']
+    expect(tab?.results.map((item) => item.resultId)).toEqual(['r-last'])
+    expect(tab?.activeResultId).toBe('r-last')
+
+    store.closeAllResults('tab-a')
+    tab = useSqlWorkbenchStore.getState().tabsById['tab-a']
+    expect(tab?.results).toEqual([])
+    expect(tab?.activeResultId).toBeNull()
+  })
+
   it('cleans up tab state when tabs are closed', () => {
     const store = useSqlWorkbenchStore.getState()
     store.ensureTab('tab-a', { sqlText: 'select 1' })

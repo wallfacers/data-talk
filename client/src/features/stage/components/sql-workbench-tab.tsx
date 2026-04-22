@@ -12,7 +12,6 @@ import { normalizeQueryEditorPayload } from '../utils/normalize-query-editor-pay
 import { useSqlExecute } from '../hooks/use-sql-execute'
 import { useSqlWorkbenchStore } from '../stores/sql-workbench-store'
 import type { SqlMonacoEditorHandle } from './sql-monaco-editor'
-import { SqlEditorBreadcrumb } from './sql-editor-breadcrumb'
 import { SqlContextChip } from './sql-context-chip'
 import { SqlEditorToolbar } from './sql-editor-toolbar'
 import { SqlMonacoEditor } from './sql-monaco-editor'
@@ -56,7 +55,6 @@ const DRAFT_STORAGE_PREFIX = 'data-talk:sql-workbench:draft:'
 const RESULT_PANE_MIN_PERCENT = 22
 const RESULT_PANE_MAX_PERCENT = 64
 const RESULT_PANE_DEFAULT_PERCENT = 38
-const TEMP_FORCE_RESULT_PANE = true
 
 export function getSqlWorkbenchTabActions(tabId: string) {
   return tabActionsById.get(tabId) ?? null
@@ -201,9 +199,11 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     setTabContext,
     resetTabContext,
     appendHistoryEntry,
-    markSaved,
     setLimit,
     setCursor,
+    closeResult,
+    closeOtherResults,
+    closeAllResults,
   } = useSqlWorkbenchStore(
     useShallow((state) => ({
       ensureTab: state.ensureTab,
@@ -216,9 +216,11 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
       setTabContext: state.setTabContext,
       resetTabContext: state.resetTabContext,
       appendHistoryEntry: state.appendHistoryEntry,
-      markSaved: state.markSaved,
       setLimit: state.setLimit,
       setCursor: state.setCursor,
+      closeResult: state.closeResult,
+      closeOtherResults: state.closeOtherResults,
+      closeAllResults: state.closeAllResults,
     })),
   )
 
@@ -230,11 +232,12 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     () => resolveCurrentSqlOutlineStatement(outline, tabState.cursor.line, totalLines),
     [outline, tabState.cursor.line, totalLines],
   )
+  const displayResults = tabState.results
   const activeResult = useMemo(
-    () => tabState.results.find((item) => item.resultId === tabState.activeResultId) ?? null,
-    [tabState.activeResultId, tabState.results],
+    () => displayResults.find((item) => item.resultId === tabState.activeResultId) ?? displayResults[0] ?? null,
+    [displayResults, tabState.activeResultId],
   )
-  const showResultPane = TEMP_FORCE_RESULT_PANE || tabState.results.length > 0
+  const showResultPane = displayResults.length > 0
 
   useEffect(() => {
     ensureTab(tab.tabId, {
@@ -301,7 +304,6 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
         database: resolvedExecutionContext.database,
         schema: resolvedExecutionContext.schema,
       }
-  const detailLabel = [effectiveContext.database, effectiveContext.schema].filter(Boolean).join(' / ') || null
   const canRun = Boolean(effectiveContext.connectionId) && tabState.sqlText.trim().length > 0
   const contextChipContext = toContextValue(
     effectiveContext.connectionId,
@@ -455,15 +457,6 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     }
   }, [setSqlText, tab.tabId, tabState.sqlText])
 
-  const handleSave = useCallback(() => {
-    markSaved(tab.tabId)
-    try {
-      window.localStorage.setItem(draftStorageKey, tabState.sqlText)
-    } catch {
-      // ignore storage failures
-    }
-  }, [draftStorageKey, markSaved, tab.tabId, tabState.sqlText])
-
   const handleContextPin = useCallback(() => {
     if (!contextChipContext) return
     setTabContext(tab.tabId, {
@@ -482,6 +475,22 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     },
     [setCursor, tab.tabId],
   )
+
+  const handleSelectResult = useCallback((resultId: string) => {
+    setActiveResult(tab.tabId, resultId)
+  }, [setActiveResult, tab.tabId])
+
+  const handleCloseResult = useCallback((resultId: string) => {
+    closeResult(tab.tabId, resultId)
+  }, [closeResult, tab.tabId])
+
+  const handleCloseOtherResults = useCallback((resultId: string) => {
+    closeOtherResults(tab.tabId, resultId)
+  }, [closeOtherResults, tab.tabId])
+
+  const handleCloseAllResults = useCallback(() => {
+    closeAllResults(tab.tabId)
+  }, [closeAllResults, tab.tabId])
 
   useEffect(() => {
     registerSqlWorkbenchTabActions(tab.tabId, {
@@ -515,23 +524,9 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     tabState.sqlText,
   ])
 
-  const entryLabel = (() => {
-    switch (payload.entryMode) {
-      case 'resource':
-        return t('stage.queryEditor.entry.resource')
-      case 'direct_sql':
-        return t('chat.directQueryMode')
-      case 'ai_generated':
-        return t('stage.queryEditor.entry.aiGenerated')
-      case 'manual':
-      default:
-        return t('stage.queryEditor.entry.manual')
-    }
-  })()
-
   return (
     <div data-testid="sql-workbench-tab" className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-col bg-background">
-      <div ref={splitLayoutRef} className="flex min-h-0 flex-1 flex-col">
+      <div ref={splitLayoutRef} data-testid="sql-workbench-layout" className="flex min-h-0 flex-1 flex-col">
         <section
           className={cn(
             'flex min-h-0 flex-col',
@@ -540,16 +535,11 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
           style={showResultPane ? { flexBasis: `${100 - resultPanePercent}%` } : undefined}
         >
           <SqlEditorToolbar
-            entryLabel={entryLabel}
-            connectionLabel={effectiveContext.connectionName ?? effectiveContext.connectionId ?? t('stage.queryEditor.connection.unselected')}
-            detailLabel={detailLabel}
-            contextNotice={tabState.contextNotice}
             canRun={canRun}
             isRunning={tabState.executeStatus === 'running'}
             onRun={() => void handleRun()}
             onCancel={() => activeControllerRef.current?.abort()}
             onFormat={() => void handleFormat()}
-            onSave={handleSave}
             limit={tabState.limit}
             onLimitChange={(value) => setLimit(tab.tabId, value)}
             contextChip={
@@ -561,29 +551,43 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
               />
             }
           />
-          <SqlEditorBreadcrumb
-            connectionLabel={effectiveContext.connectionName ?? effectiveContext.connectionId ?? null}
-            database={effectiveContext.database}
-            schema={effectiveContext.schema}
-            line={tabState.cursor.line}
-            kind={currentStatement?.kind ?? null}
-          />
-          <div className="min-h-0 flex-1 bg-background px-2 pb-2 pt-1">
-            <SqlMonacoEditor
-              ref={monacoRef}
-              value={tabState.sqlText}
-              onChange={(next) => setSqlText(tab.tabId, next)}
-              onRun={() => void handleRun()}
-              onCursorChange={handleCursorChange}
-              currentStatementRange={
-                currentStatement
-                  ? {
-                      startLine: currentStatement.line,
-                      endLine: currentStatement.endLine,
-                    }
-                  : null
-              }
-            />
+          <div className={cn('min-h-0 flex-1 bg-background px-2 pt-1', showResultPane ? 'pb-0' : 'pb-2')}>
+            <div className="flex h-full min-h-0 flex-col">
+              <SqlMonacoEditor
+                ref={monacoRef}
+                value={tabState.sqlText}
+                onChange={(next) => setSqlText(tab.tabId, next)}
+                onRun={() => void handleRun()}
+                onCursorChange={handleCursorChange}
+                currentStatementRange={
+                  currentStatement
+                    ? {
+                        startLine: currentStatement.line,
+                        endLine: currentStatement.endLine,
+                      }
+                    : null
+                }
+                shellMode={showResultPane ? 'connected' : 'standalone'}
+              />
+              {showResultPane ? (
+                <div
+                  className="relative -mt-px h-0 shrink-0 overflow-visible"
+                >
+                  <div
+                    data-testid="sql-workbench-result-splitter"
+                    role="separator"
+                    aria-orientation="horizontal"
+                    aria-label="Resize SQL result panel"
+                    className="group absolute inset-x-0 -top-1 h-2 cursor-row-resize bg-transparent"
+                    onMouseDown={handleSplitterMouseDown}
+                  >
+                    <div className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2">
+                      <div className="h-px w-full bg-border/65 transition-all duration-150 group-hover:h-1 group-hover:bg-primary/50 group-active:h-1 group-active:bg-primary/50" />
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </div>
           <SqlWorkbenchStatusBar
             status={tabState.executeStatus}
@@ -593,39 +597,35 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
         </section>
 
         {showResultPane ? (
-          <>
-            <div
-              data-testid="sql-workbench-result-splitter"
-              role="separator"
-              aria-orientation="horizontal"
-              aria-label="Resize SQL result panel"
-              className="group relative -mb-px h-4 shrink-0 cursor-row-resize bg-transparent"
-              onMouseDown={handleSplitterMouseDown}
-            >
-              <div className="pointer-events-none absolute inset-x-0 bottom-0">
-                <div className="h-px w-full bg-border/65 transition-all duration-150 group-hover:h-1 group-hover:bg-primary/50 group-active:h-1 group-active:bg-primary/50" />
+          <section
+            data-testid="sql-result-pane"
+            className="flex min-h-0 flex-none flex-col"
+            style={{ flexBasis: `${resultPanePercent}%` }}
+          >
+            <div className="flex min-h-0 flex-1 flex-col bg-background px-2 pb-2">
+              <div
+                data-testid="sql-result-shell"
+                className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-xl border-x border-b border-border/50 bg-background"
+              >
+                <SqlResultTabs
+                  results={displayResults}
+                  activeResultId={activeResult?.resultId ?? tabState.activeResultId}
+                  onSelect={handleSelectResult}
+                  onClose={handleCloseResult}
+                  onCloseOthers={handleCloseOtherResults}
+                  onCloseAll={handleCloseAllResults}
+                />
+                <div className="min-h-0 flex-1 overflow-hidden">
+                  <SqlResultPanel
+                    executeStatus={tabState.executeStatus}
+                    activeResult={activeResult}
+                    risk={tabState.risk}
+                    errorMessage={tabState.errorMessage}
+                  />
+                </div>
               </div>
             </div>
-
-            <section
-              className="flex min-h-0 flex-none flex-col"
-              style={{ flexBasis: `${resultPanePercent}%` }}
-            >
-              <SqlResultTabs
-                results={tabState.results}
-                activeResultId={tabState.activeResultId}
-                onSelect={(resultId) => setActiveResult(tab.tabId, resultId)}
-              />
-              <div className="min-h-0 flex-1 overflow-hidden">
-                <SqlResultPanel
-                  executeStatus={tabState.executeStatus}
-                  activeResult={activeResult}
-                  risk={tabState.risk}
-                  errorMessage={tabState.errorMessage}
-                />
-              </div>
-            </section>
-          </>
+          </section>
         ) : null}
       </div>
     </div>
