@@ -9,14 +9,14 @@ type SqlResultTabsProps = {
 
 export function SqlResultTabs({ results, activeResultId, onSelect }: SqlResultTabsProps) {
   return (
-    <div className="flex h-[39px] shrink-0 items-end overflow-x-auto border-b border-border/50 bg-muted/20 px-2">
-      <div role="tablist" className="flex min-w-0 items-end">
+    <div className="flex h-[39px] shrink-0 items-end overflow-x-auto overflow-y-hidden border-b border-border/50 bg-muted/20 px-2">
+      <div role="tablist" className="flex min-w-max items-end">
         {results.map((result) => {
           const isActive = result.resultId === activeResultId
           const activeToneClass =
             result.kind === 'error'
-              ? 'border-t-destructive text-destructive'
-              : 'border-t-foreground/80 text-foreground'
+              ? 'data-[state=active]:border-b-destructive text-destructive'
+              : 'data-[state=active]:border-b-foreground text-foreground'
           return (
             <button
               key={result.resultId}
@@ -27,10 +27,10 @@ export function SqlResultTabs({ results, activeResultId, onSelect }: SqlResultTa
               data-kind={result.kind}
               title={result.title}
               className={cn(
-                'flex h-[38px] max-w-[240px] shrink-0 items-center border-r px-3 pt-[1px] text-xs transition-colors duration-150',
+                'relative flex h-[38px] max-w-[240px] shrink-0 items-center border-b-2 border-b-transparent px-3 pt-[1px] text-xs transition-colors duration-150',
                 isActive
-                  ? cn('border-r-border/50 border-t-[3px] bg-background', activeToneClass)
-                  : 'border-r-border/30 border-t-[3px] border-t-transparent bg-muted/40 text-muted-foreground hover:bg-muted/65 hover:text-foreground',
+                  ? cn('bg-background', activeToneClass)
+                  : 'text-muted-foreground hover:border-b-border/60 hover:text-foreground',
               )}
               onClick={() => onSelect(result.resultId)}
             >

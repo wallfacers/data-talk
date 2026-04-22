@@ -37,6 +37,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   invalidateSessionLists,
+  filterVisibleSessions,
   useSessions,
 } from '@/features/session/hooks/use-sessions'
 import { useOpenBlankSession } from '@/features/session/hooks/use-open-blank-session'
@@ -66,7 +67,7 @@ function canManageSession(session: Session): boolean {
 
 function groupSessions(sessions: Session[], t: ReturnType<typeof useI18n>['t']): SessionGroup[] {
   // 不再过滤空白会话，始终显示，让用户可以随时切换回来
-  const realSessions = sessions
+  const realSessions = filterVisibleSessions(sessions)
 
   const now = new Date()
   const todayStart = new Date(

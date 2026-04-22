@@ -2,21 +2,12 @@ import type { ReactNode } from 'react'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent, within } from '@testing-library/react'
 import { StageWindow } from './stage-window'
-import { StageSidebar } from './stage-sidebar'
 import { StageTabBar } from './stage-tab-bar'
 import { useStageStore } from '@/stores/stage-store'
 import { useOntologyStore } from '@/stores/ontology-store'
 import { useTimelineStore } from '@/stores/timeline-store'
 
 const openOrFocusStageToolTabMock = vi.hoisted(() => vi.fn())
-
-vi.mock('./stage-tool-row', () => ({
-  StageToolRow: () => <div data-testid="stage-tool-row">tool row</div>,
-}))
-
-vi.mock('./stage-resource-browser', () => ({
-  StageResourceBrowser: () => <div data-testid="stage-resource-browser">resource browser</div>,
-}))
 
 vi.mock('./sql-workbench-tab', () => ({
   SqlWorkbenchTab: () => <div data-testid="sql-workbench-tab">sql workbench tab</div>,
@@ -113,6 +104,7 @@ describe('StageWindow', () => {
       sidebarCollapsedBySession: new Map(),
       sidebarSelectionBySession: new Map(),
       resourceTreeExpandedBySession: new Map(),
+      activeRailPanelBySession: new Map(),
       workspaceTabs: [],
       tabsBySession: new Map(),
       activeWorkspaceTabId: null,
@@ -193,6 +185,23 @@ describe('StageWindow', () => {
     expect(screen.getByRole('button', { name: '打开 SQL 编辑器' })).toBeTruthy()
   })
 
+  it('renders a right-side activity rail container and does not render the old sidebar subtree', () => {
+    useStageStore.setState({
+      tabsBySession: new Map(),
+      activeTabIdBySession: new Map(),
+      workspaceTabs: [],
+      activeWorkspaceTabId: null,
+      activeRailPanelBySession: new Map(),
+    })
+
+    render(<StageWindow sessionId="s1" />)
+
+    expect(screen.getByTestId('stage-activity-rail')).toBeTruthy()
+    expect(screen.queryByTestId('stage-sidebar')).toBeNull()
+    expect(screen.queryByTestId('stage-resource-browser')).toBeNull()
+    expect(screen.queryByTestId('stage-tool-row')).toBeNull()
+  })
+
   it('clicking the empty-state CTA opens the SQL editor via the shared Stage tool path', () => {
     useStageStore.setState({
       tabsBySession: new Map(),
@@ -271,42 +280,8 @@ describe('StageWindow', () => {
     expect(useStageStore.getState().activeTabIdBySession.get('s1')).toBeNull()
   })
 
-  it('renders the sidebar shell in expanded mode with slot placeholders', () => {
-    render(
-      <StageSidebar
-        collapsed={false}
-        onToggleCollapsed={() => {}}
-        toolRowSlot={<div data-testid="tool-row-slot">tool row</div>}
-        resourceBrowserSlot={<div data-testid="resource-browser-slot">resource browser</div>}
-      />
-    )
-
-    expect(screen.getByTestId('stage-sidebar')).toBeTruthy()
-    expect(screen.getByTestId('tool-row-slot')).toBeTruthy()
-    expect(screen.getByTestId('resource-browser-slot')).toBeTruthy()
-    expect(screen.getByRole('button', { name: '收起资源栏' })).toBeTruthy()
-  })
-
-  it('renders the collapsed sidebar shell and hides inner slots', () => {
-    render(
-      <StageSidebar
-        collapsed
-        onToggleCollapsed={() => {}}
-        toolRowSlot={<div data-testid="tool-row-slot">tool row</div>}
-        resourceBrowserSlot={<div data-testid="resource-browser-slot">resource browser</div>}
-      />
-    )
-
-    expect(screen.getByTestId('stage-sidebar').getAttribute('data-state')).toBe('collapsed')
-    expect(screen.getByTestId('tool-row-slot')).toBeTruthy()
-    expect(screen.queryByTestId('resource-browser-slot')).toBeNull()
-    expect(screen.queryByText('展开资源栏')).toBeNull()
-    expect(screen.getByRole('button', { name: '展开资源栏' })).toBeTruthy()
-  })
-
   it('wires the Stage shell without rendering the bottom dock', () => {
     useStageStore.setState({
-      sidebarCollapsedBySession: new Map([['s1', false]]),
       tabsBySession: new Map([['s1', [
         { tabId: 'q1', type: 'query_editor', title: 'SQL', scope: 'session' as const,
           originSessionId: 's1', createdAt: 0, payload: {} },
@@ -316,23 +291,9 @@ describe('StageWindow', () => {
 
     render(<StageWindow sessionId="s1" />)
 
-    expect(screen.getByTestId('stage-sidebar')).toBeTruthy()
-    expect(screen.getByTestId('stage-tool-row')).toBeTruthy()
-    expect(screen.getByTestId('stage-resource-browser')).toBeTruthy()
     expect(screen.queryByTestId('stage-dock')).toBeNull()
     expect(screen.getByText('SQL')).toBeTruthy()
     expect(screen.getByTestId('stage-workspace-pane')).toBeTruthy()
   })
 
-  it('shows a collapsed-sidebar expand entry when the session state is collapsed', () => {
-    useStageStore.setState({
-      sidebarCollapsedBySession: new Map([['s1', true]]),
-      tabsBySession: new Map(),
-      activeTabIdBySession: new Map(),
-    })
-
-    render(<StageWindow sessionId="s1" />)
-
-    expect(screen.getByRole('button', { name: '展开资源栏' })).toBeTruthy()
-  })
 })

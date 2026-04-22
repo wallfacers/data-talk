@@ -32,10 +32,11 @@ const results = [
 
 describe('SqlResultTabs', () => {
   it('renders one tab button per result and marks the active one', () => {
-    render(<SqlResultTabs results={results} activeResultId="r1" onSelect={() => {}} />)
+    const { container } = render(<SqlResultTabs results={results} activeResultId="r1" onSelect={() => {}} />)
 
     expect(screen.getByRole('tab', { name: 'Result 1' }).getAttribute('data-state')).toBe('active')
     expect(screen.getByRole('tab', { name: 'Error 2' }).getAttribute('data-state')).toBe('inactive')
+    expect(container.firstElementChild?.className).toContain('overflow-x-auto')
   })
 
   it('calls onSelect when a result tab is clicked', () => {
@@ -45,5 +46,14 @@ describe('SqlResultTabs', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Error 2' }))
 
     expect(onSelect).toHaveBeenCalledWith('r2')
+  })
+
+  it('renders a destructive underline for the active error result', () => {
+    render(<SqlResultTabs results={results} activeResultId="r2" onSelect={() => {}} />)
+
+    const errorTab = screen.getByRole('tab', { name: 'Error 2' })
+    expect(errorTab.getAttribute('data-state')).toBe('active')
+    expect(errorTab.className).toContain('data-[state=active]:border-b-destructive')
+    expect(errorTab.className).toContain('text-destructive')
   })
 })

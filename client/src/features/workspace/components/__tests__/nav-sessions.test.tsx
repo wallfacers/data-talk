@@ -132,4 +132,14 @@ describe('NavSessions — 删除当前活跃会话', () => {
     expect(screen.getByText('无绑定历史')).toBeInTheDocument()
     expect(screen.getByText('另一个库的历史')).toBeInTheDocument()
   })
+
+  it('隐藏 stage-ai 内部会话，不污染常规会话列表', () => {
+    renderWithCache([
+      mkSession({ id: 'visible', title: '普通会话' }),
+      mkSession({ id: 'internal', title: '_stage-ai_Orders SQL' }),
+    ])
+
+    expect(screen.getByText('普通会话')).toBeInTheDocument()
+    expect(screen.queryByText('_stage-ai_Orders SQL')).not.toBeInTheDocument()
+  })
 })

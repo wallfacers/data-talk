@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useSqlWorkbenchStore } from './sql-workbench-store'
 
 const resultSet = {
@@ -31,6 +31,7 @@ const dmlSummary = {
 describe('useSqlWorkbenchStore', () => {
   beforeEach(() => {
     useSqlWorkbenchStore.setState({ tabsById: {} })
+    vi.restoreAllMocks()
   })
 
   it('stores SQL text independently per tab id', () => {
@@ -42,6 +43,95 @@ describe('useSqlWorkbenchStore', () => {
     const state = useSqlWorkbenchStore.getState()
     expect(state.tabsById['tab-a']?.sqlText).toBe('select 3')
     expect(state.tabsById['tab-b']?.sqlText).toBe('select 2')
+  })
+
+  it('initializes savedSqlText from the initial SQL text', () => {
+    const store = useSqlWorkbenchStore.getState()
+    store.ensureTab('tab-a', { sqlText: 'select 1' })
+
+    expect(useSqlWorkbenchStore.getState().tabsById['tab-a']?.savedSqlText).toBe('select 1')
+  })
+
+  it('sets and resets tab context with a timestamp', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(123456789)
+
+    const store = useSqlWorkbenchStore.getState()
+    store.ensureTab('tab-a')
+    store.setTabContext('tab-a', {
+      connectionId: 'conn-1',
+      connectionName: 'Connection 1',
+      database: 'db_1',
+      schema: 'public',
+      source: 'user_toolbar',
+    })
+
+    expect(useSqlWorkbenchStore.getState().tabsById['tab-a']?.override).toEqual({
+      connectionId: 'conn-1',
+      connectionName: 'Connection 1',
+      database: 'db_1',
+      schema: 'public',
+      source: 'user_toolbar',
+      setAt: 123456789,
+    })
+
+    store.resetTabContext('tab-a')
+
+    expect(useSqlWorkbenchStore.getState().tabsById['tab-a']?.override).toBeNull()
+  })
+
+  it('appends history entries and keeps only the newest 50', () => {
+    const store = useSqlWorkbenchStore.getState()
+
+    for (let index = 0; index < 51; index += 1) {
+      store.appendHistoryEntry('tab-a', {
+        id: `h-${index}`,
+        at: index,
+        sql: `select ${index}`,
+        status: 'ok',
+        resultCount: index,
+      })
+    }
+
+    const history = useSqlWorkbenchStore.getState().tabsById['tab-a']?.history
+    expect(history).toHaveLength(50)
+    expect(history?.[0]?.id).toBe('h-1')
+    expect(history?.[49]?.id).toBe('h-50')
+  })
+
+  it('clears tab history', () => {
+    const store = useSqlWorkbenchStore.getState()
+    store.appendHistoryEntry('tab-a', {
+      id: 'h-1',
+      at: 1,
+      sql: 'select 1',
+      status: 'ok',
+    })
+
+    store.clearHistory('tab-a')
+
+    expect(useSqlWorkbenchStore.getState().tabsById['tab-a']?.history).toEqual([])
+  })
+
+  it('marks the current SQL text as saved', () => {
+    const store = useSqlWorkbenchStore.getState()
+    store.ensureTab('tab-a', { sqlText: 'select 1' })
+    store.setSqlText('tab-a', 'select 2')
+
+    store.markSaved('tab-a')
+
+    expect(useSqlWorkbenchStore.getState().tabsById['tab-a']?.savedSqlText).toBe('select 2')
+  })
+
+  it('updates limit and cursor', () => {
+    const store = useSqlWorkbenchStore.getState()
+    store.ensureTab('tab-a')
+
+    store.setLimit('tab-a', 1000)
+    store.setCursor('tab-a', 7, 18)
+
+    const tab = useSqlWorkbenchStore.getState().tabsById['tab-a']
+    expect(tab?.limit).toBe(1000)
+    expect(tab?.cursor).toEqual({ line: 7, column: 18 })
   })
 
   it('replaces results on execute success and selects the first result', () => {

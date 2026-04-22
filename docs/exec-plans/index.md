@@ -14,6 +14,7 @@
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [Stage SQL Workbench Polish](./2026-04-22-stage-sql-workbench-polish-plan.md) | 2026-04-22 | 完成 Stage SQL 打磨：移除旧左侧资源栏并改为右侧 Activity Rail（Schema/History/Outline/AI），接入工具栏 Run/Cancel/Format/Limit/Save、tab override 上下文、Monaco 轮廓解析与 breadcrumb、状态栏、AI Assist 独立会话与会话列表过滤；相关 Stage/adapter/store/hook/workspace 测试全绿且 `npx tsc --noEmit` 通过。 |
 | [PostgreSQL SQL Splitter](./2026-04-22-postgres-sql-splitter-plan.md) | 2026-04-22 | `/api/sql/execute` 已接入方言化 SQL splitter：`SqlExecuteService` 改为依赖 `SqlStatementSplitters`，PostgreSQL 连接走 PgJDBC parser，其他方言走 generic splitter；splitter 单测全绿，`SqlExecuteControllerIT` 通过且 PostgreSQL procedural case 在无 Docker 环境下自动跳过。 |
 | [Stage SQL Workbench Rebuild](./2026-04-21-stage-sql-workbench-rebuild-plan.md) | 2026-04-21 | Stage SQL 主线已完成替换：前端迁移 Monaco + 编辑器工作区 + 结果集 Tab，后端将 `/api/sql/execute` 重构为多语句 / 多结果契约，并删除旧的非 SQL Stage 页面渲染路径。 |
 | [Stage Window SQL Workbench](./2026-04-21-stage-window-sql-workbench-plan.md) | 2026-04-21 | Stage 升级为基于 shadcn/ui 的多面板 SQL 工作台，`query_editor` 成为唯一 SQL 工作页，`bang_query` 页面 / adapter / helper 退场，`resources/agents/AGENTS.md` 与 UI Object 协议文档同步完成；相关 vitest 与 `npx tsc --noEmit` 通过。 |

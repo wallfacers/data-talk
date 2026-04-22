@@ -55,7 +55,7 @@ export class SqlRiskError extends Error {
 
 export type SqlResult = SqlExecuteResponse
 
-export async function executeSql(req: SqlExecuteRequest): Promise<SqlExecuteResponse> {
+export async function executeSql(req: SqlExecuteRequest, signal?: AbortSignal): Promise<SqlExecuteResponse> {
   const json: SqlExecuteRequest = { connectionId: req.connectionId, sql: req.sql, source: req.source }
   if (req.sessionId != null) json.sessionId = req.sessionId
   if (req.database != null) json.database = req.database
@@ -64,6 +64,7 @@ export async function executeSql(req: SqlExecuteRequest): Promise<SqlExecuteResp
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(json),
+    signal,
   })
   if (res.status === 422) {
     const risk: SqlRiskBlocked = await res.json()

@@ -69,6 +69,7 @@ export class QueryEditorAdapter implements UIObject {
       schema: payload.schema ?? tab?.schema ?? null,
       lastRun: payload.lastRun,
       contextNotice: payload.contextNotice,
+      contextOverride: payload.contextOverride,
     }
 
     switch (mode) {
@@ -89,6 +90,7 @@ export class QueryEditorAdapter implements UIObject {
             schema: { type: ['string', 'null'] },
             lastRun: { type: ['object', 'null'] },
             contextNotice: { type: ['string', 'null'] },
+            contextOverride: { type: ['object', 'null'] },
           },
         }
       case 'full':

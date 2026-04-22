@@ -60,6 +60,9 @@ export class WorkspaceAdapter implements UIObject {
             connectionId: t.type === 'query_editor'
               ? normalizeQueryEditorPayload(t.payload).connectionId ?? t.connectionId
               : t.connectionId,
+            contextOverride: t.type === 'query_editor'
+              ? normalizeQueryEditorPayload(t.payload).contextOverride
+              : undefined,
           })),
           activeTabId,
         }

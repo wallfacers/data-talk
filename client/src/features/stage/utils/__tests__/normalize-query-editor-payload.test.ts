@@ -45,6 +45,45 @@ describe('normalizeQueryEditorPayload', () => {
     })
   })
 
+  it('normalizes valid contextOverride payloads', () => {
+    expect(normalizeQueryEditorPayload({
+      sql: 'select 1',
+      contextOverride: {
+        connectionId: 'conn-1',
+        database: 'reporting',
+        schema: 'public',
+      },
+    })).toMatchObject({
+      initialSql: 'select 1',
+      contextOverride: {
+        connectionId: 'conn-1',
+        database: 'reporting',
+        schema: 'public',
+      },
+    })
+  })
+
+  it('falls back to null for invalid contextOverride payloads', () => {
+    expect(normalizeQueryEditorPayload({
+      sql: 'select 1',
+      contextOverride: {},
+    })).toMatchObject({
+      initialSql: 'select 1',
+      contextOverride: null,
+    })
+
+    expect(normalizeQueryEditorPayload({
+      sql: 'select 1',
+      contextOverride: {
+        connectionId: '',
+        database: 'reporting',
+      },
+    })).toMatchObject({
+      initialSql: 'select 1',
+      contextOverride: null,
+    })
+  })
+
   it('rejects malformed normalized-looking payloads at the authoritative gate', () => {
     const malformedPayload = {
       entryMode: 'direct_sql',

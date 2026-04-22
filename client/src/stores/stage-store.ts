@@ -15,6 +15,8 @@ export type SidebarSelection =
       schema?: string | null
     }
 
+export type RailPanel = 'schema' | 'history' | 'outline' | 'ai'
+
 export interface StageTab {
   tabId: string
   type: string
@@ -38,6 +40,7 @@ export type StageState = {
   sidebarCollapsedBySession: Map<string, boolean>
   sidebarSelectionBySession: Map<string, SidebarSelection | null>
   resourceTreeExpandedBySession: Map<string, string[]>
+  activeRailPanelBySession: Map<string, RailPanel | null>
 
   workspaceTabs: StageTab[]
   tabsBySession: Map<string, StageTab[]>
@@ -55,6 +58,8 @@ export type StageState = {
   setSidebarSelection: (sessionId: string, selection: SidebarSelection | null) => void
   toggleResourceExpanded: (sessionId: string, nodeId: string) => void
   setResourceExpanded: (sessionId: string, nodeIds: string[]) => void
+  setActiveRailPanel: (sessionId: string, panel: RailPanel | null) => void
+  toggleRailPanel: (sessionId: string, panel: RailPanel) => void
   clear: (sessionId: string) => void
 
   // Tab CRUD（新）
@@ -73,6 +78,7 @@ export const useStageStore = create<StageState>((set, get) => ({
   sidebarCollapsedBySession: new Map(),
   sidebarSelectionBySession: new Map(),
   resourceTreeExpandedBySession: new Map(),
+  activeRailPanelBySession: new Map(),
 
   workspaceTabs: [],
   tabsBySession: new Map(),
@@ -122,6 +128,18 @@ export const useStageStore = create<StageState>((set, get) => ({
     map.set(sid, [...nodeIds])
     return { resourceTreeExpandedBySession: map }
   }),
+  setActiveRailPanel: (sid, panel) => set((s) => {
+    const map = new Map(s.activeRailPanelBySession)
+    map.set(sid, panel)
+    return { activeRailPanelBySession: map }
+  }),
+  toggleRailPanel: (sid, panel) => set((s) => {
+    const current = s.activeRailPanelBySession.get(sid) ?? null
+    const next = current === panel ? null : panel
+    const map = new Map(s.activeRailPanelBySession)
+    map.set(sid, next)
+    return { activeRailPanelBySession: map }
+  }),
   clear: (sid) => set((s) => {
     const openMap = new Map(s.openBySession); openMap.delete(sid)
     const a = new Set(s.autoOpenedSessions); a.delete(sid)
@@ -129,6 +147,7 @@ export const useStageStore = create<StageState>((set, get) => ({
     const collapsedMap = new Map(s.sidebarCollapsedBySession); collapsedMap.delete(sid)
     const selectionMap = new Map(s.sidebarSelectionBySession); selectionMap.delete(sid)
     const expandedMap = new Map(s.resourceTreeExpandedBySession); expandedMap.delete(sid)
+    const railMap = new Map(s.activeRailPanelBySession); railMap.delete(sid)
     const ts = new Map(s.tabsBySession); ts.delete(sid)
     const ats = new Map(s.activeTabIdBySession); ats.delete(sid)
     return {
@@ -138,6 +157,7 @@ export const useStageStore = create<StageState>((set, get) => ({
       sidebarCollapsedBySession: collapsedMap,
       sidebarSelectionBySession: selectionMap,
       resourceTreeExpandedBySession: expandedMap,
+      activeRailPanelBySession: railMap,
       tabsBySession: ts,
       activeTabIdBySession: ats,
     }

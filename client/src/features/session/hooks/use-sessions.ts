@@ -3,6 +3,15 @@ import { listSessions, type Session } from '@/services/api/session'
 import { useConnectionStore } from '@/features/connection/store'
 
 export type SessionsScope = 'active' | 'all'
+export const STAGE_AI_SESSION_TITLE_PREFIX = '_stage-ai_'
+
+export function isInternalStageAiSession(session: Pick<Session, 'title'>) {
+  return session.title.startsWith(STAGE_AI_SESSION_TITLE_PREFIX)
+}
+
+export function filterVisibleSessions(sessions: Session[]) {
+  return sessions.filter((session) => !isInternalStageAiSession(session))
+}
 
 export function getSessionsQueryKey(connectionId?: string | null) {
   return ['sessions', connectionId ?? null] as const
@@ -41,6 +50,6 @@ export function useSessions(scope: SessionsScope = 'active') {
 
   return useQuery({
     queryKey: getSessionsQueryKey(scopedConnectionId),
-    queryFn: () => listSessions(scopedConnectionId ?? undefined),
+    queryFn: async () => filterVisibleSessions(await listSessions(scopedConnectionId ?? undefined)),
   })
 }

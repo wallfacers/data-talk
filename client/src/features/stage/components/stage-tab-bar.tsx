@@ -13,6 +13,7 @@ type TabItem = {
   tabId: string
   title: string
   type?: string
+  dirty?: boolean
 }
 
 type StageTabBarProps = {
@@ -55,8 +56,8 @@ export function StageTabBar({
 }: StageTabBarProps) {
   const { t } = useI18n()
   return (
-    <div className="flex shrink-0 items-end border-b border-border/40 bg-transparent px-2 pt-2">
-      <div role="tablist" aria-orientation="horizontal" className="flex w-full min-w-0 items-end justify-start gap-0">
+    <div className="flex shrink-0 items-end overflow-x-auto overflow-y-hidden border-b border-border/40 bg-transparent px-2 pt-2">
+      <div role="tablist" aria-orientation="horizontal" className="flex min-w-max items-end justify-start gap-0">
         {tabs.map((tab) => {
           const isActive = tab.tabId === activeId
           return (
@@ -74,13 +75,20 @@ export function StageTabBar({
                       aria-selected={isActive}
                       data-state={isActive ? 'active' : 'inactive'}
                       className={cn(
-                        'relative flex h-10 min-w-0 items-center gap-1.5 border border-transparent border-b-transparent px-3 pb-1.5 pt-2 text-[13px] font-medium transition-all duration-200 ease-out select-none',
-                        'data-[state=active]:z-20 data-[state=active]:-mb-px data-[state=active]:rounded-t-[14px] data-[state=active]:border-border/50 data-[state=active]:border-b-background data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-[0_-1px_0_rgba(255,255,255,0.7),0_1px_10px_rgba(15,23,42,0.07)]',
-                        'data-[state=inactive]:mt-[2px] data-[state=inactive]:rounded-t-[12px] data-[state=inactive]:border-border/30 data-[state=inactive]:bg-muted/35 data-[state=inactive]:text-muted-foreground hover:data-[state=inactive]:bg-muted/60 hover:data-[state=inactive]:text-foreground',
+                        'relative flex h-10 min-w-0 items-center gap-1.5 border-b-2 border-b-transparent px-3 pb-1.5 pt-2 text-[13px] font-medium transition-colors duration-200 ease-out select-none',
+                        'data-[state=active]:border-b-foreground data-[state=active]:text-foreground',
+                        'data-[state=inactive]:text-muted-foreground hover:data-[state=inactive]:border-b-border/60 hover:data-[state=inactive]:text-foreground',
                         'focus-visible:outline-none focus-visible:ring-0 [&_svg]:shrink-0',
                       )}
                     >
                       {getTabIcon(tab.type, isActive)}
+                      {tab.dirty ? (
+                        <span
+                          data-testid="dirty-indicator"
+                          aria-hidden="true"
+                          className="size-1.5 shrink-0 rounded-full bg-amber-500"
+                        />
+                      ) : null}
                       <span className="min-w-0 truncate">{tab.title}</span>
                       <div
                         role="button"
@@ -88,7 +96,7 @@ export function StageTabBar({
                         className={cn(
                           'ml-0.5 flex size-5 items-center justify-center rounded-md transition-all',
                           isActive
-                            ? 'opacity-90 hover:bg-muted/80 hover:opacity-100'
+                            ? 'opacity-100 hover:bg-muted/80'
                             : 'opacity-0 group-hover/tab:opacity-100 hover:bg-muted/70',
                         )}
                         onClick={(e) => {

@@ -82,7 +82,14 @@ describe('WorkspaceAdapter', () => {
       connection_id: 'conn-1',
       database: 'db-1',
       schema: 'public',
-      payload: { initialSql: 'select 1' },
+      payload: {
+        initialSql: 'select 1',
+        contextOverride: {
+          connectionId: 'conn-a',
+          database: 'db-a',
+          schema: 'schema-a',
+        },
+      },
     })
     await adapter.exec('open', {
       type: 'query_editor',
@@ -90,15 +97,44 @@ describe('WorkspaceAdapter', () => {
       connection_id: 'conn-1',
       database: 'db-1',
       schema: 'public',
-      payload: { initialSql: 'select 2' },
+      payload: {
+        initialSql: 'select 2',
+        contextOverride: {
+          connectionId: 'conn-b',
+          database: 'db-b',
+          schema: 'schema-b',
+        },
+      },
     })
 
     const tabs = useStageStore.getState().tabsBySession.get('s1') ?? []
     expect(tabs).toHaveLength(1)
     expect(tabs[0]).toEqual(expect.objectContaining({
       title: 'SQL B',
-      payload: expect.objectContaining({ initialSql: 'select 2' }),
+      payload: expect.objectContaining({
+        initialSql: 'select 2',
+        contextOverride: expect.objectContaining({
+          connectionId: 'conn-b',
+          database: 'db-b',
+          schema: 'schema-b',
+        }),
+      }),
     }))
+
+    const state = adapter.read('state') as {
+      tabs: Array<{ tabId: string; contextOverride?: unknown }>
+      activeTabId: string | null
+    }
+
+    expect(state.tabs).toEqual([
+      expect.objectContaining({
+        contextOverride: {
+          connectionId: 'conn-b',
+          database: 'db-b',
+          schema: 'schema-b',
+        },
+      }),
+    ])
   })
 
   it('rejects session-scoped query_editor open without an active session', async () => {

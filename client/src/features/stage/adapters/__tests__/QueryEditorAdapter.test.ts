@@ -66,6 +66,7 @@ describe('QueryEditorAdapter', () => {
         truncated: false,
       },
       contextNotice: 'Using reporting schema',
+      contextOverride: null,
     })
   })
 
@@ -206,5 +207,34 @@ describe('QueryEditorAdapter', () => {
       status: 'error',
       message: 'query_editor is read-only; edit through the UI',
     })
+  })
+
+  it('read state exposes normalized contextOverride', () => {
+    openTab({
+      tabId: 'q4',
+      type: 'query_editor',
+      title: 'SQL',
+      scope: 'session',
+      originSessionId: 's1',
+      payload: {
+        initialSql: 'select 4',
+        contextOverride: {
+          connectionId: 'payload-conn',
+          database: 'payload-db',
+          schema: 'public',
+        },
+      },
+      createdAt: 0,
+    })
+
+    const adapter = new QueryEditorAdapter('q4')
+
+    expect(adapter.read('state')).toEqual(expect.objectContaining({
+      contextOverride: {
+        connectionId: 'payload-conn',
+        database: 'payload-db',
+        schema: 'public',
+      },
+    }))
   })
 })

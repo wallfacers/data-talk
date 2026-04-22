@@ -77,4 +77,35 @@ describe('useSqlExecute', () => {
     expect(result.current.status).toBe('idle')
     expect(result.current.result).toBeNull()
   })
+
+  it('passes an AbortSignal to executeSql', async () => {
+    vi.mocked(sqlApi.executeSql).mockResolvedValue(mockResult)
+    const controller = new AbortController()
+    const { result } = renderHook(() => useSqlExecute())
+
+    await act(async () => {
+      await result.current.execute('SELECT 1', 'c-1', 'user', undefined, controller.signal)
+    })
+
+    expect(sqlApi.executeSql).toHaveBeenCalledWith(
+      { sql: 'SELECT 1', connectionId: 'c-1', source: 'user' },
+      controller.signal,
+    )
+  })
+
+  it('returns to idle after an aborted execution', async () => {
+    const abortError = new DOMException('The operation was aborted.', 'AbortError')
+    vi.mocked(sqlApi.executeSql).mockRejectedValue(abortError)
+    const controller = new AbortController()
+    const { result } = renderHook(() => useSqlExecute())
+
+    await act(async () => {
+      await expect(
+        result.current.execute('SELECT 1', 'c-1', 'user', undefined, controller.signal),
+      ).rejects.toMatchObject({ name: 'AbortError' })
+    })
+
+    expect(result.current.status).toBe('idle')
+    expect(result.current.result).toBeNull()
+  })
 })

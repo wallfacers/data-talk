@@ -10,6 +10,7 @@ export interface UseSqlExecuteReturn {
     connectionId: string,
     source: 'ai' | 'user',
     context?: { sessionId?: string | null; database?: string | null; schema?: string | null },
+    signal?: AbortSignal,
   ) => Promise<SqlExecuteResponse>
   result: SqlExecuteResponse | null
   risk: SqlRiskBlocked | null
@@ -29,6 +30,7 @@ export function useSqlExecute(): UseSqlExecuteReturn {
     connectionId: string,
     source: 'ai' | 'user',
     context?: { sessionId?: string | null; database?: string | null; schema?: string | null },
+    signal?: AbortSignal,
   ) => {
     setStatus('running')
     setResult(null)
@@ -39,11 +41,18 @@ export function useSqlExecute(): UseSqlExecuteReturn {
       if (context?.sessionId != null) req.sessionId = context.sessionId
       if (context?.database != null) req.database = context.database
       if (context?.schema != null) req.schema = context.schema
-      const data = await executeSql(req)
+      const data = signal ? await executeSql(req, signal) : await executeSql(req)
       setResult(data)
       setStatus('success')
       return data
     } catch (err: unknown) {
+      if ((err instanceof DOMException && err.name === 'AbortError') || (err instanceof Error && err.name === 'AbortError')) {
+        setStatus('idle')
+        setResult(null)
+        setRisk(null)
+        setErrorMessage(null)
+        throw err
+      }
       if (err instanceof SqlRiskError) {
         setRisk(err.risk)
         setStatus('risk_blocked')

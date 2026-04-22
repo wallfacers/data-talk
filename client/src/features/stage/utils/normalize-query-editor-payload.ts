@@ -15,6 +15,12 @@ export type QueryEditorLastRunSnapshot = {
   truncated: boolean
 }
 
+export type NormalizedQueryEditorContextOverride = {
+  connectionId: string
+  database: string | null
+  schema: string | null
+} | null
+
 export type NormalizedQueryEditorPayload = {
   entryMode: QueryEditorEntryMode
   initialSql: string
@@ -27,6 +33,7 @@ export type NormalizedQueryEditorPayload = {
   connectionName: string | null
   database: string | null
   schema: string | null
+  contextOverride: NormalizedQueryEditorContextOverride
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -92,6 +99,18 @@ function normalizeLastRun(value: unknown): QueryEditorLastRunSnapshot | null {
   }
 }
 
+function normalizeContextOverride(value: unknown): NormalizedQueryEditorContextOverride {
+  if (!isPlainObject(value)) return null
+  const record = value
+  const connectionId = normalizeString(record.connectionId)
+  if (!connectionId) return null
+  return {
+    connectionId,
+    database: normalizeString(record.database),
+    schema: normalizeString(record.schema),
+  }
+}
+
 export function normalizeQueryEditorPayload(payload: unknown): NormalizedQueryEditorPayload {
   const value = isPlainObject(payload) ? payload : {}
   const source = normalizeSource(value.source)
@@ -116,6 +135,7 @@ export function normalizeQueryEditorPayload(payload: unknown): NormalizedQueryEd
     connectionName: normalizeString(value.connectionName),
     database: normalizeString(value.database),
     schema: normalizeString(value.schema),
+    contextOverride: normalizeContextOverride(value.contextOverride),
   }
 }
 
@@ -148,6 +168,19 @@ function sameNormalizedLastRun(
   )
 }
 
+function sameNormalizedContextOverride(
+  actual: unknown,
+  expected: NormalizedQueryEditorContextOverride,
+) {
+  if (expected === null) return actual === null
+  if (!isPlainObject(actual)) return false
+  return (
+    actual.connectionId === expected.connectionId &&
+    normalizeString(actual.database) === expected.database &&
+    normalizeString(actual.schema) === expected.schema
+  )
+}
+
 export function isNormalizedQueryEditorPayload(payload: unknown): payload is NormalizedQueryEditorPayload {
   if (!isPlainObject(payload)) return false
   const record = payload
@@ -163,6 +196,7 @@ export function isNormalizedQueryEditorPayload(payload: unknown): payload is Nor
     record.connectionId === normalized.connectionId &&
     record.connectionName === normalized.connectionName &&
     record.database === normalized.database &&
-    record.schema === normalized.schema
+    record.schema === normalized.schema &&
+    sameNormalizedContextOverride(record.contextOverride, normalized.contextOverride)
   )
 }

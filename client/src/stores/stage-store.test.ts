@@ -11,6 +11,7 @@ describe('stage-store', () => {
       sidebarCollapsedBySession: new Map(),
       sidebarSelectionBySession: new Map(),
       resourceTreeExpandedBySession: new Map(),
+      activeRailPanelBySession: new Map(),
     })
   })
 
@@ -97,6 +98,32 @@ describe('stage-store', () => {
     notifyArtifactArrived('s1')
     expect(useStageStore.getState().revealOrigin).toEqual({ x: 50, y: 50 })
   })
+
+  it('setActiveRailPanel / toggleRailPanel are isolated per session', () => {
+    const { setActiveRailPanel, toggleRailPanel } = useStageStore.getState()
+
+    setActiveRailPanel('s1', 'schema')
+    expect(useStageStore.getState().activeRailPanelBySession.get('s1')).toBe('schema')
+
+    toggleRailPanel('s1', 'schema')
+    expect(useStageStore.getState().activeRailPanelBySession.get('s1')).toBeNull()
+
+    toggleRailPanel('s1', 'history')
+    expect(useStageStore.getState().activeRailPanelBySession.get('s1')).toBe('history')
+
+    setActiveRailPanel('s2', 'outline')
+    expect(useStageStore.getState().activeRailPanelBySession.get('s1')).toBe('history')
+    expect(useStageStore.getState().activeRailPanelBySession.get('s2')).toBe('outline')
+  })
+
+  it('clear removes active rail panel state for the session', () => {
+    const { setActiveRailPanel, clear } = useStageStore.getState()
+
+    setActiveRailPanel('s1', 'ai')
+    clear('s1')
+
+    expect(useStageStore.getState().activeRailPanelBySession.has('s1')).toBe(false)
+  })
 })
 
 describe('StageStore tabs', () => {
@@ -108,6 +135,7 @@ describe('StageStore tabs', () => {
     sidebarCollapsedBySession: new Map(),
     sidebarSelectionBySession: new Map(),
     resourceTreeExpandedBySession: new Map(),
+    activeRailPanelBySession: new Map(),
     workspaceTabs: [], tabsBySession: new Map(),
     activeTabIdBySession: new Map(), activeWorkspaceTabId: null,
   } as unknown as Record<string, unknown>) })
