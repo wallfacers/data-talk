@@ -82,12 +82,13 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
     <>
       {/* 浮动按钮组：边栏完全收起后才 fade-in 显示在左上角 */}
       {showFloating && (
-        <div className="fixed left-4 top-1.5 z-50 flex items-center gap-1 rounded-full bg-sidebar p-1 shadow-lg ring-1 ring-sidebar-border animate-in fade-in-0 duration-150">
+        <div className="fixed left-4 top-1.5 z-50 flex items-center gap-1 rounded-full bg-sidebar/92 p-1 shadow-lg ring-1 ring-sidebar-border backdrop-blur-sm supports-[backdrop-filter]:bg-sidebar/92 animate-in fade-in-0 duration-150">
           <SidebarTrigger className="size-7 rounded-full" />
           <Button
             variant="ghost"
             size="icon-sm"
             className="size-7 rounded-full"
+            aria-label={t('workspace.createSession')}
             onClick={handleCreate}
             disabled={createMut.isPending}
           >

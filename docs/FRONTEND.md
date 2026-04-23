@@ -79,6 +79,13 @@ features/xxx/
 - 使用 shadcn/ui 组件，避免重新造轮子
 - 响应式布局使用 `react-resizable-panels`
 
+### 设计契约
+
+- `client/DESIGN.md` 是客户端视觉规则的唯一真源
+- 新 UI 开发前先读取 `client/DESIGN.md`
+- 组件与页面优先复用 semantic token，不直接写裸色值
+- `designmd` 当前对 DataTalk 的 component alias 子键只做到零错误解析，相关 warning 作为已知工具边界处理
+
 ### Stage Workbench 约定
 
 - Stage 使用 `左侧 sidebar + 右侧 workspace` 的 workbench 结构，底部 Dock 已移除；新入口统一放在顶部工具行或资源浏览器里。

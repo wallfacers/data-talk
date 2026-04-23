@@ -201,6 +201,26 @@ describe('PromptComposer', () => {
     expect(useSessionStore.getState().composerRestoreDraft).toBeNull()
   })
 
+  it('renders the composer shell as a panel-grade surface by default', () => {
+    useConnectionStore.setState({ activeConnectionId: 'conn-1', connections: [{ id: 'conn-1', name: 'Main' } as any] })
+    useSessionStore.setState({
+      activeSessionId: 'sess-1',
+      modeBySession: new Map(),
+      hasEverSentBySession: new Map([['sess-1', true]]),
+      dataContextBySession: new Map(),
+      pendingPrompt: null,
+      pendingModelPrompt: false,
+      pendingConnectionPrompt: false,
+      pendingActionAfterConnectionPick: null,
+    } as any)
+
+    renderWithClient(<PromptComposer />)
+
+    const shell = document.querySelector('[data-slot="input-group"]')
+    expect(shell).toHaveClass('rounded-2xl')
+    expect(shell).toHaveClass('border-border/80')
+  })
+
   it('persists bang query text before opening the bang query tab', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(1713650000000)
     const createBangQueryMessageMock = bangQueryApi.createBangQueryMessage as unknown as Mock
@@ -465,6 +485,7 @@ describe('PromptComposer', () => {
 
     expect(screen.getByText('直查模式')).toBeInTheDocument()
     expect(document.querySelector('[data-slot="input-group"]')).toHaveAttribute('data-bang-query-mode', 'true')
+    expect(document.querySelector('[data-slot="input-group"]')).toHaveClass('border-amber-500/45')
 
     fireEvent.change(textarea, { target: { value: '!help' } })
     fireEvent.click(document.querySelector('button[type="submit"]') as HTMLButtonElement)

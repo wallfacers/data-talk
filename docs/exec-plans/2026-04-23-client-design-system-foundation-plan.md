@@ -72,7 +72,7 @@
 - Create: `client/DESIGN.md`
 - Modify: `client/src/styles/globals.css`
 
-- [ ] **Step 1: 写 `client/DESIGN.md`，把 approved spec 落为 design contract**
+- [x] **Step 1: 写 `client/DESIGN.md`，把 approved spec 落为 design contract**
 
 ```md
 ---
@@ -127,7 +127,7 @@ DataTalk 是一台可协作、可推理、可操作的数据研究仪器。
 - Neutral Backbone, Focused Signal
 ```
 
-- [ ] **Step 2: 运行 design lint，确认 `client/DESIGN.md` 可被 `design.md` CLI 解析**
+- [x] **Step 2: 运行 design lint，确认 `client/DESIGN.md` 可被 `design.md` CLI 解析**（`npx @google/design.md` 在本环境挂起，改为直接调用 `/tmp/designmd-0.1.1/package/dist/index.js`；lint 结果 `errors = 0`）
 
 Run:
 
@@ -141,7 +141,7 @@ Expected:
 Lint completed with 0 errors
 ```
 
-- [ ] **Step 3: 改造 `globals.css`，建立“现有 shadcn token ← 新 semantic token”映射层**
+- [x] **Step 3: 改造 `globals.css`，建立“现有 shadcn token ← 新 semantic token”映射层**
 
 ```css
 :root {
@@ -174,7 +174,7 @@ Lint completed with 0 errors
 }
 ```
 
-- [ ] **Step 4: 保持现有 Tailwind semantic class 可用，不在第一轮就把全项目改成裸 CSS 变量类**
+- [x] **Step 4: 保持现有 Tailwind semantic class 可用，不在第一轮就把全项目改成裸 CSS 变量类**
 
 ```css
 @theme inline {
@@ -196,7 +196,7 @@ Lint completed with 0 errors
 - Modify: `client/src/components/ui/input-group.tsx`
 - Modify: `client/src/components/ui/table.tsx`
 
-- [ ] **Step 1: 先写 failing tests，锁定基础组件的设计语义**
+- [x] **Step 1: 先写 failing tests，锁定基础组件的设计语义**
 
 ```tsx
 describe('design-system foundation', () => {
@@ -233,7 +233,7 @@ describe('design-system foundation', () => {
 })
 ```
 
-- [ ] **Step 2: 运行基础组件测试，确认先红**
+- [x] **Step 2: 运行基础组件测试，确认先红**
 
 Run:
 
@@ -248,7 +248,7 @@ FAIL  design-system-foundation.test.tsx
 + Expected class "bg-primary/10" / "rounded-2xl" / "bg-muted/60" not found
 ```
 
-- [ ] **Step 3: 实现 `Button` 的 `tonal` 语义、`InputGroup` 的 panel shell、`Table` 的结构化表头/选中态**
+- [x] **Step 3: 实现 `Button` 的 `tonal` 语义、`InputGroup` 的 panel shell、`Table` 的结构化表头/选中态**
 
 ```tsx
 const buttonVariants = cva(
@@ -303,7 +303,7 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
 }
 ```
 
-- [ ] **Step 4: 重新运行基础组件测试，确认转绿**
+- [x] **Step 4: 重新运行基础组件测试，确认转绿**
 
 Run:
 
@@ -324,7 +324,7 @@ PASS  design-system-foundation.test.tsx
 - Modify: `client/src/features/workspace/components/app-sidebar.tsx`
 - Modify: `client/src/features/workspace/components/__tests__/app-sidebar.test.tsx`
 
-- [ ] **Step 1: 扩充 `app-sidebar` 测试，锁定“骨架弱、唯一强调主动作”的导航语义**
+- [x] **Step 1: 扩充 `app-sidebar` 测试，锁定“骨架弱、唯一强调主动作”的导航语义**
 
 ```tsx
 it('renders the primary create-session CTA as the sidebar’s single emphasized action', async () => {
@@ -342,7 +342,7 @@ it('renders the collapsed floating control pill with a bordered instrument shell
 })
 ```
 
-- [ ] **Step 2: 运行导航测试，确认先红**
+- [x] **Step 2: 运行导航测试，确认先红**
 
 Run:
 
@@ -357,7 +357,7 @@ FAIL  app-sidebar.test.tsx
 + Missing stronger shell / CTA class assertions
 ```
 
-- [ ] **Step 3: 改造 `sidebar.tsx` 与 `app-sidebar.tsx`，把导航骨架校准为“低存在感骨架 + 唯一主 CTA”**
+- [x] **Step 3: 改造 `sidebar.tsx` 与 `app-sidebar.tsx`，把导航骨架校准为“低存在感骨架 + 唯一主 CTA”**
 
 ```tsx
 function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
@@ -398,7 +398,7 @@ function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
 >
 ```
 
-- [ ] **Step 4: 重新运行导航测试，确认转绿**
+- [x] **Step 4: 重新运行导航测试，确认转绿**
 
 Run:
 
@@ -418,7 +418,7 @@ PASS  app-sidebar.test.tsx
 - Modify: `client/src/features/session/prompt-composer.tsx`
 - Modify: `client/src/features/session/__tests__/prompt-composer.test.tsx`
 
-- [ ] **Step 1: 先补 failing tests，锁定默认态与 bang-query 态的表面语义**
+- [x] **Step 1: 先补 failing tests，锁定默认态与 bang-query 态的表面语义**
 
 ```tsx
 it('renders the composer as a panel-grade instrument surface', async () => {
@@ -439,7 +439,7 @@ it('switches into a warn-toned shell when bang query mode is active', async () =
 })
 ```
 
-- [ ] **Step 2: 运行 composer 测试，确认新增断言先红**
+- [x] **Step 2: 运行 composer 测试，确认新增断言先红**
 
 Run:
 
@@ -454,7 +454,7 @@ FAIL  prompt-composer.test.tsx
 + Expected updated surface classes for default / bang-query mode
 ```
 
-- [ ] **Step 3: 调整 `PromptComposer`，把它从“普通输入框”提升为研究工作台控制面板**
+- [x] **Step 3: 调整 `PromptComposer`，把它从“普通输入框”提升为研究工作台控制面板**
 
 ```tsx
 <InputGroup
@@ -492,7 +492,7 @@ FAIL  prompt-composer.test.tsx
 )}
 ```
 
-- [ ] **Step 4: 重新运行 composer 测试，确认行为与新表面样式都转绿**
+- [x] **Step 4: 重新运行 composer 测试，确认行为与新表面样式都转绿**
 
 Run:
 
@@ -514,7 +514,7 @@ PASS  prompt-composer.test.tsx
 - Modify: `client/src/features/stage/components/stage-window.test.tsx`
 - Modify: `client/src/features/stage/components/stage-workbench-empty-state.tsx`
 
-- [ ] **Step 1: 先写 failing tests，锁定 Stage shell 和空状态卡片的设计目标**
+- [x] **Step 1: 先写 failing tests，锁定 Stage shell 和空状态卡片的设计目标**
 
 ```tsx
 it('renders Stage with an instrument-grade shell instead of a generic card shell', () => {
@@ -533,7 +533,7 @@ it('renders Stage empty cards as structured instrument tiles', () => {
 })
 ```
 
-- [ ] **Step 2: 运行 Stage 相关测试，确认先红**
+- [x] **Step 2: 运行 Stage 相关测试，确认先红**
 
 Run:
 
@@ -549,7 +549,7 @@ FAIL  stage-workbench-empty-state.test.tsx
 + Expected updated shell / empty-state surface classes
 ```
 
-- [ ] **Step 3: 在不回滚现有 dirty worktree 改动的前提下，叠加 Stage 的 Foundation 视觉校准**
+- [x] **Step 3: 在不回滚现有 dirty worktree 改动的前提下，叠加 Stage 的 Foundation 视觉校准**
 
 ```tsx
 return (
@@ -578,7 +578,7 @@ return (
 </div>
 ```
 
-- [ ] **Step 4: 重新运行 Stage 相关测试，确认转绿**
+- [x] **Step 4: 重新运行 Stage 相关测试，确认转绿**
 
 Run:
 
@@ -600,7 +600,7 @@ PASS  stage-workbench-empty-state.test.tsx
 - Modify: `docs/exec-plans/2026-04-23-client-design-system-foundation-plan.md`
 - Modify: `docs/exec-plans/index.md`
 
-- [ ] **Step 1: 在前端开发指南中登记 `client/DESIGN.md` 为唯一设计契约**
+- [x] **Step 1: 在前端开发指南中登记 `client/DESIGN.md` 为唯一设计契约**
 
 ```md
 ### 设计契约
@@ -610,7 +610,7 @@ PASS  stage-workbench-empty-state.test.tsx
 - 组件与页面优先复用 semantic token，不直接写裸色值
 ```
 
-- [ ] **Step 2: 运行 design lint + 目标 vitest 集 + TypeScript typecheck**
+- [x] **Step 2: 运行 design lint + 目标 vitest 集 + TypeScript typecheck**（design lint 继续通过 direct CLI 入口执行；结果 `errors = 0, warnings = 23`，warning 为 DataTalk component alias 子键超出当前 `designmd` 默认 schema 的已知边界）
 
 Run:
 
@@ -633,7 +633,7 @@ All targeted vitest files PASS
 TypeScript found 0 errors
 ```
 
-- [ ] **Step 3: 把本计划的 checkbox 全部按实际结果勾完，并在索引中从 Active 移到 Completed**
+- [x] **Step 3: 把本计划的 checkbox 全部按实际结果勾完，并在索引中从 Active 移到 Completed**
 
 ```md
 ## 已完成计划
@@ -643,7 +643,7 @@ TypeScript found 0 errors
 | [Client Design System Foundation](./2026-04-23-client-design-system-foundation-plan.md) | 2026-04-23 | `client/DESIGN.md`、semantic token 映射、Button/InputGroup/Table、Sidebar、PromptComposer、Stage Foundation 表面已落地，design lint、目标 vitest 与 `npx tsc --noEmit` 全部通过。 |
 ```
 
-- [ ] **Step 4: 若实现中对 spec 有实质收敛，只做最小文档同步，不扩大 spec 范围**
+- [x] **Step 4: 若实现中对 spec 有实质收敛，只做最小文档同步，不扩大 spec 范围**（本次未扩大 spec 范围；仅在 `docs/FRONTEND.md` 登记 `client/DESIGN.md` 真源与 `designmd` warning 边界）
 
 ```md
 - 若首轮只 shipped foundation surfaces，则在 spec §12“分阶段落地顺序”补一行状态说明；

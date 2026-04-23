@@ -10,8 +10,8 @@ const context = {
   schema: 'public',
 }
 const connections = [
-  { id: 'conn-1', name: 'Primary Connection', databaseName: 'db_main' },
-  { id: 'conn-2', name: 'Analytics', databaseName: 'analytics' },
+  { id: 'conn-1', name: 'Primary Connection', kind: 'postgres', databaseName: 'db_main' },
+  { id: 'conn-2', name: 'Analytics', kind: 'mysql', databaseName: 'analytics' },
 ]
 
 describe('SqlContextChip', () => {
@@ -136,5 +136,72 @@ describe('SqlContextChip', () => {
 
     expect(screen.getByRole('combobox', { name: t('stage.context.field.connection') }).textContent).toContain('Primary Connection')
     expect(screen.getByRole('combobox', { name: t('stage.context.field.connection') }).textContent).not.toContain('conn-1')
+  })
+
+  it('echoes the current database and schema through editable select triggers', () => {
+    render(
+      <SqlContextChip
+        context={context}
+        mode="session"
+        connections={connections}
+        databaseOptions={['db_main', 'analytics']}
+        schemaOptions={['public', 'reporting']}
+        onResetTabContext={onResetTabContext}
+        onSetTabContext={onSetTabContext}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: t('stage.context.tooltip.button') }))
+
+    expect(screen.getByRole('combobox', { name: t('stage.context.field.database') })).toHaveTextContent('db_main')
+    expect(screen.getByRole('combobox', { name: t('stage.context.field.schema') })).toHaveTextContent('public')
+  })
+
+  it('hides the schema field for connections whose kind does not use schemas', () => {
+    render(
+      <SqlContextChip
+        context={{
+          connectionId: 'conn-2',
+          connectionName: 'Analytics',
+          database: 'analytics',
+          schema: null,
+        }}
+        mode="session"
+        connections={connections}
+        databaseOptions={['db_main', 'analytics']}
+        schemaOptions={['public', 'reporting']}
+        onResetTabContext={onResetTabContext}
+        onSetTabContext={onSetTabContext}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: t('stage.context.tooltip.button') }))
+
+    expect(screen.getByRole('combobox', { name: t('stage.context.field.database') })).toHaveTextContent('analytics')
+    expect(screen.queryByRole('combobox', { name: t('stage.context.field.schema') })).toBeNull()
+    expect(screen.queryByText(t('stage.context.field.schema'))).toBeNull()
+  })
+
+  it('keeps schema visible when an existing schema value must still be echoed', () => {
+    render(
+      <SqlContextChip
+        context={{
+          connectionId: 'conn-2',
+          connectionName: 'Analytics',
+          database: 'analytics',
+          schema: 'legacy_schema',
+        }}
+        mode="session"
+        connections={connections}
+        databaseOptions={['db_main', 'analytics']}
+        schemaOptions={['public', 'reporting']}
+        onResetTabContext={onResetTabContext}
+        onSetTabContext={onSetTabContext}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: t('stage.context.tooltip.button') }))
+
+    expect(screen.getByRole('combobox', { name: t('stage.context.field.schema') })).toHaveTextContent('legacy_schema')
   })
 })

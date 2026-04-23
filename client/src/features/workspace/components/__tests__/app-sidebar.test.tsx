@@ -21,12 +21,12 @@ vi.mock('../nav-user', () => ({ NavUser: () => null }))
 
 import { createSession } from '@/services/api/session'
 
-function renderWithProviders(initialSessions: any[] = []) {
+function renderWithProviders(initialSessions: any[] = [], sidebarOpen = true) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   qc.setQueryData(['sessions', 'c1'], initialSessions)
   render(
     <QueryClientProvider client={qc}>
-      <SidebarProvider>
+      <SidebarProvider open={sidebarOpen} onOpenChange={vi.fn()}>
         <AppSidebar />
       </SidebarProvider>
     </QueryClientProvider>,
@@ -55,6 +55,18 @@ describe('AppSidebar — 创建会话', () => {
     await waitFor(() => expect(createSession).toHaveBeenCalledTimes(1))
   })
 
+  it('创建会话 CTA 是唯一强调动作', () => {
+    renderWithProviders()
+
+    const cta = screen.getByRole('button', { name: '创建会话' })
+    const toggle = screen.getByRole('button', { name: 'Toggle Sidebar' })
+
+    expect(cta).toHaveClass('bg-primary')
+    expect(cta).toHaveClass('text-primary-foreground')
+    expect(toggle).not.toHaveClass('bg-primary')
+    expect(toggle).not.toHaveClass('text-primary-foreground')
+  })
+
   it('品牌图标使用设计规范的主强调色语义 token', () => {
     renderWithProviders()
 
@@ -64,6 +76,20 @@ describe('AppSidebar — 创建会话', () => {
     if (!brandIcon) throw new Error('expected brand icon')
 
     expect(brandIcon).toHaveClass('text-primary')
+  })
+
+  it('收起后浮动控制壳使用更强的边框仪表盘样式', async () => {
+    renderWithProviders([], false)
+
+    const createButton = screen.getAllByRole('button', { name: '创建会话' })[0]
+    const floatingShell = createButton.parentElement
+
+    if (!floatingShell) throw new Error('expected floating shell container')
+
+    expect(floatingShell).toContainElement(createButton)
+    expect(floatingShell).toHaveClass('bg-sidebar/92')
+    expect(floatingShell).toHaveClass('ring-1')
+    expect(floatingShell).toHaveClass('ring-sidebar-border')
   })
 
   it('本地缓存已有空白 session → 点击不触发 HTTP', async () => {

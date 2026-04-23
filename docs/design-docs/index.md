@@ -16,7 +16,7 @@
 
 | 文档 | 状态 | 摘要 |
 |------|------|------|
-| [query-editor-object-actions-design](../product-specs/2026-04-23-query-editor-object-actions-design.md) | approved | 将 `query_editor` 收敛为由 `StageStore` 统一打开、命名和维护的对象，并对 AI 暴露稳定的 `state / actions / capabilities` 与文件式 SQL 编辑语义 |
+| [query-editor-object-actions-design](../product-specs/2026-04-23-query-editor-object-actions-design.md) | shipped | `query_editor` 已收敛为由 `StageStore` 统一打开、命名、聚焦和编辑的对象；`WorkspaceAdapter` / `QueryEditorAdapter` 已对 AI 暴露稳定的 `state / actions / capabilities` 与文件式 SQL 编辑语义 |
 | [datatalk-client-design-system-design](../product-specs/2026-04-23-datatalk-client-design-system-design.md) | shipped | 为 `client/` 建立可执行的设计系统契约，并落地 `client/DESIGN.md`、semantic token 映射与基础工作台表面 |
 | [chat-auto-scroll-reentry-design](../product-specs/2026-04-23-chat-auto-scroll-reentry-design.md) | shipped | 修复聊天区 auto-follow 接管条件：用户主动离开底部后，流式更新不再强制滚底，只有重新回到底部才恢复自动跟随 |
 | [sql-tab-internal-rail-design](../product-specs/2026-04-23-sql-tab-internal-rail-design.md) | approved | 布局改造代码已落地：把 Stage 窗口顶层 Activity Rail 下移到 SQL 编辑器 Tab 内部，仅在 `query_editor` 与未来 `er_designer` 挂载；待 broader suite / manual smoke 收口后再转 `shipped` |
@@ -35,7 +35,7 @@
 | [ai-message-table-actions-and-structured-format-design](../product-specs/2026-04-20-ai-message-table-actions-and-structured-format-design.md) | shipped | 为 AI 消息表格补齐复制 / 导出动作栏与结构化格式输出 |
 | [composer-data-source-picker-design](../product-specs/2026-04-20-composer-data-source-picker-design.md) | approved | Composer 增加与模型并列的数据源选择器，并接入 chooser host 与来源数据源固化 |
 | [ai-message-code-window-and-table-design](../product-specs/2026-04-20-ai-message-code-window-and-table-design.md) | shipped | 统一 AI 消息代码块窗体视觉与 Markdown 表格样式增强 |
-| [stage-ui-object-protocol-design](../product-specs/2026-04-20-stage-ui-object-protocol-design.md) | approved | 为 Stage UI 建立 `ui_read / ui_list / ui_patch / ui_exec` 对象协议，P1 已落地主链路，仍有后续联调收尾 |
+| [stage-ui-object-protocol-design](../product-specs/2026-04-20-stage-ui-object-protocol-design.md) | shipped | Stage UI 对象协议 P1 已收口：`UIRouter`、4 个 CLIENT Action 桥接、`StageStore` 多 Tab、`workspace/query_editor` 对象面与 Composer `!` direct SQL 主链路均已落地 |
 | [blank-session-list-actions-design](../product-specs/2026-04-20-blank-session-list-actions-design.md) | shipped | 空白会话继续保留，但不再暴露更多操作，避免无意义管理动作 |
 | [sql-risk-classification-and-it-ci-gate-design](../product-specs/2026-04-20-sql-risk-classification-and-it-ci-gate-design.md) | approved | 引入 SQL AST 风险判级与 IT gate，统一后端执行前风险分级 |
 | [sse-heartbeat-design](../product-specs/2026-04-20-sse-heartbeat-design.md) | shipped | SSE GET 订阅改为无限 timeout + 心跳探活，并降低超时噪音日志 |

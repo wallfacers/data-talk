@@ -24,13 +24,14 @@ export function StageWorkbenchEmptyState({
   onOpenSqlEditor,
 }: Props) {
   const { t } = useI18n()
+  const sqlEnabled = Boolean(onOpenSqlEditor)
   const actions: StageEmptyAction[] = [
     {
       id: 'sql',
       label: t('stage.toolRow.sql'),
       description: t('stage.empty.card.sql.description'),
       Icon: DatabaseIcon,
-      enabled: true,
+      enabled: sqlEnabled,
       onClick: onOpenSqlEditor,
     },
     {
@@ -63,7 +64,7 @@ export function StageWorkbenchEmptyState({
     >
       <div className="w-full max-w-3xl space-y-6">
         <div className="flex flex-col items-center gap-3 text-center">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <div className="flex size-11 items-center justify-center rounded-2xl border border-primary/20 bg-background/85 text-primary shadow-sm">
             <DatabaseIcon className="size-5" />
           </div>
           <p className="text-sm text-muted-foreground">{t('stage.empty.pickTool')}</p>
@@ -78,19 +79,19 @@ export function StageWorkbenchEmptyState({
               data-state={enabled ? 'ready' : 'pending'}
               onClick={enabled ? onClick : undefined}
               className={cn(
-                'group flex min-h-[96px] w-full items-start justify-between gap-4 rounded-xl border px-4 py-3 text-left transition-colors',
+                'group flex min-h-[96px] w-full items-start justify-between gap-4 rounded-2xl border px-4 py-3 text-left transition-colors',
                 enabled
-                  ? 'border-border/60 bg-background/95 hover:border-primary/45 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40'
+                  ? 'border-border/60 bg-background/95 shadow-sm hover:border-primary/45 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40'
                   : 'cursor-not-allowed border-border/45 bg-muted/35 text-muted-foreground opacity-75',
               )}
             >
               <div className="flex min-w-0 items-start gap-3">
                 <div
                   className={cn(
-                    'mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg border',
+                    'mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl border',
                     enabled
-                      ? 'border-primary/25 bg-primary/10 text-primary'
-                      : 'border-border/50 bg-background/50 text-muted-foreground',
+                      ? 'border-primary/25 bg-primary/10 text-primary shadow-sm'
+                      : 'border-border/50 bg-background/60 text-muted-foreground',
                   )}
                 >
                   <Icon className="size-4" />

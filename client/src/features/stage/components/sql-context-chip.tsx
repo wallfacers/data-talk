@@ -2,7 +2,6 @@ import { useEffect, useId, useMemo, useState } from 'react'
 import { DatabaseIcon, PinIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { useI18n } from '@/i18n/use-i18n'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
@@ -23,6 +22,7 @@ export type SqlContextValue = {
 export type SqlContextConnectionOption = {
   id: string
   name: string
+  kind?: string | null
   databaseName?: string | null
 }
 
@@ -68,6 +68,26 @@ function toDraftContext(context: SqlContextValue | null) {
   }
 }
 
+const EMPTY_SELECT_VALUE = '__empty__'
+
+function normalizeConnectionKind(kind: string | null | undefined) {
+  const normalized = normalizeValue(kind)
+  return normalized ? normalized.toLowerCase() : null
+}
+
+function connectionSupportsSchema(kind: string | null | undefined) {
+  const normalized = normalizeConnectionKind(kind)
+  return normalized === 'postgres' || normalized === 'postgresql'
+}
+
+function toSelectValue(value: string | null | undefined) {
+  return normalizeValue(value) ?? EMPTY_SELECT_VALUE
+}
+
+function fromSelectValue(value: string | null) {
+  return value == null || value === EMPTY_SELECT_VALUE ? '' : value
+}
+
 export function SqlContextChip({
   mode,
   context,
@@ -99,6 +119,9 @@ export function SqlContextChip({
       connectionName: resolvedName,
     }
   }, [connectionMap, context])
+  const currentResolvedConnection = contextWithResolvedName
+    ? connectionMap.get(contextWithResolvedName.connectionId) ?? null
+    : null
   const selectedDraftConnection = draft.connectionId ? connectionMap.get(draft.connectionId) ?? null : null
   const selectedDraftConnectionLabel = selectedDraftConnection?.name
     ?? normalizeValue(draft.connectionId)
@@ -116,6 +139,12 @@ export function SqlContextChip({
     () => dedupeValues([...schemaOptions, context?.schema ?? null, draft.schema]),
     [context?.schema, draft.schema, schemaOptions],
   )
+  const currentSchemaVisible = connectionSupportsSchema(currentResolvedConnection?.kind)
+    || normalizeValue(context?.schema) != null
+  const draftSchemaVisible = connectionSupportsSchema(selectedDraftConnection?.kind ?? currentResolvedConnection?.kind)
+    || normalizeValue(draft.schema) != null
+  const selectedDatabaseLabel = normalizeValue(draft.database) ?? t('stage.context.value.empty')
+  const selectedSchemaLabel = normalizeValue(draft.schema) ?? t('stage.context.value.empty')
   const canApplyDraft = mode === 'session' && draft.connectionId.trim().length > 0
   const summary = formatContextSummary(contextWithResolvedName)
   const tooltipHint = isOverride ? t('stage.context.tooltip.override') : t('stage.context.tooltip.session')
@@ -205,8 +234,12 @@ export function SqlContextChip({
           </span>
           <span className="text-muted-foreground">{t('stage.context.field.database')}</span>
           <span className="truncate">{context?.database ?? t('stage.context.value.empty')}</span>
-          <span className="text-muted-foreground">{t('stage.context.field.schema')}</span>
-          <span className="truncate">{context?.schema ?? t('stage.context.value.empty')}</span>
+          {currentSchemaVisible ? (
+            <>
+              <span className="text-muted-foreground">{t('stage.context.field.schema')}</span>
+              <span className="truncate">{context?.schema ?? t('stage.context.value.empty')}</span>
+            </>
+          ) : null}
         </div>
 
         {isOverride ? (
@@ -253,39 +286,61 @@ export function SqlContextChip({
               <label className="text-xs text-muted-foreground" htmlFor={databaseDatalistId}>
                 {t('stage.context.field.database')}
               </label>
-              <Input
-                id={databaseDatalistId}
-                value={draft.database}
-                list={`${databaseDatalistId}-list`}
-                placeholder={t('stage.context.value.empty')}
-                className="h-7 text-xs"
-                onChange={(event) => setDraft((prev) => ({ ...prev, database: event.target.value }))}
-              />
-              <datalist id={`${databaseDatalistId}-list`}>
-                {mergedDatabaseOptions.map((value) => (
-                  <option key={value} value={value} />
-                ))}
-              </datalist>
+              <Select
+                value={toSelectValue(draft.database)}
+                onValueChange={(value) => setDraft((prev) => ({ ...prev, database: fromSelectValue(value) }))}
+              >
+                <SelectTrigger
+                  size="sm"
+                  id={databaseDatalistId}
+                  className="w-full"
+                  aria-label={t('stage.context.field.database')}
+                >
+                  <span className="flex flex-1 text-left">{selectedDatabaseLabel}</span>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={EMPTY_SELECT_VALUE}>
+                    {t('stage.context.value.empty')}
+                  </SelectItem>
+                  {mergedDatabaseOptions.map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {value}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            <div className="grid gap-1">
-              <label className="text-xs text-muted-foreground" htmlFor={schemaDatalistId}>
-                {t('stage.context.field.schema')}
-              </label>
-              <Input
-                id={schemaDatalistId}
-                value={draft.schema}
-                list={`${schemaDatalistId}-list`}
-                placeholder={t('stage.context.value.empty')}
-                className="h-7 text-xs"
-                onChange={(event) => setDraft((prev) => ({ ...prev, schema: event.target.value }))}
-              />
-              <datalist id={`${schemaDatalistId}-list`}>
-                {mergedSchemaOptions.map((value) => (
-                  <option key={value} value={value} />
-                ))}
-              </datalist>
-            </div>
+            {draftSchemaVisible ? (
+              <div className="grid gap-1">
+                <label className="text-xs text-muted-foreground" htmlFor={schemaDatalistId}>
+                  {t('stage.context.field.schema')}
+                </label>
+                <Select
+                  value={toSelectValue(draft.schema)}
+                  onValueChange={(value) => setDraft((prev) => ({ ...prev, schema: fromSelectValue(value) }))}
+                >
+                  <SelectTrigger
+                    size="sm"
+                    id={schemaDatalistId}
+                    className="w-full"
+                    aria-label={t('stage.context.field.schema')}
+                  >
+                    <span className="flex flex-1 text-left">{selectedSchemaLabel}</span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={EMPTY_SELECT_VALUE}>
+                      {t('stage.context.value.empty')}
+                    </SelectItem>
+                    {mergedSchemaOptions.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {value}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
 
             <div className="flex items-center justify-between gap-2 pt-1">
               <Button
