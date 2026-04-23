@@ -2,25 +2,31 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 用一个总排期把当前 3 个待收尾的活跃计划与下一个 Stage 主线重构串成连续执行批次，避免实现状态、文档状态和实际优先级继续漂移。
+**Goal:** 用一个总排期把当前 2 个待收尾的活跃计划、已经完成的 Stage 布局与 UI Object Protocol 里程碑，以及接下来的 `query_editor` / SQL 工作台主线串成连续执行批次，避免实现状态、文档状态和实际优先级继续漂移。
 
-**Architecture:** 本计划不替代现有单项执行计划，而是作为上层编排文档：先收尾 `Composer Data Source Picker`、`Stage UI Object Protocol Phase 1`、`SQL Risk Classification & IT CI Gate` 这 3 个 `in_progress` 计划，再启动 `Stage Window Layout Refactor` 作为下一实现主线，最后统一做文档与 backlog 治理。执行时遵守现有子计划的文件边界与验证命令；本计划只定义顺序、依赖、收尾标准与批次目标。
+**Architecture:** 本计划不替代现有单项执行计划，而是作为上层编排文档：先收尾 `Composer Data Source Picker` 与 `SQL Risk Classification & IT CI Gate` 这 2 个仍在进行的计划；`Stage UI Object Protocol Phase 1` 与 `Stage Window Layout Refactor` 作为工作台基础里程碑已完成并成为后续前提；在此基础上，下一实现主线切换为 `Query Editor Object Actions` 与 `SQL Tab Internal Activity Rail`，最后统一做文档与 backlog 治理。执行时遵守现有子计划的文件边界与验证命令；本计划只定义顺序、依赖、收尾标准与批次目标。
 
 **Tech Stack:** React 19、TypeScript、Zustand、Vitest、Spring Boot 3.5、Java 21、JUnit 5、Maven、现有 `docs/exec-plans/*` 与 `docs/design-docs/index.md` 治理流程
 
 ---
 
+> **2026-04-23 Status Update**
+>
+> - `Stage Window Layout Refactor` 已在 [docs/exec-plans/index.md](./index.md) 转入 Completed，本计划中原 Batch D 只保留为已完成里程碑。
+> - `Stage UI Object Protocol Phase 1` 已于 2026-04-23 完成收口并转入 Completed，不再计入待收尾活跃计划。
+> - 当前新的未开工主线是 `Query Editor Object Actions` 与 `SQL Tab Internal Activity Rail`。
+> - 本文剩余价值主要在于约束收尾顺序与文档治理，不再把 Stage 两栏布局重构视为“下一步”。
+
 ## Context
 
-- 当前执行计划总数：57
-- 已完成：53
-- 活跃：4
-- 其中真正处于“代码已大体完成但计划未收口”的有 3 个：
+- 当前仍需优先收口的 `in_progress` 计划有 2 个：
   - `Composer Data Source Picker`
-  - `Stage UI Object Protocol Phase 1`
   - `SQL Risk Classification & IT CI Gate`
-- 当前唯一尚未开工的大块实现主线：`Stage Window Layout Refactor`
-- 当前主技术债台账中仅剩 1 项未关闭债务：`TD-SINGLE-EMPTY-SESSION-MULTINODE`，不属于当前桌面单机主线阻塞项
+- `Stage Window Layout Refactor` 已完成，不再是“下一实现主线”
+- 当前新的 `pending` 主线计划是：
+  - `Query Editor Object Actions`
+  - `SQL Tab Internal Activity Rail`
+- 文档治理仍需处理 design status、过时 roadmap 与历史 debt 文档漂移
 
 ## Inputs
 
@@ -31,6 +37,8 @@
 - [docs/exec-plans/2026-04-20-stage-ui-object-protocol-plan.md](./2026-04-20-stage-ui-object-protocol-plan.md)
 - [docs/exec-plans/2026-04-20-sql-risk-classification-it-ci-gate-plan.md](./2026-04-20-sql-risk-classification-it-ci-gate-plan.md)
 - [docs/exec-plans/2026-04-21-stage-window-layout-refactor-plan.md](./2026-04-21-stage-window-layout-refactor-plan.md)
+- [docs/exec-plans/2026-04-23-query-editor-object-actions-plan.md](./2026-04-23-query-editor-object-actions-plan.md)
+- [docs/exec-plans/2026-04-23-sql-tab-internal-rail-plan.md](./2026-04-23-sql-tab-internal-rail-plan.md)
 
 ## Non-Goals
 
@@ -86,11 +94,11 @@
 | `server/data-talk-adapter/src/main/java/com/datatalk/adapter/actions/ExecuteSqlAction.java` | 验证风险 metadata 回写 |
 | `server/data-talk-adapter/src/test/java/**` | 区分环境依赖失败与真实回归失败 |
 
-### Batch D — 启动 Stage Window Layout Refactor
+### Batch D — 已完成里程碑：Stage Window Layout Refactor
 
 | 文件 / 区域 | 责任 |
 |-------------|------|
-| `docs/exec-plans/2026-04-21-stage-window-layout-refactor-plan.md` | 作为下一个正式主线执行计划 |
+| `docs/exec-plans/2026-04-21-stage-window-layout-refactor-plan.md` | 记录已完成的 Stage 两栏工作台重构，作为后续 `query_editor` / rail 调整前提 |
 | `client/src/stores/stage-store.ts` | sidebar 导航态、selection、expanded state |
 | `client/src/features/stage/components/stage-window.tsx` | Stage 两栏 workbench 重构 |
 | `client/src/features/stage/components/stage-tab-bar.tsx` | Chrome-inspired 顶部 tabs |
@@ -195,7 +203,7 @@
   - 更新 `docs/exec-plans/index.md`
   - 如判定主体已交付，在 `docs/design-docs/index.md` 中将 `sql-risk-classification-and-it-ci-gate-design` 从 `approved` 更新到 `shipped`
 
-### Task 4: 下周 Batch D — 启动 Stage Window Layout Refactor
+### Task 4: 已完成里程碑 — Stage Window Layout Refactor
 
 **Files:**
 - Modify: `docs/exec-plans/2026-04-21-stage-window-layout-refactor-plan.md`
@@ -207,19 +215,14 @@
 - Create: `client/src/features/stage/components/stage-resource-browser.tsx`
 - Create: `client/src/features/stage/utils/open-or-focus-stage-tool-tab.ts`
 
-- [ ] **Step 4.1: 按现有子计划拆成并行批次**
-  - Batch D1：`StageStore` 导航态 + `open-or-focus` helper
-  - Batch D2：`StageWindow` 两栏骨架 + 删除 `StageDock`
-  - Batch D3：`StageSidebar` + `ToolRow` + `ResourceBrowser`
-  - Batch D4：`StageTabBar` 视觉重构 + adapter 兼容验证
+- [x] **Step 4.1: 按现有子计划拆成并行批次**
+  - 已由 `2026-04-21-stage-window-layout-refactor-plan.md` 完成：`StageStore` 导航态、两栏骨架、`StageSidebar` / `ToolRow` / `ResourceBrowser`、`StageTabBar` 视觉重构均已交付。
 
-- [ ] **Step 4.2: 严格按子计划执行**
-  - 不跳过现有 `stage-window-layout-refactor-plan.md` 的测试、type-check、文档回写步骤
-  - 若执行中发现要改需求，先回 design / plan，不直接边写边漂移
+- [x] **Step 4.2: 严格按子计划执行**
+  - 子计划内记录的 Stage 专项 vitest、`npx tsc --noEmit` 与文档回写均已完成；本计划在此仅保留里程碑状态。
 
-- [ ] **Step 4.3: 将 Stage 作为下一个唯一主实现面**
-  - 本批次不并行开启新的 ER / Report / Dashboard 功能计划
-  - 先把承载工作台的基础布局做稳
+- [x] **Step 4.3: 将 Stage 作为下一个唯一主实现面**
+  - Stage 承载工作台的基础布局已经稳定落地；后续主线从“做出两栏布局”切换为“收紧 `query_editor` 对象契约与 rail 归位”。
 
 ### Task 5: 后续 Batch E — 文档与 Backlog 治理
 
@@ -239,7 +242,10 @@
   - 失效项归档或标注 stale，避免继续误导
 
 - [ ] **Step 5.3: 为二期 backlog 准备进入条件**
-  - Stage workbench 稳定后，再评估是否启动以下能力的 spec / plan：
+  - `Stage Window Layout Refactor` 完成后，当前应先进入：
+    - `Query Editor Object Actions`
+    - `SQL Tab Internal Activity Rail`
+  - 只有在以上主线稳定后，再评估是否启动以下能力的 spec / plan：
     - ER 图设计器
     - Report / Dashboard
     - 查询分页 / 虚拟滚动 / 查询历史 / 导出
@@ -248,14 +254,14 @@
 ## Ordering
 
 1. 必须先完成 Task 1-3 中至少 2 个收尾，避免活跃计划长期堆积
-2. `Stage Window Layout Refactor` 必须在收尾批次结束后再进入主实现面
+2. 收尾批次结束后，下一正式主实现面切换为 `Query Editor Object Actions`，其后才是 `SQL Tab Internal Activity Rail`
 3. 二期 backlog 扩展必须以 Stage workbench 稳定为前提，不提前开工
 
 ## Exit Criteria
 
-- 当前 3 个 `in_progress` 计划全部收口，或明确拆出 follow-up plan 后从原计划退出
+- 当前 2 个 `in_progress` 计划全部收口，或明确拆出 follow-up plan 后从原计划退出
 - `docs/exec-plans/index.md` 与 `docs/design-docs/index.md` 状态一致
-- `Stage Window Layout Refactor` 进入正式执行
+- 下一正式主线已从“Stage 结构重构”切换为 `Query Editor Object Actions`，并为 `SQL Tab Internal Activity Rail` 留出顺序空间
 - backlog 重新按“立即收尾 / 下一个主线 / 后续二期能力”三层结构整理完毕
 
 ## Notes

@@ -1,5 +1,15 @@
 # UI Demo 模式 & Stage 滑动动画 — 技术债记录
 
+> **2026-04-23 治理结论：stale**
+>
+> 本文记录的 demo 预览模式技术债大部分已由后续计划或主技术债台账吸收，不再作为活跃执行入口。
+>
+> - 已由主技术债台账闭环：拖拽分栏（`TD-010`）等实现性遗留
+> - 已由后续计划吸收：Stage 布局重构、Query Editor 主线、设计系统与工作台表面调整
+> - 复核后唯一仍需保留的 live residue：`client/src/features/session/hero-view.tsx` 仍是无引用孤立文件，已迁回 [tech-debt-tracker.md](./tech-debt-tracker.md) 的 `TD-026`
+>
+> 除历史回溯外，不应再以本文驱动实施。
+
 **日期**：2026-04-17
 **背景**：为了在没有数据库连接/Session 的情况下直观调试"小电脑 Stage 面板"的布局与过渡效果，临时引入了一套"demo 预览模式"与自定义 SplitView 滑动动画。**这些改动绕过了真实业务流程，接通正式 session / connection 前需要逐项清理或改造**。
 

@@ -131,13 +131,15 @@ See [docs/FRONTEND.md](docs/FRONTEND.md) for details.
 
 ### UI Object Protocol (Phase 1 — 2026-04-20)
 
-StageWindow 已从单 Artifact 容器升级为 **AI 可操作的多 Tab 工作屏**，由 `client/src/services/ui-router/` 下的 `UIRouter` 单例支撑：
+StageWindow 已演进为 **AI 可操作的多 Tab 工作屏**，由 `client/src/services/ui-router/` 下的 `UIRouter` 单例与 `StageUIObjectRegistry` 共同支撑：
 
-- **Tab 体系**：每个 Tab 是一个 `UIObject`，由类型化 Adapter 注册（`WorkspaceAdapter` / `ArtifactTabAdapter` / `BangQueryAdapter` / 未来的 `QueryEditorAdapter` 等）。Tab 分两类 scope：工具 Tab 工作台级（跨会话常驻，连接绑在 Tab 自身）、Artifact Tab 会话级（跟随 activeSessionId 投影）
-- **AI 入口**：4 个 `Executor.CLIENT` Action（`datatalk.ui.read / patch / exec / list`）作为 OpenCode → 前端 `UIRouter` 的桥接；前端 `client/src/features/actions/ui-handlers.ts` 通过 `registerClientHandler` 把请求 forward 到 `uiRouter.handle()`；与 `PinArtifactAction` 的 CLIENT 分发模式完全同构
+- **对象注册**：当前 registry 会注册 `workspace` 对象，以及当前工作台中的 `query_editor` Tab。对象实例通过 `useUIObjectRegistry()` 挂接到 `uiRouter`，并由 `uiRouter.setActiveTabIdProvider()` 解析 `target=active`
+- **AI / CLIENT 入口**：4 个 `Executor.CLIENT` Action（`datatalk.ui.read / patch / exec / list`）作为 OpenCode → 前端 `UIRouter` 的桥接；前端 `client/src/features/actions/ui-handlers.ts` 通过 `registerClientHandler` 把请求统一 forward 到 `uiRouter.handle()`
+- **workspace 动作面**：`WorkspaceAdapter` 负责 `open / close / focus / choose_connection`；其中 `choose_connection` 复用 Composer 的全局 chooser host，返回用户选择的数据源结果
+- **query_editor 对象面**：`QueryEditorAdapter` 对外暴露 SQL 编辑器的 `state / actions / capabilities`，让 AI 与用户侧工作台共用同一套对象语义
 - **两条 SQL 路径**：
-  - **展示路径**（AI `ui_exec(run_sql)` / 用户 `!sql`）—— 前端直接打 `POST /api/query`，结果写入 Tab；`ui_read('state')` 刻意不含 `rows` 字段，AI 只看到 `{columns, rowCount, durationMs}` 元数据。`/api/query` 在 `QueryApplicationService` 首行调 `SqlStatementGuard.assertSelectOnly`，与 AI `execute_sql` 共用同一白名单（仅 SELECT/WITH）
-  - **分析路径**（AI `datatalk.execute_sql`）—— 结果以 Artifact 形式回流 AI 上下文；现有行为不变
-- **用户 `!` 直查**：Composer 识别 `!select ...` / `!with ...` 前缀（正则 `/^(select|with)\b/i`），先确保 session 存在并持久化一条 DataTalk synthetic user message（`displayKind=bang_query_user`），再调 util `openBangQueryTab` 生成 `bang_query` Tab；HistoryService 会把这类 synthetic message 与 OpenCode 历史稳定合并，保证当前会话即时可见、刷新后不丢；其他 `!` 开头输入继续走 AI（兼容自然语言）
+  - **展示路径**（用户 `!select ...` / `!with ...`）—— 前端直接打 `POST /api/query`，结果打开到 Stage 的 `query_editor`；该路径不产生 assistant 回复，但会先在聊天区写入一条 synthetic user message，保证当前会话即时可见、刷新后不丢
+  - **分析路径**（AI `datatalk.execute_sql`）—— 结果以 Artifact 形式回流 AI 上下文；现有行为保持不变
+- **用户 `!` 直查门槛**：Composer 仅对 `!select ...` / `!with ...` 做 direct SQL 拦截；其他 `!xxx` 输入继续走 AI，兼容自然语言强调。后端 `/api/query` 在 `QueryApplicationService` 首行调用 `SqlStatementGuard.assertSelectOnly(...)`，与 `execute_sql` 共用 SELECT/WITH 白名单
 
-完整设计见 [docs/product-specs/2026-04-20-stage-ui-object-protocol-design.md](docs/product-specs/2026-04-20-stage-ui-object-protocol-design.md)，执行计划见 [docs/exec-plans/2026-04-20-stage-ui-object-protocol-plan.md](docs/exec-plans/2026-04-20-stage-ui-object-protocol-plan.md)。Phase 2（AI 展示路径 QueryEditor + Prompt 注入）待启动。
+完整设计见 [docs/product-specs/2026-04-20-stage-ui-object-protocol-design.md](docs/product-specs/2026-04-20-stage-ui-object-protocol-design.md)，执行计划见 [docs/exec-plans/2026-04-20-stage-ui-object-protocol-plan.md](docs/exec-plans/2026-04-20-stage-ui-object-protocol-plan.md)。后续对象契约收紧与编辑语义增强继续由 `Query Editor Object Actions` 主线推进。

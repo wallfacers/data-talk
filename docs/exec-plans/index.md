@@ -6,17 +6,18 @@
 
 | 计划 | 状态 | 摘要 |
 |------|------|------|
-| [Client Design System Foundation](./2026-04-23-client-design-system-foundation-plan.md) | pending | 先落 `client/DESIGN.md` 与 `globals.css` semantic token 映射，再校准 `Button / InputGroup / Table` 基础 atoms，以及 `Sidebar / PromptComposer / Stage` 三个高频工作台表面；最终以 design lint、目标 vitest 集与 `npx tsc --noEmit` 收口。 |
+| [Query Editor Object Actions](./2026-04-23-query-editor-object-actions-plan.md) | pending | 将 `query_editor` 收敛为由 `StageStore` 统一打开和命名的对象：工作台 `+`、direct SQL、`workspace.open(query_editor)` 共用同一入口；对象对 AI 暴露 `state + actions + capabilities`、`ui_patch(/content)` 与 `apply_text_edits` 双写路径，以及结构化 `UIRouter` 错误契约。 |
 | [SQL Tab Internal Activity Rail](./2026-04-23-sql-tab-internal-rail-plan.md) | pending | 把 Stage 窗口顶层的 `StageActivityRail`（Schema/历史/大纲）下移到 `SqlWorkbenchTab` 内部：外层 flex-col 改 flex-row，rail 仅在 `query_editor` 类型 Tab 渲染；状态作用域 `activeRailPanelBySession` 与 rail 组件签名不动。对应 spec：`docs/product-specs/2026-04-23-sql-tab-internal-rail-design.md`。 |
-| [Implementation Roadmap](./2026-04-21-implementation-roadmap-plan.md) | pending | 作为上层编排计划，先收尾 `Composer Data Source Picker`、`Stage UI Object Protocol Phase 1`、`SQL Risk Classification & IT CI Gate` 这 3 个活跃计划，再启动 `Stage Window Layout Refactor`，最后统一做文档与 backlog 治理。 |
+| [Implementation Roadmap](./2026-04-21-implementation-roadmap-plan.md) | in_progress | 作为上层编排计划，当前优先收尾 `Composer Data Source Picker` 与 `SQL Risk Classification & IT CI Gate` 这 2 个 `in_progress` 计划；`Stage UI Object Protocol Phase 1` 与 `Stage Window Layout Refactor` 已完成，下一主线切换为 `Query Editor Object Actions` 与 `SQL Tab Internal Activity Rail`，随后统一做文档与 backlog 治理。 |
 | [Composer Data Source Picker](./2026-04-20-composer-data-source-picker-plan.md) | in_progress | 计划为 Composer 增加与模型并列的数据源选择器，接入全局 chooser host、缺库自动补选并恢复原动作、`ui_exec(workspace, choose_connection)` 适配器，以及 Stage 卡片来源数据源固化与显式回切。 |
-| [Stage UI Object Protocol Phase 1](./2026-04-20-stage-ui-object-protocol-plan.md) | in_progress | 前端 `UIRouter` + 4 个 CLIENT Action 桥接已就位；`StageStore` 多 Tab 模型、`WorkspaceAdapter` / `BangQueryAdapter`、StageWindow 多 Tab UI、`BangQueryTab` 组件、Composer `!` 拦截均已落地；后端 `/api/query` 加 `SqlStatementGuard`。客户端 198 tests + 后端 179 tests 全绿。**剩余：手动端到端联调（plan Step 12.5）**。AI 展示路径（QueryEditor + Prompt 注入）归属 P2，不在此 plan。 |
 | [SQL Risk Classification & IT CI Gate](./2026-04-20-sql-risk-classification-it-ci-gate-plan.md) | in_progress | `TD-020`：在 `ActionDispatcher` 统一预处理层引入 Apache Calcite SQL AST 风险判级，并通过 `ActionContext` / action output metadata 透传动态风险；`TD-021`：在 adapter 模块接入 failsafe，让 `mvn clean verify` 自动执行 `*IT.java`。 |
 ## 已完成计划
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [Client Design System Foundation](./2026-04-23-client-design-system-foundation-plan.md) | 2026-04-23 | `client/DESIGN.md`、semantic token 映射、Button/InputGroup/Table、Sidebar、PromptComposer、Stage Foundation 表面已落地；direct `designmd` lint `errors = 0`（23 条 alias-schema warning 为已知工具边界），目标 vitest 5 文件 43 测试通过，`npx tsc --noEmit` 通过。 |
 | [Chat Auto-Scroll Reentry](./2026-04-23-chat-auto-scroll-reentry-plan.md) | 2026-04-23 | 聊天区 auto-follow 状态机已修正：用户只要主动向上滚离开底部，后续流式更新不再强制滚底；只有重新回到底部后才恢复自动滚动。新增 hook 回归测试，`split-view` 相关测试与 `npx tsc --noEmit` 全部通过。 |
+| [Stage UI Object Protocol Phase 1](./2026-04-20-stage-ui-object-protocol-plan.md) | 2026-04-23 | 前端 `UIRouter` + 4 个 CLIENT Action 桥接、`StageStore` 多 Tab、`WorkspaceAdapter` / `QueryEditorAdapter` 对象面、Composer `!` direct SQL → `query_editor` 打开链路与后端 `/api/query` + `SqlStatementGuard` 已全部落地；2026-04-23 手动联调、`npx tsc --noEmit`、`npx vitest run` 与 `mvn clean verify` 通过，计划与 `ARCHITECTURE.md` 已同步收口。 |
 | [Read File Preview In Session Stage](./2026-04-22-read-file-preview-plan.md) | 2026-04-22 | `read` 文件结果现支持专属聊天 renderer 与当前会话 Stage 文件预览：点击后创建或聚焦 `file_preview` Tab，以只读 Monaco 高亮固定 `<path><type>file</type><content>` 形态中的正文；相关 62 个前端测试与 `npx tsc --noEmit` 通过。 |
 | [Java 21 Build Guard](./2026-04-22-java21-build-guard-plan.md) | 2026-04-22 | `server` 父 POM 已增加 Java 21 fail-fast enforcer，JDK 8 现在会在 `validate` 阶段直接提示“DataTalk server build requires Java 21”，不再把 Java 21 语法误报成源码错误；同时修正了此前错误归因写入的计划说明与技术债记录。 |
 | [SQL Error Markdown Diagnostics](./2026-04-22-sql-error-markdown-plan.md) | 2026-04-22 | `/api/sql/execute` 的连接级失败现在返回包含连接上下文、异常类型、驱动原始消息和排查建议的 Markdown 诊断块；Stage 错误 Tab 改为嵌入共享 Markdown renderer，并统一去掉纯文本居中布局。前端相关 vitest 与 `npx tsc --noEmit` 已通过；后端验证在切到 JDK 21 后可正常运行。 |
@@ -81,7 +82,7 @@
 | [Plan A Part 4](./2026-04-16-manus-a-backend-platform-part4.md) | 2026-04-16 | OpenCode Gateway, ToolCallBridge, E2E Smoke Test |
 | [Client Rebuild](./2026-04-16-client-rebuild-tauri-vite-plan.md) | 2026-04-16 | Tauri v2 + React 19 + Vite 客户端骨架 |
 | [Tech Debt Tracker](./tech-debt-tracker.md) | — | 已知技术债务集中记录（P0/P1/P2 优先级） |
-| [UI Demo Stage Animation Debt](./ui-demo-stage-animation-debt.md) | 2026-04-17 | Demo 预览模式与 Stage 滑动动画技术债 |
+| [UI Demo Stage Animation Debt](./ui-demo-stage-animation-debt.md) | 2026-04-17 | 历史 debt 记录；2026-04-23 治理确认大部分项已由后续计划或主技术债台账吸收，文档本身转为 stale，剩余 live residue 已迁回 `tech-debt-tracker.md`。 |
 
 ## 工作流
 

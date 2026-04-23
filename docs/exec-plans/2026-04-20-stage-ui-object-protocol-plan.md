@@ -4,7 +4,7 @@
 
 **Goal:** 落地 [Stage UI Object Protocol 设计文档](../product-specs/2026-04-20-stage-ui-object-protocol-design.md) 的 **Phase 1 MVP**——让用户可以在 Composer 输入 `!<sql>` 直查数据库，结果渲染到 StageWindow 的新 Tab 里，**完全不经过 AI 会话**；同时搭起 `UIRouter` 协议骨架和 4 个 `Executor.CLIENT` Action 桥接（P2 的 AI 展示路径直接复用）。
 
-**Architecture:** 前端新增 `services/ui-router/`（从 open-db-studio 移植）承载 `UIObject` 协议；StageStore 从"单 Artifact 容器"扩展为"多 Tab 容器"（artifact Tab 会话级 + 工具 Tab 工作台级）；Composer 拦截 `!` 前缀调用 `POST /api/query`（新增 `SqlStatementGuard` 安全闸），结果写入 `bang_query` Tab。后端新增 `Category.UI` + 4 个 CLIENT Action（`datatalk.ui.read / patch / exec / list`），本 Phase 注册但 AI 不使用——纯粹验证协议管道。
+**Architecture:** 前端新增 `services/ui-router/`（从 open-db-studio 移植）承载 `UIObject` 协议；StageStore 从"单 Artifact 容器"扩展为"多 Tab 容器"（artifact Tab 会话级 + 工具 Tab 工作台级）；Composer 拦截 `!` 前缀调用 `POST /api/query`（新增 `SqlStatementGuard` 安全闸），结果写入 Stage 的 `query_editor` Tab（早期计划草稿中的 `bang_query` 方案已被后续实现收敛替换）。后端新增 `Category.UI` + 4 个 CLIENT Action（`datatalk.ui.read / patch / exec / list`），本 Phase 注册但 AI 不使用——纯粹验证协议管道。
 
 **Tech Stack:** Java 21 / Spring Boot 3.5 / JUnit 5 / AssertJ · React 19 / TypeScript / Zustand / Vitest · 参考源 `/home/wushengzhou/workspace/github/open-db-studio/src/mcp/ui/`
 
@@ -12,6 +12,19 @@
 > - 每次编辑后端后 `cd server && mvn compile -q`；前端后 `cd client && npx tsc --noEmit`
 > - **Commit 需要用户显式同意**——本计划的 `git commit` 步骤执行到时应先和用户确认
 > - 多步骤改动已在设计 spec 对齐，本计划按任务顺序串行推进；任务内单测必须先写后过
+
+> **2026-04-23 状态注记**
+>
+> - 顶层索引已根据代码现实更新为：前端 `UIRouter`、4 个 CLIENT Action 桥接、`StageStore` 多 Tab、`WorkspaceAdapter` / `QueryEditorAdapter` 对象面、StageWindow 多 Tab UI，以及 Composer `!` direct SQL → `query_editor` 打开链路均已落地；后端 `/api/query` 也已接入 `SqlStatementGuard`。
+> - 本文件下方原始 checklist 生成于实施前；2026-04-23 已依据当前代码、手动联调结果与全量验证结果做 retrospective backfill。历史中途 commit 步骤统一按“里程碑已落地，但不重演旧提交”记账。
+> - 2026-04-23 人工联调已确认当前 direct SQL 真实行为：
+>   - 仅 `!select` / `!with` 走 direct SQL；其他 `!xxx` 回落到 AI；
+>   - direct SQL 会先写一条 synthetic user message 到聊天区；
+>   - direct SQL 打开的是 `query_editor`，不是早期文案中的 `bang_query`；
+>   - 无活动数据源时会先拉起 chooser，选中后继续 direct SQL 打开链路；
+>   - `!drop table users` 当前回落到 AI，而不是命中 direct SQL guard toast。
+> - 同日追加执行 `cd client && npx tsc --noEmit`、`cd client && npx vitest run`、`cd server && JAVA_HOME=/home/wushengzhou/.local/opt/java21 PATH=/home/wushengzhou/.local/opt/java21/bin:$PATH mvn clean verify`，结果均通过。
+> - 截至本次治理，本计划的实现、验证与文档同步均已完成；最终以本次用户批准的收口 commit 落盘，不再重演历史中途提交。
 
 ---
 
@@ -71,7 +84,7 @@
 
 > **Why：** 当前 `/api/query` 直接跳过 SQL 类型校验；`!` 通道复用此端点，必须应用与 `execute_sql` 同等的 SELECT/WITH 白名单，避免用户 `!update ...` 造成变更。
 
-- [ ] **Step 1.1: 写失败测试**
+- [x] **Step 1.1: 写失败测试**
 
 Create `server/data-talk-application/src/test/java/com/datatalk/service/QueryApplicationServiceTest.java`:
 
@@ -134,13 +147,13 @@ class QueryApplicationServiceTest {
 }
 ```
 
-- [ ] **Step 1.2: 确认测试失败**
+- [x] **Step 1.2: 确认测试失败**
 
 Run: `cd server && mvn -pl data-talk-application test -Dtest=QueryApplicationServiceTest`
 
 Expected: 编译失败 —— `QueryApplicationService` 构造器只接受 2 个参数。
 
-- [ ] **Step 1.3: 改 `QueryApplicationService`**
+- [x] **Step 1.3: 改 `QueryApplicationService`**
 
 Modify `server/data-talk-application/src/main/java/com/datatalk/service/QueryApplicationService.java`:
 
@@ -187,7 +200,7 @@ public class QueryApplicationService {
 }
 ```
 
-- [ ] **Step 1.4: 更新 `ApplicationServiceConfig`**
+- [x] **Step 1.4: 更新 `ApplicationServiceConfig`**
 
 Modify `server/data-talk-adapter/src/main/java/com/datatalk/config/ApplicationServiceConfig.java`——找到 `queryApplicationService` @Bean 方法，注入 `SqlStatementGuard`：
 
@@ -203,13 +216,13 @@ public QueryApplicationService queryApplicationService(
 
 （如果 bean 方法原签名不同，保持原有注入方式增补 `statementGuard` 参数即可。`SqlStatementGuard` 已是 `@Component`，Spring 自动装配。）
 
-- [ ] **Step 1.5: 测试通过 + 全量编译**
+- [x] **Step 1.5: 测试通过 + 全量编译**
 
 Run: `cd server && mvn -pl data-talk-application test -Dtest=QueryApplicationServiceTest && mvn -q compile`
 
 Expected: 2 tests passed, BUILD SUCCESS.
 
-- [ ] **Step 1.6: Commit**（用户同意后）
+- [x] **Step 1.6: Commit**（用户同意后）
 
 ```bash
 git add server/data-talk-application/src/main/java/com/datatalk/service/QueryApplicationService.java \
@@ -237,7 +250,7 @@ EOF
 - Create: `.../UiPatchAction.java`, `.../UiExecAction.java`, `.../UiListAction.java`
 - Create: `server/data-talk-adapter/src/test/java/com/datatalk/adapter/actions/UiActionsTest.java`
 
-- [ ] **Step 2.1: 扩 `Category` 枚举**
+- [x] **Step 2.1: 扩 `Category` 枚举**
 
 Modify `server/data-talk-domain/src/main/java/com/datatalk/domain/action/Category.java`：在枚举最后添加 `UI`：
 
@@ -254,7 +267,7 @@ public enum Category {
 }
 ```
 
-- [ ] **Step 2.2: 写失败测试**
+- [x] **Step 2.2: 写失败测试**
 
 Create `server/data-talk-adapter/src/test/java/com/datatalk/adapter/actions/UiActionsTest.java`:
 
@@ -304,13 +317,13 @@ class UiActionsTest {
 }
 ```
 
-- [ ] **Step 2.3: 确认测试失败**
+- [x] **Step 2.3: 确认测试失败**
 
 Run: `cd server && mvn -pl data-talk-adapter test -Dtest=UiActionsTest`
 
 Expected: 4 个类不存在的编译错误。
 
-- [ ] **Step 2.4: 实现 4 个 Action（参考 `PinArtifactAction`）**
+- [x] **Step 2.4: 实现 4 个 Action（参考 `PinArtifactAction`）**
 
 Create `server/data-talk-adapter/src/main/java/com/datatalk/adapter/actions/UiReadAction.java`:
 
@@ -375,19 +388,19 @@ Create `UiListAction.java`:
 
 4 个类都在 `handle()` 抛 `UnsupportedOperationException`——与 `PinArtifactAction` 一致，真实逻辑由 `ActionDispatcher` 走 CLIENT 路由。
 
-- [ ] **Step 2.5: 编译验证**
+- [x] **Step 2.5: 编译验证**
 
 Run: `cd server && mvn -pl data-talk-adapter test -Dtest=UiActionsTest && mvn -q compile`
 
 Expected: 4 tests passed, BUILD SUCCESS.
 
-- [ ] **Step 2.6: 全量测试兜底**
+- [x] **Step 2.6: 全量测试兜底**
 
 Run: `cd server && mvn -q test`
 
 Expected: BUILD SUCCESS（验证 `Category.UI` 新值未破坏既有 switch/test）。如果有 `switch (category)` 不穷举报错，按地址补 `case UI -> ...`。
 
-- [ ] **Step 2.7: Commit**（用户同意后）
+- [x] **Step 2.7: Commit**（用户同意后）
 
 ```bash
 git add server/data-talk-domain/src/main/java/com/datatalk/domain/action/Category.java \
@@ -417,7 +430,7 @@ EOF
 - Create: `client/src/services/ui-router/types.ts`
 - Create: `client/src/services/ui-router/errors.ts`
 
-- [ ] **Step 3.1: 移植 `types.ts`**
+- [x] **Step 3.1: 移植 `types.ts`**
 
 Create `client/src/services/ui-router/types.ts`（参考 open-db-studio 同名文件）:
 
@@ -500,7 +513,7 @@ export interface UIObject {
 }
 ```
 
-- [ ] **Step 3.2: 写 `errors.ts`**
+- [x] **Step 3.2: 写 `errors.ts`**
 
 Create `client/src/services/ui-router/errors.ts`:
 
@@ -522,7 +535,7 @@ export function execError(error: string, ...hints: string[]): ExecResult {
 }
 ```
 
-- [ ] **Step 3.3: Type-check**
+- [x] **Step 3.3: Type-check**
 
 Run: `cd client && npx tsc --noEmit`
 
@@ -538,7 +551,7 @@ Expected: 0 errors.
 - Create: `client/src/services/ui-router/__tests__/jsonPatch.test.ts`
 - Create: `client/src/services/ui-router/__tests__/pathResolver.test.ts`
 
-- [ ] **Step 4.1: 写 jsonPatch 失败测试**
+- [x] **Step 4.1: 写 jsonPatch 失败测试**
 
 Create `client/src/services/ui-router/__tests__/jsonPatch.test.ts`:
 
@@ -578,13 +591,13 @@ describe('applyPatch', () => {
 })
 ```
 
-- [ ] **Step 4.2: 运行测试确认失败**
+- [x] **Step 4.2: 运行测试确认失败**
 
 Run: `cd client && npx vitest run src/services/ui-router/__tests__/jsonPatch.test.ts`
 
 Expected: 文件不存在。
 
-- [ ] **Step 4.3: 实现 jsonPatch.ts**
+- [x] **Step 4.3: 实现 jsonPatch.ts**
 
 Create `client/src/services/ui-router/jsonPatch.ts`:
 
@@ -721,13 +734,13 @@ function walk(node: unknown, parts: string[], i: number, op: JsonPatchOp): unkno
 
 > 注意：parsePath / Segment 辅助类型保留备用但未被 walk 使用；可在后续清理中删除。Phase 1 优先走通，refactor 进 §9 技术债。
 
-- [ ] **Step 4.4: jsonPatch 测试通过**
+- [x] **Step 4.4: jsonPatch 测试通过**
 
 Run: `cd client && npx vitest run src/services/ui-router/__tests__/jsonPatch.test.ts`
 
 Expected: 4 passed.
 
-- [ ] **Step 4.5: 写 pathResolver 测试**
+- [x] **Step 4.5: 写 pathResolver 测试**
 
 Create `client/src/services/ui-router/__tests__/pathResolver.test.ts`:
 
@@ -759,7 +772,7 @@ describe('matchPathPattern', () => {
 })
 ```
 
-- [ ] **Step 4.6: 实现 pathResolver.ts**
+- [x] **Step 4.6: 实现 pathResolver.ts**
 
 Create `client/src/services/ui-router/pathResolver.ts`:
 
@@ -785,13 +798,13 @@ export function matchPathPattern(actualPath: string, pattern: string): boolean {
 }
 ```
 
-- [ ] **Step 4.7: 测试通过 + type-check**
+- [x] **Step 4.7: 测试通过 + type-check**
 
 Run: `cd client && npx vitest run src/services/ui-router/__tests__ && npx tsc --noEmit`
 
 Expected: 9 tests passed, 0 TS errors.
 
-- [ ] **Step 4.8: Commit**（用户同意后）
+- [x] **Step 4.8: Commit**（用户同意后）
 
 ```bash
 git add client/src/services/ui-router/types.ts \
@@ -821,7 +834,7 @@ EOF
 - Create: `client/src/services/ui-router/index.ts`
 - Create: `client/src/services/ui-router/__tests__/UIRouter.test.ts`
 
-- [ ] **Step 5.1: 写失败测试**
+- [x] **Step 5.1: 写失败测试**
 
 Create `client/src/services/ui-router/__tests__/UIRouter.test.ts`:
 
@@ -899,13 +912,13 @@ describe('UIRouter', () => {
 })
 ```
 
-- [ ] **Step 5.2: 确认测试失败**
+- [x] **Step 5.2: 确认测试失败**
 
 Run: `cd client && npx vitest run src/services/ui-router/__tests__/UIRouter.test.ts`
 
 Expected: 文件不存在。
 
-- [ ] **Step 5.3: 实现 UIRouter.ts**
+- [x] **Step 5.3: 实现 UIRouter.ts**
 
 Create `client/src/services/ui-router/UIRouter.ts`（直接移植 open-db-studio 同名文件，去掉 resolveTargetWithRetry 的异步轮询——data-talk Adapter 注册发生在组件 mount 时，不存在 MigrationJob 那种延迟场景）:
 
@@ -1038,7 +1051,7 @@ type ListFilter = { type?: string; keyword?: string; connectionId?: string; data
 export const uiRouter = new UIRouter()
 ```
 
-- [ ] **Step 5.4: 实现 useUIObjectRegistry.ts**
+- [x] **Step 5.4: 实现 useUIObjectRegistry.ts**
 
 Create `client/src/services/ui-router/useUIObjectRegistry.ts`:
 
@@ -1056,7 +1069,7 @@ export function useUIObjectRegistry(instance: UIObject | null) {
 }
 ```
 
-- [ ] **Step 5.5: 导出入口**
+- [x] **Step 5.5: 导出入口**
 
 Create `client/src/services/ui-router/index.ts`:
 
@@ -1069,13 +1082,13 @@ export { UIRouter, uiRouter } from './UIRouter'
 export { useUIObjectRegistry } from './useUIObjectRegistry'
 ```
 
-- [ ] **Step 5.6: 测试 + type-check**
+- [x] **Step 5.6: 测试 + type-check**
 
 Run: `cd client && npx vitest run src/services/ui-router/__tests__/UIRouter.test.ts && npx tsc --noEmit`
 
 Expected: 6 passed, 0 TS errors.
 
-- [ ] **Step 5.7: Commit**（用户同意后）
+- [x] **Step 5.7: Commit**（用户同意后）
 
 ```bash
 git add client/src/services/ui-router/
@@ -1102,7 +1115,7 @@ EOF
 
 > **Why：** Adapter 和 Composer 都需要 StageStore 暴露 tab CRUD；必须先把 store 扩开，后续代码才有依附点。保持既有 `openBySession/maximizedBySession/revealOrigin` 等 API 不变，向后兼容。
 
-- [ ] **Step 6.1: 扩 StageStore 测试**
+- [x] **Step 6.1: 扩 StageStore 测试**
 
 Modify `client/src/stores/stage-store.test.ts` —— 在既有测试后追加：
 
@@ -1154,13 +1167,13 @@ describe('StageStore tabs', () => {
 })
 ```
 
-- [ ] **Step 6.2: 确认失败**
+- [x] **Step 6.2: 确认失败**
 
 Run: `cd client && npx vitest run src/stores/stage-store.test.ts`
 
 Expected: `openTab/closeTab/focusTab/listTabs` undefined 错误。
 
-- [ ] **Step 6.3: 实现 StageStore 扩展**
+- [x] **Step 6.3: 实现 StageStore 扩展**
 
 Modify `client/src/stores/stage-store.ts`:
 
@@ -1320,13 +1333,13 @@ export const useStageStore = create<StageState>((set, get) => ({
 }))
 ```
 
-- [ ] **Step 6.4: 测试通过 + type-check**
+- [x] **Step 6.4: 测试通过 + type-check**
 
 Run: `cd client && npx vitest run src/stores/stage-store.test.ts && npx tsc --noEmit`
 
 Expected: 既有 + 5 new tests passed, 0 TS errors.
 
-- [ ] **Step 6.5: Commit**（用户同意后）
+- [x] **Step 6.5: Commit**（用户同意后）
 
 ```bash
 git add client/src/stores/stage-store.ts client/src/stores/stage-store.test.ts
@@ -1351,7 +1364,7 @@ EOF
 - Create: `client/src/features/stage/adapters/WorkspaceAdapter.ts`
 - Create: `client/src/features/stage/adapters/__tests__/WorkspaceAdapter.test.ts`
 
-- [ ] **Step 7.1: 写测试**
+- [x] **Step 7.1: 写测试**
 
 Create `client/src/features/stage/adapters/__tests__/WorkspaceAdapter.test.ts`:
 
@@ -1403,7 +1416,7 @@ describe('WorkspaceAdapter', () => {
 })
 ```
 
-- [ ] **Step 7.2: 实现 Adapter**
+- [x] **Step 7.2: 实现 Adapter**
 
 Create `client/src/features/stage/adapters/WorkspaceAdapter.ts`:
 
@@ -1494,13 +1507,13 @@ export class WorkspaceAdapter implements UIObject {
 }
 ```
 
-- [ ] **Step 7.3: 测试通过 + type-check**
+- [x] **Step 7.3: 测试通过 + type-check**
 
 Run: `cd client && npx vitest run src/features/stage/adapters/__tests__/WorkspaceAdapter.test.ts && npx tsc --noEmit`
 
 Expected: 4 passed, 0 TS errors.
 
-- [ ] **Step 7.4: Commit**（用户同意后）
+- [x] **Step 7.4: Commit**（用户同意后）
 
 ```bash
 git add client/src/features/stage/adapters/WorkspaceAdapter.ts \
@@ -1518,7 +1531,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 - Create: `client/src/features/stage/adapters/BangQueryAdapter.ts`
 - Create: `client/src/features/stage/adapters/__tests__/BangQueryAdapter.test.ts`
 
-- [ ] **Step 8.1: 写测试**
+- [x] **Step 8.1: 写测试**
 
 Create `client/src/features/stage/adapters/__tests__/BangQueryAdapter.test.ts`:
 
@@ -1577,7 +1590,7 @@ describe('BangQueryAdapter', () => {
 })
 ```
 
-- [ ] **Step 8.2: 实现 Adapter**
+- [x] **Step 8.2: 实现 Adapter**
 
 Create `client/src/features/stage/adapters/BangQueryAdapter.ts`:
 
@@ -1689,13 +1702,13 @@ export class BangQueryAdapter implements UIObject {
 }
 ```
 
-- [ ] **Step 8.3: 测试通过 + type-check**
+- [x] **Step 8.3: 测试通过 + type-check**
 
 Run: `cd client && npx vitest run src/features/stage/adapters/__tests__/BangQueryAdapter.test.ts && npx tsc --noEmit`
 
 Expected: 4 passed, 0 TS errors.
 
-- [ ] **Step 8.4: Commit**（用户同意后）
+- [x] **Step 8.4: Commit**（用户同意后）
 
 ```bash
 git add client/src/features/stage/adapters/BangQueryAdapter.ts \
@@ -1714,7 +1727,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 - Create: `client/src/features/actions/__tests__/ui-handlers.test.ts`
 - Modify: `client/src/features/actions/client-handlers.ts`
 
-- [ ] **Step 9.1: 写测试**
+- [x] **Step 9.1: 写测试**
 
 Create `client/src/features/actions/__tests__/ui-handlers.test.ts`:
 
@@ -1764,7 +1777,7 @@ describe('ui-handlers', () => {
 })
 ```
 
-- [ ] **Step 9.2: 实现 ui-handlers.ts**
+- [x] **Step 9.2: 实现 ui-handlers.ts**
 
 Create `client/src/features/actions/ui-handlers.ts`:
 
@@ -1805,7 +1818,7 @@ registerClientHandler('datatalk.ui.list', async (input) => {
 })
 ```
 
-- [ ] **Step 9.3: 让应用启动时触发注册**
+- [x] **Step 9.3: 让应用启动时触发注册**
 
 Modify `client/src/features/actions/client-handlers.ts` —— 末尾追加一行：
 
@@ -1814,13 +1827,13 @@ Modify `client/src/features/actions/client-handlers.ts` —— 末尾追加一�
 import './ui-handlers'
 ```
 
-- [ ] **Step 9.4: 测试通过**
+- [x] **Step 9.4: 测试通过**
 
 Run: `cd client && npx vitest run src/features/actions/__tests__/ui-handlers.test.ts && npx tsc --noEmit`
 
 Expected: 4 passed, 0 TS errors.
 
-- [ ] **Step 9.5: Commit**（用户同意后）
+- [x] **Step 9.5: Commit**（用户同意后）
 
 ```bash
 git add client/src/features/actions/ui-handlers.ts \
@@ -1842,7 +1855,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 
 > **前置阅读**：当前 `stage-window.tsx` 的 children 是外面传入的（split-view 传了 ArtifactTimelineStrip + ArtifactCanvas）。改造策略：**保留现有 children 兼容**，但当 `workspaceTabs.length > 0` 或 active tab 非 artifact 时，用新 StageTabStrip + StageTabContent 替代；纯 artifact 场景沿用旧路径，减少回归面。
 
-- [ ] **Step 10.1: 先实现 StageTabStrip 组件**
+- [x] **Step 10.1: 先实现 StageTabStrip 组件**
 
 Create `client/src/features/stage/components/stage-tab-strip.tsx`:
 
@@ -1891,7 +1904,7 @@ export function StageTabStrip() {
 }
 ```
 
-- [ ] **Step 10.2: StageTabContent 分发**
+- [x] **Step 10.2: StageTabContent 分发**
 
 Create `client/src/features/stage/components/stage-tab-content.tsx`:
 
@@ -1921,7 +1934,7 @@ export function StageTabContent() {
 }
 ```
 
-- [ ] **Step 10.3: 集成到 split-view**
+- [x] **Step 10.3: 集成到 split-view**
 
 Modify `client/src/features/session/split-view.tsx` —— 原本 StageWindow 包裹 `<ArtifactTimelineStrip /><ArtifactCanvas />`。改为：
 
@@ -1960,13 +1973,13 @@ const hasTabs = useStageStore((s) => {
 
 用 `hasTabs` 替换 `useStageStore.getState().listTabs(...).length > 0`。
 
-- [ ] **Step 10.4: type-check + 既有测试回归**
+- [x] **Step 10.4: type-check + 既有测试回归**
 
 Run: `cd client && npx tsc --noEmit && npx vitest run`
 
 Expected: 0 TS errors, 既有测试全通过（split-view.test.tsx 等不应受影响）。
 
-- [ ] **Step 10.5: Commit**（用户同意后）
+- [x] **Step 10.5: Commit**（用户同意后）
 
 ```bash
 git add client/src/features/stage/components/stage-tab-strip.tsx \
@@ -1984,7 +1997,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 **Files:**
 - Create: `client/src/features/stage/components/bang-query-tab.tsx`
 
-- [ ] **Step 11.1: 实现组件**
+- [x] **Step 11.1: 实现组件**
 
 Create `client/src/features/stage/components/bang-query-tab.tsx`:
 
@@ -2062,7 +2075,7 @@ export function BangQueryTab({ tabId }: { tabId: string }) {
 }
 ```
 
-- [ ] **Step 11.2: 添加 i18n 键**
+- [x] **Step 11.2: 添加 i18n 键**
 
 Locate the i18n message files (likely `client/src/i18n/messages.*`)，然后对每种语言补齐：
 
@@ -2074,13 +2087,13 @@ Locate the i18n message files (likely `client/src/i18n/messages.*`)，然后对�
 
 （如果当前 i18n 体系还未有此 keys，找已有一处 key（如 `dataGrid.noData`）参考文件位置和格式添加。）
 
-- [ ] **Step 11.3: type-check + test**
+- [x] **Step 11.3: type-check + test**
 
 Run: `cd client && npx tsc --noEmit && npx vitest run`
 
 Expected: 0 TS errors, all tests pass.
 
-- [ ] **Step 11.4: Commit**（用户同意后）
+- [x] **Step 11.4: Commit**（用户同意后）
 
 ```bash
 git add client/src/features/stage/components/bang-query-tab.tsx \
@@ -2099,7 +2112,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 - Create: `client/src/features/stage/utils/__tests__/open-bang-query-tab.test.ts`
 - Modify: `client/src/features/session/prompt-composer.tsx`
 
-- [ ] **Step 12.1: 写 util 测试**
+- [x] **Step 12.1: 写 util 测试**
 
 Create `client/src/features/stage/utils/__tests__/open-bang-query-tab.test.ts`:
 
@@ -2134,7 +2147,7 @@ describe('openBangQueryTab', () => {
 })
 ```
 
-- [ ] **Step 12.2: 实现 util**
+- [x] **Step 12.2: 实现 util**
 
 Create `client/src/features/stage/utils/open-bang-query-tab.ts`:
 
@@ -2169,13 +2182,13 @@ export async function openBangQueryTab({ sessionId, connectionId, sql }: Args): 
 }
 ```
 
-- [ ] **Step 12.3: util 测试通过**
+- [x] **Step 12.3: util 测试通过**
 
 Run: `cd client && npx vitest run src/features/stage/utils/__tests__/open-bang-query-tab.test.ts`
 
 Expected: 2 passed.
 
-- [ ] **Step 12.4: Composer 拦截**
+- [x] **Step 12.4: Composer 拦截**
 
 Modify `client/src/features/session/prompt-composer.tsx` —— 在 `submitText` 函数顶部（`if (!t || isStreaming) return` 之后）加入 `!` 分支：
 
@@ -2218,108 +2231,89 @@ if (t.startsWith('!')) {
 
 > **Why 这条前缀门槛**：`!sql` 直查要求前缀必须是 SELECT/WITH；否则交给 AI 处理（兼容用户用 `!` 作为自然语言强调）。后端 `SqlStatementGuard` 做最终兜底。
 
-- [ ] **Step 12.5: type-check + 手动联调**
+- [x] **Step 12.5: type-check + 手动联调**
 
 Run: `cd client && npx tsc --noEmit`
 
 Expected: 0 errors.
 
-**手动联调脚本**（需要后端运行 + 一个可连接的数据源）：
+2026-04-23 记录：
+- 手动联调已按当前真实行为确认通过
+- `cd client && npx tsc --noEmit` 已通过
+
+**手动联调脚本**（需要后端运行 + 一个可连接的数据源；以下预期已在 2026-04-23 人工确认通过）：
 
 1. `cd server && mvn spring-boot:run -pl data-talk-adapter`
 2. `cd client && npm run dev`
 3. 浏览器打开前端，选择 / 创建一个测试数据源，进入某会话
 4. 在 Composer 输入 `!select 1 as hello`，回车
 5. 断言：
+   - 若当前无活动数据源，先弹 chooser；选中后继续执行
+   - 当前会话被打开或创建
    - Stage 右栏自动弹开
-   - 新 Tab 标题 `select 1 as hello`
-   - 表格显示 `hello = 1`、耗时、1 row
-   - 打开后端日志：无 `execute_sql` action 调用，只有 `POST /api/query`
-   - 在聊天区无新 user / assistant 消息（验证不走 AI）
-6. 输入 `!drop table users`，应收到错误 toast：`SELECT / WITH allowed, got: DROP`
-7. 输入 `！你好`（全角感叹号）或 `!你好`：正则未匹配 select/with，走 AI 聊天（旧行为）
-8. 点 Tab 关闭 X，Tab 消失；多次 `!select 1` 创建多个 Tab，切换焦点表现正常
+   - 打开的不是早期设计里的 `bang_query`，而是 `query_editor`
+   - SQL 编辑器正文预填 `select 1 as hello`
+   - 若 `autoRun` 生效，结果区能看到 `hello = 1` 的 1 行结果
+   - 后端链路走 direct query，不产生 assistant 回复
+   - 聊天区会写入一条 synthetic user message，而不是“完全无消息”
+6. 输入 `!drop table users`：当前实现应回落到 AI 路径，而不是 direct SQL guard toast
+7. 输入 `！你好`（全角感叹号）或 `!你好`：正则未匹配 select/with，走 AI 聊天（兼容旧行为）
+8. 点 Tab 关闭 X，Tab 消失；多次 `!select 1` 可重复创建 direct SQL `query_editor` tab，切换焦点表现正常
 
-- [ ] **Step 12.6: Commit**（用户同意后）
+- [x] **Step 12.6: Commit**（用户同意后）
 
-```bash
-git add client/src/features/stage/utils/open-bang-query-tab.ts \
-        client/src/features/stage/utils/__tests__/open-bang-query-tab.test.ts \
-        client/src/features/session/prompt-composer.tsx
-git commit -m "$(cat <<'EOF'
-feat(client): ! direct-query intercept in Composer
-
-Typing '!select ...' bypasses AI entirely: POST /api/query directly,
-result rendered in a new bang_query Tab in StageWindow. Guards:
-SELECT/WITH prefix + server-side SqlStatementGuard. ! prefix without
-SELECT/WITH still routes to AI (compat with natural language use).
-
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
-EOF
-)"
-```
+2026-04-23 注记：
+- 历史中的功能实现提交不再重演。
+- 本步按“实现里程碑已落地，统一由本次收口 commit 落盘”回填为完成。
 
 ---
 
 ## Task 13: 验收 + 索引 housekeeping
 
-- [ ] **Step 13.1: 全量测试闸门**
+- [x] **Step 13.1: 全量测试闸门**
 
-Run 并全部通过：
-
-```bash
-cd server && mvn clean verify
-cd client && npx tsc --noEmit && npx vitest run
-```
-
-Expected: BUILD SUCCESS + 所有前端测试 pass + 0 TS errors。
-
-- [ ] **Step 13.2: 登记到 exec-plans 活跃表**
-
-Modify `docs/exec-plans/index.md` —— 在「活跃计划」表内追加一行：
-
-```markdown
-| [Stage UI Object Protocol Phase 1](./2026-04-20-stage-ui-object-protocol-plan.md) | in_progress | 前端移植 UIRouter + 4 个 CLIENT Action 桥接；StageStore 多 Tab 模型；用户 `!sql` 直查通道落地（bang_query Tab，不走 AI）；后端 `/api/query` 补 SqlStatementGuard |
-```
-
-执行完成后移入「已完成计划」表，更新时间为 `YYYY-MM-DD`。
-
-- [ ] **Step 13.3: 更新设计 spec 索引状态**
-
-完工时无需改动（spec 无 in_progress/completed 列），只在 plan 侧维护状态即可。
-
-- [ ] **Step 13.4: 同步更新 ARCHITECTURE.md**
-
-Modify `ARCHITECTURE.md` —— 在"Frontend Architecture"或"Core Domain Concepts"节下增补一段：
-
-```markdown
-### UI Object Protocol (Phase 1)
-
-StageWindow now renders a multi-tab workspace backed by `UIRouter`
-(client/src/services/ui-router/). Tabs are either session-scoped
-(artifact) or workspace-scoped (bang_query, future query_editor / …).
-AI agents can discover and operate tabs via 4 CLIENT-executor actions:
-`datatalk.ui.{read, patch, exec, list}`. Users can bypass AI entirely
-by typing `!<select-sql>` in Composer — the query hits `/api/query`
-directly and populates a bang_query tab; results never feed back into
-the AI conversation context. See docs/product-specs/2026-04-20-stage-ui-object-protocol-design.md.
-```
-
-- [ ] **Step 13.5: 完工 Commit**（用户同意后）
+2026-04-23 实际执行并通过：
 
 ```bash
-git add docs/exec-plans/index.md ARCHITECTURE.md
-git commit -m "$(cat <<'EOF'
-docs: register Stage UI Object Protocol Phase 1 plan + ARCHITECTURE note
-
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
-EOF
-)"
+cd client && npx tsc --noEmit
+cd client && npx vitest run
+cd server && JAVA_HOME=/home/wushengzhou/.local/opt/java21 PATH=/home/wushengzhou/.local/opt/java21/bin:$PATH mvn clean verify
 ```
 
-- [ ] **Step 13.6: Phase 1 完工切换状态**
+结果：
+- `cd client && npx tsc --noEmit`：通过
+- `cd client && npx vitest run`：`90` 个测试文件、`476` 个测试全部通过
+- `cd server && ... mvn clean verify`：`BUILD SUCCESS`
+- failsafe 汇总：`97` 个测试通过，`1` 个 skip（`SqlExecuteControllerIT` 的 Docker/Testcontainers 场景在当前环境不可用，属预期跳过，不是失败）
 
-手动验收完成后，编辑 `docs/exec-plans/index.md` —— 把 Stage UI Object Protocol Phase 1 条目从「活跃计划」移到「已完成计划」，`in_progress` 改为完工日期。
+- [x] **Step 13.2: 登记到 exec-plans 活跃表**
+
+2026-04-23 已完成同步：
+- `docs/exec-plans/index.md` 的活跃表条目已按当前实现改写为 `query_editor` / direct SQL / `SqlStatementGuard` 语义，并补记最新验证结果。
+- 本次收口 commit 之后，同步从「活跃计划」移入「已完成计划」。
+
+- [x] **Step 13.3: 更新设计 spec 索引状态**
+
+2026-04-23 记录：
+- 本步仍为 no-op：spec 索引没有 `in_progress / completed` 列。
+- 相关 design doc 索引已在前一轮文档治理批次完成同步，本次无需额外修改。
+
+- [x] **Step 13.4: 同步更新 ARCHITECTURE.md**
+
+2026-04-23 已完成：
+- `ARCHITECTURE.md` 已改成当前真实实现：registry 注册 `workspace` + `query_editor`，用户 `!select` / `!with` 会直达 `/api/query` 并打开 `query_editor`，同时写入 synthetic user message；非 `!select` / `!with` 的 `!xxx` 则回落到 AI。
+
+- [x] **Step 13.5: 完工 Commit**（用户同意后）
+
+2026-04-23 注记：
+- 本步由用户明确批准后执行。
+- 本次收口 commit 仅覆盖 plan/index/`ARCHITECTURE.md` 与同批治理文档；`client/src/features/stage/adapters/__tests__/QueryEditorAdapter.test.ts` 已卷入并发中的 `query_editor` 主线改造，避免在此提交中捎带用户的其他进行中改动。
+
+- [x] **Step 13.6: Phase 1 完工切换状态**
+
+2026-04-23 注记：
+- Phase 1 的实现、手动联调、全量 gate 与文档同步均已完成。
+- 伴随本次收口 commit，`docs/exec-plans/index.md` 已同步切换到 Completed。
 
 ---
 
@@ -2327,7 +2321,7 @@ EOF
 
 **Spec 覆盖**：
 - ✅ §3（协议移植）→ Task 3-5 + Task 9
-- ✅ §4.1 WorkspaceAdapter → Task 7；BangQueryAdapter → Task 8；ArtifactTabAdapter / QueryEditorAdapter → P2（本 plan 不含）
+- ✅ §4.1 WorkspaceAdapter → Task 7；当前实际对象面以 `QueryEditorAdapter` 为主（早期 `BangQueryAdapter` 方案已被后续实现演进替换）
 - ✅ §5（后端桥接）→ Task 2
 - ✅ §6（`!` 流程）→ Task 1（安全闸）+ Task 12（拦截）
 - ✅ §7（Prompt 改造）→ **P2，本 plan 明确不涉及**
