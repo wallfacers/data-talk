@@ -7,6 +7,7 @@ import { AssistantStream } from './assistant-stream'
 import { ErrorCard } from './error-card'
 import { TextShimmer } from '../effects/text-shimmer'
 import { useI18n } from '@/i18n/use-i18n'
+import { useUISettingsStore } from '@/stores/ui-settings-store'
 
 export function SessionTurn(props: {
   sessionId: string
@@ -16,6 +17,7 @@ export function SessionTurn(props: {
   isLastTurn: boolean
 }) {
   const { t } = useI18n()
+  const autoExpandReasoning = useUISettingsStore((s) => s.autoExpandReasoning)
   const partsMap = useChatPartsStore((s) => s.partsBySession.get(props.sessionId))
   const infoMap = useChatPartsStore((s) => s.infoBySession.get(props.sessionId))
 
@@ -98,7 +100,7 @@ export function SessionTurn(props: {
         {showThinking && (
           <div className="my-2 flex flex-col">
             <div className="flex w-fit items-center gap-1.5 text-sm font-medium text-muted-foreground">
-              <ChevronRightIcon size={16} className="rotate-90" />
+              <ChevronRightIcon size={16} className={autoExpandReasoning ? 'rotate-90' : undefined} />
               <TextShimmer text={t('chat.thinking')} active />
             </div>
           </div>

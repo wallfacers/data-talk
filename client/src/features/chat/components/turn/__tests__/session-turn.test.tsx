@@ -5,6 +5,7 @@ import { SessionTurn } from '../session-turn'
 import { useChatPartsStore } from '@/stores/chat-parts-store'
 import { useConnectionStore } from '@/features/connection/store'
 import { useSessionStore } from '@/stores/session-store'
+import { useUISettingsStore } from '@/stores/ui-settings-store'
 import * as openDirectSqlQueryEditorTabApi from '@/features/stage/utils/open-direct-sql-query-editor-tab'
 
 vi.mock('@/features/stage/utils/open-direct-sql-query-editor-tab', () => ({
@@ -29,6 +30,11 @@ describe('SessionTurn · showThinking', () => {
       activeSessionId: 's1',
       dataContextBySession: new Map(),
     } as any)
+    useUISettingsStore.setState({
+      splitResizable: false,
+      language: 'zh-CN',
+      autoExpandReasoning: false,
+    } as any)
     ;(openDirectSqlQueryEditorTabApi.openDirectSqlQueryEditorTab as unknown as Mock).mockReset()
   })
 
@@ -44,6 +50,43 @@ describe('SessionTurn · showThinking', () => {
       />,
     )
     expect(screen.getByLabelText('思考中…')).toBeInTheDocument()
+  })
+
+  it('keeps the placeholder chevron collapsed when auto expand reasoning is disabled', () => {
+    useChatPartsStore.getState().setStreaming('s1', true)
+
+    renderTurn(
+      <SessionTurn
+        sessionId="s1"
+        userMessageId="u1"
+        assistantMessageIds={[]}
+        userInfo={{ id: 'u1', role: 'user', sessionID: 's1', time: { created: 1 } }}
+        isLastTurn
+      />,
+    )
+
+    const chevron = screen.getByLabelText('思考中…').previousElementSibling
+    expect(chevron).not.toBeNull()
+    expect(chevron?.classList.contains('rotate-90')).toBe(false)
+  })
+
+  it('rotates the placeholder chevron when auto expand reasoning is enabled', () => {
+    useUISettingsStore.setState({ autoExpandReasoning: true } as any)
+    useChatPartsStore.getState().setStreaming('s1', true)
+
+    renderTurn(
+      <SessionTurn
+        sessionId="s1"
+        userMessageId="u1"
+        assistantMessageIds={[]}
+        userInfo={{ id: 'u1', role: 'user', sessionID: 's1', time: { created: 1 } }}
+        isLastTurn
+      />,
+    )
+
+    const chevron = screen.getByLabelText('思考中…').previousElementSibling
+    expect(chevron).not.toBeNull()
+    expect(chevron?.classList.contains('rotate-90')).toBe(true)
   })
 
   it('does not show "思考中…" when not streaming and no assistant message', () => {
