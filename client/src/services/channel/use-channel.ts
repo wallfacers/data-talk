@@ -18,6 +18,13 @@ import {
   patchCachedSessionLists,
 } from '@/features/session/hooks/use-sessions'
 
+type ActionResultErrorInfo = {
+  code: string
+  message: string
+  retriable?: boolean
+  details?: unknown
+}
+
 function getApiBaseUrl(): string {
   const env = (import.meta as any).env?.VITE_API_BASE_URL
   if (typeof env === 'string' && env.length > 0) return env.replace(/\/$/, '')
@@ -43,6 +50,30 @@ function shouldPromotePendingUserFromPart(
   const pendingText = getPendingUserText(sessionId, pendingUserId)
   if (pendingText === null) return false
   return part.text === pendingText
+}
+
+function normalizeActionInvokeError(err: unknown): ActionResultErrorInfo {
+  if (typeof err === 'object' && err !== null) {
+    const candidate = err as {
+      code?: unknown
+      message?: unknown
+      retriable?: unknown
+      details?: unknown
+    }
+    if (typeof candidate.code === 'string' && typeof candidate.message === 'string') {
+      return {
+        code: candidate.code,
+        message: candidate.message,
+        retriable: typeof candidate.retriable === 'boolean' ? candidate.retriable : undefined,
+        details: candidate.details,
+      }
+    }
+  }
+
+  return {
+    code: 'client_action_error',
+    message: err instanceof Error ? err.message : String(err),
+  }
 }
 
 export function buildEventSink(
@@ -158,8 +189,7 @@ export function buildEventSink(
       if (handler) {
         handler(input, { sessionId })
           .then((output) => client.actionResult(callId, true, output))
-          .catch((err) => client.actionResult(callId, false, undefined,
-            { code: 'client_action_error', message: String(err) }))
+          .catch((err) => client.actionResult(callId, false, undefined, normalizeActionInvokeError(err)))
       }
     }
   }

@@ -1,5 +1,5 @@
 import type { UIObject, UIRequest, UIResponse, UIObjectInfo, ActionDef, PatchResult } from './types'
-import { patchError, execError } from './errors'
+import { patchError, execError, extractUIErrorDetail, type UIErrorDetail } from './errors'
 import { matchPathPattern } from './pathResolver'
 
 export class UIRouter {
@@ -36,11 +36,12 @@ export class UIRouter {
   }
 
   private patchResponse(result: PatchResult): UIResponse {
+    const detail = extractUIErrorDetail(result)
     return {
-      data: result,
+      data: result.status === 'error' ? detail ?? result : result,
       status: result.status === 'error' ? undefined : result.status,
       confirm_id: result.confirm_id,
-      error: result.status === 'error' ? result.message : undefined,
+      error: result.status === 'error' ? detail?.message ?? result.message : undefined,
     }
   }
 
@@ -55,9 +56,13 @@ export class UIRouter {
     for (const op of ops) {
       const match = caps.find((cap) => cap.ops.includes(op.op) && matchPathPattern(op.path, cap.pathPattern))
       if (!match) {
-        const supported = caps.map((c) => `${c.ops.join('/')} ${c.pathPattern}`).join(', ')
-        const err = patchError(`Unsupported: ${op.op} ${op.path}`, `Supported paths: [${supported}]`)
-        return { error: err.message }
+        const supportedPaths = caps
+          .filter((cap) => cap.ops.includes(op.op))
+          .map((cap) => cap.pathPattern)
+        const availableActions = this.getAvailableActionNames(instance)
+        const detail = this.buildPatchCapabilityError(op.op, op.path, supportedPaths, availableActions)
+        const err = patchError(detail)
+        return { data: err.detail, error: err.message }
       }
     }
     const result = await instance.patch(ops, p.reason)
@@ -74,20 +79,39 @@ export class UIRouter {
       const actions = rawActions as ActionDef[]
       const def = actions.find((a) => a.name === action)
       if (!def) {
-        const available = actions.map((a) => a.name).join(', ')
-        const err = execError(`Unknown action '${action}'`, `Available: [${available}]`)
-        return { data: err, error: err.error }
+        const detail: UIErrorDetail = {
+          code: 'unknown_action',
+          message: `Unknown action '${action}'`,
+          hint: "Use `ui_read(mode='actions')` to inspect supported actions, or switch to `ui_patch('/content', 'replace')` for a full SQL rewrite.",
+          availableActions: actions.map((item) => item.name),
+        }
+        const err = execError(detail)
+        return { data: err.data, error: err.error }
       }
       const required = def.paramsSchema?.required ?? []
       const missing = required.filter((k) => (params as Record<string, unknown> | undefined)?.[k] === undefined)
       if (missing.length) {
-        const err = execError(`Missing required params: ${missing.join(', ')}`, `Schema: ${JSON.stringify(def.paramsSchema)}`)
-        return { data: err, error: err.error }
+        const detail: UIErrorDetail = {
+          code: 'invalid_params',
+          message: `Missing required params for action '${action}': ${missing.join(', ')}`,
+          hint: `Provide the required fields and match the action schema for '${action}'.`,
+          expectedSchema: def.paramsSchema,
+        }
+        const err = execError(detail)
+        return { data: err.data, error: err.error }
       }
     }
 
     const result = await instance.exec(action, params)
-    return { data: result, error: result.success ? undefined : result.error }
+    if (result.success) {
+      return { data: result, error: undefined }
+    }
+
+    const detail = extractUIErrorDetail(result)
+    return {
+      data: detail ?? result,
+      error: detail?.message ?? result.error,
+    }
   }
 
   private resolveTarget(objectType: string, target: string): UIObject | null {
@@ -123,6 +147,29 @@ export class UIRouter {
       results.push({ objectId: obj.objectId, type: obj.type, title: obj.title, connectionId: obj.connectionId, database: obj.database })
     }
     return { data: results }
+  }
+
+  private getAvailableActionNames(instance: UIObject): string[] | undefined {
+    const rawActions = instance.read('actions')
+    if (!Array.isArray(rawActions) || rawActions.length === 0) {
+      return undefined
+    }
+    return (rawActions as ActionDef[]).map((action) => action.name)
+  }
+
+  private buildPatchCapabilityError(
+    op: 'add' | 'remove' | 'replace',
+    path: string,
+    supportedPaths: string[],
+    availableActions?: string[],
+  ): UIErrorDetail {
+    const supportedPathsText = supportedPaths.length > 0 ? supportedPaths.join(', ') : 'none'
+    return {
+      code: 'unsupported_patch',
+      message: `Unsupported patch: ${op} ${path}`,
+      hint: `Use replace only on supported paths: ${supportedPathsText}. Re-read patch capabilities if you need to confirm the allowed paths.`,
+      availableActions,
+    }
   }
 }
 

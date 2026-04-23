@@ -45,6 +45,124 @@ describe('useSqlWorkbenchStore', () => {
     expect(state.tabsById['tab-b']?.sqlText).toBe('select 2')
   })
 
+  it('replaces full content and increments version', () => {
+    const store = useSqlWorkbenchStore.getState()
+    store.ensureTab('tab-1', { sqlText: 'select 1' })
+
+    store.replaceSqlText('tab-1', 'select 2')
+
+    expect(useSqlWorkbenchStore.getState().tabsById['tab-1']).toMatchObject({
+      sqlText: 'select 2',
+      version: 2,
+    })
+  })
+
+  it('rejects stale baseVersion when applying text edits', () => {
+    const store = useSqlWorkbenchStore.getState()
+    store.ensureTab('tab-1', { sqlText: 'select 1' })
+    store.replaceSqlText('tab-1', 'select 11')
+
+    const result = store.applyTextEdits('tab-1', {
+      baseVersion: 1,
+      edits: [
+        {
+          range: {
+            startLine: 1,
+            startColumn: 8,
+            endLine: 1,
+            endColumn: 9,
+          },
+          text: '2',
+        },
+      ],
+    })
+
+    expect(result.ok).toBe(false)
+    if (result.ok) {
+      throw new Error('expected version_conflict')
+    }
+    expect(result.code).toBe('version_conflict')
+    expect(result.currentState.version).toBe(2)
+  })
+
+  it('applies text edits to the requested range and increments version', () => {
+    const store = useSqlWorkbenchStore.getState()
+    store.ensureTab('tab-1', { sqlText: 'select 1\r\nfrom dual' })
+
+    const result = store.applyTextEdits('tab-1', {
+      baseVersion: 1,
+      edits: [
+        {
+          range: {
+            startLine: 2,
+            startColumn: 6,
+            endLine: 2,
+            endColumn: 10,
+          },
+          text: 'table',
+        },
+      ],
+    })
+
+    expect(result).toEqual({
+      ok: true,
+      version: 2,
+      content: 'select 1\r\nfrom table',
+    })
+    expect(useSqlWorkbenchStore.getState().tabsById['tab-1']).toMatchObject({
+      sqlText: 'select 1\r\nfrom table',
+      version: 2,
+    })
+  })
+
+  it('preserves line endings and version when applyTextEdits is a no-op', () => {
+    const store = useSqlWorkbenchStore.getState()
+    store.ensureTab('tab-1', { sqlText: 'select 1\r\nfrom dual' })
+
+    const result = store.applyTextEdits('tab-1', {
+      baseVersion: 1,
+      edits: [],
+    })
+
+    expect(result).toEqual({
+      ok: true,
+      version: 1,
+      content: 'select 1\r\nfrom dual',
+    })
+    expect(useSqlWorkbenchStore.getState().tabsById['tab-1']).toMatchObject({
+      sqlText: 'select 1\r\nfrom dual',
+      version: 1,
+    })
+  })
+
+  it('rejects replaceSqlText for unknown tab ids', () => {
+    expect(() => useSqlWorkbenchStore.getState().replaceSqlText('missing', 'select 1')).toThrow(
+      'Unknown sql workbench tab: missing',
+    )
+  })
+
+  it('rejects applyTextEdits for unknown tab ids', () => {
+    expect(() => useSqlWorkbenchStore.getState().applyTextEdits('missing', {
+      baseVersion: 1,
+      edits: [],
+    })).toThrow('Unknown sql workbench tab: missing')
+  })
+
+  it('rejects setCursor for unknown tab ids', () => {
+    expect(() => useSqlWorkbenchStore.getState().setCursor('missing', 3, 4)).toThrow(
+      'Unknown sql workbench tab: missing',
+    )
+  })
+
+  it('rejects setSelection for unknown tab ids', () => {
+    expect(() => useSqlWorkbenchStore.getState().setSelection('missing', {
+      startLine: 1,
+      startColumn: 1,
+      endLine: 1,
+      endColumn: 3,
+    })).toThrow('Unknown sql workbench tab: missing')
+  })
+
   it('initializes savedSqlText from the initial SQL text', () => {
     const store = useSqlWorkbenchStore.getState()
     store.ensureTab('tab-a', { sqlText: 'select 1' })

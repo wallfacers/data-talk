@@ -3,15 +3,16 @@ import { useShallow } from 'zustand/react/shallow'
 import type { StageTab } from '@/stores/stage-store'
 import { useConnectionStore } from '@/features/connection/store'
 import { useSessionDataContext } from '@/features/session/hooks/use-session-data-context'
-import { useI18n } from '@/i18n/use-i18n'
 import { cn } from '@/lib/utils'
-import { SqlRiskError } from '@/services/api/sql'
 import { listConnections } from '@/services/api/connection'
 import { resolveTabDataContext } from '@/features/stage/utils/resolve-tab-data-context'
-import { formatSql } from '../utils/format-sql'
 import { parseSqlOutline, resolveCurrentSqlOutlineStatement } from '../utils/parse-sql-outline'
 import { normalizeQueryEditorPayload } from '../utils/normalize-query-editor-payload'
-import { useSqlExecute } from '../hooks/use-sql-execute'
+import {
+  formatQueryEditorSql,
+  runQueryEditorSql,
+  setQueryEditorContext,
+} from '../utils/query-editor-actions'
 import { useSqlWorkbenchStore } from '../stores/sql-workbench-store'
 import type { SqlMonacoEditorHandle } from './sql-monaco-editor'
 import { SqlContextChip } from './sql-context-chip'
@@ -21,7 +22,6 @@ import { SqlMonacoEditor } from './sql-monaco-editor'
 import { SqlResultTabs } from './sql-result-tabs'
 import { SqlResultPanel } from './sql-result-panel'
 import { StageActivityRail } from './activity-rail/stage-activity-rail'
-import type { SqlLimitValue } from './sql-limit-select'
 
 type TabExecutionContext = {
   sessionId: string | null
@@ -58,6 +58,7 @@ const DRAFT_STORAGE_PREFIX = 'data-talk:sql-workbench:draft:'
 const RESULT_PANE_MIN_PERCENT = 22
 const RESULT_PANE_MAX_PERCENT = 64
 const RESULT_PANE_DEFAULT_PERCENT = 38
+const QUERY_EDITOR_RUN_CONTROLLERS_KEY = '__data_talk_query_editor_run_controllers__'
 
 export function getSqlWorkbenchTabActions(tabId: string) {
   return tabActionsById.get(tabId) ?? null
@@ -75,16 +76,18 @@ function isAbortError(error: unknown) {
   return (error instanceof DOMException && error.name === 'AbortError') || (error instanceof Error && error.name === 'AbortError')
 }
 
-function injectLimit(sql: string, limit: SqlLimitValue) {
-  if (limit == null) return sql
-  const trimmed = sql.trim()
-  if (!trimmed) return sql
-  if (!/^\s*(with\b|select\b)/i.test(trimmed)) return sql
-  if (/\blimit\b/i.test(trimmed)) return sql
+function getQueryEditorRunControllers() {
+  const globalState = globalThis as typeof globalThis & {
+    [QUERY_EDITOR_RUN_CONTROLLERS_KEY]?: Map<string, AbortController>
+  }
+  if (!globalState[QUERY_EDITOR_RUN_CONTROLLERS_KEY]) {
+    globalState[QUERY_EDITOR_RUN_CONTROLLERS_KEY] = new Map<string, AbortController>()
+  }
+  return globalState[QUERY_EDITOR_RUN_CONTROLLERS_KEY]
+}
 
-  const hasTrailingSemicolon = trimmed.endsWith(';')
-  const body = hasTrailingSemicolon ? trimmed.slice(0, -1).trimEnd() : trimmed
-  return `${body} LIMIT ${limit}${hasTrailingSemicolon ? ';' : ''}`
+function abortQueryEditorRun(tabId: string) {
+  getQueryEditorRunControllers().get(tabId)?.abort()
 }
 
 function insertTextAtPosition(value: string, insertedText: string, lineNumber: number, column: number) {
@@ -149,35 +152,14 @@ function collectContextOptionValues(values: Array<string | null | undefined>) {
   return Array.from(set)
 }
 
-function resetTabExecutionState(tabId: string) {
-  useSqlWorkbenchStore.setState((state) => {
-    const current = state.tabsById[tabId]
-    if (!current) return state
-    return {
-      tabsById: {
-        ...state.tabsById,
-        [tabId]: {
-          ...current,
-          executeStatus: 'idle',
-          risk: null,
-          errorMessage: null,
-        },
-      },
-    }
-  })
-}
-
 export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
-  const { t } = useI18n()
   const payload = normalizeQueryEditorPayload(tab.payload)
   const autoRunRef = useRef(false)
-  const activeControllerRef = useRef<AbortController | null>(null)
   const monacoRef = useRef<SqlMonacoEditorHandle | null>(null)
   const splitLayoutRef = useRef<HTMLDivElement | null>(null)
   const resizeCleanupRef = useRef<(() => void) | null>(null)
-  const [draftReady, setDraftReady] = useState(false)
+  const [draftLoadedTabId, setDraftLoadedTabId] = useState<string | null>(null)
   const [resultPanePercent, setResultPanePercent] = useState(RESULT_PANE_DEFAULT_PERCENT)
-  const { execute } = useSqlExecute()
   const { activeConnectionId, connections, setConnections } = useConnectionStore(
     useShallow((state) => ({
       activeConnectionId: state.activeConnectionId,
@@ -208,13 +190,6 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     ensureTab,
     setSqlText,
     setActiveResult,
-    setRunning,
-    applyExecuteSuccess,
-    setRiskBlocked,
-    setError,
-    setTabContext,
-    resetTabContext,
-    appendHistoryEntry,
     setLimit,
     setCursor,
     closeResult,
@@ -225,13 +200,6 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
       ensureTab: state.ensureTab,
       setSqlText: state.setSqlText,
       setActiveResult: state.setActiveResult,
-      setRunning: state.setRunning,
-      applyExecuteSuccess: state.applyExecuteSuccess,
-      setRiskBlocked: state.setRiskBlocked,
-      setError: state.setError,
-      setTabContext: state.setTabContext,
-      resetTabContext: state.resetTabContext,
-      appendHistoryEntry: state.appendHistoryEntry,
       setLimit: state.setLimit,
       setCursor: state.setCursor,
       closeResult: state.closeResult,
@@ -272,27 +240,27 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     if (draftSql != null) {
       setSqlText(tab.tabId, draftSql)
     }
-    setDraftReady(true)
+    setDraftLoadedTabId(tab.tabId)
   }, [draftStorageKey, setSqlText, tab.tabId])
 
   useEffect(() => {
-    if (!draftReady || typeof window === 'undefined') return
+    if (draftLoadedTabId !== tab.tabId || typeof window === 'undefined') return
     try {
       window.localStorage.setItem(draftStorageKey, tabState.sqlText)
     } catch {
       // ignore storage failures
     }
-  }, [draftReady, draftStorageKey, tabState.sqlText])
+  }, [draftLoadedTabId, draftStorageKey, tab.tabId, tabState.sqlText])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && tabState.executeStatus === 'running') {
-        activeControllerRef.current?.abort()
+        abortQueryEditorRun(tab.tabId)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [tabState.executeStatus])
+  }, [tab.tabId, tabState.executeStatus])
 
   const resolvedExecutionContext: TabExecutionContext = tabState.resolvedContext
     ? {
@@ -309,13 +277,24 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
         database: resolvedContext.database,
         schema: resolvedContext.schema,
       }
-  const effectiveContext = tabState.override
+  const hydratedOverride = tabState.override ?? (payload.contextOverride
+    ? {
+        connectionId: payload.contextOverride.connectionId,
+        connectionName: connections.find((connection) => connection.id === payload.contextOverride?.connectionId)?.name
+          ?? payload.connectionName
+          ?? tab.connectionName
+          ?? null,
+        database: payload.contextOverride.database,
+        schema: payload.contextOverride.schema,
+      }
+    : null)
+  const effectiveContext = hydratedOverride
     ? {
         sessionId: resolvedExecutionContext.sessionId ?? tab.originSessionId ?? null,
-        connectionId: tabState.override.connectionId,
-        connectionName: tabState.override.connectionName ?? resolvedExecutionContext.connectionName,
-        database: tabState.override.database ?? resolvedExecutionContext.database,
-        schema: tabState.override.schema ?? resolvedExecutionContext.schema,
+        connectionId: hydratedOverride.connectionId,
+        connectionName: hydratedOverride.connectionName ?? resolvedExecutionContext.connectionName,
+        database: hydratedOverride.database ?? resolvedExecutionContext.database,
+        schema: hydratedOverride.schema ?? resolvedExecutionContext.schema,
       }
     : {
         sessionId: resolvedExecutionContext.sessionId ?? tab.originSessionId ?? null,
@@ -324,7 +303,7 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
         database: resolvedExecutionContext.database,
         schema: resolvedExecutionContext.schema,
       }
-  const contextMode = tabState.override ? 'override' : 'session'
+  const contextMode = hydratedOverride ? 'override' : 'session'
 
   useEffect(() => {
     const connectionId = effectiveContext.connectionId
@@ -362,6 +341,7 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     () => connections.map((connection) => ({
       id: connection.id,
       name: connection.name,
+      kind: connection.kind ?? null,
       databaseName: connection.databaseName ?? null,
     })),
     [connections],
@@ -402,12 +382,6 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     tab.schema,
     tabState.override?.schema,
   ])
-  const effectiveConnectionKind = useMemo(
-    () => connections.find((connection) => connection.id === effectiveContext.connectionId)?.kind ?? null,
-    [connections, effectiveContext.connectionId],
-  )
-
-  const applyIdleState = useCallback(() => resetTabExecutionState(tab.tabId), [tab.tabId])
 
   const stopResize = useCallback(() => {
     resizeCleanupRef.current?.()
@@ -452,98 +426,18 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
   useEffect(() => stopResize, [stopResize])
 
   const handleRun = useCallback(async () => {
-    if (!effectiveContext.connectionId || !tabState.sqlText.trim()) return
-
-    const controller = new AbortController()
-    activeControllerRef.current = controller
-    setRunning(tab.tabId)
-    const startedAt = Date.now()
-    const executableSql = injectLimit(tabState.sqlText, tabState.limit)
-
     try {
-      const response = await execute(
-        executableSql,
-        effectiveContext.connectionId,
-        tabState.source,
-        {
-          sessionId: effectiveContext.sessionId ?? undefined,
-          database: effectiveContext.database,
-          schema: effectiveContext.schema,
-        },
-        controller.signal,
-      )
-      applyExecuteSuccess(tab.tabId, response)
-      appendHistoryEntry(tab.tabId, {
-        id: `history-${startedAt}-${Math.random().toString(36).slice(2, 8)}`,
-        at: Date.now(),
-        sql: executableSql,
-        status: 'ok',
-        resultCount: response.results.length,
-        elapsedMs: Date.now() - startedAt,
-        resultKinds: response.results.map((item) => item.kind),
+      await runQueryEditorSql({
+        tabId: tab.tabId,
+        sessionId: tab.originSessionId ?? null,
       })
     } catch (error) {
       if (isAbortError(error)) {
-        applyIdleState()
         return
       }
-      if (error instanceof SqlRiskError) {
-        setRiskBlocked(tab.tabId, error.risk)
-        appendHistoryEntry(tab.tabId, {
-          id: `history-${startedAt}-${Math.random().toString(36).slice(2, 8)}`,
-          at: Date.now(),
-          sql: executableSql,
-          status: 'risk_blocked',
-          elapsedMs: Date.now() - startedAt,
-          errorSummary: error.risk.riskReason,
-        })
-        return
-      }
-      const errorMessage = error instanceof Error ? error.message : t('stage.queryEditor.runFailed')
-      setError(tab.tabId, errorMessage, {
-        resultId: `error-${startedAt}-${Math.random().toString(36).slice(2, 8)}`,
-        kind: 'error',
-        title: t('stage.status.error'),
-        statementIndex: 0,
-        statementText: executableSql,
-        columns: [],
-        rows: [],
-        rowCount: 0,
-        executionMs: Date.now() - startedAt,
-        truncated: false,
-        errorMessage,
-      })
-      appendHistoryEntry(tab.tabId, {
-        id: `history-${startedAt}-${Math.random().toString(36).slice(2, 8)}`,
-        at: Date.now(),
-        sql: executableSql,
-        status: 'error',
-        elapsedMs: Date.now() - startedAt,
-        errorSummary: errorMessage,
-      })
-    } finally {
-      if (activeControllerRef.current === controller) {
-        activeControllerRef.current = null
-      }
+      throw error
     }
-  }, [
-    applyExecuteSuccess,
-    applyIdleState,
-    appendHistoryEntry,
-    effectiveContext.connectionId,
-    effectiveContext.database,
-    effectiveContext.schema,
-    effectiveContext.sessionId,
-    execute,
-    setError,
-    setRiskBlocked,
-    setRunning,
-    tab.tabId,
-    tabState.limit,
-    tabState.source,
-    tabState.sqlText,
-    t,
-  ])
+  }, [tab.originSessionId, tab.tabId])
 
   useEffect(() => {
     if (!payload.autoRun || autoRunRef.current || !effectiveContext.connectionId) return
@@ -553,26 +447,33 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
   }, [effectiveContext.connectionId, handleRun, payload.autoRun, tabState.sqlText])
 
   const handleFormat = useCallback(() => {
-    const rawSql = tabState.sqlText
-    if (!rawSql.trim()) return
-    const formatted = formatSql(rawSql, effectiveConnectionKind)
-    if (formatted !== rawSql) {
-      setSqlText(tab.tabId, formatted)
-    }
-  }, [effectiveConnectionKind, setSqlText, tab.tabId, tabState.sqlText])
+    formatQueryEditorSql(tab.tabId)
+  }, [tab.tabId])
 
   const handleContextPin = useCallback((nextContext?: SqlContextValue) => {
     const contextToPin = nextContext ?? contextChipContext
     if (!contextToPin) return
-    setTabContext(tab.tabId, {
-      ...contextToPin,
-      source: 'user_toolbar',
+    setQueryEditorContext({
+      tabId: tab.tabId,
+      connectionId: contextToPin.connectionId,
+      database: contextToPin.database,
+      schema: contextToPin.schema,
     })
-  }, [contextChipContext, setTabContext, tab.tabId])
+  }, [contextChipContext, tab.tabId])
 
   const handleContextReset = useCallback(() => {
-    resetTabContext(tab.tabId)
-  }, [resetTabContext, tab.tabId])
+    setQueryEditorContext({
+      tabId: tab.tabId,
+      connectionId: resolvedExecutionContext.connectionId,
+      database: resolvedExecutionContext.database,
+      schema: resolvedExecutionContext.schema,
+    })
+  }, [
+    resolvedExecutionContext.connectionId,
+    resolvedExecutionContext.database,
+    resolvedExecutionContext.schema,
+    tab.tabId,
+  ])
 
   const handleCursorChange = useCallback(
     (cursor: { line: number; column: number }) => {
@@ -643,7 +544,7 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
             canRun={canRun}
             isRunning={tabState.executeStatus === 'running'}
             onRun={() => void handleRun()}
-            onCancel={() => activeControllerRef.current?.abort()}
+            onCancel={() => abortQueryEditorRun(tab.tabId)}
             onFormat={handleFormat}
             limit={tabState.limit}
             onLimitChange={(value) => setLimit(tab.tabId, value)}

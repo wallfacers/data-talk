@@ -2,8 +2,8 @@ import type { UIObject, ActionDef, ExecResult, PatchResult } from '@/services/ui
 import { execError } from '@/services/ui-router'
 import { useDataSourcePickerStore } from '@/features/session/data-source-picker/data-source-picker-store'
 import { useStageStore, type StageTab } from '@/stores/stage-store'
-import { openOrFocusStageToolTab } from '@/features/stage/utils/open-or-focus-stage-tool-tab'
 import { normalizeQueryEditorPayload } from '@/features/stage/utils/normalize-query-editor-payload'
+import { QueryEditorAdapter } from './QueryEditorAdapter'
 
 const ACTIONS: ActionDef[] = [
   { name: 'open', description: 'Open a new tab', paramsSchema: {
@@ -53,17 +53,30 @@ export class WorkspaceAdapter implements UIObject {
           ? useStageStore.getState().activeTabIdBySession.get(sid) ?? useStageStore.getState().activeWorkspaceTabId
           : useStageStore.getState().activeWorkspaceTabId
         return {
-          tabs: tabs.map((t) => ({
-            tabId: t.tabId,
-            type: t.type,
-            title: t.title,
-            connectionId: t.type === 'query_editor'
-              ? normalizeQueryEditorPayload(t.payload).connectionId ?? t.connectionId
-              : t.connectionId,
-            contextOverride: t.type === 'query_editor'
-              ? normalizeQueryEditorPayload(t.payload).contextOverride
-              : undefined,
-          })),
+          tabs: tabs.map((t) => {
+            if (t.type !== 'query_editor') {
+              return {
+                tabId: t.tabId,
+                type: t.type,
+                title: t.title,
+                connectionId: t.connectionId,
+                contextOverride: undefined,
+              }
+            }
+
+            const queryEditorState = new QueryEditorAdapter(t.tabId, () => sid).read('state') as {
+              connectionId: string | null
+              contextOverride: unknown
+            }
+
+            return {
+              tabId: t.tabId,
+              type: t.type,
+              title: t.title,
+              connectionId: queryEditorState.connectionId,
+              contextOverride: queryEditorState.contextOverride,
+            }
+          }),
           activeTabId,
         }
       }
@@ -93,53 +106,25 @@ export class WorkspaceAdapter implements UIObject {
         const sid = this.getSessionId()
         if (p.type === 'query_editor') {
           if (!sid) return execError('Cannot open session-scoped tab without active session')
-          if (p.connection_id) {
-            const { tabId } = openOrFocusStageToolTab({
-              getState: () => useStageStore.getState(),
-              sessionId: sid,
-              target: {
-                kind: 'resource_tool',
-                tool: 'sql',
-                title: p.title ?? p.type,
-                connectionId: p.connection_id,
-                database: p.database ?? null,
-                schema: p.schema ?? null,
-              },
-            })
-            if (p.payload !== undefined || p.title !== undefined) {
-              const tab = useStageStore.getState().tabsBySession.get(sid)?.find((item) => item.tabId === tabId) ?? null
-              if (tab) {
-                useStageStore.setState((s) => {
-                  const tabs = new Map(s.tabsBySession)
-                  const sessionTabs = tabs.get(sid) ?? []
-                  const idx = sessionTabs.findIndex((item) => item.tabId === tabId)
-                  if (idx < 0) return s
-                  const nextTabs = [...sessionTabs]
-                  nextTabs[idx] = {
-                    ...nextTabs[idx],
-                    title: p.title ?? nextTabs[idx].title,
-                    payload: p.payload ?? nextTabs[idx].payload,
-                  }
-                  tabs.set(sid, nextTabs)
-                  return { tabsBySession: tabs }
-                })
-              }
-            }
-            return { success: true, data: { tabId } }
-          }
-
-          const tabId = `query_editor_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-          store.openTab({
-            tabId,
-            type: 'query_editor',
-            title: p.title ?? p.type,
+          const payload = normalizeQueryEditorPayload(p.payload)
+          const connectionId = p.connection_id ?? payload.connectionId ?? undefined
+          const connectionName = p.connection_id && payload.connectionId !== p.connection_id
+            ? undefined
+            : payload.connectionName ?? undefined
+          const database = p.database ?? payload.database ?? undefined
+          const schema = p.schema ?? payload.schema ?? undefined
+          const { tabId } = store.openQueryEditor({
+            sessionId: sid,
             scope: 'session',
-            originSessionId: sid,
-            connectionId: undefined,
-            database: undefined,
-            schema: undefined,
-            payload: p.payload ?? {},
-            createdAt: Date.now(),
+            baseTitle: p.title ?? p.type,
+            openMode: connectionId ? 'reuse_by_resource_context' : 'always_new',
+            entryMode: 'ui_exec',
+            initialContent: payload.initialSql,
+            autoRun: payload.autoRun,
+            connectionId,
+            connectionName,
+            database,
+            schema,
           })
           return { success: true, data: { tabId } }
         }

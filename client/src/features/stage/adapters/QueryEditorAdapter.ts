@@ -1,9 +1,53 @@
-import type { ActionDef, ExecResult, PatchResult, UIObject } from '@/services/ui-router'
-import { execError } from '@/services/ui-router'
+import type { ActionDef, ExecResult, JsonPatchOp, PatchCapability, PatchResult, UIObject } from '@/services/ui-router'
+import { execError, patchError } from '@/services/ui-router'
+import { useConnectionStore } from '@/features/connection/store'
 import { useStageStore } from '@/stores/stage-store'
 import { normalizeQueryEditorPayload } from '@/features/stage/utils/normalize-query-editor-payload'
+import { useSqlWorkbenchStore } from '@/features/stage/stores/sql-workbench-store'
+import { useSessionStore } from '@/stores/session-store'
+import { formatQueryEditorSql, runQueryEditorSql, setQueryEditorContext } from '@/features/stage/utils/query-editor-actions'
+import { resolveTabDataContext } from '@/features/stage/utils/resolve-tab-data-context'
 
 const ACTIONS: ActionDef[] = [
+  {
+    name: 'apply_text_edits',
+    description: 'Apply versioned text edits to the SQL content',
+    paramsSchema: {
+      type: 'object',
+      required: ['baseVersion', 'edits'],
+      properties: {
+        baseVersion: { type: 'number' },
+        edits: { type: 'array' },
+      },
+    },
+  },
+  {
+    name: 'set_context',
+    description: 'Set the query execution context',
+    paramsSchema: {
+      type: 'object',
+      properties: {
+        connectionId: { type: ['string', 'null'] },
+        database: { type: ['string', 'null'] },
+        schema: { type: ['string', 'null'] },
+      },
+    },
+  },
+  {
+    name: 'run_sql',
+    description: 'Run the current SQL',
+    paramsSchema: {
+      type: 'object',
+      properties: {
+        limit: { type: ['number', 'null'] },
+      },
+    },
+  },
+  {
+    name: 'format_sql',
+    description: 'Format the current SQL',
+    paramsSchema: { type: 'object', properties: {} },
+  },
   {
     name: 'focus',
     description: 'Focus this query editor',
@@ -16,6 +60,22 @@ const ACTIONS: ActionDef[] = [
   },
 ]
 
+const PATCH_CAPABILITIES: PatchCapability[] = [
+  { pathPattern: '/content', ops: ['replace'] },
+  { pathPattern: '/connectionId', ops: ['replace'] },
+  { pathPattern: '/database', ops: ['replace'] },
+  { pathPattern: '/schema', ops: ['replace'] },
+]
+
+const CAPABILITIES = {
+  editableContent: true,
+  acceptsTextEdits: true,
+  runnable: true,
+  formattable: true,
+  supportsContextBinding: true,
+  supportsResults: true,
+} as const
+
 function clearSessionActiveTab(sessionId: string | null) {
   if (!sessionId) return
   const activeTabIdBySession = new Map(useStageStore.getState().activeTabIdBySession)
@@ -23,8 +83,44 @@ function clearSessionActiveTab(sessionId: string | null) {
   useStageStore.setState({ activeTabIdBySession })
 }
 
+function isReplaceValue(value: unknown): value is string | null {
+  return typeof value === 'string' || value === null
+}
+
+function summarizeResult(result: {
+  resultId: string
+  statementIndex: number
+  columns: string[]
+  rowCount: number
+  executionMs: number
+  truncated: boolean
+  errorMessage?: string | null
+}) {
+  const summary: {
+    resultId: string
+    statementIndex: number
+    columns: string[]
+    rowCount: number
+    durationMs: number
+    truncated: boolean
+    error?: { message: string } | null
+  } = {
+    resultId: result.resultId,
+    statementIndex: result.statementIndex,
+    columns: result.columns,
+    rowCount: result.rowCount,
+    durationMs: result.executionMs,
+    truncated: result.truncated,
+  }
+  if (result.errorMessage) {
+    summary.error = { message: result.errorMessage }
+  }
+  return summary
+}
+
 export class QueryEditorAdapter implements UIObject {
   type = 'query_editor'
+  patchCapabilities = PATCH_CAPABILITIES
 
   constructor(
     public objectId: string,
@@ -40,13 +136,11 @@ export class QueryEditorAdapter implements UIObject {
   }
 
   get connectionId() {
-    const tab = this.getTab()
-    return normalizeQueryEditorPayload(tab?.payload).connectionId ?? tab?.connectionId
+    return this.getResolvedState().effectiveContext.connectionId ?? undefined
   }
 
   get database() {
-    const tab = this.getTab()
-    return normalizeQueryEditorPayload(tab?.payload).database ?? tab?.database
+    return this.getResolvedState().effectiveContext.database ?? undefined
   }
 
   private getTab() {
@@ -56,20 +150,119 @@ export class QueryEditorAdapter implements UIObject {
       ?? null
   }
 
-  read(mode: 'state' | 'schema' | 'actions' | 'full'): unknown {
+  private getResolvedState() {
     const tab = this.getTab()
     const payload = normalizeQueryEditorPayload(tab?.payload)
+    const workbenchTab = useSqlWorkbenchStore.getState().tabsById[this.objectId]
+    const sessionId = tab?.originSessionId ?? this.getSessionId() ?? null
+    const sessionContext = sessionId
+      ? useSessionStore.getState().dataContextBySession.get(sessionId) ?? null
+      : null
+    const connectionState = useConnectionStore.getState()
+    const resolvedContext = resolveTabDataContext(
+      {
+        originSessionId: sessionId,
+        connectionId: payload.connectionId ?? tab?.connectionId ?? null,
+        connectionName: payload.connectionName ?? tab?.connectionName ?? null,
+        database: payload.database ?? tab?.database ?? null,
+        schema: payload.schema ?? tab?.schema ?? null,
+      },
+      sessionContext,
+      {
+        inheritSessionContext: true,
+        fallbackConnectionId: connectionState.activeConnectionId ?? null,
+        connectionNameLookup: (connectionId) =>
+          connectionState.connections.find((connection) => connection.id === connectionId)?.name ?? null,
+      },
+    )
+    const resolvedExecutionContext = workbenchTab?.resolvedContext
+      ? {
+          sessionId: resolvedContext.sessionId ?? sessionId,
+          connectionId: workbenchTab.resolvedContext.connectionId,
+          connectionName: workbenchTab.resolvedContext.connectionName,
+          database: workbenchTab.resolvedContext.database,
+          schema: workbenchTab.resolvedContext.schema,
+        }
+      : {
+          sessionId: resolvedContext.sessionId ?? sessionId,
+          connectionId: resolvedContext.connectionId,
+          connectionName: resolvedContext.connectionName,
+          database: resolvedContext.database,
+          schema: resolvedContext.schema,
+        }
+    const hydratedOverride = workbenchTab?.override ?? (payload.contextOverride
+      ? {
+          connectionId: payload.contextOverride.connectionId,
+          connectionName: connectionState.connections.find(
+            (connection) => connection.id === payload.contextOverride?.connectionId,
+          )?.name ?? null,
+          database: payload.contextOverride.database,
+          schema: payload.contextOverride.schema,
+          source: 'open_payload' as const,
+          setAt: 0,
+        }
+      : null)
+    const effectiveContext = hydratedOverride
+      ? {
+          sessionId: resolvedExecutionContext.sessionId ?? sessionId,
+          connectionId: hydratedOverride.connectionId,
+          connectionName: hydratedOverride.connectionName
+            ?? (hydratedOverride.connectionId === resolvedExecutionContext.connectionId
+              ? resolvedExecutionContext.connectionName
+              : null),
+          database: hydratedOverride.database ?? resolvedExecutionContext.database,
+          schema: hydratedOverride.schema ?? resolvedExecutionContext.schema,
+        }
+      : {
+          sessionId: resolvedExecutionContext.sessionId ?? sessionId,
+          connectionId: resolvedExecutionContext.connectionId,
+          connectionName: resolvedExecutionContext.connectionName,
+          database: resolvedExecutionContext.database,
+          schema: resolvedExecutionContext.schema,
+        }
+
+    return {
+      tab,
+      payload,
+      workbenchTab,
+      hydratedOverride,
+      effectiveContext,
+    }
+  }
+
+  read(mode: 'state' | 'schema' | 'actions' | 'full'): unknown {
+    const { tab, payload, workbenchTab, hydratedOverride, effectiveContext } = this.getResolvedState()
+    const fallbackResults = payload.lastRun
+      ? [{
+          resultId: 'last-run',
+          statementIndex: 0,
+          columns: payload.lastRun.columns,
+          rowCount: payload.lastRun.rowCount,
+          durationMs: payload.lastRun.executionMs,
+          truncated: payload.lastRun.truncated,
+        }]
+      : []
     const state = {
-      sql: payload.initialSql,
-      source: payload.source,
+      tabId: this.objectId,
+      title: tab?.title ?? 'Query Editor',
+      scope: tab?.scope ?? 'session',
+      content: workbenchTab?.sqlText ?? payload.initialSql,
+      language: 'sql' as const,
+      version: workbenchTab?.version ?? 1,
+      dirty: workbenchTab ? workbenchTab.sqlText !== workbenchTab.savedSqlText : false,
+      cursor: workbenchTab?.cursor ?? { line: 1, column: 1 },
+      selection: workbenchTab?.selection ?? null,
+      connectionId: effectiveContext.connectionId,
+      connectionName: effectiveContext.connectionName,
+      database: effectiveContext.database,
+      schema: effectiveContext.schema,
+      contextOverride: hydratedOverride,
       entryMode: payload.entryMode,
-      connectionId: payload.connectionId ?? tab?.connectionId ?? null,
-      connectionName: payload.connectionName ?? tab?.connectionName ?? null,
-      database: payload.database ?? tab?.database ?? null,
-      schema: payload.schema ?? tab?.schema ?? null,
-      lastRun: payload.lastRun,
-      contextNotice: payload.contextNotice,
-      contextOverride: payload.contextOverride,
+      autoRun: payload.autoRun,
+      executeStatus: workbenchTab?.executeStatus ?? (payload.lastRun ? 'success' : 'idle'),
+      results: workbenchTab?.results.map(summarizeResult) ?? fallbackResults,
+      activeResultId: workbenchTab?.activeResultId ?? (payload.lastRun ? 'last-run' : null),
+      limit: workbenchTab?.limit ?? 100,
     }
 
     switch (mode) {
@@ -81,31 +274,130 @@ export class QueryEditorAdapter implements UIObject {
         return {
           type: 'object',
           properties: {
-            sql: { type: 'string' },
-            source: { type: 'string' },
-            entryMode: { type: 'string' },
+            tabId: { type: 'string' },
+            title: { type: 'string' },
+            scope: { type: 'string' },
+            content: { type: 'string' },
+            language: { type: 'string' },
+            version: { type: 'number' },
+            dirty: { type: 'boolean' },
+            cursor: { type: 'object' },
+            selection: { type: ['object', 'null'] },
             connectionId: { type: ['string', 'null'] },
             connectionName: { type: ['string', 'null'] },
             database: { type: ['string', 'null'] },
             schema: { type: ['string', 'null'] },
-            lastRun: { type: ['object', 'null'] },
-            contextNotice: { type: ['string', 'null'] },
             contextOverride: { type: ['object', 'null'] },
+            entryMode: { type: 'string' },
+            autoRun: { type: 'boolean' },
+            executeStatus: { type: 'string' },
+            results: { type: 'array' },
+            activeResultId: { type: ['string', 'null'] },
+            limit: { type: ['number', 'null'] },
           },
         }
       case 'full':
-        return { state, schema: this.read('schema'), actions: ACTIONS }
+        return { state, schema: this.read('schema'), actions: ACTIONS, capabilities: CAPABILITIES }
     }
   }
 
-  patch(_ops: unknown[] = [], _reason?: string): PatchResult {
-    return { status: 'error', message: 'query_editor is read-only; edit through the UI' }
+  patch(ops: JsonPatchOp[] = [], _reason?: string): PatchResult {
+    for (const op of ops) {
+      if (op.op !== 'replace') {
+        return patchError(`Unsupported patch op: ${op.op}`, 'Only replace is supported on query_editor')
+      }
+
+      switch (op.path) {
+        case '/content': {
+          if (typeof op.value !== 'string') {
+            return patchError('Invalid /content value', 'Expected a string')
+          }
+          useStageStore.getState().replaceQueryEditorContent(this.objectId, op.value)
+          break
+        }
+        case '/connectionId':
+        case '/database':
+        case '/schema': {
+          if (!isReplaceValue(op.value)) {
+            return patchError(`Invalid ${op.path} value`, 'Expected a string or null')
+          }
+          const field = op.path.slice(1) as 'connectionId' | 'database' | 'schema'
+          setQueryEditorContext({
+            tabId: this.objectId,
+            [field]: op.value,
+          })
+          break
+        }
+        default:
+          return patchError(`Unsupported patch path: ${op.path}`, 'Supported paths: [/content, /connectionId, /database, /schema]')
+      }
+    }
+
+    return { status: 'applied' }
   }
 
-  async exec(action: string): Promise<ExecResult> {
+  async exec(action: string, params?: unknown): Promise<ExecResult> {
     const store = useStageStore.getState()
     const tab = this.getTab()
+    const p = (params ?? {}) as {
+      baseVersion?: number
+      edits?: Array<{
+        range: {
+          startLine: number
+          startColumn: number
+          endLine: number
+          endColumn: number
+        }
+        text: string
+      }>
+      connectionId?: string | null
+      database?: string | null
+      schema?: string | null
+      limit?: 10 | 100 | 1000 | null
+    }
+
     switch (action) {
+      case 'apply_text_edits': {
+        if (typeof p.baseVersion !== 'number' || !Array.isArray(p.edits)) {
+          return execError('Invalid params for apply_text_edits')
+        }
+        const result = store.applyQueryEditorTextEdits(this.objectId, {
+          baseVersion: p.baseVersion,
+          edits: p.edits,
+        })
+        if (!result.ok) {
+          return execError({
+            code: result.code,
+            message: `Editor content has advanced to version ${result.currentState.version}`,
+            hint: "Re-read with `ui_read(mode='state')` to get the latest content and version, then retry with a fresh baseVersion.",
+            currentState: result.currentState,
+          })
+        }
+        return { success: true, data: result }
+      }
+      case 'set_context': {
+        if (p.connectionId === undefined && p.database === undefined && p.schema === undefined) {
+          return execError('set_context requires at least one of connectionId, database, schema')
+        }
+        setQueryEditorContext({
+          tabId: this.objectId,
+          connectionId: p.connectionId,
+          database: p.database,
+          schema: p.schema,
+        })
+        return { success: true }
+      }
+      case 'run_sql':
+        return {
+          success: true,
+          data: await runQueryEditorSql({
+            tabId: this.objectId,
+            sessionId: tab?.originSessionId ?? this.getSessionId(),
+            limit: p.limit,
+          }),
+        }
+      case 'format_sql':
+        return { success: true, data: formatQueryEditorSql(this.objectId) }
       case 'focus':
         store.focusTab(this.objectId)
         if (tab?.scope === 'workspace') clearSessionActiveTab(this.getSessionId())

@@ -1,9 +1,8 @@
 import { useConnectionStore } from '@/features/connection/store'
 import { getCurrentLanguage } from '@/stores/ui-settings-store'
 import { useSessionStore } from '@/stores/session-store'
-import { useStageStore, type StageTab } from '@/stores/stage-store'
+import { useStageStore } from '@/stores/stage-store'
 import { translateMessage } from '@/i18n/messages'
-import { resolveUniqueTabTitle } from './unique-tab-title'
 
 interface Args {
   sessionId: string | null
@@ -21,38 +20,20 @@ export async function openDirectSqlQueryEditorTab({ sessionId, connectionId, sql
     ?? sessionContext?.connectionNameSnapshot
     ?? null
   const store = useStageStore.getState()
-  const existingTitles = [
-    ...store.workspaceTabs.map((tab) => tab.title),
-    ...(sessionId ? (store.tabsBySession.get(sessionId) ?? []).map((tab) => tab.title) : []),
-  ]
   const baseTitle = translateMessage(getCurrentLanguage(), 'stage.toolRow.sql')
-  const payload = {
-    entryMode: 'direct_sql' as const,
-    initialSql: sql,
-    source: 'user' as const,
+  const { tabId } = store.openQueryEditor({
+    sessionId,
+    scope: 'session',
+    baseTitle,
+    openMode: 'always_new',
+    entryMode: 'direct_sql',
+    initialContent: sql,
     autoRun,
     connectionId,
     connectionName,
     database: sessionContext?.database ?? null,
     schema: sessionContext?.schema ?? null,
-  }
-
-  const tabId = `query_editor_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-  const tab: StageTab = {
-    tabId,
-    type: 'query_editor',
-    title: resolveUniqueTabTitle(baseTitle, existingTitles),
-    scope: 'session',
-    originSessionId: sessionId ?? undefined,
-    connectionId: payload.connectionId,
-    connectionName: payload.connectionName ?? undefined,
-    database: payload.database ?? undefined,
-    schema: payload.schema ?? undefined,
-    payload,
-    createdAt: Date.now(),
-  }
-
-  store.openTab(tab)
+  })
   if (sessionId) store.openStage(sessionId)
   return tabId
 }

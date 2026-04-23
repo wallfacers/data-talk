@@ -1,15 +1,53 @@
 import { registerClientHandler } from './registry'
 import { uiRouter } from '@/services/ui-router'
-import type { UIRequest } from '@/services/ui-router'
+import type { UIRequest, UIResponse } from '@/services/ui-router'
 
 type ReadInput = { object: string; target?: string; mode?: 'state' | 'schema' | 'actions' | 'full' }
 type PatchInput = { object: string; target?: string; ops: unknown[]; reason?: string }
 type ExecInput = { object: string; target?: string; action: string; params?: unknown }
 type ListInput = { filter?: { type?: string; keyword?: string; connectionId?: string; database?: string } }
 
+type ClientActionErrorDetail = {
+  code?: string
+  message?: string
+  retriable?: boolean
+  details?: unknown
+}
+
+class ClientActionHandlerError extends Error {
+  code: string
+  retriable?: boolean
+  details?: unknown
+
+  constructor(message: string, options?: { code?: string; retriable?: boolean; details?: unknown }) {
+    super(message)
+    this.name = 'ClientActionHandlerError'
+    this.code = options?.code ?? 'client_action_error'
+    this.retriable = options?.retriable
+    this.details = options?.details
+  }
+}
+
+function getStructuredErrorDetail(data: unknown): ClientActionErrorDetail | undefined {
+  if (typeof data !== 'object' || data === null) return undefined
+  const detail = data as ClientActionErrorDetail
+  if (typeof detail.code !== 'string' || typeof detail.message !== 'string') return undefined
+  return detail
+}
+
+function toClientActionHandlerError(resp: UIResponse): ClientActionHandlerError {
+  const detail = getStructuredErrorDetail(resp.data)
+  const message = resp.error ?? detail?.message ?? 'Client action failed'
+  return new ClientActionHandlerError(message, {
+    code: detail?.code ?? 'client_action_error',
+    retriable: detail?.retriable,
+    details: detail ?? resp.data,
+  })
+}
+
 async function forward(req: UIRequest): Promise<unknown> {
   const resp = await uiRouter.handle(req)
-  if (resp.error) throw new Error(resp.error)
+  if (resp.error) throw toClientActionHandlerError(resp)
   return resp.data
 }
 

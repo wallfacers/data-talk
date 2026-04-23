@@ -1,4 +1,11 @@
 import { create } from 'zustand'
+import {
+  useSqlWorkbenchStore,
+  type SqlWorkbenchEditResult,
+  type SqlWorkbenchTextEdit,
+} from '@/features/stage/stores/sql-workbench-store'
+import { resolveUniqueTabTitle } from '@/features/stage/utils/unique-tab-title'
+import { generateUuid } from '@/lib/uuid'
 
 type RevealOrigin = { x: number; y: number }
 
@@ -16,6 +23,26 @@ export type SidebarSelection =
     }
 
 export type RailPanel = 'schema' | 'history' | 'outline'
+
+export type QueryEditorOpenMode = 'always_new' | 'reuse_by_resource_context'
+
+export type QueryEditorOpenInput = {
+  sessionId: string | null
+  scope: 'workspace' | 'session'
+  baseTitle: string
+  openMode: QueryEditorOpenMode
+  entryMode: 'blank' | 'direct_sql' | 'resource_sql' | 'ui_exec' | 'ai_open'
+  initialContent?: string
+  autoRun?: boolean
+  connectionId?: string | null
+  connectionName?: string | null
+  database?: string | null
+  schema?: string | null
+}
+
+export type QueryEditorTextEdit = SqlWorkbenchTextEdit
+
+export type QueryEditorEditResult = SqlWorkbenchEditResult
 
 export interface StageTab {
   tabId: string
@@ -68,6 +95,68 @@ export type StageState = {
   focusTab: (tabId: string) => void
   listTabs: (sessionId: string | null) => StageTab[]
   updateTabPayload: (tabId: string, updater: (prev: unknown) => unknown) => void
+  openQueryEditor: (input: QueryEditorOpenInput) => { tabId: string; created: boolean }
+  setQueryEditorContext: (
+    tabId: string,
+    context: {
+      connectionId?: string | null
+      connectionName?: string | null
+      database?: string | null
+      schema?: string | null
+    },
+  ) => void
+  replaceQueryEditorContent: (tabId: string, content: string) => { version: number }
+  applyQueryEditorTextEdits: (
+    tabId: string,
+    params: { baseVersion: number; edits: QueryEditorTextEdit[] },
+  ) => QueryEditorEditResult
+  setQueryEditorCursor: (tabId: string, cursor: { line: number; column: number }) => void
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+function buildQueryEditorPayload(input: QueryEditorOpenInput) {
+  const source: 'ai' | 'user' = input.entryMode === 'ai_open' ? 'ai' : 'user'
+  return {
+    entryMode: input.entryMode,
+    source,
+    autoRun: input.autoRun === true,
+    connectionId: input.connectionId ?? null,
+    connectionName: input.connectionName ?? null,
+    database: input.database ?? null,
+    schema: input.schema ?? null,
+  }
+}
+
+function updateQueryEditorPayload(
+  payload: unknown,
+  patch: Partial<ReturnType<typeof buildQueryEditorPayload>>,
+) {
+  if (isRecord(payload)) {
+    return {
+      ...payload,
+      ...patch,
+    }
+  }
+  return patch
+}
+
+function matchesNullable(left?: string | null, right?: string | null) {
+  return (left ?? null) === (right ?? null)
+}
+
+function updateTabMeta(
+  tabs: StageTab[],
+  tabId: string,
+  updater: (tab: StageTab) => StageTab,
+) {
+  const index = tabs.findIndex((tab) => tab.tabId === tabId)
+  if (index < 0) return null
+  const next = [...tabs]
+  next[index] = updater(next[index])
+  return next
 }
 
 export const useStageStore = create<StageState>((set, get) => ({
@@ -230,4 +319,114 @@ export const useStageStore = create<StageState>((set, get) => ({
     }
     return s
   }),
+
+  openQueryEditor: (input) => {
+    if (input.scope === 'session' && !input.sessionId) {
+      throw new Error('session-scoped query editor requires sessionId')
+    }
+
+    const latest = get()
+    const sessionTabs = input.sessionId ? (latest.tabsBySession.get(input.sessionId) ?? []) : []
+    if (input.scope === 'session' && input.openMode === 'reuse_by_resource_context') {
+      const existing = sessionTabs.find((tab) =>
+        tab.type === 'query_editor' &&
+        matchesNullable(tab.connectionId, input.connectionId) &&
+        matchesNullable(tab.database, input.database) &&
+        matchesNullable(tab.schema, input.schema)
+      )
+      if (existing) {
+        latest.focusTab(existing.tabId)
+        return { tabId: existing.tabId, created: false }
+      }
+    }
+
+    const visibleTitles = [
+      ...latest.workspaceTabs,
+      ...sessionTabs,
+    ]
+      .filter((tab) => tab.type === 'query_editor')
+      .map((tab) => tab.title)
+    const tabId = `query_editor_${generateUuid()}`
+    const payload = buildQueryEditorPayload(input)
+    const tab: StageTab = {
+      tabId,
+      type: 'query_editor',
+      title: resolveUniqueTabTitle(input.baseTitle, visibleTitles),
+      connectionId: input.connectionId ?? undefined,
+      connectionName: input.connectionName ?? undefined,
+      database: input.database ?? undefined,
+      schema: input.schema ?? undefined,
+      originSessionId: input.scope === 'session' ? input.sessionId ?? undefined : undefined,
+      scope: input.scope,
+      payload,
+      createdAt: Date.now(),
+    }
+
+    latest.openTab(tab)
+    if (input.scope === 'workspace' && input.sessionId) {
+      set((state) => {
+        const activeTabIdBySession = new Map(state.activeTabIdBySession)
+        activeTabIdBySession.set(input.sessionId!, null)
+        return { activeTabIdBySession }
+      })
+    }
+    useSqlWorkbenchStore.getState().ensureTab(tabId, {
+      sqlText: input.initialContent ?? '',
+      source: payload.source,
+    })
+    return { tabId, created: true }
+  },
+
+  setQueryEditorContext: (tabId, context) => set((state) => {
+    const workspaceTabs = updateTabMeta(state.workspaceTabs, tabId, (tab) => ({
+      ...tab,
+      connectionId: context.connectionId ?? undefined,
+      connectionName: context.connectionName ?? undefined,
+      database: context.database ?? undefined,
+      schema: context.schema ?? undefined,
+      payload: updateQueryEditorPayload(tab.payload, {
+        connectionId: context.connectionId ?? null,
+        connectionName: context.connectionName ?? null,
+        database: context.database ?? null,
+        schema: context.schema ?? null,
+      }),
+    }))
+    if (workspaceTabs) {
+      return { workspaceTabs }
+    }
+
+    for (const [sessionId, tabs] of state.tabsBySession.entries()) {
+      const nextTabs = updateTabMeta(tabs, tabId, (tab) => ({
+        ...tab,
+        connectionId: context.connectionId ?? undefined,
+        connectionName: context.connectionName ?? undefined,
+        database: context.database ?? undefined,
+        schema: context.schema ?? undefined,
+        payload: updateQueryEditorPayload(tab.payload, {
+          connectionId: context.connectionId ?? null,
+          connectionName: context.connectionName ?? null,
+          database: context.database ?? null,
+          schema: context.schema ?? null,
+        }),
+      }))
+      if (!nextTabs) continue
+      const tabsBySession = new Map(state.tabsBySession)
+      tabsBySession.set(sessionId, nextTabs)
+      return { tabsBySession }
+    }
+
+    return state
+  }),
+
+  replaceQueryEditorContent: (tabId, content) => {
+    return useSqlWorkbenchStore.getState().replaceSqlText(tabId, content)
+  },
+
+  applyQueryEditorTextEdits: (tabId, params) => {
+    return useSqlWorkbenchStore.getState().applyTextEdits(tabId, params)
+  },
+
+  setQueryEditorCursor: (tabId, cursor) => {
+    useSqlWorkbenchStore.getState().setCursor(tabId, cursor.line, cursor.column)
+  },
 }))

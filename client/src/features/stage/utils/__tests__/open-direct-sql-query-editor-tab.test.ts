@@ -1,11 +1,18 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { openDirectSqlQueryEditorTab } from '../open-direct-sql-query-editor-tab'
 import { useConnectionStore } from '@/features/connection/store'
 import { useSessionStore } from '@/stores/session-store'
 import { useStageStore } from '@/stores/stage-store'
+import { getCurrentLanguage } from '@/stores/ui-settings-store'
+import { translateMessage } from '@/i18n/messages'
 
 describe('openDirectSqlQueryEditorTab', () => {
+  const openQueryEditorMock = vi.fn()
+  const openStageMock = vi.fn()
+
   beforeEach(() => {
+    openQueryEditorMock.mockReset()
+    openStageMock.mockReset()
     useConnectionStore.setState({
       activeConnectionId: null,
       connections: [
@@ -36,55 +43,64 @@ describe('openDirectSqlQueryEditorTab', () => {
       tabsBySession: new Map(),
       activeWorkspaceTabId: null,
       activeTabIdBySession: new Map(),
+      openQueryEditor: openQueryEditorMock,
+      openStage: openStageMock,
     } as any)
   })
 
-  it('opens a session-scoped query editor tab and marks it auto-run', async () => {
+  it('delegates direct SQL opening to openQueryEditor and opens the stage for the session', async () => {
+    const baseTitle = translateMessage(getCurrentLanguage(), 'stage.toolRow.sql')
+    openQueryEditorMock.mockReturnValue({ tabId: 'query-editor-1', created: true })
+
     const tabId = await openDirectSqlQueryEditorTab({
       sessionId: 'sess-1',
       connectionId: 'conn-1',
       sql: 'SELECT id, name FROM users',
     })
 
-    expect(tabId).toContain('query_editor_')
-    expect(useStageStore.getState().openBySession.get('sess-1')).toBe(true)
-
-    const tabs = useStageStore.getState().tabsBySession.get('sess-1') ?? []
-    expect(tabs).toHaveLength(1)
-    expect(tabs[0]).toEqual(expect.objectContaining({
-      type: 'query_editor',
+    expect(tabId).toBe('query-editor-1')
+    expect(openQueryEditorMock).toHaveBeenCalledWith({
+      sessionId: 'sess-1',
       scope: 'session',
-      originSessionId: 'sess-1',
+      baseTitle,
+      openMode: 'always_new',
+      entryMode: 'direct_sql',
+      initialContent: 'SELECT id, name FROM users',
+      autoRun: true,
       connectionId: 'conn-1',
       connectionName: 'orders-prod',
       database: 'session-db',
       schema: 'session-schema',
-      payload: expect.objectContaining({
-        entryMode: 'direct_sql',
-        initialSql: 'SELECT id, name FROM users',
-        source: 'user',
-        autoRun: true,
-      }),
-    }))
+    })
+    expect(openStageMock).toHaveBeenCalledWith('sess-1')
   })
 
-  it('uses a unique tab title when opening multiple direct SQL query editors', async () => {
-    await openDirectSqlQueryEditorTab({
+  it('delegates session context and explicit autoRun overrides into openQueryEditor', async () => {
+    const baseTitle = translateMessage(getCurrentLanguage(), 'stage.toolRow.sql')
+    useConnectionStore.setState({ connections: [] as any })
+    openQueryEditorMock.mockReturnValue({ tabId: 'query-editor-2', created: true })
+
+    const tabId = await openDirectSqlQueryEditorTab({
       sessionId: 'sess-1',
       connectionId: 'conn-1',
-      sql: 'SELECT 1',
-    })
-    await openDirectSqlQueryEditorTab({
-      sessionId: 'sess-1',
-      connectionId: 'conn-1',
-      sql: 'SELECT 2',
+      sql: 'WITH cte AS (SELECT 1) SELECT * FROM cte',
+      autoRun: false,
     })
 
-    const tabs = useStageStore.getState().tabsBySession.get('sess-1') ?? []
-    expect(tabs).toHaveLength(2)
-    const firstTitle = tabs[0]?.title ?? ''
-    expect(firstTitle.length).toBeGreaterThan(0)
-    expect(tabs[1]?.title).toBe(`${firstTitle}2`)
+    expect(tabId).toBe('query-editor-2')
+    expect(openQueryEditorMock).toHaveBeenCalledWith({
+      sessionId: 'sess-1',
+      scope: 'session',
+      baseTitle,
+      openMode: 'always_new',
+      entryMode: 'direct_sql',
+      initialContent: 'WITH cte AS (SELECT 1) SELECT * FROM cte',
+      autoRun: false,
+      connectionId: 'conn-1',
+      connectionName: 'orders-prod',
+      database: 'session-db',
+      schema: 'session-schema',
+    })
   })
 
   it('throws when no connectionId is provided', async () => {
@@ -93,18 +109,5 @@ describe('openDirectSqlQueryEditorTab', () => {
       connectionId: null,
       sql: 'SELECT 1',
     })).rejects.toThrow()
-  })
-
-  it('respects explicit autoRun override', async () => {
-    await openDirectSqlQueryEditorTab({
-      sessionId: 'sess-1',
-      connectionId: 'conn-1',
-      sql: 'WITH cte AS (SELECT 1) SELECT * FROM cte',
-      autoRun: false,
-    })
-
-    const tabs = useStageStore.getState().tabsBySession.get('sess-1') ?? []
-    expect(tabs).toHaveLength(1)
-    expect((tabs[0]?.payload as { autoRun?: boolean } | undefined)?.autoRun).toBe(false)
   })
 })

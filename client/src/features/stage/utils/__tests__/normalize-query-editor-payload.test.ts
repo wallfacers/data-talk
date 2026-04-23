@@ -4,7 +4,7 @@ import { isNormalizedQueryEditorPayload, normalizeQueryEditorPayload } from '../
 describe('normalizeQueryEditorPayload', () => {
   it('maps legacy sql/source payloads into the new normalized model', () => {
     expect(normalizeQueryEditorPayload({ sql: 'SELECT 1', source: 'user' })).toMatchObject({
-      entryMode: 'manual',
+      entryMode: 'blank',
       initialSql: 'SELECT 1',
       source: 'user',
       autoRun: false,
@@ -12,6 +12,50 @@ describe('normalizeQueryEditorPayload', () => {
       lastRun: null,
       contextNotice: null,
     })
+  })
+
+  it('maps legacy entry modes onto the canonical query editor entry modes', () => {
+    expect(normalizeQueryEditorPayload({
+      entryMode: 'manual',
+      source: 'user',
+    }).entryMode).toBe('blank')
+
+    expect(normalizeQueryEditorPayload({
+      entryMode: 'resource',
+      source: 'user',
+    }).entryMode).toBe('resource_sql')
+
+    expect(normalizeQueryEditorPayload({
+      entryMode: 'ai_generated',
+      source: 'ai',
+    }).entryMode).toBe('ai_open')
+
+    expect(normalizeQueryEditorPayload({
+      entryMode: 'direct_sql',
+      source: 'user',
+    }).entryMode).toBe('direct_sql')
+  })
+
+  it('accepts canonical query editor entry modes from openQueryEditor', () => {
+    expect(normalizeQueryEditorPayload({
+      entryMode: 'blank',
+      source: 'user',
+    }).entryMode).toBe('blank')
+
+    expect(normalizeQueryEditorPayload({
+      entryMode: 'resource_sql',
+      source: 'user',
+    }).entryMode).toBe('resource_sql')
+
+    expect(normalizeQueryEditorPayload({
+      entryMode: 'ui_exec',
+      source: 'user',
+    }).entryMode).toBe('ui_exec')
+
+    expect(normalizeQueryEditorPayload({
+      entryMode: 'ai_open',
+      source: 'ai',
+    }).entryMode).toBe('ai_open')
   })
 
   it('preserves direct_sql metadata and initial result payloads', () => {

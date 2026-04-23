@@ -32,10 +32,12 @@
 
 | mode | 返回内容 |
 |------|---------|
-| `state` | `{ tabs: Array<{tabId, type, title, connectionId}>, activeTabId: string \| null }` |
+| `state` | `{ tabs: Array<{tabId, type, title, connectionId, contextOverride?}>, activeTabId: string \| null }` |
 | `schema` | `{ type: 'object', properties: { tabs: array, activeTabId: string\|null } }` |
 | `actions` | 见下方 Exec Actions 列表 |
 | `full` | `{ state, schema, actions }` 合并 |
+
+其中 `query_editor` 行的 `connectionId` 反映**当前生效的上下文**，`contextOverride` 单独暴露覆盖态元数据。
 
 #### `patch`
 
@@ -57,6 +59,8 @@
 | `query_editor` | session | 统一 SQL 工作页；用于空白 SQL、资源树 SQL、AI 预填 SQL 与 direct SQL |
 | `er_canvas` | workspace | ER 图画布 |
 | `markdown_note` | workspace | Markdown 笔记 |
+| `report` | workspace | 报表页 |
+| `dashboard` | workspace | 仪表盘页 |
 | 其他（未在 `WORKSPACE_SCOPE_TYPES` 中） | session | 会话级 Tab，关联 `originSessionId` |
 
 ---
@@ -71,19 +75,55 @@
 
 | mode | 返回内容 |
 |------|---------|
-| `state` | `{ sql, source, entryMode, connectionId, connectionName, database, schema, lastRun, contextNotice }` |
-| `schema` | `{ type: 'object', properties: { sql, source, entryMode, connectionId, connectionName, database, schema, lastRun, contextNotice } }` |
+| `state` | `{ tabId, title, scope, content, language: 'sql', version, dirty, cursor, selection, connectionId, connectionName, database, schema, contextOverride, entryMode, autoRun, executeStatus, results, activeResultId, limit }` |
+| `schema` | `{ type: 'object', properties: { tabId, title, scope, content, language, version, dirty, cursor, selection, connectionId, connectionName, database, schema, contextOverride, entryMode, autoRun, executeStatus, results, activeResultId, limit } }` |
 | `actions` | 见下方 Exec Actions 列表 |
-| `full` | `{ state, schema, actions }` 合并 |
+| `full` | `{ state, schema, actions, capabilities }` 合并 |
+
+#### `capabilities`
+
+```ts
+{
+  editableContent: true,
+  acceptsTextEdits: true,
+  runnable: true,
+  formattable: true,
+  supportsContextBinding: true,
+  supportsResults: true,
+}
+```
+
+#### `state` 字段说明
+
+- `content`：当前 SQL 文本
+- `version`：SQL 文本版本号；配合 `apply_text_edits.baseVersion` 使用
+- `dirty`：是否存在未保存的文档改动
+- `cursor` / `selection`：编辑器光标与选区
+- `connectionId / connectionName / database / schema`：**当前生效的执行上下文**，会反映基础 tab/payload、继承的 session context，以及任何 override
+- `contextOverride`：覆盖态元数据 / 来源信息；与上面的生效上下文字段分开暴露
+- `entryMode / autoRun`：打开来源与是否自动执行
+- `executeStatus / results / activeResultId / limit`：运行时状态
+- `results`：**仅摘要，不包含 `rows`**；每项仅暴露 `{ resultId, statementIndex, columns, rowCount, durationMs, truncated, error? }`
 
 #### `patch`
 
-不支持（返回 `status: 'error'`，需通过 UI 编辑 SQL / 执行结果）。
+支持以下白名单路径：
+
+| path | ops | 作用 |
+|------|-----|------|
+| `/content` | `replace` | 整段覆盖 SQL 文本 |
+| `/connectionId` | `replace` | 修改连接 |
+| `/database` | `replace` | 修改数据库 |
+| `/schema` | `replace` | 修改 schema |
 
 #### Exec Actions
 
 | action | 参数 | 效果 |
 |--------|------|------|
+| `apply_text_edits` | `{ baseVersion, edits: [{ range, text }] }` | 按 range 精确编辑 SQL，带版本冲突保护 |
+| `set_context` | `{ connectionId?, database?, schema? }` | 一次性设置执行上下文；至少传一个字段 |
+| `run_sql` | `{ limit? }` | 执行当前 SQL，结果写回 query editor runtime state |
+| `format_sql` | — | 格式化当前 SQL，并更新 `content/version` |
 | `focus` | — | 聚焦此 Tab |
 | `close` | — | 关闭此 Tab |
 

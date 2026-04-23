@@ -28,8 +28,26 @@ export type HistoryEntry = {
   errorSummary?: string
 }
 
+export type SqlWorkbenchSelection = {
+  startLine: number
+  startColumn: number
+  endLine: number
+  endColumn: number
+}
+
+export type SqlWorkbenchTextEdit = {
+  range: SqlWorkbenchSelection
+  text: string
+}
+
+export type SqlWorkbenchEditResult =
+  | { ok: true; version: number; content: string }
+  | { ok: false; code: 'version_conflict'; currentState: { version: number; content: string } }
+
 export type SqlWorkbenchTabState = {
   sqlText: string
+  version: number
+  selection: SqlWorkbenchSelection | null
   source: 'ai' | 'user'
   executeStatus: SqlWorkbenchExecuteStatus
   results: SqlExecuteResultItem[]
@@ -51,6 +69,9 @@ type SqlWorkbenchState = {
   tabsById: Record<string, SqlWorkbenchTabState>
   ensureTab: (tabId: string, initial?: EnsureTabInput) => void
   setSqlText: (tabId: string, sqlText: string) => void
+  replaceSqlText: (tabId: string, sqlText: string) => { version: number }
+  applyTextEdits: (tabId: string, params: { baseVersion: number; edits: SqlWorkbenchTextEdit[] }) => SqlWorkbenchEditResult
+  setSelection: (tabId: string, selection: SqlWorkbenchSelection | null) => void
   setActiveResult: (tabId: string, resultId: string | null) => void
   closeResult: (tabId: string, resultId: string) => void
   closeOtherResults: (tabId: string, resultId: string) => void
@@ -73,6 +94,8 @@ function createDefaultTabState(initial?: EnsureTabInput): SqlWorkbenchTabState {
   const initialSqlText = initial?.sqlText ?? ''
   return {
     sqlText: initialSqlText,
+    version: 1,
+    selection: null,
     source: initial?.source ?? 'user',
     executeStatus: 'idle',
     results: [],
@@ -97,6 +120,17 @@ function ensureTabState(
   return tabsById[tabId] ?? createDefaultTabState(initial)
 }
 
+function requireTabState(
+  tabsById: Record<string, SqlWorkbenchTabState>,
+  tabId: string,
+) {
+  const tabState = tabsById[tabId]
+  if (!tabState) {
+    throw new Error(`Unknown sql workbench tab: ${tabId}`)
+  }
+  return tabState
+}
+
 function promoteActiveResultId(results: SqlExecuteResultItem[], preferredId: string | null) {
   if (results.length === 0) return null
   if (preferredId && results.some((item) => item.resultId === preferredId)) {
@@ -105,7 +139,56 @@ function promoteActiveResultId(results: SqlExecuteResultItem[], preferredId: str
   return results[0]?.resultId ?? null
 }
 
-export const useSqlWorkbenchStore = create<SqlWorkbenchState>((set) => ({
+function resolveOffset(content: string, line: number, column: number) {
+  const lines = [] as Array<{ start: number; end: number }>
+  let lineStart = 0
+
+  for (let index = 0; index < content.length; index += 1) {
+    const char = content[index]
+    if (char !== '\n' && char !== '\r') continue
+
+    lines.push({ start: lineStart, end: index })
+    if (char === '\r' && content[index + 1] === '\n') {
+      index += 1
+    }
+    lineStart = index + 1
+  }
+  lines.push({ start: lineStart, end: content.length })
+
+  const lineIndex = Math.min(Math.max(line, 1), lines.length) - 1
+  const currentLine = lines[lineIndex] ?? { start: 0, end: 0 }
+  const lineLength = currentLine.end - currentLine.start
+  const columnOffset = Math.min(Math.max(0, column - 1), lineLength)
+  return currentLine.start + columnOffset
+}
+
+function applyTextEditsToContent(content: string, edits: SqlWorkbenchTextEdit[]) {
+  const resolvedEdits = edits
+    .map((edit) => ({
+      ...edit,
+      startOffset: resolveOffset(content, edit.range.startLine, edit.range.startColumn),
+      endOffset: resolveOffset(content, edit.range.endLine, edit.range.endColumn),
+    }))
+    .sort((left, right) => right.startOffset - left.startOffset)
+
+  let nextContent = content
+  for (const edit of resolvedEdits) {
+    nextContent = `${nextContent.slice(0, edit.startOffset)}${edit.text}${nextContent.slice(edit.endOffset)}`
+  }
+
+  return nextContent
+}
+
+function applySqlTextChange(tabState: SqlWorkbenchTabState, sqlText: string) {
+  if (tabState.sqlText === sqlText) return tabState
+  return {
+    ...tabState,
+    sqlText,
+    version: tabState.version + 1,
+  }
+}
+
+export const useSqlWorkbenchStore = create<SqlWorkbenchState>((set, get) => ({
   tabsById: {},
 
   ensureTab: (tabId, initial) => set((state) => {
@@ -121,9 +204,57 @@ export const useSqlWorkbenchStore = create<SqlWorkbenchState>((set) => ({
   setSqlText: (tabId, sqlText) => set((state) => ({
     tabsById: {
       ...state.tabsById,
+      [tabId]: applySqlTextChange(ensureTabState(state.tabsById, tabId), sqlText),
+    },
+  })),
+
+  replaceSqlText: (tabId, sqlText) => {
+    const current = requireTabState(get().tabsById, tabId)
+    const next = applySqlTextChange(current, sqlText)
+    set((state) => ({
+      tabsById: {
+        ...state.tabsById,
+        [tabId]: next,
+      },
+    }))
+    return { version: next.version }
+  },
+
+  applyTextEdits: (tabId, params) => {
+    const current = requireTabState(get().tabsById, tabId)
+    if (params.baseVersion !== current.version) {
+      return {
+        ok: false,
+        code: 'version_conflict',
+        currentState: {
+          version: current.version,
+          content: current.sqlText,
+        },
+      }
+    }
+
+    const content = applyTextEditsToContent(current.sqlText, params.edits)
+    const next = applySqlTextChange(current, content)
+    set((state) => ({
+      tabsById: {
+        ...state.tabsById,
+        [tabId]: next,
+      },
+    }))
+
+    return {
+      ok: true,
+      version: next.version,
+      content: next.sqlText,
+    }
+  },
+
+  setSelection: (tabId, selection) => set((state) => ({
+    tabsById: {
+      ...state.tabsById,
       [tabId]: {
-        ...ensureTabState(state.tabsById, tabId),
-        sqlText,
+        ...requireTabState(state.tabsById, tabId),
+        selection,
       },
     },
   })),
@@ -327,7 +458,7 @@ export const useSqlWorkbenchStore = create<SqlWorkbenchState>((set) => ({
     tabsById: {
       ...state.tabsById,
       [tabId]: {
-        ...ensureTabState(state.tabsById, tabId),
+        ...requireTabState(state.tabsById, tabId),
         cursor: { line, column },
       },
     },

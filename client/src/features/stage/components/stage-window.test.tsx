@@ -8,18 +8,16 @@ import { useSessionStore } from '@/stores/session-store'
 import { useOntologyStore } from '@/stores/ontology-store'
 import { useTimelineStore } from '@/stores/timeline-store'
 
-const openOrFocusStageToolTabMock = vi.hoisted(() => vi.fn())
+const realOpenQueryEditor = useStageStore.getState().openQueryEditor
 
 vi.mock('./sql-workbench-tab', () => ({
-  SqlWorkbenchTab: () => <div data-testid="sql-workbench-tab">sql workbench tab</div>,
+  SqlWorkbenchTab: ({ tab }: { tab: { title: string } }) => (
+    <div data-testid="sql-workbench-tab">{tab.title}</div>
+  ),
 }))
 
 vi.mock('./file-preview-tab', () => ({
   FilePreviewTab: () => <div data-testid="file-preview-tab">file preview tab</div>,
-}))
-
-vi.mock('../utils/open-or-focus-stage-tool-tab', () => ({
-  openOrFocusStageToolTab: openOrFocusStageToolTabMock,
 }))
 
 vi.mock('@/components/ui/context-menu', () => ({
@@ -39,6 +37,12 @@ const stageTabs = [
   { tabId: 'active', title: 'Active', type: 'query_editor' },
   { tabId: 'right', title: 'Right', type: 'query_editor' },
 ]
+
+function installOpenQueryEditorSpy() {
+  const spy = vi.fn((input: Parameters<typeof realOpenQueryEditor>[0]) => realOpenQueryEditor(input))
+  useStageStore.setState({ openQueryEditor: spy })
+  return spy
+}
 
 describe('StageTabBar', () => {
   it('marks the active tab with a semantic state and keeps close clickable', () => {
@@ -101,7 +105,6 @@ describe('StageTabBar', () => {
 
 describe('StageWindow', () => {
   beforeEach(() => {
-    openOrFocusStageToolTabMock.mockReset()
     useSessionStore.setState({ activeSessionId: null })
     useStageStore.setState({
       openBySession: new Map([['s1', true]]),
@@ -115,6 +118,7 @@ describe('StageWindow', () => {
       tabsBySession: new Map(),
       activeWorkspaceTabId: null,
       activeTabIdBySession: new Map(),
+      openQueryEditor: realOpenQueryEditor,
     })
     useOntologyStore.setState({ artifactsBySession: new Map() })
     useTimelineStore.setState({
@@ -131,13 +135,12 @@ describe('StageWindow', () => {
     expect(screen.getByText('工作台', { selector: 'span' })).toBeTruthy()
   })
 
-  it('uses a stronger shell contrast for the right-side Stage window', () => {
+  it('renders the Stage shell container around the workspace pane', () => {
     const { container } = render(<StageWindow sessionId="s1" />)
     const shell = container.firstElementChild as HTMLElement | null
 
     expect(shell).toBeTruthy()
-    expect(shell?.className).toContain('border-border/70')
-    expect(shell?.className).toContain('bg-muted/20')
+    expect(within(shell as HTMLElement).getByTestId('stage-workspace-pane')).toBeTruthy()
   })
 
   it('点关闭触发 closeStage(sessionId)', () => {
@@ -211,7 +214,8 @@ describe('StageWindow', () => {
     expect(screen.queryByTestId('stage-tool-row')).toBeNull()
   })
 
-  it('clicking the empty-state CTA opens the SQL editor via the shared Stage tool path', () => {
+  it('clicking the empty-state CTA opens the SQL editor via openQueryEditor directly', () => {
+    const openQueryEditorSpy = installOpenQueryEditorSpy()
     useStageStore.setState({
       tabsBySession: new Map(),
       activeTabIdBySession: new Map([['s1', null]]),
@@ -223,15 +227,16 @@ describe('StageWindow', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /SQL 编辑器/ }))
 
-    expect(openOrFocusStageToolTabMock).toHaveBeenCalledWith(expect.objectContaining({
-      sessionId: null,
-      reuseExisting: false,
-      target: expect.objectContaining({
-        kind: 'global_tool',
-        tool: 'sql',
-        title: 'SQL 编辑器',
-      }),
-    }))
+    expect(openQueryEditorSpy).toHaveBeenCalledWith({
+      sessionId: 's1',
+      scope: 'workspace',
+      baseTitle: 'SQL 编辑器',
+      openMode: 'always_new',
+      entryMode: 'blank',
+    })
+    expect(useStageStore.getState().workspaceTabs).toHaveLength(1)
+    expect(useStageStore.getState().activeWorkspaceTabId).toBeTruthy()
+    expect(screen.getByTestId('sql-workbench-tab').textContent).toBe('SQL 编辑器')
   })
 
   it.each([
@@ -267,7 +272,7 @@ describe('StageWindow', () => {
 
     render(<StageWindow sessionId="s1" />)
 
-    expect(screen.getByText('Global SQL')).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Global SQL' })).toBeTruthy()
     expect(screen.getByTestId('sql-workbench-tab')).toBeTruthy()
   })
 
@@ -287,6 +292,53 @@ describe('StageWindow', () => {
 
     expect(screen.getByTestId('stage-empty-workbench')).toBeTruthy()
     expect(screen.queryByTestId('sql-workbench-tab')).toBeNull()
+  })
+
+  it('creates a new workspace SQL tab and clears the session-scoped active tab after using the start-page SQL action', () => {
+    const openQueryEditorSpy = installOpenQueryEditorSpy()
+    useSessionStore.setState({ activeSessionId: 's1' })
+    useStageStore.setState({
+      workspaceTabs: [
+        {
+          tabId: 'workspace-sql',
+          type: 'query_editor',
+          title: 'SQL 编辑器',
+          scope: 'workspace' as const,
+          createdAt: 1,
+          payload: {},
+        },
+      ],
+      activeWorkspaceTabId: null,
+      tabsBySession: new Map([['s1', [
+        {
+          tabId: 'session-sql',
+          type: 'query_editor',
+          title: 'Session SQL',
+          scope: 'session' as const,
+          originSessionId: 's1',
+          createdAt: 0,
+          payload: {},
+        },
+      ]]]),
+      activeTabIdBySession: new Map([['s1', 'session-sql']]),
+    })
+
+    render(<StageWindow sessionId="s1" />)
+
+    fireEvent.click(screen.getByLabelText('开始页'))
+    fireEvent.click(screen.getByRole('button', { name: /SQL 编辑器/ }))
+
+    expect(openQueryEditorSpy).toHaveBeenCalledWith({
+      sessionId: 's1',
+      scope: 'workspace',
+      baseTitle: 'SQL 编辑器',
+      openMode: 'always_new',
+      entryMode: 'blank',
+    })
+    expect(useStageStore.getState().workspaceTabs).toHaveLength(2)
+    expect(useStageStore.getState().activeWorkspaceTabId).toBeTruthy()
+    expect(useStageStore.getState().activeTabIdBySession.get('s1')).toBeNull()
+    expect(screen.getByTestId('sql-workbench-tab').textContent).toBe('SQL 编辑器2')
   })
 
   it('does not fall back to the empty state when a file_preview tab is active', () => {
@@ -328,7 +380,7 @@ describe('StageWindow', () => {
 
     render(<StageWindow sessionId="s1" />)
 
-    fireEvent.click(screen.getByText('Global SQL'))
+    fireEvent.click(screen.getByRole('tab', { name: 'Global SQL' }))
 
     expect(useStageStore.getState().activeTabIdBySession.get('s1')).toBeNull()
   })

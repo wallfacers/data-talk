@@ -1,5 +1,8 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useConnectionStore } from '@/features/connection/store'
 import { useStageStore, type StageTab } from '@/stores/stage-store'
+import { useSqlWorkbenchStore } from '@/features/stage/stores/sql-workbench-store'
+import { useSessionStore } from '@/stores/session-store'
 import { QueryEditorAdapter } from '../QueryEditorAdapter'
 
 function resetStageStore() {
@@ -11,85 +14,533 @@ function resetStageStore() {
   } as unknown as Record<string, unknown>)
 }
 
+function resetWorkbenchStore() {
+  useSqlWorkbenchStore.setState({ tabsById: {} })
+}
+
+function resetConnectionStore() {
+  useConnectionStore.setState({
+    activeConnectionId: null,
+    connections: [],
+  })
+}
+
+function resetSessionStore() {
+  useSessionStore.setState({
+    activeSessionId: null,
+    modeBySession: new Map(),
+    hasEverSentBySession: new Map(),
+    dataContextBySession: new Map(),
+    pendingPrompt: null,
+    composerRestoreDraft: null,
+    pendingModelPrompt: false,
+    pendingConnectionPrompt: false,
+    pendingActionAfterConnectionPick: null,
+  })
+}
+
 function openTab(tab: StageTab) {
   useStageStore.getState().openTab(tab)
 }
 
 describe('QueryEditorAdapter', () => {
   beforeEach(() => {
+    vi.restoreAllMocks()
     resetStageStore()
+    resetWorkbenchStore()
+    resetConnectionStore()
+    resetSessionStore()
   })
 
-  it('read state consumes normalized payload fields before tab-root fallbacks', () => {
-    openTab({
-      tabId: 'q1',
-      type: 'query_editor',
-      title: 'SQL',
-      scope: 'session',
-      originSessionId: 's1',
-      connectionId: 'tab-conn',
-      connectionName: 'Tab Warehouse',
-      database: 'tab-db',
-      schema: 'public',
-      payload: {
-        initialSql: 'select 42',
-        source: 'ai',
-        initialResult: {
-          columns: ['n'],
-          rows: [[42]],
-          rowCount: 1,
-          executionMs: 5,
-          truncated: false,
-        },
-        connectionId: 'payload-conn',
-        connectionName: 'Payload Warehouse',
-        database: 'payload-db',
-        contextNotice: 'Using reporting schema',
-      },
-      createdAt: 0,
-    })
-
+  it('read actions exposes exactly the six query editor actions', () => {
     const adapter = new QueryEditorAdapter('q1')
 
-    expect(adapter.read('state')).toEqual({
-      sql: 'select 42',
-      source: 'ai',
-      entryMode: 'ai_generated',
-      connectionId: 'payload-conn',
-      connectionName: 'Payload Warehouse',
-      database: 'payload-db',
-      schema: 'public',
-      lastRun: {
-        columns: ['n'],
-        rowCount: 1,
-        executionMs: 5,
-        truncated: false,
+    expect((adapter.read('actions') as Array<{ name: string }>).map((action) => action.name)).toEqual([
+      'apply_text_edits',
+      'set_context',
+      'run_sql',
+      'format_sql',
+      'focus',
+      'close',
+    ])
+  })
+
+  it('read full includes query editor capabilities and patch whitelist', () => {
+    const adapter = new QueryEditorAdapter('q1')
+
+    expect(adapter.patchCapabilities).toEqual([
+      { pathPattern: '/content', ops: ['replace'] },
+      { pathPattern: '/connectionId', ops: ['replace'] },
+      { pathPattern: '/database', ops: ['replace'] },
+      { pathPattern: '/schema', ops: ['replace'] },
+    ])
+    expect(adapter.read('full')).toEqual(expect.objectContaining({
+      capabilities: {
+        editableContent: true,
+        acceptsTextEdits: true,
+        runnable: true,
+        formattable: true,
+        supportsContextBinding: true,
+        supportsResults: true,
       },
-      contextNotice: 'Using reporting schema',
+    }))
+  })
+
+  it('read state exposes document/runtime fields and summarized results without rows', () => {
+    useConnectionStore.setState({
+      activeConnectionId: null,
+      connections: [
+        { id: 'conn-1', name: 'Warehouse', kind: 'postgres', databaseName: 'analytics' } as never,
+        { id: 'conn-2', name: 'Reporting Warehouse', kind: 'postgres', databaseName: 'warehouse' } as never,
+      ],
+    })
+
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 's1',
+      scope: 'session',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'ai_open',
+      initialContent: 'select 42',
+      autoRun: true,
+      connectionId: 'conn-1',
+      connectionName: 'Warehouse',
+      database: 'analytics',
+      schema: 'public',
+    })
+
+    useStageStore.getState().updateTabPayload(tabId, (payload) => ({
+      ...(payload as Record<string, unknown>),
+      contextOverride: {
+        connectionId: 'conn-2',
+        database: 'warehouse',
+        schema: 'reporting',
+      },
+    }))
+
+    useSqlWorkbenchStore.setState((state) => ({
+      tabsById: {
+        ...state.tabsById,
+        [tabId]: {
+          ...state.tabsById[tabId],
+          version: 3,
+          selection: {
+            startLine: 1,
+            startColumn: 1,
+            endLine: 1,
+            endColumn: 7,
+          },
+          cursor: { line: 1, column: 8 },
+          executeStatus: 'error',
+          results: [
+            {
+              resultId: 'result-1',
+              kind: 'result_set',
+              title: 'Result 1',
+              statementIndex: 0,
+              statementText: 'select 42',
+              columns: ['n'],
+              rows: [[42]],
+              rowCount: 1,
+              executionMs: 7,
+              truncated: false,
+            },
+            {
+              resultId: 'result-2',
+              kind: 'error',
+              title: 'Error',
+              statementIndex: 1,
+              statementText: 'select from',
+              columns: [],
+              rows: [],
+              rowCount: 0,
+              executionMs: 2,
+              truncated: false,
+              errorMessage: 'syntax error',
+            },
+          ],
+          activeResultId: 'result-2',
+          savedSqlText: 'select 1',
+          limit: 10,
+        },
+      },
+    }))
+
+    const adapter = new QueryEditorAdapter(tabId)
+    const state = adapter.read('state') as {
+      tabId: string
+      title: string
+      scope: 'workspace' | 'session'
+      content: string
+      language: 'sql'
+      version: number
+      dirty: boolean
+      cursor: { line: number; column: number }
+      selection: {
+        startLine: number
+        startColumn: number
+        endLine: number
+        endColumn: number
+      } | null
+      connectionId: string | null
+      connectionName: string | null
+      database: string | null
+      schema: string | null
+      contextOverride: unknown
+      entryMode: string
+      autoRun: boolean
+      executeStatus: string
+      results: Array<Record<string, unknown>>
+      activeResultId: string | null
+      limit: 10 | 100 | 1000 | null
+    }
+
+    expect(state).toEqual({
+      tabId,
+      title: 'SQL',
+      scope: 'session',
+      content: 'select 42',
+      language: 'sql',
+      version: 3,
+      dirty: true,
+      cursor: { line: 1, column: 8 },
+      selection: {
+        startLine: 1,
+        startColumn: 1,
+        endLine: 1,
+        endColumn: 7,
+      },
+      connectionId: 'conn-2',
+      connectionName: 'Reporting Warehouse',
+      database: 'warehouse',
+      schema: 'reporting',
+      contextOverride: expect.objectContaining({
+        connectionId: 'conn-2',
+        database: 'warehouse',
+        schema: 'reporting',
+      }),
+      entryMode: 'ai_open',
+      autoRun: true,
+      executeStatus: 'error',
+      results: [
+        {
+          resultId: 'result-1',
+          statementIndex: 0,
+          columns: ['n'],
+          rowCount: 1,
+          durationMs: 7,
+          truncated: false,
+        },
+        {
+          resultId: 'result-2',
+          statementIndex: 1,
+          columns: [],
+          rowCount: 0,
+          durationMs: 2,
+          truncated: false,
+          error: {
+            message: 'syntax error',
+          },
+        },
+      ],
+      activeResultId: 'result-2',
+      limit: 10,
+    })
+    expect(state.results[0]).not.toHaveProperty('rows')
+    expect(state.results[1]).not.toHaveProperty('rows')
+  })
+
+  it('read state exposes inherited session context as the effective top-level context', () => {
+    useConnectionStore.setState({
+      activeConnectionId: null,
+      connections: [
+        { id: 'session-conn', name: 'Session Warehouse', kind: 'postgres', databaseName: 'session-db' } as never,
+      ],
+    })
+    useSessionStore.setState({
+      activeSessionId: 's1',
+      modeBySession: new Map(),
+      hasEverSentBySession: new Map(),
+      dataContextBySession: new Map([[
+        's1',
+        {
+          sessionId: 's1',
+          connectionId: 'session-conn',
+          connectionNameSnapshot: 'Session Warehouse',
+          database: 'session-db',
+          schema: 'session-schema',
+          selectedLevel: 'schema',
+          updatedAt: 1,
+        },
+      ]]),
+      pendingPrompt: null,
+      composerRestoreDraft: null,
+      pendingModelPrompt: false,
+      pendingConnectionPrompt: false,
+      pendingActionAfterConnectionPick: null,
+    })
+
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 's1',
+      scope: 'session',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'blank',
+      initialContent: 'select 1',
+    })
+
+    const adapter = new QueryEditorAdapter(tabId, () => 's1')
+    const state = adapter.read('state') as {
+      connectionId: string | null
+      connectionName: string | null
+      database: string | null
+      schema: string | null
+      contextOverride: unknown
+    }
+
+    expect(state).toEqual(expect.objectContaining({
+      connectionId: 'session-conn',
+      connectionName: 'Session Warehouse',
+      database: 'session-db',
+      schema: 'session-schema',
       contextOverride: null,
+    }))
+  })
+
+  it('getters expose effective context for list/filter surfaces', () => {
+    useConnectionStore.setState({
+      activeConnectionId: null,
+      connections: [
+        { id: 'conn-1', name: 'Warehouse', kind: 'postgres', databaseName: 'analytics' } as never,
+        { id: 'conn-2', name: 'Reporting Warehouse', kind: 'postgres', databaseName: 'warehouse' } as never,
+      ],
+    })
+
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 's1',
+      scope: 'session',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'blank',
+      initialContent: 'select 1',
+      connectionId: 'conn-1',
+      connectionName: 'Warehouse',
+      database: 'analytics',
+      schema: 'public',
+    })
+    useStageStore.getState().updateTabPayload(tabId, (payload) => ({
+      ...(payload as Record<string, unknown>),
+      contextOverride: {
+        connectionId: 'conn-2',
+        database: 'warehouse',
+        schema: 'reporting',
+      },
+    }))
+
+    const adapter = new QueryEditorAdapter(tabId, () => 's1')
+
+    expect(adapter.connectionId).toBe('conn-2')
+    expect(adapter.database).toBe('warehouse')
+  })
+
+  it('does not reuse the base connection name when payload override connectionId is unknown', () => {
+    useConnectionStore.setState({
+      activeConnectionId: null,
+      connections: [
+        { id: 'conn-1', name: 'Warehouse', kind: 'postgres', databaseName: 'analytics' } as never,
+      ],
+    })
+
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 's1',
+      scope: 'session',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'blank',
+      initialContent: 'select 1',
+      connectionId: 'conn-1',
+      connectionName: 'Warehouse',
+      database: 'analytics',
+      schema: 'public',
+    })
+    useStageStore.getState().updateTabPayload(tabId, (payload) => ({
+      ...(payload as Record<string, unknown>),
+      contextOverride: {
+        connectionId: 'override-missing',
+        database: 'warehouse',
+        schema: 'reporting',
+      },
+    }))
+
+    const adapter = new QueryEditorAdapter(tabId, () => 's1')
+    const state = adapter.read('state') as {
+      connectionId: string | null
+      connectionName: string | null
+      database: string | null
+      schema: string | null
+      contextOverride: {
+        connectionId: string
+        connectionName?: string | null
+      } | null
+    }
+
+    expect(state).toEqual(expect.objectContaining({
+      connectionId: 'override-missing',
+      connectionName: null,
+      database: 'warehouse',
+      schema: 'reporting',
+      contextOverride: expect.objectContaining({
+        connectionId: 'override-missing',
+        connectionName: null,
+      }),
+    }))
+  })
+
+  it('preserves the base connection name when payload override keeps the same connectionId', () => {
+    useConnectionStore.setState({
+      activeConnectionId: null,
+      connections: [],
+    })
+
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 's1',
+      scope: 'session',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'blank',
+      initialContent: 'select 1',
+      connectionId: 'conn-1',
+      connectionName: 'Warehouse',
+      database: 'analytics',
+      schema: 'public',
+    })
+    useStageStore.getState().updateTabPayload(tabId, (payload) => ({
+      ...(payload as Record<string, unknown>),
+      contextOverride: {
+        connectionId: 'conn-1',
+        database: 'warehouse',
+        schema: 'reporting',
+      },
+    }))
+
+    const adapter = new QueryEditorAdapter(tabId, () => 's1')
+    const state = adapter.read('state') as {
+      connectionId: string | null
+      connectionName: string | null
+      database: string | null
+      schema: string | null
+      contextOverride: {
+        connectionId: string
+        connectionName?: string | null
+      } | null
+    }
+
+    expect(state).toEqual(expect.objectContaining({
+      connectionId: 'conn-1',
+      connectionName: 'Warehouse',
+      database: 'warehouse',
+      schema: 'reporting',
+      contextOverride: expect.objectContaining({
+        connectionId: 'conn-1',
+        connectionName: null,
+      }),
+    }))
+  })
+
+  it('patch /content replaces the query editor document content', () => {
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 's1',
+      scope: 'session',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'blank',
+      initialContent: 'select 1',
+    })
+
+    const adapter = new QueryEditorAdapter(tabId)
+    const result = adapter.patch([
+      { op: 'replace', path: '/content', value: 'select 2' },
+    ])
+
+    expect(result).toEqual({ status: 'applied' })
+    expect(useSqlWorkbenchStore.getState().tabsById[tabId]).toMatchObject({
+      sqlText: 'select 2',
+      version: 2,
     })
   })
 
-  it('exposes normalized payload context through adapter getters used by ui_list', () => {
-    openTab({
-      tabId: 'q2',
-      type: 'query_editor',
-      title: 'Normalized SQL',
+  it('patch /title fails cleanly', () => {
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 's1',
       scope: 'session',
-      originSessionId: 's1',
-      payload: {
-        initialSql: 'select 2',
-        source: 'ai',
-        connectionId: 'payload-conn',
-        database: 'payload-db',
-      },
-      createdAt: 0,
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'blank',
     })
 
-    const adapter = new QueryEditorAdapter('q2')
+    const adapter = new QueryEditorAdapter(tabId)
+    const result = adapter.patch([
+      { op: 'replace', path: '/title', value: 'Renamed SQL' },
+    ])
 
-    expect(adapter.connectionId).toBe('payload-conn')
-    expect(adapter.database).toBe('payload-db')
+    expect(result.status).toBe('error')
+    expect(result.message).toContain('/title')
+  })
+
+  it('exec apply_text_edits returns a version-conflict style failure when baseVersion is stale', async () => {
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 's1',
+      scope: 'session',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'blank',
+      initialContent: 'select 1',
+    })
+    useStageStore.getState().replaceQueryEditorContent(tabId, 'select 11')
+
+    const adapter = new QueryEditorAdapter(tabId)
+    const result = await adapter.exec('apply_text_edits', {
+      baseVersion: 1,
+      edits: [
+        {
+          range: {
+            startLine: 1,
+            startColumn: 8,
+            endLine: 1,
+            endColumn: 9,
+          },
+          text: '2',
+        },
+      ],
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('version 2')
+    expect(result.data).toEqual(expect.objectContaining({
+      code: 'version_conflict',
+      currentState: {
+        version: 2,
+        content: 'select 11',
+      },
+    }))
+  })
+
+  it('exec set_context rejects empty params', async () => {
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 's1',
+      scope: 'session',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'blank',
+    })
+
+    const adapter = new QueryEditorAdapter(tabId)
+    const result = await adapter.exec('set_context', {})
+
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('connectionId')
+    expect(result.error).toContain('database')
+    expect(result.error).toContain('schema')
   })
 
   it('focus clears the current session-active tab when focusing a workspace query editor', async () => {
@@ -124,28 +575,6 @@ describe('QueryEditorAdapter', () => {
     expect(useStageStore.getState().activeTabIdBySession.get('s1')).toBeNull()
   })
 
-  it('focus delegates to the stage store', async () => {
-    openTab({
-      tabId: 'q1',
-      type: 'query_editor',
-      title: 'SQL',
-      scope: 'session',
-      originSessionId: 's1',
-      payload: {},
-      createdAt: 0,
-    })
-
-    useStageStore.setState({
-      activeTabIdBySession: new Map([['s1', null]]),
-    } as unknown as Record<string, unknown>)
-
-    const adapter = new QueryEditorAdapter('q1')
-    const result = await adapter.exec('focus')
-
-    expect(result).toEqual({ success: true })
-    expect(useStageStore.getState().activeTabIdBySession.get('s1')).toBe('q1')
-  })
-
   it('close removes the query editor tab', async () => {
     openTab({
       tabId: 'q1',
@@ -162,79 +591,5 @@ describe('QueryEditorAdapter', () => {
 
     expect(result).toEqual({ success: true })
     expect(useStageStore.getState().tabsBySession.get('s1')).toEqual([])
-  })
-
-  it('rejects unknown actions', async () => {
-    openTab({
-      tabId: 'q1',
-      type: 'query_editor',
-      title: 'SQL',
-      scope: 'session',
-      originSessionId: 's1',
-      payload: {},
-      createdAt: 0,
-    })
-
-    const adapter = new QueryEditorAdapter('q1')
-    const result = await adapter.exec('rerun')
-
-    expect(result.success).toBe(false)
-    expect(result.error).toContain('Unknown action')
-  })
-
-  it('describes connectionName in schema and stays read-only for patch', () => {
-    openTab({
-      tabId: 'q3',
-      type: 'query_editor',
-      title: 'SQL',
-      scope: 'session',
-      originSessionId: 's1',
-      payload: {
-        initialSql: 'select 3',
-        connectionName: 'Warehouse',
-      },
-      createdAt: 0,
-    })
-
-    const adapter = new QueryEditorAdapter('q3')
-
-    expect(adapter.read('schema')).toEqual(expect.objectContaining({
-      properties: expect.objectContaining({
-        connectionName: { type: ['string', 'null'] },
-      }),
-    }))
-    expect(adapter.patch([])).toEqual({
-      status: 'error',
-      message: 'query_editor is read-only; edit through the UI',
-    })
-  })
-
-  it('read state exposes normalized contextOverride', () => {
-    openTab({
-      tabId: 'q4',
-      type: 'query_editor',
-      title: 'SQL',
-      scope: 'session',
-      originSessionId: 's1',
-      payload: {
-        initialSql: 'select 4',
-        contextOverride: {
-          connectionId: 'payload-conn',
-          database: 'payload-db',
-          schema: 'public',
-        },
-      },
-      createdAt: 0,
-    })
-
-    const adapter = new QueryEditorAdapter('q4')
-
-    expect(adapter.read('state')).toEqual(expect.objectContaining({
-      contextOverride: {
-        connectionId: 'payload-conn',
-        database: 'payload-db',
-        schema: 'public',
-      },
-    }))
   })
 })

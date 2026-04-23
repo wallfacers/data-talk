@@ -6,15 +6,15 @@
 
 | 计划 | 状态 | 摘要 |
 |------|------|------|
-| [Query Editor Object Actions](./2026-04-23-query-editor-object-actions-plan.md) | pending | 将 `query_editor` 收敛为由 `StageStore` 统一打开和命名的对象：工作台 `+`、direct SQL、`workspace.open(query_editor)` 共用同一入口；对象对 AI 暴露 `state + actions + capabilities`、`ui_patch(/content)` 与 `apply_text_edits` 双写路径，以及结构化 `UIRouter` 错误契约。 |
-| [SQL Tab Internal Activity Rail](./2026-04-23-sql-tab-internal-rail-plan.md) | in_progress | rail 下移到 `SqlWorkbenchTab` 的代码与定向 rail 回归已落地：`stage-window` / `sql-workbench-tab` / `file-preview` 相关 44 条测试通过，`npx tsc --noEmit` 通过；但 `npx vitest run src/features/stage` 与 `npm test` 仍被并行中的 `Query Editor Object Actions` 契约回归阻塞，手动视觉 smoke 也尚未执行，因此暂不转 Completed。 |
-| [Implementation Roadmap](./2026-04-21-implementation-roadmap-plan.md) | in_progress | 作为上层编排计划，当前优先收尾 `Composer Data Source Picker` 与 `SQL Risk Classification & IT CI Gate` 这 2 个 `in_progress` 计划；`Stage UI Object Protocol Phase 1` 与 `Stage Window Layout Refactor` 已完成，`SQL Tab Internal Activity Rail` 代码已落地但仍待 broader suite / smoke 收口，当前真正的下一个主线聚焦 `Query Editor Object Actions`，随后统一做文档与 backlog 治理。 |
+| [SQL Tab Internal Activity Rail](./2026-04-23-sql-tab-internal-rail-plan.md) | in_progress | rail 下移到 `SqlWorkbenchTab` 的代码与定向 rail 回归已落地：`stage-window` / `sql-workbench-tab` / `file-preview` 相关 44 条测试通过，`npx tsc --noEmit` 通过；当前仍待 `npx vitest run src/features/stage`、`npm test` 与手动视觉 smoke 收口，因此暂不转 Completed。 |
+| [Implementation Roadmap](./2026-04-21-implementation-roadmap-plan.md) | in_progress | 作为上层编排计划，当前优先收尾 `Composer Data Source Picker` 与 `SQL Risk Classification & IT CI Gate` 这 2 个 `in_progress` 计划；`Stage UI Object Protocol Phase 1`、`Stage Window Layout Refactor` 与 `Query Editor Object Actions` 已完成，`SQL Tab Internal Activity Rail` 代码已落地但仍待 broader suite / smoke 收口，随后统一做文档与 backlog 治理。 |
 | [Composer Data Source Picker](./2026-04-20-composer-data-source-picker-plan.md) | in_progress | 计划为 Composer 增加与模型并列的数据源选择器，接入全局 chooser host、缺库自动补选并恢复原动作、`ui_exec(workspace, choose_connection)` 适配器，以及 Stage 卡片来源数据源固化与显式回切。 |
 | [SQL Risk Classification & IT CI Gate](./2026-04-20-sql-risk-classification-it-ci-gate-plan.md) | in_progress | `TD-020`：在 `ActionDispatcher` 统一预处理层引入 Apache Calcite SQL AST 风险判级，并通过 `ActionContext` / action output metadata 透传动态风险；`TD-021`：在 adapter 模块接入 failsafe，让 `mvn clean verify` 自动执行 `*IT.java`。 |
 ## 已完成计划
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [Query Editor Object Actions](./2026-04-23-query-editor-object-actions-plan.md) | 2026-04-23 | `query_editor` 已收敛为由 `StageStore` 统一打开、命名、聚焦和编辑的对象；`WorkspaceAdapter` / `QueryEditorAdapter` 对 AI 暴露稳定的 `state + actions + capabilities`、`ui_patch(/content)` 与 `apply_text_edits` 文件式语义；`UIRouter`/client action pipeline 现保留结构化错误 detail，并同步更新 `ui-objects-reference` 与运行时 `AGENTS.md`。 |
 | [Client Design System Foundation](./2026-04-23-client-design-system-foundation-plan.md) | 2026-04-23 | `client/DESIGN.md`、semantic token 映射、Button/InputGroup/Table、Sidebar、PromptComposer、Stage Foundation 表面已落地；direct `designmd` lint `errors = 0`（23 条 alias-schema warning 为已知工具边界），目标 vitest 5 文件 43 测试通过，`npx tsc --noEmit` 通过。 |
 | [Chat Auto-Scroll Reentry](./2026-04-23-chat-auto-scroll-reentry-plan.md) | 2026-04-23 | 聊天区 auto-follow 状态机已修正：用户只要主动向上滚离开底部，后续流式更新不再强制滚底；只有重新回到底部后才恢复自动滚动。新增 hook 回归测试，`split-view` 相关测试与 `npx tsc --noEmit` 全部通过。 |
 | [Stage UI Object Protocol Phase 1](./2026-04-20-stage-ui-object-protocol-plan.md) | 2026-04-23 | 前端 `UIRouter` + 4 个 CLIENT Action 桥接、`StageStore` 多 Tab、`WorkspaceAdapter` / `QueryEditorAdapter` 对象面、Composer `!` direct SQL → `query_editor` 打开链路与后端 `/api/query` + `SqlStatementGuard` 已全部落地；2026-04-23 手动联调、`npx tsc --noEmit`、`npx vitest run` 与 `mvn clean verify` 通过，计划与 `ARCHITECTURE.md` 已同步收口。 |

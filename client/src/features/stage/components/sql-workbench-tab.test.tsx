@@ -1,13 +1,16 @@
 import { fireEvent, render, screen, waitFor, act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { StageTab } from '@/stores/stage-store'
+import { useStageStore } from '@/stores/stage-store'
 import { SqlRiskError } from '@/services/api/sql'
 import { translateMessage } from '@/i18n/messages'
+import { useSessionStore } from '@/stores/session-store'
+import { useUISettingsStore } from '@/stores/ui-settings-store'
 import { useSqlWorkbenchStore } from '../stores/sql-workbench-store'
 import { SqlMonacoEditor } from './sql-monaco-editor'
 import { SqlWorkbenchTab } from './sql-workbench-tab'
 
-const executeMock = vi.hoisted(() => vi.fn())
+const executeSqlMock = vi.hoisted(() => vi.fn())
 const formatSqlMock = vi.hoisted(() => vi.fn((sql: string) => `formatted: ${sql}`))
 const listConnectionsMock = vi.hoisted(() => vi.fn())
 const setConnectionsMock = vi.hoisted(() => vi.fn())
@@ -78,16 +81,13 @@ vi.mock('@monaco-editor/react', () => ({
   },
 }))
 
-vi.mock('@/features/stage/hooks/use-sql-execute', () => ({
-  useSqlExecute: () => ({
-    execute: executeMock,
-    result: null,
-    risk: null,
-    status: 'idle' as const,
-    errorMessage: null,
-    reset: vi.fn(),
-  }),
-}))
+vi.mock('@/services/api/sql', async () => {
+  const actual = await vi.importActual<typeof import('@/services/api/sql')>('@/services/api/sql')
+  return {
+    ...actual,
+    executeSql: executeSqlMock,
+  }
+})
 
 vi.mock('../utils/format-sql', () => ({
   formatSql: formatSqlMock,
@@ -97,17 +97,30 @@ vi.mock('@/services/api/connection', () => ({
   listConnections: listConnectionsMock,
 }))
 
-vi.mock('@/features/connection/store', () => ({
-  useConnectionStore: (selector: (state: {
-    activeConnectionId: string | null
-    connections: Array<{ id: string; name: string; kind: string }>
-    setConnections: (connections: Array<{ id: string; name: string; kind: string }>) => void
-  }) => unknown) => selector({
-    activeConnectionId: connectionStoreSnapshot.activeConnectionId,
-    connections: connectionStoreSnapshot.connections,
-    setConnections: setConnectionsMock,
-  }),
-}))
+vi.mock('@/features/connection/store', () => {
+  const store = Object.assign(
+    (selector: (state: {
+      activeConnectionId: string | null
+      connections: Array<{ id: string; name: string; kind: string }>
+      setConnections: (connections: Array<{ id: string; name: string; kind: string }>) => void
+    }) => unknown) => selector({
+      activeConnectionId: connectionStoreSnapshot.activeConnectionId,
+      connections: connectionStoreSnapshot.connections,
+      setConnections: setConnectionsMock,
+    }),
+    {
+      getState: () => ({
+        activeConnectionId: connectionStoreSnapshot.activeConnectionId,
+        connections: connectionStoreSnapshot.connections,
+        setConnections: setConnectionsMock,
+      }),
+    },
+  )
+
+  return {
+    useConnectionStore: store,
+  }
+})
 
 vi.mock('@/features/session/hooks/use-session-data-context', () => ({
   useSessionDataContext: () => ({
@@ -147,7 +160,7 @@ describe('SqlWorkbenchTab', () => {
     translateMessage('zh-CN', key, values)
 
   beforeEach(() => {
-    executeMock.mockReset()
+    executeSqlMock.mockReset()
     formatSqlMock.mockClear()
     listConnectionsMock.mockReset()
     setConnectionsMock.mockReset()
@@ -162,7 +175,33 @@ describe('SqlWorkbenchTab', () => {
     editorHarness.fakeEditor?.getPosition.mockClear()
     editorHarness.fakeEditor?.setPosition.mockClear()
     editorHarness.fakeEditor?.revealLineNearTop.mockClear()
+    useStageStore.setState({
+      openBySession: new Map(),
+      autoOpenedSessions: new Set(),
+      maximizedBySession: new Map(),
+      revealOrigin: null,
+      sidebarCollapsedBySession: new Map(),
+      sidebarSelectionBySession: new Map(),
+      resourceTreeExpandedBySession: new Map(),
+      activeRailPanelBySession: new Map(),
+      workspaceTabs: [],
+      tabsBySession: new Map(),
+      activeWorkspaceTabId: null,
+      activeTabIdBySession: new Map(),
+    })
     useSqlWorkbenchStore.setState({ tabsById: {} })
+    useSessionStore.setState({
+      activeSessionId: null,
+      modeBySession: new Map(),
+      hasEverSentBySession: new Map(),
+      dataContextBySession: new Map(),
+      pendingPrompt: null,
+      composerRestoreDraft: null,
+      pendingModelPrompt: false,
+      pendingConnectionPrompt: false,
+      pendingActionAfterConnectionPick: null,
+    })
+    useUISettingsStore.setState({ language: 'zh-CN' })
     window.localStorage.clear()
   })
 
@@ -248,7 +287,7 @@ describe('SqlWorkbenchTab', () => {
   })
 
   it('auto-runs direct SQL query tabs on mount when payload.autoRun is true', async () => {
-    executeMock.mockResolvedValue({
+    executeSqlMock.mockResolvedValue({
       resolvedContext: {
         connectionId: 'conn-1',
         connectionName: 'Primary Connection',
@@ -289,11 +328,11 @@ describe('SqlWorkbenchTab', () => {
       />,
     )
 
-    await waitFor(() => expect(executeMock).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(executeSqlMock).toHaveBeenCalledTimes(1))
   })
 
   it('auto-runs again when switching to another direct SQL tab id', async () => {
-    executeMock.mockResolvedValue({
+    executeSqlMock.mockResolvedValue({
       resolvedContext: {
         connectionId: 'conn-1',
         connectionName: 'Primary Connection',
@@ -334,7 +373,7 @@ describe('SqlWorkbenchTab', () => {
       />,
     )
 
-    await waitFor(() => expect(executeMock).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(executeSqlMock).toHaveBeenCalledTimes(1))
 
     rerender(
       <SqlWorkbenchTab
@@ -352,7 +391,7 @@ describe('SqlWorkbenchTab', () => {
       />,
     )
 
-    await waitFor(() => expect(executeMock).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(executeSqlMock).toHaveBeenCalledTimes(2))
   })
 
   it('tracks cursor position without rendering the removed breadcrumb row', async () => {
@@ -397,8 +436,110 @@ delete from sessions;`,
     )
   })
 
+  it('does not clobber another tab draft when switching tabs before the new draft loads', async () => {
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem')
+    window.localStorage.setItem('data-talk:sql-workbench:draft:tab-2', 'saved draft from tab 2')
+
+    const { rerender } = render(<SqlWorkbenchTab tab={tab} />)
+
+    fireEvent.change(screen.getByTestId('monaco-editor'), { target: { value: 'edited tab 1 draft' } })
+    await waitFor(() => {
+      expect(window.localStorage.getItem('data-talk:sql-workbench:draft:tab-1')).toBe('edited tab 1 draft')
+    })
+
+    rerender(
+      <SqlWorkbenchTab
+        tab={{
+          ...tab,
+          tabId: 'tab-2',
+          payload: {
+            initialSql: '',
+            source: 'user',
+          },
+        }}
+      />,
+    )
+
+    expect(window.localStorage.getItem('data-talk:sql-workbench:draft:tab-2')).toBe('saved draft from tab 2')
+    await waitFor(() => expect(screen.getByTestId('monaco-editor')).toHaveValue('saved draft from tab 2'))
+    expect(setItemSpy).not.toHaveBeenCalledWith('data-talk:sql-workbench:draft:tab-2', '')
+    expect(window.localStorage.getItem('data-talk:sql-workbench:draft:tab-2')).toBe('saved draft from tab 2')
+    setItemSpy.mockRestore()
+  })
+
+  it('honors a persisted payload contextOverride after a tab is restored', async () => {
+    connectionStoreSnapshot.connections = [
+      { id: 'conn-1', name: 'Primary Connection', kind: 'postgres' },
+      { id: 'conn-2', name: 'Warehouse', kind: 'postgres' },
+    ]
+
+    executeSqlMock.mockResolvedValue({
+      resolvedContext: {
+        connectionId: 'conn-2',
+        connectionName: 'Warehouse',
+        database: 'warehouse',
+        schema: 'analytics',
+        selectedLevel: 'schema',
+      },
+      contextNotice: null,
+      results: [],
+    })
+
+    useStageStore.setState({
+      workspaceTabs: [{
+        ...tab,
+        tabId: 'tab-restored-override',
+        payload: {
+          initialSql: 'select 1;',
+          source: 'user',
+          connectionId: 'conn-1',
+          database: 'db_main',
+          contextOverride: {
+            connectionId: 'conn-2',
+            database: 'warehouse',
+            schema: 'analytics',
+          },
+        },
+      }],
+      activeWorkspaceTabId: 'tab-restored-override',
+    })
+
+    render(
+      <SqlWorkbenchTab
+        tab={{
+          ...tab,
+          tabId: 'tab-restored-override',
+          payload: {
+            initialSql: 'select 1;',
+            source: 'user',
+            connectionId: 'conn-1',
+            database: 'db_main',
+            contextOverride: {
+              connectionId: 'conn-2',
+              database: 'warehouse',
+              schema: 'analytics',
+            },
+          },
+        }}
+      />,
+    )
+
+    act(() => {
+      useSqlWorkbenchStore.getState().setLimit('tab-restored-override', null)
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: t('stage.toolbar.run') }))
+
+    await waitFor(() => expect(executeSqlMock).toHaveBeenCalledWith(expect.objectContaining({
+      sql: 'select 1;',
+      connectionId: 'conn-2',
+      database: 'warehouse',
+      schema: 'analytics',
+    }), expect.any(AbortSignal)))
+  })
+
   it('injects the tab limit into select-like SQL before execution', async () => {
-    executeMock.mockResolvedValue({
+    executeSqlMock.mockResolvedValue({
       resolvedContext: {
         connectionId: 'conn-1',
         connectionName: 'Primary Connection',
@@ -462,24 +603,19 @@ delete from sessions;`,
 
     fireEvent.click(screen.getByRole('button', { name: t('stage.toolbar.run') }))
 
-    await waitFor(() => expect(executeMock).toHaveBeenCalled())
+    await waitFor(() => expect(executeSqlMock).toHaveBeenCalled())
 
-    expect(executeMock).toHaveBeenCalledWith(
-      'select 1 LIMIT 10;',
-      'conn-1',
-      'user',
-      expect.objectContaining({
-        database: 'db_main',
-        schema: null,
-      }),
-      expect.anything(),
-    )
+    expect(executeSqlMock).toHaveBeenCalledWith(expect.objectContaining({
+      sql: 'select 1 LIMIT 10;',
+      connectionId: 'conn-1',
+      source: 'user',
+    }), expect.any(AbortSignal))
   })
 
   it('keeps an existing LIMIT clause untouched and can cancel the running query', async () => {
     let abortHandler: (() => void) | null = null
-    executeMock.mockImplementation(
-      (_sql: string, _connectionId: string, _source: 'ai' | 'user', _context: unknown, signal?: AbortSignal) =>
+    executeSqlMock.mockImplementation(
+      (_req: unknown, signal?: AbortSignal) =>
         new Promise((_resolve, reject) => {
           abortHandler = () => reject(new DOMException('The operation was aborted.', 'AbortError'))
           signal?.addEventListener('abort', () => abortHandler?.(), { once: true })
@@ -491,14 +627,12 @@ delete from sessions;`,
     fireEvent.change(screen.getByTestId('monaco-editor'), { target: { value: 'select 1 limit 5' } })
     fireEvent.click(screen.getByRole('button', { name: t('stage.toolbar.run') }))
 
-    await waitFor(() => expect(executeMock).toHaveBeenCalled())
-    expect(executeMock).toHaveBeenCalledWith(
-      'select 1 limit 5',
-      'conn-1',
-      'user',
-      expect.any(Object),
-      expect.any(AbortSignal),
-    )
+    await waitFor(() => expect(executeSqlMock).toHaveBeenCalled())
+    expect(executeSqlMock).toHaveBeenCalledWith(expect.objectContaining({
+      sql: 'select 1 limit 5',
+      connectionId: 'conn-1',
+      source: 'user',
+    }), expect.any(AbortSignal))
     expect(screen.getByRole('button', { name: t('stage.toolbar.cancel') })).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: t('stage.toolbar.cancel') }))
@@ -507,7 +641,7 @@ delete from sessions;`,
   })
 
   it('executes SQL and switches among result_set / dml_summary / error panels', async () => {
-    executeMock.mockResolvedValue({
+    executeSqlMock.mockResolvedValue({
       resolvedContext: {
         connectionId: 'conn-1',
         connectionName: 'Primary Connection',
@@ -562,7 +696,7 @@ delete from sessions;`,
 
     fireEvent.click(screen.getByRole('button', { name: t('stage.toolbar.run') }))
 
-    await waitFor(() => expect(executeMock).toHaveBeenCalled())
+    await waitFor(() => expect(executeSqlMock).toHaveBeenCalled())
 
     expect(screen.getByTestId('sql-workbench-result-splitter')).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Result 1' })).toBeTruthy()
@@ -579,7 +713,7 @@ delete from sessions;`,
   })
 
   it('supports dragging the horizontal splitter above result tabs', async () => {
-    executeMock.mockResolvedValue({
+    executeSqlMock.mockResolvedValue({
       resolvedContext: {
         connectionId: 'conn-1',
         connectionName: 'Primary Connection',
@@ -636,7 +770,7 @@ delete from sessions;`,
   })
 
   it('appends a history entry after a successful execution', async () => {
-    executeMock.mockResolvedValue({
+    executeSqlMock.mockResolvedValue({
       resolvedContext: {
         connectionId: 'conn-1',
         connectionName: 'Primary Connection',
@@ -668,7 +802,7 @@ delete from sessions;`,
 
     fireEvent.click(screen.getByRole('button', { name: t('stage.toolbar.run') }))
 
-    await waitFor(() => expect(executeMock).toHaveBeenCalled())
+    await waitFor(() => expect(executeSqlMock).toHaveBeenCalled())
 
     const history = useSqlWorkbenchStore.getState().tabsById['tab-1']?.history
     expect(history).toHaveLength(1)
@@ -680,7 +814,7 @@ delete from sessions;`,
   })
 
   it('appends a history entry when execution is blocked by risk', async () => {
-    executeMock.mockRejectedValue(new SqlRiskError({
+    executeSqlMock.mockRejectedValue(new SqlRiskError({
       riskLevel: 'high',
       riskReason: 'writes are not allowed',
     }))
@@ -692,7 +826,7 @@ delete from sessions;`,
 
     fireEvent.click(screen.getByRole('button', { name: t('stage.toolbar.run') }))
 
-    await waitFor(() => expect(executeMock).toHaveBeenCalled())
+    await waitFor(() => expect(executeSqlMock).toHaveBeenCalled())
 
     const history = useSqlWorkbenchStore.getState().tabsById['tab-1']?.history
     expect(history).toHaveLength(1)
@@ -704,7 +838,7 @@ delete from sessions;`,
   })
 
   it('appends a history entry when execution fails with an error', async () => {
-    executeMock.mockRejectedValue(new Error('connection lost'))
+    executeSqlMock.mockRejectedValue(new Error('connection lost'))
 
     render(<SqlWorkbenchTab tab={tab} />)
     act(() => {
@@ -713,7 +847,7 @@ delete from sessions;`,
 
     fireEvent.click(screen.getByRole('button', { name: t('stage.toolbar.run') }))
 
-    await waitFor(() => expect(executeMock).toHaveBeenCalled())
+    await waitFor(() => expect(executeSqlMock).toHaveBeenCalled())
 
     const history = useSqlWorkbenchStore.getState().tabsById['tab-1']?.history
     expect(history).toHaveLength(1)
@@ -725,13 +859,13 @@ delete from sessions;`,
   })
 
   it('routes execution errors into an error result tab without showing the error status tag', async () => {
-    executeMock.mockRejectedValue(new Error('SQL execution failed'))
+    executeSqlMock.mockRejectedValue(new Error('SQL execution failed'))
 
     render(<SqlWorkbenchTab tab={tab} />)
 
     fireEvent.click(screen.getByRole('button', { name: t('stage.toolbar.run') }))
 
-    await waitFor(() => expect(executeMock).toHaveBeenCalled())
+    await waitFor(() => expect(executeSqlMock).toHaveBeenCalled())
 
     expect(screen.getByRole('tab', { name: t('stage.status.error') })).toBeTruthy()
     expect(screen.getByText('SQL execution failed')).toBeTruthy()

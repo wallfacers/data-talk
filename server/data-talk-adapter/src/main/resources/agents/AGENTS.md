@@ -266,7 +266,9 @@ Read the state, schema, or available actions of a UI object.
 | `workspace` | `workspace` | The tab container; reports open tabs and active tab |
 | `query_editor` | `<tabId>` | A SQL workbench tab with SQL text, execution metadata, and focus/close actions |
 
-**`query_editor` state fields**: `sql`, `source`, `entryMode`, `connectionId`, `connectionName`, `database`, `schema`, `lastRun`, `contextNotice`.
+**`query_editor` state fields**: `content`, `version`, `dirty`, `cursor`, `selection`, `connectionId`, `connectionName`, `database`, `schema`, `contextOverride`, `entryMode`, `autoRun`, `executeStatus`, `results`, `activeResultId`, `limit`.
+
+`results` contains summary metadata only and never includes row data. Use `datatalk.execute_sql` when you need row-level result data in the agent context.
 
 **Use when** you need to know the current SQL in a tab, what tabs exist, or which tab is active.
 
@@ -280,14 +282,19 @@ Modify a UI object's properties via JSON Patch operations.
 {
   "object": "query_editor",
   "target": "<tabId>",
-  "ops": [{ "op": "replace", "path": "/sql", "value": "select 1" }],
+  "ops": [{ "op": "replace", "path": "/content", "value": "select 1" }],
   "reason": "optional explanation"
 }
 ```
 
 **Supported patch paths per object type**
 
-None currently. `workspace` and `query_editor` are read-only through `datatalk.ui.patch`; edit SQL in the UI and use `datatalk.ui.exec` for supported actions.
+| object | op | path | effect |
+|--------|----|------|--------|
+| `query_editor` | `replace` | `/content` | Replace the full SQL content |
+| `query_editor` | `replace` | `/connectionId` | Update the effective connection binding |
+| `query_editor` | `replace` | `/database` | Update the effective database binding |
+| `query_editor` | `replace` | `/schema` | Update the effective schema binding |
 
 ---
 
@@ -307,10 +314,25 @@ Execute a named action on a UI object.
 | `workspace` | `close` | `{ target: tabId }` | Close a tab |
 | `workspace` | `focus` | `{ target: tabId }` | Focus a tab |
 | `workspace` | `choose_connection` | `{ preferredConnectionId? }` | Prompt user to pick a data source; returns selected connection info |
+| `query_editor` | `apply_text_edits` | `{ baseVersion, edits }` | Apply precise versioned text edits to SQL content |
+| `query_editor` | `set_context` | `{ connectionId?, database?, schema? }` | Update one or more execution-context fields |
+| `query_editor` | `run_sql` | `{ limit? }` | Run the current SQL in the editor |
+| `query_editor` | `format_sql` | `{}` | Format the current SQL text |
 | `query_editor` | `focus` | — | Focus this tab |
 | `query_editor` | `close` | — | Close this tab |
 
 **Valid `type` values for `workspace.open`**: `query_editor`, `er_canvas`, `markdown_note`, `report`, `dashboard`
+
+---
+
+### Query Editor 编辑规范
+
+1. Always `datatalk.ui.read` the `query_editor` state before precise edits so you have the current `version`.
+2. For a full SQL rewrite, use `datatalk.ui.patch` with `replace` on `/content`.
+3. For precise edits, use `datatalk.ui.exec` with `action: "apply_text_edits"` and `{ baseVersion, edits }`.
+4. For context changes, use `set_context` when updating multiple fields, or a single-field `datatalk.ui.patch` on `/connectionId`, `/database`, or `/schema`.
+5. Never ask the user to manually copy SQL into the editor; write it into the `query_editor` yourself.
+6. If a structured error response includes `hint`, follow the `hint` to self-recover instead of repeating it to the user.
 
 ---
 

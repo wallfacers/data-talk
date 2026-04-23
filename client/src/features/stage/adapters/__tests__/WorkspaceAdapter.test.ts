@@ -1,140 +1,168 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { useConnectionStore } from '@/features/connection/store'
+import { useSessionStore } from '@/stores/session-store'
 import { WorkspaceAdapter } from '../WorkspaceAdapter'
 import { useStageStore } from '@/stores/stage-store'
 import { useDataSourcePickerStore } from '@/features/session/data-source-picker/data-source-picker-store'
 
+const realOpenQueryEditor = useStageStore.getState().openQueryEditor
+
 describe('WorkspaceAdapter', () => {
   beforeEach(() => {
     useStageStore.setState({
-      workspaceTabs: [], tabsBySession: new Map(),
-      activeWorkspaceTabId: null, activeTabIdBySession: new Map(),
+      workspaceTabs: [],
+      tabsBySession: new Map(),
+      activeWorkspaceTabId: null,
+      activeTabIdBySession: new Map(),
+      openQueryEditor: realOpenQueryEditor,
     } as unknown as Record<string, unknown>)
+    useConnectionStore.setState({
+      activeConnectionId: null,
+      connections: [],
+    })
+    useSessionStore.setState({
+      activeSessionId: null,
+      modeBySession: new Map(),
+      hasEverSentBySession: new Map(),
+      dataContextBySession: new Map(),
+      pendingPrompt: null,
+      composerRestoreDraft: null,
+      pendingModelPrompt: false,
+      pendingConnectionPrompt: false,
+      pendingActionAfterConnectionPick: null,
+    })
   })
 
-  it('exec open for query_editor uses the open-or-focus rule', async () => {
-    const adapter = new WorkspaceAdapter(() => 's1')
-    const res = await adapter.exec('open', {
-      type: 'query_editor',
-      title: 'SQL',
-      connection_id: 'conn-1',
-      database: 'db-1',
-      schema: 'public',
-    })
-    expect(res.success).toBe(true)
-    const tabs = useStageStore.getState().tabsBySession.get('s1') ?? []
-    expect(tabs).toHaveLength(1)
-    expect(tabs[0].type).toBe('query_editor')
-    expect(tabs[0].connectionId).toBe('conn-1')
-    expect(tabs[0].schema).toBe('public')
-    expect(tabs[0].originSessionId).toBe('s1')
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
-  it('exec open for query_editor allows missing connection_id and keeps the tab session-scoped', async () => {
+  it('exec open for query_editor with connection context delegates to openQueryEditor only', async () => {
+    const openQueryEditor = vi.fn().mockReturnValue({ tabId: 'qe-1', created: true })
+    useStageStore.setState({ openQueryEditor } as unknown as Record<string, unknown>)
+
     const adapter = new WorkspaceAdapter(() => 's1')
-    const res = await adapter.exec('open', {
+    const result = await adapter.exec('open', {
       type: 'query_editor',
       title: 'SQL',
-    })
-
-    expect(res.success).toBe(true)
-    const tabs = useStageStore.getState().tabsBySession.get('s1') ?? []
-    expect(tabs).toEqual([
-      expect.objectContaining({
-        tabId: (res.data as { tabId: string }).tabId,
-        type: 'query_editor',
-        title: 'SQL',
-        scope: 'session',
-        originSessionId: 's1',
-        connectionId: undefined,
-        database: undefined,
-        schema: undefined,
-      }),
-    ])
-  })
-
-  it('exec open deduplicates query_editor tabs by type + connection + database + schema', async () => {
-    const adapter = new WorkspaceAdapter(() => 's1')
-    await adapter.exec('open', {
-      type: 'query_editor',
-      title: 'SQL',
-      connection_id: 'conn-1',
-      database: 'db-1',
-      schema: 'public',
-    })
-    await adapter.exec('open', {
-      type: 'query_editor',
-      title: 'SQL',
-      connection_id: 'conn-1',
-      database: 'db-1',
-      schema: 'public',
-    })
-
-    const tabs = useStageStore.getState().tabsBySession.get('s1') ?? []
-    expect(tabs).toHaveLength(1)
-    expect(useStageStore.getState().activeTabIdBySession.get('s1')).toBe(tabs[0].tabId)
-  })
-
-  it('exec open applies payload and title updates when query_editor deduplicates to an existing tab', async () => {
-    const adapter = new WorkspaceAdapter(() => 's1')
-    await adapter.exec('open', {
-      type: 'query_editor',
-      title: 'SQL A',
       connection_id: 'conn-1',
       database: 'db-1',
       schema: 'public',
       payload: {
         initialSql: 'select 1',
-        contextOverride: {
-          connectionId: 'conn-a',
-          database: 'db-a',
-          schema: 'schema-a',
-        },
+        autoRun: true,
+        connectionId: 'payload-conn',
+        database: 'payload-db',
       },
     })
-    await adapter.exec('open', {
-      type: 'query_editor',
-      title: 'SQL B',
-      connection_id: 'conn-1',
+
+    expect(result).toEqual({
+      success: true,
+      data: { tabId: 'qe-1' },
+    })
+    expect(openQueryEditor).toHaveBeenCalledWith({
+      sessionId: 's1',
+      scope: 'session',
+      baseTitle: 'SQL',
+      openMode: 'reuse_by_resource_context',
+      entryMode: 'ui_exec',
+      initialContent: 'select 1',
+      autoRun: true,
+      connectionId: 'conn-1',
+      connectionName: undefined,
       database: 'db-1',
       schema: 'public',
+    })
+    expect(useStageStore.getState().tabsBySession.get('s1') ?? []).toEqual([])
+  })
+
+  it('exec open for query_editor without connection context delegates to openQueryEditor only', async () => {
+    const openQueryEditor = vi.fn().mockReturnValue({ tabId: 'qe-2', created: true })
+    useStageStore.setState({ openQueryEditor } as unknown as Record<string, unknown>)
+
+    const adapter = new WorkspaceAdapter(() => 's1')
+    const result = await adapter.exec('open', {
+      type: 'query_editor',
       payload: {
         initialSql: 'select 2',
-        contextOverride: {
-          connectionId: 'conn-b',
-          database: 'db-b',
-          schema: 'schema-b',
-        },
       },
     })
 
-    const tabs = useStageStore.getState().tabsBySession.get('s1') ?? []
-    expect(tabs).toHaveLength(1)
-    expect(tabs[0]).toEqual(expect.objectContaining({
-      title: 'SQL B',
-      payload: expect.objectContaining({
-        initialSql: 'select 2',
-        contextOverride: expect.objectContaining({
-          connectionId: 'conn-b',
-          database: 'db-b',
-          schema: 'schema-b',
-        }),
-      }),
+    expect(result).toEqual({
+      success: true,
+      data: { tabId: 'qe-2' },
+    })
+    expect(openQueryEditor).toHaveBeenCalledWith({
+      sessionId: 's1',
+      scope: 'session',
+      baseTitle: 'query_editor',
+      openMode: 'always_new',
+      entryMode: 'ui_exec',
+      initialContent: 'select 2',
+      autoRun: false,
+      connectionId: undefined,
+      connectionName: undefined,
+      database: undefined,
+      schema: undefined,
+    })
+    expect(useStageStore.getState().tabsBySession.get('s1') ?? []).toEqual([])
+  })
+
+  it('exec open for query_editor carries payload-only canonical context into openQueryEditor', async () => {
+    const openQueryEditor = vi.fn().mockReturnValue({ tabId: 'qe-3', created: true })
+    useStageStore.setState({ openQueryEditor } as unknown as Record<string, unknown>)
+
+    const adapter = new WorkspaceAdapter(() => 's1')
+    const result = await adapter.exec('open', {
+      type: 'query_editor',
+      title: 'Payload SQL',
+      payload: {
+        initialSql: 'select 3',
+        autoRun: true,
+        connectionId: 'payload-conn',
+        connectionName: 'Payload Warehouse',
+        database: 'payload-db',
+        schema: 'payload-schema',
+      },
+    })
+
+    expect(result).toEqual({
+      success: true,
+      data: { tabId: 'qe-3' },
+    })
+    expect(openQueryEditor).toHaveBeenCalledWith({
+      sessionId: 's1',
+      scope: 'session',
+      baseTitle: 'Payload SQL',
+      openMode: 'reuse_by_resource_context',
+      entryMode: 'ui_exec',
+      initialContent: 'select 3',
+      autoRun: true,
+      connectionId: 'payload-conn',
+      connectionName: 'Payload Warehouse',
+      database: 'payload-db',
+      schema: 'payload-schema',
+    })
+  })
+
+  it('exec open for query_editor does not carry a mismatched payload connectionName when top-level connection_id wins', async () => {
+    const openQueryEditor = vi.fn().mockReturnValue({ tabId: 'qe-4', created: true })
+    useStageStore.setState({ openQueryEditor } as unknown as Record<string, unknown>)
+
+    const adapter = new WorkspaceAdapter(() => 's1')
+    await adapter.exec('open', {
+      type: 'query_editor',
+      connection_id: 'top-conn',
+      payload: {
+        connectionId: 'payload-conn',
+        connectionName: 'Payload Warehouse',
+      },
+    })
+
+    expect(openQueryEditor).toHaveBeenCalledWith(expect.objectContaining({
+      connectionId: 'top-conn',
+      connectionName: undefined,
     }))
-
-    const state = adapter.read('state') as {
-      tabs: Array<{ tabId: string; contextOverride?: unknown }>
-      activeTabId: string | null
-    }
-
-    expect(state.tabs).toEqual([
-      expect.objectContaining({
-        contextOverride: {
-          connectionId: 'conn-b',
-          database: 'db-b',
-          schema: 'schema-b',
-        },
-      }),
-    ])
   })
 
   it('rejects session-scoped query_editor open without an active session', async () => {
@@ -203,6 +231,54 @@ describe('WorkspaceAdapter', () => {
       expect.objectContaining({
         tabId: 'q-payload',
         connectionId: 'payload-conn',
+      }),
+    ])
+  })
+
+  it('read state exposes effective query editor context in workspace summary while keeping contextOverride separate', () => {
+    useConnectionStore.setState({
+      activeConnectionId: null,
+      connections: [
+        { id: 'conn-1', name: 'Warehouse', kind: 'postgres', databaseName: 'analytics' } as never,
+        { id: 'conn-2', name: 'Reporting Warehouse', kind: 'postgres', databaseName: 'warehouse' } as never,
+      ],
+    })
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 's1',
+      scope: 'session',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'ai_open',
+      initialContent: 'select 1',
+      connectionId: 'conn-1',
+      connectionName: 'Warehouse',
+      database: 'analytics',
+      schema: 'public',
+    })
+    useStageStore.getState().updateTabPayload(tabId, (payload) => ({
+      ...(payload as Record<string, unknown>),
+      contextOverride: {
+        connectionId: 'conn-2',
+        database: 'warehouse',
+        schema: 'reporting',
+      },
+    }))
+
+    const adapter = new WorkspaceAdapter(() => 's1')
+    const state = adapter.read('state') as {
+      tabs: Array<{ tabId: string; connectionId?: string | null; contextOverride?: unknown }>
+      activeTabId: string | null
+    }
+
+    expect(state.tabs).toEqual([
+      expect.objectContaining({
+        tabId,
+        connectionId: 'conn-2',
+        contextOverride: expect.objectContaining({
+          connectionId: 'conn-2',
+          database: 'warehouse',
+          schema: 'reporting',
+        }),
       }),
     ])
   })

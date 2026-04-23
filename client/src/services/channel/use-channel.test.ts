@@ -1,11 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createElement, type ReactNode } from 'react'
-import { renderHook, act } from '@testing-library/react'
+import { renderHook, act, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { buildEventSink, useChannel } from './use-channel'
 import { useChatPartsStore } from '@/stores/chat-parts-store'
 import { useChannelStore } from '@/stores/channel-store'
 import { useSessionStore } from '@/stores/session-store'
+import { uiRouter } from '@/services/ui-router'
+import type { UIObject } from '@/services/ui-router'
+import '@/features/actions/ui-handlers'
 
 describe('buildEventSink · session.meta.updated', () => {
   let qc: QueryClient
@@ -310,5 +313,66 @@ describe('buildEventSink → session.diff (TD-017)', () => {
     expect(() =>
       sink({ event: 'session.diff', data: { sessionId: 's1', payload: { unknown: true } } } as any)
     ).not.toThrow()
+  })
+})
+
+describe('buildEventSink → action.invoke error payloads', () => {
+  beforeEach(() => {
+    useChannelStore.setState({ lastEventIdBySession: new Map(), isConnected: false })
+  })
+
+  it('preserves structured ui-router detail in action_result errors', async () => {
+    uiRouter.registerInstance('query-1', {
+      type: 'query_editor',
+      objectId: 'query-1',
+      title: 'Query 1',
+      patchCapabilities: [{ pathPattern: '/content', ops: ['replace'] }],
+      read: (mode: Parameters<UIObject['read']>[0]) => {
+        if (mode === 'actions') {
+          return [
+            { name: 'apply_text_edits', description: '', paramsSchema: { type: 'object', properties: {} } },
+            { name: 'set_context', description: '', paramsSchema: { type: 'object', properties: {} } },
+          ]
+        }
+        return { content: 'select 1' }
+      },
+      patch: async () => ({ status: 'applied' }),
+      exec: async () => ({ success: true }),
+    } as any)
+
+    const qc = new QueryClient()
+    const client = {
+      actionResult: vi.fn().mockResolvedValue(undefined),
+    } as any
+    const sink = buildEventSink('s1', client, qc, null)
+
+    sink({
+      event: 'action.invoke',
+      data: {
+        callId: 'call-1',
+        actionId: 'datatalk.ui.patch',
+        input: {
+          object: 'query_editor',
+          target: 'query-1',
+          ops: [{ op: 'replace', path: '/title', value: 'bad' }],
+        },
+      },
+    } as any)
+
+    await waitFor(() => expect(client.actionResult).toHaveBeenCalledTimes(1))
+    expect(client.actionResult).toHaveBeenCalledWith(
+      'call-1',
+      false,
+      undefined,
+      expect.objectContaining({
+        code: 'unsupported_patch',
+        message: expect.stringContaining('Unsupported'),
+        details: expect.objectContaining({
+          code: 'unsupported_patch',
+          hint: expect.stringContaining('/content'),
+          availableActions: ['apply_text_edits', 'set_context'],
+        }),
+      }),
+    )
   })
 })

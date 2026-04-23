@@ -4,7 +4,6 @@ import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@/components/ui/button'
 import { useStageStore } from '@/stores/stage-store'
 import { useActiveArtifactTitle } from '../use-active-artifact-title'
-import { openOrFocusStageToolTab } from '../utils/open-or-focus-stage-tool-tab'
 import { StageTabBar } from './stage-tab-bar'
 import { StageTabContent } from './stage-tab-content'
 import { StageUIObjectRegistry } from './stage-ui-object-registry'
@@ -84,24 +83,21 @@ export function StageWindow({ sessionId }: Props) {
 
   function handleOpenSqlEditor() {
     setShowStartPage(false)
-    openOrFocusStageToolTab({
-      getState: useStageStore.getState,
-      sessionId: null,
-      reuseExisting: false,
-      target: {
-        kind: 'global_tool',
-        tool: 'sql',
-        title: t('stage.toolRow.sql'),
-      },
+    useStageStore.getState().openQueryEditor({
+      sessionId: sessionId ?? null,
+      scope: 'workspace',
+      baseTitle: t('stage.toolRow.sql'),
+      openMode: 'always_new',
+      entryMode: 'blank',
     })
   }
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden rounded-[20px] border border-border/70 bg-muted/20 shadow-[0_18px_42px_rgba(15,23,42,0.10)] ring-1 ring-black/5 transition-all duration-200">
+    <div className="flex h-full w-full flex-col overflow-hidden rounded-[22px] border border-border/75 bg-muted/25 shadow-[0_24px_56px_rgba(15,23,42,0.14)] ring-1 ring-black/5 transition-all duration-200">
       <StageUIObjectRegistry sessionId={sessionId ?? null} tabs={tabs} />
 
       <div className="flex flex-col bg-transparent">
-        <div className="group flex h-10 shrink-0 select-none items-center justify-between border-b border-border/55 bg-background/55">
+        <div className="group flex h-10 shrink-0 select-none items-center justify-between border-b border-border/65 bg-background/72 shadow-[inset_0_-1px_0_rgba(148,163,184,0.12)]">
           <div className="flex items-center gap-2 pl-3 pr-2">
             {Icon ? <Icon className="size-4 text-primary" /> : <div className="size-2 rounded-full bg-primary" />}
             <span className="text-xs font-medium tracking-wide text-foreground/80">{label || t('stage.workspace')}</span>

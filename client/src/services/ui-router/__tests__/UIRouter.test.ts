@@ -2,6 +2,58 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { UIRouter } from '../UIRouter'
 import type { UIObject, PatchCapability } from '../types'
 
+const QUERY_EDITOR_ACTIONS = [
+  {
+    name: 'apply_text_edits',
+    description: 'Apply versioned text edits to the SQL content',
+    paramsSchema: {
+      type: 'object' as const,
+      required: ['baseVersion', 'edits'],
+      properties: {
+        baseVersion: { type: 'number' },
+        edits: { type: 'array' },
+      },
+    },
+  },
+  {
+    name: 'set_context',
+    description: 'Set the query execution context',
+    paramsSchema: {
+      type: 'object' as const,
+      properties: {
+        connectionId: { type: ['string', 'null'] },
+        database: { type: ['string', 'null'] },
+        schema: { type: ['string', 'null'] },
+      },
+    },
+  },
+  {
+    name: 'run_sql',
+    description: 'Run the current SQL',
+    paramsSchema: {
+      type: 'object' as const,
+      properties: {
+        limit: { type: ['number', 'null'] },
+      },
+    },
+  },
+  {
+    name: 'format_sql',
+    description: 'Format the current SQL',
+    paramsSchema: { type: 'object' as const, properties: {} },
+  },
+  {
+    name: 'focus',
+    description: 'Focus this query editor',
+    paramsSchema: { type: 'object' as const, properties: {} },
+  },
+  {
+    name: 'close',
+    description: 'Close this query editor',
+    paramsSchema: { type: 'object' as const, properties: {} },
+  },
+]
+
 function makeStub(objectId: string, opts: {
   stateValue?: unknown,
   actions?: unknown,
@@ -66,19 +118,44 @@ describe('UIRouter', () => {
   it('validates patch capability', async () => {
     router.registerInstance('q3', makeStub('q3', {
       patchCaps: [{ pathPattern: '/content', ops: ['replace'] }],
+      actions: QUERY_EDITOR_ACTIONS,
     }))
     const bad = await router.handle({ tool: 'ui_patch', object: 'query_editor', target: 'q3',
       payload: { ops: [{ op: 'replace', path: '/forbidden', value: 1 }] } })
     expect(bad.error).toContain('Unsupported')
+    expect(bad.data).toEqual(expect.objectContaining({
+      code: 'unsupported_patch',
+      hint: expect.stringContaining('/content'),
+      availableActions: QUERY_EDITOR_ACTIONS.map((action) => action.name),
+    }))
   })
 
   it('validates exec action exists', async () => {
     router.registerInstance('q4', makeStub('q4', {
-      actions: [{ name: 'run_sql', description: '', paramsSchema: { type: 'object', properties: {} } }],
+      actions: QUERY_EDITOR_ACTIONS,
     }))
     const bad = await router.handle({ tool: 'ui_exec', object: 'query_editor', target: 'q4',
       payload: { action: 'nuke', params: {} } })
     expect(bad.error).toContain('Unknown action')
+    expect(bad.data).toEqual(expect.objectContaining({
+      code: 'unknown_action',
+      availableActions: QUERY_EDITOR_ACTIONS.map((action) => action.name),
+    }))
+  })
+
+  it('returns expected schema for missing required exec params', async () => {
+    router.registerInstance('q5', makeStub('q5', {
+      actions: QUERY_EDITOR_ACTIONS,
+    }))
+
+    const bad = await router.handle({ tool: 'ui_exec', object: 'query_editor', target: 'q5',
+      payload: { action: 'apply_text_edits', params: {} } })
+
+    expect(bad.error).toContain('Missing required params')
+    expect(bad.data).toEqual(expect.objectContaining({
+      code: 'invalid_params',
+      expectedSchema: QUERY_EDITOR_ACTIONS[0].paramsSchema,
+    }))
   })
 
   it('ui_list filters by type', async () => {

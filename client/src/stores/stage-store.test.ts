@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
+import { useSqlWorkbenchStore } from '@/features/stage/stores/sql-workbench-store'
 import { useStageStore } from './stage-store'
 
 describe('stage-store', () => {
@@ -140,6 +141,10 @@ describe('StageStore tabs', () => {
     activeTabIdBySession: new Map(), activeWorkspaceTabId: null,
   } as unknown as Record<string, unknown>) })
 
+  beforeEach(() => {
+    useSqlWorkbenchStore.setState({ tabsById: {} })
+  })
+
   it('openTab(workspace) adds to workspaceTabs and sets activeWorkspaceTabId', () => {
     useStageStore.getState().openTab({ tabId: 't1', type: 'report', title: 'sql', scope: 'workspace', payload: {}, createdAt: 1 })
     expect(useStageStore.getState().workspaceTabs).toHaveLength(1)
@@ -175,6 +180,113 @@ describe('StageStore tabs', () => {
     st.openTab({ tabId: 'a1', type: 'artifact', title: 'y', scope: 'session', originSessionId: 's1', payload: {}, createdAt: 2 })
     const merged = st.listTabs('s1')
     expect(merged.map(t => t.tabId).sort()).toEqual(['a1', 't1'])
+  })
+
+  it('allocates SQL editor titles from visible workspace + session query editors', () => {
+    const store = useStageStore.getState()
+
+    store.openQueryEditor({
+      sessionId: 's1',
+      scope: 'workspace',
+      baseTitle: 'SQL 编辑器',
+      openMode: 'always_new',
+      entryMode: 'blank',
+    })
+    store.openQueryEditor({
+      sessionId: 's1',
+      scope: 'session',
+      baseTitle: 'SQL 编辑器',
+      openMode: 'always_new',
+      entryMode: 'direct_sql',
+      initialContent: 'select 1',
+    })
+
+    const titles = store
+      .listTabs('s1')
+      .filter((tab) => tab.type === 'query_editor')
+      .map((tab) => tab.title)
+
+    expect(titles).toEqual(['SQL 编辑器', 'SQL 编辑器2'])
+  })
+
+  it('reuses the same resource-scoped query editor when openMode is reuse_by_resource_context', () => {
+    const store = useStageStore.getState()
+
+    const first = store.openQueryEditor({
+      sessionId: 's1',
+      scope: 'session',
+      baseTitle: 'SQL 编辑器',
+      openMode: 'reuse_by_resource_context',
+      entryMode: 'ui_exec',
+      connectionId: 'conn-1',
+      database: 'analytics',
+      schema: 'public',
+    })
+    const second = store.openQueryEditor({
+      sessionId: 's1',
+      scope: 'session',
+      baseTitle: 'SQL 编辑器',
+      openMode: 'reuse_by_resource_context',
+      entryMode: 'ui_exec',
+      connectionId: 'conn-1',
+      database: 'analytics',
+      schema: 'public',
+    })
+
+    expect(second).toEqual({ tabId: first.tabId, created: false })
+  })
+
+  it('bootstraps workbench state and keeps new query editor payloads free of live sql content', () => {
+    const store = useStageStore.getState()
+    const opened = store.openQueryEditor({
+      sessionId: 's1',
+      scope: 'session',
+      baseTitle: 'SQL 编辑器',
+      openMode: 'always_new',
+      entryMode: 'direct_sql',
+      initialContent: 'select 1',
+    })
+
+    expect(useSqlWorkbenchStore.getState().tabsById[opened.tabId]).toMatchObject({
+      sqlText: 'select 1',
+      version: 1,
+    })
+
+    let tab = useStageStore.getState().listTabs('s1').find((candidate) => candidate.tabId === opened.tabId)
+    expect(tab?.payload).not.toHaveProperty('initialSql')
+
+    const result = store.applyQueryEditorTextEdits(opened.tabId, {
+      baseVersion: 1,
+      edits: [
+        {
+          range: {
+            startLine: 1,
+            startColumn: 8,
+            endLine: 1,
+            endColumn: 9,
+          },
+          text: '2',
+        },
+      ],
+    })
+
+    expect(result).toEqual({
+      ok: true,
+      version: 2,
+      content: 'select 2',
+    })
+    expect(useSqlWorkbenchStore.getState().tabsById[opened.tabId]).toMatchObject({
+      sqlText: 'select 2',
+      version: 2,
+    })
+    tab = useStageStore.getState().listTabs('s1').find((candidate) => candidate.tabId === opened.tabId)
+    expect(tab?.payload).not.toHaveProperty('initialSql')
+  })
+
+  it('setQueryEditorCursor rejects unknown tab ids', () => {
+    expect(() => useStageStore.getState().setQueryEditorCursor('missing', { line: 3, column: 4 })).toThrow(
+      'Unknown sql workbench tab: missing',
+    )
   })
 
   it('toggleSidebarCollapsed persists sidebar collapsed state per session', () => {

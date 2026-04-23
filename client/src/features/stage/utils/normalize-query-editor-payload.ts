@@ -1,4 +1,4 @@
-export type QueryEditorEntryMode = 'manual' | 'resource' | 'direct_sql' | 'ai_generated'
+export type QueryEditorEntryMode = 'blank' | 'resource_sql' | 'direct_sql' | 'ui_exec' | 'ai_open'
 
 export type QueryEditorResultSnapshot = {
   columns: string[]
@@ -49,10 +49,23 @@ function normalizeSource(value: unknown): 'user' | 'ai' {
 }
 
 function normalizeEntryMode(value: unknown, source: 'user' | 'ai'): QueryEditorEntryMode {
-  if (value === 'manual' || value === 'resource' || value === 'direct_sql' || value === 'ai_generated') {
-    return value
+  switch (value) {
+    case 'manual':
+    case 'blank':
+      return 'blank'
+    case 'resource':
+    case 'resource_sql':
+      return 'resource_sql'
+    case 'direct_sql':
+      return 'direct_sql'
+    case 'ui_exec':
+      return 'ui_exec'
+    case 'ai_generated':
+    case 'ai_open':
+      return 'ai_open'
+    default:
+      return source === 'ai' ? 'ai_open' : 'blank'
   }
-  return source === 'ai' ? 'ai_generated' : 'manual'
 }
 
 function normalizeStringArray(value: unknown): string[] | null {

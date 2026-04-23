@@ -38,6 +38,48 @@ describe('ui-handlers', () => {
     await expect(h({ object: 'stub', target: 'nope', mode: 'state' }, { sessionId: 's1' })).rejects.toThrow()
   })
 
+  it('preserves structured router error detail for ui_patch failures', async () => {
+    uiRouter.registerInstance('query-1', {
+      type: 'query_editor',
+      objectId: 'query-1',
+      title: 'Query 1',
+      patchCapabilities: [{ pathPattern: '/content', ops: ['replace'] }],
+      read: (mode) => {
+        if (mode === 'actions') {
+          return [
+            { name: 'apply_text_edits', description: '', paramsSchema: { type: 'object', properties: {} } },
+            { name: 'set_context', description: '', paramsSchema: { type: 'object', properties: {} } },
+          ]
+        }
+        return { content: 'select 1' }
+      },
+      patch: async () => ({ status: 'applied' }),
+      exec: async () => ({ success: true }),
+    })
+
+    const h = getClientHandler('datatalk.ui.patch')!
+
+    try {
+      await h({
+        object: 'query_editor',
+        target: 'query-1',
+        ops: [{ op: 'replace', path: '/title', value: 'bad' }],
+      }, { sessionId: 's1' })
+      throw new Error('expected handler to reject')
+    } catch (err) {
+      expect(err).toBeInstanceOf(Error)
+      expect((err as Error).message).toContain('Unsupported')
+      expect(err).toMatchObject({
+        code: 'unsupported_patch',
+        details: expect.objectContaining({
+          code: 'unsupported_patch',
+          hint: expect.stringContaining('/content'),
+          availableActions: ['apply_text_edits', 'set_context'],
+        }),
+      })
+    }
+  })
+
   it('ui_list returns array', async () => {
     const h = getClientHandler('datatalk.ui.list')!
     const out = await h({ filter: { type: 'stub' } }, { sessionId: 's1' })
