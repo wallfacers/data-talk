@@ -65,6 +65,7 @@ This file is the map. Deep knowledge lives in `docs/`:
 | DB schema reference          | [docs/generated/db-schema.md](docs/generated/db-schema.md)   |
 | External protocol references | [docs/references/](docs/references/)                         |
 | Design patterns & conventions| [docs/DESIGN.md](docs/DESIGN.md)                             |
+| Client design contract       | [client/DESIGN.md](client/DESIGN.md)                         |
 | Backend dev guide            | [docs/BACKEND.md](docs/BACKEND.md)                           |
 | Frontend dev guide           | [docs/FRONTEND.md](docs/FRONTEND.md)                         |
 | Plan workflow                | [docs/PLANS.md](docs/PLANS.md)                               |
@@ -96,6 +97,24 @@ This file is the map. Deep knowledge lives in `docs/`:
 ### Plan Mode
 
 - Multi-step changes **MUST** use `/plan` to align on approach before writing code. Follow the existing plan workflow in [docs/PLANS.md](docs/PLANS.md)
+
+### Frontend Design Contract Gate
+
+- Any task that writes or modifies frontend requirements, product specs, design docs, execution plans, implementation proposals, or UI implementation for `client/` **MUST** read [client/DESIGN.md](client/DESIGN.md) first.
+- Before proposing or writing `client/` UI changes, the agent **MUST** explicitly state the applicable constraints taken from `client/DESIGN.md`.
+- If the requested frontend direction conflicts with `client/DESIGN.md`, the agent **MUST** stop and ask whether to:
+  1. follow `client/DESIGN.md`
+  2. update `client/DESIGN.md` first
+  3. intentionally diverge with written justification
+- Frontend plans/specs/proposals that do not reference `client/DESIGN.md` are incomplete and **MUST NOT** be treated as ready.
+
+### Frontend Plan Gate
+
+- Before entering `/plan` for any `client/` UI, UX, visual, layout, component, page-shell, interaction, or design-system change, the agent **MUST**:
+  1. read [client/DESIGN.md](client/DESIGN.md)
+  2. summarize the applicable design constraints
+  3. only then draft the plan/spec
+- Frontend `/plan` output **MUST** include a `Design Inputs` section that cites `client/DESIGN.md` and the constraints applied.
 
 ### Parallel Plan Execution
 
