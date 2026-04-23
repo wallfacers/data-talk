@@ -34,8 +34,12 @@ vi.mock('@/components/ui/context-menu', () => ({
   ContextMenu: ({ children }: { children?: ReactNode }) => <>{children}</>,
   ContextMenuTrigger: ({ render, children }: { render?: ReactNode; children?: ReactNode }) => <>{render ?? children}</>,
   ContextMenuContent: ({ children }: { children?: ReactNode }) => <div data-testid="context-menu-content">{children}</div>,
-  ContextMenuItem: ({ children, onSelect }: { children?: ReactNode; onSelect?: () => void }) => (
-    <button type="button" onClick={onSelect}>
+  ContextMenuItem: ({
+    children,
+    onClick,
+    disabled,
+  }: { children?: ReactNode; onClick?: () => void; disabled?: boolean }) => (
+    <button type="button" onClick={disabled ? undefined : onClick} disabled={disabled}>
       {children}
     </button>
   ),
@@ -172,6 +176,27 @@ describe('StageTabBar', () => {
 
     fireEvent.click(within(menu).getByText('关闭右侧标签页'))
     expect(onCloseRight).toHaveBeenCalledWith('active')
+  })
+
+  it('disables context actions when there is no sibling tab in that direction', () => {
+    render(
+      <StageTabBar
+        tabs={[{ tabId: 'only', title: 'Only', type: 'query_editor' }]}
+        activeId="only"
+        onClose={() => {}}
+        onCloseOthers={() => {}}
+        onCloseAll={() => {}}
+        onCloseLeft={() => {}}
+        onCloseRight={() => {}}
+      />
+    )
+
+    const onlyTab = screen.getByText('Only').closest('[data-tab-id="only"]') as HTMLElement
+    const menu = onlyTab.nextElementSibling as HTMLElement
+
+    expect(within(menu).getByText('关闭其他')).toBeDisabled()
+    expect(within(menu).getByText('关闭左侧标签页')).toBeDisabled()
+    expect(within(menu).getByText('关闭右侧标签页')).toBeDisabled()
   })
 
   it('uses a file icon for file_preview tabs instead of the sparkle fallback', () => {

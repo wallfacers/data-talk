@@ -154,8 +154,13 @@ export function StageTabBar({
     <div className="flex min-h-10 shrink-0 items-end border-b border-border/40 bg-transparent px-2">
       <div ref={tabScrollRef} className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div role="tablist" aria-orientation="horizontal" className="flex min-w-max items-end justify-start gap-0">
-          {tabs.map((tab) => {
+          {tabs.map((tab, index) => {
             const isActive = tab.tabId === activeId
+            const hasOtherTabs = tabs.length > 1
+            const hasLeftTabs = index > 0
+            const hasRightTabs = index < tabs.length - 1
+            const canCloseCurrent = tabs.length > 0
+            const canCloseAll = tabs.length > 0
             return (
               <ContextMenu key={tab.tabId}>
                 <ContextMenuTrigger
@@ -208,21 +213,36 @@ export function StageTabBar({
                   }
                 />
                 <ContextMenuContent className="w-48 font-sans text-xs">
-                  <ContextMenuItem onSelect={() => onClose?.(tab.tabId)}>
+                  <ContextMenuItem
+                    disabled={!canCloseCurrent}
+                    onClick={() => onClose?.(tab.tabId)}
+                  >
                     {t('stage.menu.close')}
                   </ContextMenuItem>
                   <ContextMenuSeparator />
-                  <ContextMenuItem onSelect={() => onCloseOthers?.(tab.tabId)}>
+                  <ContextMenuItem
+                    disabled={!hasOtherTabs}
+                    onClick={() => onCloseOthers?.(tab.tabId)}
+                  >
                     {t('stage.menu.closeOthers')}
                   </ContextMenuItem>
-                  <ContextMenuItem onSelect={() => onCloseAll?.()}>
+                  <ContextMenuItem
+                    disabled={!canCloseAll}
+                    onClick={() => onCloseAll?.()}
+                  >
                     {t('stage.menu.closeAll')}
                   </ContextMenuItem>
                   <ContextMenuSeparator />
-                  <ContextMenuItem onSelect={() => onCloseLeft?.(tab.tabId)}>
+                  <ContextMenuItem
+                    disabled={!hasLeftTabs}
+                    onClick={() => onCloseLeft?.(tab.tabId)}
+                  >
                     {t('stage.menu.closeLeft')}
                   </ContextMenuItem>
-                  <ContextMenuItem onSelect={() => onCloseRight?.(tab.tabId)}>
+                  <ContextMenuItem
+                    disabled={!hasRightTabs}
+                    onClick={() => onCloseRight?.(tab.tabId)}
+                  >
                     {t('stage.menu.closeRight')}
                   </ContextMenuItem>
                 </ContextMenuContent>

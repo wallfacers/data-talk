@@ -21,10 +21,10 @@ vi.mock('@/components/ui/context-menu', () => ({
   ContextMenuContent: ({ children }: { children?: ReactNode }) => <div data-testid="context-menu-content">{children}</div>,
   ContextMenuItem: ({
     children,
-    onSelect,
+    onClick,
     disabled,
-  }: { children?: ReactNode; onSelect?: () => void; disabled?: boolean }) => (
-    <button type="button" onClick={disabled ? undefined : onSelect} disabled={disabled}>
+  }: { children?: ReactNode; onClick?: () => void; disabled?: boolean }) => (
+    <button type="button" onClick={disabled ? undefined : onClick} disabled={disabled}>
       {children}
     </button>
   ),

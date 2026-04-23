@@ -104,6 +104,7 @@ export function SqlResultTabs({
           {results.map((result) => {
             const isActive = result.resultId === activeResultId
             const hasOthers = results.length > 1
+            const hasAnyResults = results.length > 0
             const activeToneClass =
               result.kind === 'error'
                 ? 'data-[state=active]:border-b-destructive text-destructive'
@@ -163,19 +164,22 @@ export function SqlResultTabs({
                   }
                 />
                 <ContextMenuContent className="w-44 font-sans text-xs">
-                  <ContextMenuItem onSelect={() => onClose(result.resultId)}>
+                  <ContextMenuItem
+                    disabled={!hasAnyResults}
+                    onClick={() => onClose(result.resultId)}
+                  >
                     {t('stage.menu.close')}
                   </ContextMenuItem>
                   <ContextMenuItem
                     disabled={!hasOthers}
-                    onSelect={() => onCloseOthers(result.resultId)}
+                    onClick={() => onCloseOthers(result.resultId)}
                   >
                     {t('stage.menu.closeOthers')}
                   </ContextMenuItem>
                   <ContextMenuSeparator />
                   <ContextMenuItem
-                    disabled={results.length === 0}
-                    onSelect={() => onCloseAll()}
+                    disabled={!hasAnyResults}
+                    onClick={() => onCloseAll()}
                   >
                     {t('stage.menu.closeAll')}
                   </ContextMenuItem>
