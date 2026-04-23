@@ -173,6 +173,21 @@ class SessionServiceTest {
     }
 
     @Test
+    void deleteAll_removesEverySession_andCleansOpenCodeAndBus() {
+        repo.upsert(new SessionRecord("s1", "c1", "t1", true, "oc-1", 100L, 100L, false));
+        repo.upsert(new SessionRecord("s2", "c1", "t2", false, null, 110L, 110L, false));
+
+        svc.deleteAll();
+
+        assertThat(repo.listAll()).isEmpty();
+        verify(sessionMap).unbind("s1");
+        verify(sessionMap).unbind("s2");
+        verify(buses).close("s1");
+        verify(buses).close("s2");
+        verify(gateway).deleteOpenCodeSession("oc-1");
+    }
+
+    @Test
     void delete_stopsEventSourcesBeforeRemovingRow() {
         // Guards the FK-violation race: any cleanup that could push more events
         // (sessionMap unbind, OpenCode delete, bus close) MUST run before the

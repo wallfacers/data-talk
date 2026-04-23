@@ -69,6 +69,12 @@ public class SessionController {
         }
     }
 
+    @DeleteMapping
+    public ResponseEntity<Void> deleteAll() {
+        svc.deleteAll();
+        return ResponseEntity.noContent().build();
+    }
+
     private static SessionDto toDto(SessionRecord r) {
         return toDto(r, false);
     }

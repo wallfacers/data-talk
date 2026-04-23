@@ -33,6 +33,8 @@ class SessionControllerIT {
         jdbc.update("DELETE FROM artifacts");
         jdbc.update("DELETE FROM events");
         jdbc.update("DELETE FROM query_results");
+        jdbc.update("DELETE FROM synthetic_session_messages");
+        jdbc.update("DELETE FROM session_data_contexts");
         jdbc.update("DELETE FROM sessions");
         for (String id : CONNECTION_IDS) {
             jdbc.update("""
@@ -191,6 +193,57 @@ class SessionControllerIT {
         Integer after = jdbc.queryForObject(
             "SELECT COUNT(*) FROM events WHERE session_id = ?", Integer.class, id);
         org.assertj.core.api.Assertions.assertThat(after).isZero();
+    }
+
+    @Test
+    void delete_all_cascades_session_related_resources() throws Exception {
+        String s1 = createSession("conn-cascade", "会话A");
+        String s2 = createSession("conn-cascade", "会话B");
+        long now = System.currentTimeMillis();
+
+        jdbc.update("""
+            INSERT INTO artifacts(id, version, session_id, kind, produced_by, payload_ref, payload_size,
+                                  supersedes_id, supersedes_ver, pinned, created_at)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, "art-1", 1, s1, "table", "call-1", "inline:{}", 2, null, null, 0, now);
+        jdbc.update("""
+            INSERT INTO events(event_id, session_id, event_type, payload_json, ts)
+            VALUES(?, ?, ?, ?, ?)
+            """, 1L, s1, "message.created", "{}", now);
+        jdbc.update("""
+            INSERT INTO synthetic_session_messages(id, session_id, kind, text, metadata_json, created_at)
+            VALUES(?, ?, ?, ?, ?, ?)
+            """, "syn-1", s1, "bang_query", "select 1", "{}", now);
+        jdbc.update("""
+            INSERT INTO session_data_contexts(session_id, connection_id, connection_name_snapshot,
+                                              database_name, schema_name, selected_level, updated_at)
+            VALUES(?, ?, ?, ?, ?, ?, ?)
+            """, s1, "conn-cascade", "seed-conn-cascade", "db1", "public", "schema", now);
+
+        Integer beforeSessions = jdbc.queryForObject("SELECT COUNT(*) FROM sessions", Integer.class);
+        Integer beforeArtifacts = jdbc.queryForObject("SELECT COUNT(*) FROM artifacts", Integer.class);
+        Integer beforeEvents = jdbc.queryForObject("SELECT COUNT(*) FROM events", Integer.class);
+        Integer beforeSynthetic = jdbc.queryForObject("SELECT COUNT(*) FROM synthetic_session_messages", Integer.class);
+        Integer beforeContexts = jdbc.queryForObject("SELECT COUNT(*) FROM session_data_contexts", Integer.class);
+        org.assertj.core.api.Assertions.assertThat(beforeSessions).isEqualTo(2);
+        org.assertj.core.api.Assertions.assertThat(beforeArtifacts).isEqualTo(1);
+        org.assertj.core.api.Assertions.assertThat(beforeEvents).isEqualTo(1);
+        org.assertj.core.api.Assertions.assertThat(beforeSynthetic).isEqualTo(1);
+        org.assertj.core.api.Assertions.assertThat(beforeContexts).isEqualTo(1);
+
+        mvc.perform(delete("/api/sessions"))
+            .andExpect(status().isNoContent());
+
+        Integer afterSessions = jdbc.queryForObject("SELECT COUNT(*) FROM sessions", Integer.class);
+        Integer afterArtifacts = jdbc.queryForObject("SELECT COUNT(*) FROM artifacts", Integer.class);
+        Integer afterEvents = jdbc.queryForObject("SELECT COUNT(*) FROM events", Integer.class);
+        Integer afterSynthetic = jdbc.queryForObject("SELECT COUNT(*) FROM synthetic_session_messages", Integer.class);
+        Integer afterContexts = jdbc.queryForObject("SELECT COUNT(*) FROM session_data_contexts", Integer.class);
+        org.assertj.core.api.Assertions.assertThat(afterSessions).isZero();
+        org.assertj.core.api.Assertions.assertThat(afterArtifacts).isZero();
+        org.assertj.core.api.Assertions.assertThat(afterEvents).isZero();
+        org.assertj.core.api.Assertions.assertThat(afterSynthetic).isZero();
+        org.assertj.core.api.Assertions.assertThat(afterContexts).isZero();
     }
 
     private String createSession(String connectionId, String title) throws Exception {

@@ -79,7 +79,18 @@ public class SessionService {
     public void delete(String id) {
         SessionRecord rec = repo.findById(id)
             .orElseThrow(() -> new NoSuchElementException(translator.get("error.session.not_found", id)));
+        deleteRecord(rec);
+    }
 
+    public void deleteAll() {
+        List<SessionRecord> sessions = repo.listAll();
+        for (SessionRecord session : sessions) {
+            deleteRecord(session);
+        }
+    }
+
+    private void deleteRecord(SessionRecord rec) {
+        String id = rec.id();
         // Order matters: events FK → sessions(id) ON DELETE CASCADE. If we delete
         // the row first, late events on the bus's flusher thread (or new ones
         // pushed by OpenCodeEventLoop) try to INSERT and trip the FK constraint.

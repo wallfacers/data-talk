@@ -19,3 +19,7 @@ export function renameSession(id: string, title: string) {
 export function deleteSession(id: string) {
   return http.delete(`sessions/${id}`).then(() => undefined)
 }
+
+export function clearAllSessions() {
+  return http.delete('sessions').then(() => undefined)
+}
