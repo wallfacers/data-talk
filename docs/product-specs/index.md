@@ -209,6 +209,7 @@ DataTalk 的差异化在于 **AI 直接操作数据库**，但不能让 AI 蛮�
 
 | 设计文档 | 日期 | 主题 |
 |----------|------|------|
+| [DataTalk Client Design System](./2026-04-23-datatalk-client-design-system-design.md) | 2026-04-23 | 为 `client/` 建立一份可执行的设计系统契约：定义 dual-theme 研究工作台视觉语言、primitive/semantic/component token 体系、Chat/Workbench 双核心页面模式、组件语义、图表/可访问性/治理规则，并作为后续 `client/DESIGN.md` 与前端实现的唯一真源 |
 | [Chat Auto-Scroll Reentry Design](./2026-04-23-chat-auto-scroll-reentry-design.md) | 2026-04-23 | 修复聊天区 auto-follow 接管条件：用户只要主动向上滚离开底部，流式更新就不得再强制滚底；仅当用户再次回到底部后，自动滚动才恢复 |
 | [SQL Tab Internal Activity Rail Design](./2026-04-23-sql-tab-internal-rail-design.md) | 2026-04-23 | 把 Stage 窗口顶层的 Activity Rail（Schema / 历史 / 大纲）下移到 SQL 编辑器 Tab 内部：rail 严格落在 Tab 内容矩形内，仅 `query_editor` 与未来 `er_designer` 挂载；文件预览、Dashboard、报表等 Tab 不再出现这些面板；状态作用域保持按 session 记忆，组件签名不变 |
 | [Read File Preview In Session Stage Design](./2026-04-22-read-file-preview-design.md) | 2026-04-22 | 为固定 `<path><type>file</type><content>` 形态的 `read` 工具文件输出增加专属前端渲染与“同步到工作台”入口：点击后在当前会话 Stage 中创建或聚焦 `file_preview` Tab，以 Tag 区显示语言/类型/截断状态、以只读 Monaco 代码区高亮 `<content>` 正文，同时保持路径与文件属性为普通文本 |
