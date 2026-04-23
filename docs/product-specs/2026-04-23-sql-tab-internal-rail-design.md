@@ -1,7 +1,7 @@
 # SQL 编辑器 Tab 内置 Activity Rail 设计
 
 - **日期**：2026-04-23
-- **状态**：待实施
+- **状态**：已实现，待完整回归与文档收口（2026-04-23）
 - **作者**：wallfacers
 - **关联代码**：`client/src/features/stage/components/stage-window.tsx`、`client/src/features/stage/components/sql-workbench-tab.tsx`、`client/src/features/stage/components/activity-rail/`
 

@@ -19,7 +19,7 @@
 | [query-editor-object-actions-design](../product-specs/2026-04-23-query-editor-object-actions-design.md) | approved | 将 `query_editor` 收敛为由 `StageStore` 统一打开、命名和维护的对象，并对 AI 暴露稳定的 `state / actions / capabilities` 与文件式 SQL 编辑语义 |
 | [datatalk-client-design-system-design](../product-specs/2026-04-23-datatalk-client-design-system-design.md) | shipped | 为 `client/` 建立可执行的设计系统契约，并落地 `client/DESIGN.md`、semantic token 映射与基础工作台表面 |
 | [chat-auto-scroll-reentry-design](../product-specs/2026-04-23-chat-auto-scroll-reentry-design.md) | shipped | 修复聊天区 auto-follow 接管条件：用户主动离开底部后，流式更新不再强制滚底，只有重新回到底部才恢复自动跟随 |
-| [sql-tab-internal-rail-design](../product-specs/2026-04-23-sql-tab-internal-rail-design.md) | approved | 把 Stage 窗口顶层 Activity Rail 下移到 SQL 编辑器 Tab 内部，仅在 `query_editor` 与未来 `er_designer` 挂载 |
+| [sql-tab-internal-rail-design](../product-specs/2026-04-23-sql-tab-internal-rail-design.md) | approved | 布局改造代码已落地：把 Stage 窗口顶层 Activity Rail 下移到 SQL 编辑器 Tab 内部，仅在 `query_editor` 与未来 `er_designer` 挂载；待 broader suite / manual smoke 收口后再转 `shipped` |
 | [read-file-preview-design](../product-specs/2026-04-22-read-file-preview-design.md) | shipped | 为 `read` 工具文件输出增加专属前端渲染与“同步到工作台”入口，在当前会话 Stage 中创建或聚焦 `file_preview` Tab |
 | [stage-sql-editor-format-design](../product-specs/2026-04-22-stage-sql-editor-format-design.md) | shipped | 为 Stage Query Editor 增加统一 SQL 格式化能力，按钮与快捷键共用同一前端格式化链路 |
 | [workspace-i18n-design](../product-specs/2026-04-22-workspace-i18n-design.md) | shipped | 补齐工作台相关前端文案与后端静态元数据、结果标题、关键错误的双语 i18n |

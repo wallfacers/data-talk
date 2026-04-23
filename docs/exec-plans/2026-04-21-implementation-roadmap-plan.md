@@ -4,7 +4,7 @@
 
 **Goal:** 用一个总排期把当前 2 个待收尾的活跃计划、已经完成的 Stage 布局与 UI Object Protocol 里程碑，以及接下来的 `query_editor` / SQL 工作台主线串成连续执行批次，避免实现状态、文档状态和实际优先级继续漂移。
 
-**Architecture:** 本计划不替代现有单项执行计划，而是作为上层编排文档：先收尾 `Composer Data Source Picker` 与 `SQL Risk Classification & IT CI Gate` 这 2 个仍在进行的计划；`Stage UI Object Protocol Phase 1` 与 `Stage Window Layout Refactor` 作为工作台基础里程碑已完成并成为后续前提；在此基础上，下一实现主线切换为 `Query Editor Object Actions` 与 `SQL Tab Internal Activity Rail`，最后统一做文档与 backlog 治理。执行时遵守现有子计划的文件边界与验证命令；本计划只定义顺序、依赖、收尾标准与批次目标。
+**Architecture:** 本计划不替代现有单项执行计划，而是作为上层编排文档：先收尾 `Composer Data Source Picker` 与 `SQL Risk Classification & IT CI Gate` 这 2 个仍在进行的计划；`Stage UI Object Protocol Phase 1` 与 `Stage Window Layout Refactor` 作为工作台基础里程碑已完成并成为后续前提；`SQL Tab Internal Activity Rail` 的代码与定向 rail 回归已落地，但 broader suite / smoke 仍待收口；在此基础上，当前真正的下一实现主线聚焦 `Query Editor Object Actions`，最后统一做文档与 backlog 治理。执行时遵守现有子计划的文件边界与验证命令；本计划只定义顺序、依赖、收尾标准与批次目标。
 
 **Tech Stack:** React 19、TypeScript、Zustand、Vitest、Spring Boot 3.5、Java 21、JUnit 5、Maven、现有 `docs/exec-plans/*` 与 `docs/design-docs/index.md` 治理流程
 
@@ -14,7 +14,8 @@
 >
 > - `Stage Window Layout Refactor` 已在 [docs/exec-plans/index.md](./index.md) 转入 Completed，本计划中原 Batch D 只保留为已完成里程碑。
 > - `Stage UI Object Protocol Phase 1` 已于 2026-04-23 完成收口并转入 Completed，不再计入待收尾活跃计划。
-> - 当前新的未开工主线是 `Query Editor Object Actions` 与 `SQL Tab Internal Activity Rail`。
+> - `SQL Tab Internal Activity Rail` 的布局改造代码已落地，相关定向 rail 测试与 `npx tsc --noEmit` 已通过；但 `src/features/stage` / `npm test` 仍被并行中的 `Query Editor Object Actions` 契约回归阻塞，尚未完成最终文档收口。
+> - 当前真正的未收口主线聚焦 `Query Editor Object Actions`；rail 计划则属于“实现已在代码，等待 broader suite 与 smoke 收口”的状态。
 > - 本文剩余价值主要在于约束收尾顺序与文档治理，不再把 Stage 两栏布局重构视为“下一步”。
 
 ## Context
@@ -23,9 +24,9 @@
   - `Composer Data Source Picker`
   - `SQL Risk Classification & IT CI Gate`
 - `Stage Window Layout Refactor` 已完成，不再是“下一实现主线”
-- 当前新的 `pending` 主线计划是：
+- 当前新的主线计划聚焦：
   - `Query Editor Object Actions`
-  - `SQL Tab Internal Activity Rail`
+- `SQL Tab Internal Activity Rail` 已完成代码落地，当前剩余的是 broader suite / smoke / 文档收口
 - 文档治理仍需处理 design status、过时 roadmap 与历史 debt 文档漂移
 
 ## Inputs
@@ -244,7 +245,7 @@
 - [ ] **Step 5.3: 为二期 backlog 准备进入条件**
   - `Stage Window Layout Refactor` 完成后，当前应先进入：
     - `Query Editor Object Actions`
-    - `SQL Tab Internal Activity Rail`
+    - `SQL Tab Internal Activity Rail` 的最终回归与文档收口
   - 只有在以上主线稳定后，再评估是否启动以下能力的 spec / plan：
     - ER 图设计器
     - Report / Dashboard
@@ -254,14 +255,14 @@
 ## Ordering
 
 1. 必须先完成 Task 1-3 中至少 2 个收尾，避免活跃计划长期堆积
-2. 收尾批次结束后，下一正式主实现面切换为 `Query Editor Object Actions`，其后才是 `SQL Tab Internal Activity Rail`
+2. 收尾批次结束后，下一正式主实现面切换为 `Query Editor Object Actions`；`SQL Tab Internal Activity Rail` 仅保留 broader suite / smoke / 文档收口，不再视为未开工主线
 3. 二期 backlog 扩展必须以 Stage workbench 稳定为前提，不提前开工
 
 ## Exit Criteria
 
 - 当前 2 个 `in_progress` 计划全部收口，或明确拆出 follow-up plan 后从原计划退出
 - `docs/exec-plans/index.md` 与 `docs/design-docs/index.md` 状态一致
-- 下一正式主线已从“Stage 结构重构”切换为 `Query Editor Object Actions`，并为 `SQL Tab Internal Activity Rail` 留出顺序空间
+- 下一正式主线已从“Stage 结构重构”切换为 `Query Editor Object Actions`；`SQL Tab Internal Activity Rail` 已进入“代码已落地，待收口”状态
 - backlog 重新按“立即收尾 / 下一个主线 / 后续二期能力”三层结构整理完毕
 
 ## Notes

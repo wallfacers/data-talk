@@ -10,6 +10,13 @@
 
 **Spec:** `docs/product-specs/2026-04-23-sql-tab-internal-rail-design.md`
 
+> **2026-04-23 Status Update**
+>
+> - 本计划对应的目标代码已经落在 `stage-window` / `sql-workbench-tab` / 相关测试文件中，不再是纯 `pending` 状态。
+> - 定向验证已通过：`stage-window.test.tsx`、`sql-workbench-tab.test.tsx`、`file-preview-tab.test.tsx` 共 44 条测试通过，`cd client && npx tsc --noEmit` 通过。
+> - 更大范围回归尚未收口：`cd client && npx vitest run src/features/stage` 与 `cd client && npm test` 当前各有 2 个失败，落在 `QueryEditorAdapter.test.ts` 与 `stage-ui-object-registry.test.tsx`，属于并行中的 `Query Editor Object Actions` 契约迁移影响，不是 rail 布局本身的回归。
+> - 手动视觉 smoke 尚未执行，因此本文当前状态应视为“代码已落地，待完整回归与文档收口”，而非 Completed。
+
 ---
 
 ## File Structure
@@ -31,7 +38,7 @@
 **Files:**
 - Modify: `client/src/features/stage/components/stage-window.test.tsx:197-212`
 
-- [ ] **Step 1: 改写「rail 在窗口层」用例为「不再在窗口层」**
+- [x] **Step 1: 改写「rail 在窗口层」用例为「不再在窗口层」**
 
 把原断言反向，并改测试名以反映新意图。
 
@@ -54,7 +61,7 @@ it('does not render the activity rail at the window level (rail moved into SQL t
 })
 ```
 
-- [ ] **Step 2: 运行该用例确认 FAIL**
+- [x] **Step 2: 运行该用例确认 FAIL**
 
 Run: `cd client && npx vitest run src/features/stage/components/stage-window.test.tsx -t "does not render the activity rail at the window level"`
 
@@ -67,7 +74,7 @@ Expected: FAIL — 当前 StageWindow 仍渲染了 rail，`queryByTestId('stage-
 **Files:**
 - Modify: `client/src/features/stage/components/stage-window.tsx:7,157`
 
-- [ ] **Step 1: 删除 StageActivityRail import**
+- [x] **Step 1: 删除 StageActivityRail import**
 
 把第 7 行：
 
@@ -77,7 +84,7 @@ import { StageActivityRail } from './activity-rail/stage-activity-rail'
 
 删除。
 
-- [ ] **Step 2: 删除 StageActivityRail 渲染**
+- [x] **Step 2: 删除 StageActivityRail 渲染**
 
 把第 157 行的 `<StageActivityRail sessionId={sessionId ?? null} />` 删除。删除后包裹它的 flex row 容器只剩一个 `<section>` 子元素，保留容器即可（不需要解构主区结构）。
 
@@ -91,13 +98,13 @@ import { StageActivityRail } from './activity-rail/stage-activity-rail'
 </div>
 ```
 
-- [ ] **Step 3: 重新运行 Task 1 用例确认 PASS**
+- [x] **Step 3: 重新运行 Task 1 用例确认 PASS**
 
 Run: `cd client && npx vitest run src/features/stage/components/stage-window.test.tsx -t "does not render the activity rail at the window level"`
 
 Expected: PASS
 
-- [ ] **Step 4: 运行 stage-window 全套测试确认无回归**
+- [x] **Step 4: 运行 stage-window 全套测试确认无回归**
 
 Run: `cd client && npx vitest run src/features/stage/components/stage-window.test.tsx`
 
@@ -110,7 +117,7 @@ Expected: 全部 PASS（其他用例不依赖 rail，应不受影响）。
 **Files:**
 - Modify: `client/src/features/stage/components/sql-workbench-tab.test.tsx`
 
-- [ ] **Step 1: 在 mock 区追加 StageActivityRail mock**
+- [x] **Step 1: 在 mock 区追加 StageActivityRail mock**
 
 在文件顶部已有 mock 块（约第 86–110 行 `vi.mock('@/features/connection/store', …)` 附近）后，新增：
 
@@ -122,7 +129,7 @@ vi.mock('./activity-rail/stage-activity-rail', () => ({
 }))
 ```
 
-- [ ] **Step 2: 在 `describe('SqlWorkbenchTab', …)` 内追加新用例**
+- [x] **Step 2: 在 `describe('SqlWorkbenchTab', …)` 内追加新用例**
 
 在已有用例之后追加：
 
@@ -157,7 +164,7 @@ it('passes empty sessionId to the rail when the SQL tab has no origin session', 
 
 > 说明：fixture `tab` 默认无 `originSessionId`，因此第二个用例会拿到 `null` → DOM 上的空字符串。
 
-- [ ] **Step 3: 运行新增用例确认 FAIL**
+- [x] **Step 3: 运行新增用例确认 FAIL**
 
 Run: `cd client && npx vitest run src/features/stage/components/sql-workbench-tab.test.tsx -t "renders the activity rail inside the SQL tab"`
 
@@ -170,7 +177,7 @@ Expected: FAIL — 当前 SqlWorkbenchTab 没有渲染 rail；`getByTestId('stag
 **Files:**
 - Modify: `client/src/features/stage/components/sql-workbench-tab.tsx`
 
-- [ ] **Step 1: 引入 StageActivityRail**
+- [x] **Step 1: 引入 StageActivityRail**
 
 在 import 区追加（按字母顺序放在合适位置）：
 
@@ -178,7 +185,7 @@ Expected: FAIL — 当前 SqlWorkbenchTab 没有渲染 rail；`getByTestId('stag
 import { StageActivityRail } from './activity-rail/stage-activity-rail'
 ```
 
-- [ ] **Step 2: 改造最外层 JSX**
+- [x] **Step 2: 改造最外层 JSX**
 
 把 `return (...)` 中最外层结构改为横向 flex，主区沿用 `sql-workbench-layout`，右侧挂 rail。
 
@@ -211,13 +218,13 @@ import { StageActivityRail } from './activity-rail/stage-activity-rail'
 
 中间「编辑器 toolbar + Monaco + 结果分割」全部保持原样，不动。
 
-- [ ] **Step 3: 重跑 Task 3 新增用例确认 PASS**
+- [x] **Step 3: 重跑 Task 3 新增用例确认 PASS**
 
 Run: `cd client && npx vitest run src/features/stage/components/sql-workbench-tab.test.tsx -t "renders the activity rail inside the SQL tab"`
 
 Expected: PASS
 
-- [ ] **Step 4: 跑 SQL Tab 全套测试无回归**
+- [x] **Step 4: 跑 SQL Tab 全套测试无回归**
 
 Run: `cd client && npx vitest run src/features/stage/components/sql-workbench-tab.test.tsx`
 
@@ -230,7 +237,7 @@ Expected: 全部 PASS。注意 splitter 拖拽用例（`supports dragging the ho
 **Files:**
 - Modify: `client/src/features/stage/components/file-preview-tab.test.tsx`
 
-- [ ] **Step 1: 新增断言用例**
+- [x] **Step 1: 新增断言用例**
 
 在 `describe('FilePreviewTab', …)` 内追加：
 
@@ -254,13 +261,13 @@ it('does not render the activity rail inside the file preview tab', () => {
 })
 ```
 
-- [ ] **Step 2: 运行该用例确认 PASS**
+- [x] **Step 2: 运行该用例确认 PASS**
 
 Run: `cd client && npx vitest run src/features/stage/components/file-preview-tab.test.tsx -t "does not render the activity rail inside the file preview tab"`
 
 Expected: PASS（FilePreviewTab 从未引入 rail，本来就不会渲染；该用例是回归保护）。
 
-- [ ] **Step 3: 跑 file-preview 全套测试**
+- [x] **Step 3: 跑 file-preview 全套测试**
 
 Run: `cd client && npx vitest run src/features/stage/components/file-preview-tab.test.tsx`
 
@@ -273,7 +280,7 @@ Expected: 全部 PASS。
 **Files:**
 - 无新增 / 修改
 
-- [ ] **Step 1: 类型检查**
+- [x] **Step 1: 类型检查**
 
 Run: `cd client && npx tsc --noEmit`
 
@@ -285,11 +292,20 @@ Run: `cd client && npx vitest run src/features/stage`
 
 Expected: 全部 PASS。重点关注 `stage-window.test.tsx`、`sql-workbench-tab.test.tsx`、`file-preview-tab.test.tsx`、`stage-activity-rail.test.tsx`。
 
+2026-04-23 实际结果：命令已执行，但当前失败 2 条非 rail 用例：
+
+- `src/features/stage/adapters/__tests__/QueryEditorAdapter.test.ts`
+- `src/features/stage/components/stage-ui-object-registry.test.tsx`
+
+两者都反映 `query_editor` 对象契约迁移中的并行改动；rail 相关文件和断言本身保持通过。
+
 - [ ] **Step 3: 全量前端测试（兜底）**
 
 Run: `cd client && npm test`
 
 Expected: 全部 PASS。
+
+2026-04-23 实际结果：命令已执行，失败点与 Step 2 相同，仍是上述 2 条 `query_editor` / registry 契约用例，不属于 rail 布局本身回归。
 
 ---
 
@@ -323,71 +339,44 @@ Run: `cd client && npm run dev`
 
 ---
 
-## Task 8: 文档收尾
+## Task 8: 文档状态同步
 
 **Files:**
 - Modify: `docs/exec-plans/index.md`
 - Modify: `docs/exec-plans/2026-04-23-sql-tab-internal-rail-plan.md`（本文件）
+- Modify: `docs/exec-plans/2026-04-21-implementation-roadmap-plan.md`
+- Modify: `docs/product-specs/2026-04-23-sql-tab-internal-rail-design.md`
 
-- [ ] **Step 1: 把本计划在 index 中从 Active 移到 Completed**
+- [x] **Step 1: 同步 index 中的真实状态**
 
-编辑 `docs/exec-plans/index.md`：
+将 `docs/exec-plans/index.md` 中本计划从 `pending` 调整为 `in_progress`，并明确说明：
 
-1. 在 `## 已完成计划` 表头下追加一行：
+- 代码与定向 rail 验证已落地
+- 更大范围 stage / 全量前端回归仍被并行中的 `Query Editor Object Actions` 契约变更阻塞
+- 手动视觉 smoke 尚未执行，因此暂不进入 Completed
 
-```markdown
-| [SQL Tab Internal Activity Rail](./2026-04-23-sql-tab-internal-rail-plan.md) | 2026-04-23 | 把 Stage 窗口顶层的 `StageActivityRail`（Schema/历史/大纲）下移到 `SqlWorkbenchTab` 内部；外层从 flex-col 改为 flex-row，rail 仅在 `query_editor` 类型 Tab 中渲染；状态作用域 `activeRailPanelBySession` 与 rail 组件签名不动；相关 stage vitest 与 `npx tsc --noEmit` 全部通过。 |
-```
+- [x] **Step 2: 在本计划、总 roadmap 与 design 文件中记录当前阻塞**
 
-2. 如该计划在执行中曾被加入 Active 表格，从 Active 删除对应行。
+更新本文、`2026-04-21-implementation-roadmap-plan.md` 与 design 文件头状态，明确：
 
-- [ ] **Step 2: 把本计划文件内的 task checkbox 全部勾选完成**
+- rail 布局改造已经落在代码
+- 当前剩余的是 broader suite / manual smoke / 最终 Completed 搬迁
+- `Query Editor Object Actions` 是当前真正影响收口的并行主线
 
-在本文件底部追加一节：
+- [ ] **Step 3: 待 broader suite 与手动视觉验证收口后，再转入 Completed**
 
-```markdown
+转入 Completed 的前提保留为：
+
+- `cd client && npx vitest run src/features/stage` 全绿
+- `cd client && npm test` 全绿
+- Task 7 手动视觉 smoke 完成
+
 ## Status
 
-- 状态：Completed
-- 完成日期：2026-04-23
+- 状态：in_progress
+- 最近更新：2026-04-23
 - 关联 spec：`docs/product-specs/2026-04-23-sql-tab-internal-rail-design.md`
-```
-
-- [ ] **Step 3: 提交所有改动**
-
-Run:
-
-```bash
-cd /home/wallfacers/project/data-talk && git status
-```
-
-确认改动文件清单符合预期（5 个源/测试文件 + 2 个文档文件）。
-
-随后单次 commit：
-
-```bash
-cd /home/wallfacers/project/data-talk && git add \
-  client/src/features/stage/components/stage-window.tsx \
-  client/src/features/stage/components/sql-workbench-tab.tsx \
-  client/src/features/stage/components/stage-window.test.tsx \
-  client/src/features/stage/components/sql-workbench-tab.test.tsx \
-  client/src/features/stage/components/file-preview-tab.test.tsx \
-  docs/exec-plans/2026-04-23-sql-tab-internal-rail-plan.md \
-  docs/exec-plans/index.md
-git commit -m "$(cat <<'EOF'
-feat(stage): move activity rail into SQL editor tab
-
-Rail (Schema/History/Outline) was rendered at StageWindow level
-regardless of active tab, polluting non-SQL tabs (file preview etc.)
-with empty/meaningless panels. Move it inside SqlWorkbenchTab so it
-only appears for query_editor tabs and is visually contained within
-the tab rectangle. State scope (activeRailPanelBySession) and the
-StageActivityRail component itself are unchanged.
-
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
-EOF
-)"
-```
+- 说明：代码与定向 rail 验证已落地；broader suite 与视觉 smoke 待收口
 
 ---
 
