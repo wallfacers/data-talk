@@ -198,6 +198,9 @@ class SessionControllerIT {
     @Test
     void delete_all_cascades_session_related_resources() throws Exception {
         String s1 = createSession("conn-cascade", "会话A");
+        // SessionService enforces single-empty-session reuse. Mark the first
+        // session as sent so the second POST creates a distinct session row.
+        jdbc.update("UPDATE sessions SET has_ever_sent = 1 WHERE id = ?", s1);
         String s2 = createSession("conn-cascade", "会话B");
         long now = System.currentTimeMillis();
 
