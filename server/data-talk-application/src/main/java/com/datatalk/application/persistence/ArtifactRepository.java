@@ -28,18 +28,20 @@ public class ArtifactRepository {
         rs.getString("supersedes_id"),
         (Integer) rs.getObject("supersedes_ver"),
         rs.getInt("pinned") == 1,
-        rs.getLong("created_at")
+        rs.getLong("created_at"),
+        rs.getString("origin_message_id"),
+        rs.getString("origin_part_id")
     );
 
     public void insert(ArtifactRecord a) {
         jdbc.update("""
             INSERT INTO artifacts(id, version, session_id, kind, produced_by, payload_ref, payload_size,
-              supersedes_id, supersedes_ver, pinned, created_at)
-            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              supersedes_id, supersedes_ver, pinned, created_at, origin_message_id, origin_part_id)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             a.id(), a.version(), a.sessionId(), a.kind(), a.producedBy(),
             a.payloadRef(), a.payloadSize(), a.supersedesId(), a.supersedesVersion(),
-            a.pinned() ? 1 : 0, a.createdAt()
+            a.pinned() ? 1 : 0, a.createdAt(), a.originMessageId(), a.originPartId()
         );
     }
 

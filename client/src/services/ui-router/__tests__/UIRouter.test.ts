@@ -59,11 +59,15 @@ function makeStub(objectId: string, opts: {
   actions?: unknown,
   patchCaps?: PatchCapability[],
   type?: string,
+  connectionId?: string,
+  database?: string,
 } = {}): UIObject {
   return {
     type: opts.type ?? 'query_editor',
     objectId,
     title: `Query ${objectId}`,
+    connectionId: opts.connectionId,
+    database: opts.database,
     patchCapabilities: opts.patchCaps,
     read: (mode) => {
       if (mode === 'state') return opts.stateValue ?? { content: '' }
@@ -163,5 +167,21 @@ describe('UIRouter', () => {
     router.registerInstance('b', { ...makeStub('b'), type: 'artifact' })
     const res = await router.handle({ tool: 'ui_list', object: '', target: '', payload: { filter: { type: 'artifact' } } })
     expect((res.data as unknown[]).length).toBe(1)
+  })
+
+  it('ui_list filters by database', async () => {
+    router.registerInstance('q1', makeStub('q1', { database: 'analytics' }))
+    router.registerInstance('q2', makeStub('q2', { database: 'sales' }))
+
+    const res = await router.handle({
+      tool: 'ui_list',
+      object: '',
+      target: '',
+      payload: { filter: { type: 'query_editor', database: 'analytics' } },
+    })
+
+    expect(res.data).toEqual([
+      expect.objectContaining({ objectId: 'q1', database: 'analytics' }),
+    ])
   })
 })

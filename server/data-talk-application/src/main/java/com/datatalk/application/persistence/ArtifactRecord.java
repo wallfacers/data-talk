@@ -2,6 +2,8 @@ package com.datatalk.application.persistence;
 
 /**
  * Persistence record for an artifact snapshot.
+ * <p>{@code originMessageId}/{@code originPartId} link chart artifacts back to the
+ * chat message-part that produced them.
  */
 public record ArtifactRecord(
     String id,
@@ -14,5 +16,7 @@ public record ArtifactRecord(
     String supersedesId,
     Integer supersedesVersion,
     boolean pinned,
-    long createdAt
+    long createdAt,
+    String originMessageId,
+    String originPartId
 ) {}

@@ -27,6 +27,10 @@ describe('SplitView stage panel', () => {
   beforeEach(() => {
     queryClient.clear()
     vi.useFakeTimers()
+    Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+      configurable: true,
+      value: vi.fn(),
+    })
     useStageStore.setState({
       openBySession: new Map(),
       autoOpenedSessions: new Set(),
@@ -92,5 +96,20 @@ describe('SplitView stage panel', () => {
     rerender(<SplitView />)
     panel = findStagePanel(container)
     expect(panel.style.transform).toBe('translateX(0)')
+  })
+
+  it('disables browser scroll anchoring on the chat scroller', () => {
+    useSessionStore.setState({
+      activeSessionId: 's1',
+      modeBySession: new Map([['s1', 'SPLIT']]),
+      hasEverSentBySession: new Map([['s1', true]]),
+      pendingPrompt: null,
+    })
+
+    const { container } = render(<SplitView />, { wrapper })
+    const scroller = container.querySelector('.flex-1.overflow-y-auto') as HTMLElement | null
+
+    expect(scroller).not.toBeNull()
+    expect(scroller?.style.overflowAnchor).toBe('none')
   })
 })

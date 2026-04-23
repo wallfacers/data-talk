@@ -34,6 +34,10 @@ export function SessionTurn(props: {
     streaming ||
     assistantMessages.some((m) => typeof m.time.completed !== 'number')
   )
+  const reserveAssistantSpace = props.isLastTurn && (
+    working ||
+    (!!props.userInfo?.__pending && assistantMessages.length === 0)
+  )
   const interrupted = assistantMessages.some((m) => m.error?.name === 'MessageAbortedError')
   const err = assistantMessages.find((m) => m.error && m.error.name !== 'MessageAbortedError')?.error
 
@@ -77,24 +81,29 @@ export function SessionTurn(props: {
   return (
     <div data-component="session-turn" className="py-2">
       {props.userInfo && <UserBubble info={props.userInfo} parts={userParts} />}
-      <AssistantStream
-        sessionId={props.sessionId}
-        messages={assistantMessages}
-        working={working}
-        showCopyPartID={working ? null : lastTextPartId}
-        turnDurationMs={turnDurationMs}
-      />
-      {interrupted && (
-        <div className="my-2 text-center text-xs text-muted-foreground">— {t('chat.interrupted')} —</div>
-      )}
-      {showThinking && (
-        <div className="my-2 flex flex-col">
-          <div className="flex w-fit items-center gap-1.5 text-sm font-medium text-muted-foreground">
-            <ChevronRightIcon size={16} className="rotate-90" />
-            <TextShimmer text={t('chat.thinking')} active />
+      {/* Reserve space equal to the thinking indicator so the swap from
+          "Thinking…" to the first (tiny) streamed text part doesn't shrink
+          scrollHeight, clamp scrollTop, and bobble the pinned user bubble. */}
+      <div className={reserveAssistantSpace ? 'min-h-9' : undefined}>
+        <AssistantStream
+          sessionId={props.sessionId}
+          messages={assistantMessages}
+          working={working}
+          showCopyPartID={working ? null : lastTextPartId}
+          turnDurationMs={turnDurationMs}
+        />
+        {interrupted && (
+          <div className="my-2 text-center text-xs text-muted-foreground">— {t('chat.interrupted')} —</div>
+        )}
+        {showThinking && (
+          <div className="my-2 flex flex-col">
+            <div className="flex w-fit items-center gap-1.5 text-sm font-medium text-muted-foreground">
+              <ChevronRightIcon size={16} className="rotate-90" />
+              <TextShimmer text={t('chat.thinking')} active />
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
       {err?.data?.message && <ErrorCard message={err.data.message} />}
     </div>
   )

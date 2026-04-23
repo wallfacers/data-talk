@@ -20,8 +20,9 @@ datatalk:
     sqlite-path: ":memory:"
   master-key-hex: "0000000000000000000000000000000000000000000000000000000000000000"
   opencode:
-    base-url: http://localhost:4096
-    callback-base: http://localhost:8080
+    base-url: http://127.0.0.1:1
+    plugin-callback-base: http://localhost:8080
+    register-external-on-startup: false
     serve:
       enabled: false
 

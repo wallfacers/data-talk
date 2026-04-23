@@ -28,6 +28,7 @@
 | TD-SINGLE-EMPTY-SESSION-MULTINODE | P2 | application | `SessionService.create` 的 `synchronized (createLock)` 仅在单 JVM 内有效。若未来扩展为多节点部署，需改为 DB 唯一约束（partial unique index `ON sessions(connection_id) WHERE has_ever_sent = 0`）。SQLite 原生不支持 partial unique，届时需配合数据库类型切换到 PG 一并处理。现状单机桌面应用无此需求 | Plan 2026-04-19 Single Empty Session |
 | TD-MULTI-SESSION-SSE-POOL | P2 | client | ~~`useSessionSubscribe` 当前仅跟随 `activeSessionId` 订阅 GET SSE，后台 session 的服务端推送在 ring buffer 溢出后可能丢失~~ `BackgroundSubscriber` 组件 + `useBackgroundSessionSubscribe` hook 实现订阅池：streaming 的后台 session 维持 SSE 存活，`session.idle/error` 触发组件卸载自动关闭连接 | 2026-04-20 完成（Tech Debt Batch plan）|
 | TD-001 | P1 | adapter | ~~`application.yml` 使用 H2 内存库作为 placeholder，需替换为正式的数据源配置策略~~ URL 改为 `jdbc:h2:mem:demodb;DB_CLOSE_DELAY=-1`，注释明确其为"演示/fallback datasource"而非临时占位 | 2026-04-20 完成（Tech Debt Batch plan）|
+| TD-027 | P1 | adapter / application / infrastructure | OpenCode 侧仍使用 legacy plugin tool 链路：`OpenCodeGateway.registerTools()` → `POST /plugin/register-tool` → `GET /global/event` → `POST /api/opencode-tool/{actionId}`。现状已验证可用，但未来若引入 MCP 且与旧链路并存，存在同名 `datatalk.*` tool 重复暴露、选择优先级不确定的风险。需将 DataTalk action 改为通过 MCP 单一路径暴露给 OpenCode，并移除旧的 tool 注册/HTTP 回调链路与对应 smoke/单测基线，避免长期维护两套入口。 | 2026-04-24 OpenCode MCP 迁移请求 |
 
 ## 已清除债务
 

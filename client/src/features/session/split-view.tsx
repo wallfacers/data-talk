@@ -102,7 +102,11 @@ export function SplitView() {
         {hasMessages ? (
           <div className="flex h-full flex-col">
             <ChatHeader />
-            <div ref={scrollRef} className="flex-1 overflow-y-auto px-2 py-4" style={{ scrollbarGutter: 'stable' }}>
+            <div
+              ref={scrollRef}
+              className="flex-1 overflow-y-auto px-2 py-4"
+              style={{ scrollbarGutter: 'stable', overflowAnchor: 'none' }}
+            >
               <div className="mx-auto w-full max-w-3xl">
                 <TurnListErrorBoundary>
                   <TurnList sessionId={sid} />

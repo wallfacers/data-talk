@@ -29,10 +29,21 @@ public class UiReadAction implements ActionHandler<Map, Map> {
         return Map.of(
                 "type", "object",
                 "required", List.of("object"),
-                "properties", Map.of(
-                        "object", Map.of("type", "string"),
-                        "target", Map.of("type", "string"),
-                        "mode", Map.of("type", "string", "enum", List.of("state", "schema", "actions", "full"))
+                "properties", Map.ofEntries(
+                        Map.entry("object", Map.of(
+                                "type", "string",
+                                "enum", List.of("workspace", "query_editor"),
+                                "description", "UI object type to read."
+                        )),
+                        Map.entry("target", Map.of(
+                                "type", "string",
+                                "description", "Explicit object id. Omit only when the active object is already clear."
+                        )),
+                        Map.entry("mode", Map.of(
+                                "type", "string",
+                                "enum", List.of("state", "schema", "actions", "full"),
+                                "description", "state=current values, schema=readable fields, actions=supported exec operations, full=state+schema+actions."
+                        ))
                 )
         );
     }

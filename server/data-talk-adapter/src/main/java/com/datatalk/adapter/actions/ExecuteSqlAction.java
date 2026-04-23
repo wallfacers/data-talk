@@ -160,7 +160,7 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
 
         artifacts.insert(new ArtifactRecord(
             artifactId, version, ctx.sessionId(), "table", ctx.callId(),
-            payloadRef, payloadSize, null, null, false, started));
+            payloadRef, payloadSize, null, null, false, started, null, null));
 
         List<Map<String, Object>> preview = rows.size() > PREVIEW_ROWS
             ? rows.subList(0, PREVIEW_ROWS) : rows;

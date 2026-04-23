@@ -29,10 +29,38 @@ public class UiPatchAction implements ActionHandler<Map, Map> {
         return Map.of(
                 "type", "object",
                 "required", List.of("object", "ops"),
-                "properties", Map.of(
-                        "object", Map.of("type", "string"),
-                        "ops", Map.of("type", "array"),
-                        "reason", Map.of("type", "string")
+                "properties", Map.ofEntries(
+                        Map.entry("object", Map.of(
+                                "type", "string",
+                                "enum", List.of("query_editor"),
+                                "description", "Only query_editor supports patch today."
+                        )),
+                        Map.entry("target", Map.of(
+                                "type", "string",
+                                "description", "Explicit query_editor tab id. Omit only when the active query editor is already clear."
+                        )),
+                        Map.entry("ops", Map.of(
+                                "type", "array",
+                                "items", Map.of("oneOf", List.of(
+                                        replaceOp("/content", Map.of("type", "string")),
+                                        replaceOp("/connectionId", Map.of("type", List.of("string", "null"))),
+                                        replaceOp("/database", Map.of("type", List.of("string", "null"))),
+                                        replaceOp("/schema", Map.of("type", List.of("string", "null")))
+                                ))
+                        )),
+                        Map.entry("reason", Map.of("type", "string"))
+                )
+        );
+    }
+
+    private static Map<String, Object> replaceOp(String path, Map<String, Object> valueSchema) {
+        return Map.of(
+                "type", "object",
+                "required", List.of("op", "path", "value"),
+                "properties", Map.ofEntries(
+                        Map.entry("op", Map.of("type", "string", "enum", List.of("replace"))),
+                        Map.entry("path", Map.of("type", "string", "enum", List.of(path))),
+                        Map.entry("value", valueSchema)
                 )
         );
     }

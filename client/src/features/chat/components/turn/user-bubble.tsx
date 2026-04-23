@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { CopyIcon, CheckIcon, PlayIcon, TerminalIcon } from 'lucide-react'
 import type { MessageInfo, Part, TextPart } from '@/services/channel/types'
 import { useChannel } from '@/services/channel/use-channel'
@@ -38,14 +38,6 @@ export function UserBubble(props: { info: MessageInfo; parts: Part[] }) {
   const pending = !!info.__pending
   const failed = !!info.__failed
   const retrying = !!info.__retrying
-  const [entryMotionActive, setEntryMotionActive] = useState(() => pending && !failed)
-  const hasStartedEntryMotion = useRef(pending && !failed)
-
-  useEffect(() => {
-    if (!pending || failed || hasStartedEntryMotion.current) return
-    hasStartedEntryMotion.current = true
-    setEntryMotionActive(true)
-  }, [pending, failed])
 
   const handleCopy = async () => {
     const success = await copyToClipboard(text)
@@ -91,13 +83,10 @@ export function UserBubble(props: { info: MessageInfo; parts: Part[] }) {
       className="my-2 flex flex-col items-end gap-1"
     >
       <div
-        data-pending-user-bubble={entryMotionActive ? 'true' : undefined}
-        onAnimationEnd={() => setEntryMotionActive(false)}
         className={cn(
           'relative max-w-[85%] rounded-lg px-3 py-2 text-sm',
           'bg-primary text-primary-foreground',
           pending && !failed && 'opacity-85',
-          entryMotionActive && 'motion-safe:animate-in motion-safe:slide-in-from-bottom-5 motion-safe:duration-300 motion-safe:ease-out motion-safe:will-change-transform',
           failed && 'border-2 border-red-500',
         )}
       >
@@ -146,6 +135,15 @@ export function UserBubble(props: { info: MessageInfo; parts: Part[] }) {
           <span className="text-red-500">⚠ {t('chat.sendFailed', { reason: info.__failReason ?? '' })}</span>
           <button onClick={handleRetry} className="text-primary hover:underline">{t('common.retry')}</button>
           <button onClick={handleRemove} className="text-muted-foreground hover:underline">{t('common.delete')}</button>
+        </div>
+      )}
+      {pending && !failed && (
+        <div
+          aria-hidden="true"
+          data-testid="user-bubble-meta-placeholder"
+          className="min-h-4 text-xs invisible"
+        >
+          .
         </div>
       )}
       {!pending && !failed && (

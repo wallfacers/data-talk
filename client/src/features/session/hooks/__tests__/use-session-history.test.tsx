@@ -136,4 +136,38 @@ describe('useSessionHistory — replace guard', () => {
       metadata: { displayKind: 'bang_query_user', queryMode: 'direct_sql' },
     })
   })
+
+  it('replays artifact originMessageId / originPartId from history artifacts', async () => {
+    vi.spyOn(http, 'get').mockImplementation(((input: any) => ({
+      json: async () =>
+        String(input).endsWith('/messages')
+          ? []
+          : {
+              artifacts: [
+                {
+                  id: 'art-1',
+                  version: 2,
+                  kind: 'chart',
+                  originMessageId: 'msg-7',
+                  originPartId: 'part-2',
+                },
+              ],
+            },
+    })) as any)
+
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    renderHook(() => useSessionHistory(SID), { wrapper: wrapper(qc) })
+
+    await waitFor(() => {
+      expect(useOntologyStore.getState().artifactsBySession.get(SID)?.get('art-1')).toBeDefined()
+    })
+
+    expect(useOntologyStore.getState().artifactsBySession.get(SID)?.get('art-1')).toMatchObject({
+      id: 'art-1',
+      version: 2,
+      kind: 'chart',
+      originMessageId: 'msg-7',
+      originPartId: 'part-2',
+    })
+  })
 })

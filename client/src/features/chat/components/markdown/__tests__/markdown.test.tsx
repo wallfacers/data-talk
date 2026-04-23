@@ -3,6 +3,23 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { Markdown } from '../markdown'
 import { SQL_EXPLAIN_EVENT, SQL_EXECUTE_EVENT } from '../sql-code-block'
 
+vi.mock('../chart-block', () => ({
+  ChartBlock: (props: {
+    sourceArtifactId?: string
+    blockIndex: number
+    messageId: string
+    partId?: string
+  }) => (
+    <div
+      data-component="chart-block"
+      data-chart-source-artifact-id={props.sourceArtifactId ?? ''}
+      data-chart-block-index={String(props.blockIndex)}
+      data-chart-message-id={props.messageId}
+      data-chart-part-id={props.partId ?? ''}
+    />
+  ),
+}))
+
 afterEach(() => {
   vi.useRealTimers()
 })
@@ -237,5 +254,34 @@ describe('Markdown', () => {
     expect(jsonAction).not.toHaveAttribute('data-copied')
     expect(jsonAction.textContent).toBe('JSON')
     expect(menu.hidden).toBe(true)
+  })
+
+  it('replaces chart fences with chart-block mount points and mounts one root', async () => {
+    const text = '```chart\n{"series":[{"type":"bar","data":[1,2,3]}]}\n```'
+    const { container, rerender } = render(
+      <Markdown text={text} streaming={false} cacheKey="msg-1" messageId="m_1" partId="p_1" />,
+    )
+
+    await waitFor(() => {
+      expect(container.querySelector('[data-component="markdown-chart"]')).toBeInTheDocument()
+      expect(container.querySelector('[data-component="chart-block"]')).toBeInTheDocument()
+    })
+
+    rerender(<Markdown text={text} streaming={false} cacheKey="msg-1" messageId="m_1" partId="p_1" />)
+
+    expect(container.querySelectorAll('[data-component="chart-block"]')).toHaveLength(1)
+  })
+
+  it('parses chart info-string and passes sourceArtifactId to chart block', async () => {
+    const text = '```chart:art_123\n{"series":[]}\n```'
+    const { container } = render(
+      <Markdown text={text} streaming={false} cacheKey="msg-2" messageId="m_2" partId="p_2" />,
+    )
+
+    await waitFor(() => {
+      const block = container.querySelector('[data-component="chart-block"]') as HTMLElement | null
+      expect(block).not.toBeNull()
+      expect(block?.dataset.chartSourceArtifactId).toBe('art_123')
+    })
   })
 })

@@ -25,8 +25,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
     "spring.sqlite-datasource.url=jdbc:sqlite::memory:",
     "spring.sqlite-datasource.driver-class-name=org.sqlite.JDBC",
     "datatalk.master-key-hex=0000000000000000000000000000000000000000000000000000000000000000",
-    "datatalk.opencode.base-url=http://localhost:4096",
-    "datatalk.opencode.callback-base=http://localhost:8080"
+    "datatalk.opencode.base-url=http://127.0.0.1:1",
+    "datatalk.opencode.plugin-callback-base=http://localhost:8080"
 })
 class DiscoveryControllerIT {
 

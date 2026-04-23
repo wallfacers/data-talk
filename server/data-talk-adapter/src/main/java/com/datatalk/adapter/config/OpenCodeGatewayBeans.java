@@ -42,6 +42,7 @@ public class OpenCodeGatewayBeans {
     private final SessionRepository sessionRepository;
     private final OpenCodeServeProperties serveProps;
     private final OpenCodeProcessManager processManager;
+    private final boolean registerExternalOnStartup;
     private OpenCodeGateway gateway;
     private OpenCodeEventLoop eventLoop;
 
@@ -55,6 +56,7 @@ public class OpenCodeGatewayBeans {
                                 SessionRepository sessionRepository,
                                 OpenCodeServeProperties serveProps,
                                 @Value("${datatalk.opencode.required:false}") boolean required,
+                                @Value("${datatalk.opencode.register-external-on-startup:true}") boolean registerExternalOnStartup,
                                 @Value("${datatalk.opencode.base-url:http://localhost:4096}") String defaultBaseUrl) {
         this.client = client;
         this.props = props;
@@ -65,6 +67,7 @@ public class OpenCodeGatewayBeans {
         this.sessionMap = sessionMap;
         this.sessionRepository = sessionRepository;
         this.serveProps = serveProps;
+        this.registerExternalOnStartup = registerExternalOnStartup;
 
         Path homeDir = Paths.get(System.getProperty("user.home"));
         OpenCodeBinaryResolver resolver = new OpenCodeBinaryResolver();
@@ -104,30 +107,34 @@ public class OpenCodeGatewayBeans {
 
     /**
      * Registers tools and starts the OpenCode SSE event loop after startup.
-     * If the embedded server is enabled and running, it's required for tool registration.
-     * If the embedded server is disabled, requires an external OpenCode instance.
+     * If the embedded server is enabled and running, use that embedded instance.
+     * If the embedded server is disabled, attempt the same bootstrap sequence
+     * against the configured external OpenCode base URL.
      */
     @EventListener(ApplicationReadyEvent.class)
     public void registerOnStartup() {
         preloadSessionMap();
         writeAgentsMd();
 
-        if (!serveProps.isEnabled()) {
-            log.info("OpenCode embedded server is disabled - skipping tool registration");
-            return;
-        }
-
-        if (!processManager.isRunning()) {
+        if (serveProps.isEnabled() && !processManager.isRunning()) {
             log.error("OpenCode embedded server failed to start - skipping tool registration (degraded mode)");
             return;
         }
 
+        if (!serveProps.isEnabled() && !registerExternalOnStartup) {
+            log.info("OpenCode embedded server is disabled and external startup registration is disabled");
+            return;
+        }
+
+        String registrationMode = serveProps.isEnabled() ? "embedded" : "external";
         try {
+            log.info("Registering DataTalk tools against {} OpenCode at {}", registrationMode, client.getBaseUrl());
             gateway.registerTools();
         } catch (Exception e) {
             log.error("OpenCode tool registration failed (degraded mode): {}", e.getMessage(), e);
         }
         try {
+            log.info("Starting OpenCode SSE event loop against {} OpenCode at {}", registrationMode, client.getBaseUrl());
             eventLoop.start();
         } catch (Exception e) {
             log.error("OpenCode SSE event loop failed to start (degraded mode): {}", e.getMessage(), e);

@@ -10,6 +10,8 @@ export type Artifact = {
   pinned?: boolean
   payload?: unknown
   createdAt?: number
+  originMessageId?: string
+  originPartId?: string
 }
 
 export type ReducerState = {

@@ -140,6 +140,7 @@ export class UIRouter {
     for (const [, obj] of this.instances) {
       if (filter?.type && obj.type !== filter.type) continue
       if (filter?.connectionId != null && obj.connectionId !== filter.connectionId) continue
+      if (filter?.database != null && obj.database !== filter.database) continue
       if (filter?.keyword) {
         const hay = `${obj.title} ${obj.objectId}`.toLowerCase()
         if (!hay.includes(filter.keyword.toLowerCase())) continue

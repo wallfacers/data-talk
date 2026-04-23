@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 
 const FOLLOW_THRESHOLD_PX = 150
 const REENABLE_THRESHOLD_PX = 4
@@ -8,6 +8,11 @@ export function useAutoScroll<T extends HTMLElement>(deps: any[]) {
   const isAtBottom = useRef(true)
   const followEnabled = useRef(true)
   const lastScrollTop = useRef(0)
+  // Each deps-triggered layout-effect scroll primes this counter so the
+  // MutationObserver callback (same commit, fires shortly after) is a no-op.
+  // Prevents the one-frame "bubble appears low, then jumps up" flash that the
+  // user sees as the message bubble jittering after Enter.
+  const skipMutationScrolls = useRef(0)
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
     const el = ref.current
@@ -61,6 +66,10 @@ export function useAutoScroll<T extends HTMLElement>(deps: any[]) {
     if (!el) return
 
     const observer = new MutationObserver(() => {
+      if (skipMutationScrolls.current > 0) {
+        skipMutationScrolls.current -= 1
+        return
+      }
       if (followEnabled.current) {
         scrollToBottom('auto')
       }
@@ -75,9 +84,13 @@ export function useAutoScroll<T extends HTMLElement>(deps: any[]) {
     return () => observer.disconnect()
   }, [scrollToBottom])
 
-  // 处理依赖项变化（如切换会话）
-  useEffect(() => {
+  // Structural appends like a newly sent user bubble must land before paint,
+  // otherwise the message renders at the old scroll position for one frame
+  // and visibly jumps up to the bottom on the next frame.
+  useLayoutEffect(() => {
     if (followEnabled.current) {
+      // Same commit also fires DOM mutations; dedupe the observer's follow-up.
+      skipMutationScrolls.current += 1
       scrollToBottom('auto')
     }
   }, [scrollToBottom, ...deps])

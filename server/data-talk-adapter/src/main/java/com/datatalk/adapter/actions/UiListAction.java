@@ -29,7 +29,18 @@ public class UiListAction implements ActionHandler<Map, Map> {
         return Map.of(
                 "type", "object",
                 "properties", Map.of(
-                        "filter", Map.of("type", "object")
+                        "filter", Map.of(
+                                "type", "object",
+                                "properties", Map.ofEntries(
+                                        Map.entry("type", Map.of(
+                                                "type", "string",
+                                                "enum", List.of("workspace", "query_editor")
+                                        )),
+                                        Map.entry("keyword", Map.of("type", "string")),
+                                        Map.entry("connectionId", Map.of("type", "string")),
+                                        Map.entry("database", Map.of("type", "string"))
+                                )
+                        )
                 )
         );
     }

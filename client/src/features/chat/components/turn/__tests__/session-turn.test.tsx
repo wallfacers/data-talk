@@ -234,7 +234,7 @@ describe('SessionTurn · showThinking', () => {
     )
   })
 
-  it('marks pending user bubbles for upward entry motion', () => {
+  it('renders pending user bubble without slide-in animation to avoid jitter', () => {
     useChatPartsStore.getState().upsertInfo('s1', {
       id: 'u1',
       role: 'user',
@@ -263,11 +263,72 @@ describe('SessionTurn · showThinking', () => {
 
     const shell = screen.getByText('show me orders').closest('[data-pending-user-motion="true"]')
     expect(shell).not.toBeNull()
-    expect(shell?.className).not.toContain('slide-in-from-bottom-3')
-    expect(shell?.className).not.toContain('fade-in-0')
 
-    const bubble = screen.getByText('show me orders').closest('[data-pending-user-bubble="true"]')
+    const bubble = screen.getByText('show me orders').closest('.bg-primary')
     expect(bubble).not.toBeNull()
-    expect(bubble?.className).toContain('slide-in-from-bottom-5')
+    expect(bubble?.className).not.toContain('slide-in-from-bottom')
+    expect(bubble?.className).not.toContain('animate-in')
+    expect(bubble?.className).toContain('opacity-85')
+  })
+
+  it('reserves assistant space for a pending last turn before streaming flips on', () => {
+    useChatPartsStore.getState().upsertInfo('s1', {
+      id: 'u1',
+      role: 'user',
+      sessionID: 's1',
+      time: { created: 1 },
+      __pending: true,
+    })
+    useChatPartsStore.getState().upsertPart('s1', {
+      type: 'text',
+      id: 'p1',
+      sessionID: 's1',
+      messageID: 'u1',
+      text: 'show me orders',
+      metadata: {},
+    } as any)
+
+    const { container } = renderTurn(
+      <SessionTurn
+        sessionId="s1"
+        userMessageId="u1"
+        assistantMessageIds={[]}
+        userInfo={{ id: 'u1', role: 'user', sessionID: 's1', time: { created: 1 }, __pending: true }}
+        isLastTurn
+      />,
+    )
+
+    const reserved = container.querySelector('[data-component="session-turn"] > .min-h-9')
+    expect(reserved).not.toBeNull()
+  })
+
+  it('reserves user bubble meta space while the user message is still pending', () => {
+    useChatPartsStore.getState().upsertInfo('s1', {
+      id: 'u1',
+      role: 'user',
+      sessionID: 's1',
+      time: { created: 1 },
+      __pending: true,
+    })
+    useChatPartsStore.getState().upsertPart('s1', {
+      type: 'text',
+      id: 'p1',
+      sessionID: 's1',
+      messageID: 'u1',
+      text: 'show me orders',
+      metadata: {},
+    } as any)
+
+    renderTurn(
+      <SessionTurn
+        sessionId="s1"
+        userMessageId="u1"
+        assistantMessageIds={[]}
+        userInfo={{ id: 'u1', role: 'user', sessionID: 's1', time: { created: 1 }, __pending: true }}
+        isLastTurn
+      />,
+    )
+
+    expect(screen.getByTestId('user-bubble-meta-placeholder')).toBeInTheDocument()
   })
 })

@@ -5,10 +5,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { buildEventSink, useChannel } from './use-channel'
 import { useChatPartsStore } from '@/stores/chat-parts-store'
 import { useChannelStore } from '@/stores/channel-store'
+import { useOntologyStore } from '@/stores/ontology-store'
 import { useSessionStore } from '@/stores/session-store'
+import { useSessionTurns } from '@/features/chat/components/helpers/use-session-turns'
 import { uiRouter } from '@/services/ui-router'
 import type { UIObject } from '@/services/ui-router'
-import '@/features/actions/ui-handlers'
+import { getClientHandler } from '@/features/actions/registry'
 
 describe('buildEventSink · session.meta.updated', () => {
   let qc: QueryClient
@@ -53,6 +55,7 @@ describe('buildEventSink · message lifecycle', () => {
       partIndexBySession: new Map(),
       streamingBySession: new Set<string>(),
     })
+    useOntologyStore.setState({ artifactsBySession: new Map() } as any)
   })
 
   it('message.updated merges error onto existing assistant info', () => {
@@ -117,6 +120,46 @@ describe('buildEventSink · message lifecycle', () => {
     })
   })
 
+  it('does not open a second user turn when subscribe sees the echoed real user before the send sink', () => {
+    const pendingId = useChatPartsStore.getState().upsertPendingUser('s1', 'hello')
+    useChatPartsStore.getState().setStreaming('s1', true)
+    const subscribeSink = buildEventSink('s1', null, qc, null)
+    const sendSink = buildEventSink('s1', null, qc, null, pendingId)
+    const { result } = renderHook(() => useSessionTurns('s1'))
+
+    expect(result.current).toHaveLength(1)
+    expect(result.current[0]).toMatchObject({
+      renderKey: pendingId,
+      userMessageId: pendingId,
+    })
+
+    act(() => {
+      subscribeSink({
+        event: 'message.created',
+        data: { info: { id: 'u_real', role: 'user', sessionID: 's1', time: { created: 100 } } },
+      } as any)
+    })
+
+    expect(result.current).toHaveLength(1)
+    expect(result.current[0]).toMatchObject({
+      renderKey: pendingId,
+      userMessageId: 'u_real',
+    })
+
+    act(() => {
+      sendSink({
+        event: 'message.part.created',
+        data: { part: { type: 'text', id: 'p_real', sessionID: 's1', messageID: 'u_real', text: 'hello', metadata: {} } },
+      } as any)
+    })
+
+    expect(result.current).toHaveLength(1)
+    expect(result.current[0]).toMatchObject({
+      renderKey: pendingId,
+      userMessageId: 'u_real',
+    })
+  })
+
   it('does not promote the pending user on an unrelated older user text part', () => {
     useChatPartsStore.getState().upsertInfo('s1', {
       id: 'u_old',
@@ -136,6 +179,32 @@ describe('buildEventSink · message lifecycle', () => {
     expect(infoMap?.has(pendingId)).toBe(true)
     expect(useChatPartsStore.getState().partsBySession.get('s1')?.get(pendingId)?.[0]).toMatchObject({
       text: '今天天气怎么样',
+    })
+  })
+
+  it('propagates originMessageId / originPartId from ontology.updated patch to OntologyStore', () => {
+    const sink = buildEventSink('s1', null, qc, null)
+
+    sink({
+      event: 'ontology.updated',
+      data: {
+        objectType: 'datatalk.artifact',
+        id: 'art-1',
+        patch: {
+          version: 3,
+          kind: 'chart',
+          originMessageId: 'msg-7',
+          originPartId: 'part-2',
+        },
+      },
+    } as any)
+
+    expect(useOntologyStore.getState().artifactsBySession.get('s1')?.get('art-1')).toMatchObject({
+      id: 'art-1',
+      version: 3,
+      kind: 'chart',
+      originMessageId: 'msg-7',
+      originPartId: 'part-2',
     })
   })
 })
@@ -321,6 +390,13 @@ describe('buildEventSink → action.invoke error payloads', () => {
     useChannelStore.setState({ lastEventIdBySession: new Map(), isConnected: false })
   })
 
+  it('auto-registers built-in client handlers for action.invoke dispatch', () => {
+    expect(getClientHandler('datatalk.ui.read')).toBeTypeOf('function')
+    expect(getClientHandler('datatalk.ui.patch')).toBeTypeOf('function')
+    expect(getClientHandler('datatalk.ui.exec')).toBeTypeOf('function')
+    expect(getClientHandler('datatalk.ui.list')).toBeTypeOf('function')
+  })
+
   it('preserves structured ui-router detail in action_result errors', async () => {
     uiRouter.registerInstance('query-1', {
       type: 'query_editor',
@@ -374,5 +450,45 @@ describe('buildEventSink → action.invoke error payloads', () => {
         }),
       }),
     )
+  })
+
+  it('returns an explicit error when a client action handler is not registered', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const qc = new QueryClient()
+    const client = {
+      actionResult: vi.fn().mockResolvedValue(undefined),
+    } as any
+    const sink = buildEventSink('s1', client, qc, null)
+
+    sink({
+      event: 'action.invoke',
+      data: {
+        callId: 'call-missing',
+        actionId: 'datatalk.unknown.client_action',
+        input: {},
+      },
+    } as any)
+
+    await waitFor(() => expect(client.actionResult).toHaveBeenCalledTimes(1))
+    expect(client.actionResult).toHaveBeenCalledWith(
+      'call-missing',
+      false,
+      undefined,
+      expect.objectContaining({
+        code: 'client_action_not_registered',
+        message: expect.stringContaining('datatalk.unknown.client_action'),
+        details: expect.objectContaining({
+          actionId: 'datatalk.unknown.client_action',
+        }),
+      }),
+    )
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[channel] missing client action handler',
+      expect.objectContaining({
+        actionId: 'datatalk.unknown.client_action',
+        callId: 'call-missing',
+      }),
+    )
+    warnSpy.mockRestore()
   })
 })

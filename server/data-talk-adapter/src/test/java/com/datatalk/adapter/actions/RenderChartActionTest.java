@@ -1,67 +1,122 @@
 package com.datatalk.adapter.actions;
 
-import com.datatalk.application.persistence.ArtifactRecord;
-import com.datatalk.application.persistence.ArtifactRepository;
-import com.datatalk.application.persistence.SessionRecord;
-import com.datatalk.application.persistence.SessionRepository;
+import com.datatalk.application.chart.ChartArtifactService;
 import com.datatalk.domain.action.ActionContext;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.annotation.DirtiesContext;
+import org.mockito.ArgumentCaptor;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletionException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
 class RenderChartActionTest {
 
-    @Autowired RenderChartAction action;
-    @Autowired ArtifactRepository artifacts;
-    @Autowired SessionRepository sessions;
-    @Autowired JdbcTemplate datatalkJdbc;
+    @Test
+    @SuppressWarnings("unchecked")
+    void handleDelegatesToChartArtifactServiceAndReturnsServiceResult() {
+        ChartArtifactService service = mock(ChartArtifactService.class);
+        when(service.createChartArtifact(any())).thenReturn(new ChartArtifactService.Result("art_42", 1));
 
-    @BeforeEach
-    void clean() {
-        datatalkJdbc.update("DELETE FROM artifacts");
-        datatalkJdbc.update("DELETE FROM sessions");
-        sessions.upsert(new SessionRecord("s-1", null, "T", true, null, 0L, 0L, false));
-        artifacts.insert(new ArtifactRecord("art-src", 1, "s-1", "table", "c-1",
-            "INLINE:[]", 2, null, null, false, 0L));
+        RenderChartAction action = new RenderChartAction(service);
+        Map<String, Object> result = (Map<String, Object>) action.handle(
+            new ActionContext("s1", "call_99", null, null),
+            Map.of(
+                "echartsOption", Map.of("series", List.of()),
+                "sourceArtifactId", "art_src",
+                "originMessageId", "msg_7",
+                "originPartId", "part_2"
+            )
+        ).toCompletableFuture().join();
+
+        assertThat(result).isEqualTo(Map.of("artifactId", "art_42", "version", 1));
+
+        ArgumentCaptor<ChartArtifactService.Request> request =
+            ArgumentCaptor.forClass(ChartArtifactService.Request.class);
+        verify(service).createChartArtifact(request.capture());
+        assertThat(request.getValue().sessionId()).isEqualTo("s1");
+        assertThat(request.getValue().callId()).isEqualTo("call_99");
+        assertThat(request.getValue().sourceArtifactId()).isEqualTo("art_src");
+        assertThat(request.getValue().originMessageId()).isEqualTo("msg_7");
+        assertThat(request.getValue().originPartId()).isEqualTo("part_2");
+        assertThat(request.getValue().echartsOption()).containsKey("series");
+    }
+
+    @Test
+    void handleAcceptsMissingSourceArtifactId() {
+        ChartArtifactService service = mock(ChartArtifactService.class);
+        when(service.createChartArtifact(any())).thenReturn(new ChartArtifactService.Result("art_42", 1));
+
+        RenderChartAction action = new RenderChartAction(service);
+        action.handle(
+            new ActionContext("s1", "call_1", null, null),
+            Map.of("echartsOption", Map.of("series", List.of()))
+        ).toCompletableFuture().join();
+
+        ArgumentCaptor<ChartArtifactService.Request> request =
+            ArgumentCaptor.forClass(ChartArtifactService.Request.class);
+        verify(service).createChartArtifact(request.capture());
+        assertThat(request.getValue().sourceArtifactId()).isNull();
+        assertThat(request.getValue().originMessageId()).isNull();
+        assertThat(request.getValue().originPartId()).isNull();
+    }
+
+    @Test
+    void handleUsesSupersedesAsCompatibilityFallback() {
+        ChartArtifactService service = mock(ChartArtifactService.class);
+        when(service.createChartArtifact(any())).thenReturn(new ChartArtifactService.Result("art_42", 1));
+
+        RenderChartAction action = new RenderChartAction(service);
+        action.handle(
+            new ActionContext("s1", "call_2", null, null),
+            Map.of(
+                "echartsOption", Map.of("series", List.of()),
+                "supersedes", "art_old"
+            )
+        ).toCompletableFuture().join();
+
+        ArgumentCaptor<ChartArtifactService.Request> request =
+            ArgumentCaptor.forClass(ChartArtifactService.Request.class);
+        verify(service).createChartArtifact(request.capture());
+        assertThat(request.getValue().sourceArtifactId()).isEqualTo("art_old");
+    }
+
+    @Test
+    void rejectsNonObjectEchartsOptionWithoutCallingService() {
+        ChartArtifactService service = mock(ChartArtifactService.class);
+        RenderChartAction action = new RenderChartAction(service);
+
+        assertThatThrownBy(() -> action.handle(
+            new ActionContext("s1", "call_1", null, null),
+            Map.of("echartsOption", "not-an-object")
+        ).toCompletableFuture().join())
+            .isInstanceOf(CompletionException.class);
+
+        verify(service, never()).createChartArtifact(any());
+    }
+
+    @Test
+    void sideEffectsReturnsEmpty() {
+        RenderChartAction action = new RenderChartAction(mock(ChartArtifactService.class));
+
+        assertThat(action.sideEffects()).isEmpty();
     }
 
     @Test
     @SuppressWarnings("unchecked")
-    void createsNewArtifactAndReturnsId() throws Exception {
-        Map<String, Object> out = (Map<String, Object>) action.handle(
-            new ActionContext("s-1", "c-r1", null, "oc-1"),
-            Map.of(
-                "sourceArtifactId", "art-src",
-                "echartsOption", Map.of(
-                    "xAxis", Map.of("type", "category", "data", List.of("a","b","c")),
-                    "yAxis", Map.of("type", "value"),
-                    "series", List.of(Map.of("type", "line", "data", List.of(1,2,3)))
-                )
-            )
-        ).toCompletableFuture().get();
+    void inputSchemaRequiresOnlyEchartsOptionAndKeepsCompatibilityFields() {
+        RenderChartAction action = new RenderChartAction(mock(ChartArtifactService.class));
 
-        assertThat(out.get("artifactId")).isNotNull();
-        assertThat(out.get("version")).isEqualTo(1);
-    }
-
-    @Test
-    void rejectsMissingEchartsOption() {
-        assertThat(
-            action.handle(new ActionContext("s-1","c","q","oc"),
-                Map.of("sourceArtifactId","art-src"))
-                .toCompletableFuture()
-        ).isCompletedExceptionally();
+        Map<String, Object> schema = action.inputSchema();
+        assertThat((List<String>) schema.get("required")).containsExactly("echartsOption");
+        assertThat((Map<String, Object>) schema.get("properties"))
+            .containsKeys("echartsOption", "sourceArtifactId", "supersedes", "originMessageId", "originPartId");
     }
 }

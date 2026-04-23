@@ -81,6 +81,9 @@
   --dt-interaction-active: oklch(0.28 0.01 255 / 0.08);
   --dt-interaction-selected: oklch(0.97 0.016 255);
   --dt-interaction-disabled: oklch(0.28 0.01 255 / 0.38);
+  --dt-chart-focus: var(--dt-accent-primary);
+  --dt-chart-compare: #F59E0B;
+  --dt-chart-grid: var(--dt-border-subtle);
   --background: var(--dt-bg-canvas);
   --foreground: var(--dt-text-strong);
   --card: var(--dt-bg-panel);
@@ -149,6 +152,9 @@
   --dt-interaction-active: oklch(1 0 0 / 0.1);
   --dt-interaction-selected: oklch(0.43 0.08 258 / 0.18);
   --dt-interaction-disabled: oklch(1 0 0 / 0.34);
+  --dt-chart-focus: var(--dt-accent-primary);
+  --dt-chart-compare: #FBBF24;
+  --dt-chart-grid: var(--dt-border-subtle);
   --background: var(--dt-bg-canvas);
   --foreground: var(--dt-text-strong);
   --card: var(--dt-bg-panel);

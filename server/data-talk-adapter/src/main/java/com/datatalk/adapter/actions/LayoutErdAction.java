@@ -117,7 +117,7 @@ public class LayoutErdAction implements ActionHandler<Map, Map> {
         artifacts.insert(new ArtifactRecord(
             artifactId, 1, ctx.sessionId(), "erd", ctx.callId(),
             PayloadRef.INLINE_PREFIX + payloadJson, payloadJson.length(),
-            null, null, false, clock.millis()));
+            null, null, false, clock.millis(), null, null));
 
         return CompletableFuture.completedFuture(Map.of(
             "artifactId", artifactId,

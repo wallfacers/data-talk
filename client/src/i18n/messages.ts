@@ -329,7 +329,15 @@ const MESSAGES = {
 
     'artifact.preparing': 'AI 正在准备…',
     'artifact.unsupportedChart': '不支持的图表规格',
+    'artifact.missingChartOption': '图表缺少可渲染配置',
     'artifact.erdEmpty': 'ER 图暂无节点数据',
+    'chart.generating': '图表生成中…',
+    'chart.openInWorkbench': '打开到工作台',
+    'chart.alreadyInWorkbench': '已在工作台',
+    'chart.expand': '放大图表',
+    'chart.copy': '复制 JSON',
+    'chart.copied': '已复制',
+    'chart.jsonError': '图表 JSON 无效',
 
     'table.label': '表格',
     'table.copy': '复制表格',
@@ -683,7 +691,15 @@ const MESSAGES = {
 
     'artifact.preparing': 'AI is preparing…',
     'artifact.unsupportedChart': 'Unsupported chart specification',
+    'artifact.missingChartOption': 'Chart option is missing',
     'artifact.erdEmpty': 'No ER nodes available yet',
+    'chart.generating': 'Generating chart…',
+    'chart.openInWorkbench': 'Open to workbench',
+    'chart.alreadyInWorkbench': 'Already in workbench',
+    'chart.expand': 'Expand chart',
+    'chart.copy': 'Copy JSON',
+    'chart.copied': 'Copied',
+    'chart.jsonError': 'Invalid chart JSON',
 
     'table.label': 'Table',
     'table.copy': 'Copy table',

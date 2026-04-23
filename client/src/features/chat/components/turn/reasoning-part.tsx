@@ -61,9 +61,15 @@ export function ReasoningPart(props: PartComponentProps) {
       {open && (
         <div className="rounded-2xl border border-border/60 bg-muted/20 px-4 py-3 text-sm text-muted-foreground shadow-sm">
           {isPartStreaming ? (
-            <PacedMarkdown text={text} cacheKey={part.id} streaming />
+            <PacedMarkdown
+              text={text}
+              cacheKey={part.id}
+              streaming
+              messageId={part.messageID}
+              partId={part.id}
+            />
           ) : (
-            <Markdown text={text} cacheKey={part.id} />
+            <Markdown text={text} cacheKey={part.id} messageId={part.messageID} partId={part.id} />
           )}
         </div>
       )}

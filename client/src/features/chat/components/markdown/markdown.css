@@ -230,3 +230,19 @@
 [data-slot="markdown-table-scroll"] tbody tr:last-child td {
   border-bottom: 0;
 }
+
+@keyframes chart-bar-pulse {
+  0%, 100% { transform: scaleY(0.58); }
+  50% { transform: scaleY(1); }
+}
+
+.chart-bar-pulse {
+  animation: chart-bar-pulse 1.1s cubic-bezier(0.2, 0, 0, 1) infinite;
+  transform-origin: bottom;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chart-bar-pulse {
+    animation: none;
+  }
+}

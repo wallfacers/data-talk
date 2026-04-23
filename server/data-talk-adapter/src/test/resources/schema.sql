@@ -30,8 +30,11 @@ CREATE TABLE artifacts (
   kind TEXT NOT NULL, produced_by TEXT NOT NULL,
   payload_ref TEXT NOT NULL, payload_size INTEGER NOT NULL, supersedes_id TEXT,
   supersedes_ver INTEGER, pinned INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL,
+  origin_message_id TEXT,
+  origin_part_id TEXT,
   PRIMARY KEY (id, version)
 );
+CREATE INDEX idx_artifacts_origin ON artifacts(session_id, origin_message_id, origin_part_id);
 CREATE TABLE action_invocations (
   call_id TEXT PRIMARY KEY, session_id TEXT NOT NULL, action_id TEXT NOT NULL,
   input_json TEXT, output_json TEXT, error_json TEXT, started_at INTEGER NOT NULL, completed_at INTEGER

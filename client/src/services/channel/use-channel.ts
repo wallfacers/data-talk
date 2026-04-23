@@ -13,6 +13,7 @@ import { useChannelStore } from '@/stores/channel-store'
 import { getClientHandler } from '@/features/actions/registry'
 import { normalizeError, showErrorToast } from '@/services/http-error'
 import { toast } from 'sonner'
+import '@/features/actions/client-handlers'
 import {
   invalidateSessionLists,
   patchCachedSessionLists,
@@ -39,6 +40,30 @@ function getPendingUserText(sessionId: string, pendingUserId: string | null): st
     ? (pendingTextPart as { text: string }).text
     : null
   return text
+}
+
+function resolvePendingUserCandidate(sessionId: string, preferredPendingUserId: string | null): string | null {
+  const store = useChatPartsStore.getState()
+  const infoMap = store.infoBySession.get(sessionId)
+  if (!infoMap) return null
+
+  const isPromotablePending = (messageId: string | null): messageId is string => {
+    if (!messageId) return false
+    const info = infoMap.get(messageId)
+    return info?.role === 'user' && info.__pending === true
+  }
+
+  if (isPromotablePending(preferredPendingUserId)) return preferredPendingUserId
+
+  if (!store.streamingBySession.has(sessionId)) return null
+
+  let fallbackPendingUserId: string | null = null
+  for (const info of infoMap.values()) {
+    if (info.role !== 'user' || info.__pending !== true) continue
+    if (fallbackPendingUserId) return null
+    fallbackPendingUserId = info.id
+  }
+  return fallbackPendingUserId
 }
 
 function shouldPromotePendingUserFromPart(
@@ -95,6 +120,7 @@ export function buildEventSink(
       const mid = m.id
       const store = useChatPartsStore.getState()
       const existing = store.infoBySession.get(sessionId)?.get(mid)
+      const pendingUserCandidateId = resolvePendingUserCandidate(sessionId, pendingUserId)
 
       const role = (m.role ? String(m.role).toLowerCase() : existing?.role) as MessageInfo['role']
       const modelID = m.modelID ?? existing?.modelID
@@ -119,6 +145,17 @@ export function buildEventSink(
         finish: m.finish ?? existing?.finish,
         tokens: m.tokens ?? existing?.tokens,
       }
+      // Any sink can receive the echoed real user first: the active GET
+      // subscribe stream and the POST send_message stream race each other.
+      // Resolve the current optimistic user at the session level, then promote
+      // before inserting the real info so useSessionTurns never sees both ids
+      // at once and never opens a transient duplicate user turn.
+      if (info.role === 'user' && pendingUserCandidateId && mid !== pendingUserCandidateId && !existing) {
+        const pendingInfo = store.infoBySession.get(sessionId)?.get(pendingUserCandidateId)
+        if (pendingInfo?.__pending && pendingInfo.role === 'user') {
+          store.promotePendingUser(sessionId, pendingUserCandidateId, mid)
+        }
+      }
       store.upsertInfo(sessionId, info)
     } else if (event === 'session.idle' || (event === 'session.status' && (data as any)?.status === 'idle')) {
       // Turn-done signals: OpenCode's native `session.idle` (DtEvent.SessionIdle),
@@ -136,14 +173,15 @@ export function buildEventSink(
     } else if (event === 'message.part.created' || event === 'message.part.updated') {
       const part = (data as any).part
       useChatPartsStore.getState().upsertPart(sessionId, part)
+      const pendingUserCandidateId = resolvePendingUserCandidate(sessionId, pendingUserId)
 
       // Only promote the optimistic user when the echoed real user text part
       // matches the pending text. Older replayed user events must not steal it.
-      if (part?.messageID && shouldPromotePendingUserFromPart(sessionId, pendingUserId, part)) {
+      if (part?.messageID && shouldPromotePendingUserFromPart(sessionId, pendingUserCandidateId, part)) {
         const infoMap = useChatPartsStore.getState().infoBySession.get(sessionId)
         const info = infoMap?.get(part.messageID)
-        if (info?.role === 'user' && pendingUserId) {
-          useChatPartsStore.getState().promotePendingUser(sessionId, pendingUserId, part.messageID)
+        if (info?.role === 'user' && pendingUserCandidateId) {
+          useChatPartsStore.getState().promotePendingUser(sessionId, pendingUserCandidateId, part.messageID)
         }
       }
     } else if (event === 'message.part.delta') {
@@ -169,6 +207,8 @@ export function buildEventSink(
           kind: d.patch?.kind ?? 'table',
           supersedesId: d.patch?.supersedesId,
           payload: d.patch,
+          originMessageId: d.patch?.originMessageId,
+          originPartId: d.patch?.originPartId,
         })
         useTimelineStore.getState().addArtifact(sessionId, d.id, d.patch?.supersedesId)
       }
@@ -186,11 +226,19 @@ export function buildEventSink(
     } else if (event === 'action.invoke' && client) {
       const { callId, actionId, input } = data as any
       const handler = getClientHandler(actionId)
-      if (handler) {
-        handler(input, { sessionId })
-          .then((output) => client.actionResult(callId, true, output))
-          .catch((err) => client.actionResult(callId, false, undefined, normalizeActionInvokeError(err)))
+      if (!handler) {
+        const error = {
+          code: 'client_action_not_registered',
+          message: `No client action handler registered for ${actionId}`,
+          details: { actionId },
+        }
+        console.warn('[channel] missing client action handler', { actionId, callId })
+        void client.actionResult(callId, false, undefined, error)
+        return
       }
+      handler(input, { sessionId })
+        .then((output) => client.actionResult(callId, true, output))
+        .catch((err) => client.actionResult(callId, false, undefined, normalizeActionInvokeError(err)))
     }
   }
 }

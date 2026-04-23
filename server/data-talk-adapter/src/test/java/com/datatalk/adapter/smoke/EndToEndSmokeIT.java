@@ -20,9 +20,13 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
@@ -51,9 +55,15 @@ class EndToEndSmokeIT {
             openCode.start();
             openCode.stubFor(post(urlPathEqualTo("/plugin/register-tool"))
                 .willReturn(aResponse().withStatus(204)));
+            openCode.stubFor(get(urlPathEqualTo("/global/event"))
+                .willReturn(aResponse()
+                    .withStatus(200)
+                    .withHeader("Content-Type", "text/event-stream")
+                    .withBody("")));
         }
         reg.add("datatalk.opencode.base-url", () -> "http://localhost:" + openCode.port());
         reg.add("datatalk.opencode.plugin-callback-base", () -> "http://localhost:8080");
+        reg.add("datatalk.opencode.register-external-on-startup", () -> "true");
     }
 
     @AfterAll
@@ -64,13 +74,66 @@ class EndToEndSmokeIT {
     }
 
     @Test
-    void skipsToolRegistrationWhenEmbeddedServeDisabled() {
-        await().during(java.time.Duration.ofSeconds(1))
+    void registersToolsAndStartsEventLoopAgainstExternalOpenCodeWhenEmbeddedServeDisabled() {
+        await()
             .atMost(java.time.Duration.ofSeconds(2))
             .untilAsserted(() -> openCode.verify(
-                0,
                 postRequestedFor(urlPathEqualTo("/plugin/register-tool"))
             ));
+
+        await()
+            .atMost(java.time.Duration.ofSeconds(2))
+            .untilAsserted(() -> openCode.verify(
+                getRequestedFor(urlPathEqualTo("/global/event"))
+            ));
+    }
+
+    @Test
+    void registersKnownProductionActionIdsOnly() {
+        await()
+            .atMost(java.time.Duration.ofSeconds(2))
+            .untilAsserted(() -> {
+                List<String> requestBodies = openCode.findAll(postRequestedFor(urlPathEqualTo("/plugin/register-tool")))
+                    .stream()
+                    .map(request -> request.getBodyAsString())
+                    .toList();
+                assertThat(requestBodies).anyMatch(body -> body.contains("\"name\":\"datatalk.list_connections\""));
+                assertThat(requestBodies).anyMatch(body -> body.contains("\"name\":\"datatalk.ui.read\""));
+                assertThat(requestBodies).noneMatch(body -> body.contains("datatalk.demo.echo"));
+            });
+    }
+
+    @Test
+    void registersPreciseUiSchemasForModelUse() {
+        await()
+            .atMost(java.time.Duration.ofSeconds(2))
+            .untilAsserted(() -> {
+                String uiList = registrationBody("datatalk.ui.list");
+                String uiPatch = registrationBody("datatalk.ui.patch");
+                String uiExec = registrationBody("datatalk.ui.exec");
+
+                assertThat(uiList)
+                    .contains("workspace")
+                    .contains("query_editor")
+                    .contains("connectionId")
+                    .contains("database");
+                assertThat(uiPatch)
+                    .contains("query_editor")
+                    .contains("replace")
+                    .contains("/content")
+                    .contains("/connectionId")
+                    .contains("/database")
+                    .contains("/schema");
+                assertThat(uiExec)
+                    .contains("workspace")
+                    .contains("query_editor")
+                    .contains("choose_connection")
+                    .contains("apply_text_edits")
+                    .contains("set_context")
+                    .contains("connection_id")
+                    .contains("baseVersion")
+                    .contains("preferredConnectionId");
+            });
     }
 
     @Test
@@ -91,5 +154,18 @@ class EndToEndSmokeIT {
             .block();
 
         assertThat(response).contains("\"connections\"");
+    }
+
+    private String registrationBody(String toolName) {
+        Optional<String> body = openCode.findAll(postRequestedFor(urlPathEqualTo("/plugin/register-tool")))
+            .stream()
+            .map(request -> request.getBodyAsString())
+            .filter(requestBody -> requestBody.contains("\"name\":\"" + toolName + "\""))
+            .findFirst();
+
+        assertThat(body)
+            .as("registered tool %s should be pushed to OpenCode", toolName)
+            .isPresent();
+        return body.orElseThrow();
     }
 }

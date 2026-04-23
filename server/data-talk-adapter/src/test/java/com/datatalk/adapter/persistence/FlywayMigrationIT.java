@@ -18,11 +18,14 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class FlywayMigrationIT {
+    private static final Pattern VERSION_PATTERN = Pattern.compile("^V(\\d+).*");
 
     @TempDir
     Path tempDir;
@@ -79,7 +82,9 @@ class FlywayMigrationIT {
         PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
         Resource[] resources = resolver.getResources("classpath:db/migration/V*.sql");
         Arrays.stream(resources)
-            .sorted(Comparator.comparing(Resource::getFilename))
+            .sorted(Comparator
+                .comparingInt(this::migrationOrder)
+                .thenComparing(Resource::getFilename, Comparator.nullsLast(String::compareTo)))
             .forEach(resource -> {
                 try {
                     String version = extractVersion(resource.getFilename());
@@ -108,6 +113,14 @@ class FlywayMigrationIT {
         if (filename == null) return "unknown";
         int dot = filename.indexOf('.');
         return dot > 0 ? filename.substring(0, dot) : filename;
+    }
+
+    private int migrationOrder(Resource resource) {
+        String filename = resource.getFilename();
+        if (filename == null) return Integer.MAX_VALUE;
+        Matcher matcher = VERSION_PATTERN.matcher(filename);
+        if (!matcher.matches()) return Integer.MAX_VALUE;
+        return Integer.parseInt(matcher.group(1));
     }
 
     private String readResource(Resource resource) throws Exception {

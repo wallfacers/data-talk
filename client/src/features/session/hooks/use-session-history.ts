@@ -53,6 +53,8 @@ type ArtifactDto = {
   pinned?: boolean
   payload?: unknown
   createdAt?: number
+  originMessageId?: string
+  originPartId?: string
 }
 
 const historyQueryKeys = {
@@ -92,6 +94,8 @@ export function useSessionHistory(sessionId: string | null) {
       pinned: a.pinned,
       payload: a.payload,
       createdAt: a.createdAt,
+      originMessageId: a.originMessageId,
+      originPartId: a.originPartId,
     }))
 
     // Guard: this hook has multiple subscribers (SessionCanvas + TurnList) with

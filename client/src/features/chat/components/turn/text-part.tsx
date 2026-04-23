@@ -25,9 +25,15 @@ export function TextPart(props: PartComponentProps) {
   return (
     <div data-component="text-part" className="my-1">
       {streaming ? (
-        <PacedMarkdown text={text} cacheKey={part.id} streaming />
+        <PacedMarkdown
+          text={text}
+          cacheKey={part.id}
+          streaming
+          messageId={part.messageID}
+          partId={part.id}
+        />
       ) : (
-        <Markdown text={text} cacheKey={part.id} />
+        <Markdown text={text} cacheKey={part.id} messageId={part.messageID} partId={part.id} />
       )}
       {props.showCopy && (
         <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">

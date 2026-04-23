@@ -25,7 +25,7 @@ class ArtifactRepositoryIT {
         sessRepo.upsert(new SessionRecord(sid, null, "T", true, null, 100L, 100L, false));
         String aid = "art-insert-" + System.nanoTime();
         repo.insert(new ArtifactRecord(aid, 1, sid, "table", "call-1",
-            "INLINE:{}", 20, null, null, false, 101L));
+            "INLINE:{}", 20, null, null, false, 101L, null, null));
         List<ArtifactRecord> all = repo.findBySession(sid);
         assertThat(all).hasSize(1);
         assertThat(all.get(0).kind()).isEqualTo("table");
@@ -36,8 +36,8 @@ class ArtifactRepositoryIT {
         String sid = "sess-artl-" + System.nanoTime();
         sessRepo.upsert(new SessionRecord(sid, null, "T", true, null, 100L, 100L, false));
         String aid = "art-latest-" + System.nanoTime();
-        repo.insert(new ArtifactRecord(aid, 1, sid, "chart", "call-1", "INLINE:{}", 2, null, null, false, 100L));
-        repo.insert(new ArtifactRecord(aid, 2, sid, "chart", "call-2", "INLINE:{}", 2, aid, 1, false, 200L));
+        repo.insert(new ArtifactRecord(aid, 1, sid, "chart", "call-1", "INLINE:{}", 2, null, null, false, 100L, null, null));
+        repo.insert(new ArtifactRecord(aid, 2, sid, "chart", "call-2", "INLINE:{}", 2, aid, 1, false, 200L, null, null));
         assertThat(repo.findLatestById(aid).orElseThrow().version()).isEqualTo(2);
     }
 }

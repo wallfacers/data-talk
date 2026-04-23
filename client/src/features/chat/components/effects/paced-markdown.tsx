@@ -21,7 +21,14 @@ function next(text: string, start: number): number {
   return end
 }
 
-export function PacedMarkdown(props: { text: string; cacheKey?: string; streaming: boolean; className?: string }) {
+export function PacedMarkdown(props: {
+  text: string
+  cacheKey?: string
+  streaming: boolean
+  className?: string
+  messageId?: string
+  partId?: string
+}) {
   const [shown, setShown] = useState(props.streaming ? '' : props.text)
   const shownRef = useRef(shown)
   shownRef.current = shown
@@ -61,5 +68,14 @@ export function PacedMarkdown(props: { text: string; cacheKey?: string; streamin
   }, [props.text, props.streaming])
 
   if (!shown) return null
-  return <Markdown text={shown} cacheKey={props.cacheKey} streaming={props.streaming} className={props.className} />
+  return (
+    <Markdown
+      text={shown}
+      cacheKey={props.cacheKey}
+      streaming={props.streaming}
+      className={props.className}
+      messageId={props.messageId}
+      partId={props.partId}
+    />
+  )
 }

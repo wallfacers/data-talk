@@ -50,9 +50,9 @@ class SupersedeArtifactActionTest {
         String aid = "art-sup-" + System.nanoTime();
         String bid = "art-sup-old-" + System.nanoTime();
         artifacts.insert(new ArtifactRecord(aid, 1, "s-1", "table", "c-1",
-            "INLINE:[]", 2, null, null, false, 0L));
+            "INLINE:[]", 2, null, null, false, 0L, null, null));
         artifacts.insert(new ArtifactRecord(bid, 1, "s-1", "chart", "c-2",
-            "INLINE:{}", 2, null, null, false, 0L));
+            "INLINE:{}", 2, null, null, false, 0L, null, null));
 
         Map<String, Object> out = (Map<String, Object>) action.handle(
             new ActionContext("s-1", "c-s1", null, "oc-1"),
@@ -66,7 +66,7 @@ class SupersedeArtifactActionTest {
     void failsForMissingArtifact() {
         String aid = "art-sup-n-" + System.nanoTime();
         artifacts.insert(new ArtifactRecord(aid, 1, "s-1", "table", "c-1",
-            "INLINE:[]", 2, null, null, false, 0L));
+            "INLINE:[]", 2, null, null, false, 0L, null, null));
 
         assertThat(
             action.handle(new ActionContext("s-1", "c", null, "oc"),

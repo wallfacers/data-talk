@@ -22,6 +22,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -36,6 +38,7 @@ import java.util.stream.Collectors;
 public class FlywayMigrationConfig {
 
     private static final Logger log = LoggerFactory.getLogger(FlywayMigrationConfig.class);
+    private static final Pattern VERSION_PATTERN = Pattern.compile("^V(\\d+).*");
 
     @Bean("datatalkDataSource")
     public DataSource datatalkDataSource(
@@ -73,7 +76,9 @@ public class FlywayMigrationConfig {
         }
 
         Arrays.stream(resources)
-            .sorted(Comparator.comparing(Resource::getFilename))
+            .sorted(Comparator
+                .comparingInt(this::migrationOrder)
+                .thenComparing(Resource::getFilename, Comparator.nullsLast(String::compareTo)))
             .forEach(resource -> {
                 try {
                     String version = extractVersion(resource.getFilename());
@@ -107,6 +112,14 @@ public class FlywayMigrationConfig {
         if (filename == null) return "unknown";
         int dot = filename.indexOf('.');
         return dot > 0 ? filename.substring(0, dot) : filename;
+    }
+
+    private int migrationOrder(Resource resource) {
+        String filename = resource.getFilename();
+        if (filename == null) return Integer.MAX_VALUE;
+        Matcher matcher = VERSION_PATTERN.matcher(filename);
+        if (!matcher.matches()) return Integer.MAX_VALUE;
+        return Integer.parseInt(matcher.group(1));
     }
 
     private String readResource(Resource resource) throws Exception {

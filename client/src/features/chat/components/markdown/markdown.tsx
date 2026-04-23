@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { createRoot, type Root } from 'react-dom/client'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import morphdom from 'morphdom'
@@ -7,11 +8,13 @@ import { decorateTables, normalizePipeTables } from './markdown-table'
 import { decorateSqlBlocks, SQL_EXECUTE_EVENT, SQL_EXPLAIN_EVENT } from './sql-code-block'
 import { extractTableModel } from './table-model'
 import { getDownloadFilename, toCsv, toDownloadableCsv, toJson, toMarkdownTable, toTsv } from './table-serializers'
+import { ChartBlock } from './chart-block'
 import { copyToClipboard } from '@/lib/utils'
 import { useI18n } from '@/i18n/use-i18n'
 import './markdown.css'
 
 type Entry = { hash: string; html: string }
+type ChartRootEntry = { root: Root; host: HTMLElement }
 const MAX_CACHE = 200
 const cache = new Map<string, Entry>()
 const copiedResetTimers = new WeakMap<HTMLElement, number>()
@@ -42,6 +45,32 @@ function fallback(text: string): string {
 function sanitize(html: string): string {
   if (!DOMPurify.isSupported) return ''
   return DOMPurify.sanitize(html, PURIFY_CONFIG)
+}
+
+function encodeUtf8Base64(text: string): string {
+  try {
+    return btoa(unescape(encodeURIComponent(text)))
+  } catch {
+    return btoa(text)
+  }
+}
+
+function decodeUtf8Base64(text: string): string {
+  try {
+    return decodeURIComponent(escape(atob(text)))
+  } catch {
+    return atob(text)
+  }
+}
+
+function scheduleRootUnmount(root: Root) {
+  queueMicrotask(() => {
+    try {
+      root.unmount()
+    } catch {
+      // Root may already be unmounted.
+    }
+  })
 }
 
 async function copyTableHtmlAndText(html: string, text: string): Promise<boolean> {
@@ -182,6 +211,49 @@ function decorateCodeBlocks(root: HTMLElement) {
   }
 }
 
+function parseChartFenceInfo(code: HTMLElement): { sourceArtifactId?: string } | null {
+  const className = code.className ?? ''
+  const match = className.match(/(?:^|\s)language-chart(?::([A-Za-z0-9_-]+))?(?:\s|$)/i)
+  if (!match) return null
+  return { sourceArtifactId: match[1] }
+}
+
+function decorateChartBlocks(
+  root: HTMLElement,
+  options: {
+    cacheKey?: string
+    streaming: boolean
+    messageId?: string
+    partId?: string
+  },
+) {
+  const codes = Array.from(root.querySelectorAll('pre > code')) as HTMLElement[]
+  let blockIndex = 0
+
+  for (const code of codes) {
+    const chartInfo = parseChartFenceInfo(code)
+    if (!chartInfo) continue
+
+    const pre = code.parentElement
+    if (!pre) continue
+
+    const mount = document.createElement('div')
+    mount.setAttribute('data-component', 'markdown-chart')
+    mount.setAttribute('data-chart-key', `${options.cacheKey ?? 'markdown'}:${blockIndex}`)
+    mount.setAttribute('data-chart-json-b64', encodeUtf8Base64(code.textContent ?? ''))
+    mount.setAttribute('data-chart-streaming', String(options.streaming))
+    mount.setAttribute('data-chart-block-index', String(blockIndex))
+    mount.setAttribute('data-chart-message-id', options.messageId ?? options.cacheKey ?? '')
+    if (options.partId) mount.setAttribute('data-chart-part-id', options.partId)
+    if (chartInfo.sourceArtifactId) {
+      mount.setAttribute('data-chart-source-artifact-id', chartInfo.sourceArtifactId)
+    }
+
+    pre.parentNode?.replaceChild(mount, pre)
+    blockIndex += 1
+  }
+}
+
 function renderHtml(text: string, cacheKey: string | undefined, streaming: boolean): string {
   if (!text) return ''
   try {
@@ -213,27 +285,117 @@ export function Markdown(props: {
   cacheKey?: string
   streaming?: boolean
   className?: string
+  messageId?: string
+  partId?: string
 }) {
   const ref = useRef<HTMLDivElement>(null)
+  const chartRootsRef = useRef<Map<string, ChartRootEntry>>(new Map())
   const { t } = useI18n()
   const tRef = useRef(t)
   tRef.current = t
 
   useEffect(() => {
+    const roots = chartRootsRef.current
+    return () => {
+      for (const { root } of roots.values()) scheduleRootUnmount(root)
+      roots.clear()
+    }
+  }, [])
+
+  useEffect(() => {
     const container = ref.current
     if (!container) return
+
+    const chartRoots = chartRootsRef.current
+    const clearChartRoots = () => {
+      for (const { root } of chartRoots.values()) scheduleRootUnmount(root)
+      chartRoots.clear()
+    }
+
     const html = renderHtml(props.text, props.cacheKey, props.streaming ?? false)
     if (!html) {
       container.innerHTML = ''
+      clearChartRoots()
       return
     }
+
     const temp = document.createElement('div')
     temp.innerHTML = html
+    decorateChartBlocks(temp, {
+      cacheKey: props.cacheKey,
+      streaming: props.streaming ?? false,
+      messageId: props.messageId,
+      partId: props.partId,
+    })
     decorateCodeBlocks(temp)
     decorateSqlBlocks(temp)
     decorateTables(temp, tRef.current)
-    morphdom(container, temp, { childrenOnly: true })
-  }, [props.text, props.cacheKey, props.streaming])
+
+    morphdom(container, temp, {
+      childrenOnly: true,
+      onBeforeElUpdated(fromEl, toEl) {
+        const fromNode = fromEl as HTMLElement
+        const toNode = toEl as HTMLElement
+        if (fromNode.getAttribute('data-component') !== 'markdown-chart') return true
+
+        for (const attr of Array.from(fromNode.attributes)) {
+          if (attr.name.startsWith('data-chart-') && !toNode.hasAttribute(attr.name)) {
+            fromNode.removeAttribute(attr.name)
+          }
+        }
+        for (const attr of Array.from(toNode.attributes)) {
+          if (attr.name.startsWith('data-chart-') || attr.name === 'data-component') {
+            fromNode.setAttribute(attr.name, attr.value)
+          }
+        }
+        return false
+      },
+    })
+
+    const mountPoints = Array.from(
+      container.querySelectorAll('[data-component="markdown-chart"]'),
+    ) as HTMLElement[]
+    const liveKeys = new Set<string>()
+
+    for (const mountPoint of mountPoints) {
+      const chartKey = mountPoint.dataset.chartKey
+      if (!chartKey) continue
+      liveKeys.add(chartKey)
+
+      const encodedJson = mountPoint.dataset.chartJsonB64 ?? ''
+      const streaming = mountPoint.dataset.chartStreaming === 'true'
+      const sourceArtifactId = mountPoint.dataset.chartSourceArtifactId
+      const messageId = mountPoint.dataset.chartMessageId ?? ''
+      const partId = mountPoint.dataset.chartPartId
+      const blockIndex = Number.parseInt(mountPoint.dataset.chartBlockIndex ?? '0', 10)
+      const json = decodeUtf8Base64(encodedJson)
+
+      let entry = chartRoots.get(chartKey)
+      if (!entry || entry.host !== mountPoint) {
+        if (entry) scheduleRootUnmount(entry.root)
+        entry = { root: createRoot(mountPoint), host: mountPoint }
+        chartRoots.set(chartKey, entry)
+      }
+
+      entry.root.render(
+        <ChartBlock
+          json={json}
+          streaming={streaming}
+          messageId={messageId}
+          partId={partId || undefined}
+          blockIndex={Number.isNaN(blockIndex) ? 0 : blockIndex}
+          sourceArtifactId={sourceArtifactId || undefined}
+        />,
+      )
+    }
+
+    for (const [key, entry] of chartRoots) {
+      if (!liveKeys.has(key)) {
+        scheduleRootUnmount(entry.root)
+        chartRoots.delete(key)
+      }
+    }
+  }, [props.text, props.cacheKey, props.streaming, props.messageId, props.partId])
 
   useEffect(() => {
     const container = ref.current
