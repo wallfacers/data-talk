@@ -55,6 +55,17 @@ describe('AppSidebar — 创建会话', () => {
     await waitFor(() => expect(createSession).toHaveBeenCalledTimes(1))
   })
 
+  it('品牌图标使用设计规范的主强调色语义 token', () => {
+    renderWithProviders()
+
+    const homeLink = screen.getByRole('link', { name: 'DataTalk' })
+    const brandIcon = homeLink.querySelector('svg')
+
+    if (!brandIcon) throw new Error('expected brand icon')
+
+    expect(brandIcon).toHaveClass('text-primary')
+  })
+
   it('本地缓存已有空白 session → 点击不触发 HTTP', async () => {
     renderWithProviders([
       { id: 'empty_1', hasEverSent: false, title: '新会话', connectionId: 'c1',

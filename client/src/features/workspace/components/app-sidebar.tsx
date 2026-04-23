@@ -104,7 +104,7 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                 className="data-[slot=sidebar-menu-button]:p-1.5!"
                 render={<a href="/" />}
               >
-                <DatabaseIcon className="size-5!" />
+                <DatabaseIcon className="size-5! text-primary" />
                 <span className="text-base font-semibold">DataTalk</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
