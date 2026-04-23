@@ -1,7 +1,8 @@
-import { describe, it, expect } from 'vitest'
+import { beforeEach, describe, it, expect } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { ReasoningPart } from '../reasoning-part'
 import type { MessageInfo, ReasoningPart as RPartType } from '@/services/channel/types'
+import { useUISettingsStore } from '@/stores/ui-settings-store'
 
 describe('ReasoningPart', () => {
   const info: MessageInfo = {
@@ -19,21 +20,39 @@ describe('ReasoningPart', () => {
     text: 'Thought process content',
   }
 
-  it('is expanded by default when streaming', async () => {
+  beforeEach(() => {
+    useUISettingsStore.setState({
+      splitResizable: false,
+      language: 'zh-CN',
+      autoExpandReasoning: false,
+    } as any)
+  })
+
+  it('stays collapsed by default when streaming and auto expand is disabled', () => {
     render(<ReasoningPart part={part} info={info} />)
-    // When streaming, it should be open, so we should see the content.
+
+    expect(screen.queryByText('Thought process content')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('思考中…')).toBeInTheDocument()
+  })
+
+  it('is expanded by default when streaming and auto expand is enabled', async () => {
+    useUISettingsStore.setState({ autoExpandReasoning: true } as any)
+
+    render(<ReasoningPart part={part} info={info} />)
+
     expect(await screen.findByText('Thought process content')).toBeInTheDocument()
     expect(screen.getByLabelText('思考中…')).toBeInTheDocument()
   })
 
   it('collapses when clicking the heading', async () => {
+    useUISettingsStore.setState({ autoExpandReasoning: true } as any)
+
     render(<ReasoningPart part={part} info={info} />)
-    // Wait for it to be visible first
     expect(await screen.findByText('Thought process content')).toBeInTheDocument()
-    
+
     const button = screen.getByRole('button')
     fireEvent.click(button)
-    // Now it should be collapsed
+
     expect(screen.queryByText('Thought process content')).not.toBeInTheDocument()
   })
 
@@ -43,12 +62,14 @@ describe('ReasoningPart', () => {
       time: { created: Date.now(), completed: Date.now() },
     }
     render(<ReasoningPart part={part} info={completedInfo} />)
-    // Not streaming, so it should be collapsed by default.
+
     expect(screen.queryByText('Thought process content')).not.toBeInTheDocument()
     expect(screen.getByText(/已深度思考/)).toBeInTheDocument()
   })
 
   it('automatically collapses when streaming finishes', async () => {
+    useUISettingsStore.setState({ autoExpandReasoning: true } as any)
+
     const { rerender } = render(<ReasoningPart part={part} info={info} />)
     expect(await screen.findByText('Thought process content')).toBeInTheDocument()
 
@@ -57,8 +78,24 @@ describe('ReasoningPart', () => {
       time: { created: Date.now(), completed: Date.now() },
     }
     rerender(<ReasoningPart part={part} info={completedInfo} />)
-    
-    // Should auto-collapse
+
+    expect(screen.queryByText('Thought process content')).not.toBeInTheDocument()
+    expect(screen.getByText(/已深度思考/)).toBeInTheDocument()
+  })
+
+  it('closes after completion even if the user manually expanded it while auto expand is disabled', async () => {
+    const { rerender } = render(<ReasoningPart part={part} info={info} />)
+
+    const button = screen.getByRole('button')
+    fireEvent.click(button)
+    expect(await screen.findByText('Thought process content')).toBeInTheDocument()
+
+    const completedInfo: MessageInfo = {
+      ...info,
+      time: { created: Date.now(), completed: Date.now() },
+    }
+    rerender(<ReasoningPart part={part} info={completedInfo} />)
+
     expect(screen.queryByText('Thought process content')).not.toBeInTheDocument()
     expect(screen.getByText(/已深度思考/)).toBeInTheDocument()
   })
@@ -77,6 +114,8 @@ describe('ReasoningPart', () => {
   })
 
   it('renders fenced code in reasoning with the shared code window wrapper', async () => {
+    useUISettingsStore.setState({ autoExpandReasoning: true } as any)
+
     const codePart = { ...part, text: '```js\nconsole.log(1)\n```' }
     const { container } = render(<ReasoningPart part={codePart} info={info} />)
     const renderedCode = await screen.findByText(/console\.log\(1\)/)

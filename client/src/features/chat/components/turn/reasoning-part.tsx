@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ChevronRightIcon } from 'lucide-react'
 import type { PartComponentProps } from './part-dispatcher'
 import { Markdown } from '../markdown/markdown'
@@ -7,10 +7,12 @@ import { TextShimmer } from '../effects/text-shimmer'
 import type { ReasoningPart as RPartType } from '@/services/channel/types'
 import { cn } from '@/lib/utils'
 import { useI18n } from '@/i18n/use-i18n'
+import { useUISettingsStore } from '@/stores/ui-settings-store'
 
 export function ReasoningPart(props: PartComponentProps) {
   const { t } = useI18n()
   const part = props.part as RPartType
+  const autoExpandReasoning = useUISettingsStore((s) => s.autoExpandReasoning)
   const isMessageStreaming =
     props.info.role === 'assistant' && typeof props.info.time.completed !== 'number'
   const isPartStreaming = isMessageStreaming && !part.time?.end
@@ -18,18 +20,18 @@ export function ReasoningPart(props: PartComponentProps) {
   const text = (part.text ?? '').trim()
   if (!text && !isPartStreaming) return null
 
-  const [open, setOpen] = useState(isPartStreaming)
-  const [hasAutoCollapsed, setHasAutoCollapsed] = useState(false)
+  const [open, setOpen] = useState(() => isPartStreaming && autoExpandReasoning)
+  const wasPartStreamingRef = useRef(isPartStreaming)
 
   useEffect(() => {
-    if (!isPartStreaming && !hasAutoCollapsed) {
-      setOpen(false)
-      setHasAutoCollapsed(true)
-    } else if (isPartStreaming) {
-      setOpen(true)
-      setHasAutoCollapsed(false)
+    if (isPartStreaming && !wasPartStreamingRef.current) {
+      setOpen(autoExpandReasoning)
     }
-  }, [isPartStreaming, hasAutoCollapsed])
+    if (!isPartStreaming && wasPartStreamingRef.current) {
+      setOpen(false)
+    }
+    wasPartStreamingRef.current = isPartStreaming
+  }, [autoExpandReasoning, isPartStreaming])
 
   let durationText = ''
   if (!isPartStreaming) {

@@ -209,6 +209,7 @@ DataTalk 的差异化在于 **AI 直接操作数据库**，但不能让 AI 蛮�
 
 | 设计文档 | 日期 | 主题 |
 |----------|------|------|
+| [Reasoning Auto-Expand Setting Design](./2026-04-24-reasoning-auto-expand-setting-design.md) | 2026-04-24 | 在“设置 > 通用”新增“思考中自动展开”开关：默认关闭；关闭时 reasoning 面板在思考期间不自动展开；打开时思考开始自动展开；无论配置如何，思考完成后统一自动收起（Shipped 2026-04-24） |
 | [AI Text-to-Chart Fence Design](./2026-04-23-ai-text-to-chart-fence-design.md) | 2026-04-23 | AI 以 ```chart 围栏 + ECharts JSON 在聊天流内联渲染图表，流式 JSON 未完整时展示骨架占位；图表块工具栏支持"打开到工作台"提升为 Stage artifact；`datatalk.render_chart` 从默认路径降级为显式保存路径，`sourceArtifactId` 放宽为可选；Stage `ChartArtifact` 统一改用 echarts-for-react，废弃 recharts（Shipped 2026-04-24） |
 | [Query Editor Object Actions Design](./2026-04-23-query-editor-object-actions-design.md) | 2026-04-23 | 将 `query_editor` 收敛为由 `StageStore` 统一打开、命名和维护的对象：所有最终打开 SQL 编辑器的入口共享同一语义；对象对外暴露 `state + actions + capabilities`；SQL 正文按“虚拟文件内容”建模，支持 range-based text edits |
 | [DataTalk Client Design System](./2026-04-23-datatalk-client-design-system-design.md) | 2026-04-23 | 为 `client/` 建立一份可执行的设计系统契约：定义 dual-theme 研究工作台视觉语言、primitive/semantic/component token 体系、Chat/Workbench 双核心页面模式、组件语义、图表/可访问性/治理规则，并作为后续 `client/DESIGN.md` 与前端实现的唯一真源 |

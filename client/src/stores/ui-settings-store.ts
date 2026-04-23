@@ -19,8 +19,10 @@ function persist(patch: Record<string, unknown>) {
 }
 
 type UISettingsState = {
+  autoExpandReasoning: boolean
   splitResizable: boolean
   language: LanguageOption
+  setAutoExpandReasoning: (v: boolean) => void
   setSplitResizable: (v: boolean) => void
   setLanguage: (v: LanguageOption) => void
 }
@@ -31,11 +33,16 @@ function detectLanguage(): LanguageOption {
 }
 
 export const useUISettingsStore = create<UISettingsState>((set) => ({
+  autoExpandReasoning: (load().autoExpandReasoning as boolean) ?? false,
   splitResizable: (load().splitResizable as boolean) ?? false,
   language: (() => {
     const saved = load().language as string | undefined
     return saved ? resolveLanguage(saved) : detectLanguage()
   })(),
+  setAutoExpandReasoning: (v) => {
+    persist({ autoExpandReasoning: v })
+    set({ autoExpandReasoning: v })
+  },
   setSplitResizable: (v) => {
     persist({ splitResizable: v })
     set({ splitResizable: v })

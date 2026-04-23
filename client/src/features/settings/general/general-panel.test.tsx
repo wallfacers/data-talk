@@ -9,6 +9,7 @@ import { useOntologyStore } from '@/stores/ontology-store'
 import { useTimelineStore } from '@/stores/timeline-store'
 import { useStageStore } from '@/stores/stage-store'
 import { useChannelStore } from '@/stores/channel-store'
+import { useUISettingsStore } from '@/stores/ui-settings-store'
 
 const openBlankSessionMock = vi.fn(async () => {})
 
@@ -84,8 +85,31 @@ function seedSessionResources() {
 describe('GeneralSettingsPanel clear all sessions', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
+    window.localStorage.clear()
     openBlankSessionMock.mockClear()
+    useUISettingsStore.setState({
+      splitResizable: false,
+      language: 'zh-CN',
+      autoExpandReasoning: false,
+    } as any)
     seedSessionResources()
+  })
+
+  it('renders reasoning auto-expand switch above split resize and toggles the setting', () => {
+    renderPanel()
+
+    const reasoningTitle = screen.getByText('思考中自动展开')
+    const splitTitle = screen.getByText('分栏拖拽调整')
+    const reasoningSwitch = screen.getByRole('switch', { name: '思考中自动展开' })
+
+    expect(reasoningSwitch).toHaveAttribute('aria-checked', 'false')
+    expect(
+      reasoningTitle.compareDocumentPosition(splitTitle) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+
+    fireEvent.click(reasoningSwitch)
+
+    expect(useUISettingsStore.getState() as any).toMatchObject({ autoExpandReasoning: true })
   })
 
   it('renders session management as a plain section without a bordered container', () => {

@@ -90,6 +90,8 @@ export function GeneralSettingsPanel({
 }: GeneralPanelProps) {
   const { t } = useI18n()
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const autoExpandReasoning = useUISettingsStore((s) => s.autoExpandReasoning)
+  const setAutoExpandReasoning = useUISettingsStore((s) => s.setAutoExpandReasoning)
   const splitResizable = useUISettingsStore((s) => s.splitResizable)
   const setSplitResizable = useUISettingsStore((s) => s.setSplitResizable)
   const queryClient = useQueryClient()
@@ -162,6 +164,18 @@ export function GeneralSettingsPanel({
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-foreground">{t('general.autoExpandReasoning')}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{t('general.autoExpandReasoningDesc')}</p>
+        </div>
+        <Switch
+          checked={autoExpandReasoning}
+          onCheckedChange={setAutoExpandReasoning}
+          aria-label={t('general.autoExpandReasoning')}
+        />
       </div>
 
       {/* Split view resizable */}

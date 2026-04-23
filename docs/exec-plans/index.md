@@ -11,6 +11,7 @@
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [Reasoning Auto-Expand Setting](./2026-04-24-reasoning-auto-expand-setting-plan.md) | 2026-04-24 | `设置 > 通用` 新增“思考中自动展开”开关；默认关闭；关闭时 reasoning 面板在思考期间不自动展开；打开时思考开始自动展开；无论配置如何，思考完成后统一自动收起。 |
 | [Agent Prompt Registry Alignment](./2026-04-24-agent-prompt-registry-alignment-plan.md) | 2026-04-24 | 运行时 `AGENTS.md` 已重写为精简英文版本，并收敛到当前真实可调用 action；未实现的 `workspace.open` 场景与误导性 chart/pin 描述已删除。生产工具面移除了遗留 `datatalk.demo.echo`，并补充了 prompt/action/client-handler 对齐回归测试；`mvn compile -q`、adapter 定向 JUnit、前端 vitest 与 `npx tsc --noEmit` 通过。 |
 | [AI Text-to-Chart Fence](./2026-04-23-ai-text-to-chart-fence-plan.md) | 2026-04-24 | 聊天 ` ```chart` 围栏 + ECharts JSON 内联渲染已落地（含流式骨架、展开与复制、打开到工作台提升）；后端新增 `ChartArtifactService` 与 `POST /api/sessions/{id}/artifacts/chart`，`Artifact` 增加 `originMessageId / originPartId` 并贯穿事件/历史回放；Stage `ChartArtifact` 已改为共享 `echarts-for-react` 渲染器。自动化前端校验通过；后端全量 `mvn clean verify` 被既有 `SessionControllerIT.delete_all_cascades_session_related_resources` 失败阻断，手工 Tauri smoke 待执行。 |
 | [Clear All Sessions](./2026-04-24-clear-all-sessions-plan.md) | 2026-04-24 | 设置-通用新增“清空全部会话”危险操作入口与确认弹窗；后端新增 `DELETE /api/sessions` 并复用单会话删除顺序清理 OpenCode 映射/会话与 SessionBus，依赖 FK 级联删除 artifacts/events/synthetic/session_data_context 等资源；前端调用后同步清空本地会话资源状态并自动拉起空白会话。 |
