@@ -33,7 +33,7 @@
 | [stage-query-editor-design](../product-specs/2026-04-21-stage-query-editor-design.md) | shipped | Stage 接通 store，并新增 Query Editor tab、SQL 编辑执行与结果面板 |
 | [bang-query-chat-visibility-design](../product-specs/2026-04-21-bang-query-chat-visibility-design.md) | shipped | 为 `!select` / `!with` 直查补齐聊天区可见性、持久化与历史合并排序 |
 | [ai-message-table-actions-and-structured-format-design](../product-specs/2026-04-20-ai-message-table-actions-and-structured-format-design.md) | shipped | 为 AI 消息表格补齐复制 / 导出动作栏与结构化格式输出 |
-| [composer-data-source-picker-design](../product-specs/2026-04-20-composer-data-source-picker-design.md) | approved | Composer 增加与模型并列的数据源选择器，并接入 chooser host 与来源数据源固化 |
+| [composer-data-source-picker-design](../product-specs/2026-04-20-composer-data-source-picker-design.md) | shipped | Composer 数据源选择器已收口：缺库自动拉起 chooser 并恢复原动作、Stage 来源数据源固化与显式回切、`ui_exec(workspace, choose_connection)` 适配器能力均已落地并完成验证 |
 | [ai-message-code-window-and-table-design](../product-specs/2026-04-20-ai-message-code-window-and-table-design.md) | shipped | 统一 AI 消息代码块窗体视觉与 Markdown 表格样式增强 |
 | [stage-ui-object-protocol-design](../product-specs/2026-04-20-stage-ui-object-protocol-design.md) | shipped | Stage UI 对象协议 P1 已收口：`UIRouter`、4 个 CLIENT Action 桥接、`StageStore` 多 Tab、`workspace/query_editor` 对象面与 Composer `!` direct SQL 主链路均已落地 |
 | [blank-session-list-actions-design](../product-specs/2026-04-20-blank-session-list-actions-design.md) | shipped | 空白会话继续保留，但不再暴露更多操作，避免无意义管理动作 |

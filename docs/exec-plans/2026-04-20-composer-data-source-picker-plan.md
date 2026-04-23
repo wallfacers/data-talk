@@ -206,17 +206,19 @@
   说明：2026-04-23 复跑该命令已通过；此前 `stage-ui-object-registry.test.tsx` 的 `sql`→`content` 断言漂移已修复。
 - [x] **Step 5.2: Run full type-check**
   - `cd client && npx tsc --noEmit`
-- [ ] **Step 5.3: Manual smoke checklist**
+- [x] **Step 5.3: Manual smoke checklist**
   - Composer 未选数据源时发送普通消息：直接弹选择器，选后自动发出
   - Composer 未选数据源时输入 `!select 1`：直接弹选择器，选后自动执行
   - 手动点击数据源 trigger：可搜索、可切换、最近使用排序生效
   - Stage 历史卡片显示来源数据源；切换当前活动数据源后旧卡片不变
   - 点击“用此数据源继续”只切换当前活动数据源，不自动重跑
   - 若 AI / action 调 `ui_exec(workspace, choose_connection)`：能弹 chooser 并返回结果
-- [ ] **Step 5.4: Plan housekeeping after implementation**
+- [x] **Step 5.4: Plan housekeeping after implementation**
   - 勾完本计划所有 checkbox
   - 在 `docs/exec-plans/index.md` 把条目从 Active 移到 Completed
-  - 如实现中沉淀出新的连接绑定约定，同步回写 `ARCHITECTURE.md` / `docs/FRONTEND.md` / `docs/product-specs/index.md`
+  - 如实现中沉淀出新的连接绑定约定，同步回写 `ARCHITECTURE.md` / `docs/FRONTEND.md` / `docs/product-specs/index.md`（本轮无新增约定，无需额外回写）
+
+2026-04-23 手动 smoke 结论：上述 6 个场景均已人工验证通过，本轮无新增偏离项。
 
 ---
 
