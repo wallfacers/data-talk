@@ -9,6 +9,7 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -77,5 +78,12 @@ class DiscoveryControllerIT {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.actions[?(@.id == 'datatalk.ui.read')].description")
                 .value(hasItem("从客户端读取 UI 状态或 schema。")));
+    }
+
+    @Test
+    void doesNotExposeLegacyDemoEchoAction() throws Exception {
+        mvc.perform(get("/api/actions"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.actions[*].id", not(hasItem("datatalk.demo.echo"))));
     }
 }

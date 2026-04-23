@@ -81,15 +81,15 @@ class EndToEndSmokeIT {
 
         WebClient client = WebClient.create("http://localhost:" + port);
         String response = client.post()
-            .uri("/api/opencode-tool/datatalk.demo.echo")
+            .uri("/api/opencode-tool/datatalk.list_connections")
             .header("X-OpenCode-Call-Id", "call-smoke-1")
             .header("X-OpenCode-Session-Id", "oc-smoke")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(Map.of("text", "hello"))
+            .bodyValue(Map.of())
             .retrieve()
             .bodyToMono(String.class)
             .block();
 
-        assertThat(response).contains("\"reversed\":\"olleh\"");
+        assertThat(response).contains("\"connections\"");
     }
 }

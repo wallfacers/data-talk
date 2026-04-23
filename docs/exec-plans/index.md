@@ -6,11 +6,12 @@
 
 | 计划 | 状态 | 摘要 |
 |------|------|------|
-| （当前无活跃计划） | — | `Implementation Roadmap` 与 `Composer Data Source Picker` 已于 2026-04-23 收口并转入 Completed；二期能力按后续单能力 spec/plan 立项推进。 |
+| （暂无） | — | — |
 ## 已完成计划
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [Agent Prompt Registry Alignment](./2026-04-24-agent-prompt-registry-alignment-plan.md) | 2026-04-24 | 运行时 `AGENTS.md` 已重写为精简英文版本，并收敛到当前真实可调用 action；未实现的 `workspace.open` 场景与误导性 chart/pin 描述已删除。生产工具面移除了遗留 `datatalk.demo.echo`，并补充了 prompt/action/client-handler 对齐回归测试；`mvn compile -q`、adapter 定向 JUnit、前端 vitest 与 `npx tsc --noEmit` 通过。 |
 | [Implementation Roadmap](./2026-04-21-implementation-roadmap-plan.md) | 2026-04-23 | 总排期文档已完成 Batch E 收口：活跃/完成状态治理同步、历史债务文档治理结论落地（`ui-demo-stage-animation-debt` 标注 stale，live residue 迁回 `TD-026`）、二期开工前置条件确认完成并明确按单能力立项。 |
 | [Composer Data Source Picker](./2026-04-20-composer-data-source-picker-plan.md) | 2026-04-23 | Composer 数据源选择器主实现、自动化回归与手动 smoke（6 个场景）均已收口；缺库自动拉起 chooser 并恢复动作、Stage 来源固化与“用此数据源继续”、`ui_exec(workspace, choose_connection)` 均已验证，文档状态同步完成。 |
 | [SQL Tab Internal Activity Rail](./2026-04-23-sql-tab-internal-rail-plan.md) | 2026-04-23 | rail 已下移到 `SqlWorkbenchTab`，并完成 `src/features/stage` + `npm test` 自动化回归与手动视觉 smoke checklist；`query_editor` 保留 rail，`file_preview` 不再显示，文档状态已同步收口。 |

@@ -70,7 +70,7 @@ domain (domain layer)
 | `controller`               | `QueryController` (/api/query)                  |
 | `adapter.channel`          | `ChannelController` (Streamable HTTP endpoint)   |
 | `adapter.discovery`        | `DiscoveryController` (/api/actions, /api/ontology) |
-| `adapter.actions`          | Concrete Action implementations (e.g. `DemoEchoAction`) |
+| `adapter.actions`          | Concrete Action implementations (e.g. `GetDataContextAction`, `ExecuteSqlAction`) |
 | `config`                   | `CorsConfig`, `JdbcConfig`, `ApplicationServiceConfig`, `OpenCodeGatewayBeans` |
 | `DataTalkApplication`      | Spring Boot entry point                          |
 

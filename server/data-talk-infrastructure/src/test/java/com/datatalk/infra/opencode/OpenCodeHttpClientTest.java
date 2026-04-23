@@ -59,11 +59,11 @@ class OpenCodeHttpClientTest {
         wm.stubFor(post(urlPathEqualTo("/plugin/register-tool"))
             .willReturn(aResponse().withStatus(204)));
 
-        client.registerTool("datatalk.demo.echo", "echo",
+        client.registerTool("datatalk.test.tool", "echo",
             Map.of("type", "object"),
-            "http://localhost:8080/api/opencode-tool/datatalk.demo.echo");
+            "http://localhost:8080/api/opencode-tool/datatalk.test.tool");
 
-        String expectedJson = "{\"name\":\"datatalk.demo.echo\",\"description\":\"echo\",\"parameters\":{\"type\":\"object\"},\"callbackUrl\":\"http://localhost:8080/api/opencode-tool/datatalk.demo.echo\"}";
+        String expectedJson = "{\"name\":\"datatalk.test.tool\",\"description\":\"echo\",\"parameters\":{\"type\":\"object\"},\"callbackUrl\":\"http://localhost:8080/api/opencode-tool/datatalk.test.tool\"}";
         wm.verify(postRequestedFor(urlPathEqualTo("/plugin/register-tool"))
             .withRequestBody(equalToJson(expectedJson, true, true)));
     }

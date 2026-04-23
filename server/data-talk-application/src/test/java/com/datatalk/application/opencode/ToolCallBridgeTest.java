@@ -27,13 +27,13 @@ class ToolCallBridgeTest {
             .thenReturn(CompletableFuture.completedFuture(Map.of("echoed", "hi")));
 
         ToolCallBridge bridge = new ToolCallBridge(disp, map);
-        Object out = bridge.handle("datatalk.demo.echo", "call-1", "oc-1",
+        Object out = bridge.handle("datatalk.test.tool", "call-1", "oc-1",
             Map.of("text", "hi")).toCompletableFuture().join();
 
         assertThat(((Map<?,?>) out).get("echoed")).isEqualTo("hi");
 
         ArgumentCaptor<ActionContext> ctx = ArgumentCaptor.forClass(ActionContext.class);
-        verify(disp).dispatch(eq("datatalk.demo.echo"), eq(Map.of("text", "hi")),
+        verify(disp).dispatch(eq("datatalk.test.tool"), eq(Map.of("text", "hi")),
             eq("call-1"), ctx.capture());
         assertThat(ctx.getValue().sessionId()).isEqualTo("dt-1");
         assertThat(ctx.getValue().openCodeSessionId()).isEqualTo("oc-1");
