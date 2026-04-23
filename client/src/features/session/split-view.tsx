@@ -47,15 +47,14 @@ export function SplitView() {
   // Track store version to trigger auto-scroll on any change (including streaming text)
   const version = useChatPartsStore((s) => s.version)
 
-  const { ref: scrollRef, scrollToBottom, isAtBottom } = useAutoScroll<HTMLDivElement>([version])
+  const { ref: scrollRef, scrollToBottom } = useAutoScroll<HTMLDivElement>([version])
 
   // Scroll to bottom on session change
   useEffect(() => {
     if (sid) {
-      isAtBottom.current = true
       scrollToBottom('auto')
     }
-  }, [sid, scrollToBottom, isAtBottom])
+  }, [sid, scrollToBottom])
 
   // Load saved ratio on mount
   useEffect(() => { setDragRatio(loadSavedRatio()) }, [])

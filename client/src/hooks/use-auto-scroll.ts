@@ -1,49 +1,67 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
+
+const FOLLOW_THRESHOLD_PX = 150
+const REENABLE_THRESHOLD_PX = 4
 
 export function useAutoScroll<T extends HTMLElement>(deps: any[]) {
   const ref = useRef<T>(null)
   const isAtBottom = useRef(true)
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const followEnabled = useRef(true)
+  const lastScrollTop = useRef(0)
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current)
-    
-    // 立即滚动，不使用 setTimeout 0，以防错过流式刷新的节奏
-    if (ref.current) {
-      ref.current.scrollTo({
-        top: ref.current.scrollHeight,
-        behavior
-      })
-    }
+    const el = ref.current
+    if (!el) return
+
+    followEnabled.current = true
+    isAtBottom.current = true
+    lastScrollTop.current = el.scrollHeight
+
+    // 流式输出时保持 auto，避免 smooth 跟不上更新节奏。
+    el.scrollTo({
+      top: el.scrollHeight,
+      behavior,
+    })
   }, [])
 
   const handleScroll = useCallback(() => {
-    if (ref.current) {
-      const { scrollTop, scrollHeight, clientHeight } = ref.current
-      // 增加阈值到 150px，给流式输出留出足够的判定空间
-      const atBottom = scrollHeight - scrollTop - clientHeight < 150
-      isAtBottom.current = atBottom
+    const el = ref.current
+    if (!el) return
+
+    const { scrollTop, scrollHeight, clientHeight } = el
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight
+    const nearBottom = distanceFromBottom <= FOLLOW_THRESHOLD_PX
+    const backAtBottom = distanceFromBottom <= REENABLE_THRESHOLD_PX
+    const movedUp = scrollTop < lastScrollTop.current
+
+    isAtBottom.current = nearBottom
+
+    if (movedUp && distanceFromBottom > 0) {
+      followEnabled.current = false
+    } else if (backAtBottom) {
+      followEnabled.current = true
     }
+
+    lastScrollTop.current = scrollTop
   }, [])
 
   useEffect(() => {
     const el = ref.current
     if (!el) return
+
+    lastScrollTop.current = el.scrollTop
+    isAtBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight <= FOLLOW_THRESHOLD_PX
+
     el.addEventListener('scroll', handleScroll)
-    return () => {
-      el.removeEventListener('scroll', handleScroll)
-      if (timeoutRef.current) clearTimeout(timeoutRef.current)
-    }
+    return () => el.removeEventListener('scroll', handleScroll)
   }, [handleScroll])
 
-  // 监听 DOM 变化（最可靠的方式）
   useEffect(() => {
     const el = ref.current
     if (!el) return
 
     const observer = new MutationObserver(() => {
-      if (isAtBottom.current) {
-        // 流式输出时使用 'auto' 才能跟上速度，'smooth' 会有延迟且易被中断
+      if (followEnabled.current) {
         scrollToBottom('auto')
       }
     })
@@ -59,7 +77,7 @@ export function useAutoScroll<T extends HTMLElement>(deps: any[]) {
 
   // 处理依赖项变化（如切换会话）
   useEffect(() => {
-    if (isAtBottom.current) {
+    if (followEnabled.current) {
       scrollToBottom('auto')
     }
   }, [scrollToBottom, ...deps])

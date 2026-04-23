@@ -15,6 +15,7 @@
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [Chat Auto-Scroll Reentry](./2026-04-23-chat-auto-scroll-reentry-plan.md) | 2026-04-23 | 聊天区 auto-follow 状态机已修正：用户只要主动向上滚离开底部，后续流式更新不再强制滚底；只有重新回到底部后才恢复自动滚动。新增 hook 回归测试，`split-view` 相关测试与 `npx tsc --noEmit` 全部通过。 |
 | [Read File Preview In Session Stage](./2026-04-22-read-file-preview-plan.md) | 2026-04-22 | `read` 文件结果现支持专属聊天 renderer 与当前会话 Stage 文件预览：点击后创建或聚焦 `file_preview` Tab，以只读 Monaco 高亮固定 `<path><type>file</type><content>` 形态中的正文；相关 62 个前端测试与 `npx tsc --noEmit` 通过。 |
 | [Java 21 Build Guard](./2026-04-22-java21-build-guard-plan.md) | 2026-04-22 | `server` 父 POM 已增加 Java 21 fail-fast enforcer，JDK 8 现在会在 `validate` 阶段直接提示“DataTalk server build requires Java 21”，不再把 Java 21 语法误报成源码错误；同时修正了此前错误归因写入的计划说明与技术债记录。 |
 | [SQL Error Markdown Diagnostics](./2026-04-22-sql-error-markdown-plan.md) | 2026-04-22 | `/api/sql/execute` 的连接级失败现在返回包含连接上下文、异常类型、驱动原始消息和排查建议的 Markdown 诊断块；Stage 错误 Tab 改为嵌入共享 Markdown renderer，并统一去掉纯文本居中布局。前端相关 vitest 与 `npx tsc --noEmit` 已通过；后端验证在切到 JDK 21 后可正常运行。 |
