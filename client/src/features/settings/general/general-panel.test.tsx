@@ -88,6 +88,18 @@ describe('GeneralSettingsPanel clear all sessions', () => {
     seedSessionResources()
   })
 
+  it('renders session management as a plain section without a bordered container', () => {
+    renderPanel()
+
+    const title = screen.getByText('会话管理')
+    const section = title.closest('div')?.parentElement?.parentElement
+
+    expect(section).not.toBeNull()
+    expect(section).not.toHaveClass('border')
+    expect(section).not.toHaveClass('rounded-lg')
+    expect(section).not.toHaveClass('bg-background')
+  })
+
   it('cancel does not call clear-all api', async () => {
     const clearAllSpy = vi.spyOn(sessionApi, 'clearAllSessions').mockResolvedValue(undefined)
     renderPanel()

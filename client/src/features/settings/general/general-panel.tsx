@@ -178,7 +178,7 @@ export function GeneralSettingsPanel({
       </div>
 
       {/* Session management */}
-      <div className="rounded-lg border border-border bg-background p-4">
+      <div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-medium text-foreground">{t('general.sessions.title')}</p>
