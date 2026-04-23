@@ -6,6 +6,7 @@
 
 | 计划 | 状态 | 摘要 |
 |------|------|------|
+| [Client Design System Foundation](./2026-04-23-client-design-system-foundation-plan.md) | pending | 先落 `client/DESIGN.md` 与 `globals.css` semantic token 映射，再校准 `Button / InputGroup / Table` 基础 atoms，以及 `Sidebar / PromptComposer / Stage` 三个高频工作台表面；最终以 design lint、目标 vitest 集与 `npx tsc --noEmit` 收口。 |
 | [SQL Tab Internal Activity Rail](./2026-04-23-sql-tab-internal-rail-plan.md) | pending | 把 Stage 窗口顶层的 `StageActivityRail`（Schema/历史/大纲）下移到 `SqlWorkbenchTab` 内部：外层 flex-col 改 flex-row，rail 仅在 `query_editor` 类型 Tab 渲染；状态作用域 `activeRailPanelBySession` 与 rail 组件签名不动。对应 spec：`docs/product-specs/2026-04-23-sql-tab-internal-rail-design.md`。 |
 | [Implementation Roadmap](./2026-04-21-implementation-roadmap-plan.md) | pending | 作为上层编排计划，先收尾 `Composer Data Source Picker`、`Stage UI Object Protocol Phase 1`、`SQL Risk Classification & IT CI Gate` 这 3 个活跃计划，再启动 `Stage Window Layout Refactor`，最后统一做文档与 backlog 治理。 |
 | [Composer Data Source Picker](./2026-04-20-composer-data-source-picker-plan.md) | in_progress | 计划为 Composer 增加与模型并列的数据源选择器，接入全局 chooser host、缺库自动补选并恢复原动作、`ui_exec(workspace, choose_connection)` 适配器，以及 Stage 卡片来源数据源固化与显式回切。 |
