@@ -148,7 +148,7 @@ describe('StageUIObjectRegistry', () => {
     })
 
     expect(response.data).toEqual(expect.objectContaining({
-      sql: 'select 2',
+      content: 'select 2',
       connectionId: 'conn-2',
     }))
   })

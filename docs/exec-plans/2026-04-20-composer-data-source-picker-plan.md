@@ -203,6 +203,7 @@
 
 - [x] **Step 5.1: Run targeted front-end test batches**
   - `cd client && npx vitest run src/features/session/data-source-picker src/features/session/hooks src/features/actions src/services/ui-router src/features/stage`
+  说明：2026-04-23 复跑该命令已通过；此前 `stage-ui-object-registry.test.tsx` 的 `sql`→`content` 断言漂移已修复。
 - [x] **Step 5.2: Run full type-check**
   - `cd client && npx tsc --noEmit`
 - [ ] **Step 5.3: Manual smoke checklist**

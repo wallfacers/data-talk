@@ -14,8 +14,8 @@
 >
 > - 本计划对应的目标代码已经落在 `stage-window` / `sql-workbench-tab` / 相关测试文件中，不再是纯 `pending` 状态。
 > - 定向验证已通过：`stage-window.test.tsx`、`sql-workbench-tab.test.tsx`、`file-preview-tab.test.tsx` 共 44 条测试通过，`cd client && npx tsc --noEmit` 通过。
-> - 更大范围回归尚未收口：`cd client && npx vitest run src/features/stage` 与 `cd client && npm test` 当前各有 2 个失败，落在 `QueryEditorAdapter.test.ts` 与 `stage-ui-object-registry.test.tsx`，属于并行中的 `Query Editor Object Actions` 契约迁移影响，不是 rail 布局本身的回归。
-> - 手动视觉 smoke 尚未执行，因此本文当前状态应视为“代码已落地，待完整回归与文档收口”，而非 Completed。
+> - 2026-04-23 已完成更大范围回归：`cd client && npx vitest run src/features/stage` 与 `cd client && npm test` 均已全绿（此前 `stage-ui-object-registry.test.tsx` 的 `sql`→`content` 断言漂移已修复）。
+> - 2026-04-23 已完成手动视觉 smoke（rail 视觉/交互 checklist），确认 SQL Tab 内 rail 视觉与交互正常、文件预览 Tab 不出现 rail；本文转入 Completed。
 
 ---
 
@@ -286,26 +286,21 @@ Run: `cd client && npx tsc --noEmit`
 
 Expected: 零错误。
 
-- [ ] **Step 2: stage 相关 vitest**
+- [x] **Step 2: stage 相关 vitest**
 
 Run: `cd client && npx vitest run src/features/stage`
 
 Expected: 全部 PASS。重点关注 `stage-window.test.tsx`、`sql-workbench-tab.test.tsx`、`file-preview-tab.test.tsx`、`stage-activity-rail.test.tsx`。
 
-2026-04-23 实际结果：命令已执行，但当前失败 2 条非 rail 用例：
+2026-04-23 实际结果：命令已执行并全绿（36 files / 201 tests passed）。
 
-- `src/features/stage/adapters/__tests__/QueryEditorAdapter.test.ts`
-- `src/features/stage/components/stage-ui-object-registry.test.tsx`
-
-两者都反映 `query_editor` 对象契约迁移中的并行改动；rail 相关文件和断言本身保持通过。
-
-- [ ] **Step 3: 全量前端测试（兜底）**
+- [x] **Step 3: 全量前端测试（兜底）**
 
 Run: `cd client && npm test`
 
 Expected: 全部 PASS。
 
-2026-04-23 实际结果：命令已执行，失败点与 Step 2 相同，仍是上述 2 条 `query_editor` / registry 契约用例，不属于 rail 布局本身回归。
+2026-04-23 实际结果：命令已执行并全绿（90 files / 494 tests passed）。
 
 ---
 
@@ -314,11 +309,11 @@ Expected: 全部 PASS。
 **Files:**
 - 无
 
-- [ ] **Step 1: 启动前端**
+- [x] **Step 1: 启动前端**
 
 Run: `cd client && npm run dev`
 
-- [ ] **Step 2: 视觉验证 checklist**
+- [x] **Step 2: 视觉验证 checklist**
 
 在浏览器打开应用后逐项确认：
 
@@ -333,7 +328,7 @@ Run: `cd client && npm run dev`
    - 文件预览 Tab 内**不**出现任何 rail 图标列或滑出面板
 4. 切回 SQL Tab：rail 重新出现，状态保留
 
-- [ ] **Step 3: 在计划中勾掉对应 checklist 项**
+- [x] **Step 3: 在计划中勾掉对应 checklist 项**
 
 如发现视觉异常，记录在本计划「Notes / Deviations」节，再开必要的修复 task。
 
@@ -349,37 +344,35 @@ Run: `cd client && npm run dev`
 
 - [x] **Step 1: 同步 index 中的真实状态**
 
-将 `docs/exec-plans/index.md` 中本计划从 `pending` 调整为 `in_progress`，并明确说明：
+将 `docs/exec-plans/index.md` 中本计划从 `in_progress` 调整为 `completed`，并明确说明：
 
 - 代码与定向 rail 验证已落地
-- 更大范围 stage / 全量前端回归仍被并行中的 `Query Editor Object Actions` 契约变更阻塞
-- 手动视觉 smoke 尚未执行，因此暂不进入 Completed
+- 更大范围 stage / 全量前端回归已全绿
+- 手动视觉 smoke checklist 已执行并通过，计划转入 Completed
 
 - [x] **Step 2: 在本计划、总 roadmap 与 design 文件中记录当前阻塞**
 
 更新本文、`2026-04-21-implementation-roadmap-plan.md` 与 design 文件头状态，明确：
 
 - rail 布局改造已经落在代码
-- 当前剩余的是 broader suite / manual smoke / 最终 Completed 搬迁
-- `Query Editor Object Actions` 是当前真正影响收口的并行主线
+- manual smoke 阻塞已收口，Completed 搬迁已完成
 
-- [ ] **Step 3: 待 broader suite 与手动视觉验证收口后，再转入 Completed**
+- [x] **Step 3: 手动视觉验证收口后，转入 Completed**
 
-转入 Completed 的前提保留为：
+已收口结果：
 
-- `cd client && npx vitest run src/features/stage` 全绿
-- `cd client && npm test` 全绿
 - Task 7 手动视觉 smoke 完成
+- 本计划已从 Active 移到 Completed，design 状态已同步为 `shipped`
 
 ## Status
 
-- 状态：in_progress
+- 状态：completed
 - 最近更新：2026-04-23
 - 关联 spec：`docs/product-specs/2026-04-23-sql-tab-internal-rail-design.md`
-- 说明：代码与定向 rail 验证已落地；broader suite 与视觉 smoke 待收口
+- 说明：代码、自动化回归（`src/features/stage` + `npm test`）与手动视觉 smoke 均已收口；索引与 design 状态同步完成
 
 ---
 
 ## Notes / Deviations
 
-（执行中如有偏离原计划，写到此处）
+- 本轮无偏离项；手动视觉 smoke checklist 全部通过。

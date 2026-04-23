@@ -19,7 +19,7 @@
 | [query-editor-object-actions-design](../product-specs/2026-04-23-query-editor-object-actions-design.md) | shipped | `query_editor` 已收敛为由 `StageStore` 统一打开、命名、聚焦和编辑的对象；`WorkspaceAdapter` / `QueryEditorAdapter` 已对 AI 暴露稳定的 `state / actions / capabilities` 与文件式 SQL 编辑语义 |
 | [datatalk-client-design-system-design](../product-specs/2026-04-23-datatalk-client-design-system-design.md) | shipped | 为 `client/` 建立可执行的设计系统契约，并落地 `client/DESIGN.md`、semantic token 映射与基础工作台表面 |
 | [chat-auto-scroll-reentry-design](../product-specs/2026-04-23-chat-auto-scroll-reentry-design.md) | shipped | 修复聊天区 auto-follow 接管条件：用户主动离开底部后，流式更新不再强制滚底，只有重新回到底部才恢复自动跟随 |
-| [sql-tab-internal-rail-design](../product-specs/2026-04-23-sql-tab-internal-rail-design.md) | approved | 布局改造代码已落地：把 Stage 窗口顶层 Activity Rail 下移到 SQL 编辑器 Tab 内部，仅在 `query_editor` 与未来 `er_designer` 挂载；待 broader suite / manual smoke 收口后再转 `shipped` |
+| [sql-tab-internal-rail-design](../product-specs/2026-04-23-sql-tab-internal-rail-design.md) | shipped | SQL Tab 内置 rail 已完成收口：`StageWindow` 顶层 Activity Rail 下移到 `SqlWorkbenchTab`，并完成自动化回归与手动视觉 smoke checklist；非 SQL Tab 不再显示 rail |
 | [read-file-preview-design](../product-specs/2026-04-22-read-file-preview-design.md) | shipped | 为 `read` 工具文件输出增加专属前端渲染与“同步到工作台”入口，在当前会话 Stage 中创建或聚焦 `file_preview` Tab |
 | [stage-sql-editor-format-design](../product-specs/2026-04-22-stage-sql-editor-format-design.md) | shipped | 为 Stage Query Editor 增加统一 SQL 格式化能力，按钮与快捷键共用同一前端格式化链路 |
 | [workspace-i18n-design](../product-specs/2026-04-22-workspace-i18n-design.md) | shipped | 补齐工作台相关前端文案与后端静态元数据、结果标题、关键错误的双语 i18n |
@@ -37,7 +37,7 @@
 | [ai-message-code-window-and-table-design](../product-specs/2026-04-20-ai-message-code-window-and-table-design.md) | shipped | 统一 AI 消息代码块窗体视觉与 Markdown 表格样式增强 |
 | [stage-ui-object-protocol-design](../product-specs/2026-04-20-stage-ui-object-protocol-design.md) | shipped | Stage UI 对象协议 P1 已收口：`UIRouter`、4 个 CLIENT Action 桥接、`StageStore` 多 Tab、`workspace/query_editor` 对象面与 Composer `!` direct SQL 主链路均已落地 |
 | [blank-session-list-actions-design](../product-specs/2026-04-20-blank-session-list-actions-design.md) | shipped | 空白会话继续保留，但不再暴露更多操作，避免无意义管理动作 |
-| [sql-risk-classification-and-it-ci-gate-design](../product-specs/2026-04-20-sql-risk-classification-and-it-ci-gate-design.md) | approved | 引入 SQL AST 风险判级与 IT gate，统一后端执行前风险分级 |
+| [sql-risk-classification-and-it-ci-gate-design](../product-specs/2026-04-20-sql-risk-classification-and-it-ci-gate-design.md) | shipped | SQL AST 风险判级与 IT gate 已落地并完成收口：2026-04-23 复跑 `mvn compile -q`、application 定向单测与 adapter `verify` 均通过，`*IT.java` 已纳入门禁 |
 | [sse-heartbeat-design](../product-specs/2026-04-20-sse-heartbeat-design.md) | shipped | SSE GET 订阅改为无限 timeout + 心跳探活，并降低超时噪音日志 |
 | [assistant-model-metadata-propagation-design](../product-specs/2026-04-20-assistant-model-metadata-propagation-design.md) | shipped | assistant provider/model 元数据全链路透传，并清理过时消息字段兼容链 |
 | [client-rebuild-tauri-vite-design](../product-specs/2026-04-16-client-rebuild-tauri-vite-design.md) | shipped | Tauri v2 + React 19 + Vite 客户端重建方案 |

@@ -6,14 +6,14 @@
 
 | 计划 | 状态 | 摘要 |
 |------|------|------|
-| [SQL Tab Internal Activity Rail](./2026-04-23-sql-tab-internal-rail-plan.md) | in_progress | rail 下移到 `SqlWorkbenchTab` 的代码与定向 rail 回归已落地：`stage-window` / `sql-workbench-tab` / `file-preview` 相关 44 条测试通过，`npx tsc --noEmit` 通过；当前仍待 `npx vitest run src/features/stage`、`npm test` 与手动视觉 smoke 收口，因此暂不转 Completed。 |
-| [Implementation Roadmap](./2026-04-21-implementation-roadmap-plan.md) | in_progress | 作为上层编排计划，当前活跃面为 `Composer Data Source Picker`、`SQL Risk Classification & IT CI Gate`，以及 `SQL Tab Internal Activity Rail` 的 broader suite / smoke 收口；`SQL Context Popover Schema Visibility`、`Stage UI Object Protocol Phase 1`、`Stage Window Layout Refactor` 与 `Query Editor Object Actions` 已完成，随后统一做文档与 backlog 治理。 |
-| [Composer Data Source Picker](./2026-04-20-composer-data-source-picker-plan.md) | in_progress | 计划为 Composer 增加与模型并列的数据源选择器，接入全局 chooser host、缺库自动补选并恢复原动作、`ui_exec(workspace, choose_connection)` 适配器，以及 Stage 卡片来源数据源固化与显式回切。 |
-| [SQL Risk Classification & IT CI Gate](./2026-04-20-sql-risk-classification-it-ci-gate-plan.md) | in_progress | `TD-020`：在 `ActionDispatcher` 统一预处理层引入 Apache Calcite SQL AST 风险判级，并通过 `ActionContext` / action output metadata 透传动态风险；`TD-021`：在 adapter 模块接入 failsafe，让 `mvn clean verify` 自动执行 `*IT.java`。 |
+| [Implementation Roadmap](./2026-04-21-implementation-roadmap-plan.md) | in_progress | 作为上层编排计划，当前活跃面为 `Composer Data Source Picker` 收口与文档/backlog 治理；`SQL Tab Internal Activity Rail` 与 `SQL Risk Classification & IT CI Gate` 已于 2026-04-23 转入 Completed。 |
+| [Composer Data Source Picker](./2026-04-20-composer-data-source-picker-plan.md) | in_progress | 数据源选择器主实现与 automated 验证已完成；2026-04-23 复跑 consolidated 前端回归通过。当前仍待手动 smoke 与 plan housekeeping 后转 Completed。 |
 ## 已完成计划
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [SQL Tab Internal Activity Rail](./2026-04-23-sql-tab-internal-rail-plan.md) | 2026-04-23 | rail 已下移到 `SqlWorkbenchTab`，并完成 `src/features/stage` + `npm test` 自动化回归与手动视觉 smoke checklist；`query_editor` 保留 rail，`file_preview` 不再显示，文档状态已同步收口。 |
+| [SQL Risk Classification & IT CI Gate](./2026-04-20-sql-risk-classification-it-ci-gate-plan.md) | 2026-04-23 | `TD-020` / `TD-021` 已收口：`ActionDispatcher` 动态 SQL 风险判级链路与 adapter failsafe 门禁已落地；2026-04-23 复跑 `mvn compile -q`、`mvn -q -pl data-talk-application test -Dtest=CalciteSqlRiskAnalyzerTest,ActionDispatcherTest`、`mvn -q -pl data-talk-adapter -am verify` 均通过，`*IT.java` 已纳入 verify。 |
 | [SQL Context Popover Schema Visibility](./2026-04-23-sql-context-popover-schema-visibility-plan.md) | 2026-04-23 | SQL 编辑器会话上下文小弹窗现已将 `Database` / `Schema` 改为可回显下拉；`Schema` 会按连接类型显隐，并对历史 schema 值保留兼容显示。目标 `vitest` 28 测试与 `npx tsc --noEmit` 通过。 |
 | [Query Editor Object Actions](./2026-04-23-query-editor-object-actions-plan.md) | 2026-04-23 | `query_editor` 已收敛为由 `StageStore` 统一打开、命名、聚焦和编辑的对象；`WorkspaceAdapter` / `QueryEditorAdapter` 对 AI 暴露稳定的 `state + actions + capabilities`、`ui_patch(/content)` 与 `apply_text_edits` 文件式语义；`UIRouter`/client action pipeline 现保留结构化错误 detail，并同步更新 `ui-objects-reference` 与运行时 `AGENTS.md`。 |
 | [Client Design System Foundation](./2026-04-23-client-design-system-foundation-plan.md) | 2026-04-23 | `client/DESIGN.md`、semantic token 映射、Button/InputGroup/Table、Sidebar、PromptComposer、Stage Foundation 表面已落地；direct `designmd` lint `errors = 0`（23 条 alias-schema warning 为已知工具边界），目标 vitest 5 文件 43 测试通过，`npx tsc --noEmit` 通过。 |

@@ -152,7 +152,7 @@
 - [x] 更新 `ExecuteSqlActionIT`：
   - `SELECT` 成功时断言 `metadata.riskLevel == L1`
   - 非 SELECT 仍被 guard 拒绝
-  说明：本地无 Docker，实际红绿验证改由新增的 `ExecuteSqlActionTest`（H2）完成；`ExecuteSqlActionIT` 仅同步断言，留待具备 Testcontainers 环境时执行。
+  说明：2026-04-23 复跑 `cd server && mvn -q -pl data-talk-adapter -am verify` 时，`ExecuteSqlActionIT` 已实际执行并通过（`Failures=0, Errors=0`）。
 - [x] 回归 `DiscoveryControllerIT`，确认静态 `ActionDescriptor.riskLevel=L1` 仍对 discovery 输出生效，避免前端描述页回退
 
 ---
@@ -166,7 +166,7 @@
 - [x] 显式纳入 `**/*IT.java`，并绑定 `integration-test` / `verify`
 - [x] 保持默认 surefire 负责 `*Test.java`，避免单测/集测职责混淆
 - [x] 确认 `mvn clean verify` 会执行现有 `ChannelControllerIT`、`TypicalQueryE2EIT`、`ExecuteSqlActionIT` 等集成测试
-  说明：通过 `help:effective-pom` 可见 failsafe 配置已生效；`mvn verify` 实测进入 adapter 测试阶段，但完整跑完仍受本机 Docker/Testcontainers 可用性约束。
+  说明：通过 `help:effective-pom` 与 2026-04-23 实跑 `mvn -q -pl data-talk-adapter -am verify` 可见，failsafe 已生效且 `*IT.java` 实际进入并通过；无 Docker 场景下仅保留用例内预期 skip（如 `SqlExecuteControllerIT` 的 1 条 skip）。
 
 ---
 
@@ -186,12 +186,18 @@
   - SQL 风险判级位于 `ActionDispatcher` 统一预处理层
   - 后端完整验证命令为 `cd server && mvn clean verify`
 - [x] 更新 `docs/QUALITY.md`，明确 `*IT.java` 属于正式回归门禁
-- [ ] 运行并记录验证命令：
+- [x] 运行并记录验证命令：
   - `cd server && mvn compile -q`
   - `cd server && mvn -q -pl data-talk-application test -Dtest=CalciteSqlRiskAnalyzerTest,ActionDispatcherTest`
   - `cd server && mvn -q -pl data-talk-adapter -am verify`
-  说明：前两项已完成；第三项已实际执行到 failsafe，并确认 `*IT.java` 进入门禁，但本机结果未全绿：`ExecuteSqlActionIT` / `LayoutErdActionIT` / `ReadSchemaActionIT` 受 Docker/Testcontainers 不可用影响，另有既存 `AiPrefsMigrationIT`、`TypicalQueryE2EIT`、`EndToEndSmokeIT` 失败/报错，需单独治理。
-- [ ] 勾完本计划 checklist，并在完成后把索引从 Active 移到 Completed
+  说明：2026-04-23 三条命令均已执行并返回 exit code 0；`data-talk-adapter` 的 surefire/failsafe 报告中相关用例 `Failures=0, Errors=0`，`SqlExecuteControllerIT` 为 `Skipped=1`（无 Docker 时的预期分支）。
+- [x] 勾完本计划 checklist，并在完成后把索引从 Active 移到 Completed
+
+## Status
+
+- 状态：completed
+- 完成日期：2026-04-23
+- 收口结论：`TD-020` / `TD-021` 主体实现、门禁接入与验证链路均已闭环；`mvn clean verify` 已可作为后端完整回归入口。
 
 ## 决策日志
 
