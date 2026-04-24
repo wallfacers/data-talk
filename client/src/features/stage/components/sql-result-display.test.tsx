@@ -22,6 +22,11 @@ vi.mock('@/i18n/use-i18n', () => ({
         'stage.queryEditor.result.copyCell': '复制单元格',
         'stage.queryEditor.result.copyRow': '复制行',
         'stage.queryEditor.result.copyColumnName': '复制列名',
+        'stage.queryEditor.result.viewCell': '查看完整内容',
+        'stage.queryEditor.result.cellDetailTitle': '单元格内容',
+        'stage.queryEditor.result.cellDetailDescription': '第 1 行 · payload · 13 字符',
+        'stage.queryEditor.result.formatContent': '格式化',
+        'stage.queryEditor.result.wrapContent': '自动换行',
         'stage.queryEditor.result.pageIndicator': 'Page 1 / 3',
         'stage.queryEditor.summary.rows': '3 rows · 8ms',
         'stage.queryEditor.summary.truncated': 'Top 3 rows · 8ms',
@@ -44,6 +49,37 @@ vi.mock('@/components/ui/context-menu', () => ({
       {children}
     </button>
   ),
+}))
+
+vi.mock('@/components/ui/dialog', () => ({
+  Dialog: ({
+    open,
+    children,
+    onOpenChange,
+  }: { open?: boolean; children?: ReactNode; onOpenChange?: (open: boolean) => void }) => open ? (
+    <div
+      data-testid="dialog-root"
+      tabIndex={-1}
+      onMouseDown={() => onOpenChange?.(false)}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') onOpenChange?.(false)
+      }}
+    >
+      {children}
+    </div>
+  ) : null,
+  DialogContent: ({ children, className }: { children?: ReactNode; className?: string }) => (
+    <div
+      data-testid="cell-detail-dialog"
+      className={className}
+      onMouseDown={(event) => event.stopPropagation()}
+    >
+      {children}
+    </div>
+  ),
+  DialogDescription: ({ children }: { children?: ReactNode }) => <p>{children}</p>,
+  DialogHeader: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  DialogTitle: ({ children }: { children?: ReactNode }) => <h2>{children}</h2>,
 }))
 
 describe('Sql result displays', () => {
@@ -151,9 +187,92 @@ describe('Sql result displays', () => {
     )
 
     const menu = screen.getByTestId('sql-result-context-menu')
+    expect(within(menu).getByRole('button', { name: '查看完整内容' })).toBeTruthy()
     expect(within(menu).getByRole('button', { name: '复制单元格' })).toBeTruthy()
     expect(within(menu).getByRole('button', { name: '复制行' })).toBeTruthy()
     expect(within(menu).getByRole('button', { name: '复制列名' })).toBeTruthy()
+  })
+
+  it('opens full cell content from the context menu without click or Enter shortcuts', () => {
+    const longText = 'first line\nsecond line\nthird line'
+    render(
+      <SqlResultTable
+        result={{
+          resultId: 'detail-result',
+          kind: 'result_set',
+          title: 'orders',
+          statementIndex: 0,
+          statementText: 'select payload from orders',
+          columns: ['payload'],
+          rows: [[longText]],
+          rowCount: 1,
+          executionMs: 8,
+          truncated: false,
+        }}
+      />,
+    )
+
+    const cell = screen.getByRole('cell', { name: longText })
+    fireEvent.click(cell)
+    fireEvent.keyDown(cell, { key: 'Enter' })
+    expect(screen.queryByTestId('cell-detail-dialog')).toBeNull()
+
+    fireEvent.contextMenu(cell)
+    fireEvent.click(screen.getByRole('button', { name: '查看完整内容' }))
+
+    const dialog = screen.getByTestId('cell-detail-dialog')
+    expect(within(dialog).getByRole('heading', { name: '单元格内容' })).toBeTruthy()
+    expect(within(dialog).getByText('第 1 行 · payload · 13 字符')).toBeTruthy()
+    expect(dialog.className).toContain('h-[min(720px,calc(100vh-4rem))]')
+    expect(dialog.querySelector('[data-component="markdown-code"]')).not.toBeNull()
+    expect(within(dialog).queryByRole('button', { name: '关闭单元格内容' })).toBeNull()
+    expect(within(dialog).getByTestId('sql-result-cell-detail-content').textContent).toBe(longText)
+  })
+
+  it('formats JSON and XML values from the full content dialog', () => {
+    const { rerender } = render(
+      <SqlResultTable
+        result={{
+          resultId: 'json-detail-result',
+          kind: 'result_set',
+          title: 'orders',
+          statementIndex: 0,
+          statementText: 'select payload from orders',
+          columns: ['payload'],
+          rows: [['{"customer":{"id":1},"items":[{"sku":"A"}]}']],
+          rowCount: 1,
+          executionMs: 8,
+          truncated: false,
+        }}
+      />,
+    )
+
+    fireEvent.contextMenu(screen.getByRole('cell', { name: '{"customer":{"id":1},"items":[{"sku":"A"}]}' }))
+    fireEvent.click(screen.getByRole('button', { name: '查看完整内容' }))
+    fireEvent.click(screen.getByRole('button', { name: '格式化' }))
+    expect(screen.getByTestId('sql-result-cell-detail-content').textContent).toContain('\n  "customer"')
+
+    rerender(
+      <SqlResultTable
+        result={{
+          resultId: 'xml-detail-result',
+          kind: 'result_set',
+          title: 'orders',
+          statementIndex: 0,
+          statementText: 'select payload from orders',
+          columns: ['payload'],
+          rows: [['<order><id>1</id><status>paid</status></order>']],
+          rowCount: 1,
+          executionMs: 8,
+          truncated: false,
+        }}
+      />,
+    )
+
+    fireEvent.contextMenu(screen.getByRole('cell', { name: '<order><id>1</id><status>paid</status></order>' }))
+    fireEvent.click(screen.getByRole('button', { name: '查看完整内容' }))
+    fireEvent.click(screen.getByRole('button', { name: '格式化' }))
+    expect(screen.getByTestId('sql-result-cell-detail-content').textContent).toContain('\n  <id>')
   })
 
   it('renders dml summary as a table row instead of plain text blocks', () => {

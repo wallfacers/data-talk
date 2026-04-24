@@ -7,6 +7,13 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
   Table,
   TableBody,
   TableCell,
@@ -17,6 +24,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { useI18n } from '@/i18n/use-i18n'
 import { copyToClipboard } from '@/lib/utils'
+import '@/features/chat/components/markdown/markdown.css'
 
 type SqlResultTableProps = {
   result: SqlExecuteResultItem
@@ -28,6 +36,7 @@ type ResultContextTarget = {
   cellValue?: unknown
   row?: unknown[]
   column?: string
+  rowNumber?: number
 }
 
 function serializeResultValue(value: unknown) {
@@ -41,10 +50,57 @@ function serializeResultRow(row: unknown[]) {
     .join('\t')
 }
 
+function formatJson(raw: string) {
+  const trimmed = raw.trim()
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) return null
+  try {
+    return JSON.stringify(JSON.parse(trimmed), null, 2)
+  } catch {
+    return null
+  }
+}
+
+function isValidXml(raw: string) {
+  const trimmed = raw.trim()
+  if (!trimmed.startsWith('<') || !trimmed.endsWith('>')) return false
+  if (typeof DOMParser === 'undefined') return true
+  const parsed = new DOMParser().parseFromString(trimmed, 'application/xml')
+  return parsed.querySelector('parsererror') == null
+}
+
+function formatXml(raw: string) {
+  if (!isValidXml(raw)) return null
+  const compact = raw.trim().replace(/>\s*</g, '><')
+  const tokens = compact.replace(/(>)(<)(\/*)/g, '$1\n$2$3').split('\n')
+  let depth = 0
+
+  return tokens
+    .map((token) => {
+      if (/^<\//.test(token)) depth = Math.max(0, depth - 1)
+      const line = `${'  '.repeat(depth)}${token}`
+      if (/^<[^!?/][^>]*[^/]?>$/.test(token) && !token.includes('</')) depth += 1
+      return line
+    })
+    .join('\n')
+}
+
+function getFormattedContent(raw: string) {
+  return formatJson(raw) ?? formatXml(raw)
+}
+
+function getContentLanguage(raw: string) {
+  if (formatJson(raw)) return 'json'
+  if (formatXml(raw)) return 'xml'
+  return 'text'
+}
+
 export function SqlResultTable({ result }: SqlResultTableProps) {
   const { t } = useI18n()
   const [page, setPage] = useState(1)
   const [contextTarget, setContextTarget] = useState<ResultContextTarget | null>(null)
+  const [detailTarget, setDetailTarget] = useState<ResultContextTarget | null>(null)
+  const [detailFormatted, setDetailFormatted] = useState(false)
+  const [detailWrap, setDetailWrap] = useState(true)
   const pageSize = 100
   const pageCount = Math.max(1, Math.ceil(result.rows.length / pageSize))
   const pageStart = (page - 1) * pageSize
@@ -56,6 +112,8 @@ export function SqlResultTable({ result }: SqlResultTableProps) {
   useEffect(() => {
     setPage(1)
     setContextTarget(null)
+    setDetailTarget(null)
+    setDetailFormatted(false)
   }, [result.resultId])
 
   const summaryLabel = result.truncated
@@ -82,6 +140,19 @@ export function SqlResultTable({ result }: SqlResultTableProps) {
     if (!contextTarget?.column) return
     void copyToClipboard(contextTarget.column)
   }, [contextTarget])
+
+  const openCellDetail = useCallback((target: ResultContextTarget | null) => {
+    if (!target || !('cellValue' in target)) return
+    setDetailTarget(target)
+    setDetailFormatted(false)
+  }, [])
+
+  const detailRaw = detailTarget && 'cellValue' in detailTarget
+    ? serializeResultValue(detailTarget.cellValue)
+    : ''
+  const formattedDetail = detailRaw ? getFormattedContent(detailRaw) : null
+  const detailContent = detailFormatted && formattedDetail ? formattedDetail : detailRaw
+  const detailLanguage = getContentLanguage(detailRaw)
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -115,7 +186,7 @@ export function SqlResultTable({ result }: SqlResultTableProps) {
                     <TableRow key={rowIndex} className="border-b border-border/30">
                       <TableCell
                         className="px-3 py-1.5 text-center text-muted-foreground"
-                        onContextMenu={() => setContextTarget({ row })}
+                        onContextMenu={() => setContextTarget({ row, rowNumber: pageStart + rowIndex + 1 })}
                       >
                         {pageStart + rowIndex + 1}
                       </TableCell>
@@ -123,11 +194,13 @@ export function SqlResultTable({ result }: SqlResultTableProps) {
                         <TableCell
                           key={cellIndex}
                           className="max-w-[360px] truncate px-3 py-1.5"
+                          title={serializeResultValue(cell)}
                           onContextMenu={() =>
                             setContextTarget({
                               cellValue: cell,
                               row,
                               column: result.columns[cellIndex],
+                              rowNumber: pageStart + rowIndex + 1,
                             })
                           }
                         >
@@ -150,6 +223,12 @@ export function SqlResultTable({ result }: SqlResultTableProps) {
         <ContextMenuContent className="w-40 font-sans text-xs">
           <ContextMenuItem
             disabled={!contextTarget || !('cellValue' in contextTarget)}
+            onClick={() => openCellDetail(contextTarget)}
+          >
+            {t('stage.queryEditor.result.viewCell')}
+          </ContextMenuItem>
+          <ContextMenuItem
+            disabled={!contextTarget || !('cellValue' in contextTarget)}
             onClick={copyCell}
           >
             {t('stage.queryEditor.result.copyCell')}
@@ -168,6 +247,74 @@ export function SqlResultTable({ result }: SqlResultTableProps) {
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
+      <Dialog open={!!detailTarget} onOpenChange={(open) => {
+        if (!open) setDetailTarget(null)
+      }}>
+        <DialogContent className="h-[min(720px,calc(100vh-4rem))] max-w-4xl !p-0 overflow-hidden">
+          <DialogHeader className="border-b border-border/60 px-4 py-3 pr-12">
+            <DialogTitle className="text-sm">
+              {t('stage.queryEditor.result.cellDetailTitle')}
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              {t('stage.queryEditor.result.cellDetailDescription', {
+                row: detailTarget?.rowNumber ?? '-',
+                column: detailTarget?.column ?? '-',
+                length: detailRaw.length,
+              })}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 p-4">
+            <div
+              data-component="markdown-code"
+              className="flex h-full min-h-0 flex-col"
+              style={{ margin: 0 }}
+            >
+              <div data-slot="markdown-code-bar">
+                <span data-slot="markdown-code-language">{detailLanguage}</span>
+                <div data-slot="markdown-code-actions">
+                  {formattedDetail ? (
+                    <button
+                      type="button"
+                      aria-pressed={detailFormatted}
+                      onClick={() => setDetailFormatted((current) => !current)}
+                    >
+                      {t('stage.queryEditor.result.formatContent')}
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    aria-pressed={detailWrap}
+                    onClick={() => setDetailWrap((current) => !current)}
+                  >
+                    {t('stage.queryEditor.result.wrapContent')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void copyToClipboard(detailRaw)}
+                  >
+                    {t('stage.queryEditor.result.copyCell')}
+                  </button>
+                </div>
+              </div>
+              <pre
+                className="min-h-0 flex-1"
+                style={{ overflow: 'auto' }}
+              >
+                <code
+                  data-testid="sql-result-cell-detail-content"
+                  style={{
+                    whiteSpace: detailWrap ? 'pre-wrap' : 'pre',
+                    overflowWrap: detailWrap ? 'break-word' : 'normal',
+                    wordBreak: detailWrap ? 'break-word' : 'normal',
+                  }}
+                >
+                  {detailContent}
+                </code>
+              </pre>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
       <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border/50 px-3 py-2">
         <span className="text-xs text-muted-foreground">{summaryLabel}</span>
         {pageCount > 1 ? (
