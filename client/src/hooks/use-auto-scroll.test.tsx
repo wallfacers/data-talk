@@ -233,6 +233,14 @@ describe('useAutoScroll', () => {
       observer.trigger()
     })
 
+    expect(scrollToSpy).not.toHaveBeenCalled()
+
+    const followFrame = rafQueue.shift()
+    expect(followFrame).toBeTypeOf('function')
+    act(() => {
+      followFrame?.(16)
+    })
+
     expect(scrollToSpy).toHaveBeenCalledTimes(1)
     expect(metrics.scrollTop).toBe(1080)
   })
