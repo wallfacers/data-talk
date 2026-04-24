@@ -356,7 +356,7 @@ export const useStageStore = create<StageState>((set, get) => ({
       connectionName: input.connectionName ?? undefined,
       database: input.database ?? undefined,
       schema: input.schema ?? undefined,
-      originSessionId: input.scope === 'session' ? input.sessionId ?? undefined : undefined,
+      originSessionId: input.sessionId ?? undefined,
       scope: input.scope,
       payload,
       createdAt: Date.now(),

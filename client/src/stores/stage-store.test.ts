@@ -209,6 +209,22 @@ describe('StageStore tabs', () => {
     expect(titles).toEqual(['SQL 编辑器', 'SQL 编辑器2'])
   })
 
+  it('keeps the origin session on workspace query editors so context targets can load', () => {
+    const store = useStageStore.getState()
+
+    const opened = store.openQueryEditor({
+      sessionId: 's1',
+      scope: 'workspace',
+      baseTitle: 'SQL 编辑器',
+      openMode: 'always_new',
+      entryMode: 'blank',
+    })
+
+    const tab = useStageStore.getState().workspaceTabs.find((candidate) => candidate.tabId === opened.tabId)
+
+    expect(tab?.originSessionId).toBe('s1')
+  })
+
   it('reuses the same resource-scoped query editor when openMode is reuse_by_resource_context', () => {
     const store = useStageStore.getState()
 
