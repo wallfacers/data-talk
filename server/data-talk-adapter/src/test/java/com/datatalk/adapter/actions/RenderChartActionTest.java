@@ -44,6 +44,7 @@ class RenderChartActionTest {
         assertThat(request.getValue().sessionId()).isEqualTo("s1");
         assertThat(request.getValue().callId()).isEqualTo("call_99");
         assertThat(request.getValue().sourceArtifactId()).isEqualTo("art_src");
+        assertThat(request.getValue().supersedesArtifactId()).isNull();
         assertThat(request.getValue().originMessageId()).isEqualTo("msg_7");
         assertThat(request.getValue().originPartId()).isEqualTo("part_2");
         assertThat(request.getValue().echartsOption()).containsKey("series");
@@ -64,12 +65,13 @@ class RenderChartActionTest {
             ArgumentCaptor.forClass(ChartArtifactService.Request.class);
         verify(service).createChartArtifact(request.capture());
         assertThat(request.getValue().sourceArtifactId()).isNull();
+        assertThat(request.getValue().supersedesArtifactId()).isNull();
         assertThat(request.getValue().originMessageId()).isNull();
         assertThat(request.getValue().originPartId()).isNull();
     }
 
     @Test
-    void handleUsesSupersedesAsCompatibilityFallback() {
+    void handleKeepsSourceArtifactIdAndSupersedesSeparate() {
         ChartArtifactService service = mock(ChartArtifactService.class);
         when(service.createChartArtifact(any())).thenReturn(new ChartArtifactService.Result("art_42", 1));
 
@@ -78,6 +80,7 @@ class RenderChartActionTest {
             new ActionContext("s1", "call_2", null, null),
             Map.of(
                 "echartsOption", Map.of("series", List.of()),
+                "sourceArtifactId", "art_src",
                 "supersedes", "art_old"
             )
         ).toCompletableFuture().join();
@@ -85,7 +88,8 @@ class RenderChartActionTest {
         ArgumentCaptor<ChartArtifactService.Request> request =
             ArgumentCaptor.forClass(ChartArtifactService.Request.class);
         verify(service).createChartArtifact(request.capture());
-        assertThat(request.getValue().sourceArtifactId()).isEqualTo("art_old");
+        assertThat(request.getValue().sourceArtifactId()).isEqualTo("art_src");
+        assertThat(request.getValue().supersedesArtifactId()).isEqualTo("art_old");
     }
 
     @Test

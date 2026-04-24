@@ -22,6 +22,7 @@ public class ChartArtifactService {
         String sessionId,
         Map<String, Object> echartsOption,
         String sourceArtifactId,
+        String supersedesArtifactId,
         String originMessageId,
         String originPartId,
         String callId
@@ -60,9 +61,9 @@ public class ChartArtifactService {
         }
 
         String artifactId = ids.nextArtifactId();
-        Integer supersedesVersion = request.sourceArtifactId() == null
+        Integer supersedesVersion = request.supersedesArtifactId() == null
             ? null
-            : artifacts.findLatestById(request.sourceArtifactId())
+            : artifacts.findLatestById(request.supersedesArtifactId())
                 .map(ArtifactRecord::version)
                 .orElse(null);
         String producedBy = request.callId() == null ? REST_PRODUCED_BY : request.callId();
@@ -76,7 +77,7 @@ public class ChartArtifactService {
             producedBy,
             PayloadRef.INLINE_PREFIX + payloadJson,
             payloadJson.length(),
-            request.sourceArtifactId(),
+            request.supersedesArtifactId(),
             supersedesVersion,
             false,
             clock.millis(),
@@ -89,7 +90,7 @@ public class ChartArtifactService {
             "datatalk.artifact",
             artifactId,
             "upsert",
-            buildPatch(artifact)
+            buildPatch(artifact, request)
         ));
 
         return new Result(artifactId, INITIAL_VERSION);
@@ -106,11 +107,15 @@ public class ChartArtifactService {
         }
     }
 
-    private Map<String, Object> buildPatch(ArtifactRecord artifact) {
+    private Map<String, Object> buildPatch(ArtifactRecord artifact, Request request) {
         Map<String, Object> patch = new LinkedHashMap<>();
         patch.put("kind", artifact.kind());
         patch.put("version", artifact.version());
         patch.put("producedBy", artifact.producedBy());
+        patch.put("echartsOption", request.echartsOption());
+        if (request.sourceArtifactId() != null) {
+            patch.put("sourceArtifactId", request.sourceArtifactId());
+        }
         if (artifact.supersedesId() != null) {
             patch.put("supersedesId", artifact.supersedesId());
         }

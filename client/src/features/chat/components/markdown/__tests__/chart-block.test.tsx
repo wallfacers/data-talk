@@ -1,11 +1,28 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ChartBlock } from '../chart-block'
 import { useOntologyStore } from '@/stores/ontology-store'
 import { useSessionStore } from '@/stores/session-store'
+import { promoteChartToStage } from '@/services/artifacts/promote-chart'
+import { showErrorToast } from '@/services/http-error'
+
+vi.mock('@/services/artifacts/promote-chart', () => ({
+  promoteChartToStage: vi.fn(),
+}))
+
+vi.mock('@/services/http-error', () => ({
+  normalizeError: vi.fn((error: unknown) => ({
+    message: error instanceof Error ? error.message : String(error),
+    type: 'unknown',
+  })),
+  showErrorToast: vi.fn(),
+}))
 
 vi.mock('../chart-renderer', () => ({
-  ChartRenderer: () => <div data-testid="chart-renderer-mock" />,
+  ChartRenderer: ({ option }: { option: Record<string, unknown> }) => {
+    if (option.__throwRenderer) throw new Error('unsupported chart renderer')
+    return <div data-testid="chart-renderer-mock" />
+  },
 }))
 
 vi.mock('../chart-expand-modal', () => ({
@@ -17,6 +34,7 @@ const MIN_OPTION = { series: [{ type: 'bar', data: [1, 2, 3] }] }
 beforeEach(() => {
   useSessionStore.setState({ activeSessionId: 's1' } as any)
   useOntologyStore.setState({ artifactsBySession: new Map() } as any)
+  vi.mocked(promoteChartToStage).mockResolvedValue({ artifactId: 'art-created', version: 1 })
 })
 
 afterEach(() => {
@@ -44,6 +62,33 @@ describe('ChartBlock', () => {
   it('renders error state when streaming=false and JSON invalid', () => {
     render(<ChartBlock json={'{"series":[{"type":"bar","dat'} streaming={false} messageId="m" blockIndex={0} />)
     expect(screen.getByTestId('chart-error')).toBeInTheDocument()
+  })
+
+  it('renders error state when the chart renderer throws', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    expect(() => {
+      render(
+        <ChartBlock
+          json={JSON.stringify({ ...MIN_OPTION, __throwRenderer: true })}
+          streaming={false}
+          messageId="m"
+          blockIndex={0}
+        />,
+      )
+    }).not.toThrow()
+
+    expect(screen.getByTestId('chart-error')).toHaveTextContent('unsupported chart renderer')
+    consoleError.mockRestore()
+  })
+
+  it('rejects chart JSON larger than 256 KB before rendering', () => {
+    const json = JSON.stringify({ series: [{ type: 'bar', data: ['x'.repeat(256 * 1024)] }] })
+
+    render(<ChartBlock json={json} streaming={false} messageId="m" blockIndex={0} />)
+
+    expect(screen.getByTestId('chart-error')).toHaveTextContent('256 KB')
+    expect(screen.queryByTestId('chart-renderer-mock')).not.toBeInTheDocument()
   })
 
   it('preserves last valid option when JSON goes valid to invalid during streaming', () => {
@@ -90,5 +135,17 @@ describe('ChartBlock', () => {
     )
 
     expect(screen.getByRole('button', { name: /已在工作台/ })).toBeInTheDocument()
+  })
+
+  it('shows an error toast and resets the promote button when promotion fails', async () => {
+    vi.mocked(promoteChartToStage).mockRejectedValueOnce(new Error('promotion failed'))
+    render(<ChartBlock json={JSON.stringify(MIN_OPTION)} streaming={false} messageId="m" blockIndex={0} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /打开到工作台/ }))
+
+    await waitFor(() => {
+      expect(showErrorToast).toHaveBeenCalledWith(expect.objectContaining({ message: 'promotion failed' }))
+    })
+    expect(screen.getByRole('button', { name: /打开到工作台/ })).toBeEnabled()
   })
 })

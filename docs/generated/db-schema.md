@@ -1,10 +1,11 @@
 # 数据库 Schema 参考
 
-> 自动生成自 `server/data-talk-infrastructure/src/main/resources/db/migration/V1__init.sql`
-> 最后更新：2026-04-16
+> 自动生成自 `server/data-talk-infrastructure/src/main/resources/db/migration/`
+> 最后更新：2026-04-24
 
 **版本历史**
 - V8 (2026-04-19): dropped `messages` table — OpenCode is now authoritative for message persistence; DataTalk only stores `events` for SSE resume.
+- V11 (2026-04-24): added artifact origin fields `origin_message_id` / `origin_part_id` and index `idx_artifacts_origin`.
 
 SQLite 元数据库，由 Flyway 管理迁移。
 
@@ -49,8 +50,12 @@ SQLite 元数据库，由 Flyway 管理迁移。
 | supersedes_ver | INTEGER | | 被替代的版本 |
 | pinned | INTEGER | NOT NULL, DEFAULT 0 | 是否钉住 |
 | created_at | INTEGER | NOT NULL | 创建时间 |
+| origin_message_id | TEXT | | 产出该工件的聊天消息 ID |
+| origin_part_id | TEXT | | 产出该工件的聊天 part ID |
 
-索引：`idx_artifacts_session(session_id, created_at)`
+索引：
+- `idx_artifacts_session(session_id, created_at)`
+- `idx_artifacts_origin(session_id, origin_message_id, origin_part_id)`
 
 ## action_invocations — Action 调用记录
 

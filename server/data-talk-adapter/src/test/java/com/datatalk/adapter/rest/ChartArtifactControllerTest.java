@@ -66,6 +66,7 @@ class ChartArtifactControllerTest {
         ChartArtifactService.Request delegated = requestCaptor.getValue();
         org.assertj.core.api.Assertions.assertThat(delegated.sessionId()).isEqualTo("s1");
         org.assertj.core.api.Assertions.assertThat(delegated.sourceArtifactId()).isEqualTo("art_src");
+        org.assertj.core.api.Assertions.assertThat(delegated.supersedesArtifactId()).isNull();
         org.assertj.core.api.Assertions.assertThat(delegated.originMessageId()).isEqualTo("msg_9");
         org.assertj.core.api.Assertions.assertThat(delegated.originPartId()).isEqualTo("part_4");
         org.assertj.core.api.Assertions.assertThat(delegated.callId()).isNull();

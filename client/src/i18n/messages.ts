@@ -343,6 +343,8 @@ const MESSAGES = {
     'chart.copy': '复制 JSON',
     'chart.copied': '已复制',
     'chart.jsonError': '图表 JSON 无效',
+    'chart.renderError': '图表渲染失败',
+    'chart.tooLarge': '图表 JSON 超过 256 KB',
 
     'table.label': '表格',
     'table.copy': '复制表格',
@@ -710,6 +712,8 @@ const MESSAGES = {
     'chart.copy': 'Copy JSON',
     'chart.copied': 'Copied',
     'chart.jsonError': 'Invalid chart JSON',
+    'chart.renderError': 'Chart render failed',
+    'chart.tooLarge': 'Chart JSON exceeds 256 KB',
 
     'table.label': 'Table',
     'table.copy': 'Copy table',

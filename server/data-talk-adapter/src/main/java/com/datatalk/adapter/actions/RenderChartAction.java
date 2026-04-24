@@ -85,16 +85,12 @@ public class RenderChartAction implements ActionHandler<Map, Map> {
             ));
         }
 
-        String sourceArtifactId = (String) input.get("sourceArtifactId");
-        if (sourceArtifactId == null) {
-            sourceArtifactId = (String) input.get("supersedes");
-        }
-
         try {
             ChartArtifactService.Result result = chartService.createChartArtifact(new ChartArtifactService.Request(
                 ctx.sessionId(),
                 (Map<String, Object>) optionMap,
-                sourceArtifactId,
+                (String) input.get("sourceArtifactId"),
+                (String) input.get("supersedes"),
                 (String) input.get("originMessageId"),
                 (String) input.get("originPartId"),
                 ctx.callId()

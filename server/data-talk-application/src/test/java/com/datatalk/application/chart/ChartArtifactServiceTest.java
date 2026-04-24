@@ -63,11 +63,11 @@ class ChartArtifactServiceTest {
             "s1",
             Map.of("series", List.of(Map.of("type", "bar"))),
             "art_src",
+            null,
             "msg_7",
             "part_2",
             "call_42"
         );
-        when(artifacts.findLatestById("art_src")).thenReturn(Optional.empty());
 
         var result = service.createChartArtifact(req);
 
@@ -83,7 +83,7 @@ class ChartArtifactServiceTest {
         assertThat(record.sessionId()).isEqualTo("s1");
         assertThat(record.kind()).isEqualTo("chart");
         assertThat(record.producedBy()).isEqualTo("call_42");
-        assertThat(record.supersedesId()).isEqualTo("art_src");
+        assertThat(record.supersedesId()).isNull();
         assertThat(record.supersedesVersion()).isNull();
         assertThat(record.originMessageId()).isEqualTo("msg_7");
         assertThat(record.originPartId()).isEqualTo("part_2");
@@ -105,15 +105,18 @@ class ChartArtifactServiceTest {
             .containsEntry("kind", "chart")
             .containsEntry("version", 1)
             .containsEntry("producedBy", "call_42")
-            .containsEntry("supersedesId", "art_src")
+            .containsEntry("sourceArtifactId", "art_src")
+            .containsEntry("echartsOption", Map.of("series", List.of(Map.of("type", "bar"))))
             .containsEntry("originMessageId", "msg_7")
-            .containsEntry("originPartId", "part_2");
+            .containsEntry("originPartId", "part_2")
+            .doesNotContainKey("supersedesId");
     }
 
     @Test
     void nullEchartsOptionRejected() {
         var req = new ChartArtifactService.Request(
             "s1",
+            null,
             null,
             null,
             null,
@@ -131,6 +134,7 @@ class ChartArtifactServiceTest {
         var req = new ChartArtifactService.Request(
             "s1",
             Map.of("series", List.of()),
+            null,
             null,
             null,
             null,
@@ -163,6 +167,7 @@ class ChartArtifactServiceTest {
             .containsEntry("kind", "chart")
             .containsEntry("version", 1)
             .containsEntry("producedBy", "rest:chart")
+            .containsEntry("echartsOption", Map.of("series", List.of()))
             .doesNotContainKeys("supersedesId", "originMessageId", "originPartId");
     }
 
@@ -187,6 +192,7 @@ class ChartArtifactServiceTest {
         var req = new ChartArtifactService.Request(
             "s1",
             Map.of("series", List.of()),
+            null,
             "art_old",
             null,
             null,

@@ -57,6 +57,7 @@ public class ChartArtifactController {
                 sessionId,
                 request.echartsOption(),
                 request.sourceArtifactId(),
+                null,
                 request.originMessageId(),
                 request.originPartId(),
                 null

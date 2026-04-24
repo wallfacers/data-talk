@@ -218,6 +218,44 @@ class SessionControllerIT {
     }
 
     @Test
+    void get_messages_returns_history_array_for_session() throws Exception {
+        String id = createSession("conn-cascade", "含消息");
+        long now = System.currentTimeMillis();
+        jdbc.update("""
+            INSERT INTO synthetic_session_messages(id, session_id, kind, text, metadata_json, created_at)
+            VALUES(?, ?, ?, ?, ?, ?)
+            """, "syn-history-1", id, "bang_query", "select 1", "{}", now);
+
+        mvc.perform(get("/api/sessions/" + id + "/messages"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].info.id").value("syn-history-1"))
+            .andExpect(jsonPath("$[0].parts[0].text").value("select 1"));
+    }
+
+    @Test
+    void get_artifacts_returns_payload_and_origin_fields_for_refresh() throws Exception {
+        String id = createSession("conn-cascade", "含图表");
+        long now = System.currentTimeMillis();
+        jdbc.update("""
+            INSERT INTO artifacts(id, version, session_id, kind, produced_by, payload_ref, payload_size,
+                                  supersedes_id, supersedes_ver, pinned, created_at, origin_message_id, origin_part_id)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            "art-chart-1", 1, id, "chart", "rest:chart",
+            "INLINE:{\"sourceArtifactId\":\"art-table-1\",\"echartsOption\":{\"series\":[{\"type\":\"bar\",\"data\":[1,2]}]}}",
+            96, null, null, 0, now, "msg-1", "part-1");
+
+        mvc.perform(get("/api/sessions/" + id + "/artifacts"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.artifacts[0].id").value("art-chart-1"))
+            .andExpect(jsonPath("$.artifacts[0].kind").value("chart"))
+            .andExpect(jsonPath("$.artifacts[0].originMessageId").value("msg-1"))
+            .andExpect(jsonPath("$.artifacts[0].originPartId").value("part-1"))
+            .andExpect(jsonPath("$.artifacts[0].payload.sourceArtifactId").value("art-table-1"))
+            .andExpect(jsonPath("$.artifacts[0].payload.echartsOption.series[0].type").value("bar"));
+    }
+
+    @Test
     void delete_all_cascades_session_related_resources() throws Exception {
         String s1 = createSession("conn-cascade", "会话A");
         // SessionService enforces single-empty-session reuse. Mark the first

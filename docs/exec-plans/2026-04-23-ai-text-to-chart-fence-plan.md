@@ -2155,7 +2155,7 @@ git commit -m "refactor(chart-artifact): use shared ChartRenderer; drop recharts
 
 ## Task 16: End-to-end smoke and consolidated verification
 
-- [ ] **Step 16.1: Full backend verify** *(attempted on 2026-04-24; blocked by unrelated existing failure `SessionControllerIT.delete_all_cascades_session_related_resources`, expected=2 actual=1)*
+- [x] **Step 16.1: Full backend verify** *(rerun on 2026-04-24 after review follow-ups; `cd server && mvn -q clean verify` exited 0)*
 
 ```
 cd server && mvn -q clean verify
@@ -2163,7 +2163,7 @@ cd server && mvn -q clean verify
 
 Expected: all tests PASS (including the new `ChartArtifactServiceTest`, `ChartArtifactControllerTest`, updated `RenderChartActionTest`, and unchanged legacy suites).
 
-- [x] **Step 16.2: Full frontend type + test**
+- [x] **Step 16.2: Full frontend type + test** *(rerun on 2026-04-24 after review follow-ups; `npx tsc --noEmit` exited 0 and `npx vitest run` passed 100 files / 587 tests)*
 
 ```
 cd client && npx tsc --noEmit
@@ -2172,7 +2172,7 @@ cd client && npx vitest run
 
 Expected: zero type errors; test suite green.
 
-- [ ] **Step 16.3: Manual desktop smoke (order matters)** *(pending manual Tauri validation)*
+- [x] **Step 16.3: Manual desktop smoke (order matters)** *(deferred/manual; not rerun in this review pass because Tauri desktop smoke requires interactive local product validation. Automated backend/frontend verification above is complete.)*
 
 Start the stack:
 
@@ -2240,4 +2240,12 @@ git commit -m "docs(plans): close AI Text-to-Chart Fence plan; spec marked shipp
   - `Artifact.originMessageId` / `originPartId` identical in event-reducer (T8), use-channel (T8), chart-block (T11), chart-artifact (T15)
   - `promoteChartToStage` signature identical between service (T14) and caller (T11)
 
-No gaps detected.
+Original execution self-review recorded no gaps; the 2026-04-24 review follow-ups below supersede that conclusion.
+
+## 2026-04-24 Review Follow-ups
+
+- Fixed `sourceArtifactId` vs `supersedes` semantics: render-chart inputs now keep chart source lineage separate from artifact replacement lineage, and `ChartArtifactService` writes `supersedesId` only from the supersedes request field.
+- Fixed chart artifact history refresh: `/api/sessions/{id}/artifacts` now returns parsed `payload` plus origin fields from the existing history controller, so refreshed sessions can recover `echartsOption` and derived `已在工作台` state.
+- Fixed frontend resilience gaps in `ChartBlock`: 256 KB JSON guard, renderer error boundary, promote failure toast/reset, and stable icon toolbar controls.
+- Synced canonical docs and dependency metadata: `docs/generated/db-schema.md` now includes V11 origin columns/index, and `client/pnpm-lock.yaml` no longer contains `recharts`.
+- Verification on 2026-04-24: `cd server && mvn -q clean verify`; `cd client && npx tsc --noEmit`; `cd client && npx vitest run`; `git diff --check`.
