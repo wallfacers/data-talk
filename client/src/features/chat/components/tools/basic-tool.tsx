@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { ChevronDownIcon } from 'lucide-react'
 import { TextShimmer } from '../effects/text-shimmer'
 import type { RiskLevel } from '../helpers/risk'
 import { getRiskStyles } from '../helpers/risk'
@@ -113,9 +114,12 @@ export function BasicTool(props: {
           {!pending && !props.hideDetails && !props.locked && props.children && (
             <span
               data-slot="basic-tool-arrow"
-              className={cn('transition-transform', open && 'rotate-180')}
+              className={cn(
+                'mt-0.5 flex size-4 shrink-0 items-center justify-center text-muted-foreground transition-transform',
+                open && 'rotate-180',
+              )}
             >
-              ▼
+              <ChevronDownIcon className="pointer-events-none size-4" />
             </span>
           )}
         </button>

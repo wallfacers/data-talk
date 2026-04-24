@@ -26,6 +26,20 @@ describe('BasicTool', () => {
     expect(container.querySelector('[data-open="true"]')).not.toBeNull()
   })
 
+  it('uses a compact select-style chevron for the details toggle', () => {
+    const { container } = render(
+      <BasicTool icon="mcp" status="completed" trigger={{ title: 'Done' }}>
+        body
+      </BasicTool>,
+    )
+
+    const arrow = container.querySelector('[data-slot="basic-tool-arrow"]')
+
+    expect(arrow).not.toBeNull()
+    expect(arrow!.querySelector('svg')).not.toBeNull()
+    expect(arrow!.textContent).not.toContain('▼')
+  })
+
   it('locked blocks collapse click', () => {
     const { container } = render(
       <BasicTool
