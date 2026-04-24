@@ -68,13 +68,21 @@ public class ActionRegistry implements InitializingBean {
             meta.requiresConnection(),
             meta.timeoutMs(),
             riskLevel,
-            category
+            category,
+            meta.exposeToMcp()
         );
     }
 
     public Collection<ActionDescriptor> all() {
         return Collections.unmodifiableList(actionsById.values().stream()
             .map(this::buildDescriptor)
+            .toList());
+    }
+
+    public Collection<ActionDescriptor> mcpExposed() {
+        return Collections.unmodifiableList(actionsById.values().stream()
+            .map(this::buildDescriptor)
+            .filter(ActionDescriptor::exposeToMcp)
             .toList());
     }
 

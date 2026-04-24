@@ -15,11 +15,12 @@ class ActionDescriptorTest {
         ActionDescriptor d = new ActionDescriptor(
             "datatalk.echo", Executor.SERVER, "Echo the input.",
             in, out, List.of(), List.of(OntologyEffect.NONE), false, 30_000,
-            null, null);
+            null, null, true);
         assertThat(d.id()).isEqualTo("datatalk.echo");
         assertThat(d.executor()).isEqualTo(Executor.SERVER);
         assertThat(d.sideEffects()).containsExactly(OntologyEffect.NONE);
         assertThat(d.timeoutMs()).isEqualTo(30_000);
         assertThat(d.requiresConnection()).isFalse();
+        assertThat(d.exposeToMcp()).isTrue();
     }
 }

@@ -19,10 +19,11 @@ datatalk:
   persistence:
     sqlite-path: ":memory:"
   master-key-hex: "0000000000000000000000000000000000000000000000000000000000000000"
+  mcp:
+    enabled: false
+    config-dir: ./target/test-opencode
   opencode:
     base-url: http://127.0.0.1:1
-    plugin-callback-base: http://localhost:8080
-    register-external-on-startup: false
     serve:
       enabled: false
 

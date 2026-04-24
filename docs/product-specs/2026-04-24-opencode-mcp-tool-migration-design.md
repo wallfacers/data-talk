@@ -239,7 +239,7 @@ DataTalk 对 external 的可保证边界定义为：
 
 #### 3.1 `opencode.json` 合并算法（embedded / external 通用）
 
-DataTalk 持有的字段范围**仅限** `mcp.datatalk`、`agents`（路径指向 DataTalk 写出的 `AGENTS.md`）、`plugins`（数组中追加 DataTalk 写出的 plugin 文件路径）。其它任何字段一律视为用户字段，不读、不改、不删。
+DataTalk 持有的字段范围**仅限** `mcp.datatalk`、`instructions`（路径指向 DataTalk 写出的 `AGENTS.md`）。plugin 文件本身通过 OpenCode config dir 下的 `plugins/` 自动加载，不通过 `opencode.json` 的数组字段声明。其它任何字段一律视为用户字段，不读、不改、不删。
 
 合并算法（伪代码）：
 
@@ -249,17 +249,17 @@ backup → opencode.json.dt-bak-<ISO timestamp>   # 仅当文件存在且本次�
 deep-merge:
     config.mcp = config.mcp ?? {}
     config.mcp.datatalk = OUR_DESIRED_DATATALK_BLOCK    # 整块覆盖（DataTalk 拥有此键）
-    if OUR_AGENTS_PATH not in config.agents:            # 数组去重追加
-        config.agents = (config.agents ?? []) + [OUR_AGENTS_PATH]
-    if OUR_PLUGIN_PATH not in config.plugins:
-        config.plugins = (config.plugins ?? []) + [OUR_PLUGIN_PATH]
+    if OUR_AGENTS_PATH not in config.instructions:      # 数组去重追加
+        config.instructions = (config.instructions ?? []) + [OUR_AGENTS_PATH]
+# plugin 文件写入 <config-dir>/plugins/datatalk-mcp-context.js
+# 由 OpenCode config dir 自动扫描加载，不写 config.plugins 数组
 write atomically (write to .tmp, fsync, rename)
 ```
 
 约束：
 
-- **整块覆盖 vs 深合并**：`mcp.datatalk` 是 DataTalk 拥有的整块对象，每次启动直接覆盖；`agents`、`plugins` 是用户与 DataTalk 共享的数组，按路径去重追加
-- **不删除**：若用户手动从 `mcp.datatalk` 改成别的结构，DataTalk 仍按”整块覆盖”恢复；若用户手动把 DataTalk 的 plugin 路径从 `plugins` 数组里删掉，DataTalk 不强加回（用户显式拒绝时尊重之，但启动时会 health-probe 失败并 degraded）
+- **整块覆盖 vs 深合并**：`mcp.datatalk` 是 DataTalk 拥有的整块对象，每次启动直接覆盖；`instructions` 是用户与 DataTalk 共享的数组，按路径去重追加；plugin 文件由 config dir 自动扫描加载，不走 JSON 数组字段
+- **不删除用户字段**：若用户手动从 `mcp.datatalk` 改成别的结构，DataTalk 仍按”整块覆盖”恢复；若用户手动删掉 DataTalk 管理的 `instructions` 路径或 `plugins/datatalk-mcp-context.js` 文件，DataTalk 会在下次 bootstrap / reconcile 时重新补回。DataTalk 不删除任何非自己管理的数组项或插件文件；若用户需要彻底禁用该桥接，应通过配置关闭 MCP 路径或改用不受 DataTalk 管理的 config dir，而不是手工删单个路径
 - **原子写**：`.tmp + rename` 防止崩溃半写；`opencode.json.dt-bak-*` 留 1 份滚动备份用于回退
 - **并发写**：embedded 模式下 DataTalk 是 config 的唯一写者，不需额外锁；external 模式下若用户也在编辑，DataTalk 仅在启动 / reconcile 时各写一次，不轮询、不持续抢锁，并在每次写之前重新读最新内容做 deep-merge
 
@@ -353,7 +353,7 @@ renderer 注册键 rename 清单（必须全部完成才视为切完）：
 补充约束：
 
 - renderer 注册逻辑保留单一文件入口（`renderers/index.ts`），不再额外维护"短名 → 长名"的兼容层
-- 新增 vitest：`registerBuiltInRenderers` 后所有注册键都以 `datatalk_` 开头，且与 backend `/mcp` 暴露的 `tools/list` 名集合精确对齐（通过 fixture 校验）
+- 新增 vitest：`registerBuiltInRenderers` 后所有注册键都以 `datatalk_` 开头；同时通过 backend fixture 断言“专属 renderer 键集合”是 `/mcp` `tools/list` 集合的子集，并与约定的 hard-rename 清单精确对齐。未列入该清单的工具继续走 `GenericTool`
 
 #### 测试基线
 
@@ -439,7 +439,7 @@ CLIENT executor 类型今天通过 `PendingCallRegistry` + `desc.timeoutMs()` �
 |------|------|---------|
 | OpenCode MCP client transport | `streamable-http`（POST `/mcp` JSON-RPC + 可选 SSE upgrade） | 阅读 OpenCode 当前版本 MCP client 源码，记录到 `docs/references/opencode-protocol.md` |
 | OpenCode plugin hook 名 | `tool.execute.before` | 同上 |
-| OpenCode plugin 文件加载形式 | ES module，从 `OPENCODE_CONFIG_DIR/plugins/*.js` 自动加载 | 同上 |
+| OpenCode plugin 文件加载形式 | ES module，从 OpenCode config dir 的 `plugins/*.js` 自动加载 | 同上 |
 | OpenCode `PATCH /config` 是否触发 mcp client invalidate | 是 | 实测 + 文档化 |
 | OpenCode `POST /mcp`（runtime mount）端点存在 | 是 | 同上 |
 
@@ -493,7 +493,7 @@ CLIENT executor 类型今天通过 `PendingCallRegistry` + `desc.timeoutMs()` �
 
 - `AGENTS.md` 中所有 `datatalk_*` 引用必须能在 `tools/list` 返回集合中找到对应项
 - `tools/list` 返回的每个生产工具必须在 `AGENTS.md` 中至少出现一次
-- 新增前端 vitest：`registerBuiltInRenderers` 注册的所有键集合 ≡ backend `tools/list` 名集合（通过 fixture 校验）
+- 新增前端 vitest：`registerBuiltInRenderers` 注册的所有键集合必须全部出现在 backend `tools/list` 中，且与约定的专属 renderer 清单精确一致（通过 fixture 校验）；其余工具允许继续走 `GenericTool`
 
 ### 风险 5：CLIENT action 在 MCP 路径上响应模型错位
 
@@ -506,11 +506,11 @@ CLIENT executor 类型今天通过 `PendingCallRegistry` + `desc.timeoutMs()` �
 
 ### 风险 6：external 模式下 `opencode.json` 与用户字段冲突
 
-场景：用户在 `opencode.json` 里手动维护 `mcp.something`、`agents`、`plugins`，DataTalk 写入时覆盖 / 删除用户字段。
+场景：用户在 `opencode.json` 里手动维护 `mcp.something`、`instructions`，或在 config dir 里放自定义 plugin，DataTalk 写入时覆盖 / 删除用户字段。
 
 控制措施：
 
-- 严格遵守 §3.1 的"DataTalk 持有字段范围"——`mcp.datatalk` 整块覆盖；`agents` / `plugins` 仅去重追加；其它字段一律不读不改不删
+- 严格遵守 §3.1 的"DataTalk 持有字段范围"——`mcp.datatalk` 整块覆盖；`instructions` 仅去重追加；`plugins/datatalk-mcp-context.js` 仅管理自己写出的文件；其它字段一律不读不改不删
 - 每次 DataTalk 实际改写文件前先写一份 `opencode.json.dt-bak-<timestamp>`
 - `OpenCodeBootstrapWriter` 必须实现 idempotency：连续两次写入同一份期望状态产生相同文件内容（含字节序），用于幂等性测试
 

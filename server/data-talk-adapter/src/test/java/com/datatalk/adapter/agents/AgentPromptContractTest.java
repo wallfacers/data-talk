@@ -1,5 +1,6 @@
 package com.datatalk.adapter.agents;
 
+import com.datatalk.application.opencode.McpNameMapper;
 import com.datatalk.application.registry.ActionRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -18,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 class AgentPromptContractTest {
 
-    private static final Pattern ACTION_ID_PATTERN = Pattern.compile("datatalk(?:\\.[a-z_]+)+");
+    private static final Pattern TOOL_NAME_PATTERN = Pattern.compile("datatalk_[a-z_]+");
     private static final Pattern HAN_PATTERN = Pattern.compile("\\p{IsHan}");
 
     @Autowired
@@ -28,26 +29,18 @@ class AgentPromptContractTest {
     ObjectMapper om;
 
     @Test
-    void runtimePromptReferencesOnlyRegisteredActions() throws IOException {
+    void runtimePromptReferencesOnlyRegisteredMcpTools() throws IOException {
         String prompt = loadPrompt();
-        Set<String> promptActionIds = ACTION_ID_PATTERN.matcher(prompt)
+        Set<String> promptToolNames = TOOL_NAME_PATTERN.matcher(prompt)
             .results()
-            .filter(result -> {
-                int end = result.end();
-                if (end >= prompt.length()) {
-                    return true;
-                }
-                char next = prompt.charAt(end);
-                return next != '.' && next != '*';
-            })
             .map(result -> result.group())
             .collect(Collectors.toSet());
 
-        Set<String> registeredActionIds = registry.all().stream()
-            .map(action -> action.id())
+        McpNameMapper mapper = new McpNameMapper(registry.mcpExposed());
+        Set<String> registeredToolNames = mapper.openCodeToolNames().stream()
             .collect(Collectors.toSet());
 
-        assertThat(promptActionIds).isSubsetOf(registeredActionIds);
+        assertThat(promptToolNames).isSubsetOf(registeredToolNames);
     }
 
     @Test
@@ -84,8 +77,13 @@ class AgentPromptContractTest {
             .contains("action=apply_text_edits")
             .contains("params.baseVersion")
             .contains("target=active")
+            .contains("datatalk_ui_list")
+            .contains("datatalk_ui_read")
+            .contains("datatalk_ui_patch")
+            .contains("datatalk_ui_exec")
             .doesNotContain("workspace.open")
-            .doesNotContain("workspace.choose_connection");
+            .doesNotContain("workspace.choose_connection")
+            .doesNotContain("datatalk.ui.");
     }
 
     @Test

@@ -109,29 +109,36 @@ public class ActionDispatcher {
                 });
             }
             case CLIENT -> {
+                if (!bus.hasSubscribers()) {
+                    CompletableFuture<Object> failed = CompletableFuture.failedFuture(
+                        new NoClientSubscriberException("no client subscriber"));
+                    yield failed.whenComplete((res, err) -> recordClientOutcome(callId, res, err));
+                }
                 CompletableFuture<Object> fut = new CompletableFuture<>();
                 pending.register(callId, fut, desc.timeoutMs());
                 bus.publish(new DtEvent.ActionInvoke(callId, actionId,
                     (Map<String, Object>) input, desc.timeoutMs()));
-                yield fut.whenComplete((res, err) -> {
-                    long t = clock.millis();
-                    if (err != null) {
-                        try {
-                            invocations.fail(callId, om.writeValueAsString(
-                                Map.of("message", err.getMessage())), t);
-                        } catch (Exception e) {
-                            log.warn("Failed to record client action failure for callId={}", callId, e);
-                        }
-                    } else {
-                        try {
-                            invocations.complete(callId, om.writeValueAsString(res), t);
-                        } catch (Exception e) {
-                            log.warn("Failed to record client action completion for callId={}", callId, e);
-                        }
-                    }
-                });
+                yield fut.whenComplete((res, err) -> recordClientOutcome(callId, res, err));
             }
         };
+    }
+
+    private void recordClientOutcome(String callId, Object result, Throwable error) {
+        long t = clock.millis();
+        if (error != null) {
+            try {
+                invocations.fail(callId, om.writeValueAsString(
+                    Map.of("message", error.getMessage())), t);
+            } catch (Exception e) {
+                log.warn("Failed to record client action failure for callId={}", callId, e);
+            }
+            return;
+        }
+        try {
+            invocations.complete(callId, om.writeValueAsString(result), t);
+        } catch (Exception e) {
+            log.warn("Failed to record client action completion for callId={}", callId, e);
+        }
     }
 
     private ActionContext enrichContext(ActionDescriptor desc, Object input, ActionContext ctx) {
@@ -189,6 +196,12 @@ public class ActionDispatcher {
             this.actionId = actionId;
             this.label = label;
             this.errors = errors;
+        }
+    }
+
+    public static class NoClientSubscriberException extends RuntimeException {
+        public NoClientSubscriberException(String message) {
+            super(message);
         }
     }
 }

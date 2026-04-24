@@ -10,30 +10,28 @@ import org.springframework.web.reactive.function.client.WebClient;
 import java.util.Map;
 
 /**
- * Thin HTTP wrapper around the OpenCode server. Exposes only the three
- * operations Plan A needs: session creation, tool registration, and message
- * send (fire-and-forget; events arrive via the separate /event stream).
+ * Thin HTTP wrapper around the OpenCode server. Session messaging remains the
+ * core path, while MCP bootstrap/reconcile uses /config and /mcp helpers.
  */
 public class OpenCodeHttpClient implements OpenCodeProviderClient {
 
     private volatile String baseUrl;
-    private final WebClient wc;
+    private volatile WebClient wc;
+    private final ExchangeStrategies strategies;
     private final ObjectMapper om;
 
     public OpenCodeHttpClient(String baseUrl, ObjectMapper om) {
         this.baseUrl = baseUrl;
-        ExchangeStrategies strategies = ExchangeStrategies.builder()
+        this.strategies = ExchangeStrategies.builder()
             .codecs(cfg -> cfg.defaultCodecs().maxInMemorySize(16 * 1024 * 1024))
             .build();
-        this.wc = WebClient.builder()
-            .baseUrl(baseUrl)
-            .exchangeStrategies(strategies)
-            .build();
+        this.wc = newClient(baseUrl);
         this.om = om;
     }
 
     public void setBaseUrl(String url) {
         this.baseUrl = url;
+        this.wc = newClient(url);
     }
 
     public String getBaseUrl() {
@@ -51,21 +49,6 @@ public class OpenCodeHttpClient implements OpenCodeProviderClient {
         } catch (Exception e) {
             throw new IllegalStateException("cannot parse OpenCode /session response", e);
         }
-    }
-
-    public void registerTool(String name, String description,
-                             Map<String, Object> parameters, String callbackUrl) {
-        wc.post().uri("/plugin/register-tool")
-            .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(Map.of(
-                "name", name,
-                "description", description,
-                "parameters", parameters,
-                "callbackUrl", callbackUrl
-            ))
-            .retrieve()
-            .toBodilessEntity()
-            .block();
     }
 
     public void sendMessage(String sessionId, Map<String, Object> requestBody) {
@@ -163,5 +146,51 @@ public class OpenCodeHttpClient implements OpenCodeProviderClient {
             .retrieve()
             .toBodilessEntity()
             .block();
+    }
+
+    public JsonNode patchConfig(Map<String, Object> config) {
+        String body = wc.patch().uri("/config")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(config)
+            .retrieve()
+            .bodyToMono(String.class)
+            .block();
+        return readJson(body, "/config");
+    }
+
+    public JsonNode addMcpServer(String name, Map<String, Object> config) {
+        String body = wc.post().uri("/mcp")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(Map.of(
+                "name", name,
+                "config", config
+            ))
+            .retrieve()
+            .bodyToMono(String.class)
+            .block();
+        return readJson(body, "/mcp");
+    }
+
+    public JsonNode getMcpStatus() {
+        String body = wc.get().uri("/mcp")
+            .retrieve()
+            .bodyToMono(String.class)
+            .block();
+        return readJson(body, "/mcp");
+    }
+
+    private WebClient newClient(String url) {
+        return WebClient.builder()
+            .baseUrl(url)
+            .exchangeStrategies(strategies)
+            .build();
+    }
+
+    private JsonNode readJson(String body, String endpoint) {
+        try {
+            return om.readTree(body);
+        } catch (Exception e) {
+            throw new IllegalStateException("cannot parse OpenCode " + endpoint + " response", e);
+        }
     }
 }

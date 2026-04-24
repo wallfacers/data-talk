@@ -1,13 +1,19 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
-import { render, act } from '@testing-library/react'
+import { render, act, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SplitView } from './split-view'
 import { useStageStore } from '@/stores/stage-store'
 import { useSessionStore } from '@/stores/session-store'
 import { useChatPartsStore } from '@/stores/chat-parts-store'
 
+const useOpencodeHealthMock = vi.hoisted(() => vi.fn())
+
 vi.mock('@/components/ui/sidebar', () => ({
   useSidebar: () => ({ state: 'expanded' }),
+}))
+
+vi.mock('@/features/session/hooks/use-opencode-health', () => ({
+  useOpencodeHealth: useOpencodeHealthMock,
 }))
 
 
@@ -27,6 +33,9 @@ describe('SplitView stage panel', () => {
   beforeEach(() => {
     queryClient.clear()
     vi.useFakeTimers()
+    useOpencodeHealthMock.mockReturnValue({
+      data: { status: 'ok', timestamp: '2026-04-24T00:00:00Z', message: 'OpenCode MCP bridge ready', reason: null },
+    })
     Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
       configurable: true,
       value: vi.fn(),
@@ -111,5 +120,27 @@ describe('SplitView stage panel', () => {
 
     expect(scroller).not.toBeNull()
     expect(scroller?.style.overflowAnchor).toBe('none')
+  })
+
+  it('renders a degraded bridge notice when MCP health is degraded', () => {
+    useOpencodeHealthMock.mockReturnValue({
+      data: {
+        status: 'degraded',
+        timestamp: '2026-04-24T00:00:00Z',
+        message: 'OpenCode MCP bridge degraded',
+        reason: 'plugin not loaded',
+      },
+    })
+
+    render(<SplitView />, { wrapper })
+
+    expect(screen.getByText('AI 工具桥未就绪')).toBeTruthy()
+    expect(screen.getByText('原因：plugin not loaded')).toBeTruthy()
+  })
+
+  it('does not render a degraded bridge notice when MCP health is ok', () => {
+    render(<SplitView />, { wrapper })
+
+    expect(screen.queryByText('AI 工具桥未就绪')).toBeNull()
   })
 })

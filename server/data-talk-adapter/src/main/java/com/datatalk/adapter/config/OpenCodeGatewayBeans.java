@@ -1,28 +1,33 @@
 package com.datatalk.adapter.config;
 
+import com.datatalk.application.opencode.OpenCodeBridgeStatus;
 import com.datatalk.application.opencode.OpenCodeEventLoop;
 import com.datatalk.application.opencode.OpenCodeEventTranslator;
 import com.datatalk.application.opencode.OpenCodeGateway;
 import com.datatalk.application.opencode.OpenCodeSessionMap;
 import com.datatalk.application.persistence.SessionRecord;
 import com.datatalk.application.persistence.SessionRepository;
-import com.datatalk.application.registry.ActionRegistry;
 import com.datatalk.application.session.SessionBusRegistry;
-import com.datatalk.infra.opencode.OpenCodeConfig;
 import com.datatalk.infra.opencode.OpenCodeHttpClient;
-import com.datatalk.infra.opencode.process.*;
+import com.datatalk.infra.opencode.OpenCodeMcpProperties;
+import com.datatalk.infra.opencode.process.OpenCodeBinaryResolver;
+import com.datatalk.infra.opencode.process.OpenCodeBootstrapReconciler;
+import com.datatalk.infra.opencode.process.OpenCodeBootstrapWriter;
+import com.datatalk.infra.opencode.process.OpenCodePortAllocator;
+import com.datatalk.infra.opencode.process.OpenCodeProcessManager;
+import com.datatalk.infra.opencode.process.OpenCodeServeProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.web.context.WebServerApplicationContext;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.EventListener;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -33,64 +38,60 @@ public class OpenCodeGatewayBeans {
     private static final Logger log = LoggerFactory.getLogger(OpenCodeGatewayBeans.class);
 
     private final OpenCodeHttpClient client;
-    private final OpenCodeConfig.OpenCodeProperties props;
-    private final ActionRegistry registry;
-    private final ObjectMapper om;
-    private final OpenCodeEventTranslator translator;
-    private final SessionBusRegistry buses;
-    private final OpenCodeSessionMap sessionMap;
     private final SessionRepository sessionRepository;
+    private final OpenCodeSessionMap sessionMap;
     private final OpenCodeServeProperties serveProps;
+    private final OpenCodeMcpProperties mcpProps;
+    private final OpenCodeBootstrapReconciler bootstrapReconciler;
+    private final OpenCodeBridgeStatus bridgeStatus;
     private final OpenCodeProcessManager processManager;
-    private final boolean registerExternalOnStartup;
+    private final OpenCodeEventLoop eventLoop;
     private OpenCodeGateway gateway;
-    private OpenCodeEventLoop eventLoop;
 
     public OpenCodeGatewayBeans(OpenCodeHttpClient client,
-                                OpenCodeConfig.OpenCodeProperties props,
-                                ActionRegistry registry,
                                 ObjectMapper om,
                                 OpenCodeEventTranslator translator,
                                 SessionBusRegistry buses,
                                 OpenCodeSessionMap sessionMap,
                                 SessionRepository sessionRepository,
                                 OpenCodeServeProperties serveProps,
+                                OpenCodeMcpProperties mcpProps,
+                                OpenCodeBootstrapReconciler bootstrapReconciler,
+                                OpenCodeBridgeStatus bridgeStatus,
                                 @Value("${datatalk.opencode.required:false}") boolean required,
-                                @Value("${datatalk.opencode.register-external-on-startup:true}") boolean registerExternalOnStartup,
                                 @Value("${datatalk.opencode.base-url:http://localhost:4096}") String defaultBaseUrl) {
         this.client = client;
-        this.props = props;
-        this.registry = registry;
-        this.om = om;
-        this.translator = translator;
-        this.buses = buses;
-        this.sessionMap = sessionMap;
         this.sessionRepository = sessionRepository;
+        this.sessionMap = sessionMap;
         this.serveProps = serveProps;
-        this.registerExternalOnStartup = registerExternalOnStartup;
+        this.mcpProps = mcpProps;
+        this.bootstrapReconciler = bootstrapReconciler;
+        this.bridgeStatus = bridgeStatus;
 
         Path homeDir = Paths.get(System.getProperty("user.home"));
         OpenCodeBinaryResolver resolver = new OpenCodeBinaryResolver();
         OpenCodePortAllocator allocator = new OpenCodePortAllocator();
-        eventLoop = new OpenCodeEventLoop(
-            defaultBaseUrl, om, translator, buses, sessionMap, null);
-
+        this.eventLoop = new OpenCodeEventLoop(defaultBaseUrl, om, translator, buses, sessionMap, null);
         this.processManager = new OpenCodeProcessManager(
-            serveProps, resolver, allocator,
-            homeDir, client, eventLoop, required);
+            serveProps,
+            resolver,
+            allocator,
+            homeDir,
+            mcpProps.resolveConfigDir(),
+            client,
+            eventLoop,
+            required
+        );
     }
 
     @Bean
     public OpenCodeGateway openCodeGateway() {
         this.gateway = new OpenCodeGateway(
-            registry,
-            (name, desc, params, cb) -> client.registerTool(name, desc, params, cb),
             (ocSid, body) -> client.sendMessage(ocSid, body),
             client::createSession,
             client::deleteSession,
             client::abort,
-            (ocSid, limit) -> client.listMessages(ocSid, limit),
-            props.callbackBase()
+            (ocSid, limit) -> client.listMessages(ocSid, limit)
         );
         return gateway;
     }
@@ -105,60 +106,75 @@ public class OpenCodeGatewayBeans {
         return processManager;
     }
 
-    /**
-     * Registers tools and starts the OpenCode SSE event loop after startup.
-     * If the embedded server is enabled and running, use that embedded instance.
-     * If the embedded server is disabled, attempt the same bootstrap sequence
-     * against the configured external OpenCode base URL.
-     */
     @EventListener(ApplicationReadyEvent.class)
-    public void registerOnStartup() {
+    public void registerOnStartup(ApplicationReadyEvent event) {
         preloadSessionMap();
-        writeAgentsMd();
+        int serverPort = serverPort(event);
 
-        if (serveProps.isEnabled() && !processManager.isRunning()) {
-            log.error("OpenCode embedded server failed to start - skipping tool registration (degraded mode)");
-            return;
+        if (serveProps.isEnabled()) {
+            if (!startEmbedded(serverPort)) {
+                return;
+            }
+        } else if (mcpProps.isEnabled()) {
+            reconcileExternal(serverPort);
+        } else {
+            bridgeStatus.markOk("OpenCode MCP bridge disabled");
+            log.info("OpenCode MCP bootstrap disabled (datatalk.mcp.enabled=false)");
         }
 
-        if (!serveProps.isEnabled() && !registerExternalOnStartup) {
-            log.info("OpenCode embedded server is disabled and external startup registration is disabled");
-            return;
-        }
-
-        String registrationMode = serveProps.isEnabled() ? "embedded" : "external";
         try {
-            log.info("Registering DataTalk tools against {} OpenCode at {}", registrationMode, client.getBaseUrl());
-            gateway.registerTools();
-        } catch (Exception e) {
-            log.error("OpenCode tool registration failed (degraded mode): {}", e.getMessage(), e);
-        }
-        try {
-            log.info("Starting OpenCode SSE event loop against {} OpenCode at {}", registrationMode, client.getBaseUrl());
+            String mode = serveProps.isEnabled() ? "embedded" : "external";
+            log.info("Starting OpenCode SSE event loop against {} OpenCode at {}", mode, client.getBaseUrl());
             eventLoop.start();
         } catch (Exception e) {
             log.error("OpenCode SSE event loop failed to start (degraded mode): {}", e.getMessage(), e);
         }
     }
 
-    private void writeAgentsMd() {
-        Path workDir = Paths.get(System.getProperty("user.home"), ".data-talk", "opencode");
-        Path target = workDir.resolve("AGENTS.md");
+    private boolean startEmbedded(int serverPort) {
         try {
-            Files.createDirectories(workDir);
-            String content = loadAgentsMd();
-            Files.writeString(target, content);
-            log.info("AGENTS.md written to {}", target);
+            if (mcpProps.isEnabled()) {
+                bootstrapReconciler.writeManagedConfig(serverPort);
+            } else {
+                bridgeStatus.markOk("OpenCode MCP bridge disabled");
+            }
+
+            processManager.start();
+            if (!processManager.isRunning()) {
+                bridgeStatus.markDegraded("embedded OpenCode not running", "OpenCode embedded server unavailable");
+                log.error("OpenCode embedded server failed to start");
+                return false;
+            }
+
+            if (mcpProps.isEnabled()) {
+                bootstrapReconciler.probeRuntimeStatus();
+            }
+            return true;
         } catch (IOException e) {
-            log.warn("Failed to write AGENTS.md: {}", e.getMessage());
+            bridgeStatus.markDegraded(e.getMessage(), "OpenCode MCP bootstrap write failed");
+            log.error("Failed to write managed OpenCode bootstrap files: {}", e.getMessage(), e);
+            return false;
         }
     }
 
-    private String loadAgentsMd() throws IOException {
-        try (var in = getClass().getClassLoader().getResourceAsStream("agents/AGENTS.md")) {
-            if (in == null) throw new IOException("agents/AGENTS.md not found on classpath");
-            return new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+    private void reconcileExternal(int serverPort) {
+        try {
+            OpenCodeBootstrapWriter.BootstrapArtifacts artifacts = bootstrapReconciler.writeManagedConfig(serverPort);
+            if (!bootstrapReconciler.reconcileExternal(artifacts)) {
+                log.warn("OpenCode MCP reconcile completed in degraded mode");
+            }
+        } catch (IOException e) {
+            bridgeStatus.markDegraded(e.getMessage(), "OpenCode MCP bootstrap write failed");
+            log.warn("Failed to write managed OpenCode bootstrap files for external OpenCode: {}", e.getMessage(), e);
         }
+    }
+
+    private int serverPort(ApplicationReadyEvent event) {
+        if (event.getApplicationContext() instanceof WebServerApplicationContext web
+            && web.getWebServer() != null) {
+            return web.getWebServer().getPort();
+        }
+        return Integer.parseInt(event.getApplicationContext().getEnvironment().getProperty("server.port", "8080"));
     }
 
     /**

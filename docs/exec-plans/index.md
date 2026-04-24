@@ -4,13 +4,13 @@
 
 ## 活跃计划
 
-| 计划 | 状态 | 摘要 |
-|------|------|------|
-| （暂无） | — | — |
+（当前无）
+
 ## 已完成计划
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [OpenCode MCP Tool Migration](./2026-04-24-opencode-mcp-tool-migration-plan.md) | 2026-04-24 | DataTalk 已切到 MCP 单路径：后端新增 `/mcp` + nonce/session bridge、managed bootstrap/external reconcile、health degraded 状态；前端切换 `datatalk_*` renderer/prompt naming 并接入 degraded surface；legacy `/plugin/register-tool` / `/api/opencode-tool/*` / `shared-secret` callback 链路已删除。后端 `mvn compile -q`、定向 JUnit smoke，前端 vitest 与 `npx tsc --noEmit` 通过。 |
 | [Reasoning Placeholder Chevron Sync](./2026-04-24-reasoning-placeholder-chevron-sync-plan.md) | 2026-04-24 | 修复 AI 首包占位“思考中…”箭头方向与“思考中自动展开”设置不同步的问题；`SessionTurn` 现直接消费 `autoExpandReasoning` 控制占位态 Chevron，并补充对应前端回归测试。 |
 | [Reasoning Auto-Expand Setting](./2026-04-24-reasoning-auto-expand-setting-plan.md) | 2026-04-24 | `设置 > 通用` 新增“思考中自动展开”开关；默认关闭；关闭时 reasoning 面板在思考期间不自动展开；打开时思考开始自动展开；无论配置如何，思考完成后统一自动收起。 |
 | [Agent Prompt Registry Alignment](./2026-04-24-agent-prompt-registry-alignment-plan.md) | 2026-04-24 | 运行时 `AGENTS.md` 已重写为精简英文版本，并收敛到当前真实可调用 action；未实现的 `workspace.open` 场景与误导性 chart/pin 描述已删除。生产工具面移除了遗留 `datatalk.demo.echo`，并补充了 prompt/action/client-handler 对齐回归测试；`mvn compile -q`、adapter 定向 JUnit、前端 vitest 与 `npx tsc --noEmit` 通过。 |
