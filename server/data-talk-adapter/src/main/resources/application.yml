@@ -58,6 +58,7 @@ datatalk:
       port-retries: 100
       hostname: 127.0.0.1
       cors: http://localhost:8080
+      strip-proxy-env: false
 
 app:
   logging:

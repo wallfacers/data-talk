@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -20,6 +21,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class OpenCodeProcessManager implements SmartLifecycle {
 
     private static final Logger log = LoggerFactory.getLogger(OpenCodeProcessManager.class);
+    private static final String[] HTTP_PROXY_ENV_VARS = {
+        "http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY"
+    };
 
     private final OpenCodeServeProperties serveProps;
     private final OpenCodeBinaryResolver binaryResolver;
@@ -99,11 +103,7 @@ public class OpenCodeProcessManager implements SmartLifecycle {
             .redirectErrorStream(true);
         pb.environment().put("OPENCODE_CONFIG_DIR", configDir.toString());
         pb.environment().put("OPENCODE_CONFIG", configDir.resolve("opencode.json").toString());
-        // Bun's fetch() chokes on proxy env vars ("proxy.url must be a non-empty string")
-        pb.environment().remove("http_proxy");
-        pb.environment().remove("https_proxy");
-        pb.environment().remove("HTTP_PROXY");
-        pb.environment().remove("HTTPS_PROXY");
+        applyProxyEnvironmentPolicy(pb.environment(), serveProps);
 
         process = pb.start();
 
@@ -208,6 +208,26 @@ public class OpenCodeProcessManager implements SmartLifecycle {
             return true;
         } catch (Exception e) {
             return false;
+        }
+    }
+
+    static void applyProxyEnvironmentPolicy(Map<String, String> environment, OpenCodeServeProperties serveProps) {
+        if (serveProps.isStripProxyEnv()) {
+            removeHttpProxyEnvironment(environment);
+            return;
+        }
+
+        for (String name : HTTP_PROXY_ENV_VARS) {
+            String value = environment.get(name);
+            if (value != null && value.isBlank()) {
+                environment.remove(name);
+            }
+        }
+    }
+
+    private static void removeHttpProxyEnvironment(Map<String, String> environment) {
+        for (String name : HTTP_PROXY_ENV_VARS) {
+            environment.remove(name);
         }
     }
 

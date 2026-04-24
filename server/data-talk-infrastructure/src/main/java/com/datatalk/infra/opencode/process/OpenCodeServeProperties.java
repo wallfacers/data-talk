@@ -16,6 +16,7 @@ public class OpenCodeServeProperties {
     private int portRetries = 100;
     private String hostname = "127.0.0.1";
     private String cors = "http://localhost:8080";
+    private boolean stripProxyEnv = false;
 
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
@@ -37,4 +38,7 @@ public class OpenCodeServeProperties {
 
     public String getCors() { return cors; }
     public void setCors(String cors) { this.cors = cors; }
+
+    public boolean isStripProxyEnv() { return stripProxyEnv; }
+    public void setStripProxyEnv(boolean stripProxyEnv) { this.stripProxyEnv = stripProxyEnv; }
 }
