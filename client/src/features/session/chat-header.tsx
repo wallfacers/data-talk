@@ -15,11 +15,9 @@ import { useSidebar } from '@/components/ui/sidebar'
 import { useSessionStore } from '@/stores/session-store'
 import { invalidateSessionLists, useSessions } from './hooks/use-sessions'
 import { useOpenBlankSession } from './hooks/use-open-blank-session'
+import { displaySessionTitle } from './session-title'
 import { deleteSession, renameSession } from '@/services/api/session'
 import { useI18n } from '@/i18n/use-i18n'
-
-// OpenCode 生成的临时标题格式，不应展示
-const OPENCODE_TEMP_TITLE_REGEX = /^New session - /
 
 export function ChatHeader() {
   const { t } = useI18n()
@@ -28,7 +26,7 @@ export function ChatHeader() {
   const { data: sessions } = useSessions('all')
   const session = sessions?.find((s) => s.id === sid)
   const rawTitle = session?.title ?? ''
-  const title = OPENCODE_TEMP_TITLE_REGEX.test(rawTitle) ? t('workspace.nav.newSession') : rawTitle
+  const title = displaySessionTitle(rawTitle, t('workspace.nav.newSession'))
   // 使用本地缓存优先判断：本地 hasEverSent=true 说明用户已发送消息
   const isBlankSession = sid ? !(localHasEverSent.get(sid) ?? session?.hasEverSent ?? false) : false
   const qc = useQueryClient()

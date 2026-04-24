@@ -142,4 +142,13 @@ describe('NavSessions — 删除当前活跃会话', () => {
     expect(screen.getByText('普通会话')).toBeInTheDocument()
     expect(screen.queryByText('_stage-ai_Orders SQL')).not.toBeInTheDocument()
   })
+
+  it('真实标题返回前不展示 OpenCode 时间戳临时标题', () => {
+    renderWithCache([
+      mkSession({ id: 'pending-title', title: 'NewSession · 2026-04-24 10:12', hasEverSent: true }),
+    ])
+
+    expect(screen.getByText('新会话')).toBeInTheDocument()
+    expect(screen.queryByText('NewSession · 2026-04-24 10:12')).not.toBeInTheDocument()
+  })
 })

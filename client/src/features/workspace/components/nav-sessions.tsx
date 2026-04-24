@@ -41,6 +41,7 @@ import {
   useSessions,
 } from '@/features/session/hooks/use-sessions'
 import { useOpenBlankSession } from '@/features/session/hooks/use-open-blank-session'
+import { displaySessionTitle } from '@/features/session/session-title'
 import { useSessionStore } from '@/stores/session-store'
 import { renameSession, deleteSession, type Session } from '@/services/api/session'
 import { useI18n } from '@/i18n/use-i18n'
@@ -48,17 +49,6 @@ import { useI18n } from '@/i18n/use-i18n'
 type SessionGroup = {
   label: string
   items: Session[]
-}
-
-// OpenCode 生成的临时标题格式，不应展示
-const OPENCODE_TEMP_TITLE_REGEX = /^New session - /
-
-/** 过滤临时标题，返回实际展示的标题 */
-function displayTitle(title: string): string {
-  if (OPENCODE_TEMP_TITLE_REGEX.test(title)) {
-    return title
-  }
-  return title
 }
 
 function canManageSession(session: Session): boolean {
@@ -225,73 +215,77 @@ function SessionGroupView({
       <SidebarGroup className="group-data-[collapsible=icon]:hidden">
         <SidebarGroupLabel>{label}</SidebarGroupLabel>
         <SidebarMenu>
-          {items.map((s) => (
-            <SidebarMenuItem key={s.id}>
-              {editingId === s.id ? (
-                <Input
-                  ref={inputRef}
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
-                    if (e.key === 'Enter') commitRename(s.id)
-                    if (e.key === 'Escape') setEditingId(null)
-                  }}
-                  onBlur={() => commitRename(s.id)}
-                  className="h-8 text-sm"
-                />
-              ) : (
-                <>
-                  <SidebarMenuButton
-                    isActive={s.id === activeId}
-                    onClick={() => onSelect(s.id)}
-                    tooltip={displayTitle(s.title)}
-                    className="data-active:bg-border data-active:ring-1 data-active:ring-border"
-                  >
-                    <span className="truncate">{displayTitle(s.title)}</span>
-                  </SidebarMenuButton>
-                  {canManageSession(s) ? (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        render={
-                          <SidebarMenuAction
-                            showOnHover
-                            className="aria-expanded:bg-muted"
-                          />
-                        }
-                      >
-                        <MoreHorizontalIcon />
-                        <span className="sr-only">{t('workspace.more')}</span>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        className="w-32"
-                        side={isMobile ? 'bottom' : 'right'}
-                        align={isMobile ? 'end' : 'start'}
-                      >
-                        <DropdownMenuItem onClick={() => {
-                          if (!canManageSession(s)) return
-                          setEditingId(s.id)
-                          setEditTitle(OPENCODE_TEMP_TITLE_REGEX.test(s.title) ? t('workspace.nav.newSession') : s.title)
-                        }}>
-                          <PencilIcon />
-                          <span>{t('common.rename')}</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          variant="destructive"
-                          onClick={() => {
-                            if (!canManageSession(s)) return
-                            setDeleteTarget(s)
-                          }}
+          {items.map((s) => {
+            const title = displaySessionTitle(s.title, t('workspace.nav.newSession'))
+
+            return (
+              <SidebarMenuItem key={s.id}>
+                {editingId === s.id ? (
+                  <Input
+                    ref={inputRef}
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+                      if (e.key === 'Enter') commitRename(s.id)
+                      if (e.key === 'Escape') setEditingId(null)
+                    }}
+                    onBlur={() => commitRename(s.id)}
+                    className="h-8 text-sm"
+                  />
+                ) : (
+                  <>
+                    <SidebarMenuButton
+                      isActive={s.id === activeId}
+                      onClick={() => onSelect(s.id)}
+                      tooltip={title}
+                      className="data-active:bg-border data-active:ring-1 data-active:ring-border"
+                    >
+                      <span className="truncate">{title}</span>
+                    </SidebarMenuButton>
+                    {canManageSession(s) ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          render={
+                            <SidebarMenuAction
+                              showOnHover
+                              className="aria-expanded:bg-muted"
+                            />
+                          }
                         >
-                          <Trash2Icon />
-                          <span>{t('common.delete')}</span>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  ) : null}
-                </>
-              )}
-            </SidebarMenuItem>
-          ))}
+                          <MoreHorizontalIcon />
+                          <span className="sr-only">{t('workspace.more')}</span>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          className="w-32"
+                          side={isMobile ? 'bottom' : 'right'}
+                          align={isMobile ? 'end' : 'start'}
+                        >
+                          <DropdownMenuItem onClick={() => {
+                            if (!canManageSession(s)) return
+                            setEditingId(s.id)
+                            setEditTitle(title)
+                          }}>
+                            <PencilIcon />
+                            <span>{t('common.rename')}</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onClick={() => {
+                              if (!canManageSession(s)) return
+                              setDeleteTarget(s)
+                            }}
+                          >
+                            <Trash2Icon />
+                            <span>{t('common.delete')}</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : null}
+                  </>
+                )}
+              </SidebarMenuItem>
+            )
+          })}
         </SidebarMenu>
       </SidebarGroup>
 
@@ -304,9 +298,7 @@ function SessionGroupView({
             <AlertDialogTitle>{t('workspace.confirmDeleteTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
               {t('workspace.confirmDeleteDescription', {
-                title: OPENCODE_TEMP_TITLE_REGEX.test(deleteTarget?.title ?? '')
-                  ? t('workspace.nav.newSession')
-                  : deleteTarget?.title ?? '',
+                title: deleteTarget ? displaySessionTitle(deleteTarget.title, t('workspace.nav.newSession')) : '',
               })}
             </AlertDialogDescription>
           </AlertDialogHeader>
