@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
     "spring.sqlite-datasource.driver-class-name=org.sqlite.JDBC",
     "datatalk.master-key-hex=0000000000000000000000000000000000000000000000000000000000000000",
     "datatalk.opencode.base-url=http://127.0.0.1:1",
-    "datatalk.opencode.plugin-callback-base=http://localhost:8080"
+    "datatalk.mcp.enabled=false"
 })
 class DiscoveryControllerIT {
 
@@ -71,13 +71,13 @@ class DiscoveryControllerIT {
                 .header(HttpHeaders.ACCEPT_LANGUAGE, "en-US"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.actions[?(@.id == 'datatalk.ui.read')].description")
-                .value(hasItem("Read UI state or schema from the client.")));
+                .value(hasItem("Read workspace or query_editor state, schema, actions, or the full descriptor from the client.")));
 
         mvc.perform(get("/api/actions")
                 .header(HttpHeaders.ACCEPT_LANGUAGE, "zh-CN"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.actions[?(@.id == 'datatalk.ui.read')].description")
-                .value(hasItem("从客户端读取 UI 状态或 schema。")));
+                .value(hasItem("从客户端读取 workspace 或 query_editor 的 state、schema、actions 或完整描述。")));
     }
 
     @Test

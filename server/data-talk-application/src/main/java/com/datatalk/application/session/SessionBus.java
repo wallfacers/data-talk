@@ -77,6 +77,7 @@ public class SessionBus implements AutoCloseable {
 
     public String sessionId() { return sessionId; }
     public long latestEventId() { return seq.get(); }
+    public boolean hasSubscribers() { return !subscribers.isEmpty(); }
 
     public void publish(DtEvent event) {
         inbound.offer(event);

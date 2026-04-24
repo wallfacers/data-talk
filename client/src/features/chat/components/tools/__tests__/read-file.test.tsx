@@ -57,10 +57,10 @@ describe('read-file renderer', () => {
     resetStores()
   })
 
-  it('registers the read renderer', () => {
+  it('does not register the legacy read renderer in the MCP renderer subset', () => {
     registerBuiltInRenderers()
 
-    expect(ToolRegistry.get('read')).toBe(ReadFile)
+    expect(ToolRegistry.get('read')).toBeUndefined()
   })
 
   it('shows a stage button for completed parseable file output and opens a file preview tab', async () => {

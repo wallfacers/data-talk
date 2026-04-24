@@ -14,8 +14,8 @@ import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Manages the embedded OpenCode process lifecycle as a Spring SmartLifecycle bean.
- * Starts early (phase=-100) to ensure OpenCode is ready before ApplicationReadyEvent.
+ * Manages the embedded OpenCode process lifecycle. Startup is triggered from
+ * ApplicationReadyEvent so the DataTalk web server already knows its real port.
  */
 public class OpenCodeProcessManager implements SmartLifecycle {
 
@@ -25,6 +25,7 @@ public class OpenCodeProcessManager implements SmartLifecycle {
     private final OpenCodeBinaryResolver binaryResolver;
     private final OpenCodePortAllocator portAllocator;
     private final Path homeDir;
+    private final Path configDir;
     private final OpenCodeHttpClient httpClient;
     private final OpenCodeEventLoop eventLoop;
     private final boolean required;
@@ -38,6 +39,7 @@ public class OpenCodeProcessManager implements SmartLifecycle {
                                   OpenCodeBinaryResolver binaryResolver,
                                   OpenCodePortAllocator portAllocator,
                                   Path homeDir,
+                                  Path configDir,
                                   OpenCodeHttpClient httpClient,
                                   OpenCodeEventLoop eventLoop,
                                   boolean required) {
@@ -45,6 +47,7 @@ public class OpenCodeProcessManager implements SmartLifecycle {
         this.binaryResolver = binaryResolver;
         this.portAllocator = portAllocator;
         this.homeDir = homeDir;
+        this.configDir = configDir;
         this.httpClient = httpClient;
         this.eventLoop = eventLoop;
         this.required = required;
@@ -64,7 +67,7 @@ public class OpenCodeProcessManager implements SmartLifecycle {
             if (required) {
                 throw new IllegalStateException("OpenCode is required but failed to start", e);
             } else {
-                log.warn("Continuing in degraded mode — OpenCode server is not available");
+                log.warn("Continuing in degraded mode; OpenCode server is not available");
                 return;
             }
         }
@@ -94,6 +97,8 @@ public class OpenCodeProcessManager implements SmartLifecycle {
         ProcessBuilder pb = new ProcessBuilder(cmd)
             .directory(homeDir.resolve(OpenCodeBinaryResolver.OPENCODE_DIR).toFile())
             .redirectErrorStream(true);
+        pb.environment().put("OPENCODE_CONFIG_DIR", configDir.toString());
+        pb.environment().put("OPENCODE_CONFIG", configDir.resolve("opencode.json").toString());
         // Bun's fetch() chokes on proxy env vars ("proxy.url must be a non-empty string")
         pb.environment().remove("http_proxy");
         pb.environment().remove("https_proxy");
@@ -149,7 +154,7 @@ public class OpenCodeProcessManager implements SmartLifecycle {
 
     @Override
     public boolean isAutoStartup() {
-        return true;
+        return false;
     }
 
     public int getActualPort() {

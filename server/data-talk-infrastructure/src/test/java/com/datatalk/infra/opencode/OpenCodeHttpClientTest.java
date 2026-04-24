@@ -14,8 +14,11 @@ import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
+import static com.github.tomakehurst.wiremock.client.WireMock.patch;
+import static com.github.tomakehurst.wiremock.client.WireMock.patchRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.put;
@@ -52,20 +55,6 @@ class OpenCodeHttpClientTest {
 
         assertThat(id).isEqualTo("oc-1");
         wm.verify(postRequestedFor(urlEqualTo("/session")));
-    }
-
-    @Test
-    void registerToolSendsNameAndCallback() {
-        wm.stubFor(post(urlPathEqualTo("/plugin/register-tool"))
-            .willReturn(aResponse().withStatus(204)));
-
-        client.registerTool("datatalk.test.tool", "echo",
-            Map.of("type", "object"),
-            "http://localhost:8080/api/opencode-tool/datatalk.test.tool");
-
-        String expectedJson = "{\"name\":\"datatalk.test.tool\",\"description\":\"echo\",\"parameters\":{\"type\":\"object\"},\"callbackUrl\":\"http://localhost:8080/api/opencode-tool/datatalk.test.tool\"}";
-        wm.verify(postRequestedFor(urlPathEqualTo("/plugin/register-tool"))
-            .withRequestBody(equalToJson(expectedJson, true, true)));
     }
 
     @Test
@@ -178,5 +167,53 @@ class OpenCodeHttpClientTest {
 
         assertThat(aborted).isTrue();
         wm.verify(postRequestedFor(urlEqualTo("/session/ses_3/abort")));
+    }
+
+    @Test
+    void patchConfigPostsJsonFragment() {
+        wm.stubFor(patch(urlEqualTo("/config"))
+            .willReturn(okJson("{\"mcp\":{\"datatalk\":{\"type\":\"remote\"}}}")));
+
+        JsonNode node = client.patchConfig(Map.of(
+            "mcp", Map.of("datatalk", Map.of("type", "remote"))
+        ));
+
+        assertThat(node.path("mcp").path("datatalk").path("type").asText()).isEqualTo("remote");
+        wm.verify(patchRequestedFor(urlEqualTo("/config"))
+            .withRequestBody(equalToJson("""
+                {"mcp":{"datatalk":{"type":"remote"}}}
+                """, true, true)));
+    }
+
+    @Test
+    void addMcpServerPostsNameAndConfig() {
+        wm.stubFor(post(urlEqualTo("/mcp"))
+            .willReturn(okJson("""
+                {"datatalk":{"status":"connected"}}
+                """)));
+
+        JsonNode node = client.addMcpServer("datatalk", Map.of(
+            "type", "remote",
+            "url", "http://127.0.0.1:8080/mcp"
+        ));
+
+        assertThat(node.path("datatalk").path("status").asText()).isEqualTo("connected");
+        wm.verify(postRequestedFor(urlEqualTo("/mcp"))
+            .withRequestBody(equalToJson("""
+                {"name":"datatalk","config":{"type":"remote","url":"http://127.0.0.1:8080/mcp"}}
+                """, true, true)));
+    }
+
+    @Test
+    void getMcpStatusReturnsStatusMap() {
+        wm.stubFor(get(urlEqualTo("/mcp"))
+            .willReturn(okJson("""
+                {"datatalk":{"status":"connected"}}
+                """)));
+
+        JsonNode node = client.getMcpStatus();
+
+        assertThat(node.path("datatalk").path("status").asText()).isEqualTo("connected");
+        wm.verify(getRequestedFor(urlEqualTo("/mcp")));
     }
 }

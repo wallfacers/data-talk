@@ -17,7 +17,7 @@
 
 - **Desktop**: renders UI, manages frontend state, communicates with backend via Streamable HTTP
 - **Backend**: core business logic — session management, SQL execution, Action dispatch, OpenCode bridge
-- **OpenCode**: AI reasoning service, provides conversation and tool-call capabilities over HTTP
+- **OpenCode**: AI reasoning service, provides conversation over HTTP/SSE and consumes DataTalk capabilities through remote MCP
 - **User DBs**: backend connects to user-owned databases via dynamic JDBC connection pools
 
 ## Server Four-Module Layering (DDD)
@@ -52,7 +52,7 @@ domain (domain layer)
 | `application.registry`     | `ActionRegistry` — scans `@DataTalkAction` beans and registers; `OntologyRegistry` — ObjectType registration |
 | `application.session`      | `SessionBus` — 16ms delta coalescing + SSE push; `ActionDispatcher`; `PendingCallRegistry` (watchdog timeout) |
 | `application.channel`      | `ChannelService` — JSON-RPC codec, request routing; `JsonRpcCodec` |
-| `application.opencode`     | `OpenCodeGateway` — tool push + message forwarding; `OpenCodeEventTranslator`; `ToolCallBridge` |
+| `application.opencode`     | `OpenCodeGateway` — session/message/history bridge; `OpenCodeEventTranslator`; `McpNameMapper`; `DataTalkMcpService`; `McpActionBridge`; `OpenCodeBridgeStatus` |
 | `application.persistence`  | Repository interfaces (SessionRepository, MessageRepository, ArtifactRepository, EventRepository, QueryResultRepository) |
 | `service`                  | `QueryApplicationService` — SQL query orchestration |
 
@@ -61,7 +61,7 @@ domain (domain layer)
 | Package                     | Responsibility                                  |
 |----------------------------|------------------------------------------------|
 | `repository`               | `JdbcDbConnectionRepository`, `DynamicSqlExecutionRepository` |
-| `infra.opencode`           | `OpenCodeHttpClient` — WebClient SSE streaming   |
+| `infra.opencode`           | `OpenCodeHttpClient` — OpenCode REST/MCP bootstrap client; `DataTalkMcpController`; `OpenCodeBootstrapWriter`; `OpenCodeBootstrapReconciler` |
 
 ### adapter — External interfaces & Spring wiring
 

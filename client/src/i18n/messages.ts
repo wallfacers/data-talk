@@ -168,6 +168,9 @@ const MESSAGES = {
     'session.needModel': '请先配置一个 AI 模型才能发送消息。',
     'session.selectModel': '选择模型',
     'session.autoMode': '自动',
+    'session.opencodeDegradedTitle': 'AI 工具桥未就绪',
+    'session.opencodeDegradedBody': '在桥接恢复前，AI 工具调用可能失败。',
+    'session.opencodeDegradedReason': '原因：{reason}',
 
     'welcome.subtitle': '用自然语言和你的数据库对话。先从左侧选择一个连接并新建会话，或试试下面的示例。',
     'welcome.newConnection': '新建连接',
@@ -532,6 +535,9 @@ const MESSAGES = {
     'session.needModel': 'Configure an AI model before sending messages.',
     'session.selectModel': 'Select model',
     'session.autoMode': 'Auto',
+    'session.opencodeDegradedTitle': 'AI tool bridge unavailable',
+    'session.opencodeDegradedBody': 'Tool calls may fail until the bridge reconnects.',
+    'session.opencodeDegradedReason': 'Reason: {reason}',
 
     'welcome.subtitle': 'Talk to your database in natural language. Pick a connection on the left and create a session, or try one of these examples.',
     'welcome.newConnection': 'New Connection',

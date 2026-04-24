@@ -39,6 +39,13 @@ class ActionRegistryTest {
         assertThat(d.executor()).isEqualTo(Executor.SERVER);
         assertThat(d.description()).isEqualTo("Alpha Translated");
         assertThat(d.timeoutMs()).isEqualTo(12_345);
+        assertThat(d.exposeToMcp()).isTrue();
+    }
+
+    @Test
+    void mcpExposedOnlyIncludesOptedInActions() {
+        assertThat(registry.mcpExposed()).extracting("id").containsExactly("test.alpha");
+        assertThat(registry.require("test.beta").exposeToMcp()).isFalse();
     }
 
     @Test
@@ -95,7 +102,13 @@ class ActionRegistryTest {
         }
     }
 
-    @DataTalkAction(id = "test.beta", executor = Executor.CLIENT, description = "Beta", requiresConnection = true)
+    @DataTalkAction(
+        id = "test.beta",
+        executor = Executor.CLIENT,
+        description = "Beta",
+        requiresConnection = true,
+        exposeToMcp = false
+    )
     static class BetaHandler implements ActionHandler<Map, Map> {
         @Override
         public Map<String, Object> inputSchema() { return Map.of("type", "object"); }

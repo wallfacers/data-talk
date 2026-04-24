@@ -43,10 +43,12 @@ datatalk:
     post-stream-timeout-ms: 600000   # POST SSE 单 turn 最长存活（毫秒），默认 10 分钟
   sql:
     max-rows: 5000
+  mcp:
+    enabled: true
+    config-dir: ~/.data-talk/opencode
+    allowed-origins: ""
   opencode:
     base-url: http://localhost:4096
-    plugin-callback-base: http://localhost:8080
-    shared-secret: ""
     required: false
     serve:
       enabled: true

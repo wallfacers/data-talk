@@ -1,26 +1,16 @@
 package com.datatalk.application.opencode;
 
-import com.datatalk.application.registry.ActionRegistry;
-import com.datatalk.domain.action.ActionDescriptor;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import java.util.Map;
 import java.util.function.Supplier;
 
 /**
- * Pushes every registered DataTalk ACTION to OpenCode as a plugin tool, and
- * manages the data-talk session to open-code session id mapping.
- *
- * <p>Plan A wires {@link ToolPusher} and {@link MessageSender} to real HTTP
- * calls via Spring configuration (see {@code OpenCodeGatewayBeans} in the
- * adapter module — added in Task 26). Unit tests inject stubs.</p>
+ * Thin orchestration wrapper for OpenCode session lifecycle and message
+ * forwarding. Tool registration is no longer part of this gateway; MCP
+ * bootstrap/reconcile owns that responsibility.
  */
 public class OpenCodeGateway {
-
-    public interface ToolPusher {
-        void push(String name, String description,
-                  Map<String, Object> parameters, String callbackUrl);
-    }
 
     public interface MessageSender {
         void send(String openCodeSessionId, Map<String, Object> requestBody);
@@ -38,48 +28,35 @@ public class OpenCodeGateway {
         JsonNode list(String openCodeSessionId, Integer limit);
     }
 
-    private final ActionRegistry registry;
-    private final ToolPusher pusher;
     private final MessageSender sender;
     private final Supplier<String> sessionCreator;
     private final SessionDeleter deleter;
     private final SessionAborter aborter;
     private final MessageLister lister;
-    private final String callbackBase;
 
-    public OpenCodeGateway(ActionRegistry registry, ToolPusher pusher,
-                           MessageSender sender, Supplier<String> sessionCreator,
-                           SessionDeleter deleter, MessageLister lister,
-                           String callbackBase) {
+    public OpenCodeGateway(MessageSender sender,
+                           Supplier<String> sessionCreator,
+                           SessionDeleter deleter,
+                           MessageLister lister) {
         this(
-            registry, pusher, sender, sessionCreator, deleter,
-            openCodeSessionId -> false, lister, callbackBase
+            sender,
+            sessionCreator,
+            deleter,
+            openCodeSessionId -> false,
+            lister
         );
     }
 
-    public OpenCodeGateway(ActionRegistry registry, ToolPusher pusher,
-                           MessageSender sender, Supplier<String> sessionCreator,
-                           SessionDeleter deleter, SessionAborter aborter,
-                           MessageLister lister, String callbackBase) {
-        this.registry = registry;
-        this.pusher = pusher;
+    public OpenCodeGateway(MessageSender sender,
+                           Supplier<String> sessionCreator,
+                           SessionDeleter deleter,
+                           SessionAborter aborter,
+                           MessageLister lister) {
         this.sender = sender;
         this.sessionCreator = sessionCreator;
         this.deleter = deleter;
         this.aborter = aborter;
         this.lister = lister;
-        this.callbackBase = callbackBase;
-    }
-
-    public void registerTools() {
-        for (ActionDescriptor d : registry.all()) {
-            pusher.push(
-                d.id(),
-                d.description(),
-                d.inputSchema(),
-                callbackBase + "/api/opencode-tool/" + d.id()
-            );
-        }
     }
 
     public String createOpenCodeSession() {
