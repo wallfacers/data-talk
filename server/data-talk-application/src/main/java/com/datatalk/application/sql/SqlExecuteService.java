@@ -237,7 +237,7 @@ public class SqlExecuteService {
             }
             List<Object> row = new ArrayList<>(colCount);
             for (int i = 1; i <= colCount; i++) {
-                row.add(rs.getObject(i));
+                row.add(JdbcResultValueNormalizer.normalize(rs.getObject(i)));
             }
             rows.add(row);
         }

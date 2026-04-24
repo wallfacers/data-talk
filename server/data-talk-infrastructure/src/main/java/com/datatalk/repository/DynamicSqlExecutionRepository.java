@@ -1,6 +1,7 @@
 package com.datatalk.repository;
 
 import com.datatalk.application.connection.JdbcUrlBuilder;
+import com.datatalk.application.sql.JdbcResultValueNormalizer;
 import com.datatalk.entity.DbConnection;
 import com.datatalk.entity.DbType;
 import com.datatalk.exception.SqlExecutionException;
@@ -37,7 +38,7 @@ public class DynamicSqlExecutionRepository implements SqlExecutionRepository {
                 while (rs.next()) {
                     Map<String, Object> row = new LinkedHashMap<>();
                     for (int i = 1; i <= columnCount; i++) {
-                        row.put(columns.get(i - 1), rs.getObject(i));
+                        row.put(columns.get(i - 1), JdbcResultValueNormalizer.normalize(rs.getObject(i)));
                     }
                     rows.add(row);
                 }

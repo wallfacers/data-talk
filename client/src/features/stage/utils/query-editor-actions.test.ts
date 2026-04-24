@@ -144,6 +144,53 @@ describe('query-editor-actions', () => {
     })
   })
 
+  it('injects limit into each select statement for multi-statement SQL', async () => {
+    useConnectionStore.setState({
+      activeConnectionId: 'conn-1',
+      connections: [
+        { id: 'conn-1', name: 'Primary Connection', kind: 'postgres', databaseName: 'db_main' } as any,
+      ],
+    })
+
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 'sess-1',
+      scope: 'session',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'blank',
+      initialContent: 'select * from users;\nselectd * from orders;',
+      connectionId: 'conn-1',
+      connectionName: 'Primary Connection',
+      database: 'db_main',
+    })
+
+    executeSqlMock.mockResolvedValue({
+      resolvedContext: {
+        connectionId: 'conn-1',
+        connectionName: 'Primary Connection',
+        database: 'db_main',
+        schema: null,
+        selectedLevel: 'database',
+      },
+      contextNotice: null,
+      results: [],
+    })
+
+    await runQueryEditorSql({
+      tabId,
+      sessionId: 'sess-1',
+      limit: 10,
+    })
+
+    expect(executeSqlMock).toHaveBeenCalledWith({
+      sql: 'select * from users LIMIT 10;\nselectd * from orders;',
+      connectionId: 'conn-1',
+      source: 'user',
+      sessionId: 'sess-1',
+      database: 'db_main',
+    }, expect.any(AbortSignal))
+  })
+
   it('stores risk-blocked executions in workbench state and history', async () => {
     const { tabId } = useStageStore.getState().openQueryEditor({
       sessionId: 'sess-1',

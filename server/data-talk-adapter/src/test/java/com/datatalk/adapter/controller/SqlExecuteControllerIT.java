@@ -97,6 +97,19 @@ class SqlExecuteControllerIT {
     }
 
     @Test
+    void execute_serializes_unsafe_bigint_cells_as_strings() throws Exception {
+        mvc.perform(post("/api/sql/execute")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"connectionId":"%s","sql":"SELECT CAST(9007199254740993 AS BIGINT) AS big_id","source":"user"}
+                    """.formatted(CONN_ID)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.results", hasSize(1)))
+            .andExpect(jsonPath("$.results[0].kind", is("result_set")))
+            .andExpect(jsonPath("$.results[0].rows[0][0]", is("9007199254740993")));
+    }
+
+    @Test
     void execute_auto_locates_missing_schema_and_returns_resolved_context() throws Exception {
         try (var c = DriverManager.getConnection("jdbc:h2:mem:sqlit;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false", "sa", "");
              var st = c.createStatement()) {

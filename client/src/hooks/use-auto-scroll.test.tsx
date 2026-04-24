@@ -191,7 +191,10 @@ describe('useAutoScroll', () => {
     expect(metrics.scrollTop).toBe(860)
   })
 
-  it('resumes auto-scroll only after the user returns to the bottom', () => {
+  it('stays detached from auto-follow even after the user scrolls back to the bottom', () => {
+    // Once the user cancels follow by scrolling up, follow must remain off
+    // for the whole assistant turn — even if they manually scroll back to
+    // the bottom. Only a fresh user send (resetDeps bump) may re-attach.
     const metrics = { clientHeight: 100, scrollHeight: 1000, scrollTop: 900 }
     const view = render(<Harness version={0} />)
     const root = view.getByTestId('scroll-root') as HTMLDivElement
@@ -200,6 +203,7 @@ describe('useAutoScroll', () => {
     syncAtBottom(root)
     scrollToSpy.mockClear()
 
+    // User scrolls up — follow must disable.
     metrics.scrollTop = 860
     fireEvent.scroll(root)
 
@@ -208,17 +212,20 @@ describe('useAutoScroll', () => {
       view.rerender(<Harness version={1} />)
     })
 
+    // User manually scrolls back to the exact bottom.
     scrollToSpy.mockClear()
     metrics.scrollTop = 940
     fireEvent.scroll(root)
 
+    // Next streaming content growth must NOT auto-follow even though the
+    // user is back at the bottom — follow only re-attaches on user send.
     metrics.scrollHeight = 1100
     act(() => {
       view.rerender(<Harness version={2} />)
     })
 
-    expect(scrollToSpy).toHaveBeenCalledTimes(1)
-    expect(metrics.scrollTop).toBe(1100)
+    expect(scrollToSpy).not.toHaveBeenCalled()
+    expect(metrics.scrollTop).toBe(940)
   })
 
   it('suppresses repeated mutation callbacks from the same append until the next frame', () => {
@@ -440,5 +447,58 @@ describe('useAutoScroll', () => {
 
     expect(scrollToSpy).not.toHaveBeenCalled()
     expect(metrics.scrollTop).toBe(820)
+  })
+
+  it('disables auto-follow immediately when wheel scrolls up, even if scroll event is coalesced away', () => {
+    // Reproduce the race: programmatic scrollToBottom and user wheel happen in
+    // the same frame, so the resulting scroll event shows the post-scroll
+    // (bottom) position and handleScroll never sees movedUp.  The wheel
+    // listener must disable follow independently of the scroll event.
+    const metrics = { clientHeight: 100, scrollHeight: 1000, scrollTop: 900 }
+    const view = render(<Harness version={0} />)
+    const root = view.getByTestId('scroll-root') as HTMLDivElement
+
+    attachScrollMetrics(root, metrics)
+    syncAtBottom(root)
+    act(() => {
+      flushAnimationFrameQueue(rafQueue)
+    })
+    scrollToSpy.mockClear()
+
+    // User wheels up (negative deltaY).
+    fireEvent.wheel(root, { deltaY: -80 })
+
+    // Streaming content grows — follow must be off now.
+    metrics.scrollHeight = 1120
+    act(() => {
+      view.rerender(<Harness version={1} />)
+    })
+
+    expect(scrollToSpy).not.toHaveBeenCalled()
+    expect(metrics.scrollTop).toBe(900)
+  })
+
+  it('disables auto-follow when touch finger moves downward (scroll-up gesture)', () => {
+    const metrics = { clientHeight: 100, scrollHeight: 1000, scrollTop: 900 }
+    const view = render(<Harness version={0} />)
+    const root = view.getByTestId('scroll-root') as HTMLDivElement
+
+    attachScrollMetrics(root, metrics)
+    syncAtBottom(root)
+    act(() => {
+      flushAnimationFrameQueue(rafQueue)
+    })
+    scrollToSpy.mockClear()
+
+    // Finger starts at Y=200, moves down to Y=280 → content scrolls up.
+    fireEvent.touchStart(root, { touches: [{ clientY: 200 }] })
+    fireEvent.touchMove(root, { touches: [{ clientY: 280 }] })
+
+    metrics.scrollHeight = 1120
+    act(() => {
+      view.rerender(<Harness version={1} />)
+    })
+
+    expect(scrollToSpy).not.toHaveBeenCalled()
   })
 })

@@ -56,11 +56,16 @@ export function SplitView() {
   const { ref: scrollRef, scrollToBottom } = useAutoScroll<HTMLDivElement>(
     [layoutVersion],
     [userSendVersion],
+    sid ? `chat-scroll-${sid}` : undefined,
   )
 
-  // Scroll to bottom on session change
+  // Scroll to bottom on session *switch* — but not on initial mount, so that
+  // Ctrl+R lets the useAutoScroll storage-restore logic take effect first.
+  const prevSidRef = useRef<string | null>(null)
   useEffect(() => {
-    if (sid) {
+    const prev = prevSidRef.current
+    prevSidRef.current = sid ?? null
+    if (sid && prev !== null && prev !== sid) {
       scrollToBottom('auto')
     }
   }, [sid, scrollToBottom])

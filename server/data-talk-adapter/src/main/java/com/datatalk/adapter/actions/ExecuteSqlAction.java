@@ -5,6 +5,7 @@ import com.datatalk.application.connection.ConnectionService;
 import com.datatalk.application.connection.JdbcUrlBuilder;
 import com.datatalk.application.persistence.*;
 import com.datatalk.application.session.SessionDataContextService;
+import com.datatalk.application.sql.JdbcResultValueNormalizer;
 import com.datatalk.application.sql.SqlStatementGuard;
 import com.datatalk.domain.action.*;
 import com.datatalk.domain.error.DataTalkErrorCodes;
@@ -125,7 +126,9 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
                 for (int i = 1; i <= md.getColumnCount(); i++) columns.add(md.getColumnLabel(i));
                 while (rs.next()) {
                     Map<String, Object> row = new LinkedHashMap<>();
-                    for (int i = 1; i <= md.getColumnCount(); i++) row.put(columns.get(i - 1), rs.getObject(i));
+                    for (int i = 1; i <= md.getColumnCount(); i++) {
+                        row.put(columns.get(i - 1), JdbcResultValueNormalizer.normalize(rs.getObject(i)));
+                    }
                     rows.add(row);
                 }
             }

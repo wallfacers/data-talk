@@ -103,4 +103,17 @@ class ExecuteSqlActionTest {
 
         assertThat((List<?>) out.get("preview")).hasSize(3);
     }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void serializes_unsafe_bigint_preview_cells_as_strings() throws Exception {
+        Map<String, Object> out = (Map<String, Object>) action.handle(
+            new ActionContext("s-exec", "c-3", connectionId, "oc-e"),
+            Map.of("connectionId", connectionId, "sql", "SELECT CAST(9007199254740993 AS BIGINT) AS big_id")
+        ).toCompletableFuture().get();
+
+        List<Map<String, Object>> preview = (List<Map<String, Object>>) out.get("preview");
+        assertThat(preview).hasSize(1);
+        assertThat(preview.get(0).get("BIG_ID")).isEqualTo("9007199254740993");
+    }
 }

@@ -46,16 +46,171 @@ function isAbortError(error: unknown) {
   return (error instanceof DOMException && error.name === 'AbortError') || (error instanceof Error && error.name === 'AbortError')
 }
 
+function readDollarQuoteTag(sql: string, index: number) {
+  if (sql[index] !== '$') return null
+  if (sql[index + 1] === '$') return '$$'
+
+  const end = sql.indexOf('$', index + 1)
+  if (end <= index + 1) return null
+  const tag = sql.slice(index, end + 1)
+  return /^\$[A-Za-z_][A-Za-z0-9_]*\$$/.test(tag) ? tag : null
+}
+
+function splitSqlStatementsForLimit(sql: string) {
+  const statements: string[] = []
+  let current = ''
+  let inSingleQuote = false
+  let inDoubleQuote = false
+  let inBacktick = false
+  let inLineComment = false
+  let blockCommentDepth = 0
+  let inDollarQuote: string | null = null
+
+  for (let i = 0; i < sql.length; i += 1) {
+    const ch = sql[i]
+    const next = sql[i + 1]
+
+    if (inLineComment) {
+      current += ch
+      if (ch === '\n') inLineComment = false
+      continue
+    }
+
+    if (blockCommentDepth > 0) {
+      current += ch
+      if (ch === '/' && sql[i - 1] === '*') {
+        blockCommentDepth = Math.max(0, blockCommentDepth - 1)
+      } else if (ch === '*' && next === '/') {
+        current += next
+        blockCommentDepth = Math.max(0, blockCommentDepth - 1)
+        i += 1
+      } else if (ch === '/' && next === '*') {
+        current += next
+        blockCommentDepth += 1
+        i += 1
+      }
+      continue
+    }
+
+    if (inDollarQuote) {
+      if (sql.startsWith(inDollarQuote, i)) {
+        current += inDollarQuote
+        i += inDollarQuote.length - 1
+        inDollarQuote = null
+        continue
+      }
+      current += ch
+      continue
+    }
+
+    if (inSingleQuote) {
+      current += ch
+      if (ch === "'" && next === "'") {
+        current += next
+        i += 1
+        continue
+      }
+      if (ch === "'") inSingleQuote = false
+      continue
+    }
+
+    if (inDoubleQuote) {
+      current += ch
+      if (ch === '"' && next === '"') {
+        current += next
+        i += 1
+        continue
+      }
+      if (ch === '"') inDoubleQuote = false
+      continue
+    }
+
+    if (inBacktick) {
+      current += ch
+      if (ch === '`' && next === '`') {
+        current += next
+        i += 1
+        continue
+      }
+      if (ch === '`') inBacktick = false
+      continue
+    }
+
+    if (ch === '-' && next === '-') {
+      current += ch + next
+      inLineComment = true
+      i += 1
+      continue
+    }
+    if (ch === '/' && next === '*') {
+      current += ch + next
+      blockCommentDepth += 1
+      i += 1
+      continue
+    }
+
+    const dollarQuoteTag = readDollarQuoteTag(sql, i)
+    if (dollarQuoteTag) {
+      current += dollarQuoteTag
+      inDollarQuote = dollarQuoteTag
+      i += dollarQuoteTag.length - 1
+      continue
+    }
+
+    if (ch === "'") {
+      current += ch
+      inSingleQuote = true
+      continue
+    }
+    if (ch === '"') {
+      current += ch
+      inDoubleQuote = true
+      continue
+    }
+    if (ch === '`') {
+      current += ch
+      inBacktick = true
+      continue
+    }
+
+    current += ch
+    if (ch === ';') {
+      statements.push(current)
+      current = ''
+    }
+  }
+
+  if (current.length > 0) {
+    statements.push(current)
+  }
+  return statements
+}
+
+function injectLimitIntoSingleStatement(statement: string, limit: 10 | 100 | 1000) {
+  const trimmed = statement.trim()
+  if (!trimmed) return statement
+
+  const hasTrailingSemicolon = /;\s*$/.test(trimmed)
+  const trimmedBody = hasTrailingSemicolon ? trimmed.replace(/;\s*$/, '') : trimmed
+
+  if (!/^\s*(with\b|select\b)/i.test(trimmedBody)) return statement
+  if (/\blimit\b/i.test(trimmedBody)) return statement
+
+  const leadingWhitespace = statement.match(/^\s*/)?.[0] ?? ''
+  const trailingWhitespace = statement.match(/\s*$/)?.[0] ?? ''
+  const bodyWithoutOuterWhitespace = trimmedBody
+  return `${leadingWhitespace}${bodyWithoutOuterWhitespace} LIMIT ${limit}${hasTrailingSemicolon ? ';' : ''}${trailingWhitespace}`
+}
+
 function injectLimit(sql: string, limit: 10 | 100 | 1000 | null) {
   if (limit == null) return sql
   const trimmed = sql.trim()
   if (!trimmed) return sql
-  if (!/^\s*(with\b|select\b)/i.test(trimmed)) return sql
-  if (/\blimit\b/i.test(trimmed)) return sql
-
-  const hasTrailingSemicolon = trimmed.endsWith(';')
-  const body = hasTrailingSemicolon ? trimmed.slice(0, -1).trimEnd() : trimmed
-  return `${body} LIMIT ${limit}${hasTrailingSemicolon ? ';' : ''}`
+  const statements = splitSqlStatementsForLimit(sql)
+  if (statements.length <= 1) {
+    return injectLimitIntoSingleStatement(sql, limit)
+  }
+  return statements.map((statement) => injectLimitIntoSingleStatement(statement, limit)).join('')
 }
 
 function getStageTab(tabId: string) {
