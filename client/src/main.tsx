@@ -5,10 +5,12 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { routeTree } from './routeTree.gen'
 import { queryClient } from './lib/query-client'
 import { registerBuiltInRenderers } from '@/features/chat/components/tools/renderers'
+import { installMonacoLocaleSync } from '@/features/stage/components/monaco-locale'
 import { I18nProvider } from '@/i18n/provider'
 import './styles/globals.css'
 
 registerBuiltInRenderers()
+installMonacoLocaleSync()
 
 const router = createRouter({ routeTree })
 

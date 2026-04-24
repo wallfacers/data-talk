@@ -7,3 +7,5 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
+
+declare module 'monaco-editor/esm/nls.messages.zh-cn.js'
