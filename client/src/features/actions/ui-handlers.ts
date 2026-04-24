@@ -68,5 +68,6 @@ registerClientHandler('datatalk.ui.exec', async (input) => {
 
 registerClientHandler('datatalk.ui.list', async (input) => {
   const i = input as ListInput
-  return forward({ tool: 'ui_list', object: '', target: '', payload: { filter: i.filter } })
+  const items = await forward({ tool: 'ui_list', object: '', target: '', payload: { filter: i.filter } })
+  return { items }
 })

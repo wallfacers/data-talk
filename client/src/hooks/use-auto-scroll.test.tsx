@@ -44,11 +44,60 @@ function syncAtBottom(el: HTMLDivElement) {
   fireEvent.scroll(el)
 }
 
+function flushAnimationFrameQueue(queue: FrameRequestCallback[]) {
+  while (queue.length > 0) {
+    const callback = queue.shift()
+    callback?.(16)
+  }
+}
+
+class MockMutationObserver {
+  static instances: MockMutationObserver[] = []
+
+  callback: MutationCallback
+
+  constructor(callback: MutationCallback) {
+    this.callback = callback
+    MockMutationObserver.instances.push(this)
+  }
+
+  observe() {}
+
+  disconnect() {}
+
+  takeRecords() {
+    return []
+  }
+
+  trigger(records: MutationRecord[] = []) {
+    this.callback(records, this as unknown as MutationObserver)
+  }
+
+  static reset() {
+    MockMutationObserver.instances = []
+  }
+}
+
 describe('useAutoScroll', () => {
   const originalScrollTo = HTMLElement.prototype.scrollTo
+  const originalMutationObserver = globalThis.MutationObserver
+  const originalRequestAnimationFrame = globalThis.requestAnimationFrame
+  const originalCancelAnimationFrame = globalThis.cancelAnimationFrame
   let scrollToSpy: ReturnType<typeof vi.fn>
+  let rafQueue: FrameRequestCallback[]
 
   beforeEach(() => {
+    MockMutationObserver.reset()
+    globalThis.MutationObserver = MockMutationObserver as unknown as typeof MutationObserver
+    rafQueue = []
+    globalThis.requestAnimationFrame = vi.fn((cb: FrameRequestCallback) => {
+      rafQueue.push(cb)
+      return rafQueue.length
+    })
+    globalThis.cancelAnimationFrame = vi.fn((id: number) => {
+      const idx = id - 1
+      if (idx >= 0 && idx < rafQueue.length) rafQueue[idx] = () => {}
+    })
     scrollToSpy = vi.fn(function scrollTo(this: HTMLElement, options?: ScrollToOptions | number) {
       if (typeof options === 'object' && options && typeof options.top === 'number') {
         ;(this as HTMLDivElement).scrollTop = options.top
@@ -67,6 +116,9 @@ describe('useAutoScroll', () => {
       writable: true,
       value: originalScrollTo,
     })
+    globalThis.MutationObserver = originalMutationObserver
+    globalThis.requestAnimationFrame = originalRequestAnimationFrame
+    globalThis.cancelAnimationFrame = originalCancelAnimationFrame
   })
 
   it('auto-scrolls when content changes while the user is at the bottom', () => {
@@ -136,5 +188,51 @@ describe('useAutoScroll', () => {
 
     expect(scrollToSpy).toHaveBeenCalledTimes(1)
     expect(metrics.scrollTop).toBe(1100)
+  })
+
+  it('suppresses repeated mutation callbacks from the same append until the next frame', () => {
+    const metrics = { clientHeight: 100, scrollHeight: 1000, scrollTop: 900 }
+    const view = render(<Harness version={0} />)
+    const root = view.getByTestId('scroll-root') as HTMLDivElement
+
+    attachScrollMetrics(root, metrics)
+    syncAtBottom(root)
+    act(() => {
+      flushAnimationFrameQueue(rafQueue)
+    })
+    scrollToSpy.mockClear()
+
+    metrics.scrollHeight = 1040
+    act(() => {
+      view.rerender(<Harness version={1} />)
+    })
+
+    expect(scrollToSpy).toHaveBeenCalledTimes(1)
+    scrollToSpy.mockClear()
+
+    const observer = MockMutationObserver.instances[0]
+    expect(observer).toBeDefined()
+
+    act(() => {
+      observer.trigger()
+      observer.trigger()
+      observer.trigger()
+    })
+
+    expect(scrollToSpy).not.toHaveBeenCalled()
+
+    const frameCallback = rafQueue.shift()
+    expect(frameCallback).toBeTypeOf('function')
+    act(() => {
+      frameCallback?.(16)
+    })
+
+    metrics.scrollHeight = 1080
+    act(() => {
+      observer.trigger()
+    })
+
+    expect(scrollToSpy).toHaveBeenCalledTimes(1)
+    expect(metrics.scrollTop).toBe(1080)
   })
 })

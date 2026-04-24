@@ -178,6 +178,10 @@ public class OpenCodeBootstrapWriter {
     }
 
     private String pluginContent(String nonce) {
+        // OpenCode passes `{ args }` to the hook and then invokes the MCP tool with the
+        // original `args` variable, not `output.args`. Mutating `output.args` in place is
+        // the only way the bridge fields reach the backend; reassigning `output.args` to a
+        // new object is silently dropped.
         return """
             const TOOL_PREFIX = 'datatalk_'
             const BRIDGE_PREFIX = '__dt'
@@ -186,14 +190,14 @@ public class OpenCodeBootstrapWriter {
             export const DataTalkMcpContext = async () => ({
               'tool.execute.before': async (input, output) => {
                 if (!input.tool?.startsWith(TOOL_PREFIX)) return
-                const args = { ...(output.args ?? {}) }
+                if (!output.args || typeof output.args !== 'object') return
+                const args = output.args
                 for (const key of Object.keys(args)) {
                   if (key.startsWith(BRIDGE_PREFIX)) delete args[key]
                 }
                 args.__dtOpenCodeSessionId = input.sessionID
                 args.__dtCallId = input.callID
                 args.__dtBridgeNonce = BRIDGE_NONCE
-                output.args = args
               },
             })
             """.formatted(nonce);

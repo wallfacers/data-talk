@@ -80,10 +80,10 @@ describe('ui-handlers', () => {
     }
   })
 
-  it('ui_list returns array', async () => {
+  it('ui_list wraps results in { items } so MCP structuredContent is an object', async () => {
     const h = getClientHandler('datatalk.ui.list')!
-    const out = await h({ filter: { type: 'stub' } }, { sessionId: 's1' })
-    expect(Array.isArray(out)).toBe(true)
+    const out = await h({ filter: { type: 'stub' } }, { sessionId: 's1' }) as { items: unknown[] }
+    expect(out).toMatchObject({ items: expect.any(Array) })
   })
 
   it('ui_exec returns cancelled result for workspace choose_connection', async () => {

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createElement, type ReactNode } from 'react'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { buildEventSink, useChannel } from './use-channel'
+import { buildEventSink, useChannel, __resetCallIdDispatchForTest } from './use-channel'
 import { useChatPartsStore } from '@/stores/chat-parts-store'
 import { useChannelStore } from '@/stores/channel-store'
 import { useOntologyStore } from '@/stores/ontology-store'
@@ -388,6 +388,7 @@ describe('buildEventSink → session.diff (TD-017)', () => {
 describe('buildEventSink → action.invoke error payloads', () => {
   beforeEach(() => {
     useChannelStore.setState({ lastEventIdBySession: new Map(), isConnected: false })
+    __resetCallIdDispatchForTest()
   })
 
   it('auto-registers built-in client handlers for action.invoke dispatch', () => {
@@ -450,6 +451,31 @@ describe('buildEventSink → action.invoke error payloads', () => {
         }),
       }),
     )
+  })
+
+  it('dispatches an action.invoke only once per callId even when delivered to multiple sinks', async () => {
+    const handler = vi.fn().mockResolvedValue({ tabId: 'q1' })
+    const { registerClientHandler } = await import('@/features/actions/registry')
+    registerClientHandler('datatalk.test.dedupe', handler)
+
+    const qc = new QueryClient()
+    const client = { actionResult: vi.fn().mockResolvedValue(undefined) } as any
+    // Two sinks for the same session, simulating the GET /subscribe stream and
+    // a concurrent POST /send_message stream both receiving the bus event.
+    const sinkA = buildEventSink('s1', client, qc, null)
+    const sinkB = buildEventSink('s1', client, qc, null)
+
+    const event = {
+      event: 'action.invoke',
+      data: { callId: 'call-dup', actionId: 'datatalk.test.dedupe', input: {} },
+    } as any
+
+    sinkA(event)
+    sinkB(event)
+    sinkA(event) // also covers a replay after POST resubscribes from cursor 0
+
+    await waitFor(() => expect(client.actionResult).toHaveBeenCalledTimes(1))
+    expect(handler).toHaveBeenCalledTimes(1)
   })
 
   it('returns an explicit error when a client action handler is not registered', async () => {

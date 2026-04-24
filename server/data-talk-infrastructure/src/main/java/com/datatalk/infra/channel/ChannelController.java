@@ -150,7 +150,13 @@ public class ChannelController {
             if (isTurnDoneSignal(ne.event())) turnDone.countDown();
         });
         bus.publish(new DtEvent.Connected(sessionId, 1));
-        bus.subscribe(clientId, lastEventId == null ? 0L : lastEventId, sub);
+        // POST is a turn stream, not a resume stream: the client wants events
+        // PRODUCED by this send_message call. Seeding from cursor=0 replays
+        // every buffered action.invoke on every new turn, which triggered
+        // phantom client-side side effects (e.g. duplicate workspace tabs).
+        // If the caller did send Last-Event-ID we honour it; otherwise start
+        // from the current cursor so we only see what follows.
+        bus.subscribe(clientId, lastEventId == null ? cursor : lastEventId, sub);
 
         Thread t = new Thread(() -> {
             try {

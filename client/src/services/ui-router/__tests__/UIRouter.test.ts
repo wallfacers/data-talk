@@ -119,6 +119,29 @@ describe('UIRouter', () => {
     expect(res.error).toContain('No query_editor')
   })
 
+  it('resolves singleton target=active via objectId===type even when active tab is a different type', async () => {
+    router.registerInstance('workspace', makeStub('workspace', { type: 'workspace', stateValue: { tabs: [] } }))
+    router.registerInstance('q1', makeStub('q1', { stateValue: { content: 'sql1' } }))
+    router.setActiveTabIdProvider(() => 'q1')
+
+    const res = await router.handle({ tool: 'ui_read', object: 'workspace', target: 'active', payload: { mode: 'state' } })
+
+    expect(res.error).toBeUndefined()
+    expect(res.data).toEqual({ tabs: [] })
+  })
+
+  it('does not use singleton fallback for non-singleton-registered types', async () => {
+    router.registerInstance('q1', makeStub('q1', { stateValue: { content: 'sql1' } }))
+    router.registerInstance('r1', { ...makeStub('r1', { type: 'report', stateValue: { sql: 'r' } }) })
+    router.setActiveTabIdProvider(() => 'r1')
+
+    // q1 is a query_editor but NOT registered at objectId='query_editor', so no
+    // singleton substitution — caller must disambiguate via explicit target.
+    const res = await router.handle({ tool: 'ui_read', object: 'query_editor', target: 'active', payload: { mode: 'state' } })
+
+    expect(res.error).toContain('No query_editor')
+  })
+
   it('validates patch capability', async () => {
     router.registerInstance('q3', makeStub('q3', {
       patchCaps: [{ pathPattern: '/content', ops: ['replace'] }],

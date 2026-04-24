@@ -28,6 +28,7 @@
 | TD-SINGLE-EMPTY-SESSION-MULTINODE | P2 | application | `SessionService.create` 的 `synchronized (createLock)` 仅在单 JVM 内有效。若未来扩展为多节点部署，需改为 DB 唯一约束（partial unique index `ON sessions(connection_id) WHERE has_ever_sent = 0`）。SQLite 原生不支持 partial unique，届时需配合数据库类型切换到 PG 一并处理。现状单机桌面应用无此需求 | Plan 2026-04-19 Single Empty Session |
 | TD-MULTI-SESSION-SSE-POOL | P2 | client | ~~`useSessionSubscribe` 当前仅跟随 `activeSessionId` 订阅 GET SSE，后台 session 的服务端推送在 ring buffer 溢出后可能丢失~~ `BackgroundSubscriber` 组件 + `useBackgroundSessionSubscribe` hook 实现订阅池：streaming 的后台 session 维持 SSE 存活，`session.idle/error` 触发组件卸载自动关闭连接 | 2026-04-20 完成（Tech Debt Batch plan）|
 | TD-001 | P1 | adapter | ~~`application.yml` 使用 H2 内存库作为 placeholder，需替换为正式的数据源配置策略~~ URL 改为 `jdbc:h2:mem:demodb;DB_CLOSE_DELAY=-1`，注释明确其为"演示/fallback datasource"而非临时占位 | 2026-04-20 完成（Tech Debt Batch plan）|
+| TD-028 | P1 | adapter | `EndToEndSmokeIT` 用 `bridgeArgs()` 手工构造带 `__dt*` 的 `/mcp` 请求，只覆盖 backend endpoint，不跑真实 OpenCode→plugin→bridge 链路。曾导致 plugin 里 `output.args = args` 整体替换失效的 bug 一路漏到生产（-32602 missing session context）。需引入能启动真 `opencode serve` 的端到端夹具，断言 `datatalk_*` 工具调用到 backend 时 `__dt*` 字段齐全 | 2026-04-24 MCP 桥接 plugin bug 修复事件 |
 
 ## 已清除债务
 

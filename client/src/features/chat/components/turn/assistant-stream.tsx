@@ -1,5 +1,11 @@
 import { useMemo } from 'react'
-import type { MessageInfo, Part, ToolPart, TextPart as TextPartType } from '@/services/channel/types'
+import type {
+  MessageInfo,
+  Part,
+  ReasoningPart as ReasoningPartType,
+  ToolPart,
+  TextPart as TextPartType,
+} from '@/services/channel/types'
 import { useChatPartsStore } from '@/stores/chat-parts-store'
 import { useActionRegistryStore } from '@/stores/action-registry-store'
 import { PartDispatcher } from './part-dispatcher'
@@ -24,8 +30,8 @@ export function AssistantStream(props: {
     for (const m of props.messages) {
       const parts = partsMap.get(m.id) ?? []
       for (const p of parts) {
-        // We now allow empty reasoning parts because they render their own "Thinking..." state
         if (p.type === 'text' && !(p as TextPartType).text?.trim()) continue
+        if (p.type === 'reasoning' && !(p as ReasoningPartType).text?.trim()) continue
         if (p.type === 'tool') {
           const s = (p as ToolPart).state?.status
           if ((p as ToolPart).tool === 'todowrite') continue

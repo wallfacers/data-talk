@@ -18,7 +18,7 @@ export function ReasoningPart(props: PartComponentProps) {
   const isPartStreaming = isMessageStreaming && !part.time?.end
 
   const text = (part.text ?? '').trim()
-  if (!text && !isPartStreaming) return null
+  if (!text) return null
 
   const [open, setOpen] = useState(() => isPartStreaming && autoExpandReasoning)
   const wasPartStreamingRef = useRef(isPartStreaming)

@@ -122,6 +122,37 @@ describe('SessionTurn · showThinking', () => {
     expect(screen.queryByLabelText('思考中…')).toBeNull()
   })
 
+  it('keeps the outer thinking placeholder until a streaming reasoning part has text', () => {
+    useChatPartsStore.getState().setStreaming('s1', true)
+    useChatPartsStore.getState().upsertInfo('s1', {
+      id: 'a1',
+      role: 'assistant',
+      sessionID: 's1',
+      time: { created: 2 },
+    })
+    useChatPartsStore.getState().upsertPart('s1', {
+      type: 'reasoning',
+      id: 'r1',
+      sessionID: 's1',
+      messageID: 'a1',
+      text: '',
+      metadata: {},
+    } as any)
+
+    const { container } = renderTurn(
+      <SessionTurn
+        sessionId="s1"
+        userMessageId="u1"
+        assistantMessageIds={['a1']}
+        userInfo={{ id: 'u1', role: 'user', sessionID: 's1', time: { created: 1 } }}
+        isLastTurn
+      />,
+    )
+
+    expect(screen.getByLabelText('思考中…')).toBeInTheDocument()
+    expect(container.querySelector('[data-component="reasoning-part"]')).toBeNull()
+  })
+
   it('does not show "思考中…" when the assistant message has an error', () => {
     useChatPartsStore.getState().setStreaming('s1', true)
     useChatPartsStore.getState().upsertInfo('s1', {
@@ -141,6 +172,32 @@ describe('SessionTurn · showThinking', () => {
     expect(screen.getByText(/Invalid token/)).toBeInTheDocument()
   })
 
+  it('does not show assistant copy meta when an incomplete turn is no longer last', () => {
+    useChatPartsStore.getState().upsertInfo('s1', {
+      id: 'a1',
+      role: 'assistant',
+      sessionID: 's1',
+      time: { created: 2 },
+    })
+    useChatPartsStore.getState().upsertPart('s1', {
+      type: 'text',
+      id: 'prt1',
+      sessionID: 's1',
+      messageID: 'a1',
+      text: 'hi',
+      metadata: {},
+    } as any)
+
+    renderTurn(
+      <SessionTurn
+        sessionId="s1"
+        assistantMessageIds={['a1']}
+        isLastTurn={false}
+      />,
+    )
+
+    expect(screen.queryByLabelText('Copy')).toBeNull()
+  })
   it('renders bang-query user messages with a prefix marker and rerun action', () => {
     useChatPartsStore.getState().upsertInfo('s1', {
       id: 'u1',
@@ -343,6 +400,37 @@ describe('SessionTurn · showThinking', () => {
 
     const reserved = container.querySelector('[data-component="session-turn"] > .min-h-9')
     expect(reserved).not.toBeNull()
+  })
+
+  it('renders an invisible thinking shell before streaming flips on for a pending last turn', () => {
+    useChatPartsStore.getState().upsertInfo('s1', {
+      id: 'u1',
+      role: 'user',
+      sessionID: 's1',
+      time: { created: 1 },
+      __pending: true,
+    })
+    useChatPartsStore.getState().upsertPart('s1', {
+      type: 'text',
+      id: 'p1',
+      sessionID: 's1',
+      messageID: 'u1',
+      text: 'show me orders',
+      metadata: {},
+    } as any)
+
+    renderTurn(
+      <SessionTurn
+        sessionId="s1"
+        userMessageId="u1"
+        assistantMessageIds={[]}
+        userInfo={{ id: 'u1', role: 'user', sessionID: 's1', time: { created: 1 }, __pending: true }}
+        isLastTurn
+      />,
+    )
+
+    const shell = screen.getByTestId('assistant-thinking-shell')
+    expect(shell).toHaveClass('invisible')
   })
 
   it('reserves user bubble meta space while the user message is still pending', () => {

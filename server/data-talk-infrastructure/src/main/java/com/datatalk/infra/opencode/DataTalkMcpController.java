@@ -3,6 +3,8 @@ package com.datatalk.infra.opencode;
 import com.datatalk.application.opencode.DataTalkMcpService;
 import com.datatalk.application.opencode.McpActionBridge;
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +26,8 @@ import java.util.concurrent.CompletionException;
 @RequestMapping("/mcp")
 public class DataTalkMcpController {
 
+    private static final Logger log = LoggerFactory.getLogger(DataTalkMcpController.class);
+
     private final DataTalkMcpService service;
     private final Set<String> allowedOrigins;
 
@@ -40,7 +44,12 @@ public class DataTalkMcpController {
     public Object handle(@RequestBody Map<String, Object> requestBody,
                          HttpServletRequest request,
                          @RequestHeader(value = "Origin", required = false) String origin) {
-        if (!isLoopback(request.getRemoteAddr()) || !isOriginAllowed(origin)) {
+        if (!isLoopback(request.getRemoteAddr())) {
+            log.warn("[mcp-controller] rejected non-loopback remoteAddr={} origin={}", request.getRemoteAddr(), origin);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        if (!isOriginAllowed(origin)) {
+            log.warn("[mcp-controller] rejected disallowed origin={} allowed={}", origin, allowedOrigins);
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
@@ -55,11 +64,15 @@ public class DataTalkMcpController {
                     : ResponseEntity.ok(rpcResult(id, Map.of()));
                 case "tools/list" -> ResponseEntity.ok(rpcResult(id, service.listTools()));
                 case "tools/call" -> handleToolsCall(id, params);
-                default -> ResponseEntity.ok(rpcError(id, -32601, "Method not found"));
+                default -> {
+                    log.warn("[mcp-controller] method not found method={}", method);
+                    yield ResponseEntity.ok(rpcError(id, -32601, "Method not found"));
+                }
             };
         } catch (McpActionBridge.McpCallException e) {
             return ResponseEntity.ok(rpcError(id, e.getCode(), e.getMessage()));
         } catch (IllegalArgumentException e) {
+            log.warn("[mcp-controller] invalid params id={} reason={}", id, e.getMessage());
             return ResponseEntity.ok(rpcError(id, -32602, e.getMessage()));
         }
     }
@@ -69,7 +82,10 @@ public class DataTalkMcpController {
         Map<String, Object> arguments = asMap(params.get("arguments"));
 
         DeferredResult<ResponseEntity<Map<String, Object>>> deferred = new DeferredResult<>(service.httpTimeoutMs(name));
-        deferred.onTimeout(() -> deferred.setResult(ResponseEntity.ok(rpcError(id, -32003, "client action timed out"))));
+        deferred.onTimeout(() -> {
+            log.warn("[mcp-controller] DeferredResult timed out id={} tool={}", id, name);
+            deferred.setResult(ResponseEntity.ok(rpcError(id, -32003, "client action timed out")));
+        });
 
         service.callTool(name, arguments).whenComplete((result, error) -> {
             if (error == null) {
@@ -83,9 +99,12 @@ public class DataTalkMcpController {
                 return;
             }
             if (cause instanceof IllegalArgumentException illegalArgumentException) {
+                log.warn("[mcp-controller] invalid params async id={} tool={} reason={}",
+                    id, name, illegalArgumentException.getMessage());
                 deferred.setResult(ResponseEntity.ok(rpcError(id, -32602, illegalArgumentException.getMessage())));
                 return;
             }
+            log.error("[mcp-controller] internal error id={} tool={}", id, name, cause);
             deferred.setResult(ResponseEntity.ok(rpcError(id, -32603, safeMessage(cause))));
         });
         return deferred;

@@ -8,11 +8,12 @@ export function useAutoScroll<T extends HTMLElement>(deps: any[]) {
   const isAtBottom = useRef(true)
   const followEnabled = useRef(true)
   const lastScrollTop = useRef(0)
-  // Each deps-triggered layout-effect scroll primes this counter so the
-  // MutationObserver callback (same commit, fires shortly after) is a no-op.
-  // Prevents the one-frame "bubble appears low, then jumps up" flash that the
-  // user sees as the message bubble jittering after Enter.
-  const skipMutationScrolls = useRef(0)
+  // A deps-triggered layout scroll should own the entire current frame. Any
+  // MutationObserver callbacks that fire from the same append/reflow wave must
+  // be ignored, otherwise a newly sent user bubble can land low and then get
+  // "corrected" by a second scroll a moment later.
+  const suppressMutationScrolls = useRef(false)
+  const releaseMutationSuppressionFrame = useRef<number | null>(null)
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
     const el = ref.current
@@ -26,6 +27,17 @@ export function useAutoScroll<T extends HTMLElement>(deps: any[]) {
     el.scrollTo({
       top: el.scrollHeight,
       behavior,
+    })
+  }, [])
+
+  const suppressMutationsUntilNextFrame = useCallback(() => {
+    suppressMutationScrolls.current = true
+    if (releaseMutationSuppressionFrame.current !== null) {
+      cancelAnimationFrame(releaseMutationSuppressionFrame.current)
+    }
+    releaseMutationSuppressionFrame.current = requestAnimationFrame(() => {
+      suppressMutationScrolls.current = false
+      releaseMutationSuppressionFrame.current = null
     })
   }, [])
 
@@ -66,8 +78,7 @@ export function useAutoScroll<T extends HTMLElement>(deps: any[]) {
     if (!el) return
 
     const observer = new MutationObserver(() => {
-      if (skipMutationScrolls.current > 0) {
-        skipMutationScrolls.current -= 1
+      if (suppressMutationScrolls.current) {
         return
       }
       if (followEnabled.current) {
@@ -84,16 +95,21 @@ export function useAutoScroll<T extends HTMLElement>(deps: any[]) {
     return () => observer.disconnect()
   }, [scrollToBottom])
 
+  useEffect(() => () => {
+    if (releaseMutationSuppressionFrame.current !== null) {
+      cancelAnimationFrame(releaseMutationSuppressionFrame.current)
+    }
+  }, [])
+
   // Structural appends like a newly sent user bubble must land before paint,
   // otherwise the message renders at the old scroll position for one frame
   // and visibly jumps up to the bottom on the next frame.
   useLayoutEffect(() => {
     if (followEnabled.current) {
-      // Same commit also fires DOM mutations; dedupe the observer's follow-up.
-      skipMutationScrolls.current += 1
+      suppressMutationsUntilNextFrame()
       scrollToBottom('auto')
     }
-  }, [scrollToBottom, ...deps])
+  }, [scrollToBottom, suppressMutationsUntilNextFrame, ...deps])
 
   return { ref, scrollToBottom, isAtBottom }
 }

@@ -123,9 +123,17 @@ export class UIRouter {
     const activeTabId = this._getActiveTabId?.()
     if (target === 'active' && activeTabId) {
       const direct = this.instances.get(activeTabId)
-      if (direct) return !objectType || direct.type === objectType ? direct : null
+      if (direct && (!objectType || direct.type === objectType)) return direct
       for (const [, obj] of this.instances) {
-        if (obj.tabId === activeTabId) return !objectType || obj.type === objectType ? obj : null
+        if (obj.tabId === activeTabId && (!objectType || obj.type === objectType)) return obj
+      }
+      // Singletons (e.g. workspace) are registered at objectId === type and are not
+      // tied to any stage tab. target='active' has no meaning for them, but LLM
+      // handlers default to it — so fall back to the type-named instance here.
+      // Tab-based types (query_editor, report, ...) stay strict: no substitution.
+      if (objectType) {
+        const singleton = this.instances.get(objectType)
+        if (singleton && singleton.type === objectType) return singleton
       }
       return null
     }

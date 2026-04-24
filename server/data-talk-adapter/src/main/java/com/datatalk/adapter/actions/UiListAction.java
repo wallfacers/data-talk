@@ -47,7 +47,25 @@ public class UiListAction implements ActionHandler<Map, Map> {
 
     @Override
     public Map<String, Object> outputSchema() {
-        return Map.of("type", "object");
+        return Map.of(
+                "type", "object",
+                "required", List.of("items"),
+                "properties", Map.of(
+                        "items", Map.of(
+                                "type", "array",
+                                "items", Map.of(
+                                        "type", "object",
+                                        "properties", Map.ofEntries(
+                                                Map.entry("objectId", Map.of("type", "string")),
+                                                Map.entry("type", Map.of("type", "string")),
+                                                Map.entry("title", Map.of("type", "string")),
+                                                Map.entry("connectionId", Map.of("type", List.of("string", "null"))),
+                                                Map.entry("database", Map.of("type", List.of("string", "null")))
+                                        )
+                                )
+                        )
+                )
+        );
     }
 
     @Override

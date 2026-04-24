@@ -39,9 +39,17 @@ class OpenCodeBootstrapWriterTest {
         OpenCodeBootstrapWriter.BootstrapArtifacts artifacts = writer.write(8080);
 
         assertThat(Files.readString(artifacts.instructionsFile())).contains("datatalk_execute_sql");
-        assertThat(Files.readString(artifacts.pluginFile()))
+        String pluginBody = Files.readString(artifacts.pluginFile());
+        assertThat(pluginBody)
             .contains("__dtBridgeNonce")
             .contains(status.bridgeNonce());
+        // OpenCode invokes the MCP tool with the original `args` variable, not `output.args`,
+        // so the plugin must mutate `output.args` in place. Reassigning `output.args = ...`
+        // silently drops the bridge fields and causes "missing session context" errors.
+        assertThat(pluginBody)
+            .doesNotContain("output.args = args")
+            .doesNotContain("output.args = {")
+            .contains("args.__dtOpenCodeSessionId = input.sessionID");
 
         JsonNode config = objectMapper.readTree(Files.readString(artifacts.configFile()));
         assertThat(config.path("mcp").path("datatalk").path("url").asText()).isEqualTo("http://127.0.0.1:8080/mcp");

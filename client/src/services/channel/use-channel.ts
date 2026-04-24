@@ -77,6 +77,29 @@ function shouldPromotePendingUserFromPart(
   return part.text === pendingText
 }
 
+// Deduplication set for action.invoke callIds. See the buildEventSink comment
+// where this is used — the SessionBus currently fans one event out to every
+// active subscriber sink, and a POST stream's subscription resumes from cursor
+// 0 so already-handled action.invoke events can be replayed on the next turn.
+// Bounded FIFO keeps memory flat even on long-running sessions.
+const DISPATCHED_CALL_ID_MAX = 512
+const dispatchedCallIds = new Set<string>()
+
+function markCallIdDispatched(callId: string | null | undefined): boolean {
+  if (!callId) return true
+  if (dispatchedCallIds.has(callId)) return false
+  if (dispatchedCallIds.size >= DISPATCHED_CALL_ID_MAX) {
+    const oldest = dispatchedCallIds.values().next().value
+    if (oldest) dispatchedCallIds.delete(oldest)
+  }
+  dispatchedCallIds.add(callId)
+  return true
+}
+
+export function __resetCallIdDispatchForTest() {
+  dispatchedCallIds.clear()
+}
+
 function normalizeActionInvokeError(err: unknown): ActionResultErrorInfo {
   if (typeof err === 'object' && err !== null) {
     const candidate = err as {
@@ -225,6 +248,13 @@ export function buildEventSink(
       // payload semantics undocumented in OpenCode 1.4.7 — safely ignored
     } else if (event === 'action.invoke' && client) {
       const { callId, actionId, input } = data as any
+      // The backend publishes to a single SessionBus, but a live session has
+      // TWO subscribers at once (the long-lived GET /subscribe sink plus each
+      // POST /send_message sink), AND a new POST sink currently resumes from
+      // cursor 0 — so the same action.invoke can reach buildEventSink two or
+      // more times. Client handlers are not idempotent (e.g. workspace.open
+      // would create a new tab on every replay), so dedupe on callId here.
+      if (!markCallIdDispatched(callId)) return
       const handler = getClientHandler(actionId)
       if (!handler) {
         const error = {

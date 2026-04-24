@@ -126,6 +126,10 @@ export class WorkspaceAdapter implements UIObject {
             database,
             schema,
           })
+          // The "!" direct-SQL path (open-direct-sql-query-editor-tab.ts) also
+          // calls openStage — AI-driven opens must mirror that so the panel
+          // actually slides into view instead of only the tab being added.
+          store.openStage(sid)
           return { success: true, data: { tabId } }
         }
 
@@ -143,6 +147,7 @@ export class WorkspaceAdapter implements UIObject {
         if (scope === 'session' && !sid) return execError('Cannot open session-scoped tab without active session')
         store.openTab(tab)
         if (scope === 'workspace') clearSessionActiveTab(sid)
+        if (sid) store.openStage(sid)
         return { success: true, data: { tabId } }
       }
       case 'close': {
