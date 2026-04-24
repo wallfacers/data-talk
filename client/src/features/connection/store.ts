@@ -27,13 +27,29 @@ type ConnectionState = {
   setConnections: (conns: Connection[]) => void
 }
 
+function nextActiveConnectionId(activeConnectionId: string | null, connections: Connection[]) {
+  if (!activeConnectionId) return null
+  return connections.some((connection) => connection.id === activeConnectionId)
+    ? activeConnectionId
+    : null
+}
+
 export const useConnectionStore = create<ConnectionState>()(
   persist(
     (set) => ({
       activeConnectionId: null,
       connections: [],
       setActive: (id) => set((s) => (s.activeConnectionId === id ? s : { activeConnectionId: id })),
-      setConnections: (conns) => set((s) => (sameConnections(s.connections, conns) ? s : { connections: conns })),
+      setConnections: (conns) => set((s) => {
+        const nextActive = nextActiveConnectionId(s.activeConnectionId, conns)
+        if (sameConnections(s.connections, conns) && s.activeConnectionId === nextActive) {
+          return s
+        }
+        return {
+          connections: conns,
+          activeConnectionId: nextActive,
+        }
+      }),
     }),
     {
       name: 'data-talk.connection',

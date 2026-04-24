@@ -3,6 +3,8 @@ package com.datatalk.application.session;
 import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.opencode.OpenCodeGateway;
 import com.datatalk.application.opencode.OpenCodeSessionMap;
+import com.datatalk.application.persistence.ConnectionRecord;
+import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.persistence.SessionRecord;
 import com.datatalk.application.persistence.SessionRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -24,6 +26,7 @@ import java.util.concurrent.Executors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -33,6 +36,7 @@ class SessionServiceTest {
 
     private SessionRepository repo;
     private SessionService svc;
+    private ConnectionRepository connections;
     private OpenCodeGateway gateway;
     private OpenCodeSessionMap sessionMap;
     private SessionBusRegistry buses;
@@ -63,15 +67,18 @@ class SessionServiceTest {
         ds = new SingleConnectionDataSource(conn, true);
         JdbcTemplate jdbc = new JdbcTemplate(ds);
         repo = new SessionRepository(jdbc);
+        connections = mock(ConnectionRepository.class);
         gateway = mock(OpenCodeGateway.class);
         sessionMap = mock(OpenCodeSessionMap.class);
         buses = mock(SessionBusRegistry.class);
         translator = mock(Translator.class);
+        org.mockito.Mockito.when(connections.findById(anyString()))
+            .thenAnswer(inv -> java.util.Optional.of(connectionRecord(inv.getArgument(0, String.class))));
         org.mockito.Mockito.when(translator.get("session.default_title")).thenReturn("新会话");
         org.mockito.Mockito.when(translator.get("error.session.title_blank")).thenReturn("title must not be blank");
         org.mockito.Mockito.when(translator.get(org.mockito.ArgumentMatchers.eq("error.session.not_found"), org.mockito.ArgumentMatchers.any()))
             .thenAnswer(inv -> "session not found: " + inv.getArgument(1));
-        svc = new SessionService(repo, Clock.fixed(Instant.ofEpochMilli(500L), ZoneOffset.UTC),
+        svc = new SessionService(connections, repo, Clock.fixed(Instant.ofEpochMilli(500L), ZoneOffset.UTC),
             gateway, sessionMap, buses, translator);
     }
 
@@ -196,7 +203,7 @@ class SessionServiceTest {
         repo.upsert(new SessionRecord("s1", "c1", "t", true, "ses_xxx", 100L, 100L, false));
 
         SessionRepository repoSpy = org.mockito.Mockito.spy(repo);
-        SessionService spied = new SessionService(repoSpy,
+        SessionService spied = new SessionService(connections, repoSpy,
             Clock.fixed(Instant.ofEpochMilli(500L), ZoneOffset.UTC),
             gateway, sessionMap, buses, translator);
 
@@ -264,5 +271,19 @@ class SessionServiceTest {
 
         long emptyCount = repo.listAll().stream().filter(r -> !r.hasEverSent()).count();
         assertThat(emptyCount).isEqualTo(1L);
+    }
+
+    @Test
+    void create_dropsUnknownConnectionIdToNull() {
+        org.mockito.Mockito.when(connections.findById("stale-conn")).thenReturn(java.util.Optional.empty());
+
+        SessionRecord record = svc.create("stale-conn", "旧缓存").record();
+
+        assertThat(record.connectionId()).isNull();
+    }
+
+    private static ConnectionRecord connectionRecord(String id) {
+        return new ConnectionRecord(id, "seed-" + id, "mysql", "h", 3306,
+            null, "u", new byte[] {0}, null, 0L, 3000, null, null);
     }
 }

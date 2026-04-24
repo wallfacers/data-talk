@@ -65,6 +65,11 @@ export function SessionTurn(props: {
     return null
   }, [assistantMessages, partsMap])
 
+  const assistantTurnSettled = useMemo(
+    () => assistantMessages.length > 0 && assistantMessages.every((m) => typeof m.time.completed === 'number'),
+    [assistantMessages],
+  )
+
   // working 已含 streaming 分支，因此首包延迟期（assistant message 尚未创建，或没有可见 part 时）也能显示"思考中…"。
   const showThinking = working && !err && !anyVisiblePart
 
@@ -91,7 +96,7 @@ export function SessionTurn(props: {
           sessionId={props.sessionId}
           messages={assistantMessages}
           working={working}
-          showCopyPartID={working ? null : lastTextPartId}
+          showCopyPartID={assistantTurnSettled ? lastTextPartId : null}
           turnDurationMs={turnDurationMs}
         />
         {interrupted && (

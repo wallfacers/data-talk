@@ -4,14 +4,15 @@ import { useAutoScroll } from './use-auto-scroll'
 
 type HarnessProps = {
   version: number
+  text?: string
 }
 
-function Harness({ version }: HarnessProps) {
+function Harness({ version, text = String(version) }: HarnessProps) {
   const { ref } = useAutoScroll<HTMLDivElement>([version])
 
   return (
     <div ref={ref} data-testid="scroll-root">
-      <div>{version}</div>
+      <div data-testid="stream-text">{text}</div>
     </div>
   )
 }
@@ -136,5 +137,52 @@ describe('useAutoScroll', () => {
 
     expect(scrollToSpy).toHaveBeenCalledTimes(1)
     expect(metrics.scrollTop).toBe(1100)
+  })
+
+  it('batches repeated streaming text mutations into a single follow on the next animation frame', async () => {
+    const metrics = { clientHeight: 100, scrollHeight: 1000, scrollTop: 900 }
+    const queuedFrames: FrameRequestCallback[] = []
+    const requestAnimationFrameSpy = vi
+      .spyOn(window, 'requestAnimationFrame')
+      .mockImplementation((callback: FrameRequestCallback) => {
+        queuedFrames.push(callback)
+        return queuedFrames.length
+      })
+    const cancelAnimationFrameSpy = vi
+      .spyOn(window, 'cancelAnimationFrame')
+      .mockImplementation(() => {})
+
+    const view = render(<Harness version={0} text="a" />)
+    const root = view.getByTestId('scroll-root') as HTMLDivElement
+    const streamText = view.getByTestId('stream-text')
+
+    attachScrollMetrics(root, metrics)
+    syncAtBottom(root)
+    scrollToSpy.mockClear()
+
+    metrics.scrollHeight = 1040
+    act(() => {
+      streamText.textContent = 'ab'
+    })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    metrics.scrollHeight = 1080
+    act(() => {
+      streamText.textContent = 'abc'
+    })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(queuedFrames).toHaveLength(1)
+    expect(scrollToSpy).not.toHaveBeenCalled()
+
+    act(() => {
+      queuedFrames.shift()?.(16)
+    })
+
+    expect(scrollToSpy).toHaveBeenCalledTimes(1)
+    expect(metrics.scrollTop).toBe(1080)
+
+    requestAnimationFrameSpy.mockRestore()
+    cancelAnimationFrameSpy.mockRestore()
   })
 })

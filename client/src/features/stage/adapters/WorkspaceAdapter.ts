@@ -1,5 +1,6 @@
 import type { UIObject, ActionDef, ExecResult, PatchResult } from '@/services/ui-router'
 import { execError } from '@/services/ui-router'
+import { useConnectionStore } from '@/features/connection/store'
 import { useDataSourcePickerStore } from '@/features/session/data-source-picker/data-source-picker-store'
 import { useStageStore, type StageTab } from '@/stores/stage-store'
 import { normalizeQueryEditorPayload } from '@/features/stage/utils/normalize-query-editor-payload'
@@ -161,6 +162,9 @@ export class WorkspaceAdapter implements UIObject {
           reason: 'ui_exec',
           preferredConnectionId: p.preferredConnectionId ?? null,
         })
+        if (!('cancelled' in result)) {
+          useConnectionStore.getState().setActive(result.connectionId)
+        }
         return { success: true, data: result }
       }
       default: return execError(`Unknown action: ${action}`, `Available: [${ACTIONS.map((a) => a.name).join(', ')}]`)

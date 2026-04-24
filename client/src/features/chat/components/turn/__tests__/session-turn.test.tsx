@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SessionTurn } from '../session-turn'
 import { useChatPartsStore } from '@/stores/chat-parts-store'
@@ -14,7 +14,41 @@ vi.mock('@/features/stage/utils/open-direct-sql-query-editor-tab', () => ({
 
 function renderTurn(ui: React.ReactElement) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>)
+  const view = render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>)
+  return {
+    ...view,
+    rerenderWithClient(nextUi: React.ReactElement) {
+      view.rerender(<QueryClientProvider client={qc}>{nextUi}</QueryClientProvider>)
+    },
+  }
+}
+
+function estimateTurnHeight(turn: HTMLElement | null): number {
+  if (!turn) return 0
+
+  let height = 16
+
+  if (turn.querySelector('.bg-primary')) {
+    height += 56
+  }
+
+  const textParts = Array.from(turn.querySelectorAll('[data-component="text-part"]'))
+  for (const textPart of textParts) {
+    height += 48
+    if (textPart.querySelector('.mt-1.flex.items-center.gap-2.text-xs.text-muted-foreground')) {
+      height += 16
+    }
+  }
+
+  if (turn.querySelector('[aria-label="思考中…"]')) {
+    height += 36
+  }
+
+  if (turn.querySelector('.min-h-9') && textParts.length === 0 && !turn.querySelector('[aria-label="思考中…"]')) {
+    height += 36
+  }
+
+  return height
 }
 
 describe('SessionTurn · showThinking', () => {
@@ -373,5 +407,93 @@ describe('SessionTurn · showThinking', () => {
     )
 
     expect(screen.getByTestId('user-bubble-meta-placeholder')).toBeInTheDocument()
+  })
+
+  it('keeps the previous assistant turn height stable when a new pending user turn appends', () => {
+    useChatPartsStore.getState().upsertInfo('s1', {
+      id: 'u1',
+      role: 'user',
+      sessionID: 's1',
+      time: { created: 1 },
+    })
+    useChatPartsStore.getState().upsertPart('s1', {
+      type: 'text',
+      id: 'u1p',
+      sessionID: 's1',
+      messageID: 'u1',
+      text: 'first question',
+      metadata: {},
+    } as any)
+    useChatPartsStore.getState().upsertInfo('s1', {
+      id: 'a1',
+      role: 'assistant',
+      sessionID: 's1',
+      modelID: 'deepseek-chat',
+      time: { created: 2 },
+    })
+    useChatPartsStore.getState().upsertPart('s1', {
+      type: 'text',
+      id: 'a1p',
+      sessionID: 's1',
+      messageID: 'a1',
+      text: 'first answer',
+      metadata: {},
+    } as any)
+
+    const view = renderTurn(
+      <SessionTurn
+        sessionId="s1"
+        userMessageId="u1"
+        assistantMessageIds={['a1']}
+        userInfo={{ id: 'u1', role: 'user', sessionID: 's1', time: { created: 1 } }}
+        isLastTurn
+      />,
+    )
+
+    const previousTurnBefore = screen.getByText('first question').closest('[data-component="session-turn"]') as HTMLElement | null
+    const previousHeightBefore = estimateTurnHeight(previousTurnBefore)
+
+    act(() => {
+      useChatPartsStore.getState().upsertInfo('s1', {
+        id: 'u2',
+        role: 'user',
+        sessionID: 's1',
+        time: { created: 3 },
+        __pending: true,
+      })
+      useChatPartsStore.getState().upsertPart('s1', {
+        type: 'text',
+        id: 'u2p',
+        sessionID: 's1',
+        messageID: 'u2',
+        text: 'second question',
+        metadata: {},
+      } as any)
+    })
+
+    view.rerenderWithClient(
+      <>
+        <SessionTurn
+          sessionId="s1"
+          userMessageId="u1"
+          assistantMessageIds={['a1']}
+          userInfo={{ id: 'u1', role: 'user', sessionID: 's1', time: { created: 1 } }}
+          isLastTurn={false}
+        />
+        <SessionTurn
+          sessionId="s1"
+          userMessageId="u2"
+          assistantMessageIds={[]}
+          userInfo={{ id: 'u2', role: 'user', sessionID: 's1', time: { created: 3 }, __pending: true }}
+          isLastTurn
+        />
+      </>,
+    )
+
+    const previousTurnAfter = screen.getByText('first question').closest('[data-component="session-turn"]') as HTMLElement | null
+    const previousHeightAfter = estimateTurnHeight(previousTurnAfter)
+
+    expect(view.container.querySelectorAll('[data-pending-user-motion="true"]')).toHaveLength(1)
+    expect(previousHeightAfter).toBe(previousHeightBefore)
   })
 })

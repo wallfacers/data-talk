@@ -8,16 +8,24 @@ export function useAutoScroll<T extends HTMLElement>(deps: any[]) {
   const isAtBottom = useRef(true)
   const followEnabled = useRef(true)
   const lastScrollTop = useRef(0)
+  const scheduledFollowFrame = useRef<number | null>(null)
   // Each deps-triggered layout-effect scroll primes this counter so the
   // MutationObserver callback (same commit, fires shortly after) is a no-op.
   // Prevents the one-frame "bubble appears low, then jumps up" flash that the
   // user sees as the message bubble jittering after Enter.
   const skipMutationScrolls = useRef(0)
 
+  const cancelScheduledFollow = useCallback(() => {
+    if (scheduledFollowFrame.current === null) return
+    cancelAnimationFrame(scheduledFollowFrame.current)
+    scheduledFollowFrame.current = null
+  }, [])
+
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
     const el = ref.current
     if (!el) return
 
+    cancelScheduledFollow()
     followEnabled.current = true
     isAtBottom.current = true
     lastScrollTop.current = el.scrollHeight
@@ -27,7 +35,18 @@ export function useAutoScroll<T extends HTMLElement>(deps: any[]) {
       top: el.scrollHeight,
       behavior,
     })
-  }, [])
+  }, [cancelScheduledFollow])
+
+  const scheduleFollow = useCallback(() => {
+    if (scheduledFollowFrame.current !== null) return
+
+    scheduledFollowFrame.current = requestAnimationFrame(() => {
+      scheduledFollowFrame.current = null
+      if (followEnabled.current) {
+        scrollToBottom('auto')
+      }
+    })
+  }, [scrollToBottom])
 
   const handleScroll = useCallback(() => {
     const el = ref.current
@@ -71,7 +90,7 @@ export function useAutoScroll<T extends HTMLElement>(deps: any[]) {
         return
       }
       if (followEnabled.current) {
-        scrollToBottom('auto')
+        scheduleFollow()
       }
     })
 
@@ -81,8 +100,11 @@ export function useAutoScroll<T extends HTMLElement>(deps: any[]) {
       characterData: true
     })
 
-    return () => observer.disconnect()
-  }, [scrollToBottom])
+    return () => {
+      observer.disconnect()
+      cancelScheduledFollow()
+    }
+  }, [cancelScheduledFollow, scheduleFollow])
 
   // Structural appends like a newly sent user bubble must land before paint,
   // otherwise the message renders at the old scroll position for one frame

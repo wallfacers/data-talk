@@ -3,6 +3,7 @@ package com.datatalk.application.session;
 import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.opencode.OpenCodeGateway;
 import com.datatalk.application.opencode.OpenCodeSessionMap;
+import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.persistence.SessionRecord;
 import com.datatalk.application.persistence.SessionRepository;
 import com.datatalk.domain.util.Strings;
@@ -21,6 +22,7 @@ public class SessionService {
 
     private static final Logger log = LoggerFactory.getLogger(SessionService.class);
 
+    private final ConnectionRepository connections;
     private final SessionRepository repo;
     private final Clock clock;
     private final OpenCodeGateway gateway;
@@ -29,9 +31,10 @@ public class SessionService {
     private final Translator translator;
     private final Object createLock = new Object();
 
-    public SessionService(SessionRepository repo, Clock clock,
+    public SessionService(ConnectionRepository connections, SessionRepository repo, Clock clock,
                           OpenCodeGateway gateway, OpenCodeSessionMap sessionMap,
                           SessionBusRegistry buses, Translator translator) {
+        this.connections = connections;
         this.repo = repo;
         this.clock = clock;
         this.gateway = gateway;
@@ -49,7 +52,8 @@ public class SessionService {
             long now = clock.millis();
             String id = UUID.randomUUID().toString();
             String effectiveTitle = Strings.defaultIfBlank(title, translator.get("session.default_title"));
-            SessionRecord rec = new SessionRecord(id, connectionId, effectiveTitle, false, null, now, now, false);
+            String effectiveConnectionId = normalizeConnectionId(connectionId);
+            SessionRecord rec = new SessionRecord(id, effectiveConnectionId, effectiveTitle, false, null, now, now, false);
             repo.upsert(rec);
             return new CreateSessionResult(rec, false);
         }
@@ -87,6 +91,17 @@ public class SessionService {
         for (SessionRecord session : sessions) {
             deleteRecord(session);
         }
+    }
+
+    private String normalizeConnectionId(String connectionId) {
+        if (Strings.isBlank(connectionId)) {
+            return null;
+        }
+        if (connections.findById(connectionId).isPresent()) {
+            return connectionId;
+        }
+        log.warn("[session] ignoring stale connectionId during create: {}", connectionId);
+        return null;
     }
 
     private void deleteRecord(SessionRecord rec) {

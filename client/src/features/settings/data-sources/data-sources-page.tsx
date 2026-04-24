@@ -11,17 +11,19 @@ import { useConnectionStore } from '@/features/connection/store'
 export function DataSourcesPage() {
   const { t } = useI18n()
   const qc = useQueryClient()
-  const { data: connections = [], isLoading } = useQuery({
+  const { data: connectionsData, isLoading } = useQuery({
     queryKey: connectionsKey, queryFn: listConnections,
   })
+  const connections = connectionsData ?? []
   const setConnections = useConnectionStore((s) => s.setConnections)
   const [editing, setEditing] = useState<Connection | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [testResult, setTestResult] = useState<Record<string, 'ok' | 'fail' | 'loading'>>({})
 
   useEffect(() => {
-    setConnections(connections)
-  }, [connections, setConnections])
+    if (connectionsData === undefined) return
+    setConnections(connectionsData)
+  }, [connectionsData, setConnections])
 
   function getStatus(c: Connection): 'ok' | 'fail' | 'loading' | null {
     return testResult[c.id] ?? (c.lastTestStatus === 'ok' || c.lastTestStatus === 'fail' ? c.lastTestStatus : null)
