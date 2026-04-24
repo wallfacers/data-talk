@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { translateMessage } from '@/i18n/messages'
 import { SqlContextChip } from './sql-context-chip'
@@ -22,6 +22,14 @@ const connectionTargetsByConnectionId = {
     databases: ['analytics'],
     schemas: [],
   },
+}
+
+async function chooseSelectOption(fieldLabel: string, optionLabel: string) {
+  fireEvent.click(screen.getByRole('combobox', { name: fieldLabel }))
+  const option = await screen.findByRole('option', { name: optionLabel })
+  fireEvent.mouseMove(option)
+  fireEvent.pointerEnter(option, { pointerType: 'mouse' })
+  fireEvent.click(option)
 }
 
 describe('SqlContextChip', () => {
@@ -224,5 +232,103 @@ describe('SqlContextChip', () => {
 
     expect(await screen.findByText('warehouse')).toBeTruthy()
     expect(screen.queryByText('analytics')).toBeNull()
+  })
+
+  it('switches database and schema options to the selected connection targets', async () => {
+    const postgresConnections = [
+      { id: 'conn-1', name: 'Primary Connection', kind: 'postgres', databaseName: 'db_main' },
+      { id: 'conn-2', name: 'Analytics', kind: 'postgres', databaseName: 'analytics' },
+    ]
+    const postgresTargets = {
+      'conn-1': {
+        databases: ['db_main', 'warehouse'],
+        schemas: ['public', 'reporting'],
+      },
+      'conn-2': {
+        databases: ['analytics', 'finance'],
+        schemas: ['core', 'mart'],
+      },
+    }
+
+    render(
+      <SqlContextChip
+        context={context}
+        mode="session"
+        connections={postgresConnections}
+        connectionTargetsByConnectionId={postgresTargets}
+        onResetTabContext={onResetTabContext}
+        onSetTabContext={onSetTabContext}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: t('stage.context.tooltip.button') }))
+    await chooseSelectOption(t('stage.context.field.connection'), 'Analytics')
+
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: t('stage.context.field.connection') })).toHaveTextContent('Analytics')
+    })
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: t('stage.context.field.database') })).toHaveTextContent('analytics')
+    })
+    expect(screen.getByRole('combobox', { name: t('stage.context.field.schema') })).toHaveTextContent(
+      t('stage.context.value.empty'),
+    )
+
+    fireEvent.click(screen.getByRole('combobox', { name: t('stage.context.field.database') }))
+    await waitFor(() => expect(screen.getByRole('option', { name: 'finance' })).toBeTruthy())
+    expect(screen.queryByRole('option', { name: 'warehouse' })).toBeNull()
+    expect(screen.queryByRole('option', { name: 'db_main' })).toBeNull()
+
+    fireEvent.click(screen.getByRole('combobox', { name: t('stage.context.field.schema') }))
+    await waitFor(() => expect(screen.getByRole('option', { name: 'core' })).toBeTruthy())
+    expect(screen.queryByRole('option', { name: 'public' })).toBeNull()
+    expect(screen.queryByRole('option', { name: 'reporting' })).toBeNull()
+  })
+
+  it('applies the manually selected connection, database, and schema as the tab context override', async () => {
+    const postgresConnections = [
+      { id: 'conn-1', name: 'Primary Connection', kind: 'postgres', databaseName: 'db_main' },
+      { id: 'conn-2', name: 'Analytics', kind: 'postgres', databaseName: 'analytics' },
+    ]
+    const postgresTargets = {
+      'conn-1': {
+        databases: ['db_main', 'warehouse'],
+        schemas: ['public', 'reporting'],
+      },
+      'conn-2': {
+        databases: ['analytics', 'finance'],
+        schemas: ['core', 'mart'],
+      },
+    }
+
+    render(
+      <SqlContextChip
+        context={context}
+        mode="session"
+        connections={postgresConnections}
+        connectionTargetsByConnectionId={postgresTargets}
+        onResetTabContext={onResetTabContext}
+        onSetTabContext={onSetTabContext}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: t('stage.context.tooltip.button') }))
+    await chooseSelectOption(t('stage.context.field.connection'), 'Analytics')
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: t('stage.context.field.connection') })).toHaveTextContent('Analytics')
+    })
+    await chooseSelectOption(t('stage.context.field.database'), 'finance')
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: t('stage.context.field.database') })).toHaveTextContent('finance')
+    })
+    await chooseSelectOption(t('stage.context.field.schema'), 'mart')
+    fireEvent.click(screen.getByRole('button', { name: t('stage.context.action.applyOverride') }))
+
+    expect(onSetTabContext).toHaveBeenCalledWith({
+      connectionId: 'conn-2',
+      connectionName: 'Analytics',
+      database: 'finance',
+      schema: 'mart',
+    })
   })
 })

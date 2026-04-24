@@ -131,6 +131,7 @@ export function SqlContextChip({
   const selectedDraftConnectionTargets = draft.connectionId
     ? connectionTargetsByConnectionId[draft.connectionId] ?? null
     : null
+  const selectedDraftConnectionMatchesContext = normalizeValue(draft.connectionId) === normalizeValue(context?.connectionId)
   const selectedDraftConnectionLabel = selectedDraftConnection?.name
     ?? normalizeValue(draft.connectionId)
     ?? t('stage.context.value.empty')
@@ -138,14 +139,24 @@ export function SqlContextChip({
     () => dedupeValues([
       selectedDraftConnection?.databaseName ?? null,
       ...(selectedDraftConnectionTargets?.databases ?? []),
-      context?.database ?? null,
+      selectedDraftConnectionMatchesContext ? context?.database ?? null : null,
       draft.database,
     ]),
-    [context?.database, draft.database, selectedDraftConnection?.databaseName, selectedDraftConnectionTargets?.databases],
+    [
+      context?.database,
+      draft.database,
+      selectedDraftConnection?.databaseName,
+      selectedDraftConnectionMatchesContext,
+      selectedDraftConnectionTargets?.databases,
+    ],
   )
   const mergedSchemaOptions = useMemo(
-    () => dedupeValues([...(selectedDraftConnectionTargets?.schemas ?? []), context?.schema ?? null, draft.schema]),
-    [context?.schema, draft.schema, selectedDraftConnectionTargets?.schemas],
+    () => dedupeValues([
+      ...(selectedDraftConnectionTargets?.schemas ?? []),
+      selectedDraftConnectionMatchesContext ? context?.schema ?? null : null,
+      draft.schema,
+    ]),
+    [context?.schema, draft.schema, selectedDraftConnectionMatchesContext, selectedDraftConnectionTargets?.schemas],
   )
   const currentSchemaVisible = connectionSupportsSchema(currentResolvedConnection?.kind)
     || normalizeValue(context?.schema) != null
@@ -196,7 +207,7 @@ export function SqlContextChip({
       const nextConnection = connectionMap.get(nextId)
       return {
         connectionId: nextId,
-        database: normalizeValue(previous.database) ?? normalizeValue(nextConnection?.databaseName) ?? '',
+        database: normalizeValue(nextConnection?.databaseName) ?? '',
         schema: '',
       }
     })
