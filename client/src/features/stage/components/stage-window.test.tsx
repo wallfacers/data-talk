@@ -161,7 +161,7 @@ describe('StageWindow', () => {
     expect(useStageStore.getState().maximizedBySession.get('s1')).toBe(false)
   })
 
-  it('标题随 active artifact 变化', () => {
+  it('keeps the shell title stable when the active artifact changes', () => {
     useOntologyStore.getState().upsertArtifact('s1', { id: 'a1', version: 2, kind: 'chart' })
     useTimelineStore.setState({
       orderBySession: new Map([['s1', ['a1']]]),
@@ -169,7 +169,8 @@ describe('StageWindow', () => {
       manualBySession: new Map(),
     })
     render(<StageWindow sessionId="s1" />)
-    expect(screen.getByText(/工作台 · 图 v2/)).toBeTruthy()
+    expect(screen.getByText('工作台', { selector: 'span' })).toBeTruthy()
+    expect(screen.queryByText(/工作台 · 图 v2/)).toBeNull()
   })
 
   it('renders tab bar when store has tabs for session', () => {

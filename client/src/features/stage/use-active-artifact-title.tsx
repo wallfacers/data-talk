@@ -15,7 +15,5 @@ export function useActiveArtifactTitle(sessionId: string | null) {
   const Icon = artifact.kind === 'table' ? Table2Icon
             : artifact.kind === 'chart' ? LineChartIcon
             : NetworkIcon
-  const kind = artifact.kind === 'table' ? t('stage.kind.table')
-            : artifact.kind === 'chart' ? t('stage.kind.chart') : t('stage.kind.er')
-  return { Icon, label: t('stage.titleWithKind', { kind, version: artifact.version }) }
+  return { Icon, label: t('stage.title') }
 }
