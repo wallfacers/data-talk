@@ -51,9 +51,9 @@ public class SelectConnectionAction implements ActionHandler<Map, Map> {
             "required", List.of("connectionId", "connectionNameSnapshot"),
             "properties", Map.of(
                 "connectionId", Map.of("type", "string"),
-                "connectionNameSnapshot", Map.of("type", "string"),
-                "database", Map.of("type", "string"),
-                "schema", Map.of("type", "string")
+                "connectionNameSnapshot", Map.of("type", List.of("string", "null")),
+                "database", Map.of("type", List.of("string", "null")),
+                "schema", Map.of("type", List.of("string", "null"))
             )
         );
     }

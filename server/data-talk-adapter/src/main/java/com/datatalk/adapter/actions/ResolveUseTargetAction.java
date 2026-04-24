@@ -50,11 +50,11 @@ public class ResolveUseTargetAction implements ActionHandler<Map, Map> {
             "required", List.of("status", "candidates", "suggestions"),
             "properties", Map.of(
                 "status", Map.of("type", "string"),
-                "context", Map.of("type", "object"),
-                "matched_target", Map.of("type", "object"),
+                "context", Map.of("type", List.of("object", "null")),
+                "matched_target", Map.of("type", List.of("object", "null")),
                 "candidates", Map.of("type", "array"),
                 "suggestions", Map.of("type", "array"),
-                "message", Map.of("type", "string")
+                "message", Map.of("type", List.of("string", "null"))
             )
         );
     }

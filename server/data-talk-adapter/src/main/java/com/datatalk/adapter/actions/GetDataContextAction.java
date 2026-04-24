@@ -46,11 +46,11 @@ public class GetDataContextAction implements ActionHandler<Map, Map> {
             "required", List.of("sessionId"),
             "properties", Map.of(
                 "sessionId", Map.of("type", "string"),
-                "connectionId", Map.of("type", "string"),
-                "connectionNameSnapshot", Map.of("type", "string"),
-                "database", Map.of("type", "string"),
-                "schema", Map.of("type", "string"),
-                "selectedLevel", Map.of("type", "string"),
+                "connectionId", Map.of("type", List.of("string", "null")),
+                "connectionNameSnapshot", Map.of("type", List.of("string", "null")),
+                "database", Map.of("type", List.of("string", "null")),
+                "schema", Map.of("type", List.of("string", "null")),
+                "selectedLevel", Map.of("type", List.of("string", "null")),
                 "updatedAt", Map.of("type", "integer")
             )
         );

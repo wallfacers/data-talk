@@ -49,7 +49,7 @@ public class TestConnectionAction implements ActionHandler<Map, Map> {
             "properties", Map.of(
                 "ok", Map.of("type", "boolean"),
                 "latencyMs", Map.of("type", "integer"),
-                "reason", Map.of("type", "string")
+                "reason", Map.of("type", List.of("string", "null"))
             )
         );
     }
