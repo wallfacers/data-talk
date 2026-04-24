@@ -41,6 +41,13 @@ export namespace ResolveUseTargetResponse {
   }
 }
 
+export type ConnectionTargetsResponse = {
+  connectionId: string
+  connectionName: string
+  databases: string[]
+  schemas: string[]
+}
+
 export function getSessionDataContext(sessionId: string) {
   return http.get(`sessions/${sessionId}/data-context`).json<SessionDataContext>()
 }
@@ -56,4 +63,9 @@ export function resolveUseTarget(sessionId: string, target: string) {
 
 export function validateSessionDataContext(sessionId: string) {
   return http.post(`sessions/${sessionId}/data-context/validate`).json<SessionDataContext>()
+}
+
+export function listConnectionTargets(sessionId: string, connectionId?: string | null) {
+  const searchParams = connectionId ? { connectionId } : undefined
+  return http.get(`sessions/${sessionId}/data-context/targets`, { searchParams }).json<ConnectionTargetsResponse>()
 }

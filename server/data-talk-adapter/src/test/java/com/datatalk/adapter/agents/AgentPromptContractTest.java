@@ -87,6 +87,18 @@ class AgentPromptContractTest {
     }
 
     @Test
+    void runtimePromptRequiresExplicitDatabaseSchemaDisambiguationForTableErrors() throws IOException {
+        String prompt = loadPrompt();
+
+        assertThat(prompt)
+            .contains("matches multiple candidates")
+            .contains("Select a database/schema first")
+            .contains("do not say the database has no data")
+            .contains("datatalk_list_connection_targets")
+            .contains("ask the user to choose");
+    }
+
+    @Test
     void registeredUiActionSchemasStayAlignedWithPromptSurface() throws Exception {
         String uiListSchema = om.writeValueAsString(registry.require("datatalk.ui.list").inputSchema());
         String uiReadSchema = om.writeValueAsString(registry.require("datatalk.ui.read").inputSchema());

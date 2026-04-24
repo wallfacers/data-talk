@@ -16,6 +16,7 @@ import {
 import { useSqlWorkbenchStore } from '../stores/sql-workbench-store'
 import type { SqlMonacoEditorHandle } from './sql-monaco-editor'
 import { SqlContextChip } from './sql-context-chip'
+import type { SqlContextConnectionTargets } from './sql-context-chip'
 import type { SqlContextValue } from './sql-context-chip'
 import { SqlEditorToolbar } from './sql-editor-toolbar'
 import { SqlMonacoEditor } from './sql-monaco-editor'
@@ -140,18 +141,6 @@ function toContextValue(
   return { connectionId, connectionName, database, schema }
 }
 
-function collectContextOptionValues(values: Array<string | null | undefined>) {
-  const set = new Set<string>()
-  for (const value of values) {
-    if (value == null) continue
-    const trimmed = value.trim()
-    if (trimmed.length > 0) {
-      set.add(trimmed)
-    }
-  }
-  return Array.from(set)
-}
-
 export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
   const payload = normalizeQueryEditorPayload(tab.payload)
   const autoRunRef = useRef(false)
@@ -160,6 +149,8 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
   const resizeCleanupRef = useRef<(() => void) | null>(null)
   const [draftLoadedTabId, setDraftLoadedTabId] = useState<string | null>(null)
   const [resultPanePercent, setResultPanePercent] = useState(RESULT_PANE_DEFAULT_PERCENT)
+  const [connectionTargetsByConnectionId, setConnectionTargetsByConnectionId] = useState<Record<string, SqlContextConnectionTargets>>({})
+  const pendingConnectionTargetsRef = useRef<Set<string>>(new Set())
   const { activeConnectionId, connections, setConnections } = useConnectionStore(
     useShallow((state) => ({
       activeConnectionId: state.activeConnectionId,
@@ -330,6 +321,62 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     }
   }, [connections, contextMode, effectiveContext.connectionId, setConnections])
 
+  useEffect(() => {
+    pendingConnectionTargetsRef.current.clear()
+    setConnectionTargetsByConnectionId({})
+  }, [tab.originSessionId])
+
+  const fetchConnectionTargets = useCallback(async (connectionId: string | null | undefined) => {
+    const normalizedConnectionId = connectionId?.trim()
+    if (!normalizedConnectionId) return
+    if (contextMode !== 'session' || !tab.originSessionId) return
+    if (connectionTargetsByConnectionId[normalizedConnectionId]) return
+    if (pendingConnectionTargetsRef.current.has(normalizedConnectionId)) return
+
+    pendingConnectionTargetsRef.current.add(normalizedConnectionId)
+    try {
+      const targets = await sessionDataContext.listConnectionTargets(normalizedConnectionId)
+      setConnectionTargetsByConnectionId((previous) => {
+        if (previous[normalizedConnectionId]) return previous
+        return {
+          ...previous,
+          [normalizedConnectionId]: { databases: targets.databases, schemas: targets.schemas },
+        }
+      })
+    } catch {
+      // Best-effort prefetch. Leave uncached so later UI interactions can retry.
+    } finally {
+      pendingConnectionTargetsRef.current.delete(normalizedConnectionId)
+    }
+  }, [
+    connectionTargetsByConnectionId,
+    contextMode,
+    sessionDataContext,
+    tab.originSessionId,
+  ])
+
+  useEffect(() => {
+    if (contextMode !== 'session') return
+    if (!tab.originSessionId) return
+
+    const connectionIds = Array.from(new Set([
+      effectiveContext.connectionId,
+      ...connections.map((connection) => connection.id),
+    ].filter((value): value is string => Boolean(value))))
+
+    if (connectionIds.length === 0) return
+
+    connectionIds.forEach((connectionId) => {
+      void fetchConnectionTargets(connectionId)
+    })
+  }, [
+    connections,
+    contextMode,
+    effectiveContext.connectionId,
+    fetchConnectionTargets,
+    tab.originSessionId,
+  ])
+
   const canRun = Boolean(effectiveContext.connectionId) && tabState.sqlText.trim().length > 0
   const contextChipContext = toContextValue(
     effectiveContext.connectionId,
@@ -346,42 +393,6 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     })),
     [connections],
   )
-  const contextDatabaseOptions = useMemo(() => collectContextOptionValues([
-    effectiveContext.database,
-    resolvedExecutionContext.database,
-    resolvedContext.database,
-    payload.database,
-    tab.database,
-    tabState.override?.database,
-    sessionDataContext.context?.database,
-    ...connections.map((connection) => connection.databaseName),
-  ]), [
-    connections,
-    effectiveContext.database,
-    payload.database,
-    resolvedContext.database,
-    resolvedExecutionContext.database,
-    sessionDataContext.context?.database,
-    tab.database,
-    tabState.override?.database,
-  ])
-  const contextSchemaOptions = useMemo(() => collectContextOptionValues([
-    effectiveContext.schema,
-    resolvedExecutionContext.schema,
-    resolvedContext.schema,
-    payload.schema,
-    tab.schema,
-    tabState.override?.schema,
-    sessionDataContext.context?.schema,
-  ]), [
-    effectiveContext.schema,
-    payload.schema,
-    resolvedContext.schema,
-    resolvedExecutionContext.schema,
-    sessionDataContext.context?.schema,
-    tab.schema,
-    tabState.override?.schema,
-  ])
 
   const stopResize = useCallback(() => {
     resizeCleanupRef.current?.()
@@ -553,8 +564,8 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
                 mode={contextMode}
                 context={contextChipContext}
                 connections={contextConnectionOptions}
-                databaseOptions={contextDatabaseOptions}
-                schemaOptions={contextSchemaOptions}
+                connectionTargetsByConnectionId={connectionTargetsByConnectionId}
+                onRequestConnectionTargets={fetchConnectionTargets}
                 onSetTabContext={handleContextPin}
                 onResetTabContext={handleContextReset}
               />

@@ -11,6 +11,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.sql.DriverManager;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -142,6 +144,32 @@ class SessionDataContextControllerIT {
     }
 
     @Test
+    void targets_returns_discovered_database_and_schema_candidates() throws Exception {
+        jdbc.update("""
+            INSERT INTO connections(id, name, kind, host, port, database_name, username, password_enc, created_at, connect_timeout)
+            VALUES('c2', '目标库', 'h2', 'localhost', 0, 'mem:ctx-targets;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false', 'sa', x'00', 0, 3000)
+            """);
+        try (var c = DriverManager.getConnection(
+            "jdbc:h2:mem:ctx-targets;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false",
+            "sa",
+            ""
+        );
+             var st = c.createStatement()) {
+            st.execute("CREATE SCHEMA IF NOT EXISTS reporting");
+        }
+
+        String sessionId = createSession("c2");
+
+        mvc.perform(get("/api/sessions/" + sessionId + "/data-context/targets")
+                .param("connectionId", "c2"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.connectionId").value("c2"))
+            .andExpect(jsonPath("$.connectionName").value("目标库"))
+            .andExpect(jsonPath("$.databases[0]").value("mem:ctx-targets;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false"))
+            .andExpect(jsonPath("$.schemas").isArray());
+    }
+
+    @Test
     void validate_refreshes_snapshot_and_clears_missing_schema() throws Exception {
         String sessionId = createSession();
         jdbc.update("""
@@ -158,11 +186,15 @@ class SessionDataContextControllerIT {
     }
 
     private String createSession() throws Exception {
+        return createSession("c1");
+    }
+
+    private String createSession(String connectionId) throws Exception {
         String json = mvc.perform(post("/api/sessions")
                 .contentType("application/json")
                 .content("""
-                    {"connectionId":"c1","title":"上下文测试"}
-                    """))
+                    {"connectionId":"%s","title":"上下文测试"}
+                    """.formatted(connectionId)))
             .andExpect(status().isOk())
             .andReturn()
             .getResponse()

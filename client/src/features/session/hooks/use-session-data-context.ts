@@ -3,9 +3,11 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSessionStore } from '@/stores/session-store'
 import {
   getSessionDataContext,
+  listConnectionTargets as listConnectionTargetsApi,
   resolveUseTarget as resolveUseTargetApi,
   setSessionDataContext as setSessionDataContextApi,
   validateSessionDataContext as validateSessionDataContextApi,
+  type ConnectionTargetsResponse,
   type ResolveUseTargetResponse,
   type SessionDataContext,
   type SessionDataContextUpdateRequest,
@@ -76,6 +78,15 @@ export function useSessionDataContext(sessionId: string | null) {
     [sessionId],
   )
 
+  const listConnectionTargets = useCallback(
+    async (connectionId?: string | null, sessionIdOverride?: string | null): Promise<ConnectionTargetsResponse> => {
+      const sid = sessionIdOverride ?? sessionId
+      if (!sid) throw noSessionError()
+      return listConnectionTargetsApi(sid, connectionId)
+    },
+    [sessionId],
+  )
+
   const setSessionDataContext = useCallback(
     async (update: SessionDataContextUpdateRequest, sessionIdOverride?: string | null): Promise<SessionDataContext> => {
       const sid = sessionIdOverride ?? sessionId
@@ -129,6 +140,7 @@ export function useSessionDataContext(sessionId: string | null) {
     isLoading: query.isLoading,
     error: query.error ?? null,
     refresh,
+    listConnectionTargets,
     resolveUseTarget,
     setSessionDataContext,
     validateSessionDataContext,

@@ -26,12 +26,17 @@ export type SqlContextConnectionOption = {
   databaseName?: string | null
 }
 
+export type SqlContextConnectionTargets = {
+  databases: string[]
+  schemas: string[]
+}
+
 type SqlContextChipProps = {
   mode: 'session' | 'override'
   context: SqlContextValue | null
   connections: SqlContextConnectionOption[]
-  databaseOptions: string[]
-  schemaOptions: string[]
+  connectionTargetsByConnectionId: Record<string, SqlContextConnectionTargets | undefined>
+  onRequestConnectionTargets?: (connectionId: string) => void | Promise<unknown>
   onSetTabContext: (context: SqlContextValue) => void
   onResetTabContext: () => void
 }
@@ -92,8 +97,8 @@ export function SqlContextChip({
   mode,
   context,
   connections,
-  databaseOptions,
-  schemaOptions,
+  connectionTargetsByConnectionId,
+  onRequestConnectionTargets,
   onSetTabContext,
   onResetTabContext,
 }: SqlContextChipProps) {
@@ -123,21 +128,24 @@ export function SqlContextChip({
     ? connectionMap.get(contextWithResolvedName.connectionId) ?? null
     : null
   const selectedDraftConnection = draft.connectionId ? connectionMap.get(draft.connectionId) ?? null : null
+  const selectedDraftConnectionTargets = draft.connectionId
+    ? connectionTargetsByConnectionId[draft.connectionId] ?? null
+    : null
   const selectedDraftConnectionLabel = selectedDraftConnection?.name
     ?? normalizeValue(draft.connectionId)
     ?? t('stage.context.value.empty')
   const mergedDatabaseOptions = useMemo(
     () => dedupeValues([
       selectedDraftConnection?.databaseName ?? null,
-      ...databaseOptions,
+      ...(selectedDraftConnectionTargets?.databases ?? []),
       context?.database ?? null,
       draft.database,
     ]),
-    [context?.database, databaseOptions, draft.database, selectedDraftConnection?.databaseName],
+    [context?.database, draft.database, selectedDraftConnection?.databaseName, selectedDraftConnectionTargets?.databases],
   )
   const mergedSchemaOptions = useMemo(
-    () => dedupeValues([...schemaOptions, context?.schema ?? null, draft.schema]),
-    [context?.schema, draft.schema, schemaOptions],
+    () => dedupeValues([...(selectedDraftConnectionTargets?.schemas ?? []), context?.schema ?? null, draft.schema]),
+    [context?.schema, draft.schema, selectedDraftConnectionTargets?.schemas],
   )
   const currentSchemaVisible = connectionSupportsSchema(currentResolvedConnection?.kind)
     || normalizeValue(context?.schema) != null
@@ -153,6 +161,14 @@ export function SqlContextChip({
     if (open) return
     setDraft(toDraftContext(context))
   }, [context, open])
+
+  useEffect(() => {
+    if (!open) return
+    const connectionId = normalizeValue(draft.connectionId)
+    if (!connectionId) return
+    if (selectedDraftConnectionTargets != null) return
+    void onRequestConnectionTargets?.(connectionId)
+  }, [draft.connectionId, onRequestConnectionTargets, open, selectedDraftConnectionTargets])
 
   function handlePinCurrentContext() {
     if (!contextWithResolvedName) return

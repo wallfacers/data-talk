@@ -13,6 +13,16 @@ const connections = [
   { id: 'conn-1', name: 'Primary Connection', kind: 'postgres', databaseName: 'db_main' },
   { id: 'conn-2', name: 'Analytics', kind: 'mysql', databaseName: 'analytics' },
 ]
+const connectionTargetsByConnectionId = {
+  'conn-1': {
+    databases: ['db_main', 'warehouse'],
+    schemas: ['public', 'reporting'],
+  },
+  'conn-2': {
+    databases: ['analytics'],
+    schemas: [],
+  },
+}
 
 describe('SqlContextChip', () => {
   const t = (key: Parameters<typeof translateMessage>[1], values?: Record<string, string | number>) =>
@@ -31,8 +41,7 @@ describe('SqlContextChip', () => {
         context={context}
         mode="session"
         connections={connections}
-        databaseOptions={['db_main', 'analytics']}
-        schemaOptions={['public', 'reporting']}
+        connectionTargetsByConnectionId={connectionTargetsByConnectionId}
         onResetTabContext={onResetTabContext}
         onSetTabContext={onSetTabContext}
       />,
@@ -51,8 +60,7 @@ describe('SqlContextChip', () => {
         context={context}
         mode="session"
         connections={connections}
-        databaseOptions={['db_main', 'analytics']}
-        schemaOptions={['public', 'reporting']}
+        connectionTargetsByConnectionId={connectionTargetsByConnectionId}
         onResetTabContext={onResetTabContext}
         onSetTabContext={onSetTabContext}
       />,
@@ -71,8 +79,7 @@ describe('SqlContextChip', () => {
         context={context}
         mode="override"
         connections={connections}
-        databaseOptions={['db_main', 'analytics']}
-        schemaOptions={['public', 'reporting']}
+        connectionTargetsByConnectionId={connectionTargetsByConnectionId}
         onResetTabContext={onResetTabContext}
         onSetTabContext={onSetTabContext}
       />,
@@ -96,8 +103,7 @@ describe('SqlContextChip', () => {
         }}
         mode="session"
         connections={connections}
-        databaseOptions={['db_main', 'analytics']}
-        schemaOptions={['public', 'reporting']}
+        connectionTargetsByConnectionId={connectionTargetsByConnectionId}
         onResetTabContext={onResetTabContext}
         onSetTabContext={onSetTabContext}
       />,
@@ -125,8 +131,7 @@ describe('SqlContextChip', () => {
         }}
         mode="session"
         connections={connections}
-        databaseOptions={['db_main', 'analytics']}
-        schemaOptions={['public', 'reporting']}
+        connectionTargetsByConnectionId={connectionTargetsByConnectionId}
         onResetTabContext={onResetTabContext}
         onSetTabContext={onSetTabContext}
       />,
@@ -144,8 +149,7 @@ describe('SqlContextChip', () => {
         context={context}
         mode="session"
         connections={connections}
-        databaseOptions={['db_main', 'analytics']}
-        schemaOptions={['public', 'reporting']}
+        connectionTargetsByConnectionId={connectionTargetsByConnectionId}
         onResetTabContext={onResetTabContext}
         onSetTabContext={onSetTabContext}
       />,
@@ -168,8 +172,7 @@ describe('SqlContextChip', () => {
         }}
         mode="session"
         connections={connections}
-        databaseOptions={['db_main', 'analytics']}
-        schemaOptions={['public', 'reporting']}
+        connectionTargetsByConnectionId={connectionTargetsByConnectionId}
         onResetTabContext={onResetTabContext}
         onSetTabContext={onSetTabContext}
       />,
@@ -193,8 +196,7 @@ describe('SqlContextChip', () => {
         }}
         mode="session"
         connections={connections}
-        databaseOptions={['db_main', 'analytics']}
-        schemaOptions={['public', 'reporting']}
+        connectionTargetsByConnectionId={connectionTargetsByConnectionId}
         onResetTabContext={onResetTabContext}
         onSetTabContext={onSetTabContext}
       />,
@@ -203,5 +205,24 @@ describe('SqlContextChip', () => {
     fireEvent.click(screen.getByRole('button', { name: t('stage.context.tooltip.button') }))
 
     expect(screen.getByRole('combobox', { name: t('stage.context.field.schema') })).toHaveTextContent('legacy_schema')
+  })
+
+  it('shows database options only for the selected connection target set', async () => {
+    render(
+      <SqlContextChip
+        context={context}
+        mode="session"
+        connections={connections}
+        connectionTargetsByConnectionId={connectionTargetsByConnectionId}
+        onResetTabContext={onResetTabContext}
+        onSetTabContext={onSetTabContext}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: t('stage.context.tooltip.button') }))
+    fireEvent.click(screen.getByRole('combobox', { name: t('stage.context.field.database') }))
+
+    expect(await screen.findByText('warehouse')).toBeTruthy()
+    expect(screen.queryByText('analytics')).toBeNull()
   })
 })
