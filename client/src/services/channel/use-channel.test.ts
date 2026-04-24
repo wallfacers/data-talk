@@ -12,6 +12,12 @@ import { uiRouter } from '@/services/ui-router'
 import type { UIObject } from '@/services/ui-router'
 import { getClientHandler } from '@/features/actions/registry'
 
+// Reset the per-session event cursor before each test so the new id-based
+// dedupe gate doesn't drop events in tests that reuse small ids like 1.
+beforeEach(() => {
+  useChannelStore.setState({ lastEventIdBySession: new Map(), isConnected: false })
+})
+
 describe('buildEventSink · session.meta.updated', () => {
   let qc: QueryClient
   beforeEach(() => {
@@ -254,6 +260,7 @@ describe('buildEventSink → lastEventId tracking', () => {
       infoBySession: new Map(),
       partIndexBySession: new Map(),
       streamingBySession: new Set<string>(),
+      pendingDeltasBySession: new Map(),
     })
   })
 
@@ -275,6 +282,44 @@ describe('buildEventSink → lastEventId tracking', () => {
     sink({ id: 5,  event: 'message.created', data: { message: { id: 'm2', role: 'assistant', sessionId: 'oc', time: { created: 2 } } } })
 
     expect(useChannelStore.getState().lastEventIdBySession.get('ses_a')).toBe(20)
+  })
+
+  it('drops a redelivered message.part.delta so text is not appended twice', () => {
+    // The SessionBus fans events out to both the long-lived GET subscribe
+    // sink and every POST send_message sink; a fresh POST subscription
+    // also resumes from cursor 0. Without id-based dedupe, the same
+    // delta would be appended twice and the user sees doubled content
+    // like "sort sort()" during streaming.
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const sink = buildEventSink('ses_a', null, qc, null, null)
+
+    useChatPartsStore.getState().upsertPart('ses_a', {
+      type: 'text', id: 'p1', sessionID: 'ses_a', messageID: 'm1', text: '', metadata: {},
+    } as any)
+
+    sink({ id: 11, event: 'message.part.delta', data: { partId: 'p1', field: 'text', delta: 'sort' } })
+    // Redelivery of the exact same event id on the other stream.
+    sink({ id: 11, event: 'message.part.delta', data: { partId: 'p1', field: 'text', delta: 'sort' } })
+
+    const part = useChatPartsStore.getState().findPart('ses_a', 'p1') as any
+    expect(part?.text).toBe('sort')
+  })
+
+  it('drops any replayed event whose id is at or below the cursor', () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const sink = buildEventSink('ses_a', null, qc, null, null)
+
+    useChatPartsStore.getState().upsertPart('ses_a', {
+      type: 'text', id: 'p1', sessionID: 'ses_a', messageID: 'm1', text: '', metadata: {},
+    } as any)
+
+    sink({ id: 20, event: 'message.part.delta', data: { partId: 'p1', field: 'text', delta: 'A' } })
+    sink({ id: 21, event: 'message.part.delta', data: { partId: 'p1', field: 'text', delta: 'B' } })
+    // Replay of id=20 from a cursor-0 POST resume must not apply again.
+    sink({ id: 20, event: 'message.part.delta', data: { partId: 'p1', field: 'text', delta: 'A' } })
+
+    const part = useChatPartsStore.getState().findPart('ses_a', 'p1') as any
+    expect(part?.text).toBe('AB')
   })
 })
 
@@ -344,6 +389,67 @@ describe('buildEventSink → session.error (TD-014)', () => {
     const sink = buildEventSink('ses_a', null, qc, null)
     sink({ event: 'session.error', data: { error: 'model unavailable' } } as any)
     expect(useChatPartsStore.getState().streamingBySession.has('ses_a')).toBe(false)
+  })
+
+  it('renders a session.error in the current assistant turn without waiting for history refresh', () => {
+    useChatPartsStore.getState().upsertInfo('ses_a', {
+      id: 'user_1',
+      role: 'user',
+      sessionID: 'ses_a',
+      time: { created: 100 },
+    })
+    const qc = new QueryClient()
+    const sink = buildEventSink('ses_a', null, qc, null)
+
+    sink({ id: 42, event: 'session.error', data: { error: 'unknown certificate verification error' } } as any)
+
+    const infoMap = useChatPartsStore.getState().infoBySession.get('ses_a')
+    const assistant = Array.from(infoMap?.values() ?? []).find((info) => info.role === 'assistant')
+    expect(assistant).toMatchObject({
+      id: 'session_error_ses_a_42',
+      role: 'assistant',
+      sessionID: 'ses_a',
+      error: {
+        name: 'SessionError',
+        data: { message: 'unknown certificate verification error' },
+      },
+    })
+    expect(typeof assistant?.time.completed).toBe('number')
+
+    const { result } = renderHook(() => useSessionTurns('ses_a'))
+    expect(result.current).toHaveLength(1)
+    expect(result.current[0]).toMatchObject({
+      userMessageId: 'user_1',
+      assistantMessageIds: ['session_error_ses_a_42'],
+    })
+  })
+
+  it('attaches session.error to an existing assistant message instead of creating a separate error turn', () => {
+    useChatPartsStore.getState().upsertInfo('ses_a', {
+      id: 'user_1',
+      role: 'user',
+      sessionID: 'ses_a',
+      time: { created: 100 },
+    })
+    useChatPartsStore.getState().upsertInfo('ses_a', {
+      id: 'assistant_1',
+      role: 'assistant',
+      sessionID: 'ses_a',
+      time: { created: 110 },
+    })
+    const qc = new QueryClient()
+    const sink = buildEventSink('ses_a', null, qc, null)
+
+    sink({ id: 43, event: 'session.error', data: { error: 'unknown certificate verification error' } } as any)
+
+    const infoMap = useChatPartsStore.getState().infoBySession.get('ses_a')
+    expect(infoMap?.size).toBe(2)
+    expect(infoMap?.get('assistant_1')).toMatchObject({
+      error: {
+        name: 'SessionError',
+        data: { message: 'unknown certificate verification error' },
+      },
+    })
   })
 })
 

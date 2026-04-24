@@ -34,4 +34,14 @@ describe('PacedMarkdown', () => {
 
     vi.useRealTimers()
   })
+
+  it('preserves trailing newlines when bypassing paced reveal for streaming code', async () => {
+    vi.useFakeTimers()
+    const text = '```ts\nconst a = 1\n'
+    const { container } = render(<PacedMarkdown text={text} cacheKey="code-newline" streaming={true} />)
+
+    expect(container.querySelector('code')?.textContent).toBe('const a = 1\n')
+
+    vi.useRealTimers()
+  })
 })

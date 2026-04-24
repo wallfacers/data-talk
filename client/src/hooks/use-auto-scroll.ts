@@ -3,7 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 const FOLLOW_THRESHOLD_PX = 150
 const REENABLE_THRESHOLD_PX = 4
 
-export function useAutoScroll<T extends HTMLElement>(deps: any[]) {
+export function useAutoScroll<T extends HTMLElement>(deps: any[], resetDeps: any[] = []) {
   const ref = useRef<T>(null)
   const isAtBottom = useRef(true)
   const followEnabled = useRef(true)
@@ -96,23 +96,30 @@ export function useAutoScroll<T extends HTMLElement>(deps: any[]) {
     const el = ref.current
     if (!el) return
 
-    const observer = new MutationObserver(() => {
+    const handleContentGrowth = () => {
       if (suppressMutationScrolls.current) {
         return
       }
       if (followEnabled.current) {
         scheduleFollow()
       }
-    })
+    }
+
+    const observer = new MutationObserver(handleContentGrowth)
+    const resizeObserver = typeof ResizeObserver === 'undefined'
+      ? null
+      : new ResizeObserver(handleContentGrowth)
 
     observer.observe(el, {
       childList: true,
       subtree: true,
       characterData: true,
     })
+    resizeObserver?.observe(el)
 
     return () => {
       observer.disconnect()
+      resizeObserver?.disconnect()
       cancelScheduledFollow()
     }
   }, [cancelScheduledFollow, scheduleFollow])
@@ -135,6 +142,21 @@ export function useAutoScroll<T extends HTMLElement>(deps: any[]) {
       scrollToBottom('auto')
     }
   }, [scrollToBottom, suppressMutationsUntilNextFrame, ...deps])
+
+  // A bump in resetDeps represents a user-initiated action (e.g. sending a
+  // new message) that must override any earlier "user scrolled up" state.
+  // Without this, once followEnabled is flipped off by an upward scroll, it
+  // never re-enables for subsequent sends unless the user first scrolls back
+  // to the bottom.
+  const didMountReset = useRef(false)
+  useLayoutEffect(() => {
+    if (!didMountReset.current) {
+      didMountReset.current = true
+      return
+    }
+    suppressMutationsUntilNextFrame()
+    scrollToBottom('auto')
+  }, [scrollToBottom, suppressMutationsUntilNextFrame, ...resetDeps])
 
   return { ref, scrollToBottom, isAtBottom }
 }

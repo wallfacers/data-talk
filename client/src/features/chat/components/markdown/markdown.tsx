@@ -3,7 +3,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import morphdom from 'morphdom'
-import { stream } from './markdown-stream'
+import { stream, type Block } from './markdown-stream'
 import { decorateTables, normalizePipeTables } from './markdown-table'
 import { decorateSqlBlocks, SQL_EXECUTE_EVENT, SQL_EXPLAIN_EVENT } from './sql-code-block'
 import { extractTableModel } from './table-model'
@@ -184,6 +184,45 @@ function getLanguageLabel(code: Element | null) {
   return LANGUAGE_LABELS[language] ?? language.replace(/^[a-z]/, (c) => c.toUpperCase())
 }
 
+function getStreamingLanguageLabel(language: string): string {
+  return LANGUAGE_LABELS[language] ?? language.replace(/^[a-z]/, (c) => c.toUpperCase())
+}
+
+// Inline style so the rendered code is locked to the same layout as a
+// closed/marked-parsed code block regardless of cascade state. morphdom
+// churns `class` and `data-*` attributes on the <code> during the
+// stream-code → live transition, and without an inline override the
+// element can briefly inherit the markdown container's `word-wrap:
+// break-word` and render a commented line like `const a = 1; // 我是张三`
+// as two visual rows, then snap back to one row on close.
+const STREAMING_CODE_BODY_STYLE =
+  'display:block;white-space:pre;word-break:normal;overflow-wrap:normal;min-height:1.5em'
+
+function renderStreamingCodeBlock(block: Block): string {
+  const language = block.language ?? ''
+  const languageClass = language ? `language-${escape(language)}` : ''
+  const label = language ? getStreamingLanguageLabel(language) : ''
+  const rawCode = block.code ?? ''
+  // Marked always emits a trailing `\n` inside `<code>`. Matching that here
+  // means the morphdom text-diff across stream-code → live is a zero-op
+  // and the visible line count cannot change when the closing fence
+  // lands.
+  const codeWithTrailingNewline = rawCode.endsWith('\n') ? rawCode : `${rawCode}\n`
+  return [
+    '<div data-component="markdown-code" data-streaming-code="true">',
+    '<div data-slot="markdown-code-bar">',
+    `<span data-slot="markdown-code-language">${escape(label)}</span>`,
+    '<div data-slot="markdown-code-actions">',
+    `<button data-slot="markdown-copy-button" type="button" aria-label="Copy">${COPY_SVG}</button>`,
+    '</div>',
+    '</div>',
+    '<pre>',
+    `<code class="${languageClass}" data-streaming-code-body="true" style="${STREAMING_CODE_BODY_STYLE}">${escape(codeWithTrailingNewline)}</code>`,
+    '</pre>',
+    '</div>',
+  ].join('')
+}
+
 function decorateCodeBlocks(root: HTMLElement) {
   const pres = Array.from(root.querySelectorAll('pre'))
   for (const pre of pres) {
@@ -267,6 +306,11 @@ function renderHtml(text: string, cacheKey: string | undefined, streaming: boole
           touch(key, cached)
           return cached.html
         }
+      }
+      if (block.mode === 'stream-code') {
+        const html = renderStreamingCodeBlock(block)
+        if (key) touch(key, { hash: blockHash, html })
+        return html
       }
       const normalized = normalizePipeTables(block.src)
       const parsed = marked.parse(normalized, { async: false }) as string

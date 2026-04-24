@@ -1,7 +1,15 @@
 import { afterEach, describe, it, expect, vi } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { Markdown } from '../markdown'
 import { SQL_EXPLAIN_EVENT, SQL_EXECUTE_EVENT } from '../sql-code-block'
+
+const markdownCss = readFileSync(
+  resolve(dirname(fileURLToPath(import.meta.url)), '../markdown.css'),
+  'utf8',
+)
 
 vi.mock('../chart-block', () => ({
   ChartBlock: (props: {
@@ -87,6 +95,103 @@ describe('Markdown', () => {
 
     window.removeEventListener(SQL_EXECUTE_EVENT, onExecute)
     window.removeEventListener(SQL_EXPLAIN_EVENT, onExplain)
+  })
+
+  it('keeps streaming code block chrome mounted while code text grows', async () => {
+    const first = '```ts\nconst a = 1'
+    const second = '```ts\nconst a = 1\nconst b = 2'
+    const { container, rerender } = render(
+      <Markdown text={first} streaming cacheKey="stream-code-1" />,
+    )
+
+    await waitFor(() => {
+      expect(container.querySelector('[data-component="markdown-code"]')).not.toBeNull()
+    })
+
+    const shell = container.querySelector('[data-component="markdown-code"]')
+    const bar = container.querySelector('[data-slot="markdown-code-bar"]')
+    const code = container.querySelector('[data-streaming-code-body="true"]')
+
+    rerender(<Markdown text={second} streaming cacheKey="stream-code-1" />)
+
+    await waitFor(() => {
+      const streamingCode = container.querySelector('[data-streaming-code-body="true"]')
+      expect(streamingCode).not.toBeNull()
+      expect(streamingCode?.textContent).toContain('const b = 2')
+    })
+
+    expect(container.querySelector('[data-component="markdown-code"]')).toBe(shell)
+    expect(container.querySelector('[data-slot="markdown-code-bar"]')).toBe(bar)
+    expect(container.querySelector('[data-streaming-code-body="true"]')).toBe(code)
+  })
+
+  it('does not show SQL execute or explain actions for an incomplete streaming SQL fence', async () => {
+    const { container } = render(
+      <Markdown text={'```sql\nselect 1'} streaming cacheKey="stream-sql-incomplete" />,
+    )
+
+    await waitFor(() => {
+      expect(container.querySelector('[data-component="markdown-code"]')).not.toBeNull()
+    })
+
+    expect(container.querySelector('[data-slot="sql-execute"]')).toBeNull()
+    expect(container.querySelector('[data-slot="sql-explain"]')).toBeNull()
+    expect(container.querySelector('[data-slot="markdown-copy-button"]')).not.toBeNull()
+  })
+
+  it('does not give streaming code blocks an extra pre height over completed code blocks', () => {
+    expect(markdownCss).not.toMatch(
+      /\[data-component="markdown-code"\]\[data-streaming-code="true"\]\s+pre\s*{[^}]*min-height/s,
+    )
+  })
+
+  it('reserves one shared code body line for streaming and completed code blocks', () => {
+    const codeBodyRule = markdownCss.match(
+      /\[data-component="markdown-code"\]\s+pre\s*>\s*code\s*{(?<body>[^}]*)}/s,
+    )?.groups?.body ?? ''
+
+    expect(codeBodyRule).toContain('display: block')
+    expect(codeBodyRule).toContain('min-height: 1.5em')
+    expect(codeBodyRule).toContain('white-space: pre')
+  })
+
+  it('pins streaming code wrapping via inline style so a commented line cannot briefly wrap to two lines', async () => {
+    const { container } = render(
+      <Markdown text={'```ts\nconst a = 1; // 我是张三的注释'} streaming cacheKey="stream-code-nowrap" />,
+    )
+
+    await waitFor(() => {
+      expect(container.querySelector('[data-streaming-code-body="true"]')).not.toBeNull()
+    })
+
+    const body = container.querySelector('[data-streaming-code-body="true"]') as HTMLElement
+    const inline = body.getAttribute('style') ?? ''
+    // Inline style must win over every cascade path — morphdom's attribute
+    // churn during stream-code → live can otherwise leave the code briefly
+    // inheriting parent white-space and wrapping mid-line in a narrow chat
+    // pane.
+    expect(inline).toMatch(/white-space:\s*pre\b/)
+    expect(inline).toMatch(/word-break:\s*normal/)
+    expect(inline).toMatch(/overflow-wrap:\s*normal/)
+    expect(inline).toMatch(/display:\s*block/)
+  })
+
+  it('matches marked\'s trailing newline so stream-code → live swap has a zero-diff text node', async () => {
+    const openText = '```ts\nconst a = 1'
+    const { container } = render(
+      <Markdown text={openText} streaming cacheKey="stream-code-trailing" />,
+    )
+
+    await waitFor(() => {
+      expect(container.querySelector('[data-streaming-code-body="true"]')).not.toBeNull()
+    })
+
+    // The streaming code body must already end in a newline so that when
+    // the closing fence arrives and marked re-renders the same content
+    // with its own trailing \n, the morphdom text diff is a no-op and no
+    // line-count jitter can occur.
+    const streamingText = container.querySelector('[data-streaming-code-body="true"]')?.textContent
+    expect(streamingText?.endsWith('\n')).toBe(true)
   })
 
   it('wraps rendered tables with the unified scroll container', async () => {

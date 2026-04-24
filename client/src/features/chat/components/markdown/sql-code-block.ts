@@ -18,6 +18,7 @@ export function decorateSqlBlocks(root: HTMLElement) {
     if (!pre) continue
     const wrapper = pre.parentElement
     if (!wrapper || wrapper.getAttribute('data-component') !== 'markdown-code') continue
+    if (wrapper.getAttribute('data-streaming-code') === 'true') continue
     if (wrapper.querySelector('[data-slot="sql-execute"], [data-slot="sql-explain"]')) continue
 
     const sql = code.textContent ?? ''

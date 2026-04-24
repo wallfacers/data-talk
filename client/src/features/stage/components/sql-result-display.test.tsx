@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { fireEvent } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
@@ -18,6 +19,9 @@ vi.mock('@/i18n/use-i18n', () => ({
         'stage.queryEditor.result.sql': 'SQL',
         'stage.queryEditor.result.previousPage': 'Previous',
         'stage.queryEditor.result.nextPage': 'Next',
+        'stage.queryEditor.result.copyCell': '复制单元格',
+        'stage.queryEditor.result.copyRow': '复制行',
+        'stage.queryEditor.result.copyColumnName': '复制列名',
         'stage.queryEditor.result.pageIndicator': 'Page 1 / 3',
         'stage.queryEditor.summary.rows': '3 rows · 8ms',
         'stage.queryEditor.summary.truncated': 'Top 3 rows · 8ms',
@@ -25,6 +29,21 @@ vi.mock('@/i18n/use-i18n', () => ({
         'stage.status.error': 'Error',
       })[key] ?? key,
   }),
+}))
+
+vi.mock('@/components/ui/context-menu', () => ({
+  ContextMenu: ({ children }: { children?: ReactNode }) => <>{children}</>,
+  ContextMenuTrigger: ({ render, children }: { render?: ReactNode; children?: ReactNode }) => <>{render ?? children}</>,
+  ContextMenuContent: ({ children }: { children?: ReactNode }) => <div data-testid="sql-result-context-menu">{children}</div>,
+  ContextMenuItem: ({
+    children,
+    onClick,
+    disabled,
+  }: { children?: ReactNode; onClick?: () => void; disabled?: boolean }) => (
+    <button type="button" onClick={disabled ? undefined : onClick} disabled={disabled}>
+      {children}
+    </button>
+  ),
 }))
 
 describe('Sql result displays', () => {
@@ -56,6 +75,85 @@ describe('Sql result displays', () => {
     expect(screen.getByRole('cell', { name: '1' })).toBeTruthy()
     expect(screen.getByRole('cell', { name: '2' })).toBeTruthy()
     expect(screen.getByText('NULL')).toBeTruthy()
+  })
+
+  it('keeps the horizontal result scrollbar on the visible result viewport', () => {
+    const { container } = render(
+      <SqlResultTable
+        result={{
+          resultId: 'wide-result',
+          kind: 'result_set',
+          title: 'wide orders',
+          statementIndex: 0,
+          statementText: 'select * from orders',
+          columns: Array.from({ length: 12 }, (_, index) => `column_${index + 1}`),
+          rows: Array.from({ length: 120 }, (_, rowIndex) =>
+            Array.from({ length: 12 }, (_, columnIndex) => `R${rowIndex + 1}-C${columnIndex + 1}`),
+          ),
+          rowCount: 120,
+          executionMs: 8,
+          truncated: false,
+        }}
+      />,
+    )
+
+    const viewport = screen.getByTestId('sql-result-table-scroll')
+    const tableContainer = container.querySelector('[data-slot="table-container"]') as HTMLElement
+    expect(viewport.className).toContain('overflow-auto')
+    expect(tableContainer.className).not.toContain('overflow-x-auto')
+  })
+
+  it('keeps result headers opaque and above rows while scrolling vertically', () => {
+    const { container } = render(
+      <SqlResultTable
+        result={{
+          resultId: 'sticky-header-result',
+          kind: 'result_set',
+          title: 'orders',
+          statementIndex: 0,
+          statementText: 'select * from orders',
+          columns: ['id', 'status'],
+          rows: Array.from({ length: 120 }, (_, index) => [`O-${index + 1}`, 'paid']),
+          rowCount: 120,
+          executionMs: 8,
+          truncated: false,
+        }}
+      />,
+    )
+
+    const tableHeader = container.querySelector('[data-slot="table-header"]') as HTMLElement
+    expect(tableHeader.className).not.toContain('bg-muted/40')
+
+    for (const headerCell of screen.getAllByRole('columnheader')) {
+      expect(headerCell.className).toContain('sticky')
+      expect(headerCell.className).toContain('top-0')
+      expect(headerCell.className).toContain('z-20')
+      expect(headerCell.className).toContain('bg-muted')
+    }
+  })
+
+  it('renders localized context menu actions for result cells', () => {
+    render(
+      <SqlResultTable
+        result={{
+          resultId: 'context-result',
+          kind: 'result_set',
+          title: 'orders',
+          statementIndex: 0,
+          statementText: 'select * from orders',
+          columns: ['id', 'status'],
+          rows: [['O-1', 'paid']],
+          rowCount: 1,
+          executionMs: 8,
+          truncated: false,
+        }}
+      />,
+    )
+
+    const menu = screen.getByTestId('sql-result-context-menu')
+    expect(within(menu).getByRole('button', { name: '复制单元格' })).toBeTruthy()
+    expect(within(menu).getByRole('button', { name: '复制行' })).toBeTruthy()
+    expect(within(menu).getByRole('button', { name: '复制列名' })).toBeTruthy()
   })
 
   it('renders dml summary as a table row instead of plain text blocks', () => {

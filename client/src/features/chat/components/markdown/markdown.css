@@ -100,6 +100,12 @@
   background: transparent;
 }
 
+[data-component="markdown-code"] pre > code {
+  display: block;
+  min-height: 1.5em;
+  white-space: pre;
+}
+
 [data-component="markdown-table"] {
   margin: 0.875em 0;
   overflow: hidden;

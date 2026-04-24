@@ -10,6 +10,9 @@ describe('chat-parts-store', () => {
       partIndexBySession: new Map(),
       streamingBySession: new Set<string>(),
       pendingDeltasBySession: new Map(),
+      version: 0,
+      layoutVersion: 0,
+      userSendVersion: 0,
     })
   })
 
@@ -127,9 +130,29 @@ describe('chat-parts-store', () => {
         type: 'text', id: 'prt_1', sessionID: 'ses_a', messageID: 'msg_1',
         text: 'hi ', metadata: {},
       } as Part)
+      const before = useChatPartsStore.getState()
       store.appendPartDelta('ses_a', 'prt_1', 'text', 'there')
-      const part = useChatPartsStore.getState().findPart('ses_a', 'prt_1')
+      const after = useChatPartsStore.getState()
+      const part = after.findPart('ses_a', 'prt_1')
       expect((part as any)?.text).toBe('hi there')
+      expect(after.version).toBe(before.version + 1)
+      expect(after.layoutVersion).toBe(before.layoutVersion)
+    })
+
+    it('does not increment layoutVersion for pure reasoning text deltas on an existing part', () => {
+      const store = useChatPartsStore.getState()
+      store.upsertPart('ses_a', {
+        type: 'reasoning', id: 'prt_reason', sessionID: 'ses_a', messageID: 'msg_1',
+        text: '', thinking: 'step 1', metadata: {},
+      } as unknown as Part)
+      const before = useChatPartsStore.getState()
+
+      store.appendPartDelta('ses_a', 'prt_reason', 'thinking', '\nstep 2')
+
+      const after = useChatPartsStore.getState()
+      expect((after.findPart('ses_a', 'prt_reason') as any)?.thinking).toBe('step 1\nstep 2')
+      expect(after.version).toBe(before.version + 1)
+      expect(after.layoutVersion).toBe(before.layoutVersion)
     })
 
     it('buffers delta when part not yet in store, drains on next upsertPart', () => {
@@ -187,6 +210,74 @@ describe('chat-parts-store', () => {
     })
   })
 
+  describe('layoutVersion', () => {
+    it('increments when a part is inserted for the first time', () => {
+      const store = useChatPartsStore.getState()
+      const before = store.layoutVersion
+
+      store.upsertPart('ses_a', {
+        type: 'text', id: 'prt_1', sessionID: 'ses_a', messageID: 'msg_1',
+        text: 'hello', metadata: {},
+      } as Part)
+
+      expect(useChatPartsStore.getState().layoutVersion).toBe(before + 1)
+    })
+
+    it('increments when streaming starts and stops', () => {
+      const store = useChatPartsStore.getState()
+
+      store.setStreaming('ses_a', true)
+      expect(useChatPartsStore.getState().layoutVersion).toBe(1)
+
+      store.setStreaming('ses_a', false)
+      expect(useChatPartsStore.getState().layoutVersion).toBe(2)
+    })
+
+    it('increments when a pending user is inserted, failed, promoted, and removed', () => {
+      const store = useChatPartsStore.getState()
+
+      const pendingId = store.upsertPendingUser('ses_a', 'hello')
+      expect(useChatPartsStore.getState().layoutVersion).toBe(1)
+
+      store.markPendingUserFailed('ses_a', pendingId, 'network error')
+      expect(useChatPartsStore.getState().layoutVersion).toBe(2)
+
+      store.promotePendingUser('ses_a', pendingId, 'msg_real_1')
+      expect(useChatPartsStore.getState().layoutVersion).toBe(3)
+
+      store.removePendingUser('ses_a', 'msg_real_1')
+      expect(useChatPartsStore.getState().layoutVersion).toBe(4)
+    })
+  })
+
+  describe('userSendVersion', () => {
+    it('bumps only when the user submits a pending message', () => {
+      const store = useChatPartsStore.getState()
+      expect(useChatPartsStore.getState().userSendVersion).toBe(0)
+
+      store.upsertPendingUser('ses_a', 'hello')
+      expect(useChatPartsStore.getState().userSendVersion).toBe(1)
+
+      store.upsertPendingUser('ses_a', 'second')
+      expect(useChatPartsStore.getState().userSendVersion).toBe(2)
+    })
+
+    it('does not change on assistant part inserts, deltas, or streaming toggles', () => {
+      const store = useChatPartsStore.getState()
+      const baseline = useChatPartsStore.getState().userSendVersion
+
+      store.upsertPart('ses_a', {
+        type: 'text', id: 'prt_1', sessionID: 'ses_a', messageID: 'msg_1',
+        text: 'hi', metadata: {},
+      } as Part)
+      store.appendPartDelta('ses_a', 'prt_1', 'text', ' more')
+      store.setStreaming('ses_a', true)
+      store.setStreaming('ses_a', false)
+
+      expect(useChatPartsStore.getState().userSendVersion).toBe(baseline)
+    })
+  })
+
   describe('streamingBySession', () => {
     it('setStreaming(on=true) marks the session as streaming', () => {
       useChatPartsStore.getState().setStreaming('ses_a', true)
@@ -226,6 +317,9 @@ describe('streamingBySession persistence', () => {
       partIndexBySession: new Map(),
       streamingBySession: new Set<string>(),
       pendingDeltasBySession: new Map(),
+      version: 0,
+      layoutVersion: 0,
+      userSendVersion: 0,
     })
     sessionStorage.clear()
   })

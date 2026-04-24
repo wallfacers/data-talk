@@ -3,6 +3,9 @@ import { persist, createJSONStorage } from 'zustand/middleware'
 import type { Part, MessageInfo } from '@/services/channel/types'
 import { generateUuid } from '@/lib/uuid'
 
+const nextLayoutVersion = (state: Pick<ChatPartsState, 'layoutVersion'>, increment = 1) =>
+  (state.layoutVersion ?? 0) + increment
+
 type ChatPartsState = {
   partsBySession: Map<string, Map<string, Part[]>>
   infoBySession: Map<string, Map<string, MessageInfo>>
@@ -15,6 +18,13 @@ type ChatPartsState = {
    */
   pendingDeltasBySession: Map<string, Map<string, Record<string, string>>>
   version: number
+  layoutVersion: number
+  /**
+   * Bumps only when the user submits a new message. Drives auto-scroll's
+   * "re-follow on user send" behavior independently of structural layout
+   * changes caused by assistant deltas.
+   */
+  userSendVersion: number
 
   upsertPart: (sessionId: string, part: Part) => void
   upsertInfo: (sessionId: string, info: MessageInfo) => void
@@ -43,6 +53,8 @@ export const useChatPartsStore = create<ChatPartsState>()(
       streamingBySession: new Set<string>(),
       pendingDeltasBySession: new Map(),
       version: 0,
+      layoutVersion: 0,
+      userSendVersion: 0,
 
       upsertPart: (sessionId, part) => set((s) => {
         // Drain any deltas that arrived before this part was in the store
@@ -69,6 +81,7 @@ export const useChatPartsStore = create<ChatPartsState>()(
         const index = new Map(s.partIndexBySession.get(sessionId) ?? new Map())
         const list = [...(byMessage.get(merged.messageID) ?? [])]
         const idx = existing && existingParts ? existingParts.indexOf(existing) : list.findIndex((p) => p.id === merged.id)
+        const inserted = idx < 0
         if (idx >= 0) {
           list[idx] = merged
         } else {
@@ -84,6 +97,7 @@ export const useChatPartsStore = create<ChatPartsState>()(
           partsBySession: bySession,
           partIndexBySession: indexBySession,
           version: s.version + 1,
+          layoutVersion: nextLayoutVersion(s, inserted ? 1 : 0),
         }
         if (pending && pendingByPart) {
           const nextByPart = new Map(pendingByPart)
@@ -126,13 +140,18 @@ export const useChatPartsStore = create<ChatPartsState>()(
         }
 
         bySession.set(sessionId, map)
-        return { infoBySession: bySession, version: s.version + 1 }
+        return {
+          infoBySession: bySession,
+          version: s.version + 1,
+          layoutVersion: nextLayoutVersion(s, !existing ? 1 : 0),
+        }
       }),
 
       upsertMany: (sessionId, parts) => set((s) => {
         const partsBySession = new Map(s.partsBySession)
         const byMessage = new Map(partsBySession.get(sessionId) ?? new Map())
         const index = new Map(s.partIndexBySession.get(sessionId) ?? new Map())
+        let inserted = false
 
         for (const part of parts) {
           const list = [...(byMessage.get(part.messageID) ?? [])]
@@ -142,6 +161,7 @@ export const useChatPartsStore = create<ChatPartsState>()(
           } else {
             list.push(part)
             index.set(part.id, { messageId: part.messageID, idx: list.length - 1 })
+            inserted = true
           }
           byMessage.set(part.messageID, list)
         }
@@ -149,7 +169,12 @@ export const useChatPartsStore = create<ChatPartsState>()(
         partsBySession.set(sessionId, byMessage)
         const indexBySession = new Map(s.partIndexBySession)
         indexBySession.set(sessionId, index)
-        return { partsBySession, partIndexBySession: indexBySession, version: s.version + 1 }
+        return {
+          partsBySession,
+          partIndexBySession: indexBySession,
+          version: s.version + 1,
+          layoutVersion: nextLayoutVersion(s, inserted ? 1 : 0),
+        }
       }),
 
       replaceSession: (sessionId, list) => set((s) => {
@@ -178,7 +203,14 @@ export const useChatPartsStore = create<ChatPartsState>()(
         const pendingDeltasBySession = new Map(s.pendingDeltasBySession)
         pendingDeltasBySession.delete(sessionId)
 
-        return { partsBySession, infoBySession, partIndexBySession, pendingDeltasBySession, version: s.version + 1 }
+        return {
+          partsBySession,
+          infoBySession,
+          partIndexBySession,
+          pendingDeltasBySession,
+          version: s.version + 1,
+          layoutVersion: nextLayoutVersion(s),
+        }
       }),
 
       removePart: (sessionId, messageId, partId) => set((s) => {
@@ -198,6 +230,7 @@ export const useChatPartsStore = create<ChatPartsState>()(
           partsBySession: bySession,
           partIndexBySession: indexBySession,
           version: s.version + 1,
+          layoutVersion: nextLayoutVersion(s),
         }
         const pendingByPart = s.pendingDeltasBySession.get(sessionId)
         if (pendingByPart?.has(partId)) {
@@ -224,6 +257,7 @@ export const useChatPartsStore = create<ChatPartsState>()(
           streamingBySession: streaming,
           pendingDeltasBySession: pending,
           version: s.version + 1,
+          layoutVersion: nextLayoutVersion(s),
         }
       }),
 
@@ -256,7 +290,7 @@ export const useChatPartsStore = create<ChatPartsState>()(
         const next = new Set(s.streamingBySession)
         if (on) next.add(sessionId)
         else next.delete(sessionId)
-        return { streamingBySession: next, version: s.version + 1 }
+        return { streamingBySession: next, version: s.version + 1, layoutVersion: nextLayoutVersion(s) }
       }),
 
       getParts: (sessionId) => {
@@ -317,6 +351,8 @@ export const useChatPartsStore = create<ChatPartsState>()(
             partsBySession,
             partIndexBySession,
             version: s.version + 1,
+            layoutVersion: nextLayoutVersion(s),
+            userSendVersion: (s.userSendVersion ?? 0) + 1,
           }
         })
         return pendingId
@@ -382,7 +418,13 @@ export const useChatPartsStore = create<ChatPartsState>()(
         const infoBySession = new Map(s.infoBySession); infoBySession.set(sessionId, nextInfoMap)
         const partsBySession = new Map(s.partsBySession); partsBySession.set(sessionId, nextPartsMap)
         const partIndexBySession = new Map(s.partIndexBySession); partIndexBySession.set(sessionId, index)
-        return { infoBySession, partsBySession, partIndexBySession, version: s.version + 1 }
+        return {
+          infoBySession,
+          partsBySession,
+          partIndexBySession,
+          version: s.version + 1,
+          layoutVersion: nextLayoutVersion(s),
+        }
       }),
 
       markPendingUserFailed: (sessionId, pendingId, reason) => set((s) => {
@@ -391,7 +433,7 @@ export const useChatPartsStore = create<ChatPartsState>()(
         if (!info) return {}
         byInfo.set(pendingId, { ...info, __failed: true, __failReason: reason, __retrying: false })
         const infoBySession = new Map(s.infoBySession); infoBySession.set(sessionId, byInfo)
-        return { infoBySession, version: s.version + 1 }
+        return { infoBySession, version: s.version + 1, layoutVersion: nextLayoutVersion(s) }
       }),
 
       removePendingUser: (sessionId, pendingId) => set((s) => {
@@ -406,7 +448,13 @@ export const useChatPartsStore = create<ChatPartsState>()(
         const infoBySession = new Map(s.infoBySession); infoBySession.set(sessionId, byInfo)
         const partsBySession = new Map(s.partsBySession); partsBySession.set(sessionId, byMsg)
         const partIndexBySession = new Map(s.partIndexBySession); partIndexBySession.set(sessionId, index)
-        return { infoBySession, partsBySession, partIndexBySession, version: s.version + 1 }
+        return {
+          infoBySession,
+          partsBySession,
+          partIndexBySession,
+          version: s.version + 1,
+          layoutVersion: nextLayoutVersion(s),
+        }
       }),
 
       markSessionTurnCompleted: (sessionId) => set((s) => {

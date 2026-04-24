@@ -46,10 +46,17 @@ export function SplitView() {
   const [dragRatio, setDragRatio] = useState<number | null>(null)
   const isDraggingRef = useRef(false)
 
-  // Track store version to trigger auto-scroll on any change (including streaming text)
-  const version = useChatPartsStore((s) => s.version)
+  // Track structural changes only; streamed token growth follows through observers.
+  const layoutVersion = useChatPartsStore((s) => s.layoutVersion)
+  // A user send must re-arm follow even if the user had scrolled up during
+  // the previous assistant turn — otherwise their new message stays above
+  // the viewport with no assistant response visible.
+  const userSendVersion = useChatPartsStore((s) => s.userSendVersion)
 
-  const { ref: scrollRef, scrollToBottom } = useAutoScroll<HTMLDivElement>([version])
+  const { ref: scrollRef, scrollToBottom } = useAutoScroll<HTMLDivElement>(
+    [layoutVersion],
+    [userSendVersion],
+  )
 
   // Scroll to bottom on session change
   useEffect(() => {
@@ -122,7 +129,13 @@ export function SplitView() {
             <div
               ref={scrollRef}
               className="flex-1 overflow-y-auto px-2 py-4"
-              style={{ scrollbarGutter: 'stable', overflowAnchor: 'none' }}
+              // `overflow-anchor: auto` (browser default) lets the engine
+              // compensate `scrollTop` when content above the viewport
+              // shrinks — e.g. reasoning panel collapsing, code→chart fence
+              // transition, SQL action bar appearing. Our auto-follow logic
+              // still wins at the bottom because `scrollToBottom` runs after
+              // layout and sets scrollTop = scrollHeight explicitly.
+              style={{ scrollbarGutter: 'stable' }}
             >
               <div className="mx-auto w-full max-w-3xl">
                 {degradedNotice}

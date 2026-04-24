@@ -5,10 +5,11 @@ import { useAutoScroll } from './use-auto-scroll'
 type HarnessProps = {
   version: number
   text?: string
+  resetVersion?: number
 }
 
-function Harness({ version, text = String(version) }: HarnessProps) {
-  const { ref } = useAutoScroll<HTMLDivElement>([version])
+function Harness({ version, text = String(version), resetVersion = 0 }: HarnessProps) {
+  const { ref } = useAutoScroll<HTMLDivElement>([version], [resetVersion])
 
   return (
     <div ref={ref} data-testid="scroll-root">
@@ -79,9 +80,35 @@ class MockMutationObserver {
   }
 }
 
+class MockResizeObserver {
+  static instances: MockResizeObserver[] = []
+
+  callback: ResizeObserverCallback
+
+  constructor(callback: ResizeObserverCallback) {
+    this.callback = callback
+    MockResizeObserver.instances.push(this)
+  }
+
+  observe() {}
+
+  unobserve() {}
+
+  disconnect() {}
+
+  trigger(entries: ResizeObserverEntry[] = []) {
+    this.callback(entries, this as unknown as ResizeObserver)
+  }
+
+  static reset() {
+    MockResizeObserver.instances = []
+  }
+}
+
 describe('useAutoScroll', () => {
   const originalScrollTo = HTMLElement.prototype.scrollTo
   const originalMutationObserver = globalThis.MutationObserver
+  const originalResizeObserver = globalThis.ResizeObserver
   const originalRequestAnimationFrame = globalThis.requestAnimationFrame
   const originalCancelAnimationFrame = globalThis.cancelAnimationFrame
   let scrollToSpy: ReturnType<typeof vi.fn>
@@ -89,7 +116,9 @@ describe('useAutoScroll', () => {
 
   beforeEach(() => {
     MockMutationObserver.reset()
+    MockResizeObserver.reset()
     globalThis.MutationObserver = MockMutationObserver as unknown as typeof MutationObserver
+    globalThis.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver
     rafQueue = []
     globalThis.requestAnimationFrame = vi.fn((cb: FrameRequestCallback) => {
       rafQueue.push(cb)
@@ -118,6 +147,7 @@ describe('useAutoScroll', () => {
       value: originalScrollTo,
     })
     globalThis.MutationObserver = originalMutationObserver
+    globalThis.ResizeObserver = originalResizeObserver
     globalThis.requestAnimationFrame = originalRequestAnimationFrame
     globalThis.cancelAnimationFrame = originalCancelAnimationFrame
   })
@@ -279,5 +309,136 @@ describe('useAutoScroll', () => {
 
     expect(scrollToSpy).toHaveBeenCalledTimes(1)
     expect(metrics.scrollTop).toBe(1080)
+  })
+
+  it('does not layout-scroll for streamed content growth when deps do not change', () => {
+    const metrics = { clientHeight: 100, scrollHeight: 1000, scrollTop: 900 }
+    const view = render(<Harness version={0} text="```ts\nconst a = 1" />)
+    const root = view.getByTestId('scroll-root') as HTMLDivElement
+
+    attachScrollMetrics(root, metrics)
+    syncAtBottom(root)
+    act(() => {
+      flushAnimationFrameQueue(rafQueue)
+    })
+    scrollToSpy.mockClear()
+
+    metrics.scrollHeight = 1040
+    act(() => {
+      view.rerender(<Harness version={0} text="```ts\nconst a = 1\nconst b = 2" />)
+    })
+
+    expect(scrollToSpy).not.toHaveBeenCalled()
+
+    const observer = MockMutationObserver.instances[0]
+    expect(observer).toBeDefined()
+
+    act(() => {
+      observer.trigger()
+    })
+    expect(scrollToSpy).not.toHaveBeenCalled()
+
+    act(() => {
+      rafQueue.shift()?.(16)
+    })
+
+    expect(scrollToSpy).toHaveBeenCalledTimes(1)
+    expect(metrics.scrollTop).toBe(1040)
+  })
+
+  it('batches resize-driven content growth into a single follow on the next animation frame', () => {
+    const metrics = { clientHeight: 100, scrollHeight: 1000, scrollTop: 900 }
+    const view = render(<Harness version={0} text="```ts\nconst a = 1" />)
+    const root = view.getByTestId('scroll-root') as HTMLDivElement
+
+    attachScrollMetrics(root, metrics)
+    syncAtBottom(root)
+    act(() => {
+      flushAnimationFrameQueue(rafQueue)
+    })
+    scrollToSpy.mockClear()
+
+    const observer = MockResizeObserver.instances[0]
+    expect(observer).toBeDefined()
+
+    metrics.scrollHeight = 1040
+    act(() => {
+      observer.trigger()
+      observer.trigger()
+    })
+
+    expect(scrollToSpy).not.toHaveBeenCalled()
+    expect(rafQueue).toHaveLength(1)
+
+    act(() => {
+      rafQueue.shift()?.(16)
+    })
+
+    expect(scrollToSpy).toHaveBeenCalledTimes(1)
+    expect(metrics.scrollTop).toBe(1040)
+  })
+
+  it('resetDeps change re-enables follow and scrolls to bottom even after user scrolled up', () => {
+    const metrics = { clientHeight: 100, scrollHeight: 1000, scrollTop: 900 }
+    const view = render(<Harness version={0} resetVersion={0} />)
+    const root = view.getByTestId('scroll-root') as HTMLDivElement
+
+    attachScrollMetrics(root, metrics)
+    syncAtBottom(root)
+    act(() => {
+      flushAnimationFrameQueue(rafQueue)
+    })
+    scrollToSpy.mockClear()
+
+    // User scrolls upward — follow should be disabled.
+    metrics.scrollTop = 500
+    fireEvent.scroll(root)
+
+    // Assistant streaming content grows — follow must stay disabled.
+    metrics.scrollHeight = 1200
+    act(() => {
+      view.rerender(<Harness version={1} resetVersion={0} />)
+    })
+    expect(scrollToSpy).not.toHaveBeenCalled()
+    expect(metrics.scrollTop).toBe(500)
+
+    // User sends a new message — resetVersion bumps, follow must reset.
+    metrics.scrollHeight = 1400
+    act(() => {
+      view.rerender(<Harness version={2} resetVersion={1} />)
+    })
+
+    expect(scrollToSpy).toHaveBeenCalledTimes(1)
+    expect(metrics.scrollTop).toBe(1400)
+  })
+
+  it('does not follow resize-driven content growth after the user scrolls upward', () => {
+    const metrics = { clientHeight: 100, scrollHeight: 1000, scrollTop: 900 }
+    const view = render(<Harness version={0} text="```ts\nconst a = 1" />)
+    const root = view.getByTestId('scroll-root') as HTMLDivElement
+
+    attachScrollMetrics(root, metrics)
+    syncAtBottom(root)
+    act(() => {
+      flushAnimationFrameQueue(rafQueue)
+    })
+    scrollToSpy.mockClear()
+
+    metrics.scrollTop = 820
+    fireEvent.scroll(root)
+
+    const observer = MockResizeObserver.instances[0]
+    expect(observer).toBeDefined()
+
+    metrics.scrollHeight = 1040
+    act(() => {
+      observer.trigger()
+    })
+    act(() => {
+      rafQueue.shift()?.(16)
+    })
+
+    expect(scrollToSpy).not.toHaveBeenCalled()
+    expect(metrics.scrollTop).toBe(820)
   })
 })

@@ -118,6 +118,8 @@ describe('SplitView stage panel', () => {
       streamingBySession: new Set<string>(),
       pendingDeltasBySession: new Map(),
       version: 0,
+      layoutVersion: 0,
+      userSendVersion: 0,
     })
   })
 
@@ -178,7 +180,12 @@ describe('SplitView stage panel', () => {
     expect(panel.style.transform).toBe('translateX(0)')
   })
 
-  it('disables browser scroll anchoring on the chat scroller', () => {
+  it('leaves browser scroll anchoring enabled on the chat scroller', () => {
+    // Scroll anchoring must stay at its default (auto) so the browser
+    // compensates scrollTop when content above the viewport shrinks
+    // (reasoning collapse, code→chart fence transition, SQL action bar
+    // appearing on fence close). Our scrollToBottom still wins at the
+    // bottom because it runs after layout.
     useSessionStore.setState({
       activeSessionId: 's1',
       modeBySession: new Map([['s1', 'SPLIT']]),
@@ -190,7 +197,9 @@ describe('SplitView stage panel', () => {
     const scroller = container.querySelector('.flex-1.overflow-y-auto') as HTMLElement | null
 
     expect(scroller).not.toBeNull()
-    expect(scroller?.style.overflowAnchor).toBe('none')
+    // Empty string means the inline style is not set; the computed value
+    // will fall back to the browser default "auto".
+    expect(scroller?.style.overflowAnchor ?? '').not.toBe('none')
   })
 
   it('renders a degraded bridge notice when MCP health is degraded', () => {
@@ -315,5 +324,61 @@ describe('SplitView stage panel', () => {
 
     expect(container.querySelectorAll('[data-pending-user-motion="true"]')).toHaveLength(1)
     expect(metrics.scrollTop - scrollHeightBefore).toBe(estimateTurnHeight(pendingTurn))
+  })
+
+  it('does not run the structural scroll path for streamed text growth in an existing part', () => {
+    const store = useChatPartsStore.getState()
+    store.upsertInfo('s1', {
+      id: 'u_stream',
+      role: 'user',
+      sessionID: 's1',
+      time: { created: 1 },
+    })
+    store.upsertPart('s1', {
+      type: 'text',
+      id: 'u_stream_text',
+      sessionID: 's1',
+      messageID: 'u_stream',
+      text: 'write a ts helper',
+      metadata: {},
+    } as any)
+    store.upsertInfo('s1', {
+      id: 'a_stream',
+      role: 'assistant',
+      sessionID: 's1',
+      modelID: 'deepseek-chat',
+      time: { created: 2 },
+    })
+    store.upsertPart('s1', {
+      type: 'text',
+      id: 'a_stream_text',
+      sessionID: 's1',
+      messageID: 'a_stream',
+      text: '```ts\nconst a = 1',
+      metadata: {},
+    } as any)
+
+    useSessionStore.setState({
+      activeSessionId: 's1',
+      modeBySession: new Map([['s1', 'SPLIT']]),
+      hasEverSentBySession: new Map([['s1', true]]),
+      pendingPrompt: null,
+    })
+
+    const { container } = render(<SplitView />, { wrapper })
+    const scroller = container.querySelector('.flex-1.overflow-y-auto') as HTMLDivElement | null
+    expect(scroller).not.toBeNull()
+
+    const metrics = { clientHeight: 180, scrollTop: 0 }
+    attachDynamicScrollMetrics(scroller!, metrics)
+    metrics.scrollTop = scroller!.scrollHeight
+    fireEvent.scroll(scroller!)
+    scrollToSpy.mockClear()
+
+    act(() => {
+      store.appendPartDelta('s1', 'a_stream_text', 'text', '\nconst b = 2')
+    })
+
+    expect(scrollToSpy).not.toHaveBeenCalled()
   })
 })

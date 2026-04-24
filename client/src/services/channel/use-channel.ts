@@ -77,6 +77,37 @@ function shouldPromotePendingUserFromPart(
   return part.text === pendingText
 }
 
+function upsertSessionErrorMessage(sessionId: string, eventId: number | undefined, message: string) {
+  const store = useChatPartsStore.getState()
+  const infoMap = store.infoBySession.get(sessionId)
+  const now = Date.now()
+  const error = { name: 'SessionError', data: { message } }
+  const existingAssistant = Array.from(infoMap?.values() ?? [])
+    .reverse()
+    .find((info) => info.role === 'assistant')
+
+  if (existingAssistant) {
+    store.upsertInfo(sessionId, {
+      ...existingAssistant,
+      time: {
+        ...existingAssistant.time,
+        completed: existingAssistant.time.completed ?? now,
+      },
+      error: existingAssistant.error ?? error,
+    })
+    return
+  }
+
+  const suffix = typeof eventId === 'number' && eventId > 0 ? String(eventId) : 'latest'
+  store.upsertInfo(sessionId, {
+    id: `session_error_${sessionId}_${suffix}`,
+    role: 'assistant',
+    sessionID: sessionId,
+    time: { created: now, completed: now },
+    error,
+  })
+}
+
 // Deduplication set for action.invoke callIds. See the buildEventSink comment
 // where this is used — the SessionBus currently fans one event out to every
 // active subscriber sink, and a POST stream's subscription resumes from cursor
@@ -133,7 +164,16 @@ export function buildEventSink(
 ) {
   return (evt: StreamEvent) => {
     const { event, data } = evt
+    // Dedupe by event id. A live session has two subscribers at once
+    // (long-lived GET /subscribe sink plus each POST /send_message sink),
+    // and a fresh POST sink currently resumes from cursor 0 — so any
+    // event with id <= already-seen cursor has already been applied and
+    // applying it again doubles text in `message.part.delta` append
+    // fields. Events without an id (`id === 0`) bypass this gate because
+    // they have no deterministic way to be matched to a prior delivery.
     if (typeof evt.id === 'number' && evt.id > 0) {
+      const prev = useChannelStore.getState().lastEventIdBySession.get(sessionId) ?? 0
+      if (evt.id <= prev) return
       useChannelStore.getState().setLastEventId(sessionId, evt.id)
     }
     if (event === 'message.created' || event === 'message.updated') {
@@ -237,9 +277,11 @@ export function buildEventSink(
       }
     } else if (event === 'session.error') {
       const { error } = data as { error?: string }
+      const message = error ?? 'Session error'
       useChatPartsStore.getState().markSessionTurnCompleted(sessionId)
+      upsertSessionErrorMessage(sessionId, evt.id, message)
       useChatPartsStore.getState().setStreaming(sessionId, false)
-      showErrorToast(normalizeError(new Error(error ?? 'Session error')))
+      showErrorToast(normalizeError(new Error(message)))
     } else if (event === 'session.created' || event === 'session.deleted') {
       invalidateSessionLists(queryClient)
     } else if (event === 'session.compacted') {

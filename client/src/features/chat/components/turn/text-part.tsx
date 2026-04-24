@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { CopyIcon, CheckIcon } from 'lucide-react'
 import type { PartComponentProps } from './part-dispatcher'
-import { Markdown } from '../markdown/markdown'
 import { PacedMarkdown } from '../effects/paced-markdown'
 import type { TextPart as TextPartType } from '@/services/channel/types'
 import { copyToClipboard } from '@/lib/utils'
@@ -9,32 +8,34 @@ import { copyToClipboard } from '@/lib/utils'
 export function TextPart(props: PartComponentProps) {
   const part = props.part as TextPartType
   const streaming = props.info.role === 'assistant' && typeof props.info.time.completed !== 'number'
-  const text = (part.text ?? '').trim()
+  const rawText = part.text ?? ''
+  const visibleText = rawText.trim()
   const [copied, setCopied] = useState(false)
 
-  if (!text) return null
+  if (!visibleText) return null
 
   const handleCopy = async () => {
-    const success = await copyToClipboard(text)
+    const success = await copyToClipboard(rawText)
     if (success) {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     }
   }
 
+  // Use PacedMarkdown for both streaming and completed states so React keeps
+  // the inner Markdown tree mounted when `streaming` flips to false. A
+  // component-type swap (PacedMarkdown → Markdown) unmounted the renderer for
+  // one frame and caused the code block to briefly collapse, which shifted
+  // content below it upward — visible as a scroll jump at stream end.
   return (
     <div data-component="text-part" className="my-1">
-      {streaming ? (
-        <PacedMarkdown
-          text={text}
-          cacheKey={part.id}
-          streaming
-          messageId={part.messageID}
-          partId={part.id}
-        />
-      ) : (
-        <Markdown text={text} cacheKey={part.id} messageId={part.messageID} partId={part.id} />
-      )}
+      <PacedMarkdown
+        text={rawText}
+        cacheKey={part.id}
+        streaming={streaming}
+        messageId={part.messageID}
+        partId={part.id}
+      />
       {props.showCopy && (
         <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
           <button onClick={handleCopy} className="flex items-center hover:text-foreground" aria-label="Copy">
