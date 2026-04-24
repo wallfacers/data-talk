@@ -6,10 +6,23 @@ type HarnessProps = {
   version: number
   text?: string
   resetVersion?: number
+  storageKey?: string
 }
 
-function Harness({ version, text = String(version), resetVersion = 0 }: HarnessProps) {
-  const { ref } = useAutoScroll<HTMLDivElement>([version], [resetVersion])
+function Harness({ version, text = String(version), resetVersion = 0, storageKey }: HarnessProps) {
+  const { ref } = useAutoScroll<HTMLDivElement>([version], [resetVersion], storageKey)
+
+  return (
+    <div ref={ref} data-testid="scroll-root">
+      <div data-testid="stream-text">{text}</div>
+    </div>
+  )
+}
+
+function ConditionalHarness({ version, text = String(version), show }: HarnessProps & { show: boolean }) {
+  const { ref } = useAutoScroll<HTMLDivElement>([version])
+
+  if (!show) return <div data-testid="empty-state" />
 
   return (
     <div ref={ref} data-testid="scroll-root">
@@ -141,6 +154,7 @@ describe('useAutoScroll', () => {
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
       configurable: true,
       writable: true,
@@ -168,6 +182,49 @@ describe('useAutoScroll', () => {
 
     expect(scrollToSpy).toHaveBeenCalledTimes(1)
     expect(metrics.scrollTop).toBe(1120)
+  })
+
+  it('keeps following after browser clamps programmatic scrollTo to the real max scrollTop', () => {
+    const metrics = { clientHeight: 100, scrollHeight: 1000, scrollTop: 900 }
+    const view = render(<Harness version={0} />)
+    const root = view.getByTestId('scroll-root') as HTMLDivElement
+
+    attachScrollMetrics(root, metrics)
+    syncAtBottom(root)
+    act(() => {
+      flushAnimationFrameQueue(rafQueue)
+    })
+    scrollToSpy.mockImplementation(function scrollTo(this: HTMLElement, options?: ScrollToOptions | number) {
+      if (typeof options === 'object' && options && typeof options.top === 'number') {
+        ;(this as HTMLDivElement).scrollTop = Math.min(
+          options.top,
+          Math.max(0, (this as HTMLDivElement).scrollHeight - (this as HTMLDivElement).clientHeight),
+        )
+      }
+    })
+    scrollToSpy.mockClear()
+
+    metrics.scrollHeight = 1120
+    act(() => {
+      view.rerender(<Harness version={1} />)
+    })
+    expect(metrics.scrollTop).toBe(1020)
+
+    scrollToSpy.mockClear()
+    metrics.scrollHeight = 1160
+    fireEvent.scroll(root)
+
+    const observer = MockMutationObserver.instances[0]
+    expect(observer).toBeDefined()
+    act(() => {
+      observer.trigger()
+    })
+    act(() => {
+      rafQueue.shift()?.(16)
+    })
+
+    expect(scrollToSpy).toHaveBeenCalledTimes(1)
+    expect(metrics.scrollTop).toBe(1060)
   })
 
   it('stops auto-scroll after the user manually scrolls upward even if still near the bottom', () => {
@@ -316,6 +373,40 @@ describe('useAutoScroll', () => {
 
     expect(scrollToSpy).toHaveBeenCalledTimes(1)
     expect(metrics.scrollTop).toBe(1080)
+  })
+
+  it('attaches content-growth observers when the scroll element appears after initial render', () => {
+    const metrics = { clientHeight: 100, scrollHeight: 1000, scrollTop: 900 }
+    const view = render(<ConditionalHarness version={0} text="a" show={false} />)
+
+    act(() => {
+      view.rerender(<ConditionalHarness version={0} text="a" show />)
+    })
+    const root = view.getByTestId('scroll-root') as HTMLDivElement
+    attachScrollMetrics(root, metrics)
+    syncAtBottom(root)
+    act(() => {
+      flushAnimationFrameQueue(rafQueue)
+    })
+    scrollToSpy.mockClear()
+
+    const observer = MockMutationObserver.instances[0]
+    expect(observer).toBeDefined()
+
+    metrics.scrollHeight = 1040
+    act(() => {
+      observer.trigger()
+    })
+
+    expect(scrollToSpy).not.toHaveBeenCalled()
+    expect(rafQueue).toHaveLength(1)
+
+    act(() => {
+      rafQueue.shift()?.(16)
+    })
+
+    expect(scrollToSpy).toHaveBeenCalledTimes(1)
+    expect(metrics.scrollTop).toBe(1040)
   })
 
   it('does not layout-scroll for streamed content growth when deps do not change', () => {
@@ -500,5 +591,24 @@ describe('useAutoScroll', () => {
     })
 
     expect(scrollToSpy).not.toHaveBeenCalled()
+  })
+
+  it('does not persist scroll snapshots for reload restore', () => {
+    vi.useFakeTimers()
+    sessionStorage.clear()
+    const metrics = { clientHeight: 100, scrollHeight: 1000, scrollTop: 900 }
+    const view = render(<Harness version={0} storageKey="chat-scroll-s1" />)
+    const root = view.getByTestId('scroll-root') as HTMLDivElement
+
+    attachScrollMetrics(root, metrics)
+    syncAtBottom(root)
+
+    metrics.scrollTop = 500
+    fireEvent.scroll(root)
+    act(() => {
+      vi.advanceTimersByTime(300)
+    })
+
+    expect(sessionStorage.getItem('chat-scroll-s1')).toBeNull()
   })
 })

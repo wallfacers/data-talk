@@ -1,33 +1,36 @@
-import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 const FOLLOW_THRESHOLD_PX = 150
-const SAVE_SCROLL_DEBOUNCE_MS = 300
 
-type ScrollSnapshot = { dfb: number; scrollHeight: number }
+function getMaxScrollTop(el: HTMLElement): number {
+  return Math.max(0, el.scrollHeight - el.clientHeight)
+}
 
 export function useAutoScroll<T extends HTMLElement>(
   deps: any[],
   resetDeps: any[] = [],
-  storageKey?: string,
+  _storageKey?: string,
 ) {
-  const ref = useRef<T>(null)
+  const nodeRef = useRef<T | null>(null)
+  const [node, setNode] = useState<T | null>(null)
   const isAtBottom = useRef(true)
   const followEnabled = useRef(true)
   const lastScrollTop = useRef(0)
+  const lastFollowScrollHeight = useRef(0)
   // A deps-triggered layout scroll should own the entire current frame. Any
   // MutationObserver callbacks that fire from the same append/reflow wave must
   // be ignored, otherwise a newly sent user bubble can land low and then get
   // "corrected" by a second scroll a moment later.
   const suppressMutationScrolls = useRef(false)
+  const pendingFollowAfterSuppression = useRef(false)
   const releaseMutationSuppressionFrame = useRef<number | null>(null)
   const scheduledFollowFrame = useRef<number | null>(null)
-  // Pending scroll-position restore from sessionStorage. Set on mount when a
-  // saved position exists; cleared once applied or when scrollToBottom fires.
-  const pendingScrollRestore = useRef<ScrollSnapshot | null>(null)
-  const saveScrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // Always holds the latest storageKey without adding it to every callback dep.
-  const storageKeyRef = useRef(storageKey)
-  storageKeyRef.current = storageKey
+
+  const ref = useCallback((nextNode: T | null) => {
+    if (nodeRef.current === nextNode) return
+    nodeRef.current = nextNode
+    setNode(nextNode)
+  }, [])
 
   const cancelScheduledFollow = useCallback(() => {
     if (scheduledFollowFrame.current === null) return
@@ -36,15 +39,17 @@ export function useAutoScroll<T extends HTMLElement>(
   }, [])
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
-    const el = ref.current
+    const el = nodeRef.current
     if (!el) return
 
     cancelScheduledFollow()
-    // Explicit scroll (user send, session switch) cancels any pending restoration.
-    pendingScrollRestore.current = null
     followEnabled.current = true
     isAtBottom.current = true
-    lastScrollTop.current = el.scrollHeight
+    // Browsers clamp scrollTop to scrollHeight - clientHeight. Recording the
+    // unclamped scrollHeight makes the next native scroll event look like a
+    // user-initiated upward move and incorrectly disables streaming follow.
+    lastScrollTop.current = getMaxScrollTop(el)
+    lastFollowScrollHeight.current = el.scrollHeight
 
     // 流式输出时保持 auto，避免 smooth 跟不上更新节奏。
     el.scrollTo({
@@ -72,11 +77,16 @@ export function useAutoScroll<T extends HTMLElement>(
     releaseMutationSuppressionFrame.current = requestAnimationFrame(() => {
       suppressMutationScrolls.current = false
       releaseMutationSuppressionFrame.current = null
+      const shouldFollowAfterSuppression = pendingFollowAfterSuppression.current && followEnabled.current
+      pendingFollowAfterSuppression.current = false
+      if (shouldFollowAfterSuppression) {
+        scrollToBottom('auto')
+      }
     })
-  }, [])
+  }, [scrollToBottom])
 
   const handleScroll = useCallback(() => {
-    const el = ref.current
+    const el = nodeRef.current
     if (!el) return
 
     const { scrollTop, scrollHeight, clientHeight } = el
@@ -95,23 +105,11 @@ export function useAutoScroll<T extends HTMLElement>(
     }
 
     lastScrollTop.current = scrollTop
-
-    // Persist scroll position so Ctrl+R can restore it.
-    const sk = storageKeyRef.current
-    if (sk) {
-      if (saveScrollTimer.current !== null) clearTimeout(saveScrollTimer.current)
-      saveScrollTimer.current = setTimeout(() => {
-        saveScrollTimer.current = null
-        try {
-          sessionStorage.setItem(sk, JSON.stringify({ dfb: distanceFromBottom, scrollHeight }))
-        } catch { /* quota / private mode */ }
-      }, SAVE_SCROLL_DEBOUNCE_MS)
-    }
   }, [])
 
   // Scroll-event listener + initial state snapshot.
   useEffect(() => {
-    const el = ref.current
+    const el = node
     if (!el) return
 
     lastScrollTop.current = el.scrollTop
@@ -119,7 +117,7 @@ export function useAutoScroll<T extends HTMLElement>(
 
     el.addEventListener('scroll', handleScroll)
     return () => el.removeEventListener('scroll', handleScroll)
-  }, [handleScroll])
+  }, [handleScroll, node])
 
   // Detect user upward-scroll intent via input events. Scroll events alone are
   // unreliable because the browser coalesces them with programmatic scrollTo
@@ -127,7 +125,7 @@ export function useAutoScroll<T extends HTMLElement>(
   // upward position. Wheel / touch events fire before scrollTop is modified,
   // so they give a guaranteed signal of user intent.
   useEffect(() => {
-    const el = ref.current
+    const el = node
     if (!el) return
 
     let touchStartY = 0
@@ -150,14 +148,17 @@ export function useAutoScroll<T extends HTMLElement>(
       el.removeEventListener('touchstart', onTouchStart)
       el.removeEventListener('touchmove', onTouchMove)
     }
-  }, [])
+  }, [node])
 
   useEffect(() => {
-    const el = ref.current
+    const el = node
     if (!el) return
 
     const handleContentGrowth = () => {
       if (suppressMutationScrolls.current) {
+        if (followEnabled.current && el.scrollHeight > lastFollowScrollHeight.current) {
+          pendingFollowAfterSuppression.current = true
+        }
         return
       }
       if (followEnabled.current) {
@@ -182,68 +183,27 @@ export function useAutoScroll<T extends HTMLElement>(
       resizeObserver?.disconnect()
       cancelScheduledFollow()
     }
-  }, [cancelScheduledFollow, scheduleFollow])
+  }, [cancelScheduledFollow, node, scheduleFollow])
 
   useEffect(() => {
     return () => {
       if (releaseMutationSuppressionFrame.current !== null) {
         cancelAnimationFrame(releaseMutationSuppressionFrame.current)
       }
+      pendingFollowAfterSuppression.current = false
       cancelScheduledFollow()
-      if (saveScrollTimer.current !== null) clearTimeout(saveScrollTimer.current)
     }
   }, [cancelScheduledFollow])
-
-  // On storageKey change (session switch), reload saved scroll position.
-  // If the user was not at the bottom, set followEnabled=false and record a
-  // pending restore target; scrollToBottom (triggered by session-switch or
-  // user-send) clears it if the caller explicitly wants to go to bottom.
-  useEffect(() => {
-    pendingScrollRestore.current = null
-    if (!storageKey) return
-    try {
-      const raw = sessionStorage.getItem(storageKey)
-      if (raw !== null) {
-        const snap = JSON.parse(raw) as ScrollSnapshot
-        if (snap.dfb > FOLLOW_THRESHOLD_PX) {
-          followEnabled.current = false
-          isAtBottom.current = false
-          pendingScrollRestore.current = snap
-        }
-        // dfb <= threshold → user was at bottom → keep followEnabled=true (default).
-      }
-    } catch { /* parse error */ }
-  }, [storageKey])
 
   // Structural appends like a newly sent user bubble must land before paint,
   // otherwise the message renders at the old scroll position for one frame
   // and visibly jumps up to the bottom on the next frame.
   useLayoutEffect(() => {
-    // If a saved scroll position is waiting to be restored, apply it once
-    // enough content has loaded (≥90% of the stored scrollHeight). This lets
-    // Ctrl+R re-land the user at their previous position rather than always
-    // jumping to the bottom.
-    if (pendingScrollRestore.current !== null) {
-      const el = ref.current
-      if (el && el.scrollHeight >= pendingScrollRestore.current.scrollHeight * 0.9) {
-        const { dfb } = pendingScrollRestore.current
-        pendingScrollRestore.current = null
-        const targetTop = Math.max(0, el.scrollHeight - el.clientHeight - dfb)
-        el.scrollTop = targetTop
-        lastScrollTop.current = targetTop
-        followEnabled.current = false
-        isAtBottom.current = false
-        return
-      }
-      // Content not loaded yet → skip auto-scroll; try again on next dep change.
-      return
-    }
-
     if (followEnabled.current) {
       suppressMutationsUntilNextFrame()
       scrollToBottom('auto')
     }
-  }, [scrollToBottom, suppressMutationsUntilNextFrame, ...deps])
+  }, [node, scrollToBottom, suppressMutationsUntilNextFrame, ...deps])
 
   // A bump in resetDeps represents a user-initiated action (e.g. sending a
   // new message) that must override any earlier "user scrolled up" state.
