@@ -209,6 +209,7 @@ DataTalk 的差异化在于 **AI 直接操作数据库**，但不能让 AI 蛮�
 
 | 设计文档 | 日期 | 主题 |
 |----------|------|------|
+| [Chat Tool System Arg Folding Design](./2026-04-24-chat-tool-system-arg-folding-design.md) | 2026-04-24 | 聊天区工具调用卡片的 trigger 默认只显示工具名称，所有输入参数统一下沉到展开内容，避免执行细节污染主阅读路径（Shipped 2026-04-24） |
 | [OpenCode MCP Tool Migration Design](./2026-04-24-opencode-mcp-tool-migration-design.md) | 2026-04-24 | 将 DataTalk 从 legacy plugin-tool 注册/回调链路切到 MCP 单路径：embedded 模式采用 config-first 启动顺序，external 模式采用 config patch + runtime reconcile；通过 OpenCode plugin hook 注入隐藏会话上下文（含进程级 nonce 防伪），CLIENT action 用 `DeferredResult` 保留同步等待语义；定义 `/mcp` 端点的访问控制（loopback + Origin + nonce 三层）、`opencode.json` 合并算法（DataTalk 仅持有 `mcp.datatalk` / `agents` / `plugins` 三键、整块覆盖 + 去重追加 + 原子写）、`tools/list` 过滤位 `ActionDescriptor.exposeToMcp`、SessionMap 写入时机、前端 renderer 注册键 hard rename 清单，并钉死 OpenCode MCP transport 等设计输入；统一把对外 tool naming 切到 `datatalk_*` 风格 |
 | [Reasoning Auto-Expand Setting Design](./2026-04-24-reasoning-auto-expand-setting-design.md) | 2026-04-24 | 在“设置 > 通用”新增“思考中自动展开”开关：默认关闭；关闭时 reasoning 面板在思考期间不自动展开；打开时思考开始自动展开；无论配置如何，思考完成后统一自动收起（Shipped 2026-04-24） |
 | [AI Text-to-Chart Fence Design](./2026-04-23-ai-text-to-chart-fence-design.md) | 2026-04-23 | AI 以 ```chart 围栏 + ECharts JSON 在聊天流内联渲染图表，流式 JSON 未完整时展示骨架占位；图表块工具栏支持"打开到工作台"提升为 Stage artifact；`datatalk.render_chart` 从默认路径降级为显式保存路径，`sourceArtifactId` 放宽为可选；Stage `ChartArtifact` 统一改用 echarts-for-react，废弃 recharts（Shipped 2026-04-24） |

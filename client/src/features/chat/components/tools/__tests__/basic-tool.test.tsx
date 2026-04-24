@@ -41,4 +41,30 @@ describe('BasicTool', () => {
     fireEvent.click(container.querySelector('[data-component="tool-trigger"]')!)
     expect(container.querySelector('[data-open="true"]')).not.toBeNull()
   })
+
+  it('wraps long trigger args inside the tool card', () => {
+    const { container } = render(
+      <BasicTool
+        icon="mcp"
+        status="completed"
+        trigger={{
+          title: 'datatalk_ui_list',
+          args: [
+            '__dtOpenCodeSessionId=ses_241b8620bffeURHQFdER7THDyw__dtCallId=call_83a2bab1d31b4b5fbf4d6556__dtBridgeNonce=89a6862c-4940-4539-ab6b-942e5d3d01fc',
+          ],
+        }}
+      >
+        body
+      </BasicTool>,
+    )
+
+    const trigger = container.querySelector('[data-component="tool-trigger"]')
+    const arg = container.querySelector('[data-slot="basic-tool-tool-arg"]')
+
+    expect(trigger).not.toBeNull()
+    expect(arg).not.toBeNull()
+    expect(trigger!).toHaveClass('items-start')
+    expect(arg!.parentElement).toHaveClass('flex-wrap')
+    expect(arg!).toHaveClass('break-all')
+  })
 })

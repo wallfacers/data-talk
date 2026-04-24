@@ -2,43 +2,60 @@ import { BasicTool } from '../basic-tool'
 import type { ToolRendererProps } from '../tool-registry'
 import { resolveRisk } from '../../helpers/risk'
 
-function summarizeInput(input: Record<string, any> | undefined): { subtitle?: string; args: string[] } {
-  if (!input) return { args: [] }
-  const keys = ['description', 'query', 'url', 'filePath', 'path', 'pattern', 'name', 'sql']
-  const subtitle = keys
-    .map((k) => input[k])
-    .find((v): v is string => typeof v === 'string' && v.length > 0)
-  const skip = new Set(keys)
-  const args = Object.entries(input)
-    .filter(([k]) => !skip.has(k))
-    .flatMap(([k, v]) => {
-      if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return [`${k}=${v}`]
-      return []
-    })
-    .slice(0, 3)
-  return { subtitle, args }
+type SummarizedInput = {
+  detailArgs: string[]
+}
+
+const isPrimitiveArg = (value: unknown): value is string | number | boolean =>
+  typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
+
+function summarizeInput(input: Record<string, any> | undefined): SummarizedInput {
+  if (!input) return { detailArgs: [] }
+
+  return {
+    detailArgs: Object.entries(input).flatMap(([k, v]) => (isPrimitiveArg(v) ? [`${k}=${v}`] : [])),
+  }
 }
 
 export function GenericTool(props: ToolRendererProps) {
   const { part, descriptor } = props
   const risk = resolveRisk(part, descriptor)
-  const { subtitle, args } = summarizeInput(part.state.input)
+  const { detailArgs } = summarizeInput(part.state.input)
   const variant = descriptor.category === 'question' ? 'question' : 'risk'
+  const outputText =
+    part.state.output === undefined
+      ? null
+      : typeof part.state.output === 'string'
+        ? part.state.output
+        : JSON.stringify(part.state.output, null, 2)
+  const detailContent = detailArgs.length > 0 ? (
+    <pre
+      data-slot="generic-tool-detail-args"
+      className="whitespace-pre-wrap break-all text-xs font-mono text-muted-foreground"
+    >
+      {detailArgs.join('\n')}
+    </pre>
+  ) : null
+  const outputContent = outputText ? (
+    <pre className="overflow-x-auto text-xs">
+      {outputText}
+    </pre>
+  ) : null
+
   return (
     <BasicTool
       icon="mcp"
       risk={risk}
       variant={variant}
       status={part.state.status}
-      trigger={{ title: part.tool, subtitle, args }}
+      trigger={{ title: part.tool }}
       defaultOpen={props.defaultOpen}
     >
-      {part.state.output ? (
-        <pre className="text-xs overflow-x-auto">
-          {typeof part.state.output === 'string'
-            ? part.state.output
-            : JSON.stringify(part.state.output, null, 2)}
-        </pre>
+      {detailContent || outputContent ? (
+        <div className="space-y-2">
+          {detailContent}
+          {outputContent}
+        </div>
       ) : null}
     </BasicTool>
   )

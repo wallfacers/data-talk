@@ -10,6 +10,10 @@
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [Chat Tool Trigger Name Only](./2026-04-24-chat-tool-trigger-name-only-plan.md) | 2026-04-24 | 聊天区工具调用卡片的 trigger 已进一步收紧为只显示工具名称，所有输入参数统一下沉到展开内容；`object=workspace`、`action=open` 以及 `__dt*` 系统参数现在都只在展开后可见。 |
+| [Chat Tool Trigger System Args Suppression](./2026-04-24-chat-tool-trigger-system-args-suppression-plan.md) | 2026-04-24 | 聊天区工具调用卡片的 trigger 已进一步收紧为只保留工具主名称和普通可读参数，不再显示系统 bridge 参数名；完整 `key=value` 继续只在展开内容中可见。 |
+| [Chat Tool System Arg Folding](./2026-04-24-chat-tool-system-arg-folding-plan.md) | 2026-04-24 | 聊天区工具调用卡片现在会把系统级长参数在 trigger 中折叠为名称展示，完整 `key=value` 下沉到展开内容；`GenericTool` 新增回归测试并保持普通短参数 `key=value` 呈现不变。 |
+| [Chat Tool Call Overflow](./2026-04-24-chat-tool-call-overflow-plan.md) | 2026-04-24 | 修复聊天区工具调用卡片在长参数（如 session/call/nonce）场景下的触发行内容溢出；`BasicTool` 现将标题/副标题与参数分层排版，长参数可在卡片内断行，并补充前端回归测试。 |
 | [OpenCode MCP Tool Migration](./2026-04-24-opencode-mcp-tool-migration-plan.md) | 2026-04-24 | DataTalk 已切到 MCP 单路径：后端新增 `/mcp` + nonce/session bridge、managed bootstrap/external reconcile、health degraded 状态；前端切换 `datatalk_*` renderer/prompt naming 并接入 degraded surface；legacy `/plugin/register-tool` / `/api/opencode-tool/*` / `shared-secret` callback 链路已删除。后端 `mvn compile -q`、定向 JUnit smoke，前端 vitest 与 `npx tsc --noEmit` 通过。 |
 | [Reasoning Placeholder Chevron Sync](./2026-04-24-reasoning-placeholder-chevron-sync-plan.md) | 2026-04-24 | 修复 AI 首包占位“思考中…”箭头方向与“思考中自动展开”设置不同步的问题；`SessionTurn` 现直接消费 `autoExpandReasoning` 控制占位态 Chevron，并补充对应前端回归测试。 |
 | [Reasoning Auto-Expand Setting](./2026-04-24-reasoning-auto-expand-setting-plan.md) | 2026-04-24 | `设置 > 通用` 新增“思考中自动展开”开关；默认关闭；关闭时 reasoning 面板在思考期间不自动展开；打开时思考开始自动展开；无论配置如何，思考完成后统一自动收起。 |

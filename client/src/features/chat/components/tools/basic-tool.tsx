@@ -52,13 +52,13 @@ export function BasicTool(props: {
         props.variant === 'question' && 'border-blue-400/50',
       )}
     >
-      <div className="flex w-full items-center gap-2 px-3 py-2">
+      <div className="flex w-full items-start gap-2 px-3 py-2">
         <button
           type="button"
           data-component="tool-trigger"
           data-open={open ? 'true' : 'false'}
           onClick={handleToggle}
-          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+          className="flex min-w-0 flex-1 items-start gap-2 text-left"
         >
           {riskStyles && (
             <span
@@ -73,28 +73,39 @@ export function BasicTool(props: {
             </span>
           )}
           {isTriggerTitle(t) ? (
-            <div className="flex min-w-0 flex-1 items-baseline gap-2">
-              <span data-slot="basic-tool-tool-title" className="font-medium">
-                <TextShimmer text={t.title} active={pending} />
-              </span>
-              {!pending && t.subtitle && (
+            <div data-slot="basic-tool-trigger-content" className="flex min-w-0 flex-1 flex-col gap-1">
+              <div
+                data-slot="basic-tool-trigger-heading"
+                className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1"
+              >
                 <span
-                  data-slot="basic-tool-tool-subtitle"
-                  className="text-xs text-muted-foreground truncate"
+                  data-slot="basic-tool-tool-title"
+                  className="min-w-0 font-medium [overflow-wrap:anywhere]"
                 >
-                  {t.subtitle}
+                  <TextShimmer text={t.title} active={pending} />
                 </span>
-              )}
-              {!pending &&
-                t.args?.map((a, i) => (
+                {!pending && t.subtitle && (
                   <span
-                    key={i}
-                    data-slot="basic-tool-tool-arg"
-                    className="text-xs font-mono text-muted-foreground"
+                    data-slot="basic-tool-tool-subtitle"
+                    className="min-w-0 max-w-full truncate text-xs text-muted-foreground"
                   >
-                    {a}
+                    {t.subtitle}
                   </span>
-                ))}
+                )}
+              </div>
+              {!pending && t.args && t.args.length > 0 && (
+                <div data-slot="basic-tool-trigger-args" className="flex min-w-0 flex-wrap gap-x-2 gap-y-1">
+                  {t.args.map((a, i) => (
+                    <span
+                      key={i}
+                      data-slot="basic-tool-tool-arg"
+                      className="min-w-0 max-w-full break-all text-xs font-mono text-muted-foreground"
+                    >
+                      {a}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
             t
