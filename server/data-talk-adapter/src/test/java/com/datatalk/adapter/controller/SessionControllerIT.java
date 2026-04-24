@@ -93,6 +93,28 @@ class SessionControllerIT {
     }
 
     @Test
+    void 创建会话遇到失效_connectionId_时降级为_null() throws Exception {
+        mvc.perform(post("/api/sessions")
+                .contentType("application/json")
+                .content("{\"connectionId\":\"stale-conn\",\"title\":\"旧缓存\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.connectionId").value(org.hamcrest.Matchers.nullValue()))
+            .andExpect(jsonPath("$.title").value("旧缓存"));
+    }
+
+    @Test
+    void create_allows_localhost_1421_origin_for_dev_worktrees() throws Exception {
+        mvc.perform(post("/api/sessions")
+                .header(HttpHeaders.ORIGIN, "http://localhost:1421")
+                .contentType("application/json")
+                .content("{\"title\":\"worktree dev\"}"))
+            .andExpect(status().isOk())
+            .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "http://localhost:1421"))
+            .andExpect(jsonPath("$.id").isNotEmpty());
+    }
+
+    @Test
     void create_uses_en_locale_for_default_title() throws Exception {
         mvc.perform(post("/api/sessions")
                 .header(HttpHeaders.ACCEPT_LANGUAGE, "en-US")

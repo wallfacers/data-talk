@@ -344,5 +344,6 @@ describe('WorkspaceAdapter', () => {
       connectionId: 'c9',
       connectionName: 'warehouse-prod',
     })
+    expect(useConnectionStore.getState().activeConnectionId).toBe('c9')
   })
 })

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
-import { render, act, screen } from '@testing-library/react'
+import { render, act, fireEvent, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SplitView } from './split-view'
 import { useStageStore } from '@/stores/stage-store'
@@ -18,6 +18,8 @@ vi.mock('@/features/session/hooks/use-opencode-health', () => ({
 
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+const originalScrollTo = HTMLElement.prototype.scrollTo
+let scrollToSpy: ReturnType<typeof vi.fn>
 
 function wrapper({ children }: { children: React.ReactNode }) {
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
@@ -29,16 +31,73 @@ function findStagePanel(container: HTMLElement): HTMLElement {
   return el
 }
 
+function estimateTurnHeight(turn: HTMLElement | null): number {
+  if (!turn) return 0
+
+  let height = 16
+
+  if (turn.querySelector('.bg-primary')) {
+    height += 56
+  }
+
+  const textParts = Array.from(turn.querySelectorAll('[data-component="text-part"]'))
+  for (const textPart of textParts) {
+    height += 48
+    if (textPart.querySelector('.mt-1.flex.items-center.gap-2.text-xs.text-muted-foreground')) {
+      height += 16
+    }
+  }
+
+  if (turn.querySelector('[aria-label="思考中…"]')) {
+    height += 36
+  }
+
+  if (turn.querySelector('.min-h-9') && textParts.length === 0 && !turn.querySelector('[aria-label="思考中…"]')) {
+    height += 36
+  }
+
+  return height
+}
+
+function estimateChatScrollHeight(scroller: HTMLElement): number {
+  return 32 + Array.from(scroller.querySelectorAll('[data-component="session-turn"]'))
+    .reduce((sum, turn) => sum + estimateTurnHeight(turn as HTMLElement), 0)
+}
+
+function attachDynamicScrollMetrics(el: HTMLDivElement, metrics: { clientHeight: number; scrollTop: number }) {
+  Object.defineProperty(el, 'clientHeight', {
+    configurable: true,
+    get: () => metrics.clientHeight,
+  })
+  Object.defineProperty(el, 'scrollHeight', {
+    configurable: true,
+    get: () => estimateChatScrollHeight(el),
+  })
+  Object.defineProperty(el, 'scrollTop', {
+    configurable: true,
+    get: () => metrics.scrollTop,
+    set: (value: number) => {
+      metrics.scrollTop = value
+    },
+  })
+}
+
 describe('SplitView stage panel', () => {
   beforeEach(() => {
     queryClient.clear()
     vi.useFakeTimers()
-    useOpencodeHealthMock.mockReturnValue({
-      data: { status: 'ok', timestamp: '2026-04-24T00:00:00Z', message: 'OpenCode MCP bridge ready', reason: null },
+    scrollToSpy = vi.fn(function scrollTo(this: HTMLElement, options?: ScrollToOptions | number) {
+      if (typeof options === 'object' && options && typeof options.top === 'number') {
+        ;(this as HTMLDivElement).scrollTop = options.top
+      }
     })
     Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
       configurable: true,
-      value: vi.fn(),
+      writable: true,
+      value: scrollToSpy,
+    })
+    useOpencodeHealthMock.mockReturnValue({
+      data: { status: 'ok', timestamp: '2026-04-24T00:00:00Z', message: 'OpenCode MCP bridge ready', reason: null },
     })
     useStageStore.setState({
       openBySession: new Map(),
@@ -52,11 +111,23 @@ describe('SplitView stage panel', () => {
       hasEverSentBySession: new Map(),
       pendingPrompt: null,
     })
-    useChatPartsStore.setState({ partsBySession: new Map() })
+    useChatPartsStore.setState({
+      partsBySession: new Map(),
+      infoBySession: new Map(),
+      partIndexBySession: new Map(),
+      streamingBySession: new Set<string>(),
+      pendingDeltasBySession: new Map(),
+      version: 0,
+    })
   })
 
   afterEach(() => {
     vi.useRealTimers()
+    Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+      configurable: true,
+      writable: true,
+      value: originalScrollTo,
+    })
   })
 
   it('open=false 时 stage 容器 transform 为 translateX(100%)', () => {
@@ -142,5 +213,107 @@ describe('SplitView stage panel', () => {
     render(<SplitView />, { wrapper })
 
     expect(screen.queryByText('AI 工具桥未就绪')).toBeNull()
+  })
+
+  it('scrolls only by the new pending turn height on the second send when the chat is already scrollable', () => {
+    const store = useChatPartsStore.getState()
+    const seedTurn = (ids: {
+      userId: string
+      userText: string
+      userCreated: number
+      assistantId: string
+      assistantText: string
+      assistantCreated: number
+      assistantCompleted?: number
+    }) => {
+      store.upsertInfo('s1', {
+        id: ids.userId,
+        role: 'user',
+        sessionID: 's1',
+        time: { created: ids.userCreated },
+      })
+      store.upsertPart('s1', {
+        type: 'text',
+        id: `${ids.userId}-text`,
+        sessionID: 's1',
+        messageID: ids.userId,
+        text: ids.userText,
+        metadata: {},
+      } as any)
+      store.upsertInfo('s1', {
+        id: ids.assistantId,
+        role: 'assistant',
+        sessionID: 's1',
+        modelID: 'deepseek-chat',
+        time: {
+          created: ids.assistantCreated,
+          completed: ids.assistantCompleted,
+        },
+      })
+      store.upsertPart('s1', {
+        type: 'text',
+        id: `${ids.assistantId}-text`,
+        sessionID: 's1',
+        messageID: ids.assistantId,
+        text: ids.assistantText,
+        metadata: {},
+      } as any)
+    }
+
+    seedTurn({
+      userId: 'u_hist_1',
+      userText: 'history question 1',
+      userCreated: 1,
+      assistantId: 'a_hist_1',
+      assistantText: 'history answer 1',
+      assistantCreated: 2,
+      assistantCompleted: 3,
+    })
+    seedTurn({
+      userId: 'u_hist_2',
+      userText: 'history question 2',
+      userCreated: 4,
+      assistantId: 'a_hist_2',
+      assistantText: 'history answer 2',
+      assistantCreated: 5,
+      assistantCompleted: 6,
+    })
+    seedTurn({
+      userId: 'u_first_send',
+      userText: 'first send question',
+      userCreated: 7,
+      assistantId: 'a_first_send',
+      assistantText: 'first send answer',
+      assistantCreated: 8,
+    })
+
+    useSessionStore.setState({
+      activeSessionId: 's1',
+      modeBySession: new Map([['s1', 'SPLIT']]),
+      hasEverSentBySession: new Map([['s1', true]]),
+      pendingPrompt: null,
+    })
+
+    const { container } = render(<SplitView />, { wrapper })
+    const scroller = container.querySelector('.flex-1.overflow-y-auto') as HTMLDivElement | null
+
+    expect(scroller).not.toBeNull()
+
+    const metrics = { clientHeight: 180, scrollTop: 0 }
+    attachDynamicScrollMetrics(scroller!, metrics)
+    metrics.scrollTop = scroller!.scrollHeight
+    fireEvent.scroll(scroller!)
+    scrollToSpy.mockClear()
+
+    const scrollHeightBefore = scroller!.scrollHeight
+
+    act(() => {
+      store.upsertPendingUser('s1', 'second send question')
+    })
+
+    const pendingTurn = screen.getByText('second send question').closest('[data-component="session-turn"]') as HTMLElement | null
+
+    expect(container.querySelectorAll('[data-pending-user-motion="true"]')).toHaveLength(1)
+    expect(metrics.scrollTop - scrollHeightBefore).toBe(estimateTurnHeight(pendingTurn))
   })
 })

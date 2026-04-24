@@ -4,15 +4,14 @@
 
 ## 活跃计划
 
-| 计划 | 状态 | 摘要 |
-|------|------|------|
-| [Chat Jitter DeepSeek Alignment](./2026-04-24-chat-jitter-deepseek-alignment-plan.md) | pending | 基于 DeepSeek 公开可观察到的聊天前端信号（virtual list、`overflow-anchor:none`、stable gutter、observer/raf follow 触发器）对照 DataTalk 当前实现，按“先锁定 turn 高度突变，再复核 scroll ownership，最后再决定是否需要列表架构升级”的顺序推进用户发送气泡抖动排查与修复。 |
+（当前无）
 
 ## 已完成计划
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
 | [User Bubble Scroll Jitter](./2026-04-24-user-bubble-scroll-jitter-plan.md) | 2026-04-24 | 修复聊天区存在滚动条时，用户新发送气泡在底部出现时的垂直位置抖动；在保留 `useAutoScroll` 同轮 observer 去重的同时，`SessionTurn` 现在会在 pending 阶段先渲染与真实 thinking indicator 同构的隐形壳，并禁止上一条未 completed 的 assistant turn 在下一次发送时突然长出 `Copy` footer。 |
+| [Chat Jitter DeepSeek Alignment](./2026-04-24-chat-jitter-deepseek-alignment-plan.md) | 2026-04-24 | 聊天区发送抖动已按“先锁 turn 高度、再压缩 follow 触发”的窄范围策略收口：`SessionTurn` 现只在 assistant turn settled 后挂 footer/meta，`useAutoScroll` 将 mutation follow 合并到 `requestAnimationFrame`，`PacedMarkdown` 在 fenced code 流式阶段跳过本地 staged reveal；相关 chat 回归、`npx tsc --noEmit` 与人工复测已完成，无需额外 virtualization 计划。 |
 | [Chat Tool Trigger Name Only](./2026-04-24-chat-tool-trigger-name-only-plan.md) | 2026-04-24 | 聊天区工具调用卡片的 trigger 已进一步收紧为只显示工具名称，所有输入参数统一下沉到展开内容；`object=workspace`、`action=open` 以及 `__dt*` 系统参数现在都只在展开后可见。 |
 | [Reasoning Placeholder Flicker](./2026-04-24-reasoning-placeholder-flicker-plan.md) | 2026-04-24 | 修复聊天区“思考中…”在 reasoning 首包阶段因全局占位与 reasoning 占位快速交替而产生的抖动；空 reasoning shell 现在不会抢占 `SessionTurn` 占位，直到 reasoning 真正收到文本才接管界面。 |
 | [Chat Tool Trigger System Args Suppression](./2026-04-24-chat-tool-trigger-system-args-suppression-plan.md) | 2026-04-24 | 聊天区工具调用卡片的 trigger 已进一步收紧为只保留工具主名称和普通可读参数，不再显示系统 bridge 参数名；完整 `key=value` 继续只在展开内容中可见。 |

@@ -14,11 +14,19 @@ export function useAutoScroll<T extends HTMLElement>(deps: any[]) {
   // "corrected" by a second scroll a moment later.
   const suppressMutationScrolls = useRef(false)
   const releaseMutationSuppressionFrame = useRef<number | null>(null)
+  const scheduledFollowFrame = useRef<number | null>(null)
+
+  const cancelScheduledFollow = useCallback(() => {
+    if (scheduledFollowFrame.current === null) return
+    cancelAnimationFrame(scheduledFollowFrame.current)
+    scheduledFollowFrame.current = null
+  }, [])
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
     const el = ref.current
     if (!el) return
 
+    cancelScheduledFollow()
     followEnabled.current = true
     isAtBottom.current = true
     lastScrollTop.current = el.scrollHeight
@@ -28,7 +36,18 @@ export function useAutoScroll<T extends HTMLElement>(deps: any[]) {
       top: el.scrollHeight,
       behavior,
     })
-  }, [])
+  }, [cancelScheduledFollow])
+
+  const scheduleFollow = useCallback(() => {
+    if (scheduledFollowFrame.current !== null) return
+
+    scheduledFollowFrame.current = requestAnimationFrame(() => {
+      scheduledFollowFrame.current = null
+      if (followEnabled.current) {
+        scrollToBottom('auto')
+      }
+    })
+  }, [scrollToBottom])
 
   const suppressMutationsUntilNextFrame = useCallback(() => {
     suppressMutationScrolls.current = true
@@ -82,24 +101,30 @@ export function useAutoScroll<T extends HTMLElement>(deps: any[]) {
         return
       }
       if (followEnabled.current) {
-        scrollToBottom('auto')
+        scheduleFollow()
       }
     })
 
     observer.observe(el, {
       childList: true,
       subtree: true,
-      characterData: true
+      characterData: true,
     })
 
-    return () => observer.disconnect()
-  }, [scrollToBottom])
-
-  useEffect(() => () => {
-    if (releaseMutationSuppressionFrame.current !== null) {
-      cancelAnimationFrame(releaseMutationSuppressionFrame.current)
+    return () => {
+      observer.disconnect()
+      cancelScheduledFollow()
     }
-  }, [])
+  }, [cancelScheduledFollow, scheduleFollow])
+
+  useEffect(() => {
+    return () => {
+      if (releaseMutationSuppressionFrame.current !== null) {
+        cancelAnimationFrame(releaseMutationSuppressionFrame.current)
+      }
+      cancelScheduledFollow()
+    }
+  }, [cancelScheduledFollow])
 
   // Structural appends like a newly sent user bubble must land before paint,
   // otherwise the message renders at the old scroll position for one frame

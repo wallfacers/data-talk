@@ -10,10 +10,11 @@ export function DataSourcePickerDialogHost() {
   const preferredConnectionId = useDataSourcePickerStore((s) => s.preferredConnectionId)
   const resolvePick = useDataSourcePickerStore((s) => s.resolvePick)
   const cancelPick = useDataSourcePickerStore((s) => s.cancelPick)
-  const { data: connections = [] } = useConnections()
+  const { data: connections } = useConnections()
   const setConnections = useConnectionStore((s) => s.setConnections)
 
   useEffect(() => {
+    if (connections === undefined) return
     setConnections(connections)
   }, [connections, setConnections])
 
@@ -23,7 +24,7 @@ export function DataSourcePickerDialogHost() {
       onOpenChange={(next) => {
         if (!next) cancelPick()
       }}
-      connections={connections}
+      connections={connections ?? []}
       recentConnectionIds={readRecentConnectionIds()}
       preferredConnectionId={preferredConnectionId}
       onPick={(connection) => {

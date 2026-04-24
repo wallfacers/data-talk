@@ -4,14 +4,15 @@ import { useAutoScroll } from './use-auto-scroll'
 
 type HarnessProps = {
   version: number
+  text?: string
 }
 
-function Harness({ version }: HarnessProps) {
+function Harness({ version, text = String(version) }: HarnessProps) {
   const { ref } = useAutoScroll<HTMLDivElement>([version])
 
   return (
     <div ref={ref} data-testid="scroll-root">
-      <div>{version}</div>
+      <div data-testid="stream-text">{text}</div>
     </div>
   )
 }
@@ -230,6 +231,42 @@ describe('useAutoScroll', () => {
     metrics.scrollHeight = 1080
     act(() => {
       observer.trigger()
+    })
+
+    expect(scrollToSpy).toHaveBeenCalledTimes(1)
+    expect(metrics.scrollTop).toBe(1080)
+  })
+
+  it('batches repeated streaming text mutations into a single follow on the next animation frame', () => {
+    const metrics = { clientHeight: 100, scrollHeight: 1000, scrollTop: 900 }
+    const view = render(<Harness version={0} text="a" />)
+    const root = view.getByTestId('scroll-root') as HTMLDivElement
+
+    attachScrollMetrics(root, metrics)
+    syncAtBottom(root)
+    act(() => {
+      flushAnimationFrameQueue(rafQueue)
+    })
+    scrollToSpy.mockClear()
+
+    const observer = MockMutationObserver.instances[0]
+    expect(observer).toBeDefined()
+
+    metrics.scrollHeight = 1040
+    act(() => {
+      observer.trigger()
+    })
+
+    metrics.scrollHeight = 1080
+    act(() => {
+      observer.trigger()
+    })
+
+    expect(scrollToSpy).not.toHaveBeenCalled()
+    expect(rafQueue).toHaveLength(1)
+
+    act(() => {
+      rafQueue.shift()?.(16)
     })
 
     expect(scrollToSpy).toHaveBeenCalledTimes(1)

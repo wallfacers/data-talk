@@ -4,6 +4,7 @@ import { Markdown } from '../markdown/markdown'
 
 const PACE_MS = 24
 const SNAP = /[\s.,!?;:)\]]/
+const CODE_FENCE = /```|~~~/
 
 function step(size: number): number {
   if (size <= 12) return 2
@@ -33,11 +34,18 @@ export function PacedMarkdown(props: {
   const shownRef = useRef(shown)
   shownRef.current = shown
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const bypassPacing = props.streaming && CODE_FENCE.test(props.text)
 
   useEffect(() => {
     const clear = () => { if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = undefined } }
 
     if (!props.streaming) {
+      clear()
+      setShown(props.text)
+      return clear
+    }
+
+    if (bypassPacing) {
       clear()
       setShown(props.text)
       return clear
@@ -65,7 +73,7 @@ export function PacedMarkdown(props: {
     timerRef.current = setTimeout(tick, PACE_MS)
 
     return clear
-  }, [props.text, props.streaming])
+  }, [bypassPacing, props.text, props.streaming])
 
   if (!shown) return null
   return (

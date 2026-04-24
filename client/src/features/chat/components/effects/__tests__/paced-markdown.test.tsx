@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render } from '@testing-library/react'
+import { act, render } from '@testing-library/react'
 import { PacedMarkdown } from '../paced-markdown'
 
 describe('PacedMarkdown', () => {
@@ -12,11 +12,26 @@ describe('PacedMarkdown', () => {
   it('streaming=true reveals progressively', async () => {
     vi.useFakeTimers()
     const { container } = render(<PacedMarkdown text="hello world! this is streaming" cacheKey="x2" streaming={true} />)
-    vi.advanceTimersByTime(24)
+    await act(async () => {
+      vi.advanceTimersByTime(24)
+    })
     const partial1 = container.textContent ?? ''
-    vi.advanceTimersByTime(240)
+    await act(async () => {
+      vi.advanceTimersByTime(240)
+    })
     const partial2 = container.textContent ?? ''
     expect(partial2.length).toBeGreaterThanOrEqual(partial1.length)
+    vi.useRealTimers()
+  })
+
+  it('streaming=true bypasses paced reveal once fenced code appears', async () => {
+    vi.useFakeTimers()
+    const text = 'before\n\n```sql\nselect * from orders\n```'
+    const { container } = render(<PacedMarkdown text={text} cacheKey="code-stream" streaming={true} />)
+
+    expect(container.textContent).toContain('before')
+    expect(container.textContent).toContain('select * from orders')
+
     vi.useRealTimers()
   })
 })

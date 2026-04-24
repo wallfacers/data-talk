@@ -45,4 +45,16 @@ describe('connection-store', () => {
 
     expect(useConnectionStore.getState().connections).toBe(firstList)
   })
+
+  it('setConnections clears stale activeConnectionId when it is no longer present', () => {
+    useConnectionStore.setState({
+      activeConnectionId: 'stale-conn',
+      connections: [],
+    } as unknown as Record<string, unknown>)
+
+    useConnectionStore.getState().setConnections([connection])
+
+    expect(useConnectionStore.getState().connections).toEqual([connection])
+    expect(useConnectionStore.getState().activeConnectionId).toBeNull()
+  })
 })

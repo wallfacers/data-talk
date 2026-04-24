@@ -72,9 +72,13 @@
 - Modify: `client/src/features/chat/components/turn/__tests__/session-turn.test.tsx`
 - Modify: `client/src/features/session/split-view.test.tsx`
 
-- [ ] Add a failing regression test for the user-reported path: refreshed page, first send, second send, existing scrollbar present.
-- [ ] Assert not only scroll position, but also whether any previous turn grows in height during the next send.
-- [ ] Capture the exact DOM invariant we want: new pending user turn mounts once, previous completed/incomplete turn height stays stable across the same send.
+- [x] Add a failing regression test for the user-reported path: refreshed page, first send, second send, existing scrollbar present.
+- [x] Assert not only scroll position, but also whether any previous turn grows in height during the next send.
+- [x] Capture the exact DOM invariant we want: new pending user turn mounts once, previous completed/incomplete turn height stays stable across the same send.
+
+**Status notes (2026-04-24):**
+- `session-turn.test.tsx` now fails with previous-turn synthetic DOM height growing from `120` to `136` when a new pending user turn appends.
+- `split-view.test.tsx` now fails with bottom scroll delta `124` while the new pending turn itself contributes only `108`, showing that an older turn also grows during the same send.
 
 ## Task 2: Audit Turn Height Mutations Against DeepSeek Invariants
 
@@ -83,9 +87,15 @@
 - Modify: `client/src/features/chat/components/turn/user-bubble.tsx`
 - Modify: `client/src/features/chat/components/turn/assistant-stream.tsx`
 
-- [ ] Enumerate every send-time height mutation source inside a turn: thinking placeholder, reasoning shell, copy footer, duration/model footer, pending placeholders.
-- [ ] Delay or reserve any non-essential footer/meta that still changes an older turn’s height during a new send.
-- [ ] Keep pending user and assistant placeholder DOM shape stable across `pending -> streaming -> completed`.
+- [x] Enumerate every send-time height mutation source inside a turn: thinking placeholder, reasoning shell, copy footer, duration/model footer, pending placeholders.
+- [x] Delay or reserve any non-essential footer/meta that still changes an older turn’s height during a new send.
+- [x] Keep pending user and assistant placeholder DOM shape stable across `pending -> streaming -> completed`.
+
+**Status notes (2026-04-24):**
+- Root cause confirmed for the locked repro: when an incomplete assistant turn stopped being `isLastTurn`, `showCopyPartID` flipped from `null` to the last text part id, so the assistant copy/model/duration footer mounted into the older turn and added the extra `16px`.
+- `SessionTurn` now gates assistant footer reveal on the turn being settled (`assistantMessages.every(time.completed is set)`), rather than merely no longer being the last turn.
+- Audited send-time turn shell mutation sources in `SessionTurn` / `AssistantStream`; no second height source beyond the footer/meta mount was needed to eliminate the locked repro.
+- Pending user bubble identity and assistant placeholder shell stayed stable for the reproduced `pending -> streaming -> completed` path; no additional DOM shape rewrite was required in this fix.
 
 ## Task 3: Re-Check Scroll Ownership Only After Turn Stability
 
@@ -94,9 +104,16 @@
 - Modify: `client/src/hooks/use-auto-scroll.test.tsx`
 - Modify: `client/src/features/session/split-view.tsx`
 
-- [ ] Re-verify that bottom-follow writes happen only once per structural append wave.
-- [ ] Confirm `lastScrollTop` continues using actual max scroll position (`scrollHeight - clientHeight`), since rolling that back reintroduced duplicate-message behavior.
-- [ ] Only if Task 2 is green and jitter remains, evaluate whether composer/list ownership needs to move closer to DeepSeek’s “list owns scroll, composer is shell” model.
+- [x] Re-verify that bottom-follow writes happen only once per structural append wave.
+- [x] Confirm the existing `lastScrollTop` path should stay untouched for this fix, since changing that ownership path previously reintroduced duplicate-message behavior. (No code change required for the locked repro.)
+- [x] Only if Task 2 is green and jitter remains, evaluate whether composer/list ownership needs to move closer to DeepSeek’s “list owns scroll, composer is shell” model. (Not needed once Task 2/3 removed the reproduced jitter.)
+
+**Status notes (2026-04-24):**
+- `useAutoScroll` mutation follow is now batched behind `requestAnimationFrame`, so repeated streaming text mutations before the next paint only trigger one bottom-follow write.
+- The synchronous `useLayoutEffect` scroll remains in place for structural appends, preserving the earlier fix that prevents a newly sent bubble from landing low for one frame and then jumping upward.
+- Added `use-auto-scroll.test.tsx` regression covering repeated streaming text mutations while pinned to bottom.
+- For fenced code blocks, `PacedMarkdown` now bypasses local 24ms staged reveal and renders the latest upstream text directly, reducing extra intermediate reflows during code streaming.
+- The locked repro no longer required a deeper scroll-ownership rewrite; existing append-time ownership stayed in place after the turn-height fix and mutation batching landed.
 
 ## Task 4: Escalate Only If Evidence Still Points To List Architecture
 
@@ -105,9 +122,9 @@
 - Inspect: `client/src/features/chat/components/helpers/use-session-turns.ts`
 - Inspect: `client/src/services/channel/use-channel.ts`
 
-- [ ] Compare full-list rendering vs. targeted virtualization cost using the locked repro.
-- [ ] Decide whether virtualization is justified, or whether stable turn shells are sufficient.
-- [ ] If virtualization is needed, write a separate follow-up plan rather than bundling it into the jitter fix.
+- [x] Compare full-list rendering vs. targeted virtualization cost using the locked repro. (Result: no follow-up needed for this fix.)
+- [x] Decide whether virtualization is justified, or whether stable turn shells are sufficient. (Result: stable turn shells + follow batching were sufficient for the reproduced issue.)
+- [x] If virtualization is needed, write a separate follow-up plan rather than bundling it into the jitter fix. (Not needed.)
 
 ## Task 5: Consolidated Verification
 
@@ -115,9 +132,14 @@
 - Modify: `docs/exec-plans/2026-04-24-chat-jitter-deepseek-alignment-plan.md`
 - Modify: `docs/exec-plans/index.md`
 
-- [ ] Run `cd client && npx vitest run src/features/chat/components/turn/__tests__/session-turn.test.tsx src/features/session/split-view.test.tsx src/hooks/use-auto-scroll.test.tsx src/services/channel/use-channel.test.ts`.
-- [ ] Run `cd client && npx tsc --noEmit`.
-- [ ] Mark the plan with actual outcomes and move it from Active to Completed only after the repro path is verified manually.
+- [x] Run `cd client && npx vitest run src/features/chat/components/turn/__tests__/session-turn.test.tsx src/features/session/split-view.test.tsx src/hooks/use-auto-scroll.test.tsx src/services/channel/use-channel.test.ts`.
+- [x] Run `cd client && npx tsc --noEmit`.
+- [x] Mark the plan with actual outcomes and move it from Active to Completed only after the repro path is verified manually.
+
+**Final outcomes (2026-04-24):**
+- Automated verification passed for the targeted chat regressions (`session-turn`, `split-view`, `use-auto-scroll`, `use-channel`) and related streaming/code-fence regressions.
+- `npx tsc --noEmit` passed after the final chat, chooser, and connection-persistence fixes.
+- Manual verification on the worktree app confirmed the reproduced “refresh then second send” jitter path no longer jumps, and the remaining code-stream jitter was reduced enough to close without a virtualization follow-up.
 
 ## Decision Rule
 

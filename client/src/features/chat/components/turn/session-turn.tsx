@@ -46,7 +46,8 @@ export function SessionTurn(props: {
   const anyVisiblePart = useMemo(
     () => assistantMessages.some((m) => (partsMap?.get(m.id) ?? []).some((p) => {
       if (p.type === 'text') return !!(p as any).text?.trim()
-      if (p.type === 'reasoning') return !!(p as any).text?.trim()
+      // Reasoning parts are visible immediately once mounted; their shell owns the placeholder.
+      if (p.type === 'reasoning') return true
       return p.type === 'tool'
     })),
     [assistantMessages, partsMap],
@@ -63,11 +64,14 @@ export function SessionTurn(props: {
     }
     return null
   }, [assistantMessages, partsMap])
-  const hasIncompleteAssistant = assistantMessages.some((m) => typeof m.time.completed !== 'number')
+
+  const assistantTurnSettled = useMemo(
+    () => assistantMessages.length > 0 && assistantMessages.every((m) => typeof m.time.completed === 'number'),
+    [assistantMessages],
+  )
 
   // working 已含 streaming 分支，因此首包延迟期（assistant message 尚未创建，或没有可见 part 时）也能显示"思考中…"。
   const showThinking = working && !err && !anyVisiblePart
-  const showThinkingShell = reserveAssistantSpace && !err && !interrupted && !anyVisiblePart
 
   const turnDurationMs = useMemo(() => {
     const start = props.userInfo?.time.created
@@ -92,23 +96,17 @@ export function SessionTurn(props: {
           sessionId={props.sessionId}
           messages={assistantMessages}
           working={working}
-          showCopyPartID={working || hasIncompleteAssistant ? null : lastTextPartId}
+          showCopyPartID={assistantTurnSettled ? lastTextPartId : null}
           turnDurationMs={turnDurationMs}
         />
         {interrupted && (
           <div className="my-2 text-center text-xs text-muted-foreground">— {t('chat.interrupted')} —</div>
         )}
-        {showThinkingShell && (
-          <div className="flex flex-col gap-1">
-            <div
-              data-testid="assistant-thinking-shell"
-              aria-hidden={showThinking ? undefined : true}
-              className={showThinking ? 'my-2 flex flex-col' : 'my-2 invisible flex flex-col'}
-            >
-              <div className="flex w-fit items-center gap-1.5 text-sm font-medium text-muted-foreground">
-                <ChevronRightIcon size={16} className={autoExpandReasoning ? 'rotate-90' : undefined} />
-                <TextShimmer text={t('chat.thinking')} active={showThinking} />
-              </div>
+        {showThinking && (
+          <div className="my-2 flex flex-col">
+            <div className="flex w-fit items-center gap-1.5 text-sm font-medium text-muted-foreground">
+              <ChevronRightIcon size={16} className={autoExpandReasoning ? 'rotate-90' : undefined} />
+              <TextShimmer text={t('chat.thinking')} active />
             </div>
           </div>
         )}
