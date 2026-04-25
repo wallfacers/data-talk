@@ -52,10 +52,22 @@ echarts.use([
 ])
 
 const DEFAULT_HEIGHT = 320
+const DEFAULT_ASPECT_RATIO = 16 / 9
+const COMPACT_ASPECT_RATIO = 4 / 3
+const COMPACT_ASPECT_THRESHOLD = 700
+
+type AspectBadgeSize = {
+  ratio: number
+  compact: boolean
+}
 
 type ChartRendererProps = {
   option: Record<string, unknown>
   height?: number
+  aspectRatio?: number
+  compactAspectRatio?: number
+  compactWidthThreshold?: number
+  showAspectBadge?: boolean
 }
 
 type ChartSize = {
@@ -63,23 +75,98 @@ type ChartSize = {
   height: number
 }
 
+type MeasureBox = {
+  clientWidth: number
+  clientHeight: number
+}
+
+function formatRatioLabel(ratio: number): string {
+  const closeTo = (target: number) => Math.abs(ratio - target) < 0.03
+  if (closeTo(16 / 9)) return '16:9'
+  if (closeTo(4 / 3)) return '4:3'
+  if (closeTo(1)) return '1:1'
+  return `${ratio.toFixed(2)}:1`
+}
+
 function readThemeName(root: HTMLElement | null = globalThis.document?.documentElement ?? null) {
   return root?.classList.contains('dark') ? CHART_THEME_DARK : CHART_THEME_LIGHT
 }
 
-function measureSize(container: HTMLDivElement | null, fallbackHeight: number): ChartSize {
-  const width = container?.clientWidth ?? 0
-  const height = container?.clientHeight ?? fallbackHeight
+function preferredRatio(width: number, ratio: number, compactRatio: number, threshold: number): AspectBadgeSize {
+  if (width > 0 && width < threshold) {
+    return { ratio: compactRatio, compact: true }
+  }
+  return { ratio, compact: false }
+}
+
+function computeSize(
+  container: MeasureBox | null,
+  fallbackHeight: number,
+  ratio: number,
+  compactRatio: number,
+  compactWidthThreshold: number,
+): { size: ChartSize; ratio: number; compact: boolean } {
+  const containerWidth = container?.clientWidth ?? 0
+  const containerHeight = container?.clientHeight ?? 0
+  const target = preferredRatio(containerWidth, ratio, compactRatio, compactWidthThreshold)
+
+  if (containerWidth <= 0) {
+    return {
+      size: {
+        width: '100%',
+        height: fallbackHeight,
+      },
+      ratio: target.ratio,
+      compact: target.compact,
+    }
+  }
+
+  const byWidth = containerWidth / target.ratio
+  if (containerHeight > 0 && byWidth > containerHeight) {
+    return {
+      size: {
+        width: Math.round(containerHeight * target.ratio),
+        height: Math.max(1, Math.round(containerHeight)),
+      },
+      ratio: target.ratio,
+      compact: target.compact,
+    }
+  }
 
   return {
-    width: width > 0 ? width : '100%',
-    height: height > 0 ? height : fallbackHeight,
+    size: {
+      width: containerWidth,
+      height: Math.max(1, Math.round(byWidth)),
+    },
+    ratio: target.ratio,
+    compact: target.compact,
   }
 }
 
-export function ChartRenderer({ option, height = DEFAULT_HEIGHT }: ChartRendererProps) {
+function measureSize(
+  container: HTMLDivElement | null,
+  fallbackHeight: number,
+  ratio: number,
+  compactRatio: number,
+  compactWidthThreshold: number,
+): ChartSize {
+  return computeSize(container, fallbackHeight, ratio, compactRatio, compactWidthThreshold).size
+}
+
+export function ChartRenderer({
+  option,
+  height = DEFAULT_HEIGHT,
+  aspectRatio = DEFAULT_ASPECT_RATIO,
+  compactAspectRatio = COMPACT_ASPECT_RATIO,
+  compactWidthThreshold = COMPACT_ASPECT_THRESHOLD,
+  showAspectBadge = false,
+}: ChartRendererProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [themeName, setThemeName] = useState(() => readThemeName())
+  const [ratioState, setRatioState] = useState({
+    ratio: aspectRatio,
+    compact: false,
+  })
   const [size, setSize] = useState<ChartSize>(() => ({
     width: '100%',
     height,
@@ -91,10 +178,15 @@ export function ChartRenderer({ option, height = DEFAULT_HEIGHT }: ChartRenderer
     () => injectOptionFix(option) as EChartsCoreOption,
     [option],
   )
+  const ratioLabel = useMemo(() => formatRatioLabel(ratioState.ratio), [ratioState.ratio])
+  const aspectBadge = showAspectBadge
+    ? ratioLabel + (ratioState.compact ? ' · 适配比例' : '')
+    : ''
 
   useLayoutEffect(() => {
-    setSize(measureSize(containerRef.current, height))
-  }, [height])
+    setSize(measureSize(containerRef.current, height, aspectRatio, compactAspectRatio, compactWidthThreshold))
+    setRatioState(preferredRatio(containerRef.current?.clientWidth ?? 0, aspectRatio, compactAspectRatio, compactWidthThreshold))
+  }, [aspectRatio, compactAspectRatio, compactWidthThreshold, height])
 
   useEffect(() => {
     const container = containerRef.current
@@ -103,27 +195,41 @@ export function ChartRenderer({ option, height = DEFAULT_HEIGHT }: ChartRenderer
     }
 
     const observer = new ResizeObserver(([entry]) => {
-      const width = entry?.contentRect.width ?? container.clientWidth
-      const nextHeight = entry?.contentRect.height ?? container.clientHeight ?? height
+      const nextWidth = entry?.contentRect.width ?? container.clientWidth
+      const nextHeight = entry?.contentRect.height ?? container.clientHeight
+      const measured = computeSize(
+        {
+          clientWidth: nextWidth,
+          clientHeight: nextHeight,
+        },
+        height,
+        aspectRatio,
+        compactAspectRatio,
+        compactWidthThreshold,
+      )
 
       setSize((current) => {
-        const resolvedWidth = width > 0 ? width : current.width
-        const resolvedHeight = nextHeight > 0 ? nextHeight : height
-
-        if (current.width === resolvedWidth && current.height === resolvedHeight) {
+        if (current.width === measured.size.width && current.height === measured.size.height) {
           return current
         }
-
         return {
-          width: resolvedWidth,
-          height: resolvedHeight,
+          width: measured.size.width,
+          height: measured.size.height,
         }
+      })
+
+      setRatioState((state) => {
+        const nextCompact = measured.compact
+        if (state.compact === nextCompact && state.ratio === measured.ratio) {
+          return state
+        }
+        return { compact: nextCompact, ratio: measured.ratio }
       })
     })
 
     observer.observe(container)
     return () => observer.disconnect()
-  }, [height])
+  }, [aspectRatio, compactAspectRatio, compactWidthThreshold, height])
 
   useEffect(() => {
     const root = globalThis.document?.documentElement ?? null
@@ -154,7 +260,15 @@ export function ChartRenderer({ option, height = DEFAULT_HEIGHT }: ChartRenderer
   }, [])
 
   return (
-    <div ref={containerRef} style={{ height }}>
+    <div ref={containerRef} style={{ width: '100%' }} className="relative">
+      {showAspectBadge && (
+        <div
+          className="pointer-events-none absolute right-2 top-2 rounded-md border border-[var(--dt-border-subtle)] bg-[var(--dt-bg-overlay)] px-2 py-0.5 text-[11px] leading-[16px] tracking-wide text-[var(--dt-text-soft)]"
+          aria-label="chart aspect ratio"
+        >
+          {aspectBadge}
+        </div>
+      )}
       <ReactECharts
         key={themeName}
         notMerge={true}

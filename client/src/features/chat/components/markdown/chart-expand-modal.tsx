@@ -52,7 +52,7 @@ export function ChartExpandModal({ option, onClose }: ChartExpandModalProps) {
           </Tooltip>
         </div>
         <div className="min-h-0 flex-1 p-3">
-          <ChartRenderer option={option} height={getModalChartHeight()} />
+          <ChartRenderer option={option} height={getModalChartHeight()} showAspectBadge />
         </div>
       </div>
     </div>,
