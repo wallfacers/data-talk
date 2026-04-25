@@ -115,6 +115,7 @@ Registered UI actions:
 - If `target` is omitted, the client defaults to `active`.
 - `mode` is one of `state`, `schema`, `actions`, or `full`.
 - `mode=full` returns `state`, `schema`, and `actions`. For `query_editor`, `full` also includes `capabilities`.
+- `mode=actions` returns `{ "items": [...] }` where each item has `name`, `description`, and `paramsSchema`.
 
 `datatalk_ui_patch` always uses top-level `object=query_editor`, optional `target`, and `ops`.
 
@@ -159,7 +160,7 @@ For a query editor:
 - Read the `query_editor` state before versioned text edits so you have the latest `content` and `version`.
 - Use `datatalk_ui_patch` on `/content` for a full SQL rewrite.
 - Use `datatalk_ui_exec` with `object=query_editor`, `action=apply_text_edits`, and a fresh `params.baseVersion` only for targeted edits.
-- If `apply_text_edits` reports a version conflict, re-read the editor state and retry with the new `version`.
+- If `apply_text_edits` reports a version conflict, use `currentState.version` from the error response as the new `baseVersion` and retry immediately. Only re-read with `datatalk_ui_read(mode='state')` when `currentState` is absent from the error.
 - Use `set_context` only for one editor tab. Use `datatalk_set_data_context` when the user wants to change the session data context itself.
 - Use `run_sql` when the user wants to execute the SQL currently in the editor.
 - Use `format_sql` only when the user asks to format or clean up the current SQL text.

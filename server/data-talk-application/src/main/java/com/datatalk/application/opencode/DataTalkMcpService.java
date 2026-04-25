@@ -83,8 +83,12 @@ public class DataTalkMcpService {
             "type", "text",
             "text", serialize(outcome.output())
         )));
-        if (outcome.output() instanceof Map<?, ?> rawMap) {
-            result.put("structuredContent", (Map<String, Object>) rawMap);
+        if (!outcome.isError()) {
+            if (outcome.output() instanceof Map<?, ?> rawMap) {
+                result.put("structuredContent", (Map<String, Object>) rawMap);
+            } else if (outcome.output() instanceof List<?> list) {
+                result.put("structuredContent", Map.of("items", list));
+            }
         }
         if (outcome.isError()) {
             result.put("isError", true);
