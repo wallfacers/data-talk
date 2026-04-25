@@ -163,6 +163,7 @@ const MESSAGES = {
     'chat.explainSqlPrefix': '解释这条 SQL：\n',
     'chat.directQueryMode': '直查模式',
     'chat.promptPlaceholder': '用自然语言查询你的数据库...',
+    'chat.scrollToBottom': '回到底部',
 
     'session.heroSubtitle': '用自然语言和你的数据库对话',
     'session.needModel': '请先配置一个 AI 模型才能发送消息。',
@@ -540,6 +541,7 @@ const MESSAGES = {
     'chat.explainSqlPrefix': 'Explain this SQL:\n',
     'chat.directQueryMode': 'Direct query mode',
     'chat.promptPlaceholder': 'Query your database in natural language...',
+    'chat.scrollToBottom': 'Scroll to bottom',
 
     'session.heroSubtitle': 'Talk to your database in natural language',
     'session.needModel': 'Configure an AI model before sending messages.',

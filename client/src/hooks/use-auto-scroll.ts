@@ -13,7 +13,8 @@ export function useAutoScroll<T extends HTMLElement>(
 ) {
   const nodeRef = useRef<T | null>(null)
   const [node, setNode] = useState<T | null>(null)
-  const isAtBottom = useRef(true)
+  const isAtBottomRef = useRef(true)
+  const [isAtBottom, setIsAtBottom] = useState(true)
   const followEnabled = useRef(true)
   const lastScrollTop = useRef(0)
   const lastFollowScrollHeight = useRef(0)
@@ -38,13 +39,19 @@ export function useAutoScroll<T extends HTMLElement>(
     scheduledFollowFrame.current = null
   }, [])
 
+  const setBottomState = useCallback((next: boolean) => {
+    if (isAtBottomRef.current === next) return
+    isAtBottomRef.current = next
+    setIsAtBottom(next)
+  }, [])
+
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
     const el = nodeRef.current
     if (!el) return
 
     cancelScheduledFollow()
     followEnabled.current = true
-    isAtBottom.current = true
+    setBottomState(true)
     // Browsers clamp scrollTop to scrollHeight - clientHeight. Recording the
     // unclamped scrollHeight makes the next native scroll event look like a
     // user-initiated upward move and incorrectly disables streaming follow.
@@ -56,7 +63,7 @@ export function useAutoScroll<T extends HTMLElement>(
       top: el.scrollHeight,
       behavior,
     })
-  }, [cancelScheduledFollow])
+  }, [cancelScheduledFollow, setBottomState])
 
   const scheduleFollow = useCallback(() => {
     if (scheduledFollowFrame.current !== null) return
@@ -94,7 +101,7 @@ export function useAutoScroll<T extends HTMLElement>(
     const nearBottom = distanceFromBottom <= FOLLOW_THRESHOLD_PX
     const movedUp = scrollTop < lastScrollTop.current
 
-    isAtBottom.current = nearBottom
+    setBottomState(nearBottom)
 
     // Once the user cancels follow, it stays off for the rest of the
     // current turn. Only a fresh user send (resetDeps bump → scrollToBottom)
@@ -105,7 +112,7 @@ export function useAutoScroll<T extends HTMLElement>(
     }
 
     lastScrollTop.current = scrollTop
-  }, [])
+  }, [setBottomState])
 
   // Scroll-event listener + initial state snapshot.
   useEffect(() => {
@@ -113,11 +120,11 @@ export function useAutoScroll<T extends HTMLElement>(
     if (!el) return
 
     lastScrollTop.current = el.scrollTop
-    isAtBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight <= FOLLOW_THRESHOLD_PX
+    setBottomState(el.scrollHeight - el.scrollTop - el.clientHeight <= FOLLOW_THRESHOLD_PX)
 
     el.addEventListener('scroll', handleScroll)
     return () => el.removeEventListener('scroll', handleScroll)
-  }, [handleScroll, node])
+  }, [handleScroll, node, setBottomState])
 
   // Detect user upward-scroll intent via input events. Scroll events alone are
   // unreliable because the browser coalesces them with programmatic scrollTo

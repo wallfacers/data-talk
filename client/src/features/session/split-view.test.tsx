@@ -82,6 +82,46 @@ function attachDynamicScrollMetrics(el: HTMLDivElement, metrics: { clientHeight:
   })
 }
 
+function seedTextTurn(ids: {
+  userId: string
+  userText: string
+  userCreated: number
+  assistantId: string
+  assistantText: string
+  assistantCreated: number
+}) {
+  const store = useChatPartsStore.getState()
+  store.upsertInfo('s1', {
+    id: ids.userId,
+    role: 'user',
+    sessionID: 's1',
+    time: { created: ids.userCreated },
+  })
+  store.upsertPart('s1', {
+    type: 'text',
+    id: `${ids.userId}-text`,
+    sessionID: 's1',
+    messageID: ids.userId,
+    text: ids.userText,
+    metadata: {},
+  } as any)
+  store.upsertInfo('s1', {
+    id: ids.assistantId,
+    role: 'assistant',
+    sessionID: 's1',
+    modelID: 'deepseek-chat',
+    time: { created: ids.assistantCreated },
+  })
+  store.upsertPart('s1', {
+    type: 'text',
+    id: `${ids.assistantId}-text`,
+    sessionID: 's1',
+    messageID: ids.assistantId,
+    text: ids.assistantText,
+    metadata: {},
+  } as any)
+}
+
 describe('SplitView stage panel', () => {
   beforeEach(() => {
     queryClient.clear()
@@ -222,6 +262,64 @@ describe('SplitView stage panel', () => {
     render(<SplitView />, { wrapper })
 
     expect(screen.queryByText('AI 工具桥未就绪')).toBeNull()
+  })
+
+  it('shows a floating button to return to the bottom after scrolling away', () => {
+    seedTextTurn({
+      userId: 'u_scroll_1',
+      userText: 'scroll question 1',
+      userCreated: 1,
+      assistantId: 'a_scroll_1',
+      assistantText: 'scroll answer 1',
+      assistantCreated: 2,
+    })
+    seedTextTurn({
+      userId: 'u_scroll_2',
+      userText: 'scroll question 2',
+      userCreated: 3,
+      assistantId: 'a_scroll_2',
+      assistantText: 'scroll answer 2',
+      assistantCreated: 4,
+    })
+    seedTextTurn({
+      userId: 'u_scroll_3',
+      userText: 'scroll question 3',
+      userCreated: 5,
+      assistantId: 'a_scroll_3',
+      assistantText: 'scroll answer 3',
+      assistantCreated: 6,
+    })
+    useSessionStore.setState({
+      activeSessionId: 's1',
+      modeBySession: new Map([['s1', 'SPLIT']]),
+      hasEverSentBySession: new Map([['s1', true]]),
+      pendingPrompt: null,
+    })
+
+    const { container } = render(<SplitView />, { wrapper })
+    const scroller = container.querySelector('.flex-1.overflow-y-auto') as HTMLDivElement | null
+    expect(scroller).not.toBeNull()
+
+    const metrics = { clientHeight: 120, scrollTop: 0 }
+    attachDynamicScrollMetrics(scroller!, metrics)
+    metrics.scrollTop = Math.max(0, scroller!.scrollHeight - metrics.clientHeight)
+    fireEvent.scroll(scroller!)
+    expect(screen.queryByRole('button', { name: '回到底部' })).toBeNull()
+    scrollToSpy.mockClear()
+
+    metrics.scrollTop = 0
+    fireEvent.scroll(scroller!)
+
+    const button = screen.getByRole('button', { name: '回到底部' })
+    expect(button).toBeVisible()
+
+    fireEvent.click(button)
+
+    expect(scrollToSpy).toHaveBeenCalledWith({
+      top: scroller!.scrollHeight,
+      behavior: 'smooth',
+    })
+    expect(screen.queryByRole('button', { name: '回到底部' })).toBeNull()
   })
 
   it('scrolls only by the new pending turn height on the second send when the chat is already scrollable', () => {

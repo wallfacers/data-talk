@@ -19,6 +19,23 @@ function Harness({ version, text = String(version), resetVersion = 0, storageKey
   )
 }
 
+function StateHarness({ version, text = String(version) }: HarnessProps) {
+  const { ref, scrollToBottom, isAtBottom } = useAutoScroll<HTMLDivElement>([version])
+
+  return (
+    <>
+      <div ref={ref} data-testid="scroll-root">
+        <div data-testid="stream-text">{text}</div>
+      </div>
+      {!isAtBottom ? (
+        <button type="button" onClick={() => scrollToBottom('smooth')}>
+          scroll to bottom
+        </button>
+      ) : null}
+    </>
+  )
+}
+
 function ConditionalHarness({ version, text = String(version), show }: HarnessProps & { show: boolean }) {
   const { ref } = useAutoScroll<HTMLDivElement>([version])
 
@@ -246,6 +263,44 @@ describe('useAutoScroll', () => {
 
     expect(scrollToSpy).not.toHaveBeenCalled()
     expect(metrics.scrollTop).toBe(860)
+  })
+
+  it('exposes a detached bottom state and re-enables follow after manual scrollToBottom', () => {
+    const metrics = { clientHeight: 100, scrollHeight: 1000, scrollTop: 900 }
+    const view = render(<StateHarness version={0} />)
+    const root = view.getByTestId('scroll-root') as HTMLDivElement
+
+    attachScrollMetrics(root, metrics)
+    syncAtBottom(root)
+    act(() => {
+      flushAnimationFrameQueue(rafQueue)
+    })
+    expect(view.queryByText('scroll to bottom')).toBeNull()
+    scrollToSpy.mockClear()
+
+    metrics.scrollTop = 500
+    fireEvent.scroll(root)
+
+    expect(view.getByText('scroll to bottom')).toBeInTheDocument()
+
+    fireEvent.click(view.getByText('scroll to bottom'))
+
+    expect(scrollToSpy).toHaveBeenCalledWith({ top: 1000, behavior: 'smooth' })
+    expect(view.queryByText('scroll to bottom')).toBeNull()
+
+    scrollToSpy.mockClear()
+    metrics.scrollHeight = 1120
+    const observer = MockMutationObserver.instances[0]
+    expect(observer).toBeDefined()
+    act(() => {
+      observer.trigger()
+    })
+    act(() => {
+      rafQueue.shift()?.(16)
+    })
+
+    expect(scrollToSpy).toHaveBeenCalledTimes(1)
+    expect(metrics.scrollTop).toBe(1120)
   })
 
   it('stays detached from auto-follow even after the user scrolls back to the bottom', () => {

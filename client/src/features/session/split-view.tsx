@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { DatabaseIcon } from 'lucide-react'
+import { ArrowDownIcon, DatabaseIcon } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { TurnList } from '@/features/chat/components/turn/turn-list'
 import { TurnListErrorBoundary } from '@/features/chat/components/turn/turn-list-error-boundary'
 import { StageWindow } from '@/features/stage/components/stage-window'
@@ -53,7 +55,7 @@ export function SplitView() {
   // the viewport with no assistant response visible.
   const userSendVersion = useChatPartsStore((s) => s.userSendVersion)
 
-  const { ref: scrollRef, scrollToBottom } = useAutoScroll<HTMLDivElement>(
+  const { ref: scrollRef, scrollToBottom, isAtBottom } = useAutoScroll<HTMLDivElement>(
     [layoutVersion],
     [userSendVersion],
   )
@@ -97,6 +99,7 @@ export function SplitView() {
     willChange: 'transform, width',
   }
   const degradedReason = health?.reason ?? health?.message ?? ''
+  const scrollToBottomLabel = t('chat.scrollToBottom')
   const degradedNotice = health?.status === 'degraded' ? (
     <div
       data-opencode-health="degraded"
@@ -129,23 +132,46 @@ export function SplitView() {
         {hasMessages ? (
           <div className="flex h-full flex-col">
             <ChatHeader />
-            <div
-              ref={scrollRef}
-              className="flex-1 overflow-y-auto px-2 py-4"
-              // `overflow-anchor: auto` (browser default) lets the engine
-              // compensate `scrollTop` when content above the viewport
-              // shrinks — e.g. reasoning panel collapsing, code→chart fence
-              // transition, SQL action bar appearing. Our auto-follow logic
-              // still wins at the bottom because `scrollToBottom` runs after
-              // layout and sets scrollTop = scrollHeight explicitly.
-              style={{ scrollbarGutter: 'stable' }}
-            >
-              <div className="mx-auto w-full max-w-3xl">
-                {degradedNotice}
-                <TurnListErrorBoundary>
-                  <TurnList sessionId={sid} />
-                </TurnListErrorBoundary>
+            <div className="relative flex min-h-0 flex-1 flex-col">
+              <div
+                ref={scrollRef}
+                className="flex-1 overflow-y-auto px-2 py-4"
+                // `overflow-anchor: auto` (browser default) lets the engine
+                // compensate `scrollTop` when content above the viewport
+                // shrinks — e.g. reasoning panel collapsing, code→chart fence
+                // transition, SQL action bar appearing. Our auto-follow logic
+                // still wins at the bottom because `scrollToBottom` runs after
+                // layout and sets scrollTop = scrollHeight explicitly.
+                style={{ scrollbarGutter: 'stable' }}
+              >
+                <div className="mx-auto w-full max-w-3xl">
+                  {degradedNotice}
+                  <TurnListErrorBoundary>
+                    <TurnList sessionId={sid} />
+                  </TurnListErrorBoundary>
+                </div>
               </div>
+              {!isAtBottom ? (
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon-lg"
+                        aria-label={scrollToBottomLabel}
+                        onClick={() => scrollToBottom('smooth')}
+                        className="absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-full border-border/80 bg-background/95 text-foreground shadow-md backdrop-blur hover:bg-muted"
+                      >
+                        <ArrowDownIcon className="size-4" />
+                      </Button>
+                    }
+                  />
+                  <TooltipContent side="top" sideOffset={6}>
+                    {scrollToBottomLabel}
+                  </TooltipContent>
+                </Tooltip>
+              ) : null}
             </div>
             <div className="overflow-y-auto px-2 pt-1 pb-4" style={{ scrollbarGutter: 'stable' }}>
               <div id="composer-slot" className="mx-auto w-full max-w-3xl" />
