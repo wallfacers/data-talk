@@ -28,7 +28,7 @@ function normalizeHistory(raw: HistoryResponse): HistoryItem[] {
   }))
 }
 
-async function hasLiveAssistantTurn(sessionId: string): Promise<boolean> {
+async function hasLiveAssistantTurn(sessionId: string): Promise<boolean | null> {
   try {
     const raw = await http
       .get(`sessions/${sessionId}/messages`, { silent: true } as any)
@@ -37,7 +37,7 @@ async function hasLiveAssistantTurn(sessionId: string): Promise<boolean> {
       ({ info }) => info.role === 'assistant' && typeof info.time.completed !== 'number',
     )
   } catch {
-    return false
+    return null
   }
 }
 
@@ -58,10 +58,11 @@ export function useBackgroundSessionSubscribe(sessionId: string) {
 
     void hasLiveAssistantTurn(sessionId).then((shouldResume) => {
       if (cancelled) return
-      if (!shouldResume) {
+      if (shouldResume === false) {
         useChatPartsStore.getState().setStreaming(sessionId, false)
         return
       }
+      if (shouldResume === null) return
       if (bgSubscribedSessions.has(sessionId)) return
 
       bgSubscribedSessions.add(sessionId)

@@ -20,7 +20,10 @@ export function SessionCanvas() {
   const sessionId = useSessionStore((s) => s.activeSessionId)
   const streamingBySession = useChatPartsStore((s) => s.streamingBySession)
   const backgroundSessionIds = useMemo(
-    () => [...streamingBySession.keys()].filter((id) => id !== sessionId),
+    () => {
+      if (!sessionId) return []
+      return [...streamingBySession.keys()].filter((id) => id !== sessionId)
+    },
     [streamingBySession, sessionId],
   )
 
