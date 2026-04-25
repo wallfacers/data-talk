@@ -15,7 +15,12 @@ const KIND_ICONS: Record<string, string> = { table: '📊', chart: '📈', erd: 
 export function ArtifactCreated(props: ToolRendererProps) {
   const { part } = props
   const language = getCurrentLanguage()
-  const output = part.state.output as { kind?: string; title?: string; artifactId?: string } | undefined
+  const rawOutput = part.state.output
+  const output = (
+    typeof rawOutput === 'string'
+      ? (() => { try { return JSON.parse(rawOutput) } catch { return undefined } })()
+      : rawOutput
+  ) as { kind?: string; title?: string; artifactId?: string } | undefined
   const kind = (() => {
     if (output?.kind) return output.kind
     const metaKind = part.state.metadata?.kind as string | undefined
