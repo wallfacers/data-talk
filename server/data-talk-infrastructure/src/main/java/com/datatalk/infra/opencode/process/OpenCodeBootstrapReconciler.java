@@ -49,9 +49,7 @@ public class OpenCodeBootstrapReconciler {
                 return true;
             }
 
-            String reason = runtimeStatus.isBlank()
-                ? "datatalk MCP runtime status missing"
-                : "datatalk MCP runtime status: " + runtimeStatus;
+            String reason = runtimeStatusReason(status.path("datatalk"), runtimeStatus);
             bridgeStatus.markDegraded(reason, "OpenCode MCP bridge degraded");
             return false;
         } catch (Exception e) {
@@ -68,5 +66,16 @@ public class OpenCodeBootstrapReconciler {
             return error.getMessage();
         }
         return error.getClass().getSimpleName();
+    }
+
+    private static String runtimeStatusReason(JsonNode datatalkStatus, String runtimeStatus) {
+        String reason = runtimeStatus.isBlank()
+            ? "datatalk MCP runtime status missing"
+            : "datatalk MCP runtime status: " + runtimeStatus;
+        String runtimeError = datatalkStatus.path("error").asText("");
+        if (!runtimeError.isBlank()) {
+            return reason + "; error: " + runtimeError;
+        }
+        return reason;
     }
 }

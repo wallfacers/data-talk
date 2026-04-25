@@ -74,6 +74,23 @@ class OpenCodeBootstrapReconcilerTest {
         verify(client).getMcpStatus();
     }
 
+    @Test
+    void probeRuntimeStatusIncludesOpenCodeRuntimeErrorWhenMcpFailed() throws Exception {
+        OpenCodeBridgeStatus status = new OpenCodeBridgeStatus(clock);
+        OpenCodeHttpClient client = mock(OpenCodeHttpClient.class);
+        OpenCodeBootstrapReconciler reconciler = new OpenCodeBootstrapReconciler(writer(status), client, status);
+        when(client.getMcpStatus()).thenReturn(objectMapper.readTree("""
+            {"datatalk":{"status":"failed","error":"SSE error: Non-200 status code (502)"}}
+            """));
+
+        assertThat(reconciler.probeRuntimeStatus()).isFalse();
+
+        assertThat(status.snapshot().status()).isEqualTo("degraded");
+        assertThat(status.snapshot().reason())
+            .contains("datatalk MCP runtime status: failed")
+            .contains("SSE error: Non-200 status code (502)");
+    }
+
     private OpenCodeBootstrapWriter writer(OpenCodeBridgeStatus status) {
         return new OpenCodeBootstrapWriter(
             properties(),

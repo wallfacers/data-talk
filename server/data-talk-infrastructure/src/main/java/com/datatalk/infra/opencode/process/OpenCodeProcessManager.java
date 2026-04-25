@@ -11,7 +11,9 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -23,6 +25,12 @@ public class OpenCodeProcessManager implements SmartLifecycle {
     private static final Logger log = LoggerFactory.getLogger(OpenCodeProcessManager.class);
     private static final String[] HTTP_PROXY_ENV_VARS = {
         "http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY"
+    };
+    private static final String[] NO_PROXY_ENV_VARS = {
+        "NO_PROXY", "no_proxy"
+    };
+    private static final String[] LOOPBACK_NO_PROXY_ENTRIES = {
+        "localhost", "127.0.0.1", "::1"
     };
 
     private final OpenCodeServeProperties serveProps;
@@ -214,6 +222,7 @@ public class OpenCodeProcessManager implements SmartLifecycle {
     static void applyProxyEnvironmentPolicy(Map<String, String> environment, OpenCodeServeProperties serveProps) {
         if (serveProps.isStripProxyEnv()) {
             removeHttpProxyEnvironment(environment);
+            ensureLoopbackNoProxy(environment);
             return;
         }
 
@@ -223,12 +232,35 @@ public class OpenCodeProcessManager implements SmartLifecycle {
                 environment.remove(name);
             }
         }
+        ensureLoopbackNoProxy(environment);
     }
 
     private static void removeHttpProxyEnvironment(Map<String, String> environment) {
         for (String name : HTTP_PROXY_ENV_VARS) {
             environment.remove(name);
         }
+    }
+
+    private static void ensureLoopbackNoProxy(Map<String, String> environment) {
+        for (String name : NO_PROXY_ENV_VARS) {
+            environment.put(name, withLoopbackNoProxyEntries(environment.get(name)));
+        }
+    }
+
+    private static String withLoopbackNoProxyEntries(String value) {
+        Set<String> entries = new LinkedHashSet<>();
+        if (value != null) {
+            for (String entry : value.split(",")) {
+                String trimmed = entry.trim();
+                if (!trimmed.isBlank()) {
+                    entries.add(trimmed);
+                }
+            }
+        }
+        for (String entry : LOOPBACK_NO_PROXY_ENTRIES) {
+            entries.add(entry);
+        }
+        return String.join(",", entries);
     }
 
     private void stopProcess() {
