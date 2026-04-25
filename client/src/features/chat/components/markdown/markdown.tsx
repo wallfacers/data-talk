@@ -381,19 +381,23 @@ export function Markdown(props: {
       onBeforeElUpdated(fromEl, toEl) {
         const fromNode = fromEl as HTMLElement
         const toNode = toEl as HTMLElement
-        if (fromNode.getAttribute('data-component') !== 'markdown-chart') return true
+        const component = fromNode.getAttribute('data-component')
 
-        for (const attr of Array.from(fromNode.attributes)) {
-          if (attr.name.startsWith('data-chart-') && !toNode.hasAttribute(attr.name)) {
-            fromNode.removeAttribute(attr.name)
+        if (component === 'markdown-chart') {
+          for (const attr of Array.from(fromNode.attributes)) {
+            if (attr.name.startsWith('data-chart-') && !toNode.hasAttribute(attr.name)) {
+              fromNode.removeAttribute(attr.name)
+            }
           }
-        }
-        for (const attr of Array.from(toNode.attributes)) {
-          if (attr.name.startsWith('data-chart-') || attr.name === 'data-component') {
-            fromNode.setAttribute(attr.name, attr.value)
+          for (const attr of Array.from(toNode.attributes)) {
+            if (attr.name.startsWith('data-chart-') || attr.name === 'data-component') {
+              fromNode.setAttribute(attr.name, attr.value)
+            }
           }
+          return false
         }
-        return false
+
+        return true
       },
     })
 

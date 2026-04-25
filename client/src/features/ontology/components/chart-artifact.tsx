@@ -3,7 +3,7 @@ import { ChartRenderer } from '@/features/chat/components/markdown/chart-rendere
 import type { Artifact } from '@/services/channel/event-reducer'
 import { useI18n } from '@/i18n/use-i18n'
 
-const FALLBACK_HEIGHT = 320
+const FALLBACK_HEIGHT = 480
 
 export function ChartArtifact({ artifact }: { artifact: Artifact }) {
   const { t } = useI18n()

@@ -35,8 +35,10 @@ export function ArtifactPreviewTab({ tab }: { tab: StageTab }) {
   }
 
   return (
-    <div className="flex h-full w-full min-h-0 min-w-0 overflow-hidden p-3">
-      <ArtifactDispatcher artifact={artifact} />
+    <div className="flex h-full w-full min-h-0 min-w-0 items-center justify-center overflow-auto p-4">
+      <div className="w-full">
+        <ArtifactDispatcher artifact={artifact} />
+      </div>
     </div>
   )
 }
