@@ -377,7 +377,7 @@ function InnerComposer() {
             <ModelPicker />
 
             {/* Data source selector */}
-            <DataSourcePicker />
+            <DataSourcePicker sessionId={activeSessionId} />
 
             {/* Auto toggle */}
             <InputGroupText

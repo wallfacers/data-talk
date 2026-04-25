@@ -10,6 +10,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -26,7 +27,7 @@ import static org.mockito.Mockito.when;
 @SpringBootTest
 class SessionDataContextActionsIT {
 
-    @Autowired JdbcTemplate jdbc;
+    @Autowired @Qualifier("datatalkJdbc") JdbcTemplate jdbc;
     @Autowired ConnectionService connections;
     @Autowired SessionRepository sessions;
     @Autowired ActionRegistry registry;
@@ -75,7 +76,9 @@ class SessionDataContextActionsIT {
             Map.of()
         ).toCompletableFuture().get();
         assertThat(before.get("sessionId")).isEqualTo("s1");
-        assertThat(before.get("connectionId")).isNull();
+        assertThat(before.get("connectionId")).isEqualTo(c1Id);
+        assertThat(before.get("connectionNameSnapshot")).isEqualTo(c1Name);
+        assertThat(before.get("selectedLevel")).isEqualTo("connection");
 
         Map<String, Object> resolved = (Map<String, Object>) resolveUseTargetAction.handle(
             new ActionContext("s1", "call-resolve", c1Id, "oc-1"),

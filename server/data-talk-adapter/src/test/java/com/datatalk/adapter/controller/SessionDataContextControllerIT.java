@@ -45,16 +45,17 @@ class SessionDataContextControllerIT {
     }
 
     @Test
-    void get_returns_empty_context_before_any_set() throws Exception {
+    void get_inherits_session_connection_before_any_explicit_set() throws Exception {
         String sessionId = createSession();
 
         mvc.perform(get("/api/sessions/" + sessionId + "/data-context"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.sessionId").value(sessionId))
-            .andExpect(jsonPath("$.connectionId").doesNotExist())
+            .andExpect(jsonPath("$.connectionId").value("c1"))
+            .andExpect(jsonPath("$.connectionNameSnapshot").value("主库"))
             .andExpect(jsonPath("$.database").doesNotExist())
             .andExpect(jsonPath("$.schema").doesNotExist())
-            .andExpect(jsonPath("$.selectedLevel").doesNotExist());
+            .andExpect(jsonPath("$.selectedLevel").value("connection"));
     }
 
     @Test

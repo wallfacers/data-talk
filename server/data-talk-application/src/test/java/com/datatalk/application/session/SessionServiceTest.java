@@ -225,6 +225,8 @@ class SessionServiceTest {
 
         assertThat(result.reusedEmpty()).isTrue();
         assertThat(result.record().id()).isEqualTo("existing_empty");
+        assertThat(result.record().connectionId()).isEqualTo("c2");
+        assertThat(repo.findById("existing_empty").orElseThrow().connectionId()).isEqualTo("c2");
         assertThat(repo.listAll()).hasSize(1);
     }
 

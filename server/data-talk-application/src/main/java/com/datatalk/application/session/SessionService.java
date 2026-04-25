@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import java.time.Clock;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -45,14 +46,29 @@ public class SessionService {
 
     public CreateSessionResult create(String connectionId, String title) {
         synchronized (createLock) {
+            String effectiveConnectionId = normalizeConnectionId(connectionId);
             Optional<SessionRecord> existing = repo.findEmpty();
             if (existing.isPresent()) {
-                return new CreateSessionResult(existing.get(), true);
+                SessionRecord reused = existing.get();
+                if (!Objects.equals(reused.connectionId(), effectiveConnectionId)) {
+                    long now = clock.millis();
+                    reused = new SessionRecord(
+                        reused.id(),
+                        effectiveConnectionId,
+                        reused.title(),
+                        reused.hasEverSent(),
+                        reused.openCodeSid(),
+                        reused.createdAt(),
+                        now,
+                        reused.titleLocked()
+                    );
+                    repo.upsert(reused);
+                }
+                return new CreateSessionResult(reused, true);
             }
             long now = clock.millis();
             String id = UUID.randomUUID().toString();
             String effectiveTitle = Strings.defaultIfBlank(title, translator.get("session.default_title"));
-            String effectiveConnectionId = normalizeConnectionId(connectionId);
             SessionRecord rec = new SessionRecord(id, effectiveConnectionId, effectiveTitle, false, null, now, now, false);
             repo.upsert(rec);
             return new CreateSessionResult(rec, false);

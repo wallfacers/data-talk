@@ -113,10 +113,24 @@ class SessionDataContextServiceTest {
     }
 
     @Test
-    void get_returns_empty_context_when_missing() {
+    void get_inherits_session_connection_when_context_missing() {
         SessionDataContextRecord record = service.get("s1");
 
         assertThat(record.sessionId()).isEqualTo("s1");
+        assertThat(record.connectionId()).isEqualTo("c1");
+        assertThat(record.connectionNameSnapshot()).isEqualTo("主库");
+        assertThat(record.databaseName()).isNull();
+        assertThat(record.schemaName()).isNull();
+        assertThat(record.selectedLevel()).isEqualTo("connection");
+    }
+
+    @Test
+    void get_returns_empty_context_when_missing_and_session_has_no_connection() {
+        sessionRepo.upsert(new SessionRecord("s-null", null, "无连接会话", false, null, 101L, 101L, false));
+
+        SessionDataContextRecord record = service.get("s-null");
+
+        assertThat(record.sessionId()).isEqualTo("s-null");
         assertThat(record.connectionId()).isNull();
         assertThat(record.connectionNameSnapshot()).isNull();
         assertThat(record.databaseName()).isNull();

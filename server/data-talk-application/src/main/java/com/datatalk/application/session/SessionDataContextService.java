@@ -41,8 +41,27 @@ public class SessionDataContextService {
         var session = sessions.findById(sessionId)
             .orElseThrow(() -> new NoSuchElementException(translator.get("error.session.not_found", sessionId)));
         return contexts.findBySessionId(sessionId)
+            .orElseGet(() -> contextFromSessionConnection(sessionId, session.connectionId(), session.updatedAt()));
+    }
+
+    private SessionDataContextRecord contextFromSessionConnection(String sessionId, String connectionId, long updatedAt) {
+        if (connectionId == null || connectionId.isBlank()) {
+            return new SessionDataContextRecord(
+                sessionId, null, null, null, null, null, updatedAt
+            );
+        }
+        return connections.findById(connectionId)
+            .map(connection -> new SessionDataContextRecord(
+                sessionId,
+                connection.id(),
+                connection.name(),
+                null,
+                null,
+                "connection",
+                updatedAt
+            ))
             .orElseGet(() -> new SessionDataContextRecord(
-                sessionId, null, null, null, null, null, session.updatedAt()
+                sessionId, null, null, null, null, null, updatedAt
             ));
     }
 
