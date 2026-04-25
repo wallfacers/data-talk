@@ -281,7 +281,7 @@ export const ChartBlock = memo(function ChartBlock({
       </div>
       <div data-testid="chart-canvas-host">
         <ChartErrorBoundary json={json} resetKey={json} title={t('chart.renderError')}>
-          <ChartRenderer option={option} showAspectBadge />
+          <ChartRenderer option={option} />
         </ChartErrorBoundary>
       </div>
       {expanded ? <ChartExpandModal option={option} onClose={() => setExpanded(false)} /> : null}

@@ -104,7 +104,7 @@ export function ArtifactCreated(props: ToolRendererProps) {
       />
       {echartsOption && (
         <div className="mb-2 overflow-hidden rounded-lg border border-[var(--dt-border-subtle)]">
-          <ChartRenderer option={echartsOption} showAspectBadge />
+          <ChartRenderer option={echartsOption} />
         </div>
       )}
     </>
