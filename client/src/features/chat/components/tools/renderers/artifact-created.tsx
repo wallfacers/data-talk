@@ -24,10 +24,18 @@ export function ArtifactCreated(props: ToolRendererProps) {
     if (part.tool === 'datatalk_layout_erd') return 'erd'
     return 'table'
   })()
+  const fallbackKindLabel =
+    kind === 'chart'
+      ? translateMessage(language, 'chat.artifactKind.chart')
+      : kind === 'erd'
+        ? translateMessage(language, 'chat.artifactKind.erd')
+        : kind === 'table'
+          ? translateMessage(language, 'chat.artifactKind.table')
+          : kind
   const title =
     output?.title ??
     (part.state.metadata?.title as string | undefined) ??
-    `${kind} artifact`
+    translateMessage(language, 'chat.artifactFallbackTitle', { kind: fallbackKindLabel })
   const artifactId = output?.artifactId ?? null
   const activeSessionId = useSessionStore((s) => s.activeSessionId)
   const sessionId = activeSessionId?.trim().length

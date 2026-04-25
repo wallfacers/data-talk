@@ -22,7 +22,16 @@ vi.mock('@/stores/ui-settings-store', () => ({
 }))
 
 vi.mock('@/i18n/messages', () => ({
-  translateMessage: (_lang: string, key: string) => key,
+  translateMessage: (_lang: string, key: string, values?: Record<string, unknown>) => {
+    const messages: Record<string, string> = {
+      'chat.artifactFallbackTitle': '{kind} artifact',
+      'chat.artifactKind.table': 'table',
+      'chat.artifactKind.chart': 'chart',
+      'chat.artifactKind.erd': 'ERD',
+    }
+    const template = messages[key] ?? key
+    return template.replace(/\{(\w+)\}/g, (_, name: string) => String(values?.[name] ?? `{${name}}`))
+  },
 }))
 
 vi.mock('@/features/actions/registry', () => ({

@@ -74,6 +74,7 @@ describe('i18n and tooltip regressions', () => {
       'AI 上下文已压缩，早期消息可能不再可用',
       '请输入要切换的数据源名称',
       '当前数据源下未找到',
+      '`${kind} artifact`',
     ]
 
     const violations = walk(SRC_ROOT)
