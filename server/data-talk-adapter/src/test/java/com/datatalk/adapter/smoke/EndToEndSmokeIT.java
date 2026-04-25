@@ -54,6 +54,11 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
+/*
+ * This smoke test verifies DataTalk's MCP endpoint and bootstrap/reconcile logic
+ * without starting a real OpenCode process. Real OpenCode plugin injection is
+ * covered by RealOpenCodeMcpBridgeIT when DATATALK_REAL_OPENCODE_E2E=true.
+ */
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
     classes = DataTalkApplication.class

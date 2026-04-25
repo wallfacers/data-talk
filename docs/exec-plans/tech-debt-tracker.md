@@ -28,12 +28,12 @@
 | TD-SINGLE-EMPTY-SESSION-MULTINODE | P2 | application | `SessionService.create` 的 `synchronized (createLock)` 仅在单 JVM 内有效。若未来扩展为多节点部署，需改为 DB 唯一约束（partial unique index `ON sessions(connection_id) WHERE has_ever_sent = 0`）。SQLite 原生不支持 partial unique，届时需配合数据库类型切换到 PG 一并处理。现状单机桌面应用无此需求 | Plan 2026-04-19 Single Empty Session |
 | TD-MULTI-SESSION-SSE-POOL | P2 | client | ~~`useSessionSubscribe` 当前仅跟随 `activeSessionId` 订阅 GET SSE，后台 session 的服务端推送在 ring buffer 溢出后可能丢失~~ `BackgroundSubscriber` 组件 + `useBackgroundSessionSubscribe` hook 实现订阅池：streaming 的后台 session 维持 SSE 存活，`session.idle/error` 触发组件卸载自动关闭连接 | 2026-04-20 完成（Tech Debt Batch plan）|
 | TD-001 | P1 | adapter | ~~`application.yml` 使用 H2 内存库作为 placeholder，需替换为正式的数据源配置策略~~ URL 改为 `jdbc:h2:mem:demodb;DB_CLOSE_DELAY=-1`，注释明确其为"演示/fallback datasource"而非临时占位 | 2026-04-20 完成（Tech Debt Batch plan）|
-| TD-028 | P1 | adapter | `EndToEndSmokeIT` 用 `bridgeArgs()` 手工构造带 `__dt*` 的 `/mcp` 请求，只覆盖 backend endpoint，不跑真实 OpenCode→plugin→bridge 链路。曾导致 plugin 里 `output.args = args` 整体替换失效的 bug 一路漏到生产（-32602 missing session context）。需引入能启动真 `opencode serve` 的端到端夹具，断言 `datatalk_*` 工具调用到 backend 时 `__dt*` 字段齐全 | 2026-04-24 MCP 桥接 plugin bug 修复事件 |
 
 ## 已清除债务
 
 | ID | 清除日期 | 原描述 | 清除方式 |
 |----|----------|--------|----------|
+| TD-028 | 2026-04-25 | `EndToEndSmokeIT` 用 `bridgeArgs()` 手工构造带 `__dt*` 的 `/mcp` 请求，只覆盖 backend endpoint，不跑真实 OpenCode→plugin→bridge 链路。曾导致 plugin 里 `output.args = args` 整体替换失效的 bug 一路漏到生产（-32602 missing session context） | Real OpenCode MCP Bridge E2E 计划新增 opt-in `RealOpenCodeMcpBridgeIT`：默认 CI 仍用确定性 WireMock smoke；设置 `DATATALK_REAL_OPENCODE_E2E=true DATATALK_REAL_OPENCODE_MODEL=alibaba-coding-plan-cn/qwen3-coder-plus` 后启动真实 OpenCode 1.4.7，模型触发 `datatalk_list_connections`，后端观察到 plugin 注入后的 bridge 调用。2026-04-25 命令 `cd server && DATATALK_REAL_OPENCODE_E2E=true DATATALK_REAL_OPENCODE_MODEL=alibaba-coding-plan-cn/qwen3-coder-plus mvn -q -pl data-talk-adapter -am verify -Dit.test=RealOpenCodeMcpBridgeIT` 退出 0 |
 | TD-027 | 2026-04-24 | OpenCode 仍走 legacy plugin tool 注册/HTTP callback 链路，未来与 MCP 并存会导致同名 tool 重复暴露与维护双轨入口 | OpenCode MCP Tool Migration 已切到单一路径：后端新增 `/mcp` + `McpNameMapper` + nonce/session bridge + bootstrap/reconcile/health，前端切到 `datatalk_*` renderer/prompt naming，并删除 `/plugin/register-tool` / `/api/opencode-tool/*` / `shared-secret` callback 运行时与 smoke 基线 |
 | TD-008 | 2026-04-17 | `ChatHeader` 的重命名/删除仅 toast 占位，`services/api/session.ts` 缺 `renameSession` / `deleteSession` 端点 | `SessionController` 加 `PATCH`/`DELETE`，`session.ts` 加对应客户端方法，`chat-header.tsx` 用 `useMutation` 接通 |
 | TD-002 | 2026-04-18 | `OpenCodeHttpClient` 仅有 WireMock 测试，缺少对真实 OpenCode 服务端的集成验证 | 项目已可启动运行，真实集成验证已在日常开发中覆盖 |
