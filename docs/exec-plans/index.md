@@ -6,6 +6,8 @@
 
 | 计划 | 创建日期 | 摘要 |
 |------|---------|------|
+| [SQL Result Export](./2026-04-25-sql-result-export-plan.md) | 2026-04-25 | Stage SQL result set 首版导出：复制 CSV、复制 JSON、下载 CSV；支持当前页与当前已返回 bounded result 两种范围；前端-only，不新增后端 streaming / Excel / 虚拟滚动。 |
+| [Next Implementation Roadmap](./2026-04-25-next-implementation-roadmap-plan.md) | 2026-04-25 | 下一阶段路线图：分页/限制已评估为现有能力加少量 polish，查询历史已有 tab-local 基础能力；下一正式子计划转为 SQL 结果导出，后续再推进 DDL/DML 分级确认、智能化运维诊断与可视化扩展；明确排除虚拟滚动。 |
 
 ## 已完成计划
 

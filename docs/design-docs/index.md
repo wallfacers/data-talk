@@ -16,6 +16,7 @@
 
 | 文档 | 状态 | 摘要 |
 |------|------|------|
+| [sql-result-export-design](../product-specs/2026-04-25-sql-result-export-design.md) | approved | Stage SQL result set 首版导出设计：复制 CSV、复制 JSON、下载 CSV；范围限定当前页或当前已返回 bounded result，不新增后端 streaming、Excel 或虚拟滚动 |
 | [query-editor-object-actions-design](../product-specs/2026-04-23-query-editor-object-actions-design.md) | shipped | `query_editor` 已收敛为由 `StageStore` 统一打开、命名、聚焦和编辑的对象；`WorkspaceAdapter` / `QueryEditorAdapter` 已对 AI 暴露稳定的 `state / actions / capabilities` 与文件式 SQL 编辑语义 |
 | [datatalk-client-design-system-design](../product-specs/2026-04-23-datatalk-client-design-system-design.md) | shipped | 为 `client/` 建立可执行的设计系统契约，并落地 `client/DESIGN.md`、semantic token 映射与基础工作台表面 |
 | [chat-auto-scroll-reentry-design](../product-specs/2026-04-23-chat-auto-scroll-reentry-design.md) | shipped | 修复聊天区 auto-follow 接管条件：用户主动离开底部后，流式更新不再强制滚底，只有重新回到底部才恢复自动跟随 |
