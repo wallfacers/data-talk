@@ -7,6 +7,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { SqlExecuteResultItem } from '@/services/api/sql'
 import { cn } from '@/lib/utils'
 import { useI18n } from '@/i18n/use-i18n'
@@ -126,40 +127,46 @@ export function SqlResultTabs({
                       data-state={isActive ? 'active' : 'inactive'}
                       className={cn('group/result relative -mb-px flex', isActive ? 'z-10' : 'z-0')}
                     >
-                      <button
-                        type="button"
-                        role="tab"
-                        aria-selected={isActive}
-                        data-state={isActive ? 'active' : 'inactive'}
-                        data-kind={result.kind}
-                        title={result.title}
-                        className={cn(
-                          'relative flex h-[38px] max-w-[240px] shrink-0 items-center gap-1 border-b-2 border-b-transparent px-3 pt-[1px] text-xs transition-colors duration-150',
-                          isActive
-                            ? activeToneClass
-                            : 'text-muted-foreground hover:border-b-border/60 hover:text-foreground',
-                        )}
-                        onClick={() => onSelect(result.resultId)}
-                      >
-                        {icon}
-                        <span className="truncate">{result.title}</span>
-                        <div
-                          role="button"
-                          aria-label={t('stage.menu.close')}
-                          className={cn(
-                            'ml-0.5 flex size-4 items-center justify-center rounded-sm transition-all',
-                            isActive
-                              ? 'opacity-100 hover:bg-muted/80'
-                              : 'opacity-0 group-hover/result:opacity-100 hover:bg-muted/70',
-                          )}
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            onClose(result.resultId)
-                          }}
-                        >
-                          <XIcon className="size-3" />
-                        </div>
-                      </button>
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <button
+                              type="button"
+                              role="tab"
+                              aria-selected={isActive}
+                              data-state={isActive ? 'active' : 'inactive'}
+                              data-kind={result.kind}
+                              className={cn(
+                                'relative flex h-[38px] max-w-[240px] shrink-0 items-center gap-1 border-b-2 border-b-transparent px-3 pt-[1px] text-xs transition-colors duration-150',
+                                isActive
+                                  ? activeToneClass
+                                  : 'text-muted-foreground hover:border-b-border/60 hover:text-foreground',
+                              )}
+                              onClick={() => onSelect(result.resultId)}
+                            >
+                              {icon}
+                              <span className="truncate">{result.title}</span>
+                              <div
+                                role="button"
+                                aria-label={t('stage.menu.close')}
+                                className={cn(
+                                  'ml-0.5 flex size-4 items-center justify-center rounded-sm transition-all',
+                                  isActive
+                                    ? 'opacity-100 hover:bg-muted/80'
+                                    : 'opacity-0 group-hover/result:opacity-100 hover:bg-muted/70',
+                                )}
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  onClose(result.resultId)
+                                }}
+                              >
+                                <XIcon className="size-3" />
+                              </div>
+                            </button>
+                          }
+                        />
+                        <TooltipContent>{result.title}</TooltipContent>
+                      </Tooltip>
                     </div>
                   }
                 />

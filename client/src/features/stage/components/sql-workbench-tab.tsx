@@ -24,6 +24,7 @@ import { SqlResultTabs } from './sql-result-tabs'
 import { SqlResultPanel } from './sql-result-panel'
 import type { ResultScrollPosition } from './sql-result-table'
 import { StageActivityRail } from './activity-rail/stage-activity-rail'
+import { useI18n } from '@/i18n/use-i18n'
 
 type TabExecutionContext = {
   sessionId: string | null
@@ -184,6 +185,7 @@ function toContextValue(
 }
 
 export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
+  const { t } = useI18n()
   const payload = normalizeQueryEditorPayload(tab.payload)
   const autoRunRef = useRef(false)
   const monacoRef = useRef<SqlMonacoEditorHandle | null>(null)
@@ -690,7 +692,7 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
                     data-testid="sql-workbench-result-splitter"
                     role="separator"
                     aria-orientation="horizontal"
-                    aria-label="Resize SQL result panel"
+                    aria-label={t('stage.queryEditor.result.resizePanel')}
                     className="group absolute inset-x-0 -top-1 h-2 cursor-row-resize bg-transparent"
                     onMouseDown={handleSplitterMouseDown}
                   >

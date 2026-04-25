@@ -13,6 +13,8 @@ import { useChannelStore } from '@/stores/channel-store'
 import { getClientHandler } from '@/features/actions/registry'
 import { normalizeError, showErrorToast } from '@/services/http-error'
 import { toast } from 'sonner'
+import { translateMessage } from '@/i18n/messages'
+import { getCurrentLanguage } from '@/stores/ui-settings-store'
 import '@/features/actions/client-handlers'
 import {
   invalidateSessionLists,
@@ -277,7 +279,8 @@ export function buildEventSink(
       }
     } else if (event === 'session.error') {
       const { error } = data as { error?: string }
-      const message = error ?? 'Session error'
+      const language = getCurrentLanguage()
+      const message = error ?? translateMessage(language, 'session.errorFallback')
       useChatPartsStore.getState().markSessionTurnCompleted(sessionId)
       upsertSessionErrorMessage(sessionId, evt.id, message)
       useChatPartsStore.getState().setStreaming(sessionId, false)
@@ -285,7 +288,7 @@ export function buildEventSink(
     } else if (event === 'session.created' || event === 'session.deleted') {
       invalidateSessionLists(queryClient)
     } else if (event === 'session.compacted') {
-      toast.info('AI 上下文已压缩，早期消息可能不再可用')
+      toast.info(translateMessage(getCurrentLanguage(), 'session.contextCompacted'))
     } else if (event === 'session.diff') {
       // payload semantics undocumented in OpenCode 1.4.7 — safely ignored
     } else if (event === 'action.invoke' && client) {

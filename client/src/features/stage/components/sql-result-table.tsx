@@ -22,6 +22,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useI18n } from '@/i18n/use-i18n'
 import { copyToClipboard } from '@/lib/utils'
 import '@/features/chat/components/markdown/markdown.css'
@@ -228,29 +229,42 @@ export function SqlResultTable({
                       >
                         {pageStart + rowIndex + 1}
                       </TableCell>
-                      {row.map((cell, cellIndex) => (
-                        <TableCell
-                          key={cellIndex}
-                          className="max-w-[360px] truncate px-3 py-1.5"
-                          title={serializeResultValue(cell)}
-                          onContextMenu={() =>
-                            setContextTarget({
-                              cellValue: cell,
-                              row,
-                              column: result.columns[cellIndex],
-                              rowNumber: pageStart + rowIndex + 1,
-                            })
-                          }
-                        >
-                          {cell == null ? (
-                            <span className="italic text-muted-foreground/70">
-                              {t('stage.queryEditor.cell.null')}
-                            </span>
-                          ) : (
-                            String(cell)
-                          )}
-                        </TableCell>
-                      ))}
+                      {row.map((cell, cellIndex) => {
+                        const cellLabel = serializeResultValue(cell)
+                        return (
+                          <TableCell
+                            key={cellIndex}
+                            className="max-w-[360px] px-3 py-1.5"
+                            onContextMenu={() =>
+                              setContextTarget({
+                                cellValue: cell,
+                                row,
+                                column: result.columns[cellIndex],
+                                rowNumber: pageStart + rowIndex + 1,
+                              })
+                            }
+                          >
+                            <Tooltip>
+                              <TooltipTrigger
+                                render={
+                                  <span className="block truncate">
+                                    {cell == null ? (
+                                      <span className="italic text-muted-foreground/70">
+                                        {t('stage.queryEditor.cell.null')}
+                                      </span>
+                                    ) : (
+                                      String(cell)
+                                    )}
+                                  </span>
+                                }
+                              />
+                              <TooltipContent>
+                                <span className="block max-w-xs truncate">{cellLabel}</span>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TableCell>
+                        )
+                      })}
                     </TableRow>
                   ))}
                 </TableBody>

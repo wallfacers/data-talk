@@ -8,6 +8,7 @@ import { getCurrentLanguage } from '@/stores/ui-settings-store'
 import { translateMessage } from '@/i18n/messages'
 import { ChartRenderer } from '@/features/chat/components/markdown/chart-renderer'
 import { EyeIcon } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 const KIND_ICONS: Record<string, string> = { table: '📊', chart: '📈', erd: '🔗' }
 
@@ -65,18 +66,25 @@ export function ArtifactCreated(props: ToolRendererProps) {
         trigger={{
           title: `${KIND_ICONS[kind] ?? '📦'} ${title}`,
           action: (
-            <button
-              type="button"
-              aria-label={translateMessage(language, 'chat.openStage')}
-              disabled={!sessionId || !artifactId || part.state.status !== 'completed'}
-              onClick={(event) => {
-                event.stopPropagation()
-                openArtifact()
-              }}
-              className="inline-flex size-6 items-center justify-center rounded-md text-foreground hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <EyeIcon className="size-3.5" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <button
+                    type="button"
+                    aria-label={translateMessage(language, 'chat.openStage')}
+                    disabled={!sessionId || !artifactId || part.state.status !== 'completed'}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      openArtifact()
+                    }}
+                    className="inline-flex size-6 items-center justify-center rounded-md text-foreground hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <EyeIcon className="size-3.5" />
+                  </button>
+                }
+              />
+              <TooltipContent>{translateMessage(language, 'chat.viewInStage')}</TooltipContent>
+            </Tooltip>
           ),
         }}
         hideDetails

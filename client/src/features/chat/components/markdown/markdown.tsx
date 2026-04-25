@@ -198,7 +198,7 @@ function getStreamingLanguageLabel(language: string): string {
 const STREAMING_CODE_BODY_STYLE =
   'display:block;white-space:pre;word-break:normal;overflow-wrap:normal;min-height:1.5em'
 
-function renderStreamingCodeBlock(block: Block): string {
+function renderStreamingCodeBlock(block: Block, copyLabel: string): string {
   const language = block.language ?? ''
   const languageClass = language ? `language-${escape(language)}` : ''
   const label = language ? getStreamingLanguageLabel(language) : ''
@@ -213,7 +213,7 @@ function renderStreamingCodeBlock(block: Block): string {
     '<div data-slot="markdown-code-bar">',
     `<span data-slot="markdown-code-language">${escape(label)}</span>`,
     '<div data-slot="markdown-code-actions">',
-    `<button data-slot="markdown-copy-button" type="button" aria-label="Copy">${COPY_SVG}</button>`,
+    `<button data-slot="markdown-copy-button" type="button" aria-label="${escape(copyLabel)}">${COPY_SVG}</button>`,
     '</div>',
     '</div>',
     '<pre>',
@@ -223,7 +223,7 @@ function renderStreamingCodeBlock(block: Block): string {
   ].join('')
 }
 
-function decorateCodeBlocks(root: HTMLElement) {
+function decorateCodeBlocks(root: HTMLElement, copyLabel: string) {
   const pres = Array.from(root.querySelectorAll('pre'))
   for (const pre of pres) {
     if (pre.parentElement?.getAttribute('data-component') === 'markdown-code') continue
@@ -240,7 +240,7 @@ function decorateCodeBlocks(root: HTMLElement) {
     const btn = document.createElement('button')
     btn.setAttribute('data-slot', 'markdown-copy-button')
     btn.setAttribute('type', 'button')
-    btn.setAttribute('aria-label', 'Copy')
+    btn.setAttribute('aria-label', copyLabel)
     btn.innerHTML = COPY_SVG
     actions.append(btn)
     bar.append(language, actions)
@@ -293,12 +293,12 @@ function decorateChartBlocks(
   }
 }
 
-function renderHtml(text: string, cacheKey: string | undefined, streaming: boolean): string {
+function renderHtml(text: string, cacheKey: string | undefined, streaming: boolean, copyLabel: string): string {
   if (!text) return ''
   try {
     const blocks = stream(text, streaming)
     const htmls = blocks.map((block, i) => {
-      const blockHash = hash(block.raw)
+      const blockHash = hash(`${copyLabel}\0${block.raw}`)
       const key = cacheKey ? `${cacheKey}:${i}:${block.mode}` : undefined
       if (key) {
         const cached = cache.get(key)
@@ -308,7 +308,7 @@ function renderHtml(text: string, cacheKey: string | undefined, streaming: boole
         }
       }
       if (block.mode === 'stream-code') {
-        const html = renderStreamingCodeBlock(block)
+        const html = renderStreamingCodeBlock(block, copyLabel)
         if (key) touch(key, { hash: blockHash, html })
         return html
       }
@@ -356,7 +356,8 @@ export function Markdown(props: {
       chartRoots.clear()
     }
 
-    const html = renderHtml(props.text, props.cacheKey, props.streaming ?? false)
+    const copyLabel = tRef.current('common.copy')
+    const html = renderHtml(props.text, props.cacheKey, props.streaming ?? false, copyLabel)
     if (!html) {
       container.innerHTML = ''
       clearChartRoots()
@@ -371,7 +372,7 @@ export function Markdown(props: {
       messageId: props.messageId,
       partId: props.partId,
     })
-    decorateCodeBlocks(temp)
+    decorateCodeBlocks(temp, copyLabel)
     decorateSqlBlocks(temp)
     decorateTables(temp, tRef.current)
 

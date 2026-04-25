@@ -12,11 +12,13 @@ import {
   type SessionDataContext,
   type SessionDataContextUpdateRequest,
 } from '@/services/api/session-data-context'
+import { translateMessage } from '@/i18n/messages'
+import { getCurrentLanguage } from '@/stores/ui-settings-store'
 
 const queryKey = (sessionId: string | null) => ['session-data-context', sessionId] as const
 
 function noSessionError() {
-  return new Error('No active session')
+  return new Error(translateMessage(getCurrentLanguage(), 'session.noActiveSession'))
 }
 
 function buildOptimisticContext(

@@ -102,7 +102,7 @@ function InnerComposer() {
       if (useMatch) {
         const target = useMatch[1]?.trim() ?? ''
         if (!target) {
-          showErrorToast(normalizeError(new Error('请输入要切换的数据源名称')))
+          showErrorToast(normalizeError(new Error(t('session.useTargetRequired'))))
           return
         }
 
@@ -126,7 +126,7 @@ function InnerComposer() {
         try {
           const resolved = await sessionDataContext.resolveUseTarget(target, sessionId)
           if (resolved.status !== 'matched' || !resolved.context) {
-            const message = resolved.message ?? `当前数据源下未找到 ${target}`
+            const message = resolved.message ?? t('session.useTargetNotFound', { target })
             throw new Error(message)
           }
           await sessionDataContext.setSessionDataContext({

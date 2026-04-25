@@ -4,11 +4,19 @@ import { useRender } from "@base-ui/react/use-render"
 
 import { cn } from "@/lib/utils"
 import { ChevronRightIcon, MoreHorizontalIcon } from "lucide-react"
+import { translateMessage } from "@/i18n/messages"
+import { useUISettingsStore } from "@/stores/ui-settings-store"
 
-function Breadcrumb({ className, ...props }: React.ComponentProps<"nav">) {
+function Breadcrumb({
+  className,
+  "aria-label": ariaLabel,
+  ...props
+}: React.ComponentProps<"nav">) {
+  const language = useUISettingsStore((state) => state.language)
+
   return (
     <nav
-      aria-label="breadcrumb"
+      aria-label={ariaLabel ?? translateMessage(language, "common.breadcrumb")}
       data-slot="breadcrumb"
       className={cn(className)}
       {...props}
@@ -96,6 +104,8 @@ function BreadcrumbEllipsis({
   className,
   ...props
 }: React.ComponentProps<"span">) {
+  const language = useUISettingsStore((state) => state.language)
+
   return (
     <span
       data-slot="breadcrumb-ellipsis"
@@ -109,7 +119,7 @@ function BreadcrumbEllipsis({
     >
       <MoreHorizontalIcon
       />
-      <span className="sr-only">More</span>
+      <span className="sr-only">{translateMessage(language, "common.more")}</span>
     </span>
   )
 }

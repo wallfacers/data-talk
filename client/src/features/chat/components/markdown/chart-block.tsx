@@ -9,6 +9,7 @@ import { promoteChartToStage } from '@/services/artifacts/promote-chart'
 import { normalizeError, showErrorToast } from '@/services/http-error'
 import { useI18n } from '@/i18n/use-i18n'
 import { copyToClipboard } from '@/lib/utils'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 type ChartBlockProps = {
   json: string
@@ -214,7 +215,7 @@ export const ChartBlock = memo(function ChartBlock({
   }
 
   if (!option) {
-    return <ChartError json={json} title={t('chart.jsonError')} message={parsed.ok ? 'invalid chart option' : parsed.error} />
+    return <ChartError json={json} title={t('chart.jsonError')} message={parsed.ok ? t('chart.invalidOption') : parsed.error} />
   }
 
   return (
@@ -226,38 +227,56 @@ export const ChartBlock = memo(function ChartBlock({
       <div className="flex items-center justify-between border-b border-[var(--dt-border-subtle)] bg-[var(--dt-bg-subtle)] px-3 py-1.5">
         <span className="font-mono text-[13px] leading-[18px] text-[var(--dt-text-muted)]">chart</span>
         <div className="flex items-center gap-1 text-[13px] leading-[18px]">
-          <button
-            type="button"
-            onClick={onPromote}
-            disabled={!canPromote || promoteState === 'loading'}
-            aria-label={openLabel}
-            title={openLabel}
-            className="inline-flex h-7 w-7 items-center justify-center rounded text-[var(--dt-text-muted)] transition-colors hover:text-[var(--dt-text-strong)] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {promoteState === 'loading'
-              ? <Loader2Icon className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-              : <ExternalLinkIcon className="h-4 w-4" aria-hidden="true" />}
-          </button>
-          <button
-            type="button"
-            onClick={() => setExpanded(true)}
-            aria-label={t('chart.expand')}
-            title={t('chart.expand')}
-            className="inline-flex h-7 w-7 items-center justify-center rounded text-[var(--dt-text-muted)] transition-colors hover:text-[var(--dt-text-strong)]"
-          >
-            <Maximize2Icon className="h-4 w-4" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            onClick={onCopy}
-            aria-label={t('chart.copy')}
-            title={t('chart.copy')}
-            className="inline-flex h-7 w-7 items-center justify-center rounded text-[var(--dt-text-muted)] transition-colors hover:text-[var(--dt-text-strong)]"
-          >
-            {copied
-              ? <CheckIcon className="h-4 w-4" aria-hidden="true" />
-              : <CopyIcon className="h-4 w-4" aria-hidden="true" />}
-          </button>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <button
+                  type="button"
+                  onClick={onPromote}
+                  disabled={!canPromote || promoteState === 'loading'}
+                  aria-label={openLabel}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded text-[var(--dt-text-muted)] transition-colors hover:text-[var(--dt-text-strong)] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {promoteState === 'loading'
+                    ? <Loader2Icon className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                    : <ExternalLinkIcon className="h-4 w-4" aria-hidden="true" />}
+                </button>
+              }
+            />
+            <TooltipContent>{openLabel}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <button
+                  type="button"
+                  onClick={() => setExpanded(true)}
+                  aria-label={t('chart.expand')}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded text-[var(--dt-text-muted)] transition-colors hover:text-[var(--dt-text-strong)]"
+                >
+                  <Maximize2Icon className="h-4 w-4" aria-hidden="true" />
+                </button>
+              }
+            />
+            <TooltipContent>{t('chart.expand')}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <button
+                  type="button"
+                  onClick={onCopy}
+                  aria-label={t('chart.copy')}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded text-[var(--dt-text-muted)] transition-colors hover:text-[var(--dt-text-strong)]"
+                >
+                  {copied
+                    ? <CheckIcon className="h-4 w-4" aria-hidden="true" />
+                    : <CopyIcon className="h-4 w-4" aria-hidden="true" />}
+                </button>
+              }
+            />
+            <TooltipContent>{t('chart.copy')}</TooltipContent>
+          </Tooltip>
         </div>
       </div>
       <div data-testid="chart-canvas-host">

@@ -24,6 +24,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { PanelLeftIcon } from "lucide-react"
+import { translateMessage } from "@/i18n/messages"
+import { useUISettingsStore } from "@/stores/ui-settings-store"
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
@@ -165,6 +167,9 @@ function Sidebar({
   collapsible?: "offcanvas" | "icon" | "none"
 }) {
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+  const language = useUISettingsStore((store) => store.language)
+  const sidebarTitle = translateMessage(language, "ui.sidebar.title")
+  const sidebarDescription = translateMessage(language, "ui.sidebar.description")
 
   if (collapsible === "none") {
     return (
@@ -198,8 +203,8 @@ function Sidebar({
           side={side}
         >
           <SheetHeader className="sr-only">
-            <SheetTitle>Sidebar</SheetTitle>
-            <SheetDescription>Displays the mobile sidebar.</SheetDescription>
+            <SheetTitle>{sidebarTitle}</SheetTitle>
+            <SheetDescription>{sidebarDescription}</SheetDescription>
           </SheetHeader>
           <div className="flex h-full w-full flex-col">{children}</div>
         </SheetContent>
@@ -257,6 +262,8 @@ function SidebarTrigger({
   ...props
 }: React.ComponentProps<typeof Button>) {
   const { toggleSidebar } = useSidebar()
+  const language = useUISettingsStore((store) => store.language)
+  const toggleLabel = translateMessage(language, "ui.sidebar.toggle")
 
   return (
     <Button
@@ -272,13 +279,15 @@ function SidebarTrigger({
       {...props}
     >
       <PanelLeftIcon />
-      <span className="sr-only">Toggle Sidebar</span>
+      <span className="sr-only">{toggleLabel}</span>
     </Button>
   )
 }
 
 function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
   const { toggleSidebar } = useSidebar()
+  const language = useUISettingsStore((store) => store.language)
+  const toggleLabel = translateMessage(language, "ui.sidebar.toggle")
 
   return (
     <Tooltip>
@@ -287,7 +296,7 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
           <button
             data-sidebar="rail"
             data-slot="sidebar-rail"
-            aria-label="Toggle Sidebar"
+            aria-label={toggleLabel}
             tabIndex={-1}
             onClick={toggleSidebar}
             className={cn(
@@ -304,7 +313,7 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
         }
       />
       <TooltipContent side="right">
-        Toggle Sidebar
+        {toggleLabel}
       </TooltipContent>
     </Tooltip>
   )

@@ -12,7 +12,8 @@ interface Args {
 }
 
 export async function openDirectSqlQueryEditorTab({ sessionId, connectionId, sql, autoRun = true }: Args): Promise<string> {
-  if (!connectionId) throw new Error('No active connection — please select a data source')
+  const language = getCurrentLanguage()
+  if (!connectionId) throw new Error(translateMessage(language, 'error.connection.missing'))
 
   const sessionContext = sessionId ? useSessionStore.getState().dataContextBySession.get(sessionId) ?? null : null
   const connectionName =
@@ -20,7 +21,7 @@ export async function openDirectSqlQueryEditorTab({ sessionId, connectionId, sql
     ?? sessionContext?.connectionNameSnapshot
     ?? null
   const store = useStageStore.getState()
-  const baseTitle = translateMessage(getCurrentLanguage(), 'stage.toolRow.sql')
+  const baseTitle = translateMessage(language, 'stage.toolRow.sql')
   const { tabId } = store.openQueryEditor({
     sessionId,
     scope: 'session',

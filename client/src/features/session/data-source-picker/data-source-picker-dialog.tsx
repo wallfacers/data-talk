@@ -87,7 +87,11 @@ export function DataSourcePickerDialog({
                       {formatConnectionMeta(connection)}
                     </div>
                   </div>
-                  <StatusBadge status={connection.lastTestStatus} />
+                  <StatusBadge
+                    status={connection.lastTestStatus}
+                    okLabel={t('dataSources.status.ok')}
+                    failedLabel={t('dataSources.status.failed')}
+                  />
                 </button>
               ))}
             </div>
@@ -107,12 +111,20 @@ function formatConnectionMeta(connection: Connection) {
   return [kind, connection.host, connection.databaseName ?? ''].filter(Boolean).join(' · ')
 }
 
-function StatusBadge({ status }: { status: string | null }) {
+function StatusBadge({
+  status,
+  okLabel,
+  failedLabel,
+}: {
+  status: string | null
+  okLabel: string
+  failedLabel: string
+}) {
   if (status === 'ok') {
     return (
       <span className="inline-flex items-center gap-1 text-xs text-green-600">
         <CheckCircle2Icon className="size-3.5" />
-        OK
+        {okLabel}
       </span>
     )
   }
@@ -120,7 +132,7 @@ function StatusBadge({ status }: { status: string | null }) {
     return (
       <span className="inline-flex items-center gap-1 text-xs text-red-600">
         <XCircleIcon className="size-3.5" />
-        Failed
+        {failedLabel}
       </span>
     )
   }

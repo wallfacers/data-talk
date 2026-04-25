@@ -9,6 +9,7 @@ import { getCurrentLanguage } from '@/stores/ui-settings-store'
 import { translateMessage } from '@/i18n/messages'
 import { resolveRisk } from '../../helpers/risk'
 import { EyeIcon } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 export function ReadFile(props: ToolRendererProps) {
   const { part, descriptor } = props
@@ -50,6 +51,8 @@ export function ReadFile(props: ToolRendererProps) {
   }
 
   const language = getCurrentLanguage()
+  const openStageLabel = translateMessage(language, 'chat.openStage')
+  const viewInStageLabel = translateMessage(language, 'chat.viewInStage')
   const risk = resolveRisk(part, descriptor)
 
   return (
@@ -61,18 +64,24 @@ export function ReadFile(props: ToolRendererProps) {
         title: payload.filename,
         subtitle: payload.fileType,
         action: (
-          <button
-            type="button"
-            aria-label={translateMessage(language, 'chat.openStage')}
-            title={translateMessage(language, 'chat.viewInStage')}
-            onClick={(event) => {
-              event.stopPropagation()
-              openInStage()
-            }}
-            className="inline-flex size-6 items-center justify-center rounded-md text-foreground hover:bg-muted hover:text-foreground"
-          >
-            <EyeIcon className="size-3.5" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <button
+                  type="button"
+                  aria-label={openStageLabel}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    openInStage()
+                  }}
+                  className="inline-flex size-6 items-center justify-center rounded-md text-foreground hover:bg-muted hover:text-foreground"
+                >
+                  <EyeIcon className="size-3.5" />
+                </button>
+              }
+            />
+            <TooltipContent>{viewInStageLabel}</TooltipContent>
+          </Tooltip>
         ),
       }}
       forceOpen
