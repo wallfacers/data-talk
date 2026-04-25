@@ -4,6 +4,7 @@ import type { StageTab } from '@/stores/stage-store'
 import { useStageStore } from '@/stores/stage-store'
 import { useSessionStore } from '@/stores/session-store'
 import { useSqlWorkbenchStore } from '../stores/sql-workbench-store'
+import { ArtifactPreviewTab } from './artifact-preview-tab'
 import { FilePreviewTab } from './file-preview-tab'
 import { SqlWorkbenchTab } from './sql-workbench-tab'
 
@@ -55,6 +56,14 @@ export function StageTabContent() {
     return (
       <div className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <FilePreviewTab key={tab.tabId} tab={tab} />
+      </div>
+    )
+  }
+
+  if (tab.type === 'artifact_preview') {
+    return (
+      <div className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <ArtifactPreviewTab key={tab.tabId} tab={tab} />
       </div>
     )
   }

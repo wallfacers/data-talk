@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import {
+  BarChart2Icon,
   ChevronDownIcon,
   DatabaseIcon,
   FileTextIcon,
@@ -57,6 +58,12 @@ function getTabIcon(type?: string, isActive?: boolean) {
       return (
         <FileTextIcon
           className={cn('size-4 transition-colors', isActive ? 'text-sky-500' : 'text-muted-foreground')}
+        />
+      )
+    case 'artifact_preview':
+      return (
+        <BarChart2Icon
+          className={cn('size-4 transition-colors', isActive ? 'text-violet-500' : 'text-muted-foreground')}
         />
       )
     default:

@@ -252,7 +252,7 @@ function decorateCodeBlocks(root: HTMLElement) {
 
 function parseChartFenceInfo(code: HTMLElement): { sourceArtifactId?: string } | null {
   const className = code.className ?? ''
-  const match = className.match(/(?:^|\s)language-chart(?::([A-Za-z0-9_-]+))?(?:\s|$)/i)
+  const match = className.match(/(?:^|\s)language-(?:chart|echarts)(?::([A-Za-z0-9_-]+))?(?:\s|$)/i)
   if (!match) return null
   return { sourceArtifactId: match[1] }
 }

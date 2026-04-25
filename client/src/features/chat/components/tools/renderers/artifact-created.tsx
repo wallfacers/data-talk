@@ -11,15 +11,20 @@ const KIND_ICONS: Record<string, string> = { table: '📊', chart: '📈', erd: 
 export function ArtifactCreated(props: ToolRendererProps) {
   const { part } = props
   const language = getCurrentLanguage()
-  const output = part.state.output as { kind?: string; title?: string } | undefined
-  const kind =
-    output?.kind ??
-    (part.state.metadata?.kind as string | undefined) ??
-    'table'
+  const output = part.state.output as { kind?: string; title?: string; artifactId?: string } | undefined
+  const kind = (() => {
+    if (output?.kind) return output.kind
+    const metaKind = part.state.metadata?.kind as string | undefined
+    if (metaKind) return metaKind
+    if (part.tool === 'datatalk_render_chart') return 'chart'
+    if (part.tool === 'datatalk_layout_erd') return 'erd'
+    return 'table'
+  })()
   const title =
     output?.title ??
     (part.state.metadata?.title as string | undefined) ??
     `${kind} artifact`
+  const artifactId = output?.artifactId ?? null
   const activeSessionId = useSessionStore((s) => s.activeSessionId)
   const sessionId = activeSessionId?.trim().length
     ? activeSessionId
@@ -27,8 +32,13 @@ export function ArtifactCreated(props: ToolRendererProps) {
       ? part.sessionID
       : null
 
-  const openStage = () => {
-    if (sessionId) useStageStore.getState().openStage(sessionId)
+  const openArtifact = () => {
+    if (!sessionId) return
+    if (artifactId && part.state.status === 'completed') {
+      useStageStore.getState().openArtifactPreviewTab(sessionId, artifactId, title)
+    } else {
+      useStageStore.getState().openStage(sessionId)
+    }
   }
 
   return (
@@ -46,7 +56,7 @@ export function ArtifactCreated(props: ToolRendererProps) {
             disabled={!sessionId}
             onClick={(event) => {
               event.stopPropagation()
-              openStage()
+              openArtifact()
             }}
             className="inline-flex size-6 items-center justify-center rounded-md text-foreground hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
           >

@@ -95,6 +95,7 @@ export type StageState = {
   focusTab: (tabId: string) => void
   listTabs: (sessionId: string | null) => StageTab[]
   updateTabPayload: (tabId: string, updater: (prev: unknown) => unknown) => void
+  openArtifactPreviewTab: (sessionId: string, artifactId: string, title: string) => void
   openQueryEditor: (input: QueryEditorOpenInput) => { tabId: string; created: boolean }
   setQueryEditorContext: (
     tabId: string,
@@ -319,6 +320,29 @@ export const useStageStore = create<StageState>((set, get) => ({
     }
     return s
   }),
+
+  openArtifactPreviewTab: (sessionId, artifactId, title) => {
+    const existing = get().tabsBySession.get(sessionId)?.find(
+      (t) => t.type === 'artifact_preview' && (t.payload as { artifactId?: string })?.artifactId === artifactId,
+    )
+    if (existing) {
+      get().openStage(sessionId)
+      get().focusTab(existing.tabId)
+      return
+    }
+    const tabId = `artifact_preview_${generateUuid()}`
+    const tab: StageTab = {
+      tabId,
+      type: 'artifact_preview',
+      title,
+      originSessionId: sessionId,
+      scope: 'session',
+      payload: { artifactId, sessionId },
+      createdAt: Date.now(),
+    }
+    get().openStage(sessionId)
+    get().openTab(tab)
+  },
 
   openQueryEditor: (input) => {
     if (input.scope === 'session' && !input.sessionId) {
