@@ -225,6 +225,14 @@
   display: none;
 }
 
+[data-result-scrollbar="header-offset"]::-webkit-scrollbar:vertical {
+  background: linear-gradient(to bottom, var(--muted) 0 2rem, transparent 2rem);
+}
+
+[data-result-scrollbar="header-offset"]::-webkit-scrollbar-track:vertical {
+  margin-top: 2rem;
+}
+
 /* Reduced motion: Stage bubble reveal 降级为瞬切 */
 @media (prefers-reduced-motion: reduce) {
   [data-stage-panel] {

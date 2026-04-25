@@ -6,6 +6,13 @@ import { cn } from '@/lib/utils'
 import { DARK_MONACO_THEME, LIGHT_MONACO_THEME, registerMonacoThemes } from './monaco-theme'
 const SYSTEM_MEDIA_QUERY = '(prefers-color-scheme: dark)'
 
+type SqlEditorSelection = {
+  startLine: number
+  startColumn: number
+  endLine: number
+  endColumn: number
+}
+
 export type SqlMonacoEditorHandle = {
   insertAtCursor: (text: string) => void
   revealLineNearTop: (line: number) => void
@@ -18,12 +25,13 @@ type SqlMonacoEditorProps = {
   onRun: () => void
   onFormat?: () => void
   onCursorChange?: (cursor: { line: number; column: number }) => void
+  onSelectionChange?: (selection: SqlEditorSelection | null) => void
   currentStatementRange?: { startLine: number; endLine: number } | null
   shellMode?: 'standalone' | 'connected'
 }
 
 export const SqlMonacoEditor = forwardRef<SqlMonacoEditorHandle, SqlMonacoEditorProps>(function SqlMonacoEditor(
-  { value, onChange, onRun, onFormat, onCursorChange, currentStatementRange, shellMode = 'standalone' },
+  { value, onChange, onRun, onFormat, onCursorChange, onSelectionChange, currentStatementRange, shellMode = 'standalone' },
   ref,
 ) {
   const themePreference = useThemeStore((state) => state.theme)
@@ -68,6 +76,19 @@ export const SqlMonacoEditor = forwardRef<SqlMonacoEditorHandle, SqlMonacoEditor
     editor.onDidChangeCursorPosition((event) => {
       const position = event.position
       onCursorChange?.({ line: position.lineNumber, column: position.column })
+    })
+    editor.onDidChangeCursorSelection((event) => {
+      const selection = event.selection
+      if (!selection || selection.isEmpty()) {
+        onSelectionChange?.(null)
+        return
+      }
+      onSelectionChange?.({
+        startLine: selection.startLineNumber,
+        startColumn: selection.startColumn,
+        endLine: selection.endLineNumber,
+        endColumn: selection.endColumn,
+      })
     })
   }
 

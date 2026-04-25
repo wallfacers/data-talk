@@ -32,6 +32,15 @@ const editorHarness = vi.hoisted(() => {
     },
     position: { lineNumber: 1, column: 1 },
     cursorListener: null as null | ((event: { position?: { lineNumber: number; column: number } }) => void),
+    selectionListener: null as null | ((event: {
+      selection?: {
+        startLineNumber: number
+        startColumn: number
+        endLineNumber: number
+        endColumn: number
+        isEmpty?: () => boolean
+      }
+    }) => void),
     decorations: [] as Array<Record<string, unknown>>,
     fakeMonaco: {
       KeyMod: { CtrlCmd: 1024, Shift: 2048 },
@@ -49,6 +58,18 @@ const editorHarness = vi.hoisted(() => {
     addCommand: vi.fn(),
     onDidChangeCursorPosition: vi.fn((listener: (event: { position?: { lineNumber: number; column: number } }) => void) => {
       harness.cursorListener = listener
+      return { dispose: vi.fn() }
+    }),
+    onDidChangeCursorSelection: vi.fn((listener: (event: {
+      selection?: {
+        startLineNumber: number
+        startColumn: number
+        endLineNumber: number
+        endColumn: number
+        isEmpty?: () => boolean
+      }
+    }) => void) => {
+      harness.selectionListener = listener
       return { dispose: vi.fn() }
     }),
     deltaDecorations: vi.fn((_previousIds: string[], nextDecorations: Array<Record<string, unknown>>) => {
@@ -177,8 +198,10 @@ describe('SqlWorkbenchTab', () => {
     editorHarness.lastProps = null
     editorHarness.position = { lineNumber: 1, column: 1 }
     editorHarness.cursorListener = null
+    editorHarness.selectionListener = null
     editorHarness.decorations = []
     editorHarness.fakeEditor?.addCommand.mockClear()
+    editorHarness.fakeEditor?.onDidChangeCursorSelection.mockClear()
     editorHarness.fakeEditor?.deltaDecorations.mockClear()
     editorHarness.fakeEditor?.getPosition.mockClear()
     editorHarness.fakeEditor?.setPosition.mockClear()
@@ -492,6 +515,107 @@ delete from sessions;`,
     expect(screen.queryByText('UPDATE')).toBeNull()
   })
 
+  it('runs the exact selected SQL text instead of the whole editor buffer', async () => {
+    executeSqlMock.mockResolvedValue({
+      resolvedContext: {
+        connectionId: 'conn-1',
+        connectionName: 'Primary Connection',
+        database: 'db_main',
+        schema: null,
+        selectedLevel: 'database',
+      },
+      contextNotice: null,
+      results: [],
+    })
+
+    render(
+      <SqlWorkbenchTab
+        tab={{
+          ...tab,
+          tabId: 'tab-selected-run',
+          payload: {
+            initialSql: 'select 1;\nselect 2\nselect 3;',
+            source: 'user',
+          },
+        }}
+      />,
+    )
+
+    act(() => {
+      useSqlWorkbenchStore.getState().setLimit('tab-selected-run', null)
+      editorHarness.selectionListener?.({
+        selection: {
+          startLineNumber: 2,
+          startColumn: 1,
+          endLineNumber: 2,
+          endColumn: 9,
+          isEmpty: () => false,
+        },
+      })
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: t('stage.toolbar.run') }))
+
+    await waitFor(() => expect(executeSqlMock).toHaveBeenCalledTimes(1))
+    expect(executeSqlMock).toHaveBeenCalledWith(expect.objectContaining({
+      sql: 'select 2',
+      connectionId: 'conn-1',
+      source: 'user',
+    }), expect.any(AbortSignal))
+  })
+
+  it('runs the exact selected SQL text from the Monaco run command', async () => {
+    executeSqlMock.mockResolvedValue({
+      resolvedContext: {
+        connectionId: 'conn-1',
+        connectionName: 'Primary Connection',
+        database: 'db_main',
+        schema: null,
+        selectedLevel: 'database',
+      },
+      contextNotice: null,
+      results: [],
+    })
+
+    render(
+      <SqlWorkbenchTab
+        tab={{
+          ...tab,
+          tabId: 'tab-selected-command-run',
+          payload: {
+            initialSql: 'select 1;\nselect 2\nselect 3;',
+            source: 'user',
+          },
+        }}
+      />,
+    )
+
+    act(() => {
+      useSqlWorkbenchStore.getState().setLimit('tab-selected-command-run', null)
+      editorHarness.selectionListener?.({
+        selection: {
+          startLineNumber: 2,
+          startColumn: 1,
+          endLineNumber: 2,
+          endColumn: 9,
+          isEmpty: () => false,
+        },
+      })
+    })
+
+    const runCommand = editorHarness.fakeEditor?.addCommand.mock.calls[0]?.[1] as (() => void) | undefined
+    act(() => {
+      runCommand?.()
+    })
+
+    await waitFor(() => expect(executeSqlMock).toHaveBeenCalledTimes(1))
+    expect(executeSqlMock).toHaveBeenCalledWith(expect.objectContaining({
+      sql: 'select 2',
+      connectionId: 'conn-1',
+      source: 'user',
+    }), expect.any(AbortSignal))
+  })
+
   it('formats SQL and persists the draft without a save button', async () => {
     render(<SqlWorkbenchTab tab={tab} />)
 
@@ -780,6 +904,78 @@ delete from sessions;`,
 
     fireEvent.click(screen.getByRole('tab', { name: 'Error' }))
     expect(screen.getByText(/relation missing does not exist/)).toBeTruthy()
+  })
+
+  it('restores vertical and horizontal scroll independently for each result set', async () => {
+    executeSqlMock.mockResolvedValue({
+      resolvedContext: {
+        connectionId: 'conn-1',
+        connectionName: 'Primary Connection',
+        database: 'db_main',
+        schema: null,
+        selectedLevel: 'database',
+      },
+      contextNotice: null,
+      results: [
+        {
+          resultId: 'r-a',
+          kind: 'result_set',
+          title: 'Result A',
+          statementIndex: 0,
+          statementText: 'select * from a',
+          columns: Array.from({ length: 8 }, (_, index) => `a_col_${index + 1}`),
+          rows: Array.from({ length: 20 }, (_, rowIndex) =>
+            Array.from({ length: 8 }, (_, columnIndex) => `A${rowIndex + 1}-${columnIndex + 1}`),
+          ),
+          rowCount: 20,
+          executionMs: 5,
+          truncated: false,
+        },
+        {
+          resultId: 'r-b',
+          kind: 'result_set',
+          title: 'Result B',
+          statementIndex: 1,
+          statementText: 'select * from b',
+          columns: Array.from({ length: 8 }, (_, index) => `b_col_${index + 1}`),
+          rows: Array.from({ length: 20 }, (_, rowIndex) =>
+            Array.from({ length: 8 }, (_, columnIndex) => `B${rowIndex + 1}-${columnIndex + 1}`),
+          ),
+          rowCount: 20,
+          executionMs: 6,
+          truncated: false,
+        },
+      ],
+    })
+
+    render(<SqlWorkbenchTab tab={{ ...tab, tabId: 'tab-result-scroll' }} />)
+    fireEvent.click(screen.getByRole('button', { name: t('stage.toolbar.run') }))
+
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'Result A' })).toBeTruthy())
+
+    const getViewport = () => screen.getByTestId('sql-result-table-scroll') as HTMLDivElement
+    let viewport = getViewport()
+    viewport.scrollTop = 80
+    viewport.scrollLeft = 120
+    fireEvent.scroll(viewport)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Result B' }))
+    viewport = getViewport()
+    viewport.scrollTop = 30
+    viewport.scrollLeft = 40
+    fireEvent.scroll(viewport)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Result A' }))
+    await waitFor(() => {
+      expect(getViewport().scrollTop).toBe(80)
+      expect(getViewport().scrollLeft).toBe(120)
+    })
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Result B' }))
+    await waitFor(() => {
+      expect(getViewport().scrollTop).toBe(30)
+      expect(getViewport().scrollLeft).toBe(40)
+    })
   })
 
   it('supports dragging the horizontal splitter above result tabs', async () => {

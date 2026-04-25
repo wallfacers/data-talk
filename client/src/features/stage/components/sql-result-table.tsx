@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { SqlExecuteResultItem } from '@/services/api/sql'
 import {
   ContextMenu,
@@ -28,9 +28,16 @@ import '@/features/chat/components/markdown/markdown.css'
 
 type SqlResultTableProps = {
   result: SqlExecuteResultItem
+  scrollPosition?: ResultScrollPosition
+  onScrollPositionChange?: (position: ResultScrollPosition) => void
 }
 
 const stickyHeaderCellClass = 'sticky top-0 z-20 h-8 border-b border-border/50 bg-muted px-3'
+
+export type ResultScrollPosition = {
+  scrollTop: number
+  scrollLeft: number
+}
 
 type ResultContextTarget = {
   cellValue?: unknown
@@ -94,8 +101,13 @@ function getContentLanguage(raw: string) {
   return 'text'
 }
 
-export function SqlResultTable({ result }: SqlResultTableProps) {
+export function SqlResultTable({
+  result,
+  scrollPosition,
+  onScrollPositionChange,
+}: SqlResultTableProps) {
   const { t } = useI18n()
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const [page, setPage] = useState(1)
   const [contextTarget, setContextTarget] = useState<ResultContextTarget | null>(null)
   const [detailTarget, setDetailTarget] = useState<ResultContextTarget | null>(null)
@@ -115,6 +127,29 @@ export function SqlResultTable({ result }: SqlResultTableProps) {
     setDetailTarget(null)
     setDetailFormatted(false)
   }, [result.resultId])
+
+  useLayoutEffect(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    const nextScrollTop = scrollPosition?.scrollTop ?? 0
+    const nextScrollLeft = scrollPosition?.scrollLeft ?? 0
+    if (container.scrollTop !== nextScrollTop) {
+      container.scrollTop = nextScrollTop
+    }
+    if (container.scrollLeft !== nextScrollLeft) {
+      container.scrollLeft = nextScrollLeft
+    }
+  }, [result.resultId, scrollPosition?.scrollLeft, scrollPosition?.scrollTop])
+
+  const handleScroll = useCallback(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+    onScrollPositionChange?.({
+      scrollTop: container.scrollTop,
+      scrollLeft: container.scrollLeft,
+    })
+  }, [onScrollPositionChange])
 
   const summaryLabel = result.truncated
     ? t('stage.queryEditor.summary.truncated', {
@@ -160,9 +195,12 @@ export function SqlResultTable({ result }: SqlResultTableProps) {
         <ContextMenuTrigger
           render={
             <div
+              ref={scrollContainerRef}
               data-testid="sql-result-table-scroll"
+              data-result-scrollbar="header-offset"
               className="min-h-0 flex-1 overflow-auto"
               onContextMenuCapture={() => setContextTarget(null)}
+              onScroll={handleScroll}
             >
               <Table scrollContainer={false} className="min-w-max text-xs">
                 <TableHeader className="bg-muted">

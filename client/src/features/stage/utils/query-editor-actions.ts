@@ -360,6 +360,7 @@ export async function runQueryEditorSql(params: {
   tabId: string
   sessionId: string | null
   limit?: 10 | 100 | 1000 | null
+  sqlOverride?: string | null
 }): Promise<{ executeStatus: 'success' | 'risk_blocked' | 'error'; activeResultId: string | null }> {
   const { tabId, sessionId } = params
   const stageTab = getStageTab(tabId)
@@ -372,7 +373,11 @@ export async function runQueryEditorSql(params: {
   }
 
   const { tabState, effectiveContext } = resolveQueryEditorContexts(tabId, sessionId)
-  if (!tabState || !effectiveContext.connectionId || !tabState.sqlText.trim()) {
+  const rawExecutableSql = params.sqlOverride?.trim()
+    ? params.sqlOverride
+    : tabState?.sqlText
+
+  if (!tabState || !effectiveContext.connectionId || !rawExecutableSql?.trim()) {
     return { executeStatus: 'error', activeResultId: null }
   }
 
@@ -383,7 +388,7 @@ export async function runQueryEditorSql(params: {
   const sqlWorkbenchStore = useSqlWorkbenchStore.getState()
   sqlWorkbenchStore.setRunning(tabId)
   const startedAt = Date.now()
-  const executableSql = injectLimit(tabState.sqlText, params.limit === undefined ? tabState.limit : params.limit)
+  const executableSql = injectLimit(rawExecutableSql, params.limit === undefined ? tabState.limit : params.limit)
 
   try {
     const request: Parameters<typeof executeSql>[0] = {

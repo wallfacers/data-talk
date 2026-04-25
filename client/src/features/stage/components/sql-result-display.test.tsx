@@ -168,6 +168,28 @@ describe('Sql result displays', () => {
     }
   })
 
+  it('aligns the vertical scrollbar with the sticky header without leaving a blank corner', () => {
+    render(
+      <SqlResultTable
+        result={{
+          resultId: 'scrollbar-header-gap-result',
+          kind: 'result_set',
+          title: 'orders',
+          statementIndex: 0,
+          statementText: 'select * from orders',
+          columns: ['id', 'status'],
+          rows: Array.from({ length: 120 }, (_, index) => [`O-${index + 1}`, 'paid']),
+          rowCount: 120,
+          executionMs: 8,
+          truncated: false,
+        }}
+      />,
+    )
+
+    const viewport = screen.getByTestId('sql-result-table-scroll')
+    expect(viewport.getAttribute('data-result-scrollbar')).toBe('header-offset')
+  })
+
   it('renders localized context menu actions for result cells', () => {
     render(
       <SqlResultTable

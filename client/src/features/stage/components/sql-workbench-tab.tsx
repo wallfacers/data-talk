@@ -22,6 +22,7 @@ import { SqlEditorToolbar } from './sql-editor-toolbar'
 import { SqlMonacoEditor } from './sql-monaco-editor'
 import { SqlResultTabs } from './sql-result-tabs'
 import { SqlResultPanel } from './sql-result-panel'
+import type { ResultScrollPosition } from './sql-result-table'
 import { StageActivityRail } from './activity-rail/stage-activity-rail'
 
 type TabExecutionContext = {
@@ -45,6 +46,7 @@ const EMPTY_WORKBENCH_STATE = {
   executeStatus: 'idle' as const,
   results: [],
   activeResultId: null,
+  selection: null,
   resolvedContext: null,
   contextNotice: null,
   risk: null,
@@ -60,6 +62,7 @@ const RESULT_PANE_MIN_PERCENT = 22
 const RESULT_PANE_MAX_PERCENT = 64
 const RESULT_PANE_DEFAULT_PERCENT = 38
 const QUERY_EDITOR_RUN_CONTROLLERS_KEY = '__data_talk_query_editor_run_controllers__'
+const DEFAULT_RESULT_SCROLL_POSITION: ResultScrollPosition = { scrollTop: 0, scrollLeft: 0 }
 
 export function getSqlWorkbenchTabActions(tabId: string) {
   return tabActionsById.get(tabId) ?? null
@@ -131,6 +134,45 @@ function replaceSqlStatementRange(value: string, startLine: number, endLine: num
   return next.join('\n')
 }
 
+function resolveTextOffset(value: string, line: number, column: number) {
+  let currentLine = 1
+  let lineStart = 0
+
+  for (let index = 0; index < value.length; index += 1) {
+    const char = value[index]
+    if (char !== '\n' && char !== '\r') continue
+
+    if (currentLine === line) {
+      const lineLength = index - lineStart
+      return lineStart + Math.min(Math.max(0, column - 1), lineLength)
+    }
+
+    if (char === '\r' && value[index + 1] === '\n') {
+      index += 1
+    }
+    currentLine += 1
+    lineStart = index + 1
+  }
+
+  if (currentLine === line) {
+    return lineStart + Math.min(Math.max(0, column - 1), value.length - lineStart)
+  }
+  return value.length
+}
+
+function getSelectedSqlText(
+  value: string,
+  selection: { startLine: number; startColumn: number; endLine: number; endColumn: number } | null,
+) {
+  if (!selection) return null
+  const startOffset = resolveTextOffset(value, selection.startLine, selection.startColumn)
+  const endOffset = resolveTextOffset(value, selection.endLine, selection.endColumn)
+  if (startOffset === endOffset) return null
+
+  const selectedText = value.slice(Math.min(startOffset, endOffset), Math.max(startOffset, endOffset))
+  return selectedText.trim().length > 0 ? selectedText : null
+}
+
 function toContextValue(
   connectionId: string | null,
   connectionName: string | null,
@@ -149,6 +191,7 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
   const resizeCleanupRef = useRef<(() => void) | null>(null)
   const [draftLoadedTabId, setDraftLoadedTabId] = useState<string | null>(null)
   const [resultPanePercent, setResultPanePercent] = useState(RESULT_PANE_DEFAULT_PERCENT)
+  const [resultScrollPositionsById, setResultScrollPositionsById] = useState<Record<string, ResultScrollPosition>>({})
   const [connectionTargetsByConnectionId, setConnectionTargetsByConnectionId] = useState<Record<string, SqlContextConnectionTargets>>({})
   const pendingConnectionTargetsRef = useRef<Set<string>>(new Set())
   const { activeConnectionId, connections, setConnections } = useConnectionStore(
@@ -183,6 +226,7 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     setActiveResult,
     setLimit,
     setCursor,
+    setSelection,
     closeResult,
     closeOtherResults,
     closeAllResults,
@@ -193,6 +237,7 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
       setActiveResult: state.setActiveResult,
       setLimit: state.setLimit,
       setCursor: state.setCursor,
+      setSelection: state.setSelection,
       closeResult: state.closeResult,
       closeOtherResults: state.closeOtherResults,
       closeAllResults: state.closeAllResults,
@@ -213,6 +258,26 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     [displayResults, tabState.activeResultId],
   )
   const showResultPane = displayResults.length > 0
+  const activeResultId = activeResult?.resultId ?? null
+  const activeResultScrollPosition = activeResultId
+    ? resultScrollPositionsById[activeResultId] ?? DEFAULT_RESULT_SCROLL_POSITION
+    : DEFAULT_RESULT_SCROLL_POSITION
+
+  useEffect(() => {
+    const resultIds = new Set(displayResults.map((result) => result.resultId))
+    setResultScrollPositionsById((previous) => {
+      let changed = false
+      const next: Record<string, ResultScrollPosition> = {}
+      for (const [resultId, position] of Object.entries(previous)) {
+        if (!resultIds.has(resultId)) {
+          changed = true
+          continue
+        }
+        next[resultId] = position
+      }
+      return changed ? next : previous
+    })
+  }, [displayResults])
 
   useEffect(() => {
     ensureTab(tab.tabId, {
@@ -437,10 +502,15 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
   useEffect(() => stopResize, [stopResize])
 
   const handleRun = useCallback(async () => {
+    const currentTabState = useSqlWorkbenchStore.getState().tabsById[tab.tabId]
+    const selectedSqlText = currentTabState
+      ? getSelectedSqlText(currentTabState.sqlText, currentTabState.selection)
+      : null
     try {
       await runQueryEditorSql({
         tabId: tab.tabId,
         sessionId: tab.originSessionId ?? null,
+        sqlOverride: selectedSqlText,
       })
     } catch (error) {
       if (isAbortError(error)) {
@@ -493,9 +563,30 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     [setCursor, tab.tabId],
   )
 
+  const handleSelectionChange = useCallback(
+    (selection: { startLine: number; startColumn: number; endLine: number; endColumn: number } | null) => {
+      setSelection(tab.tabId, selection)
+    },
+    [setSelection, tab.tabId],
+  )
+
   const handleSelectResult = useCallback((resultId: string) => {
     setActiveResult(tab.tabId, resultId)
   }, [setActiveResult, tab.tabId])
+
+  const handleActiveResultScrollPositionChange = useCallback((position: ResultScrollPosition) => {
+    if (!activeResultId) return
+    setResultScrollPositionsById((previous) => {
+      const current = previous[activeResultId]
+      if (current?.scrollTop === position.scrollTop && current.scrollLeft === position.scrollLeft) {
+        return previous
+      }
+      return {
+        ...previous,
+        [activeResultId]: position,
+      }
+    })
+  }, [activeResultId])
 
   const handleCloseResult = useCallback((resultId: string) => {
     closeResult(tab.tabId, resultId)
@@ -580,6 +671,7 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
                 onRun={() => void handleRun()}
                 onFormat={handleFormat}
                 onCursorChange={handleCursorChange}
+                onSelectionChange={handleSelectionChange}
                 currentStatementRange={
                   currentStatement
                     ? {
@@ -637,6 +729,8 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
                     activeResult={activeResult}
                     risk={tabState.risk}
                     errorMessage={tabState.errorMessage}
+                    activeScrollPosition={activeResultScrollPosition}
+                    onActiveScrollPositionChange={handleActiveResultScrollPositionChange}
                   />
                 </div>
               </div>

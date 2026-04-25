@@ -2,6 +2,7 @@ import type { SqlExecuteResultItem, SqlRiskBlocked } from '@/services/api/sql'
 import { useI18n } from '@/i18n/use-i18n'
 import type { SqlWorkbenchExecuteStatus } from '../stores/sql-workbench-store'
 import { SqlResultTable } from './sql-result-table'
+import type { ResultScrollPosition } from './sql-result-table'
 import { SqlDmlSummaryPanel } from './sql-dml-summary-panel'
 import { SqlErrorResultPanel } from './sql-error-result-panel'
 
@@ -10,6 +11,8 @@ type SqlResultPanelProps = {
   activeResult: SqlExecuteResultItem | null
   risk: SqlRiskBlocked | null
   errorMessage: string | null
+  activeScrollPosition?: ResultScrollPosition
+  onActiveScrollPositionChange?: (position: ResultScrollPosition) => void
 }
 
 export function SqlResultPanel({
@@ -17,6 +20,8 @@ export function SqlResultPanel({
   activeResult,
   risk,
   errorMessage,
+  activeScrollPosition,
+  onActiveScrollPositionChange,
 }: SqlResultPanelProps) {
   const { t } = useI18n()
 
@@ -75,5 +80,11 @@ export function SqlResultPanel({
     return <SqlErrorResultPanel result={activeResult} />
   }
 
-  return <SqlResultTable result={activeResult} />
+  return (
+    <SqlResultTable
+      result={activeResult}
+      scrollPosition={activeScrollPosition}
+      onScrollPositionChange={onActiveScrollPositionChange}
+    />
+  )
 }

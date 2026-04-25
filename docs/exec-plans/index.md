@@ -11,6 +11,7 @@
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [SQL Editor Selection Run And Result Scroll](./2026-04-25-sql-editor-selection-run-result-scroll-plan.md) | 2026-04-25 | SQL 编辑器已支持工具栏与 `Ctrl/Cmd+Enter` 精确执行非空 Monaco 选区；无选区仍执行全文；多结果集按 `resultId` 独立保存并恢复上下、左右滚动位置。 |
 | [Streaming Code Block Jitter](./2026-04-24-streaming-code-block-jitter-plan.md) | 2026-04-24 | assistant 流式 fenced code block 底部抖动已按“结构滚动版本 + 内容增长 observer/RAF + 未闭合代码围栏稳定 DOM”收口；后续移除 streaming-only `pre` 高度规则，并改为所有 code window 共享 `pre > code` 一行正文保底，使未闭合与完成态高度模型一致；前端 focused/full vitest、`npx tsc --noEmit` 与 `git diff --check` 通过，真实 DeepSeek/OpenCode live smoke 作为本地产品复测项记录在计划内。 |
 | [User Bubble Scroll Jitter](./2026-04-24-user-bubble-scroll-jitter-plan.md) | 2026-04-24 | 修复聊天区存在滚动条时，用户新发送气泡在底部出现时的垂直位置抖动；在保留 `useAutoScroll` 同轮 observer 去重的同时，`SessionTurn` 现在会在 pending 阶段先渲染与真实 thinking indicator 同构的隐形壳，并禁止上一条未 completed 的 assistant turn 在下一次发送时突然长出 `Copy` footer。 |
 | [Chat Jitter DeepSeek Alignment](./2026-04-24-chat-jitter-deepseek-alignment-plan.md) | 2026-04-24 | 聊天区发送抖动已按“先锁 turn 高度、再压缩 follow 触发”的窄范围策略收口：`SessionTurn` 现只在 assistant turn settled 后挂 footer/meta，`useAutoScroll` 将 mutation follow 合并到 `requestAnimationFrame`，`PacedMarkdown` 在 fenced code 流式阶段跳过本地 staged reveal；相关 chat 回归、`npx tsc --noEmit` 与人工复测已完成，无需额外 virtualization 计划。 |
