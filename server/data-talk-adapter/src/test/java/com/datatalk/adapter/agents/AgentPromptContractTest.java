@@ -99,6 +99,45 @@ class AgentPromptContractTest {
     }
 
     @Test
+    void runtimePromptRoutesTableBrowsingToQueryEditorAndAnalyticsToServerData() throws IOException {
+        String prompt = loadPrompt();
+
+        assertThat(prompt)
+            .contains("Intent Routing Gate")
+            .contains("query editor UI workflow")
+            .contains("browse table rows")
+            .contains("do not use `datatalk_execute_sql`")
+            .contains("server data workflow")
+            .contains("analytical question")
+            .contains("report")
+            .contains("chart");
+    }
+
+    @Test
+    void runtimePromptClarifiesRoutingEdgeCases() throws IOException {
+        String prompt = loadPrompt();
+
+        assertThat(prompt)
+            .contains("single-table `COUNT(*)` without grouping")
+            .contains("Grouped counts")
+            .contains("query editor result grid")
+            .contains("Do not replace unrelated SQL")
+            .contains("smallest aggregated result");
+    }
+
+    @Test
+    void runtimePromptSpecifiesChartFenceLanguage() throws IOException {
+        String prompt = loadPrompt();
+
+        assertThat(prompt)
+            .contains("inline fenced code block with language `chart`")
+            .contains("ECharts option JSON")
+            .contains("chart:<artifactId>")
+            .contains("```chart:art-abc123")
+            .doesNotContain("inline fenced chart block");
+    }
+
+    @Test
     void registeredUiActionSchemasStayAlignedWithPromptSurface() throws Exception {
         String uiListSchema = om.writeValueAsString(registry.require("datatalk.ui.list").inputSchema());
         String uiReadSchema = om.writeValueAsString(registry.require("datatalk.ui.read").inputSchema());
