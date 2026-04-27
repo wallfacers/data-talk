@@ -55,7 +55,10 @@ export interface StageTab {
   originSessionId?: string
   scope: 'session' | 'workspace'
   pinned?: boolean
+  archived?: boolean
   payload: unknown
+  payloadVersion?: number
+  lastTouchedAt?: number
   createdAt: number
 }
 
@@ -112,6 +115,15 @@ export type StageState = {
     params: { baseVersion: number; edits: QueryEditorTextEdit[] },
   ) => QueryEditorEditResult
   setQueryEditorCursor: (tabId: string, cursor: { line: number; column: number }) => void
+
+  // Persistence mutation API
+  findTab: (tabId: string) => StageTab | null
+  __hydrateWorkspaceTabs: (items: Array<StageTab & Record<string, unknown>>) => void
+  __hydrateSessionTabs: (sessionId: string, items: Array<StageTab & Record<string, unknown>>) => void
+  __hydratePayload: (tabId: string, payload: unknown, version: number) => void
+  archiveTab: (id: string, archived: boolean) => void
+  setTabPinned: (id: string, pinned: boolean) => void
+  setTabTitle: (id: string, title: string) => void
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -453,4 +465,125 @@ export const useStageStore = create<StageState>((set, get) => ({
   setQueryEditorCursor: (tabId, cursor) => {
     useSqlWorkbenchStore.getState().setCursor(tabId, cursor.line, cursor.column)
   },
+
+  findTab: (tabId) => {
+    const s = get()
+    const ws = s.workspaceTabs.find((t) => t.tabId === tabId)
+    if (ws) return ws
+    for (const [, arr] of s.tabsBySession.entries()) {
+      const found = arr.find((t) => t.tabId === tabId)
+      if (found) return found
+    }
+    return null
+  },
+
+  __hydrateWorkspaceTabs: (items) => set((s) => {
+    const incomingMap = new Map(items.map((t) => [t.tabId, t as StageTab]))
+    const merged = s.workspaceTabs.map((existing) => {
+      const hydrated = incomingMap.get(existing.tabId)
+      if (!hydrated) return existing
+      return { ...existing, ...hydrated }
+    })
+    // Add new tabs from hydration that don't exist locally
+    for (const item of items) {
+      if (!merged.some((t) => t.tabId === item.tabId)) {
+        merged.push(item as StageTab)
+      }
+    }
+    return { workspaceTabs: merged }
+  }),
+
+  __hydrateSessionTabs: (sessionId, items) => set((s) => {
+    const existing = s.tabsBySession.get(sessionId) ?? []
+    const incomingMap = new Map(items.map((t) => [t.tabId, t as StageTab]))
+    const merged = existing.map((e) => {
+      const hydrated = incomingMap.get(e.tabId)
+      if (!hydrated) return e
+      return { ...e, ...hydrated }
+    })
+    for (const item of items) {
+      if (!merged.some((t) => t.tabId === item.tabId)) {
+        merged.push(item as StageTab)
+      }
+    }
+    const nextMap = new Map(s.tabsBySession)
+    nextMap.set(sessionId, merged)
+    return { tabsBySession: nextMap }
+  }),
+
+  __hydratePayload: (tabId, payload, version) => set((s) => {
+    const wsIdx = s.workspaceTabs.findIndex((t) => t.tabId === tabId)
+    if (wsIdx >= 0) {
+      const next = [...s.workspaceTabs]
+      next[wsIdx] = { ...next[wsIdx], payload, payloadVersion: version }
+      return { workspaceTabs: next }
+    }
+    for (const [sid, arr] of s.tabsBySession.entries()) {
+      const i = arr.findIndex((t) => t.tabId === tabId)
+      if (i < 0) continue
+      const nextArr = [...arr]
+      nextArr[i] = { ...nextArr[i], payload, payloadVersion: version }
+      const map = new Map(s.tabsBySession)
+      map.set(sid, nextArr)
+      return { tabsBySession: map }
+    }
+    return s
+  }),
+
+  archiveTab: (id, archived) => set((s) => {
+    const wsIdx = s.workspaceTabs.findIndex((t) => t.tabId === id)
+    if (wsIdx >= 0) {
+      const next = [...s.workspaceTabs]
+      next[wsIdx] = { ...next[wsIdx], archived }
+      return { workspaceTabs: next }
+    }
+    for (const [sid, arr] of s.tabsBySession.entries()) {
+      const i = arr.findIndex((t) => t.tabId === id)
+      if (i < 0) continue
+      const nextArr = [...arr]
+      nextArr[i] = { ...nextArr[i], archived }
+      const map = new Map(s.tabsBySession)
+      map.set(sid, nextArr)
+      return { tabsBySession: map }
+    }
+    return s
+  }),
+
+  setTabPinned: (id, pinned) => set((s) => {
+    const wsIdx = s.workspaceTabs.findIndex((t) => t.tabId === id)
+    if (wsIdx >= 0) {
+      const next = [...s.workspaceTabs]
+      next[wsIdx] = { ...next[wsIdx], pinned }
+      return { workspaceTabs: next }
+    }
+    for (const [sid, arr] of s.tabsBySession.entries()) {
+      const i = arr.findIndex((t) => t.tabId === id)
+      if (i < 0) continue
+      const nextArr = [...arr]
+      nextArr[i] = { ...nextArr[i], pinned }
+      const map = new Map(s.tabsBySession)
+      map.set(sid, nextArr)
+      return { tabsBySession: map }
+    }
+    return s
+  }),
+
+  setTabTitle: (id, title) => set((s) => {
+    const wsIdx = s.workspaceTabs.findIndex((t) => t.tabId === id)
+    if (wsIdx >= 0) {
+      const next = [...s.workspaceTabs]
+      next[wsIdx] = { ...next[wsIdx], title }
+      return { workspaceTabs: next }
+    }
+    for (const [sid, arr] of s.tabsBySession.entries()) {
+      const i = arr.findIndex((t) => t.tabId === id)
+      if (i < 0) continue
+      const nextArr = [...arr]
+      nextArr[i] = { ...nextArr[i], title }
+      const map = new Map(s.tabsBySession)
+      map.set(sid, nextArr)
+      return { tabsBySession: map }
+    }
+    return s
+  }),
 }))

@@ -344,3 +344,98 @@ describe('StageStore tabs', () => {
     expect(useStageStore.getState().resourceTreeExpandedBySession.has('s1')).toBe(false)
   })
 })
+
+describe('StageStore persistence mutation API', () => {
+  beforeEach(() => { useStageStore.setState({
+    openBySession: new Map(),
+    autoOpenedSessions: new Set(),
+    maximizedBySession: new Map(),
+    revealOrigin: null,
+    sidebarCollapsedBySession: new Map(),
+    sidebarSelectionBySession: new Map(),
+    resourceTreeExpandedBySession: new Map(),
+    activeRailPanelBySession: new Map(),
+    workspaceTabs: [], tabsBySession: new Map(),
+    activeTabIdBySession: new Map(), activeWorkspaceTabId: null,
+  } as unknown as Record<string, unknown>) })
+
+  beforeEach(() => {
+    useSqlWorkbenchStore.setState({ tabsById: {} })
+  })
+
+  it('findTab returns tab by id from workspace or session', () => {
+    const st = useStageStore.getState()
+    st.openTab({ tabId: 't1', type: 'query_editor', title: 'WS', scope: 'workspace', payload: {}, createdAt: 1 })
+    st.openTab({ tabId: 's1', type: 'artifact_preview', title: 'Sess', scope: 'session', originSessionId: 'sess1', payload: {}, createdAt: 2 })
+
+    expect(st.findTab('t1')).toMatchObject({ tabId: 't1' })
+    expect(st.findTab('s1')).toMatchObject({ tabId: 's1' })
+    expect(st.findTab('missing')).toBeNull()
+  })
+
+  it('__hydrateWorkspaceTabs merges server items into existing workspace tabs', () => {
+    const st = useStageStore.getState()
+    st.openTab({ tabId: 't1', type: 'query_editor', title: 'Local', scope: 'workspace', payload: {}, createdAt: 1 })
+
+    st.__hydrateWorkspaceTabs([
+      { tabId: 't1', type: 'query_editor', title: 'Hydrated', scope: 'workspace' as const, payload: { sql: 'server' }, payloadVersion: 5, createdAt: 1, lastTouchedAt: 100 },
+      { tabId: 't2', type: 'query_editor', title: 'New From Server', scope: 'workspace' as const, payload: {}, createdAt: 2 },
+    ] as never)
+
+    const tabs = useStageStore.getState().workspaceTabs
+    expect(tabs).toHaveLength(2)
+    expect(tabs.find((t) => t.tabId === 't1')?.title).toBe('Hydrated')
+    expect(tabs.find((t) => t.tabId === 't2')?.title).toBe('New From Server')
+  })
+
+  it('__hydrateSessionTabs merges server items into session tabs', () => {
+    const st = useStageStore.getState()
+    st.openTab({ tabId: 'a1', type: 'artifact_preview', title: 'Local Art', scope: 'session', originSessionId: 'sess1', payload: {}, createdAt: 1 })
+
+    st.__hydrateSessionTabs('sess1', [
+      { tabId: 'a1', type: 'artifact_preview', title: 'Server Art', scope: 'session' as const, originSessionId: 'sess1', payload: {}, createdAt: 1, payloadVersion: 2 },
+    ] as never)
+
+    const sessionTabs = useStageStore.getState().tabsBySession.get('sess1')
+    expect(sessionTabs).toHaveLength(1)
+    expect(sessionTabs?.[0].title).toBe('Server Art')
+  })
+
+  it('__hydratePayload sets payload and version on target tab', () => {
+    const st = useStageStore.getState()
+    st.openTab({ tabId: 't1', type: 'query_editor', title: 'Q', scope: 'workspace', payload: {}, createdAt: 1 })
+
+    st.__hydratePayload('t1', { sqlText: 'SELECT 1' }, 7)
+
+    const tab = useStageStore.getState().findTab('t1')
+    expect(tab?.payload).toEqual({ sqlText: 'SELECT 1' })
+    expect(tab?.payloadVersion).toBe(7)
+  })
+
+  it('archiveTab sets archived flag on tab', () => {
+    const st = useStageStore.getState()
+    st.openTab({ tabId: 't1', type: 'query_editor', title: 'Q', scope: 'workspace', payload: {}, createdAt: 1 })
+
+    st.archiveTab('t1', true)
+    expect(useStageStore.getState().findTab('t1')?.archived).toBe(true)
+
+    st.archiveTab('t1', false)
+    expect(useStageStore.getState().findTab('t1')?.archived).toBe(false)
+  })
+
+  it('setTabPinned sets pinned flag on tab', () => {
+    const st = useStageStore.getState()
+    st.openTab({ tabId: 't1', type: 'query_editor', title: 'Q', scope: 'workspace', payload: {}, createdAt: 1 })
+
+    st.setTabPinned('t1', true)
+    expect(useStageStore.getState().findTab('t1')?.pinned).toBe(true)
+  })
+
+  it('setTabTitle updates title on tab', () => {
+    const st = useStageStore.getState()
+    st.openTab({ tabId: 't1', type: 'query_editor', title: 'Old', scope: 'workspace', payload: {}, createdAt: 1 })
+
+    st.setTabTitle('t1', 'New Title')
+    expect(useStageStore.getState().findTab('t1')?.title).toBe('New Title')
+  })
+})
