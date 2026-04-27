@@ -99,6 +99,18 @@ class AgentPromptContractTest {
     }
 
     @Test
+    void runtimePromptDocumentsBoundedSchemaReadsAndTruncationHandling() throws IOException {
+        String prompt = loadPrompt();
+
+        assertThat(prompt)
+            .contains("Schema Reading Rules")
+            .contains("explicit `tables`")
+            .contains("table discovery")
+            .contains("truncated")
+            .contains("Do not describe truncation as a tool failure");
+    }
+
+    @Test
     void runtimePromptRoutesTableBrowsingToQueryEditorAndAnalyticsToServerData() throws IOException {
         String prompt = loadPrompt();
 

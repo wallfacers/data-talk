@@ -14,8 +14,11 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
@@ -93,6 +96,8 @@ public class ReadSchemaAction implements ActionHandler<Map, Map> {
         );
         ConnectionRecord cr = withDatabase(base, database);
         String password = conn.decryptPassword(connectionId);
+        Set<String> requestedTables = requestedTables(input.get("tables"));
+        boolean includeColumns = !requestedTables.isEmpty();
 
         List<Map<String, Object>> tables = new ArrayList<>();
         try (Connection c = DriverManager.getConnection(JdbcUrlBuilder.build(cr), cr.username(), password)) {
@@ -102,6 +107,13 @@ public class ReadSchemaAction implements ActionHandler<Map, Map> {
             try (ResultSet tbl = meta.getTables(scope.catalog(), scope.schema(), "%", new String[]{"TABLE"})) {
                 while (tbl.next()) {
                     String name = tbl.getString("TABLE_NAME");
+                    if (includeColumns && !requestedTables.contains(normalizeTableName(name))) {
+                        continue;
+                    }
+                    if (!includeColumns) {
+                        tables.add(Map.of("name", name));
+                        continue;
+                    }
                     List<Map<String, Object>> cols = new ArrayList<>();
                     try (ResultSet colRs = meta.getColumns(scope.catalog(), scope.schema(), name, "%")) {
                         while (colRs.next()) {
@@ -121,11 +133,28 @@ public class ReadSchemaAction implements ActionHandler<Map, Map> {
         return CompletableFuture.completedFuture(Map.of("schema", tables));
     }
 
+    private static Set<String> requestedTables(Object value) {
+        if (!(value instanceof Iterable<?> rawTables)) {
+            return Set.of();
+        }
+        Set<String> tables = new LinkedHashSet<>();
+        for (Object rawTable : rawTables) {
+            if (rawTable instanceof String table && hasText(table)) {
+                tables.add(normalizeTableName(table));
+            }
+        }
+        return tables;
+    }
+
     static MetadataScope metadataScope(String kind, String database, String schema) {
         if ("mysql".equalsIgnoreCase(kind)) {
             return new MetadataScope(hasText(database) ? database : null, null);
         }
         return new MetadataScope(null, schemaPattern(schema));
+    }
+
+    private static String normalizeTableName(String tableName) {
+        return tableName.toLowerCase(Locale.ROOT);
     }
 
     private static void applySchema(Connection connection, String kind, String schema) throws java.sql.SQLException {

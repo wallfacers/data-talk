@@ -12,6 +12,7 @@
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [Schema Read Bounds](./2026-04-27-schema-read-bounds-plan.md) | 2026-04-27 | `datatalk_read_schema` 现在默认只返回表名摘要，显式 `tables` 才返回指定表列详情；运行时 Agent prompt 已补充 table discovery、显式表范围和截断输出处理规则；后端编译与定向回归测试通过。 |
 | [Chart Artifact Inline Preview](./2026-04-25-chart-artifact-inline-preview-plan.md) | 2026-04-27 | `datatalk_render_chart` 工具完成后，图表直接内联渲染在对话消息流中；`ArtifactCreated` 订阅 `useOntologyStore`，仅 `kind=chart` 且 `echartsOption` 存在时渲染；6 测试通过；实际实现超出计划：i18n 翻译、string JSON output 解析、眼睛图标 Tooltip。代码已实现，待 commit。 |
 | [Guarded DDL / DML Execution](./2026-04-25-guarded-ddl-dml-execution-plan.md) | 2026-04-27 | 后端 L1/L2/L3 风险分级改造为用户可见两步确认流：`SqlExecuteService` sealed Outcome 三状态机，`ExecuteSqlAction` 接入风险门控，`DELETE WITH WHERE` 降为 L2；前端 `<SqlConfirmationCard>` 共享组件，Workbench AlertDialog + Chat inline 卡片双路径；后端 214 测试（1 预存失败无关），前端 400 测试全绿，`tsc --noEmit` 零错误。 |
 | [Chat Auto-Follow Bottom Recovery](./2026-04-27-chat-auto-follow-bottom-recovery-plan.md) | 2026-04-27 | 聊天区 auto-follow 恢复条件已纠偏：用户上滚后暂停跟随，但只要再次严格触底，无论通过手动滚动还是点击“回到底部”，后续流式内容都恢复自动跟随；`use-auto-scroll` 与 `split-view` 相关测试共 26 条通过，`npx tsc --noEmit` 通过。 |
