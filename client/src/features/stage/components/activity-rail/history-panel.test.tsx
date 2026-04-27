@@ -7,7 +7,7 @@ import { HistoryPanel } from './history-panel'
 
 const history: HistoryEntry[] = [
   { id: 'h-1', at: 1, sql: 'select 1', status: 'ok' },
-  { id: 'h-2', at: 2, sql: 'update users set active = 0', status: 'risk_blocked' },
+  { id: 'h-2', at: 2, sql: 'update users set active = 0', status: 'requires_confirmation' },
 ]
 
 describe('HistoryPanel', () => {

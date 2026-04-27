@@ -1115,7 +1115,7 @@ delete from sessions;`,
     expect(history?.[0]).toMatchObject({
       sql: 'select 1;',
       status: 'requires_confirmation',
-      errorSummary: 'This statement modifies data',
+      confirmationReason: 'This statement modifies data',
     })
   })
 

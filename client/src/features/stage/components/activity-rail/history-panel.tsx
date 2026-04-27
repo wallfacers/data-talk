@@ -13,8 +13,8 @@ type HistoryPanelProps = {
 const STATUS_CLASSES: Record<HistoryEntry['status'], string> = {
   ok: 'border-transparent bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
   error: 'border-transparent bg-destructive/10 text-destructive',
-  risk_blocked: 'border-transparent bg-amber-500/15 text-amber-700 dark:text-amber-300',
   requires_confirmation: 'border-transparent bg-amber-500/15 text-amber-700 dark:text-amber-300',
+  confirmation_invalid: 'border-transparent bg-amber-500/15 text-amber-700 dark:text-amber-300',
 }
 
 export function HistoryPanel({ entries, onAppendSql, onClear }: HistoryPanelProps) {
@@ -22,8 +22,8 @@ export function HistoryPanel({ entries, onAppendSql, onClear }: HistoryPanelProp
   const statusLabels: Record<HistoryEntry['status'], string> = {
     ok: t('stage.activityRail.history.status.ok'),
     error: t('stage.activityRail.history.status.error'),
-    risk_blocked: t('stage.activityRail.history.status.riskBlocked'),
-    requires_confirmation: t('stage.activityRail.history.status.riskBlocked'),
+    requires_confirmation: t('stage.activityRail.history.status.requiresConfirmation'),
+    confirmation_invalid: t('stage.activityRail.history.status.requiresConfirmation'),
   }
 
   return (

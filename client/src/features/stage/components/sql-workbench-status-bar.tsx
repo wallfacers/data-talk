@@ -18,12 +18,8 @@ export function SqlWorkbenchStatusBar({
   const statusMeta: Record<Exclude<SqlWorkbenchExecuteStatus, 'idle' | 'error'>, { label: string; className: string }> = {
     running: { label: t('stage.status.running'), className: 'bg-primary text-primary-foreground' },
     success: { label: t('stage.status.success'), className: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' },
-    risk_blocked: {
-      label: t('stage.status.riskBlocked'),
-      className: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
-    },
     requires_confirmation: {
-      label: t('stage.status.riskBlocked'),
+      label: t('stage.status.requiresConfirmation'),
       className: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
     },
     confirming: {
@@ -31,13 +27,13 @@ export function SqlWorkbenchStatusBar({
       className: 'bg-primary text-primary-foreground',
     },
     confirmation_invalid: {
-      label: t('stage.status.riskBlocked'),
+      label: t('stage.status.requiresConfirmation'),
       className: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
     },
   }
 
   const meta = statusMeta[status]
-  const detail = (status === 'risk_blocked' || status === 'requires_confirmation' || status === 'confirmation_invalid') ? riskReason : null
+  const detail = (status === 'requires_confirmation' || status === 'confirmation_invalid') ? riskReason : null
 
   return (
     <div

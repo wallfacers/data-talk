@@ -755,7 +755,6 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
                   <SqlResultPanel
                     executeStatus={tabState.executeStatus}
                     activeResult={activeResult}
-                    risk={tabState.risk}
                     errorMessage={tabState.errorMessage}
                     activeScrollPosition={activeResultScrollPosition}
                     onActiveScrollPositionChange={handleActiveResultScrollPositionChange}

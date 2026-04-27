@@ -10,11 +10,12 @@ describe('SqlWorkbenchStatusBar', () => {
   it.each([
     ['running', 'stage.status.running'],
     ['success', 'stage.status.success'],
-    ['risk_blocked', 'stage.status.riskBlocked'],
+    ['requires_confirmation', 'stage.status.requiresConfirmation'],
+    ['confirmation_invalid', 'stage.status.requiresConfirmation'],
   ] as const)('maps %s to %s', (status, label) => {
     render(
       <SqlWorkbenchStatusBar
-        riskReason={status === 'risk_blocked' ? 'bulk delete' : null}
+        riskReason={status === 'requires_confirmation' ? 'bulk delete' : null}
         status={status}
       />,
     )

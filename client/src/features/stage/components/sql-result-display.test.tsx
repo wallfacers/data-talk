@@ -404,7 +404,6 @@ describe('Sql result displays', () => {
       <SqlResultPanel
         executeStatus="error"
         activeResult={null}
-        risk={null}
         errorMessage={'## Connection failed\n\nMySQL is down.'}
       />,
     )

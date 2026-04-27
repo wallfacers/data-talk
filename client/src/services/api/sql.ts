@@ -56,20 +56,6 @@ export type SqlExecuteResponse =
   | { status: 'requires_confirmation'; resolvedContext: ResolvedDataContext | null; contextNotice?: string | null; confirmation: SqlConfirmationPayload }
   | { status: 'confirmation_invalid'; resolvedContext: ResolvedDataContext | null; contextNotice?: string | null; invalidConfirmation: SqlConfirmationInvalid }
 
-/** @deprecated Backend no longer returns 422 risk_blocked; confirmation flow uses discriminated status instead. */
-export interface SqlRiskBlocked {
-  riskLevel: string
-  riskReason: string
-}
-
-/** @deprecated Backend no longer returns 422 risk_blocked; confirmation flow uses discriminated status instead. */
-export class SqlRiskError extends Error {
-  constructor(public readonly risk: SqlRiskBlocked) {
-    super('risk_blocked')
-    this.name = 'SqlRiskError'
-  }
-}
-
 export type SqlResult = SqlExecuteResponse
 
 export async function executeSql(req: SqlExecuteRequest, signal?: AbortSignal): Promise<SqlExecuteResponse> {
@@ -85,10 +71,6 @@ export async function executeSql(req: SqlExecuteRequest, signal?: AbortSignal): 
     body: JSON.stringify(json),
     signal,
   })
-  if (res.status === 422) {
-    const risk: SqlRiskBlocked = await res.json()
-    throw new SqlRiskError(risk)
-  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: 'SQL execution failed' }))
     throw new Error((err as any).message ?? 'SQL execution failed')
