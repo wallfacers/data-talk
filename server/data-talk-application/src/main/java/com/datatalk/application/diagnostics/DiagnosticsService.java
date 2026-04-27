@@ -48,9 +48,14 @@ public class DiagnosticsService {
         }
         String pwd = connSvc.decryptPassword(ctx.connection().id());
         var explainResult = provider.explain(sql, ctx.connection(), pwd, ctx.database(), ctx.schema());
-        if (!explainResult.isOk()) return DiagnosticResult.unsupported("EXPLAIN failed, cannot compute index hints");
-        var plan = ((DiagnosticResult.Ok<ExplainPlan>) explainResult).value();
-        return provider.indexHints(sql, plan, ctx.connection(), pwd);
+        return switch (explainResult) {
+            case DiagnosticResult.Ok<ExplainPlan> ok ->
+                provider.indexHints(sql, ok.value(), ctx.connection(), pwd);
+            case DiagnosticResult.Unsupported<ExplainPlan> unsupported ->
+                DiagnosticResult.unsupported(unsupported.reason());
+            case DiagnosticResult.DiagnosticError<ExplainPlan> err ->
+                DiagnosticResult.error(err.errorType(), err.message());
+        };
     }
 
     private DiagnosticsProvider requireProvider(String driverType) {

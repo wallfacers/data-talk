@@ -6,6 +6,7 @@ import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.domain.diagnostics.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.sql.Connection;
 import java.sql.DriverManager;
 import java.util.*;
 import org.springframework.stereotype.Component;
@@ -28,26 +29,30 @@ public class PostgreSqlDiagnosticsProvider implements DiagnosticsProvider {
     @Override
     public DiagnosticResult<ExplainPlan> explain(String sql, ConnectionRecord conn, String decryptedPassword,
                                                  String database, String schema) {
-        try (var connection = DriverManager.getConnection(JdbcUrlBuilder.build(conn), conn.username(), decryptedPassword);
+        ConnectionRecord effectiveConn = withDatabaseOverride(conn, database);
+        try (var connection = DriverManager.getConnection(JdbcUrlBuilder.build(effectiveConn), effectiveConn.username(), decryptedPassword);
              var stmt = connection.createStatement();
-             var rs = stmt.executeQuery("EXPLAIN (FORMAT JSON, ANALYZE false) " + sql)) {
+             ) {
+            applySchema(connection, schema);
+            try (var rs = stmt.executeQuery("EXPLAIN (FORMAT JSON, ANALYZE false) " + sql)) {
 
-            if (!rs.next()) {
-                return DiagnosticResult.ok(new ExplainPlan("postgresql", "", List.of(), null, List.of()));
+                if (!rs.next()) {
+                    return DiagnosticResult.ok(new ExplainPlan("postgresql", "", List.of(), null, List.of()));
+                }
+                String raw = rs.getString(1);
+                JsonNode root = objectMapper.readTree(raw);
+                // PostgreSQL returns an array; take first element
+                JsonNode planRoot = root.isArray() ? root.get(0) : root;
+                JsonNode planNode = planRoot.path("Plan");
+
+                ExplainNode topNode = parsePlanNode(planNode);
+                List<ExplainNode> nodes = topNode != null ? List.of(topNode) : List.of();
+                List<String> warnings = collectWarnings(nodes);
+
+                Double totalCost = planNode.has("Total Cost") ? planNode.get("Total Cost").asDouble() : null;
+
+                return DiagnosticResult.ok(new ExplainPlan("postgresql", raw, nodes, totalCost, warnings));
             }
-            String raw = rs.getString(1);
-            JsonNode root = objectMapper.readTree(raw);
-            // PostgreSQL returns an array; take first element
-            JsonNode planRoot = root.isArray() ? root.get(0) : root;
-            JsonNode planNode = planRoot.path("Plan");
-
-            ExplainNode topNode = parsePlanNode(planNode);
-            List<ExplainNode> nodes = topNode != null ? List.of(topNode) : List.of();
-            List<String> warnings = collectWarnings(nodes);
-
-            Double totalCost = planNode.has("Total Cost") ? planNode.get("Total Cost").asDouble() : null;
-
-            return DiagnosticResult.ok(new ExplainPlan("postgresql", raw, nodes, totalCost, warnings));
         } catch (Exception e) {
             return DiagnosticResult.error("EXPLAIN_ERROR", e.getMessage());
         }
@@ -59,7 +64,7 @@ public class PostgreSqlDiagnosticsProvider implements DiagnosticsProvider {
         if (plan == null || plan.nodes() == null) {
             return DiagnosticResult.ok(List.of());
         }
-        List<IndexRecommendation> recs = collectRecommendations(plan.nodes());
+        List<IndexRecommendation> recs = collectRecommendations(plan.nodes(), sql);
         return DiagnosticResult.ok(recs);
     }
 
@@ -79,6 +84,36 @@ public class PostgreSqlDiagnosticsProvider implements DiagnosticsProvider {
     }
 
     // -- internal parsing --
+
+    ConnectionRecord withDatabaseOverride(ConnectionRecord conn, String database) {
+        if (database == null || database.isBlank()) {
+            return conn;
+        }
+        return new ConnectionRecord(
+            conn.id(),
+            conn.name(),
+            conn.kind(),
+            conn.host(),
+            conn.port(),
+            database,
+            conn.username(),
+            conn.passwordEnc(),
+            conn.schemaDigest(),
+            conn.createdAt(),
+            conn.connectTimeout(),
+            conn.lastTestStatus(),
+            conn.lastTestAt()
+        );
+    }
+
+    void applySchema(Connection connection, String schema) throws Exception {
+        if (schema == null || schema.isBlank()) {
+            return;
+        }
+        try (var stmt = connection.createStatement()) {
+            stmt.execute("SET search_path TO " + schema);
+        }
+    }
 
     private ExplainNode parsePlanNode(JsonNode plan) {
         if (plan == null || plan.isMissingNode() || plan.isNull()) {
@@ -135,20 +170,23 @@ public class PostgreSqlDiagnosticsProvider implements DiagnosticsProvider {
         return warnings;
     }
 
-    private List<IndexRecommendation> collectRecommendations(List<ExplainNode> nodes) {
+    private List<IndexRecommendation> collectRecommendations(List<ExplainNode> nodes, String sql) {
         List<IndexRecommendation> recs = new ArrayList<>();
         for (ExplainNode node : nodes) {
             if (node.scanType() == ScanType.FULL_SCAN) {
-                Impact impact = node.rows() > 1000 ? Impact.HIGH : Impact.MEDIUM;
-                recs.add(new IndexRecommendation(
-                    node.table(),
-                    List.of(),
-                    "BTREE",
-                    impact,
-                    "Sequential scan on " + node.table() + " (" + node.rows() + " rows)"
-                ));
+                List<String> cols = SqlColumnExtractor.extract(sql, node.table());
+                if (!cols.isEmpty()) {
+                    Impact impact = node.rows() > 1000 ? Impact.HIGH : Impact.MEDIUM;
+                    recs.add(new IndexRecommendation(
+                        node.table(),
+                        cols,
+                        "BTREE",
+                        impact,
+                        "Sequential scan on " + node.table() + " (" + node.rows() + " rows)"
+                    ));
+                }
             }
-            recs.addAll(collectRecommendations(node.children()));
+            recs.addAll(collectRecommendations(node.children(), sql));
         }
         return recs;
     }

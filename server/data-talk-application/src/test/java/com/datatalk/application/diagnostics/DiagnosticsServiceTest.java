@@ -93,6 +93,44 @@ class DiagnosticsServiceTest {
         verify(mockProvider).indexHints(any(), eq(plan), any(), any());
     }
 
+    @Test
+    void indexHints_explainUnsupported_propagatesUnsupportedReason() {
+        var conn = testConn("mysql");
+        when(sessionContexts.get("s1")).thenReturn(new SessionDataContextRecord("s1", "c1", "test", "db", null, "database", 0L));
+        when(connRepo.findById("c1")).thenReturn(Optional.of(conn));
+        when(connSvc.decryptPassword("c1")).thenReturn("pass");
+        when(registry.find("mysql")).thenReturn(Optional.of(mockProvider));
+        when(mockProvider.supportedCapabilities()).thenReturn(Set.of(DiagnosticCapability.EXPLAIN, DiagnosticCapability.INDEX_HINTS));
+        when(mockProvider.explain(any(), any(), any(), any(), any()))
+            .thenReturn(DiagnosticResult.unsupported("explain unsupported"));
+
+        var result = service.indexHints("s1", "SELECT 1");
+
+        assertThat(result).isInstanceOf(DiagnosticResult.Unsupported.class);
+        assertThat(((DiagnosticResult.Unsupported<List<IndexRecommendation>>) result).reason()).isEqualTo("explain unsupported");
+        verify(mockProvider, never()).indexHints(any(), any(), any(), any());
+    }
+
+    @Test
+    void indexHints_explainError_propagatesDiagnosticError() {
+        var conn = testConn("mysql");
+        when(sessionContexts.get("s1")).thenReturn(new SessionDataContextRecord("s1", "c1", "test", "db", null, "database", 0L));
+        when(connRepo.findById("c1")).thenReturn(Optional.of(conn));
+        when(connSvc.decryptPassword("c1")).thenReturn("pass");
+        when(registry.find("mysql")).thenReturn(Optional.of(mockProvider));
+        when(mockProvider.supportedCapabilities()).thenReturn(Set.of(DiagnosticCapability.EXPLAIN, DiagnosticCapability.INDEX_HINTS));
+        when(mockProvider.explain(any(), any(), any(), any(), any()))
+            .thenReturn(DiagnosticResult.error("EXPLAIN_ERROR", "syntax error"));
+
+        var result = service.indexHints("s1", "BAD SQL");
+
+        assertThat(result).isInstanceOf(DiagnosticResult.DiagnosticError.class);
+        var err = (DiagnosticResult.DiagnosticError<List<IndexRecommendation>>) result;
+        assertThat(err.errorType()).isEqualTo("EXPLAIN_ERROR");
+        assertThat(err.message()).isEqualTo("syntax error");
+        verify(mockProvider, never()).indexHints(any(), any(), any(), any());
+    }
+
     private ConnectionRecord testConn(String kind) {
         return new ConnectionRecord("c1", "test", kind, "localhost", 3306,
             "db", "user", new byte[0], null, 0L, 5000, null, null);

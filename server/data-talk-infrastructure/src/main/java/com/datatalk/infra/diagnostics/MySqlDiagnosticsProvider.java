@@ -28,7 +28,8 @@ public class MySqlDiagnosticsProvider implements DiagnosticsProvider {
     @Override
     public DiagnosticResult<ExplainPlan> explain(String sql, ConnectionRecord conn, String decryptedPassword,
                                                  String database, String schema) {
-        try (var connection = DriverManager.getConnection(JdbcUrlBuilder.build(conn), conn.username(), decryptedPassword);
+        ConnectionRecord effectiveConn = withDatabaseOverride(conn, database);
+        try (var connection = DriverManager.getConnection(JdbcUrlBuilder.build(effectiveConn), effectiveConn.username(), decryptedPassword);
              var stmt = connection.createStatement();
              var rs = stmt.executeQuery("EXPLAIN FORMAT=JSON " + sql)) {
 
@@ -54,7 +55,7 @@ public class MySqlDiagnosticsProvider implements DiagnosticsProvider {
         if (plan == null || plan.nodes() == null) {
             return DiagnosticResult.ok(List.of());
         }
-        List<IndexRecommendation> recs = collectRecommendations(plan.nodes());
+        List<IndexRecommendation> recs = collectRecommendations(plan.nodes(), sql);
         return DiagnosticResult.ok(recs);
     }
 
@@ -74,6 +75,27 @@ public class MySqlDiagnosticsProvider implements DiagnosticsProvider {
     }
 
     // -- internal parsing --
+
+    ConnectionRecord withDatabaseOverride(ConnectionRecord conn, String database) {
+        if (database == null || database.isBlank()) {
+            return conn;
+        }
+        return new ConnectionRecord(
+            conn.id(),
+            conn.name(),
+            conn.kind(),
+            conn.host(),
+            conn.port(),
+            database,
+            conn.username(),
+            conn.passwordEnc(),
+            conn.schemaDigest(),
+            conn.createdAt(),
+            conn.connectTimeout(),
+            conn.lastTestStatus(),
+            conn.lastTestAt()
+        );
+    }
 
     List<ExplainNode> parseQueryBlock(JsonNode queryBlock) {
         List<ExplainNode> nodes = new ArrayList<>();
@@ -141,20 +163,23 @@ public class MySqlDiagnosticsProvider implements DiagnosticsProvider {
         return warnings;
     }
 
-    private List<IndexRecommendation> collectRecommendations(List<ExplainNode> nodes) {
+    private List<IndexRecommendation> collectRecommendations(List<ExplainNode> nodes, String sql) {
         List<IndexRecommendation> recs = new ArrayList<>();
         for (ExplainNode node : nodes) {
             if (node.scanType() == ScanType.FULL_SCAN) {
-                Impact impact = node.rows() > 1000 ? Impact.HIGH : Impact.MEDIUM;
-                recs.add(new IndexRecommendation(
-                    node.table(),
-                    List.of(),
-                    "BTREE",
-                    impact,
-                    "Full table scan on " + node.table() + " (" + node.rows() + " rows)"
-                ));
+                List<String> cols = SqlColumnExtractor.extract(sql, node.table());
+                if (!cols.isEmpty()) {
+                    Impact impact = node.rows() > 1000 ? Impact.HIGH : Impact.MEDIUM;
+                    recs.add(new IndexRecommendation(
+                        node.table(),
+                        cols,
+                        "BTREE",
+                        impact,
+                        "Full table scan on " + node.table() + " (" + node.rows() + " rows)"
+                    ));
+                }
             }
-            recs.addAll(collectRecommendations(node.children()));
+            recs.addAll(collectRecommendations(node.children(), sql));
         }
         return recs;
     }

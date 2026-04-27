@@ -17,12 +17,18 @@ export interface ExplainPlan {
   nodes: ExplainNode[]
   totalCostEstimate?: number
   warnings: string[]
-  unsupported: false
 }
 
 export interface UnsupportedResult {
   unsupported: true
   reason: string
+}
+
+export interface DiagnosticErrorResult {
+  error: {
+    type: string
+    message: string
+  }
 }
 
 export interface IndexRecommendation {
@@ -35,9 +41,8 @@ export interface IndexRecommendation {
 
 export interface IndexHintsResult {
   recommendations: IndexRecommendation[]
-  explainSummary: string
-  unsupported: false
+  summary: string
 }
 
-export type ExplainResult = ExplainPlan | UnsupportedResult
-export type IndexHintsResponse = IndexHintsResult | UnsupportedResult
+export type ExplainResult = ExplainPlan | UnsupportedResult | DiagnosticErrorResult
+export type IndexHintsResponse = IndexHintsResult | UnsupportedResult | DiagnosticErrorResult

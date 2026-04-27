@@ -4,6 +4,7 @@ import com.datatalk.application.connection.JdbcUrlBuilder;
 import com.datatalk.application.diagnostics.DiagnosticsProvider;
 import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.domain.diagnostics.*;
+import java.sql.Connection;
 import java.sql.DriverManager;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -31,20 +32,24 @@ public class H2DiagnosticsProvider implements DiagnosticsProvider {
     @Override
     public DiagnosticResult<ExplainPlan> explain(String sql, ConnectionRecord conn, String decryptedPassword,
                                                  String database, String schema) {
-        try (var connection = DriverManager.getConnection(JdbcUrlBuilder.build(conn), conn.username(), decryptedPassword);
+        ConnectionRecord effectiveConn = withDatabaseOverride(conn, database);
+        try (var connection = DriverManager.getConnection(JdbcUrlBuilder.build(effectiveConn), effectiveConn.username(), decryptedPassword);
              var stmt = connection.createStatement();
-             var rs = stmt.executeQuery("EXPLAIN " + sql)) {
+             ) {
+            applySchema(connection, schema);
+            try (var rs = stmt.executeQuery("EXPLAIN " + sql)) {
 
-            StringBuilder sb = new StringBuilder();
-            while (rs.next()) {
-                sb.append(rs.getString(1)).append("\n");
+                StringBuilder sb = new StringBuilder();
+                while (rs.next()) {
+                    sb.append(rs.getString(1)).append("\n");
+                }
+                String raw = sb.toString().trim();
+
+                List<ExplainNode> nodes = parseH2Text(raw);
+                List<String> warnings = collectWarnings(nodes);
+
+                return DiagnosticResult.ok(new ExplainPlan("h2", raw, nodes, null, warnings));
             }
-            String raw = sb.toString().trim();
-
-            List<ExplainNode> nodes = parseH2Text(raw);
-            List<String> warnings = collectWarnings(nodes);
-
-            return DiagnosticResult.ok(new ExplainPlan("h2", raw, nodes, null, warnings));
         } catch (Exception e) {
             return DiagnosticResult.error("EXPLAIN_ERROR", e.getMessage());
         }
@@ -59,13 +64,16 @@ public class H2DiagnosticsProvider implements DiagnosticsProvider {
         List<IndexRecommendation> recs = new ArrayList<>();
         for (ExplainNode node : plan.nodes()) {
             if (node.scanType() == ScanType.FULL_SCAN) {
-                recs.add(new IndexRecommendation(
-                    node.table(),
-                    List.of(),
-                    "BTREE",
-                    Impact.MEDIUM,
-                    "Table scan on " + node.table()
-                ));
+                List<String> cols = SqlColumnExtractor.extract(sql, node.table());
+                if (!cols.isEmpty()) {
+                    recs.add(new IndexRecommendation(
+                        node.table(),
+                        cols,
+                        "BTREE",
+                        Impact.MEDIUM,
+                        "Table scan on " + node.table()
+                    ));
+                }
             }
         }
         return DiagnosticResult.ok(recs);
@@ -87,6 +95,36 @@ public class H2DiagnosticsProvider implements DiagnosticsProvider {
     }
 
     // -- internal parsing --
+
+    ConnectionRecord withDatabaseOverride(ConnectionRecord conn, String database) {
+        if (database == null || database.isBlank()) {
+            return conn;
+        }
+        return new ConnectionRecord(
+            conn.id(),
+            conn.name(),
+            conn.kind(),
+            conn.host(),
+            conn.port(),
+            database,
+            conn.username(),
+            conn.passwordEnc(),
+            conn.schemaDigest(),
+            conn.createdAt(),
+            conn.connectTimeout(),
+            conn.lastTestStatus(),
+            conn.lastTestAt()
+        );
+    }
+
+    void applySchema(Connection connection, String schema) throws Exception {
+        if (schema == null || schema.isBlank()) {
+            return;
+        }
+        try (var stmt = connection.createStatement()) {
+            stmt.execute("SET SCHEMA " + schema);
+        }
+    }
 
     List<ExplainNode> parseH2Text(String text) {
         List<ExplainNode> nodes = new ArrayList<>();

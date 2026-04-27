@@ -10,19 +10,18 @@ type DiagnosticsOutput = ExplainResult | IndexHintsResponse
 export function DiagnosticsCard(props: ToolRendererProps) {
   const { part } = props
   const output = part.state.output as DiagnosticsOutput | undefined
-  const unsupported = output?.unsupported === true
+  const unsupported = Boolean(output && 'unsupported' in output && output.unsupported === true)
+  const errorMessage = output && 'error' in output ? output.error.message : null
 
   const warnings: string[] = (() => {
-    if (unsupported) return []
-    const o = output as Exclude<DiagnosticsOutput, { unsupported: true }> | undefined
-    if (o && 'warnings' in o) return o.warnings ?? []
+    if (unsupported || errorMessage) return []
+    if (output && 'warnings' in output) return output.warnings ?? []
     return []
   })()
 
   const recommendations: IndexRecommendation[] = (() => {
-    if (unsupported) return []
-    const o = output as Extract<DiagnosticsOutput, { unsupported: false }> | undefined
-    if (o && 'recommendations' in o) return o.recommendations ?? []
+    if (unsupported || errorMessage) return []
+    if (output && 'recommendations' in output) return output.recommendations ?? []
     return []
   })()
 
@@ -40,6 +39,12 @@ export function DiagnosticsCard(props: ToolRendererProps) {
         {unsupported && (
           <div className="text-sm text-muted-foreground">
             Execution plan analysis is not supported for this query or database dialect.
+          </div>
+        )}
+
+        {errorMessage && (
+          <div className="text-sm text-destructive">
+            {errorMessage}
           </div>
         )}
 

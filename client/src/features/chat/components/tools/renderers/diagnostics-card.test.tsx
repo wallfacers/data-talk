@@ -64,6 +64,15 @@ describe('DiagnosticsCard', () => {
     expect(screen.getByText(/not supported for this query/i)).toBeInTheDocument()
   })
 
+  it('shows error message when diagnostics returns error payload', () => {
+    const part = buildPart({ error: { type: 'EXPLAIN_ERROR', message: 'Syntax error near FROM' } })
+
+    render(<DiagnosticsCard part={part} descriptor={descriptor} />)
+    expandTool()
+
+    expect(screen.getByText(/syntax error near from/i)).toBeInTheDocument()
+  })
+
   it('shows warning count when warnings present', () => {
     const part = buildPart({
       unsupported: false,
