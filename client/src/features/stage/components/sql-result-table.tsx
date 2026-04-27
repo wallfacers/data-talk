@@ -58,6 +58,7 @@ type ResultContextTarget = {
 
 function serializeResultValue(value: unknown) {
   if (value == null) return 'NULL'
+  if (typeof value === 'object') return JSON.stringify(value)
   return String(value)
 }
 
@@ -290,6 +291,8 @@ export function SqlResultTable({
                                 <span className="italic text-muted-foreground/70">
                                   {t('stage.queryEditor.cell.null')}
                                 </span>
+                              ) : typeof cell === 'object' ? (
+                                JSON.stringify(cell)
                               ) : (
                                 String(cell)
                               )}

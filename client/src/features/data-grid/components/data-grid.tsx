@@ -36,7 +36,7 @@ export function DataGrid({ columns, rows }: DataGridProps) {
           {rows.map((row, i) => (
             <TableRow key={i}>
               {columns.map((c) => (
-                <TableCell key={c.key}>{String(row[c.key] ?? '')}</TableCell>
+                <TableCell key={c.key}>{(() => { const v = row[c.key]; return v == null ? '' : typeof v === 'object' ? JSON.stringify(v) : String(v) })()}</TableCell>
               ))}
             </TableRow>
           ))}
