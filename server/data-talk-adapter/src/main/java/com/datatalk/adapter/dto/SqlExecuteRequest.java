@@ -6,5 +6,11 @@ public record SqlExecuteRequest(
     String source,
     String sessionId,
     String database,
-    String schema
-) {}
+    String schema,
+    Boolean confirmed,
+    String riskAck
+) {
+    public boolean confirmedFlag() {
+        return Boolean.TRUE.equals(confirmed);
+    }
+}

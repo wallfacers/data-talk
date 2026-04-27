@@ -49,11 +49,7 @@ public class SqlExecuteController {
                 ))
                 .toList();
             return ResponseEntity.ok(
-                new SqlExecuteResult(
-                    r.resolvedContext(),
-                    r.contextNotice(),
-                    items
-                )
+                SqlExecuteResult.executed(r.resolvedContext(), r.contextNotice(), items)
             );
         } catch (SqlExecuteService.SqlRiskBlockedException e) {
             return ResponseEntity.unprocessableEntity()
