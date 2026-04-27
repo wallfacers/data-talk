@@ -5,25 +5,16 @@ import { ExecuteSql } from './execute-sql'
 import type { ActionDescriptor } from '@/features/actions/registry'
 import type { ToolPart } from '@/services/channel/types'
 
-const mockActionResult = vi.fn()
+const mockOpenQueryEditor = vi.fn()
+const mockOpenStage = vi.fn()
 
-// Real translation function for en-US
 const t = (key: Parameters<typeof translateMessage>[1], values?: Record<string, string | number>) =>
   translateMessage('en-US', key, values)
-
-vi.mock('@/services/channel/use-channel', () => ({
-  useChannel: () => ({
-    client: {
-      actionResult: mockActionResult,
-    },
-  }),
-}))
 
 vi.mock('@/stores/ui-settings-store', () => ({
   getCurrentLanguage: () => 'en-US',
 }))
 
-// Mock translateMessage for the execute-sql component (uses getCurrentLanguage + translateMessage)
 vi.mock('@/i18n/messages', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/i18n/messages')>()
   return {
@@ -32,13 +23,48 @@ vi.mock('@/i18n/messages', async (importOriginal) => {
   }
 })
 
-// Mock useI18n for SqlConfirmationCard (uses useI18n().t)
 vi.mock('@/i18n/use-i18n', () => ({
   useI18n: () => ({
     language: 'en-US',
     setLanguage: vi.fn(),
     t: (key: string, values?: Record<string, string | number>) => t(key as never, values),
   }),
+}))
+
+vi.mock('@/stores/stage-store', () => ({
+  useStageStore: {
+    getState: () => ({
+      openQueryEditor: mockOpenQueryEditor,
+      openStage: mockOpenStage,
+    }),
+  },
+}))
+
+vi.mock('@/stores/session-store', () => ({
+  useSessionStore: {
+    getState: () => ({
+      dataContextBySession: new Map([
+        ['sess-1', {
+          sessionId: 'sess-1',
+          connectionId: 'conn-from-session',
+          connectionNameSnapshot: 'Session DB',
+          database: 'app',
+          schema: 'public',
+        }],
+      ]),
+    }),
+  },
+}))
+
+vi.mock('@/features/connection/store', () => ({
+  useConnectionStore: {
+    getState: () => ({
+      connections: [
+        { id: 'conn-from-session', name: 'Session DB' },
+        { id: 'conn-from-input', name: 'Input DB' },
+      ],
+    }),
+  },
 }))
 
 const descriptor: ActionDescriptor = {
@@ -74,78 +100,79 @@ function buildPart(output: Record<string, unknown>, extra?: Partial<ToolPart>): 
 
 describe('ExecuteSql renderer', () => {
   beforeEach(() => {
-    mockActionResult.mockClear()
+    mockOpenQueryEditor.mockClear()
+    mockOpenStage.mockClear()
   })
 
-  it('renders confirmation card for requires_confirmation output', () => {
+  it('renders blocked_in_chat card with affected objects, SQL preview and CTA', () => {
     const part = buildPart({
-      status: 'requires_confirmation',
-      risk: {
-        level: 'L2',
-        reason: 'INSERT statement',
-        affectedObjects: ['public.users'],
-      },
+      status: 'blocked_in_chat',
+      risk: { level: 'L2', reason: 'INSERT statement', affectedObjects: ['public.users'] },
       sqlPreview: "INSERT INTO users (name) VALUES ('test')",
     })
 
     render(<ExecuteSql part={part} descriptor={descriptor} />)
 
-    // Should show the SQL preview in the confirmation card
     expect(screen.getByText(/INSERT INTO users/)).toBeTruthy()
-    // Should show affected object
     expect(screen.getByText('public.users')).toBeTruthy()
-    // Should have Execute and Cancel buttons (rendered by SqlConfirmationCard via en-US i18n)
-    expect(screen.getByRole('button', { name: 'Execute' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Cancel' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Open in SQL Workbench' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Execute' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull()
   })
 
-  it('sends actionResult with confirmed:true and riskAck on Execute', () => {
+  it('clicking Open in SQL Workbench opens an ai_open query editor with sqlPreview pre-loaded', () => {
     const part = buildPart({
-      status: 'requires_confirmation',
-      risk: {
-        level: 'L3',
-        reason: 'DELETE statement',
-        affectedObjects: ['public.users'],
-      },
-      sqlPreview: 'DELETE FROM users',
+      status: 'blocked_in_chat',
+      risk: { level: 'L3', reason: 'DROP TABLE', affectedObjects: ['public.users'] },
+      sqlPreview: 'DROP TABLE users',
     })
 
     render(<ExecuteSql part={part} descriptor={descriptor} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Open in SQL Workbench' }))
 
-    const executeBtn = screen.getByRole('button', { name: 'Execute' })
-    fireEvent.click(executeBtn)
-
-    expect(mockActionResult).toHaveBeenCalledWith(
-      'call-abc',
-      true,
-      { confirmed: true, riskAck: 'L3' },
-    )
+    expect(mockOpenQueryEditor).toHaveBeenCalledTimes(1)
+    expect(mockOpenQueryEditor).toHaveBeenCalledWith(expect.objectContaining({
+      sessionId: 'sess-1',
+      scope: 'session',
+      openMode: 'always_new',
+      entryMode: 'ai_open',
+      initialContent: 'DROP TABLE users',
+      autoRun: false,
+      connectionId: 'conn-from-session',
+      database: 'app',
+      schema: 'public',
+    }))
+    expect(mockOpenStage).toHaveBeenCalledWith('sess-1')
   })
 
-  it('sends confirmed:false on Cancel', () => {
+  it('prefers connectionId from tool input over session context', () => {
     const part = buildPart({
-      status: 'requires_confirmation',
-      risk: {
-        level: 'L2',
-        reason: 'UPDATE statement',
-        affectedObjects: ['public.orders'],
+      status: 'blocked_in_chat',
+      risk: { level: 'L2', reason: 'UPDATE', affectedObjects: ['orders'] },
+      sqlPreview: 'UPDATE orders SET status = 1 WHERE id = 1',
+    }, {
+      state: {
+        status: 'completed',
+        input: { sql: 'UPDATE orders SET status = 1 WHERE id = 1', connectionId: 'conn-from-input' },
+        output: {
+          status: 'blocked_in_chat',
+          risk: { level: 'L2', reason: 'UPDATE', affectedObjects: ['orders'] },
+          sqlPreview: 'UPDATE orders SET status = 1 WHERE id = 1',
+        },
+        metadata: {},
       },
-      sqlPreview: 'UPDATE orders SET status = 1',
     })
 
     render(<ExecuteSql part={part} descriptor={descriptor} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Open in SQL Workbench' }))
 
-    const cancelBtn = screen.getByRole('button', { name: 'Cancel' })
-    fireEvent.click(cancelBtn)
-
-    expect(mockActionResult).toHaveBeenCalledWith(
-      'call-abc',
-      true,
-      { confirmed: false },
-    )
+    expect(mockOpenQueryEditor).toHaveBeenCalledWith(expect.objectContaining({
+      connectionId: 'conn-from-input',
+      connectionName: 'Input DB',
+    }))
   })
 
-  it('renders the legacy artifact view for executed output', () => {
+  it('renders the legacy artifact view for executed L1 output', () => {
     const part = buildPart({
       rowCount: 42,
       rows: [{ id: 1, name: 'Alice' }],
@@ -154,39 +181,6 @@ describe('ExecuteSql renderer', () => {
 
     render(<ExecuteSql part={part} descriptor={descriptor} />)
 
-    // Should render the row count in the subtitle
     expect(screen.getByText('42 rows affected')).toBeTruthy()
-  })
-
-  it('renders confirmation_invalid status with reason', () => {
-    const part = buildPart({
-      status: 'confirmation_invalid',
-      reason: 'Risk escalated from L2 to L3',
-      ackedRisk: 'L2',
-      currentRisk: 'L3',
-    })
-
-    render(<ExecuteSql part={part} descriptor={descriptor} />)
-
-    expect(screen.getByText(/Risk escalated from L2 to L3/)).toBeTruthy()
-  })
-
-  it('uses part.id fallback when callID is missing', () => {
-    const part = buildPart({
-      status: 'requires_confirmation',
-      risk: { level: 'L2', reason: 'test', affectedObjects: [] },
-      sqlPreview: 'UPDATE t SET x=1',
-    }, { callID: undefined })
-
-    render(<ExecuteSql part={part} descriptor={descriptor} />)
-
-    const executeBtn = screen.getByRole('button', { name: 'Execute' })
-    fireEvent.click(executeBtn)
-
-    expect(mockActionResult).toHaveBeenCalledWith(
-      'part-1',
-      true,
-      { confirmed: true, riskAck: 'L2' },
-    )
   })
 })

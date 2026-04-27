@@ -1,111 +1,102 @@
-import { useState } from 'react'
 import { BasicTool } from '../basic-tool'
 import { Markdown } from '../../markdown/markdown'
 import type { ToolRendererProps } from '../tool-registry'
 import { resolveRisk } from '../../helpers/risk'
 import { getCurrentLanguage } from '@/stores/ui-settings-store'
 import { translateMessage } from '@/i18n/messages'
-import { useChannel } from '@/services/channel/use-channel'
-import { SqlConfirmationCard } from '@/features/sql-confirmation/sql-confirmation-card'
-import type { SqlRisk } from '@/features/sql-confirmation/sql-confirmation-card'
+import { Button } from '@/components/ui/button'
+import { useStageStore } from '@/stores/stage-store'
+import { useConnectionStore } from '@/features/connection/store'
+import { useSessionStore } from '@/stores/session-store'
 import { useI18n } from '@/i18n/use-i18n'
+
+type BlockedInChatRisk = { level: 'L2' | 'L3'; reason: string; affectedObjects: string[] }
 
 type ExecuteSqlOutput = {
   rows?: unknown[]
   rowCount?: number
   columns?: string[]
   status?: string
-  risk?: { level: 'L2' | 'L3'; reason: string; affectedObjects: string[] }
+  risk?: BlockedInChatRisk
   sqlPreview?: string
-  reason?: string
-  ackedRisk?: string
-  currentRisk?: string
 }
 
 export function ExecuteSql(props: ToolRendererProps) {
-  const { part, descriptor } = props
+  const { part } = props
   const output = part.state.output as ExecuteSqlOutput | undefined
   const status = output?.status
-  const callID = part.callID ?? part.id
-  const { client } = useChannel()
-  const [decided, setDecided] = useState<'confirmed' | 'cancelled' | null>(null)
 
-  // Confirmation-required branch: L2/L3 SQL needs explicit user approval
-  if (status === 'requires_confirmation' && output?.risk) {
-    const risk: SqlRisk = output.risk as SqlRisk
-    const sqlPreview = String(output.sqlPreview ?? '')
-    const lang = getCurrentLanguage()
-
-    return (
-      <BasicTool
-        icon="code"
-        risk={risk.level}
-        status={part.state.status}
-        trigger={{
-          title: risk.level === 'L3'
-            ? translateMessage(lang, 'chat.confirmSql')
-            : translateMessage(lang, 'chat.executeSql'),
-        }}
-        forceOpen
-      >
-        {decided ? (
-          <div className="text-xs text-muted-foreground">
-            {decided === 'confirmed'
-              ? translateMessage(lang, 'chat.confirmedExecute')
-              : translateMessage(lang, 'chat.cancelled')}
-          </div>
-        ) : (
-          <SqlConfirmationCard
-            risk={risk}
-            sqlPreview={sqlPreview}
-            onCancel={() => {
-              setDecided('cancelled')
-              client?.actionResult(callID, true, { confirmed: false })
-            }}
-            onExecute={() => {
-              setDecided('confirmed')
-              client?.actionResult(callID, true, { confirmed: true, riskAck: risk.level })
-            }}
-          />
-        )}
-      </BasicTool>
-    )
+  if (status === 'blocked_in_chat' && output?.risk) {
+    return <BlockedInChatCard part={part} risk={output.risk} sqlPreview={String(output.sqlPreview ?? '')} />
   }
 
-  // Confirmation-invalid branch: risk changed between confirmation and execution
-  if (status === 'confirmation_invalid') {
-    return <ConfirmationInvalid output={output} part={part} descriptor={descriptor} />
-  }
-
-  // Legacy success rendering
   return renderExecutedSqlResult(props)
 }
 
-function ConfirmationInvalid({
-  output,
+function BlockedInChatCard({
   part,
-  descriptor,
+  risk,
+  sqlPreview,
 }: {
-  output: ExecuteSqlOutput | undefined
   part: ToolRendererProps['part']
-  descriptor: ToolRendererProps['descriptor']
+  risk: BlockedInChatRisk
+  sqlPreview: string
 }) {
   const { t } = useI18n()
-  const risk = resolveRisk(part, descriptor)
-  const reason = output?.reason ?? ''
-  const ackedRisk = output?.ackedRisk ?? ''
-  const currentRisk = output?.currentRisk ?? ''
+  const lang = getCurrentLanguage()
+  const sessionId = part.sessionID
+  const inputConnectionId = (part.state.input?.connectionId as string | undefined) ?? null
+
+  const handleOpenInWorkbench = () => {
+    const sessionContext = useSessionStore.getState().dataContextBySession.get(sessionId) ?? null
+    const connectionId = inputConnectionId ?? sessionContext?.connectionId ?? null
+    const connectionName = connectionId
+      ? useConnectionStore.getState().connections.find((c) => c.id === connectionId)?.name
+        ?? sessionContext?.connectionNameSnapshot
+        ?? null
+      : null
+    const stage = useStageStore.getState()
+    stage.openQueryEditor({
+      sessionId,
+      scope: 'session',
+      baseTitle: translateMessage(lang, 'stage.toolRow.sql'),
+      openMode: 'always_new',
+      entryMode: 'ai_open',
+      initialContent: sqlPreview,
+      autoRun: false,
+      connectionId,
+      connectionName,
+      database: sessionContext?.database ?? null,
+      schema: sessionContext?.schema ?? null,
+    })
+    stage.openStage(sessionId)
+  }
 
   return (
     <BasicTool
       icon="code"
-      risk={risk}
+      risk={risk.level}
       status={part.state.status}
-      trigger={{ title: t('sqlConfirmation.invalid.title') }}
+      trigger={{ title: t('chat.blockedInChat.title') }}
       forceOpen
     >
-      <div className="text-sm text-muted-foreground">
-        {reason || t('sqlConfirmation.invalid.message', { currentRisk, ackedRisk })}
+      <div className="space-y-3">
+        <div className="text-sm text-muted-foreground">
+          {t('chat.blockedInChat.message')}
+        </div>
+        {risk.affectedObjects.length > 0 && (
+          <div className="text-xs font-mono text-foreground">
+            {risk.affectedObjects.join(', ')}
+          </div>
+        )}
+        {sqlPreview && (
+          <Markdown text={'```sql\n' + sqlPreview + '\n```'} cacheKey={`${part.id}:sql`} />
+        )}
+        <div className="flex justify-end">
+          <Button size="sm" onClick={handleOpenInWorkbench}>
+            {t('chat.openInWorkbench')}
+          </Button>
+        </div>
       </div>
     </BasicTool>
   )
