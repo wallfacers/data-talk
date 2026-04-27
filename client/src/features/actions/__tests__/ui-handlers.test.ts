@@ -4,6 +4,7 @@ import { uiRouter } from '@/services/ui-router'
 import type { UIObject } from '@/services/ui-router'
 import { useDataSourcePickerStore } from '@/features/session/data-source-picker/data-source-picker-store'
 import { WorkspaceAdapter } from '@/features/stage/adapters/WorkspaceAdapter'
+import { coordinator } from '@/features/stage/persistence/stage-persistence-bootstrap'
 import '../ui-handlers'
 
 function stubObject(objectId: string, stateValue: unknown): UIObject {
@@ -85,5 +86,29 @@ describe('ui-handlers', () => {
     const h = getClientHandler('datatalk.ui.exec')!
     const out = await h({ object: 'workspace', target: 'workspace', action: 'choose_connection' }, { sessionId: 's1' })
     expect(out).toEqual({ success: true, data: { cancelled: true } })
+  })
+
+  it('ensureHydrated -> forward -> flush ordering for patch handler', async () => {
+    const ensureHydratedSpy = vi.spyOn(coordinator, 'ensureHydrated').mockResolvedValue(undefined)
+    const flushSpy = vi.spyOn(coordinator, 'flush').mockResolvedValue(undefined)
+
+    uiRouter.registerInstance('order-test', stubObject('order-test', { patched: true }))
+
+    const h = getClientHandler('datatalk.ui.patch')!
+    const out = await h({
+      object: 'stub',
+      target: 'order-test',
+      ops: [{ op: 'replace', path: '/content', value: 'new' }],
+    }, { sessionId: 's1' })
+
+    expect(out).toEqual({ status: 'applied' })
+
+    // ensureHydrated called before flush
+    const hydrateOrder = ensureHydratedSpy.mock.invocationCallOrder[0]
+    const flushOrder = flushSpy.mock.invocationCallOrder[0]
+    expect(hydrateOrder).toBeLessThan(flushOrder)
+
+    ensureHydratedSpy.mockRestore()
+    flushSpy.mockRestore()
   })
 })

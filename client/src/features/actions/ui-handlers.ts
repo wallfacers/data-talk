@@ -1,6 +1,8 @@
 import { registerClientHandler } from './registry'
 import { uiRouter } from '@/services/ui-router'
 import type { UIRequest, UIResponse } from '@/services/ui-router'
+import { coordinator } from '@/features/stage/persistence/stage-persistence-bootstrap'
+import { useStageStore } from '@/stores/stage-store'
 
 type ReadInput = { object: string; target?: string; mode?: 'state' | 'schema' | 'actions' | 'full' }
 type PatchInput = { object: string; target?: string; ops: unknown[]; reason?: string }
@@ -50,17 +52,43 @@ async function forward(req: UIRequest): Promise<unknown> {
   return resp.data
 }
 
+function resolveTarget(input: { object?: string; target?: string }): string | null {
+  if (!input.target || input.target === 'active') return useStageStore.getState().activeWorkspaceTabId ?? null
+  return input.target
+}
+
+const MUTATING_EXEC = new Set([
+  'open', 'close', 'focus', 'archive',
+  'set_context', 'apply_text_edits', 'replace_content',
+])
+
+function isMutatingExec(a: string): boolean {
+  return MUTATING_EXEC.has(a)
+}
+
 registerClientHandler('datatalk.ui.read', async (input) => {
   const i = input as ReadInput
+  const target = resolveTarget(i)
+  if (target) await coordinator.ensureHydrated(target)
   return forward({ tool: 'ui_read', object: i.object, target: i.target ?? 'active', payload: { mode: i.mode } })
 })
 
 registerClientHandler('datatalk.ui.patch', async (input) => {
   const i = input as PatchInput
-  return forward({ tool: 'ui_patch', object: i.object, target: i.target ?? 'active', payload: { ops: i.ops, reason: i.reason } })
+  const target = resolveTarget(i)
+  if (target) await coordinator.ensureHydrated(target)
+  const result = await forward({ tool: 'ui_patch', object: i.object, target: i.target ?? 'active', payload: { ops: i.ops, reason: i.reason } })
+  if (target) await coordinator.flush(target)
+  return result
 })
 
 registerClientHandler('datatalk.ui.exec', async (input) => {
   const i = input as ExecInput
-  return forward({ tool: 'ui_exec', object: i.object, target: i.target ?? 'active', payload: { action: i.action, params: i.params } })
+  const target = resolveTarget(i)
+  if (target) await coordinator.ensureHydrated(target)
+  // Force-flush BEFORE run_sql so the server sees the latest content
+  if (i.action === 'run_sql' && target) await coordinator.flush(target)
+  const result = await forward({ tool: 'ui_exec', object: i.object, target: i.target ?? 'active', payload: { action: i.action, params: i.params } })
+  if (target && isMutatingExec(i.action)) await coordinator.flush(target)
+  return result
 })
