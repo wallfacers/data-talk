@@ -150,13 +150,26 @@ class SqlExecuteControllerIT {
     }
 
     @Test
-    void ai_source_skips_risk_check_and_executes() throws Exception {
+    void ai_source_is_gated_for_l2_just_like_user_source() throws Exception {
+        // Source label confers no trust bypass — AI-prefilled L2/L3 SQL still
+        // needs confirmation through the AlertDialog flow.
         mvc.perform(post("/api/sql/execute")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {"connectionId":"%s","sql":"DELETE FROM items WHERE id = 4; INSERT INTO items VALUES(5,'e')","source":"ai"}
                     """.formatted(CONN_ID)))
             .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status", is("requires_confirmation")))
+            .andExpect(jsonPath("$.confirmation.level", is("L2")));
+
+        // Confirming with riskAck=L2 lets it execute, regardless of source.
+        mvc.perform(post("/api/sql/execute")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"connectionId":"%s","sql":"DELETE FROM items WHERE id = 4; INSERT INTO items VALUES(5,'e')","source":"ai","confirmed":true,"riskAck":"L2"}
+                    """.formatted(CONN_ID)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status", is("executed")))
             .andExpect(jsonPath("$.results", hasSize(1)))
             .andExpect(jsonPath("$.results[0].kind", is("dml_summary")))
             .andExpect(jsonPath("$.results[0].affectedRows", is(2)));
@@ -169,7 +182,9 @@ class SqlExecuteControllerIT {
                 .content("""
                     {
                       "connectionId":"%s",
-                      "source":"ai",
+                      "source":"user",
+                      "confirmed":true,
+                      "riskAck":"L2",
                       "sql":"SELECT id, name FROM items WHERE id <= 2 ORDER BY id; UPDATE items SET name = 'z' WHERE id = 1; DELETE FROM items WHERE id = 4; SELECT missing FROM items; SELECT id, name FROM items WHERE id = 1"
                     }
                     """.formatted(CONN_ID)))
@@ -210,7 +225,9 @@ class SqlExecuteControllerIT {
                 .content("""
                     {
                       "connectionId":"%s",
-                      "source":"ai",
+                      "source":"user",
+                      "confirmed":true,
+                      "riskAck":"L2",
                       "sql":"SELECT id, name FROM items WHERE id <= 2 ORDER BY id; UPDATE items SET name = 'z' WHERE id = 1; DELETE FROM items WHERE id = 4; SELECT missing FROM items"
                     }
                     """.formatted(CONN_ID)))
@@ -318,7 +335,9 @@ class SqlExecuteControllerIT {
                     .content("""
                         {
                           "connectionId":"%s",
-                          "source":"ai",
+                          "source":"user",
+                          "confirmed":true,
+                          "riskAck":"L2",
                           "sql":"DO $$ BEGIN INSERT INTO procedural_items(id, name) VALUES (1, 'alpha'); INSERT INTO procedural_items(id, name) VALUES (2, 'beta'); END $$; SELECT id, name FROM procedural_items ORDER BY id"
                         }
                         """.formatted(POSTGRES_CONN_ID)))

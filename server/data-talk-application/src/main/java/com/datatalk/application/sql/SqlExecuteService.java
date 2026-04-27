@@ -112,23 +112,24 @@ public class SqlExecuteService {
         ResolvedExecutionContext context = tableContextAutoResolver.resolve(requestedContext, sql);
         ResolvedDataContextDto resolvedDto = toDto(context);
 
-        if ("user".equals(source)) {
-            SqlRiskAnalysis risk = riskAnalyzer.analyze(sql, Category.QUERY);
-            if (risk.riskLevel() != null
-                && (risk.riskLevel() == RiskLevel.L2 || risk.riskLevel() == RiskLevel.L3)) {
-                if (!confirmed) {
-                    return new RequiresConfirmation(
-                        resolvedDto, context.contextNotice(),
-                        risk.riskLevel().name(), risk.reason(), risk.affectedObjects(), sql);
-                }
-                if (riskAck == null || riskAck.ordinal() < risk.riskLevel().ordinal()) {
-                    return new ConfirmationInvalid(
-                        resolvedDto, context.contextNotice(),
-                        "risk_ack_insufficient",
-                        riskAck == null ? null : riskAck.name(),
-                        risk.riskLevel().name(),
-                        translator.get("sql.confirmation.invalid.message"));
-                }
+        // Risk gate applies to BOTH user-typed and AI-prefilled SQL. The
+        // Workbench tab is the single trusted execution surface for L2 / L3
+        // statements; the source label never confers a trust bypass.
+        SqlRiskAnalysis risk = riskAnalyzer.analyze(sql, Category.QUERY);
+        if (risk.riskLevel() != null
+            && (risk.riskLevel() == RiskLevel.L2 || risk.riskLevel() == RiskLevel.L3)) {
+            if (!confirmed) {
+                return new RequiresConfirmation(
+                    resolvedDto, context.contextNotice(),
+                    risk.riskLevel().name(), risk.reason(), risk.affectedObjects(), sql);
+            }
+            if (riskAck == null || riskAck.ordinal() < risk.riskLevel().ordinal()) {
+                return new ConfirmationInvalid(
+                    resolvedDto, context.contextNotice(),
+                    "risk_ack_insufficient",
+                    riskAck == null ? null : riskAck.name(),
+                    risk.riskLevel().name(),
+                    translator.get("sql.confirmation.invalid.message"));
             }
         }
 
