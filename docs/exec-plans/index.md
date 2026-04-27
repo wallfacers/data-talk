@@ -6,7 +6,7 @@
 
 | 计划 | 创建日期 | 摘要 |
 |------|---------|------|
-| [Next Implementation Roadmap](./2026-04-25-next-implementation-roadmap-plan.md) | 2026-04-25 | 下一阶段路线图：分页/限制已评估为现有能力加少量 polish，查询历史已有 tab-local 基础能力；下一正式子计划转为 SQL 结果导出，后续再推进 DDL/DML 分级确认、智能化运维诊断与可视化扩展；明确排除虚拟滚动。 |
+| [Next Implementation Roadmap](./2026-04-25-next-implementation-roadmap-plan.md) | 2026-04-25 | 下一阶段路线图：Tasks 1-5 已收口（cleanup / pagination 评估 / query history 评估 / bounded export shipped / guarded DDL-DML shipped）；2026-04-27 重排，Task 6 跨 session 工作台持久化 + Tab 内容索引 + `ui_find` 作为下一启动项，Task 7 智能运维降级、Task 8 可视化扩展依赖 Task 6，Task 9 外部数据采集（skill 驱动）作为三期占位；明确排除虚拟滚动。 |
 
 ## 已完成计划
 

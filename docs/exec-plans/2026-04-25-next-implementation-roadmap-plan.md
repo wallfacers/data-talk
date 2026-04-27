@@ -16,7 +16,7 @@
 - **State:** Active
 - **Owner intent:** Decide "接下来做什么" after the 2026-04-21 roadmap completed.
 - **Primary direction:** Make SQL Workbench reliably useful for daily work before expanding into visualization and intelligent operations.
-- **2026-04-27 update:** Tasks 1-4 已完成。Chart Artifact Inline Preview（子计划）已实现，待 commit。下一步应推进 Task 5 Guarded DDL/DML 或 Task 6 Intelligent Operations。
+- **2026-04-27 update:** Tasks 1-5 已完成（TD-026 已清除、Pagination/Query History 评估完成、Bounded Export shipped、Guarded DDL/DML shipped、Chart Artifact Inline Preview 子计划 shipped）。同日产品总设计新增 §3.11 跨 session 工作台 + Tab 内容索引 + `ui_find` 与 §3.12 外部数据采集（skill 驱动），roadmap 重排：原 Task 6 Intelligent Operations 降为 Task 7、原 Task 7 Visualization 降为 Task 8，新插入 Task 6 跨 session 工作台持久化作为下一启动项，新增 Task 9 外部数据采集作为三期占位。
 
 ## Context
 
@@ -41,13 +41,15 @@ Frontend work in this roadmap must follow [client/DESIGN.md](../../client/DESIGN
 
 ### Recommended Order
 
-1. **Small cleanup:** close stale client residue before the next feature branch grows.
-2. **Bounded SQL results polish:** current client-side table pagination, toolbar `LIMIT`, backend `maxRows`, and `truncated` metadata are enough for now; only polish misleading labels or metadata gaps.
-3. **Query history enhancement:** current tab-local history is usable; persistence, search, filtering, and reopen modes should be a later focused enhancement.
-4. **Export:** next new implementation plan. Ship bounded CSV / JSON first; evaluate Excel only after result metadata is stable.
-5. **DDL / DML guarded execution:** extend the existing risk classification into user-facing confirmation flows.
-6. **Intelligent operations:** introduce read-only diagnostics such as `EXPLAIN`, slow query analysis, index recommendations, and audit visibility.
-7. **Visualization expansion:** ER designer, report, and dashboard work should start after the SQL workbench data surface is stable.
+1. **Small cleanup:** close stale client residue before the next feature branch grows. _(shipped)_
+2. **Bounded SQL results polish:** current client-side table pagination, toolbar `LIMIT`, backend `maxRows`, and `truncated` metadata are enough for now; only polish misleading labels or metadata gaps. _(assessed, no new child plan)_
+3. **Query history enhancement:** current tab-local history is usable; persistence, search, filtering, and reopen modes should be a later focused enhancement. _(assessed, deferred)_
+4. **Export:** next new implementation plan. Ship bounded CSV / JSON first; evaluate Excel only after result metadata is stable. _(shipped)_
+5. **DDL / DML guarded execution:** extend the existing risk classification into user-facing confirmation flows. _(shipped)_
+6. **Cross-session workbench persistence + Tab content index + `ui_find`:** promote workbench Tabs to globally persisted, content-indexed objects so the AI can locate, read, and patch any open work surface across sessions; this is the foundation that makes report / dashboard / ER work durable rather than throwaway artifacts. _(next active head)_
+7. **Intelligent operations:** introduce read-only diagnostics such as `EXPLAIN`, slow query analysis, index recommendations, and audit visibility. _(can be designed in parallel with Task 6)_
+8. **Visualization expansion:** ER designer, report, and dashboard work; depends on Task 6 to be useful, since long-lived design objects need cross-session persistence.
+9. **External data ingestion via skills:** e-commerce platform / generic web data fetching with auto-table creation under guarded execution. _(phase-3 placeholder; do not start until Tasks 6 and 8 are stable)_
 
 ### Explicit Exclusion
 
@@ -95,19 +97,11 @@ Frontend work in this roadmap must follow [client/DESIGN.md](../../client/DESIGN
 - Delete candidate: `client/src/features/session/hero-view.tsx`
 - Verify: `client/src/features/session/**`
 
-- [ ] **Step 1.1: Register this roadmap as Active**
-  - Add `2026-04-25-next-implementation-roadmap-plan.md` to the Active table in `docs/exec-plans/index.md`.
-  - Keep the summary short: next roadmap for bounded SQL results, query history, export, guarded DDL / DML, intelligent operations, and later visualization.
+- [x] **Step 1.1: Register this roadmap as Active** — 已登记于 `docs/exec-plans/index.md` Active 表。
 
-- [ ] **Step 1.2: Close TD-026 in a narrow cleanup**
-  - Run: `rg -n "HeroView|hero-view" client/src`
-  - If the only hit is `client/src/features/session/hero-view.tsx`, delete that file.
-  - If imports still exist, remove the dead import path and keep current empty-session behavior in `client/src/features/session/welcome-empty.tsx`.
+- [x] **Step 1.2: Close TD-026 in a narrow cleanup** — `client/src/features/session/hero-view.tsx` 已删除，`rg "HeroView|hero-view" client/src` 零结果。
 
-- [ ] **Step 1.3: Verify cleanup**
-  - Run: `cd client && npx tsc --noEmit`
-  - Expected: zero TypeScript errors.
-  - Update `docs/exec-plans/tech-debt-tracker.md` by moving `TD-026` to cleared debt with the verification command and date.
+- [x] **Step 1.3: Verify cleanup** — `TD-026` 已迁入 `docs/exec-plans/tech-debt-tracker.md` 已清除债务表（2026-04-27）。
 
 ### Task 2: SQL Results Pagination And Bounded Limits Assessment
 
@@ -130,18 +124,11 @@ Frontend work in this roadmap must follow [client/DESIGN.md](../../client/DESIGN
   - `server/data-talk-application/src/main/java/com/datatalk/application/sql/SqlExecuteService.java` enforces `datatalk.sql.max-rows` and returns `truncated`.
   - No virtual scrolling should be introduced.
 
-- [ ] **Step 2.2: Optional polish only**
-  - Clarify the `none` limit label so users do not read it as unlimited; backend still has `datatalk.sql.max-rows`.
-  - Keep `rowCount` semantics as returned row count, not total database count.
-  - Avoid `COUNT(*)` or server-side page queries until a concrete product need appears.
+- [x] **Step 2.2: Optional polish only** — 评估完成，无即时 polish 启动；后续按需触发独立小补丁，不再走 roadmap。
 
-- [ ] **Step 2.3: Defer server pagination**
-  - Do not add `pageNumber`, cursor, or server-side page loading in the next child plan.
-  - Current bounded rendering plus query `LIMIT` is sufficient for the export plan.
+- [x] **Step 2.3: Defer server pagination** — 已确认延后；export 子计划已基于现有 bounded rendering 完成（Task 4 shipped）。
 
-- [ ] **Step 2.4: Define tests and verification**
-  - If polish is implemented, run the focused stage tests and `cd client && npx tsc --noEmit`.
-  - Backend tests are only needed if `SqlExecuteService` or API DTOs change.
+- [x] **Step 2.4: Define tests and verification** — 无新代码改动，仅评估，不需要新测试。
 
 ### Task 3: Query History And Result Management Assessment
 
@@ -161,17 +148,13 @@ Frontend work in this roadmap must follow [client/DESIGN.md](../../client/DESIGN
   - `HistoryPanel` renders entries in the Activity Rail and appends selected SQL back into the editor.
   - Existing tests cover append, clear, and history panel behavior.
 
-- [ ] **Step 3.2: Defer persistent history**
-  - Missing capabilities remain valid backlog: persistence across refresh, session-level and cross-session views, search, filters, context capture, replace-current-editor, open-new-tab, and rerun actions.
-  - Do not block SQL export on these missing capabilities.
+- [x] **Step 3.2: Defer persistent history** — 已确认延后；export 已 ship，未被 history 阻塞。
 
-- [ ] **Step 3.3: Future source-of-truth decision**
-  - When this becomes active, first decide whether to reuse `action_invocations` metadata or create a dedicated SQL history table.
-  - Persisting full result rows is still excluded; store SQL text, context, status, timing, row count, and error summary.
+- [x] **Step 3.3: Future source-of-truth decision** — 决策延后到 history 真正立项时；候选方案（复用 `action_invocations` vs 独立表）已记录。
 
-- [ ] **Step 3.4: Define tests and verification**
-  - Future frontend tests should cover history panel rendering, replace/append/rerun modes, filters, and result-tab isolation.
-  - Future backend tests are only required once history persists beyond the Zustand tab store.
+- [x] **Step 3.4: Define tests and verification** — 无代码改动，无新测试需求。
+
+> **2026-04-27 note:** Task 6（Cross-Session Workbench Persistence）落地后，全局 Tab 持久化与内容索引能力会与 query history 形成强耦合。届时应先看看是否可以让 history 复用 Task 6 的 Tab 持久化与 `ui_find` 通道，而不是单独建一张 SQL history 表。
 
 ### Task 4: Bounded Export
 
@@ -223,7 +206,56 @@ Frontend work in this roadmap must follow [client/DESIGN.md](../../client/DESIGN
 
 - [x] **Step 5.4: Define tests and verification** — 214 后端测试 + 400 前端测试通过
 
-### Task 6: Intelligent Operations Track
+### Task 6: Cross-Session Workbench Persistence And Content-Aware Tab Search
+
+> Promotes 总设计 §3.11. This is the next active head; spec + child plan must be created before code work begins.
+
+**Files:**
+- Create: `docs/product-specs/<YYYY-MM-DD>-cross-session-workbench-tabs-design.md`
+- Create: `docs/exec-plans/<YYYY-MM-DD>-cross-session-workbench-tabs-plan.md`
+- Modify later: SQLite migration under `server/data-talk-adapter/src/main/resources/db/migration/`
+- Modify later: new domain / application Tab persistence model under `server/data-talk-domain/**` and `server/data-talk-application/**`
+- Modify later: new `UiFindAction` under `server/data-talk-adapter/src/main/java/com/datatalk/adapter/actions/`
+- Modify later: `client/src/features/stage/stores/stage-store.ts` (cross-session Tab scope + hydration)
+- Modify later: `client/src/features/stage/adapters/WorkspaceAdapter.ts` (and per-Tab adapters that need full-document `ui_read`)
+- Modify later: `client/src/features/session/**` (sidebar entry: "Tab 打开记录")
+- Modify later: AGENTS.md / system-prompt template (inject open-Tab summary + recently-touched Tabs + `ui_find` priority)
+
+- [ ] **Step 6.1: Promote 总设计 §3.11 to a focused product spec**
+  - Decompose into: Tab persistence schema, content indexing strategy, `ui_find` action contract, sidebar Tab history surface, system-prompt injection.
+  - Spec must explicitly cite [Stage UI Object Protocol](../product-specs/2026-04-20-stage-ui-object-protocol-design.md) as the foundation it extends.
+  - Spec must classify each existing Tab type as workbench-scope (e.g. `query_editor`, future `er_designer`, future `report_designer`) vs session-scope (e.g. `chart_artifact`, `file_preview` snapshots), and set the default for new Tab types.
+
+- [ ] **Step 6.2: Define persistence contract**
+  - SQLite schema for Tabs: `id / type / title / objectId / connectionId / payloadSnapshot / lastTouchedAt / openedBySessionId`.
+  - Decide whether content snapshots live alongside metadata or in a separate blob table (likely separate to keep list queries cheap).
+  - Migration is additive; on cold start `StageStore` hydrates from DB instead of starting empty.
+  - Out of scope: full per-keystroke history; only logical save points and explicit AI patches snapshot.
+
+- [ ] **Step 6.3: Define indexing and `ui_find` contract**
+  - `ui_find` is the Claude Code `find + grep + cat` analogue: single action covers metadata filter, content search, and ranged content read.
+  - Filter modes: by `type / connectionId / objectId / openedBySessionId / lastTouchedAt window`.
+  - Search modes: substring, regex, optional semantic (deferred slice if scope grows).
+  - Read mode: returns `tabId` plus matched fragment with byte / line range so AI can decide a precise `ui_patch` without re-fetching the whole document.
+  - `ui_find` stays read-only. All mutation must continue to flow through `ui_patch` per the existing UI Object Protocol.
+
+- [ ] **Step 6.4: Define UI surface**
+  - Sidebar gains a "Tab 打开记录" entry parallel to the session list, using `bg.subtle / border.subtle / interaction.selected / text.strong` per [client/DESIGN.md](../../client/DESIGN.md).
+  - Search input and result navigation are keyboard accessible; focus rings follow `interaction.focusRing`.
+  - Search hits highlight using `accent.primary`; switching / focusing a Tab animates with `motion.normal + easing.standard`, used only as state confirmation.
+  - A Tab opened in session A renders identically when re-opened from session B.
+
+- [ ] **Step 6.5: Define AI integration**
+  - System prompt injects "current open Tabs summary + recently-touched Tabs"; `ui_find` listed as the preferred locator before broader `ui_list` traversal or full-document `ui_read`.
+  - AGENTS.md updated to teach the find / grep / cat mental model and rule out "fetch everything to context" patterns.
+  - Tab summary surfaces enough discriminator metadata (object kind + a one-line snippet) so the AI can pick targets without an extra round-trip.
+
+- [ ] **Step 6.6: Define tests and verification**
+  - Backend: `TabRepository` CRUD, indexer determinism, `ui_find` filter / search / read modes, migration round-trip, cold-start hydration.
+  - Frontend: cross-session Tab hydration, sidebar Tab history rendering, search interaction, `ui_find → ui_patch` flow over a mocked Adapter.
+  - Verification gates per the roadmap's Verification Gates section.
+
+### Task 7: Intelligent Operations Track
 
 **Files:**
 - Create: `docs/product-specs/2026-04-25-intelligent-operations-design.md`
@@ -235,56 +267,78 @@ Frontend work in this roadmap must follow [client/DESIGN.md](../../client/DESIGN
 - Modify later: `client/src/features/stage/components/query-editor-inspector.tsx`
 - Modify later: `client/src/features/chat/components/tools/renderers/execute-sql.tsx`
 
-- [ ] **Step 6.1: Start with read-only diagnostics**
+- [ ] **Step 7.1: Start with read-only diagnostics**
   - First intelligent operations scope should be L1-only: `EXPLAIN`, execution-plan capture, slow-query explanation, table statistics display, and index recommendation text.
   - It should not create indexes or change schema in its first slice.
 
-- [ ] **Step 6.2: Define dialect boundaries**
+- [ ] **Step 7.2: Define dialect boundaries**
   - MySQL, PostgreSQL, and H2 have different `EXPLAIN` output shapes.
   - The first plan should normalize a minimal common model: statement, dialect, raw plan text or rows, timing if available, and AI-readable summary input.
 
-- [ ] **Step 6.3: Define AI collaboration**
+- [ ] **Step 7.3: Define AI collaboration**
   - AI can ask DataTalk for plan data and schema metadata.
   - DataTalk performs database reads; OpenCode only reasons over returned context.
   - Index recommendations are suggestions until the guarded DDL / DML flow supports confirmed index creation.
 
-- [ ] **Step 6.4: Define operations surfaces**
-  - Query Editor inspector can show execution plan, risk level, timing, and recommendation summary.
+- [ ] **Step 7.4: Define operations surfaces**
+  - Query Editor inspector can show execution plan, risk level, timing, and recommendation summary, ideally as a Task 6 workbench-scope persistent Tab so a user can return to a diagnostic across sessions.
   - Chat tool rendering can show a compact diagnostic card with "open in workbench".
-  - Audit visibility should start as "what SQL did I run in this session" using query history before becoming a full compliance log.
+  - Audit visibility should start as "what SQL did I run in this session" using query history; once Task 6 lands, persistent audit Tabs become the natural surface.
 
-- [ ] **Step 6.5: Define tests and verification**
+- [ ] **Step 7.5: Define tests and verification**
   - Backend tests cover dialect-specific plan command construction and failure handling.
   - Frontend tests cover inspector rendering, empty plan states, and chat-to-workbench promotion.
 
-### Task 7: Visualization Expansion Candidate
+### Task 8: Visualization Expansion Candidate
 
 **Files:**
-- Create when this slice starts: `docs/product-specs/2026-04-25-visualization-expansion-design.md`
-- Create when this slice starts: `docs/exec-plans/2026-04-25-visualization-expansion-plan.md`
+- Create when this slice starts: `docs/product-specs/<YYYY-MM-DD>-visualization-expansion-design.md`
+- Create when this slice starts: `docs/exec-plans/<YYYY-MM-DD>-visualization-expansion-plan.md`
 - Review later: `server/data-talk-adapter/src/main/java/com/datatalk/adapter/actions/LayoutErdAction.java`
 - Review later: `server/data-talk-adapter/src/main/java/com/datatalk/adapter/actions/RenderChartAction.java`
 - Review later: `client/src/features/ontology/components/chart-artifact.tsx`
 - Review later: `client/src/features/chat/components/markdown/chart-block.tsx`
 - Review later: `client/src/features/stage/components/artifact-preview-tab.tsx`
 
-- [ ] **Step 7.1: Keep visualization behind SQL Workbench stabilization**
-  - ER designer, report builder, and dashboard composition depend on stable result metadata and export semantics.
-  - This roadmap records the direction but does not start visualization implementation before Tasks 2 through 4 are planned.
+- [ ] **Step 8.1: Keep visualization behind cross-session persistence**
+  - ER designer, report builder, and dashboard composition only deliver real product value once Task 6 (cross-session Tab persistence) ships, because these objects are long-lived and edited across sessions.
+  - This roadmap records the direction but does not start visualization implementation before Task 6 has at least a child spec, and ideally before its first usable slice ships.
 
-- [ ] **Step 7.2: Pick one first visualization slice**
-  - Candidate A: ER graph browsing from metadata.
+- [ ] **Step 8.2: Pick one first visualization slice**
+  - Candidate A: ER graph browsing from metadata, evolving toward an editable `er_designer` Tab type registered as workbench-scope under Task 6.
   - Candidate B: chart editing and replacement from existing chart fence artifacts.
-  - Candidate C: dashboard tab that composes existing chart artifacts.
-  - The first visualization child plan should choose one candidate only.
+  - Candidate C: dashboard tab that composes existing chart artifacts, registered as a workbench-scope persistent Tab via Task 6.
+  - The first visualization child plan should choose one candidate only, and explicitly state how its persistent objects integrate with `ui_find` / `ui_patch`.
+
+### Task 9: External Data Ingestion via Skills (Phase 3 Placeholder)
+
+> Promotes 总设计 §3.12. Phase-3 placeholder; do not start a child spec until Task 6 ships and at least one Task 8 slice is in production.
+
+**Files:**
+- Create when this slice starts: `docs/product-specs/<YYYY-MM-DD>-external-data-ingestion-skills-design.md`
+- Create when this slice starts: `docs/exec-plans/<YYYY-MM-DD>-external-data-ingestion-skills-plan.md`
+
+- [ ] **Step 9.1: Hold until Tasks 6 and 8 are stable**
+  - Do not open a child spec earlier; ingestion is an additive capability, not a foundation.
+  - When opened, scope must start from a generic HTTP / API skill scaffolding interoperating with OpenCode MCP / skill protocol; platform-specific skills (Taobao / JD / Pinduoduo / Douyin commerce) come only after the generic scaffolding is proven.
+
+- [ ] **Step 9.2: Hard architectural rules to preserve when this opens**
+  - DataTalk core must not bundle any platform-specific SDK. All ingestion lives in skill packages, including credentials (OAuth / API key) and platform-specific scraping logic.
+  - Auto-table creation must reuse the L2 risk flow shipped in Task 5; ingestion does not get a private bypass for guarded execution.
+  - Ingestion source URL, run timing, and raw payload references must hit the audit log per §3.8.
+  - Ingestion progress / mapping / target-table previews must surface as persistent Tabs registered through Task 6, so a user can resume a partially-configured pipeline across sessions.
+
+- [ ] **Step 9.3: First-slice direction (when activated)**
+  - Generic scaffolding first: HTTP / REST / GraphQL skill harness, credential vault hookup, schema-inference helper, target-table preview with L2 confirmation.
+  - Only then sequence platform-specific skills, one platform per child plan.
 
 ## Ordering And Parallelism
 
-- Task 1 can run immediately.
-- Tasks 2 and 3 have been assessed as partially shipped. Task 4 is the next new child plan.
-- Task 5 should start after Task 2 because confirmation UI needs accurate result and impact metadata.
-- Task 6 can be designed in parallel with Task 5, but its first implementation must stay read-only until guarded DDL / DML exists.
-- Task 7 stays behind Tasks 2 through 4 unless product priority explicitly changes.
+- Tasks 1 through 5 are closed (shipped or assessed-and-deferred); no further roadmap-level action.
+- Task 6 (Cross-Session Workbench Persistence) is the next active head; child spec + plan must precede any code work because it changes the StageStore scope contract and adds a new top-level action (`ui_find`).
+- Task 7 (Intelligent Operations) can be designed in parallel with Task 6, but its first implementation must stay read-only and should target persistent Tab surfaces created under Task 6 (e.g. plan inspector, audit panel) rather than session-only artifacts.
+- Task 8 (Visualization Expansion) waits for Task 6's first usable slice. ER / report / dashboard objects must register as workbench-scope persistent Tabs from the start; do not ship throwaway session-scope versions first.
+- Task 9 (External Data Ingestion) is a phase-3 placeholder; do not open a child spec until Task 6 is shipped and at least one Task 8 slice is in production.
 
 ## Verification Gates
 
@@ -298,10 +352,13 @@ Every child implementation plan created from this roadmap must include:
 
 ## Exit Criteria
 
-- TD-026 is closed or explicitly split into a small active cleanup plan.
-- SQL results pagination / limits are either left as existing support plus polish, or a small follow-up plan exists; virtual scrolling remains excluded.
-- Query history / result management is intentionally deferred with the current tab-local implementation documented.
-- Bounded export has a clear child spec and plan, or the roadmap records why it was deferred.
-- Guarded DDL / DML execution has a child spec that connects backend risk enforcement to frontend confirmation UI.
-- Intelligent operations has a child spec covering read-only diagnostics, dialect boundaries, and AI collaboration rules.
+- TD-026 is closed or explicitly split into a small active cleanup plan. _(closed 2026-04-27)_
+- SQL results pagination / limits are either left as existing support plus polish, or a small follow-up plan exists; virtual scrolling remains excluded. _(left as existing support; no new plan)_
+- Query history / result management is intentionally deferred with the current tab-local implementation documented. _(deferred; will likely fold into Task 6's persistence + `ui_find` once that ships)_
+- Bounded export has a clear child spec and plan, or the roadmap records why it was deferred. _(shipped)_
+- Guarded DDL / DML execution has a child spec that connects backend risk enforcement to frontend confirmation UI. _(shipped)_
+- Cross-session workbench persistence + `ui_find` has a child spec covering Tab persistence schema, content indexing, action contract, sidebar surface, and AI integration; all classified Tab types have an explicit workbench-scope vs session-scope decision.
+- Intelligent operations has a child spec covering read-only diagnostics, dialect boundaries, and AI collaboration rules; surfaces target persistent Tabs from Task 6 where applicable.
+- Visualization expansion has at least one child spec choosing one initial slice (ER / chart-edit / dashboard), with explicit `ui_find` / `ui_patch` integration for its persistent objects.
+- External data ingestion remains a registered phase-3 placeholder until Tasks 6 and 8 are stable; no child spec opened prematurely.
 - The next roadmap or child plans are registered in `docs/exec-plans/index.md` before this roadmap is moved to Completed.
