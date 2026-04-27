@@ -6,13 +6,13 @@
 
 | 计划 | 创建日期 | 摘要 |
 |------|---------|------|
-| [Cross-Session Workbench Tabs](./2026-04-27-cross-session-workbench-tabs-plan.md) | 2026-04-27 | 跨 session 工作台 Tab 持久化 + 内容索引 + `ui_find`（hard-cut 替换 `ui_list`）。23 任务分 4 batch（S/P/F/U）：V12 schema + FTS5 trigram + StageTab repo/service/HTTP；前端 StagePersistenceCoordinator + 单一 mutation API（ESLint custom rule + ts-morph 静态扫描双门禁）+ 强制 force-flush；ui_find 三段（filter/query/read）+ 四 output mode + 虚拟线程 fan-out + 正则护栏；NavTabs sidebar group + 搜索 + `{{STAGE_TAB_DIGEST}}` AGENTS.md 注入；AI 行为回归 IT 验证 force-flush。Roadmap Task 6 当前主线。 |
 | [Next Implementation Roadmap](./2026-04-25-next-implementation-roadmap-plan.md) | 2026-04-25 | 下一阶段路线图：Tasks 1-5 已收口（cleanup / pagination 评估 / query history 评估 / bounded export shipped / guarded DDL-DML shipped）；2026-04-27 重排，Task 6 跨 session 工作台持久化 + Tab 内容索引 + `ui_find` 作为下一启动项，Task 7 智能运维降级、Task 8 可视化扩展依赖 Task 6，Task 9 外部数据采集（skill 驱动）作为三期占位；明确排除虚拟滚动。 |
 
 ## 已完成计划
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [Cross-Session Workbench Tabs](./2026-04-27-cross-session-workbench-tabs-plan.md) | 2026-04-27 | 跨 session 工作台 Tab 持久化 + 内容索引 + `ui_find`（hard-cut 替换 `ui_list`）。23 任务分 4 batch（S/P/F/U）：V12 schema + FTS5 trigram + StageTab repo/service/HTTP；前端 StagePersistenceCoordinator + 单一 mutation API（ESLint custom rule + ts-morph 静态扫描双门禁）+ 强制 force-flush；ui_find 三段（filter/query/read）+ 四 output mode + 虚拟线程 fan-out + 正则护栏；NavTabs sidebar group + 搜索 + `{{STAGE_TAB_DIGEST}}` AGENTS.md 注入；AI 行为回归 IT 验证 force-flush。Backend: 237 tests, Frontend: 690 tests green, tsc --noEmit clean. |
 | [Schema Read Bounds](./2026-04-27-schema-read-bounds-plan.md) | 2026-04-27 | `datatalk_read_schema` 现在默认只返回表名摘要，显式 `tables` 才返回指定表列详情；运行时 Agent prompt 已补充 table discovery、显式表范围和截断输出处理规则；后端编译与定向回归测试通过。 |
 | [Chart Artifact Inline Preview](./2026-04-25-chart-artifact-inline-preview-plan.md) | 2026-04-27 | `datatalk_render_chart` 工具完成后，图表直接内联渲染在对话消息流中；`ArtifactCreated` 订阅 `useOntologyStore`，仅 `kind=chart` 且 `echartsOption` 存在时渲染；6 测试通过；实际实现超出计划：i18n 翻译、string JSON output 解析、眼睛图标 Tooltip。代码已实现，待 commit。 |
 | [Guarded DDL / DML Execution](./2026-04-25-guarded-ddl-dml-execution-plan.md) | 2026-04-27 | 后端 L1/L2/L3 风险分级改造为用户可见两步确认流：`SqlExecuteService` sealed Outcome 三状态机，`ExecuteSqlAction` 接入风险门控，`DELETE WITH WHERE` 降为 L2；前端 `<SqlConfirmationCard>` 共享组件，Workbench AlertDialog + Chat inline 卡片双路径；后端 214 测试（1 预存失败无关），前端 400 测试全绿，`tsc --noEmit` 零错误。 |

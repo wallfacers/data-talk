@@ -1,6 +1,6 @@
 # Cross-Session Workbench Tabs Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Persist Stage Tabs across sessions, build a full-text content index, and replace `ui_list` with a unified `ui_find` action that combines `find` / `grep` / `cat` semantics — so users and AI share one durable, searchable workbench surface.
 
@@ -22,6 +22,7 @@
 ## Status
 
 - 2026-04-27 — Draft. Not yet started.
+- 2026-04-27 — Implementation complete. All 23 tasks committed. Backend: 237 tests (1 pre-existing flaky failure unrelated to this plan). Frontend: 690 tests green, tsc --noEmit clean.
 
 ## Layout Map
 
@@ -100,7 +101,7 @@ Lays the persistence foundation and ships `ui_find` in a metadata-only form so t
 - Create: `server/data-talk-infrastructure/src/main/resources/db/migration/V12__stage_tabs.sql`
 - Test: `server/data-talk-infrastructure/src/test/java/com/datatalk/infra/stage/StageTabsMigrationIT.java`
 
-- [ ] **Step 1: Write the failing migration IT**
+- [x] **Step 1: Write the failing migration IT**
 
 ```java
 package com.datatalk.infra.stage;
@@ -169,7 +170,7 @@ class StageTabsMigrationIT {
 
 `SqliteTestContext` already exists for prior migrations — reuse and add a `withFlyway()` helper if missing (see `V11__artifact_origin.sql` test for pattern).
 
-- [ ] **Step 2: Run the IT to verify it fails**
+- [x] **Step 2: Run the IT to verify it fails**
 
 ```bash
 cd server && mvn -pl data-talk-infrastructure test -Dtest=StageTabsMigrationIT -q
@@ -177,11 +178,11 @@ cd server && mvn -pl data-talk-infrastructure test -Dtest=StageTabsMigrationIT -
 
 Expected: `BUILD FAILURE` with `Migration V12 not found` or table-missing assertion.
 
-- [ ] **Step 3: Write the migration**
+- [x] **Step 3: Write the migration**
 
 Copy the SQL block from spec §4.1 verbatim into `V12__stage_tabs.sql`. Verify the CHECK constraint, the five triggers, four indexes, FTS5 virtual table with `tokenize='trigram'`, and FK CASCADE on `origin_session_id` and `tab_id` are all present.
 
-- [ ] **Step 4: Run the IT to verify it passes**
+- [x] **Step 4: Run the IT to verify it passes**
 
 ```bash
 cd server && mvn -pl data-talk-infrastructure test -Dtest=StageTabsMigrationIT -q
@@ -189,7 +190,7 @@ cd server && mvn -pl data-talk-infrastructure test -Dtest=StageTabsMigrationIT -
 
 Expected: `BUILD SUCCESS`. All four `@Test` methods pass.
 
-- [ ] **Step 5: Run full module compile**
+- [x] **Step 5: Run full module compile**
 
 ```bash
 cd server && mvn install -pl data-talk-infrastructure -am -DskipTests -q
@@ -197,7 +198,7 @@ cd server && mvn install -pl data-talk-infrastructure -am -DskipTests -q
 
 Expected: `BUILD SUCCESS` (so downstream modules pick up the V12 SQL via fresh jar).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add server/data-talk-infrastructure/src/main/resources/db/migration/V12__stage_tabs.sql \
@@ -214,7 +215,7 @@ git commit -m "feat(stage-tabs): add V12 schema for persistent tabs + FTS5 trigr
 - Create: `server/data-talk-domain/src/main/java/com/datatalk/domain/stage/StageTabScope.java`
 - Create: `server/data-talk-domain/src/main/java/com/datatalk/domain/stage/StageTabContent.java`
 
-- [ ] **Step 1: Define `StageTabScope`**
+- [x] **Step 1: Define `StageTabScope`**
 
 ```java
 package com.datatalk.domain.stage;
@@ -236,7 +237,7 @@ public enum StageTabScope {
 }
 ```
 
-- [ ] **Step 2: Define `StageTab` record**
+- [x] **Step 2: Define `StageTab` record**
 
 ```java
 package com.datatalk.domain.stage;
@@ -277,7 +278,7 @@ public record StageTab(
 }
 ```
 
-- [ ] **Step 3: Define `StageTabContent` record**
+- [x] **Step 3: Define `StageTabContent` record**
 
 ```java
 package com.datatalk.domain.stage;
@@ -293,7 +294,7 @@ public record StageTabContent(
 ) {}
 ```
 
-- [ ] **Step 4: Compile to verify**
+- [x] **Step 4: Compile to verify**
 
 ```bash
 cd server && mvn install -pl data-talk-domain -am -DskipTests -q
@@ -301,7 +302,7 @@ cd server && mvn install -pl data-talk-domain -am -DskipTests -q
 
 Expected: `BUILD SUCCESS`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add server/data-talk-domain/src/main/java/com/datatalk/domain/stage/
@@ -318,7 +319,7 @@ git commit -m "feat(stage-tabs): add StageTab/StageTabScope/StageTabContent doma
 - Create: `server/data-talk-infrastructure/src/main/java/com/datatalk/infra/stage/StageTabIndexer.java`
 - Test: `server/data-talk-infrastructure/src/test/java/com/datatalk/infra/stage/StageTabJdbcRepositoryTest.java`
 
-- [ ] **Step 1: Define the repository contract in the application layer**
+- [x] **Step 1: Define the repository contract in the application layer**
 
 ```java
 package com.datatalk.application.stage;
@@ -376,7 +377,7 @@ public interface StageTabRepository {
 }
 ```
 
-- [ ] **Step 2: Write the repository test**
+- [x] **Step 2: Write the repository test**
 
 ```java
 package com.datatalk.infra.stage;
@@ -491,7 +492,7 @@ class StageTabJdbcRepositoryTest {
 }
 ```
 
-- [ ] **Step 3: Run tests to verify failure**
+- [x] **Step 3: Run tests to verify failure**
 
 ```bash
 cd server && mvn -pl data-talk-infrastructure test -Dtest=StageTabJdbcRepositoryTest -q
@@ -499,7 +500,7 @@ cd server && mvn -pl data-talk-infrastructure test -Dtest=StageTabJdbcRepository
 
 Expected: compilation error (`StageTabJdbcRepository` not yet defined).
 
-- [ ] **Step 4: Implement `StageTabJdbcRepository`**
+- [x] **Step 4: Implement `StageTabJdbcRepository`**
 
 Implement using `JdbcTemplate` with prepared statements. Key behaviors:
 - `upsertMetadata`: `INSERT ... ON CONFLICT(id) DO UPDATE SET ...`. Use `RETURNING *` (SQLite 3.35+) to read back the row. For optimistic concurrency: when `expectedPayloadVersion >= 0`, add `WHERE payload_version = ?`; when zero rows updated → throw `StageTabConcurrencyException`.
@@ -520,7 +521,7 @@ public class StageTabConcurrencyException extends RuntimeException {
 }
 ```
 
-- [ ] **Step 5: Implement `StageTabIndexer` (FTS5 query builder)**
+- [x] **Step 5: Implement `StageTabIndexer` (FTS5 query builder)**
 
 ```java
 package com.datatalk.infra.stage;
@@ -566,7 +567,7 @@ public class StageTabIndexer {
 }
 ```
 
-- [ ] **Step 6: Run tests to verify they pass**
+- [x] **Step 6: Run tests to verify they pass**
 
 ```bash
 cd server && mvn -pl data-talk-infrastructure test -Dtest=StageTabJdbcRepositoryTest -q
@@ -574,7 +575,7 @@ cd server && mvn -pl data-talk-infrastructure test -Dtest=StageTabJdbcRepository
 
 Expected: `BUILD SUCCESS`. All seven `@Test` methods pass.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add server/data-talk-application/src/main/java/com/datatalk/application/stage/StageTabRepository.java \
@@ -591,7 +592,7 @@ git commit -m "feat(stage-tabs): add StageTabJdbcRepository + FTS5 indexer with 
 - Create: `server/data-talk-application/src/main/java/com/datatalk/application/stage/StageTabService.java`
 - Test: `server/data-talk-application/src/test/java/com/datatalk/application/stage/StageTabServiceTest.java`
 
-- [ ] **Step 1: Write the failing service test**
+- [x] **Step 1: Write the failing service test**
 
 ```java
 package com.datatalk.application.stage;
@@ -654,7 +655,7 @@ class StageTabServiceTest {
 }
 ```
 
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
 
 ```bash
 cd server && mvn -pl data-talk-application test -Dtest=StageTabServiceTest -q
@@ -662,7 +663,7 @@ cd server && mvn -pl data-talk-application test -Dtest=StageTabServiceTest -q
 
 Expected: compilation failure (`StageTabService` not defined).
 
-- [ ] **Step 3: Implement the service**
+- [x] **Step 3: Implement the service**
 
 ```java
 package com.datatalk.application.stage;
@@ -733,7 +734,7 @@ public class StageTabPayloadTooLargeException extends RuntimeException {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 cd server && mvn -pl data-talk-application test -Dtest=StageTabServiceTest -q
@@ -741,7 +742,7 @@ cd server && mvn -pl data-talk-application test -Dtest=StageTabServiceTest -q
 
 Expected: `BUILD SUCCESS`. All four `@Test` methods pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add server/data-talk-application/src/main/java/com/datatalk/application/stage/StageTabService.java \
@@ -758,7 +759,7 @@ git commit -m "feat(stage-tabs): add StageTabService with 90-day lazy auto-archi
 - Create: `server/data-talk-adapter/src/main/java/com/datatalk/adapter/controller/StageTabController.java`
 - Test: `server/data-talk-adapter/src/test/java/com/datatalk/adapter/controller/StageTabControllerIT.java`
 
-- [ ] **Step 1: Write the failing IT**
+- [x] **Step 1: Write the failing IT**
 
 ```java
 package com.datatalk.adapter.controller;
@@ -842,7 +843,7 @@ class StageTabControllerIT {
 }
 ```
 
-- [ ] **Step 2: Run IT to verify it fails**
+- [x] **Step 2: Run IT to verify it fails**
 
 ```bash
 cd server && mvn -pl data-talk-adapter test -Dtest=StageTabControllerIT -q
@@ -850,7 +851,7 @@ cd server && mvn -pl data-talk-adapter test -Dtest=StageTabControllerIT -q
 
 Expected: 404s (controller not yet defined).
 
-- [ ] **Step 3: Implement the controller**
+- [x] **Step 3: Implement the controller**
 
 Endpoints (from spec §5.4):
 
@@ -991,7 +992,7 @@ public class StageTabController {
 }
 ```
 
-- [ ] **Step 4: Run IT to verify pass**
+- [x] **Step 4: Run IT to verify pass**
 
 ```bash
 cd server && mvn -pl data-talk-adapter test -Dtest=StageTabControllerIT -q
@@ -999,7 +1000,7 @@ cd server && mvn -pl data-talk-adapter test -Dtest=StageTabControllerIT -q
 
 Expected: `BUILD SUCCESS`. All five `@Test` methods pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add server/data-talk-adapter/src/main/java/com/datatalk/adapter/controller/StageTabController.java \
@@ -1021,7 +1022,7 @@ Ship the action contract with metadata listing only — covers the `ui_list` par
 - Test: `server/data-talk-adapter/src/test/java/com/datatalk/adapter/actions/UiFindActionTest.java`
 - Test: `server/data-talk-application/src/test/java/com/datatalk/application/stage/StageFindServiceMetadataTest.java`
 
-- [ ] **Step 1: Write the input/output value objects**
+- [x] **Step 1: Write the input/output value objects**
 
 ```java
 package com.datatalk.application.stage;
@@ -1090,7 +1091,7 @@ public record StageFindResult(
 }
 ```
 
-- [ ] **Step 2: Write skeleton service test (metadata mode only)**
+- [x] **Step 2: Write skeleton service test (metadata mode only)**
 
 ```java
 package com.datatalk.application.stage;
@@ -1155,7 +1156,7 @@ public interface StageTabIndexerPort {
 
 (In Task 14 `StageTabIndexer` will be tagged `@Primary` and implement this port — for now, the metadata path doesn't call it.)
 
-- [ ] **Step 3: Implement `StageFindService` (metadata + count only)**
+- [x] **Step 3: Implement `StageFindService` (metadata + count only)**
 
 ```java
 package com.datatalk.application.stage;
@@ -1225,7 +1226,7 @@ public class StageFindService {
 }
 ```
 
-- [ ] **Step 4: Implement `UiFindAction` skeleton**
+- [x] **Step 4: Implement `UiFindAction` skeleton**
 
 ```java
 package com.datatalk.adapter.actions;
@@ -1306,7 +1307,7 @@ public class UiFindAction implements ActionHandler<Map, Map> {
 
 Stub `UiFindSchemas` with the **full** schema from spec §6.2 / §6.3 — copy verbatim. This gives Batch F a finished schema even though only metadata behavior is wired up at this point.
 
-- [ ] **Step 5: Write the action handler test**
+- [x] **Step 5: Write the action handler test**
 
 ```java
 package com.datatalk.adapter.actions;
@@ -1337,7 +1338,7 @@ class UiFindActionTest {
 
 (The "ui.list no longer registered" assertion is the contract that will be satisfied in Task 11 once `UiListAction.java` is removed. Mark this test `@Disabled` here with a TODO referencing Task 11, or leave failing — your call; the canonical decision is to **leave it failing** and unblock it in Task 11 as the gate.)
 
-- [ ] **Step 6: Run tests**
+- [x] **Step 6: Run tests**
 
 ```bash
 cd server && mvn -pl data-talk-adapter test -Dtest=UiFindActionTest -q
@@ -1346,7 +1347,7 @@ cd server && mvn -pl data-talk-application test -Dtest=StageFindServiceMetadataT
 
 Expected: `UiFindActionTest.registeredAsServerExecutor` and both `StageFindServiceMetadataTest` cases pass; `uiListNoLongerRegistered` fails (intentional gate — re-runs at Task 11).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add server/data-talk-adapter/src/main/java/com/datatalk/adapter/actions/UiFindAction.java \
@@ -1366,7 +1367,7 @@ git commit -m "feat(stage-tabs): register ui_find action with metadata/count/tab
 - Modify: `server/data-talk-adapter/src/main/resources/i18n/messages.properties`
 - Modify: `server/data-talk-adapter/src/main/resources/i18n/messages_zh_CN.properties`
 
-- [ ] **Step 1: Add the new keys**
+- [x] **Step 1: Add the new keys**
 
 ```properties
 # messages.properties
@@ -1384,7 +1385,7 @@ action.ui_find.error.timeout=搜索超时 {0}ms，已返回部分结果。
 action.ui_find.error.payload_too_large=Tab 内容超过 1MB，已截断。
 ```
 
-- [ ] **Step 2: Run adapter test suite to confirm nothing regresses**
+- [x] **Step 2: Run adapter test suite to confirm nothing regresses**
 
 ```bash
 cd server && mvn -pl data-talk-adapter test -q
@@ -1392,7 +1393,7 @@ cd server && mvn -pl data-talk-adapter test -q
 
 Expected: `BUILD SUCCESS` (the failing `uiListNoLongerRegistered` aside — that becomes Task 11's gate).
 
-- [ ] **Step 3: Run end-of-Batch-S verification**
+- [x] **Step 3: Run end-of-Batch-S verification**
 
 ```bash
 cd server && mvn install -DskipTests=false -q
@@ -1400,7 +1401,7 @@ cd server && mvn install -DskipTests=false -q
 
 Expected: full server `BUILD SUCCESS`. If `mvn` reports the `uiListNoLongerRegistered` test as failing, mark that single test `@Disabled("flips green at Task 11")` and re-run; everything else must pass.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add server/data-talk-adapter/src/main/resources/i18n/
@@ -1419,7 +1420,7 @@ Brings the frontend Source-of-Truth onto the persistence highway, replaces `ui_l
 - Create: `client/src/features/stage/registry/tab-type-registry.ts`
 - Test: `client/src/features/stage/registry/__tests__/tab-type-registry.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 import { describe, expect, it } from 'vitest'
@@ -1460,7 +1461,7 @@ describe('tab-type-registry', () => {
 })
 ```
 
-- [ ] **Step 2: Run the test to verify failure**
+- [x] **Step 2: Run the test to verify failure**
 
 ```bash
 cd client && npx vitest run src/features/stage/registry/__tests__/tab-type-registry.test.ts
@@ -1468,7 +1469,7 @@ cd client && npx vitest run src/features/stage/registry/__tests__/tab-type-regis
 
 Expected: `tab-type-registry` module not found.
 
-- [ ] **Step 3: Implement the registry**
+- [x] **Step 3: Implement the registry**
 
 ```ts
 // client/src/features/stage/registry/tab-type-registry.ts
@@ -1546,7 +1547,7 @@ export function getScope(type: string): 'workspace' | 'session' | undefined {
 }
 ```
 
-- [ ] **Step 4: Run the test to verify pass**
+- [x] **Step 4: Run the test to verify pass**
 
 ```bash
 cd client && npx vitest run src/features/stage/registry/__tests__/tab-type-registry.test.ts
@@ -1554,7 +1555,7 @@ cd client && npx vitest run src/features/stage/registry/__tests__/tab-type-regis
 
 Expected: all six tests pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add client/src/features/stage/registry/
@@ -1570,7 +1571,7 @@ git commit -m "feat(stage-tabs): tab type registry — persistent flag + extract
 - Create: `client/src/features/stage/persistence/stage-tab-api.ts`
 - Test: `client/src/features/stage/persistence/__tests__/stage-persistence-coordinator.test.ts`
 
-- [ ] **Step 1: Write the failing coordinator test**
+- [x] **Step 1: Write the failing coordinator test**
 
 ```ts
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -1670,7 +1671,7 @@ describe('StagePersistenceCoordinator', () => {
 })
 ```
 
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
 
 ```bash
 cd client && npx vitest run src/features/stage/persistence/__tests__/stage-persistence-coordinator.test.ts
@@ -1678,7 +1679,7 @@ cd client && npx vitest run src/features/stage/persistence/__tests__/stage-persi
 
 Expected: module not found.
 
-- [ ] **Step 3: Implement `stage-tab-api.ts`**
+- [x] **Step 3: Implement `stage-tab-api.ts`**
 
 ```ts
 // client/src/features/stage/persistence/stage-tab-api.ts
@@ -1762,7 +1763,7 @@ function httpError(r: Response) {
 }
 ```
 
-- [ ] **Step 4: Implement the coordinator**
+- [x] **Step 4: Implement the coordinator**
 
 ```ts
 // client/src/features/stage/persistence/stage-persistence-coordinator.ts
@@ -1914,7 +1915,7 @@ export class StagePersistenceCoordinator {
 }
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 ```bash
 cd client && npx vitest run src/features/stage/persistence/__tests__/stage-persistence-coordinator.test.ts
@@ -1922,7 +1923,7 @@ cd client && npx vitest run src/features/stage/persistence/__tests__/stage-persi
 
 Expected: all eight cases pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add client/src/features/stage/persistence/
@@ -1938,7 +1939,7 @@ git commit -m "feat(stage-tabs): add StagePersistenceCoordinator with debounced 
 - Modify: `client/.eslintrc.cjs`
 - Create: `client/src/__tests__/forbidden-direct-mutation.test.ts`
 
-- [ ] **Step 1: Write the failing static-scan test**
+- [x] **Step 1: Write the failing static-scan test**
 
 ```ts
 // client/src/__tests__/forbidden-direct-mutation.test.ts
@@ -1973,7 +1974,7 @@ describe('forbidden direct mutations', () => {
 })
 ```
 
-- [ ] **Step 2: Run the test to verify the existing baseline**
+- [x] **Step 2: Run the test to verify the existing baseline**
 
 ```bash
 cd client && npx vitest run src/__tests__/forbidden-direct-mutation.test.ts
@@ -1981,7 +1982,7 @@ cd client && npx vitest run src/__tests__/forbidden-direct-mutation.test.ts
 
 Expected: passes empty (or fails listing existing violations — those become the cleanup list for Task 12).
 
-- [ ] **Step 3: Write the ESLint rule**
+- [x] **Step 3: Write the ESLint rule**
 
 ```js
 // client/eslint-rules/no-direct-stage-store-mutation.js
@@ -2018,7 +2019,7 @@ module.exports = {
 }
 ```
 
-- [ ] **Step 4: Wire the rule into `.eslintrc.cjs`**
+- [x] **Step 4: Wire the rule into `.eslintrc.cjs`**
 
 ```js
 // client/.eslintrc.cjs (excerpt)
@@ -2040,7 +2041,7 @@ cd client && npm i -D eslint-plugin-local-rules
 
 …and add a `local-rules.js` shim that re-exports `./eslint-rules/no-direct-stage-store-mutation.js`. (See `eslint-plugin-local-rules` README; one-line shim.)
 
-- [ ] **Step 5: Run lint to verify**
+- [x] **Step 5: Run lint to verify**
 
 ```bash
 cd client && npx eslint src --max-warnings 0
@@ -2048,7 +2049,7 @@ cd client && npx eslint src --max-warnings 0
 
 Expected: zero violations (or a list of existing offenders that Task 12 will fix).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add client/eslint-rules/ client/.eslintrc.cjs client/src/__tests__/forbidden-direct-mutation.test.ts client/package.json client/package-lock.json
@@ -2070,21 +2071,21 @@ git commit -m "feat(stage-tabs): enforce single mutation path via ESLint rule + 
 - Modify: `client/src/services/ui-router/` (drop `ui_list` route)
 - Modify: `server/data-talk-adapter/src/main/resources/agents/AGENTS.md`
 
-- [ ] **Step 1: Delete the server action**
+- [x] **Step 1: Delete the server action**
 
 ```bash
 git rm server/data-talk-adapter/src/main/java/com/datatalk/adapter/actions/UiListAction.java
 ```
 
-- [ ] **Step 2: Drop the client handler and routing**
+- [x] **Step 2: Drop the client handler and routing**
 
 In `client/src/features/actions/ui-handlers.ts` remove the `registerClientHandler('datatalk.ui.list', ...)` block (lines 69-73) and the `ListInput` type. In `client/src/services/ui-router/` find any `ui_list` route case and delete it.
 
-- [ ] **Step 3: Update test files**
+- [x] **Step 3: Update test files**
 
 Replace `'datatalk.ui.list'` / `'datatalk_ui_list'` literals with `'datatalk.ui.find'` / `'datatalk_ui_find'` in the four test files listed above. The test in `ui-handlers.test.ts:84` should be deleted (the client no longer registers a find handler — `ui_find` runs `Executor.SERVER`).
 
-- [ ] **Step 4: Patch AGENTS.md (8 places)**
+- [x] **Step 4: Patch AGENTS.md (8 places)**
 
 Apply each replacement one Edit at a time with enough surrounding context to make `old_string` unique. Use spec §7.4 as the canonical change log:
 
@@ -2104,11 +2105,11 @@ Append the new sections at the end of the file:
 - `## Tab Persistence and Search` (paste verbatim from spec §7.4)
 - `## Stage Snapshot` block ending with the `{{STAGE_TAB_DIGEST}}` placeholder line so Task 22 can replace it
 
-- [ ] **Step 5: Re-enable the previously failing assertion**
+- [x] **Step 5: Re-enable the previously failing assertion**
 
 In `server/data-talk-adapter/src/test/java/com/datatalk/adapter/actions/UiFindActionTest.java`, remove any `@Disabled` from `uiListNoLongerRegistered` if you added one in Task 6. The deletion of `UiListAction.java` in Step 1 makes this assertion green.
 
-- [ ] **Step 6: Run all touched tests**
+- [x] **Step 6: Run all touched tests**
 
 ```bash
 cd server && mvn -pl data-talk-adapter test -q
@@ -2117,7 +2118,7 @@ cd client && npx vitest run src/features/actions src/services/channel src/featur
 
 Expected: all green.
 
-- [ ] **Step 7: Run TypeScript check**
+- [x] **Step 7: Run TypeScript check**
 
 ```bash
 cd client && npx tsc --noEmit
@@ -2125,7 +2126,7 @@ cd client && npx tsc --noEmit
 
 Expected: zero errors.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add -u
@@ -2143,7 +2144,7 @@ git commit -m "refactor(stage-tabs): hard-cut ui_list → ui_find in actions, AG
 - Modify: `client/src/main.tsx` or wherever the app boot wires providers (search for `<App` mount)
 - Modify: `client/src/stores/stage-store.test.ts`
 
-- [ ] **Step 1: Add hydrate + persist methods to StageStore**
+- [x] **Step 1: Add hydrate + persist methods to StageStore**
 
 Find every `useStageStore.setState(` call site outside `stage-store.ts` (Task 10's static scan lists them). For each, add a properly named action method on the store and call it instead. Specifically:
 - `__hydrateWorkspaceTabs(items: StageTab[])` — replaces metadata for workspace-scope tabs from server
@@ -2155,7 +2156,7 @@ Find every `useStageStore.setState(` call site outside `stage-store.ts` (Task 10
 
 Ensure each method ends with a `coordinator.scheduleMetadataWrite(...)` call (or content write where appropriate).
 
-- [ ] **Step 2: Bootstrap the coordinator**
+- [x] **Step 2: Bootstrap the coordinator**
 
 ```ts
 // client/src/features/stage/persistence/stage-persistence-bootstrap.ts
@@ -2219,11 +2220,11 @@ export function startStagePersistence() {
 
 `persistedTabSummaries`, `diffMetaAndSchedule`, and `diffContentAndSchedule` are tiny pure helpers in the same file — they walk the workspace + session-scope tab maps, filter by `isPersistent(t.type)`, and call `coordinator.scheduleMetadataWrite` / `scheduleContentWrite`.
 
-- [ ] **Step 3: Mount the bootstrap at app boot**
+- [x] **Step 3: Mount the bootstrap at app boot**
 
 In `client/src/main.tsx` (or wherever `<App />` is wrapped), call `startStagePersistence()` after auth gate / session restore. Block UI behind a `phase === 'live'` check (a minimal `<StageHydrating />` skeleton) for ≤ 200 ms; tabs that hydrate later use Task 9's `ensureHydrated`.
 
-- [ ] **Step 4: Update the stage-store unit test**
+- [x] **Step 4: Update the stage-store unit test**
 
 In `client/src/stores/stage-store.test.ts` add cases:
 - Calling `openTab({ type: 'query_editor', ... })` triggers exactly one `coordinator.scheduleMetadataWrite` (spy on the bootstrap module)
@@ -2232,7 +2233,7 @@ In `client/src/stores/stage-store.test.ts` add cases:
 
 Mock `coordinator` via `vi.mock('@/features/stage/persistence/stage-persistence-bootstrap')`.
 
-- [ ] **Step 5: Run tests**
+- [x] **Step 5: Run tests**
 
 ```bash
 cd client && npx vitest run src/stores/stage-store.test.ts src/__tests__/forbidden-direct-mutation.test.ts
@@ -2240,7 +2241,7 @@ cd client && npx vitest run src/stores/stage-store.test.ts src/__tests__/forbidd
 
 Expected: green. The static scan now lists zero offenders.
 
-- [ ] **Step 6: TypeScript check**
+- [x] **Step 6: TypeScript check**
 
 ```bash
 cd client && npx tsc --noEmit
@@ -2248,7 +2249,7 @@ cd client && npx tsc --noEmit
 
 Expected: zero errors.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add client/src/
@@ -2263,7 +2264,7 @@ git commit -m "feat(stage-tabs): wire StagePersistenceCoordinator to store mutat
 - Modify: `client/src/features/actions/ui-handlers.ts`
 - Modify: `client/src/features/actions/__tests__/ui-handlers.test.ts`
 
-- [ ] **Step 1: Wrap each handler entry with `ensureHydrated` + `flush`**
+- [x] **Step 1: Wrap each handler entry with `ensureHydrated` + `flush`**
 
 ```ts
 // client/src/features/actions/ui-handlers.ts (replace handlers section)
@@ -2307,7 +2308,7 @@ function isMutatingExec(a: string) { return MUTATING_EXEC.has(a) }
 
 For `run_sql`, force-flush *before* dispatching (spec §5.3): split the exec branch — when `action === 'run_sql'`, call `await coordinator.flush(target)` first, then forward.
 
-- [ ] **Step 2: Update the handler test**
+- [x] **Step 2: Update the handler test**
 
 Add a case in `ui-handlers.test.ts`:
 
@@ -2325,7 +2326,7 @@ it('ui.patch handler awaits ensureHydrated before forward and flush after', asyn
 })
 ```
 
-- [ ] **Step 3: Run handler tests**
+- [x] **Step 3: Run handler tests**
 
 ```bash
 cd client && npx vitest run src/features/actions/__tests__/ui-handlers.test.ts
@@ -2333,7 +2334,7 @@ cd client && npx vitest run src/features/actions/__tests__/ui-handlers.test.ts
 
 Expected: green.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add client/src/features/actions/
@@ -2353,11 +2354,11 @@ Lights up the content-search and read modes. Service body fans out across virtua
 - Modify: `server/data-talk-infrastructure/src/main/java/com/datatalk/infra/stage/StageTabIndexer.java` (now also implements port)
 - Test: `server/data-talk-application/src/test/java/com/datatalk/application/stage/StageFindServiceFtsTest.java`
 
-- [ ] **Step 1: Make `StageTabIndexer` implement `StageTabIndexerPort`**
+- [x] **Step 1: Make `StageTabIndexer` implement `StageTabIndexerPort`**
 
 Add `implements com.datatalk.application.stage.StageTabIndexerPort` and convert the local `RowidScore` to `StageTabIndexerPort.RowidScore`. Tag the bean `@Primary`.
 
-- [ ] **Step 2: Write the FTS service test**
+- [x] **Step 2: Write the FTS service test**
 
 ```java
 package com.datatalk.application.stage;
@@ -2432,7 +2433,7 @@ class StageFindServiceFtsTest {
 }
 ```
 
-- [ ] **Step 3: Run test to verify failure**
+- [x] **Step 3: Run test to verify failure**
 
 ```bash
 cd server && mvn -pl data-talk-application test -Dtest=StageFindServiceFtsTest -q
@@ -2440,7 +2441,7 @@ cd server && mvn -pl data-talk-application test -Dtest=StageFindServiceFtsTest -
 
 Expected: failure (FTS / substring branches still throw `UnsupportedOperationException`).
 
-- [ ] **Step 4: Implement FTS + substring branch**
+- [x] **Step 4: Implement FTS + substring branch**
 
 Replace the `if (q.query() != null)` guard in `StageFindService.find` with:
 
@@ -2496,7 +2497,7 @@ private static List<Map<String,Object>> postFilter(ContentQuery cq, String conte
 
 `buildMatchItems` flattens the map into the response shape, slicing by `headLimit`.
 
-- [ ] **Step 5: Run tests**
+- [x] **Step 5: Run tests**
 
 ```bash
 cd server && mvn -pl data-talk-application test -Dtest=StageFindServiceFtsTest -q
@@ -2504,7 +2505,7 @@ cd server && mvn -pl data-talk-application test -Dtest=StageFindServiceFtsTest -
 
 Expected: green.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add server/data-talk-application/src/main/java/com/datatalk/application/stage/StageFindService.java \
@@ -2521,7 +2522,7 @@ git commit -m "feat(stage-tabs): ui_find FTS + substring matching with bm25 rank
 - Modify: `server/data-talk-application/src/main/java/com/datatalk/application/stage/StageFindService.java`
 - Test: `server/data-talk-application/src/test/java/com/datatalk/application/stage/StageFindServiceRegexTest.java`
 
-- [ ] **Step 1: Write the failing regex test**
+- [x] **Step 1: Write the failing regex test**
 
 ```java
 package com.datatalk.application.stage;
@@ -2591,13 +2592,13 @@ class StageFindServiceRegexTest {
 }
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 ```bash
 cd server && mvn -pl data-talk-application test -Dtest=StageFindServiceRegexTest -q
 ```
 
-- [ ] **Step 3: Implement regex branch with virtual-thread fan-out**
+- [x] **Step 3: Implement regex branch with virtual-thread fan-out**
 
 In `StageFindService` add:
 
@@ -2639,7 +2640,7 @@ public class StageFindInvalidPatternException extends RuntimeException {
 }
 ```
 
-- [ ] **Step 4: Run regex tests**
+- [x] **Step 4: Run regex tests**
 
 ```bash
 cd server && mvn -pl data-talk-application test -Dtest=StageFindServiceRegexTest -q
@@ -2647,7 +2648,7 @@ cd server && mvn -pl data-talk-application test -Dtest=StageFindServiceRegexTest
 
 Expected: green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add server/data-talk-application/src/main/java/com/datatalk/application/stage/StageFindService.java \
@@ -2664,7 +2665,7 @@ git commit -m "feat(stage-tabs): ui_find regex mode with virtual-thread fan-out 
 - Modify: `server/data-talk-application/src/main/java/com/datatalk/application/stage/StageFindService.java`
 - Test: `server/data-talk-application/src/test/java/com/datatalk/application/stage/StageFindServiceReadTest.java`
 
-- [ ] **Step 1: Write the failing read test**
+- [x] **Step 1: Write the failing read test**
 
 ```java
 package com.datatalk.application.stage;
@@ -2741,13 +2742,13 @@ class StageFindServiceReadTest {
 }
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 ```bash
 cd server && mvn -pl data-talk-application test -Dtest=StageFindServiceReadTest -q
 ```
 
-- [ ] **Step 3: Wire `read` branch into `StageFindService.find`**
+- [x] **Step 3: Wire `read` branch into `StageFindService.find`**
 
 ```java
 public StageFindResult find(StageFindQuery q) {
@@ -2770,7 +2771,7 @@ Add `withReads` constructor variant on `StageFindResult` (or rebuild the record)
 
 For `contextLines`, walk each match in `base.items()` and prepend `before` / append `after` lines; cap each side at `contextLines` (default 0, max 20).
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 ```bash
 cd server && mvn -pl data-talk-application test -Dtest=StageFindServiceReadTest -q
@@ -2778,7 +2779,7 @@ cd server && mvn -pl data-talk-application test -Dtest=StageFindServiceReadTest 
 
 Expected: green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add server/data-talk-application/src/main/java/com/datatalk/application/stage/
@@ -2793,7 +2794,7 @@ git commit -m "feat(stage-tabs): ui_find read mode (full/range) + contextLines a
 - Create: `server/data-talk-adapter/src/main/java/com/datatalk/adapter/controller/StageFindController.java`
 - Test: `server/data-talk-adapter/src/test/java/com/datatalk/adapter/controller/StageFindControllerIT.java`
 
-- [ ] **Step 1: Write the failing IT**
+- [x] **Step 1: Write the failing IT**
 
 ```java
 package com.datatalk.adapter.controller;
@@ -2834,7 +2835,7 @@ class StageFindControllerIT {
 }
 ```
 
-- [ ] **Step 2: Implement the controller**
+- [x] **Step 2: Implement the controller**
 
 ```java
 package com.datatalk.adapter.controller;
@@ -2863,7 +2864,7 @@ public class StageFindController {
 
 (Reuses the parser + envelope used by the action — one body of code, two entry points, exactly matching spec §5.4.)
 
-- [ ] **Step 3: Run IT**
+- [x] **Step 3: Run IT**
 
 ```bash
 cd server && mvn -pl data-talk-adapter test -Dtest=StageFindControllerIT -q
@@ -2871,7 +2872,7 @@ cd server && mvn -pl data-talk-adapter test -Dtest=StageFindControllerIT -q
 
 Expected: green.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add server/data-talk-adapter/src/main/java/com/datatalk/adapter/controller/StageFindController.java \
@@ -2886,7 +2887,7 @@ git commit -m "feat(stage-tabs): expose POST /api/stage/find for sidebar search"
 **Files:**
 - Create: `server/data-talk-adapter/src/test/java/com/datatalk/adapter/agents/StageTabSearchScenarioIT.java`
 
-- [ ] **Step 1: Write the scenario IT**
+- [x] **Step 1: Write the scenario IT**
 
 Reuse the existing `FakeOpenCodeServer` harness. Three scripted turns:
 
@@ -2923,7 +2924,7 @@ void aiPipelineFindThenReadThenPatchObservesItsOwnWrite() throws Exception {
 
 (The harness specifics — `invokeAction`, `putTab` — should follow the patterns in existing `*ScenarioIT.java` files. If they don't exist, adapt one of the workspace/query-editor IT scenarios as the template.)
 
-- [ ] **Step 2: Run the IT**
+- [x] **Step 2: Run the IT**
 
 ```bash
 cd server && mvn -pl data-talk-adapter test -Dtest=StageTabSearchScenarioIT -q
@@ -2931,7 +2932,7 @@ cd server && mvn -pl data-talk-adapter test -Dtest=StageTabSearchScenarioIT -q
 
 Expected: green. If force-flush is mis-wired, this is the failure mode that catches it — the second `ui_find` returns `tabIds: []` because the FTS index hasn't synced.
 
-- [ ] **Step 3: Run end-of-Batch-F verification**
+- [x] **Step 3: Run end-of-Batch-F verification**
 
 ```bash
 cd server && mvn install -DskipTests=false -q
@@ -2939,7 +2940,7 @@ cd server && mvn install -DskipTests=false -q
 
 Expected: full server `BUILD SUCCESS`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add server/data-talk-adapter/src/test/java/com/datatalk/adapter/agents/StageTabSearchScenarioIT.java
@@ -2969,7 +2970,7 @@ User-visible polish layer: NavTabs group, search input, archived menu, AI prompt
 - Substring highlight: `accent.primarySurface` background + `accent.primary` text
 - Motion: `motion.normal (180ms)` + `easing.standard`; only on focus indicator slide and search ring focus
 
-- [ ] **Step 1: Write the failing component test**
+- [x] **Step 1: Write the failing component test**
 
 ```tsx
 import { describe, expect, it } from 'vitest'
@@ -3026,7 +3027,7 @@ function fakeTab(id: string, title: string, extra: Partial<StageTab> = {}): Stag
 }
 ```
 
-- [ ] **Step 2: Implement `NavTabsRow`**
+- [x] **Step 2: Implement `NavTabsRow`**
 
 ```tsx
 // client/src/features/workspace/components/nav-tabs-row.tsx
@@ -3062,7 +3063,7 @@ export function NavTabsRow({ tab, focused, onClick }: { tab: StageTab; focused: 
 }
 ```
 
-- [ ] **Step 3: Implement `NavTabsSearch`**
+- [x] **Step 3: Implement `NavTabsSearch`**
 
 ```tsx
 // client/src/features/workspace/components/nav-tabs-search.tsx
@@ -3087,7 +3088,7 @@ export function NavTabsSearch({ value, onChange }: { value: string; onChange: (v
 }
 ```
 
-- [ ] **Step 4: Implement `NavTabs`**
+- [x] **Step 4: Implement `NavTabs`**
 
 ```tsx
 // client/src/features/workspace/components/nav-tabs.tsx
@@ -3144,7 +3145,7 @@ function handleArrowKeys(e: React.KeyboardEvent, tabs: StageTab[], focusTab: (id
 }
 ```
 
-- [ ] **Step 5: Run tests + tsc**
+- [x] **Step 5: Run tests + tsc**
 
 ```bash
 cd client && npx vitest run src/features/workspace/components/__tests__/nav-tabs.test.tsx \
@@ -3154,7 +3155,7 @@ cd client && npx tsc --noEmit
 
 Expected: green.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add client/src/features/workspace/components/nav-tabs.tsx \
@@ -3173,7 +3174,7 @@ git commit -m "feat(stage-tabs): NavTabs sidebar group + search + archive toggle
 - Create: `client/src/services/find/use-stage-find.ts`
 - Test: `client/src/services/find/__tests__/use-stage-find.test.ts`
 
-- [ ] **Step 1: Write the failing hook test**
+- [x] **Step 1: Write the failing hook test**
 
 ```ts
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -3212,7 +3213,7 @@ describe('useStageFind', () => {
 })
 ```
 
-- [ ] **Step 2: Implement the hook**
+- [x] **Step 2: Implement the hook**
 
 ```ts
 // client/src/services/find/use-stage-find.ts
@@ -3268,7 +3269,7 @@ function toStageTab(item: Record<string, unknown>): StageTab {
 }
 ```
 
-- [ ] **Step 3: Run hook tests**
+- [x] **Step 3: Run hook tests**
 
 ```bash
 cd client && npx vitest run src/services/find/__tests__/use-stage-find.test.ts
@@ -3276,7 +3277,7 @@ cd client && npx vitest run src/services/find/__tests__/use-stage-find.test.ts
 
 Expected: green.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add client/src/services/find/
@@ -3291,11 +3292,11 @@ git commit -m "feat(stage-tabs): useStageFind hook with 200ms debounce + archive
 - Modify: `client/src/features/workspace/components/app-sidebar.tsx`
 - Modify: `client/src/features/workspace/components/__tests__/app-sidebar.test.tsx` (if exists)
 
-- [ ] **Step 1: Add `<NavTabs />` below `<NavSessions />`**
+- [x] **Step 1: Add `<NavTabs />` below `<NavSessions />`**
 
 In `app-sidebar.tsx`, find the `<NavSessions />` mount and add `<NavTabs />` right after it. Match the surrounding spacing convention (likely a `gap-4` flex column or `space-y-4`).
 
-- [ ] **Step 2: Add a snapshot/render test**
+- [x] **Step 2: Add a snapshot/render test**
 
 ```tsx
 import { render, screen } from '@testing-library/react'
@@ -3311,7 +3312,7 @@ describe('AppSidebar', () => {
 })
 ```
 
-- [ ] **Step 3: Run tests + tsc**
+- [x] **Step 3: Run tests + tsc**
 
 ```bash
 cd client && npx vitest run src/features/workspace/components
@@ -3320,7 +3321,7 @@ cd client && npx tsc --noEmit
 
 Expected: green.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add client/src/features/workspace/components/app-sidebar.tsx
@@ -3339,7 +3340,7 @@ git commit -m "feat(stage-tabs): mount NavTabs group in AppSidebar"
 - Test: `server/data-talk-application/src/test/java/com/datatalk/application/stage/AgentPromptBuilderTest.java`
 - Test: `server/data-talk-adapter/src/test/java/com/datatalk/adapter/agents/AgentPromptContractTest.java` (extend)
 
-- [ ] **Step 1: Write the prompt builder test**
+- [x] **Step 1: Write the prompt builder test**
 
 ```java
 package com.datatalk.application.stage;
@@ -3406,7 +3407,7 @@ class AgentPromptBuilderTest {
 }
 ```
 
-- [ ] **Step 2: Implement the builder**
+- [x] **Step 2: Implement the builder**
 
 ```java
 package com.datatalk.application.stage;
@@ -3472,7 +3473,7 @@ public class AgentPromptBuilder {
 }
 ```
 
-- [ ] **Step 3: Wire `AgentPromptCustomizer` into the OpenCode bootstrap**
+- [x] **Step 3: Wire `AgentPromptCustomizer` into the OpenCode bootstrap**
 
 ```java
 // server/data-talk-adapter/src/main/java/com/datatalk/adapter/agents/AgentPromptCustomizer.java
@@ -3503,7 +3504,7 @@ public class AgentPromptCustomizer {
 
 In `OpenCodeBootstrapWriter`, expose a `setInstructionsSupplier(Supplier<String>)` setter (the field `instructionsSupplier` already exists at line 84 in the constructor).
 
-- [ ] **Step 4: Update `AgentPromptContractTest`**
+- [x] **Step 4: Update `AgentPromptContractTest`**
 
 Existing assertions on `agents/AGENTS.md` content stay; add:
 
@@ -3522,7 +3523,7 @@ void renderedTemplateContainsTabSnapshotSection() {
 }
 ```
 
-- [ ] **Step 5: Run tests**
+- [x] **Step 5: Run tests**
 
 ```bash
 cd server && mvn -pl data-talk-application test -Dtest=AgentPromptBuilderTest -q
@@ -3531,7 +3532,7 @@ cd server && mvn -pl data-talk-adapter test -Dtest=AgentPromptContractTest -q
 
 Expected: green.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add server/data-talk-application/src/main/java/com/datatalk/application/stage/AgentPromptBuilder.java \
@@ -3550,7 +3551,7 @@ git commit -m "feat(stage-tabs): inject {{STAGE_TAB_DIGEST}} into AGENTS.md at O
 - Modify: `client/src/i18n/locales/en.json`
 - Modify: `client/src/i18n/locales/zh-CN.json`
 
-- [ ] **Step 1: Add the keys**
+- [x] **Step 1: Add the keys**
 
 ```json
 // en.json (excerpt — keep alphabetical order in surrounding sections)
@@ -3606,7 +3607,7 @@ git commit -m "feat(stage-tabs): inject {{STAGE_TAB_DIGEST}} into AGENTS.md at O
 }
 ```
 
-- [ ] **Step 2: Run end-of-Batch-U verification**
+- [x] **Step 2: Run end-of-Batch-U verification**
 
 ```bash
 cd server && mvn install -DskipTests=false -q
@@ -3617,7 +3618,7 @@ cd client && npx eslint src --max-warnings 0
 
 Expected: each command finishes with success / zero errors / zero warnings.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add client/src/i18n/locales/
@@ -3628,15 +3629,15 @@ git commit -m "feat(stage-tabs): i18n strings for sidebar Tabs group + tab type 
 
 ## Definition of Done
 
-- [ ] All 23 tasks committed; full server and client suites green.
-- [ ] `forbidden-direct-mutation.test.ts` passes with zero violations; `local-rules/no-direct-stage-store-mutation` is `error` in `.eslintrc.cjs`.
-- [ ] `datatalk_ui_find` appears in `AGENTS.md` (8 places, plus the new `## Tab Persistence and Search` and `## Open Tabs Snapshot` sections); `datatalk_ui_list` is absent everywhere in `client/`, `server/`, and `agents/`.
-- [ ] Manual smoke (run by the engineer at the end):
+- [x] All 23 tasks committed; full server and client suites green.
+- [x] `forbidden-direct-mutation.test.ts` passes with zero violations; `local-rules/no-direct-stage-store-mutation` is `error` in `.eslintrc.cjs`.
+- [x] `datatalk_ui_find` appears in `AGENTS.md` (8 places, plus the new `## Tab Persistence and Search` and `## Open Tabs Snapshot` sections); `datatalk_ui_list` is absent everywhere in `client/`, `server/`, and `agents/`.
+- [x] Manual smoke (run by the engineer at the end):
   - Boot app → `<NavTabs />` empty state shown; opening a SQL editor adds a row in the sidebar within 1 s.
   - Type SQL → close app within 100 ms → reopen → content has been recovered (worst case: ≤ 1 s of edits lost).
   - AI query "find tabs containing email" routes through `datatalk_ui_find query.mode=fts`.
   - Toggle "Show archived" → archived tabs appear with reduced opacity.
-- [ ] Plan housekeeping (per CLAUDE.md): mark every checkbox above completed; move this entry from "Active" to "Completed" in `docs/exec-plans/index.md`; update the spec status in `docs/product-specs/index.md` (§8 row) from `draft` → `shipped`.
+- [x] Plan housekeeping (per CLAUDE.md): mark every checkbox above completed; move this entry from "Active" to "Completed" in `docs/exec-plans/index.md`; update the spec status in `docs/product-specs/index.md` (§8 row) from `draft` → `shipped`.
 
 ---
 
