@@ -1,10 +1,24 @@
 import { useState, useCallback } from 'react'
-import { executeSql, SqlRiskError } from '@/services/api/sql'
-import type { SqlExecuteResponse, SqlRiskBlocked } from '@/services/api/sql'
+import { executeSql } from '@/services/api/sql'
+import type {
+  SqlConfirmationInvalid,
+  SqlConfirmationPayload,
+  SqlExecuteRequest,
+  SqlExecuteResponse,
+  SqlExecuteResultItem,
+} from '@/services/api/sql'
 
-type Status = 'idle' | 'running' | 'success' | 'risk_blocked' | 'error'
+export type SqlExecuteState =
+  | { kind: 'idle' }
+  | { kind: 'running' }
+  | { kind: 'success'; results: SqlExecuteResultItem[] }
+  | { kind: 'error'; message: string }
+  | { kind: 'requires_confirmation'; confirmation: SqlConfirmationPayload; lastRequest: SqlExecuteRequest }
+  | { kind: 'confirming' }
+  | { kind: 'confirmation_invalid'; invalid: SqlConfirmationInvalid; lastRequest: SqlExecuteRequest }
 
 export interface UseSqlExecuteReturn {
+  state: SqlExecuteState
   execute: (
     sql: string,
     connectionId: string,
@@ -12,18 +26,27 @@ export interface UseSqlExecuteReturn {
     context?: { sessionId?: string | null; database?: string | null; schema?: string | null },
     signal?: AbortSignal,
   ) => Promise<SqlExecuteResponse>
-  result: SqlExecuteResponse | null
-  risk: SqlRiskBlocked | null
-  status: Status
-  errorMessage: string | null
+  confirmAndRun: (level: 'L2' | 'L3') => Promise<void>
+  cancelConfirmation: () => void
   reset: () => void
 }
 
+function handleResponse(
+  req: SqlExecuteRequest,
+  response: SqlExecuteResponse,
+  setState: (state: SqlExecuteState) => void,
+) {
+  if (response.status === 'executed') {
+    setState({ kind: 'success', results: response.results })
+  } else if (response.status === 'requires_confirmation') {
+    setState({ kind: 'requires_confirmation', confirmation: response.confirmation, lastRequest: req })
+  } else if (response.status === 'confirmation_invalid') {
+    setState({ kind: 'confirmation_invalid', invalid: response.invalidConfirmation, lastRequest: req })
+  }
+}
+
 export function useSqlExecute(): UseSqlExecuteReturn {
-  const [status, setStatus] = useState<Status>('idle')
-  const [result, setResult] = useState<SqlExecuteResponse | null>(null)
-  const [risk, setRisk] = useState<SqlRiskBlocked | null>(null)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [state, setState] = useState<SqlExecuteState>({ kind: 'idle' })
 
   const execute = useCallback(async (
     sql: string,
@@ -32,44 +55,44 @@ export function useSqlExecute(): UseSqlExecuteReturn {
     context?: { sessionId?: string | null; database?: string | null; schema?: string | null },
     signal?: AbortSignal,
   ) => {
-    setStatus('running')
-    setResult(null)
-    setRisk(null)
-    setErrorMessage(null)
+    setState({ kind: 'running' })
     try {
-      const req: Parameters<typeof executeSql>[0] = { sql, connectionId, source }
+      const req: SqlExecuteRequest = { sql, connectionId, source }
       if (context?.sessionId != null) req.sessionId = context.sessionId
       if (context?.database != null) req.database = context.database
       if (context?.schema != null) req.schema = context.schema
       const data = signal ? await executeSql(req, signal) : await executeSql(req)
-      setResult(data)
-      setStatus('success')
+      handleResponse(req, data, setState)
       return data
     } catch (err: unknown) {
       if ((err instanceof DOMException && err.name === 'AbortError') || (err instanceof Error && err.name === 'AbortError')) {
-        setStatus('idle')
-        setResult(null)
-        setRisk(null)
-        setErrorMessage(null)
+        setState({ kind: 'idle' })
         throw err
       }
-      if (err instanceof SqlRiskError) {
-        setRisk(err.risk)
-        setStatus('risk_blocked')
-      } else {
-        setErrorMessage(err instanceof Error ? err.message : 'Unknown error')
-        setStatus('error')
-      }
+      setState({ kind: 'error', message: err instanceof Error ? err.message : 'Unknown error' })
       throw err
     }
   }, [])
 
-  const reset = useCallback(() => {
-    setStatus('idle')
-    setResult(null)
-    setRisk(null)
-    setErrorMessage(null)
+  const confirmAndRun = useCallback(async (level: 'L2' | 'L3') => {
+    if (state.kind !== 'requires_confirmation' && state.kind !== 'confirmation_invalid') return
+    const req = { ...state.lastRequest, confirmed: true as const, riskAck: level }
+    setState({ kind: 'confirming' })
+    try {
+      const res = await executeSql(req)
+      handleResponse(req, res, setState)
+    } catch (err: unknown) {
+      setState({ kind: 'error', message: err instanceof Error ? err.message : 'Unknown error' })
+    }
+  }, [state])
+
+  const cancelConfirmation = useCallback(() => {
+    setState({ kind: 'idle' })
   }, [])
 
-  return { execute, result, risk, status, errorMessage, reset }
+  const reset = useCallback(() => {
+    setState({ kind: 'idle' })
+  }, [])
+
+  return { state, execute, confirmAndRun, cancelConfirmation, reset }
 }

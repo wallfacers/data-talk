@@ -22,10 +22,22 @@ export function SqlWorkbenchStatusBar({
       label: t('stage.status.riskBlocked'),
       className: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
     },
+    requires_confirmation: {
+      label: t('stage.status.riskBlocked'),
+      className: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
+    },
+    confirming: {
+      label: t('stage.status.running'),
+      className: 'bg-primary text-primary-foreground',
+    },
+    confirmation_invalid: {
+      label: t('stage.status.riskBlocked'),
+      className: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
+    },
   }
 
   const meta = statusMeta[status]
-  const detail = status === 'risk_blocked' ? riskReason : null
+  const detail = (status === 'risk_blocked' || status === 'requires_confirmation' || status === 'confirmation_invalid') ? riskReason : null
 
   return (
     <div

@@ -1,6 +1,7 @@
 import { useConnectionStore } from '@/features/connection/store'
 import { getCurrentLanguage } from '@/stores/ui-settings-store'
-import { executeSql, SqlRiskError } from '@/services/api/sql'
+import { executeSql } from '@/services/api/sql'
+import type { SqlExecuteRequest } from '@/services/api/sql'
 import { useSessionStore } from '@/stores/session-store'
 import { useStageStore } from '@/stores/stage-store'
 import { translateMessage } from '@/i18n/messages'
@@ -245,6 +246,9 @@ function resetTabExecutionState(tabId: string) {
           executeStatus: 'idle',
           risk: null,
           errorMessage: null,
+          confirmation: null,
+          confirmationInvalid: null,
+          lastRequest: null,
         },
       },
     }
@@ -361,7 +365,7 @@ export async function runQueryEditorSql(params: {
   sessionId: string | null
   limit?: 10 | 100 | 1000 | null
   sqlOverride?: string | null
-}): Promise<{ executeStatus: 'success' | 'risk_blocked' | 'error'; activeResultId: string | null }> {
+}): Promise<{ executeStatus: 'success' | 'risk_blocked' | 'error' | 'requires_confirmation' | 'confirmation_invalid'; activeResultId: string | null }> {
   const { tabId, sessionId } = params
   const stageTab = getStageTab(tabId)
   if (stageTab) {
@@ -391,7 +395,7 @@ export async function runQueryEditorSql(params: {
   const executableSql = injectLimit(rawExecutableSql, params.limit === undefined ? tabState.limit : params.limit)
 
   try {
-    const request: Parameters<typeof executeSql>[0] = {
+    const request: SqlExecuteRequest = {
       sql: executableSql,
       connectionId: effectiveContext.connectionId,
       source: tabState.source,
@@ -401,7 +405,32 @@ export async function runQueryEditorSql(params: {
     if (effectiveContext.schema != null) request.schema = effectiveContext.schema
 
     const response = await executeSql(request, controller.signal)
-    const results = response.status === 'executed' ? response.results : []
+
+    if (response.status === 'requires_confirmation') {
+      sqlWorkbenchStore.setRequiresConfirmation(tabId, response.confirmation, request)
+      sqlWorkbenchStore.appendHistoryEntry(tabId, {
+        id: `history-${startedAt}-${Math.random().toString(36).slice(2, 8)}`,
+        at: Date.now(),
+        sql: executableSql,
+        status: 'requires_confirmation',
+        elapsedMs: Date.now() - startedAt,
+        errorSummary: response.confirmation.reason,
+      })
+      return {
+        executeStatus: 'requires_confirmation',
+        activeResultId: null,
+      }
+    }
+
+    if (response.status === 'confirmation_invalid') {
+      sqlWorkbenchStore.setConfirmationInvalid(tabId, response.invalidConfirmation, request)
+      return {
+        executeStatus: 'confirmation_invalid',
+        activeResultId: null,
+      }
+    }
+
+    const results = response.results
     sqlWorkbenchStore.applyExecuteSuccess(tabId, response)
     sqlWorkbenchStore.appendHistoryEntry(tabId, {
       id: `history-${startedAt}-${Math.random().toString(36).slice(2, 8)}`,
@@ -421,21 +450,6 @@ export async function runQueryEditorSql(params: {
     if (isAbortError(error)) {
       resetTabExecutionState(tabId)
       throw error
-    }
-    if (error instanceof SqlRiskError) {
-      sqlWorkbenchStore.setRiskBlocked(tabId, error.risk)
-      sqlWorkbenchStore.appendHistoryEntry(tabId, {
-        id: `history-${startedAt}-${Math.random().toString(36).slice(2, 8)}`,
-        at: Date.now(),
-        sql: executableSql,
-        status: 'risk_blocked',
-        elapsedMs: Date.now() - startedAt,
-        errorSummary: error.risk.riskReason,
-      })
-      return {
-        executeStatus: 'risk_blocked',
-        activeResultId: useSqlWorkbenchStore.getState().tabsById[tabId]?.activeResultId ?? null,
-      }
     }
 
     const language = getCurrentLanguage()
@@ -470,6 +484,102 @@ export async function runQueryEditorSql(params: {
       controllers.delete(tabId)
     }
   }
+}
+
+export async function confirmQueryEditorSql(params: {
+  tabId: string
+  sessionId: string | null
+  level: 'L2' | 'L3'
+}): Promise<{ executeStatus: 'success' | 'error' | 'confirmation_invalid'; activeResultId: string | null }> {
+  const { tabId, level } = params
+  const sqlWorkbenchStore = useSqlWorkbenchStore.getState()
+  const tabState = sqlWorkbenchStore.tabsById[tabId]
+  if (!tabState?.lastRequest) {
+    return { executeStatus: 'error', activeResultId: null }
+  }
+
+  const controller = new AbortController()
+  const controllers = getQueryEditorRunControllers()
+  controllers.set(tabId, controller)
+
+  const startedAt = Date.now()
+  const request: SqlExecuteRequest = {
+    ...tabState.lastRequest,
+    confirmed: true,
+    riskAck: level,
+  }
+
+  sqlWorkbenchStore.setConfirming(tabId)
+
+  try {
+    const response = await executeSql(request, controller.signal)
+
+    if (response.status === 'confirmation_invalid') {
+      sqlWorkbenchStore.setConfirmationInvalid(tabId, response.invalidConfirmation, request)
+      return {
+        executeStatus: 'confirmation_invalid',
+        activeResultId: null,
+      }
+    }
+
+    const results = response.status === 'executed' ? response.results : []
+    sqlWorkbenchStore.applyExecuteSuccess(tabId, response)
+    sqlWorkbenchStore.appendHistoryEntry(tabId, {
+      id: `history-${startedAt}-${Math.random().toString(36).slice(2, 8)}`,
+      at: Date.now(),
+      sql: request.sql,
+      status: 'ok',
+      resultCount: results.length,
+      elapsedMs: Date.now() - startedAt,
+      resultKinds: results.map((item) => item.kind),
+    })
+
+    return {
+      executeStatus: 'success',
+      activeResultId: useSqlWorkbenchStore.getState().tabsById[tabId]?.activeResultId ?? results[0]?.resultId ?? null,
+    }
+  } catch (error) {
+    if (isAbortError(error)) {
+      resetTabExecutionState(tabId)
+      throw error
+    }
+
+    const language = getCurrentLanguage()
+    const errorMessage = error instanceof Error ? error.message : translateMessage(language, 'stage.queryEditor.runFailed')
+    sqlWorkbenchStore.setError(tabId, errorMessage, {
+      resultId: `error-${startedAt}-${Math.random().toString(36).slice(2, 8)}`,
+      kind: 'error',
+      title: translateMessage(language, 'stage.status.error'),
+      statementIndex: 0,
+      statementText: request.sql,
+      columns: [],
+      rows: [],
+      rowCount: 0,
+      executionMs: Date.now() - startedAt,
+      truncated: false,
+      errorMessage,
+    })
+    sqlWorkbenchStore.appendHistoryEntry(tabId, {
+      id: `history-${startedAt}-${Math.random().toString(36).slice(2, 8)}`,
+      at: Date.now(),
+      sql: request.sql,
+      status: 'error',
+      elapsedMs: Date.now() - startedAt,
+      errorSummary: errorMessage,
+    })
+    return {
+      executeStatus: 'error',
+      activeResultId: useSqlWorkbenchStore.getState().tabsById[tabId]?.activeResultId ?? null,
+    }
+  } finally {
+    if (controllers.get(tabId) === controller) {
+      controllers.delete(tabId)
+    }
+  }
+}
+
+export function cancelQueryEditorConfirmation(tabId: string): void {
+  useSqlWorkbenchStore.getState().cancelConfirmation(tabId)
 }
 
 export function formatQueryEditorSql(tabId: string): { version: number; content: string } {

@@ -12,6 +12,8 @@ import {
   formatQueryEditorSql,
   runQueryEditorSql,
   setQueryEditorContext,
+  confirmQueryEditorSql,
+  cancelQueryEditorConfirmation,
 } from '../utils/query-editor-actions'
 import { useSqlWorkbenchStore } from '../stores/sql-workbench-store'
 import type { SqlMonacoEditorHandle } from './sql-monaco-editor'
@@ -25,6 +27,8 @@ import { SqlResultPanel } from './sql-result-panel'
 import type { ResultScrollPosition } from './sql-result-table'
 import { StageActivityRail } from './activity-rail/stage-activity-rail'
 import { useI18n } from '@/i18n/use-i18n'
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import { SqlConfirmationCard } from '@/features/sql-confirmation/sql-confirmation-card'
 
 type TabExecutionContext = {
   sessionId: string | null
@@ -602,6 +606,28 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     closeAllResults(tab.tabId)
   }, [closeAllResults, tab.tabId])
 
+  const isPending = tabState.executeStatus === 'requires_confirmation'
+    || tabState.executeStatus === 'confirmation_invalid'
+    || tabState.executeStatus === 'confirming'
+
+  const handleConfirmExecute = useCallback(async () => {
+    if (!tabState.confirmation) return
+    try {
+      await confirmQueryEditorSql({
+        tabId: tab.tabId,
+        sessionId: tab.originSessionId ?? null,
+        level: tabState.confirmation.level,
+      })
+    } catch (error) {
+      if (isAbortError(error)) return
+      throw error
+    }
+  }, [tab.tabId, tab.originSessionId, tabState.confirmation])
+
+  const handleCancelConfirmation = useCallback(() => {
+    cancelQueryEditorConfirmation(tab.tabId)
+  }, [tab.tabId])
+
   useEffect(() => {
     registerSqlWorkbenchTabActions(tab.tabId, {
       insertAtCursor: (text: string) => {
@@ -741,6 +767,31 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
         ) : null}
       </div>
       <StageActivityRail sessionId={tab.originSessionId ?? null} />
+      {isPending && tabState.confirmation ? (
+        <AlertDialog open>
+          <AlertDialogContent data-testid="sql-confirmation-dialog">
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t('stage.queryEditor.confirmation.title')}</AlertDialogTitle>
+            </AlertDialogHeader>
+            <SqlConfirmationCard
+              risk={{
+                level: tabState.confirmation.level,
+                reason: tabState.confirmation.reason,
+                affectedObjects: tabState.confirmation.affectedObjects,
+              }}
+              sqlPreview={tabState.confirmation.sqlPreview}
+              pending={tabState.executeStatus === 'confirming'}
+              onCancel={handleCancelConfirmation}
+              onExecute={() => void handleConfirmExecute()}
+            />
+            {tabState.confirmationInvalid && (
+              <p data-testid="sql-confirmation-invalid-message" className="text-sm text-[var(--dt-status-danger)]">
+                {tabState.confirmationInvalid.message}
+              </p>
+            )}
+          </AlertDialogContent>
+        </AlertDialog>
+      ) : null}
     </div>
   )
 }

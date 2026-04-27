@@ -1,11 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useConnectionStore } from '@/features/connection/store'
-import { SqlRiskError } from '@/services/api/sql'
 import { useSessionStore } from '@/stores/session-store'
 import { useStageStore } from '@/stores/stage-store'
 import { normalizeQueryEditorPayload } from './normalize-query-editor-payload'
 import { useSqlWorkbenchStore } from '../stores/sql-workbench-store'
-import { formatQueryEditorSql, runQueryEditorSql, setQueryEditorContext } from './query-editor-actions'
+import { formatQueryEditorSql, runQueryEditorSql, setQueryEditorContext, confirmQueryEditorSql, cancelQueryEditorConfirmation } from './query-editor-actions'
 
 const executeSqlMock = vi.hoisted(() => vi.fn())
 const formatSqlMock = vi.hoisted(() => vi.fn((sql: string) => `formatted: ${sql}`))
@@ -90,6 +89,7 @@ describe('query-editor-actions', () => {
     })
 
     executeSqlMock.mockResolvedValue({
+      status: 'executed',
       resolvedContext: {
         connectionId: 'conn-1',
         connectionName: 'Primary Connection',
@@ -165,6 +165,7 @@ describe('query-editor-actions', () => {
     })
 
     executeSqlMock.mockResolvedValue({
+      status: 'executed',
       resolvedContext: {
         connectionId: 'conn-1',
         connectionName: 'Primary Connection',
@@ -212,6 +213,7 @@ describe('query-editor-actions', () => {
     })
 
     executeSqlMock.mockResolvedValue({
+      status: 'executed',
       resolvedContext: {
         connectionId: 'conn-1',
         connectionName: 'Primary Connection',
@@ -239,7 +241,7 @@ describe('query-editor-actions', () => {
     }, expect.any(AbortSignal))
   })
 
-  it('stores risk-blocked executions in workbench state and history', async () => {
+  it('stores requires_confirmation executions in workbench state and history', async () => {
     const { tabId } = useStageStore.getState().openQueryEditor({
       sessionId: 'sess-1',
       scope: 'session',
@@ -250,34 +252,148 @@ describe('query-editor-actions', () => {
       connectionId: 'conn-1',
     })
 
-    executeSqlMock.mockRejectedValue(new SqlRiskError({
-      riskLevel: 'high',
-      riskReason: 'writes are not allowed',
-    }))
+    executeSqlMock.mockResolvedValue({
+      status: 'requires_confirmation',
+      resolvedContext: null,
+      contextNotice: null,
+      confirmation: {
+        level: 'L2',
+        reason: 'This statement modifies data',
+        affectedObjects: ['public.users'],
+        sqlPreview: 'delete from users',
+      },
+    })
 
     await expect(runQueryEditorSql({
       tabId,
       sessionId: 'sess-1',
       limit: null,
     })).resolves.toEqual({
-      executeStatus: 'risk_blocked',
+      executeStatus: 'requires_confirmation',
       activeResultId: null,
     })
 
     const tabState = useSqlWorkbenchStore.getState().tabsById[tabId]
     expect(tabState).toMatchObject({
-      executeStatus: 'risk_blocked',
-      risk: {
-        riskLevel: 'high',
-        riskReason: 'writes are not allowed',
+      executeStatus: 'requires_confirmation',
+      confirmation: {
+        level: 'L2',
+        reason: 'This statement modifies data',
+        affectedObjects: ['public.users'],
       },
+    })
+    expect(tabState?.lastRequest).toMatchObject({
+      sql: 'delete from users',
+      connectionId: 'conn-1',
     })
     expect(tabState?.history).toHaveLength(1)
     expect(tabState?.history[0]).toMatchObject({
       sql: 'delete from users',
-      status: 'risk_blocked',
-      errorSummary: 'writes are not allowed',
+      status: 'requires_confirmation',
+      errorSummary: 'This statement modifies data',
     })
+  })
+
+  it('confirmQueryEditorSql re-executes with confirmed=true and riskAck', async () => {
+    useConnectionStore.setState({
+      activeConnectionId: 'conn-1',
+      connections: [
+        { id: 'conn-1', name: 'Primary Connection', kind: 'postgres', databaseName: 'db_main' } as any,
+      ],
+    })
+
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 'sess-1',
+      scope: 'session',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'blank',
+      initialContent: 'update users set active = false',
+      connectionId: 'conn-1',
+    })
+
+    executeSqlMock
+      .mockResolvedValueOnce({
+        status: 'requires_confirmation',
+        resolvedContext: null,
+        contextNotice: null,
+        confirmation: {
+          level: 'L2',
+          reason: 'This statement modifies data',
+          affectedObjects: ['public.users'],
+          sqlPreview: 'update users set active = false',
+        },
+      })
+      .mockResolvedValueOnce({
+        status: 'executed',
+        resolvedContext: null,
+        contextNotice: null,
+        results: [
+          {
+            resultId: 'result-confirmed',
+            kind: 'dml_summary',
+            title: 'DML',
+            statementIndex: 0,
+            statementText: 'update users set active = false',
+            columns: [],
+            rows: [],
+            rowCount: 0,
+            executionMs: 5,
+            truncated: false,
+            affectedRows: 10,
+          },
+        ],
+      })
+
+    await runQueryEditorSql({ tabId, sessionId: 'sess-1', limit: null })
+
+    await expect(confirmQueryEditorSql({
+      tabId,
+      sessionId: 'sess-1',
+      level: 'L2',
+    })).resolves.toEqual({
+      executeStatus: 'success',
+      activeResultId: 'result-confirmed',
+    })
+
+    expect(executeSqlMock).toHaveBeenCalledTimes(2)
+    expect(executeSqlMock).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      confirmed: true,
+      riskAck: 'L2',
+      sql: 'update users set active = false',
+    }), expect.any(AbortSignal))
+  })
+
+  it('cancelQueryEditorConfirmation resets to idle', async () => {
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 'sess-1',
+      scope: 'session',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'blank',
+      initialContent: 'update users set active = false',
+      connectionId: 'conn-1',
+    })
+
+    executeSqlMock.mockResolvedValue({
+      status: 'requires_confirmation',
+      resolvedContext: null,
+      contextNotice: null,
+      confirmation: {
+        level: 'L2',
+        reason: 'This statement modifies data',
+        affectedObjects: ['public.users'],
+        sqlPreview: 'update users set active = false',
+      },
+    })
+
+    await runQueryEditorSql({ tabId, sessionId: 'sess-1', limit: null })
+    expect(useSqlWorkbenchStore.getState().tabsById[tabId]?.executeStatus).toBe('requires_confirmation')
+
+    cancelQueryEditorConfirmation(tabId)
+    expect(useSqlWorkbenchStore.getState().tabsById[tabId]?.executeStatus).toBe('idle')
+    expect(useSqlWorkbenchStore.getState().tabsById[tabId]?.confirmation).toBeNull()
+    expect(useSqlWorkbenchStore.getState().tabsById[tabId]?.lastRequest).toBeNull()
   })
 
   it('formats SQL through the shared stage-store document path', () => {
@@ -392,6 +508,7 @@ describe('query-editor-actions', () => {
     }))
 
     executeSqlMock.mockResolvedValue({
+      status: 'executed',
       resolvedContext: {
         connectionId: 'conn-2',
         connectionName: 'Warehouse',

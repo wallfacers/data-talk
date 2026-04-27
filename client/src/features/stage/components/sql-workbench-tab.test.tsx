@@ -2,7 +2,6 @@ import { fireEvent, render, screen, waitFor, act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { StageTab } from '@/stores/stage-store'
 import { useStageStore } from '@/stores/stage-store'
-import { SqlRiskError } from '@/services/api/sql'
 import { translateMessage } from '@/i18n/messages'
 import { useSessionStore } from '@/stores/session-store'
 import { useUISettingsStore } from '@/stores/ui-settings-store'
@@ -381,6 +380,7 @@ describe('SqlWorkbenchTab', () => {
 
   it('auto-runs direct SQL query tabs on mount when payload.autoRun is true', async () => {
     executeSqlMock.mockResolvedValue({
+      status: 'executed',
       resolvedContext: {
         connectionId: 'conn-1',
         connectionName: 'Primary Connection',
@@ -426,6 +426,7 @@ describe('SqlWorkbenchTab', () => {
 
   it('auto-runs again when switching to another direct SQL tab id', async () => {
     executeSqlMock.mockResolvedValue({
+      status: 'executed',
       resolvedContext: {
         connectionId: 'conn-1',
         connectionName: 'Primary Connection',
@@ -517,6 +518,7 @@ delete from sessions;`,
 
   it('runs the exact selected SQL text instead of the whole editor buffer', async () => {
     executeSqlMock.mockResolvedValue({
+      status: 'executed',
       resolvedContext: {
         connectionId: 'conn-1',
         connectionName: 'Primary Connection',
@@ -566,6 +568,7 @@ delete from sessions;`,
 
   it('runs the exact selected SQL text from the Monaco run command', async () => {
     executeSqlMock.mockResolvedValue({
+      status: 'executed',
       resolvedContext: {
         connectionId: 'conn-1',
         connectionName: 'Primary Connection',
@@ -668,6 +671,7 @@ delete from sessions;`,
     ]
 
     executeSqlMock.mockResolvedValue({
+      status: 'executed',
       resolvedContext: {
         connectionId: 'conn-2',
         connectionName: 'Warehouse',
@@ -734,6 +738,7 @@ delete from sessions;`,
 
   it('injects the tab limit into select-like SQL before execution', async () => {
     executeSqlMock.mockResolvedValue({
+      status: 'executed',
       resolvedContext: {
         connectionId: 'conn-1',
         connectionName: 'Primary Connection',
@@ -836,6 +841,7 @@ delete from sessions;`,
 
   it('executes SQL and switches among result_set / dml_summary / error panels', async () => {
     executeSqlMock.mockResolvedValue({
+      status: 'executed',
       resolvedContext: {
         connectionId: 'conn-1',
         connectionName: 'Primary Connection',
@@ -908,6 +914,7 @@ delete from sessions;`,
 
   it('restores vertical and horizontal scroll independently for each result set', async () => {
     executeSqlMock.mockResolvedValue({
+      status: 'executed',
       resolvedContext: {
         connectionId: 'conn-1',
         connectionName: 'Primary Connection',
@@ -980,6 +987,7 @@ delete from sessions;`,
 
   it('supports dragging the horizontal splitter above result tabs', async () => {
     executeSqlMock.mockResolvedValue({
+      status: 'executed',
       resolvedContext: {
         connectionId: 'conn-1',
         connectionName: 'Primary Connection',
@@ -1037,6 +1045,7 @@ delete from sessions;`,
 
   it('appends a history entry after a successful execution', async () => {
     executeSqlMock.mockResolvedValue({
+      status: 'executed',
       resolvedContext: {
         connectionId: 'conn-1',
         connectionName: 'Primary Connection',
@@ -1079,11 +1088,18 @@ delete from sessions;`,
     })
   })
 
-  it('appends a history entry when execution is blocked by risk', async () => {
-    executeSqlMock.mockRejectedValue(new SqlRiskError({
-      riskLevel: 'high',
-      riskReason: 'writes are not allowed',
-    }))
+  it('appends a history entry when execution requires confirmation', async () => {
+    executeSqlMock.mockResolvedValue({
+      status: 'requires_confirmation',
+      resolvedContext: null,
+      contextNotice: null,
+      confirmation: {
+        level: 'L2',
+        reason: 'This statement modifies data',
+        affectedObjects: ['public.users'],
+        sqlPreview: 'select 1;',
+      },
+    })
 
     render(<SqlWorkbenchTab tab={tab} />)
     act(() => {
@@ -1098,8 +1114,8 @@ delete from sessions;`,
     expect(history).toHaveLength(1)
     expect(history?.[0]).toMatchObject({
       sql: 'select 1;',
-      status: 'risk_blocked',
-      errorSummary: 'writes are not allowed',
+      status: 'requires_confirmation',
+      errorSummary: 'This statement modifies data',
     })
   })
 
@@ -1238,5 +1254,112 @@ delete from sessions;`,
 
     const rail = screen.getByTestId('stage-activity-rail-stub')
     expect(rail.getAttribute('data-session-id')).toBe('')
+  })
+
+  it('opens AlertDialog when SQL requires L2 confirmation', async () => {
+    executeSqlMock.mockResolvedValue({
+      status: 'requires_confirmation',
+      resolvedContext: null,
+      contextNotice: null,
+      confirmation: {
+        level: 'L2',
+        reason: 'This statement modifies data',
+        affectedObjects: ['public.users'],
+        sqlPreview: 'update users set active = false',
+      },
+    })
+
+    render(<SqlWorkbenchTab tab={tab} />)
+
+    fireEvent.click(screen.getByRole('button', { name: t('stage.toolbar.run') }))
+
+    await waitFor(() => expect(executeSqlMock).toHaveBeenCalled())
+
+    expect(screen.getByTestId('sql-confirmation-dialog')).toBeTruthy()
+    expect(screen.getByText('update users set active = false')).toBeTruthy()
+    expect(screen.queryByTestId('sql-confirmation-invalid-message')).toBeNull()
+  })
+
+  it('L1 SQL runs without confirmation dialog', async () => {
+    executeSqlMock.mockResolvedValue({
+      status: 'executed',
+      resolvedContext: {
+        connectionId: 'conn-1',
+        connectionName: 'Primary Connection',
+        database: 'db_main',
+        schema: null,
+        selectedLevel: 'database',
+      },
+      contextNotice: null,
+      results: [
+        {
+          resultId: 'r-set',
+          kind: 'result_set',
+          title: 'Result 1',
+          statementIndex: 0,
+          statementText: 'select 1',
+          columns: ['id'],
+          rows: [[1]],
+          rowCount: 1,
+          executionMs: 5,
+          truncated: false,
+        },
+      ],
+    })
+
+    render(<SqlWorkbenchTab tab={tab} />)
+    act(() => {
+      useSqlWorkbenchStore.getState().setLimit('tab-1', null)
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: t('stage.toolbar.run') }))
+
+    await waitFor(() => expect(executeSqlMock).toHaveBeenCalled())
+
+    expect(screen.queryByTestId('sql-confirmation-dialog')).toBeNull()
+    expect(screen.getByRole('tab', { name: 'Result 1' })).toBeTruthy()
+  })
+
+  it('confirmation dialog shows invalid message on confirmation_invalid response', async () => {
+    executeSqlMock
+      .mockResolvedValueOnce({
+        status: 'requires_confirmation',
+        resolvedContext: null,
+        contextNotice: null,
+        confirmation: {
+          level: 'L2',
+          reason: 'This statement modifies data',
+          affectedObjects: ['public.users'],
+          sqlPreview: 'update users set active = false',
+        },
+      })
+      .mockResolvedValueOnce({
+        status: 'confirmation_invalid',
+        resolvedContext: null,
+        contextNotice: null,
+        invalidConfirmation: {
+          reason: 'risk_ack_insufficient',
+          ackedRisk: 'L1',
+          currentRisk: 'L2',
+          message: 'Insufficient risk acknowledgment level',
+        },
+      })
+
+    render(<SqlWorkbenchTab tab={tab} />)
+
+    fireEvent.click(screen.getByRole('button', { name: t('stage.toolbar.run') }))
+    await waitFor(() => expect(executeSqlMock).toHaveBeenCalledTimes(1))
+
+    expect(screen.getByTestId('sql-confirmation-dialog')).toBeTruthy()
+
+    // Click the Execute button on the SqlConfirmationCard
+    const confirmButtons = screen.getAllByRole('button')
+    const executeConfirmBtn = confirmButtons.find((btn) => btn.textContent === t('sqlConfirmation.execute'))
+    fireEvent.click(executeConfirmBtn!)
+
+    await waitFor(() => expect(executeSqlMock).toHaveBeenCalledTimes(2))
+
+    expect(screen.getByTestId('sql-confirmation-invalid-message')).toBeTruthy()
+    expect(screen.getByTestId('sql-confirmation-invalid-message').textContent).toBe('Insufficient risk acknowledgment level')
   })
 })

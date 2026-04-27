@@ -1,12 +1,23 @@
 import { create } from 'zustand'
 import type {
   ResolvedDataContext,
+  SqlConfirmationInvalid,
+  SqlConfirmationPayload,
+  SqlExecuteRequest,
   SqlExecuteResponse,
   SqlExecuteResultItem,
   SqlRiskBlocked,
 } from '@/services/api/sql'
 
-export type SqlWorkbenchExecuteStatus = 'idle' | 'running' | 'success' | 'risk_blocked' | 'error'
+export type SqlWorkbenchExecuteStatus =
+  | 'idle'
+  | 'running'
+  | 'success'
+  | 'requires_confirmation'
+  | 'confirming'
+  | 'confirmation_invalid'
+  | 'risk_blocked'
+  | 'error'
 
 export type TabContextOverride = {
   connectionId: string
@@ -21,7 +32,7 @@ export type HistoryEntry = {
   id: string
   at: number
   sql: string
-  status: 'ok' | 'error' | 'risk_blocked'
+  status: 'ok' | 'error' | 'risk_blocked' | 'requires_confirmation'
   resultCount?: number
   elapsedMs?: number
   resultKinds?: SqlExecuteResultItem['kind'][]
@@ -56,6 +67,9 @@ export type SqlWorkbenchTabState = {
   contextNotice: string | null
   risk: SqlRiskBlocked | null
   errorMessage: string | null
+  confirmation: SqlConfirmationPayload | null
+  confirmationInvalid: SqlConfirmationInvalid | null
+  lastRequest: SqlExecuteRequest | null
   override: TabContextOverride | null
   history: HistoryEntry[]
   savedSqlText: string
@@ -78,6 +92,10 @@ type SqlWorkbenchState = {
   closeAllResults: (tabId: string) => void
   setRunning: (tabId: string) => void
   applyExecuteSuccess: (tabId: string, response: SqlExecuteResponse) => void
+  setRequiresConfirmation: (tabId: string, confirmation: SqlConfirmationPayload, lastRequest: SqlExecuteRequest) => void
+  setConfirming: (tabId: string) => void
+  setConfirmationInvalid: (tabId: string, invalid: SqlConfirmationInvalid, lastRequest: SqlExecuteRequest) => void
+  cancelConfirmation: (tabId: string) => void
   setRiskBlocked: (tabId: string, risk: SqlRiskBlocked) => void
   setError: (tabId: string, message: string, result?: SqlExecuteResultItem | null) => void
   setTabContext: (tabId: string, ctx: Omit<TabContextOverride, 'setAt'>) => void
@@ -104,6 +122,9 @@ function createDefaultTabState(initial?: EnsureTabInput): SqlWorkbenchTabState {
     contextNotice: null,
     risk: null,
     errorMessage: null,
+    confirmation: null,
+    confirmationInvalid: null,
+    lastRequest: null,
     override: null,
     history: [],
     savedSqlText: initialSqlText,
@@ -332,6 +353,9 @@ export const useSqlWorkbenchStore = create<SqlWorkbenchState>((set, get) => ({
         executeStatus: 'running',
         risk: null,
         errorMessage: null,
+        confirmation: null,
+        confirmationInvalid: null,
+        lastRequest: null,
       },
     },
   })),
@@ -352,10 +376,63 @@ export const useSqlWorkbenchStore = create<SqlWorkbenchState>((set, get) => ({
           contextNotice: response.contextNotice ?? null,
           risk: null,
           errorMessage: null,
+          confirmation: null,
+          confirmationInvalid: null,
+          lastRequest: null,
         },
       },
     }
   }),
+
+  setRequiresConfirmation: (tabId, confirmation, lastRequest) => set((state) => ({
+    tabsById: {
+      ...state.tabsById,
+      [tabId]: {
+        ...ensureTabState(state.tabsById, tabId),
+        executeStatus: 'requires_confirmation',
+        confirmation,
+        confirmationInvalid: null,
+        lastRequest,
+        risk: null,
+        errorMessage: null,
+      },
+    },
+  })),
+
+  setConfirming: (tabId) => set((state) => ({
+    tabsById: {
+      ...state.tabsById,
+      [tabId]: {
+        ...ensureTabState(state.tabsById, tabId),
+        executeStatus: 'confirming',
+      },
+    },
+  })),
+
+  setConfirmationInvalid: (tabId, invalid, lastRequest) => set((state) => ({
+    tabsById: {
+      ...state.tabsById,
+      [tabId]: {
+        ...ensureTabState(state.tabsById, tabId),
+        executeStatus: 'confirmation_invalid',
+        confirmationInvalid: invalid,
+        lastRequest,
+      },
+    },
+  })),
+
+  cancelConfirmation: (tabId) => set((state) => ({
+    tabsById: {
+      ...state.tabsById,
+      [tabId]: {
+        ...ensureTabState(state.tabsById, tabId),
+        executeStatus: 'idle',
+        confirmation: null,
+        confirmationInvalid: null,
+        lastRequest: null,
+      },
+    },
+  })),
 
   setRiskBlocked: (tabId, risk) => set((state) => ({
     tabsById: {
