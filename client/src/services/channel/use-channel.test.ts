@@ -7,6 +7,7 @@ import { useChatPartsStore } from '@/stores/chat-parts-store'
 import { useChannelStore } from '@/stores/channel-store'
 import { useOntologyStore } from '@/stores/ontology-store'
 import { useSessionStore } from '@/stores/session-store'
+import { useConnectionStore } from '@/features/connection/store'
 import { useSessionTurns } from '@/features/chat/components/helpers/use-session-turns'
 import { uiRouter } from '@/services/ui-router'
 import type { UIObject } from '@/services/ui-router'
@@ -48,6 +49,78 @@ describe('buildEventSink · session.meta.updated', () => {
 
     const cached = qc.getQueryData<Array<{ id: string }>>(['sessions', 'conn-1'])!
     expect(cached).toHaveLength(1)
+  })
+})
+
+describe('buildEventSink · session data context tool sync', () => {
+  let qc: QueryClient
+
+  beforeEach(() => {
+    qc = new QueryClient()
+    useSessionStore.setState({
+      activeSessionId: 's1',
+      dataContextBySession: new Map([['s1', {
+        sessionId: 's1',
+        connectionId: 'conn-old',
+        connectionNameSnapshot: 'old-db',
+        database: null,
+        schema: null,
+        selectedLevel: 'connection',
+        updatedAt: 1,
+      }]]),
+    } as any)
+    useConnectionStore.setState({ activeConnectionId: 'conn-old', connections: [] })
+    qc.setQueryData(['session-data-context', 's1'], {
+      sessionId: 's1',
+      connectionId: 'conn-old',
+      connectionNameSnapshot: 'old-db',
+      database: null,
+      schema: null,
+      selectedLevel: 'connection',
+      updatedAt: 1,
+    })
+  })
+
+  it('updates the active session context from a completed select_connection tool part', () => {
+    const sink = buildEventSink('s1', null, qc, 'conn-old')
+
+    sink({
+      event: 'message.part.updated',
+      data: {
+        part: {
+          type: 'tool',
+          id: 'prt-tool-1',
+          sessionID: 's1',
+          messageID: 'm1',
+          tool: 'datatalk_select_connection',
+          state: {
+            status: 'completed',
+            output: {
+              sessionId: 's1',
+              connectionId: 'conn-new',
+              connectionNameSnapshot: 'pdt-dev',
+              database: null,
+              schema: null,
+              selectedLevel: 'connection',
+            },
+          },
+        },
+      },
+    } as any)
+
+    expect(qc.getQueryData(['session-data-context', 's1'])).toMatchObject({
+      sessionId: 's1',
+      connectionId: 'conn-new',
+      connectionNameSnapshot: 'pdt-dev',
+      database: null,
+      schema: null,
+      selectedLevel: 'connection',
+    })
+    expect(useSessionStore.getState().dataContextBySession.get('s1')).toMatchObject({
+      connectionId: 'conn-new',
+      connectionNameSnapshot: 'pdt-dev',
+    })
+    expect(useConnectionStore.getState().activeConnectionId).toBe('conn-new')
   })
 })
 

@@ -15,6 +15,7 @@ import { normalizeError, showErrorToast } from '@/services/http-error'
 import { toast } from 'sonner'
 import { translateMessage } from '@/i18n/messages'
 import { getCurrentLanguage } from '@/stores/ui-settings-store'
+import type { SessionDataContext } from '@/services/api/session-data-context'
 import '@/features/actions/client-handlers'
 import {
   invalidateSessionLists,
@@ -77,6 +78,101 @@ function shouldPromotePendingUserFromPart(
   const pendingText = getPendingUserText(sessionId, pendingUserId)
   if (pendingText === null) return false
   return part.text === pendingText
+}
+
+const SESSION_DATA_CONTEXT_TOOL_NAMES = new Set([
+  'datatalk_select_connection',
+  'select_connection',
+  'datatalk_set_data_context',
+  'set_data_context',
+  'datatalk_get_data_context',
+  'get_data_context',
+])
+
+function isSessionDataContextTool(tool: unknown): tool is string {
+  return typeof tool === 'string'
+    && SESSION_DATA_CONTEXT_TOOL_NAMES.has(tool.replace(/\./g, '_'))
+}
+
+function objectRecord(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null
+}
+
+function nullableString(value: unknown): string | null {
+  return typeof value === 'string' && value.length > 0 ? value : null
+}
+
+function selectedLevel(value: unknown, context: Pick<SessionDataContext, 'connectionId' | 'database' | 'schema'>) {
+  if (value === 'connection' || value === 'database' || value === 'schema') return value
+  if (context.schema) return 'schema'
+  if (context.database) return 'database'
+  if (context.connectionId) return 'connection'
+  return null
+}
+
+function extractSessionDataContextOutput(output: unknown): Record<string, unknown> | null {
+  const direct = objectRecord(output)
+  if (direct) {
+    const structured = objectRecord(direct.structuredContent)
+    if (structured) return structured
+
+    const content = Array.isArray(direct.content) ? direct.content : null
+    const firstText = content
+      ?.map((item) => objectRecord(item))
+      .map((item) => item?.text)
+      .find((text): text is string => typeof text === 'string')
+    if (firstText) return extractSessionDataContextOutput(firstText)
+
+    return direct
+  }
+
+  if (typeof output === 'string') {
+    try {
+      return extractSessionDataContextOutput(JSON.parse(output))
+    } catch {
+      return null
+    }
+  }
+
+  return null
+}
+
+function syncSessionDataContextFromToolPart(
+  fallbackSessionId: string,
+  part: Part | undefined,
+  queryClient: QueryClient,
+) {
+  if (!part || part.type !== 'tool') return
+  const tool = (part as { tool?: unknown }).tool
+  if (!isSessionDataContextTool(tool)) return
+
+  const state = objectRecord((part as { state?: unknown }).state)
+  if (state?.status !== 'completed') return
+  const output = extractSessionDataContextOutput(state.output)
+  if (!output) return
+
+  const previousSessionId = nullableString(output.sessionId) ?? fallbackSessionId
+  const connectionId = nullableString(output.connectionId)
+  const database = nullableString(output.database)
+  const schema = nullableString(output.schema)
+  const context: SessionDataContext = {
+    sessionId: previousSessionId,
+    connectionId,
+    connectionNameSnapshot: nullableString(output.connectionNameSnapshot) ?? nullableString(output.connectionName),
+    database,
+    schema,
+    selectedLevel: selectedLevel(output.selectedLevel, { connectionId, database, schema }),
+    updatedAt: typeof output.updatedAt === 'number' ? output.updatedAt : Date.now(),
+  }
+
+  useSessionStore.getState().setSessionDataContext(context)
+  queryClient.setQueryData(['session-data-context', context.sessionId], context)
+
+  if (useSessionStore.getState().activeSessionId === context.sessionId) {
+    useConnectionStore.getState().setActive(context.connectionId)
+  }
 }
 
 function upsertSessionErrorMessage(sessionId: string, eventId: number | undefined, message: string) {
@@ -238,6 +334,7 @@ export function buildEventSink(
     } else if (event === 'message.part.created' || event === 'message.part.updated') {
       const part = (data as any).part
       useChatPartsStore.getState().upsertPart(sessionId, part)
+      syncSessionDataContextFromToolPart(sessionId, part, queryClient)
       const pendingUserCandidateId = resolvePendingUserCandidate(sessionId, pendingUserId)
 
       // Only promote the optimistic user when the echoed real user text part
