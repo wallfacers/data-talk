@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { TrashIcon, PencilIcon, PlusIcon, CheckCircle2Icon, XCircleIcon, LoaderIcon } from 'lucide-react'
 import { useI18n } from '@/i18n/use-i18n'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { listConnections, deleteConnection, testConnection, connectionsKey, type Connection } from './api'
 import { ConnectionFormPanel } from './connection-form-dialog'
 import { useConnectionStore } from '@/features/connection/store'
@@ -64,23 +65,32 @@ export function DataSourcesPage() {
           <thead className="text-left text-muted-foreground">
             <tr>
               <th className="pb-2 align-middle">{t('dataSources.name')}</th>
-              <th className="pb-2 w-16 align-middle">{t('dataSources.type')}</th>
-              <th className="pb-2 w-24 align-middle">{t('dataSources.address')}</th>
-              <th className="pb-2 w-20 align-middle">{t('dataSources.database')}</th>
-              <th className="pb-2 w-20 align-middle">{t('dataSources.user')}</th>
+              <th className="pb-2 w-24 align-middle">{t('dataSources.type')}</th>
+              <th className="pb-2 align-middle" style={{ width: '28%' }}>{t('dataSources.address')}</th>
+              <th className="pb-2 align-middle" style={{ width: '15%' }}>{t('dataSources.database')}</th>
+              <th className="pb-2 align-middle" style={{ width: '12%' }}>{t('dataSources.user')}</th>
               <th className="pb-2 w-[140px] align-middle pl-3">{t('dataSources.actions')}</th>
             </tr>
           </thead>
           <tbody>
             {connections.map((c) => {
                 const status = getStatus(c)
+                const addr = `${c.host}:${c.port}`
                 return (
               <tr key={c.id} className="border-t">
-                <td className="py-2 align-middle">{c.name}</td>
+                <td className="py-2 align-middle">
+                  <Tooltip><TooltipTrigger render={<span className="truncate block" />}>{c.name}</TooltipTrigger><TooltipContent side="bottom" sideOffset={4}>{c.name}</TooltipContent></Tooltip>
+                </td>
                 <td className="py-2 align-middle">{c.kind}</td>
-                <td className="align-middle">{c.host}:{c.port}</td>
-                <td className="align-middle">{c.databaseName}</td>
-                <td className="align-middle">{c.username}</td>
+                <td className="align-middle">
+                  <Tooltip><TooltipTrigger render={<span className="truncate block" />}>{addr}</TooltipTrigger><TooltipContent side="bottom" sideOffset={4}>{addr}</TooltipContent></Tooltip>
+                </td>
+                <td className="align-middle">
+                  <Tooltip><TooltipTrigger render={<span className="truncate block" />}>{c.databaseName}</TooltipTrigger><TooltipContent side="bottom" sideOffset={4}>{c.databaseName}</TooltipContent></Tooltip>
+                </td>
+                <td className="align-middle">
+                  <Tooltip><TooltipTrigger render={<span className="truncate block" />}>{c.username}</TooltipTrigger><TooltipContent side="bottom" sideOffset={4}>{c.username}</TooltipContent></Tooltip>
+                </td>
                 <td className="py-2 align-middle">
                   <div className="flex gap-1 items-center">
                     <Button size="sm" variant="ghost" onClick={() => runTest(c.id)} className="h-8 min-w-[60px] px-3 justify-center" disabled={status === 'loading'}>
