@@ -1,10 +1,6 @@
 package com.datatalk.application.stage;
 
-import com.datatalk.application.stage.StageFindQuery;
 import com.datatalk.application.stage.StageFindQuery.Filter;
-import com.datatalk.application.stage.StageFindResult;
-import com.datatalk.application.stage.StageFindService;
-import com.datatalk.application.stage.StageTabRepository;
 import com.datatalk.domain.stage.StageTab;
 import com.datatalk.domain.stage.StageTabScope;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,20 +9,24 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class StageFindServiceMetadataTest {
 
     private StageTabRepository repo;
+    private StageTabIndexerPort indexer;
     private StageFindService svc;
 
     @BeforeEach
     void setUp() {
         repo = mock(StageTabRepository.class);
-        svc = new StageFindService(repo);
+        indexer = mock(StageTabIndexerPort.class);
+        svc = new StageFindService(repo, indexer);
     }
 
     @Test

@@ -1,38 +1,129 @@
 package com.datatalk.application.stage;
 
 import com.datatalk.domain.stage.StageTab;
+import com.datatalk.domain.stage.StageTabContent;
 import com.datatalk.domain.stage.StageTabScope;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
- * Service for the ui_find action. Supports metadata listing and count modes.
- * Content search and read modes will throw UnsupportedOperationException
- * until full implementation (Task 14-18).
+ * Service for the ui_find action. Supports metadata listing, count,
+ * content search (FTS/substring/regex), and read modes.
  */
 @Service
 public class StageFindService {
 
     private final StageTabRepository repo;
+    private final StageTabIndexerPort indexer;
 
-    public StageFindService(StageTabRepository repo) {
+    public StageFindService(StageTabRepository repo, StageTabIndexerPort indexer) {
         this.repo = repo;
+        this.indexer = indexer;
     }
 
     public StageFindResult execute(StageFindQuery query) {
+        StageFindResult base;
+        if (query.contentQuery() != null && query.contentQuery().pattern() != null) {
+            base = executeContentSearch(query);
+        } else {
+            base = switch (query.outputMode()) {
+                case METADATA -> executeMetadata(query.filter());
+                case COUNT -> executeCount(query.filter());
+                case TABS_ONLY -> executeTabsOnly(query.filter());
+                case CONTENT -> throw new UnsupportedOperationException(
+                    "Content search mode requires a contentQuery with a pattern");
+                case READ -> executeRead(query);
+            };
+        }
+
+        return base;
+    }
+
+    // ---- Content search (FTS + substring/regex post-filter) ----
+
+    private StageFindResult executeContentSearch(StageFindQuery query) {
+        var cq = query.contentQuery();
+        String pattern = cq.pattern();
+        boolean includeArchived = cq.includeArchived() != null ? cq.includeArchived() : false;
+        int queryLimit = cq.limit() != null ? cq.limit() : 100;
+
+        int candidateLimit = Math.max(queryLimit * 4, 200);
+        var rowids = indexer.ftsMatch(pattern, includeArchived, candidateLimit);
+        var ids = indexer.rowidsToIds(rowids.stream().map(StageTabIndexerPort.RowidScore::rowid).toList());
+        var idsToCheck = ids.stream().limit(queryLimit).toList();
+
+        var contents = repo.findContents(idsToCheck);
+        var contentById = contents.stream()
+            .collect(Collectors.toMap(StageTabContent::tabId, Function.identity()));
+
+        var matchesByTab = new LinkedHashMap<String, List<Map<String, Object>>>();
+        for (var id : idsToCheck) {
+            var c = contentById.get(id);
+            if (c == null) continue;
+            var lines = postFilter(pattern, c.contentText());
+            if (!lines.isEmpty()) {
+                matchesByTab.put(id, lines);
+            }
+        }
+
+        int totalMatches = matchesByTab.values().stream().mapToInt(List::size).sum();
+        boolean truncated = ids.size() > queryLimit;
+
         return switch (query.outputMode()) {
-            case METADATA -> executeMetadata(query.filter());
-            case COUNT -> executeCount(query.filter());
-            case TABS_ONLY -> executeTabsOnly(query.filter());
-            case CONTENT -> throw new UnsupportedOperationException(
-                "Content search mode not yet implemented (scheduled for Task 14-18)");
-            case READ -> throw new UnsupportedOperationException(
-                "Read mode not yet implemented (scheduled for Task 14-18)");
+            case METADATA -> {
+                var items = matchesByTab.keySet().stream()
+                    .map(id -> repo.findById(id))
+                    .filter(Optional::isPresent)
+                    .map(opt -> tabToMap(opt.get()))
+                    .toList();
+                yield StageFindResult.metadata(items, matchesByTab.size(), truncated);
+            }
+            case COUNT -> StageFindResult.count(totalMatches);
+            case CONTENT, TABS_ONLY -> {
+                var tabIds = List.copyOf(matchesByTab.keySet());
+                yield StageFindResult.tabsOnly(tabIds, totalMatches, truncated);
+            }
+            case READ -> {
+                var tabIds = List.copyOf(matchesByTab.keySet());
+                yield new StageFindResult(
+                    StageFindQuery.OutputMode.READ, List.of(), tabIds,
+                    totalMatches, matchesByTab.size(), truncated,
+                    List.of(), List.of());
+            }
         };
     }
+
+    private static List<Map<String, Object>> postFilter(String pattern, String content) {
+        return firstMatchPerLine(content, pattern);
+    }
+
+    private static List<Map<String, Object>> firstMatchPerLine(String content, String pattern) {
+        var result = new ArrayList<Map<String, Object>>();
+        String[] lines = content.split("\n");
+        String lowerPattern = pattern.toLowerCase();
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+            int idx = line.toLowerCase().indexOf(lowerPattern);
+            if (idx >= 0) {
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("lineNumber", i + 1);
+                m.put("line", line);
+                m.put("columnStart", idx + 1);
+                m.put("columnEnd", idx + pattern.length());
+                result.add(m);
+            }
+        }
+        return result;
+    }
+
+    // ---- Metadata-only modes ----
 
     private StageFindResult executeMetadata(StageFindQuery.Filter filter) {
         StageTabRepository.ListFilter listFilter = toListFilter(filter);
@@ -43,7 +134,6 @@ public class StageFindService {
     }
 
     private StageFindResult executeCount(StageFindQuery.Filter filter) {
-        // List with limit=max to get all matching tabs for counting
         StageTabRepository.ListFilter listFilter = toListFilter(filter);
         List<StageTab> tabs = repo.list(listFilter);
         return StageFindResult.count(tabs.size());
@@ -55,6 +145,23 @@ public class StageFindService {
         List<String> tabIds = tabs.stream().map(StageTab::id).toList();
         boolean truncated = tabs.size() >= listFilter.limit();
         return StageFindResult.tabsOnly(tabIds, tabs.size(), truncated);
+    }
+
+    private StageFindResult executeRead(StageFindQuery query) {
+        if (query.reads() == null || query.reads().isEmpty()) {
+            return new StageFindResult(
+                StageFindQuery.OutputMode.READ, List.of(), List.of(),
+                0, 0, false, List.of(), List.of());
+        }
+        var reads = query.reads().stream()
+            .map(r -> repo.findContent(r.tabId()))
+            .filter(Optional::isPresent)
+            .map(Optional::get)
+            .toList();
+        return new StageFindResult(
+            StageFindQuery.OutputMode.READ, List.of(),
+            reads.stream().map(StageTabContent::tabId).toList(),
+            reads.size(), reads.size(), false, reads, List.of());
     }
 
     private StageTabRepository.ListFilter toListFilter(StageFindQuery.Filter filter) {

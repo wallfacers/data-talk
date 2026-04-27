@@ -1,7 +1,8 @@
 package com.datatalk.infra.stage;
 
-import com.datatalk.domain.stage.StageTab;
+import com.datatalk.application.stage.StageTabIndexerPort;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
@@ -13,7 +14,8 @@ import java.util.List;
  * Uses the trigram tokenizer for substring matching.
  */
 @Component
-public class StageTabIndexer {
+@Primary
+public class StageTabIndexer implements StageTabIndexerPort {
 
     private final JdbcTemplate jdbc;
 
@@ -28,14 +30,7 @@ public class StageTabIndexer {
         this.jdbc = jdbc;
     }
 
-    /**
-     * Execute an FTS5 match query with optional BM25 ranking.
-     *
-     * @param pattern         the search pattern (will be sanitized for FTS5 trigram)
-     * @param includeArchived whether to include archived tabs in results
-     * @param limit           maximum number of results
-     * @return list of rowid-score pairs, ranked by relevance
-     */
+    @Override
     public List<RowidScore> ftsMatch(String pattern, boolean includeArchived, int limit) {
         String sanitized = sanitizePattern(pattern);
         String query;
@@ -56,9 +51,7 @@ public class StageTabIndexer {
         return jdbc.query(query, ROWID_SCORE_MAPPER, params);
     }
 
-    /**
-     * Convert FTS rowids to stage tab ids.
-     */
+    @Override
     public List<String> rowidsToIds(List<Long> rowids) {
         if (rowids == null || rowids.isEmpty()) {
             return List.of();
@@ -83,9 +76,4 @@ public class StageTabIndexer {
         // Wrap in double quotes for exact trigram matching
         return "\"" + sanitized + "\"";
     }
-
-    /**
-     * Represents an FTS match result with its rowid and BM25 relevance score.
-     */
-    public record RowidScore(long rowid, double score) {}
 }
