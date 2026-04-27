@@ -148,6 +148,47 @@ DataTalk 的差异化在于 **AI 直接操作数据库**，但不能让 AI 蛮�
 | 结构对比（两库 diff） | 🟢 | 三期 | 可视化结构差异 |
 | 同步脚本生成 | 🟡 | 三期 | 生成 `ALTER` 脚本使 A → B |
 
+### 3.11 工作台与跨 Session Tab 协作
+
+**动机**：当前 `StageStore` 的 Tab 集合按 session 切片，离开会话即失忆。报表设计器、ER 设计器等"长生命周期工作对象"需要跨多个 session 持续演进，必须把 Tab 提升为工作台级、可持久化、可被 AI 全量检索的一等对象。
+
+| 功能 | 等级 | 阶段 | 描述 |
+|------|------|------|------|
+| 工作台跨 session 共享 | 🟢 | 二期 | StageWindow 升级为全局共享工作台，所有 session 共用同一 Tab 集合，AI 与用户在不同会话间可接力编辑同一对象 |
+| Tab 列表持久化与打开记录 | 🟢 | 二期 | 用户手动 / AI 自动打开的 Tab 默认全部持久化（SQL 编辑器、ER 设计器、报表设计器、文件预览等），关闭客户端后重启仍可恢复；提供与会话列表同构的"Tab 打开记录"入口 |
+| Tab 标题与内容索引 | 🟢 | 二期 | 在全量 Tab 集合上建立标题 + 正文索引（SQL 文本、ER 字段、报表组件 schema、文件预览正文等），既支持用户模糊搜索 Tab 列表，也支持在 Tab 内容里全文检索关键词、字段名、片段 |
+| AI 跨会话定位 Tab 与内容检索 | 🟢 | 二期 | 类比 Claude Code 用 bash 做 `find` / `grep` / `cat` 的组合：AI 通过 `ui_list` 列出候选 Tab，通过新增 `ui_find` 在 Tab 元数据 + 内容上做关键词 / 正则 / 语义检索，并按需把命中片段或整个 Tab 正文读取为对话上下文，再决定下一步 `ui_patch`；用于"用户在多轮对话中改 ER 字段、报表组件、SQL 文件中的某一段"等场景 |
+| 报表 / Dashboard 跨 session 协作 | 🟢 | 三期 | 报表设计器作为持久化工作对象，可由不同 session 接力修改，AI 与用户共享同一 canvas，保留版本与变更日志 |
+
+**关键设计要点**：
+
+- Tab 作用域从「工作台级 / 会话级」演化为「**工作台级跨 session 持久化**」为默认；纯一次性产物（chart artifact 等）保持会话级，由 Tab type 注册表显式区分
+- Tab 元数据（id / type / title / objectId / connectionId / lastTouchedAt）+ 内容快照（SQL 正文、ER schema、报表 schema）写入 SQLite 元数据库，与会话列表对等的查询与排序能力
+- AI 通过 `ui_list` / `ui_find` 操作面对全量 Tab 集合查询，不再受限于当前 `session.tabs`；`ui_patch` 沿用 [Stage UI Object Protocol](./2026-04-20-stage-ui-object-protocol-design.md) 的 Adapter 协议，Adapter 不感知"是否跨 session"
+- `ui_find` 显式对标 Claude Code 在 bash 里用 `find + grep + cat` 的工作方式：单一调用既可按 Tab 标题 / type / connectionId 过滤（≈ `find`），又可在 Tab 正文里按关键词 / 正则 / 语义检索命中行 / 字段（≈ `grep`），并支持按 `tabId + range` 把命中片段或整段正文回读为对话上下文（≈ `cat` / `read`）；AI 可以先粗筛 Tab、再深入正文、再决定 `ui_patch`，整个链路保持只读、不副作用，避免"为定位一个字段先把整个工作台拉进上下文"
+- AI 提示工程需要在系统消息中注入"当前打开 Tab 摘要 + 最近编辑 Tab 列表"，使其具备"用户正在改哪个对象"的默认认知，并把 `ui_find` 列为优先工具
+- 客户端设计契约对齐 [client/DESIGN.md](../../client/DESIGN.md)：Tab 打开记录复用 sidebar 的 `bg.subtle / interaction.selected / text.strong`，落在 navigation skeleton 层；搜索命中态用 `accent.primary` 高亮；切换 / 定位 Tab 的过渡走 `motion.normal + easing.standard`，仅用于 confirm state；搜索面板键盘可达，焦点环遵循 `interaction.focusRing`
+- 该方向是 [Stage UI Object Protocol](./2026-04-20-stage-ui-object-protocol-design.md) 的自然延伸——把当时埋下的"工具 Tab 工作台级常驻"约束彻底落实为持久化 + 可检索
+
+### 3.12 外部数据接入与自动采集（Skill 驱动）
+
+**动机**：DataTalk 的可视化分析能力对"用户连接里已有的数据"很完整，但实际业务（电商运营、市场分析、舆情监控）经常需要把外部互联网数据先拉进来再分析。把这条链路通过 skill 系统插件化暴露，让 AI 在自然语言里完成"采集 → 落库 → 分析"全流程，而 DataTalk 主程序保持纯净、不绑死任何第三方平台。
+
+| 功能 | 等级 | 阶段 | 描述 |
+|------|------|------|------|
+| 国内电商平台数据采集 | 🟡 | 三期 | 通过 skill 安装方式对接淘宝 / 京东 / 拼多多 / 抖音电商等常见平台开放接口，在用户授权前提下获取商品 / 订单 / 流量 / 退款等业务数据 |
+| 通用互联网数据抓取 | 🟡 | 三期 | 通用网页 / REST / GraphQL 数据采集 skill 矩阵，AI 自然语言驱动从指定 URL / 接口拉取结构化数据，支持分页与限流 |
+| 自动落库 | 🟡 | 三期 | 抓取数据自动建表并导入到用户当前连接，AI 推断 schema / 字段类型 / 索引建议，走 §3.2 / §3.3 的 L2 二期风险流程二次确认 |
+| 端到端可视化分析 | 🟢 | 三期 | 与 §3.5 可视化打通：抓取 → 落库 → 查询 → 图表 → Dashboard 一条龙；分析结果作为持久化 Tab，复用 §3.11 的跨 session 协作能力 |
+
+**关键设计要点**：
+
+- 该能力**完全通过 skill 系统**扩展，DataTalk 核心不内置任何具体平台 SDK，规避合规 / 资质 / 版权 / 平台 ToS 风险渗透到主程序
+- skill 负责凭据托管（OAuth / API key）、采集脚本、字段映射建议；DataTalk 负责任务调度、结果回写到用户连接、Tab 可视化呈现、采集进度展示
+- 实施路径：① 先打通通用 HTTP / scraping skill 接入框架，与 OpenCode 现有 MCP / skill 协议互通 → ② 再针对个别高频平台沉淀官方 skill 包
+- 数据来源 / 采集时间 / 原始 payload 必须写入审计日志（沿用 §3.8 操作审计），保证可回溯
+- 与 §3.11 协同：采集任务运行视图、字段映射预览、目标表 DDL 预览作为持久化 Tab，跨 session 可继续编辑并由 AI 接力补全
+
 ## 4. 开发路线图
 
 ### MVP（第一阶段）— 跑通核心链路
@@ -182,6 +223,9 @@ DataTalk 的差异化在于 **AI 直接操作数据库**，但不能让 AI 蛮�
 | 数据导入 | 拖拽 CSV，AI 推断字段映射并预览前 10 行 | 🟡 | 三期 |
 | 跨库迁移 | "把测试库的 orders 同步到生产库"，生成迁移脚本 | 🔴 | 三期 |
 | 操作回溯 | "我今天改了什么"，AI 读审计日志 | 🟢 | 三期 |
+| 跨 session 改报表 | "把昨天那个销售看板的 GMV 字段改成万元单位"，AI 通过 Tab 索引定位到对应 Dashboard Tab 并就地 patch | 🟢 | 二期 |
+| 多轮对话改 ER | 在 ER 设计器 Tab 中对话改字段："把 users.email 改为 VARCHAR(255) NOT NULL"，AI 自然语言改字段并生成 DDL 预览 | 🟡 | 二期 |
+| 电商运营数据落库 | "把抖音电商最近 7 天订单同步进来分析转化率"，skill 拉取数据 → AI 自动建表 → 落库 → 出图 | 🟡 | 三期 |
 
 ## 6. 关键问题与对策
 
