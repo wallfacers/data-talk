@@ -119,75 +119,64 @@ class ExecuteSqlActionTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void l2WithoutConfirmation_returnsRequiresConfirmation() throws Exception {
+    void l2_returnsBlockedInChat() throws Exception {
         Map<String, Object> out = (Map<String, Object>) action.handle(
             new ActionContext("s-exec", "c-l2", connectionId, "oc-e"),
             Map.of("connectionId", connectionId, "sql", "DELETE FROM t WHERE id = 1")
         ).toCompletableFuture().get();
 
-        assertThat(out).containsEntry("status", "requires_confirmation");
+        assertThat(out).containsEntry("status", "blocked_in_chat");
         Map<String, Object> risk = (Map<String, Object>) out.get("risk");
         assertThat(risk).containsEntry("level", "L2");
         assertThat(risk).containsKey("reason");
         assertThat(risk).containsKey("affectedObjects");
         assertThat(out).containsEntry("sqlPreview", "DELETE FROM t WHERE id = 1");
-        // No artifact created
+        // No artifact created — chat path never executes mutating SQL.
         assertThat(artifacts.findBySession("s-exec")).isEmpty();
     }
 
     @Test
     @SuppressWarnings("unchecked")
-    void l3WithoutConfirmation_returnsRequiresConfirmation() throws Exception {
+    void l3_returnsBlockedInChat() throws Exception {
         Map<String, Object> out = (Map<String, Object>) action.handle(
             new ActionContext("s-exec", "c-l3", connectionId, "oc-e"),
             Map.of("connectionId", connectionId, "sql", "DELETE FROM t")
         ).toCompletableFuture().get();
 
-        assertThat(out).containsEntry("status", "requires_confirmation");
+        assertThat(out).containsEntry("status", "blocked_in_chat");
         Map<String, Object> risk = (Map<String, Object>) out.get("risk");
         assertThat(risk).containsEntry("level", "L3");
-        assertThat(risk).containsKey("reason");
-        assertThat(risk).containsKey("affectedObjects");
         assertThat(out).containsEntry("sqlPreview", "DELETE FROM t");
         assertThat(artifacts.findBySession("s-exec")).isEmpty();
     }
 
+    /**
+     * Security boundary: AI cannot bypass the user-facing confirmation by
+     * setting {@code confirmed=true} + matching {@code riskAck} in tool input.
+     * SERVER executor actions have no pause-resume primitive, so honoring
+     * those flags would let the AI execute L3 SQL with no user signal.
+     */
     @Test
     @SuppressWarnings("unchecked")
-    void l2WithLowerAck_returnsConfirmationInvalid() throws Exception {
+    void aiCannotBypassConfirmationViaToolInput() throws Exception {
         Map<String, Object> out = (Map<String, Object>) action.handle(
-            new ActionContext("s-exec", "c-ack-low", connectionId, "oc-e"),
+            new ActionContext("s-exec", "c-bypass", connectionId, "oc-e"),
             Map.of(
                 "connectionId", connectionId,
-                "sql", "DELETE FROM t WHERE id = 1",
+                "sql", "DELETE FROM t",
                 "confirmed", true,
-                "riskAck", "L1"
+                "riskAck", "L3"
             )
         ).toCompletableFuture().get();
 
-        assertThat(out).containsEntry("status", "confirmation_invalid");
-        assertThat(out).containsEntry("reason", "risk_ack_insufficient");
-        assertThat(out).containsEntry("ackedRisk", "L1");
-        assertThat(out).containsEntry("currentRisk", "L2");
-    }
-
-    @Test
-    @SuppressWarnings("unchecked")
-    void l3WithMatchingAck_passesGateButJdbcRejectsDml() {
-        // L3 DELETE without WHERE, confirmed with L3 ack.
-        // The confirmation gate passes, but executeQuery() cannot handle DML.
-        // This test documents that the state machine correctly opens the gate;
-        // actual DML execution requires executeUpdate() support (future work).
-        assertThat(
-            action.handle(
-                new ActionContext("s-exec", "c-l3-ack", connectionId, "oc-e"),
-                Map.of(
-                    "connectionId", connectionId,
-                    "sql", "DELETE FROM t",
-                    "confirmed", true,
-                    "riskAck", "L3"
-                )
-            ).toCompletableFuture()
-        ).isCompletedExceptionally();
+        assertThat(out).containsEntry("status", "blocked_in_chat");
+        assertThat(out).doesNotContainKey("artifactId");
+        // Rows in the user H2 DB are unchanged — DELETE never executed.
+        try (var c = DriverManager.getConnection("jdbc:h2:mem:execsql;MODE=PostgreSQL;DB_CLOSE_DELAY=-1", "sa", "");
+             var st = c.createStatement();
+             var rs = st.executeQuery("SELECT COUNT(*) FROM t")) {
+            assertThat(rs.next()).isTrue();
+            assertThat(rs.getInt(1)).isEqualTo(3);
+        }
     }
 }

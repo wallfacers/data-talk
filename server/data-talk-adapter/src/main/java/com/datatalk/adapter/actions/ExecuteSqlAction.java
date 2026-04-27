@@ -22,11 +22,13 @@ import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 
 /**
- * Confirmation protocol: SERVER executor actions have no pause-resume mechanism
- * (only CLIENT executor actions use PendingCallRegistry + action_result). The
- * fallback is: this action returns {@code requires_confirmation} immediately;
- * the client renderer (Task 9) issues a fresh {@code executeSql} call with
- * {@code confirmed=true} and {@code riskAck}.
+ * Chat-path confirmation policy: SERVER executor actions cannot pause-resume,
+ * and {@code actionResult} for an unregistered SERVER call is silently dropped.
+ * Honoring {@code confirmed=true} from the AI's tool input would let the AI
+ * bypass the user-facing confirmation card. The action therefore refuses every
+ * L2 / L3 statement with {@code blocked_in_chat} regardless of input flags.
+ * The Workbench REST flow (POST /api/sql/execute with {@code confirmed=true}
+ * + {@code riskAck}) is the only trusted execution surface for L2 / L3.
  */
 
 @Component
@@ -79,9 +81,7 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
                 "database",     Map.of("type", "string"),
                 "schema",       Map.of("type", "string"),
                 "sql",          Map.of("type", "string"),
-                "pageSize",     Map.of("type", "integer", "minimum", 1, "maximum", 10_000),
-                "confirmed",    Map.of("type", "boolean"),
-                "riskAck",      Map.of("type", "string", "enum", List.of("L1", "L2", "L3"))
+                "pageSize",     Map.of("type", "integer", "minimum", 1, "maximum", 10_000)
             ));
     }
 
@@ -118,16 +118,14 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
 
     private Map<String, Object> execute(ActionContext ctx, Map<String, Object> input) {
         String sql = String.valueOf(input.get("sql"));
-        boolean confirmedFromInput = Boolean.TRUE.equals(input.get("confirmed"));
-        String riskAckRaw = nullableString(input, "riskAck");
 
-        // Risk state machine gates non-SELECT execution
+        // L2 / L3 SQL is not executable from the chat tool path. The chat client
+        // surfaces an "Open in SQL Workbench" CTA; the AlertDialog flow there
+        // is the only trusted confirmation surface.
         SqlRiskAnalysis risk = riskAnalyzer.analyze(sql, Category.QUERY);
-        boolean isHigherRisk = risk.riskLevel() == RiskLevel.L2 || risk.riskLevel() == RiskLevel.L3;
-
-        if (isHigherRisk && !confirmedFromInput) {
+        if (risk.riskLevel() == RiskLevel.L2 || risk.riskLevel() == RiskLevel.L3) {
             return Map.of(
-                "status", "requires_confirmation",
+                "status", "blocked_in_chat",
                 "risk", Map.of(
                     "level", risk.riskLevel().name(),
                     "reason", risk.reason(),
@@ -135,18 +133,6 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
                 ),
                 "sqlPreview", sql
             );
-        }
-
-        if (isHigherRisk && confirmedFromInput) {
-            RiskLevel ack = parseRiskAck(riskAckRaw);
-            if (ack == null || ack.ordinal() < risk.riskLevel().ordinal()) {
-                return Map.of(
-                    "status", "confirmation_invalid",
-                    "reason", "risk_ack_insufficient",
-                    "ackedRisk", ack == null ? null : ack.name(),
-                    "currentRisk", risk.riskLevel().name()
-                );
-            }
         }
 
         var resolved = resolveContext(ctx, input);
@@ -296,12 +282,6 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
     private static String nullableString(Map<String, Object> input, String key) {
         Object value = input.get(key);
         return value == null ? null : String.valueOf(value);
-    }
-
-    private static RiskLevel parseRiskAck(String raw) {
-        if (raw == null) return null;
-        try { return RiskLevel.valueOf(raw); }
-        catch (IllegalArgumentException e) { return null; }
     }
 
     private record ResolvedSqlContext(

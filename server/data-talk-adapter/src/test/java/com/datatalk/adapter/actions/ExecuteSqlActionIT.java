@@ -83,13 +83,13 @@ class ExecuteSqlActionIT {
 
     @Test
     @SuppressWarnings("unchecked")
-    void deleteReturnsRequiresConfirmation() throws Exception {
+    void deleteReturnsBlockedInChat() throws Exception {
         Map<String, Object> out = (Map<String, Object>) action.handle(
             new ActionContext("s-exec", "c-del", connectionId, "oc-e"),
             Map.of("connectionId", connectionId, "sql", "DELETE FROM t")
         ).toCompletableFuture().get();
 
-        assertThat(out).containsEntry("status", "requires_confirmation");
+        assertThat(out).containsEntry("status", "blocked_in_chat");
         assertThat((Map<String, Object>) out.get("risk")).containsEntry("level", "L3");
     }
 }
