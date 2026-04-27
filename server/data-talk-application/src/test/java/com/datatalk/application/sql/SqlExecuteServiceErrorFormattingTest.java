@@ -60,7 +60,7 @@ class SqlExecuteServiceErrorFormattingTest {
             100
         );
 
-        assertThatThrownBy(() -> service.execute("conn-broken", "SELECT 1", "user", null, null, null))
+        assertThatThrownBy(() -> service.execute("conn-broken", "SELECT 1", "user", null, null, null, false, null))
             .isInstanceOf(RuntimeException.class)
             .hasMessageContaining("## SQL execution failed")
             .hasMessageContaining("127.0.0.1")

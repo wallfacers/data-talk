@@ -84,8 +84,10 @@ class SqlExecuteServiceSplitterSelectionTest {
 
     @Test
     void delegates_statement_splitting_to_the_injected_splitter_facade() {
-        SqlExecuteService.Result result = service.execute("conn-1", "ignored script", "user", null, null, null);
+        var outcome = service.execute("conn-1", "ignored script", "user", null, null, null, false, null);
 
+        assertThat(outcome).isInstanceOf(SqlExecuteService.Executed.class);
+        SqlExecuteService.Executed result = (SqlExecuteService.Executed) outcome;
         assertThat(result.results()).hasSize(2);
         assertThat(result.results().get(0).statementText()).isEqualTo("SELECT name FROM items WHERE id = 1");
         assertThat(result.results().get(1).statementText()).isEqualTo("SELECT name FROM items WHERE id = 2");

@@ -24,11 +24,34 @@ import java.util.UUID;
 @Service
 public class SqlExecuteService {
 
-    public record Result(
+    public sealed interface Outcome permits Executed, RequiresConfirmation, ConfirmationInvalid {
+        ResolvedDataContextDto resolvedContext();
+        String contextNotice();
+    }
+
+    public record Executed(
         ResolvedDataContextDto resolvedContext,
         String contextNotice,
         List<ResultItem> results
-    ) {}
+    ) implements Outcome {}
+
+    public record RequiresConfirmation(
+        ResolvedDataContextDto resolvedContext,
+        String contextNotice,
+        String level,
+        String reason,
+        List<String> affectedObjects,
+        String sqlPreview
+    ) implements Outcome {}
+
+    public record ConfirmationInvalid(
+        ResolvedDataContextDto resolvedContext,
+        String contextNotice,
+        String reason,
+        String ackedRisk,
+        String currentRisk,
+        String message
+    ) implements Outcome {}
 
     public record ResultItem(
         String resultId,
@@ -44,17 +67,6 @@ public class SqlExecuteService {
         Integer affectedRows,
         String errorMessage
     ) {}
-
-    public record RiskBlocked(String riskLevel, String riskReason) {}
-
-    public static class SqlRiskBlockedException extends RuntimeException {
-        private final RiskBlocked risk;
-        public SqlRiskBlockedException(RiskBlocked risk) {
-            super("SQL risk blocked: " + risk.riskLevel());
-            this.risk = risk;
-        }
-        public RiskBlocked risk() { return risk; }
-    }
 
     private final SqlRiskAnalyzer riskAnalyzer;
     private final ConnectionRepository connRepo;
@@ -83,10 +95,13 @@ public class SqlExecuteService {
         this.maxRows = maxRows;
     }
 
-    public Result execute(String connectionId, String sql, String source, String sessionId, String database, String schema) {
+    public Outcome execute(
+        String connectionId, String sql, String source, String sessionId,
+        String database, String schema, boolean confirmed, RiskLevel riskAck
+    ) {
         if (sql == null || sql.isBlank())
             throw new IllegalArgumentException(translator.get("error.sql.required"));
-        String normalizedSource = validateSource(source);
+        validateSource(source);
 
         ResolvedExecutionContext requestedContext = resolveExecutionContext(sessionId, connectionId, database, schema);
         List<String> statements = sqlStatementSplitters.split(requestedContext.connection().kind(), sql);
@@ -94,18 +109,32 @@ public class SqlExecuteService {
             throw new IllegalArgumentException(translator.get("error.sql.required"));
         }
 
-        ResolvedExecutionContext context = tableContextAutoResolver.resolve(
-            requestedContext,
-            sql
-        );
+        ResolvedExecutionContext context = tableContextAutoResolver.resolve(requestedContext, sql);
+        ResolvedDataContextDto resolvedDto = toDto(context);
 
-        if ("user".equals(normalizedSource)) {
-            SqlRiskAnalysis risk = riskAnalyzer.analyze(sql, Category.QUERY);
-            if (RiskLevel.L3.equals(risk.riskLevel())) {
-                throw new SqlRiskBlockedException(new RiskBlocked("HIGH", risk.reason()));
+        SqlRiskAnalysis risk = riskAnalyzer.analyze(sql, Category.QUERY);
+        if (risk.riskLevel() != null
+            && (risk.riskLevel() == RiskLevel.L2 || risk.riskLevel() == RiskLevel.L3)) {
+            if (!confirmed) {
+                return new RequiresConfirmation(
+                    resolvedDto, context.contextNotice(),
+                    risk.riskLevel().name(), risk.reason(), risk.affectedObjects(), sql);
+            }
+            if (riskAck == null || riskAck.ordinal() < risk.riskLevel().ordinal()) {
+                return new ConfirmationInvalid(
+                    resolvedDto, context.contextNotice(),
+                    "risk_ack_insufficient",
+                    riskAck == null ? null : riskAck.name(),
+                    risk.riskLevel().name(),
+                    translator.get("sql.confirmation.invalid.message"));
             }
         }
 
+        List<ResultItem> items = runStatements(context, statements);
+        return new Executed(resolvedDto, context.contextNotice(), items);
+    }
+
+    private List<ResultItem> runStatements(ResolvedExecutionContext context, List<String> statements) {
         ConnectionRecord cr = context.connection();
         List<ResultItem> results = new ArrayList<>();
         DmlSummaryAccumulator pendingDmlSummary = null;
@@ -208,16 +237,13 @@ public class SqlExecuteService {
             );
         }
 
-        return new Result(
-            new ResolvedDataContextDto(
-                context.connection().id(),
-                context.connection().name(),
-                context.database(),
-                context.schema(),
-                context.selectedLevel()
-            ),
-            context.contextNotice(),
-            results
+        return results;
+    }
+
+    private ResolvedDataContextDto toDto(ResolvedExecutionContext context) {
+        return new ResolvedDataContextDto(
+            context.connection().id(), context.connection().name(),
+            context.database(), context.schema(), context.selectedLevel()
         );
     }
 
