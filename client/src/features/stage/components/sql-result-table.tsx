@@ -23,7 +23,6 @@ import {
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useI18n } from '@/i18n/use-i18n'
 import { copyToClipboard } from '@/lib/utils'
 import { Download, Copy } from 'lucide-react'
@@ -273,7 +272,6 @@ export function SqlResultTable({
                         {pageStart + rowIndex + 1}
                       </TableCell>
                       {row.map((cell, cellIndex) => {
-                        const cellLabel = serializeResultValue(cell)
                         return (
                           <TableCell
                             key={cellIndex}
@@ -287,24 +285,15 @@ export function SqlResultTable({
                               })
                             }
                           >
-                            <Tooltip>
-                              <TooltipTrigger
-                                render={
-                                  <span className="block truncate">
-                                    {cell == null ? (
-                                      <span className="italic text-muted-foreground/70">
-                                        {t('stage.queryEditor.cell.null')}
-                                      </span>
-                                    ) : (
-                                      String(cell)
-                                    )}
-                                  </span>
-                                }
-                              />
-                              <TooltipContent>
-                                <span className="block max-w-xs truncate">{cellLabel}</span>
-                              </TooltipContent>
-                            </Tooltip>
+                            <span className="block truncate">
+                              {cell == null ? (
+                                <span className="italic text-muted-foreground/70">
+                                  {t('stage.queryEditor.cell.null')}
+                                </span>
+                              ) : (
+                                String(cell)
+                              )}
+                            </span>
                           </TableCell>
                         )
                       })}
