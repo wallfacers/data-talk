@@ -30,7 +30,6 @@ public class SessionService {
     private final OpenCodeSessionMap sessionMap;
     private final SessionBusRegistry buses;
     private final Translator translator;
-    private final Object createLock = new Object();
 
     public SessionService(ConnectionRepository connections, SessionRepository repo, Clock clock,
                           OpenCodeGateway gateway, OpenCodeSessionMap sessionMap,
@@ -45,34 +44,32 @@ public class SessionService {
     }
 
     public CreateSessionResult create(String connectionId, String title) {
-        synchronized (createLock) {
-            String effectiveConnectionId = normalizeConnectionId(connectionId);
-            Optional<SessionRecord> existing = repo.findEmpty();
-            if (existing.isPresent()) {
-                SessionRecord reused = existing.get();
-                if (!Objects.equals(reused.connectionId(), effectiveConnectionId)) {
-                    long now = clock.millis();
-                    reused = new SessionRecord(
-                        reused.id(),
-                        effectiveConnectionId,
-                        reused.title(),
-                        reused.hasEverSent(),
-                        reused.openCodeSid(),
-                        reused.createdAt(),
-                        now,
-                        reused.titleLocked()
-                    );
-                    repo.upsert(reused);
-                }
-                return new CreateSessionResult(reused, true);
+        String effectiveConnectionId = normalizeConnectionId(connectionId);
+        Optional<SessionRecord> existing = repo.findEmpty();
+        if (existing.isPresent()) {
+            SessionRecord reused = existing.get();
+            if (!Objects.equals(reused.connectionId(), effectiveConnectionId)) {
+                long now = clock.millis();
+                reused = new SessionRecord(
+                    reused.id(),
+                    effectiveConnectionId,
+                    reused.title(),
+                    reused.hasEverSent(),
+                    reused.openCodeSid(),
+                    reused.createdAt(),
+                    now,
+                    reused.titleLocked()
+                );
+                repo.upsert(reused);
             }
-            long now = clock.millis();
-            String id = UUID.randomUUID().toString();
-            String effectiveTitle = Strings.defaultIfBlank(title, translator.get("session.default_title"));
-            SessionRecord rec = new SessionRecord(id, effectiveConnectionId, effectiveTitle, false, null, now, now, false);
-            repo.upsert(rec);
-            return new CreateSessionResult(rec, false);
+            return new CreateSessionResult(reused, true);
         }
+        long now = clock.millis();
+        String id = UUID.randomUUID().toString();
+        String effectiveTitle = Strings.defaultIfBlank(title, translator.get("session.default_title"));
+        SessionRecord rec = new SessionRecord(id, effectiveConnectionId, effectiveTitle, false, null, now, now, false);
+        repo.upsert(rec);
+        return new CreateSessionResult(rec, false);
     }
 
     public List<SessionRecord> list(String connectionId) {

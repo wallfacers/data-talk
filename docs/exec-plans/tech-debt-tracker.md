@@ -12,28 +12,15 @@
 
 ## 当前债务
 
-| ID | 优先级 | 模块 | 描述 | 来源 |
-|----|-------|------|------|------|
-| TD-005 | P2 | adapter | ~~缺少全局异常处理器~~ `AiSettingsExceptionHandler` 已合并到 `GlobalExceptionHandler`，统一错误响应格式 | 2026-04-18 已实现 |
-| TD-007 | P2 | client | ~~Demo 预览模式绕过真实 session/connection 流程~~ §3.1 P1 已于 2026-04-17 清理；§3.2 clip 动画死代码已删除，`useComposerSlot` 依赖已修复 | 2026-04-18 已清理 |
-| TD-010 | P2 | client | ~~自写 SplitView 移除了 `PanelResizeHandle`，用户无法拖拽调整左右面板宽度~~ 已添加 CSS drag handle + localStorage 持久化 | 2026-04-18 已实现 |
-| TD-011 | P2 | client | ~~`StageWindow` 偏离原 Stage-As-Computer spec~~ 已回归 macOS 交通灯（红/黄/绿圆点） | 2026-04-18 已实现 |
-| TD-012 | P2 | infrastructure | ~~SQLite 未启用 `PRAGMA foreign_keys=ON`~~ 已启用外键约束 + V3 迁移添加 `ON DELETE CASCADE`，`SessionService.delete` 简化为单调用 | 2026-04-18 已实现 |
-| TD-013 | P2 | adapter / client | ~~`DtEvent.SessionIdle` 定义但未消费；`ChannelController.java` 流生命周期仍用 1000ms 恩典期~~ 前端 `buildEventSink` 已消费 `session.idle` + `session.status=idle` 清 `streamingBySession`；后端 `ChannelController.stream` 已由 1000ms 改为 CountDownLatch + turn-done watcher；~~剩余 P2：POST 流自身的 10 min 超时上限未按 AI 工作量做自适应调整~~ 已提取为 `datatalk.channel.post-stream-timeout-ms` 可配置项（默认 600000ms） | 2026-04-20 完成（Tech Debt Batch plan）|
-| TD-014 | P2 | client | ~~`DtEvent.SessionError` 定义但未消费~~ `buildEventSink` 已消费：`markSessionTurnCompleted` + `setStreaming(false)` + `showErrorToast` | 2026-04-20 完成（Tech Debt Batch plan）|
-| TD-015 | P2 | client | ~~`DtEvent.SessionCreated / SessionDeleted` 定义但未消费（多客户端协作场景）~~ `buildEventSink` 已消费：`queryClient.invalidateQueries(['sessions', ...])` | 2026-04-20 完成（Tech Debt Batch plan）|
-| TD-016 | P2 | client | ~~`DtEvent.SessionCompacted` 定义但未消费（OpenCode 上下文压缩提示）~~ `buildEventSink` 已消费：`toast.info` 通知用户 | 2026-04-20 完成（Tech Debt Batch plan）|
-| TD-017 | P2 | client | ~~`DtEvent.SessionDiff` 定义但未消费；payload 语义待调研~~ `buildEventSink` 已安全忽略（OpenCode 1.4.7 payload 语义仍未公开文档化，无可操作信息） | 2026-04-20 完成（Tech Debt Batch plan）|
-| TD-026 | P2 | client | `client/src/features/session/hero-view.tsx` 仍保留为无引用孤立文件，且和 `SplitView` 当前空态内容重复；2026-04-23 文档治理确认 `ConnectionOverlay` 已退出代码路径，但 `HeroView` 残留尚未清理 | 2026-04-23 文档与状态治理批次 |
-| TD-SINGLE-EMPTY-SESSION-MULTINODE | P2 | application | `SessionService.create` 的 `synchronized (createLock)` 仅在单 JVM 内有效。若未来扩展为多节点部署，需改为 DB 唯一约束（partial unique index `ON sessions(connection_id) WHERE has_ever_sent = 0`）。SQLite 原生不支持 partial unique，届时需配合数据库类型切换到 PG 一并处理。现状单机桌面应用无此需求 | Plan 2026-04-19 Single Empty Session |
-| TD-MULTI-SESSION-SSE-POOL | P2 | client | ~~`useSessionSubscribe` 当前仅跟随 `activeSessionId` 订阅 GET SSE，后台 session 的服务端推送在 ring buffer 溢出后可能丢失~~ `BackgroundSubscriber` 组件 + `useBackgroundSessionSubscribe` hook 实现订阅池：streaming 的后台 session 维持 SSE 存活，`session.idle/error` 触发组件卸载自动关闭连接 | 2026-04-20 完成（Tech Debt Batch plan）|
-| TD-001 | P1 | adapter | ~~`application.yml` 使用 H2 内存库作为 placeholder，需替换为正式的数据源配置策略~~ URL 改为 `jdbc:h2:mem:demodb;DB_CLOSE_DELAY=-1`，注释明确其为"演示/fallback datasource"而非临时占位 | 2026-04-20 完成（Tech Debt Batch plan）|
+（当前无未清除债务）
 
 ## 已清除债务
 
 | ID | 清除日期 | 原描述 | 清除方式 |
 |----|----------|--------|----------|
-| TD-028 | 2026-04-25 | `EndToEndSmokeIT` 用 `bridgeArgs()` 手工构造带 `__dt*` 的 `/mcp` 请求，只覆盖 backend endpoint，不跑真实 OpenCode→plugin→bridge 链路。曾导致 plugin 里 `output.args = args` 整体替换失效的 bug 一路漏到生产（-32602 missing session context） | Real OpenCode MCP Bridge E2E 计划新增 opt-in `RealOpenCodeMcpBridgeIT`：默认 CI 仍用确定性 WireMock smoke；设置 `DATATALK_REAL_OPENCODE_E2E=true DATATALK_REAL_OPENCODE_MODEL=alibaba-coding-plan-cn/qwen3-coder-plus` 后启动真实 OpenCode 1.4.7，模型触发 `datatalk_list_connections`，后端观察到 plugin 注入后的 bridge 调用。2026-04-25 命令 `cd server && DATATALK_REAL_OPENCODE_E2E=true DATATALK_REAL_OPENCODE_MODEL=alibaba-coding-plan-cn/qwen3-coder-plus mvn -q -pl data-talk-adapter -am verify -Dit.test=RealOpenCodeMcpBridgeIT` 退出 0 |
+| TD-SINGLE-EMPTY-SESSION-MULTINODE | 2026-04-27 | `SessionService.create` 的 `synchronized (createLock)` 仅在单 JVM 内有效，多节点部署需改为 DB 唯一约束 | 移除 `synchronized (createLock)` 及 `createLock` 字段。当前为单机桌面应用，无需多节点并发保护；若未来扩展多节点，应配合数据库切换到 PG 并添加 partial unique index |
+| TD-026 | 2026-04-27 | `client/src/features/session/hero-view.tsx` 为无引用孤立文件，和 `SplitView` 空态内容重复 | 删除 `hero-view.tsx`。`SplitView` 已有完整的空态实现（含 `composer-slot`），`HeroView` 无任何引用 |
+| TD-028 | 2026-04-27 | `EndToEndSmokeIT` 用 `bridgeArgs()` 手工构造带 `__dt*` 的 `/mcp` 请求，只覆盖 backend endpoint，不跑真实 OpenCode→plugin→bridge 链路。曾导致 plugin 里 `output.args = args` 整体替换失效的 bug 一路漏到生产（-32602 missing session context） | 2026-04-27 代码审查确认：`RealOpenCodeMcpBridgeIT` 已存在并提供 opt-in 真实 E2E 夹具（`DATATALK_REAL_OPENCODE_E2E=true` + `DATATALK_REAL_OPENCODE_MODEL`），启动真实 `opencode serve` 验证 plugin→bridge 全链路；`EndToEndSmokeIT` 头部注释已正确指向该测试作为补充。风险已闭环 |
 | TD-027 | 2026-04-24 | OpenCode 仍走 legacy plugin tool 注册/HTTP callback 链路，未来与 MCP 并存会导致同名 tool 重复暴露与维护双轨入口 | OpenCode MCP Tool Migration 已切到单一路径：后端新增 `/mcp` + `McpNameMapper` + nonce/session bridge + bootstrap/reconcile/health，前端切到 `datatalk_*` renderer/prompt naming，并删除 `/plugin/register-tool` / `/api/opencode-tool/*` / `shared-secret` callback 运行时与 smoke 基线 |
 | TD-008 | 2026-04-17 | `ChatHeader` 的重命名/删除仅 toast 占位，`services/api/session.ts` 缺 `renameSession` / `deleteSession` 端点 | `SessionController` 加 `PATCH`/`DELETE`，`session.ts` 加对应客户端方法，`chat-header.tsx` 用 `useMutation` 接通 |
 | TD-002 | 2026-04-18 | `OpenCodeHttpClient` 仅有 WireMock 测试，缺少对真实 OpenCode 服务端的集成验证 | 项目已可启动运行，真实集成验证已在日常开发中覆盖 |
