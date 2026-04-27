@@ -51,7 +51,7 @@ class StageTabSearchScenarioIT {
         mvc.perform(post("/api/stage/find")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"outputMode":"tabs_only","contentQuery":{"pattern":"email","mode":"fts"}}
+                    {"output":{"mode":"tabs_only"},"query":{"pattern":"email","mode":"fts"}}
                     """))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.tabIds", hasSize(0)));
@@ -73,7 +73,7 @@ class StageTabSearchScenarioIT {
         mvc.perform(post("/api/stage/find")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"outputMode":"tabs_only","contentQuery":{"pattern":"email","mode":"fts"}}
+                    {"output":{"mode":"tabs_only"},"query":{"pattern":"email","mode":"fts"}}
                     """))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.tabIds", hasItem("scenario-1")));
@@ -82,7 +82,7 @@ class StageTabSearchScenarioIT {
         mvc.perform(post("/api/stage/find")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"outputMode":"count","contentQuery":{"pattern":"email","mode":"fts"}}
+                    {"output":{"mode":"count"},"query":{"pattern":"email","mode":"fts"}}
                     """))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalMatched", greaterThanOrEqualTo(1)));
@@ -116,7 +116,7 @@ class StageTabSearchScenarioIT {
         mvc.perform(post("/api/stage/find")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"outputMode":"metadata","filter":{"scope":"workspace","type":"query_editor"}}
+                    {"output":{"mode":"metadata"},"filter":{"scope":"workspace","type":"query_editor"}}
                     """))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.items", hasSize(1)))

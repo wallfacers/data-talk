@@ -33,9 +33,7 @@ const WORKSPACE_SCOPE_TYPES = new Set<string>(['er_canvas', 'markdown_note', 're
 
 function clearSessionActiveTab(sessionId: string | null) {
   if (!sessionId) return
-  const activeTabIdBySession = new Map(useStageStore.getState().activeTabIdBySession)
-  activeTabIdBySession.set(sessionId, null)
-  useStageStore.setState({ activeTabIdBySession })
+  useStageStore.getState().focusWorkspaceTabForSession(sessionId)
 }
 
 export class WorkspaceAdapter implements UIObject {

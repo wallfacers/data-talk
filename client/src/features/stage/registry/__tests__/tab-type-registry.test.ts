@@ -42,6 +42,13 @@ describe('tab-type-registry', () => {
     expect(artifactDesc.extractContent({})).toBe('')
   })
 
+  it('diagnostic type is registered as workbench-scope persistent', () => {
+    const desc = getTabTypeDescriptor('diagnostic')
+    expect(desc.persistent).toBe(true)
+    expect(desc.scope).toBe('workspace')
+    expect(desc.type).toBe('diagnostic')
+  })
+
   it('unknown type falls back to noop descriptor', () => {
     const desc = getTabTypeDescriptor('totally_unknown')
     expect(desc.type).toBe('unknown')

@@ -1,0 +1,7 @@
+package com.datatalk.domain.diagnostics;
+
+import java.util.List;
+
+public record LockReport(List<LockEntry> locks) {
+    public record LockEntry(String table, String lockType, String holder, String waiter) {}
+}

@@ -2,6 +2,7 @@ package com.datatalk.infra.stage;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import com.datatalk.infra.persistence.SqlScriptSplitter;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -71,7 +72,7 @@ class StageTabsMigrationIT {
             String.class);
         assertThat(triggers).containsExactlyInAnyOrder(
             "stage_tabs_ai", "stage_tabs_au", "stage_tabs_ad",
-            "stage_tab_payload_aiu", "stage_tab_payload_au");
+            "stage_tab_payload_aiu", "stage_tab_payload_au", "stage_tab_payload_ad");
 
         // FTS5 virtual table
         List<String> vtables = jdbc.queryForList(
@@ -157,6 +158,35 @@ class StageTabsMigrationIT {
         assertThat(count).isGreaterThan(0);
     }
 
+    @Test
+    void ftsIndexUsesStageTabsRowidAndIncludesTitle() {
+        long now = System.currentTimeMillis();
+        jdbc.update("""
+            INSERT INTO stage_tabs(id, type, scope, title, created_at, last_touched_at)
+            VALUES('tab-rowid', 'query_editor', 'workspace', 'Customer Email Query', ?, ?)
+            """, now, now);
+        jdbc.update("""
+            INSERT INTO stage_tab_payload(tab_id, payload_json, content_text, content_version, updated_at)
+            VALUES('tab-rowid', '{}', 'SELECT email FROM customers', 1, ?)
+            """, now);
+
+        Long tabRowid = jdbc.queryForObject("SELECT rowid FROM stage_tabs WHERE id = 'tab-rowid'", Long.class);
+        Long ftsRowid = jdbc.queryForObject(
+            "SELECT rowid FROM stage_tab_index WHERE stage_tab_index MATCH ?",
+            Long.class, "\"Customer\"");
+
+        assertThat(ftsRowid).isEqualTo(tabRowid);
+    }
+
+    @Test
+    void activeIndexIsPartialOnArchivedFlag() {
+        String sql = jdbc.queryForObject(
+            "SELECT sql FROM sqlite_master WHERE type='index' AND name='idx_stage_tabs_active'",
+            String.class);
+
+        assertThat(sql).contains("WHERE archived = 0");
+    }
+
     private void applyMigrations(JdbcTemplate jdbc) throws Exception {
         jdbc.execute(
             "CREATE TABLE IF NOT EXISTS schema_version (" +
@@ -178,12 +208,8 @@ class StageTabsMigrationIT {
                     if (count != null && count > 0) return;
 
                     String sql = readResource(resource);
-                    String[] statements = sql.split(";");
-                    for (String stmt : statements) {
-                        String trimmed = stmt.trim();
-                        if (!trimmed.isEmpty()) {
-                            jdbc.execute(trimmed);
-                        }
+                    for (String statement : SqlScriptSplitter.split(sql)) {
+                        jdbc.execute(statement);
                     }
                     jdbc.update("INSERT INTO schema_version (version, applied_at) VALUES (?, ?)",
                         version, System.currentTimeMillis());

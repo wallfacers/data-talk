@@ -16,6 +16,7 @@ public record StageFindQuery(
 ) {
     public enum OutputMode {
         METADATA,   // List tab metadata (no payload)
+        MATCHES,    // Return matching lines grouped by tab
         COUNT,      // Count matching tabs
         CONTENT,    // Search content via FTS
         TABS_ONLY,  // Return tab IDs only (for bulk operations)
@@ -26,6 +27,7 @@ public record StageFindQuery(
         StageTabScope scope,
         String type,
         String connectionId,
+        String objectId,
         String originSessionId,
         Boolean includeArchived,
         Boolean pinned,
@@ -38,8 +40,14 @@ public record StageFindQuery(
         String pattern,
         Boolean includeArchived,
         Integer limit,
-        SearchMode mode
+        SearchMode mode,
+        Boolean caseInsensitive,
+        Boolean multiline
     ) {
+        public ContentQuery(String pattern, Boolean includeArchived, Integer limit, SearchMode mode) {
+            this(pattern, includeArchived, limit, mode, true, false);
+        }
+
         public enum SearchMode {
             FTS,        // FTS5 trigram coarse match + substring post-filter
             SUBSTRING,  // Pure substring match (no FTS)
@@ -50,16 +58,22 @@ public record StageFindQuery(
     public record Read(
         String tabId,
         boolean includePayload,
-        ReadRange range
+        ReadRange range,
+        int contextLines
     ) {
         public Read {
             if (range == null) {
                 range = ReadRange.FULL;
             }
+            contextLines = Math.max(0, Math.min(20, contextLines));
+        }
+
+        public Read(String tabId, boolean includePayload, ReadRange range) {
+            this(tabId, includePayload, range, 0);
         }
 
         public Read(String tabId, boolean includePayload) {
-            this(tabId, includePayload, ReadRange.FULL);
+            this(tabId, includePayload, ReadRange.FULL, 0);
         }
     }
 

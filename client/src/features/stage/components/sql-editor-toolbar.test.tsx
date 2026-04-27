@@ -64,4 +64,46 @@ describe('SqlEditorToolbar', () => {
     expect(onFormat).toHaveBeenCalledTimes(1)
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
+
+  it('renders Explain button when onExplain prop provided', () => {
+    const onExplain = vi.fn()
+
+    render(
+      <SqlEditorToolbar
+        canRun
+        isRunning={false}
+        limit={100}
+        onCancel={onCancel}
+        onFormat={onFormat}
+        onLimitChange={onLimitChange}
+        onRun={onRun}
+        canExplain
+        onExplain={onExplain}
+        contextChip={<button type="button">{t('stage.context.label.session')}</button>}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: t('stage.toolbar.explain') })).toBeEnabled()
+  })
+
+  it('Explain button is disabled when canExplain is false', () => {
+    const onExplain = vi.fn()
+
+    render(
+      <SqlEditorToolbar
+        canRun
+        isRunning={false}
+        limit={100}
+        onCancel={onCancel}
+        onFormat={onFormat}
+        onLimitChange={onLimitChange}
+        onRun={onRun}
+        canExplain={false}
+        onExplain={onExplain}
+        contextChip={<button type="button">{t('stage.context.label.session')}</button>}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: t('stage.toolbar.explain') })).toBeDisabled()
+  })
 })

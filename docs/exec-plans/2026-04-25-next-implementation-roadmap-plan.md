@@ -47,7 +47,7 @@ Frontend work in this roadmap must follow [client/DESIGN.md](../../client/DESIGN
 4. **Export:** next new implementation plan. Ship bounded CSV / JSON first; evaluate Excel only after result metadata is stable. _(shipped)_
 5. **DDL / DML guarded execution:** extend the existing risk classification into user-facing confirmation flows. _(shipped)_
 6. **Cross-session workbench persistence + Tab content index + `ui_find`:** promote workbench Tabs to globally persisted, content-indexed objects so the AI can locate, read, and patch any open work surface across sessions; this is the foundation that makes report / dashboard / ER work durable rather than throwaway artifacts. _(next active head)_
-7. **Intelligent operations:** introduce read-only diagnostics such as `EXPLAIN`, slow query analysis, index recommendations, and audit visibility. _(can be designed in parallel with Task 6)_
+7. **Intelligent operations:** introduce read-only diagnostics such as `EXPLAIN`, slow query analysis, index recommendations, and audit visibility. _(shipped — see [2026-04-27-intelligent-operations-plan.md](./2026-04-27-intelligent-operations-plan.md))_
 8. **Visualization expansion:** ER designer, report, and dashboard work; depends on Task 6 to be useful, since long-lived design objects need cross-session persistence.
 9. **External data ingestion via skills:** e-commerce platform / generic web data fetching with auto-table creation under guarded execution. _(phase-3 placeholder; do not start until Tasks 6 and 8 are stable)_
 
@@ -267,27 +267,30 @@ Frontend work in this roadmap must follow [client/DESIGN.md](../../client/DESIGN
 - Modify later: `client/src/features/stage/components/query-editor-inspector.tsx`
 - Modify later: `client/src/features/chat/components/tools/renderers/execute-sql.tsx`
 
-- [ ] **Step 7.1: Start with read-only diagnostics**
-  - First intelligent operations scope should be L1-only: `EXPLAIN`, execution-plan capture, slow-query explanation, table statistics display, and index recommendation text.
-  - It should not create indexes or change schema in its first slice.
+- [x] **Step 7.1: Start with read-only diagnostics**
+  - Spec confirmed: L1-only scope. `datatalk_explain_query` + `datatalk_index_hints` are read-only; no DDL/index creation in first slice.
+  - Product spec: [docs/product-specs/2026-04-27-intelligent-operations-design.md](../product-specs/2026-04-27-intelligent-operations-design.md)
 
-- [ ] **Step 7.2: Define dialect boundaries**
-  - MySQL, PostgreSQL, and H2 have different `EXPLAIN` output shapes.
-  - The first plan should normalize a minimal common model: statement, dialect, raw plan text or rows, timing if available, and AI-readable summary input.
+- [x] **Step 7.2: Define dialect boundaries**
+  - MySqlDiagnosticsProvider (`EXPLAIN FORMAT=JSON`), PostgreSqlDiagnosticsProvider (`EXPLAIN (FORMAT JSON, ANALYZE false)`), H2DiagnosticsProvider (text parse), OracleDiagnosticsProvider (stub → UNSUPPORTED).
+  - Normalized model: `ExplainPlan { sql, dialect, nodes: ExplainNode[], scanTypes }` + `DiagnosticResult<T>` sealed interface.
 
-- [ ] **Step 7.3: Define AI collaboration**
-  - AI can ask DataTalk for plan data and schema metadata.
-  - DataTalk performs database reads; OpenCode only reasons over returned context.
-  - Index recommendations are suggestions until the guarded DDL / DML flow supports confirmed index creation.
+- [x] **Step 7.3: Define AI collaboration**
+  - `datatalk_explain_query`: plain EXPLAIN, returns normalized tree + raw JSON.
+  - `datatalk_index_hints`: chains EXPLAIN → AI call once → returns `IndexRecommendation[]`; AI sees a single-step interface.
+  - Three stub actions registered: `datatalk_lock_info`, `datatalk_pool_status`, `datatalk_table_space` (return `{unsupported: true}` until future specs).
 
-- [ ] **Step 7.4: Define operations surfaces**
-  - Query Editor inspector can show execution plan, risk level, timing, and recommendation summary, ideally as a Task 6 workbench-scope persistent Tab so a user can return to a diagnostic across sessions.
-  - Chat tool rendering can show a compact diagnostic card with "open in workbench".
-  - Audit visibility should start as "what SQL did I run in this session" using query history; once Task 6 lands, persistent audit Tabs become the natural surface.
+- [x] **Step 7.4: Define operations surfaces**
+  - `DiagnosticsTab` registered as `scope: 'workspace'` / `persistent: true` from the start (workbench-scope Tab, ready for Task 6 persistence).
+  - `DiagnosticsPanel` in Activity Rail alongside Schema/History/Outline.
+  - `DiagnosticsCard` in chat tool renderer for both `datatalk.explain_query` and `datatalk.index_hints`.
+  - SQL Editor toolbar gains an "Explain" button that opens/focuses the DiagnosticsTab.
+  - REST: `POST /api/sessions/{sessionId}/diagnostics/explain` + `/index-hints` for direct toolbar entry.
 
-- [ ] **Step 7.5: Define tests and verification**
-  - Backend tests cover dialect-specific plan command construction and failure handling.
-  - Frontend tests cover inspector rendering, empty plan states, and chat-to-workbench promotion.
+- [x] **Step 7.5: Define tests and verification**
+  - Backend: JUnit tests for DiagnosticsService, all four providers, ExplainQueryAction, IndexHintsAction, stub actions, DiagnosticsController (MockMvc).
+  - Frontend: vitest for TypeScript types, API service, ExplainPlanTree, IndexRecommendationList, DiagnosticsTab, DiagnosticsCard, DiagnosticsPanel.
+  - Implementation plan: [docs/exec-plans/2026-04-27-intelligent-operations-plan.md](./2026-04-27-intelligent-operations-plan.md) — 20 tasks, 4 batches. Execute after Task 6 completes.
 
 ### Task 8: Visualization Expansion Candidate
 

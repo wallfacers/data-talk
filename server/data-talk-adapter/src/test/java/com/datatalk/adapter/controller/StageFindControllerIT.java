@@ -47,10 +47,9 @@ class StageFindControllerIT {
         mvc.perform(post("/api/stage/find")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"outputMode":"metadata","filter":{"scope":"workspace"}}
+                    {"output":{"mode":"metadata"},"filter":{"scope":"workspace"}}
                     """))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.outputMode", is("metadata")))
             .andExpect(jsonPath("$.items", hasSize(2)))
             .andExpect(jsonPath("$.items[0].id", isOneOf("find-1", "find-2")));
     }
@@ -70,10 +69,9 @@ class StageFindControllerIT {
         mvc.perform(post("/api/stage/find")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"outputMode":"tabs_only","contentQuery":{"pattern":"email","mode":"fts"}}
+                    {"output":{"mode":"tabs_only"},"query":{"pattern":"email","mode":"fts"}}
                     """))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.outputMode", is("tabs_only")))
             .andExpect(jsonPath("$.tabIds", hasItem("content-1")));
     }
 
@@ -92,10 +90,9 @@ class StageFindControllerIT {
         mvc.perform(post("/api/stage/find")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"outputMode":"count","filter":{"scope":"workspace"}}
+                    {"output":{"mode":"count"},"filter":{"scope":"workspace"}}
                     """))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.outputMode", is("count")))
             .andExpect(jsonPath("$.totalMatched", is(2)));
     }
 }

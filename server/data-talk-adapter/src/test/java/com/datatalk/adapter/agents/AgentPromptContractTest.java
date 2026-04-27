@@ -157,11 +157,18 @@ class AgentPromptContractTest {
         String uiExecSchema = om.writeValueAsString(registry.require("datatalk.ui.exec").inputSchema());
 
         assertThat(uiFindSchema)
-            .contains("workspace")
-            .contains("query_editor")
-            .contains("keyword")
+            .contains("filter")
+            .contains("query")
+            .contains("read")
+            .contains("output")
+            .contains("objectId")
+            .contains("originSessionId")
             .contains("connectionId")
-            .contains("database");
+            .contains("fts")
+            .contains("regex")
+            .contains("matches")
+            .contains("tabs_only")
+            .contains("contextLines");
         assertThat(uiReadSchema)
             .contains("workspace")
             .contains("query_editor")

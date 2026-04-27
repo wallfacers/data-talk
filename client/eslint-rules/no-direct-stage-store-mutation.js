@@ -1,13 +1,8 @@
-'use strict'
-
-const ALLOWED = new Set([
-  'src/stores/stage-store.ts',
-  'src/features/stage/stores/sql-workbench-store.ts',
-])
+import { isAllowedDirectStageStoreMutationFile } from './stage-store-mutation-allowlist.js'
 
 const TARGETS = new Set(['useStageStore', 'useSqlWorkbenchStore'])
 
-module.exports = {
+export default {
   meta: {
     type: 'problem',
     docs: { description: 'Forbid direct setState calls on stage stores from outside the store implementation files.' },
@@ -15,8 +10,7 @@ module.exports = {
     schema: [],
   },
   create(context) {
-    const filename = context.getFilename().split('/').slice(-7).join('/')
-    if ([...ALLOWED].some((a) => filename.endsWith(a))) return {}
+    if (isAllowedDirectStageStoreMutationFile(context.getFilename())) return {}
     return {
       MemberExpression(node) {
         if (

@@ -57,17 +57,7 @@ function clearAllLocalSessionResources() {
     activeBySession: new Map(),
     manualBySession: new Map(),
   })
-  useStageStore.setState({
-    openBySession: new Map(),
-    autoOpenedSessions: new Set(),
-    maximizedBySession: new Map(),
-    sidebarCollapsedBySession: new Map(),
-    sidebarSelectionBySession: new Map(),
-    resourceTreeExpandedBySession: new Map(),
-    activeRailPanelBySession: new Map(),
-    tabsBySession: new Map(),
-    activeTabIdBySession: new Map(),
-  })
+  useStageStore.getState().clearAllSessionState()
   useSessionStore.setState({
     activeSessionId: null,
     modeBySession: new Map(),

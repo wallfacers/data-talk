@@ -22,7 +22,7 @@ export type SidebarSelection =
       schema?: string | null
     }
 
-export type RailPanel = 'schema' | 'history' | 'outline'
+export type RailPanel = 'schema' | 'history' | 'outline' | 'diagnostics'
 
 export type QueryEditorOpenMode = 'always_new' | 'reuse_by_resource_context'
 
@@ -91,6 +91,8 @@ export type StageState = {
   setActiveRailPanel: (sessionId: string, panel: RailPanel | null) => void
   toggleRailPanel: (sessionId: string, panel: RailPanel) => void
   clear: (sessionId: string) => void
+  clearAllSessionState: () => void
+  focusWorkspaceTabForSession: (sessionId: string) => void
 
   // Tab CRUD（新）
   openTab: (tab: StageTab) => void
@@ -118,9 +120,10 @@ export type StageState = {
 
   // Persistence mutation API
   findTab: (tabId: string) => StageTab | null
-  __hydrateWorkspaceTabs: (items: Array<StageTab & Record<string, unknown>>) => void
-  __hydrateSessionTabs: (sessionId: string, items: Array<StageTab & Record<string, unknown>>) => void
+  __hydrateWorkspaceTabs: (items: StageTab[]) => void
+  __hydrateSessionTabs: (sessionId: string, items: StageTab[]) => void
   __hydratePayload: (tabId: string, payload: unknown, version: number) => void
+  __setPayloadVersion: (tabId: string, version: number) => void
   archiveTab: (id: string, archived: boolean) => void
   setTabPinned: (id: string, pinned: boolean) => void
   setTabTitle: (id: string, title: string) => void
@@ -263,6 +266,24 @@ export const useStageStore = create<StageState>((set, get) => ({
       tabsBySession: ts,
       activeTabIdBySession: ats,
     }
+  }),
+
+  clearAllSessionState: () => set({
+    openBySession: new Map(),
+    autoOpenedSessions: new Set(),
+    maximizedBySession: new Map(),
+    sidebarCollapsedBySession: new Map(),
+    sidebarSelectionBySession: new Map(),
+    resourceTreeExpandedBySession: new Map(),
+    activeRailPanelBySession: new Map(),
+    tabsBySession: new Map(),
+    activeTabIdBySession: new Map(),
+  }),
+
+  focusWorkspaceTabForSession: (sessionId) => set((s) => {
+    const activeTabIdBySession = new Map(s.activeTabIdBySession)
+    activeTabIdBySession.set(sessionId, null)
+    return { activeTabIdBySession }
   }),
 
   openTab: (tab) => set((s) => {
@@ -523,6 +544,25 @@ export const useStageStore = create<StageState>((set, get) => ({
       if (i < 0) continue
       const nextArr = [...arr]
       nextArr[i] = { ...nextArr[i], payload, payloadVersion: version }
+      const map = new Map(s.tabsBySession)
+      map.set(sid, nextArr)
+      return { tabsBySession: map }
+    }
+    return s
+  }),
+
+  __setPayloadVersion: (tabId, version) => set((s) => {
+    const wsIdx = s.workspaceTabs.findIndex((t) => t.tabId === tabId)
+    if (wsIdx >= 0) {
+      const next = [...s.workspaceTabs]
+      next[wsIdx] = { ...next[wsIdx], payloadVersion: version }
+      return { workspaceTabs: next }
+    }
+    for (const [sid, arr] of s.tabsBySession.entries()) {
+      const i = arr.findIndex((t) => t.tabId === tabId)
+      if (i < 0) continue
+      const nextArr = [...arr]
+      nextArr[i] = { ...nextArr[i], payloadVersion: version }
       const map = new Map(s.tabsBySession)
       map.set(sid, nextArr)
       return { tabsBySession: map }

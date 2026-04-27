@@ -8,47 +8,62 @@ import java.util.Map;
  */
 final class UiFindSchemas {
 
-    private UiFindSchemas() {}
+    private UiFindSchemas() {
+    }
 
     static final Map<String, Object> INPUT_SCHEMA = Map.of(
         "type", "object",
         "properties", Map.of(
-            "outputMode", Map.of(
-                "type", "string",
-                "enum", List.of("metadata", "count", "content", "tabs_only", "read"),
-                "description", "Output mode: metadata=list tab metadata, count=return total, content=FTS search, tabs_only=IDs only, read=full payload"
-            ),
             "filter", Map.of(
                 "type", "object",
-                "properties", Map.of(
-                    "scope", Map.of("type", "string", "enum", List.of("workspace", "session")),
-                    "type", Map.of("type", "string", "description", "Tab type, e.g. query_editor, chart"),
-                    "connectionId", Map.of("type", "string"),
-                    "originSessionId", Map.of("type", "string"),
-                    "includeArchived", Map.of("type", "boolean"),
-                    "pinned", Map.of("type", "boolean"),
-                    "lastTouchedAfter", Map.of("type", "integer", "description", "Epoch millis"),
-                    "lastTouchedBefore", Map.of("type", "integer", "description", "Epoch millis"),
-                    "limit", Map.of("type", "integer", "minimum", 1, "maximum", 10_000)
+                "description", "Metadata filters (AND-combined). All fields optional.",
+                "properties", Map.ofEntries(
+                    Map.entry("type", Map.of("type", "string")),
+                    Map.entry("connectionId", Map.of("type", "string")),
+                    Map.entry("objectId", Map.of("type", "string")),
+                    Map.entry("originSessionId", Map.of("type", "string")),
+                    Map.entry("lastTouchedAfter", Map.of("type", "integer")),
+                    Map.entry("lastTouchedBefore", Map.of("type", "integer")),
+                    Map.entry("includeArchived", Map.of("type", "boolean", "default", false)),
+                    Map.entry("pinned", Map.of("type", "boolean"))
                 )
             ),
-            "contentQuery", Map.of(
+            "query", Map.of(
+                "type", "object",
+                "description", "Content match (omit for metadata-only listing).",
+                "properties", Map.of(
+                    "mode", Map.of("type", "string", "enum", List.of("substring", "regex", "fts")),
+                    "pattern", Map.of("type", "string"),
+                    "caseInsensitive", Map.of("type", "boolean", "default", true),
+                    "multiline", Map.of("type", "boolean", "default", false)
+                ),
+                "required", List.of("mode", "pattern")
+            ),
+            "read", Map.of(
+                "type", "object",
+                "description", "Read content from named tabs.",
+                "properties", Map.of(
+                    "tabIds", Map.of("type", "array", "items", Map.of("type", "string")),
+                    "range", Map.of("oneOf", List.of(
+                        Map.of("type", "string", "enum", List.of("full")),
+                        Map.of(
+                            "type", "object",
+                            "properties", Map.of(
+                                "lineStart", Map.of("type", "integer", "minimum", 1),
+                                "lineEnd", Map.of("type", "integer", "minimum", 1)
+                            ),
+                            "required", List.of("lineStart", "lineEnd")
+                        )
+                    ), "default", "full"),
+                    "contextLines", Map.of("type", "integer", "minimum", 0, "maximum", 20, "default", 0)
+                )
+            ),
+            "output", Map.of(
                 "type", "object",
                 "properties", Map.of(
-                    "pattern", Map.of("type", "string", "description", "FTS search pattern"),
-                    "includeArchived", Map.of("type", "boolean"),
-                    "limit", Map.of("type", "integer")
-                )
-            ),
-            "reads", Map.of(
-                "type", "array",
-                "items", Map.of(
-                    "type", "object",
-                    "required", List.of("tabId"),
-                    "properties", Map.of(
-                        "tabId", Map.of("type", "string"),
-                        "includePayload", Map.of("type", "boolean")
-                    )
+                    "mode", Map.of("type", "string", "enum", List.of("metadata", "matches", "tabs_only", "count"), "default", "metadata"),
+                    "headLimit", Map.of("type", "integer", "minimum", 1, "default", 100),
+                    "maxTabs", Map.of("type", "integer", "minimum", 1, "default", 50)
                 )
             )
         )
@@ -56,19 +71,15 @@ final class UiFindSchemas {
 
     static final Map<String, Object> OUTPUT_SCHEMA = Map.of(
         "type", "object",
-        "required", List.of("outputMode"),
-        "properties", Map.of(
-            "outputMode", Map.of("type", "string"),
-            "items", Map.of(
-                "type", "array",
-                "items", Map.of("type", "object")
-            ),
-            "tabIds", Map.of("type", "array", "items", Map.of("type", "string")),
-            "totalMatched", Map.of("type", "integer"),
-            "tabsMatched", Map.of("type", "integer"),
-            "truncated", Map.of("type", "boolean"),
-            "reads", Map.of("type", "array"),
-            "warnings", Map.of("type", "array", "items", Map.of("type", "string"))
+        "properties", Map.ofEntries(
+            Map.entry("items", Map.of("type", "array", "items", Map.of("type", "object"))),
+            Map.entry("tabIds", Map.of("type", "array", "items", Map.of("type", "string"))),
+            Map.entry("totalMatched", Map.of("type", "integer")),
+            Map.entry("tabsMatched", Map.of("type", "integer")),
+            Map.entry("truncated", Map.of("type", "boolean")),
+            Map.entry("reads", Map.of("type", "array", "items", Map.of("type", "object"))),
+            Map.entry("warnings", Map.of("type", "array", "items", Map.of("type", "string"))),
+            Map.entry("error", Map.of("type", "object"))
         )
     );
 }

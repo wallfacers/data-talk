@@ -1,9 +1,11 @@
 package com.datatalk.infra.stage;
 
 import com.datatalk.application.stage.StageTabRepository;
+import com.datatalk.application.stage.StageTabConcurrencyException;
 import com.datatalk.domain.stage.StageTab;
 import com.datatalk.domain.stage.StageTabContent;
 import com.datatalk.domain.stage.StageTabScope;
+import com.datatalk.infra.persistence.SqlScriptSplitter;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.junit.jupiter.api.AfterEach;
@@ -83,7 +85,7 @@ class StageTabJdbcRepositoryTest {
             false, false, null, now, now);
         repo.upsertMetadata(tab, null);
 
-        repo.upsertPayload("t2", "{\"sql\":\"SELECT 1\"}", "SELECT 1 FROM users", 0, now);
+        repo.upsertPayload("t2", "{\"sql\":\"SELECT 1\"}", "SELECT 1 FROM users", null, now);
 
         Optional<StageTabContent> content = repo.findContent("t2");
         assertThat(content).isPresent();
@@ -104,7 +106,7 @@ class StageTabJdbcRepositoryTest {
             "Concurrency Tab", null, null, null, null, 1,
             false, false, null, now, now);
         repo.upsertMetadata(tab, null);
-        repo.upsertPayload("t3", "{\"v\":1}", "text v1", 0, now);
+        repo.upsertPayload("t3", "{\"v\":1}", "text v1", null, now);
 
         // Try to update with wrong expected version
         assertThatThrownBy(() -> repo.upsertPayload("t3", "{\"v\":2}", "text v2", 0, now))
@@ -199,8 +201,8 @@ class StageTabJdbcRepositoryTest {
             "FC2", null, null, null, null, 1, false, false, null, now, now);
         repo.upsertMetadata(tab1, null);
         repo.upsertMetadata(tab2, null);
-        repo.upsertPayload("fc-1", "{\"a\":1}", "text-a", 0, now);
-        repo.upsertPayload("fc-2", "{\"b\":2}", "text-b", 0, now);
+        repo.upsertPayload("fc-1", "{\"a\":1}", "text-a", null, now);
+        repo.upsertPayload("fc-2", "{\"b\":2}", "text-b", null, now);
 
         List<StageTabContent> contents = repo.findContents(List.of("fc-1"));
         assertThat(contents).hasSize(1);
@@ -229,12 +231,8 @@ class StageTabJdbcRepositoryTest {
                     if (count != null && count > 0) return;
 
                     String sql = readResource(resource);
-                    String[] statements = sql.split(";");
-                    for (String stmt : statements) {
-                        String trimmed = stmt.trim();
-                        if (!trimmed.isEmpty()) {
-                            jdbc.execute(trimmed);
-                        }
+                    for (String statement : SqlScriptSplitter.split(sql)) {
+                        jdbc.execute(statement);
                     }
                     jdbc.update("INSERT INTO schema_version (version, applied_at) VALUES (?, ?)",
                         version, System.currentTimeMillis());

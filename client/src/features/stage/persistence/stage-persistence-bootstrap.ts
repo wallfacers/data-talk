@@ -27,7 +27,7 @@ coordinator.resolveTabSnapshot = (tabId) => {
 }
 
 coordinator.onHydrated = (items) => {
-  useStageStore.getState().__hydrateWorkspaceTabs(items as Array<StageTab & Record<string, unknown>>)
+  useStageStore.getState().__hydrateWorkspaceTabs(items.map(toStageTab))
 }
 
 coordinator.onPayloadHydrated = (tabId, payload, version) => {
@@ -35,6 +35,10 @@ coordinator.onPayloadHydrated = (tabId, payload, version) => {
   if (!tab) return
   TAB_TYPE_REGISTRY[tab.type]?.rehydrate?.(tabId, payload)
   useStageStore.getState().__hydratePayload(tabId, payload, version)
+}
+
+coordinator.onPersisted = (tabId, version) => {
+  useStageStore.getState().__setPayloadVersion(tabId, version)
 }
 
 // --- Subscription helpers ---
@@ -47,7 +51,31 @@ type TabSummary = {
   database?: string
   schema?: string
   pinned?: boolean
+  archived?: boolean
   lastTouchedAt?: number
+}
+
+function toStageTab(item: Record<string, unknown>): StageTab {
+  return {
+    tabId: String(item.tabId ?? item.id ?? item.objectId ?? ''),
+    type: String(item.type ?? 'unknown'),
+    title: String(item.title ?? '(untitled)'),
+    scope: (item.scope === 'session' ? 'session' : 'workspace'),
+    connectionId: typeof item.connectionId === 'string' ? item.connectionId : undefined,
+    database: typeof item.database === 'string'
+      ? item.database
+      : typeof item.databaseName === 'string' ? item.databaseName : undefined,
+    schema: typeof item.schema === 'string'
+      ? item.schema
+      : typeof item.schemaName === 'string' ? item.schemaName : undefined,
+    originSessionId: typeof item.originSessionId === 'string' ? item.originSessionId : undefined,
+    pinned: item.pinned === true,
+    archived: item.archived === true,
+    payload: {},
+    payloadVersion: typeof item.payloadVersion === 'number' ? item.payloadVersion : Number(item.payloadVersion) || 1,
+    createdAt: typeof item.createdAt === 'number' ? item.createdAt : Number(item.createdAt) || Date.now(),
+    lastTouchedAt: typeof item.lastTouchedAt === 'number' ? item.lastTouchedAt : Number(item.lastTouchedAt) || Date.now(),
+  }
 }
 
 function persistedTabSummaries(state: {
@@ -65,6 +93,7 @@ function persistedTabSummaries(state: {
       database: tab.database,
       schema: tab.schema,
       pinned: tab.pinned,
+      archived: tab.archived,
       lastTouchedAt: tab.lastTouchedAt,
     })
   }
@@ -79,6 +108,7 @@ function persistedTabSummaries(state: {
         database: tab.database,
         schema: tab.schema,
         pinned: tab.pinned,
+        archived: tab.archived,
         lastTouchedAt: tab.lastTouchedAt,
       })
     }
@@ -87,13 +117,18 @@ function persistedTabSummaries(state: {
 }
 
 function diffMetaAndSchedule(next: TabSummary[], prev: TabSummary[]): void {
+  if (coordinator.phase === 'hydrating') return
   const prevMap = new Map(prev.map((s) => [s.tabId, s]))
+  const nextMap = new Map(next.map((s) => [s.tabId, s]))
   for (const nextTab of next) {
     const prevTab = prevMap.get(nextTab.tabId)
-    if (!prevTab) continue
+    if (!prevTab) {
+      coordinator.scheduleMetadataWrite(nextTab.tabId, {})
+      continue
+    }
     const patch: Record<string, unknown> = {}
     let changed = false
-    for (const key of ['title', 'connectionId', 'database', 'schema', 'pinned'] as const) {
+    for (const key of ['title', 'connectionId', 'database', 'schema', 'pinned', 'archived'] as const) {
       if ((nextTab as Record<string, unknown>)[key] !== (prevTab as Record<string, unknown>)[key]) {
         patch[key] = (nextTab as Record<string, unknown>)[key]
         changed = true
@@ -101,6 +136,11 @@ function diffMetaAndSchedule(next: TabSummary[], prev: TabSummary[]): void {
     }
     if (changed) {
       coordinator.scheduleMetadataWrite(nextTab.tabId, patch)
+    }
+  }
+  for (const prevTab of prev) {
+    if (!nextMap.has(prevTab.tabId)) {
+      void coordinator.delete(prevTab.tabId).catch(() => undefined)
     }
   }
 }
@@ -112,7 +152,7 @@ function diffContentAndSchedule(
   for (const tabId of Object.keys(next)) {
     const nextTab = next[tabId]
     const prevTab = prev[tabId]
-    if (!prevTab || nextTab.sqlText === prevTab.sqlText) continue
+    if (prevTab && nextTab.sqlText === prevTab.sqlText) continue
     const tab = useStageStore.getState().findTab(tabId)
     if (!tab || !isPersistent(tab.type)) continue
     coordinator.scheduleContentWrite(tabId, {

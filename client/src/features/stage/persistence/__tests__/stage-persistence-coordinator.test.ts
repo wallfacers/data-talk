@@ -84,6 +84,30 @@ describe('StagePersistenceCoordinator', () => {
     expect(api.putPayload).toHaveBeenCalledTimes(1)
   })
 
+  it('flush() writes metadata before content for new tabs', async () => {
+    const calls: string[] = []
+    const api = createMockApi({
+      upsert: vi.fn().mockImplementation(async () => {
+        calls.push('metadata')
+        return { id: 't1', payloadVersion: 1 }
+      }),
+      putPayload: vi.fn().mockImplementation(async () => {
+        calls.push('content')
+        return { id: 't1', payloadVersion: 1 }
+      }),
+    })
+    const coord = new StagePersistenceCoordinator(api)
+    coord.resolveTabSnapshot = () => stubSnapshot('t1')
+    coord.phase = 'live'
+
+    coord.scheduleMetadataWrite('t1', { title: 'New Tab' })
+    coord.scheduleContentWrite('t1', { payload: {}, contentText: 'SELECT 1' })
+
+    await coord.flush('t1')
+
+    expect(calls).toEqual(['metadata', 'content'])
+  })
+
   it('metadata writes are immediate (no debounce)', async () => {
     const api = createMockApi()
     const coord = new StagePersistenceCoordinator(api)

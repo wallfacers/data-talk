@@ -94,6 +94,34 @@ There are two separate contexts:
 - `datatalk_pin_artifact`
   Pin an artifact in the current client timeline. This is a client-side timeline action, not durable server persistence.
 
+### Query Diagnostics
+
+- `datatalk_explain_query`
+  Get a normalized execution plan tree for a SQL statement.
+  Input: `{ "sql": "<sql>" }`. Connection context is taken from the current session.
+  Output: `{ dialect, rawText, nodes, warnings, unsupported }`.
+  Call when: user asks "why is this slow", "show execution plan", or any query performance question.
+  Do not call when: the user only asks about SQL correctness, not performance.
+
+- `datatalk_index_hints`
+  Get index recommendations by internally running EXPLAIN and analyzing the result.
+  Input: `{ "sql": "<sql>" }`.
+  Output: `{ recommendations: [...], explainSummary, unsupported }`.
+  Call when: user asks for index advice, or `datatalk_explain_query` reveals FULL_SCAN nodes.
+  Do not call when: the table has fewer than ~1000 rows (full scan is typically acceptable).
+
+- `datatalk_lock_info`, `datatalk_pool_status`, `datatalk_table_space`
+  Not yet available. These return `{ "unsupported": true }`. Do not call them.
+
+### Diagnostics Workflow Rules
+
+1. Performance question received → call `datatalk_explain_query` first.
+2. Plan contains FULL_SCAN nodes or non-empty `warnings` → call `datatalk_index_hints`.
+3. Present `explainSummary` + recommendation `rationale` values as natural language to the user.
+4. Do not infer index recommendations from schema alone — always base them on actual EXPLAIN output.
+5. Do not run `datatalk_read_schema` before `datatalk_explain_query` to pre-load context.
+6. Index recommendations are suggestions only. If the user confirms they want to create an index, generate the `CREATE INDEX` SQL and route it through the standard Guarded DDL flow.
+
 ### UI Actions
 
 Only these UI object types are supported today:
@@ -104,7 +132,7 @@ Only these UI object types are supported today:
 Registered UI actions:
 
 - `datatalk_ui_find`
-  Find open UI objects by scope, type, and other filters. Use this first when the user refers to the current, open, active, or existing SQL editor. Supports `filter` with `scope`, `type`, `keyword`, `connectionId`, and `database`. Returns `outputMode=metadata` by default with `items`, `totalMatched`, and `truncated`.
+  Discover, search, and read tabs across all sessions. Use this first when the user refers to the current, open, active, or existing SQL editor. Returns `output.mode=metadata` by default with `items`, `totalMatched`, and `truncated`.
 
 - `datatalk_ui_read`
   Read `workspace` or `query_editor` state, schema, actions, or the full descriptor through top-level `object`, optional `target`, and optional `mode`.
@@ -117,11 +145,13 @@ Registered UI actions:
 
 ## Exact UI Contract
 
-`datatalk_ui_find` uses an optional top-level `filter` and optional `outputMode`.
+`datatalk_ui_find` uses four optional top-level sections: `filter`, `query`, `read`, and `output`.
 
-- Supported `filter` fields are `scope`, `type`, `keyword`, `connectionId`, and `database`.
-- `outputMode` is one of `metadata` (default), `count`, or `payload`. Use `payload` to include content snapshot in each item.
-- `datatalk_ui_find` returns `{ outputMode, items, totalMatched, truncated }` where each entry has `id`, `type`, `title`, `connectionId`, `database`, and `schema`. Read `items` to iterate; the top level is always an object.
+- `filter` fields are `type`, `connectionId`, `objectId`, `originSessionId`, `lastTouchedAfter`, `lastTouchedBefore`, `includeArchived`, and `pinned`.
+- `query` is `{ mode, pattern, caseInsensitive, multiline }`, where `mode` is `fts`, `substring`, or `regex`.
+- `read` is `{ tabIds, range, contextLines }`; `range` is `"full"` or `{ lineStart, lineEnd }`.
+- `output` is `{ mode, headLimit, maxTabs }`, where `mode` is `metadata` (default), `matches`, `tabs_only`, or `count`.
+- `metadata` returns `{ items, totalMatched, truncated }`; `matches` returns `{ items: [{ tab, matches, matchScore? }], totalMatched, truncated }`; `tabs_only` returns `{ tabIds, totalMatched, truncated }`; `count` returns `{ totalMatched, tabsMatched }`. Any `read` adds top-level `reads`.
 
 `datatalk_ui_read` always uses top-level `object`, optional `target`, and optional `mode`.
 
@@ -232,20 +262,35 @@ For a query editor:
 3. Targeted edit: `datatalk_ui_exec` with `object=query_editor`, `action=apply_text_edits`, and a fresh `params.baseVersion`
 4. If execution context must change, use `datatalk_ui_exec` with `object=query_editor`, `action=set_context`
 
+### Locate Text Inside an Existing Tab
+
+1. `datatalk_ui_find` with `query.mode=fts`, `query.pattern=<text>`, and `output.mode=tabs_only`
+2. If needed, re-run with `output.mode=matches` to inspect matching lines
+3. Use `read.tabIds` with a line range or `"full"` only after narrowing to the right tab
+
 ### No Active Connection
 
 1. `datatalk_list_connections` if you need to suggest saved connections
 2. `datatalk_ui_exec` with `object=workspace`, `action=choose_connection` if the user needs to pick one interactively
 
-## Tab Persistence
+## Tab Persistence and Search
 
-- Workspace-scoped tabs (e.g. `query_editor`) are persisted to the server and restored across sessions.
-- Session-scoped tabs (e.g. `artifact_preview`) are ephemeral and tied to the chat session lifecycle.
-- Content changes (SQL text edits) are debounced 1 second before persisting. Metadata changes (title, context) persist immediately.
-- Use `datatalk_ui_find` with `outputMode=payload` when you need the full content snapshot including SQL text.
+Tabs persist across sessions and across app restarts. The same tab id identifies the same logical work object.
 
-## Search
+`datatalk_ui_find` covers three composable verbs:
 
-- `datatalk_ui_find` supports `filter.keyword` for case-insensitive substring search across tab titles and IDs.
-- Use `filter.scope=workspace` or `filter.scope=session` to narrow results to a specific scope.
-- Use `outputMode=count` when you only need the number of matching tabs.
+- list: pass `filter` only. Returns metadata for tabs matching type, connection, or other metadata.
+- search: pass `filter + query`. Use `query.mode=fts` for normal search, `regex` for structural patterns, and `substring` for literal matching.
+- read: pass `read.tabIds`. Returns content, optionally by line range.
+
+Combine them: `filter + query + output.mode=tabs_only` is `grep -l`; `filter + query + read` reads matching tabs after narrowing.
+
+Output budget rules:
+- Default `output.headLimit=100` and `output.maxTabs=50`.
+- For existence checks, use `output.mode=count` or `tabs_only`.
+- Use `output.mode=matches` only when matching lines are needed.
+- Avoid full reads of many tabs at once.
+
+After mutating a tab via `datatalk_ui_patch` or `datatalk_ui_exec apply_text_edits`, the change is immediately visible to subsequent `datatalk_ui_find` calls.
+
+{{STAGE_TAB_DIGEST}}

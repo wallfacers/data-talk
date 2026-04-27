@@ -75,13 +75,13 @@ class StageTabControllerIT {
         // Default: exclude archived
         mvc.perform(get("/api/stage/tabs?scope=workspace"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$", hasSize(1)))
-            .andExpect(jsonPath("$[0].id", is("ws-1")));
+            .andExpect(jsonPath("$.items", hasSize(1)))
+            .andExpect(jsonPath("$.items[0].id", is("ws-1")));
 
         // Include archived
         mvc.perform(get("/api/stage/tabs?scope=workspace&archived=true"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$", hasSize(2)));
+            .andExpect(jsonPath("$.items", hasSize(2)));
     }
 
     @Test
@@ -99,6 +99,8 @@ class StageTabControllerIT {
         mvc.perform(get("/api/stage/tabs/payload-1/payload"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.tabId", is("payload-1")))
+            .andExpect(jsonPath("$.payload.sql", is("SELECT 1")))
+            .andExpect(jsonPath("$.payloadVersion", is(1)))
             .andExpect(jsonPath("$.payloadJson", is("{\"sql\":\"SELECT 1\"}")))
             .andExpect(jsonPath("$.contentText", is("SELECT 1")));
     }

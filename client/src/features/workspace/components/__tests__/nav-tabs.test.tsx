@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { NavTabs } from '../nav-tabs'
 import { useStageStore } from '@/stores/stage-store'
+import { useSessionStore } from '@/stores/session-store'
 import type { StageTab } from '@/stores/stage-store'
 import { SidebarProvider } from '@/components/ui/sidebar'
 
@@ -39,6 +40,10 @@ describe('NavTabs', () => {
       activeWorkspaceTabId: null,
       workspaceTabs: [],
     })
+    useSessionStore.setState({
+      activeSessionId: 'session-active',
+      hasEverSentBySession: new Map([['session-active', true], ['session-tab', true]]),
+    })
   })
 
   it('renders one row per active workspace tab and an empty state when none', () => {
@@ -58,11 +63,32 @@ describe('NavTabs', () => {
 
   it('clicking a row focuses the tab via store', () => {
     const focusSpy = vi.spyOn(useStageStore.getState(), 'focusTab')
+    const openStageSpy = vi.spyOn(useStageStore.getState(), 'openStage')
     mockTabs = [mkTab({ tabId: 'tab-1', title: 'Click Me' })]
     renderNavTabs()
 
     fireEvent.click(screen.getByText('Click Me'))
     expect(focusSpy).toHaveBeenCalledWith('tab-1')
+    expect(openStageSpy).toHaveBeenCalledWith('session-active')
+  })
+
+  it('clicking a session-scoped row switches session before focusing', () => {
+    const focusSpy = vi.spyOn(useStageStore.getState(), 'focusTab')
+    const openStageSpy = vi.spyOn(useStageStore.getState(), 'openStage')
+    const openSessionSpy = vi.spyOn(useSessionStore.getState(), 'openSession')
+    mockTabs = [mkTab({
+      tabId: 'tab-session',
+      title: 'Session Tab',
+      scope: 'session',
+      originSessionId: 'session-tab',
+    })]
+    renderNavTabs()
+
+    fireEvent.click(screen.getByText('Session Tab'))
+
+    expect(openSessionSpy).toHaveBeenCalledWith('session-tab', true)
+    expect(openStageSpy).toHaveBeenCalledWith('session-tab')
+    expect(focusSpy).toHaveBeenCalledWith('tab-session')
   })
 
   it('hides archived rows by default and shows them after toggle', () => {

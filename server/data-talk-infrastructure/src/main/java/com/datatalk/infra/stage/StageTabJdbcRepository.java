@@ -1,6 +1,7 @@
 package com.datatalk.infra.stage;
 
 import com.datatalk.application.stage.StageTabRepository;
+import com.datatalk.application.stage.StageTabConcurrencyException;
 import com.datatalk.domain.stage.StageTab;
 import com.datatalk.domain.stage.StageTabContent;
 import com.datatalk.domain.stage.StageTabScope;
@@ -50,50 +51,33 @@ public class StageTabJdbcRepository implements StageTabRepository {
 
     @Override
     public int upsertMetadata(StageTab tab, Integer expectedPayloadVersion) {
-        if (expectedPayloadVersion != null) {
-            // Optimistic concurrency: only update if current version matches
-            int updated = jdbc.update("""
-                UPDATE stage_tabs SET
-                    type = ?, scope = ?, title = ?, connection_id = ?, database_name = ?,
-                    schema_name = ?, origin_session_id = ?, pinned = ?,
-                    archived = ?, archived_at = ?, last_touched_at = ?
-                WHERE id = ? AND payload_version = ?
-                """,
-                tab.type(), tab.scope().wire(), tab.title(),
-                tab.connectionId(), tab.databaseName(), tab.schemaName(),
-                tab.originSessionId(), tab.pinned() ? 1 : 0,
-                tab.archived() ? 1 : 0, tab.archivedAt(),
-                tab.lastTouchedAt(), tab.id(), expectedPayloadVersion);
-            if (updated > 0) {
-                return expectedPayloadVersion + 1;
+        Optional<StageTab> existing = findById(tab.id());
+        if (existing.isEmpty()) {
+            if (expectedPayloadVersion != null && expectedPayloadVersion > 0) {
+                throw new StageTabConcurrencyException(tab.id(), expectedPayloadVersion, 0);
             }
-            // If not updated, check if the tab exists at all
-            Optional<StageTab> existing = findById(tab.id());
-            if (existing.isEmpty()) {
-                // Tab doesn't exist yet — insert
-                return doInsert(tab);
-            }
-            // Version mismatch
-            throw new StageTabConcurrencyException(tab.id(),
-                expectedPayloadVersion, existing.get().payloadVersion());
+            return doInsert(tab);
         }
-        // No version check — simple upsert
-        int updated = jdbc.update("""
+
+        int currentVersion = existing.get().payloadVersion();
+        if (expectedPayloadVersion != null && currentVersion != expectedPayloadVersion) {
+            throw new StageTabConcurrencyException(tab.id(), expectedPayloadVersion, currentVersion);
+        }
+
+        int newVersion = currentVersion + 1;
+        jdbc.update("""
             UPDATE stage_tabs SET
                 type = ?, scope = ?, title = ?, connection_id = ?, database_name = ?,
-                schema_name = ?, origin_session_id = ?, pinned = ?,
+                schema_name = ?, origin_session_id = ?, payload_version = ?, pinned = ?,
                 archived = ?, archived_at = ?, last_touched_at = ?
             WHERE id = ?
             """,
             tab.type(), tab.scope().wire(), tab.title(),
             tab.connectionId(), tab.databaseName(), tab.schemaName(),
-            tab.originSessionId(), tab.pinned() ? 1 : 0,
+            tab.originSessionId(), newVersion, tab.pinned() ? 1 : 0,
             tab.archived() ? 1 : 0, tab.archivedAt(),
             tab.lastTouchedAt(), tab.id());
-        if (updated > 0) {
-            return tab.payloadVersion() + 1;
-        }
-        return doInsert(tab);
+        return newVersion;
     }
 
     private int doInsert(StageTab tab) {
@@ -113,37 +97,33 @@ public class StageTabJdbcRepository implements StageTabRepository {
 
     @Override
     @Transactional
-    public void upsertPayload(String tabId, String payloadJson, String contentText,
-                              int expectedVersion, long updatedAt) {
-        // Check current version
-        Integer currentVersion = jdbc.queryForObject(
-            "SELECT content_version FROM stage_tab_payload WHERE tab_id = ?",
-            Integer.class, tabId);
+    public int upsertPayload(String tabId, String payloadJson, String contentText,
+                             Integer expectedVersion, long updatedAt) {
+        StageTab tab = findById(tabId)
+            .orElseThrow(() -> new StageTabConcurrencyException(tabId, expectedVersion == null ? 0 : expectedVersion, 0));
+        int currentVersion = tab.payloadVersion();
+        if (expectedVersion != null && currentVersion != expectedVersion) {
+            throw new StageTabConcurrencyException(tabId, expectedVersion, currentVersion);
+        }
 
-        if (currentVersion != null) {
-            if (currentVersion != expectedVersion) {
-                throw new StageTabConcurrencyException(tabId, expectedVersion, currentVersion);
-            }
-            // Update existing payload
+        boolean payloadExists = findContent(tabId).isPresent();
+        int newVersion = payloadExists ? currentVersion + 1 : currentVersion;
+        if (payloadExists) {
             jdbc.update("""
                 UPDATE stage_tab_payload
                 SET payload_json = ?, content_text = ?, content_version = ?, updated_at = ?
                 WHERE tab_id = ?
-                """, payloadJson, contentText, expectedVersion + 1, updatedAt, tabId);
-            // Bump metadata payload_version
+                """, payloadJson, contentText, newVersion, updatedAt, tabId);
             jdbc.update("""
-                UPDATE stage_tabs SET payload_version = payload_version + 1 WHERE id = ?
-                """, tabId);
+                UPDATE stage_tabs SET payload_version = ?, last_touched_at = ? WHERE id = ?
+                """, newVersion, updatedAt, tabId);
         } else {
-            // Insert new payload
             jdbc.update("""
                 INSERT INTO stage_tab_payload(tab_id, payload_json, content_text, content_version, updated_at)
-                VALUES(?, ?, ?, 1, ?)
-                """, tabId, payloadJson, contentText, updatedAt);
-            jdbc.update("""
-                UPDATE stage_tabs SET payload_version = 1 WHERE id = ? AND payload_version = 0
-                """, tabId);
+                VALUES(?, ?, ?, ?, ?)
+                """, tabId, payloadJson, contentText, newVersion, updatedAt);
         }
+        return newVersion;
     }
 
     @Override

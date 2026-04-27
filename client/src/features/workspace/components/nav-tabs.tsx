@@ -7,13 +7,16 @@ import { useStageFind } from '@/services/find/use-stage-find'
 import { Button } from '@/components/ui/button'
 import { MoreHorizontal } from 'lucide-react'
 import type { StageTab } from '@/stores/stage-store'
+import { useSessionStore } from '@/stores/session-store'
 
 export function NavTabs() {
   const { t } = useI18n()
   const [showArchived, setShowArchived] = useState(false)
   const [query, setQuery] = useState('')
   const focusTab = useStageStore((s) => s.focusTab)
+  const openStage = useStageStore((s) => s.openStage)
   const activeId = useStageStore((s) => s.activeWorkspaceTabId)
+  const activeSessionId = useSessionStore((s) => s.activeSessionId)
   const { tabs, isLoading } = useStageFind({ query, includeArchived: showArchived })
 
   return (
@@ -34,7 +37,12 @@ export function NavTabs() {
           <li className="px-2 py-3 text-center text-xs text-text-soft">{t('sidebar.tabs.empty')}</li>
         ) : (
           tabs.map((tab) => (
-            <NavTabsRow key={tab.tabId} tab={tab} focused={tab.tabId === activeId} onClick={() => focusTab(tab.tabId)} />
+            <NavTabsRow
+              key={tab.tabId}
+              tab={tab}
+              focused={tab.tabId === activeId}
+              onClick={() => openSidebarTab(tab, activeSessionId, openStage, focusTab)}
+            />
           ))
         )}
       </ul>
@@ -42,7 +50,32 @@ export function NavTabs() {
   )
 }
 
+function openSidebarTab(
+  tab: StageTab,
+  activeSessionId: string | null,
+  openStage: (id: string) => void,
+  focusTab: (id: string) => void,
+) {
+  const targetSessionId = tab.scope === 'session' ? tab.originSessionId : activeSessionId
+  if (tab.scope === 'session' && tab.originSessionId) {
+    const session = useSessionStore.getState()
+    session.openSession(tab.originSessionId, session.hasEverSentBySession.get(tab.originSessionId) ?? true)
+  }
+  if (targetSessionId) {
+    openStage(targetSessionId)
+  }
+  focusTab(tab.tabId)
+}
+
 function handleArrowKeys(e: React.KeyboardEvent, _tabs: StageTab[], _focusTab: (id: string) => void) {
+  if (e.key === 'Enter') {
+    const active = document.activeElement
+    if (active instanceof HTMLElement && active.getAttribute('role') === 'button') {
+      e.preventDefault()
+      active.click()
+    }
+    return
+  }
   if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
   e.preventDefault()
   const items = [...e.currentTarget.querySelectorAll<HTMLLIElement>('[role="button"]')]

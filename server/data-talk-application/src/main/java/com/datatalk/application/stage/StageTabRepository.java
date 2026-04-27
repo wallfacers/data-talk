@@ -24,9 +24,9 @@ public interface StageTabRepository {
     /**
      * Insert or update tab payload + content. Uses optimistic concurrency:
      * if expectedVersion does not match current payload_version, throws
-     * {@link com.datatalk.infra.stage.StageTabConcurrencyException}.
+     * {@link StageTabConcurrencyException}.
      */
-    void upsertPayload(String tabId, String payloadJson, String contentText, int expectedVersion, long updatedAt);
+    int upsertPayload(String tabId, String payloadJson, String contentText, Integer expectedVersion, long updatedAt);
 
     Optional<StageTab> findById(String id);
 

@@ -2,6 +2,7 @@ import { ToolRegistry } from '../tool-registry'
 import { ExecuteSql } from './execute-sql'
 import { ShowSchema } from './metadata-renderers'
 import { ArtifactCreated } from './artifact-created'
+import './diagnostics-card'
 
 let registered = false
 

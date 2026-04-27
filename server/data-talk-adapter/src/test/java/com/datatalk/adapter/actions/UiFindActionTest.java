@@ -28,7 +28,7 @@ class UiFindActionTest {
     @Test
     void parseMapsOutputModeCorrectly() {
         java.util.Map<String, Object> input = java.util.Map.of(
-            "outputMode", "count",
+            "output", java.util.Map.of("mode", "count"),
             "filter", java.util.Map.of("scope", "workspace")
         );
 
@@ -50,7 +50,6 @@ class UiFindActionTest {
 
         java.util.Map<String, Object> envelope = UiFindAction.toEnvelope(result);
 
-        assertThat(envelope).containsEntry("outputMode", "metadata");
         assertThat(envelope).containsEntry("totalMatched", 1);
         assertThat(envelope).containsEntry("truncated", false);
     }

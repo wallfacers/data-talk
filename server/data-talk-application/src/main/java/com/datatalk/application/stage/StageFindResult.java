@@ -2,6 +2,7 @@ package com.datatalk.application.stage;
 
 import com.datatalk.domain.stage.StageTabContent;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -27,7 +28,7 @@ public record StageFindResult(
     public static StageFindResult count(int totalMatched) {
         return new StageFindResult(
             StageFindQuery.OutputMode.COUNT, List.of(), List.of(),
-            totalMatched, 0, false, List.of(), List.of());
+            totalMatched, totalMatched, false, List.of(), List.of());
     }
 
     public static StageFindResult tabsOnly(List<String> tabIds, int totalMatched, boolean truncated) {
@@ -40,8 +41,28 @@ public record StageFindResult(
      * Return a new instance with the reads field replaced.
      */
     public StageFindResult withReads(List<StageTabContent> reads) {
+        return withReadsAndWarnings(reads, List.of());
+    }
+
+    /**
+     * Return a new instance with reads replaced and additional warnings appended.
+     */
+    public StageFindResult withReadsAndWarnings(List<StageTabContent> reads, List<String> additionalWarnings) {
+        var mergedWarnings = new ArrayList<>(warnings);
+        mergedWarnings.addAll(additionalWarnings);
         return new StageFindResult(
             outputMode, items, tabIds, totalMatched, tabsMatched,
-            truncated, reads, warnings);
+            truncated, reads, List.copyOf(mergedWarnings));
+    }
+
+    /**
+     * Return a new instance with additional warnings appended.
+     */
+    public StageFindResult withWarnings(List<String> additionalWarnings) {
+        var mergedWarnings = new ArrayList<>(warnings);
+        mergedWarnings.addAll(additionalWarnings);
+        return new StageFindResult(
+            outputMode, items, tabIds, totalMatched, tabsMatched,
+            truncated, reads, List.copyOf(mergedWarnings));
     }
 }

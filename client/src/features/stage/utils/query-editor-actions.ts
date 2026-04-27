@@ -236,24 +236,7 @@ function updateQueryEditorPayloadContextOverride(
 }
 
 function resetTabExecutionState(tabId: string) {
-  useSqlWorkbenchStore.setState((state) => {
-    const current = state.tabsById[tabId]
-    if (!current) return state
-    return {
-      tabsById: {
-        ...state.tabsById,
-        [tabId]: {
-          ...current,
-          executeStatus: 'idle',
-          risk: null,
-          errorMessage: null,
-          confirmation: null,
-          confirmationInvalid: null,
-          lastRequest: null,
-        },
-      },
-    }
-  })
+  useSqlWorkbenchStore.getState().resetExecutionState(tabId)
 }
 
 function buildRuntimeOverrideFromPayload(params: {

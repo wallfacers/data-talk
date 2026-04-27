@@ -24,8 +24,6 @@ public class StageTabIndexer implements StageTabIndexerPort {
         rs.getDouble("score")
     );
 
-    private static final RowMapper<String> ID_MAPPER = (rs, i) -> rs.getString("id");
-
     public StageTabIndexer(@Qualifier("datatalkJdbc") JdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }
@@ -56,11 +54,14 @@ public class StageTabIndexer implements StageTabIndexerPort {
         if (rowids == null || rowids.isEmpty()) {
             return List.of();
         }
-        String placeholders = String.join(",", rowids.stream().map(r -> "?").toList());
-        return jdbc.query(
-            "SELECT id FROM stage_tab_payload p JOIN stage_tabs t ON t.id = p.tab_id" +
-            " WHERE p.rowid IN (" + placeholders + ")",
-            ID_MAPPER, rowids.toArray());
+        return rowids.stream()
+            .map(rowid -> jdbc.query(
+                "SELECT id FROM stage_tabs WHERE rowid = ?",
+                (rs, i) -> rs.getString("id"),
+                rowid))
+            .filter(list -> !list.isEmpty())
+            .map(list -> list.get(0))
+            .toList();
     }
 
     /**

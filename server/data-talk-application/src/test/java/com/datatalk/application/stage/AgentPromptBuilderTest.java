@@ -74,8 +74,9 @@ class AgentPromptBuilderTest {
         when(repo.countArchived()).thenReturn(0);
 
         String result = builder.render("{{STAGE_TAB_DIGEST}}");
-        // Title should be truncated: 80 chars + "…" = 81 chars in the escaped output
-        assertThat(result).contains("…" );
+        // Title should be truncated: 80 chars + "..." in the escaped output.
+        assertThat(result).contains("...");
+        assertThat(result).doesNotContain("…");
         assertThat(result).doesNotContain("A".repeat(120));
     }
 

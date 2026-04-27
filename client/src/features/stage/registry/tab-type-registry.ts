@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react'
-import { FileEditIcon, FileTextIcon, ImageIcon, LayoutIcon } from 'lucide-react'
+import { FileEditIcon, FileTextIcon, ImageIcon, LayoutIcon, SearchCodeIcon } from 'lucide-react'
+import { useSqlWorkbenchStore } from '@/features/stage/stores/sql-workbench-store'
 
 export interface TabTypeDescriptor {
   type: string
@@ -30,6 +31,13 @@ export const TAB_TYPE_REGISTRY: Record<string, TabTypeDescriptor> = {
       const o = p as { sqlText?: unknown } | null | undefined
       return typeof o?.sqlText === 'string' ? o.sqlText : ''
     },
+    rehydrate: (tabId, p) => {
+      const o = p as { sqlText?: unknown; version?: unknown } | null | undefined
+      useSqlWorkbenchStore.getState().ensureTab(tabId, {
+        sqlText: typeof o?.sqlText === 'string' ? o.sqlText : '',
+        source: 'user',
+      })
+    },
   },
   artifact_preview: {
     type: 'artifact_preview',
@@ -55,6 +63,17 @@ export const TAB_TYPE_REGISTRY: Record<string, TabTypeDescriptor> = {
     icon: LayoutIcon,
     labelKey: 'tabType.workspace',
     extractContent: () => '',
+  },
+  diagnostic: {
+    type: 'diagnostic',
+    persistent: true,
+    scope: 'workspace',
+    icon: SearchCodeIcon,
+    labelKey: 'tabType.diagnostic',
+    extractContent: (p) => {
+      const o = p as { sql?: unknown } | null | undefined
+      return typeof o?.sql === 'string' ? o.sql : ''
+    },
   },
 }
 

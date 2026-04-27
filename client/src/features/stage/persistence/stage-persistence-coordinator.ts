@@ -47,7 +47,7 @@ export class StagePersistenceCoordinator {
     if (this.phase === 'degraded') return
     const merged = { ...this.metaPending.get(tabId), ...patch }
     this.metaPending.set(tabId, merged)
-    void this.runMetadataWrite(tabId)
+    void this.runMetadataWrite(tabId).catch(() => undefined)
   }
 
   scheduleContentWrite(tabId: string, write: ContentWrite): void {
@@ -60,8 +60,22 @@ export class StagePersistenceCoordinator {
     const existing = this.contentTimers.get(tabId)
     if (existing) clearTimeout(existing)
     this.contentTimers.set(tabId, setTimeout(() => {
-      void this.runContentWrite(tabId)
+      void this.runContentWrite(tabId).catch(() => undefined)
     }, CONTENT_DEBOUNCE_MS))
+  }
+
+  async delete(tabId: string): Promise<void> {
+    if (this.phase === 'degraded') return
+    if (this.resolveTabSnapshot(tabId)) {
+      await this.flush(tabId)
+    } else {
+      const timer = this.contentTimers.get(tabId)
+      if (timer) clearTimeout(timer)
+      this.contentTimers.delete(tabId)
+      this.contentPending.delete(tabId)
+      this.metaPending.delete(tabId)
+    }
+    await this.api.delete(tabId)
   }
 
   async flush(tabId: string): Promise<void> {
@@ -70,8 +84,10 @@ export class StagePersistenceCoordinator {
       clearTimeout(t)
       this.contentTimers.delete(tabId)
     }
-    if (this.contentPending.has(tabId)) await this.runContentWrite(tabId)
+    const metaInflight = this.metaInflight.get(tabId)
+    if (metaInflight) await metaInflight
     if (this.metaPending.has(tabId)) await this.runMetadataWrite(tabId)
+    if (this.contentPending.has(tabId)) await this.runContentWrite(tabId)
   }
 
   async flushAll(): Promise<void> {
@@ -100,6 +116,7 @@ export class StagePersistenceCoordinator {
   }
 
   onPayloadHydrated?: (tabId: string, payload: unknown, version: number) => void
+  onPersisted?: (tabId: string, version: number) => void
 
   private async runMetadataWrite(tabId: string): Promise<void> {
     const inflight = this.metaInflight.get(tabId)
@@ -108,9 +125,12 @@ export class StagePersistenceCoordinator {
     if (!snap) return
     this.metaPending.delete(tabId)
     const promise = this.api.upsert(this.materializeUpsert(tabId, snap))
-      .then(() => undefined)
+      .then((response) => {
+        this.onPersisted?.(tabId, response.payloadVersion)
+      })
       .catch((e: unknown) => {
         this.handleError(e)
+        throw e
       })
       .finally(() => {
         this.metaInflight.delete(tabId)
@@ -126,9 +146,11 @@ export class StagePersistenceCoordinator {
     this.contentPending.delete(tabId)
     this.contentTimers.delete(tabId)
     try {
-      await this.api.putPayload(this.materializeContent(tabId, w))
+      const response = await this.api.putPayload(this.materializeContent(tabId, w))
+      this.onPersisted?.(tabId, response.payloadVersion)
     } catch (e) {
       this.handleError(e)
+      throw e
     }
   }
 

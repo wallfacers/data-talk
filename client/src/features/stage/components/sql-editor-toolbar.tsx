@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { PlayIcon, SquareIcon, SparklesIcon } from 'lucide-react'
+import { PlayIcon, SquareIcon, SparklesIcon, SearchCodeIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useI18n } from '@/i18n/use-i18n'
 import { SqlLimitSelect, type SqlLimitValue } from './sql-limit-select'
@@ -11,6 +11,8 @@ type SqlEditorToolbarProps = {
   onRun: () => void
   onCancel: () => void
   onFormat: () => void
+  canExplain?: boolean
+  onExplain?: () => void
   limit: SqlLimitValue
   onLimitChange: (value: SqlLimitValue) => void
 }
@@ -22,6 +24,8 @@ export function SqlEditorToolbar({
   onRun,
   onCancel,
   onFormat,
+  canExplain,
+  onExplain,
   limit,
   onLimitChange,
 }: SqlEditorToolbarProps) {
@@ -47,6 +51,18 @@ export function SqlEditorToolbar({
           <SparklesIcon />
           {t('stage.toolbar.format')}
         </Button>
+        {onExplain && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onExplain}
+            disabled={!canExplain}
+            aria-label={t('stage.toolbar.explain')}
+          >
+            <SearchCodeIcon />
+            {t('stage.toolbar.explain')}
+          </Button>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center justify-end gap-2">

@@ -55,9 +55,7 @@ export function StageWindow({ sessionId }: Props) {
 
   function focusWorkspaceTabInStage() {
     if (!sessionId) return
-    const activeTabs = new Map(useStageStore.getState().activeTabIdBySession)
-    activeTabs.set(sessionId, null)
-    useStageStore.setState({ activeTabIdBySession: activeTabs })
+    useStageStore.getState().focusWorkspaceTabForSession(sessionId)
   }
 
   const handleCloseTab = (tabId: string) => closeTab(tabId)

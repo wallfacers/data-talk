@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -29,11 +30,20 @@ import java.util.stream.Collectors;
 public class StageFindService {
 
     private static final int MAX_REGEX_LENGTH = 200;
+    private static final int MAX_TAB_IDS = 200;
+    private static final int MAX_PAYLOAD_BYTES = 1024 * 1024;
     private static final long PER_TAB_TIMEOUT_SECONDS = 2;
     static final int DEFAULT_CONTEXT_LINES = 3;
 
     private final StageTabRepository repo;
     private final StageTabIndexerPort indexer;
+
+    private record ReadComputation(List<StageTabContent> reads, List<String> warnings) {}
+
+    private record RegexFanOutResult(
+        Map<String, List<Map<String, Object>>> matchesByTab,
+        List<String> warnings
+    ) {}
 
     public StageFindService(StageTabRepository repo, StageTabIndexerPort indexer) {
         this.repo = repo;
@@ -49,6 +59,8 @@ public class StageFindService {
                 case METADATA -> executeMetadata(query.filter());
                 case COUNT -> executeCount(query.filter());
                 case TABS_ONLY -> executeTabsOnly(query.filter());
+                case MATCHES -> throw new UnsupportedOperationException(
+                    "Matches mode requires a content query with a pattern");
                 case CONTENT -> throw new UnsupportedOperationException(
                     "Content search mode requires a contentQuery with a pattern");
                 case READ -> executeRead(query);
@@ -56,9 +68,10 @@ public class StageFindService {
         }
 
         // Apply read on top of content search results
-        if (query.reads() != null && !query.reads().isEmpty() && base != null) {
+        if (query.reads() != null && !query.reads().isEmpty()
+            && base != null && base.outputMode() != StageFindQuery.OutputMode.READ) {
             var reads = computeReads(query, base);
-            return base.withReads(reads);
+            return base.withReadsAndWarnings(reads.reads(), reads.warnings());
         }
 
         return base;
@@ -66,38 +79,130 @@ public class StageFindService {
 
     // ---- Read mode (cat/sed) + contextLines ----
 
-    private List<StageTabContent> computeReads(StageFindQuery query, StageFindResult base) {
+    private ReadComputation computeReads(StageFindQuery query, StageFindResult base) {
         var reads = query.reads();
         var result = new ArrayList<StageTabContent>();
+        var warnings = new ArrayList<String>();
+        if (reads == null || reads.isEmpty()) {
+            return new ReadComputation(List.of(), List.of());
+        }
 
-        // Resolve tab IDs: explicit reads take priority, then fall back to base results
-        var tabIds = reads.stream().map(StageFindQuery.Read::tabId).toList();
+        // Resolve tab IDs: explicit reads take priority, then fall back to base results.
+        var tabIds = resolveReadTabIds(reads, base);
+        if (tabIds.isEmpty()) {
+            return new ReadComputation(List.of(), List.of());
+        }
+
+        boolean includeArchived = query.filter() != null && Boolean.TRUE.equals(query.filter().includeArchived());
+        var allowedTabIds = new ArrayList<String>();
+        for (var tabId : tabIds) {
+            var tab = repo.findById(tabId);
+            if (tab.isEmpty()) {
+                warnings.add("tab_not_found: " + tabId);
+                continue;
+            }
+            if (tab.get().archived() && !includeArchived) {
+                warnings.add("archived_tab_skipped: " + tabId);
+                continue;
+            }
+            allowedTabIds.add(tabId);
+        }
+        if (allowedTabIds.isEmpty()) {
+            return new ReadComputation(List.of(), warnings);
+        }
 
         // Look up content for each tab, applying range slicing
-        var contents = repo.findContents(tabIds);
+        var contents = repo.findContents(allowedTabIds);
         var contentById = contents.stream()
             .collect(Collectors.toMap(StageTabContent::tabId, Function.identity()));
 
         // Build a readById map for range lookup
         var readById = reads.stream()
-            .collect(Collectors.toMap(StageFindQuery.Read::tabId, Function.identity()));
+            .filter(read -> read.tabId() != null)
+            .collect(Collectors.toMap(
+                StageFindQuery.Read::tabId,
+                Function.identity(),
+                (first, second) -> second,
+                LinkedHashMap::new));
+        var defaultRead = reads.stream()
+            .filter(read -> read.tabId() == null)
+            .findFirst();
 
-        for (var tabId : tabIds) {
+        for (var tabId : allowedTabIds) {
             var content = contentById.get(tabId);
             if (content == null) continue;
-            var read = readById.get(tabId);
-            if (read == null) continue;
+            var read = readById.getOrDefault(tabId,
+                defaultRead.orElseGet(() -> new StageFindQuery.Read(tabId, true)));
 
             var range = read.range();
             if (range instanceof StageFindQuery.ReadRange.Full) {
-                result.add(content);
+                result.add(limitPayload(content, warnings));
             } else if (range instanceof StageFindQuery.ReadRange.LineRange lr) {
                 var sliced = sliceContent(content, lr.startLine(), lr.endLine());
-                result.add(sliced);
+                result.add(limitPayload(sliced, warnings));
             }
         }
 
-        return result;
+        return new ReadComputation(List.copyOf(result), List.copyOf(warnings));
+    }
+
+    private List<String> resolveReadTabIds(List<StageFindQuery.Read> reads, StageFindResult base) {
+        var explicitIds = reads.stream()
+            .map(StageFindQuery.Read::tabId)
+            .filter(id -> id != null && !id.isBlank())
+            .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (!explicitIds.isEmpty()) {
+            return explicitIds.stream().limit(MAX_TAB_IDS).toList();
+        }
+        if (base == null) {
+            return List.of();
+        }
+        var ids = new LinkedHashSet<String>();
+        ids.addAll(base.tabIds());
+        for (var item : base.items()) {
+            Object id = item.get("objectId");
+            if (!(id instanceof String)) {
+                id = item.get("id");
+            }
+            if (!(id instanceof String) && item.get("tab") instanceof Map<?, ?> tab) {
+                id = tab.get("objectId");
+                if (!(id instanceof String)) {
+                    id = tab.get("id");
+                }
+            }
+            if (id instanceof String s && !s.isBlank()) {
+                ids.add(s);
+            }
+        }
+        return ids.stream().limit(MAX_TAB_IDS).toList();
+    }
+
+    private StageTabContent limitPayload(StageTabContent content, List<String> warnings) {
+        String payloadJson = truncateUtf8(content.payloadJson(), MAX_PAYLOAD_BYTES);
+        String contentText = truncateUtf8(content.contentText(), MAX_PAYLOAD_BYTES);
+        if (payloadJson.equals(content.payloadJson()) && contentText.equals(content.contentText())) {
+            return content;
+        }
+        warnings.add("payload_too_large: " + content.tabId());
+        return new StageTabContent(content.tabId(), payloadJson, contentText,
+            content.contentVersion(), content.updatedAt());
+    }
+
+    private static String truncateUtf8(String value, int maxBytes) {
+        if (value.getBytes(java.nio.charset.StandardCharsets.UTF_8).length <= maxBytes) {
+            return value;
+        }
+        int low = 0;
+        int high = value.length();
+        while (low < high) {
+            int mid = (low + high + 1) >>> 1;
+            if (value.substring(0, mid).getBytes(java.nio.charset.StandardCharsets.UTF_8).length <= maxBytes) {
+                low = mid;
+            } else {
+                high = mid - 1;
+            }
+        }
+        return value.substring(0, low);
     }
 
     private StageTabContent sliceContent(StageTabContent content, int startLine, int endLine) {
@@ -140,6 +245,14 @@ public class StageFindService {
                 context.add(ctxLine);
             }
             Map<String, Object> enriched = new LinkedHashMap<>(match);
+            enriched.put("before", context.stream()
+                .filter(line -> !Boolean.TRUE.equals(line.get("isMatch")) && (int) line.get("lineNumber") < lineNum)
+                .map(line -> line.get("line"))
+                .toList());
+            enriched.put("after", context.stream()
+                .filter(line -> !Boolean.TRUE.equals(line.get("isMatch")) && (int) line.get("lineNumber") > lineNum)
+                .map(line -> line.get("line"))
+                .toList());
             enriched.put("context", context);
             result.add(enriched);
         }
@@ -156,13 +269,24 @@ public class StageFindService {
         var mode = cq.mode() != null ? cq.mode() : StageFindQuery.ContentQuery.SearchMode.FTS;
 
         var matchesByTab = new LinkedHashMap<String, List<Map<String, Object>>>();
+        var scoreByTab = new LinkedHashMap<String, Double>();
+        var warnings = new ArrayList<String>();
+        boolean truncated = false;
+        int contextLines = maxContextLines(query.reads());
 
         switch (mode) {
             case FTS, SUBSTRING -> {
                 int candidateLimit = Math.max(queryLimit * 4, 200);
                 var rowids = indexer.ftsMatch(pattern, includeArchived, candidateLimit);
                 var ids = indexer.rowidsToIds(rowids.stream().map(StageTabIndexerPort.RowidScore::rowid).toList());
-                var idsToCheck = ids.stream().limit(queryLimit).toList();
+                for (int i = 0; i < ids.size() && i < rowids.size(); i++) {
+                    scoreByTab.put(ids.get(i), rowids.get(i).score());
+                }
+                var filteredIds = ids.stream()
+                    .filter(id -> repo.findById(id).map(tab -> matchesFilter(tab, query.filter())).orElse(false))
+                    .toList();
+                truncated = filteredIds.size() > queryLimit || ids.size() >= candidateLimit;
+                var idsToCheck = filteredIds.stream().limit(queryLimit).toList();
 
                 var contents = repo.findContents(idsToCheck);
                 var contentById = contents.stream()
@@ -171,8 +295,13 @@ public class StageFindService {
                 for (var id : idsToCheck) {
                     var c = contentById.get(id);
                     if (c == null) continue;
-                    var lines = substringPostFilter(pattern, c.contentText());
-                    if (!lines.isEmpty()) {
+                    var lines = mode == StageFindQuery.ContentQuery.SearchMode.FTS
+                        ? firstMatchPerLine(c.contentText(), pattern, cq.caseInsensitive() == null || cq.caseInsensitive())
+                        : substringPostFilter(pattern, c.contentText(), cq.caseInsensitive() == null || cq.caseInsensitive());
+                    if (!lines.isEmpty() || mode == StageFindQuery.ContentQuery.SearchMode.FTS) {
+                        if (!lines.isEmpty() && contextLines > 0) {
+                            lines = withContextLines(lines, c.contentText(), contextLines, contextLines);
+                        }
                         matchesByTab.put(id, lines);
                     }
                 }
@@ -182,26 +311,47 @@ public class StageFindService {
 
                 // For regex, list all tabs and fan-out with virtual threads
                 StageTabRepository.ListFilter listFilter = new StageTabRepository.ListFilter(
-                    null, null, null, null, includeArchived, null, null, null, queryLimit * 4
+                    query.filter() != null ? query.filter().scope() : null,
+                    query.filter() != null ? query.filter().type() : null,
+                    query.filter() != null ? query.filter().connectionId() : null,
+                    query.filter() != null ? query.filter().originSessionId() : null,
+                    includeArchived, query.filter() != null ? query.filter().pinned() : null,
+                    query.filter() != null ? query.filter().lastTouchedAfter() : null,
+                    query.filter() != null ? query.filter().lastTouchedBefore() : null,
+                    queryLimit * 4
                 );
                 var tabs = repo.list(listFilter);
+                truncated = tabs.size() > queryLimit;
                 var idsToCheck = tabs.stream().map(StageTab::id).limit(queryLimit).toList();
 
                 var contents = repo.findContents(idsToCheck);
                 var contentById = contents.stream()
                     .collect(Collectors.toMap(StageTabContent::tabId, Function.identity()));
 
-                var regexResults = regexFanOut(pattern, idsToCheck, contentById);
-                for (var entry : regexResults.entrySet()) {
-                    if (!entry.getValue().isEmpty()) {
-                        matchesByTab.put(entry.getKey(), entry.getValue());
+                int flags = Boolean.TRUE.equals(cq.multiline()) ? Pattern.MULTILINE : 0;
+                if (cq.caseInsensitive() == null || cq.caseInsensitive()) {
+                    flags |= Pattern.CASE_INSENSITIVE;
+                }
+                var regexResults = regexFanOut(pattern, flags, idsToCheck, contentById);
+                warnings.addAll(regexResults.warnings());
+                if (!regexResults.warnings().isEmpty()) {
+                    truncated = true;
+                }
+                for (var entry : regexResults.matchesByTab().entrySet()) {
+                    var lines = entry.getValue();
+                    if (!lines.isEmpty()) {
+                        var content = contentById.get(entry.getKey());
+                        if (content != null && contextLines > 0) {
+                            lines = withContextLines(lines, content.contentText(), contextLines, contextLines);
+                        }
+                        matchesByTab.put(entry.getKey(), lines);
                     }
                 }
             }
         }
 
-        int totalMatches = matchesByTab.values().stream().mapToInt(List::size).sum();
-        boolean truncated = matchesByTab.size() > queryLimit;
+        int lineMatches = matchesByTab.values().stream().mapToInt(List::size).sum();
+        int totalMatches = Math.max(lineMatches, matchesByTab.size());
 
         return switch (query.outputMode()) {
             case METADATA -> {
@@ -210,20 +360,25 @@ public class StageFindService {
                     .filter(Optional::isPresent)
                     .map(opt -> tabToMap(opt.get()))
                     .toList();
-                yield StageFindResult.metadata(items, matchesByTab.size(), truncated);
+                yield StageFindResult.metadata(items, matchesByTab.size(), truncated).withWarnings(warnings);
             }
-            case COUNT -> StageFindResult.count(totalMatches);
-            case CONTENT, TABS_ONLY -> {
+            case COUNT -> StageFindResult.count(totalMatches).withWarnings(warnings);
+            case TABS_ONLY -> {
                 var tabIds = List.copyOf(matchesByTab.keySet());
-                yield StageFindResult.tabsOnly(tabIds, totalMatches, truncated);
+                yield StageFindResult.tabsOnly(tabIds, totalMatches, truncated).withWarnings(warnings);
             }
-            case READ -> {
-                var tabIds = List.copyOf(matchesByTab.keySet());
+            case MATCHES, CONTENT -> {
+                var items = matchesByTab.entrySet().stream()
+                    .map(entry -> matchItem(entry.getKey(), entry.getValue(), scoreByTab.get(entry.getKey())))
+                    .filter(Optional::isPresent)
+                    .map(Optional::get)
+                    .toList();
                 yield new StageFindResult(
-                    StageFindQuery.OutputMode.READ, List.of(), tabIds,
-                    totalMatches, matchesByTab.size(), truncated,
-                    List.of(), List.of());
+                    StageFindQuery.OutputMode.MATCHES, items, List.of(),
+                    totalMatches, matchesByTab.size(), truncated, List.of(), List.copyOf(warnings));
             }
+            case READ -> StageFindResult.tabsOnly(List.copyOf(matchesByTab.keySet()), totalMatches, truncated)
+                .withWarnings(warnings);
         };
     }
 
@@ -245,13 +400,15 @@ public class StageFindService {
      * Fan-out regex matching across tabs using virtual threads.
      * Each tab gets its own virtual thread with a per-tab timeout.
      */
-    private Map<String, List<Map<String, Object>>> regexFanOut(
+    private RegexFanOutResult regexFanOut(
             String pattern,
+            int flags,
             List<String> tabIds,
             Map<String, StageTabContent> contentById) {
 
-        var compiled = Pattern.compile(pattern);
+        var compiled = Pattern.compile(pattern, flags);
         var result = new LinkedHashMap<String, List<Map<String, Object>>>();
+        var warnings = new ArrayList<String>();
 
         try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
             var futures = new ArrayList<Future<Map.Entry<String, List<Map<String, Object>>>>>();
@@ -266,14 +423,15 @@ public class StageFindService {
                     var entry = future.get(PER_TAB_TIMEOUT_SECONDS, TimeUnit.SECONDS);
                     result.put(entry.getKey(), entry.getValue());
                 } catch (TimeoutException e) {
-                    // Tab timed out — skip it
+                    warnings.add("timeout: regex tab scan exceeded " + PER_TAB_TIMEOUT_SECONDS + "s");
+                    future.cancel(true);
                 } catch (Exception e) {
                     // Other error — skip
                 }
             }
         }
 
-        return result;
+        return new RegexFanOutResult(result, List.copyOf(warnings));
     }
 
     private static List<Map<String, Object>> regexMatchOne(Pattern pattern, String content) {
@@ -295,17 +453,18 @@ public class StageFindService {
 
     // ---- Substring post-filter ----
 
-    private static List<Map<String, Object>> substringPostFilter(String pattern, String content) {
-        return firstMatchPerLine(content, pattern);
+    private static List<Map<String, Object>> substringPostFilter(String pattern, String content, boolean caseInsensitive) {
+        return firstMatchPerLine(content, pattern, caseInsensitive);
     }
 
-    private static List<Map<String, Object>> firstMatchPerLine(String content, String pattern) {
+    private static List<Map<String, Object>> firstMatchPerLine(String content, String pattern, boolean caseInsensitive) {
         var result = new ArrayList<Map<String, Object>>();
         String[] lines = content.split("\n");
-        String lowerPattern = pattern.toLowerCase();
+        String needle = caseInsensitive ? pattern.toLowerCase() : pattern;
         for (int i = 0; i < lines.length; i++) {
             String line = lines[i];
-            int idx = line.toLowerCase().indexOf(lowerPattern);
+            String haystack = caseInsensitive ? line.toLowerCase() : line;
+            int idx = haystack.indexOf(needle);
             if (idx >= 0) {
                 Map<String, Object> m = new LinkedHashMap<>();
                 m.put("lineNumber", i + 1);
@@ -318,9 +477,35 @@ public class StageFindService {
         return result;
     }
 
+    private Optional<Map<String, Object>> matchItem(String tabId, List<Map<String, Object>> matches, Double score) {
+        return repo.findById(tabId).map(tab -> {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("tab", tabToMap(tab));
+            item.put("matches", matches);
+            if (score != null) {
+                item.put("matchScore", score);
+            }
+            return item;
+        });
+    }
+
+    private int maxContextLines(List<StageFindQuery.Read> reads) {
+        if (reads == null || reads.isEmpty()) {
+            return 0;
+        }
+        return reads.stream().mapToInt(StageFindQuery.Read::contextLines).max().orElse(0);
+    }
+
     // ---- Metadata-only modes ----
 
     private StageFindResult executeMetadata(StageFindQuery.Filter filter) {
+        if (filter != null && filter.objectId() != null) {
+            List<Map<String, Object>> items = repo.findById(filter.objectId())
+                .filter(tab -> matchesFilter(tab, filter))
+                .map(tab -> List.of(tabToMap(tab)))
+                .orElse(List.of());
+            return StageFindResult.metadata(items, items.size(), false);
+        }
         StageTabRepository.ListFilter listFilter = toListFilter(filter);
         List<StageTab> tabs = repo.list(listFilter);
         List<Map<String, Object>> items = tabs.stream().map(this::tabToMap).toList();
@@ -329,12 +514,23 @@ public class StageFindService {
     }
 
     private StageFindResult executeCount(StageFindQuery.Filter filter) {
+        if (filter != null && filter.objectId() != null) {
+            int count = repo.findById(filter.objectId()).filter(tab -> matchesFilter(tab, filter)).isPresent() ? 1 : 0;
+            return StageFindResult.count(count);
+        }
         StageTabRepository.ListFilter listFilter = toListFilter(filter);
         List<StageTab> tabs = repo.list(listFilter);
         return StageFindResult.count(tabs.size());
     }
 
     private StageFindResult executeTabsOnly(StageFindQuery.Filter filter) {
+        if (filter != null && filter.objectId() != null) {
+            List<String> tabIds = repo.findById(filter.objectId())
+                .filter(tab -> matchesFilter(tab, filter))
+                .map(tab -> List.of(tab.id()))
+                .orElse(List.of());
+            return StageFindResult.tabsOnly(tabIds, tabIds.size(), false);
+        }
         StageTabRepository.ListFilter listFilter = toListFilter(filter);
         List<StageTab> tabs = repo.list(listFilter);
         List<String> tabIds = tabs.stream().map(StageTab::id).toList();
@@ -351,8 +547,8 @@ public class StageFindService {
         var reads = computeReads(query, null);
         return new StageFindResult(
             StageFindQuery.OutputMode.READ, List.of(),
-            reads.stream().map(StageTabContent::tabId).toList(),
-            reads.size(), reads.size(), false, reads, List.of());
+            reads.reads().stream().map(StageTabContent::tabId).toList(),
+            reads.reads().size(), reads.reads().size(), false, reads.reads(), reads.warnings());
     }
 
     private StageTabRepository.ListFilter toListFilter(StageFindQuery.Filter filter) {
@@ -375,6 +571,7 @@ public class StageFindService {
     private Map<String, Object> tabToMap(StageTab tab) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", tab.id());
+        m.put("objectId", tab.id());
         m.put("type", tab.type());
         m.put("scope", tab.scope().wire());
         m.put("title", tab.title());
@@ -386,6 +583,23 @@ public class StageFindService {
         m.put("archived", tab.archived());
         m.put("createdAt", tab.createdAt());
         m.put("lastTouchedAt", tab.lastTouchedAt());
+        m.put("payloadVersion", tab.payloadVersion());
         return m;
+    }
+
+    private boolean matchesFilter(StageTab tab, StageFindQuery.Filter filter) {
+        if (filter == null) {
+            return !tab.archived();
+        }
+        if (!Boolean.TRUE.equals(filter.includeArchived()) && tab.archived()) return false;
+        if (filter.scope() != null && tab.scope() != filter.scope()) return false;
+        if (filter.type() != null && !filter.type().equals(tab.type())) return false;
+        if (filter.connectionId() != null && !filter.connectionId().equals(tab.connectionId())) return false;
+        if (filter.objectId() != null && !filter.objectId().equals(tab.id())) return false;
+        if (filter.originSessionId() != null && !filter.originSessionId().equals(tab.originSessionId())) return false;
+        if (filter.pinned() != null && filter.pinned() != tab.pinned()) return false;
+        if (filter.lastTouchedAfter() != null && tab.lastTouchedAt() <= filter.lastTouchedAfter()) return false;
+        if (filter.lastTouchedBefore() != null && tab.lastTouchedAt() >= filter.lastTouchedBefore()) return false;
+        return true;
     }
 }

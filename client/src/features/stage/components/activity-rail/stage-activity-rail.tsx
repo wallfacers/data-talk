@@ -1,4 +1,4 @@
-import { DatabaseIcon, HistoryIcon, ListTreeIcon } from 'lucide-react'
+import { DatabaseIcon, HistoryIcon, ListTreeIcon, SearchCodeIcon } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@/components/ui/button'
 import { useI18n } from '@/i18n/use-i18n'
@@ -11,6 +11,7 @@ import { RailPanelShell } from './rail-panel-shell'
 import { HistoryPanel } from './history-panel'
 import { OutlinePanel } from './outline-panel'
 import { SchemaPanel, type SchemaPanelItem, type SchemaPanelContext } from './schema-panel'
+import { DiagnosticsPanel } from './diagnostics-panel'
 
 type Props = {
   sessionId?: string | null
@@ -140,12 +141,14 @@ export function StageActivityRail({ sessionId, className }: Props) {
     { panel: 'schema', label: t('stage.activityRail.schema.title'), Icon: DatabaseIcon },
     { panel: 'history', label: t('stage.activityRail.history.title'), Icon: HistoryIcon },
     { panel: 'outline', label: t('stage.activityRail.outline.title'), Icon: ListTreeIcon },
+    { panel: 'diagnostics', label: t('stage.activityRail.diagnostics.title'), Icon: SearchCodeIcon },
   ]
 
   const panelTitles: Record<RailPanel, string> = {
     schema: t('stage.activityRail.schema.title'),
     history: t('stage.activityRail.history.title'),
     outline: t('stage.activityRail.outline.title'),
+    diagnostics: t('stage.activityRail.diagnostics.title'),
   }
 
   const schemaItems = buildSchemaItems(schemaContext, {
@@ -206,6 +209,9 @@ export function StageActivityRail({ sessionId, className }: Props) {
           ) : null}
           {activePanel === 'outline' ? (
             <OutlinePanel statements={outlineStatements} onJumpToLine={handleJumpToLine} />
+          ) : null}
+          {activePanel === 'diagnostics' ? (
+            <DiagnosticsPanel entry={null} onOpenInWorkbench={() => {}} />
           ) : null}
         </RailPanelShell>
       ) : null}

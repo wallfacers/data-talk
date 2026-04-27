@@ -48,7 +48,7 @@ class StageFindServiceRegexTest {
 
         StageFindQuery query = new StageFindQuery(
             StageFindQuery.OutputMode.TABS_ONLY,
-            new Filter(null, null, null, null, false, null, null, null, 100),
+            new Filter(null, null, null, null, null, false, null, null, null, 100),
             new ContentQuery("#\\d{5}", false, 100, SearchMode.REGEX),
             List.of()
         );
@@ -63,7 +63,7 @@ class StageFindServiceRegexTest {
     void regexInvalidPatternThrowsException() {
         StageFindQuery query = new StageFindQuery(
             StageFindQuery.OutputMode.TABS_ONLY,
-            new Filter(null, null, null, null, false, null, null, null, 100),
+            new Filter(null, null, null, null, null, false, null, null, null, 100),
             new ContentQuery("[unclosed", false, 100, SearchMode.REGEX),
             List.of()
         );
@@ -79,7 +79,7 @@ class StageFindServiceRegexTest {
 
         StageFindQuery query = new StageFindQuery(
             StageFindQuery.OutputMode.TABS_ONLY,
-            new Filter(null, null, null, null, false, null, null, null, 100),
+            new Filter(null, null, null, null, null, false, null, null, null, 100),
             new ContentQuery(longPattern, false, 100, SearchMode.REGEX),
             List.of()
         );

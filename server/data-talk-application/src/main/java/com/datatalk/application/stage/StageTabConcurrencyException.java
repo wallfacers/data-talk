@@ -1,8 +1,7 @@
-package com.datatalk.infra.stage;
+package com.datatalk.application.stage;
 
 /**
- * Thrown when an upsert payload operation detects an optimistic concurrency conflict:
- * the expected payload version does not match the current version in the database.
+ * Thrown when a stage tab write detects an optimistic concurrency conflict.
  */
 public class StageTabConcurrencyException extends RuntimeException {
 
@@ -18,7 +17,15 @@ public class StageTabConcurrencyException extends RuntimeException {
         this.actualVersion = actualVersion;
     }
 
-    public String tabId() { return tabId; }
-    public int expectedVersion() { return expectedVersion; }
-    public int actualVersion() { return actualVersion; }
+    public String tabId() {
+        return tabId;
+    }
+
+    public int expectedVersion() {
+        return expectedVersion;
+    }
+
+    public int actualVersion() {
+        return actualVersion;
+    }
 }

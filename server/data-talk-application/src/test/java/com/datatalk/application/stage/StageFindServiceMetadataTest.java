@@ -40,7 +40,7 @@ class StageFindServiceMetadataTest {
 
         StageFindQuery query = new StageFindQuery(
             StageFindQuery.OutputMode.METADATA,
-            new Filter(StageTabScope.WORKSPACE, null, null, null, false, null, null, null, 100),
+            new Filter(StageTabScope.WORKSPACE, null, null, null, null, false, null, null, null, 100),
             null, List.of()
         );
 
@@ -66,7 +66,7 @@ class StageFindServiceMetadataTest {
 
         StageFindQuery query = new StageFindQuery(
             StageFindQuery.OutputMode.COUNT,
-            new Filter(StageTabScope.WORKSPACE, null, null, null, false, null, null, null, 100),
+            new Filter(StageTabScope.WORKSPACE, null, null, null, null, false, null, null, null, 100),
             null, List.of()
         );
 

@@ -3,7 +3,9 @@ package com.datatalk.application.stage;
 import com.datatalk.application.stage.StageFindQuery.ContentQuery;
 import com.datatalk.application.stage.StageFindQuery.ContentQuery.SearchMode;
 import com.datatalk.application.stage.StageFindQuery.Filter;
+import com.datatalk.domain.stage.StageTab;
 import com.datatalk.domain.stage.StageTabContent;
+import com.datatalk.domain.stage.StageTabScope;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -40,12 +42,16 @@ class StageFindServiceFtsTest {
 
         var contentA = new StageTabContent("tab-a", "{}", "contact email: alice@example.com", 1, now);
         var contentB = new StageTabContent("tab-b", "{}", "send email to bob@corp.io", 1, now);
+        when(repo.findById("tab-a")).thenReturn(java.util.Optional.of(new StageTab("tab-a", "query_editor", StageTabScope.WORKSPACE,
+            "A", null, null, null, null, 1, false, false, null, now, now)));
+        when(repo.findById("tab-b")).thenReturn(java.util.Optional.of(new StageTab("tab-b", "query_editor", StageTabScope.WORKSPACE,
+            "B", null, null, null, null, 1, false, false, null, now, now)));
         when(repo.findContents(List.of("tab-a", "tab-b")))
             .thenReturn(List.of(contentA, contentB));
 
         StageFindQuery query = new StageFindQuery(
             StageFindQuery.OutputMode.TABS_ONLY,
-            new Filter(null, null, null, null, false, null, null, null, 100),
+            new Filter(null, null, null, null, null, false, null, null, null, 100),
             new ContentQuery("email", false, 100, SearchMode.FTS),
             List.of()
         );
@@ -72,13 +78,17 @@ class StageFindServiceFtsTest {
         // tab-x contains "email", tab-y does not
         var contentX = new StageTabContent("tab-x", "{}", "my email is here", 1, now);
         var contentY = new StageTabContent("tab-y", "{}", "no match here", 1, now);
+        when(repo.findById("tab-x")).thenReturn(java.util.Optional.of(new StageTab("tab-x", "query_editor", StageTabScope.WORKSPACE,
+            "X", null, null, null, null, 1, false, false, null, now, now)));
+        when(repo.findById("tab-y")).thenReturn(java.util.Optional.of(new StageTab("tab-y", "query_editor", StageTabScope.WORKSPACE,
+            "Y", null, null, null, null, 1, false, false, null, now, now)));
         when(repo.findContents(List.of("tab-x", "tab-y")))
             .thenReturn(List.of(contentX, contentY));
 
         StageFindQuery query = new StageFindQuery(
             StageFindQuery.OutputMode.TABS_ONLY,
-            new Filter(null, null, null, null, false, null, null, null, 100),
-            new ContentQuery("email", false, 100, SearchMode.FTS),
+            new Filter(null, null, null, null, null, false, null, null, null, 100),
+            new ContentQuery("email", false, 100, SearchMode.SUBSTRING),
             List.of()
         );
 

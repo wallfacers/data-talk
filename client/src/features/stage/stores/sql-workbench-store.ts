@@ -102,6 +102,7 @@ type SqlWorkbenchState = {
   markSaved: (tabId: string) => void
   setLimit: (tabId: string, limit: 10 | 100 | 1000 | null) => void
   setCursor: (tabId: string, line: number, column: number) => void
+  resetExecutionState: (tabId: string) => void
   cleanupTabs: (activeTabIds: string[]) => void
 }
 
@@ -522,6 +523,24 @@ export const useSqlWorkbenchStore = create<SqlWorkbenchState>((set, get) => ({
       },
     },
   })),
+
+  resetExecutionState: (tabId) => set((state) => {
+    const current = state.tabsById[tabId]
+    if (!current) return state
+    return {
+      tabsById: {
+        ...state.tabsById,
+        [tabId]: {
+          ...current,
+          executeStatus: 'idle',
+          errorMessage: null,
+          confirmation: null,
+          confirmationInvalid: null,
+          lastRequest: null,
+        },
+      },
+    }
+  }),
 
   cleanupTabs: (activeTabIds) => set((state) => {
     const activeSet = new Set(activeTabIds)

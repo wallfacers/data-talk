@@ -51,13 +51,13 @@ public class StageTabService {
     /**
      * Save payload and content text for a tab. Validates size cap.
      */
-    public void savePayload(String tabId, String payloadJson, String contentText, int expectedVersion) {
+    public int savePayload(String tabId, String payloadJson, String contentText, Integer expectedVersion) {
         long payloadBytes = payloadJson.getBytes(StandardCharsets.UTF_8).length;
         if (payloadBytes > MAX_PAYLOAD_BYTES) {
             throw new StageTabPayloadTooLargeException(payloadBytes, MAX_PAYLOAD_BYTES);
         }
         long now = clock.millis();
-        repo.upsertPayload(tabId, payloadJson, contentText, expectedVersion, now);
+        return repo.upsertPayload(tabId, payloadJson, contentText, expectedVersion, now);
     }
 
     public Optional<StageTab> find(String id) {

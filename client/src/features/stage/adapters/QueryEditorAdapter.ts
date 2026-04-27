@@ -78,9 +78,7 @@ const CAPABILITIES = {
 
 function clearSessionActiveTab(sessionId: string | null) {
   if (!sessionId) return
-  const activeTabIdBySession = new Map(useStageStore.getState().activeTabIdBySession)
-  activeTabIdBySession.set(sessionId, null)
-  useStageStore.setState({ activeTabIdBySession })
+  useStageStore.getState().focusWorkspaceTabForSession(sessionId)
 }
 
 function isReplaceValue(value: unknown): value is string | null {

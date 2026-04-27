@@ -26,7 +26,7 @@ public class AgentPromptBuilder {
         if (!template.contains(PLACEHOLDER)) return template;
         String digest = renderDigest();
         if (digest.length() > MAX_RENDERED_CHARS) {
-            digest = digest.substring(0, MAX_RENDERED_CHARS - 1) + "…";
+            digest = digest.substring(0, MAX_RENDERED_CHARS - 3) + "...";
         }
         return template.replace(PLACEHOLDER, digest);
     }
@@ -58,12 +58,13 @@ public class AgentPromptBuilder {
     static String escape(String title) {
         if (title == null) return "(untitled)";
         String t = title;
-        if (t.length() > MAX_TITLE_CHARS) t = t.substring(0, MAX_TITLE_CHARS) + "…";
+        if (t.length() > MAX_TITLE_CHARS) t = t.substring(0, MAX_TITLE_CHARS) + "...";
         return t.replace("\n", " ")
                 .replace("\r", " ")
-                .replace("`", "'")
                 .replace("```", "''")
+                .replace("`", "'")
                 .replace(":::", "..")
+                .replace("<!--", "< !--")
                 .replace("{{", "{ {")
                 .replace("}}", "} }");
     }
