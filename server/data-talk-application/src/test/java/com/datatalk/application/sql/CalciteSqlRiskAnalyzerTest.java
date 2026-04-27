@@ -86,4 +86,44 @@ class CalciteSqlRiskAnalyzerTest {
         assertThat(analysis.fallbackUsed()).isFalse();
         assertThat(analysis.requiresStrongConfirmation()).isTrue();
     }
+
+    @Test
+    void deleteWithWhereIsMedium() {
+        var result = analyzer.analyze("DELETE FROM users WHERE id = 1", Category.QUERY);
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L2);
+        assertThat(result.reason()).isEqualTo("delete_with_where");
+        assertThat(result.affectedObjects()).containsExactly("users");
+    }
+
+    @Test
+    void deleteWithoutWhereIsHigh() {
+        var result = analyzer.analyze("DELETE FROM users", Category.QUERY);
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("delete_without_where");
+        assertThat(result.affectedObjects()).containsExactly("users");
+    }
+
+    @Test
+    void updateWithWhereExposesAffectedObjects() {
+        var result = analyzer.analyze("UPDATE orders SET status = 'paid' WHERE id = 9", Category.MUTATION);
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L2);
+        assertThat(result.affectedObjects()).containsExactly("orders");
+    }
+
+    @Test
+    void dropTableExposesAffectedObjects() {
+        var result = analyzer.analyze("DROP TABLE temp_log", Category.MUTATION);
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.affectedObjects()).containsExactly("temp_log");
+    }
+
+    @Test
+    void multiStatementBatchUsesHighestRiskAndUnionAffectedObjects() {
+        var result = analyzer.analyze(
+            "UPDATE orders SET note = 'x' WHERE id = 1; DELETE FROM logs;",
+            Category.MUTATION
+        );
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.affectedObjects()).containsExactlyInAnyOrder("orders", "logs");
+    }
 }
