@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
 import {
-  TAB_TYPE_REGISTRY,
   getTabTypeDescriptor,
   isPersistent,
   getScope,

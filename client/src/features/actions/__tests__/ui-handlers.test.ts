@@ -4,6 +4,17 @@ import { uiRouter } from '@/services/ui-router'
 import type { UIObject } from '@/services/ui-router'
 import { useDataSourcePickerStore } from '@/features/session/data-source-picker/data-source-picker-store'
 import { WorkspaceAdapter } from '@/features/stage/adapters/WorkspaceAdapter'
+import { useStageStore } from '@/stores/stage-store'
+
+vi.mock('@/features/stage/persistence/stage-persistence-bootstrap', () => ({
+  coordinator: {
+    ensureHydrated: vi.fn().mockResolvedValue(undefined),
+    flush: vi.fn().mockResolvedValue(undefined),
+    scheduleMetadataWrite: vi.fn(),
+    scheduleContentWrite: vi.fn(),
+  },
+}))
+
 import { coordinator } from '@/features/stage/persistence/stage-persistence-bootstrap'
 import '../ui-handlers'
 
@@ -18,6 +29,8 @@ function stubObject(objectId: string, stateValue: unknown): UIObject {
 
 describe('ui-handlers', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
+    useStageStore.setState({ activeWorkspaceTabId: 'stub1' })
     uiRouter.registerInstance('stub1', stubObject('stub1', { foo: 'bar' }))
     uiRouter.registerInstance('workspace', new WorkspaceAdapter(() => 's1'))
   })
@@ -89,9 +102,6 @@ describe('ui-handlers', () => {
   })
 
   it('ensureHydrated -> forward -> flush ordering for patch handler', async () => {
-    const ensureHydratedSpy = vi.spyOn(coordinator, 'ensureHydrated').mockResolvedValue(undefined)
-    const flushSpy = vi.spyOn(coordinator, 'flush').mockResolvedValue(undefined)
-
     uiRouter.registerInstance('order-test', stubObject('order-test', { patched: true }))
 
     const h = getClientHandler('datatalk.ui.patch')!
@@ -104,11 +114,8 @@ describe('ui-handlers', () => {
     expect(out).toEqual({ status: 'applied' })
 
     // ensureHydrated called before flush
-    const hydrateOrder = ensureHydratedSpy.mock.invocationCallOrder[0]
-    const flushOrder = flushSpy.mock.invocationCallOrder[0]
+    const hydrateOrder = (coordinator.ensureHydrated as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0]
+    const flushOrder = (coordinator.flush as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0]
     expect(hydrateOrder).toBeLessThan(flushOrder)
-
-    ensureHydratedSpy.mockRestore()
-    flushSpy.mockRestore()
   })
 })

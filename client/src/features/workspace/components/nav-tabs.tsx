@@ -42,7 +42,7 @@ export function NavTabs() {
   )
 }
 
-function handleArrowKeys(e: React.KeyboardEvent, tabs: StageTab[], focusTab: (id: string) => void) {
+function handleArrowKeys(e: React.KeyboardEvent, _tabs: StageTab[], _focusTab: (id: string) => void) {
   if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
   e.preventDefault()
   const items = [...e.currentTarget.querySelectorAll<HTMLLIElement>('[role="button"]')]

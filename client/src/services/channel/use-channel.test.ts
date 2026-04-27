@@ -13,6 +13,15 @@ import { uiRouter } from '@/services/ui-router'
 import type { UIObject } from '@/services/ui-router'
 import { getClientHandler } from '@/features/actions/registry'
 
+vi.mock('@/features/stage/persistence/stage-persistence-bootstrap', () => ({
+  coordinator: {
+    ensureHydrated: vi.fn().mockResolvedValue(undefined),
+    flush: vi.fn().mockResolvedValue(undefined),
+    scheduleMetadataWrite: vi.fn(),
+    scheduleContentWrite: vi.fn(),
+  },
+}))
+
 // Reset the per-session event cursor before each test so the new id-based
 // dedupe gate doesn't drop events in tests that reuse small ids like 1.
 beforeEach(() => {

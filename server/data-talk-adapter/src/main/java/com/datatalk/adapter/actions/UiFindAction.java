@@ -78,7 +78,9 @@ public class UiFindAction implements ActionHandler<Map, Map> {
         };
 
         StageFindQuery.Filter filter = null;
-        if (input.get("filter") instanceof Map<String, Object> filterMap) {
+        if (input.get("filter") instanceof Map<?, ?> rawFilter) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> filterMap = (Map<String, Object>) rawFilter;
             filter = new StageFindQuery.Filter(
                 filterMap.get("scope") instanceof String s ? StageTabScope.fromWire(s) : null,
                 (String) filterMap.get("type"),
@@ -93,9 +95,11 @@ public class UiFindAction implements ActionHandler<Map, Map> {
         }
 
         StageFindQuery.ContentQuery contentQuery = null;
-        if (input.get("contentQuery") instanceof Map<String, Object> cqMap) {
-            String modeStr = (String) cqMap.getOrDefault("mode", "fts");
-            StageFindQuery.ContentQuery.SearchMode mode = switch (modeStr) {
+        if (input.get("contentQuery") instanceof Map<?, ?> rawCq) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> cqMap = (Map<String, Object>) rawCq;
+            String cqModeStr = (String) cqMap.getOrDefault("mode", "fts");
+            StageFindQuery.ContentQuery.SearchMode mode = switch (cqModeStr) {
                 case "substring" -> StageFindQuery.ContentQuery.SearchMode.SUBSTRING;
                 case "regex" -> StageFindQuery.ContentQuery.SearchMode.REGEX;
                 default -> StageFindQuery.ContentQuery.SearchMode.FTS;

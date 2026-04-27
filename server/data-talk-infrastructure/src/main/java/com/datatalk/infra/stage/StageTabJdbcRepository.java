@@ -252,7 +252,7 @@ public class StageTabJdbcRepository implements StageTabRepository {
         if (tabIds == null || tabIds.isEmpty()) {
             return List.of();
         }
-        String placeholders = String.join(",", tabIds.stream().map(_ -> "?").toList());
+        String placeholders = String.join(",", tabIds.stream().map(id -> "?").toList());
         return jdbc.query(
             "SELECT tab_id, payload_json, content_text, content_version, updated_at" +
             " FROM stage_tab_payload WHERE tab_id IN (" + placeholders + ")",

@@ -124,18 +124,28 @@ function diffContentAndSchedule(
 }
 
 // Subscribe metadata diffs (immediate write)
-useStageStore.subscribe(
-  (s) => persistedTabSummaries(s),
-  (next, prev) => diffMetaAndSchedule(next, prev),
-  { equalityFn: shallow },
-)
+{
+  let prevMeta = persistedTabSummaries(useStageStore.getState())
+  useStageStore.subscribe((state) => {
+    const next = persistedTabSummaries(state)
+    if (!shallow(prevMeta, next)) {
+      diffMetaAndSchedule(next, prevMeta)
+      prevMeta = next
+    }
+  })
+}
 
 // Subscribe content diffs (debounce 1s)
-useSqlWorkbenchStore.subscribe(
-  (s) => s.tabsById,
-  (next, prev) => diffContentAndSchedule(next, prev),
-  { equalityFn: shallow },
-)
+{
+  let prevTabs = useSqlWorkbenchStore.getState().tabsById
+  useSqlWorkbenchStore.subscribe((state) => {
+    const next = state.tabsById
+    if (!shallow(prevTabs, next)) {
+      diffContentAndSchedule(next, prevTabs)
+      prevTabs = next
+    }
+  })
+}
 
 export function startStagePersistence() {
   return coordinator.start()

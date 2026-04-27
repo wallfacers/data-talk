@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, within } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { NavTabs } from '../nav-tabs'
 import { useStageStore } from '@/stores/stage-store'
 import type { StageTab } from '@/stores/stage-store'
@@ -44,7 +44,7 @@ describe('NavTabs', () => {
   it('renders one row per active workspace tab and an empty state when none', () => {
     const { container } = renderNavTabs()
     expect(container.querySelectorAll('[role="button"]')).toHaveLength(0)
-    expect(screen.getByText(/No tabs yet/)).toBeInTheDocument()
+    expect(screen.getByText(/尚无 Tab|No tabs yet/)).toBeInTheDocument()
 
     mockTabs = [
       mkTab({ tabId: 'tab-1', title: 'Query 1' }),
@@ -77,7 +77,7 @@ describe('NavTabs', () => {
       mkTab({ tabId: 'tab-1', title: 'Active Tab' }),
       mkTab({ tabId: 'tab-2', title: 'Archived Tab', archived: true }),
     ]
-    const toggleBtn = screen.getByRole('button', { name: /Show archived/ })
+    const toggleBtn = screen.getByRole('button', { name: /archive|归档/ })
     fireEvent.click(toggleBtn)
   })
 

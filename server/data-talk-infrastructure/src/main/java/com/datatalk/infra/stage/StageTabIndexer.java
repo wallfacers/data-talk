@@ -56,7 +56,7 @@ public class StageTabIndexer implements StageTabIndexerPort {
         if (rowids == null || rowids.isEmpty()) {
             return List.of();
         }
-        String placeholders = String.join(",", rowids.stream().map(_ -> "?").toList());
+        String placeholders = String.join(",", rowids.stream().map(r -> "?").toList());
         return jdbc.query(
             "SELECT id FROM stage_tab_payload p JOIN stage_tabs t ON t.id = p.tab_id" +
             " WHERE p.rowid IN (" + placeholders + ")",
