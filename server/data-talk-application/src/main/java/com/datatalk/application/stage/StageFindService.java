@@ -10,7 +10,15 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 
 /**
@@ -19,6 +27,9 @@ import java.util.stream.Collectors;
  */
 @Service
 public class StageFindService {
+
+    private static final int MAX_REGEX_LENGTH = 200;
+    private static final long PER_TAB_TIMEOUT_SECONDS = 2;
 
     private final StageTabRepository repo;
     private final StageTabIndexerPort indexer;
@@ -53,28 +64,61 @@ public class StageFindService {
         String pattern = cq.pattern();
         boolean includeArchived = cq.includeArchived() != null ? cq.includeArchived() : false;
         int queryLimit = cq.limit() != null ? cq.limit() : 100;
-
-        int candidateLimit = Math.max(queryLimit * 4, 200);
-        var rowids = indexer.ftsMatch(pattern, includeArchived, candidateLimit);
-        var ids = indexer.rowidsToIds(rowids.stream().map(StageTabIndexerPort.RowidScore::rowid).toList());
-        var idsToCheck = ids.stream().limit(queryLimit).toList();
-
-        var contents = repo.findContents(idsToCheck);
-        var contentById = contents.stream()
-            .collect(Collectors.toMap(StageTabContent::tabId, Function.identity()));
+        var mode = cq.mode() != null ? cq.mode() : StageFindQuery.ContentQuery.SearchMode.FTS;
 
         var matchesByTab = new LinkedHashMap<String, List<Map<String, Object>>>();
-        for (var id : idsToCheck) {
-            var c = contentById.get(id);
-            if (c == null) continue;
-            var lines = postFilter(pattern, c.contentText());
-            if (!lines.isEmpty()) {
-                matchesByTab.put(id, lines);
+
+        switch (mode) {
+            case FTS, SUBSTRING -> {
+                int candidateLimit = Math.max(queryLimit * 4, 200);
+                var rowids = indexer.ftsMatch(pattern, includeArchived, candidateLimit);
+                var ids = indexer.rowidsToIds(rowids.stream().map(StageTabIndexerPort.RowidScore::rowid).toList());
+                var idsToCheck = ids.stream().limit(queryLimit).toList();
+
+                var contents = repo.findContents(idsToCheck);
+                var contentById = contents.stream()
+                    .collect(Collectors.toMap(StageTabContent::tabId, Function.identity()));
+
+                for (var id : idsToCheck) {
+                    var c = contentById.get(id);
+                    if (c == null) continue;
+                    var lines = substringPostFilter(pattern, c.contentText());
+                    if (!lines.isEmpty()) {
+                        matchesByTab.put(id, lines);
+                    }
+                }
+            }
+            case REGEX -> {
+                var warnings = new ArrayList<String>();
+                validateRegexPattern(pattern);
+
+                // For regex, list all tabs and fan-out with virtual threads
+                StageTabRepository.ListFilter listFilter = new StageTabRepository.ListFilter(
+                    null, null, null, null, includeArchived, null, null, null, queryLimit * 4
+                );
+                var tabs = repo.list(listFilter);
+                var idsToCheck = tabs.stream().map(StageTab::id).limit(queryLimit).toList();
+
+                var contents = repo.findContents(idsToCheck);
+                var contentById = contents.stream()
+                    .collect(Collectors.toMap(StageTabContent::tabId, Function.identity()));
+
+                var results = regexFanOut(pattern, idsToCheck, contentById);
+                for (var entry : results.entrySet()) {
+                    if (!entry.getValue().isEmpty()) {
+                        matchesByTab.put(entry.getKey(), entry.getValue());
+                    }
+                }
+                warnings.addAll(results.values().stream()
+                    .flatMap(List::stream)
+                    .filter(m -> m.containsKey("_warning"))
+                    .map(m -> (String) m.get("_warning"))
+                    .toList());
             }
         }
 
         int totalMatches = matchesByTab.values().stream().mapToInt(List::size).sum();
-        boolean truncated = ids.size() > queryLimit;
+        boolean truncated = matchesByTab.size() > queryLimit;
 
         return switch (query.outputMode()) {
             case METADATA -> {
@@ -100,7 +144,75 @@ public class StageFindService {
         };
     }
 
-    private static List<Map<String, Object>> postFilter(String pattern, String content) {
+    // ---- Regex support ----
+
+    private void validateRegexPattern(String pattern) {
+        if (pattern.length() > MAX_REGEX_LENGTH) {
+            throw new StageFindInvalidPatternException(pattern,
+                "pattern exceeds maximum length of " + MAX_REGEX_LENGTH + " characters (got " + pattern.length() + ")");
+        }
+        try {
+            Pattern.compile(pattern);
+        } catch (PatternSyntaxException e) {
+            throw new StageFindInvalidPatternException(pattern, e);
+        }
+    }
+
+    /**
+     * Fan-out regex matching across tabs using virtual threads.
+     * Each tab gets its own virtual thread with a per-tab timeout.
+     */
+    private Map<String, List<Map<String, Object>>> regexFanOut(
+            String pattern,
+            List<String> tabIds,
+            Map<String, StageTabContent> contentById) {
+
+        var compiled = Pattern.compile(pattern);
+        var result = new LinkedHashMap<String, List<Map<String, Object>>>();
+
+        try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            var futures = new ArrayList<Future<Map.Entry<String, List<Map<String, Object>>>>>();
+            for (var tabId : tabIds) {
+                var content = contentById.get(tabId);
+                if (content == null) continue;
+                futures.add(executor.submit(() -> Map.entry(tabId, regexMatchOne(compiled, content.contentText()))));
+            }
+
+            for (var future : futures) {
+                try {
+                    var entry = future.get(PER_TAB_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                    result.put(entry.getKey(), entry.getValue());
+                } catch (TimeoutException e) {
+                    // Tab timed out — skip it
+                } catch (Exception e) {
+                    // Other error — skip
+                }
+            }
+        }
+
+        return result;
+    }
+
+    private static List<Map<String, Object>> regexMatchOne(Pattern pattern, String content) {
+        var result = new ArrayList<Map<String, Object>>();
+        String[] lines = content.split("\n");
+        for (int i = 0; i < lines.length; i++) {
+            Matcher matcher = pattern.matcher(lines[i]);
+            if (matcher.find()) {
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("lineNumber", i + 1);
+                m.put("line", lines[i]);
+                m.put("columnStart", matcher.start() + 1);
+                m.put("columnEnd", matcher.end() + 1);
+                result.add(m);
+            }
+        }
+        return result;
+    }
+
+    // ---- Substring post-filter ----
+
+    private static List<Map<String, Object>> substringPostFilter(String pattern, String content) {
         return firstMatchPerLine(content, pattern);
     }
 

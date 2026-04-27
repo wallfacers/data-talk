@@ -1,20 +1,15 @@
 package com.datatalk.application.stage;
 
 import com.datatalk.application.stage.StageFindQuery.ContentQuery;
+import com.datatalk.application.stage.StageFindQuery.ContentQuery.SearchMode;
 import com.datatalk.application.stage.StageFindQuery.Filter;
-import com.datatalk.domain.stage.StageTab;
 import com.datatalk.domain.stage.StageTabContent;
-import com.datatalk.domain.stage.StageTabScope;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -51,7 +46,7 @@ class StageFindServiceFtsTest {
         StageFindQuery query = new StageFindQuery(
             StageFindQuery.OutputMode.TABS_ONLY,
             new Filter(null, null, null, null, false, null, null, null, 100),
-            new ContentQuery("email", false, 100),
+            new ContentQuery("email", false, 100, SearchMode.FTS),
             List.of()
         );
 
@@ -69,12 +64,12 @@ class StageFindServiceFtsTest {
         var rowid1 = new StageTabIndexerPort.RowidScore(10, -1.0);
         var rowid2 = new StageTabIndexerPort.RowidScore(20, -2.0);
 
-        when(indexer.ftsMatch("ail", false, 400))
+        when(indexer.ftsMatch("email", false, 400))
             .thenReturn(List.of(rowid1, rowid2));
         when(indexer.rowidsToIds(List.of(10L, 20L)))
             .thenReturn(List.of("tab-x", "tab-y"));
 
-        // tab-x contains "email" (has substring "ail"), tab-y does not
+        // tab-x contains "email", tab-y does not
         var contentX = new StageTabContent("tab-x", "{}", "my email is here", 1, now);
         var contentY = new StageTabContent("tab-y", "{}", "no match here", 1, now);
         when(repo.findContents(List.of("tab-x", "tab-y")))
@@ -83,7 +78,7 @@ class StageFindServiceFtsTest {
         StageFindQuery query = new StageFindQuery(
             StageFindQuery.OutputMode.TABS_ONLY,
             new Filter(null, null, null, null, false, null, null, null, 100),
-            new ContentQuery("email", false, 100),
+            new ContentQuery("email", false, 100, SearchMode.FTS),
             List.of()
         );
 

@@ -37,8 +37,15 @@ public record StageFindQuery(
     public record ContentQuery(
         String pattern,
         Boolean includeArchived,
-        Integer limit
-    ) {}
+        Integer limit,
+        SearchMode mode
+    ) {
+        public enum SearchMode {
+            FTS,        // FTS5 trigram coarse match + substring post-filter
+            SUBSTRING,  // Pure substring match (no FTS)
+            REGEX       // Java regex with virtual-thread fan-out
+        }
+    }
 
     public record Read(
         String tabId,

@@ -94,10 +94,17 @@ public class UiFindAction implements ActionHandler<Map, Map> {
 
         StageFindQuery.ContentQuery contentQuery = null;
         if (input.get("contentQuery") instanceof Map<String, Object> cqMap) {
+            String modeStr = (String) cqMap.getOrDefault("mode", "fts");
+            StageFindQuery.ContentQuery.SearchMode mode = switch (modeStr) {
+                case "substring" -> StageFindQuery.ContentQuery.SearchMode.SUBSTRING;
+                case "regex" -> StageFindQuery.ContentQuery.SearchMode.REGEX;
+                default -> StageFindQuery.ContentQuery.SearchMode.FTS;
+            };
             contentQuery = new StageFindQuery.ContentQuery(
                 (String) cqMap.get("pattern"),
                 cqMap.get("includeArchived") instanceof Boolean b ? b : null,
-                cqMap.get("limit") instanceof Number n ? n.intValue() : null
+                cqMap.get("limit") instanceof Number n ? n.intValue() : null,
+                mode
             );
         }
 
