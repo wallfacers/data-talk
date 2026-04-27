@@ -412,6 +412,18 @@ const MESSAGES = {
     'error.server': '服务器错误，请稍后重试',
     'error.requestFailed': '请求失败 ({status})',
     'error.network': '网络连接失败，请检查网络',
+
+    'sqlConfirmation.l2.title': '受限变更',
+    'sqlConfirmation.l3.title': '破坏性操作',
+    'sqlConfirmation.l2.body': '将修改 {objects} 中的数据。',
+    'sqlConfirmation.l3.body': '将永久影响 {objects}。',
+    'sqlConfirmation.l3.irreversible': '此操作无法撤销。',
+    'sqlConfirmation.affectedObjects': '受影响对象',
+    'sqlConfirmation.cancel': '取消',
+    'sqlConfirmation.execute': '执行',
+    'sqlConfirmation.executing': '执行中…',
+    'sqlConfirmation.invalid.title': '确认已失效',
+    'sqlConfirmation.invalid.message': '当前 SQL 风险为 {currentRisk}，但你确认的等级是 {ackedRisk}，请重新查看并确认。',
   },
   'en-US': {
     'common.loading': 'Loading...',
@@ -820,6 +832,18 @@ const MESSAGES = {
     'error.server': 'Server error. Try again later.',
     'error.requestFailed': 'Request failed ({status})',
     'error.network': 'Network connection failed. Check your connection.',
+
+    'sqlConfirmation.l2.title': 'Bounded mutation',
+    'sqlConfirmation.l3.title': 'Destructive operation',
+    'sqlConfirmation.l2.body': 'This will modify data in {objects}.',
+    'sqlConfirmation.l3.body': 'This will permanently affect {objects}.',
+    'sqlConfirmation.l3.irreversible': 'This action cannot be undone.',
+    'sqlConfirmation.affectedObjects': 'Affected objects',
+    'sqlConfirmation.cancel': 'Cancel',
+    'sqlConfirmation.execute': 'Execute',
+    'sqlConfirmation.executing': 'Executing…',
+    'sqlConfirmation.invalid.title': 'Confirmation no longer valid',
+    'sqlConfirmation.invalid.message': 'The current statement risk is {currentRisk}, but you acknowledged {ackedRisk}. Please review and confirm again.',
   },
 } as const
 
