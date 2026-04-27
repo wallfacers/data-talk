@@ -5,7 +5,6 @@ import type { UIRequest, UIResponse } from '@/services/ui-router'
 type ReadInput = { object: string; target?: string; mode?: 'state' | 'schema' | 'actions' | 'full' }
 type PatchInput = { object: string; target?: string; ops: unknown[]; reason?: string }
 type ExecInput = { object: string; target?: string; action: string; params?: unknown }
-type ListInput = { filter?: { type?: string; keyword?: string; connectionId?: string; database?: string } }
 
 type ClientActionErrorDetail = {
   code?: string
@@ -64,10 +63,4 @@ registerClientHandler('datatalk.ui.patch', async (input) => {
 registerClientHandler('datatalk.ui.exec', async (input) => {
   const i = input as ExecInput
   return forward({ tool: 'ui_exec', object: i.object, target: i.target ?? 'active', payload: { action: i.action, params: i.params } })
-})
-
-registerClientHandler('datatalk.ui.list', async (input) => {
-  const i = input as ListInput
-  const items = await forward({ tool: 'ui_list', object: '', target: '', payload: { filter: i.filter } })
-  return { items }
 })

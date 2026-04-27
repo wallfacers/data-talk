@@ -5,8 +5,8 @@ import type { ActionDescriptor } from '@/features/actions/registry'
 import type { ToolPart } from '@/services/channel/types'
 
 const descriptor: ActionDescriptor = {
-  id: 'datatalk.ui.list',
-  executor: 'CLIENT',
+  id: 'datatalk.ui.find',
+  executor: 'SERVER',
   description: 'List UI objects',
   inputSchema: {},
   outputSchema: {},
@@ -23,7 +23,7 @@ function buildPart(input: Record<string, unknown>): ToolPart {
     type: 'tool',
     sessionID: 'sess-1',
     messageID: 'msg-1',
-    tool: 'datatalk_ui_list',
+    tool: 'datatalk_ui_find',
     state: {
       status: 'completed',
       input,

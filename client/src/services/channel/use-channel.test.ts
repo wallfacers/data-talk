@@ -574,7 +574,6 @@ describe('buildEventSink → action.invoke error payloads', () => {
     expect(getClientHandler('datatalk.ui.read')).toBeTypeOf('function')
     expect(getClientHandler('datatalk.ui.patch')).toBeTypeOf('function')
     expect(getClientHandler('datatalk.ui.exec')).toBeTypeOf('function')
-    expect(getClientHandler('datatalk.ui.list')).toBeTypeOf('function')
   })
 
   it('preserves structured ui-router detail in action_result errors', async () => {

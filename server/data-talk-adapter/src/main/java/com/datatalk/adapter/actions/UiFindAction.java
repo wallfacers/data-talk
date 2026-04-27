@@ -67,7 +67,7 @@ public class UiFindAction implements ActionHandler<Map, Map> {
     }
 
     @SuppressWarnings("unchecked")
-    static StageFindQuery parse(Map<String, Object> input) {
+    public static StageFindQuery parse(Map<String, Object> input) {
         String modeStr = (String) input.getOrDefault("outputMode", "metadata");
         StageFindQuery.OutputMode outputMode = switch (modeStr) {
             case "count" -> StageFindQuery.OutputMode.COUNT;
@@ -111,7 +111,7 @@ public class UiFindAction implements ActionHandler<Map, Map> {
         return new StageFindQuery(outputMode, filter, contentQuery, List.of());
     }
 
-    static Map<String, Object> toEnvelope(StageFindResult result) {
+    public static Map<String, Object> toEnvelope(StageFindResult result) {
         return Map.of(
             "outputMode", result.outputMode().name().toLowerCase(),
             "items", result.items(),

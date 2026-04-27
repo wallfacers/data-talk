@@ -218,7 +218,7 @@ class EndToEndSmokeIT {
         seedSession("s-smoke-nosub", "oc-smoke-nosub");
 
         JsonNode response = callMcp("req-call-2", "tools/call", Map.of(
-            "name", "ui_list",
+            "name", "ui_read",
             "arguments", bridgeArgs("oc-smoke-nosub", "call-smoke-2", Map.of())
         ));
 
@@ -239,7 +239,7 @@ class EndToEndSmokeIT {
 
         try {
             JsonNode response = callMcp("req-call-3", "tools/call", Map.of(
-                "name", "ui_list",
+                "name", "ui_read",
                 "arguments", bridgeArgs("oc-smoke-timeout", "call-smoke-3", Map.of())
             ));
 

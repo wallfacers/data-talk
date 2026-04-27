@@ -38,14 +38,4 @@ class UiActionsTest {
         assertThat(ann.executor()).isEqualTo(Executor.CLIENT);
         assertThat(ann.timeoutMs()).isGreaterThanOrEqualTo(30_000);
     }
-
-    @Test
-    void uiListAction_declaresClientExecutorAndUiCategory() {
-        DataTalkAction ann = UiListAction.class.getAnnotation(DataTalkAction.class);
-        assertThat(ann).isNotNull();
-        assertThat(ann.id()).isEqualTo("datatalk.ui.list");
-        assertThat(ann.executor()).isEqualTo(Executor.CLIENT);
-        assertThat(ann.category()).containsExactly(Category.UI);
-        assertThat(ann.riskLevel()).containsExactly(RiskLevel.L1);
-    }
 }

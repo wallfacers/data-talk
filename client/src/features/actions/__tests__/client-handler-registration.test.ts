@@ -8,7 +8,6 @@ describe('client handler registration', () => {
     'datatalk.ui.read',
     'datatalk.ui.patch',
     'datatalk.ui.exec',
-    'datatalk.ui.list',
   ])('registers %s', (actionId) => {
     expect(getClientHandler(actionId)).toBeTypeOf('function')
   })

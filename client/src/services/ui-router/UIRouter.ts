@@ -1,4 +1,4 @@
-import type { UIObject, UIRequest, UIResponse, UIObjectInfo, ActionDef, PatchResult } from './types'
+import type { UIObject, UIRequest, UIResponse, ActionDef, PatchResult } from './types'
 import { patchError, execError, extractUIErrorDetail, type UIErrorDetail } from './errors'
 import { matchPathPattern } from './pathResolver'
 
@@ -12,9 +12,6 @@ export class UIRouter {
   unregisterInstance(objectId: string) { this.instances.delete(objectId) }
 
   async handle(req: UIRequest): Promise<UIResponse> {
-    if (req.tool === 'ui_list') {
-      return this.handleList((req.payload as { filter?: ListFilter } | undefined)?.filter)
-    }
     const instance = this.resolveTarget(req.object, req.target)
     if (!instance) return { error: `No ${req.object} found for target '${req.target}'` }
 
@@ -143,21 +140,6 @@ export class UIRouter {
     return null
   }
 
-  private handleList(filter?: ListFilter): UIResponse {
-    const results: UIObjectInfo[] = []
-    for (const [, obj] of this.instances) {
-      if (filter?.type && obj.type !== filter.type) continue
-      if (filter?.connectionId != null && obj.connectionId !== filter.connectionId) continue
-      if (filter?.database != null && obj.database !== filter.database) continue
-      if (filter?.keyword) {
-        const hay = `${obj.title} ${obj.objectId}`.toLowerCase()
-        if (!hay.includes(filter.keyword.toLowerCase())) continue
-      }
-      results.push({ objectId: obj.objectId, type: obj.type, title: obj.title, connectionId: obj.connectionId, database: obj.database })
-    }
-    return { data: results }
-  }
-
   private getAvailableActionNames(instance: UIObject): string[] | undefined {
     const rawActions = instance.read('actions')
     if (!Array.isArray(rawActions) || rawActions.length === 0) {
@@ -181,7 +163,5 @@ export class UIRouter {
     }
   }
 }
-
-type ListFilter = { type?: string; keyword?: string; connectionId?: string; database?: string }
 
 export const uiRouter = new UIRouter()

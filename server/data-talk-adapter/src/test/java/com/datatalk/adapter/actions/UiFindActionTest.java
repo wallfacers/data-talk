@@ -12,9 +12,6 @@ import static org.mockito.Mockito.mock;
 
 /**
  * Verifies that the ui_find action is registered and discoverable.
- * Note: This test runs within the full Spring Boot context that scans
- * all @DataTalkAction beans. The "ui.list no longer registered" assertion
- * may fail until Task 11 removes the UiListAction — that is expected.
  */
 class UiFindActionTest {
 

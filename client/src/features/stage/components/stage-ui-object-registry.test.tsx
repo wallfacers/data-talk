@@ -80,34 +80,14 @@ describe('StageUIObjectRegistry', () => {
 
     const view = render(<StageUIObjectRegistry sessionId="s1" tabs={tabs} />)
 
-    const workspaceList = await uiRouter.handle({
-      tool: 'ui_list',
-      object: '',
-      target: '',
-      payload: { filter: { type: 'workspace' } },
-    })
-    expect(workspaceList.data).toEqual([
-      expect.objectContaining({ objectId: 'workspace', type: 'workspace' }),
-    ])
-
-    const queryEditors = await uiRouter.handle({
-      tool: 'ui_list',
-      object: '',
-      target: '',
-      payload: { filter: { type: 'query_editor' } },
-    })
-    expect(queryEditors.data).toEqual(expect.arrayContaining([
-      expect.objectContaining({ objectId: 'q1', title: 'Session SQL' }),
-      expect.objectContaining({ objectId: 'q2', title: 'Active SQL' }),
-    ]))
-
-    const workspaceState = await uiRouter.handle({
+    // Verify workspace is registered and readable
+    const workspaceRead = await uiRouter.handle({
       tool: 'ui_read',
       object: 'workspace',
       target: 'workspace',
       payload: { mode: 'state' },
     })
-    expect(workspaceState.data).toEqual(expect.objectContaining({
+    expect(workspaceRead.data).toEqual(expect.objectContaining({
       activeTabId: 'q2',
       tabs: expect.arrayContaining([
         expect.objectContaining({ tabId: 'r1', type: 'report' }),
@@ -116,23 +96,36 @@ describe('StageUIObjectRegistry', () => {
       ]),
     }))
 
+    // Verify query editor is reachable
+    const q1Read = await uiRouter.handle({
+      tool: 'ui_read',
+      object: 'query_editor',
+      target: 'q1',
+      payload: { mode: 'state' },
+    })
+    expect(q1Read.data).toEqual(expect.objectContaining({
+      content: 'select 1',
+      connectionId: 'conn-1',
+    }))
+
     view.unmount()
 
+    // After unmount, workspace should no longer be reachable
     const clearedWorkspace = await uiRouter.handle({
-      tool: 'ui_list',
-      object: '',
-      target: '',
-      payload: { filter: { type: 'workspace' } },
+      tool: 'ui_read',
+      object: 'workspace',
+      target: 'workspace',
+      payload: { mode: 'state' },
     })
-    expect(clearedWorkspace.data).toEqual([])
+    expect(clearedWorkspace.error).toContain('No workspace')
 
-    const clearedQueryEditors = await uiRouter.handle({
-      tool: 'ui_list',
-      object: '',
-      target: '',
-      payload: { filter: { type: 'query_editor' } },
+    const clearedQueryEditor = await uiRouter.handle({
+      tool: 'ui_read',
+      object: 'query_editor',
+      target: 'q1',
+      payload: { mode: 'state' },
     })
-    expect(clearedQueryEditors.data).toEqual([])
+    expect(clearedQueryEditor.error).toContain('No query_editor')
   })
 
   it('routes target=active to the current active query_editor tab', async () => {

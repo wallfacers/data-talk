@@ -62,7 +62,7 @@ describe('BasicTool', () => {
         icon="mcp"
         status="completed"
         trigger={{
-          title: 'datatalk_ui_list',
+          title: 'datatalk_ui_find',
           args: [
             '__dtOpenCodeSessionId=ses_241b8620bffeURHQFdER7THDyw__dtCallId=call_83a2bab1d31b4b5fbf4d6556__dtBridgeNonce=89a6862c-4940-4539-ab6b-942e5d3d01fc',
           ],

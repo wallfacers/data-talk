@@ -77,7 +77,7 @@ class AgentPromptContractTest {
             .contains("action=apply_text_edits")
             .contains("params.baseVersion")
             .contains("target=active")
-            .contains("datatalk_ui_list")
+            .contains("datatalk_ui_find")
             .contains("datatalk_ui_read")
             .contains("datatalk_ui_patch")
             .contains("datatalk_ui_exec")
@@ -151,12 +151,12 @@ class AgentPromptContractTest {
 
     @Test
     void registeredUiActionSchemasStayAlignedWithPromptSurface() throws Exception {
-        String uiListSchema = om.writeValueAsString(registry.require("datatalk.ui.list").inputSchema());
+        String uiFindSchema = om.writeValueAsString(registry.require("datatalk.ui.find").inputSchema());
         String uiReadSchema = om.writeValueAsString(registry.require("datatalk.ui.read").inputSchema());
         String uiPatchSchema = om.writeValueAsString(registry.require("datatalk.ui.patch").inputSchema());
         String uiExecSchema = om.writeValueAsString(registry.require("datatalk.ui.exec").inputSchema());
 
-        assertThat(uiListSchema)
+        assertThat(uiFindSchema)
             .contains("workspace")
             .contains("query_editor")
             .contains("keyword")

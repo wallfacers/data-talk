@@ -8,7 +8,7 @@ export interface JsonPatchOp {
 }
 
 export interface UIRequest {
-  tool: 'ui_read' | 'ui_patch' | 'ui_exec' | 'ui_list'
+  tool: 'ui_read' | 'ui_patch' | 'ui_exec'
   object: string
   target: string
   payload: unknown
