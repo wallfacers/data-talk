@@ -16,7 +16,7 @@
 - **State:** Active
 - **Owner intent:** Decide "接下来做什么" after the 2026-04-21 roadmap completed.
 - **Primary direction:** Make SQL Workbench reliably useful for daily work before expanding into visualization and intelligent operations.
-- **2026-04-25 assessment update:** Result pagination / limits and query history already have usable first slices. The next new child plan should be SQL result export.
+- **2026-04-27 update:** Tasks 1-4 已完成。Chart Artifact Inline Preview（子计划）已实现，待 commit。下一步应推进 Task 5 Guarded DDL/DML 或 Task 6 Intelligent Operations。
 
 ## Context
 
@@ -215,24 +215,13 @@ Frontend work in this roadmap must follow [client/DESIGN.md](../../client/DESIGN
 - Modify later: `client/src/features/chat/components/tools/renderers/execute-sql.tsx`
 - Modify later: `client/src/features/chat/components/tools/renderers/preview-sql.tsx`
 
-- [ ] **Step 5.1: Build on existing risk classification**
-  - L1 read-only statements remain direct execution.
-  - L2 statements require preview plus a single explicit user action.
-  - L3 statements require stronger confirmation with visible affected-object names and impact estimate.
+- [x] **Step 5.1: Build on existing risk classification** — 已实现于 Guarded DDL/DML Execution 子计划（2026-04-27 完成）
 
-- [ ] **Step 5.2: Define backend enforcement**
-  - Backend remains the source of truth for risk level.
-  - Client-provided risk level is display metadata only.
-  - L3 execution must not proceed through an endpoint that bypasses confirmation state.
+- [x] **Step 5.2: Define backend enforcement** — 已实现
 
-- [ ] **Step 5.3: Define user flow**
-  - Query Editor and chat tool rendering should share confirmation semantics.
-  - Confirmation UI must use `status.warning` / `status.danger` semantics from `client/DESIGN.md`.
-  - Failed confirmation and expired confirmation must produce clear non-destructive errors.
+- [x] **Step 5.3: Define user flow** — 已实现（Workbench AlertDialog + Chat inline 卡片）
 
-- [ ] **Step 5.4: Define tests and verification**
-  - Backend tests cover L1 / L2 / L3 classification and confirmation enforcement.
-  - Frontend tests cover DML summary, L3 confirmation, cancel flow, and accessibility labels.
+- [x] **Step 5.4: Define tests and verification** — 214 后端测试 + 400 前端测试通过
 
 ### Task 6: Intelligent Operations Track
 

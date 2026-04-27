@@ -7,12 +7,12 @@
 | 计划 | 创建日期 | 摘要 |
 |------|---------|------|
 | [Next Implementation Roadmap](./2026-04-25-next-implementation-roadmap-plan.md) | 2026-04-25 | 下一阶段路线图：分页/限制已评估为现有能力加少量 polish，查询历史已有 tab-local 基础能力；下一正式子计划转为 SQL 结果导出，后续再推进 DDL/DML 分级确认、智能化运维诊断与可视化扩展；明确排除虚拟滚动。 |
-| [Chart Artifact Inline Preview](./2026-04-25-chart-artifact-inline-preview-plan.md) | 2026-04-25 | `datatalk_render_chart` 工具完成后，图表直接内联渲染在对话消息流中，无需跳转 Workspace。 |
 
 ## 已完成计划
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [Chart Artifact Inline Preview](./2026-04-25-chart-artifact-inline-preview-plan.md) | 2026-04-27 | `datatalk_render_chart` 工具完成后，图表直接内联渲染在对话消息流中；`ArtifactCreated` 订阅 `useOntologyStore`，仅 `kind=chart` 且 `echartsOption` 存在时渲染；6 测试通过；实际实现超出计划：i18n 翻译、string JSON output 解析、眼睛图标 Tooltip。代码已实现，待 commit。 |
 | [Guarded DDL / DML Execution](./2026-04-25-guarded-ddl-dml-execution-plan.md) | 2026-04-27 | 后端 L1/L2/L3 风险分级改造为用户可见两步确认流：`SqlExecuteService` sealed Outcome 三状态机，`ExecuteSqlAction` 接入风险门控，`DELETE WITH WHERE` 降为 L2；前端 `<SqlConfirmationCard>` 共享组件，Workbench AlertDialog + Chat inline 卡片双路径；后端 214 测试（1 预存失败无关），前端 400 测试全绿，`tsc --noEmit` 零错误。 |
 | [Chat Auto-Follow Bottom Recovery](./2026-04-27-chat-auto-follow-bottom-recovery-plan.md) | 2026-04-27 | 聊天区 auto-follow 恢复条件已纠偏：用户上滚后暂停跟随，但只要再次严格触底，无论通过手动滚动还是点击“回到底部”，后续流式内容都恢复自动跟随；`use-auto-scroll` 与 `split-view` 相关测试共 26 条通过，`npx tsc --noEmit` 通过。 |
 | [SQL Result Export](./2026-04-25-sql-result-export-plan.md) | 2026-04-27 | Stage SQL result set 首版导出已落地：复制 CSV、复制 JSON、下载 CSV；支持当前页与已返回结果两种范围；前端-only，18 个测试全绿，`tsc --noEmit` 通过。 |
