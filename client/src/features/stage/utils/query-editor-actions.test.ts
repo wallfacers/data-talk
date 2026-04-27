@@ -21,6 +21,11 @@ vi.mock('./format-sql', () => ({
   formatSql: formatSqlMock,
 }))
 
+const toastErrorMock = vi.hoisted(() => vi.fn())
+vi.mock('sonner', () => ({
+  toast: { error: toastErrorMock, success: vi.fn() },
+}))
+
 function resetStores() {
   useStageStore.setState({
     openBySession: new Map(),
@@ -290,7 +295,7 @@ describe('query-editor-actions', () => {
     expect(tabState?.history[0]).toMatchObject({
       sql: 'delete from users',
       status: 'requires_confirmation',
-      errorSummary: 'This statement modifies data',
+      confirmationReason: 'This statement modifies data',
     })
   })
 
@@ -362,6 +367,52 @@ describe('query-editor-actions', () => {
       riskAck: 'L2',
       sql: 'update users set active = false',
     }), expect.any(AbortSignal))
+  })
+
+  it('confirmQueryEditorSql network failure toasts and clears stale confirmation', async () => {
+    useConnectionStore.setState({
+      activeConnectionId: 'conn-1',
+      connections: [
+        { id: 'conn-1', name: 'Primary Connection', kind: 'postgres', databaseName: 'db_main' } as any,
+      ],
+    })
+
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 'sess-1',
+      scope: 'session',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'blank',
+      initialContent: 'update users set active = false',
+      connectionId: 'conn-1',
+    })
+
+    executeSqlMock
+      .mockResolvedValueOnce({
+        status: 'requires_confirmation',
+        resolvedContext: null,
+        contextNotice: null,
+        confirmation: {
+          level: 'L2',
+          reason: 'This statement modifies data',
+          affectedObjects: ['public.users'],
+          sqlPreview: 'update users set active = false',
+        },
+      })
+      .mockRejectedValueOnce(new Error('network down'))
+
+    await runQueryEditorSql({ tabId, sessionId: 'sess-1', limit: null })
+
+    toastErrorMock.mockClear()
+    const result = await confirmQueryEditorSql({ tabId, sessionId: 'sess-1', level: 'L2' })
+
+    expect(result.executeStatus).toBe('error')
+    expect(toastErrorMock).toHaveBeenCalledTimes(1)
+    expect(toastErrorMock.mock.calls[0]?.[0]).toMatch(/Confirmation request did not reach the server/i)
+    const tabState = useSqlWorkbenchStore.getState().tabsById[tabId]
+    expect(tabState?.executeStatus).toBe('error')
+    expect(tabState?.confirmation).toBeNull()
+    expect(tabState?.errorMessage).toMatch(/network down/)
   })
 
   it('cancelQueryEditorConfirmation resets to idle', async () => {

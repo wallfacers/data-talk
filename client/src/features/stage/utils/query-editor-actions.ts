@@ -5,6 +5,7 @@ import type { SqlExecuteRequest } from '@/services/api/sql'
 import { useSessionStore } from '@/stores/session-store'
 import { useStageStore } from '@/stores/stage-store'
 import { translateMessage } from '@/i18n/messages'
+import { toast } from 'sonner'
 import { formatSql } from './format-sql'
 import { normalizeQueryEditorPayload } from './normalize-query-editor-payload'
 import { resolveTabDataContext } from './resolve-tab-data-context'
@@ -365,7 +366,7 @@ export async function runQueryEditorSql(params: {
   sessionId: string | null
   limit?: 10 | 100 | 1000 | null
   sqlOverride?: string | null
-}): Promise<{ executeStatus: 'success' | 'risk_blocked' | 'error' | 'requires_confirmation' | 'confirmation_invalid'; activeResultId: string | null }> {
+}): Promise<{ executeStatus: 'success' | 'error' | 'requires_confirmation' | 'confirmation_invalid'; activeResultId: string | null }> {
   const { tabId, sessionId } = params
   const stageTab = getStageTab(tabId)
   if (stageTab) {
@@ -414,7 +415,7 @@ export async function runQueryEditorSql(params: {
         sql: executableSql,
         status: 'requires_confirmation',
         elapsedMs: Date.now() - startedAt,
-        errorSummary: response.confirmation.reason,
+        confirmationReason: response.confirmation.reason,
       })
       return {
         executeStatus: 'requires_confirmation',
@@ -546,6 +547,9 @@ export async function confirmQueryEditorSql(params: {
 
     const language = getCurrentLanguage()
     const errorMessage = error instanceof Error ? error.message : translateMessage(language, 'stage.queryEditor.runFailed')
+    // Spec §9: confirmation request that fails to reach the server should
+    // toast and not leave the AlertDialog stuck on `confirming`.
+    toast.error(translateMessage(language, 'stage.queryEditor.confirmFailed'))
     sqlWorkbenchStore.setError(tabId, errorMessage, {
       resultId: `error-${startedAt}-${Math.random().toString(36).slice(2, 8)}`,
       kind: 'error',

@@ -6,7 +6,6 @@ import type {
   SqlExecuteRequest,
   SqlExecuteResponse,
   SqlExecuteResultItem,
-  SqlRiskBlocked,
 } from '@/services/api/sql'
 
 export type SqlWorkbenchExecuteStatus =
@@ -16,7 +15,6 @@ export type SqlWorkbenchExecuteStatus =
   | 'requires_confirmation'
   | 'confirming'
   | 'confirmation_invalid'
-  | 'risk_blocked'
   | 'error'
 
 export type TabContextOverride = {
@@ -32,11 +30,12 @@ export type HistoryEntry = {
   id: string
   at: number
   sql: string
-  status: 'ok' | 'error' | 'risk_blocked' | 'requires_confirmation'
+  status: 'ok' | 'error' | 'requires_confirmation' | 'confirmation_invalid'
   resultCount?: number
   elapsedMs?: number
   resultKinds?: SqlExecuteResultItem['kind'][]
   errorSummary?: string
+  confirmationReason?: string
 }
 
 export type SqlWorkbenchSelection = {
@@ -65,7 +64,6 @@ export type SqlWorkbenchTabState = {
   activeResultId: string | null
   resolvedContext: ResolvedDataContext | null
   contextNotice: string | null
-  risk: SqlRiskBlocked | null
   errorMessage: string | null
   confirmation: SqlConfirmationPayload | null
   confirmationInvalid: SqlConfirmationInvalid | null
@@ -96,7 +94,6 @@ type SqlWorkbenchState = {
   setConfirming: (tabId: string) => void
   setConfirmationInvalid: (tabId: string, invalid: SqlConfirmationInvalid, lastRequest: SqlExecuteRequest) => void
   cancelConfirmation: (tabId: string) => void
-  setRiskBlocked: (tabId: string, risk: SqlRiskBlocked) => void
   setError: (tabId: string, message: string, result?: SqlExecuteResultItem | null) => void
   setTabContext: (tabId: string, ctx: Omit<TabContextOverride, 'setAt'>) => void
   resetTabContext: (tabId: string) => void
@@ -120,7 +117,6 @@ function createDefaultTabState(initial?: EnsureTabInput): SqlWorkbenchTabState {
     activeResultId: null,
     resolvedContext: null,
     contextNotice: null,
-    risk: null,
     errorMessage: null,
     confirmation: null,
     confirmationInvalid: null,
@@ -351,7 +347,6 @@ export const useSqlWorkbenchStore = create<SqlWorkbenchState>((set, get) => ({
       [tabId]: {
         ...ensureTabState(state.tabsById, tabId),
         executeStatus: 'running',
-        risk: null,
         errorMessage: null,
         confirmation: null,
         confirmationInvalid: null,
@@ -374,7 +369,6 @@ export const useSqlWorkbenchStore = create<SqlWorkbenchState>((set, get) => ({
           activeResultId,
           resolvedContext: response.resolvedContext ?? null,
           contextNotice: response.contextNotice ?? null,
-          risk: null,
           errorMessage: null,
           confirmation: null,
           confirmationInvalid: null,
@@ -393,7 +387,6 @@ export const useSqlWorkbenchStore = create<SqlWorkbenchState>((set, get) => ({
         confirmation,
         confirmationInvalid: null,
         lastRequest,
-        risk: null,
         errorMessage: null,
       },
     },
@@ -434,18 +427,6 @@ export const useSqlWorkbenchStore = create<SqlWorkbenchState>((set, get) => ({
     },
   })),
 
-  setRiskBlocked: (tabId, risk) => set((state) => ({
-    tabsById: {
-      ...state.tabsById,
-      [tabId]: {
-        ...ensureTabState(state.tabsById, tabId),
-        executeStatus: 'risk_blocked',
-        risk,
-        errorMessage: null,
-      },
-    },
-  })),
-
   setError: (tabId, message, result) => set((state) => ({
     tabsById: {
       ...state.tabsById,
@@ -454,7 +435,7 @@ export const useSqlWorkbenchStore = create<SqlWorkbenchState>((set, get) => ({
         executeStatus: 'error',
         results: result ? [result] : [],
         activeResultId: result?.resultId ?? null,
-        risk: null,
+        confirmation: null,
         errorMessage: message,
       },
     },
