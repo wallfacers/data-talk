@@ -35,4 +35,13 @@ public record StageFindResult(
             StageFindQuery.OutputMode.TABS_ONLY, List.of(), tabIds,
             totalMatched, tabIds.size(), truncated, List.of(), List.of());
     }
+
+    /**
+     * Return a new instance with the reads field replaced.
+     */
+    public StageFindResult withReads(List<StageTabContent> reads) {
+        return new StageFindResult(
+            outputMode, items, tabIds, totalMatched, tabsMatched,
+            truncated, reads, warnings);
+    }
 }

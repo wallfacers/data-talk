@@ -49,6 +49,28 @@ public record StageFindQuery(
 
     public record Read(
         String tabId,
-        boolean includePayload
-    ) {}
+        boolean includePayload,
+        ReadRange range
+    ) {
+        public Read {
+            if (range == null) {
+                range = ReadRange.FULL;
+            }
+        }
+
+        public Read(String tabId, boolean includePayload) {
+            this(tabId, includePayload, ReadRange.FULL);
+        }
+    }
+
+    /**
+     * Range specification for read operations.
+     * FULL reads the entire content, LINE_RANGE reads a specific line window.
+     */
+    public sealed interface ReadRange permits ReadRange.Full, ReadRange.LineRange {
+        ReadRange FULL = new Full();
+
+        record Full() implements ReadRange {}
+        record LineRange(int startLine, int endLine) implements ReadRange {}
+    }
 }

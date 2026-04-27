@@ -30,6 +30,7 @@ public class StageFindService {
 
     private static final int MAX_REGEX_LENGTH = 200;
     private static final long PER_TAB_TIMEOUT_SECONDS = 2;
+    static final int DEFAULT_CONTEXT_LINES = 3;
 
     private final StageTabRepository repo;
     private final StageTabIndexerPort indexer;
@@ -54,7 +55,95 @@ public class StageFindService {
             };
         }
 
+        // Apply read on top of content search results
+        if (query.reads() != null && !query.reads().isEmpty() && base != null) {
+            var reads = computeReads(query, base);
+            return base.withReads(reads);
+        }
+
         return base;
+    }
+
+    // ---- Read mode (cat/sed) + contextLines ----
+
+    private List<StageTabContent> computeReads(StageFindQuery query, StageFindResult base) {
+        var reads = query.reads();
+        var result = new ArrayList<StageTabContent>();
+
+        // Resolve tab IDs: explicit reads take priority, then fall back to base results
+        var tabIds = reads.stream().map(StageFindQuery.Read::tabId).toList();
+
+        // Look up content for each tab, applying range slicing
+        var contents = repo.findContents(tabIds);
+        var contentById = contents.stream()
+            .collect(Collectors.toMap(StageTabContent::tabId, Function.identity()));
+
+        // Build a readById map for range lookup
+        var readById = reads.stream()
+            .collect(Collectors.toMap(StageFindQuery.Read::tabId, Function.identity()));
+
+        for (var tabId : tabIds) {
+            var content = contentById.get(tabId);
+            if (content == null) continue;
+            var read = readById.get(tabId);
+            if (read == null) continue;
+
+            var range = read.range();
+            if (range instanceof StageFindQuery.ReadRange.Full) {
+                result.add(content);
+            } else if (range instanceof StageFindQuery.ReadRange.LineRange lr) {
+                var sliced = sliceContent(content, lr.startLine(), lr.endLine());
+                result.add(sliced);
+            }
+        }
+
+        return result;
+    }
+
+    private StageTabContent sliceContent(StageTabContent content, int startLine, int endLine) {
+        String[] lines = content.contentText().split("\n", -1);
+        int start = Math.max(1, startLine) - 1; // 0-indexed
+        int end = Math.min(lines.length, endLine);
+        if (start >= end) {
+            return new StageTabContent(content.tabId(), content.payloadJson(), "",
+                content.contentVersion(), content.updatedAt());
+        }
+        var sb = new StringBuilder();
+        for (int i = start; i < end; i++) {
+            if (i > start) sb.append("\n");
+            sb.append(lines[i]);
+        }
+        return new StageTabContent(content.tabId(), content.payloadJson(), sb.toString(),
+            content.contentVersion(), content.updatedAt());
+    }
+
+    /**
+     * Apply context lines (before/after) around matched lines in content.
+     */
+    static List<Map<String, Object>> withContextLines(
+            List<Map<String, Object>> matches, String content, int before, int after) {
+        if (matches.isEmpty() || (before <= 0 && after <= 0)) {
+            return matches;
+        }
+        String[] lines = content.split("\n", -1);
+        var result = new ArrayList<Map<String, Object>>();
+        for (var match : matches) {
+            int lineNum = (int) match.get("lineNumber");
+            int start = Math.max(1, lineNum - before);
+            int end = Math.min(lines.length, lineNum + after);
+            var context = new ArrayList<Map<String, Object>>();
+            for (int i = start; i <= end; i++) {
+                Map<String, Object> ctxLine = new LinkedHashMap<>();
+                ctxLine.put("lineNumber", i);
+                ctxLine.put("line", lines[i - 1]);
+                ctxLine.put("isMatch", i == lineNum);
+                context.add(ctxLine);
+            }
+            Map<String, Object> enriched = new LinkedHashMap<>(match);
+            enriched.put("context", context);
+            result.add(enriched);
+        }
+        return result;
     }
 
     // ---- Content search (FTS + substring/regex post-filter) ----
@@ -89,7 +178,6 @@ public class StageFindService {
                 }
             }
             case REGEX -> {
-                var warnings = new ArrayList<String>();
                 validateRegexPattern(pattern);
 
                 // For regex, list all tabs and fan-out with virtual threads
@@ -103,17 +191,12 @@ public class StageFindService {
                 var contentById = contents.stream()
                     .collect(Collectors.toMap(StageTabContent::tabId, Function.identity()));
 
-                var results = regexFanOut(pattern, idsToCheck, contentById);
-                for (var entry : results.entrySet()) {
+                var regexResults = regexFanOut(pattern, idsToCheck, contentById);
+                for (var entry : regexResults.entrySet()) {
                     if (!entry.getValue().isEmpty()) {
                         matchesByTab.put(entry.getKey(), entry.getValue());
                     }
                 }
-                warnings.addAll(results.values().stream()
-                    .flatMap(List::stream)
-                    .filter(m -> m.containsKey("_warning"))
-                    .map(m -> (String) m.get("_warning"))
-                    .toList());
             }
         }
 
@@ -265,11 +348,7 @@ public class StageFindService {
                 StageFindQuery.OutputMode.READ, List.of(), List.of(),
                 0, 0, false, List.of(), List.of());
         }
-        var reads = query.reads().stream()
-            .map(r -> repo.findContent(r.tabId()))
-            .filter(Optional::isPresent)
-            .map(Optional::get)
-            .toList();
+        var reads = computeReads(query, null);
         return new StageFindResult(
             StageFindQuery.OutputMode.READ, List.of(),
             reads.stream().map(StageTabContent::tabId).toList(),
