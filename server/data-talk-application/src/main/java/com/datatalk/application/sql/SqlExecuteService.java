@@ -112,21 +112,23 @@ public class SqlExecuteService {
         ResolvedExecutionContext context = tableContextAutoResolver.resolve(requestedContext, sql);
         ResolvedDataContextDto resolvedDto = toDto(context);
 
-        SqlRiskAnalysis risk = riskAnalyzer.analyze(sql, Category.QUERY);
-        if (risk.riskLevel() != null
-            && (risk.riskLevel() == RiskLevel.L2 || risk.riskLevel() == RiskLevel.L3)) {
-            if (!confirmed) {
-                return new RequiresConfirmation(
-                    resolvedDto, context.contextNotice(),
-                    risk.riskLevel().name(), risk.reason(), risk.affectedObjects(), sql);
-            }
-            if (riskAck == null || riskAck.ordinal() < risk.riskLevel().ordinal()) {
-                return new ConfirmationInvalid(
-                    resolvedDto, context.contextNotice(),
-                    "risk_ack_insufficient",
-                    riskAck == null ? null : riskAck.name(),
-                    risk.riskLevel().name(),
-                    translator.get("sql.confirmation.invalid.message"));
+        if ("user".equals(source)) {
+            SqlRiskAnalysis risk = riskAnalyzer.analyze(sql, Category.QUERY);
+            if (risk.riskLevel() != null
+                && (risk.riskLevel() == RiskLevel.L2 || risk.riskLevel() == RiskLevel.L3)) {
+                if (!confirmed) {
+                    return new RequiresConfirmation(
+                        resolvedDto, context.contextNotice(),
+                        risk.riskLevel().name(), risk.reason(), risk.affectedObjects(), sql);
+                }
+                if (riskAck == null || riskAck.ordinal() < risk.riskLevel().ordinal()) {
+                    return new ConfirmationInvalid(
+                        resolvedDto, context.contextNotice(),
+                        "risk_ack_insufficient",
+                        riskAck == null ? null : riskAck.name(),
+                        risk.riskLevel().name(),
+                        translator.get("sql.confirmation.invalid.message"));
+                }
             }
         }
 

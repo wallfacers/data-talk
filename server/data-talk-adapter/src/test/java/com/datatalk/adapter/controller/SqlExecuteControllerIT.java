@@ -53,6 +53,10 @@ class SqlExecuteControllerIT {
             st.execute("DROP ALL OBJECTS");
             st.execute("CREATE TABLE items(id INT, name VARCHAR(50))");
             st.execute("INSERT INTO items VALUES(1,'a'),(2,'b'),(3,'c'),(4,'d')");
+            st.execute("CREATE TABLE app_users(id INT PRIMARY KEY, note VARCHAR(100))");
+            st.execute("INSERT INTO app_users VALUES(1,'hello'),(2,'world')");
+            st.execute("CREATE TABLE app_logs(id INT, msg VARCHAR(200))");
+            st.execute("INSERT INTO app_logs VALUES(1,'a'),(2,'b'),(3,'c')");
         }
     }
 
@@ -218,6 +222,67 @@ class SqlExecuteControllerIT {
     }
 
     @Test
+    void l2RequiresConfirmationThenExecutes() throws Exception {
+        // Step 1: UPDATE with WHERE → L2, send without confirmation → requires_confirmation
+        mvc.perform(post("/api/sql/execute")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"connectionId":"%s","sql":"UPDATE app_users SET note = 'x' WHERE id = 1","source":"user"}
+                    """.formatted(CONN_ID)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status", is("requires_confirmation")))
+            .andExpect(jsonPath("$.confirmation.level", is("L2")))
+            .andExpect(jsonPath("$.confirmation.affectedObjects", hasItem("app_users")));
+
+        // Step 2: Re-send with confirmed=true, riskAck=L2 → executed
+        mvc.perform(post("/api/sql/execute")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"connectionId":"%s","sql":"UPDATE app_users SET note = 'x' WHERE id = 1","source":"user","confirmed":true,"riskAck":"L2"}
+                    """.formatted(CONN_ID)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status", is("executed")))
+            .andExpect(jsonPath("$.results", hasSize(1)));
+    }
+
+    @Test
+    void l3RequiresConfirmationThenExecutes() throws Exception {
+        // DELETE without WHERE → L3
+        mvc.perform(post("/api/sql/execute")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"connectionId":"%s","sql":"DELETE FROM app_logs","source":"user"}
+                    """.formatted(CONN_ID)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status", is("requires_confirmation")))
+            .andExpect(jsonPath("$.confirmation.level", is("L3")));
+
+        // Confirm with riskAck=L3 → executed
+        mvc.perform(post("/api/sql/execute")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"connectionId":"%s","sql":"DELETE FROM app_logs","source":"user","confirmed":true,"riskAck":"L3"}
+                    """.formatted(CONN_ID)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status", is("executed")));
+    }
+
+    @Test
+    void riskAckLowerThanCurrentReturnsConfirmationInvalid() throws Exception {
+        // UPDATE with WHERE → L2, but ack only L1 → confirmation_invalid
+        mvc.perform(post("/api/sql/execute")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"connectionId":"%s","sql":"UPDATE app_users SET note = 'x' WHERE id = 1","source":"user","confirmed":true,"riskAck":"L1"}
+                    """.formatted(CONN_ID)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status", is("confirmation_invalid")))
+            .andExpect(jsonPath("$.invalidConfirmation.reason", is("risk_ack_insufficient")))
+            .andExpect(jsonPath("$.invalidConfirmation.ackedRisk", is("L1")))
+            .andExpect(jsonPath("$.invalidConfirmation.currentRisk", is("L2")));
+    }
+
+    @Test
     void postgres_procedural_scripts_execute_without_splitting_inner_semicolons() throws Exception {
         Assumptions.assumeTrue(
             DockerClientFactory.instance().isDockerAvailable(),
@@ -274,15 +339,18 @@ class SqlExecuteControllerIT {
     }
 
     @Test
-    void high_risk_user_sql_returns_422_and_blocks_the_whole_batch_before_execution() throws Exception {
+    void high_risk_user_sql_returns_requires_confirmation_and_blocks_execution() throws Exception {
+        // DELETE with WHERE → L2, INSERT → L2; max is L2 → requires_confirmation
         mvc.perform(post("/api/sql/execute")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {"connectionId":"%s","sql":"DELETE FROM items WHERE id = 1; INSERT INTO items VALUES (99,'x')","source":"user"}
                     """.formatted(CONN_ID)))
-            .andExpect(status().isUnprocessableEntity())
-            .andExpect(jsonPath("$.riskLevel", is("HIGH")))
-            .andExpect(jsonPath("$.riskReason", notNullValue()));
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status", is("requires_confirmation")))
+            .andExpect(jsonPath("$.confirmation.level", is("L2")))
+            .andExpect(jsonPath("$.confirmation.reason", notNullValue()));
+        // Verify no rows were actually modified
         try (var c = DriverManager.getConnection("jdbc:h2:mem:sqlit;DB_CLOSE_DELAY=-1", "sa", "");
              var st = c.createStatement();
              var rs = st.executeQuery("SELECT COUNT(*) FROM items")) {
