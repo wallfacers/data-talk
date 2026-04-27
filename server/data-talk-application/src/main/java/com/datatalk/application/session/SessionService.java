@@ -43,7 +43,7 @@ public class SessionService {
         this.translator = translator;
     }
 
-    public CreateSessionResult create(String connectionId, String title) {
+    public synchronized CreateSessionResult create(String connectionId, String title) {
         String effectiveConnectionId = normalizeConnectionId(connectionId);
         Optional<SessionRecord> existing = repo.findEmpty();
         if (existing.isPresent()) {
