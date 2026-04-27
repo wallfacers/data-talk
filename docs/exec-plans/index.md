@@ -13,6 +13,7 @@
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [Guarded DDL / DML Execution](./2026-04-25-guarded-ddl-dml-execution-plan.md) | 2026-04-27 | 后端 L1/L2/L3 风险分级改造为用户可见两步确认流：`SqlExecuteService` sealed Outcome 三状态机，`ExecuteSqlAction` 接入风险门控，`DELETE WITH WHERE` 降为 L2；前端 `<SqlConfirmationCard>` 共享组件，Workbench AlertDialog + Chat inline 卡片双路径；后端 214 测试（1 预存失败无关），前端 400 测试全绿，`tsc --noEmit` 零错误。 |
 | [Chat Auto-Follow Bottom Recovery](./2026-04-27-chat-auto-follow-bottom-recovery-plan.md) | 2026-04-27 | 聊天区 auto-follow 恢复条件已纠偏：用户上滚后暂停跟随，但只要再次严格触底，无论通过手动滚动还是点击“回到底部”，后续流式内容都恢复自动跟随；`use-auto-scroll` 与 `split-view` 相关测试共 26 条通过，`npx tsc --noEmit` 通过。 |
 | [SQL Result Export](./2026-04-25-sql-result-export-plan.md) | 2026-04-27 | Stage SQL result set 首版导出已落地：复制 CSV、复制 JSON、下载 CSV；支持当前页与已返回结果两种范围；前端-only，18 个测试全绿，`tsc --noEmit` 通过。 |
 | [Real OpenCode MCP Bridge E2E](./2026-04-25-real-opencode-mcp-bridge-e2e-plan.md) | 2026-04-25 | `TD-028` 已关闭：新增 opt-in `RealOpenCodeMcpBridgeIT`，默认 CI 保持跳过真实模型；本地以 `DATATALK_REAL_OPENCODE_E2E=true DATATALK_REAL_OPENCODE_MODEL=alibaba-coding-plan-cn/qwen3-coder-plus mvn -q -pl data-talk-adapter -am verify -Dit.test=RealOpenCodeMcpBridgeIT` 启动 OpenCode 1.4.7 并验证 `datatalk_list_connections` 经 plugin 注入 bridge 字段后真实到达 DataTalk MCP 后端。 |

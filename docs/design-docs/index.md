@@ -16,6 +16,7 @@
 
 | 文档 | 状态 | 摘要 |
 |------|------|------|
+| [guarded-ddl-dml-execution-design](../product-specs/2026-04-25-guarded-ddl-dml-execution-design.md) | shipped | 将后端 L1/L2/L3 风险分级转化为用户可见的两步确认流：`/api/sql/execute` 与 `ExecuteSqlAction` 引入 `confirmed` + `riskAck`，Workbench 用 `AlertDialog`、chat 沿用 `preview-sql.tsx` inline 卡片，二者共享 `<SqlConfirmationCard>` 内核；`DELETE WITH WHERE` 由 L3 调整为 L2，与 `UPDATE WITH WHERE` 对称 |
 | [sql-result-export-design](../product-specs/2026-04-25-sql-result-export-design.md) | shipped | Stage SQL result set 首版导出设计已落地：复制 CSV、复制 JSON、下载 CSV；范围限定当前页或当前已返回 bounded result |
 | [query-editor-object-actions-design](../product-specs/2026-04-23-query-editor-object-actions-design.md) | shipped | `query_editor` 已收敛为由 `StageStore` 统一打开、命名、聚焦和编辑的对象；`WorkspaceAdapter` / `QueryEditorAdapter` 已对 AI 暴露稳定的 `state / actions / capabilities` 与文件式 SQL 编辑语义 |
 | [datatalk-client-design-system-design](../product-specs/2026-04-23-datatalk-client-design-system-design.md) | shipped | 为 `client/` 建立可执行的设计系统契约，并落地 `client/DESIGN.md`、semantic token 映射与基础工作台表面 |
