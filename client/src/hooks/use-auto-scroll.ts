@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 const FOLLOW_THRESHOLD_PX = 150
+const STRICT_BOTTOM_THRESHOLD_PX = 2
 
 function getMaxScrollTop(el: HTMLElement): number {
   return Math.max(0, el.scrollHeight - el.clientHeight)
+}
+
+function getDistanceFromBottom(el: HTMLElement): number {
+  return el.scrollHeight - el.scrollTop - el.clientHeight
 }
 
 export function useAutoScroll<T extends HTMLElement>(
@@ -96,18 +101,17 @@ export function useAutoScroll<T extends HTMLElement>(
     const el = nodeRef.current
     if (!el) return
 
-    const { scrollTop, scrollHeight, clientHeight } = el
-    const distanceFromBottom = scrollHeight - scrollTop - clientHeight
+    const { scrollTop } = el
+    const distanceFromBottom = getDistanceFromBottom(el)
     const nearBottom = distanceFromBottom <= FOLLOW_THRESHOLD_PX
+    const strictlyAtBottom = distanceFromBottom <= STRICT_BOTTOM_THRESHOLD_PX
     const movedUp = scrollTop < lastScrollTop.current
 
     setBottomState(nearBottom)
 
-    // Once the user cancels follow, it stays off for the rest of the
-    // current turn. Only a fresh user send (resetDeps bump → scrollToBottom)
-    // re-attaches — manually scrolling back to the bottom is not enough,
-    // per product spec.
-    if (movedUp && distanceFromBottom > 0) {
+    if (strictlyAtBottom) {
+      followEnabled.current = true
+    } else if (movedUp && distanceFromBottom > 0) {
       followEnabled.current = false
     }
 
@@ -120,7 +124,7 @@ export function useAutoScroll<T extends HTMLElement>(
     if (!el) return
 
     lastScrollTop.current = el.scrollTop
-    setBottomState(el.scrollHeight - el.scrollTop - el.clientHeight <= FOLLOW_THRESHOLD_PX)
+    setBottomState(getDistanceFromBottom(el) <= FOLLOW_THRESHOLD_PX)
 
     el.addEventListener('scroll', handleScroll)
     return () => el.removeEventListener('scroll', handleScroll)

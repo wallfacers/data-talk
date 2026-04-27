@@ -303,10 +303,7 @@ describe('useAutoScroll', () => {
     expect(metrics.scrollTop).toBe(1120)
   })
 
-  it('stays detached from auto-follow even after the user scrolls back to the bottom', () => {
-    // Once the user cancels follow by scrolling up, follow must remain off
-    // for the whole assistant turn — even if they manually scroll back to
-    // the bottom. Only a fresh user send (resetDeps bump) may re-attach.
+  it('re-attaches auto-follow after the user manually scrolls back to the exact bottom', () => {
     const metrics = { clientHeight: 100, scrollHeight: 1000, scrollTop: 900 }
     const view = render(<Harness version={0} />)
     const root = view.getByTestId('scroll-root') as HTMLDivElement
@@ -315,7 +312,6 @@ describe('useAutoScroll', () => {
     syncAtBottom(root)
     scrollToSpy.mockClear()
 
-    // User scrolls up — follow must disable.
     metrics.scrollTop = 860
     fireEvent.scroll(root)
 
@@ -324,20 +320,47 @@ describe('useAutoScroll', () => {
       view.rerender(<Harness version={1} />)
     })
 
-    // User manually scrolls back to the exact bottom.
     scrollToSpy.mockClear()
     metrics.scrollTop = 940
     fireEvent.scroll(root)
 
-    // Next streaming content growth must NOT auto-follow even though the
-    // user is back at the bottom — follow only re-attaches on user send.
+    metrics.scrollHeight = 1100
+    act(() => {
+      view.rerender(<Harness version={2} />)
+    })
+
+    expect(scrollToSpy).toHaveBeenCalledTimes(1)
+    expect(metrics.scrollTop).toBe(1100)
+  })
+
+  it('does not re-attach auto-follow when the user is only near the bottom', () => {
+    const metrics = { clientHeight: 100, scrollHeight: 1000, scrollTop: 900 }
+    const view = render(<Harness version={0} />)
+    const root = view.getByTestId('scroll-root') as HTMLDivElement
+
+    attachScrollMetrics(root, metrics)
+    syncAtBottom(root)
+    scrollToSpy.mockClear()
+
+    metrics.scrollTop = 860
+    fireEvent.scroll(root)
+
+    metrics.scrollHeight = 1040
+    act(() => {
+      view.rerender(<Harness version={1} />)
+    })
+
+    scrollToSpy.mockClear()
+    metrics.scrollTop = 930
+    fireEvent.scroll(root)
+
     metrics.scrollHeight = 1100
     act(() => {
       view.rerender(<Harness version={2} />)
     })
 
     expect(scrollToSpy).not.toHaveBeenCalled()
-    expect(metrics.scrollTop).toBe(940)
+    expect(metrics.scrollTop).toBe(930)
   })
 
   it('suppresses repeated mutation callbacks from the same append until the next frame', () => {

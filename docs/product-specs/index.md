@@ -209,6 +209,7 @@ DataTalk 的差异化在于 **AI 直接操作数据库**，但不能让 AI 蛮�
 
 | 设计文档 | 日期 | 主题 |
 |----------|------|------|
+| [Chat Auto-Follow Bottom Recovery Design](./2026-04-27-chat-auto-follow-bottom-recovery-design.md) | 2026-04-27 | 纠正聊天区 auto-follow 恢复条件的实现漂移：用户主动上滚后暂停跟随，但只要再次严格触底，无论是拖动滚动条、滚轮/触摸到底还是点击“回到底部”，后续流式内容都应恢复自动跟随（Shipped 2026-04-27） |
 | [SQL Result Export Design](./2026-04-25-sql-result-export-design.md) | 2026-04-25 | Stage SQL result set 首版导出：复制 CSV、复制 JSON、下载 CSV；支持当前页与当前已返回 bounded result，明确不做后端 streaming、Excel 和虚拟滚动 |
 | [SQL Editor Selection Run And Result Scroll Design](./2026-04-25-sql-editor-selection-run-result-scroll-design.md) | 2026-04-25 | SQL 编辑器在存在非空 Monaco 选区时精确执行选中文本；无选区时继续执行全文；多结果集切换时按 `resultId` 独立保存并恢复上下、左右滚动条位置（Shipped 2026-04-25） |
 | [Chat Tool System Arg Folding Design](./2026-04-24-chat-tool-system-arg-folding-design.md) | 2026-04-24 | 聊天区工具调用卡片的 trigger 默认只显示工具名称，所有输入参数统一下沉到展开内容，避免执行细节污染主阅读路径（Shipped 2026-04-24） |
