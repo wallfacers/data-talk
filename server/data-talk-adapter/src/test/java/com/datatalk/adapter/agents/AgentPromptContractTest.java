@@ -199,6 +199,26 @@ class AgentPromptContractTest {
         assertThat(registeredActionIds).doesNotContain("datatalk.demo.echo");
     }
 
+    @Test
+    void renderedTemplateRegistersUiFindAndDoesNotMentionUiList() throws IOException {
+        String prompt = loadPrompt();
+
+        assertThat(prompt).contains("datatalk_ui_find");
+        assertThat(prompt).doesNotContain("datatalk_ui_list");
+    }
+
+    @Test
+    void renderedTemplateContainsTabSnapshotSection() throws IOException {
+        String prompt = loadPrompt();
+
+        // The raw template should contain the placeholder that gets resolved at runtime
+        assertThat(prompt)
+            .satisfiesAnyOf(
+                p -> assertThat(p).contains("{{STAGE_TAB_DIGEST}}"),
+                p -> assertThat(p).contains("## Open Tabs Snapshot")
+            );
+    }
+
     private static String loadPrompt() throws IOException {
         return new ClassPathResource("agents/AGENTS.md")
             .getContentAsString(StandardCharsets.UTF_8);

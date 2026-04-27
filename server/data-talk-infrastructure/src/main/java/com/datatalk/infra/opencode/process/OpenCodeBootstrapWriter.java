@@ -36,7 +36,7 @@ public class OpenCodeBootstrapWriter {
     private final ObjectMapper objectMapper;
     private final OpenCodeBridgeStatus bridgeStatus;
     private final Clock clock;
-    private final Supplier<String> instructionsSupplier;
+    private Supplier<String> instructionsSupplier;
 
     @Autowired
     public OpenCodeBootstrapWriter(OpenCodeMcpProperties properties,
@@ -56,6 +56,14 @@ public class OpenCodeBootstrapWriter {
         this.bridgeStatus = bridgeStatus;
         this.clock = clock;
         this.instructionsSupplier = instructionsSupplier;
+    }
+
+    /**
+     * Replace the instructions supplier used to render AGENTS.md.
+     * Called after construction to inject dynamic content (e.g. tab digest).
+     */
+    public void setInstructionsSupplier(Supplier<String> supplier) {
+        this.instructionsSupplier = supplier;
     }
 
     public BootstrapArtifacts write(int serverPort) throws IOException {
