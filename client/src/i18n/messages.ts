@@ -136,6 +136,21 @@ const MESSAGES = {
     'workspace.confirmDeleteDescription': '确定要删除“{title}”吗？此操作不可撤销。',
     'workspace.nav.newSession': '新会话',
 
+    'sidebar.tabs.title': '工作台',
+    'sidebar.tabs.search.placeholder': '搜索 Tab...',
+    'sidebar.tabs.archive.toggle': '显示已归档 ({{count}})',
+    'sidebar.tabs.empty': '尚无 Tab。请从对话中打开，或点击 +。',
+    'sidebar.tabs.contextMenu.rename': '重命名',
+    'sidebar.tabs.contextMenu.archive': '归档',
+    'sidebar.tabs.contextMenu.delete': '删除',
+    'sidebar.tabs.contextMenu.openInNewStage': '在新 Stage 中打开',
+
+    'tabType.queryEditor': 'SQL',
+    'tabType.artifactPreview': '图表',
+    'tabType.filePreview': '文件',
+    'tabType.workspace': '工作台',
+    'tabType.unknown': 'Tab',
+
     'chat.doubleClickRename': '双击重命名',
     'chat.confirmDelete': '确定删除“{title}”？',
     'chat.sendFailed': '发送失败：{reason}',
@@ -559,6 +574,21 @@ const MESSAGES = {
     'workspace.confirmDeleteTitle': 'Delete Session',
     'workspace.confirmDeleteDescription': 'Delete "{title}"? This action cannot be undone.',
     'workspace.nav.newSession': 'New Session',
+
+    'sidebar.tabs.title': 'Tabs',
+    'sidebar.tabs.search.placeholder': 'Search tabs...',
+    'sidebar.tabs.archive.toggle': 'Show archived ({{count}})',
+    'sidebar.tabs.empty': 'No tabs yet. Open one from chat or click +.',
+    'sidebar.tabs.contextMenu.rename': 'Rename',
+    'sidebar.tabs.contextMenu.archive': 'Archive',
+    'sidebar.tabs.contextMenu.delete': 'Delete',
+    'sidebar.tabs.contextMenu.openInNewStage': 'Open in new Stage',
+
+    'tabType.queryEditor': 'SQL',
+    'tabType.artifactPreview': 'Artifact',
+    'tabType.filePreview': 'File',
+    'tabType.workspace': 'Workspace',
+    'tabType.unknown': 'Tab',
 
     'chat.doubleClickRename': 'Double-click to rename',
     'chat.confirmDelete': 'Delete "{title}"?',
