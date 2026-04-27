@@ -51,6 +51,10 @@ class CalciteSqlRiskAnalyzerTest {
 
     @Test
     void classifiesWithUpdateAsL3() {
+        // Calcite's default SQL parser does not understand WITH ... UPDATE,
+        // so this lands in the parse-failure fallback path. For Category.MUTATION
+        // that fallback escalates to L3 unconditionally — the safe choice when
+        // the AST cannot be inspected.
         SqlRiskAnalysis analysis = analyzer.analyze(
             "WITH stale AS (SELECT id FROM orders) UPDATE orders SET status = 'x' WHERE id IN (SELECT id FROM stale)",
             Category.MUTATION);
@@ -125,5 +129,19 @@ class CalciteSqlRiskAnalyzerTest {
         );
         assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
         assertThat(result.affectedObjects()).containsExactlyInAnyOrder("orders", "logs");
+    }
+
+    @Test
+    void createViewLandsInDdlFallback() {
+        // Calcite's default SQL parser does not parse CREATE VIEW; the path is
+        // covered by the DDL parse-failure fallback (L3). The dedicated
+        // CREATE_VIEW classifier branch with affectedObjects extraction stays
+        // wired so that future parser upgrades (or dialect-aware splitters)
+        // get the L2 + extracted-objects treatment for free.
+        var result = analyzer.analyze(
+            "CREATE VIEW active_users AS SELECT id FROM users WHERE active = TRUE",
+            Category.DDL);
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).startsWith("parse_failed:");
     }
 }

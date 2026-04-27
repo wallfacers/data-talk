@@ -73,7 +73,10 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
 
     private SqlRiskAnalysis classify(SqlNode node) {
         if (node instanceof SqlWith with) {
-            return max(SqlRiskAnalysis.high("with_dml"), classify(with.body));
+            // The WITH wrapper inherits the body's risk so that
+            // `WITH cte AS (...) UPDATE t SET ... WHERE id = ?` stays L2,
+            // matching the spec's "L2 stays L2, L3 stays L3" rule.
+            return classify(with.body);
         }
         if (node instanceof SqlOrderBy orderBy) {
             return classify(orderBy.query);
@@ -102,7 +105,7 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
             return SqlRiskAnalysis.low(kind.toLowerCase());
         }
         if ("CREATE_VIEW".equals(kind) || "CREATE_INDEX".equals(kind)) {
-            return SqlRiskAnalysis.medium(kind.toLowerCase());
+            return SqlRiskAnalysis.medium(kind.toLowerCase()).withAffectedObjects(extractObjects(node));
         }
         if (kind.startsWith("DROP")
             || kind.startsWith("ALTER")
