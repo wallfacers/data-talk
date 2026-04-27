@@ -46,10 +46,11 @@ This feature follows [client/DESIGN.md](../../client/DESIGN.md):
 | `TRUNCATE` | L3 | Unchanged |
 | `ALTER` (any) | L3 | Unchanged |
 | `GRANT` / `REVOKE` | L3 | Unchanged |
-| `WITH ... <mutating DML>` | Escalates to nested DML's level | Unchanged (L2 stays L2, L3 stays L3) |
+| `WITH ... <mutating DML>` | L3 (fallback) | Calcite's default parser does not parse `WITH ... UPDATE / DELETE`; the analyzer hits the parse-failure path and escalates to L3. The classifier branch already inherits the body's risk for parser configurations that do support it — current effective behavior is L3. |
+| `CREATE VIEW` / `CREATE INDEX` (any non-trivial form) | L3 (fallback) | Same parser limitation. The classifier branch is wired to L2 + affected-object extraction so future parser upgrades pick up the spec'd behavior automatically. |
 | Unclassified | L3 | Unchanged safe default |
 
-The only behavioral change is `DELETE WITH WHERE` moving from L3 to L2, mirroring `UPDATE WITH WHERE`.
+The only intentional classification change in this slice is `DELETE WITH WHERE` moving from L3 to L2, mirroring `UPDATE WITH WHERE`. The `WITH-DML` and `CREATE VIEW / INDEX` rows reflect Calcite parser reality rather than the originally proposed shape — both forms currently land in the safe parse-failure fallback (L3) and would need a parser upgrade or dialect-aware pre-classifier to be eligible for L2.
 
 ## 5. Scope
 

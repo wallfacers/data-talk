@@ -884,6 +884,8 @@ private static RiskLevel parseRiskAck(String value) {
 
 If the explore step finds a different "trusted-confirmation" mechanism, swap the `ctx.metadata().confirmedByActionResult()` check for whatever the dispatcher actually exposes. If no such mechanism exists, drop the trust check — `confirmed=true` from the action input is honored, and the client (Task 9) is responsible for issuing it only after rendering the confirmation card. Update the design doc §9 to reflect the implementation reality.
 
+**Status (2026-04-27, post-review):** Step 5.1's exploration confirmed there is no pause-resume primitive for SERVER executor actions — `actionResult` for a SERVER call routes through `PendingCallRegistry.complete()`, which silently no-ops because SERVER dispatch never registers a pending future. Honoring `confirmed=true` from raw tool input is therefore unsafe (the AI fully controls those flags). The fallback path "trust the input" was the original ship; code review caught it as an AI-bypass vector. Resolution: `ExecuteSqlAction` now refuses every L2 / L3 statement with `status: "blocked_in_chat"` regardless of input flags. The chat renderer surfaces an "Open in SQL Workbench" CTA; the Workbench `AlertDialog` REST flow is the only trusted execution surface for L2 / L3. Spec §6 / §7 / §9 / §11 were rewritten in commit `c7a1ca8` to match. The original `requires_confirmation` / `confirmation_invalid` chat-tool branches and their tests were removed in the follow-up commit alongside the bypass-resistance test in `ExecuteSqlActionTest`.
+
 - [x] **Step 5.4: Add unit tests for the action**
 
 Create or extend `ExecuteSqlActionTest.java`:
