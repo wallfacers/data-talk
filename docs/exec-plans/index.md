@@ -6,6 +6,7 @@
 
 | 计划 | 创建日期 | 摘要 |
 |------|---------|------|
+| [Cross-Session Workbench Tabs](./2026-04-27-cross-session-workbench-tabs-plan.md) | 2026-04-27 | 跨 session 工作台 Tab 持久化 + 内容索引 + `ui_find`（hard-cut 替换 `ui_list`）。23 任务分 4 batch（S/P/F/U）：V12 schema + FTS5 trigram + StageTab repo/service/HTTP；前端 StagePersistenceCoordinator + 单一 mutation API（ESLint custom rule + ts-morph 静态扫描双门禁）+ 强制 force-flush；ui_find 三段（filter/query/read）+ 四 output mode + 虚拟线程 fan-out + 正则护栏；NavTabs sidebar group + 搜索 + `{{STAGE_TAB_DIGEST}}` AGENTS.md 注入；AI 行为回归 IT 验证 force-flush。Roadmap Task 6 当前主线。 |
 | [Next Implementation Roadmap](./2026-04-25-next-implementation-roadmap-plan.md) | 2026-04-25 | 下一阶段路线图：Tasks 1-5 已收口（cleanup / pagination 评估 / query history 评估 / bounded export shipped / guarded DDL-DML shipped）；2026-04-27 重排，Task 6 跨 session 工作台持久化 + Tab 内容索引 + `ui_find` 作为下一启动项，Task 7 智能运维降级、Task 8 可视化扩展依赖 Task 6，Task 9 外部数据采集（skill 驱动）作为三期占位；明确排除虚拟滚动。 |
 
 ## 已完成计划
