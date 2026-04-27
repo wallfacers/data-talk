@@ -62,7 +62,7 @@ class ExecuteSqlActionTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void returnsPreviewAndRiskMetadata() throws Exception {
+    void l1SelectExecutesAndReturnsArtifact() throws Exception {
         Map<String, Object> out = (Map<String, Object>) action.handle(
             new ActionContext(
                 "s-exec",
@@ -115,5 +115,79 @@ class ExecuteSqlActionTest {
         List<Map<String, Object>> preview = (List<Map<String, Object>>) out.get("preview");
         assertThat(preview).hasSize(1);
         assertThat(preview.get(0).get("BIG_ID")).isEqualTo("9007199254740993");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void l2WithoutConfirmation_returnsRequiresConfirmation() throws Exception {
+        Map<String, Object> out = (Map<String, Object>) action.handle(
+            new ActionContext("s-exec", "c-l2", connectionId, "oc-e"),
+            Map.of("connectionId", connectionId, "sql", "DELETE FROM t WHERE id = 1")
+        ).toCompletableFuture().get();
+
+        assertThat(out).containsEntry("status", "requires_confirmation");
+        Map<String, Object> risk = (Map<String, Object>) out.get("risk");
+        assertThat(risk).containsEntry("level", "L2");
+        assertThat(risk).containsKey("reason");
+        assertThat(risk).containsKey("affectedObjects");
+        assertThat(out).containsEntry("sqlPreview", "DELETE FROM t WHERE id = 1");
+        // No artifact created
+        assertThat(artifacts.findBySession("s-exec")).isEmpty();
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void l3WithoutConfirmation_returnsRequiresConfirmation() throws Exception {
+        Map<String, Object> out = (Map<String, Object>) action.handle(
+            new ActionContext("s-exec", "c-l3", connectionId, "oc-e"),
+            Map.of("connectionId", connectionId, "sql", "DELETE FROM t")
+        ).toCompletableFuture().get();
+
+        assertThat(out).containsEntry("status", "requires_confirmation");
+        Map<String, Object> risk = (Map<String, Object>) out.get("risk");
+        assertThat(risk).containsEntry("level", "L3");
+        assertThat(risk).containsKey("reason");
+        assertThat(risk).containsKey("affectedObjects");
+        assertThat(out).containsEntry("sqlPreview", "DELETE FROM t");
+        assertThat(artifacts.findBySession("s-exec")).isEmpty();
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void l2WithLowerAck_returnsConfirmationInvalid() throws Exception {
+        Map<String, Object> out = (Map<String, Object>) action.handle(
+            new ActionContext("s-exec", "c-ack-low", connectionId, "oc-e"),
+            Map.of(
+                "connectionId", connectionId,
+                "sql", "DELETE FROM t WHERE id = 1",
+                "confirmed", true,
+                "riskAck", "L1"
+            )
+        ).toCompletableFuture().get();
+
+        assertThat(out).containsEntry("status", "confirmation_invalid");
+        assertThat(out).containsEntry("reason", "risk_ack_insufficient");
+        assertThat(out).containsEntry("ackedRisk", "L1");
+        assertThat(out).containsEntry("currentRisk", "L2");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void l3WithMatchingAck_passesGateButJdbcRejectsDml() {
+        // L3 DELETE without WHERE, confirmed with L3 ack.
+        // The confirmation gate passes, but executeQuery() cannot handle DML.
+        // This test documents that the state machine correctly opens the gate;
+        // actual DML execution requires executeUpdate() support (future work).
+        assertThat(
+            action.handle(
+                new ActionContext("s-exec", "c-l3-ack", connectionId, "oc-e"),
+                Map.of(
+                    "connectionId", connectionId,
+                    "sql", "DELETE FROM t",
+                    "confirmed", true,
+                    "riskAck", "L3"
+                )
+            ).toCompletableFuture()
+        ).isCompletedExceptionally();
     }
 }

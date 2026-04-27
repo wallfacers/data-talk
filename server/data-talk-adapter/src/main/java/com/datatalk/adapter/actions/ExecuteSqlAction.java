@@ -6,7 +6,8 @@ import com.datatalk.application.connection.JdbcUrlBuilder;
 import com.datatalk.application.persistence.*;
 import com.datatalk.application.session.SessionDataContextService;
 import com.datatalk.application.sql.JdbcResultValueNormalizer;
-import com.datatalk.application.sql.SqlStatementGuard;
+import com.datatalk.application.sql.SqlRiskAnalysis;
+import com.datatalk.application.sql.SqlRiskAnalyzer;
 import com.datatalk.domain.action.*;
 import com.datatalk.domain.error.DataTalkErrorCodes;
 import com.datatalk.domain.error.DataTalkException;
@@ -20,6 +21,14 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 
+/**
+ * Confirmation protocol: SERVER executor actions have no pause-resume mechanism
+ * (only CLIENT executor actions use PendingCallRegistry + action_result). The
+ * fallback is: this action returns {@code requires_confirmation} immediately;
+ * the client renderer (Task 9) issues a fresh {@code executeSql} call with
+ * {@code confirmed=true} and {@code riskAck}.
+ */
+
 @Component
 @DataTalkAction(
     id = "datatalk.execute_sql",
@@ -28,8 +37,8 @@ import java.util.stream.Collectors;
     produces = {"datatalk.artifact"},
     requiresConnection = true,
     timeoutMs = 30_000,
-    riskLevel = { RiskLevel.L1 },
-    category = { Category.QUERY }
+    riskLevel = { RiskLevel.L1, RiskLevel.L2, RiskLevel.L3 },
+    category = { Category.QUERY, Category.MUTATION }
 )
 public class ExecuteSqlAction implements ActionHandler<Map, Map> {
 
@@ -38,7 +47,7 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
 
     private final ConnectionRepository connRepo;
     private final ConnectionService connSvc;
-    private final SqlStatementGuard guard;
+    private final SqlRiskAnalyzer riskAnalyzer;
     private final ArtifactRepository artifacts;
     private final QueryResultRepository queryResults;
     private final ObjectMapper om;
@@ -47,13 +56,13 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
     private final SessionDataContextService sessionContexts;
 
     public ExecuteSqlAction(ConnectionRepository connRepo, ConnectionService connSvc,
-                            SqlStatementGuard guard, ArtifactRepository artifacts,
+                            SqlRiskAnalyzer riskAnalyzer, ArtifactRepository artifacts,
                             QueryResultRepository queryResults, ObjectMapper om, Clock clock,
                             IdGenerator ids,
                             SessionDataContextService sessionContexts) {
         this.connRepo = connRepo;
         this.connSvc = connSvc;
-        this.guard = guard;
+        this.riskAnalyzer = riskAnalyzer;
         this.artifacts = artifacts;
         this.queryResults = queryResults;
         this.om = om;
@@ -70,7 +79,9 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
                 "database",     Map.of("type", "string"),
                 "schema",       Map.of("type", "string"),
                 "sql",          Map.of("type", "string"),
-                "pageSize",     Map.of("type", "integer", "minimum", 1, "maximum", 10_000)
+                "pageSize",     Map.of("type", "integer", "minimum", 1, "maximum", 10_000),
+                "confirmed",    Map.of("type", "boolean"),
+                "riskAck",      Map.of("type", "string", "enum", List.of("L1", "L2", "L3"))
             ));
     }
 
@@ -107,7 +118,36 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
 
     private Map<String, Object> execute(ActionContext ctx, Map<String, Object> input) {
         String sql = String.valueOf(input.get("sql"));
-        guard.assertSelectOnly(sql);
+        boolean confirmedFromInput = Boolean.TRUE.equals(input.get("confirmed"));
+        String riskAckRaw = nullableString(input, "riskAck");
+
+        // Risk state machine gates non-SELECT execution
+        SqlRiskAnalysis risk = riskAnalyzer.analyze(sql, Category.QUERY);
+        boolean isHigherRisk = risk.riskLevel() == RiskLevel.L2 || risk.riskLevel() == RiskLevel.L3;
+
+        if (isHigherRisk && !confirmedFromInput) {
+            return Map.of(
+                "status", "requires_confirmation",
+                "risk", Map.of(
+                    "level", risk.riskLevel().name(),
+                    "reason", risk.reason(),
+                    "affectedObjects", risk.affectedObjects()
+                ),
+                "sqlPreview", sql
+            );
+        }
+
+        if (isHigherRisk && confirmedFromInput) {
+            RiskLevel ack = parseRiskAck(riskAckRaw);
+            if (ack == null || ack.ordinal() < risk.riskLevel().ordinal()) {
+                return Map.of(
+                    "status", "confirmation_invalid",
+                    "reason", "risk_ack_insufficient",
+                    "ackedRisk", ack == null ? null : ack.name(),
+                    "currentRisk", risk.riskLevel().name()
+                );
+            }
+        }
 
         var resolved = resolveContext(ctx, input);
         ConnectionRecord cr = withDatabase(resolved.connection(), resolved.database());
@@ -256,6 +296,12 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
     private static String nullableString(Map<String, Object> input, String key) {
         Object value = input.get(key);
         return value == null ? null : String.valueOf(value);
+    }
+
+    private static RiskLevel parseRiskAck(String raw) {
+        if (raw == null) return null;
+        try { return RiskLevel.valueOf(raw); }
+        catch (IllegalArgumentException e) { return null; }
     }
 
     private record ResolvedSqlContext(
