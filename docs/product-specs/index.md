@@ -253,6 +253,7 @@ DataTalk 的差异化在于 **AI 直接操作数据库**，但不能让 AI 蛮�
 
 | 设计文档 | 日期 | 主题 |
 |----------|------|------|
+| [Schema Read Bounds Design](./2026-04-27-schema-read-bounds-design.md) | 2026-04-27 | 将 `datatalk_read_schema` 收敛为默认只返回表摘要，显式传 `tables` 时才返回指定表列详情，并补充运行时 Agent 对大 schema / 截断输出的处理规范（Shipped 2026-04-27） |
 | [Chat Auto-Follow Bottom Recovery Design](./2026-04-27-chat-auto-follow-bottom-recovery-design.md) | 2026-04-27 | 纠正聊天区 auto-follow 恢复条件的实现漂移：用户主动上滚后暂停跟随，但只要再次严格触底，无论是拖动滚动条、滚轮/触摸到底还是点击“回到底部”，后续流式内容都应恢复自动跟随（Shipped 2026-04-27） |
 | [Guarded DDL/DML Execution Design](./2026-04-25-guarded-ddl-dml-execution-design.md) | 2026-04-25 | 把后端 L1/L2/L3 风险分级转化为用户可见的两步确认：`POST /api/sql/execute` 与 `ExecuteSqlAction` 引入 `confirmed + riskAck` 状态机，Workbench 用 `AlertDialog`，chat 走 `blocked_in_chat`（直接拒绝 L2/L3 + 引导回 Workbench）；`DELETE WITH WHERE` 由 L3 调整为 L2 与 `UPDATE WITH WHERE` 对称 |
 | [SQL Result Export Design](./2026-04-25-sql-result-export-design.md) | 2026-04-25 | Stage SQL result set 首版导出：复制 CSV、复制 JSON、下载 CSV；支持当前页与当前已返回 bounded result，明确不做后端 streaming、Excel 和虚拟滚动 |

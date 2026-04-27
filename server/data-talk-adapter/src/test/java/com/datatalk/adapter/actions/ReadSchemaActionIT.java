@@ -73,6 +73,36 @@ class ReadSchemaActionIT {
 
     @Test
     @SuppressWarnings("unchecked")
+    void readSchemaWithoutTablesReturnsTableSummaryOnly() throws Exception {
+        Map<String, Object> out = (Map<String, Object>) action.handle(
+            new ActionContext("s-1", "c-summary", connectionId, "oc-summary"),
+            Map.of("connectionId", connectionId, "schema", "PUBLIC")
+        ).toCompletableFuture().get();
+
+        List<Map<String, Object>> schema = (List<Map<String, Object>>) out.get("schema");
+        assertThat(schema).extracting(t -> t.get("name"))
+            .containsExactlyInAnyOrder("users", "orders");
+        assertThat(schema).allSatisfy(table -> assertThat(table).doesNotContainKey("columns"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void readSchemaWithTablesReturnsOnlyRequestedColumnDetails() throws Exception {
+        Map<String, Object> out = (Map<String, Object>) action.handle(
+            new ActionContext("s-1", "c-filtered", connectionId, "oc-filtered"),
+            Map.of("connectionId", connectionId, "schema", "PUBLIC", "tables", List.of("users"))
+        ).toCompletableFuture().get();
+
+        List<Map<String, Object>> schema = (List<Map<String, Object>>) out.get("schema");
+        assertThat(schema).extracting(t -> t.get("name")).containsExactly("users");
+
+        List<Map<String, Object>> columns = (List<Map<String, Object>>) schema.getFirst().get("columns");
+        assertThat(columns).extracting(c -> c.get("name"))
+            .containsExactlyInAnyOrder("id", "name", "created_at");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     void readSchemaUsesSessionContextWhenInputOmitsConnection() throws Exception {
         long now = System.currentTimeMillis();
         datatalkJdbc.update("""
