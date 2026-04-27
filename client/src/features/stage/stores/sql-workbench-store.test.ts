@@ -256,6 +256,7 @@ describe('useSqlWorkbenchStore', () => {
     const store = useSqlWorkbenchStore.getState()
     store.ensureTab('tab-a')
     store.applyExecuteSuccess('tab-a', {
+      status: 'executed',
       resolvedContext: null,
       contextNotice: 'session context',
       results: [resultSet, dmlSummary],
@@ -266,6 +267,7 @@ describe('useSqlWorkbenchStore', () => {
     expect(state.tabsById['tab-a']?.activeResultId).toBe('r-set')
 
     store.applyExecuteSuccess('tab-a', {
+      status: 'executed',
       resolvedContext: null,
       contextNotice: null,
       results: [{ ...resultSet, resultId: 'r-new', title: 'Result 2' }],
@@ -280,6 +282,7 @@ describe('useSqlWorkbenchStore', () => {
     const store = useSqlWorkbenchStore.getState()
     store.ensureTab('tab-a')
     store.applyExecuteSuccess('tab-a', {
+      status: 'executed',
       resolvedContext: null,
       contextNotice: null,
       results: [resultSet, dmlSummary],
@@ -294,6 +297,7 @@ describe('useSqlWorkbenchStore', () => {
     const store = useSqlWorkbenchStore.getState()
     store.ensureTab('tab-a')
     store.applyExecuteSuccess('tab-a', {
+      status: 'executed',
       resolvedContext: null,
       contextNotice: null,
       results: [resultSet, dmlSummary, { ...resultSet, resultId: 'r-last', title: 'Result 3' }],

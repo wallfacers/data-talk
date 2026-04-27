@@ -401,20 +401,21 @@ export async function runQueryEditorSql(params: {
     if (effectiveContext.schema != null) request.schema = effectiveContext.schema
 
     const response = await executeSql(request, controller.signal)
+    const results = response.status === 'executed' ? response.results : []
     sqlWorkbenchStore.applyExecuteSuccess(tabId, response)
     sqlWorkbenchStore.appendHistoryEntry(tabId, {
       id: `history-${startedAt}-${Math.random().toString(36).slice(2, 8)}`,
       at: Date.now(),
       sql: executableSql,
       status: 'ok',
-      resultCount: response.results.length,
+      resultCount: results.length,
       elapsedMs: Date.now() - startedAt,
-      resultKinds: response.results.map((item) => item.kind),
+      resultKinds: results.map((item) => item.kind),
     })
 
     return {
       executeStatus: 'success',
-      activeResultId: useSqlWorkbenchStore.getState().tabsById[tabId]?.activeResultId ?? response.results[0]?.resultId ?? null,
+      activeResultId: useSqlWorkbenchStore.getState().tabsById[tabId]?.activeResultId ?? results[0]?.resultId ?? null,
     }
   } catch (error) {
     if (isAbortError(error)) {

@@ -338,17 +338,18 @@ export const useSqlWorkbenchStore = create<SqlWorkbenchState>((set, get) => ({
 
   applyExecuteSuccess: (tabId, response) => set((state) => {
     const previous = ensureTabState(state.tabsById, tabId)
-    const activeResultId = response.results[0]?.resultId ?? null
+    const results = response.status === 'executed' ? response.results : []
+    const activeResultId = results[0]?.resultId ?? null
     return {
       tabsById: {
         ...state.tabsById,
         [tabId]: {
           ...previous,
           executeStatus: 'success',
-          results: response.results,
+          results,
           activeResultId,
-          resolvedContext: response.resolvedContext,
-          contextNotice: response.contextNotice,
+          resolvedContext: response.resolvedContext ?? null,
+          contextNotice: response.contextNotice ?? null,
           risk: null,
           errorMessage: null,
         },

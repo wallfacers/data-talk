@@ -9,6 +9,7 @@ vi.mock('@/services/api/sql', async (importOriginal) => {
 })
 
 const mockResult: sqlApi.SqlExecuteResponse = {
+  status: 'executed',
   resolvedContext: null,
   contextNotice: null,
   results: [

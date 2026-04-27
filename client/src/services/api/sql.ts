@@ -10,6 +10,8 @@ export interface SqlExecuteRequest {
   sessionId?: string | null
   database?: string | null
   schema?: string | null
+  confirmed?: boolean
+  riskAck?: 'L1' | 'L2' | 'L3'
 }
 
 export interface ResolvedDataContext {
@@ -35,17 +37,32 @@ export interface SqlExecuteResultItem {
   errorMessage?: string | null
 }
 
-export interface SqlExecuteResponse {
-  resolvedContext: ResolvedDataContext | null
-  contextNotice: string | null
-  results: SqlExecuteResultItem[]
+export type SqlConfirmationPayload = {
+  level: 'L2' | 'L3'
+  reason: string
+  affectedObjects: string[]
+  sqlPreview: string
 }
 
+export type SqlConfirmationInvalid = {
+  reason: 'risk_ack_insufficient'
+  ackedRisk: 'L1' | 'L2' | 'L3' | null
+  currentRisk: 'L2' | 'L3'
+  message: string
+}
+
+export type SqlExecuteResponse =
+  | { status: 'executed'; resolvedContext: ResolvedDataContext | null; contextNotice?: string | null; results: SqlExecuteResultItem[] }
+  | { status: 'requires_confirmation'; resolvedContext: ResolvedDataContext | null; contextNotice?: string | null; confirmation: SqlConfirmationPayload }
+  | { status: 'confirmation_invalid'; resolvedContext: ResolvedDataContext | null; contextNotice?: string | null; invalidConfirmation: SqlConfirmationInvalid }
+
+/** @deprecated Backend no longer returns 422 risk_blocked; confirmation flow uses discriminated status instead. */
 export interface SqlRiskBlocked {
   riskLevel: string
   riskReason: string
 }
 
+/** @deprecated Backend no longer returns 422 risk_blocked; confirmation flow uses discriminated status instead. */
 export class SqlRiskError extends Error {
   constructor(public readonly risk: SqlRiskBlocked) {
     super('risk_blocked')
@@ -60,6 +77,8 @@ export async function executeSql(req: SqlExecuteRequest, signal?: AbortSignal): 
   if (req.sessionId != null) json.sessionId = req.sessionId
   if (req.database != null) json.database = req.database
   if (req.schema != null) json.schema = req.schema
+  if (req.confirmed != null) json.confirmed = req.confirmed
+  if (req.riskAck != null) json.riskAck = req.riskAck
   const res = await fetch(`${BASE}/api/sql/execute`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
