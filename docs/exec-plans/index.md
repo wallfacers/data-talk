@@ -6,7 +6,6 @@
 
 | 计划 | 创建日期 | 摘要 |
 |------|---------|------|
-| [SQL Result Export](./2026-04-25-sql-result-export-plan.md) | 2026-04-25 | Stage SQL result set 首版导出：复制 CSV、复制 JSON、下载 CSV；支持当前页与当前已返回 bounded result 两种范围；前端-only，不新增后端 streaming / Excel / 虚拟滚动。 |
 | [Next Implementation Roadmap](./2026-04-25-next-implementation-roadmap-plan.md) | 2026-04-25 | 下一阶段路线图：分页/限制已评估为现有能力加少量 polish，查询历史已有 tab-local 基础能力；下一正式子计划转为 SQL 结果导出，后续再推进 DDL/DML 分级确认、智能化运维诊断与可视化扩展；明确排除虚拟滚动。 |
 | [Chart Artifact Inline Preview](./2026-04-25-chart-artifact-inline-preview-plan.md) | 2026-04-25 | `datatalk_render_chart` 工具完成后，图表直接内联渲染在对话消息流中，无需跳转 Workspace。 |
 
@@ -14,6 +13,7 @@
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [SQL Result Export](./2026-04-25-sql-result-export-plan.md) | 2026-04-27 | Stage SQL result set 首版导出已落地：复制 CSV、复制 JSON、下载 CSV；支持当前页与已返回结果两种范围；前端-only，18 个测试全绿，`tsc --noEmit` 通过。 |
 | [Real OpenCode MCP Bridge E2E](./2026-04-25-real-opencode-mcp-bridge-e2e-plan.md) | 2026-04-25 | `TD-028` 已关闭：新增 opt-in `RealOpenCodeMcpBridgeIT`，默认 CI 保持跳过真实模型；本地以 `DATATALK_REAL_OPENCODE_E2E=true DATATALK_REAL_OPENCODE_MODEL=alibaba-coding-plan-cn/qwen3-coder-plus mvn -q -pl data-talk-adapter -am verify -Dit.test=RealOpenCodeMcpBridgeIT` 启动 OpenCode 1.4.7 并验证 `datatalk_list_connections` 经 plugin 注入 bridge 字段后真实到达 DataTalk MCP 后端。 |
 | [SQL Editor Selection Run And Result Scroll](./2026-04-25-sql-editor-selection-run-result-scroll-plan.md) | 2026-04-25 | SQL 编辑器已支持工具栏与 `Ctrl/Cmd+Enter` 精确执行非空 Monaco 选区；无选区仍执行全文；多结果集按 `resultId` 独立保存并恢复上下、左右滚动位置。 |
 | [Streaming Code Block Jitter](./2026-04-24-streaming-code-block-jitter-plan.md) | 2026-04-24 | assistant 流式 fenced code block 底部抖动已按“结构滚动版本 + 内容增长 observer/RAF + 未闭合代码围栏稳定 DOM”收口；后续移除 streaming-only `pre` 高度规则，并改为所有 code window 共享 `pre > code` 一行正文保底，使未闭合与完成态高度模型一致；前端 focused/full vitest、`npx tsc --noEmit` 与 `git diff --check` 通过，真实 DeepSeek/OpenCode live smoke 作为本地产品复测项记录在计划内。 |

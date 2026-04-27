@@ -189,22 +189,19 @@ Frontend work in this roadmap must follow [client/DESIGN.md](../../client/DESIGN
   - Reuse existing chat Markdown table serialization patterns where possible.
   - 2026-04-25 child docs created: `docs/product-specs/2026-04-25-sql-result-export-design.md` and `docs/exec-plans/2026-04-25-sql-result-export-plan.md`.
 
-- [ ] **Step 4.1: Ship small exports first**
-  - First target: copy CSV, copy JSON, and download CSV for SQL result sets.
-  - Supported scope: current visible page and current bounded result already returned to the client.
-  - Excel export requires a separate decision after CSV / JSON behavior is stable.
+- [x] **Step 4.1: Ship small exports first**
+  - Shipped 2026-04-27: copy CSV, copy JSON, and download CSV in `SqlResultTable` footer.
+  - Supported scope: current page and current bounded result already returned to the client.
 
-- [ ] **Step 4.2: Define safety limits**
-  - Export must show whether it covers current page, bounded result, or a newly executed export query.
-  - Large full-result export should not be hidden behind a table UI button until backend streaming export exists.
+- [x] **Step 4.2: Define safety limits**
+  - Scope selector shows page vs returned result; truncated results are labeled honestly.
 
-- [ ] **Step 4.3: Define user-facing controls**
-  - Export actions belong in the result toolbar or result tab overflow, not inside every table row.
-  - Copy actions and export actions should remain visually related to existing AI table actions.
+- [x] **Step 4.3: Define user-facing controls**
+  - Export controls in `SqlResultTable` footer: scope select, copy CSV, copy JSON, download CSV.
+  - Controls use shadcn/ui with accessible names and aria-labels.
 
-- [ ] **Step 4.4: Define tests and verification**
-  - Serializer tests cover CSV escaping, nulls, dates, numbers, and JSON shape.
-  - Frontend tests cover action availability, disabled states, and downloaded content creation.
+- [x] **Step 4.4: Define tests and verification**
+  - 5 serializer tests + 2 component tests, all 18 tests pass, `tsc --noEmit` clean.
 
 ### Task 5: Guarded DDL / DML Execution
 

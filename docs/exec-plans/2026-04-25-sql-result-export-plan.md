@@ -46,7 +46,7 @@ Applicable [client/DESIGN.md](../../client/DESIGN.md) constraints:
 - Create: `client/src/features/stage/utils/sql-result-export.ts`
 - Create: `client/src/features/stage/utils/sql-result-export.test.ts`
 
-- [ ] **Step 1.1: Write serializer tests**
+- [x] **Step 1.1: Write serializer tests**
 
 Create `client/src/features/stage/utils/sql-result-export.test.ts` with these cases:
 
@@ -99,7 +99,7 @@ describe('sql-result-export', () => {
 })
 ```
 
-- [ ] **Step 1.2: Run the new tests and confirm failure**
+- [x] **Step 1.2: Run the new tests and confirm failure**
 
 Run:
 
@@ -109,7 +109,7 @@ cd client && npx vitest run src/features/stage/utils/sql-result-export.test.ts
 
 Expected: the test file fails because `sql-result-export.ts` does not exist.
 
-- [ ] **Step 1.3: Implement the serializer utility**
+- [x] **Step 1.3: Implement the serializer utility**
 
 Create `client/src/features/stage/utils/sql-result-export.ts`:
 
@@ -192,7 +192,7 @@ export function buildSqlResultExportFilename(title: string, now = new Date()): s
 }
 ```
 
-- [ ] **Step 1.4: Verify serializer tests pass**
+- [x] **Step 1.4: Verify serializer tests pass**
 
 Run:
 
@@ -209,7 +209,7 @@ Expected: all tests pass.
 - Modify: `client/src/features/stage/components/sql-result-display.test.tsx`
 - Modify: `client/src/i18n/messages.ts`
 
-- [ ] **Step 2.1: Add i18n keys**
+- [x] **Step 2.1: Add i18n keys**
 
 Add zh-CN keys near existing `stage.queryEditor.result.*` messages:
 
@@ -241,7 +241,7 @@ Add en-US keys:
 'stage.queryEditor.result.copied': 'Copied',
 ```
 
-- [ ] **Step 2.2: Add component tests for export controls**
+- [x] **Step 2.2: Add component tests for export controls**
 
 Extend the `useI18n` mock in `client/src/features/stage/components/sql-result-display.test.tsx` with the new keys, then add tests:
 
@@ -307,7 +307,7 @@ it('copies JSON for all returned rows when export scope is changed', async () =>
 })
 ```
 
-- [ ] **Step 2.3: Run component tests and confirm failure**
+- [x] **Step 2.3: Run component tests and confirm failure**
 
 Run:
 
@@ -317,7 +317,7 @@ cd client && npx vitest run src/features/stage/components/sql-result-display.tes
 
 Expected: new export control tests fail because the UI controls are not present.
 
-- [ ] **Step 2.4: Wire export controls into `SqlResultTable`**
+- [x] **Step 2.4: Wire export controls into `SqlResultTable`**
 
 In `client/src/features/stage/components/sql-result-table.tsx`:
 
@@ -401,7 +401,7 @@ const downloadCsv = useCallback(() => {
 
 Keep existing pagination controls after the export controls.
 
-- [ ] **Step 2.5: Verify component tests pass**
+- [x] **Step 2.5: Verify component tests pass**
 
 Run:
 
@@ -419,7 +419,7 @@ Expected: existing and new SQL result display tests pass.
 - Modify: `docs/design-docs/index.md`
 - Modify: `docs/product-specs/index.md`
 
-- [ ] **Step 3.1: Run focused Stage tests**
+- [x] **Step 3.1: Run focused Stage tests**
 
 Run:
 
@@ -429,7 +429,7 @@ cd client && npx vitest run src/features/stage/utils/sql-result-export.test.ts s
 
 Expected: both test files pass.
 
-- [ ] **Step 3.2: Run frontend type check**
+- [x] **Step 3.2: Run frontend type check**
 
 Run:
 
@@ -439,7 +439,7 @@ cd client && npx tsc --noEmit
 
 Expected: zero TypeScript errors.
 
-- [ ] **Step 3.3: Run whitespace check**
+- [x] **Step 3.3: Run whitespace check**
 
 Run:
 
@@ -449,7 +449,7 @@ git diff --check -- client/src/features/stage/utils/sql-result-export.ts client/
 
 Expected: no output.
 
-- [ ] **Step 3.4: Complete document housekeeping after implementation**
+- [x] **Step 3.4: Complete document housekeeping after implementation**
 
 When implementation and verification pass:
 

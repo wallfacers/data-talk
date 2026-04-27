@@ -22,9 +22,19 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useI18n } from '@/i18n/use-i18n'
 import { copyToClipboard } from '@/lib/utils'
+import { Download, Copy } from 'lucide-react'
+import {
+  buildSqlResultExportFilename,
+  selectSqlResultExportRows,
+  toSqlResultCsv,
+  toSqlResultDownloadCsv,
+  toSqlResultJson,
+  type SqlResultExportScope,
+} from '../utils/sql-result-export'
 import '@/features/chat/components/markdown/markdown.css'
 
 type SqlResultTableProps = {
@@ -115,11 +125,17 @@ export function SqlResultTable({
   const [detailFormatted, setDetailFormatted] = useState(false)
   const [detailWrap, setDetailWrap] = useState(true)
   const pageSize = 100
+  const [exportScope, setExportScope] = useState<SqlResultExportScope>('page')
+  const [copiedAction, setCopiedAction] = useState<'csv' | 'json' | null>(null)
   const pageCount = Math.max(1, Math.ceil(result.rows.length / pageSize))
   const pageStart = (page - 1) * pageSize
   const visibleRows = useMemo(
     () => result.rows.slice(pageStart, pageStart + pageSize),
     [pageStart, result.rows],
+  )
+  const exportRows = useMemo(
+    () => selectSqlResultExportRows(result.rows, visibleRows, exportScope),
+    [exportScope, result.rows, visibleRows],
   )
 
   useEffect(() => {
@@ -151,6 +167,33 @@ export function SqlResultTable({
       scrollLeft: container.scrollLeft,
     })
   }, [onScrollPositionChange])
+
+  const markCopied = useCallback((action: 'csv' | 'json') => {
+    setCopiedAction(action)
+    window.setTimeout(() => setCopiedAction((current) => current === action ? null : current), 1200)
+  }, [])
+
+  const copyCsv = useCallback(async () => {
+    const ok = await copyToClipboard(toSqlResultCsv(result.columns, exportRows))
+    if (ok) markCopied('csv')
+  }, [exportRows, markCopied, result.columns])
+
+  const copyJson = useCallback(async () => {
+    const ok = await copyToClipboard(toSqlResultJson(result.columns, exportRows))
+    if (ok) markCopied('json')
+  }, [exportRows, markCopied, result.columns])
+
+  const downloadCsv = useCallback(() => {
+    const blob = new Blob([toSqlResultDownloadCsv(result.columns, exportRows)], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = buildSqlResultExportFilename(result.title)
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+    URL.revokeObjectURL(url)
+  }, [exportRows, result.columns, result.title])
 
   const summaryLabel = result.truncated
     ? t('stage.queryEditor.summary.truncated', {
@@ -367,21 +410,44 @@ export function SqlResultTable({
           </div>
         </DialogContent>
       </Dialog>
-      <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border/50 px-3 py-2">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border/50 px-3 py-2">
         <span className="text-xs text-muted-foreground">{summaryLabel}</span>
-        {pageCount > 1 ? (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">
-              {t('stage.queryEditor.result.pageIndicator', { current: page, total: pageCount })}
-            </span>
-            <Button size="sm" variant="outline" disabled={page === 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>
-              {t('stage.queryEditor.result.previousPage')}
-            </Button>
-            <Button size="sm" variant="outline" disabled={page === pageCount} onClick={() => setPage((current) => Math.min(pageCount, current + 1))}>
-              {t('stage.queryEditor.result.nextPage')}
-            </Button>
-          </div>
-        ) : null}
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Select value={exportScope} onValueChange={(value) => setExportScope(value as SqlResultExportScope)}>
+            <SelectTrigger size="sm" aria-label={t('stage.queryEditor.result.exportScope')}>
+              <span>{exportScope === 'page' ? t('stage.queryEditor.result.exportPage') : t('stage.queryEditor.result.exportResult')}</span>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="page">{t('stage.queryEditor.result.exportPage')}</SelectItem>
+              <SelectItem value="result">{t('stage.queryEditor.result.exportResult')}</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button size="sm" variant="outline" aria-label={t('stage.queryEditor.result.copyCsvAria')} onClick={() => void copyCsv()}>
+            <Copy className="size-3.5" />
+            {copiedAction === 'csv' ? t('stage.queryEditor.result.copied') : t('stage.queryEditor.result.copyCsv')}
+          </Button>
+          <Button size="sm" variant="outline" aria-label={t('stage.queryEditor.result.copyJsonAria')} onClick={() => void copyJson()}>
+            <Copy className="size-3.5" />
+            {copiedAction === 'json' ? t('stage.queryEditor.result.copied') : t('stage.queryEditor.result.copyJson')}
+          </Button>
+          <Button size="sm" variant="outline" aria-label={t('stage.queryEditor.result.downloadCsvAria')} onClick={downloadCsv}>
+            <Download className="size-3.5" />
+            {t('stage.queryEditor.result.downloadCsv')}
+          </Button>
+          {pageCount > 1 ? (
+            <>
+              <span className="text-xs text-muted-foreground">
+                {t('stage.queryEditor.result.pageIndicator', { current: page, total: pageCount })}
+              </span>
+              <Button size="sm" variant="outline" disabled={page === 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>
+                {t('stage.queryEditor.result.previousPage')}
+              </Button>
+              <Button size="sm" variant="outline" disabled={page === pageCount} onClick={() => setPage((current) => Math.min(pageCount, current + 1))}>
+                {t('stage.queryEditor.result.nextPage')}
+              </Button>
+            </>
+          ) : null}
+        </div>
       </div>
     </div>
   )

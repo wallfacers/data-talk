@@ -30,6 +30,16 @@ vi.mock('@/i18n/use-i18n', () => ({
         'stage.queryEditor.result.pageIndicator': 'Page 1 / 3',
         'stage.queryEditor.summary.rows': '3 rows · 8ms',
         'stage.queryEditor.summary.truncated': 'Top 3 rows · 8ms',
+        'stage.queryEditor.result.exportScope': '导出范围',
+        'stage.queryEditor.result.exportPage': '当前页',
+        'stage.queryEditor.result.exportResult': '已返回结果',
+        'stage.queryEditor.result.copyCsv': '复制 CSV',
+        'stage.queryEditor.result.copyJson': '复制 JSON',
+        'stage.queryEditor.result.downloadCsv': '下载 CSV',
+        'stage.queryEditor.result.copyCsvAria': '复制当前 SQL 结果为 CSV',
+        'stage.queryEditor.result.copyJsonAria': '复制当前 SQL 结果为 JSON',
+        'stage.queryEditor.result.downloadCsvAria': '下载当前 SQL 结果为 CSV',
+        'stage.queryEditor.result.copied': '已复制',
         'stage.queryEditor.runFailed': 'SQL execution failed',
         'stage.status.error': 'Error',
       })[key] ?? key,
@@ -80,6 +90,34 @@ vi.mock('@/components/ui/dialog', () => ({
   DialogDescription: ({ children }: { children?: ReactNode }) => <p>{children}</p>,
   DialogHeader: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   DialogTitle: ({ children }: { children?: ReactNode }) => <h2>{children}</h2>,
+}))
+
+vi.mock('@/components/ui/select', () => ({
+  Select: ({ children, value, onValueChange }: { children?: ReactNode; value?: string; onValueChange?: (value: string) => void }) => (
+    <div data-testid="select-root" data-value={value} data-testid-select>
+      {children}
+      <select
+        aria-label="导出范围"
+        value={value}
+        onChange={(event) => onValueChange?.(event.target.value)}
+        data-testid="select-native"
+      >
+        <option value="page">当前页</option>
+        <option value="result">已返回结果</option>
+      </select>
+    </div>
+  ),
+  SelectTrigger: ({ children, 'aria-label': ariaLabel }: { children?: ReactNode; 'aria-label'?: string }) => (
+    <button type="button" role="combobox" aria-label={ariaLabel} data-testid="select-trigger">
+      {children}
+    </button>
+  ),
+  SelectContent: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  SelectItem: ({ children, value, onClick }: { children?: ReactNode; value: string; onClick?: () => void }) => (
+    <div role="option" aria-label={String(children)} data-value={value} onClick={onClick}>
+      {children}
+    </div>
+  ),
 }))
 
 describe('Sql result displays', () => {
@@ -408,5 +446,66 @@ describe('Sql result displays', () => {
 
     expect(screen.getByRole('cell', { name: '101' })).toBeTruthy()
     expect(screen.queryByRole('cell', { name: '100' })).toBeNull()
+  })
+
+  it('copies CSV for the current result page', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, { clipboard: { writeText } })
+
+    render(
+      <SqlResultTable
+        result={{
+          resultId: 'export-result',
+          kind: 'result_set',
+          title: 'orders',
+          statementIndex: 0,
+          statementText: 'select * from orders',
+          columns: ['id', 'status'],
+          rows: Array.from({ length: 105 }, (_, index) => [index + 1, index === 100 ? 'needs,quote' : 'paid']),
+          rowCount: 105,
+          executionMs: 8,
+          truncated: false,
+        }}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '复制当前 SQL 结果为 CSV' }))
+
+    await waitFor(() => expect(writeText).toHaveBeenCalled())
+    expect(writeText.mock.calls[0][0]).toContain('id,status')
+    expect(writeText.mock.calls[0][0]).toContain('100,paid')
+    expect(writeText.mock.calls[0][0]).not.toContain('101,"needs,quote"')
+  })
+
+  it('copies JSON for all returned rows when export scope is changed', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, { clipboard: { writeText } })
+
+    render(
+      <SqlResultTable
+        result={{
+          resultId: 'json-export-result',
+          kind: 'result_set',
+          title: 'orders',
+          statementIndex: 0,
+          statementText: 'select * from orders',
+          columns: ['id', 'status'],
+          rows: [[1, 'paid'], [2, 'pending']],
+          rowCount: 2,
+          executionMs: 8,
+          truncated: false,
+        }}
+      />,
+    )
+
+    const nativeSelect = screen.getByTestId('select-native') as HTMLSelectElement
+    fireEvent.change(nativeSelect, { target: { value: 'result' } })
+
+    fireEvent.click(screen.getByRole('button', { name: '复制当前 SQL 结果为 JSON' }))
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(JSON.stringify([
+      { id: 1, status: 'paid' },
+      { id: 2, status: 'pending' },
+    ], null, 2)))
   })
 })
