@@ -87,6 +87,17 @@ class UiActionsTest {
     }
 
     @Test
+    void uiExec_chooseConnectionSchemaDocumentsDatabaseIntentGate() {
+        Map<String, Object> schema = uiExecAction.inputSchema();
+        Map<String, Object> wsBranch = findOneOfBranch(schema, "workspace");
+        Map<String, Object> action = navigate(wsBranch, "properties", "action");
+
+        assertThat(action.get("description"))
+            .asString()
+            .contains("choose_connection only when a database-related request needs a data source");
+    }
+
+    @Test
     void uiExec_queryEditorAction_removesCloseAlias() {
         Map<String, Object> schema = uiExecAction.inputSchema();
         Map<String, Object> qeBranch = findOneOfBranch(schema, "query_editor");

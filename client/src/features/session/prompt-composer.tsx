@@ -74,8 +74,6 @@ function InnerComposer() {
   const composerRestoreDraft = useSessionStore((s) => s.composerRestoreDraft)
   const setComposerRestoreDraft = useSessionStore((s) => s.setComposerRestoreDraft)
   const setPendingModelPrompt = useSessionStore((s) => s.setPendingModelPrompt)
-  const setPendingConnectionPrompt = useSessionStore((s) => s.setPendingConnectionPrompt)
-  const setPendingActionAfterConnectionPick = useSessionStore((s) => s.setPendingActionAfterConnectionPick)
   const activeConnectionId = useConnectionStore((s) => s.activeConnectionId)
   const setActiveConnection = useConnectionStore((s) => s.setActive)
   const hasActiveModel = useHasActiveModel()
@@ -229,25 +227,6 @@ function InnerComposer() {
         return
       }
       // fall through to AI path for non-SELECT/WITH '!' content
-    }
-
-    if (!activeConnectionId) {
-      setPendingPrompt(trimmed)
-      setPendingConnectionPrompt(true)
-      setPendingActionAfterConnectionPick({ kind: 'send' })
-      const picked = await useDataSourcePickerStore.getState().requestPick({
-        reason: 'send',
-        preferredConnectionId: null,
-      })
-      if ('cancelled' in picked) {
-        setPendingPrompt(null)
-        setPendingConnectionPrompt(false)
-        setPendingActionAfterConnectionPick(null)
-        return
-      }
-      setActiveConnection(picked.connectionId)
-      setPendingConnectionPrompt(false)
-      return
     }
 
     if (!activeSessionId) {

@@ -47,7 +47,7 @@ public class UiExecAction implements ActionHandler<Map, Map> {
                         Map.entry("action", Map.of(
                                 "type", "string",
                                 "enum", List.of("open", "focus", "choose_connection", "detach", "archive", "trash"),
-                                "description", "Workspace verbs for opening, focusing, detaching, archiving, and deleting tabs."
+                                "description", "Workspace verbs for opening, focusing, detaching, archiving, and deleting tabs; choose_connection only when a database-related request needs a data source."
                         )),
                         Map.entry("params", Map.of(
                                 "type", "object",

@@ -108,20 +108,41 @@ describe('PromptComposer', () => {
     } as any)
   })
 
-  it('requests connection chooser before creating session when no active connection', async () => {
+  it('creates connectionless AI chat session without opening chooser for general prompts', async () => {
+    const createSessionMock = sessionApi.createSession as unknown as Mock
+    createSessionMock.mockResolvedValue({ id: 'sess-general', hasEverSent: false } as any)
     const requestPick = vi.spyOn(chooserStore.useDataSourcePickerStore.getState(), 'requestPick')
       .mockResolvedValue({ cancelled: true })
 
     renderWithClient(<PromptComposer />)
     fireEvent.change(screen.getByPlaceholderText('用自然语言查询你的数据库...'), {
-      target: { value: 'show me orders' },
+      target: { value: '你好' },
     })
     fireEvent.click(document.querySelector('button[type="submit"]') as HTMLButtonElement)
 
-    await waitFor(() => {
-      expect(requestPick).toHaveBeenCalled()
-      expect(sessionApi.createSession).not.toHaveBeenCalled()
+    await waitFor(() => expect(createSessionMock).toHaveBeenCalledWith(undefined, '你好'))
+    expect(requestPick).not.toHaveBeenCalled()
+    expect(useSessionStore.getState().activeSessionId).toBe('sess-general')
+    expect(useSessionStore.getState().pendingConnectionPrompt).toBe(false)
+    expect(useSessionStore.getState().pendingActionAfterConnectionPick).toBeNull()
+  })
+
+  it('still requests connection chooser for bang SQL when no active connection', async () => {
+    const requestPick = vi.spyOn(chooserStore.useDataSourcePickerStore.getState(), 'requestPick')
+      .mockResolvedValue({ cancelled: true })
+
+    renderWithClient(<PromptComposer />)
+    fireEvent.change(screen.getByPlaceholderText('用自然语言查询你的数据库...'), {
+      target: { value: '! select 1' },
     })
+    fireEvent.click(document.querySelector('button[type="submit"]') as HTMLButtonElement)
+
+    await waitFor(() => expect(requestPick).toHaveBeenCalledWith({
+      reason: 'direct_sql',
+      preferredConnectionId: null,
+    }))
+    expect(sessionApi.createSession).not.toHaveBeenCalled()
+    expect(channel.sendMessage).not.toHaveBeenCalled()
   })
 
   it('opens a newly created AI chat session directly in split mode before the pending prompt resumes', async () => {

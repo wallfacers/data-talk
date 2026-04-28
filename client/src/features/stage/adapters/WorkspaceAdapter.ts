@@ -35,7 +35,7 @@ const ACTIONS: ActionDef[] = [
   { name: 'focus', description: 'Focus a tab', paramsSchema: {
     type: 'object', required: ['target'], properties: { target: { type: 'string' } },
   } },
-  { name: 'choose_connection', description: 'Prompt user to choose a data source', paramsSchema: {
+  { name: 'choose_connection', description: 'Prompt user to choose a data source for a database-related request', paramsSchema: {
     type: 'object', properties: { preferredConnectionId: { type: 'string' } },
   } },
 ]

@@ -139,6 +139,16 @@ class AgentPromptContractTest {
     }
 
     @Test
+    void runtimePromptDoesNotRequireConnectionForGeneralChat() throws IOException {
+        String prompt = loadPrompt();
+
+        assertThat(prompt)
+            .contains("General chat and product-help requests do not require a data source")
+            .contains("Do not call `datatalk_ui_exec` with `action=choose_connection` for greetings")
+            .contains("Only prompt the connection chooser when the user asks a database-related question or explicitly uses `!` SQL");
+    }
+
+    @Test
     void runtimePromptSpecifiesChartFenceLanguage() throws IOException {
         String prompt = loadPrompt();
 
