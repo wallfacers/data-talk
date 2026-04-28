@@ -68,6 +68,7 @@ This file is the map. Deep knowledge lives in `docs/`:
 | Client design contract       | [client/DESIGN.md](client/DESIGN.md)                         |
 | Backend dev guide            | [docs/BACKEND.md](docs/BACKEND.md)                           |
 | Frontend dev guide           | [docs/FRONTEND.md](docs/FRONTEND.md)                         |
+| Data source type compatibility | [docs/DATA_SOURCE_TYPE_COMPATIBILITY.md](docs/DATA_SOURCE_TYPE_COMPATIBILITY.md) |
 | Plan workflow                | [docs/PLANS.md](docs/PLANS.md)                               |
 | Quality standards & scoring  | [docs/QUALITY.md](docs/QUALITY.md)                           |
 | Reliability practices        | [docs/RELIABILITY.md](docs/RELIABILITY.md)                   |
@@ -80,6 +81,13 @@ This file is the map. Deep knowledge lives in `docs/`:
 ### Bug Fixes
 
 - Proactively inspect related code when fixing a bug. In this 4-layer architecture, pay special attention: changes to domain sealed interfaces/records require checking application-layer exhaustive switches for sync updates
+
+### Data Source Type Compatibility Gate
+
+- Any task that adds, changes, or depends on a database/data-source type **MUST** read [docs/DATA_SOURCE_TYPE_COMPATIBILITY.md](docs/DATA_SOURCE_TYPE_COMPATIBILITY.md) before proposing or implementing changes.
+- This gate applies to frontend connection UI, backend JDBC connection handling, schema discovery, SQL execution, SQL splitting/risk analysis, diagnostics, MCP action schemas, and runtime agent prompts.
+- If a checklist section is not applicable, explicitly mark it `N/A` with a concrete reason in the plan or final notes.
+- When database-related implementation discovers a new compatibility point, update [docs/DATA_SOURCE_TYPE_COMPATIBILITY.md](docs/DATA_SOURCE_TYPE_COMPATIBILITY.md) in the same change.
 
 ### Post-Edit Verification
 
