@@ -6,6 +6,16 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -35,6 +45,7 @@ export function ChatHeader() {
 
   const [editing, setEditing] = useState(false)
   const [editTitle, setEditTitle] = useState('')
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -74,8 +85,7 @@ export function ChatHeader() {
 
   function handleDelete() {
     if (!sid || isBlankSession) return
-    if (!window.confirm(t('chat.confirmDelete', { title }))) return
-    del.mutate(sid)
+    setDeleteConfirmOpen(true)
   }
 
   // 空白会话不显示标题和操作按钮
@@ -86,6 +96,7 @@ export function ChatHeader() {
   }
 
   return (
+    <>
     <div className={`flex h-9 shrink-0 items-center justify-between px-3 ${state === 'collapsed' ? 'pl-24' : ''}`}>
       {editing ? (
         <Input
@@ -137,5 +148,32 @@ export function ChatHeader() {
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
+
+    <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t('workspace.confirmDeleteTitle')}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {t('workspace.confirmDeleteDescription', { title })}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter className="border-t-0 bg-transparent pt-2">
+          <AlertDialogCancel className="border-0 bg-transparent hover:bg-muted/50">
+            {t('common.cancel')}
+          </AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            className="border-0 bg-transparent"
+            onClick={() => {
+              if (sid) del.mutate(sid)
+              setDeleteConfirmOpen(false)
+            }}
+          >
+            {t('common.delete')}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   )
 }

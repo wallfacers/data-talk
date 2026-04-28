@@ -238,7 +238,7 @@ function SessionGroupView({
                       isActive={s.id === activeId}
                       onClick={() => onSelect(s.id)}
                       tooltip={title}
-                      className="data-active:bg-border data-active:ring-1 data-active:ring-border"
+                      className="data-active:bg-accent-primary/10 data-active:font-medium"
                     >
                       <span className="truncate">{title}</span>
                     </SidebarMenuButton>

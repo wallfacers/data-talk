@@ -193,13 +193,6 @@ export function StageTabBar({
                         onClick={() => onSelect?.(tab.tabId)}
                       >
                         {getTabIcon(tab.type, isActive)}
-                        {tab.dirty ? (
-                          <span
-                            data-testid="dirty-indicator"
-                            aria-hidden="true"
-                            className="size-1.5 shrink-0 rounded-full bg-amber-500"
-                          />
-                        ) : null}
                         <span className="min-w-0 truncate">{tab.title}</span>
                         <Tooltip>
                           <TooltipTrigger
@@ -290,23 +283,16 @@ export function StageTabBar({
           ) : null}
           <StageTabBarAddButton />
           {hasOverflow ? (
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <button
-                    type="button"
-                    data-testid="stage-tab-overflow-trigger"
-                    aria-label={t('stage.tabBar.moreTabs')}
-                    aria-expanded={overflowOpen}
-                    onClick={() => setOverflowOpen((prev) => !prev)}
-                    className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing"
-                  >
-                    <ChevronDownIcon className="size-3.5" />
-                  </button>
-                }
-              />
-              <TooltipContent>{t('stage.tabBar.moreTabs')}</TooltipContent>
-            </Tooltip>
+            <button
+              type="button"
+              data-testid="stage-tab-overflow-trigger"
+              aria-label={t('stage.tabBar.moreTabs')}
+              aria-expanded={overflowOpen}
+              onClick={() => setOverflowOpen((prev) => !prev)}
+              className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing"
+            >
+              <ChevronDownIcon className="size-3.5" />
+            </button>
           ) : null}
 
           {overflowOpen && hasOverflow ? (

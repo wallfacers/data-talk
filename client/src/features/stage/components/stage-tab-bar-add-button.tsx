@@ -48,25 +48,25 @@ export function StageTabBarAddButton() {
         />
         <TooltipContent>{t('stage.tabBar.addNew')}</TooltipContent>
       </Tooltip>
-      <DropdownMenuContent align="end" className="bg-bg-elevated border border-border-default shadow-sm">
+      <DropdownMenuContent align="end" className="w-auto min-w-56 bg-bg-elevated border border-border-default shadow-sm">
         <DropdownMenuItem onClick={openSqlEditor} className="text-text-base focus:bg-accent focus:text-accent-foreground">
           <DatabaseIcon className="size-4 mr-2 text-text-muted" />
-          {t('stage.tabBar.addNew.menu.sql')}
+          <span className="whitespace-nowrap">{t('stage.tabBar.addNew.menu.sql')}</span>
         </DropdownMenuItem>
         <DropdownMenuItem disabled aria-disabled className="text-text-soft data-[disabled]:opacity-60 data-[disabled]:cursor-not-allowed">
           <NetworkIcon className="size-4 mr-2" />
-          <span className="flex-1 line-through decoration-text-soft/60">{t('stage.tabBar.addNew.menu.er')}</span>
-          <span className="ml-2 rounded border border-border-subtle bg-bg-subtle px-1.5 py-0.5 text-[10px] text-text-soft">{t('stage.empty.pending')}</span>
+          <span className="flex-1 whitespace-nowrap line-through decoration-text-soft/60">{t('stage.tabBar.addNew.menu.er')}</span>
+          <span className="ml-2 whitespace-nowrap rounded border border-border-subtle bg-bg-subtle px-1.5 py-0.5 text-[10px] text-text-soft">{t('stage.empty.pending')}</span>
         </DropdownMenuItem>
         <DropdownMenuItem disabled aria-disabled className="text-text-soft data-[disabled]:opacity-60 data-[disabled]:cursor-not-allowed">
           <LineChartIcon className="size-4 mr-2" />
-          <span className="flex-1 line-through decoration-text-soft/60">{t('stage.tabBar.addNew.menu.report')}</span>
-          <span className="ml-2 rounded border border-border-subtle bg-bg-subtle px-1.5 py-0.5 text-[10px] text-text-soft">{t('stage.empty.pending')}</span>
+          <span className="flex-1 whitespace-nowrap line-through decoration-text-soft/60">{t('stage.tabBar.addNew.menu.report')}</span>
+          <span className="ml-2 whitespace-nowrap rounded border border-border-subtle bg-bg-subtle px-1.5 py-0.5 text-[10px] text-text-soft">{t('stage.empty.pending')}</span>
         </DropdownMenuItem>
         <DropdownMenuItem disabled aria-disabled className="text-text-soft data-[disabled]:opacity-60 data-[disabled]:cursor-not-allowed">
           <Table2Icon className="size-4 mr-2" />
-          <span className="flex-1 line-through decoration-text-soft/60">{t('stage.tabBar.addNew.menu.dashboard')}</span>
-          <span className="ml-2 rounded border border-border-subtle bg-bg-subtle px-1.5 py-0.5 text-[10px] text-text-soft">{t('stage.empty.pending')}</span>
+          <span className="flex-1 whitespace-nowrap line-through decoration-text-soft/60">{t('stage.tabBar.addNew.menu.dashboard')}</span>
+          <span className="ml-2 whitespace-nowrap rounded border border-border-subtle bg-bg-subtle px-1.5 py-0.5 text-[10px] text-text-soft">{t('stage.empty.pending')}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

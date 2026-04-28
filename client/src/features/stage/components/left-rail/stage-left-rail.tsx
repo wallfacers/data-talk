@@ -74,8 +74,8 @@ export function StageLeftRail() {
 
   return (
     <div className="flex h-full flex-col bg-bg-subtle border-r border-border-subtle">
-      <div className="flex h-9 items-center gap-1 px-2 border-b border-border-subtle">
-        <span className="flex-1 text-xs font-medium uppercase tracking-wide text-text-soft">
+      <div className="flex h-[41px] shrink-0 items-center gap-1 px-2 border-b border-border-subtle">
+        <span className="flex-1 text-[13px] font-medium uppercase tracking-wide text-text-soft">
           {t('stage.leftRail.title')}
         </span>
         <Tooltip>
@@ -134,16 +134,17 @@ export function StageLeftRail() {
       </div>
 
       <AlertDialog open={!!pendingUnarchiveTab} onOpenChange={(o) => !o && setPendingUnarchiveTab(null)}>
-        <AlertDialogContent className="bg-bg-elevated border border-border-default">
+        <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('stage.leftRail.confirmUnarchive.title')}</AlertDialogTitle>
             <AlertDialogDescription>
               {t('stage.leftRail.confirmUnarchive.body', { title: pendingUnarchiveTab?.title ?? '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="bg-bg-panel border border-border-default">{t('common.cancel')}</AlertDialogCancel>
+          <AlertDialogFooter className="border-t-0 bg-transparent pt-2">
+            <AlertDialogCancel className="border-0 bg-transparent hover:bg-muted/50">{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction
+              className="border-0 bg-transparent"
               onClick={() => {
                 if (!pendingUnarchiveTab) return
                 archiveTab(pendingUnarchiveTab.tabId, false)

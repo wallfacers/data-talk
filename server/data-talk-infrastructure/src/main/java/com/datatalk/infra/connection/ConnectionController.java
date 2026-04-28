@@ -6,6 +6,7 @@ import com.datatalk.dto.ConnectionDto;
 import com.datatalk.dto.ConnectionTestResultDto;
 import com.datatalk.dto.ConnectionUpdateRequest;
 import com.datatalk.application.connection.ConnectionContextRefreshService;
+import com.datatalk.application.connection.ConnectionInUseException;
 import com.datatalk.application.connection.ConnectionService;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
@@ -58,10 +59,15 @@ public class ConnectionController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable String id) {
-        return svc.deleteById(id)
-            ? ResponseEntity.noContent().build()
-            : ResponseEntity.notFound().build();
+    public ResponseEntity<Object> delete(@PathVariable String id) {
+        try {
+            return svc.deleteById(id)
+                ? ResponseEntity.noContent().build()
+                : ResponseEntity.notFound().build();
+        } catch (ConnectionInUseException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("error", e.getMessage()));
+        }
     }
 
     @PostMapping("/{id}/test")

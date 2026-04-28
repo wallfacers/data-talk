@@ -118,8 +118,8 @@ public class StageTabController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable String id) {
-        boolean deleted = service.delete(id);
-        return deleted ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
+        service.delete(id);
+        return ResponseEntity.noContent().build();
     }
 
     @ExceptionHandler(StageTabConcurrencyException.class)

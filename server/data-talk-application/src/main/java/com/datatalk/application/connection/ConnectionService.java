@@ -1,10 +1,12 @@
 package com.datatalk.application.connection;
 
 import com.datatalk.application.i18n.Translator;
-import com.datatalk.dto.ConnectionDto;
 import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.persistence.SecretVault;
+import com.datatalk.application.persistence.SessionRepository;
+import com.datatalk.application.stage.StageTabRepository;
+import com.datatalk.dto.ConnectionDto;
 import com.datatalk.domain.util.Strings;
 import org.springframework.stereotype.Service;
 
@@ -15,12 +17,18 @@ import java.util.List;
 public class ConnectionService {
 
     private final ConnectionRepository repo;
+    private final SessionRepository sessionRepo;
+    private final StageTabRepository stageTabRepo;
     private final SecretVault vault;
     private final Clock clock;
     private final Translator translator;
 
-    public ConnectionService(ConnectionRepository repo, SecretVault vault, Clock clock, Translator translator) {
+    public ConnectionService(ConnectionRepository repo, SessionRepository sessionRepo,
+                             StageTabRepository stageTabRepo, SecretVault vault,
+                             Clock clock, Translator translator) {
         this.repo = repo;
+        this.sessionRepo = sessionRepo;
+        this.stageTabRepo = stageTabRepo;
         this.vault = vault;
         this.clock = clock;
         this.translator = translator;
@@ -71,6 +79,14 @@ public class ConnectionService {
     }
 
     public boolean deleteById(String id) {
+        var sessions = sessionRepo.listByConnection(id);
+        if (!sessions.isEmpty()) {
+            throw new ConnectionInUseException(translator.get("error.connection.delete_in_use_sessions", sessions.size()));
+        }
+        var tabs = stageTabRepo.list(new StageTabRepository.ListFilter(null, id, null, false, null, null, null, 1));
+        if (!tabs.isEmpty()) {
+            throw new ConnectionInUseException(translator.get("error.connection.delete_in_use_stage"));
+        }
         return repo.deleteById(id);
     }
 

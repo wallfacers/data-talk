@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { MoreVerticalIcon, ExternalLinkIcon, PinIcon, PinOffIcon, ArchiveIcon, ArchiveRestoreIcon, Trash2Icon } from 'lucide-react'
+import { MoreHorizontalIcon, ExternalLinkIcon, PinIcon, PinOffIcon, ArchiveIcon, ArchiveRestoreIcon, Trash2Icon } from 'lucide-react'
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
@@ -8,7 +8,6 @@ import {
   AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useI18n } from '@/i18n/use-i18n'
 import { useStageStore } from '@/stores/stage-store'
 import type { StageTab } from '@/stores/stage-store'
@@ -27,32 +26,25 @@ export function StageRailRowMenu({ tab }: Props) {
   return (
     <>
       <DropdownMenu>
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <DropdownMenuTrigger
-                render={
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    aria-label={t('stage.leftRail.row.menu')}
-                    onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                    className={[
-                      'text-text-muted',
-                      'hover:bg-interaction-hover hover:text-text-base',
-                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing',
-                      'data-[state=open]:bg-interaction-selected data-[state=open]:text-accent-primary',
-                    ].join(' ')}
-                  >
-                    <MoreVerticalIcon className="size-3.5" />
-                  </Button>
-                }
-              />
-            }
-          />
-          <TooltipContent>{t('stage.leftRail.row.menu')}</TooltipContent>
-        </Tooltip>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              aria-label={t('stage.leftRail.row.menu')}
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+              className={[
+                'text-text-muted',
+                'hover:bg-interaction-hover hover:text-text-base',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing',
+                'data-[state=open]:bg-interaction-selected data-[state=open]:text-accent-primary',
+              ].join(' ')}
+            >
+              <MoreHorizontalIcon className="size-3.5" />
+            </Button>
+          }
+        />
         <DropdownMenuContent align="end" className="bg-bg-elevated border border-border-default shadow-sm">
           <DropdownMenuItem onClick={() => focusTab(tab.tabId)} className="focus:bg-accent focus:text-accent-foreground">
             <ExternalLinkIcon className="size-4 mr-2 text-text-muted" />
@@ -84,20 +76,21 @@ export function StageRailRowMenu({ tab }: Props) {
       </DropdownMenu>
 
       <AlertDialog open={confirmTrashOpen} onOpenChange={setConfirmTrashOpen}>
-        <AlertDialogContent className="bg-bg-elevated border border-border-default">
+        <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('stage.leftRail.confirmTrash.title')}</AlertDialogTitle>
             <AlertDialogDescription>
               {t('stage.leftRail.confirmTrash.body', { title: tab.title })}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="bg-bg-panel border border-border-default">
+          <AlertDialogFooter className="border-t-0 bg-transparent pt-2">
+            <AlertDialogCancel className="border-0 bg-transparent hover:bg-muted/50">
               {t('common.cancel')}
             </AlertDialogCancel>
             <AlertDialogAction
+              variant="destructive"
+              className="border-0 bg-transparent"
               onClick={() => { void trashTab(tab.tabId); setConfirmTrashOpen(false) }}
-              className="bg-status-danger text-text-inverse hover:bg-status-danger/90"
             >
               {t('stage.leftRail.confirmTrash.confirm')}
             </AlertDialogAction>

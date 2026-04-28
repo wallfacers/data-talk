@@ -108,9 +108,9 @@ class StageTabControllerIT {
         mvc.perform(delete("/api/stage/tabs/del-1"))
             .andExpect(status().isNoContent());
 
-        // Second delete returns 404
+        // DELETE is idempotent — second call still returns 204 even if the row is already gone
         mvc.perform(delete("/api/stage/tabs/del-1"))
-            .andExpect(status().isNotFound());
+            .andExpect(status().isNoContent());
     }
 
     private void insertSession(String id, String title, long now) {

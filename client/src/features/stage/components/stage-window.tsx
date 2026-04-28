@@ -37,6 +37,10 @@ export function StageWindow() {
     setShowStartPage(false)
   }, [openTabsOrdered.length])
 
+  useEffect(() => {
+    if (activeTabId) setShowStartPage(false)
+  }, [activeTabId])
+
   function handleClose() {
     closeStage()
   }

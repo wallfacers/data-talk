@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { FileEditIcon, FileTextIcon, ImageIcon, LayoutIcon, SearchCodeIcon } from 'lucide-react'
+import { BarChart2Icon, DatabaseIcon, FileTextIcon, LayoutIcon, SearchCodeIcon } from 'lucide-react'
 import { useSqlWorkbenchStore } from '@/features/stage/stores/sql-workbench-store'
 
 export interface TabTypeDescriptor {
@@ -25,7 +25,7 @@ export const TAB_TYPE_REGISTRY: Record<string, TabTypeDescriptor> = {
     type: 'query_editor',
     persistent: true,
     scope: 'workspace',
-    icon: FileEditIcon,
+    icon: DatabaseIcon,
     labelKey: 'tabType.queryEditor',
     extractContent: (p) => {
       const o = p as { sqlText?: unknown } | null | undefined
@@ -43,7 +43,7 @@ export const TAB_TYPE_REGISTRY: Record<string, TabTypeDescriptor> = {
     type: 'artifact_preview',
     persistent: true,
     scope: 'session',
-    icon: ImageIcon,
+    icon: BarChart2Icon,
     labelKey: 'tabType.artifactPreview',
     extractContent: (p) => {
       const o = p as { artifactTitle?: unknown } | null | undefined

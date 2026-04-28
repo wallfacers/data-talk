@@ -45,10 +45,6 @@ export function StageRailRow({ tab, active, inWorkset, onClick, trailingMenu }: 
 
       <span className="flex-1 truncate text-sm">{tab.title}</span>
 
-      {inWorkset && !active && (
-        <span aria-hidden className="size-1.5 rounded-full bg-accent-primary opacity-60" />
-      )}
-
       <span className="shrink-0 rounded bg-bg-subtle px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-text-soft">
         {t(desc.labelKey as Parameters<typeof t>[0])}
       </span>
