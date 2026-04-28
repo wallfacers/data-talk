@@ -307,6 +307,7 @@ The YAML `components` block below is the approved DataTalk alias contract (`bg`,
 - Composer uses `bg.panel`, `border.default`, and `interaction.focusRing`. It is a composed work control, not a plain textarea shell.
 - Messages distinguish user, assistant, tool, and error surfaces with semantics instead of saturated bubbles.
 - Stage uses `bg.subtle` for chrome and `bg.canvas` for the main work surface. Tabs, rail, running state, and selection must be readable at a glance.
+- Stage state is **global, not per-session**: tab list, workset, open / maximized, sidebar selection, and active rail panel are single values shared across all chat sessions. Switching session must not visually change the workbench. `StageTab` records carry no `scope` field on the instance; type-level scope is metadata in `tab-type-registry`.
 - Tables use stable header hierarchy, light hover, explicit selected state, and mono treatment for numeric or technical content.
 - Charts use neutral context with semantic color emphasis: focus object, compare object, and status objects each have one role.
 

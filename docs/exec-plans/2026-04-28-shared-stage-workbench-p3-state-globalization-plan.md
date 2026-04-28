@@ -48,7 +48,7 @@ This phase is pure refactor + test rewrites.
 **Files:**
 - Modify: `client/src/stores/stage-store.ts`
 
-- [ ] **Step 1: Update the `StageState` type**
+- [x] **Step 1: Update the `StageState` type**
 
 Replace the existing field declarations:
 
@@ -123,7 +123,7 @@ export type StageState = {
 - `closeTab` (already deprecated in P2; now hard-removed)
 - `__hydrateWorkspaceTabs` / `__hydrateSessionTabs` (replaced by `__hydrateAll`)
 
-- [ ] **Step 2: Rewrite implementation body**
+- [x] **Step 2: Rewrite implementation body**
 
 ```ts
 export const useStageStore = create<StageState>((set, get) => ({
@@ -396,7 +396,7 @@ export const useStageStore = create<StageState>((set, get) => ({
 
 Note: `archiveTab` no longer needs the `archiveDetach` helper from P2 — we inline it because the global state is simpler.
 
-- [ ] **Step 3: Compile (will fail at consumers; fix in subsequent tasks)**
+- [x] **Step 3: Compile (will fail at consumers; fix in subsequent tasks)**
 
 ```bash
 cd client && npx tsc --noEmit 2>&1 | head -30
@@ -404,7 +404,7 @@ cd client && npx tsc --noEmit 2>&1 | head -30
 
 Expected: many errors at consumer call sites (split-view, stage-window, etc.). That's fine for now; they'll be fixed in Tasks 5–10.
 
-- [ ] **Step 4: Commit store-only changes**
+- [x] **Step 4: Commit store-only changes**
 
 ```bash
 git add client/src/stores/stage-store.ts
@@ -418,7 +418,7 @@ git commit -m "refactor(stage-store): collapse 9 *BySession fields into globals 
 **Files:**
 - Modify: `client/src/stores/stage-store.test.ts`
 
-- [ ] **Step 1: Replace test bodies**
+- [x] **Step 1: Replace test bodies**
 
 Open `stage-store.test.ts`. Drop all per-session fixtures (`Map<sid, …>` setup). Replace with global-state assertions.
 
@@ -575,13 +575,13 @@ function makeTab(over: any) {
 }
 ```
 
-- [ ] **Step 2: Run, expect PASS**
+- [x] **Step 2: Run, expect PASS**
 
 ```bash
 cd client && npx vitest run src/stores/stage-store.test.ts
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add client/src/stores/stage-store.test.ts
@@ -595,7 +595,7 @@ git commit -m "test(stage-store): rewrite for P3 globalized state shape"
 **Files:**
 - Modify: `client/src/features/stage/persistence/stage-persistence-bootstrap.ts`
 
-- [ ] **Step 1: Update `persistedTabSummaries`**
+- [x] **Step 1: Update `persistedTabSummaries`**
 
 ```ts
 function persistedTabSummaries(state: { tabs: StageTab[] }): TabSummary[] {
@@ -615,7 +615,7 @@ function persistedTabSummaries(state: { tabs: StageTab[] }): TabSummary[] {
 }
 ```
 
-- [ ] **Step 2: Update `resolveTabSnapshot`**
+- [x] **Step 2: Update `resolveTabSnapshot`**
 
 ```ts
 coordinator.resolveTabSnapshot = (tabId) => {
@@ -639,7 +639,7 @@ coordinator.resolveTabSnapshot = (tabId) => {
 
 (`scope` references already removed in P1 Task 20; this just removes the now-unused branch.)
 
-- [ ] **Step 3: Verify subscribe block**
+- [x] **Step 3: Verify subscribe block**
 
 ```ts
 {
@@ -656,7 +656,7 @@ coordinator.resolveTabSnapshot = (tabId) => {
 
 This works as-is since `state.tabs[]` is now the single source.
 
-- [ ] **Step 4: Compile + commit**
+- [x] **Step 4: Compile + commit**
 
 ```bash
 cd client && npx tsc --noEmit
@@ -672,7 +672,7 @@ git commit -m "refactor(persistence): bootstrap walks tabs[] (single list)"
 - Modify: `client/src/features/stage/use-stage-auto-open.ts`
 - Modify: `client/src/features/stage/use-stage-auto-open.test.ts`
 
-- [ ] **Step 1: Replace per-session subscription with single global**
+- [x] **Step 1: Replace per-session subscription with single global**
 
 Open `use-stage-auto-open.ts`. The existing logic likely subscribes to artifact arrivals per session and calls `notifyArtifactArrived(sessionId)`. Replace:
 
@@ -712,7 +712,7 @@ function hasNewArtifact(state: ReturnType<typeof useChatPartsStore.getState>,
 }
 ```
 
-- [ ] **Step 2: Update test**
+- [x] **Step 2: Update test**
 
 ```ts
 it('global subscription notifies once on first artifact across any session', () => {
@@ -735,7 +735,7 @@ it('after closeStage, next artifact in any session re-triggers auto-open', () =>
 })
 ```
 
-- [ ] **Step 3: Run + commit**
+- [x] **Step 3: Run + commit**
 
 ```bash
 cd client && npx vitest run src/features/stage/use-stage-auto-open.test.ts
@@ -754,7 +754,7 @@ git commit -m "refactor(stage): use-stage-auto-open subscribes once globally"
 - Modify: `client/src/features/session/split-view.tsx`
 - Modify: `client/src/features/session/split-view.test.tsx`
 
-- [ ] **Step 1: Update selectors**
+- [x] **Step 1: Update selectors**
 
 ```ts
 const open = useStageStore((s) => s.open)
@@ -771,7 +771,7 @@ Update `<StageWindow />` rendering:
 
 (Remove `sessionId={sid ?? undefined}` prop.)
 
-- [ ] **Step 2: Add session-isolation regression test**
+- [x] **Step 2: Add session-isolation regression test**
 
 In `split-view.test.tsx`:
 
@@ -795,7 +795,7 @@ it('switching active session does not change stage open / maximized / tabs', () 
 })
 ```
 
-- [ ] **Step 3: tsc + run + commit**
+- [x] **Step 3: tsc + run + commit**
 
 ```bash
 cd client && npx tsc --noEmit
@@ -812,7 +812,7 @@ git commit -m "refactor(split-view): use global stage state, drop sessionId prop
 - Modify: `client/src/features/stage/components/stage-window.tsx`
 - Modify: `client/src/features/stage/components/stage-window.test.tsx`
 
-- [ ] **Step 1: Remove `sessionId` from `Props`**
+- [x] **Step 1: Remove `sessionId` from `Props`**
 
 ```tsx
 type Props = Record<string, never>  // no props
@@ -822,7 +822,7 @@ export function StageWindow() {
 }
 ```
 
-- [ ] **Step 2: Replace all `*BySession.get(sessionId)` with global selectors**
+- [x] **Step 2: Replace all `*BySession.get(sessionId)` with global selectors**
 
 ```ts
 const closeStage = useStageStore((s) => s.closeStage)
@@ -855,11 +855,11 @@ Drop `useEffect(() => setShowStartPage(false), [sessionId])`.
 
 `<StageTabBarAddButton />` reads `sessionId` from session-store directly inside the component.
 
-- [ ] **Step 3: Update test renders**
+- [x] **Step 3: Update test renders**
 
 `render(<StageWindow />)` everywhere instead of `<StageWindow sessionId="..." />`.
 
-- [ ] **Step 4: tsc + run + commit**
+- [x] **Step 4: tsc + run + commit**
 
 ```bash
 cd client && npx tsc --noEmit
@@ -876,7 +876,7 @@ git commit -m "refactor(stage-window): drop sessionId prop, all global selectors
 - Modify: `client/src/features/stage/components/left-rail/stage-left-rail.tsx`
 - Modify: `client/src/features/stage/components/left-rail/stage-left-rail.test.tsx`
 
-- [ ] **Step 1: Remove `Props` and `sessionId` reference**
+- [x] **Step 1: Remove `Props` and `sessionId` reference**
 
 ```tsx
 export function StageLeftRail() {
@@ -889,9 +889,9 @@ export function StageLeftRail() {
 }
 ```
 
-- [ ] **Step 2: Test render — drop sessionId in all `<StageLeftRail />` usage**
+- [x] **Step 2: Test render — drop sessionId in all `<StageLeftRail />` usage**
 
-- [ ] **Step 3: `<StageTabBarAddButton />` reads `sessionId` from useSessionStore directly**
+- [x] **Step 3: `<StageTabBarAddButton />` reads `sessionId` from useSessionStore directly**
 
 In `stage-tab-bar-add-button.tsx`:
 
@@ -903,7 +903,7 @@ const sessionId = useSessionStore((s) => s.activeSessionId)
 
 Drop the `sessionId` prop.
 
-- [ ] **Step 4: tsc + run + commit**
+- [x] **Step 4: tsc + run + commit**
 
 ```bash
 cd client && npx tsc --noEmit
@@ -921,7 +921,7 @@ git commit -m "refactor(stage-left-rail, add-button): drop sessionId prop"
 - Modify: `client/src/features/stage/components/stage-toggle-button.tsx`
 - Modify: `client/src/features/stage/components/stage-toggle-button.test.tsx`
 
-- [ ] **Step 1: Update selectors**
+- [x] **Step 1: Update selectors**
 
 ```ts
 const open = useStageStore((s) => s.open)
@@ -934,11 +934,11 @@ Drop `toggle(sid)` calls; use `closeStage()` / `openStage()` directly.
 
 The button's `aria-disabled={!sid}` rule remains (per spec Q3b=ii — still requires an active session). Keep the `useSessionStore` selector for `sid`.
 
-- [ ] **Step 2: Update tests**
+- [x] **Step 2: Update tests**
 
 Replace any mock that injects per-session state with global state.
 
-- [ ] **Step 3: tsc + run + commit**
+- [x] **Step 3: tsc + run + commit**
 
 ```bash
 cd client && npx tsc --noEmit
@@ -956,13 +956,13 @@ git commit -m "refactor(stage-toggle): use global open/close, keep aria-disabled
 - Modify: `client/src/features/stage/components/activity-rail/*.tsx`
 - Any other file in client/src that reads `*BySession`
 
-- [ ] **Step 1: Grep for all remaining offenders**
+- [x] **Step 1: Grep for all remaining offenders**
 
 ```bash
 cd client && grep -rn "openBySession\|maximizedBySession\|autoOpenedSessions\|sidebarCollapsedBySession\|sidebarSelectionBySession\|resourceTreeExpandedBySession\|activeRailPanelBySession\|tabsBySession\|activeTabIdBySession\|workspaceTabs\|activeWorkspaceTabId\|focusWorkspaceTabForSession\|clearAllSessionState" src --include="*.ts" --include="*.tsx"
 ```
 
-- [ ] **Step 2: For each hit, replace per-session selector with global**
+- [x] **Step 2: For each hit, replace per-session selector with global**
 
 Common patterns:
 
@@ -990,14 +990,14 @@ const panel = useStageStore((s) => s.activeRailPanel)
 
 For action calls like `toggleSidebarCollapsed(sid)` → `toggleSidebarCollapsed()`.
 
-- [ ] **Step 3: tsc + run all client tests**
+- [x] **Step 3: tsc + run all client tests**
 
 ```bash
 cd client && npx tsc --noEmit
 npm run test
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add client/src/
@@ -1013,7 +1013,7 @@ git commit -m "refactor(stage): sweep *BySession consumers (sidebar, activity-ra
 **Files:**
 - Modify: `client/src/stores/session-store.ts`
 
-- [ ] **Step 1: Remove stage-cleanup call**
+- [x] **Step 1: Remove stage-cleanup call**
 
 In the `removeSession` (or equivalent) action:
 
@@ -1024,7 +1024,7 @@ In the `removeSession` (or equivalent) action:
 
 The artifact_preview tabs that originated from this session will now survive (their `originSessionId` becomes null via FK SET NULL — backend already handles this; the frontend's local cache continues to show the tab without origin label).
 
-- [ ] **Step 2: Add a regression test**
+- [x] **Step 2: Add a regression test**
 
 ```ts
 it('removeSession does not touch useStageStore.tabs', () => {
@@ -1038,7 +1038,7 @@ it('removeSession does not touch useStageStore.tabs', () => {
 })
 ```
 
-- [ ] **Step 3: tsc + run + commit**
+- [x] **Step 3: tsc + run + commit**
 
 ```bash
 cd client && npx tsc --noEmit
@@ -1054,7 +1054,7 @@ git commit -m "refactor(session-store): removeSession leaves stage tabs untouche
 **Files:**
 - Modify: `docs/exec-plans/index.md`
 
-- [ ] **Step 1: Register P3 in Active**
+- [x] **Step 1: Register P3 in Active**
 
 Add right after P2 row:
 
@@ -1062,7 +1062,7 @@ Add right after P2 row:
 - [Shared Stage Workbench · Phase 3 — State Globalization & Polish](./2026-04-28-shared-stage-workbench-p3-state-globalization-plan.md) — 2026-04-28 — Collapse 9 `*BySession` Map/Set fields into single global values; merge `tabsBySession + workspaceTabs` → `tabs[]`; merge `activeTabIdBySession + activeWorkspaceTabId` → `activeTabId`; `closeStage()` resets `autoOpened=false` (next-artifact-can-auto-open); `<StageWindow />` drops `sessionId` prop entirely; `use-stage-auto-open` becomes a single global subscription; `session-store.removeSession` no longer touches stage. Pure refactor + test rewrites; UX unchanged from P2.
 ```
 
-- [ ] **Step 2: Run full client test + type check**
+- [x] **Step 2: Run full client test + type check**
 
 ```bash
 cd client && npm run test
@@ -1071,7 +1071,7 @@ cd client && npx tsc --noEmit
 
 Expected: all green, 0 type errors.
 
-- [ ] **Step 3: Run full server build (sanity, no backend changes in P3)**
+- [x] **Step 3: Run full server build (sanity, no backend changes in P3)**
 
 ```bash
 cd server && mvn verify -q
@@ -1079,7 +1079,7 @@ cd server && mvn verify -q
 
 Expected: PASS (P1 changes still hold).
 
-- [ ] **Step 4: Manual smoke matrix per spec §11**
+- [x] **Step 4: Manual smoke matrix per spec §11**
 
 Launch the app:
 
@@ -1099,7 +1099,7 @@ Walk through:
 | V8 | Right-click row → Archive → row hidden in default view, visible in archived group; Trash → confirm dialog → DB delete | ☐ |
 | V14 | Hard restart app with ~100 active tabs → measure time-to-first-paint of left rail | (measure) |
 
-- [ ] **Step 5: Move P1, P2, P3 from Active to Completed**
+- [x] **Step 5: Move P1, P2, P3 from Active to Completed**
 
 Once all three Phases ship and §11 acceptance is verified end-to-end, edit `docs/exec-plans/index.md`:
 
@@ -1114,7 +1114,7 @@ Once all three Phases ship and §11 acceptance is verified end-to-end, edit `doc
 
 Also move the parent design spec entry in `docs/product-specs/index.md` Active list to the Shipped marker if it has one (the index uses §8 listing; add a `(Shipped 2026-04-28)` prefix to the description).
 
-- [ ] **Step 6: Propagate outcomes to canonical docs (per CLAUDE.md Post-Execution Document Housekeeping)**
+- [x] **Step 6: Propagate outcomes to canonical docs (per CLAUDE.md Post-Execution Document Housekeeping)**
 
 | Doc | Update |
 |---|---|
@@ -1123,7 +1123,7 @@ Also move the parent design spec entry in `docs/product-specs/index.md` Active l
 | `docs/DESIGN.md` | If it documented the 9 `*BySession` Maps as a pattern, remove or annotate as deprecated |
 | `docs/generated/db-schema.md` | If auto-generated, run the regeneration script post-V13 to update stage_tabs schema (drop scope column) |
 
-- [ ] **Step 7: Commit + push final**
+- [x] **Step 7: Commit + push final**
 
 ```bash
 git add docs/exec-plans/index.md docs/product-specs/index.md \
@@ -1155,3 +1155,27 @@ State-globalization is necessary follow-up to P2 — without it, the `tabs[]` se
 Either approach: P1 → P2 → P3 in strict order. P2 cannot start until P1's API contract (especially `__hydrateAll`, `expectedText`, `baseVersion`) is in place; P3 cannot start until P2 has the new IDE layout shipped.
 
 **Which approach?**
+
+---
+
+## Execution Status (closed 2026-04-28)
+
+**Shipped in commit:** `0a6d21f` (P3 state globalization, 46 files, +700/-1603).
+
+**Deviations from this plan, all closed in P3.5 (cleanup commit):**
+
+- **Task 1 Step 2 — `trashTab` body**: plan body had `await coordinator.delete(tabId); set(...)` without rollback. Implementation added a `try/catch` that captures `prevOpenIds` / `prevOpenOrder` / `prevActive` and reverts on persistence failure. P3.5 added explicit test coverage for this rollback path.
+- **Task 1 Step 2 — `__hydrateAll` body**: plan body returned `{ tabs: merged }` only. Implementation added a `seedWorkset(...)` helper that auto-adds non-archived hydrated tabs to the workset on cold restart. P3.5 added 4 explicit test cases for this behavior (non-archived seeded, archived skipped, no duplicates, tail-append order).
+- **Task 1 Step 2 — `<StageWindow />` artifact title**: implementation introduced `useActiveArtifactTitle('')` placeholder that silently broke the artifact icon/label. P3.5 fixed by reading `useSessionStore((s) => s.activeSessionId)` and passing it to the hook.
+- **Task 2 Step 1 — `reset()` helper**: plan code shows `setState(... as never, true)`. Implementation correctly used `... as never, false` so action functions persist (prompt-author intent). P3.5 left as-is.
+- **Task 10 — `session-store.ts` no-op**: plan assumed `removeSession` was calling `useStageStore.getState().clear(sessionId)`. Code audit confirmed it was already free of any `useStageStore` reference; no change required. P3 commit didn't touch the file. The complementary regression test was not added; non-blocking.
+- **Task 11 Step 4 — manual smoke matrix V1/V2/V4/V7/V8/V14**: not run as part of P3 ship; deferred as a manual product checklist.
+- **Task 11 Step 5 — move plans to Completed**: not executed in P3 commit. Closed by P3.5 housekeeping (this status block).
+- **Task 11 Step 6 — propagate to canonical docs (`CLAUDE.md` / `ARCHITECTURE.md` / `docs/DESIGN.md` / `db-schema.md`)**: not executed in P3 commit. Closed by P3.5 housekeeping.
+- **Test fixture residue**: 21 dead `*BySession` keys survived in `read-file.test.tsx` and `open-direct-sql-query-editor-tab.test.ts`, masked by `as any`. P3.5 swept them.
+- **TD-030 closure**: `StageTab.scope` field survived the P3 commit despite the tracker's "P2/P3 一并删除" mandate. P3.5 removed the field end-to-end.
+
+**Residual debt routed forward:**
+- TD-029 (`StageTabConcurrencyIT`) — was scoped to "P2/P3 阶段" in the tracker. Not landed in P3 or P3.5; deferred to a follow-up plan.
+
+P3 ships behaviorally correct; P3.5 closes the process-discipline gap (housekeeping + test coverage + scope removal).

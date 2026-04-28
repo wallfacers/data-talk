@@ -50,6 +50,7 @@ cd client && npm run tauri dev                               # Tauri dev mode
 - **Protocol**: Streamable HTTP — POST response upgrades to SSE; server pushes `action.invoke`, client replies with `action_result`
 - **Event model**: `DtEvent` sealed interface, 22 event types, exhaustive switch guarantees compile-time completeness
 - **Frontend state**: Zustand store per feature, TanStack Query for server state
+- **Stage state**: `useStageStore` is **session-independent / global** — `tabs[]`, `open`, `maximized`, `activeTabId` etc. are single values, not per-session maps. `StageTab` instances have **no `scope` field**; type-level scope (workspace vs session) lives only in `tab-type-registry.ts` as `TabTypeDescriptor.scope`. Switching the active session does not change stage tabs or open/maximized state
 
 ## Knowledge Base Navigation (docs/)
 

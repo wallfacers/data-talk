@@ -14,13 +14,13 @@
 
 | ID | 优先级 | 描述 | 关联计划 |
 |----|--------|------|----------|
-| TD-029 | P1 | 端到端"两个 OpenCode session 通过 `ui_exec` 竞争同一 tab"集成测试缺失。P1 用 `McpActionBridgeTest` 替代了原计划的 `StageTabConcurrencyIT`，只覆盖错误封装语义，不穿透 `ChannelService → ActionDispatcher → Client → 回程`。真实端到端的 `version_conflict` / `expected_text_mismatch` 行为没有自动化保障 | 在 P2/P3 阶段补一份 `StageTabConcurrencyIT` 或等价场景：用 `WireMockOpenCodeServer` 启两个 fake session 并发提交 `ui_exec apply_text_edits`，断言后到者一定收到结构化 conflict 错误且 baseVersion/expectedText 路径都被覆盖 |
-| TD-030 | P1 | P1 让 session-scoped 持久化恢复后，前端运行态 `StageTab.scope` 仍存在，但 hydrate 路径在 `stage-persistence-bootstrap.ts` 强制写回 `scope: 'workspace'`。下次 boot 任何曾以 `scope: 'session'` 创建的可持久化 tab（如 `artifact_preview`）会从 `tabsBySession` 跳到 `workspaceTabs`，可能造成 P2 布局位置漂移 | 在 P2 一并删除前端 `StageTab.scope` 字段、合并 `tabsBySession`/`workspaceTabs` 为单一 workspace 列表（与 P3 状态全局化方案对齐），同时迁移 `openArtifactPreviewTab` 等仍写 `scope: 'session'` 的入口 |
+| TD-029 | P1 | 端到端"两个 OpenCode session 通过 `ui_exec` 竞争同一 tab"集成测试缺失。P1 用 `McpActionBridgeTest` 替代了原计划的 `StageTabConcurrencyIT`，只覆盖错误封装语义，不穿透 `ChannelService → ActionDispatcher → Client → 回程`。真实端到端的 `version_conflict` / `expected_text_mismatch` 行为没有自动化保障。**2026-04-28 更新**：原计划"P2/P3 阶段补"未兑现——P2 / P3 / P3.5 均无 backend 改动，concurrency IT 涉及 WireMock 双 session 编排、独立工作量较大。**显式延期到独立 follow-up plan**，不再挂在 Stage Workbench 系列下 | 立项独立 `StageTabConcurrencyIT` plan：`WireMockOpenCodeServer` 起两个 fake session 并发提交 `ui_exec apply_text_edits`，断言后到者一定收到结构化 conflict 错误且 `baseVersion` / `expectedText` 路径都被覆盖 |
 
 ## 已清除债务
 
 | ID | 清除日期 | 原描述 | 清除方式 |
 |----|----------|--------|----------|
+| TD-030 | 2026-04-28 | P1 让 session-scoped 持久化恢复后，前端运行态 `StageTab.scope` 仍存在，hydrate 路径在 `stage-persistence-bootstrap.ts` 强制写回 `scope: 'workspace'`，可能造成 P2 布局位置漂移 | P3 commit `0a6d21f` 完成 `tabsBySession` / `workspaceTabs` 合并为单一 `tabs[]`；P3.5 cleanup commit 端到端删除前端 `StageTab.scope` 字段、`QueryEditorOpenInput.scope` 与所有 ~10 处生产写入位、~60 处测试 fixture；hydrate 路径不再写入 scope；type-level scope 由 `tab-type-registry.ts` 提供，与实例字段彻底解耦 |
 | TD-SINGLE-EMPTY-SESSION-MULTINODE | 2026-04-27 | `SessionService.create` 的 `synchronized (createLock)` 仅在单 JVM 内有效，多节点部署需改为 DB 唯一约束 | 移除 `synchronized (createLock)` 及 `createLock` 字段。当前为单机桌面应用，无需多节点并发保护；若未来扩展多节点，应配合数据库切换到 PG 并添加 partial unique index |
 | TD-026 | 2026-04-27 | `client/src/features/session/hero-view.tsx` 为无引用孤立文件，和 `SplitView` 空态内容重复 | 删除 `hero-view.tsx`。`SplitView` 已有完整的空态实现（含 `composer-slot`），`HeroView` 无任何引用 |
 | TD-028 | 2026-04-27 | `EndToEndSmokeIT` 用 `bridgeArgs()` 手工构造带 `__dt*` 的 `/mcp` 请求，只覆盖 backend endpoint，不跑真实 OpenCode→plugin→bridge 链路。曾导致 plugin 里 `output.args = args` 整体替换失效的 bug 一路漏到生产（-32602 missing session context） | 2026-04-27 代码审查确认：`RealOpenCodeMcpBridgeIT` 已存在并提供 opt-in 真实 E2E 夹具（`DATATALK_REAL_OPENCODE_E2E=true` + `DATATALK_REAL_OPENCODE_MODEL`），启动真实 `opencode serve` 验证 plugin→bridge 全链路；`EndToEndSmokeIT` 头部注释已正确指向该测试作为补充。风险已闭环 |

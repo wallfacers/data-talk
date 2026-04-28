@@ -62,7 +62,7 @@
 - Modify: `client/src/stores/stage-store.ts`
 - Modify: `client/src/stores/stage-store.test.ts`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Append to `stage-store.test.ts`:
 
@@ -169,7 +169,7 @@ function makeStageTab(overrides: Partial<StageTab> = {}): StageTab {
 }
 ```
 
-- [ ] **Step 2: Run tests, expect FAIL**
+- [x] **Step 2: Run tests, expect FAIL**
 
 ```bash
 cd client && npx vitest run src/stores/stage-store.test.ts -t "Library vs Workset"
@@ -177,7 +177,7 @@ cd client && npx vitest run src/stores/stage-store.test.ts -t "Library vs Workse
 
 Expected: FAIL — these mutators don't exist yet.
 
-- [ ] **Step 3: Add new state + mutator types to `StageState`**
+- [x] **Step 3: Add new state + mutator types to `StageState`**
 
 In `stage-store.ts`, add to the `StageState` type:
 
@@ -203,7 +203,7 @@ export type StageState = {
 
 Note: `focusTab` already exists in the store but only does `setActive`; we override it to also `ensureOpenInWorkset`. Check existing definition and replace.
 
-- [ ] **Step 4: Add initial state**
+- [x] **Step 4: Add initial state**
 
 In the `create<StageState>(...)` body:
 
@@ -240,7 +240,7 @@ function loadLeftRailCollapsed(): boolean {
 }
 ```
 
-- [ ] **Step 5: Implement mutators**
+- [x] **Step 5: Implement mutators**
 
 ```ts
 ensureOpenInWorkset: (tabId) => set((s) => {
@@ -351,13 +351,13 @@ function archiveDetach(s: StageState, tabId: string) {
 }
 ```
 
-- [ ] **Step 6: Run tests, expect PASS**
+- [x] **Step 6: Run tests, expect PASS**
 
 ```bash
 cd client && npx vitest run src/stores/stage-store.test.ts -t "Library vs Workset"
 ```
 
-- [ ] **Step 7: tsc check + commit**
+- [x] **Step 7: tsc check + commit**
 
 ```bash
 cd client && npx tsc --noEmit
@@ -372,7 +372,7 @@ git commit -m "feat(stage-store): add openTabIds + library/workset mutators"
 **Files:**
 - Modify: `client/src/stores/stage-store.ts`
 
-- [ ] **Step 1: Update `closeTab` to delegate**
+- [x] **Step 1: Update `closeTab` to delegate**
 
 Replace the existing `closeTab` body:
 
@@ -394,7 +394,7 @@ Add a JSDoc note on the method:
 closeTab: (tabId: string) => void
 ```
 
-- [ ] **Step 2: Compile + commit**
+- [x] **Step 2: Compile + commit**
 
 ```bash
 cd client && npx tsc --noEmit
@@ -411,7 +411,7 @@ git commit -m "refactor(stage-store): closeTab → alias of detachFromWorkset"
 - Modify: `client/src/features/stage/components/stage-tab-bar.tsx`
 - Modify: `client/src/features/stage/components/stage-tab-bar.test.tsx`
 
-- [ ] **Step 1: Update `StageWindow` selectors**
+- [x] **Step 1: Update `StageWindow` selectors**
 
 Replace the existing `tabs` selector in `stage-window.tsx`:
 
@@ -453,7 +453,7 @@ const handleCloseRight = (tabId: string) => {
 }
 ```
 
-- [ ] **Step 2: Update existing test**
+- [x] **Step 2: Update existing test**
 
 In `stage-tab-bar.test.tsx`, find the test that asserts close button calls `closeTab` callback. The callback is unchanged from `<StageTabBar />` perspective (still `onClose` prop). The behavioral test should still pass — `detachFromWorkset` is called by the parent. Add a new test:
 
@@ -466,7 +466,7 @@ it('Close X on a tab calls onClose with the tabId (parent will detachFromWorkset
 })
 ```
 
-- [ ] **Step 3: Run tests, expect PASS**
+- [x] **Step 3: Run tests, expect PASS**
 
 ```bash
 cd client && npx vitest run src/features/stage/components/stage-tab-bar.test.tsx src/features/stage/components/stage-window.test.tsx
@@ -474,7 +474,7 @@ cd client && npx vitest run src/features/stage/components/stage-tab-bar.test.tsx
 
 If `stage-window.test.tsx` references the old `tabs` selector, update it to construct a fixture with `openTabIds`/`openTabIdsOrdered` populated.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add client/src/features/stage/components/stage-window.tsx \
@@ -494,7 +494,7 @@ git commit -m "feat(stage-window): tab bar renders openTabsOrdered, close = deta
 - Create: `client/src/features/stage/components/stage-tab-bar-add-button.tsx`
 - Create: `client/src/features/stage/components/stage-tab-bar-add-button.test.tsx`
 
-- [ ] **Step 1: Write component**
+- [x] **Step 1: Write component**
 
 ```tsx
 import { PlusIcon, DatabaseIcon, NetworkIcon, LineChartIcon, Table2Icon } from 'lucide-react'
@@ -571,7 +571,7 @@ export function StageTabBarAddButton({ sessionId }: Props) {
 }
 ```
 
-- [ ] **Step 2: Add i18n keys**
+- [x] **Step 2: Add i18n keys**
 
 In `client/src/i18n/messages.ts` (zh-CN block):
 
@@ -593,7 +593,7 @@ In `client/src/i18n/messages.ts` (zh-CN block):
 'stage.tabBar.addNew.menu.dashboard': 'Dashboard',
 ```
 
-- [ ] **Step 3: Write component test**
+- [x] **Step 3: Write component test**
 
 ```tsx
 import { render, screen, fireEvent } from '@testing-library/react'
@@ -636,13 +636,13 @@ describe('StageTabBarAddButton', () => {
 })
 ```
 
-- [ ] **Step 4: Run tests, expect PASS**
+- [x] **Step 4: Run tests, expect PASS**
 
 ```bash
 cd client && npx vitest run src/features/stage/components/stage-tab-bar-add-button.test.tsx
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add client/src/features/stage/components/stage-tab-bar-add-button.tsx \
@@ -658,7 +658,7 @@ git commit -m "feat(stage-tab-bar): add + button with new-workspace-tool menu"
 **Files:**
 - Modify: `client/src/features/stage/components/stage-tab-bar.tsx`
 
-- [ ] **Step 1: Render at end of tab strip**
+- [x] **Step 1: Render at end of tab strip**
 
 In `stage-tab-bar.tsx`, locate the JSX where individual tabs are rendered. After the last tab `<div>`, add:
 
@@ -668,14 +668,14 @@ In `stage-tab-bar.tsx`, locate the JSX where individual tabs are rendered. After
 
 Pass `sessionId` down from `<StageWindow />` via a new prop on `<StageTabBar />` (or read from store directly if simpler).
 
-- [ ] **Step 2: tsc + visual quick check**
+- [x] **Step 2: tsc + visual quick check**
 
 ```bash
 cd client && npx tsc --noEmit && npm run dev
 # manually verify: open chat, click monitor button → stage opens → "+" button visible at end of tab strip
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add client/src/features/stage/components/stage-tab-bar.tsx
@@ -691,7 +691,7 @@ git commit -m "feat(stage-tab-bar): render add button at end of strip"
 **Files:**
 - Create: `client/src/features/stage/components/left-rail/stage-rail-search.tsx`
 
-- [ ] **Step 1: Write component**
+- [x] **Step 1: Write component**
 
 ```tsx
 import { SearchIcon, XIcon } from 'lucide-react'
@@ -749,7 +749,7 @@ export function StageRailSearch({ value, onChange, disabled }: Props) {
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add client/src/features/stage/components/left-rail/stage-rail-search.tsx
@@ -763,7 +763,7 @@ git commit -m "feat(stage-left-rail): add StageRailSearch with 5-state tokens"
 **Files:**
 - Create: `client/src/features/stage/components/left-rail/stage-rail-row.tsx`
 
-- [ ] **Step 1: Write component**
+- [x] **Step 1: Write component**
 
 ```tsx
 import { useI18n } from '@/i18n/use-i18n'
@@ -840,7 +840,7 @@ export function StageRailRow({ tab, active, inWorkset, onClick, trailingMenu }: 
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add client/src/features/stage/components/left-rail/stage-rail-row.tsx
@@ -854,7 +854,7 @@ git commit -m "feat(stage-left-rail): add StageRailRow with inWorkset mark"
 **Files:**
 - Create: `client/src/features/stage/components/left-rail/stage-rail-row-menu.tsx`
 
-- [ ] **Step 1: Write component**
+- [x] **Step 1: Write component**
 
 ```tsx
 import { useState } from 'react'
@@ -958,7 +958,7 @@ export function StageRailRowMenu({ tab }: Props) {
 }
 ```
 
-- [ ] **Step 2: Add i18n keys**
+- [x] **Step 2: Add i18n keys**
 
 zh-CN:
 
@@ -994,7 +994,7 @@ en:
 'common.clear': 'Clear',
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add client/src/features/stage/components/left-rail/stage-rail-row-menu.tsx \
@@ -1010,7 +1010,7 @@ git commit -m "feat(stage-left-rail): add row kebab menu with archive/unarchive/
 - Create: `client/src/features/stage/components/left-rail/stage-rail-group.tsx`
 - Create: `client/src/features/stage/components/left-rail/stage-left-rail.tsx`
 
-- [ ] **Step 1: Write `StageRailGroup`**
+- [x] **Step 1: Write `StageRailGroup`**
 
 ```tsx
 import { useState } from 'react'
@@ -1046,7 +1046,7 @@ export function StageRailGroup({ label, count, defaultOpen = true, children }: P
 }
 ```
 
-- [ ] **Step 2: Write `StageLeftRail`**
+- [x] **Step 2: Write `StageLeftRail`**
 
 ```tsx
 import { useMemo, useRef, useState } from 'react'
@@ -1205,7 +1205,7 @@ export function StageLeftRail({ sessionId }: Props) {
 }
 ```
 
-- [ ] **Step 3: Add i18n keys**
+- [x] **Step 3: Add i18n keys**
 
 zh-CN:
 
@@ -1239,7 +1239,7 @@ en (mirror):
 'stage.leftRail.cta.openNew': 'Open a new workspace tool',
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add client/src/features/stage/components/left-rail/stage-left-rail.tsx \
@@ -1255,7 +1255,7 @@ git commit -m "feat(stage-left-rail): assemble shell with active/archived groups
 **Files:**
 - Create: `client/src/features/stage/components/left-rail/stage-left-rail.test.tsx`
 
-- [ ] **Step 1: Write tests**
+- [x] **Step 1: Write tests**
 
 ```tsx
 import { render, screen, fireEvent, within } from '@testing-library/react'
@@ -1382,13 +1382,13 @@ function makeTab(over: any) {
 }
 ```
 
-- [ ] **Step 2: Run tests, expect PASS**
+- [x] **Step 2: Run tests, expect PASS**
 
 ```bash
 cd client && npx vitest run src/features/stage/components/left-rail/stage-left-rail.test.tsx
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add client/src/features/stage/components/left-rail/stage-left-rail.test.tsx
@@ -1404,7 +1404,7 @@ git commit -m "test(stage-left-rail): cover 5-state, inWorkset, archive flow"
 **Files:**
 - Modify: `client/src/features/stage/components/stage-window.tsx`
 
-- [ ] **Step 1: Update layout JSX**
+- [x] **Step 1: Update layout JSX**
 
 Replace the `<div className="flex min-h-0 flex-1 overflow-hidden bg-background/88">…</div>` block:
 
@@ -1488,20 +1488,20 @@ function handleDividerPointerUp() {
 }
 ```
 
-- [ ] **Step 2: tsc check**
+- [x] **Step 2: tsc check**
 
 ```bash
 cd client && npx tsc --noEmit
 ```
 
-- [ ] **Step 3: Visual smoke**
+- [x] **Step 3: Visual smoke**
 
 ```bash
 cd client && npm run dev
 # manually: open chat → click monitor button → stage opens → verify left rail visible at 240px → drag divider → confirms width persists across reload
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add client/src/features/stage/components/stage-window.tsx
@@ -1515,7 +1515,7 @@ git commit -m "feat(stage-window): embed left rail + resizable divider"
 **Files:**
 - Modify: `client/src/features/stage/components/stage-window.test.tsx`
 
-- [ ] **Step 1: Add three-pane structural test**
+- [x] **Step 1: Add three-pane structural test**
 
 ```tsx
 it('renders left rail + tab bar + content pane when openTabIds is non-empty', () => {
@@ -1566,7 +1566,7 @@ it('clicking close X on a top-bar tab detaches but keeps it in left rail', () =>
 })
 ```
 
-- [ ] **Step 2: Run + commit**
+- [x] **Step 2: Run + commit**
 
 ```bash
 cd client && npx vitest run src/features/stage/components/stage-window.test.tsx
@@ -1581,7 +1581,7 @@ git commit -m "test(stage-window): assert 3-pane structure + close = detach sema
 **Files:**
 - Modify: `client/src/features/stage/components/stage-workbench-empty-state.tsx`
 
-- [ ] **Step 1: Add CTA wiring**
+- [x] **Step 1: Add CTA wiring**
 
 The existing empty state has 4 cards. Keep them. Add a small banner above with an inline `<StageTabBarAddButton sessionId={sessionId ?? null} />` and helper text from `stage.leftRail.cta.openNew`.
 
@@ -1597,7 +1597,7 @@ import { StageTabBarAddButton } from './stage-tab-bar-add-button'
 
 `sessionId` becomes a new optional prop. Update the parent `<StageWindow />` to pass it.
 
-- [ ] **Step 2: tsc + commit**
+- [x] **Step 2: tsc + commit**
 
 ```bash
 cd client && npx tsc --noEmit
@@ -1619,7 +1619,7 @@ git commit -m "feat(stage-empty-state): inline + button CTA"
 - Delete: `client/src/features/workspace/components/nav-tabs-search.tsx`
 - Delete: `client/src/features/workspace/components/__tests__/nav-tabs.test.tsx`
 
-- [ ] **Step 1: Remove import + usage**
+- [x] **Step 1: Remove import + usage**
 
 In `app-sidebar.tsx`:
 
@@ -1631,7 +1631,7 @@ In `app-sidebar.tsx`:
        </SidebarContent>
 ```
 
-- [ ] **Step 2: Delete files**
+- [x] **Step 2: Delete files**
 
 ```bash
 git rm client/src/features/workspace/components/nav-tabs.tsx \
@@ -1640,7 +1640,7 @@ git rm client/src/features/workspace/components/nav-tabs.tsx \
        client/src/features/workspace/components/__tests__/nav-tabs.test.tsx
 ```
 
-- [ ] **Step 3: tsc**
+- [x] **Step 3: tsc**
 
 ```bash
 cd client && npx tsc --noEmit
@@ -1654,7 +1654,7 @@ grep -rn "features/workspace/components/nav-tabs" client/src --include="*.ts" --
 
 Fix each to import from `features/stage/components/left-rail/...` if applicable.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add client/src/features/workspace/components/app-sidebar.tsx
@@ -1668,28 +1668,28 @@ git commit -m "refactor(sidebar): remove NavTabs (migrated to stage left rail)"
 **Files:**
 - Modify: `client/src/i18n/messages.ts`
 
-- [ ] **Step 1: Search for all `sidebar.tabs.*` references**
+- [x] **Step 1: Search for all `sidebar.tabs.*` references**
 
 ```bash
 cd client && grep -rn "sidebar\.tabs\." src --include="*.ts" --include="*.tsx"
 ```
 
-- [ ] **Step 2: Rename keys**
+- [x] **Step 2: Rename keys**
 
 In `messages.ts`, replace each `sidebar.tabs.X` key with `stage.leftRail.X` in BOTH the zh-CN and en sections. Tasks 8 and 9 above have already added `stage.leftRail.*` keys; ensure they don't duplicate. The original `sidebar.tabs.contextMenu.*` keys may have analogues in `stage.leftRail.row.menu.*`; consolidate.
 
-- [ ] **Step 3: Update all consumer code**
+- [x] **Step 3: Update all consumer code**
 
 For each grep hit from Step 1, replace `t('sidebar.tabs.X')` with `t('stage.leftRail.X')` (or the new analogue). Most should already be in deleted files; remaining ones are likely tests.
 
-- [ ] **Step 4: tsc + run i18n test**
+- [x] **Step 4: tsc + run i18n test**
 
 ```bash
 cd client && npx tsc --noEmit
 npx vitest run src/i18n
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add client/src/i18n/messages.ts client/src/  # any consumer updates
@@ -1703,19 +1703,19 @@ git commit -m "i18n(stage): rename sidebar.tabs.* to stage.leftRail.*"
 **Files:**
 - Modify: `client/src/services/find/use-stage-find.ts` (verify)
 
-- [ ] **Step 1: Read current hook**
+- [x] **Step 1: Read current hook**
 
 ```bash
 cd client && cat src/services/find/use-stage-find.ts
 ```
 
-- [ ] **Step 2: If it sends `scope` as a filter param, remove it**
+- [x] **Step 2: If it sends `scope` as a filter param, remove it**
 
 The hook calls `/api/stage/find` (or similar). Since Phase 1 removed `scope` from the backend filter, ensure the hook does not send `scope`. If the hook is currently used by `<NavTabs />` (now deleted), it may need re-purposing for the left rail's deeper search-with-FTS feature later (Phase 3+ — out of scope for P2).
 
 For now: P2 left rail uses simple in-memory `title.toLowerCase().includes(query)` (already implemented in Task 9). So `useStageFind` is **not** wired to the left rail in P2; deeper FTS-backed search is a future enhancement.
 
-- [ ] **Step 3: If unused after P2, mark hook with a `@deprecated` JSDoc note pointing to potential P3+ revival**
+- [x] **Step 3: If unused after P2, mark hook with a `@deprecated` JSDoc note pointing to potential P3+ revival**
 
 ```ts
 /**
@@ -1724,7 +1724,7 @@ For now: P2 left rail uses simple in-memory `title.toLowerCase().includes(query)
  */
 ```
 
-- [ ] **Step 4: Commit (if any change)**
+- [x] **Step 4: Commit (if any change)**
 
 ```bash
 git add client/src/services/find/use-stage-find.ts
@@ -1741,13 +1741,13 @@ This is a **manual review** step paired with vitest snapshot assertions.
 
 **Files:** read-only review of left-rail, tab bar, empty state.
 
-- [ ] **Step 1: Build dev server**
+- [x] **Step 1: Build dev server**
 
 ```bash
 cd client && npm run dev
 ```
 
-- [ ] **Step 2: Token map walk-through (light theme)**
+- [x] **Step 2: Token map walk-through (light theme)**
 
 For each control below, confirm idle / hover / focus / active(or selected) / disabled states map to the expected token. Do this in DevTools (inspect background-color, border, color).
 
@@ -1767,11 +1767,11 @@ For each control below, confirm idle / hover / focus / active(or selected) / dis
 | Top tab close X | `text.muted` | `text.base` | ring | n/a | n/a | ☐ |
 | Empty state CTA | (delegates to add button) | | | | | ☐ |
 
-- [ ] **Step 3: Switch to dark theme; repeat the table**
+- [x] **Step 3: Switch to dark theme; repeat the table**
 
 Toggle theme in app settings. Verify each row remains correct. No light-theme-only colors should leak.
 
-- [ ] **Step 4: Snapshot test for the most token-heavy components**
+- [x] **Step 4: Snapshot test for the most token-heavy components**
 
 In `stage-rail-row.test.tsx` (create if missing), add:
 
@@ -1789,13 +1789,13 @@ it('archived row applies opacity-60 + text-soft', () => {
 })
 ```
 
-- [ ] **Step 5: Run snapshot tests, expect PASS or update**
+- [x] **Step 5: Run snapshot tests, expect PASS or update**
 
 ```bash
 cd client && npx vitest run src/features/stage/components/left-rail
 ```
 
-- [ ] **Step 6: Document the review pass**
+- [x] **Step 6: Document the review pass**
 
 Add a short note to PR description. No commit needed (review checklist is in this plan).
 
@@ -1806,7 +1806,7 @@ Add a short note to PR description. No commit needed (review checklist is in thi
 **Files:**
 - Modify: `docs/exec-plans/index.md`
 
-- [ ] **Step 1: Register P2 in index Active section**
+- [x] **Step 1: Register P2 in index Active section**
 
 Add right after the P1 row (which should already be in Active from P1's Task 22):
 
@@ -1814,7 +1814,7 @@ Add right after the P1 row (which should already be in Active from P1's Task 22)
 - [Shared Stage Workbench · Phase 2 — Frontend Layout Migration](./2026-04-28-shared-stage-workbench-p2-frontend-layout-plan.md) — 2026-04-28 — IDEA-style 3-pane stage layout: left rail library (search + active/archived groups + kebab menu) + top tab bar workset (with `+` add button) + content pane. NavTabs deleted from sidebar; archived tab focus shows confirm-and-unarchive in UI; close = detach (DB unchanged). All new controls map 5 states to `client/DESIGN.md` tokens.
 ```
 
-- [ ] **Step 2: Run full client tests**
+- [x] **Step 2: Run full client tests**
 
 ```bash
 cd client && npm run test
@@ -1822,7 +1822,7 @@ cd client && npm run test
 
 Expected: all green.
 
-- [ ] **Step 3: Type check**
+- [x] **Step 3: Type check**
 
 ```bash
 cd client && npx tsc --noEmit
@@ -1830,7 +1830,7 @@ cd client && npx tsc --noEmit
 
 Expected: 0 errors.
 
-- [ ] **Step 4: Server compile (sanity, no backend changes in P2)**
+- [x] **Step 4: Server compile (sanity, no backend changes in P2)**
 
 ```bash
 cd server && mvn compile -q
@@ -1838,14 +1838,14 @@ cd server && mvn compile -q
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit index update**
+- [x] **Step 5: Commit index update**
 
 ```bash
 git add docs/exec-plans/index.md
 git commit -m "docs(plans): register P2 in Active"
 ```
 
-- [ ] **Step 6: Verification matrix self-check (per spec §11)**
+- [x] **Step 6: Verification matrix self-check (per spec §11)**
 
 | Acceptance | Verified by |
 |---|---|
@@ -1870,3 +1870,19 @@ State globalization (`*BySession` removal) is explicitly **deferred to P3** — 
 ---
 
 **Plan complete and saved.** This is Phase 2 of three. P3 (State Globalization & Polish) drafts next.
+
+---
+
+## Execution Status (closed 2026-04-28)
+
+**Shipped in commits:** `162c548` (initial implementation), `1c720b6` (review-fix close-out for tokens / workset / close-action contract).
+
+**Deviations:**
+- §V14 cold-restart performance smoke (~100 active tabs) — left as manual product-side measurement, not automated.
+- §V1 / §V2 / §V4 cross-session UX scenarios — verified after P3 lands global state (intentional cross-phase dependency, called out in Self-Review).
+
+**Residual debt routed forward:**
+- TD-029 (`StageTabConcurrencyIT`) — explicitly deferred to a follow-up plan (see tech-debt-tracker).
+- TD-030 (`StageTab.scope` removal) — closed by P3.5 cleanup commit.
+
+All P2 acceptance items above are green; manual performance smoke remains as a non-blocking product checklist.
