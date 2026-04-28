@@ -9,7 +9,6 @@ const sessionTab = {
   tabId: 'session-q1',
   type: 'query_editor',
   title: 'Session SQL',
-  scope: 'session' as const,
   originSessionId: 's-1',
   createdAt: 0,
   payload: {
@@ -30,7 +29,6 @@ const workspaceTab = {
   tabId: 'workspace-q1',
   type: 'query_editor',
   title: 'Workspace SQL',
-  scope: 'workspace' as const,
   createdAt: 0,
   payload: {
     initialSql: 'select workspace',

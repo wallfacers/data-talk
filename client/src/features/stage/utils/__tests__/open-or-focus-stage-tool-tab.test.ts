@@ -36,7 +36,6 @@ describe('openOrFocusStageToolTab', () => {
     expect(opened).toEqual({ tabId: 'workspace-sql', created: false })
     expect(openQueryEditorMock).toHaveBeenCalledWith({
       sessionId: 's1',
-      scope: 'workspace',
       baseTitle: 'SQL 编辑器',
       openMode: 'always_new',
       entryMode: 'blank',
@@ -65,7 +64,6 @@ describe('openOrFocusStageToolTab', () => {
     expect(opened).toEqual({ tabId: 'session-sql', created: true })
     expect(openQueryEditorMock).toHaveBeenCalledWith({
       sessionId: 's1',
-      scope: 'session',
       baseTitle: 'SQL 编辑器',
       openMode: 'reuse_by_resource_context',
       entryMode: 'resource_sql',
@@ -124,7 +122,6 @@ describe('openOrFocusStageToolTab', () => {
         tabId: 'session-sql',
         type: 'er_canvas',
         title: 'ER 图设计器',
-        scope: 'session' as const,
         originSessionId: 's1',
         createdAt: 0,
         payload: {},

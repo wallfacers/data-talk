@@ -45,7 +45,6 @@ function toStageTab(item: Record<string, unknown>): StageTab {
     tabId: (item.id as string) ?? '',
     type: (item.type as string) ?? 'unknown',
     title: (item.title as string) ?? '(untitled)',
-    scope: (item.scope as 'workspace' | 'session') ?? 'workspace',
     connectionId: (item.connectionId as string) ?? undefined,
     database: (item.databaseName as string) ?? undefined,
     schema: (item.schemaName as string) ?? undefined,
@@ -55,5 +54,6 @@ function toStageTab(item: Record<string, unknown>): StageTab {
     payloadVersion: Number(item.payloadVersion) || 1,
     createdAt: Number(item.createdAt) || 0,
     lastTouchedAt: Number(item.lastTouchedAt) || 0,
+    payload: {} as unknown,
   } as StageTab
 }

@@ -133,7 +133,6 @@ describe('ExecuteSql renderer', () => {
     expect(mockOpenQueryEditor).toHaveBeenCalledTimes(1)
     expect(mockOpenQueryEditor).toHaveBeenCalledWith(expect.objectContaining({
       sessionId: 'sess-1',
-      scope: 'session',
       openMode: 'always_new',
       entryMode: 'ai_open',
       initialContent: 'DROP TABLE users',

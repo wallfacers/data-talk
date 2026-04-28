@@ -18,18 +18,18 @@ function resetStores() {
   } as any)
 
   useStageStore.setState({
-    openBySession: new Map(),
-    autoOpenedSessions: new Set(),
-    maximizedBySession: new Map(),
+    open: false,
+    autoOpened: false,
+    maximized: false,
     revealOrigin: null,
-    sidebarCollapsedBySession: new Map(),
-    sidebarSelectionBySession: new Map(),
-    resourceTreeExpandedBySession: new Map(),
-    activeRailPanelBySession: new Map(),
-    workspaceTabs: [],
-    tabsBySession: new Map(),
-    activeWorkspaceTabId: null,
-    activeTabIdBySession: new Map(),
+    sidebarCollapsed: false,
+    sidebarSelection: null,
+    resourceTreeExpanded: [],
+    activeRailPanel: null,
+    tabs: [],
+    openTabIds: new Set(),
+    openTabIdsOrdered: [],
+    activeTabId: null,
     openStage: openStageSpy,
   } as any)
 }
@@ -82,7 +82,6 @@ describe('read-file renderer', () => {
     expect(tabs).toHaveLength(1)
     expect(tabs[0]).toEqual(expect.objectContaining({
       type: 'file_preview',
-      scope: 'session',
       originSessionId: 'sess-1',
       title: 'readme.md',
       payload: expect.objectContaining({

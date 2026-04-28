@@ -171,7 +171,6 @@ const tab: StageTab = {
   tabId: 'tab-1',
   type: 'query_editor',
   title: 'SQL',
-  scope: 'workspace',
   createdAt: 0,
   payload: {
     initialSql: 'select 1;',

@@ -14,7 +14,6 @@ export function StageTabBarAddButton() {
   function openSqlEditor() {
     useStageStore.getState().openQueryEditor({
       sessionId: sessionId ?? null,
-      scope: 'workspace',
       baseTitle: t('stage.tabBar.addNew.menu.sql'),
       openMode: 'always_new',
       entryMode: 'blank',

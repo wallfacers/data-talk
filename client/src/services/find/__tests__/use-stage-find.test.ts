@@ -35,7 +35,7 @@ describe('useStageFind', () => {
     globalThis.fetch = vi.fn(async (_url: string | URL | Request, init: any) => {
       capturedBody = JSON.parse(init.body)
       return new Response(
-        JSON.stringify({ items: [{ id: 't1', type: 'query_editor', title: 'Q1', scope: 'workspace' }] }),
+        JSON.stringify({ items: [{ id: 't1', type: 'query_editor', title: 'Q1' }] }),
         { headers: { 'content-type': 'application/json' } },
       )
     })

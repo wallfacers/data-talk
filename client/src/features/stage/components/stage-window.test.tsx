@@ -65,7 +65,6 @@ function makeTab(over: Record<string, unknown> = {}) {
     tabId: 'default',
     type: 'query_editor',
     title: 'untitled',
-    scope: 'workspace',
     payload: {},
     payloadVersion: 1,
     createdAt: 0,
@@ -204,7 +203,7 @@ describe('StageWindow', () => {
   it('renders tab bar when store has tabs', () => {
     useStageStore.setState({
       tabs: [
-        { tabId: 'q1', type: 'query_editor', title: 'SQL', scope: 'session' as const,
+        { tabId: 'q1', type: 'query_editor', title: 'SQL',
           originSessionId: 's-1', createdAt: 0, payload: {} },
       ],
       activeTabId: 'q1',
@@ -260,7 +259,6 @@ describe('StageWindow', () => {
 
     expect(openQueryEditorSpy).toHaveBeenCalledWith({
       sessionId: null,
-      scope: 'workspace',
       baseTitle: 'SQL 编辑器',
       openMode: 'always_new',
       entryMode: 'blank',
@@ -277,7 +275,7 @@ describe('StageWindow', () => {
   ])('does not render legacy %s tabs in Stage content', (type, title) => {
     useStageStore.setState({
       tabs: [
-        { tabId: 'w1', type: type as 'er_canvas' | 'report' | 'dashboard', title, scope: 'workspace' as const, createdAt: 0, payload: {} },
+        { tabId: 'w1', type: type as 'er_canvas' | 'report' | 'dashboard', title, createdAt: 0, payload: {} },
       ],
       activeTabId: 'w1',
       openTabIds: new Set(['w1']),
@@ -294,7 +292,7 @@ describe('StageWindow', () => {
   it('renders workspace tab content inside a session stage when no session tab is active', () => {
     useStageStore.setState({
       tabs: [
-        { tabId: 'w1', type: 'query_editor', title: 'Global SQL', scope: 'workspace' as const, createdAt: 0, payload: {} },
+        { tabId: 'w1', type: 'query_editor', title: 'Global SQL', createdAt: 0, payload: {} },
       ],
       activeTabId: 'w1',
       openTabIds: new Set(['w1']),
@@ -310,7 +308,7 @@ describe('StageWindow', () => {
   it('switches to the Stage start page when clicking the + button', () => {
     useStageStore.setState({
       tabs: [
-        { tabId: 'w1', type: 'query_editor', title: 'Global SQL', scope: 'workspace' as const, createdAt: 0, payload: {} },
+        { tabId: 'w1', type: 'query_editor', title: 'Global SQL', createdAt: 0, payload: {} },
       ],
       activeTabId: 'w1',
       openTabIds: new Set(['w1']),
@@ -334,7 +332,6 @@ describe('StageWindow', () => {
           tabId: 'workspace-sql',
           type: 'query_editor',
           title: 'SQL 编辑器',
-          scope: 'workspace' as const,
           createdAt: 1,
           payload: {},
         },
@@ -342,7 +339,6 @@ describe('StageWindow', () => {
           tabId: 'session-sql',
           type: 'query_editor',
           title: 'Session SQL',
-          scope: 'session' as const,
           originSessionId: 's1',
           createdAt: 0,
           payload: {},
@@ -360,7 +356,6 @@ describe('StageWindow', () => {
 
     expect(openQueryEditorSpy).toHaveBeenCalledWith({
       sessionId: null,
-      scope: 'workspace',
       baseTitle: 'SQL 编辑器',
       openMode: 'always_new',
       entryMode: 'blank',
@@ -378,7 +373,6 @@ describe('StageWindow', () => {
           tabId: 'preview-1',
           type: 'file_preview',
           title: 'README.md',
-          scope: 'session' as const,
           originSessionId: 's1',
           createdAt: 0,
           payload: { sourceKey: 'readme' },
@@ -398,8 +392,8 @@ describe('StageWindow', () => {
   it('clears the session-scoped active tab when a workspace tab is focused from the shared tab bar', () => {
     useStageStore.setState({
       tabs: [
-        { tabId: 'w1', type: 'query_editor', title: 'Global SQL', scope: 'workspace' as const, createdAt: 0, payload: {} },
-        { tabId: 's-tab', type: 'query_editor', title: 'Session SQL', scope: 'session' as const, originSessionId: 's1', createdAt: 0, payload: {} },
+        { tabId: 'w1', type: 'query_editor', title: 'Global SQL', createdAt: 0, payload: {} },
+        { tabId: 's-tab', type: 'query_editor', title: 'Session SQL', originSessionId: 's1', createdAt: 0, payload: {} },
       ],
       activeTabId: 's-tab',
       openTabIds: new Set(['w1', 's-tab']),
@@ -416,7 +410,7 @@ describe('StageWindow', () => {
   it('wires the Stage shell without rendering the bottom dock', () => {
     useStageStore.setState({
       tabs: [
-        { tabId: 'q1', type: 'query_editor', title: 'SQL', scope: 'session' as const,
+        { tabId: 'q1', type: 'query_editor', title: 'SQL',
           originSessionId: 's1', createdAt: 0, payload: {} },
       ],
       activeTabId: 'q1',

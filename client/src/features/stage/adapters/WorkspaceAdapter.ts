@@ -107,7 +107,6 @@ export class WorkspaceAdapter implements UIObject {
           const schema = p.schema ?? payload.schema ?? undefined
           const { tabId } = store.openQueryEditor({
             sessionId: sid,
-            scope: 'session',
             baseTitle: p.title ?? p.type,
             openMode: connectionId ? 'reuse_by_resource_context' : 'always_new',
             entryMode: 'ui_exec',
@@ -123,17 +122,15 @@ export class WorkspaceAdapter implements UIObject {
         }
 
         const tabId = `${p.type}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-        const scope: StageTab['scope'] = WORKSPACE_SCOPE_TYPES.has(p.type)
-          ? 'workspace'
-          : 'session'
+        const isWorkspaceScoped = WORKSPACE_SCOPE_TYPES.has(p.type)
+        if (!isWorkspaceScoped && !sid) return execError('Cannot open session-scoped tab without active session')
         const tab: StageTab = {
-          tabId, type: p.type, title: p.title ?? p.type, scope,
+          tabId, type: p.type, title: p.title ?? p.type,
           connectionId: p.connection_id, database: p.database, schema: p.schema,
           originSessionId: sid ?? undefined,
           payload: p.payload ?? {},
           createdAt: Date.now(),
         }
-        if (scope === 'session' && !sid) return execError('Cannot open session-scoped tab without active session')
         store.openTab(tab)
         if (sid) store.openStage()
         return { success: true, data: { tabId } }

@@ -32,17 +32,18 @@ describe('openDirectSqlQueryEditorTab', () => {
       }]]),
     } as any)
     useStageStore.setState({
-      openBySession: new Map(),
-      autoOpenedSessions: new Set(),
-      maximizedBySession: new Map(),
+      open: false,
+      autoOpened: false,
+      maximized: false,
       revealOrigin: null,
-      sidebarCollapsedBySession: new Map(),
-      sidebarSelectionBySession: new Map(),
-      resourceTreeExpandedBySession: new Map(),
-      workspaceTabs: [],
-      tabsBySession: new Map(),
-      activeWorkspaceTabId: null,
-      activeTabIdBySession: new Map(),
+      sidebarCollapsed: false,
+      sidebarSelection: null,
+      resourceTreeExpanded: [],
+      activeRailPanel: null,
+      tabs: [],
+      openTabIds: new Set(),
+      openTabIdsOrdered: [],
+      activeTabId: null,
       openQueryEditor: openQueryEditorMock,
       openStage: openStageMock,
     } as any)
@@ -61,7 +62,6 @@ describe('openDirectSqlQueryEditorTab', () => {
     expect(tabId).toBe('query-editor-1')
     expect(openQueryEditorMock).toHaveBeenCalledWith({
       sessionId: 'sess-1',
-      scope: 'session',
       baseTitle,
       openMode: 'always_new',
       entryMode: 'direct_sql',
@@ -90,7 +90,6 @@ describe('openDirectSqlQueryEditorTab', () => {
     expect(tabId).toBe('query-editor-2')
     expect(openQueryEditorMock).toHaveBeenCalledWith({
       sessionId: 'sess-1',
-      scope: 'session',
       baseTitle,
       openMode: 'always_new',
       entryMode: 'direct_sql',

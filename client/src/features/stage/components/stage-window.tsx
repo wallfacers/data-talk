@@ -3,6 +3,7 @@ import { CopyIcon, SquareIcon, XIcon } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@/components/ui/button'
 import { useStageStore, type StageTab } from '@/stores/stage-store'
+import { useSessionStore } from '@/stores/session-store'
 import { useActiveArtifactTitle } from '../use-active-artifact-title'
 import { StageTabBar } from './stage-tab-bar'
 import { StageTabContent } from './stage-tab-content'
@@ -17,7 +18,8 @@ export function StageWindow() {
   const closeStage = useStageStore((s) => s.closeStage)
   const maximized = useStageStore((s) => s.maximized)
   const toggleMaximized = useStageStore((s) => s.toggleMaximized)
-  const { Icon, label } = useActiveArtifactTitle('')
+  const activeSessionId = useSessionStore((s) => s.activeSessionId)
+  const { Icon, label } = useActiveArtifactTitle(activeSessionId)
 
   const tabs = useStageStore(useShallow((s) => s.tabs))
   const openTabsOrdered = useStageStore(
@@ -93,7 +95,6 @@ export function StageWindow() {
     setShowStartPage(false)
     useStageStore.getState().openQueryEditor({
       sessionId: null,
-      scope: 'workspace',
       baseTitle: t('stage.toolRow.sql'),
       openMode: 'always_new',
       entryMode: 'blank',

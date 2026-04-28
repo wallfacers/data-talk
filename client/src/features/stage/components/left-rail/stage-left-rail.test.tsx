@@ -26,7 +26,6 @@ function makeTab(over: Record<string, unknown> = {}) {
     tabId: 'default',
     type: 'query_editor',
     title: 'untitled',
-    scope: 'workspace',
     payload: {},
     payloadVersion: 1,
     createdAt: 0,

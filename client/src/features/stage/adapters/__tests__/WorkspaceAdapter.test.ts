@@ -62,7 +62,6 @@ describe('WorkspaceAdapter', () => {
     })
     expect(openQueryEditor).toHaveBeenCalledWith({
       sessionId: 's1',
-      scope: 'session',
       baseTitle: 'SQL',
       openMode: 'reuse_by_resource_context',
       entryMode: 'ui_exec',
@@ -93,7 +92,6 @@ describe('WorkspaceAdapter', () => {
     })
     expect(openQueryEditor).toHaveBeenCalledWith({
       sessionId: 's1',
-      scope: 'session',
       baseTitle: 'query_editor',
       openMode: 'always_new',
       entryMode: 'ui_exec',
@@ -130,7 +128,6 @@ describe('WorkspaceAdapter', () => {
     })
     expect(openQueryEditor).toHaveBeenCalledWith({
       sessionId: 's1',
-      scope: 'session',
       baseTitle: 'Payload SQL',
       openMode: 'reuse_by_resource_context',
       entryMode: 'ui_exec',
@@ -181,7 +178,6 @@ describe('WorkspaceAdapter', () => {
       tabId: 'session-q1',
       type: 'query_editor',
       title: 'Session SQL',
-      scope: 'session',
       originSessionId: 's1',
       payload: {},
       createdAt: 0,
@@ -206,7 +202,6 @@ describe('WorkspaceAdapter', () => {
       tabId: 'q-payload',
       type: 'query_editor',
       title: 'SQL',
-      scope: 'session',
       originSessionId: 's1',
       payload: {
         initialSql: 'select 1',
@@ -239,7 +234,6 @@ describe('WorkspaceAdapter', () => {
     })
     const { tabId } = useStageStore.getState().openQueryEditor({
       sessionId: 's1',
-      scope: 'session',
       baseTitle: 'SQL',
       openMode: 'always_new',
       entryMode: 'ai_open',
@@ -312,7 +306,6 @@ describe('WorkspaceAdapter', () => {
         tabId: (opened.data as { tabId: string }).tabId,
         type,
         title,
-        scope: 'workspace',
       }),
     ])
   })

@@ -49,7 +49,6 @@ export function openOrFocusStageToolTab({ getState, sessionId, target, reuseExis
   if (target.tool === 'sql') {
     return latest.openQueryEditor({
       sessionId,
-      scope: target.kind === 'global_tool' ? 'workspace' : 'session',
       baseTitle: target.title,
       openMode: target.kind === 'global_tool' ? 'always_new' : 'reuse_by_resource_context',
       entryMode: target.kind === 'global_tool' ? 'blank' : 'resource_sql',
@@ -76,7 +75,6 @@ export function openOrFocusStageToolTab({ getState, sessionId, target, reuseExis
       tabId,
       type: tabType,
       title: resolveUniqueTabTitle(target.title, visibleTitles),
-      scope: 'workspace',
       payload: { identity: buildStageTabIdentity(target) },
       createdAt: Date.now(),
     }
@@ -102,7 +100,6 @@ export function openOrFocusStageToolTab({ getState, sessionId, target, reuseExis
     tabId,
     type: tabType,
     title: resolveUniqueTabTitle(target.title, visibleTitles),
-    scope: 'session',
     originSessionId: sessionId,
     connectionId: target.connectionId,
     database: target.database ?? undefined,

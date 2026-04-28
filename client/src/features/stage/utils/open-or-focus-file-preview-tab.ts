@@ -37,7 +37,6 @@ export function openOrFocusFilePreviewTab({ getState, sessionId, payload }: Inpu
     tabId,
     type: 'file_preview',
     title: payload.filename,
-    scope: 'session',
     originSessionId: sessionId,
     payload,
     createdAt: Date.now(),

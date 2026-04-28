@@ -24,7 +24,6 @@ export async function openDirectSqlQueryEditorTab({ sessionId, connectionId, sql
   const baseTitle = translateMessage(language, 'stage.toolRow.sql')
   const { tabId } = store.openQueryEditor({
     sessionId,
-    scope: 'session',
     baseTitle,
     openMode: 'always_new',
     entryMode: 'direct_sql',

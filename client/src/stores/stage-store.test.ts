@@ -18,7 +18,6 @@ function makeTab(over: Record<string, unknown> = {}) {
     tabId: 'default',
     type: 'query_editor',
     title: 'untitled',
-    scope: 'workspace' as const,
     payload: {},
     payloadVersion: 1,
     createdAt: 0,
@@ -147,6 +146,79 @@ describe('useStageStore (P3 globalized)', () => {
       useStageStore.getState().toggleLeftRailCollapsed()
       expect(useStageStore.getState().leftRailCollapsed).toBe(true)
       expect(setItem).toHaveBeenCalledWith('stage.leftRail.collapsed', 'true')
+    })
+  })
+
+  describe('__hydrateAll seedWorkset behavior', () => {
+    it('seeds non-archived hydrated tabs into workset', () => {
+      useStageStore.getState().__hydrateAll([
+        makeTab({ tabId: 'a' }),
+        makeTab({ tabId: 'b' }),
+      ])
+      const s = useStageStore.getState()
+      expect(s.openTabIds.has('a')).toBe(true)
+      expect(s.openTabIds.has('b')).toBe(true)
+      expect(s.openTabIdsOrdered).toEqual(['a', 'b'])
+    })
+
+    it('skips archived hydrated tabs from workset', () => {
+      useStageStore.getState().__hydrateAll([
+        makeTab({ tabId: 'a', archived: false }),
+        makeTab({ tabId: 'b', archived: true }),
+      ])
+      const s = useStageStore.getState()
+      expect(s.openTabIds.has('a')).toBe(true)
+      expect(s.openTabIds.has('b')).toBe(false)
+      expect(s.openTabIdsOrdered).toEqual(['a'])
+    })
+
+    it('does not duplicate tabs already in workset', () => {
+      useStageStore.setState({
+        tabs: [makeTab({ tabId: 'a' })],
+        openTabIds: new Set(['a']),
+        openTabIdsOrdered: ['a'],
+      } as never, false)
+      useStageStore.getState().__hydrateAll([makeTab({ tabId: 'a' })])
+      const s = useStageStore.getState()
+      expect(s.openTabIdsOrdered).toEqual(['a'])
+    })
+
+    it('preserves existing workset order; appends newly seeded tabs to tail', () => {
+      useStageStore.setState({
+        tabs: [makeTab({ tabId: 'a' })],
+        openTabIds: new Set(['a']),
+        openTabIdsOrdered: ['a'],
+      } as never, false)
+      useStageStore.getState().__hydrateAll([
+        makeTab({ tabId: 'b' }),
+        makeTab({ tabId: 'c' }),
+      ])
+      const s = useStageStore.getState()
+      expect(s.openTabIdsOrdered).toEqual(['a', 'b', 'c'])
+    })
+  })
+
+  describe('trashTab rollback on persistence failure', () => {
+    it('reverts workset state when coordinator.delete throws', async () => {
+      const bootstrap = await import('@/features/stage/persistence/stage-persistence-bootstrap')
+      const deleteSpy = vi.spyOn(bootstrap.coordinator, 'delete').mockRejectedValue(new Error('boom'))
+
+      useStageStore.setState({
+        tabs: [makeTab({ tabId: 'a' }), makeTab({ tabId: 'b' })],
+        openTabIds: new Set(['a', 'b']),
+        openTabIdsOrdered: ['a', 'b'],
+        activeTabId: 'b',
+      } as never, false)
+
+      await expect(useStageStore.getState().trashTab('b')).rejects.toThrow('boom')
+
+      const s = useStageStore.getState()
+      expect(s.openTabIdsOrdered).toEqual(['a', 'b'])
+      expect(s.openTabIds.has('b')).toBe(true)
+      expect(s.activeTabId).toBe('b')
+      expect(s.tabs.map((t) => t.tabId)).toEqual(['a', 'b'])
+
+      deleteSpy.mockRestore()
     })
   })
 })

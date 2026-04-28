@@ -28,7 +28,6 @@ export type QueryEditorOpenMode = 'always_new' | 'reuse_by_resource_context'
 
 export type QueryEditorOpenInput = {
   sessionId: string | null
-  scope: 'workspace' | 'session'
   baseTitle: string
   openMode: QueryEditorOpenMode
   entryMode: 'blank' | 'direct_sql' | 'resource_sql' | 'ui_exec' | 'ai_open'
@@ -53,7 +52,6 @@ export interface StageTab {
   database?: string
   schema?: string
   originSessionId?: string
-  scope: 'session' | 'workspace'
   pinned?: boolean
   archived?: boolean
   archivedAt?: number | null
@@ -370,7 +368,6 @@ export const useStageStore = create<StageState>((set, get) => ({
     const tab: StageTab = {
       tabId, type: 'artifact_preview', title,
       originSessionId: sessionId,
-      scope: 'session',
       payload: { artifactId, sessionId },
       createdAt: Date.now(),
     }
@@ -405,7 +402,6 @@ export const useStageStore = create<StageState>((set, get) => ({
       database: input.database ?? undefined,
       schema: input.schema ?? undefined,
       originSessionId: input.sessionId ?? undefined,
-      scope: input.scope,
       payload,
       createdAt: Date.now(),
     }

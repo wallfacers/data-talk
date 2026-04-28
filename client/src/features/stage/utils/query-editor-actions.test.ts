@@ -81,7 +81,6 @@ describe('query-editor-actions', () => {
 
     const { tabId } = useStageStore.getState().openQueryEditor({
       sessionId: 'sess-1',
-      scope: 'session',
       baseTitle: 'SQL',
       openMode: 'always_new',
       entryMode: 'blank',
@@ -157,7 +156,6 @@ describe('query-editor-actions', () => {
 
     const { tabId } = useStageStore.getState().openQueryEditor({
       sessionId: 'sess-1',
-      scope: 'session',
       baseTitle: 'SQL',
       openMode: 'always_new',
       entryMode: 'blank',
@@ -205,7 +203,6 @@ describe('query-editor-actions', () => {
 
     const { tabId } = useStageStore.getState().openQueryEditor({
       sessionId: 'sess-1',
-      scope: 'session',
       baseTitle: 'SQL',
       openMode: 'always_new',
       entryMode: 'blank',
@@ -247,7 +244,6 @@ describe('query-editor-actions', () => {
   it('stores requires_confirmation executions in workbench state and history', async () => {
     const { tabId } = useStageStore.getState().openQueryEditor({
       sessionId: 'sess-1',
-      scope: 'session',
       baseTitle: 'SQL',
       openMode: 'always_new',
       entryMode: 'blank',
@@ -307,7 +303,6 @@ describe('query-editor-actions', () => {
 
     const { tabId } = useStageStore.getState().openQueryEditor({
       sessionId: 'sess-1',
-      scope: 'session',
       baseTitle: 'SQL',
       openMode: 'always_new',
       entryMode: 'blank',
@@ -377,7 +372,6 @@ describe('query-editor-actions', () => {
 
     const { tabId } = useStageStore.getState().openQueryEditor({
       sessionId: 'sess-1',
-      scope: 'session',
       baseTitle: 'SQL',
       openMode: 'always_new',
       entryMode: 'blank',
@@ -416,7 +410,6 @@ describe('query-editor-actions', () => {
   it('cancelQueryEditorConfirmation resets to idle', async () => {
     const { tabId } = useStageStore.getState().openQueryEditor({
       sessionId: 'sess-1',
-      scope: 'session',
       baseTitle: 'SQL',
       openMode: 'always_new',
       entryMode: 'blank',
@@ -455,7 +448,6 @@ describe('query-editor-actions', () => {
 
     const { tabId } = useStageStore.getState().openQueryEditor({
       sessionId: 'sess-1',
-      scope: 'session',
       baseTitle: 'SQL',
       openMode: 'always_new',
       entryMode: 'resource_sql',
@@ -480,7 +472,6 @@ describe('query-editor-actions', () => {
   it('writes context overrides through the shared context action and clears them when returning to the base context', () => {
     const { tabId } = useStageStore.getState().openQueryEditor({
       sessionId: 'sess-1',
-      scope: 'session',
       baseTitle: 'SQL',
       openMode: 'always_new',
       entryMode: 'resource_sql',
@@ -537,7 +528,6 @@ describe('query-editor-actions', () => {
 
     const { tabId } = useStageStore.getState().openQueryEditor({
       sessionId: 'sess-1',
-      scope: 'session',
       baseTitle: 'SQL',
       openMode: 'always_new',
       entryMode: 'blank',
@@ -611,7 +601,6 @@ describe('query-editor-actions', () => {
 
     const { tabId } = useStageStore.getState().openQueryEditor({
       sessionId: 'sess-1',
-      scope: 'session',
       baseTitle: 'SQL',
       openMode: 'always_new',
       entryMode: 'blank',

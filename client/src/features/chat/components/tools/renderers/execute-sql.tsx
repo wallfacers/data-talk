@@ -58,7 +58,6 @@ function BlockedInChatCard({
     const stage = useStageStore.getState()
     stage.openQueryEditor({
       sessionId,
-      scope: 'session',
       baseTitle: translateMessage(lang, 'stage.toolRow.sql'),
       openMode: 'always_new',
       entryMode: 'ai_open',

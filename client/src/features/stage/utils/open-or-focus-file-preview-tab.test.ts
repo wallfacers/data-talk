@@ -41,7 +41,6 @@ describe('openOrFocusFilePreviewTab', () => {
     expect(tabs).toHaveLength(1)
     expect(tabs[0]).toEqual(expect.objectContaining({
       type: 'file_preview',
-      scope: 'session',
       originSessionId: 'sess-1',
       title: 'report.md',
       payload: expect.objectContaining({

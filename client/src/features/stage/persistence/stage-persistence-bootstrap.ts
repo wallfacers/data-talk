@@ -59,7 +59,6 @@ function toStageTab(item: Record<string, unknown>): StageTab {
     tabId: String(item.tabId ?? item.id ?? item.objectId ?? ''),
     type: String(item.type ?? 'unknown'),
     title: String(item.title ?? '(untitled)'),
-    scope: 'workspace',
     connectionId: typeof item.connectionId === 'string' ? item.connectionId : undefined,
     database: typeof item.database === 'string'
       ? item.database

@@ -95,7 +95,6 @@ describe('QueryEditorAdapter', () => {
 
     const { tabId } = useStageStore.getState().openQueryEditor({
       sessionId: 's1',
-      scope: 'session',
       baseTitle: 'SQL',
       openMode: 'always_new',
       entryMode: 'ai_open',
@@ -280,7 +279,6 @@ describe('QueryEditorAdapter', () => {
 
     const { tabId } = useStageStore.getState().openQueryEditor({
       sessionId: 's1',
-      scope: 'session',
       baseTitle: 'SQL',
       openMode: 'always_new',
       entryMode: 'blank',
@@ -316,7 +314,6 @@ describe('QueryEditorAdapter', () => {
 
     const { tabId } = useStageStore.getState().openQueryEditor({
       sessionId: 's1',
-      scope: 'session',
       baseTitle: 'SQL',
       openMode: 'always_new',
       entryMode: 'blank',
@@ -351,7 +348,6 @@ describe('QueryEditorAdapter', () => {
 
     const { tabId } = useStageStore.getState().openQueryEditor({
       sessionId: 's1',
-      scope: 'session',
       baseTitle: 'SQL',
       openMode: 'always_new',
       entryMode: 'blank',
@@ -402,7 +398,6 @@ describe('QueryEditorAdapter', () => {
 
     const { tabId } = useStageStore.getState().openQueryEditor({
       sessionId: 's1',
-      scope: 'session',
       baseTitle: 'SQL',
       openMode: 'always_new',
       entryMode: 'blank',
@@ -448,7 +443,6 @@ describe('QueryEditorAdapter', () => {
   it('patch /content replaces the query editor document content', () => {
     const { tabId } = useStageStore.getState().openQueryEditor({
       sessionId: 's1',
-      scope: 'session',
       baseTitle: 'SQL',
       openMode: 'always_new',
       entryMode: 'blank',
@@ -470,7 +464,6 @@ describe('QueryEditorAdapter', () => {
   it('patch /content rejects requests that omit baseVersion', () => {
     const { tabId } = useStageStore.getState().openQueryEditor({
       sessionId: 's1',
-      scope: 'session',
       baseTitle: 'SQL',
       openMode: 'always_new',
       entryMode: 'blank',
@@ -493,7 +486,6 @@ describe('QueryEditorAdapter', () => {
   it('patch /content returns version_conflict details when baseVersion is stale', () => {
     const { tabId } = useStageStore.getState().openQueryEditor({
       sessionId: 's1',
-      scope: 'session',
       baseTitle: 'SQL',
       openMode: 'always_new',
       entryMode: 'blank',
@@ -523,7 +515,6 @@ describe('QueryEditorAdapter', () => {
   it('patch /title fails cleanly', () => {
     const { tabId } = useStageStore.getState().openQueryEditor({
       sessionId: 's1',
-      scope: 'session',
       baseTitle: 'SQL',
       openMode: 'always_new',
       entryMode: 'blank',
@@ -541,7 +532,6 @@ describe('QueryEditorAdapter', () => {
   it('exec apply_text_edits returns a version-conflict style failure when baseVersion is stale', async () => {
     const { tabId } = useStageStore.getState().openQueryEditor({
       sessionId: 's1',
-      scope: 'session',
       baseTitle: 'SQL',
       openMode: 'always_new',
       entryMode: 'blank',
@@ -581,7 +571,6 @@ describe('QueryEditorAdapter', () => {
   it('exec apply_text_edits returns expected_text_mismatch details and keeps the batch unapplied', async () => {
     const { tabId } = useStageStore.getState().openQueryEditor({
       sessionId: 's1',
-      scope: 'session',
       baseTitle: 'SQL',
       openMode: 'always_new',
       entryMode: 'blank',
@@ -631,7 +620,6 @@ describe('QueryEditorAdapter', () => {
   it('exec set_context rejects empty params', async () => {
     const { tabId } = useStageStore.getState().openQueryEditor({
       sessionId: 's1',
-      scope: 'session',
       baseTitle: 'SQL',
       openMode: 'always_new',
       entryMode: 'blank',
@@ -651,7 +639,6 @@ describe('QueryEditorAdapter', () => {
       tabId: 'ws-q1',
       type: 'query_editor',
       title: 'Workspace SQL',
-      scope: 'workspace',
       payload: {},
       createdAt: 0,
     })
@@ -659,7 +646,6 @@ describe('QueryEditorAdapter', () => {
       tabId: 'session-q1',
       type: 'query_editor',
       title: 'Session SQL',
-      scope: 'session',
       originSessionId: 's1',
       payload: {},
       createdAt: 0,
@@ -681,7 +667,6 @@ describe('QueryEditorAdapter', () => {
       tabId: 'q1',
       type: 'query_editor',
       title: 'SQL',
-      scope: 'session',
       originSessionId: 's1',
       payload: {},
       createdAt: 0,
