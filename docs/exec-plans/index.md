@@ -7,6 +7,7 @@
 | 计划 | 创建日期 | 摘要 |
 |------|---------|------|
 | [Next Implementation Roadmap](./2026-04-25-next-implementation-roadmap-plan.md) | 2026-04-25 | 下一阶段路线图：Tasks 1-7 已收口（cleanup / pagination 评估 / query history 评估 / bounded export shipped / guarded DDL-DML shipped / cross-session workbench + `ui_find` shipped / intelligent operations shipped）；当前下一产品候选为 Task 8 可视化扩展，Task 9 外部数据采集继续作为三期占位；明确排除虚拟滚动。 |
+| [Diagnostics & Mutation Actions](./2026-04-29-diagnostics-mutation-plan.md) | 2026-04-29 | 三个 stub 诊断工具（lock_info / pool_status / table_space）落地真实 MySQL/PG 实现 + H2 partial + Oracle 显式 unsupported；新增两个 confirmable mutation action（terminate_session / optimize_table）形成诊断→建议→执行闭环；19 任务分 5 batch（Domain → Application → Infra(并行 4 provider) → Adapter Action → AGENTS.md & 闭环 IT）；阈值参数化通过 `DiagnosticsThresholdProperties`；i18n 中英双套 24 个 key；mutation 走 Phase 1 preview / Phase 2 execute 独立方法 + SHA-256 confirmation token。 |
 
 ## 已完成计划
 
