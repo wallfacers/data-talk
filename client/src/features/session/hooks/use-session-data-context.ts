@@ -12,6 +12,7 @@ import {
   type SessionDataContext,
   type SessionDataContextUpdateRequest,
 } from '@/services/api/session-data-context'
+import { HTTPError } from '@/services/http'
 import { translateMessage } from '@/i18n/messages'
 import { getCurrentLanguage } from '@/stores/ui-settings-store'
 
@@ -56,13 +57,32 @@ export function useSessionDataContext(sessionId: string | null) {
   const setCachedContext = useSessionStore((s) => s.setSessionDataContext)
   const clearCachedContext = useSessionStore((s) => s.clearSessionDataContext)
 
+  const clearStaleSession = useCallback(() => {
+    if (!sessionId) return
+    const store = useSessionStore.getState()
+    if (store.activeSessionId === sessionId) {
+      store.closeSession()
+    }
+    store.clearSessionDataContext(sessionId)
+    queryClient.removeQueries({ queryKey: queryKey(sessionId), exact: true })
+  }, [sessionId, queryClient])
+
   const query = useQuery({
     queryKey: queryKey(sessionId),
     enabled: !!sessionId,
     staleTime: 0,
-    retry: 1,
+    retry: (failureCount, error) => {
+      if (error instanceof HTTPError && error.response.status === 404) return false
+      return failureCount < 1
+    },
     queryFn: () => getSessionDataContext(sessionId ?? ''),
   })
+
+  useEffect(() => {
+    if (query.error instanceof HTTPError && query.error.response.status === 404) {
+      clearStaleSession()
+    }
+  }, [query.error, clearStaleSession])
 
   useEffect(() => {
     if (!sessionId || !query.data) return
