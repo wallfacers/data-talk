@@ -68,6 +68,7 @@ rg -n "JdbcUrlBuilder|DriverManager|getConnection|setCatalog|setSchema|getCatalo
 rg -n "mysql|postgres|postgresql|sqlite|h2|oracle|sqlserver|mssql|clickhouse|duckdb"
 rg -n "DiagnosticsProvider|EXPLAIN|indexHints|lockInfo|pool_status|table_space"
 rg -n "SqlStatementSplitters|SqlStatementGuard|CalciteSqlRiskAnalyzer|SqlExecuteService|ExecuteSqlAction|ReadSchemaAction"
+rg -n "UseTargetResolver|SessionDataContextService|SessionDataContextRepository|resolve_use_target|list_connection_targets"
 rg -n "datatalk_.*sql|datatalk_.*schema|datatalk_.*connection|AGENTS.md|MCP|tools/list"
 rg -n "DATABASE_TYPES|DbType|formatSql|sql-dialects|parse-sql-outline|connection-form|data-source"
 ```
@@ -76,6 +77,7 @@ For frontend work, also inspect:
 
 ```bash
 rg -n "kind|databaseName|schema|connectionId" client/src/features client/src/services client/src/types
+rg -n "run_sql|set_context|query-editor-actions|use-sql-execute|services/api/sql"
 ```
 
 For backend work, inspect:
@@ -91,6 +93,10 @@ Every data source type needs a canonical kind string.
 - Use lower-case strings in persisted records and API payloads.
 - Keep aliases explicit. Example: `postgres` may be accepted as input, but
   `postgresql` is the canonical kind in most current code.
+- Alias acceptance must have an explicit normalization boundary. If input can
+  accept aliases (`postgres`), define where they are canonicalized (for
+  example create/update REST or action layer) before persistence and JDBC
+  routing. Do not rely on scattered `equalsIgnoreCase` branches.
 - Update all enum-like schemas and UI lists together. Search for hand-written
   string lists; not every list is generated.
 - If a database has separate concepts for catalog, database, schema, namespace,
@@ -176,7 +182,9 @@ Tests:
 Check and update:
 
 - `server/data-talk-infrastructure/src/main/resources/db/migration/`
-- `server/data-talk-infrastructure/src/main/java/com/datatalk/repository/JdbcDbConnectionRepository.java`
+- `server/data-talk-application/src/main/java/com/datatalk/application/persistence/ConnectionRepository.java`
+- `server/data-talk-application/src/main/java/com/datatalk/application/persistence/ConnectionRecord.java`
+- `server/data-talk-infrastructure/src/main/java/com/datatalk/repository/JdbcDbConnectionRepository.java` (legacy path; update only if touched)
 - `docs/generated/db-schema.md`
 
 Required decisions:
@@ -343,9 +351,13 @@ Check and update:
 - `server/data-talk-adapter/src/main/java/com/datatalk/adapter/actions/ResolveUseTargetAction.java`
 - `server/data-talk-adapter/src/main/java/com/datatalk/adapter/actions/GetDataContextAction.java`
 - `server/data-talk-adapter/src/main/java/com/datatalk/adapter/actions/SetDataContextAction.java`
+- `server/data-talk-adapter/src/main/java/com/datatalk/adapter/controller/SessionDataContextController.java`
 - `server/data-talk-application/src/main/java/com/datatalk/application/session/ConnectionTargetDiscoveryService.java`
 - `server/data-talk-application/src/main/java/com/datatalk/application/session/SessionDataContextService.java`
+- `server/data-talk-application/src/main/java/com/datatalk/application/session/UseTargetResolver.java`
 - `server/data-talk-application/src/main/java/com/datatalk/application/session/ResolvedExecutionContext.java`
+- `server/data-talk-application/src/main/java/com/datatalk/application/persistence/SessionDataContextRecord.java`
+- `server/data-talk-application/src/main/java/com/datatalk/application/persistence/SessionDataContextRepository.java`
 - `server/data-talk-application/src/main/java/com/datatalk/application/sql/TableContextAutoResolver.java`
 
 Required decisions:
@@ -538,6 +550,8 @@ Check and update:
 - `client/src/features/stage/utils/parse-sql-outline.ts`
 - `client/src/features/stage/sql-dialects/*.json`
 - `client/src/features/stage/hooks/use-sql-execute.ts`
+- `client/src/features/stage/utils/query-editor-actions.ts`
+- `client/src/services/api/sql.ts`
 - `client/src/i18n/messages.ts`
 
 Required decisions:
@@ -552,6 +566,9 @@ Required decisions:
 - SQL outline keyword set and high-risk hint behavior.
 - Schema/database selector visibility.
 - Data source picker labels and recent connection display.
+- Query Editor run path contract: `connectionId`, `database`, `schema`,
+  `sessionId`, `confirmed`, and `riskAck` must stay aligned between frontend
+  request types and backend controller DTOs.
 - Error, unsupported, and empty states must use existing semantic tokens and
   i18n messages.
 
@@ -592,8 +609,10 @@ Backend:
 
 - Unit tests for `JdbcUrlBuilder`.
 - Unit tests for `ConnectionKind`/kind mapping and invalid kind behavior.
+- Alias normalization tests (`postgres` input path vs canonical persisted kind).
 - Repository tests if metadata schema changed.
 - Service tests for connection target discovery.
+- `resolve_use_target` service/action tests for matched/ambiguous/not-found.
 - `ReadSchemaAction` tests for discover/describe and large-schema bounds.
 - `SqlExecuteService` tests for context application and statement execution.
 - `ExecuteSqlAction` tests for chat-path read-only execution and L2/L3 block.
