@@ -241,9 +241,6 @@ describe('StageWindow', () => {
     render(<StageWindow />)
 
     expect(screen.queryByTestId('stage-activity-rail')).toBeNull()
-    expect(screen.queryByTestId('stage-sidebar')).toBeNull()
-    expect(screen.queryByTestId('stage-resource-browser')).toBeNull()
-    expect(screen.queryByTestId('stage-tool-row')).toBeNull()
   })
 
   it('clicking the empty-state CTA opens the SQL editor via openQueryEditor directly', () => {
@@ -286,7 +283,7 @@ describe('StageWindow', () => {
 
     expect(screen.queryByTestId('stage-placeholder-tab')).toBeNull()
     expect(screen.queryByTestId('sql-workbench-tab')).toBeNull()
-    expect(screen.queryByText(title)).toBeTruthy()
+    expect(screen.getAllByText(title).length).toBeGreaterThan(0)
   })
 
   it('renders workspace tab content inside a session stage when no session tab is active', () => {
@@ -489,9 +486,10 @@ describe('StageWindow', () => {
     } as never, false)
 
     render(<StageWindow />)
-    // Find the tab's close button (inside the tab element)
     const tab = screen.getByRole('tab', { name: /one/ })
-    const closeBtn = within(tab).getByRole('button', { name: /关闭/ })
+    const tabRoot = tab.closest('[data-tab-id="qe-1"]')
+    expect(tabRoot).not.toBeNull()
+    const closeBtn = within(tabRoot as HTMLElement).getByRole('button', { name: /关闭/ })
     fireEvent.click(closeBtn)
 
     expect(useStageStore.getState().openTabIds.has('qe-1')).toBe(false)

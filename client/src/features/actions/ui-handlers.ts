@@ -52,13 +52,23 @@ async function forward(req: UIRequest): Promise<unknown> {
   return resp.data
 }
 
-function resolveTarget(input: { object?: string; target?: string }): string | null {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function resolveTarget(input: { object?: string; target?: string; params?: unknown }): string | null {
+  if (input.object === 'workspace') {
+    const paramsTarget = isRecord(input.params) && typeof input.params.target === 'string'
+      ? input.params.target
+      : null
+    return paramsTarget
+  }
   if (!input.target || input.target === 'active') return useStageStore.getState().activeTabId ?? null
   return input.target
 }
 
 const MUTATING_EXEC = new Set([
-  'open', 'close', 'focus', 'archive',
+  'open', 'close', 'focus', 'detach', 'archive', 'trash',
   'set_context', 'apply_text_edits', 'replace_content',
 ])
 

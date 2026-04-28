@@ -12,6 +12,7 @@ vi.mock('@/features/stage/persistence/stage-persistence-bootstrap', () => ({
     flush: vi.fn().mockResolvedValue(undefined),
     scheduleMetadataWrite: vi.fn(),
     scheduleContentWrite: vi.fn(),
+    delete: vi.fn().mockResolvedValue(undefined),
   },
 }))
 
@@ -99,6 +100,39 @@ describe('ui-handlers', () => {
     const h = getClientHandler('datatalk.ui.exec')!
     const out = await h({ object: 'workspace', target: 'workspace', action: 'choose_connection' }, { sessionId: 's1' })
     expect(out).toEqual({ success: true, data: { cancelled: true } })
+  })
+
+  it('ui_exec hydrates and flushes the params target for workspace archive', async () => {
+    uiRouter.registerInstance('tab-a', stubObject('tab-a', { content: 'select 1' }))
+    useStageStore.setState({ activeTabId: 'tab-a' } as never)
+
+    const h = getClientHandler('datatalk.ui.exec')!
+    await h({
+      object: 'workspace',
+      target: 'workspace',
+      action: 'archive',
+      params: { target: 'tab-a' },
+    }, { sessionId: 's1' })
+
+    expect(coordinator.ensureHydrated).toHaveBeenCalledWith('tab-a')
+    expect(coordinator.flush).toHaveBeenCalledWith('tab-a')
+  })
+
+  it('ui_exec flushes the params target before workspace trash', async () => {
+    uiRouter.registerInstance('tab-b', stubObject('tab-b', { content: 'select 2' }))
+    useStageStore.setState({ activeTabId: 'tab-b' } as never)
+
+    const h = getClientHandler('datatalk.ui.exec')!
+    await h({
+      object: 'workspace',
+      target: 'workspace',
+      action: 'trash',
+      params: { target: 'tab-b' },
+    }, { sessionId: 's1' })
+
+    const hydrateOrder = (coordinator.ensureHydrated as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0]
+    const flushOrder = (coordinator.flush as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0]
+    expect(hydrateOrder).toBeLessThan(flushOrder)
   })
 
   it('ensureHydrated -> forward -> flush ordering for patch handler', async () => {

@@ -1,5 +1,6 @@
 package com.datatalk.application.session;
 
+import com.datatalk.application.connection.ConnectionKind;
 import com.datatalk.application.connection.ConnectionService;
 import com.datatalk.application.connection.JdbcUrlBuilder;
 import com.datatalk.application.i18n.Translator;
@@ -45,13 +46,29 @@ public class ConnectionTargetDiscoveryService {
             connectionService.decryptPassword(connectionId)
         )) {
             var meta = jdbc.getMetaData();
-            try (var catalogs = meta.getCatalogs()) {
-                while (catalogs.next()) {
-                    String name = catalogs.getString(1);
-                    if (name != null && !name.isBlank()) databaseNames.add(name);
+            // For PostgreSQL, getCatalogs() only returns the connected database.
+            // Execute a direct query to enumerate all visible databases.
+            if (ConnectionKind.POSTGRESQL.equals(connection.kind())) {
+                try (var stmt = jdbc.createStatement();
+                     var rs = stmt.executeQuery(
+                         "SELECT datname FROM pg_database WHERE datistemplate = false ORDER BY datname")) {
+                    while (rs.next()) {
+                        String name = rs.getString(1);
+                        if (name != null && !name.isBlank()) databaseNames.add(name);
+                    }
+                } catch (Exception ignored) {
+                    // Fall through to getCatalogs() below.
                 }
-            } catch (Exception ignored) {
-                // Some drivers do not expose catalogs. Keep configured databaseName only.
+            }
+            if (databaseNames.isEmpty()) {
+                try (var catalogs = meta.getCatalogs()) {
+                    while (catalogs.next()) {
+                        String name = catalogs.getString(1);
+                        if (name != null && !name.isBlank()) databaseNames.add(name);
+                    }
+                } catch (Exception ignored) {
+                    // Some drivers do not expose catalogs. Keep configured databaseName only.
+                }
             }
             try (var schemas = meta.getSchemas()) {
                 while (schemas.next()) {

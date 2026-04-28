@@ -21,6 +21,20 @@ const ACTIONS: ActionDef[] = [
   { name: 'close', description: 'Close a tab', paramsSchema: {
     type: 'object', required: ['target'], properties: { target: { type: 'string' } },
   } },
+  { name: 'detach', description: 'Remove a tab from the workset without archiving it', paramsSchema: {
+    type: 'object', required: ['target'], properties: { target: { type: 'string' } },
+  } },
+  { name: 'archive', description: 'Archive or unarchive a tab', paramsSchema: {
+    type: 'object',
+    required: ['target'],
+    properties: {
+      target: { type: 'string' },
+      archived: { type: 'boolean', default: true },
+    },
+  } },
+  { name: 'trash', description: 'Permanently delete a tab', paramsSchema: {
+    type: 'object', required: ['target'], properties: { target: { type: 'string' } },
+  } },
   { name: 'focus', description: 'Focus a tab', paramsSchema: {
     type: 'object', required: ['target'], properties: { target: { type: 'string' } },
   } },
@@ -90,6 +104,7 @@ export class WorkspaceAdapter implements UIObject {
       payload?: unknown
       target?: string
       preferredConnectionId?: string
+      archived?: boolean
     }
     const store = useStageStore.getState()
     switch (action) {
@@ -97,7 +112,6 @@ export class WorkspaceAdapter implements UIObject {
         if (!p.type) return execError('Missing param: type')
         const sid = this.getSessionId()
         if (p.type === 'query_editor') {
-          if (!sid) return execError('Cannot open session-scoped tab without active session')
           const payload = normalizeQueryEditorPayload(p.payload)
           const connectionId = p.connection_id ?? payload.connectionId ?? undefined
           const connectionName = p.connection_id && payload.connectionId !== p.connection_id
@@ -140,8 +154,32 @@ export class WorkspaceAdapter implements UIObject {
         store.archiveTab(p.target, true)
         return { success: true }
       }
+      case 'detach': {
+        if (!p.target) return execError('Missing param: target')
+        store.detachFromWorkset(p.target)
+        return { success: true }
+      }
+      case 'archive': {
+        if (!p.target) return execError('Missing param: target')
+        store.archiveTab(p.target, p.archived ?? true)
+        return { success: true }
+      }
+      case 'trash': {
+        if (!p.target) return execError('Missing param: target')
+        await store.trashTab(p.target)
+        return { success: true }
+      }
       case 'focus': {
         if (!p.target) return execError('Missing param: target')
+        const tab = store.findTab(p.target)
+        if (!tab) return execError({ code: 'tab_not_found', message: `Tab not found: ${p.target}` })
+        if (tab.archived) {
+          return execError({
+            code: 'tab_archived',
+            message: 'The tab is archived. Unarchive it before focusing.',
+            hint: `Call workspace.archive(target=${p.target}, archived=false) before focus.`,
+          })
+        }
         store.focusTab(p.target)
         return { success: true }
       }

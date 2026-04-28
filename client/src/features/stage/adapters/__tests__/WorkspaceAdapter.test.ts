@@ -9,6 +9,7 @@ const realOpenQueryEditor = useStageStore.getState().openQueryEditor
 
 describe('WorkspaceAdapter', () => {
   beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 204 })))
     useStageStore.setState({
       tabs: [],
       openTabIds: new Set(),
@@ -35,6 +36,7 @@ describe('WorkspaceAdapter', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
   it('exec open for query_editor with connection context delegates to openQueryEditor only', async () => {
@@ -160,7 +162,10 @@ describe('WorkspaceAdapter', () => {
     }))
   })
 
-  it('rejects session-scoped query_editor open without an active session', async () => {
+  it('opens a global query_editor without an active session', async () => {
+    const openQueryEditor = vi.fn().mockReturnValue({ tabId: 'qe-global', created: true })
+    useStageStore.setState({ openQueryEditor } as unknown as Record<string, unknown>)
+
     const adapter = new WorkspaceAdapter(() => null)
     const res = await adapter.exec('open', {
       type: 'query_editor',
@@ -169,8 +174,15 @@ describe('WorkspaceAdapter', () => {
       database: 'db-1',
       schema: 'public',
     })
-    expect(res.success).toBe(false)
-    expect(res.error).toContain('active session')
+    expect(res).toEqual({
+      success: true,
+      data: { tabId: 'qe-global' },
+    })
+    expect(openQueryEditor).toHaveBeenCalledWith(expect.objectContaining({
+      sessionId: null,
+      baseTitle: 'SQL',
+      connectionId: 'conn-1',
+    }))
   })
 
   it('exec open sets the new tab as active', async () => {
@@ -282,6 +294,49 @@ describe('WorkspaceAdapter', () => {
     expect(useStageStore.getState().tabs[0]?.archived).toBe(true)
   })
 
+  it('exec detach removes the tab from the workset without archiving it', async () => {
+    const adapter = new WorkspaceAdapter(() => 's1')
+    const opened = await adapter.exec('open', { type: 'er_canvas', title: 'ER' })
+    const tabId = (opened.data as { tabId: string }).tabId
+
+    const detached = await adapter.exec('detach', { target: tabId })
+
+    expect(detached).toEqual({ success: true })
+    expect(useStageStore.getState().openTabIds.has(tabId)).toBe(false)
+    expect(useStageStore.getState().tabs).toEqual([
+      expect.objectContaining({ tabId }),
+    ])
+    expect(useStageStore.getState().tabs[0]?.archived).toBeUndefined()
+  })
+
+  it('exec archive toggles archived state and cascades detach when archiving', async () => {
+    const adapter = new WorkspaceAdapter(() => 's1')
+    const opened = await adapter.exec('open', { type: 'er_canvas', title: 'ER' })
+    const tabId = (opened.data as { tabId: string }).tabId
+
+    const archived = await adapter.exec('archive', { target: tabId })
+    const unarchived = await adapter.exec('archive', { target: tabId, archived: false })
+
+    expect(archived).toEqual({ success: true })
+    expect(unarchived).toEqual({ success: true })
+    expect(useStageStore.getState().openTabIds.has(tabId)).toBe(false)
+    expect(useStageStore.getState().tabs).toEqual([
+      expect.objectContaining({ tabId, archived: false, archivedAt: null }),
+    ])
+  })
+
+  it('exec trash permanently deletes the tab', async () => {
+    const adapter = new WorkspaceAdapter(() => 's1')
+    const opened = await adapter.exec('open', { type: 'er_canvas', title: 'ER' })
+    const tabId = (opened.data as { tabId: string }).tabId
+
+    const trashed = await adapter.exec('trash', { target: tabId })
+
+    expect(trashed).toEqual({ success: true })
+    expect(useStageStore.getState().tabs).toHaveLength(0)
+    expect(useStageStore.getState().openTabIds.has(tabId)).toBe(false)
+  })
+
   it('exec focus sets the target as active', async () => {
     const adapter = new WorkspaceAdapter(() => 's1')
     const opened = await adapter.exec('open', { type: 'er_canvas', title: 'ER' })
@@ -290,6 +345,22 @@ describe('WorkspaceAdapter', () => {
 
     expect(focused).toEqual({ success: true })
     expect(useStageStore.getState().activeTabId).toBe((opened.data as { tabId: string }).tabId)
+  })
+
+  it('exec focus rejects archived tabs with a structured tab_archived error', async () => {
+    const adapter = new WorkspaceAdapter(() => 's1')
+    const opened = await adapter.exec('open', { type: 'er_canvas', title: 'ER' })
+    const tabId = (opened.data as { tabId: string }).tabId
+    useStageStore.getState().archiveTab(tabId, true)
+
+    const focused = await adapter.exec('focus', { target: tabId })
+
+    expect(focused.success).toBe(false)
+    expect(focused.data).toEqual(expect.objectContaining({
+      code: 'tab_archived',
+      message: expect.stringContaining('archived'),
+      hint: expect.stringContaining('archived=false'),
+    }))
   })
 
   it.each([

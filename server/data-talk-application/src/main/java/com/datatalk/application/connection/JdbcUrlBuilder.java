@@ -15,7 +15,8 @@ public final class JdbcUrlBuilder {
             case ConnectionKind.POSTGRESQL ->
                 "jdbc:postgresql://" + c.host() + ":" + c.port() + "/" + (db != null ? db : "postgres");
             case ConnectionKind.MYSQL ->
-                "jdbc:mysql://" + c.host() + ":" + c.port() + "/" + (db != null ? db : "");
+                db != null ? "jdbc:mysql://" + c.host() + ":" + c.port() + "/" + db
+                           : "jdbc:mysql://" + c.host() + ":" + c.port();
             case ConnectionKind.H2 ->
                 "jdbc:h2:" + (db != null ? db : "mem:test");
             case ConnectionKind.SQLITE ->
@@ -32,7 +33,8 @@ public final class JdbcUrlBuilder {
             case POSTGRESQL ->
                 "jdbc:postgresql://" + c.host() + ":" + c.port() + "/" + (db != null ? db : "postgres");
             case MYSQL ->
-                "jdbc:mysql://" + c.host() + ":" + c.port() + "/" + (db != null ? db : "");
+                db != null ? "jdbc:mysql://" + c.host() + ":" + c.port() + "/" + db
+                           : "jdbc:mysql://" + c.host() + ":" + c.port();
             case H2 ->
                 "jdbc:h2:" + (db != null ? db : "mem:test");
             case SQLITE ->

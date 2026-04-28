@@ -17,13 +17,14 @@
 - **Owner intent:** Decide "接下来做什么" after the 2026-04-21 roadmap completed.
 - **Primary direction:** Make SQL Workbench reliably useful for daily work before expanding into visualization and intelligent operations.
 - **2026-04-27 update:** Tasks 1-5 已完成（TD-026 已清除、Pagination/Query History 评估完成、Bounded Export shipped、Guarded DDL/DML shipped、Chart Artifact Inline Preview 子计划 shipped）。同日产品总设计新增 §3.11 跨 session 工作台 + Tab 内容索引 + `ui_find` 与 §3.12 外部数据采集（skill 驱动），roadmap 重排：原 Task 6 Intelligent Operations 降为 Task 7、原 Task 7 Visualization 降为 Task 8，新插入 Task 6 跨 session 工作台持久化作为下一启动项，新增 Task 9 外部数据采集作为三期占位。
+- **2026-04-28 update:** Task 6 已通过 [Cross-Session Workbench Tabs](./2026-04-27-cross-session-workbench-tabs-plan.md) 和 Shared Stage Workbench P1/P2/P3/P3.5 系列收口；Task 7 Intelligent Operations 已 shipped；当前下一条产品主线是 Task 8 Visualization Expansion，Task 9 继续等待 Task 8 至少一个生产切片稳定。
 
 ## Context
 
 - `docs/exec-plans/index.md` currently has no active plans before this roadmap is registered.
 - The following foundations are already shipped: Stage UI Object Protocol, Stage Window Layout, SQL Workbench, Query Editor object actions, SQL risk classification, Composer data source picker, MCP tool migration, chart fence rendering, and real OpenCode MCP bridge smoke coverage.
 - The product roadmap in `docs/product-specs/index.md` places the next major work in "二期": SQL editing, query result management, export, DDL / DML guarded execution, visualization, and performance analysis.
-- The current live technical debt list is small. `TD-026` is a stale client file cleanup item; `TD-SINGLE-EMPTY-SESSION-MULTINODE` remains a future deployment concern and is not a desktop blocker.
+- The current live technical debt list is small. `TD-033` tracks the scheduled removal of the deprecated `workspace.close` alias; no P0/P1 debt remains registered after the 2026-04-28 cleanup.
 
 ## Design Inputs
 
@@ -46,9 +47,9 @@ Frontend work in this roadmap must follow [client/DESIGN.md](../../client/DESIGN
 3. **Query history enhancement:** current tab-local history is usable; persistence, search, filtering, and reopen modes should be a later focused enhancement. _(assessed, deferred)_
 4. **Export:** next new implementation plan. Ship bounded CSV / JSON first; evaluate Excel only after result metadata is stable. _(shipped)_
 5. **DDL / DML guarded execution:** extend the existing risk classification into user-facing confirmation flows. _(shipped)_
-6. **Cross-session workbench persistence + Tab content index + `ui_find`:** promote workbench Tabs to globally persisted, content-indexed objects so the AI can locate, read, and patch any open work surface across sessions; this is the foundation that makes report / dashboard / ER work durable rather than throwaway artifacts. _(next active head)_
+6. **Cross-session workbench persistence + Tab content index + `ui_find`:** promote workbench Tabs to globally persisted, content-indexed objects so the AI can locate, read, and patch any open work surface across sessions; this is the foundation that makes report / dashboard / ER work durable rather than throwaway artifacts. _(shipped — see [2026-04-27-cross-session-workbench-tabs-plan.md](./2026-04-27-cross-session-workbench-tabs-plan.md) and Shared Stage Workbench P1/P2/P3/P3.5)_
 7. **Intelligent operations:** introduce read-only diagnostics such as `EXPLAIN`, slow query analysis, index recommendations, and audit visibility. _(shipped — see [2026-04-27-intelligent-operations-plan.md](./2026-04-27-intelligent-operations-plan.md))_
-8. **Visualization expansion:** ER designer, report, and dashboard work; depends on Task 6 to be useful, since long-lived design objects need cross-session persistence.
+8. **Visualization expansion:** ER designer, report, and dashboard work; now unblocked by Task 6 persistence, but should still start with one focused child spec rather than bundling all visualization surfaces.
 9. **External data ingestion via skills:** e-commerce platform / generic web data fetching with auto-table creation under guarded execution. _(phase-3 placeholder; do not start until Tasks 6 and 8 are stable)_
 
 ### Explicit Exclusion
@@ -208,7 +209,7 @@ Frontend work in this roadmap must follow [client/DESIGN.md](../../client/DESIGN
 
 ### Task 6: Cross-Session Workbench Persistence And Content-Aware Tab Search
 
-> Promotes 总设计 §3.11. This is the next active head; spec + child plan must be created before code work begins.
+> Promotes 总设计 §3.11. Shipped via the Cross-Session Workbench Tabs plan and the Shared Stage Workbench follow-up phases; checklist below records the roadmap-level closure rather than the full child-plan task list.
 
 **Files:**
 - Create: `docs/product-specs/<YYYY-MM-DD>-cross-session-workbench-tabs-design.md`
@@ -221,36 +222,36 @@ Frontend work in this roadmap must follow [client/DESIGN.md](../../client/DESIGN
 - Modify later: `client/src/features/session/**` (sidebar entry: "Tab 打开记录")
 - Modify later: AGENTS.md / system-prompt template (inject open-Tab summary + recently-touched Tabs + `ui_find` priority)
 
-- [ ] **Step 6.1: Promote 总设计 §3.11 to a focused product spec**
+- [x] **Step 6.1: Promote 总设计 §3.11 to a focused product spec**
   - Decompose into: Tab persistence schema, content indexing strategy, `ui_find` action contract, sidebar Tab history surface, system-prompt injection.
   - Spec must explicitly cite [Stage UI Object Protocol](../product-specs/2026-04-20-stage-ui-object-protocol-design.md) as the foundation it extends.
   - Spec must classify each existing Tab type as workbench-scope (e.g. `query_editor`, future `er_designer`, future `report_designer`) vs session-scope (e.g. `chart_artifact`, `file_preview` snapshots), and set the default for new Tab types.
 
-- [ ] **Step 6.2: Define persistence contract**
+- [x] **Step 6.2: Define persistence contract**
   - SQLite schema for Tabs: `id / type / title / objectId / connectionId / payloadSnapshot / lastTouchedAt / openedBySessionId`.
   - Decide whether content snapshots live alongside metadata or in a separate blob table (likely separate to keep list queries cheap).
   - Migration is additive; on cold start `StageStore` hydrates from DB instead of starting empty.
   - Out of scope: full per-keystroke history; only logical save points and explicit AI patches snapshot.
 
-- [ ] **Step 6.3: Define indexing and `ui_find` contract**
+- [x] **Step 6.3: Define indexing and `ui_find` contract**
   - `ui_find` is the Claude Code `find + grep + cat` analogue: single action covers metadata filter, content search, and ranged content read.
   - Filter modes: by `type / connectionId / objectId / openedBySessionId / lastTouchedAt window`.
   - Search modes: substring, regex, optional semantic (deferred slice if scope grows).
   - Read mode: returns `tabId` plus matched fragment with byte / line range so AI can decide a precise `ui_patch` without re-fetching the whole document.
   - `ui_find` stays read-only. All mutation must continue to flow through `ui_patch` per the existing UI Object Protocol.
 
-- [ ] **Step 6.4: Define UI surface**
+- [x] **Step 6.4: Define UI surface**
   - Sidebar gains a "Tab 打开记录" entry parallel to the session list, using `bg.subtle / border.subtle / interaction.selected / text.strong` per [client/DESIGN.md](../../client/DESIGN.md).
   - Search input and result navigation are keyboard accessible; focus rings follow `interaction.focusRing`.
   - Search hits highlight using `accent.primary`; switching / focusing a Tab animates with `motion.normal + easing.standard`, used only as state confirmation.
   - A Tab opened in session A renders identically when re-opened from session B.
 
-- [ ] **Step 6.5: Define AI integration**
+- [x] **Step 6.5: Define AI integration**
   - System prompt injects "current open Tabs summary + recently-touched Tabs"; `ui_find` listed as the preferred locator before broader `ui_list` traversal or full-document `ui_read`.
   - AGENTS.md updated to teach the find / grep / cat mental model and rule out "fetch everything to context" patterns.
   - Tab summary surfaces enough discriminator metadata (object kind + a one-line snippet) so the AI can pick targets without an extra round-trip.
 
-- [ ] **Step 6.6: Define tests and verification**
+- [x] **Step 6.6: Define tests and verification**
   - Backend: `TabRepository` CRUD, indexer determinism, `ui_find` filter / search / read modes, migration round-trip, cold-start hydration.
   - Frontend: cross-session Tab hydration, sidebar Tab history rendering, search interaction, `ui_find → ui_patch` flow over a mocked Adapter.
   - Verification gates per the roadmap's Verification Gates section.
@@ -338,10 +339,10 @@ Frontend work in this roadmap must follow [client/DESIGN.md](../../client/DESIGN
 ## Ordering And Parallelism
 
 - Tasks 1 through 5 are closed (shipped or assessed-and-deferred); no further roadmap-level action.
-- Task 6 (Cross-Session Workbench Persistence) is the next active head; child spec + plan must precede any code work because it changes the StageStore scope contract and adds a new top-level action (`ui_find`).
-- Task 7 (Intelligent Operations) can be designed in parallel with Task 6, but its first implementation must stay read-only and should target persistent Tab surfaces created under Task 6 (e.g. plan inspector, audit panel) rather than session-only artifacts.
-- Task 8 (Visualization Expansion) waits for Task 6's first usable slice. ER / report / dashboard objects must register as workbench-scope persistent Tabs from the start; do not ship throwaway session-scope versions first.
-- Task 9 (External Data Ingestion) is a phase-3 placeholder; do not open a child spec until Task 6 is shipped and at least one Task 8 slice is in production.
+- Task 6 (Cross-Session Workbench Persistence) is closed; future work should use the shipped persistent Tab + `ui_find` substrate instead of reopening the foundation.
+- Task 7 (Intelligent Operations) is closed as a read-only diagnostics slice.
+- Task 8 (Visualization Expansion) is the next product candidate. ER / report / dashboard objects must register as workbench-scope persistent Tabs from the start; do not ship throwaway session-scope versions first.
+- Task 9 (External Data Ingestion) is a phase-3 placeholder; do not open a child spec until at least one Task 8 slice is in production.
 
 ## Verification Gates
 
@@ -360,8 +361,8 @@ Every child implementation plan created from this roadmap must include:
 - Query history / result management is intentionally deferred with the current tab-local implementation documented. _(deferred; will likely fold into Task 6's persistence + `ui_find` once that ships)_
 - Bounded export has a clear child spec and plan, or the roadmap records why it was deferred. _(shipped)_
 - Guarded DDL / DML execution has a child spec that connects backend risk enforcement to frontend confirmation UI. _(shipped)_
-- Cross-session workbench persistence + `ui_find` has a child spec covering Tab persistence schema, content indexing, action contract, sidebar surface, and AI integration; all classified Tab types have an explicit workbench-scope vs session-scope decision.
-- Intelligent operations has a child spec covering read-only diagnostics, dialect boundaries, and AI collaboration rules; surfaces target persistent Tabs from Task 6 where applicable.
+- Cross-session workbench persistence + `ui_find` has a child spec covering Tab persistence schema, content indexing, action contract, sidebar surface, and AI integration; all classified Tab types have an explicit workbench-scope vs session-scope decision. _(shipped)_
+- Intelligent operations has a child spec covering read-only diagnostics, dialect boundaries, and AI collaboration rules; surfaces target persistent Tabs from Task 6 where applicable. _(shipped)_
 - Visualization expansion has at least one child spec choosing one initial slice (ER / chart-edit / dashboard), with explicit `ui_find` / `ui_patch` integration for its persistent objects.
 - External data ingestion remains a registered phase-3 placeholder until Tasks 6 and 8 are stable; no child spec opened prematurely.
 - The next roadmap or child plans are registered in `docs/exec-plans/index.md` before this roadmap is moved to Completed.
