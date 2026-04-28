@@ -27,11 +27,11 @@ export function StageRailRow({ tab, active, inWorkset, onClick, trailingMenu }: 
       data-in-workset={inWorkset}
       data-archived={tab.archived ? true : undefined}
       className={[
-        'group relative flex h-8 items-center gap-2 rounded-md px-2',
+        'group relative flex h-8 cursor-pointer select-none items-center gap-2 rounded-md px-2',
         'transition-[background,color] duration-[180ms] ease-[var(--easing-standard)]',
         'text-text-muted',
         inWorkset && !active ? 'font-medium text-text-base' : '',
-        'hover:bg-interaction-hover',
+        'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
         active ? 'bg-interaction-selected text-text-strong' : '',
         tab.archived ? 'opacity-60 text-text-soft' : '',
         // focus ring renders for both selected and non-selected rows so keyboard

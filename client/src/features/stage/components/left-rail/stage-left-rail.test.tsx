@@ -66,6 +66,23 @@ describe('StageLeftRail', () => {
     expect(titles[0]).toContain('pinned')
   })
 
+  it('uses sidebar-style hover affordance and pointer cursor for active SQL editor rows', () => {
+    useStageStore.setState({
+      tabs: [makeTab({ tabId: 'sql-1', title: 'SQL 编辑器' })],
+      openTabIds: new Set(['sql-1']),
+      openTabIdsOrdered: ['sql-1'],
+      activeTabId: 'sql-1',
+    } as never, false)
+
+    render(<StageLeftRail />)
+
+    const row = screen.getByText('SQL 编辑器').closest('[role="button"]')
+
+    expect(row).toHaveClass('cursor-pointer')
+    expect(row).toHaveClass('select-none')
+    expect(row).toHaveClass('hover:bg-sidebar-accent')
+  })
+
   it('collapsed rail shows expand chevron only', () => {
     useStageStore.setState({ leftRailCollapsed: true } as never, false)
     render(<StageLeftRail />)

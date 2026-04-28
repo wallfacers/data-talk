@@ -115,6 +115,15 @@ describe('StageTabBar', () => {
     expect(onClose).toHaveBeenCalledWith('active')
   })
 
+  it('uses a pointer cursor on the active SQL tab instead of a text cursor', () => {
+    render(<StageTabBar tabs={tabs} activeId="active" />)
+
+    const activeTab = screen.getByText('Active').closest('[data-tab-id="active"]') as HTMLElement
+    const activeButton = within(activeTab).getByRole('tab', { name: 'Active' })
+
+    expect(activeButton.className).toContain('cursor-pointer')
+  })
+
   it('shows overflow actions and supports selecting/closing tabs plus opening start page', () => {
     const onSelect = vi.fn()
     const onClose = vi.fn()

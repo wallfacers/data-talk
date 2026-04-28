@@ -186,7 +186,7 @@ export function StageTabBar({
                         aria-selected={isActive}
                         data-state={isActive ? 'active' : 'inactive'}
                         className={cn(
-                          'relative flex h-10 min-w-0 items-center gap-1.5 border-b-2 border-b-transparent px-3 pb-1.5 pt-2 text-[13px] font-medium transition-colors duration-200 ease-out select-none',
+                          'relative flex h-10 min-w-0 cursor-pointer items-center gap-1.5 border-b-2 border-b-transparent px-3 pb-1.5 pt-2 text-[13px] font-medium transition-colors duration-200 ease-out select-none',
                           'data-[state=active]:border-b-foreground data-[state=active]:text-foreground',
                           'data-[state=inactive]:text-muted-foreground hover:data-[state=inactive]:border-b-border/60 hover:data-[state=inactive]:text-foreground',
                           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing [&_svg]:shrink-0',
@@ -195,6 +195,13 @@ export function StageTabBar({
                       >
                         {getTabIcon(tab.type, isActive)}
                         <span className="min-w-0 truncate">{tab.title}</span>
+                        {tab.dirty ? (
+                          <span
+                            data-testid="dirty-indicator"
+                            aria-hidden
+                            className="size-1.5 shrink-0 rounded-full bg-accent-primary"
+                          />
+                        ) : null}
                       </button>
                       <Tooltip>
                         <TooltipTrigger
