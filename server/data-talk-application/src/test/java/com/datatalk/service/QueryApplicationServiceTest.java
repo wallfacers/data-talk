@@ -53,7 +53,7 @@ class QueryApplicationServiceTest {
         connectionService = mock(ConnectionService.class);
         sessionDataContextService = mock(SessionDataContextService.class);
         sqlExecutionRepository = mock(SqlExecutionRepository.class);
-        statementGuard = spy(new SqlStatementGuard());
+        statementGuard = spy(new SqlStatementGuard(translator));
         tableContextAutoResolver = mock(TableContextAutoResolver.class);
         translator = translator();
         when(tableContextAutoResolver.resolve(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));

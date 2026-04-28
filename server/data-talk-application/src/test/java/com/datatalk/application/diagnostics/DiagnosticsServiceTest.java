@@ -1,6 +1,7 @@
 package com.datatalk.application.diagnostics;
 
 import com.datatalk.application.connection.ConnectionService;
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.persistence.SessionDataContextRecord;
@@ -28,7 +29,7 @@ class DiagnosticsServiceTest {
         connRepo = mock(ConnectionRepository.class);
         connSvc = mock(ConnectionService.class);
         sessionContexts = mock(SessionDataContextService.class);
-        service = new DiagnosticsService(registry, connRepo, connSvc, sessionContexts);
+        service = new DiagnosticsService(registry, connRepo, connSvc, sessionContexts, mock(Translator.class));
     }
 
     @Test

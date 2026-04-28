@@ -3,15 +3,26 @@ package com.datatalk.infra.diagnostics;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.domain.diagnostics.*;
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Locale;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.support.StaticMessageSource;
 
 class MySqlDiagnosticsProviderTest {
 
-    private final MySqlDiagnosticsProvider provider = new MySqlDiagnosticsProvider();
+    private MySqlDiagnosticsProvider provider;
+
+    @BeforeEach
+    void setUp() {
+        var source = new StaticMessageSource();
+        source.addMessage("diagnostics.mysql.explain-failed", Locale.ENGLISH, "EXPLAIN failed");
+        provider = new MySqlDiagnosticsProvider(new Translator(source));
+    }
 
     @Test
     void supportedDriverTypes_returnsMysql() {

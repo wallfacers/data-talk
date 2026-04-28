@@ -3,17 +3,28 @@ package com.datatalk.infra.diagnostics;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.domain.diagnostics.*;
 import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.Statement;
 import java.util.List;
+import java.util.Locale;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.support.StaticMessageSource;
 
 class PostgreSqlDiagnosticsProviderTest {
 
-    private final PostgreSqlDiagnosticsProvider provider = new PostgreSqlDiagnosticsProvider();
+    private PostgreSqlDiagnosticsProvider provider;
+
+    @BeforeEach
+    void setUp() {
+        var source = new StaticMessageSource();
+        source.addMessage("diagnostics.postgresql.explain-failed", Locale.ENGLISH, "EXPLAIN failed");
+        provider = new PostgreSqlDiagnosticsProvider(new Translator(source));
+    }
 
     @Test
     void supportedDriverTypes_containsBothPostgresqlAndPostgres() {

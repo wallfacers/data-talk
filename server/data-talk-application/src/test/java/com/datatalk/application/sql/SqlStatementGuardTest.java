@@ -1,15 +1,27 @@
 package com.datatalk.application.sql;
 
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.domain.error.DataTalkErrorCodes;
 import com.datatalk.domain.error.DataTalkException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.support.StaticMessageSource;
+
+import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class SqlStatementGuardTest {
 
-    private final SqlStatementGuard guard = new SqlStatementGuard();
+    private SqlStatementGuard guard;
+
+    @BeforeEach
+    void setUp() {
+        var source = new StaticMessageSource();
+        source.addMessage("error.sql.forbidden", Locale.ENGLISH, "Only SELECT/WITH statements are allowed");
+        guard = new SqlStatementGuard(new Translator(source));
+    }
 
     @Test void acceptsSimpleSelect() {
         assertThatCode(() -> guard.assertSelectOnly("SELECT * FROM users")).doesNotThrowAnyException();
