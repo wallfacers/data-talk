@@ -105,8 +105,43 @@ class DataTalkMcpServiceTest {
         assertThat(content.get(0).get("text")).asString().contains("timeout");
     }
 
+    @Test
+    void oversizedSuccessOutputIsReplacedWithCompactTruncationPayload() {
+        DataTalkMcpService smallBudgetService = new DataTalkMcpService(
+            registryWith("datatalk.execute_sql", Executor.SERVER),
+            bridge,
+            new ObjectMapper(),
+            120
+        );
+        when(bridge.handle(anyString(), any())).thenReturn(
+            CompletableFuture.completedFuture(McpActionBridge.ToolCallOutcome.success(
+                Map.of("rows", "x".repeat(500))
+            ))
+        );
+
+        Map<String, Object> result = smallBudgetService.callTool("execute_sql", Map.of()).toCompletableFuture().join();
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> structured = (Map<String, Object>) result.get("structuredContent");
+        assertThat(structured)
+            .containsEntry("truncated", true)
+            .containsEntry("reason", "output_too_large");
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> content = (List<Map<String, Object>>) result.get("content");
+        assertThat(content.getFirst().get("text")).asString()
+            .contains("\"truncated\":true")
+            .contains("Use narrower arguments");
+    }
+
     private static ActionDescriptor descriptor(String id, Executor executor) {
         return new ActionDescriptor(id, executor, "desc", Map.of(), Map.of(),
             List.of(), List.of(OntologyEffect.NONE), false, 3_000, null, null);
+    }
+
+    private static ActionRegistry registryWith(String id, Executor executor) {
+        ActionRegistry registry = mock(ActionRegistry.class);
+        when(registry.mcpExposed()).thenReturn(List.of(descriptor(id, executor)));
+        return registry;
     }
 }

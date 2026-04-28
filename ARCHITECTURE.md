@@ -139,7 +139,8 @@ StageWindow 已演进为 **AI 可操作的多 Tab 工作屏**，由 `client/src/
 - **query_editor 对象面**：`QueryEditorAdapter` 对外暴露 SQL 编辑器的 `state / actions / capabilities`，让 AI 与用户侧工作台共用同一套对象语义
 - **两条 SQL 路径**：
   - **展示路径**（用户 `!select ...` / `!with ...`）—— 前端直接打 `POST /api/query`，结果打开到 Stage 的 `query_editor`；该路径不产生 assistant 回复，但会先在聊天区写入一条 synthetic user message，保证当前会话即时可见、刷新后不丢
-  - **分析路径**（AI `datatalk.execute_sql`）—— 结果以 Artifact 形式回流 AI 上下文；现有行为保持不变
+  - **分析路径**（AI `datatalk.execute_sql`）—— 结果以 Artifact 形式回流 AI 上下文；chat-path 原始行读取必须通过 `pageSize` 维持有界，分析类问题优先生成聚合 SQL
+- **大 schema 约束**：AI 通过 `datatalk.read_schema` 读取元数据时保持实时 JDBC 读取，不做持久 schema cache；大 schema 必须先用 `pattern` / `limit` / `cursor` 做表发现，再对少量显式 `tables` 做列描述，避免把全库表/列塞进模型上下文
 - **用户 `!` 直查门槛**：Composer 仅对 `!select ...` / `!with ...` 做 direct SQL 拦截；其他 `!xxx` 输入继续走 AI，兼容自然语言强调。后端 `/api/query` 在 `QueryApplicationService` 首行调用 `SqlStatementGuard.assertSelectOnly(...)`，与 `execute_sql` 共用 SELECT/WITH 白名单
 
 完整设计见 [docs/product-specs/2026-04-20-stage-ui-object-protocol-design.md](docs/product-specs/2026-04-20-stage-ui-object-protocol-design.md)，执行计划见 [docs/exec-plans/2026-04-20-stage-ui-object-protocol-plan.md](docs/exec-plans/2026-04-20-stage-ui-object-protocol-plan.md)。后续对象契约收紧与编辑语义增强继续由 `Query Editor Object Actions` 主线推进。

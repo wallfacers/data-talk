@@ -107,6 +107,10 @@ class AgentPromptContractTest {
             .contains("Schema Reading Rules")
             .contains("explicit `tables`")
             .contains("table discovery")
+            .contains("pattern")
+            .contains("limit")
+            .contains("large schemas")
+            .contains("Never pass a large table list")
             .contains("truncated")
             .contains("Do not describe truncation as a tool failure");
     }

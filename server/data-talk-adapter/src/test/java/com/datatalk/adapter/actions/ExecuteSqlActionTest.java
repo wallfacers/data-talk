@@ -106,6 +106,20 @@ class ExecuteSqlActionTest {
 
     @Test
     @SuppressWarnings("unchecked")
+    void pageSizeLimitsRowsAndReportsTruncation() throws Exception {
+        Map<String, Object> out = (Map<String, Object>) action.handle(
+            new ActionContext("s-exec", "c-page", connectionId, "oc-e"),
+            Map.of("connectionId", connectionId, "sql", "SELECT * FROM t ORDER BY id", "pageSize", 2)
+        ).toCompletableFuture().get();
+
+        assertThat((List<?>) out.get("preview")).hasSize(2);
+        assertThat(out)
+            .containsEntry("rowCount", 2)
+            .containsEntry("truncated", true);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     void serializes_unsafe_bigint_preview_cells_as_strings() throws Exception {
         Map<String, Object> out = (Map<String, Object>) action.handle(
             new ActionContext("s-exec", "c-3", connectionId, "oc-e"),

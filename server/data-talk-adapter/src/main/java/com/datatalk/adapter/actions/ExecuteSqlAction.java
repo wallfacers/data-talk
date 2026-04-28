@@ -47,6 +47,8 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
 
     private static final int INLINE_LIMIT_BYTES = 256 * 1024;
     private static final int PREVIEW_ROWS = 100;
+    private static final int DEFAULT_PAGE_SIZE = 100;
+    private static final int MAX_PAGE_SIZE = 1_000;
 
     private final ConnectionRepository connRepo;
     private final ConnectionService connSvc;
@@ -85,7 +87,7 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
                 "database",     Map.of("type", "string"),
                 "schema",       Map.of("type", "string"),
                 "sql",          Map.of("type", "string"),
-                "pageSize",     Map.of("type", "integer", "minimum", 1, "maximum", 10_000)
+                "pageSize",     Map.of("type", "integer", "minimum", 1, "maximum", MAX_PAGE_SIZE)
             ));
     }
 
@@ -99,6 +101,7 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
                 "columns",     Map.of("type", "array"),
                 "preview",     Map.of("type", "array"),
                 "rowCount",    Map.of("type", "integer"),
+                "truncated",   Map.of("type", "boolean"),
                 "durationMs",  Map.of("type", "integer"),
                 "metadata",    Map.of(
                     "type", "object",
@@ -141,20 +144,27 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
 
         var resolved = resolveContext(ctx, input);
         ConnectionRecord cr = withDatabase(resolved.connection(), resolved.database());
+        int pageSize = pageSize(input.get("pageSize"));
 
         long started = clock.millis();
         List<String> columns = new ArrayList<>();
         List<Map<String, Object>> rows = new ArrayList<>();
+        boolean truncated = false;
 
         try (Connection c = DriverManager.getConnection(JdbcUrlBuilder.build(cr), cr.username(),
                 connSvc.decryptPassword(cr.id()));
              PreparedStatement ps = c.prepareStatement(sql)) {
             applyExecutionContext(c, cr.kind(), resolved.schema());
             ps.setQueryTimeout(30);
+            ps.setMaxRows(pageSize + 1);
             try (ResultSet rs = ps.executeQuery()) {
                 var md = rs.getMetaData();
                 for (int i = 1; i <= md.getColumnCount(); i++) columns.add(md.getColumnLabel(i));
                 while (rs.next()) {
+                    if (rows.size() >= pageSize) {
+                        truncated = true;
+                        break;
+                    }
                     Map<String, Object> row = new LinkedHashMap<>();
                     for (int i = 1; i <= md.getColumnCount(); i++) {
                         row.put(columns.get(i - 1), JdbcResultValueNormalizer.normalize(rs.getObject(i)));
@@ -205,9 +215,27 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
             "columns", columns,
             "preview", preview,
             "rowCount", rows.size(),
+            "truncated", truncated,
             "durationMs", (int) duration,
             "metadata", buildMetadata(ctx)
         );
+    }
+
+    private static int pageSize(Object value) {
+        int parsed = DEFAULT_PAGE_SIZE;
+        if (value instanceof Number number) {
+            parsed = number.intValue();
+        } else if (value instanceof String text && hasText(text)) {
+            try {
+                parsed = Integer.parseInt(text);
+            } catch (NumberFormatException ignored) {
+                parsed = DEFAULT_PAGE_SIZE;
+            }
+        }
+        if (parsed < 1) {
+            return DEFAULT_PAGE_SIZE;
+        }
+        return Math.min(parsed, MAX_PAGE_SIZE);
     }
 
     private ResolvedSqlContext resolveContext(ActionContext ctx, Map<String, Object> input) {
