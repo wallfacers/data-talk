@@ -1,5 +1,6 @@
 import { http } from '@/services/http'
 import type { Connection, ConnectionCreateInput } from '@/types/generated/api'
+import type { ConnectionTargetsResponse } from '@/services/api/session-data-context'
 
 export type { Connection } from '@/types/generated/api'
 export type DbType = 'mysql' | 'postgres' | 'h2'
@@ -17,4 +18,8 @@ export function createConnection(input: CreateConnectionInput) {
 
 export function testConnection(id: string) {
   return http.post(`connections/${id}/test`).json<{ ok: boolean; message?: string }>()
+}
+
+export function getConnectionTargets(connectionId: string) {
+  return http.get(`connections/${connectionId}/targets`).json<ConnectionTargetsResponse>()
 }

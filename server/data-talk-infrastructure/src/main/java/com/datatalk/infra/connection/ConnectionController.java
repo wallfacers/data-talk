@@ -3,11 +3,13 @@ package com.datatalk.infra.connection;
 import com.datatalk.dto.ConnectionCreateRequest;
 import com.datatalk.dto.ConnectionCreatedDto;
 import com.datatalk.dto.ConnectionDto;
+import com.datatalk.dto.ConnectionTargetsDto;
 import com.datatalk.dto.ConnectionTestResultDto;
 import com.datatalk.dto.ConnectionUpdateRequest;
 import com.datatalk.application.connection.ConnectionContextRefreshService;
 import com.datatalk.application.connection.ConnectionInUseException;
 import com.datatalk.application.connection.ConnectionService;
+import com.datatalk.application.session.ConnectionTargetDiscoveryService;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,10 +24,16 @@ public class ConnectionController {
 
     private final ConnectionService svc;
     private final ConnectionContextRefreshService contextRefreshService;
+    private final ConnectionTargetDiscoveryService discovery;
 
-    public ConnectionController(ConnectionService svc, ConnectionContextRefreshService contextRefreshService) {
+    public ConnectionController(
+        ConnectionService svc,
+        ConnectionContextRefreshService contextRefreshService,
+        ConnectionTargetDiscoveryService discovery
+    ) {
         this.svc = svc;
         this.contextRefreshService = contextRefreshService;
+        this.discovery = discovery;
     }
 
     @PostMapping
@@ -75,6 +83,21 @@ public class ConnectionController {
         try {
             var r = svc.testConnection(id);
             return ResponseEntity.ok(new ConnectionTestResultDto(r.ok(), r.latencyMs(), r.reason()));
+        } catch (java.util.NoSuchElementException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @GetMapping("/{id}/targets")
+    public ResponseEntity<ConnectionTargetsDto> targets(@PathVariable String id) {
+        try {
+            var result = discovery.discover(id);
+            return ResponseEntity.ok(new ConnectionTargetsDto(
+                result.connectionId(),
+                result.connectionName(),
+                result.databaseNames().stream().sorted(String.CASE_INSENSITIVE_ORDER).toList(),
+                result.schemaNames().stream().sorted(String.CASE_INSENSITIVE_ORDER).toList()
+            ));
         } catch (java.util.NoSuchElementException e) {
             return ResponseEntity.notFound().build();
         }

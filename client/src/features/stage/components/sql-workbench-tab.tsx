@@ -4,7 +4,7 @@ import type { StageTab } from '@/stores/stage-store'
 import { useConnectionStore } from '@/features/connection/store'
 import { useSessionDataContext } from '@/features/session/hooks/use-session-data-context'
 import { cn } from '@/lib/utils'
-import { listConnections } from '@/services/api/connection'
+import { listConnections, getConnectionTargets } from '@/services/api/connection'
 import { resolveTabDataContext } from '@/features/stage/utils/resolve-tab-data-context'
 import { parseSqlOutline, resolveCurrentSqlOutlineStatement } from '../utils/parse-sql-outline'
 import { normalizeQueryEditorPayload } from '../utils/normalize-query-editor-payload'
@@ -400,13 +400,15 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
   const fetchConnectionTargets = useCallback(async (connectionId: string | null | undefined) => {
     const normalizedConnectionId = connectionId?.trim()
     if (!normalizedConnectionId) return
-    if (contextMode !== 'session' || !tab.originSessionId) return
+    if (contextMode !== 'session') return
     if (connectionTargetsByConnectionId[normalizedConnectionId]) return
     if (pendingConnectionTargetsRef.current.has(normalizedConnectionId)) return
 
     pendingConnectionTargetsRef.current.add(normalizedConnectionId)
     try {
-      const targets = await sessionDataContext.listConnectionTargets(normalizedConnectionId)
+      const targets = tab.originSessionId
+        ? await sessionDataContext.listConnectionTargets(normalizedConnectionId)
+        : await getConnectionTargets(normalizedConnectionId)
       setConnectionTargetsByConnectionId((previous) => {
         if (previous[normalizedConnectionId]) return previous
         return {
@@ -428,7 +430,6 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
 
   useEffect(() => {
     if (contextMode !== 'session') return
-    if (!tab.originSessionId) return
 
     const connectionIds = Array.from(new Set([
       effectiveContext.connectionId,
@@ -445,7 +446,6 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     contextMode,
     effectiveContext.connectionId,
     fetchConnectionTargets,
-    tab.originSessionId,
   ])
 
   const canRun = Boolean(effectiveContext.connectionId) && tabState.sqlText.trim().length > 0
