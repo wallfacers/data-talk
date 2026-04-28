@@ -48,11 +48,18 @@ export type SqlWorkbenchSelection = {
 export type SqlWorkbenchTextEdit = {
   range: SqlWorkbenchSelection
   text: string
+  expectedText: string
 }
 
 export type SqlWorkbenchEditResult =
   | { ok: true; version: number; content: string }
   | { ok: false; code: 'version_conflict'; currentState: { version: number; content: string } }
+  | {
+      ok: false
+      code: 'expected_text_mismatch'
+      currentState: { version: number; content: string }
+      details: { editIndex: number; expected: string; actual: string }
+    }
 
 export type SqlWorkbenchTabState = {
   sqlText: string
@@ -81,7 +88,7 @@ type SqlWorkbenchState = {
   tabsById: Record<string, SqlWorkbenchTabState>
   ensureTab: (tabId: string, initial?: EnsureTabInput) => void
   setSqlText: (tabId: string, sqlText: string) => void
-  replaceSqlText: (tabId: string, sqlText: string) => { version: number }
+  replaceSqlText: (tabId: string, sqlText: string, baseVersion: number) => SqlWorkbenchEditResult
   applyTextEdits: (tabId: string, params: { baseVersion: number; edits: SqlWorkbenchTextEdit[] }) => SqlWorkbenchEditResult
   setSelection: (tabId: string, selection: SqlWorkbenchSelection | null) => void
   setActiveResult: (tabId: string, resultId: string | null) => void
@@ -180,14 +187,25 @@ function resolveOffset(content: string, line: number, column: number) {
   return currentLine.start + columnOffset
 }
 
-function applyTextEditsToContent(content: string, edits: SqlWorkbenchTextEdit[]) {
-  const resolvedEdits = edits
-    .map((edit) => ({
-      ...edit,
-      startOffset: resolveOffset(content, edit.range.startLine, edit.range.startColumn),
-      endOffset: resolveOffset(content, edit.range.endLine, edit.range.endColumn),
-    }))
-    .sort((left, right) => right.startOffset - left.startOffset)
+type ResolvedSqlWorkbenchTextEdit = SqlWorkbenchTextEdit & {
+  startOffset: number
+  endOffset: number
+}
+
+function normalizeLineEndings(content: string) {
+  return content.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+}
+
+function resolveTextEdits(content: string, edits: SqlWorkbenchTextEdit[]): ResolvedSqlWorkbenchTextEdit[] {
+  return edits.map((edit) => ({
+    ...edit,
+    startOffset: resolveOffset(content, edit.range.startLine, edit.range.startColumn),
+    endOffset: resolveOffset(content, edit.range.endLine, edit.range.endColumn),
+  }))
+}
+
+function applyResolvedTextEditsToContent(content: string, edits: ResolvedSqlWorkbenchTextEdit[]) {
+  const resolvedEdits = [...edits].sort((left, right) => right.startOffset - left.startOffset)
 
   let nextContent = content
   for (const edit of resolvedEdits) {
@@ -226,8 +244,19 @@ export const useSqlWorkbenchStore = create<SqlWorkbenchState>((set, get) => ({
     },
   })),
 
-  replaceSqlText: (tabId, sqlText) => {
+  replaceSqlText: (tabId, sqlText, baseVersion) => {
     const current = requireTabState(get().tabsById, tabId)
+    if (baseVersion !== current.version) {
+      return {
+        ok: false,
+        code: 'version_conflict',
+        currentState: {
+          version: current.version,
+          content: current.sqlText,
+        },
+      }
+    }
+
     const next = applySqlTextChange(current, sqlText)
     set((state) => ({
       tabsById: {
@@ -235,7 +264,11 @@ export const useSqlWorkbenchStore = create<SqlWorkbenchState>((set, get) => ({
         [tabId]: next,
       },
     }))
-    return { version: next.version }
+    return {
+      ok: true,
+      version: next.version,
+      content: next.sqlText,
+    }
   },
 
   applyTextEdits: (tabId, params) => {
@@ -251,7 +284,28 @@ export const useSqlWorkbenchStore = create<SqlWorkbenchState>((set, get) => ({
       }
     }
 
-    const content = applyTextEditsToContent(current.sqlText, params.edits)
+    const resolvedEdits = resolveTextEdits(current.sqlText, params.edits)
+    for (const [editIndex, edit] of resolvedEdits.entries()) {
+      const actual = normalizeLineEndings(current.sqlText.slice(edit.startOffset, edit.endOffset))
+      const expected = normalizeLineEndings(edit.expectedText)
+      if (actual !== expected) {
+        return {
+          ok: false,
+          code: 'expected_text_mismatch',
+          currentState: {
+            version: current.version,
+            content: current.sqlText,
+          },
+          details: {
+            editIndex,
+            expected,
+            actual,
+          },
+        }
+      }
+    }
+
+    const content = applyResolvedTextEditsToContent(current.sqlText, resolvedEdits)
     const next = applySqlTextChange(current, content)
     set((state) => ({
       tabsById: {

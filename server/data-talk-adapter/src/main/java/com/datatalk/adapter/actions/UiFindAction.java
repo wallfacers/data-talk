@@ -12,7 +12,6 @@ import com.datatalk.domain.action.DataTalkAction;
 import com.datatalk.domain.action.Executor;
 import com.datatalk.domain.action.OntologyEffect;
 import com.datatalk.domain.action.RiskLevel;
-import com.datatalk.domain.stage.StageTabScope;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -96,7 +95,6 @@ public class UiFindAction implements ActionHandler<Map, Map> {
             ? (Map<String, Object>) rawFilter
             : Map.of();
         StageFindQuery.Filter filter = new StageFindQuery.Filter(
-            filterMap.get("scope") instanceof String s ? StageTabScope.fromWire(s) : null,
             (String) filterMap.get("type"),
             (String) filterMap.get("connectionId"),
             (String) filterMap.get("objectId"),

@@ -76,6 +76,7 @@ class AgentPromptContractTest {
             .contains("object=query_editor")
             .contains("action=apply_text_edits")
             .contains("params.baseVersion")
+            .contains("expectedText")
             .contains("target=active")
             .contains("datatalk_ui_find")
             .contains("datatalk_ui_read")
@@ -224,6 +225,26 @@ class AgentPromptContractTest {
                 p -> assertThat(p).contains("{{STAGE_TAB_DIGEST}}"),
                 p -> assertThat(p).contains("## Open Tabs Snapshot")
             );
+    }
+
+    @Test
+    void runtimePromptDocumentsSharedWorkbenchConcurrencyAndDeprecations() throws IOException {
+        String prompt = loadPrompt();
+
+        assertThat(prompt)
+            .contains("## Concurrency Contract")
+            .contains("## Library vs Workset")
+            .contains("workspace-wide objects shared across all chat sessions")
+            .contains("error.markdown")
+            .contains("baseVersion")
+            .contains("expectedText")
+            .contains("inWorkset")
+            .contains("Deprecated since")
+            .contains("detach")
+            .contains("archive")
+            .contains("trash")
+            .contains("close")
+            .contains("shared across all sessions and persisted across app restarts");
     }
 
     private static String loadPrompt() throws IOException {

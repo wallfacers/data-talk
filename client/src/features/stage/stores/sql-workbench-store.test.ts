@@ -45,14 +45,40 @@ describe('useSqlWorkbenchStore', () => {
     expect(state.tabsById['tab-b']?.sqlText).toBe('select 2')
   })
 
-  it('replaces full content and increments version', () => {
+  it('replaces full content and increments version when baseVersion matches', () => {
     const store = useSqlWorkbenchStore.getState()
     store.ensureTab('tab-1', { sqlText: 'select 1' })
 
-    store.replaceSqlText('tab-1', 'select 2')
+    const result = store.replaceSqlText('tab-1', 'select 2', 1)
 
+    expect(result).toEqual({
+      ok: true,
+      version: 2,
+      content: 'select 2',
+    })
     expect(useSqlWorkbenchStore.getState().tabsById['tab-1']).toMatchObject({
       sqlText: 'select 2',
+      version: 2,
+    })
+  })
+
+  it('rejects stale baseVersion when replacing full content', () => {
+    const store = useSqlWorkbenchStore.getState()
+    store.ensureTab('tab-1', { sqlText: 'select 1' })
+    store.setSqlText('tab-1', 'select 11')
+
+    const result = store.replaceSqlText('tab-1', 'select 2', 1)
+
+    expect(result).toEqual({
+      ok: false,
+      code: 'version_conflict',
+      currentState: {
+        version: 2,
+        content: 'select 11',
+      },
+    })
+    expect(useSqlWorkbenchStore.getState().tabsById['tab-1']).toMatchObject({
+      sqlText: 'select 11',
       version: 2,
     })
   })
@@ -60,7 +86,7 @@ describe('useSqlWorkbenchStore', () => {
   it('rejects stale baseVersion when applying text edits', () => {
     const store = useSqlWorkbenchStore.getState()
     store.ensureTab('tab-1', { sqlText: 'select 1' })
-    store.replaceSqlText('tab-1', 'select 11')
+    store.replaceSqlText('tab-1', 'select 11', 1)
 
     const result = store.applyTextEdits('tab-1', {
       baseVersion: 1,
@@ -73,6 +99,7 @@ describe('useSqlWorkbenchStore', () => {
             endColumn: 9,
           },
           text: '2',
+          expectedText: '1',
         },
       ],
     })
@@ -100,6 +127,7 @@ describe('useSqlWorkbenchStore', () => {
             endColumn: 10,
           },
           text: 'table',
+          expectedText: 'dual',
         },
       ],
     })
@@ -135,8 +163,47 @@ describe('useSqlWorkbenchStore', () => {
     })
   })
 
+  it('rejects applyTextEdits when expectedText does not match after CRLF normalization', () => {
+    const store = useSqlWorkbenchStore.getState()
+    store.ensureTab('tab-1', { sqlText: 'select 1\r\nfrom dual' })
+
+    const result = store.applyTextEdits('tab-1', {
+      baseVersion: 1,
+      edits: [
+        {
+          range: {
+            startLine: 1,
+            startColumn: 8,
+            endLine: 2,
+            endColumn: 5,
+          },
+          text: 'x',
+          expectedText: '1\nFORM',
+        },
+      ],
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      code: 'expected_text_mismatch',
+      currentState: {
+        version: 1,
+        content: 'select 1\r\nfrom dual',
+      },
+      details: {
+        editIndex: 0,
+        expected: '1\nFORM',
+        actual: '1\nfrom',
+      },
+    })
+    expect(useSqlWorkbenchStore.getState().tabsById['tab-1']).toMatchObject({
+      sqlText: 'select 1\r\nfrom dual',
+      version: 1,
+    })
+  })
+
   it('rejects replaceSqlText for unknown tab ids', () => {
-    expect(() => useSqlWorkbenchStore.getState().replaceSqlText('missing', 'select 1')).toThrow(
+    expect(() => useSqlWorkbenchStore.getState().replaceSqlText('missing', 'select 1', 1)).toThrow(
       'Unknown sql workbench tab: missing',
     )
   })

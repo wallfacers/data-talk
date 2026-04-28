@@ -124,6 +124,9 @@ There are two separate contexts:
 
 ### UI Actions
 
+Tabs are workspace-wide and shared across all sessions. Any chat session or
+parallel agent may be reading or editing the same tab you are about to touch.
+
 Only these UI object types are supported today:
 
 - `workspace`
@@ -132,16 +135,16 @@ Only these UI object types are supported today:
 Registered UI actions:
 
 - `datatalk_ui_find`
-  Discover, search, and read tabs across all sessions. Use this first when the user refers to the current, open, active, or existing SQL editor. Returns `output.mode=metadata` by default with `items`, `totalMatched`, and `truncated`.
+  Discover, search, and read tabs across all sessions. Use this first when the user refers to the current, open, active, or existing SQL editor. The library view covers open and idle tabs, not just those currently in the top tab bar. Returns `output.mode=metadata` by default with `items`, `totalMatched`, and `truncated`.
 
 - `datatalk_ui_read`
-  Read `workspace` or `query_editor` state, schema, actions, or the full descriptor through top-level `object`, optional `target`, and optional `mode`.
+  Read `workspace` or `query_editor` state, schema, actions, or the full descriptor through top-level `object`, optional `target`, and optional `mode`. Query editor state includes `inWorkset` so you can tell whether a persisted tab is currently open in the top tab bar.
 
 - `datatalk_ui_patch`
-  Patch a `query_editor` through JSON Patch `ops`. Only `replace` is supported today, and only on `/content`, `/connectionId`, `/database`, and `/schema`.
+  Patch a `query_editor` through JSON Patch `ops`. Only `replace` is supported today, and only on `/content`, `/connectionId`, `/database`, and `/schema`. A `/content` patch requires `baseVersion`.
 
 - `datatalk_ui_exec`
-  Execute supported actions on `workspace` or `query_editor` through top-level `object`, optional `target`, `action`, and `params`.
+  Execute supported actions on `workspace` or `query_editor` through top-level `object`, optional `target`, `action`, and `params`. `apply_text_edits` requires `params.baseVersion` and every entry in `params.edits` requires `expectedText`. Workspace verbs are `open`, `focus`, `choose_connection`, `detach`, `archive(archived?: boolean = true)`, and `trash`. The legacy `close` is a deprecated alias for `archive(archived=true)`.
 
 ## Exact UI Contract
 
@@ -162,7 +165,7 @@ Registered UI actions:
 
 `datatalk_ui_patch` always uses top-level `object=query_editor`, optional `target`, and `ops`.
 
-- Each patch op is shaped like `{ op, path, value }`.
+- Each patch op is shaped like `{ op, path, value }`, except `/content` also requires `baseVersion`.
 - Only `op=replace` is supported today.
 - Supported patch paths are `/content`, `/connectionId`, `/database`, and `/schema`.
 
@@ -174,19 +177,116 @@ For the workspace:
 - `workspace` open accepts `params.connection_id`, `params.database`, `params.schema`, `params.title`, and `params.payload`.
 - `workspace` uses snake_case for `params.connection_id`.
 - Prompt the connection chooser with `datatalk_ui_exec`, `object=workspace`, `action=choose_connection`, and optional `params.preferredConnectionId`.
-- `workspace` `focus` and `close` use `params.target` to identify the tab to focus or close.
+- `workspace` `focus` uses `params.target` to ensure the tab is in the workset and make it active. Archived tabs return `tab_archived`.
+- `workspace` `detach` removes a tab from the workset without deleting it.
+- `workspace` `archive` uses `params.target` and optional `params.archived`; the default is `archived=true`, while `archived=false` unarchives.
+- `workspace` `trash` permanently deletes the tab.
+- `workspace` `close` is a deprecated alias for `archive(archived=true)`.
 - A `workspace` state includes `tabs` and `activeTabId`. Each tab entry includes `tabId`, `type`, `title`, `connectionId`, and `contextOverride`.
 
 For a query editor:
 
 - Read the editor through `datatalk_ui_read` with `object=query_editor`.
-- A query editor state includes `tabId`, `title`, `content`, `version`, `connectionId`, `database`, `schema`, `contextOverride`, `results`, `activeResultId`, and `limit`.
-- Full SQL replacement uses `datatalk_ui_patch` on `/content`.
+- A query editor state includes `tabId`, `title`, `content`, `version`, `connectionId`, `database`, `schema`, `contextOverride`, `results`, `activeResultId`, `limit`, and `inWorkset`.
+- Full SQL replacement uses `datatalk_ui_patch` on `/content` with `baseVersion`.
 - Context patching uses `/connectionId`, `/database`, and `/schema`.
-- Targeted SQL edits use `datatalk_ui_exec`, `object=query_editor`, `action=apply_text_edits`, `params.baseVersion`, and `params.edits`.
+- Targeted SQL edits use `datatalk_ui_exec`, `object=query_editor`, `action=apply_text_edits`, `params.baseVersion`, and `params.edits`. Each edit entry must include `expectedText`.
 - Query editor context updates use `datatalk_ui_exec`, `object=query_editor`, `action=set_context`, with `params.connectionId`, `params.database`, and `params.schema`.
 - Query editor actions are `apply_text_edits`, `set_context`, `run_sql`, `format_sql`, `focus`, and `close`.
 - Query editor actions and state use camelCase such as `connectionId` and `baseVersion`.
+
+## Concurrency Contract
+
+Workbench tabs (`query_editor`, `artifact_preview`, future `er_designer` /
+`report_designer`) are workspace-wide objects shared across all chat sessions.
+Any session, including a parallel agent, may have edited a tab since your last
+read. Treat every patch and text edit as optimistic and conflict-aware.
+
+### Required guard fields
+
+- `datatalk_ui_patch` with `path=/content` requires `baseVersion: number`.
+- `datatalk_ui_exec apply_text_edits` requires `params.baseVersion: number`.
+- Each entry in `params.edits` requires `expectedText: string`, the exact text
+  currently occupying `range`. The server compares it after line-ending
+  normalization (`\r\n` to `\n`).
+
+### Conflict response shape
+
+```json
+{
+  "error": {
+    "code": "version_conflict" | "expected_text_mismatch" | "out_of_range_lines" | "tab_not_found" | "tab_archived",
+    "message": "<one-line machine summary>",
+    "currentState": { "version": 14, "tabId": "qe-1" },
+    "markdown": "<human-and-LLM-readable explanation>",
+    "details": { "editIndex": 0, "expected": "...", "actual": "..." }
+  }
+}
+```
+
+### What you MUST do on conflict
+
+1. Stop. Do not retry with the same `baseVersion` or `expectedText`.
+2. Read `error.markdown`. It includes the current content for the affected range and a hint about who likely changed it.
+3. Call `datatalk_ui_read` on the same `target` with `mode='state'` to get the new `version` and `content`.
+4. Re-plan your edit against the new content. Your new range and `expectedText` must match the freshly read snapshot exactly.
+5. Submit a single fresh `apply_text_edits` with the new `baseVersion`.
+
+### Multi-edit batches
+
+`apply_text_edits` accepts multiple edits in `params.edits`. The server applies
+them in reverse line order against the snapshot at `baseVersion`, as a single
+transactional unit. Either all edits apply or none do, with a single
+`error.markdown`.
+
+If `error.code='expected_text_mismatch'`, `error.details.editIndex` is the
+0-based index of the failing edit in the request array. Earlier edits in the
+same batch were not applied. Plan your retry as a fresh single-batch
+`apply_text_edits` against the new `baseVersion`.
+
+### What you MUST NOT do
+
+- Do not loop the same edit hoping the conflict clears.
+- Do not assume `version_conflict` means your edit is wrong; it usually means another session reached the tab first.
+- Do not trash or archive a tab to force a clean slate unless the user explicitly asked you to.
+
+### Multi-session etiquette
+
+- Always pass an explicit `target` tab id when more than one tab of the matching type exists. Relying on `target='active'` while another session may have shifted focus is a source of silent cross-talk.
+- After mutating, the change is visible to subsequent `datatalk_ui_find` calls in any session before your next tool call returns.
+
+## Library vs Workset
+
+The workbench has two coexisting tab views:
+
+- Library: the durable set of all non-archived tabs. Surfaced by `datatalk_ui_find` and the left rail. Includes tabs that are not currently open in the top tab bar.
+- Workset: the subset currently open in the top tab bar. Tracked per app instance, not persisted server-side, and reflected by `datatalk_ui_read state.inWorkset`.
+
+When the user says "current SQL editor", they usually mean a tab in the workset.
+When they say "the SQL I wrote yesterday", they mean a tab in the library that
+may not currently be in the workset.
+
+To bring a library tab into the workset, call
+`datatalk_ui_exec(object=workspace, action=focus, params.target=<tabId>)`. It
+ensures the tab is open and makes it active. If the target tab is archived,
+this returns `error.code='tab_archived'`; unarchive first.
+
+To remove a tab from the workset without deleting it, call
+`datatalk_ui_exec(object=workspace, action=detach, params.target=<tabId>)`. The
+tab remains in the library and can be re-opened later.
+
+To archive a tab and hide it from the default library view, use `action=archive`
+with `params.target=<tabId>`. The default is `params.archived=true`; pass
+`params.archived=false` to unarchive a previously archived tab.
+
+To permanently delete, use `action=trash` only when the user explicitly asks.
+Both `archive(archived=true)` and `trash` cascade-detach from the workset.
+
+The legacy `action=close` is now an alias for `archive(archived=true)`. Prefer
+the new verbs for clarity.
+
+> Deprecated since v0.X (the release where this spec ships); will be removed
+> in v0.X+3. Keep this alias note until the removal release.
 
 ## UI Navigation Rules
 
@@ -196,14 +296,16 @@ For a query editor:
 - If the active workspace tab is not a `query_editor`, `target=active` with `object=query_editor` will fail.
 - Use `target=active` or an omitted `target` only when the active object is already clear. Otherwise pass the explicit tab id.
 - Do not open a new `query_editor` if an existing one already satisfies the user request.
+- Prefer the library/workset distinction: use `datatalk_ui_find` to discover persisted tabs, then `workspace.focus` to bring the chosen tab into the workset when needed.
 - If no `query_editor` exists while the user is only asking whether one exists or wants the current/open editor inspected, say so clearly instead of pretending one is open. If the task itself requires a query editor, open one through the workspace open workflow.
 
 ## Query Editor Rules
 
 - Read the `query_editor` state before versioned text edits so you have the latest `content` and `version`.
-- Use `datatalk_ui_patch` on `/content` for a full SQL rewrite.
-- Use `datatalk_ui_exec` with `object=query_editor`, `action=apply_text_edits`, and a fresh `params.baseVersion` only for targeted edits.
-- If `apply_text_edits` reports a version conflict, use `currentState.version` from the error response as the new `baseVersion` and retry immediately. Only re-read with `datatalk_ui_read(mode='state')` when `currentState` is absent from the error.
+- Use `datatalk_ui_patch` on `/content` for a full SQL rewrite, and include `baseVersion`.
+- Use `datatalk_ui_exec` with `object=query_editor`, `action=apply_text_edits`, a fresh `params.baseVersion`, and `expectedText` for every edit only for targeted edits.
+- If `apply_text_edits` reports `expected_text_mismatch`, do not retry the same edit. Re-read, re-plan, and submit a fresh edit against the new content.
+- If `apply_text_edits` reports a version conflict, use `error.markdown` plus `currentState.version` from the error response as the new baseline. Only re-read with `datatalk_ui_read(mode='state')` when `currentState` is absent from the error.
 - Use `set_context` only for one editor tab. Use `datatalk_set_data_context` when the user wants to change the session data context itself.
 - Use `run_sql` when the user wants to execute the SQL currently in the editor.
 - Use `format_sql` only when the user asks to format or clean up the current SQL text.
@@ -230,7 +332,7 @@ For a query editor:
 2. Reuse an existing `query_editor` only when the user referred to it, it is empty, or it already matches the request. Do not replace unrelated SQL.
 3. Otherwise call `datatalk_ui_exec` with `object=workspace`, `action=open`, and `params.type=query_editor`
 4. If table names are unclear, call `datatalk_read_schema` without `tables` for table discovery. If column names are unclear, call it again with explicit `tables`.
-5. Write the SQL into the editor with `datatalk_ui_patch` on `/content`
+5. Read the target editor state, then write the SQL into the editor with `datatalk_ui_patch` on `/content` using the fresh `baseVersion`.
 6. Execute the editor SQL with `datatalk_ui_exec`, `object=query_editor`, `action=run_sql`
 7. If a tool error says "matches multiple candidates" or "Select a database/schema first", call `datatalk_list_connection_targets` if needed and ask the user to choose the database/schema. Do not claim there is no data.
 
@@ -258,9 +360,10 @@ For a query editor:
 ### Edit SQL in a Query Editor
 
 1. `datatalk_ui_read` with `object=query_editor` and `mode=state`
-2. Full rewrite: `datatalk_ui_patch` on `/content`
-3. Targeted edit: `datatalk_ui_exec` with `object=query_editor`, `action=apply_text_edits`, and a fresh `params.baseVersion`
-4. If execution context must change, use `datatalk_ui_exec` with `object=query_editor`, `action=set_context`
+2. Full rewrite: `datatalk_ui_patch` on `/content` with the current `baseVersion`
+3. Targeted edit: `datatalk_ui_exec` with `object=query_editor`, `action=apply_text_edits`, a fresh `params.baseVersion`, and `expectedText` taken from the current content at each range
+4. On conflict: re-read, re-plan, and submit a fresh edit. Do not retry stale `baseVersion` or `expectedText`.
+5. If execution context must change, use `datatalk_ui_exec` with `object=query_editor`, `action=set_context`
 
 ### Locate Text Inside an Existing Tab
 
@@ -275,7 +378,7 @@ For a query editor:
 
 ## Tab Persistence and Search
 
-Tabs persist across sessions and across app restarts. The same tab id identifies the same logical work object.
+Tabs are shared across all sessions and persisted across app restarts. The same tab id identifies the same logical work object.
 
 `datatalk_ui_find` covers three composable verbs:
 

@@ -2,7 +2,6 @@ package com.datatalk.application.stage;
 
 import com.datatalk.domain.stage.StageTab;
 import com.datatalk.domain.stage.StageTabContent;
-import com.datatalk.domain.stage.StageTabScope;
 
 import java.util.List;
 import java.util.Optional;
@@ -52,7 +51,6 @@ public interface StageTabRepository {
      * Filter parameters for listing stage tabs.
      */
     record ListFilter(
-        StageTabScope scope,
         String type,
         String connectionId,
         String originSessionId,
@@ -63,7 +61,7 @@ public interface StageTabRepository {
         int limit
     ) {
         public static ListFilter defaultFilter() {
-            return new ListFilter(null, null, null, null, false, null, null, null, 100);
+            return new ListFilter(null, null, null, false, null, null, null, 100);
         }
     }
 }

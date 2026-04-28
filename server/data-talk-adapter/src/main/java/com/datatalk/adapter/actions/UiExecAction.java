@@ -46,7 +46,8 @@ public class UiExecAction implements ActionHandler<Map, Map> {
                         Map.entry("object", Map.of("type", "string", "enum", List.of("workspace"))),
                         Map.entry("action", Map.of(
                                 "type", "string",
-                                "enum", List.of("open", "close", "focus", "choose_connection")
+                                "enum", List.of("open", "close", "focus", "choose_connection", "detach", "archive", "trash"),
+                                "description", "`close` remains accepted as a deprecated alias while clients migrate to `detach`/`trash`."
                         )),
                         Map.entry("params", Map.of(
                                 "type", "object",
@@ -62,7 +63,12 @@ public class UiExecAction implements ActionHandler<Map, Map> {
                                         Map.entry("schema", Map.of("type", "string")),
                                         Map.entry("payload", Map.of("type", "object")),
                                         Map.entry("target", Map.of("type", "string")),
-                                        Map.entry("preferredConnectionId", Map.of("type", "string"))
+                                        Map.entry("preferredConnectionId", Map.of("type", "string")),
+                                        Map.entry("archived", Map.of(
+                                                "type", "boolean",
+                                                "default", Boolean.TRUE,
+                                                "description", "Only used for `action=archive`. true=archive, false=unarchive."
+                                        ))
                                 )
                         ))
                 )
@@ -76,7 +82,8 @@ public class UiExecAction implements ActionHandler<Map, Map> {
                         Map.entry("object", Map.of("type", "string", "enum", List.of("query_editor"))),
                         Map.entry("action", Map.of(
                                 "type", "string",
-                                "enum", List.of("apply_text_edits", "set_context", "run_sql", "format_sql", "focus", "close")
+                                "enum", List.of("apply_text_edits", "set_context", "run_sql", "format_sql", "focus", "close"),
+                                "description", "`close` remains accepted as a deprecated alias while clients migrate to workspace-level detach/trash verbs."
                         )),
                         Map.entry("params", Map.of(
                                 "type", "object",
@@ -86,7 +93,7 @@ public class UiExecAction implements ActionHandler<Map, Map> {
                                                 "type", "array",
                                                 "items", Map.of(
                                                         "type", "object",
-                                                        "required", List.of("range", "text"),
+                                                        "required", List.of("range", "text", "expectedText"),
                                                         "properties", Map.ofEntries(
                                                                 Map.entry("range", Map.of(
                                                                         "type", "object",
@@ -97,6 +104,10 @@ public class UiExecAction implements ActionHandler<Map, Map> {
                                                                                 Map.entry("endLine", Map.of("type", "number")),
                                                                                 Map.entry("endColumn", Map.of("type", "number"))
                                                                         )
+                                                                )),
+                                                                Map.entry("expectedText", Map.of(
+                                                                        "type", "string",
+                                                                        "description", "Required: exact current text in the range, normalized (\\r\\n -> \\n). Rejected with `error.code='expected_text_mismatch'` if it doesn't match."
                                                                 )),
                                                                 Map.entry("text", Map.of("type", "string"))
                                                         )

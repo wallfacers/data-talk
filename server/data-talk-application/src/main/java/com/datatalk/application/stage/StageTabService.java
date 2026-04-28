@@ -2,7 +2,6 @@ package com.datatalk.application.stage;
 
 import com.datatalk.domain.stage.StageTab;
 import com.datatalk.domain.stage.StageTabContent;
-import com.datatalk.domain.stage.StageTabScope;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
@@ -39,7 +38,7 @@ public class StageTabService {
     public int upsert(StageTab tab, Integer expectedPayloadVersion) {
         long now = clock.millis();
         StageTab withTimestamp = new StageTab(
-            tab.id(), tab.type(), tab.scope(), tab.title(),
+            tab.id(), tab.type(), tab.title(),
             tab.connectionId(), tab.databaseName(), tab.schemaName(),
             tab.originSessionId(), tab.payloadVersion(),
             tab.pinned(), tab.archived(), tab.archivedAt(),

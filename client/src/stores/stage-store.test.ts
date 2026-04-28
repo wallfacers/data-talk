@@ -282,6 +282,7 @@ describe('StageStore tabs', () => {
             endColumn: 9,
           },
           text: '2',
+          expectedText: '1',
         },
       ],
     })
@@ -388,17 +389,41 @@ describe('StageStore persistence mutation API', () => {
     expect(tabs.find((t) => t.tabId === 't2')?.title).toBe('New From Server')
   })
 
-  it('__hydrateSessionTabs merges server items into session tabs', () => {
+  it('__hydrateAll merges hydrated tabs into workspace storage', () => {
     const st = useStageStore.getState()
-    st.openTab({ tabId: 'a1', type: 'artifact_preview', title: 'Local Art', scope: 'session', originSessionId: 'sess1', payload: {}, createdAt: 1 })
+    st.openTab({ tabId: 't1', type: 'query_editor', title: 'Local', scope: 'workspace', payload: {}, createdAt: 1 })
 
-    st.__hydrateSessionTabs('sess1', [
-      { tabId: 'a1', type: 'artifact_preview', title: 'Server Art', scope: 'session' as const, originSessionId: 'sess1', payload: {}, createdAt: 1, payloadVersion: 2 },
+    st.__hydrateAll([
+      { tabId: 't1', type: 'query_editor', title: 'Hydrated', scope: 'workspace' as const, payload: { sql: 'server' }, payloadVersion: 5, createdAt: 1, lastTouchedAt: 100 },
+      { tabId: 't2', type: 'query_editor', title: 'Shared From Server', scope: 'workspace' as const, originSessionId: 'sess1', payload: {}, createdAt: 2 },
     ] as never)
 
-    const sessionTabs = useStageStore.getState().tabsBySession.get('sess1')
-    expect(sessionTabs).toHaveLength(1)
-    expect(sessionTabs?.[0].title).toBe('Server Art')
+    const tabs = useStageStore.getState().workspaceTabs
+    expect(tabs).toHaveLength(2)
+    expect(tabs.find((t) => t.tabId === 't1')?.title).toBe('Hydrated')
+    expect(tabs.find((t) => t.tabId === 't2')?.originSessionId).toBe('sess1')
+    expect(useStageStore.getState().tabsBySession.get('sess1')).toBeUndefined()
+  })
+
+  it('__hydrateSessionTabs aliases hydration into workspace storage', () => {
+    const st = useStageStore.getState()
+    st.__hydrateSessionTabs('sess1', [
+      { tabId: 'a1', type: 'artifact_preview', title: 'Server Art', scope: 'workspace' as const, originSessionId: 'sess1', payload: {}, createdAt: 1, payloadVersion: 2 },
+    ] as never)
+
+    expect(useStageStore.getState().workspaceTabs.find((tab) => tab.tabId === 'a1')?.title).toBe('Server Art')
+    expect(useStageStore.getState().tabsBySession.get('sess1')).toBeUndefined()
+  })
+
+  it('__hydrateSessionTabs remains an alias to __hydrateAll for compatibility', () => {
+    const st = useStageStore.getState()
+
+    st.__hydrateSessionTabs('sess1', [
+      { tabId: 'a1', type: 'artifact_preview', title: 'Server Art', scope: 'workspace' as const, originSessionId: 'sess1', payload: {}, createdAt: 1, payloadVersion: 2 },
+    ] as never)
+
+    expect(useStageStore.getState().workspaceTabs.find((tab) => tab.tabId === 'a1')?.originSessionId).toBe('sess1')
+    expect(useStageStore.getState().tabsBySession.get('sess1')).toBeUndefined()
   })
 
   it('__hydratePayload sets payload and version on target tab', () => {

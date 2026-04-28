@@ -4,6 +4,8 @@ import com.datatalk.domain.stage.StageTab;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 /**
  * Renders the {@code {{STAGE_TAB_DIGEST}}} placeholder in the AGENTS.md template
@@ -17,9 +19,11 @@ public class AgentPromptBuilder {
     private static final int MAX_RENDERED_CHARS = 1_500;
 
     private final StageTabRepository repo;
+    private final SessionTitleLookup lookup;
 
-    public AgentPromptBuilder(StageTabRepository repo) {
+    public AgentPromptBuilder(StageTabRepository repo, SessionTitleLookup lookup) {
         this.repo = repo;
+        this.lookup = lookup;
     }
 
     public String render(String template) {
@@ -35,18 +39,37 @@ public class AgentPromptBuilder {
         List<StageTab> recent = repo.recentByLastTouched(MAX_TABS);
         int active = repo.countActive();
         int archived = repo.countArchived();
+
+        Map<String, String> sessionTitles = lookup.titlesByIds(
+            recent.stream()
+                .map(StageTab::originSessionId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList());
+
         StringBuilder sb = new StringBuilder("## Open Tabs Snapshot\n\n");
         if (recent.isEmpty()) {
             sb.append("No persisted tabs yet.\n");
         } else {
             sb.append("Recently-touched tabs (top ").append(recent.size())
               .append(" by lastTouchedAt, archived excluded):\n");
+            long now = System.currentTimeMillis();
             int i = 1;
             for (StageTab t : recent) {
-                sb.append(i++).append(". ").append(t.id()).append("  ")
-                  .append(escape(t.title())).append("  (")
-                  .append(orDash(t.databaseName())).append(" · ").append(orDash(t.schemaName()))
-                  .append(")\n");
+                sb.append(i++).append(". ")
+                    .append(t.type()).append(" `").append(t.id()).append("` ")
+                    .append("\"").append(escape(t.title())).append("\"\n");
+                sb.append("   conn=").append(orDash(t.connectionId()))
+                    .append(" db=").append(orDash(t.databaseName()))
+                    .append(" schema=").append(orDash(t.schemaName()))
+                    .append("\n");
+                String fromSession = t.originSessionId() == null
+                    ? "(deleted)"
+                    : sessionTitles.getOrDefault(t.originSessionId(), "(deleted)");
+                sb.append("   fromSession=\"").append(escape(fromSession)).append("\"\n");
+                sb.append("   lastTouched=").append(lastTouched(now, t.lastTouchedAt()))
+                    .append(" version=").append(t.payloadVersion())
+                    .append("\n");
             }
         }
         sb.append("\nTotal persisted tabs: ").append(active).append(" active, ").append(archived).append(" archived.\n");
@@ -71,5 +94,12 @@ public class AgentPromptBuilder {
 
     private static String orDash(String s) {
         return s == null || s.isBlank() ? "-" : s;
+    }
+
+    private static String lastTouched(long now, long lastTouchedAt) {
+        if (lastTouchedAt <= 0L || lastTouchedAt > now) {
+            return "unknown";
+        }
+        return EditConflictMarkdownFormatter.humanizeDelta(now - lastTouchedAt);
     }
 }

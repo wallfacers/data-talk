@@ -8,6 +8,8 @@ import { useSessionStore } from '@/stores/session-store'
 import { formatQueryEditorSql, runQueryEditorSql, setQueryEditorContext } from '@/features/stage/utils/query-editor-actions'
 import { resolveTabDataContext } from '@/features/stage/utils/resolve-tab-data-context'
 
+type ContentPatchOp = JsonPatchOp & { baseVersion?: number }
+
 const ACTIONS: ActionDef[] = [
   {
     name: 'apply_text_edits',
@@ -17,7 +19,18 @@ const ACTIONS: ActionDef[] = [
       required: ['baseVersion', 'edits'],
       properties: {
         baseVersion: { type: 'number' },
-        edits: { type: 'array' },
+        edits: {
+          type: 'array',
+          items: {
+            type: 'object',
+            required: ['range', 'text', 'expectedText'],
+            properties: {
+              range: { type: 'object' },
+              text: { type: 'string' },
+              expectedText: { type: 'string' },
+            },
+          },
+        },
       },
     },
   },
@@ -83,6 +96,10 @@ function clearSessionActiveTab(sessionId: string | null) {
 
 function isReplaceValue(value: unknown): value is string | null {
   return typeof value === 'string' || value === null
+}
+
+function hasBaseVersion(op: ContentPatchOp): op is ContentPatchOp & { baseVersion: number } {
+  return typeof op.baseVersion === 'number'
 }
 
 function summarizeResult(result: {
@@ -243,7 +260,6 @@ export class QueryEditorAdapter implements UIObject {
     const state = {
       tabId: this.objectId,
       title: tab?.title ?? 'Query Editor',
-      scope: tab?.scope ?? 'session',
       content: workbenchTab?.sqlText ?? payload.initialSql,
       language: 'sql' as const,
       version: workbenchTab?.version ?? 1,
@@ -274,7 +290,6 @@ export class QueryEditorAdapter implements UIObject {
           properties: {
             tabId: { type: 'string' },
             title: { type: 'string' },
-            scope: { type: 'string' },
             content: { type: 'string' },
             language: { type: 'string' },
             version: { type: 'number' },
@@ -299,7 +314,7 @@ export class QueryEditorAdapter implements UIObject {
     }
   }
 
-  patch(ops: JsonPatchOp[] = [], _reason?: string): PatchResult {
+  patch(ops: ContentPatchOp[] = [], _reason?: string): PatchResult {
     for (const op of ops) {
       if (op.op !== 'replace') {
         return patchError(`Unsupported patch op: ${op.op}`, 'Only replace is supported on query_editor')
@@ -310,7 +325,31 @@ export class QueryEditorAdapter implements UIObject {
           if (typeof op.value !== 'string') {
             return patchError('Invalid /content value', 'Expected a string')
           }
-          useStageStore.getState().replaceQueryEditorContent(this.objectId, op.value)
+          if (!hasBaseVersion(op)) {
+            const { payload, workbenchTab } = this.getResolvedState()
+            return patchError({
+              code: 'version_conflict',
+              message: 'Patch /content requires baseVersion',
+              hint: "Re-read with `ui_read(mode='state')` to get the latest content and version, then retry with a fresh baseVersion.",
+              currentState: {
+                tabId: this.objectId,
+                version: workbenchTab?.version ?? 1,
+                content: workbenchTab?.sqlText ?? payload.initialSql,
+              },
+            })
+          }
+          const result = useStageStore.getState().replaceQueryEditorContent(this.objectId, op.value, op.baseVersion)
+          if (!result.ok) {
+            return patchError({
+              code: result.code,
+              message: `Editor content has advanced to version ${result.currentState.version}`,
+              hint: "Re-read with `ui_read(mode='state')` to get the latest content and version, then retry with a fresh baseVersion.",
+              currentState: {
+                tabId: this.objectId,
+                ...result.currentState,
+              },
+            })
+          }
           break
         }
         case '/connectionId':
@@ -347,6 +386,7 @@ export class QueryEditorAdapter implements UIObject {
           endColumn: number
         }
         text: string
+        expectedText: string
       }>
       connectionId?: string | null
       database?: string | null
@@ -356,7 +396,11 @@ export class QueryEditorAdapter implements UIObject {
 
     switch (action) {
       case 'apply_text_edits': {
-        if (typeof p.baseVersion !== 'number' || !Array.isArray(p.edits)) {
+        if (
+          typeof p.baseVersion !== 'number'
+          || !Array.isArray(p.edits)
+          || p.edits.some((edit) => typeof edit?.expectedText !== 'string')
+        ) {
           return execError('Invalid params for apply_text_edits')
         }
         const result = store.applyQueryEditorTextEdits(this.objectId, {
@@ -364,11 +408,26 @@ export class QueryEditorAdapter implements UIObject {
           edits: p.edits,
         })
         if (!result.ok) {
+          if (result.code === 'expected_text_mismatch') {
+            return execError({
+              code: result.code,
+              message: `The expected text for edit ${result.details.editIndex} no longer matches the current content`,
+              hint: "Re-read with `ui_read(mode='state')` to get the latest content and version, then recompute the edit against the current text.",
+              currentState: {
+                tabId: this.objectId,
+                ...result.currentState,
+              },
+              details: result.details,
+            } as Parameters<typeof execError>[0])
+          }
           return execError({
             code: result.code,
             message: `Editor content has advanced to version ${result.currentState.version}`,
             hint: "Re-read with `ui_read(mode='state')` to get the latest content and version, then retry with a fresh baseVersion.",
-            currentState: result.currentState,
+            currentState: {
+              tabId: this.objectId,
+              ...result.currentState,
+            },
           })
         }
         return { success: true, data: result }

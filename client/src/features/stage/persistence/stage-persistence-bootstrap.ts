@@ -2,7 +2,7 @@ import { stageTabApi } from './stage-tab-api'
 import { StagePersistenceCoordinator } from './stage-persistence-coordinator'
 import { useStageStore, type StageTab } from '@/stores/stage-store'
 import { useSqlWorkbenchStore, type SqlWorkbenchTabState } from '@/features/stage/stores/sql-workbench-store'
-import { TAB_TYPE_REGISTRY, isPersistent, getTabTypeDescriptor } from '@/features/stage/registry/tab-type-registry'
+import { TAB_TYPE_REGISTRY, isPersistent } from '@/features/stage/registry/tab-type-registry'
 import { shallow } from 'zustand/shallow'
 
 export const coordinator = new StagePersistenceCoordinator(stageTabApi)
@@ -13,7 +13,6 @@ coordinator.resolveTabSnapshot = (tabId) => {
   return {
     id: tab.tabId,
     type: tab.type,
-    scope: (getTabTypeDescriptor(tab.type).scope ?? tab.scope) as 'workspace' | 'session',
     title: tab.title,
     connectionId: tab.connectionId ?? null,
     database: tab.database ?? null,
@@ -27,7 +26,7 @@ coordinator.resolveTabSnapshot = (tabId) => {
 }
 
 coordinator.onHydrated = (items) => {
-  useStageStore.getState().__hydrateWorkspaceTabs(items.map(toStageTab))
+  useStageStore.getState().__hydrateAll(items.map(toStageTab))
 }
 
 coordinator.onPayloadHydrated = (tabId, payload, version) => {
@@ -60,7 +59,7 @@ function toStageTab(item: Record<string, unknown>): StageTab {
     tabId: String(item.tabId ?? item.id ?? item.objectId ?? ''),
     type: String(item.type ?? 'unknown'),
     title: String(item.title ?? '(untitled)'),
-    scope: (item.scope === 'session' ? 'session' : 'workspace'),
+    scope: 'workspace',
     connectionId: typeof item.connectionId === 'string' ? item.connectionId : undefined,
     database: typeof item.database === 'string'
       ? item.database
@@ -80,7 +79,6 @@ function toStageTab(item: Record<string, unknown>): StageTab {
 
 function persistedTabSummaries(state: {
   workspaceTabs: StageTab[]
-  tabsBySession: Map<string, StageTab[]>
 }): TabSummary[] {
   const allTabs: TabSummary[] = []
   for (const tab of state.workspaceTabs) {
@@ -96,22 +94,6 @@ function persistedTabSummaries(state: {
       archived: tab.archived,
       lastTouchedAt: tab.lastTouchedAt,
     })
-  }
-  for (const [, tabs] of state.tabsBySession) {
-    for (const tab of tabs) {
-      if (!isPersistent(tab.type)) continue
-      allTabs.push({
-        tabId: tab.tabId,
-        type: tab.type,
-        title: tab.title,
-        connectionId: tab.connectionId,
-        database: tab.database,
-        schema: tab.schema,
-        pinned: tab.pinned,
-        archived: tab.archived,
-        lastTouchedAt: tab.lastTouchedAt,
-      })
-    }
   }
   return allTabs
 }

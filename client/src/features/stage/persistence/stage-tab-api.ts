@@ -3,7 +3,6 @@ const BASE = '/api/stage/tabs'
 export interface UpsertRequest {
   id: string
   type: string
-  scope: 'workspace' | 'session'
   title: string
   connectionId?: string | null
   database?: string | null
@@ -34,8 +33,7 @@ export interface ListResponse {
 }
 
 export interface StageTabApi {
-  listWorkspaceTabs(): Promise<ListResponse>
-  listSessionTabs(originSessionId: string): Promise<ListResponse>
+  listAll(opts?: { archived?: boolean; originSessionId?: string }): Promise<ListResponse>
   upsert(req: UpsertRequest): Promise<UpsertResponse>
   putPayload(req: UpsertRequest): Promise<UpsertResponse>
   delete(id: string): Promise<void>
@@ -44,13 +42,16 @@ export interface StageTabApi {
 }
 
 export const stageTabApi: StageTabApi = {
-  async listWorkspaceTabs() {
-    const r = await fetch(`${BASE}?scope=workspace&archived=false`)
-    if (!r.ok) throw httpError(r)
-    return r.json()
-  },
-  async listSessionTabs(originSessionId) {
-    const r = await fetch(`${BASE}?scope=session&originSessionId=${encodeURIComponent(originSessionId)}&archived=false`)
+  async listAll(opts) {
+    const params = new URLSearchParams()
+    if (opts?.archived !== undefined) {
+      params.set('archived', String(opts.archived))
+    }
+    if (opts?.originSessionId) {
+      params.set('originSessionId', opts.originSessionId)
+    }
+    const query = params.size > 0 ? `?${params.toString()}` : ''
+    const r = await fetch(`${BASE}${query}`)
     if (!r.ok) throw httpError(r)
     return r.json()
   },

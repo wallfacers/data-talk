@@ -1,84 +1,76 @@
 # UI Object Protocol — Registered Objects Reference
 
-> 维护说明：每次新增或修改 `UIObject` Adapter（`client/src/features/stage/adapters/`）时，**必须同步更新本文件**，并同步更新 `server/data-talk-adapter/src/main/resources/agents/AGENTS.md`。运行时提示词由 `OpenCodeGatewayBeans.writeAgentsMd()` 从该资源文件写入 OpenCode 工作目录。
+> Maintenance note: when a `UIObject` adapter under `client/src/features/stage/adapters/` is added or changed, update this file and `server/data-talk-adapter/src/main/resources/agents/AGENTS.md` in the same change. The runtime agent prompt is sourced from that `AGENTS.md`.
 >
-> 范围：前端已注册到 `UIRouter` 的所有 UIObject 类型，含 state schema、patch capabilities、exec actions。
+> Scope: all UI object types registered to `UIRouter`, including their state shape, patch capabilities, and exec actions.
 
 ---
 
-## 协议摘要
+## Protocol Summary
 
-每个 UIObject 通过 `type + objectId` 标识，对外暴露三个动词：
+Each UI object is addressed by `type + objectId` and exposes three verbs:
 
-| 动词 | 后端 Action | 含义 |
-|------|------------|------|
-| `read(mode)` | `datatalk.ui.read` | 读对象状态 / schema / actions / full |
-| `patch(ops)` | `datatalk.ui.patch` | JSON Patch 修改对象属性 |
-| `exec(action, params)` | `datatalk.ui.exec` | 执行具名动作 |
+| Verb | Backend Action | Meaning |
+|------|----------------|---------|
+| `read(mode)` | `datatalk.ui.read` | Read state, schema, actions, or `full` |
+| `patch(ops)` | `datatalk.ui.patch` | Apply JSON Patch updates |
+| `exec(action, params)` | `datatalk.ui.exec` | Execute a named action |
 
-发现入口：`datatalk.ui.list`（可按 `type` 过滤）。
+Discovery entrypoint: `datatalk.ui.find`.
 
 ---
 
-## 已注册对象
+## Registered Objects
 
 ### 1. `workspace`
 
-**源文件**：`client/src/features/stage/adapters/WorkspaceAdapter.ts`  
-**objectId**：固定为 `"workspace"`  
-**说明**：Tab 容器，管理整个 Stage 内的所有标签页。
+**Source file**: `client/src/features/stage/adapters/WorkspaceAdapter.ts`
+**objectId**: fixed as `"workspace"`
+**Description**: the workspace-wide stage container for all tabs.
 
-#### `read` 输出
+#### `read` output
 
-| mode | 返回内容 |
+| mode | Returns |
 |------|---------|
 | `state` | `{ tabs: Array<{tabId, type, title, connectionId, contextOverride?}>, activeTabId: string \| null }` |
 | `schema` | `{ type: 'object', properties: { tabs: array, activeTabId: string\|null } }` |
-| `actions` | 见下方 Exec Actions 列表 |
-| `full` | `{ state, schema, actions }` 合并 |
+| `actions` | exec actions listed below |
+| `full` | merged `{ state, schema, actions }` |
 
-其中 `query_editor` 行的 `connectionId` 反映**当前生效的上下文**，`contextOverride` 单独暴露覆盖态元数据。
+For `query_editor` rows, `connectionId` reflects the currently effective context. `contextOverride` remains the explicit override metadata.
 
 #### `patch`
 
-不支持（返回 `status: 'error'`，workspace 为只读，需通过 `exec` 操作）。
+Not supported. `workspace` is read-only through `patch`; use `exec`.
 
 #### Exec Actions
 
-| action | 必填参数 | 可选参数 | 效果 |
-|--------|---------|---------|------|
-| `open` | `type: string` | `title`, `connection_id`, `database`, `schema`, `payload` | 开一个新 Tab；`type` 决定 Tab 类型和 scope（见下表） |
-| `close` | `target: tabId` | — | 关闭指定 Tab |
-| `focus` | `target: tabId` | — | 聚焦指定 Tab |
-| `choose_connection` | — | `preferredConnectionId: string` | 弹出数据源选择器，等待用户选择后返回结果 |
-
-**`open` 的 Tab type → scope 映射**
-
-| type | scope | 说明 |
-|------|-------|------|
-| `query_editor` | session | 统一 SQL 工作页；用于空白 SQL、资源树 SQL、AI 预填 SQL 与 direct SQL |
-| `er_canvas` | workspace | ER 图画布 |
-| `markdown_note` | workspace | Markdown 笔记 |
-| `report` | workspace | 报表页 |
-| `dashboard` | workspace | 仪表盘页 |
-| 其他（未在 `WORKSPACE_SCOPE_TYPES` 中） | session | 会话级 Tab，关联 `originSessionId` |
+| action | Required params | Optional params | Effect |
+|--------|-----------------|-----------------|--------|
+| `open` | `type: string` | `title`, `connection_id`, `database`, `schema`, `payload` | Open a new tab; the adapter registry determines the concrete tab type |
+| `focus` | `target: tabId` | — | Ensure the tab is in the workset and make it active; archived targets return `tab_archived` |
+| `detach` | `target: tabId` | — | Remove the tab from the top-tab workset only; it remains in the library |
+| `archive` | `target: tabId` | `archived?: boolean = true` | Archive when `true`; unarchive when `false` |
+| `trash` | `target: tabId` | — | Permanently delete the tab |
+| `close` | `target: tabId` | — | **Deprecated alias** for `archive(archived=true)`; scheduled for removal after three release cycles |
+| `choose_connection` | — | `preferredConnectionId: string` | Open the connection chooser |
 
 ---
 
 ### 2. `query_editor`
 
-**源文件**：`client/src/features/stage/adapters/QueryEditorAdapter.ts`  
-**objectId**：`tabId`  
-**说明**：统一 SQL 工作页，承接手动 SQL、资源树 SQL、AI 预填 SQL 与 direct SQL。
+**Source file**: `client/src/features/stage/adapters/QueryEditorAdapter.ts`
+**objectId**: `tabId`
+**Description**: the unified SQL workbench tab for manual SQL, resource-tree SQL, AI-prefilled SQL, and direct SQL entry.
 
-#### `read` 输出
+#### `read` output
 
-| mode | 返回内容 |
+| mode | Returns |
 |------|---------|
-| `state` | `{ tabId, title, scope, content, language: 'sql', version, dirty, cursor, selection, connectionId, connectionName, database, schema, contextOverride, entryMode, autoRun, executeStatus, results, activeResultId, limit }` |
-| `schema` | `{ type: 'object', properties: { tabId, title, scope, content, language, version, dirty, cursor, selection, connectionId, connectionName, database, schema, contextOverride, entryMode, autoRun, executeStatus, results, activeResultId, limit } }` |
-| `actions` | 见下方 Exec Actions 列表 |
-| `full` | `{ state, schema, actions, capabilities }` 合并 |
+| `state` | `{ tabId, title, content, language: 'sql', version, dirty, cursor, selection, connectionId, connectionName, database, schema, contextOverride, entryMode, autoRun, executeStatus, results, activeResultId, limit, inWorkset }` |
+| `schema` | `{ type: 'object', properties: { tabId, title, content, language, version, dirty, cursor, selection, connectionId, connectionName, database, schema, contextOverride, entryMode, autoRun, executeStatus, results, activeResultId, limit, inWorkset } }` |
+| `actions` | exec actions listed below |
+| `full` | merged `{ state, schema, actions, capabilities }` |
 
 #### `capabilities`
 
@@ -93,48 +85,50 @@
 }
 ```
 
-#### `state` 字段说明
+#### `state` field notes
 
-- `content`：当前 SQL 文本
-- `version`：SQL 文本版本号；配合 `apply_text_edits.baseVersion` 使用
-- `dirty`：是否存在未保存的文档改动
-- `cursor` / `selection`：编辑器光标与选区
-- `connectionId / connectionName / database / schema`：**当前生效的执行上下文**，会反映基础 tab/payload、继承的 session context，以及任何 override
-- `contextOverride`：覆盖态元数据 / 来源信息；与上面的生效上下文字段分开暴露
-- `entryMode / autoRun`：打开来源与是否自动执行
-- `executeStatus / results / activeResultId / limit`：运行时状态
-- `results`：**仅摘要，不包含 `rows`**；每项仅暴露 `{ resultId, statementIndex, columns, rowCount, durationMs, truncated, error? }`
+- `content`: current SQL text
+- `version`: SQL content version, used with `baseVersion`
+- `dirty`: whether unsaved document edits exist
+- `cursor` / `selection`: editor caret and selection state
+- `connectionId / connectionName / database / schema`: currently effective execution context
+- `contextOverride`: explicit override metadata, separate from the effective context fields
+- `entryMode / autoRun`: open source metadata and auto-run behavior
+- `executeStatus / results / activeResultId / limit`: runtime execution state
+- `results`: summary only, without row payloads; each item exposes `{ resultId, statementIndex, columns, rowCount, durationMs, truncated, error? }`
+- `inWorkset`: whether this tab is currently open in the top-tab workset for this app instance
 
 #### `patch`
 
-支持以下白名单路径：
+Supported whitelist paths:
 
-| path | ops | 作用 |
-|------|-----|------|
-| `/content` | `replace` | 整段覆盖 SQL 文本 |
-| `/connectionId` | `replace` | 修改连接 |
-| `/database` | `replace` | 修改数据库 |
-| `/schema` | `replace` | 修改 schema |
+| path | ops | Required fields | Effect |
+|------|-----|-----------------|--------|
+| `/content` | `replace` | `baseVersion: number` | Replace the full SQL text; a stale base version returns `version_conflict` |
+| `/connectionId` | `replace` | — | Change the connection |
+| `/database` | `replace` | — | Change the database |
+| `/schema` | `replace` | — | Change the schema |
 
 #### Exec Actions
 
-| action | 参数 | 效果 |
-|--------|------|------|
-| `apply_text_edits` | `{ baseVersion, edits: [{ range, text }] }` | 按 range 精确编辑 SQL，带版本冲突保护 |
-| `set_context` | `{ connectionId?, database?, schema? }` | 一次性设置执行上下文；至少传一个字段 |
-| `run_sql` | `{ limit? }` | 执行当前 SQL，结果写回 query editor runtime state |
-| `format_sql` | — | 格式化当前 SQL，并更新 `content/version` |
-| `focus` | — | 聚焦此 Tab |
-| `close` | — | 关闭此 Tab |
+| action | Params | Effect |
+|--------|--------|--------|
+| `apply_text_edits` | `{ baseVersion, edits: [{ range, expectedText, text }] }` | Apply precise SQL edits by range; every edit must include `expectedText`, and any mismatch rolls back the whole batch |
+| `set_context` | `{ connectionId?, database?, schema? }` | Update execution context in one call; provide at least one field |
+| `run_sql` | `{ limit? }` | Execute the current SQL and write results back into query editor runtime state |
+| `format_sql` | — | Format the current SQL and update `content/version` |
+| `focus` | — | Focus this tab |
+| `close` | — | Close this tab |
 
 ---
 
-## 新增 / 修改 Adapter 的 Checklist
+> **2026-04-28 update — Shared Stage Workbench Phase 1**: the `scope` concept is removed; tabs are workspace-wide; `apply_text_edits` requires `expectedText`; `/content` patch requires `baseVersion`; `workspace.detach/archive/trash` are the new verbs; `close` is deprecated. See [Shared Stage Workbench Design](../product-specs/2026-04-28-shared-stage-workbench-design.md).
 
-新增一个 UIObject Adapter 或修改现有 Adapter 时，**按序完成以下步骤**：
+## Adapter Change Checklist
 
-- [ ] 在 `client/src/features/stage/adapters/` 编写 Adapter 类，实现 `UIObject` 接口
-- [ ] 在 `useUIObjectRegistry.ts` 或相应初始化逻辑中注册 Adapter 实例
-- [ ] 更新本文件（`docs/references/ui-objects-reference.md`）对应章节
-- [ ] 更新 `server/data-talk-adapter/src/main/resources/agents/AGENTS.md`，确保运行时提示词与实现保持一致
-- [ ] 若新增了 exec action 的 `type` 值（如新 Tab type），同步更新 `WORKSPACE_SCOPE_TYPES`（`WorkspaceAdapter.ts`）
+When adding a UI object adapter or changing an existing one, complete these steps:
+
+- [ ] Implement the adapter under `client/src/features/stage/adapters/`
+- [ ] Register it in `useUIObjectRegistry.ts` or the relevant initialization path
+- [ ] Update this file
+- [ ] Update `server/data-talk-adapter/src/main/resources/agents/AGENTS.md` to keep the runtime prompt aligned

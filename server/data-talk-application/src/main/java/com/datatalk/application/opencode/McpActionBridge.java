@@ -3,7 +3,11 @@ package com.datatalk.application.opencode;
 import com.datatalk.application.channel.ChannelService;
 import com.datatalk.application.registry.ActionRegistry;
 import com.datatalk.application.session.ActionDispatcher;
+import com.datatalk.application.stage.EditConflictMarkdownFormatter;
+import com.datatalk.application.stage.StageTabRepository;
 import com.datatalk.domain.action.ActionContext;
+import com.datatalk.domain.event.ErrorInfo;
+import com.datatalk.domain.stage.StageTab;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +17,7 @@ import java.time.Clock;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
@@ -28,18 +33,21 @@ public class McpActionBridge {
     private final OpenCodeSessionMap sessionMap;
     private final OpenCodeBridgeStatus bridgeStatus;
     private final McpArgumentsNormalizer normalizer;
+    private final StageTabRepository stageTabRepository;
 
     @Autowired
     public McpActionBridge(ActionDispatcher dispatcher,
                            ActionRegistry registry,
                            OpenCodeSessionMap sessionMap,
                            OpenCodeBridgeStatus bridgeStatus,
-                           McpArgumentsNormalizer normalizer) {
+                           McpArgumentsNormalizer normalizer,
+                           StageTabRepository stageTabRepository) {
         this.dispatcher = dispatcher;
         this.registry = registry;
         this.sessionMap = sessionMap;
         this.bridgeStatus = bridgeStatus;
         this.normalizer = normalizer;
+        this.stageTabRepository = stageTabRepository;
     }
 
     McpActionBridge(ActionDispatcher dispatcher,
@@ -47,7 +55,7 @@ public class McpActionBridge {
                     OpenCodeSessionMap sessionMap,
                     String bridgeNonce) {
         this(dispatcher, registry, sessionMap, bridgeStatus(bridgeNonce),
-            new McpArgumentsNormalizer(new com.fasterxml.jackson.databind.ObjectMapper()));
+            new McpArgumentsNormalizer(new com.fasterxml.jackson.databind.ObjectMapper()), null);
     }
 
     public CompletionStage<ToolCallOutcome> handle(String mcpToolName, Map<String, Object> arguments) {
@@ -143,7 +151,7 @@ public class McpActionBridge {
             if (cause instanceof ChannelService.ActionResultError actionError) {
                 log.warn("[mcp-bridge] client action error tool={} action={} message={}",
                     mcpToolName, actionId, safeMessage(actionError));
-                return ToolCallOutcome.error(Map.of("message", safeMessage(actionError)));
+                return ToolCallOutcome.error(toClientErrorPayload(actionError.info, actionId, strippedArguments));
             }
             log.error("[mcp-bridge] dispatch unexpected error tool={} action={}", mcpToolName, actionId, cause);
             return ToolCallOutcome.error(Map.of("message", safeMessage(cause)));
@@ -176,10 +184,152 @@ private static Throwable unwrap(Throwable error) {
         if (error == null) {
             return "unknown tool error";
         }
-        if (error.getMessage() != null && !error.getMessage().isBlank()) {
-            return error.getMessage();
+        return safeMessage(error.getMessage());
+    }
+
+    private static String safeMessage(String message) {
+        if (message != null && !message.isBlank()) {
+            return message;
         }
-        return error.getClass().getSimpleName();
+        return "unknown tool error";
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> toClientErrorPayload(ErrorInfo info, String actionId, Map<String, Object> input) {
+        LinkedHashMap<String, Object> error = new LinkedHashMap<>();
+        if (info != null && info.code() != null && !info.code().isBlank()) {
+            error.put("code", info.code());
+        }
+        error.put("message", safeMessage(info == null ? null : info.message()));
+
+        if (info == null || info.details() == null || info.details().isEmpty()) {
+            return error;
+        }
+
+        Object currentState = info.details().get("currentState");
+        if (currentState != null) {
+            error.put("currentState", currentState);
+        }
+
+        Object markdown = info.details().get("markdown");
+        if (markdown == null) {
+            markdown = info.details().get("markdown_note");
+        }
+        if (markdown != null) {
+            error.put("markdown", markdown);
+        }
+
+        Object details = info.details().get("details");
+        if (details instanceof Map<?, ?> rawDetails && !rawDetails.isEmpty()) {
+            error.put("details", (Map<String, Object>) rawDetails);
+        }
+
+        if (!error.containsKey("markdown")) {
+            synthesizeMarkdown(info, actionId, input).ifPresent(rendered -> error.put("markdown", rendered));
+        }
+
+        return error;
+    }
+
+    private Optional<String> synthesizeMarkdown(ErrorInfo info, String actionId, Map<String, Object> input) {
+        if (info == null || info.code() == null || stageTabRepository == null) {
+            return Optional.empty();
+        }
+        Map<String, Object> detail = detailsMap(info.details());
+        String tabId = extractTabId(detail, input);
+        if (tabId == null || tabId.isBlank()) {
+            if ("tab_not_found".equals(info.code())) {
+                return Optional.of(EditConflictMarkdownFormatter.tabNotFound("active"));
+            }
+            return Optional.empty();
+        }
+
+        if ("tab_not_found".equals(info.code())) {
+            return Optional.of(EditConflictMarkdownFormatter.tabNotFound(tabId));
+        }
+
+        Optional<StageTab> tabOpt = stageTabRepository.findById(tabId);
+        if (tabOpt.isEmpty()) {
+            return "tab_not_found".equals(info.code())
+                ? Optional.of(EditConflictMarkdownFormatter.tabNotFound(tabId))
+                : Optional.empty();
+        }
+
+        StageTab tab = tabOpt.get();
+        long deltaMs = Math.max(0L, System.currentTimeMillis() - tab.lastTouchedAt());
+        Integer actualVersion = extractInteger(detailsMap(detail.get("currentState")).get("version"));
+
+        return switch (info.code()) {
+            case "version_conflict" -> {
+                Integer requestedBase = extractRequestedBase(actionId, input);
+                if (requestedBase == null || actualVersion == null) {
+                    yield Optional.empty();
+                }
+                yield Optional.of(EditConflictMarkdownFormatter.versionConflict(
+                    tab, requestedBase, actualVersion, deltaMs));
+            }
+            case "expected_text_mismatch" -> {
+                Map<String, Object> mismatch = detailsMap(detail.get("details"));
+                Integer editIndex = extractInteger(mismatch.get("editIndex"));
+                String expected = extractString(mismatch.get("expected"));
+                String actual = extractString(mismatch.get("actual"));
+                if (editIndex == null || actualVersion == null || expected == null || actual == null) {
+                    yield Optional.empty();
+                }
+                yield Optional.of(EditConflictMarkdownFormatter.expectedTextMismatch(
+                    tab, editIndex, expected, actual, actualVersion, deltaMs));
+            }
+            case "tab_archived" -> Optional.of(EditConflictMarkdownFormatter.tabArchived(tab));
+            default -> Optional.empty();
+        };
+    }
+
+    private static String extractTabId(Map<String, Object> detail, Map<String, Object> input) {
+        String fromCurrentState = extractString(detailsMap(detail.get("currentState")).get("tabId"));
+        if (fromCurrentState != null && !fromCurrentState.isBlank()) {
+            return fromCurrentState;
+        }
+        String target = extractString(input.get("target"));
+        if (target != null && !target.isBlank() && !"active".equals(target)) {
+            return target;
+        }
+        return null;
+    }
+
+    private static Integer extractRequestedBase(String actionId, Map<String, Object> input) {
+        if ("datatalk.ui.exec".equals(actionId)) {
+            return extractInteger(detailsMap(input.get("params")).get("baseVersion"));
+        }
+        if (!"datatalk.ui.patch".equals(actionId)) {
+            return null;
+        }
+        Object rawOps = input.get("ops");
+        if (!(rawOps instanceof List<?> ops)) {
+            return null;
+        }
+        for (Object rawOp : ops) {
+            Map<String, Object> op = detailsMap(rawOp);
+            if ("/content".equals(extractString(op.get("path")))) {
+                return extractInteger(op.get("baseVersion"));
+            }
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> detailsMap(Object value) {
+        if (value instanceof Map<?, ?> map) {
+            return (Map<String, Object>) map;
+        }
+        return Map.of();
+    }
+
+    private static Integer extractInteger(Object value) {
+        return value instanceof Number number ? number.intValue() : null;
+    }
+
+    private static String extractString(Object value) {
+        return value instanceof String text ? text : null;
     }
 
     record BridgeFields(String openCodeSessionId, String callId, String bridgeNonce) {

@@ -1,11 +1,13 @@
 # 数据库 Schema 参考
 
 > 自动生成自 `server/data-talk-infrastructure/src/main/resources/db/migration/`
-> 最后更新：2026-04-24
+> 最后更新：2026-04-28
 
 **版本历史**
 - V8 (2026-04-19): dropped `messages` table — OpenCode is now authoritative for message persistence; DataTalk only stores `events` for SSE resume.
 - V11 (2026-04-24): added artifact origin fields `origin_message_id` / `origin_part_id` and index `idx_artifacts_origin`.
+- V12 (2026-04-27): added persistent stage tabs, payload storage, and FTS5 content index (`stage_tabs`, `stage_tab_payload`, `stage_tab_index`).
+- V13 (2026-04-28): removed `stage_tabs.scope`, rebuilt FTS rowid mapping, and changed `origin_session_id` FK from `ON DELETE CASCADE` to `ON DELETE SET NULL`.
 
 SQLite 元数据库，由 Flyway 管理迁移。
 
@@ -94,3 +96,62 @@ SQLite 元数据库，由 Flyway 管理迁移。
 | row_count | INTEGER | NOT NULL | 行数 |
 | created_at | INTEGER | NOT NULL | 创建时间 |
 | ttl_at | INTEGER | NOT NULL | 过期时间 |
+
+## stage_tabs — 工作台 Tab 元数据
+
+| 列 | 类型 | 约束 | 说明 |
+|----|------|------|------|
+| id | TEXT | PK | Tab ID |
+| type | TEXT | NOT NULL | Tab 类型（如 `query_editor` / `file_preview`） |
+| title | TEXT | NOT NULL | Tab 标题 |
+| connection_id | TEXT | | 关联连接 ID |
+| database_name | TEXT | | 关联数据库名 |
+| schema_name | TEXT | | 关联 schema 名 |
+| origin_session_id | TEXT | FK → sessions, NULLABLE, `ON DELETE SET NULL` | 来源会话软标签；会话删除后置空，Tab 保留 |
+| payload_version | INTEGER | NOT NULL, DEFAULT 1 | 元数据/内容乐观锁版本 |
+| pinned | INTEGER | NOT NULL, DEFAULT 0 | 是否置顶 |
+| archived | INTEGER | NOT NULL, DEFAULT 0 | 是否归档 |
+| archived_at | INTEGER | | 归档时间 |
+| created_at | INTEGER | NOT NULL | 创建时间 |
+| last_touched_at | INTEGER | NOT NULL | 最近触达时间 |
+
+索引：
+- `idx_stage_tabs_active(archived, last_touched_at DESC)`，部分索引条件 `WHERE archived = 0`
+- `idx_stage_tabs_type(type, archived)`
+- `idx_stage_tabs_origin(origin_session_id)`
+
+说明：
+- V13 起不再有 `scope` 列；持久化层所有 Tab 都是工作台级记录。
+- `origin_session_id` 仅用于来源标记，不再决定生命周期。
+
+## stage_tab_payload — Tab 内容快照
+
+| 列 | 类型 | 约束 | 说明 |
+|----|------|------|------|
+| tab_id | TEXT | PK, FK → stage_tabs, `ON DELETE CASCADE` | 对应 Tab |
+| payload_json | TEXT | NOT NULL | Tab payload JSON |
+| content_text | TEXT | NOT NULL | 供搜索/AI 使用的纯文本内容 |
+| content_version | INTEGER | NOT NULL | 内容版本 |
+| updated_at | INTEGER | NOT NULL | 更新时间 |
+
+## stage_tab_index — Tab 全文索引
+
+FTS5 虚表，列：
+
+- `title`
+- `content`
+- `type`（UNINDEXED）
+- `archived`（UNINDEXED）
+
+说明：
+- 使用 `tokenize = 'trigram'`
+- 通过 `rowid = stage_tabs.rowid` 与 `stage_tabs` 对齐
+- V13 迁移会重建 rowid 映射，确保历史索引命中不漂移
+
+同步触发器：
+- `stage_tabs_ai`
+- `stage_tabs_au`
+- `stage_tabs_ad`
+- `stage_tab_payload_aiu`
+- `stage_tab_payload_au`
+- `stage_tab_payload_ad`

@@ -4,8 +4,7 @@ import { StagePersistenceCoordinator } from '../stage-persistence-coordinator'
 
 function createMockApi(overrides?: Partial<StageTabApi>): StageTabApi {
   return {
-    listWorkspaceTabs: vi.fn().mockResolvedValue({ items: [] }),
-    listSessionTabs: vi.fn().mockResolvedValue({ items: [] }),
+    listAll: vi.fn().mockResolvedValue({ items: [] }),
     upsert: vi.fn().mockResolvedValue({ id: '', payloadVersion: 1 }),
     putPayload: vi.fn().mockResolvedValue({ id: '', payloadVersion: 1 }),
     delete: vi.fn().mockResolvedValue(undefined),
@@ -19,7 +18,6 @@ function stubSnapshot(tabId: string): UpsertRequest {
   return {
     id: tabId,
     type: 'query_editor',
-    scope: 'workspace',
     title: 'Test',
     createdAt: Date.now(),
     lastTouchedAt: Date.now(),
@@ -34,7 +32,7 @@ describe('StagePersistenceCoordinator', () => {
   it('start() hydrates workspace tabs and transitions to live phase', async () => {
     const items = [{ id: 't1', title: 'Q1' }]
     const api = createMockApi({
-      listWorkspaceTabs: vi.fn().mockResolvedValue({ items }),
+      listAll: vi.fn().mockResolvedValue({ items }),
     })
     const onHydrated = vi.fn()
     const coord = new StagePersistenceCoordinator(api)
@@ -43,6 +41,7 @@ describe('StagePersistenceCoordinator', () => {
     await coord.start()
 
     expect(coord.phase).toBe('live')
+    expect(api.listAll).toHaveBeenCalledWith({ archived: false })
     expect(onHydrated).toHaveBeenCalledWith(items)
   })
 
@@ -146,7 +145,7 @@ describe('StagePersistenceCoordinator', () => {
 
   it('phase=hydrating queues writes and flushes after live', async () => {
     const api = createMockApi({
-      listWorkspaceTabs: vi.fn().mockImplementation(() => {
+      listAll: vi.fn().mockImplementation(() => {
         return new Promise((resolve) => {
           setTimeout(() => resolve({ items: [] }), 50)
         })
@@ -206,5 +205,18 @@ describe('StagePersistenceCoordinator', () => {
 
     expect(api.putPayload).toHaveBeenCalledTimes(2)
     expect(api.upsert).toHaveBeenCalledTimes(1)
+  })
+
+  it('content writes persist scope-less payload snapshots', async () => {
+    const api = createMockApi()
+    const coord = new StagePersistenceCoordinator(api)
+    coord.resolveTabSnapshot = () => stubSnapshot('t1')
+    coord.phase = 'live'
+
+    coord.scheduleContentWrite('t1', { payload: { sql: 'SELECT 1' }, contentText: 'SELECT 1' })
+    await coord.flush('t1')
+
+    const calledReq = (api.putPayload as ReturnType<typeof vi.fn>).mock.calls[0][0] as UpsertRequest
+    expect(calledReq).not.toHaveProperty('scope')
   })
 })

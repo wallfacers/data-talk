@@ -1,7 +1,5 @@
 package com.datatalk.application.stage;
 
-import com.datatalk.domain.stage.StageTabScope;
-
 import java.util.List;
 
 /**
@@ -24,7 +22,6 @@ public record StageFindQuery(
     }
 
     public record Filter(
-        StageTabScope scope,
         String type,
         String connectionId,
         String objectId,

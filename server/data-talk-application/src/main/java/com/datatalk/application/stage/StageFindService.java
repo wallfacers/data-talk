@@ -1,11 +1,12 @@
 package com.datatalk.application.stage;
 
+import com.datatalk.application.persistence.SessionRepository;
 import com.datatalk.domain.stage.StageTab;
 import com.datatalk.domain.stage.StageTabContent;
-import com.datatalk.domain.stage.StageTabScope;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -37,6 +38,7 @@ public class StageFindService {
 
     private final StageTabRepository repo;
     private final StageTabIndexerPort indexer;
+    private final SessionRepository sessions;
 
     private record ReadComputation(List<StageTabContent> reads, List<String> warnings) {}
 
@@ -45,9 +47,10 @@ public class StageFindService {
         List<String> warnings
     ) {}
 
-    public StageFindService(StageTabRepository repo, StageTabIndexerPort indexer) {
+    public StageFindService(StageTabRepository repo, StageTabIndexerPort indexer, SessionRepository sessions) {
         this.repo = repo;
         this.indexer = indexer;
+        this.sessions = sessions;
     }
 
     public StageFindResult execute(StageFindQuery query) {
@@ -311,7 +314,6 @@ public class StageFindService {
 
                 // For regex, list all tabs and fan-out with virtual threads
                 StageTabRepository.ListFilter listFilter = new StageTabRepository.ListFilter(
-                    query.filter() != null ? query.filter().scope() : null,
                     query.filter() != null ? query.filter().type() : null,
                     query.filter() != null ? query.filter().connectionId() : null,
                     query.filter() != null ? query.filter().originSessionId() : null,
@@ -352,13 +354,17 @@ public class StageFindService {
 
         int lineMatches = matchesByTab.values().stream().mapToInt(List::size).sum();
         int totalMatches = Math.max(lineMatches, matchesByTab.size());
+        var sessionTitleCache = new HashMap<String, Optional<String>>();
 
         return switch (query.outputMode()) {
             case METADATA -> {
-                var items = matchesByTab.keySet().stream()
+                var tabs = matchesByTab.keySet().stream()
                     .map(id -> repo.findById(id))
                     .filter(Optional::isPresent)
-                    .map(opt -> tabToMap(opt.get()))
+                    .map(Optional::get)
+                    .toList();
+                var items = tabs.stream()
+                    .map(tab -> tabToMap(tab, sessionTitleCache))
                     .toList();
                 yield StageFindResult.metadata(items, matchesByTab.size(), truncated).withWarnings(warnings);
             }
@@ -369,7 +375,11 @@ public class StageFindService {
             }
             case MATCHES, CONTENT -> {
                 var items = matchesByTab.entrySet().stream()
-                    .map(entry -> matchItem(entry.getKey(), entry.getValue(), scoreByTab.get(entry.getKey())))
+                    .map(entry -> matchItem(
+                        entry.getKey(),
+                        entry.getValue(),
+                        scoreByTab.get(entry.getKey()),
+                        sessionTitleCache))
                     .filter(Optional::isPresent)
                     .map(Optional::get)
                     .toList();
@@ -478,9 +488,18 @@ public class StageFindService {
     }
 
     private Optional<Map<String, Object>> matchItem(String tabId, List<Map<String, Object>> matches, Double score) {
+        return matchItem(tabId, matches, score, new HashMap<>());
+    }
+
+    private Optional<Map<String, Object>> matchItem(
+        String tabId,
+        List<Map<String, Object>> matches,
+        Double score,
+        Map<String, Optional<String>> sessionTitleCache
+    ) {
         return repo.findById(tabId).map(tab -> {
             Map<String, Object> item = new LinkedHashMap<>();
-            item.put("tab", tabToMap(tab));
+            item.put("tab", tabToMap(tab, sessionTitleCache));
             item.put("matches", matches);
             if (score != null) {
                 item.put("matchScore", score);
@@ -500,15 +519,22 @@ public class StageFindService {
 
     private StageFindResult executeMetadata(StageFindQuery.Filter filter) {
         if (filter != null && filter.objectId() != null) {
-            List<Map<String, Object>> items = repo.findById(filter.objectId())
+            List<StageTab> tabs = repo.findById(filter.objectId())
                 .filter(tab -> matchesFilter(tab, filter))
-                .map(tab -> List.of(tabToMap(tab)))
+                .map(List::of)
                 .orElse(List.of());
+            var sessionTitleCache = new HashMap<String, Optional<String>>();
+            List<Map<String, Object>> items = tabs.stream()
+                .map(tab -> tabToMap(tab, sessionTitleCache))
+                .toList();
             return StageFindResult.metadata(items, items.size(), false);
         }
         StageTabRepository.ListFilter listFilter = toListFilter(filter);
         List<StageTab> tabs = repo.list(listFilter);
-        List<Map<String, Object>> items = tabs.stream().map(this::tabToMap).toList();
+        var sessionTitleCache = new HashMap<String, Optional<String>>();
+        List<Map<String, Object>> items = tabs.stream()
+            .map(tab -> tabToMap(tab, sessionTitleCache))
+            .toList();
         boolean truncated = tabs.size() >= listFilter.limit();
         return StageFindResult.metadata(items, tabs.size(), truncated);
     }
@@ -556,7 +582,6 @@ public class StageFindService {
             return StageTabRepository.ListFilter.defaultFilter();
         }
         return new StageTabRepository.ListFilter(
-            filter.scope(),
             filter.type(),
             filter.connectionId(),
             filter.originSessionId(),
@@ -568,17 +593,17 @@ public class StageFindService {
         );
     }
 
-    private Map<String, Object> tabToMap(StageTab tab) {
+    private Map<String, Object> tabToMap(StageTab tab, Map<String, Optional<String>> sessionTitleCache) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", tab.id());
         m.put("objectId", tab.id());
         m.put("type", tab.type());
-        m.put("scope", tab.scope().wire());
         m.put("title", tab.title());
         if (tab.connectionId() != null) m.put("connectionId", tab.connectionId());
         if (tab.databaseName() != null) m.put("databaseName", tab.databaseName());
         if (tab.schemaName() != null) m.put("schemaName", tab.schemaName());
         if (tab.originSessionId() != null) m.put("originSessionId", tab.originSessionId());
+        m.put("originSessionTitle", resolveOriginSessionTitle(tab.originSessionId(), sessionTitleCache));
         m.put("pinned", tab.pinned());
         m.put("archived", tab.archived());
         m.put("createdAt", tab.createdAt());
@@ -592,7 +617,6 @@ public class StageFindService {
             return !tab.archived();
         }
         if (!Boolean.TRUE.equals(filter.includeArchived()) && tab.archived()) return false;
-        if (filter.scope() != null && tab.scope() != filter.scope()) return false;
         if (filter.type() != null && !filter.type().equals(tab.type())) return false;
         if (filter.connectionId() != null && !filter.connectionId().equals(tab.connectionId())) return false;
         if (filter.objectId() != null && !filter.objectId().equals(tab.id())) return false;
@@ -601,5 +625,17 @@ public class StageFindService {
         if (filter.lastTouchedAfter() != null && tab.lastTouchedAt() <= filter.lastTouchedAfter()) return false;
         if (filter.lastTouchedBefore() != null && tab.lastTouchedAt() >= filter.lastTouchedBefore()) return false;
         return true;
+    }
+
+    private String resolveOriginSessionTitle(
+        String originSessionId,
+        Map<String, Optional<String>> sessionTitleCache
+    ) {
+        if (originSessionId == null || originSessionId.isBlank()) {
+            return null;
+        }
+        return sessionTitleCache
+            .computeIfAbsent(originSessionId, id -> sessions.findById(id).map(session -> session.title()))
+            .orElse(null);
     }
 }

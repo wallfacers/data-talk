@@ -9,7 +9,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -30,17 +29,16 @@ class StageTabSearchScenarioIT {
     void resetTables() {
         jdbc.update("DELETE FROM stage_tab_payload");
         jdbc.update("DELETE FROM stage_tabs");
+        jdbc.update("DELETE FROM sessions");
     }
 
     @Test
     void aiPipelineFindThenReadThenPatchObservesItsOwnWrite() throws Exception {
-        long now = System.currentTimeMillis();
-
         // Step 1: PUT tab with initial content
         mvc.perform(put("/api/stage/tabs/scenario-1")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"type":"query_editor","scope":"workspace","title":"Scenario Tab",
+                    {"type":"query_editor","title":"Scenario Tab",
                      "payloadJson":"{\\"sql\\":\\"SELECT * FROM users\\"}",
                      "contentText":"SELECT * FROM users WHERE name = Alice"}
                     """))
@@ -62,7 +60,7 @@ class StageTabSearchScenarioIT {
                 .header("If-Match", "1")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"type":"query_editor","scope":"workspace","title":"Scenario Tab",
+                    {"type":"query_editor","title":"Scenario Tab",
                      "payloadJson":"{\\"sql\\":\\"SELECT * FROM users WHERE email IS NOT NULL\\"}",
                      "contentText":"SELECT * FROM users WHERE email IS NOT NULL"}
                     """))
@@ -96,19 +94,20 @@ class StageTabSearchScenarioIT {
     @Test
     void metadataFindReturnsCorrectTabInfo() throws Exception {
         long now = System.currentTimeMillis();
+        insertSession("sess-meta", "April Weekly", now);
 
         // Create two tabs
         mvc.perform(put("/api/stage/tabs/scenario-meta-1")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"type":"query_editor","scope":"workspace","title":"First Query"}
+                    {"type":"query_editor","title":"First Query","originSessionId":"sess-meta"}
                     """))
             .andExpect(status().isOk());
 
         mvc.perform(put("/api/stage/tabs/scenario-meta-2")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"type":"chart","scope":"workspace","title":"Sales Chart"}
+                    {"type":"chart","title":"Sales Chart"}
                     """))
             .andExpect(status().isOk());
 
@@ -116,11 +115,21 @@ class StageTabSearchScenarioIT {
         mvc.perform(post("/api/stage/find")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"output":{"mode":"metadata"},"filter":{"scope":"workspace","type":"query_editor"}}
+                    {"output":{"mode":"metadata"},"filter":{"type":"query_editor"}}
                     """))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.items", hasSize(1)))
             .andExpect(jsonPath("$.items[0].id", is("scenario-meta-1")))
-            .andExpect(jsonPath("$.items[0].type", is("query_editor")));
+            .andExpect(jsonPath("$.items[0].type", is("query_editor")))
+            .andExpect(jsonPath("$.items[0].originSessionId", is("sess-meta")))
+            .andExpect(jsonPath("$.items[0].originSessionTitle", is("April Weekly")))
+            .andExpect(jsonPath("$.items[0].scope").doesNotExist());
+    }
+
+    private void insertSession(String id, String title, long now) {
+        jdbc.update("""
+            INSERT INTO sessions(id, connection_id, title, has_ever_sent, opencode_sid, created_at, updated_at, title_locked)
+            VALUES(?, NULL, ?, 0, NULL, ?, ?, 0)
+            """, id, title, now, now);
     }
 }

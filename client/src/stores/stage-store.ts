@@ -111,7 +111,7 @@ export type StageState = {
       schema?: string | null
     },
   ) => void
-  replaceQueryEditorContent: (tabId: string, content: string) => { version: number }
+  replaceQueryEditorContent: (tabId: string, content: string, baseVersion: number) => QueryEditorEditResult
   applyQueryEditorTextEdits: (
     tabId: string,
     params: { baseVersion: number; edits: QueryEditorTextEdit[] },
@@ -120,6 +120,7 @@ export type StageState = {
 
   // Persistence mutation API
   findTab: (tabId: string) => StageTab | null
+  __hydrateAll: (items: StageTab[]) => void
   __hydrateWorkspaceTabs: (items: StageTab[]) => void
   __hydrateSessionTabs: (sessionId: string, items: StageTab[]) => void
   __hydratePayload: (tabId: string, payload: unknown, version: number) => void
@@ -173,6 +174,21 @@ function updateTabMeta(
   const next = [...tabs]
   next[index] = updater(next[index])
   return next
+}
+
+function mergeHydratedWorkspaceTabs(existingTabs: StageTab[], items: StageTab[]) {
+  const incomingMap = new Map(items.map((t) => [t.tabId, t]))
+  const merged = existingTabs.map((existing) => {
+    const hydrated = incomingMap.get(existing.tabId)
+    if (!hydrated) return existing
+    return { ...existing, ...hydrated }
+  })
+  for (const item of items) {
+    if (!merged.some((t) => t.tabId === item.tabId)) {
+      merged.push(item)
+    }
+  }
+  return merged
 }
 
 export const useStageStore = create<StageState>((set, get) => ({
@@ -475,8 +491,8 @@ export const useStageStore = create<StageState>((set, get) => ({
     return state
   }),
 
-  replaceQueryEditorContent: (tabId, content) => {
-    return useSqlWorkbenchStore.getState().replaceSqlText(tabId, content)
+  replaceQueryEditorContent: (tabId, content, baseVersion) => {
+    return useSqlWorkbenchStore.getState().replaceSqlText(tabId, content, baseVersion)
   },
 
   applyQueryEditorTextEdits: (tabId, params) => {
@@ -498,39 +514,17 @@ export const useStageStore = create<StageState>((set, get) => ({
     return null
   },
 
-  __hydrateWorkspaceTabs: (items) => set((s) => {
-    const incomingMap = new Map(items.map((t) => [t.tabId, t as StageTab]))
-    const merged = s.workspaceTabs.map((existing) => {
-      const hydrated = incomingMap.get(existing.tabId)
-      if (!hydrated) return existing
-      return { ...existing, ...hydrated }
-    })
-    // Add new tabs from hydration that don't exist locally
-    for (const item of items) {
-      if (!merged.some((t) => t.tabId === item.tabId)) {
-        merged.push(item as StageTab)
-      }
-    }
-    return { workspaceTabs: merged }
-  }),
+  __hydrateAll: (items) => set((s) => ({
+    workspaceTabs: mergeHydratedWorkspaceTabs(s.workspaceTabs, items),
+  })),
 
-  __hydrateSessionTabs: (sessionId, items) => set((s) => {
-    const existing = s.tabsBySession.get(sessionId) ?? []
-    const incomingMap = new Map(items.map((t) => [t.tabId, t as StageTab]))
-    const merged = existing.map((e) => {
-      const hydrated = incomingMap.get(e.tabId)
-      if (!hydrated) return e
-      return { ...e, ...hydrated }
-    })
-    for (const item of items) {
-      if (!merged.some((t) => t.tabId === item.tabId)) {
-        merged.push(item as StageTab)
-      }
-    }
-    const nextMap = new Map(s.tabsBySession)
-    nextMap.set(sessionId, merged)
-    return { tabsBySession: nextMap }
-  }),
+  __hydrateWorkspaceTabs: (items) => set((s) => ({
+    workspaceTabs: mergeHydratedWorkspaceTabs(s.workspaceTabs, items),
+  })),
+
+  __hydrateSessionTabs: (_sessionId, items) => set((s) => ({
+    workspaceTabs: mergeHydratedWorkspaceTabs(s.workspaceTabs, items),
+  })),
 
   __hydratePayload: (tabId, payload, version) => set((s) => {
     const wsIdx = s.workspaceTabs.findIndex((t) => t.tabId === tabId)

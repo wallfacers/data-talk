@@ -1,10 +1,10 @@
 package com.datatalk.application.stage;
 
+import com.datatalk.application.persistence.SessionRepository;
 import com.datatalk.application.stage.StageFindQuery.Read;
 import com.datatalk.application.stage.StageFindQuery.ReadRange;
 import com.datatalk.domain.stage.StageTab;
 import com.datatalk.domain.stage.StageTabContent;
-import com.datatalk.domain.stage.StageTabScope;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -20,13 +20,15 @@ class StageFindServiceReadTest {
 
     private StageTabRepository repo;
     private StageTabIndexerPort indexer;
+    private SessionRepository sessions;
     private StageFindService svc;
 
     @BeforeEach
     void setUp() {
         repo = mock(StageTabRepository.class);
         indexer = mock(StageTabIndexerPort.class);
-        svc = new StageFindService(repo, indexer);
+        sessions = mock(SessionRepository.class);
+        svc = new StageFindService(repo, indexer, sessions);
     }
 
     @Test
@@ -144,8 +146,32 @@ class StageFindServiceReadTest {
     }
 
     private static StageTab tab(String id, boolean archived, long now) {
-        return new StageTab(id, "query_editor", StageTabScope.WORKSPACE,
-            id, null, null, null, null, 1, false, archived,
-            archived ? now : null, now, now);
+        try {
+            for (var constructor : StageTab.class.getConstructors()) {
+                if (constructor.getParameterCount() == 13) {
+                    return (StageTab) constructor.newInstance(
+                        id, "query_editor", id, null, null, null, null, 1,
+                        false, archived, archived ? now : null, now, now
+                    );
+                }
+                if (constructor.getParameterCount() == 14) {
+                    return (StageTab) constructor.newInstance(
+                        id, "query_editor", workspaceScope(constructor.getParameterTypes()[2]), id,
+                        null, null, null, null, 1, false, archived, archived ? now : null, now, now
+                    );
+                }
+            }
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError("Failed to construct StageTab", e);
+        }
+        throw new AssertionError("Unsupported StageTab constructor shape");
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static Object workspaceScope(Class<?> scopeType) {
+        if (!scopeType.isEnum()) {
+            throw new AssertionError("Expected enum scope type but got " + scopeType.getName());
+        }
+        return Enum.valueOf((Class<? extends Enum>) scopeType.asSubclass(Enum.class), "WORKSPACE");
     }
 }

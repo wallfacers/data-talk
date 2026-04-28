@@ -14,7 +14,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -40,11 +39,11 @@ class StageTabsMigrationIT {
         Path dbFile = tempDir.resolve("stage_tabs_test.db");
         HikariConfig cfg = new HikariConfig();
         cfg.setJdbcUrl("jdbc:sqlite:" + dbFile);
+        cfg.setConnectionInitSql("PRAGMA foreign_keys = ON");
         cfg.setMaximumPoolSize(1);
         cfg.setPoolName("stage-tabs-test");
         ds = new HikariDataSource(cfg);
         jdbc = new JdbcTemplate(ds);
-        applyMigrations(jdbc);
     }
 
     @AfterEach
@@ -56,6 +55,8 @@ class StageTabsMigrationIT {
 
     @Test
     void schemaCreatesAllArtifacts() {
+        applyMigrationsThrough(12);
+
         List<String> tables = jdbc.queryForList(
             "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name", String.class);
         assertThat(tables).contains("stage_tabs", "stage_tab_payload");
@@ -82,14 +83,13 @@ class StageTabsMigrationIT {
 
     @Test
     void scopeSessionRequiresOriginSessionId() {
+        applyMigrationsThrough(12);
+
         // Seed a session row so the FK passes
-        long now = System.currentTimeMillis();
-        jdbc.update("""
-            INSERT INTO sessions(id, connection_id, title, has_ever_sent, opencode_sid, created_at, updated_at, title_locked)
-            VALUES('s1', NULL, 'test', 0, NULL, ?, ?, 0)
-            """, now, now);
+        insertSessionRow("s1", "test");
 
         // workspace scope with null origin_session_id should succeed
+        long now = System.currentTimeMillis();
         jdbc.update("""
             INSERT INTO stage_tabs(id, type, scope, title, origin_session_id, created_at, last_touched_at)
             VALUES('tab1', 'query_editor', 'workspace', 'ws-tab', NULL, ?, ?)
@@ -111,6 +111,8 @@ class StageTabsMigrationIT {
 
     @Test
     void deletingTabCascadesPayloadAndFtsIndex() {
+        applyMigrationsThrough(12);
+
         long now = System.currentTimeMillis();
         jdbc.update("""
             INSERT INTO stage_tabs(id, type, scope, title, created_at, last_touched_at)
@@ -133,10 +135,15 @@ class StageTabsMigrationIT {
         assertThat(jdbc.queryForObject(
             "SELECT COUNT(*) FROM stage_tab_payload WHERE tab_id = 'tab-del'", Integer.class))
             .isEqualTo(0);
+        assertThat(jdbc.queryForObject(
+            "SELECT COUNT(*) FROM stage_tab_index WHERE title = 'to-delete'", Integer.class))
+            .isEqualTo(0);
     }
 
     @Test
     void payloadInsertSyncsContentToFts() {
+        applyMigrationsThrough(12);
+
         long now = System.currentTimeMillis();
         jdbc.update("""
             INSERT INTO stage_tabs(id, type, scope, title, created_at, last_touched_at)
@@ -148,10 +155,6 @@ class StageTabsMigrationIT {
             """, now);
 
         // FTS should find the content
-        List<String> results = jdbc.queryForList(
-            "SELECT stage_tab_index FROM stage_tab_index WHERE stage_tab_index MATCH ?",
-            String.class, "\"active\"");
-        // The FTS query returns a snippet; we just verify it found something
         Integer count = jdbc.queryForObject(
             "SELECT COUNT(*) FROM stage_tab_index WHERE stage_tab_index MATCH ?",
             Integer.class, "\"orders\"");
@@ -160,6 +163,8 @@ class StageTabsMigrationIT {
 
     @Test
     void ftsIndexUsesStageTabsRowidAndIncludesTitle() {
+        applyMigrationsThrough(12);
+
         long now = System.currentTimeMillis();
         jdbc.update("""
             INSERT INTO stage_tabs(id, type, scope, title, created_at, last_touched_at)
@@ -180,6 +185,8 @@ class StageTabsMigrationIT {
 
     @Test
     void activeIndexIsPartialOnArchivedFlag() {
+        applyMigrationsThrough(12);
+
         String sql = jdbc.queryForObject(
             "SELECT sql FROM sqlite_master WHERE type='index' AND name='idx_stage_tabs_active'",
             String.class);
@@ -187,18 +194,110 @@ class StageTabsMigrationIT {
         assertThat(sql).contains("WHERE archived = 0");
     }
 
-    private void applyMigrations(JdbcTemplate jdbc) throws Exception {
-        jdbc.execute(
-            "CREATE TABLE IF NOT EXISTS schema_version (" +
-            "  version TEXT PRIMARY KEY, applied_at INTEGER NOT NULL" +
-            ")");
+    @Test
+    void v13_migration_dropsScope_rewiresFts_keepsTabsAfterSessionDelete() {
+        applyMigrationsThrough(12);
+
+        insertSessionRow("sess-1", "April Weekly");
+        insertStageTabRow("qe-1", "query_editor", "workspace", "users monthly", "sess-1");
+        insertStageTabPayloadRow(
+            "qe-1",
+            "{\"sqlText\":\"SELECT id FROM invoices\"}",
+            "SELECT id FROM invoices");
+
+        applyMigrationsThrough(13);
+
+        List<String> columns = jdbc.queryForList(
+            "SELECT name FROM pragma_table_info('stage_tabs') ORDER BY cid",
+            String.class);
+        assertThat(columns).doesNotContain("scope");
+
+        Integer idxCount = jdbc.queryForObject(
+            "SELECT COUNT(*) FROM stage_tab_index",
+            Integer.class);
+        Integer tabCount = jdbc.queryForObject(
+            "SELECT COUNT(*) FROM stage_tabs",
+            Integer.class);
+        assertThat(idxCount).isEqualTo(tabCount);
+
+        String alignedContent = jdbc.queryForObject(
+            "SELECT content FROM stage_tab_index WHERE rowid = (SELECT rowid FROM stage_tabs WHERE id = 'qe-1')",
+            String.class);
+        assertThat(alignedContent).isEqualTo("SELECT id FROM invoices");
+
+        List<String> titleHits = jdbc.queryForList(
+            "SELECT title FROM stage_tab_index WHERE stage_tab_index MATCH 'monthly'",
+            String.class);
+        assertThat(titleHits).contains("users monthly");
+
+        List<String> contentHits = jdbc.queryForList(
+            "SELECT title FROM stage_tab_index WHERE stage_tab_index MATCH 'invoices'",
+            String.class);
+        assertThat(contentHits).contains("users monthly");
+
+        List<String> triggers = jdbc.queryForList(
+            "SELECT name FROM sqlite_master WHERE type='trigger' ORDER BY name",
+            String.class);
+        assertThat(triggers).containsExactly(
+            "stage_tab_payload_ad",
+            "stage_tab_payload_aiu",
+            "stage_tab_payload_au",
+            "stage_tabs_ad",
+            "stage_tabs_ai",
+            "stage_tabs_au");
+
+        Integer backupCount = jdbc.queryForObject(
+            "SELECT COUNT(*) FROM stage_tabs_backup_v13_pre",
+            Integer.class);
+        assertThat(backupCount).isEqualTo(tabCount);
+
+        jdbc.update("DELETE FROM sessions WHERE id = ?", "sess-1");
+
+        assertThat(jdbc.queryForObject(
+            "SELECT COUNT(*) FROM stage_tabs WHERE id = 'qe-1'",
+            Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+            "SELECT origin_session_id FROM stage_tabs WHERE id = 'qe-1'",
+            String.class)).isNull();
+    }
+
+    @Test
+    void v13_postMigration_payloadInsertTriggersFtsUpdate() {
+        applyMigrationsThrough(13);
+
+        insertStageTabRow("qe-2", "query_editor", null, "second tab", null);
+        insertStageTabPayloadRow("qe-2", "{\"sqlText\":\"new payload\"}", "new payload");
+
+        String content = jdbc.queryForObject(
+            "SELECT content FROM stage_tab_index WHERE rowid = (SELECT rowid FROM stage_tabs WHERE id = 'qe-2')",
+            String.class);
+        assertThat(content).isEqualTo("new payload");
+    }
+
+    @Test
+    void v13_postMigration_orphanPayloadInsertStillFailsFk() {
+        applyMigrationsThrough(13);
+
+        assertThatThrownBy(() -> insertStageTabPayloadRow("nonexistent", "{}", ""))
+            .hasMessageContaining("FOREIGN KEY constraint failed");
+    }
+
+    private void applyMigrationsThrough(int maxVersion) {
+        ensureSchemaVersionTable();
 
         PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
-        Resource[] resources = resolver.getResources("classpath:db/migration/V*.sql");
+        Resource[] resources;
+        try {
+            resources = resolver.getResources("classpath:db/migration/V*.sql");
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to load migration resources", e);
+        }
+
         Arrays.stream(resources)
             .sorted(Comparator
                 .comparingInt(this::migrationOrder)
                 .thenComparing(Resource::getFilename, Comparator.nullsLast(String::compareTo)))
+            .filter(resource -> migrationOrder(resource) <= maxVersion)
             .forEach(resource -> {
                 try {
                     String version = extractVersion(resource.getFilename());
@@ -217,6 +316,56 @@ class StageTabsMigrationIT {
                     throw new RuntimeException("Failed to apply migration: " + resource.getFilename(), e);
                 }
             });
+    }
+
+    private void ensureSchemaVersionTable() {
+        jdbc.execute(
+            "CREATE TABLE IF NOT EXISTS schema_version (" +
+            "  version TEXT PRIMARY KEY, applied_at INTEGER NOT NULL" +
+            ")");
+    }
+
+    private void insertSessionRow(String id, String title) {
+        long now = System.currentTimeMillis();
+        jdbc.update("""
+            INSERT INTO sessions(id, title, created_at, updated_at, has_ever_sent)
+            VALUES(?, ?, ?, ?, 1)
+            """, id, title, now, now);
+    }
+
+    private void insertStageTabRow(
+        String id,
+        String type,
+        String scopeOrNull,
+        String title,
+        String originSessionId
+    ) {
+        long now = System.currentTimeMillis();
+        if (scopeOrNull != null) {
+            jdbc.update("""
+                INSERT INTO stage_tabs(
+                    id, type, scope, title, origin_session_id, payload_version,
+                    pinned, archived, created_at, last_touched_at
+                )
+                VALUES(?, ?, ?, ?, ?, 1, 0, 0, ?, ?)
+                """, id, type, scopeOrNull, title, originSessionId, now, now);
+            return;
+        }
+
+        jdbc.update("""
+            INSERT INTO stage_tabs(
+                id, type, title, origin_session_id, payload_version,
+                pinned, archived, created_at, last_touched_at
+            )
+            VALUES(?, ?, ?, ?, 1, 0, 0, ?, ?)
+            """, id, type, title, originSessionId, now, now);
+    }
+
+    private void insertStageTabPayloadRow(String tabId, String payloadJson, String contentText) {
+        jdbc.update("""
+            INSERT INTO stage_tab_payload(tab_id, payload_json, content_text, content_version, updated_at)
+            VALUES(?, ?, ?, 1, ?)
+            """, tabId, payloadJson, contentText, System.currentTimeMillis());
     }
 
     private String extractVersion(String filename) {

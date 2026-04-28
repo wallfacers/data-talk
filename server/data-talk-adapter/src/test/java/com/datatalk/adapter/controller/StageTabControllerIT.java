@@ -25,6 +25,7 @@ class StageTabControllerIT {
     void resetTables() {
         jdbc.update("DELETE FROM stage_tab_payload");
         jdbc.update("DELETE FROM stage_tabs");
+        jdbc.update("DELETE FROM sessions");
     }
 
     @Test
@@ -32,7 +33,7 @@ class StageTabControllerIT {
         mvc.perform(put("/api/stage/tabs/tab-1")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"type":"query_editor","scope":"workspace","title":"My Tab"}
+                    {"type":"query_editor","title":"My Tab"}
                     """))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id", is("tab-1")))
@@ -45,7 +46,7 @@ class StageTabControllerIT {
         mvc.perform(put("/api/stage/tabs/tab-2")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"type":"query_editor","scope":"workspace","title":"V1"}
+                    {"type":"query_editor","title":"V1"}
                     """))
             .andExpect(status().isOk());
 
@@ -54,32 +55,29 @@ class StageTabControllerIT {
                 .header("If-Match", "99")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"type":"query_editor","scope":"workspace","title":"V2"}
+                    {"type":"query_editor","title":"V2"}
                     """))
             .andExpect(status().isPreconditionFailed())
             .andExpect(jsonPath("$.error", is("CONCURRENCY_CONFLICT")));
     }
 
     @Test
-    void getListsByScopeAndArchived() throws Exception {
+    void getListsByOriginSessionIdAndArchived() throws Exception {
         long now = System.currentTimeMillis();
-        jdbc.update("""
-            INSERT INTO stage_tabs(id, type, scope, title, created_at, last_touched_at)
-            VALUES('ws-1', 'query_editor', 'workspace', 'Active WS', ?, ?)
-            """, now, now);
-        jdbc.update("""
-            INSERT INTO stage_tabs(id, type, scope, title, archived, created_at, last_touched_at)
-            VALUES('ws-2', 'chart', 'workspace', 'Archived WS', 1, ?, ?)
-            """, now, now);
+        insertSession("sess-1", "April Weekly", now);
+        insertSession("sess-2", "May Weekly", now);
+        insertStageTab("ws-1", "query_editor", "Active S1", "sess-1", false, null, now);
+        insertStageTab("ws-2", "chart", "Archived S1", "sess-1", true, now, now);
+        insertStageTab("ws-3", "query_editor", "Active S2", "sess-2", false, null, now);
 
-        // Default: exclude archived
-        mvc.perform(get("/api/stage/tabs?scope=workspace"))
+        mvc.perform(get("/api/stage/tabs?originSessionId=sess-1"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.items", hasSize(1)))
-            .andExpect(jsonPath("$.items[0].id", is("ws-1")));
+            .andExpect(jsonPath("$.items[0].id", is("ws-1")))
+            .andExpect(jsonPath("$.items[0].originSessionId", is("sess-1")))
+            .andExpect(jsonPath("$.items[0].scope").doesNotExist());
 
-        // Include archived
-        mvc.perform(get("/api/stage/tabs?scope=workspace&archived=true"))
+        mvc.perform(get("/api/stage/tabs?originSessionId=sess-1&archived=true"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.items", hasSize(2)));
     }
@@ -87,10 +85,7 @@ class StageTabControllerIT {
     @Test
     void getPayloadReturnsContentJson() throws Exception {
         long now = System.currentTimeMillis();
-        jdbc.update("""
-            INSERT INTO stage_tabs(id, type, scope, title, created_at, last_touched_at)
-            VALUES('payload-1', 'query_editor', 'workspace', 'Payload Test', ?, ?)
-            """, now, now);
+        insertStageTab("payload-1", "query_editor", "Payload Test", null, false, null, now);
         jdbc.update("""
             INSERT INTO stage_tab_payload(tab_id, payload_json, content_text, content_version, updated_at)
             VALUES('payload-1', '{"sql":"SELECT 1"}', 'SELECT 1', 1, ?)
@@ -108,10 +103,7 @@ class StageTabControllerIT {
     @Test
     void deleteReturnsNoContent() throws Exception {
         long now = System.currentTimeMillis();
-        jdbc.update("""
-            INSERT INTO stage_tabs(id, type, scope, title, created_at, last_touched_at)
-            VALUES('del-1', 'query_editor', 'workspace', 'Delete Me', ?, ?)
-            """, now, now);
+        insertStageTab("del-1", "query_editor", "Delete Me", null, false, null, now);
 
         mvc.perform(delete("/api/stage/tabs/del-1"))
             .andExpect(status().isNoContent());
@@ -119,5 +111,46 @@ class StageTabControllerIT {
         // Second delete returns 404
         mvc.perform(delete("/api/stage/tabs/del-1"))
             .andExpect(status().isNotFound());
+    }
+
+    private void insertSession(String id, String title, long now) {
+        jdbc.update("""
+            INSERT INTO sessions(id, connection_id, title, has_ever_sent, opencode_sid, created_at, updated_at, title_locked)
+            VALUES(?, NULL, ?, 0, NULL, ?, ?, 0)
+            """, id, title, now, now);
+    }
+
+    private void insertStageTab(
+        String id,
+        String type,
+        String title,
+        String originSessionId,
+        boolean archived,
+        Long archivedAt,
+        long now
+    ) {
+        if (hasScopeColumn()) {
+            jdbc.update("""
+                INSERT INTO stage_tabs(
+                    id, type, scope, title, origin_session_id, archived, archived_at, created_at, last_touched_at
+                )
+                VALUES(?, ?, 'workspace', ?, ?, ?, ?, ?, ?)
+                """, id, type, title, originSessionId, archived ? 1 : 0, archivedAt, now, now);
+            return;
+        }
+
+        jdbc.update("""
+            INSERT INTO stage_tabs(
+                id, type, title, origin_session_id, archived, archived_at, created_at, last_touched_at
+            )
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?)
+            """, id, type, title, originSessionId, archived ? 1 : 0, archivedAt, now, now);
+    }
+
+    private boolean hasScopeColumn() {
+        Integer matches = jdbc.queryForObject(
+            "SELECT COUNT(*) FROM pragma_table_info('stage_tabs') WHERE name = 'scope'",
+            Integer.class);
+        return matches != null && matches > 0;
     }
 }

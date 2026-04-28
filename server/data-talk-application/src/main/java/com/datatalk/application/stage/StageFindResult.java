@@ -8,6 +8,7 @@ import java.util.Map;
 
 /**
  * Result model for the ui_find action.
+ * Metadata-bearing item maps may include {@code originSessionTitle}; scope is no longer surfaced.
  */
 public record StageFindResult(
     StageFindQuery.OutputMode outputMode,

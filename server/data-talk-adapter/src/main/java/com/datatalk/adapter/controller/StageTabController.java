@@ -6,7 +6,6 @@ import com.datatalk.application.stage.StageTabService;
 import com.datatalk.application.stage.StageTabConcurrencyException;
 import com.datatalk.domain.stage.StageTab;
 import com.datatalk.domain.stage.StageTabContent;
-import com.datatalk.domain.stage.StageTabScope;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.HttpStatus;
@@ -31,16 +30,14 @@ public class StageTabController {
 
     @GetMapping
     public ResponseEntity<Map<String, Object>> list(
-        @RequestParam(required = false) String scope,
         @RequestParam(required = false) String type,
         @RequestParam(required = false) String connectionId,
         @RequestParam(required = false) String originSessionId,
         @RequestParam(required = false, defaultValue = "false") boolean archived,
         @RequestParam(required = false, defaultValue = "100") int limit
     ) {
-        StageTabScope scopeEnum = scope != null ? StageTabScope.fromWire(scope) : null;
         StageTabRepository.ListFilter filter = new StageTabRepository.ListFilter(
-            scopeEnum, type, connectionId, originSessionId, archived, null, null, null, limit);
+            type, connectionId, originSessionId, archived, null, null, null, limit);
         List<StageTab> tabs = service.list(filter);
         List<Map<String, Object>> result = tabs.stream().map(this::toJson).toList();
         return ResponseEntity.ok(Map.of("items", result));
@@ -53,11 +50,10 @@ public class StageTabController {
         @RequestHeader(value = "If-Match", required = false) String ifMatch
     ) {
         Integer expectedVersion = ifMatch != null ? Integer.parseInt(ifMatch) : null;
-        StageTabScope scope = StageTabScope.fromWire(body.scope());
         long now = System.currentTimeMillis();
 
         StageTab tab = new StageTab(
-            id, body.type(), scope, body.title(),
+            id, body.type(), body.title(),
             body.connectionId(), body.effectiveDatabase(), body.effectiveSchema(),
             body.originSessionId(), 1,
             body.pinned() != null ? body.pinned() : false,
@@ -150,7 +146,6 @@ public class StageTabController {
         m.put("tabId", tab.id());
         m.put("objectId", tab.id());
         m.put("type", tab.type());
-        m.put("scope", tab.scope().wire());
         m.put("title", tab.title());
         if (tab.connectionId() != null) m.put("connectionId", tab.connectionId());
         if (tab.databaseName() != null) {
@@ -181,7 +176,6 @@ public class StageTabController {
 
     public record UpsertBody(
         String type,
-        String scope,
         String title,
         String connectionId,
         String database,

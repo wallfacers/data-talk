@@ -594,7 +594,13 @@ export function formatQueryEditorSql(tabId: string): { version: number; content:
     return { version: tabState.version, content: rawSql }
   }
 
-  const next = useStageStore.getState().replaceQueryEditorContent(tabId, formatted)
+  const next = useStageStore.getState().replaceQueryEditorContent(tabId, formatted, tabState.version)
+  if (!next.ok) {
+    return {
+      version: next.currentState.version,
+      content: next.currentState.content,
+    }
+  }
   return {
     version: next.version,
     content: formatted,

@@ -4,7 +4,6 @@ import com.datatalk.application.stage.StageTabRepository;
 import com.datatalk.application.stage.StageTabConcurrencyException;
 import com.datatalk.domain.stage.StageTab;
 import com.datatalk.domain.stage.StageTabContent;
-import com.datatalk.domain.stage.StageTabScope;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -27,7 +26,6 @@ public class StageTabJdbcRepository implements StageTabRepository {
     private static final RowMapper<StageTab> TAB_MAPPER = (rs, i) -> new StageTab(
         rs.getString("id"),
         rs.getString("type"),
-        StageTabScope.fromWire(rs.getString("scope")),
         rs.getString("title"),
         rs.getString("connection_id"),
         rs.getString("database_name"),
@@ -67,12 +65,12 @@ public class StageTabJdbcRepository implements StageTabRepository {
         int newVersion = currentVersion + 1;
         jdbc.update("""
             UPDATE stage_tabs SET
-                type = ?, scope = ?, title = ?, connection_id = ?, database_name = ?,
+                type = ?, title = ?, connection_id = ?, database_name = ?,
                 schema_name = ?, origin_session_id = ?, payload_version = ?, pinned = ?,
                 archived = ?, archived_at = ?, last_touched_at = ?
             WHERE id = ?
             """,
-            tab.type(), tab.scope().wire(), tab.title(),
+            tab.type(), tab.title(),
             tab.connectionId(), tab.databaseName(), tab.schemaName(),
             tab.originSessionId(), newVersion, tab.pinned() ? 1 : 0,
             tab.archived() ? 1 : 0, tab.archivedAt(),
@@ -82,12 +80,12 @@ public class StageTabJdbcRepository implements StageTabRepository {
 
     private int doInsert(StageTab tab) {
         jdbc.update("""
-            INSERT INTO stage_tabs(id, type, scope, title, connection_id, database_name,
+            INSERT INTO stage_tabs(id, type, title, connection_id, database_name,
                 schema_name, origin_session_id, payload_version, pinned,
                 archived, archived_at, created_at, last_touched_at)
-            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            tab.id(), tab.type(), tab.scope().wire(), tab.title(),
+            tab.id(), tab.type(), tab.title(),
             tab.connectionId(), tab.databaseName(), tab.schemaName(),
             tab.originSessionId(), 1,
             tab.pinned() ? 1 : 0, tab.archived() ? 1 : 0, tab.archivedAt(),
@@ -145,10 +143,6 @@ public class StageTabJdbcRepository implements StageTabRepository {
         StringBuilder sql = new StringBuilder("SELECT * FROM stage_tabs WHERE 1=1");
         List<Object> params = new ArrayList<>();
 
-        if (filter.scope() != null) {
-            sql.append(" AND scope = ?");
-            params.add(filter.scope().wire());
-        }
         if (filter.type() != null) {
             sql.append(" AND type = ?");
             params.add(filter.type());

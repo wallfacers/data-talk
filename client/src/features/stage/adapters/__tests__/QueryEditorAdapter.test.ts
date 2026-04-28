@@ -170,7 +170,6 @@ describe('QueryEditorAdapter', () => {
     const state = adapter.read('state') as {
       tabId: string
       title: string
-      scope: 'workspace' | 'session'
       content: string
       language: 'sql'
       version: number
@@ -198,7 +197,6 @@ describe('QueryEditorAdapter', () => {
     expect(state).toEqual({
       tabId,
       title: 'SQL',
-      scope: 'session',
       content: 'select 42',
       language: 'sql',
       version: 3,
@@ -459,13 +457,66 @@ describe('QueryEditorAdapter', () => {
 
     const adapter = new QueryEditorAdapter(tabId)
     const result = adapter.patch([
-      { op: 'replace', path: '/content', value: 'select 2' },
+      { op: 'replace', path: '/content', value: 'select 2', baseVersion: 1 },
     ])
 
     expect(result).toEqual({ status: 'applied' })
     expect(useSqlWorkbenchStore.getState().tabsById[tabId]).toMatchObject({
       sqlText: 'select 2',
       version: 2,
+    })
+  })
+
+  it('patch /content rejects requests that omit baseVersion', () => {
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 's1',
+      scope: 'session',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'blank',
+      initialContent: 'select 1',
+    })
+
+    const adapter = new QueryEditorAdapter(tabId)
+    const result = adapter.patch([
+      { op: 'replace', path: '/content', value: 'select 2' },
+    ])
+
+    expect(result.status).toBe('error')
+    expect(result.message).toContain('baseVersion')
+    expect(useSqlWorkbenchStore.getState().tabsById[tabId]).toMatchObject({
+      sqlText: 'select 1',
+      version: 1,
+    })
+  })
+
+  it('patch /content returns version_conflict details when baseVersion is stale', () => {
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 's1',
+      scope: 'session',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'blank',
+      initialContent: 'select 1',
+    })
+    useSqlWorkbenchStore.getState().setSqlText(tabId, 'select 11')
+
+    const adapter = new QueryEditorAdapter(tabId)
+    const result = adapter.patch([
+      { op: 'replace', path: '/content', value: 'select 2', baseVersion: 1 },
+    ])
+
+    expect(result.status).toBe('error')
+    expect(result.message).toContain('version 2')
+    expect((result as { detail?: { code?: string; currentState?: unknown } }).detail).toEqual({
+      code: 'version_conflict',
+      message: 'Editor content has advanced to version 2',
+      hint: "Re-read with `ui_read(mode='state')` to get the latest content and version, then retry with a fresh baseVersion.",
+      currentState: {
+        tabId,
+        version: 2,
+        content: 'select 11',
+      },
     })
   })
 
@@ -496,7 +547,7 @@ describe('QueryEditorAdapter', () => {
       entryMode: 'blank',
       initialContent: 'select 1',
     })
-    useStageStore.getState().replaceQueryEditorContent(tabId, 'select 11')
+    useStageStore.getState().replaceQueryEditorContent(tabId, 'select 11', 1)
 
     const adapter = new QueryEditorAdapter(tabId)
     const result = await adapter.exec('apply_text_edits', {
@@ -506,23 +557,75 @@ describe('QueryEditorAdapter', () => {
           range: {
             startLine: 1,
             startColumn: 8,
-            endLine: 1,
-            endColumn: 9,
-          },
-          text: '2',
+          endLine: 1,
+          endColumn: 9,
         },
-      ],
-    })
+        text: '2',
+        expectedText: '1',
+      },
+    ],
+  })
 
     expect(result.success).toBe(false)
     expect(result.error).toContain('version 2')
     expect(result.data).toEqual(expect.objectContaining({
       code: 'version_conflict',
       currentState: {
+        tabId,
         version: 2,
         content: 'select 11',
       },
     }))
+  })
+
+  it('exec apply_text_edits returns expected_text_mismatch details and keeps the batch unapplied', async () => {
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 's1',
+      scope: 'session',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'blank',
+      initialContent: 'select 1\r\nfrom dual',
+    })
+
+    const adapter = new QueryEditorAdapter(tabId)
+    const result = await adapter.exec('apply_text_edits', {
+      baseVersion: 1,
+      edits: [
+        {
+          range: {
+            startLine: 1,
+            startColumn: 8,
+            endLine: 2,
+            endColumn: 5,
+          },
+          text: 'x',
+          expectedText: '1\nFORM',
+        },
+      ],
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('expected text for edit 0')
+    expect(result.data).toEqual({
+      code: 'expected_text_mismatch',
+      message: 'The expected text for edit 0 no longer matches the current content',
+      hint: "Re-read with `ui_read(mode='state')` to get the latest content and version, then recompute the edit against the current text.",
+      currentState: {
+        tabId,
+        version: 1,
+        content: 'select 1\r\nfrom dual',
+      },
+      details: {
+        editIndex: 0,
+        expected: '1\nFORM',
+        actual: '1\nfrom',
+      },
+    })
+    expect(useSqlWorkbenchStore.getState().tabsById[tabId]).toMatchObject({
+      sqlText: 'select 1\r\nfrom dual',
+      version: 1,
+    })
   })
 
   it('exec set_context rejects empty params', async () => {

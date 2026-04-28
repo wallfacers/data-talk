@@ -9,6 +9,7 @@ import com.datatalk.domain.action.OntologyEffect;
 import com.datatalk.domain.action.RiskLevel;
 import org.springframework.stereotype.Component;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
@@ -42,10 +43,10 @@ public class UiPatchAction implements ActionHandler<Map, Map> {
                         Map.entry("ops", Map.of(
                                 "type", "array",
                                 "items", Map.of("oneOf", List.of(
-                                        replaceOp("/content", Map.of("type", "string")),
-                                        replaceOp("/connectionId", Map.of("type", List.of("string", "null"))),
-                                        replaceOp("/database", Map.of("type", List.of("string", "null"))),
-                                        replaceOp("/schema", Map.of("type", List.of("string", "null")))
+                                        replaceOp("/content", Map.of("type", "string"), true),
+                                        replaceOp("/connectionId", Map.of("type", List.of("string", "null")), false),
+                                        replaceOp("/database", Map.of("type", List.of("string", "null")), false),
+                                        replaceOp("/schema", Map.of("type", List.of("string", "null")), false)
                                 ))
                         )),
                         Map.entry("reason", Map.of("type", "string"))
@@ -53,15 +54,26 @@ public class UiPatchAction implements ActionHandler<Map, Map> {
         );
     }
 
-    private static Map<String, Object> replaceOp(String path, Map<String, Object> valueSchema) {
+    private static Map<String, Object> replaceOp(String path,
+                                                 Map<String, Object> valueSchema,
+                                                 boolean requiresBaseVersion) {
+        List<String> required = requiresBaseVersion
+            ? List.of("op", "path", "value", "baseVersion")
+            : List.of("op", "path", "value");
+        Map<String, Object> properties = new LinkedHashMap<>();
+        properties.put("op", Map.of("type", "string", "enum", List.of("replace")));
+        properties.put("path", Map.of("type", "string", "enum", List.of(path)));
+        properties.put("value", valueSchema);
+        if (requiresBaseVersion) {
+            properties.put("baseVersion", Map.of(
+                "type", "number",
+                "description", "Required: tab payloadVersion at the moment you read the content; rejected if it has drifted."
+            ));
+        }
         return Map.of(
                 "type", "object",
-                "required", List.of("op", "path", "value"),
-                "properties", Map.ofEntries(
-                        Map.entry("op", Map.of("type", "string", "enum", List.of("replace"))),
-                        Map.entry("path", Map.of("type", "string", "enum", List.of(path))),
-                        Map.entry("value", valueSchema)
-                )
+                "required", required,
+                "properties", properties
         );
     }
 

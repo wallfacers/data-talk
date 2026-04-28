@@ -1,11 +1,11 @@
 package com.datatalk.application.stage;
 
+import com.datatalk.application.persistence.SessionRepository;
 import com.datatalk.application.stage.StageFindQuery.ContentQuery;
 import com.datatalk.application.stage.StageFindQuery.ContentQuery.SearchMode;
 import com.datatalk.application.stage.StageFindQuery.Filter;
 import com.datatalk.domain.stage.StageTab;
 import com.datatalk.domain.stage.StageTabContent;
-import com.datatalk.domain.stage.StageTabScope;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -21,22 +21,22 @@ class StageFindServiceRegexTest {
 
     private StageTabRepository repo;
     private StageTabIndexerPort indexer;
+    private SessionRepository sessions;
     private StageFindService svc;
 
     @BeforeEach
     void setUp() {
         repo = mock(StageTabRepository.class);
         indexer = mock(StageTabIndexerPort.class);
-        svc = new StageFindService(repo, indexer);
+        sessions = mock(SessionRepository.class);
+        svc = new StageFindService(repo, indexer, sessions);
     }
 
     @Test
     void regexFanOutMatchesAcrossTabs() {
         long now = System.currentTimeMillis();
-        var tab1 = new StageTab("tab-1", "query_editor", StageTabScope.WORKSPACE,
-            "Q1", null, null, null, null, 1, false, false, null, now, now);
-        var tab2 = new StageTab("tab-2", "query_editor", StageTabScope.WORKSPACE,
-            "Q2", null, null, null, null, 1, false, false, null, now, now);
+        var tab1 = stageTab("tab-1", "Q1", now);
+        var tab2 = stageTab("tab-2", "Q2", now);
 
         when(repo.list(any(StageTabRepository.ListFilter.class)))
             .thenReturn(List.of(tab1, tab2));
@@ -48,7 +48,7 @@ class StageFindServiceRegexTest {
 
         StageFindQuery query = new StageFindQuery(
             StageFindQuery.OutputMode.TABS_ONLY,
-            new Filter(null, null, null, null, null, false, null, null, null, 100),
+            new Filter(null, null, null, null, false, null, null, null, 100),
             new ContentQuery("#\\d{5}", false, 100, SearchMode.REGEX),
             List.of()
         );
@@ -63,7 +63,7 @@ class StageFindServiceRegexTest {
     void regexInvalidPatternThrowsException() {
         StageFindQuery query = new StageFindQuery(
             StageFindQuery.OutputMode.TABS_ONLY,
-            new Filter(null, null, null, null, null, false, null, null, null, 100),
+            new Filter(null, null, null, null, false, null, null, null, 100),
             new ContentQuery("[unclosed", false, 100, SearchMode.REGEX),
             List.of()
         );
@@ -79,7 +79,7 @@ class StageFindServiceRegexTest {
 
         StageFindQuery query = new StageFindQuery(
             StageFindQuery.OutputMode.TABS_ONLY,
-            new Filter(null, null, null, null, null, false, null, null, null, 100),
+            new Filter(null, null, null, null, false, null, null, null, 100),
             new ContentQuery(longPattern, false, 100, SearchMode.REGEX),
             List.of()
         );
@@ -87,5 +87,35 @@ class StageFindServiceRegexTest {
         assertThatThrownBy(() -> svc.execute(query))
             .isInstanceOf(StageFindInvalidPatternException.class)
             .hasMessageContaining("maximum length");
+    }
+
+    private static StageTab stageTab(String id, String title, long now) {
+        try {
+            for (var constructor : StageTab.class.getConstructors()) {
+                if (constructor.getParameterCount() == 13) {
+                    return (StageTab) constructor.newInstance(
+                        id, "query_editor", title, null, null, null, null, 1,
+                        false, false, null, now, now
+                    );
+                }
+                if (constructor.getParameterCount() == 14) {
+                    return (StageTab) constructor.newInstance(
+                        id, "query_editor", workspaceScope(constructor.getParameterTypes()[2]), title,
+                        null, null, null, null, 1, false, false, null, now, now
+                    );
+                }
+            }
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError("Failed to construct StageTab", e);
+        }
+        throw new AssertionError("Unsupported StageTab constructor shape");
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static Object workspaceScope(Class<?> scopeType) {
+        if (!scopeType.isEnum()) {
+            throw new AssertionError("Expected enum scope type but got " + scopeType.getName());
+        }
+        return Enum.valueOf((Class<? extends Enum>) scopeType.asSubclass(Enum.class), "WORKSPACE");
     }
 }

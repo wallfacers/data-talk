@@ -25,7 +25,7 @@ export class StagePersistenceCoordinator {
   async start(): Promise<void> {
     this.phase = 'hydrating'
     try {
-      const meta = await this.api.listWorkspaceTabs()
+      const meta = await this.api.listAll({ archived: false })
       this.onHydrated?.(meta.items)
     } catch (e) {
       this.phase = 'degraded'
