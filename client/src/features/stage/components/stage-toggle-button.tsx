@@ -40,7 +40,6 @@ export function StageToggleButton() {
   }, [sid, open, hasMessages, mode, setSessionMode])
 
   function handleClick() {
-    if (!sid) return
     const rect = btnRef.current?.getBoundingClientRect()
     if (rect) {
       setRevealOrigin({
@@ -50,13 +49,15 @@ export function StageToggleButton() {
     }
     if (open) {
       toggleStage()
-      if (!hasMessages) {
+      if (sid && !hasMessages) {
         setSessionMode(sid, 'HERO')
       }
       return
     }
 
-    setSessionMode(sid, 'SPLIT')
+    if (sid) {
+      setSessionMode(sid, 'SPLIT')
+    }
     openStage()
   }
 
@@ -71,10 +72,9 @@ export function StageToggleButton() {
             variant="ghost"
             aria-pressed={open}
             aria-label={title}
-            aria-disabled={!sid}
             onClick={handleClick}
             className={cn(
-              'cursor-pointer rounded-md text-foreground hover:bg-accent/80 aria-disabled:cursor-not-allowed aria-disabled:opacity-50',
+              'cursor-pointer rounded-md text-foreground hover:bg-accent/80',
               open && 'bg-accent/70',
             )}
           >

@@ -29,11 +29,14 @@ describe('StageToggleButton', () => {
     })
   })
 
-  it('无 activeSessionId → 按钮 aria-disabled="true"', () => {
+  it('无 activeSessionId 也可点击 → 直接打开 Stage（Stage 是全局态，与 session 无关）', () => {
     render(<StageToggleButton />)
     const btn = screen.getByRole('button')
-    expect(btn.getAttribute('aria-disabled')).toBe('true')
-    expect(btn).toHaveClass('aria-disabled:opacity-50')
+    expect(btn.getAttribute('aria-disabled')).toBeNull()
+    fireEvent.click(btn)
+    expect(useStageStore.getState().open).toBe(true)
+    // 没有 sid 时不应写入任何 session 的 mode
+    expect(useSessionStore.getState().modeBySession.size).toBe(0)
   })
 
   it('HERO 模式下点击 → 进入 SPLIT + 打开 Stage', () => {
