@@ -21,7 +21,7 @@ public final class JdbcUrlBuilder {
             case ConnectionKind.SQLITE ->
                 "jdbc:sqlite:" + (db != null ? db : "memory");
             default ->
-                throw new DataTalkException(DataTalkErrorCodes.CONNECTION_MISSING,
+                throw new DataTalkException(DataTalkErrorCodes.DATABASE_KIND_UNSUPPORTED,
                     "unsupported database kind: " + c.kind(), false);
         };
     }
@@ -38,7 +38,7 @@ public final class JdbcUrlBuilder {
             case SQLITE ->
                 "jdbc:sqlite:" + (db != null ? db : "memory");
             default ->
-                throw new DataTalkException(DataTalkErrorCodes.CONNECTION_MISSING,
+                throw new DataTalkException(DataTalkErrorCodes.DATABASE_TYPE_UNSUPPORTED,
                     "unsupported database type: " + c.dbType(), false);
         };
     }

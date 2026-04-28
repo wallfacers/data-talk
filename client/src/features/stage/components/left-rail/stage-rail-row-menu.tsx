@@ -8,6 +8,7 @@ import {
   AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useI18n } from '@/i18n/use-i18n'
 import { useStageStore } from '@/stores/stage-store'
 import type { StageTab } from '@/stores/stage-store'
@@ -26,40 +27,47 @@ export function StageRailRowMenu({ tab }: Props) {
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger
-          render={
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              aria-label={t('stage.leftRail.row.menu')}
-              onClick={(e: React.MouseEvent) => e.stopPropagation()}
-              className={[
-                'text-text-muted',
-                'hover:bg-interaction-hover hover:text-text-base',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing',
-                'data-[state=open]:bg-interaction-selected data-[state=open]:text-accent-primary',
-              ].join(' ')}
-            >
-              <MoreVerticalIcon className="size-3.5" />
-            </Button>
-          }
-        />
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    aria-label={t('stage.leftRail.row.menu')}
+                    onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                    className={[
+                      'text-text-muted',
+                      'hover:bg-interaction-hover hover:text-text-base',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing',
+                      'data-[state=open]:bg-interaction-selected data-[state=open]:text-accent-primary',
+                    ].join(' ')}
+                  >
+                    <MoreVerticalIcon className="size-3.5" />
+                  </Button>
+                }
+              />
+            }
+          />
+          <TooltipContent>{t('stage.leftRail.row.menu')}</TooltipContent>
+        </Tooltip>
         <DropdownMenuContent align="end" className="bg-bg-elevated border border-border-default shadow-sm">
-          <DropdownMenuItem onClick={() => focusTab(tab.tabId)} className="hover:bg-interaction-hover focus:bg-interaction-selected focus:text-text-strong">
+          <DropdownMenuItem onClick={() => focusTab(tab.tabId)} className="focus:bg-accent focus:text-accent-foreground">
             <ExternalLinkIcon className="size-4 mr-2 text-text-muted" />
             {t('stage.leftRail.row.menu.open')}
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => setTabPinned(tab.tabId, !tab.pinned)}
-            className="hover:bg-interaction-hover focus:bg-interaction-selected focus:text-text-strong"
+            className="focus:bg-accent focus:text-accent-foreground"
           >
             {tab.pinned ? <PinOffIcon className="size-4 mr-2 text-text-muted" /> : <PinIcon className="size-4 mr-2 text-text-muted" />}
             {tab.pinned ? t('stage.leftRail.row.menu.unpin') : t('stage.leftRail.row.menu.pin')}
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => archiveTab(tab.tabId, !tab.archived)}
-            className="hover:bg-interaction-hover focus:bg-interaction-selected focus:text-text-strong"
+            className="focus:bg-accent focus:text-accent-foreground"
           >
             {tab.archived ? <ArchiveRestoreIcon className="size-4 mr-2 text-text-muted" /> : <ArchiveIcon className="size-4 mr-2 text-text-muted" />}
             {tab.archived ? t('stage.leftRail.row.menu.unarchive') : t('stage.leftRail.row.menu.archive')}
@@ -67,7 +75,7 @@ export function StageRailRowMenu({ tab }: Props) {
           <DropdownMenuSeparator className="bg-border-subtle" />
           <DropdownMenuItem
             onClick={() => setConfirmTrashOpen(true)}
-            className="text-status-danger hover:bg-status-dangerSurface focus:bg-status-dangerSurface focus:text-status-danger"
+            className="text-status-danger focus:bg-destructive/10 focus:text-destructive"
           >
             <Trash2Icon className="size-4 mr-2" />
             {t('stage.leftRail.row.menu.trash')}

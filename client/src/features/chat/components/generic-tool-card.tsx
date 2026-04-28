@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/i18n/use-i18n'
 import { Badge } from '@/components/ui/badge'
 import type { ActionDescriptor } from '@/features/actions/registry'
 
@@ -20,11 +21,18 @@ const statusStyles: Record<PartStatus, string> = {
 }
 
 export function GenericToolCard({ part, descriptor }: { part: PartWithState; descriptor: ActionDescriptor }) {
+  const { t } = useI18n()
   const status = (part.state?.status ?? 'pending') as PartStatus
+  const statusLabels: Record<PartStatus, string> = {
+    pending: t('action.status.pending'),
+    running: t('action.status.running'),
+    completed: t('action.status.completed'),
+    error: t('action.status.error'),
+  }
   return (
     <div className="my-2 rounded border bg-background p-2 text-xs">
       <div className="flex items-center gap-2">
-        <Badge variant="outline" className={cn('rounded', statusStyles[status])}>{status}</Badge>
+        <Badge variant="outline" className={cn('rounded', statusStyles[status])}>{statusLabels[status]}</Badge>
         <span className="font-mono">{descriptor.id}</span>
       </div>
       <div className="mt-1 text-muted-foreground">{descriptor.description}</div>

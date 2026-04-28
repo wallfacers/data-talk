@@ -33,7 +33,7 @@ export function SettingsNav({ activeSection, onSectionChange }: SettingsNavProps
                 type="button"
                 onClick={() => onSectionChange(it.key)}
                 className={cn(
-                  'flex w-full items-center gap-2 rounded px-2 py-1.5 hover:bg-accent text-left',
+                  'flex w-full items-center gap-2 rounded px-2 py-1.5 hover:bg-accent text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing',
                   activeSection === it.key && 'bg-accent font-medium',
                 )}
               >

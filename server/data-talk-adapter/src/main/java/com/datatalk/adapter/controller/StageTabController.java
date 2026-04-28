@@ -1,5 +1,6 @@
 package com.datatalk.adapter.controller;
 
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.stage.StageTabPayloadTooLargeException;
 import com.datatalk.application.stage.StageTabRepository;
 import com.datatalk.application.stage.StageTabService;
@@ -22,10 +23,12 @@ public class StageTabController {
 
     private final StageTabService service;
     private final ObjectMapper objectMapper;
+    private final Translator translator;
 
-    public StageTabController(StageTabService service, ObjectMapper objectMapper) {
+    public StageTabController(StageTabService service, ObjectMapper objectMapper, Translator translator) {
         this.service = service;
         this.objectMapper = objectMapper;
+        this.translator = translator;
     }
 
     @GetMapping

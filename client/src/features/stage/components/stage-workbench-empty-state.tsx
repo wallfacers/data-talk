@@ -87,7 +87,7 @@ export function StageWorkbenchEmptyState({
               className={cn(
                 'group flex min-h-[96px] w-full items-start justify-between gap-4 rounded-2xl border px-4 py-3 text-left transition-colors',
                 enabled
-                  ? 'border-border/60 bg-background/95 shadow-sm hover:border-primary/45 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40'
+                  ? 'border-border/60 bg-background/95 shadow-sm hover:border-primary/45 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50'
                   : 'cursor-not-allowed border-border/45 bg-muted/35 text-muted-foreground opacity-75',
               )}
             >

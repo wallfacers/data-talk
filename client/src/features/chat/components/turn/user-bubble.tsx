@@ -148,9 +148,16 @@ export function UserBubble(props: { info: MessageInfo; parts: Part[] }) {
       )}
       {!pending && !failed && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <button onClick={handleCopy} className="flex items-center hover:text-foreground" aria-label={t('common.copy')}>
-            {copied ? <CheckIcon className="size-3.5" /> : <CopyIcon className="size-3.5" />}
-          </button>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <button onClick={handleCopy} className="flex items-center hover:text-foreground" aria-label={t('common.copy')}>
+                  {copied ? <CheckIcon className="size-3.5" /> : <CopyIcon className="size-3.5" />}
+                </button>
+              }
+            />
+            <TooltipContent>{t('common.copy')}</TooltipContent>
+          </Tooltip>
           {info.time.created && <span>· {new Date(info.time.created).toLocaleTimeString(language)}</span>}
         </div>
       )}

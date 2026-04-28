@@ -34,7 +34,7 @@ export function ChartExpandModal({ option, onClose }: ChartExpandModalProps) {
     >
       <div className="flex max-h-[92vh] w-[92vw] max-w-6xl flex-col overflow-hidden rounded-xl border border-[var(--dt-border-subtle)] bg-[var(--dt-bg-panel)] shadow-2xl">
         <div className="flex items-center justify-between border-b border-[var(--dt-border-subtle)] px-4 py-2">
-          <span className="font-mono text-[13px] leading-[18px] text-[var(--dt-text-muted)]">chart</span>
+          <span className="font-mono text-[13px] leading-[18px] text-[var(--dt-text-muted)]">{t('chart.label')}</span>
           <Tooltip>
             <TooltipTrigger
               render={

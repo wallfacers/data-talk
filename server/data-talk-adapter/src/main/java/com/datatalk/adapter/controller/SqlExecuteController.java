@@ -4,6 +4,7 @@ import com.datatalk.adapter.dto.SqlExecuteRequest;
 import com.datatalk.adapter.dto.SqlExecuteResult;
 import com.datatalk.adapter.dto.SqlExecuteResultItem;
 import com.datatalk.adapter.dto.SqlConfirmationPayload;
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.sql.SqlExecuteService;
 import com.datatalk.domain.action.RiskLevel;
 import org.springframework.http.ResponseEntity;
@@ -18,9 +19,11 @@ import java.util.NoSuchElementException;
 public class SqlExecuteController {
 
     private final SqlExecuteService service;
+    private final Translator translator;
 
-    public SqlExecuteController(SqlExecuteService service) {
+    public SqlExecuteController(SqlExecuteService service, Translator translator) {
         this.service = service;
+        this.translator = translator;
     }
 
     @PostMapping("/execute")
@@ -50,9 +53,9 @@ public class SqlExecuteController {
                         new SqlExecuteResult.SqlConfirmationInvalid(i.reason(), i.ackedRisk(), i.currentRisk(), i.message())));
             };
         } catch (IllegalArgumentException | NoSuchElementException e) {
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of("message", translator.getOrDefault(e.getMessage(), e.getMessage())));
         } catch (RuntimeException e) {
-            return ResponseEntity.internalServerError().body(Map.of("message", e.getMessage()));
+            return ResponseEntity.internalServerError().body(Map.of("message", translator.getOrDefault(e.getMessage(), e.getMessage())));
         }
     }
 

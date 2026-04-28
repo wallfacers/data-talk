@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { CopyIcon, SquareIcon, XIcon } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useStageStore, type StageTab } from '@/stores/stage-store'
 import { useSessionStore } from '@/stores/session-store'
 import { useActiveArtifactTitle } from '../use-active-artifact-title'
@@ -112,28 +113,42 @@ export function StageWindow() {
             <span className="text-xs font-medium tracking-wide text-foreground/80">{label || t('stage.workspace')}</span>
           </div>
           <div className="flex h-full items-center">
-            <Button
-              type="button"
-              variant="ghost"
-              className="h-full w-11 rounded-none text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-0"
-              aria-label={maximized ? t('stage.restore') : t('stage.maximize')}
-              onClick={handleToggleMaximized}
-            >
-              {maximized ? (
-                <CopyIcon className="size-4 rotate-180" strokeWidth={1.5} />
-              ) : (
-                <SquareIcon className="size-4" strokeWidth={1.5} />
-              )}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              className="h-full w-11 rounded-none text-muted-foreground transition-colors hover:bg-[#e81123] hover:text-white focus-visible:ring-0"
-              aria-label={t('stage.close')}
-              onClick={handleClose}
-            >
-              <XIcon className="size-4" strokeWidth={1.5} />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-full w-11 rounded-none text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing"
+                    aria-label={maximized ? t('stage.restore') : t('stage.maximize')}
+                    onClick={handleToggleMaximized}
+                  >
+                    {maximized ? (
+                      <CopyIcon className="size-4 rotate-180" strokeWidth={1.5} />
+                    ) : (
+                      <SquareIcon className="size-4" strokeWidth={1.5} />
+                    )}
+                  </Button>
+                }
+              />
+              <TooltipContent>{maximized ? t('stage.restore') : t('stage.maximize')}</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-full w-11 rounded-none text-muted-foreground transition-colors hover:bg-[#e81123] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing"
+                    aria-label={t('stage.close')}
+                    onClick={handleClose}
+                  >
+                    <XIcon className="size-4" strokeWidth={1.5} />
+                  </Button>
+                }
+              />
+              <TooltipContent>{t('stage.close')}</TooltipContent>
+            </Tooltip>
           </div>
         </div>
       </div>

@@ -13,7 +13,7 @@ export function ModelOverlay() {
       <div className="text-sm">{t('session.needModel')}</div>
       <div className="mt-2 text-right">
         <button
-          className="text-xs text-muted-foreground hover:underline"
+          className="text-xs text-muted-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing rounded"
           onClick={() => { setPending(false); setPrompt(null) }}
         >
           {t('common.cancel')}

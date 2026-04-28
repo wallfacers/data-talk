@@ -1,6 +1,7 @@
 package com.datatalk.adapter.rest;
 
 import com.datatalk.application.chart.ChartArtifactService;
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.persistence.SessionRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -23,15 +24,18 @@ public class ChartArtifactController {
     private final ChartArtifactService chartArtifactService;
     private final SessionRepository sessionRepository;
     private final ObjectMapper objectMapper;
+    private final Translator translator;
 
     public ChartArtifactController(
         ChartArtifactService chartArtifactService,
         SessionRepository sessionRepository,
-        ObjectMapper objectMapper
+        ObjectMapper objectMapper,
+        Translator translator
     ) {
         this.chartArtifactService = chartArtifactService;
         this.sessionRepository = sessionRepository;
         this.objectMapper = objectMapper;
+        this.translator = translator;
     }
 
     @PostMapping
@@ -40,12 +44,12 @@ public class ChartArtifactController {
         @RequestBody(required = false) CreateChartArtifactRequest request
     ) {
         if (request == null || request.echartsOption() == null) {
-            return ResponseEntity.badRequest().body(Map.of("message", "echartsOption is required"));
+            return ResponseEntity.badRequest().body(Map.of("message", translator.get("error.chart.echarts_option_required")));
         }
 
         if (serializedSize(request.echartsOption()) > MAX_ECHARTS_OPTION_BYTES) {
             return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
-                .body(Map.of("message", "echartsOption exceeds 256KB"));
+                .body(Map.of("message", translator.get("error.chart.echarts_option_too_large")));
         }
 
         if (sessionRepository.findById(sessionId).isEmpty()) {
@@ -71,7 +75,7 @@ public class ChartArtifactController {
         try {
             return objectMapper.writeValueAsBytes(echartsOption).length;
         } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException("echartsOption must be serializable", e);
+            throw new IllegalArgumentException(translator.get("error.chart.echarts_option_not_serializable"), e);
         }
     }
 

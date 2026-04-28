@@ -107,7 +107,7 @@ export function NavUser({
                         requestAnimationFrame(() => openDialog(it.section))
                       }}
                       className={cn(
-                        'flex w-full items-center gap-2 rounded px-2 py-1.5 hover:bg-accent text-left text-sm',
+                        'flex w-full items-center gap-2 rounded px-2 py-1.5 hover:bg-accent text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing',
                       )}
                     >
                       <Icon className="size-4" />

@@ -131,7 +131,7 @@ export function GeneralSettingsPanel({
                 type="button"
                 onClick={() => onThemeChange?.(option.value)}
                 className={cn(
-                  'flex flex-col items-center justify-center gap-2 rounded-lg border p-4 text-sm transition-colors',
+                  'flex flex-col items-center justify-center gap-2 rounded-lg border p-4 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing',
                   active
                     ? 'border-primary bg-primary/5 text-foreground'
                     : 'border-input bg-background text-muted-foreground hover:text-foreground hover:border-foreground/30'

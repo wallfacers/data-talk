@@ -225,7 +225,7 @@ export const ChartBlock = memo(function ChartBlock({
       className="my-2 overflow-hidden rounded-lg border border-[var(--dt-border-subtle)]"
     >
       <div className="flex items-center justify-between border-b border-[var(--dt-border-subtle)] bg-[var(--dt-bg-subtle)] px-3 py-1.5">
-        <span className="font-mono text-[13px] leading-[18px] text-[var(--dt-text-muted)]">chart</span>
+        <span className="font-mono text-[13px] leading-[18px] text-[var(--dt-text-muted)]">{t('chart.label')}</span>
         <div className="flex items-center gap-1 text-[13px] leading-[18px]">
           <Tooltip>
             <TooltipTrigger

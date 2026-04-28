@@ -2,6 +2,7 @@ package com.datatalk.infra.diagnostics;
 
 import com.datatalk.application.connection.JdbcUrlBuilder;
 import com.datatalk.application.diagnostics.DiagnosticsProvider;
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.domain.diagnostics.*;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -15,6 +16,11 @@ import org.springframework.stereotype.Component;
 public class PostgreSqlDiagnosticsProvider implements DiagnosticsProvider {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final Translator translator;
+
+    public PostgreSqlDiagnosticsProvider(Translator translator) {
+        this.translator = translator;
+    }
 
     @Override
     public Set<String> supportedDriverTypes() {
@@ -70,17 +76,17 @@ public class PostgreSqlDiagnosticsProvider implements DiagnosticsProvider {
 
     @Override
     public DiagnosticResult<LockReport> lockInfo(ConnectionRecord conn, String decryptedPassword, String database) {
-        return DiagnosticResult.unsupported("PostgreSQL lock info is not yet supported");
+        return DiagnosticResult.unsupported(translator.get("diagnostics.lock_not_supported", "PostgreSQL"));
     }
 
     @Override
     public DiagnosticResult<PoolReport> connectionPoolInfo(ConnectionRecord conn, String decryptedPassword) {
-        return DiagnosticResult.unsupported("PostgreSQL connection pool info is not yet supported");
+        return DiagnosticResult.unsupported(translator.get("diagnostics.pool_not_supported", "PostgreSQL"));
     }
 
     @Override
     public DiagnosticResult<SpaceReport> tableSpaceInfo(ConnectionRecord conn, String decryptedPassword, String database) {
-        return DiagnosticResult.unsupported("PostgreSQL table space info is not yet supported");
+        return DiagnosticResult.unsupported(translator.get("diagnostics.tablespace_not_supported", "PostgreSQL"));
     }
 
     // -- internal parsing --
@@ -163,7 +169,7 @@ public class PostgreSqlDiagnosticsProvider implements DiagnosticsProvider {
         List<String> warnings = new ArrayList<>();
         for (ExplainNode node : nodes) {
             if (node.scanType() == ScanType.FULL_SCAN) {
-                warnings.add("Sequential scan on " + node.table());
+                warnings.add(translator.get("diagnostics.warning.sequential_scan", node.table()));
             }
             warnings.addAll(collectWarnings(node.children()));
         }
@@ -182,7 +188,7 @@ public class PostgreSqlDiagnosticsProvider implements DiagnosticsProvider {
                         cols,
                         "BTREE",
                         impact,
-                        "Sequential scan on " + node.table() + " (" + node.rows() + " rows)"
+                        translator.get("diagnostics.recommendation.sequential_scan", node.table(), String.valueOf(node.rows()))
                     ));
                 }
             }

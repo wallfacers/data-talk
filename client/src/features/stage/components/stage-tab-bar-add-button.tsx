@@ -3,6 +3,7 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useI18n } from '@/i18n/use-i18n'
 import { useStageStore } from '@/stores/stage-store'
 import { useSessionStore } from '@/stores/session-store'
@@ -22,26 +23,33 @@ export function StageTabBarAddButton() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-xs"
-            aria-label={t('stage.tabBar.addNew')}
-            className={[
-              'text-text-muted',
-              'hover:bg-interaction-hover hover:text-text-base',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing',
-              'data-[state=open]:bg-interaction-selected data-[state=open]:text-accent-primary',
-            ].join(' ')}
-          >
-            <PlusIcon className="size-4" />
-          </Button>
-        }
-      />
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label={t('stage.tabBar.addNew')}
+                  className={[
+                    'text-text-muted',
+                    'hover:bg-interaction-hover hover:text-text-base',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing',
+                    'data-[state=open]:bg-interaction-selected data-[state=open]:text-accent-primary',
+                  ].join(' ')}
+                >
+                  <PlusIcon className="size-4" />
+                </Button>
+              }
+            />
+          }
+        />
+        <TooltipContent>{t('stage.tabBar.addNew')}</TooltipContent>
+      </Tooltip>
       <DropdownMenuContent align="end" className="bg-bg-elevated border border-border-default shadow-sm">
-        <DropdownMenuItem onClick={openSqlEditor} className="text-text-base hover:bg-interaction-hover focus:bg-interaction-selected focus:text-text-strong">
+        <DropdownMenuItem onClick={openSqlEditor} className="text-text-base focus:bg-accent focus:text-accent-foreground">
           <DatabaseIcon className="size-4 mr-2 text-text-muted" />
           {t('stage.tabBar.addNew.menu.sql')}
         </DropdownMenuItem>

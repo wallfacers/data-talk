@@ -120,7 +120,7 @@ function ConnectPage({ provider, onBack, onSaved }: {
   return (
     <div className="max-w-2xl">
       <button
-        className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing rounded"
         onClick={onBack}
       >
         <ArrowLeftIcon className="size-3.5" />
@@ -164,7 +164,7 @@ function ConnectPage({ provider, onBack, onSaved }: {
                 <Label className="text-sm font-medium">{t('providers.baseUrl')}<span className="text-muted-foreground font-normal">{t('providers.optional')}</span></Label>
                 <Input
                   value={baseUrl}
-                  placeholder="https://api.example.com"
+                  placeholder={t('providers.baseUrlPlaceholder')}
                   onChange={(e) => setBaseUrl(e.target.value)}
                   className="font-mono"
                 />

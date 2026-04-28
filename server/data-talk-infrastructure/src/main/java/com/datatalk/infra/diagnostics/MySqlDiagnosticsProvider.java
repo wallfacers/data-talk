@@ -2,6 +2,7 @@ package com.datatalk.infra.diagnostics;
 
 import com.datatalk.application.connection.JdbcUrlBuilder;
 import com.datatalk.application.diagnostics.DiagnosticsProvider;
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.domain.diagnostics.*;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -14,6 +15,11 @@ import org.springframework.stereotype.Component;
 public class MySqlDiagnosticsProvider implements DiagnosticsProvider {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final Translator translator;
+
+    public MySqlDiagnosticsProvider(Translator translator) {
+        this.translator = translator;
+    }
 
     @Override
     public Set<String> supportedDriverTypes() {
@@ -61,17 +67,17 @@ public class MySqlDiagnosticsProvider implements DiagnosticsProvider {
 
     @Override
     public DiagnosticResult<LockReport> lockInfo(ConnectionRecord conn, String decryptedPassword, String database) {
-        return DiagnosticResult.unsupported("MySQL lock info is not yet supported");
+        return DiagnosticResult.unsupported(translator.get("diagnostics.lock_not_supported", "MySQL"));
     }
 
     @Override
     public DiagnosticResult<PoolReport> connectionPoolInfo(ConnectionRecord conn, String decryptedPassword) {
-        return DiagnosticResult.unsupported("MySQL connection pool info is not yet supported");
+        return DiagnosticResult.unsupported(translator.get("diagnostics.pool_not_supported", "MySQL"));
     }
 
     @Override
     public DiagnosticResult<SpaceReport> tableSpaceInfo(ConnectionRecord conn, String decryptedPassword, String database) {
-        return DiagnosticResult.unsupported("MySQL table space info is not yet supported");
+        return DiagnosticResult.unsupported(translator.get("diagnostics.tablespace_not_supported", "MySQL"));
     }
 
     // -- internal parsing --
@@ -156,7 +162,7 @@ public class MySqlDiagnosticsProvider implements DiagnosticsProvider {
         List<String> warnings = new ArrayList<>();
         for (ExplainNode node : nodes) {
             if (node.scanType() == ScanType.FULL_SCAN) {
-                warnings.add("Full table scan on " + node.table());
+                warnings.add(translator.get("diagnostics.warning.full_table_scan", node.table()));
             }
             warnings.addAll(collectWarnings(node.children()));
         }
@@ -175,7 +181,7 @@ public class MySqlDiagnosticsProvider implements DiagnosticsProvider {
                         cols,
                         "BTREE",
                         impact,
-                        "Full table scan on " + node.table() + " (" + node.rows() + " rows)"
+                        translator.get("diagnostics.recommendation.full_scan", node.table(), String.valueOf(node.rows()))
                     ));
                 }
             }

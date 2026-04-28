@@ -75,7 +75,7 @@ export function ModelPickerDialog({ open, onOpenChange, providers, currentModelI
                 type="button"
                 onClick={() => setActiveProviderId(p.id)}
                 className={cn(
-                  'flex w-full items-center gap-2 rounded px-2 py-1.5 hover:bg-accent text-left',
+                  'flex w-full items-center gap-2 rounded px-2 py-1.5 hover:bg-accent text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing',
                   activeProviderId === p.id && 'bg-accent font-medium',
                 )}
               >
@@ -96,7 +96,7 @@ export function ModelPickerDialog({ open, onOpenChange, providers, currentModelI
                       type="button"
                       onClick={() => { onPick(id); onOpenChange(false) }}
                       className={cn(
-                        'block w-full rounded px-3 py-2 text-left text-sm hover:bg-accent',
+                        'block w-full rounded px-3 py-2 text-left text-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing',
                         active && 'bg-accent',
                       )}
                     >

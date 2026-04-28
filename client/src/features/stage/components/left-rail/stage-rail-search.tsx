@@ -1,5 +1,6 @@
 import { SearchIcon, XIcon } from 'lucide-react'
 import { useI18n } from '@/i18n/use-i18n'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 type Props = {
   value: string
@@ -15,7 +16,7 @@ export function StageRailSearch({ value, onChange, disabled }: Props) {
         'group relative flex h-8 items-center gap-1.5 rounded-md px-2',
         'bg-bg-panel border border-border-default',
         'hover:bg-interaction-hover',
-        'focus-within:border-border-strong focus-within:ring-2 focus-within:ring-interaction-focusRing',
+        'focus-within:border-border-strong focus-within:ring-3 focus-within:ring-interaction-focusRing',
         disabled ? 'opacity-50 pointer-events-none' : '',
       ].join(' ')}
     >
@@ -34,14 +35,21 @@ export function StageRailSearch({ value, onChange, disabled }: Props) {
         aria-label={t('stage.leftRail.search.placeholder')}
       />
       {value ? (
-        <button
-          type="button"
-          aria-label={t('common.clear')}
-          onClick={() => onChange('')}
-          className="text-text-muted hover:text-text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing rounded"
-        >
-          <XIcon className="size-3.5" />
-        </button>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <button
+                type="button"
+                aria-label={t('common.clear')}
+                onClick={() => onChange('')}
+                className="text-text-muted hover:text-text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing rounded"
+              >
+                <XIcon className="size-3.5" />
+              </button>
+            }
+          />
+          <TooltipContent>{t('common.clear')}</TooltipContent>
+        </Tooltip>
       ) : null}
     </div>
   )

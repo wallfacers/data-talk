@@ -1,6 +1,7 @@
 import { DatabaseIcon, HistoryIcon, ListTreeIcon, SearchCodeIcon } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useI18n } from '@/i18n/use-i18n'
 import { cn } from '@/lib/utils'
 import { useStageStore, type RailPanel } from '@/stores/stage-store'
@@ -212,22 +213,28 @@ export function StageActivityRail({ className }: Props) {
         {panelMeta.map(({ panel, label, Icon }) => {
           const isActive = activePanel === panel
           return (
-            <Button
-              key={panel}
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              aria-label={label}
-              aria-pressed={isActive}
-              data-state={isActive ? 'active' : 'inactive'}
-              onClick={() => handlePanelClick(panel)}
-              className={cn(
-                'w-7 rounded-none border-0 text-muted-foreground transition-colors',
-                isActive ? 'bg-background text-foreground' : 'hover:bg-muted hover:text-foreground',
-              )}
-            >
-              <Icon className="size-3.5" />
-            </Button>
+            <Tooltip key={panel}>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={label}
+                    aria-pressed={isActive}
+                    data-state={isActive ? 'active' : 'inactive'}
+                    onClick={() => handlePanelClick(panel)}
+                    className={cn(
+                      'w-7 rounded-none border-0 text-muted-foreground transition-colors',
+                      isActive ? 'bg-background text-foreground' : 'hover:bg-muted hover:text-foreground',
+                    )}
+                  >
+                    <Icon className="size-3.5" />
+                  </Button>
+                }
+              />
+              <TooltipContent>{label}</TooltipContent>
+            </Tooltip>
           )
         })}
       </div>

@@ -77,7 +77,7 @@ export function DataSourcePickerDialog({
                     onOpenChange(false)
                   }}
                   className={cn(
-                    'flex w-full items-start justify-between rounded-lg border px-3 py-3 text-left hover:bg-accent/50',
+                    'flex w-full items-start justify-between rounded-lg border px-3 py-3 text-left hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing',
                     preferredConnectionId === connection.id && 'border-primary/40 bg-accent/30',
                   )}
                 >

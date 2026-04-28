@@ -3,6 +3,7 @@ package com.datatalk.adapter.controller;
 import com.datatalk.adapter.actions.ExplainQueryAction;
 import com.datatalk.adapter.actions.IndexHintsAction;
 import com.datatalk.application.diagnostics.DiagnosticsService;
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.domain.diagnostics.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,9 +16,11 @@ import java.util.Map;
 public class DiagnosticsController {
 
     private final DiagnosticsService service;
+    private final Translator translator;
 
-    public DiagnosticsController(DiagnosticsService service) {
+    public DiagnosticsController(DiagnosticsService service, Translator translator) {
         this.service = service;
+        this.translator = translator;
     }
 
     @PostMapping("/explain")
@@ -26,7 +29,7 @@ public class DiagnosticsController {
             @RequestBody Map<String, Object> body) {
         String sql = (String) body.get("sql");
         if (sql == null || sql.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "SQL is required"));
+            return ResponseEntity.badRequest().body(Map.of("message", translator.get("error.sql.required")));
         }
 
         DiagnosticResult<ExplainPlan> result = service.explain(sessionId, sql);
@@ -48,7 +51,7 @@ public class DiagnosticsController {
             @RequestBody Map<String, Object> body) {
         String sql = (String) body.get("sql");
         if (sql == null || sql.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "SQL is required"));
+            return ResponseEntity.badRequest().body(Map.of("message", translator.get("error.sql.required")));
         }
 
         DiagnosticResult<List<IndexRecommendation>> result = service.indexHints(sessionId, sql);

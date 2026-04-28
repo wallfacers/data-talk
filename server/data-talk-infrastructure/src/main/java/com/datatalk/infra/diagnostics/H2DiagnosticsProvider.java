@@ -2,6 +2,7 @@ package com.datatalk.infra.diagnostics;
 
 import com.datatalk.application.connection.JdbcUrlBuilder;
 import com.datatalk.application.diagnostics.DiagnosticsProvider;
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.domain.diagnostics.*;
 import java.sql.Connection;
@@ -13,6 +14,12 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class H2DiagnosticsProvider implements DiagnosticsProvider {
+
+    private final Translator translator;
+
+    public H2DiagnosticsProvider(Translator translator) {
+        this.translator = translator;
+    }
 
     private static final Pattern TABLE_SCAN_PATTERN =
         Pattern.compile("FROM\\s+(\\w+\\.\\w+|\\w+)\\s*/\\*\\s*(\\w+)\\.tableScan");
@@ -71,7 +78,7 @@ public class H2DiagnosticsProvider implements DiagnosticsProvider {
                         cols,
                         "BTREE",
                         Impact.MEDIUM,
-                        "Table scan on " + node.table()
+                        translator.get("diagnostics.recommendation.table_scan", node.table())
                     ));
                 }
             }
@@ -81,17 +88,17 @@ public class H2DiagnosticsProvider implements DiagnosticsProvider {
 
     @Override
     public DiagnosticResult<LockReport> lockInfo(ConnectionRecord conn, String decryptedPassword, String database) {
-        return DiagnosticResult.unsupported("H2 lock info is not yet supported");
+        return DiagnosticResult.unsupported(translator.get("diagnostics.lock_not_supported", "H2"));
     }
 
     @Override
     public DiagnosticResult<PoolReport> connectionPoolInfo(ConnectionRecord conn, String decryptedPassword) {
-        return DiagnosticResult.unsupported("H2 connection pool info is not yet supported");
+        return DiagnosticResult.unsupported(translator.get("diagnostics.pool_not_supported", "H2"));
     }
 
     @Override
     public DiagnosticResult<SpaceReport> tableSpaceInfo(ConnectionRecord conn, String decryptedPassword, String database) {
-        return DiagnosticResult.unsupported("H2 table space info is not yet supported");
+        return DiagnosticResult.unsupported(translator.get("diagnostics.tablespace_not_supported", "H2"));
     }
 
     // -- internal parsing --
@@ -169,7 +176,7 @@ public class H2DiagnosticsProvider implements DiagnosticsProvider {
         List<String> warnings = new ArrayList<>();
         for (ExplainNode node : nodes) {
             if (node.scanType() == ScanType.FULL_SCAN) {
-                warnings.add("Table scan on " + node.table());
+                warnings.add(translator.get("diagnostics.warning.table_scan", node.table()));
             }
         }
         return warnings;

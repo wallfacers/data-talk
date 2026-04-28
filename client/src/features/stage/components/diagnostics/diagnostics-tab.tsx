@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { ChevronRightIcon, DatabaseIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/i18n/use-i18n'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ExplainPlanTree } from './explain-plan-tree'
 import { IndexRecommendationList } from './index-recommendation-list'
 import type { ExplainNode, IndexRecommendation } from '@/features/stage/types/diagnostics'
@@ -24,6 +26,7 @@ type DiagnosticsTabProps = {
 
 export function DiagnosticsTab({ payload }: DiagnosticsTabProps) {
   const [rawExpanded, setRawExpanded] = useState(false)
+  const { t } = useI18n()
   const {
     sql,
     connectionName,
@@ -39,7 +42,7 @@ export function DiagnosticsTab({ payload }: DiagnosticsTabProps) {
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p className="text-sm text-muted-foreground">Running EXPLAIN&#8230;</p>
+        <p className="text-sm text-muted-foreground">{t('diagnostics.running')}</p>
       </div>
     )
   }
@@ -73,7 +76,7 @@ export function DiagnosticsTab({ payload }: DiagnosticsTabProps) {
         {/* Left: Execution Plan */}
         <div className="w-3/5 overflow-auto border-r p-3">
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Execution Plan
+            {t('diagnostics.executionPlan')}
           </h3>
           <ExplainPlanTree nodes={plan ?? []} />
         </div>
@@ -81,7 +84,7 @@ export function DiagnosticsTab({ payload }: DiagnosticsTabProps) {
         {/* Right: Index Recommendations */}
         <div className="w-2/5 overflow-auto p-3">
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Index Recommendations
+            {t('diagnostics.indexRecommendations')}
           </h3>
           <IndexRecommendationList recommendations={recommendations ?? []} />
           {explainSummary && (
@@ -93,18 +96,25 @@ export function DiagnosticsTab({ payload }: DiagnosticsTabProps) {
       {/* Bottom: collapsible raw EXPLAIN */}
       {rawExplainText && (
         <div className="border-t">
-          <button
-            type="button"
-            className="flex w-full items-center gap-1.5 px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted"
-            onClick={() => setRawExpanded((prev) => !prev)}
-            aria-expanded={rawExpanded}
-            aria-label="Toggle raw EXPLAIN output"
-          >
-            <ChevronRightIcon
-              className={cn('size-3 transition-transform', rawExpanded && 'rotate-90')}
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-1.5 px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted"
+                  onClick={() => setRawExpanded((prev) => !prev)}
+                  aria-expanded={rawExpanded}
+                  aria-label={t('diagnostics.toggleRaw')}
+                >
+                  <ChevronRightIcon
+                    className={cn('size-3 transition-transform', rawExpanded && 'rotate-90')}
+                  />
+                  {t('diagnostics.rawExplain')}
+                </button>
+              }
             />
-            Raw EXPLAIN
-          </button>
+            <TooltipContent>{t('diagnostics.toggleRaw')}</TooltipContent>
+          </Tooltip>
           {rawExpanded && (
             <pre className="max-h-40 overflow-auto bg-muted/50 px-3 py-2 text-xs font-mono">
               {rawExplainText}

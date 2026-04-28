@@ -28,7 +28,7 @@ export function ModelPicker() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex h-7 items-center gap-1.5 rounded px-2 text-xs text-foreground hover:bg-accent/50"
+        className="flex h-7 items-center gap-1.5 rounded px-2 text-xs text-foreground hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing"
       >
         {selected ? (
           <>

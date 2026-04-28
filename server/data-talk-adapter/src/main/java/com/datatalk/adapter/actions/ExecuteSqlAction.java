@@ -3,6 +3,7 @@ package com.datatalk.adapter.actions;
 import com.datatalk.application.channel.IdGenerator;
 import com.datatalk.application.connection.ConnectionService;
 import com.datatalk.application.connection.JdbcUrlBuilder;
+import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.persistence.*;
 import com.datatalk.application.session.SessionDataContextService;
 import com.datatalk.application.sql.JdbcResultValueNormalizer;
@@ -56,12 +57,14 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
     private final Clock clock;
     private final IdGenerator ids;
     private final SessionDataContextService sessionContexts;
+    private final Translator translator;
 
     public ExecuteSqlAction(ConnectionRepository connRepo, ConnectionService connSvc,
                             SqlRiskAnalyzer riskAnalyzer, ArtifactRepository artifacts,
                             QueryResultRepository queryResults, ObjectMapper om, Clock clock,
                             IdGenerator ids,
-                            SessionDataContextService sessionContexts) {
+                            SessionDataContextService sessionContexts,
+                            Translator translator) {
         this.connRepo = connRepo;
         this.connSvc = connSvc;
         this.riskAnalyzer = riskAnalyzer;
@@ -71,6 +74,7 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
         this.clock = clock;
         this.ids = ids;
         this.sessionContexts = sessionContexts;
+        this.translator = translator;
     }
 
     @Override public Map<String, Object> inputSchema() {
@@ -159,7 +163,7 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
                 }
             }
         } catch (SQLTimeoutException e) {
-            throw new DataTalkException(DataTalkErrorCodes.SQL_TIMEOUT, "query timeout", false);
+            throw new DataTalkException(DataTalkErrorCodes.SQL_TIMEOUT, translator.get("error.sql.query_timeout"), false);
         } catch (SQLException e) {
             throw new DataTalkException(DataTalkErrorCodes.SQL_SYNTAX_ERROR, e.getMessage(), true);
         }
@@ -218,12 +222,12 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
             ctx.connectionId()
         );
         if (!hasText(connectionId)) {
-            throw new DataTalkException(DataTalkErrorCodes.CONNECTION_MISSING, "no active connection", false);
+            throw new DataTalkException(DataTalkErrorCodes.CONNECTION_MISSING, translator.get("error.connection.no_active"), false);
         }
 
         ConnectionRecord connection = connRepo.findById(connectionId)
             .orElseThrow(() -> new DataTalkException(DataTalkErrorCodes.CONNECTION_MISSING,
-                "unknown connection: " + connectionId, false));
+                translator.get("error.connection.unknown_connection", connectionId), false));
         boolean inheritsSessionScope = connectionId.equals(sessionContext.connectionId());
         return new ResolvedSqlContext(
             connection,

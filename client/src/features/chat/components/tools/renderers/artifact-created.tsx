@@ -90,7 +90,7 @@ export function ArtifactCreated(props: ToolRendererProps) {
                       event.stopPropagation()
                       openArtifact()
                     }}
-                    className="inline-flex size-6 items-center justify-center rounded-md text-foreground hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex size-6 items-center justify-center rounded-md text-foreground hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing"
                   >
                     <EyeIcon className="size-3.5" />
                   </button>

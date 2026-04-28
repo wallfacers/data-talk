@@ -137,7 +137,7 @@ export function SqlResultTabs({
                               data-state={isActive ? 'active' : 'inactive'}
                               data-kind={result.kind}
                               className={cn(
-                                'relative flex h-[38px] max-w-[240px] shrink-0 items-center gap-1 border-b-2 border-b-transparent px-3 pt-[1px] text-xs transition-colors duration-150',
+                                'relative flex h-[38px] max-w-[240px] shrink-0 items-center gap-1 border-b-2 border-b-transparent px-3 pt-[1px] text-xs transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing',
                                 isActive
                                   ? activeToneClass
                                   : 'text-muted-foreground hover:border-b-border/60 hover:text-foreground',
@@ -146,22 +146,29 @@ export function SqlResultTabs({
                             >
                               {icon}
                               <span className="truncate">{result.title}</span>
-                              <div
-                                role="button"
-                                aria-label={t('stage.menu.close')}
-                                className={cn(
-                                  'ml-0.5 flex size-4 items-center justify-center rounded-sm transition-all',
-                                  isActive
-                                    ? 'opacity-100 hover:bg-muted/80'
-                                    : 'opacity-0 group-hover/result:opacity-100 hover:bg-muted/70',
-                                )}
-                                onClick={(event) => {
-                                  event.stopPropagation()
-                                  onClose(result.resultId)
-                                }}
-                              >
-                                <XIcon className="size-3" />
-                              </div>
+                              <Tooltip>
+                                <TooltipTrigger
+                                  render={
+                                    <div
+                                      role="button"
+                                      aria-label={t('stage.menu.close')}
+                                      className={cn(
+                                        'ml-0.5 flex size-4 items-center justify-center rounded-sm transition-all',
+                                        isActive
+                                          ? 'opacity-100 hover:bg-muted/80'
+                                          : 'opacity-0 group-hover/result:opacity-100 hover:bg-muted/70',
+                                      )}
+                                      onClick={(event) => {
+                                        event.stopPropagation()
+                                        onClose(result.resultId)
+                                      }}
+                                    >
+                                      <XIcon className="size-3" />
+                                    </div>
+                                  }
+                                />
+                                <TooltipContent>{t('stage.menu.close')}</TooltipContent>
+                              </Tooltip>
                             </button>
                           }
                         />
@@ -199,16 +206,23 @@ export function SqlResultTabs({
 
       {results.length > 0 && hasOverflow ? (
         <div ref={overflowRef} className="relative ml-2 flex h-[38px] shrink-0 items-center">
-          <button
-            type="button"
-            data-testid="sql-result-overflow-trigger"
-            aria-label={t('stage.tabBar.moreTabs')}
-            aria-expanded={overflowOpen}
-            onClick={() => setOverflowOpen((prev) => !prev)}
-            className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          >
-            <ChevronDownIcon className="size-3.5" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <button
+                  type="button"
+                  data-testid="sql-result-overflow-trigger"
+                  aria-label={t('stage.tabBar.moreTabs')}
+                  aria-expanded={overflowOpen}
+                  onClick={() => setOverflowOpen((prev) => !prev)}
+                  className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing"
+                >
+                  <ChevronDownIcon className="size-3.5" />
+                </button>
+              }
+            />
+            <TooltipContent>{t('stage.tabBar.moreTabs')}</TooltipContent>
+          </Tooltip>
 
           {overflowOpen ? (
             <div
@@ -223,7 +237,7 @@ export function SqlResultTabs({
                       <button
                         type="button"
                         className={cn(
-                          'min-w-0 flex-1 rounded-md px-2 py-1 text-left text-xs transition-colors',
+                          'min-w-0 flex-1 rounded-md px-2 py-1 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing',
                           isActive
                             ? 'bg-accent/70 text-foreground'
                             : 'text-muted-foreground hover:bg-muted hover:text-foreground',
@@ -235,17 +249,24 @@ export function SqlResultTabs({
                       >
                         <span className="truncate">{result.title}</span>
                       </button>
-                      <button
-                        type="button"
-                        aria-label={t('stage.menu.close')}
-                        className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          onClose(result.resultId)
-                        }}
-                      >
-                        <XIcon className="size-3.5" />
-                      </button>
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <button
+                              type="button"
+                              aria-label={t('stage.menu.close')}
+                              className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                onClose(result.resultId)
+                              }}
+                            >
+                              <XIcon className="size-3.5" />
+                            </button>
+                          }
+                        />
+                        <TooltipContent>{t('stage.menu.close')}</TooltipContent>
+                      </Tooltip>
                     </div>
                   )
                 })}

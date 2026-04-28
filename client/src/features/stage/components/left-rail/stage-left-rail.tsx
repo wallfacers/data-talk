@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription,
   AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
@@ -52,14 +53,21 @@ export function StageLeftRail() {
   if (collapsed) {
     return (
       <div className="flex h-full w-9 flex-col bg-bg-subtle border-r border-border-subtle">
-        <button
-          type="button"
-          aria-label={t('stage.leftRail.expand')}
-          onClick={toggleCollapsed}
-          className="h-8 w-full flex items-center justify-center text-text-muted hover:bg-interaction-hover hover:text-text-base"
-        >
-          <ChevronRightIcon className="size-4" />
-        </button>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <button
+                type="button"
+                aria-label={t('stage.leftRail.expand')}
+                onClick={toggleCollapsed}
+                className="h-8 w-full flex items-center justify-center text-text-muted hover:bg-interaction-hover hover:text-text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing"
+              >
+                <ChevronRightIcon className="size-4" />
+              </button>
+            }
+          />
+          <TooltipContent>{t('stage.leftRail.expand')}</TooltipContent>
+        </Tooltip>
       </div>
     )
   }
@@ -70,14 +78,21 @@ export function StageLeftRail() {
         <span className="flex-1 text-xs font-medium uppercase tracking-wide text-text-soft">
           {t('stage.leftRail.title')}
         </span>
-        <Button
-          type="button" variant="ghost" size="icon-xs"
-          aria-label={t('stage.leftRail.collapse')}
-          onClick={toggleCollapsed}
-          className="text-text-muted hover:bg-interaction-hover hover:text-text-base focus-visible:ring-2 focus-visible:ring-interaction-focusRing"
-        >
-          <ChevronLeftIcon className="size-3.5" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                type="button" variant="ghost" size="icon-xs"
+                aria-label={t('stage.leftRail.collapse')}
+                onClick={toggleCollapsed}
+                className="text-text-muted hover:bg-interaction-hover hover:text-text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing"
+              >
+                <ChevronLeftIcon className="size-3.5" />
+              </Button>
+            }
+          />
+          <TooltipContent>{t('stage.leftRail.collapse')}</TooltipContent>
+        </Tooltip>
       </div>
 
       <div className="px-2 pt-2">

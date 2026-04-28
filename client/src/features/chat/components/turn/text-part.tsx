@@ -6,6 +6,7 @@ import { ArtifactRefBlock } from '../markdown/artifact-ref-block'
 import type { TextPart as TextPartType } from '@/services/channel/types'
 import { copyToClipboard } from '@/lib/utils'
 import { useI18n } from '@/i18n/use-i18n'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 // Matches a standalone "chart:art-XXXX" line (multiline mode).
 const ARTIFACT_REF_LINE_RE = /^chart:[A-Za-z0-9_-]+$/gm
@@ -59,9 +60,16 @@ export function TextPart(props: PartComponentProps) {
       ))}
       {props.showCopy && (
         <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-          <button onClick={handleCopy} className="flex items-center hover:text-foreground" aria-label={t('common.copy')}>
-            {copied ? <CheckIcon className="size-3.5" /> : <CopyIcon className="size-3.5" />}
-          </button>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <button onClick={handleCopy} className="flex items-center hover:text-foreground" aria-label={t('common.copy')}>
+                  {copied ? <CheckIcon className="size-3.5" /> : <CopyIcon className="size-3.5" />}
+                </button>
+              }
+            />
+            <TooltipContent>{t('common.copy')}</TooltipContent>
+          </Tooltip>
           {props.info.role === 'assistant' && props.info.modelID && <span>· {props.info.modelID}</span>}
           {props.turnDurationMs !== undefined && props.turnDurationMs >= 0 && (
             <span>· {Math.round(props.turnDurationMs / 1000)}s</span>

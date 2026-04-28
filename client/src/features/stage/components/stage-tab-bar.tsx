@@ -17,6 +17,7 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
 import { cn } from '@/lib/utils'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useI18n } from '@/i18n/use-i18n'
 import { StageTabBarAddButton } from './stage-tab-bar-add-button'
 
@@ -187,7 +188,7 @@ export function StageTabBar({
                           'relative flex h-10 min-w-0 items-center gap-1.5 border-b-2 border-b-transparent px-3 pb-1.5 pt-2 text-[13px] font-medium transition-colors duration-200 ease-out select-none',
                           'data-[state=active]:border-b-foreground data-[state=active]:text-foreground',
                           'data-[state=inactive]:text-muted-foreground hover:data-[state=inactive]:border-b-border/60 hover:data-[state=inactive]:text-foreground',
-                          'focus-visible:outline-none focus-visible:ring-0 [&_svg]:shrink-0',
+                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing [&_svg]:shrink-0',
                         )}
                         onClick={() => onSelect?.(tab.tabId)}
                       >
@@ -200,22 +201,29 @@ export function StageTabBar({
                           />
                         ) : null}
                         <span className="min-w-0 truncate">{tab.title}</span>
-                        <div
-                          role="button"
-                          aria-label={t('stage.menu.close')}
-                          className={cn(
-                            'ml-0.5 flex size-5 items-center justify-center rounded-md transition-all',
-                            isActive
-                              ? 'opacity-100 hover:bg-muted/80'
-                              : 'opacity-0 group-hover/tab:opacity-100 hover:bg-muted/70',
-                          )}
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            onClose?.(tab.tabId)
-                          }}
-                        >
-                          <XIcon className="size-3.5" />
-                        </div>
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={
+                              <div
+                                role="button"
+                                aria-label={t('stage.menu.close')}
+                                className={cn(
+                                  'ml-0.5 flex size-5 items-center justify-center rounded-md transition-all',
+                                  isActive
+                                    ? 'opacity-100 hover:bg-muted/80'
+                                    : 'opacity-0 group-hover/tab:opacity-100 hover:bg-muted/70',
+                                )}
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  onClose?.(tab.tabId)
+                                }}
+                              >
+                                <XIcon className="size-3.5" />
+                              </div>
+                            }
+                          />
+                          <TooltipContent>{t('stage.menu.close')}</TooltipContent>
+                        </Tooltip>
                       </button>
                     </div>
                   }
@@ -263,28 +271,42 @@ export function StageTabBar({
       {showControls ? (
         <div ref={overflowRef} className="relative ml-2 flex h-10 shrink-0 items-center gap-1">
           {onOpenStartPage ? (
-            <button
-              type="button"
-              data-testid="stage-tab-start-button"
-              aria-label={t('stage.tabBar.startPage')}
-              onClick={onOpenStartPage}
-              className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              <HomeIcon className="size-3.5" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <button
+                    type="button"
+                    data-testid="stage-tab-start-button"
+                    aria-label={t('stage.tabBar.startPage')}
+                    onClick={onOpenStartPage}
+                    className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing"
+                  >
+                    <HomeIcon className="size-3.5" />
+                  </button>
+                }
+              />
+              <TooltipContent>{t('stage.tabBar.startPage')}</TooltipContent>
+            </Tooltip>
           ) : null}
           <StageTabBarAddButton />
           {hasOverflow ? (
-            <button
-              type="button"
-              data-testid="stage-tab-overflow-trigger"
-              aria-label={t('stage.tabBar.moreTabs')}
-              aria-expanded={overflowOpen}
-              onClick={() => setOverflowOpen((prev) => !prev)}
-              className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              <ChevronDownIcon className="size-3.5" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <button
+                    type="button"
+                    data-testid="stage-tab-overflow-trigger"
+                    aria-label={t('stage.tabBar.moreTabs')}
+                    aria-expanded={overflowOpen}
+                    onClick={() => setOverflowOpen((prev) => !prev)}
+                    className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing"
+                  >
+                    <ChevronDownIcon className="size-3.5" />
+                  </button>
+                }
+              />
+              <TooltipContent>{t('stage.tabBar.moreTabs')}</TooltipContent>
+            </Tooltip>
           ) : null}
 
           {overflowOpen && hasOverflow ? (
@@ -300,7 +322,7 @@ export function StageTabBar({
                       <button
                         type="button"
                         className={cn(
-                          'min-w-0 flex-1 rounded-md px-2 py-1 text-left text-xs transition-colors',
+                          'min-w-0 flex-1 rounded-md px-2 py-1 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing',
                           isActive
                             ? 'bg-accent/70 text-foreground'
                             : 'text-muted-foreground hover:bg-muted hover:text-foreground',
@@ -312,17 +334,24 @@ export function StageTabBar({
                       >
                         <span className="truncate">{tab.title}</span>
                       </button>
-                      <button
-                        type="button"
-                        aria-label={t('stage.menu.close')}
-                        className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          onClose?.(tab.tabId)
-                        }}
-                      >
-                        <XIcon className="size-3.5" />
-                      </button>
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <button
+                              type="button"
+                              aria-label={t('stage.menu.close')}
+                              className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                onClose?.(tab.tabId)
+                              }}
+                            >
+                              <XIcon className="size-3.5" />
+                            </button>
+                          }
+                        />
+                        <TooltipContent>{t('stage.menu.close')}</TooltipContent>
+                      </Tooltip>
                     </div>
                   )
                 })}

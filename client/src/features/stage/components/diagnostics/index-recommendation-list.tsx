@@ -1,12 +1,9 @@
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/i18n/use-i18n'
 import type { Impact, IndexRecommendation } from '@/features/stage/types/diagnostics'
 
 type IndexRecommendationListProps = {
   recommendations: IndexRecommendation[]
-}
-
-function impactLabel(impact: Impact): string {
-  return impact
 }
 
 function impactStyle(impact: Impact): string {
@@ -21,6 +18,12 @@ function impactStyle(impact: Impact): string {
 }
 
 function ImpactBadge({ impact }: { impact: Impact }) {
+  const { t } = useI18n()
+  const labels: Record<Impact, string> = {
+    HIGH: t('diagnostics.impact.high'),
+    MEDIUM: t('diagnostics.impact.medium'),
+    LOW: t('diagnostics.impact.low'),
+  }
   return (
     <span
       className={cn(
@@ -28,14 +31,16 @@ function ImpactBadge({ impact }: { impact: Impact }) {
         impactStyle(impact),
       )}
     >
-      {impactLabel(impact)}
+      {labels[impact]}
     </span>
   )
 }
 
 export function IndexRecommendationList({ recommendations }: IndexRecommendationListProps) {
+  const { t } = useI18n()
+
   if (recommendations.length === 0) {
-    return <p className="px-2 py-4 text-xs text-muted-foreground">No index recommendations.</p>
+    return <p className="px-2 py-4 text-xs text-muted-foreground">{t('diagnostics.noIndexRecommendations')}</p>
   }
 
   return (
