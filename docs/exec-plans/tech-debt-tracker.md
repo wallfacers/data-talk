@@ -12,7 +12,10 @@
 
 ## 当前债务
 
-（当前无未清除债务）
+| ID | 优先级 | 描述 | 关联计划 |
+|----|--------|------|----------|
+| TD-029 | P1 | 端到端"两个 OpenCode session 通过 `ui_exec` 竞争同一 tab"集成测试缺失。P1 用 `McpActionBridgeTest` 替代了原计划的 `StageTabConcurrencyIT`，只覆盖错误封装语义，不穿透 `ChannelService → ActionDispatcher → Client → 回程`。真实端到端的 `version_conflict` / `expected_text_mismatch` 行为没有自动化保障 | 在 P2/P3 阶段补一份 `StageTabConcurrencyIT` 或等价场景：用 `WireMockOpenCodeServer` 启两个 fake session 并发提交 `ui_exec apply_text_edits`，断言后到者一定收到结构化 conflict 错误且 baseVersion/expectedText 路径都被覆盖 |
+| TD-030 | P1 | P1 让 session-scoped 持久化恢复后，前端运行态 `StageTab.scope` 仍存在，但 hydrate 路径在 `stage-persistence-bootstrap.ts` 强制写回 `scope: 'workspace'`。下次 boot 任何曾以 `scope: 'session'` 创建的可持久化 tab（如 `artifact_preview`）会从 `tabsBySession` 跳到 `workspaceTabs`，可能造成 P2 布局位置漂移 | 在 P2 一并删除前端 `StageTab.scope` 字段、合并 `tabsBySession`/`workspaceTabs` 为单一 workspace 列表（与 P3 状态全局化方案对齐），同时迁移 `openArtifactPreviewTab` 等仍写 `scope: 'session'` 的入口 |
 
 ## 已清除债务
 
