@@ -13,8 +13,8 @@ type HistoryPanelProps = {
 const STATUS_CLASSES: Record<HistoryEntry['status'], string> = {
   ok: 'border-transparent bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
   error: 'border-transparent bg-destructive/10 text-destructive',
-  requires_confirmation: 'border-transparent bg-amber-500/15 text-amber-700 dark:text-amber-300',
-  confirmation_invalid: 'border-transparent bg-amber-500/15 text-amber-700 dark:text-amber-300',
+  requires_confirmation: 'border-transparent bg-warning/15 text-warning',
+  confirmation_invalid: 'border-transparent bg-warning/15 text-warning',
 }
 
 export function HistoryPanel({ entries, onAppendSql, onClear }: HistoryPanelProps) {

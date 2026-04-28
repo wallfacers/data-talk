@@ -86,6 +86,7 @@
   /* Standard easing — used by `transition-[...] ease-[var(--easing-standard)]`
      in left-rail rows so motion matches DESIGN.md motion.easing.standard. */
   --easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --dt-shadow-stage: 0 24px 56px color-mix(in srgb, var(--dt-text-strong) 18%, transparent);
 }
 
 :root {
@@ -166,6 +167,7 @@
   --dt-bg-subtle: oklch(0.27 0.012 255);
   --dt-bg-elevated: oklch(0.27 0.012 255);
   --dt-bg-overlay: oklch(0.15 0.01 255 / 0.72);
+  --dt-shadow-stage: 0 28px 72px color-mix(in srgb, var(--dt-text-strong) 38%, transparent);
   --dt-text-strong: oklch(0.985 0 0);
   --dt-text-base: oklch(0.93 0.01 255);
   --dt-text-muted: oklch(0.72 0.015 255);
@@ -274,9 +276,11 @@
   margin-top: 2rem;
 }
 
-/* Reduced motion: Stage bubble reveal 降级为瞬切 */
+/* Reduced motion: all stage / chat / drag-handle transitions degrade to instant */
 @media (prefers-reduced-motion: reduce) {
-  [data-stage-panel] {
+  [data-stage-panel],
+  [data-stage-panel] *,
+  #composer-slot {
     transition: none !important;
   }
 }

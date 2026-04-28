@@ -446,6 +446,26 @@ describe('StageWindow', () => {
     expect(screen.getByRole('tab', { name: /one/ })).toBeTruthy()
   })
 
+  it('places the left rail resize handle as an overlay instead of a standalone flex column', () => {
+    useStageStore.setState({
+      tabs: [makeTab({ tabId: 'qe-1', title: 'one' })],
+      openTabIds: new Set(['qe-1']),
+      openTabIdsOrdered: ['qe-1'],
+      activeTabId: 'qe-1',
+      leftRailCollapsed: false,
+    } as never, false)
+
+    render(<StageWindow />)
+
+    const leftRailShell = screen.getByTestId('stage-left-rail-shell')
+    const resizeHandle = screen.getByTestId('stage-left-rail-resize-handle')
+    const workspacePane = screen.getByTestId('stage-workspace-pane')
+    const rightPane = workspacePane.closest('section')
+
+    expect(leftRailShell).toContainElement(resizeHandle)
+    expect(rightPane?.previousElementSibling).toBe(leftRailShell)
+  })
+
   it('renders empty state in right pane when openTabIds is empty', () => {
     useStageStore.setState({
       tabs: [],

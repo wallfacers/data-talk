@@ -18,7 +18,7 @@ export function StageRailRow({ tab, active, inWorkset, onClick, trailingMenu }: 
   return (
     <li
       role="button"
-      tabIndex={active ? 0 : -1}
+      tabIndex={0}
       onClick={onClick}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() }

@@ -20,7 +20,7 @@ export function SqlWorkbenchStatusBar({
     success: { label: t('stage.status.success'), className: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' },
     requires_confirmation: {
       label: t('stage.status.requiresConfirmation'),
-      className: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
+      className: 'bg-warning/15 text-warning',
     },
     confirming: {
       label: t('stage.status.running'),
@@ -28,7 +28,7 @@ export function SqlWorkbenchStatusBar({
     },
     confirmation_invalid: {
       label: t('stage.status.requiresConfirmation'),
-      className: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
+      className: 'bg-warning/15 text-warning',
     },
   }
 

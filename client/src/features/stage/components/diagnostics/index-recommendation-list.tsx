@@ -11,9 +11,9 @@ function impactStyle(impact: Impact): string {
     case 'HIGH':
       return 'bg-destructive/15 text-destructive'
     case 'MEDIUM':
-      return 'bg-amber-500/15 text-amber-700 dark:text-amber-400'
+      return 'bg-warning/15 text-warning'
     case 'LOW':
-      return 'bg-sky-500/15 text-sky-700 dark:text-sky-400'
+      return 'bg-accent-primary/15 text-accent-primary'
   }
 }
 

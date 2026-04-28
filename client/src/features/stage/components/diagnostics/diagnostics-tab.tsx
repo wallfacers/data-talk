@@ -60,7 +60,7 @@ export function DiagnosticsTab({ payload }: DiagnosticsTabProps) {
   return (
     <div className="flex h-full flex-col">
       {/* Top chrome */}
-      <div className="flex items-center gap-2 border-b bg-subtle px-3 py-2">
+      <div className="flex items-center gap-2 border-b bg-muted px-3 py-2">
         {connectionName && (
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <DatabaseIcon className="size-3" />

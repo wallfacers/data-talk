@@ -1,5 +1,6 @@
 import { AlertTriangleIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/i18n/use-i18n'
 
 export interface DiagnosticsPanelEntry {
   sqlSnippet: string
@@ -13,12 +14,13 @@ type DiagnosticsPanelProps = {
 }
 
 export function DiagnosticsPanel({ entry, onOpenInWorkbench }: DiagnosticsPanelProps) {
+  const { t } = useI18n()
 
   if (!entry) {
     return (
       <div data-testid="diagnostics-panel" className="space-y-3">
         <div className="rounded-lg border border-dashed border-border/60 bg-muted/20 px-3 py-4 text-xs text-muted-foreground">
-          Run Explain to view the execution plan.
+          {t('diagnostics.panel.runExplain')}
         </div>
       </div>
     )
@@ -38,16 +40,16 @@ export function DiagnosticsPanel({ entry, onOpenInWorkbench }: DiagnosticsPanelP
         <div className="flex items-center gap-3">
           {entry.warningCount > 0 && (
             <div className="flex items-center gap-1">
-              <AlertTriangleIcon className="size-3.5 text-amber-500" />
-              <span className="text-xs text-amber-600 dark:text-amber-400">
-                {entry.warningCount} warning{entry.warningCount !== 1 ? 's' : ''}
+              <AlertTriangleIcon className="size-3.5 text-warning" />
+              <span className="text-xs text-warning">
+                {t('diagnostics.panel.warningCount', { count: entry.warningCount })}
               </span>
             </div>
           )}
 
           {entry.recommendationCount > 0 && (
             <span className="text-xs text-muted-foreground">
-              {entry.recommendationCount} recommendation{entry.recommendationCount !== 1 ? 's' : ''}
+              {t('diagnostics.panel.recommendationCount', { count: entry.recommendationCount })}
             </span>
           )}
         </div>
@@ -55,7 +57,7 @@ export function DiagnosticsPanel({ entry, onOpenInWorkbench }: DiagnosticsPanelP
 
       <div className="flex justify-end">
         <Button size="sm" variant="ghost" onClick={onOpenInWorkbench}>
-          Open in Workbench
+          {t('diagnostics.panel.openInWorkbench')}
         </Button>
       </div>
     </div>

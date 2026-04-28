@@ -14,7 +14,7 @@ import { useAutoScroll } from '@/hooks/use-auto-scroll'
 import { useI18n } from '@/i18n/use-i18n'
 import { useOpencodeHealth } from './hooks/use-opencode-health'
 
-const DURATION = 400
+const DURATION = 240
 const EASE = 'cubic-bezier(0.32, 0.72, 0.24, 1)'
 const SPLIT_RATIO_KEY = 'split-view-ratio'
 
@@ -81,14 +81,12 @@ export function SplitView() {
   const stageWidth = maximized ? '100%' : `${(1 - effectiveRatio) * 100}%`
   const stageTransform = open ? 'translateX(0)' : 'translateX(100%)'
 
-  // Maximize: chat slides out first (220ms), stage expands after 60ms delay (320ms).
-  // Restore: stage shrinks immediately (DURATION), chat slides back after 80ms delay.
   const chatTransition = maximized
-    ? 'transform 220ms ease-in'
-    : `transform 350ms ${EASE} 80ms, width ${DURATION}ms ${EASE}`
+    ? 'transform 180ms ease-in'
+    : `transform ${DURATION}ms ${EASE} 60ms, width ${DURATION}ms ${EASE}`
   const stageTransition = maximized
-    ? `width 320ms ${EASE} 60ms`
-    : `transform ${DURATION}ms ${EASE}, width 320ms ${EASE}`
+    ? `width ${DURATION}ms ${EASE} 60ms`
+    : `transform ${DURATION}ms ${EASE}, width ${DURATION}ms ${EASE}`
 
   const stageStyle: CSSProperties = {
     position: 'absolute',

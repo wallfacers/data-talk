@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
+import { PanelLeftIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
@@ -62,7 +62,7 @@ export function StageLeftRail() {
                 onClick={toggleCollapsed}
                 className="h-8 w-full flex items-center justify-center text-text-muted hover:bg-interaction-hover hover:text-text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing"
               >
-                <ChevronRightIcon className="size-4" />
+                <PanelLeftIcon className="size-4" />
               </button>
             }
           />
@@ -87,7 +87,7 @@ export function StageLeftRail() {
                 onClick={toggleCollapsed}
                 className="text-text-muted hover:bg-interaction-hover hover:text-text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing"
               >
-                <ChevronLeftIcon className="size-3.5" />
+                <PanelLeftIcon className="size-3.5" />
               </Button>
             }
           />

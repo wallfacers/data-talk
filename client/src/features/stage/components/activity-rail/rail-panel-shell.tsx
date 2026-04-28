@@ -23,7 +23,7 @@ export function RailPanelShell({ title, onClose, children, className }: RailPane
         className,
       )}
     >
-      <div className="flex h-10 shrink-0 items-center justify-between gap-2 border-b border-border/40 px-3">
+      <div className="flex min-h-11 shrink-0 items-center justify-between gap-2 border-b border-border/40 px-3">
         <div className="min-w-0 truncate text-sm font-medium text-foreground">{title}</div>
         <Tooltip>
           <TooltipTrigger

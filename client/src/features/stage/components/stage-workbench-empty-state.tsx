@@ -15,7 +15,6 @@ type Props = {
 type StageEmptyAction = {
   id: 'sql' | 'er' | 'report' | 'dashboard'
   label: string
-  description: string
   Icon: typeof DatabaseIcon
   enabled: boolean
   onClick?: () => void
@@ -25,34 +24,29 @@ export function StageWorkbenchEmptyState({
   onOpenSqlEditor,
 }: Props) {
   const { t } = useI18n()
-  const sqlEnabled = Boolean(onOpenSqlEditor)
   const actions: StageEmptyAction[] = [
     {
       id: 'sql',
       label: t('stage.toolRow.sql'),
-      description: t('stage.empty.card.sql.description'),
       Icon: DatabaseIcon,
-      enabled: sqlEnabled,
+      enabled: Boolean(onOpenSqlEditor),
       onClick: onOpenSqlEditor,
     },
     {
       id: 'er',
       label: t('stage.toolRow.er'),
-      description: t('stage.empty.card.er.description'),
       Icon: NetworkIcon,
       enabled: false,
     },
     {
       id: 'report',
       label: t('stage.toolRow.report'),
-      description: t('stage.empty.card.report.description'),
       Icon: LineChartIcon,
       enabled: false,
     },
     {
       id: 'dashboard',
       label: t('stage.toolRow.dashboard'),
-      description: t('stage.empty.card.dashboard.description'),
       Icon: Table2Icon,
       enabled: false,
     },
@@ -61,64 +55,43 @@ export function StageWorkbenchEmptyState({
   return (
     <div
       data-testid="stage-empty-workbench"
-      className="flex min-h-0 w-full flex-1 items-center justify-center overflow-auto p-6"
+      className="flex min-h-0 w-full flex-1 items-center justify-center overflow-auto p-4"
     >
-      <div className="w-full max-w-3xl space-y-6">
-        <div className="flex flex-col items-center gap-3 text-center">
-          <div className="flex size-11 items-center justify-center rounded-2xl border border-primary/20 bg-background/85 text-primary shadow-sm">
-            <DatabaseIcon className="size-5" />
-          </div>
-          <p className="text-sm text-muted-foreground">{t('stage.empty.pickTool')}</p>
-        </div>
-
-        <div className="flex items-center justify-center gap-2 mb-2">
+      <div className="w-full max-w-sm space-y-4">
+        <div className="flex items-center justify-center gap-2">
           <StageTabBarAddButton />
           <span className="text-xs text-text-soft">{t('stage.leftRail.cta.openNew')}</span>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          {actions.map(({ id, label, description, Icon, enabled, onClick }) => (
-            <button
-              key={id}
-              type="button"
-              disabled={!enabled}
-              data-state={enabled ? 'ready' : 'pending'}
-              onClick={enabled ? onClick : undefined}
-              className={cn(
-                'group flex min-h-[96px] w-full items-start justify-between gap-4 rounded-2xl border px-4 py-3 text-left transition-colors',
-                enabled
-                  ? 'border-border/60 bg-background/95 shadow-sm hover:border-primary/45 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50'
-                  : 'cursor-not-allowed border-border/45 bg-muted/35 text-muted-foreground opacity-75',
-              )}
-            >
-              <div className="flex min-w-0 items-start gap-3">
-                <div
-                  className={cn(
-                    'mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl border',
-                    enabled
-                      ? 'border-primary/25 bg-primary/10 text-primary shadow-sm'
-                      : 'border-border/50 bg-background/60 text-muted-foreground',
-                  )}
-                >
-                  <Icon className="size-4" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-sm font-medium text-foreground">{label}</div>
-                  <div className="mt-1 text-xs text-muted-foreground">{description}</div>
-                </div>
-              </div>
-
-              {!enabled ? (
-                <span className="shrink-0 rounded-md border border-border/55 bg-background/75 px-2 py-1 text-[11px] text-muted-foreground">
-                  {t('stage.empty.pending')}
-                </span>
-              ) : null}
-            </button>
+        <ul className="space-y-1">
+          {actions.map(({ id, label, Icon, enabled, onClick }) => (
+            <li key={id}>
+              <button
+                type="button"
+                disabled={!enabled}
+                onClick={enabled ? onClick : undefined}
+                className={cn(
+                  'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors',
+                  enabled
+                    ? 'text-text-base hover:bg-interaction-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing'
+                    : 'cursor-not-allowed text-text-soft',
+                )}
+              >
+                <Icon className="size-4 shrink-0" />
+                <span className="flex-1">{label}</span>
+                {!enabled && (
+                  <span className="shrink-0 text-[10px] uppercase tracking-wide text-text-soft">
+                    {t('stage.empty.pending')}
+                  </span>
+                )}
+              </button>
+            </li>
           ))}
-        </div>
-        <div className="text-center text-xs text-muted-foreground">
+        </ul>
+
+        <p className="text-center text-xs text-text-soft">
           {t('stage.empty.helper')}
-        </div>
+        </p>
       </div>
     </div>
   )

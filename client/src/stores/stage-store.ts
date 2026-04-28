@@ -285,7 +285,16 @@ export const useStageStore = create<StageState>((set, get) => ({
     if (!s.openTabIds.has(tabId)) return s
     const nextIds = new Set(s.openTabIds); nextIds.delete(tabId)
     const nextOrder = s.openTabIdsOrdered.filter((id) => id !== tabId)
-    const nextActive = s.activeTabId === tabId ? (nextOrder[nextOrder.length - 1] ?? null) : s.activeTabId
+    let nextActive = s.activeTabId
+    if (s.activeTabId === tabId) {
+      const closingType = s.tabs.find((t) => t.tabId === tabId)?.type
+      if (closingType === 'query_editor') {
+        const nextSqlId = nextOrder.find((id) => s.tabs.find((t) => t.tabId === id)?.type === 'query_editor')
+        nextActive = nextSqlId ?? null
+      } else {
+        nextActive = nextOrder[nextOrder.length - 1] ?? null
+      }
+    }
     return { openTabIds: nextIds, openTabIdsOrdered: nextOrder, activeTabId: nextActive }
   }),
 
@@ -297,7 +306,16 @@ export const useStageStore = create<StageState>((set, get) => ({
     if (!archived) return { tabs: updated }
     const nextIds = new Set(s.openTabIds); nextIds.delete(tabId)
     const nextOrder = s.openTabIdsOrdered.filter((id) => id !== tabId)
-    const nextActive = s.activeTabId === tabId ? (nextOrder[nextOrder.length - 1] ?? null) : s.activeTabId
+    let nextActive = s.activeTabId
+    if (s.activeTabId === tabId) {
+      const closingType = s.tabs.find((t) => t.tabId === tabId)?.type
+      if (closingType === 'query_editor') {
+        const nextSqlId = nextOrder.find((id) => s.tabs.find((t) => t.tabId === id)?.type === 'query_editor')
+        nextActive = nextSqlId ?? null
+      } else {
+        nextActive = nextOrder[nextOrder.length - 1] ?? null
+      }
+    }
     return { tabs: updated, openTabIds: nextIds, openTabIdsOrdered: nextOrder, activeTabId: nextActive }
   }),
 

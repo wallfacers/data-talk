@@ -15,10 +15,10 @@ function scanTypeStyle(scanType: ScanType): string {
       return 'bg-destructive/10'
     case 'INDEX_SCAN':
     case 'CONST':
-      return 'bg-green-500/10'
+      return 'bg-emerald-500/10'
     case 'REF':
     case 'INDEX_RANGE':
-      return 'bg-sky-500/10'
+      return 'bg-accent-primary/10'
     default:
       return ''
   }
@@ -30,7 +30,7 @@ function scanTypeIcon(scanType: ScanType) {
       return <AlertTriangleIcon className="size-3.5 shrink-0 text-destructive" />
     case 'INDEX_SCAN':
     case 'CONST':
-      return <CheckIcon className="size-3.5 shrink-0 text-green-600" />
+      return <CheckIcon className="size-3.5 shrink-0 text-emerald-600" />
     default:
       return null
   }

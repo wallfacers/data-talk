@@ -125,7 +125,7 @@ export function SqlResultTabs({
                     <div
                       data-result-id={result.resultId}
                       data-state={isActive ? 'active' : 'inactive'}
-                      className={cn('group/result relative -mb-px flex', isActive ? 'z-10' : 'z-0')}
+                      className={cn('group/result relative -mb-px flex items-center', isActive ? 'z-10' : 'z-0')}
                     >
                       <Tooltip>
                         <TooltipTrigger
@@ -146,33 +146,33 @@ export function SqlResultTabs({
                             >
                               {icon}
                               <span className="truncate">{result.title}</span>
-                              <Tooltip>
-                                <TooltipTrigger
-                                  render={
-                                    <div
-                                      role="button"
-                                      aria-label={t('stage.menu.close')}
-                                      className={cn(
-                                        'ml-0.5 flex size-4 items-center justify-center rounded-sm transition-all',
-                                        isActive
-                                          ? 'opacity-100 hover:bg-muted/80'
-                                          : 'opacity-0 group-hover/result:opacity-100 hover:bg-muted/70',
-                                      )}
-                                      onClick={(event) => {
-                                        event.stopPropagation()
-                                        onClose(result.resultId)
-                                      }}
-                                    >
-                                      <XIcon className="size-3" />
-                                    </div>
-                                  }
-                                />
-                                <TooltipContent>{t('stage.menu.close')}</TooltipContent>
-                              </Tooltip>
                             </button>
                           }
                         />
                         <TooltipContent>{result.title}</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <button
+                              type="button"
+                              aria-label={t('stage.menu.close')}
+                              className={cn(
+                                '-ml-0.5 flex size-4 items-center justify-center rounded-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing',
+                                isActive
+                                  ? 'opacity-100 hover:bg-muted/80'
+                                  : 'opacity-0 group-hover/result:opacity-100 hover:bg-muted/70',
+                              )}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                onClose(result.resultId)
+                              }}
+                            >
+                              <XIcon className="size-3" />
+                            </button>
+                          }
+                        />
+                        <TooltipContent>{t('stage.menu.close')}</TooltipContent>
                       </Tooltip>
                     </div>
                   }

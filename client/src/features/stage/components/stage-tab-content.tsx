@@ -3,6 +3,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { useStageStore } from '@/stores/stage-store'
 import { useSqlWorkbenchStore } from '../stores/sql-workbench-store'
 import { ArtifactPreviewTab } from './artifact-preview-tab'
+import { DiagnosticsTab } from './diagnostics/diagnostics-tab'
 import { FilePreviewTab } from './file-preview-tab'
 import { SqlWorkbenchTab } from './sql-workbench-tab'
 
@@ -47,6 +48,14 @@ export function StageTabContent() {
     return (
       <div className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <ArtifactPreviewTab key={tab.tabId} tab={tab} />
+      </div>
+    )
+  }
+
+  if (tab.type === 'diagnostic') {
+    return (
+      <div className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <DiagnosticsTab key={tab.tabId} payload={(tab.payload ?? {}) as import('./diagnostics/diagnostics-tab').DiagnosticsTabPayload} />
       </div>
     )
   }

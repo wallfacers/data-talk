@@ -41,37 +41,38 @@ type StageTabBarProps = {
 }
 
 function getTabIcon(type?: string, isActive?: boolean) {
+  const color = isActive ? 'text-accent-primary' : 'text-text-muted'
   switch (type) {
     case 'sql':
     case 'query_editor':
       return (
         <DatabaseIcon
-          className={cn('size-4 transition-colors', isActive ? 'text-blue-500' : 'text-muted-foreground')}
+          className={cn('size-4 transition-colors', color)}
         />
       )
     case 'er':
     case 'er_canvas':
       return (
         <NetworkIcon
-          className={cn('size-4 transition-colors', isActive ? 'text-emerald-500' : 'text-muted-foreground')}
+          className={cn('size-4 transition-colors', color)}
         />
       )
     case 'file_preview':
       return (
         <FileTextIcon
-          className={cn('size-4 transition-colors', isActive ? 'text-sky-500' : 'text-muted-foreground')}
+          className={cn('size-4 transition-colors', color)}
         />
       )
     case 'artifact_preview':
       return (
         <BarChart2Icon
-          className={cn('size-4 transition-colors', isActive ? 'text-violet-500' : 'text-muted-foreground')}
+          className={cn('size-4 transition-colors', color)}
         />
       )
     default:
       return (
         <SparklesIcon
-          className={cn('size-4 transition-colors', isActive ? 'text-purple-500' : 'text-muted-foreground')}
+          className={cn('size-4 transition-colors', color)}
         />
       )
   }
@@ -177,7 +178,7 @@ export function StageTabBar({
                     <div
                       data-tab-id={tab.tabId}
                       data-state={isActive ? 'active' : 'inactive'}
-                      className={cn('group/tab relative -mb-px flex', isActive ? 'z-20' : 'z-10')}
+                      className={cn('group/tab relative -mb-px flex items-center', isActive ? 'z-20' : 'z-10')}
                     >
                       <button
                         type="button"
@@ -194,30 +195,30 @@ export function StageTabBar({
                       >
                         {getTabIcon(tab.type, isActive)}
                         <span className="min-w-0 truncate">{tab.title}</span>
-                        <Tooltip>
-                          <TooltipTrigger
-                            render={
-                              <div
-                                role="button"
-                                aria-label={t('stage.menu.close')}
-                                className={cn(
-                                  'ml-0.5 flex size-5 items-center justify-center rounded-md transition-all',
-                                  isActive
-                                    ? 'opacity-100 hover:bg-muted/80'
-                                    : 'opacity-0 group-hover/tab:opacity-100 hover:bg-muted/70',
-                                )}
-                                onClick={(event) => {
-                                  event.stopPropagation()
-                                  onClose?.(tab.tabId)
-                                }}
-                              >
-                                <XIcon className="size-3.5" />
-                              </div>
-                            }
-                          />
-                          <TooltipContent>{t('stage.menu.close')}</TooltipContent>
-                        </Tooltip>
                       </button>
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <button
+                              type="button"
+                              aria-label={t('stage.menu.close')}
+                              className={cn(
+                                '-ml-0.5 flex size-5 items-center justify-center rounded-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing',
+                                isActive
+                                  ? 'opacity-100 hover:bg-muted/80'
+                                  : 'opacity-0 group-hover/tab:opacity-100 hover:bg-muted/70',
+                              )}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                onClose?.(tab.tabId)
+                              }}
+                            >
+                              <XIcon className="size-3.5" />
+                            </button>
+                          }
+                        />
+                        <TooltipContent>{t('stage.menu.close')}</TooltipContent>
+                      </Tooltip>
                     </div>
                   }
                 />

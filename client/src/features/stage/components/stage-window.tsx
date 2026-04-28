@@ -4,8 +4,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useStageStore, type StageTab } from '@/stores/stage-store'
-import { useSessionStore } from '@/stores/session-store'
-import { useActiveArtifactTitle } from '../use-active-artifact-title'
+import { getTabTypeDescriptor } from '../registry/tab-type-registry'
 import { StageTabBar } from './stage-tab-bar'
 import { StageTabContent } from './stage-tab-content'
 import { StageUIObjectRegistry } from './stage-ui-object-registry'
@@ -19,9 +18,6 @@ export function StageWindow() {
   const closeStage = useStageStore((s) => s.closeStage)
   const maximized = useStageStore((s) => s.maximized)
   const toggleMaximized = useStageStore((s) => s.toggleMaximized)
-  const activeSessionId = useSessionStore((s) => s.activeSessionId)
-  const { Icon, label } = useActiveArtifactTitle(activeSessionId)
-
   const tabs = useStageStore(useShallow((s) => s.tabs))
   const openTabsOrdered = useStageStore(
     useShallow((s) => s.openTabIdsOrdered.map((id) => s.tabs.find((t) => t.tabId === id)).filter(Boolean) as StageTab[]),
@@ -106,15 +102,22 @@ export function StageWindow() {
     })
   }
 
+  const activeTab = openTabsOrdered.find((t) => t.tabId === activeTabId)
+  const HeaderIcon = activeTab ? getTabTypeDescriptor(activeTab.type).icon : null
+
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden rounded-[22px] border border-border/75 bg-muted/25 shadow-[0_24px_56px_rgba(15,23,42,0.14)] ring-1 ring-black/5 transition-all duration-200">
+    <div className="flex h-full w-full flex-col overflow-hidden rounded-2xl border border-border-default bg-bg-subtle shadow-[var(--dt-shadow-stage)] transition-all duration-200">
       <StageUIObjectRegistry tabs={tabs} />
 
       <div className="flex flex-col bg-transparent">
-        <div className="group flex h-10 shrink-0 select-none items-center justify-between border-b border-border/65 bg-background/72 shadow-[inset_0_-1px_0_rgba(148,163,184,0.12)]">
+        <div className="group flex h-10 shrink-0 select-none items-center justify-between border-b border-border-subtle bg-bg-panel">
           <div className="flex items-center gap-2 pl-3 pr-2">
-            {Icon ? <Icon className="size-4 text-primary" /> : <div className="size-2 rounded-full bg-primary" />}
-            <span className="text-xs font-medium tracking-wide text-foreground/80">{label || t('stage.workspace')}</span>
+            {HeaderIcon
+              ? <HeaderIcon className="size-4 text-primary" />
+              : <div className="size-2 rounded-full bg-primary" />}
+            <span className="text-xs font-medium tracking-wide text-foreground/80">
+              {activeTab?.title || t('stage.workspace')}
+            </span>
           </div>
           <div className="flex h-full items-center">
             <Tooltip>
@@ -143,7 +146,7 @@ export function StageWindow() {
                   <Button
                     type="button"
                     variant="ghost"
-                    className="h-full w-11 rounded-none text-muted-foreground transition-colors hover:bg-[#e81123] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing"
+                    className="h-full w-11 rounded-none text-text-muted transition-colors hover:bg-interaction-hover hover:text-text-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing"
                     aria-label={t('stage.close')}
                     onClick={handleClose}
                   >
@@ -157,28 +160,28 @@ export function StageWindow() {
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 overflow-hidden bg-background/88">
+      <div className="flex min-h-0 flex-1 overflow-hidden bg-bg-subtle">
         {/* Left rail (library) */}
         <div
+          data-testid="stage-left-rail-shell"
           style={{ width: leftRailCollapsed ? 36 : leftRailWidth }}
-          className="shrink-0 transition-[width] duration-[180ms]"
+          className="relative shrink-0 transition-[width] duration-[180ms]"
         >
           <StageLeftRail />
+          {!leftRailCollapsed ? (
+            <div
+              data-testid="stage-left-rail-resize-handle"
+              className="group absolute inset-y-0 right-0 z-10 w-2 translate-x-1/2 cursor-col-resize bg-transparent"
+              onPointerDown={handleDividerPointerDown}
+              onPointerMove={handleDividerPointerMove}
+              onPointerUp={handleDividerPointerUp}
+              onPointerCancel={handleDividerPointerCancel}
+              onLostPointerCapture={handleDividerLostCapture}
+            >
+              <div className="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-transparent transition-colors group-hover:bg-accent-primary/50" />
+            </div>
+          ) : null}
         </div>
-
-        {/* Resizable divider (only when not collapsed) */}
-        {!leftRailCollapsed ? (
-          <div
-            className="w-1 cursor-col-resize hover:bg-accent-primary/20 transition-colors group"
-            onPointerDown={handleDividerPointerDown}
-            onPointerMove={handleDividerPointerMove}
-            onPointerUp={handleDividerPointerUp}
-            onPointerCancel={handleDividerPointerCancel}
-            onLostPointerCapture={handleDividerLostCapture}
-          >
-            <div className="h-full w-px bg-border-subtle group-hover:bg-accent-primary/50" />
-          </div>
-        ) : null}
 
         {/* Right pane: top tab bar + content */}
         <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
@@ -196,7 +199,7 @@ export function StageWindow() {
             />
           )}
 
-          <div data-testid="stage-workspace-pane" className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
+          <div data-testid="stage-workspace-pane" className="flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-canvas">
             {activeTabId && !showStartPage ? (
               <div className="flex min-h-0 flex-1 overflow-hidden">
                 <StageTabContent />
