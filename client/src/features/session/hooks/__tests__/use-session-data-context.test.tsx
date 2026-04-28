@@ -3,6 +3,7 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useSessionStore } from '@/stores/session-store'
+import { HTTPError } from '@/services/http'
 import * as api from '@/services/api/session-data-context'
 import { useSessionDataContext } from '../use-session-data-context'
 
@@ -17,13 +18,24 @@ vi.mock('@/services/api/session-data-context', async (importOriginal) => {
   }
 })
 
-function wrapper() {
-  const qc = new QueryClient({
+function createTestQueryClient() {
+  return new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
+}
+
+function wrapper(qc = createTestQueryClient()) {
   return function Wrapper({ children }: { children: ReactNode }) {
     return <QueryClientProvider client={qc}>{children}</QueryClientProvider>
   }
+}
+
+function httpError(status: number) {
+  return new HTTPError(
+    new Response('{}', { status }),
+    new Request('http://localhost/api/sessions/sess-1/data-context'),
+    {} as never,
+  )
 }
 
 describe('useSessionDataContext', () => {
@@ -49,6 +61,36 @@ describe('useSessionDataContext', () => {
     await waitFor(() => expect(result.current.context).toEqual(context))
     expect(api.getSessionDataContext).toHaveBeenCalledWith('sess-1')
     expect(useSessionStore.getState().dataContextBySession.get('sess-1')).toEqual(context)
+  })
+
+  it('clears a stale active session and cached context when data context returns 404 without retrying', async () => {
+    const qc = createTestQueryClient()
+    const staleContext: api.SessionDataContext = {
+      sessionId: 'stale-session',
+      connectionId: 'conn-1',
+      connectionNameSnapshot: 'orders-prod',
+      database: 'orders',
+      schema: 'public',
+      selectedLevel: 'schema',
+      updatedAt: 123,
+    }
+    useSessionStore.setState({
+      activeSessionId: 'stale-session',
+      dataContextBySession: new Map([['stale-session', staleContext]]),
+    } as any)
+    qc.setQueryData(['session-data-context', 'stale-session'], staleContext)
+    vi.mocked(api.getSessionDataContext).mockRejectedValue(httpError(404))
+
+    renderHook(() => {
+      const sessionId = useSessionStore((s) => s.activeSessionId)
+      return useSessionDataContext(sessionId)
+    }, { wrapper: wrapper(qc) })
+
+    await waitFor(() => expect(useSessionStore.getState().activeSessionId).toBeNull())
+
+    expect(api.getSessionDataContext).toHaveBeenCalledTimes(1)
+    expect(useSessionStore.getState().dataContextBySession.has('stale-session')).toBe(false)
+    expect(qc.getQueryData(['session-data-context', 'stale-session'])).toBeUndefined()
   })
 
   it('resolves use targets and persists updates back to the API', async () => {
