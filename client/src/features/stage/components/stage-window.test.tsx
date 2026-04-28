@@ -17,14 +17,14 @@ vi.mock('./sql-workbench-tab', () => ({
 }))
 
 vi.mock('./left-rail/stage-left-rail', () => ({
-  StageLeftRail: ({ sessionId }: { sessionId?: string }) => (
-    <div data-testid="stage-left-rail-mock">left-rail:{sessionId ?? 'none'}</div>
+  StageLeftRail: () => (
+    <div data-testid="stage-left-rail-mock">left-rail:none</div>
   ),
 }))
 
 vi.mock('./stage-tab-bar-add-button', () => ({
-  StageTabBarAddButton: ({ sessionId }: { sessionId?: string | null }) => (
-    <button type="button" data-testid="stage-tab-bar-add-button-mock">add:{sessionId ?? 'none'}</button>
+  StageTabBarAddButton: () => (
+    <button type="button" data-testid="stage-tab-bar-add-button-mock">add:none</button>
   ),
 }))
 
@@ -139,19 +139,17 @@ describe('StageWindow', () => {
   beforeEach(() => {
     useSessionStore.setState({ activeSessionId: null })
     useStageStore.setState({
-      openBySession: new Map([['s1', true]]),
-      autoOpenedSessions: new Set(),
-      maximizedBySession: new Map(),
-      sidebarCollapsedBySession: new Map(),
-      sidebarSelectionBySession: new Map(),
-      resourceTreeExpandedBySession: new Map(),
-      activeRailPanelBySession: new Map(),
-      workspaceTabs: [],
-      tabsBySession: new Map(),
-      activeWorkspaceTabId: null,
-      activeTabIdBySession: new Map(),
+      open: true,
+      autoOpened: false,
+      maximized: false,
+      sidebarCollapsed: false,
+      sidebarSelection: null,
+      resourceTreeExpanded: [],
+      activeRailPanel: null,
+      tabs: [],
       openTabIds: new Set<string>(),
       openTabIdsOrdered: [],
+      activeTabId: null,
       openQueryEditor: realOpenQueryEditor,
     })
     useOntologyStore.setState({ artifactsBySession: new Map() })
@@ -163,32 +161,32 @@ describe('StageWindow', () => {
   })
 
   it('渲染默认标题 工作台 + 关闭 / 最大化 按钮', () => {
-    render(<StageWindow sessionId="s1" />)
+    render(<StageWindow />)
     expect(screen.getByLabelText('关闭')).toBeTruthy()
     expect(screen.getByLabelText('最大化')).toBeTruthy()
     expect(screen.getByText('工作台', { selector: 'span' })).toBeTruthy()
   })
 
   it('renders the Stage shell container around the workspace pane', () => {
-    const { container } = render(<StageWindow sessionId="s1" />)
+    const { container } = render(<StageWindow />)
     const shell = container.firstElementChild as HTMLElement | null
 
     expect(shell).toBeTruthy()
     expect(within(shell as HTMLElement).getByTestId('stage-workspace-pane')).toBeTruthy()
   })
 
-  it('点关闭触发 closeStage(sessionId)', () => {
-    render(<StageWindow sessionId="s1" />)
+  it('点关闭触发 closeStage()', () => {
+    render(<StageWindow />)
     fireEvent.click(screen.getByLabelText('关闭'))
-    expect(useStageStore.getState().openBySession.get('s1')).toBe(false)
+    expect(useStageStore.getState().open).toBe(false)
   })
 
-  it('点最大化切换 maximizedBySession', () => {
-    render(<StageWindow sessionId="s1" />)
+  it('点最大化切换 maximized', () => {
+    render(<StageWindow />)
     fireEvent.click(screen.getByLabelText('最大化'))
-    expect(useStageStore.getState().maximizedBySession.get('s1')).toBe(true)
+    expect(useStageStore.getState().maximized).toBe(true)
     fireEvent.click(screen.getByLabelText('还原'))
-    expect(useStageStore.getState().maximizedBySession.get('s1')).toBe(false)
+    expect(useStageStore.getState().maximized).toBe(false)
   })
 
   it('keeps the shell title stable when the active artifact changes', () => {
@@ -198,34 +196,34 @@ describe('StageWindow', () => {
       activeBySession: new Map([['s1', 'a1']]),
       manualBySession: new Map(),
     })
-    render(<StageWindow sessionId="s1" />)
+    render(<StageWindow />)
     expect(screen.getByText('工作台', { selector: 'span' })).toBeTruthy()
     expect(screen.queryByText(/工作台 · 图 v2/)).toBeNull()
   })
 
-  it('renders tab bar when store has tabs for session', () => {
+  it('renders tab bar when store has tabs', () => {
     useStageStore.setState({
-      tabsBySession: new Map([['s-1', [
+      tabs: [
         { tabId: 'q1', type: 'query_editor', title: 'SQL', scope: 'session' as const,
           originSessionId: 's-1', createdAt: 0, payload: {} },
-      ]]]),
-      activeTabIdBySession: new Map([['s-1', 'q1']]),
+      ],
+      activeTabId: 'q1',
       openTabIds: new Set(['q1']),
       openTabIdsOrdered: ['q1'],
     })
-    render(<StageWindow sessionId="s-1" />)
-    expect(screen.getByText('SQL')).toBeTruthy()
+    render(<StageWindow />)
+    // Both the tab bar label and the mocked SqlWorkbenchTab content render "SQL"
+    const sqlElements = screen.getAllByText('SQL')
+    expect(sqlElements.length).toBeGreaterThanOrEqual(1)
   })
 
   it('renders the new Stage empty workbench instead of the legacy child path when there are no tabs', () => {
     useStageStore.setState({
-      tabsBySession: new Map(),
-      activeTabIdBySession: new Map(),
-      workspaceTabs: [],
-      activeWorkspaceTabId: null,
+      tabs: [],
+      activeTabId: null,
     })
 
-    render(<StageWindow sessionId="s-1" />)
+    render(<StageWindow />)
 
     expect(screen.getByTestId('stage-empty-workbench')).toBeTruthy()
     expect(screen.getByRole('button', { name: /SQL 编辑器/ })).toBeTruthy()
@@ -236,14 +234,12 @@ describe('StageWindow', () => {
 
   it('does not render the activity rail at the window level (rail moved into SQL tab)', () => {
     useStageStore.setState({
-      tabsBySession: new Map(),
-      activeTabIdBySession: new Map(),
-      workspaceTabs: [],
-      activeWorkspaceTabId: null,
-      activeRailPanelBySession: new Map(),
+      tabs: [],
+      activeTabId: null,
+      activeRailPanel: null,
     })
 
-    render(<StageWindow sessionId="s1" />)
+    render(<StageWindow />)
 
     expect(screen.queryByTestId('stage-activity-rail')).toBeNull()
     expect(screen.queryByTestId('stage-sidebar')).toBeNull()
@@ -254,25 +250,23 @@ describe('StageWindow', () => {
   it('clicking the empty-state CTA opens the SQL editor via openQueryEditor directly', () => {
     const openQueryEditorSpy = installOpenQueryEditorSpy()
     useStageStore.setState({
-      tabsBySession: new Map(),
-      activeTabIdBySession: new Map([['s1', null]]),
-      workspaceTabs: [],
-      activeWorkspaceTabId: null,
+      tabs: [],
+      activeTabId: null,
     })
 
-    render(<StageWindow sessionId="s1" />)
+    render(<StageWindow />)
 
     fireEvent.click(screen.getByRole('button', { name: /SQL 编辑器/ }))
 
     expect(openQueryEditorSpy).toHaveBeenCalledWith({
-      sessionId: 's1',
+      sessionId: null,
       scope: 'workspace',
       baseTitle: 'SQL 编辑器',
       openMode: 'always_new',
       entryMode: 'blank',
     })
-    expect(useStageStore.getState().workspaceTabs).toHaveLength(1)
-    expect(useStageStore.getState().activeWorkspaceTabId).toBeTruthy()
+    expect(useStageStore.getState().tabs).toHaveLength(1)
+    expect(useStageStore.getState().activeTabId).toBeTruthy()
     expect(screen.getByTestId('sql-workbench-tab').textContent).toBe('SQL 编辑器')
   })
 
@@ -282,17 +276,15 @@ describe('StageWindow', () => {
     ['dashboard', 'Dashboard'],
   ])('does not render legacy %s tabs in Stage content', (type, title) => {
     useStageStore.setState({
-      workspaceTabs: [
+      tabs: [
         { tabId: 'w1', type: type as 'er_canvas' | 'report' | 'dashboard', title, scope: 'workspace' as const, createdAt: 0, payload: {} },
       ],
-      activeWorkspaceTabId: 'w1',
-      tabsBySession: new Map(),
-      activeTabIdBySession: new Map([['s1', null]]),
+      activeTabId: 'w1',
       openTabIds: new Set(['w1']),
       openTabIdsOrdered: ['w1'],
     })
 
-    render(<StageWindow sessionId="s1" />)
+    render(<StageWindow />)
 
     expect(screen.queryByTestId('stage-placeholder-tab')).toBeNull()
     expect(screen.queryByTestId('sql-workbench-tab')).toBeNull()
@@ -301,17 +293,15 @@ describe('StageWindow', () => {
 
   it('renders workspace tab content inside a session stage when no session tab is active', () => {
     useStageStore.setState({
-      workspaceTabs: [
+      tabs: [
         { tabId: 'w1', type: 'query_editor', title: 'Global SQL', scope: 'workspace' as const, createdAt: 0, payload: {} },
       ],
-      activeWorkspaceTabId: 'w1',
-      tabsBySession: new Map(),
-      activeTabIdBySession: new Map([['s1', null]]),
+      activeTabId: 'w1',
       openTabIds: new Set(['w1']),
       openTabIdsOrdered: ['w1'],
     })
 
-    render(<StageWindow sessionId="s1" />)
+    render(<StageWindow />)
 
     expect(screen.getByRole('tab', { name: 'Global SQL' })).toBeTruthy()
     expect(screen.getByTestId('sql-workbench-tab')).toBeTruthy()
@@ -319,17 +309,15 @@ describe('StageWindow', () => {
 
   it('switches to the Stage start page when clicking the + button', () => {
     useStageStore.setState({
-      workspaceTabs: [
+      tabs: [
         { tabId: 'w1', type: 'query_editor', title: 'Global SQL', scope: 'workspace' as const, createdAt: 0, payload: {} },
       ],
-      activeWorkspaceTabId: 'w1',
-      tabsBySession: new Map(),
-      activeTabIdBySession: new Map([['s1', null]]),
+      activeTabId: 'w1',
       openTabIds: new Set(['w1']),
       openTabIdsOrdered: ['w1'],
     })
 
-    render(<StageWindow sessionId="s1" />)
+    render(<StageWindow />)
 
     fireEvent.click(screen.getByLabelText('开始页'))
 
@@ -341,7 +329,7 @@ describe('StageWindow', () => {
     const openQueryEditorSpy = installOpenQueryEditorSpy()
     useSessionStore.setState({ activeSessionId: 's1' })
     useStageStore.setState({
-      workspaceTabs: [
+      tabs: [
         {
           tabId: 'workspace-sql',
           type: 'query_editor',
@@ -350,9 +338,6 @@ describe('StageWindow', () => {
           createdAt: 1,
           payload: {},
         },
-      ],
-      activeWorkspaceTabId: null,
-      tabsBySession: new Map([['s1', [
         {
           tabId: 'session-sql',
           type: 'query_editor',
@@ -362,34 +347,33 @@ describe('StageWindow', () => {
           createdAt: 0,
           payload: {},
         },
-      ]]]),
-      activeTabIdBySession: new Map([['s1', 'session-sql']]),
+      ],
+      activeTabId: 'session-sql',
       openTabIds: new Set(['workspace-sql', 'session-sql']),
       openTabIdsOrdered: ['workspace-sql', 'session-sql'],
     })
 
-    render(<StageWindow sessionId="s1" />)
+    render(<StageWindow />)
 
     fireEvent.click(screen.getByLabelText('开始页'))
     fireEvent.click(screen.getByRole('button', { name: /SQL 编辑器/ }))
 
     expect(openQueryEditorSpy).toHaveBeenCalledWith({
-      sessionId: 's1',
+      sessionId: null,
       scope: 'workspace',
       baseTitle: 'SQL 编辑器',
       openMode: 'always_new',
       entryMode: 'blank',
     })
-    expect(useStageStore.getState().workspaceTabs).toHaveLength(2)
-    expect(useStageStore.getState().activeWorkspaceTabId).toBeTruthy()
-    expect(useStageStore.getState().activeTabIdBySession.get('s1')).toBeNull()
+    expect(useStageStore.getState().tabs).toHaveLength(3)
+    expect(useStageStore.getState().activeTabId).toBeTruthy()
     expect(screen.getByTestId('sql-workbench-tab').textContent).toBe('SQL 编辑器2')
   })
 
   it('does not fall back to the empty state when a file_preview tab is active', () => {
     useSessionStore.setState({ activeSessionId: 's1' })
     useStageStore.setState({
-      tabsBySession: new Map([['s1', [
+      tabs: [
         {
           tabId: 'preview-1',
           type: 'file_preview',
@@ -399,15 +383,13 @@ describe('StageWindow', () => {
           createdAt: 0,
           payload: { sourceKey: 'readme' },
         },
-      ]]]),
-      activeTabIdBySession: new Map([['s1', 'preview-1']]),
-      workspaceTabs: [],
-      activeWorkspaceTabId: null,
+      ],
+      activeTabId: 'preview-1',
       openTabIds: new Set(['preview-1']),
       openTabIdsOrdered: ['preview-1'],
     })
 
-    render(<StageWindow sessionId="s1" />)
+    render(<StageWindow />)
 
     expect(screen.queryByTestId('stage-empty-workbench')).toBeNull()
     expect(screen.getByTestId('file-preview-tab')).toBeTruthy()
@@ -415,53 +397,52 @@ describe('StageWindow', () => {
 
   it('clears the session-scoped active tab when a workspace tab is focused from the shared tab bar', () => {
     useStageStore.setState({
-      workspaceTabs: [
+      tabs: [
         { tabId: 'w1', type: 'query_editor', title: 'Global SQL', scope: 'workspace' as const, createdAt: 0, payload: {} },
-      ],
-      activeWorkspaceTabId: 'w1',
-      tabsBySession: new Map([['s1', [
         { tabId: 's-tab', type: 'query_editor', title: 'Session SQL', scope: 'session' as const, originSessionId: 's1', createdAt: 0, payload: {} },
-      ]]]),
-      activeTabIdBySession: new Map([['s1', 's-tab']]),
+      ],
+      activeTabId: 's-tab',
       openTabIds: new Set(['w1', 's-tab']),
       openTabIdsOrdered: ['w1', 's-tab'],
     })
 
-    render(<StageWindow sessionId="s1" />)
+    render(<StageWindow />)
 
     fireEvent.click(screen.getByRole('tab', { name: 'Global SQL' }))
 
-    expect(useStageStore.getState().activeTabIdBySession.get('s1')).toBeNull()
+    expect(useStageStore.getState().activeTabId).toBe('w1')
   })
 
   it('wires the Stage shell without rendering the bottom dock', () => {
     useStageStore.setState({
-      tabsBySession: new Map([['s1', [
+      tabs: [
         { tabId: 'q1', type: 'query_editor', title: 'SQL', scope: 'session' as const,
           originSessionId: 's1', createdAt: 0, payload: {} },
-      ]]]),
-      activeTabIdBySession: new Map([['s1', 'q1']]),
+      ],
+      activeTabId: 'q1',
       openTabIds: new Set(['q1']),
       openTabIdsOrdered: ['q1'],
     })
 
-    render(<StageWindow sessionId="s1" />)
+    render(<StageWindow />)
 
     expect(screen.queryByTestId('stage-dock')).toBeNull()
-    expect(screen.getByText('SQL')).toBeTruthy()
+    // Both the tab bar label and the mocked SqlWorkbenchTab content render "SQL"
+    const sqlElements = screen.getAllByText('SQL')
+    expect(sqlElements.length).toBeGreaterThanOrEqual(1)
     expect(screen.getByTestId('stage-workspace-pane')).toBeTruthy()
   })
 
   it('renders left rail + tab bar + content pane when openTabIds is non-empty', () => {
     useStageStore.setState({
-      workspaceTabs: [makeTab({ tabId: 'qe-1', title: 'one' })],
+      tabs: [makeTab({ tabId: 'qe-1', title: 'one' })],
       openTabIds: new Set(['qe-1']),
       openTabIdsOrdered: ['qe-1'],
-      activeWorkspaceTabId: 'qe-1',
+      activeTabId: 'qe-1',
       leftRailCollapsed: false,
     } as never, false)
 
-    render(<StageWindow sessionId="sess-1" />)
+    render(<StageWindow />)
 
     // Left rail visible (mocked)
     expect(screen.getByTestId('stage-left-rail-mock')).toBeInTheDocument()
@@ -473,12 +454,12 @@ describe('StageWindow', () => {
 
   it('renders empty state in right pane when openTabIds is empty', () => {
     useStageStore.setState({
-      workspaceTabs: [],
+      tabs: [],
       openTabIds: new Set<string>(),
-      activeWorkspaceTabId: null,
+      activeTabId: null,
     } as never, false)
 
-    render(<StageWindow sessionId="sess-1" />)
+    render(<StageWindow />)
 
     // Empty state should render
     expect(screen.getByTestId('stage-empty-workbench')).toBeInTheDocument()
@@ -487,21 +468,21 @@ describe('StageWindow', () => {
 
   it('clicking close X on a top-bar tab detaches but keeps it in left rail', () => {
     useStageStore.setState({
-      workspaceTabs: [makeTab({ tabId: 'qe-1', title: 'one' })],
+      tabs: [makeTab({ tabId: 'qe-1', title: 'one' })],
       openTabIds: new Set(['qe-1']),
       openTabIdsOrdered: ['qe-1'],
-      activeWorkspaceTabId: 'qe-1',
+      activeTabId: 'qe-1',
     } as never, false)
 
-    render(<StageWindow sessionId="sess-1" />)
+    render(<StageWindow />)
     // Find the tab's close button (inside the tab element)
     const tab = screen.getByRole('tab', { name: /one/ })
     const closeBtn = within(tab).getByRole('button', { name: /关闭/ })
     fireEvent.click(closeBtn)
 
     expect(useStageStore.getState().openTabIds.has('qe-1')).toBe(false)
-    // Tab still in left rail (the tab still exists in workspaceTabs)
-    expect(useStageStore.getState().workspaceTabs.find((t) => t.tabId === 'qe-1')).toBeDefined()
+    // Tab still in left rail (the tab still exists in tabs)
+    expect(useStageStore.getState().tabs.find((t) => t.tabId === 'qe-1')).toBeDefined()
   })
 
 })

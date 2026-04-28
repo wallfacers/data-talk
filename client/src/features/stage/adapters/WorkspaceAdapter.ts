@@ -31,11 +31,6 @@ const ACTIONS: ActionDef[] = [
 
 const WORKSPACE_SCOPE_TYPES = new Set<string>(['er_canvas', 'markdown_note', 'report', 'dashboard'])
 
-function clearSessionActiveTab(sessionId: string | null) {
-  if (!sessionId) return
-  useStageStore.getState().focusWorkspaceTabForSession(sessionId)
-}
-
 export class WorkspaceAdapter implements UIObject {
   type = 'workspace'
   objectId = 'workspace'
@@ -47,10 +42,8 @@ export class WorkspaceAdapter implements UIObject {
     switch (mode) {
       case 'state': {
         const sid = this.getSessionId()
-        const tabs = useStageStore.getState().listTabs(sid)
-        const activeTabId = sid
-          ? useStageStore.getState().activeTabIdBySession.get(sid) ?? useStageStore.getState().activeWorkspaceTabId
-          : useStageStore.getState().activeWorkspaceTabId
+        const tabs = useStageStore.getState().listTabs()
+        const activeTabId = useStageStore.getState().activeTabId
         return {
           tabs: tabs.map((t) => {
             if (t.type !== 'query_editor') {
@@ -125,10 +118,7 @@ export class WorkspaceAdapter implements UIObject {
             database,
             schema,
           })
-          // The "!" direct-SQL path (open-direct-sql-query-editor-tab.ts) also
-          // calls openStage — AI-driven opens must mirror that so the panel
-          // actually slides into view instead of only the tab being added.
-          store.openStage(sid)
+          store.openStage()
           return { success: true, data: { tabId } }
         }
 
@@ -145,21 +135,17 @@ export class WorkspaceAdapter implements UIObject {
         }
         if (scope === 'session' && !sid) return execError('Cannot open session-scoped tab without active session')
         store.openTab(tab)
-        if (scope === 'workspace') clearSessionActiveTab(sid)
-        if (sid) store.openStage(sid)
+        if (sid) store.openStage()
         return { success: true, data: { tabId } }
       }
       case 'close': {
         if (!p.target) return execError('Missing param: target')
-        // Per docs/references/ui-objects-reference.md, MCP `close` is a
-        // deprecated alias for archive(archived=true), not detach-from-workset.
         store.archiveTab(p.target, true)
         return { success: true }
       }
       case 'focus': {
         if (!p.target) return execError('Missing param: target')
         store.focusTab(p.target)
-        if (store.workspaceTabs.some((tab) => tab.tabId === p.target)) clearSessionActiveTab(this.getSessionId())
         return { success: true }
       }
       case 'choose_connection': {

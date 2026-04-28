@@ -75,10 +75,10 @@ describe('read-file renderer', () => {
     fireEvent.click(button)
     fireEvent.click(button)
 
-    expect(openStageSpy).toHaveBeenCalledWith('sess-1')
+    expect(openStageSpy).toHaveBeenCalledWith()
     expect(openStageSpy).toHaveBeenCalledTimes(2)
 
-    const tabs = useStageStore.getState().tabsBySession.get('sess-1') ?? []
+    const tabs = useStageStore.getState().tabs
     expect(tabs).toHaveLength(1)
     expect(tabs[0]).toEqual(expect.objectContaining({
       type: 'file_preview',
@@ -110,8 +110,8 @@ describe('read-file renderer', () => {
     const button = screen.getByRole('button', { name: 'Open Workbench' })
     fireEvent.click(button)
 
-    expect(openStageSpy).toHaveBeenCalledWith('sess-2')
-    const tabs = useStageStore.getState().tabsBySession.get('sess-2') ?? []
+    expect(openStageSpy).toHaveBeenCalledWith()
+    const tabs = useStageStore.getState().tabs
     expect(tabs).toHaveLength(1)
   })
 

@@ -10,10 +10,10 @@ const realOpenQueryEditor = useStageStore.getState().openQueryEditor
 describe('WorkspaceAdapter', () => {
   beforeEach(() => {
     useStageStore.setState({
-      workspaceTabs: [],
-      tabsBySession: new Map(),
-      activeWorkspaceTabId: null,
-      activeTabIdBySession: new Map(),
+      tabs: [],
+      openTabIds: new Set(),
+      openTabIdsOrdered: [],
+      activeTabId: null,
       openQueryEditor: realOpenQueryEditor,
     } as unknown as Record<string, unknown>)
     useConnectionStore.setState({
@@ -73,7 +73,6 @@ describe('WorkspaceAdapter', () => {
       database: 'db-1',
       schema: 'public',
     })
-    expect(useStageStore.getState().tabsBySession.get('s1') ?? []).toEqual([])
   })
 
   it('exec open for query_editor without connection context delegates to openQueryEditor only', async () => {
@@ -105,7 +104,6 @@ describe('WorkspaceAdapter', () => {
       database: undefined,
       schema: undefined,
     })
-    expect(useStageStore.getState().tabsBySession.get('s1') ?? []).toEqual([])
   })
 
   it('exec open for query_editor carries payload-only canonical context into openQueryEditor', async () => {
@@ -178,7 +176,7 @@ describe('WorkspaceAdapter', () => {
     expect(res.error).toContain('active session')
   })
 
-  it('exec open clears the current session-active tab when opening a workspace tab', async () => {
+  it('exec open sets the new tab as active', async () => {
     useStageStore.getState().openTab({
       tabId: 'session-q1',
       type: 'query_editor',
@@ -188,16 +186,12 @@ describe('WorkspaceAdapter', () => {
       payload: {},
       createdAt: 0,
     })
-    useStageStore.setState({
-      activeTabIdBySession: new Map([['s1', 'session-q1']]),
-    } as unknown as Record<string, unknown>)
 
     const adapter = new WorkspaceAdapter(() => 's1')
     const opened = await adapter.exec('open', { type: 'report', title: 'Revenue' })
 
     expect(opened.success).toBe(true)
-    expect(useStageStore.getState().activeWorkspaceTabId).toBe((opened.data as { tabId: string }).tabId)
-    expect(useStageStore.getState().activeTabIdBySession.get('s1')).toBeNull()
+    expect(useStageStore.getState().activeTabId).toBe((opened.data as { tabId: string }).tabId)
   })
 
   it('read state returns tabs + active', async () => {
@@ -289,25 +283,19 @@ describe('WorkspaceAdapter', () => {
     const tabId = (opened.data as { tabId: string }).tabId
     const closed = await adapter.exec('close', { target: tabId })
     expect(closed.success).toBe(true)
-    // Per ui-objects-reference.md: close is deprecated alias for archive(true).
     expect(useStageStore.getState().openTabIds.has(tabId)).toBe(false)
-    expect(useStageStore.getState().workspaceTabs).toHaveLength(1)
-    expect(useStageStore.getState().workspaceTabs[0]?.archived).toBe(true)
+    expect(useStageStore.getState().tabs).toHaveLength(1)
+    expect(useStageStore.getState().tabs[0]?.archived).toBe(true)
   })
 
-  it('exec focus clears the current session-active tab when targeting a workspace tab', async () => {
+  it('exec focus sets the target as active', async () => {
     const adapter = new WorkspaceAdapter(() => 's1')
     const opened = await adapter.exec('open', { type: 'er_canvas', title: 'ER' })
-
-    useStageStore.setState({
-      activeTabIdBySession: new Map([['s1', 'session-q1']]),
-    } as unknown as Record<string, unknown>)
 
     const focused = await adapter.exec('focus', { target: (opened.data as { tabId: string }).tabId })
 
     expect(focused).toEqual({ success: true })
-    expect(useStageStore.getState().activeWorkspaceTabId).toBe((opened.data as { tabId: string }).tabId)
-    expect(useStageStore.getState().activeTabIdBySession.get('s1')).toBeNull()
+    expect(useStageStore.getState().activeTabId).toBe((opened.data as { tabId: string }).tabId)
   })
 
   it.each([
@@ -319,7 +307,7 @@ describe('WorkspaceAdapter', () => {
     const opened = await adapter.exec('open', { type, title })
 
     expect(opened.success).toBe(true)
-    expect(useStageStore.getState().workspaceTabs).toEqual([
+    expect(useStageStore.getState().tabs).toEqual([
       expect.objectContaining({
         tabId: (opened.data as { tabId: string }).tabId,
         type,

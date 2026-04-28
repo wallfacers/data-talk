@@ -35,6 +35,6 @@ export async function openDirectSqlQueryEditorTab({ sessionId, connectionId, sql
     database: sessionContext?.database ?? null,
     schema: sessionContext?.schema ?? null,
   })
-  if (sessionId) store.openStage(sessionId)
+  if (sessionId) store.openStage()
   return tabId
 }

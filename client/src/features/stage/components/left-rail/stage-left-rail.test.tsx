@@ -40,12 +40,10 @@ function makeTab(over: Record<string, unknown> = {}) {
 describe('StageLeftRail', () => {
   beforeEach(() => {
     useStageStore.setState({
-      workspaceTabs: [],
-      tabsBySession: new Map(),
+      tabs: [],
       openTabIds: new Set<string>(),
       openTabIdsOrdered: [],
-      activeWorkspaceTabId: null,
-      activeTabIdBySession: new Map(),
+      activeTabId: null,
       leftRailCollapsed: false,
     } as never, true)
   })
@@ -57,7 +55,7 @@ describe('StageLeftRail', () => {
 
   it('renders active tabs sorted by pinned first then lastTouchedAt desc', () => {
     useStageStore.setState({
-      workspaceTabs: [
+      tabs: [
         makeTab({ tabId: 'a', title: 'old', lastTouchedAt: 1, pinned: false }),
         makeTab({ tabId: 'b', title: 'newer', lastTouchedAt: 5, pinned: false }),
         makeTab({ tabId: 'c', title: 'pinned', lastTouchedAt: 2, pinned: true }),
@@ -78,7 +76,7 @@ describe('StageLeftRail', () => {
 
   it('clicking an archived row opens unarchive confirm dialog', () => {
     useStageStore.setState({
-      workspaceTabs: [makeTab({ tabId: 'a', title: 'frozen', archived: true })],
+      tabs: [makeTab({ tabId: 'a', title: 'frozen', archived: true })],
     } as never, false)
     render(<StageLeftRail />)
     // First, toggle archived group open by finding and clicking it
@@ -91,7 +89,7 @@ describe('StageLeftRail', () => {
 
   it('search filters tabs by title', () => {
     useStageStore.setState({
-      workspaceTabs: [
+      tabs: [
         makeTab({ tabId: 'a', title: 'users monthly' }),
         makeTab({ tabId: 'b', title: 'orders trend' }),
       ],

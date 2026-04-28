@@ -6,10 +6,10 @@ import { StageUIObjectRegistry } from './stage-ui-object-registry'
 
 function resetStageStore() {
   useStageStore.setState({
-    workspaceTabs: [],
-    tabsBySession: new Map(),
-    activeWorkspaceTabId: null,
-    activeTabIdBySession: new Map(),
+    tabs: [],
+    activeTabId: null,
+    openTabIds: new Set(),
+    openTabIdsOrdered: [],
   } as unknown as Record<string, unknown>)
 }
 
@@ -53,10 +53,10 @@ function seedTabs() {
   }
 
   useStageStore.setState({
-    workspaceTabs: [workspaceTab],
-    tabsBySession: new Map([['s1', [sessionTab, activeSessionTab]]]),
-    activeWorkspaceTabId: 'r1',
-    activeTabIdBySession: new Map([['s1', 'q2']]),
+    tabs: [workspaceTab, sessionTab, activeSessionTab],
+    activeTabId: 'q2',
+    openTabIds: new Set(['r1', 'q1', 'q2']),
+    openTabIdsOrdered: ['r1', 'q1', 'q2'],
   } as unknown as Record<string, unknown>)
 
   return { sessionTab, activeSessionTab, workspaceTab }
@@ -78,7 +78,7 @@ describe('StageUIObjectRegistry', () => {
     const { sessionTab, activeSessionTab, workspaceTab } = seedTabs()
     const tabs = [workspaceTab, sessionTab, activeSessionTab]
 
-    const view = render(<StageUIObjectRegistry sessionId="s1" tabs={tabs} />)
+    const view = render(<StageUIObjectRegistry tabs={tabs} />)
 
     // Verify workspace is registered and readable
     const workspaceRead = await uiRouter.handle({
@@ -131,7 +131,7 @@ describe('StageUIObjectRegistry', () => {
   it('routes target=active to the current active query_editor tab', async () => {
     const { sessionTab, activeSessionTab, workspaceTab } = seedTabs()
 
-    render(<StageUIObjectRegistry sessionId="s1" tabs={[workspaceTab, sessionTab, activeSessionTab]} />)
+    render(<StageUIObjectRegistry tabs={[workspaceTab, sessionTab, activeSessionTab]} />)
 
     const response = await uiRouter.handle({
       tool: 'ui_read',
@@ -167,13 +167,13 @@ describe('StageUIObjectRegistry', () => {
     }
 
     useStageStore.setState({
-      workspaceTabs: [reportTab],
-      tabsBySession: new Map([['s1', [sessionQueryEditor]]]),
-      activeWorkspaceTabId: 'r1',
-      activeTabIdBySession: new Map([['s1', null]]),
+      tabs: [reportTab, sessionQueryEditor],
+      activeTabId: 'r1',
+      openTabIds: new Set(['r1', 'q1']),
+      openTabIdsOrdered: ['r1', 'q1'],
     } as unknown as Record<string, unknown>)
 
-    render(<StageUIObjectRegistry sessionId="s1" tabs={[reportTab, sessionQueryEditor]} />)
+    render(<StageUIObjectRegistry tabs={[reportTab, sessionQueryEditor]} />)
 
     const workspaceState = await uiRouter.handle({
       tool: 'ui_read',

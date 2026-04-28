@@ -89,11 +89,6 @@ const CAPABILITIES = {
   supportsResults: true,
 } as const
 
-function clearSessionActiveTab(sessionId: string | null) {
-  if (!sessionId) return
-  useStageStore.getState().focusWorkspaceTabForSession(sessionId)
-}
-
 function isReplaceValue(value: unknown): value is string | null {
   return typeof value === 'string' || value === null
 }
@@ -160,9 +155,7 @@ export class QueryEditorAdapter implements UIObject {
 
   private getTab() {
     const state = useStageStore.getState()
-    return state.workspaceTabs.find((tab) => tab.tabId === this.objectId)
-      ?? Array.from(state.tabsBySession.values()).flat().find((tab) => tab.tabId === this.objectId)
-      ?? null
+    return state.tabs.find((tab) => tab.tabId === this.objectId) ?? null
   }
 
   private getResolvedState() {
@@ -459,7 +452,6 @@ export class QueryEditorAdapter implements UIObject {
         return { success: true, data: formatQueryEditorSql(this.objectId) }
       case 'focus':
         store.focusTab(this.objectId)
-        if (tab?.scope === 'workspace') clearSessionActiveTab(this.getSessionId())
         return { success: true }
       case 'close':
         // Per docs/references/ui-objects-reference.md, MCP `close` is a

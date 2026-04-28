@@ -28,19 +28,19 @@ vi.mock('sonner', () => ({
 
 function resetStores() {
   useStageStore.setState({
-    openBySession: new Map(),
-    autoOpenedSessions: new Set(),
-    maximizedBySession: new Map(),
+    open: false,
+    autoOpened: false,
+    maximized: false,
     revealOrigin: null,
-    sidebarCollapsedBySession: new Map(),
-    sidebarSelectionBySession: new Map(),
-    resourceTreeExpandedBySession: new Map(),
-    activeRailPanelBySession: new Map(),
-    workspaceTabs: [],
-    tabsBySession: new Map(),
-    activeWorkspaceTabId: null,
-    activeTabIdBySession: new Map(),
-  })
+    sidebarCollapsed: false,
+    sidebarSelection: null,
+    resourceTreeExpanded: [],
+    activeRailPanel: null,
+    tabs: [],
+    openTabIds: new Set(),
+    openTabIdsOrdered: [],
+    activeTabId: null,
+  } as never)
   useSqlWorkbenchStore.setState({ tabsById: {} })
   useConnectionStore.setState({
     activeConnectionId: null,
@@ -61,9 +61,7 @@ function resetStores() {
 
 function getStageTab(tabId: string) {
   const state = useStageStore.getState()
-  return state.workspaceTabs.find((tab) => tab.tabId === tabId)
-    ?? Array.from(state.tabsBySession.values()).flat().find((tab) => tab.tabId === tabId)
-    ?? null
+  return state.tabs.find((tab) => tab.tabId === tabId) ?? null
 }
 
 describe('query-editor-actions', () => {

@@ -30,8 +30,8 @@ export function SplitView() {
   const { t } = useI18n()
   const { data: health } = useOpencodeHealth()
   const sid = useSessionStore((s) => s.activeSessionId)
-  const open = useStageStore((s) => (sid ? !!s.openBySession.get(sid) : false))
-  const maximized = useStageStore((s) => (sid ? !!s.maximizedBySession.get(sid) : false))
+  const open = useStageStore((s) => s.open)
+  const maximized = useStageStore((s) => s.maximized)
   // 用同步的 hasEverSent 作为主信号，避免会话切换时 infoBySession 还没被 fetch
   // 填充导致空态分支闪过一帧；chat-parts-store 的判断仅兜底"新空会话里用户刚敲第一条"。
   const hasEverSent = useSessionStore((s) =>
@@ -229,7 +229,7 @@ export function SplitView() {
       {/* stage 列：translateX 滑入/滑出 */}
       <div data-stage-panel style={stageStyle}>
         <div className="h-full w-full p-2">
-          <StageWindow sessionId={sid ?? undefined} />
+          <StageWindow />
         </div>
       </div>
     </div>

@@ -8,17 +8,18 @@ describe('openOrFocusStageToolTab', () => {
   beforeEach(() => {
     openQueryEditorMock.mockReset()
     useStageStore.setState({
-      openBySession: new Map(),
-      autoOpenedSessions: new Set(),
-      maximizedBySession: new Map(),
+      open: false,
+      maximized: false,
+      autoOpened: false,
       revealOrigin: null,
-      sidebarCollapsedBySession: new Map(),
-      sidebarSelectionBySession: new Map(),
-      resourceTreeExpandedBySession: new Map(),
-      workspaceTabs: [],
-      tabsBySession: new Map(),
-      activeWorkspaceTabId: null,
-      activeTabIdBySession: new Map(),
+      sidebarCollapsed: false,
+      sidebarSelection: null,
+      resourceTreeExpanded: [],
+      activeRailPanel: null,
+      tabs: [],
+      openTabIds: new Set(),
+      openTabIdsOrdered: [],
+      activeTabId: null,
       openQueryEditor: openQueryEditorMock,
     } as unknown as Record<string, unknown>)
   })
@@ -89,8 +90,8 @@ describe('openOrFocusStageToolTab', () => {
     expect(first.created).toBe(true)
     expect(second.created).toBe(false)
     expect(second.tabId).toBe(first.tabId)
-    expect(useStageStore.getState().workspaceTabs).toHaveLength(1)
-    expect(useStageStore.getState().activeWorkspaceTabId).toBe(first.tabId)
+    expect(useStageStore.getState().tabs).toHaveLength(1)
+    expect(useStageStore.getState().activeTabId).toBe(first.tabId)
   })
 
   it('creates a new workspace non-SQL tool tab when reuseExisting is false', () => {
@@ -110,8 +111,8 @@ describe('openOrFocusStageToolTab', () => {
     expect(first.created).toBe(true)
     expect(second.created).toBe(true)
     expect(second.tabId).not.toBe(first.tabId)
-    expect(useStageStore.getState().workspaceTabs).toHaveLength(2)
-    expect(useStageStore.getState().workspaceTabs.map((tab) => tab.title)).toEqual([
+    expect(useStageStore.getState().tabs).toHaveLength(2)
+    expect(useStageStore.getState().tabs.map((tab) => tab.title)).toEqual([
       '报表',
       '报表2',
     ])
@@ -119,18 +120,18 @@ describe('openOrFocusStageToolTab', () => {
 
   it('counts visible session tab titles when naming a new workspace non-SQL tool tab', () => {
     useStageStore.setState({
-      tabsBySession: new Map([['s1', [
-        {
-          tabId: 'session-sql',
-          type: 'er_canvas',
-          title: 'ER 图设计器',
-          scope: 'session' as const,
-          originSessionId: 's1',
-          createdAt: 0,
-          payload: {},
-        },
-      ]]]),
-      activeTabIdBySession: new Map([['s1', 'session-sql']]),
+      tabs: [{
+        tabId: 'session-sql',
+        type: 'er_canvas',
+        title: 'ER 图设计器',
+        scope: 'session' as const,
+        originSessionId: 's1',
+        createdAt: 0,
+        payload: {},
+      }],
+      activeTabId: 'session-sql',
+      openTabIds: new Set(['session-sql']),
+      openTabIdsOrdered: ['session-sql'],
     } as unknown as Record<string, unknown>)
 
     const created = openOrFocusStageToolTab({
@@ -141,8 +142,8 @@ describe('openOrFocusStageToolTab', () => {
     })
 
     expect(created.created).toBe(true)
-    expect(useStageStore.getState().workspaceTabs).toHaveLength(1)
-    expect(useStageStore.getState().workspaceTabs[0]?.title).toBe('ER 图设计器2')
+    expect(useStageStore.getState().tabs).toHaveLength(2)
+    expect(useStageStore.getState().tabs[1]?.title).toBe('ER 图设计器2')
   })
 
   it('reuses existing non-SQL session tool tab for the same resource context', () => {
@@ -174,8 +175,8 @@ describe('openOrFocusStageToolTab', () => {
     expect(first.created).toBe(true)
     expect(second.created).toBe(false)
     expect(second.tabId).toBe(first.tabId)
-    expect(useStageStore.getState().tabsBySession.get('s1')).toHaveLength(1)
-    expect(useStageStore.getState().activeTabIdBySession.get('s1')).toBe(first.tabId)
+    expect(useStageStore.getState().tabs).toHaveLength(1)
+    expect(useStageStore.getState().activeTabId).toBe(first.tabId)
   })
 
   it('opens a different non-SQL session tool tab when schema differs', () => {
@@ -206,8 +207,8 @@ describe('openOrFocusStageToolTab', () => {
 
     expect(second.created).toBe(true)
     expect(second.tabId).not.toBe(first.tabId)
-    expect(useStageStore.getState().tabsBySession.get('s1')).toHaveLength(2)
-    expect(useStageStore.getState().tabsBySession.get('s1')?.map((tab) => tab.title)).toEqual([
+    expect(useStageStore.getState().tabs).toHaveLength(2)
+    expect(useStageStore.getState().tabs.map((tab) => tab.title)).toEqual([
       'ER 图设计器',
       'ER 图设计器2',
     ])

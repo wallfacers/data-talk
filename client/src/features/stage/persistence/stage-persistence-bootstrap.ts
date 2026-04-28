@@ -77,17 +77,10 @@ function toStageTab(item: Record<string, unknown>): StageTab {
   }
 }
 
-function persistedTabSummaries(state: {
-  workspaceTabs: StageTab[]
-  tabsBySession: Map<string, StageTab[]>
-}): TabSummary[] {
-  const allTabs: TabSummary[] = []
-  const seen = new Set<string>()
-  const collect = (tab: StageTab) => {
-    if (!isPersistent(tab.type)) return
-    if (seen.has(tab.tabId)) return
-    seen.add(tab.tabId)
-    allTabs.push({
+function persistedTabSummaries(state: { tabs: StageTab[] }): TabSummary[] {
+  return state.tabs
+    .filter((t) => isPersistent(t.type))
+    .map((tab) => ({
       tabId: tab.tabId,
       type: tab.type,
       title: tab.title,
@@ -97,13 +90,7 @@ function persistedTabSummaries(state: {
       pinned: tab.pinned,
       archived: tab.archived,
       lastTouchedAt: tab.lastTouchedAt,
-    })
-  }
-  for (const tab of state.workspaceTabs) collect(tab)
-  for (const tabs of state.tabsBySession.values()) {
-    for (const tab of tabs) collect(tab)
-  }
-  return allTabs
+    }))
 }
 
 function diffMetaAndSchedule(next: TabSummary[], prev: TabSummary[]): void {

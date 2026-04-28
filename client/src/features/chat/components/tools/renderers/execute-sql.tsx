@@ -69,7 +69,7 @@ function BlockedInChatCard({
       database: sessionContext?.database ?? null,
       schema: sessionContext?.schema ?? null,
     })
-    stage.openStage(sessionId)
+    stage.openStage()
   }
 
   return (

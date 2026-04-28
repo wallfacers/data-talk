@@ -52,19 +52,19 @@ describe('StageActivityRail', () => {
 
   beforeEach(() => {
     useStageStore.setState({
-      openBySession: new Map(),
-      autoOpenedSessions: new Set(),
-      maximizedBySession: new Map(),
+      open: false,
+      autoOpened: false,
+      maximized: false,
       revealOrigin: null,
-      sidebarCollapsedBySession: new Map(),
-      sidebarSelectionBySession: new Map(),
-      resourceTreeExpandedBySession: new Map(),
-      activeRailPanelBySession: new Map(),
-      workspaceTabs: [workspaceTab],
-      tabsBySession: new Map([['s-1', [sessionTab]]]),
-      activeWorkspaceTabId: 'workspace-q1',
-      activeTabIdBySession: new Map([['s-1', 'session-q1']]),
-    })
+      sidebarCollapsed: false,
+      sidebarSelection: null,
+      resourceTreeExpanded: [],
+      activeRailPanel: null,
+      tabs: [workspaceTab, sessionTab],
+      openTabIds: new Set(['workspace-q1', 'session-q1']),
+      openTabIdsOrdered: ['workspace-q1', 'session-q1'],
+      activeTabId: 'session-q1',
+    } as never)
     useSqlWorkbenchStore.setState({ tabsById: {} })
     useSqlWorkbenchStore.getState().ensureTab('session-q1', {
       sqlText: 'select session',
@@ -83,7 +83,7 @@ describe('StageActivityRail', () => {
   })
 
   it('renders real panel content and preserves toggle behavior', () => {
-    render(<StageActivityRail sessionId="s-1" />)
+    render(<StageActivityRail />)
 
     fireEvent.click(screen.getByRole('button', { name: t('stage.activityRail.schema.title') }))
     expect(screen.getByTestId('schema-panel')).toBeTruthy()
@@ -96,11 +96,10 @@ describe('StageActivityRail', () => {
 
   it('falls back to the workspace active query editor tab for history actions', async () => {
     useStageStore.setState({
-      activeTabIdBySession: new Map([['s-1', null]]),
-      activeWorkspaceTabId: 'workspace-q1',
-    })
+      activeTabId: 'workspace-q1',
+    } as never)
 
-    render(<StageActivityRail sessionId="s-1" />)
+    render(<StageActivityRail />)
 
     fireEvent.click(screen.getByRole('button', { name: t('stage.activityRail.history.title') }))
     fireEvent.click(await screen.findByRole('button', { name: /select 1/i }))

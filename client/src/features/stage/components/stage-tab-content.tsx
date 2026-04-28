@@ -1,41 +1,24 @@
 import { useEffect, useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import type { StageTab } from '@/stores/stage-store'
 import { useStageStore } from '@/stores/stage-store'
-import { useSessionStore } from '@/stores/session-store'
 import { useSqlWorkbenchStore } from '../stores/sql-workbench-store'
 import { ArtifactPreviewTab } from './artifact-preview-tab'
 import { FilePreviewTab } from './file-preview-tab'
 import { SqlWorkbenchTab } from './sql-workbench-tab'
 
-const EMPTY_TABS: StageTab[] = []
-
 export function StageTabContent() {
-  const sid = useSessionStore((s) => s.activeSessionId)
   const cleanupTabs = useSqlWorkbenchStore((s) => s.cleanupTabs)
-  const activeTabId = useStageStore((s) => {
-    if (!sid) return s.activeWorkspaceTabId
-    return s.activeTabIdBySession.get(sid) ?? s.activeWorkspaceTabId
-  })
-  const { workspaceTabs, sessionTabs } = useStageStore(
-    useShallow((s) => ({
-      workspaceTabs: s.workspaceTabs,
-      sessionTabs: sid ? (s.tabsBySession.get(sid) ?? EMPTY_TABS) : EMPTY_TABS,
-    })),
-  )
+  const activeTabId = useStageStore((s) => s.activeTabId)
+  const tabs = useStageStore(useShallow((s) => s.tabs))
   const sqlTabIds = useMemo(
-    () => [...workspaceTabs, ...sessionTabs]
+    () => tabs
       .filter((candidate) => candidate.type === 'query_editor')
       .map((candidate) => candidate.tabId),
-    [sessionTabs, workspaceTabs],
+    [tabs],
   )
   const tab = useStageStore((s) => {
     if (!activeTabId) return null
-    return (
-      s.workspaceTabs.find((t) => t.tabId === activeTabId) ??
-      (sid ? s.tabsBySession.get(sid)?.find((t) => t.tabId === activeTabId) : undefined) ??
-      null
-    )
+    return s.tabs.find((t) => t.tabId === activeTabId) ?? null
   })
 
   useEffect(() => {

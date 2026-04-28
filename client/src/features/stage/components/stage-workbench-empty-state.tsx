@@ -10,7 +10,6 @@ import { StageTabBarAddButton } from './stage-tab-bar-add-button'
 
 type Props = {
   onOpenSqlEditor?: () => void
-  sessionId?: string
 }
 
 type StageEmptyAction = {
@@ -24,7 +23,6 @@ type StageEmptyAction = {
 
 export function StageWorkbenchEmptyState({
   onOpenSqlEditor,
-  sessionId,
 }: Props) {
   const { t } = useI18n()
   const sqlEnabled = Boolean(onOpenSqlEditor)
@@ -74,7 +72,7 @@ export function StageWorkbenchEmptyState({
         </div>
 
         <div className="flex items-center justify-center gap-2 mb-2">
-          <StageTabBarAddButton sessionId={sessionId ?? null} />
+          <StageTabBarAddButton />
           <span className="text-xs text-text-soft">{t('stage.leftRail.cta.openNew')}</span>
         </div>
 

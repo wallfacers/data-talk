@@ -19,7 +19,7 @@ type ResourceToolTarget = {
 type Target = GlobalToolTarget | ResourceToolTarget
 
 type Input = {
-  getState: () => Pick<StageState, 'workspaceTabs' | 'tabsBySession' | 'activeWorkspaceTabId' | 'activeTabIdBySession' | 'openTab' | 'focusTab' | 'openQueryEditor'>
+  getState: () => Pick<StageState, 'tabs' | 'activeTabId' | 'openTab' | 'focusTab' | 'openQueryEditor'>
   sessionId: string | null
   target: Target
   reuseExisting?: boolean
@@ -60,16 +60,11 @@ export function openOrFocusStageToolTab({ getState, sessionId, target, reuseExis
   }
 
   const tabType = resolveTabType(target.tool)
-  const workspaceTitles = latest.workspaceTabs.map((tab) => tab.title)
-  const sessionTabs = sessionId ? (latest.tabsBySession.get(sessionId) ?? []) : []
-  const visibleTitles = [
-    ...workspaceTitles,
-    ...sessionTabs.map((tab) => tab.title),
-  ]
+  const visibleTitles = latest.tabs.map((tab) => tab.title)
 
   if (target.kind === 'global_tool') {
     if (reuseExisting) {
-      const existing = latest.workspaceTabs.find((tab) => tab.type === tabType)
+      const existing = latest.tabs.find((tab) => tab.type === tabType)
       if (existing) {
         latest.focusTab(existing.tabId)
         return { tabId: existing.tabId, created: false }
@@ -91,7 +86,7 @@ export function openOrFocusStageToolTab({ getState, sessionId, target, reuseExis
 
   if (!sessionId) throw new Error('session-scoped stage tool requires active session')
 
-  const existing = sessionTabs.find((tab) =>
+  const existing = latest.tabs.find((tab) =>
     tab.type === tabType &&
     tab.connectionId === target.connectionId &&
     (tab.database ?? null) === (target.database ?? null) &&

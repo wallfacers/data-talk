@@ -2,7 +2,7 @@ import type { FilePreviewPayload } from '@/features/chat/components/tools/render
 import type { StageState, StageTab } from '@/stores/stage-store'
 
 type Input = {
-  getState: () => Pick<StageState, 'tabsBySession' | 'openTab' | 'focusTab'>
+  getState: () => Pick<StageState, 'tabs' | 'openTab' | 'focusTab'>
   sessionId: string | null
   payload: FilePreviewPayload
 }
@@ -21,8 +21,7 @@ export function openOrFocusFilePreviewTab({ getState, sessionId, payload }: Inpu
   }
 
   const latest = getState()
-  const sessionTabs = latest.tabsBySession.get(sessionId) ?? []
-  const existing = sessionTabs.find((tab) =>
+  const existing = latest.tabs.find((tab) =>
     tab.type === 'file_preview' &&
     hasFilePreviewSourceKey(tab.payload) &&
     tab.payload.sourceKey === payload.sourceKey

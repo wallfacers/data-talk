@@ -8,11 +8,11 @@ import { useChatPartsStore } from '@/stores/chat-parts-store'
 describe('StageToggleButton', () => {
   beforeEach(() => {
     useStageStore.setState({
-      openBySession: new Map(),
-      autoOpenedSessions: new Set(),
-      maximizedBySession: new Map(),
+      open: false,
+      maximized: false,
+      autoOpened: false,
       revealOrigin: null,
-    })
+    } as never)
     useSessionStore.setState({
       activeSessionId: null,
       modeBySession: new Map(),
@@ -41,27 +41,27 @@ describe('StageToggleButton', () => {
     render(<StageToggleButton />)
     fireEvent.click(screen.getByRole('button'))
     expect(useSessionStore.getState().modeBySession.get('s1')).toBe('SPLIT')
-    expect(useStageStore.getState().openBySession.get('s1')).toBe(true)
+    expect(useStageStore.getState().open).toBe(true)
   })
 
   it('SPLIT 关闭态下点击 → 打开', () => {
     useSessionStore.getState().openSession('s1', true)
     render(<StageToggleButton />)
     fireEvent.click(screen.getByRole('button'))
-    expect(useStageStore.getState().openBySession.get('s1')).toBe(true)
+    expect(useStageStore.getState().open).toBe(true)
   })
 
   it('SPLIT 打开态下点击 → 关闭', () => {
     useSessionStore.getState().openSession('s1', true)
-    useStageStore.getState().openStage('s1')
+    useStageStore.getState().openStage()
     render(<StageToggleButton />)
     fireEvent.click(screen.getByRole('button'))
-    expect(useStageStore.getState().openBySession.get('s1')).toBe(false)
+    expect(useStageStore.getState().open).toBe(false)
   })
 
   it('aria-pressed 反映打开状态', () => {
     useSessionStore.getState().openSession('s1', true)
-    useStageStore.getState().openStage('s1')
+    useStageStore.getState().openStage()
     render(<StageToggleButton />)
     expect(screen.getByRole('button').getAttribute('aria-pressed')).toBe('true')
   })
@@ -81,19 +81,19 @@ describe('StageToggleButton', () => {
 
   it('open=true 且 mode 被重置为 HERO 时，点击仍可关闭 Stage', () => {
     useSessionStore.getState().openSession('s1', false)
-    useStageStore.getState().openStage('s1')
+    useStageStore.getState().openStage()
     useSessionStore.getState().setSessionMode('s1', 'HERO')
 
     render(<StageToggleButton />)
     fireEvent.click(screen.getByRole('button'))
 
-    expect(useStageStore.getState().openBySession.get('s1')).toBe(false)
+    expect(useStageStore.getState().open).toBe(false)
     expect(useSessionStore.getState().modeBySession.get('s1')).toBe('HERO')
   })
 
   it('切回空会话且 Stage 仍打开时，mode 会自动同步回 SPLIT', () => {
     useSessionStore.getState().openSession('s1', false)
-    useStageStore.getState().openStage('s1')
+    useStageStore.getState().openStage()
 
     render(<StageToggleButton />)
 
@@ -102,7 +102,7 @@ describe('StageToggleButton', () => {
       useSessionStore.getState().openSession('s1', false)
     })
 
-    expect(useStageStore.getState().openBySession.get('s1')).toBe(true)
+    expect(useStageStore.getState().open).toBe(true)
     return waitFor(() => {
       expect(useSessionStore.getState().modeBySession.get('s1')).toBe('SPLIT')
     })

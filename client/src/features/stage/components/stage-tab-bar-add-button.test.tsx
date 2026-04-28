@@ -10,12 +10,12 @@ vi.mock('@/i18n/use-i18n', () => ({
 
 describe('StageTabBarAddButton', () => {
   it('renders the + trigger button', () => {
-    render(<StageTabBarAddButton sessionId={null} />)
+    render(<StageTabBarAddButton />)
     expect(screen.getByRole('button')).toBeInTheDocument()
   })
 
   it('disabled menu items show pending pill text', () => {
-    render(<StageTabBarAddButton sessionId={null} />)
+    render(<StageTabBarAddButton />)
     fireEvent.click(screen.getByRole('button'))
     // ER, Report, Dashboard are disabled
     const menuItems = screen.getAllByRole('menuitem')
@@ -24,7 +24,7 @@ describe('StageTabBarAddButton', () => {
 
   it('SQL editor menu item calls openQueryEditor on click', () => {
     const spy = vi.spyOn(useStageStore.getState(), 'openQueryEditor').mockImplementation(() => ({ tabId: 'test', created: true }))
-    render(<StageTabBarAddButton sessionId={null} />)
+    render(<StageTabBarAddButton />)
     fireEvent.click(screen.getByRole('button'))
     const sqlItem = screen.getAllByRole('menuitem')[0]
     fireEvent.click(sqlItem)

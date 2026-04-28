@@ -24,9 +24,9 @@ export function StageToggleButton() {
   const hasMessages = hasEverSent || hasStoreMessages
 
   const { mode } = useSessionMode()
-  const open = useStageStore((s) => (sid ? !!s.openBySession.get(sid) : false))
+  const open = useStageStore((s) => s.open)
   const openStage = useStageStore((s) => s.openStage)
-  const toggle = useStageStore((s) => s.toggleStage)
+  const toggleStage = useStageStore((s) => s.toggleStage)
   const setRevealOrigin = useStageStore((s) => s.setRevealOrigin)
 
   const title = open ? t('stage.closePanel') : t('stage.openPanel')
@@ -49,7 +49,7 @@ export function StageToggleButton() {
       })
     }
     if (open) {
-      toggle(sid)
+      toggleStage()
       if (!hasMessages) {
         setSessionMode(sid, 'HERO')
       }
@@ -57,7 +57,7 @@ export function StageToggleButton() {
     }
 
     setSessionMode(sid, 'SPLIT')
-    openStage(sid)
+    openStage()
   }
 
   return (

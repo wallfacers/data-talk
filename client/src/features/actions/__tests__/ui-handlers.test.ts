@@ -30,7 +30,7 @@ function stubObject(objectId: string, stateValue: unknown): UIObject {
 describe('ui-handlers', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    useStageStore.setState({ activeWorkspaceTabId: 'stub1' })
+    useStageStore.setState({ activeTabId: 'stub1' } as never)
     uiRouter.registerInstance('stub1', stubObject('stub1', { foo: 'bar' }))
     uiRouter.registerInstance('workspace', new WorkspaceAdapter(() => 's1'))
   })

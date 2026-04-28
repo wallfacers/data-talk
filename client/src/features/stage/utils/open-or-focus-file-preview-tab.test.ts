@@ -5,18 +5,18 @@ import { openOrFocusFilePreviewTab } from './open-or-focus-file-preview-tab'
 describe('openOrFocusFilePreviewTab', () => {
   beforeEach(() => {
     useStageStore.setState({
-      openBySession: new Map(),
-      autoOpenedSessions: new Set(),
-      maximizedBySession: new Map(),
+      open: false,
+      autoOpened: false,
+      maximized: false,
       revealOrigin: null,
-      sidebarCollapsedBySession: new Map(),
-      sidebarSelectionBySession: new Map(),
-      resourceTreeExpandedBySession: new Map(),
-      activeRailPanelBySession: new Map(),
-      workspaceTabs: [],
-      tabsBySession: new Map(),
-      activeWorkspaceTabId: null,
-      activeTabIdBySession: new Map(),
+      sidebarCollapsed: false,
+      sidebarSelection: null,
+      resourceTreeExpanded: [],
+      activeRailPanel: null,
+      tabs: [],
+      openTabIds: new Set(),
+      openTabIdsOrdered: [],
+      activeTabId: null,
     } as unknown as Record<string, unknown>)
   })
 
@@ -37,7 +37,7 @@ describe('openOrFocusFilePreviewTab', () => {
 
     expect(result).toEqual({ tabId: expect.any(String), created: true })
 
-    const tabs = useStageStore.getState().tabsBySession.get('sess-1') ?? []
+    const tabs = useStageStore.getState().tabs
     expect(tabs).toHaveLength(1)
     expect(tabs[0]).toEqual(expect.objectContaining({
       type: 'file_preview',
@@ -54,7 +54,7 @@ describe('openOrFocusFilePreviewTab', () => {
         language: 'markdown',
       }),
     }))
-    expect(useStageStore.getState().activeTabIdBySession.get('sess-1')).toBe(result.tabId)
+    expect(useStageStore.getState().activeTabId).toBe(result.tabId)
   })
 
   it('focuses the existing file preview tab when sourceKey matches again in the same session', () => {
@@ -88,11 +88,11 @@ describe('openOrFocusFilePreviewTab', () => {
 
     expect(first.created).toBe(true)
     expect(second).toEqual({ tabId: first.tabId, created: false })
-    expect(useStageStore.getState().tabsBySession.get('sess-1')).toHaveLength(1)
-    expect(useStageStore.getState().activeTabIdBySession.get('sess-1')).toBe(first.tabId)
+    expect(useStageStore.getState().tabs).toHaveLength(1)
+    expect(useStageStore.getState().activeTabId).toBe(first.tabId)
   })
 
-  it('creates a distinct file preview tab for the same sourceKey in a different session', () => {
+  it('reuses the existing file preview tab for the same sourceKey even from a different session', () => {
     const first = openOrFocusFilePreviewTab({
       getState: useStageStore.getState,
       sessionId: 'sess-1',
@@ -122,12 +122,10 @@ describe('openOrFocusFilePreviewTab', () => {
     })
 
     expect(first.created).toBe(true)
-    expect(second.created).toBe(true)
-    expect(second.tabId).not.toBe(first.tabId)
-    expect(useStageStore.getState().tabsBySession.get('sess-1')).toHaveLength(1)
-    expect(useStageStore.getState().tabsBySession.get('sess-2')).toHaveLength(1)
-    expect(useStageStore.getState().activeTabIdBySession.get('sess-1')).toBe(first.tabId)
-    expect(useStageStore.getState().activeTabIdBySession.get('sess-2')).toBe(second.tabId)
+    // In the global tabs model, same sourceKey reuses the existing tab regardless of sessionId
+    expect(second).toEqual({ tabId: first.tabId, created: false })
+    expect(useStageStore.getState().tabs).toHaveLength(1)
+    expect(useStageStore.getState().activeTabId).toBe(first.tabId)
   })
 
   it('throws a clear error when sessionId is missing or blank', () => {

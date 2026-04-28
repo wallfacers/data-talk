@@ -5,13 +5,11 @@ import {
 import { Button } from '@/components/ui/button'
 import { useI18n } from '@/i18n/use-i18n'
 import { useStageStore } from '@/stores/stage-store'
+import { useSessionStore } from '@/stores/session-store'
 
-type Props = {
-  sessionId?: string | null
-}
-
-export function StageTabBarAddButton({ sessionId }: Props) {
+export function StageTabBarAddButton() {
   const { t } = useI18n()
+  const sessionId = useSessionStore((s) => s.activeSessionId)
 
   function openSqlEditor() {
     useStageStore.getState().openQueryEditor({

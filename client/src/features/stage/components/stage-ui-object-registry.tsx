@@ -17,12 +17,9 @@ function RegisteredQueryEditor({ tabId, sessionId }: { tabId: string; sessionId:
   return null
 }
 
-export function StageUIObjectRegistry({ sessionId, tabs }: { sessionId: string | null; tabs: StageTab[] }) {
-  const workspace = useMemo(() => new WorkspaceAdapter(() => sessionId), [sessionId])
-  const activeTabId = useStageStore((s) => {
-    if (!sessionId) return s.activeWorkspaceTabId
-    return s.activeTabIdBySession.get(sessionId) ?? s.activeWorkspaceTabId ?? null
-  })
+export function StageUIObjectRegistry({ tabs }: { tabs: StageTab[] }) {
+  const workspace = useMemo(() => new WorkspaceAdapter(() => null), [])
+  const activeTabId = useStageStore((s) => s.activeTabId)
 
   useEffect(() => {
     uiRouter.setActiveTabIdProvider(() => activeTabId ?? null)
@@ -34,7 +31,7 @@ export function StageUIObjectRegistry({ sessionId, tabs }: { sessionId: string |
       <RegisteredInstance instance={workspace} />
       {tabs
         .filter((tab) => tab.type === 'query_editor')
-        .map((tab) => <RegisteredQueryEditor key={tab.tabId} tabId={tab.tabId} sessionId={sessionId} />)}
+        .map((tab) => <RegisteredQueryEditor key={tab.tabId} tabId={tab.tabId} sessionId={tab.originSessionId ?? null} />)}
     </>
   )
 }

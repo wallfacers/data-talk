@@ -142,7 +142,7 @@ describe('ExecuteSql renderer', () => {
       database: 'app',
       schema: 'public',
     }))
-    expect(mockOpenStage).toHaveBeenCalledWith('sess-1')
+    expect(mockOpenStage).toHaveBeenCalledWith()
   })
 
   it('prefers connectionId from tool input over session context', () => {

@@ -140,9 +140,9 @@ describe('SplitView stage panel', () => {
       data: { status: 'ok', timestamp: '2026-04-24T00:00:00Z', message: 'OpenCode MCP bridge ready', reason: null },
     })
     useStageStore.setState({
-      openBySession: new Map(),
-      autoOpenedSessions: new Set(),
-      maximizedBySession: new Map(),
+      open: false,
+      autoOpened: false,
+      maximized: false,
       revealOrigin: null,
     })
     useSessionStore.setState({
@@ -181,7 +181,7 @@ describe('SplitView stage panel', () => {
 
   it('open=true + revealOrigin 有值 → 面板可见，style 正确', () => {
     useStageStore.setState({
-      openBySession: new Map([['s1', true]]),
+      open: true,
       revealOrigin: { x: 100, y: 300 },
     })
     const { container } = render(<SplitView />, { wrapper })
@@ -191,20 +191,20 @@ describe('SplitView stage panel', () => {
   })
 
   it('open=true + revealOrigin=null → 面板正常渲染', () => {
-    useStageStore.setState({ openBySession: new Map([['s1', true]]) })
+    useStageStore.setState({ open: true })
     const { container } = render(<SplitView />, { wrapper })
     const panel = findStagePanel(container)
     expect(panel.style.transform).toBe('translateX(0)')
   })
 
   it('关闭时 transform 切换到 100%，打开时切换回 0', () => {
-    useStageStore.setState({ openBySession: new Map([['s1', true]]) })
+    useStageStore.setState({ open: true })
     const { container, rerender } = render(<SplitView />, { wrapper })
     let panel = findStagePanel(container)
     expect(panel.style.transform).toBe('translateX(0)')
 
     act(() => {
-      useStageStore.setState({ openBySession: new Map([['s1', false]]) })
+      useStageStore.setState({ open: false })
     })
     rerender(<SplitView />)
     panel = findStagePanel(container)
@@ -213,7 +213,7 @@ describe('SplitView stage panel', () => {
 
     // 重新打开
     act(() => {
-      useStageStore.setState({ openBySession: new Map([['s1', true]]) })
+      useStageStore.setState({ open: true })
     })
     rerender(<SplitView />)
     panel = findStagePanel(container)

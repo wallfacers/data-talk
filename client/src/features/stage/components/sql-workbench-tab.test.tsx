@@ -162,8 +162,8 @@ vi.mock('@/features/session/hooks/use-session-data-context', () => ({
 }))
 
 vi.mock('./activity-rail/stage-activity-rail', () => ({
-  StageActivityRail: ({ sessionId }: { sessionId: string | null }) => (
-    <div data-testid="stage-activity-rail-stub" data-session-id={sessionId ?? ''} />
+  StageActivityRail: () => (
+    <div data-testid="stage-activity-rail-stub" data-session-id="" />
   ),
 }))
 
@@ -206,18 +206,16 @@ describe('SqlWorkbenchTab', () => {
     editorHarness.fakeEditor?.setPosition.mockClear()
     editorHarness.fakeEditor?.revealLineNearTop.mockClear()
     useStageStore.setState({
-      openBySession: new Map(),
-      autoOpenedSessions: new Set(),
-      maximizedBySession: new Map(),
+      open: false,
+      autoOpened: false,
+      maximized: false,
       revealOrigin: null,
-      sidebarCollapsedBySession: new Map(),
-      sidebarSelectionBySession: new Map(),
-      resourceTreeExpandedBySession: new Map(),
-      activeRailPanelBySession: new Map(),
-      workspaceTabs: [],
-      tabsBySession: new Map(),
-      activeWorkspaceTabId: null,
-      activeTabIdBySession: new Map(),
+      sidebarCollapsed: false,
+      sidebarSelection: null,
+      resourceTreeExpanded: [],
+      activeRailPanel: null,
+      tabs: [],
+      activeTabId: null,
     })
     useSqlWorkbenchStore.setState({ tabsById: {} })
     useSessionStore.setState({
@@ -684,7 +682,7 @@ delete from sessions;`,
     })
 
     useStageStore.setState({
-      workspaceTabs: [{
+      tabs: [{
         ...tab,
         tabId: 'tab-restored-override',
         payload: {
@@ -699,7 +697,7 @@ delete from sessions;`,
           },
         },
       }],
-      activeWorkspaceTabId: 'tab-restored-override',
+      activeTabId: 'tab-restored-override',
     })
 
     render(
@@ -1229,7 +1227,7 @@ delete from sessions;`,
     expect(onFormat).toHaveBeenCalledTimes(1)
   })
 
-  it('renders the activity rail inside the SQL tab and propagates the origin sessionId', () => {
+  it('renders the activity rail inside the SQL tab', () => {
     render(
       <SqlWorkbenchTab
         tab={{
@@ -1242,18 +1240,17 @@ delete from sessions;`,
 
     const rail = screen.getByTestId('stage-activity-rail-stub')
     expect(rail).toBeTruthy()
-    expect(rail.getAttribute('data-session-id')).toBe('sess-99')
 
     const tabRoot = screen.getByTestId('sql-workbench-tab')
     expect(tabRoot.contains(rail)).toBe(true)
     expect(tabRoot.className).toContain('flex-row')
   })
 
-  it('passes empty sessionId to the rail when the SQL tab has no origin session', () => {
+  it('renders the activity rail when the SQL tab has no origin session', () => {
     render(<SqlWorkbenchTab tab={{ ...tab, tabId: 'tab-rail-workspace' }} />)
 
     const rail = screen.getByTestId('stage-activity-rail-stub')
-    expect(rail.getAttribute('data-session-id')).toBe('')
+    expect(rail).toBeTruthy()
   })
 
   it('opens AlertDialog when SQL requires L2 confirmation', async () => {

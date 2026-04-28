@@ -7,10 +7,8 @@ import { QueryEditorAdapter } from '../QueryEditorAdapter'
 
 function resetStageStore() {
   useStageStore.setState({
-    workspaceTabs: [],
-    tabsBySession: new Map(),
-    activeWorkspaceTabId: null,
-    activeTabIdBySession: new Map(),
+    tabs: [],
+    activeTabId: null,
   } as unknown as Record<string, unknown>)
 }
 
@@ -668,16 +666,14 @@ describe('QueryEditorAdapter', () => {
     })
 
     useStageStore.setState({
-      activeWorkspaceTabId: null,
-      activeTabIdBySession: new Map([['s1', 'session-q1']]),
+      activeTabId: 'session-q1',
     } as unknown as Record<string, unknown>)
 
     const adapter = new QueryEditorAdapter('ws-q1', () => 's1')
     const result = await adapter.exec('focus')
 
     expect(result).toEqual({ success: true })
-    expect(useStageStore.getState().activeWorkspaceTabId).toBe('ws-q1')
-    expect(useStageStore.getState().activeTabIdBySession.get('s1')).toBeNull()
+    expect(useStageStore.getState().activeTabId).toBe('ws-q1')
   })
 
   it('close archives the query editor tab (detaches from workset, sets archived=true)', async () => {
@@ -698,7 +694,7 @@ describe('QueryEditorAdapter', () => {
     // Per ui-objects-reference.md: close is a deprecated alias for archive(true).
     // Tab gets archived (not deleted) and falls out of the workset.
     expect(useStageStore.getState().openTabIds.has('q1')).toBe(false)
-    const tab = useStageStore.getState().tabsBySession.get('s1')?.[0]
+    const tab = useStageStore.getState().tabs.find((t) => t.tabId === 'q1')
     expect(tab?.archived).toBe(true)
   })
 })

@@ -72,7 +72,7 @@ describe('openDirectSqlQueryEditorTab', () => {
       database: 'session-db',
       schema: 'session-schema',
     })
-    expect(openStageMock).toHaveBeenCalledWith('sess-1')
+    expect(openStageMock).toHaveBeenCalledWith()
   })
 
   it('delegates session context and explicit autoRun overrides into openQueryEditor', async () => {

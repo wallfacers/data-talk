@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { StageTabContent } from './stage-tab-content'
-import { useSessionStore } from '@/stores/session-store'
 import { useStageStore } from '@/stores/stage-store'
 
 vi.mock('./sql-workbench-tab', () => ({
@@ -23,32 +22,29 @@ vi.mock('@/components/ui/context-menu', () => ({
 
 describe('StageTabContent', () => {
   beforeEach(() => {
-    useSessionStore.setState({ activeSessionId: 's1' })
     useStageStore.setState({
-      workspaceTabs: [],
-      tabsBySession: new Map(),
-      activeWorkspaceTabId: null,
-      activeTabIdBySession: new Map(),
-    })
+      tabs: [],
+      openTabIds: new Set(),
+      openTabIdsOrdered: [],
+      activeTabId: null,
+    } as never)
   })
 
   it('renders SqlWorkbenchTab when the active tab is query_editor', () => {
     useStageStore.setState({
-      tabsBySession: new Map([
-        ['s1', [
-          {
-            tabId: 'sql-1',
-            type: 'query_editor',
-            title: 'SQL',
-            scope: 'session' as const,
-            originSessionId: 's1',
-            createdAt: 0,
-            payload: {},
-          },
-        ]],
-      ]),
-      activeTabIdBySession: new Map([['s1', 'sql-1']]),
-    })
+      tabs: [{
+        tabId: 'sql-1',
+        type: 'query_editor',
+        title: 'SQL',
+        scope: 'session' as const,
+        originSessionId: 's1',
+        createdAt: 0,
+        payload: {},
+      }],
+      activeTabId: 'sql-1',
+      openTabIds: new Set(['sql-1']),
+      openTabIdsOrdered: ['sql-1'],
+    } as never)
 
     render(<StageTabContent />)
 
@@ -57,21 +53,19 @@ describe('StageTabContent', () => {
 
   it('renders FilePreviewTab when the active tab is file_preview', () => {
     useStageStore.setState({
-      tabsBySession: new Map([
-        ['s1', [
-          {
-            tabId: 'preview-1',
-            type: 'file_preview',
-            title: 'README.md',
-            scope: 'session' as const,
-            originSessionId: 's1',
-            createdAt: 0,
-            payload: { sourceKey: 'readme' },
-          },
-        ]],
-      ]),
-      activeTabIdBySession: new Map([['s1', 'preview-1']]),
-    })
+      tabs: [{
+        tabId: 'preview-1',
+        type: 'file_preview',
+        title: 'README.md',
+        scope: 'session' as const,
+        originSessionId: 's1',
+        createdAt: 0,
+        payload: { sourceKey: 'readme' },
+      }],
+      activeTabId: 'preview-1',
+      openTabIds: new Set(['preview-1']),
+      openTabIdsOrdered: ['preview-1'],
+    } as never)
 
     render(<StageTabContent />)
 

@@ -765,7 +765,7 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
           </section>
         ) : null}
       </div>
-      <StageActivityRail sessionId={tab.originSessionId ?? null} />
+      <StageActivityRail />
       {isPending && tabState.confirmation ? (
         <AlertDialog open>
           <AlertDialogContent data-testid="sql-confirmation-dialog">

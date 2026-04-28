@@ -30,7 +30,6 @@ type TabItem = {
 type StageTabBarProps = {
   tabs: TabItem[]
   activeId?: string
-  sessionId?: string | null
   onSelect?: (tabId: string) => void
   onClose?: (tabId: string) => void
   onCloseOthers?: (tabId: string) => void
@@ -80,7 +79,6 @@ function getTabIcon(type?: string, isActive?: boolean) {
 export function StageTabBar({
   tabs,
   activeId,
-  sessionId,
   onSelect,
   onClose,
   onCloseOthers,
@@ -275,7 +273,7 @@ export function StageTabBar({
               <HomeIcon className="size-3.5" />
             </button>
           ) : null}
-          <StageTabBarAddButton sessionId={sessionId ?? null} />
+          <StageTabBarAddButton />
           {hasOverflow ? (
             <button
               type="button"

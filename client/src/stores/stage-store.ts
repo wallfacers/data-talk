@@ -56,6 +56,7 @@ export interface StageTab {
   scope: 'session' | 'workspace'
   pinned?: boolean
   archived?: boolean
+  archivedAt?: number | null
   payload: unknown
   payloadVersion?: number
   lastTouchedAt?: number
@@ -63,58 +64,51 @@ export interface StageTab {
 }
 
 export type StageState = {
-  openBySession: Map<string, boolean>
-  autoOpenedSessions: Set<string>
-  maximizedBySession: Map<string, boolean>
+  // Global stage view state
+  open: boolean
+  maximized: boolean
+  autoOpened: boolean
+  sidebarCollapsed: boolean
+  sidebarSelection: SidebarSelection | null
+  resourceTreeExpanded: string[]
+  activeRailPanel: RailPanel | null
   revealOrigin: RevealOrigin | null
-  sidebarCollapsedBySession: Map<string, boolean>
-  sidebarSelectionBySession: Map<string, SidebarSelection | null>
-  resourceTreeExpandedBySession: Map<string, string[]>
-  activeRailPanelBySession: Map<string, RailPanel | null>
 
-  workspaceTabs: StageTab[]
-  tabsBySession: Map<string, StageTab[]>
-  activeWorkspaceTabId: string | null
-  activeTabIdBySession: Map<string, string | null>
-
-  // Workset (Phase 2)
+  // Tabs (single list)
+  tabs: StageTab[]
   openTabIds: Set<string>
   openTabIdsOrdered: string[]
+  activeTabId: string | null
+
+  // Left rail UI prefs
   leftRailWidth: number
   leftRailCollapsed: boolean
 
+  // Actions (no sid params)
+  openStage: () => void
+  closeStage: () => void
+  toggleStage: () => void
+  toggleMaximized: () => void
+  setRevealOrigin: (origin: RevealOrigin | null) => void
+  notifyArtifactArrived: () => void
+  syncCollapsed: (collapsed: boolean) => void
+  toggleSidebarCollapsed: () => void
+  setSidebarSelection: (selection: SidebarSelection | null) => void
+  toggleResourceExpanded: (nodeId: string) => void
+  setResourceExpanded: (ids: string[]) => void
+  setActiveRailPanel: (panel: RailPanel | null) => void
+  toggleRailPanel: (panel: RailPanel) => void
+
+  // Tab CRUD
   ensureOpenInWorkset: (tabId: string) => void
   detachFromWorkset: (tabId: string) => void
   trashTab: (tabId: string) => Promise<void>
   setLeftRailWidth: (px: number) => void
   toggleLeftRailCollapsed: () => void
 
-  openStage: (sessionId: string) => void
-  closeStage: (sessionId: string) => void
-  toggleStage: (sessionId: string) => void
-  toggleMaximized: (sessionId: string) => void
-  setRevealOrigin: (origin: RevealOrigin | null) => void
-  notifyArtifactArrived: (sessionId: string) => void
-  syncCollapsed: (sessionId: string, collapsed: boolean) => void
-  toggleSidebarCollapsed: (sessionId: string) => void
-  setSidebarSelection: (sessionId: string, selection: SidebarSelection | null) => void
-  toggleResourceExpanded: (sessionId: string, nodeId: string) => void
-  setResourceExpanded: (sessionId: string, nodeIds: string[]) => void
-  setActiveRailPanel: (sessionId: string, panel: RailPanel | null) => void
-  toggleRailPanel: (sessionId: string, panel: RailPanel) => void
-  clear: (sessionId: string) => void
-  clearAllSessionState: () => void
-  focusWorkspaceTabForSession: (sessionId: string) => void
-
-  // Tab CRUD（新）
   openTab: (tab: StageTab) => void
-  /**
-   * @deprecated Phase 2: closeTab is now an alias of detachFromWorkset.
-   * Use detachFromWorkset directly.
-   */
-  closeTab: (tabId: string) => void
   focusTab: (tabId: string) => void
-  listTabs: (sessionId: string | null) => StageTab[]
+  listTabs: () => StageTab[]
   updateTabPayload: (tabId: string, updater: (prev: unknown) => unknown) => void
   openArtifactPreviewTab: (sessionId: string, artifactId: string, title: string) => void
   openQueryEditor: (input: QueryEditorOpenInput) => { tabId: string; created: boolean }
@@ -137,8 +131,6 @@ export type StageState = {
   // Persistence mutation API
   findTab: (tabId: string) => StageTab | null
   __hydrateAll: (items: StageTab[]) => void
-  __hydrateWorkspaceTabs: (items: StageTab[]) => void
-  __hydrateSessionTabs: (sessionId: string, items: StageTab[]) => void
   __hydratePayload: (tabId: string, payload: unknown, version: number) => void
   __setPayloadVersion: (tabId: string, version: number) => void
   archiveTab: (id: string, archived: boolean) => void
@@ -166,14 +158,6 @@ function loadLeftRailCollapsed(): boolean {
   } catch {
     return false
   }
-}
-
-function archiveDetach(s: StageState, tabId: string) {
-  const nextIds = new Set(s.openTabIds); nextIds.delete(tabId)
-  const nextOrder = s.openTabIdsOrdered.filter((id) => id !== tabId)
-  const wasActive = s.activeWorkspaceTabId === tabId
-  const nextActive = wasActive ? (nextOrder[nextOrder.length - 1] ?? null) : s.activeWorkspaceTabId
-  return { openTabIds: nextIds, openTabIdsOrdered: nextOrder, activeWorkspaceTabId: nextActive }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -210,33 +194,6 @@ function matchesNullable(left?: string | null, right?: string | null) {
   return (left ?? null) === (right ?? null)
 }
 
-function updateTabMeta(
-  tabs: StageTab[],
-  tabId: string,
-  updater: (tab: StageTab) => StageTab,
-) {
-  const index = tabs.findIndex((tab) => tab.tabId === tabId)
-  if (index < 0) return null
-  const next = [...tabs]
-  next[index] = updater(next[index])
-  return next
-}
-
-function mergeHydratedWorkspaceTabs(existingTabs: StageTab[], items: StageTab[]) {
-  const incomingMap = new Map(items.map((t) => [t.tabId, t]))
-  const merged = existingTabs.map((existing) => {
-    const hydrated = incomingMap.get(existing.tabId)
-    if (!hydrated) return existing
-    return { ...existing, ...hydrated }
-  })
-  for (const item of items) {
-    if (!merged.some((t) => t.tabId === item.tabId)) {
-      merged.push(item)
-    }
-  }
-  return merged
-}
-
 // On hydrate, seed the workset with non-archived hydrated tabs so the top tab
 // bar is not empty after a cold restart. Existing workset entries are preserved
 // in their current order; new tabs append to the tail.
@@ -257,176 +214,71 @@ function seedWorkset(
 }
 
 export const useStageStore = create<StageState>((set, get) => ({
-  openBySession: new Map(),
-  autoOpenedSessions: new Set(),
-  maximizedBySession: new Map(),
+  open: false,
+  maximized: false,
+  autoOpened: false,
+  sidebarCollapsed: false,
+  sidebarSelection: null,
+  resourceTreeExpanded: [],
+  activeRailPanel: null,
   revealOrigin: null,
-  sidebarCollapsedBySession: new Map(),
-  sidebarSelectionBySession: new Map(),
-  resourceTreeExpandedBySession: new Map(),
-  activeRailPanelBySession: new Map(),
 
-  workspaceTabs: [],
-  tabsBySession: new Map(),
-  activeWorkspaceTabId: null,
-  activeTabIdBySession: new Map(),
-
+  tabs: [],
   openTabIds: new Set<string>(),
   openTabIdsOrdered: [],
+  activeTabId: null,
+
   leftRailWidth: loadLeftRailWidth(),
   leftRailCollapsed: loadLeftRailCollapsed(),
 
-  openStage: (sid) => set((s) => { const m = new Map(s.openBySession); m.set(sid, true); return { openBySession: m } }),
-  closeStage: (sid) => set((s) => { const m = new Map(s.openBySession); m.set(sid, false); const a = new Set(s.autoOpenedSessions); a.add(sid); return { openBySession: m, autoOpenedSessions: a } }),
-  toggleStage: (sid) => { const cur = !!get().openBySession.get(sid); if (cur) get().closeStage(sid); else get().openStage(sid) },
-  toggleMaximized: (sid) => set((s) => { const m = new Map(s.maximizedBySession); m.set(sid, !m.get(sid)); return { maximizedBySession: m } }),
+  openStage: () => set({ open: true }),
+  closeStage: () => set({ open: false, autoOpened: false }),
+  toggleStage: () => set((s) => ({ open: !s.open, ...(s.open ? { autoOpened: false } : {}) })),
+  toggleMaximized: () => set((s) => ({ maximized: !s.maximized })),
   setRevealOrigin: (origin) => set({ revealOrigin: origin }),
-  notifyArtifactArrived: (sid) => set((s) => {
-    if (s.autoOpenedSessions.has(sid)) return s
-    if (s.openBySession.get(sid)) return s
-    const m = new Map(s.openBySession); m.set(sid, true)
-    const a = new Set(s.autoOpenedSessions); a.add(sid)
-    return { openBySession: m, autoOpenedSessions: a }
-  }),
-  syncCollapsed: (sid, collapsed) => set((s) => {
-    const cur = s.openBySession.get(sid); const next = !collapsed
-    if (cur === next) return s
-    const m = new Map(s.openBySession); m.set(sid, next)
-    if (collapsed) { const a = new Set(s.autoOpenedSessions); a.add(sid); return { openBySession: m, autoOpenedSessions: a } }
-    return { openBySession: m }
-  }),
-  toggleSidebarCollapsed: (sid) => set((s) => {
-    const map = new Map(s.sidebarCollapsedBySession)
-    map.set(sid, !map.get(sid))
-    return { sidebarCollapsedBySession: map }
-  }),
-  setSidebarSelection: (sid, selection) => set((s) => {
-    const map = new Map(s.sidebarSelectionBySession)
-    map.set(sid, selection)
-    return { sidebarSelectionBySession: map }
-  }),
-  toggleResourceExpanded: (sid, nodeId) => set((s) => {
-    const current = s.resourceTreeExpandedBySession.get(sid) ?? []
-    const next = current.includes(nodeId)
-      ? current.filter((id) => id !== nodeId)
-      : [...current, nodeId]
-    const map = new Map(s.resourceTreeExpandedBySession)
-    map.set(sid, next)
-    return { resourceTreeExpandedBySession: map }
-  }),
-  setResourceExpanded: (sid, nodeIds) => set((s) => {
-    const map = new Map(s.resourceTreeExpandedBySession)
-    map.set(sid, [...nodeIds])
-    return { resourceTreeExpandedBySession: map }
-  }),
-  setActiveRailPanel: (sid, panel) => set((s) => {
-    const map = new Map(s.activeRailPanelBySession)
-    map.set(sid, panel)
-    return { activeRailPanelBySession: map }
-  }),
-  toggleRailPanel: (sid, panel) => set((s) => {
-    const current = s.activeRailPanelBySession.get(sid) ?? null
-    const next = current === panel ? null : panel
-    const map = new Map(s.activeRailPanelBySession)
-    map.set(sid, next)
-    return { activeRailPanelBySession: map }
-  }),
-  clear: (sid) => set((s) => {
-    const openMap = new Map(s.openBySession); openMap.delete(sid)
-    const a = new Set(s.autoOpenedSessions); a.delete(sid)
-    const maxMap = new Map(s.maximizedBySession); maxMap.delete(sid)
-    const collapsedMap = new Map(s.sidebarCollapsedBySession); collapsedMap.delete(sid)
-    const selectionMap = new Map(s.sidebarSelectionBySession); selectionMap.delete(sid)
-    const expandedMap = new Map(s.resourceTreeExpandedBySession); expandedMap.delete(sid)
-    const railMap = new Map(s.activeRailPanelBySession); railMap.delete(sid)
-    const ts = new Map(s.tabsBySession); ts.delete(sid)
-    const ats = new Map(s.activeTabIdBySession); ats.delete(sid)
-    return {
-      openBySession: openMap,
-      autoOpenedSessions: a,
-      maximizedBySession: maxMap,
-      sidebarCollapsedBySession: collapsedMap,
-      sidebarSelectionBySession: selectionMap,
-      resourceTreeExpandedBySession: expandedMap,
-      activeRailPanelBySession: railMap,
-      tabsBySession: ts,
-      activeTabIdBySession: ats,
-    }
+
+  notifyArtifactArrived: () => set((s) => {
+    if (s.autoOpened) return s
+    if (s.open) return s
+    return { open: true, autoOpened: true }
   }),
 
-  clearAllSessionState: () => set({
-    openBySession: new Map(),
-    autoOpenedSessions: new Set(),
-    maximizedBySession: new Map(),
-    sidebarCollapsedBySession: new Map(),
-    sidebarSelectionBySession: new Map(),
-    resourceTreeExpandedBySession: new Map(),
-    activeRailPanelBySession: new Map(),
-    tabsBySession: new Map(),
-    activeTabIdBySession: new Map(),
+  syncCollapsed: (collapsed) => set((s) => {
+    const nextOpen = !collapsed
+    if (s.open === nextOpen) return s
+    return collapsed
+      ? { open: false, autoOpened: false }
+      : { open: true }
   }),
 
-  focusWorkspaceTabForSession: (sessionId) => set((s) => {
-    const activeTabIdBySession = new Map(s.activeTabIdBySession)
-    activeTabIdBySession.set(sessionId, null)
-    return { activeTabIdBySession }
+  toggleSidebarCollapsed: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+  setSidebarSelection: (selection) => set({ sidebarSelection: selection }),
+
+  toggleResourceExpanded: (nodeId) => set((s) => {
+    const next = s.resourceTreeExpanded.includes(nodeId)
+      ? s.resourceTreeExpanded.filter((id) => id !== nodeId)
+      : [...s.resourceTreeExpanded, nodeId]
+    return { resourceTreeExpanded: next }
   }),
+  setResourceExpanded: (ids) => set({ resourceTreeExpanded: [...ids] }),
 
-  openTab: (tab) => set((s) => {
-    // Newly created tabs always enter the workset so the top tab bar shows them
-    // immediately. Archived tabs cannot be created via this path; ensureOpenInWorkset
-    // semantics are inlined here to avoid a chained set call.
-    const alreadyInWorkset = s.openTabIds.has(tab.tabId)
-    const nextOpenIds = alreadyInWorkset ? s.openTabIds : new Set(s.openTabIds).add(tab.tabId)
-    const nextOpenOrder = alreadyInWorkset ? s.openTabIdsOrdered : [...s.openTabIdsOrdered, tab.tabId]
-    if (tab.scope === 'workspace') {
-      return {
-        workspaceTabs: [...s.workspaceTabs, tab],
-        activeWorkspaceTabId: tab.tabId,
-        openTabIds: nextOpenIds,
-        openTabIdsOrdered: nextOpenOrder,
-      }
-    }
-    const sid = tab.originSessionId
-    if (!sid) throw new Error('session-scoped tab requires originSessionId')
-    const existing = s.tabsBySession.get(sid) ?? []
-    const next = new Map(s.tabsBySession); next.set(sid, [...existing, tab])
-    const active = new Map(s.activeTabIdBySession); active.set(sid, tab.tabId)
-    return {
-      tabsBySession: next,
-      activeTabIdBySession: active,
-      openTabIds: nextOpenIds,
-      openTabIdsOrdered: nextOpenOrder,
-    }
-  }),
+  setActiveRailPanel: (panel) => set({ activeRailPanel: panel }),
+  toggleRailPanel: (panel) => set((s) => ({
+    activeRailPanel: s.activeRailPanel === panel ? null : panel,
+  })),
 
-  closeTab: (tabId) => {
-    // Phase 2 semantic: close = detach from workset (not DB delete).
-    useStageStore.getState().detachFromWorkset(tabId)
-  },
-
-  focusTab: (tabId) => {
-    useStageStore.getState().ensureOpenInWorkset(tabId)
-    set((s) => {
-      if (s.workspaceTabs.some((t) => t.tabId === tabId)) {
-        return { activeWorkspaceTabId: tabId }
-      }
-      for (const [sid, arr] of s.tabsBySession.entries()) {
-        if (arr.some((t) => t.tabId === tabId)) {
-          const map = new Map(s.activeTabIdBySession); map.set(sid, tabId)
-          return { activeTabIdBySession: map, activeWorkspaceTabId: tabId }
-        }
-      }
-      return s
-    })
-  },
+  // Tab CRUD
+  openTab: (tab) => set((s) => ({
+    tabs: [...s.tabs, tab],
+    openTabIds: new Set([...s.openTabIds, tab.tabId]),
+    openTabIdsOrdered: [...s.openTabIdsOrdered, tab.tabId],
+    activeTabId: tab.tabId,
+  })),
 
   ensureOpenInWorkset: (tabId) => set((s) => {
     if (s.openTabIds.has(tabId)) return s
-    const allTabs = [...s.workspaceTabs, ...[...s.tabsBySession.values()].flat()]
-    const target = allTabs.find((t) => t.tabId === tabId)
-    if (!target) return s
-    if (target.archived) return s
+    const target = s.tabs.find((t) => t.tabId === tabId)
+    if (!target || target.archived) return s
     const next = new Set(s.openTabIds); next.add(tabId)
     return { openTabIds: next, openTabIdsOrdered: [...s.openTabIdsOrdered, tabId] }
   }),
@@ -435,19 +287,27 @@ export const useStageStore = create<StageState>((set, get) => ({
     if (!s.openTabIds.has(tabId)) return s
     const nextIds = new Set(s.openTabIds); nextIds.delete(tabId)
     const nextOrder = s.openTabIdsOrdered.filter((id) => id !== tabId)
-    const wasActive = s.activeWorkspaceTabId === tabId
-    const nextActive = wasActive ? (nextOrder[nextOrder.length - 1] ?? null) : s.activeWorkspaceTabId
-    return { openTabIds: nextIds, openTabIdsOrdered: nextOrder, activeWorkspaceTabId: nextActive }
+    const nextActive = s.activeTabId === tabId ? (nextOrder[nextOrder.length - 1] ?? null) : s.activeTabId
+    return { openTabIds: nextIds, openTabIdsOrdered: nextOrder, activeTabId: nextActive }
+  }),
+
+  archiveTab: (tabId, archived) => set((s) => {
+    const idx = s.tabs.findIndex((t) => t.tabId === tabId)
+    if (idx < 0) return s
+    const updated = [...s.tabs]
+    updated[idx] = { ...updated[idx], archived, archivedAt: archived ? Date.now() : null }
+    if (!archived) return { tabs: updated }
+    const nextIds = new Set(s.openTabIds); nextIds.delete(tabId)
+    const nextOrder = s.openTabIdsOrdered.filter((id) => id !== tabId)
+    const nextActive = s.activeTabId === tabId ? (nextOrder[nextOrder.length - 1] ?? null) : s.activeTabId
+    return { tabs: updated, openTabIds: nextIds, openTabIdsOrdered: nextOrder, activeTabId: nextActive }
   }),
 
   trashTab: async (tabId) => {
-    // Snapshot workset state before detach so we can roll back if the persistence
-    // delete fails — otherwise users see the tab vanish from workset but the
-    // library row stays around forever.
     const before = get()
     const prevOpenIds = before.openTabIds
     const prevOpenOrder = before.openTabIdsOrdered
-    const prevActive = before.activeWorkspaceTabId
+    const prevActive = before.activeTabId
     useStageStore.getState().detachFromWorkset(tabId)
     try {
       const { coordinator } = await import('@/features/stage/persistence/stage-persistence-bootstrap')
@@ -456,114 +316,89 @@ export const useStageStore = create<StageState>((set, get) => ({
       set(() => ({
         openTabIds: prevOpenIds,
         openTabIdsOrdered: prevOpenOrder,
-        activeWorkspaceTabId: prevActive,
+        activeTabId: prevActive,
       }))
       throw err
     }
-    set((s) => {
-      const wsRemoved = s.workspaceTabs.filter((t) => t.tabId !== tabId)
-      if (wsRemoved.length !== s.workspaceTabs.length) return { workspaceTabs: wsRemoved }
-      for (const [sid, list] of s.tabsBySession.entries()) {
-        if (list.some((t) => t.tabId === tabId)) {
-          const next = list.filter((t) => t.tabId !== tabId)
-          const map = new Map(s.tabsBySession); map.set(sid, next)
-          const activeMap = new Map(s.activeTabIdBySession)
-          if (activeMap.get(sid) === tabId) activeMap.set(sid, null)
-          return { tabsBySession: map, activeTabIdBySession: activeMap }
-        }
-      }
-      return s
-    })
+    set((s) => ({ tabs: s.tabs.filter((t) => t.tabId !== tabId) }))
   },
 
-  setLeftRailWidth: (px) => set(() => {
-    try { localStorage.setItem(LEFT_RAIL_WIDTH_KEY, String(px)) } catch {}
-    return { leftRailWidth: Math.min(320, Math.max(180, px)) }
+  focusTab: (tabId) => set((s) => {
+    const target = s.tabs.find((t) => t.tabId === tabId)
+    if (!target) return s
+    if (target.archived) return s
+    const inWorkset = s.openTabIds.has(tabId)
+    if (inWorkset) return { activeTabId: tabId }
+    const nextIds = new Set(s.openTabIds); nextIds.add(tabId)
+    return {
+      openTabIds: nextIds,
+      openTabIdsOrdered: [...s.openTabIdsOrdered, tabId],
+      activeTabId: tabId,
+    }
   }),
 
+  setLeftRailWidth: (px) => {
+    try { localStorage.setItem(LEFT_RAIL_WIDTH_KEY, String(px)) } catch {}
+    set({ leftRailWidth: Math.min(320, Math.max(180, px)) })
+  },
   toggleLeftRailCollapsed: () => set((s) => {
     const next = !s.leftRailCollapsed
     try { localStorage.setItem(LEFT_RAIL_COLLAPSED_KEY, String(next)) } catch {}
     return { leftRailCollapsed: next }
   }),
 
-  listTabs: (sid) => {
-    const s = get()
-    const sessionTabs = sid ? (s.tabsBySession.get(sid) ?? []) : []
-    return [...s.workspaceTabs, ...sessionTabs]
-  },
+  listTabs: () => get().tabs,
 
   updateTabPayload: (tabId, updater) => set((s) => {
-    const wsIdx = s.workspaceTabs.findIndex((t) => t.tabId === tabId)
-    if (wsIdx >= 0) {
-      const next = [...s.workspaceTabs]
-      next[wsIdx] = { ...next[wsIdx], payload: updater(next[wsIdx].payload) }
-      return { workspaceTabs: next }
-    }
-    for (const [sid, arr] of s.tabsBySession.entries()) {
-      const i = arr.findIndex((t) => t.tabId === tabId)
-      if (i < 0) continue
-      const nextArr = [...arr]; nextArr[i] = { ...nextArr[i], payload: updater(nextArr[i].payload) }
-      const map = new Map(s.tabsBySession); map.set(sid, nextArr)
-      return { tabsBySession: map }
-    }
-    return s
+    const idx = s.tabs.findIndex((t) => t.tabId === tabId)
+    if (idx < 0) return s
+    const next = [...s.tabs]
+    next[idx] = { ...next[idx], payload: updater(next[idx].payload) }
+    return { tabs: next }
   }),
 
   openArtifactPreviewTab: (sessionId, artifactId, title) => {
-    const existing = get().tabsBySession.get(sessionId)?.find(
+    const existing = get().tabs.find(
       (t) => t.type === 'artifact_preview' && (t.payload as { artifactId?: string })?.artifactId === artifactId,
     )
     if (existing) {
-      get().openStage(sessionId)
+      get().openStage()
       get().focusTab(existing.tabId)
       return
     }
     const tabId = `artifact_preview_${generateUuid()}`
     const tab: StageTab = {
-      tabId,
-      type: 'artifact_preview',
-      title,
+      tabId, type: 'artifact_preview', title,
       originSessionId: sessionId,
       scope: 'session',
       payload: { artifactId, sessionId },
       createdAt: Date.now(),
     }
-    get().openStage(sessionId)
+    get().openStage()
     get().openTab(tab)
   },
 
   openQueryEditor: (input) => {
-    if (input.scope === 'session' && !input.sessionId) {
-      throw new Error('session-scoped query editor requires sessionId')
-    }
-
     const latest = get()
-    const sessionTabs = input.sessionId ? (latest.tabsBySession.get(input.sessionId) ?? []) : []
-    if (input.scope === 'session' && input.openMode === 'reuse_by_resource_context') {
-      const existing = sessionTabs.find((tab) =>
-        tab.type === 'query_editor' &&
-        matchesNullable(tab.connectionId, input.connectionId) &&
-        matchesNullable(tab.database, input.database) &&
-        matchesNullable(tab.schema, input.schema)
+    if (input.openMode === 'reuse_by_resource_context') {
+      const existing = latest.tabs.find((t) =>
+        t.type === 'query_editor' &&
+        matchesNullable(t.connectionId, input.connectionId) &&
+        matchesNullable(t.database, input.database) &&
+        matchesNullable(t.schema, input.schema)
       )
       if (existing) {
         latest.focusTab(existing.tabId)
         return { tabId: existing.tabId, created: false }
       }
     }
-
-    const visibleTitles = [
-      ...latest.workspaceTabs,
-      ...sessionTabs,
-    ]
-      .filter((tab) => tab.type === 'query_editor')
-      .map((tab) => tab.title)
+    const visibleTitles = latest.tabs
+      .filter((t) => t.type === 'query_editor')
+      .map((t) => t.title)
     const tabId = `query_editor_${generateUuid()}`
     const payload = buildQueryEditorPayload(input)
     const tab: StageTab = {
-      tabId,
-      type: 'query_editor',
+      tabId, type: 'query_editor',
       title: resolveUniqueTabTitle(input.baseTitle, visibleTitles),
       connectionId: input.connectionId ?? undefined,
       connectionName: input.connectionName ?? undefined,
@@ -574,15 +409,7 @@ export const useStageStore = create<StageState>((set, get) => ({
       payload,
       createdAt: Date.now(),
     }
-
     latest.openTab(tab)
-    if (input.scope === 'workspace' && input.sessionId) {
-      set((state) => {
-        const activeTabIdBySession = new Map(state.activeTabIdBySession)
-        activeTabIdBySession.set(input.sessionId!, null)
-        return { activeTabIdBySession }
-      })
-    }
     useSqlWorkbenchStore.getState().ensureTab(tabId, {
       sqlText: input.initialContent ?? '',
       source: payload.source,
@@ -590,191 +417,79 @@ export const useStageStore = create<StageState>((set, get) => ({
     return { tabId, created: true }
   },
 
-  setQueryEditorContext: (tabId, context) => set((state) => {
-    const workspaceTabs = updateTabMeta(state.workspaceTabs, tabId, (tab) => ({
-      ...tab,
+  setQueryEditorContext: (tabId, context) => set((s) => {
+    const idx = s.tabs.findIndex((t) => t.tabId === tabId)
+    if (idx < 0) return s
+    const next = [...s.tabs]
+    next[idx] = {
+      ...next[idx],
       connectionId: context.connectionId ?? undefined,
       connectionName: context.connectionName ?? undefined,
       database: context.database ?? undefined,
       schema: context.schema ?? undefined,
-      payload: updateQueryEditorPayload(tab.payload, {
+      payload: updateQueryEditorPayload(next[idx].payload, {
         connectionId: context.connectionId ?? null,
         connectionName: context.connectionName ?? null,
         database: context.database ?? null,
         schema: context.schema ?? null,
       }),
-    }))
-    if (workspaceTabs) {
-      return { workspaceTabs }
     }
-
-    for (const [sessionId, tabs] of state.tabsBySession.entries()) {
-      const nextTabs = updateTabMeta(tabs, tabId, (tab) => ({
-        ...tab,
-        connectionId: context.connectionId ?? undefined,
-        connectionName: context.connectionName ?? undefined,
-        database: context.database ?? undefined,
-        schema: context.schema ?? undefined,
-        payload: updateQueryEditorPayload(tab.payload, {
-          connectionId: context.connectionId ?? null,
-          connectionName: context.connectionName ?? null,
-          database: context.database ?? null,
-          schema: context.schema ?? null,
-        }),
-      }))
-      if (!nextTabs) continue
-      const tabsBySession = new Map(state.tabsBySession)
-      tabsBySession.set(sessionId, nextTabs)
-      return { tabsBySession }
-    }
-
-    return state
+    return { tabs: next }
   }),
 
-  replaceQueryEditorContent: (tabId, content, baseVersion) => {
-    return useSqlWorkbenchStore.getState().replaceSqlText(tabId, content, baseVersion)
-  },
+  replaceQueryEditorContent: (tabId, content, baseVersion) =>
+    useSqlWorkbenchStore.getState().replaceSqlText(tabId, content, baseVersion),
 
-  applyQueryEditorTextEdits: (tabId, params) => {
-    return useSqlWorkbenchStore.getState().applyTextEdits(tabId, params)
-  },
+  applyQueryEditorTextEdits: (tabId, params) =>
+    useSqlWorkbenchStore.getState().applyTextEdits(tabId, params),
 
-  setQueryEditorCursor: (tabId, cursor) => {
-    useSqlWorkbenchStore.getState().setCursor(tabId, cursor.line, cursor.column)
-  },
+  setQueryEditorCursor: (tabId, cursor) =>
+    useSqlWorkbenchStore.getState().setCursor(tabId, cursor.line, cursor.column),
 
-  findTab: (tabId) => {
-    const s = get()
-    const ws = s.workspaceTabs.find((t) => t.tabId === tabId)
-    if (ws) return ws
-    for (const [, arr] of s.tabsBySession.entries()) {
-      const found = arr.find((t) => t.tabId === tabId)
-      if (found) return found
+  findTab: (tabId) => get().tabs.find((t) => t.tabId === tabId) ?? null,
+
+  __hydrateAll: (items) => set((s) => {
+    const incoming = new Map(items.map((t) => [t.tabId, t]))
+    const merged = s.tabs.map((existing) => {
+      const hydrated = incoming.get(existing.tabId)
+      if (!hydrated) return existing
+      return { ...existing, ...hydrated }
+    })
+    for (const item of items) {
+      if (!merged.some((t) => t.tabId === item.tabId)) merged.push(item)
     }
-    return null
-  },
-
-  __hydrateAll: (items) => set((s) => ({
-    workspaceTabs: mergeHydratedWorkspaceTabs(s.workspaceTabs, items),
-    ...seedWorkset(s.openTabIds, s.openTabIdsOrdered, items),
-  })),
-
-  __hydrateWorkspaceTabs: (items) => set((s) => ({
-    workspaceTabs: mergeHydratedWorkspaceTabs(s.workspaceTabs, items),
-    ...seedWorkset(s.openTabIds, s.openTabIdsOrdered, items),
-  })),
-
-  __hydrateSessionTabs: (_sessionId, items) => set((s) => ({
-    workspaceTabs: mergeHydratedWorkspaceTabs(s.workspaceTabs, items),
-    ...seedWorkset(s.openTabIds, s.openTabIdsOrdered, items),
-  })),
+    return { tabs: merged, ...seedWorkset(s.openTabIds, s.openTabIdsOrdered, items) }
+  }),
 
   __hydratePayload: (tabId, payload, version) => set((s) => {
-    const wsIdx = s.workspaceTabs.findIndex((t) => t.tabId === tabId)
-    if (wsIdx >= 0) {
-      const next = [...s.workspaceTabs]
-      next[wsIdx] = { ...next[wsIdx], payload, payloadVersion: version }
-      return { workspaceTabs: next }
-    }
-    for (const [sid, arr] of s.tabsBySession.entries()) {
-      const i = arr.findIndex((t) => t.tabId === tabId)
-      if (i < 0) continue
-      const nextArr = [...arr]
-      nextArr[i] = { ...nextArr[i], payload, payloadVersion: version }
-      const map = new Map(s.tabsBySession)
-      map.set(sid, nextArr)
-      return { tabsBySession: map }
-    }
-    return s
+    const idx = s.tabs.findIndex((t) => t.tabId === tabId)
+    if (idx < 0) return s
+    const next = [...s.tabs]
+    next[idx] = { ...next[idx], payload, payloadVersion: version }
+    return { tabs: next }
   }),
 
   __setPayloadVersion: (tabId, version) => set((s) => {
-    const wsIdx = s.workspaceTabs.findIndex((t) => t.tabId === tabId)
-    if (wsIdx >= 0) {
-      const next = [...s.workspaceTabs]
-      next[wsIdx] = { ...next[wsIdx], payloadVersion: version }
-      return { workspaceTabs: next }
-    }
-    for (const [sid, arr] of s.tabsBySession.entries()) {
-      const i = arr.findIndex((t) => t.tabId === tabId)
-      if (i < 0) continue
-      const nextArr = [...arr]
-      nextArr[i] = { ...nextArr[i], payloadVersion: version }
-      const map = new Map(s.tabsBySession)
-      map.set(sid, nextArr)
-      return { tabsBySession: map }
-    }
-    return s
-  }),
-
-  archiveTab: (id, archived) => set((s) => {
-    const updateInList = (list: StageTab[]): StageTab[] | null => {
-      const idx = list.findIndex((t) => t.tabId === id)
-      if (idx < 0) return null
-      const next = [...list]
-      next[idx] = { ...next[idx], archived }
-      return next
-    }
-    const ws = updateInList(s.workspaceTabs)
-    if (ws) {
-      const detached = archived ? archiveDetach(s, id) : { openTabIds: s.openTabIds, openTabIdsOrdered: s.openTabIdsOrdered, activeWorkspaceTabId: s.activeWorkspaceTabId }
-      return { workspaceTabs: ws, ...detached }
-    }
-    for (const [sid, list] of s.tabsBySession.entries()) {
-      const updated = updateInList(list)
-      if (updated) {
-        const map = new Map(s.tabsBySession); map.set(sid, updated)
-        if (!archived) {
-          return { tabsBySession: map }
-        }
-        // Archiving an active session-scoped tab must clear that session's
-        // active pointer; otherwise renderers keep highlighting an archived row.
-        const detached = archiveDetach(s, id)
-        const activeMap = new Map(s.activeTabIdBySession)
-        if (activeMap.get(sid) === id) {
-          activeMap.set(sid, null)
-        }
-        return { tabsBySession: map, activeTabIdBySession: activeMap, ...detached }
-      }
-    }
-    return s
+    const idx = s.tabs.findIndex((t) => t.tabId === tabId)
+    if (idx < 0) return s
+    const next = [...s.tabs]
+    next[idx] = { ...next[idx], payloadVersion: version }
+    return { tabs: next }
   }),
 
   setTabPinned: (id, pinned) => set((s) => {
-    const wsIdx = s.workspaceTabs.findIndex((t) => t.tabId === id)
-    if (wsIdx >= 0) {
-      const next = [...s.workspaceTabs]
-      next[wsIdx] = { ...next[wsIdx], pinned }
-      return { workspaceTabs: next }
-    }
-    for (const [sid, arr] of s.tabsBySession.entries()) {
-      const i = arr.findIndex((t) => t.tabId === id)
-      if (i < 0) continue
-      const nextArr = [...arr]
-      nextArr[i] = { ...nextArr[i], pinned }
-      const map = new Map(s.tabsBySession)
-      map.set(sid, nextArr)
-      return { tabsBySession: map }
-    }
-    return s
+    const idx = s.tabs.findIndex((t) => t.tabId === id)
+    if (idx < 0) return s
+    const next = [...s.tabs]
+    next[idx] = { ...next[idx], pinned }
+    return { tabs: next }
   }),
 
   setTabTitle: (id, title) => set((s) => {
-    const wsIdx = s.workspaceTabs.findIndex((t) => t.tabId === id)
-    if (wsIdx >= 0) {
-      const next = [...s.workspaceTabs]
-      next[wsIdx] = { ...next[wsIdx], title }
-      return { workspaceTabs: next }
-    }
-    for (const [sid, arr] of s.tabsBySession.entries()) {
-      const i = arr.findIndex((t) => t.tabId === id)
-      if (i < 0) continue
-      const nextArr = [...arr]
-      nextArr[i] = { ...nextArr[i], title }
-      const map = new Map(s.tabsBySession)
-      map.set(sid, nextArr)
-      return { tabsBySession: map }
-    }
-    return s
+    const idx = s.tabs.findIndex((t) => t.tabId === id)
+    if (idx < 0) return s
+    const next = [...s.tabs]
+    next[idx] = { ...next[idx], title }
+    return { tabs: next }
   }),
 }))

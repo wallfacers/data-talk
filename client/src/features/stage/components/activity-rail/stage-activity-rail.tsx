@@ -14,7 +14,6 @@ import { SchemaPanel, type SchemaPanelItem, type SchemaPanelContext } from './sc
 import { DiagnosticsPanel } from './diagnostics-panel'
 
 type Props = {
-  sessionId?: string | null
   className?: string
 }
 
@@ -74,25 +73,18 @@ function buildSchemaItems(
   return items
 }
 
-export function StageActivityRail({ sessionId, className }: Props) {
+export function StageActivityRail({ className }: Props) {
   const { t } = useI18n()
-  const railScopeId = sessionId ?? 'workspace'
-  const activePanel = useStageStore((s) => s.activeRailPanelBySession.get(railScopeId) ?? null)
+  const activePanel = useStageStore((s) => s.activeRailPanel)
   const toggleRailPanel = useStageStore((s) => s.toggleRailPanel)
   const setActiveRailPanel = useStageStore((s) => s.setActiveRailPanel)
 
   const activeTab = useStageStore((state) => {
-    const activeTabId = sessionId
-      ? state.activeTabIdBySession.get(sessionId) ?? state.activeWorkspaceTabId
-      : state.activeWorkspaceTabId
+    const activeTabId = state.activeTabId
 
     if (!activeTabId) return null
 
-    return (
-      state.workspaceTabs.find((tab) => tab.tabId === activeTabId)
-      ?? (sessionId ? state.tabsBySession.get(sessionId)?.find((tab) => tab.tabId === activeTabId) : undefined)
-      ?? null
-    )
+    return state.tabs.find((tab) => tab.tabId === activeTabId) ?? null
   })
 
   const activeTabState = useSqlWorkbenchStore((state) => (activeTab ? state.tabsById[activeTab.tabId] ?? null : null))
@@ -159,11 +151,11 @@ export function StageActivityRail({ sessionId, className }: Props) {
   const outlineStatements = parseSqlOutline(activeTabState?.sqlText ?? '')
 
   function handlePanelClick(panel: RailPanel) {
-    toggleRailPanel(railScopeId, panel)
+    toggleRailPanel(panel)
   }
 
   function handleClosePanel() {
-    setActiveRailPanel(railScopeId, null)
+    setActiveRailPanel(null)
   }
 
   function handleSetSchemaContext(context: SchemaPanelContext) {

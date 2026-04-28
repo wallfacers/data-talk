@@ -66,7 +66,7 @@ export function ArtifactCreated(props: ToolRendererProps) {
     if (artifactId && part.state.status === 'completed') {
       useStageStore.getState().openArtifactPreviewTab(sessionId, artifactId, title)
     } else {
-      useStageStore.getState().openStage(sessionId)
+      useStageStore.getState().openStage()
     }
   }
 

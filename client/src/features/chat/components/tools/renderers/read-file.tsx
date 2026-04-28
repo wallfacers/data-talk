@@ -42,7 +42,7 @@ export function ReadFile(props: ToolRendererProps) {
 
   const openInStage = () => {
     const stage = useStageStore.getState()
-    stage.openStage(sessionId)
+    stage.openStage()
     openOrFocusFilePreviewTab({
       getState: useStageStore.getState,
       sessionId,

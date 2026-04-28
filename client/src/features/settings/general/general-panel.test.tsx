@@ -67,16 +67,18 @@ function seedSessionResources() {
     manualBySession: new Map([['s1', false]]),
   })
   useStageStore.setState({
-    openBySession: new Map([['s1', true]]),
-    autoOpenedSessions: new Set(['s1']),
-    maximizedBySession: new Map([['s1', true]]),
-    sidebarCollapsedBySession: new Map([['s1', false]]),
-    sidebarSelectionBySession: new Map([['s1', null]]),
-    resourceTreeExpandedBySession: new Map([['s1', ['node']]]),
-    activeRailPanelBySession: new Map([['s1', 'history']]),
-    tabsBySession: new Map([['s1', []]]),
-    activeTabIdBySession: new Map([['s1', 'tab-1']]),
-  } as any)
+    open: true,
+    autoOpened: true,
+    maximized: true,
+    sidebarCollapsed: false,
+    sidebarSelection: null,
+    resourceTreeExpanded: ['node'],
+    activeRailPanel: 'history',
+    tabs: [],
+    openTabIds: new Set(),
+    openTabIdsOrdered: [],
+    activeTabId: 'tab-1',
+  } as never)
   useChannelStore.setState({
     lastEventIdBySession: new Map([['s1', 42]]),
   })
@@ -162,9 +164,9 @@ describe('GeneralSettingsPanel clear all sessions', () => {
     expect(useTimelineStore.getState().orderBySession.size).toBe(0)
     expect(useTimelineStore.getState().activeBySession.size).toBe(0)
     expect(useTimelineStore.getState().manualBySession.size).toBe(0)
-    expect(useStageStore.getState().openBySession.size).toBe(0)
-    expect(useStageStore.getState().tabsBySession.size).toBe(0)
-    expect(useStageStore.getState().activeTabIdBySession.size).toBe(0)
+    expect(useStageStore.getState().open).toBe(false)
+    expect(useStageStore.getState().tabs).toEqual([])
+    expect(useStageStore.getState().activeTabId).toBeNull()
     expect(useChannelStore.getState().lastEventIdBySession.size).toBe(0)
   })
 })

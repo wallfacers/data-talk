@@ -53,7 +53,7 @@ async function forward(req: UIRequest): Promise<unknown> {
 }
 
 function resolveTarget(input: { object?: string; target?: string }): string | null {
-  if (!input.target || input.target === 'active') return useStageStore.getState().activeWorkspaceTabId ?? null
+  if (!input.target || input.target === 'active') return useStageStore.getState().activeTabId ?? null
   return input.target
 }
 

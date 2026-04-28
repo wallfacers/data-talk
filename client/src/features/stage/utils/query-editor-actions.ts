@@ -217,9 +217,7 @@ function injectLimit(sql: string, limit: 10 | 100 | 1000 | null) {
 
 function getStageTab(tabId: string) {
   const stageState = useStageStore.getState()
-  return stageState.workspaceTabs.find((tab) => tab.tabId === tabId)
-    ?? Array.from(stageState.tabsBySession.values()).flat().find((tab) => tab.tabId === tabId)
-    ?? null
+  return stageState.tabs.find((tab) => tab.tabId === tabId) ?? null
 }
 
 function updateQueryEditorPayloadContextOverride(

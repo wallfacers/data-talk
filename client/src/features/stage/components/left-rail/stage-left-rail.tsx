@@ -7,7 +7,6 @@ import {
   AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
 } from '@/components/ui/alert-dialog'
 import { useStageStore } from '@/stores/stage-store'
-import { useSessionStore } from '@/stores/session-store'
 import { useI18n } from '@/i18n/use-i18n'
 import { StageRailSearch } from './stage-rail-search'
 import { StageRailGroup } from './stage-rail-group'
@@ -15,25 +14,15 @@ import { StageRailRow } from './stage-rail-row'
 import { StageRailRowMenu } from './stage-rail-row-menu'
 import type { StageTab } from '@/stores/stage-store'
 
-type Props = { sessionId?: string }
-
-export function StageLeftRail({ sessionId }: Props) {
+export function StageLeftRail() {
   const { t } = useI18n()
 
   const collapsed = useStageStore((s) => s.leftRailCollapsed)
   const toggleCollapsed = useStageStore((s) => s.toggleLeftRailCollapsed)
 
-  const allTabs = useStageStore(
-    useShallow((s) => {
-      const sessionTabs = sessionId ? (s.tabsBySession.get(sessionId) ?? []) : []
-      return [...s.workspaceTabs, ...sessionTabs]
-    }),
-  )
+  const allTabs = useStageStore(useShallow((s) => s.tabs))
   const openTabIds = useStageStore((s) => s.openTabIds)
-  const activeTabId = useStageStore((s) => {
-    if (!sessionId) return s.activeWorkspaceTabId
-    return s.activeTabIdBySession.get(sessionId) ?? s.activeWorkspaceTabId ?? null
-  })
+  const activeTabId = useStageStore((s) => s.activeTabId)
   const focusTab = useStageStore((s) => s.focusTab)
   const archiveTab = useStageStore((s) => s.archiveTab)
 
@@ -56,16 +45,6 @@ export function StageLeftRail({ sessionId }: Props) {
     if (tab.archived) {
       setPendingUnarchiveTab(tab)
       return
-    }
-    // Clicking a session-scoped row switches to that session before focusing
-    // — restores the behavior of the deleted nav-tabs so focusing a tab from a
-    // different session brings the user there instead of silently failing.
-    if (tab.scope === 'session' && tab.originSessionId) {
-      const sessions = useSessionStore.getState()
-      if (sessions.activeSessionId !== tab.originSessionId) {
-        const hasEverSent = sessions.hasEverSentBySession.get(tab.originSessionId) ?? false
-        sessions.openSession(tab.originSessionId, hasEverSent)
-      }
     }
     focusTab(tab.tabId)
   }
