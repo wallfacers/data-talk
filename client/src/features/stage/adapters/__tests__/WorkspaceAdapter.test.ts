@@ -283,13 +283,15 @@ describe('WorkspaceAdapter', () => {
     ])
   })
 
-  it('exec close removes tab', async () => {
+  it('exec close detaches tab from workset', async () => {
     const adapter = new WorkspaceAdapter(() => 's1')
     const opened = await adapter.exec('open', { type: 'er_canvas', title: 'ER' })
     const tabId = (opened.data as { tabId: string }).tabId
     const closed = await adapter.exec('close', { target: tabId })
     expect(closed.success).toBe(true)
-    expect(useStageStore.getState().workspaceTabs).toHaveLength(0)
+    // Phase 2: close = detach from workset, tab still in library
+    expect(useStageStore.getState().openTabIds.has(tabId)).toBe(false)
+    expect(useStageStore.getState().workspaceTabs).toHaveLength(1)
   })
 
   it('exec focus clears the current session-active tab when targeting a workspace tab', async () => {

@@ -22,7 +22,6 @@ import { invalidateSessionLists } from '@/features/session/hooks/use-sessions'
 import { useSessionStore } from '@/stores/session-store'
 import { useHasActiveModel } from '@/features/session/hooks/use-has-active-model'
 import { NavSessions } from './nav-sessions'
-import { NavTabs } from './nav-tabs'
 import { NavUser } from './nav-user'
 import { useI18n } from '@/i18n/use-i18n'
 
@@ -134,7 +133,6 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
         </SidebarGroup>
 
         <NavSessions />
-        <NavTabs />
       </SidebarContent>
 
       <SidebarFooter>

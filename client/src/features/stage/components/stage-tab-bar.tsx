@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/context-menu'
 import { cn } from '@/lib/utils'
 import { useI18n } from '@/i18n/use-i18n'
+import { StageTabBarAddButton } from './stage-tab-bar-add-button'
 
 type TabItem = {
   tabId: string
@@ -29,6 +30,7 @@ type TabItem = {
 type StageTabBarProps = {
   tabs: TabItem[]
   activeId?: string
+  sessionId?: string | null
   onSelect?: (tabId: string) => void
   onClose?: (tabId: string) => void
   onCloseOthers?: (tabId: string) => void
@@ -78,6 +80,7 @@ function getTabIcon(type?: string, isActive?: boolean) {
 export function StageTabBar({
   tabs,
   activeId,
+  sessionId,
   onSelect,
   onClose,
   onCloseOthers,
@@ -272,6 +275,7 @@ export function StageTabBar({
               <PlusIcon className="size-3.5" />
             </button>
           ) : null}
+          <StageTabBarAddButton sessionId={sessionId ?? null} />
           {hasOverflow ? (
             <button
               type="button"

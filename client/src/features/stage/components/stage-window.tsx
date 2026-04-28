@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CopyIcon, SquareIcon, XIcon } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@/components/ui/button'
-import { useStageStore } from '@/stores/stage-store'
+import { useStageStore, type StageTab } from '@/stores/stage-store'
 import { useActiveArtifactTitle } from '../use-active-artifact-title'
 import { StageTabBar } from './stage-tab-bar'
 import { StageTabContent } from './stage-tab-content'
 import { StageUIObjectRegistry } from './stage-ui-object-registry'
 import { StageWorkbenchEmptyState } from './stage-workbench-empty-state'
+import { StageLeftRail } from './left-rail/stage-left-rail'
 import { useI18n } from '@/i18n/use-i18n'
 
 type Props = {
@@ -20,30 +21,34 @@ export function StageWindow({ sessionId }: Props) {
   const closeStage = useStageStore((s) => s.closeStage)
   const maximized = useStageStore((s) => (sessionId ? !!s.maximizedBySession.get(sessionId) : false))
   const toggleMaximized = useStageStore((s) => s.toggleMaximized)
-  const workspaceTabs = useStageStore((s) => s.workspaceTabs)
   const { Icon, label } = useActiveArtifactTitle(sessionId ?? '')
 
-  const tabs = useStageStore(
+  const allTabs = useStageStore(
     useShallow((s) => {
       const sessionTabs = sessionId ? (s.tabsBySession.get(sessionId) ?? []) : []
       return [...s.workspaceTabs, ...sessionTabs]
-    })
+    }),
+  )
+  const openTabsOrdered = useStageStore(
+    useShallow((s) => s.openTabIdsOrdered.map((id) => allTabs.find((t) => t.tabId === id)).filter(Boolean) as StageTab[]),
   )
   const activeTabId = useStageStore((s) => {
     if (!sessionId) return s.activeWorkspaceTabId
     return s.activeTabIdBySession.get(sessionId) ?? s.activeWorkspaceTabId ?? null
   })
   const focusTab = useStageStore((s) => s.focusTab)
-  const closeTab = useStageStore((s) => s.closeTab)
+  const leftRailWidth = useStageStore((s) => s.leftRailWidth)
+  const leftRailCollapsed = useStageStore((s) => s.leftRailCollapsed)
+  const setLeftRailWidth = useStageStore((s) => s.setLeftRailWidth)
 
   useEffect(() => {
     setShowStartPage(false)
   }, [sessionId])
 
   useEffect(() => {
-    if (tabs.length > 0) return
+    if (openTabsOrdered.length > 0) return
     setShowStartPage(false)
-  }, [tabs.length])
+  }, [openTabsOrdered.length])
 
   function handleClose() {
     if (sessionId) closeStage(sessionId)
@@ -58,25 +63,43 @@ export function StageWindow({ sessionId }: Props) {
     useStageStore.getState().focusWorkspaceTabForSession(sessionId)
   }
 
-  const handleCloseTab = (tabId: string) => closeTab(tabId)
+  const handleCloseTab = (tabId: string) => useStageStore.getState().detachFromWorkset(tabId)
   const handleCloseOthers = (tabId: string) =>
-    tabs.filter((t) => t.tabId !== tabId).forEach((t) => closeTab(t.tabId))
-  const handleCloseAll = () => tabs.forEach((t) => closeTab(t.tabId))
+    openTabsOrdered.filter((t) => t.tabId !== tabId).forEach((t) => useStageStore.getState().detachFromWorkset(t.tabId))
+  const handleCloseAll = () =>
+    openTabsOrdered.forEach((t) => useStageStore.getState().detachFromWorkset(t.tabId))
   const handleCloseLeft = (tabId: string) => {
-    const idx = tabs.findIndex((t) => t.tabId === tabId)
-    tabs.slice(0, idx).forEach((t) => closeTab(t.tabId))
+    const idx = openTabsOrdered.findIndex((t) => t.tabId === tabId)
+    openTabsOrdered.slice(0, idx).forEach((t) => useStageStore.getState().detachFromWorkset(t.tabId))
   }
   const handleCloseRight = (tabId: string) => {
-    const idx = tabs.findIndex((t) => t.tabId === tabId)
-    tabs.slice(idx + 1).forEach((t) => closeTab(t.tabId))
+    const idx = openTabsOrdered.findIndex((t) => t.tabId === tabId)
+    openTabsOrdered.slice(idx + 1).forEach((t) => useStageStore.getState().detachFromWorkset(t.tabId))
   }
 
   const handleSelectTab = (tabId: string) => {
     focusTab(tabId)
     setShowStartPage(false)
-    if (workspaceTabs.some((tab) => tab.tabId === tabId)) {
+    if (allTabs.some((tab) => tab.tabId === tabId && tab.scope === 'workspace')) {
       focusWorkspaceTabInStage()
     }
+  }
+
+  const dividerStateRef = useRef<{ active: boolean; startX: number; startWidth: number }>({
+    active: false, startX: 0, startWidth: 0,
+  })
+
+  function handleDividerPointerDown(e: React.PointerEvent) {
+    dividerStateRef.current = { active: true, startX: e.clientX, startWidth: leftRailWidth }
+    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+  }
+  function handleDividerPointerMove(e: React.PointerEvent) {
+    if (!dividerStateRef.current.active) return
+    const next = dividerStateRef.current.startWidth + (e.clientX - dividerStateRef.current.startX)
+    setLeftRailWidth(next)
+  }
+  function handleDividerPointerUp() {
+    dividerStateRef.current.active = false
   }
 
   function handleOpenSqlEditor() {
@@ -92,7 +115,7 @@ export function StageWindow({ sessionId }: Props) {
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden rounded-[22px] border border-border/75 bg-muted/25 shadow-[0_24px_56px_rgba(15,23,42,0.14)] ring-1 ring-black/5 transition-all duration-200">
-      <StageUIObjectRegistry sessionId={sessionId ?? null} tabs={tabs} />
+      <StageUIObjectRegistry sessionId={sessionId ?? null} tabs={allTabs} />
 
       <div className="flex flex-col bg-transparent">
         <div className="group flex h-10 shrink-0 select-none items-center justify-between border-b border-border/65 bg-background/72 shadow-[inset_0_-1px_0_rgba(148,163,184,0.12)]">
@@ -128,10 +151,32 @@ export function StageWindow({ sessionId }: Props) {
       </div>
 
       <div className="flex min-h-0 flex-1 overflow-hidden bg-background/88">
+        {/* Left rail (library) */}
+        <div
+          style={{ width: leftRailCollapsed ? 36 : leftRailWidth }}
+          className="shrink-0 transition-[width] duration-[180ms]"
+        >
+          <StageLeftRail sessionId={sessionId} />
+        </div>
+
+        {/* Resizable divider (only when not collapsed) */}
+        {!leftRailCollapsed ? (
+          <div
+            className="w-1 cursor-col-resize hover:bg-accent-primary/20 transition-colors group"
+            onPointerDown={handleDividerPointerDown}
+            onPointerMove={handleDividerPointerMove}
+            onPointerUp={handleDividerPointerUp}
+          >
+            <div className="h-full w-px bg-border-subtle group-hover:bg-accent-primary/50" />
+          </div>
+        ) : null}
+
+        {/* Right pane: top tab bar + content */}
         <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          {tabs.length > 0 && (
+          {openTabsOrdered.length > 0 && (
             <StageTabBar
-              tabs={tabs.map((t) => ({ tabId: t.tabId, title: t.title, type: t.type }))}
+              sessionId={sessionId ?? null}
+              tabs={openTabsOrdered.map((t) => ({ tabId: t.tabId, title: t.title, type: t.type }))}
               activeId={activeTabId ?? undefined}
               onSelect={handleSelectTab}
               onClose={handleCloseTab}
@@ -152,6 +197,7 @@ export function StageWindow({ sessionId }: Props) {
               <div className="flex min-h-0 flex-1 overflow-hidden">
                 <StageWorkbenchEmptyState
                   onOpenSqlEditor={handleOpenSqlEditor}
+                  sessionId={sessionId}
                 />
               </div>
             )}

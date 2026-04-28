@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useSqlWorkbenchStore } from '@/features/stage/stores/sql-workbench-store'
-import { useStageStore } from './stage-store'
+import { useStageStore, type StageTab } from './stage-store'
 
 describe('stage-store', () => {
   beforeEach(() => {
@@ -139,6 +139,7 @@ describe('StageStore tabs', () => {
     activeRailPanelBySession: new Map(),
     workspaceTabs: [], tabsBySession: new Map(),
     activeTabIdBySession: new Map(), activeWorkspaceTabId: null,
+    openTabIds: new Set<string>(), openTabIdsOrdered: [],
   } as unknown as Record<string, unknown>) })
 
   beforeEach(() => {
@@ -157,12 +158,13 @@ describe('StageStore tabs', () => {
     expect(useStageStore.getState().activeTabIdBySession.get('s1')).toBe('a1')
   })
 
-  it('closeTab removes and clears active', () => {
+  it('closeTab detaches from workset (Phase 2 alias)', () => {
     const st = useStageStore.getState()
     st.openTab({ tabId: 't1', type: 'report', title: 'x', scope: 'workspace', payload: {}, createdAt: 1 })
+    useStageStore.setState({ openTabIds: new Set(['t1']), openTabIdsOrdered: ['t1'] } as unknown as Record<string, unknown>, false)
     st.closeTab('t1')
-    expect(useStageStore.getState().workspaceTabs).toHaveLength(0)
-    expect(useStageStore.getState().activeWorkspaceTabId).toBeNull()
+    expect(useStageStore.getState().workspaceTabs).toHaveLength(1)
+    expect(useStageStore.getState().openTabIds.has('t1')).toBe(false)
   })
 
   it('focusTab switches active', () => {
@@ -358,6 +360,7 @@ describe('StageStore persistence mutation API', () => {
     activeRailPanelBySession: new Map(),
     workspaceTabs: [], tabsBySession: new Map(),
     activeTabIdBySession: new Map(), activeWorkspaceTabId: null,
+    openTabIds: new Set<string>(), openTabIdsOrdered: [],
   } as unknown as Record<string, unknown>) })
 
   beforeEach(() => {
@@ -462,5 +465,100 @@ describe('StageStore persistence mutation API', () => {
 
     st.setTabTitle('t1', 'New Title')
     expect(useStageStore.getState().findTab('t1')?.title).toBe('New Title')
+  })
+})
+
+function makeStageTab(overrides: Partial<StageTab> = {}): StageTab {
+  return {
+    tabId: 'qe-default',
+    type: 'query_editor',
+    title: 'untitled',
+    scope: 'workspace',
+    payload: {},
+    payloadVersion: 1,
+    createdAt: Date.now(),
+    lastTouchedAt: Date.now(),
+    archived: false,
+    ...overrides,
+  }
+}
+
+describe('Library vs Workset (Phase 2)', () => {
+  beforeEach(() => {
+    useStageStore.setState({
+      workspaceTabs: [],
+      tabsBySession: new Map(),
+      openTabIds: new Set<string>(),
+      openTabIdsOrdered: [],
+      activeWorkspaceTabId: null,
+      activeTabIdBySession: new Map(),
+    } as never, false)
+  })
+
+  it('ensureOpenInWorkset adds an existing library tab into the open set without DB calls', () => {
+    const tab = makeStageTab({ tabId: 'qe-1', type: 'query_editor', archived: false })
+    useStageStore.setState({ workspaceTabs: [tab] } as never, false)
+
+    useStageStore.getState().ensureOpenInWorkset('qe-1')
+
+    expect(useStageStore.getState().openTabIds.has('qe-1')).toBe(true)
+    expect(useStageStore.getState().openTabIdsOrdered).toEqual(['qe-1'])
+  })
+
+  it('ensureOpenInWorkset is idempotent — second call leaves order unchanged', () => {
+    const tab = makeStageTab({ tabId: 'qe-1' })
+    useStageStore.setState({ workspaceTabs: [tab] } as never, false)
+    useStageStore.getState().ensureOpenInWorkset('qe-1')
+    useStageStore.getState().ensureOpenInWorkset('qe-1')
+
+    expect(useStageStore.getState().openTabIdsOrdered).toEqual(['qe-1'])
+  })
+
+  it('detachFromWorkset removes from open set but leaves library entry untouched', () => {
+    const tab = makeStageTab({ tabId: 'qe-1' })
+    useStageStore.setState({
+      workspaceTabs: [tab],
+      openTabIds: new Set(['qe-1']),
+      openTabIdsOrdered: ['qe-1'],
+    } as never, false)
+
+    useStageStore.getState().detachFromWorkset('qe-1')
+
+    expect(useStageStore.getState().openTabIds.has('qe-1')).toBe(false)
+    expect(useStageStore.getState().workspaceTabs.find((t) => t.tabId === 'qe-1')).toBeDefined()
+  })
+
+  it('archiveTab(true) detaches from workset and flips archived flag', () => {
+    const tab = makeStageTab({ tabId: 'qe-1', archived: false })
+    useStageStore.setState({
+      workspaceTabs: [tab],
+      openTabIds: new Set(['qe-1']),
+      openTabIdsOrdered: ['qe-1'],
+    } as never, false)
+
+    useStageStore.getState().archiveTab('qe-1', true)
+
+    expect(useStageStore.getState().openTabIds.has('qe-1')).toBe(false)
+    const updated = useStageStore.getState().workspaceTabs.find((t) => t.tabId === 'qe-1')
+    expect(updated?.archived).toBe(true)
+  })
+
+  it('archiveTab(false) unarchives in place', () => {
+    const tab = makeStageTab({ tabId: 'qe-1', archived: true })
+    useStageStore.setState({ workspaceTabs: [tab] } as never, false)
+
+    useStageStore.getState().archiveTab('qe-1', false)
+
+    expect(useStageStore.getState().workspaceTabs.find((t) => t.tabId === 'qe-1')?.archived).toBe(false)
+  })
+
+  it('focusTab calls ensureOpenInWorkset then setActive', () => {
+    const tab = makeStageTab({ tabId: 'qe-1' })
+    useStageStore.setState({ workspaceTabs: [tab] } as never, false)
+
+    useStageStore.getState().focusTab('qe-1')
+
+    expect(useStageStore.getState().openTabIds.has('qe-1')).toBe(true)
+    expect(useStageStore.getState().activeWorkspaceTabId).toBe('qe-1')
   })
 })

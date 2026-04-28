@@ -77,6 +77,18 @@ export type StageState = {
   activeWorkspaceTabId: string | null
   activeTabIdBySession: Map<string, string | null>
 
+  // Workset (Phase 2)
+  openTabIds: Set<string>
+  openTabIdsOrdered: string[]
+  leftRailWidth: number
+  leftRailCollapsed: boolean
+
+  ensureOpenInWorkset: (tabId: string) => void
+  detachFromWorkset: (tabId: string) => void
+  trashTab: (tabId: string) => Promise<void>
+  setLeftRailWidth: (px: number) => void
+  toggleLeftRailCollapsed: () => void
+
   openStage: (sessionId: string) => void
   closeStage: (sessionId: string) => void
   toggleStage: (sessionId: string) => void
@@ -96,6 +108,10 @@ export type StageState = {
 
   // Tab CRUD（新）
   openTab: (tab: StageTab) => void
+  /**
+   * @deprecated Phase 2: closeTab is now an alias of detachFromWorkset.
+   * Use detachFromWorkset directly.
+   */
   closeTab: (tabId: string) => void
   focusTab: (tabId: string) => void
   listTabs: (sessionId: string | null) => StageTab[]
@@ -128,6 +144,36 @@ export type StageState = {
   archiveTab: (id: string, archived: boolean) => void
   setTabPinned: (id: string, pinned: boolean) => void
   setTabTitle: (id: string, title: string) => void
+}
+
+const LEFT_RAIL_WIDTH_KEY = 'stage.leftRail.width'
+const LEFT_RAIL_COLLAPSED_KEY = 'stage.leftRail.collapsed'
+
+function loadLeftRailWidth(): number {
+  try {
+    const v = localStorage.getItem(LEFT_RAIL_WIDTH_KEY)
+    if (v) {
+      const n = parseInt(v, 10)
+      if (!isNaN(n) && n >= 180 && n <= 320) return n
+    }
+  } catch {}
+  return 240
+}
+
+function loadLeftRailCollapsed(): boolean {
+  try {
+    return localStorage.getItem(LEFT_RAIL_COLLAPSED_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
+function archiveDetach(s: StageState, tabId: string) {
+  const nextIds = new Set(s.openTabIds); nextIds.delete(tabId)
+  const nextOrder = s.openTabIdsOrdered.filter((id) => id !== tabId)
+  const wasActive = s.activeWorkspaceTabId === tabId
+  const nextActive = wasActive ? (nextOrder[nextOrder.length - 1] ?? null) : s.activeWorkspaceTabId
+  return { openTabIds: nextIds, openTabIdsOrdered: nextOrder, activeWorkspaceTabId: nextActive }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -205,6 +251,11 @@ export const useStageStore = create<StageState>((set, get) => ({
   tabsBySession: new Map(),
   activeWorkspaceTabId: null,
   activeTabIdBySession: new Map(),
+
+  openTabIds: new Set<string>(),
+  openTabIdsOrdered: [],
+  leftRailWidth: loadLeftRailWidth(),
+  leftRailCollapsed: loadLeftRailCollapsed(),
 
   openStage: (sid) => set((s) => { const m = new Map(s.openBySession); m.set(sid, true); return { openBySession: m } }),
   closeStage: (sid) => set((s) => { const m = new Map(s.openBySession); m.set(sid, false); const a = new Set(s.autoOpenedSessions); a.add(sid); return { openBySession: m, autoOpenedSessions: a } }),
@@ -314,37 +365,73 @@ export const useStageStore = create<StageState>((set, get) => ({
     return { tabsBySession: next, activeTabIdBySession: active }
   }),
 
-  closeTab: (tabId) => set((s) => {
-    const wsIdx = s.workspaceTabs.findIndex((t) => t.tabId === tabId)
-    if (wsIdx >= 0) {
-      const next = [...s.workspaceTabs]; next.splice(wsIdx, 1)
-      const newActive = s.activeWorkspaceTabId === tabId ? (next.length ? next[next.length - 1].tabId : null) : s.activeWorkspaceTabId
-      return { workspaceTabs: next, activeWorkspaceTabId: newActive }
-    }
-    // 按 session 搜索
-    for (const [sid, arr] of s.tabsBySession.entries()) {
-      const i = arr.findIndex((t) => t.tabId === tabId)
-      if (i < 0) continue
-      const nextArr = [...arr]; nextArr.splice(i, 1)
-      const nextMap = new Map(s.tabsBySession); nextMap.set(sid, nextArr)
-      const activeMap = new Map(s.activeTabIdBySession)
-      if (activeMap.get(sid) === tabId) activeMap.set(sid, nextArr.length ? nextArr[nextArr.length - 1].tabId : null)
-      return { tabsBySession: nextMap, activeTabIdBySession: activeMap }
-    }
-    return s
+  closeTab: (tabId) => {
+    // Phase 2 semantic: close = detach from workset (not DB delete).
+    useStageStore.getState().detachFromWorkset(tabId)
+  },
+
+  focusTab: (tabId) => {
+    useStageStore.getState().ensureOpenInWorkset(tabId)
+    set((s) => {
+      if (s.workspaceTabs.some((t) => t.tabId === tabId)) {
+        return { activeWorkspaceTabId: tabId }
+      }
+      for (const [sid, arr] of s.tabsBySession.entries()) {
+        if (arr.some((t) => t.tabId === tabId)) {
+          const map = new Map(s.activeTabIdBySession); map.set(sid, tabId)
+          return { activeTabIdBySession: map, activeWorkspaceTabId: tabId }
+        }
+      }
+      return s
+    })
+  },
+
+  ensureOpenInWorkset: (tabId) => set((s) => {
+    if (s.openTabIds.has(tabId)) return s
+    const allTabs = [...s.workspaceTabs, ...[...s.tabsBySession.values()].flat()]
+    const target = allTabs.find((t) => t.tabId === tabId)
+    if (!target) return s
+    if (target.archived) return s
+    const next = new Set(s.openTabIds); next.add(tabId)
+    return { openTabIds: next, openTabIdsOrdered: [...s.openTabIdsOrdered, tabId] }
   }),
 
-  focusTab: (tabId) => set((s) => {
-    if (s.workspaceTabs.some((t) => t.tabId === tabId)) {
-      return { activeWorkspaceTabId: tabId }
-    }
-    for (const [sid, arr] of s.tabsBySession.entries()) {
-      if (arr.some((t) => t.tabId === tabId)) {
-        const map = new Map(s.activeTabIdBySession); map.set(sid, tabId)
-        return { activeTabIdBySession: map }
+  detachFromWorkset: (tabId) => set((s) => {
+    if (!s.openTabIds.has(tabId)) return s
+    const nextIds = new Set(s.openTabIds); nextIds.delete(tabId)
+    const nextOrder = s.openTabIdsOrdered.filter((id) => id !== tabId)
+    const wasActive = s.activeWorkspaceTabId === tabId
+    const nextActive = wasActive ? (nextOrder[nextOrder.length - 1] ?? null) : s.activeWorkspaceTabId
+    return { openTabIds: nextIds, openTabIdsOrdered: nextOrder, activeWorkspaceTabId: nextActive }
+  }),
+
+  trashTab: async (tabId) => {
+    useStageStore.getState().detachFromWorkset(tabId)
+    const { coordinator } = await import('@/features/stage/persistence/stage-persistence-bootstrap')
+    await coordinator.delete(tabId)
+    set((s) => {
+      const wsRemoved = s.workspaceTabs.filter((t) => t.tabId !== tabId)
+      if (wsRemoved.length !== s.workspaceTabs.length) return { workspaceTabs: wsRemoved }
+      for (const [sid, list] of s.tabsBySession.entries()) {
+        if (list.some((t) => t.tabId === tabId)) {
+          const next = list.filter((t) => t.tabId !== tabId)
+          const map = new Map(s.tabsBySession); map.set(sid, next)
+          return { tabsBySession: map }
+        }
       }
-    }
-    return s
+      return s
+    })
+  },
+
+  setLeftRailWidth: (px) => set(() => {
+    try { localStorage.setItem(LEFT_RAIL_WIDTH_KEY, String(px)) } catch {}
+    return { leftRailWidth: Math.min(320, Math.max(180, px)) }
+  }),
+
+  toggleLeftRailCollapsed: () => set((s) => {
+    const next = !s.leftRailCollapsed
+    try { localStorage.setItem(LEFT_RAIL_COLLAPSED_KEY, String(next)) } catch {}
+    return { leftRailCollapsed: next }
   }),
 
   listTabs: (sid) => {
@@ -565,20 +652,25 @@ export const useStageStore = create<StageState>((set, get) => ({
   }),
 
   archiveTab: (id, archived) => set((s) => {
-    const wsIdx = s.workspaceTabs.findIndex((t) => t.tabId === id)
-    if (wsIdx >= 0) {
-      const next = [...s.workspaceTabs]
-      next[wsIdx] = { ...next[wsIdx], archived }
-      return { workspaceTabs: next }
+    const updateInList = (list: StageTab[]): StageTab[] | null => {
+      const idx = list.findIndex((t) => t.tabId === id)
+      if (idx < 0) return null
+      const next = [...list]
+      next[idx] = { ...next[idx], archived }
+      return next
     }
-    for (const [sid, arr] of s.tabsBySession.entries()) {
-      const i = arr.findIndex((t) => t.tabId === id)
-      if (i < 0) continue
-      const nextArr = [...arr]
-      nextArr[i] = { ...nextArr[i], archived }
-      const map = new Map(s.tabsBySession)
-      map.set(sid, nextArr)
-      return { tabsBySession: map }
+    const ws = updateInList(s.workspaceTabs)
+    if (ws) {
+      const detached = archived ? archiveDetach(s, id) : { openTabIds: s.openTabIds, openTabIdsOrdered: s.openTabIdsOrdered, activeWorkspaceTabId: s.activeWorkspaceTabId }
+      return { workspaceTabs: ws, ...detached }
+    }
+    for (const [sid, list] of s.tabsBySession.entries()) {
+      const updated = updateInList(list)
+      if (updated) {
+        const map = new Map(s.tabsBySession); map.set(sid, updated)
+        const detached = archived ? archiveDetach(s, id) : {}
+        return { tabsBySession: map, ...detached }
+      }
     }
     return s
   }),

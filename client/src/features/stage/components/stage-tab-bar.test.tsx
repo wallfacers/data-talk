@@ -207,4 +207,12 @@ describe('StageTabBar', () => {
     expect(within(previewTab).getByTestId('file-text-icon')).toBeTruthy()
     expect(within(previewTab).queryByTestId('sparkles-icon')).toBeNull()
   })
+
+  it('Close X on a tab calls onClose with the tabId (parent will detachFromWorkset)', () => {
+    const onClose = vi.fn()
+    render(<StageTabBar tabs={[{ tabId: 'qe-1', title: 'one' }]} activeId="qe-1" onClose={onClose} />)
+    const closeButtons = screen.getAllByRole('button', { name: /关闭/ })
+    fireEvent.click(closeButtons[0])
+    expect(onClose).toHaveBeenCalledWith('qe-1')
+  })
 })

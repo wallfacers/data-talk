@@ -6,9 +6,11 @@ import {
 } from 'lucide-react'
 import { useI18n } from '@/i18n/use-i18n'
 import { cn } from '@/lib/utils'
+import { StageTabBarAddButton } from './stage-tab-bar-add-button'
 
 type Props = {
   onOpenSqlEditor?: () => void
+  sessionId?: string
 }
 
 type StageEmptyAction = {
@@ -22,6 +24,7 @@ type StageEmptyAction = {
 
 export function StageWorkbenchEmptyState({
   onOpenSqlEditor,
+  sessionId,
 }: Props) {
   const { t } = useI18n()
   const sqlEnabled = Boolean(onOpenSqlEditor)
@@ -68,6 +71,11 @@ export function StageWorkbenchEmptyState({
             <DatabaseIcon className="size-5" />
           </div>
           <p className="text-sm text-muted-foreground">{t('stage.empty.pickTool')}</p>
+        </div>
+
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <StageTabBarAddButton sessionId={sessionId ?? null} />
+          <span className="text-xs text-text-soft">{t('stage.leftRail.cta.openNew')}</span>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">

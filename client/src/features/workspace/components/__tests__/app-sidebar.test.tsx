@@ -17,7 +17,6 @@ vi.mock('@/features/session/hooks/use-has-active-model', () => ({
   useHasActiveModel: () => true,
 }))
 vi.mock('../nav-sessions', () => ({ NavSessions: () => null }))
-vi.mock('../nav-tabs', () => ({ NavTabs: () => null }))
 vi.mock('../nav-user', () => ({ NavUser: () => null }))
 
 import { createSession } from '@/services/api/session'

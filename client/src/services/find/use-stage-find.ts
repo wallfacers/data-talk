@@ -3,6 +3,10 @@ import type { StageTab } from '@/stores/stage-store'
 
 const DEBOUNCE_MS = 200
 
+/**
+ * @deprecated 2026-04-28: The Phase 2 left rail uses in-memory filtering.
+ * Server-backed FTS search will be re-introduced in a follow-up plan.
+ */
 export function useStageFind({ query, includeArchived }: { query: string; includeArchived: boolean }) {
   const [tabs, setTabs] = useState<StageTab[]>([])
   const [isLoading, setLoading] = useState(false)

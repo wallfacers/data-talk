@@ -680,7 +680,7 @@ describe('QueryEditorAdapter', () => {
     expect(useStageStore.getState().activeTabIdBySession.get('s1')).toBeNull()
   })
 
-  it('close removes the query editor tab', async () => {
+  it('close detaches the query editor tab from workset', async () => {
     openTab({
       tabId: 'q1',
       type: 'query_editor',
@@ -695,6 +695,8 @@ describe('QueryEditorAdapter', () => {
     const result = await adapter.exec('close')
 
     expect(result).toEqual({ success: true })
-    expect(useStageStore.getState().tabsBySession.get('s1')).toEqual([])
+    // Phase 2: close = detach from workset, tab still in library
+    expect(useStageStore.getState().openTabIds.has('q1')).toBe(false)
+    expect(useStageStore.getState().tabsBySession.get('s1')).toHaveLength(1)
   })
 })
