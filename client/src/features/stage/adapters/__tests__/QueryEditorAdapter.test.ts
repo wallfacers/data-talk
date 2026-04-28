@@ -192,6 +192,7 @@ describe('QueryEditorAdapter', () => {
       results: Array<Record<string, unknown>>
       activeResultId: string | null
       limit: 10 | 100 | 1000 | null
+      inWorkset: boolean
     }
 
     expect(state).toEqual({
@@ -243,6 +244,7 @@ describe('QueryEditorAdapter', () => {
       ],
       activeResultId: 'result-2',
       limit: 10,
+      inWorkset: true,
     })
     expect(state.results[0]).not.toHaveProperty('rows')
     expect(state.results[1]).not.toHaveProperty('rows')

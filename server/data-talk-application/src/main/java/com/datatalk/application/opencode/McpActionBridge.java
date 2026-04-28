@@ -202,26 +202,24 @@ private static Throwable unwrap(Throwable error) {
         }
         error.put("message", safeMessage(info == null ? null : info.message()));
 
-        if (info == null || info.details() == null || info.details().isEmpty()) {
-            return error;
-        }
+        if (info != null && info.details() != null && !info.details().isEmpty()) {
+            Object currentState = info.details().get("currentState");
+            if (currentState != null) {
+                error.put("currentState", currentState);
+            }
 
-        Object currentState = info.details().get("currentState");
-        if (currentState != null) {
-            error.put("currentState", currentState);
-        }
+            Object markdown = info.details().get("markdown");
+            if (markdown == null) {
+                markdown = info.details().get("markdown_note");
+            }
+            if (markdown != null) {
+                error.put("markdown", markdown);
+            }
 
-        Object markdown = info.details().get("markdown");
-        if (markdown == null) {
-            markdown = info.details().get("markdown_note");
-        }
-        if (markdown != null) {
-            error.put("markdown", markdown);
-        }
-
-        Object details = info.details().get("details");
-        if (details instanceof Map<?, ?> rawDetails && !rawDetails.isEmpty()) {
-            error.put("details", (Map<String, Object>) rawDetails);
+            Object details = info.details().get("details");
+            if (details instanceof Map<?, ?> rawDetails && !rawDetails.isEmpty()) {
+                error.put("details", (Map<String, Object>) rawDetails);
+            }
         }
 
         if (!error.containsKey("markdown")) {

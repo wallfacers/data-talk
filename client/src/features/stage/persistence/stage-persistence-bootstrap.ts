@@ -79,10 +79,14 @@ function toStageTab(item: Record<string, unknown>): StageTab {
 
 function persistedTabSummaries(state: {
   workspaceTabs: StageTab[]
+  tabsBySession: Map<string, StageTab[]>
 }): TabSummary[] {
   const allTabs: TabSummary[] = []
-  for (const tab of state.workspaceTabs) {
-    if (!isPersistent(tab.type)) continue
+  const seen = new Set<string>()
+  const collect = (tab: StageTab) => {
+    if (!isPersistent(tab.type)) return
+    if (seen.has(tab.tabId)) return
+    seen.add(tab.tabId)
     allTabs.push({
       tabId: tab.tabId,
       type: tab.type,
@@ -94,6 +98,10 @@ function persistedTabSummaries(state: {
       archived: tab.archived,
       lastTouchedAt: tab.lastTouchedAt,
     })
+  }
+  for (const tab of state.workspaceTabs) collect(tab)
+  for (const tabs of state.tabsBySession.values()) {
+    for (const tab of tabs) collect(tab)
   }
   return allTabs
 }

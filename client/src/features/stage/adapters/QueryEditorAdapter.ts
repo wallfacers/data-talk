@@ -277,6 +277,7 @@ export class QueryEditorAdapter implements UIObject {
       results: workbenchTab?.results.map(summarizeResult) ?? fallbackResults,
       activeResultId: workbenchTab?.activeResultId ?? (payload.lastRun ? 'last-run' : null),
       limit: workbenchTab?.limit ?? 100,
+      inWorkset: tab !== null,
     }
 
     switch (mode) {
@@ -307,6 +308,7 @@ export class QueryEditorAdapter implements UIObject {
             results: { type: 'array' },
             activeResultId: { type: ['string', 'null'] },
             limit: { type: ['number', 'null'] },
+            inWorkset: { type: 'boolean' },
           },
         }
       case 'full':

@@ -487,10 +487,6 @@ public class StageFindService {
         return result;
     }
 
-    private Optional<Map<String, Object>> matchItem(String tabId, List<Map<String, Object>> matches, Double score) {
-        return matchItem(tabId, matches, score, new HashMap<>());
-    }
-
     private Optional<Map<String, Object>> matchItem(
         String tabId,
         List<Map<String, Object>> matches,

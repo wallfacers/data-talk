@@ -46,9 +46,10 @@ DROP TABLE stage_tabs;
 ALTER TABLE stage_tabs_new RENAME TO stage_tabs;
 
 -- 3) rebuild indexes
-CREATE INDEX idx_stage_tabs_active ON stage_tabs(archived, last_touched_at DESC) WHERE archived = 0;
-CREATE INDEX idx_stage_tabs_type   ON stage_tabs(type, archived);
-CREATE INDEX idx_stage_tabs_origin ON stage_tabs(origin_session_id);
+CREATE INDEX idx_stage_tabs_active     ON stage_tabs(archived, last_touched_at DESC) WHERE archived = 0;
+CREATE INDEX idx_stage_tabs_type       ON stage_tabs(type, archived);
+CREATE INDEX idx_stage_tabs_origin     ON stage_tabs(origin_session_id) WHERE origin_session_id IS NOT NULL;
+CREATE INDEX idx_stage_tabs_connection ON stage_tabs(connection_id) WHERE connection_id IS NOT NULL;
 
 -- 4) rebuild FTS row mapping (rowid changed after RENAME)
 DELETE FROM stage_tab_index;

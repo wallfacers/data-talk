@@ -76,9 +76,9 @@ public class UiExecAction implements ActionHandler<Map, Map> {
     }
 
     private static Map<String, Object> queryEditorExecSchema() {
-        return Map.of(
-                "required", List.of("object", "action"),
-                "properties", Map.ofEntries(
+        return Map.ofEntries(
+                Map.entry("required", List.of("object", "action")),
+                Map.entry("properties", Map.ofEntries(
                         Map.entry("object", Map.of("type", "string", "enum", List.of("query_editor"))),
                         Map.entry("action", Map.of(
                                 "type", "string",
@@ -88,7 +88,10 @@ public class UiExecAction implements ActionHandler<Map, Map> {
                         Map.entry("params", Map.of(
                                 "type", "object",
                                 "properties", Map.ofEntries(
-                                        Map.entry("baseVersion", Map.of("type", "number")),
+                                        Map.entry("baseVersion", Map.of(
+                                                "type", "number",
+                                                "description", "Required for action=apply_text_edits: tab payloadVersion read just before the edit; rejected with `error.code='version_conflict'` if it has drifted."
+                                        )),
                                         Map.entry("edits", Map.of(
                                                 "type", "array",
                                                 "items", Map.of(
@@ -119,7 +122,27 @@ public class UiExecAction implements ActionHandler<Map, Map> {
                                         Map.entry("limit", Map.of("type", List.of("number", "null")))
                                 )
                         ))
-                )
+                )),
+                Map.entry("allOf", List.of(
+                        Map.of(
+                                "if", Map.of(
+                                        "properties", Map.of(
+                                                "object", Map.of("const", "query_editor"),
+                                                "action", Map.of("const", "apply_text_edits")
+                                        ),
+                                        "required", List.of("object", "action")
+                                ),
+                                "then", Map.of(
+                                        "required", List.of("params"),
+                                        "properties", Map.of(
+                                                "params", Map.of(
+                                                        "type", "object",
+                                                        "required", List.of("baseVersion", "edits")
+                                                )
+                                        )
+                                )
+                        )
+                ))
         );
     }
 

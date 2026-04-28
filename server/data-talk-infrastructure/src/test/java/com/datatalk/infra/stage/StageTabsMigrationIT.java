@@ -246,6 +246,15 @@ class StageTabsMigrationIT {
             "stage_tabs_ai",
             "stage_tabs_au");
 
+        List<String> indexes = jdbc.queryForList(
+            "SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'idx_stage_tabs%' ORDER BY name",
+            String.class);
+        assertThat(indexes).containsExactlyInAnyOrder(
+            "idx_stage_tabs_active",
+            "idx_stage_tabs_connection",
+            "idx_stage_tabs_origin",
+            "idx_stage_tabs_type");
+
         Integer backupCount = jdbc.queryForObject(
             "SELECT COUNT(*) FROM stage_tabs_backup_v13_pre",
             Integer.class);
