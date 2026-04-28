@@ -24,7 +24,7 @@
 - `docs/exec-plans/index.md` currently has no active plans before this roadmap is registered.
 - The following foundations are already shipped: Stage UI Object Protocol, Stage Window Layout, SQL Workbench, Query Editor object actions, SQL risk classification, Composer data source picker, MCP tool migration, chart fence rendering, and real OpenCode MCP bridge smoke coverage.
 - The product roadmap in `docs/product-specs/index.md` places the next major work in "二期": SQL editing, query result management, export, DDL / DML guarded execution, visualization, and performance analysis.
-- The current live technical debt list is small. `TD-033` tracks the scheduled removal of the deprecated `workspace.close` alias; no P0/P1 debt remains registered after the 2026-04-28 cleanup.
+- The current live technical debt list is empty after the 2026-04-29 `TD-033` cleanup removed the deprecated `workspace.close` / `query_editor.close` aliases.
 
 ## Design Inputs
 

@@ -82,7 +82,19 @@ class UiActionsTest {
         Map<String, Object> action = navigate(wsBranch, "properties", "action");
 
         assertThat(list(action.get("enum"), "enum"))
-            .contains("open", "close", "focus", "choose_connection", "detach", "archive", "trash");
+            .containsExactlyInAnyOrder("open", "focus", "choose_connection", "detach", "archive", "trash")
+            .doesNotContain("close");
+    }
+
+    @Test
+    void uiExec_queryEditorAction_removesCloseAlias() {
+        Map<String, Object> schema = uiExecAction.inputSchema();
+        Map<String, Object> qeBranch = findOneOfBranch(schema, "query_editor");
+        Map<String, Object> action = navigate(qeBranch, "properties", "action");
+
+        assertThat(list(action.get("enum"), "enum"))
+            .containsExactlyInAnyOrder("apply_text_edits", "set_context", "run_sql", "format_sql", "focus")
+            .doesNotContain("close");
     }
 
     @Test

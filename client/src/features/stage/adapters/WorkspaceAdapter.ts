@@ -18,9 +18,6 @@ const ACTIONS: ActionDef[] = [
       payload: { type: 'object' },
     },
   } },
-  { name: 'close', description: 'Close a tab', paramsSchema: {
-    type: 'object', required: ['target'], properties: { target: { type: 'string' } },
-  } },
   { name: 'detach', description: 'Remove a tab from the workset without archiving it', paramsSchema: {
     type: 'object', required: ['target'], properties: { target: { type: 'string' } },
   } },
@@ -148,11 +145,6 @@ export class WorkspaceAdapter implements UIObject {
         store.openTab(tab)
         if (sid) store.openStage()
         return { success: true, data: { tabId } }
-      }
-      case 'close': {
-        if (!p.target) return execError('Missing param: target')
-        store.archiveTab(p.target, true)
-        return { success: true }
       }
       case 'detach': {
         if (!p.target) return execError('Missing param: target')

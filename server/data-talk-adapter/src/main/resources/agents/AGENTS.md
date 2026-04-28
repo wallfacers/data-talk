@@ -144,7 +144,7 @@ Registered UI actions:
   Patch a `query_editor` through JSON Patch `ops`. Only `replace` is supported today, and only on `/content`, `/connectionId`, `/database`, and `/schema`. A `/content` patch requires `baseVersion`.
 
 - `datatalk_ui_exec`
-  Execute supported actions on `workspace` or `query_editor` through top-level `object`, optional `target`, `action`, and `params`. `apply_text_edits` requires `params.baseVersion` and every entry in `params.edits` requires `expectedText`. Workspace verbs are `open`, `focus`, `choose_connection`, `detach`, `archive(archived?: boolean = true)`, and `trash`. The legacy `close` is a deprecated alias for `archive(archived=true)`.
+  Execute supported actions on `workspace` or `query_editor` through top-level `object`, optional `target`, `action`, and `params`. `apply_text_edits` requires `params.baseVersion` and every entry in `params.edits` requires `expectedText`. Workspace verbs are `open`, `focus`, `choose_connection`, `detach`, `archive(archived?: boolean = true)`, and `trash`.
 
 ## Exact UI Contract
 
@@ -181,7 +181,6 @@ For the workspace:
 - `workspace` `detach` removes a tab from the workset without deleting it.
 - `workspace` `archive` uses `params.target` and optional `params.archived`; the default is `archived=true`, while `archived=false` unarchives.
 - `workspace` `trash` permanently deletes the tab.
-- `workspace` `close` is a deprecated alias for `archive(archived=true)`.
 - A `workspace` state includes `tabs` and `activeTabId`. Each tab entry includes `tabId`, `type`, `title`, `connectionId`, and `contextOverride`.
 
 For a query editor:
@@ -192,7 +191,7 @@ For a query editor:
 - Context patching uses `/connectionId`, `/database`, and `/schema`.
 - Targeted SQL edits use `datatalk_ui_exec`, `object=query_editor`, `action=apply_text_edits`, `params.baseVersion`, and `params.edits`. Each edit entry must include `expectedText`.
 - Query editor context updates use `datatalk_ui_exec`, `object=query_editor`, `action=set_context`, with `params.connectionId`, `params.database`, and `params.schema`.
-- Query editor actions are `apply_text_edits`, `set_context`, `run_sql`, `format_sql`, `focus`, and `close`.
+- Query editor actions are `apply_text_edits`, `set_context`, `run_sql`, `format_sql`, and `focus`.
 - Query editor actions and state use camelCase such as `connectionId` and `baseVersion`.
 
 ## Concurrency Contract
@@ -281,12 +280,6 @@ with `params.target=<tabId>`. The default is `params.archived=true`; pass
 
 To permanently delete, use `action=trash` only when the user explicitly asks.
 Both `archive(archived=true)` and `trash` cascade-detach from the workset.
-
-The legacy `action=close` is now an alias for `archive(archived=true)`. Prefer
-the new verbs for clarity.
-
-> Deprecated since v0.X (the release where this spec ships); will be removed
-> in v0.X+3. Keep this alias note until the removal release.
 
 ## UI Navigation Rules
 

@@ -46,8 +46,8 @@ public class UiExecAction implements ActionHandler<Map, Map> {
                         Map.entry("object", Map.of("type", "string", "enum", List.of("workspace"))),
                         Map.entry("action", Map.of(
                                 "type", "string",
-                                "enum", List.of("open", "close", "focus", "choose_connection", "detach", "archive", "trash"),
-                                "description", "`close` remains accepted as a deprecated alias while clients migrate to `detach`/`trash`."
+                                "enum", List.of("open", "focus", "choose_connection", "detach", "archive", "trash"),
+                                "description", "Workspace verbs for opening, focusing, detaching, archiving, and deleting tabs."
                         )),
                         Map.entry("params", Map.of(
                                 "type", "object",
@@ -82,8 +82,8 @@ public class UiExecAction implements ActionHandler<Map, Map> {
                         Map.entry("object", Map.of("type", "string", "enum", List.of("query_editor"))),
                         Map.entry("action", Map.of(
                                 "type", "string",
-                                "enum", List.of("apply_text_edits", "set_context", "run_sql", "format_sql", "focus", "close"),
-                                "description", "`close` remains accepted as a deprecated alias while clients migrate to workspace-level detach/trash verbs."
+                                "enum", List.of("apply_text_edits", "set_context", "run_sql", "format_sql", "focus"),
+                                "description", "Query editor verbs for editing, context changes, execution, formatting, and focus."
                         )),
                         Map.entry("params", Map.of(
                                 "type", "object",

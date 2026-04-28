@@ -66,11 +66,6 @@ const ACTIONS: ActionDef[] = [
     description: 'Focus this query editor',
     paramsSchema: { type: 'object', properties: {} },
   },
-  {
-    name: 'close',
-    description: 'Close this query editor',
-    paramsSchema: { type: 'object', properties: {} },
-  },
 ]
 
 const PATCH_CAPABILITIES: PatchCapability[] = [
@@ -452,11 +447,6 @@ export class QueryEditorAdapter implements UIObject {
         return { success: true, data: formatQueryEditorSql(this.objectId) }
       case 'focus':
         store.focusTab(this.objectId)
-        return { success: true }
-      case 'close':
-        // Per docs/references/ui-objects-reference.md, MCP `close` is a
-        // deprecated alias for archive(archived=true), not detach-from-workset.
-        store.archiveTab(this.objectId, true)
         return { success: true }
       default:
         return execError(`Unknown action: ${action}`, `Available: [${ACTIONS.map((item) => item.name).join(', ')}]`)

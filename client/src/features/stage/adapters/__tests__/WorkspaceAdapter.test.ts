@@ -283,15 +283,18 @@ describe('WorkspaceAdapter', () => {
     ])
   })
 
-  it('exec close archives the tab (alias of archive(archived=true))', async () => {
+  it('exec close is rejected after alias removal and leaves the tab in place', async () => {
     const adapter = new WorkspaceAdapter(() => 's1')
     const opened = await adapter.exec('open', { type: 'er_canvas', title: 'ER' })
     const tabId = (opened.data as { tabId: string }).tabId
     const closed = await adapter.exec('close', { target: tabId })
-    expect(closed.success).toBe(true)
-    expect(useStageStore.getState().openTabIds.has(tabId)).toBe(false)
+    expect(closed).toEqual(expect.objectContaining({
+      success: false,
+      error: 'Unknown action: close',
+    }))
+    expect(useStageStore.getState().openTabIds.has(tabId)).toBe(true)
     expect(useStageStore.getState().tabs).toHaveLength(1)
-    expect(useStageStore.getState().tabs[0]?.archived).toBe(true)
+    expect(useStageStore.getState().tabs[0]?.archived).toBeUndefined()
   })
 
   it('exec detach removes the tab from the workset without archiving it', async () => {

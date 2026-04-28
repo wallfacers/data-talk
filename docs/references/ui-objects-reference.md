@@ -52,7 +52,6 @@ Not supported. `workspace` is read-only through `patch`; use `exec`.
 | `detach` | `target: tabId` | — | Remove the tab from the top-tab workset only; it remains in the library |
 | `archive` | `target: tabId` | `archived?: boolean = true` | Archive when `true`; unarchive when `false` |
 | `trash` | `target: tabId` | — | Permanently delete the tab |
-| `close` | `target: tabId` | — | **Deprecated alias** for `archive(archived=true)`; scheduled for removal after three release cycles |
 | `choose_connection` | — | `preferredConnectionId: string` | Open the connection chooser |
 
 ---
@@ -118,11 +117,10 @@ Supported whitelist paths:
 | `run_sql` | `{ limit? }` | Execute the current SQL and write results back into query editor runtime state |
 | `format_sql` | — | Format the current SQL and update `content/version` |
 | `focus` | — | Focus this tab |
-| `close` | — | Close this tab |
 
 ---
 
-> **2026-04-28 update — Shared Stage Workbench Phase 1**: the `scope` concept is removed; tabs are workspace-wide; `apply_text_edits` requires `expectedText`; `/content` patch requires `baseVersion`; `workspace.detach/archive/trash` are the new verbs; `close` is deprecated. See [Shared Stage Workbench Design](../product-specs/2026-04-28-shared-stage-workbench-design.md).
+> **2026-04-29 update — TD-033 cleanup**: the deprecated `close` alias was removed from `workspace` and `query_editor`; use `detach`, `archive`, or `trash` for workspace lifecycle changes. See [TD-033 Remove Close Alias](../exec-plans/2026-04-29-td033-remove-close-alias-plan.md).
 
 ## Adapter Change Checklist
 

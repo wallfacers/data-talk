@@ -3,6 +3,8 @@
 > 状态：Draft · 2026-04-28 · wallfacers
 >
 > 范围：在 [Cross-Session Workbench Tabs](./2026-04-27-cross-session-workbench-tabs-design.md) 的持久化 + `ui_find` 基础上，把 Stage（工作台）整体从「按 session 切片的 UI 状态」升级为「全局共享 + IDEA 风格 库/工作集分离 + 多 session 并发写安全」。同时把 `ui_xxx` 协议升级为 `expectedText` 指纹 + `error.markdown` 友好反馈，并同步重写 `AGENTS.md` 的 UI 协议章节。
+>
+> 2026-04-29 更新：`workspace.close` / `query_editor.close` deprecated alias 已通过 [TD-033 Remove Close Alias](../exec-plans/2026-04-29-td033-remove-close-alias-plan.md) 删除；当前协议只保留 `detach` / `archive` / `trash` 等明确动词。
 
 ---
 
@@ -48,7 +50,7 @@
 | D6 | **库 vs 工作集**：左 rail = 库（含未打开），顶 tab 栏 = 工作集；关闭顶 tab = `detach`，DB 不动；`archive` = 库默认隐藏；`trash` = DELETE |
 | D7 | **Migration**：`V13__stage_tabs_workspace_only.sql` 单向迁移，drop `scope` 列，FK 改 `ON DELETE SET NULL`，重建索引 |
 | D8 | **AGENTS.md**：UI 协议章节大改写，新增 `## Concurrency Contract` 与 `## Library vs Workset` 两段；`STAGE_TAB_DIGEST` 渲染加 `originSession` / `version` / `lastTouched` 字段（**不**含 `inWorkset`——digest 在 bootstrap 时由服务端一次性渲染、`OpenCodeBootstrapWriter.setInstructionsSupplier` 提供，服务端无客户端 `openTabIds` 视角；`inWorkset` 仅由 `ui_read state.inWorkset` 实时提供） |
-| D9 | **协议增量**：`ui_exec workspace.detach` / `archive` / `trash` 三新动词；`close` deprecated alias；`workspace.focus` 自动 ensure-in-workset |
+| D9 | **协议增量**：`ui_exec workspace.detach` / `archive` / `trash` 三新动词；`workspace.focus` 自动 ensure-in-workset；`close` alias 已于 2026-04-29 删除 |
 | D10 | **实施分阶**：Approach β = Backend Protocol & Migration（P1）→ Frontend Layout Migration（P2）→ State Globalization & Polish（P3）→ Cleanup（P4，可选） |
 
 ---
@@ -63,7 +65,7 @@
 4. sidebar 拆 NavTabs，左 rail 接管所有 tab 浏览/搜索/归档
 5. `apply_text_edits` 强制 `expectedText`；`replace /content` 强制 `baseVersion`
 6. `error.markdown` 统一返回结构 + 5 种 code
-7. `workspace.detach` / `archive` / `trash` 三动词；`close` deprecated
+7. `workspace.detach` / `archive` / `trash` 三动词；`close` alias 已删除
 8. AGENTS.md 重写 UI 协议章节
 9. `STAGE_TAB_DIGEST` 渲染升级（仅服务端可知字段：`originSession` / `version` / `lastTouched`）
 10. `V13` migration（FK SET NULL、drop scope，含 FTS trigger 重建）
@@ -538,7 +540,6 @@ replaceSqlText(
 | `workspace.detach` | `target: tabId` | — | 仅从 `openTabIds` / `openTabIdsOrdered` 移除；DB 完全不动；同 tab 仍可在左 rail 库见到 |
 | `workspace.archive` | `target: tabId` | `archived: boolean = true` | `archived=true`：DB `archived=true` + `archivedAt=now` + 级联 `detach`；左 rail 默认视图隐藏，归档分组可见。`archived=false`：DB `archived=false` + `archivedAt=null` —— **解归档**入口 |
 | `workspace.trash` | `target: tabId` | — | DB hard DELETE；自动级联 `detach`；fts / payload 表通过 FK CASCADE 清理 |
-| `workspace.close` | `target: tabId` | — | **deprecated alias** = `archive(target, archived=true)`；3 个发版周期后删除 |
 | `workspace.focus` | `target: tabId` | — | 行为升级：`ensureOpenInWorkset(target)` + `setActive(target)`，自动把库里的 tab 拉进工作集。**对 archived tab 显式拒绝**：返回 `error.code='tab_archived'` + markdown 提示先 `archive(target, archived=false)` 再 focus；**不**隐式解归档（避免 AI 在调试某个错误时无意识激活历史 tab） |
 
 `archive` 之所以选用「带 `archived` 布尔参数」而不是 `archive` / `unarchive` 双动词：
@@ -903,7 +904,7 @@ zh-CN / en 同步。
 | `datatalk_ui_find` 描述 | 强调"library covers all open and idle tabs (not just those currently in the top tab bar)" |
 | `datatalk_ui_read` 描述 | 增 `state.inWorkset` 字段 |
 | `datatalk_ui_patch` 描述 | 增 "`/content` requires `baseVersion`" |
-| `datatalk_ui_exec` 描述 | 增 `apply_text_edits` 强制 `expectedText`；列出 `detach` / `archive(archived?: boolean = true)` / `trash`；明示 `archive(archived=false)` 是解归档入口；`close` 标 deprecated alias = `archive(archived=true)` |
+| `datatalk_ui_exec` 描述 | 增 `apply_text_edits` 强制 `expectedText`；列出 `detach` / `archive(archived?: boolean = true)` / `trash`；明示 `archive(archived=false)` 是解归档入口；`close` alias 已于 2026-04-29 删除 |
 | `## Exact UI Contract` | 大改：apply_text_edits schema 段补 `expectedText` required；workspace 动作列表更新 |
 | `## UI Navigation Rules` | 改写：移除 workspace / session scope；强调 library vs workset |
 | `## Query Editor Rules` | 增 1 条 `expectedText` 必填 + "do not retry the same edit on `expected_text_mismatch`" |
@@ -1019,15 +1020,8 @@ previously archived tab (e.g., when an edit fails with `tab_archived`).
 
 To permanently delete, use `action=trash` — only when the user explicitly
 asks. Both `archive(archived=true)` and `trash` cascade-detach from the
-workset.
-
-The legacy `action=close` is now an alias for `archive(archived=true)`.
-Prefer the new verbs for clarity.
-
-> Deprecated since v0.X (the release where this spec ships); will be
-> removed in v0.X+3. AGENTS.md should retain this alias paragraph until
-> the removal release; tests in `AgentPromptContractTest` assert the
-> deprecation marker remains so we don't drop it accidentally.
+workset. The removed `close` alias is no longer accepted; use the explicit
+workspace lifecycle verbs instead.
 ```
 
 ### 8.4 `STAGE_TAB_DIGEST` 渲染升级
@@ -1125,7 +1119,7 @@ Prefer the new verbs for clarity.
 | P1 | 1.15 | `stage-tab-api`: `listWorkspaceTabs` / `listSessionTabs` 删除并替换为 `listAll({ archived?, originSessionId? })`；`UpsertRequest.scope` 字段删除 | client |
 | P1 | 1.16 | `StagePersistenceCoordinator.start()` 改用 `listAll({ archived: false })`；`stage-persistence-bootstrap`: `__hydrateWorkspaceTabs` / `__hydrateSessionTabs` 合并为 `__hydrateAll`；`persistedTabSummaries` / `resolveTabSnapshot` 去除 scope / `tabsBySession` 分支 | client |
 | P1 | 1.17 | `StageTabsMigrationIT` 扩展：插入若干 row（trigger 触发 FTS 写入）→ 跑 V13 → 断言：(a) `stage_tab_index` 行数 = `stage_tabs` 行数；(b) FTS 仍能 `MATCH` 命中迁移前的 title / content；(c) 旧 trigger 完全消失（`SELECT name FROM sqlite_master WHERE type='trigger'` 只剩新 6 个）；(d) `scope` 列从 `PRAGMA table_info(stage_tabs)` 消失；(e) **migration 后向 `stage_tab_payload` INSERT 一条新 payload**（`tab_id` 引用新 `stage_tabs.id`），断言 trigger 正常更新 `stage_tab_index.content`、且 FK 约束生效（违法 `tab_id` 触发 SQLITE_CONSTRAINT）；(f) **session 删除 → CASCADE 不再发生**，`origin_session_id` 改 NULL，对应 stage_tab 仍存活 | infra IT |
-| P1 | 1.18 | **`docs/references/ui-objects-reference.md` 大改写**：删除 `WORKSPACE_SCOPE_TYPES` 表 / `scope` 列；`workspace.close` → 标 deprecated；新增 `detach` / `archive` / `trash` 行；`workspace.focus` 行为升级；`apply_text_edits` 增 `expectedText` required；`/content` patch 增 `baseVersion` required；`query_editor.state` 字段表新增 `inWorkset: boolean` | docs |
+| P1 | 1.18 | **`docs/references/ui-objects-reference.md` 大改写**：删除 `WORKSPACE_SCOPE_TYPES` 表 / `scope` 列；新增 `detach` / `archive` / `trash` 行；`workspace.focus` 行为升级；`apply_text_edits` 增 `expectedText` required；`/content` patch 增 `baseVersion` required；`query_editor.state` 字段表新增 `inWorkset: boolean`；2026-04-29 补记 `close` alias 删除 | docs |
 | P1 | 1.19 | 全套回归（`mvn verify` + `npm run test` + `npx tsc --noEmit`） | all |
 | P2 | 2.1 | 新建 `features/stage/components/left-rail/` 组件 | client |
 | P2 | 2.2 | 复用 `useStageFind`；搜索框五态 token 映射 | client |
@@ -1145,7 +1139,7 @@ Prefer the new verbs for clarity.
 | P3 | 3.7 | `stage-toggle-button.test.tsx` 改 mock | client |
 | P3 | 3.8 | localStorage `stage.leftRail.width` / `stage.leftRail.collapsed` | client |
 | P3 | 3.9 | 全套回归 + smoke IT | all |
-| P4 | 4.1 | `workspace.close` deprecated alias 删除（3 版本后） | adapter |
+| P4 | 4.1 | `workspace.close` / `query_editor.close` deprecated alias 已通过 TD-033 于 2026-04-29 删除 | adapter |
 | P4 | 4.2 | 用户反馈跟踪：是否需要 `openTabIds` 持久化 | product |
 
 ---
@@ -1215,7 +1209,7 @@ Prefer the new verbs for clarity.
 | O4 | 左 rail 默认 sort 是否允许用户切换？ | 否（仅 `lastTouchedAt desc` + pinned 置顶 + archived 折叠） |
 | O5 | `notifyArtifactArrived()` 全局化后多 session 同时进 artifact 是否各自触发一次自动开 stage？ | 首次触发后置 `autoOpened=true`，后续不再自动开；**用户手动 `closeStage()` 时重置 `autoOpened=false`**——下次任意 session 有新 artifact 仍能再自动开一次（与 per-session 时代"每个新 session 都能自动开一次"语义近似但更克制） |
 | O6 | localStorage 失败（Tauri 沙箱权限异常）的兜底？ | 默认值（240 / false）+ 静默 catch |
-| O7 | `workspace.close` deprecation 周期？ | 3 个发版周期 |
+| O7 | `workspace.close` deprecation 周期？ | 原设计为 3 个发版周期；2026-04-29 按用户指令提前删除 |
 
 ---
 

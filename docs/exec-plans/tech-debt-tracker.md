@@ -14,12 +14,13 @@
 
 | ID | 优先级 | 描述 | 关联计划 |
 |----|--------|------|----------|
-| TD-033 | P2 | `workspace.close` / `query_editor.close` 仍作为 deprecated alias 保留为 `archive(archived=true)`；协议文档要求三版兼容期后删除，当前不能立即移除以免破坏旧 Agent prompt / 历史工具调用 | 到达 `Shared Stage Workbench` 兼容期 +3 个发版周期后，删除后端 `UiExecAction` schema 中的 `close`、前端 `WorkspaceAdapter` / `QueryEditorAdapter` `close` 分支、相关 prompt 文案和兼容测试 |
+| — | — | 当前无已知技术债务 | — |
 
 ## 已清除债务
 
 | ID | 清除日期 | 原描述 | 清除方式 |
 |----|----------|--------|----------|
+| TD-033 | 2026-04-29 | `workspace.close` / `query_editor.close` 仍作为 deprecated alias 保留为 `archive(archived=true)`；协议文档要求三版兼容期后删除，当前不能立即移除以免破坏旧 Agent prompt / 历史工具调用 | 按用户指令提前删除 alias：后端 `UiExecAction` schema 移除 `close`，前端 `WorkspaceAdapter` / `QueryEditorAdapter` 移除 `close` actions 和分支，运行时 `AGENTS.md` 与 `ui-objects-reference.md` 删除 deprecation 文案，兼容测试改为断言 `unknown_action` |
 | TD-032 | 2026-04-28 | 前端残留 deprecated 空 shim（`StageSidebar` / `StageResourceBrowser` / `StageToolRow`）和废弃 `useStageFind` hook，仅剩测试引用，继续保留会误导后续 Stage 布局维护 | 删除 `client/src/features/stage/components/stage-sidebar.tsx`、`stage-resource-browser.tsx`、`stage-tool-row.tsx`、`client/src/services/find/use-stage-find.ts` 及对应 shim/hook 测试；同步移除 `stage-window.test.tsx` 中对旧 test id 的断言 |
 | TD-031 | 2026-04-28 | `datatalk_ui_exec` 后端 schema / prompt 已暴露 `workspace.detach/archive/trash/focus` 和全局 query editor，但前端 `WorkspaceAdapter` 只接受旧 `open/close/focus/choose_connection`，且 `datatalk.ui.exec` handler 用 top-level `target` 而不是 `params.target` 做 hydrate/flush，导致 AI 调新协议会在客户端被 `unknown_action` 拒绝或落盘目标不准 | `WorkspaceAdapter` actions 与 exec 分支补齐 `detach/archive/trash`；`archive(archived=false)` 解归档；`focus` 对 archived tab 返回结构化 `tab_archived`；`query_editor` open 支持 `sessionId=null` 的全局 Stage；`ui-handlers` 对 workspace action 使用 `params.target` 做 hydrate/flush，并将 `detach/trash` 纳入 mutating exec；新增 `WorkspaceAdapter.test.ts` 和 `ui-handlers.test.ts` 回归 |
 | TD-029 | 2026-04-28 | 端到端"两个 OpenCode session 通过 `ui_exec` 竞争同一 tab"集成测试缺失。P1 用 `McpActionBridgeTest` 替代原计划 `StageTabConcurrencyIT`，只覆盖错误封装语义，不穿透 `ChannelService → ActionDispatcher → Client → 回程`，`version_conflict` / `expected_text_mismatch` 自动化不足 | 在 `McpActionBridgeTest` 新增真实 round-trip 覆盖：两个 DataTalk/OpenCode session 绑定到同一 tab，真实 `ActionDispatcher` 发布 `action.invoke` 到各自 `SessionBus`，模拟客户端经 `ChannelService.completeActionResult` 回传成功、`expected_text_mismatch`、`version_conflict`，断言 OpenCode tool outcome 保留结构化 code/message 并生成 conflict markdown。未引入 WireMock full HTTP fixture，但覆盖了原缺失的 application-layer 回程链路 |

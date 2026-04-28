@@ -50,7 +50,7 @@ describe('QueryEditorAdapter', () => {
     resetSessionStore()
   })
 
-  it('read actions exposes exactly the six query editor actions', () => {
+  it('read actions exposes exactly the five query editor actions', () => {
     const adapter = new QueryEditorAdapter('q1')
 
     expect((adapter.read('actions') as Array<{ name: string }>).map((action) => action.name)).toEqual([
@@ -59,7 +59,6 @@ describe('QueryEditorAdapter', () => {
       'run_sql',
       'format_sql',
       'focus',
-      'close',
     ])
   })
 
@@ -662,7 +661,7 @@ describe('QueryEditorAdapter', () => {
     expect(useStageStore.getState().activeTabId).toBe('ws-q1')
   })
 
-  it('close archives the query editor tab (detaches from workset, sets archived=true)', async () => {
+  it('rejects the removed close action and leaves the query editor tab unchanged', async () => {
     openTab({
       tabId: 'q1',
       type: 'query_editor',
@@ -675,11 +674,12 @@ describe('QueryEditorAdapter', () => {
     const adapter = new QueryEditorAdapter('q1')
     const result = await adapter.exec('close')
 
-    expect(result).toEqual({ success: true })
-    // Per ui-objects-reference.md: close is a deprecated alias for archive(true).
-    // Tab gets archived (not deleted) and falls out of the workset.
-    expect(useStageStore.getState().openTabIds.has('q1')).toBe(false)
+    expect(result).toEqual(expect.objectContaining({
+      success: false,
+      error: 'Unknown action: close',
+    }))
+    expect(useStageStore.getState().openTabIds.has('q1')).toBe(true)
     const tab = useStageStore.getState().tabs.find((t) => t.tabId === 'q1')
-    expect(tab?.archived).toBe(true)
+    expect(tab?.archived).toBeUndefined()
   })
 })

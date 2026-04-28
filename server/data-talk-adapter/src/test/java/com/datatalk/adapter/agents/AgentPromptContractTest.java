@@ -228,7 +228,7 @@ class AgentPromptContractTest {
     }
 
     @Test
-    void runtimePromptDocumentsSharedWorkbenchConcurrencyAndDeprecations() throws IOException {
+    void runtimePromptDocumentsSharedWorkbenchConcurrencyWithoutCloseAlias() throws IOException {
         String prompt = loadPrompt();
 
         assertThat(prompt)
@@ -239,12 +239,15 @@ class AgentPromptContractTest {
             .contains("baseVersion")
             .contains("expectedText")
             .contains("inWorkset")
-            .contains("Deprecated since")
             .contains("detach")
             .contains("archive")
             .contains("trash")
-            .contains("close")
             .contains("shared across all sessions and persisted across app restarts");
+        assertThat(prompt)
+            .doesNotContain("Deprecated since")
+            .doesNotContain("deprecated alias")
+            .doesNotContain("action=close")
+            .doesNotContain("`close`");
     }
 
     private static String loadPrompt() throws IOException {
