@@ -680,7 +680,7 @@ describe('QueryEditorAdapter', () => {
     expect(useStageStore.getState().activeTabIdBySession.get('s1')).toBeNull()
   })
 
-  it('close detaches the query editor tab from workset', async () => {
+  it('close archives the query editor tab (detaches from workset, sets archived=true)', async () => {
     openTab({
       tabId: 'q1',
       type: 'query_editor',
@@ -695,8 +695,10 @@ describe('QueryEditorAdapter', () => {
     const result = await adapter.exec('close')
 
     expect(result).toEqual({ success: true })
-    // Phase 2: close = detach from workset, tab still in library
+    // Per ui-objects-reference.md: close is a deprecated alias for archive(true).
+    // Tab gets archived (not deleted) and falls out of the workset.
     expect(useStageStore.getState().openTabIds.has('q1')).toBe(false)
-    expect(useStageStore.getState().tabsBySession.get('s1')).toHaveLength(1)
+    const tab = useStageStore.getState().tabsBySession.get('s1')?.[0]
+    expect(tab?.archived).toBe(true)
   })
 })

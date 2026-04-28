@@ -85,22 +85,33 @@ export function StageWindow({ sessionId }: Props) {
     }
   }
 
-  const dividerStateRef = useRef<{ active: boolean; startX: number; startWidth: number }>({
-    active: false, startX: 0, startWidth: 0,
-  })
+  const dividerStateRef = useRef<{
+    active: boolean; startX: number; startWidth: number; pointerId: number; target: HTMLElement | null
+  }>({ active: false, startX: 0, startWidth: 0, pointerId: -1, target: null })
 
   function handleDividerPointerDown(e: React.PointerEvent) {
-    dividerStateRef.current = { active: true, startX: e.clientX, startWidth: leftRailWidth }
-    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+    const target = e.currentTarget as HTMLElement
+    dividerStateRef.current = {
+      active: true, startX: e.clientX, startWidth: leftRailWidth,
+      pointerId: e.pointerId, target,
+    }
+    try { target.setPointerCapture(e.pointerId) } catch {}
   }
   function handleDividerPointerMove(e: React.PointerEvent) {
     if (!dividerStateRef.current.active) return
     const next = dividerStateRef.current.startWidth + (e.clientX - dividerStateRef.current.startX)
     setLeftRailWidth(next)
   }
-  function handleDividerPointerUp() {
-    dividerStateRef.current.active = false
+  function endDividerDrag() {
+    const { target, pointerId } = dividerStateRef.current
+    if (target && pointerId >= 0) {
+      try { target.releasePointerCapture(pointerId) } catch {}
+    }
+    dividerStateRef.current = { active: false, startX: 0, startWidth: 0, pointerId: -1, target: null }
   }
+  function handleDividerPointerUp() { endDividerDrag() }
+  function handleDividerPointerCancel() { endDividerDrag() }
+  function handleDividerLostCapture() { endDividerDrag() }
 
   function handleOpenSqlEditor() {
     setShowStartPage(false)
@@ -166,6 +177,8 @@ export function StageWindow({ sessionId }: Props) {
             onPointerDown={handleDividerPointerDown}
             onPointerMove={handleDividerPointerMove}
             onPointerUp={handleDividerPointerUp}
+            onPointerCancel={handleDividerPointerCancel}
+            onLostPointerCapture={handleDividerLostCapture}
           >
             <div className="h-full w-px bg-border-subtle group-hover:bg-accent-primary/50" />
           </div>

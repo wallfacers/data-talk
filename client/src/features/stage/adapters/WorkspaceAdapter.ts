@@ -151,7 +151,9 @@ export class WorkspaceAdapter implements UIObject {
       }
       case 'close': {
         if (!p.target) return execError('Missing param: target')
-        store.closeTab(p.target)
+        // Per docs/references/ui-objects-reference.md, MCP `close` is a
+        // deprecated alias for archive(archived=true), not detach-from-workset.
+        store.archiveTab(p.target, true)
         return { success: true }
       }
       case 'focus': {

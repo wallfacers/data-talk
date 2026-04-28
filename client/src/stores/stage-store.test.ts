@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { useSqlWorkbenchStore } from '@/features/stage/stores/sql-workbench-store'
 import { useStageStore, type StageTab } from './stage-store'
 
@@ -146,22 +146,25 @@ describe('StageStore tabs', () => {
     useSqlWorkbenchStore.setState({ tabsById: {} })
   })
 
-  it('openTab(workspace) adds to workspaceTabs and sets activeWorkspaceTabId', () => {
+  it('openTab(workspace) adds to workspaceTabs, sets activeWorkspaceTabId, and seeds workset', () => {
     useStageStore.getState().openTab({ tabId: 't1', type: 'report', title: 'sql', scope: 'workspace', payload: {}, createdAt: 1 })
     expect(useStageStore.getState().workspaceTabs).toHaveLength(1)
     expect(useStageStore.getState().activeWorkspaceTabId).toBe('t1')
+    expect(useStageStore.getState().openTabIds.has('t1')).toBe(true)
+    expect(useStageStore.getState().openTabIdsOrdered).toEqual(['t1'])
   })
 
-  it('openTab(session) adds to tabsBySession and sets activeTabIdBySession', () => {
+  it('openTab(session) adds to tabsBySession, sets activeTabIdBySession, and seeds workset', () => {
     useStageStore.getState().openTab({ tabId: 'a1', type: 'artifact', title: 'art', scope: 'session', originSessionId: 's1', payload: {}, createdAt: 1 })
     expect(useStageStore.getState().tabsBySession.get('s1')).toHaveLength(1)
     expect(useStageStore.getState().activeTabIdBySession.get('s1')).toBe('a1')
+    expect(useStageStore.getState().openTabIds.has('a1')).toBe(true)
   })
 
-  it('closeTab detaches from workset (Phase 2 alias)', () => {
+  it('closeTab detaches from workset (Phase 2 alias) and leaves the library entry untouched', () => {
     const st = useStageStore.getState()
     st.openTab({ tabId: 't1', type: 'report', title: 'x', scope: 'workspace', payload: {}, createdAt: 1 })
-    useStageStore.setState({ openTabIds: new Set(['t1']), openTabIdsOrdered: ['t1'] } as unknown as Record<string, unknown>, false)
+    expect(useStageStore.getState().openTabIds.has('t1')).toBe(true)
     st.closeTab('t1')
     expect(useStageStore.getState().workspaceTabs).toHaveLength(1)
     expect(useStageStore.getState().openTabIds.has('t1')).toBe(false)
@@ -377,19 +380,24 @@ describe('StageStore persistence mutation API', () => {
     expect(st.findTab('missing')).toBeNull()
   })
 
-  it('__hydrateWorkspaceTabs merges server items into existing workspace tabs', () => {
+  it('__hydrateWorkspaceTabs merges server items into existing workspace tabs and seeds workset for non-archived tabs', () => {
     const st = useStageStore.getState()
     st.openTab({ tabId: 't1', type: 'query_editor', title: 'Local', scope: 'workspace', payload: {}, createdAt: 1 })
 
     st.__hydrateWorkspaceTabs([
       { tabId: 't1', type: 'query_editor', title: 'Hydrated', scope: 'workspace' as const, payload: { sql: 'server' }, payloadVersion: 5, createdAt: 1, lastTouchedAt: 100 },
       { tabId: 't2', type: 'query_editor', title: 'New From Server', scope: 'workspace' as const, payload: {}, createdAt: 2 },
+      { tabId: 't3', type: 'query_editor', title: 'Archived', scope: 'workspace' as const, archived: true, payload: {}, createdAt: 3 },
     ] as never)
 
     const tabs = useStageStore.getState().workspaceTabs
-    expect(tabs).toHaveLength(2)
+    expect(tabs).toHaveLength(3)
     expect(tabs.find((t) => t.tabId === 't1')?.title).toBe('Hydrated')
     expect(tabs.find((t) => t.tabId === 't2')?.title).toBe('New From Server')
+    // Workset seeded from non-archived hydrated tabs only
+    expect(useStageStore.getState().openTabIds.has('t1')).toBe(true)
+    expect(useStageStore.getState().openTabIds.has('t2')).toBe(true)
+    expect(useStageStore.getState().openTabIds.has('t3')).toBe(false)
   })
 
   it('__hydrateAll merges hydrated tabs into workspace storage', () => {
@@ -560,5 +568,48 @@ describe('Library vs Workset (Phase 2)', () => {
 
     expect(useStageStore.getState().openTabIds.has('qe-1')).toBe(true)
     expect(useStageStore.getState().activeWorkspaceTabId).toBe('qe-1')
+  })
+
+  it('archiveTab(true) on a session-scoped active tab clears activeTabIdBySession[sid]', () => {
+    const tab = makeStageTab({ tabId: 'sess-1', scope: 'session', originSessionId: 'sid-1' })
+    useStageStore.setState({
+      tabsBySession: new Map([['sid-1', [tab]]]),
+      activeTabIdBySession: new Map([['sid-1', 'sess-1']]),
+      openTabIds: new Set(['sess-1']),
+      openTabIdsOrdered: ['sess-1'],
+    } as never, false)
+
+    useStageStore.getState().archiveTab('sess-1', true)
+
+    expect(useStageStore.getState().activeTabIdBySession.get('sid-1')).toBeNull()
+    expect(useStageStore.getState().openTabIds.has('sess-1')).toBe(false)
+    const tabs = useStageStore.getState().tabsBySession.get('sid-1')
+    expect(tabs?.[0].archived).toBe(true)
+  })
+
+  it('trashTab rolls back workset detach if coordinator.delete rejects', async () => {
+    const tab = makeStageTab({ tabId: 'qe-99' })
+    useStageStore.setState({
+      workspaceTabs: [tab],
+      openTabIds: new Set(['qe-99']),
+      openTabIdsOrdered: ['qe-99'],
+      activeWorkspaceTabId: 'qe-99',
+    } as never, false)
+
+    const persistence = await import('@/features/stage/persistence/stage-persistence-bootstrap')
+    const failure = new Error('persistence boom')
+    const spy = vi.spyOn(persistence.coordinator, 'delete').mockRejectedValueOnce(failure)
+
+    try {
+      await expect(useStageStore.getState().trashTab('qe-99')).rejects.toBe(failure)
+      // Workset state must be restored after rollback
+      expect(useStageStore.getState().openTabIds.has('qe-99')).toBe(true)
+      expect(useStageStore.getState().openTabIdsOrdered).toEqual(['qe-99'])
+      expect(useStageStore.getState().activeWorkspaceTabId).toBe('qe-99')
+      // Library entry must remain (delete never succeeded)
+      expect(useStageStore.getState().workspaceTabs.some((t) => t.tabId === 'qe-99')).toBe(true)
+    } finally {
+      spy.mockRestore()
+    }
   })
 })

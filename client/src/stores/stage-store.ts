@@ -237,6 +237,25 @@ function mergeHydratedWorkspaceTabs(existingTabs: StageTab[], items: StageTab[])
   return merged
 }
 
+// On hydrate, seed the workset with non-archived hydrated tabs so the top tab
+// bar is not empty after a cold restart. Existing workset entries are preserved
+// in their current order; new tabs append to the tail.
+function seedWorkset(
+  currentIds: Set<string>,
+  currentOrder: string[],
+  hydratedTabs: StageTab[],
+): { openTabIds: Set<string>; openTabIdsOrdered: string[] } {
+  const nextIds = new Set(currentIds)
+  const nextOrder = [...currentOrder]
+  for (const tab of hydratedTabs) {
+    if (tab.archived) continue
+    if (nextIds.has(tab.tabId)) continue
+    nextIds.add(tab.tabId)
+    nextOrder.push(tab.tabId)
+  }
+  return { openTabIds: nextIds, openTabIdsOrdered: nextOrder }
+}
+
 export const useStageStore = create<StageState>((set, get) => ({
   openBySession: new Map(),
   autoOpenedSessions: new Set(),
@@ -354,15 +373,31 @@ export const useStageStore = create<StageState>((set, get) => ({
   }),
 
   openTab: (tab) => set((s) => {
+    // Newly created tabs always enter the workset so the top tab bar shows them
+    // immediately. Archived tabs cannot be created via this path; ensureOpenInWorkset
+    // semantics are inlined here to avoid a chained set call.
+    const alreadyInWorkset = s.openTabIds.has(tab.tabId)
+    const nextOpenIds = alreadyInWorkset ? s.openTabIds : new Set(s.openTabIds).add(tab.tabId)
+    const nextOpenOrder = alreadyInWorkset ? s.openTabIdsOrdered : [...s.openTabIdsOrdered, tab.tabId]
     if (tab.scope === 'workspace') {
-      return { workspaceTabs: [...s.workspaceTabs, tab], activeWorkspaceTabId: tab.tabId }
+      return {
+        workspaceTabs: [...s.workspaceTabs, tab],
+        activeWorkspaceTabId: tab.tabId,
+        openTabIds: nextOpenIds,
+        openTabIdsOrdered: nextOpenOrder,
+      }
     }
     const sid = tab.originSessionId
     if (!sid) throw new Error('session-scoped tab requires originSessionId')
     const existing = s.tabsBySession.get(sid) ?? []
     const next = new Map(s.tabsBySession); next.set(sid, [...existing, tab])
     const active = new Map(s.activeTabIdBySession); active.set(sid, tab.tabId)
-    return { tabsBySession: next, activeTabIdBySession: active }
+    return {
+      tabsBySession: next,
+      activeTabIdBySession: active,
+      openTabIds: nextOpenIds,
+      openTabIdsOrdered: nextOpenOrder,
+    }
   }),
 
   closeTab: (tabId) => {
@@ -406,9 +441,25 @@ export const useStageStore = create<StageState>((set, get) => ({
   }),
 
   trashTab: async (tabId) => {
+    // Snapshot workset state before detach so we can roll back if the persistence
+    // delete fails — otherwise users see the tab vanish from workset but the
+    // library row stays around forever.
+    const before = get()
+    const prevOpenIds = before.openTabIds
+    const prevOpenOrder = before.openTabIdsOrdered
+    const prevActive = before.activeWorkspaceTabId
     useStageStore.getState().detachFromWorkset(tabId)
-    const { coordinator } = await import('@/features/stage/persistence/stage-persistence-bootstrap')
-    await coordinator.delete(tabId)
+    try {
+      const { coordinator } = await import('@/features/stage/persistence/stage-persistence-bootstrap')
+      await coordinator.delete(tabId)
+    } catch (err) {
+      set(() => ({
+        openTabIds: prevOpenIds,
+        openTabIdsOrdered: prevOpenOrder,
+        activeWorkspaceTabId: prevActive,
+      }))
+      throw err
+    }
     set((s) => {
       const wsRemoved = s.workspaceTabs.filter((t) => t.tabId !== tabId)
       if (wsRemoved.length !== s.workspaceTabs.length) return { workspaceTabs: wsRemoved }
@@ -416,7 +467,9 @@ export const useStageStore = create<StageState>((set, get) => ({
         if (list.some((t) => t.tabId === tabId)) {
           const next = list.filter((t) => t.tabId !== tabId)
           const map = new Map(s.tabsBySession); map.set(sid, next)
-          return { tabsBySession: map }
+          const activeMap = new Map(s.activeTabIdBySession)
+          if (activeMap.get(sid) === tabId) activeMap.set(sid, null)
+          return { tabsBySession: map, activeTabIdBySession: activeMap }
         }
       }
       return s
@@ -603,14 +656,17 @@ export const useStageStore = create<StageState>((set, get) => ({
 
   __hydrateAll: (items) => set((s) => ({
     workspaceTabs: mergeHydratedWorkspaceTabs(s.workspaceTabs, items),
+    ...seedWorkset(s.openTabIds, s.openTabIdsOrdered, items),
   })),
 
   __hydrateWorkspaceTabs: (items) => set((s) => ({
     workspaceTabs: mergeHydratedWorkspaceTabs(s.workspaceTabs, items),
+    ...seedWorkset(s.openTabIds, s.openTabIdsOrdered, items),
   })),
 
   __hydrateSessionTabs: (_sessionId, items) => set((s) => ({
     workspaceTabs: mergeHydratedWorkspaceTabs(s.workspaceTabs, items),
+    ...seedWorkset(s.openTabIds, s.openTabIdsOrdered, items),
   })),
 
   __hydratePayload: (tabId, payload, version) => set((s) => {
@@ -668,8 +724,17 @@ export const useStageStore = create<StageState>((set, get) => ({
       const updated = updateInList(list)
       if (updated) {
         const map = new Map(s.tabsBySession); map.set(sid, updated)
-        const detached = archived ? archiveDetach(s, id) : {}
-        return { tabsBySession: map, ...detached }
+        if (!archived) {
+          return { tabsBySession: map }
+        }
+        // Archiving an active session-scoped tab must clear that session's
+        // active pointer; otherwise renderers keep highlighting an archived row.
+        const detached = archiveDetach(s, id)
+        const activeMap = new Map(s.activeTabIdBySession)
+        if (activeMap.get(sid) === id) {
+          activeMap.set(sid, null)
+        }
+        return { tabsBySession: map, activeTabIdBySession: activeMap, ...detached }
       }
     }
     return s

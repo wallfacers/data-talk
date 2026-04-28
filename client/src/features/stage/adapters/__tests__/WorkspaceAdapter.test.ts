@@ -283,15 +283,16 @@ describe('WorkspaceAdapter', () => {
     ])
   })
 
-  it('exec close detaches tab from workset', async () => {
+  it('exec close archives the tab (alias of archive(archived=true))', async () => {
     const adapter = new WorkspaceAdapter(() => 's1')
     const opened = await adapter.exec('open', { type: 'er_canvas', title: 'ER' })
     const tabId = (opened.data as { tabId: string }).tabId
     const closed = await adapter.exec('close', { target: tabId })
     expect(closed.success).toBe(true)
-    // Phase 2: close = detach from workset, tab still in library
+    // Per ui-objects-reference.md: close is deprecated alias for archive(true).
     expect(useStageStore.getState().openTabIds.has(tabId)).toBe(false)
     expect(useStageStore.getState().workspaceTabs).toHaveLength(1)
+    expect(useStageStore.getState().workspaceTabs[0]?.archived).toBe(true)
   })
 
   it('exec focus clears the current session-active tab when targeting a workspace tab', async () => {

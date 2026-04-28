@@ -7,7 +7,6 @@ type Props = {
   active: boolean
   inWorkset: boolean
   onClick: () => void
-  onMenuOpen?: () => void
   trailingMenu?: React.ReactNode
 }
 
@@ -35,7 +34,9 @@ export function StageRailRow({ tab, active, inWorkset, onClick, trailingMenu }: 
         'hover:bg-interaction-hover',
         active ? 'bg-interaction-selected text-text-strong' : '',
         tab.archived ? 'opacity-60 text-text-soft' : '',
-        !active ? 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing' : '',
+        // focus ring renders for both selected and non-selected rows so keyboard
+        // focus is always visible (DESIGN.md focusRing is a stable token).
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing',
       ].filter(Boolean).join(' ')}
     >
       {active && <span aria-hidden className="absolute inset-y-1 left-0 w-0.5 rounded bg-accent-primary" />}

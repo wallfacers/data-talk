@@ -45,6 +45,47 @@
   --radius-2xl: 1.5rem;
   --radius-3xl: 1.75rem;
   --radius-4xl: 2rem;
+
+  /* DataTalk semantic tokens — expose --dt-* under Tailwind's --color-* so that
+     bg-bg-subtle / text-text-muted / bg-interaction-hover / bg-accent-primary
+     / bg-status-danger etc. resolve to real utilities. */
+  --color-bg-app: var(--dt-bg-app);
+  --color-bg-canvas: var(--dt-bg-canvas);
+  --color-bg-panel: var(--dt-bg-panel);
+  --color-bg-subtle: var(--dt-bg-subtle);
+  --color-bg-elevated: var(--dt-bg-elevated);
+  --color-bg-overlay: var(--dt-bg-overlay);
+  --color-text-strong: var(--dt-text-strong);
+  --color-text-base: var(--dt-text-base);
+  --color-text-muted: var(--dt-text-muted);
+  --color-text-soft: var(--dt-text-soft);
+  --color-text-inverse: var(--dt-text-inverse);
+  --color-border-subtle: var(--dt-border-subtle);
+  --color-border-default: var(--dt-border-default);
+  --color-border-strong: var(--dt-border-strong);
+  --color-accent-primary: var(--dt-accent-primary);
+  --color-accent-primary-hover: var(--dt-accent-primary-hover);
+  --color-accent-primary-surface: var(--dt-accent-primary-surface);
+  --color-accent-primary-border: var(--dt-accent-primary-border);
+  --color-accent-warn: var(--dt-accent-warn);
+  --color-accent-warn-surface: var(--dt-accent-warn-surface);
+  --color-status-success: var(--dt-status-success);
+  --color-status-success-surface: var(--dt-status-success-surface);
+  --color-status-warning: var(--dt-status-warning);
+  --color-status-warning-surface: var(--dt-status-warning-surface);
+  --color-status-danger: var(--dt-status-danger);
+  --color-status-dangerSurface: var(--dt-status-danger-surface);
+  --color-status-info: var(--dt-status-info);
+  --color-status-infoSurface: var(--dt-status-info-surface);
+  --color-interaction-focusRing: var(--dt-interaction-focus-ring);
+  --color-interaction-hover: var(--dt-interaction-hover);
+  --color-interaction-active: var(--dt-interaction-active);
+  --color-interaction-selected: var(--dt-interaction-selected);
+  --color-interaction-disabled: var(--dt-interaction-disabled);
+
+  /* Standard easing — used by `transition-[...] ease-[var(--easing-standard)]`
+     in left-rail rows so motion matches DESIGN.md motion.easing.standard. */
+  --easing-standard: cubic-bezier(0.2, 0, 0, 1);
 }
 
 :root {

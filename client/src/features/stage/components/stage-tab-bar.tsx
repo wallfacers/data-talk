@@ -4,8 +4,8 @@ import {
   ChevronDownIcon,
   DatabaseIcon,
   FileTextIcon,
+  HomeIcon,
   NetworkIcon,
-  PlusIcon,
   SparklesIcon,
   XIcon,
 } from 'lucide-react'
@@ -272,7 +272,7 @@ export function StageTabBar({
               onClick={onOpenStartPage}
               className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
-              <PlusIcon className="size-3.5" />
+              <HomeIcon className="size-3.5" />
             </button>
           ) : null}
           <StageTabBarAddButton sessionId={sessionId ?? null} />

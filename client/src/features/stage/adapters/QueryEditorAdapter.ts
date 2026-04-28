@@ -462,7 +462,9 @@ export class QueryEditorAdapter implements UIObject {
         if (tab?.scope === 'workspace') clearSessionActiveTab(this.getSessionId())
         return { success: true }
       case 'close':
-        store.closeTab(this.objectId)
+        // Per docs/references/ui-objects-reference.md, MCP `close` is a
+        // deprecated alias for archive(archived=true), not detach-from-workset.
+        store.archiveTab(this.objectId, true)
         return { success: true }
       default:
         return execError(`Unknown action: ${action}`, `Available: [${ACTIONS.map((item) => item.name).join(', ')}]`)

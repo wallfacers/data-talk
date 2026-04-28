@@ -7,6 +7,7 @@ import {
   AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
 } from '@/components/ui/alert-dialog'
 import { useStageStore } from '@/stores/stage-store'
+import { useSessionStore } from '@/stores/session-store'
 import { useI18n } from '@/i18n/use-i18n'
 import { StageRailSearch } from './stage-rail-search'
 import { StageRailGroup } from './stage-rail-group'
@@ -55,6 +56,16 @@ export function StageLeftRail({ sessionId }: Props) {
     if (tab.archived) {
       setPendingUnarchiveTab(tab)
       return
+    }
+    // Clicking a session-scoped row switches to that session before focusing
+    // — restores the behavior of the deleted nav-tabs so focusing a tab from a
+    // different session brings the user there instead of silently failing.
+    if (tab.scope === 'session' && tab.originSessionId) {
+      const sessions = useSessionStore.getState()
+      if (sessions.activeSessionId !== tab.originSessionId) {
+        const hasEverSent = sessions.hasEverSentBySession.get(tab.originSessionId) ?? false
+        sessions.openSession(tab.originSessionId, hasEverSent)
+      }
     }
     focusTab(tab.tabId)
   }
