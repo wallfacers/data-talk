@@ -46,22 +46,17 @@ class UiActionsTest {
     }
 
     @Test
-    void uiPatch_contentReplace_requiresBaseVersion() {
+    void uiPatchAction_declaresLenientOpsAndTopLevelBaseVersion() {
         Map<String, Object> schema = uiPatchAction.inputSchema();
-        Map<String, Object> ops = map(schema.get("properties"), "properties").get("ops") instanceof Map<?, ?> rawOps
-            ? cast(rawOps)
-            : Map.of();
-        List<Map<String, Object>> oneOf = cast(map(ops.get("items"), "items").get("oneOf"));
+        Map<String, Object> properties = map(schema.get("properties"), "properties");
+        Map<String, Object> baseVersion = map(properties.get("baseVersion"), "baseVersion");
+        Map<String, Object> ops = map(properties.get("ops"), "ops");
+        Map<String, Object> item = map(ops.get("items"), "items");
+        Map<String, Object> op = navigate(item, "properties", "op");
 
-        Map<String, Object> contentOp = oneOf.stream()
-            .filter(o -> {
-                Map<String, Object> path = map(map(o.get("properties"), "properties").get("path"), "path");
-                return list(path.get("enum"), "enum").contains("/content");
-            })
-            .findFirst()
-            .orElseThrow();
-
-        assertThat(list(contentOp.get("required"), "required")).contains("baseVersion");
+        assertThat(list(baseVersion.get("oneOf"), "oneOf")).hasSize(2);
+        assertThat(list(item.get("required"), "required")).containsExactlyInAnyOrder("op", "path");
+        assertThat(list(op.get("enum"), "enum")).containsExactlyInAnyOrder("add", "remove", "replace");
     }
 
     @Test
@@ -82,8 +77,30 @@ class UiActionsTest {
         Map<String, Object> action = navigate(wsBranch, "properties", "action");
 
         assertThat(list(action.get("enum"), "enum"))
-            .containsExactlyInAnyOrder("open", "focus", "choose_connection", "detach", "archive", "trash")
+            .containsExactlyInAnyOrder(
+                "open", "focus", "choose_connection", "detach", "archive", "trash",
+                "open_er_inspector", "open_er_designer"
+            )
             .doesNotContain("close");
+    }
+
+    @Test
+    void uiExec_erInspectorBranch_exposesInspectorVerbs() {
+        Map<String, Object> schema = uiExecAction.inputSchema();
+        Map<String, Object> erBranch = findOneOfBranch(schema, "er_inspector");
+        Map<String, Object> action = navigate(erBranch, "properties", "action");
+
+        assertThat(list(action.get("enum"), "enum"))
+            .containsExactlyInAnyOrder("refresh", "auto_layout", "fit_view", "add_neighbors", "fork_to_designer");
+    }
+
+    @Test
+    void uiPatchAction_acceptsErInspectorObject() {
+        Map<String, Object> schema = uiPatchAction.inputSchema();
+        Map<String, Object> object = navigate(schema, "properties", "object");
+
+        assertThat(list(object.get("enum"), "enum"))
+            .contains("query_editor", "er_inspector");
     }
 
     @Test
@@ -153,8 +170,4 @@ class UiActionsTest {
         return (List<T>) value;
     }
 
-    @SuppressWarnings("unchecked")
-    private static <T> T cast(Object value) {
-        return (T) value;
-    }
 }

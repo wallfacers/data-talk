@@ -24,6 +24,8 @@ import java.util.concurrent.CompletionStage;
 )
 public class UiExecAction implements ActionHandler<Map, Map> {
 
+    // AI-facing description fields and aiHint values stay in English per Spec §4 P12.
+    // User-visible labels belong in localized message bundles.
     @Override
     public Map<String, Object> inputSchema() {
         return Map.of(
@@ -35,7 +37,7 @@ public class UiExecAction implements ActionHandler<Map, Map> {
                                 "description", "Explicit object id. Omit only when the active object is already clear."
                         )
                 ),
-                "oneOf", List.of(workspaceExecSchema(), queryEditorExecSchema())
+                "oneOf", List.of(workspaceExecSchema(), queryEditorExecSchema(), erInspectorExecSchema())
         );
     }
 
@@ -46,8 +48,11 @@ public class UiExecAction implements ActionHandler<Map, Map> {
                         Map.entry("object", Map.of("type", "string", "enum", List.of("workspace"))),
                         Map.entry("action", Map.of(
                                 "type", "string",
-                                "enum", List.of("open", "focus", "choose_connection", "detach", "archive", "trash"),
-                                "description", "Workspace verbs for opening, focusing, detaching, archiving, and deleting tabs; choose_connection only when a database-related request needs a data source."
+                                "enum", List.of(
+                                        "open", "focus", "choose_connection", "detach", "archive", "trash",
+                                        "open_er_inspector", "open_er_designer"
+                                ),
+                                "description", "Workspace verbs for opening, focusing, detaching, archiving, deleting tabs, and creating ER inspector / designer tabs; choose_connection only when a database-related request needs a data source."
                         )),
                         Map.entry("params", Map.of(
                                 "type", "object",
@@ -55,10 +60,11 @@ public class UiExecAction implements ActionHandler<Map, Map> {
                                         Map.entry("type", Map.of(
                                                 "type", "string",
                                                 "enum", List.of("query_editor"),
-                                                "description", "workspace open supports query_editor today."
+                                                "description", "workspace open supports query_editor. Use open_er_inspector for ER tabs."
                                         )),
                                         Map.entry("title", Map.of("type", "string")),
                                         Map.entry("connection_id", Map.of("type", "string")),
+                                        Map.entry("connectionId", Map.of("type", "string")),
                                         Map.entry("database", Map.of("type", "string")),
                                         Map.entry("schema", Map.of("type", "string")),
                                         Map.entry("payload", Map.of("type", "object")),
@@ -68,6 +74,37 @@ public class UiExecAction implements ActionHandler<Map, Map> {
                                                 "type", "boolean",
                                                 "default", Boolean.TRUE,
                                                 "description", "Only used for `action=archive`. true=archive, false=unarchive."
+                                        )),
+                                        Map.entry("tables", Map.of(
+                                                "type", "array",
+                                                "items", Map.of("type", "string"),
+                                                "description", "Required for open_er_inspector. Seed table names; 1..100."
+                                        )),
+                                        Map.entry("neighborDepth", Map.of(
+                                                "type", "integer",
+                                                "enum", List.of(0, 1, 2),
+                                                "description", "Optional for open_er_inspector. Direct/indirect neighbor expansion. Default 1."
+                                        )),
+                                        Map.entry("dialect", Map.of(
+                                                "type", "string",
+                                                "enum", List.of("mysql", "postgresql", "h2", "sqlite"),
+                                                "description", "Required for open_er_designer. Oracle / SQL Server are not supported."
+                                        )),
+                                        Map.entry("targetConnectionId", Map.of(
+                                                "type", "string",
+                                                "description", "Optional for open_er_designer. When set, the draft is bound to this connection for diff / generate_ddl."
+                                        )),
+                                        Map.entry("targetDatabase", Map.of("type", "string")),
+                                        Map.entry("targetSchema", Map.of("type", "string")),
+                                        Map.entry("seedTables", Map.of(
+                                                "type", "array",
+                                                "items", Map.of("type", "object"),
+                                                "description", "Optional for open_er_designer. Initial tables for the draft."
+                                        )),
+                                        Map.entry("seedRelations", Map.of(
+                                                "type", "array",
+                                                "items", Map.of("type", "object"),
+                                                "description", "Optional for open_er_designer. Initial relations for the draft."
                                         ))
                                 )
                         ))
@@ -142,6 +179,33 @@ public class UiExecAction implements ActionHandler<Map, Map> {
                                         )
                                 )
                         )
+                ))
+        );
+    }
+
+    private static Map<String, Object> erInspectorExecSchema() {
+        return Map.ofEntries(
+                Map.entry("required", List.of("object", "action")),
+                Map.entry("properties", Map.ofEntries(
+                        Map.entry("object", Map.of("type", "string", "enum", List.of("er_inspector"))),
+                        Map.entry("action", Map.of(
+                                "type", "string",
+                                "enum", List.of("refresh", "auto_layout", "fit_view", "add_neighbors", "fork_to_designer"),
+                                "description", "ER inspector verbs. fork_to_designer is implemented in Plan B and returns an error in Plan A."
+                        )),
+                        Map.entry("params", Map.of(
+                                "type", "object",
+                                "properties", Map.ofEntries(
+                                        Map.entry("table", Map.of(
+                                                "type", "string",
+                                                "description", "Required for add_neighbors: the table whose direct neighbors should be expanded into selection."
+                                        )),
+                                        Map.entry("title", Map.of(
+                                                "type", "string",
+                                                "description", "Optional for fork_to_designer."
+                                        ))
+                                )
+                        ))
                 ))
         );
     }
