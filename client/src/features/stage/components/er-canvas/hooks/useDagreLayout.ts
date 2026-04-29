@@ -5,6 +5,7 @@ export function useDagreLayout() {
   const workerRef = useRef<Worker | null>(null)
 
   useEffect(() => {
+    if (typeof Worker === 'undefined') return
     workerRef.current = new Worker(
       new URL('../workers/dagre-layout.worker.ts', import.meta.url),
       { type: 'module' },
