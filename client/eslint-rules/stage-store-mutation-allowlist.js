@@ -13,10 +13,13 @@ export const ALLOWED_DIRECT_STAGE_STORE_MUTATION_FILES = [
   'src/features/stage/utils/open-or-focus-file-preview-tab.test.ts',
   'src/features/stage/components/activity-rail/stage-activity-rail.test.tsx',
   'src/features/stage/components/sql-workbench-tab.test.tsx',
+  'src/features/stage/adapters/__tests__/WorkspaceAdapter.er.test.ts',
   'src/features/stage/components/stage-tab-content.test.tsx',
   'src/features/stage/components/stage-toggle-button.test.tsx',
   'src/features/stage/components/stage-ui-object-registry.test.tsx',
   'src/features/stage/components/stage-window.test.tsx',
+  'src/features/stage/components/left-rail/stage-left-rail.test.tsx',
+  'src/features/stage/persistence/__tests__/stage-persistence-bootstrap.er.test.ts',
   // Stage store tests.
   'src/features/stage/stores/sql-workbench-store.test.ts',
   'src/features/stage/use-stage-auto-open.test.ts',

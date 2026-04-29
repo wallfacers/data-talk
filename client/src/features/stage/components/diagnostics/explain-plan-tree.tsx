@@ -12,10 +12,10 @@ type ExplainPlanTreeProps = {
 function scanTypeStyle(scanType: ScanType): string {
   switch (scanType) {
     case 'FULL_SCAN':
-      return 'bg-destructive/10'
+      return 'bg-status-danger-surface'
     case 'INDEX_SCAN':
     case 'CONST':
-      return 'bg-emerald-500/10'
+      return 'bg-status-success-surface'
     case 'REF':
     case 'INDEX_RANGE':
       return 'bg-accent-primary/10'
@@ -27,10 +27,10 @@ function scanTypeStyle(scanType: ScanType): string {
 function scanTypeIcon(scanType: ScanType) {
   switch (scanType) {
     case 'FULL_SCAN':
-      return <AlertTriangleIcon className="size-3.5 shrink-0 text-destructive" />
+      return <AlertTriangleIcon className="size-3.5 shrink-0 text-status-danger" />
     case 'INDEX_SCAN':
     case 'CONST':
-      return <CheckIcon className="size-3.5 shrink-0 text-emerald-600" />
+      return <CheckIcon className="size-3.5 shrink-0 text-status-success" />
     default:
       return null
   }
