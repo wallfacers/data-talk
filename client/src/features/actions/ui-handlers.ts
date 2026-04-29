@@ -70,6 +70,9 @@ function resolveTarget(input: { object?: string; target?: string; params?: unkno
 const MUTATING_EXEC = new Set([
   'open', 'focus', 'detach', 'archive', 'trash',
   'set_context', 'apply_text_edits', 'replace_content',
+  'open_er_inspector', 'open_er_designer',
+  'refresh', 'auto_layout', 'fit_view', 'add_neighbors', 'fork_to_designer',
+  'bind_target', 'unbind_target', 'sync_from_db', 'generate_ddl',
 ])
 
 function isMutatingExec(a: string): boolean {
@@ -100,5 +103,13 @@ registerClientHandler('datatalk.ui.exec', async (input) => {
   if (i.action === 'run_sql' && target) await coordinator.flush(target)
   const result = await forward({ tool: 'ui_exec', object: i.object, target: i.target ?? 'active', payload: { action: i.action, params: i.params } })
   if (target && isMutatingExec(i.action)) await coordinator.flush(target)
+  const created = isRecord(result)
+    ? (
+      (typeof result.tabId === 'string' ? result.tabId : undefined)
+      ?? (typeof result.newTabId === 'string' ? result.newTabId : undefined)
+      ?? (typeof result.queryEditorTabId === 'string' ? result.queryEditorTabId : undefined)
+    )
+    : undefined
+  if (created && created !== target) await coordinator.flush(created)
   return result
 })
