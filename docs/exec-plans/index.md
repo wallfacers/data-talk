@@ -7,12 +7,12 @@
 | 计划 | 创建日期 | 摘要 |
 |------|---------|------|
 | [Next Implementation Roadmap](./2026-04-25-next-implementation-roadmap-plan.md) | 2026-04-25 | 下一阶段路线图：Tasks 1-7 已收口（cleanup / pagination 评估 / query history 评估 / bounded export shipped / guarded DDL-DML shipped / cross-session workbench + `ui_find` shipped / intelligent operations shipped）；当前下一产品候选为 Task 8 可视化扩展，Task 9 外部数据采集继续作为三期占位；明确排除虚拟滚动。 |
-| [Diagnostics & Mutation Actions](./2026-04-29-diagnostics-mutation-plan.md) | 2026-04-29 | 三个 stub 诊断工具（lock_info / pool_status / table_space）落地真实 MySQL/PG 实现 + H2 partial + Oracle 显式 unsupported；新增两个 confirmable mutation action（terminate_session / optimize_table）形成诊断→建议→执行闭环；19 任务分 5 batch（Domain → Application → Infra(并行 4 provider) → Adapter Action → AGENTS.md & 闭环 IT）；阈值参数化通过 `DiagnosticsThresholdProperties`；i18n 中英双套 24 个 key；mutation 走 Phase 1 preview / Phase 2 execute 独立方法 + SHA-256 confirmation token。 |
 
 ## 已完成计划
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [Diagnostics & Mutation Actions](./2026-04-29-diagnostics-mutation-plan.md) | 2026-04-29 | 三个 stub 诊断工具升级为 MySQL/PG 真实实现、H2 partial、Oracle 显式 unsupported，并新增 terminate_session / optimize_table 两个 confirmable mutation action，闭环 IT 与 `mvn clean verify` 通过；源码与文档分两次提交，手工 smoke deferred 到用户验收。 |
 | [Large Schema Context Guards](./2026-04-29-large-schema-context-guards-plan.md) | 2026-04-29 | 不引入 schema 缓存/索引；`read_schema` 已支持实时分页/搜索/显式 describe 限制和列截断，MCP 输出有预算兜底，`execute_sql.pageSize` 已强制执行；后端定向测试与 `mvn compile -q` 通过。 |
 | [SQL DML Batch Execution](./2026-04-29-sql-dml-batch-execution-plan.md) | 2026-04-29 | `/api/sql/execute` 执行层增加连续 DML JDBC batch 与同表 `INSERT ... VALUES` rewrite，保持现有事务、风险确认和结果契约；application 定向测试、SqlExecuteControllerIT 与 `mvn compile -q` 通过。 |
 | [MySQL SQL Splitter](./2026-04-29-mysql-sql-splitter-plan.md) | 2026-04-29 | 为 `/api/sql/execute` 增加 MySQL 专用语句拆分器，覆盖字符串/注释/反引号内分号与 `DELIMITER` 存储过程脚本，并把后续数据库类型的 splitter 策略要求写回数据源兼容规范；splitter 定向测试与 `mvn compile -q` 通过。 |

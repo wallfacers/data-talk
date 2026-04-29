@@ -1,7 +1,7 @@
 # Diagnostics & Mutation Actions Design
 
 **日期**: 2026-04-29
-**状态**: Active
+**状态**: Completed
 **关联**: 接续 [Intelligent Operations Design](./2026-04-27-intelligent-operations-design.md) 中预留的 lock / pool / space stub 实现
 
 ## 0. Compatibility Gate Acknowledgment
