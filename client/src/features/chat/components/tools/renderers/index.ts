@@ -12,5 +12,4 @@ export function registerBuiltInRenderers() {
   ToolRegistry.register('datatalk_execute_sql', ExecuteSql)
   ToolRegistry.register('datatalk_read_schema', ShowSchema)
   ToolRegistry.register('datatalk_render_chart', ArtifactCreated)
-  ToolRegistry.register('datatalk_layout_erd', ArtifactCreated)
 }
