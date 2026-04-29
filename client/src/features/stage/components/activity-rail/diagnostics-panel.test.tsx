@@ -1,6 +1,16 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { DiagnosticsPanel, type DiagnosticsPanelEntry } from './diagnostics-panel'
+import { translateMessage } from '@/i18n/messages'
+
+vi.mock('@/i18n/use-i18n', () => ({
+  useI18n: () => ({
+    language: 'en-US',
+    setLanguage: vi.fn(),
+    t: (key: Parameters<typeof translateMessage>[1], values?: Record<string, string | number>) =>
+      translateMessage('en-US', key, values),
+  }),
+}))
 
 describe('DiagnosticsPanel', () => {
   it('shows empty state when no entry', () => {
@@ -19,8 +29,8 @@ describe('DiagnosticsPanel', () => {
     render(<DiagnosticsPanel entry={entry} onOpenInWorkbench={() => {}} />)
 
     expect(screen.getByText(/SELECT \* FROM users WHERE email = \?/)).toBeInTheDocument()
-    expect(screen.getByText(/3 warnings/)).toBeInTheDocument()
-    expect(screen.getByText(/1 recommendation/)).toBeInTheDocument()
+    expect(screen.getByText(/3 warning\(s\)/)).toBeInTheDocument()
+    expect(screen.getByText(/1 recommendation\(s\)/)).toBeInTheDocument()
   })
 
   it('truncates sql snippet longer than 60 characters', () => {

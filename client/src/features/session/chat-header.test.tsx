@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ChatHeader } from './chat-header'
 import { useSessionStore } from '@/stores/session-store'
@@ -50,11 +50,12 @@ describe('ChatHeader', () => {
       id: 'new', connectionId: null, title: '新会话', hasEverSent: false,
       createdAt: 0, updatedAt: 0, titleLocked: false, reusedEmpty: false,
     })
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
-
     renderWithClient(<ChatHeader />)
     fireEvent.click(screen.getByRole('button'))
     fireEvent.click(screen.getByText('删除'))
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: '删除' }),
+    )
 
     await waitFor(() => expect(delSpy).toHaveBeenCalledWith('s1'))
     await waitFor(() => expect(createSpy).toHaveBeenCalledTimes(1))
@@ -66,7 +67,6 @@ describe('ChatHeader', () => {
   it('删除 → 缓存中已有空白会话则复用，不触发 createSession', async () => {
     const delSpy = vi.spyOn(api, 'deleteSession').mockResolvedValue(undefined)
     const createSpy = vi.spyOn(api, 'createSession')
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
 
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     qc.setQueryData(['sessions', null], [
@@ -79,6 +79,9 @@ describe('ChatHeader', () => {
 
     fireEvent.click(screen.getByRole('button'))
     fireEvent.click(screen.getByText('删除'))
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: '删除' }),
+    )
 
     await waitFor(() => expect(delSpy).toHaveBeenCalledWith('s1'))
     await waitFor(() =>
@@ -103,11 +106,13 @@ describe('ChatHeader', () => {
 
   it('取消删除 → 不调用 API', async () => {
     const spy = vi.spyOn(api, 'deleteSession')
-    vi.spyOn(window, 'confirm').mockReturnValue(false)
 
     renderWithClient(<ChatHeader />)
     fireEvent.click(screen.getByRole('button'))
     fireEvent.click(screen.getByText('删除'))
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: '取消' }),
+    )
 
     expect(spy).not.toHaveBeenCalled()
   })

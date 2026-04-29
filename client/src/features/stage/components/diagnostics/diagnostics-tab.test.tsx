@@ -1,6 +1,16 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { DiagnosticsTab, type DiagnosticsTabPayload } from './diagnostics-tab'
+import { translateMessage } from '@/i18n/messages'
+
+vi.mock('@/i18n/use-i18n', () => ({
+  useI18n: () => ({
+    language: 'en-US',
+    setLanguage: vi.fn(),
+    t: (key: Parameters<typeof translateMessage>[1], values?: Record<string, string | number>) =>
+      translateMessage('en-US', key, values),
+  }),
+}))
 
 const basePayload: DiagnosticsTabPayload = {
   sql: 'SELECT * FROM orders WHERE user_id = 1',

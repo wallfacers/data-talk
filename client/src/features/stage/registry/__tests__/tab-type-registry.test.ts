@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  TAB_TYPE_REGISTRY,
   getTabTypeDescriptor,
   isPersistent,
   getScope,
@@ -56,5 +57,53 @@ describe('tab-type-registry', () => {
     expect(desc.extractContent({})).toBe('')
     expect(isPersistent('totally_unknown')).toBe(false)
     expect(getScope('totally_unknown')).toBeUndefined()
+  })
+
+  it('er_inspector is registered as workspace-scope persistent', () => {
+    expect(TAB_TYPE_REGISTRY.er_inspector).toBeDefined()
+    expect(isPersistent('er_inspector')).toBe(true)
+    expect(getScope('er_inspector')).toBe('workspace')
+  })
+
+  it('extractContent indexes ER selection, virtual relations, notes, and table columns', () => {
+    const desc = getTabTypeDescriptor('er_inspector')
+    const text = desc.extractContent({
+      kind: 'er_inspector',
+      connectionId: 'c',
+      selection: ['users', 'orders'],
+      neighborDepth: 1,
+      layout: 'dagre-LR',
+      tablesSnapshot: [
+        {
+          name: 'users',
+          columns: [
+            { name: 'id', type: 'BIGINT', nullable: false, isPK: true, isFK: false },
+            { name: 'email', type: 'VARCHAR(255)', nullable: false, isPK: false, isFK: false },
+          ],
+          fkOut: [],
+        },
+      ],
+      positions: {},
+      collapsed: [],
+      virtualRelations: [
+        {
+          id: 'vr1',
+          from: { table: 'orders', column: 'user_email' },
+          to: { table: 'users', column: 'email' },
+          type: 'many_to_one',
+        },
+      ],
+      notes: { orders: '订单主表' },
+      viewport: { x: 0, y: 0, zoom: 1 },
+    })
+
+    expect(text).toContain('users orders')
+    expect(text).toContain('users id BIGINT email VARCHAR(255)')
+    expect(text).toContain('orders.user_email users.email')
+    expect(text).toContain('订单主表')
+  })
+
+  it('extractContent returns empty string for null er_inspector payload', () => {
+    expect(getTabTypeDescriptor('er_inspector').extractContent(null)).toBe('')
   })
 })

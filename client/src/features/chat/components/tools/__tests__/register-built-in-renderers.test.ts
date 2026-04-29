@@ -17,7 +17,6 @@ describe('registerBuiltInRenderers', () => {
     expect(ToolRegistry.get('datatalk_execute_sql')).toBe(ExecuteSql)
     expect(ToolRegistry.get('datatalk_read_schema')).toBe(ShowSchema)
     expect(ToolRegistry.get('datatalk_render_chart')).toBe(ArtifactCreated)
-    expect(ToolRegistry.get('datatalk_layout_erd')).toBe(ArtifactCreated)
 
     for (const legacyKey of ['execute_sql', 'show_schema', 'artifact_created', 'read']) {
       expect(ToolRegistry.get(legacyKey)).toBeUndefined()

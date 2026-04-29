@@ -1,7 +1,17 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { IndexRecommendationList } from './index-recommendation-list'
+import { translateMessage } from '@/i18n/messages'
 import type { IndexRecommendation } from '@/features/stage/types/diagnostics'
+
+vi.mock('@/i18n/use-i18n', () => ({
+  useI18n: () => ({
+    language: 'en-US',
+    setLanguage: vi.fn(),
+    t: (key: Parameters<typeof translateMessage>[1], values?: Record<string, string | number>) =>
+      translateMessage('en-US', key, values),
+  }),
+}))
 
 const highRec: IndexRecommendation = {
   table: 'orders',
@@ -36,13 +46,13 @@ describe('IndexRecommendationList', () => {
   it('HIGH impact badge has destructive styling', () => {
     render(<IndexRecommendationList recommendations={[highRec]} />)
     const badge = screen.getByText('HIGH')
-    expect(badge.className).toContain('bg-destructive')
+    expect(badge.className).toContain('bg-status-danger')
   })
 
   it('MEDIUM impact badge has amber styling', () => {
     render(<IndexRecommendationList recommendations={[mediumRec]} />)
     const badge = screen.getByText('MEDIUM')
-    expect(badge.className).toContain('bg-amber')
+    expect(badge.className).toContain('bg-status-warning')
   })
 
   it('renders multiple recommendations', () => {

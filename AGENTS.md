@@ -64,6 +64,7 @@ This file is the map. Deep knowledge lives in `docs/`:
 | Product specs & features     | [docs/product-specs/index.md](docs/product-specs/index.md)   |
 | DB schema reference          | [docs/generated/db-schema.md](docs/generated/db-schema.md)   |
 | External protocol references | [docs/references/](docs/references/)                         |
+| ER tab protocol              | [docs/references/er-tab-protocol.md](docs/references/er-tab-protocol.md) |
 | Design patterns & conventions| [docs/DESIGN.md](docs/DESIGN.md)                             |
 | Client design contract       | [client/DESIGN.md](client/DESIGN.md)                         |
 | Backend dev guide            | [docs/BACKEND.md](docs/BACKEND.md)                           |

@@ -12,6 +12,10 @@ vi.mock('./file-preview-tab', () => ({
   FilePreviewTab: () => <div data-testid="file-preview-tab">file preview tab</div>,
 }))
 
+vi.mock('./er-inspector-tab', () => ({
+  ErInspectorTab: () => <div data-testid="er-inspector-tab">er inspector tab</div>,
+}))
+
 vi.mock('@/components/ui/context-menu', () => ({
   ContextMenu: ({ children }: { children?: ReactNode }) => <>{children}</>,
   ContextMenuTrigger: ({ render, children }: { render?: ReactNode; children?: ReactNode }) => <>{render ?? children}</>,
@@ -68,5 +72,24 @@ describe('StageTabContent', () => {
     render(<StageTabContent />)
 
     expect(screen.getByTestId('file-preview-tab')).toBeTruthy()
+  })
+
+  it('renders ErInspectorTab when the active tab is er_inspector', () => {
+    useStageStore.setState({
+      tabs: [{
+        tabId: 'er-1',
+        type: 'er_inspector',
+        title: 'ER',
+        createdAt: 0,
+        payload: {},
+      }],
+      activeTabId: 'er-1',
+      openTabIds: new Set(['er-1']),
+      openTabIdsOrdered: ['er-1'],
+    } as never)
+
+    render(<StageTabContent />)
+
+    expect(screen.getByTestId('er-inspector-tab')).toBeTruthy()
   })
 })

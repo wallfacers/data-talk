@@ -1,7 +1,17 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { ExplainPlanTree } from './explain-plan-tree'
+import { translateMessage } from '@/i18n/messages'
 import type { ExplainNode } from '@/features/stage/types/diagnostics'
+
+vi.mock('@/i18n/use-i18n', () => ({
+  useI18n: () => ({
+    language: 'en-US',
+    setLanguage: vi.fn(),
+    t: (key: Parameters<typeof translateMessage>[1], values?: Record<string, string | number>) =>
+      translateMessage('en-US', key, values),
+  }),
+}))
 
 const fullScanNode: ExplainNode = {
   operation: 'Seq Scan',
@@ -33,14 +43,14 @@ describe('ExplainPlanTree', () => {
   it('renders full scan node with danger styling', () => {
     const { container } = render(<ExplainPlanTree nodes={[fullScanNode]} />)
     const row = container.querySelector('[role="treeitem"]')!
-    expect(row.querySelector('div')!.className).toContain('bg-destructive')
+    expect(row.querySelector('div')!.className).toContain('bg-status-danger')
     expect(screen.getByText('Seq Scan')).toBeTruthy()
   })
 
   it('renders index scan node with success styling', () => {
     const { container } = render(<ExplainPlanTree nodes={[indexScanNode]} />)
     const row = container.querySelector('[role="treeitem"]')!
-    expect(row.querySelector('div')!.className).toContain('bg-green')
+    expect(row.querySelector('div')!.className).toContain('bg-status-success')
     expect(screen.getByText('Index Scan')).toBeTruthy()
   })
 

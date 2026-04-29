@@ -10,7 +10,7 @@ import { ChartRenderer } from '@/features/chat/components/markdown/chart-rendere
 import { EyeIcon } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
-const KIND_ICONS: Record<string, string> = { table: '📊', chart: '📈', erd: '🔗' }
+const KIND_ICONS: Record<string, string> = { table: '📊', chart: '📈' }
 
 export function ArtifactCreated(props: ToolRendererProps) {
   const { part } = props
@@ -26,17 +26,14 @@ export function ArtifactCreated(props: ToolRendererProps) {
     const metaKind = part.state.metadata?.kind as string | undefined
     if (metaKind) return metaKind
     if (part.tool === 'datatalk_render_chart') return 'chart'
-    if (part.tool === 'datatalk_layout_erd') return 'erd'
     return 'table'
   })()
   const fallbackKindLabel =
     kind === 'chart'
       ? translateMessage(language, 'chat.artifactKind.chart')
-      : kind === 'erd'
-        ? translateMessage(language, 'chat.artifactKind.erd')
-        : kind === 'table'
-          ? translateMessage(language, 'chat.artifactKind.table')
-          : kind
+      : kind === 'table'
+        ? translateMessage(language, 'chat.artifactKind.table')
+        : kind
   const title =
     output?.title ??
     (part.state.metadata?.title as string | undefined) ??

@@ -46,7 +46,7 @@ function normalizeHistory(raw: HistoryResponse): HistoryItem[] {
 type ArtifactDto = {
   id: string
   version: number
-  kind: 'table' | 'chart' | 'erd'
+  kind: 'table' | 'chart'
   sessionId?: string
   supersedesId?: string
   supersedesVersion?: number

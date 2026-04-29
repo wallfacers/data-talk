@@ -19,6 +19,7 @@ function resetUiRouter() {
   uiRouter.unregisterInstance('q2')
   uiRouter.unregisterInstance('b1')
   uiRouter.unregisterInstance('r1')
+  uiRouter.unregisterInstance('er-1')
   uiRouter.setActiveTabIdProvider(() => null)
 }
 
@@ -189,5 +190,37 @@ describe('StageUIObjectRegistry', () => {
       payload: { mode: 'state' },
     })
     expect(wrongQueryEditor.error).toContain('No query_editor')
+  })
+
+  it('registers er_inspector tabs in uiRouter', async () => {
+    const erInspectorTab: StageTab = {
+      tabId: 'er-1',
+      type: 'er_inspector',
+      title: 'ER',
+      originSessionId: 's1',
+      connectionId: 'conn-1',
+      payload: {},
+      createdAt: 0,
+      payloadVersion: 1,
+    }
+
+    useStageStore.setState({
+      tabs: [erInspectorTab],
+      activeTabId: 'er-1',
+      openTabIds: new Set(['er-1']),
+      openTabIdsOrdered: ['er-1'],
+    } as unknown as Record<string, unknown>)
+
+    render(<StageUIObjectRegistry tabs={[erInspectorTab]} />)
+
+    const response = await uiRouter.handle({
+      tool: 'ui_read',
+      object: 'er_inspector',
+      target: 'er-1',
+      payload: { mode: 'state' },
+    })
+
+    expect(response.error).toBeUndefined()
+    expect(response.data).toBeNull()
   })
 })

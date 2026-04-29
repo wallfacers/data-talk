@@ -2,8 +2,11 @@ import type { UIObject, ActionDef, ExecResult, PatchResult } from '@/services/ui
 import { execError } from '@/services/ui-router'
 import { useConnectionStore } from '@/features/connection/store'
 import { useDataSourcePickerStore } from '@/features/session/data-source-picker/data-source-picker-store'
+import { useErTabsStore } from '@/features/stage/stores/er-tabs-store'
+import type { ErInspectorPayload, ErTableSnapshot } from '@/features/stage/stores/er-tabs-payload-types'
 import { useStageStore, type StageTab } from '@/stores/stage-store'
 import { normalizeQueryEditorPayload } from '@/features/stage/utils/normalize-query-editor-payload'
+import { generateUuid } from '@/lib/uuid'
 import { QueryEditorAdapter } from './QueryEditorAdapter'
 
 const ACTIONS: ActionDef[] = [
@@ -38,9 +41,79 @@ const ACTIONS: ActionDef[] = [
   { name: 'choose_connection', description: 'Prompt user to choose a data source for a database-related request', paramsSchema: {
     type: 'object', properties: { preferredConnectionId: { type: 'string' } },
   } },
+  { name: 'open_er_inspector', description: 'Open a read-only ER inspector tab from selected tables', paramsSchema: {
+    type: 'object',
+    required: ['connectionId', 'tables'],
+    properties: {
+      connectionId: { type: 'string' },
+      connection_id: { type: 'string' },
+      tables: { type: 'array' },
+      neighborDepth: { type: 'number' },
+      database: { type: 'string' },
+      schema: { type: 'string' },
+      title: { type: 'string' },
+    },
+  } },
 ]
 
 const WORKSPACE_SCOPE_TYPES = new Set<string>(['er_canvas', 'markdown_note', 'report', 'dashboard'])
+
+interface SeedInspectorResponse {
+  nodes: ErTableSnapshot[]
+  edges: unknown[]
+  summary: string
+  warnings: string[]
+}
+
+type OpenErInspectorParams = {
+  connectionId?: string
+  connection_id?: string
+  tables?: unknown
+  neighborDepth?: unknown
+  database?: string
+  schema?: string
+  title?: string
+}
+
+function normalizeNeighborDepth(value: unknown): 0 | 1 | 2 {
+  return value === 0 || value === 1 || value === 2 ? value : 1
+}
+
+function tableNames(nodes: ErTableSnapshot[]): string[] {
+  return nodes.map((node) => node.name)
+}
+
+async function fetchSeedInspector(request: {
+  connectionId: string
+  tables: string[]
+  neighborDepth: 0 | 1 | 2
+}): Promise<SeedInspectorResponse> {
+  const response = await fetch('/api/er/seed-inspector', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(request),
+  })
+  if (!response.ok) {
+    const detail = await response.json().catch(() => ({})) as { code?: string; message?: string; aiHint?: string }
+    throw Object.assign(new Error(detail.message ?? `seed-inspector failed: ${response.status}`), {
+      code: detail.code,
+      aiHint: detail.aiHint,
+    })
+  }
+  return response.json() as Promise<SeedInspectorResponse>
+}
+
+function toExecError(error: unknown): ExecResult {
+  const detail = error as { code?: string; message?: string; aiHint?: string }
+  if (detail.code && detail.message) {
+    return execError({
+      code: detail.code,
+      message: detail.message,
+      hint: detail.aiHint,
+    })
+  }
+  return execError(error instanceof Error ? error.message : 'ER inspector request failed')
+}
 
 export class WorkspaceAdapter implements UIObject {
   type = 'workspace'
@@ -105,6 +178,57 @@ export class WorkspaceAdapter implements UIObject {
     }
     const store = useStageStore.getState()
     switch (action) {
+      case 'open_er_inspector': {
+        const input = (params ?? {}) as OpenErInspectorParams
+        const connectionId = input.connectionId ?? input.connection_id
+        if (!connectionId) return execError('Missing param: connectionId')
+        const tables = Array.isArray(input.tables)
+          ? input.tables.filter((table): table is string => typeof table === 'string' && table.length > 0)
+          : []
+        if (tables.length === 0) return execError('Missing param: tables')
+        const neighborDepth = normalizeNeighborDepth(input.neighborDepth)
+
+        try {
+          const graph = await fetchSeedInspector({ connectionId, tables, neighborDepth })
+          const tabId = `er_inspector_${generateUuid()}`
+          const selection = tableNames(graph.nodes)
+          const payload: ErInspectorPayload = {
+            kind: 'er_inspector',
+            connectionId,
+            database: input.database ?? null,
+            schema: input.schema ?? null,
+            selection,
+            neighborDepth,
+            layout: 'dagre-LR',
+            tablesSnapshot: graph.nodes,
+            snapshotAt: Date.now(),
+            positions: {},
+            collapsed: [],
+            virtualRelations: [],
+            notes: {},
+            viewport: { x: 0, y: 0, zoom: 1 },
+          }
+          const tab: StageTab = {
+            tabId,
+            type: 'er_inspector',
+            title: input.title ?? `ER: ${tables.join(', ')}`,
+            connectionId,
+            database: input.database,
+            schema: input.schema,
+            payload,
+            createdAt: Date.now(),
+          }
+          store.openTab(tab)
+          store.openStage()
+          useErTabsStore.getState().hydrateInspector(tabId, payload)
+          return {
+            success: true,
+            data: { tabId, summary: graph.summary, edges: graph.edges.length, tables: selection, warnings: graph.warnings },
+          }
+        } catch (error) {
+          return toExecError(error)
+        }
+      }
       case 'open': {
         if (!p.type) return execError('Missing param: type')
         const sid = this.getSessionId()

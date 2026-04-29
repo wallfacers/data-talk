@@ -57,6 +57,12 @@ This table describes the current repository state. Keep it accurate.
 | `oracle` | Stub only | `DbType` and `OracleDiagnosticsProvider` exist, but `ConnectionKind`, JDBC URL, UI, driver dependency, schema discovery, and SQL execution support are not complete. |
 | `sqlserver` | Stub/legacy enum only | `DbType` and `QueryApplicationService` mapping exist, but the main connection kind, JDBC URL, driver, UI, schema discovery, and diagnostics are not complete. |
 
+ER Inspector follows this matrix: `mysql`, `postgresql` / `postgres`, and `h2`
+are supported through JDBC `DatabaseMetaData.getImportedKeys`; `sqlite` remains
+partial because the frontend connection form is not wired for user SQLite
+connections; `oracle` and `sqlserver` are explicitly unsupported and must return
+structured `dialect_unsupported` guidance instead of a fake empty ER graph.
+
 ## Roadmap Expansion Candidates
 
 These are roadmap candidates, not supported kinds. A candidate becomes
@@ -465,7 +471,10 @@ Check and update:
 - `server/data-talk-adapter/src/main/java/com/datatalk/adapter/actions/TestConnectionAction.java`
 - `server/data-talk-adapter/src/main/java/com/datatalk/adapter/actions/ListConnectionsAction.java`
 - `server/data-talk-adapter/src/main/java/com/datatalk/adapter/actions/SelectConnectionAction.java`
-- `server/data-talk-adapter/src/main/java/com/datatalk/adapter/actions/LayoutErdAction.java`
+- `server/data-talk-adapter/src/main/java/com/datatalk/adapter/actions/UiExecAction.java`
+- `server/data-talk-adapter/src/main/java/com/datatalk/adapter/actions/UiPatchAction.java`
+- `server/data-talk-adapter/src/main/java/com/datatalk/adapter/controller/ErTabController.java`
+- `server/data-talk-infrastructure/src/main/java/com/datatalk/infra/er/JdbcErRelationDiscoveryService.java`
 - `server/data-talk-adapter/src/main/java/com/datatalk/adapter/ontology/ConnectionObjectType.java`
 - `server/data-talk-infrastructure/src/main/java/com/datatalk/infra/connection/ConnectionController.java`
 - `server/data-talk-adapter/src/main/resources/messages.properties`
@@ -476,7 +485,10 @@ Required decisions:
 - Should action input schemas enumerate allowed `kind` values? If not, how is
   invalid kind reported?
 - Does `ConnectionObjectType.propertySchema()` expose the new kind?
-- Does ERD layout work from this database's foreign-key metadata?
+- Does ER Inspector work from this database's foreign-key metadata? Plan A
+  supports `mysql`, `postgresql` / `postgres`, and `h2` via JDBC
+  `getImportedKeys`; `sqlite` follows the partial frontend-support status above;
+  `oracle` and `sqlserver` are unsupported with `dialect_unsupported` aiHint.
 - Does connection update confirmation include all kind-specific fields in the
   preview and token?
 - Do REST endpoints and MCP actions expose the same fields and validation
@@ -487,7 +499,7 @@ Tests:
 
 - Agent action schema contract tests.
 - Ontology schema test for connection kind values.
-- ERD metadata test or explicit unsupported behavior.
+- ER Inspector metadata test or explicit unsupported behavior.
 - REST controller tests for create/update/test/list if fields or validation
   changed.
 - i18n message tests or smoke checks for new labels/errors.

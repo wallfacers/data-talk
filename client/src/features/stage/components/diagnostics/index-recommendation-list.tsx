@@ -9,9 +9,9 @@ type IndexRecommendationListProps = {
 function impactStyle(impact: Impact): string {
   switch (impact) {
     case 'HIGH':
-      return 'bg-destructive/15 text-destructive'
+      return 'bg-status-danger-surface text-status-danger'
     case 'MEDIUM':
-      return 'bg-warning/15 text-warning'
+      return 'bg-status-warning-surface text-status-warning'
     case 'LOW':
       return 'bg-accent-primary/15 text-accent-primary'
   }

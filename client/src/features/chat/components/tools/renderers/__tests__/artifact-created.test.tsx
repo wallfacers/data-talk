@@ -27,7 +27,6 @@ vi.mock('@/i18n/messages', () => ({
       'chat.artifactFallbackTitle': '{kind} artifact',
       'chat.artifactKind.table': 'table',
       'chat.artifactKind.chart': 'chart',
-      'chat.artifactKind.erd': 'ERD',
     }
     const template = messages[key] ?? key
     return template.replace(/\{(\w+)\}/g, (_, name: string) => String(values?.[name] ?? `{${name}}`))

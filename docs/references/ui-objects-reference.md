@@ -53,6 +53,11 @@ Not supported. `workspace` is read-only through `patch`; use `exec`.
 | `archive` | `target: tabId` | `archived?: boolean = true` | Archive when `true`; unarchive when `false` |
 | `trash` | `target: tabId` | — | Permanently delete the tab |
 | `choose_connection` | — | `preferredConnectionId: string` | Open the connection chooser |
+| `open_er_inspector` | `connectionId`, `tables: string[]` | `neighborDepth`, `database`, `schema`, `title` | Seed a read-only `er_inspector` tab from JDBC metadata |
+
+`open_er_designer` is reserved in the backend schema for Plan B. In Plan A,
+agents should open an inspector first; designer creation remains unavailable
+until the `er_designer` adapter ships.
 
 ---
 
@@ -117,6 +122,56 @@ Supported whitelist paths:
 | `run_sql` | `{ limit? }` | Execute the current SQL and write results back into query editor runtime state |
 | `format_sql` | — | Format the current SQL and update `content/version` |
 | `focus` | — | Focus this tab |
+
+---
+
+### 3. `er_inspector`
+
+**Source file**: `client/src/features/stage/adapters/ErInspectorAdapter.ts`
+**objectId**: `tabId`
+**Description**: a read-only ER browser backed by a captured JDBC metadata
+snapshot plus local annotations, layout, viewport, and virtual relations.
+
+#### `read` output
+
+| mode | Returns |
+|------|---------|
+| `state` | The persisted `ErInspectorPayload`, or `null` when no payload has been hydrated |
+| `schema` | `{ type: 'er_inspector', patchCapabilities }` |
+| `actions` | exec actions listed below |
+| `full` | merged `{ state, schema, actions }` |
+
+State follows [ER Tab Protocol](./er-tab-protocol.md): `connectionId`,
+`database`, `schema`, `selection`, `neighborDepth`, `tablesSnapshot`,
+`positions`, `collapsed`, `virtualRelations`, `notes`, and `viewport`.
+
+#### `patch`
+
+Supported whitelist paths:
+
+| path | ops | Effect |
+|------|-----|--------|
+| `/selection` | `replace` | Replace the selected table list |
+| `/neighborDepth` | `replace` | Change neighbor expansion depth |
+| `/positions` | `replace` | Replace all node positions |
+| `/positions/<table>` | `replace`, `remove` | Update or clear one table position |
+| `/collapsed` | `replace` | Replace collapsed table ids |
+| `/virtualRelations` | `replace` | Replace all virtual relations |
+| `/virtualRelations/-` | `add` | Append a virtual relation |
+| `/virtualRelations[id=<id>]` | `replace`, `remove` | Update or remove one virtual relation |
+| `/notes` | `replace` | Replace all table notes |
+| `/notes/<table>` | `replace`, `remove` | Update or clear one table note |
+| `/viewport` | `replace` | Replace canvas viewport |
+
+#### Exec Actions
+
+| action | Params | Effect |
+|--------|--------|--------|
+| `refresh` | — | Re-read selected tables from the source connection |
+| `auto_layout` | — | Recompute node positions with dagre |
+| `fit_view` | — | Reset viewport to fit the graph |
+| `add_neighbors` | `{ table }` | Add direct FK neighbors for a table |
+| `fork_to_designer` | — | Reserved for Plan B; returns an explicit unsupported result in Plan A |
 
 ---
 

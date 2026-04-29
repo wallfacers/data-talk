@@ -9,10 +9,10 @@ describe('StageWorkbenchEmptyState', () => {
     const sqlTile = screen.getByRole('button', { name: /SQL 编辑器/ })
     const erTile = screen.getByRole('button', { name: /ER 图设计器/ })
 
-    expect(sqlTile.className).toContain('rounded-2xl')
-    expect(sqlTile.className).toContain('hover:border-primary/45')
-    expect(erTile.className).toContain('rounded-2xl')
-    expect(erTile.className).toContain('border-border/45')
+    expect(sqlTile.className).toContain('rounded-lg')
+    expect(sqlTile.className).toContain('hover:bg-interaction-hover')
+    expect(erTile.className).toContain('rounded-lg')
+    expect(erTile.className).toContain('cursor-not-allowed')
   })
 
   it('keeps the SQL tile interactive while pending tiles stay disabled', () => {
