@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useErTabsStore } from '@/features/stage/stores/er-tabs-store'
 import { useStageStore } from '@/stores/stage-store'
+import { useUISettingsStore } from '@/stores/ui-settings-store'
 import { WorkspaceAdapter } from '../WorkspaceAdapter'
 
 describe('WorkspaceAdapter.exec(open_er_inspector)', () => {
   beforeEach(() => {
     useErTabsStore.setState({ inspectors: new Map(), designers: new Map() })
+    useUISettingsStore.setState({ language: 'zh-CN' })
     useStageStore.setState({
       tabs: [],
       openTabIds: new Set(),
@@ -113,7 +115,20 @@ describe('WorkspaceAdapter.exec(open_er_designer)', () => {
     expect(useErTabsStore.getState().designers.get(data.tabId)?.dialect).toBe('mysql')
     expect(useStageStore.getState().activeTabId).toBe(data.tabId)
     expect(useStageStore.getState().tabs.find((tab) => tab.tabId === data.tabId)).toEqual(expect.objectContaining({
-      title: 'ER Diagram Designer (mysql)',
+      title: 'ER 图设计器 (mysql)',
+    }))
+  })
+
+  it('localizes the default designer tab title for English UI settings', async () => {
+    useUISettingsStore.setState({ language: 'en-US' })
+    const adapter = new WorkspaceAdapter(() => null)
+
+    const result = await adapter.exec('open_er_designer', { dialect: 'postgresql' })
+
+    expect(result.success).toBe(true)
+    const data = result.data as { tabId: string }
+    expect(useStageStore.getState().tabs.find((tab) => tab.tabId === data.tabId)).toEqual(expect.objectContaining({
+      title: 'ER Diagram Designer (postgresql)',
     }))
   })
 

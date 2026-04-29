@@ -14,6 +14,8 @@ import type {
 } from '@/features/stage/stores/er-tabs-payload-types'
 import { useStageStore, type StageTab } from '@/stores/stage-store'
 import { normalizeQueryEditorPayload } from '@/features/stage/utils/normalize-query-editor-payload'
+import { translateMessage } from '@/i18n/messages'
+import { getCurrentLanguage } from '@/stores/ui-settings-store'
 import { generateUuid } from '@/lib/uuid'
 import { QueryEditorAdapter } from './QueryEditorAdapter'
 
@@ -169,6 +171,10 @@ function isDesignerRelationType(value: unknown): value is DesignerRelationType {
 
 function isDesignerConstraintMethod(value: unknown): value is DesignerConstraintMethod {
   return value === 'database_fk' || value === 'comment_ref'
+}
+
+function defaultErDesignerTitle(dialect: SupportedDesignerDialect): string {
+  return `${translateMessage(getCurrentLanguage(), 'stage.toolRow.er')} (${dialect})`
 }
 
 function normalizeSeedTables(seedTables: unknown): {
@@ -392,7 +398,7 @@ export class WorkspaceAdapter implements UIObject {
         const tab: StageTab = {
           tabId,
           type: 'er_designer',
-          title: input.title ?? `ER Diagram Designer (${dialect})`,
+          title: input.title ?? defaultErDesignerTitle(dialect),
           connectionId: input.targetConnectionId ?? undefined,
           database: input.targetDatabase ?? undefined,
           schema: input.targetSchema ?? undefined,

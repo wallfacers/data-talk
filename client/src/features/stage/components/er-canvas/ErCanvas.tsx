@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import {
   Background,
+  BackgroundVariant,
   Controls,
   ReactFlow,
   ReactFlowProvider,
@@ -12,10 +13,10 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
-import { ErEdge } from './ErEdge'
 import { ErEmptyState } from './ErEmptyState'
+import { MemoErEdge } from './ErEdge'
 import { ErTableContextMenu } from './ErTableContextMenu'
-import { ErTableNode } from './ErTableNode'
+import { MemoErTableNode } from './ErTableNode'
 import { ErToolbar } from './ErToolbar'
 import { useDagreLayout } from './hooks/useDagreLayout'
 import { useErKeyboard } from './hooks/useErKeyboard'
@@ -48,8 +49,8 @@ export interface ErCanvasDesignerProps {
 
 export type ErCanvasProps = ErCanvasInspectorProps | ErCanvasDesignerProps
 
-const nodeTypes = { erTable: ErTableNode }
-const edgeTypes = { erEdge: ErEdge }
+const nodeTypes = { erTable: MemoErTableNode }
+const edgeTypes = { erEdge: MemoErEdge }
 
 export function ErCanvas(props: ErCanvasProps) {
   return (
@@ -235,9 +236,15 @@ function ErCanvasInner(props: ErCanvasProps) {
             fitViewOptions={{ padding: 0.2, maxZoom: 1 }}
             minZoom={0.1}
             maxZoom={2}
+            onlyRenderVisibleElements
             proOptions={{ hideAttribution: true }}
           >
-            <Background color="var(--dt-border-subtle)" gap={20} size={1} />
+            <Background
+              color="var(--dt-border-subtle)"
+              gap={18}
+              size={1}
+              variant={BackgroundVariant.Dots}
+            />
             <Controls showInteractive={false} />
           </ReactFlow>
         )}

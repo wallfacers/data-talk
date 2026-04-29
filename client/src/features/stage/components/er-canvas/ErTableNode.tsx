@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react'
 import { KeyRoundIcon, LinkIcon, LockIcon, PencilIcon, TableIcon, Trash2Icon } from 'lucide-react'
 import {
@@ -47,7 +47,7 @@ export function ErTableNode({ id, data, selected }: NodeProps<ErTableReactFlowNo
         data.onOpenContextMenu({ tableId: id, x: event.clientX, y: event.clientY })
       }}
       className={[
-        'w-72 overflow-hidden rounded-md border bg-[var(--dt-bg-canvas)] font-sans shadow-sm transition-colors',
+        'w-80 overflow-hidden rounded-md border bg-[var(--dt-bg-canvas)] font-sans shadow-sm transition-colors',
         selected
           ? 'border-[var(--dt-accent-primary)] ring-2 ring-[var(--dt-accent-primary-surface)]'
           : 'border-[var(--dt-border-default)]',
@@ -126,14 +126,14 @@ function ColumnRow({
 }) {
   const columnId = getColumnId(column)
   const handleClassName = [
-    '!h-2 !w-2 !border-[var(--dt-bg-canvas)] transition-colors',
+    '!h-2.5 !w-2.5 !border-[var(--dt-bg-canvas)] transition-all duration-150 group-hover:scale-[1.8] hover:scale-[1.8]',
     mode === 'designer'
       ? '!bg-[var(--dt-accent-primary)] !opacity-35 hover:!bg-[var(--dt-accent-primary)] hover:!opacity-100'
       : '!bg-[var(--dt-border-strong)]',
   ].join(' ')
 
   return (
-    <li className="relative flex min-h-8 items-center justify-between gap-2 border-b border-[var(--dt-border-subtle)] px-3 py-1.5 last:border-b-0 hover:bg-[var(--dt-interaction-hover)]">
+    <li className="group relative flex min-h-8 items-center justify-between gap-2 border-b border-[var(--dt-border-subtle)] px-3 py-1.5 last:border-b-0 hover:bg-[var(--dt-interaction-hover)]">
       <Handle
         type="target"
         position={Position.Left}
@@ -205,6 +205,9 @@ function ColumnRow({
     </li>
   )
 }
+
+export const MemoErTableNode = memo(ErTableNode)
+MemoErTableNode.displayName = 'ErTableNode'
 
 const COLUMN_TYPE_OPTIONS = ['BIGINT', 'INT', 'VARCHAR(255)', 'TEXT', 'BOOLEAN', 'DATE', 'TIMESTAMP']
 

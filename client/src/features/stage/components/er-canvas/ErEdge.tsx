@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { memo, useMemo } from 'react'
 import {
   EdgeLabelRenderer,
   Position,
@@ -53,6 +53,7 @@ export function ErEdge(props: EdgeProps<Edge<ErEdgeData>>) {
 
   const storeEdges = useStore((state) => state.edges)
   const nodeLookup = useStore((state) => state.nodeLookup)
+  const isAnyNodeDragging = useStore((state) => state.nodes.some((node) => node.dragging))
   const isSelfRef = source === target
   const isVirtual = data?.kind === 'virtual'
 
@@ -88,12 +89,12 @@ export function ErEdge(props: EdgeProps<Edge<ErEdgeData>>) {
   ])
 
   const crossings = useMemo(() => {
-    if (isSelfRef) {
+    if (isSelfRef || isAnyNodeDragging) {
       return []
     }
 
     return computeCrossings(edgePath, id, storeEdges, nodeLookup as unknown as CrossingNodeLookup)
-  }, [edgePath, id, isSelfRef, nodeLookup, storeEdges])
+  }, [edgePath, id, isAnyNodeDragging, isSelfRef, nodeLookup, storeEdges])
 
   const labelPos = useMemo(() => {
     if (isSelfRef) {
@@ -159,3 +160,6 @@ export function ErEdge(props: EdgeProps<Edge<ErEdgeData>>) {
     </>
   )
 }
+
+export const MemoErEdge = memo(ErEdge)
+MemoErEdge.displayName = 'ErEdge'

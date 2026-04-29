@@ -104,6 +104,7 @@ describe('<ErCanvas mode="designer">', () => {
     expect(screen.getByRole('button', { name: /add table|添加表/i })).toBeInTheDocument()
     expect(screen.getByText('users')).toBeInTheDocument()
     expect(screen.getByText('orders')).toBeInTheDocument()
+    expect(document.querySelector('.react-flow__background pattern circle')).toBeTruthy()
   })
 
   it('renders an explicit empty-state hint for a blank designer draft', () => {

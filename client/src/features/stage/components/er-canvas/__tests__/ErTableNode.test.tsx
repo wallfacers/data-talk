@@ -98,8 +98,13 @@ describe('<ErTableNode mode="designer">', () => {
     expect(screen.getByRole('combobox', { name: /type for email/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /add column|添加列/i })).toBeInTheDocument()
 
+    const tableNode = screen.getByLabelText('Table users')
+    expect(tableNode.className).toContain('w-80')
+
     const firstHandle = document.querySelector('.react-flow__handle')
-    expect(firstHandle?.className).toContain('hover:!bg-[var(--dt-accent-primary)]')
+    expect(firstHandle?.className).toContain('!h-2.5')
+    expect(firstHandle?.className).toContain('!w-2.5')
+    expect(firstHandle?.className).toContain('group-hover:scale-[1.8]')
   })
 
   it('triggers designer callbacks for adding, updating, and deleting columns', () => {

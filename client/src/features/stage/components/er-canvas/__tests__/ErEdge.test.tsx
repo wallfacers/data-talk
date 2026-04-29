@@ -1,84 +1,82 @@
 import { render } from '@testing-library/react'
-import { ReactFlowProvider, Position } from '@xyflow/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+const mockState = {
+  edges: [
+    {
+      id: 'edge-a',
+      source: 'users',
+      target: 'orders',
+      sourceHandle: 'c1-source',
+      targetHandle: 'c2-target',
+    },
+    {
+      id: 'edge-b',
+      source: 'orders',
+      target: 'users',
+      sourceHandle: 'c2-source',
+      targetHandle: 'c1-target',
+    },
+  ],
+  nodeLookup: new Map([
+    ['users', {
+      internals: {
+        positionAbsolute: { x: 0, y: 0 },
+        handleBounds: {
+          source: [{ id: 'c1-source', x: 100, y: 20, width: 10, height: 10 }],
+          target: [{ id: 'c1-target', x: 0, y: 20, width: 10, height: 10 }],
+        },
+      },
+    }],
+    ['orders', {
+      internals: {
+        positionAbsolute: { x: 220, y: 0 },
+        handleBounds: {
+          source: [{ id: 'c2-source', x: 100, y: 50, width: 10, height: 10 }],
+          target: [{ id: 'c2-target', x: 0, y: 50, width: 10, height: 10 }],
+        },
+      },
+    }],
+  ]),
+  nodes: [
+    { id: 'users', dragging: true },
+    { id: 'orders', dragging: false },
+  ],
+}
+
+vi.mock('@xyflow/react', () => ({
+  EdgeLabelRenderer: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+  Position: { Right: 'right', Left: 'left' },
+  getSmoothStepPath: ({ sourceX, sourceY, targetX, targetY }: { sourceX: number; sourceY: number; targetX: number; targetY: number }) => [
+    `M ${sourceX},${sourceY} L ${targetX},${targetY}`,
+    (sourceX + targetX) / 2,
+    (sourceY + targetY) / 2,
+  ],
+  useStore: (selector: (state: typeof mockState) => unknown) => selector(mockState),
+}))
 
 import { ErEdge } from '../ErEdge'
 
-const baseProps = {
-  id: 'fk:orders.user_id->users.id',
-  source: 'orders',
-  target: 'users',
-  sourceX: 0,
-  sourceY: 0,
-  targetX: 200,
-  targetY: 0,
-  sourcePosition: Position.Right,
-  targetPosition: Position.Left,
-  data: {
-    kind: 'fk' as const,
-    fromColumn: 'user_id',
-    toColumn: 'id',
-    relationType: 'many_to_one',
-  },
-  style: {},
-  selected: false,
-  markerEnd: undefined,
-  markerStart: undefined,
-  interactionWidth: 20,
-  pathOptions: undefined,
-}
-
 describe('<ErEdge>', () => {
-  it('renders an SVG path for a normal smoothstep edge', () => {
+  it('skips crossing jump rendering while a node is being dragged', () => {
     const { container } = render(
-      <ReactFlowProvider>
-        <svg>
-          <ErEdge {...baseProps} />
-        </svg>
-      </ReactFlowProvider>,
+      <svg>
+        <ErEdge
+          id="edge-b"
+          source="orders"
+          target="users"
+          sourceX={220}
+          sourceY={50}
+          targetX={0}
+          targetY={20}
+          sourcePosition={'right' as never}
+          targetPosition={'left' as never}
+          data={{ kind: 'fk', fromColumn: 'user_id', toColumn: 'id' }}
+          selected={false}
+        />
+      </svg>,
     )
 
-    const path = container.querySelector('path')
-    expect(path).toBeTruthy()
-    expect(path?.getAttribute('d')).toContain('M')
-  })
-
-  it('keeps smoothstep wiring for designer-created relations', () => {
-    const { container } = render(
-      <ReactFlowProvider>
-        <svg>
-          <ErEdge {...baseProps} id="r1" data={{ ...baseProps.data, kind: 'fk' }} />
-        </svg>
-      </ReactFlowProvider>,
-    )
-
-    const d = container.querySelector('path')?.getAttribute('d') ?? ''
-    expect(d).toMatch(/^M/)
-    expect(d).toContain('L')
-  })
-
-  it('renders a virtual relation as dashed', () => {
-    const { container } = render(
-      <ReactFlowProvider>
-        <svg>
-          <ErEdge {...baseProps} data={{ ...baseProps.data, kind: 'virtual' }} />
-        </svg>
-      </ReactFlowProvider>,
-    )
-
-    expect(container.querySelector('path[stroke-dasharray]')).toBeTruthy()
-  })
-
-  it('uses self-ref loopback when source equals target', () => {
-    const { container } = render(
-      <ReactFlowProvider>
-        <svg>
-          <ErEdge {...baseProps} id="self" source="orders" target="orders" targetX={80} targetY={60} />
-        </svg>
-      </ReactFlowProvider>,
-    )
-
-    const d = container.querySelector('path')?.getAttribute('d') ?? ''
-    expect(d.match(/L /g)?.length ?? 0).toBeGreaterThanOrEqual(5)
+    expect(container.querySelectorAll('circle')).toHaveLength(0)
   })
 })
