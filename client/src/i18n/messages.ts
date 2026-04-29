@@ -141,6 +141,7 @@ const MESSAGES = {
     'tabType.filePreview': '文件',
     'tabType.workspace': '工作台',
     'tabType.unknown': 'Tab',
+    'tabType.erInspector': 'ER 浏览',
 
     'chat.doubleClickRename': '双击重命名',
     'chat.confirmDelete': '确定删除“{title}”？',
@@ -629,6 +630,7 @@ const MESSAGES = {
     'tabType.filePreview': 'File',
     'tabType.workspace': 'Workspace',
     'tabType.unknown': 'Tab',
+    'tabType.erInspector': 'ER Inspector',
 
     'chat.doubleClickRename': 'Double-click to rename',
     'chat.confirmDelete': 'Delete "{title}"?',

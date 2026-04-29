@@ -1,6 +1,8 @@
 import type { LucideIcon } from 'lucide-react'
-import { BarChart2Icon, DatabaseIcon, FileTextIcon, LayoutIcon, SearchCodeIcon } from 'lucide-react'
+import { BarChart2Icon, DatabaseIcon, FileTextIcon, LayoutIcon, NetworkIcon, SearchCodeIcon } from 'lucide-react'
 import { useSqlWorkbenchStore } from '@/features/stage/stores/sql-workbench-store'
+import { useErTabsStore } from '@/features/stage/stores/er-tabs-store'
+import type { ErInspectorPayload } from '@/features/stage/stores/er-tabs-payload-types'
 
 export interface TabTypeDescriptor {
   type: string
@@ -73,6 +75,32 @@ export const TAB_TYPE_REGISTRY: Record<string, TabTypeDescriptor> = {
     extractContent: (p) => {
       const o = p as { sql?: unknown } | null | undefined
       return typeof o?.sql === 'string' ? o.sql : ''
+    },
+  },
+  er_inspector: {
+    type: 'er_inspector',
+    persistent: true,
+    scope: 'workspace',
+    icon: NetworkIcon,
+    labelKey: 'tabType.erInspector',
+    extractContent: (p) => {
+      const payload = p as ErInspectorPayload | null | undefined
+      if (!payload) return ''
+      const selection = (payload.selection ?? []).join(' ')
+      const snapshot = (payload.tablesSnapshot ?? [])
+        .map((table) => {
+          const columns = (table.columns ?? []).map((column) => `${column.name} ${column.type}`).join(' ')
+          return `${table.name} ${columns} ${table.comment ?? ''}`.trim()
+        })
+        .join('\n')
+      const virtualRelations = (payload.virtualRelations ?? [])
+        .map((relation) => `${relation.from.table}.${relation.from.column} ${relation.to.table}.${relation.to.column}`)
+        .join('\n')
+      const notes = Object.values(payload.notes ?? {}).join('\n')
+      return [selection, snapshot, virtualRelations, notes].filter(Boolean).join('\n')
+    },
+    rehydrate: (tabId, p) => {
+      useErTabsStore.getState().hydrateInspector(tabId, p as ErInspectorPayload)
     },
   },
 }
