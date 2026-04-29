@@ -708,7 +708,6 @@ describe('query-editor-actions', () => {
     expect(executeSqlMock).toHaveBeenCalledWith({
       sql: 'select 1',
       connectionId: 'conn-2',
-      connectionName: 'Warehouse',
       source: 'user',
       sessionId: 'sess-1',
       database: 'warehouse',

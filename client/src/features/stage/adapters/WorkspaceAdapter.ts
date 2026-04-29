@@ -315,6 +315,10 @@ export class WorkspaceAdapter implements UIObject {
 
             const queryEditorState = new QueryEditorAdapter(t.tabId, () => sid).read('state') as {
               connectionId: string | null
+              connectionName: string | null
+              database: string | null
+              schema: string | null
+              contextSource: 'session' | 'override' | 'tab'
               contextOverride: unknown
             }
 
@@ -323,6 +327,10 @@ export class WorkspaceAdapter implements UIObject {
               type: t.type,
               title: t.title,
               connectionId: queryEditorState.connectionId,
+              connectionName: queryEditorState.connectionName,
+              database: queryEditorState.database,
+              schema: queryEditorState.schema,
+              contextSource: queryEditorState.contextSource,
               contextOverride: queryEditorState.contextOverride,
             }
           }),

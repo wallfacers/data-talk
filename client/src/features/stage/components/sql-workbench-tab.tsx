@@ -220,6 +220,7 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     sessionDataContext.context,
     {
       inheritSessionContext: true,
+      preferSessionContext: true,
       fallbackConnectionId: activeConnectionId ?? null,
       connectionNameLookup: (connectionId) =>
         connections.find((connection) => connection.id === connectionId)?.name ?? null,
@@ -324,21 +325,13 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [tab.tabId, tabState.executeStatus])
 
-  const resolvedExecutionContext: TabExecutionContext = tabState.resolvedContext
-    ? {
-        sessionId: resolvedContext.sessionId ?? tab.originSessionId ?? null,
-        connectionId: tabState.resolvedContext.connectionId,
-        connectionName: tabState.resolvedContext.connectionName,
-        database: tabState.resolvedContext.database,
-        schema: tabState.resolvedContext.schema,
-      }
-    : {
-        sessionId: resolvedContext.sessionId ?? tab.originSessionId ?? null,
-        connectionId: resolvedContext.connectionId,
-        connectionName: resolvedContext.connectionName,
-        database: resolvedContext.database,
-        schema: resolvedContext.schema,
-      }
+  const resolvedExecutionContext: TabExecutionContext = {
+    sessionId: resolvedContext.sessionId ?? tab.originSessionId ?? null,
+    connectionId: resolvedContext.connectionId,
+    connectionName: resolvedContext.connectionName,
+    database: resolvedContext.database,
+    schema: resolvedContext.schema,
+  }
   const hydratedOverride = tabState.override ?? (payload.contextOverride
     ? {
         connectionId: payload.contextOverride.connectionId,

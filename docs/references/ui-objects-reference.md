@@ -32,12 +32,15 @@ Discovery entrypoint: `datatalk.ui.find`.
 
 | mode | Returns |
 |------|---------|
-| `state` | `{ tabs: Array<{tabId, type, title, connectionId, contextOverride?}>, activeTabId: string \| null }` |
+| `state` | `{ tabs: Array<{tabId, type, title, connectionId, connectionName?, database?, schema?, contextSource?, contextOverride?}>, activeTabId: string \| null }` |
 | `schema` | `{ type: 'object', properties: { tabs: array, activeTabId: string\|null } }` |
 | `actions` | exec actions listed below |
 | `full` | merged `{ state, schema, actions }` |
 
-For `query_editor` rows, `connectionId` reflects the currently effective context. `contextOverride` remains the explicit override metadata.
+For `query_editor` rows:
+- `connectionId / connectionName / database / schema` reflect the currently effective context
+- `contextSource` is one of `session`, `override`, or `tab`
+- `contextOverride` remains the explicit override metadata
 
 #### `patch`
 
@@ -71,8 +74,8 @@ until the `er_designer` adapter ships.
 
 | mode | Returns |
 |------|---------|
-| `state` | `{ tabId, title, content, language: 'sql', version, dirty, cursor, selection, connectionId, connectionName, database, schema, contextOverride, entryMode, autoRun, executeStatus, results, activeResultId, limit, inWorkset }` |
-| `schema` | `{ type: 'object', properties: { tabId, title, content, language, version, dirty, cursor, selection, connectionId, connectionName, database, schema, contextOverride, entryMode, autoRun, executeStatus, results, activeResultId, limit, inWorkset } }` |
+| `state` | `{ tabId, title, content, language: 'sql', version, dirty, cursor, selection, connectionId, connectionName, database, schema, contextSource, contextOverride, entryMode, autoRun, executeStatus, results, activeResultId, limit, inWorkset }` |
+| `schema` | `{ type: 'object', properties: { tabId, title, content, language, version, dirty, cursor, selection, connectionId, connectionName, database, schema, contextSource, contextOverride, entryMode, autoRun, executeStatus, results, activeResultId, limit, inWorkset } }` |
 | `actions` | exec actions listed below |
 | `full` | merged `{ state, schema, actions, capabilities }` |
 
@@ -96,6 +99,7 @@ until the `er_designer` adapter ships.
 - `dirty`: whether unsaved document edits exist
 - `cursor` / `selection`: editor caret and selection state
 - `connectionId / connectionName / database / schema`: currently effective execution context
+- `contextSource`: where the effective context comes from; one of `session`, `override`, or `tab`
 - `contextOverride`: explicit override metadata, separate from the effective context fields
 - `entryMode / autoRun`: open source metadata and auto-run behavior
 - `executeStatus / results / activeResultId / limit`: runtime execution state

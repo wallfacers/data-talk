@@ -287,7 +287,15 @@ describe('WorkspaceAdapter', () => {
 
     const adapter = new WorkspaceAdapter(() => 's1')
     const state = adapter.read('state') as {
-      tabs: Array<{ tabId: string; connectionId?: string | null; contextOverride?: unknown }>
+      tabs: Array<{
+        tabId: string
+        connectionId?: string | null
+        connectionName?: string | null
+        database?: string | null
+        schema?: string | null
+        contextSource?: 'session' | 'override' | 'tab'
+        contextOverride?: unknown
+      }>
       activeTabId: string | null
     }
 
@@ -295,11 +303,84 @@ describe('WorkspaceAdapter', () => {
       expect.objectContaining({
         tabId,
         connectionId: 'conn-2',
+        connectionName: 'Reporting Warehouse',
+        database: 'warehouse',
+        schema: 'reporting',
+        contextSource: 'override',
         contextOverride: expect.objectContaining({
           connectionId: 'conn-2',
           database: 'warehouse',
           schema: 'reporting',
         }),
+      }),
+    ])
+  })
+
+  it('read state exposes latest inherited session context for query editor tabs so workspace-level scans can read it directly', () => {
+    useConnectionStore.setState({
+      activeConnectionId: null,
+      connections: [
+        { id: 'conn-1', name: 'Warehouse', kind: 'postgres', databaseName: 'analytics' } as never,
+        { id: 'conn-2', name: 'Reporting Warehouse', kind: 'postgres', databaseName: 'warehouse' } as never,
+      ],
+    })
+    useSessionStore.setState({
+      activeSessionId: 's1',
+      modeBySession: new Map(),
+      hasEverSentBySession: new Map(),
+      dataContextBySession: new Map([[
+        's1',
+        {
+          sessionId: 's1',
+          connectionId: 'conn-2',
+          connectionNameSnapshot: 'Reporting Warehouse',
+          database: 'warehouse',
+          schema: 'reporting',
+          selectedLevel: 'schema',
+          updatedAt: 2,
+        },
+      ]]),
+      pendingPrompt: null,
+      composerRestoreDraft: null,
+      pendingModelPrompt: false,
+      pendingConnectionPrompt: false,
+      pendingActionAfterConnectionPick: null,
+    })
+
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 's1',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'blank',
+      initialContent: 'select 1',
+      connectionId: 'conn-1',
+      connectionName: 'Warehouse',
+      database: 'analytics',
+      schema: 'public',
+    })
+
+    const adapter = new WorkspaceAdapter(() => 's1')
+    const state = adapter.read('state') as {
+      tabs: Array<{
+        tabId: string
+        connectionId?: string | null
+        connectionName?: string | null
+        database?: string | null
+        schema?: string | null
+        contextSource?: 'session' | 'override' | 'tab'
+        contextOverride?: unknown
+      }>
+    }
+
+    expect(state.tabs).toEqual([
+      expect.objectContaining({
+        tabId,
+        connectionId: 'conn-2',
+        connectionName: 'Reporting Warehouse',
+        database: 'warehouse',
+        schema: 'reporting',
+        contextSource: 'session',
+        contextOverride: null,
       }),
     ])
   })

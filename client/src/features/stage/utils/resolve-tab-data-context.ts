@@ -16,6 +16,7 @@ type TabDataContextLike = {
 
 export type ResolveTabDataContextOptions = {
   inheritSessionContext?: boolean
+  preferSessionContext?: boolean
   fallbackConnectionId?: string | null
   connectionNameLookup?: (connectionId: string) => string | null | undefined
 }
@@ -34,7 +35,9 @@ function pickField(
   payloadValue: string | null | undefined,
   sessionValue: string | null | undefined,
   inheritSessionContext: boolean,
+  preferSessionContext: boolean,
 ) {
+  if (preferSessionContext && inheritSessionContext && sessionValue != null && sessionValue !== '') return sessionValue
   if (tabValue != null && tabValue !== '') return tabValue
   if (payloadValue != null && payloadValue !== '') return payloadValue
   if (inheritSessionContext && sessionValue != null && sessionValue !== '') return sessionValue
@@ -47,18 +50,25 @@ export function resolveTabDataContext(
   options: ResolveTabDataContextOptions = {},
 ): ResolvedTabDataContext {
   const inheritSessionContext = options.inheritSessionContext ?? false
+  const preferSessionContext = options.preferSessionContext ?? false
   const payload = tab.payload ?? {}
 
   const connectionId =
-    pickField(tab.connectionId, payload.connectionId, sessionContext?.connectionId, inheritSessionContext)
+    pickField(tab.connectionId, payload.connectionId, sessionContext?.connectionId, inheritSessionContext, preferSessionContext)
     ?? options.fallbackConnectionId
     ?? null
-  const database = pickField(tab.database, payload.database, sessionContext?.database, inheritSessionContext)
-  const schema = pickField(tab.schema, payload.schema, sessionContext?.schema, inheritSessionContext)
+  const database = pickField(tab.database, payload.database, sessionContext?.database, inheritSessionContext, preferSessionContext)
+  const schema = pickField(tab.schema, payload.schema, sessionContext?.schema, inheritSessionContext, preferSessionContext)
 
   const connectionName =
     (connectionId ? options.connectionNameLookup?.(connectionId) : null)
-    ?? pickField(tab.connectionName, payload.connectionName, sessionContext?.connectionNameSnapshot, inheritSessionContext)
+    ?? pickField(
+      tab.connectionName,
+      payload.connectionName,
+      sessionContext?.connectionNameSnapshot,
+      inheritSessionContext,
+      preferSessionContext,
+    )
 
   const selectedLevel = schema
     ? 'schema'

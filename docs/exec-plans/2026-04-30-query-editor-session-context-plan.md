@@ -1,6 +1,6 @@
 # Query Editor Session Context Truth Plan
 
-**Status:** in_progress
+**Status:** completed
 
 **Goal:** 让 query editor 在 `session` 模式下把最新 session data context 作为 UI 显示与 SQL 执行的唯一真源，同时把 `resolvedContext` 降级为仅用于展示“上一次实际执行落点”的结果信息；并让模型能从 workspace 级状态读取每个 query editor tab 当前实际使用的上下文。
 
@@ -38,18 +38,31 @@
 
 ## Tasks
 
-- [ ] 增加失败测试，覆盖 session 模式下忽略陈旧 `resolvedContext`
-- [ ] 增加失败测试，覆盖 `workspace.read('state')` 暴露每个 query editor tab 的完整有效上下文与来源
-- [ ] 修正 query editor 的默认上下文解析逻辑，使 `resolvedContext` 仅作结果信息保留
-- [ ] 扩展 workspace 状态摘要字段，使模型可直接读取每个 tab 的有效上下文
-- [ ] 运行 `cd client && npx tsc --noEmit`
-- [ ] 运行定向 vitest
-- [ ] 只提交本次相关文件
+- [x] 增加失败测试，覆盖 session 模式下忽略陈旧 `resolvedContext`
+- [x] 增加失败测试，覆盖 `workspace.read('state')` 暴露每个 query editor tab 的完整有效上下文与来源
+- [x] 修正 query editor 的默认上下文解析逻辑，使 `resolvedContext` 仅作结果信息保留
+- [x] 扩展 workspace 状态摘要字段，使模型可直接读取每个 tab 的有效上下文
+- [x] 运行 `cd client && npx tsc --noEmit`
+- [x] 运行定向 vitest
+- [x] 只提交本次相关文件
 
 ## Verification
 
-- [ ] session context 更新后，未 override 的 query editor 默认执行上下文会跟随变化
-- [ ] session context 更新后，未 override 的 query editor 状态读取会反映最新 session context
-- [ ] `workspace.read('state')` 可直接读到 query editor 的 `database/schema/contextSource`
-- [ ] 前端类型检查通过
-- [ ] 定向测试通过
+- [x] session context 更新后，未 override 的 query editor 默认执行上下文会跟随变化
+- [x] session context 更新后，未 override 的 query editor 状态读取会反映最新 session context
+- [x] `workspace.read('state')` 可直接读到 query editor 的 `database/schema/contextSource`
+- [x] 前端类型检查通过
+- [x] 定向测试通过
+
+## Outcome
+
+- query editor 的 session 模式现在显式启用 `preferSessionContext`，会优先采用最新 session data context，而不是旧 tab metadata、payload snapshot 或最近一次执行写回的 `resolvedContext`。
+- `resolvedContext` 继续保存在 workbench runtime state 中，但只作为最近一次执行结果信息保留，不再参与下一次默认上下文推导。
+- `QueryEditorAdapter.read('state')` 新增 `contextSource`，并继续暴露 effective `connectionId / connectionName / database / schema / contextOverride`。
+- `WorkspaceAdapter.read('state')` 的 query editor 摘要现在也暴露 `connectionName / database / schema / contextSource`，模型可以直接扫描当前所有 tab 的实际上下文。
+- 参考文档已同步：`docs/references/ui-objects-reference.md` 与 runtime prompt `server/.../agents/AGENTS.md`。
+
+## Verification Evidence
+
+- `cd client && npx vitest run src/features/stage/utils/__tests__/resolve-tab-data-context.test.ts src/features/stage/utils/query-editor-actions.test.ts src/features/stage/adapters/__tests__/QueryEditorAdapter.test.ts src/features/stage/adapters/__tests__/WorkspaceAdapter.test.ts src/features/stage/components/sql-workbench-tab.test.tsx`
+- `cd client && npx tsc --noEmit`

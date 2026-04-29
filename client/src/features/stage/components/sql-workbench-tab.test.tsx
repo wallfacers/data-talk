@@ -14,6 +14,17 @@ const formatSqlMock = vi.hoisted(() => vi.fn((sql: string) => `formatted: ${sql}
 const listConnectionsMock = vi.hoisted(() => vi.fn())
 const listConnectionTargetsMock = vi.hoisted(() => vi.fn())
 const setConnectionsMock = vi.hoisted(() => vi.fn())
+const sessionDataContextSnapshot = vi.hoisted(() => ({
+  context: null as null | {
+    sessionId: string
+    connectionId: string | null
+    connectionNameSnapshot: string | null
+    database: string | null
+    schema: string | null
+    selectedLevel: 'connection' | 'database' | 'schema' | null
+    updatedAt: number
+  },
+}))
 const connectionStoreSnapshot = vi.hoisted(() => ({
   activeConnectionId: 'conn-1' as string | null,
   connections: [{ id: 'conn-1', name: 'Primary Connection', kind: 'postgres', databaseName: 'db_main' }] as Array<{
@@ -150,7 +161,7 @@ vi.mock('@/features/connection/store', () => {
 
 vi.mock('@/features/session/hooks/use-session-data-context', () => ({
   useSessionDataContext: () => ({
-    context: null,
+    context: sessionDataContextSnapshot.context,
     isLoading: false,
     error: null,
     refresh: vi.fn(),
@@ -191,6 +202,7 @@ describe('SqlWorkbenchTab', () => {
     listConnectionsMock.mockReset()
     listConnectionTargetsMock.mockReset()
     setConnectionsMock.mockReset()
+    sessionDataContextSnapshot.context = null
     connectionStoreSnapshot.activeConnectionId = 'conn-1'
     connectionStoreSnapshot.connections = [{ id: 'conn-1', name: 'Primary Connection', kind: 'postgres', databaseName: 'db_main' }]
     editorHarness.lastProps = null
@@ -340,6 +352,72 @@ describe('SqlWorkbenchTab', () => {
     )
 
     await waitFor(() => expect(listConnectionTargetsMock).toHaveBeenCalledWith('conn-1'))
+  })
+
+  it('shows the latest session context in the context panel even when tab metadata and resolvedContext are stale', async () => {
+    sessionDataContextSnapshot.context = {
+      sessionId: 'session-1',
+      connectionId: 'conn-2',
+      connectionNameSnapshot: 'Warehouse',
+      database: 'warehouse',
+      schema: 'analytics',
+      selectedLevel: 'schema',
+      updatedAt: 2,
+    }
+    connectionStoreSnapshot.connections = [
+      { id: 'conn-1', name: 'Primary Connection', kind: 'postgres', databaseName: 'db_main' },
+      { id: 'conn-2', name: 'Warehouse', kind: 'postgres', databaseName: 'warehouse' },
+    ]
+    useSqlWorkbenchStore.setState({
+      tabsById: {
+        'tab-session-context-latest': {
+          sqlText: 'select 1;',
+          version: 1,
+          selection: null,
+          source: 'user',
+          executeStatus: 'idle',
+          results: [],
+          activeResultId: null,
+          resolvedContext: {
+            connectionId: 'conn-1',
+            connectionName: 'Primary Connection',
+            database: 'db_main',
+            schema: 'public',
+            selectedLevel: 'schema',
+          },
+          contextNotice: null,
+          errorMessage: null,
+          confirmation: null,
+          confirmationInvalid: null,
+          lastRequest: null,
+          override: null,
+          history: [],
+          savedSqlText: 'select 1;',
+          limit: 100,
+          cursor: { line: 1, column: 1 },
+        },
+      },
+    })
+
+    render(
+      <SqlWorkbenchTab
+        tab={{
+          ...tab,
+          tabId: 'tab-session-context-latest',
+          originSessionId: 'session-1',
+          connectionId: 'conn-1',
+          connectionName: 'Primary Connection',
+          database: 'db_main',
+          schema: 'public',
+        }}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: t('stage.context.tooltip.button') }))
+
+    expect(screen.getByRole('combobox', { name: t('stage.context.field.connection') })).toHaveTextContent('Warehouse')
+    expect(screen.getByRole('combobox', { name: t('stage.context.field.database') })).toHaveTextContent('warehouse')
+    expect(screen.getByRole('combobox', { name: t('stage.context.field.schema') })).toHaveTextContent('analytics')
   })
 
   it('retries loading connection targets when reopening the SQL context after an initial failure', async () => {

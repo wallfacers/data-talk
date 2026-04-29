@@ -177,26 +177,19 @@ export class QueryEditorAdapter implements UIObject {
       sessionContext,
       {
         inheritSessionContext: true,
+        preferSessionContext: true,
         fallbackConnectionId: connectionState.activeConnectionId ?? null,
         connectionNameLookup: (connectionId) =>
           connectionState.connections.find((connection) => connection.id === connectionId)?.name ?? null,
       },
     )
-    const resolvedExecutionContext = workbenchTab?.resolvedContext
-      ? {
-          sessionId: resolvedContext.sessionId ?? sessionId,
-          connectionId: workbenchTab.resolvedContext.connectionId,
-          connectionName: workbenchTab.resolvedContext.connectionName,
-          database: workbenchTab.resolvedContext.database,
-          schema: workbenchTab.resolvedContext.schema,
-        }
-      : {
-          sessionId: resolvedContext.sessionId ?? sessionId,
-          connectionId: resolvedContext.connectionId,
-          connectionName: resolvedContext.connectionName,
-          database: resolvedContext.database,
-          schema: resolvedContext.schema,
-        }
+    const resolvedExecutionContext = {
+      sessionId: resolvedContext.sessionId ?? sessionId,
+      connectionId: resolvedContext.connectionId,
+      connectionName: resolvedContext.connectionName,
+      database: resolvedContext.database,
+      schema: resolvedContext.schema,
+    }
     const hydratedOverride = workbenchTab?.override ?? (payload.contextOverride
       ? {
           connectionId: payload.contextOverride.connectionId,
@@ -227,6 +220,9 @@ export class QueryEditorAdapter implements UIObject {
           database: resolvedExecutionContext.database,
           schema: resolvedExecutionContext.schema,
         }
+    const contextSource: 'session' | 'override' | 'tab' = hydratedOverride
+      ? 'override'
+      : sessionId ? 'session' : 'tab'
 
     return {
       tab,
@@ -234,11 +230,12 @@ export class QueryEditorAdapter implements UIObject {
       workbenchTab,
       hydratedOverride,
       effectiveContext,
+      contextSource,
     }
   }
 
   read(mode: 'state' | 'schema' | 'actions' | 'full'): unknown {
-    const { tab, payload, workbenchTab, hydratedOverride, effectiveContext } = this.getResolvedState()
+    const { tab, payload, workbenchTab, hydratedOverride, effectiveContext, contextSource } = this.getResolvedState()
     const fallbackResults = payload.lastRun
       ? [{
           resultId: 'last-run',
@@ -262,6 +259,7 @@ export class QueryEditorAdapter implements UIObject {
       connectionName: effectiveContext.connectionName,
       database: effectiveContext.database,
       schema: effectiveContext.schema,
+      contextSource,
       contextOverride: hydratedOverride,
       entryMode: payload.entryMode,
       autoRun: payload.autoRun,
@@ -293,6 +291,7 @@ export class QueryEditorAdapter implements UIObject {
             connectionName: { type: ['string', 'null'] },
             database: { type: ['string', 'null'] },
             schema: { type: ['string', 'null'] },
+            contextSource: { type: 'string' },
             contextOverride: { type: ['object', 'null'] },
             entryMode: { type: 'string' },
             autoRun: { type: 'boolean' },

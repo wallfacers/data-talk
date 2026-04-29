@@ -71,4 +71,37 @@ describe('resolveTabDataContext', () => {
       selectedLevel: 'connection',
     })
   })
+
+  it('can prefer the latest session context over tab and payload snapshots', () => {
+    const preferred = resolveTabDataContext(
+      {
+        originSessionId: 'sess-1',
+        connectionId: 'conn-tab',
+        connectionName: 'tab-name',
+        database: 'tab-db',
+        schema: 'tab-schema',
+        payload: {
+          connectionId: 'conn-payload',
+          connectionName: 'payload-name',
+          database: 'payload-db',
+          schema: 'payload-schema',
+        },
+      },
+      sessionContext,
+      {
+        inheritSessionContext: true,
+        preferSessionContext: true,
+        connectionNameLookup: (connectionId) => (connectionId === 'conn-session' ? 'lookup-session' : null),
+      },
+    )
+
+    expect(preferred).toEqual({
+      sessionId: 'sess-1',
+      connectionId: 'conn-session',
+      connectionName: 'lookup-session',
+      database: 'session-db',
+      schema: 'session-schema',
+      selectedLevel: 'schema',
+    })
+  })
 })

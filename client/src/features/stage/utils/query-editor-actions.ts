@@ -278,29 +278,22 @@ function resolveQueryEditorContexts(tabId: string, sessionIdOverride: string | n
       schema: payload.schema ?? tab?.schema ?? null,
     },
     sessionContext,
-    {
-      inheritSessionContext: true,
-      fallbackConnectionId: connectionState.activeConnectionId ?? null,
-      connectionNameLookup: (connectionId) =>
-        connectionState.connections.find((connection) => connection.id === connectionId)?.name ?? null,
-    },
-  )
+      {
+        inheritSessionContext: true,
+        preferSessionContext: true,
+        fallbackConnectionId: connectionState.activeConnectionId ?? null,
+        connectionNameLookup: (connectionId) =>
+          connectionState.connections.find((connection) => connection.id === connectionId)?.name ?? null,
+      },
+    )
 
-  const defaultContext: QueryEditorExecutionContext = tabState?.resolvedContext
-    ? {
-        sessionId: resolvedContext.sessionId ?? sessionId,
-        connectionId: tabState.resolvedContext.connectionId,
-        connectionName: tabState.resolvedContext.connectionName,
-        database: tabState.resolvedContext.database,
-        schema: tabState.resolvedContext.schema,
-      }
-    : {
-        sessionId: resolvedContext.sessionId ?? sessionId,
-        connectionId: resolvedContext.connectionId,
-        connectionName: resolvedContext.connectionName,
-        database: resolvedContext.database,
-        schema: resolvedContext.schema,
-      }
+  const defaultContext: QueryEditorExecutionContext = {
+    sessionId: resolvedContext.sessionId ?? sessionId,
+    connectionId: resolvedContext.connectionId,
+    connectionName: resolvedContext.connectionName,
+    database: resolvedContext.database,
+    schema: resolvedContext.schema,
+  }
 
   const currentOverride = tabState?.override ?? (payload.contextOverride
     ? buildRuntimeOverrideFromPayload({

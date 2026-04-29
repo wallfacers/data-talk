@@ -222,12 +222,12 @@ For the workspace (uses snake_case `params.connection_id`):
 - `detach(target)`: removes from workset, keeps in library.
 - `archive(target, archived?=true)`: hides the tab; pass `archived=false` to unarchive.
 - `trash(target)`: permanent delete; only when the user explicitly asks.
-- State includes `tabs` and `activeTabId`. Each tab entry: `tabId`, `type`, `title`, `connectionId`, `contextOverride`.
+- State includes `tabs` and `activeTabId`. Each query-editor tab entry exposes `tabId`, `type`, `title`, `connectionId`, `connectionName`, `database`, `schema`, `contextSource`, and `contextOverride`.
 
 For a query editor:
 
 - Read the editor through `datatalk_ui_read` with `object=query_editor`.
-- A query editor state includes `tabId`, `title`, `content`, `version`, `connectionId`, `database`, `schema`, `contextOverride`, `results`, `activeResultId`, `limit`, and `inWorkset`.
+- A query editor state includes `tabId`, `title`, `content`, `version`, `connectionId`, `connectionName`, `database`, `schema`, `contextSource`, `contextOverride`, `results`, `activeResultId`, `limit`, and `inWorkset`.
 - Full SQL replacement uses `datatalk_ui_patch` on `/content` with `baseVersion`.
 - Context patching uses `/connectionId`, `/database`, and `/schema`.
 - Targeted SQL edits use `datatalk_ui_exec`, `object=query_editor`, `action=apply_text_edits`, `params.baseVersion`, and `params.edits`. Each edit entry must include `expectedText`.
