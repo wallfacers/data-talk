@@ -54,11 +54,19 @@ abstract class AbstractDiagnosticsProvider implements DiagnosticsProvider {
         }
     }
 
-    protected void executeStatementAutoCommit(ConnectionRecord conn, String decryptedPassword, String sql) throws SQLException {
+    protected void executeStatement(ConnectionRecord conn, String decryptedPassword, String sql) throws SQLException {
         try (Connection c = openConnection(conn, decryptedPassword);
              Statement s = c.createStatement()) {
-            c.setAutoCommit(true);
             s.execute(sql);
+        }
+    }
+
+    protected void executeStatementAutoCommit(ConnectionRecord conn, String decryptedPassword, String sql) throws SQLException {
+        try (Connection c = openConnection(conn, decryptedPassword)) {
+            c.setAutoCommit(true);
+            try (Statement s = c.createStatement()) {
+                s.execute(sql);
+            }
         }
     }
 

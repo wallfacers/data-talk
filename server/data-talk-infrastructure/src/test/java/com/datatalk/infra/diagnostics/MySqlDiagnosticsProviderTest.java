@@ -100,6 +100,20 @@ class MySqlDiagnosticsProviderTest {
     }
 
     @Test
+    void poolStatus_readsValueColumnCaseInsensitively() {
+        provider.respond("Threads_connected", rows(row("VARIABLE_NAME", "Threads_connected", "VALUE", "25")));
+        provider.respond("Threads_running", rows(row("VARIABLE_NAME", "Threads_running", "VALUE", "5")));
+        provider.respond("max_connections", rows(row("VARIABLE_NAME", "max_connections", "VALUE", "100")));
+        provider.respond("COUNT(*) AS waiting", rows(row("waiting", 2)));
+
+        var result = (DiagnosticResult.Ok<PoolReport>) provider.poolStatus(testConn("test_store"), "pw");
+
+        assertThat(result.value().activeConnections()).isEqualTo(25);
+        assertThat(result.value().idleConnections()).isEqualTo(20);
+        assertThat(result.value().maxConnections()).isEqualTo(100);
+    }
+
+    @Test
     void tableSpaceInfo_mapsRowsAndCapsAt200() {
         List<Map<String, Object>> rows = new ArrayList<>();
         for (int i = 0; i < 250; i++) {
@@ -129,6 +143,14 @@ class MySqlDiagnosticsProviderTest {
 
         assertThat(provider.sqls()).anySatisfy(sql -> assertThat(sql).contains("table_name IN"));
         assertThat(provider.params()).anySatisfy(params -> assertThat(params).contains("users", "orders"));
+    }
+
+    @Test
+    void tableSpaceInfo_withoutDatabase_returnsUnsupported() {
+        var result = provider.tableSpaceInfo(testConn(null), "pw", null, null);
+
+        assertThat(result).isInstanceOf(DiagnosticResult.Unsupported.class);
+        assertThat(((DiagnosticResult.Unsupported<SpaceReport>) result).reason()).contains("No database selected");
     }
 
     @Test
@@ -217,6 +239,8 @@ class MySqlDiagnosticsProviderTest {
         assertThat(result.value().ok()).isTrue();
         assertThat(result.value().reclaimedBytes()).isEqualTo(824_000L);
         assertThat(provider.executedSql()).contains("OPTIMIZE TABLE `test_store`.`users`");
+        assertThat(provider.executeStatementCalled()).isTrue();
+        assertThat(provider.executeUpdateCalled()).isFalse();
     }
 
     @Test
@@ -268,6 +292,7 @@ class MySqlDiagnosticsProviderTest {
         source.addMessage("diagnostics.error.permission_denied", Locale.ENGLISH, "Insufficient privileges to read diagnostic views");
         source.addMessage("diagnostics.terminate.unsupported.self", Locale.ENGLISH, "Cannot terminate the current connection");
         source.addMessage("diagnostics.terminate.session_not_found", Locale.ENGLISH, "Target session no longer exists; it may have already ended");
+        source.addMessage("diagnostics.space.unsupported.no_database", Locale.ENGLISH, "No database selected; cannot inspect table space");
         source.addMessage("diagnostics.optimize.unsupported.no_database", Locale.ENGLISH, "No database selected; cannot determine table location");
         source.addMessage("diagnostics.optimize.preview.lock_warning_mysql", Locale.ENGLISH, "OPTIMIZE TABLE locks the table for the duration of the operation; may impact production traffic");
         return new Translator(source);
@@ -293,6 +318,8 @@ class MySqlDiagnosticsProviderTest {
         private SQLException executeFailure;
         private int executeResult;
         private String executedSql;
+        private boolean executeStatementCalled;
+        private boolean executeUpdateCalled;
 
         TestableMySqlDiagnosticsProvider(Translator translator) {
             super(translator);
@@ -327,6 +354,14 @@ class MySqlDiagnosticsProviderTest {
             return executedSql;
         }
 
+        boolean executeStatementCalled() {
+            return executeStatementCalled;
+        }
+
+        boolean executeUpdateCalled() {
+            return executeUpdateCalled;
+        }
+
         @Override
         protected List<Map<String, Object>> queryForList(ConnectionRecord conn, String decryptedPassword, String sql, Object... params) throws SQLException {
             sqls.add(sql);
@@ -343,9 +378,17 @@ class MySqlDiagnosticsProviderTest {
 
         @Override
         protected int executeUpdate(ConnectionRecord conn, String decryptedPassword, String sql) throws SQLException {
+            executeUpdateCalled = true;
             executedSql = sql;
             if (executeFailure != null) throw executeFailure;
             return executeResult;
+        }
+
+        @Override
+        protected void executeStatement(ConnectionRecord conn, String decryptedPassword, String sql) throws SQLException {
+            executeStatementCalled = true;
+            executedSql = sql;
+            if (executeFailure != null) throw executeFailure;
         }
     }
 }

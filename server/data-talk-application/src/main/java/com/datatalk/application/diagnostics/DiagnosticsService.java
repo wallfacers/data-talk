@@ -204,7 +204,7 @@ public class DiagnosticsService {
             if (waitMillis != null && waitMillis > thresholds.lock().longWaitMs()) {
                 recommendations.add(new DiagnosticRecommendation(
                     "warning",
-                    translator.get("diagnostics.lock.recommendation.terminate", entry.holderId(), String.valueOf(waitMillis / 1000)),
+                    translator.get("diagnostics.lock.recommendation.terminate", entry.holderId(), waitSeconds(waitMillis)),
                     "datatalk.terminate_session",
                     "datatalk_terminate_session",
                     Map.of("sessionId", entry.holderId()),
@@ -295,12 +295,12 @@ public class DiagnosticsService {
             case "terminate" -> switch (normalized) {
                 case "h2" -> translator.get("diagnostics.terminate.unsupported.h2");
                 case "oracle" -> translator.get("diagnostics.terminate.unsupported.oracle");
-                default -> translator.get("diagnostics.terminate.unsupported.oracle");
+                default -> translator.get("diagnostics.terminate_not_supported", kind);
             };
             case "optimize" -> switch (normalized) {
                 case "h2" -> translator.get("diagnostics.optimize.unsupported.h2");
                 case "oracle" -> translator.get("diagnostics.optimize.unsupported.oracle");
-                default -> translator.get("diagnostics.optimize.unsupported.oracle");
+                default -> translator.get("diagnostics.optimize_not_supported", kind);
             };
             default -> translator.get("diagnostics.no_provider", kind);
         };
@@ -308,6 +308,10 @@ public class DiagnosticsService {
 
     private static String percent(double ratio) {
         return String.valueOf(Math.round(ratio * 100));
+    }
+
+    private static String waitSeconds(long waitMillis) {
+        return String.format(Locale.ROOT, "%.1f", waitMillis / 1000.0);
     }
 
     private static String bytes(long bytes) {

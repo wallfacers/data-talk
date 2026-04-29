@@ -98,8 +98,6 @@ public class PostgreSqlDiagnosticsProvider extends AbstractDiagnosticsProvider {
               ON blocked_locks.pid = blocked.pid
             JOIN pg_catalog.pg_stat_activity blocking
               ON blocking.pid = ANY(pg_blocking_pids(blocked.pid))
-            JOIN pg_catalog.pg_locks blocking_locks
-              ON blocking_locks.pid = blocking.pid
             WHERE NOT blocked_locks.granted
             """;
         try {
@@ -126,20 +124,22 @@ public class PostgreSqlDiagnosticsProvider extends AbstractDiagnosticsProvider {
         try {
             Map<String, Object> pool = firstRow(queryForList(conn, decryptedPassword, """
                 SELECT
-                  count(*) FILTER (WHERE state='active') AS active,
-                  count(*) FILTER (WHERE state='idle') AS idle,
+                  count(*) AS active,
+                  count(*) FILTER (WHERE state='active') AS running,
+                  count(*) FILTER (WHERE state IN ('idle', 'idle in transaction', 'idle in transaction (aborted)')) AS idle,
                   count(*) FILTER (WHERE wait_event IS NOT NULL AND wait_event_type='Lock') AS waiting
                 FROM pg_stat_activity
                 WHERE backend_type='client backend'
                 """));
             int max = intValue(firstValue(queryForList(conn, decryptedPassword, "SHOW max_connections")), 0);
             int active = intValue(pool.get("active"), 0);
+            int running = intValue(pool.get("running"), 0);
             return DiagnosticResult.ok(new PoolReport(
                 "server",
                 active,
                 intValue(pool.get("idle"), 0),
                 max,
-                active,
+                running,
                 intValue(pool.get("waiting"), 0),
                 conn.host() + ":" + conn.port(),
                 List.of()
@@ -201,6 +201,7 @@ public class PostgreSqlDiagnosticsProvider extends AbstractDiagnosticsProvider {
         String targetSessionId,
         String database
     ) {
+        int targetPid = Integer.parseInt(targetSessionId);
         try {
             String self = String.valueOf(firstValue(queryForList(withDatabaseOverride(conn, database), decryptedPassword,
                 "SELECT pg_backend_pid() AS pid")));
@@ -210,8 +211,8 @@ public class PostgreSqlDiagnosticsProvider extends AbstractDiagnosticsProvider {
             Object currentSql = value(queryForList(withDatabaseOverride(conn, database), decryptedPassword, """
                 SELECT query AS current_sql
                 FROM pg_stat_activity
-                WHERE pid = ?
-                """, targetSessionId), "current_sql");
+                WHERE pid = ?::integer
+                """, targetPid), "current_sql");
             return DiagnosticResult.ok(new TerminateSessionPreview(
                 "postgresql",
                 targetSessionId,
@@ -230,9 +231,10 @@ public class PostgreSqlDiagnosticsProvider extends AbstractDiagnosticsProvider {
         String targetSessionId,
         String database
     ) {
+        int targetPid = Integer.parseInt(targetSessionId);
         try {
             boolean terminated = booleanValue(value(queryForList(withDatabaseOverride(conn, database), decryptedPassword,
-                "SELECT pg_terminate_backend(?) AS terminated", targetSessionId), "terminated"));
+                "SELECT pg_terminate_backend(?::integer) AS terminated", targetPid), "terminated"));
             return DiagnosticResult.ok(new TerminateSessionResult(
                 terminated,
                 targetSessionId,
@@ -306,7 +308,7 @@ public class PostgreSqlDiagnosticsProvider extends AbstractDiagnosticsProvider {
             return;
         }
         try (var stmt = connection.createStatement()) {
-            stmt.execute("SET search_path TO " + schema);
+            stmt.execute("SET search_path TO " + quote(schema));
         }
     }
 

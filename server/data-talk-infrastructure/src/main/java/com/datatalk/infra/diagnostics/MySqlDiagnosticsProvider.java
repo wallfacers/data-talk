@@ -142,7 +142,7 @@ public class MySqlDiagnosticsProvider extends AbstractDiagnosticsProvider {
     public DiagnosticResult<SpaceReport> tableSpaceInfo(ConnectionRecord conn, String decryptedPassword, String database, List<String> tables) {
         String schema = firstNonBlank(database, conn.databaseName());
         if (schema == null) {
-            return DiagnosticResult.error("MYSQL_TABLE_SPACE_ERROR", translator.get("diagnostics.optimize.unsupported.no_database"));
+            return DiagnosticResult.unsupported(translator.get("diagnostics.space.unsupported.no_database"));
         }
         boolean filtered = tables != null && !tables.isEmpty();
         StringBuilder sql = new StringBuilder("""
@@ -281,7 +281,7 @@ public class MySqlDiagnosticsProvider extends AbstractDiagnosticsProvider {
         try {
             Long before = mysqlDataFree(conn, decryptedPassword, schema, table);
             long start = System.currentTimeMillis();
-            executeUpdate(withDatabaseOverride(conn, schema), decryptedPassword, sql);
+            executeStatement(withDatabaseOverride(conn, schema), decryptedPassword, sql);
             long duration = Math.max(System.currentTimeMillis() - start, 0L);
             Long after = mysqlDataFree(conn, decryptedPassword, schema, table);
             Long reclaimed = before != null && after != null ? Math.max(before - after, 0L) : null;
@@ -418,7 +418,12 @@ public class MySqlDiagnosticsProvider extends AbstractDiagnosticsProvider {
 
     private static Object firstValue(List<Map<String, Object>> rows) {
         if (rows == null || rows.isEmpty() || rows.get(0).isEmpty()) return null;
-        if (rows.get(0).containsKey("Value")) return rows.get(0).get("Value");
+        for (var entry : rows.get(0).entrySet()) {
+            String key = entry.getKey();
+            if ("Value".equalsIgnoreCase(key) || "Variable_value".equalsIgnoreCase(key)) {
+                return entry.getValue();
+            }
+        }
         return rows.get(0).values().iterator().next();
     }
 

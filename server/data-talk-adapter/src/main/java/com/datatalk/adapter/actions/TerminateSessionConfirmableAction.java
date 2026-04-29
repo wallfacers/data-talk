@@ -26,7 +26,7 @@ import java.util.regex.Pattern;
 )
 public class TerminateSessionConfirmableAction implements ActionHandler<Map, Map> {
 
-    private static final Pattern SESSION_ID = Pattern.compile("^[0-9]+$|^[0-9]+,[0-9]+$");
+    private static final Pattern SESSION_ID = Pattern.compile("^[0-9]+$");
     private final DiagnosticsService diagnosticsService;
     private final Translator translator;
 

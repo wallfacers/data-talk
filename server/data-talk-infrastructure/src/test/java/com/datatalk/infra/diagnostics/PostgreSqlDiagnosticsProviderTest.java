@@ -73,6 +73,15 @@ class PostgreSqlDiagnosticsProviderTest {
     }
 
     @Test
+    void lockInfo_doesNotJoinHolderLocksAgain() {
+        provider.respond("pg_catalog.pg_locks", rows());
+
+        provider.lockInfo(testConn("postgres"), "pw", "postgres");
+
+        assertThat(provider.sqls()).anySatisfy(sql -> assertThat(sql).doesNotContain("blocking_locks"));
+    }
+
+    @Test
     void lockInfo_permissionDenied_returnsUnsupported() {
         provider.failQueries(new SQLException("permission denied", "42501"));
 
@@ -84,17 +93,18 @@ class PostgreSqlDiagnosticsProviderTest {
 
     @Test
     void poolStatus_mapsServerCounters() {
-        provider.respond("pg_stat_activity", rows(row("active", 10, "idle", 15, "waiting", 2)));
+        provider.respond("pg_stat_activity", rows(row("active", 25, "running", 10, "idle", 15, "waiting", 2)));
         provider.respond("SHOW max_connections", rows(row("max_connections", "100")));
 
         var result = (DiagnosticResult.Ok<PoolReport>) provider.poolStatus(testConn("postgres"), "pw");
 
         assertThat(result.value().scope()).isEqualTo("server");
-        assertThat(result.value().activeConnections()).isEqualTo(10);
+        assertThat(result.value().activeConnections()).isEqualTo(25);
         assertThat(result.value().idleConnections()).isEqualTo(15);
         assertThat(result.value().maxConnections()).isEqualTo(100);
         assertThat(result.value().threadsRunning()).isEqualTo(10);
         assertThat(result.value().waitingConnections()).isEqualTo(2);
+        assertThat(provider.sqls()).anySatisfy(sql -> assertThat(sql).contains("idle in transaction"));
     }
 
     @Test
@@ -136,6 +146,8 @@ class PostgreSqlDiagnosticsProviderTest {
         assertThat(result.value().engine()).isEqualTo("postgresql");
         assertThat(result.value().willRunSql()).isEqualTo("SELECT pg_terminate_backend(42)");
         assertThat(result.value().currentSql()).isEqualTo("SELECT * FROM orders");
+        assertThat(provider.sqls()).anySatisfy(sql -> assertThat(sql).contains("pid = ?::integer"));
+        assertThat(provider.params()).anySatisfy(params -> assertThat(params).containsExactly(42));
     }
 
     @Test
@@ -143,6 +155,8 @@ class PostgreSqlDiagnosticsProviderTest {
         provider.respond("pg_terminate_backend", rows(row("terminated", true)));
         var success = (DiagnosticResult.Ok<TerminateSessionResult>) provider.terminateSession(testConn("postgres"), "pw", "42", "postgres");
         assertThat(success.value().ok()).isTrue();
+        assertThat(provider.sqls()).anySatisfy(sql -> assertThat(sql).contains("pg_terminate_backend(?::integer)"));
+        assertThat(provider.params()).anySatisfy(params -> assertThat(params).containsExactly(42));
 
         provider.respond("pg_terminate_backend", rows(row("terminated", false)));
         var missing = (DiagnosticResult.Ok<TerminateSessionResult>) provider.terminateSession(testConn("postgres"), "pw", "42", "postgres");
@@ -207,7 +221,7 @@ class PostgreSqlDiagnosticsProviderTest {
 
         provider.applySchema(connection, "public");
 
-        verify(statement).execute("SET search_path TO public");
+        verify(statement).execute("SET search_path TO \"public\"");
         verify(statement).close();
     }
 

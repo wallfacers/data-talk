@@ -205,6 +205,17 @@ class DiagnosticsServiceTest {
         assertThat(((DiagnosticResult.Ok<OptimizeTableResult>) service.optimizeTable("s1", "users", null)).value()).isEqualTo(optimizeResult);
     }
 
+    @Test
+    void terminateAndOptimizeUnsupported_useGenericReasonForUnknownDialects() {
+        arrange("sqlite", Set.of());
+
+        var terminate = (DiagnosticResult.Unsupported<TerminateSessionPreview>) service.terminateSessionPreview("s1", "42");
+        var optimize = (DiagnosticResult.Unsupported<OptimizeTablePreview>) service.optimizeTablePreview("s1", "users", null);
+
+        assertThat(terminate.reason()).contains("sqlite").doesNotContain("Oracle");
+        assertThat(optimize.reason()).contains("sqlite").doesNotContain("Oracle");
+    }
+
     private ConnectionRecord arrange(String kind, Set<DiagnosticCapability> capabilities) {
         var conn = testConn(kind);
         when(sessionContexts.get("s1")).thenReturn(context());
@@ -239,8 +250,10 @@ class DiagnosticsServiceTest {
         source.addMessage("diagnostics.space.unsupported.oracle", Locale.ENGLISH, "Oracle diagnostics not yet available");
         source.addMessage("diagnostics.terminate.unsupported.h2", Locale.ENGLISH, "H2 does not support session termination");
         source.addMessage("diagnostics.terminate.unsupported.oracle", Locale.ENGLISH, "Oracle diagnostics not yet available");
+        source.addMessage("diagnostics.terminate_not_supported", Locale.ENGLISH, "{0} session termination is not yet supported");
         source.addMessage("diagnostics.optimize.unsupported.h2", Locale.ENGLISH, "H2 does not support reclaiming space; ANALYZE only updates statistics");
         source.addMessage("diagnostics.optimize.unsupported.oracle", Locale.ENGLISH, "Oracle diagnostics not yet available");
+        source.addMessage("diagnostics.optimize_not_supported", Locale.ENGLISH, "{0} table optimization is not yet supported");
         source.addMessage("diagnostics.lock.recommendation.terminate", Locale.ENGLISH, "Holder session {0} has blocked for {1}s; consider terminating it");
         source.addMessage("diagnostics.pool.recommendation.high_usage_warning", Locale.ENGLISH, "Connection usage is at {0}%, approaching capacity");
         source.addMessage("diagnostics.pool.recommendation.high_usage_critical", Locale.ENGLISH, "Connection usage is at {0}%, near maximum capacity");

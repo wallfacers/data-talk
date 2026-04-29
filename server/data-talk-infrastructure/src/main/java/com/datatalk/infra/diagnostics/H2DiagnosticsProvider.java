@@ -103,7 +103,7 @@ public class H2DiagnosticsProvider extends AbstractDiagnosticsProvider {
         StringBuilder sql = new StringBuilder("""
             SELECT table_schema, table_name, row_count_estimate
             FROM information_schema.tables
-            WHERE table_schema NOT IN ('INFORMATION_SCHEMA', 'PUBLIC.PG_CATALOG')
+            WHERE table_schema NOT IN ('INFORMATION_SCHEMA', 'PG_CATALOG')
             """);
         List<Object> params = new ArrayList<>();
         if (filtered) {

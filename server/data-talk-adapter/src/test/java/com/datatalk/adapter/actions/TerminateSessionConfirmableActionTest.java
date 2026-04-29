@@ -100,6 +100,14 @@ class TerminateSessionConfirmableActionTest {
         verifyNoInteractions(service);
     }
 
+    @Test
+    void commaSeparatedSessionIdReturnsInvalidInputError() {
+        Map out = action.handle(ctx, Map.of("sessionId", "42,43")).toCompletableFuture().join();
+
+        assertThat(((Map<?, ?>) out.get("error")).get("type")).isEqualTo("INVALID_INPUT");
+        verifyNoInteractions(service);
+    }
+
     private Translator translator() {
         var source = new StaticMessageSource();
         source.addMessage("diagnostics.error.invalid_session_id", Locale.ENGLISH, "Invalid session id format");
