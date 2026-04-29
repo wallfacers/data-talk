@@ -10,6 +10,8 @@ import org.springframework.core.io.ClassPathResource;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -207,15 +209,21 @@ class AgentPromptContractTest {
             .contains("full");
         assertThat(uiPatchSchema)
             .contains("query_editor")
+            .contains("er_inspector")
+            .contains("add")
+            .contains("remove")
             .contains("replace")
-            .contains("/content")
-            .contains("/connectionId")
-            .contains("/database")
-            .contains("/schema");
+            .contains("baseVersion")
+            .contains("JSON Pointer");
         assertThat(uiExecSchema)
             .contains("workspace")
             .contains("query_editor")
+            .contains("er_inspector")
             .contains("choose_connection")
+            .contains("open_er_inspector")
+            .contains("open_er_designer")
+            .contains("auto_layout")
+            .contains("add_neighbors")
             .contains("apply_text_edits")
             .contains("set_context")
             .contains("run_sql")
@@ -223,6 +231,47 @@ class AgentPromptContractTest {
             .contains("connection_id")
             .contains("baseVersion")
             .contains("preferredConnectionId");
+    }
+
+    @Test
+    void agentsMdReferencesErInspectorVerbs() throws IOException {
+        String prompt = loadPrompt();
+
+        assertThat(prompt)
+            .contains("## ER Tabs (Inspector & Designer)")
+            .contains("ui_exec(workspace, open_er_inspector")
+            .contains("ui_patch(inspector_tab,")
+            .contains("filter: { type: \"er_inspector\" }")
+            .doesNotContain("datatalk_layout_erd");
+    }
+
+    @Test
+    void uiExecActionSchemaContainsOpenErInspectorVerb() {
+        Map<String, Object> schema = registry.require("datatalk.ui.exec").inputSchema();
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> oneOf = (List<Map<String, Object>>) schema.get("oneOf");
+
+        boolean hasOpenErInspector = oneOf.stream()
+            .map(s -> (Map<String, Object>) s.get("properties"))
+            .map(p -> (Map<String, Object>) p.get("action"))
+            .filter(a -> a != null)
+            .map(a -> (List<?>) a.get("enum"))
+            .filter(en -> en != null)
+            .anyMatch(en -> en.contains("open_er_inspector"));
+
+        assertThat(hasOpenErInspector).isTrue();
+    }
+
+    @Test
+    void uiPatchActionSchemaAllowsErInspectorObject() {
+        Map<String, Object> schema = registry.require("datatalk.ui.patch").inputSchema();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> properties = (Map<String, Object>) schema.get("properties");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> object = (Map<String, Object>) properties.get("object");
+
+        List<?> objectTypes = (List<?>) object.get("enum");
+        assertThat(objectTypes.stream().map(String::valueOf)).contains("er_inspector");
     }
 
     @Test

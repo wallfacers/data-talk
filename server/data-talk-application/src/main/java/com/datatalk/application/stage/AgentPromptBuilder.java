@@ -1,9 +1,13 @@
 package com.datatalk.application.stage;
 
 import com.datatalk.domain.stage.StageTab;
+import com.datatalk.domain.stage.StageTabContent;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -21,6 +25,7 @@ public class AgentPromptBuilder {
     private static final int MAX_TABS = 10;
     private static final int MAX_TITLE_CHARS = 80;
     private static final int MAX_RENDERED_CHARS = 1_500;
+    private static final ObjectMapper OM = new ObjectMapper();
 
     private final StageTabRepository repo;
     private final SessionTitleLookup lookup;
@@ -75,12 +80,18 @@ public class AgentPromptBuilder {
         } else {
             sb.append("Recently-touched tabs (top ").append(recent.size())
               .append(" by lastTouchedAt, archived excluded):\n");
+            Map<String, StageTabContent> erInspectorContent = erInspectorContentByTabId(recent);
             long now = System.currentTimeMillis();
             int i = 1;
             for (StageTab t : recent) {
                 sb.append(i++).append(". ")
                     .append(t.type()).append(" `").append(t.id()).append("` ")
-                    .append("\"").append(escape(t.title())).append("\"\n");
+                    .append("\"").append(escape(t.title())).append("\"");
+                String erStats = erInspectorStats(t, erInspectorContent.get(t.id()));
+                if (!erStats.isBlank()) {
+                    sb.append(" ").append(erStats);
+                }
+                sb.append("\n");
                 sb.append("   conn=").append(orDash(t.connectionId()))
                     .append(" db=").append(orDash(t.databaseName()))
                     .append(" schema=").append(orDash(t.schemaName()))
@@ -98,6 +109,59 @@ public class AgentPromptBuilder {
         sb.append("Use `datatalk_ui_find` to locate tabs not listed above; the snapshot caps at ")
           .append(MAX_TABS).append(" entries to save tokens.\n");
         return sb.toString();
+    }
+
+    private Map<String, StageTabContent> erInspectorContentByTabId(List<StageTab> tabs) {
+        List<String> ids = tabs.stream()
+            .filter(t -> "er_inspector".equals(t.type()))
+            .map(StageTab::id)
+            .toList();
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, StageTabContent> byId = new LinkedHashMap<>();
+        for (StageTabContent content : repo.findContents(ids)) {
+            byId.put(content.tabId(), content);
+        }
+        return byId;
+    }
+
+    private static String erInspectorStats(StageTab tab, StageTabContent content) {
+        if (!"er_inspector".equals(tab.type())) {
+            return "";
+        }
+
+        int tableCount = 0;
+        int relationCount = 0;
+        String connectionId = tab.connectionId();
+        if (content != null) {
+            try {
+                JsonNode root = OM.readTree(content.payloadJson());
+                connectionId = nonBlank(root.path("connectionId").asText(null), connectionId);
+                JsonNode tables = root.path("tablesSnapshot");
+                if (tables.isArray()) {
+                    tableCount = tables.size();
+                    for (JsonNode table : tables) {
+                        JsonNode fkOut = table.path("fkOut");
+                        if (fkOut.isArray()) {
+                            relationCount += fkOut.size();
+                        }
+                    }
+                }
+                JsonNode virtualRelations = root.path("virtualRelations");
+                if (virtualRelations.isArray()) {
+                    relationCount += virtualRelations.size();
+                }
+            } catch (Exception ignored) {
+                // Keep the prompt render resilient; malformed payloads still get metadata below.
+            }
+        }
+        return "(" + tableCount + " tables \u00b7 " + relationCount + " relations \u00b7 conn="
+            + orDash(connectionId) + ")";
+    }
+
+    private static String nonBlank(String candidate, String fallback) {
+        return candidate == null || candidate.isBlank() ? fallback : candidate;
     }
 
     static String escape(String title) {
