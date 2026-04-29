@@ -14,7 +14,6 @@ import {
 } from '@/components/ui/input-group'
 import { DataSourcePicker } from './data-source-picker/data-source-picker'
 import { ModelPicker } from './model-picker/model-picker'
-import { Switch } from '@/components/ui/switch'
 import { useSessionStore } from '@/stores/session-store'
 import { useChatPartsStore } from '@/stores/chat-parts-store'
 import { useConnectionStore } from '@/features/connection/store'
@@ -66,7 +65,6 @@ export function PromptComposer() {
 function InnerComposer() {
   const { t } = useI18n()
   const [text, setText] = useState('')
-  const [autoMode, setAutoMode] = useState(true)
   const { sendMessage, abort, isStreaming, canAbort } = useChannel()
   const activeSessionId = useSessionStore((s) => s.activeSessionId)
   const openSession = useSessionStore((s) => s.openSession)
@@ -357,25 +355,6 @@ function InnerComposer() {
 
             {/* Data source selector */}
             <DataSourcePicker sessionId={activeSessionId} />
-
-            {/* Auto toggle */}
-            <InputGroupText
-              className="cursor-pointer gap-1.5 text-xs"
-              style={{ color: 'var(--foreground)' }}
-              onClick={(e) => {
-                e.stopPropagation()
-                if ((e.target as HTMLElement).closest('[data-slot=switch]')) return
-                setAutoMode((v) => !v)
-              }}
-            >
-              <Switch
-                size="sm"
-                checked={autoMode}
-                onCheckedChange={setAutoMode}
-                className="data-[size=sm]:h-[14px] data-[size=sm]:w-[24px]"
-              />
-              {t('session.autoMode')}
-            </InputGroupText>
 
             {/* Stage 开关：手动打开/关闭右侧"电脑"窗体 */}
             <StageToggleButton />

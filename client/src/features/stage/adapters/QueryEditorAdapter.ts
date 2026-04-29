@@ -8,7 +8,7 @@ import { useSessionStore } from '@/stores/session-store'
 import { formatQueryEditorSql, runQueryEditorSql, setQueryEditorContext } from '@/features/stage/utils/query-editor-actions'
 import { resolveTabDataContext } from '@/features/stage/utils/resolve-tab-data-context'
 
-type ContentPatchOp = JsonPatchOp & { baseVersion?: number }
+type ContentPatchOp = JsonPatchOp
 
 const ACTIONS: ActionDef[] = [
   {
@@ -90,6 +90,10 @@ function isReplaceValue(value: unknown): value is string | null {
 
 function hasBaseVersion(op: ContentPatchOp): op is ContentPatchOp & { baseVersion: number } {
   return typeof op.baseVersion === 'number'
+}
+
+function hasInvalidBaseVersion(op: ContentPatchOp): boolean {
+  return op.baseVersion !== undefined && typeof op.baseVersion !== 'number'
 }
 
 function summarizeResult(result: {
@@ -314,6 +318,13 @@ export class QueryEditorAdapter implements UIObject {
         case '/content': {
           if (typeof op.value !== 'string') {
             return patchError('Invalid /content value', 'Expected a string')
+          }
+          if (hasInvalidBaseVersion(op)) {
+            return patchError({
+              code: 'invalid_base_version',
+              message: 'Patch /content requires numeric baseVersion',
+              hint: 'Re-read with `ui_read(mode=\'state\')` and retry with the numeric `version` from the query editor state. `baseVersion: "auto"` is not supported for query_editor /content.',
+            })
           }
           if (!hasBaseVersion(op)) {
             const { payload, workbenchTab } = this.getResolvedState()

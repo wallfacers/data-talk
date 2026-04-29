@@ -5,6 +5,7 @@ import {
   isPersistent,
   getScope,
 } from '../tab-type-registry'
+import { useErTabsStore } from '../../stores/er-tabs-store'
 
 describe('tab-type-registry', () => {
   it('query_editor is persistent and workspace-scoped', () => {
@@ -105,5 +106,80 @@ describe('tab-type-registry', () => {
 
   it('extractContent returns empty string for null er_inspector payload', () => {
     expect(getTabTypeDescriptor('er_inspector').extractContent(null)).toBe('')
+  })
+
+  it('er_designer is registered as workspace-scope persistent', () => {
+    expect(TAB_TYPE_REGISTRY.er_designer).toBeDefined()
+    expect(isPersistent('er_designer')).toBe(true)
+    expect(getScope('er_designer')).toBe('workspace')
+  })
+
+  it('extractContent indexes ER designer target, tables, columns, comments, and relations', () => {
+    const desc = getTabTypeDescriptor('er_designer')
+    const text = desc.extractContent({
+      kind: 'er_designer',
+      dialect: 'mysql',
+      targetConnectionId: 'conn-1',
+      targetDatabase: 'sales',
+      targetSchema: 'public',
+      tables: [
+        {
+          id: 't_orders',
+          name: 'orders',
+          comment: '订单主表',
+          columns: [
+            { id: 'c_order_id', name: 'id', type: 'BIGINT', nullable: false, isPrimaryKey: true, isAutoIncrement: true },
+            { id: 'c_user_id', name: 'user_id', type: 'BIGINT', nullable: false, isPrimaryKey: false, isAutoIncrement: false, comment: 'owner' },
+          ],
+          indexes: [{ name: 'idx_orders_user', columns: ['user_id'] }],
+          uniques: [{ columns: ['id'] }],
+        },
+        {
+          id: 't_users',
+          name: 'users',
+          columns: [
+            { id: 'c_users_id', name: 'id', type: 'BIGINT', nullable: false, isPrimaryKey: true, isAutoIncrement: true },
+          ],
+          indexes: [],
+          uniques: [],
+        },
+      ],
+      relations: [
+        {
+          id: 'r_orders_users',
+          fromTableId: 't_orders',
+          fromColumnId: 'c_user_id',
+          toTableId: 't_users',
+          toColumnId: 'c_users_id',
+          type: 'many_to_one',
+          constraintMethod: 'database_fk',
+        },
+      ],
+      positions: {},
+      collapsed: [],
+      viewport: { x: 0, y: 0, zoom: 1 },
+    })
+
+    expect(text).toContain('target conn-1 sales public mysql')
+    expect(text).toContain('orders id BIGINT user_id BIGINT 订单主表 owner')
+    expect(text).toContain('relation orders.user_id -> users.id many_to_one database_fk')
+    expect(text).toContain('index idx_orders_user user_id')
+    expect(text).toContain('unique id')
+  })
+
+  it('rehydrates er_designer payloads into the ER tabs store', () => {
+    const payload = {
+      kind: 'er_designer',
+      dialect: 'mysql',
+      tables: [],
+      relations: [],
+      positions: {},
+      collapsed: [],
+      viewport: { x: 0, y: 0, zoom: 1 },
+    }
+
+    getTabTypeDescriptor('er_designer').rehydrate?.('d-registry', payload)
+
+    expect((useErTabsStore.getState().designers.get('d-registry') as { kind?: string } | undefined)?.kind).toBe('er_designer')
   })
 })

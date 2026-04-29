@@ -128,10 +128,15 @@ export function normalizeQueryEditorPayload(payload: unknown): NormalizedQueryEd
   const value = isPlainObject(payload) ? payload : {}
   const source = normalizeSource(value.source)
   const initialResult = normalizeResult(value.initialResult)
+  const initialSql = typeof value.initialSql === 'string'
+    ? value.initialSql
+    : typeof value.content === 'string'
+      ? value.content
+      : typeof value.sql === 'string' ? value.sql : ''
 
   return {
     entryMode: normalizeEntryMode(value.entryMode, source),
-    initialSql: typeof value.initialSql === 'string' ? value.initialSql : typeof value.sql === 'string' ? value.sql : '',
+    initialSql,
     source,
     autoRun: value.autoRun === true,
     initialResult,

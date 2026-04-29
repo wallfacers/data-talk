@@ -152,4 +152,32 @@ describe('ui-handlers', () => {
     const flushOrder = (coordinator.flush as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0]
     expect(hydrateOrder).toBeLessThan(flushOrder)
   })
+
+  it('ui_patch handler applies top-level baseVersion to patch ops before dispatch', async () => {
+    let receivedOps: unknown[] = []
+    uiRouter.registerInstance('base-version-test', {
+      type: 'query_editor',
+      objectId: 'base-version-test',
+      title: 'Base Version Test',
+      patchCapabilities: [{ pathPattern: '/content', ops: ['replace'] }],
+      read: () => ({}),
+      patch: async (ops) => {
+        receivedOps = ops
+        return { status: 'applied' }
+      },
+      exec: async () => ({ success: true }),
+    })
+
+    const h = getClientHandler('datatalk.ui.patch')!
+    await h({
+      object: 'query_editor',
+      target: 'base-version-test',
+      baseVersion: 1,
+      ops: [{ op: 'replace', path: '/content', value: 'select 2' }],
+    }, { sessionId: 's1' })
+
+    expect(receivedOps).toEqual([
+      { op: 'replace', path: '/content', value: 'select 2', baseVersion: 1 },
+    ])
+  })
 })

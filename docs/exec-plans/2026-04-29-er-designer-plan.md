@@ -13,11 +13,18 @@
 ## Status
 
 - **Created:** 2026-04-29
-- **State:** Active (not started; gated on Plan A acceptance)
+- **State:** Active (implementation + automated verification completed 2026-04-29; manual Tauri + real-database smoke pending)
 - **Spec:** [docs/product-specs/2026-04-29-er-graph-browsing-design.md](../product-specs/2026-04-29-er-graph-browsing-design.md)
 - **Phase:** Plan B of 2 (Plan A `er_inspector` ships first)
 - **Dependency:** Plan A must be merged and Plan A's exit criteria satisfied (mvn verify green, tsc clean, npm test green, real-database smoke pass) before any Plan B task starts. The shared canvas / store / persistence pipeline / global adapter registry are foundations Plan B builds on, not parallel work.
 - **Estimated effort:** 3-4 weeks
+
+### Execution Checkpoint — 2026-04-29
+
+- Code implementation for Tasks 1-30 was completed through parallel subagents, then integrated in one consolidated pass.
+- Backend verification passed: `cd server && mvn compile -q`; `cd server && mvn clean verify` finished with `BUILD SUCCESS` (adapter failsafe summary: 140 tests, 0 failures, 0 errors, 2 skipped).
+- Frontend verification passed: `cd client && npx tsc --noEmit && npm test -- --run` finished with 137 test files / 826 tests passed.
+- Manual smoke in Task 31 was **not executed** in this terminal session because it requires a running Tauri desktop app and a writable real MySQL connection. Do not move this plan to Completed until Task 31 is run or explicitly waived by the owner.
 
 ## Context
 
@@ -3480,21 +3487,27 @@ git commit -m "docs(compat): record Designer DDL matrix; SQLite is CREATE-only"
 
 ### Task 29: Backend full verification
 
-- [ ] **Step 1: `mvn clean verify`**
+- [x] **Step 1: `mvn clean verify`**
 
 Run: `cd server && mvn clean verify`
 Expected: BUILD SUCCESS; all tests green.
 
+Status 2026-04-29: passed. Maven reported `BUILD SUCCESS`; adapter failsafe summary was 140 tests, 0 failures, 0 errors, 2 skipped.
+
 ### Task 30: Frontend full verification
 
-- [ ] **Step 1: `tsc --noEmit` + `npm test`**
+- [x] **Step 1: `tsc --noEmit` + `npm test`**
 
 Run: `cd client && npx tsc --noEmit && npm test -- --run`
 Expected: zero errors; all suites green.
 
+Status 2026-04-29: passed. `npx tsc --noEmit && npm test -- --run` exited 0 with 137 test files / 826 tests passed.
+
 ### Task 31: Manual end-to-end smoke (real database)
 
 - [ ] **Step 1: Walk through the Apply flow**
+
+Status 2026-04-29: not executed in this terminal session. Requires a running Tauri app plus a writable real MySQL connection such as `test-mysql`.
 
 In a running Tauri app with a MySQL connection ("test-mysql") that has at least one writable schema:
 
@@ -3511,6 +3524,8 @@ In a running Tauri app with a MySQL connection ("test-mysql") that has at least 
 - [ ] **Step 2: Tick the spec checklist**
 
 Open the spec and mark Plan B's section §13 acceptance criteria as completed.
+
+Status 2026-04-29: deferred until the manual real-database smoke is executed or explicitly waived.
 
 ### Task 32: `docs/exec-plans/index.md` housekeeping
 

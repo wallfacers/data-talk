@@ -63,6 +63,51 @@ partial because the frontend connection form is not wired for user SQLite
 connections; `oracle` and `sqlserver` are explicitly unsupported and must return
 structured `dialect_unsupported` guidance instead of a fake empty ER graph.
 
+ER Designer follows this DDL matrix: `mysql`, `postgresql` / `postgres`, and
+`h2` generate day-1 DDL for `CREATE TABLE`, `ALTER ADD COLUMN`, `ALTER ADD FK`,
+and `CREATE INDEX`; `sqlite` is CREATE-only for table/index generation and must
+return `SkippedOp` for ALTER variants; `oracle` and `sqlserver` are explicitly
+unsupported with `dialect_unsupported`. DROP, ALTER COLUMN type changes, and
+RENAME are N/A for day-1 automated generation because they are always returned
+as `SkippedOp` with `day1_unsupported`; users must write that SQL manually in
+`query_editor` and execute it through the existing L2/L3 guarded SQL flow.
+
+### Feature Compatibility Matrix
+
+| Feature | Compatibility notes |
+|---|---|
+| ER Tabs (Inspector + Designer) | Inspector: mysql / postgresql / h2 fully via JDBC `getImportedKeys`; sqlite incomplete frontend; oracle / sqlserver `dialect_unsupported`. Designer day-1 DDL generation: mysql / postgresql / h2 emit CREATE TABLE / ALTER ADD COLUMN / ALTER ADD FK / CREATE INDEX; sqlite is CREATE-only with all ALTER variants returning `SkippedOp`; oracle / sqlserver `dialect_unsupported`. DROP / ALTER COLUMN type / RENAME are always `SkippedOp` (`day1_unsupported`) regardless of dialect; users must write that SQL manually in the `query_editor` and run it through L2/L3 confirmation. |
+
+### ER Designer Gate Notes
+
+- Domain Layer: N/A for this adapter/docs slice; domain records/enums are owned
+  by the backend core ER Designer worker.
+- Application Connection Layer: N/A for this adapter/docs slice; no new
+  connection kind, JDBC URL shape, database/schema semantics, or target
+  resolution behavior is introduced here.
+- Persistence And Metadata DB: N/A; ER Designer reuses existing generic Stage
+  tab persistence and does not add metadata DB columns or migrations.
+- JDBC Driver And Runtime Packaging: N/A; day-1 DDL support only covers
+  existing supported drivers/kinds and does not add dependencies.
+- Dynamic SQL Execution Repository: N/A; generated DDL lands in `query_editor`
+  and uses the existing guarded SQL execution path.
+- Result Values, Analytics, Visualization, And Reports: N/A; ER Designer DDL
+  generation does not change SQL result value shapes, charting, reports, or
+  exports.
+- SQL Statement Splitting: N/A; generated DDL is executed later by
+  `query_editor` through existing splitter/guard behavior for the selected
+  connection kind.
+- SQL Risk Analysis And Guards: N/A for generation; execution still uses the
+  existing L2/L3 guarded SQL path and no new mutation egress is introduced.
+- Schema Discovery And Target Resolution: Applicable only through existing
+  bound connection/database/schema fields; this slice adds REST/action hooks,
+  not new target-resolution semantics.
+- Adapter Actions And Ontology: Applicable; `ui_exec` exposes ER Designer
+  verbs, `ui_patch` accepts `er_designer`, REST endpoints return structured
+  target/dialect errors, and message bundles include user-visible descriptions.
+- Diagnostics Compatibility Checklist: N/A; ER Designer does not add or change
+  diagnostics providers/actions.
+
 ## Roadmap Expansion Candidates
 
 These are roadmap candidates, not supported kinds. A candidate becomes

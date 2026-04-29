@@ -311,17 +311,19 @@ Frontend work in this roadmap must follow [client/DESIGN.md](../../client/DESIGN
 - Review later: `client/src/features/chat/components/markdown/chart-block.tsx`
 - Review later: `client/src/features/stage/components/artifact-preview-tab.tsx`
 
-- [ ] **Step 8.1: Keep visualization behind cross-session persistence**
+- [x] **Step 8.1: Keep visualization behind cross-session persistence**
   - ER designer, report builder, and dashboard composition only deliver real product value once Task 6 (cross-session Tab persistence) ships, because these objects are long-lived and edited across sessions.
   - Task 6 has now shipped; visualization is no longer blocked by persistence. Start with one child spec and one production slice.
   - Existing disabled / placeholder ER, report, and dashboard UI is intentionally moved out of tech-debt tracking. It is the visible product backlog for this task and should be retired by the relevant visualization child plans.
+  - Status 2026-04-29: ER Inspector Plan A and ER Designer Plan B both use persistent workbench-scope Stage tabs registered through the Task 6 substrate.
 
-- [ ] **Step 8.2: Pick one first visualization slice**
+- [x] **Step 8.2: Pick one first visualization slice**
   - Candidate A: ER graph browsing from metadata, evolving toward an editable `er_designer` Tab type registered as workbench-scope under Task 6.
   - Candidate B: chart editing and replacement from existing chart fence artifacts.
   - Candidate C: dashboard tab that composes existing chart artifacts, registered as a workbench-scope persistent Tab via Task 6.
   - The first visualization child plan should choose one candidate only, and explicitly state how its persistent objects integrate with `ui_find` / `ui_patch`.
   - Recommendation after the 2026-04-29 roadmap review: choose Candidate A first, because `LayoutErdAction` already exists and ER browsing is the narrowest visualization slice that exercises persistent workbench objects without requiring dashboard composition semantics.
+  - Status 2026-04-29: Candidate A was selected and implemented through [ER Inspector Plan A](./2026-04-29-er-inspector-plan.md) plus [ER Designer Plan B](./2026-04-29-er-designer-plan.md). Automated verification passed; Plan B manual real-database smoke remains pending in its active plan.
 
 ### Task 9: Data Source Coverage Expansion
 
@@ -446,7 +448,7 @@ Frontend work in this roadmap must follow [client/DESIGN.md](../../client/DESIGN
 - Task 6 (Cross-Session Workbench Persistence) is closed; future work should use the shipped persistent Tab + `ui_find` substrate instead of reopening the foundation.
 - Task 7 (Intelligent Operations) is closed as a read-only diagnostics slice.
 - Query history persistence is a deferred product enhancement. It should reuse the Task 6 persistent Tab / `ui_find` substrate first and should not be tracked as technical debt unless a concrete reliability or data-loss defect is found.
-- Task 8 (Visualization Expansion) is the next product candidate. ER / report / dashboard objects must register as workbench-scope persistent Tabs from the start; do not ship throwaway session-scope versions first.
+- Task 8 (Visualization Expansion) has its first ER slice implemented through Plan A + Plan B. ER objects register as workbench-scope persistent Tabs; Plan B remains active only for manual Tauri + real-database smoke before final completion. Report/dashboard remain future visualization candidates.
 - Task 9 (Data Source Coverage Expansion) is a platform-expansion track. It can run as independent child specs after each candidate kind passes the data-source gate; do not batch unrelated dialects unless they share driver semantics and test fixtures.
 - Task 10 (External Data Ingestion) is a phase-3 placeholder; do not open a child spec until at least one Task 8 slice is in production and Task 9 has at least one stable target data source beyond the current first-class set.
 - Task 11 (OpenCode Workdir & File Artifact System) is an **out-of-roadmap** runtime-infrastructure track inserted on 2026-04-29. Runs in parallel with Task 8 visualization (does not block it; physical persistence of long-lived ER / report objects from Task 8 will eventually flow through Task 11). Part 1 (Migration & Domain) is the active starting point; Parts 2-5 are written as Part 1 lands. Backend-first: Parts 1-3 stabilize the domain + watcher + MCP protocol before Part 4 introduces frontend tabs and Part 5 ties deletion flows together with housekeeping.
@@ -470,7 +472,7 @@ Every child implementation plan created from this roadmap must include:
 - Guarded DDL / DML execution has a child spec that connects backend risk enforcement to frontend confirmation UI. _(shipped)_
 - Cross-session workbench persistence + `ui_find` has a child spec covering Tab persistence schema, content indexing, action contract, sidebar surface, and AI integration; all classified Tab types have an explicit workbench-scope vs session-scope decision. _(shipped)_
 - Intelligent operations has a child spec covering read-only diagnostics, dialect boundaries, and AI collaboration rules; surfaces target persistent Tabs from Task 6 where applicable. _(shipped)_
-- Visualization expansion has at least one child spec choosing one initial slice (recommended first slice: ER graph browsing), with explicit `ui_find` / `ui_patch` integration for its persistent objects. Existing ER / report / dashboard placeholders are retired through those product child plans rather than the tech-debt tracker.
+- Visualization expansion has an ER child spec and implementation slice with explicit `ui_find` / `ui_patch` integration for persistent `er_inspector` / `er_designer` objects. Plan B automated verification passed on 2026-04-29; manual real-database smoke remains pending before the ER slice is marked fully complete.
 - Data source coverage expansion has at least one child spec or an explicit prioritization decision for the first wave, and every new kind is tied back to [DATA_SOURCE_TYPE_COMPATIBILITY.md](../DATA_SOURCE_TYPE_COMPATIBILITY.md).
 - External data ingestion remains a registered phase-3 placeholder until Tasks 8 and 9 are stable; no child spec opened prematurely.
 - OpenCode workdir & file artifact system (Task 11, out-of-roadmap) has a code-verified spec v2 and an active Part 1 plan registered in `docs/exec-plans/index.md`; Parts 2-5 are written sequentially as each prior Part lands. Part 1 ships before any Task 8 visualization slice that would produce persistent file artifacts.

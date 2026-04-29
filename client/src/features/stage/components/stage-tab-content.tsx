@@ -4,6 +4,7 @@ import { useStageStore } from '@/stores/stage-store'
 import { useSqlWorkbenchStore } from '../stores/sql-workbench-store'
 import { ArtifactPreviewTab } from './artifact-preview-tab'
 import { DiagnosticsTab } from './diagnostics/diagnostics-tab'
+import { ErDesignerTab } from './er-designer-tab'
 import { ErInspectorTab } from './er-inspector-tab'
 import { FilePreviewTab } from './file-preview-tab'
 import { SqlWorkbenchTab } from './sql-workbench-tab'
@@ -65,6 +66,14 @@ export function StageTabContent() {
     return (
       <div className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <ErInspectorTab key={tab.tabId} tabId={tab.tabId} />
+      </div>
+    )
+  }
+
+  if (tab.type === 'er_designer') {
+    return (
+      <div className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <ErDesignerTab key={tab.tabId} tabId={tab.tabId} />
       </div>
     )
   }

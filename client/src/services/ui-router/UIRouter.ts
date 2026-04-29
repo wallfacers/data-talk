@@ -43,8 +43,16 @@ export class UIRouter {
   }
 
   private async handlePatch(instance: UIObject, payload: unknown): Promise<UIResponse> {
-    const p = (payload ?? {}) as { ops?: Array<{ op: 'add' | 'remove' | 'replace'; path: string; value?: unknown }>; reason?: string }
-    const ops = p.ops ?? []
+    const p = (payload ?? {}) as {
+      ops?: Array<{ op: 'add' | 'remove' | 'replace'; path: string; value?: unknown; baseVersion?: number | 'auto'; expectedVersion?: number | 'auto' }>
+      reason?: string
+      baseVersion?: number | 'auto'
+    }
+    const ops = (p.ops ?? []).map((op) => (
+      p.baseVersion !== undefined && op.baseVersion === undefined && op.expectedVersion === undefined
+        ? { ...op, baseVersion: p.baseVersion }
+        : op
+    ))
     const caps = instance.patchCapabilities
     if (!caps?.length) {
       const result = await instance.patch(ops, p.reason)

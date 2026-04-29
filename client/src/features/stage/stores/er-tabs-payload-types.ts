@@ -63,9 +63,48 @@ export interface ErDesignerPayload {
   targetConnectionId?: string | null
   targetDatabase?: string | null
   targetSchema?: string | null
-  tables: unknown[]
-  relations: unknown[]
+  tables: ErDesignerTableDraft[]
+  relations: ErDesignerRelationDraft[]
   positions: Record<string, { x: number; y: number }>
   collapsed: string[]
   viewport: ErViewport
+}
+
+export interface ErDesignerColumnDraft {
+  id: string
+  name: string
+  type: string
+  nullable: boolean
+  isPrimaryKey: boolean
+  isAutoIncrement: boolean
+  default?: string | null
+  comment?: string | null
+}
+
+export interface ErDesignerIndexDraft {
+  name: string
+  columns: string[]
+}
+
+export interface ErDesignerUniqueDraft {
+  columns: string[]
+}
+
+export interface ErDesignerTableDraft {
+  id: string
+  name: string
+  comment?: string | null
+  columns: ErDesignerColumnDraft[]
+  indexes: ErDesignerIndexDraft[]
+  uniques: ErDesignerUniqueDraft[]
+}
+
+export interface ErDesignerRelationDraft {
+  id: string
+  fromTableId: string
+  fromColumnId: string
+  toTableId: string
+  toColumnId: string
+  type: 'one_to_one' | 'one_to_many' | 'many_to_one' | 'many_to_many'
+  constraintMethod: 'database_fk' | 'comment_ref'
 }

@@ -37,7 +37,7 @@ public class UiExecAction implements ActionHandler<Map, Map> {
                                 "description", "Explicit object id. Omit only when the active object is already clear."
                         )
                 ),
-                "oneOf", List.of(workspaceExecSchema(), queryEditorExecSchema(), erInspectorExecSchema())
+                "oneOf", List.of(workspaceExecSchema(), queryEditorExecSchema(), erInspectorExecSchema(), erDesignerExecSchema())
         );
     }
 
@@ -67,7 +67,29 @@ public class UiExecAction implements ActionHandler<Map, Map> {
                                         Map.entry("connectionId", Map.of("type", "string")),
                                         Map.entry("database", Map.of("type", "string")),
                                         Map.entry("schema", Map.of("type", "string")),
-                                        Map.entry("payload", Map.of("type", "object")),
+                                        Map.entry("payload", Map.of(
+                                                "type", "object",
+                                                "description", "Optional query_editor open payload. SQL content may be provided as initialSql, content, or sql; initialSql wins over content, content wins over sql.",
+                                                "properties", Map.ofEntries(
+                                                        Map.entry("initialSql", Map.of(
+                                                                "type", "string",
+                                                                "description", "Initial SQL text for a query_editor tab."
+                                                        )),
+                                                        Map.entry("content", Map.of(
+                                                                "type", "string",
+                                                                "description", "Initial SQL text alias for query_editor open."
+                                                        )),
+                                                        Map.entry("sql", Map.of(
+                                                                "type", "string",
+                                                                "description", "Legacy initial SQL text alias for query_editor open."
+                                                        )),
+                                                        Map.entry("autoRun", Map.of("type", "boolean")),
+                                                        Map.entry("connectionId", Map.of("type", "string")),
+                                                        Map.entry("connectionName", Map.of("type", "string")),
+                                                        Map.entry("database", Map.of("type", "string")),
+                                                        Map.entry("schema", Map.of("type", "string"))
+                                                )
+                                        )),
                                         Map.entry("target", Map.of("type", "string")),
                                         Map.entry("preferredConnectionId", Map.of("type", "string")),
                                         Map.entry("archived", Map.of(
@@ -203,6 +225,45 @@ public class UiExecAction implements ActionHandler<Map, Map> {
                                         Map.entry("title", Map.of(
                                                 "type", "string",
                                                 "description", "Optional for fork_to_designer."
+                                        ))
+                                )
+                        ))
+                ))
+        );
+    }
+
+    private static Map<String, Object> erDesignerExecSchema() {
+        return Map.ofEntries(
+                Map.entry("required", List.of("object", "action")),
+                Map.entry("properties", Map.ofEntries(
+                        Map.entry("object", Map.of("type", "string", "enum", List.of("er_designer"))),
+                        Map.entry("action", Map.of(
+                                "type", "string",
+                                "enum", List.of(
+                                        "auto_layout", "fit_view",
+                                        "bind_target", "unbind_target",
+                                        "sync_from_db", "diff_against_db", "generate_ddl"
+                                ),
+                                "description", "ER designer verbs. generate_ddl writes DDL into a new query_editor tab and returns its tabId; the user runs it through L2/L3 confirmation."
+                        )),
+                        Map.entry("params", Map.of(
+                                "type", "object",
+                                "properties", Map.ofEntries(
+                                        Map.entry("connectionId", Map.of(
+                                                "type", "string",
+                                                "description", "Required for bind_target."
+                                        )),
+                                        Map.entry("database", Map.of("type", "string")),
+                                        Map.entry("schema", Map.of("type", "string")),
+                                        Map.entry("tables", Map.of(
+                                                "type", "array",
+                                                "items", Map.of("type", "string"),
+                                                "description", "Optional for sync_from_db. Subset of tables to refresh from the bound DB; empty = all bound tables."
+                                        )),
+                                        Map.entry("includeDrops", Map.of(
+                                                "type", "boolean",
+                                                "default", Boolean.FALSE,
+                                                "description", "Optional for generate_ddl. Day-1 always false; reserved for later phases."
                                         ))
                                 )
                         ))

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { cleanup, render } from '@testing-library/react'
 import { uiRouter } from '@/services/ui-router'
 import { useStageStore, type StageTab } from '@/stores/stage-store'
+import { useErTabsStore } from '../stores/er-tabs-store'
 import { StageUIObjectRegistry } from './stage-ui-object-registry'
 
 function resetStageStore() {
@@ -11,6 +12,7 @@ function resetStageStore() {
     openTabIds: new Set(),
     openTabIdsOrdered: [],
   } as unknown as Record<string, unknown>)
+  useErTabsStore.setState({ inspectors: new Map(), designers: new Map() })
 }
 
 function resetUiRouter() {
@@ -20,6 +22,7 @@ function resetUiRouter() {
   uiRouter.unregisterInstance('b1')
   uiRouter.unregisterInstance('r1')
   uiRouter.unregisterInstance('er-1')
+  uiRouter.unregisterInstance('d-1')
   uiRouter.setActiveTabIdProvider(() => null)
 }
 
@@ -222,5 +225,53 @@ describe('StageUIObjectRegistry', () => {
 
     expect(response.error).toBeUndefined()
     expect(response.data).toBeNull()
+  })
+
+  it('registers er_designer tabs in uiRouter through the planned adapter', async () => {
+    const erDesignerTab: StageTab = {
+      tabId: 'd-1',
+      type: 'er_designer',
+      title: 'ER Designer',
+      originSessionId: 's1',
+      connectionId: 'conn-1',
+      payload: {},
+      createdAt: 0,
+      payloadVersion: 1,
+    }
+
+    useStageStore.setState({
+      tabs: [erDesignerTab],
+      activeTabId: 'd-1',
+      openTabIds: new Set(['d-1']),
+      openTabIdsOrdered: ['d-1'],
+    } as unknown as Record<string, unknown>)
+    useErTabsStore.getState().hydrateDesigner('d-1', {
+      kind: 'er_designer',
+      dialect: 'mysql',
+      targetConnectionId: 'conn-1',
+      targetDatabase: null,
+      targetSchema: null,
+      tables: [],
+      relations: [],
+      positions: {},
+      collapsed: [],
+      viewport: { x: 0, y: 0, zoom: 1 },
+    })
+
+    render(<StageUIObjectRegistry tabs={[erDesignerTab]} />)
+
+    const response = await uiRouter.handle({
+      tool: 'ui_read',
+      object: 'er_designer',
+      target: 'd-1',
+      payload: { mode: 'state' },
+    })
+
+    expect(response.error).toBeUndefined()
+    expect(response.data).toEqual(expect.objectContaining({
+      kind: 'er_designer',
+      dialect: 'mysql',
+      targetConnectionId: 'conn-1',
+    }))
   })
 })

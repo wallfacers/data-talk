@@ -205,9 +205,10 @@ Registered UI actions:
 - `mode=full` returns `state`, `schema`, and `actions`. For `query_editor`, `full` also includes `capabilities`.
 - `mode=actions` returns `{ "items": [...] }` where each item has `name`, `description`, and `paramsSchema`.
 
-`datatalk_ui_patch` always uses top-level `object=query_editor`, optional `target`, and `ops`.
+`datatalk_ui_patch` always uses top-level `object=query_editor`, optional `target`, `ops`, and optional top-level `baseVersion`.
 
-- Each patch op is shaped like `{ op, path, value }`, except `/content` also requires `baseVersion`.
+- Each patch op is shaped like `{ op, path, value }`.
+- `/content` requires top-level `baseVersion: number` from the latest `datatalk_ui_read object=query_editor mode=state`; `baseVersion: "auto"` is not valid for query editor content.
 - Only `op=replace` is supported today.
 - Supported patch paths are `/content`, `/connectionId`, `/database`, and `/schema`.
 
@@ -215,7 +216,7 @@ Registered UI actions:
 
 For the workspace (uses snake_case `params.connection_id`):
 
-- `open` (`params.type=query_editor`): opens a tab. Optional `connection_id`, `database`, `schema`, `title`, `payload`.
+- `open` (`params.type=query_editor`): opens a tab. Optional `connection_id`, `database`, `schema`, `title`, `payload`. To prefill SQL, use `params.payload.initialSql`, `params.payload.content`, or legacy `params.payload.sql` (`initialSql` wins over `content`, `content` wins over `sql`).
 - `choose_connection`: prompts the connection chooser. Optional `preferredConnectionId`.
 - `focus(target)`: ensures the tab is in the workset and active. Archived tabs return `tab_archived`.
 - `detach(target)`: removes from workset, keeps in library.
@@ -238,8 +239,9 @@ For a query editor:
 
 DataTalk has two ER tab types — **er_inspector** (read-only view of a real
 schema with annotation overlay) and **er_designer** (independent schema draft
-that can generate DDL for a target connection). In Plan A only er_inspector
-is fully wired; er_designer verbs are reserved.
+that can generate DDL for a target connection). er_designer verbs are live:
+bind a target, diff the draft against the DB, generate DDL into query_editor,
+then have the user review and run it through guarded SQL execution.
 
 See `docs/references/er-tab-protocol.md` for payload shape, patch paths, exec
 verbs, and error contracts.
@@ -251,9 +253,9 @@ verbs, and error contracts.
 | "show how X relates to other tables" | er_inspector | tables=[X], neighborDepth=1 |
 | "show me the ER for db Y" | er_inspector | tables = read_schema(db=Y, limit=100) |
 | "annotate an implicit link between A and B" | (existing er_inspector) | ui_patch /virtualRelations |
-| "design a schema for ..." | er_designer | dialect required (mysql/postgresql/h2). Plan B. |
-| "fork prod into a draft to edit" | er_inspector -> fork_to_designer | preserves table & column shapes. Plan B. |
-| "apply this draft to the test DB" | er_designer + bind_target + generate_ddl | DDL lands in a new query_editor tab; user must confirm via L2. Plan B. |
+| "design a schema for ..." | er_designer | dialect required (mysql/postgresql/h2; sqlite CREATE-only). |
+| "fork prod into a draft to edit" | er_inspector -> fork_to_designer | preserves table & column shapes. |
+| "apply this draft to the test DB" | er_designer + bind_target + diff_against_db + generate_ddl | DDL lands in a query_editor tab; user must confirm via L2/L3. |
 | "find the ER tab containing X" | datatalk_ui_find | filter.type=er_inspector or er_designer + query.mode=fts pattern=X |
 
 ### Hard rules
@@ -262,6 +264,8 @@ verbs, and error contracts.
   views; structural changes belong in a designer or query_editor.
 - Designer never executes DDL on its own. generate_ddl produces a query_editor
   tab; the user runs it under the existing L2/L3 confirmation flow.
+- DDL lands in a query_editor tab and must be user-confirmed through guarded
+  SQL execution. Do not claim a designer action applied schema changes.
 - Oracle and SQL Server are not supported by ER. Use query_editor + read_schema
   instead.
 - Do not pass coordinates. Layout is computed client-side; auto_layout is one
@@ -287,6 +291,35 @@ ui_find({
   output: { mode: "metadata", headLimit: 10 }
 })
 
+#### Create a new designer with a seed table
+ui_exec(workspace, open_er_designer, {
+  dialect: "postgresql",
+  title: "Order System Draft",
+  seedTables: [{
+    name: "users",
+    columns: [{ name: "id", type: "BIGINT", isPrimaryKey: true, isAutoIncrement: true }]
+  }]
+})
+
+#### Fork an inspector into an editable designer
+ui_exec(inspector_tab, fork_to_designer, { title: "Fork of Order ER" })
+
+#### Apply a designer to a target DB
+ui_exec(designer_tab, bind_target, { connectionId, database, schema })
+ui_exec(designer_tab, diff_against_db)
+ui_exec(designer_tab, generate_ddl)
+
+The response includes queryEditorTabId, ddl, and skippedOps. DDL lands in a
+query_editor tab; hand the queryEditorTabId to the user so they can review,
+Run, and confirm through L2/L3 guarded SQL execution.
+
+#### Add a column via patch
+ui_patch(designer_tab, [{
+  op: "add",
+  path: "/tables[id=t_abc123]/columns/-",
+  value: { name: "status", type: "VARCHAR(32)", nullable: false }
+}])
+
 ## Concurrency Contract
 
 Workbench tabs (`query_editor`, `artifact_preview`, `er_inspector`,
@@ -297,7 +330,7 @@ read. Treat every patch and text edit as optimistic and conflict-aware.
 
 ### Required guard fields
 
-- `datatalk_ui_patch` with `path=/content` requires `baseVersion: number`.
+- `datatalk_ui_patch` with `path=/content` requires top-level `baseVersion: number`.
 - `datatalk_ui_exec apply_text_edits` requires `params.baseVersion: number`.
 - Each entry in `params.edits` requires `expectedText: string`, the exact text
   currently occupying `range`. The server compares it after line-ending

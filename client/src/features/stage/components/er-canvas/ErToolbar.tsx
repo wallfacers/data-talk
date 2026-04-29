@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react'
 import {
+  CodeIcon,
+  DiffIcon,
   GitForkIcon,
   LayoutTemplateIcon,
+  LinkIcon,
   MaximizeIcon,
   PlusIcon,
   RefreshCwIcon,
@@ -20,10 +23,79 @@ interface ErToolbarInspectorProps {
   onForkToDesigner: () => void
 }
 
-export type ErToolbarProps = ErToolbarInspectorProps
+type DesignerDialect = 'mysql' | 'postgresql' | 'h2' | 'sqlite'
+
+interface ErToolbarDesignerProps {
+  mode: 'designer'
+  dialect: DesignerDialect
+  hasTarget: boolean
+  onAddTable: () => void
+  onAutoLayout: () => void
+  onFitView: () => void
+  onBindTarget: () => void
+  onDiffVsDb: () => void
+  onGenerateDdl: () => void
+  onChangeDialect: (dialect: DesignerDialect) => void
+}
+
+export type ErToolbarProps = ErToolbarInspectorProps | ErToolbarDesignerProps
 
 export function ErToolbar(props: ErToolbarProps) {
   const { t } = useI18n()
+  const label = useFallbackLabel(t)
+
+  if (props.mode === 'designer') {
+    return (
+      <div className="flex min-h-10 items-center gap-1 border-b border-border-subtle bg-bg-subtle px-2 py-1">
+        <ToolbarButton
+          onClick={props.onAddTable}
+          icon={<PlusIcon />}
+          label={label('erCanvas.toolbar.addTable', 'Add table')}
+        />
+        <ToolbarButton onClick={props.onAutoLayout} icon={<LayoutTemplateIcon />} label={t('erCanvas.toolbar.autoLayout')} />
+        <ToolbarButton onClick={props.onFitView} icon={<MaximizeIcon />} label={t('erCanvas.toolbar.fitView')} />
+
+        <Separator />
+
+        <ToolbarButton
+          onClick={props.onBindTarget}
+          icon={<LinkIcon />}
+          label={label('erCanvas.toolbar.bindTarget', 'Bind target')}
+          primary
+        />
+        <ToolbarButton
+          onClick={props.onDiffVsDb}
+          icon={<DiffIcon />}
+          label={label('erCanvas.toolbar.diffVsDb', 'Diff vs DB')}
+          disabled={!props.hasTarget}
+        />
+        <ToolbarButton
+          onClick={props.onGenerateDdl}
+          icon={<CodeIcon />}
+          label={label('erCanvas.toolbar.generateDdl', 'Generate DDL')}
+          primary
+          disabled={!props.hasTarget}
+        />
+
+        <div className="ml-auto" />
+
+        <label className="flex items-center gap-1.5 text-xs text-text-muted">
+          <span>{label('erCanvas.toolbar.dialect', 'Dialect')}</span>
+          <select
+            aria-label={label('erCanvas.toolbar.dialect', 'Dialect')}
+            value={props.dialect}
+            onChange={(event) => props.onChangeDialect(event.target.value as DesignerDialect)}
+            className="h-7 rounded-md border border-border-default bg-bg-canvas px-2 text-xs text-text-base outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <option value="mysql">MySQL</option>
+            <option value="postgresql">PostgreSQL</option>
+            <option value="h2">H2</option>
+            <option value="sqlite">SQLite</option>
+          </select>
+        </label>
+      </div>
+    )
+  }
 
   return (
     <div className="flex min-h-10 items-center gap-1 border-b border-border-subtle bg-bg-subtle px-2 py-1">
@@ -72,11 +144,13 @@ function ToolbarButton({
   icon,
   label,
   primary,
+  disabled,
 }: {
   onClick: () => void
   icon: ReactNode
   label: string
   primary?: boolean
+  disabled?: boolean
 }) {
   return (
     <Button
@@ -85,7 +159,12 @@ function ToolbarButton({
       variant={primary ? 'outline' : 'ghost'}
       onClick={onClick}
       aria-label={label}
-      className={primary ? 'border-primary text-primary hover:bg-primary/10' : 'text-text-muted hover:text-text-strong'}
+      disabled={disabled}
+      className={
+        primary
+          ? 'border-[var(--dt-accent-primary)] text-[var(--dt-accent-primary)] hover:bg-[var(--dt-accent-primary-surface)]'
+          : 'text-text-muted hover:text-text-strong'
+      }
     >
       {icon}
       <span>{label}</span>
@@ -95,4 +174,11 @@ function ToolbarButton({
 
 function Separator() {
   return <div className="mx-1 h-4 w-px bg-border-default" />
+}
+
+function useFallbackLabel(t: ReturnType<typeof useI18n>['t']) {
+  return (key: string, fallback: string) => {
+    const translated = t(key as Parameters<typeof t>[0])
+    return translated === key ? fallback : translated
+  }
 }

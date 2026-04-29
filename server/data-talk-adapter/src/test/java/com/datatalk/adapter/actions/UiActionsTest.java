@@ -46,7 +46,7 @@ class UiActionsTest {
     }
 
     @Test
-    void uiPatchAction_declaresLenientOpsAndTopLevelBaseVersion() {
+    void uiPatchAction_declaresLenientOpsAndNumericTopLevelBaseVersion() {
         Map<String, Object> schema = uiPatchAction.inputSchema();
         Map<String, Object> properties = map(schema.get("properties"), "properties");
         Map<String, Object> baseVersion = map(properties.get("baseVersion"), "baseVersion");
@@ -54,7 +54,12 @@ class UiActionsTest {
         Map<String, Object> item = map(ops.get("items"), "items");
         Map<String, Object> op = navigate(item, "properties", "op");
 
-        assertThat(list(baseVersion.get("oneOf"), "oneOf")).hasSize(2);
+        assertThat(baseVersion.get("type")).isEqualTo("number");
+        assertThat(baseVersion.get("description"))
+            .asString()
+            .contains("query_editor /content")
+            .contains("numeric")
+            .doesNotContain("'auto' (default)");
         assertThat(list(item.get("required"), "required")).containsExactlyInAnyOrder("op", "path");
         assertThat(list(op.get("enum"), "enum")).containsExactlyInAnyOrder("add", "remove", "replace");
     }
@@ -85,6 +90,21 @@ class UiActionsTest {
     }
 
     @Test
+    void uiExec_workspaceOpenPayloadDocumentsSqlContentAliases() {
+        Map<String, Object> schema = uiExecAction.inputSchema();
+        Map<String, Object> wsBranch = findOneOfBranch(schema, "workspace");
+        Map<String, Object> payload = navigate(wsBranch, "properties", "params", "properties", "payload");
+        Map<String, Object> payloadProperties = map(payload.get("properties"), "payload.properties");
+
+        assertThat(payload.get("type")).isEqualTo("object");
+        assertThat(payloadProperties.keySet())
+            .contains("initialSql", "content", "sql", "autoRun", "connectionId", "connectionName", "database", "schema");
+        assertThat(map(payloadProperties.get("content"), "content").get("description"))
+            .asString()
+            .contains("SQL");
+    }
+
+    @Test
     void uiExec_erInspectorBranch_exposesInspectorVerbs() {
         Map<String, Object> schema = uiExecAction.inputSchema();
         Map<String, Object> erBranch = findOneOfBranch(schema, "er_inspector");
@@ -95,12 +115,33 @@ class UiActionsTest {
     }
 
     @Test
+    void uiExec_erDesignerBranch_exposesDesignerVerbs() {
+        Map<String, Object> schema = uiExecAction.inputSchema();
+        Map<String, Object> erBranch = findOneOfBranch(schema, "er_designer");
+        Map<String, Object> action = navigate(erBranch, "properties", "action");
+        Map<String, Object> params = navigate(erBranch, "properties", "params", "properties");
+
+        assertThat(list(action.get("enum"), "enum"))
+            .containsExactlyInAnyOrder(
+                "auto_layout", "fit_view",
+                "bind_target", "unbind_target",
+                "sync_from_db", "diff_against_db", "generate_ddl"
+            );
+        assertThat(action.get("description"))
+            .asString()
+            .contains("query_editor")
+            .contains("L2/L3 confirmation");
+        assertThat(params.keySet())
+            .contains("connectionId", "database", "schema", "tables", "includeDrops");
+    }
+
+    @Test
     void uiPatchAction_acceptsErInspectorObject() {
         Map<String, Object> schema = uiPatchAction.inputSchema();
         Map<String, Object> object = navigate(schema, "properties", "object");
 
         assertThat(list(object.get("enum"), "enum"))
-            .contains("query_editor", "er_inspector");
+            .contains("query_editor", "er_inspector", "er_designer");
     }
 
     @Test

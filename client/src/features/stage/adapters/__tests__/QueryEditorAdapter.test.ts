@@ -482,6 +482,32 @@ describe('QueryEditorAdapter', () => {
     })
   })
 
+  it('patch /content rejects baseVersion="auto" with a query-editor-specific error', () => {
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 's1',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'blank',
+      initialContent: 'select 1',
+    })
+
+    const adapter = new QueryEditorAdapter(tabId)
+    const result = adapter.patch([
+      { op: 'replace', path: '/content', value: 'select 2', baseVersion: 'auto' } as never,
+    ])
+
+    expect(result.status).toBe('error')
+    expect((result as { detail?: { code?: string; message?: string; hint?: string } }).detail).toEqual({
+      code: 'invalid_base_version',
+      message: 'Patch /content requires numeric baseVersion',
+      hint: 'Re-read with `ui_read(mode=\'state\')` and retry with the numeric `version` from the query editor state. `baseVersion: "auto"` is not supported for query_editor /content.',
+    })
+    expect(useSqlWorkbenchStore.getState().tabsById[tabId]).toMatchObject({
+      sqlText: 'select 1',
+      version: 1,
+    })
+  })
+
   it('patch /content returns version_conflict details when baseVersion is stale', () => {
     const { tabId } = useStageStore.getState().openQueryEditor({
       sessionId: 's1',

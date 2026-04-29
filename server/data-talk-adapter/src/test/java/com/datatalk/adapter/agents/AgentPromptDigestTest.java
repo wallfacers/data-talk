@@ -126,6 +126,39 @@ class AgentPromptDigestTest {
     }
 
     @Test
+    void digest_erDesignerRendersStatsAndTargetLineFromPayload() {
+        StageTabRepository repo = mock(StageTabRepository.class);
+        SessionTitleLookup lookup = mock(SessionTitleLookup.class);
+        long now = System.currentTimeMillis();
+        StageTab t = new StageTab("er_designer_c3d4", "er_designer", "Order Draft",
+            null, null, null, "sess-1",
+            8, false, false, null, now, now);
+        String payload = """
+            {
+              "kind": "er_designer",
+              "dialect": "mysql",
+              "targetConnectionId": "test-mysql",
+              "targetDatabase": "test_db",
+              "tables": [{"id": "t1"}, {"id": "t2"}, {"id": "t3"}],
+              "relations": [{"id": "r1"}, {"id": "r2"}]
+            }
+            """;
+
+        when(repo.recentByLastTouched(anyInt())).thenReturn(List.of(t));
+        when(repo.findContents(List.of("er_designer_c3d4")))
+            .thenReturn(List.of(new StageTabContent("er_designer_c3d4", payload, "", 8, now)));
+        when(lookup.titlesByIds(List.of("sess-1"))).thenReturn(Map.of("sess-1", "Design Session"));
+        when(repo.countActive()).thenReturn(1);
+        when(repo.countArchived()).thenReturn(0);
+
+        String md = new AgentPromptBuilder(repo, lookup).render("{{STAGE_TAB_DIGEST}}");
+
+        assertThat(md).contains("er_designer `er_designer_c3d4`");
+        assertThat(md).contains("Order Draft");
+        assertThat(md).contains("(3 tables \u00b7 2 relations \u00b7 target=test-mysql/test_db)");
+    }
+
+    @Test
     void digest_erInspectorTitleIsEscapedToPreventPromptInjection() {
         StageTabRepository repo = mock(StageTabRepository.class);
         SessionTitleLookup lookup = mock(SessionTitleLookup.class);

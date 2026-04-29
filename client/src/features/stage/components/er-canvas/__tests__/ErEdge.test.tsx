@@ -43,6 +43,20 @@ describe('<ErEdge>', () => {
     expect(path?.getAttribute('d')).toContain('M')
   })
 
+  it('keeps smoothstep wiring for designer-created relations', () => {
+    const { container } = render(
+      <ReactFlowProvider>
+        <svg>
+          <ErEdge {...baseProps} id="r1" data={{ ...baseProps.data, kind: 'fk' }} />
+        </svg>
+      </ReactFlowProvider>,
+    )
+
+    const d = container.querySelector('path')?.getAttribute('d') ?? ''
+    expect(d).toMatch(/^M/)
+    expect(d).toContain('L')
+  })
+
   it('renders a virtual relation as dashed', () => {
     const { container } = render(
       <ReactFlowProvider>

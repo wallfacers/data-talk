@@ -626,4 +626,93 @@ describe('query-editor-actions', () => {
       schema: 'analytics',
     })
   })
+
+  it('uses the latest session context as the default execution context even when tab metadata and resolvedContext are stale', async () => {
+    useConnectionStore.setState({
+      activeConnectionId: 'conn-1',
+      connections: [
+        { id: 'conn-1', name: 'Primary Connection', kind: 'postgres', databaseName: 'db_main' } as any,
+        { id: 'conn-2', name: 'Warehouse', kind: 'postgres', databaseName: 'warehouse' } as any,
+      ],
+    })
+    useSessionStore.setState({
+      activeSessionId: 'sess-1',
+      modeBySession: new Map(),
+      hasEverSentBySession: new Map(),
+      dataContextBySession: new Map([[
+        'sess-1',
+        {
+          sessionId: 'sess-1',
+          connectionId: 'conn-2',
+          connectionNameSnapshot: 'Warehouse',
+          database: 'warehouse',
+          schema: 'analytics',
+          selectedLevel: 'schema',
+          updatedAt: 2,
+        },
+      ]]),
+      pendingPrompt: null,
+      composerRestoreDraft: null,
+      pendingModelPrompt: false,
+      pendingConnectionPrompt: false,
+      pendingActionAfterConnectionPick: null,
+    })
+
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 'sess-1',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'blank',
+      initialContent: 'select 1',
+      connectionId: 'conn-1',
+      connectionName: 'Primary Connection',
+      database: 'db_main',
+      schema: 'public',
+    })
+
+    useSqlWorkbenchStore.setState((state) => ({
+      tabsById: {
+        ...state.tabsById,
+        [tabId]: {
+          ...state.tabsById[tabId],
+          resolvedContext: {
+            connectionId: 'conn-1',
+            connectionName: 'Primary Connection',
+            database: 'db_main',
+            schema: 'public',
+            selectedLevel: 'schema',
+          },
+        },
+      },
+    }))
+
+    executeSqlMock.mockResolvedValue({
+      status: 'executed',
+      resolvedContext: {
+        connectionId: 'conn-2',
+        connectionName: 'Warehouse',
+        database: 'warehouse',
+        schema: 'analytics',
+        selectedLevel: 'schema',
+      },
+      contextNotice: null,
+      results: [],
+    })
+
+    await runQueryEditorSql({
+      tabId,
+      sessionId: 'sess-1',
+      limit: null,
+    })
+
+    expect(executeSqlMock).toHaveBeenCalledWith({
+      sql: 'select 1',
+      connectionId: 'conn-2',
+      connectionName: 'Warehouse',
+      source: 'user',
+      sessionId: 'sess-1',
+      database: 'warehouse',
+      schema: 'analytics',
+    }, expect.any(AbortSignal))
+  })
 })

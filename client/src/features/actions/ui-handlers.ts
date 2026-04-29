@@ -5,7 +5,7 @@ import { coordinator } from '@/features/stage/persistence/stage-persistence-boot
 import { useStageStore } from '@/stores/stage-store'
 
 type ReadInput = { object: string; target?: string; mode?: 'state' | 'schema' | 'actions' | 'full' }
-type PatchInput = { object: string; target?: string; ops: unknown[]; reason?: string }
+type PatchInput = { object: string; target?: string; ops: unknown[]; reason?: string; baseVersion?: number | 'auto' }
 type ExecInput = { object: string; target?: string; action: string; params?: unknown }
 
 type ClientActionErrorDetail = {
@@ -90,7 +90,12 @@ registerClientHandler('datatalk.ui.patch', async (input) => {
   const i = input as PatchInput
   const target = resolveTarget(i)
   if (target) await coordinator.ensureHydrated(target)
-  const result = await forward({ tool: 'ui_patch', object: i.object, target: i.target ?? 'active', payload: { ops: i.ops, reason: i.reason } })
+  const result = await forward({
+    tool: 'ui_patch',
+    object: i.object,
+    target: i.target ?? 'active',
+    payload: { ops: i.ops, reason: i.reason, baseVersion: i.baseVersion },
+  })
   if (target) await coordinator.flush(target)
   return result
 })

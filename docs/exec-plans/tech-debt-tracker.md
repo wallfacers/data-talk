@@ -21,6 +21,10 @@
 |----|--------|------|----------|
 | — | — | 当前无已知技术债务 | — |
 
+## Closure Notes
+
+- 2026-04-29: ER Designer Plan B implementation did not introduce known technical debt during automated verification. Remaining Plan B work is manual product smoke in a running Tauri app with a writable real database, tracked in the active plan rather than as technical debt.
+
 ## 已清除债务
 
 | ID | 清除日期 | 原描述 | 清除方式 |

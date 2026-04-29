@@ -20,6 +20,7 @@ export const ALLOWED_DIRECT_STAGE_STORE_MUTATION_FILES = [
   'src/features/stage/components/stage-window.test.tsx',
   'src/features/stage/components/left-rail/stage-left-rail.test.tsx',
   'src/features/stage/persistence/__tests__/stage-persistence-bootstrap.er.test.ts',
+  'src/features/stage/persistence/__tests__/stage-persistence-bootstrap.query-editor.test.ts',
   // Stage store tests.
   'src/features/stage/stores/sql-workbench-store.test.ts',
   'src/features/stage/use-stage-auto-open.test.ts',

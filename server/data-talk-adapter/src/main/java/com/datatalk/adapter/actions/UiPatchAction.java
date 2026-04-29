@@ -32,7 +32,7 @@ public class UiPatchAction implements ActionHandler<Map, Map> {
                 "properties", Map.ofEntries(
                         Map.entry("object", Map.of(
                                 "type", "string",
-                                "enum", List.of("query_editor", "er_inspector"),
+                                "enum", List.of("query_editor", "er_inspector", "er_designer"),
                                 "description", "Tab type that owns the patch target."
                         )),
                         Map.entry("target", Map.of(
@@ -40,11 +40,8 @@ public class UiPatchAction implements ActionHandler<Map, Map> {
                                 "description", "Explicit tab id. Omit only when the active object is unambiguous."
                         )),
                         Map.entry("baseVersion", Map.of(
-                                "oneOf", List.of(
-                                        Map.of("type", "number"),
-                                        Map.of("type", "string", "enum", List.of("auto"))
-                                ),
-                                "description", "Optional. 'auto' (default) lets the server use the latest version. Designer structural paths require a numeric baseVersion in Plan B."
+                                "type", "number",
+                                "description", "Top-level numeric version from ui_read. Required for query_editor /content and designer structural paths; view-only paths may omit it."
                         )),
                         Map.entry("ops", Map.of(
                                 "type", "array",
@@ -59,7 +56,7 @@ public class UiPatchAction implements ActionHandler<Map, Map> {
                                                 )),
                                                 Map.entry("path", Map.of(
                                                         "type", "string",
-                                                        "description", "JSON Pointer with /key[matchKey=value] addressing extension; see docs/references/er-tab-protocol.md for the inspector path whitelist."
+                                                        "description", "JSON Pointer with /key[matchKey=value] addressing extension; see docs/references/er-tab-protocol.md for ER inspector/designer path rules. Designer structural path validation is enforced by the client adapter."
                                                 )),
                                                 Map.entry("value", Map.of("description", "Op value (omitted for remove)."))
                                         )

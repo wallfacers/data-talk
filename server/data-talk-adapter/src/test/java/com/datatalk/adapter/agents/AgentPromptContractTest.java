@@ -246,6 +246,20 @@ class AgentPromptContractTest {
     }
 
     @Test
+    void agentsMdReferencesDesignerVerbs() throws IOException {
+        String prompt = loadPrompt();
+
+        assertThat(prompt)
+            .contains("er_designer verbs are live")
+            .contains("ui_exec(workspace, open_er_designer")
+            .contains("ui_exec(designer_tab, bind_target")
+            .contains("ui_exec(designer_tab, diff_against_db)")
+            .contains("ui_exec(designer_tab, generate_ddl)")
+            .contains("DDL lands in a query_editor tab")
+            .contains("L2/L3 confirmation");
+    }
+
+    @Test
     void uiExecActionSchemaContainsOpenErInspectorVerb() {
         Map<String, Object> schema = registry.require("datatalk.ui.exec").inputSchema();
         @SuppressWarnings("unchecked")
@@ -263,6 +277,23 @@ class AgentPromptContractTest {
     }
 
     @Test
+    void uiExecActionSchemaContainsDesignerVerbs() {
+        Map<String, Object> schema = registry.require("datatalk.ui.exec").inputSchema();
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> oneOf = (List<Map<String, Object>>) schema.get("oneOf");
+
+        boolean hasGenerateDdl = oneOf.stream()
+            .map(s -> (Map<String, Object>) s.get("properties"))
+            .map(p -> (Map<String, Object>) p.get("action"))
+            .filter(a -> a != null)
+            .map(a -> (List<?>) a.get("enum"))
+            .filter(en -> en != null)
+            .anyMatch(en -> en.contains("generate_ddl") && en.contains("diff_against_db"));
+
+        assertThat(hasGenerateDdl).isTrue();
+    }
+
+    @Test
     void uiPatchActionSchemaAllowsErInspectorObject() {
         Map<String, Object> schema = registry.require("datatalk.ui.patch").inputSchema();
         @SuppressWarnings("unchecked")
@@ -271,7 +302,7 @@ class AgentPromptContractTest {
         Map<String, Object> object = (Map<String, Object>) properties.get("object");
 
         List<?> objectTypes = (List<?>) object.get("enum");
-        assertThat(objectTypes.stream().map(String::valueOf)).contains("er_inspector");
+        assertThat(objectTypes.stream().map(String::valueOf)).contains("er_inspector", "er_designer");
     }
 
     @Test

@@ -5,6 +5,7 @@ import { useSqlWorkbenchStore, type SqlWorkbenchTabState } from '@/features/stag
 import { useErTabsStore } from '@/features/stage/stores/er-tabs-store'
 import type { ErDesignerPayload, ErInspectorPayload } from '@/features/stage/stores/er-tabs-payload-types'
 import { TAB_TYPE_REGISTRY, isPersistent } from '@/features/stage/registry/tab-type-registry'
+import { normalizeQueryEditorPayload } from '@/features/stage/utils/normalize-query-editor-payload'
 import { shallow } from 'zustand/shallow'
 
 export const coordinator = new StagePersistenceCoordinator(stageTabApi)
@@ -130,14 +131,57 @@ function diffContentAndSchedule(
   for (const tabId of Object.keys(next)) {
     const nextTab = next[tabId]
     const prevTab = prev[tabId]
-    if (prevTab && nextTab.sqlText === prevTab.sqlText) continue
     const tab = useStageStore.getState().findTab(tabId)
     if (!tab || !isPersistent(tab.type)) continue
+    if (prevTab && nextTab.sqlText === prevTab.sqlText && sameQueryEditorOverride(nextTab, prevTab)) continue
     coordinator.scheduleContentWrite(tabId, {
-      payload: { sqlText: nextTab.sqlText },
+      payload: buildPersistedQueryEditorPayload(tab, nextTab, prevTab),
       contentText: nextTab.sqlText,
       expectedVersion: tab.payloadVersion,
     })
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function sameNullableString(left: string | null | undefined, right: string | null | undefined) {
+  return (left ?? null) === (right ?? null)
+}
+
+function sameQueryEditorOverride(
+  left: Pick<SqlWorkbenchTabState, 'override'>,
+  right: Pick<SqlWorkbenchTabState, 'override'>,
+) {
+  return sameNullableString(left.override?.connectionId, right.override?.connectionId)
+    && sameNullableString(left.override?.database, right.override?.database)
+    && sameNullableString(left.override?.schema, right.override?.schema)
+}
+
+function buildPersistedQueryEditorPayload(
+  tab: StageTab,
+  nextTab: SqlWorkbenchTabState,
+  prevTab?: SqlWorkbenchTabState,
+) {
+  const basePayload = isRecord(tab.payload) ? tab.payload : {}
+  const normalizedPayload = normalizeQueryEditorPayload(tab.payload)
+  const overrideChanged = !prevTab || !sameQueryEditorOverride(nextTab, prevTab)
+  const contextOverride = overrideChanged
+    ? (nextTab.override
+      ? {
+          connectionId: nextTab.override.connectionId,
+          database: nextTab.override.database ?? null,
+          schema: nextTab.override.schema ?? null,
+        }
+      : null)
+    : normalizedPayload.contextOverride
+
+  return {
+    ...basePayload,
+    initialSql: nextTab.sqlText,
+    sqlText: nextTab.sqlText,
+    contextOverride,
   }
 }
 

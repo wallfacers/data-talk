@@ -14,6 +14,12 @@ describe('normalizeQueryEditorPayload', () => {
     })
   })
 
+  it('accepts content as a query editor open payload alias', () => {
+    expect(normalizeQueryEditorPayload({ content: 'DROP DATABASE ecommerce;' })).toMatchObject({
+      initialSql: 'DROP DATABASE ecommerce;',
+    })
+  })
+
   it('maps legacy entry modes onto the canonical query editor entry modes', () => {
     expect(normalizeQueryEditorPayload({
       entryMode: 'manual',

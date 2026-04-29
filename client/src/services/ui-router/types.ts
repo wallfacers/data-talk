@@ -5,6 +5,8 @@ export interface JsonPatchOp {
   op: 'add' | 'remove' | 'replace'
   path: string
   value?: unknown
+  baseVersion?: number | 'auto'
+  expectedVersion?: number | 'auto'
 }
 
 export interface UIRequest {
@@ -33,6 +35,11 @@ export interface PatchResult {
   confirm_id?: string
   preview?: JsonPatchOp[]
   message?: string
+  // Maps each `add` op path that was assigned an ID by the store to the new ID.
+  // Stable handles for follow-up ops on the same item — see ER designer/inspector
+  // store assignedIds semantics.
+  assignedIds?: Record<string, string>
+  newVersion?: number
 }
 
 export interface ExecResult {

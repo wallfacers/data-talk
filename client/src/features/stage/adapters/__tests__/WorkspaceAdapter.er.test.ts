@@ -86,3 +86,72 @@ describe('WorkspaceAdapter.exec(open_er_inspector)', () => {
     expect(result.data).toMatchObject({ code: 'dialect_unsupported' })
   })
 })
+
+describe('WorkspaceAdapter.exec(open_er_designer)', () => {
+  beforeEach(() => {
+    useErTabsStore.setState({ inspectors: new Map(), designers: new Map() })
+    useStageStore.setState({
+      tabs: [],
+      openTabIds: new Set(),
+      openTabIdsOrdered: [],
+      activeTabId: null,
+    })
+  })
+
+  it('creates a blank designer tab with the requested dialect', async () => {
+    const adapter = new WorkspaceAdapter(() => null)
+
+    const result = await adapter.exec('open_er_designer', { dialect: 'mysql', title: 'Order Draft' })
+
+    expect(result.success).toBe(true)
+    const data = result.data as { tabId: string; summary: string; payloadVersion: number }
+    expect(data.tabId).toMatch(/^er_designer_/)
+    expect(data.summary).toContain('mysql')
+    expect(data.payloadVersion).toBe(1)
+    expect(useErTabsStore.getState().designers.get(data.tabId)?.dialect).toBe('mysql')
+    expect(useStageStore.getState().activeTabId).toBe(data.tabId)
+  })
+
+  it('rejects unsupported dialects with an English aiHint', async () => {
+    const adapter = new WorkspaceAdapter(() => null)
+
+    const result = await adapter.exec('open_er_designer', { dialect: 'oracle' })
+
+    expect(result.success).toBe(false)
+    expect(result.error).toMatch(/dialect_unsupported|oracle/i)
+    expect(result.data).toMatchObject({
+      aiHint: expect.stringContaining('query_editor'),
+    })
+  })
+
+  it('accepts seedTables and seedRelations', async () => {
+    const adapter = new WorkspaceAdapter(() => null)
+
+    const result = await adapter.exec('open_er_designer', {
+      dialect: 'postgresql',
+      seedTables: [
+        {
+          name: 'users',
+          columns: [{ name: 'id', type: 'BIGINT', nullable: false, isPrimaryKey: true, isAutoIncrement: true }],
+        },
+        {
+          name: 'orders',
+          columns: [
+            { name: 'id', type: 'BIGINT', nullable: false, isPrimaryKey: true },
+            { name: 'user_id', type: 'BIGINT', nullable: false },
+          ],
+        },
+      ],
+      seedRelations: [
+        { fromTable: 'orders', fromColumn: 'user_id', toTable: 'users', toColumn: 'id', type: 'many_to_one' },
+      ],
+    })
+
+    expect(result.success).toBe(true)
+    const data = result.data as { tabId: string }
+    const payload = useErTabsStore.getState().designers.get(data.tabId)
+    expect(payload?.tables).toHaveLength(2)
+    expect((payload?.tables[0] as { name?: string }).name).toBe('users')
+    expect(payload?.relations).toHaveLength(1)
+  })
+})

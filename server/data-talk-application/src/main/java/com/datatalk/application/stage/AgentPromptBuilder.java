@@ -80,14 +80,14 @@ public class AgentPromptBuilder {
         } else {
             sb.append("Recently-touched tabs (top ").append(recent.size())
               .append(" by lastTouchedAt, archived excluded):\n");
-            Map<String, StageTabContent> erInspectorContent = erInspectorContentByTabId(recent);
+            Map<String, StageTabContent> erContent = erContentByTabId(recent);
             long now = System.currentTimeMillis();
             int i = 1;
             for (StageTab t : recent) {
                 sb.append(i++).append(". ")
                     .append(t.type()).append(" `").append(t.id()).append("` ")
                     .append("\"").append(escape(t.title())).append("\"");
-                String erStats = erInspectorStats(t, erInspectorContent.get(t.id()));
+                String erStats = erStats(t, erContent.get(t.id()));
                 if (!erStats.isBlank()) {
                     sb.append(" ").append(erStats);
                 }
@@ -111,9 +111,9 @@ public class AgentPromptBuilder {
         return sb.toString();
     }
 
-    private Map<String, StageTabContent> erInspectorContentByTabId(List<StageTab> tabs) {
+    private Map<String, StageTabContent> erContentByTabId(List<StageTab> tabs) {
         List<String> ids = tabs.stream()
-            .filter(t -> "er_inspector".equals(t.type()))
+            .filter(t -> "er_inspector".equals(t.type()) || "er_designer".equals(t.type()))
             .map(StageTab::id)
             .toList();
         if (ids.isEmpty()) {
@@ -126,11 +126,15 @@ public class AgentPromptBuilder {
         return byId;
     }
 
-    private static String erInspectorStats(StageTab tab, StageTabContent content) {
-        if (!"er_inspector".equals(tab.type())) {
-            return "";
-        }
+    private static String erStats(StageTab tab, StageTabContent content) {
+        return switch (tab.type()) {
+            case "er_inspector" -> erInspectorStats(tab, content);
+            case "er_designer" -> erDesignerStats(content);
+            default -> "";
+        };
+    }
 
+    private static String erInspectorStats(StageTab tab, StageTabContent content) {
         int tableCount = 0;
         int relationCount = 0;
         String connectionId = tab.connectionId();
@@ -158,6 +162,34 @@ public class AgentPromptBuilder {
         }
         return "(" + tableCount + " tables \u00b7 " + relationCount + " relations \u00b7 conn="
             + orDash(connectionId) + ")";
+    }
+
+    private static String erDesignerStats(StageTabContent content) {
+        int tableCount = 0;
+        int relationCount = 0;
+        String target = "no target";
+        if (content != null) {
+            try {
+                JsonNode root = OM.readTree(content.payloadJson());
+                JsonNode tables = root.path("tables");
+                if (tables.isArray()) {
+                    tableCount = tables.size();
+                }
+                JsonNode relations = root.path("relations");
+                if (relations.isArray()) {
+                    relationCount = relations.size();
+                }
+                String targetConnectionId = root.path("targetConnectionId").asText(null);
+                if (targetConnectionId != null && !targetConnectionId.isBlank()) {
+                    String targetDatabase = root.path("targetDatabase").asText(null);
+                    target = "target=" + targetConnectionId
+                        + (targetDatabase == null || targetDatabase.isBlank() ? "" : "/" + targetDatabase);
+                }
+            } catch (Exception ignored) {
+                // Keep the prompt render resilient; malformed payloads still get metadata below.
+            }
+        }
+        return "(" + tableCount + " tables \u00b7 " + relationCount + " relations \u00b7 " + target + ")";
     }
 
     private static String nonBlank(String candidate, String fallback) {

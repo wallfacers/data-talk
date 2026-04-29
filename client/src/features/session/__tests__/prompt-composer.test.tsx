@@ -242,6 +242,24 @@ describe('PromptComposer', () => {
     expect(shell).toHaveClass('border-border/80')
   })
 
+  it('does not render the obsolete auto mode toggle', () => {
+    useConnectionStore.setState({ activeConnectionId: 'conn-1', connections: [{ id: 'conn-1', name: 'Main' } as any] })
+    useSessionStore.setState({
+      activeSessionId: 'sess-1',
+      modeBySession: new Map(),
+      hasEverSentBySession: new Map([['sess-1', true]]),
+      dataContextBySession: new Map(),
+      pendingPrompt: null,
+      pendingModelPrompt: false,
+      pendingConnectionPrompt: false,
+      pendingActionAfterConnectionPick: null,
+    } as any)
+
+    renderWithClient(<PromptComposer />)
+
+    expect(screen.queryByText('自动')).not.toBeInTheDocument()
+  })
+
   it('persists bang query text before opening the bang query tab', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(1713650000000)
     const createBangQueryMessageMock = bangQueryApi.createBangQueryMessage as unknown as Mock

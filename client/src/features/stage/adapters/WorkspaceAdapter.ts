@@ -3,7 +3,15 @@ import { execError } from '@/services/ui-router'
 import { useConnectionStore } from '@/features/connection/store'
 import { useDataSourcePickerStore } from '@/features/session/data-source-picker/data-source-picker-store'
 import { useErTabsStore } from '@/features/stage/stores/er-tabs-store'
-import type { ErInspectorPayload, ErTableSnapshot } from '@/features/stage/stores/er-tabs-payload-types'
+import type {
+  ErDesignerIndexDraft,
+  ErDesignerPayload,
+  ErDesignerRelationDraft,
+  ErDesignerTableDraft,
+  ErDesignerUniqueDraft,
+  ErInspectorPayload,
+  ErTableSnapshot,
+} from '@/features/stage/stores/er-tabs-payload-types'
 import { useStageStore, type StageTab } from '@/stores/stage-store'
 import { normalizeQueryEditorPayload } from '@/features/stage/utils/normalize-query-editor-payload'
 import { generateUuid } from '@/lib/uuid'
@@ -18,7 +26,19 @@ const ACTIONS: ActionDef[] = [
       connection_id: { type: 'string' },
       database: { type: 'string' },
       schema: { type: 'string' },
-      payload: { type: 'object' },
+      payload: {
+        type: 'object',
+        properties: {
+          initialSql: { type: 'string' },
+          content: { type: 'string' },
+          sql: { type: 'string' },
+          autoRun: { type: 'boolean' },
+          connectionId: { type: 'string' },
+          connectionName: { type: 'string' },
+          database: { type: 'string' },
+          schema: { type: 'string' },
+        },
+      },
     },
   } },
   { name: 'detach', description: 'Remove a tab from the workset without archiving it', paramsSchema: {
@@ -54,6 +74,18 @@ const ACTIONS: ActionDef[] = [
       title: { type: 'string' },
     },
   } },
+  { name: 'open_er_designer', description: 'Open an ER designer tab for schema drafting', paramsSchema: {
+    type: 'object',
+    properties: {
+      dialect: { type: 'string' },
+      title: { type: 'string' },
+      targetConnectionId: { type: 'string' },
+      targetDatabase: { type: 'string' },
+      targetSchema: { type: 'string' },
+      seedTables: { type: 'array' },
+      seedRelations: { type: 'array' },
+    },
+  } },
 ]
 
 const WORKSPACE_SCOPE_TYPES = new Set<string>(['er_canvas', 'markdown_note', 'report', 'dashboard'])
@@ -75,8 +107,149 @@ type OpenErInspectorParams = {
   title?: string
 }
 
+type SupportedDesignerDialect = ErDesignerPayload['dialect']
+type DesignerRelationType = ErDesignerRelationDraft['type']
+type DesignerConstraintMethod = ErDesignerRelationDraft['constraintMethod']
+
+type SeedDesignerColumn = {
+  name?: unknown
+  type?: unknown
+  nullable?: unknown
+  isPrimaryKey?: unknown
+  isPK?: unknown
+  isAutoIncrement?: unknown
+  default?: unknown
+  comment?: unknown
+}
+
+type SeedDesignerTable = {
+  name?: unknown
+  comment?: unknown
+  columns?: unknown
+}
+
+type SeedDesignerRelation = {
+  fromTable?: unknown
+  fromTableId?: unknown
+  fromColumn?: unknown
+  fromColumnId?: unknown
+  toTable?: unknown
+  toTableId?: unknown
+  toColumn?: unknown
+  toColumnId?: unknown
+  type?: unknown
+  constraintMethod?: unknown
+}
+
+type OpenErDesignerParams = {
+  dialect?: unknown
+  title?: string
+  targetConnectionId?: string | null
+  targetDatabase?: string | null
+  targetSchema?: string | null
+  seedTables?: unknown
+  seedRelations?: unknown
+}
+
 function normalizeNeighborDepth(value: unknown): 0 | 1 | 2 {
   return value === 0 || value === 1 || value === 2 ? value : 1
+}
+
+function isSupportedDesignerDialect(value: unknown): value is SupportedDesignerDialect {
+  return value === 'mysql' || value === 'postgresql' || value === 'h2' || value === 'sqlite'
+}
+
+function createDesignerId(prefix: 't' | 'c' | 'r'): string {
+  return `${prefix}_${generateUuid()}`
+}
+
+function isDesignerRelationType(value: unknown): value is DesignerRelationType {
+  return value === 'one_to_one' || value === 'one_to_many' || value === 'many_to_one' || value === 'many_to_many'
+}
+
+function isDesignerConstraintMethod(value: unknown): value is DesignerConstraintMethod {
+  return value === 'database_fk' || value === 'comment_ref'
+}
+
+function normalizeSeedTables(seedTables: unknown): {
+  tables: ErDesignerTableDraft[]
+  tableIdsByName: Map<string, string>
+  columnIdsByTableAndName: Map<string, Map<string, string>>
+} {
+  const tables = Array.isArray(seedTables) ? seedTables as SeedDesignerTable[] : []
+  const tableIdsByName = new Map<string, string>()
+  const columnIdsByTableAndName = new Map<string, Map<string, string>>()
+  const normalized = tables
+    .filter((table) => typeof table.name === 'string' && table.name.length > 0)
+    .map((table) => {
+      const tableId = createDesignerId('t')
+      const columnIds = new Map<string, string>()
+      tableIdsByName.set(table.name as string, tableId)
+      columnIdsByTableAndName.set(table.name as string, columnIds)
+      const columns = (Array.isArray(table.columns) ? table.columns as SeedDesignerColumn[] : [])
+        .filter((column) => typeof column.name === 'string' && column.name.length > 0)
+        .map((column) => {
+          const columnId = createDesignerId('c')
+          columnIds.set(column.name as string, columnId)
+          return {
+            id: columnId,
+            name: column.name as string,
+            type: typeof column.type === 'string' && column.type.length > 0 ? column.type : 'VARCHAR(255)',
+            nullable: typeof column.nullable === 'boolean' ? column.nullable : true,
+            isPrimaryKey: column.isPrimaryKey === true || column.isPK === true,
+            isAutoIncrement: column.isAutoIncrement === true,
+            default: typeof column.default === 'string' ? column.default : null,
+            comment: typeof column.comment === 'string' ? column.comment : null,
+          }
+        })
+      return {
+        id: tableId,
+        name: table.name as string,
+        comment: typeof table.comment === 'string' ? table.comment : null,
+        columns,
+        indexes: [] as ErDesignerIndexDraft[],
+        uniques: [] as ErDesignerUniqueDraft[],
+      }
+    })
+  return { tables: normalized, tableIdsByName, columnIdsByTableAndName }
+}
+
+function normalizeSeedRelations(
+  seedRelations: unknown,
+  tableIdsByName: Map<string, string>,
+  columnIdsByTableAndName: Map<string, Map<string, string>>,
+) : ErDesignerRelationDraft[] {
+  if (!Array.isArray(seedRelations)) return []
+  return (seedRelations as SeedDesignerRelation[]).flatMap((relation) => {
+    const fromTableName = typeof relation.fromTable === 'string' ? relation.fromTable : null
+    const toTableName = typeof relation.toTable === 'string' ? relation.toTable : null
+    const fromTableId = typeof relation.fromTableId === 'string'
+      ? relation.fromTableId
+      : fromTableName ? tableIdsByName.get(fromTableName) : undefined
+    const toTableId = typeof relation.toTableId === 'string'
+      ? relation.toTableId
+      : toTableName ? tableIdsByName.get(toTableName) : undefined
+    const fromColumnId = typeof relation.fromColumnId === 'string'
+      ? relation.fromColumnId
+      : fromTableName && typeof relation.fromColumn === 'string'
+        ? columnIdsByTableAndName.get(fromTableName)?.get(relation.fromColumn)
+        : undefined
+    const toColumnId = typeof relation.toColumnId === 'string'
+      ? relation.toColumnId
+      : toTableName && typeof relation.toColumn === 'string'
+        ? columnIdsByTableAndName.get(toTableName)?.get(relation.toColumn)
+        : undefined
+    if (!fromTableId || !toTableId || !fromColumnId || !toColumnId) return []
+    return [{
+      id: createDesignerId('r'),
+      fromTableId,
+      fromColumnId,
+      toTableId,
+      toColumnId,
+      type: isDesignerRelationType(relation.type) ? relation.type : 'many_to_one',
+      constraintMethod: isDesignerConstraintMethod(relation.constraintMethod) ? relation.constraintMethod : 'database_fk',
+    }]
+  })
 }
 
 function tableNames(nodes: ErTableSnapshot[]): string[] {
@@ -178,6 +351,53 @@ export class WorkspaceAdapter implements UIObject {
     }
     const store = useStageStore.getState()
     switch (action) {
+      case 'open_er_designer': {
+        const input = (params ?? {}) as OpenErDesignerParams
+        const dialect = input.dialect ?? 'mysql'
+        if (!isSupportedDesignerDialect(dialect)) {
+          const message = `dialect_unsupported: ER Designer does not support dialect: ${String(dialect)}`
+          return {
+            success: false,
+            error: message,
+            data: {
+              code: 'dialect_unsupported',
+              message,
+              aiHint: 'Use query_editor to write dialect-specific DDL manually, then run it through normal confirmation.',
+            },
+          }
+        }
+        const tabId = `er_designer_${generateUuid()}`
+        const { tables, tableIdsByName, columnIdsByTableAndName } = normalizeSeedTables(input.seedTables)
+        const relations = normalizeSeedRelations(input.seedRelations, tableIdsByName, columnIdsByTableAndName)
+        const payload: ErDesignerPayload = {
+          kind: 'er_designer',
+          dialect,
+          targetConnectionId: input.targetConnectionId ?? null,
+          targetDatabase: input.targetDatabase ?? null,
+          targetSchema: input.targetSchema ?? null,
+          tables,
+          relations,
+          positions: {},
+          collapsed: [],
+          viewport: { x: 0, y: 0, zoom: 1 },
+        }
+        const tab: StageTab = {
+          tabId,
+          type: 'er_designer',
+          title: input.title ?? `ER Designer (${dialect})`,
+          connectionId: input.targetConnectionId ?? undefined,
+          database: input.targetDatabase ?? undefined,
+          schema: input.targetSchema ?? undefined,
+          payload,
+          payloadVersion: 1,
+          createdAt: Date.now(),
+        }
+        useErTabsStore.getState().hydrateDesigner(tabId, payload)
+        store.openTab(tab)
+        store.openStage()
+        const summary = `${tables.length === 0 ? 'blank designer' : `${tables.length} tables, ${relations.length} relations`} (${dialect}${payload.targetConnectionId ? `, target=${payload.targetConnectionId}` : ', no target'})`
+        return { success: true, data: { tabId, newTabId: tabId, payloadVersion: 1, summary } }
+      }
       case 'open_er_inspector': {
         const input = (params ?? {}) as OpenErInspectorParams
         const connectionId = input.connectionId ?? input.connection_id

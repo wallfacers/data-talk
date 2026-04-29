@@ -1,6 +1,6 @@
 import type { ActionDef, ExecResult, JsonPatchOp, PatchCapability, PatchResult, UIObject } from '@/services/ui-router'
 import { useErTabsStore } from '@/features/stage/stores/er-tabs-store'
-import type { ErInspectorPayload, ErTableSnapshot } from '@/features/stage/stores/er-tabs-payload-types'
+import type { ErDesignerPayload, ErInspectorPayload, ErTableSnapshot } from '@/features/stage/stores/er-tabs-payload-types'
 
 interface SeedInspectorResponse {
   nodes: ErTableSnapshot[]
@@ -118,8 +118,13 @@ export class ErInspectorAdapter implements UIObject {
 
   patch(ops: JsonPatchOp[], _reason?: string): PatchResult {
     try {
-      const { newVersion } = useErTabsStore.getState().applyInspectorPatch(this.tabId, ops)
-      return { status: 'applied', message: `applied ${ops.length} op(s); new version ${newVersion}` }
+      const { newVersion, assignedIds } = useErTabsStore.getState().applyInspectorPatch(this.tabId, ops)
+      return {
+        status: 'applied',
+        message: `applied ${ops.length} op(s); new version ${newVersion}`,
+        newVersion,
+        assignedIds,
+      }
     } catch (error) {
       return { status: 'error', message: (error as Error).message }
     }
@@ -180,7 +185,7 @@ export class ErInspectorAdapter implements UIObject {
         }
 
         case 'fork_to_designer':
-          return { success: false, error: 'fork_to_designer is implemented in Plan B (er_designer)' }
+          return this.forkToDesigner(payload, params)
 
         default:
           return { success: false, error: `unknown action: ${action}` }
@@ -188,5 +193,46 @@ export class ErInspectorAdapter implements UIObject {
     } catch (error) {
       return { success: false, error: (error as Error).message }
     }
+  }
+
+  private async forkToDesigner(payload: ErInspectorPayload, params?: unknown): Promise<ExecResult> {
+    const { WorkspaceAdapter } = await import('./WorkspaceAdapter')
+    const input = (params ?? {}) as { title?: string; dialect?: ErDesignerPayload['dialect'] }
+    const seedTables = (payload.tablesSnapshot ?? []).map((table) => ({
+      name: table.name,
+      comment: table.comment ?? null,
+      columns: table.columns.map((column) => ({
+        name: column.name,
+        type: column.type,
+        nullable: column.nullable,
+        isPrimaryKey: column.isPK,
+        isAutoIncrement: column.isAutoIncrement ?? false,
+        default: column.default ?? null,
+        comment: column.comment ?? null,
+      })),
+    }))
+    const seedRelations = (payload.tablesSnapshot ?? []).flatMap((table) =>
+      (table.fkOut ?? []).map((relation) => ({
+        fromTable: table.name,
+        fromColumn: relation.fromColumn,
+        toTable: relation.toTable,
+        toColumn: relation.toColumn,
+        type: 'many_to_one',
+        constraintMethod: 'foreign_key',
+      })),
+    )
+    const workspace = new WorkspaceAdapter(() => null)
+    const result = await workspace.exec('open_er_designer', {
+      dialect: input.dialect ?? 'mysql',
+      title: input.title ?? `Fork: ${payload.selection[0] ?? 'ER'}`,
+      targetConnectionId: payload.connectionId,
+      targetDatabase: payload.database ?? null,
+      targetSchema: payload.schema ?? null,
+      seedTables,
+      seedRelations,
+    })
+    if (!result.success) return result
+    const tabId = (result.data as { tabId?: string }).tabId
+    return { success: true, data: { ...(result.data as Record<string, unknown>), newTabId: tabId } }
   }
 }

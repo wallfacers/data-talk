@@ -1259,6 +1259,8 @@ separate and pending.
 
 文件：`docs/exec-plans/2026-04-29-er-designer-plan.md`
 
+**2026-04-29 execution checkpoint:** Code implementation and automated gates are complete. `cd server && mvn clean verify` passed with `BUILD SUCCESS`; `cd client && npx tsc --noEmit && npm test -- --run` passed with 137 test files / 826 tests. Manual real-database Tauri smoke remains pending before this Plan B section is treated as fully accepted.
+
 **估算**：3-4 周
 
 **依赖**：Plan A 完成（共享 canvas / store / Tab type 注册）
@@ -1277,9 +1279,9 @@ separate and pending.
 - AI 能 `open_er_designer` 创建空 / 含 seed 草稿
 - AI 能 `ui_patch` 加表 / 列 / 关系，含 strict baseVersion 冲突测试
 - AI 能 `bind_target` + `diff_against_db` + `generate_ddl`，DDL 进 query_editor
-- 经 Task 5 L2/L3 confirm 落库（手工验证）
+- 经 Task 5 L2/L3 confirm 落库（手工验证；2026-04-29 terminal session 未执行，需 Tauri + writable real DB）
 - DROP / ALTER COLUMN 显式 skipped 并附 aiHint
-- `cd server && mvn clean verify` + `cd client && npx tsc --noEmit && npm test` 通过
+- `cd server && mvn clean verify` + `cd client && npx tsc --noEmit && npm test` 通过（2026-04-29 自动化验证通过）
 
 ---
 

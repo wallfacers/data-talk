@@ -106,6 +106,27 @@ describe('WorkspaceAdapter', () => {
     })
   })
 
+  it('exec open for query_editor accepts payload.content as initial SQL', async () => {
+    const openQueryEditor = vi.fn().mockReturnValue({ tabId: 'qe-content', created: true })
+    useStageStore.setState({ openQueryEditor } as unknown as Record<string, unknown>)
+
+    const adapter = new WorkspaceAdapter(() => 's1')
+    const result = await adapter.exec('open', {
+      type: 'query_editor',
+      payload: {
+        content: 'DROP DATABASE ecommerce;',
+      },
+    })
+
+    expect(result).toEqual({
+      success: true,
+      data: { tabId: 'qe-content' },
+    })
+    expect(openQueryEditor).toHaveBeenCalledWith(expect.objectContaining({
+      initialContent: 'DROP DATABASE ecommerce;',
+    }))
+  })
+
   it('exec open for query_editor carries payload-only canonical context into openQueryEditor', async () => {
     const openQueryEditor = vi.fn().mockReturnValue({ tabId: 'qe-3', created: true })
     useStageStore.setState({ openQueryEditor } as unknown as Record<string, unknown>)

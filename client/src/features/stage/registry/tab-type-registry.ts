@@ -1,8 +1,8 @@
 import type { LucideIcon } from 'lucide-react'
-import { BarChart2Icon, DatabaseIcon, FileTextIcon, LayoutIcon, NetworkIcon, SearchCodeIcon } from 'lucide-react'
+import { BarChart2Icon, DatabaseIcon, FileTextIcon, LayoutIcon, NetworkIcon, SearchCodeIcon, TableIcon } from 'lucide-react'
 import { useSqlWorkbenchStore } from '@/features/stage/stores/sql-workbench-store'
 import { useErTabsStore } from '@/features/stage/stores/er-tabs-store'
-import type { ErInspectorPayload } from '@/features/stage/stores/er-tabs-payload-types'
+import type { ErDesignerPayload, ErInspectorPayload } from '@/features/stage/stores/er-tabs-payload-types'
 
 export interface TabTypeDescriptor {
   type: string
@@ -101,6 +101,62 @@ export const TAB_TYPE_REGISTRY: Record<string, TabTypeDescriptor> = {
     },
     rehydrate: (tabId, p) => {
       useErTabsStore.getState().hydrateInspector(tabId, p as ErInspectorPayload)
+    },
+  },
+  er_designer: {
+    type: 'er_designer',
+    persistent: true,
+    scope: 'workspace',
+    icon: TableIcon,
+    labelKey: 'tabType.erDesigner',
+    extractContent: (p) => {
+      const payload = p as ErDesignerPayload | null | undefined
+      if (!payload) return ''
+
+      const tableById = new Map((payload.tables ?? []).map((table) => [table.id, table]))
+      const columnById = new Map<string, { tableName: string; columnName: string }>()
+      const target = [
+        'target',
+        payload.targetConnectionId,
+        payload.targetDatabase,
+        payload.targetSchema,
+        payload.dialect,
+      ].filter(Boolean).join(' ')
+
+      const tables = (payload.tables ?? []).map((table) => {
+        for (const column of table.columns ?? []) {
+          columnById.set(column.id, { tableName: table.name, columnName: column.name })
+        }
+        const columns = (table.columns ?? [])
+          .map((column) => [column.name, column.type].filter(Boolean).join(' '))
+          .join(' ')
+        const columnComments = (table.columns ?? [])
+          .map((column) => column.comment)
+          .filter(Boolean)
+          .join(' ')
+        const indexes = (table.indexes ?? [])
+          .map((index) => `index ${index.name} ${(index.columns ?? []).join(' ')}`)
+          .join(' ')
+        const uniques = (table.uniques ?? [])
+          .map((unique) => `unique ${(unique.columns ?? []).join(' ')}`)
+          .join(' ')
+        return [table.name, columns, table.comment, columnComments, indexes, uniques].filter(Boolean).join(' ')
+      })
+
+      const relations = (payload.relations ?? []).map((relation) => {
+        const from = columnById.get(relation.fromColumnId)
+        const to = columnById.get(relation.toColumnId)
+        const fromTable = from?.tableName ?? tableById.get(relation.fromTableId)?.name ?? relation.fromTableId
+        const fromColumn = from?.columnName ?? relation.fromColumnId
+        const toTable = to?.tableName ?? tableById.get(relation.toTableId)?.name ?? relation.toTableId
+        const toColumn = to?.columnName ?? relation.toColumnId
+        return `relation ${fromTable}.${fromColumn} -> ${toTable}.${toColumn} ${relation.type} ${relation.constraintMethod}`
+      })
+
+      return [target, ...tables, ...relations].filter(Boolean).join('\n')
+    },
+    rehydrate: (tabId, p) => {
+      useErTabsStore.getState().hydrateDesigner(tabId, p as ErDesignerPayload)
     },
   },
 }

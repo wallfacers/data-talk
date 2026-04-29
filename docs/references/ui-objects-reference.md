@@ -47,7 +47,7 @@ Not supported. `workspace` is read-only through `patch`; use `exec`.
 
 | action | Required params | Optional params | Effect |
 |--------|-----------------|-----------------|--------|
-| `open` | `type: string` | `title`, `connection_id`, `database`, `schema`, `payload` | Open a new tab; the adapter registry determines the concrete tab type |
+| `open` | `type: string` | `title`, `connection_id`, `database`, `schema`, `payload` | Open a new tab; for `query_editor`, prefill SQL with `payload.initialSql`, `payload.content`, or legacy `payload.sql` |
 | `focus` | `target: tabId` | — | Ensure the tab is in the workset and make it active; archived targets return `tab_archived` |
 | `detach` | `target: tabId` | — | Remove the tab from the top-tab workset only; it remains in the library |
 | `archive` | `target: tabId` | `archived?: boolean = true` | Archive when `true`; unarchive when `false` |
@@ -108,7 +108,7 @@ Supported whitelist paths:
 
 | path | ops | Required fields | Effect |
 |------|-----|-----------------|--------|
-| `/content` | `replace` | `baseVersion: number` | Replace the full SQL text; a stale base version returns `version_conflict` |
+| `/content` | `replace` | top-level `baseVersion: number` | Replace the full SQL text; `baseVersion: "auto"` is not valid for query editor content, and a stale base version returns `version_conflict` |
 | `/connectionId` | `replace` | — | Change the connection |
 | `/database` | `replace` | — | Change the database |
 | `/schema` | `replace` | — | Change the schema |

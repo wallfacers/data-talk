@@ -1,11 +1,19 @@
 import { create } from 'zustand'
 import { applyPatch } from '@/services/ui-router/jsonPatch'
 import type {
+  ErDesignerColumnDraft,
   ErDesignerPayload,
+  ErDesignerRelationDraft,
+  ErDesignerTableDraft,
   ErInspectorPayload,
   ErVirtualRelation,
   JsonPatchOp,
 } from './er-tabs-payload-types'
+
+type DesignerBaseVersion = number | 'auto'
+// Designer ops carry the same shape as JsonPatchOp; baseVersion/expectedVersion
+// were hoisted into the protocol type, so this alias only documents intent.
+type DesignerPatchOp = JsonPatchOp
 
 const INSPECTOR_PATH_WHITELIST = [
   /^\/selection$/,
@@ -36,11 +44,19 @@ function immutablePathError(path: string): Error {
 }
 
 function createVirtualRelationId(): string {
+  return createStableId('vr')
+}
+
+function createDesignerId(prefix: 't' | 'c' | 'r'): string {
+  return createStableId(prefix)
+}
+
+function createStableId(prefix: string): string {
   const bytes = globalThis.crypto?.getRandomValues?.(new Uint8Array(6))
   if (bytes) {
-    return `vr_${Array.from(bytes, (byte) => byte.toString(36).padStart(2, '0')).join('').slice(0, 8)}`
+    return `${prefix}_${Array.from(bytes, (byte) => byte.toString(36).padStart(2, '0')).join('').slice(0, 8)}`
   }
-  return `vr_${Math.random().toString(36).slice(2, 10).padEnd(8, '0')}`
+  return `${prefix}_${Math.random().toString(36).slice(2, 10).padEnd(8, '0')}`
 }
 
 function stampVirtualRelationAddOps(current: ErInspectorPayload, ops: JsonPatchOp[]) {
@@ -79,6 +95,196 @@ export interface ErInspectorView {
   }[]
 }
 
+const DESIGNER_STRUCTURAL_PATHS = [
+  /^\/tables$/,
+  /^\/tables\/-$/,
+  /^\/tables\[id=[^\]]+\](?:\/(?:id|name|comment|columns|indexes|uniques))?$/,
+  /^\/tables\[id=[^\]]+\]\/columns\/-$/,
+  /^\/tables\[id=[^\]]+\]\/columns\[id=[^\]]+\](?:\/(?:id|name|type|nullable|isPrimaryKey|isAutoIncrement|default|comment))?$/,
+  /^\/tables\[id=[^\]]+\]\/indexes(?:\/-|\/\d+)?$/,
+  /^\/tables\[id=[^\]]+\]\/indexes\/\d+\/(?:name|columns)$/,
+  /^\/tables\[id=[^\]]+\]\/uniques(?:\/-|\/\d+)?$/,
+  /^\/tables\[id=[^\]]+\]\/uniques\/\d+\/columns$/,
+  /^\/relations$/,
+  /^\/relations\/-$/,
+  /^\/relations\[id=[^\]]+\](?:\/(?:id|fromTableId|fromColumnId|toTableId|toColumnId|type|constraintMethod))?$/,
+  /^\/dialect$/,
+  /^\/targetConnectionId$/,
+  /^\/targetDatabase$/,
+  /^\/targetSchema$/,
+]
+
+const DESIGNER_VIEW_PATHS = [
+  /^\/positions$/,
+  /^\/positions\/[^/]+$/,
+  /^\/collapsed$/,
+  /^\/viewport$/,
+]
+
+function isDesignerStructuralPath(path: string): boolean {
+  return DESIGNER_STRUCTURAL_PATHS.some((pattern) => pattern.test(path))
+}
+
+function isDesignerPathAllowed(path: string): boolean {
+  return isDesignerStructuralPath(path) || DESIGNER_VIEW_PATHS.some((pattern) => pattern.test(path))
+}
+
+function versionOf(payload: ErDesignerPayload): number {
+  const version = (payload as unknown as { __v?: unknown }).__v
+  return typeof version === 'number' ? version : 0
+}
+
+function designerPatchVersion(
+  op: DesignerPatchOp,
+  opts?: { baseVersion?: DesignerBaseVersion },
+): DesignerBaseVersion | undefined {
+  if (op.baseVersion !== undefined) return op.baseVersion
+  if (op.expectedVersion !== undefined) return op.expectedVersion
+  if (opts?.baseVersion !== undefined) return opts.baseVersion
+  return undefined
+}
+
+function conflictError(currentVersion: number, baseVersion: number): Error {
+  const error = new Error(`conflict_with_concurrent_edit: current version ${currentVersion}, patch baseVersion ${baseVersion}`)
+  Object.assign(error, {
+    code: 'conflict_with_concurrent_edit',
+    currentVersion,
+    baseVersion,
+    aiHint:
+      'Re-read the ER designer state with ui_read(mode="state") to get the latest version, then retry the structural patch with a fresh baseVersion.',
+  })
+  return error
+}
+
+function missingBaseVersionError(path: string, currentVersion: number): Error {
+  const error = new Error(`missing_base_version: structural designer patch ${path} requires a numeric baseVersion`)
+  Object.assign(error, {
+    code: 'missing_base_version',
+    path,
+    currentVersion,
+    aiHint:
+      'Designer structural patches (tables / columns / relations / dialect / target*) require a numeric baseVersion read from ui_read(mode="state"). The wire-default "auto" literal is NOT accepted here — strict versioning is mandatory so concurrent edits surface as 409. View paths (positions/collapsed/viewport) may still omit baseVersion.',
+  })
+  return error
+}
+
+function invalidDesignerPathError(path: string): Error {
+  const error = new Error(`invalid_path: ${path}`)
+  Object.assign(error, {
+    code: 'invalid_path',
+    aiHint:
+      'Patch only designer schema paths (/tables, /columns, /relations, target fields, dialect) or view paths (/positions, /collapsed, /viewport).',
+  })
+  return error
+}
+
+function normalizeDesignerColumn(
+  column: Partial<ErDesignerColumnDraft>,
+  assignedIds: Record<string, string>,
+  assignedPath: string,
+): ErDesignerColumnDraft {
+  const id = typeof column.id === 'string' && column.id.length > 0 ? column.id : createDesignerId('c')
+  if (column.id !== id) assignedIds[assignedPath] = id
+  return {
+    id,
+    name: typeof column.name === 'string' ? column.name : 'column',
+    type: typeof column.type === 'string' ? column.type : 'TEXT',
+    nullable: typeof column.nullable === 'boolean' ? column.nullable : true,
+    isPrimaryKey: typeof column.isPrimaryKey === 'boolean' ? column.isPrimaryKey : false,
+    isAutoIncrement: typeof column.isAutoIncrement === 'boolean' ? column.isAutoIncrement : false,
+    default: column.default,
+    comment: column.comment,
+  }
+}
+
+function normalizeDesignerTable(
+  table: Partial<ErDesignerTableDraft>,
+  assignedIds: Record<string, string>,
+  tablePath: string,
+): ErDesignerTableDraft {
+  const id = typeof table.id === 'string' && table.id.length > 0 ? table.id : createDesignerId('t')
+  if (table.id !== id) assignedIds[tablePath] = id
+  return {
+    id,
+    name: typeof table.name === 'string' ? table.name : 'table',
+    comment: table.comment,
+    columns: Array.isArray(table.columns)
+      ? table.columns.map((column, index) => normalizeDesignerColumn(column, assignedIds, `${tablePath}/columns/${index}`))
+      : [],
+    indexes: Array.isArray(table.indexes) ? table.indexes : [],
+    uniques: Array.isArray(table.uniques) ? table.uniques : [],
+  }
+}
+
+function normalizeDesignerRelation(
+  relation: Partial<ErDesignerRelationDraft>,
+  assignedIds: Record<string, string>,
+  relationPath: string,
+): ErDesignerRelationDraft {
+  const id = typeof relation.id === 'string' && relation.id.length > 0 ? relation.id : createDesignerId('r')
+  if (relation.id !== id) assignedIds[relationPath] = id
+  return {
+    id,
+    fromTableId: relation.fromTableId ?? '',
+    fromColumnId: relation.fromColumnId ?? '',
+    toTableId: relation.toTableId ?? '',
+    toColumnId: relation.toColumnId ?? '',
+    type: relation.type ?? 'many_to_one',
+    constraintMethod: relation.constraintMethod ?? 'database_fk',
+  }
+}
+
+function tableIdFromColumnAddPath(path: string): string | null {
+  return path.match(/^\/tables\[id=([^\]]+)\]\/columns\/-$/)?.[1] ?? null
+}
+
+function stampDesignerAddOps(current: ErDesignerPayload, ops: DesignerPatchOp[]) {
+  const assignedIds: Record<string, string> = {}
+  let tableAdds = 0
+  let relationAdds = 0
+  const columnAddsByTableId = new Map<string, number>()
+
+  const stamped = ops.map((op): DesignerPatchOp => {
+    if (op.op === 'add' && op.path === '/tables/-' && typeof op.value === 'object' && op.value !== null) {
+      const tableIndex = current.tables.length + tableAdds
+      tableAdds += 1
+      return {
+        ...op,
+        value: normalizeDesignerTable(op.value as Partial<ErDesignerTableDraft>, assignedIds, `/tables/${tableIndex}`),
+      }
+    }
+
+    if (op.op === 'add' && op.path === '/relations/-' && typeof op.value === 'object' && op.value !== null) {
+      const relationIndex = current.relations.length + relationAdds
+      relationAdds += 1
+      return {
+        ...op,
+        value: normalizeDesignerRelation(op.value as Partial<ErDesignerRelationDraft>, assignedIds, `/relations/${relationIndex}`),
+      }
+    }
+
+    const tableId = op.op === 'add' ? tableIdFromColumnAddPath(op.path) : null
+    if (tableId && typeof op.value === 'object' && op.value !== null) {
+      const table = current.tables.find((item) => item.id === tableId)
+      const previousAdds = columnAddsByTableId.get(tableId) ?? 0
+      columnAddsByTableId.set(tableId, previousAdds + 1)
+      const columnIndex = (table?.columns.length ?? 0) + previousAdds
+      return {
+        ...op,
+        value: normalizeDesignerColumn(
+          op.value as Partial<ErDesignerColumnDraft>,
+          assignedIds,
+          `/tables[id=${tableId}]/columns/${columnIndex}`,
+        ),
+      }
+    }
+
+    return op
+  })
+
+  return { stamped, assignedIds }
+}
+
 interface ErTabsState {
   inspectors: Map<string, ErInspectorPayload>
   designers: Map<string, ErDesignerPayload>
@@ -92,7 +298,8 @@ interface ErTabsState {
   ) => { newVersion: number; assignedIds: Record<string, string> }
   applyDesignerPatch: (
     tabId: string,
-    ops: JsonPatchOp[],
+    ops: DesignerPatchOp[],
+    opts?: { baseVersion?: DesignerBaseVersion },
   ) => { newVersion: number; assignedIds: Record<string, string> }
 
   getInspectorView: (tabId: string) => ErInspectorView | null
@@ -147,8 +354,43 @@ export const useErTabsStore = create<ErTabsState>((set, get) => ({
     return { newVersion: previousVersion + 1, assignedIds }
   },
 
-  applyDesignerPatch(_tabId, _ops) {
-    throw new Error('applyDesignerPatch: implement in Plan B')
+  applyDesignerPatch(tabId, ops, opts) {
+    const current = get().designers.get(tabId)
+    if (!current) throw new Error(`tab not found: ${tabId}`)
+
+    const currentVersion = versionOf(current)
+    for (const op of ops) {
+      if (!isDesignerPathAllowed(op.path)) {
+        throw invalidDesignerPathError(op.path)
+      }
+      if (isDesignerStructuralPath(op.path)) {
+        const baseVersion = designerPatchVersion(op, opts)
+        // Spec (Q12 in 2026-04-29-er-graph-browsing-design): designer structural
+        // changes are STRICT — undefined and the convenience 'auto' literal are
+        // both rejected so the AI is forced to read the version first.
+        if (typeof baseVersion !== 'number') {
+          throw missingBaseVersionError(op.path, currentVersion)
+        }
+        if (baseVersion !== currentVersion) {
+          throw conflictError(currentVersion, baseVersion)
+        }
+      }
+    }
+
+    const { stamped, assignedIds } = stampDesignerAddOps(current, ops)
+    const next = applyPatch(
+      current as unknown as Record<string, unknown>,
+      stamped,
+    ) as unknown as ErDesignerPayload
+    ;(next as unknown as { __v: number }).__v = currentVersion + 1
+
+    set((state) => {
+      const designers = new Map(state.designers)
+      designers.set(tabId, next)
+      return { designers }
+    })
+
+    return { newVersion: currentVersion + 1, assignedIds }
   },
 
   getInspectorView(tabId) {
@@ -194,7 +436,39 @@ export const useErTabsStore = create<ErTabsState>((set, get) => ({
     return { nodes, edges }
   },
 
-  getDesignerView(_tabId) {
-    return null
+  getDesignerView(tabId) {
+    const payload = get().designers.get(tabId)
+    if (!payload) return null
+
+    const fkColumnIds = new Set(payload.relations.map((relation) => relation.fromColumnId))
+    const tableById = new Map(payload.tables.map((table) => [table.id, table]))
+    const columnById = new Map<string, ErDesignerColumnDraft>()
+    for (const table of payload.tables) {
+      for (const column of table.columns) {
+        columnById.set(column.id, column)
+      }
+    }
+
+    const nodes = payload.tables.map((table) => ({
+      id: table.id,
+      label: table.name,
+      columns: table.columns.map((column) => ({
+        name: column.name,
+        type: column.type,
+        isPK: column.isPrimaryKey,
+        isFK: fkColumnIds.has(column.id),
+      })),
+    }))
+
+    const edges: ErInspectorView['edges'] = payload.relations.map((relation): ErInspectorView['edges'][number] => ({
+      id: relation.id,
+      source: relation.fromTableId,
+      target: relation.toTableId,
+      sourceColumn: columnById.get(relation.fromColumnId)?.name ?? relation.fromColumnId,
+      targetColumn: columnById.get(relation.toColumnId)?.name ?? relation.toColumnId,
+      kind: relation.constraintMethod === 'database_fk' ? 'fk' : 'virtual',
+    })).filter((edge) => tableById.has(edge.source) && tableById.has(edge.target))
+
+    return { nodes, edges }
   },
 }))
