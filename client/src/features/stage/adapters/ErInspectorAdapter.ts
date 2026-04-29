@@ -92,7 +92,7 @@ export class ErInspectorAdapter implements UIObject {
   patchCapabilities = PATCH_CAPABILITIES
   objectId: string
   tabId: string
-  title = 'ER Inspector'
+  title = 'ER Diagram Viewer'
 
   constructor(tabId: string, _sessionIdGetter: () => string | null) {
     this.objectId = tabId

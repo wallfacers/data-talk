@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { BarChart2Icon, DatabaseIcon, FileTextIcon, LayoutIcon, NetworkIcon, SearchCodeIcon, TableIcon } from 'lucide-react'
+import { BarChart2Icon, DatabaseIcon, FileTextIcon, LayoutIcon, NetworkIcon, SearchCodeIcon } from 'lucide-react'
 import { useSqlWorkbenchStore } from '@/features/stage/stores/sql-workbench-store'
 import { useErTabsStore } from '@/features/stage/stores/er-tabs-store'
 import type { ErDesignerPayload, ErInspectorPayload } from '@/features/stage/stores/er-tabs-payload-types'
@@ -107,7 +107,7 @@ export const TAB_TYPE_REGISTRY: Record<string, TabTypeDescriptor> = {
     type: 'er_designer',
     persistent: true,
     scope: 'workspace',
-    icon: TableIcon,
+    icon: NetworkIcon,
     labelKey: 'tabType.erDesigner',
     extractContent: (p) => {
       const payload = p as ErDesignerPayload | null | undefined

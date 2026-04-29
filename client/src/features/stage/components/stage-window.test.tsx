@@ -7,6 +7,7 @@ import { useStageStore } from '@/stores/stage-store'
 import { useSessionStore } from '@/stores/session-store'
 import { useOntologyStore } from '@/stores/ontology-store'
 import { useTimelineStore } from '@/stores/timeline-store'
+import { useErTabsStore } from '../stores/er-tabs-store'
 
 const realOpenQueryEditor = useStageStore.getState().openQueryEditor
 
@@ -14,6 +15,10 @@ vi.mock('./sql-workbench-tab', () => ({
   SqlWorkbenchTab: ({ tab }: { tab: { title: string } }) => (
     <div data-testid="sql-workbench-tab">{tab.title}</div>
   ),
+}))
+
+vi.mock('./er-designer-tab', () => ({
+  ErDesignerTab: () => <div data-testid="er-designer-tab">er designer tab</div>,
 }))
 
 vi.mock('./left-rail/stage-left-rail', () => ({
@@ -152,6 +157,7 @@ describe('StageWindow', () => {
       openQueryEditor: realOpenQueryEditor,
     })
     useOntologyStore.setState({ artifactsBySession: new Map() })
+    useErTabsStore.setState({ inspectors: new Map(), designers: new Map() })
     useTimelineStore.setState({
       orderBySession: new Map(),
       activeBySession: new Map(),
@@ -226,7 +232,7 @@ describe('StageWindow', () => {
 
     expect(screen.getByTestId('stage-empty-workbench')).toBeTruthy()
     expect(screen.getByRole('button', { name: /SQL 编辑器/ })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /ER 图设计器/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /ER 图设计器/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: /报表/ })).toBeDisabled()
     expect(screen.getByRole('button', { name: /Dashboard/ })).toBeDisabled()
   })
@@ -263,6 +269,24 @@ describe('StageWindow', () => {
     expect(useStageStore.getState().tabs).toHaveLength(1)
     expect(useStageStore.getState().activeTabId).toBeTruthy()
     expect(screen.getByTestId('sql-workbench-tab').textContent).toBe('SQL 编辑器')
+  })
+
+  it('clicking the empty-state ER designer CTA opens an er_designer tab', () => {
+    useStageStore.setState({
+      tabs: [],
+      activeTabId: null,
+    })
+
+    render(<StageWindow />)
+
+    fireEvent.click(screen.getByRole('button', { name: /ER 图设计器/ }))
+
+    expect(useStageStore.getState().tabs).toEqual([
+      expect.objectContaining({
+        type: 'er_designer',
+      }),
+    ])
+    expect(useErTabsStore.getState().designers.size).toBe(1)
   })
 
   it.each([

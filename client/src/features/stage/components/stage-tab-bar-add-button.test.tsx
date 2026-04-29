@@ -17,9 +17,30 @@ describe('StageTabBarAddButton', () => {
   it('disabled menu items show pending pill text', () => {
     render(<StageTabBarAddButton />)
     fireEvent.click(screen.getByRole('button'))
-    // ER, Report, Dashboard are disabled
+    // ER designer is now available; only Report and Dashboard remain pending.
     const menuItems = screen.getAllByRole('menuitem')
-    expect(menuItems.length).toBeGreaterThanOrEqual(3)
+    expect(menuItems).toHaveLength(4)
+    expect(screen.getByText('stage.tabBar.addNew.menu.er')).toBeInTheDocument()
+  })
+
+  it('ER designer menu item opens an er_designer tab', () => {
+    useStageStore.setState({
+      tabs: [],
+      openTabIds: new Set(),
+      openTabIdsOrdered: [],
+      activeTabId: null,
+    } as never)
+
+    render(<StageTabBarAddButton />)
+    fireEvent.click(screen.getByRole('button'))
+    const erItem = screen.getAllByRole('menuitem')[1]
+    fireEvent.click(erItem)
+
+    expect(useStageStore.getState().tabs).toEqual([
+      expect.objectContaining({
+        type: 'er_designer',
+      }),
+    ])
   })
 
   it('SQL editor menu item calls openQueryEditor on click', () => {

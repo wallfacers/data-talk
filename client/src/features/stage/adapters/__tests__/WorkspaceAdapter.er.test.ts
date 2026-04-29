@@ -58,7 +58,9 @@ describe('WorkspaceAdapter.exec(open_er_inspector)', () => {
     expect(data.summary).toContain('tables')
     expect(data.edges).toBe(1)
     expect(data.tables).toEqual(['users', 'orders'])
-    expect(useStageStore.getState().tabs.find((tab) => tab.tabId === data.tabId)).toBeDefined()
+    expect(useStageStore.getState().tabs.find((tab) => tab.tabId === data.tabId)).toEqual(expect.objectContaining({
+      title: 'ER Diagram Viewer: orders',
+    }))
     expect(useErTabsStore.getState().inspectors.get(data.tabId)).toBeDefined()
   })
 
@@ -101,7 +103,7 @@ describe('WorkspaceAdapter.exec(open_er_designer)', () => {
   it('creates a blank designer tab with the requested dialect', async () => {
     const adapter = new WorkspaceAdapter(() => null)
 
-    const result = await adapter.exec('open_er_designer', { dialect: 'mysql', title: 'Order Draft' })
+    const result = await adapter.exec('open_er_designer', { dialect: 'mysql' })
 
     expect(result.success).toBe(true)
     const data = result.data as { tabId: string; summary: string; payloadVersion: number }
@@ -110,6 +112,9 @@ describe('WorkspaceAdapter.exec(open_er_designer)', () => {
     expect(data.payloadVersion).toBe(1)
     expect(useErTabsStore.getState().designers.get(data.tabId)?.dialect).toBe('mysql')
     expect(useStageStore.getState().activeTabId).toBe(data.tabId)
+    expect(useStageStore.getState().tabs.find((tab) => tab.tabId === data.tabId)).toEqual(expect.objectContaining({
+      title: 'ER Diagram Designer (mysql)',
+    }))
   })
 
   it('rejects unsupported dialects with an English aiHint', async () => {

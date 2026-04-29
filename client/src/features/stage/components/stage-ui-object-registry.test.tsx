@@ -231,7 +231,7 @@ describe('StageUIObjectRegistry', () => {
     const erDesignerTab: StageTab = {
       tabId: 'd-1',
       type: 'er_designer',
-      title: 'ER Designer',
+      title: 'ER Diagram Designer',
       originSessionId: 's1',
       connectionId: 'conn-1',
       payload: {},

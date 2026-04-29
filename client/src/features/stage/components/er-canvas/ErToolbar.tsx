@@ -10,6 +10,7 @@ import {
   RefreshCwIcon,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { useI18n } from '@/i18n/use-i18n'
 
 interface ErToolbarInspectorProps {
@@ -24,6 +25,12 @@ interface ErToolbarInspectorProps {
 }
 
 type DesignerDialect = 'mysql' | 'postgresql' | 'h2' | 'sqlite'
+const DESIGNER_DIALECT_OPTIONS: Array<{ value: DesignerDialect; label: string }> = [
+  { value: 'mysql', label: 'MySQL' },
+  { value: 'postgresql', label: 'PostgreSQL' },
+  { value: 'h2', label: 'H2' },
+  { value: 'sqlite', label: 'SQLite' },
+]
 
 interface ErToolbarDesignerProps {
   mode: 'designer'
@@ -81,17 +88,27 @@ export function ErToolbar(props: ErToolbarProps) {
 
         <label className="flex items-center gap-1.5 text-xs text-text-muted">
           <span>{label('erCanvas.toolbar.dialect', 'Dialect')}</span>
-          <select
-            aria-label={label('erCanvas.toolbar.dialect', 'Dialect')}
+          <Select
             value={props.dialect}
-            onChange={(event) => props.onChangeDialect(event.target.value as DesignerDialect)}
-            className="h-7 rounded-md border border-border-default bg-bg-canvas px-2 text-xs text-text-base outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onValueChange={(value) => props.onChangeDialect(value as DesignerDialect)}
           >
-            <option value="mysql">MySQL</option>
-            <option value="postgresql">PostgreSQL</option>
-            <option value="h2">H2</option>
-            <option value="sqlite">SQLite</option>
-          </select>
+            <SelectTrigger
+              size="sm"
+              aria-label={label('erCanvas.toolbar.dialect', 'Dialect')}
+              className="min-w-28 border-border-default bg-bg-canvas px-2 text-xs text-text-base"
+            >
+              <span className="flex flex-1 text-left">
+                {DESIGNER_DIALECT_OPTIONS.find((option) => option.value === props.dialect)?.label ?? props.dialect}
+              </span>
+            </SelectTrigger>
+            <SelectContent>
+              {DESIGNER_DIALECT_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </label>
       </div>
     )

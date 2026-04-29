@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { NetworkIcon } from 'lucide-react'
 import {
   TAB_TYPE_REGISTRY,
   getTabTypeDescriptor,
@@ -112,6 +113,7 @@ describe('tab-type-registry', () => {
     expect(TAB_TYPE_REGISTRY.er_designer).toBeDefined()
     expect(isPersistent('er_designer')).toBe(true)
     expect(getScope('er_designer')).toBe('workspace')
+    expect(TAB_TYPE_REGISTRY.er_designer.icon).toBe(NetworkIcon)
   })
 
   it('extractContent indexes ER designer target, tables, columns, comments, and relations', () => {

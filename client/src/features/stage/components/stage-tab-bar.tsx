@@ -52,6 +52,8 @@ function getTabIcon(type?: string, isActive?: boolean) {
       )
     case 'er':
     case 'er_canvas':
+    case 'er_inspector':
+    case 'er_designer':
       return (
         <NetworkIcon
           className={cn('size-4 transition-colors', color)}

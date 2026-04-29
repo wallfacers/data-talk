@@ -118,7 +118,7 @@ export class ErDesignerAdapter implements UIObject {
   type = 'er_designer'
   objectId: string
   tabId: string
-  title = 'ER Designer'
+  title = 'ER Diagram Designer'
   patchCapabilities = PATCH_CAPABILITIES
 
   constructor(tabId: string, _sessionIdGetter: () => string | null) {

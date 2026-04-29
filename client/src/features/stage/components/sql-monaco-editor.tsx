@@ -42,6 +42,17 @@ export const SqlMonacoEditor = forwardRef<SqlMonacoEditorHandle, SqlMonacoEditor
 
   useEffect(() => {
     latestValueRef.current = value
+    const editor = editorRef.current
+    const model = editor?.getModel?.()
+    if (!model || typeof model.getValue !== 'function') return
+    if (model.getValue() === value) return
+    // External update (e.g. datatalk_ui_patch /content). Force-sync the model
+    // so the visible editor never drifts from the controlling store.
+    model.pushEditOperations(
+      [],
+      [{ range: model.getFullModelRange(), text: value }],
+      () => null,
+    )
   }, [value])
 
   useEffect(() => {

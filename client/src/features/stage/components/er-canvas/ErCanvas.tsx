@@ -20,6 +20,7 @@ import { ErToolbar } from './ErToolbar'
 import { useDagreLayout } from './hooks/useDagreLayout'
 import { useErKeyboard } from './hooks/useErKeyboard'
 import { inspectorToGraph, type ErEdgeData, type ErNodeData } from './utils/payload-to-graph'
+import { useI18n } from '@/i18n/use-i18n'
 import type {
   ErColumnMeta,
   ErDesignerPayload,
@@ -60,6 +61,7 @@ export function ErCanvas(props: ErCanvasProps) {
 
 function ErCanvasInner(props: ErCanvasProps) {
   const { tabId, mode, payload, onPatch, onExec } = props
+  const { t } = useI18n()
   const [contextMenu, setContextMenu] = useState<{ tableId: string; x: number; y: number } | null>(null)
   const { nodes: rawNodes, edges } = useMemo(
     () => mode === 'designer'
@@ -181,6 +183,9 @@ function ErCanvasInner(props: ErCanvasProps) {
     return <ErEmptyState reason="empty_selection" />
   }
 
+  const designerPayload = payload as ErDesignerPayload
+  const isEmptyDesigner = mode === 'designer' && (designerPayload.tables?.length ?? 0) === 0
+
   return (
     <div className="flex h-full w-full flex-col" data-er-tab-id={tabId}>
       {mode === 'designer' ? (
@@ -209,25 +214,33 @@ function ErCanvasInner(props: ErCanvasProps) {
         />
       )}
       <div className="min-h-0 flex-1 bg-bg-canvas">
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={mode === 'designer' ? onConnect : undefined}
-          onNodesDelete={mode === 'designer' ? onNodesDelete : undefined}
-          onEdgesDelete={mode === 'designer' ? onEdgesDelete : undefined}
-          fitView
-          fitViewOptions={{ padding: 0.2, maxZoom: 1 }}
-          minZoom={0.1}
-          maxZoom={2}
-          proOptions={{ hideAttribution: true }}
-        >
-          <Background color="var(--dt-border-subtle)" gap={20} size={1} />
-          <Controls showInteractive={false} />
-        </ReactFlow>
+        {isEmptyDesigner ? (
+          <ErEmptyState
+            reason="empty_designer"
+            actionLabel={mode === 'designer' ? t('erCanvas.toolbar.addTable') : undefined}
+            onAction={mode === 'designer' ? onAddTable : undefined}
+          />
+        ) : (
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={mode === 'designer' ? onConnect : undefined}
+            onNodesDelete={mode === 'designer' ? onNodesDelete : undefined}
+            onEdgesDelete={mode === 'designer' ? onEdgesDelete : undefined}
+            fitView
+            fitViewOptions={{ padding: 0.2, maxZoom: 1 }}
+            minZoom={0.1}
+            maxZoom={2}
+            proOptions={{ hideAttribution: true }}
+          >
+            <Background color="var(--dt-border-subtle)" gap={20} size={1} />
+            <Controls showInteractive={false} />
+          </ReactFlow>
+        )}
       </div>
       {contextMenu && (
         <ErTableContextMenu

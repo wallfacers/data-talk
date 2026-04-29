@@ -6,11 +6,13 @@ import { StageTabBar } from './stage-tab-bar'
 vi.mock('lucide-react', async () => {
   const actual = await vi.importActual<typeof import('lucide-react')>('lucide-react')
   const FileTextIcon = (props: any) => <svg data-testid="file-text-icon" {...props} />
+  const NetworkIcon = (props: any) => <svg data-testid="network-icon" {...props} />
   const SparklesIcon = (props: any) => <svg data-testid="sparkles-icon" {...props} />
 
   return {
     ...actual,
     FileTextIcon,
+    NetworkIcon,
     SparklesIcon,
   }
 })
@@ -54,6 +56,10 @@ const tabs = [
 
 const filePreviewTabs = [
   { tabId: 'preview', title: 'README.md', type: 'file_preview' as const },
+]
+
+const erDesignerTabs = [
+  { tabId: 'designer', title: 'ER 图设计器', type: 'er_designer' as const },
 ]
 
 function mockTabOverflow() {
@@ -215,6 +221,15 @@ describe('StageTabBar', () => {
 
     expect(within(previewTab).getByTestId('file-text-icon')).toBeTruthy()
     expect(within(previewTab).queryByTestId('sparkles-icon')).toBeNull()
+  })
+
+  it('uses the ER network icon for er_designer tabs instead of the sparkle fallback', () => {
+    render(<StageTabBar tabs={erDesignerTabs} activeId="designer" />)
+
+    const designerTab = screen.getByText('ER 图设计器').closest('[data-tab-id="designer"]') as HTMLElement
+
+    expect(within(designerTab).getByTestId('network-icon')).toBeTruthy()
+    expect(within(designerTab).queryByTestId('sparkles-icon')).toBeNull()
   })
 
   it('Close X on a tab calls onClose with the tabId (parent will detachFromWorkset)', () => {

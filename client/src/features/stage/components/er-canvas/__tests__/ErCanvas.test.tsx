@@ -106,6 +106,20 @@ describe('<ErCanvas mode="designer">', () => {
     expect(screen.getByText('orders')).toBeInTheDocument()
   })
 
+  it('renders an explicit empty-state hint for a blank designer draft', () => {
+    render(
+      <ErCanvas
+        tabId="d-empty"
+        mode="designer"
+        payload={{ ...designerPayload, tables: [], positions: {} }}
+        onPatch={vi.fn()}
+        onExec={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText(/尚未添加表|No tables yet/i)).toBeInTheDocument()
+  })
+
   it('maps comment_ref relations to virtual edges in the designer graph', () => {
     const graph = designerToGraph({
       ...designerPayload,

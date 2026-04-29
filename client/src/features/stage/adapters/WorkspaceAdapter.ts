@@ -392,7 +392,7 @@ export class WorkspaceAdapter implements UIObject {
         const tab: StageTab = {
           tabId,
           type: 'er_designer',
-          title: input.title ?? `ER Designer (${dialect})`,
+          title: input.title ?? `ER Diagram Designer (${dialect})`,
           connectionId: input.targetConnectionId ?? undefined,
           database: input.targetDatabase ?? undefined,
           schema: input.targetSchema ?? undefined,
@@ -439,7 +439,7 @@ export class WorkspaceAdapter implements UIObject {
           const tab: StageTab = {
             tabId,
             type: 'er_inspector',
-            title: input.title ?? `ER: ${tables.join(', ')}`,
+            title: input.title ?? `ER Diagram Viewer: ${tables.join(', ')}`,
             connectionId,
             database: input.database,
             schema: input.schema,
@@ -525,6 +525,7 @@ export class WorkspaceAdapter implements UIObject {
           })
         }
         store.focusTab(p.target)
+        store.openStage()
         return { success: true }
       }
       case 'choose_connection': {

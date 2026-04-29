@@ -452,6 +452,20 @@ describe('WorkspaceAdapter', () => {
     expect(useStageStore.getState().activeTabId).toBe((opened.data as { tabId: string }).tabId)
   })
 
+  it('exec focus reveals the stage panel when it is currently closed', async () => {
+    const adapter = new WorkspaceAdapter(() => 's1')
+    const opened = await adapter.exec('open', { type: 'er_canvas', title: 'ER' })
+    const tabId = (opened.data as { tabId: string }).tabId
+    useStageStore.getState().closeStage()
+    expect(useStageStore.getState().open).toBe(false)
+
+    const focused = await adapter.exec('focus', { target: tabId })
+
+    expect(focused).toEqual({ success: true })
+    expect(useStageStore.getState().open).toBe(true)
+    expect(useStageStore.getState().activeTabId).toBe(tabId)
+  })
+
   it('exec focus rejects archived tabs with a structured tab_archived error', async () => {
     const adapter = new WorkspaceAdapter(() => 's1')
     const opened = await adapter.exec('open', { type: 'er_canvas', title: 'ER' })

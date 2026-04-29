@@ -102,7 +102,7 @@ describe('StageTabContent', () => {
       tabs: [{
         tabId: 'designer-1',
         type: 'er_designer',
-        title: 'ER Designer',
+        title: 'ER Diagram Designer',
         createdAt: 0,
         payload: {},
       }],
