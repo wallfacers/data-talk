@@ -172,6 +172,7 @@ Only these UI object types are supported today:
 
 - `workspace`
 - `query_editor`
+- `er_inspector`
 
 Registered UI actions:
 
@@ -182,10 +183,10 @@ Registered UI actions:
   Read `workspace` or `query_editor` state, schema, actions, or the full descriptor through top-level `object`, optional `target`, and optional `mode`. Query editor state includes `inWorkset` so you can tell whether a persisted tab is currently open in the top tab bar.
 
 - `datatalk_ui_patch`
-  Patch a `query_editor` through JSON Patch `ops`. Only `replace` is supported today, and only on `/content`, `/connectionId`, `/database`, and `/schema`. A `/content` patch requires `baseVersion`.
+  Patch a `query_editor` or `er_inspector` through JSON Patch `ops`. Query-editor text patches use `/content`, `/connectionId`, `/database`, and `/schema`; ER inspector annotation/layout patches use the ER tab protocol path whitelist.
 
 - `datatalk_ui_exec`
-  Execute supported actions on `workspace` or `query_editor` through top-level `object`, optional `target`, `action`, and `params`. `apply_text_edits` requires `params.baseVersion` and every entry in `params.edits` requires `expectedText`. Workspace verbs are `open`, `focus`, `choose_connection`, `detach`, `archive(archived?: boolean = true)`, and `trash`.
+  Execute supported actions on `workspace`, `query_editor`, or `er_inspector` through top-level `object`, optional `target`, `action`, and `params`. `apply_text_edits` requires `params.baseVersion` and every entry in `params.edits` requires `expectedText`. Workspace verbs include `open`, `focus`, `choose_connection`, `detach`, `archive(archived?: boolean = true)`, `trash`, `open_er_inspector`, and `open_er_designer`.
 
 ## Exact UI Contract
 
@@ -233,10 +234,63 @@ For a query editor:
 - Query editor actions are `apply_text_edits`, `set_context`, `run_sql`, `format_sql`, and `focus`.
 - Query editor actions and state use camelCase such as `connectionId` and `baseVersion`.
 
+## ER Tabs (Inspector & Designer)
+
+DataTalk has two ER tab types — **er_inspector** (read-only view of a real
+schema with annotation overlay) and **er_designer** (independent schema draft
+that can generate DDL for a target connection). In Plan A only er_inspector
+is fully wired; er_designer verbs are reserved.
+
+See `docs/references/er-tab-protocol.md` for payload shape, patch paths, exec
+verbs, and error contracts.
+
+### When to open which
+
+| User says | Open | Notes |
+|---|---|---|
+| "show how X relates to other tables" | er_inspector | tables=[X], neighborDepth=1 |
+| "show me the ER for db Y" | er_inspector | tables = read_schema(db=Y, limit=100) |
+| "annotate an implicit link between A and B" | (existing er_inspector) | ui_patch /virtualRelations |
+| "design a schema for ..." | er_designer | dialect required (mysql/postgresql/h2). Plan B. |
+| "fork prod into a draft to edit" | er_inspector -> fork_to_designer | preserves table & column shapes. Plan B. |
+| "apply this draft to the test DB" | er_designer + bind_target + generate_ddl | DDL lands in a new query_editor tab; user must confirm via L2. Plan B. |
+| "find the ER tab containing X" | datatalk_ui_find | filter.type=er_inspector or er_designer + query.mode=fts pattern=X |
+
+### Hard rules
+
+- Do not patch an inspector to "change a real column type". Inspectors are
+  views; structural changes belong in a designer or query_editor.
+- Designer never executes DDL on its own. generate_ddl produces a query_editor
+  tab; the user runs it under the existing L2/L3 confirmation flow.
+- Oracle and SQL Server are not supported by ER. Use query_editor + read_schema
+  instead.
+- Do not pass coordinates. Layout is computed client-side; auto_layout is one
+  ui_exec call away if a relayout is wanted.
+
+### Recipe shortcuts
+
+#### Open an inspector for a table and its neighbors
+ui_exec(workspace, open_er_inspector, { connectionId, tables: ["orders"], neighborDepth: 1 })
+
+#### Add a virtual (non-FK) relation
+ui_patch(inspector_tab, [{
+  op: "add", path: "/virtualRelations/-",
+  value: { from: {table:"orders",column:"user_email"},
+           to:   {table:"users", column:"email"},
+           type: "many_to_one", note: "implicit link in app code" }
+}])
+
+#### Search for an ER tab by content
+ui_find({
+  filter: { type: "er_inspector" },
+  query:  { mode: "fts", pattern: "user_email" },
+  output: { mode: "metadata", headLimit: 10 }
+})
+
 ## Concurrency Contract
 
-Workbench tabs (`query_editor`, `artifact_preview`, future `er_designer` /
-`report_designer`) are workspace-wide objects shared across all chat sessions.
+Workbench tabs (`query_editor`, `artifact_preview`, `er_inspector`,
+`er_designer`, future `report_designer`) are workspace-wide objects shared across all chat sessions.
 They are shared across all sessions and persisted across app restarts.
 Any session, including a parallel agent, may have edited a tab since your last
 read. Treat every patch and text edit as optimistic and conflict-aware.
