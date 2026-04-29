@@ -19,6 +19,7 @@
 - **2026-04-27 update:** Tasks 1-5 已完成（TD-026 已清除、Pagination/Query History 评估完成、Bounded Export shipped、Guarded DDL/DML shipped、Chart Artifact Inline Preview 子计划 shipped）。同日产品总设计新增 §3.11 跨 session 工作台 + Tab 内容索引 + `ui_find` 与 §3.12 外部数据采集（skill 驱动），roadmap 重排：原 Task 6 Intelligent Operations 降为 Task 7、原 Task 7 Visualization 降为 Task 8，新插入 Task 6 跨 session 工作台持久化作为下一启动项；当时新增外部数据采集作为下一阶段占位，后续在 2026-04-29 后移为 Task 10。
 - **2026-04-28 update:** Task 6 已通过 [Cross-Session Workbench Tabs](./2026-04-27-cross-session-workbench-tabs-plan.md) 和 Shared Stage Workbench P1/P2/P3/P3.5 系列收口；Task 7 Intelligent Operations 已 shipped；当时下一条产品主线是 Task 8 Visualization Expansion，外部数据采集继续等待 Task 8 至少一个生产切片稳定。
 - **2026-04-29 update:** 插入新的 Task 9 Data Source Coverage Expansion，外部数据采集后移为 Task 10。新增数据源候选必须按 [docs/DATA_SOURCE_TYPE_COMPATIBILITY.md](../DATA_SOURCE_TYPE_COMPATIBILITY.md) 分批落地；不得只改 UI 下拉或 prompt 文案就宣称支持。
+- **2026-04-29 out-of-roadmap insertion:** 用户从运行时观察提出了 OpenCode 工作目录治理 + AI 产出文件归属问题（`~/.data-talk/opencode/` 下出现孤儿文件、备份/log 堆积、删除 session 不联动清理 OpenCode 自管目录、未来报告/ER 图等持久资产无归属维度），不在原 roadmap Task 1-10 范围内。经 brainstorming + spec 修订（含一次代码核实驱动的 v2 重写）后立项为 Task 11 "OpenCode Workdir & File Artifact System"。这是**运行时基础设施**类别的工作，与 Task 8 visualization 是天然搭档（ER/报表/数据集等长生命周期产物需要 file artifact 系统提供物理归属与生命周期管理）。Spec 与 Part 1 计划已登记到对应 index；按 5 Part 推进，Part 1 (Migration & Domain) 优先于 Task 8 启动。
 
 ## Context
 
@@ -54,6 +55,7 @@ Frontend work in this roadmap must follow [client/DESIGN.md](../../client/DESIGN
 8. **Visualization expansion:** ER designer, report, and dashboard work; now unblocked by Task 6 persistence, but should still start with one focused child spec rather than bundling all visualization surfaces. Existing disabled / placeholder ER, report, and dashboard UI is classified as product backlog for this task, not as a separate tech-debt item.
 9. **Data source coverage expansion:** add first-class support for mainstream and currently popular database/data-warehouse sources in batches, starting from SQL/JDBC-compatible systems and following [DATA_SOURCE_TYPE_COMPATIBILITY.md](../DATA_SOURCE_TYPE_COMPATIBILITY.md) for every kind. Candidate pool includes Doris / Apache Doris, Oracle, Hive, GaussDB / openGauss, Dameng, SQL Server, MariaDB, ClickHouse, DuckDB, Snowflake, BigQuery, Redshift, Databricks SQL, Trino / Presto, StarRocks, OceanBase, TiDB, KingbaseES, IBM Db2, SAP HANA, Teradata, Elasticsearch / OpenSearch, and MongoDB. _(new 2026-04-29; open only as focused child specs, not one mega-implementation)_
 10. **External data ingestion via skills:** e-commerce platform / generic web data fetching with auto-table creation under guarded execution. _(phase-3 placeholder; do not start until Tasks 8 and 9 have stable production slices)_
+11. **OpenCode workdir & file artifact system:** runtime-infrastructure work inserted out-of-roadmap on 2026-04-29 in response to user-observed issues (orphan files in OpenCode cwd, backup/log accumulation, session deletion not cascading to OpenCode-managed directories, no ownership model for AI-produced reports / ER diagrams / scripts). Establishes a dual-track (temporary / persistent) and dual-dimension (session / connection) `file_artifact` system separate from the existing payload-type `artifacts` table; subdirectory soft-isolation (single OpenCode process), `datatalk_archive_artifact` MCP tool, AGENTS.md `{{ACTIVE_SESSION_DIR}}` placeholder, `io.methvin` directory watcher, two-phase session/connection delete with final-confirm modal, and HousekeepingScheduler for backup/log/_trash rotation + one-shot legacy migration. Runs in parallel with Task 8 visualization rather than blocking it; physical persistence of long-lived ER / report objects from Task 8 will eventually flow through this system.
 
 ### Explicit Exclusion
 
@@ -388,6 +390,56 @@ Frontend work in this roadmap must follow [client/DESIGN.md](../../client/DESIGN
   - Generic scaffolding first: HTTP / REST / GraphQL skill harness, credential vault hookup, schema-inference helper, target-table preview with L2 confirmation.
   - Only then sequence platform-specific skills, one platform per child plan.
 
+### Task 11: OpenCode Workdir And File Artifact System (Out-Of-Roadmap, 2026-04-29)
+
+> **Out-of-roadmap insertion**: not in the original Task 1-10 product direction. Triggered by user-observed runtime hygiene issues in `~/.data-talk/opencode/` and a stated need for ownership over AI-produced reports / ER diagrams / scripts. Runs as a **runtime-infrastructure track** in parallel with Task 8 visualization rather than blocking it. Reviewed and revised through one round of code-verification feedback before plan kick-off.
+
+**Spec:** [docs/product-specs/2026-04-29-opencode-workdir-and-artifact-system-design.md](../product-specs/2026-04-29-opencode-workdir-and-artifact-system-design.md) (Draft v2 — first version was rejected during review for assuming per-session OpenCode cwd; v2 switched to subdirectory soft-isolation since OpenCode runs as a single process)
+
+**Plans:**
+- [Part 1 — Migration & Domain](./2026-04-29-file-artifact-system-part1-domain-and-migration-plan.md) (active)
+- Part 2-5 (pending; written after Part 1 lands — Watcher / MCP+AGENTS / Frontend Tabs / Deletion Flow + Housekeeping)
+
+**Files (high-level; per-Part plans hold exact paths):**
+- New: `server/data-talk-domain/src/main/java/com/datatalk/domain/fileartifact/**` (FileArtifact sealed record + 3 enums)
+- New: `server/data-talk-application/src/main/java/com/datatalk/application/fileartifact/**` (FileArtifactService + SessionWorkdirService + repository + path safety)
+- New: `server/data-talk-infrastructure/src/main/java/com/datatalk/infra/fileartifact/**` (JdbcFileArtifactRepository) and `db/migration/V14__file_artifact.sql`
+- New: `server/data-talk-adapter/src/main/java/com/datatalk/adapter/controller/FileArtifactController.java` and `actions/ArchiveArtifactActionHandler.java`
+- Modify: `server/data-talk-adapter/src/main/resources/agents/AGENTS.md` (classpath template; add `## Output Files & Artifacts` section + `{{ACTIVE_SESSION_DIR}}` placeholder)
+- Modify: `server/data-talk-application/src/main/java/com/datatalk/application/stage/AgentPromptBuilder.java` (add second placeholder rendering)
+- Modify: `server/data-talk-domain/src/main/java/com/datatalk/domain/event/DtEvent.java` (5 new sealed records)
+- Modify: `server/data-talk-application/src/main/java/com/datatalk/application/session/SessionService.java` (Phase 2 cascade for file_artifact)
+- New (frontend): Stage Files Tab + Files Library Tab, Zustand `useFileArtifactsStore`, Settings Maintenance tab, i18n keys in `client/src/i18n/messages.ts`
+
+- [ ] **Step 11.1: Spec gate — code-verified v2 only**
+  - The first spec assumed per-session OpenCode cwd; this is **not** supported (`OpenCodeProcessManager` uses a single fixed cwd). v2 spec uses subdirectory soft-isolation under the existing process cwd; do not regress to per-session cwd without first changing the process model.
+  - The new `file_artifact` table must remain disjoint from the existing `artifacts(payload-type)` table — different name, different schema, different lifecycle. Do not unify them in this track.
+  - `session_id` / `connection_id` on `file_artifact` are intentionally **not** FK-constrained; application-layer code (`SessionService.deleteRecord` + `FileArtifactService`) manages references. Archived rows survive session deletion with `session_id` set to `NULL`.
+
+- [ ] **Step 11.2: Path safety is non-negotiable**
+  - Eight rules in spec §5.4 (relative path, no `..`, realpath containment, `_`-prefixed segments rejected, NOFOLLOW_LINKS attribute check, regular-file check, pre-mv stat re-check, ATOMIC_MOVE without REPLACE_EXISTING).
+  - Both watcher (followLinks=false) and `datatalk_archive_artifact` (back-end re-validation) must enforce these. AI cannot be trusted to stay inside the session subdir.
+
+- [ ] **Step 11.3: Lifecycle is application-managed**
+  - Two-phase delete: GET candidates → 409 on conflict → final-confirm modal → force=true → application-layer cascade (`deleteTransientByForSession` + `detachArchivedFromSession`) + `rm -rf opencode/sessions/<sid>/` + OpenCode `session_diff` / `tool-output` cleanup.
+  - HousekeepingScheduler runs on startup + daily cron: `opencode.json.dt-bak-*` rotation (5 + 7 days union), OpenCode log rotation (5 + 7 days), `_trash` 7-day cleanup with synchronized `DELETE FROM file_artifact`, reconcile against on-disk truth.
+  - LegacyMigrationRunner: one-shot move of orphan root files (e.g. observed `datatalk-tools-test-report.md`) under `~/.data-talk/opencode/` to `~/.data-talk/_legacy/`, marker file `~/.data-talk/.legacy-migrated` prevents repeat runs.
+
+- [ ] **Step 11.4: AGENTS.md modification path is the classpath template**
+  - Modify `server/data-talk-adapter/src/main/resources/agents/AGENTS.md` (the source-of-truth template); the runtime copy at `~/.data-talk/opencode/AGENTS.md` is rewritten by `AgentPromptBuilder` on each start, so direct edits there will be lost.
+  - Add `AgentsTemplateContractTest` that asserts the `## Output Files & Artifacts` section is present and contains the `{{ACTIVE_SESSION_DIR}}` placeholder; this prevents accidental deletion in future template refactors.
+
+- [ ] **Step 11.5: UI integration follows client/DESIGN.md and Stage globalization**
+  - Two new Stage tab types (`FILES`, `FILES_LIBRARY`); tab instances are global; tab content is a function of `activeSessionId` / `activeConnectionId` per `tab-type-registry.scope`. Sidebar is **not** modified (user explicit constraint during brainstorming).
+  - Status uses double-channel signaling (icon + color band), not color alone; warning surface for candidates, danger only for actual delete confirmation.
+  - i18n keys land in `client/src/i18n/messages.ts` (the project's actual i18n location), not a separate locale JSON.
+
+- [ ] **Step 11.6: Verification gates per Part**
+  - Backend: `cd server && mvn clean verify` after each Part; new `FlywayMigrationIT` test asserts V14 migration creates `file_artifact` table and does **not** alter the existing `artifacts` table.
+  - Frontend: vitest + `cd client && npx tsc --noEmit` after Part 4.
+  - Integration: end-to-end Temporary → Candidate → Archived flow with FakeOpenCodeServer, tested per Part 3 / Part 5.
+  - Path-attack regression: symlink to outside cwd, `..` traversal, `_`-prefixed segments — all must be rejected (Part 1 service tests).
+
 ## Ordering And Parallelism
 
 - Tasks 1 through 5 are closed (shipped or assessed-and-deferred); no further roadmap-level action.
@@ -397,6 +449,7 @@ Frontend work in this roadmap must follow [client/DESIGN.md](../../client/DESIGN
 - Task 8 (Visualization Expansion) is the next product candidate. ER / report / dashboard objects must register as workbench-scope persistent Tabs from the start; do not ship throwaway session-scope versions first.
 - Task 9 (Data Source Coverage Expansion) is a platform-expansion track. It can run as independent child specs after each candidate kind passes the data-source gate; do not batch unrelated dialects unless they share driver semantics and test fixtures.
 - Task 10 (External Data Ingestion) is a phase-3 placeholder; do not open a child spec until at least one Task 8 slice is in production and Task 9 has at least one stable target data source beyond the current first-class set.
+- Task 11 (OpenCode Workdir & File Artifact System) is an **out-of-roadmap** runtime-infrastructure track inserted on 2026-04-29. Runs in parallel with Task 8 visualization (does not block it; physical persistence of long-lived ER / report objects from Task 8 will eventually flow through Task 11). Part 1 (Migration & Domain) is the active starting point; Parts 2-5 are written as Part 1 lands. Backend-first: Parts 1-3 stabilize the domain + watcher + MCP protocol before Part 4 introduces frontend tabs and Part 5 ties deletion flows together with housekeeping.
 
 ## Verification Gates
 
@@ -420,4 +473,5 @@ Every child implementation plan created from this roadmap must include:
 - Visualization expansion has at least one child spec choosing one initial slice (recommended first slice: ER graph browsing), with explicit `ui_find` / `ui_patch` integration for its persistent objects. Existing ER / report / dashboard placeholders are retired through those product child plans rather than the tech-debt tracker.
 - Data source coverage expansion has at least one child spec or an explicit prioritization decision for the first wave, and every new kind is tied back to [DATA_SOURCE_TYPE_COMPATIBILITY.md](../DATA_SOURCE_TYPE_COMPATIBILITY.md).
 - External data ingestion remains a registered phase-3 placeholder until Tasks 8 and 9 are stable; no child spec opened prematurely.
+- OpenCode workdir & file artifact system (Task 11, out-of-roadmap) has a code-verified spec v2 and an active Part 1 plan registered in `docs/exec-plans/index.md`; Parts 2-5 are written sequentially as each prior Part lands. Part 1 ships before any Task 8 visualization slice that would produce persistent file artifacts.
 - The next roadmap or child plans are registered in `docs/exec-plans/index.md` before this roadmap is moved to Completed.
