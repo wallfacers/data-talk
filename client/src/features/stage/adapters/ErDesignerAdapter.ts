@@ -15,6 +15,8 @@ type DesignerRelation = {
   toTableId: string
 }
 
+type DesignerPosition = { x: number; y: number }
+
 const PATCH_CAPABILITIES: PatchCapability[] = [
   { pathPattern: '/tables/-', ops: ['add'] },
   { pathPattern: '/tables[id=<id>]', ops: ['replace', 'remove'] },
@@ -82,6 +84,34 @@ function asDesignerRelations(payload: ErDesignerPayload): DesignerRelation[] {
 
 function hydrateDesigner(tabId: string, payload: ErDesignerPayload): void {
   useErTabsStore.getState().hydrateDesigner(tabId, payload)
+}
+
+function mergeDesignerPositions(
+  existingPositions: ErDesignerPayload['positions'],
+  syncedTables: ErDesignerPayload['tables'],
+): ErDesignerPayload['positions'] {
+  const mergedPositions = { ...existingPositions }
+  const existing = Object.values(existingPositions)
+  const maxX = existing.reduce((current, position) => Math.max(current, position.x), 0)
+  const minY = existing.reduce((current, position) => Math.min(current, position.y), 0)
+  let missingIndex = 0
+
+  for (const table of syncedTables) {
+    if (mergedPositions[table.id]) continue
+    mergedPositions[table.id] = buildFallbackDesignerPosition(maxX, minY, missingIndex)
+    missingIndex += 1
+  }
+
+  return mergedPositions
+}
+
+function buildFallbackDesignerPosition(maxX: number, minY: number, index: number): DesignerPosition {
+  const column = index % 3
+  const row = Math.floor(index / 3)
+  return {
+    x: maxX + 360 + column * 360,
+    y: Math.max(minY, 80) + row * 220,
+  }
 }
 
 export class ErDesignerAdapter implements UIObject {
@@ -200,17 +230,20 @@ export class ErDesignerAdapter implements UIObject {
         if (!data?.payload) {
           return { success: false, error: 'sync_from_db: server response missing `payload`' }
         }
+        const syncedTables = Array.isArray(data.payload.tables) ? data.payload.tables : []
         // Server returns the merged tables/relations + target context. Preserve the
-        // local-only view fields (kind / positions / collapsed / viewport) so layout
-        // and zoom survive the refresh; tables/relations are taken from the server.
+        // local-only view fields (positions / collapsed / viewport) so layout and
+        // zoom survive the refresh. Newly added tables need fallback positions
+        // because the backend merge does not own frontend view-state coordinates.
         const merged: ErDesignerPayload = {
           ...payload,
           dialect: data.payload.dialect ?? payload.dialect,
           targetConnectionId: data.payload.targetConnectionId ?? payload.targetConnectionId,
           targetDatabase: data.payload.targetDatabase ?? payload.targetDatabase,
           targetSchema: data.payload.targetSchema ?? payload.targetSchema,
-          tables: Array.isArray(data.payload.tables) ? data.payload.tables : [],
+          tables: syncedTables,
           relations: Array.isArray(data.payload.relations) ? data.payload.relations : [],
+          positions: mergeDesignerPositions(payload.positions, syncedTables),
         }
         hydrateDesigner(this.tabId, merged)
         return { success: true, data: { payload: merged } }

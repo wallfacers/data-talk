@@ -116,12 +116,70 @@ describe('ErDesignerAdapter', () => {
     expect(result.success).toBe(true)
     const stored = useErTabsStore.getState().designers.get('d-1')!
     // View fields preserved from local payload, even though server response has no positions/collapsed/viewport.
-    expect(stored.positions).toEqual({ t_old: { x: 100, y: 200 } })
+    expect(stored.positions.t_old).toEqual({ x: 100, y: 200 })
+    expect(stored.positions.t_users).toEqual({ x: 460, y: 80 })
     expect(stored.collapsed).toEqual(['t_old'])
     expect(stored.viewport).toEqual({ x: 5, y: 6, zoom: 0.5 })
     expect(stored.kind).toBe('er_designer')
     // Tables/relations replaced from server.
     expect(stored.tables.map((t) => t.name)).toEqual(['users'])
+  })
+
+  it('exec("sync_from_db") assigns fallback positions to newly added tables', async () => {
+    useErTabsStore.setState({
+      designers: new Map([[
+        'd-1',
+        {
+          ...samplePayload,
+          targetConnectionId: 'c1',
+          positions: { t_existing: { x: 100, y: 200 } },
+          tables: [{
+            id: 't_existing',
+            name: 'existing_users',
+            columns: [],
+            indexes: [],
+            uniques: [],
+          }],
+        },
+      ]]),
+    })
+    ;(global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        payload: {
+          dialect: 'mysql',
+          targetConnectionId: 'c1',
+          targetDatabase: null,
+          targetSchema: null,
+          tables: [
+            {
+              id: 't_existing',
+              name: 'existing_users',
+              columns: [],
+              indexes: [],
+              uniques: [],
+            },
+            {
+              id: 't_new',
+              name: 'orders',
+              columns: [],
+              indexes: [],
+              uniques: [],
+            },
+          ],
+          relations: [],
+        },
+      }),
+    })
+    const adapter = new ErDesignerAdapter('d-1', () => null)
+
+    const result = await adapter.exec('sync_from_db')
+
+    expect(result.success).toBe(true)
+    const stored = useErTabsStore.getState().designers.get('d-1')!
+    expect(stored.positions.t_existing).toEqual({ x: 100, y: 200 })
+    expect(stored.positions.t_new).toBeDefined()
+    expect(stored.positions.t_new).not.toEqual({ x: 0, y: 0 })
   })
 
   it('exec("sync_from_db") surfaces a clear error if server omits payload', async () => {

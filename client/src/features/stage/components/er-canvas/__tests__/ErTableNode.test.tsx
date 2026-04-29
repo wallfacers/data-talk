@@ -6,9 +6,9 @@ import type { ErColumnMeta } from '@/features/stage/stores/er-tabs-payload-types
 import type { ErTableNodeData } from '../ErTableNode'
 
 const columns: ErColumnMeta[] = [
-  { name: 'id', type: 'BIGINT', isPK: true, isFK: false, nullable: false },
-  { name: 'account_id', type: 'BIGINT', isPK: false, isFK: true, nullable: false },
-  { name: 'email', type: 'VARCHAR(255)', isPK: false, isFK: false, nullable: false },
+  { id: 'c_id', name: 'id', type: 'BIGINT', isPK: true, isFK: false, nullable: false } as ErColumnMeta & { id: string },
+  { id: 'c_account_id', name: 'account_id', type: 'BIGINT', isPK: false, isFK: true, nullable: false } as ErColumnMeta & { id: string },
+  { id: 'c_email', name: 'email', type: 'VARCHAR(255)', isPK: false, isFK: false, nullable: false } as ErColumnMeta & { id: string },
 ]
 
 const data: ErTableNodeData = {
@@ -120,8 +120,8 @@ describe('<ErTableNode mode="designer">', () => {
     fireEvent.click(screen.getByRole('button', { name: /delete column email/i }))
 
     expect(onAddColumn).toHaveBeenCalled()
-    expect(onUpdateColumn).toHaveBeenCalledWith('email', { name: 'email_address' })
-    expect(onDeleteColumn).toHaveBeenCalledWith('email')
+    expect(onUpdateColumn).toHaveBeenCalledWith('c_email', { name: 'email_address' })
+    expect(onDeleteColumn).toHaveBeenCalledWith('c_email')
   })
 
   it('dispatches table context menu coordinates on right click', () => {

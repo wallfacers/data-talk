@@ -216,7 +216,7 @@ Registered UI actions:
 
 For the workspace (uses snake_case `params.connection_id`):
 
-- `open` (`params.type=query_editor`): opens a tab. Optional `connection_id`, `database`, `schema`, `title`, `payload`. To prefill SQL, use `params.payload.initialSql`, `params.payload.content`, or legacy `params.payload.sql` (`initialSql` wins over `content`, `content` wins over `sql`).
+- `open` (`params.type=query_editor`): opens a tab. Optional `connection_id`, `database`, `schema`, `title`, `payload`. `params.payload` belongs to the query-editor open request and may include SQL text via `initialSql`, `content`, or legacy `sql` (`initialSql` wins over `content`, `content` wins over `sql`), plus `autoRun`, `connectionId`, `connectionName`, `database`, and `schema` for initial execution/context metadata.
 - `choose_connection`: prompts the connection chooser. Optional `preferredConnectionId`.
 - `focus(target)`: ensures the tab is in the workset and active. Archived tabs return `tab_archived`.
 - `detach(target)`: removes from workset, keeps in library.

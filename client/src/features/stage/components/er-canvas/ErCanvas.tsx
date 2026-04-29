@@ -23,6 +23,7 @@ import { inspectorToGraph, type ErEdgeData, type ErNodeData } from './utils/payl
 import type {
   ErColumnMeta,
   ErDesignerPayload,
+  ErDesignerRelationDraft,
   ErInspectorPayload,
   ErTableSnapshot,
   JsonPatchOp,
@@ -271,9 +272,10 @@ type DesignerRelation = {
   toTableId: string
   toColumnId: string
   type?: string
+  constraintMethod?: ErDesignerRelationDraft['constraintMethod']
 }
 
-function designerToGraph(payload: ErDesignerPayload): {
+export function designerToGraph(payload: ErDesignerPayload): {
   nodes: Node<ErNodeData>[]
   edges: Edge<ErEdgeData>[]
 } {
@@ -309,7 +311,7 @@ function designerToGraph(payload: ErDesignerPayload): {
     targetHandle: `${relation.toColumnId}-target`,
     type: 'erEdge',
     data: {
-      kind: 'fk',
+      kind: relation.constraintMethod === 'comment_ref' ? 'virtual' : 'fk',
       relationType: relation.type ?? 'many_to_one',
       fromColumn: relation.fromColumnId,
       toColumn: relation.toColumnId,

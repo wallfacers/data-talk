@@ -5,6 +5,7 @@ import {
   buildDesignerConnectPatch,
   buildDesignerEdgeDeletePatches,
   buildDesignerNodeDeletePatches,
+  designerToGraph,
 } from '../ErCanvas'
 import type { ErDesignerPayload, ErInspectorPayload } from '@/features/stage/stores/er-tabs-payload-types'
 
@@ -103,6 +104,31 @@ describe('<ErCanvas mode="designer">', () => {
     expect(screen.getByRole('button', { name: /add table|添加表/i })).toBeInTheDocument()
     expect(screen.getByText('users')).toBeInTheDocument()
     expect(screen.getByText('orders')).toBeInTheDocument()
+  })
+
+  it('maps comment_ref relations to virtual edges in the designer graph', () => {
+    const graph = designerToGraph({
+      ...designerPayload,
+      relations: [{
+        id: 'r_virtual',
+        fromTableId: 't1',
+        fromColumnId: 'c1',
+        toTableId: 't2',
+        toColumnId: 'c2',
+        type: 'many_to_one',
+        constraintMethod: 'comment_ref',
+      }],
+    })
+
+    expect(graph.edges).toEqual([
+      expect.objectContaining({
+        id: 'r_virtual',
+        data: expect.objectContaining({
+          kind: 'virtual',
+          relationType: 'many_to_one',
+        }),
+      }),
+    ])
   })
 
   it('emits patches for designer toolbar, context menu, and deletion callbacks', () => {
