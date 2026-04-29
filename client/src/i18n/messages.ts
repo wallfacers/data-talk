@@ -143,6 +143,13 @@ const MESSAGES = {
     'tabType.unknown': 'Tab',
     'tabType.erInspector': 'ER 浏览',
 
+    'erCanvas.empty.oracle': 'ER 不支持 Oracle。请使用 query_editor + read_schema 查看。',
+    'erCanvas.empty.sqlite': 'SQLite ER 需要后端连接配置。当前请使用 query_editor。',
+    'erCanvas.empty.unsupported': 'ER 不支持当前数据库类型。请使用 query_editor。',
+    'erCanvas.empty.selection': '尚未选择表。请在 schema 面板挑选表以查看 ER。',
+    'erCanvas.empty.oversized': '当前 schema 表数过多。请缩小范围或拆分到多个 ER Tab。',
+    'erCanvas.empty.unknown': '无可显示数据。',
+
     'chat.doubleClickRename': '双击重命名',
     'chat.confirmDelete': '确定删除“{title}”？',
     'chat.sendFailed': '发送失败：{reason}',
@@ -631,6 +638,13 @@ const MESSAGES = {
     'tabType.workspace': 'Workspace',
     'tabType.unknown': 'Tab',
     'tabType.erInspector': 'ER Inspector',
+
+    'erCanvas.empty.oracle': 'ER is not supported for Oracle. Use query_editor + read_schema for inspection.',
+    'erCanvas.empty.sqlite': 'ER for SQLite requires backend connection setup. Use query_editor for now.',
+    'erCanvas.empty.unsupported': 'ER is not supported for this database type. Use query_editor instead.',
+    'erCanvas.empty.selection': 'No tables selected. Pick tables from the schema panel to view their ER.',
+    'erCanvas.empty.oversized': 'The selected schema has too many tables to display. Narrow the scope or split across ER tabs.',
+    'erCanvas.empty.unknown': 'No data to display.',
 
     'chat.doubleClickRename': 'Double-click to rename',
     'chat.confirmDelete': 'Delete "{title}"?',
