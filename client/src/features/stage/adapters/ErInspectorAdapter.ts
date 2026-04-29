@@ -1,5 +1,13 @@
 import type { ActionDef, ExecResult, JsonPatchOp, PatchCapability, PatchResult, UIObject } from '@/services/ui-router'
 import { useErTabsStore } from '@/features/stage/stores/er-tabs-store'
+import type { ErInspectorPayload, ErTableSnapshot } from '@/features/stage/stores/er-tabs-payload-types'
+
+interface SeedInspectorResponse {
+  nodes: ErTableSnapshot[]
+  edges: unknown[]
+  summary: string
+  warnings: string[]
+}
 
 const PATCH_CAPABILITIES: PatchCapability[] = [
   { pathPattern: '/selection', ops: ['replace'] },
@@ -47,6 +55,38 @@ const ACTIONS: ActionDef[] = [
   },
 ]
 
+async function fetchSeedInspector(request: {
+  connectionId: string
+  tables: string[]
+  neighborDepth: number
+}): Promise<SeedInspectorResponse> {
+  const response = await fetch('/api/er/seed-inspector', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(request),
+  })
+  if (!response.ok) {
+    const detail = await response.json().catch(() => ({})) as { message?: string; code?: string; aiHint?: string }
+    const error = new Error(detail.message ?? `seed-inspector failed: ${response.status}`)
+    Object.assign(error, { code: detail.code, aiHint: detail.aiHint })
+    throw error
+  }
+  return response.json() as Promise<SeedInspectorResponse>
+}
+
+function tableNames(nodes: ErTableSnapshot[]): string[] {
+  return nodes.map((node) => node.name)
+}
+
+function hydrateSnapshot(tabId: string, payload: ErInspectorPayload, graph: SeedInspectorResponse): void {
+  useErTabsStore.getState().hydrateInspector(tabId, {
+    ...payload,
+    selection: tableNames(graph.nodes),
+    tablesSnapshot: graph.nodes,
+    snapshotAt: Date.now(),
+  })
+}
+
 export class ErInspectorAdapter implements UIObject {
   type = 'er_inspector'
   patchCapabilities = PATCH_CAPABILITIES
@@ -85,7 +125,68 @@ export class ErInspectorAdapter implements UIObject {
     }
   }
 
-  exec(_action: string, _params?: unknown): ExecResult {
-    return { success: false, error: 'ErInspectorAdapter.exec not yet implemented (Task 27)' }
+  async exec(action: string, params?: unknown): Promise<ExecResult> {
+    const store = useErTabsStore.getState()
+    const payload = store.inspectors.get(this.tabId)
+    if (!payload) return { success: false, error: `tab not found: ${this.tabId}` }
+
+    try {
+      switch (action) {
+        case 'refresh': {
+          const graph = await fetchSeedInspector({
+            connectionId: payload.connectionId,
+            tables: payload.selection,
+            neighborDepth: payload.neighborDepth,
+          })
+          hydrateSnapshot(this.tabId, payload, graph)
+          return { success: true, data: { summary: graph.summary, edges: graph.edges.length, warnings: graph.warnings } }
+        }
+
+        case 'auto_layout': {
+          const { computeDagreLayout } = await import('@/features/stage/components/er-canvas/workers/dagre-layout.worker')
+          const positions = computeDagreLayout({
+            nodes: (payload.tablesSnapshot ?? []).map((table) => ({
+              id: table.name,
+              width: 288,
+              height: 40 + table.columns.length * 28,
+            })),
+            edges: (payload.tablesSnapshot ?? []).flatMap((table) =>
+              table.fkOut.map((fk) => ({ source: table.name, target: fk.toTable })),
+            ),
+            config: { rankdir: 'LR', nodesep: 80, ranksep: 200 },
+          })
+          store.applyInspectorPatch(this.tabId, [{ op: 'replace', path: '/positions', value: positions }])
+          return { success: true, data: { positions } }
+        }
+
+        case 'fit_view': {
+          store.applyInspectorPatch(this.tabId, [{ op: 'replace', path: '/viewport', value: { x: 0, y: 0, zoom: 1 } }])
+          return { success: true }
+        }
+
+        case 'add_neighbors': {
+          const table = (params as { table?: unknown } | undefined)?.table
+          if (typeof table !== 'string' || table.length === 0) {
+            return { success: false, error: 'add_neighbors requires { table }' }
+          }
+          const tables = Array.from(new Set([...(payload.selection ?? []), table]))
+          const graph = await fetchSeedInspector({
+            connectionId: payload.connectionId,
+            tables,
+            neighborDepth: payload.neighborDepth,
+          })
+          hydrateSnapshot(this.tabId, payload, graph)
+          return { success: true, data: { addedTables: tableNames(graph.nodes), summary: graph.summary } }
+        }
+
+        case 'fork_to_designer':
+          return { success: false, error: 'fork_to_designer is implemented in Plan B (er_designer)' }
+
+        default:
+          return { success: false, error: `unknown action: ${action}` }
+      }
+    } catch (error) {
+      return { success: false, error: (error as Error).message }
+    }
   }
 }
