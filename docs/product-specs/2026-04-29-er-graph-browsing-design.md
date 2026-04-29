@@ -1230,6 +1230,11 @@ DDL 一律落到 query_editor，**不另开 Apply Dialog**。L2/L3 confirm 是�
 
 文件：`docs/exec-plans/2026-04-29-er-inspector-plan.md`
 
+**状态**：Plan A shipped 2026-04-29. Backend `mvn clean verify` passed;
+client `npx tsc --noEmit` + `npm test -- --run` passed. Manual
+real-database desktop smoke is deferred to user acceptance. Plan B remains
+separate and pending.
+
 **估算**：2-3 周
 
 **范围**：
