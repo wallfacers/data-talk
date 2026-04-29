@@ -5,11 +5,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 class SessionWorkdirServiceTest {
 
@@ -39,6 +41,26 @@ class SessionWorkdirServiceTest {
     }
 
     @Test
+    void getOrCreateRejectsTraversalSessionId() {
+        assertThatThrownBy(() -> service.getOrCreate("../escape", "conn_xyz"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("unsafe session id");
+        assertThat(tmp.resolve("escape")).doesNotExist();
+    }
+
+    @Test
+    void getOrCreateRejectsSymlinkedSessionDirectory() throws Exception {
+        Path outside = tmp.resolve("outside");
+        Files.createDirectories(outside);
+        Files.createDirectories(root.sessionsRoot());
+        createSymlinkOrSkip(root.sessionDir("ses_link"), outside);
+
+        assertThatThrownBy(() -> service.getOrCreate("ses_link", "conn_xyz"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("symlink");
+    }
+
+    @Test
     void getOrCreateIsIdempotentAndKeepsExistingMeta() throws Exception {
         Path first = service.getOrCreate("ses_abc", "conn_xyz");
         Path meta = first.resolve(".meta.json");
@@ -65,6 +87,13 @@ class SessionWorkdirServiceTest {
     }
 
     @Test
+    void requireRejectsTraversalSessionId() {
+        assertThatThrownBy(() -> service.require("../escape"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("unsafe session id");
+    }
+
+    @Test
     void deleteRecursivelyRemovesSessionSubtree() throws Exception {
         Path dir = service.getOrCreate("ses_abc", "conn_xyz");
         Files.writeString(dir.resolve("sample.csv"), "id,val\n1,2");
@@ -84,5 +113,20 @@ class SessionWorkdirServiceTest {
     @Test
     void relativeForPromptRendersSessionSubdir() {
         assertThat(service.relativeForPrompt("ses_abc")).isEqualTo("./sessions/ses_abc/");
+    }
+
+    @Test
+    void relativeForPromptRejectsUnsafeSessionId() {
+        assertThatThrownBy(() -> service.relativeForPrompt("a/b"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("unsafe session id");
+    }
+
+    private static void createSymlinkOrSkip(Path link, Path target) {
+        try {
+            Files.createSymbolicLink(link, target);
+        } catch (UnsupportedOperationException | IOException e) {
+            assumeTrue(false, "symbolic links are not available: " + e);
+        }
     }
 }

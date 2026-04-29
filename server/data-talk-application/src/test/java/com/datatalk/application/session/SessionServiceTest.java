@@ -1,21 +1,28 @@
 package com.datatalk.application.session;
 
 import com.datatalk.application.i18n.Translator;
+import com.datatalk.application.fileartifact.FileArtifactRepository;
+import com.datatalk.application.fileartifact.SessionWorkdirRoot;
+import com.datatalk.application.fileartifact.SessionWorkdirService;
 import com.datatalk.application.opencode.OpenCodeGateway;
 import com.datatalk.application.opencode.OpenCodeSessionMap;
 import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.persistence.SessionRecord;
 import com.datatalk.application.persistence.SessionRepository;
+import com.datatalk.application.stage.ActiveSessionRegistry;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.SingleConnectionDataSource;
 import org.sqlite.SQLiteDataSource;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -34,8 +41,14 @@ import static org.mockito.Mockito.verify;
 
 class SessionServiceTest {
 
+    @TempDir
+    Path tmp;
+
     private SessionRepository repo;
     private SessionService svc;
+    private SessionWorkdirService workdirs;
+    private FileArtifactRepository fileArtifacts;
+    private ActiveSessionRegistry activeSessions;
     private ConnectionRepository connections;
     private OpenCodeGateway gateway;
     private OpenCodeSessionMap sessionMap;
@@ -78,8 +91,13 @@ class SessionServiceTest {
         org.mockito.Mockito.when(translator.get("error.session.title_blank")).thenReturn("title must not be blank");
         org.mockito.Mockito.when(translator.get(org.mockito.ArgumentMatchers.eq("error.session.not_found"), org.mockito.ArgumentMatchers.any()))
             .thenAnswer(inv -> "session not found: " + inv.getArgument(1));
+        workdirs = new SessionWorkdirService(
+            new SessionWorkdirRoot(tmp, tmp.resolve("opencode")),
+            new com.fasterxml.jackson.databind.ObjectMapper());
+        fileArtifacts = mock(FileArtifactRepository.class);
+        activeSessions = new ActiveSessionRegistry();
         svc = new SessionService(connections, repo, Clock.fixed(Instant.ofEpochMilli(500L), ZoneOffset.UTC),
-            gateway, sessionMap, buses, translator);
+            gateway, sessionMap, buses, translator, workdirs, fileArtifacts, activeSessions);
     }
 
     @AfterEach
@@ -144,13 +162,29 @@ class SessionServiceTest {
     }
 
     @Test
+    void createCreatesSessionWorkdirAndMeta() throws Exception {
+        SessionRecord rec = svc.create("c1", "带目录").record();
+
+        Path dir = workdirs.root().sessionDir(rec.id());
+        assertThat(dir).isDirectory();
+        assertThat(Files.readString(dir.resolve(".meta.json")))
+            .contains("\"sessionId\" : \"" + rec.id() + "\"")
+            .contains("\"connectionId\" : \"c1\"");
+        assertThat(activeSessions.currentSessionId()).contains(rec.id());
+    }
+
+    @Test
     void delete_cascadesToOpenCodeWhenOcSidPresent() {
         repo.upsert(new SessionRecord("s1", "c1", "t", true, "ses_xxx", 100L, 100L, false));
+        workdirs.getOrCreate("s1", "c1");
         svc.delete("s1");
         assertThat(repo.findById("s1")).isEmpty();
+        assertThat(workdirs.root().sessionDir("s1")).doesNotExist();
         verify(gateway).deleteOpenCodeSession("ses_xxx");
         verify(sessionMap).unbind("s1");
         verify(buses).close("s1");
+        verify(fileArtifacts).deleteTransientByForSession("s1");
+        verify(fileArtifacts).detachArchivedFromSession("s1");
     }
 
     @Test
@@ -183,15 +217,23 @@ class SessionServiceTest {
     void deleteAll_removesEverySession_andCleansOpenCodeAndBus() {
         repo.upsert(new SessionRecord("s1", "c1", "t1", true, "oc-1", 100L, 100L, false));
         repo.upsert(new SessionRecord("s2", "c1", "t2", false, null, 110L, 110L, false));
+        workdirs.getOrCreate("s1", "c1");
+        workdirs.getOrCreate("s2", "c1");
 
         svc.deleteAll();
 
         assertThat(repo.listAll()).isEmpty();
+        assertThat(workdirs.root().sessionDir("s1")).doesNotExist();
+        assertThat(workdirs.root().sessionDir("s2")).doesNotExist();
         verify(sessionMap).unbind("s1");
         verify(sessionMap).unbind("s2");
         verify(buses).close("s1");
         verify(buses).close("s2");
         verify(gateway).deleteOpenCodeSession("oc-1");
+        verify(fileArtifacts).deleteTransientByForSession("s1");
+        verify(fileArtifacts).deleteTransientByForSession("s2");
+        verify(fileArtifacts).detachArchivedFromSession("s1");
+        verify(fileArtifacts).detachArchivedFromSession("s2");
     }
 
     @Test
@@ -205,7 +247,7 @@ class SessionServiceTest {
         SessionRepository repoSpy = org.mockito.Mockito.spy(repo);
         SessionService spied = new SessionService(connections, repoSpy,
             Clock.fixed(Instant.ofEpochMilli(500L), ZoneOffset.UTC),
-            gateway, sessionMap, buses, translator);
+            gateway, sessionMap, buses, translator, workdirs, fileArtifacts, activeSessions);
 
         spied.delete("s1");
 

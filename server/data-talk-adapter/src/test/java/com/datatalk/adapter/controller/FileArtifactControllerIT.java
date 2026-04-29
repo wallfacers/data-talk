@@ -21,6 +21,9 @@ import java.time.Instant;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -60,7 +63,10 @@ class FileArtifactControllerIT {
 
         mvc.perform(get("/api/sessions/{sessionId}/files", SESSION_ID))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.length()").value(2));
+            .andExpect(jsonPath("$.length()").value(2))
+            .andExpect(jsonPath("$[*].scope", everyItem(is("session"))))
+            .andExpect(jsonPath("$[*].kind", everyItem(is("other"))))
+            .andExpect(jsonPath("$[*].status", containsInAnyOrder("temporary", "candidate")));
     }
 
     @Test

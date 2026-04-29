@@ -27,6 +27,8 @@ datatalk:
       min-data-size-bytes: 104857600
   persistence:
     sqlite-path: ":memory:"
+  workdir:
+    data-talk-root: ./target/test-data-talk-workdir
   master-key-hex: "0000000000000000000000000000000000000000000000000000000000000000"
   mcp:
     enabled: false

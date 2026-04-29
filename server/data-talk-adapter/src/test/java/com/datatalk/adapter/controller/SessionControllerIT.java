@@ -30,6 +30,7 @@ class SessionControllerIT {
     @BeforeEach
     void seedConnectionsAndReset() {
         jdbc.update("DELETE FROM action_invocations");
+        jdbc.update("DELETE FROM file_artifact");
         jdbc.update("DELETE FROM artifacts");
         jdbc.update("DELETE FROM events");
         jdbc.update("DELETE FROM query_results");

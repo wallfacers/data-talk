@@ -72,8 +72,12 @@ public class FileArtifactService {
                 return Optional.of(PathSafetyError.PATH_CONTAINS_SYMLINK);
             }
             base = workdir.require(sessionId);
+        } catch (IllegalArgumentException e) {
+            return Optional.of(PathSafetyError.PATH_OUTSIDE_SESSION_DIR);
         } catch (IllegalStateException e) {
-            return Optional.of(PathSafetyError.PATH_NOT_FOUND);
+            return Optional.of(e.getMessage() != null && e.getMessage().contains("symlink")
+                    ? PathSafetyError.PATH_CONTAINS_SYMLINK
+                    : PathSafetyError.PATH_NOT_FOUND);
         }
 
         Path target = base.resolve(requested).normalize();
@@ -163,9 +167,13 @@ public class FileArtifactService {
     }
 
     private static boolean attributesChanged(BasicFileAttributes before, BasicFileAttributes after) {
+        if (before.fileKey() == null || after.fileKey() == null) {
+            return true;
+        }
         return !Objects.equals(before.fileKey(), after.fileKey())
                 || before.size() != after.size()
                 || !Objects.equals(before.lastModifiedTime(), after.lastModifiedTime())
+                || !Objects.equals(before.creationTime(), after.creationTime())
                 || before.isRegularFile() != after.isRegularFile()
                 || before.isDirectory() != after.isDirectory()
                 || before.isSymbolicLink() != after.isSymbolicLink();

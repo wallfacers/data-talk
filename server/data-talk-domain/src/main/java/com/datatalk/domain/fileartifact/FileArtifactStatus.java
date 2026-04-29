@@ -1,5 +1,7 @@
 package com.datatalk.domain.fileartifact;
 
+import com.fasterxml.jackson.annotation.JsonValue;
+
 import java.util.Locale;
 
 /**
@@ -11,6 +13,7 @@ public enum FileArtifactStatus {
     ARCHIVED,
     DISCARDED;
 
+    @JsonValue
     public String dbValue() {
         return name().toLowerCase(Locale.ROOT);
     }

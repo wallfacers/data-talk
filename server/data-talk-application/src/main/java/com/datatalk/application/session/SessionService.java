@@ -1,11 +1,14 @@
 package com.datatalk.application.session;
 
+import com.datatalk.application.fileartifact.FileArtifactRepository;
+import com.datatalk.application.fileartifact.SessionWorkdirService;
 import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.opencode.OpenCodeGateway;
 import com.datatalk.application.opencode.OpenCodeSessionMap;
 import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.persistence.SessionRecord;
 import com.datatalk.application.persistence.SessionRepository;
+import com.datatalk.application.stage.ActiveSessionRegistry;
 import com.datatalk.domain.util.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,10 +33,16 @@ public class SessionService {
     private final OpenCodeSessionMap sessionMap;
     private final SessionBusRegistry buses;
     private final Translator translator;
+    private final SessionWorkdirService workdirs;
+    private final FileArtifactRepository fileArtifacts;
+    private final ActiveSessionRegistry activeSessions;
 
     public SessionService(ConnectionRepository connections, SessionRepository repo, Clock clock,
                           OpenCodeGateway gateway, OpenCodeSessionMap sessionMap,
-                          SessionBusRegistry buses, Translator translator) {
+                          SessionBusRegistry buses, Translator translator,
+                          SessionWorkdirService workdirs,
+                          FileArtifactRepository fileArtifacts,
+                          ActiveSessionRegistry activeSessions) {
         this.connections = connections;
         this.repo = repo;
         this.clock = clock;
@@ -41,6 +50,9 @@ public class SessionService {
         this.sessionMap = sessionMap;
         this.buses = buses;
         this.translator = translator;
+        this.workdirs = workdirs;
+        this.fileArtifacts = fileArtifacts;
+        this.activeSessions = activeSessions;
     }
 
     public synchronized CreateSessionResult create(String connectionId, String title) {
@@ -62,13 +74,17 @@ public class SessionService {
                 );
                 repo.upsert(reused);
             }
+            workdirs.getOrCreate(reused.id(), reused.connectionId());
+            activeSessions.markActive(reused.id());
             return new CreateSessionResult(reused, true);
         }
         long now = clock.millis();
         String id = UUID.randomUUID().toString();
         String effectiveTitle = Strings.defaultIfBlank(title, translator.get("session.default_title"));
         SessionRecord rec = new SessionRecord(id, effectiveConnectionId, effectiveTitle, false, null, now, now, false);
+        workdirs.getOrCreate(rec.id(), rec.connectionId());
         repo.upsert(rec);
+        activeSessions.markActive(rec.id());
         return new CreateSessionResult(rec, false);
     }
 
@@ -134,7 +150,23 @@ public class SessionService {
             }
         }
         buses.close(id);
+        cleanupFileArtifacts(id);
         repo.deleteById(id);
+        cleanupWorkdir(id);
+        activeSessions.clearIfActive(id);
         // FK ON DELETE CASCADE handles artifacts, action_invocations, events, query_results.
+    }
+
+    private void cleanupFileArtifacts(String sessionId) {
+        fileArtifacts.deleteTransientByForSession(sessionId);
+        fileArtifacts.detachArchivedFromSession(sessionId);
+    }
+
+    private void cleanupWorkdir(String sessionId) {
+        try {
+            workdirs.delete(sessionId);
+        } catch (Exception e) {
+            log.warn("[session] session workdir cleanup failed for {}: {}", sessionId, e.toString());
+        }
     }
 }

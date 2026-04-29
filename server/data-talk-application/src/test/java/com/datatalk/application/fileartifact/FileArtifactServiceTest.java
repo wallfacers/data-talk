@@ -85,6 +85,12 @@ class FileArtifactServiceTest {
     }
 
     @Test
+    void guardPathRejectsUnsafeSessionId() {
+        assertThat(service.guardPath("../escape", "foo.md"))
+                .contains(PathSafetyError.PATH_OUTSIDE_SESSION_DIR);
+    }
+
+    @Test
     void guardPathRejectsMissingFile() {
         assertThat(service.guardPath("ses_abc", "missing.md"))
                 .contains(PathSafetyError.PATH_NOT_FOUND);

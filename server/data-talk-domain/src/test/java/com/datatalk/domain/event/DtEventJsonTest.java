@@ -49,4 +49,21 @@ class DtEventJsonTest {
         assertThat(json).contains("\"type\":\"session.diff\"");
         assertThat(om.readValue(json, DtEvent.class)).isEqualTo(e);
     }
+
+    @Test
+    void fileArtifactEvents_roundTrip() throws Exception {
+        DtEvent[] events = {
+            new DtEvent.FileArtifactDetected("fa1", "s1", "report.md", "report", "temporary", 42L),
+            new DtEvent.FileArtifactArchiveRequested("fa1", "s1", "report", "Report", "Summary"),
+            new DtEvent.FileArtifactArchived("fa1", "s1", "conn1", "report.md", "/tmp/report.md"),
+            new DtEvent.FileArtifactDiscarded("fa1", "user_action"),
+            new DtEvent.LegacyMigrated(3)
+        };
+
+        for (DtEvent event : events) {
+            String json = om.writeValueAsString(event);
+            assertThat(json).contains("\"type\":\"" + event.typeName() + "\"");
+            assertThat(om.readValue(json, DtEvent.class)).isEqualTo(event);
+        }
+    }
 }
