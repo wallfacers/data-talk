@@ -169,6 +169,35 @@ describe('SqlContextChip', () => {
     expect(screen.getByRole('combobox', { name: t('stage.context.field.schema') })).toHaveTextContent('public')
   })
 
+  it('syncs session context updates into database and schema selects while open', () => {
+    const { rerender } = render(
+      <SqlContextChip
+        context={null}
+        mode="session"
+        connections={connections}
+        connectionTargetsByConnectionId={connectionTargetsByConnectionId}
+        onResetTabContext={onResetTabContext}
+        onSetTabContext={onSetTabContext}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: t('stage.context.tooltip.button') }))
+
+    rerender(
+      <SqlContextChip
+        context={context}
+        mode="session"
+        connections={connections}
+        connectionTargetsByConnectionId={connectionTargetsByConnectionId}
+        onResetTabContext={onResetTabContext}
+        onSetTabContext={onSetTabContext}
+      />,
+    )
+
+    expect(screen.getByRole('combobox', { name: t('stage.context.field.database') })).toHaveTextContent('db_main')
+    expect(screen.getByRole('combobox', { name: t('stage.context.field.schema') })).toHaveTextContent('public')
+  })
+
   it('hides the schema field for connections whose kind does not use schemas', () => {
     render(
       <SqlContextChip

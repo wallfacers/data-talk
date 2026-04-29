@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { DatabaseIcon, PinIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -75,6 +75,15 @@ function toDraftContext(context: SqlContextValue | null) {
 
 const EMPTY_SELECT_VALUE = '__empty__'
 
+function sameDraftContext(
+  left: ReturnType<typeof toDraftContext>,
+  right: ReturnType<typeof toDraftContext>,
+) {
+  return left.connectionId === right.connectionId
+    && left.database === right.database
+    && left.schema === right.schema
+}
+
 function normalizeConnectionKind(kind: string | null | undefined) {
   const normalized = normalizeValue(kind)
   return normalized ? normalized.toLowerCase() : null
@@ -104,7 +113,13 @@ export function SqlContextChip({
 }: SqlContextChipProps) {
   const { t } = useI18n()
   const [open, setOpen] = useState(false)
-  const [draft, setDraft] = useState(() => toDraftContext(context))
+  const contextDraft = useMemo(() => toDraftContext(context), [
+    context?.connectionId,
+    context?.database,
+    context?.schema,
+  ])
+  const [draft, setDraft] = useState(() => contextDraft)
+  const lastSyncedContextDraftRef = useRef(contextDraft)
   const databaseDatalistId = useId()
   const schemaDatalistId = useId()
   const isOverride = mode === 'override'
@@ -169,9 +184,15 @@ export function SqlContextChip({
   const tooltipHint = isOverride ? t('stage.context.tooltip.override') : t('stage.context.tooltip.session')
 
   useEffect(() => {
-    if (open) return
-    setDraft(toDraftContext(context))
-  }, [context, open])
+    setDraft((previous) => {
+      const previousSyncedContext = lastSyncedContextDraftRef.current
+      lastSyncedContextDraftRef.current = contextDraft
+      if (!open || sameDraftContext(previous, previousSyncedContext)) {
+        return contextDraft
+      }
+      return previous
+    })
+  }, [contextDraft, open])
 
   useEffect(() => {
     if (!open) return
