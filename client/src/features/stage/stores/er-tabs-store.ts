@@ -1,9 +1,67 @@
 import { create } from 'zustand'
+import { applyPatch } from '@/services/ui-router/jsonPatch'
 import type {
   ErDesignerPayload,
   ErInspectorPayload,
+  ErVirtualRelation,
   JsonPatchOp,
 } from './er-tabs-payload-types'
+
+const INSPECTOR_PATH_WHITELIST = [
+  /^\/selection$/,
+  /^\/neighborDepth$/,
+  /^\/positions$/,
+  /^\/positions\/[^/]+$/,
+  /^\/collapsed$/,
+  /^\/virtualRelations$/,
+  /^\/virtualRelations\/-$/,
+  /^\/virtualRelations\[id=[^\]]+\]$/,
+  /^\/notes$/,
+  /^\/notes\/[^/]+$/,
+  /^\/viewport$/,
+]
+
+function isInspectorPathAllowed(path: string): boolean {
+  return INSPECTOR_PATH_WHITELIST.some((pattern) => pattern.test(path))
+}
+
+function immutablePathError(path: string): Error {
+  const error = new Error(`immutable_path_in_inspector: ${path}`)
+  Object.assign(error, {
+    code: 'immutable_path_in_inspector',
+    aiHint:
+      'Inspector tabs are read-only views of real schema. To edit tables, fork this tab to a designer first via ui_exec(fork_to_designer).',
+  })
+  return error
+}
+
+function createVirtualRelationId(): string {
+  const bytes = globalThis.crypto?.getRandomValues?.(new Uint8Array(6))
+  if (bytes) {
+    return `vr_${Array.from(bytes, (byte) => byte.toString(36).padStart(2, '0')).join('').slice(0, 8)}`
+  }
+  return `vr_${Math.random().toString(36).slice(2, 10).padEnd(8, '0')}`
+}
+
+function stampVirtualRelationAddOps(current: ErInspectorPayload, ops: JsonPatchOp[]) {
+  const assignedIds: Record<string, string> = {}
+  let tailAdds = 0
+  const baseLength = current.virtualRelations.length
+
+  const stamped = ops.map((op) => {
+    if (op.op !== 'add' || op.path !== '/virtualRelations/-' || typeof op.value !== 'object' || op.value === null) {
+      return op
+    }
+
+    const value = op.value as Partial<ErVirtualRelation>
+    const id = typeof value.id === 'string' && value.id.length > 0 ? value.id : createVirtualRelationId()
+    assignedIds[`/virtualRelations/${baseLength + tailAdds}`] = id
+    tailAdds += 1
+    return { ...op, value: { ...value, id } }
+  })
+
+  return { stamped, assignedIds }
+}
 
 export interface ErInspectorView {
   nodes: {
@@ -61,8 +119,32 @@ export const useErTabsStore = create<ErTabsState>((set, get) => ({
     })
   },
 
-  applyInspectorPatch(_tabId, _ops) {
-    throw new Error('applyInspectorPatch: implement in Task 11')
+  applyInspectorPatch(tabId, ops) {
+    const current = get().inspectors.get(tabId)
+    if (!current) throw new Error(`tab not found: ${tabId}`)
+
+    for (const op of ops) {
+      if (!isInspectorPathAllowed(op.path)) {
+        throw immutablePathError(op.path)
+      }
+    }
+
+    const { stamped, assignedIds } = stampVirtualRelationAddOps(current, ops)
+    const next = applyPatch(
+      current as unknown as Record<string, unknown>,
+      stamped,
+    ) as unknown as ErInspectorPayload
+
+    set((state) => {
+      const inspectors = new Map(state.inspectors)
+      inspectors.set(tabId, next)
+      return { inspectors }
+    })
+
+    const previousVersion = typeof (current as unknown as { __v?: unknown }).__v === 'number'
+      ? (current as unknown as { __v: number }).__v
+      : 0
+    return { newVersion: previousVersion + 1, assignedIds }
   },
 
   applyDesignerPatch(_tabId, _ops) {
