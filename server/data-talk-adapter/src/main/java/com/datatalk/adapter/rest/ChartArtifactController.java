@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestController
@@ -44,12 +45,15 @@ public class ChartArtifactController {
         @RequestBody(required = false) CreateChartArtifactRequest request
     ) {
         if (request == null || request.echartsOption() == null) {
-            return ResponseEntity.badRequest().body(Map.of("message", translator.get("error.chart.echarts_option_required")));
+            return ResponseEntity.badRequest().body(messageBody(
+                "error.chart.echarts_option_required",
+                "echartsOption is required"
+            ));
         }
 
         if (serializedSize(request.echartsOption()) > MAX_ECHARTS_OPTION_BYTES) {
             return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
-                .body(Map.of("message", translator.get("error.chart.echarts_option_too_large")));
+                .body(messageBody("error.chart.echarts_option_too_large", "echartsOption exceeds 256KB"));
         }
 
         if (sessionRepository.findById(sessionId).isEmpty()) {
@@ -77,6 +81,16 @@ public class ChartArtifactController {
         } catch (JsonProcessingException e) {
             throw new IllegalArgumentException(translator.get("error.chart.echarts_option_not_serializable"), e);
         }
+    }
+
+    private Map<String, Object> messageBody(String code, String fallback) {
+        String message = translator.getOrDefault(code, fallback);
+        if (message == null) {
+            message = fallback;
+        }
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("message", message);
+        return body;
     }
 
     public record CreateChartArtifactRequest(

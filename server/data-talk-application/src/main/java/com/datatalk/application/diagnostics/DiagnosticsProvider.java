@@ -12,6 +12,10 @@ public interface DiagnosticsProvider {
     DiagnosticResult<ExplainPlan>               explain(String sql, ConnectionRecord conn, String decryptedPassword, String database, String schema);
     DiagnosticResult<List<IndexRecommendation>> indexHints(String sql, ExplainPlan plan, ConnectionRecord conn, String decryptedPassword);
     DiagnosticResult<LockReport>                lockInfo(ConnectionRecord conn, String decryptedPassword, String database);
-    DiagnosticResult<PoolReport>                connectionPoolInfo(ConnectionRecord conn, String decryptedPassword);
-    DiagnosticResult<SpaceReport>               tableSpaceInfo(ConnectionRecord conn, String decryptedPassword, String database);
+    DiagnosticResult<PoolReport>                poolStatus(ConnectionRecord conn, String decryptedPassword);
+    DiagnosticResult<SpaceReport>               tableSpaceInfo(ConnectionRecord conn, String decryptedPassword, String database, List<String> tables);
+    DiagnosticResult<TerminateSessionPreview>   terminateSessionPreview(ConnectionRecord conn, String decryptedPassword, String targetSessionId, String database);
+    DiagnosticResult<TerminateSessionResult>    terminateSession(ConnectionRecord conn, String decryptedPassword, String targetSessionId, String database);
+    DiagnosticResult<OptimizeTablePreview>      optimizeTablePreview(ConnectionRecord conn, String decryptedPassword, String table, String schemaName, String database);
+    DiagnosticResult<OptimizeTableResult>       optimizeTable(ConnectionRecord conn, String decryptedPassword, String table, String schemaName, String database);
 }

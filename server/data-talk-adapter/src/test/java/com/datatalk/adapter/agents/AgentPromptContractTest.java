@@ -116,6 +116,19 @@ class AgentPromptContractTest {
     }
 
     @Test
+    void runtimePromptDocumentsDiagnosticsMutationClosedLoop() throws IOException {
+        String prompt = loadPrompt();
+
+        assertThat(prompt)
+            .contains("datatalk_terminate_session")
+            .contains("datatalk_optimize_table")
+            .contains("Mutation Actions")
+            .contains("Lock complaint received")
+            .contains("Holder session has been blocking")
+            .doesNotContain("Not yet available");
+    }
+
+    @Test
     void runtimePromptRoutesTableBrowsingToQueryEditorAndAnalyticsToServerData() throws IOException {
         String prompt = loadPrompt();
 

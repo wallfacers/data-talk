@@ -8,6 +8,7 @@ import com.datatalk.domain.diagnostics.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -29,7 +30,7 @@ public class DiagnosticsController {
             @RequestBody Map<String, Object> body) {
         String sql = (String) body.get("sql");
         if (sql == null || sql.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("message", translator.get("error.sql.required")));
+            return ResponseEntity.badRequest().body(messageBody("error.sql.required", "SQL is required"));
         }
 
         DiagnosticResult<ExplainPlan> result = service.explain(sessionId, sql);
@@ -51,7 +52,7 @@ public class DiagnosticsController {
             @RequestBody Map<String, Object> body) {
         String sql = (String) body.get("sql");
         if (sql == null || sql.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("message", translator.get("error.sql.required")));
+            return ResponseEntity.badRequest().body(messageBody("error.sql.required", "SQL is required"));
         }
 
         DiagnosticResult<List<IndexRecommendation>> result = service.indexHints(sessionId, sql);
@@ -71,5 +72,15 @@ public class DiagnosticsController {
                 "error", Map.of("type", err.errorType(), "message", err.message())
             );
         });
+    }
+
+    private Map<String, Object> messageBody(String code, String fallback) {
+        String message = translator.getOrDefault(code, fallback);
+        if (message == null) {
+            message = fallback;
+        }
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("message", message);
+        return body;
     }
 }

@@ -20,6 +20,11 @@ class SqlStatementGuardTest {
     void setUp() {
         var source = new StaticMessageSource();
         source.addMessage("error.sql.forbidden", Locale.ENGLISH, "Only SELECT/WITH statements are allowed");
+        source.addMessage("error.sql.empty_sql", Locale.ENGLISH, "empty SQL");
+        source.addMessage("error.sql.multiple_statements", Locale.ENGLISH, "multiple statements not allowed");
+        source.addMessage("error.sql.cannot_determine_type", Locale.ENGLISH, "cannot determine statement type");
+        source.addMessage("error.sql.only_select_allowed", Locale.ENGLISH, "only SELECT / WITH allowed, got: {0}");
+        source.addMessage("error.sql.mvp_only_read", Locale.ENGLISH, "MVP only permits read queries: {0}");
         guard = new SqlStatementGuard(new Translator(source));
     }
 

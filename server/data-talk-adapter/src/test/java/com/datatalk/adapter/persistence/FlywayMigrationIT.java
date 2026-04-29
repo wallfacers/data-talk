@@ -1,5 +1,6 @@
 package com.datatalk.adapter.persistence;
 
+import com.datatalk.infra.persistence.SqlScriptSplitter;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.junit.jupiter.api.AfterEach;
@@ -94,12 +95,8 @@ class FlywayMigrationIT {
                     if (count != null && count > 0) return;
 
                     String sql = readResource(resource);
-                    String[] statements = sql.split(";");
-                    for (String stmt : statements) {
-                        String trimmed = stmt.trim();
-                        if (!trimmed.isEmpty()) {
-                            jdbc.execute(trimmed);
-                        }
+                    for (String stmt : SqlScriptSplitter.split(sql)) {
+                        jdbc.execute(stmt);
                     }
                     jdbc.update("INSERT INTO schema_version (version, applied_at) VALUES (?, ?)",
                         version, System.currentTimeMillis());

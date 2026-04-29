@@ -37,6 +37,15 @@ server:
   shutdown: graceful
 
 datatalk:
+  diagnostics:
+    lock:
+      long-wait-ms: 5000
+    pool:
+      warn-ratio: 0.80
+      critical-ratio: 0.95
+    space:
+      reclaim-ratio: 0.30
+      min-data-size-bytes: 104857600
   persistence:
     sqlite-path: ./data/datatalk.db
   channel:

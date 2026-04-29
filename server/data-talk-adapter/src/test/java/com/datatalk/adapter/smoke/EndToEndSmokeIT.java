@@ -219,7 +219,7 @@ class EndToEndSmokeIT {
 
         JsonNode response = callMcp("req-call-2", "tools/call", Map.of(
             "name", "ui_read",
-            "arguments", bridgeArgs("oc-smoke-nosub", "call-smoke-2", Map.of())
+            "arguments", bridgeArgs("oc-smoke-nosub", "call-smoke-2", Map.of("object", "workspace"))
         ));
 
         assertThat(response.path("error").path("code").asInt()).isEqualTo(-32004);
@@ -240,7 +240,7 @@ class EndToEndSmokeIT {
         try {
             JsonNode response = callMcp("req-call-3", "tools/call", Map.of(
                 "name", "ui_read",
-                "arguments", bridgeArgs("oc-smoke-timeout", "call-smoke-3", Map.of())
+                "arguments", bridgeArgs("oc-smoke-timeout", "call-smoke-3", Map.of("object", "workspace"))
             ));
 
             assertThat(invoked.await(2, TimeUnit.SECONDS)).isTrue();

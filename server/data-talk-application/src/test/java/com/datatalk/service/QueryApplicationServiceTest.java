@@ -53,9 +53,9 @@ class QueryApplicationServiceTest {
         connectionService = mock(ConnectionService.class);
         sessionDataContextService = mock(SessionDataContextService.class);
         sqlExecutionRepository = mock(SqlExecutionRepository.class);
+        translator = translator();
         statementGuard = spy(new SqlStatementGuard(translator));
         tableContextAutoResolver = mock(TableContextAutoResolver.class);
-        translator = translator();
         when(tableContextAutoResolver.resolve(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
         service = new QueryApplicationService(
             connectionRepository,
@@ -179,6 +179,11 @@ class QueryApplicationServiceTest {
         StaticMessageSource source = new StaticMessageSource();
         source.addMessage("error.connection.id_required", Locale.ENGLISH, "Connection ID is required");
         source.addMessage("error.database.kind.unsupported", Locale.ENGLISH, "Unsupported database kind: {0}");
+        source.addMessage("error.sql.empty_sql", Locale.ENGLISH, "empty SQL");
+        source.addMessage("error.sql.multiple_statements", Locale.ENGLISH, "multiple statements not allowed");
+        source.addMessage("error.sql.cannot_determine_type", Locale.ENGLISH, "cannot determine statement type");
+        source.addMessage("error.sql.only_select_allowed", Locale.ENGLISH, "only SELECT / WITH allowed, got: {0}");
+        source.addMessage("error.sql.mvp_only_read", Locale.ENGLISH, "MVP only permits read queries: {0}");
         return new Translator(source);
     }
 }
