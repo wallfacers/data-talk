@@ -2,6 +2,8 @@ import { stageTabApi } from './stage-tab-api'
 import { StagePersistenceCoordinator } from './stage-persistence-coordinator'
 import { useStageStore, type StageTab } from '@/stores/stage-store'
 import { useSqlWorkbenchStore, type SqlWorkbenchTabState } from '@/features/stage/stores/sql-workbench-store'
+import { useErTabsStore } from '@/features/stage/stores/er-tabs-store'
+import type { ErDesignerPayload, ErInspectorPayload } from '@/features/stage/stores/er-tabs-payload-types'
 import { TAB_TYPE_REGISTRY, isPersistent } from '@/features/stage/registry/tab-type-registry'
 import { shallow } from 'zustand/shallow'
 
@@ -139,6 +141,29 @@ function diffContentAndSchedule(
   }
 }
 
+function diffErContentAndSchedule(
+  next: { inspectors: Map<string, ErInspectorPayload>; designers: Map<string, ErDesignerPayload> },
+  prev: { inspectors: Map<string, ErInspectorPayload>; designers: Map<string, ErDesignerPayload> },
+): void {
+  scheduleErChanges(next.inspectors, prev.inspectors)
+  scheduleErChanges(next.designers, prev.designers)
+}
+
+function scheduleErChanges<P>(next: Map<string, P>, prev: Map<string, P>): void {
+  for (const [tabId, payload] of next) {
+    const prevPayload = prev.get(tabId)
+    if (prevPayload === payload) continue
+    const tab = useStageStore.getState().findTab(tabId)
+    if (!tab || !isPersistent(tab.type)) continue
+    const descriptor = TAB_TYPE_REGISTRY[tab.type]
+    coordinator.scheduleContentWrite(tabId, {
+      payload: payload as Record<string, unknown>,
+      contentText: descriptor?.extractContent?.(payload) ?? '',
+      expectedVersion: tab.payloadVersion,
+    })
+  }
+}
+
 // Subscribe metadata diffs (immediate write)
 {
   let prevMeta = persistedTabSummaries(useStageStore.getState())
@@ -159,6 +184,21 @@ function diffContentAndSchedule(
     if (!shallow(prevTabs, next)) {
       diffContentAndSchedule(next, prevTabs)
       prevTabs = next
+    }
+  })
+}
+
+// Subscribe ER content diffs (debounce 1s)
+{
+  let prevEr = {
+    inspectors: useErTabsStore.getState().inspectors,
+    designers: useErTabsStore.getState().designers,
+  }
+  useErTabsStore.subscribe((state) => {
+    const next = { inspectors: state.inspectors, designers: state.designers }
+    if (next.inspectors !== prevEr.inspectors || next.designers !== prevEr.designers) {
+      diffErContentAndSchedule(next, prevEr)
+      prevEr = next
     }
   })
 }
