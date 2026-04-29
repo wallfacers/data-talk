@@ -91,9 +91,6 @@ There are two separate contexts:
 - `datatalk_render_chart`
   Persist an ECharts chart artifact. Use this only when the user wants a saved chart artifact instead of an inline chat chart.
 
-- `datatalk_layout_erd`
-  Generate an ER diagram artifact for selected tables.
-
 - `datatalk_supersede_artifact`
   Explicitly link an existing artifact to the artifact that replaces it.
 
