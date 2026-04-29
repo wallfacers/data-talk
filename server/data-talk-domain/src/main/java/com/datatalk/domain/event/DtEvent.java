@@ -75,6 +75,40 @@ public sealed interface DtEvent {
     @JsonTypeName("ontology.updated")
     record OntologyUpdated(String objectType, String id, String op, Map<String, Object> patch) implements DtEvent {}
 
+    @JsonTypeName("file_artifact.detected")
+    record FileArtifactDetected(
+        String fileArtifactId,
+        String sessionId,
+        String filename,
+        String kind,
+        String status,
+        long sizeBytes
+    ) implements DtEvent {}
+
+    @JsonTypeName("file_artifact.archive_requested")
+    record FileArtifactArchiveRequested(
+        String fileArtifactId,
+        String sessionId,
+        String kind,
+        String title,
+        String summary
+    ) implements DtEvent {}
+
+    @JsonTypeName("file_artifact.archived")
+    record FileArtifactArchived(
+        String fileArtifactId,
+        String sessionId,
+        String connectionId,
+        String filename,
+        String physicalPath
+    ) implements DtEvent {}
+
+    @JsonTypeName("file_artifact.discarded")
+    record FileArtifactDiscarded(String fileArtifactId, String reason) implements DtEvent {}
+
+    @JsonTypeName("legacy.migrated")
+    record LegacyMigrated(int filesMovedCount) implements DtEvent {}
+
     @JsonTypeName("heartbeat")
     record Heartbeat(long ts) implements DtEvent {}
     @JsonTypeName("ping")
@@ -111,6 +145,11 @@ public sealed interface DtEvent {
             case ActionResponse ar        -> "action.response";
             case ArtifactSnapshot as      -> "artifact.snapshot";
             case OntologyUpdated ou       -> "ontology.updated";
+            case FileArtifactDetected fad -> "file_artifact.detected";
+            case FileArtifactArchiveRequested far -> "file_artifact.archive_requested";
+            case FileArtifactArchived fa  -> "file_artifact.archived";
+            case FileArtifactDiscarded fd -> "file_artifact.discarded";
+            case LegacyMigrated lm        -> "legacy.migrated";
             case Heartbeat hb             -> "heartbeat";
             case PingPong pp              -> "ping";
             case StreamError se           -> "error";

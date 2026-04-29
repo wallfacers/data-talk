@@ -2,6 +2,7 @@ DROP TABLE IF EXISTS pending_calls;
 DROP TABLE IF EXISTS action_invocations;
 DROP TABLE IF EXISTS query_results;
 DROP TABLE IF EXISTS events;
+DROP TABLE IF EXISTS file_artifact;
 DROP TABLE IF EXISTS artifacts;
 DROP TABLE IF EXISTS messages;
 DROP TABLE IF EXISTS sessions;
@@ -69,3 +70,25 @@ CREATE TABLE ai_model_prefs (
   updated_at  INTEGER NOT NULL,
   PRIMARY KEY (provider_id, model_id)
 );
+
+CREATE TABLE file_artifact (
+  id            TEXT PRIMARY KEY,
+  scope         TEXT NOT NULL CHECK(scope IN ('session','workspace')),
+  status        TEXT NOT NULL CHECK(status IN ('temporary','candidate','archived','discarded')),
+  kind          TEXT NOT NULL CHECK(kind IN ('report','er_diagram','sql_script','dataset','other')),
+  session_id    TEXT,
+  connection_id TEXT,
+  filename      TEXT NOT NULL,
+  physical_path TEXT NOT NULL,
+  size_bytes    INTEGER NOT NULL,
+  mime_type     TEXT,
+  title         TEXT,
+  summary       TEXT,
+  created_at    INTEGER NOT NULL,
+  updated_at    INTEGER NOT NULL,
+  archived_at   INTEGER,
+  metadata_json TEXT
+);
+CREATE INDEX idx_file_artifact_session ON file_artifact(session_id);
+CREATE INDEX idx_file_artifact_connection ON file_artifact(connection_id);
+CREATE INDEX idx_file_artifact_status ON file_artifact(status);

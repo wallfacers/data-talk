@@ -74,6 +74,63 @@ class FlywayMigrationIT {
         assertThat(pkFlags).containsExactly(1, 2);
     }
 
+    @Test
+    void v14_creates_file_artifact_table() {
+        Integer count = datatalkJdbc.queryForObject(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='file_artifact'",
+            Integer.class);
+        assertThat(count).isEqualTo(1);
+
+        List<String> columns = datatalkJdbc.queryForList(
+            "SELECT name FROM pragma_table_info('file_artifact') ORDER BY cid", String.class);
+        assertThat(columns).containsExactly(
+            "id", "scope", "status", "kind", "session_id", "connection_id",
+            "filename", "physical_path", "size_bytes", "mime_type", "title",
+            "summary", "created_at", "updated_at", "archived_at", "metadata_json");
+
+        List<String> indexes = datatalkJdbc.queryForList(
+            "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='file_artifact' ORDER BY name",
+            String.class);
+        assertThat(indexes).contains(
+            "idx_file_artifact_session",
+            "idx_file_artifact_connection",
+            "idx_file_artifact_status");
+    }
+
+    @Test
+    void v14_does_not_alter_existing_artifacts_table() {
+        List<String> columns = datatalkJdbc.queryForList(
+            "SELECT name FROM pragma_table_info('artifacts') ORDER BY cid", String.class);
+        assertThat(columns).containsExactly(
+            "id", "version", "session_id", "kind", "produced_by", "payload_ref",
+            "payload_size", "supersedes_id", "supersedes_ver", "pinned", "created_at",
+            "origin_message_id", "origin_part_id");
+
+        List<Integer> pkFlags = datatalkJdbc.queryForList(
+            "SELECT pk FROM pragma_table_info('artifacts') WHERE name IN ('id','version') ORDER BY name",
+            Integer.class);
+        assertThat(pkFlags).containsExactly(1, 2);
+    }
+
+    @Test
+    void v14_coexists_with_existing_artifacts_table() {
+        long now = System.currentTimeMillis();
+        datatalkJdbc.update(
+            "INSERT INTO sessions(id, title, created_at, updated_at) VALUES (?,?,?,?)",
+            "ses_x", "Test Session", now, now);
+        datatalkJdbc.update(
+            "INSERT INTO artifacts(id, version, session_id, kind, produced_by, payload_ref, " +
+                "payload_size, pinned, created_at) VALUES (?,?,?,?,?,?,?,?,?)",
+            "art_legacy", 1, "ses_x", "table", "test", "ref://x", 100, 0, now);
+        datatalkJdbc.update(
+            "INSERT INTO file_artifact(id, scope, status, kind, session_id, filename, " +
+                "physical_path, size_bytes, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            "file_artifact_new", "session", "temporary", "other", "ses_x", "x.md", "/abs/x.md", 100, now, now);
+
+        assertThat(datatalkJdbc.queryForObject("SELECT COUNT(*) FROM artifacts", Integer.class)).isPositive();
+        assertThat(datatalkJdbc.queryForObject("SELECT COUNT(*) FROM file_artifact", Integer.class)).isEqualTo(1);
+    }
+
     private void applyMigrations(JdbcTemplate jdbc) throws Exception {
         jdbc.execute(
             "CREATE TABLE IF NOT EXISTS schema_version (" +

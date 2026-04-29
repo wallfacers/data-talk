@@ -255,6 +255,7 @@ DataTalk 的差异化在于 **AI 直接操作数据库**，但不能让 AI 蛮�
 
 | 设计文档 | 日期 | 主题 |
 |----------|------|------|
+| [OpenCode Workdir & Artifact System](./2026-04-29-opencode-workdir-and-artifact-system-design.md) | 2026-04-29 | 把 OpenCode 在 `~/.data-talk/` 下的运行时产物规范化为双轨双维度的 file artifact 系统：OpenCode 单进程 cwd 固定，按 `opencode/sessions/<sid>/` 子目录软隔离；AI 中间产物默认 Temporary，显式 MCP `datatalk_archive_artifact` / frontmatter 提升 Candidate，用户在 UI 决策升档为 connection 维度 Archived 资产；新增 Stage Files / Files Library、Chat 内联卡片、session 删除两阶段终局确认；`io.methvin:directory-watcher` 跨平台监听 + debounce + reconcile；HousekeepingScheduler 滚动治理 `_trash` 等；LegacyMigrationRunner 一次性收拾历史孤儿到 `_legacy/`；Settings Maintenance 存储概览页。Part 1 (Migration & Domain) 已完成 2026-04-29。 |
 | [SQL DML Batch Execution](./2026-04-29-sql-dml-batch-execution-design.md) | 2026-04-29 | `/api/sql/execute` 执行层增加连续 DML JDBC batch 与同表 `INSERT ... VALUES` rewrite 优化 |
 | [Diagnostics & Mutation Actions Design](./2026-04-29-diagnostics-mutation-design.md) | 2026-04-29 | 将三个 stub 诊断工具（lock_info / pool_status / table_space）升级为真实实现，新增两个 confirmable mutation action（terminate_session / optimize_table）形成诊断→建议→执行闭环；MySQL / PostgreSQL 完整实现，H2 受技术限制部分实现 / unsupported，Oracle 受连接栈未闭环本期保持 unsupported（架构债，待独立 follow-up）。Completed 2026-04-29 |
 | [Large Schema Context Guards Design](./2026-04-29-large-schema-context-guards-design.md) | 2026-04-29 | 在不引入 schema 缓存/索引延迟的前提下，为 `datatalk_read_schema` 增加实时分页、搜索、显式 describe 限制和截断元数据；为 MCP 输出和 chat-path SQL 结果增加预算保护，避免大 schema / 大结果集压爆 OpenCode 上下文或后端内存（Shipped 2026-04-29） |

@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -18,14 +19,16 @@ class AgentPromptBuilderTest {
 
     private StageTabRepository repo;
     private SessionTitleLookup lookup;
+    private ActiveSessionDirProvider activeDir;
     private AgentPromptBuilder builder;
 
     @BeforeEach
     void setUp() {
         repo = mock(StageTabRepository.class);
         lookup = mock(SessionTitleLookup.class);
+        activeDir = mock(ActiveSessionDirProvider.class);
         when(lookup.titlesByIds(anyList())).thenReturn(Map.of());
-        builder = new AgentPromptBuilder(repo, lookup);
+        builder = new AgentPromptBuilder(repo, lookup, activeDir);
     }
 
     private StageTab mkTab(String id, String title) {
@@ -115,6 +118,51 @@ class AgentPromptBuilderTest {
     void leavesInputUntouchedWhenNoPlaceholder() {
         String plain = "Just a normal template with no placeholder.";
         String result = builder.render(plain);
+        assertThat(result).isEqualTo(plain);
+    }
+
+    @Test
+    void replacesActiveSessionDirWhenSessionPresent() {
+        when(activeDir.currentSessionId()).thenReturn(Optional.of("ses_abc"));
+
+        String result = builder.render("Subdir is {{ACTIVE_SESSION_DIR}}.");
+
+        assertThat(result).isEqualTo("Subdir is ./sessions/ses_abc/.");
+    }
+
+    @Test
+    void replacesActiveSessionDirWithSentinelWhenNoActiveSession() {
+        when(activeDir.currentSessionId()).thenReturn(Optional.empty());
+
+        String result = builder.render("Subdir is {{ACTIVE_SESSION_DIR}}.");
+
+        assertThat(result).isEqualTo("Subdir is <no active session>.");
+    }
+
+    @Test
+    void replacesStageDigestAndActiveSessionDirIndependently() {
+        when(activeDir.currentSessionId()).thenReturn(Optional.of("ses_x"));
+        when(repo.recentByLastTouched(anyInt())).thenReturn(List.of());
+        when(repo.countActive()).thenReturn(0);
+        when(repo.countArchived()).thenReturn(0);
+
+        String result = builder.render("Tabs:\n{{STAGE_TAB_DIGEST}}\nDir={{ACTIVE_SESSION_DIR}}");
+
+        assertThat(result)
+            .contains("## Open Tabs Snapshot")
+            .contains("No persisted tabs yet.")
+            .contains("Dir=./sessions/ses_x/")
+            .doesNotContain("{{STAGE_TAB_DIGEST}}")
+            .doesNotContain("{{ACTIVE_SESSION_DIR}}");
+    }
+
+    @Test
+    void leavesInputUntouchedWhenNoPlaceholdersEvenWithActiveSession() {
+        when(activeDir.currentSessionId()).thenReturn(Optional.of("ses_x"));
+
+        String plain = "Just a normal template with no placeholders.";
+        String result = builder.render(plain);
+
         assertThat(result).isEqualTo(plain);
     }
 }

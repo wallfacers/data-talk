@@ -1,11 +1,13 @@
 package com.datatalk.application.stage;
 
 import com.datatalk.domain.stage.StageTab;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Renders the {@code {{STAGE_TAB_DIGEST}}} placeholder in the AGENTS.md template
@@ -13,26 +15,46 @@ import java.util.Objects;
  */
 @Component
 public class AgentPromptBuilder {
-    private static final String PLACEHOLDER = "{{STAGE_TAB_DIGEST}}";
+    private static final String PLACEHOLDER_STAGE_DIGEST = "{{STAGE_TAB_DIGEST}}";
+    private static final String PLACEHOLDER_ACTIVE_DIR = "{{ACTIVE_SESSION_DIR}}";
+    private static final String NO_ACTIVE_SENTINEL = "<no active session>";
     private static final int MAX_TABS = 10;
     private static final int MAX_TITLE_CHARS = 80;
     private static final int MAX_RENDERED_CHARS = 1_500;
 
     private final StageTabRepository repo;
     private final SessionTitleLookup lookup;
+    private final ActiveSessionDirProvider activeDir;
 
-    public AgentPromptBuilder(StageTabRepository repo, SessionTitleLookup lookup) {
+    @Autowired
+    public AgentPromptBuilder(StageTabRepository repo,
+                              SessionTitleLookup lookup,
+                              ActiveSessionDirProvider activeDir) {
         this.repo = repo;
         this.lookup = lookup;
+        this.activeDir = activeDir;
+    }
+
+    public AgentPromptBuilder(StageTabRepository repo, SessionTitleLookup lookup) {
+        this(repo, lookup, () -> Optional.empty());
     }
 
     public String render(String template) {
-        if (!template.contains(PLACEHOLDER)) return template;
-        String digest = renderDigest();
-        if (digest.length() > MAX_RENDERED_CHARS) {
-            digest = digest.substring(0, MAX_RENDERED_CHARS - 3) + "...";
+        String result = template;
+        if (result.contains(PLACEHOLDER_STAGE_DIGEST)) {
+            String digest = renderDigest();
+            if (digest.length() > MAX_RENDERED_CHARS) {
+                digest = digest.substring(0, MAX_RENDERED_CHARS - 3) + "...";
+            }
+            result = result.replace(PLACEHOLDER_STAGE_DIGEST, digest);
         }
-        return template.replace(PLACEHOLDER, digest);
+        if (result.contains(PLACEHOLDER_ACTIVE_DIR)) {
+            String value = activeDir.currentSessionId()
+                .map(sid -> "./sessions/" + sid + "/")
+                .orElse(NO_ACTIVE_SENTINEL);
+            result = result.replace(PLACEHOLDER_ACTIVE_DIR, value);
+        }
+        return result;
     }
 
     private String renderDigest() {

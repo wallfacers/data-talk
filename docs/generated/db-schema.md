@@ -1,13 +1,14 @@
 # 数据库 Schema 参考
 
 > 自动生成自 `server/data-talk-infrastructure/src/main/resources/db/migration/`
-> 最后更新：2026-04-28
+> 最后更新：2026-04-29
 
 **版本历史**
 - V8 (2026-04-19): dropped `messages` table — OpenCode is now authoritative for message persistence; DataTalk only stores `events` for SSE resume.
 - V11 (2026-04-24): added artifact origin fields `origin_message_id` / `origin_part_id` and index `idx_artifacts_origin`.
 - V12 (2026-04-27): added persistent stage tabs, payload storage, and FTS5 content index (`stage_tabs`, `stage_tab_payload`, `stage_tab_index`).
 - V13 (2026-04-28): removed `stage_tabs.scope`, rebuilt FTS rowid mapping, and changed `origin_session_id` FK from `ON DELETE CASCADE` to `ON DELETE SET NULL`.
+- V14 (2026-04-29): added physical file artifact index table `file_artifact` with application-managed `session_id` / `connection_id` references.
 
 SQLite 元数据库，由 Flyway 管理迁移。
 
@@ -58,6 +59,36 @@ SQLite 元数据库，由 Flyway 管理迁移。
 索引：
 - `idx_artifacts_session(session_id, created_at)`
 - `idx_artifacts_origin(session_id, origin_message_id, origin_part_id)`
+
+## file_artifact — 物理文件型产物
+
+| 列 | 类型 | 约束 | 说明 |
+|----|------|------|------|
+| id | TEXT | PK | 文件产物 ID |
+| scope | TEXT | NOT NULL, CHECK(session/workspace) | 归属范围：session 临时区或 workspace 资产库 |
+| status | TEXT | NOT NULL, CHECK(temporary/candidate/archived/discarded) | 生命周期状态；严格 4 状态，无 Removed |
+| kind | TEXT | NOT NULL, CHECK(report/er_diagram/sql_script/dataset/other) | 文件产物类型 |
+| session_id | TEXT | | 来源会话 ID；不设 FK，archived 行可在会话删除后置 NULL |
+| connection_id | TEXT | | 归属连接 ID；不设 FK，application 层管理引用 |
+| filename | TEXT | NOT NULL | 文件名 |
+| physical_path | TEXT | NOT NULL | 物理路径 |
+| size_bytes | INTEGER | NOT NULL | 文件大小 |
+| mime_type | TEXT | | MIME 类型 |
+| title | TEXT | | 展示标题 |
+| summary | TEXT | | 摘要 |
+| created_at | INTEGER | NOT NULL | 创建时间（epoch millis） |
+| updated_at | INTEGER | NOT NULL | 更新时间（epoch millis） |
+| archived_at | INTEGER | | 归档时间（epoch millis） |
+| metadata_json | TEXT | | frontmatter / 扩展元数据 JSON |
+
+索引：
+- `idx_file_artifact_session(session_id)`，部分索引条件 `WHERE scope = 'session'`
+- `idx_file_artifact_connection(connection_id)`，部分索引条件 `WHERE scope = 'workspace'`
+- `idx_file_artifact_status(status)`
+
+说明：
+- 与 `artifacts` payload 型工件表完全独立。
+- `session_id` / `connection_id` 不设 FK；删除与解绑由 application 层显式管理。
 
 ## action_invocations — Action 调用记录
 

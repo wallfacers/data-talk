@@ -12,6 +12,7 @@
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [File Artifact System · Part 1 — Migration & Domain](./2026-04-29-file-artifact-system-part1-domain-and-migration-plan.md) | 2026-04-29 | OpenCode 工作目录与 File Artifact 系统 v2 Part 1 已落地：Flyway V14 新表 `file_artifact`（与现有 `artifacts` payload 型共存，session_id/connection_id 无 FK）、Domain `FileArtifact` record + 3 enum + DtEvent 5 事件、`FileArtifactService` 路径安全与状态机骨架、`SessionWorkdirService` 子目录软隔离、`AgentPromptBuilder` `{{ACTIVE_SESSION_DIR}}` 占位、JDBC repository 与 REST skeleton。Focused tests 与 `mvn clean verify -q` 通过；手工 smoke 未执行。 |
 | [Diagnostics & Mutation Actions](./2026-04-29-diagnostics-mutation-plan.md) | 2026-04-29 | 三个 stub 诊断工具升级为 MySQL/PG 真实实现、H2 partial、Oracle 显式 unsupported，并新增 terminate_session / optimize_table 两个 confirmable mutation action，闭环 IT 与 `mvn clean verify` 通过；源码与文档分两次提交，手工 smoke deferred 到用户验收。 |
 | [Large Schema Context Guards](./2026-04-29-large-schema-context-guards-plan.md) | 2026-04-29 | 不引入 schema 缓存/索引；`read_schema` 已支持实时分页/搜索/显式 describe 限制和列截断，MCP 输出有预算兜底，`execute_sql.pageSize` 已强制执行；后端定向测试与 `mvn compile -q` 通过。 |
 | [SQL DML Batch Execution](./2026-04-29-sql-dml-batch-execution-plan.md) | 2026-04-29 | `/api/sql/execute` 执行层增加连续 DML JDBC batch 与同表 `INSERT ... VALUES` rewrite，保持现有事务、风险确认和结果契约；application 定向测试、SqlExecuteControllerIT 与 `mvn compile -q` 通过。 |
