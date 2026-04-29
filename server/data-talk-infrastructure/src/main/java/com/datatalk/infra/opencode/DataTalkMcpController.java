@@ -6,8 +6,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -38,6 +40,19 @@ public class DataTalkMcpController {
             .map(String::trim)
             .filter(value -> !value.isBlank())
             .collect(java.util.stream.Collectors.toUnmodifiableSet());
+    }
+
+    /**
+     * MCP Streamable HTTP 客户端会主动 GET 同一 endpoint 来打开可选的
+     * server-to-client SSE 通道。本服务只走 request/response 模式，按规范返回
+     * 405 + Allow: POST。客户端读到该响应后会自动回退到 only-POST 模式，属预期
+     * 行为，因此这里不打 WARN（避免每次启动都把日志刷成 405）。
+     */
+    @GetMapping
+    public ResponseEntity<Void> noServerStream() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(HttpHeaders.ALLOW, "POST");
+        return new ResponseEntity<>(headers, HttpStatus.METHOD_NOT_ALLOWED);
     }
 
     @PostMapping

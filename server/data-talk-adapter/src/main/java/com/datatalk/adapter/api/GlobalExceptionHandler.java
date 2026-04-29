@@ -5,9 +5,15 @@ import com.datatalk.domain.error.DataTalkErrorCodes;
 import com.datatalk.domain.error.DataTalkException;
 import com.datatalk.exception.ConnectionNotFoundException;
 import com.datatalk.exception.SqlExecutionException;
+import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.reactive.function.client.WebClientException;
@@ -15,9 +21,12 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Set;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     private final Translator translator;
 
@@ -44,6 +53,17 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(Map.of(
             "error", "BAD_REQUEST",
             "message", translator.get("error.request_body_required")));
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<Void> methodNotAllowed(
+            HttpRequestMethodNotSupportedException e, HttpServletRequest req) {
+        Set<HttpMethod> supported = e.getSupportedHttpMethods();
+        HttpHeaders headers = new HttpHeaders();
+        if (supported != null) headers.setAllow(supported);
+        log.warn("405 method not allowed: {} {} (supported={})",
+            req.getMethod(), req.getRequestURI(), supported);
+        return new ResponseEntity<>(headers, HttpStatus.METHOD_NOT_ALLOWED);
     }
 
     @ExceptionHandler(ConnectionNotFoundException.class)
