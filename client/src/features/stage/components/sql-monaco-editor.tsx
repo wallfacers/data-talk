@@ -31,7 +31,7 @@ type SqlMonacoEditorProps = {
 }
 
 export const SqlMonacoEditor = forwardRef<SqlMonacoEditorHandle, SqlMonacoEditorProps>(function SqlMonacoEditor(
-  { value, onChange, onRun, onFormat, onCursorChange, onSelectionChange, currentStatementRange, shellMode = 'standalone' },
+  { value, onChange, onRun, onFormat, onCursorChange, onSelectionChange, currentStatementRange },
   ref,
 ) {
   const themePreference = useThemeStore((state) => state.theme)
@@ -142,12 +142,7 @@ export const SqlMonacoEditor = forwardRef<SqlMonacoEditorHandle, SqlMonacoEditor
   return (
     <div
       data-testid="sql-monaco-editor"
-      className={cn(
-        'h-full min-h-[260px] overflow-hidden bg-background',
-        shellMode === 'connected'
-          ? 'rounded-b-none border-x border-t border-border/50'
-          : 'rounded-b-xl border border-border/50',
-      )}
+      className={cn('h-full min-h-[260px] overflow-hidden rounded-none bg-background')}
     >
       <Editor
         height="100%"

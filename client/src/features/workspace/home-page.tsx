@@ -20,7 +20,7 @@ export function HomePage() {
       }
     >
       <AppSidebar variant="inset" />
-      <SidebarInset className="md:m-0! md:ml-0! md:rounded-none! md:shadow-none!">
+      <SidebarInset className="md:m-0! md:ml-0! md:rounded-none! md:border-0! md:shadow-none!">
         <div className="relative min-h-0 flex-1">
           <SessionCanvas />
         </div>

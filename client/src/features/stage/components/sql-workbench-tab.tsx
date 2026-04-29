@@ -690,7 +690,7 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
               />
             }
           />
-          <div className={cn('min-h-0 flex-1 bg-background px-2 pt-1', showResultPane ? 'pb-0' : 'pb-2')}>
+          <div data-testid="sql-editor-frame" className="min-h-0 flex-1 bg-background">
             <div className="flex h-full min-h-0 flex-col">
               <SqlMonacoEditor
                 ref={monacoRef}
@@ -738,10 +738,10 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
             className="flex min-h-0 flex-none flex-col"
             style={{ flexBasis: `${resultPanePercent}%` }}
           >
-            <div className="flex min-h-0 flex-1 flex-col bg-background px-2 pb-2">
+            <div className="flex min-h-0 flex-1 flex-col bg-background">
               <div
                 data-testid="sql-result-shell"
-                className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-xl border-x border-b border-border/50 bg-background"
+                className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-none bg-background"
               >
                 <SqlResultTabs
                   results={displayResults}

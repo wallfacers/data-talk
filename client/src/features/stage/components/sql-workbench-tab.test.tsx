@@ -238,8 +238,10 @@ describe('SqlWorkbenchTab', () => {
     expect(screen.getByTestId('sql-workbench-tab')).toBeTruthy()
     expect(screen.queryByTestId('sql-editor-breadcrumb')).toBeNull()
     expect(screen.getByTestId('sql-monaco-editor')).toBeTruthy()
-    expect(screen.getByTestId('sql-monaco-editor').className).toContain('rounded-b-xl')
-    expect(screen.getByTestId('sql-monaco-editor').className).toContain('border border-border/50')
+    expect(screen.getByTestId('sql-editor-frame').className).not.toContain('px-2')
+    expect(screen.getByTestId('sql-editor-frame').className).not.toContain('pb-2')
+    expect(screen.getByTestId('sql-monaco-editor').className).toContain('rounded-none')
+    expect(screen.getByTestId('sql-monaco-editor').className).not.toContain('border border-border/50')
     expect(screen.getByRole('button', { name: t('stage.toolbar.run') })).toBeTruthy()
     expect(screen.getByTestId('sql-editor-toolbar')).toBeTruthy()
     expect(screen.queryByTestId('sql-workbench-status-bar')).toBeNull()
@@ -900,7 +902,11 @@ delete from sessions;`,
     expect(screen.getByRole('tab', { name: 'DML' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Error' })).toBeTruthy()
     expect(screen.getByRole('columnheader', { name: t('stage.queryEditor.result.rowNumber') })).toBeTruthy()
-    expect(screen.getByTestId('sql-result-shell').className).toContain('rounded-b-xl')
+    expect(screen.getByTestId('sql-monaco-editor').className).toContain('rounded-none')
+    expect(screen.getByTestId('sql-monaco-editor').className).not.toContain('border-x')
+    expect(screen.getByTestId('sql-result-shell').className).toContain('rounded-none')
+    expect(screen.getByTestId('sql-result-shell').className).not.toContain('border-x')
+    expect(screen.getByTestId('sql-result-shell').className).not.toContain('border-b')
 
     fireEvent.click(screen.getByRole('tab', { name: 'DML' }))
     expect(screen.getByText(/3/)).toBeTruthy()
@@ -1187,8 +1193,8 @@ delete from sessions;`,
       editorHarness.fakeMonaco.KeyMod.CtrlCmd | editorHarness.fakeMonaco.KeyMod.Shift | editorHarness.fakeMonaco.KeyCode.KeyF,
       expect.any(Function),
     )
-    expect(screen.getByTestId('sql-monaco-editor').className).toContain('rounded-b-xl')
-    expect(screen.getByTestId('sql-monaco-editor').className).toContain('border border-border/50')
+    expect(screen.getByTestId('sql-monaco-editor').className).toContain('rounded-none')
+    expect(screen.getByTestId('sql-monaco-editor').className).not.toContain('border border-border/50')
     expect(editorHarness.lastProps?.options).toMatchObject({
       overviewRulerLanes: 0,
       hideCursorInOverviewRuler: true,
