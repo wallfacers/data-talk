@@ -50,7 +50,7 @@ This table describes the current repository state. Keep it accurate.
 
 | Kind | Current status | Notes |
 |---|---|---|
-| `mysql` | First-class | Connection UI, JDBC URL, metadata, SQL execution, diagnostics provider, prompt rules. |
+| `mysql` | First-class | Connection UI, JDBC URL, metadata, SQL execution, MySQL-specific SQL splitter with `DELIMITER` support, diagnostics provider, prompt rules. |
 | `postgresql` / `postgres` | First-class with aliases | PostgreSQL-specific SQL splitter, schema/search-path handling, target discovery, diagnostics provider. Preserve both aliases where existing code accepts both. |
 | `h2` | Development/demo support | Connection UI, JDBC URL, generic SQL splitter, schema handling, diagnostics provider. |
 | `sqlite` | Partial/runtime backend support | Metadata DB uses SQLite. User DB support exists in some backend paths, but the current frontend connection form does not expose it. Treat frontend support as incomplete unless verified. |
@@ -238,6 +238,10 @@ Required decisions:
   context setter.
 - Whether multi-statement execution is supported.
 - Whether transactions can wrap the statement batch.
+- Whether consecutive DML can use JDBC `executeBatch()`.
+- Whether any SQL rewrite optimization is allowed. Rewrites must be narrow,
+  dialect-reviewed, and covered by tests; do not rewrite `UPDATE`, `DELETE`,
+  `INSERT ... SELECT`, DDL, `CALL`, or procedural blocks by default.
 - Whether generated keys, update counts, multiple result sets, and affected
   row counts behave differently.
 - Whether `PreparedStatement.setMaxRows` is honored by the driver.
@@ -251,8 +255,24 @@ Tests:
 - `/api/query` or direct service test for read-only query.
 - `/api/sql/execute` test for result-set and DML/DDL confirmation behavior when
   the kind supports mutations.
+- `/api/sql/execute` or direct service test for DML batch behavior when the kind
+  supports JDBC batch execution.
 - Context application test for database/schema/catalog selection.
 - Result normalization tests for the database's non-trivial JDBC value types.
+
+Current DML execution strategy:
+
+- `mysql`, `postgresql` / `postgres`, `h2`, and other JDBC kinds using
+  `/api/sql/execute`: consecutive `INSERT` / `UPDATE` / `DELETE` statements are
+  planned as JDBC `Statement.addBatch()` / `executeBatch()` units when no
+  result-set statement interrupts the run.
+- Consecutive same-prefix `INSERT INTO ... VALUES ...` statements are rewritten
+  into a single multi-values insert only when the `VALUES` suffix is a pure
+  tuple list. `INSERT ... SELECT`, `ON DUPLICATE KEY UPDATE`, `RETURNING`,
+  DDL, `CALL`, procedural blocks, and unknown syntax are not rewritten.
+- Risk analysis and confirmation run on the original user SQL before any
+  execution optimization. Result payloads still report original statement text
+  through the existing `dml_summary` contract.
 
 ### Result Values, Analytics, Visualization, And Reports
 
@@ -299,7 +319,20 @@ Check and update:
 - `server/data-talk-application/src/main/java/com/datatalk/application/sql/SqlStatementSplitters.java`
 - `server/data-talk-infrastructure/src/main/java/com/datatalk/sql/DefaultSqlStatementSplitters.java`
 - `server/data-talk-infrastructure/src/main/java/com/datatalk/sql/GenericSqlStatementSplitter.java`
-- Existing specialized splitters such as `PostgresJdbcSqlStatementSplitter`.
+- Existing specialized splitters such as `MySqlSqlStatementSplitter` and
+  `PostgresJdbcSqlStatementSplitter`.
+
+Current splitter strategy:
+
+- `mysql`: `MySqlSqlStatementSplitter`; handles quoted strings, backtick
+  identifiers, `--` / `#` / `/* ... */` comments, backslash escapes, and
+  client-side `DELIMITER` commands for stored-program scripts. `DELIMITER`
+  lines are never sent to JDBC.
+- `postgresql` / `postgres`: `PostgresJdbcSqlStatementSplitter`, backed by the
+  PostgreSQL JDBC parser so dollar-quoted strings and PL/pgSQL blocks are not
+  split on internal semicolons.
+- `h2` and all unrecognized kinds: `GenericSqlStatementSplitter`; acceptable
+  only for simple semicolon scripts with ordinary strings and comments.
 
 Required decisions:
 
@@ -308,6 +341,10 @@ Required decisions:
   commands?
 - Does the database need a specialized parser or driver parser?
 - Does the workbench support scripts for this kind, or only single statements?
+- For every new database kind, explicitly choose one of: reuse a proven driver
+  parser, add a dedicated dialect splitter, or document why the generic splitter
+  is sufficient. Do not silently inherit the generic fallback for first-class
+  database support.
 
 Tests:
 

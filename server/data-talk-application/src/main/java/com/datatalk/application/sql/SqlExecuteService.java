@@ -74,6 +74,7 @@ public class SqlExecuteService {
     private final SessionDataContextService sessionDataContextService;
     private final TableContextAutoResolver tableContextAutoResolver;
     private final SqlStatementSplitters sqlStatementSplitters;
+    private final SqlExecutionPlanner sqlExecutionPlanner = new SqlExecutionPlanner();
     private final Translator translator;
     private final int maxRows;
 
@@ -150,9 +151,57 @@ public class SqlExecuteService {
             c.setAutoCommit(false);
             boolean failed = false;
             try {
-                for (int i = 0; i < statements.size(); i++) {
-                    String statementText = statements.get(i);
-                    int statementIndex = i + 1;
+                List<SqlExecutionPlanner.ExecutionUnit> executionUnits = sqlExecutionPlanner.plan(statements);
+                for (SqlExecutionPlanner.ExecutionUnit executionUnit : executionUnits) {
+                    if (executionUnit instanceof SqlExecutionPlanner.DmlBatch dmlBatch) {
+                        long started = System.currentTimeMillis();
+                        try (Statement stmt = c.createStatement()) {
+                            stmt.setQueryTimeout(30);
+                            int affectedRows;
+                            if (dmlBatch.rewrittenStatement().isPresent()) {
+                                affectedRows = normalizeAffectedRows(stmt.executeUpdate(dmlBatch.rewrittenStatement().get()));
+                            } else {
+                                for (String statementText : dmlBatch.statementTexts()) {
+                                    stmt.addBatch(statementText);
+                                }
+                                affectedRows = sumAffectedRows(stmt.executeBatch());
+                            }
+                            long executionMs = System.currentTimeMillis() - started;
+                            pendingDmlSummary = appendPendingDmlSummary(
+                                pendingDmlSummary,
+                                dmlBatch.startIndex(),
+                                dmlBatch.endIndex(),
+                                dmlBatch.statementTexts(),
+                                affectedRows,
+                                executionMs
+                            );
+                        } catch (SQLException e) {
+                            pendingDmlSummary = flushPendingDmlSummary(results, pendingDmlSummary);
+                            long executionMs = System.currentTimeMillis() - started;
+                            results.add(new ResultItem(
+                                nextResultId(),
+                                "error",
+                                translator.get("sql.result.error.title", dmlBatch.startIndex()),
+                                dmlBatch.startIndex(),
+                                joinStatementTexts(dmlBatch.statementTexts()),
+                                List.of(),
+                                List.of(),
+                                0,
+                                executionMs,
+                                false,
+                                null,
+                                sanitizeSqlErrorMessage(e)
+                            ));
+                            c.rollback();
+                            failed = true;
+                            break;
+                        }
+                        continue;
+                    }
+
+                    SqlExecutionPlanner.SingleStatement single = (SqlExecutionPlanner.SingleStatement) executionUnit;
+                    String statementText = single.statementText();
+                    int statementIndex = single.statementIndex();
                     long started = System.currentTimeMillis();
                     try (Statement stmt = c.createStatement()) {
                         stmt.setQueryTimeout(30);
@@ -178,23 +227,15 @@ public class SqlExecuteService {
                                 ));
                             }
                         } else {
-                            int affectedRows = Math.max(stmt.getUpdateCount(), 0);
-                            if (pendingDmlSummary == null) {
-                                pendingDmlSummary = new DmlSummaryAccumulator(
-                                    statementIndex,
-                                    statementIndex,
-                                    new ArrayList<>(List.of(statementText)),
-                                    affectedRows,
-                                    executionMs
-                                );
-                            } else {
-                                pendingDmlSummary.statementTexts().add(statementText);
-                                pendingDmlSummary = pendingDmlSummary.with(
-                                    statementIndex,
-                                    pendingDmlSummary.affectedRows() + affectedRows,
-                                    pendingDmlSummary.executionMs() + executionMs
-                                );
-                            }
+                            int affectedRows = normalizeAffectedRows(stmt.getUpdateCount());
+                            pendingDmlSummary = appendPendingDmlSummary(
+                                pendingDmlSummary,
+                                statementIndex,
+                                statementIndex,
+                                List.of(statementText),
+                                affectedRows,
+                                executionMs
+                            );
                         }
                     } catch (SQLException e) {
                         pendingDmlSummary = flushPendingDmlSummary(results, pendingDmlSummary);
@@ -241,6 +282,47 @@ public class SqlExecuteService {
         }
 
         return results;
+    }
+
+    private DmlSummaryAccumulator appendPendingDmlSummary(
+        DmlSummaryAccumulator pendingDmlSummary,
+        int startIndex,
+        int endIndex,
+        List<String> statementTexts,
+        int affectedRows,
+        long executionMs
+    ) {
+        if (pendingDmlSummary == null) {
+            return new DmlSummaryAccumulator(
+                startIndex,
+                endIndex,
+                new ArrayList<>(statementTexts),
+                affectedRows,
+                executionMs
+            );
+        }
+        pendingDmlSummary.statementTexts().addAll(statementTexts);
+        return pendingDmlSummary.with(
+            endIndex,
+            pendingDmlSummary.affectedRows() + affectedRows,
+            pendingDmlSummary.executionMs() + executionMs
+        );
+    }
+
+    private static int sumAffectedRows(int[] updateCounts) {
+        int total = 0;
+        for (int updateCount : updateCounts) {
+            total += normalizeAffectedRows(updateCount);
+        }
+        return total;
+    }
+
+    private static int normalizeAffectedRows(int updateCount) {
+        return updateCount > 0 ? updateCount : 0;
+    }
+
+    private static String joinStatementTexts(List<String> statementTexts) {
+        return String.join(";\n", statementTexts);
     }
 
     private ResolvedDataContextDto toDto(ResolvedExecutionContext context) {

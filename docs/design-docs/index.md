@@ -16,6 +16,7 @@
 
 | 文档 | 状态 | 摘要 |
 |------|------|------|
+| [sql-dml-batch-execution-design](../product-specs/2026-04-29-sql-dml-batch-execution-design.md) | shipped | `/api/sql/execute` 执行层增加连续 DML JDBC batch 与同表 `INSERT ... VALUES` rewrite，保持现有结果契约与事务回滚语义 |
 | [guarded-ddl-dml-execution-design](../product-specs/2026-04-25-guarded-ddl-dml-execution-design.md) | shipped | 将后端 L1/L2/L3 风险分级转化为用户可见的两步确认流：`/api/sql/execute` 与 `ExecuteSqlAction` 引入 `confirmed` + `riskAck`，Workbench 用 `AlertDialog`、chat 沿用 `preview-sql.tsx` inline 卡片，二者共享 `<SqlConfirmationCard>` 内核；`DELETE WITH WHERE` 由 L3 调整为 L2，与 `UPDATE WITH WHERE` 对称 |
 | [sql-result-export-design](../product-specs/2026-04-25-sql-result-export-design.md) | shipped | Stage SQL result set 首版导出设计已落地：复制 CSV、复制 JSON、下载 CSV；范围限定当前页或当前已返回 bounded result |
 | [query-editor-object-actions-design](../product-specs/2026-04-23-query-editor-object-actions-design.md) | shipped | `query_editor` 已收敛为由 `StageStore` 统一打开、命名、聚焦和编辑的对象；`WorkspaceAdapter` / `QueryEditorAdapter` 已对 AI 暴露稳定的 `state / actions / capabilities` 与文件式 SQL 编辑语义 |

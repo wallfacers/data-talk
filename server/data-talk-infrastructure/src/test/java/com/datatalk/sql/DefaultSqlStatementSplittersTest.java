@@ -8,6 +8,7 @@ class DefaultSqlStatementSplittersTest {
 
     private final DefaultSqlStatementSplitters splitters = new DefaultSqlStatementSplitters(
         new PostgresJdbcSqlStatementSplitter(),
+        new MySqlSqlStatementSplitter(),
         new GenericSqlStatementSplitter()
     );
 
@@ -20,8 +21,29 @@ class DefaultSqlStatementSplittersTest {
     }
 
     @Test
+    void routes_mysql_to_the_mysql_splitter() {
+        assertThat(splitters.split("mysql", """
+            DELIMITER //
+            CREATE PROCEDURE AddData()
+            BEGIN
+              SELECT 'a;b';
+            END //
+            DELIMITER ;
+            CALL AddData();
+            """))
+            .containsExactly(
+                """
+            CREATE PROCEDURE AddData()
+            BEGIN
+              SELECT 'a;b';
+            END""",
+                "CALL AddData()"
+            );
+    }
+
+    @Test
     void routes_other_kinds_to_the_generic_splitter() {
-        assertThat(splitters.split("mysql", "SELECT $$a;b$$; SELECT 1;"))
+        assertThat(splitters.split("sqlite", "SELECT $$a;b$$; SELECT 1;"))
             .containsExactly("SELECT $$a", "b$$", "SELECT 1");
     }
 }
