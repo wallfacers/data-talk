@@ -3,6 +3,7 @@ import { useUIObjectRegistry, uiRouter } from '@/services/ui-router'
 import type { UIObject } from '@/services/ui-router'
 import type { StageTab } from '@/stores/stage-store'
 import { useStageStore } from '@/stores/stage-store'
+import { ErInspectorAdapter } from '../adapters/ErInspectorAdapter'
 import { QueryEditorAdapter } from '../adapters/QueryEditorAdapter'
 import { WorkspaceAdapter } from '../adapters/WorkspaceAdapter'
 
@@ -13,6 +14,12 @@ function RegisteredInstance({ instance }: { instance: UIObject | null }) {
 
 function RegisteredQueryEditor({ tabId, sessionId }: { tabId: string; sessionId: string | null }) {
   const instance = useMemo(() => new QueryEditorAdapter(tabId, () => sessionId), [tabId, sessionId])
+  useUIObjectRegistry(instance)
+  return null
+}
+
+function RegisteredErInspector({ tabId, sessionId }: { tabId: string; sessionId: string | null }) {
+  const instance = useMemo(() => new ErInspectorAdapter(tabId, () => sessionId), [tabId, sessionId])
   useUIObjectRegistry(instance)
   return null
 }
@@ -32,6 +39,9 @@ export function StageUIObjectRegistry({ tabs }: { tabs: StageTab[] }) {
       {tabs
         .filter((tab) => tab.type === 'query_editor')
         .map((tab) => <RegisteredQueryEditor key={tab.tabId} tabId={tab.tabId} sessionId={tab.originSessionId ?? null} />)}
+      {tabs
+        .filter((tab) => tab.type === 'er_inspector')
+        .map((tab) => <RegisteredErInspector key={tab.tabId} tabId={tab.tabId} sessionId={tab.originSessionId ?? null} />)}
     </>
   )
 }
