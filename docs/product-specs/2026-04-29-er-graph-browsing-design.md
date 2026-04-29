@@ -1259,7 +1259,9 @@ separate and pending.
 
 文件：`docs/exec-plans/2026-04-29-er-designer-plan.md`
 
-**2026-04-29 execution checkpoint:** Code implementation and automated gates are complete. `cd server && mvn clean verify` passed with `BUILD SUCCESS`; `cd client && npx tsc --noEmit && npm test -- --run` passed with 137 test files / 826 tests. Manual real-database Tauri smoke remains pending before this Plan B section is treated as fully accepted.
+**2026-04-29 execution checkpoint:** Code implementation and automated gates are complete. `cd server && mvn clean verify` passed with `BUILD SUCCESS`; `cd client && npx tsc --noEmit && npm test -- --run` passed with 137 test files / 826 tests.
+
+**2026-04-30 follow-up checkpoint:** A narrow follow-up patch closed the post-ship review gaps: designer graph conversion now maps `database_fk -> fk` and `comment_ref -> virtual`, designer table-node tests assert real column ids, and `sync_from_db` assigns fallback coordinates for newly introduced table ids while preserving existing local view state. Manual real-database Tauri smoke still remains pending before this Plan B section is treated as fully accepted.
 
 **估算**：3-4 周
 

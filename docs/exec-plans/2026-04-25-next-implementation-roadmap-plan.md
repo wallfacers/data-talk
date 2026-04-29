@@ -19,7 +19,7 @@
 - **2026-04-27 update:** Tasks 1-5 已完成（TD-026 已清除、Pagination/Query History 评估完成、Bounded Export shipped、Guarded DDL/DML shipped、Chart Artifact Inline Preview 子计划 shipped）。同日产品总设计新增 §3.11 跨 session 工作台 + Tab 内容索引 + `ui_find` 与 §3.12 外部数据采集（skill 驱动），roadmap 重排：原 Task 6 Intelligent Operations 降为 Task 7、原 Task 7 Visualization 降为 Task 8，新插入 Task 6 跨 session 工作台持久化作为下一启动项；当时新增外部数据采集作为下一阶段占位，后续在 2026-04-29 后移为 Task 10。
 - **2026-04-28 update:** Task 6 已通过 [Cross-Session Workbench Tabs](./2026-04-27-cross-session-workbench-tabs-plan.md) 和 Shared Stage Workbench P1/P2/P3/P3.5 系列收口；Task 7 Intelligent Operations 已 shipped；当时下一条产品主线是 Task 8 Visualization Expansion，外部数据采集继续等待 Task 8 至少一个生产切片稳定。
 - **2026-04-29 update:** 插入新的 Task 9 Data Source Coverage Expansion，外部数据采集后移为 Task 10。新增数据源候选必须按 [docs/DATA_SOURCE_TYPE_COMPATIBILITY.md](../DATA_SOURCE_TYPE_COMPATIBILITY.md) 分批落地；不得只改 UI 下拉或 prompt 文案就宣称支持。
-- **2026-04-29 out-of-roadmap insertion:** 用户从运行时观察提出了 OpenCode 工作目录治理 + AI 产出文件归属问题（`~/.data-talk/opencode/` 下出现孤儿文件、备份/log 堆积、删除 session 不联动清理 OpenCode 自管目录、未来报告/ER 图等持久资产无归属维度），不在原 roadmap Task 1-10 范围内。经 brainstorming + spec 修订（含一次代码核实驱动的 v2 重写）后立项为 Task 11 "OpenCode Workdir & File Artifact System"。这是**运行时基础设施**类别的工作，与 Task 8 visualization 是天然搭档（ER/报表/数据集等长生命周期产物需要 file artifact 系统提供物理归属与生命周期管理）。Spec 与 Part 1 计划已登记到对应 index；按 5 Part 推进，Part 1 (Migration & Domain) 优先于 Task 8 启动。
+- **2026-04-29 out-of-roadmap insertion:** 用户从运行时观察提出了 OpenCode 工作目录治理 + AI 产出文件归属问题（`~/.data-talk/opencode/` 下出现孤儿文件、备份/log 堆积、删除 session 不联动清理 OpenCode 自管目录、未来报告/ER 图等持久资产无归属维度），不在原 roadmap Task 1-10 范围内。经 brainstorming + spec 修订（含一次代码核实驱动的 v2 重写）后立项为 Task 11 "OpenCode Workdir & File Artifact System"。这是**运行时基础设施**类别的工作，与 Task 8 visualization 是天然搭档（ER/报表/数据集等长生命周期产物需要 file artifact 系统提供物理归属与生命周期管理）。Spec 与 Part 1 计划已登记到对应 index；按 5 Part 推进，Part 1 (Migration & Domain) 已于 2026-04-29 完成，Part 2-5 仍待补正式 child plan。
 
 ## Context
 
@@ -396,11 +396,11 @@ Frontend work in this roadmap must follow [client/DESIGN.md](../../client/DESIGN
 
 > **Out-of-roadmap insertion**: not in the original Task 1-10 product direction. Triggered by user-observed runtime hygiene issues in `~/.data-talk/opencode/` and a stated need for ownership over AI-produced reports / ER diagrams / scripts. Runs as a **runtime-infrastructure track** in parallel with Task 8 visualization rather than blocking it. Reviewed and revised through one round of code-verification feedback before plan kick-off.
 
-**Spec:** [docs/product-specs/2026-04-29-opencode-workdir-and-artifact-system-design.md](../product-specs/2026-04-29-opencode-workdir-and-artifact-system-design.md) (Draft v2 — first version was rejected during review for assuming per-session OpenCode cwd; v2 switched to subdirectory soft-isolation since OpenCode runs as a single process)
+**Spec:** [docs/product-specs/2026-04-29-opencode-workdir-and-artifact-system-design.md](../product-specs/2026-04-29-opencode-workdir-and-artifact-system-design.md) (Draft v2 / partially implemented — first version was rejected during review for assuming per-session OpenCode cwd; v2 switched to subdirectory soft-isolation since OpenCode runs as a single process, and Part 1 has since shipped)
 
 **Plans:**
-- [Part 1 — Migration & Domain](./2026-04-29-file-artifact-system-part1-domain-and-migration-plan.md) (active)
-- Part 2-5 (pending; written after Part 1 lands — Watcher / MCP+AGENTS / Frontend Tabs / Deletion Flow + Housekeeping)
+- [Part 1 — Migration & Domain](./2026-04-29-file-artifact-system-part1-domain-and-migration-plan.md) (completed 2026-04-29)
+- Part 2-5 (pending formal child plans — Watcher / MCP+AGENTS / Frontend Tabs / Deletion Flow + Housekeeping)
 
 **Files (high-level; per-Part plans hold exact paths):**
 - New: `server/data-talk-domain/src/main/java/com/datatalk/domain/fileartifact/**` (FileArtifact sealed record + 3 enums)
@@ -448,10 +448,10 @@ Frontend work in this roadmap must follow [client/DESIGN.md](../../client/DESIGN
 - Task 6 (Cross-Session Workbench Persistence) is closed; future work should use the shipped persistent Tab + `ui_find` substrate instead of reopening the foundation.
 - Task 7 (Intelligent Operations) is closed as a read-only diagnostics slice.
 - Query history persistence is a deferred product enhancement. It should reuse the Task 6 persistent Tab / `ui_find` substrate first and should not be tracked as technical debt unless a concrete reliability or data-loss defect is found.
-- Task 8 (Visualization Expansion) has its first ER slice implemented through Plan A + Plan B. ER objects register as workbench-scope persistent Tabs; Plan B remains active only for manual Tauri + real-database smoke before final completion. Report/dashboard remain future visualization candidates.
+- Task 8 (Visualization Expansion) has its first ER slice implemented through Plan A + Plan B plus the 2026-04-30 follow-up patch. ER objects register as workbench-scope persistent Tabs; Plan B remains active only for manual Tauri + real-database smoke before final completion. Report/dashboard remain future visualization candidates.
 - Task 9 (Data Source Coverage Expansion) is a platform-expansion track. It can run as independent child specs after each candidate kind passes the data-source gate; do not batch unrelated dialects unless they share driver semantics and test fixtures.
 - Task 10 (External Data Ingestion) is a phase-3 placeholder; do not open a child spec until at least one Task 8 slice is in production and Task 9 has at least one stable target data source beyond the current first-class set.
-- Task 11 (OpenCode Workdir & File Artifact System) is an **out-of-roadmap** runtime-infrastructure track inserted on 2026-04-29. Runs in parallel with Task 8 visualization (does not block it; physical persistence of long-lived ER / report objects from Task 8 will eventually flow through Task 11). Part 1 (Migration & Domain) is the active starting point; Parts 2-5 are written as Part 1 lands. Backend-first: Parts 1-3 stabilize the domain + watcher + MCP protocol before Part 4 introduces frontend tabs and Part 5 ties deletion flows together with housekeeping.
+- Task 11 (OpenCode Workdir & File Artifact System) is an **out-of-roadmap** runtime-infrastructure track inserted on 2026-04-29. Runs in parallel with Task 8 visualization (does not block it; physical persistence of long-lived ER / report objects from Task 8 will eventually flow through Task 11). Part 1 (Migration & Domain) is complete; Parts 2-5 are still pending formal child plans. Backend-first ordering remains unchanged: Parts 1-3 stabilize the domain + watcher + MCP protocol before Part 4 introduces frontend tabs and Part 5 ties deletion flows together with housekeeping.
 
 ## Verification Gates
 
@@ -475,5 +475,5 @@ Every child implementation plan created from this roadmap must include:
 - Visualization expansion has an ER child spec and implementation slice with explicit `ui_find` / `ui_patch` integration for persistent `er_inspector` / `er_designer` objects. Plan B automated verification passed on 2026-04-29; manual real-database smoke remains pending before the ER slice is marked fully complete.
 - Data source coverage expansion has at least one child spec or an explicit prioritization decision for the first wave, and every new kind is tied back to [DATA_SOURCE_TYPE_COMPATIBILITY.md](../DATA_SOURCE_TYPE_COMPATIBILITY.md).
 - External data ingestion remains a registered phase-3 placeholder until Tasks 8 and 9 are stable; no child spec opened prematurely.
-- OpenCode workdir & file artifact system (Task 11, out-of-roadmap) has a code-verified spec v2 and an active Part 1 plan registered in `docs/exec-plans/index.md`; Parts 2-5 are written sequentially as each prior Part lands. Part 1 ships before any Task 8 visualization slice that would produce persistent file artifacts.
+- OpenCode workdir & file artifact system (Task 11, out-of-roadmap) has a code-verified spec v2 and a completed Part 1 plan registered in `docs/exec-plans/index.md`; Parts 2-5 are still pending formal child plans. Part 1 shipped before broader Task 8 visualization/file-persistence follow-on work.
 - The next roadmap or child plans are registered in `docs/exec-plans/index.md` before this roadmap is moved to Completed.

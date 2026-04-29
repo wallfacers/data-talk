@@ -13,7 +13,7 @@
 ## Status
 
 - **Created:** 2026-04-29
-- **State:** Active (implementation + automated verification completed 2026-04-29; manual Tauri + real-database smoke pending)
+- **State:** Active (implementation + automated verification completed 2026-04-29; 2026-04-30 follow-up fixes shipped; manual Tauri + real-database smoke still pending)
 - **Spec:** [docs/product-specs/2026-04-29-er-graph-browsing-design.md](../product-specs/2026-04-29-er-graph-browsing-design.md)
 - **Phase:** Plan B of 2 (Plan A `er_inspector` ships first)
 - **Dependency:** Plan A must be merged and Plan A's exit criteria satisfied (mvn verify green, tsc clean, npm test green, real-database smoke pass) before any Plan B task starts. The shared canvas / store / persistence pipeline / global adapter registry are foundations Plan B builds on, not parallel work.
@@ -25,6 +25,13 @@
 - Backend verification passed: `cd server && mvn compile -q`; `cd server && mvn clean verify` finished with `BUILD SUCCESS` (adapter failsafe summary: 140 tests, 0 failures, 0 errors, 2 skipped).
 - Frontend verification passed: `cd client && npx tsc --noEmit && npm test -- --run` finished with 137 test files / 826 tests passed.
 - Manual smoke in Task 31 was **not executed** in this terminal session because it requires a running Tauri desktop app and a writable real MySQL connection. Do not move this plan to Completed until Task 31 is run or explicitly waived by the owner.
+
+### Status Snapshot — 2026-04-30
+
+- Post-ship regressions found during review were handled in [ER Designer Follow-up Fixes](./2026-04-30-er-designer-follow-up-fixes-plan.md).
+- That follow-up patch corrected relation-kind mapping (`database_fk -> fk`, `comment_ref -> virtual`), aligned designer table-node tests with id-based callbacks, and kept `sync_from_db` from stacking newly synced tables at `(0,0)`.
+- AI-facing backend prompt docs were also aligned with the shipped `workspace.open` query-editor payload fields.
+- After that follow-up, the only remaining acceptance gate for this plan is Task 31 manual Tauri + real-database smoke, or an explicit owner waiver for that smoke.
 
 ## Context
 
