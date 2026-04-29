@@ -57,6 +57,45 @@ This table describes the current repository state. Keep it accurate.
 | `oracle` | Stub only | `DbType` and `OracleDiagnosticsProvider` exist, but `ConnectionKind`, JDBC URL, UI, driver dependency, schema discovery, and SQL execution support are not complete. |
 | `sqlserver` | Stub/legacy enum only | `DbType` and `QueryApplicationService` mapping exist, but the main connection kind, JDBC URL, driver, UI, schema discovery, and diagnostics are not complete. |
 
+## Roadmap Expansion Candidates
+
+These are roadmap candidates, not supported kinds. A candidate becomes
+first-class only after a focused spec/plan completes the compatibility checklist
+below and updates the support snapshot above. Do not expose these in the
+frontend connection form, runtime prompt, or MCP schemas as supported until then.
+
+Market input is directional and should be rechecked when a child plan starts.
+DB-Engines' April 2026 ranking lists 431 DBMSs and keeps Oracle, MySQL,
+Microsoft SQL Server, PostgreSQL, MongoDB, Snowflake, Databricks, Redis, IBM
+Db2, Apache Cassandra, Elasticsearch, SQLite, MariaDB, Apache Hive, Google
+BigQuery, ClickHouse, DuckDB, and Trino among visible high-ranking or
+fast-moving systems. Product priority still depends on DataTalk fit, available
+drivers, license/redistribution, test fixture quality, and dialect risk.
+
+### Candidate Priority Bands
+
+| Band | Candidate kinds | Notes |
+|---|---|---|
+| A — close partial/stub and common enterprise SQL | `sqlite`, `oracle`, `sqlserver` / `mssql`, `mariadb` | Prefer these when the goal is broad SQL Workbench coverage and familiar enterprise databases. `sqlite` needs frontend completion; `oracle` and `sqlserver` already have partial/stub traces but are not first-class. |
+| B — analytics / OLAP SQL engines | `apache_doris` / `doris`, `starrocks`, `clickhouse`, `hive`, `trino`, `presto`, `duckdb` | Validate JDBC behavior, catalog/schema semantics, splitter safety, and whether diagnostics can be real or must return structured unsupported. |
+| C — domestic / enterprise compatibility | `gaussdb`, `opengauss`, `dameng` / `dm` / `dm8`, `kingbase` / `kingbasees`, `oceanbase`, `tidb` | Do not assume PostgreSQL/MySQL compatibility is enough. Each kind needs explicit driver, URL, catalog/schema, SQL dialect, and risk-analysis decisions. |
+| D — cloud warehouses / lakehouse SQL | `snowflake`, `bigquery`, `redshift`, `databricks_sql` | Watch for non-standard authentication, warehouse/project/dataset fields, JDBC driver redistribution limits, billing-sensitive metadata scans, and result-limit semantics. |
+| E — non-SQL or semi-SQL sources | `mongodb`, `elasticsearch`, `opensearch`, optionally `redis` only if product scope expands beyond SQL | These require a separate read/query contract and should not be forced through fake SQL execution. Mutation and schema semantics must be designed before implementation. |
+
+### Candidate Naming Notes
+
+- Use canonical lower-case kind strings in persisted records and API payloads.
+- `apache_doris` is the canonical candidate for Apache Doris; accept `doris`
+  only through an explicit normalization boundary if needed.
+- `gaussdb` and `opengauss` must be evaluated separately during implementation.
+  Huawei GaussDB, openGauss, and PostgreSQL-compatible modes can differ in
+  driver, authentication, catalog/schema behavior, and dialect support.
+- `dameng` is the canonical candidate for 达梦; `dm` / `dm8` are aliases only if
+  the implementation explicitly normalizes them.
+- Cloud warehouse candidates often need fields beyond host/port/database, such
+  as account, region, warehouse, project, dataset, role, HTTP path, token, or
+  JDBC properties. Do not overload `databaseName` with these without a plan.
+
 ## Mandatory Repository Scan
 
 Before designing or implementing a database-type change, run targeted searches.
@@ -65,7 +104,7 @@ Do not rely on memory.
 ```bash
 rg -n "ConnectionKind|DbType|DbConnection|ConnectionRecord|databaseName|schemaName|driverType|kind\\("
 rg -n "JdbcUrlBuilder|DriverManager|getConnection|setCatalog|setSchema|getCatalogs|getSchemas|getTables|getColumns"
-rg -n "mysql|postgres|postgresql|sqlite|h2|oracle|sqlserver|mssql|clickhouse|duckdb"
+rg -n "mysql|postgres|postgresql|sqlite|h2|oracle|sqlserver|mssql|mariadb|clickhouse|duckdb|doris|apache_doris|starrocks|hive|trino|presto|gauss|gaussdb|opengauss|dameng|dm8|kingbase|oceanbase|tidb|snowflake|bigquery|redshift|databricks|db2|hana|teradata|mongodb|elasticsearch|opensearch|redis"
 rg -n "DiagnosticsProvider|EXPLAIN|indexHints|lockInfo|pool_status|table_space"
 rg -n "SqlStatementSplitters|SqlStatementGuard|CalciteSqlRiskAnalyzer|SqlExecuteService|ExecuteSqlAction|ReadSchemaAction"
 rg -n "UseTargetResolver|SessionDataContextService|SessionDataContextRepository|resolve_use_target|list_connection_targets"

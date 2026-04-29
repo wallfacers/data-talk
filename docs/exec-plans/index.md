@@ -6,7 +6,7 @@
 
 | 计划 | 创建日期 | 摘要 |
 |------|---------|------|
-| [Next Implementation Roadmap](./2026-04-25-next-implementation-roadmap-plan.md) | 2026-04-25 | 下一阶段路线图：Tasks 1-7 已收口（cleanup / pagination 评估 / query history 评估 / bounded export shipped / guarded DDL-DML shipped / cross-session workbench + `ui_find` shipped / intelligent operations shipped）；当前下一产品候选为 Task 8 可视化扩展，Task 9 外部数据采集继续作为三期占位；明确排除虚拟滚动。 |
+| [Next Implementation Roadmap](./2026-04-25-next-implementation-roadmap-plan.md) | 2026-04-25 | 下一阶段路线图：Tasks 1-7 已收口（cleanup / pagination 评估 / query history 评估 / bounded export shipped / guarded DDL-DML shipped / cross-session workbench + `ui_find` shipped / intelligent operations shipped）；当前下一产品候选为 Task 8 可视化扩展；新增 Task 9 主流数据源覆盖扩展（必须走数据源兼容 gate），Task 10 外部数据采集继续作为三期占位；明确排除虚拟滚动。 |
 
 ## 已完成计划
 

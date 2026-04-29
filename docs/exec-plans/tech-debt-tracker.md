@@ -2,6 +2,11 @@
 
 已知技术债务的集中记录。每项标注优先级和关联计划。
 
+## 判定口径
+
+- 产品能力尚未实现、但已在 roadmap 中作为明确 feature slice 跟踪的项目，不登记为技术债。当前 ER / report / dashboard 的 placeholder / disabled UI 属于 [Next Implementation Roadmap](./2026-04-25-next-implementation-roadmap-plan.md) Task 8 Visualization Expansion 的产品待实现范围。
+- 已评估延期的增强项不自动登记为技术债。当前 query history persistence 归类为后续 result/history management 产品增强，重新立项时优先复用已落地的持久 Tab / `ui_find` 底座；只有发现具体可靠性、数据丢失或维护性缺陷时才登记为技术债。
+
 ## 优先级说明
 
 | 级别 | 含义 |

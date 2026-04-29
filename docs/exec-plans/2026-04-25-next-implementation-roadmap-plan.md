@@ -16,15 +16,17 @@
 - **State:** Active
 - **Owner intent:** Decide "接下来做什么" after the 2026-04-21 roadmap completed.
 - **Primary direction:** Make SQL Workbench reliably useful for daily work before expanding into visualization and intelligent operations.
-- **2026-04-27 update:** Tasks 1-5 已完成（TD-026 已清除、Pagination/Query History 评估完成、Bounded Export shipped、Guarded DDL/DML shipped、Chart Artifact Inline Preview 子计划 shipped）。同日产品总设计新增 §3.11 跨 session 工作台 + Tab 内容索引 + `ui_find` 与 §3.12 外部数据采集（skill 驱动），roadmap 重排：原 Task 6 Intelligent Operations 降为 Task 7、原 Task 7 Visualization 降为 Task 8，新插入 Task 6 跨 session 工作台持久化作为下一启动项，新增 Task 9 外部数据采集作为三期占位。
-- **2026-04-28 update:** Task 6 已通过 [Cross-Session Workbench Tabs](./2026-04-27-cross-session-workbench-tabs-plan.md) 和 Shared Stage Workbench P1/P2/P3/P3.5 系列收口；Task 7 Intelligent Operations 已 shipped；当前下一条产品主线是 Task 8 Visualization Expansion，Task 9 继续等待 Task 8 至少一个生产切片稳定。
+- **2026-04-27 update:** Tasks 1-5 已完成（TD-026 已清除、Pagination/Query History 评估完成、Bounded Export shipped、Guarded DDL/DML shipped、Chart Artifact Inline Preview 子计划 shipped）。同日产品总设计新增 §3.11 跨 session 工作台 + Tab 内容索引 + `ui_find` 与 §3.12 外部数据采集（skill 驱动），roadmap 重排：原 Task 6 Intelligent Operations 降为 Task 7、原 Task 7 Visualization 降为 Task 8，新插入 Task 6 跨 session 工作台持久化作为下一启动项；当时新增外部数据采集作为下一阶段占位，后续在 2026-04-29 后移为 Task 10。
+- **2026-04-28 update:** Task 6 已通过 [Cross-Session Workbench Tabs](./2026-04-27-cross-session-workbench-tabs-plan.md) 和 Shared Stage Workbench P1/P2/P3/P3.5 系列收口；Task 7 Intelligent Operations 已 shipped；当时下一条产品主线是 Task 8 Visualization Expansion，外部数据采集继续等待 Task 8 至少一个生产切片稳定。
+- **2026-04-29 update:** 插入新的 Task 9 Data Source Coverage Expansion，外部数据采集后移为 Task 10。新增数据源候选必须按 [docs/DATA_SOURCE_TYPE_COMPATIBILITY.md](../DATA_SOURCE_TYPE_COMPATIBILITY.md) 分批落地；不得只改 UI 下拉或 prompt 文案就宣称支持。
 
 ## Context
 
 - `docs/exec-plans/index.md` currently has no active plans before this roadmap is registered.
 - The following foundations are already shipped: Stage UI Object Protocol, Stage Window Layout, SQL Workbench, Query Editor object actions, SQL risk classification, Composer data source picker, MCP tool migration, chart fence rendering, and real OpenCode MCP bridge smoke coverage.
-- The product roadmap in `docs/product-specs/index.md` places the next major work in "二期": SQL editing, query result management, export, DDL / DML guarded execution, visualization, and performance analysis.
+- The product roadmap in `docs/product-specs/index.md` places the next major work in "二期": SQL editing, query result management, export, DDL / DML guarded execution, visualization, performance analysis, and broader data-source coverage.
 - The current live technical debt list is empty after the 2026-04-29 `TD-033` cleanup removed the deprecated `workspace.close` / `query_editor.close` aliases.
+- Database popularity inputs are directional, not support commitments. DB-Engines' April 2026 ranking lists 431 systems and keeps Oracle / MySQL / SQL Server / PostgreSQL / MongoDB / Snowflake / Databricks / Redis / Db2 / Cassandra / Elasticsearch / SQLite / MariaDB / Apache Hive / BigQuery / ClickHouse / DuckDB / Trino among visible high-ranking or fast-moving systems; implementation priority still follows product fit, JDBC feasibility, and compatibility-gate cost.
 
 ## Design Inputs
 
@@ -44,13 +46,14 @@ Frontend work in this roadmap must follow [client/DESIGN.md](../../client/DESIGN
 
 1. **Small cleanup:** close stale client residue before the next feature branch grows. _(shipped)_
 2. **Bounded SQL results polish:** current client-side table pagination, toolbar `LIMIT`, backend `maxRows`, and `truncated` metadata are enough for now; only polish misleading labels or metadata gaps. _(assessed, no new child plan)_
-3. **Query history enhancement:** current tab-local history is usable; persistence, search, filtering, and reopen modes should be a later focused enhancement. _(assessed, deferred)_
+3. **Query history enhancement:** current tab-local history is usable. After Task 6 shipped, persistent history should reuse the persistent Tab / `ui_find` substrate instead of introducing a standalone history store first. This remains a later product enhancement, not technical debt. _(re-assessed 2026-04-29, deferred)_
 4. **Export:** next new implementation plan. Ship bounded CSV / JSON first; evaluate Excel only after result metadata is stable. _(shipped)_
 5. **DDL / DML guarded execution:** extend the existing risk classification into user-facing confirmation flows. _(shipped)_
 6. **Cross-session workbench persistence + Tab content index + `ui_find`:** promote workbench Tabs to globally persisted, content-indexed objects so the AI can locate, read, and patch any open work surface across sessions; this is the foundation that makes report / dashboard / ER work durable rather than throwaway artifacts. _(shipped — see [2026-04-27-cross-session-workbench-tabs-plan.md](./2026-04-27-cross-session-workbench-tabs-plan.md) and Shared Stage Workbench P1/P2/P3/P3.5)_
 7. **Intelligent operations:** introduce read-only diagnostics such as `EXPLAIN`, slow query analysis, index recommendations, and audit visibility. _(shipped — see [2026-04-27-intelligent-operations-plan.md](./2026-04-27-intelligent-operations-plan.md))_
-8. **Visualization expansion:** ER designer, report, and dashboard work; now unblocked by Task 6 persistence, but should still start with one focused child spec rather than bundling all visualization surfaces.
-9. **External data ingestion via skills:** e-commerce platform / generic web data fetching with auto-table creation under guarded execution. _(phase-3 placeholder; do not start until Tasks 6 and 8 are stable)_
+8. **Visualization expansion:** ER designer, report, and dashboard work; now unblocked by Task 6 persistence, but should still start with one focused child spec rather than bundling all visualization surfaces. Existing disabled / placeholder ER, report, and dashboard UI is classified as product backlog for this task, not as a separate tech-debt item.
+9. **Data source coverage expansion:** add first-class support for mainstream and currently popular database/data-warehouse sources in batches, starting from SQL/JDBC-compatible systems and following [DATA_SOURCE_TYPE_COMPATIBILITY.md](../DATA_SOURCE_TYPE_COMPATIBILITY.md) for every kind. Candidate pool includes Doris / Apache Doris, Oracle, Hive, GaussDB / openGauss, Dameng, SQL Server, MariaDB, ClickHouse, DuckDB, Snowflake, BigQuery, Redshift, Databricks SQL, Trino / Presto, StarRocks, OceanBase, TiDB, KingbaseES, IBM Db2, SAP HANA, Teradata, Elasticsearch / OpenSearch, and MongoDB. _(new 2026-04-29; open only as focused child specs, not one mega-implementation)_
+10. **External data ingestion via skills:** e-commerce platform / generic web data fetching with auto-table creation under guarded execution. _(phase-3 placeholder; do not start until Tasks 8 and 9 have stable production slices)_
 
 ### Explicit Exclusion
 
@@ -61,6 +64,7 @@ Frontend work in this roadmap must follow [client/DESIGN.md](../../client/DESIGN
 - High-level product roadmap: [docs/product-specs/index.md](../product-specs/index.md), sections 3.4, 3.5, 3.6, 3.8, and 4.
 - Current implementation tracking: [docs/exec-plans/index.md](./index.md).
 - Design-system gate: [client/DESIGN.md](../../client/DESIGN.md).
+- Data-source compatibility gate: [docs/DATA_SOURCE_TYPE_COMPATIBILITY.md](../DATA_SOURCE_TYPE_COMPATIBILITY.md).
 - Quality gates: [docs/QUALITY.md](../QUALITY.md).
 - Plan workflow: [docs/PLANS.md](../PLANS.md).
 
@@ -87,6 +91,7 @@ Frontend work in this roadmap must follow [client/DESIGN.md](../../client/DESIGN
 | Stage SQL state and API | `client/src/features/stage/stores/sql-workbench-store.ts`, `client/src/features/stage/hooks/use-sql-execute.ts`, `client/src/services/api/sql.ts` |
 | Stage panels | `client/src/features/stage/components/activity-rail/history-panel.tsx`, `client/src/features/stage/components/activity-rail/schema-panel.tsx`, `client/src/features/stage/components/activity-rail/outline-panel.tsx` |
 | Session and workspace context | `client/src/features/session/**`, `client/src/features/stage/adapters/WorkspaceAdapter.ts`, `client/src/features/stage/adapters/QueryEditorAdapter.ts`, `client/src/services/ui-router/**` |
+| Data source expansion | `docs/DATA_SOURCE_TYPE_COMPATIBILITY.md`, `server/data-talk-application/src/main/java/com/datatalk/application/connection/**`, `server/data-talk-application/src/main/java/com/datatalk/application/session/ConnectionTargetDiscoveryService.java`, `server/data-talk-application/src/main/java/com/datatalk/application/sql/**`, `server/data-talk-infrastructure/src/main/java/com/datatalk/sql/**`, `server/data-talk-infrastructure/src/main/java/com/datatalk/infra/diagnostics/**`, `client/src/features/settings/data-sources/**`, `client/src/features/stage/sql-dialects/**`, `server/data-talk-adapter/src/main/resources/agents/AGENTS.md` |
 
 ## Batch Plan
 
@@ -149,13 +154,13 @@ Frontend work in this roadmap must follow [client/DESIGN.md](../../client/DESIGN
   - `HistoryPanel` renders entries in the Activity Rail and appends selected SQL back into the editor.
   - Existing tests cover append, clear, and history panel behavior.
 
-- [x] **Step 3.2: Defer persistent history** — 已确认延后；export 已 ship，未被 history 阻塞。
+- [x] **Step 3.2: Defer persistent history** — 已确认延后；export 已 ship，未被 history 阻塞。2026-04-29 复评后继续延后，且不登记为技术债；后续做法应优先复用 Task 6 已落地的持久 Tab、内容索引和 `ui_find` 能力。
 
-- [x] **Step 3.3: Future source-of-truth decision** — 决策延后到 history 真正立项时；候选方案（复用 `action_invocations` vs 独立表）已记录。
+- [x] **Step 3.3: Future source-of-truth decision** — 决策延后到 history 真正立项时；候选方案从“复用 `action_invocations` vs 独立表”收敛为先评估持久 Tab / `ui_find` 是否足够承载跨 Tab 查询历史检索、重开和过滤，只有明确不足时再引入专用 history 表或复用 `action_invocations`。
 
 - [x] **Step 3.4: Define tests and verification** — 无代码改动，无新测试需求。
 
-> **2026-04-27 note:** Task 6（Cross-Session Workbench Persistence）落地后，全局 Tab 持久化与内容索引能力会与 query history 形成强耦合。届时应先看看是否可以让 history 复用 Task 6 的 Tab 持久化与 `ui_find` 通道，而不是单独建一张 SQL history 表。
+> **2026-04-29 re-assessment:** Task 6 已落地，全局 Tab 持久化与内容索引能力现在是 query history 的默认底座。Persistent query history 不作为技术债登记；当它重新进入 roadmap 时，应作为“result/history management”产品增强开独立 child spec，并先证明持久 Tab / `ui_find` 不能满足的具体场景，再考虑新增专用 history 表。
 
 ### Task 4: Bounded Export
 
@@ -306,33 +311,80 @@ Frontend work in this roadmap must follow [client/DESIGN.md](../../client/DESIGN
 
 - [ ] **Step 8.1: Keep visualization behind cross-session persistence**
   - ER designer, report builder, and dashboard composition only deliver real product value once Task 6 (cross-session Tab persistence) ships, because these objects are long-lived and edited across sessions.
-  - This roadmap records the direction but does not start visualization implementation before Task 6 has at least a child spec, and ideally before its first usable slice ships.
+  - Task 6 has now shipped; visualization is no longer blocked by persistence. Start with one child spec and one production slice.
+  - Existing disabled / placeholder ER, report, and dashboard UI is intentionally moved out of tech-debt tracking. It is the visible product backlog for this task and should be retired by the relevant visualization child plans.
 
 - [ ] **Step 8.2: Pick one first visualization slice**
   - Candidate A: ER graph browsing from metadata, evolving toward an editable `er_designer` Tab type registered as workbench-scope under Task 6.
   - Candidate B: chart editing and replacement from existing chart fence artifacts.
   - Candidate C: dashboard tab that composes existing chart artifacts, registered as a workbench-scope persistent Tab via Task 6.
   - The first visualization child plan should choose one candidate only, and explicitly state how its persistent objects integrate with `ui_find` / `ui_patch`.
+  - Recommendation after the 2026-04-29 roadmap review: choose Candidate A first, because `LayoutErdAction` already exists and ER browsing is the narrowest visualization slice that exercises persistent workbench objects without requiring dashboard composition semantics.
 
-### Task 9: External Data Ingestion via Skills (Phase 3 Placeholder)
+### Task 9: Data Source Coverage Expansion
 
-> Promotes 总设计 §3.12. Phase-3 placeholder; do not start a child spec until Task 6 ships and at least one Task 8 slice is in production.
+> Promotes product roadmap §3.1 and the mandatory [Data Source Type Compatibility Gate](../DATA_SOURCE_TYPE_COMPATIBILITY.md). This is a platform-expansion track, not a single implementation batch. Every database kind must get its own focused child spec / plan or a small compatible batch with shared behavior.
+
+**Files:**
+- Create when this slice starts: `docs/product-specs/<YYYY-MM-DD>-data-source-coverage-<kind>-design.md`
+- Create when this slice starts: `docs/exec-plans/<YYYY-MM-DD>-data-source-coverage-<kind>-plan.md`
+- Update for every child plan: `docs/DATA_SOURCE_TYPE_COMPATIBILITY.md`
+- Review later: `server/data-talk-application/src/main/java/com/datatalk/application/connection/ConnectionKind.java`
+- Review later: `server/data-talk-application/src/main/java/com/datatalk/application/connection/JdbcUrlBuilder.java`
+- Review later: `server/data-talk-application/src/main/java/com/datatalk/application/session/ConnectionTargetDiscoveryService.java`
+- Review later: `server/data-talk-application/src/main/java/com/datatalk/application/sql/SqlExecuteService.java`
+- Review later: `server/data-talk-infrastructure/src/main/java/com/datatalk/sql/DefaultSqlStatementSplitters.java`
+- Review later: `server/data-talk-infrastructure/src/main/java/com/datatalk/infra/diagnostics/*DiagnosticsProvider.java`
+- Review later: `client/src/features/settings/data-sources/connection-form-dialog.tsx`
+- Review later: `client/src/features/stage/utils/format-sql.ts`
+- Review later: `client/src/features/stage/sql-dialects/*.json`
+- Review later: `server/data-talk-adapter/src/main/resources/agents/AGENTS.md`
+
+- [ ] **Step 9.1: Keep the gate mandatory**
+  - Before any child spec proposes or implements a new kind, read and apply [DATA_SOURCE_TYPE_COMPATIBILITY.md](../DATA_SOURCE_TYPE_COMPATIBILITY.md).
+  - Each child plan must mark every gate checklist section as applicable or `N/A` with a concrete reason.
+  - If a child plan finds a missing compatibility point, update `DATA_SOURCE_TYPE_COMPATIBILITY.md` in the same change before claiming completion.
+  - Do not add prompt-only or UI-only support. A kind is first-class only after connection creation, connection test, metadata discovery, SQL execution, result normalization, guarded risk flow, diagnostics status, frontend context UI, MCP/action schemas, runtime prompt, and tests are aligned or explicitly unsupported.
+
+- [ ] **Step 9.2: Candidate matrix**
+  - User-requested candidates: Apache Doris (`apache_doris`, alias `doris`), Oracle (`oracle`), Apache Hive (`hive`), GaussDB / openGauss (`gaussdb`, `opengauss` pending exact driver decision), and Dameng (`dameng`, aliases `dm` / `dm8`).
+  - Additional mainstream candidates to evaluate: SQL Server (`sqlserver`, alias `mssql`), MariaDB (`mariadb`), ClickHouse (`clickhouse`), DuckDB (`duckdb`), Snowflake (`snowflake`), Google BigQuery (`bigquery`), Amazon Redshift (`redshift`), Databricks SQL (`databricks_sql`), Trino / Presto (`trino`, `presto`), StarRocks (`starrocks`), OceanBase (`oceanbase`), TiDB (`tidb`), KingbaseES (`kingbase` / `kingbasees`), IBM Db2 (`db2`), SAP HANA (`sap_hana`), Teradata (`teradata`), Elasticsearch / OpenSearch (`elasticsearch`, `opensearch`), and MongoDB (`mongodb`).
+  - The first implementation wave should prefer SQL/JDBC-compatible engines where DataTalk can preserve the existing SQL Workbench contract. Non-SQL/search/document systems need a separate read/query contract and must not be forced through fake SQL semantics.
+
+- [ ] **Step 9.3: Recommended implementation waves**
+  - Wave A: close existing partial/stub support and common enterprise SQL: `sqlite` frontend completion, `oracle`, `sqlserver`, `mariadb`.
+  - Wave B: high-demand analytics / OLAP JDBC engines: `apache_doris`, `starrocks`, `clickhouse`, `hive`, `trino`, `presto`, `duckdb`.
+  - Wave C: domestic / enterprise compatibility: `gaussdb` / `opengauss`, `dameng`, `kingbase`, `oceanbase`, `tidb`.
+  - Wave D: cloud warehouses: `snowflake`, `bigquery`, `redshift`, `databricks_sql`.
+  - Wave E: non-SQL or semi-SQL data sources: `mongodb`, `elasticsearch`, `opensearch`; these need product decisions for read/query model, schema discovery, and mutation policy before implementation.
+  - Exact order inside a wave should be chosen by user demand, available JDBC driver quality/license, test fixture availability, and whether the dialect can safely share an existing splitter/risk strategy.
+
+- [ ] **Step 9.4: Child-plan acceptance gates**
+  - Update support snapshot and candidate notes in [DATA_SOURCE_TYPE_COMPATIBILITY.md](../DATA_SOURCE_TYPE_COMPATIBILITY.md).
+  - Backend: `JdbcUrlBuilder`, connection kind normalization, metadata discovery, context application (`database`/`schema`/`catalog`), SQL splitter, risk analyzer/guard, result normalization, diagnostics provider or structured unsupported.
+  - Frontend: connection form fields, default port, data source picker, query editor context selectors, SQL formatter mapping, SQL outline keyword set, i18n.
+  - AI/MCP: action schemas, runtime `AGENTS.md` rules, prompt contract tests, no unsupported capability overclaim.
+  - Verification: focused tests for the touched kind plus `cd server && mvn compile -q`; run `cd client && npx tsc --noEmit` when frontend surfaces change.
+
+### Task 10: External Data Ingestion via Skills (Phase 3 Placeholder)
+
+> Promotes 总设计 §3.12. Phase-3 placeholder; do not start a child spec until Task 8 has at least one production slice and Task 9 has at least one stable target data source beyond the current first-class set.
 
 **Files:**
 - Create when this slice starts: `docs/product-specs/<YYYY-MM-DD>-external-data-ingestion-skills-design.md`
 - Create when this slice starts: `docs/exec-plans/<YYYY-MM-DD>-external-data-ingestion-skills-plan.md`
 
-- [ ] **Step 9.1: Hold until Tasks 6 and 8 are stable**
+- [ ] **Step 10.1: Hold until Tasks 8 and 9 are stable**
   - Do not open a child spec earlier; ingestion is an additive capability, not a foundation.
   - When opened, scope must start from a generic HTTP / API skill scaffolding interoperating with OpenCode MCP / skill protocol; platform-specific skills (Taobao / JD / Pinduoduo / Douyin commerce) come only after the generic scaffolding is proven.
 
-- [ ] **Step 9.2: Hard architectural rules to preserve when this opens**
+- [ ] **Step 10.2: Hard architectural rules to preserve when this opens**
   - DataTalk core must not bundle any platform-specific SDK. All ingestion lives in skill packages, including credentials (OAuth / API key) and platform-specific scraping logic.
   - Auto-table creation must reuse the L2 risk flow shipped in Task 5; ingestion does not get a private bypass for guarded execution.
   - Ingestion source URL, run timing, and raw payload references must hit the audit log per §3.8.
   - Ingestion progress / mapping / target-table previews must surface as persistent Tabs registered through Task 6, so a user can resume a partially-configured pipeline across sessions.
 
-- [ ] **Step 9.3: First-slice direction (when activated)**
+- [ ] **Step 10.3: First-slice direction (when activated)**
   - Generic scaffolding first: HTTP / REST / GraphQL skill harness, credential vault hookup, schema-inference helper, target-table preview with L2 confirmation.
   - Only then sequence platform-specific skills, one platform per child plan.
 
@@ -341,8 +393,10 @@ Frontend work in this roadmap must follow [client/DESIGN.md](../../client/DESIGN
 - Tasks 1 through 5 are closed (shipped or assessed-and-deferred); no further roadmap-level action.
 - Task 6 (Cross-Session Workbench Persistence) is closed; future work should use the shipped persistent Tab + `ui_find` substrate instead of reopening the foundation.
 - Task 7 (Intelligent Operations) is closed as a read-only diagnostics slice.
+- Query history persistence is a deferred product enhancement. It should reuse the Task 6 persistent Tab / `ui_find` substrate first and should not be tracked as technical debt unless a concrete reliability or data-loss defect is found.
 - Task 8 (Visualization Expansion) is the next product candidate. ER / report / dashboard objects must register as workbench-scope persistent Tabs from the start; do not ship throwaway session-scope versions first.
-- Task 9 (External Data Ingestion) is a phase-3 placeholder; do not open a child spec until at least one Task 8 slice is in production.
+- Task 9 (Data Source Coverage Expansion) is a platform-expansion track. It can run as independent child specs after each candidate kind passes the data-source gate; do not batch unrelated dialects unless they share driver semantics and test fixtures.
+- Task 10 (External Data Ingestion) is a phase-3 placeholder; do not open a child spec until at least one Task 8 slice is in production and Task 9 has at least one stable target data source beyond the current first-class set.
 
 ## Verification Gates
 
@@ -358,11 +412,12 @@ Every child implementation plan created from this roadmap must include:
 
 - TD-026 is closed or explicitly split into a small active cleanup plan. _(closed 2026-04-27)_
 - SQL results pagination / limits are either left as existing support plus polish, or a small follow-up plan exists; virtual scrolling remains excluded. _(left as existing support; no new plan)_
-- Query history / result management is intentionally deferred with the current tab-local implementation documented. _(deferred; will likely fold into Task 6's persistence + `ui_find` once that ships)_
+- Query history / result management is intentionally deferred with the current tab-local implementation documented. _(re-assessed 2026-04-29; future product enhancement should first reuse Task 6 persistent Tabs + `ui_find`, not a standalone tech-debt item)_
 - Bounded export has a clear child spec and plan, or the roadmap records why it was deferred. _(shipped)_
 - Guarded DDL / DML execution has a child spec that connects backend risk enforcement to frontend confirmation UI. _(shipped)_
 - Cross-session workbench persistence + `ui_find` has a child spec covering Tab persistence schema, content indexing, action contract, sidebar surface, and AI integration; all classified Tab types have an explicit workbench-scope vs session-scope decision. _(shipped)_
 - Intelligent operations has a child spec covering read-only diagnostics, dialect boundaries, and AI collaboration rules; surfaces target persistent Tabs from Task 6 where applicable. _(shipped)_
-- Visualization expansion has at least one child spec choosing one initial slice (ER / chart-edit / dashboard), with explicit `ui_find` / `ui_patch` integration for its persistent objects.
-- External data ingestion remains a registered phase-3 placeholder until Tasks 6 and 8 are stable; no child spec opened prematurely.
+- Visualization expansion has at least one child spec choosing one initial slice (recommended first slice: ER graph browsing), with explicit `ui_find` / `ui_patch` integration for its persistent objects. Existing ER / report / dashboard placeholders are retired through those product child plans rather than the tech-debt tracker.
+- Data source coverage expansion has at least one child spec or an explicit prioritization decision for the first wave, and every new kind is tied back to [DATA_SOURCE_TYPE_COMPATIBILITY.md](../DATA_SOURCE_TYPE_COMPATIBILITY.md).
+- External data ingestion remains a registered phase-3 placeholder until Tasks 8 and 9 are stable; no child spec opened prematurely.
 - The next roadmap or child plans are registered in `docs/exec-plans/index.md` before this roadmap is moved to Completed.
