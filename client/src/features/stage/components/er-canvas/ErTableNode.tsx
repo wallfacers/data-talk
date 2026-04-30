@@ -125,12 +125,35 @@ function ColumnRow({
   onDeleteColumn?: (columnId: string) => void
 }) {
   const columnId = getColumnId(column)
-  const handleClassName = [
-    '!h-2.5 !w-2.5 !border-[var(--dt-bg-canvas)] transition-all duration-150 group-hover:scale-[1.8] hover:scale-[1.8]',
-    mode === 'designer'
-      ? '!bg-[var(--dt-accent-primary)] !opacity-35 hover:!bg-[var(--dt-accent-primary)] hover:!opacity-100'
-      : '!bg-[var(--dt-border-strong)]',
-  ].join(' ')
+
+  // Outer Handle: transparent anchor positioned by ReactFlow; the visible ball
+  // is an inner <span> so direct-hover scaling stays centered (Tailwind's
+  // transform would otherwise replace ReactFlow's translateY(-50%)).
+  const handleAnchor = mode === 'designer'
+    ? 'er-handle !border-none !bg-transparent !cursor-crosshair flex items-center justify-center z-20'
+    : 'er-handle !border-none !bg-transparent flex items-center justify-center z-20'
+  const targetHandleClassName = handleAnchor
+  const sourceHandleClassName = handleAnchor
+  // Single base size for all visible states (connected, row-hover, direct-hover)
+  // — only the direct-hover state adds a subtle pop + glow as feedback.
+  const ballBase = 'block w-full h-full rounded-full transition-transform duration-150'
+  const targetBallClassName = mode === 'designer'
+    ? [
+        ballBase,
+        'bg-[var(--dt-status-success)] border-2 border-[var(--dt-bg-canvas)]',
+        'hover:scale-[1.15]',
+        'hover:shadow-[0_0_8px_color-mix(in_srgb,var(--dt-status-success)_70%,transparent)]',
+      ].join(' ')
+    : [ballBase, 'bg-[var(--dt-border-strong)] border-2 border-[var(--dt-bg-canvas)]'].join(' ')
+  const sourceBallClassName = mode === 'designer'
+    ? [
+        ballBase,
+        'bg-[var(--dt-status-danger)] border-2 border-[var(--dt-bg-canvas)]',
+        'hover:scale-[1.15]',
+        'hover:shadow-[0_0_8px_color-mix(in_srgb,var(--dt-status-danger)_70%,transparent)]',
+      ].join(' ')
+    : [ballBase, 'bg-[var(--dt-border-strong)] border-2 border-[var(--dt-bg-canvas)]'].join(' ')
+  const handleAnchorStyle = { width: 20, height: 20 } as const
 
   return (
     <li className="group relative flex min-h-8 items-center justify-between gap-2 border-b border-[var(--dt-border-subtle)] px-3 py-1.5 last:border-b-0 hover:bg-[var(--dt-interaction-hover)]">
@@ -138,8 +161,11 @@ function ColumnRow({
         type="target"
         position={Position.Left}
         id={`${columnId}-target`}
-        className={handleClassName}
-      />
+        className={targetHandleClassName}
+        style={handleAnchorStyle}
+      >
+        <span className={targetBallClassName} />
+      </Handle>
       <div className="flex min-w-0 items-center gap-1.5">
         {column.isPK && (
           <KeyRoundIcon
@@ -200,8 +226,11 @@ function ColumnRow({
         type="source"
         position={Position.Right}
         id={`${columnId}-source`}
-        className={handleClassName}
-      />
+        className={sourceHandleClassName}
+        style={handleAnchorStyle}
+      >
+        <span className={sourceBallClassName} />
+      </Handle>
     </li>
   )
 }

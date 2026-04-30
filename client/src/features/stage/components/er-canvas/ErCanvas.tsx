@@ -1,15 +1,15 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Background,
   BackgroundVariant,
   Controls,
   ReactFlow,
   ReactFlowProvider,
+  useEdgesState,
+  useNodesState,
   type Connection,
   type Edge,
-  type EdgeChange,
   type Node,
-  type NodeChange,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
@@ -64,34 +64,74 @@ function ErCanvasInner(props: ErCanvasProps) {
   const { tabId, mode, payload, onPatch, onExec } = props
   const { t } = useI18n()
   const [contextMenu, setContextMenu] = useState<{ tableId: string; x: number; y: number } | null>(null)
-  const { nodes: rawNodes, edges } = useMemo(
+  const { nodes: rawNodes, edges: rawEdges } = useMemo(
     () => mode === 'designer'
       ? designerToGraph(payload as ErDesignerPayload)
       : inspectorToGraph(payload as ErInspectorPayload),
     [mode, payload],
   )
-  const nodes: Node<ErNodeData & { mode: 'inspector' | 'designer' }>[] = useMemo(() => (
-    rawNodes.map((node) => ({
-      ...node,
-      data: {
-        ...node.data,
-        mode,
-        onAddColumn: mode === 'designer' ? () => addColumn(node.id, onPatch) : undefined,
-        onDeleteColumn: mode === 'designer' ? (columnId: string) => {
-          onPatch([{ op: 'remove', path: `/tables[id=${node.id}]/columns[id=${columnId}]` }])
-        } : undefined,
-        onUpdateColumn: mode === 'designer' ? (columnId: string, updates: Partial<ErColumnMeta>) => {
-          const ops: JsonPatchOp[] = Object.entries(updates).map(([key, value]) => ({
-            op: 'replace',
-            path: `/tables[id=${node.id}]/columns[id=${columnId}]/${key}`,
-            value,
-          }))
-          onPatch(ops)
-        } : undefined,
-        onOpenContextMenu: mode === 'designer' ? setContextMenu : undefined,
-      },
-    }))
-  ), [mode, onPatch, rawNodes])
+
+  type ErFlowNode = Node<ErNodeData & { mode: 'inspector' | 'designer' }>
+
+  const decorate = useCallback((node: Node<ErNodeData>): ErFlowNode => ({
+    ...node,
+    data: {
+      ...node.data,
+      mode,
+      onAddColumn: mode === 'designer' ? () => addColumn(node.id, onPatch) : undefined,
+      onDeleteColumn: mode === 'designer' ? (columnId: string) => {
+        onPatch([{ op: 'remove', path: `/tables[id=${node.id}]/columns[id=${columnId}]` }])
+      } : undefined,
+      onUpdateColumn: mode === 'designer' ? (columnId: string, updates: Partial<ErColumnMeta>) => {
+        const ops: JsonPatchOp[] = Object.entries(updates).map(([key, value]) => ({
+          op: 'replace',
+          path: `/tables[id=${node.id}]/columns[id=${columnId}]/${key}`,
+          value,
+        }))
+        onPatch(ops)
+      } : undefined,
+      onOpenContextMenu: mode === 'designer' ? setContextMenu : undefined,
+    },
+  }), [mode, onPatch])
+
+  const initialNodes = useMemo(() => rawNodes.map(decorate), [rawNodes, decorate])
+  const [nodes, setNodes, onNodesChange] = useNodesState<ErFlowNode>(initialNodes)
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge<ErEdgeData>>(rawEdges as Edge<ErEdgeData>[])
+
+  // Reconcile external payload changes into local node state without disturbing
+  // in-flight drag positions. We keep existing nodes' positions; only updates to
+  // table data (or new/removed nodes) propagate.
+  useEffect(() => {
+    setNodes((current) => {
+      const decorated = rawNodes.map(decorate)
+      const byId = new Map(current.map((n) => [n.id, n]))
+      const next: ErFlowNode[] = []
+      const seen = new Set<string>()
+      for (const incoming of decorated) {
+        seen.add(incoming.id)
+        const existing = byId.get(incoming.id)
+        if (existing) {
+          next.push({
+            ...existing,
+            position: existing.dragging ? existing.position : incoming.position,
+            data: incoming.data,
+          })
+        } else {
+          next.push(incoming)
+        }
+      }
+      // Drop nodes that no longer exist in payload
+      if (next.length === current.length && current.every((n) => seen.has(n.id))) {
+        return next
+      }
+      return next
+    })
+  }, [rawNodes, decorate, setNodes])
+
+  useEffect(() => {
+    setEdges(rawEdges as Edge<ErEdgeData>[])
+  }, [rawEdges, setEdges])
+
   const { layout } = useDagreLayout()
 
   const onAutoLayout = useCallback(async () => {
@@ -152,17 +192,17 @@ function ErCanvasInner(props: ErCanvasProps) {
 
   useErKeyboard({ enabled: true, onAutoLayout, onFitView })
 
-  const onNodesChange = useCallback((changes: NodeChange[]) => {
-    const ops: JsonPatchOp[] = []
-    for (const change of changes) {
-      if (change.type === 'position' && change.position && change.dragging === false) {
-        ops.push({ op: 'replace', path: `/positions/${change.id}`, value: change.position })
-      }
-    }
-    if (ops.length > 0) onPatch(ops)
-  }, [onPatch])
-
-  const onEdgesChange = useCallback((_changes: EdgeChange[]) => undefined, [])
+  const onNodeDragStop = useCallback(
+    (_event: unknown, _node: Node, draggedNodes: Node[]) => {
+      const ops: JsonPatchOp[] = draggedNodes.map((n) => ({
+        op: 'replace',
+        path: `/positions/${n.id}`,
+        value: n.position,
+      }))
+      if (ops.length > 0) onPatch(ops)
+    },
+    [onPatch],
+  )
 
   const onConnect = useCallback((connection: Connection) => {
     if (mode !== 'designer') return
@@ -229,6 +269,7 @@ function ErCanvasInner(props: ErCanvasProps) {
             edgeTypes={edgeTypes}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
+            onNodeDragStop={onNodeDragStop}
             onConnect={mode === 'designer' ? onConnect : undefined}
             onNodesDelete={mode === 'designer' ? onNodesDelete : undefined}
             onEdgesDelete={mode === 'designer' ? onEdgesDelete : undefined}

@@ -84,7 +84,7 @@ describe('<ErTableNode mode="inspector">', () => {
 })
 
 describe('<ErTableNode mode="designer">', () => {
-  it('shows a pencil icon, editable columns, cobalt handles, and add-column affordance', () => {
+  it('shows a pencil icon, editable columns, two-tone handles, and add-column affordance', () => {
     renderNode({
       ...data,
       mode: 'designer',
@@ -101,10 +101,18 @@ describe('<ErTableNode mode="designer">', () => {
     const tableNode = screen.getByLabelText('Table users')
     expect(tableNode.className).toContain('w-80')
 
-    const firstHandle = document.querySelector('.react-flow__handle')
-    expect(firstHandle?.className).toContain('!h-2.5')
-    expect(firstHandle?.className).toContain('!w-2.5')
-    expect(firstHandle?.className).toContain('group-hover:scale-[1.8]')
+    // Outer Handle is a transparent anchor; the visible ball is an inner <span>
+    // and is always rendered (no hover-to-reveal). Verify the inner ball uses
+    // the success (target) / danger (source) color and pops on direct hover.
+    const targetHandle = document.querySelector('.react-flow__handle.react-flow__handle-left')
+    const sourceHandle = document.querySelector('.react-flow__handle.react-flow__handle-right')
+
+    const targetBall = targetHandle?.firstElementChild as HTMLElement | null
+    const sourceBall = sourceHandle?.firstElementChild as HTMLElement | null
+    expect(targetBall?.className).toContain('bg-[var(--dt-status-success)]')
+    expect(targetBall?.className).toContain('hover:scale-[1.15]')
+    expect(sourceBall?.className).toContain('bg-[var(--dt-status-danger)]')
+    expect(sourceBall?.className).toContain('hover:scale-[1.15]')
   })
 
   it('triggers designer callbacks for adding, updating, and deleting columns', () => {
