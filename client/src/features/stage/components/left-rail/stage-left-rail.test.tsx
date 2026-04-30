@@ -10,10 +10,19 @@ vi.mock('@/i18n/use-i18n', () => ({
 
 // Mock tab-type-registry
 vi.mock('@/features/stage/registry/tab-type-registry', () => ({
-  getTabTypeDescriptor: () => ({
-    icon: () => null,
-    labelKey: 'tabType.queryEditor',
-  }),
+  getTabTypeDescriptor: (type: string) => {
+    if (type === 'er_designer') {
+      return {
+        icon: () => null,
+        labelKey: 'tabType.erDesigner',
+        railLabelKey: 'tabType.erDesigner.short',
+      }
+    }
+    return {
+      icon: () => null,
+      labelKey: 'tabType.queryEditor',
+    }
+  },
 }))
 
 // Mock StageRailRowMenu since it has complex dependencies
@@ -81,6 +90,20 @@ describe('StageLeftRail', () => {
     expect(row).toHaveClass('cursor-pointer')
     expect(row).toHaveClass('select-none')
     expect(row).toHaveClass('hover:bg-sidebar-accent')
+  })
+
+  it('uses compact type labels in active list rows', () => {
+    useStageStore.setState({
+      tabs: [makeTab({ tabId: 'er-1', type: 'er_designer', title: 'ER 图设计器' })],
+      openTabIds: new Set(['er-1']),
+      openTabIdsOrdered: ['er-1'],
+      activeTabId: 'er-1',
+    } as never, false)
+
+    render(<StageLeftRail />)
+
+    expect(screen.getByText('tabType.erDesigner.short')).toBeInTheDocument()
+    expect(screen.queryByText('tabType.erDesigner')).not.toBeInTheDocument()
   })
 
   it('collapsed rail shows expand chevron only', () => {

@@ -143,6 +143,7 @@ const MESSAGES = {
     'tabType.unknown': 'Tab',
     'tabType.erInspector': 'ER 图浏览器',
     'tabType.erDesigner': 'ER 图设计器',
+    'tabType.erDesigner.short': 'ER',
 
     'erCanvas.empty.oracle': 'ER 不支持 Oracle。请使用 query_editor + read_schema 查看。',
     'erCanvas.empty.sqlite': 'SQLite ER 需要后端连接配置。当前请使用 query_editor。',
@@ -653,6 +654,7 @@ const MESSAGES = {
     'tabType.unknown': 'Tab',
     'tabType.erInspector': 'ER Diagram Viewer',
     'tabType.erDesigner': 'ER Diagram Designer',
+    'tabType.erDesigner.short': 'ER',
 
     'erCanvas.empty.oracle': 'ER is not supported for Oracle. Use query_editor + read_schema for inspection.',
     'erCanvas.empty.sqlite': 'ER for SQLite requires backend connection setup. Use query_editor for now.',

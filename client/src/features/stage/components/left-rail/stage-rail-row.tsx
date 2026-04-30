@@ -13,6 +13,7 @@ type Props = {
 export function StageRailRow({ tab, active, inWorkset, onClick, trailingMenu }: Props) {
   const { t } = useI18n()
   const desc = getTabTypeDescriptor(tab.type)
+  const labelKey = desc.railLabelKey ?? desc.labelKey
   const Icon = desc.icon
 
   return (
@@ -46,7 +47,7 @@ export function StageRailRow({ tab, active, inWorkset, onClick, trailingMenu }: 
       <span className="flex-1 truncate text-sm">{tab.title}</span>
 
       <span className="shrink-0 rounded bg-bg-subtle px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-text-soft">
-        {t(desc.labelKey as Parameters<typeof t>[0])}
+        {t(labelKey as Parameters<typeof t>[0])}
       </span>
 
       {trailingMenu ? (

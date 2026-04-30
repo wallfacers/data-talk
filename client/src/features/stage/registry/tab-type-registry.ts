@@ -11,6 +11,7 @@ export interface TabTypeDescriptor {
   scope?: 'workspace' | 'session'
   icon: LucideIcon
   labelKey: string
+  railLabelKey?: string
   extractContent: (payload: unknown) => string
   rehydrate?: (tabId: string, payload: unknown) => void
 }
@@ -112,6 +113,7 @@ export const TAB_TYPE_REGISTRY: Record<string, TabTypeDescriptor> = {
     scope: 'workspace',
     icon: NetworkIcon,
     labelKey: 'tabType.erDesigner',
+    railLabelKey: 'tabType.erDesigner.short',
     extractContent: (p) => {
       const payload = p as ErDesignerPayload | null | undefined
       if (!payload) return ''

@@ -134,6 +134,7 @@ describe('tab-type-registry', () => {
     expect(isPersistent('er_designer')).toBe(true)
     expect(getScope('er_designer')).toBe('workspace')
     expect(TAB_TYPE_REGISTRY.er_designer.icon).toBe(NetworkIcon)
+    expect(TAB_TYPE_REGISTRY.er_designer.railLabelKey).toBe('tabType.erDesigner.short')
   })
 
   it('extractContent indexes ER designer target, tables, columns, comments, and relations', () => {
