@@ -90,6 +90,7 @@ public class ArtifactWatcherService implements AutoCloseable {
                 debounce(rename.previousPath(), DispatchKind.DELETE);
                 debounce(rename.path(), DispatchKind.CREATE);
             }
+            // Spec 6.4: keep OVERFLOW reconcile synchronous so shutdown cannot race a closed scheduler.
             case FileWatchEvent.Overflow ignored -> reconciler.runFullReconcile();
         }
     }
