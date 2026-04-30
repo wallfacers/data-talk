@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { useStageStore } from './stage-store'
 
 function reset() {
+  localStorage.removeItem('stage.workset.order')
+  localStorage.removeItem('stage.workset.active')
   useStageStore.setState({
     open: false, maximized: false, autoOpened: false,
     sidebarCollapsed: false, sidebarSelection: null,
@@ -92,6 +94,25 @@ describe('useStageStore (P3 globalized)', () => {
       const s = useStageStore.getState()
       expect(s.openTabIdsOrdered).toEqual(['a', 'b'])
       expect(s.activeTabId).toBe('b')
+    })
+
+    it('detachFromWorkset keeps the stage open when the last workset tab is removed', () => {
+      useStageStore.setState({
+        open: true,
+        autoOpened: true,
+        tabs: [makeTab({ tabId: 'a' })],
+        openTabIds: new Set(['a']),
+        openTabIdsOrdered: ['a'],
+        activeTabId: 'a',
+      } as never, false)
+
+      useStageStore.getState().detachFromWorkset('a')
+
+      const s = useStageStore.getState()
+      expect(s.openTabIdsOrdered).toEqual([])
+      expect(s.activeTabId).toBe(null)
+      expect(s.open).toBe(true)
+      expect(s.autoOpened).toBe(true)
     })
 
     it('archiveTab(true) detaches and flips archived; archiveTab(false) only flips', () => {
@@ -195,6 +216,38 @@ describe('useStageStore (P3 globalized)', () => {
       ])
       const s = useStageStore.getState()
       expect(s.openTabIdsOrdered).toEqual(['a', 'b', 'c'])
+    })
+
+    it('restores only the persisted workset snapshot on hydrate when one exists', () => {
+      localStorage.setItem('stage.workset.order', JSON.stringify(['b']))
+      localStorage.setItem('stage.workset.active', 'b')
+
+      useStageStore.getState().__hydrateAll([
+        makeTab({ tabId: 'a' }),
+        makeTab({ tabId: 'b' }),
+        makeTab({ tabId: 'c' }),
+      ])
+
+      const s = useStageStore.getState()
+      expect(s.openTabIdsOrdered).toEqual(['b'])
+      expect(s.openTabIds.has('a')).toBe(false)
+      expect(s.openTabIds.has('b')).toBe(true)
+      expect(s.openTabIds.has('c')).toBe(false)
+      expect(s.activeTabId).toBe('b')
+    })
+
+    it('does not auto-seed all tabs on hydrate when the persisted workset snapshot is empty', () => {
+      localStorage.setItem('stage.workset.order', JSON.stringify([]))
+
+      useStageStore.getState().__hydrateAll([
+        makeTab({ tabId: 'a' }),
+        makeTab({ tabId: 'b' }),
+      ])
+
+      const s = useStageStore.getState()
+      expect(s.openTabIdsOrdered).toEqual([])
+      expect(s.openTabIds.size).toBe(0)
+      expect(s.activeTabId).toBe(null)
     })
   })
 

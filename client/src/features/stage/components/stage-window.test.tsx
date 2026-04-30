@@ -503,6 +503,7 @@ describe('StageWindow', () => {
 
   it('clicking close X on a top-bar tab detaches but keeps it in left rail', () => {
     useStageStore.setState({
+      open: true,
       tabs: [makeTab({ tabId: 'qe-1', title: 'one' })],
       openTabIds: new Set(['qe-1']),
       openTabIdsOrdered: ['qe-1'],
@@ -517,8 +518,32 @@ describe('StageWindow', () => {
     fireEvent.click(closeBtn)
 
     expect(useStageStore.getState().openTabIds.has('qe-1')).toBe(false)
+    expect(useStageStore.getState().open).toBe(true)
     // Tab still in left rail (the tab still exists in tabs)
     expect(useStageStore.getState().tabs.find((t) => t.tabId === 'qe-1')).toBeDefined()
+    expect(screen.getByTestId('stage-empty-workbench')).toBeInTheDocument()
+  })
+
+  it('closing all tabs from the tab menu keeps the stage open and shows the empty workbench', () => {
+    useStageStore.setState({
+      open: true,
+      tabs: [makeTab({ tabId: 'qe-1', title: 'one' })],
+      openTabIds: new Set(['qe-1']),
+      openTabIdsOrdered: ['qe-1'],
+      activeTabId: 'qe-1',
+    } as never, false)
+
+    render(<StageWindow />)
+
+    const onlyTab = screen.getByRole('tab', { name: /one/ }).closest('[data-tab-id="qe-1"]') as HTMLElement
+    const menu = onlyTab.nextElementSibling as HTMLElement
+
+    fireEvent.click(within(menu).getByText('关闭全部'))
+
+    expect(useStageStore.getState().openTabIdsOrdered).toEqual([])
+    expect(useStageStore.getState().activeTabId).toBe(null)
+    expect(useStageStore.getState().open).toBe(true)
+    expect(screen.getByTestId('stage-empty-workbench')).toBeInTheDocument()
   })
 
 })

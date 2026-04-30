@@ -139,6 +139,8 @@ export type StageState = {
 
 const LEFT_RAIL_WIDTH_KEY = 'stage.leftRail.width'
 const LEFT_RAIL_COLLAPSED_KEY = 'stage.leftRail.collapsed'
+const WORKSET_ORDER_KEY = 'stage.workset.order'
+const WORKSET_ACTIVE_KEY = 'stage.workset.active'
 
 function loadLeftRailWidth(): number {
   try {
@@ -193,23 +195,133 @@ function matchesNullable(left?: string | null, right?: string | null) {
   return (left ?? null) === (right ?? null)
 }
 
-// On hydrate, seed the workset with non-archived hydrated tabs so the top tab
-// bar is not empty after a cold restart. Existing workset entries are preserved
-// in their current order; new tabs append to the tail.
-function seedWorkset(
+type PersistedWorksetSnapshot = {
+  hasSnapshot: boolean
+  order: string[]
+  activeTabId: string | null
+}
+
+function sanitizePersistedWorksetOrder(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  const seen = new Set<string>()
+  const order: string[] = []
+  for (const entry of value) {
+    if (typeof entry !== 'string' || entry.length === 0) continue
+    if (seen.has(entry)) continue
+    seen.add(entry)
+    order.push(entry)
+  }
+  return order
+}
+
+function loadPersistedWorksetSnapshot(): PersistedWorksetSnapshot {
+  try {
+    const rawOrder = localStorage.getItem(WORKSET_ORDER_KEY)
+    if (rawOrder === null) {
+      return { hasSnapshot: false, order: [], activeTabId: null }
+    }
+    const order = sanitizePersistedWorksetOrder(JSON.parse(rawOrder))
+    const activeTabId = localStorage.getItem(WORKSET_ACTIVE_KEY)
+    return {
+      hasSnapshot: true,
+      order,
+      activeTabId: activeTabId && order.includes(activeTabId) ? activeTabId : null,
+    }
+  } catch {
+    return { hasSnapshot: false, order: [], activeTabId: null }
+  }
+}
+
+function persistWorksetSnapshot(state: Pick<StageState, 'tabs' | 'openTabIdsOrdered' | 'activeTabId'>) {
+  try {
+    if (state.tabs.length === 0 && state.openTabIdsOrdered.length === 0 && state.activeTabId === null) {
+      localStorage.removeItem(WORKSET_ORDER_KEY)
+      localStorage.removeItem(WORKSET_ACTIVE_KEY)
+      return
+    }
+    localStorage.setItem(WORKSET_ORDER_KEY, JSON.stringify(state.openTabIdsOrdered))
+    if (state.activeTabId && state.openTabIdsOrdered.includes(state.activeTabId)) {
+      localStorage.setItem(WORKSET_ACTIVE_KEY, state.activeTabId)
+    } else {
+      localStorage.removeItem(WORKSET_ACTIVE_KEY)
+    }
+  } catch {}
+}
+
+function resolveNextActiveWorksetTabId(
+  currentActiveTabId: string | null,
+  nextOrder: string[],
+): string | null {
+  if (nextOrder.length === 0) return null
+  if (currentActiveTabId && nextOrder.includes(currentActiveTabId)) return currentActiveTabId
+  return nextOrder[nextOrder.length - 1] ?? null
+}
+
+function buildWorksetAfterRemoval(state: Pick<StageState, 'openTabIds' | 'openTabIdsOrdered' | 'activeTabId'>, tabId: string) {
+  const nextIds = new Set(state.openTabIds)
+  nextIds.delete(tabId)
+  const nextOrder = state.openTabIdsOrdered.filter((id) => id !== tabId)
+  const nextActive = resolveNextActiveWorksetTabId(state.activeTabId, nextOrder)
+  return {
+    openTabIds: nextIds,
+    openTabIdsOrdered: nextOrder,
+    activeTabId: nextActive,
+  }
+}
+
+// On hydrate, prefer the in-memory workset, then the per-app-instance local
+// workset snapshot, and only seed all non-archived tabs when no snapshot exists.
+function resolveHydratedWorkset(
   currentIds: Set<string>,
   currentOrder: string[],
-  hydratedTabs: StageTab[],
-): { openTabIds: Set<string>; openTabIdsOrdered: string[] } {
+  currentActiveTabId: string | null,
+  availableTabs: StageTab[],
+): { openTabIds: Set<string>; openTabIdsOrdered: string[]; activeTabId: string | null } {
+  const availableActiveIds = new Set(
+    availableTabs
+      .filter((tab) => !tab.archived)
+      .map((tab) => tab.tabId),
+  )
+
+  if (currentIds.size > 0 || currentOrder.length > 0 || currentActiveTabId !== null) {
+    const nextOrder = currentOrder.filter((tabId) => availableActiveIds.has(tabId))
+    const nextIds = new Set(nextOrder)
+    for (const tab of availableTabs) {
+      if (tab.archived) continue
+      if (nextIds.has(tab.tabId)) continue
+      nextIds.add(tab.tabId)
+      nextOrder.push(tab.tabId)
+    }
+    return {
+      openTabIds: nextIds,
+      openTabIdsOrdered: nextOrder,
+      activeTabId: resolveNextActiveWorksetTabId(currentActiveTabId, nextOrder),
+    }
+  }
+
+  const persisted = loadPersistedWorksetSnapshot()
+  if (persisted.hasSnapshot) {
+    const nextOrder = persisted.order.filter((tabId) => availableActiveIds.has(tabId))
+    return {
+      openTabIds: new Set(nextOrder),
+      openTabIdsOrdered: nextOrder,
+      activeTabId: resolveNextActiveWorksetTabId(persisted.activeTabId, nextOrder),
+    }
+  }
+
   const nextIds = new Set(currentIds)
   const nextOrder = [...currentOrder]
-  for (const tab of hydratedTabs) {
+  for (const tab of availableTabs) {
     if (tab.archived) continue
     if (nextIds.has(tab.tabId)) continue
     nextIds.add(tab.tabId)
     nextOrder.push(tab.tabId)
   }
-  return { openTabIds: nextIds, openTabIdsOrdered: nextOrder }
+  return {
+    openTabIds: nextIds,
+    openTabIdsOrdered: nextOrder,
+    activeTabId: resolveNextActiveWorksetTabId(currentActiveTabId, nextOrder),
+  }
 }
 
 export const useStageStore = create<StageState>((set, get) => ({
@@ -299,10 +411,7 @@ export const useStageStore = create<StageState>((set, get) => ({
 
   detachFromWorkset: (tabId) => set((s) => {
     if (!s.openTabIds.has(tabId)) return s
-    const nextIds = new Set(s.openTabIds); nextIds.delete(tabId)
-    const nextOrder = s.openTabIdsOrdered.filter((id) => id !== tabId)
-    const nextActive = s.activeTabId === tabId ? (nextOrder[nextOrder.length - 1] ?? null) : s.activeTabId
-    return { openTabIds: nextIds, openTabIdsOrdered: nextOrder, activeTabId: nextActive }
+    return buildWorksetAfterRemoval(s, tabId)
   }),
 
   archiveTab: (tabId, archived) => set((s) => {
@@ -311,10 +420,7 @@ export const useStageStore = create<StageState>((set, get) => ({
     const updated = [...s.tabs]
     updated[idx] = { ...updated[idx], archived, archivedAt: archived ? Date.now() : null }
     if (!archived) return { tabs: updated }
-    const nextIds = new Set(s.openTabIds); nextIds.delete(tabId)
-    const nextOrder = s.openTabIdsOrdered.filter((id) => id !== tabId)
-    const nextActive = s.activeTabId === tabId ? (nextOrder[nextOrder.length - 1] ?? null) : s.activeTabId
-    return { tabs: updated, openTabIds: nextIds, openTabIdsOrdered: nextOrder, activeTabId: nextActive }
+    return { tabs: updated, ...buildWorksetAfterRemoval(s, tabId) }
   }),
 
   trashTab: async (tabId) => {
@@ -470,7 +576,7 @@ export const useStageStore = create<StageState>((set, get) => ({
     for (const item of items) {
       if (!merged.some((t) => t.tabId === item.tabId)) merged.push(item)
     }
-    return { tabs: merged, ...seedWorkset(s.openTabIds, s.openTabIdsOrdered, items) }
+    return { tabs: merged, ...resolveHydratedWorkset(s.openTabIds, s.openTabIdsOrdered, s.activeTabId, merged) }
   }),
 
   __hydratePayload: (tabId, payload, version) => set((s) => {
@@ -505,3 +611,11 @@ export const useStageStore = create<StageState>((set, get) => ({
     return { tabs: next }
   }),
 }))
+
+useStageStore.subscribe((state) => {
+  persistWorksetSnapshot({
+    tabs: state.tabs,
+    openTabIdsOrdered: state.openTabIdsOrdered,
+    activeTabId: state.activeTabId,
+  })
+})
