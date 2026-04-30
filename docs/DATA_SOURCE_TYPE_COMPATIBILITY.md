@@ -132,7 +132,7 @@ drivers, license/redistribution, test fixture quality, and dialect risk.
 | Band | Candidate kinds | Notes |
 |---|---|---|
 | A — close partial/stub and common enterprise SQL | `oracle`, `sqlserver` / `mssql`, `mariadb` | Prefer these when the goal is broad SQL Workbench coverage and familiar enterprise databases. `oracle` and `sqlserver` already have partial/stub traces but are not first-class. |
-| B — analytics / OLAP SQL engines | `apache_doris` / `doris`, `starrocks`, `clickhouse`, `hive`, `trino`, `presto`, `duckdb` | Validate JDBC behavior, catalog/schema semantics, splitter safety, and whether diagnostics can be real or must return structured unsupported. |
+| B — analytics / OLAP SQL engines | `apache_doris` / `doris`, `starrocks`, `clickhouse`, `hive`, `trino`, `presto`, `duckdb` | Validate JDBC behavior, catalog/schema semantics, splitter safety, and whether diagnostics can be real or must return structured unsupported. These candidates have moved into the Wave B Child Artifact Tracking table below. |
 | C — domestic / enterprise compatibility | `gaussdb`, `opengauss`, `dameng` / `dm` / `dm8`, `kingbase` / `kingbasees`, `oceanbase`, `tidb` | Do not assume PostgreSQL/MySQL compatibility is enough. Each kind needs explicit driver, URL, catalog/schema, SQL dialect, and risk-analysis decisions. |
 | D — cloud warehouses / lakehouse SQL | `snowflake`, `bigquery`, `redshift`, `databricks_sql` | Watch for non-standard authentication, warehouse/project/dataset fields, JDBC driver redistribution limits, billing-sensitive metadata scans, and result-limit semantics. |
 | E — non-SQL or semi-SQL sources | `mongodb`, `elasticsearch`, `opensearch`, optionally `redis` only if product scope expands beyond SQL | These require a separate read/query contract and should not be forced through fake SQL execution. Mutation and schema semantics must be designed before implementation. |
@@ -150,6 +150,23 @@ executed, verified, and the support snapshot above is updated.
 | `sqlserver` | `docs/product-specs/2026-04-30-data-source-coverage-sqlserver-design.md` | `docs/exec-plans/2026-04-30-data-source-coverage-sqlserver-plan.md` | Planned: first-class support design from current legacy/stub state; support remains stub/legacy until implementation completes. |
 | `mariadb` | `docs/product-specs/2026-04-30-data-source-coverage-mariadb-design.md` | `docs/exec-plans/2026-04-30-data-source-coverage-mariadb-plan.md` | Planned: explicit MariaDB design; support remains unsupported until implementation completes. |
 
+### Wave B Child Artifact Tracking
+
+Wave B child artifacts are documentation gates for analytics and OLAP SQL
+engines. They are not support declarations. A kind stays unsupported until its
+child implementation plan is executed, verified, and the support snapshot above
+is updated.
+
+| Kind | Child design | Child plan | Current outcome |
+|---|---|---|---|
+| `apache_doris` | `docs/product-specs/2026-05-01-data-source-coverage-apache-doris-design.md` | `docs/exec-plans/2026-05-01-data-source-coverage-apache-doris-plan.md` | Planned: explicit Doris design using MySQL protocol as a hypothesis to prove; support remains unsupported until implementation completes. |
+| `starrocks` | `docs/product-specs/2026-05-01-data-source-coverage-starrocks-design.md` | `docs/exec-plans/2026-05-01-data-source-coverage-starrocks-plan.md` | Planned: native StarRocks JDBC design with explicit catalog/database target resolution; support remains unsupported until implementation completes. |
+| `clickhouse` | `docs/product-specs/2026-05-01-data-source-coverage-clickhouse-design.md` | `docs/exec-plans/2026-05-01-data-source-coverage-clickhouse-plan.md` | Planned: ClickHouse analytical SQL design with explicit type, transaction, and diagnostics caveats; support remains unsupported until implementation completes. |
+| `duckdb` | `docs/product-specs/2026-05-01-data-source-coverage-duckdb-design.md` | `docs/exec-plans/2026-05-01-data-source-coverage-duckdb-plan.md` | Planned: embedded DuckDB design with file, in-memory, read-only, and extension-safety gates; support remains unsupported until implementation completes. |
+| `trino` | `docs/product-specs/2026-05-01-data-source-coverage-trino-design.md` | `docs/exec-plans/2026-05-01-data-source-coverage-trino-plan.md` | Planned: federated Trino design with catalog/schema context and connector-capability caveats; support remains unsupported until implementation completes. |
+| `presto` | `docs/product-specs/2026-05-01-data-source-coverage-presto-design.md` | `docs/exec-plans/2026-05-01-data-source-coverage-presto-plan.md` | Planned: PrestoDB design separate from Trino despite similar catalog/schema shape; support remains unsupported until implementation completes. |
+| `hive` | `docs/product-specs/2026-05-01-data-source-coverage-hive-design.md` | `docs/exec-plans/2026-05-01-data-source-coverage-hive-plan.md` | Planned: conservative HiveServer2 design with explicit transport/auth subset decisions; support remains unsupported until implementation completes. |
+
 ### Candidate Naming Notes
 
 - Use canonical lower-case kind strings in persisted records and API payloads.
@@ -163,6 +180,10 @@ executed, verified, and the support snapshot above is updated.
 - Cloud warehouse candidates often need fields beyond host/port/database, such
   as account, region, warehouse, project, dataset, role, HTTP path, token, or
   JDBC properties. Do not overload `databaseName` with these without a plan.
+- Embedded engines such as DuckDB need an additional file/network egress gate:
+  SELECT-shaped table functions that read backend-local files or remote
+  resources are not automatically L1. They need dialect risk tests, a sandbox or
+  allowlist design, and Workbench confirmation or structured unsupported output.
 
 ## Mandatory Repository Scan
 
