@@ -138,6 +138,19 @@ drivers, license/redistribution, test fixture quality, and dialect risk.
 | D — cloud warehouses / lakehouse SQL | `snowflake`, `bigquery`, `redshift`, `databricks_sql` | Watch for non-standard authentication, warehouse/project/dataset fields, JDBC driver redistribution limits, billing-sensitive metadata scans, and result-limit semantics. |
 | E — non-SQL or semi-SQL sources | `mongodb`, `elasticsearch`, `opensearch`, optionally `redis` only if product scope expands beyond SQL | These require a separate read/query contract and should not be forced through fake SQL execution. Mutation and schema semantics must be designed before implementation. |
 
+### Wave A Child Artifact Tracking
+
+Wave A child artifacts are documentation gates, not support declarations. A kind
+stays in its current support state until its child implementation plan is
+executed, verified, and the support snapshot above is updated.
+
+| Kind | Child design | Child plan | Current outcome |
+|---|---|---|---|
+| `sqlite` | `docs/product-specs/2026-04-30-data-source-coverage-sqlite-design.md` | `docs/exec-plans/2026-04-30-data-source-coverage-sqlite-plan.md` | Planned: frontend completion and runtime verification; support remains partial until implementation completes. |
+| `oracle` | `docs/product-specs/2026-04-30-data-source-coverage-oracle-design.md` | `docs/exec-plans/2026-04-30-data-source-coverage-oracle-plan.md` | Planned: first-class support design from current stub state; support remains stub-only until implementation completes. |
+| `sqlserver` | `docs/product-specs/2026-04-30-data-source-coverage-sqlserver-design.md` | `docs/exec-plans/2026-04-30-data-source-coverage-sqlserver-plan.md` | Planned: first-class support design from current legacy/stub state; support remains stub/legacy until implementation completes. |
+| `mariadb` | `docs/product-specs/2026-04-30-data-source-coverage-mariadb-design.md` | `docs/exec-plans/2026-04-30-data-source-coverage-mariadb-plan.md` | Planned: explicit MariaDB design; support remains unsupported until implementation completes. |
+
 ### Candidate Naming Notes
 
 - Use canonical lower-case kind strings in persisted records and API payloads.

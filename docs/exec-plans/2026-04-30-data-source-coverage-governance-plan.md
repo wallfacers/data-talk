@@ -90,7 +90,7 @@ Every child execution plan must use the standard implementation-plan header requ
 - Modify: `docs/DATA_SOURCE_TYPE_COMPATIBILITY.md`
 - Modify: `docs/exec-plans/index.md`
 
-- [ ] **Step 1: Re-read the approved governance spec**
+- [x] **Step 1: Re-read the approved governance spec**
 
 Run:
 
@@ -100,7 +100,7 @@ sed -n '1,340p' docs/product-specs/2026-04-30-data-source-coverage-governance-de
 
 Expected: output includes the Wave A list `sqlite`, `oracle`, `sqlserver`, and `mariadb`, plus the child spec required sections.
 
-- [ ] **Step 2: Re-read the compatibility gate**
+- [x] **Step 2: Re-read the compatibility gate**
 
 Run:
 
@@ -110,7 +110,7 @@ sed -n '1,920p' docs/DATA_SOURCE_TYPE_COMPATIBILITY.md
 
 Expected: output includes the current support snapshot, mandatory repository scan commands, backend checklist, frontend checklist, MCP checklist, and Definition of Done.
 
-- [ ] **Step 3: Re-read the frontend design contract**
+- [x] **Step 3: Re-read the frontend design contract**
 
 Run:
 
@@ -120,7 +120,7 @@ sed -n '1,360p' client/DESIGN.md
 
 Expected: output includes semantic token rules, Chat/Workbench single-system rules, global Stage state, accessibility, and i18n constraints.
 
-- [ ] **Step 4: Run the mandatory data-source scan**
+- [x] **Step 4: Run the mandatory data-source scan**
 
 Run:
 
@@ -137,7 +137,7 @@ rg -n "DATABASE_TYPES|DbType|formatSql|sql-dialects|parse-sql-outline|connection
 
 Expected: commands exit `0` and confirm database-kind logic remains spread across backend connection, SQL execution, diagnostics, frontend data-source UI, Query Editor utilities, MCP schemas, and runtime prompt docs.
 
-- [ ] **Step 5: Add Wave A tracking to the compatibility gate**
+- [x] **Step 5: Add Wave A tracking to the compatibility gate**
 
 Edit `docs/DATA_SOURCE_TYPE_COMPATIBILITY.md` in the Roadmap Expansion Candidates area and add this subsection:
 
@@ -156,7 +156,7 @@ executed, verified, and the support snapshot above is updated.
 | `mariadb` | `docs/product-specs/2026-04-30-data-source-coverage-mariadb-design.md` | `docs/exec-plans/2026-04-30-data-source-coverage-mariadb-plan.md` | Planned: explicit MariaDB design; support remains unsupported until implementation completes. |
 ```
 
-- [ ] **Step 6: Commit gate preparation**
+- [x] **Step 6: Commit gate preparation**
 
 Run:
 
@@ -177,7 +177,7 @@ Expected: `git diff --check` prints no output and the commit succeeds.
 - Modify: `docs/exec-plans/index.md`
 - Modify: `docs/DATA_SOURCE_TYPE_COMPATIBILITY.md`
 
-- [ ] **Step 1: Run SQLite-targeted scan**
+- [x] **Step 1: Run SQLite-targeted scan**
 
 Run:
 
@@ -187,7 +187,7 @@ rg -n "sqlite|SQLITE|org.sqlite|jdbc:sqlite|DATABASE_TYPES|formatSql|parse-sql-o
 
 Expected: output shows SQLite support in backend URL/driver/runtime paths and missing or incomplete frontend connection form exposure.
 
-- [ ] **Step 2: Write SQLite child design**
+- [x] **Step 2: Write SQLite child design**
 
 Create `docs/product-specs/2026-04-30-data-source-coverage-sqlite-design.md` with the shared child spec contract. Required design decisions:
 
@@ -202,7 +202,7 @@ Create `docs/product-specs/2026-04-30-data-source-coverage-sqlite-design.md` wit
 - frontend: add SQLite to connection form/picker only after backend verification; map fields so `databaseName` clearly represents the SQLite file path or memory name;
 - MCP/prompt: do not claim cross-database schema switching for SQLite.
 
-- [ ] **Step 3: Write SQLite child execution plan**
+- [x] **Step 3: Write SQLite child execution plan**
 
 Create `docs/exec-plans/2026-04-30-data-source-coverage-sqlite-plan.md` with task groups for:
 
@@ -216,7 +216,7 @@ Create `docs/exec-plans/2026-04-30-data-source-coverage-sqlite-plan.md` with tas
 
 The plan must state that SQLite remains partial until the implementation tasks pass verification.
 
-- [ ] **Step 4: Register SQLite child artifacts**
+- [x] **Step 4: Register SQLite child artifacts**
 
 Modify:
 
@@ -224,7 +224,7 @@ Modify:
 - `docs/exec-plans/index.md`: add the SQLite plan under Active.
 - `docs/DATA_SOURCE_TYPE_COMPATIBILITY.md`: ensure the Wave A tracking row links are accurate and do not mark SQLite first-class.
 
-- [ ] **Step 5: Review SQLite artifacts**
+- [x] **Step 5: Review SQLite artifacts**
 
 Run:
 
@@ -235,7 +235,7 @@ git diff --check -- docs/product-specs/2026-04-30-data-source-coverage-sqlite-de
 
 Expected: the `rg` command prints no lines; `git diff --check` prints no output.
 
-- [ ] **Step 6: Commit SQLite child artifacts**
+- [x] **Step 6: Commit SQLite child artifacts**
 
 Run:
 
@@ -259,7 +259,7 @@ Expected: commit succeeds.
 - Modify: `docs/exec-plans/index.md`
 - Modify: `docs/DATA_SOURCE_TYPE_COMPATIBILITY.md`
 
-- [ ] **Step 1: Run Oracle-targeted scan**
+- [x] **Step 1: Run Oracle-targeted scan**
 
 Run:
 
@@ -269,7 +269,7 @@ rg -n "oracle|ORACLE|OracleDiagnosticsProvider|ojdbc|serviceName|SID|ConnectionK
 
 Expected: output shows Oracle stubs in domain/diagnostics and missing connection kind, JDBC URL, driver dependency, frontend exposure, schema discovery, and SQL execution support.
 
-- [ ] **Step 2: Write Oracle child design**
+- [x] **Step 2: Write Oracle child design**
 
 Create `docs/product-specs/2026-04-30-data-source-coverage-oracle-design.md` with the shared child spec contract. Required design decisions:
 
@@ -285,7 +285,7 @@ Create `docs/product-specs/2026-04-30-data-source-coverage-oracle-design.md` wit
 - frontend: define kind-specific fields and i18n labels before exposing Oracle in the picker;
 - MCP/prompt: prompt must not claim Oracle diagnostics or ER support until implemented.
 
-- [ ] **Step 3: Write Oracle child execution plan**
+- [x] **Step 3: Write Oracle child execution plan**
 
 Create `docs/exec-plans/2026-04-30-data-source-coverage-oracle-plan.md` with task groups for:
 
@@ -299,7 +299,7 @@ Create `docs/exec-plans/2026-04-30-data-source-coverage-oracle-plan.md` with tas
 
 The plan must state that Oracle remains stub-only until the implementation tasks pass verification.
 
-- [ ] **Step 4: Register Oracle child artifacts**
+- [x] **Step 4: Register Oracle child artifacts**
 
 Modify:
 
@@ -307,7 +307,7 @@ Modify:
 - `docs/exec-plans/index.md`: add the Oracle plan under Active.
 - `docs/DATA_SOURCE_TYPE_COMPATIBILITY.md`: keep the current support snapshot as stub-only.
 
-- [ ] **Step 5: Review Oracle artifacts**
+- [x] **Step 5: Review Oracle artifacts**
 
 Run:
 
@@ -318,7 +318,7 @@ git diff --check -- docs/product-specs/2026-04-30-data-source-coverage-oracle-de
 
 Expected: the `rg` command prints no lines; `git diff --check` prints no output.
 
-- [ ] **Step 6: Commit Oracle child artifacts**
+- [x] **Step 6: Commit Oracle child artifacts**
 
 Run:
 
@@ -342,7 +342,7 @@ Expected: commit succeeds.
 - Modify: `docs/exec-plans/index.md`
 - Modify: `docs/DATA_SOURCE_TYPE_COMPATIBILITY.md`
 
-- [ ] **Step 1: Run SQL Server-targeted scan**
+- [x] **Step 1: Run SQL Server-targeted scan**
 
 Run:
 
@@ -352,7 +352,7 @@ rg -n "sqlserver|mssql|SQLSERVER|Microsoft|jdbc:sqlserver|ConnectionKind|JdbcUrl
 
 Expected: output shows legacy enum or mapping traces and missing first-class connection kind, JDBC URL, driver, frontend exposure, metadata discovery, and diagnostics support.
 
-- [ ] **Step 2: Write SQL Server child design**
+- [x] **Step 2: Write SQL Server child design**
 
 Create `docs/product-specs/2026-04-30-data-source-coverage-sqlserver-design.md` with the shared child spec contract. Required design decisions:
 
@@ -368,7 +368,7 @@ Create `docs/product-specs/2026-04-30-data-source-coverage-sqlserver-design.md` 
 - frontend: define kind-specific security fields before exposing SQL Server in the picker;
 - MCP/prompt: do not claim SQL Server ER or diagnostics support until implemented and tested.
 
-- [ ] **Step 3: Write SQL Server child execution plan**
+- [x] **Step 3: Write SQL Server child execution plan**
 
 Create `docs/exec-plans/2026-04-30-data-source-coverage-sqlserver-plan.md` with task groups for:
 
@@ -380,7 +380,7 @@ Create `docs/exec-plans/2026-04-30-data-source-coverage-sqlserver-plan.md` with 
 
 The plan must state that SQL Server remains stub/legacy until the implementation tasks pass verification.
 
-- [ ] **Step 4: Register SQL Server child artifacts**
+- [x] **Step 4: Register SQL Server child artifacts**
 
 Modify:
 
@@ -388,7 +388,7 @@ Modify:
 - `docs/exec-plans/index.md`: add the SQL Server plan under Active.
 - `docs/DATA_SOURCE_TYPE_COMPATIBILITY.md`: keep the current support snapshot as stub/legacy.
 
-- [ ] **Step 5: Review SQL Server artifacts**
+- [x] **Step 5: Review SQL Server artifacts**
 
 Run:
 
@@ -399,7 +399,7 @@ git diff --check -- docs/product-specs/2026-04-30-data-source-coverage-sqlserver
 
 Expected: the `rg` command prints no lines; `git diff --check` prints no output.
 
-- [ ] **Step 6: Commit SQL Server child artifacts**
+- [x] **Step 6: Commit SQL Server child artifacts**
 
 Run:
 
@@ -423,7 +423,7 @@ Expected: commit succeeds.
 - Modify: `docs/exec-plans/index.md`
 - Modify: `docs/DATA_SOURCE_TYPE_COMPATIBILITY.md`
 
-- [ ] **Step 1: Run MariaDB-targeted scan**
+- [x] **Step 1: Run MariaDB-targeted scan**
 
 Run:
 
@@ -433,7 +433,7 @@ rg -n "mariadb|MariaDB|mysql|MySqlSqlStatementSplitter|ConnectionKind|JdbcUrlBui
 
 Expected: output shows MySQL first-class support and no separate MariaDB first-class support.
 
-- [ ] **Step 2: Write MariaDB child design**
+- [x] **Step 2: Write MariaDB child design**
 
 Create `docs/product-specs/2026-04-30-data-source-coverage-mariadb-design.md` with the shared child spec contract. Required design decisions:
 
@@ -449,7 +449,7 @@ Create `docs/product-specs/2026-04-30-data-source-coverage-mariadb-design.md` wi
 - frontend: add MariaDB label/default port only after backend support is real;
 - MCP/prompt: mention MariaDB only when action schemas and runtime guidance match implementation.
 
-- [ ] **Step 3: Write MariaDB child execution plan**
+- [x] **Step 3: Write MariaDB child execution plan**
 
 Create `docs/exec-plans/2026-04-30-data-source-coverage-mariadb-plan.md` with task groups for:
 
@@ -460,7 +460,7 @@ Create `docs/exec-plans/2026-04-30-data-source-coverage-mariadb-plan.md` with ta
 
 The plan must state that MariaDB remains unsupported until the implementation tasks pass verification.
 
-- [ ] **Step 4: Register MariaDB child artifacts**
+- [x] **Step 4: Register MariaDB child artifacts**
 
 Modify:
 
@@ -468,7 +468,7 @@ Modify:
 - `docs/exec-plans/index.md`: add the MariaDB plan under Active.
 - `docs/DATA_SOURCE_TYPE_COMPATIBILITY.md`: keep MariaDB in roadmap candidate status.
 
-- [ ] **Step 5: Review MariaDB artifacts**
+- [x] **Step 5: Review MariaDB artifacts**
 
 Run:
 
@@ -479,7 +479,7 @@ git diff --check -- docs/product-specs/2026-04-30-data-source-coverage-mariadb-d
 
 Expected: the `rg` command prints no lines; `git diff --check` prints no output.
 
-- [ ] **Step 6: Commit MariaDB child artifacts**
+- [x] **Step 6: Commit MariaDB child artifacts**
 
 Run:
 
@@ -496,13 +496,15 @@ Expected: commit succeeds.
 
 ## Task 6: Cross-Child Consistency Review
 
+Status: Completed. This plan produced Wave A child design and plan artifacts only. No database support implementation was exposed.
+
 **Files:**
 - Modify: `docs/exec-plans/2026-04-30-data-source-coverage-governance-plan.md`
 - Modify: `docs/DATA_SOURCE_TYPE_COMPATIBILITY.md`
 - Modify: `docs/product-specs/index.md`
 - Modify: `docs/exec-plans/index.md`
 
-- [ ] **Step 1: Verify child artifact files exist**
+- [x] **Step 1: Verify child artifact files exist**
 
 Run:
 
@@ -513,7 +515,7 @@ ls docs/exec-plans/2026-04-30-data-source-coverage-*-plan.md
 
 Expected: output includes governance plus the four Wave A child design files and governance plus the four Wave A child plan files.
 
-- [ ] **Step 2: Verify all child artifacts are indexed**
+- [x] **Step 2: Verify all child artifacts are indexed**
 
 Run:
 
@@ -524,7 +526,7 @@ rg -n "data-source-coverage-(sqlite|oracle|sqlserver|mariadb)-plan" docs/exec-pl
 
 Expected: each command prints four matching index entries.
 
-- [ ] **Step 3: Verify no child artifact marks support complete**
+- [x] **Step 3: Verify no child artifact marks support complete**
 
 Run:
 
@@ -535,7 +537,7 @@ rg -n "supported[[:space:]]+now|first-class[[:space:]]+now|is now supported|is n
 
 Expected: the first command prints explicit non-complete support statements for each child artifact. The second command prints no lines.
 
-- [ ] **Step 4: Verify prompt/UI support was not exposed**
+- [x] **Step 4: Verify prompt/UI support was not exposed**
 
 Run:
 
@@ -545,15 +547,15 @@ rg -n "oracle|sqlserver|mariadb" client/src/features/settings/data-sources/conne
 
 Expected: output does not show newly exposed Oracle, SQL Server, or MariaDB support from this documentation-only plan.
 
-- [ ] **Step 5: Mark this governance plan complete**
+- [x] **Step 5: Mark this governance plan complete**
 
-Edit this file and change every completed checkbox from `- [ ]` to `- [x]`. Add a short status note under this task:
+All checklist items in this plan are now marked `- [x]`. Add a short status note under this task:
 
 ```markdown
 Status: Completed. This plan produced Wave A child design and plan artifacts only. No database support implementation was exposed.
 ```
 
-- [ ] **Step 6: Move this plan to Completed in the index**
+- [x] **Step 6: Move this plan to Completed in the index**
 
 Edit `docs/exec-plans/index.md`:
 
@@ -561,7 +563,7 @@ Edit `docs/exec-plans/index.md`:
 - add it to Completed with the completion date `2026-04-30`;
 - keep all four child implementation plans in Active.
 
-- [ ] **Step 7: Final doc verification**
+- [x] **Step 7: Final doc verification**
 
 Run:
 
@@ -573,7 +575,7 @@ git status --short
 
 Expected: the first command prints no lines; `git diff --check` prints no output; `git status --short` shows only documentation files intentionally changed for this plan.
 
-- [ ] **Step 8: Commit governance completion**
+- [x] **Step 8: Commit governance completion**
 
 Run:
 
