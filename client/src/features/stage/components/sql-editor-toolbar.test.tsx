@@ -54,7 +54,7 @@ describe('SqlEditorToolbar', () => {
         onCancel={onCancel}
         onFormat={onFormat}
         onRun={onRun}
-        contextControls={<span>{t('stage.context.label.override')}</span>}
+        contextControls={<span>context controls</span>}
       />,
     )
 
@@ -80,7 +80,7 @@ describe('SqlEditorToolbar', () => {
         onRun={onRun}
         canExplain
         onExplain={onExplain}
-        contextControls={<span>{t('stage.context.label.session')}</span>}
+        contextControls={<span>context controls</span>}
       />,
     )
 
@@ -99,7 +99,7 @@ describe('SqlEditorToolbar', () => {
         onRun={onRun}
         canExplain={false}
         onExplain={onExplain}
-        contextControls={<span>{t('stage.context.label.session')}</span>}
+        contextControls={<span>context controls</span>}
       />,
     )
 

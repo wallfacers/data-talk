@@ -102,6 +102,7 @@ Not supported. `workspace` is read-only through `patch`; use `exec`.
 - `contextOverride`: explicit override metadata, separate from the effective context fields
 - `entryMode / autoRun`: open source metadata and auto-run behavior
 - `executeStatus / results / activeResultId / limit`: runtime execution state
+- `availableDatabases / availableSchemas`: known static/current values from cached connection metadata and the current editor context, not an exhaustive live target list
 - `results`: summary only, without row payloads; each item exposes `{ resultId, statementIndex, columns, rowCount, durationMs, truncated, error? }`
 - `inWorkset`: whether this tab is currently open in the top-tab workset for this app instance
 
@@ -128,8 +129,8 @@ Supported whitelist paths:
 
 `set_context` linked parameter rules:
 - `useSessionContext=true` cannot be combined with `connectionId`, `database`, or `schema`.
-- `database requires connectionId`.
-- `schema requires connectionId and database`.
+- `database` requires an effective `connectionId`, either from the current editor context or an explicit `connectionId`.
+- `schema` requires an effective `connectionId` and `database`, either from the current editor context or explicit params.
 - `limit` may be set independently; accepted values are `10`, `100`, `1000`, or `null`.
 
 ---

@@ -138,4 +138,18 @@ describe('SqlContextToolbarControls', () => {
     })
     expect(onDatabaseChange).not.toHaveBeenCalled()
   })
+
+  it('does not request target refresh when no connection is selected', async () => {
+    const onOpenTargets = vi.fn().mockResolvedValue(undefined)
+    renderControls({
+      useSessionContext: false,
+      context: null,
+      targets: null,
+      onOpenTargets,
+    })
+
+    fireEvent.click(screen.getByRole('combobox', { name: '数据库' }))
+
+    expect(onOpenTargets).not.toHaveBeenCalled()
+  })
 })

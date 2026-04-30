@@ -97,6 +97,22 @@ describe('resolveTabDataContext', () => {
     })
   })
 
+  it('treats raw contextOverride undefined as absent instead of forcing manual mode', () => {
+    expect(resolveTabDataContext(
+      {
+        originSessionId: 'sess-1',
+        payload: { contextOverride: undefined },
+      },
+      sessionContext,
+      { inheritSessionContext: true },
+    )).toMatchObject({
+      useSessionContext: true,
+      connectionId: 'conn-session',
+      database: 'session-db',
+      contextSource: 'session',
+    })
+  })
+
   it('lets tab overrides win while still inheriting missing fields from the session context', () => {
     const resolved = resolveTabDataContext(
       {

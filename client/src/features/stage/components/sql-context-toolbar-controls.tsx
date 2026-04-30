@@ -116,6 +116,7 @@ export function SqlContextToolbarControls({
 
   function refreshTargetsOnOpen(open: boolean) {
     if (!open) return
+    if (!context?.connectionId) return
     void onOpenTargets().catch(() => {
       toast.error(t('stage.context.toast.targetsRefreshFailed'))
     })

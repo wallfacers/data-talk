@@ -8,7 +8,6 @@ import {
   formatQueryEditorSql,
   runQueryEditorSql,
   setQueryEditorContext,
-  resetQueryEditorContext,
   confirmQueryEditorSql,
   cancelQueryEditorConfirmation,
 } from './query-editor-actions'
@@ -691,7 +690,10 @@ describe('query-editor-actions', () => {
       schema: 'fixed_schema',
     })
 
-    resetQueryEditorContext(tabId)
+    setQueryEditorContext({
+      tabId,
+      useSessionContext: true,
+    })
 
     expect(useSqlWorkbenchStore.getState().tabsById[tabId]?.override).toBeNull()
     expect(normalizeQueryEditorPayload(getStageTab(tabId)?.payload).contextOverride).toBeNull()

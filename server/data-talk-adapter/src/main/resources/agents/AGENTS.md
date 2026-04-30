@@ -266,7 +266,7 @@ For a query editor:
 - Targeted SQL edits use `datatalk_ui_exec`, `object=query_editor`, `action=apply_text_edits`, `params.baseVersion`, and `params.edits`. Each edit entry must include `expectedText`.
 - Query editor context updates use `datatalk_ui_exec`, `object=query_editor`, `action=set_context`, with `params.useSessionContext`, `params.connectionId`, `params.database`, `params.schema`, and `params.limit`.
 - Use `set_context({ useSessionContext: true })` to make an editor follow the session data context. `useSessionContext=true` cannot be combined with `connectionId`, `database`, or `schema`.
-- Linked parameter rules: `database requires connectionId`; `schema requires connectionId and database`; `limit` may be set independently.
+- Linked parameter rules: `database requires an effective connectionId`; `schema requires an effective connectionId and database`; omitted fields keep the current editor context when those effective fields already exist; `limit` may be set independently.
 - Query editor actions are `apply_text_edits`, `set_context`, `run_sql`, `format_sql`, and `focus`.
 - Query editor actions and state use camelCase such as `connectionId` and `baseVersion`.
 

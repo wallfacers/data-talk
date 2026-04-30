@@ -475,11 +475,18 @@ export class QueryEditorAdapter implements UIObject {
         if (p.useSessionContext === true && (p.connectionId || p.database || p.schema)) {
           return execError('useSessionContext=true cannot be combined with connectionId, database, or schema')
         }
-        if (p.schema && (!p.connectionId || !p.database)) {
-          return execError('schema requires connectionId and database')
+        const currentContext = hasConnectionField ? this.getResolvedState().effectiveContext : null
+        const effectiveConnectionId = p.connectionId === undefined
+          ? currentContext?.connectionId ?? null
+          : p.connectionId
+        const effectiveDatabase = p.database === undefined
+          ? currentContext?.database ?? null
+          : p.database
+        if (p.schema && (!effectiveConnectionId || !effectiveDatabase)) {
+          return execError('schema requires an effective connectionId and database')
         }
-        if (p.database && !p.connectionId) {
-          return execError('database requires connectionId')
+        if (p.database && !effectiveConnectionId) {
+          return execError('database requires an effective connectionId')
         }
         if (hasLimit) {
           if (p.limit !== null && p.limit !== 10 && p.limit !== 100 && p.limit !== 1000) {

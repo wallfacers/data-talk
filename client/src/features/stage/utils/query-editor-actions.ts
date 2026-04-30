@@ -723,17 +723,3 @@ export function setQueryEditorContext(params: {
     schema: nextSchema,
   }, false)
 }
-
-export function resetQueryEditorContext(tabId: string): void {
-  const stageTab = getStageTab(tabId)
-  if (!stageTab) return
-
-  useStageStore.getState().setQueryEditorContext(tabId, {
-    connectionId: null,
-    connectionName: null,
-    database: null,
-    schema: null,
-  })
-  useSqlWorkbenchStore.getState().resetTabContext(tabId)
-  updateQueryEditorPayloadContextOverride(tabId, null, true)
-}

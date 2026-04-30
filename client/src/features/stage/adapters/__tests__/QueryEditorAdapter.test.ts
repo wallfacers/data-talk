@@ -838,6 +838,89 @@ describe('QueryEditorAdapter', () => {
     expect(useSqlWorkbenchStore.getState().tabsById[tabId]?.limit).toBe(100)
   })
 
+  it('exec set_context accepts incremental database and schema changes when linked context already exists', async () => {
+    useConnectionStore.setState({
+      activeConnectionId: null,
+      connections: [
+        { id: 'conn-1', name: 'Primary', kind: 'postgres', databaseName: 'app' } as never,
+      ],
+    })
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 's1',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'blank',
+      connectionId: 'conn-1',
+      connectionName: 'Primary',
+      database: 'app',
+      schema: 'public',
+    })
+
+    const adapter = new QueryEditorAdapter(tabId)
+
+    await expect(adapter.exec('set_context', { database: 'warehouse' })).resolves.toEqual({ success: true })
+    expect(useSqlWorkbenchStore.getState().tabsById[tabId]?.override).toMatchObject({
+      connectionId: 'conn-1',
+      database: 'warehouse',
+      schema: 'public',
+    })
+
+    await expect(adapter.exec('set_context', { schema: 'analytics' })).resolves.toEqual({ success: true })
+    expect(useSqlWorkbenchStore.getState().tabsById[tabId]?.override).toMatchObject({
+      connectionId: 'conn-1',
+      database: 'warehouse',
+      schema: 'analytics',
+    })
+  })
+
+  it('exec set_context can pin the current effective context when useSessionContext is false', async () => {
+    useConnectionStore.setState({
+      activeConnectionId: null,
+      connections: [
+        { id: 'conn-session', name: 'Session', kind: 'postgres', databaseName: 'session_db' } as never,
+      ],
+    })
+    useSessionStore.setState({
+      activeSessionId: 's1',
+      modeBySession: new Map(),
+      hasEverSentBySession: new Map(),
+      dataContextBySession: new Map([[
+        's1',
+        {
+          sessionId: 's1',
+          connectionId: 'conn-session',
+          connectionNameSnapshot: 'Session',
+          database: 'session_db',
+          schema: 'session_schema',
+          selectedLevel: 'schema',
+          updatedAt: 1,
+        },
+      ]]),
+      pendingPrompt: null,
+      composerRestoreDraft: null,
+      pendingModelPrompt: false,
+      pendingConnectionPrompt: false,
+      pendingActionAfterConnectionPick: null,
+    })
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 's1',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'blank',
+      initialContent: 'select 1',
+    })
+
+    const adapter = new QueryEditorAdapter(tabId, () => 's1')
+
+    await expect(adapter.exec('set_context', { useSessionContext: false })).resolves.toEqual({ success: true })
+    expect(useSqlWorkbenchStore.getState().tabsById[tabId]?.useSessionContext).toBe(false)
+    expect(useSqlWorkbenchStore.getState().tabsById[tabId]?.override).toMatchObject({
+      connectionId: 'conn-session',
+      database: 'session_db',
+      schema: 'session_schema',
+    })
+  })
+
   it('exec set_context rejects incomplete or conflicting linked context params', async () => {
     const { tabId } = useStageStore.getState().openQueryEditor({
       sessionId: 's1',
