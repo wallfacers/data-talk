@@ -152,4 +152,23 @@ describe('SqlContextToolbarControls', () => {
 
     expect(onOpenTargets).not.toHaveBeenCalled()
   })
+
+  it('hides schema selection for MySQL connections because database is the selectable namespace', () => {
+    renderControls({
+      useSessionContext: false,
+      context: {
+        connectionId: 'conn-2',
+        connectionName: 'Analytics',
+        database: 'analytics',
+        schema: null,
+      },
+      targets: {
+        databases: ['analytics', 'warehouse'],
+        schemas: ['ignored_mysql_schema'],
+      },
+    })
+
+    expect(screen.getByRole('combobox', { name: '数据库' })).toHaveTextContent('analytics')
+    expect(screen.queryByRole('combobox', { name: 'Schema' })).not.toBeInTheDocument()
+  })
 })

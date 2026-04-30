@@ -72,6 +72,14 @@ function dedupeValues(values: Array<string | null | undefined>) {
   return Array.from(normalizedValues)
 }
 
+function hasIndependentSchemaNamespace(kind: string | null | undefined) {
+  const normalizedKind = kind?.trim().toLowerCase()
+  if (!normalizedKind) return true
+  return normalizedKind !== 'mysql'
+    && normalizedKind !== 'mariadb'
+    && normalizedKind !== 'sqlite'
+}
+
 export function SqlContextToolbarControls({
   useSessionContext,
   context,
@@ -106,6 +114,7 @@ export function SqlContextToolbarControls({
   ])
   const databaseLabel = normalizeValue(context?.database) ?? t('stage.context.value.empty')
   const schemaLabel = normalizeValue(context?.schema) ?? t('stage.context.value.empty')
+  const showSchemaSelect = hasIndependentSchemaNamespace(selectedConnection?.kind)
 
   function refreshConnectionsOnOpen(open: boolean) {
     if (!open) return
@@ -201,32 +210,34 @@ export function SqlContextToolbarControls({
         </Select>
       </ToolbarSelectFrame>
 
-      <ToolbarSelectFrame label={t('stage.context.field.schema')}>
-        <Select
-          value={toSelectValue(context?.schema)}
-          disabled={useSessionContext}
-          onOpenChange={refreshTargetsOnOpen}
-          onValueChange={(value) => onSchemaChange(fromSelectValue(value))}
-        >
-          <SelectTrigger
-            size="sm"
-            aria-label={t('stage.context.field.schema')}
-            className="w-28"
+      {showSchemaSelect ? (
+        <ToolbarSelectFrame label={t('stage.context.field.schema')}>
+          <Select
+            value={toSelectValue(context?.schema)}
+            disabled={useSessionContext}
+            onOpenChange={refreshTargetsOnOpen}
+            onValueChange={(value) => onSchemaChange(fromSelectValue(value))}
           >
-            <span className="flex flex-1 text-left">{schemaLabel}</span>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={EMPTY_SELECT_VALUE}>
-              {t('stage.context.value.empty')}
-            </SelectItem>
-            {schemaOptions.map((schema) => (
-              <SelectItem key={schema} value={schema}>
-                {schema}
+            <SelectTrigger
+              size="sm"
+              aria-label={t('stage.context.field.schema')}
+              className="w-28"
+            >
+              <span className="flex flex-1 text-left">{schemaLabel}</span>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={EMPTY_SELECT_VALUE}>
+                {t('stage.context.value.empty')}
               </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </ToolbarSelectFrame>
+              {schemaOptions.map((schema) => (
+                <SelectItem key={schema} value={schema}>
+                  {schema}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </ToolbarSelectFrame>
+      ) : null}
 
       <ToolbarSelectFrame label={t('stage.limit.toolbarLabel')}>
         <SqlLimitSelect

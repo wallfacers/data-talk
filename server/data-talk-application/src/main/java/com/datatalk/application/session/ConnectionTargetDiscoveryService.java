@@ -70,19 +70,29 @@ public class ConnectionTargetDiscoveryService {
                     // Some drivers do not expose catalogs. Keep configured databaseName only.
                 }
             }
-            try (var schemas = meta.getSchemas()) {
-                while (schemas.next()) {
-                    String name = schemas.getString("TABLE_SCHEM");
-                    if (isUserSchema(name)) schemaNames.add(name);
+            if (hasIndependentSchemaNamespace(connection.kind())) {
+                try (var schemas = meta.getSchemas()) {
+                    while (schemas.next()) {
+                        String name = schemas.getString("TABLE_SCHEM");
+                        if (isUserSchema(name)) schemaNames.add(name);
+                    }
+                } catch (Exception ignored) {
+                    // Some drivers do not expose schemas.
                 }
-            } catch (Exception ignored) {
-                // Some drivers do not expose schemas.
             }
         } catch (Exception ignored) {
             // Discovery should degrade gracefully. Configured databaseName is still useful.
         }
 
         return new DiscoveryResult(connection.id(), connection.name(), databaseNames, schemaNames);
+    }
+
+    private boolean hasIndependentSchemaNamespace(String kind) {
+        if (kind == null || kind.isBlank()) return true;
+        String normalized = kind.toLowerCase(Locale.ROOT);
+        return !ConnectionKind.MYSQL.equals(normalized)
+            && !ConnectionKind.SQLITE.equals(normalized)
+            && !"mariadb".equals(normalized);
     }
 
     private boolean isUserSchema(String schema) {

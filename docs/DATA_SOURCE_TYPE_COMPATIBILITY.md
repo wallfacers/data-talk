@@ -50,7 +50,7 @@ This table describes the current repository state. Keep it accurate.
 
 | Kind | Current status | Notes |
 |---|---|---|
-| `mysql` | First-class | Connection UI, JDBC URL, metadata, SQL execution, MySQL-specific SQL splitter with `DELIMITER` support, diagnostics provider, prompt rules. |
+| `mysql` | First-class | Connection UI, JDBC URL, metadata, SQL execution, MySQL-specific SQL splitter with `DELIMITER` support, diagnostics provider, prompt rules. Query/editor target selection treats MySQL databases as the selectable namespace and does not expose a separate Schema selector. |
 | `postgresql` / `postgres` | First-class with aliases | PostgreSQL-specific SQL splitter, schema/search-path handling, target discovery, diagnostics provider. Preserve both aliases where existing code accepts both. |
 | `h2` | Development/demo support | Connection UI, JDBC URL, generic SQL splitter, schema handling, diagnostics provider. |
 | `sqlite` | Partial/runtime backend support | Metadata DB uses SQLite. User DB support exists in some backend paths, but the current frontend connection form does not expose it. Treat frontend support as incomplete unless verified. |
@@ -509,6 +509,9 @@ Required decisions:
 
 - Map DataTalk `database` and `schema` to the driver's `catalog` and `schema`
   concepts.
+- For MySQL-compatible engines, DataTalk `database` maps to the JDBC catalog /
+  MySQL schema namespace; target discovery and SQL editor controls must not
+  expose a second independent `schema` level.
 - Decide what `use xxx` means for the kind: connection, database, schema,
   catalog, namespace, or unsupported.
 - Define system schemas to filter from target discovery.
@@ -715,7 +718,8 @@ Required decisions:
 - SQL formatter language mapping. If `sql-formatter` does not support the
   dialect, choose a safe fallback and document the limitation.
 - SQL outline keyword set and high-risk hint behavior.
-- Schema/database selector visibility.
+- Schema/database selector visibility. MySQL-compatible and SQLite-like engines
+  do not show a separate SQL editor Schema selector; PostgreSQL/H2 keep it.
 - Data source picker labels and recent connection display.
 - Query Editor run path contract: `connectionId`, `database`, `schema`,
   `sessionId`, `confirmed`, and `riskAck` must stay aligned between frontend
