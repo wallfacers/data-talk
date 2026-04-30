@@ -409,9 +409,15 @@ export class WorkspaceAdapter implements UIObject {
           payloadVersion: 1,
           createdAt: Date.now(),
         }
-        useErTabsStore.getState().hydrateDesigner(tabId, payload)
+        // Order matters: stage tab must be registered before erTabsStore is
+        // updated. The erTabsStore subscriber in stage-persistence-bootstrap
+        // looks up the stage tab via findTab(tabId) before scheduling a
+        // content write — if the tab is missing, the write is silently
+        // dropped, the payload never reaches the server, and the next
+        // ensureHydrated() returns 404.
         store.openTab(tab)
         store.openStage()
+        useErTabsStore.getState().hydrateDesigner(tabId, payload)
         const summary = `${tables.length === 0 ? 'blank designer' : `${tables.length} tables, ${relations.length} relations`} (${dialect}${payload.targetConnectionId ? `, target=${payload.targetConnectionId}` : ', no target'})`
         return { success: true, data: { tabId, newTabId: tabId, payloadVersion: 1, summary } }
       }

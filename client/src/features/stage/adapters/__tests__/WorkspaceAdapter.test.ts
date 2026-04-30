@@ -3,6 +3,7 @@ import { useConnectionStore } from '@/features/connection/store'
 import { useSessionStore } from '@/stores/session-store'
 import { WorkspaceAdapter } from '../WorkspaceAdapter'
 import { useStageStore } from '@/stores/stage-store'
+import { useErTabsStore } from '@/features/stage/stores/er-tabs-store'
 import { useDataSourcePickerStore } from '@/features/session/data-source-picker/data-source-picker-store'
 
 const realOpenQueryEditor = useStageStore.getState().openQueryEditor
@@ -519,6 +520,32 @@ describe('WorkspaceAdapter', () => {
     const adapter = new WorkspaceAdapter(() => 's1')
     const res = await adapter.exec('open', {})
     expect(res.success).toBe(false)
+  })
+
+  it('open_er_designer registers the stage tab BEFORE updating erTabsStore so persistence subscriber sees the tab', async () => {
+    // The persistence layer's erTabsStore subscriber resolves the stage tab
+    // via useStageStore.findTab(tabId) before scheduling a content write.
+    // If hydrateDesigner runs before openTab, the tab is missing and the
+    // content write is silently dropped — leaving the server with no payload
+    // row and producing 404 on the next ensureHydrated.
+    let stageTabPresentWhenDesignerWritten: boolean | null = null
+    const unsubscribe = useErTabsStore.subscribe((state, prev) => {
+      if (state.designers === prev.designers) return
+      for (const [tabId] of state.designers) {
+        if (prev.designers.has(tabId)) continue
+        stageTabPresentWhenDesignerWritten = !!useStageStore.getState().findTab(tabId)
+      }
+    })
+
+    try {
+      const adapter = new WorkspaceAdapter(() => 's1')
+      const opened = await adapter.exec('open_er_designer', { dialect: 'mysql' })
+      expect(opened.success).toBe(true)
+      expect(stageTabPresentWhenDesignerWritten).toBe(true)
+    } finally {
+      unsubscribe()
+      useErTabsStore.setState({ designers: new Map(), inspectors: new Map() } as never)
+    }
   })
 
   it('choose_connection returns selected connection from chooser', async () => {
