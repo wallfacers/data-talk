@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import {
   ErCanvas,
@@ -6,6 +6,7 @@ import {
   buildDesignerEdgeDeletePatches,
   buildDesignerNodeDeletePatches,
   buildDesignerRelationTypePatch,
+  buildDesignerTableUpdatePatch,
   designerToGraph,
 } from '../ErCanvas'
 import type { ErDesignerPayload, ErInspectorPayload } from '@/features/stage/stores/er-tabs-payload-types'
@@ -115,8 +116,8 @@ describe('<ErCanvas mode="designer">', () => {
     render(<ErCanvas tabId="d-1" mode="designer" payload={designerPayload} onPatch={vi.fn()} onExec={vi.fn()} />)
 
     expect(screen.getByRole('button', { name: /add table|添加表/i })).toBeInTheDocument()
-    expect(screen.getByText('users')).toBeInTheDocument()
-    expect(screen.getByText('orders')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('users')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('orders')).toBeInTheDocument()
     expect(document.querySelector('.react-flow__background pattern circle')).toBeTruthy()
   })
 
@@ -186,6 +187,15 @@ describe('<ErCanvas mode="designer">', () => {
     expect(onExec).toHaveBeenCalledWith('auto_layout')
   })
 
+  it('focuses the table name input when rename is chosen from the context menu', () => {
+    render(<ErCanvas tabId="d-1" mode="designer" payload={designerPayload} onPatch={vi.fn()} onExec={vi.fn()} />)
+
+    fireEvent.contextMenu(screen.getByLabelText('Table users'))
+    fireEvent.click(screen.getByRole('menuitem', { name: /重命名|Rename/i }))
+
+    expect(screen.getByDisplayValue('users')).toHaveFocus()
+  })
+
   it('builds designer relation mutation and deletion patches for ReactFlow callbacks', () => {
     expect(buildDesignerConnectPatch({
       source: 't1',
@@ -210,6 +220,9 @@ describe('<ErCanvas mode="designer">', () => {
     ])
     expect(buildDesignerRelationTypePatch({ id: 'r2' }, 'one_to_one')).toEqual([
       { op: 'replace', path: '/relations[id=r2]/type', value: 'one_to_one' },
+    ])
+    expect(buildDesignerTableUpdatePatch('t1', { name: 'accounts' })).toEqual([
+      { op: 'replace', path: '/tables[id=t1]/name', value: 'accounts' },
     ])
 
     expect(buildDesignerNodeDeletePatches([{ id: 't1' }], [

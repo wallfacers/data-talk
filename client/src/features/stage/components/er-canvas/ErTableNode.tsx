@@ -1,11 +1,10 @@
-import { memo, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react'
 import {
   ChevronDownIcon,
   KeyRoundIcon,
   LinkIcon,
   LockIcon,
-  PencilIcon,
   TableIcon,
   Trash2Icon,
 } from 'lucide-react'
@@ -26,6 +25,9 @@ export type ErDesignerDialect = 'mysql' | 'postgresql' | 'h2' | 'sqlite'
 export interface ErTableNodeData extends ErNodeData {
   mode: ErTableNodeMode
   dialect?: ErDesignerDialect
+  shouldFocusName?: boolean
+  onNameFocusHandled?: (tableId: string) => void
+  onUpdateTable?: (tableId: string, updates: { name?: string }) => void
   onUpdateColumn?: (columnId: string, updates: Partial<ErColumnMeta>) => void
   onAddColumn?: () => void
   onDeleteColumn?: (columnId: string) => void
@@ -41,6 +43,7 @@ export function ErTableNode({ id, data, selected }: NodeProps<ErTableReactFlowNo
   const { t } = useI18n()
   const label = useFallbackLabel(t)
   const [expanded, setExpanded] = useState(data.columns.length <= COLUMN_PREVIEW_LIMIT)
+  const nameInputRef = useRef<HTMLInputElement>(null)
   const emptyLabel = label('erCanvas.node.empty', 'No columns yet')
   const visibleColumns = data.collapsed
     ? []
@@ -48,6 +51,17 @@ export function ErTableNode({ id, data, selected }: NodeProps<ErTableReactFlowNo
       ? data.columns
       : data.columns.slice(0, COLUMN_PREVIEW_LIMIT)
   const hiddenColumnCount = data.collapsed ? 0 : data.columns.length - visibleColumns.length
+
+  const focusTableNameInput = () => {
+    nameInputRef.current?.focus()
+    nameInputRef.current?.select()
+  }
+
+  useEffect(() => {
+    if (data.mode !== 'designer' || !data.shouldFocusName) return
+    focusTableNameInput()
+    data.onNameFocusHandled?.(id)
+  }, [data.mode, data.onNameFocusHandled, data.shouldFocusName, id])
 
   return (
     <section
@@ -78,29 +92,33 @@ export function ErTableNode({ id, data, selected }: NodeProps<ErTableReactFlowNo
       >
         <div className="flex min-w-0 items-center gap-2">
           <TableIcon className="size-3.5 shrink-0 text-text-muted" aria-hidden="true" />
-          <span className="truncate text-sm font-medium leading-5 text-text-strong">
-            {data.table.name}
-          </span>
+          {data.mode === 'designer' ? (
+            <input
+              ref={nameInputRef}
+              type="text"
+              value={data.table.name}
+              aria-label={`Table name ${data.table.name}`}
+              onChange={(event) => data.onUpdateTable?.(id, { name: event.target.value })}
+              className="nodrag min-w-0 flex-1 rounded-sm border border-transparent bg-transparent px-1 text-sm font-medium leading-5 text-text-strong outline-none focus:border-border-default focus:bg-bg-panel"
+            />
+          ) : (
+            <span className="truncate text-sm font-medium leading-5 text-text-strong">
+              {data.table.name}
+            </span>
+          )}
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           {data.collapsed && (
             <ChevronDownIcon className="size-3.5 text-text-soft" aria-hidden="true" />
           )}
-          {data.mode === 'designer' ? (
-            <PencilIcon
-              className="size-3.5 shrink-0 text-accent-primary"
-              aria-label="editable designer table"
-              data-testid="er-mode-indicator"
-              data-er-mode="designer"
-            />
-          ) : (
+          {data.mode === 'inspector' ? (
             <LockIcon
               className="size-3.5 shrink-0 text-text-soft"
               aria-label="read-only inspector view"
               data-testid="er-mode-indicator"
               data-er-mode="inspector"
             />
-          )}
+          ) : null}
         </div>
       </header>
 
@@ -166,7 +184,8 @@ function ColumnRow({
   const role = rowRole(column)
   const rowMinHeight = mode === 'designer' ? 'min-h-8' : 'min-h-7'
   const rowPadding = mode === 'designer' ? 'py-1.5' : 'py-1'
-  const rowHorizontalPadding = mode === 'designer' ? 'pl-3 pr-10' : 'px-3'
+  const rowHorizontalPadding = mode === 'designer' ? 'pl-0 pr-8' : 'px-3'
+  const rowGap = mode === 'designer' ? 'gap-2.5' : 'gap-2'
 
   // Outer Handle: transparent anchor positioned by ReactFlow; the visible ball
   // is an inner <span> so direct-hover scaling stays centered (Tailwind's
@@ -203,10 +222,11 @@ function ColumnRow({
   return (
     <li
       className={[
-        'group relative flex items-center justify-between gap-2 border-b border-border-subtle last:border-b-0 hover:bg-interaction-hover',
+        'group relative flex items-center justify-between border-b border-border-subtle last:border-b-0 hover:bg-interaction-hover',
         rowMinHeight,
         rowPadding,
         rowHorizontalPadding,
+        rowGap,
       ].join(' ')}
       data-testid={`er-row-${column.name}`}
       data-er-row-role={role}
@@ -227,8 +247,8 @@ function ColumnRow({
       >
         <span className={targetBallClassName} data-er-handle-shape="solid" />
       </Handle>
-      <div className="flex min-w-0 flex-1 items-center gap-1.5">
-        <div className="flex w-7 shrink-0 items-center gap-1">
+      <div className="flex min-w-0 flex-1 items-center gap-1">
+        <div className="flex w-6 shrink-0 items-center gap-1">
           {(role === 'pk' || role === 'pkfk') && (
             <KeyRoundIcon
               className="size-3 shrink-0 text-text-muted group-hover:text-accent-primary"
@@ -479,7 +499,7 @@ function ColumnTypeSelect({
       <SelectTrigger
         aria-label={label}
         size="sm"
-        className="nodrag h-6 max-w-28 border-border-default bg-bg-panel px-1.5 font-mono text-xs text-text-muted"
+        className="nodrag h-6 w-32 border-border-default bg-bg-panel px-1.5 font-mono text-xs text-text-muted"
       >
         <SelectValue />
       </SelectTrigger>

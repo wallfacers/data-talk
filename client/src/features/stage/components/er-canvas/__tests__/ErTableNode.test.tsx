@@ -138,17 +138,18 @@ describe('<ErTableNode mode="designer">', () => {
     ]))
   })
 
-  it('shows a pencil icon, editable columns, neutral handles, and add-column affordance', () => {
+  it('shows editable columns, tighter left alignment, and add-column affordance', () => {
     renderNode({
       ...data,
       mode: 'designer',
+      onUpdateTable: vi.fn(),
       onAddColumn: vi.fn(),
       onUpdateColumn: vi.fn(),
       onDeleteColumn: vi.fn(),
-    })
+    } as unknown as ErTableNodeData)
 
-    expect(screen.getByLabelText(/editable designer table/i)).toBeInTheDocument()
-    expect(screen.getByTestId('er-mode-indicator')).toHaveAttribute('data-er-mode', 'designer')
+    expect(screen.queryByRole('button', { name: /rename|重命名/i })).not.toBeInTheDocument()
+    expect(screen.getByDisplayValue('users')).toBeInTheDocument()
     expect(screen.getByDisplayValue('email')).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: /type for email/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /add column|添加列/i })).toBeInTheDocument()
@@ -172,7 +173,11 @@ describe('<ErTableNode mode="designer">', () => {
     expect(sourceBall?.className).toContain('border-border-strong')
     expect(sourceBall?.className).toContain('size-[18px]')
     expect(sourceBall?.className).toContain('hover:scale-125')
-    expect(screen.getByTestId('er-row-email').className).toContain('pr-10')
+    expect(screen.getByTestId('er-row-email').className).toContain('pl-0')
+    expect(screen.getByTestId('er-row-email').className).toContain('pr-8')
+    expect(screen.getByTestId('er-row-email').className).toContain('gap-2.5')
+    expect(screen.getByLabelText('primary key').parentElement?.className).toContain('w-6')
+    expect(screen.getByRole('combobox', { name: /type for email/i }).className).toContain('w-32')
   })
 
   it('renders NN pills only for non-null columns', () => {
@@ -229,24 +234,44 @@ describe('<ErTableNode mode="designer">', () => {
 
   it('triggers designer callbacks for adding, updating, and deleting columns', () => {
     const onAddColumn = vi.fn()
+    const onUpdateTable = vi.fn()
     const onUpdateColumn = vi.fn()
     const onDeleteColumn = vi.fn()
 
     renderNode({
       ...data,
       mode: 'designer',
+      onUpdateTable,
       onAddColumn,
       onUpdateColumn,
       onDeleteColumn,
-    })
+    } as unknown as ErTableNodeData)
 
     fireEvent.click(screen.getByRole('button', { name: /add column|添加列/i }))
+    fireEvent.change(screen.getByDisplayValue('users'), { target: { value: 'accounts' } })
     fireEvent.change(screen.getByDisplayValue('email'), { target: { value: 'email_address' } })
     fireEvent.click(screen.getByRole('button', { name: /delete column email/i }))
 
     expect(onAddColumn).toHaveBeenCalled()
+    expect(onUpdateTable).toHaveBeenCalledWith('users', { name: 'accounts' })
     expect(onUpdateColumn).toHaveBeenCalledWith('c_email', { name: 'email_address' })
     expect(onDeleteColumn).toHaveBeenCalledWith('c_email')
+  })
+
+  it('focuses and selects the table name when rename is requested', () => {
+    const onNameFocusHandled = vi.fn()
+
+    renderNode({
+      ...data,
+      mode: 'designer',
+      shouldFocusName: true,
+      onNameFocusHandled,
+    } as ErTableNodeData)
+
+    const tableNameInput = screen.getByDisplayValue('users')
+
+    expect(tableNameInput).toHaveFocus()
+    expect(onNameFocusHandled).toHaveBeenCalledWith('users')
   })
 
   it('dispatches table context menu coordinates on right click', () => {

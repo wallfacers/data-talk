@@ -171,6 +171,8 @@ describe('<ErEdge>', () => {
 
     expect(onUpdateRelationType).toHaveBeenCalledWith('many_to_many')
     expect(onDeleteRelation).toHaveBeenCalled()
+    expect(screen.getByRole('combobox', { name: /关系类型|Relation type/i }).className).toContain('w-[50px]')
+    expect(screen.getByRole('button', { name: /删除关系|Delete relation/i }).className).toContain('p-0.5')
   })
 
   it('renders the selected designer relation as the short label instead of the internal enum', () => {

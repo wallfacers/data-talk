@@ -182,7 +182,7 @@ export function ErEdge(props: EdgeProps<Edge<ErEdgeData>>) {
         <div
           className={[
             isEditable
-              ? 'pointer-events-auto flex items-center gap-1 rounded-md border border-[var(--dt-border-default)] bg-[var(--dt-bg-canvas)] px-1 py-0.5 shadow-sm'
+              ? 'pointer-events-auto flex items-center gap-0.5 rounded-md border border-[var(--dt-border-default)] bg-[var(--dt-bg-canvas)] px-1 py-0.5 shadow-sm'
               : 'pointer-events-none rounded border border-[var(--dt-border-default)] bg-[var(--dt-bg-canvas)] px-1.5 py-0.5 font-mono text-[11px] text-[var(--dt-text-muted)]',
             'absolute',
           ].join(' ')}
@@ -206,7 +206,7 @@ export function ErEdge(props: EdgeProps<Edge<ErEdgeData>>) {
                   nativeButton={false}
                   render={<div />}
                   size="sm"
-                  className="nodrag h-6 w-[58px] border-transparent bg-transparent px-1 font-mono text-[11px] text-[var(--dt-text-muted)] hover:bg-[var(--dt-interaction-hover)]"
+                  className="nodrag h-6 w-[50px] border-transparent bg-transparent px-1 font-mono text-[11px] text-[var(--dt-text-muted)] hover:bg-[var(--dt-interaction-hover)]"
                 >
                   <span className="flex flex-1 text-left">{relationLabel}</span>
                 </SelectTrigger>
@@ -222,7 +222,7 @@ export function ErEdge(props: EdgeProps<Edge<ErEdgeData>>) {
                 type="button"
                 aria-label={t('erCanvas.edge.deleteRelation')}
                 onClick={() => data?.onDeleteRelation?.()}
-                className="nodrag rounded p-1 text-[var(--dt-text-soft)] transition-colors hover:bg-[var(--dt-status-danger-surface)] hover:text-[var(--dt-status-danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dt-interaction-focus-ring)]"
+                className="nodrag rounded p-0.5 text-[var(--dt-text-soft)] transition-colors hover:bg-[var(--dt-status-danger-surface)] hover:text-[var(--dt-status-danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dt-interaction-focus-ring)]"
               >
                 <Trash2Icon className="size-3" aria-hidden="true" />
               </button>

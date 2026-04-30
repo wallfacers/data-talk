@@ -65,6 +65,7 @@ function ErCanvasInner(props: ErCanvasProps) {
   const { tabId, mode, payload, onPatch, onExec } = props
   const { t } = useI18n()
   const [contextMenu, setContextMenu] = useState<{ tableId: string; x: number; y: number } | null>(null)
+  const [renameTableId, setRenameTableId] = useState<string | null>(null)
   const { nodes: rawNodes, edges: rawEdges } = useMemo(
     () => mode === 'designer'
       ? designerToGraph(payload as ErDesignerPayload)
@@ -84,6 +85,13 @@ function ErCanvasInner(props: ErCanvasProps) {
       ...node.data,
       mode,
       dialect: designerDialect,
+      shouldFocusName: mode === 'designer' && renameTableId === node.id,
+      onNameFocusHandled: mode === 'designer' ? (tableId: string) => {
+        setRenameTableId((current) => current === tableId ? null : current)
+      } : undefined,
+      onUpdateTable: mode === 'designer' ? (_tableId: string, updates: { name?: string }) => {
+        onPatch(buildDesignerTableUpdatePatch(node.id, updates))
+      } : undefined,
       onAddColumn: mode === 'designer' ? () => addColumn(node.id, onPatch) : undefined,
       onDeleteColumn: mode === 'designer' ? (columnId: string) => {
         onPatch([{ op: 'remove', path: `/tables[id=${node.id}]/columns[id=${columnId}]` }])
@@ -98,7 +106,7 @@ function ErCanvasInner(props: ErCanvasProps) {
       } : undefined,
       onOpenContextMenu: mode === 'designer' ? setContextMenu : undefined,
     },
-  }), [designerDialect, mode, onPatch])
+  }), [designerDialect, mode, onPatch, renameTableId])
 
   const decorateEdge = useCallback((edge: Edge<ErEdgeData>): Edge<ErEdgeData> => {
     if (!edge.data) return edge
@@ -350,7 +358,7 @@ function ErCanvasInner(props: ErCanvasProps) {
           x={contextMenu.x}
           y={contextMenu.y}
           tableId={contextMenu.tableId}
-          onRename={(tableId) => onExec('rename_table', { tableId })}
+          onRename={(tableId) => setRenameTableId(tableId)}
           onAddColumn={(tableId) => addColumn(tableId, onPatch)}
           onDeleteTable={(tableId) => onPatch(buildDesignerNodeDeletePatches(
             [{ id: tableId }],
@@ -518,6 +526,19 @@ export function buildDesignerRelationTypePatch(
     path: `/relations[id=${designerRelationIdFromEdgeId(edge.id)}]/type`,
     value: relationType,
   }]
+}
+
+export function buildDesignerTableUpdatePatch(
+  tableId: string,
+  updates: { name?: string },
+): JsonPatchOp[] {
+  return Object.entries(updates)
+    .filter(([, value]) => value !== undefined)
+    .map(([key, value]) => ({
+      op: 'replace',
+      path: `/tables[id=${tableId}]/${key}`,
+      value,
+    }))
 }
 
 function designerRelationIdFromEdgeId(edgeId: string | number): string {
