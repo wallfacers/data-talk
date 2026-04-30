@@ -167,6 +167,8 @@ function diffContentAndSchedule(
 
 function diffStageLocalPayloadAndSchedule(next: StageLocalPayloadSummary[], prev: StageLocalPayloadSummary[]): void {
   for (const nextTab of next) {
+    if (isHydrationPlaceholderPayload(nextTab)) continue
+
     const prevTab = prev.find((item) => item.tabId === nextTab.tabId)
     if (prevTab) {
       if (prevTab.payloadJson === nextTab.payloadJson) continue
@@ -184,6 +186,13 @@ function diffStageLocalPayloadAndSchedule(next: StageLocalPayloadSummary[], prev
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function isHydrationPlaceholderPayload(tab: StageLocalPayloadSummary): boolean {
+  if (coordinator.phase !== 'hydrating') return false
+  if (tab.payloadVersion == null) return false
+  if (!isRecord(tab.payload)) return false
+  return Object.keys(tab.payload).length === 0
 }
 
 function sameNullableString(left: string | null | undefined, right: string | null | undefined) {
