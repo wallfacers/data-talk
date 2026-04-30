@@ -1,5 +1,8 @@
 package com.datatalk.application.fileartifact;
 
+import com.datatalk.application.session.SessionBus;
+import com.datatalk.application.session.SessionBusRegistry;
+import com.datatalk.domain.event.DtEvent;
 import com.datatalk.domain.fileartifact.FileArtifact;
 import com.datatalk.domain.fileartifact.FileArtifactKind;
 import com.datatalk.domain.fileartifact.FileArtifactScope;
@@ -21,6 +24,10 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class FileArtifactServiceTest {
 
@@ -29,6 +36,8 @@ class FileArtifactServiceTest {
 
     RecordingRepository repo;
     SessionWorkdirService workdir;
+    SessionBusRegistry buses;
+    SessionBus bus;
     FileArtifactService service;
     Path sessionDir;
 
@@ -38,7 +47,10 @@ class FileArtifactServiceTest {
         SessionWorkdirRoot root = new SessionWorkdirRoot(tmp, tmp.resolve("opencode"));
         workdir = new SessionWorkdirService(root, new ObjectMapper());
         sessionDir = workdir.getOrCreate("ses_abc", "conn_xyz");
-        service = new FileArtifactService(repo, workdir, new ObjectMapper());
+        buses = mock(SessionBusRegistry.class);
+        bus = mock(SessionBus.class);
+        when(buses.getOrCreate(anyString())).thenReturn(bus);
+        service = new FileArtifactService(repo, workdir, buses, new ObjectMapper());
     }
 
     @Test
@@ -140,7 +152,7 @@ class FileArtifactServiceTest {
 
         SessionWorkdirRoot linkedRoot = new SessionWorkdirRoot(tmp, opencode);
         SessionWorkdirService linkedWorkdir = new SessionWorkdirService(linkedRoot, new ObjectMapper());
-        FileArtifactService linkedService = new FileArtifactService(repo, linkedWorkdir, new ObjectMapper());
+        FileArtifactService linkedService = new FileArtifactService(repo, linkedWorkdir, buses, new ObjectMapper());
 
         assertThat(linkedService.guardPath("ses_linked", "report.md"))
                 .contains(PathSafetyError.PATH_CONTAINS_SYMLINK);
@@ -206,6 +218,103 @@ class FileArtifactServiceTest {
                 .hasMessageContaining("file artifact not found");
     }
 
+    @Test
+    void recordDetectedInsertsTemporaryWhenArtifactNotDeclared() throws Exception {
+        Path file = sessionDir.resolve("foo.csv");
+        Files.writeString(file, "id,val\n1,2\n");
+
+        var inserted = service.recordDetected("ses_abc", file, Map.of());
+
+        assertThat(inserted).isPresent();
+        assertThat(repo.inserted).hasSize(1);
+        FileArtifact row = repo.inserted.get(0);
+        assertThat(row.status()).isEqualTo(FileArtifactStatus.TEMPORARY);
+        assertThat(row.filename()).isEqualTo("foo.csv");
+        assertThat(row.physicalPath()).isEqualTo(file.toAbsolutePath().normalize().toString());
+        verify(bus).publish(org.mockito.ArgumentMatchers.any(DtEvent.FileArtifactDetected.class));
+    }
+
+    @Test
+    void recordDetectedInsertsCandidateWhenArtifactDeclared() throws Exception {
+        Path file = sessionDir.resolve("orders-er.md");
+        Files.writeString(file, "# report\n");
+
+        service.recordDetected("ses_abc", file, Map.of("artifact", "yes", "kind", "er_diagram", "title", "Orders"));
+
+        FileArtifact row = repo.inserted.get(0);
+        assertThat(row.status()).isEqualTo(FileArtifactStatus.CANDIDATE);
+        assertThat(row.kind()).isEqualTo(FileArtifactKind.ER_DIAGRAM);
+        assertThat(row.title()).isEqualTo("Orders");
+    }
+
+    @Test
+    void recordDetectedIsIdempotentWhenPathAlreadyExists() throws Exception {
+        Path file = sessionDir.resolve("foo.csv");
+        Files.writeString(file, "x");
+        FileArtifact existing = artifact("existing", FileArtifactStatus.TEMPORARY);
+        repo.byPhysicalPath.put(file.toAbsolutePath().normalize().toString(), existing);
+
+        var result = service.recordDetected("ses_abc", file, Map.of("artifact", "true"));
+
+        assertThat(result).contains(existing);
+        assertThat(repo.inserted).isEmpty();
+    }
+
+    @Test
+    void recordModifiedUpdatesSizeAndPromotesTemporaryWhenArtifactDeclarationAppears() throws Exception {
+        Path file = sessionDir.resolve("foo.md");
+        Files.writeString(file, "---\nartifact: true\n---\n");
+        FileArtifact existing = artifactAt("fid", FileArtifactStatus.TEMPORARY, file);
+        repo.byPhysicalPath.put(file.toAbsolutePath().normalize().toString(), existing);
+
+        service.recordModified(file, Map.of("artifact", "true", "kind", "report"));
+
+        assertThat(repo.metadataUpdates).hasSize(1);
+        assertThat(repo.statusUpdates).containsExactly(new StatusUpdate("fid", FileArtifactStatus.CANDIDATE));
+        verify(bus).publish(org.mockito.ArgumentMatchers.any(DtEvent.FileArtifactArchiveRequested.class));
+    }
+
+    @Test
+    void recordModifiedDoesNotPromoteCandidateAgain() throws Exception {
+        Path file = sessionDir.resolve("foo.md");
+        Files.writeString(file, "x");
+        repo.byPhysicalPath.put(file.toAbsolutePath().normalize().toString(),
+                artifactAt("fid", FileArtifactStatus.CANDIDATE, file));
+
+        service.recordModified(file, Map.of("artifact", "true"));
+
+        assertThat(repo.metadataUpdates).hasSize(1);
+        assertThat(repo.statusUpdates).isEmpty();
+    }
+
+    @Test
+    void recordDeletedSilentlyDeletesTemporaryRow() {
+        FileArtifact existing = artifact("fid", FileArtifactStatus.TEMPORARY);
+        repo.byPhysicalPath.put(existing.physicalPath(), existing);
+
+        service.recordDeleted(Path.of(existing.physicalPath()));
+
+        assertThat(repo.deletedIds).containsExactly("fid");
+    }
+
+    @Test
+    void recordDeletedPublishesDiscardedForCandidateRow() {
+        FileArtifact existing = artifact("fid", FileArtifactStatus.CANDIDATE);
+        repo.byPhysicalPath.put(existing.physicalPath(), existing);
+
+        service.recordDeleted(Path.of(existing.physicalPath()));
+
+        assertThat(repo.deletedIds).containsExactly("fid");
+        verify(bus).publish(org.mockito.ArgumentMatchers.any(DtEvent.FileArtifactDiscarded.class));
+    }
+
+    @Test
+    void recordDeletedNoopsWhenRowMissing() {
+        service.recordDeleted(Path.of("/abs/missing.md"));
+
+        assertThat(repo.deletedIds).isEmpty();
+    }
+
     private static void createSymlinkOrSkip(Path link, Path target) {
         try {
             Files.createSymbolicLink(link, target);
@@ -235,22 +344,58 @@ class FileArtifactServiceTest {
                 Map.of());
     }
 
+    private static FileArtifact artifactAt(String id, FileArtifactStatus status, Path path) {
+        Instant now = Instant.now();
+        return new FileArtifact(
+                id,
+                FileArtifactScope.SESSION,
+                status,
+                FileArtifactKind.OTHER,
+                "ses_abc",
+                null,
+                path.getFileName().toString(),
+                path.toAbsolutePath().normalize().toString(),
+                1L,
+                null,
+                null,
+                null,
+                now,
+                now,
+                null,
+                Map.of());
+    }
+
     private record StatusUpdate(String id, FileArtifactStatus status) {}
+
+    private record MetadataUpdate(String id, long sizeBytes, long updatedAtMillis) {}
 
     private static final class RecordingRepository implements FileArtifactRepository {
         Optional<FileArtifact> found = Optional.empty();
         List<FileArtifact> bySession = List.of();
         List<FileArtifact> archivedByConnection = List.of();
         List<FileArtifact> candidatesBySession = List.of();
+        List<FileArtifact> sessionScoped = List.of();
+        List<FileArtifact> workspaceArchived = List.of();
+        Map<String, FileArtifact> byPhysicalPath = new java.util.HashMap<>();
+        List<FileArtifact> inserted = new ArrayList<>();
         List<StatusUpdate> statusUpdates = new ArrayList<>();
+        List<MetadataUpdate> metadataUpdates = new ArrayList<>();
+        List<String> deletedIds = new ArrayList<>();
 
         @Override
         public void insert(FileArtifact artifact) {
+            inserted.add(artifact);
+            byPhysicalPath.put(artifact.physicalPath(), artifact);
         }
 
         @Override
         public Optional<FileArtifact> findById(String id) {
             return found;
+        }
+
+        @Override
+        public Optional<FileArtifact> findByPhysicalPath(String physicalPath) {
+            return Optional.ofNullable(byPhysicalPath.get(physicalPath));
         }
 
         @Override
@@ -266,6 +411,16 @@ class FileArtifactServiceTest {
         @Override
         public List<FileArtifact> findCandidatesBySession(String sessionId) {
             return candidatesBySession;
+        }
+
+        @Override
+        public List<FileArtifact> findAllSessionScoped() {
+            return sessionScoped;
+        }
+
+        @Override
+        public List<FileArtifact> findAllWorkspaceScopedArchived() {
+            return workspaceArchived;
         }
 
         @Override
@@ -296,10 +451,12 @@ class FileArtifactServiceTest {
 
         @Override
         public void deleteById(String id) {
+            deletedIds.add(id);
         }
 
         @Override
         public void updateMetadata(String id, long sizeBytes, long updatedAtMillis) {
+            metadataUpdates.add(new MetadataUpdate(id, sizeBytes, updatedAtMillis));
         }
     }
 }

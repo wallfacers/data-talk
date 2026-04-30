@@ -1,6 +1,10 @@
 package com.datatalk.application.fileartifact;
 
+import com.datatalk.application.session.SessionBusRegistry;
+import com.datatalk.domain.event.DtEvent;
 import com.datatalk.domain.fileartifact.FileArtifact;
+import com.datatalk.domain.fileartifact.FileArtifactKind;
+import com.datatalk.domain.fileartifact.FileArtifactScope;
 import com.datatalk.domain.fileartifact.FileArtifactStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -12,7 +16,11 @@ import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -26,12 +34,18 @@ public class FileArtifactService {
 
     private final FileArtifactRepository repo;
     private final SessionWorkdirService workdir;
+    private final SessionBusRegistry buses;
     @SuppressWarnings("unused")
     private final ObjectMapper json;
 
-    public FileArtifactService(FileArtifactRepository repo, SessionWorkdirService workdir, ObjectMapper json) {
+    public FileArtifactService(
+            FileArtifactRepository repo,
+            SessionWorkdirService workdir,
+            SessionBusRegistry buses,
+            ObjectMapper json) {
         this.repo = repo;
         this.workdir = workdir;
+        this.buses = buses;
         this.json = json;
     }
 
@@ -45,6 +59,10 @@ public class FileArtifactService {
 
     public List<FileArtifact> findCandidatesForSession(String sessionId) {
         return repo.findCandidatesBySession(sessionId);
+    }
+
+    public Optional<FileArtifact> findByPhysicalPath(String physicalPath) {
+        return repo.findByPhysicalPath(physicalPath);
     }
 
     public Optional<PathSafetyError> guardPath(String sessionId, String requestedPath) {
@@ -148,6 +166,144 @@ public class FileArtifactService {
             }
             case ARCHIVED, DISCARDED -> throw new IllegalStateException(
                     "cannot mark candidate: artifact " + fileArtifactId + " is " + artifact.status());
+        }
+    }
+
+    public Optional<FileArtifact> recordDetected(String sessionId, Path physicalPath, Map<String, String> frontmatter) {
+        Objects.requireNonNull(sessionId, "sessionId");
+        Objects.requireNonNull(physicalPath, "physicalPath");
+        Map<String, String> safeFrontmatter = frontmatter == null ? Map.of() : frontmatter;
+        Path absolutePath = physicalPath.toAbsolutePath().normalize();
+        String pathStr = absolutePath.toString();
+        Optional<FileArtifact> existing = repo.findByPhysicalPath(pathStr);
+        if (existing.isPresent()) {
+            return existing;
+        }
+
+        BasicFileAttributes attrs;
+        try {
+            attrs = Files.readAttributes(absolutePath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+        } catch (IOException e) {
+            log.debug("recordDetected skipped vanished file {}", pathStr);
+            return Optional.empty();
+        }
+        if (!attrs.isRegularFile() || attrs.isSymbolicLink()) {
+            return Optional.empty();
+        }
+
+        FileArtifactStatus status = FrontmatterParser.isArtifactDeclared(safeFrontmatter)
+                ? FileArtifactStatus.CANDIDATE
+                : FileArtifactStatus.TEMPORARY;
+        FileArtifactKind kind = parseKind(safeFrontmatter);
+        Instant now = Instant.now();
+        FileArtifact row = new FileArtifact(
+                FileArtifactIds.next(),
+                FileArtifactScope.SESSION,
+                status,
+                kind,
+                sessionId,
+                null,
+                absolutePath.getFileName().toString(),
+                pathStr,
+                attrs.size(),
+                guessMime(absolutePath),
+                safeFrontmatter.get("title"),
+                safeFrontmatter.get("summary"),
+                now,
+                now,
+                null,
+                new LinkedHashMap<>(safeFrontmatter));
+        repo.insert(row);
+        publish(sessionId, new DtEvent.FileArtifactDetected(
+                row.id(),
+                sessionId,
+                row.filename(),
+                row.kind().dbValue(),
+                row.status().dbValue(),
+                row.sizeBytes()));
+        return Optional.of(row);
+    }
+
+    public void recordModified(Path physicalPath, Map<String, String> frontmatter) {
+        Objects.requireNonNull(physicalPath, "physicalPath");
+        Map<String, String> safeFrontmatter = frontmatter == null ? Map.of() : frontmatter;
+        Path absolutePath = physicalPath.toAbsolutePath().normalize();
+        String pathStr = absolutePath.toString();
+        Optional<FileArtifact> existing = repo.findByPhysicalPath(pathStr);
+        if (existing.isEmpty()) {
+            return;
+        }
+        FileArtifact row = existing.get();
+        try {
+            repo.updateMetadata(
+                    row.id(),
+                    Files.size(absolutePath),
+                    Files.getLastModifiedTime(absolutePath, LinkOption.NOFOLLOW_LINKS).toMillis());
+        } catch (IOException e) {
+            log.debug("recordModified skipped vanished file {}", pathStr);
+            return;
+        }
+
+        if (row.status() == FileArtifactStatus.TEMPORARY && FrontmatterParser.isArtifactDeclared(safeFrontmatter)) {
+            repo.updateStatus(row.id(), FileArtifactStatus.CANDIDATE);
+            publish(row.sessionId(), new DtEvent.FileArtifactArchiveRequested(
+                    row.id(),
+                    row.sessionId(),
+                    parseKind(safeFrontmatter).dbValue(),
+                    safeFrontmatter.getOrDefault("title", row.title()),
+                    safeFrontmatter.getOrDefault("summary", row.summary())));
+        }
+    }
+
+    public void recordDeleted(Path physicalPath) {
+        Objects.requireNonNull(physicalPath, "physicalPath");
+        String pathStr = physicalPath.toAbsolutePath().normalize().toString();
+        Optional<FileArtifact> existing = repo.findByPhysicalPath(pathStr);
+        if (existing.isEmpty()) {
+            return;
+        }
+        FileArtifact row = existing.get();
+        switch (row.status()) {
+            case TEMPORARY, DISCARDED -> repo.deleteById(row.id());
+            case CANDIDATE -> {
+                repo.deleteById(row.id());
+                publish(row.sessionId(), new DtEvent.FileArtifactDiscarded(row.id(), "watcher_delete"));
+            }
+            case ARCHIVED -> log.warn(
+                    "file_artifact {} is ARCHIVED but watcher saw delete under sessions root: {}",
+                    row.id(),
+                    pathStr);
+        }
+    }
+
+    private void publish(String sessionId, DtEvent event) {
+        if (sessionId == null) {
+            return;
+        }
+        try {
+            buses.getOrCreate(sessionId).publish(event);
+        } catch (Exception e) {
+            log.warn("failed to publish file artifact event for session={}: {}", sessionId, e.toString());
+        }
+    }
+
+    private static FileArtifactKind parseKind(Map<String, String> frontmatter) {
+        String raw = frontmatter.get("kind");
+        if (raw == null || raw.isBlank()) {
+            return FileArtifactKind.OTHER;
+        }
+        try {
+            return FileArtifactKind.fromDb(raw.trim().toLowerCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            return FileArtifactKind.OTHER;
+        }
+    }
+
+    private static String guessMime(Path file) {
+        try {
+            return Files.probeContentType(file);
+        } catch (IOException e) {
+            return null;
         }
     }
 

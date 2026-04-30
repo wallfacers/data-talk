@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Background,
   BackgroundVariant,
@@ -70,14 +70,19 @@ function ErCanvasInner(props: ErCanvasProps) {
       : inspectorToGraph(payload as ErInspectorPayload),
     [mode, payload],
   )
+  const designerDialect = mode === 'designer' ? (payload as ErDesignerPayload).dialect : undefined
 
-  type ErFlowNode = Node<ErNodeData & { mode: 'inspector' | 'designer' }>
+  type ErFlowNode = Node<ErNodeData & {
+    mode: 'inspector' | 'designer'
+    dialect?: ErDesignerPayload['dialect']
+  }>
 
   const decorate = useCallback((node: Node<ErNodeData>): ErFlowNode => ({
     ...node,
     data: {
       ...node.data,
       mode,
+      dialect: designerDialect,
       onAddColumn: mode === 'designer' ? () => addColumn(node.id, onPatch) : undefined,
       onDeleteColumn: mode === 'designer' ? (columnId: string) => {
         onPatch([{ op: 'remove', path: `/tables[id=${node.id}]/columns[id=${columnId}]` }])
@@ -92,11 +97,32 @@ function ErCanvasInner(props: ErCanvasProps) {
       } : undefined,
       onOpenContextMenu: mode === 'designer' ? setContextMenu : undefined,
     },
-  }), [mode, onPatch])
+  }), [designerDialect, mode, onPatch])
+
+  const decorateEdge = useCallback((edge: Edge<ErEdgeData>): Edge<ErEdgeData> => {
+    if (!edge.data) return edge
+
+    return {
+      ...edge,
+      data: {
+        ...edge.data,
+        mode,
+        onUpdateRelationType: mode === 'designer'
+          ? (relationType: ErDesignerRelationDraft['type']) => onPatch(buildDesignerRelationTypePatch(edge, relationType))
+          : undefined,
+        onDeleteRelation: mode === 'designer'
+          ? () => onPatch(buildDesignerEdgeDeletePatches([edge]))
+          : undefined,
+      },
+    }
+  }, [mode, onPatch])
 
   const initialNodes = useMemo(() => rawNodes.map(decorate), [rawNodes, decorate])
+  const initialEdges = useMemo(() => rawEdges.map(decorateEdge), [rawEdges, decorateEdge])
   const [nodes, setNodes, onNodesChange] = useNodesState<ErFlowNode>(initialNodes)
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge<ErEdgeData>>(rawEdges as Edge<ErEdgeData>[])
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge<ErEdgeData>>(initialEdges)
+  const selectedNodesRef = useRef<Node[]>([])
+  const selectedEdgesRef = useRef<Edge[]>([])
 
   // Reconcile external payload changes into local node state without disturbing
   // in-flight drag positions. We keep existing nodes' positions; only updates to
@@ -129,8 +155,8 @@ function ErCanvasInner(props: ErCanvasProps) {
   }, [rawNodes, decorate, setNodes])
 
   useEffect(() => {
-    setEdges(rawEdges as Edge<ErEdgeData>[])
-  }, [rawEdges, setEdges])
+    setEdges(rawEdges.map(decorateEdge))
+  }, [decorateEdge, rawEdges, setEdges])
 
   const { layout } = useDagreLayout()
 
@@ -190,7 +216,25 @@ function ErCanvasInner(props: ErCanvasProps) {
     onPatch([{ op: 'replace', path: '/neighborDepth', value: depth }])
   }, [onPatch])
 
-  useErKeyboard({ enabled: true, onAutoLayout, onFitView })
+  const onDeleteSelection = useCallback(() => {
+    if (mode !== 'designer') return
+
+    const selectedNodes = selectedNodesRef.current.length > 0
+      ? selectedNodesRef.current
+      : nodes.filter((node) => node.selected)
+    const selectedEdges = selectedEdgesRef.current.length > 0
+      ? selectedEdgesRef.current
+      : edges.filter((edge) => edge.selected)
+
+    const designerRelations = (payload as ErDesignerPayload).relations ?? []
+    const ops = dedupePatchPaths([
+      ...buildDesignerNodeDeletePatches(selectedNodes, designerRelations),
+      ...buildDesignerEdgeDeletePatches(selectedEdges),
+    ])
+    if (ops.length > 0) onPatch(ops)
+  }, [edges, mode, nodes, onPatch, payload])
+
+  useErKeyboard({ enabled: true, onAutoLayout, onFitView, onDelete: onDeleteSelection })
 
   const onNodeDragStop = useCallback(
     (_event: unknown, _node: Node, draggedNodes: Node[]) => {
@@ -212,13 +256,18 @@ function ErCanvasInner(props: ErCanvasProps) {
 
   const onNodesDelete = useCallback((deletedNodes: Node[]) => {
     if (mode !== 'designer') return
-    onPatch(buildDesignerNodeDeletePatches(deletedNodes))
-  }, [mode, onPatch])
+    onPatch(buildDesignerNodeDeletePatches(deletedNodes, (payload as ErDesignerPayload).relations ?? []))
+  }, [mode, onPatch, payload])
 
   const onEdgesDelete = useCallback((deletedEdges: Edge[]) => {
     if (mode !== 'designer') return
     onPatch(buildDesignerEdgeDeletePatches(deletedEdges))
   }, [mode, onPatch])
+
+  const onSelectionChange = useCallback(({ nodes: selectedNodes, edges: selectedEdges }: { nodes: Node[]; edges: Edge[] }) => {
+    selectedNodesRef.current = selectedNodes
+    selectedEdgesRef.current = selectedEdges
+  }, [])
 
   if (mode === 'inspector' && ((payload as ErInspectorPayload).selection ?? []).length === 0) {
     return <ErEmptyState reason="empty_selection" />
@@ -273,6 +322,8 @@ function ErCanvasInner(props: ErCanvasProps) {
             onConnect={mode === 'designer' ? onConnect : undefined}
             onNodesDelete={mode === 'designer' ? onNodesDelete : undefined}
             onEdgesDelete={mode === 'designer' ? onEdgesDelete : undefined}
+            onSelectionChange={mode === 'designer' ? onSelectionChange : undefined}
+            deleteKeyCode={null}
             fitView
             fitViewOptions={{ padding: 0.2, maxZoom: 1 }}
             minZoom={0.1}
@@ -297,7 +348,10 @@ function ErCanvasInner(props: ErCanvasProps) {
           tableId={contextMenu.tableId}
           onRename={(tableId) => onExec('rename_table', { tableId })}
           onAddColumn={(tableId) => addColumn(tableId, onPatch)}
-          onDeleteTable={(tableId) => onPatch([{ op: 'remove', path: `/tables[id=${tableId}]` }])}
+          onDeleteTable={(tableId) => onPatch(buildDesignerNodeDeletePatches(
+            [{ id: tableId }],
+            (payload as ErDesignerPayload).relations ?? [],
+          ))}
           onClose={() => setContextMenu(null)}
         />
       )}
@@ -431,13 +485,49 @@ export function buildDesignerConnectPatch(
   }]
 }
 
-export function buildDesignerNodeDeletePatches(nodes: Array<Pick<Node, 'id'>>): JsonPatchOp[] {
-  return nodes.map((node) => ({ op: 'remove', path: `/tables[id=${node.id}]` }))
+export function buildDesignerNodeDeletePatches(
+  nodes: Array<Pick<Node, 'id'>>,
+  relations: Array<Pick<ErDesignerRelationDraft, 'id' | 'fromTableId' | 'toTableId'>> = [],
+): JsonPatchOp[] {
+  const deletedTableIds = new Set(nodes.map((node) => node.id))
+  return [
+    ...relations
+      .filter((relation) => deletedTableIds.has(relation.fromTableId) || deletedTableIds.has(relation.toTableId))
+      .map((relation) => ({ op: 'remove', path: `/relations[id=${relation.id}]` } as JsonPatchOp)),
+    ...nodes.map((node) => ({ op: 'remove', path: `/tables[id=${node.id}]` } as JsonPatchOp)),
+  ]
 }
 
 export function buildDesignerEdgeDeletePatches(edges: Array<Pick<Edge, 'id'>>): JsonPatchOp[] {
   return edges.map((edge) => ({
     op: 'remove',
-    path: `/relations[id=${String(edge.id).replace(/^vr:|^fk:/, '')}]`,
+    path: `/relations[id=${designerRelationIdFromEdgeId(edge.id)}]`,
   }))
+}
+
+export function buildDesignerRelationTypePatch(
+  edge: Pick<Edge, 'id'>,
+  relationType: ErDesignerRelationDraft['type'],
+): JsonPatchOp[] {
+  return [{
+    op: 'replace',
+    path: `/relations[id=${designerRelationIdFromEdgeId(edge.id)}]/type`,
+    value: relationType,
+  }]
+}
+
+function designerRelationIdFromEdgeId(edgeId: string | number): string {
+  return String(edgeId).replace(/^vr:|^fk:/, '')
+}
+
+function dedupePatchPaths(ops: JsonPatchOp[]): JsonPatchOp[] {
+  const seen = new Set<string>()
+  const deduped: JsonPatchOp[] = []
+  for (const op of ops) {
+    const key = `${op.op}:${op.path}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    deduped.push(op)
+  }
+  return deduped
 }

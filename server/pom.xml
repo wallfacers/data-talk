@@ -77,6 +77,11 @@
                 <artifactId>data-talk-adapter</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>io.methvin</groupId>
+                <artifactId>directory-watcher</artifactId>
+                <version>0.18.0</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 </project>

@@ -241,8 +241,66 @@ class JdbcFileArtifactRepositoryIT {
         assertThat(repo.findById("other")).isPresent();
     }
 
+    @Test
+    void findByPhysicalPath_returns_row_when_present() {
+        repo.insert(samplePath("a1", "/abs/sessions/ses_x/foo.md"));
+
+        var loaded = repo.findByPhysicalPath("/abs/sessions/ses_x/foo.md");
+
+        assertThat(loaded).isPresent();
+        assertThat(loaded.get().id()).isEqualTo("a1");
+    }
+
+    @Test
+    void findByPhysicalPath_returns_empty_when_absent() {
+        assertThat(repo.findByPhysicalPath("/abs/missing.md")).isEmpty();
+    }
+
+    @Test
+    void findAllSessionScoped_returns_only_session_rows() {
+        repo.insert(sample("s1", FileArtifactStatus.TEMPORARY, "ses_x", null));
+        repo.insert(sample("s2", FileArtifactStatus.CANDIDATE, "ses_y", null));
+        repo.insert(archivedForSession("w1", "ses_x", "conn_p"));
+
+        var rows = repo.findAllSessionScoped();
+
+        assertThat(rows).extracting(FileArtifact::id).containsExactlyInAnyOrder("s1", "s2");
+    }
+
+    @Test
+    void findAllWorkspaceScopedArchived_returns_only_workspace_archived_rows() {
+        repo.insert(sample("s1", FileArtifactStatus.TEMPORARY, "ses_x", null));
+        repo.insert(archivedAt("w1", "conn_p", "2026-04-29T09:00:00Z"));
+        repo.insert(archivedAt("w2", "conn_q", "2026-04-29T09:00:00Z"));
+
+        var rows = repo.findAllWorkspaceScopedArchived();
+
+        assertThat(rows).extracting(FileArtifact::id).containsExactlyInAnyOrder("w1", "w2");
+    }
+
     private static FileArtifact sample(String id, FileArtifactStatus status, String sessionId, String connectionId) {
         return sampleAt(id, status, sessionId, connectionId, "2026-04-29T09:00:00Z");
+    }
+
+    private static FileArtifact samplePath(String id, String physicalPath) {
+        Instant now = Instant.parse("2026-04-29T09:00:00Z");
+        return new FileArtifact(
+                id,
+                FileArtifactScope.SESSION,
+                FileArtifactStatus.TEMPORARY,
+                FileArtifactKind.OTHER,
+                "ses_x",
+                null,
+                "x.md",
+                physicalPath,
+                123L,
+                "text/markdown",
+                null,
+                null,
+                now,
+                now,
+                null,
+                Map.of());
     }
 
     private static FileArtifact sampleAt(

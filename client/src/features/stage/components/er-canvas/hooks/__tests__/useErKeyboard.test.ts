@@ -38,4 +38,24 @@ describe('useErKeyboard', () => {
 
     expect(onAutoLayout).not.toHaveBeenCalled()
   })
+
+  it('triggers selection deletion on Delete and Backspace outside text inputs', () => {
+    const onDelete = vi.fn()
+    renderHook(() => useErKeyboard({
+      enabled: true,
+      onAutoLayout: vi.fn(),
+      onFitView: vi.fn(),
+      onDelete,
+    }))
+
+    fire(window, 'Delete')
+    fire(window, 'Backspace')
+
+    const input = document.createElement('input')
+    document.body.append(input)
+    fire(input, 'Backspace')
+    input.remove()
+
+    expect(onDelete).toHaveBeenCalledTimes(2)
+  })
 })

@@ -68,6 +68,15 @@ public class JdbcFileArtifactRepository implements FileArtifactRepository {
     }
 
     @Override
+    public Optional<FileArtifact> findByPhysicalPath(String physicalPath) {
+        var rows = jdbc.query(
+                "SELECT " + COLS + " FROM file_artifact WHERE physical_path = ? LIMIT 1",
+                mapper(),
+                physicalPath);
+        return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
+    }
+
+    @Override
     public List<FileArtifact> findBySession(String sessionId) {
         return jdbc.query(
                 "SELECT " + COLS + " FROM file_artifact WHERE session_id = ? ORDER BY created_at DESC",
@@ -91,6 +100,20 @@ public class JdbcFileArtifactRepository implements FileArtifactRepository {
                 "SELECT " + COLS + " FROM file_artifact WHERE session_id = ? AND status = 'candidate'",
                 mapper(),
                 sessionId);
+    }
+
+    @Override
+    public List<FileArtifact> findAllSessionScoped() {
+        return jdbc.query(
+                "SELECT " + COLS + " FROM file_artifact WHERE scope = 'session'",
+                mapper());
+    }
+
+    @Override
+    public List<FileArtifact> findAllWorkspaceScopedArchived() {
+        return jdbc.query(
+                "SELECT " + COLS + " FROM file_artifact WHERE scope = 'workspace' AND status = 'archived'",
+                mapper());
     }
 
     @Override

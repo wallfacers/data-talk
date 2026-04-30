@@ -1,6 +1,7 @@
 import type { Edge, Node } from '@xyflow/react'
 import type {
   ErColumnMeta,
+  ErDesignerRelationDraft,
   ErInspectorPayload,
   ErTableSnapshot,
 } from '@/features/stage/stores/er-tabs-payload-types'
@@ -13,9 +14,12 @@ export interface ErNodeData extends Record<string, unknown> {
 
 export interface ErEdgeData extends Record<string, unknown> {
   kind: 'fk' | 'virtual'
-  relationType?: string
+  relationType?: ErDesignerRelationDraft['type'] | string
   fromColumn: string
   toColumn: string
+  mode?: 'inspector' | 'designer'
+  onUpdateRelationType?: (relationType: ErDesignerRelationDraft['type']) => void
+  onDeleteRelation?: () => void
 }
 
 export function inspectorToGraph(payload: ErInspectorPayload): {

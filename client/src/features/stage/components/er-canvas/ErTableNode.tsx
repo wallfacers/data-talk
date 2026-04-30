@@ -13,9 +13,11 @@ import type { ErColumnMeta } from '@/features/stage/stores/er-tabs-payload-types
 import type { ErNodeData } from './utils/payload-to-graph'
 
 export type ErTableNodeMode = 'inspector' | 'designer'
+export type ErDesignerDialect = 'mysql' | 'postgresql' | 'h2' | 'sqlite'
 
 export interface ErTableNodeData extends ErNodeData {
   mode: ErTableNodeMode
+  dialect?: ErDesignerDialect
   onUpdateColumn?: (columnId: string, updates: Partial<ErColumnMeta>) => void
   onAddColumn?: () => void
   onDeleteColumn?: (columnId: string) => void
@@ -81,6 +83,7 @@ export function ErTableNode({ id, data, selected }: NodeProps<ErTableReactFlowNo
               key={getColumnId(column)}
               column={column}
               mode={data.mode}
+              dialect={data.dialect}
               onUpdateColumn={data.onUpdateColumn}
               onDeleteColumn={data.onDeleteColumn}
             />
@@ -116,11 +119,13 @@ export function ErTableNode({ id, data, selected }: NodeProps<ErTableReactFlowNo
 function ColumnRow({
   column,
   mode,
+  dialect,
   onUpdateColumn,
   onDeleteColumn,
 }: {
   column: ErColumnMeta
   mode: ErTableNodeMode
+  dialect?: ErDesignerDialect
   onUpdateColumn?: (columnId: string, updates: Partial<ErColumnMeta>) => void
   onDeleteColumn?: (columnId: string) => void
 }) {
@@ -204,6 +209,7 @@ function ColumnRow({
       {mode === 'designer' ? (
         <ColumnTypeSelect
           value={column.type}
+          dialect={dialect}
           label={`Type for ${column.name}`}
           onValueChange={(type) => onUpdateColumn?.(columnId, { type })}
         />
@@ -240,15 +246,158 @@ MemoErTableNode.displayName = 'ErTableNode'
 
 const COLUMN_TYPE_OPTIONS = ['BIGINT', 'INT', 'VARCHAR(255)', 'TEXT', 'BOOLEAN', 'DATE', 'TIMESTAMP']
 
+const DIALECT_COLUMN_TYPE_OPTIONS: Record<ErDesignerDialect, string[]> = {
+  mysql: [
+    'TINYINT',
+    'SMALLINT',
+    'MEDIUMINT',
+    'INT',
+    'INTEGER',
+    'BIGINT',
+    'SERIAL',
+    'DECIMAL',
+    'DECIMAL(10,2)',
+    'DEC',
+    'FIXED',
+    'NUMERIC',
+    'NUMERIC(10,2)',
+    'FLOAT',
+    'DOUBLE',
+    'DOUBLE PRECISION',
+    'REAL',
+    'BIT(1)',
+    'BOOL',
+    'BOOLEAN',
+    'CHAR',
+    'CHAR(255)',
+    'NCHAR(255)',
+    'VARCHAR(255)',
+    'NVARCHAR(255)',
+    'TINYTEXT',
+    'TEXT',
+    'MEDIUMTEXT',
+    'LONGTEXT',
+    'BINARY(16)',
+    'VARBINARY(255)',
+    'TINYBLOB',
+    'BLOB',
+    'MEDIUMBLOB',
+    'LONGBLOB',
+    'DATE',
+    'TIME',
+    'DATETIME',
+    'TIMESTAMP',
+    'YEAR',
+    'JSON',
+    "ENUM('value')",
+    "SET('value')",
+    'GEOMETRY',
+    'POINT',
+    'LINESTRING',
+    'POLYGON',
+    'MULTIPOINT',
+    'MULTILINESTRING',
+    'MULTIPOLYGON',
+    'GEOMETRYCOLLECTION',
+  ],
+  postgresql: [
+    'SMALLINT',
+    'INTEGER',
+    'BIGINT',
+    'SMALLSERIAL',
+    'SERIAL',
+    'BIGSERIAL',
+    'DECIMAL',
+    'DECIMAL(10,2)',
+    'NUMERIC',
+    'NUMERIC(10,2)',
+    'REAL',
+    'DOUBLE PRECISION',
+    'BOOLEAN',
+    'BIT(1)',
+    'BIT VARYING(255)',
+    'CHAR(255)',
+    'VARCHAR(255)',
+    'TEXT',
+    'DATE',
+    'TIME',
+    'TIMETZ',
+    'TIMESTAMP',
+    'TIMESTAMPTZ',
+    'INTERVAL',
+    'UUID',
+    'JSON',
+    'JSONB',
+    'BYTEA',
+    'INET',
+    'CIDR',
+    'MACADDR',
+    'MACADDR8',
+    'MONEY',
+    'POINT',
+    'LINE',
+    'LSEG',
+    'BOX',
+    'PATH',
+    'POLYGON',
+    'CIRCLE',
+    'TSVECTOR',
+    'TSQUERY',
+    'XML',
+  ],
+  h2: [
+    'TINYINT',
+    'SMALLINT',
+    'INT',
+    'BIGINT',
+    'DECIMAL(10,2)',
+    'NUMERIC(10,2)',
+    'REAL',
+    'DOUBLE',
+    'BOOLEAN',
+    'CHAR(255)',
+    'VARCHAR(255)',
+    'CLOB',
+    'BINARY(16)',
+    'VARBINARY(255)',
+    'BLOB',
+    'DATE',
+    'TIME',
+    'TIMESTAMP',
+    'UUID',
+    'JSON',
+  ],
+  sqlite: [
+    'INTEGER',
+    'REAL',
+    'NUMERIC',
+    'TEXT',
+    'BLOB',
+  ],
+}
+
+export function getColumnTypeOptions(dialect?: ErDesignerDialect, currentValue?: string): string[] {
+  const baseOptions = dialect ? DIALECT_COLUMN_TYPE_OPTIONS[dialect] : COLUMN_TYPE_OPTIONS
+  const options = [...baseOptions]
+  if (currentValue && !options.includes(currentValue)) {
+    options.unshift(currentValue)
+  }
+  return options
+}
+
 function ColumnTypeSelect({
   value,
+  dialect,
   label,
   onValueChange,
 }: {
   value: string
+  dialect?: ErDesignerDialect
   label: string
   onValueChange: (value: string) => void
 }) {
+  const options = getColumnTypeOptions(dialect, value)
+
   return (
     <Select value={value} onValueChange={(nextValue) => {
       if (nextValue) onValueChange(nextValue)
@@ -261,7 +410,7 @@ function ColumnTypeSelect({
         <SelectValue />
       </SelectTrigger>
       <SelectContent className="bg-[var(--dt-bg-panel)]">
-        {COLUMN_TYPE_OPTIONS.map((type) => (
+        {options.map((type) => (
           <SelectItem key={type} value={type}>
             {type}
           </SelectItem>

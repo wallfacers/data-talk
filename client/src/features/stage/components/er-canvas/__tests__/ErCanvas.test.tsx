@@ -5,6 +5,7 @@ import {
   buildDesignerConnectPatch,
   buildDesignerEdgeDeletePatches,
   buildDesignerNodeDeletePatches,
+  buildDesignerRelationTypePatch,
   designerToGraph,
 } from '../ErCanvas'
 import type { ErDesignerPayload, ErInspectorPayload } from '@/features/stage/stores/er-tabs-payload-types'
@@ -161,7 +162,7 @@ describe('<ErCanvas mode="designer">', () => {
     expect(onExec).toHaveBeenCalledWith('auto_layout')
   })
 
-  it('builds designer relation and deletion patches for ReactFlow callbacks', () => {
+  it('builds designer relation mutation and deletion patches for ReactFlow callbacks', () => {
     expect(buildDesignerConnectPatch({
       source: 't1',
       target: 't2',
@@ -180,7 +181,18 @@ describe('<ErCanvas mode="designer">', () => {
       },
     }])
 
-    expect(buildDesignerNodeDeletePatches([{ id: 't1' }])).toEqual([
+    expect(buildDesignerRelationTypePatch({ id: 'fk:r1' }, 'many_to_many')).toEqual([
+      { op: 'replace', path: '/relations[id=r1]/type', value: 'many_to_many' },
+    ])
+    expect(buildDesignerRelationTypePatch({ id: 'r2' }, 'one_to_one')).toEqual([
+      { op: 'replace', path: '/relations[id=r2]/type', value: 'one_to_one' },
+    ])
+
+    expect(buildDesignerNodeDeletePatches([{ id: 't1' }], [
+      { id: 'r1', fromTableId: 't1', toTableId: 't2' },
+      { id: 'r2', fromTableId: 't2', toTableId: 't3' },
+    ])).toEqual([
+      { op: 'remove', path: '/relations[id=r1]' },
       { op: 'remove', path: '/tables[id=t1]' },
     ])
     expect(buildDesignerEdgeDeletePatches([{ id: 'fk:r1' }, { id: 'vr:r2' }, { id: 'r3' }])).toEqual([

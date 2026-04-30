@@ -17,11 +17,17 @@ public interface FileArtifactRepository {
 
     Optional<FileArtifact> findById(String id);
 
+    Optional<FileArtifact> findByPhysicalPath(String physicalPath);
+
     List<FileArtifact> findBySession(String sessionId);
 
     List<FileArtifact> findArchivedByConnection(String connectionId);
 
     List<FileArtifact> findCandidatesBySession(String sessionId);
+
+    List<FileArtifact> findAllSessionScoped();
+
+    List<FileArtifact> findAllWorkspaceScopedArchived();
 
     void updateStatus(String id, FileArtifactStatus newStatus);
 

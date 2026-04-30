@@ -82,6 +82,11 @@ as `SkippedOp` with `day1_unsupported`; users must write that SQL manually in
 
 - Domain Layer: N/A for this adapter/docs slice; domain records/enums are owned
   by the backend core ER Designer worker.
+- Frontend Column Type Options: ER Designer exposes dialect-aware native type
+  candidates for the existing `mysql`, `postgresql`, `h2`, and `sqlite`
+  dialect values. These options are UI affordances only; stored draft column
+  types remain strings so synced metadata and manually entered type strings are
+  preserved.
 - Application Connection Layer: N/A for this adapter/docs slice; no new
   connection kind, JDBC URL shape, database/schema semantics, or target
   resolution behavior is introduced here.

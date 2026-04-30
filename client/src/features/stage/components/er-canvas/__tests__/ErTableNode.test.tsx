@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { ReactFlowProvider } from '@xyflow/react'
 import { describe, expect, it, vi } from 'vitest'
-import { ErTableNode } from '../ErTableNode'
+import { ErTableNode, getColumnTypeOptions } from '../ErTableNode'
 import type { ErColumnMeta } from '@/features/stage/stores/er-tabs-payload-types'
 import type { ErTableNodeData } from '../ErTableNode'
 
@@ -84,6 +84,23 @@ describe('<ErTableNode mode="inspector">', () => {
 })
 
 describe('<ErTableNode mode="designer">', () => {
+  it('offers dialect-aware native MySQL column types while preserving custom values', () => {
+    expect(getColumnTypeOptions('mysql')).toEqual(expect.arrayContaining([
+      'TINYINT',
+      'MEDIUMINT',
+      'DOUBLE',
+      'JSON',
+      "ENUM('value')",
+      'GEOMETRY',
+      'MULTIPOLYGON',
+    ]))
+
+    expect(getColumnTypeOptions('mysql', 'CUSTOM_DOMAIN')).toEqual(expect.arrayContaining([
+      'CUSTOM_DOMAIN',
+      'VARCHAR(255)',
+    ]))
+  })
+
   it('shows a pencil icon, editable columns, two-tone handles, and add-column affordance', () => {
     renderNode({
       ...data,

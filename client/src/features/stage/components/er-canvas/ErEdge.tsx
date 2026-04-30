@@ -7,7 +7,11 @@ import {
   type Edge,
   type EdgeProps,
 } from '@xyflow/react'
+import { Trash2Icon } from 'lucide-react'
 
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
+import { useI18n } from '@/i18n/use-i18n'
+import type { ErDesignerRelationDraft } from '@/features/stage/stores/er-tabs-payload-types'
 import { computeCrossings, pathToSegments } from './utils/crossings'
 import { resolveLabelPos } from './utils/label-positioning'
 import type { ErEdgeData } from './utils/payload-to-graph'
@@ -23,16 +27,25 @@ const RELATION_LABEL: Record<string, string> = {
   many_to_many: 'N:N',
 }
 
+const RELATION_TYPE_OPTIONS: Array<{ value: ErDesignerRelationDraft['type']; label: string }> = [
+  { value: 'one_to_one', label: '1:1' },
+  { value: 'one_to_many', label: '1:N' },
+  { value: 'many_to_one', label: 'N:1' },
+  { value: 'many_to_many', label: 'N:N' },
+]
+
 type ErNodeLookupEntry = {
   internals?: {
     positionAbsolute?: { x: number; y: number }
   }
   measured?: {
+    width?: number
     height?: number
   }
 }
 
 type CrossingNodeLookup = Parameters<typeof computeCrossings>[3]
+type NodeLookupLike = { get: (nodeId: string) => unknown }
 
 export function ErEdge(props: EdgeProps<Edge<ErEdgeData>>) {
   const {
@@ -50,12 +63,24 @@ export function ErEdge(props: EdgeProps<Edge<ErEdgeData>>) {
     markerEnd,
     markerStart,
   } = props
+  const { t } = useI18n()
 
   const storeEdges = useStore((state) => state.edges)
   const nodeLookup = useStore((state) => state.nodeLookup)
   const isAnyNodeDragging = useStore((state) => state.nodes.some((node) => node.dragging))
   const isSelfRef = source === target
   const isVirtual = data?.kind === 'virtual'
+  const isEditable = data?.mode === 'designer'
+    && typeof data.onUpdateRelationType === 'function'
+    && typeof data.onDeleteRelation === 'function'
+  const sourcePoint = useMemo(
+    () => alignEndpointToNodeBorder(nodeLookup, source, sourceX, sourceY, sourcePosition ?? Position.Right),
+    [nodeLookup, source, sourcePosition, sourceX, sourceY],
+  )
+  const targetPoint = useMemo(
+    () => alignEndpointToNodeBorder(nodeLookup, target, targetX, targetY, targetPosition ?? Position.Left),
+    [nodeLookup, target, targetPosition, targetX, targetY],
+  )
 
   const [edgePath, fallbackLabelX, fallbackLabelY] = useMemo(() => {
     if (isSelfRef) {
@@ -64,14 +89,14 @@ export function ErEdge(props: EdgeProps<Edge<ErEdgeData>>) {
       const measuredHeight = node?.measured?.height ?? Math.abs(targetY - sourceY)
       const nodeBottomY = nodeTopY + (measuredHeight || 160)
 
-      return buildSelfRefPath(sourceX, sourceY, targetX, targetY, nodeTopY, nodeBottomY)
+      return buildSelfRefPath(sourcePoint.x, sourcePoint.y, targetPoint.x, targetPoint.y, nodeTopY, nodeBottomY)
     }
 
     return getSmoothStepPath({
-      sourceX,
-      sourceY,
-      targetX,
-      targetY,
+      sourceX: sourcePoint.x,
+      sourceY: sourcePoint.y,
+      targetX: targetPoint.x,
+      targetY: targetPoint.y,
       sourcePosition: sourcePosition ?? Position.Right,
       targetPosition: targetPosition ?? Position.Left,
       borderRadius: BORDER_RADIUS,
@@ -80,9 +105,11 @@ export function ErEdge(props: EdgeProps<Edge<ErEdgeData>>) {
     isSelfRef,
     nodeLookup,
     source,
-    sourceX,
+    sourcePoint.x,
+    sourcePoint.y,
+    targetPoint.x,
+    targetPoint.y,
     sourceY,
-    targetX,
     targetY,
     sourcePosition,
     targetPosition,
@@ -112,6 +139,7 @@ export function ErEdge(props: EdgeProps<Edge<ErEdgeData>>) {
   const strokeWidth = selected ? 2.5 : 2
   const strokeDasharray = isVirtual ? '6 3' : undefined
   const relationLabel = RELATION_LABEL[data?.relationType ?? 'one_to_many'] ?? '1:N'
+  const editableRelationType = isRelationType(data?.relationType ?? '') ? data?.relationType : 'many_to_one'
 
   return (
     <>
@@ -148,13 +176,59 @@ export function ErEdge(props: EdgeProps<Edge<ErEdgeData>>) {
       })}
       <EdgeLabelRenderer>
         <div
-          className="pointer-events-none absolute rounded border border-[var(--dt-border-default)] bg-[var(--dt-bg-canvas)] px-1.5 py-0.5 font-mono text-[11px] text-[var(--dt-text-muted)]"
+          className={[
+            isEditable
+              ? 'pointer-events-auto flex items-center gap-1 rounded-md border border-[var(--dt-border-default)] bg-[var(--dt-bg-canvas)] px-1 py-0.5 shadow-sm'
+              : 'pointer-events-none rounded border border-[var(--dt-border-default)] bg-[var(--dt-bg-canvas)] px-1.5 py-0.5 font-mono text-[11px] text-[var(--dt-text-muted)]',
+            'absolute',
+          ].join(' ')}
           style={{
             transform: `translate(-50%, -50%) translate(${labelPos.x}px, ${labelPos.y}px)`,
           }}
+          onClick={(event) => event.stopPropagation()}
         >
-          {relationLabel}
-          {isVirtual ? <span className="ml-1 text-[var(--dt-accent-warn)]">virtual</span> : null}
+          {isEditable ? (
+            <>
+              <Select
+                value={editableRelationType}
+                onValueChange={(nextValue) => {
+                  if (typeof nextValue === 'string' && isRelationType(nextValue)) {
+                    data?.onUpdateRelationType?.(nextValue)
+                  }
+                }}
+              >
+                <SelectTrigger
+                  aria-label={t('erCanvas.edge.relationType')}
+                  nativeButton={false}
+                  render={<div />}
+                  size="sm"
+                  className="nodrag h-6 w-[58px] border-transparent bg-transparent px-1 font-mono text-[11px] text-[var(--dt-text-muted)] hover:bg-[var(--dt-interaction-hover)]"
+                >
+                  <span className="flex flex-1 text-left">{relationLabel}</span>
+                </SelectTrigger>
+                <SelectContent className="bg-[var(--dt-bg-panel)]">
+                  {RELATION_TYPE_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <button
+                type="button"
+                aria-label={t('erCanvas.edge.deleteRelation')}
+                onClick={() => data?.onDeleteRelation?.()}
+                className="nodrag rounded p-1 text-[var(--dt-text-soft)] transition-colors hover:bg-[var(--dt-status-danger-surface)] hover:text-[var(--dt-status-danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dt-interaction-focus-ring)]"
+              >
+                <Trash2Icon className="size-3" aria-hidden="true" />
+              </button>
+            </>
+          ) : (
+            <>
+              {relationLabel}
+              {isVirtual ? <span className="ml-1 text-[var(--dt-accent-warn)]">virtual</span> : null}
+            </>
+          )}
         </div>
       </EdgeLabelRenderer>
     </>
@@ -163,3 +237,24 @@ export function ErEdge(props: EdgeProps<Edge<ErEdgeData>>) {
 
 export const MemoErEdge = memo(ErEdge)
 MemoErEdge.displayName = 'ErEdge'
+
+function isRelationType(value: string): value is ErDesignerRelationDraft['type'] {
+  return RELATION_TYPE_OPTIONS.some((option) => option.value === value)
+}
+
+function alignEndpointToNodeBorder(
+  nodeLookup: NodeLookupLike,
+  nodeId: string,
+  x: number,
+  y: number,
+  position: Position,
+): { x: number; y: number } {
+  const node = nodeLookup.get(nodeId) as ErNodeLookupEntry | undefined
+  const absolute = node?.internals?.positionAbsolute
+  const width = node?.measured?.width
+  if (!absolute || typeof width !== 'number') return { x, y }
+
+  if (position === Position.Left) return { x: absolute.x, y }
+  if (position === Position.Right) return { x: absolute.x + width, y }
+  return { x, y }
+}
