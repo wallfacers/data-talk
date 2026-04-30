@@ -113,6 +113,42 @@ describe('normalizeQueryEditorPayload', () => {
     })
   })
 
+  it('normalizes the SQL context empty sentinel to null', () => {
+    expect(normalizeQueryEditorPayload({
+      connectionId: 'conn-1',
+      database: '__empty__',
+      schema: '__empty__',
+      contextOverride: {
+        connectionId: 'conn-1',
+        database: '__empty__',
+        schema: '__empty__',
+      },
+    })).toMatchObject({
+      connectionId: 'conn-1',
+      database: null,
+      schema: null,
+      contextOverride: {
+        connectionId: 'conn-1',
+        database: null,
+        schema: null,
+      },
+    })
+  })
+
+  it('preserves the explicit session context pin mode marker', () => {
+    expect(normalizeQueryEditorPayload({
+      contextOverride: null,
+      contextPinMode: 'session',
+    })).toMatchObject({
+      contextOverride: null,
+      contextPinMode: 'session',
+    })
+
+    expect(normalizeQueryEditorPayload({
+      contextPinMode: 'override',
+    }).contextPinMode).toBeNull()
+  })
+
   it('falls back to null for invalid contextOverride payloads', () => {
     expect(normalizeQueryEditorPayload({
       sql: 'select 1',

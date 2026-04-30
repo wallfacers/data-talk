@@ -6,6 +6,7 @@ import {
 } from '@/features/stage/stores/sql-workbench-store'
 import { resolveUniqueTabTitle } from '@/features/stage/utils/unique-tab-title'
 import { generateUuid } from '@/lib/uuid'
+import { useSessionStore } from './session-store'
 
 type RevealOrigin = { x: number; y: number }
 
@@ -197,16 +198,79 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 }
 
-function buildQueryEditorPayload(input: QueryEditorOpenInput) {
+function normalizeContextValue(value: string | null | undefined) {
+  if (value == null) return null
+  const trimmed = value.trim()
+  return trimmed.length > 0 && trimmed !== '__empty__' ? trimmed : null
+}
+
+type ResolvedQueryEditorOpenContext = {
+  originSessionId: string | null
+  connectionId: string | null
+  connectionName: string | null
+  database: string | null
+  schema: string | null
+  pinned: boolean
+}
+
+function resolveQueryEditorOpenContext(input: QueryEditorOpenInput): ResolvedQueryEditorOpenContext {
+  const sessionState = useSessionStore.getState()
+  const explicitConnectionId = normalizeContextValue(input.connectionId)
+  if (explicitConnectionId) {
+    return {
+      originSessionId: input.sessionId ?? null,
+      connectionId: explicitConnectionId,
+      connectionName: normalizeContextValue(input.connectionName),
+      database: normalizeContextValue(input.database),
+      schema: normalizeContextValue(input.schema),
+      pinned: true,
+    }
+  }
+
+  const contextSessionId = input.sessionId ?? sessionState.activeSessionId ?? null
+  const sessionContext = contextSessionId
+    ? sessionState.dataContextBySession.get(contextSessionId) ?? null
+    : null
+  const sessionConnectionId = normalizeContextValue(sessionContext?.connectionId)
+  if (sessionConnectionId) {
+    return {
+      originSessionId: contextSessionId,
+      connectionId: sessionConnectionId,
+      connectionName: normalizeContextValue(sessionContext?.connectionNameSnapshot),
+      database: normalizeContextValue(sessionContext?.database),
+      schema: normalizeContextValue(sessionContext?.schema),
+      pinned: true,
+    }
+  }
+
+  return {
+    originSessionId: contextSessionId,
+    connectionId: null,
+    connectionName: null,
+    database: null,
+    schema: null,
+    pinned: false,
+  }
+}
+
+function buildQueryEditorPayload(input: QueryEditorOpenInput, context: ResolvedQueryEditorOpenContext) {
   const source: 'ai' | 'user' = input.entryMode === 'ai_open' ? 'ai' : 'user'
   return {
     entryMode: input.entryMode,
     source,
     autoRun: input.autoRun === true,
-    connectionId: input.connectionId ?? null,
-    connectionName: input.connectionName ?? null,
-    database: input.database ?? null,
-    schema: input.schema ?? null,
+    connectionId: context.connectionId,
+    connectionName: context.connectionName,
+    database: context.database,
+    schema: context.schema,
+    contextOverride: context.pinned && context.connectionId
+      ? {
+          connectionId: context.connectionId,
+          database: context.database,
+          schema: context.schema,
+        }
+      : null,
+    contextPinMode: null,
   }
 }
 
@@ -546,12 +610,13 @@ export const useStageStore = create<StageState>((set, get) => ({
 
   openQueryEditor: (input) => {
     const latest = get()
+    const openContext = resolveQueryEditorOpenContext(input)
     if (input.openMode === 'reuse_by_resource_context') {
       const existing = latest.tabs.find((t) =>
         t.type === 'query_editor' &&
-        matchesNullable(t.connectionId, input.connectionId) &&
-        matchesNullable(t.database, input.database) &&
-        matchesNullable(t.schema, input.schema)
+        matchesNullable(t.connectionId, openContext.connectionId) &&
+        matchesNullable(t.database, openContext.database) &&
+        matchesNullable(t.schema, openContext.schema)
       )
       if (existing) {
         latest.focusTab(existing.tabId)
@@ -562,15 +627,15 @@ export const useStageStore = create<StageState>((set, get) => ({
       .filter((t) => t.type === 'query_editor')
       .map((t) => t.title)
     const tabId = `query_editor_${generateUuid()}`
-    const payload = buildQueryEditorPayload(input)
+    const payload = buildQueryEditorPayload(input, openContext)
     const tab: StageTab = {
       tabId, type: 'query_editor',
       title: resolveUniqueTabTitle(input.baseTitle, visibleTitles),
-      connectionId: input.connectionId ?? undefined,
-      connectionName: input.connectionName ?? undefined,
-      database: input.database ?? undefined,
-      schema: input.schema ?? undefined,
-      originSessionId: input.sessionId ?? undefined,
+      connectionId: openContext.connectionId ?? undefined,
+      connectionName: openContext.connectionName ?? undefined,
+      database: openContext.database ?? undefined,
+      schema: openContext.schema ?? undefined,
+      originSessionId: openContext.originSessionId ?? undefined,
       payload,
       createdAt: Date.now(),
     }

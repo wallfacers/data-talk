@@ -4,7 +4,14 @@ import { useSessionStore } from '@/stores/session-store'
 import { useStageStore } from '@/stores/stage-store'
 import { normalizeQueryEditorPayload } from './normalize-query-editor-payload'
 import { useSqlWorkbenchStore } from '../stores/sql-workbench-store'
-import { formatQueryEditorSql, runQueryEditorSql, setQueryEditorContext, confirmQueryEditorSql, cancelQueryEditorConfirmation } from './query-editor-actions'
+import {
+  formatQueryEditorSql,
+  runQueryEditorSql,
+  setQueryEditorContext,
+  resetQueryEditorContext,
+  confirmQueryEditorSql,
+  cancelQueryEditorConfirmation,
+} from './query-editor-actions'
 
 const executeSqlMock = vi.hoisted(() => vi.fn())
 const formatSqlMock = vi.hoisted(() => vi.fn((sql: string) => `formatted: ${sql}`))
@@ -468,7 +475,7 @@ describe('query-editor-actions', () => {
     })
   })
 
-  it('writes context overrides through the shared context action and clears them when returning to the base context', () => {
+  it('writes context overrides through the shared context action and keeps them until explicit reset', () => {
     const { tabId } = useStageStore.getState().openQueryEditor({
       sessionId: 'sess-1',
       baseTitle: 'SQL',
@@ -507,8 +514,17 @@ describe('query-editor-actions', () => {
       schema: 'public',
     })
 
-    expect(useSqlWorkbenchStore.getState().tabsById[tabId]?.override).toBeNull()
-    expect(normalizeQueryEditorPayload(getStageTab(tabId)?.payload).contextOverride).toBeNull()
+    expect(useSqlWorkbenchStore.getState().tabsById[tabId]?.override).toMatchObject({
+      connectionId: 'conn-1',
+      database: 'db_main',
+      schema: 'public',
+      source: 'api',
+    })
+    expect(normalizeQueryEditorPayload(getStageTab(tabId)?.payload).contextOverride).toEqual({
+      connectionId: 'conn-1',
+      database: 'db_main',
+      schema: 'public',
+    })
     expect(getStageTab(tabId)).toEqual(expect.objectContaining({
       connectionId: 'conn-1',
       database: 'db_main',
@@ -626,6 +642,86 @@ describe('query-editor-actions', () => {
     })
   })
 
+  it('clears a pinned tab context so execution returns to the latest session context', async () => {
+    useConnectionStore.setState({
+      activeConnectionId: 'conn-fixed',
+      connections: [
+        { id: 'conn-fixed', name: 'Fixed', kind: 'postgres', databaseName: 'fixed_db' } as any,
+        { id: 'conn-session', name: 'Session', kind: 'postgres', databaseName: 'session_db' } as any,
+      ],
+    })
+    useSessionStore.setState({
+      activeSessionId: 'sess-1',
+      modeBySession: new Map(),
+      hasEverSentBySession: new Map(),
+      dataContextBySession: new Map([[
+        'sess-1',
+        {
+          sessionId: 'sess-1',
+          connectionId: 'conn-session',
+          connectionNameSnapshot: 'Session',
+          database: 'session_db',
+          schema: 'session_schema',
+          selectedLevel: 'schema',
+          updatedAt: 1,
+        },
+      ]]),
+      pendingPrompt: null,
+      composerRestoreDraft: null,
+      pendingModelPrompt: false,
+      pendingConnectionPrompt: false,
+      pendingActionAfterConnectionPick: null,
+    })
+
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 'sess-1',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'resource_sql',
+      initialContent: 'select 1',
+      connectionId: 'conn-fixed',
+      connectionName: 'Fixed',
+      database: 'fixed_db',
+      schema: 'fixed_schema',
+    })
+
+    expect(normalizeQueryEditorPayload(getStageTab(tabId)?.payload).contextOverride).toEqual({
+      connectionId: 'conn-fixed',
+      database: 'fixed_db',
+      schema: 'fixed_schema',
+    })
+
+    resetQueryEditorContext(tabId)
+
+    expect(useSqlWorkbenchStore.getState().tabsById[tabId]?.override).toBeNull()
+    expect(normalizeQueryEditorPayload(getStageTab(tabId)?.payload).contextOverride).toBeNull()
+    expect(normalizeQueryEditorPayload(getStageTab(tabId)?.payload).contextPinMode).toBe('session')
+
+    executeSqlMock.mockResolvedValue({
+      status: 'executed',
+      resolvedContext: {
+        connectionId: 'conn-session',
+        connectionName: 'Session',
+        database: 'session_db',
+        schema: 'session_schema',
+        selectedLevel: 'schema',
+      },
+      contextNotice: null,
+      results: [],
+    })
+
+    await runQueryEditorSql({ tabId, sessionId: 'sess-1', limit: null })
+
+    expect(executeSqlMock).toHaveBeenCalledWith({
+      sql: 'select 1',
+      connectionId: 'conn-session',
+      source: 'user',
+      sessionId: 'sess-1',
+      database: 'session_db',
+      schema: 'session_schema',
+    }, expect.any(AbortSignal))
+  })
+
   it('uses the latest session context as the default execution context even when tab metadata and resolvedContext are stale', async () => {
     useConnectionStore.setState({
       activeConnectionId: 'conn-1',
@@ -668,6 +764,11 @@ describe('query-editor-actions', () => {
       database: 'db_main',
       schema: 'public',
     })
+    useStageStore.getState().updateTabPayload(tabId, (payload) => ({
+      ...(payload as Record<string, unknown>),
+      contextOverride: null,
+      contextPinMode: 'session',
+    }))
 
     useSqlWorkbenchStore.setState((state) => ({
       tabsById: {

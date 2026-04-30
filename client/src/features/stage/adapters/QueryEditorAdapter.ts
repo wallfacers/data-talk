@@ -5,6 +5,7 @@ import { useStageStore } from '@/stores/stage-store'
 import { normalizeQueryEditorPayload } from '@/features/stage/utils/normalize-query-editor-payload'
 import { useSqlWorkbenchStore } from '@/features/stage/stores/sql-workbench-store'
 import { useSessionStore } from '@/stores/session-store'
+import type { SessionDataContext } from '@/services/api/session-data-context'
 import { formatQueryEditorSql, runQueryEditorSql, setQueryEditorContext } from '@/features/stage/utils/query-editor-actions'
 import { resolveTabDataContext } from '@/features/stage/utils/resolve-tab-data-context'
 
@@ -132,6 +133,26 @@ function summarizeResult(result: {
   return summary
 }
 
+function resolveImplicitSessionOverride(
+  payload: ReturnType<typeof normalizeQueryEditorPayload>,
+  sessionContext: SessionDataContext | null,
+  connections: Array<{ id: string; name: string }>,
+) {
+  if (payload.contextPinMode === 'session') return null
+  if (!sessionContext?.connectionId) return null
+
+  return {
+    connectionId: sessionContext.connectionId,
+    connectionName: connections.find((connection) => connection.id === sessionContext.connectionId)?.name
+      ?? sessionContext.connectionNameSnapshot
+      ?? null,
+    database: sessionContext.database ?? null,
+    schema: sessionContext.schema ?? null,
+    source: 'open_payload' as const,
+    setAt: 0,
+  }
+}
+
 export class QueryEditorAdapter implements UIObject {
   type = 'query_editor'
   patchCapabilities = PATCH_CAPABILITIES
@@ -166,7 +187,7 @@ export class QueryEditorAdapter implements UIObject {
     const tab = this.getTab()
     const payload = normalizeQueryEditorPayload(tab?.payload)
     const workbenchTab = useSqlWorkbenchStore.getState().tabsById[this.objectId]
-    const sessionId = tab?.originSessionId ?? this.getSessionId() ?? null
+    const sessionId = tab?.originSessionId ?? this.getSessionId() ?? useSessionStore.getState().activeSessionId ?? null
     const sessionContext = sessionId
       ? useSessionStore.getState().dataContextBySession.get(sessionId) ?? null
       : null
@@ -206,7 +227,7 @@ export class QueryEditorAdapter implements UIObject {
           source: 'open_payload' as const,
           setAt: 0,
         }
-      : null)
+      : resolveImplicitSessionOverride(payload, sessionContext, connectionState.connections))
     const effectiveContext = hydratedOverride
       ? {
           sessionId: resolvedExecutionContext.sessionId ?? sessionId,

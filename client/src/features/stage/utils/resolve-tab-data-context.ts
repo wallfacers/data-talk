@@ -30,6 +30,15 @@ export type ResolvedTabDataContext = {
   selectedLevel: 'connection' | 'database' | 'schema' | null
 }
 
+const EMPTY_CONTEXT_SELECT_VALUE = '__empty__'
+
+function normalizeContextValue(value: string | null | undefined) {
+  if (value == null) return null
+  const trimmed = value.trim()
+  if (trimmed.length === 0 || trimmed === EMPTY_CONTEXT_SELECT_VALUE) return null
+  return trimmed
+}
+
 function pickField(
   tabValue: string | null | undefined,
   payloadValue: string | null | undefined,
@@ -37,10 +46,13 @@ function pickField(
   inheritSessionContext: boolean,
   preferSessionContext: boolean,
 ) {
-  if (preferSessionContext && inheritSessionContext && sessionValue != null && sessionValue !== '') return sessionValue
-  if (tabValue != null && tabValue !== '') return tabValue
-  if (payloadValue != null && payloadValue !== '') return payloadValue
-  if (inheritSessionContext && sessionValue != null && sessionValue !== '') return sessionValue
+  const normalizedTabValue = normalizeContextValue(tabValue)
+  const normalizedPayloadValue = normalizeContextValue(payloadValue)
+  const normalizedSessionValue = normalizeContextValue(sessionValue)
+  if (preferSessionContext && inheritSessionContext && normalizedSessionValue != null) return normalizedSessionValue
+  if (normalizedTabValue != null) return normalizedTabValue
+  if (normalizedPayloadValue != null) return normalizedPayloadValue
+  if (inheritSessionContext && normalizedSessionValue != null) return normalizedSessionValue
   return null
 }
 

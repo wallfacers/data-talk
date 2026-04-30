@@ -301,8 +301,12 @@ describe('QueryEditorAdapter', () => {
       connectionName: 'Session Warehouse',
       database: 'session-db',
       schema: 'session-schema',
-      contextSource: 'session',
-      contextOverride: null,
+      contextSource: 'override',
+      contextOverride: expect.objectContaining({
+        connectionId: 'session-conn',
+        database: 'session-db',
+        schema: 'session-schema',
+      }),
     }))
   })
 
@@ -348,6 +352,11 @@ describe('QueryEditorAdapter', () => {
       database: 'analytics',
       schema: 'public',
     })
+    useStageStore.getState().updateTabPayload(tabId, (payload) => ({
+      ...(payload as Record<string, unknown>),
+      contextOverride: null,
+      contextPinMode: 'session',
+    }))
 
     useSqlWorkbenchStore.setState((state) => ({
       tabsById: {

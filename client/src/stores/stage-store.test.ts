@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { normalizeQueryEditorPayload } from '@/features/stage/utils/normalize-query-editor-payload'
+import { useSessionStore } from './session-store'
 import { useStageStore } from './stage-store'
 
 function reset() {
@@ -15,6 +17,17 @@ function reset() {
     activeTabId: null,
     leftRailWidth: 240, leftRailCollapsed: false,
   } as never, false)
+  useSessionStore.setState({
+    activeSessionId: null,
+    modeBySession: new Map(),
+    hasEverSentBySession: new Map(),
+    dataContextBySession: new Map(),
+    pendingPrompt: null,
+    composerRestoreDraft: null,
+    pendingModelPrompt: false,
+    pendingConnectionPrompt: false,
+    pendingActionAfterConnectionPick: null,
+  })
 }
 
 function makeTab(over: Record<string, unknown> = {}) {
@@ -118,6 +131,100 @@ describe('useStageStore (single-flag stage panel)', () => {
   })
 
   describe('tabs / library / workset', () => {
+    it('pins a blank query editor to the current session data context when no explicit context is supplied', () => {
+      useSessionStore.setState({
+        activeSessionId: 'sess-1',
+        modeBySession: new Map(),
+        hasEverSentBySession: new Map(),
+        dataContextBySession: new Map([[
+          'sess-1',
+          {
+            sessionId: 'sess-1',
+            connectionId: 'conn-session',
+            connectionNameSnapshot: 'Warehouse',
+            database: 'warehouse',
+            schema: 'analytics',
+            selectedLevel: 'schema',
+            updatedAt: 1,
+          },
+        ]]),
+        pendingPrompt: null,
+        composerRestoreDraft: null,
+        pendingModelPrompt: false,
+        pendingConnectionPrompt: false,
+        pendingActionAfterConnectionPick: null,
+      })
+
+      const { tabId } = useStageStore.getState().openQueryEditor({
+        sessionId: 'sess-1',
+        baseTitle: 'SQL',
+        openMode: 'always_new',
+        entryMode: 'blank',
+      })
+
+      const tab = useStageStore.getState().tabs.find((item) => item.tabId === tabId)
+      const payload = normalizeQueryEditorPayload(tab?.payload)
+      expect(tab).toMatchObject({
+        originSessionId: 'sess-1',
+        connectionId: 'conn-session',
+        connectionName: 'Warehouse',
+        database: 'warehouse',
+        schema: 'analytics',
+      })
+      expect(payload.contextOverride).toEqual({
+        connectionId: 'conn-session',
+        database: 'warehouse',
+        schema: 'analytics',
+      })
+    })
+
+    it('pins a blank query editor to the active session when the open request has no session id', () => {
+      useSessionStore.setState({
+        activeSessionId: 'sess-active',
+        modeBySession: new Map(),
+        hasEverSentBySession: new Map(),
+        dataContextBySession: new Map([[
+          'sess-active',
+          {
+            sessionId: 'sess-active',
+            connectionId: 'conn-active',
+            connectionNameSnapshot: 'Active Warehouse',
+            database: 'active_db',
+            schema: 'active_schema',
+            selectedLevel: 'schema',
+            updatedAt: 1,
+          },
+        ]]),
+        pendingPrompt: null,
+        composerRestoreDraft: null,
+        pendingModelPrompt: false,
+        pendingConnectionPrompt: false,
+        pendingActionAfterConnectionPick: null,
+      })
+
+      const { tabId } = useStageStore.getState().openQueryEditor({
+        sessionId: null,
+        baseTitle: 'SQL',
+        openMode: 'always_new',
+        entryMode: 'blank',
+      })
+
+      const tab = useStageStore.getState().tabs.find((item) => item.tabId === tabId)
+      const payload = normalizeQueryEditorPayload(tab?.payload)
+      expect(tab).toMatchObject({
+        originSessionId: 'sess-active',
+        connectionId: 'conn-active',
+        connectionName: 'Active Warehouse',
+        database: 'active_db',
+        schema: 'active_schema',
+      })
+      expect(payload.contextOverride).toEqual({
+        connectionId: 'conn-active',
+        database: 'active_db',
+        schema: 'active_schema',
+      })
+    })
+
     it('detachFromWorkset removes from workset, picks previous order as new active', () => {
       useStageStore.setState({
         tabs: [makeTab({ tabId: 'a' }), makeTab({ tabId: 'b' }), makeTab({ tabId: 'c' })],

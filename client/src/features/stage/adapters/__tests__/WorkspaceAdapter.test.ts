@@ -368,6 +368,11 @@ describe('WorkspaceAdapter', () => {
       database: 'analytics',
       schema: 'public',
     })
+    useStageStore.getState().updateTabPayload(tabId, (payload) => ({
+      ...(payload as Record<string, unknown>),
+      contextOverride: null,
+      contextPinMode: 'session',
+    }))
 
     const adapter = new WorkspaceAdapter(() => 's1')
     const state = adapter.read('state') as {

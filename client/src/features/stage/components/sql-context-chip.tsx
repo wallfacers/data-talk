@@ -36,7 +36,8 @@ type SqlContextChipProps = {
   context: SqlContextValue | null
   connections: SqlContextConnectionOption[]
   connectionTargetsByConnectionId: Record<string, SqlContextConnectionTargets | undefined>
-  onRequestConnectionTargets?: (connectionId: string) => void | Promise<unknown>
+  onRequestConnections?: () => void | Promise<unknown>
+  onRequestConnectionTargets?: (connectionId: string, options?: { force?: boolean }) => void | Promise<unknown>
   onSetTabContext: (context: SqlContextValue) => void
   onResetTabContext: () => void
 }
@@ -107,6 +108,7 @@ export function SqlContextChip({
   context,
   connections,
   connectionTargetsByConnectionId,
+  onRequestConnections,
   onRequestConnectionTargets,
   onSetTabContext,
   onResetTabContext,
@@ -223,8 +225,8 @@ export function SqlContextChip({
 
   function handleConnectionChange(nextConnectionId: string | null) {
     const nextId = nextConnectionId ?? ''
-    setDraft((previous) => {
-      if (previous.connectionId === nextId) return previous
+    if (draft.connectionId === nextId) return
+    setDraft(() => {
       const nextConnection = connectionMap.get(nextId)
       return {
         connectionId: nextId,
@@ -232,6 +234,15 @@ export function SqlContextChip({
         schema: '',
       }
     })
+    if (nextId) {
+      void onRequestConnectionTargets?.(nextId, { force: true })
+    }
+  }
+
+  function requestDraftConnectionTargets(force: boolean) {
+    const connectionId = normalizeValue(draft.connectionId)
+    if (!connectionId) return
+    void onRequestConnectionTargets?.(connectionId, { force })
   }
 
   return (
@@ -311,7 +322,13 @@ export function SqlContextChip({
               <label className="text-xs text-muted-foreground" htmlFor={`${databaseDatalistId}-connection`}>
                 {t('stage.context.field.connection')}
               </label>
-              <Select value={draft.connectionId} onValueChange={handleConnectionChange}>
+              <Select
+                value={draft.connectionId}
+                onValueChange={handleConnectionChange}
+                onOpenChange={(nextOpen) => {
+                  if (nextOpen) void onRequestConnections?.()
+                }}
+              >
                 <SelectTrigger
                   size="sm"
                   id={`${databaseDatalistId}-connection`}
@@ -336,6 +353,9 @@ export function SqlContextChip({
               </label>
               <Select
                 value={toSelectValue(draft.database)}
+                onOpenChange={(nextOpen) => {
+                  if (nextOpen) requestDraftConnectionTargets(true)
+                }}
                 onValueChange={(value) => setDraft((prev) => ({ ...prev, database: fromSelectValue(value) }))}
               >
                 <SelectTrigger
@@ -366,6 +386,9 @@ export function SqlContextChip({
                 </label>
                 <Select
                   value={toSelectValue(draft.schema)}
+                  onOpenChange={(nextOpen) => {
+                    if (nextOpen) requestDraftConnectionTargets(true)
+                  }}
                   onValueChange={(value) => setDraft((prev) => ({ ...prev, schema: fromSelectValue(value) }))}
                 >
                   <SelectTrigger

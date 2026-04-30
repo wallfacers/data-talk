@@ -35,10 +35,14 @@ async function chooseSelectOption(fieldLabel: string, optionLabel: string) {
 describe('SqlContextChip', () => {
   const t = (key: Parameters<typeof translateMessage>[1], values?: Record<string, string | number>) =>
     translateMessage('zh-CN', key, values)
+  const onRequestConnections = vi.fn()
+  const onRequestConnectionTargets = vi.fn()
   const onSetTabContext = vi.fn()
   const onResetTabContext = vi.fn()
 
   beforeEach(() => {
+    onRequestConnections.mockReset()
+    onRequestConnectionTargets.mockReset()
     onSetTabContext.mockReset()
     onResetTabContext.mockReset()
   })
@@ -359,5 +363,38 @@ describe('SqlContextChip', () => {
       database: 'finance',
       schema: 'mart',
     })
+  })
+
+  it('refreshes connections and selected targets every time a context dropdown opens', async () => {
+    render(
+      <SqlContextChip
+        context={context}
+        mode="session"
+        connections={connections}
+        connectionTargetsByConnectionId={connectionTargetsByConnectionId}
+        onRequestConnections={onRequestConnections}
+        onRequestConnectionTargets={onRequestConnectionTargets}
+        onResetTabContext={onResetTabContext}
+        onSetTabContext={onSetTabContext}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: t('stage.context.tooltip.button') }))
+
+    fireEvent.click(screen.getByRole('combobox', { name: t('stage.context.field.connection') }))
+    await waitFor(() => expect(onRequestConnections).toHaveBeenCalledTimes(1))
+
+    fireEvent.click(screen.getByRole('option', { name: 'Primary Connection' }))
+    fireEvent.click(screen.getByRole('combobox', { name: t('stage.context.field.database') }))
+    await waitFor(() => {
+      expect(onRequestConnectionTargets).toHaveBeenCalledWith('conn-1', { force: true })
+    })
+
+    fireEvent.click(screen.getByRole('option', { name: t('stage.context.value.empty') }))
+    fireEvent.click(screen.getByRole('combobox', { name: t('stage.context.field.schema') }))
+    await waitFor(() => {
+      expect(onRequestConnectionTargets).toHaveBeenCalledTimes(2)
+    })
+    expect(onRequestConnectionTargets).toHaveBeenLastCalledWith('conn-1', { force: true })
   })
 })

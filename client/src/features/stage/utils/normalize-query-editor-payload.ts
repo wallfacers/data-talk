@@ -34,14 +34,20 @@ export type NormalizedQueryEditorPayload = {
   database: string | null
   schema: string | null
   contextOverride: NormalizedQueryEditorContextOverride
+  contextPinMode: 'session' | null
 }
+
+const EMPTY_CONTEXT_SELECT_VALUE = '__empty__'
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 }
 
 function normalizeString(value: unknown): string | null {
-  return typeof value === 'string' && value.trim().length > 0 ? value : null
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  if (trimmed.length === 0 || trimmed === EMPTY_CONTEXT_SELECT_VALUE) return null
+  return trimmed
 }
 
 function normalizeSource(value: unknown): 'user' | 'ai' {
@@ -124,6 +130,10 @@ function normalizeContextOverride(value: unknown): NormalizedQueryEditorContextO
   }
 }
 
+function normalizeContextPinMode(value: unknown): 'session' | null {
+  return value === 'session' ? 'session' : null
+}
+
 export function normalizeQueryEditorPayload(payload: unknown): NormalizedQueryEditorPayload {
   const value = isPlainObject(payload) ? payload : {}
   const source = normalizeSource(value.source)
@@ -154,6 +164,7 @@ export function normalizeQueryEditorPayload(payload: unknown): NormalizedQueryEd
     database: normalizeString(value.database),
     schema: normalizeString(value.schema),
     contextOverride: normalizeContextOverride(value.contextOverride),
+    contextPinMode: normalizeContextPinMode(value.contextPinMode),
   }
 }
 
@@ -215,6 +226,7 @@ export function isNormalizedQueryEditorPayload(payload: unknown): payload is Nor
     record.connectionName === normalized.connectionName &&
     record.database === normalized.database &&
     record.schema === normalized.schema &&
-    sameNormalizedContextOverride(record.contextOverride, normalized.contextOverride)
+    sameNormalizedContextOverride(record.contextOverride, normalized.contextOverride) &&
+    record.contextPinMode === normalized.contextPinMode
   )
 }

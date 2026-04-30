@@ -2,6 +2,7 @@ import { useConnectionStore } from '@/features/connection/store'
 import { getCurrentLanguage } from '@/stores/ui-settings-store'
 import { executeSql } from '@/services/api/sql'
 import type { SqlExecuteRequest } from '@/services/api/sql'
+import type { SessionDataContext } from '@/services/api/session-data-context'
 import { useSessionStore } from '@/stores/session-store'
 import { useStageStore } from '@/stores/stage-store'
 import { translateMessage } from '@/i18n/messages'
@@ -223,12 +224,14 @@ function getStageTab(tabId: string) {
 function updateQueryEditorPayloadContextOverride(
   tabId: string,
   contextOverride: { connectionId: string; database: string | null; schema: string | null } | null,
+  contextPinMode: 'session' | null = null,
 ) {
   useStageStore.getState().updateTabPayload(tabId, (payload) => {
     const basePayload = isPlainObject(payload) ? payload : {}
     return {
       ...basePayload,
       contextOverride,
+      contextPinMode,
     }
   })
 }
@@ -258,13 +261,50 @@ function buildRuntimeOverrideFromPayload(params: {
   return override
 }
 
+function resolveImplicitTabContextOverride(
+  tab: ReturnType<typeof getStageTab>,
+  payload: ReturnType<typeof normalizeQueryEditorPayload>,
+  fallbackConnectionName: string | null,
+) {
+  const connectionId = payload.connectionId ?? tab?.connectionId ?? null
+  if (!connectionId) return null
+
+  const shouldTreatAsFixed =
+    payload.entryMode !== 'blank'
+    || !tab?.originSessionId
+
+  if (!shouldTreatAsFixed) return null
+
+  return buildRuntimeOverrideFromPayload({
+    connectionId,
+    database: payload.database ?? tab?.database ?? null,
+    schema: payload.schema ?? tab?.schema ?? null,
+    fallbackConnectionName: payload.connectionName ?? tab?.connectionName ?? fallbackConnectionName,
+  })
+}
+
+function resolveImplicitSessionContextOverride(
+  payload: ReturnType<typeof normalizeQueryEditorPayload>,
+  sessionContext: SessionDataContext | null,
+) {
+  if (payload.contextPinMode === 'session') return null
+  if (!sessionContext?.connectionId) return null
+
+  return buildRuntimeOverrideFromPayload({
+    connectionId: sessionContext.connectionId,
+    database: sessionContext.database ?? null,
+    schema: sessionContext.schema ?? null,
+    fallbackConnectionName: sessionContext.connectionNameSnapshot ?? null,
+  })
+}
+
 function resolveQueryEditorContexts(tabId: string, sessionIdOverride: string | null) {
   const tab = getStageTab(tabId)
   const payload = normalizeQueryEditorPayload(tab?.payload)
   const sqlWorkbenchState = useSqlWorkbenchStore.getState()
   const tabState = sqlWorkbenchState.tabsById[tabId] ?? null
   const connectionState = useConnectionStore.getState()
-  const sessionId = sessionIdOverride ?? tab?.originSessionId ?? null
+  const sessionId = sessionIdOverride ?? tab?.originSessionId ?? useSessionStore.getState().activeSessionId ?? null
   const sessionContext = sessionId
     ? useSessionStore.getState().dataContextBySession.get(sessionId) ?? null
     : null
@@ -272,10 +312,6 @@ function resolveQueryEditorContexts(tabId: string, sessionIdOverride: string | n
   const resolvedContext = resolveTabDataContext(
     {
       originSessionId: sessionId,
-      connectionId: payload.connectionId ?? tab?.connectionId ?? null,
-      connectionName: payload.connectionName ?? tab?.connectionName ?? null,
-      database: payload.database ?? tab?.database ?? null,
-      schema: payload.schema ?? tab?.schema ?? null,
     },
     sessionContext,
       {
@@ -302,7 +338,10 @@ function resolveQueryEditorContexts(tabId: string, sessionIdOverride: string | n
         schema: payload.contextOverride.schema,
         fallbackConnectionName: payload.connectionName ?? tab?.connectionName ?? defaultContext.connectionName,
       })
-    : null)
+    : (
+        resolveImplicitTabContextOverride(tab, payload, defaultContext.connectionName)
+        ?? resolveImplicitSessionContextOverride(payload, sessionContext)
+      ))
 
   const effectiveContext: QueryEditorExecutionContext = currentOverride
     ? {
@@ -608,7 +647,7 @@ export function setQueryEditorContext(params: {
   const stageTab = getStageTab(tabId)
   if (!stageTab) return
 
-  const { currentOverride, defaultContext, effectiveContext, persistedBaseContext } = resolveQueryEditorContexts(tabId, null)
+  const { defaultContext, effectiveContext, persistedBaseContext } = resolveQueryEditorContexts(tabId, null)
   const stageStore = useStageStore.getState()
   const sqlWorkbenchStore = useSqlWorkbenchStore.getState()
 
@@ -626,23 +665,7 @@ export function setQueryEditorContext(params: {
       schema: nextSchema,
     })
     sqlWorkbenchStore.resetTabContext(tabId)
-    updateQueryEditorPayloadContextOverride(tabId, null)
-    return
-  }
-
-  const shouldResetOverride =
-    nextConnectionId === defaultContext.connectionId
-    && nextDatabase === defaultContext.database
-    && nextSchema === defaultContext.schema
-
-  const matchesPersistedBaseContext =
-    nextConnectionId === persistedBaseContext.connectionId
-    && nextDatabase === persistedBaseContext.database
-    && nextSchema === persistedBaseContext.schema
-
-  if (shouldResetOverride && (currentOverride || matchesPersistedBaseContext)) {
-    sqlWorkbenchStore.resetTabContext(tabId)
-    updateQueryEditorPayloadContextOverride(tabId, null)
+    updateQueryEditorPayloadContextOverride(tabId, null, 'session')
     return
   }
 
@@ -661,5 +684,19 @@ export function setQueryEditorContext(params: {
     connectionId: nextConnectionId,
     database: nextDatabase,
     schema: nextSchema,
+  }, null)
+}
+
+export function resetQueryEditorContext(tabId: string): void {
+  const stageTab = getStageTab(tabId)
+  if (!stageTab) return
+
+  useStageStore.getState().setQueryEditorContext(tabId, {
+    connectionId: null,
+    connectionName: null,
+    database: null,
+    schema: null,
   })
+  useSqlWorkbenchStore.getState().resetTabContext(tabId)
+  updateQueryEditorPayloadContextOverride(tabId, null, 'session')
 }

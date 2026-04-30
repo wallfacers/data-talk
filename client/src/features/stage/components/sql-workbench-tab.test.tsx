@@ -132,6 +132,7 @@ vi.mock('../utils/format-sql', () => ({
 
 vi.mock('@/services/api/connection', () => ({
   listConnections: listConnectionsMock,
+  getConnectionTargets: listConnectionTargetsMock,
 }))
 
 vi.mock('@/features/connection/store', () => {
@@ -408,6 +409,13 @@ describe('SqlWorkbenchTab', () => {
           connectionName: 'Primary Connection',
           database: 'db_main',
           schema: 'public',
+          payload: {
+            initialSql: 'select 1;',
+            source: 'user',
+            entryMode: 'blank',
+            contextOverride: null,
+            contextPinMode: 'session',
+          },
         }}
       />,
     )
@@ -417,6 +425,101 @@ describe('SqlWorkbenchTab', () => {
     expect(screen.getByRole('combobox', { name: t('stage.context.field.connection') })).toHaveTextContent('Warehouse')
     expect(screen.getByRole('combobox', { name: t('stage.context.field.database') })).toHaveTextContent('warehouse')
     expect(screen.getByRole('combobox', { name: t('stage.context.field.schema') })).toHaveTextContent('analytics')
+  })
+
+  it('treats a legacy blank tab without a context override as pinned to the active session context', () => {
+    sessionDataContextSnapshot.context = {
+      sessionId: 'session-active',
+      connectionId: 'conn-2',
+      connectionNameSnapshot: 'Warehouse',
+      database: 'warehouse',
+      schema: 'analytics',
+      selectedLevel: 'schema',
+      updatedAt: 2,
+    }
+    connectionStoreSnapshot.connections = [
+      { id: 'conn-2', name: 'Warehouse', kind: 'postgres', databaseName: 'warehouse' },
+    ]
+    useSessionStore.setState({
+      activeSessionId: 'session-active',
+      dataContextBySession: new Map([['session-active', sessionDataContextSnapshot.context]]),
+    })
+
+    render(
+      <SqlWorkbenchTab
+        tab={{
+          ...tab,
+          tabId: 'tab-legacy-active-session-context',
+          originSessionId: undefined,
+          connectionId: undefined,
+          connectionName: undefined,
+          database: undefined,
+          schema: undefined,
+          payload: {
+            initialSql: 'select 1;',
+            source: 'user',
+            entryMode: 'blank',
+            contextOverride: null,
+          },
+        }}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: t('stage.context.tooltip.button') }))
+
+    expect(screen.getByText(t('stage.context.label.override'))).toBeTruthy()
+    expect(screen.getByText('Warehouse')).toBeTruthy()
+    expect(screen.getByText('warehouse')).toBeTruthy()
+    expect(screen.getByText('analytics')).toBeTruthy()
+    expect(screen.getByRole('button', { name: t('stage.context.action.useSession') })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: t('stage.context.action.applyOverride') })).toBeNull()
+  })
+
+  it('honors an explicit unpin marker for an active session context', () => {
+    sessionDataContextSnapshot.context = {
+      sessionId: 'session-active',
+      connectionId: 'conn-2',
+      connectionNameSnapshot: 'Warehouse',
+      database: 'warehouse',
+      schema: 'analytics',
+      selectedLevel: 'schema',
+      updatedAt: 2,
+    }
+    connectionStoreSnapshot.connections = [
+      { id: 'conn-2', name: 'Warehouse', kind: 'postgres', databaseName: 'warehouse' },
+    ]
+    useSessionStore.setState({
+      activeSessionId: 'session-active',
+      dataContextBySession: new Map([['session-active', sessionDataContextSnapshot.context]]),
+    })
+
+    render(
+      <SqlWorkbenchTab
+        tab={{
+          ...tab,
+          tabId: 'tab-explicit-unpinned-active-session-context',
+          originSessionId: undefined,
+          connectionId: undefined,
+          connectionName: undefined,
+          database: undefined,
+          schema: undefined,
+          payload: {
+            initialSql: 'select 1;',
+            source: 'user',
+            entryMode: 'blank',
+            contextOverride: null,
+            contextPinMode: 'session',
+          },
+        }}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: t('stage.context.tooltip.button') }))
+
+    expect(screen.getByText(t('stage.context.label.session'))).toBeTruthy()
+    expect(screen.getByRole('combobox', { name: t('stage.context.field.connection') })).toHaveTextContent('Warehouse')
+    expect(screen.getByRole('button', { name: t('stage.context.action.applyOverride') })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: t('stage.context.action.useSession') })).toBeNull()
   })
 
   it('retries loading connection targets when reopening the SQL context after an initial failure', async () => {

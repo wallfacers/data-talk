@@ -104,4 +104,28 @@ describe('resolveTabDataContext', () => {
       selectedLevel: 'schema',
     })
   })
+
+  it('treats the SQL context empty sentinel as an unset database and schema', () => {
+    const resolved = resolveTabDataContext(
+      {
+        originSessionId: 'sess-1',
+        connectionId: 'conn-tab',
+        database: '__empty__',
+        schema: '__empty__',
+        payload: {
+          database: '__empty__',
+          schema: '__empty__',
+        },
+      },
+      null,
+      { inheritSessionContext: true },
+    )
+
+    expect(resolved).toMatchObject({
+      connectionId: 'conn-tab',
+      database: null,
+      schema: null,
+      selectedLevel: 'connection',
+    })
+  })
 })
