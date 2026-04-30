@@ -112,6 +112,13 @@ export class StagePersistenceCoordinator {
       this.onPayloadHydrated?.(tabId, r.payload, r.payloadVersion)
     })
     this.hydrationCache.set(tabId, p)
+    // Caching a rejected promise would permanently poison this tabId — even
+    // after content lands server-side, every subsequent call would replay the
+    // original failure. Drop the cache entry on rejection so the next caller
+    // gets a fresh fetch.
+    p.catch(() => {
+      if (this.hydrationCache.get(tabId) === p) this.hydrationCache.delete(tabId)
+    })
     return p
   }
 

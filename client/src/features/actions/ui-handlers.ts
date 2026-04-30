@@ -108,13 +108,15 @@ registerClientHandler('datatalk.ui.exec', async (input) => {
   if (i.action === 'run_sql' && target) await coordinator.flush(target)
   const result = await forward({ tool: 'ui_exec', object: i.object, target: i.target ?? 'active', payload: { action: i.action, params: i.params } })
   if (target && isMutatingExec(i.action)) await coordinator.flush(target)
-  const created = isRecord(result)
-    ? (
-      (typeof result.tabId === 'string' ? result.tabId : undefined)
-      ?? (typeof result.newTabId === 'string' ? result.newTabId : undefined)
-      ?? (typeof result.queryEditorTabId === 'string' ? result.queryEditorTabId : undefined)
-    )
-    : undefined
+  // result is the unwrapped UIResponse.data, which UIRouter.handleExec sets to
+  // the full ExecResult ({ success, data: { tabId, ... } }). The newly-created
+  // tab id therefore lives at result.data.tabId, not at the top level.
+  const exec = isRecord(result) && isRecord(result.data) ? result.data : {}
+  const created = (
+    (typeof exec.tabId === 'string' ? exec.tabId : undefined)
+    ?? (typeof exec.newTabId === 'string' ? exec.newTabId : undefined)
+    ?? (typeof exec.queryEditorTabId === 'string' ? exec.queryEditorTabId : undefined)
+  )
   if (created && created !== target) await coordinator.flush(created)
   return result
 })
