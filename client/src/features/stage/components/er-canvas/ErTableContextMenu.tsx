@@ -1,4 +1,5 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { PencilIcon, PlusIcon, Trash2Icon, type LucideIcon } from 'lucide-react'
+import { useEffect, useRef, type KeyboardEvent } from 'react'
 import { useI18n } from '@/i18n/use-i18n'
 
 interface ErTableContextMenuProps {
@@ -22,7 +23,31 @@ export function ErTableContextMenu({
 }: ErTableContextMenuProps) {
   const { t } = useI18n()
   const ref = useRef<HTMLDivElement>(null)
+  const itemRefs = useRef<Array<HTMLButtonElement | null>>([])
   const label = useFallbackLabel(t)
+
+  const items = [
+    {
+      icon: PencilIcon,
+      label: label('erCanvas.contextMenu.rename', 'Rename'),
+      onSelect: () => onRename(tableId),
+    },
+    {
+      icon: PlusIcon,
+      label: label('erCanvas.contextMenu.addColumn', 'Add column'),
+      onSelect: () => onAddColumn(tableId),
+    },
+    {
+      danger: true,
+      icon: Trash2Icon,
+      label: label('erCanvas.contextMenu.deleteTable', 'Delete table'),
+      onSelect: () => onDeleteTable(tableId),
+    },
+  ]
+
+  useEffect(() => {
+    itemRefs.current[0]?.focus()
+  }, [])
 
   useEffect(() => {
     const closeOnOutsideClick = (event: MouseEvent) => {
@@ -35,41 +60,100 @@ export function ErTableContextMenu({
     return () => document.removeEventListener('mousedown', closeOnOutsideClick)
   }, [onClose])
 
+  const selectItem = (onSelect: () => void) => {
+    onSelect()
+    onClose()
+  }
+
+  const focusItem = (index: number) => {
+    const itemCount = items.length
+    itemRefs.current[(index + itemCount) % itemCount]?.focus()
+  }
+
   return (
     <div
       ref={ref}
       role="menu"
+      aria-orientation="vertical"
       style={{ left: x, top: y }}
-      className="fixed z-50 min-w-36 rounded-lg border border-[var(--dt-border-default)] bg-[var(--dt-bg-panel)] p-1 shadow-md"
+      className="fixed z-50 min-w-44 rounded-[10px] border border-border-subtle bg-bg-panel p-1.5 shadow-md"
     >
-      <MenuItem onClick={() => { onRename(tableId); onClose() }}>
-        {label('erCanvas.contextMenu.rename', 'Rename')}
-      </MenuItem>
-      <MenuItem onClick={() => { onAddColumn(tableId); onClose() }}>
-        {label('erCanvas.contextMenu.addColumn', 'Add column')}
-      </MenuItem>
-      <MenuItem danger onClick={() => { onDeleteTable(tableId); onClose() }}>
-        {label('erCanvas.contextMenu.deleteTable', 'Delete table')}
-      </MenuItem>
+      {items.map((item, index) => (
+        <MenuItem
+          key={item.label}
+          buttonRef={(node) => {
+            itemRefs.current[index] = node
+          }}
+          danger={item.danger}
+          icon={item.icon}
+          label={item.label}
+          onClick={() => selectItem(item.onSelect)}
+          onKeyDown={(event) => {
+            if (event.key === 'ArrowDown') {
+              event.preventDefault()
+              focusItem(index + 1)
+              return
+            }
+
+            if (event.key === 'ArrowUp') {
+              event.preventDefault()
+              focusItem(index - 1)
+              return
+            }
+
+            if (event.key === 'Escape') {
+              event.preventDefault()
+              onClose()
+              return
+            }
+
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              selectItem(item.onSelect)
+            }
+          }}
+        />
+      ))}
     </div>
   )
 }
 
-function MenuItem({ children, danger, onClick }: { children: ReactNode; danger?: boolean; onClick: () => void }) {
+function MenuItem({
+  buttonRef,
+  danger,
+  icon: Icon,
+  label,
+  onClick,
+  onKeyDown,
+}: {
+  buttonRef: (node: HTMLButtonElement | null) => void
+  danger?: boolean
+  icon: LucideIcon
+  label: string
+  onClick: () => void
+  onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => void
+}) {
   return (
-    <button
-      type="button"
-      role="menuitem"
-      onClick={onClick}
-      className={[
-        'w-full rounded-md px-2 py-1.5 text-left text-xs outline-none transition-colors',
-        danger
-          ? 'text-[var(--dt-status-danger)] hover:bg-[var(--dt-status-danger-surface)] focus-visible:bg-[var(--dt-status-danger-surface)]'
-          : 'text-[var(--dt-text-base)] hover:bg-[var(--dt-interaction-hover)] focus-visible:bg-[var(--dt-interaction-hover)]',
-      ].join(' ')}
-    >
-      {children}
-    </button>
+    <>
+      {danger ? <div role="separator" className="my-1 border-t border-border-subtle" /> : null}
+      <button
+        ref={buttonRef}
+        type="button"
+        role="menuitem"
+        data-er-menu-variant={danger ? 'danger' : undefined}
+        onClick={onClick}
+        onKeyDown={onKeyDown}
+        className={[
+          'flex h-7 w-full items-center gap-2 rounded-md px-2 text-left text-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-interaction-focusRing',
+          danger
+            ? 'text-status-danger hover:bg-[var(--dt-status-danger-surface)] focus:bg-[var(--dt-status-danger-surface)]'
+            : 'text-text-base hover:bg-interaction-hover focus:bg-interaction-hover',
+        ].join(' ')}
+      >
+        <Icon className="size-3.5 shrink-0" aria-hidden="true" />
+        <span>{label}</span>
+      </button>
+    </>
   )
 }
 

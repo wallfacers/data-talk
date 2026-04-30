@@ -45,6 +45,7 @@ describe('<ErTableNode mode="inspector">', () => {
 
     expect(screen.getByText('users')).toBeInTheDocument()
     expect(screen.getByLabelText(/read-only/i)).toBeInTheDocument()
+    expect(screen.getByTestId('er-mode-indicator')).toHaveAttribute('data-er-mode', 'inspector')
   })
 
   it('renders columns with type metadata and PK/FK icons', () => {
@@ -57,6 +58,9 @@ describe('<ErTableNode mode="inspector">', () => {
     expect(screen.getByText('VARCHAR(255)')).toBeInTheDocument()
     expect(screen.getByLabelText('primary key')).toBeInTheDocument()
     expect(screen.getByLabelText('foreign key')).toBeInTheDocument()
+    expect(screen.getByTestId('er-row-id')).toHaveAttribute('data-er-row-role', 'pk')
+    expect(screen.getByTestId('er-row-account_id')).toHaveAttribute('data-er-row-role', 'fk')
+    expect(screen.getByTestId('er-row-email')).toHaveAttribute('data-er-row-role', 'regular')
   })
 
   it('hides column rows when collapsed', () => {
@@ -64,6 +68,22 @@ describe('<ErTableNode mode="inspector">', () => {
 
     expect(screen.queryByText('id')).not.toBeInTheDocument()
     expect(screen.queryByText('BIGINT')).not.toBeInTheDocument()
+  })
+
+  it('uses a subtle header divider when collapsed in designer mode', () => {
+    renderNode({
+      ...data,
+      mode: 'designer',
+      collapsed: true,
+      onAddColumn: vi.fn(),
+      onUpdateColumn: vi.fn(),
+      onDeleteColumn: vi.fn(),
+    })
+
+    const header = screen.getByLabelText('Table users').querySelector('header')
+
+    expect(header?.className).toContain('border-border-subtle')
+    expect(header?.className).not.toContain('border-border-default')
   })
 
   it('renders an N more button when columns exceed twelve', () => {
@@ -80,6 +100,19 @@ describe('<ErTableNode mode="inspector">', () => {
     expect(screen.getByRole('button', { name: /3 more/i })).toBeInTheDocument()
     expect(screen.getByText('c12')).toBeInTheDocument()
     expect(screen.queryByText('c13')).not.toBeInTheDocument()
+  })
+
+  it('renders no add-column affordance in viewer mode', () => {
+    renderNode()
+
+    expect(screen.queryByRole('button', { name: /add column|添加列/i })).not.toBeInTheDocument()
+  })
+
+  it('renders an empty viewer state without add-column affordance', () => {
+    renderNode({ ...data, columns: [], table: { ...data.table, columns: [] } })
+
+    expect(screen.getByText(/no columns yet|此表暂无列/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /add column|添加列/i })).not.toBeInTheDocument()
   })
 })
 
@@ -101,7 +134,7 @@ describe('<ErTableNode mode="designer">', () => {
     ]))
   })
 
-  it('shows a pencil icon, editable columns, two-tone handles, and add-column affordance', () => {
+  it('shows a pencil icon, editable columns, neutral handles, and add-column affordance', () => {
     renderNode({
       ...data,
       mode: 'designer',
@@ -111,6 +144,7 @@ describe('<ErTableNode mode="designer">', () => {
     })
 
     expect(screen.getByLabelText(/editable designer table/i)).toBeInTheDocument()
+    expect(screen.getByTestId('er-mode-indicator')).toHaveAttribute('data-er-mode', 'designer')
     expect(screen.getByDisplayValue('email')).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: /type for email/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /add column|添加列/i })).toBeInTheDocument()
@@ -119,17 +153,71 @@ describe('<ErTableNode mode="designer">', () => {
     expect(tableNode.className).toContain('w-80')
 
     // Outer Handle is a transparent anchor; the visible ball is an inner <span>
-    // and is always rendered (no hover-to-reveal). Verify the inner ball uses
-    // the success (target) / danger (source) color and pops on direct hover.
+    // and is always rendered. Verify the inner ball uses the neutral
+    // solid (target) / ring (source) shape contract and pops on direct hover.
     const targetHandle = document.querySelector('.react-flow__handle.react-flow__handle-left')
     const sourceHandle = document.querySelector('.react-flow__handle.react-flow__handle-right')
 
     const targetBall = targetHandle?.firstElementChild as HTMLElement | null
     const sourceBall = sourceHandle?.firstElementChild as HTMLElement | null
-    expect(targetBall?.className).toContain('bg-[var(--dt-status-success)]')
-    expect(targetBall?.className).toContain('hover:scale-[1.15]')
-    expect(sourceBall?.className).toContain('bg-[var(--dt-status-danger)]')
-    expect(sourceBall?.className).toContain('hover:scale-[1.15]')
+    expect(targetBall).toHaveAttribute('data-er-handle-shape', 'solid')
+    expect(targetBall?.className).toContain('bg-border-strong')
+    expect(targetBall?.className).toContain('hover:scale-125')
+    expect(sourceBall).toHaveAttribute('data-er-handle-shape', 'ring')
+    expect(sourceBall?.className).toContain('border-border-strong')
+    expect(sourceBall?.className).toContain('hover:scale-125')
+  })
+
+  it('renders NN pills only for non-null columns', () => {
+    renderNode({
+      ...data,
+      mode: 'designer',
+      columns: [
+        { ...columns[0], nullable: false },
+        { ...columns[1], nullable: true },
+        { ...columns[2], nullable: true },
+      ],
+      table: {
+        ...data.table,
+        columns: [
+          { ...columns[0], nullable: false },
+          { ...columns[1], nullable: true },
+          { ...columns[2], nullable: true },
+        ],
+      },
+    })
+
+    expect(document.querySelectorAll('[data-er-nn-pill]')).toHaveLength(1)
+    expect(screen.getByTestId('er-row-id').querySelector('[data-er-nn-pill]')).toBeInTheDocument()
+    expect(screen.getByTestId('er-row-account_id').querySelector('[data-er-nn-pill]')).not.toBeInTheDocument()
+    expect(screen.getByTestId('er-row-email').querySelector('[data-er-nn-pill]')).not.toBeInTheDocument()
+  })
+
+  it('keeps the delete button hidden until row hover or keyboard focus', () => {
+    renderNode({
+      ...data,
+      mode: 'designer',
+      onDeleteColumn: vi.fn(),
+    })
+
+    const deleteButton = screen.getByRole('button', { name: /delete column email/i })
+
+    expect(deleteButton.className).toContain('opacity-0')
+    expect(deleteButton.className).toContain('group-hover:opacity-100')
+    expect(deleteButton.className).toContain('focus-visible:opacity-100')
+  })
+
+  it('renders an empty designer state with add-column affordance', () => {
+    renderNode({
+      ...data,
+      mode: 'designer',
+      columns: [],
+      table: { ...data.table, columns: [] },
+      onAddColumn: vi.fn(),
+    })
+
+    expect(screen.getByText(/no columns yet|此表暂无列/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /add column|添加列/i })).toBeInTheDocument()
   })
 
   it('triggers designer callbacks for adding, updating, and deleting columns', () => {

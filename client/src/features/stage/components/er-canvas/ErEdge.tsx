@@ -60,7 +60,6 @@ export function ErEdge(props: EdgeProps<Edge<ErEdgeData>>) {
     targetPosition,
     data,
     selected,
-    markerEnd,
     markerStart,
   } = props
   const { t } = useI18n()
@@ -136,8 +135,13 @@ export function ErEdge(props: EdgeProps<Edge<ErEdgeData>>) {
     : isVirtual
       ? 'var(--dt-accent-warn)'
       : 'var(--dt-border-strong)'
-  const strokeWidth = selected ? 2.5 : 2
-  const strokeDasharray = isVirtual ? '6 3' : undefined
+  const strokeWidth = selected ? 2 : 1.5
+  const strokeDasharray = isVirtual ? '4 3' : undefined
+  const markerId = selected
+    ? 'er-edge-arrow-selected'
+    : isVirtual
+      ? 'er-edge-arrow-virtual'
+      : 'er-edge-arrow-default'
   const relationLabel = RELATION_LABEL[data?.relationType ?? 'one_to_many'] ?? '1:N'
   const editableRelationType = isRelationType(data?.relationType ?? '') ? data?.relationType : 'many_to_one'
 
@@ -146,7 +150,7 @@ export function ErEdge(props: EdgeProps<Edge<ErEdgeData>>) {
       <path
         d={edgePath}
         fill="none"
-        markerEnd={markerEnd}
+        markerEnd={`url(#${markerId})`}
         markerStart={markerStart}
         stroke={stroke}
         strokeDasharray={strokeDasharray}
@@ -226,7 +230,11 @@ export function ErEdge(props: EdgeProps<Edge<ErEdgeData>>) {
           ) : (
             <>
               {relationLabel}
-              {isVirtual ? <span className="ml-1 text-[var(--dt-accent-warn)]">virtual</span> : null}
+              {isVirtual ? (
+                <span className="ml-1 inline-flex h-4 rounded-sm border border-border-subtle bg-accent-warn-surface px-1 text-[10px] leading-4 text-accent-warn">
+                  virtual
+                </span>
+              ) : null}
             </>
           )}
         </div>

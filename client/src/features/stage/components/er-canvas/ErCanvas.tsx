@@ -15,6 +15,7 @@ import '@xyflow/react/dist/style.css'
 
 import { ErEmptyState } from './ErEmptyState'
 import { MemoErEdge } from './ErEdge'
+import { ErEdgeMarkers } from './ErEdgeMarkers'
 import { ErTableContextMenu } from './ErTableContextMenu'
 import { MemoErTableNode } from './ErTableNode'
 import { ErToolbar } from './ErToolbar'
@@ -332,12 +333,15 @@ function ErCanvasInner(props: ErCanvasProps) {
             proOptions={{ hideAttribution: true }}
           >
             <Background
-              color="var(--dt-border-subtle)"
-              gap={18}
+              color={mode === 'designer'
+                ? 'var(--dt-border-subtle)'
+                : 'color-mix(in srgb, var(--dt-border-subtle) 60%, transparent)'}
+              gap={mode === 'designer' ? 18 : 24}
               size={1}
               variant={BackgroundVariant.Dots}
             />
             <Controls showInteractive={false} />
+            <ErEdgeMarkers />
           </ReactFlow>
         )}
       </div>

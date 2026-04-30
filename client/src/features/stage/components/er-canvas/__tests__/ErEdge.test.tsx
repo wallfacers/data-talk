@@ -63,25 +63,83 @@ function renderEdge(children: React.ReactNode) {
   return render(<svg>{children}</svg>)
 }
 
+function makeEdgeProps(
+  overrides: Partial<React.ComponentProps<typeof ErEdge>> = {},
+): React.ComponentProps<typeof ErEdge> {
+  return {
+    id: 'edge-b',
+    source: 'orders',
+    target: 'users',
+    sourceX: 225,
+    sourceY: 50,
+    targetX: -5,
+    targetY: 20,
+    sourcePosition: 'right' as never,
+    targetPosition: 'left' as never,
+    data: { kind: 'fk', fromColumn: 'user_id', toColumn: 'id' },
+    selected: false,
+    ...overrides,
+  } as React.ComponentProps<typeof ErEdge>
+}
+
 describe('<ErEdge>', () => {
   it('draws designer edges from node borders rather than detached handle centers', () => {
     const { container } = renderEdge(
-      <ErEdge
-        id="edge-b"
-        source="orders"
-        target="users"
-        sourceX={225}
-        sourceY={50}
-        targetX={-5}
-        targetY={20}
-        sourcePosition={'right' as never}
-        targetPosition={'left' as never}
-        data={{ kind: 'fk', fromColumn: 'user_id', toColumn: 'id' }}
-        selected={false}
-      />,
+      <ErEdge {...makeEdgeProps()} />,
     )
 
     expect(container.querySelector('path')?.getAttribute('d')).toBe('M 320,50 L 0,20')
+  })
+
+  it('uses the default arrow marker for unselected foreign key edges', () => {
+    const { container } = renderEdge(<ErEdge {...makeEdgeProps()} />)
+
+    const path = container.querySelector('path')
+    expect(path).toHaveAttribute('stroke', 'var(--dt-border-strong)')
+    expect(path).toHaveAttribute('marker-end', 'url(#er-edge-arrow-default)')
+  })
+
+  it('uses the virtual arrow marker and dash style for unselected virtual edges', () => {
+    const { container } = renderEdge(
+      <ErEdge
+        {...makeEdgeProps({
+          data: { kind: 'virtual', fromColumn: 'user_id', toColumn: 'id' },
+        })}
+      />,
+    )
+
+    const path = container.querySelector('path')
+    expect(path).toHaveAttribute('marker-end', 'url(#er-edge-arrow-virtual)')
+    expect(path).toHaveAttribute('stroke-dasharray', '4 3')
+  })
+
+  it('uses the selected arrow marker for selected foreign key edges', () => {
+    const { container } = renderEdge(<ErEdge {...makeEdgeProps({ selected: true })} />)
+
+    expect(container.querySelector('path')).toHaveAttribute('marker-end', 'url(#er-edge-arrow-selected)')
+  })
+
+  it('renders virtual relation labels with a suffix pill', () => {
+    renderEdge(
+      <ErEdge
+        {...makeEdgeProps({
+          data: { kind: 'virtual', fromColumn: 'user_id', toColumn: 'id' },
+        })}
+      />,
+    )
+
+    expect(screen.getByText('virtual')).toHaveClass(
+      'inline-flex',
+      'h-4',
+      'rounded-sm',
+      'border',
+      'border-border-subtle',
+      'bg-accent-warn-surface',
+      'px-1',
+      'text-[10px]',
+      'leading-4',
+      'text-accent-warn',
+    )
   })
 
   it('lets designer edges update relation type and delete explicitly from the label', async () => {
@@ -90,25 +148,17 @@ describe('<ErEdge>', () => {
 
     renderEdge(
       <ErEdge
-        id="edge-b"
-        source="orders"
-        target="users"
-        sourceX={225}
-        sourceY={50}
-        targetX={-5}
-        targetY={20}
-        sourcePosition={'right' as never}
-        targetPosition={'left' as never}
-        data={{
-          kind: 'fk',
-          relationType: 'many_to_one',
-          fromColumn: 'user_id',
-          toColumn: 'id',
-          mode: 'designer',
-          onUpdateRelationType,
-          onDeleteRelation,
-        }}
-        selected={false}
+        {...makeEdgeProps({
+          data: {
+            kind: 'fk',
+            relationType: 'many_to_one',
+            fromColumn: 'user_id',
+            toColumn: 'id',
+            mode: 'designer',
+            onUpdateRelationType,
+            onDeleteRelation,
+          },
+        })}
       />,
     )
 
@@ -126,25 +176,17 @@ describe('<ErEdge>', () => {
   it('renders the selected designer relation as the short label instead of the internal enum', () => {
     renderEdge(
       <ErEdge
-        id="edge-b"
-        source="orders"
-        target="users"
-        sourceX={225}
-        sourceY={50}
-        targetX={-5}
-        targetY={20}
-        sourcePosition={'right' as never}
-        targetPosition={'left' as never}
-        data={{
-          kind: 'fk',
-          relationType: 'one_to_one',
-          fromColumn: 'user_id',
-          toColumn: 'id',
-          mode: 'designer',
-          onUpdateRelationType: vi.fn(),
-          onDeleteRelation: vi.fn(),
-        }}
-        selected={false}
+        {...makeEdgeProps({
+          data: {
+            kind: 'fk',
+            relationType: 'one_to_one',
+            fromColumn: 'user_id',
+            toColumn: 'id',
+            mode: 'designer',
+            onUpdateRelationType: vi.fn(),
+            onDeleteRelation: vi.fn(),
+          },
+        })}
       />,
     )
 
@@ -156,17 +198,10 @@ describe('<ErEdge>', () => {
   it('skips crossing jump rendering while a node is being dragged', () => {
     const { container } = renderEdge(
       <ErEdge
-        id="edge-b"
-        source="orders"
-        target="users"
-        sourceX={220}
-        sourceY={50}
-        targetX={0}
-        targetY={20}
-        sourcePosition={'right' as never}
-        targetPosition={'left' as never}
-        data={{ kind: 'fk', fromColumn: 'user_id', toColumn: 'id' }}
-        selected={false}
+        {...makeEdgeProps({
+          sourceX: 220,
+          targetX: 0,
+        })}
       />,
     )
 

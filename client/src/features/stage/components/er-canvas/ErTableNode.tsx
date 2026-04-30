@@ -1,6 +1,14 @@
 import { memo, useState } from 'react'
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react'
-import { KeyRoundIcon, LinkIcon, LockIcon, PencilIcon, TableIcon, Trash2Icon } from 'lucide-react'
+import {
+  ChevronDownIcon,
+  KeyRoundIcon,
+  LinkIcon,
+  LockIcon,
+  PencilIcon,
+  TableIcon,
+  Trash2Icon,
+} from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -25,6 +33,7 @@ export interface ErTableNodeData extends ErNodeData {
 }
 
 type ErTableReactFlowNode = Node<ErTableNodeData, 'erTable'>
+type RowRole = 'pk' | 'fk' | 'pkfk' | 'regular'
 
 const COLUMN_PREVIEW_LIMIT = 12
 
@@ -32,6 +41,7 @@ export function ErTableNode({ id, data, selected }: NodeProps<ErTableReactFlowNo
   const { t } = useI18n()
   const label = useFallbackLabel(t)
   const [expanded, setExpanded] = useState(data.columns.length <= COLUMN_PREVIEW_LIMIT)
+  const emptyLabel = label('erCanvas.node.empty', 'No columns yet')
   const visibleColumns = data.collapsed
     ? []
     : expanded
@@ -48,36 +58,59 @@ export function ErTableNode({ id, data, selected }: NodeProps<ErTableReactFlowNo
         // not the display name — patch paths address tables via [id=…].
         data.onOpenContextMenu({ tableId: id, x: event.clientX, y: event.clientY })
       }}
+      data-er-mode={data.mode}
       className={[
-        'w-80 overflow-hidden rounded-md border bg-[var(--dt-bg-canvas)] font-sans shadow-sm transition-colors',
+        'w-80 overflow-hidden rounded-[10px] border bg-bg-canvas font-sans transition-colors',
+        data.mode === 'designer'
+          ? 'border-border-default shadow-sm'
+          : 'border-border-subtle',
         selected
-          ? 'border-[var(--dt-accent-primary)] ring-2 ring-[var(--dt-accent-primary-surface)]'
-          : 'border-[var(--dt-border-default)]',
+          ? 'border-accent-primary ring-2 ring-accent-primary-surface'
+          : '',
       ].join(' ')}
       aria-label={`Table ${data.table.name}`}
     >
-      <header className="flex items-center justify-between gap-2 border-b border-[var(--dt-border-default)] bg-[var(--dt-bg-subtle)] px-3 py-2">
+      <header
+        className={[
+          'flex items-center justify-between gap-2 border-b bg-bg-subtle px-3 py-2',
+          data.mode === 'designer' && !data.collapsed ? 'border-border-default' : 'border-border-subtle',
+        ].join(' ')}
+      >
         <div className="flex min-w-0 items-center gap-2">
-          <TableIcon className="size-3.5 shrink-0 text-[var(--dt-text-muted)]" aria-hidden="true" />
-          <span className="truncate text-sm font-medium leading-5 text-[var(--dt-text-strong)]">
+          <TableIcon className="size-3.5 shrink-0 text-text-muted" aria-hidden="true" />
+          <span className="truncate text-sm font-medium leading-5 text-text-strong">
             {data.table.name}
           </span>
         </div>
-        {data.mode === 'designer' ? (
-          <PencilIcon
-            className="size-3.5 shrink-0 text-[var(--dt-accent-primary)]"
-            aria-label="editable designer table"
-          />
-        ) : (
-          <LockIcon
-            className="size-3.5 shrink-0 text-[var(--dt-text-soft)]"
-            aria-label="read-only inspector view"
-          />
-        )}
+        <div className="flex shrink-0 items-center gap-1.5">
+          {data.collapsed && (
+            <ChevronDownIcon className="size-3.5 text-text-soft" aria-hidden="true" />
+          )}
+          {data.mode === 'designer' ? (
+            <PencilIcon
+              className="size-3.5 shrink-0 text-accent-primary"
+              aria-label="editable designer table"
+              data-testid="er-mode-indicator"
+              data-er-mode="designer"
+            />
+          ) : (
+            <LockIcon
+              className="size-3.5 shrink-0 text-text-soft"
+              aria-label="read-only inspector view"
+              data-testid="er-mode-indicator"
+              data-er-mode="inspector"
+            />
+          )}
+        </div>
       </header>
 
       {!data.collapsed && (
         <ul className="flex flex-col">
+          {visibleColumns.length === 0 && (
+            <li className="px-3 py-5 text-center text-xs leading-4 text-text-soft">
+              {emptyLabel}
+            </li>
+          )}
           {visibleColumns.map((column) => (
             <ColumnRow
               key={getColumnId(column)}
@@ -92,7 +125,7 @@ export function ErTableNode({ id, data, selected }: NodeProps<ErTableReactFlowNo
             <li>
               <button
                 type="button"
-                className="nodrag w-full px-3 py-2 text-left text-xs leading-4 text-[var(--dt-text-muted)] outline-none transition-colors hover:bg-[var(--dt-interaction-hover)] hover:text-[var(--dt-text-strong)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--dt-interaction-focus-ring)]"
+                className="nodrag w-full px-3 py-2 text-left text-xs leading-4 text-text-muted outline-none transition-colors hover:bg-interaction-hover hover:text-text-strong focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-interaction-focusRing"
                 onClick={() => setExpanded(true)}
               >
                 {hiddenColumnCount} more
@@ -104,7 +137,7 @@ export function ErTableNode({ id, data, selected }: NodeProps<ErTableReactFlowNo
               <button
                 type="button"
                 onClick={data.onAddColumn}
-                className="nodrag w-full border-t border-[var(--dt-border-subtle)] px-3 py-2 text-center text-xs font-medium text-[var(--dt-accent-primary)] outline-none transition-colors hover:bg-[var(--dt-accent-primary-surface)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--dt-interaction-focus-ring)]"
+                className="nodrag w-full border-t border-border-subtle px-3 py-2 text-center text-xs font-medium text-accent-primary outline-none transition-colors hover:bg-accent-primary-surface focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-interaction-focusRing"
               >
                 {label('erCanvas.contextMenu.addColumn', 'Add column')}
               </button>
@@ -130,60 +163,83 @@ function ColumnRow({
   onDeleteColumn?: (columnId: string) => void
 }) {
   const columnId = getColumnId(column)
+  const role = rowRole(column)
+  const rowMinHeight = mode === 'designer' ? 'min-h-8' : 'min-h-7'
+  const rowPadding = mode === 'designer' ? 'py-1.5' : 'py-1'
 
   // Outer Handle: transparent anchor positioned by ReactFlow; the visible ball
   // is an inner <span> so direct-hover scaling stays centered (Tailwind's
   // transform would otherwise replace ReactFlow's translateY(-50%)).
   const handleAnchor = mode === 'designer'
-    ? 'er-handle !border-none !bg-transparent !cursor-crosshair flex items-center justify-center z-20'
-    : 'er-handle !border-none !bg-transparent flex items-center justify-center z-20'
-  const targetHandleClassName = handleAnchor
-  const sourceHandleClassName = handleAnchor
-  // Single base size for all visible states (connected, row-hover, direct-hover)
-  // — only the direct-hover state adds a subtle pop + glow as feedback.
-  const ballBase = 'block w-full h-full rounded-full transition-transform duration-150'
-  const targetBallClassName = mode === 'designer'
+    ? 'er-handle !border-none !bg-transparent !cursor-crosshair z-20 flex items-center justify-center'
+    : 'er-handle !border-none !bg-transparent z-20 flex items-center justify-center'
+  const ballBase = 'block rounded-full transition duration-150'
+  const visibilityClass = mode === 'designer'
+    ? 'opacity-100'
+    : 'opacity-0 group-hover:opacity-100'
+  const handleSizeClass = mode === 'designer' ? 'size-2' : 'size-1.5'
+  const targetBallClassName = [
+    ballBase,
+    visibilityClass,
+    handleSizeClass,
+    'bg-border-strong ring-2 ring-bg-canvas hover:scale-125 hover:ring-accent-primary',
+  ].join(' ')
+  const sourceBallClassName = [
+    ballBase,
+    visibilityClass,
+    handleSizeClass,
+    'border-2 border-border-strong bg-bg-canvas hover:scale-125 hover:border-accent-primary hover:ring-2 hover:ring-accent-primary',
+  ].join(' ')
+  const railClassName = role === 'pk' || role === 'pkfk'
     ? [
-        ballBase,
-        'bg-[var(--dt-status-success)] border-2 border-[var(--dt-bg-canvas)]',
-        'hover:scale-[1.15]',
-        'hover:shadow-[0_0_8px_color-mix(in_srgb,var(--dt-status-success)_70%,transparent)]',
+        'absolute left-0 top-0 bottom-0 w-[3px] bg-border-strong',
       ].join(' ')
-    : [ballBase, 'bg-[var(--dt-border-strong)] border-2 border-[var(--dt-bg-canvas)]'].join(' ')
-  const sourceBallClassName = mode === 'designer'
-    ? [
-        ballBase,
-        'bg-[var(--dt-status-danger)] border-2 border-[var(--dt-bg-canvas)]',
-        'hover:scale-[1.15]',
-        'hover:shadow-[0_0_8px_color-mix(in_srgb,var(--dt-status-danger)_70%,transparent)]',
-      ].join(' ')
-    : [ballBase, 'bg-[var(--dt-border-strong)] border-2 border-[var(--dt-bg-canvas)]'].join(' ')
+    : role === 'fk'
+      ? 'absolute left-0 top-1 bottom-1 border-l-[1.5px] border-dashed border-border-default'
+      : 'hidden'
   const handleAnchorStyle = { width: 20, height: 20 } as const
 
   return (
-    <li className="group relative flex min-h-8 items-center justify-between gap-2 border-b border-[var(--dt-border-subtle)] px-3 py-1.5 last:border-b-0 hover:bg-[var(--dt-interaction-hover)]">
+    <li
+      className={[
+        'group relative flex items-center justify-between gap-2 border-b border-border-subtle px-3 last:border-b-0 hover:bg-interaction-hover',
+        rowMinHeight,
+        rowPadding,
+      ].join(' ')}
+      data-testid={`er-row-${column.name}`}
+      data-er-row-role={role}
+    >
+      <span className={railClassName} aria-hidden="true" />
+      {role === 'pkfk' && (
+        <span
+          className="absolute left-[2px] top-1 bottom-1 border-l border-dashed border-border-default"
+          aria-hidden="true"
+        />
+      )}
       <Handle
         type="target"
         position={Position.Left}
         id={`${columnId}-target`}
-        className={targetHandleClassName}
+        className={handleAnchor}
         style={handleAnchorStyle}
       >
-        <span className={targetBallClassName} />
+        <span className={targetBallClassName} data-er-handle-shape="solid" />
       </Handle>
-      <div className="flex min-w-0 items-center gap-1.5">
-        {column.isPK && (
-          <KeyRoundIcon
-            className="size-3 shrink-0 text-[var(--dt-accent-primary)]"
-            aria-label="primary key"
-          />
-        )}
-        {column.isFK && (
-          <LinkIcon
-            className="size-3 shrink-0 text-[var(--dt-text-muted)]"
-            aria-label="foreign key"
-          />
-        )}
+      <div className="flex min-w-0 flex-1 items-center gap-1.5">
+        <div className="flex w-7 shrink-0 items-center gap-1">
+          {(role === 'pk' || role === 'pkfk') && (
+            <KeyRoundIcon
+              className="size-3 shrink-0 text-text-muted group-hover:text-accent-primary"
+              aria-label="primary key"
+            />
+          )}
+          {(role === 'fk' || role === 'pkfk') && (
+            <LinkIcon
+              className="size-3 shrink-0 text-text-muted group-hover:text-accent-primary"
+              aria-label="foreign key"
+            />
+          )}
+        </div>
         {mode === 'designer' ? (
           <input
             type="text"
@@ -191,15 +247,15 @@ function ColumnRow({
             aria-label={`Column name ${column.name}`}
             onChange={(event) => onUpdateColumn?.(columnId, { name: event.target.value })}
             className={[
-              'nodrag min-w-0 flex-1 rounded-sm border border-transparent bg-transparent px-1 text-sm leading-5 outline-none focus:border-[var(--dt-border-default)] focus:bg-[var(--dt-bg-panel)]',
-              column.isPK ? 'font-medium text-[var(--dt-text-strong)]' : 'text-[var(--dt-text-base)]',
+              'nodrag min-w-0 flex-1 rounded-sm border border-transparent bg-transparent px-1 text-sm leading-5 outline-none focus:border-border-default focus:bg-bg-panel',
+              column.isPK ? 'font-medium text-text-strong' : 'text-text-base',
             ].join(' ')}
           />
         ) : (
           <span
             className={[
               'truncate text-sm leading-5',
-              column.isPK ? 'font-medium text-[var(--dt-text-strong)]' : 'text-[var(--dt-text-base)]',
+              column.isPK ? 'font-medium text-text-strong' : 'text-text-base',
             ].join(' ')}
           >
             {column.name}
@@ -214,8 +270,17 @@ function ColumnRow({
           onValueChange={(type) => onUpdateColumn?.(columnId, { type })}
         />
       ) : (
-        <span className="shrink-0 font-mono text-xs leading-4 text-[var(--dt-text-muted)]">
+        <span className="shrink-0 rounded-sm border border-border-subtle bg-bg-subtle px-1.5 font-mono text-xs leading-4 text-text-muted">
           {column.type}
+        </span>
+      )}
+      {column.nullable === false && (
+        <span
+          className="shrink-0 rounded-sm border border-border-subtle px-1.5 text-[10px] font-medium leading-4 text-text-soft"
+          aria-label="NOT NULL"
+          data-er-nn-pill
+        >
+          NN
         </span>
       )}
       {mode === 'designer' && (
@@ -223,7 +288,7 @@ function ColumnRow({
           type="button"
           aria-label={`Delete column ${column.name}`}
           onClick={() => onDeleteColumn?.(columnId)}
-          className="nodrag -mr-1 rounded p-1 text-[var(--dt-text-soft)] transition-colors hover:bg-[var(--dt-status-danger-surface)] hover:text-[var(--dt-status-danger)]"
+          className="nodrag -mr-1 rounded p-1 text-text-soft opacity-0 transition-colors hover:bg-[var(--dt-status-danger-surface)] hover:text-status-danger group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-interaction-focusRing"
         >
           <Trash2Icon className="size-3" aria-hidden="true" />
         </button>
@@ -232,10 +297,10 @@ function ColumnRow({
         type="source"
         position={Position.Right}
         id={`${columnId}-source`}
-        className={sourceHandleClassName}
+        className={handleAnchor}
         style={handleAnchorStyle}
       >
-        <span className={sourceBallClassName} />
+        <span className={sourceBallClassName} data-er-handle-shape="ring" />
       </Handle>
     </li>
   )
@@ -243,6 +308,13 @@ function ColumnRow({
 
 export const MemoErTableNode = memo(ErTableNode)
 MemoErTableNode.displayName = 'ErTableNode'
+
+function rowRole(column: ErColumnMeta): RowRole {
+  if (column.isPK && column.isFK) return 'pkfk'
+  if (column.isPK) return 'pk'
+  if (column.isFK) return 'fk'
+  return 'regular'
+}
 
 const COLUMN_TYPE_OPTIONS = ['BIGINT', 'INT', 'VARCHAR(255)', 'TEXT', 'BOOLEAN', 'DATE', 'TIMESTAMP']
 
@@ -405,11 +477,11 @@ function ColumnTypeSelect({
       <SelectTrigger
         aria-label={label}
         size="sm"
-        className="nodrag h-6 max-w-28 border-[var(--dt-border-default)] bg-[var(--dt-bg-panel)] px-1.5 font-mono text-xs text-[var(--dt-text-muted)]"
+        className="nodrag h-6 max-w-28 border-border-default bg-bg-panel px-1.5 font-mono text-xs text-text-muted"
       >
         <SelectValue />
       </SelectTrigger>
-      <SelectContent className="bg-[var(--dt-bg-panel)]">
+      <SelectContent className="bg-bg-panel">
         {options.map((type) => (
           <SelectItem key={type} value={type}>
             {type}

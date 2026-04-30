@@ -75,6 +75,18 @@ describe('<ErCanvas mode="inspector">', () => {
     expect(screen.getByText('users')).toBeInTheDocument()
   })
 
+  it('mounts edge markers once and uses the 24px inspector grid', () => {
+    const { container } = render(
+      <ErCanvas tabId="t-1" mode="inspector" payload={samplePayload} onPatch={vi.fn()} onExec={vi.fn()} />,
+    )
+
+    expect(container.querySelectorAll('marker#er-edge-arrow-default')).toHaveLength(1)
+    expect(container.querySelector('.react-flow__background pattern')?.getAttribute('width')).toBe('24')
+    expect((container.querySelector('.react-flow__background') as HTMLElement | null)?.style
+      .getPropertyValue('--xy-background-pattern-color-props'))
+      .toBe('color-mix(in srgb, var(--dt-border-subtle) 60%, transparent)')
+  })
+
   it('renders ErEmptyState when payload selection is empty', () => {
     render(
       <ErCanvas
@@ -86,7 +98,7 @@ describe('<ErCanvas mode="inspector">', () => {
       />,
     )
 
-    expect(screen.getByText(/尚未选择表/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /尚未选择表|Nothing selected/i })).toBeInTheDocument()
   })
 })
 
@@ -106,6 +118,18 @@ describe('<ErCanvas mode="designer">', () => {
     expect(screen.getByText('users')).toBeInTheDocument()
     expect(screen.getByText('orders')).toBeInTheDocument()
     expect(document.querySelector('.react-flow__background pattern circle')).toBeTruthy()
+  })
+
+  it('uses the 18px designer grid and mounts edge markers once', () => {
+    const { container } = render(
+      <ErCanvas tabId="d-1" mode="designer" payload={designerPayload} onPatch={vi.fn()} onExec={vi.fn()} />,
+    )
+
+    expect(container.querySelector('.react-flow__background pattern')?.getAttribute('width')).toBe('18')
+    expect((container.querySelector('.react-flow__background') as HTMLElement | null)?.style
+      .getPropertyValue('--xy-background-pattern-color-props'))
+      .toBe('var(--dt-border-subtle)')
+    expect(container.querySelectorAll('marker#er-edge-arrow-default')).toHaveLength(1)
   })
 
   it('renders an explicit empty-state hint for a blank designer draft', () => {
