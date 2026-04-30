@@ -226,8 +226,18 @@ describe('WorkspaceAdapter', () => {
   it('read state returns tabs + active', async () => {
     const adapter = new WorkspaceAdapter(() => 's1')
     await adapter.exec('open', { type: 'er_canvas', title: 'ER' })
-    const state = adapter.read('state') as { tabs: unknown[]; activeTabId: string | null }
+    const state = adapter.read('state') as { open: boolean; maximized: boolean; tabs: unknown[]; activeTabId: string | null }
     expect(state.tabs.length).toBe(1)
+    expect(state.open).toBe(true)
+    expect(state.maximized).toBe(false)
+  })
+
+  it('read state reflects stage panel open/maximized from store', () => {
+    useStageStore.setState({ open: false, maximized: true } as unknown as Record<string, unknown>)
+    const adapter = new WorkspaceAdapter(() => 's1')
+    const state = adapter.read('state') as { open: boolean; maximized: boolean }
+    expect(state.open).toBe(false)
+    expect(state.maximized).toBe(true)
   })
 
   it('read state prefers normalized payload connectionId for query_editor tabs', () => {

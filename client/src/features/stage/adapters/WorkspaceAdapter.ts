@@ -305,10 +305,12 @@ export class WorkspaceAdapter implements UIObject {
   read(mode: 'state' | 'schema' | 'actions' | 'full'): unknown {
     switch (mode) {
       case 'state': {
+        const store = useStageStore.getState()
         const sid = this.getSessionId()
-        const tabs = useStageStore.getState().listTabs()
-        const activeTabId = useStageStore.getState().activeTabId
+        const tabs = store.listTabs()
         return {
+          open: store.open,
+          maximized: store.maximized,
           tabs: tabs.map((t) => {
             if (t.type !== 'query_editor') {
               return {
@@ -341,11 +343,11 @@ export class WorkspaceAdapter implements UIObject {
               contextOverride: queryEditorState.contextOverride,
             }
           }),
-          activeTabId,
+          activeTabId: store.activeTabId,
         }
       }
       case 'actions': return ACTIONS
-      case 'schema': return { type: 'object', properties: { tabs: { type: 'array' }, activeTabId: { type: ['string', 'null'] } } }
+      case 'schema': return { type: 'object', properties: { open: { type: 'boolean' }, maximized: { type: 'boolean' }, tabs: { type: 'array' }, activeTabId: { type: ['string', 'null'] } } }
       case 'full': return { state: this.read('state'), actions: ACTIONS, schema: this.read('schema') }
     }
   }

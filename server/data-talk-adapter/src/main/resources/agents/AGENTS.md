@@ -255,7 +255,7 @@ For the workspace (uses snake_case `params.connection_id`):
 - `detach(target)`: removes from workset, keeps in library.
 - `archive(target, archived?=true)`: hides the tab; pass `archived=false` to unarchive.
 - `trash(target)`: permanent delete; only when the user explicitly asks.
-- State includes `tabs` and `activeTabId`. Each query-editor tab entry exposes `tabId`, `type`, `title`, `connectionId`, `connectionName`, `database`, `schema`, `contextSource`, and `contextOverride`.
+- State includes `open`, `maximized`, `tabs`, and `activeTabId`. `open` indicates whether the stage panel is currently visible. `maximized` indicates whether it is expanded to full height. Each query-editor tab entry exposes `tabId`, `type`, `title`, `connectionId`, `connectionName`, `database`, `schema`, `contextSource`, and `contextOverride`.
 
 For a query editor:
 
