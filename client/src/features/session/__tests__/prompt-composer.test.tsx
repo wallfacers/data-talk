@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { I18nContext } from '@/i18n/provider'
@@ -65,6 +65,37 @@ function renderWithClient(ui: React.ReactElement) {
     >
       <QueryClientProvider client={qc}>{ui}</QueryClientProvider>
     </I18nContext.Provider>,
+  )
+}
+
+function ComposerSlotHost() {
+  const activeSessionId = useSessionStore((s) => s.activeSessionId)
+  const hasEverSent = useSessionStore((s) =>
+    activeSessionId ? (s.hasEverSentBySession.get(activeSessionId) ?? false) : false,
+  )
+  const hasStoreMessages = useChatPartsStore((s) => {
+    const info = activeSessionId ? s.infoBySession.get(activeSessionId) : undefined
+    return info ? info.size > 0 : false
+  })
+  const hasMessages = hasEverSent || hasStoreMessages
+
+  return (
+    <>
+      {hasMessages ? (
+        <div key="message-branch" data-testid="message-branch">
+          <div className="message-scroll-shell">
+            <div id="composer-slot" data-testid="message-slot" />
+          </div>
+        </div>
+      ) : (
+        <div key="hero-branch" data-testid="hero-branch">
+          <div className="hero-center-shell">
+            <div id="composer-slot" data-testid="hero-slot" />
+          </div>
+        </div>
+      )}
+      <PromptComposer />
+    </>
   )
 }
 
@@ -220,6 +251,47 @@ describe('PromptComposer', () => {
       expect((screen.getByPlaceholderText('用自然语言查询你的数据库...') as HTMLTextAreaElement).value).toBe('你好')
     })
     expect(useSessionStore.getState().composerRestoreDraft).toBeNull()
+  })
+
+  it('keeps the textarea mounted when streaming replay swaps the composer slot after info arrives before parts', async () => {
+    document.body.innerHTML = ''
+    channel.isStreaming = true
+    useSessionStore.setState({
+      activeSessionId: 'sess-streaming',
+      modeBySession: new Map([['sess-streaming', 'HERO']]),
+      hasEverSentBySession: new Map(),
+      dataContextBySession: new Map(),
+      pendingPrompt: null,
+      pendingModelPrompt: false,
+      pendingConnectionPrompt: false,
+      pendingActionAfterConnectionPick: null,
+      composerRestoreDraft: null,
+    } as any)
+    useChatPartsStore.setState({
+      partsBySession: new Map(),
+      infoBySession: new Map(),
+      partIndexBySession: new Map(),
+      streamingBySession: new Set<string>(['sess-streaming']),
+    } as any)
+
+    renderWithClient(<ComposerSlotHost />)
+
+    let textarea = await screen.findByPlaceholderText('用自然语言查询你的数据库...')
+    expect(screen.getByTestId('hero-slot')).toContainElement(textarea.closest('form'))
+
+    act(() => {
+      useChatPartsStore.getState().upsertInfo('sess-streaming', {
+        id: 'assistant-1',
+        role: 'assistant',
+        sessionID: 'sess-streaming',
+        time: { created: 1 },
+      })
+    })
+
+    await waitFor(() => {
+      textarea = screen.getByPlaceholderText('用自然语言查询你的数据库...')
+      expect(screen.getByTestId('message-slot')).toContainElement(textarea.closest('form'))
+    })
   })
 
   it('renders the composer shell as a panel-grade surface by default', () => {

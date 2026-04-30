@@ -35,23 +35,34 @@ import { shouldAutoRunDirectSql } from '@/features/stage/utils/direct-sql-auto-r
 
 function useComposerSlot(): HTMLElement | null {
   const [slot, setSlot] = useState<HTMLElement | null>(null)
+  const slotRef = useRef<HTMLElement | null>(null)
   const activeSessionId = useSessionStore((s) => s.activeSessionId)
-  // Must mirror SplitView's hasMessages signal (hasEverSent || hasStoreMessages).
-  // If we only watch chat-parts, enterSplit() flipping hasEverSent causes SplitView
-  // to swap the composer-slot DOM node while our portal still points at the old one.
+  // Must mirror SplitView's hasMessages signal (hasEverSent || infoBySession).
+  // During stream replay, message.created can arrive before message.part.created;
+  // if we watch parts here, SplitView can swap the slot while the portal stays
+  // attached to the removed DOM node.
   const hasEverSent = useSessionStore((s) =>
     activeSessionId ? (s.hasEverSentBySession.get(activeSessionId) ?? false) : false,
   )
   const hasStoreMessages = useChatPartsStore((s) => {
-    const parts = activeSessionId ? s.partsBySession.get(activeSessionId) : undefined
-    return parts ? parts.size > 0 : false
+    const info = activeSessionId ? s.infoBySession.get(activeSessionId) : undefined
+    return info ? info.size > 0 : false
   })
   const hasMessages = hasEverSent || hasStoreMessages
 
   useLayoutEffect(() => {
-    const el = document.getElementById('composer-slot')
-    if (el !== slot) setSlot(el)
-  }, [activeSessionId, hasMessages, slot])
+    const syncSlot = () => {
+      const el = document.getElementById('composer-slot')
+      if (slotRef.current === el) return
+      slotRef.current = el
+      setSlot(el)
+    }
+
+    syncSlot()
+    const observer = new MutationObserver(syncSlot)
+    observer.observe(document.body, { childList: true, subtree: true })
+    return () => observer.disconnect()
+  }, [activeSessionId, hasMessages])
 
   return slot
 }
