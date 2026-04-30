@@ -210,7 +210,7 @@ type ResolvedQueryEditorOpenContext = {
   connectionName: string | null
   database: string | null
   schema: string | null
-  pinned: boolean
+  useSessionContext: boolean
 }
 
 function resolveQueryEditorOpenContext(input: QueryEditorOpenInput): ResolvedQueryEditorOpenContext {
@@ -223,7 +223,7 @@ function resolveQueryEditorOpenContext(input: QueryEditorOpenInput): ResolvedQue
       connectionName: normalizeContextValue(input.connectionName),
       database: normalizeContextValue(input.database),
       schema: normalizeContextValue(input.schema),
-      pinned: true,
+      useSessionContext: false,
     }
   }
 
@@ -239,7 +239,7 @@ function resolveQueryEditorOpenContext(input: QueryEditorOpenInput): ResolvedQue
       connectionName: normalizeContextValue(sessionContext?.connectionNameSnapshot),
       database: normalizeContextValue(sessionContext?.database),
       schema: normalizeContextValue(sessionContext?.schema),
-      pinned: true,
+      useSessionContext: true,
     }
   }
 
@@ -249,7 +249,7 @@ function resolveQueryEditorOpenContext(input: QueryEditorOpenInput): ResolvedQue
     connectionName: null,
     database: null,
     schema: null,
-    pinned: false,
+    useSessionContext: true,
   }
 }
 
@@ -263,14 +263,14 @@ function buildQueryEditorPayload(input: QueryEditorOpenInput, context: ResolvedQ
     connectionName: context.connectionName,
     database: context.database,
     schema: context.schema,
-    contextOverride: context.pinned && context.connectionId
+    contextOverride: !context.useSessionContext && context.connectionId
       ? {
           connectionId: context.connectionId,
           database: context.database,
           schema: context.schema,
         }
       : null,
-    contextPinMode: null,
+    useSessionContext: context.useSessionContext,
   }
 }
 
@@ -643,6 +643,7 @@ export const useStageStore = create<StageState>((set, get) => ({
     useSqlWorkbenchStore.getState().ensureTab(tabId, {
       sqlText: input.initialContent ?? '',
       source: payload.source,
+      useSessionContext: payload.useSessionContext,
     })
     return { tabId, created: true }
   },

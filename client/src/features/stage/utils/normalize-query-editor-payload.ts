@@ -21,6 +21,18 @@ export type NormalizedQueryEditorContextOverride = {
   schema: string | null
 } | null
 
+export type QueryEditorContextSource = 'session' | 'override' | 'tab'
+
+export type QueryEditorEffectiveContext = {
+  useSessionContext: boolean
+  sessionId: string | null
+  connectionId: string | null
+  connectionName: string | null
+  database: string | null
+  schema: string | null
+  contextSource: QueryEditorContextSource
+}
+
 export type NormalizedQueryEditorPayload = {
   entryMode: QueryEditorEntryMode
   initialSql: string
@@ -34,7 +46,7 @@ export type NormalizedQueryEditorPayload = {
   database: string | null
   schema: string | null
   contextOverride: NormalizedQueryEditorContextOverride
-  contextPinMode: 'session' | null
+  useSessionContext: boolean
 }
 
 const EMPTY_CONTEXT_SELECT_VALUE = '__empty__'
@@ -130,14 +142,14 @@ function normalizeContextOverride(value: unknown): NormalizedQueryEditorContextO
   }
 }
 
-function normalizeContextPinMode(value: unknown): 'session' | null {
-  return value === 'session' ? 'session' : null
-}
-
 export function normalizeQueryEditorPayload(payload: unknown): NormalizedQueryEditorPayload {
   const value = isPlainObject(payload) ? payload : {}
   const source = normalizeSource(value.source)
   const initialResult = normalizeResult(value.initialResult)
+  const contextOverride = normalizeContextOverride(value.contextOverride)
+  const useSessionContext = typeof value.useSessionContext === 'boolean'
+    ? value.useSessionContext
+    : contextOverride == null
   const initialSql = typeof value.initialSql === 'string'
     ? value.initialSql
     : typeof value.content === 'string'
@@ -163,8 +175,8 @@ export function normalizeQueryEditorPayload(payload: unknown): NormalizedQueryEd
     connectionName: normalizeString(value.connectionName),
     database: normalizeString(value.database),
     schema: normalizeString(value.schema),
-    contextOverride: normalizeContextOverride(value.contextOverride),
-    contextPinMode: normalizeContextPinMode(value.contextPinMode),
+    contextOverride,
+    useSessionContext,
   }
 }
 
@@ -227,6 +239,6 @@ export function isNormalizedQueryEditorPayload(payload: unknown): payload is Nor
     record.database === normalized.database &&
     record.schema === normalized.schema &&
     sameNormalizedContextOverride(record.contextOverride, normalized.contextOverride) &&
-    record.contextPinMode === normalized.contextPinMode
+    record.useSessionContext === normalized.useSessionContext
   )
 }

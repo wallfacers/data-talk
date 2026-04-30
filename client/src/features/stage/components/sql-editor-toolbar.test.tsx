@@ -9,26 +9,30 @@ describe('SqlEditorToolbar', () => {
   const onRun = vi.fn()
   const onCancel = vi.fn()
   const onFormat = vi.fn()
-  const onLimitChange = vi.fn()
 
   beforeEach(() => {
     onRun.mockReset()
     onCancel.mockReset()
     onFormat.mockReset()
-    onLimitChange.mockReset()
   })
 
-  it('shows only run and format on the left, with session context and limit on the right', () => {
+  it('shows only run and format on the left, with context controls on the right', () => {
     render(
       <SqlEditorToolbar
         canRun
         isRunning={false}
-        limit={100}
         onCancel={onCancel}
         onFormat={onFormat}
-        onLimitChange={onLimitChange}
         onRun={onRun}
-        contextChip={<button type="button">{t('stage.context.label.session')}</button>}
+        contextControls={
+          <>
+            <span>固定 session 上下文</span>
+            <span>连接</span>
+            <span>数据库</span>
+            <span>Schema</span>
+            <span>分页限制</span>
+          </>
+        }
       />,
     )
 
@@ -37,8 +41,9 @@ describe('SqlEditorToolbar', () => {
     expect(screen.getByRole('button', { name: t('stage.toolbar.format') })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Save/i })).toBeNull()
     expect(screen.queryByRole('button', { name: /More actions/i })).toBeNull()
-    expect(screen.getByRole('button', { name: t('stage.context.label.session') })).toBeTruthy()
-    expect(screen.getByRole('combobox', { name: t('stage.limit.aria') })).toHaveTextContent(t('stage.limit.rows', { count: 100 }))
+    expect(screen.getByTestId('sql-editor-toolbar').textContent).toMatch(
+      /固定 session 上下文.*连接.*数据库.*Schema.*分页限制/,
+    )
   })
 
   it('shows cancel while running and forwards the primary actions', () => {
@@ -46,12 +51,10 @@ describe('SqlEditorToolbar', () => {
       <SqlEditorToolbar
         canRun={false}
         isRunning
-        limit={null}
         onCancel={onCancel}
         onFormat={onFormat}
-        onLimitChange={onLimitChange}
         onRun={onRun}
-        contextChip={<button type="button">{t('stage.context.label.override')}</button>}
+        contextControls={<span>context controls</span>}
       />,
     )
 
@@ -72,14 +75,12 @@ describe('SqlEditorToolbar', () => {
       <SqlEditorToolbar
         canRun
         isRunning={false}
-        limit={100}
         onCancel={onCancel}
         onFormat={onFormat}
-        onLimitChange={onLimitChange}
         onRun={onRun}
         canExplain
         onExplain={onExplain}
-        contextChip={<button type="button">{t('stage.context.label.session')}</button>}
+        contextControls={<span>context controls</span>}
       />,
     )
 
@@ -93,14 +94,12 @@ describe('SqlEditorToolbar', () => {
       <SqlEditorToolbar
         canRun
         isRunning={false}
-        limit={100}
         onCancel={onCancel}
         onFormat={onFormat}
-        onLimitChange={onLimitChange}
         onRun={onRun}
         canExplain={false}
         onExplain={onExplain}
-        contextChip={<button type="button">{t('stage.context.label.session')}</button>}
+        contextControls={<span>context controls</span>}
       />,
     )
 

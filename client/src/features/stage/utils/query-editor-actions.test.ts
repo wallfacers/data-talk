@@ -8,7 +8,6 @@ import {
   formatQueryEditorSql,
   runQueryEditorSql,
   setQueryEditorContext,
-  resetQueryEditorContext,
   confirmQueryEditorSql,
   cancelQueryEditorConfirmation,
 } from './query-editor-actions'
@@ -691,11 +690,14 @@ describe('query-editor-actions', () => {
       schema: 'fixed_schema',
     })
 
-    resetQueryEditorContext(tabId)
+    setQueryEditorContext({
+      tabId,
+      useSessionContext: true,
+    })
 
     expect(useSqlWorkbenchStore.getState().tabsById[tabId]?.override).toBeNull()
     expect(normalizeQueryEditorPayload(getStageTab(tabId)?.payload).contextOverride).toBeNull()
-    expect(normalizeQueryEditorPayload(getStageTab(tabId)?.payload).contextPinMode).toBe('session')
+    expect(normalizeQueryEditorPayload(getStageTab(tabId)?.payload).useSessionContext).toBe(true)
 
     executeSqlMock.mockResolvedValue({
       status: 'executed',
@@ -720,6 +722,31 @@ describe('query-editor-actions', () => {
       database: 'session_db',
       schema: 'session_schema',
     }, expect.any(AbortSignal))
+  })
+
+  it('can switch context mode back to session without writing a legacy contextPinMode', () => {
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 'sess-1',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'resource_sql',
+      initialContent: 'select 1',
+      connectionId: 'conn-fixed',
+      connectionName: 'Fixed',
+      database: 'fixed_db',
+      schema: 'fixed_schema',
+    })
+
+    setQueryEditorContext({
+      tabId,
+      useSessionContext: true,
+    })
+
+    const payload = getStageTab(tabId)?.payload as Record<string, unknown>
+    expect(useSqlWorkbenchStore.getState().tabsById[tabId]?.useSessionContext).toBe(true)
+    expect(normalizeQueryEditorPayload(payload).contextOverride).toBeNull()
+    expect(normalizeQueryEditorPayload(payload).useSessionContext).toBe(true)
+    expect(payload).not.toHaveProperty('contextPinMode')
   })
 
   it('uses the latest session context as the default execution context even when tab metadata and resolvedContext are stale', async () => {

@@ -2,10 +2,9 @@ import type { ReactNode } from 'react'
 import { PlayIcon, SquareIcon, SparklesIcon, SearchCodeIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useI18n } from '@/i18n/use-i18n'
-import { SqlLimitSelect, type SqlLimitValue } from './sql-limit-select'
 
 type SqlEditorToolbarProps = {
-  contextChip: ReactNode
+  contextControls: ReactNode
   canRun: boolean
   isRunning: boolean
   onRun: () => void
@@ -13,12 +12,10 @@ type SqlEditorToolbarProps = {
   onFormat: () => void
   canExplain?: boolean
   onExplain?: () => void
-  limit: SqlLimitValue
-  onLimitChange: (value: SqlLimitValue) => void
 }
 
 export function SqlEditorToolbar({
-  contextChip,
+  contextControls,
   canRun,
   isRunning,
   onRun,
@@ -26,8 +23,6 @@ export function SqlEditorToolbar({
   onFormat,
   canExplain,
   onExplain,
-  limit,
-  onLimitChange,
 }: SqlEditorToolbarProps) {
   const { t } = useI18n()
 
@@ -66,8 +61,7 @@ export function SqlEditorToolbar({
       </div>
 
       <div className="flex flex-wrap items-center justify-end gap-2">
-        {contextChip}
-        <SqlLimitSelect value={limit} onValueChange={onLimitChange} />
+        {contextControls}
       </div>
     </div>
   )

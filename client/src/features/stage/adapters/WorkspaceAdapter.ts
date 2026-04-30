@@ -327,8 +327,10 @@ export class WorkspaceAdapter implements UIObject {
               connectionName: string | null
               database: string | null
               schema: string | null
+              useSessionContext: boolean
               contextSource: 'session' | 'override' | 'tab'
               contextOverride: unknown
+              limit: 10 | 100 | 1000 | null
             }
 
             return {
@@ -339,8 +341,10 @@ export class WorkspaceAdapter implements UIObject {
               connectionName: queryEditorState.connectionName,
               database: queryEditorState.database,
               schema: queryEditorState.schema,
+              useSessionContext: queryEditorState.useSessionContext,
               contextSource: queryEditorState.contextSource,
               contextOverride: queryEditorState.contextOverride,
+              limit: queryEditorState.limit,
             }
           }),
           activeTabId: store.activeTabId,

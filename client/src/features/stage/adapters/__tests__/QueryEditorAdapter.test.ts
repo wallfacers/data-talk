@@ -181,8 +181,11 @@ describe('QueryEditorAdapter', () => {
       connectionName: string | null
       database: string | null
       schema: string | null
+      useSessionContext: boolean
       contextSource: 'session' | 'override' | 'tab'
       contextOverride: unknown
+      availableDatabases: string[]
+      availableSchemas: string[]
       entryMode: string
       autoRun: boolean
       executeStatus: string
@@ -210,12 +213,15 @@ describe('QueryEditorAdapter', () => {
       connectionName: 'Reporting Warehouse',
       database: 'warehouse',
       schema: 'reporting',
+      useSessionContext: false,
       contextSource: 'override',
       contextOverride: expect.objectContaining({
         connectionId: 'conn-2',
         database: 'warehouse',
         schema: 'reporting',
       }),
+      availableDatabases: ['warehouse'],
+      availableSchemas: ['reporting'],
       entryMode: 'ai_open',
       autoRun: true,
       executeStatus: 'error',
@@ -301,12 +307,72 @@ describe('QueryEditorAdapter', () => {
       connectionName: 'Session Warehouse',
       database: 'session-db',
       schema: 'session-schema',
+      useSessionContext: true,
+      contextSource: 'session',
+      contextOverride: null,
+    }))
+  })
+
+  it('read state prefers runtime manual mode over a payload default session mode', () => {
+    useConnectionStore.setState({
+      activeConnectionId: null,
+      connections: [
+        { id: 'conn-1', name: 'Warehouse', kind: 'postgres', databaseName: 'analytics' } as never,
+        { id: 'conn-2', name: 'Reporting Warehouse', kind: 'postgres', databaseName: 'warehouse' } as never,
+      ],
+    })
+    useSessionStore.setState({
+      activeSessionId: 's1',
+      modeBySession: new Map(),
+      hasEverSentBySession: new Map(),
+      dataContextBySession: new Map([[
+        's1',
+        {
+          sessionId: 's1',
+          connectionId: 'conn-2',
+          connectionNameSnapshot: 'Reporting Warehouse',
+          database: 'warehouse',
+          schema: 'reporting',
+          selectedLevel: 'schema',
+          updatedAt: 2,
+        },
+      ]]),
+      pendingPrompt: null,
+      composerRestoreDraft: null,
+      pendingModelPrompt: false,
+      pendingConnectionPrompt: false,
+      pendingActionAfterConnectionPick: null,
+    })
+
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 's1',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'blank',
+      initialContent: 'select 1',
+    })
+    useSqlWorkbenchStore.getState().setTabContext(tabId, {
+      connectionId: 'conn-1',
+      connectionName: 'Warehouse',
+      database: 'analytics',
+      schema: 'public',
+      source: 'api',
+    })
+
+    const state = new QueryEditorAdapter(tabId, () => 's1').read('state') as {
+      connectionId: string | null
+      database: string | null
+      schema: string | null
+      useSessionContext: boolean
+      contextSource: 'session' | 'override' | 'tab'
+    }
+
+    expect(state).toEqual(expect.objectContaining({
+      connectionId: 'conn-1',
+      database: 'analytics',
+      schema: 'public',
+      useSessionContext: false,
       contextSource: 'override',
-      contextOverride: expect.objectContaining({
-        connectionId: 'session-conn',
-        database: 'session-db',
-        schema: 'session-schema',
-      }),
     }))
   })
 
@@ -355,8 +421,9 @@ describe('QueryEditorAdapter', () => {
     useStageStore.getState().updateTabPayload(tabId, (payload) => ({
       ...(payload as Record<string, unknown>),
       contextOverride: null,
-      contextPinMode: 'session',
+      useSessionContext: true,
     }))
+    useSqlWorkbenchStore.getState().resetTabContext(tabId)
 
     useSqlWorkbenchStore.setState((state) => ({
       tabsById: {
@@ -748,6 +815,125 @@ describe('QueryEditorAdapter', () => {
     expect(result.error).toContain('connectionId')
     expect(result.error).toContain('database')
     expect(result.error).toContain('schema')
+  })
+
+  it('exec set_context accepts session mode and limit-only changes', async () => {
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 's1',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'blank',
+      connectionId: 'conn-1',
+      database: 'app',
+      schema: 'public',
+    })
+
+    const adapter = new QueryEditorAdapter(tabId)
+
+    await expect(adapter.exec('set_context', { useSessionContext: true })).resolves.toEqual({ success: true })
+    expect(useSqlWorkbenchStore.getState().tabsById[tabId]?.useSessionContext).toBe(true)
+    expect(useSqlWorkbenchStore.getState().tabsById[tabId]?.override).toBeNull()
+
+    await expect(adapter.exec('set_context', { limit: 100 })).resolves.toEqual({ success: true })
+    expect(useSqlWorkbenchStore.getState().tabsById[tabId]?.limit).toBe(100)
+  })
+
+  it('exec set_context accepts incremental database and schema changes when linked context already exists', async () => {
+    useConnectionStore.setState({
+      activeConnectionId: null,
+      connections: [
+        { id: 'conn-1', name: 'Primary', kind: 'postgres', databaseName: 'app' } as never,
+      ],
+    })
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 's1',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'blank',
+      connectionId: 'conn-1',
+      connectionName: 'Primary',
+      database: 'app',
+      schema: 'public',
+    })
+
+    const adapter = new QueryEditorAdapter(tabId)
+
+    await expect(adapter.exec('set_context', { database: 'warehouse' })).resolves.toEqual({ success: true })
+    expect(useSqlWorkbenchStore.getState().tabsById[tabId]?.override).toMatchObject({
+      connectionId: 'conn-1',
+      database: 'warehouse',
+      schema: 'public',
+    })
+
+    await expect(adapter.exec('set_context', { schema: 'analytics' })).resolves.toEqual({ success: true })
+    expect(useSqlWorkbenchStore.getState().tabsById[tabId]?.override).toMatchObject({
+      connectionId: 'conn-1',
+      database: 'warehouse',
+      schema: 'analytics',
+    })
+  })
+
+  it('exec set_context can pin the current effective context when useSessionContext is false', async () => {
+    useConnectionStore.setState({
+      activeConnectionId: null,
+      connections: [
+        { id: 'conn-session', name: 'Session', kind: 'postgres', databaseName: 'session_db' } as never,
+      ],
+    })
+    useSessionStore.setState({
+      activeSessionId: 's1',
+      modeBySession: new Map(),
+      hasEverSentBySession: new Map(),
+      dataContextBySession: new Map([[
+        's1',
+        {
+          sessionId: 's1',
+          connectionId: 'conn-session',
+          connectionNameSnapshot: 'Session',
+          database: 'session_db',
+          schema: 'session_schema',
+          selectedLevel: 'schema',
+          updatedAt: 1,
+        },
+      ]]),
+      pendingPrompt: null,
+      composerRestoreDraft: null,
+      pendingModelPrompt: false,
+      pendingConnectionPrompt: false,
+      pendingActionAfterConnectionPick: null,
+    })
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 's1',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'blank',
+      initialContent: 'select 1',
+    })
+
+    const adapter = new QueryEditorAdapter(tabId, () => 's1')
+
+    await expect(adapter.exec('set_context', { useSessionContext: false })).resolves.toEqual({ success: true })
+    expect(useSqlWorkbenchStore.getState().tabsById[tabId]?.useSessionContext).toBe(false)
+    expect(useSqlWorkbenchStore.getState().tabsById[tabId]?.override).toMatchObject({
+      connectionId: 'conn-session',
+      database: 'session_db',
+      schema: 'session_schema',
+    })
+  })
+
+  it('exec set_context rejects incomplete or conflicting linked context params', async () => {
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 's1',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'blank',
+    })
+
+    const adapter = new QueryEditorAdapter(tabId)
+
+    await expect(adapter.exec('set_context', { schema: 'public' })).resolves.toEqual(expect.objectContaining({ success: false }))
+    await expect(adapter.exec('set_context', { database: 'app' })).resolves.toEqual(expect.objectContaining({ success: false }))
+    await expect(adapter.exec('set_context', { useSessionContext: true, connectionId: 'conn-1' })).resolves.toEqual(expect.objectContaining({ success: false }))
   })
 
   it('focus clears the current session-active tab when focusing a workspace query editor', async () => {

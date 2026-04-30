@@ -32,13 +32,14 @@ Discovery entrypoint: `datatalk.ui.find`.
 
 | mode | Returns |
 |------|---------|
-| `state` | `{ tabs: Array<{tabId, type, title, connectionId, connectionName?, database?, schema?, contextSource?, contextOverride?}>, activeTabId: string \| null }` |
+| `state` | `{ tabs: Array<{tabId, type, title, connectionId, connectionName?, database?, schema?, useSessionContext?, contextSource?, contextOverride?, limit?}>, activeTabId: string \| null }` |
 | `schema` | `{ type: 'object', properties: { tabs: array, activeTabId: string\|null } }` |
 | `actions` | exec actions listed below |
 | `full` | merged `{ state, schema, actions }` |
 
 For `query_editor` rows:
 - `connectionId / connectionName / database / schema` reflect the currently effective context
+- `useSessionContext` and `limit` mirror the query editor state summary
 - `contextSource` is one of `session`, `override`, or `tab`
 - `contextOverride` remains the explicit override metadata
 
@@ -71,8 +72,8 @@ Not supported. `workspace` is read-only through `patch`; use `exec`.
 
 | mode | Returns |
 |------|---------|
-| `state` | `{ tabId, title, content, language: 'sql', version, dirty, cursor, selection, connectionId, connectionName, database, schema, contextSource, contextOverride, entryMode, autoRun, executeStatus, results, activeResultId, limit, inWorkset }` |
-| `schema` | `{ type: 'object', properties: { tabId, title, content, language, version, dirty, cursor, selection, connectionId, connectionName, database, schema, contextSource, contextOverride, entryMode, autoRun, executeStatus, results, activeResultId, limit, inWorkset } }` |
+| `state` | `{ tabId, title, content, language: 'sql', version, dirty, cursor, selection, useSessionContext, connectionId, connectionName, database, schema, contextSource, contextOverride, entryMode, autoRun, executeStatus, results, activeResultId, limit, inWorkset }` |
+| `schema` | `{ type: 'object', properties: { tabId, title, content, language, version, dirty, cursor, selection, useSessionContext, connectionId, connectionName, database, schema, contextSource, contextOverride, entryMode, autoRun, executeStatus, results, activeResultId, limit, inWorkset } }` |
 | `actions` | exec actions listed below |
 | `full` | merged `{ state, schema, actions, capabilities }` |
 
@@ -95,11 +96,13 @@ Not supported. `workspace` is read-only through `patch`; use `exec`.
 - `version`: SQL content version, used with `baseVersion`
 - `dirty`: whether unsaved document edits exist
 - `cursor` / `selection`: editor caret and selection state
+- `useSessionContext`: whether this editor follows the session data context instead of a tab override
 - `connectionId / connectionName / database / schema`: currently effective execution context
 - `contextSource`: where the effective context comes from; one of `session`, `override`, or `tab`
 - `contextOverride`: explicit override metadata, separate from the effective context fields
 - `entryMode / autoRun`: open source metadata and auto-run behavior
 - `executeStatus / results / activeResultId / limit`: runtime execution state
+- `availableDatabases / availableSchemas`: known static/current values from cached connection metadata and the current editor context, not an exhaustive live target list
 - `results`: summary only, without row payloads; each item exposes `{ resultId, statementIndex, columns, rowCount, durationMs, truncated, error? }`
 - `inWorkset`: whether this tab is currently open in the top-tab workset for this app instance
 
@@ -119,10 +122,16 @@ Supported whitelist paths:
 | action | Params | Effect |
 |--------|--------|--------|
 | `apply_text_edits` | `{ baseVersion, edits: [{ range, expectedText, text }] }` | Apply precise SQL edits by range; every edit must include `expectedText`, and any mismatch rolls back the whole batch |
-| `set_context` | `{ connectionId?, database?, schema? }` | Update execution context in one call; provide at least one field |
+| `set_context` | `{ useSessionContext?, connectionId?, database?, schema?, limit? }` | Update context mode, execution context, or result limit in one call; provide at least one field |
 | `run_sql` | `{ limit? }` | Execute the current SQL and write results back into query editor runtime state |
 | `format_sql` | — | Format the current SQL and update `content/version` |
 | `focus` | — | Focus this tab |
+
+`set_context` linked parameter rules:
+- `useSessionContext=true` cannot be combined with `connectionId`, `database`, or `schema`.
+- `database` requires an effective `connectionId`, either from the current editor context or an explicit `connectionId`.
+- `schema` requires an effective `connectionId` and `database`, either from the current editor context or explicit params.
+- `limit` may be set independently; accepted values are `10`, `100`, `1000`, or `null`.
 
 ---
 

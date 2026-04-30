@@ -243,7 +243,7 @@ Required `params` by action:
 - `workspace/open_er_inspector`: `params.connectionId` and `params.tables`
 - `workspace/open_er_designer`: `params.dialect`
 - `query_editor/apply_text_edits`: `params.baseVersion` and `params.edits`; each edit requires `range`, `text`, and `expectedText`
-- `query_editor/set_context`: at least one of `params.connectionId`, `params.database`, or `params.schema`
+- `query_editor/set_context`: at least one of `params.useSessionContext`, `params.connectionId`, `params.database`, `params.schema`, or `params.limit`
 - `er_inspector/add_neighbors`: `params.table`
 - `er_designer/bind_target`: `params.connectionId`
 
@@ -255,16 +255,18 @@ For the workspace (uses snake_case `params.connection_id`):
 - `detach(target)`: removes from workset, keeps in library.
 - `archive(target, archived?=true)`: hides the tab; pass `archived=false` to unarchive.
 - `trash(target)`: permanent delete; only when the user explicitly asks.
-- State includes `open`, `maximized`, `tabs`, and `activeTabId`. `open` indicates whether the stage panel is currently visible. `maximized` indicates whether it is expanded to full height. Each query-editor tab entry exposes `tabId`, `type`, `title`, `connectionId`, `connectionName`, `database`, `schema`, `contextSource`, and `contextOverride`.
+- State includes `open`, `maximized`, `tabs`, and `activeTabId`. `open` indicates whether the stage panel is currently visible. `maximized` indicates whether it is expanded to full height. Each query-editor tab entry exposes `tabId`, `type`, `title`, `connectionId`, `connectionName`, `database`, `schema`, `useSessionContext`, `contextSource`, `contextOverride`, and `limit`.
 
 For a query editor:
 
 - Read the editor through `datatalk_ui_read` with `object=query_editor`.
-- A query editor state includes `tabId`, `title`, `content`, `version`, `connectionId`, `connectionName`, `database`, `schema`, `contextSource`, `contextOverride`, `results`, `activeResultId`, `limit`, and `inWorkset`.
+- A query editor state includes `tabId`, `title`, `content`, `version`, `useSessionContext`, `connectionId`, `connectionName`, `database`, `schema`, `contextSource`, `contextOverride`, `results`, `activeResultId`, `limit`, and `inWorkset`.
 - Full SQL replacement uses `datatalk_ui_patch` on `/content` with `baseVersion`.
 - Context patching uses `/connectionId`, `/database`, and `/schema`.
 - Targeted SQL edits use `datatalk_ui_exec`, `object=query_editor`, `action=apply_text_edits`, `params.baseVersion`, and `params.edits`. Each edit entry must include `expectedText`.
-- Query editor context updates use `datatalk_ui_exec`, `object=query_editor`, `action=set_context`, with `params.connectionId`, `params.database`, and `params.schema`.
+- Query editor context updates use `datatalk_ui_exec`, `object=query_editor`, `action=set_context`, with `params.useSessionContext`, `params.connectionId`, `params.database`, `params.schema`, and `params.limit`.
+- Use `set_context({ useSessionContext: true })` to make an editor follow the session data context. `useSessionContext=true` cannot be combined with `connectionId`, `database`, or `schema`.
+- Linked parameter rules: `database requires an effective connectionId`; `schema requires an effective connectionId and database`; omitted fields keep the current editor context when those effective fields already exist; `limit` may be set independently.
 - Query editor actions are `apply_text_edits`, `set_context`, `run_sql`, `format_sql`, and `focus`.
 - Query editor actions and state use camelCase such as `connectionId` and `baseVersion`.
 

@@ -79,10 +79,11 @@ export type SqlWorkbenchTabState = {
   history: HistoryEntry[]
   savedSqlText: string
   limit: 10 | 100 | 1000 | null
+  useSessionContext: boolean
   cursor: { line: number; column: number }
 }
 
-type EnsureTabInput = Partial<Pick<SqlWorkbenchTabState, 'sqlText' | 'source'>>
+type EnsureTabInput = Partial<Pick<SqlWorkbenchTabState, 'sqlText' | 'source' | 'useSessionContext'>>
 
 type SqlWorkbenchState = {
   tabsById: Record<string, SqlWorkbenchTabState>
@@ -133,6 +134,7 @@ function createDefaultTabState(initial?: EnsureTabInput): SqlWorkbenchTabState {
     history: [],
     savedSqlText: initialSqlText,
     limit: 100,
+    useSessionContext: initial?.useSessionContext ?? true,
     cursor: { line: 1, column: 1 },
   }
 }
@@ -505,6 +507,7 @@ export const useSqlWorkbenchStore = create<SqlWorkbenchState>((set, get) => ({
           ...ctx,
           setAt: Date.now(),
         },
+        useSessionContext: false,
       },
     },
   })),
@@ -515,6 +518,7 @@ export const useSqlWorkbenchStore = create<SqlWorkbenchState>((set, get) => ({
       [tabId]: {
         ...ensureTabState(state.tabsById, tabId),
         override: null,
+        useSessionContext: true,
       },
     },
   })),

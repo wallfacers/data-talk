@@ -258,10 +258,19 @@ describe('useSqlWorkbenchStore', () => {
       source: 'user_toolbar',
       setAt: 123456789,
     })
+    expect(useSqlWorkbenchStore.getState().tabsById['tab-a']?.useSessionContext).toBe(false)
 
     store.resetTabContext('tab-a')
 
     expect(useSqlWorkbenchStore.getState().tabsById['tab-a']?.override).toBeNull()
+    expect(useSqlWorkbenchStore.getState().tabsById['tab-a']?.useSessionContext).toBe(true)
+  })
+
+  it('defaults query editor tabs to session-following mode', () => {
+    const store = useSqlWorkbenchStore.getState()
+    store.ensureTab('tab-a')
+
+    expect(useSqlWorkbenchStore.getState().tabsById['tab-a']?.useSessionContext).toBe(true)
   })
 
   it('appends history entries and keeps only the newest 50', () => {
