@@ -71,13 +71,13 @@ class DiscoveryControllerIT {
                 .header(HttpHeaders.ACCEPT_LANGUAGE, "en-US"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.actions[?(@.id == 'datatalk.ui.read')].description")
-                .value(hasItem("Read workspace or query_editor state, schema, actions, or the full descriptor from the client.")));
+                .value(hasItem("Read workspace, query_editor, er_inspector, or er_designer state, schema, actions, or the full descriptor from the client.")));
 
         mvc.perform(get("/api/actions")
                 .header(HttpHeaders.ACCEPT_LANGUAGE, "zh-CN"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.actions[?(@.id == 'datatalk.ui.read')].description")
-                .value(hasItem("从客户端读取 workspace 或 query_editor 的 state、schema、actions 或完整描述。")));
+                .value(hasItem("从客户端读取 workspace、query_editor、er_inspector 或 er_designer 的 state、schema、actions 或完整描述。")));
     }
 
     @Test

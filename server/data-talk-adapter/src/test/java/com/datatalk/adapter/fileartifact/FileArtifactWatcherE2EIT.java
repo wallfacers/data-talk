@@ -2,7 +2,6 @@ package com.datatalk.adapter.fileartifact;
 
 import com.datatalk.application.fileartifact.FileArtifactRepository;
 import com.datatalk.application.fileartifact.SessionWorkdirService;
-import com.datatalk.domain.fileartifact.FileArtifact;
 import com.datatalk.domain.fileartifact.FileArtifactStatus;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -49,11 +48,11 @@ class FileArtifactWatcherE2EIT {
         Files.setLastModifiedTime(file, FileTime.from(Instant.now().minusSeconds(2)));
 
         await().atMost(ofSeconds(10)).untilAsserted(() -> {
-            FileArtifact row = repo.findBySession("ses_watcher_e2e_csv").stream()
+            var row = repo.findBySession("ses_watcher_e2e_csv").stream()
                     .filter(candidate -> candidate.filename().equals("sample.csv"))
-                    .findFirst()
-                    .orElseThrow();
-            assertThat(row.status()).isEqualTo(FileArtifactStatus.TEMPORARY);
+                    .findFirst();
+            assertThat(row).isPresent();
+            assertThat(row.orElseThrow().status()).isEqualTo(FileArtifactStatus.TEMPORARY);
         });
     }
 
@@ -73,12 +72,12 @@ class FileArtifactWatcherE2EIT {
         Files.setLastModifiedTime(file, FileTime.from(Instant.now().minusSeconds(2)));
 
         await().atMost(ofSeconds(10)).untilAsserted(() -> {
-            FileArtifact row = repo.findBySession("ses_watcher_e2e_md").stream()
+            var row = repo.findBySession("ses_watcher_e2e_md").stream()
                     .filter(candidate -> candidate.filename().equals("orders-er.md"))
-                    .findFirst()
-                    .orElseThrow();
-            assertThat(row.status()).isEqualTo(FileArtifactStatus.CANDIDATE);
-            assertThat(row.title()).isEqualTo("Orders");
+                    .findFirst();
+            assertThat(row).isPresent();
+            assertThat(row.orElseThrow().status()).isEqualTo(FileArtifactStatus.CANDIDATE);
+            assertThat(row.orElseThrow().title()).isEqualTo("Orders");
         });
     }
 }

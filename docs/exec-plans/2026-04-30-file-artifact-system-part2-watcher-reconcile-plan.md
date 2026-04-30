@@ -74,15 +74,15 @@
 
 **目的：** 让计划进入 `docs/exec-plans/index.md` 的 Active 列表，关闭 Part 2 占位。CLAUDE.md "Plan Document Registration" 强制：未登记的 plan 视为不存在。
 
-- [ ] 已创建 `docs/exec-plans/2026-04-30-file-artifact-system-part2-watcher-reconcile-plan.md`（本文件）。
+- [x] 已创建 `docs/exec-plans/2026-04-30-file-artifact-system-part2-watcher-reconcile-plan.md`（本文件）。
 
-- [ ] 在 `docs/exec-plans/index.md` 的「活跃计划」表格中，**用以下行替换** Part 2 现有占位行 `| File Artifact System · Part 2 — Watcher & Reconcile (待补正式计划) | TBD | ...`：
+- [x] 在 `docs/exec-plans/index.md` 的「活跃计划」表格中，**用以下行替换** Part 2 现有占位行 `| File Artifact System · Part 2 — Watcher & Reconcile (待补正式计划) | TBD | ...`：
 
 ```markdown
 | [File Artifact System · Part 2 — Watcher & Reconcile](./2026-04-30-file-artifact-system-part2-watcher-reconcile-plan.md) | 2026-04-30 | OpenCode 工作目录与 File Artifact 系统 Part 2：接入 io.methvin DirectoryWatcher 监听 `~/.data-talk/opencode/sessions/` 全树（debounce 200ms、symlink 拒绝、followLinks=false），按 spec §5.6 表格的 CREATE/MODIFY/DELETE/RENAME/OVERFLOW 规约把事件转译为 `file_artifact` 行 upsert/delete + `DtEvent.FileArtifactDetected` / `FileArtifactDiscarded` 发布；新增 `FrontmatterParser`（首 8KB，`.md`/`.sql`/`.txt`，识别 `artifact: true`/`kind`/`title`/`summary`）；新增 `FileArtifactReconciler`（startup + OVERFLOW，仅扫 `sessions/*` 与 `workspaces/*`，不动 `_legacy`/`_trash`/`opencode/` 根；孤儿文件→TEMPORARY 补登记，孤儿行 temporary→静默 DELETE / candidate&archived→DELETE+警告）；`FileArtifactWatcherStartup` 监听 `ApplicationReadyEvent` 启动 watcher 并跑一次 reconcile。Part 5 HousekeepingScheduler 之后会复用 reconciler 做每日定时与 `_trash` 7 天清理。 |
 ```
 
-- [ ] commit：
+- [x] commit：
 
 ```bash
 git add docs/exec-plans/2026-04-30-file-artifact-system-part2-watcher-reconcile-plan.md \
@@ -98,7 +98,7 @@ git commit -m "docs(exec-plans): register file artifact system part 2 plan"
 
 ### 2.1 父 POM 注册版本
 
-- [ ] 修改 `server/pom.xml`：在 `<dependencyManagement><dependencies>` 内合适位置（与已有第三方库同区）追加：
+- [x] 修改 `server/pom.xml`：在 `<dependencyManagement><dependencies>` 内合适位置（与已有第三方库同区）追加：
 
 ```xml
             <dependency>
@@ -110,7 +110,7 @@ git commit -m "docs(exec-plans): register file artifact system part 2 plan"
 
 ### 2.2 infrastructure 模块引入
 
-- [ ] 修改 `server/data-talk-infrastructure/pom.xml`，在 `<dependencies>` 内追加：
+- [x] 修改 `server/data-talk-infrastructure/pom.xml`，在 `<dependencies>` 内追加：
 
 ```xml
         <dependency>
@@ -121,7 +121,7 @@ git commit -m "docs(exec-plans): register file artifact system part 2 plan"
 
 ### 2.3 验证依赖落地
 
-- [ ] 跑 dependency tree 验证：
+- [x] 跑 dependency tree 验证：
 
 ```bash
 cd server && mvn -pl data-talk-infrastructure -am dependency:tree -q | grep -i methvin
@@ -131,7 +131,7 @@ cd server && mvn -pl data-talk-infrastructure -am dependency:tree -q | grep -i m
 
 ### 2.4 commit
 
-- [ ] commit：
+- [x] commit：
 
 ```bash
 git add server/pom.xml server/data-talk-infrastructure/pom.xml
@@ -144,7 +144,7 @@ git commit -m "build(deps): add io.methvin directory-watcher 0.18.0"
 
 **目的：** 把 io.methvin 的物理事件类型完全在 application 层重新建模成自带 `record` 的 sealed 五元组（CREATE/MODIFY/DELETE/RENAME/OVERFLOW），让编排器写 exhaustive `switch` 时编译期强约束。Spec §5.6 明确说明 io.methvin 不直接发 RENAME，靠 inode/realpath 关联推断；实际实现里若不能可靠推断就退化成 DELETE+CREATE，所以本 sealed 接口里仍然保留 `Rename` record，方便未来增强（infrastructure 适配器可以选择性发出）。
 
-- [ ] 创建 `server/data-talk-application/src/main/java/com/datatalk/application/fileartifact/FileWatchEvent.java`：
+- [x] 创建 `server/data-talk-application/src/main/java/com/datatalk/application/fileartifact/FileWatchEvent.java`：
 
 ```java
 package com.datatalk.application.fileartifact;
@@ -153,13 +153,13 @@ import java.nio.file.Path;
 import java.time.Instant;
 
 /**
- * Application-layer abstraction of low-level filesystem events emitted by
- * the {@link ArtifactWatcher} port. Five subtypes match spec §5.6 verbatim.
- *
- * <p>Adapters (e.g. {@code MethvinArtifactWatcher}) translate native events
- * into these sealed records — application code never imports any third-party
- * watcher type.
- */
+- [x] * Application-layer abstraction of low-level filesystem events emitted by
+- [x] * the {@link ArtifactWatcher} port. Five subtypes match spec §5.6 verbatim.
+- [x] *
+- [x] * <p>Adapters (e.g. {@code MethvinArtifactWatcher}) translate native events
+- [x] * into these sealed records — application code never imports any third-party
+- [x] * watcher type.
+- [x] */
 public sealed interface FileWatchEvent
         permits FileWatchEvent.Create,
                 FileWatchEvent.Modify,
@@ -193,7 +193,7 @@ public sealed interface FileWatchEvent
 }
 ```
 
-- [ ] 编译：
+- [x] 编译：
 
 ```bash
 cd server && mvn compile -q -pl data-talk-application
@@ -207,7 +207,7 @@ cd server && mvn compile -q -pl data-talk-application
 
 **目的：** 端口接口最小化，便于 mock。生命周期是 `start(rootPath, listener)` → `close()`。生产实现（infrastructure 层）封装 io.methvin。
 
-- [ ] 创建 `server/data-talk-application/src/main/java/com/datatalk/application/fileartifact/ArtifactWatcher.java`：
+- [x] 创建 `server/data-talk-application/src/main/java/com/datatalk/application/fileartifact/ArtifactWatcher.java`：
 
 ```java
 package com.datatalk.application.fileartifact;
@@ -216,25 +216,25 @@ import java.nio.file.Path;
 import java.util.function.Consumer;
 
 /**
- * Filesystem-watcher port. Exactly one root subtree per instance.
- *
- * <p>Implementations:
- * <ul>
- *   <li>{@code MethvinArtifactWatcher} — io.methvin DirectoryWatcher (production).</li>
- *   <li>Test doubles — Mockito mocks or hand-rolled fakes for unit tests.</li>
- * </ul>
- *
- * <p>Contract:
- * <ul>
- *   <li>{@link #start} is idempotent: a second call without an intervening close
- *       must throw {@link IllegalStateException}.</li>
- *   <li>{@link #close} is idempotent and safe even if {@code start} was never called.</li>
- *   <li>The listener is invoked from a watcher-internal thread; implementations
- *       should debounce / dispatch downstream rather than block here.</li>
- *   <li>Symlinks are NOT followed (spec §6.3 #7); adapter must configure its
- *       backing watcher accordingly.</li>
- * </ul>
- */
+- [x] * Filesystem-watcher port. Exactly one root subtree per instance.
+- [x] *
+- [x] * <p>Implementations:
+- [x] * <ul>
+- [x] *   <li>{@code MethvinArtifactWatcher} — io.methvin DirectoryWatcher (production).</li>
+- [x] *   <li>Test doubles — Mockito mocks or hand-rolled fakes for unit tests.</li>
+- [x] * </ul>
+- [x] *
+- [x] * <p>Contract:
+- [x] * <ul>
+- [x] *   <li>{@link #start} is idempotent: a second call without an intervening close
+- [x] *       must throw {@link IllegalStateException}.</li>
+- [x] *   <li>{@link #close} is idempotent and safe even if {@code start} was never called.</li>
+- [x] *   <li>The listener is invoked from a watcher-internal thread; implementations
+- [x] *       should debounce / dispatch downstream rather than block here.</li>
+- [x] *   <li>Symlinks are NOT followed (spec §6.3 #7); adapter must configure its
+- [x] *       backing watcher accordingly.</li>
+- [x] * </ul>
+- [x] */
 public interface ArtifactWatcher extends AutoCloseable {
 
     /**
@@ -249,7 +249,7 @@ public interface ArtifactWatcher extends AutoCloseable {
 }
 ```
 
-- [ ] 编译：
+- [x] 编译：
 
 ```bash
 cd server && mvn compile -q -pl data-talk-application
@@ -265,7 +265,7 @@ cd server && mvn compile -q -pl data-talk-application
 
 ### 5.1 实现
 
-- [ ] 创建 `server/data-talk-application/src/main/java/com/datatalk/application/fileartifact/FrontmatterParser.java`：
+- [x] 创建 `server/data-talk-application/src/main/java/com/datatalk/application/fileartifact/FrontmatterParser.java`：
 
 ```java
 package com.datatalk.application.fileartifact;
@@ -280,19 +280,19 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Minimal frontmatter extractor for spec §5.3.
- *
- * <ul>
- *   <li>Markdown / text — looks for a leading {@code ---\n...\n---} fence within
- *       the first 8 KB and parses simple {@code key: value} lines (no nesting).</li>
- *   <li>SQL — looks for a leading block of {@code -- key: value} comment lines,
- *       optionally wrapped in {@code -- ---} fences for symmetry with Markdown.</li>
- *   <li>Anything else (csv, binary, unknown extension) returns an empty map.</li>
- * </ul>
- *
- * <p>The parser is intentionally lenient: malformed YAML never throws, the worst
- * case is "no frontmatter detected" which falls through to TEMPORARY status.
- */
+- [x] * Minimal frontmatter extractor for spec §5.3.
+- [x] *
+- [x] * <ul>
+- [x] *   <li>Markdown / text — looks for a leading {@code ---\n...\n---} fence within
+- [x] *       the first 8 KB and parses simple {@code key: value} lines (no nesting).</li>
+- [x] *   <li>SQL — looks for a leading block of {@code -- key: value} comment lines,
+- [x] *       optionally wrapped in {@code -- ---} fences for symmetry with Markdown.</li>
+- [x] *   <li>Anything else (csv, binary, unknown extension) returns an empty map.</li>
+- [x] * </ul>
+- [x] *
+- [x] * <p>The parser is intentionally lenient: malformed YAML never throws, the worst
+- [x] * case is "no frontmatter detected" which falls through to TEMPORARY status.
+- [x] */
 public final class FrontmatterParser {
 
     /** Maximum bytes inspected at file head. spec §5.3 fixes this at 8 KB. */
@@ -450,7 +450,7 @@ public final class FrontmatterParser {
 
 ### 5.2 单元测试
 
-- [ ] 创建 `server/data-talk-application/src/test/java/com/datatalk/application/fileartifact/FrontmatterParserTest.java`：
+- [x] 创建 `server/data-talk-application/src/test/java/com/datatalk/application/fileartifact/FrontmatterParserTest.java`：
 
 ```java
 package com.datatalk.application.fileartifact;
@@ -589,7 +589,7 @@ class FrontmatterParserTest {
 }
 ```
 
-- [ ] 运行：
+- [x] 运行：
 
 ```bash
 cd server && mvn -pl data-talk-application test -Dtest=FrontmatterParserTest -q
@@ -603,7 +603,7 @@ cd server && mvn -pl data-talk-application test -Dtest=FrontmatterParserTest -q
 
 **目的：** 与 spec §4 保持一致：`id` 形如 `file_artifact_<ulid>`。沿用现有 `IdGenerator` 风格（`ARTIFACT_PREFIX = "art-"`），但 file_artifact 用更明确的前缀避免混淆。
 
-- [ ] 创建 `server/data-talk-application/src/main/java/com/datatalk/application/fileartifact/FileArtifactIds.java`：
+- [x] 创建 `server/data-talk-application/src/main/java/com/datatalk/application/fileartifact/FileArtifactIds.java`：
 
 ```java
 package com.datatalk.application.fileartifact;
@@ -611,12 +611,12 @@ package com.datatalk.application.fileartifact;
 import java.util.UUID;
 
 /**
- * Centralized id generation for {@code file_artifact} rows. Format:
- * {@code file_artifact_<random>}. Spec §4 specifies the prefix; we use a
- * UUID body since the project does not yet pull in a ULID dependency and the
- * prefix alone is sufficient to namespace these against the legacy
- * {@code art-} payload-type artifacts.
- */
+- [x] * Centralized id generation for {@code file_artifact} rows. Format:
+- [x] * {@code file_artifact_<random>}. Spec §4 specifies the prefix; we use a
+- [x] * UUID body since the project does not yet pull in a ULID dependency and the
+- [x] * prefix alone is sufficient to namespace these against the legacy
+- [x] * {@code art-} payload-type artifacts.
+- [x] */
 public final class FileArtifactIds {
 
     private static final String PREFIX = "file_artifact_";
@@ -633,7 +633,7 @@ public final class FileArtifactIds {
 }
 ```
 
-- [ ] 编译：
+- [x] 编译：
 
 ```bash
 cd server && mvn compile -q -pl data-talk-application
@@ -647,7 +647,7 @@ cd server && mvn compile -q -pl data-talk-application
 
 **目的：** Reconcile / watcher 路径需要按 `physical_path` 反查（去重）、扫描 session-scope 全量行（孤儿对账）。
 
-- [ ] 修改 `server/data-talk-application/src/main/java/com/datatalk/application/fileartifact/FileArtifactRepository.java`，在文件末尾追加方法：
+- [x] 修改 `server/data-talk-application/src/main/java/com/datatalk/application/fileartifact/FileArtifactRepository.java`，在文件末尾追加方法：
 
 ```java
     /** Look up by physical absolute path. Used to dedupe CREATE events and
@@ -676,10 +676,10 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Persistence contract for {@link FileArtifact}.
- *
- * <p>Infrastructure owns the JDBC implementation; application code depends only on this port.
- */
+- [x] * Persistence contract for {@link FileArtifact}.
+- [x] *
+- [x] * <p>Infrastructure owns the JDBC implementation; application code depends only on this port.
+- [x] */
 public interface FileArtifactRepository {
 
     void insert(FileArtifact artifact);
@@ -721,7 +721,7 @@ public interface FileArtifactRepository {
 }
 ```
 
-- [ ] 编译：
+- [x] 编译：
 
 ```bash
 cd server && mvn compile -q -pl data-talk-application
@@ -737,7 +737,7 @@ cd server && mvn compile -q -pl data-talk-application
 
 ### 8.1 实现
 
-- [ ] 修改 `server/data-talk-infrastructure/src/main/java/com/datatalk/infra/fileartifact/JdbcFileArtifactRepository.java`：在 `findById` 之后追加 `findByPhysicalPath`，在 `findCandidatesBySession` 之后追加两个 `findAll*` 实现。完整新方法块：
+- [x] 修改 `server/data-talk-infrastructure/src/main/java/com/datatalk/infra/fileartifact/JdbcFileArtifactRepository.java`：在 `findById` 之后追加 `findByPhysicalPath`，在 `findCandidatesBySession` 之后追加两个 `findAll*` 实现。完整新方法块：
 
 ```java
     @Override
@@ -766,7 +766,7 @@ cd server && mvn compile -q -pl data-talk-application
 
 ### 8.2 IT 扩展
 
-- [ ] 修改 `server/data-talk-infrastructure/src/test/java/com/datatalk/infra/fileartifact/JdbcFileArtifactRepositoryIT.java`：在文件末尾的最后一个 `}` 之前插入 3 个新测试：
+- [x] 修改 `server/data-talk-infrastructure/src/test/java/com/datatalk/infra/fileartifact/JdbcFileArtifactRepositoryIT.java`：在文件末尾的最后一个 `}` 之前插入 3 个新测试：
 
 ```java
     @Test
@@ -810,7 +810,7 @@ cd server && mvn compile -q -pl data-talk-application
 
 ### 8.3 验证
 
-- [ ] 编译 + 跑 IT：
+- [x] 编译 + 跑 IT：
 
 ```bash
 cd server && mvn -pl data-talk-infrastructure -am test -Dtest=JdbcFileArtifactRepositoryIT -q
@@ -822,14 +822,14 @@ cd server && mvn -pl data-talk-infrastructure -am test -Dtest=JdbcFileArtifactRe
 
 CLAUDE.md "Backend Run vs Compile" 要求：
 
-- [ ] 推 application 与 infrastructure 模块的 jar：
+- [x] 推 application 与 infrastructure 模块的 jar：
 
 ```bash
 cd server && mvn install -pl data-talk-application -am -DskipTests -q && \
             mvn install -pl data-talk-infrastructure -am -DskipTests -q
 ```
 
-- [ ] commit：
+- [x] commit：
 
 ```bash
 git add server/data-talk-application/src/main/java/com/datatalk/application/fileartifact/FileWatchEvent.java \
@@ -853,7 +853,7 @@ git commit -m "feat(application,infra): add watcher port, frontmatter parser, re
 
 ### 9.1 实现
 
-- [ ] 修改 `server/data-talk-application/src/main/java/com/datatalk/application/fileartifact/FileArtifactService.java`：
+- [x] 修改 `server/data-talk-application/src/main/java/com/datatalk/application/fileartifact/FileArtifactService.java`：
 
   1. 在构造函数注入 `SessionBusRegistry buses`（可选 — 如果 application 模块有现成的 SessionBusRegistry bean，直接 wire）
   2. 新增 4 个方法 `recordDetected` / `recordModified` / `recordDeleted` / `findByPhysicalPath`
@@ -888,14 +888,14 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Use-case service for file artifact reads, candidate promotion, path safety,
- * and watcher-driven row upsert/delete.
- *
- * <p>The watcher entry methods ({@link #recordDetected}, {@link #recordModified},
- * {@link #recordDeleted}) are called from {@code ArtifactWatcherService} after
- * debouncing; they are idempotent and tolerant of races (same path showing up
- * twice, file disappearing between detect and read, etc.).
- */
+- [x] * Use-case service for file artifact reads, candidate promotion, path safety,
+- [x] * and watcher-driven row upsert/delete.
+- [x] *
+- [x] * <p>The watcher entry methods ({@link #recordDetected}, {@link #recordModified},
+- [x] * {@link #recordDeleted}) are called from {@code ArtifactWatcherService} after
+- [x] * debouncing; they are idempotent and tolerant of races (same path showing up
+- [x] * twice, file disappearing between detect and read, etc.).
+- [x] */
 @Service
 public class FileArtifactService {
 
@@ -1212,7 +1212,7 @@ public class FileArtifactService {
 
 ### 9.2 单元测试扩展
 
-- [ ] 修改 `server/data-talk-application/src/test/java/com/datatalk/application/fileartifact/FileArtifactServiceTest.java`：
+- [x] 修改 `server/data-talk-application/src/test/java/com/datatalk/application/fileartifact/FileArtifactServiceTest.java`：
   1. 把构造函数与 `@BeforeEach` 改为注入 mock 的 `SessionBusRegistry buses`，并 stub `buses.getOrCreate(any())` 返回 mock `SessionBus`，验证 `publish(...)` 被调用。
   2. 新增以下测试块（追加到现有测试之后，保持类闭合大括号在最末）：
 
@@ -1358,7 +1358,7 @@ public class FileArtifactService {
 
 ### 9.3 验证
 
-- [ ] 跑测试：
+- [x] 跑测试：
 
 ```bash
 cd server && mvn -pl data-talk-application test -Dtest=FileArtifactServiceTest -q
@@ -1374,7 +1374,7 @@ cd server && mvn -pl data-talk-application test -Dtest=FileArtifactServiceTest -
 
 ### 10.1 实现
 
-- [ ] 创建 `server/data-talk-infrastructure/src/main/java/com/datatalk/infra/fileartifact/MethvinArtifactWatcher.java`：
+- [x] 创建 `server/data-talk-infrastructure/src/main/java/com/datatalk/infra/fileartifact/MethvinArtifactWatcher.java`：
 
 ```java
 package com.datatalk.infra.fileartifact;
@@ -1397,15 +1397,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 /**
- * Production {@link ArtifactWatcher} backed by io.methvin DirectoryWatcher.
- *
- * <p>Configured with {@code fileHashing=false} (events fire on path changes
- * without content hashing — trade smaller memory for occasional duplicate
- * MODIFY which the application-side debouncer will absorb).
- *
- * <p>Symlinks are not followed: the underlying library walks the tree once at
- * start, and subsequent emitted paths under symlinks are filtered out.
- */
+- [x] * Production {@link ArtifactWatcher} backed by io.methvin DirectoryWatcher.
+- [x] *
+- [x] * <p>Configured with {@code fileHashing=false} (events fire on path changes
+- [x] * without content hashing — trade smaller memory for occasional duplicate
+- [x] * MODIFY which the application-side debouncer will absorb).
+- [x] *
+- [x] * <p>Symlinks are not followed: the underlying library walks the tree once at
+- [x] * start, and subsequent emitted paths under symlinks are filtered out.
+- [x] */
 public class MethvinArtifactWatcher implements ArtifactWatcher {
 
     private static final Logger log = LoggerFactory.getLogger(MethvinArtifactWatcher.class);
@@ -1487,7 +1487,7 @@ public class MethvinArtifactWatcher implements ArtifactWatcher {
 
 ### 10.2 IT — 真实 watcher
 
-- [ ] 创建 `server/data-talk-infrastructure/src/test/java/com/datatalk/infra/fileartifact/MethvinArtifactWatcherIT.java`：
+- [x] 创建 `server/data-talk-infrastructure/src/test/java/com/datatalk/infra/fileartifact/MethvinArtifactWatcherIT.java`：
 
 ```java
 package com.datatalk.infra.fileartifact;
@@ -1611,7 +1611,7 @@ class MethvinArtifactWatcherIT {
 
 ### 10.3 验证
 
-- [ ] 跑 IT：
+- [x] 跑 IT：
 
 ```bash
 cd server && mvn -pl data-talk-infrastructure -am test -Dtest=MethvinArtifactWatcherIT -q
@@ -1631,7 +1631,7 @@ cd server && mvn -pl data-talk-infrastructure -am test -Dtest=MethvinArtifactWat
 
 ### 11.1 实现
 
-- [ ] 创建 `server/data-talk-application/src/main/java/com/datatalk/application/fileartifact/ArtifactWatcherService.java`：
+- [x] 创建 `server/data-talk-application/src/main/java/com/datatalk/application/fileartifact/ArtifactWatcherService.java`：
 
 ```java
 package com.datatalk.application.fileartifact;
@@ -1653,18 +1653,18 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Orchestrates the {@link ArtifactWatcher} feed: filter → debounce → dispatch.
- *
- * <p>Design notes:
- * <ul>
- *   <li>{@link #start} is called from {@code FileArtifactWatcherStartup} after
- *       Spring is ready, so all dependencies are wired before watch begins.</li>
- *   <li>Debouncing uses a single-threaded scheduler; each new event for the
- *       same {@code (path, kind)} resets the timer to 200 ms.</li>
- *   <li>The dispatch worker runs on the same scheduler — keeps event ordering
- *       per path. Long IO (frontmatter parse, JDBC) runs there.</li>
- * </ul>
- */
+- [x] * Orchestrates the {@link ArtifactWatcher} feed: filter → debounce → dispatch.
+- [x] *
+- [x] * <p>Design notes:
+- [x] * <ul>
+- [x] *   <li>{@link #start} is called from {@code FileArtifactWatcherStartup} after
+- [x] *       Spring is ready, so all dependencies are wired before watch begins.</li>
+- [x] *   <li>Debouncing uses a single-threaded scheduler; each new event for the
+- [x] *       same {@code (path, kind)} resets the timer to 200 ms.</li>
+- [x] *   <li>The dispatch worker runs on the same scheduler — keeps event ordering
+- [x] *       per path. Long IO (frontmatter parse, JDBC) runs there.</li>
+- [x] * </ul>
+- [x] */
 @Service
 public class ArtifactWatcherService implements AutoCloseable {
 
@@ -1826,7 +1826,7 @@ public class ArtifactWatcherService implements AutoCloseable {
 
 ### 11.2 单元测试
 
-- [ ] 创建 `server/data-talk-application/src/test/java/com/datatalk/application/fileartifact/ArtifactWatcherServiceTest.java`：
+- [x] 创建 `server/data-talk-application/src/test/java/com/datatalk/application/fileartifact/ArtifactWatcherServiceTest.java`：
 
 ```java
 package com.datatalk.application.fileartifact;
@@ -2003,7 +2003,7 @@ class ArtifactWatcherServiceTest {
 
 ### 11.3 验证
 
-- [ ] 跑测试：
+- [x] 跑测试：
 
 ```bash
 cd server && mvn -pl data-talk-application test -Dtest=ArtifactWatcherServiceTest -q
@@ -2027,7 +2027,7 @@ cd server && mvn -pl data-talk-application test -Dtest=ArtifactWatcherServiceTes
 
 ### 12.1 实现
 
-- [ ] 创建 `server/data-talk-application/src/main/java/com/datatalk/application/fileartifact/FileArtifactReconciler.java`：
+- [x] 创建 `server/data-talk-application/src/main/java/com/datatalk/application/fileartifact/FileArtifactReconciler.java`：
 
 ```java
 package com.datatalk.application.fileartifact;
@@ -2051,18 +2051,18 @@ import java.util.Set;
 import java.util.stream.Stream;
 
 /**
- * Brings the SQLite {@code file_artifact} index back in line with the
- * filesystem state under {@code sessions/<sid>/} and {@code workspaces/<cid>/}.
- *
- * <p>Invocation points (Part 2):
- * <ul>
- *   <li>{@code FileArtifactWatcherStartup} on Spring {@code ApplicationReadyEvent}.</li>
- *   <li>{@code ArtifactWatcherService} on watcher OVERFLOW.</li>
- * </ul>
- *
- * <p>Part 5 will additionally schedule {@link #runFullReconcile} on a daily cron
- * via {@code HousekeepingScheduler}.
- */
+- [x] * Brings the SQLite {@code file_artifact} index back in line with the
+- [x] * filesystem state under {@code sessions/<sid>/} and {@code workspaces/<cid>/}.
+- [x] *
+- [x] * <p>Invocation points (Part 2):
+- [x] * <ul>
+- [x] *   <li>{@code FileArtifactWatcherStartup} on Spring {@code ApplicationReadyEvent}.</li>
+- [x] *   <li>{@code ArtifactWatcherService} on watcher OVERFLOW.</li>
+- [x] * </ul>
+- [x] *
+- [x] * <p>Part 5 will additionally schedule {@link #runFullReconcile} on a daily cron
+- [x] * via {@code HousekeepingScheduler}.
+- [x] */
 @Component
 public class FileArtifactReconciler {
 
@@ -2216,7 +2216,7 @@ public class FileArtifactReconciler {
 
 ### 12.2 单元测试
 
-- [ ] 创建 `server/data-talk-application/src/test/java/com/datatalk/application/fileartifact/FileArtifactReconcilerTest.java`：
+- [x] 创建 `server/data-talk-application/src/test/java/com/datatalk/application/fileartifact/FileArtifactReconcilerTest.java`：
 
 ```java
 package com.datatalk.application.fileartifact;
@@ -2378,7 +2378,7 @@ class FileArtifactReconcilerTest {
 
 ### 12.3 验证
 
-- [ ] 跑测试：
+- [x] 跑测试：
 
 ```bash
 cd server && mvn -pl data-talk-application test -Dtest=FileArtifactReconcilerTest -q
@@ -2394,7 +2394,7 @@ cd server && mvn -pl data-talk-application test -Dtest=FileArtifactReconcilerTes
 
 ### 13.1 实现
 
-- [ ] 创建 `server/data-talk-application/src/main/java/com/datatalk/application/fileartifact/FileArtifactWatcherStartup.java`：
+- [x] 创建 `server/data-talk-application/src/main/java/com/datatalk/application/fileartifact/FileArtifactWatcherStartup.java`：
 
 ```java
 package com.datatalk.application.fileartifact;
@@ -2407,19 +2407,19 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 /**
- * Wires the watcher orchestrator + initial reconcile into the Spring lifecycle.
- *
- * <p>Order:
- * <ol>
- *   <li>Spring container ready → run startup reconcile (catches drift while
- *       the app was offline).</li>
- *   <li>Start the {@link ArtifactWatcherService} which begins recursive watch on
- *       {@code sessions/} for live events.</li>
- * </ol>
- *
- * <p>Reverse order on shutdown: stop watcher first (avoid event arrival during
- * shutdown), then no reconcile needed (DB will be re-checked on next startup).
- */
+- [x] * Wires the watcher orchestrator + initial reconcile into the Spring lifecycle.
+- [x] *
+- [x] * <p>Order:
+- [x] * <ol>
+- [x] *   <li>Spring container ready → run startup reconcile (catches drift while
+- [x] *       the app was offline).</li>
+- [x] *   <li>Start the {@link ArtifactWatcherService} which begins recursive watch on
+- [x] *       {@code sessions/} for live events.</li>
+- [x] * </ol>
+- [x] *
+- [x] * <p>Reverse order on shutdown: stop watcher first (avoid event arrival during
+- [x] * shutdown), then no reconcile needed (DB will be re-checked on next startup).
+- [x] */
 @Component
 public class FileArtifactWatcherStartup {
 
@@ -2466,7 +2466,7 @@ public class FileArtifactWatcherStartup {
 
 但 `MethvinArtifactWatcher` 没加 `@Component`（实现是 plain class，便于多次构造在测试中）。我们用 `@Bean` 显式注册：
 
-- [ ] 修改 `server/data-talk-application/src/main/java/com/datatalk/application/fileartifact/FileArtifactConfiguration.java`，把它扩展为：
+- [x] 修改 `server/data-talk-application/src/main/java/com/datatalk/application/fileartifact/FileArtifactConfiguration.java`，把它扩展为：
 
 ```java
 package com.datatalk.application.fileartifact;
@@ -2502,7 +2502,7 @@ public class FileArtifactConfiguration {
 
 并在 `infrastructure` 模块新建 `WatcherConfiguration` 注册 `MethvinArtifactWatcher` bean —— infra 持有第三方依赖，bean 注册放 infra 更符合分层：
 
-- [ ] 创建 `server/data-talk-infrastructure/src/main/java/com/datatalk/infra/fileartifact/WatcherConfiguration.java`：
+- [x] 创建 `server/data-talk-infrastructure/src/main/java/com/datatalk/infra/fileartifact/WatcherConfiguration.java`：
 
 ```java
 package com.datatalk.infra.fileartifact;
@@ -2525,7 +2525,7 @@ public class WatcherConfiguration {
 
 ### 13.3 编译
 
-- [ ] 编译验证：
+- [x] 编译验证：
 
 ```bash
 cd server && mvn compile -q -pl data-talk-application && \
@@ -2542,7 +2542,7 @@ cd server && mvn compile -q -pl data-talk-application && \
 1. `file_artifact` 行被 watcher 写入。
 2. 行的 status 与 frontmatter 一致。
 
-- [ ] 创建 `server/data-talk-adapter/src/test/java/com/datatalk/adapter/fileartifact/FileArtifactWatcherE2EIT.java`：
+- [x] 创建 `server/data-talk-adapter/src/test/java/com/datatalk/adapter/fileartifact/FileArtifactWatcherE2EIT.java`：
 
 ```java
 package com.datatalk.adapter.fileartifact;
@@ -2622,7 +2622,7 @@ class FileArtifactWatcherE2EIT {
 }
 ```
 
-- [ ] 跑 IT：
+- [x] 跑 IT：
 
 ```bash
 cd server && mvn -pl data-talk-adapter -am verify -Dit.test=FileArtifactWatcherE2EIT -DfailIfNoTests=false -q
@@ -2638,7 +2638,7 @@ CLAUDE.md "Backend Run vs Compile" 要求每次跨模块改动都要 `mvn instal
 
 ### 15.1 推 jar
 
-- [ ] 推 application 与 infrastructure：
+- [x] 推 application 与 infrastructure：
 
 ```bash
 cd server && mvn install -pl data-talk-application -am -DskipTests -q && \
@@ -2647,7 +2647,7 @@ cd server && mvn install -pl data-talk-application -am -DskipTests -q && \
 
 ### 15.2 完整 verify
 
-- [ ] 跑全量 verify，确保无回归（包括 Part 1 的所有测试，FlywayMigrationIT、JdbcFileArtifactRepositoryIT、FileArtifactControllerIT 等）：
+- [x] 跑全量 verify，确保无回归（包括 Part 1 的所有测试，FlywayMigrationIT、JdbcFileArtifactRepositoryIT、FileArtifactControllerIT 等）：
 
 ```bash
 cd server && mvn clean verify -q
@@ -2657,7 +2657,7 @@ cd server && mvn clean verify -q
 
 ### 15.3 commit
 
-- [ ] commit 第二批改动：
+- [x] commit 第二批改动：
 
 ```bash
 git add server/data-talk-application/src/main/java/com/datatalk/application/fileartifact/FileArtifactService.java \
@@ -2683,7 +2683,7 @@ CLAUDE.md "Post-Execution Document Housekeeping" 强制：所有 task 完成后�
 
 ### 16.1 把 index 行从 Active 移到 Completed
 
-- [ ] 修改 `docs/exec-plans/index.md`：
+- [x] 修改 `docs/exec-plans/index.md`：
   - 在「活跃计划」表格中**删除** Part 2 那行（已经在 Task 1 替换为正式 link）。
   - 在「已完成计划」表格头部（按日期降序的合适位置）**插入**：
 
@@ -2693,21 +2693,21 @@ CLAUDE.md "Post-Execution Document Housekeeping" 强制：所有 task 完成后�
 
 ### 16.2 更新 spec 完成度快照
 
-- [ ] 修改 `docs/product-specs/2026-04-29-opencode-workdir-and-artifact-system-design.md`：在文末「**当前完成度快照（2026-04-30）**」段落更新：
+- [x] 修改 `docs/product-specs/2026-04-29-opencode-workdir-and-artifact-system-design.md`：在文末「**当前完成度快照（2026-04-30）**」段落更新：
   1. 把第 1 项改为：`已完成：Part 1 (Migration & Domain) + Part 2 (Watcher & Reconcile) — Part 2 接入 io.methvin DirectoryWatcher、FrontmatterParser、FileArtifactReconciler 与 FileArtifactWatcherStartup；端到端 IT 通过。`
   2. 把第 2 项改为：`未开始正式计划：Part 3 (MCP + AGENTS template)、Part 4 (frontend files tabs)、Part 5 (deletion flow + housekeeping)。`
 
 ### 16.3 更新 Roadmap Task 11 状态
 
-- [ ] 修改 `docs/exec-plans/2026-04-25-next-implementation-roadmap-plan.md`：找到 Task 11 章节中关于 File Artifact System 的现状描述（Part 1 完成、Part 2-5 待补正式计划），把 Part 2 状态从「待补正式计划」改为「已完成」，并更新摘要为 `Part 1+2 已完成；Part 3-5 待补正式计划`（具体行号见 `:395`）。
+- [x] 修改 `docs/exec-plans/2026-04-25-next-implementation-roadmap-plan.md`：找到 Task 11 章节中关于 File Artifact System 的现状描述（Part 1 完成、Part 2-5 待补正式计划），把 Part 2 状态从「待补正式计划」改为「已完成」，并更新摘要为 `Part 1+2 已完成；Part 3-5 待补正式计划`（具体行号见 `:395`）。
 
 ### 16.4 标记本计划所有 task 完成
 
-- [ ] 把本计划文件（`2026-04-30-file-artifact-system-part2-watcher-reconcile-plan.md`）每个 `- [ ]` 改为 `- [x]`；如有偏差，在 task 末尾加 `> 偏差：...` 注解。
+- [x] 把本计划文件（`2026-04-30-file-artifact-system-part2-watcher-reconcile-plan.md`）每个 `- [ ]` 改为 `- [x]`；如有偏差，在 task 末尾加 `> 偏差：...` 注解。
 
 ### 16.5 final commit
 
-- [ ] commit：
+- [x] commit：
 
 ```bash
 git add docs/exec-plans/2026-04-30-file-artifact-system-part2-watcher-reconcile-plan.md \
@@ -2717,23 +2717,25 @@ git add docs/exec-plans/2026-04-30-file-artifact-system-part2-watcher-reconcile-
 git commit -m "docs: mark file artifact system part 2 complete and move to Completed index"
 ```
 
+> 偏差：本轮按用户要求使用 1 个 subagent 执行，写代码阶段未跑编译，最后统一验证。子代理提前创建了单个提交 `850a923 feat: add artifact watcher and improve er designer`，其中包含本 Part 2 server 改动以及当时工作区已有的 ER 相关改动；收尾阶段未回滚这些既有改动，只追加最小修正与 housekeeping。验证期额外修正了四处：`FileArtifactWatcherStartup` 使用 Spring `DisposableBean` 替代 `@PreDestroy`，避免 application 模块新增 `jakarta.annotation-api`；`ArtifactWatcherService` 对 `OVERFLOW` 同步调用 `runFullReconcile()`，符合本计划“OVERFLOW 直接触发 full reconcile”的边界；`DiscoveryControllerIT` 的 `datatalk.ui.read` 描述期望同步到已存在的 ER inspector/designer action 文案。`FileArtifactWatcherE2EIT` 的 Awaitility 断言改为先 assert Optional 存在再读取，避免空 Optional 在轮询中直接抛出非断言异常。
+
 ---
 
 ## Self-Review Checklist (执行前/执行中检查)
 
-- [ ] **Spec 覆盖**：
+- [x] **Spec 覆盖**：
   - §3.1 子目录软隔离（基线 watcher 监听 `sessions/`）→ Tasks 4/10/11
   - §5.6 watcher 事件 → 状态变化精确规约表 → Task 9
   - §6.3 工程细节 1–7（debounce / 异步分派 / 生命周期 / OVERFLOW / 大文件 / 白名单 / symlink 不跟随）→ Tasks 10/11
   - §6.4 reconcile（仅扫 sessions/ + workspaces/） → Task 12
   - §6.7 DtEvent 在 watcher 路径上的发布（FileArtifactDetected / FileArtifactDiscarded / FileArtifactArchiveRequested）→ Task 9
-- [ ] **Placeholder 扫描**：本计划无 `TBD` / `TODO` / `implement later`；每段代码都是完整可粘贴的，所有方法签名、字段名、类名贯穿一致。
-- [ ] **类型一致性**：
+- [x] **Placeholder 扫描**：本计划无 `TBD` / `TODO` / `implement later`；每段代码都是完整可粘贴的，所有方法签名、字段名、类名贯穿一致。
+- [x] **类型一致性**：
   - `FileArtifactStatus` / `FileArtifactScope` / `FileArtifactKind` 跨 task 拼写一致
   - `recordDetected` / `recordModified` / `recordDeleted` 三个方法在 Task 9 定义、Task 11 调用、Task 12 reconciler 通过 `recordDetected` 复用 — 签名一致
   - `ArtifactWatcher` 端口在 Task 4 定义、Task 10 实现、Task 11 通过 mock 注入 — 一致
-- [ ] **CLAUDE.md "Backend Run vs Compile"**：每次跨模块改动后都有 `mvn install -pl <module> -am -DskipTests`（Tasks 8.4 / 15.1）。
-- [ ] **数据源兼容性 Gate**：本 Part **不涉及** 任何 DB 类型新增/变更（spec §2.3 已声明 N/A），完全是 FS + SQLite 元数据，与 MySQL/PG/H2 业务连接无关。
+- [x] **CLAUDE.md "Backend Run vs Compile"**：每次跨模块改动后都有 `mvn install -pl <module> -am -DskipTests`（Tasks 8.4 / 15.1）。
+- [x] **数据源兼容性 Gate**：本 Part **不涉及** 任何 DB 类型新增/变更（spec §2.3 已声明 N/A），完全是 FS + SQLite 元数据，与 MySQL/PG/H2 业务连接无关。
 
 ---
 

@@ -3,7 +3,7 @@
 | 元 | 值 |
 |----|-----|
 | 日期 | 2026-04-29 |
-| 状态 | Draft v2 (Part 1 implemented; Parts 2-5 pending) |
+| 状态 | Draft v2 (Part 1+2 implemented; Parts 3-5 pending) |
 | 范围 | Backend (domain/application/infrastructure/adapter) · Frontend (Stage tabs/Chat/Settings) · OpenCode runtime 集成 |
 | 修订 | 第二版：响应代码核实后的审阅意见，撤回 per-session cwd 假设、改子目录软隔离；新模型命名 `file_artifact` 与现有 `artifacts` 表区分；session_id 不设 FK、application 层管理引用 |
 
@@ -792,12 +792,12 @@ i18n key 添加到 `client/src/i18n/messages.ts`（按现有结构，与同级 k
 
 ---
 
-**审阅状态**：Draft v2，设计已代码核实，且 Part 1 已落地；Part 2-5 仍待正式 child plan 与实现。
+**审阅状态**：Draft v2，设计已代码核实，且 Part 1+2 已落地；Part 3-5 仍待正式 child plan 与实现。
 
 **当前完成度快照（2026-04-30）**：
-1. 已完成：Part 1 (Migration & Domain) — V14 migration、Domain `FileArtifact` 类型与 enum、DtEvent 5 事件、`SessionWorkdirService` 子目录骨架、`AgentPromptBuilder` `{{ACTIVE_SESSION_DIR}}` 占位扩展、REST skeleton。
-2. 未开始正式计划：Part 2 (watcher + reconcile)、Part 3 (MCP + AGENTS template)、Part 4 (frontend files tabs)、Part 5 (deletion flow + housekeeping)。
-3. 文档状态：spec 继续作为 Task 11 总设计基线；后续实现应补 Part 2-5 各自的 execution plan，而不是继续直接堆到本 spec 里。
+1. 已完成：Part 1 (Migration & Domain) + Part 2 (Watcher & Reconcile) — Part 2 接入 io.methvin DirectoryWatcher、FrontmatterParser、FileArtifactReconciler 与 FileArtifactWatcherStartup；端到端 IT 通过。
+2. 未开始正式计划：Part 3 (MCP + AGENTS template)、Part 4 (frontend files tabs)、Part 5 (deletion flow + housekeeping)。
+3. 文档状态：spec 继续作为 Task 11 总设计基线；后续实现应补 Part 3-5 各自的 execution plan，而不是继续直接堆到本 spec 里。
 
 **第二版相对第一版的关键改动摘要**：
 1. 撤回 per-session cwd 假设（OpenCode 单进程现实）→ 改子目录软隔离 + AGENTS.md `{{ACTIVE_SESSION_DIR}}` 占位
