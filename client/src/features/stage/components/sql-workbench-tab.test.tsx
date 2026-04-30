@@ -11,6 +11,7 @@ import { SqlWorkbenchTab } from './sql-workbench-tab'
 
 const executeSqlMock = vi.hoisted(() => vi.fn())
 const formatSqlMock = vi.hoisted(() => vi.fn((sql: string) => `formatted: ${sql}`))
+const ensureHydratedMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
 const listConnectionsMock = vi.hoisted(() => vi.fn())
 const listConnectionTargetsMock = vi.hoisted(() => vi.fn())
 const setConnectionsMock = vi.hoisted(() => vi.fn())
@@ -130,6 +131,12 @@ vi.mock('../utils/format-sql', () => ({
   formatSql: formatSqlMock,
 }))
 
+vi.mock('@/features/stage/persistence/stage-persistence-bootstrap', () => ({
+  coordinator: {
+    ensureHydrated: ensureHydratedMock,
+  },
+}))
+
 vi.mock('@/services/api/connection', () => ({
   listConnections: listConnectionsMock,
   getConnectionTargets: listConnectionTargetsMock,
@@ -200,6 +207,7 @@ describe('SqlWorkbenchTab', () => {
   beforeEach(() => {
     executeSqlMock.mockReset()
     formatSqlMock.mockClear()
+    ensureHydratedMock.mockClear()
     listConnectionsMock.mockReset()
     listConnectionTargetsMock.mockReset()
     setConnectionsMock.mockReset()
@@ -260,6 +268,12 @@ describe('SqlWorkbenchTab', () => {
     expect(screen.queryByRole('tablist')).toBeNull()
     expect(screen.queryByTestId('sql-workbench-result-splitter')).toBeNull()
     expect(screen.queryByTestId('sql-result-shell')).toBeNull()
+  })
+
+  it('requests payload hydration when refresh restored only query-editor metadata', () => {
+    render(<SqlWorkbenchTab tab={{ ...tab, payload: {}, payloadVersion: 5 }} />)
+
+    expect(ensureHydratedMock).toHaveBeenCalledWith('tab-1')
   })
 
   it('loads connections to resolve missing connection names for current tab context', async () => {

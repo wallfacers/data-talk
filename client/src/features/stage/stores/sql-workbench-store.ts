@@ -84,10 +84,12 @@ export type SqlWorkbenchTabState = {
 }
 
 type EnsureTabInput = Partial<Pick<SqlWorkbenchTabState, 'sqlText' | 'source' | 'useSessionContext'>>
+type HydrateTabInput = Pick<SqlWorkbenchTabState, 'sqlText' | 'source' | 'useSessionContext'>
 
 type SqlWorkbenchState = {
   tabsById: Record<string, SqlWorkbenchTabState>
   ensureTab: (tabId: string, initial?: EnsureTabInput) => void
+  hydrateTab: (tabId: string, snapshot: HydrateTabInput) => void
   setSqlText: (tabId: string, sqlText: string) => void
   replaceSqlText: (tabId: string, sqlText: string, baseVersion: number) => SqlWorkbenchEditResult
   applyTextEdits: (tabId: string, params: { baseVersion: number; edits: SqlWorkbenchTextEdit[] }) => SqlWorkbenchEditResult
@@ -137,6 +139,23 @@ function createDefaultTabState(initial?: EnsureTabInput): SqlWorkbenchTabState {
     useSessionContext: initial?.useSessionContext ?? true,
     cursor: { line: 1, column: 1 },
   }
+}
+
+function canHydratePristineTab(tabState: SqlWorkbenchTabState) {
+  return tabState.version === 1
+    && tabState.sqlText === tabState.savedSqlText
+    && tabState.executeStatus === 'idle'
+    && tabState.results.length === 0
+    && tabState.activeResultId === null
+    && tabState.resolvedContext === null
+    && tabState.contextNotice === null
+    && tabState.errorMessage === null
+    && tabState.confirmation === null
+    && tabState.confirmationInvalid === null
+    && tabState.lastRequest === null
+    && tabState.override === null
+    && tabState.history.length === 0
+    && tabState.selection === null
 }
 
 function ensureTabState(
@@ -235,6 +254,41 @@ export const useSqlWorkbenchStore = create<SqlWorkbenchState>((set, get) => ({
       tabsById: {
         ...state.tabsById,
         [tabId]: createDefaultTabState(initial),
+      },
+    }
+  }),
+
+  hydrateTab: (tabId, snapshot) => set((state) => {
+    const current = state.tabsById[tabId]
+    if (!current) {
+      return {
+        tabsById: {
+          ...state.tabsById,
+          [tabId]: createDefaultTabState(snapshot),
+        },
+      }
+    }
+    if (!canHydratePristineTab(current)) return state
+
+    const next = {
+      ...current,
+      sqlText: snapshot.sqlText,
+      savedSqlText: snapshot.sqlText,
+      source: snapshot.source,
+      useSessionContext: snapshot.useSessionContext,
+    }
+    if (
+      next.sqlText === current.sqlText
+      && next.savedSqlText === current.savedSqlText
+      && next.source === current.source
+      && next.useSessionContext === current.useSessionContext
+    ) {
+      return state
+    }
+    return {
+      tabsById: {
+        ...state.tabsById,
+        [tabId]: next,
       },
     }
   }),

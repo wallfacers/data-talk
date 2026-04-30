@@ -53,6 +53,28 @@ describe('tab-type-registry', () => {
     })
   })
 
+  it('rehydrates query_editor payloads into an already-mounted pristine tab', () => {
+    useSqlWorkbenchStore.getState().cleanupTabs([])
+    useSqlWorkbenchStore.getState().ensureTab('q-mounted', {
+      sqlText: '',
+      source: 'user',
+      useSessionContext: true,
+    })
+
+    getTabTypeDescriptor('query_editor').rehydrate?.('q-mounted', {
+      sqlText: 'select 42',
+      source: 'ai',
+      useSessionContext: false,
+    })
+
+    expect(useSqlWorkbenchStore.getState().tabsById['q-mounted']).toMatchObject({
+      sqlText: 'select 42',
+      savedSqlText: 'select 42',
+      source: 'ai',
+      useSessionContext: false,
+    })
+  })
+
   it('extractContent is total — null/undefined/empty returns empty string', () => {
     const queryDesc = getTabTypeDescriptor('query_editor')
     expect(queryDesc.extractContent(null)).toBe('')

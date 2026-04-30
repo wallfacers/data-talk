@@ -57,6 +57,14 @@ type TabSummary = {
   lastTouchedAt?: number
 }
 
+type StageLocalPayloadSummary = {
+  tabId: string
+  type: string
+  payload: unknown
+  payloadJson: string
+  payloadVersion?: number
+}
+
 function toStageTab(item: Record<string, unknown>): StageTab {
   return {
     tabId: String(item.tabId ?? item.id ?? item.objectId ?? ''),
@@ -92,6 +100,21 @@ function persistedTabSummaries(state: { tabs: StageTab[] }): TabSummary[] {
       pinned: tab.pinned,
       archived: tab.archived,
       lastTouchedAt: tab.lastTouchedAt,
+    }))
+}
+
+function stageLocalPayloadSummaries(state: { tabs: StageTab[] }): StageLocalPayloadSummary[] {
+  return state.tabs
+    .filter((tab) => {
+      const descriptor = TAB_TYPE_REGISTRY[tab.type]
+      return descriptor?.persistent && descriptor.payloadSource === 'stage_tab'
+    })
+    .map((tab) => ({
+      tabId: tab.tabId,
+      type: tab.type,
+      payload: tab.payload,
+      payloadJson: JSON.stringify(tab.payload ?? {}),
+      payloadVersion: tab.payloadVersion,
     }))
 }
 
@@ -138,6 +161,23 @@ function diffContentAndSchedule(
       payload: buildPersistedQueryEditorPayload(tab, nextTab, prevTab),
       contentText: nextTab.sqlText,
       expectedVersion: tab.payloadVersion,
+    })
+  }
+}
+
+function diffStageLocalPayloadAndSchedule(next: StageLocalPayloadSummary[], prev: StageLocalPayloadSummary[]): void {
+  for (const nextTab of next) {
+    const prevTab = prev.find((item) => item.tabId === nextTab.tabId)
+    if (prevTab) {
+      if (prevTab.payloadJson === nextTab.payloadJson) continue
+      if (prevTab.payloadVersion !== nextTab.payloadVersion) continue
+    }
+
+    const descriptor = TAB_TYPE_REGISTRY[nextTab.type]
+    coordinator.scheduleContentWrite(nextTab.tabId, {
+      payload: nextTab.payload,
+      contentText: descriptor?.extractContent?.(nextTab.payload) ?? '',
+      expectedVersion: nextTab.payloadVersion,
     })
   }
 }
@@ -219,6 +259,19 @@ function scheduleErChanges<P>(next: Map<string, P>, prev: Map<string, P>): void 
     if (!shallow(prevMeta, next)) {
       diffMetaAndSchedule(next, prevMeta)
       prevMeta = next
+    }
+  })
+}
+
+// Subscribe payload diffs for persistent tabs whose content lives directly on
+// StageTab.payload instead of an auxiliary store.
+{
+  let prevPayloads = stageLocalPayloadSummaries(useStageStore.getState())
+  useStageStore.subscribe((state) => {
+    const next = stageLocalPayloadSummaries(state)
+    if (!shallow(prevPayloads, next)) {
+      diffStageLocalPayloadAndSchedule(next, prevPayloads)
+      prevPayloads = next
     }
   })
 }

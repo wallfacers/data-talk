@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 import { listConnections, getConnectionTargets } from '@/services/api/connection'
 import { resolveTabDataContext } from '@/features/stage/utils/resolve-tab-data-context'
 import { parseSqlOutline, resolveCurrentSqlOutlineStatement } from '../utils/parse-sql-outline'
-import { normalizeQueryEditorPayload } from '../utils/normalize-query-editor-payload'
+import { isNormalizedQueryEditorPayload, normalizeQueryEditorPayload } from '../utils/normalize-query-editor-payload'
 import {
   formatQueryEditorSql,
   runQueryEditorSql,
@@ -31,6 +31,7 @@ import { StageActivityRail } from './activity-rail/stage-activity-rail'
 import { useI18n } from '@/i18n/use-i18n'
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { SqlConfirmationCard } from '@/features/sql-confirmation/sql-confirmation-card'
+import { coordinator } from '../persistence/stage-persistence-bootstrap'
 
 export type SqlWorkbenchTabActions = {
   insertAtCursor: (text: string) => void
@@ -185,6 +186,7 @@ function toContextValue(
 export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
   const { t } = useI18n()
   const payload = normalizeQueryEditorPayload(tab.payload)
+  const shouldHydratePersistedPayload = tab.payloadVersion != null && !isNormalizedQueryEditorPayload(tab.payload)
   const autoRunRef = useRef(false)
   const monacoRef = useRef<SqlMonacoEditorHandle | null>(null)
   const splitLayoutRef = useRef<HTMLDivElement | null>(null)
@@ -306,6 +308,11 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
       useSessionContext: payload.useSessionContext,
     })
   }, [ensureTab, payload.initialSql, payload.source, payload.useSessionContext, tab.tabId])
+
+  useEffect(() => {
+    if (!shouldHydratePersistedPayload) return
+    void coordinator.ensureHydrated(tab.tabId)
+  }, [shouldHydratePersistedPayload, tab.tabId])
 
   useEffect(() => {
     autoRunRef.current = false

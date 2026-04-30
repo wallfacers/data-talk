@@ -602,7 +602,7 @@ export const useStageStore = create<StageState>((set, get) => ({
     const tab: StageTab = {
       tabId, type: 'artifact_preview', title,
       originSessionId: sessionId,
-      payload: { artifactId, sessionId },
+      payload: { artifactId, sessionId, artifactTitle: title },
       createdAt: Date.now(),
     }
     get().openTab(tab)

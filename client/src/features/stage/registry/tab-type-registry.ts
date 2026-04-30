@@ -9,6 +9,7 @@ export interface TabTypeDescriptor {
   type: string
   persistent: boolean
   scope?: 'workspace' | 'session'
+  payloadSource?: 'stage_tab' | 'sql_workbench' | 'er_tabs'
   icon: LucideIcon
   labelKey: string
   railLabelKey?: string
@@ -29,6 +30,7 @@ export const TAB_TYPE_REGISTRY: Record<string, TabTypeDescriptor> = {
     type: 'query_editor',
     persistent: true,
     scope: 'workspace',
+    payloadSource: 'sql_workbench',
     icon: DatabaseIcon,
     labelKey: 'tabType.queryEditor',
     extractContent: (p) => {
@@ -38,9 +40,9 @@ export const TAB_TYPE_REGISTRY: Record<string, TabTypeDescriptor> = {
     rehydrate: (tabId, p) => {
       const o = p as { sqlText?: unknown; version?: unknown } | null | undefined
       const normalizedPayload = normalizeQueryEditorPayload(p)
-      useSqlWorkbenchStore.getState().ensureTab(tabId, {
+      useSqlWorkbenchStore.getState().hydrateTab(tabId, {
         sqlText: typeof o?.sqlText === 'string' ? o.sqlText : '',
-        source: 'user',
+        source: normalizedPayload.source,
         useSessionContext: normalizedPayload.useSessionContext,
       })
     },
@@ -49,6 +51,7 @@ export const TAB_TYPE_REGISTRY: Record<string, TabTypeDescriptor> = {
     type: 'artifact_preview',
     persistent: true,
     scope: 'session',
+    payloadSource: 'stage_tab',
     icon: BarChart2Icon,
     labelKey: 'tabType.artifactPreview',
     extractContent: (p) => {
@@ -74,6 +77,7 @@ export const TAB_TYPE_REGISTRY: Record<string, TabTypeDescriptor> = {
     type: 'diagnostic',
     persistent: true,
     scope: 'workspace',
+    payloadSource: 'stage_tab',
     icon: SearchCodeIcon,
     labelKey: 'tabType.diagnostic',
     extractContent: (p) => {
@@ -85,6 +89,7 @@ export const TAB_TYPE_REGISTRY: Record<string, TabTypeDescriptor> = {
     type: 'er_inspector',
     persistent: true,
     scope: 'workspace',
+    payloadSource: 'er_tabs',
     icon: NetworkIcon,
     labelKey: 'tabType.erInspector',
     extractContent: (p) => {
@@ -111,6 +116,7 @@ export const TAB_TYPE_REGISTRY: Record<string, TabTypeDescriptor> = {
     type: 'er_designer',
     persistent: true,
     scope: 'workspace',
+    payloadSource: 'er_tabs',
     icon: NetworkIcon,
     labelKey: 'tabType.erDesigner',
     railLabelKey: 'tabType.erDesigner.short',
