@@ -35,7 +35,7 @@ describe('tab-type-registry', () => {
   })
 
   it('rehydrates query_editor useSessionContext from normalized payloads', () => {
-    useSqlWorkbenchStore.setState({ tabsById: {} })
+    useSqlWorkbenchStore.getState().cleanupTabs([])
     const desc = getTabTypeDescriptor('query_editor')
 
     desc.rehydrate?.('q-registry', {
