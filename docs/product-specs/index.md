@@ -255,6 +255,7 @@ DataTalk 的差异化在于 **AI 直接操作数据库**，但不能让 AI 蛮�
 
 | 设计文档 | 日期 | 主题 |
 |----------|------|------|
+| [Data Source Coverage: Oracle Design](./2026-04-30-data-source-coverage-oracle-design.md) | 2026-04-30 | Wave A Oracle child design：把当前 `DbType` / diagnostics stub 推进为可实现的一等支持前置设计；明确 canonical kind `oracle`、service name/SID/role/JDBC properties 不得混塞字段、owner/schema target resolution、PL/SQL splitter、Oracle risk guard、EXPLAIN PLAN/DBMS_XPLAN 与 structured unsupported 的边界，支持状态在实现完成前保持 stub-only |
 | [Data Source Coverage: SQLite Design](./2026-04-30-data-source-coverage-sqlite-design.md) | 2026-04-30 | Wave A SQLite child design：以 `sqlite` 为 canonical kind，补齐用户 SQLite 文件连接的一等支持要求；明确 `databaseName` 表示文件路径或 `:memory:`、无 server catalog/schema、前端需补连接表单和 picker、SQL splitter/risk/diagnostics/ER/MCP 必须验证，支持状态在实现完成前保持 partial |
 | [Data Source Coverage Governance Design](./2026-04-30-data-source-coverage-governance-design.md) | 2026-04-30 | 为主流数据源覆盖扩展建立总控治理：强制应用 `DATA_SOURCE_TYPE_COMPATIBILITY.md` gate，禁止 UI-only / prompt-only / JDBC-only 支持；固化候选矩阵与 Wave A-E 推进顺序；要求每个 kind 独立 child spec + child plan，并统一覆盖 canonical kind、alias normalization、连接、metadata、SQL execution、splitter、risk guard、diagnostics、frontend、MCP/runtime prompt、测试与文档 housekeeping |
 | [SQL Editor Toolbar Context Design](./2026-04-30-sql-editor-toolbar-context-design.md) | 2026-04-30 | 将 SQL 执行上下文从 popover 重做为 toolbar 内联控件：`固定 session 上下文` 开关 + 连接 / 数据库 / Schema 联动下拉 + 最末尾分页限制；默认跟随 session，关闭后 tab 手动 override 即选即生效；补齐 AI `query_editor.set_context` 的 useSessionContext / limit / 联动参数契约和刷新失败全局提示 |
