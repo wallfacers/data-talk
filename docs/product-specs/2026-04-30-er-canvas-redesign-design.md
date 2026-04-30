@@ -104,7 +104,7 @@ DESIGN.md 没有图标色专条，本 spec 把"Neutral Backbone, Focused Signal"
 | 禁用图标 | `interaction.disabled`（必须配 `aria-disabled`，不可只靠灰度） |
 | Connection handle 球（Designer） | 两端统一 `border.strong`，靠形状区分（target 实心圆 / source 环形圆）；hover 时 ring `accent.primary` |
 
-**通用尺寸**：装饰性 `size-3.5`（14px）、按钮内联 `size-4`（16px）、列行内 PK/FK `size-3`（12px）。
+**通用尺寸**：装饰性 `size-3.5`（14px）、按钮内联 `size-4`（16px）、列行内 PK/FK `size-3`（12px）。Connection handle 可见球单独放大：Designer `18px`，Viewer hover `16px`，外层命中区保持 `20px`。
 
 **写法**：优先用 Tailwind 语义类（`text-text-muted`、`bg-bg-canvas`、`border-border-default` 等，由项目 `@theme inline` 映射至 `var(--dt-*)`）；SVG `stroke` / `fill` / `<marker>` 等 Tailwind 工具难以直达的位置允许用 `var(--dt-*)` CSS 自定义属性。**禁止**直接使用 primitive 值（如 `text-cobalt-700`、`#3B82F6`、Tailwind 调色板里的 `bg-blue-500`），也禁止在组件内引入 component-local 颜色值——这是 DESIGN.md "Don't use raw primitive colors directly in feature code" 的硬约束。
 
@@ -306,9 +306,9 @@ Designer 模式下整个芯片即 `<SelectTrigger>`，下拉项按当前 `dialec
 
 | 模式 | 形态 |
 |---|---|
-| Designer target（左） | 8px **实心圆**，填充 `border.strong`，2px `bg.canvas` 外描边；常驻；hover 缩放 1.25 + 2px ring `accent.primary`，去除 status-色 glow |
-| Designer source（右） | 8px **环形圆**（透明填充 + 2px `border.strong` 描边 + 1px `bg.canvas` 内描边形成"环"）；常驻；hover 缩放 1.25 + 2px ring `accent.primary` |
-| Viewer source/target | 默认隐藏（opacity 0）；行 hover 时显示为 6px 圆（target 实心 / source 环形，沿用 Designer 的形状语义），`border.strong` + `bg.canvas` 描边；不可拖拽 |
+| Designer target（左） | 18px **实心圆**，填充 `border.strong`，2px `bg.canvas` 外描边；常驻；hover 缩放 1.25 + 2px ring `accent.primary`，去除 status-色 glow |
+| Designer source（右） | 18px **环形圆**（透明填充 + 2px `border.strong` 描边 + 1px `bg.canvas` 内描边形成"环"）；常驻；hover 缩放 1.25 + 2px ring `accent.primary`；Designer 行右侧预留 `pr-10`，避免和 hover-only delete 按钮重合 |
+| Viewer source/target | 默认隐藏（opacity 0）；行 hover 时显示为 16px 圆（target 实心 / source 环形，沿用 Designer 的形状语义），`border.strong` + `bg.canvas` 描边；不可拖拽 |
 
 Designer 永远暴露 connection affordance（active workshop）；Viewer 只在 hover 给暗示（passive instrument）。
 

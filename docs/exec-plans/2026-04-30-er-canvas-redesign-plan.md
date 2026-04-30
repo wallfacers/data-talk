@@ -13,6 +13,7 @@
 - 2026-04-30：按用户要求采用"先写代码 / 文档，最后统一编译联调"执行；因此每个 task 中的单文件 red/green test run、Phase B/C 中段 `tsc --noEmit`、per-task commit 均跳过，改为 Task 9 统一验证。
 - 2026-04-30：Phase B 与 Phase C 使用并行 subagent batch 写入，主线程完成静态集成复核与少量样式契约修正。
 - 2026-04-30：最终自动化验证完成：`cd client && npx tsc --noEmit` 通过；`cd client && npx vitest run` 通过（139 files / 924 tests）。`npm run lint --silent` 已执行但命中既有 repo-wide lint 基线（310 errors / 7 warnings）；本轮 ER canvas 变更文件定向 ESLint 通过。截图、axe-core、PR 创建未在本轮执行，作为手工验收 / 提交流程 deferred。
+- 2026-05-01：按视觉验收反馈放大字段两侧 connection handle：Designer 可见球 `18px`、Viewer hover 可见球 `16px`；Designer 行右侧增加 `pr-10` 预留，避免右侧 source handle 与 hover-only delete 按钮重合。验证：`cd client && npx vitest run src/features/stage/components/er-canvas/__tests__/ErTableNode.test.tsx`、`cd client && npx tsc --noEmit`、ERTableNode 定向 ESLint 均通过。
 
 ---
 
@@ -2098,7 +2099,7 @@ cd client && npm run dev
    - 行 hover 时 rail 与图标同步变 cobalt
    - NN 列右侧出现 NN 胶囊
    - 默认看不到删除按钮，行 hover 才出
-   - target handle = 实心圆，source handle = 环形圆，hover 时缩放 + cobalt ring
+   - target handle = 18px 实心圆，source handle = 18px 环形圆，hover 时缩放 + cobalt ring；右侧 handle 与删除按钮不重合
    - "+ Add column" 在节点底部
    - 空表显示 "No columns yet" + "+ Add column"
    - 边默认 1.5px 中性、virtual 1.5px warn dashed `4 3`、selected 2px cobalt
@@ -2107,7 +2108,7 @@ cd client && npm run dev
 2. 切换到 ER Viewer Tab：
    - 工具栏徽章变 `Viewer` + Lock；节点 header 右侧 Lock
    - 网格更稀疏（24px）；节点无阴影、边框更克制
-   - handle 默认隐藏，行 hover 才显示
+   - handle 默认隐藏，行 hover 才显示为 16px 实心 / 环形圆
 3. 右键节点：上下文菜单按 ArrowDown / ArrowUp 循环；Enter 触发并关闭；Esc 关闭；删除项前有分隔条
 4. 切深色主题（系统 / Tauri 主题切换）：所有元素颜色协调，对比度可读
 5. 空态四种 reason 各看一遍
@@ -2161,8 +2162,8 @@ gh pr create --title "feat(er-canvas): redesign Designer / Inspector canvas per 
 - [x] 数据源类型兼容门：N/A（纯前端视觉，未触及 dialect / JDBC / SQL）
 
 ## Manual acceptance
-- [ ] Designer：模式徽章 / header pencil / PK rail / FK rail / NN pill / hover delete / target handle 实心 / source handle 环形 / hover ring cobalt / +Add column / 空表 / 边 markerEnd / Diff/DDL disabled tooltip
-- [ ] Viewer：模式徽章 / header lock / 24px 稀疏网格 / 扁平节点 / handle 默认隐藏 / 上下文菜单 / 4 个空态
+- [ ] Designer：模式徽章 / header pencil / PK rail / FK rail / NN pill / hover delete / target handle 18px 实心 / source handle 18px 环形 / 右侧 handle 不与删除按钮重合 / hover ring cobalt / +Add column / 空表 / 边 markerEnd / Diff/DDL disabled tooltip
+- [ ] Viewer：模式徽章 / header lock / 24px 稀疏网格 / 扁平节点 / handle 默认隐藏并在行 hover 显示 16px / 上下文菜单 / 4 个空态
 - [ ] 双主题切换无串色
 EOF
 )"
