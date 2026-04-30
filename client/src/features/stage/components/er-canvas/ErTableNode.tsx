@@ -166,6 +166,7 @@ function ColumnRow({
   const role = rowRole(column)
   const rowMinHeight = mode === 'designer' ? 'min-h-8' : 'min-h-7'
   const rowPadding = mode === 'designer' ? 'py-1.5' : 'py-1'
+  const rowHorizontalPadding = mode === 'designer' ? 'pl-3 pr-10' : 'px-3'
 
   // Outer Handle: transparent anchor positioned by ReactFlow; the visible ball
   // is an inner <span> so direct-hover scaling stays centered (Tailwind's
@@ -177,7 +178,7 @@ function ColumnRow({
   const visibilityClass = mode === 'designer'
     ? 'opacity-100'
     : 'opacity-0 group-hover:opacity-100'
-  const handleSizeClass = mode === 'designer' ? 'size-3' : 'size-2.5'
+  const handleSizeClass = mode === 'designer' ? 'size-[18px]' : 'size-4'
   const targetBallClassName = [
     ballBase,
     visibilityClass,
@@ -202,9 +203,10 @@ function ColumnRow({
   return (
     <li
       className={[
-        'group relative flex items-center justify-between gap-2 border-b border-border-subtle px-3 last:border-b-0 hover:bg-interaction-hover',
+        'group relative flex items-center justify-between gap-2 border-b border-border-subtle last:border-b-0 hover:bg-interaction-hover',
         rowMinHeight,
         rowPadding,
+        rowHorizontalPadding,
       ].join(' ')}
       data-testid={`er-row-${column.name}`}
       data-er-row-role={role}

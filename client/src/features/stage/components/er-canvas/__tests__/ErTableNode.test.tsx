@@ -61,6 +61,10 @@ describe('<ErTableNode mode="inspector">', () => {
     expect(screen.getByTestId('er-row-id')).toHaveAttribute('data-er-row-role', 'pk')
     expect(screen.getByTestId('er-row-account_id')).toHaveAttribute('data-er-row-role', 'fk')
     expect(screen.getByTestId('er-row-email')).toHaveAttribute('data-er-row-role', 'regular')
+    expect(document.querySelector('.react-flow__handle.react-flow__handle-left')?.firstElementChild?.className)
+      .toContain('size-4')
+    expect(document.querySelector('.react-flow__handle.react-flow__handle-right')?.firstElementChild?.className)
+      .toContain('size-4')
   })
 
   it('hides column rows when collapsed', () => {
@@ -162,12 +166,13 @@ describe('<ErTableNode mode="designer">', () => {
     const sourceBall = sourceHandle?.firstElementChild as HTMLElement | null
     expect(targetBall).toHaveAttribute('data-er-handle-shape', 'solid')
     expect(targetBall?.className).toContain('bg-border-strong')
-    expect(targetBall?.className).toContain('size-3')
+    expect(targetBall?.className).toContain('size-[18px]')
     expect(targetBall?.className).toContain('hover:scale-125')
     expect(sourceBall).toHaveAttribute('data-er-handle-shape', 'ring')
     expect(sourceBall?.className).toContain('border-border-strong')
-    expect(sourceBall?.className).toContain('size-3')
+    expect(sourceBall?.className).toContain('size-[18px]')
     expect(sourceBall?.className).toContain('hover:scale-125')
+    expect(screen.getByTestId('er-row-email').className).toContain('pr-10')
   })
 
   it('renders NN pills only for non-null columns', () => {
