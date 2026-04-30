@@ -162,9 +162,11 @@ describe('<ErTableNode mode="designer">', () => {
     const sourceBall = sourceHandle?.firstElementChild as HTMLElement | null
     expect(targetBall).toHaveAttribute('data-er-handle-shape', 'solid')
     expect(targetBall?.className).toContain('bg-border-strong')
+    expect(targetBall?.className).toContain('size-3')
     expect(targetBall?.className).toContain('hover:scale-125')
     expect(sourceBall).toHaveAttribute('data-er-handle-shape', 'ring')
     expect(sourceBall?.className).toContain('border-border-strong')
+    expect(sourceBall?.className).toContain('size-3')
     expect(sourceBall?.className).toContain('hover:scale-125')
   })
 

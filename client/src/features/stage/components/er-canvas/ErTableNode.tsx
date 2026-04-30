@@ -177,7 +177,7 @@ function ColumnRow({
   const visibilityClass = mode === 'designer'
     ? 'opacity-100'
     : 'opacity-0 group-hover:opacity-100'
-  const handleSizeClass = mode === 'designer' ? 'size-2' : 'size-1.5'
+  const handleSizeClass = mode === 'designer' ? 'size-3' : 'size-2.5'
   const targetBallClassName = [
     ballBase,
     visibilityClass,
