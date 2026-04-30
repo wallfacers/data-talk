@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import ReactECharts from 'echarts-for-react'
 import * as echarts from 'echarts/core'
 import type { EChartsCoreOption } from 'echarts/core'
@@ -58,32 +58,12 @@ type ChartRendererProps = {
   height?: number
 }
 
-type ChartSize = {
-  width: number | string
-  height: number
-}
-
 function readThemeName(root: HTMLElement | null = globalThis.document?.documentElement ?? null) {
   return root?.classList.contains('dark') ? CHART_THEME_DARK : CHART_THEME_LIGHT
 }
 
-function measureSize(container: HTMLDivElement | null, fallbackHeight: number): ChartSize {
-  const width = container?.clientWidth ?? 0
-  const height = container?.clientHeight ?? fallbackHeight
-
-  return {
-    width: width > 0 ? width : '100%',
-    height: height > 0 ? height : fallbackHeight,
-  }
-}
-
 export function ChartRenderer({ option, height = DEFAULT_HEIGHT }: ChartRendererProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
   const [themeName, setThemeName] = useState(() => readThemeName())
-  const [size, setSize] = useState<ChartSize>(() => ({
-    width: '100%',
-    height,
-  }))
 
   ensureChartThemesRegistered()
 
@@ -91,39 +71,6 @@ export function ChartRenderer({ option, height = DEFAULT_HEIGHT }: ChartRenderer
     () => injectOptionFix(option) as EChartsCoreOption,
     [option],
   )
-
-  useLayoutEffect(() => {
-    setSize(measureSize(containerRef.current, height))
-  }, [height])
-
-  useEffect(() => {
-    const container = containerRef.current
-    if (!container || typeof ResizeObserver === 'undefined') {
-      return
-    }
-
-    const observer = new ResizeObserver(([entry]) => {
-      const width = entry?.contentRect.width ?? container.clientWidth
-      const nextHeight = entry?.contentRect.height ?? container.clientHeight ?? height
-
-      setSize((current) => {
-        const resolvedWidth = width > 0 ? width : current.width
-        const resolvedHeight = nextHeight > 0 ? nextHeight : height
-
-        if (current.width === resolvedWidth && current.height === resolvedHeight) {
-          return current
-        }
-
-        return {
-          width: resolvedWidth,
-          height: resolvedHeight,
-        }
-      })
-    })
-
-    observer.observe(container)
-    return () => observer.disconnect()
-  }, [height])
 
   useEffect(() => {
     const root = globalThis.document?.documentElement ?? null
@@ -153,18 +100,28 @@ export function ChartRenderer({ option, height = DEFAULT_HEIGHT }: ChartRenderer
     return () => observer.disconnect()
   }, [])
 
+  // The ECharts wrapper MUST keep `width: 100%` here. Previously we measured
+  // the container with a `ResizeObserver` and fed the px width back as
+  // `style={size}`, but the wrapper is a `block` element and its px width
+  // lagged the parent's `width: 100%` by one frame on every resize. A pie
+  // chart, whose centre is anchored at the canvas mid-point, immediately
+  // reveals that one-frame offset: the canvas sits left- or right-of-centre
+  // inside the parent and gets clipped by the parent's `overflow-hidden`,
+  // so the pie visually drifts off-centre. echarts-for-react ships with
+  // `autoResize: true` (`size_sensor`) — letting both the wrapper div and
+  // the echarts canvas track the parent at `100%` keeps the pie centred
+  // through every split-pane resize.
   return (
     <div
-      ref={containerRef}
       className="w-full min-w-0 max-w-full overflow-hidden"
-      style={{ width: '100%', minWidth: 0, maxWidth: '100%', height }}
+      style={{ height }}
     >
       <ReactECharts
         key={themeName}
         notMerge={true}
         option={fixedOption}
         opts={{ renderer: 'canvas' }}
-        style={size}
+        style={{ width: '100%', height }}
         theme={themeName}
       />
     </div>

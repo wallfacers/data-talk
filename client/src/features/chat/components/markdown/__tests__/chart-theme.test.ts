@@ -66,6 +66,50 @@ describe('chart-theme', () => {
     expect(theme.backgroundColor).toBe('#0F172A')
   })
 
+  it('injectOptionFix pins pie series center to [50%, 50%] regardless of source value', async () => {
+    const { injectOptionFix } = await loadChartTheme()
+
+    const fixed = injectOptionFix({
+      series: [
+        { type: 'pie', center: ['40%', '50%'], radius: '60%', data: [] },
+        { type: 'bar', data: [1, 2, 3] },
+      ],
+    })
+
+    const series = fixed.series as Array<Record<string, unknown>>
+    expect(series[0].center).toEqual(['50%', '50%'])
+    // Non-pie series must be untouched (bar lays out via grid, not center).
+    expect(series[1]).toEqual({ type: 'bar', data: [1, 2, 3] })
+  })
+
+  it('injectOptionFix flattens a pie chart legend to a horizontal bottom strip', async () => {
+    const { injectOptionFix } = await loadChartTheme()
+
+    const fixed = injectOptionFix({
+      series: [{ type: 'pie', data: [] }],
+      legend: { orient: 'vertical', left: 'left', top: 'middle' },
+    })
+
+    const legend = fixed.legend as Record<string, unknown>
+    expect(legend.orient).toBe('horizontal')
+    expect(legend.left).toBe('center')
+    expect(legend.bottom).toBe(8)
+    expect(legend.top).toBeUndefined()
+  })
+
+  it('injectOptionFix leaves non-pie options untouched apart from the existing grid/title fixes', async () => {
+    const { injectOptionFix } = await loadChartTheme()
+
+    const fixed = injectOptionFix({
+      series: [{ type: 'line', data: [1, 2, 3] }],
+      legend: { orient: 'vertical', left: 'left' },
+    })
+
+    expect(fixed.series).toEqual([{ type: 'line', data: [1, 2, 3] }])
+    // Legend should not be flattened when no pie series is present.
+    expect((fixed.legend as Record<string, unknown>).orient).toBe('vertical')
+  })
+
   it('registerChartThemes registers both datatalk-light and datatalk-dark', async () => {
     const registerTheme = vi.fn()
     vi.doMock('echarts/core', async () => {

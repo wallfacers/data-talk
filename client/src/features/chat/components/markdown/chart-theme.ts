@@ -174,6 +174,56 @@ function withTransparentTitle(title: unknown) {
   return title
 }
 
+// AI-generated pie options frequently set `series.center` to a non-centred
+// pair (e.g. ['40%', '50%']) or pin a vertical legend that pushes the pie
+// off-axis. The product contract is that chart artifacts always read as a
+// horizontally centred figure, so we hard-pin pie centres back to
+// ['50%', '50%'] before handing the option to ECharts. Other series types
+// (bar/line/scatter/...) lay out in a `grid`, not via `center`, so we only
+// touch `pie`.
+function withCenteredPie(series: unknown): unknown {
+  const ensure = (entry: unknown): unknown => {
+    if (!entry || typeof entry !== 'object') return entry
+    const record = entry as Record<string, unknown>
+    if (record.type !== 'pie') return entry
+    return { ...record, center: ['50%', '50%'] }
+  }
+
+  if (Array.isArray(series)) {
+    return series.map(ensure)
+  }
+  return ensure(series)
+}
+
+// Pie-with-vertical-legend frequently arrives with the pie centred but the
+// legend stacked along one edge, which still leaves the figure visually
+// off-axis. Rewriting any pie's legend to a centred horizontal strip at the
+// bottom keeps the figure's visual centre aligned with the container's
+// horizontal centre.
+function hasPieSeries(series: unknown): boolean {
+  const isPie = (entry: unknown) =>
+    !!entry && typeof entry === 'object' && (entry as Record<string, unknown>).type === 'pie'
+  if (Array.isArray(series)) return series.some(isPie)
+  return isPie(series)
+}
+
+function withHorizontalLegend(legend: unknown): unknown {
+  const flatten = (entry: unknown): unknown => {
+    if (!entry || typeof entry !== 'object') return entry
+    const record = entry as Record<string, unknown>
+    return {
+      ...record,
+      orient: 'horizontal',
+      left: 'center',
+      top: undefined,
+      right: undefined,
+      bottom: 8,
+    }
+  }
+  if (Array.isArray(legend)) return legend.map(flatten)
+  return flatten(legend)
+}
+
 export function injectOptionFix(option: Record<string, unknown>): Record<string, unknown> {
   const fixed: Record<string, unknown> = {
     ...option,
@@ -182,6 +232,13 @@ export function injectOptionFix(option: Record<string, unknown>): Record<string,
 
   if (option.title !== undefined) {
     fixed.title = withTransparentTitle(option.title)
+  }
+
+  if (option.series !== undefined && hasPieSeries(option.series)) {
+    fixed.series = withCenteredPie(option.series)
+    if (option.legend !== undefined) {
+      fixed.legend = withHorizontalLegend(option.legend)
+    }
   }
 
   return fixed
