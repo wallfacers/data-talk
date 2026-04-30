@@ -111,7 +111,10 @@ class MethvinArtifactWatcherIT {
         } catch (UnsupportedOperationException | java.nio.file.FileSystemException e) {
             org.junit.jupiter.api.Assumptions.abort("symlink not supported on this filesystem");
         }
+        Files.writeString(session.resolve("ordinary.md"), "ok");
 
+        await().atMost(ofSeconds(5)).untilAsserted(() ->
+                assertThat(events).anyMatch(event -> event.path().getFileName().toString().equals("ordinary.md")));
         await().pollDelay(ofMillis(500)).atMost(ofSeconds(2)).untilAsserted(() ->
                 assertThat(events).noneMatch(event -> event.path().getFileName().toString().equals("link.md")));
     }

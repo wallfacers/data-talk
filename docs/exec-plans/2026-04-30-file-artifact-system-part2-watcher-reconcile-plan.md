@@ -153,13 +153,13 @@ import java.nio.file.Path;
 import java.time.Instant;
 
 /**
-- [x] * Application-layer abstraction of low-level filesystem events emitted by
-- [x] * the {@link ArtifactWatcher} port. Five subtypes match spec §5.6 verbatim.
-- [x] *
-- [x] * <p>Adapters (e.g. {@code MethvinArtifactWatcher}) translate native events
-- [x] * into these sealed records — application code never imports any third-party
-- [x] * watcher type.
-- [x] */
+ * Application-layer abstraction of low-level filesystem events emitted by
+ * the {@link ArtifactWatcher} port. Five subtypes match spec §5.6 verbatim.
+ *
+ * <p>Adapters (e.g. {@code MethvinArtifactWatcher}) translate native events
+ * into these sealed records — application code never imports any third-party
+ * watcher type.
+ */
 public sealed interface FileWatchEvent
         permits FileWatchEvent.Create,
                 FileWatchEvent.Modify,
@@ -216,25 +216,25 @@ import java.nio.file.Path;
 import java.util.function.Consumer;
 
 /**
-- [x] * Filesystem-watcher port. Exactly one root subtree per instance.
-- [x] *
-- [x] * <p>Implementations:
-- [x] * <ul>
-- [x] *   <li>{@code MethvinArtifactWatcher} — io.methvin DirectoryWatcher (production).</li>
-- [x] *   <li>Test doubles — Mockito mocks or hand-rolled fakes for unit tests.</li>
-- [x] * </ul>
-- [x] *
-- [x] * <p>Contract:
-- [x] * <ul>
-- [x] *   <li>{@link #start} is idempotent: a second call without an intervening close
-- [x] *       must throw {@link IllegalStateException}.</li>
-- [x] *   <li>{@link #close} is idempotent and safe even if {@code start} was never called.</li>
-- [x] *   <li>The listener is invoked from a watcher-internal thread; implementations
-- [x] *       should debounce / dispatch downstream rather than block here.</li>
-- [x] *   <li>Symlinks are NOT followed (spec §6.3 #7); adapter must configure its
-- [x] *       backing watcher accordingly.</li>
-- [x] * </ul>
-- [x] */
+ * Filesystem-watcher port. Exactly one root subtree per instance.
+ *
+ * <p>Implementations:
+ * <ul>
+ *   <li>{@code MethvinArtifactWatcher} — io.methvin DirectoryWatcher (production).</li>
+ *   <li>Test doubles — Mockito mocks or hand-rolled fakes for unit tests.</li>
+ * </ul>
+ *
+ * <p>Contract:
+ * <ul>
+ *   <li>{@link #start} is idempotent: a second call without an intervening close
+ *       must throw {@link IllegalStateException}.</li>
+ *   <li>{@link #close} is idempotent and safe even if {@code start} was never called.</li>
+ *   <li>The listener is invoked from a watcher-internal thread; implementations
+ *       should debounce / dispatch downstream rather than block here.</li>
+ *   <li>Symlinks are NOT followed (spec §6.3 #7); adapter must configure its
+ *       backing watcher accordingly.</li>
+ * </ul>
+ */
 public interface ArtifactWatcher extends AutoCloseable {
 
     /**
@@ -280,19 +280,19 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
-- [x] * Minimal frontmatter extractor for spec §5.3.
-- [x] *
-- [x] * <ul>
-- [x] *   <li>Markdown / text — looks for a leading {@code ---\n...\n---} fence within
-- [x] *       the first 8 KB and parses simple {@code key: value} lines (no nesting).</li>
-- [x] *   <li>SQL — looks for a leading block of {@code -- key: value} comment lines,
-- [x] *       optionally wrapped in {@code -- ---} fences for symmetry with Markdown.</li>
-- [x] *   <li>Anything else (csv, binary, unknown extension) returns an empty map.</li>
-- [x] * </ul>
-- [x] *
-- [x] * <p>The parser is intentionally lenient: malformed YAML never throws, the worst
-- [x] * case is "no frontmatter detected" which falls through to TEMPORARY status.
-- [x] */
+ * Minimal frontmatter extractor for spec §5.3.
+ *
+ * <ul>
+ *   <li>Markdown / text — looks for a leading {@code ---\n...\n---} fence within
+ *       the first 8 KB and parses simple {@code key: value} lines (no nesting).</li>
+ *   <li>SQL — looks for a leading block of {@code -- key: value} comment lines,
+ *       optionally wrapped in {@code -- ---} fences for symmetry with Markdown.</li>
+ *   <li>Anything else (csv, binary, unknown extension) returns an empty map.</li>
+ * </ul>
+ *
+ * <p>The parser is intentionally lenient: malformed YAML never throws, the worst
+ * case is "no frontmatter detected" which falls through to TEMPORARY status.
+ */
 public final class FrontmatterParser {
 
     /** Maximum bytes inspected at file head. spec §5.3 fixes this at 8 KB. */
@@ -611,12 +611,12 @@ package com.datatalk.application.fileartifact;
 import java.util.UUID;
 
 /**
-- [x] * Centralized id generation for {@code file_artifact} rows. Format:
-- [x] * {@code file_artifact_<random>}. Spec §4 specifies the prefix; we use a
-- [x] * UUID body since the project does not yet pull in a ULID dependency and the
-- [x] * prefix alone is sufficient to namespace these against the legacy
-- [x] * {@code art-} payload-type artifacts.
-- [x] */
+ * Centralized id generation for {@code file_artifact} rows. Format:
+ * {@code file_artifact_<random>}. Spec §4 specifies the prefix; we use a
+ * UUID body since the project does not yet pull in a ULID dependency and the
+ * prefix alone is sufficient to namespace these against the legacy
+ * {@code art-} payload-type artifacts.
+ */
 public final class FileArtifactIds {
 
     private static final String PREFIX = "file_artifact_";
@@ -676,10 +676,10 @@ import java.util.List;
 import java.util.Optional;
 
 /**
-- [x] * Persistence contract for {@link FileArtifact}.
-- [x] *
-- [x] * <p>Infrastructure owns the JDBC implementation; application code depends only on this port.
-- [x] */
+ * Persistence contract for {@link FileArtifact}.
+ *
+ * <p>Infrastructure owns the JDBC implementation; application code depends only on this port.
+ */
 public interface FileArtifactRepository {
 
     void insert(FileArtifact artifact);
@@ -888,14 +888,14 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
-- [x] * Use-case service for file artifact reads, candidate promotion, path safety,
-- [x] * and watcher-driven row upsert/delete.
-- [x] *
-- [x] * <p>The watcher entry methods ({@link #recordDetected}, {@link #recordModified},
-- [x] * {@link #recordDeleted}) are called from {@code ArtifactWatcherService} after
-- [x] * debouncing; they are idempotent and tolerant of races (same path showing up
-- [x] * twice, file disappearing between detect and read, etc.).
-- [x] */
+ * Use-case service for file artifact reads, candidate promotion, path safety,
+ * and watcher-driven row upsert/delete.
+ *
+ * <p>The watcher entry methods ({@link #recordDetected}, {@link #recordModified},
+ * {@link #recordDeleted}) are called from {@code ArtifactWatcherService} after
+ * debouncing; they are idempotent and tolerant of races (same path showing up
+ * twice, file disappearing between detect and read, etc.).
+ */
 @Service
 public class FileArtifactService {
 
@@ -1397,15 +1397,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 /**
-- [x] * Production {@link ArtifactWatcher} backed by io.methvin DirectoryWatcher.
-- [x] *
-- [x] * <p>Configured with {@code fileHashing=false} (events fire on path changes
-- [x] * without content hashing — trade smaller memory for occasional duplicate
-- [x] * MODIFY which the application-side debouncer will absorb).
-- [x] *
-- [x] * <p>Symlinks are not followed: the underlying library walks the tree once at
-- [x] * start, and subsequent emitted paths under symlinks are filtered out.
-- [x] */
+ * Production {@link ArtifactWatcher} backed by io.methvin DirectoryWatcher.
+ *
+ * <p>Configured with {@code fileHashing=false} (events fire on path changes
+ * without content hashing — trade smaller memory for occasional duplicate
+ * MODIFY which the application-side debouncer will absorb).
+ *
+ * <p>Symlinks are not followed: the underlying library walks the tree once at
+ * start, and subsequent emitted paths under symlinks are filtered out.
+ */
 public class MethvinArtifactWatcher implements ArtifactWatcher {
 
     private static final Logger log = LoggerFactory.getLogger(MethvinArtifactWatcher.class);
@@ -1653,18 +1653,18 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
-- [x] * Orchestrates the {@link ArtifactWatcher} feed: filter → debounce → dispatch.
-- [x] *
-- [x] * <p>Design notes:
-- [x] * <ul>
-- [x] *   <li>{@link #start} is called from {@code FileArtifactWatcherStartup} after
-- [x] *       Spring is ready, so all dependencies are wired before watch begins.</li>
-- [x] *   <li>Debouncing uses a single-threaded scheduler; each new event for the
-- [x] *       same {@code (path, kind)} resets the timer to 200 ms.</li>
-- [x] *   <li>The dispatch worker runs on the same scheduler — keeps event ordering
-- [x] *       per path. Long IO (frontmatter parse, JDBC) runs there.</li>
-- [x] * </ul>
-- [x] */
+ * Orchestrates the {@link ArtifactWatcher} feed: filter → debounce → dispatch.
+ *
+ * <p>Design notes:
+ * <ul>
+ *   <li>{@link #start} is called from {@code FileArtifactWatcherStartup} after
+ *       Spring is ready, so all dependencies are wired before watch begins.</li>
+ *   <li>Debouncing uses a single-threaded scheduler; each new event for the
+ *       same {@code (path, kind)} resets the timer to 200 ms.</li>
+ *   <li>The dispatch worker runs on the same scheduler — keeps event ordering
+ *       per path. Long IO (frontmatter parse, JDBC) runs there.</li>
+ * </ul>
+ */
 @Service
 public class ArtifactWatcherService implements AutoCloseable {
 
@@ -2051,18 +2051,18 @@ import java.util.Set;
 import java.util.stream.Stream;
 
 /**
-- [x] * Brings the SQLite {@code file_artifact} index back in line with the
-- [x] * filesystem state under {@code sessions/<sid>/} and {@code workspaces/<cid>/}.
-- [x] *
-- [x] * <p>Invocation points (Part 2):
-- [x] * <ul>
-- [x] *   <li>{@code FileArtifactWatcherStartup} on Spring {@code ApplicationReadyEvent}.</li>
-- [x] *   <li>{@code ArtifactWatcherService} on watcher OVERFLOW.</li>
-- [x] * </ul>
-- [x] *
-- [x] * <p>Part 5 will additionally schedule {@link #runFullReconcile} on a daily cron
-- [x] * via {@code HousekeepingScheduler}.
-- [x] */
+ * Brings the SQLite {@code file_artifact} index back in line with the
+ * filesystem state under {@code sessions/<sid>/} and {@code workspaces/<cid>/}.
+ *
+ * <p>Invocation points (Part 2):
+ * <ul>
+ *   <li>{@code FileArtifactWatcherStartup} on Spring {@code ApplicationReadyEvent}.</li>
+ *   <li>{@code ArtifactWatcherService} on watcher OVERFLOW.</li>
+ * </ul>
+ *
+ * <p>Part 5 will additionally schedule {@link #runFullReconcile} on a daily cron
+ * via {@code HousekeepingScheduler}.
+ */
 @Component
 public class FileArtifactReconciler {
 
@@ -2407,19 +2407,19 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 /**
-- [x] * Wires the watcher orchestrator + initial reconcile into the Spring lifecycle.
-- [x] *
-- [x] * <p>Order:
-- [x] * <ol>
-- [x] *   <li>Spring container ready → run startup reconcile (catches drift while
-- [x] *       the app was offline).</li>
-- [x] *   <li>Start the {@link ArtifactWatcherService} which begins recursive watch on
-- [x] *       {@code sessions/} for live events.</li>
-- [x] * </ol>
-- [x] *
-- [x] * <p>Reverse order on shutdown: stop watcher first (avoid event arrival during
-- [x] * shutdown), then no reconcile needed (DB will be re-checked on next startup).
-- [x] */
+ * Wires the watcher orchestrator + initial reconcile into the Spring lifecycle.
+ *
+ * <p>Order:
+ * <ol>
+ *   <li>Spring container ready → run startup reconcile (catches drift while
+ *       the app was offline).</li>
+ *   <li>Start the {@link ArtifactWatcherService} which begins recursive watch on
+ *       {@code sessions/} for live events.</li>
+ * </ol>
+ *
+ * <p>Reverse order on shutdown: stop watcher first (avoid event arrival during
+ * shutdown), then no reconcile needed (DB will be re-checked on next startup).
+ */
 @Component
 public class FileArtifactWatcherStartup {
 
@@ -2723,19 +2723,19 @@ git commit -m "docs: mark file artifact system part 2 complete and move to Compl
 
 ## Self-Review Checklist (执行前/执行中检查)
 
-- [x] **Spec 覆盖**：
+ **Spec 覆盖**：
   - §3.1 子目录软隔离（基线 watcher 监听 `sessions/`）→ Tasks 4/10/11
   - §5.6 watcher 事件 → 状态变化精确规约表 → Task 9
   - §6.3 工程细节 1–7（debounce / 异步分派 / 生命周期 / OVERFLOW / 大文件 / 白名单 / symlink 不跟随）→ Tasks 10/11
   - §6.4 reconcile（仅扫 sessions/ + workspaces/） → Task 12
   - §6.7 DtEvent 在 watcher 路径上的发布（FileArtifactDetected / FileArtifactDiscarded / FileArtifactArchiveRequested）→ Task 9
-- [x] **Placeholder 扫描**：本计划无 `TBD` / `TODO` / `implement later`；每段代码都是完整可粘贴的，所有方法签名、字段名、类名贯穿一致。
-- [x] **类型一致性**：
+ **Placeholder 扫描**：本计划无 `TBD` / `TODO` / `implement later`；每段代码都是完整可粘贴的，所有方法签名、字段名、类名贯穿一致。
+ **类型一致性**：
   - `FileArtifactStatus` / `FileArtifactScope` / `FileArtifactKind` 跨 task 拼写一致
   - `recordDetected` / `recordModified` / `recordDeleted` 三个方法在 Task 9 定义、Task 11 调用、Task 12 reconciler 通过 `recordDetected` 复用 — 签名一致
   - `ArtifactWatcher` 端口在 Task 4 定义、Task 10 实现、Task 11 通过 mock 注入 — 一致
-- [x] **CLAUDE.md "Backend Run vs Compile"**：每次跨模块改动后都有 `mvn install -pl <module> -am -DskipTests`（Tasks 8.4 / 15.1）。
-- [x] **数据源兼容性 Gate**：本 Part **不涉及** 任何 DB 类型新增/变更（spec §2.3 已声明 N/A），完全是 FS + SQLite 元数据，与 MySQL/PG/H2 业务连接无关。
+ **CLAUDE.md "Backend Run vs Compile"**：每次跨模块改动后都有 `mvn install -pl <module> -am -DskipTests`（Tasks 8.4 / 15.1）。
+ **数据源兼容性 Gate**：本 Part **不涉及** 任何 DB 类型新增/变更（spec §2.3 已声明 N/A），完全是 FS + SQLite 元数据，与 MySQL/PG/H2 业务连接无关。
 
 ---
 

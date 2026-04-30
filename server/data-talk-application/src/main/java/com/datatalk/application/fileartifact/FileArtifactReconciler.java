@@ -1,5 +1,7 @@
 package com.datatalk.application.fileartifact;
 
+import com.datatalk.application.persistence.SessionRecord;
+import com.datatalk.application.persistence.SessionRepository;
 import com.datatalk.application.session.SessionBusRegistry;
 import com.datatalk.domain.event.DtEvent;
 import com.datatalk.domain.fileartifact.FileArtifact;
@@ -31,32 +33,42 @@ public class FileArtifactReconciler {
     private final FileArtifactService artifactService;
     private final SessionWorkdirService workdir;
     private final SessionBusRegistry buses;
+    private final SessionRepository sessions;
 
     public FileArtifactReconciler(
             FileArtifactRepository repo,
             FileArtifactService artifactService,
             SessionWorkdirService workdir,
-            SessionBusRegistry buses) {
+            SessionBusRegistry buses,
+            SessionRepository sessions) {
         this.repo = repo;
         this.artifactService = artifactService;
         this.workdir = workdir;
         this.buses = buses;
+        this.sessions = sessions;
     }
 
     public synchronized void runFullReconcile() {
-        reconcileSessionsTree();
-        reconcileWorkspacesTree();
+        Set<String> knownSessionIds = knownSessionIds();
+        reconcileSessionsTree(knownSessionIds);
+        reconcileWorkspacesTree(knownSessionIds);
     }
 
-    private void reconcileSessionsTree() {
-        Path sessionsRoot = workdir.root().sessionsRoot();
+    private void reconcileSessionsTree(Set<String> knownSessionIds) {
+        Path sessionsRoot = canonicalDirectory(workdir.root().sessionsRoot());
+        if (sessionsRoot == null) {
+            return;
+        }
         if (!Files.isDirectory(sessionsRoot)) {
             return;
         }
 
         List<FileArtifact> rows = repo.findAllSessionScoped();
         Map<String, FileArtifact> byPath = rows.stream()
-                .collect(Collectors.toMap(FileArtifact::physicalPath, row -> row, (left, right) -> left));
+                .collect(Collectors.toMap(FileArtifact::physicalPath, row -> row, (left, right) -> {
+                    log.warn("duplicate file_artifact physical_path row {} vs {}", left.id(), right.id());
+                    return left;
+                }));
         Set<String> seen = new HashSet<>();
 
         try (Stream<Path> walk = Files.walk(sessionsRoot)) {
@@ -64,13 +76,17 @@ public class FileArtifactReconciler {
                 if (!isAdoptableFile(path, sessionsRoot)) {
                     continue;
                 }
-                String absolutePath = path.toAbsolutePath().normalize().toString();
+                String absolutePath = canonicalFilePath(path);
                 seen.add(absolutePath);
                 if (byPath.containsKey(absolutePath)) {
                     continue;
                 }
                 String sessionId = sessionIdOf(path, sessionsRoot);
                 if (sessionId != null) {
+                    if (!knownSessionIds.contains(sessionId)) {
+                        log.info("orphan_session_dir {}", sessionId);
+                        continue;
+                    }
                     artifactService.recordDetected(sessionId, path, FrontmatterParser.parse(path));
                 }
             }
@@ -86,7 +102,7 @@ public class FileArtifactReconciler {
                 case TEMPORARY, DISCARDED -> repo.deleteById(row.id());
                 case CANDIDATE -> {
                     repo.deleteById(row.id());
-                    publishDiscarded(row, "reconcile");
+                    publishDiscarded(row, "reconcile", knownSessionIds);
                 }
                 case ARCHIVED -> log.warn(
                         "file_artifact {} archived row unexpectedly appears in session scope and is missing: {}",
@@ -96,19 +112,19 @@ public class FileArtifactReconciler {
         }
     }
 
-    private void reconcileWorkspacesTree() {
+    private void reconcileWorkspacesTree(Set<String> knownSessionIds) {
         for (FileArtifact row : repo.findAllWorkspaceScopedArchived()) {
             if (Files.exists(Path.of(row.physicalPath()))) {
                 continue;
             }
             log.warn("file_artifact {} archived file missing: {}", row.id(), row.physicalPath());
             repo.deleteById(row.id());
-            publishDiscarded(row, "reconcile");
+            publishDiscarded(row, "reconcile", knownSessionIds);
         }
     }
 
-    private void publishDiscarded(FileArtifact row, String reason) {
-        if (row.sessionId() == null) {
+    private void publishDiscarded(FileArtifact row, String reason, Set<String> knownSessionIds) {
+        if (row.sessionId() == null || !knownSessionIds.contains(row.sessionId())) {
             return;
         }
         try {
@@ -127,7 +143,7 @@ public class FileArtifactReconciler {
             return false;
         }
         String name = fileName.toString();
-        if (name.isBlank() || name.startsWith(".") || name.endsWith(".meta.json")) {
+        if (name.isBlank() || name.startsWith(".")) {
             return false;
         }
         String lower = name.toLowerCase(Locale.ROOT);
@@ -146,5 +162,35 @@ public class FileArtifactReconciler {
         }
         String sessionId = relative.getName(0).toString();
         return sessionId.startsWith("_") || sessionId.startsWith(".") ? null : sessionId;
+    }
+
+    private Set<String> knownSessionIds() {
+        try {
+            return sessions.listAll().stream()
+                    .map(SessionRecord::id)
+                    .collect(Collectors.toSet());
+        } catch (Exception e) {
+            log.warn("file artifact reconcile failed loading sessions: {}", e.toString());
+            return Set.of();
+        }
+    }
+
+    private static Path canonicalDirectory(Path root) {
+        if (!Files.isDirectory(root)) {
+            return null;
+        }
+        try {
+            return root.toRealPath();
+        } catch (IOException e) {
+            return root.toAbsolutePath().normalize();
+        }
+    }
+
+    private static String canonicalFilePath(Path path) {
+        try {
+            return path.toRealPath().toString();
+        } catch (IOException e) {
+            return path.toAbsolutePath().normalize().toString();
+        }
     }
 }

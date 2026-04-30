@@ -16,6 +16,7 @@ import java.util.function.Consumer;
 import static java.time.Duration.ofSeconds;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
@@ -64,31 +65,70 @@ class ArtifactWatcherServiceTest {
     }
 
     @Test
-    void startWatchesSessionsRoot() {
-        verify(watcher).start(eq(root.sessionsRoot()), any());
+    void startWatchesCanonicalSessionsRoot() throws Exception {
+        verify(watcher).start(eq(root.sessionsRoot().toRealPath()), any());
+    }
+
+    @Test
+    void startCanonicalizesSessionsRootAndAcceptsCanonicalEventPaths() throws Exception {
+        service.close();
+
+        Path realDataRoot = tmp.resolve("real-data");
+        Files.createDirectories(realDataRoot);
+        Path linkedDataRoot = tmp.resolve("linked-data");
+        createSymlinkOrSkip(linkedDataRoot, realDataRoot);
+
+        SessionWorkdirRoot linkedRoot = new SessionWorkdirRoot(linkedDataRoot, linkedDataRoot.resolve("opencode"));
+        SessionWorkdirService linkedWorkdir = new SessionWorkdirService(linkedRoot, new ObjectMapper());
+        ArtifactWatcher linkedWatcher = mock(ArtifactWatcher.class);
+        AtomicReference<Consumer<FileWatchEvent>> linkedListener = new AtomicReference<>();
+        doAnswer(inv -> {
+            @SuppressWarnings("unchecked")
+            Consumer<FileWatchEvent> captured = (Consumer<FileWatchEvent>) inv.getArgument(1);
+            linkedListener.set(captured);
+            return null;
+        }).when(linkedWatcher).start(any(), any());
+        service = new ArtifactWatcherService(linkedWatcher, artifactService, linkedWorkdir, reconciler);
+
+        service.start();
+
+        Path canonicalSessionsRoot = linkedRoot.sessionsRoot().toRealPath();
+        verify(linkedWatcher).start(eq(canonicalSessionsRoot), any());
+
+        Path sessionDir = canonicalSessionsRoot.resolve("ses_linked");
+        Files.createDirectories(sessionDir);
+        Path file = sessionDir.resolve("foo.csv");
+        Files.writeString(file, "id,val\n1,2\n");
+        Files.setLastModifiedTime(file, FileTime.from(Instant.now().minusSeconds(2)));
+
+        linkedListener.get().accept(new FileWatchEvent.Create(file, Instant.now()));
+
+        verify(artifactService, timeout(2_000)).recordDetected(eq("ses_linked"), eq(file), any());
     }
 
     @Test
     void createEventDispatchesDetectedWithSessionId() throws Exception {
         Path file = stableFile("ses_abc", "foo.csv", "x");
+        Path canonicalFile = file.toRealPath();
 
         listener.get().accept(new FileWatchEvent.Create(file, Instant.now()));
 
-        verify(artifactService, timeout(2_000)).recordDetected(eq("ses_abc"), eq(file), any());
+        verify(artifactService, timeout(2_000)).recordDetected(eq("ses_abc"), eq(canonicalFile), any());
     }
 
     @Test
     void modifyEventDispatchesModified() throws Exception {
         Path file = stableFile("ses_abc", "foo.md", "x");
+        Path canonicalFile = file.toRealPath();
 
         listener.get().accept(new FileWatchEvent.Modify(file, Instant.now()));
 
-        verify(artifactService, timeout(2_000)).recordModified(eq(file), any());
+        verify(artifactService, timeout(2_000)).recordModified(eq(canonicalFile), any());
     }
 
     @Test
-    void deleteEventDispatchesDeletedEvenWhenFileIsAbsent() {
-        Path file = root.sessionDir("ses_abc").resolve("gone.md");
+    void deleteEventDispatchesDeletedEvenWhenFileIsAbsent() throws Exception {
+        Path file = root.sessionsRoot().toRealPath().resolve("ses_abc").resolve("gone.md");
 
         listener.get().accept(new FileWatchEvent.Delete(file, Instant.now()));
 
@@ -97,13 +137,14 @@ class ArtifactWatcherServiceTest {
 
     @Test
     void renameEventDispatchesDeleteAndCreate() throws Exception {
-        Path oldPath = root.sessionDir("ses_abc").resolve("old.md");
+        Path oldPath = root.sessionsRoot().toRealPath().resolve("ses_abc").resolve("old.md");
         Path newPath = stableFile("ses_abc", "new.md", "x");
+        Path canonicalNewPath = newPath.toRealPath();
 
         listener.get().accept(new FileWatchEvent.Rename(newPath, oldPath, Instant.now()));
 
         verify(artifactService, timeout(2_000)).recordDeleted(oldPath);
-        verify(artifactService, timeout(2_000)).recordDetected(eq("ses_abc"), eq(newPath), any());
+        verify(artifactService, timeout(2_000)).recordDetected(eq("ses_abc"), eq(canonicalNewPath), any());
     }
 
     @Test
@@ -126,6 +167,16 @@ class ArtifactWatcherServiceTest {
     }
 
     @Test
+    void userFileEndingWithMetaJsonIsNotIgnored() throws Exception {
+        Path file = stableFile("ses_abc", "foo.meta.json", "{}");
+        Path canonicalFile = file.toRealPath();
+
+        listener.get().accept(new FileWatchEvent.Create(file, Instant.now()));
+
+        verify(artifactService, timeout(2_000)).recordDetected(eq("ses_abc"), eq(canonicalFile), any());
+    }
+
+    @Test
     void fileDirectlyUnderSessionsRootIsIgnored() throws Exception {
         Path file = root.sessionsRoot().resolve("orphan.md");
         Files.writeString(file, "x");
@@ -140,6 +191,7 @@ class ArtifactWatcherServiceTest {
     @Test
     void repeatedModifyEventsForSamePathAreDebounced() throws Exception {
         Path file = stableFile("ses_abc", "foo.md", "x");
+        Path canonicalFile = file.toRealPath();
 
         for (int i = 0; i < 5; i++) {
             listener.get().accept(new FileWatchEvent.Modify(file, Instant.now()));
@@ -147,12 +199,12 @@ class ArtifactWatcherServiceTest {
         }
 
         await().atMost(ofSeconds(2)).untilAsserted(() ->
-                verify(artifactService, org.mockito.Mockito.times(1)).recordModified(eq(file), any()));
+                verify(artifactService, org.mockito.Mockito.times(1)).recordModified(eq(canonicalFile), any()));
     }
 
     @Test
-    void inferSessionIdUsesFirstPathSegmentUnderSessionsRoot() {
-        Path file = root.sessionDir("ses_target").resolve("sub").resolve("file.md");
+    void inferSessionIdUsesFirstCanonicalPathSegmentUnderSessionsRoot() throws Exception {
+        Path file = root.sessionsRoot().toRealPath().resolve("ses_target").resolve("sub").resolve("file.md");
 
         assertThat(service.inferSessionId(file)).isEqualTo("ses_target");
     }
@@ -164,5 +216,13 @@ class ArtifactWatcherServiceTest {
         Files.writeString(file, body);
         Files.setLastModifiedTime(file, FileTime.from(Instant.now().minusSeconds(2)));
         return file;
+    }
+
+    private static void createSymlinkOrSkip(Path link, Path target) throws Exception {
+        try {
+            Files.createSymbolicLink(link, target);
+        } catch (UnsupportedOperationException | java.nio.file.FileSystemException e) {
+            assumeTrue(false, "symbolic links are not available: " + e);
+        }
     }
 }

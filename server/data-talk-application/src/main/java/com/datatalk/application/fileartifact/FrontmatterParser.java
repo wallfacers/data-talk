@@ -89,6 +89,7 @@ public final class FrontmatterParser {
         StringBuilder yaml = new StringBuilder();
         boolean insideFence = false;
         boolean sawFence = false;
+        boolean sawCommentBlock = false;
         for (String rawLine : text.split("\n", -1)) {
             String line = rawLine.stripTrailing();
             if (line.isBlank()) {
@@ -96,11 +97,15 @@ public final class FrontmatterParser {
                     yaml.append('\n');
                     continue;
                 }
+                if (!sawCommentBlock) {
+                    continue;
+                }
                 break;
             }
             if (!line.startsWith("--")) {
                 break;
             }
+            sawCommentBlock = true;
             String content = line.substring(2).stripLeading();
             if (content.equals("---")) {
                 if (!insideFence) {

@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -34,6 +35,7 @@ public class ArtifactWatcherService implements AutoCloseable {
     private final FileArtifactReconciler reconciler;
     private final ScheduledExecutorService scheduler;
     private final ConcurrentHashMap<DebounceKey, ScheduledFuture<?>> pending = new ConcurrentHashMap<>();
+    private volatile Path canonicalSessionsRoot;
     private volatile boolean started;
 
     public ArtifactWatcherService(
@@ -60,11 +62,23 @@ public class ArtifactWatcherService implements AutoCloseable {
         Path sessionsRoot = workdir.root().sessionsRoot();
         try {
             Files.createDirectories(sessionsRoot);
+            canonicalSessionsRoot = sessionsRoot.toRealPath();
         } catch (IOException e) {
+            scheduler.shutdownNow();
             throw new RuntimeException("failed to create sessions root: " + sessionsRoot, e);
         }
-        watcher.start(sessionsRoot, this::onEvent);
-        started = true;
+        try {
+            watcher.start(canonicalSessionsRoot, this::onEvent);
+            started = true;
+        } catch (RuntimeException e) {
+            try {
+                watcher.close();
+            } catch (RuntimeException closeFailure) {
+                e.addSuppressed(closeFailure);
+            }
+            scheduler.shutdownNow();
+            throw e;
+        }
     }
 
     void onEvent(FileWatchEvent event) {
@@ -90,13 +104,22 @@ public class ArtifactWatcherService implements AutoCloseable {
         pending.clear();
         watcher.close();
         scheduler.shutdownNow();
+        try {
+            scheduler.awaitTermination(2, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     private void debounce(Path path, DispatchKind kind) {
-        DebounceKey key = new DebounceKey(path.toAbsolutePath().normalize(), kind);
-        ScheduledFuture<?> previous = pending.put(
-                key,
-                scheduler.schedule(() -> dispatch(key), DEBOUNCE_MS, TimeUnit.MILLISECONDS));
+        DebounceKey key = new DebounceKey(normalizeEventPath(path), kind);
+        ScheduledFuture<?> scheduled;
+        try {
+            scheduled = scheduler.schedule(() -> dispatch(key), DEBOUNCE_MS, TimeUnit.MILLISECONDS);
+        } catch (RejectedExecutionException ignored) {
+            return;
+        }
+        ScheduledFuture<?> previous = pending.put(key, scheduled);
         if (previous != null) {
             previous.cancel(false);
         }
@@ -142,7 +165,7 @@ public class ArtifactWatcherService implements AutoCloseable {
     }
 
     private boolean isPathRelevant(Path path) {
-        Path sessionsRoot = workdir.root().sessionsRoot().toAbsolutePath().normalize();
+        Path sessionsRoot = activeSessionsRoot();
         Path abs = path.toAbsolutePath().normalize();
         if (!abs.startsWith(sessionsRoot)) {
             return false;
@@ -152,7 +175,7 @@ public class ArtifactWatcherService implements AutoCloseable {
             return false;
         }
         String name = fileName.toString();
-        if (name.isBlank() || name.startsWith(".") || name.endsWith(".meta.json")) {
+        if (name.isBlank() || name.startsWith(".")) {
             return false;
         }
         String lower = name.toLowerCase(Locale.ROOT);
@@ -165,7 +188,7 @@ public class ArtifactWatcherService implements AutoCloseable {
     }
 
     String inferSessionId(Path path) {
-        Path sessionsRoot = workdir.root().sessionsRoot().toAbsolutePath().normalize();
+        Path sessionsRoot = activeSessionsRoot();
         Path abs = path.toAbsolutePath().normalize();
         if (!abs.startsWith(sessionsRoot)) {
             return null;
@@ -176,6 +199,21 @@ public class ArtifactWatcherService implements AutoCloseable {
         }
         String sessionId = relative.getName(0).toString();
         return sessionId.startsWith("_") || sessionId.startsWith(".") ? null : sessionId;
+    }
+
+    private Path activeSessionsRoot() {
+        Path root = canonicalSessionsRoot;
+        return root == null ? workdir.root().sessionsRoot().toAbsolutePath().normalize() : root;
+    }
+
+    private static Path normalizeEventPath(Path path) {
+        try {
+            if (Files.exists(path)) {
+                return path.toRealPath();
+            }
+        } catch (IOException ignored) {
+        }
+        return path.toAbsolutePath().normalize();
     }
 
     private static boolean isStable(Path path) {

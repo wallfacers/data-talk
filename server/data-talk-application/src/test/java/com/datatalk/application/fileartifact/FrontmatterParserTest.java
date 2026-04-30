@@ -94,6 +94,22 @@ class FrontmatterParserTest {
     }
 
     @Test
+    void sqlPlainLeadingCommentBlockAllowsLeadingBlankLines() throws Exception {
+        Path file = tmp.resolve("script.sql");
+        Files.writeString(file, """
+
+                -- artifact: true
+                -- kind: sql_script
+
+                SELECT 1;
+                """);
+
+        assertThat(FrontmatterParser.parse(file))
+                .containsEntry("artifact", "true")
+                .containsEntry("kind", "sql_script");
+    }
+
+    @Test
     void unsupportedExtensionsReturnEmptyMap() throws Exception {
         Path file = tmp.resolve("data.csv");
         Files.writeString(file, "id,value\n1,2\n");

@@ -60,6 +60,8 @@ public class MethvinArtifactWatcher implements ArtifactWatcher {
 
     private static void dispatch(Path rootPath, DirectoryChangeEvent event, Consumer<FileWatchEvent> listener) {
         Path path = event.path() == null ? rootPath : event.path();
+        // DELETE events usually point at paths that no longer exist, so the symlink
+        // check only filters live symlink create/modify events.
         if (event.isDirectory() || Files.isSymbolicLink(path)) {
             return;
         }

@@ -1,5 +1,7 @@
 package com.datatalk.application.fileartifact;
 
+import com.datatalk.application.persistence.SessionRecord;
+import com.datatalk.application.persistence.SessionRepository;
 import com.datatalk.application.session.SessionBus;
 import com.datatalk.application.session.SessionBusRegistry;
 import com.datatalk.domain.event.DtEvent;
@@ -19,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -37,6 +40,7 @@ class FileArtifactReconcilerTest {
     FileArtifactService artifactService;
     SessionBusRegistry buses;
     SessionBus bus;
+    SessionRepository sessions;
     FileArtifactReconciler reconciler;
 
     @BeforeEach
@@ -50,7 +54,9 @@ class FileArtifactReconcilerTest {
         buses = mock(SessionBusRegistry.class);
         bus = mock(SessionBus.class);
         when(buses.getOrCreate(any())).thenReturn(bus);
-        reconciler = new FileArtifactReconciler(repo, artifactService, workdir, buses);
+        sessions = mock(SessionRepository.class);
+        when(sessions.listAll()).thenReturn(List.of(session("ses_x")));
+        reconciler = new FileArtifactReconciler(repo, artifactService, workdir, buses, sessions);
     }
 
     @Test
@@ -66,6 +72,48 @@ class FileArtifactReconcilerTest {
         reconciler.runFullReconcile();
 
         verify(artifactService).recordDetected(eq("ses_x"), eq(file), any());
+    }
+
+    @Test
+    void orphanFileUnderUnknownSessionDirIsSkipped() throws Exception {
+        Path deletedSession = root.sessionDir("ses_deleted");
+        Files.createDirectories(deletedSession);
+        Files.writeString(deletedSession.resolve("orphan.md"), "# stale\n");
+        when(repo.findAllSessionScoped()).thenReturn(List.of());
+        when(repo.findAllWorkspaceScopedArchived()).thenReturn(List.of());
+
+        reconciler.runFullReconcile();
+
+        verify(artifactService, never()).recordDetected(any(), any(), any());
+        verify(buses, never()).getOrCreate(eq("ses_deleted"));
+    }
+
+    @Test
+    void canonicalizesSessionWalkPathsBeforeComparingRows() throws Exception {
+        Path realDataRoot = tmp.resolve("real-data");
+        Files.createDirectories(realDataRoot);
+        Path linkedDataRoot = tmp.resolve("linked-data");
+        createSymlinkOrSkip(linkedDataRoot, realDataRoot);
+
+        SessionWorkdirRoot linkedRoot = new SessionWorkdirRoot(linkedDataRoot, linkedDataRoot.resolve("opencode"));
+        SessionWorkdirService linkedWorkdir = new SessionWorkdirService(linkedRoot, new ObjectMapper());
+        Files.createDirectories(linkedRoot.sessionsRoot().resolve("ses_x"));
+        Path canonicalFile = linkedRoot.sessionsRoot().toRealPath().resolve("ses_x").resolve("foo.csv");
+        Files.writeString(canonicalFile, "id,val\n1,2\n");
+
+        FileArtifactRepository linkedRepo = mock(FileArtifactRepository.class);
+        FileArtifactService linkedArtifactService = mock(FileArtifactService.class);
+        SessionRepository linkedSessions = mock(SessionRepository.class);
+        when(linkedSessions.listAll()).thenReturn(List.of(session("ses_x")));
+        when(linkedRepo.findAllSessionScoped())
+                .thenReturn(List.of(artifactAt("a1", FileArtifactStatus.TEMPORARY, canonicalFile)));
+        when(linkedRepo.findAllWorkspaceScopedArchived()).thenReturn(List.of());
+        FileArtifactReconciler linkedReconciler =
+                new FileArtifactReconciler(linkedRepo, linkedArtifactService, linkedWorkdir, buses, linkedSessions);
+
+        linkedReconciler.runFullReconcile();
+
+        verify(linkedArtifactService, never()).recordDetected(any(), any(), any());
     }
 
     @Test
@@ -92,6 +140,35 @@ class FileArtifactReconcilerTest {
 
         verify(repo).deleteById("a1");
         verify(bus).publish(any(DtEvent.FileArtifactDiscarded.class));
+    }
+
+    @Test
+    void missingCandidateRowForUnknownSessionDoesNotPublishDiscarded() {
+        FileArtifact row = new FileArtifact(
+                "a1",
+                FileArtifactScope.SESSION,
+                FileArtifactStatus.CANDIDATE,
+                FileArtifactKind.REPORT,
+                "ses_deleted",
+                null,
+                "missing.md",
+                root.sessionDir("ses_deleted").resolve("missing.md").toAbsolutePath().normalize().toString(),
+                1L,
+                "text/markdown",
+                null,
+                null,
+                Instant.now(),
+                Instant.now(),
+                null,
+                Map.of());
+        when(repo.findAllSessionScoped()).thenReturn(List.of(row));
+        when(repo.findAllWorkspaceScopedArchived()).thenReturn(List.of());
+
+        reconciler.runFullReconcile();
+
+        verify(repo).deleteById("a1");
+        verify(buses, never()).getOrCreate(eq("ses_deleted"));
+        verify(bus, never()).publish(any());
     }
 
     @Test
@@ -172,5 +249,17 @@ class FileArtifactReconcilerTest {
                 now,
                 null,
                 Map.of());
+    }
+
+    private static SessionRecord session(String id) {
+        return new SessionRecord(id, null, id, false, null, 1L, 1L, false);
+    }
+
+    private static void createSymlinkOrSkip(Path link, Path target) throws Exception {
+        try {
+            Files.createSymbolicLink(link, target);
+        } catch (UnsupportedOperationException | java.nio.file.FileSystemException e) {
+            assumeTrue(false, "symbolic links are not available: " + e);
+        }
     }
 }

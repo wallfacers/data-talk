@@ -244,6 +244,8 @@ public class FileArtifactService {
             return;
         }
 
+        // Spec 5.6: MODIFY may promote TEMPORARY but must not refresh title/summary
+        // on rows that are already CANDIDATE.
         if (row.status() == FileArtifactStatus.TEMPORARY && FrontmatterParser.isArtifactDeclared(safeFrontmatter)) {
             repo.updateStatus(row.id(), FileArtifactStatus.CANDIDATE);
             publish(row.sessionId(), new DtEvent.FileArtifactArchiveRequested(
