@@ -1,5 +1,7 @@
 package com.datatalk.adapter.actions;
 
+import com.datatalk.application.registry.JsonSchemaLoader;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.datatalk.domain.action.Category;
 import com.datatalk.domain.action.DataTalkAction;
 import com.datatalk.domain.action.Executor;
@@ -13,8 +15,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class UiActionsTest {
 
+    private final UiReadAction uiReadAction = new UiReadAction();
     private final UiPatchAction uiPatchAction = new UiPatchAction();
     private final UiExecAction uiExecAction = new UiExecAction();
+    private final JsonSchemaLoader schemas = new JsonSchemaLoader(new ObjectMapper());
 
     @Test
     void uiReadAction_declaresClientExecutorAndUiCategory() {
@@ -62,6 +66,86 @@ class UiActionsTest {
             .doesNotContain("'auto' (default)");
         assertThat(list(item.get("required"), "required")).containsExactlyInAnyOrder("op", "path");
         assertThat(list(op.get("enum"), "enum")).containsExactlyInAnyOrder("add", "remove", "replace");
+    }
+
+    @Test
+    void uiPatchAction_requiresBaseVersionForQueryEditorContentReplace() {
+        Map<String, Object> schema = uiPatchAction.inputSchema();
+
+        assertInvalid(schema, Map.of(
+            "object", "query_editor",
+            "ops", List.of(Map.of("op", "replace", "path", "/content", "value", "select 2"))
+        ));
+        assertValid(schema, Map.of(
+            "object", "query_editor",
+            "baseVersion", 7,
+            "ops", List.of(Map.of("op", "replace", "path", "/content", "value", "select 2"))
+        ));
+        assertValid(schema, Map.of(
+            "object", "query_editor",
+            "ops", List.of(Map.of("op", "replace", "path", "/database", "value", "analytics"))
+        ));
+    }
+
+    @Test
+    void uiPatchAction_requiresValueForReplaceOps() {
+        Map<String, Object> schema = uiPatchAction.inputSchema();
+
+        assertInvalid(schema, Map.of(
+            "object", "query_editor",
+            "ops", List.of(Map.of("op", "replace", "path", "/database"))
+        ));
+    }
+
+    @Test
+    void uiPatchAction_requiresValueForAddOps() {
+        Map<String, Object> schema = uiPatchAction.inputSchema();
+
+        assertInvalid(schema, Map.of(
+            "object", "er_designer",
+            "baseVersion", 0,
+            "ops", List.of(Map.of("op", "add", "path", "/tables/-"))
+        ));
+    }
+
+    @Test
+    void uiPatchAction_requiresBaseVersionForErDesignerStructuralPatches() {
+        Map<String, Object> schema = uiPatchAction.inputSchema();
+
+        assertInvalid(schema, Map.of(
+            "object", "er_designer",
+            "ops", List.of(Map.of(
+                "op", "add",
+                "path", "/tables/-",
+                "value", Map.of("name", "orders", "columns", List.of(), "indexes", List.of(), "uniques", List.of())
+            ))
+        ));
+        assertValid(schema, Map.of(
+            "object", "er_designer",
+            "baseVersion", 0,
+            "ops", List.of(Map.of(
+                "op", "add",
+                "path", "/tables/-",
+                "value", Map.of("name", "orders", "columns", List.of(), "indexes", List.of(), "uniques", List.of())
+            ))
+        ));
+        assertValid(schema, Map.of(
+            "object", "er_designer",
+            "ops", List.of(Map.of(
+                "op", "replace",
+                "path", "/viewport",
+                "value", Map.of("x", 0, "y", 0, "zoom", 1)
+            ))
+        ));
+    }
+
+    @Test
+    void uiReadAction_acceptsErTabObjectsSoAgentsCanReadVersionedState() {
+        Map<String, Object> schema = uiReadAction.inputSchema();
+        Map<String, Object> object = navigate(schema, "properties", "object");
+
+        assertThat(list(object.get("enum"), "enum"))
+            .contains("workspace", "query_editor", "er_inspector", "er_designer");
     }
 
     @Test
@@ -167,6 +251,37 @@ class UiActionsTest {
     }
 
     @Test
+    void uiExecAction_rejectsMissingActionSpecificRequiredParams() {
+        Map<String, Object> schema = uiExecAction.inputSchema();
+
+        assertInvalid(schema, Map.of("object", "workspace", "action", "open", "params", Map.of()));
+        assertValid(schema, Map.of("object", "workspace", "action", "open", "params", Map.of("type", "query_editor")));
+
+        assertInvalid(schema, Map.of("object", "workspace", "action", "focus", "params", Map.of()));
+        assertValid(schema, Map.of("object", "workspace", "action", "focus", "params", Map.of("target", "qe-1")));
+
+        assertInvalid(schema, Map.of("object", "workspace", "action", "open_er_inspector", "params", Map.of(
+            "tables", List.of("orders")
+        )));
+        assertValid(schema, Map.of("object", "workspace", "action", "open_er_inspector", "params", Map.of(
+            "connectionId", "conn-1",
+            "tables", List.of("orders")
+        )));
+
+        assertInvalid(schema, Map.of("object", "workspace", "action", "open_er_designer", "params", Map.of()));
+        assertValid(schema, Map.of("object", "workspace", "action", "open_er_designer", "params", Map.of("dialect", "mysql")));
+
+        assertInvalid(schema, Map.of("object", "query_editor", "action", "set_context", "params", Map.of()));
+        assertValid(schema, Map.of("object", "query_editor", "action", "set_context", "params", Map.of("database", "analytics")));
+
+        assertInvalid(schema, Map.of("object", "er_inspector", "action", "add_neighbors", "params", Map.of()));
+        assertValid(schema, Map.of("object", "er_inspector", "action", "add_neighbors", "params", Map.of("table", "orders")));
+
+        assertInvalid(schema, Map.of("object", "er_designer", "action", "bind_target", "params", Map.of()));
+        assertValid(schema, Map.of("object", "er_designer", "action", "bind_target", "params", Map.of("connectionId", "conn-1")));
+    }
+
+    @Test
     void uiExec_workspaceArchive_archivedFlagOptionalDefaultTrue() {
         Map<String, Object> schema = uiExecAction.inputSchema();
         Map<String, Object> wsBranch = findOneOfBranch(schema, "workspace");
@@ -209,6 +324,18 @@ class UiActionsTest {
             .as(label)
             .isInstanceOf(List.class);
         return (List<T>) value;
+    }
+
+    private void assertValid(Map<String, Object> schema, Map<String, Object> input) {
+        assertThat(schemas.validate(schema, input).errors())
+            .as("expected valid input: %s", input)
+            .isEmpty();
+    }
+
+    private void assertInvalid(Map<String, Object> schema, Map<String, Object> input) {
+        assertThat(schemas.validate(schema, input).errors())
+            .as("expected invalid input: %s", input)
+            .isNotEmpty();
     }
 
 }

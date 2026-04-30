@@ -41,6 +41,56 @@ public class UiExecAction implements ActionHandler<Map, Map> {
         );
     }
 
+    private static Map<String, Object> actionRequiresParams(
+            String object,
+            String action,
+            List<String> requiredParams
+    ) {
+        return Map.of(
+                "if", actionCondition(object, action),
+                "then", Map.of(
+                        "required", List.of("params"),
+                        "properties", Map.of(
+                                "params", Map.of(
+                                        "type", "object",
+                                        "required", requiredParams
+                                )
+                        )
+                )
+        );
+    }
+
+    private static Map<String, Object> actionRequiresAnyParam(
+            String object,
+            String action,
+            List<String> paramNames
+    ) {
+        return Map.of(
+                "if", actionCondition(object, action),
+                "then", Map.of(
+                        "required", List.of("params"),
+                        "properties", Map.of(
+                                "params", Map.of(
+                                        "type", "object",
+                                        "anyOf", paramNames.stream()
+                                                .map(param -> Map.of("required", List.of(param)))
+                                                .toList()
+                                )
+                        )
+                )
+        );
+    }
+
+    private static Map<String, Object> actionCondition(String object, String action) {
+        return Map.of(
+                "properties", Map.of(
+                        "object", Map.of("const", object),
+                        "action", Map.of("const", action)
+                ),
+                "required", List.of("object", "action")
+        );
+    }
+
     private static Map<String, Object> workspaceExecSchema() {
         return Map.of(
                 "required", List.of("object", "action"),
@@ -130,6 +180,15 @@ public class UiExecAction implements ActionHandler<Map, Map> {
                                         ))
                                 )
                         ))
+                ),
+                "allOf", List.of(
+                        actionRequiresParams("workspace", "open", List.of("type")),
+                        actionRequiresParams("workspace", "focus", List.of("target")),
+                        actionRequiresParams("workspace", "detach", List.of("target")),
+                        actionRequiresParams("workspace", "archive", List.of("target")),
+                        actionRequiresParams("workspace", "trash", List.of("target")),
+                        actionRequiresParams("workspace", "open_er_inspector", List.of("connectionId", "tables")),
+                        actionRequiresParams("workspace", "open_er_designer", List.of("dialect"))
                 )
         );
     }
@@ -183,24 +242,8 @@ public class UiExecAction implements ActionHandler<Map, Map> {
                         ))
                 )),
                 Map.entry("allOf", List.of(
-                        Map.of(
-                                "if", Map.of(
-                                        "properties", Map.of(
-                                                "object", Map.of("const", "query_editor"),
-                                                "action", Map.of("const", "apply_text_edits")
-                                        ),
-                                        "required", List.of("object", "action")
-                                ),
-                                "then", Map.of(
-                                        "required", List.of("params"),
-                                        "properties", Map.of(
-                                                "params", Map.of(
-                                                        "type", "object",
-                                                        "required", List.of("baseVersion", "edits")
-                                                )
-                                        )
-                                )
-                        )
+                        actionRequiresParams("query_editor", "apply_text_edits", List.of("baseVersion", "edits")),
+                        actionRequiresAnyParam("query_editor", "set_context", List.of("connectionId", "database", "schema"))
                 ))
         );
     }
@@ -228,6 +271,9 @@ public class UiExecAction implements ActionHandler<Map, Map> {
                                         ))
                                 )
                         ))
+                )),
+                Map.entry("allOf", List.of(
+                        actionRequiresParams("er_inspector", "add_neighbors", List.of("table"))
                 ))
         );
     }
@@ -267,6 +313,9 @@ public class UiExecAction implements ActionHandler<Map, Map> {
                                         ))
                                 )
                         ))
+                )),
+                Map.entry("allOf", List.of(
+                        actionRequiresParams("er_designer", "bind_target", List.of("connectionId"))
                 ))
         );
     }

@@ -95,10 +95,11 @@ export class UIRouter {
       }
       const required = def.paramsSchema?.required ?? []
       const missing = required.filter((k) => (params as Record<string, unknown> | undefined)?.[k] === undefined)
-      if (missing.length) {
+      const missingAnyOf = this.missingAnyOfRequiredGroup(def, params)
+      if (missing.length || missingAnyOf) {
         const detail: UIErrorDetail = {
           code: 'invalid_params',
-          message: `Missing required params for action '${action}': ${missing.join(', ')}`,
+          message: `Missing required params for action '${action}': ${missing.length ? missing.join(', ') : missingAnyOf}`,
           hint: `Provide the required fields and match the action schema for '${action}'.`,
           expectedSchema: def.paramsSchema,
         }
@@ -117,6 +118,23 @@ export class UIRouter {
       data: detail ?? result,
       error: detail?.message ?? result.error,
     }
+  }
+
+  private missingAnyOfRequiredGroup(def: ActionDef, params: unknown): string | null {
+    const anyOf = def.paramsSchema?.anyOf ?? []
+    if (!anyOf.length) return null
+
+    const input = params as Record<string, unknown> | undefined
+    const groups = anyOf
+      .map((branch) => branch.required ?? [])
+      .filter((required) => required.length > 0)
+    if (!groups.length) return null
+
+    const satisfied = groups.some((required) => required.every((key) => input?.[key] !== undefined))
+    if (satisfied) return null
+
+    const fields = Array.from(new Set(groups.flat()))
+    return `one of ${fields.join(', ')}`
   }
 
   private resolveTarget(objectType: string, target: string): UIObject | null {

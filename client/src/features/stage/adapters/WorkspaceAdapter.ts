@@ -78,6 +78,7 @@ const ACTIONS: ActionDef[] = [
   } },
   { name: 'open_er_designer', description: 'Open an ER designer tab for schema drafting', paramsSchema: {
     type: 'object',
+    required: ['dialect'],
     properties: {
       dialect: { type: 'string' },
       title: { type: 'string' },

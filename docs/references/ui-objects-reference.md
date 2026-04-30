@@ -57,10 +57,7 @@ Not supported. `workspace` is read-only through `patch`; use `exec`.
 | `trash` | `target: tabId` | — | Permanently delete the tab |
 | `choose_connection` | — | `preferredConnectionId: string` | Open the connection chooser |
 | `open_er_inspector` | `connectionId`, `tables: string[]` | `neighborDepth`, `database`, `schema`, `title` | Seed a read-only `er_inspector` tab from JDBC metadata |
-
-`open_er_designer` is reserved in the backend schema for Plan B. In Plan A,
-agents should open an inspector first; designer creation remains unavailable
-until the `er_designer` adapter ships.
+| `open_er_designer` | `dialect: mysql \| postgresql \| h2 \| sqlite` | `title`, `targetConnectionId`, `targetDatabase`, `targetSchema`, `seedTables`, `seedRelations` | Open an ER designer draft; generated DDL lands in a query editor and is not executed automatically |
 
 ---
 

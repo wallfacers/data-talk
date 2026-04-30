@@ -37,15 +37,26 @@ public class OptimizeTableConfirmableAction implements ActionHandler<Map, Map> {
 
     @Override
     public Map<String, Object> inputSchema() {
-        return Map.of(
-            "type", "object",
-            "required", List.of("table"),
-            "properties", Map.of(
+        return Map.ofEntries(
+            Map.entry("type", "object"),
+            Map.entry("required", List.of("table")),
+            Map.entry("properties", Map.of(
                 "table", Map.of("type", "string"),
                 "schemaName", Map.of("type", "string"),
                 "confirm", Map.of("type", "boolean"),
                 "confirmationToken", Map.of("type", "string")
-            )
+            )),
+            Map.entry("allOf", List.of(confirmRequiresTokenSchema()))
+        );
+    }
+
+    private static Map<String, Object> confirmRequiresTokenSchema() {
+        return Map.of(
+            "if", Map.of(
+                "properties", Map.of("confirm", Map.of("const", true)),
+                "required", List.of("confirm")
+            ),
+            "then", Map.of("required", List.of("confirmationToken"))
         );
     }
 

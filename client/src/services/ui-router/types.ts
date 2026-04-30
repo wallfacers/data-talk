@@ -52,6 +52,7 @@ export interface JsonSchema {
   type: 'object'
   properties: Record<string, unknown>
   required?: string[]
+  anyOf?: Array<{ required?: string[] }>
 }
 
 export interface ActionDef {

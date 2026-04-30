@@ -32,8 +32,8 @@ public class UiReadAction implements ActionHandler<Map, Map> {
                 "properties", Map.ofEntries(
                         Map.entry("object", Map.of(
                                 "type", "string",
-                                "enum", List.of("workspace", "query_editor"),
-                                "description", "UI object type to read."
+                                "enum", List.of("workspace", "query_editor", "er_inspector", "er_designer"),
+                                "description", "UI object type to read, including ER tabs for versioned state before patching."
                         )),
                         Map.entry("target", Map.of(
                                 "type", "string",

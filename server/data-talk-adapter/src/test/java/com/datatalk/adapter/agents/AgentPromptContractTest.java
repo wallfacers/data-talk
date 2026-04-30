@@ -102,6 +102,43 @@ class AgentPromptContractTest {
     }
 
     @Test
+    void runtimePromptRequiresFullResolvedTargetForContextSwitches() throws IOException {
+        String prompt = loadPrompt();
+
+        assertThat(prompt)
+            .contains("Do not call `datatalk_set_data_context` with only `database` or only `schema`")
+            .contains("copy the full `matched_target` fields")
+            .contains("connectionId=<matched_target.connectionId>")
+            .contains("selectedLevel=<matched_target.level>");
+    }
+
+    @Test
+    void runtimePromptDocumentsRequiredInputsForRegisteredServerActions() throws IOException {
+        String prompt = loadPrompt();
+
+        assertThat(prompt)
+            .contains("Required input: `target`")
+            .contains("Required input: `connectionId`")
+            .contains("Required input: `name`, `kind`, `host`, `port`, `username`, and `password`")
+            .contains("Required input: `connectionId`, `name`, `kind`, `host`, `port`, and `username`")
+            .contains("Required input: `sql`")
+            .contains("Required input: `echartsOption`")
+            .contains("Required input: `newArtifactId` and `oldArtifactId`")
+            .contains("Required input: `artifactId`");
+    }
+
+    @Test
+    void runtimePromptRequiresConfirmationTokenForConfirmedMutationTools() throws IOException {
+        String prompt = loadPrompt();
+
+        assertThat(prompt)
+            .contains("When a confirmable mutation tool is called with `confirm=true`, include `confirmationToken`")
+            .contains("datatalk_update_connection_confirmable")
+            .contains("datatalk_terminate_session")
+            .contains("datatalk_optimize_table");
+    }
+
+    @Test
     void runtimePromptDocumentsBoundedSchemaReadsAndTruncationHandling() throws IOException {
         String prompt = loadPrompt();
 
@@ -202,6 +239,8 @@ class AgentPromptContractTest {
         assertThat(uiReadSchema)
             .contains("workspace")
             .contains("query_editor")
+            .contains("er_inspector")
+            .contains("er_designer")
             .contains("target")
             .contains("state")
             .contains("schema")
@@ -210,6 +249,7 @@ class AgentPromptContractTest {
         assertThat(uiPatchSchema)
             .contains("query_editor")
             .contains("er_inspector")
+            .contains("er_designer")
             .contains("add")
             .contains("remove")
             .contains("replace")
@@ -257,6 +297,20 @@ class AgentPromptContractTest {
             .contains("ui_exec(designer_tab, generate_ddl)")
             .contains("DDL lands in a query_editor tab")
             .contains("L2/L3 confirmation");
+    }
+
+    @Test
+    void runtimePromptDocumentsErDesignerPatchGuards() throws IOException {
+        String prompt = loadPrompt();
+
+        assertThat(prompt)
+            .contains("object=er_designer")
+            .contains("structural paths")
+            .contains("op=add")
+            .contains("op=replace")
+            .contains("require `value`")
+            .contains("view paths")
+            .contains("baseVersion: number");
     }
 
     @Test

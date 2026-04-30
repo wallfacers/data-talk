@@ -35,13 +35,31 @@ public class SetDataContextAction implements ActionHandler<Map, Map> {
 
     @Override
     public Map<String, Object> inputSchema() {
-        return Map.of(
-            "type", "object",
-            "properties", Map.of(
-                "connectionId", Map.of("type", "string"),
-                "database", Map.of("type", "string"),
-                "schema", Map.of("type", "string"),
+        return Map.ofEntries(
+            Map.entry("type", "object"),
+            Map.entry("required", List.of("connectionId", "selectedLevel")),
+            Map.entry("properties", Map.of(
+                "connectionId", Map.of("type", "string", "minLength", 1),
+                "database", Map.of("type", List.of("string", "null")),
+                "schema", Map.of("type", List.of("string", "null")),
                 "selectedLevel", Map.of("type", "string", "enum", List.of("connection", "database", "schema"))
+            )),
+            Map.entry("allOf", List.of(
+                selectedLevelRequires("database", "database"),
+                selectedLevelRequires("schema", "schema")
+            ))
+        );
+    }
+
+    private static Map<String, Object> selectedLevelRequires(String selectedLevel, String field) {
+        return Map.of(
+            "if", Map.of(
+                "properties", Map.of("selectedLevel", Map.of("const", selectedLevel)),
+                "required", List.of("selectedLevel")
+            ),
+            "then", Map.of(
+                "required", List.of(field),
+                "properties", Map.of(field, Map.of("type", "string", "minLength", 1))
             )
         );
     }

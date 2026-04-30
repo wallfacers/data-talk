@@ -4,6 +4,7 @@ import com.datatalk.application.connection.ConnectionService;
 import com.datatalk.application.persistence.SessionRecord;
 import com.datatalk.application.persistence.SessionRepository;
 import com.datatalk.application.registry.ActionRegistry;
+import com.datatalk.application.registry.JsonSchemaLoader;
 import com.datatalk.application.session.ConnectionTargetDiscoveryService;
 import com.datatalk.domain.action.ActionContext;
 import org.junit.jupiter.api.AfterEach;
@@ -31,6 +32,7 @@ class SessionDataContextActionsIT {
     @Autowired ConnectionService connections;
     @Autowired SessionRepository sessions;
     @Autowired ActionRegistry registry;
+    @Autowired JsonSchemaLoader schemas;
     @Autowired GetDataContextAction getDataContextAction;
     @Autowired SetDataContextAction setDataContextAction;
     @Autowired ResolveUseTargetAction resolveUseTargetAction;
@@ -170,5 +172,39 @@ class SessionDataContextActionsIT {
         assertThat(registry.handler("datatalk.set_data_context")).isSameAs(setDataContextAction);
         assertThat(registry.handler("datatalk.resolve_use_target")).isSameAs(resolveUseTargetAction);
         assertThat(registry.handler("datatalk.list_connection_targets")).isSameAs(listConnectionTargetsAction);
+    }
+
+    @Test
+    void set_data_context_schema_requires_full_resolved_target_not_database_only() {
+        Map<String, Object> schema = registry.require("datatalk.set_data_context").inputSchema();
+
+        assertThat(schemas.validate(schema, Map.of("database", "ecommerce")).valid())
+            .as("database-only set_data_context calls clear the context today and must be rejected")
+            .isFalse();
+        assertThat(schemas.validate(schema, Map.of("connectionId", c1Id)).valid())
+            .as("selectedLevel makes the intended context level explicit")
+            .isFalse();
+        assertThat(schemas.validate(schema, Map.of(
+            "connectionId", c1Id,
+            "selectedLevel", "connection"
+        )).valid()).isTrue();
+        assertThat(schemas.validate(schema, Map.of(
+            "connectionId", c1Id,
+            "selectedLevel", "database"
+        )).valid()).isFalse();
+        assertThat(schemas.validate(schema, Map.of(
+            "connectionId", c1Id,
+            "database", "analytics",
+            "selectedLevel", "database"
+        )).valid()).isTrue();
+        assertThat(schemas.validate(schema, Map.of(
+            "connectionId", c1Id,
+            "selectedLevel", "schema"
+        )).valid()).isFalse();
+        assertThat(schemas.validate(schema, Map.of(
+            "connectionId", c1Id,
+            "schema", "public",
+            "selectedLevel", "schema"
+        )).valid()).isTrue();
     }
 }

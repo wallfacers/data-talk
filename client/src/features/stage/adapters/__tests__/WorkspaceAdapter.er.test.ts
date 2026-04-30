@@ -119,6 +119,15 @@ describe('WorkspaceAdapter.exec(open_er_designer)', () => {
     }))
   })
 
+  it('advertises dialect as required for ui_exec open_er_designer', () => {
+    const adapter = new WorkspaceAdapter(() => null)
+
+    const actions = adapter.read('actions') as Array<{ name: string; paramsSchema: { required?: string[] } }>
+    const openDesigner = actions.find((action) => action.name === 'open_er_designer')
+
+    expect(openDesigner?.paramsSchema.required).toContain('dialect')
+  })
+
   it('localizes the default designer tab title for English UI settings', async () => {
     useUISettingsStore.setState({ language: 'en-US' })
     const adapter = new WorkspaceAdapter(() => null)

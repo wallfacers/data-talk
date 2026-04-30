@@ -39,6 +39,11 @@ const ACTIONS: ActionDef[] = [
     description: 'Set the query execution context',
     paramsSchema: {
       type: 'object',
+      anyOf: [
+        { required: ['connectionId'] },
+        { required: ['database'] },
+        { required: ['schema'] },
+      ],
       properties: {
         connectionId: { type: ['string', 'null'] },
         database: { type: ['string', 'null'] },

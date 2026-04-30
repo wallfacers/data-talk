@@ -20,6 +20,11 @@ const QUERY_EDITOR_ACTIONS = [
     description: 'Set the query execution context',
     paramsSchema: {
       type: 'object' as const,
+      anyOf: [
+        { required: ['connectionId'] },
+        { required: ['database'] },
+        { required: ['schema'] },
+      ],
       properties: {
         connectionId: { type: ['string', 'null'] },
         database: { type: ['string', 'null'] },
@@ -182,6 +187,21 @@ describe('UIRouter', () => {
     expect(bad.data).toEqual(expect.objectContaining({
       code: 'invalid_params',
       expectedSchema: QUERY_EDITOR_ACTIONS[0].paramsSchema,
+    }))
+  })
+
+  it('rejects exec params that miss an anyOf required group', async () => {
+    router.registerInstance('q6', makeStub('q6', {
+      actions: QUERY_EDITOR_ACTIONS,
+    }))
+
+    const bad = await router.handle({ tool: 'ui_exec', object: 'query_editor', target: 'q6',
+      payload: { action: 'set_context', params: {} } })
+
+    expect(bad.error).toContain('Missing required params')
+    expect(bad.data).toEqual(expect.objectContaining({
+      code: 'invalid_params',
+      expectedSchema: QUERY_EDITOR_ACTIONS[1].paramsSchema,
     }))
   })
 

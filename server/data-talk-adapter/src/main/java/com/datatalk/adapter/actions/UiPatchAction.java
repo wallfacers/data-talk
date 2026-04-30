@@ -26,10 +26,10 @@ public class UiPatchAction implements ActionHandler<Map, Map> {
 
     @Override
     public Map<String, Object> inputSchema() {
-        return Map.of(
-                "type", "object",
-                "required", List.of("object", "ops"),
-                "properties", Map.ofEntries(
+        return Map.ofEntries(
+                Map.entry("type", "object"),
+                Map.entry("required", List.of("object", "ops")),
+                Map.entry("properties", Map.ofEntries(
                         Map.entry("object", Map.of(
                                 "type", "string",
                                 "enum", List.of("query_editor", "er_inspector", "er_designer"),
@@ -58,12 +58,70 @@ public class UiPatchAction implements ActionHandler<Map, Map> {
                                                         "type", "string",
                                                         "description", "JSON Pointer with /key[matchKey=value] addressing extension; see docs/references/er-tab-protocol.md for ER inspector/designer path rules. Designer structural path validation is enforced by the client adapter."
                                                 )),
-                                                Map.entry("value", Map.of("description", "Op value (omitted for remove)."))
-                                        )
+                                                Map.entry("value", Map.of("description", "Required for add and replace; omitted for remove."))
+                                        ),
+                                        "allOf", List.of(addOrReplaceRequiresValueSchema())
                                 )
                         )),
                         Map.entry("reason", Map.of("type", "string"))
-                )
+                )),
+                Map.entry("allOf", List.of(
+                        queryEditorContentPatchRequiresBaseVersionSchema(),
+                        erDesignerStructuralPatchRequiresBaseVersionSchema()
+                ))
+        );
+    }
+
+    private static Map<String, Object> addOrReplaceRequiresValueSchema() {
+        return Map.of(
+                "if", Map.of(
+                        "properties", Map.of("op", Map.of("enum", List.of("add", "replace"))),
+                        "required", List.of("op")
+                ),
+                "then", Map.of("required", List.of("value"))
+        );
+    }
+
+    private static Map<String, Object> queryEditorContentPatchRequiresBaseVersionSchema() {
+        return Map.of(
+                "if", Map.of(
+                        "properties", Map.of(
+                                "object", Map.of("const", "query_editor"),
+                                "ops", Map.of(
+                                        "contains", Map.of(
+                                                "type", "object",
+                                                "properties", Map.of("path", Map.of("const", "/content")),
+                                                "required", List.of("path")
+                                        )
+                                )
+                        ),
+                        "required", List.of("object", "ops")
+                ),
+                "then", Map.of("required", List.of("baseVersion"))
+        );
+    }
+
+    private static Map<String, Object> erDesignerStructuralPatchRequiresBaseVersionSchema() {
+        return Map.of(
+                "if", Map.of(
+                        "properties", Map.of(
+                                "object", Map.of("const", "er_designer"),
+                                "ops", Map.of(
+                                        "contains", Map.of(
+                                                "type", "object",
+                                                "properties", Map.of(
+                                                        "path", Map.of(
+                                                                "type", "string",
+                                                                "pattern", "^/(tables|relations|dialect|targetConnectionId|targetDatabase|targetSchema)(?:$|/|\\[)"
+                                                        )
+                                                ),
+                                                "required", List.of("path")
+                                        )
+                                )
+                        ),
+                        "required", List.of("object", "ops")
+                ),
+                "then", Map.of("required", List.of("baseVersion"))
         );
     }
 
