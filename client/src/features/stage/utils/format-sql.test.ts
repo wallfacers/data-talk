@@ -26,4 +26,14 @@ ORDER BY
     expect(formatSql('select 1', 'oracle')).toBe(`SELECT
   1`)
   })
+
+  it('uses the generic sql formatter for SQLite', () => {
+    expect(resolveSqlFormatterLanguage('sqlite')).toBe('sql')
+    expect(formatSql('select id from users where active=1', 'sqlite')).toBe(`SELECT
+  id
+FROM
+  users
+WHERE
+  active = 1`)
+  })
 })

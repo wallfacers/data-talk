@@ -1,0 +1,8 @@
+[
+  "ATTACH",
+  "DETACH",
+  "EXPLAIN",
+  "PRAGMA",
+  "REINDEX",
+  "VACUUM"
+]

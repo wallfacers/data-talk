@@ -12,6 +12,7 @@ export const DATABASE_TYPES = {
   mysql: { label: 'MySQL', port: 3306 },
   postgres: { label: 'PostgreSQL', port: 5432 },
   h2: { label: 'H2', port: 9092 },
+  sqlite: { label: 'SQLite', port: 0 },
 } as const
 
 export type DatabaseKind = keyof typeof DATABASE_TYPES
@@ -46,17 +47,18 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
     mutationFn: async () => {
       const dbName = form.database.trim() || null
       const connName = form.name.trim() || t('dataSources.unnamed')
+      const sqlite = form.kind === 'sqlite'
       if (editing) {
         await updateConnection(editing.id, {
-          name: connName, kind: form.kind, host: form.host, port: form.port,
-          databaseName: dbName, username: form.username,
+          name: connName, kind: form.kind, host: sqlite ? '' : form.host, port: sqlite ? 0 : form.port,
+          databaseName: dbName, username: sqlite ? '' : form.username,
           password: form.password.length > 0 ? form.password : null,
           connectTimeout: form.connectTimeout,
         })
       } else {
         await createConnection({
-          name: connName, kind: form.kind, host: form.host, port: form.port,
-          databaseName: dbName, username: form.username, password: form.password,
+          name: connName, kind: form.kind, host: sqlite ? '' : form.host, port: sqlite ? 0 : form.port,
+          databaseName: dbName, username: sqlite ? '' : form.username, password: sqlite ? '' : form.password,
           connectTimeout: form.connectTimeout,
         })
       }
@@ -66,6 +68,9 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
     },
     onSuccess: () => toast.success(editing ? t('dataSources.updated') : t('dataSources.created')),
   })
+  const isSqlite = form.kind === 'sqlite'
+  const databaseLabel = isSqlite ? t('dataSources.sqliteFilePath') : t('dataSources.databaseOptional')
+  const databasePlaceholder = isSqlite ? t('dataSources.sqliteFilePathPlaceholder') : t('dataSources.databasePlaceholder')
 
   return (
     <div className="rounded-lg border bg-card p-6">
@@ -74,13 +79,25 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
       </h2>
       <div className="grid gap-4">
         <Field label={t('dataSources.name')}>
-          <Input value={form.name} placeholder={t('dataSources.unnamed')}
+          <Input aria-label={t('dataSources.name')} value={form.name} placeholder={t('dataSources.unnamed')}
             onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))} />
         </Field>
         <Field label={t('dataSources.type')}>
           <Select value={form.kind}
-            onValueChange={(v) => { if (v && v in DATABASE_TYPES) setForm(f => ({ ...f, kind: v as DatabaseKind, port: DATABASE_TYPES[v as DatabaseKind].port })) }}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            onValueChange={(v) => {
+              if (v && v in DATABASE_TYPES) {
+                const nextKind = v as DatabaseKind
+                setForm(f => ({
+                  ...f,
+                  kind: nextKind,
+                  host: nextKind === 'sqlite' ? '' : f.host || 'localhost',
+                  port: DATABASE_TYPES[nextKind].port,
+                  username: nextKind === 'sqlite' ? '' : f.username,
+                  password: nextKind === 'sqlite' ? '' : f.password,
+                }))
+              }
+            }}>
+            <SelectTrigger aria-label={t('dataSources.type')}><SelectValue /></SelectTrigger>
             <SelectContent>
               {(Object.keys(DATABASE_TYPES) as DatabaseKind[]).map(k => (
                 <SelectItem key={k} value={k}>{DATABASE_TYPES[k].label}</SelectItem>
@@ -88,28 +105,36 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
             </SelectContent>
           </Select>
         </Field>
-        <Field label={t('dataSources.host')}>
-          <Input value={form.host}
-            onChange={(e) => setForm(f => ({ ...f, host: e.target.value }))} />
-        </Field>
-        <Field label={t('dataSources.port')}>
-          <Input type="number" value={form.port}
-            onChange={(e) => setForm(f => ({ ...f, port: Number(e.target.value) }))} />
-        </Field>
-        <Field label={t('dataSources.databaseOptional')}>
-          <Input value={form.database} placeholder={t('dataSources.databasePlaceholder')}
+        {isSqlite ? null : (
+          <>
+            <Field label={t('dataSources.host')}>
+              <Input aria-label={t('dataSources.host')} value={form.host}
+                onChange={(e) => setForm(f => ({ ...f, host: e.target.value }))} />
+            </Field>
+            <Field label={t('dataSources.port')}>
+              <Input aria-label={t('dataSources.port')} type="number" value={form.port}
+                onChange={(e) => setForm(f => ({ ...f, port: Number(e.target.value) }))} />
+            </Field>
+          </>
+        )}
+        <Field label={databaseLabel}>
+          <Input aria-label={databaseLabel} value={form.database} placeholder={databasePlaceholder}
             onChange={(e) => setForm(f => ({ ...f, database: e.target.value }))} />
         </Field>
-        <Field label={t('dataSources.username')}>
-          <Input value={form.username}
-            onChange={(e) => setForm(f => ({ ...f, username: e.target.value }))} />
-        </Field>
-        <Field label={t('dataSources.password')}>
-          <Input type="password" value={form.password}
-            onChange={(e) => setForm(f => ({ ...f, password: e.target.value }))} />
-        </Field>
+        {isSqlite ? null : (
+          <>
+            <Field label={t('dataSources.username')}>
+              <Input aria-label={t('dataSources.username')} value={form.username}
+                onChange={(e) => setForm(f => ({ ...f, username: e.target.value }))} />
+            </Field>
+            <Field label={t('dataSources.password')}>
+              <Input aria-label={t('dataSources.password')} type="password" value={form.password}
+                onChange={(e) => setForm(f => ({ ...f, password: e.target.value }))} />
+            </Field>
+          </>
+        )}
         <Field label={t('dataSources.connectTimeoutMs')}>
-          <Input type="number" value={form.connectTimeout}
+          <Input aria-label={t('dataSources.connectTimeoutMs')} type="number" value={form.connectTimeout}
             onChange={(e) => setForm(f => ({ ...f, connectTimeout: Number(e.target.value) }))} />
         </Field>
       </div>

@@ -1,6 +1,7 @@
 import mysqlKeywords from '../sql-dialects/mysql-keywords.json'
 import postgresKeywords from '../sql-dialects/postgres-keywords.json'
 import h2Keywords from '../sql-dialects/h2-keywords.json'
+import sqliteKeywords from '../sql-dialects/sqlite-keywords.json'
 
 export type SqlOutlineStatement = {
   line: number
@@ -13,8 +14,8 @@ type SqlOutlineStatementRange = SqlOutlineStatement & {
   endLine: number
 }
 
-const KEYWORDS = new Set([...mysqlKeywords, ...postgresKeywords, ...h2Keywords])
-const HIGH_RISK_KINDS = new Set(['DROP', 'TRUNCATE', 'ALTER'])
+const KEYWORDS = new Set([...mysqlKeywords, ...postgresKeywords, ...h2Keywords, ...sqliteKeywords])
+const HIGH_RISK_KINDS = new Set(['DROP', 'TRUNCATE', 'ALTER', 'ATTACH', 'DETACH', 'VACUUM', 'REINDEX'])
 
 export function parseSqlOutline(sql: string): SqlOutlineStatement[] {
   const statements: Array<{ line: number; text: string }> = []

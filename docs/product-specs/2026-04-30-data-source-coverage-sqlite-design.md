@@ -1,19 +1,19 @@
 # Data Source Coverage: SQLite Design
 
 Date: 2026-04-30
-Status: Draft for review
+Status: Implemented (2026-05-01)
 
 ## 1. Purpose
 
-SQLite is Wave A because the repository already contains backend and runtime
+SQLite was Wave A because the repository already contained backend and runtime
 traces for `sqlite`, while the user-facing connection UI and compatibility
-claims remain incomplete. This design defines how SQLite can become first-class
-for user database files after the child implementation plan is reviewed,
-executed, and verified.
+claims were incomplete. This design defined how SQLite could become first-class
+for user database files through a file-scoped model.
 
-This artifact does not expose SQLite in the frontend and does not update the
-support snapshot to complete. SQLite support remains partial until the child
-implementation plan passes verification.
+The child implementation plan executed on 2026-05-01. SQLite is now exposed in
+the frontend, verified as a first-class file-scoped user data source, and the
+current support snapshot lives in
+[docs/DATA_SOURCE_TYPE_COMPATIBILITY.md](../DATA_SOURCE_TYPE_COMPATIBILITY.md).
 
 ## 2. Compatibility Gate Application
 
@@ -21,8 +21,8 @@ The mandatory gate is
 [docs/DATA_SOURCE_TYPE_COMPATIBILITY.md](../DATA_SOURCE_TYPE_COMPATIBILITY.md).
 SQLite child implementation must apply these gate areas:
 
-- Current support snapshot: applicable; keep `sqlite` partial until all child
-  plan checks pass.
+- Current support snapshot: applicable; the child plan completed on 2026-05-01
+  and upgraded `sqlite` to first-class file-scoped support.
 - Canonical naming and alias normalization: applicable; persist `sqlite`.
 - Backend connection, JDBC URL, driver, connection test, metadata, SQL
   execution, result normalization, splitter, risk guard, diagnostics:

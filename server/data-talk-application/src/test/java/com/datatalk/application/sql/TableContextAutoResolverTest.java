@@ -6,9 +6,11 @@ import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.application.session.ResolvedExecutionContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.context.support.StaticMessageSource;
 
+import java.nio.file.Path;
 import java.sql.DriverManager;
 import java.time.Instant;
 import java.util.Locale;
@@ -22,6 +24,7 @@ class TableContextAutoResolverTest {
 
     private final ConnectionService connectionService = mock(ConnectionService.class);
     private final TableContextAutoResolver resolver = new TableContextAutoResolver(connectionService, translator());
+    @TempDir Path tempDir;
 
     @AfterEach
     void resetLocale() {
@@ -96,6 +99,40 @@ class TableContextAutoResolverTest {
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("Table users matches multiple candidates")
             .hasMessageContaining("Select a database/schema first");
+    }
+
+    @Test
+    void leaves_sqlite_context_file_scoped_without_schema_auto_location() throws Exception {
+        Path dbFile = tempDir.resolve("users.db");
+        try (var c = DriverManager.getConnection("jdbc:sqlite:" + dbFile);
+             var st = c.createStatement()) {
+            st.execute("CREATE TABLE users(id INTEGER PRIMARY KEY)");
+        }
+        ConnectionRecord connection = new ConnectionRecord(
+            "sqlite-auto",
+            "SQLite File",
+            "sqlite",
+            "",
+            0,
+            dbFile.toString(),
+            "",
+            new byte[0],
+            null,
+            Instant.parse("2026-04-21T00:00:00Z").toEpochMilli(),
+            3000,
+            null,
+            null
+        );
+        when(connectionService.decryptPassword("sqlite-auto")).thenReturn("");
+
+        ResolvedExecutionContext resolved = resolver.resolve(
+            new ResolvedExecutionContext(connection, dbFile.toString(), null),
+            "SELECT * FROM users"
+        );
+
+        assertThat(resolved.database()).isEqualTo(dbFile.toString());
+        assertThat(resolved.schema()).isNull();
+        assertThat(resolved.contextNotice()).isNull();
     }
 
     private static ConnectionRecord h2Connection(String id, String dbName) {

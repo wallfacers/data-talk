@@ -35,8 +35,9 @@ public class ConnectionTargetDiscoveryService {
             .orElseThrow(() -> new NoSuchElementException(translator.get("error.connection.unknown", connectionId)));
 
         Set<String> databaseNames = new LinkedHashSet<>();
-        if (connection.databaseName() != null && !connection.databaseName().isBlank()) {
-            databaseNames.add(connection.databaseName());
+        String configuredDatabase = effectiveDatabaseName(connection.kind(), connection.databaseName());
+        if (configuredDatabase != null && !configuredDatabase.isBlank()) {
+            databaseNames.add(configuredDatabase);
         }
 
         Set<String> schemaNames = new LinkedHashSet<>();
@@ -93,6 +94,12 @@ public class ConnectionTargetDiscoveryService {
         return !ConnectionKind.MYSQL.equals(normalized)
             && !ConnectionKind.SQLITE.equals(normalized)
             && !"mariadb".equals(normalized);
+    }
+
+    private String effectiveDatabaseName(String kind, String databaseName) {
+        if (databaseName != null && !databaseName.isBlank()) return databaseName;
+        if (ConnectionKind.SQLITE.equalsIgnoreCase(kind)) return ":memory:";
+        return databaseName;
     }
 
     private boolean isUserSchema(String schema) {

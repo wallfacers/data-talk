@@ -18,6 +18,7 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -26,6 +27,10 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
 
     @Override
     public SqlRiskAnalysis analyze(String sql, Category category) {
+        SqlRiskAnalysis dialectSpecific = classifyDialectSpecific(sql);
+        if (dialectSpecific != null) {
+            return dialectSpecific;
+        }
         try {
             SqlNodeList statements = SqlParser.create(sql).parseStmtList();
             SqlRiskAnalysis aggregate = null;
@@ -42,6 +47,25 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
         } catch (SqlParseException e) {
             return fallbackFor(category, sql, e.getMessage());
         }
+    }
+
+    private SqlRiskAnalysis classifyDialectSpecific(String sql) {
+        String normalized = sql == null ? "" : sql.trim().toLowerCase(Locale.ROOT);
+        if (normalized.isEmpty()) return null;
+        if (normalized.startsWith("explain query plan")) {
+            return SqlRiskAnalysis.low("explain_query_plan");
+        }
+        if (normalized.matches("(?s)^pragma\\s+table_info\\s*\\([^;]+\\)\\s*;?\\s*$")) {
+            return SqlRiskAnalysis.low("pragma_table_info");
+        }
+        if (normalized.startsWith("attach ")
+            || normalized.startsWith("detach ")
+            || normalized.startsWith("vacuum")
+            || normalized.startsWith("reindex")
+            || normalized.startsWith("pragma ")) {
+            return SqlRiskAnalysis.high("sqlite_file_or_maintenance_command");
+        }
+        return null;
     }
 
     private static final List<Pattern> DDL_OBJECT_PATTERNS = List.of(

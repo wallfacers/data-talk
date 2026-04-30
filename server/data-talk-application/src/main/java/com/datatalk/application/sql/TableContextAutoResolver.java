@@ -110,6 +110,9 @@ public class TableContextAutoResolver {
     }
 
     private static boolean requiresLocation(ResolvedExecutionContext context) {
+        if (isSqlite(context.connection().kind())) {
+            return false;
+        }
         return isMysql(context.connection().kind())
             ? !hasText(context.database())
             : !hasText(context.schema());
@@ -157,6 +160,10 @@ public class TableContextAutoResolver {
 
     private static boolean isMysql(String kind) {
         return "mysql".equalsIgnoreCase(kind);
+    }
+
+    private static boolean isSqlite(String kind) {
+        return "sqlite".equalsIgnoreCase(kind);
     }
 
     private static boolean hasText(String value) {

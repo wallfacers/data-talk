@@ -61,6 +61,19 @@ describe('DataSourcePicker', () => {
         lastTestStatus: 'ok',
         lastTestAt: 2,
       },
+      {
+        id: 'c3',
+        name: 'local-sqlite',
+        kind: 'sqlite',
+        host: '',
+        port: 0,
+        databaseName: '/tmp/app.db',
+        username: '',
+        createdAt: 3,
+        connectTimeout: 3000,
+        lastTestStatus: 'ok',
+        lastTestAt: 3,
+      },
     ])
     vi.mocked(sessionDataContextApi.getSessionDataContext).mockResolvedValue({
       sessionId: 'sess-1',
@@ -116,6 +129,14 @@ describe('DataSourcePicker', () => {
     renderWithClient(<DataSourcePicker sessionId="sess-1" />)
 
     expect(await screen.findByRole('button', { name: /analytics-dev/ })).toBeInTheDocument()
+  })
+
+  it('shows saved SQLite connections without schema assumptions', async () => {
+    useConnectionStore.setState({ activeConnectionId: 'c3', connections: [] })
+
+    renderWithClient(<DataSourcePicker />)
+
+    expect(await screen.findByRole('button', { name: /local-sqlite/ })).toBeInTheDocument()
   })
 
   it('persists manual picks to the active session data context', async () => {

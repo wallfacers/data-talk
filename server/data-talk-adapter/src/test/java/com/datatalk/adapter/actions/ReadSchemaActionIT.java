@@ -6,12 +6,14 @@ import com.datatalk.domain.action.ActionContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.nio.file.Path;
 import java.sql.DriverManager;
 import java.util.ArrayList;
 import java.util.List;
@@ -33,6 +35,7 @@ class ReadSchemaActionIT {
     @Autowired @Qualifier("datatalkJdbc") JdbcTemplate datatalkJdbc;
 
     String connectionId;
+    @TempDir Path tempDir;
 
     @AfterEach
     void resetLocale() {
@@ -267,6 +270,45 @@ class ReadSchemaActionIT {
             .hasMessage("当前会话没有激活的数据源");
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    void sqliteDiscoverFiltersInternalTablesAndAppliesPagination() throws Exception {
+        String sqliteConnectionId = createSqliteFixtureConnection();
+
+        Map<String, Object> out = (Map<String, Object>) action.handle(
+            new ActionContext("s-1", "c-sqlite-discover", sqliteConnectionId, "oc-sqlite-discover"),
+            Map.of("connectionId", sqliteConnectionId, "mode", "discover", "limit", 2)
+        ).toCompletableFuture().get();
+
+        List<Map<String, Object>> schema = (List<Map<String, Object>>) out.get("schema");
+        assertThat(schema).hasSize(2);
+        assertThat(schema).extracting(t -> t.get("name"))
+            .doesNotContain("sqlite_sequence");
+        assertThat(out)
+            .containsEntry("mode", "discover")
+            .containsEntry("returnedCount", 2)
+            .containsEntry("totalCount", 3)
+            .containsEntry("truncated", true)
+            .containsEntry("nextCursor", "2");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void sqliteDescribeReturnsRequestedTableColumnsOnly() throws Exception {
+        String sqliteConnectionId = createSqliteFixtureConnection();
+
+        Map<String, Object> out = (Map<String, Object>) action.handle(
+            new ActionContext("s-1", "c-sqlite-describe", sqliteConnectionId, "oc-sqlite-describe"),
+            Map.of("connectionId", sqliteConnectionId, "mode", "describe", "tables", List.of("accounts"))
+        ).toCompletableFuture().get();
+
+        List<Map<String, Object>> schema = (List<Map<String, Object>>) out.get("schema");
+        assertThat(schema).extracting(t -> t.get("name")).containsExactly("accounts");
+        List<Map<String, Object>> columns = (List<Map<String, Object>>) schema.getFirst().get("columns");
+        assertThat(columns).extracting(c -> c.get("name"))
+            .containsExactlyInAnyOrder("id", "name");
+    }
+
     private static void createUserTables(List<String> tableNames) throws Exception {
         try (var c = DriverManager.getConnection("jdbc:h2:" + DB_NAME, "sa", "");
              var st = c.createStatement()) {
@@ -274,5 +316,17 @@ class ReadSchemaActionIT {
                 st.execute("CREATE TABLE " + tableName + "(id INT PRIMARY KEY)");
             }
         }
+    }
+
+    private String createSqliteFixtureConnection() throws Exception {
+        Path dbFile = tempDir.resolve("schema-fixture.db");
+        try (var c = DriverManager.getConnection("jdbc:sqlite:" + dbFile);
+             var st = c.createStatement()) {
+            st.execute("CREATE TABLE accounts(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)");
+            st.execute("CREATE TABLE invoices(id INTEGER PRIMARY KEY, account_id INTEGER)");
+            st.execute("CREATE TABLE report_cache(id INTEGER PRIMARY KEY)");
+            st.execute("INSERT INTO accounts(name) VALUES ('Ada')");
+        }
+        return conn.create("SQLite Schema Test", "sqlite", "", 0, dbFile.toString(), "", "", null);
     }
 }

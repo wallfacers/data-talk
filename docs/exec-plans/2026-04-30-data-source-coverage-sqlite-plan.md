@@ -10,10 +10,11 @@
 
 ---
 
-Implementation cannot begin until
-`docs/product-specs/2026-04-30-data-source-coverage-sqlite-design.md` is
-reviewed and approved. SQLite remains partial until every verification step in
-this plan passes and `docs/DATA_SOURCE_TYPE_COMPATIBILITY.md` is updated.
+Implementation began after
+`docs/product-specs/2026-04-30-data-source-coverage-sqlite-design.md` was
+approved. The working-tree implementation and automated verification completed
+on 2026-05-01, and `docs/DATA_SOURCE_TYPE_COMPATIBILITY.md` now reflects
+first-class file-scoped SQLite support.
 
 ## Files
 
@@ -65,7 +66,7 @@ Expected docs:
 
 ### Task 1: Approval Gate And Current-State Verification
 
-- [ ] **Step 1: Confirm design approval**
+- [x] **Step 1: Confirm design approval**
 
 Run:
 
@@ -76,7 +77,7 @@ rg -n "Status: Draft for review|Status: Approved" docs/product-specs/2026-04-30-
 Expected: the design has been reviewed and marked approved before code edits
 start.
 
-- [ ] **Step 2: Re-run mandatory gate reads**
+- [x] **Step 2: Re-run mandatory gate reads**
 
 Run:
 
@@ -88,7 +89,7 @@ sed -n '1,360p' client/DESIGN.md
 Expected: output includes the data-source compatibility checklist and frontend
 semantic token, global Stage, accessibility, and i18n constraints.
 
-- [ ] **Step 3: Re-run SQLite implementation scan**
+- [x] **Step 3: Re-run SQLite implementation scan**
 
 Run:
 
@@ -101,7 +102,7 @@ exposure.
 
 ### Task 2: Backend Connection And URL Tests
 
-- [ ] **Step 1: Add failing URL and kind tests**
+- [x] **Step 1: Add failing URL and kind tests**
 
 Add cases to
 `server/data-talk-application/src/test/java/com/datatalk/application/connection/JdbcUrlBuilderTest.java`:
@@ -122,7 +123,7 @@ cd server && mvn -q -pl data-talk-application -Dtest=JdbcUrlBuilderTest test
 Expected: new tests fail if the current URL behavior does not match the
 approved design.
 
-- [ ] **Step 2: Implement minimal URL and kind behavior**
+- [x] **Step 2: Implement minimal URL and kind behavior**
 
 Update `JdbcUrlBuilder` and `ConnectionKind` only if the failing tests require
 changes. Preserve existing MySQL, PostgreSQL, and H2 behavior.
@@ -137,7 +138,7 @@ Expected: `JdbcUrlBuilderTest` passes.
 
 ### Task 3: Backend Metadata, Target, SQL, Splitter, Risk, And Diagnostics
 
-- [ ] **Step 1: Add failing metadata and target tests**
+- [x] **Step 1: Add failing metadata and target tests**
 
 Add SQLite cases for:
 
@@ -157,7 +158,7 @@ cd server && mvn -q -pl data-talk-application,data-talk-adapter -am test -Dtest=
 
 Expected: tests fail where SQLite behavior is incomplete.
 
-- [ ] **Step 2: Implement metadata and target behavior**
+- [x] **Step 2: Implement metadata and target behavior**
 
 Update discovery, resolver, and `ReadSchemaAction` scope handling so SQLite is
 file-scoped and schema-less by default.
@@ -170,7 +171,7 @@ cd server && mvn -q -pl data-talk-application,data-talk-adapter -am test -Dtest=
 
 Expected: targeted tests pass.
 
-- [ ] **Step 3: Add failing SQL, splitter, and risk tests**
+- [x] **Step 3: Add failing SQL, splitter, and risk tests**
 
 Add SQLite coverage for:
 
@@ -191,7 +192,7 @@ cd server && mvn -q -pl data-talk-application,data-talk-infrastructure,data-talk
 
 Expected: tests fail until SQLite splitter and risk behavior is explicit.
 
-- [ ] **Step 4: Implement SQL, splitter, risk, and diagnostics behavior**
+- [x] **Step 4: Implement SQL, splitter, risk, and diagnostics behavior**
 
 Use the generic splitter only if the new SQLite tests prove it is safe for the
 approved day-1 script set. Add a dedicated SQLite splitter if generic behavior
@@ -209,7 +210,7 @@ Expected: targeted backend tests pass.
 
 ### Task 4: Frontend Exposure And Query Editor Behavior
 
-- [ ] **Step 1: Add failing frontend tests**
+- [x] **Step 1: Add failing frontend tests**
 
 Add or update Vitest cases for:
 
@@ -229,7 +230,7 @@ cd client && npx vitest run src/features/settings/data-sources src/features/sess
 
 Expected: tests fail until SQLite UI is exposed.
 
-- [ ] **Step 2: Implement frontend changes**
+- [x] **Step 2: Implement frontend changes**
 
 Update connection type lists, the settings form, picker display, Query Editor
 context controls, formatter mapping, outline keywords, and i18n messages. Use
@@ -246,7 +247,7 @@ Expected: targeted frontend tests and typecheck pass.
 
 ### Task 5: MCP, Runtime Prompt, ER, And Docs
 
-- [ ] **Step 1: Add prompt and schema contract tests**
+- [x] **Step 1: Add prompt and schema contract tests**
 
 Update `AgentPromptContractTest` and any MCP schema tests so SQLite appears in
 runtime guidance only with file-scoped context and honest diagnostics.
@@ -259,7 +260,7 @@ cd server && mvn -q -pl data-talk-adapter -am test -Dtest=AgentPromptContractTes
 
 Expected: tests fail until schemas and prompt are aligned.
 
-- [ ] **Step 2: Update MCP schemas and runtime prompt**
+- [x] **Step 2: Update MCP schemas and runtime prompt**
 
 Expose `sqlite` in action schemas only where implementation is real. Update
 `server/data-talk-adapter/src/main/resources/agents/AGENTS.md` with SQLite
@@ -273,7 +274,7 @@ cd server && mvn -q -pl data-talk-adapter -am test -Dtest=AgentPromptContractTes
 
 Expected: prompt contract tests pass.
 
-- [ ] **Step 3: Update compatibility and generated docs**
+- [x] **Step 3: Update compatibility and generated docs**
 
 Update `docs/DATA_SOURCE_TYPE_COMPATIBILITY.md` support snapshot from partial
 to first-class only after automated gates pass. Update
@@ -290,7 +291,7 @@ Expected: docs are accurate and whitespace checks pass.
 
 ### Task 6: Consolidated Verification And Commit
 
-- [ ] **Step 1: Run consolidated backend and frontend gates**
+- [x] **Step 1: Run consolidated backend and frontend gates**
 
 Run:
 
@@ -301,7 +302,7 @@ cd client && npx tsc --noEmit
 
 Expected: both commands succeed.
 
-- [ ] **Step 2: Run manual or integration smoke**
+- [x] **Step 2: Run manual or integration smoke**
 
 Exercise:
 
@@ -318,6 +319,27 @@ Exercise:
 Expected: smoke results match the approved design and are recorded in this
 plan before completion.
 
+Recorded 2026-05-01 integration smoke:
+
+- create/test SQLite file connection: `ConnectionManagementActionsIT` added a
+  `kind=sqlite` file-path create/test case and passed.
+- list targets: `ConnectionTargetDiscoveryServiceTest` verified file-scoped
+  target discovery without synthesized schemas and passed.
+- read schema discover/describe: `ReadSchemaActionIT` verified
+  `sqlite_%` filtering, pagination, and explicit describe and passed.
+- run Query Editor context path: frontend tests verified SQLite connection type
+  exposure plus schema-less context controls and passed.
+- run AI `datatalk_execute_sql`: `ExecuteSqlActionIT` added a SQLite read-only
+  query case and passed.
+- verify L2/L3 guard: `CalciteSqlRiskAnalyzerTest` verified SQLite
+  `EXPLAIN QUERY PLAN`, `PRAGMA table_info`, `ATTACH`, `DETACH`, and `VACUUM`
+  classification; chat-path mutation blocking remained covered by
+  `ExecuteSqlActionIT`.
+- verify diagnostics or structured unsupported: `SqliteDiagnosticsProviderTest`
+  and `AgentPromptContractTest` passed.
+- verify ER Designer CREATE-only SQLite behavior: `SqliteDdlGeneratorTest`
+  passed.
+
 - [ ] **Step 3: Commit implementation**
 
 Run:
@@ -329,3 +351,8 @@ git commit -m "feat(data-sources): complete sqlite coverage"
 ```
 
 Expected: commit succeeds after all checks pass.
+
+Status note: deferred for now because the shared `develop` worktree contains
+other unrelated local changes and untracked Wave B planning artifacts. Commit
+only the SQLite slice after those unrelated changes are separated or approved
+for inclusion.

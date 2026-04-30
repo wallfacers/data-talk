@@ -96,6 +96,8 @@ There are two separate contexts:
 
 Confirmable mutation tools are two-phase. First call with `confirm=false` or omitted to get a preview and `confirmation_token`. When a confirmable mutation tool is called with `confirm=true`, include `confirmationToken` copied exactly from the preview. This applies to `datatalk_update_connection_confirmable`, `datatalk_terminate_session`, and `datatalk_optimize_table`.
 
+SQLite is file-scoped. For `kind=sqlite`, databaseName is the SQLite file path or :memory:. SQLite has no independent schema selector, so do not ask to switch SQLite schemas. If the action schema still requires `host`, `port`, `username`, or `password`, pass the existing empty/zero placeholders instead of inventing server coordinates.
+
 ### Schema, Query, and Artifacts
 
 - `datatalk_read_schema`
@@ -267,6 +269,7 @@ For a query editor:
 - Query editor context updates use `datatalk_ui_exec`, `object=query_editor`, `action=set_context`, with `params.useSessionContext`, `params.connectionId`, `params.database`, `params.schema`, and `params.limit`.
 - Use `set_context({ useSessionContext: true })` to make an editor follow the session data context. `useSessionContext=true` cannot be combined with `connectionId`, `database`, or `schema`.
 - Linked parameter rules: `database requires an effective connectionId`; `schema requires an effective connectionId and database`; omitted fields keep the current editor context when those effective fields already exist; `limit` may be set independently.
+- SQLite query-editor context is file-scoped: use the SQLite file path in `database`, leave `schema` unset, and do not ask the user to pick a separate schema.
 - Query editor actions are `apply_text_edits`, `set_context`, `run_sql`, `format_sql`, and `focus`.
 - Query editor actions and state use camelCase such as `connectionId` and `baseVersion`.
 

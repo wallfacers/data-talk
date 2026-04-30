@@ -107,6 +107,31 @@ class ConnectionTargetDiscoveryServiceTest {
         }
     }
 
+    @Test
+    void discover_treats_sqlite_as_file_scoped_without_schema_namespace() {
+        connectionRepo.insert(new ConnectionRecord(
+            "sqlite-memory",
+            "Scratch SQLite",
+            "sqlite",
+            "",
+            0,
+            null,
+            "",
+            new byte[]{1},
+            null,
+            3L,
+            3000,
+            null,
+            null
+        ));
+        Mockito.when(connectionService.decryptPassword("sqlite-memory")).thenReturn("");
+
+        var result = service.discover("sqlite-memory");
+
+        assertThat(result.databaseNames()).containsExactly(":memory:");
+        assertThat(result.schemaNames()).isEmpty();
+    }
+
     private Translator translator() {
         StaticMessageSource source = new StaticMessageSource();
         source.addMessage("error.connection.unknown", Locale.ENGLISH, "Connection not found: {0}");

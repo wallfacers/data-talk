@@ -46,4 +46,33 @@ class DefaultSqlStatementSplittersTest {
         assertThat(splitters.split("sqlite", "SELECT $$a;b$$; SELECT 1;"))
             .containsExactly("SELECT $$a", "b$$", "SELECT 1");
     }
+
+    @Test
+    void sqliteScriptsKeepPragmasAndQuotedSemicolonsTogether() {
+        assertThat(splitters.split("sqlite", """
+            PRAGMA table_info('users');
+            SELECT 'semi;colon';
+            VACUUM;
+            """))
+            .containsExactly(
+                "PRAGMA table_info('users')",
+                "SELECT 'semi;colon'",
+                "VACUUM"
+            );
+    }
+
+    @Test
+    void sqliteScriptsDoNotSplitInsideComments() {
+        assertThat(splitters.split("sqlite", """
+            -- bootstrap; keep comment attached
+            PRAGMA foreign_keys = ON;
+            SELECT "semi;colon";
+            """))
+            .containsExactly(
+                """
+            -- bootstrap; keep comment attached
+            PRAGMA foreign_keys = ON""",
+                "SELECT \"semi;colon\""
+            );
+    }
 }

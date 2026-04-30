@@ -19,6 +19,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.DriverManager;
 import java.util.List;
 import java.util.Map;
@@ -91,5 +93,37 @@ class ExecuteSqlActionIT {
 
         assertThat(out).containsEntry("status", "blocked_in_chat");
         assertThat((Map<String, Object>) out.get("risk")).containsEntry("level", "L3");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void returnsPreviewForSqliteReadOnlyQuery() throws Exception {
+        Path dbFile = Files.createTempFile("execute-sql-it", ".db");
+        try (var c = DriverManager.getConnection("jdbc:sqlite:" + dbFile);
+             var st = c.createStatement()) {
+            st.execute("CREATE TABLE items(id INTEGER PRIMARY KEY, name TEXT)");
+            st.execute("INSERT INTO items(name) VALUES ('alpha'), ('beta')");
+        }
+
+        String sqliteConnectionId = conn.create("Execute SQL SQLite", ConnectionKind.SQLITE, "", 0,
+            dbFile.toString(), "", "", null);
+        sessRepo.upsert(new SessionRecord("s-exec-sqlite", sqliteConnectionId, "SQLite", true, "oc-sqlite", 0L, 0L, false));
+
+        Map<String, Object> out = (Map<String, Object>) action.handle(
+            new ActionContext(
+                "s-exec-sqlite",
+                "c-sqlite-1",
+                sqliteConnectionId,
+                "oc-sqlite",
+                new ActionExecutionMetadata(new SqlExecutionRisk(RiskLevel.L1, "select", false, false))
+            ),
+            Map.of("connectionId", sqliteConnectionId, "sql", "SELECT id, name FROM items ORDER BY id")
+        ).toCompletableFuture().get();
+
+        assertThat(out).containsKeys("artifactId", "columns", "preview", "rowCount");
+        assertThat((List<?>) out.get("preview")).hasSize(2);
+        assertThat((List<Map<String, Object>>) out.get("preview"))
+            .extracting(row -> row.get("name"))
+            .containsExactly("alpha", "beta");
     }
 }

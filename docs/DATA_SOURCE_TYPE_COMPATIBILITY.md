@@ -53,15 +53,14 @@ This table describes the current repository state. Keep it accurate.
 | `mysql` | First-class | Connection UI, JDBC URL, metadata, SQL execution, MySQL-specific SQL splitter with `DELIMITER` support, diagnostics provider, prompt rules. Query/editor target selection treats MySQL databases as the selectable namespace and does not expose a separate Schema selector. |
 | `postgresql` / `postgres` | First-class with aliases | PostgreSQL-specific SQL splitter, schema/search-path handling, target discovery, diagnostics provider. Preserve both aliases where existing code accepts both. |
 | `h2` | Development/demo support | Connection UI, JDBC URL, generic SQL splitter, schema handling, diagnostics provider. |
-| `sqlite` | Partial/runtime backend support | Metadata DB uses SQLite. User DB support exists in some backend paths, but the current frontend connection form does not expose it. Treat frontend support as incomplete unless verified. |
+| `sqlite` | First-class file-scoped support | Metadata DB uses SQLite, and user SQLite files are now first-class: connection UI, JDBC URL building, connection test, target discovery, `read_schema`, Query Editor schema-less context, read-only SQL execution, prompt rules, and structured unsupported diagnostics are verified. `databaseName` is the SQLite file path or `:memory:`; there is no independent server catalog/schema. ER Designer remains CREATE-only day-1. |
 | `oracle` | Stub only | `DbType` and `OracleDiagnosticsProvider` exist, but `ConnectionKind`, JDBC URL, UI, driver dependency, schema discovery, and SQL execution support are not complete. |
 | `sqlserver` | Stub/legacy enum only | `DbType` and `QueryApplicationService` mapping exist, but the main connection kind, JDBC URL, driver, UI, schema discovery, and diagnostics are not complete. |
 
-ER Inspector follows this matrix: `mysql`, `postgresql` / `postgres`, and `h2`
-are supported through JDBC `DatabaseMetaData.getImportedKeys`; `sqlite` remains
-partial because the frontend connection form is not wired for user SQLite
-connections; `oracle` and `sqlserver` are explicitly unsupported and must return
-structured `dialect_unsupported` guidance instead of a fake empty ER graph.
+ER Inspector follows this matrix: `mysql`, `postgresql` / `postgres`, `h2`, and
+user `sqlite` file connections use JDBC `DatabaseMetaData.getImportedKeys`;
+`oracle` and `sqlserver` are explicitly unsupported and must return structured
+`dialect_unsupported` guidance instead of a fake empty ER graph.
 
 ER Designer follows this DDL matrix: `mysql`, `postgresql` / `postgres`, and
 `h2` generate day-1 DDL for `CREATE TABLE`, `ALTER ADD COLUMN`, `ALTER ADD FK`,
@@ -76,7 +75,7 @@ as `SkippedOp` with `day1_unsupported`; users must write that SQL manually in
 
 | Feature | Compatibility notes |
 |---|---|
-| ER Tabs (Inspector + Designer) | Inspector: mysql / postgresql / h2 fully via JDBC `getImportedKeys`; sqlite incomplete frontend; oracle / sqlserver `dialect_unsupported`. Designer day-1 DDL generation: mysql / postgresql / h2 emit CREATE TABLE / ALTER ADD COLUMN / ALTER ADD FK / CREATE INDEX; sqlite is CREATE-only with all ALTER variants returning `SkippedOp`; oracle / sqlserver `dialect_unsupported`. DROP / ALTER COLUMN type / RENAME are always `SkippedOp` (`day1_unsupported`) regardless of dialect; users must write that SQL manually in the `query_editor` and run it through L2/L3 confirmation. |
+| ER Tabs (Inspector + Designer) | Inspector: mysql / postgresql / h2 fully via JDBC `getImportedKeys`, and sqlite user file connections use the same metadata path with no extra schema selector; oracle / sqlserver `dialect_unsupported`. Designer day-1 DDL generation: mysql / postgresql / h2 emit CREATE TABLE / ALTER ADD COLUMN / ALTER ADD FK / CREATE INDEX; sqlite is CREATE-only with all ALTER variants returning `SkippedOp`; oracle / sqlserver `dialect_unsupported`. DROP / ALTER COLUMN type / RENAME are always `SkippedOp` (`day1_unsupported`) regardless of dialect; users must write that SQL manually in the `query_editor` and run it through L2/L3 confirmation. |
 
 ### ER Designer Gate Notes
 
@@ -132,7 +131,7 @@ drivers, license/redistribution, test fixture quality, and dialect risk.
 
 | Band | Candidate kinds | Notes |
 |---|---|---|
-| A — close partial/stub and common enterprise SQL | `sqlite`, `oracle`, `sqlserver` / `mssql`, `mariadb` | Prefer these when the goal is broad SQL Workbench coverage and familiar enterprise databases. `sqlite` needs frontend completion; `oracle` and `sqlserver` already have partial/stub traces but are not first-class. |
+| A — close partial/stub and common enterprise SQL | `oracle`, `sqlserver` / `mssql`, `mariadb` | Prefer these when the goal is broad SQL Workbench coverage and familiar enterprise databases. `oracle` and `sqlserver` already have partial/stub traces but are not first-class. |
 | B — analytics / OLAP SQL engines | `apache_doris` / `doris`, `starrocks`, `clickhouse`, `hive`, `trino`, `presto`, `duckdb` | Validate JDBC behavior, catalog/schema semantics, splitter safety, and whether diagnostics can be real or must return structured unsupported. |
 | C — domestic / enterprise compatibility | `gaussdb`, `opengauss`, `dameng` / `dm` / `dm8`, `kingbase` / `kingbasees`, `oceanbase`, `tidb` | Do not assume PostgreSQL/MySQL compatibility is enough. Each kind needs explicit driver, URL, catalog/schema, SQL dialect, and risk-analysis decisions. |
 | D — cloud warehouses / lakehouse SQL | `snowflake`, `bigquery`, `redshift`, `databricks_sql` | Watch for non-standard authentication, warehouse/project/dataset fields, JDBC driver redistribution limits, billing-sensitive metadata scans, and result-limit semantics. |
@@ -146,7 +145,7 @@ executed, verified, and the support snapshot above is updated.
 
 | Kind | Child design | Child plan | Current outcome |
 |---|---|---|---|
-| `sqlite` | `docs/product-specs/2026-04-30-data-source-coverage-sqlite-design.md` | `docs/exec-plans/2026-04-30-data-source-coverage-sqlite-plan.md` | Planned: frontend completion and runtime verification; support remains partial until implementation completes. |
+| `sqlite` | `docs/product-specs/2026-04-30-data-source-coverage-sqlite-design.md` | `docs/exec-plans/2026-04-30-data-source-coverage-sqlite-plan.md` | Implemented 2026-05-01 in the working tree: frontend completion, file-scoped context, `read_schema`, prompt contract, structured unsupported diagnostics, and verification are in place; support snapshot is now first-class. |
 | `oracle` | `docs/product-specs/2026-04-30-data-source-coverage-oracle-design.md` | `docs/exec-plans/2026-04-30-data-source-coverage-oracle-plan.md` | Planned: first-class support design from current stub state; support remains stub-only until implementation completes. |
 | `sqlserver` | `docs/product-specs/2026-04-30-data-source-coverage-sqlserver-design.md` | `docs/exec-plans/2026-04-30-data-source-coverage-sqlserver-plan.md` | Planned: first-class support design from current legacy/stub state; support remains stub/legacy until implementation completes. |
 | `mariadb` | `docs/product-specs/2026-04-30-data-source-coverage-mariadb-design.md` | `docs/exec-plans/2026-04-30-data-source-coverage-mariadb-plan.md` | Planned: explicit MariaDB design; support remains unsupported until implementation completes. |
@@ -552,9 +551,9 @@ Required decisions:
   invalid kind reported?
 - Does `ConnectionObjectType.propertySchema()` expose the new kind?
 - Does ER Inspector work from this database's foreign-key metadata? Plan A
-  supports `mysql`, `postgresql` / `postgres`, and `h2` via JDBC
-  `getImportedKeys`; `sqlite` follows the partial frontend-support status above;
-  `oracle` and `sqlserver` are unsupported with `dialect_unsupported` aiHint.
+  supports `mysql`, `postgresql` / `postgres`, `h2`, and user `sqlite`
+  connections via JDBC `getImportedKeys`; `oracle` and `sqlserver` are
+  unsupported with `dialect_unsupported` aiHint.
 - Does connection update confirmation include all kind-specific fields in the
   preview and token?
 - Do REST endpoints and MCP actions expose the same fields and validation

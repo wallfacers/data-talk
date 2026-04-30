@@ -20,6 +20,7 @@ const context = {
 const connections = [
   { id: 'conn-1', name: 'Primary Connection', kind: 'postgres', databaseName: 'db_main' },
   { id: 'conn-2', name: 'Analytics', kind: 'mysql', databaseName: 'analytics' },
+  { id: 'conn-3', name: 'Local SQLite', kind: 'sqlite', databaseName: '/tmp/app.db' },
 ]
 
 const targets = {
@@ -169,6 +170,25 @@ describe('SqlContextToolbarControls', () => {
     })
 
     expect(screen.getByRole('combobox', { name: '数据库' })).toHaveTextContent('analytics')
+    expect(screen.queryByRole('combobox', { name: 'Schema' })).not.toBeInTheDocument()
+  })
+
+  it('hides schema selection for SQLite connections because context is file-scoped', () => {
+    renderControls({
+      useSessionContext: false,
+      context: {
+        connectionId: 'conn-3',
+        connectionName: 'Local SQLite',
+        database: '/tmp/app.db',
+        schema: null,
+      },
+      targets: {
+        databases: ['/tmp/app.db'],
+        schemas: ['ignored_sqlite_schema'],
+      },
+    })
+
+    expect(screen.getByRole('combobox', { name: '数据库' })).toHaveTextContent('/tmp/app.db')
     expect(screen.queryByRole('combobox', { name: 'Schema' })).not.toBeInTheDocument()
   })
 })

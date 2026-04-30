@@ -53,4 +53,24 @@ delete from sessions where id = 1;`)
       false,
     ])
   })
+
+  it('recognizes SQLite pragmas and file-level maintenance commands', () => {
+    const outline = parseSqlOutline(`pragma table_info(users);
+explain query plan select * from users;
+attach database 'other.db' as other;
+vacuum;`)
+
+    expect(outline.map((statement) => statement.kind)).toEqual([
+      'PRAGMA',
+      'EXPLAIN',
+      'ATTACH',
+      'VACUUM',
+    ])
+    expect(outline.map((statement) => statement.highRiskHint)).toEqual([
+      false,
+      false,
+      true,
+      true,
+    ])
+  })
 })

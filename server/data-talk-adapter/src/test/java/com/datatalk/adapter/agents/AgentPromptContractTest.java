@@ -160,6 +160,18 @@ class AgentPromptContractTest {
     }
 
     @Test
+    void runtimePromptDocumentsSqliteFileScopedConnectionSemantics() throws IOException {
+        String prompt = loadPrompt();
+
+        assertThat(prompt)
+            .contains("SQLite is file-scoped")
+            .contains("kind=sqlite")
+            .contains("databaseName is the SQLite file path or :memory:")
+            .contains("SQLite has no independent schema selector")
+            .contains("do not ask to switch SQLite schemas");
+    }
+
+    @Test
     void runtimePromptDocumentsDiagnosticsMutationClosedLoop() throws IOException {
         String prompt = loadPrompt();
 

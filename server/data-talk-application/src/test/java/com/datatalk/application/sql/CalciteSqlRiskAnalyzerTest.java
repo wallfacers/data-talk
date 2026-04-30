@@ -144,4 +144,30 @@ class CalciteSqlRiskAnalyzerTest {
         assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
         assertThat(result.reason()).startsWith("parse_failed:");
     }
+
+    @Test
+    void sqliteExplainQueryPlanIsReadOnly() {
+        var result = analyzer.analyze("EXPLAIN QUERY PLAN SELECT * FROM users", Category.QUERY);
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L1);
+        assertThat(result.reason()).isEqualTo("explain_query_plan");
+    }
+
+    @Test
+    void sqlitePragmaTableInfoIsReadOnly() {
+        var result = analyzer.analyze("PRAGMA table_info(users)", Category.QUERY);
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L1);
+        assertThat(result.reason()).isEqualTo("pragma_table_info");
+    }
+
+    @Test
+    void sqliteAttachDetachAndVacuumAreHighRiskEvenFromQueryCategory() {
+        assertThat(analyzer.analyze("ATTACH DATABASE 'other.db' AS other", Category.QUERY).riskLevel())
+            .isEqualTo(RiskLevel.L3);
+        assertThat(analyzer.analyze("DETACH DATABASE other", Category.QUERY).riskLevel())
+            .isEqualTo(RiskLevel.L3);
+        assertThat(analyzer.analyze("VACUUM", Category.QUERY).riskLevel())
+            .isEqualTo(RiskLevel.L3);
+    }
 }

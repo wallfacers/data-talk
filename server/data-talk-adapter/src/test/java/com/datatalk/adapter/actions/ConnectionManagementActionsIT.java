@@ -19,6 +19,8 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.DriverManager;
 import java.util.List;
 import java.util.Locale;
@@ -120,6 +122,44 @@ class ConnectionManagementActionsIT {
         assertThat(context.schemaName()).isNull();
         assertThatThrownBy(() -> registry.require("datatalk.delete_connection"))
             .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void create_and_test_sqlite_file_connection() throws Exception {
+        Path dbFile = Files.createTempFile("datatalk-sqlite-connection", ".db");
+        try (var c = DriverManager.getConnection("jdbc:sqlite:" + dbFile);
+             var st = c.createStatement()) {
+            st.execute("CREATE TABLE sample(id INTEGER PRIMARY KEY, name TEXT)");
+            st.execute("INSERT INTO sample(name) VALUES ('alpha')");
+        }
+
+        Map<String, Object> created = (Map<String, Object>) createConnectionAction.handle(
+            new ActionContext("s-sqlite", "call-create-sqlite", null, "oc-sqlite"),
+            Map.of(
+                "name", "SQLite 文件",
+                "kind", "sqlite",
+                "host", "",
+                "port", 0,
+                "databaseName", dbFile.toString(),
+                "username", "",
+                "password", "",
+                "connectTimeout", 3000
+            )
+        ).toCompletableFuture().get();
+
+        String connectionId = String.valueOf(created.get("id"));
+        assertThat(connectionRepo.findById(connectionId).orElseThrow())
+            .extracting(ConnectionRecord::kind, ConnectionRecord::databaseName, ConnectionRecord::host, ConnectionRecord::port)
+            .containsExactly("sqlite", dbFile.toString(), "", 0);
+
+        Map<String, Object> tested = (Map<String, Object>) testConnectionAction.handle(
+            new ActionContext("s-sqlite", "call-test-sqlite", connectionId, "oc-sqlite"),
+            Map.of("connectionId", connectionId)
+        ).toCompletableFuture().get();
+
+        assertThat(tested).containsEntry("ok", true);
+        assertThat(tested).containsKey("latencyMs");
     }
 
     @Test
