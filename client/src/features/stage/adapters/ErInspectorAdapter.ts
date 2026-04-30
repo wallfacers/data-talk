@@ -218,7 +218,7 @@ export class ErInspectorAdapter implements UIObject {
         toTable: relation.toTable,
         toColumn: relation.toColumn,
         type: 'many_to_one',
-        constraintMethod: 'foreign_key',
+        constraintMethod: 'database_fk',
       })),
     )
     const workspace = new WorkspaceAdapter(() => null)
