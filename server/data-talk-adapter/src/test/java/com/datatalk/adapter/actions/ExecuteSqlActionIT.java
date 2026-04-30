@@ -13,6 +13,7 @@ import com.datatalk.domain.action.SqlExecutionRisk;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -31,6 +32,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest(classes = DataTalkApplication.class)
 @AutoConfigureMockMvc
 class ExecuteSqlActionIT {
+
+    @TempDir Path tempDir;
 
     private static final String DATABASE_NAME =
         "mem:execute-sql-it;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE";
@@ -98,7 +101,7 @@ class ExecuteSqlActionIT {
     @Test
     @SuppressWarnings("unchecked")
     void returnsPreviewForSqliteReadOnlyQuery() throws Exception {
-        Path dbFile = Files.createTempFile("execute-sql-it", ".db");
+        Path dbFile = tempDir.resolve("execute-sql-it.db");
         try (var c = DriverManager.getConnection("jdbc:sqlite:" + dbFile);
              var st = c.createStatement()) {
             st.execute("CREATE TABLE items(id INTEGER PRIMARY KEY, name TEXT)");

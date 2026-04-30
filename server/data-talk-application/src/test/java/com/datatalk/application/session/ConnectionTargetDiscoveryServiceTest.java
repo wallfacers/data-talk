@@ -18,11 +18,13 @@ import java.sql.DriverManager;
 import java.sql.DriverPropertyInfo;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.nio.file.Files;
 import java.util.Locale;
 import java.util.Properties;
 import java.util.logging.Logger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -130,6 +132,31 @@ class ConnectionTargetDiscoveryServiceTest {
 
         assertThat(result.databaseNames()).containsExactly(":memory:");
         assertThat(result.schemaNames()).isEmpty();
+    }
+
+    @Test
+    void discover_throws_when_sqlite_target_cannot_be_opened() throws Exception {
+        var invalidTarget = Files.createTempDirectory("sqlite-discovery-target");
+        connectionRepo.insert(new ConnectionRecord(
+            "sqlite-invalid",
+            "Broken SQLite",
+            "sqlite",
+            "",
+            0,
+            invalidTarget.toString(),
+            "",
+            new byte[]{1},
+            null,
+            4L,
+            3000,
+            null,
+            null
+        ));
+        Mockito.when(connectionService.decryptPassword("sqlite-invalid")).thenReturn("");
+
+        assertThatThrownBy(() -> service.discover("sqlite-invalid"))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining(invalidTarget.toString());
     }
 
     private Translator translator() {

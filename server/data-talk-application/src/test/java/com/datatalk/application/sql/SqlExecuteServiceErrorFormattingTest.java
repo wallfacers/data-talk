@@ -50,7 +50,7 @@ class SqlExecuteServiceErrorFormattingTest {
         when(sqlStatementSplitters.split("mysql", "SELECT 1")).thenReturn(List.of("SELECT 1"));
 
         SqlExecuteService service = new SqlExecuteService(
-            new CalciteSqlRiskAnalyzer(),
+            new CalciteSqlRiskAnalyzer(sqlStatementSplitters),
             connectionRepository,
             connectionService,
             sessionDataContextService,

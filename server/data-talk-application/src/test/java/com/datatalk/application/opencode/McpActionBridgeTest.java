@@ -330,8 +330,14 @@ class McpActionBridgeTest {
             invocations,
             mock(com.datatalk.application.persistence.ArtifactRepository.class),
             pending,
-            new com.datatalk.application.sql.CalciteSqlRiskAnalyzer(),
+            new com.datatalk.application.sql.CalciteSqlRiskAnalyzer((kind, sql) ->
+                java.util.Arrays.stream(sql.split(";"))
+                    .map(String::trim)
+                    .filter(part -> !part.isEmpty())
+                    .toList()
+            ),
             new com.datatalk.application.sql.SqlBearingActionInspector(),
+            mock(com.datatalk.application.persistence.ConnectionRepository.class),
             om,
             clock
         );

@@ -76,7 +76,6 @@ function hasIndependentSchemaNamespace(kind: string | null | undefined) {
   const normalizedKind = kind?.trim().toLowerCase()
   if (!normalizedKind) return true
   return normalizedKind !== 'mysql'
-    && normalizedKind !== 'mariadb'
     && normalizedKind !== 'sqlite'
 }
 

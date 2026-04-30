@@ -125,11 +125,12 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
 
     private Map<String, Object> execute(ActionContext ctx, Map<String, Object> input) {
         String sql = String.valueOf(input.get("sql"));
+        var resolved = resolveContext(ctx, input);
 
         // L2 / L3 SQL is not executable from the chat tool path. The chat client
         // surfaces an "Open in SQL Workbench" CTA; the AlertDialog flow there
         // is the only trusted confirmation surface.
-        SqlRiskAnalysis risk = riskAnalyzer.analyze(sql, Category.QUERY);
+        SqlRiskAnalysis risk = riskAnalyzer.analyze(sql, Category.QUERY, resolved.connection().kind());
         if (risk.riskLevel() == RiskLevel.L2 || risk.riskLevel() == RiskLevel.L3) {
             return Map.of(
                 "status", "blocked_in_chat",
@@ -142,7 +143,6 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
             );
         }
 
-        var resolved = resolveContext(ctx, input);
         ConnectionRecord cr = withDatabase(resolved.connection(), resolved.database());
         int pageSize = pageSize(input.get("pageSize"));
 

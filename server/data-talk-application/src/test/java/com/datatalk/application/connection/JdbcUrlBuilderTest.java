@@ -112,4 +112,26 @@ class JdbcUrlBuilderTest {
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:sqlite::memory:");
     }
+
+    @Test
+    void sqliteBlankDatabaseUsesMemoryUrl() {
+        var connection = new ConnectionRecord(
+            "sqlite-blank",
+            "Blank SQLite",
+            ConnectionKind.SQLITE,
+            "",
+            0,
+            "   ",
+            "",
+            new byte[]{1},
+            null,
+            1L,
+            3000,
+            null,
+            null
+        );
+
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:sqlite::memory:");
+    }
 }

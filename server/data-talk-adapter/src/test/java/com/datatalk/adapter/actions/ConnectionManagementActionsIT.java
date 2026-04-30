@@ -13,6 +13,7 @@ import com.datatalk.domain.action.ActionContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -33,6 +34,8 @@ import static org.mockito.Mockito.when;
 
 @SpringBootTest
 class ConnectionManagementActionsIT {
+
+    @TempDir Path tempDir;
 
     @Autowired ConnectionService connections;
     @Autowired ConnectionRepository connectionRepo;
@@ -127,7 +130,7 @@ class ConnectionManagementActionsIT {
     @Test
     @SuppressWarnings("unchecked")
     void create_and_test_sqlite_file_connection() throws Exception {
-        Path dbFile = Files.createTempFile("datatalk-sqlite-connection", ".db");
+        Path dbFile = tempDir.resolve("datatalk-sqlite-connection.db");
         try (var c = DriverManager.getConnection("jdbc:sqlite:" + dbFile);
              var st = c.createStatement()) {
             st.execute("CREATE TABLE sample(id INTEGER PRIMARY KEY, name TEXT)");
@@ -139,11 +142,7 @@ class ConnectionManagementActionsIT {
             Map.of(
                 "name", "SQLite 文件",
                 "kind", "sqlite",
-                "host", "",
-                "port", 0,
                 "databaseName", dbFile.toString(),
-                "username", "",
-                "password", "",
                 "connectTimeout", 3000
             )
         ).toCompletableFuture().get();

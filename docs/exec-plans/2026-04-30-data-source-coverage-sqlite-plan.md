@@ -111,6 +111,8 @@ Add cases to
   `jdbc:sqlite:/tmp/app.db`.
 - `sqlite_memory_builds_exact_memory_url`: `databaseName=":memory:"` yields
   `jdbc:sqlite::memory:`.
+- `sqlite_blank_database_uses_documented_default`: blank `databaseName`
+  normalizes to the documented `:memory:` fallback instead of `jdbc:sqlite:`.
 - `sqlite_null_database_uses_documented_default`: preserves or intentionally
   changes the existing null fallback, with the expected value asserted.
 
@@ -182,7 +184,8 @@ Add SQLite coverage for:
 - `DefaultSqlStatementSplittersTest`: comments, strings, pragmas, and
   multi-statement SQLite scripts split safely.
 - `CalciteSqlRiskAnalyzerTest`: `EXPLAIN QUERY PLAN`, `PRAGMA table_info`,
-  `ATTACH`, `DETACH`, `VACUUM`, `DROP`, and broad mutations are classified.
+  read-only metadata pragmas, `ATTACH`, `DETACH`, `VACUUM`, `DROP`, and broad
+  mutations are classified, including mixed multi-statement SQLite scripts.
 
 Run:
 
@@ -264,7 +267,8 @@ Expected: tests fail until schemas and prompt are aligned.
 
 Expose `sqlite` in action schemas only where implementation is real. Update
 `server/data-talk-adapter/src/main/resources/agents/AGENTS.md` with SQLite
-file-scoped guidance and no schema-switching claim.
+file-scoped guidance, no schema-switching claim, and no placeholder
+host/port/username/password requirement for SQLite create/update flows.
 
 Run:
 
@@ -307,6 +311,8 @@ Expected: both commands succeed.
 Exercise:
 
 - create SQLite file connection;
+- verify `datatalk_create_connection` / `datatalk_update_connection_confirmable`
+  accept SQLite without fake server fields;
 - test connection;
 - list targets;
 - read schema discover and describe;
@@ -332,9 +338,15 @@ Recorded 2026-05-01 integration smoke:
 - run AI `datatalk_execute_sql`: `ExecuteSqlActionIT` added a SQLite read-only
   query case and passed.
 - verify L2/L3 guard: `CalciteSqlRiskAnalyzerTest` verified SQLite
-  `EXPLAIN QUERY PLAN`, `PRAGMA table_info`, `ATTACH`, `DETACH`, and `VACUUM`
-  classification; chat-path mutation blocking remained covered by
-  `ExecuteSqlActionIT`.
+  `EXPLAIN QUERY PLAN`, read-only pragma allowlisting, `ATTACH`, `DETACH`,
+  `VACUUM`, and mixed multi-statement maintenance-command classification;
+  chat-path mutation blocking remained covered by `ExecuteSqlActionIT`.
+- verify SQLite MCP connection schemas: `ConfirmableActionSchemasTest` and
+  `ConnectionManagementActionsIT` verified SQLite create/update flows no longer
+  depend on fake host/port/username/password placeholders.
+- verify SQLite `:memory:` semantics remain documented as temporary-only:
+  frontend placeholder copy and runtime prompt guidance were updated to call
+  out the per-JDBC-connection lifetime.
 - verify diagnostics or structured unsupported: `SqliteDiagnosticsProviderTest`
   and `AgentPromptContractTest` passed.
 - verify ER Designer CREATE-only SQLite behavior: `SqliteDdlGeneratorTest`

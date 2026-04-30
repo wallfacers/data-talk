@@ -2,6 +2,7 @@ package com.datatalk.application.session;
 
 import com.datatalk.application.persistence.ActionInvocationRepository;
 import com.datatalk.application.persistence.ArtifactRepository;
+import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.registry.ActionRegistry;
 import com.datatalk.application.registry.JsonSchemaLoader;
 import com.datatalk.application.sql.SqlBearingActionInspector;
@@ -37,6 +38,7 @@ public class ActionDispatcher {
     private final PendingCallRegistry pending;
     private final SqlRiskAnalyzer sqlRiskAnalyzer;
     private final SqlBearingActionInspector sqlInspector;
+    private final ConnectionRepository connections;
     private final ObjectMapper om;
     private final Clock clock;
 
@@ -44,6 +46,7 @@ public class ActionDispatcher {
                             SessionBusRegistry buses, ActionInvocationRepository invocations,
                             ArtifactRepository artifacts, PendingCallRegistry pending,
                             SqlRiskAnalyzer sqlRiskAnalyzer, SqlBearingActionInspector sqlInspector,
+                            ConnectionRepository connections,
                             ObjectMapper om, Clock clock) {
         this.registry = registry;
         this.schemas = schemas;
@@ -53,6 +56,7 @@ public class ActionDispatcher {
         this.pending = pending;
         this.sqlRiskAnalyzer = sqlRiskAnalyzer;
         this.sqlInspector = sqlInspector;
+        this.connections = connections;
         this.om = om;
         this.clock = clock;
     }
@@ -144,7 +148,11 @@ public class ActionDispatcher {
     private ActionContext enrichContext(ActionDescriptor desc, Object input, ActionContext ctx) {
         return sqlInspector.extractSql(input)
             .map(sql -> {
-                SqlRiskAnalysis analysis = sqlRiskAnalyzer.analyze(sql, desc.category());
+                SqlRiskAnalysis analysis = sqlRiskAnalyzer.analyze(
+                    sql,
+                    desc.category(),
+                    resolveConnectionKind(input, ctx)
+                );
                 SqlExecutionRisk risk = new SqlExecutionRisk(
                     analysis.riskLevel(),
                     analysis.reason(),
@@ -160,6 +168,31 @@ public class ActionDispatcher {
                 );
             })
             .orElse(ctx);
+    }
+
+    private String resolveConnectionKind(Object input, ActionContext ctx) {
+        String connectionId = extractConnectionId(input);
+        if (connectionId == null || connectionId.isBlank()) {
+            connectionId = ctx.connectionId();
+        }
+        if (connectionId == null || connectionId.isBlank()) {
+            return null;
+        }
+        return connections.findById(connectionId)
+            .map(connection -> connection.kind())
+            .orElse(null);
+    }
+
+    private String extractConnectionId(Object input) {
+        if (!(input instanceof Map<?, ?> map)) {
+            return null;
+        }
+        Object connectionId = map.get("connectionId");
+        if (!(connectionId instanceof String value)) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private void validate(Map<String, Object> schema, Object data, String label, String actionId) {

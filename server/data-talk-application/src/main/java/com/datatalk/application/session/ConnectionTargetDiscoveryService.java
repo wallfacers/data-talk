@@ -81,7 +81,10 @@ public class ConnectionTargetDiscoveryService {
                     // Some drivers do not expose schemas.
                 }
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            if (ConnectionKind.SQLITE.equalsIgnoreCase(connection.kind())) {
+                throw new IllegalStateException("SQLite target discovery failed for " + configuredDatabase, e);
+            }
             // Discovery should degrade gracefully. Configured databaseName is still useful.
         }
 
@@ -92,8 +95,7 @@ public class ConnectionTargetDiscoveryService {
         if (kind == null || kind.isBlank()) return true;
         String normalized = kind.toLowerCase(Locale.ROOT);
         return !ConnectionKind.MYSQL.equals(normalized)
-            && !ConnectionKind.SQLITE.equals(normalized)
-            && !"mariadb".equals(normalized);
+            && !ConnectionKind.SQLITE.equals(normalized);
     }
 
     private String effectiveDatabaseName(String kind, String databaseName) {

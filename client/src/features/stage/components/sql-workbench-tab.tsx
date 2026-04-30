@@ -395,7 +395,10 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
           [normalizedConnectionId]: { databases: targets.databases, schemas: targets.schemas },
         }
       })
-    } catch {
+    } catch (error) {
+      if (options?.force) {
+        throw error
+      }
       // Best-effort prefetch. Leave uncached so later UI interactions can retry.
     } finally {
       pendingConnectionTargetsRef.current.delete(normalizedConnectionId)

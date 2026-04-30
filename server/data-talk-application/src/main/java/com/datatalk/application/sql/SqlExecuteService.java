@@ -116,7 +116,7 @@ public class SqlExecuteService {
         // Risk gate applies to BOTH user-typed and AI-prefilled SQL. The
         // Workbench tab is the single trusted execution surface for L2 / L3
         // statements; the source label never confers a trust bypass.
-        SqlRiskAnalysis risk = riskAnalyzer.analyze(sql, Category.QUERY);
+        SqlRiskAnalysis risk = riskAnalyzer.analyze(sql, Category.QUERY, context.connection().kind());
         if (risk.riskLevel() != null
             && (risk.riskLevel() == RiskLevel.L2 || risk.riskLevel() == RiskLevel.L3)) {
             if (!confirmed) {

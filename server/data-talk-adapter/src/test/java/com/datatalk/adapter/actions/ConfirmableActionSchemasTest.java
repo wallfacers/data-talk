@@ -75,6 +75,47 @@ class ConfirmableActionSchemasTest {
         assertValid(schema, with(with(base, "confirm", true), "confirmationToken", "token"));
     }
 
+    @Test
+    void createConnection_allows_sqlite_without_server_fields() {
+        Map<String, Object> schema = new CreateConnectionAction(
+            mock(ConnectionService.class)
+        ).inputSchema();
+
+        assertValid(schema, Map.of(
+            "name", "Local SQLite",
+            "kind", "sqlite",
+            "databaseName", "/tmp/app.db"
+        ));
+        assertInvalid(schema, Map.of(
+            "name", "Main",
+            "kind", "h2",
+            "databaseName", "mem:test"
+        ));
+    }
+
+    @Test
+    void updateConnection_allows_sqlite_without_server_fields() {
+        Map<String, Object> schema = new UpdateConnectionConfirmableAction(
+            mock(ConnectionService.class),
+            mock(ConnectionContextRefreshService.class),
+            mock(ConnectionRepository.class),
+            mock(SessionDataContextService.class),
+            mock(Translator.class)
+        ).inputSchema();
+
+        Map<String, Object> sqliteBase = Map.of(
+            "connectionId", "conn-1",
+            "name", "Local SQLite",
+            "kind", "sqlite",
+            "databaseName", "/tmp/app.db"
+        );
+
+        assertValid(schema, sqliteBase);
+        assertValid(schema, with(sqliteBase, "confirm", false));
+        assertInvalid(schema, with(sqliteBase, "confirm", true));
+        assertValid(schema, with(with(sqliteBase, "confirm", true), "confirmationToken", "token"));
+    }
+
     private void assertValid(Map<String, Object> schema, Map<String, Object> input) {
         assertThat(schemas.validate(schema, input).errors())
             .as("expected valid input: %s", input)

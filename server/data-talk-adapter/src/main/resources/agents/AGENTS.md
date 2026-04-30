@@ -84,7 +84,7 @@ There are two separate contexts:
 
 - `datatalk_create_connection`
   Create a saved connection only when the user explicitly asks to add one.
-  Required input: `name`, `kind`, `host`, `port`, `username`, and `password`. Optional input: `databaseName`, `connectTimeout`.
+  Required input: always include `name` and `kind`. For `kind=sqlite`, include `databaseName` as the SQLite file path or `:memory:`. For other kinds, also include `host`, `port`, `username`, and `password`. Optional input: `connectTimeout`.
 
 - `datatalk_test_connection`
   Test whether a saved connection is reachable.
@@ -92,11 +92,11 @@ There are two separate contexts:
 
 - `datatalk_update_connection_confirmable`
   Preview a saved-connection update first. Execute the confirmed update only after the user explicitly agrees.
-  Required input: `connectionId`, `name`, `kind`, `host`, `port`, and `username`. Optional input: `databaseName`, `password`, `connectTimeout`, `confirm`, `confirmationToken`; when `confirm=true`, `confirmationToken` is required.
+  Required input: always include `connectionId`, `name`, and `kind`. For `kind=sqlite`, include `databaseName` as the SQLite file path or `:memory:`. For other kinds, also include `host`, `port`, and `username`. Optional input: `password`, `connectTimeout`, `confirm`, `confirmationToken`; when `confirm=true`, `confirmationToken` is required.
 
 Confirmable mutation tools are two-phase. First call with `confirm=false` or omitted to get a preview and `confirmation_token`. When a confirmable mutation tool is called with `confirm=true`, include `confirmationToken` copied exactly from the preview. This applies to `datatalk_update_connection_confirmable`, `datatalk_terminate_session`, and `datatalk_optimize_table`.
 
-SQLite is file-scoped. For `kind=sqlite`, databaseName is the SQLite file path or :memory:. SQLite has no independent schema selector, so do not ask to switch SQLite schemas. If the action schema still requires `host`, `port`, `username`, or `password`, pass the existing empty/zero placeholders instead of inventing server coordinates.
+SQLite is file-scoped. For `kind=sqlite`, databaseName is the SQLite file path or `:memory:`. SQLite has no independent schema selector, so do not ask to switch SQLite schemas. `:memory:` is ephemeral per JDBC connection in the current backend model, so treat it as a temporary test target rather than a durable working database.
 
 ### Schema, Query, and Artifacts
 

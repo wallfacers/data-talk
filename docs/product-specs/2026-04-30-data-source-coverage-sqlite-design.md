@@ -75,7 +75,10 @@ server.
 - Driver class: `org.sqlite.JDBC`.
 - URL shape: `jdbc:sqlite:<databaseName>`.
 - `databaseName` meaning: SQLite file path or the exact memory token
-  `:memory:`. It must not be presented as a server database name.
+  `:memory:`. It must not be presented as a server database name. In the
+  current backend model, `:memory:` is ephemeral per JDBC connection, so the
+  UI and runtime prompt must present it as a temporary test target rather than
+  a durable working database.
 - Host and port: not meaningful for SQLite. The backend may keep existing DTO
   fields for compatibility, but frontend labels and validation must not imply a
   remote host requirement.
@@ -135,7 +138,11 @@ Required splitter coverage:
 
 Risk guard coverage must include:
 
-- L1: `SELECT`, `WITH`, `EXPLAIN QUERY PLAN`, bounded `PRAGMA table_info`.
+- L1: `SELECT`, `WITH`, `EXPLAIN QUERY PLAN`, and read-only metadata pragmas
+  such as `PRAGMA table_info`, `database_list`, `index_list`, `index_info`,
+  `index_xinfo`, `foreign_key_list`, `table_list`, `table_xinfo`,
+  `compile_options`, `quick_check`, `integrity_check`, `page_count`,
+  `freelist_count`, `application_id`, `user_version`, and `schema_version`.
 - L2: `INSERT`, `UPDATE` with predicate, `DELETE` with predicate,
   `CREATE TABLE`, `CREATE INDEX`.
 - L3: `DROP`, `ALTER TABLE`, `VACUUM`, `ATTACH`, `DETACH`, `REINDEX`,
@@ -214,6 +221,11 @@ Required frontend decisions:
 Action schemas may expose `sqlite` only when the backend can create, test,
 select, read schema, and execute guarded SQL for user SQLite connections.
 
+For connection-management tools, `datatalk_create_connection` and
+`datatalk_update_connection_confirmable` must require only `name` / `kind`
+plus `databaseName` for `kind=sqlite`; `host`, `port`, `username`, and
+`password` remain required only for non-SQLite kinds.
+
 Runtime `AGENTS.md` must state:
 
 - SQLite context is file-scoped.
@@ -243,7 +255,9 @@ Automated gates:
 Manual or integration smoke:
 
 - create SQLite connection for a file path;
-- create SQLite `:memory:` connection if day-1 support includes memory mode;
+- create SQLite `:memory:` connection if day-1 support includes memory mode,
+  but treat it as a temporary test target and do not assume state survives
+  separate JDBC connections;
 - test connection;
 - list targets;
 - read schema discovery and explicit table describe;

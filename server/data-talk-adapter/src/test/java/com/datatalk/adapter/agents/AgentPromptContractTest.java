@@ -124,8 +124,11 @@ class AgentPromptContractTest {
         assertThat(prompt)
             .contains("Required input: `target`")
             .contains("Required input: `connectionId`")
-            .contains("Required input: `name`, `kind`, `host`, `port`, `username`, and `password`")
-            .contains("Required input: `connectionId`, `name`, `kind`, `host`, `port`, and `username`")
+            .contains("Required input: always include `name` and `kind`")
+            .contains("For `kind=sqlite`, include `databaseName` as the SQLite file path or `:memory:`")
+            .contains("For other kinds, also include `host`, `port`, `username`, and `password`")
+            .contains("Required input: always include `connectionId`, `name`, and `kind`")
+            .contains("For other kinds, also include `host`, `port`, and `username`")
             .contains("Required input: `sql`")
             .contains("Required input: `echartsOption`")
             .contains("Required input: `newArtifactId` and `oldArtifactId`")
@@ -166,9 +169,10 @@ class AgentPromptContractTest {
         assertThat(prompt)
             .contains("SQLite is file-scoped")
             .contains("kind=sqlite")
-            .contains("databaseName is the SQLite file path or :memory:")
+            .contains("databaseName is the SQLite file path or `:memory:`")
             .contains("SQLite has no independent schema selector")
-            .contains("do not ask to switch SQLite schemas");
+            .contains("do not ask to switch SQLite schemas")
+            .contains(":memory:` is ephemeral per JDBC connection");
     }
 
     @Test

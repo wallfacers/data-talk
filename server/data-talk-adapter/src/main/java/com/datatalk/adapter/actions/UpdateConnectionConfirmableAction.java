@@ -1,5 +1,6 @@
 package com.datatalk.adapter.actions;
 
+import com.datatalk.application.connection.ConnectionKind;
 import com.datatalk.application.connection.ConnectionService;
 import com.datatalk.application.connection.ConnectionContextRefreshService;
 import com.datatalk.application.i18n.Translator;
@@ -61,7 +62,7 @@ public class UpdateConnectionConfirmableAction implements ActionHandler<Map, Map
     public Map<String, Object> inputSchema() {
         return Map.ofEntries(
             Map.entry("type", "object"),
-            Map.entry("required", List.of("connectionId", "name", "kind", "host", "port", "username")),
+            Map.entry("required", List.of("connectionId", "name", "kind")),
             Map.entry("properties", Map.ofEntries(
                 Map.entry("connectionId", Map.of("type", "string")),
                 Map.entry("name", Map.of("type", "string")),
@@ -75,7 +76,20 @@ public class UpdateConnectionConfirmableAction implements ActionHandler<Map, Map
                 Map.entry("confirm", Map.of("type", "boolean")),
                 Map.entry("confirmationToken", Map.of("type", "string"))
             )),
-            Map.entry("allOf", List.of(confirmRequiresTokenSchema()))
+            Map.entry("allOf", List.of(
+                nonSqliteRequiresServerFieldsSchema(),
+                confirmRequiresTokenSchema()
+            ))
+        );
+    }
+
+    private static Map<String, Object> nonSqliteRequiresServerFieldsSchema() {
+        return Map.of(
+            "if", Map.of(
+                "properties", Map.of("kind", Map.of("const", ConnectionKind.SQLITE)),
+                "required", List.of("kind")
+            ),
+            "else", Map.of("required", List.of("host", "port", "username"))
         );
     }
 
@@ -120,8 +134,9 @@ public class UpdateConnectionConfirmableAction implements ActionHandler<Map, Map
         String connectionId = String.valueOf(input.get("connectionId"));
         ConnectionRecord before = connectionRepo.findById(connectionId)
             .orElseThrow(() -> new IllegalArgumentException(translator.get("error.connection.unknown", connectionId)));
+        var normalized = normalizeInput(input);
 
-        String token = confirmationToken(ctx.sessionId(), before, input);
+        String token = confirmationToken(ctx.sessionId(), before, normalized);
         boolean confirm = Boolean.TRUE.equals(input.get("confirm"));
         String providedToken = input.get("confirmationToken") == null ? null : String.valueOf(input.get("confirmationToken"));
 
@@ -132,7 +147,7 @@ public class UpdateConnectionConfirmableAction implements ActionHandler<Map, Map
             var preview = new LinkedHashMap<String, Object>();
             preview.put("connectionId", before.id());
             preview.put("before", toMap(before));
-            preview.put("after", proposedUpdate(before, input));
+            preview.put("after", proposedUpdate(before, normalized));
             out.put("preview", preview);
             return CompletableFuture.completedFuture(out);
         }
@@ -143,14 +158,14 @@ public class UpdateConnectionConfirmableAction implements ActionHandler<Map, Map
 
         connections.update(
             connectionId,
-            string(input, "name"),
-            string(input, "kind"),
-            string(input, "host"),
-            number(input, "port"),
-            nullableString(input, "databaseName"),
-            string(input, "username"),
-            nullableString(input, "password"),
-            nullableInteger(input, "connectTimeout")
+            normalized.name(),
+            normalized.kind(),
+            normalized.host(),
+            normalized.port(),
+            normalized.databaseName(),
+            normalized.username(),
+            normalized.password(),
+            normalized.connectTimeout()
         );
         contextRefreshService.refreshByConnectionId(connectionId);
 
@@ -191,16 +206,16 @@ public class UpdateConnectionConfirmableAction implements ActionHandler<Map, Map
         );
     }
 
-    private Map<String, Object> proposedUpdate(ConnectionRecord current, Map input) {
+    private Map<String, Object> proposedUpdate(ConnectionRecord current, NormalizedConnectionInput input) {
         var out = new LinkedHashMap<String, Object>();
         out.put("id", current.id());
-        out.put("name", string(input, "name"));
-        out.put("kind", string(input, "kind"));
-        out.put("host", string(input, "host"));
-        out.put("port", number(input, "port"));
-        out.put("databaseName", nullableString(input, "databaseName"));
-        out.put("username", string(input, "username"));
-        out.put("connectTimeout", nullableInteger(input, "connectTimeout"));
+        out.put("name", input.name());
+        out.put("kind", input.kind());
+        out.put("host", input.host());
+        out.put("port", input.port());
+        out.put("databaseName", input.databaseName());
+        out.put("username", input.username());
+        out.put("connectTimeout", input.connectTimeout());
         return out;
     }
 
@@ -237,7 +252,7 @@ public class UpdateConnectionConfirmableAction implements ActionHandler<Map, Map
         return out;
     }
 
-    private static String confirmationToken(String sessionId, ConnectionRecord before, Map input) {
+    private static String confirmationToken(String sessionId, ConnectionRecord before, NormalizedConnectionInput input) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
             digest(md, sessionId);
@@ -251,18 +266,33 @@ public class UpdateConnectionConfirmableAction implements ActionHandler<Map, Map
             digest(md, Base64.getEncoder().encodeToString(before.passwordEnc()));
             digest(md, before.schemaDigest());
             digest(md, String.valueOf(before.connectTimeout()));
-            digest(md, string(input, "name"));
-            digest(md, string(input, "kind"));
-            digest(md, string(input, "host"));
-            digest(md, String.valueOf(number(input, "port")));
-            digest(md, nullableString(input, "databaseName"));
-            digest(md, string(input, "username"));
-            digest(md, nullableString(input, "password"));
-            digest(md, String.valueOf(nullableInteger(input, "connectTimeout")));
+            digest(md, input.name());
+            digest(md, input.kind());
+            digest(md, input.host());
+            digest(md, String.valueOf(input.port()));
+            digest(md, input.databaseName());
+            digest(md, input.username());
+            digest(md, input.password());
+            digest(md, String.valueOf(input.connectTimeout()));
             return Base64.getUrlEncoder().withoutPadding().encodeToString(md.digest());
         } catch (Exception e) {
             throw new IllegalStateException("cannot create confirmation token", e);
         }
+    }
+
+    private static NormalizedConnectionInput normalizeInput(Map input) {
+        String kind = string(input, "kind");
+        boolean sqlite = ConnectionKind.SQLITE.equalsIgnoreCase(kind);
+        return new NormalizedConnectionInput(
+            string(input, "name"),
+            kind,
+            sqlite ? "" : string(input, "host"),
+            sqlite ? 0 : number(input, "port"),
+            nullableString(input, "databaseName"),
+            sqlite ? "" : string(input, "username"),
+            nullableString(input, "password"),
+            nullableInteger(input, "connectTimeout")
+        );
     }
 
     private static void digest(MessageDigest md, String value) {
@@ -291,4 +321,15 @@ public class UpdateConnectionConfirmableAction implements ActionHandler<Map, Map
         if (value instanceof Number n) return n.intValue();
         return Integer.parseInt(String.valueOf(value));
     }
+
+    private record NormalizedConnectionInput(
+        String name,
+        String kind,
+        String host,
+        int port,
+        String databaseName,
+        String username,
+        String password,
+        Integer connectTimeout
+    ) {}
 }

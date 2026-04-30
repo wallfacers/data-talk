@@ -42,9 +42,10 @@ describe('<ErEmptyState>', () => {
     expect(screen.getByText(/Oracle/i)).toBeInTheDocument()
   })
 
-  it('keeps SQLite-specific unsupported body copy', () => {
+  it('uses generic unsupported copy for SQLite instead of legacy unsupported guidance', () => {
     render(<ErEmptyState reason="dialect_unsupported" dialect="sqlite" />)
 
-    expect(screen.getByText(/SQLite/i)).toBeInTheDocument()
+    expect(screen.queryByText(/backend connection setup|后端连接配置/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/Use query_editor|请使用 query_editor/)).toBeInTheDocument()
   })
 })

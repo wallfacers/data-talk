@@ -20,7 +20,7 @@ public final class JdbcUrlBuilder {
             case ConnectionKind.H2 ->
                 "jdbc:h2:" + (db != null ? db : "mem:test");
             case ConnectionKind.SQLITE ->
-                "jdbc:sqlite:" + (db != null ? db : ":memory:");
+                "jdbc:sqlite:" + sqliteDatabaseName(db);
             default ->
                 throw new DataTalkException(DataTalkErrorCodes.DATABASE_KIND_UNSUPPORTED,
                     "unsupported database kind: " + c.kind(), false);
@@ -38,10 +38,14 @@ public final class JdbcUrlBuilder {
             case H2 ->
                 "jdbc:h2:" + (db != null ? db : "mem:test");
             case SQLITE ->
-                "jdbc:sqlite:" + (db != null ? db : ":memory:");
+                "jdbc:sqlite:" + sqliteDatabaseName(db);
             default ->
                 throw new DataTalkException(DataTalkErrorCodes.DATABASE_TYPE_UNSUPPORTED,
                     "unsupported database type: " + c.dbType(), false);
         };
+    }
+
+    private static String sqliteDatabaseName(String databaseName) {
+        return databaseName == null || databaseName.isBlank() ? ":memory:" : databaseName;
     }
 }

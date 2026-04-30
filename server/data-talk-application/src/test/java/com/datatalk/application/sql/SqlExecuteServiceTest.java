@@ -93,7 +93,7 @@ class SqlExecuteServiceTest {
         when(connectionService.decryptPassword(CONN_ID)).thenReturn("");
 
         service = new SqlExecuteService(
-            new CalciteSqlRiskAnalyzer(),
+            new CalciteSqlRiskAnalyzer(sqlStatementSplitters),
             connectionRepository,
             connectionService,
             sessionDataContextService,

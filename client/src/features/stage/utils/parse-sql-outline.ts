@@ -16,6 +16,26 @@ type SqlOutlineStatementRange = SqlOutlineStatement & {
 
 const KEYWORDS = new Set([...mysqlKeywords, ...postgresKeywords, ...h2Keywords, ...sqliteKeywords])
 const HIGH_RISK_KINDS = new Set(['DROP', 'TRUNCATE', 'ALTER', 'ATTACH', 'DETACH', 'VACUUM', 'REINDEX'])
+const READ_ONLY_SQLITE_PRAGMAS = new Set([
+  'application_id',
+  'collation_list',
+  'compile_options',
+  'database_list',
+  'foreign_key_list',
+  'freelist_count',
+  'index_info',
+  'index_list',
+  'index_xinfo',
+  'integrity_check',
+  'page_count',
+  'pragma_list',
+  'quick_check',
+  'schema_version',
+  'table_info',
+  'table_list',
+  'table_xinfo',
+  'user_version',
+])
 
 export function parseSqlOutline(sql: string): SqlOutlineStatement[] {
   const statements: Array<{ line: number; text: string }> = []
@@ -191,6 +211,7 @@ export function parseSqlOutline(sql: string): SqlOutlineStatement[] {
     const summary = text.trim().replace(/\s+/g, ' ').replace(/;$/, '')
     const highRiskHint =
       HIGH_RISK_KINDS.has(kind) || ((kind === 'UPDATE' || kind === 'DELETE') && !tokens.includes('WHERE'))
+      || (kind === 'PRAGMA' && !isReadOnlySqlitePragma(summary))
 
     return {
       line: statementLine,
@@ -199,6 +220,21 @@ export function parseSqlOutline(sql: string): SqlOutlineStatement[] {
       highRiskHint,
     }
   })
+}
+
+function isReadOnlySqlitePragma(statement: string) {
+  const normalized = statement.trim().toLowerCase()
+  const match = normalized.match(/^pragma\s+([\w.]+)\s*(?:\(([^;]*)\))?\s*$/i)
+  if (!match) return false
+  if (normalized.includes('=')) return false
+  const pragmaName = normalizePragmaName(match[1])
+  return READ_ONLY_SQLITE_PRAGMAS.has(pragmaName)
+}
+
+function normalizePragmaName(pragmaName: string) {
+  const normalized = pragmaName.trim().toLowerCase()
+  const lastDot = normalized.lastIndexOf('.')
+  return lastDot >= 0 ? normalized.slice(lastDot + 1) : normalized
 }
 
 export function resolveCurrentSqlOutlineStatement(

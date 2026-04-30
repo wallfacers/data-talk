@@ -99,8 +99,25 @@ export function DataSourcesPage() {
                         : status === 'fail' ? <XCircleIcon className="size-4 text-red-600" />
                         : t('dataSources.test')}
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setEditing(c)} className="h-8 w-8 p-0"><PencilIcon className="size-4" /></Button>
-                    <Button size="sm" variant="ghost" onClick={() => del.mutate(c.id)} className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10" disabled={del.isPending}><TrashIcon className="size-4" /></Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label={t('dataSources.edit')}
+                      onClick={() => setEditing(c)}
+                      className="h-8 w-8 p-0"
+                    >
+                      <PencilIcon className="size-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label={t('common.delete')}
+                      onClick={() => del.mutate(c.id)}
+                      className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      disabled={del.isPending}
+                    >
+                      <TrashIcon className="size-4" />
+                    </Button>
                   </div>
                 </td>
               </tr>

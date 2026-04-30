@@ -18,6 +18,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -71,7 +72,7 @@ class SqlExecuteServiceSplitterSelectionTest {
             ));
 
         service = new SqlExecuteService(
-            new CalciteSqlRiskAnalyzer(),
+            new CalciteSqlRiskAnalyzer(sqlStatementSplitters),
             connectionRepository,
             connectionService,
             sessionDataContextService,
@@ -91,7 +92,7 @@ class SqlExecuteServiceSplitterSelectionTest {
         assertThat(result.results()).hasSize(2);
         assertThat(result.results().get(0).statementText()).isEqualTo("SELECT name FROM items WHERE id = 1");
         assertThat(result.results().get(1).statementText()).isEqualTo("SELECT name FROM items WHERE id = 2");
-        verify(sqlStatementSplitters).split("h2", "ignored script");
+        verify(sqlStatementSplitters, times(2)).split("h2", "ignored script");
     }
 
     private Translator translator() {

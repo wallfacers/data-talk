@@ -1,5 +1,6 @@
 package com.datatalk.application.sql;
 
+import com.datatalk.application.connection.ConnectionKind;
 import com.datatalk.domain.action.Category;
 import org.apache.calcite.sql.SqlDelete;
 import org.apache.calcite.sql.SqlIdentifier;
@@ -19,53 +20,154 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Component
 public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
 
+    private static final Set<String> SQLITE_READ_ONLY_PRAGMAS = Set.of(
+        "application_id",
+        "collation_list",
+        "compile_options",
+        "database_list",
+        "foreign_key_list",
+        "freelist_count",
+        "index_info",
+        "index_list",
+        "index_xinfo",
+        "integrity_check",
+        "page_count",
+        "pragma_list",
+        "quick_check",
+        "schema_version",
+        "table_info",
+        "table_list",
+        "table_xinfo",
+        "user_version"
+    );
+
+    private static final Pattern SQLITE_PRAGMA_NAME_PATTERN =
+        Pattern.compile("(?is)^pragma\\s+([\\w.]+)");
+
+    private final SqlStatementSplitters statementSplitters;
+
+    public CalciteSqlRiskAnalyzer(SqlStatementSplitters statementSplitters) {
+        this.statementSplitters = statementSplitters;
+    }
+
     @Override
-    public SqlRiskAnalysis analyze(String sql, Category category) {
-        SqlRiskAnalysis dialectSpecific = classifyDialectSpecific(sql);
-        if (dialectSpecific != null) {
-            return dialectSpecific;
+    public SqlRiskAnalysis analyze(String sql, Category category, String connectionKind) {
+        if (connectionKind == null || connectionKind.isBlank()) {
+            return analyzeWithoutKind(sql, category);
         }
+        List<String> statements = statementSplitters.split(connectionKind, sql);
+        if (statements.isEmpty()) {
+            return fallbackFor(category, sql, "empty");
+        }
+        return aggregateAnalyses(statements, category, connectionKind);
+    }
+
+    private SqlRiskAnalysis analyzeWithoutKind(String sql, Category category) {
         try {
             SqlNodeList statements = SqlParser.create(sql).parseStmtList();
-            SqlRiskAnalysis aggregate = null;
-            var unionObjects = new LinkedHashSet<String>();
-            for (SqlNode statement : statements) {
-                SqlRiskAnalysis current = classify(statement);
-                unionObjects.addAll(current.affectedObjects());
-                aggregate = aggregate == null ? current : max(aggregate, current);
-            }
-            if (aggregate == null) {
-                return fallbackFor(category, sql, "empty");
-            }
-            return unionObjects.isEmpty() ? aggregate : aggregate.withAffectedObjects(List.copyOf(unionObjects));
+            return aggregateParsedStatements(statements, category, sql);
         } catch (SqlParseException e) {
             return fallbackFor(category, sql, e.getMessage());
         }
     }
 
-    private SqlRiskAnalysis classifyDialectSpecific(String sql) {
-        String normalized = sql == null ? "" : sql.trim().toLowerCase(Locale.ROOT);
+    private SqlRiskAnalysis aggregateAnalyses(List<String> statements, Category category, String connectionKind) {
+        SqlRiskAnalysis aggregate = null;
+        var unionObjects = new LinkedHashSet<String>();
+        for (String statement : statements) {
+            SqlRiskAnalysis current = analyzeStatement(statement, category, connectionKind);
+            unionObjects.addAll(current.affectedObjects());
+            aggregate = aggregate == null ? current : max(aggregate, current);
+        }
+        if (aggregate == null) {
+            return fallbackFor(category, String.join(";\n", statements), "empty");
+        }
+        return unionObjects.isEmpty() ? aggregate : aggregate.withAffectedObjects(List.copyOf(unionObjects));
+    }
+
+    private SqlRiskAnalysis analyzeStatement(String sql, Category category, String connectionKind) {
+        SqlRiskAnalysis dialectSpecific = classifyDialectSpecific(sql, connectionKind);
+        if (dialectSpecific != null) {
+            return dialectSpecific;
+        }
+        try {
+            SqlNodeList statements = SqlParser.create(sql).parseStmtList();
+            return aggregateParsedStatements(statements, category, sql);
+        } catch (SqlParseException e) {
+            return fallbackFor(category, sql, e.getMessage());
+        }
+    }
+
+    private SqlRiskAnalysis aggregateParsedStatements(SqlNodeList statements, Category category, String rawSql) {
+        SqlRiskAnalysis aggregate = null;
+        var unionObjects = new LinkedHashSet<String>();
+        for (SqlNode statement : statements) {
+            SqlRiskAnalysis current = classify(statement);
+            unionObjects.addAll(current.affectedObjects());
+            aggregate = aggregate == null ? current : max(aggregate, current);
+        }
+        if (aggregate == null) {
+            return fallbackFor(category, rawSql, "empty");
+        }
+        return unionObjects.isEmpty() ? aggregate : aggregate.withAffectedObjects(List.copyOf(unionObjects));
+    }
+
+    private SqlRiskAnalysis classifyDialectSpecific(String sql, String connectionKind) {
+        if (!ConnectionKind.SQLITE.equalsIgnoreCase(connectionKind)) {
+            return null;
+        }
+
+        String normalized = stripLeadingComments(sql).toLowerCase(Locale.ROOT);
         if (normalized.isEmpty()) return null;
         if (normalized.startsWith("explain query plan")) {
             return SqlRiskAnalysis.low("explain_query_plan");
         }
-        if (normalized.matches("(?s)^pragma\\s+table_info\\s*\\([^;]+\\)\\s*;?\\s*$")) {
-            return SqlRiskAnalysis.low("pragma_table_info");
+        Matcher pragma = SQLITE_PRAGMA_NAME_PATTERN.matcher(normalized);
+        if (pragma.find()) {
+            String pragmaName = normalizeSqlitePragmaName(pragma.group(1));
+            if (!normalized.contains("=") && SQLITE_READ_ONLY_PRAGMAS.contains(pragmaName)) {
+                return SqlRiskAnalysis.low("pragma_" + pragmaName);
+            }
+            return SqlRiskAnalysis.high("sqlite_file_or_maintenance_command");
         }
         if (normalized.startsWith("attach ")
             || normalized.startsWith("detach ")
             || normalized.startsWith("vacuum")
-            || normalized.startsWith("reindex")
-            || normalized.startsWith("pragma ")) {
+            || normalized.startsWith("reindex")) {
             return SqlRiskAnalysis.high("sqlite_file_or_maintenance_command");
         }
         return null;
+    }
+
+    private String stripLeadingComments(String sql) {
+        String normalized = sql == null ? "" : sql.trim();
+        while (!normalized.isEmpty()) {
+            if (normalized.startsWith("--")) {
+                int newline = normalized.indexOf('\n');
+                normalized = newline >= 0 ? normalized.substring(newline + 1).trim() : "";
+                continue;
+            }
+            if (normalized.startsWith("/*")) {
+                int end = normalized.indexOf("*/");
+                normalized = end >= 0 ? normalized.substring(end + 2).trim() : "";
+                continue;
+            }
+            return normalized;
+        }
+        return normalized;
+    }
+
+    private String normalizeSqlitePragmaName(String pragmaName) {
+        String normalized = pragmaName == null ? "" : pragmaName.trim().toLowerCase(Locale.ROOT);
+        int lastDot = normalized.lastIndexOf('.');
+        return lastDot >= 0 ? normalized.substring(lastDot + 1) : normalized;
     }
 
     private static final List<Pattern> DDL_OBJECT_PATTERNS = List.of(

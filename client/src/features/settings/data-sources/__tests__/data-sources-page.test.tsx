@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { DataSourcesPage } from '../data-sources-page'
@@ -47,5 +47,38 @@ describe('DataSourcesPage', () => {
     expect(screen.getByLabelText('SQLite 文件路径')).toBeInTheDocument()
     expect(screen.queryByLabelText('主机')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('端口')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('用户名')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('密码')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('SQLite 文件路径')).toHaveAttribute('placeholder', expect.stringContaining(':memory:'))
+  })
+
+  it('keeps SQLite edit forms file-scoped without server credential fields', async () => {
+    const qc = new QueryClient()
+    const connection = {
+      id: 'c-sqlite',
+      name: '本地 SQLite',
+      kind: 'sqlite',
+      host: '',
+      port: 0,
+      databaseName: '/tmp/app.db',
+      username: '',
+      createdAt: 0,
+      connectTimeout: 3000,
+      lastTestStatus: null,
+      lastTestAt: null,
+    }
+    vi.mocked(api.listConnections).mockResolvedValue([connection])
+
+    render(<QueryClientProvider client={qc}><DataSourcesPage /></QueryClientProvider>)
+
+    const row = (await screen.findByText('本地 SQLite')).closest('tr')
+    expect(row).not.toBeNull()
+    fireEvent.click(within(row as HTMLTableRowElement).getByRole('button', { name: '编辑数据源' }))
+
+    expect(screen.getByLabelText('SQLite 文件路径')).toHaveValue('/tmp/app.db')
+    expect(screen.queryByLabelText('主机')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('端口')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('用户名')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('密码')).not.toBeInTheDocument()
   })
 })

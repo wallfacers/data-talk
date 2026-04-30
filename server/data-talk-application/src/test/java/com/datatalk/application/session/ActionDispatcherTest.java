@@ -2,10 +2,12 @@ package com.datatalk.application.session;
 
 import com.datatalk.application.persistence.ActionInvocationRepository;
 import com.datatalk.application.persistence.ArtifactRepository;
+import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.registry.ActionRegistry;
 import com.datatalk.application.registry.JsonSchemaLoader;
 import com.datatalk.application.sql.CalciteSqlRiskAnalyzer;
 import com.datatalk.application.sql.SqlBearingActionInspector;
+import com.datatalk.application.sql.SqlStatementSplitters;
 import com.datatalk.domain.action.ActionContext;
 import com.datatalk.domain.action.ActionDescriptor;
 import com.datatalk.domain.action.ActionHandler;
@@ -37,7 +39,11 @@ import static org.mockito.Mockito.when;
 class ActionDispatcherTest {
 
     private final SqlBearingActionInspector inspector = new SqlBearingActionInspector();
-    private final CalciteSqlRiskAnalyzer analyzer = new CalciteSqlRiskAnalyzer();
+    private final SqlStatementSplitters splitters = (kind, sql) -> java.util.Arrays.stream(sql.split(";"))
+        .map(String::trim)
+        .filter(part -> !part.isEmpty())
+        .toList();
+    private final CalciteSqlRiskAnalyzer analyzer = new CalciteSqlRiskAnalyzer(splitters);
 
     @Test
     void serverExecutorRunsHandlerAndRecordsInvocation() throws Exception {
@@ -49,6 +55,7 @@ class ActionDispatcherTest {
         ActionInvocationRepository invocations = Mockito.mock(ActionInvocationRepository.class);
         ArtifactRepository artifacts = Mockito.mock(ArtifactRepository.class);
         PendingCallRegistry pending = Mockito.mock(PendingCallRegistry.class);
+        ConnectionRepository connections = Mockito.mock(ConnectionRepository.class);
         JsonSchemaLoader schemas = new JsonSchemaLoader(new ObjectMapper());
 
         when(registry.require("x.ok")).thenReturn(
@@ -60,7 +67,7 @@ class ActionDispatcherTest {
         Mockito.doReturn(new AlwaysOkHandler()).when(registry).handler("x.ok");
 
         ActionDispatcher disp = new ActionDispatcher(registry, schemas, buses,
-            invocations, artifacts, pending, analyzer, inspector, new ObjectMapper(),
+            invocations, artifacts, pending, analyzer, inspector, connections, new ObjectMapper(),
             Clock.fixed(Instant.ofEpochMilli(1000L), ZoneOffset.UTC));
 
         CompletionStage<Object> out = disp.dispatch("x.ok",
@@ -83,6 +90,7 @@ class ActionDispatcherTest {
         ActionInvocationRepository invocations = Mockito.mock(ActionInvocationRepository.class);
         ArtifactRepository artifacts = Mockito.mock(ArtifactRepository.class);
         PendingCallRegistry pending = Mockito.mock(PendingCallRegistry.class);
+        ConnectionRepository connections = Mockito.mock(ConnectionRepository.class);
         JsonSchemaLoader schemas = new JsonSchemaLoader(new ObjectMapper());
 
         when(registry.require("x.client")).thenReturn(
@@ -94,7 +102,7 @@ class ActionDispatcherTest {
         Mockito.doReturn(new AlwaysOkHandler()).when(registry).handler("x.client");
 
         ActionDispatcher disp = new ActionDispatcher(registry, schemas, buses,
-            invocations, artifacts, pending, analyzer, inspector, new ObjectMapper(),
+            invocations, artifacts, pending, analyzer, inspector, connections, new ObjectMapper(),
             Clock.fixed(Instant.ofEpochMilli(1000L), ZoneOffset.UTC));
 
         CompletionStage<Object> out = disp.dispatch("x.client",
@@ -116,6 +124,7 @@ class ActionDispatcherTest {
         ActionInvocationRepository invocations = Mockito.mock(ActionInvocationRepository.class);
         ArtifactRepository artifacts = Mockito.mock(ArtifactRepository.class);
         PendingCallRegistry pending = Mockito.mock(PendingCallRegistry.class);
+        ConnectionRepository connections = Mockito.mock(ConnectionRepository.class);
         JsonSchemaLoader schemas = new JsonSchemaLoader(new ObjectMapper());
 
         when(registry.require("x.client")).thenReturn(
@@ -126,7 +135,7 @@ class ActionDispatcherTest {
         );
 
         ActionDispatcher disp = new ActionDispatcher(registry, schemas, buses,
-            invocations, artifacts, pending, analyzer, inspector, new ObjectMapper(),
+            invocations, artifacts, pending, analyzer, inspector, connections, new ObjectMapper(),
             Clock.fixed(Instant.ofEpochMilli(1000L), ZoneOffset.UTC));
 
         CompletionStage<Object> out = disp.dispatch("x.client",
@@ -147,10 +156,11 @@ class ActionDispatcherTest {
         ActionInvocationRepository invocations = Mockito.mock(ActionInvocationRepository.class);
         ArtifactRepository artifacts = Mockito.mock(ArtifactRepository.class);
         PendingCallRegistry pending = Mockito.mock(PendingCallRegistry.class);
+        ConnectionRepository connections = Mockito.mock(ConnectionRepository.class);
         JsonSchemaLoader schemas = new JsonSchemaLoader(new ObjectMapper());
 
         ActionDispatcher disp = new ActionDispatcher(registry, schemas, buses,
-            invocations, artifacts, pending, analyzer, inspector, new ObjectMapper(),
+            invocations, artifacts, pending, analyzer, inspector, connections, new ObjectMapper(),
             Clock.fixed(Instant.ofEpochMilli(1000L), ZoneOffset.UTC));
 
         assertThatThrownBy(() -> disp.dispatch("no.such", Map.of(), "c-3",
@@ -167,6 +177,7 @@ class ActionDispatcherTest {
         ActionInvocationRepository invocations = Mockito.mock(ActionInvocationRepository.class);
         ArtifactRepository artifacts = Mockito.mock(ArtifactRepository.class);
         PendingCallRegistry pending = Mockito.mock(PendingCallRegistry.class);
+        ConnectionRepository connections = Mockito.mock(ConnectionRepository.class);
         JsonSchemaLoader schemas = new JsonSchemaLoader(new ObjectMapper());
         CaptureCtxHandler handler = new CaptureCtxHandler();
 
@@ -179,7 +190,7 @@ class ActionDispatcherTest {
         Mockito.doReturn(handler).when(registry).handler("x.sql");
 
         ActionDispatcher disp = new ActionDispatcher(registry, schemas, buses,
-            invocations, artifacts, pending, analyzer, inspector, new ObjectMapper(),
+            invocations, artifacts, pending, analyzer, inspector, connections, new ObjectMapper(),
             Clock.fixed(Instant.ofEpochMilli(1000L), ZoneOffset.UTC));
 
         Object result = disp.dispatch("x.sql",
@@ -202,6 +213,7 @@ class ActionDispatcherTest {
         ActionInvocationRepository invocations = Mockito.mock(ActionInvocationRepository.class);
         ArtifactRepository artifacts = Mockito.mock(ArtifactRepository.class);
         PendingCallRegistry pending = Mockito.mock(PendingCallRegistry.class);
+        ConnectionRepository connections = Mockito.mock(ConnectionRepository.class);
         JsonSchemaLoader schemas = new JsonSchemaLoader(new ObjectMapper());
         CaptureCtxHandler handler = new CaptureCtxHandler();
 
@@ -214,7 +226,7 @@ class ActionDispatcherTest {
         Mockito.doReturn(handler).when(registry).handler("x.query");
 
         ActionDispatcher disp = new ActionDispatcher(registry, schemas, buses,
-            invocations, artifacts, pending, analyzer, inspector, new ObjectMapper(),
+            invocations, artifacts, pending, analyzer, inspector, connections, new ObjectMapper(),
             Clock.fixed(Instant.ofEpochMilli(1000L), ZoneOffset.UTC));
 
         Object result = disp.dispatch("x.query",

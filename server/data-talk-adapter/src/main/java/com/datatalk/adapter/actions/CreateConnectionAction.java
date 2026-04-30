@@ -1,5 +1,6 @@
 package com.datatalk.adapter.actions;
 
+import com.datatalk.application.connection.ConnectionKind;
 import com.datatalk.application.connection.ConnectionService;
 import com.datatalk.domain.action.ActionContext;
 import com.datatalk.domain.action.ActionHandler;
@@ -36,10 +37,10 @@ public class CreateConnectionAction implements ActionHandler<Map, Map> {
 
     @Override
     public Map<String, Object> inputSchema() {
-        return Map.of(
-            "type", "object",
-            "required", List.of("name", "kind", "host", "port", "username", "password"),
-            "properties", Map.of(
+        return Map.ofEntries(
+            Map.entry("type", "object"),
+            Map.entry("required", List.of("name", "kind")),
+            Map.entry("properties", Map.of(
                 "name", Map.of("type", "string"),
                 "kind", Map.of("type", "string"),
                 "host", Map.of("type", "string"),
@@ -48,7 +49,18 @@ public class CreateConnectionAction implements ActionHandler<Map, Map> {
                 "username", Map.of("type", "string"),
                 "password", Map.of("type", "string"),
                 "connectTimeout", Map.of("type", "integer")
-            )
+            )),
+            Map.entry("allOf", List.of(nonSqliteRequiresServerFieldsSchema()))
+        );
+    }
+
+    private static Map<String, Object> nonSqliteRequiresServerFieldsSchema() {
+        return Map.of(
+            "if", Map.of(
+                "properties", Map.of("kind", Map.of("const", ConnectionKind.SQLITE)),
+                "required", List.of("kind")
+            ),
+            "else", Map.of("required", List.of("host", "port", "username", "password"))
         );
     }
 
@@ -77,20 +89,37 @@ public class CreateConnectionAction implements ActionHandler<Map, Map> {
     @Override
     @SuppressWarnings("unchecked")
     public CompletionStage<Map> handle(ActionContext ctx, Map input) {
+        var normalized = normalizeInput(input);
         String id = connections.create(
-            string(input, "name"),
-            string(input, "kind"),
-            string(input, "host"),
-            number(input, "port"),
-            nullableString(input, "databaseName"),
-            string(input, "username"),
-            string(input, "password"),
-            nullableInteger(input, "connectTimeout")
+            normalized.name(),
+            normalized.kind(),
+            normalized.host(),
+            normalized.port(),
+            normalized.databaseName(),
+            normalized.username(),
+            normalized.password(),
+            normalized.connectTimeout()
         );
         var out = new LinkedHashMap<String, Object>();
         out.put("id", id);
         out.put("connection", toMap(connections.get(id)));
         return CompletableFuture.completedFuture(out);
+    }
+
+    private static NormalizedConnectionInput normalizeInput(Map input) {
+        String kind = string(input, "kind");
+        boolean sqlite = ConnectionKind.SQLITE.equalsIgnoreCase(kind);
+        String password = nullableString(input, "password");
+        return new NormalizedConnectionInput(
+            string(input, "name"),
+            kind,
+            sqlite ? "" : string(input, "host"),
+            sqlite ? 0 : number(input, "port"),
+            nullableString(input, "databaseName"),
+            sqlite ? "" : string(input, "username"),
+            sqlite ? (password == null ? "" : password) : string(input, "password"),
+            nullableInteger(input, "connectTimeout")
+        );
     }
 
     private static Map<String, Object> toMap(ConnectionDto c) {
@@ -130,4 +159,15 @@ public class CreateConnectionAction implements ActionHandler<Map, Map> {
         if (value instanceof Number n) return n.intValue();
         return Integer.parseInt(String.valueOf(value));
     }
+
+    private record NormalizedConnectionInput(
+        String name,
+        String kind,
+        String host,
+        int port,
+        String databaseName,
+        String username,
+        String password,
+        Integer connectTimeout
+    ) {}
 }

@@ -28,12 +28,6 @@ function resolveCopy(reason: ErEmptyReason, dialect: string | undefined, t: Retu
         body: t('erCanvas.empty.oracle'),
       }
     }
-    if (normalizedDialect === 'sqlite') {
-      return {
-        title: t('erCanvas.empty.unsupported.title'),
-        body: t('erCanvas.empty.sqlite'),
-      }
-    }
     return {
       title: t('erCanvas.empty.unsupported.title'),
       body: t('erCanvas.empty.unsupported'),

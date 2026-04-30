@@ -8,7 +8,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class CalciteSqlRiskAnalyzerTest {
 
-    private final CalciteSqlRiskAnalyzer analyzer = new CalciteSqlRiskAnalyzer();
+    private final CalciteSqlRiskAnalyzer analyzer = new CalciteSqlRiskAnalyzer((kind, sql) ->
+        java.util.Arrays.stream(sql.split(";"))
+            .map(String::trim)
+            .filter(part -> !part.isEmpty())
+            .toList()
+    );
 
     @Test
     void classifiesSelectAsL1() {
@@ -147,7 +152,7 @@ class CalciteSqlRiskAnalyzerTest {
 
     @Test
     void sqliteExplainQueryPlanIsReadOnly() {
-        var result = analyzer.analyze("EXPLAIN QUERY PLAN SELECT * FROM users", Category.QUERY);
+        var result = analyzer.analyze("EXPLAIN QUERY PLAN SELECT * FROM users", Category.QUERY, "sqlite");
 
         assertThat(result.riskLevel()).isEqualTo(RiskLevel.L1);
         assertThat(result.reason()).isEqualTo("explain_query_plan");
@@ -155,7 +160,7 @@ class CalciteSqlRiskAnalyzerTest {
 
     @Test
     void sqlitePragmaTableInfoIsReadOnly() {
-        var result = analyzer.analyze("PRAGMA table_info(users)", Category.QUERY);
+        var result = analyzer.analyze("PRAGMA table_info(users)", Category.QUERY, "sqlite");
 
         assertThat(result.riskLevel()).isEqualTo(RiskLevel.L1);
         assertThat(result.reason()).isEqualTo("pragma_table_info");
@@ -163,11 +168,43 @@ class CalciteSqlRiskAnalyzerTest {
 
     @Test
     void sqliteAttachDetachAndVacuumAreHighRiskEvenFromQueryCategory() {
-        assertThat(analyzer.analyze("ATTACH DATABASE 'other.db' AS other", Category.QUERY).riskLevel())
+        assertThat(analyzer.analyze("ATTACH DATABASE 'other.db' AS other", Category.QUERY, "sqlite").riskLevel())
             .isEqualTo(RiskLevel.L3);
-        assertThat(analyzer.analyze("DETACH DATABASE other", Category.QUERY).riskLevel())
+        assertThat(analyzer.analyze("DETACH DATABASE other", Category.QUERY, "sqlite").riskLevel())
             .isEqualTo(RiskLevel.L3);
-        assertThat(analyzer.analyze("VACUUM", Category.QUERY).riskLevel())
+        assertThat(analyzer.analyze("VACUUM", Category.QUERY, "sqlite").riskLevel())
             .isEqualTo(RiskLevel.L3);
+    }
+
+    @Test
+    void sqliteReadOnlyPragmasRemainLowRisk() {
+        var result = analyzer.analyze("PRAGMA database_list", Category.QUERY, "sqlite");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L1);
+        assertThat(result.reason()).isEqualTo("pragma_database_list");
+    }
+
+    @Test
+    void sqliteWritePragmasRemainHighRisk() {
+        var result = analyzer.analyze("PRAGMA journal_mode = WAL", Category.QUERY, "sqlite");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("sqlite_file_or_maintenance_command");
+    }
+
+    @Test
+    void sqliteHighRiskMaintenanceCommandsStayHighInsideMultiStatementScripts() {
+        var result = analyzer.analyze("SELECT 1; VACUUM;", Category.QUERY, "sqlite");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("sqlite_file_or_maintenance_command");
+    }
+
+    @Test
+    void nonSqliteKindsDoNotApplySqliteMaintenanceRules() {
+        var result = analyzer.analyze("VACUUM", Category.QUERY, "postgresql");
+
+        assertThat(result.riskLevel()).isNull();
+        assertThat(result.fallbackUsed()).isTrue();
     }
 }

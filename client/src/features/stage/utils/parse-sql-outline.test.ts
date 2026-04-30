@@ -73,4 +73,31 @@ vacuum;`)
       true,
     ])
   })
+
+  it('keeps read-only pragmas low-risk and flags write pragmas as high-risk', () => {
+    const outline = parseSqlOutline(`pragma database_list;
+pragma journal_mode = wal;
+select 1;`)
+
+    expect(outline).toEqual([
+      {
+        line: 1,
+        kind: 'PRAGMA',
+        summary: 'pragma database_list',
+        highRiskHint: false,
+      },
+      {
+        line: 2,
+        kind: 'PRAGMA',
+        summary: 'pragma journal_mode = wal',
+        highRiskHint: true,
+      },
+      {
+        line: 3,
+        kind: 'SELECT',
+        summary: 'select 1',
+        highRiskHint: false,
+      },
+    ])
+  })
 })
