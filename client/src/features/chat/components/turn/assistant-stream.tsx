@@ -58,7 +58,7 @@ export function AssistantStream(props: {
     : 'part:' + ((groups[groups.length - 1] as any).ref?.id))
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex min-w-0 flex-col gap-1">
       {groups.map((g) => {
         if (g.type === 'context-group') {
           const busy = props.working && lastKey === g.key

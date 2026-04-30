@@ -25,7 +25,7 @@ export function TurnList(props: { sessionId: string | null; error?: Error | null
 
   if (!props.sessionId || turns.length === 0) return null
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex min-w-0 flex-col gap-2">
       {turns.map((t, i) => (
         <SessionTurn
           key={t.renderKey}

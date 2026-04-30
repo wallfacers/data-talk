@@ -45,7 +45,7 @@ export function TextPart(props: PartComponentProps) {
   // one frame and caused the code block to briefly collapse, which shifted
   // content below it upward — visible as a scroll jump at stream end.
   return (
-    <div data-component="text-part" className="my-1">
+    <div data-component="text-part" className="my-1 min-w-0 max-w-full">
       {visibleText && (
         <PacedMarkdown
           text={cleanText}

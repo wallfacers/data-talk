@@ -59,6 +59,13 @@ describe('ChartBlock', () => {
     expect(screen.getByRole('button', { name: /打开到工作台/ })).toBeEnabled()
   })
 
+  it('keeps the chart block shrinkable inside narrow split panes', () => {
+    render(<ChartBlock json={JSON.stringify(MIN_OPTION)} streaming={false} messageId="m" blockIndex={0} />)
+
+    expect(screen.getByTestId('chart-canvas-host')).toHaveClass('w-full', 'min-w-0', 'max-w-full')
+    expect(screen.getByTestId('chart-canvas-host').parentElement).toHaveClass('w-full', 'min-w-0', 'max-w-full')
+  })
+
   it('renders error state when streaming=false and JSON invalid', () => {
     render(<ChartBlock json={'{"series":[{"type":"bar","dat'} streaming={false} messageId="m" blockIndex={0} />)
     expect(screen.getByTestId('chart-error')).toBeInTheDocument()

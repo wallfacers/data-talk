@@ -1,5 +1,19 @@
 /* markdown.css */
-[data-component="markdown"] { line-height: 1.5; word-wrap: break-word; }
+[data-component="markdown"] {
+  line-height: 1.5;
+  /* `overflow-wrap: anywhere` (vs the older `break-word`) is the one that
+     also affects min-content sizing — a long unbreakable token (URL,
+     identifier, hash) inside a paragraph or inline <code> can otherwise
+     keep the markdown root's min-content above the chat column width and
+     spill horizontally into the chat scroller. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  /* The markdown root sits inside the assistant column flex chain; without
+     min-width:0 / max-width:100% a wide child can push the markdown root's
+     own width past its parent in narrow split panes. */
+  min-width: 0;
+  max-width: 100%;
+}
 [data-component="markdown"] h1,
 [data-component="markdown"] h2,
 [data-component="markdown"] h3 { margin: 0.75em 0 0.5em; font-weight: 600; }

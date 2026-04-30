@@ -86,7 +86,7 @@ export function SessionTurn(props: {
   }, [props.userInfo, assistantMessages])
 
   return (
-    <div data-component="session-turn" className="py-2">
+    <div data-component="session-turn" className="min-w-0 py-2">
       {props.userInfo && <UserBubble info={props.userInfo} parts={userParts} />}
       {/* Reserve space equal to the thinking indicator so the swap from
           "Thinking…" to the first (tiny) streamed text part doesn't shrink

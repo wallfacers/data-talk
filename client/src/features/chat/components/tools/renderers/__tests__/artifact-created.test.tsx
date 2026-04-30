@@ -142,6 +142,18 @@ describe('ArtifactCreated — inline chart preview', () => {
     expect(JSON.parse(renderer.getAttribute('data-option')!)).toEqual(CHART_OPTION)
   })
 
+  it('renders the inline chart inside a shrinkable full-width wrapper', () => {
+    useOntologyStore.setState({
+      artifactsBySession: new Map([
+        ['sess-1', new Map([['art-1', CHART_ARTIFACT]])],
+      ]),
+    } as any)
+
+    render(<ArtifactCreated part={makePart() as any} descriptor={DESCRIPTOR as any} />)
+
+    expect(screen.getByTestId('chart-renderer-mock').parentElement).toHaveClass('w-full', 'min-w-0', 'max-w-full')
+  })
+
   it('still renders the tool row (BasicTool) alongside the inline chart', () => {
     useOntologyStore.setState({
       artifactsBySession: new Map([

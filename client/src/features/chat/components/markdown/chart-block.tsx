@@ -222,7 +222,7 @@ export const ChartBlock = memo(function ChartBlock({
     <div
       data-component="chart-block"
       data-chart-block-index={String(blockIndex)}
-      className="my-2 overflow-hidden rounded-lg border border-[var(--dt-border-subtle)]"
+      className="my-2 w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-[var(--dt-border-subtle)]"
     >
       <div className="flex items-center justify-between border-b border-[var(--dt-border-subtle)] bg-[var(--dt-bg-subtle)] px-3 py-1.5">
         <span className="font-mono text-[13px] leading-[18px] text-[var(--dt-text-muted)]">{t('chart.label')}</span>
@@ -279,7 +279,7 @@ export const ChartBlock = memo(function ChartBlock({
           </Tooltip>
         </div>
       </div>
-      <div data-testid="chart-canvas-host">
+      <div data-testid="chart-canvas-host" className="w-full min-w-0 max-w-full">
         <ChartErrorBoundary json={json} resetKey={json} title={t('chart.renderError')}>
           <ChartRenderer option={option} />
         </ChartErrorBoundary>

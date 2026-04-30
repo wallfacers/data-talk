@@ -146,7 +146,16 @@ export function SplitView() {
             <div className="relative flex min-h-0 flex-1 flex-col">
               <div
                 ref={scrollRef}
-                className="flex-1 overflow-y-auto px-2 py-4"
+                className="flex-1 overflow-x-hidden overflow-y-auto px-2 py-4"
+                // `overflow-x-hidden` is mandatory: per CSS Overflow L3 §3, when
+                // `overflow-y` is non-visible, an unspecified `overflow-x: visible`
+                // computes to `auto`, so any descendant horizontal overflow
+                // (long inline code, an over-eager ECharts pixel width, a markdown
+                // edge case) would surface a horizontal scrollbar on the chat
+                // scroller in narrow split panes. The chat surface is contractually
+                // never horizontally scrollable — content must self-wrap or scroll
+                // inside its own widget.
+                //
                 // `overflow-anchor: auto` (browser default) lets the engine
                 // compensate `scrollTop` when content above the viewport
                 // shrinks — e.g. reasoning panel collapsing, code→chart fence
@@ -155,7 +164,7 @@ export function SplitView() {
                 // layout and sets scrollTop = scrollHeight explicitly.
                 style={{ scrollbarGutter: 'stable' }}
               >
-                <div className="mx-auto w-full max-w-3xl">
+                <div className="mx-auto w-full min-w-0 max-w-3xl">
                   {degradedNotice}
                   <TurnListErrorBoundary>
                     <TurnList sessionId={sid} />
@@ -185,7 +194,7 @@ export function SplitView() {
               ) : null}
             </div>
             <div className="overflow-y-auto px-2 pt-1 pb-4" style={{ scrollbarGutter: 'stable' }}>
-              <div id="composer-slot" className="mx-auto w-full max-w-3xl" />
+              <div id="composer-slot" className="mx-auto w-full min-w-0 max-w-3xl" />
             </div>
           </div>
         ) : (
@@ -200,7 +209,7 @@ export function SplitView() {
                 <h1 className="text-xl font-semibold tracking-tight">DataTalk</h1>
                 <p className="text-sm text-muted-foreground">{t('session.heroSubtitle')}</p>
               </div>
-              <div className="mt-8 w-full max-w-3xl mx-auto">
+              <div className="mx-auto mt-8 w-full min-w-0 max-w-3xl">
                 <div id="composer-slot" className="w-full" />
               </div>
             </div>

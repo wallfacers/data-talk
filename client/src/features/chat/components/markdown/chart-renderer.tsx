@@ -154,7 +154,11 @@ export function ChartRenderer({ option, height = DEFAULT_HEIGHT }: ChartRenderer
   }, [])
 
   return (
-    <div ref={containerRef} style={{ height }}>
+    <div
+      ref={containerRef}
+      className="w-full min-w-0 max-w-full overflow-hidden"
+      style={{ width: '100%', minWidth: 0, maxWidth: '100%', height }}
+    >
       <ReactECharts
         key={themeName}
         notMerge={true}

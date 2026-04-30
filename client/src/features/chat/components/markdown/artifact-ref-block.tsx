@@ -21,7 +21,7 @@ export function ArtifactRefBlock({ artifactId }: { artifactId: string }) {
   if (!echartsOption) return null
 
   return (
-    <div className="my-2 overflow-hidden rounded-lg border border-[var(--dt-border-subtle)]">
+    <div className="my-2 w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-[var(--dt-border-subtle)]">
       <ChartRenderer option={echartsOption} />
     </div>
   )

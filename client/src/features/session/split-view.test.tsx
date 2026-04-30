@@ -230,6 +230,14 @@ describe('SplitView stage panel', () => {
     expect(panel.style.width).toBe('38%')
   })
 
+  it('keeps the chat column content shrinkable when the stage opens', () => {
+    useStageStore.setState({ open: true })
+
+    const { container } = render(<SplitView />, { wrapper })
+
+    expect(container.querySelector('.mx-auto.w-full.max-w-3xl')).toHaveClass('min-w-0')
+  })
+
   it('does not render ER designer loading content after the stage is closed', () => {
     useStageStore.setState({
       open: false,
@@ -274,6 +282,31 @@ describe('SplitView stage panel', () => {
     // Empty string means the inline style is not set; the computed value
     // will fall back to the browser default "auto".
     expect(scroller?.style.overflowAnchor ?? '').not.toBe('none')
+  })
+
+  it('locks the chat scroller against horizontal overflow', () => {
+    // Per CSS Overflow L3 §3, an `overflow-y: auto` container with an
+    // unspecified `overflow-x` resolves to `overflow: auto auto`, so any
+    // stray descendant horizontal overflow (long inline code, an over-eager
+    // ECharts pixel width, a markdown edge case) would surface a horizontal
+    // scrollbar on the chat scroller in narrow split panes. The chat surface
+    // is contractually never horizontally scrollable — content must self-wrap
+    // or scroll inside its own widget. jsdom does not lay out, so this is a
+    // weak guard that simply prevents the overflow-x-hidden token from being
+    // dropped silently; real layout regressions need to be caught by a Tauri
+    // E2E pass.
+    useSessionStore.setState({
+      activeSessionId: 's1',
+      modeBySession: new Map([['s1', 'SPLIT']]),
+      hasEverSentBySession: new Map([['s1', true]]),
+      pendingPrompt: null,
+    })
+
+    const { container } = render(<SplitView />, { wrapper })
+    const scroller = container.querySelector('.flex-1.overflow-y-auto') as HTMLElement | null
+
+    expect(scroller).not.toBeNull()
+    expect(scroller!.classList.contains('overflow-x-hidden')).toBe(true)
   })
 
   it('renders a degraded bridge notice when MCP health is degraded', () => {
