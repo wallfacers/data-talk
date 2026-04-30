@@ -3,6 +3,7 @@ import type { Connection, ConnectionCreateInput } from '@/types/generated/api'
 import type { ConnectionTargetsResponse } from '@/services/api/session-data-context'
 
 export type { Connection } from '@/types/generated/api'
+export type { ConnectionTargetsResponse } from '@/services/api/session-data-context'
 export type DbType = 'mysql' | 'postgres' | 'h2' | 'sqlite'
 
 // Alias for create input with password
