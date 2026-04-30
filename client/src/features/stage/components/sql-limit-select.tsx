@@ -1,14 +1,22 @@
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { useI18n } from '@/i18n/use-i18n'
+import { cn } from '@/lib/utils'
 
 export type SqlLimitValue = 10 | 100 | 1000 | null
 
 type SqlLimitSelectProps = {
   value: SqlLimitValue
   onValueChange: (value: SqlLimitValue) => void
+  ariaLabel?: string
+  triggerClassName?: string
 }
 
-export function SqlLimitSelect({ value, onValueChange }: SqlLimitSelectProps) {
+export function SqlLimitSelect({
+  value,
+  onValueChange,
+  ariaLabel,
+  triggerClassName,
+}: SqlLimitSelectProps) {
   const { t } = useI18n()
   const limitOptions: Array<{ value: SqlLimitValue; label: string }> = [
     { value: null, label: t('stage.limit.none') },
@@ -31,7 +39,11 @@ export function SqlLimitSelect({ value, onValueChange }: SqlLimitSelectProps) {
         }
       }}
     >
-      <SelectTrigger size="sm" aria-label={t('stage.limit.aria')}>
+      <SelectTrigger
+        size="sm"
+        aria-label={ariaLabel ?? t('stage.limit.aria')}
+        className={cn(triggerClassName)}
+      >
         <span className="flex flex-1 text-left">{selectedLabel}</span>
       </SelectTrigger>
       <SelectContent>

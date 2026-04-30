@@ -680,8 +680,8 @@ Check and update:
 - `client/src/features/connection/store.ts`
 - `client/src/features/session/data-source-picker/`
 - `client/src/services/api/session-data-context.ts`
-- `client/src/features/stage/components/sql-context-chip.tsx`
-- `client/src/features/stage/components/query-editor-toolbar.tsx`
+- `client/src/features/stage/components/sql-context-toolbar-controls.tsx`
+- `client/src/features/stage/components/sql-editor-toolbar.tsx`
 - `client/src/features/stage/components/activity-rail/schema-panel.tsx`
 - `client/src/features/stage/utils/build-stage-resource-tree.ts`
 - `client/src/features/stage/utils/format-sql.ts`

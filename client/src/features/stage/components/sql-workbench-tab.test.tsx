@@ -394,6 +394,7 @@ describe('SqlWorkbenchTab', () => {
           history: [],
           savedSqlText: 'select 1;',
           limit: 100,
+          useSessionContext: true,
           cursor: { line: 1, column: 1 },
         },
       },
@@ -414,20 +415,18 @@ describe('SqlWorkbenchTab', () => {
             source: 'user',
             entryMode: 'blank',
             contextOverride: null,
-            contextPinMode: 'session',
+            useSessionContext: true,
           },
         }}
       />,
     )
-
-    fireEvent.click(screen.getByRole('button', { name: t('stage.context.tooltip.button') }))
 
     expect(screen.getByRole('combobox', { name: t('stage.context.field.connection') })).toHaveTextContent('Warehouse')
     expect(screen.getByRole('combobox', { name: t('stage.context.field.database') })).toHaveTextContent('warehouse')
     expect(screen.getByRole('combobox', { name: t('stage.context.field.schema') })).toHaveTextContent('analytics')
   })
 
-  it('treats a legacy blank tab without a context override as pinned to the active session context', () => {
+  it('treats a legacy blank tab without a context override as following the active session context', () => {
     sessionDataContextSnapshot.context = {
       sessionId: 'session-active',
       connectionId: 'conn-2',
@@ -465,17 +464,13 @@ describe('SqlWorkbenchTab', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: t('stage.context.tooltip.button') }))
-
-    expect(screen.getByText(t('stage.context.label.override'))).toBeTruthy()
-    expect(screen.getByText('Warehouse')).toBeTruthy()
-    expect(screen.getByText('warehouse')).toBeTruthy()
-    expect(screen.getByText('analytics')).toBeTruthy()
-    expect(screen.getByRole('button', { name: t('stage.context.action.useSession') })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: t('stage.context.action.applyOverride') })).toBeNull()
+    expect(screen.getByRole('switch', { name: t('stage.context.toolbar.useSession') })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('combobox', { name: t('stage.context.field.connection') })).toHaveTextContent('Warehouse')
+    expect(screen.getByRole('combobox', { name: t('stage.context.field.database') })).toHaveTextContent('warehouse')
+    expect(screen.getByRole('combobox', { name: t('stage.context.field.schema') })).toHaveTextContent('analytics')
   })
 
-  it('honors an explicit unpin marker for an active session context', () => {
+  it('honors explicit session-following mode for an active session context', () => {
     sessionDataContextSnapshot.context = {
       sessionId: 'session-active',
       connectionId: 'conn-2',
@@ -508,18 +503,15 @@ describe('SqlWorkbenchTab', () => {
             source: 'user',
             entryMode: 'blank',
             contextOverride: null,
-            contextPinMode: 'session',
+            useSessionContext: true,
           },
         }}
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: t('stage.context.tooltip.button') }))
-
-    expect(screen.getByText(t('stage.context.label.session'))).toBeTruthy()
+    expect(screen.getByRole('switch', { name: t('stage.context.toolbar.useSession') })).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByRole('combobox', { name: t('stage.context.field.connection') })).toHaveTextContent('Warehouse')
-    expect(screen.getByRole('button', { name: t('stage.context.action.applyOverride') })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: t('stage.context.action.useSession') })).toBeNull()
+    expect(screen.getByRole('combobox', { name: t('stage.context.field.connection') })).toBeDisabled()
   })
 
   it('retries loading connection targets when reopening the SQL context after an initial failure', async () => {
@@ -532,25 +524,33 @@ describe('SqlWorkbenchTab', () => {
         databases: ['warehouse'],
         schemas: ['reporting'],
       })
+    const retryTab = {
+      ...tab,
+      tabId: 'tab-context-targets-retry',
+      originSessionId: 'session-1',
+      database: undefined,
+      payload: {
+        initialSql: 'select 1;',
+        source: 'user' as const,
+      },
+    }
+    useStageStore.setState({
+      tabs: [retryTab],
+      activeTabId: retryTab.tabId,
+    })
 
     render(
       <SqlWorkbenchTab
-        tab={{
-          ...tab,
-          tabId: 'tab-context-targets-retry',
-          originSessionId: 'session-1',
-          database: undefined,
-          payload: {
-            initialSql: 'select 1;',
-            source: 'user',
-          },
-        }}
+        tab={retryTab}
       />,
     )
 
     await waitFor(() => expect(listConnectionTargetsMock).toHaveBeenCalledTimes(1))
 
-    fireEvent.click(screen.getByRole('button', { name: t('stage.context.tooltip.button') }))
+    fireEvent.click(screen.getByRole('switch', { name: t('stage.context.toolbar.useSession') }))
+    const databaseSelect = screen.getByRole('combobox', { name: t('stage.context.field.database') })
+    await waitFor(() => expect(databaseSelect).not.toBeDisabled())
+    fireEvent.click(databaseSelect)
 
     await waitFor(() => expect(listConnectionTargetsMock).toHaveBeenCalledTimes(2))
     expect(listConnectionTargetsMock).toHaveBeenNthCalledWith(1, 'conn-1')
@@ -974,7 +974,7 @@ delete from sessions;`,
       useSqlWorkbenchStore.getState().setLimit('tab-1', 10)
     })
     await waitFor(() =>
-      expect(screen.getByRole('combobox', { name: t('stage.limit.aria') })).toHaveTextContent(
+      expect(screen.getByRole('combobox', { name: t('stage.limit.toolbarLabel') })).toHaveTextContent(
         t('stage.limit.rows', { count: 10 }),
       ),
     )

@@ -10,6 +10,7 @@ import org.springframework.core.io.ClassPathResource;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -80,6 +81,10 @@ class AgentPromptContractTest {
             .contains("params.baseVersion")
             .contains("expectedText")
             .contains("target=active")
+            .contains("set_context({ useSessionContext: true })")
+            .contains("database requires connectionId")
+            .contains("schema requires connectionId and database")
+            .contains("limit")
             .contains("datatalk_ui_find")
             .contains("datatalk_ui_read")
             .contains("datatalk_ui_patch")
@@ -266,9 +271,12 @@ class AgentPromptContractTest {
             .contains("add_neighbors")
             .contains("apply_text_edits")
             .contains("set_context")
+            .contains("useSessionContext")
             .contains("run_sql")
             .contains("format_sql")
             .contains("connection_id")
+            .contains("limit")
+            .contains("integer")
             .contains("baseVersion")
             .contains("preferredConnectionId");
     }
@@ -345,6 +353,44 @@ class AgentPromptContractTest {
             .anyMatch(en -> en.contains("generate_ddl") && en.contains("diff_against_db"));
 
         assertThat(hasGenerateDdl).isTrue();
+    }
+
+    @Test
+    void uiExecActionSchemaAdvertisesQueryEditorContextParameters() {
+        Map<String, Object> schema = registry.require("datatalk.ui.exec").inputSchema();
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> oneOf = (List<Map<String, Object>>) schema.get("oneOf");
+
+        Map<String, Object> queryEditorSchema = oneOf.stream()
+            .filter(candidate -> {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> properties = (Map<String, Object>) candidate.get("properties");
+                @SuppressWarnings("unchecked")
+                Map<String, Object> object = (Map<String, Object>) properties.get("object");
+                return ((List<?>) object.get("enum")).contains("query_editor");
+            })
+            .findFirst()
+            .orElseThrow();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> properties = (Map<String, Object>) queryEditorSchema.get("properties");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> params = (Map<String, Object>) properties.get("params");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> paramProperties = (Map<String, Object>) params.get("properties");
+
+        assertThat(paramProperties.get("useSessionContext"))
+            .isEqualTo(Map.of("type", "boolean"));
+        assertThat(paramProperties.get("connectionId"))
+            .isEqualTo(Map.of("type", List.of("string", "null")));
+        assertThat(paramProperties.get("database"))
+            .isEqualTo(Map.of("type", List.of("string", "null")));
+        assertThat(paramProperties.get("schema"))
+            .isEqualTo(Map.of("type", List.of("string", "null")));
+        assertThat(paramProperties.get("limit"))
+            .isEqualTo(Map.of(
+                "type", List.of("integer", "null"),
+                "enum", Arrays.asList(10, 100, 1000, null)
+            ));
     }
 
     @Test

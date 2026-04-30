@@ -9,6 +9,7 @@ import com.datatalk.domain.action.OntologyEffect;
 import com.datatalk.domain.action.RiskLevel;
 import org.springframework.stereotype.Component;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
@@ -234,16 +235,21 @@ public class UiExecAction implements ActionHandler<Map, Map> {
                                                         )
                                                 )
                                         )),
+                                        Map.entry("useSessionContext", Map.of("type", "boolean")),
                                         Map.entry("connectionId", Map.of("type", List.of("string", "null"))),
                                         Map.entry("database", Map.of("type", List.of("string", "null"))),
                                         Map.entry("schema", Map.of("type", List.of("string", "null"))),
-                                        Map.entry("limit", Map.of("type", List.of("number", "null")))
+                                        Map.entry("limit", Map.of(
+                                                "type", List.of("integer", "null"),
+                                                "enum", Arrays.asList(10, 100, 1000, null)
+                                        ))
                                 )
                         ))
                 )),
                 Map.entry("allOf", List.of(
                         actionRequiresParams("query_editor", "apply_text_edits", List.of("baseVersion", "edits")),
-                        actionRequiresAnyParam("query_editor", "set_context", List.of("connectionId", "database", "schema"))
+                        actionRequiresAnyParam("query_editor", "set_context",
+                                List.of("useSessionContext", "connectionId", "database", "schema", "limit"))
                 ))
         );
     }

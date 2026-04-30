@@ -2,6 +2,7 @@ import type { LucideIcon } from 'lucide-react'
 import { BarChart2Icon, DatabaseIcon, FileTextIcon, LayoutIcon, NetworkIcon, SearchCodeIcon } from 'lucide-react'
 import { useSqlWorkbenchStore } from '@/features/stage/stores/sql-workbench-store'
 import { useErTabsStore } from '@/features/stage/stores/er-tabs-store'
+import { normalizeQueryEditorPayload } from '@/features/stage/utils/normalize-query-editor-payload'
 import type { ErDesignerPayload, ErInspectorPayload } from '@/features/stage/stores/er-tabs-payload-types'
 
 export interface TabTypeDescriptor {
@@ -35,9 +36,11 @@ export const TAB_TYPE_REGISTRY: Record<string, TabTypeDescriptor> = {
     },
     rehydrate: (tabId, p) => {
       const o = p as { sqlText?: unknown; version?: unknown } | null | undefined
+      const normalizedPayload = normalizeQueryEditorPayload(p)
       useSqlWorkbenchStore.getState().ensureTab(tabId, {
         sqlText: typeof o?.sqlText === 'string' ? o.sqlText : '',
         source: 'user',
+        useSessionContext: normalizedPayload.useSessionContext,
       })
     },
   },

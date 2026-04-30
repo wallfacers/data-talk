@@ -5,7 +5,6 @@ import { useStageStore } from '@/stores/stage-store'
 import { normalizeQueryEditorPayload } from '@/features/stage/utils/normalize-query-editor-payload'
 import { useSqlWorkbenchStore } from '@/features/stage/stores/sql-workbench-store'
 import { useSessionStore } from '@/stores/session-store'
-import type { SessionDataContext } from '@/services/api/session-data-context'
 import { formatQueryEditorSql, runQueryEditorSql, setQueryEditorContext } from '@/features/stage/utils/query-editor-actions'
 import { resolveTabDataContext } from '@/features/stage/utils/resolve-tab-data-context'
 
@@ -41,14 +40,18 @@ const ACTIONS: ActionDef[] = [
     paramsSchema: {
       type: 'object',
       anyOf: [
+        { required: ['useSessionContext'] },
         { required: ['connectionId'] },
         { required: ['database'] },
         { required: ['schema'] },
+        { required: ['limit'] },
       ],
       properties: {
+        useSessionContext: { type: 'boolean' },
         connectionId: { type: ['string', 'null'] },
         database: { type: ['string', 'null'] },
         schema: { type: ['string', 'null'] },
+        limit: { type: ['number', 'null'], enum: [10, 100, 1000, null] },
       },
     },
   },
@@ -133,24 +136,19 @@ function summarizeResult(result: {
   return summary
 }
 
-function resolveImplicitSessionOverride(
-  payload: ReturnType<typeof normalizeQueryEditorPayload>,
-  sessionContext: SessionDataContext | null,
-  connections: Array<{ id: string; name: string }>,
-) {
-  if (payload.contextPinMode === 'session') return null
-  if (!sessionContext?.connectionId) return null
+function dedupeStrings(values: Array<string | null | undefined>) {
+  return Array.from(new Set(values.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)))
+}
 
-  return {
-    connectionId: sessionContext.connectionId,
-    connectionName: connections.find((connection) => connection.id === sessionContext.connectionId)?.name
-      ?? sessionContext.connectionNameSnapshot
-      ?? null,
-    database: sessionContext.database ?? null,
-    schema: sessionContext.schema ?? null,
-    source: 'open_payload' as const,
-    setAt: 0,
-  }
+function availableDatabases(connectionId: string | null, currentDatabase: string | null) {
+  const connectionDatabase = connectionId
+    ? useConnectionStore.getState().connections.find((connection) => connection.id === connectionId)?.databaseName ?? null
+    : null
+  return dedupeStrings([connectionDatabase, currentDatabase])
+}
+
+function availableSchemas(currentSchema: string | null) {
+  return dedupeStrings([currentSchema])
 }
 
 export class QueryEditorAdapter implements UIObject {
@@ -192,6 +190,14 @@ export class QueryEditorAdapter implements UIObject {
       ? useSessionStore.getState().dataContextBySession.get(sessionId) ?? null
       : null
     const connectionState = useConnectionStore.getState()
+    const runtimeContextOverride = workbenchTab?.override
+      ? {
+          connectionId: workbenchTab.override.connectionId,
+          database: workbenchTab.override.database ?? null,
+          schema: workbenchTab.override.schema ?? null,
+        }
+      : payload.contextOverride
+    const useSessionContext = workbenchTab?.useSessionContext ?? payload.useSessionContext
     const resolvedContext = resolveTabDataContext(
       {
         originSessionId: sessionId,
@@ -199,11 +205,19 @@ export class QueryEditorAdapter implements UIObject {
         connectionName: payload.connectionName ?? tab?.connectionName ?? null,
         database: payload.database ?? tab?.database ?? null,
         schema: payload.schema ?? tab?.schema ?? null,
+        payload: {
+          connectionId: payload.connectionId ?? tab?.connectionId ?? null,
+          connectionName: payload.connectionName ?? tab?.connectionName ?? null,
+          database: payload.database ?? tab?.database ?? null,
+          schema: payload.schema ?? tab?.schema ?? null,
+          contextOverride: runtimeContextOverride,
+          useSessionContext,
+        },
       },
       sessionContext,
       {
         inheritSessionContext: true,
-        preferSessionContext: true,
+        preferSessionContext: useSessionContext,
         fallbackConnectionId: connectionState.activeConnectionId ?? null,
         connectionNameLookup: (connectionId) =>
           connectionState.connections.find((connection) => connection.id === connectionId)?.name ?? null,
@@ -216,39 +230,24 @@ export class QueryEditorAdapter implements UIObject {
       database: resolvedContext.database,
       schema: resolvedContext.schema,
     }
-    const hydratedOverride = workbenchTab?.override ?? (payload.contextOverride
+    const hydratedOverride = useSessionContext ? null : (workbenchTab?.override ?? (payload.contextOverride
       ? {
           connectionId: payload.contextOverride.connectionId,
-          connectionName: connectionState.connections.find(
-            (connection) => connection.id === payload.contextOverride?.connectionId,
-          )?.name ?? null,
+          connectionName: connectionState.connections.find((connection) => connection.id === payload.contextOverride?.connectionId)?.name
+            ?? null,
           database: payload.contextOverride.database,
           schema: payload.contextOverride.schema,
           source: 'open_payload' as const,
           setAt: 0,
         }
-      : resolveImplicitSessionOverride(payload, sessionContext, connectionState.connections))
-    const effectiveContext = hydratedOverride
-      ? {
-          sessionId: resolvedExecutionContext.sessionId ?? sessionId,
-          connectionId: hydratedOverride.connectionId,
-          connectionName: hydratedOverride.connectionName
-            ?? (hydratedOverride.connectionId === resolvedExecutionContext.connectionId
-              ? resolvedExecutionContext.connectionName
-              : null),
-          database: hydratedOverride.database ?? resolvedExecutionContext.database,
-          schema: hydratedOverride.schema ?? resolvedExecutionContext.schema,
-        }
-      : {
-          sessionId: resolvedExecutionContext.sessionId ?? sessionId,
-          connectionId: resolvedExecutionContext.connectionId,
-          connectionName: resolvedExecutionContext.connectionName,
-          database: resolvedExecutionContext.database,
-          schema: resolvedExecutionContext.schema,
-        }
-    const contextSource: 'session' | 'override' | 'tab' = hydratedOverride
-      ? 'override'
-      : sessionId ? 'session' : 'tab'
+      : null))
+    const effectiveContext = {
+      sessionId: resolvedExecutionContext.sessionId ?? sessionId,
+      connectionId: resolvedContext.connectionId,
+      connectionName: resolvedContext.connectionName,
+      database: resolvedContext.database,
+      schema: resolvedContext.schema,
+    }
 
     return {
       tab,
@@ -256,12 +255,13 @@ export class QueryEditorAdapter implements UIObject {
       workbenchTab,
       hydratedOverride,
       effectiveContext,
-      contextSource,
+      contextSource: resolvedContext.contextSource,
+      useSessionContext: resolvedContext.useSessionContext,
     }
   }
 
   read(mode: 'state' | 'schema' | 'actions' | 'full'): unknown {
-    const { tab, payload, workbenchTab, hydratedOverride, effectiveContext, contextSource } = this.getResolvedState()
+    const { tab, payload, workbenchTab, hydratedOverride, effectiveContext, contextSource, useSessionContext } = this.getResolvedState()
     const fallbackResults = payload.lastRun
       ? [{
           resultId: 'last-run',
@@ -285,8 +285,11 @@ export class QueryEditorAdapter implements UIObject {
       connectionName: effectiveContext.connectionName,
       database: effectiveContext.database,
       schema: effectiveContext.schema,
+      useSessionContext,
       contextSource,
       contextOverride: hydratedOverride,
+      availableDatabases: availableDatabases(effectiveContext.connectionId, effectiveContext.database),
+      availableSchemas: availableSchemas(effectiveContext.schema),
       entryMode: payload.entryMode,
       autoRun: payload.autoRun,
       executeStatus: workbenchTab?.executeStatus ?? (payload.lastRun ? 'success' : 'idle'),
@@ -317,8 +320,11 @@ export class QueryEditorAdapter implements UIObject {
             connectionName: { type: ['string', 'null'] },
             database: { type: ['string', 'null'] },
             schema: { type: ['string', 'null'] },
+            useSessionContext: { type: 'boolean' },
             contextSource: { type: 'string' },
             contextOverride: { type: ['object', 'null'] },
+            availableDatabases: { type: 'array' },
+            availableSchemas: { type: 'array' },
             entryMode: { type: 'string' },
             autoRun: { type: 'boolean' },
             executeStatus: { type: 'string' },
@@ -417,6 +423,7 @@ export class QueryEditorAdapter implements UIObject {
       connectionId?: string | null
       database?: string | null
       schema?: string | null
+      useSessionContext?: boolean
       limit?: 10 | 100 | 1000 | null
     }
 
@@ -459,15 +466,36 @@ export class QueryEditorAdapter implements UIObject {
         return { success: true, data: result }
       }
       case 'set_context': {
-        if (p.connectionId === undefined && p.database === undefined && p.schema === undefined) {
-          return execError('set_context requires at least one of connectionId, database, schema')
+        const hasConnectionField = p.connectionId !== undefined || p.database !== undefined || p.schema !== undefined
+        const hasLimit = p.limit !== undefined
+        const hasMode = p.useSessionContext !== undefined
+        if (!hasConnectionField && !hasLimit && !hasMode) {
+          return execError('set_context requires at least one of useSessionContext, connectionId, database, schema, limit')
         }
-        setQueryEditorContext({
-          tabId: this.objectId,
-          connectionId: p.connectionId,
-          database: p.database,
-          schema: p.schema,
-        })
+        if (p.useSessionContext === true && (p.connectionId || p.database || p.schema)) {
+          return execError('useSessionContext=true cannot be combined with connectionId, database, or schema')
+        }
+        if (p.schema && (!p.connectionId || !p.database)) {
+          return execError('schema requires connectionId and database')
+        }
+        if (p.database && !p.connectionId) {
+          return execError('database requires connectionId')
+        }
+        if (hasLimit) {
+          if (p.limit !== null && p.limit !== 10 && p.limit !== 100 && p.limit !== 1000) {
+            return execError('limit must be 10, 100, 1000, or null')
+          }
+          useSqlWorkbenchStore.getState().setLimit(this.objectId, p.limit)
+        }
+        if (hasMode || hasConnectionField) {
+          setQueryEditorContext({
+            tabId: this.objectId,
+            useSessionContext: p.useSessionContext,
+            connectionId: p.connectionId,
+            database: p.database,
+            schema: p.schema,
+          })
+        }
         return { success: true }
       }
       case 'run_sql':

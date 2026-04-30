@@ -5,6 +5,7 @@ import { WorkspaceAdapter } from '../WorkspaceAdapter'
 import { useStageStore } from '@/stores/stage-store'
 import { useErTabsStore } from '@/features/stage/stores/er-tabs-store'
 import { useDataSourcePickerStore } from '@/features/session/data-source-picker/data-source-picker-store'
+import { useSqlWorkbenchStore } from '@/features/stage/stores/sql-workbench-store'
 
 const realOpenQueryEditor = useStageStore.getState().openQueryEditor
 
@@ -22,6 +23,7 @@ describe('WorkspaceAdapter', () => {
       activeConnectionId: null,
       connections: [],
     })
+    useSqlWorkbenchStore.setState({ tabsById: {} })
     useSessionStore.setState({
       activeSessionId: null,
       modeBySession: new Map(),
@@ -304,8 +306,10 @@ describe('WorkspaceAdapter', () => {
         connectionName?: string | null
         database?: string | null
         schema?: string | null
+        useSessionContext?: boolean
         contextSource?: 'session' | 'override' | 'tab'
         contextOverride?: unknown
+        limit?: 10 | 100 | 1000 | null
       }>
       activeTabId: string | null
     }
@@ -317,12 +321,14 @@ describe('WorkspaceAdapter', () => {
         connectionName: 'Reporting Warehouse',
         database: 'warehouse',
         schema: 'reporting',
+        useSessionContext: false,
         contextSource: 'override',
         contextOverride: expect.objectContaining({
           connectionId: 'conn-2',
           database: 'warehouse',
           schema: 'reporting',
         }),
+        limit: 100,
       }),
     ])
   })
@@ -372,8 +378,9 @@ describe('WorkspaceAdapter', () => {
     useStageStore.getState().updateTabPayload(tabId, (payload) => ({
       ...(payload as Record<string, unknown>),
       contextOverride: null,
-      contextPinMode: 'session',
+      useSessionContext: true,
     }))
+    useSqlWorkbenchStore.getState().resetTabContext(tabId)
 
     const adapter = new WorkspaceAdapter(() => 's1')
     const state = adapter.read('state') as {
@@ -383,8 +390,10 @@ describe('WorkspaceAdapter', () => {
         connectionName?: string | null
         database?: string | null
         schema?: string | null
+        useSessionContext?: boolean
         contextSource?: 'session' | 'override' | 'tab'
         contextOverride?: unknown
+        limit?: 10 | 100 | 1000 | null
       }>
     }
 
@@ -395,8 +404,10 @@ describe('WorkspaceAdapter', () => {
         connectionName: 'Reporting Warehouse',
         database: 'warehouse',
         schema: 'reporting',
+        useSessionContext: true,
         contextSource: 'session',
         contextOverride: null,
+        limit: 100,
       }),
     ])
   })

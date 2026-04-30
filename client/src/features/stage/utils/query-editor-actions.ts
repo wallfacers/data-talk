@@ -224,14 +224,15 @@ function getStageTab(tabId: string) {
 function updateQueryEditorPayloadContextOverride(
   tabId: string,
   contextOverride: { connectionId: string; database: string | null; schema: string | null } | null,
-  contextPinMode: 'session' | null = null,
+  useSessionContext: boolean,
 ) {
   useStageStore.getState().updateTabPayload(tabId, (payload) => {
     const basePayload = isPlainObject(payload) ? payload : {}
+    const { contextPinMode: _contextPinMode, ...persistableBasePayload } = basePayload
     return {
-      ...basePayload,
+      ...persistableBasePayload,
       contextOverride,
-      contextPinMode,
+      useSessionContext,
     }
   })
 }
@@ -287,7 +288,7 @@ function resolveImplicitSessionContextOverride(
   payload: ReturnType<typeof normalizeQueryEditorPayload>,
   sessionContext: SessionDataContext | null,
 ) {
-  if (payload.contextPinMode === 'session') return null
+  if (payload.useSessionContext) return null
   if (!sessionContext?.connectionId) return null
 
   return buildRuntimeOverrideFromPayload({
@@ -308,15 +309,36 @@ function resolveQueryEditorContexts(tabId: string, sessionIdOverride: string | n
   const sessionContext = sessionId
     ? useSessionStore.getState().dataContextBySession.get(sessionId) ?? null
     : null
+  const contextOverride = tabState?.override
+    ? {
+        connectionId: tabState.override.connectionId,
+        database: tabState.override.database ?? null,
+        schema: tabState.override.schema ?? null,
+      }
+    : payload.contextOverride
+  const useSessionContext = tabState?.useSessionContext ?? payload.useSessionContext
+  const contextPayload = {
+    connectionId: payload.connectionId ?? tab?.connectionId ?? null,
+    connectionName: payload.connectionName ?? tab?.connectionName ?? null,
+    database: payload.database ?? tab?.database ?? null,
+    schema: payload.schema ?? tab?.schema ?? null,
+    contextOverride,
+    useSessionContext,
+  }
 
   const resolvedContext = resolveTabDataContext(
     {
       originSessionId: sessionId,
+      connectionId: payload.connectionId ?? tab?.connectionId ?? null,
+      connectionName: payload.connectionName ?? tab?.connectionName ?? null,
+      database: payload.database ?? tab?.database ?? null,
+      schema: payload.schema ?? tab?.schema ?? null,
+      payload: contextPayload,
     },
     sessionContext,
       {
         inheritSessionContext: true,
-        preferSessionContext: true,
+        preferSessionContext: useSessionContext,
         fallbackConnectionId: connectionState.activeConnectionId ?? null,
         connectionNameLookup: (connectionId) =>
           connectionState.connections.find((connection) => connection.id === connectionId)?.name ?? null,
@@ -331,7 +353,7 @@ function resolveQueryEditorContexts(tabId: string, sessionIdOverride: string | n
     schema: resolvedContext.schema,
   }
 
-  const currentOverride = tabState?.override ?? (payload.contextOverride
+  const currentOverride = useSessionContext ? null : (tabState?.override ?? (payload.contextOverride
     ? buildRuntimeOverrideFromPayload({
         connectionId: payload.contextOverride.connectionId,
         database: payload.contextOverride.database,
@@ -341,7 +363,7 @@ function resolveQueryEditorContexts(tabId: string, sessionIdOverride: string | n
     : (
         resolveImplicitTabContextOverride(tab, payload, defaultContext.connectionName)
         ?? resolveImplicitSessionContextOverride(payload, sessionContext)
-      ))
+      )))
 
   const effectiveContext: QueryEditorExecutionContext = currentOverride
     ? {
@@ -387,6 +409,7 @@ export async function runQueryEditorSql(params: {
     useSqlWorkbenchStore.getState().ensureTab(tabId, {
       sqlText: payload.initialSql,
       source: payload.source,
+      useSessionContext: payload.useSessionContext,
     })
   }
 
@@ -606,6 +629,7 @@ export function formatQueryEditorSql(tabId: string): { version: number; content:
     useSqlWorkbenchStore.getState().ensureTab(tabId, {
       sqlText: payload.initialSql,
       source: payload.source,
+      useSessionContext: payload.useSessionContext,
     })
   }
 
@@ -639,6 +663,7 @@ export function formatQueryEditorSql(tabId: string): { version: number; content:
 
 export function setQueryEditorContext(params: {
   tabId: string
+  useSessionContext?: boolean
   connectionId?: string | null
   database?: string | null
   schema?: string | null
@@ -650,6 +675,18 @@ export function setQueryEditorContext(params: {
   const { defaultContext, effectiveContext, persistedBaseContext } = resolveQueryEditorContexts(tabId, null)
   const stageStore = useStageStore.getState()
   const sqlWorkbenchStore = useSqlWorkbenchStore.getState()
+
+  if (params.useSessionContext === true) {
+    stageStore.setQueryEditorContext(tabId, {
+      connectionId: null,
+      connectionName: null,
+      database: null,
+      schema: null,
+    })
+    sqlWorkbenchStore.resetTabContext(tabId)
+    updateQueryEditorPayloadContextOverride(tabId, null, true)
+    return
+  }
 
   stageStore.setQueryEditorContext(tabId, persistedBaseContext)
 
@@ -665,7 +702,7 @@ export function setQueryEditorContext(params: {
       schema: nextSchema,
     })
     sqlWorkbenchStore.resetTabContext(tabId)
-    updateQueryEditorPayloadContextOverride(tabId, null, 'session')
+    updateQueryEditorPayloadContextOverride(tabId, null, true)
     return
   }
 
@@ -684,7 +721,7 @@ export function setQueryEditorContext(params: {
     connectionId: nextConnectionId,
     database: nextDatabase,
     schema: nextSchema,
-  }, null)
+  }, false)
 }
 
 export function resetQueryEditorContext(tabId: string): void {
@@ -698,5 +735,5 @@ export function resetQueryEditorContext(tabId: string): void {
     schema: null,
   })
   useSqlWorkbenchStore.getState().resetTabContext(tabId)
-  updateQueryEditorPayloadContextOverride(tabId, null, 'session')
+  updateQueryEditorPayloadContextOverride(tabId, null, true)
 }

@@ -10,11 +10,13 @@
 
 ---
 
-**Status:** Active
+**Status:** Completed
 
 **Spec:** [SQL Editor Toolbar Context Design](../product-specs/2026-04-30-sql-editor-toolbar-context-design.md)
 
 **Branch target:** `develop`
+
+**Completion Summary (2026-04-30):** Implemented inline SQL editor context toolbar controls, mode-aware query editor payload/store/persistence, AI `query_editor.set_context` linked parameters, workspace/query editor state summaries, server prompt/schema docs, and compatibility checklist updates. Verification passed: focused frontend Vitest batch (10 files / 134 tests), `cd client && npx tsc --noEmit`, `cd server && mvn -q -pl data-talk-adapter -am -Dtest=AgentPromptContractTest -Dsurefire.failIfNoSpecifiedTests=false test`, `cd server && mvn -q -pl data-talk-application -Dtest=McpActionBridgeTest test`, `cd server && mvn compile -q`, and `git diff --check`. Data source compatibility update was documentation-only: the checklist now points to `sql-context-toolbar-controls.tsx` / `sql-editor-toolbar.tsx`; no new database-specific runtime behavior was introduced.
 
 ## Design Inputs
 
@@ -92,7 +94,7 @@ Modify:
 - Modify: `client/src/features/stage/utils/resolve-tab-data-context.ts`
 - Modify: `client/src/features/stage/utils/__tests__/resolve-tab-data-context.test.ts`
 
-- [ ] **Step 1: Add failing tests for mode migration**
+- [x] **Step 1: Add failing tests for mode migration**
 
 Add cases equivalent to:
 
@@ -106,7 +108,7 @@ Run: `cd client && npm test -- --run src/features/stage/utils/__tests__/normaliz
 
 Expected before implementation: at least one assertion fails because `useSessionContext` is not normalized.
 
-- [ ] **Step 2: Implement the payload contract**
+- [x] **Step 2: Implement the payload contract**
 
 Use this shape in the normalizer and resolver:
 
@@ -134,7 +136,7 @@ const explicitUseSession = typeof record.useSessionContext === 'boolean'
 
 Keep `contextPinMode` only as a legacy input. New persisted payloads should write `useSessionContext`.
 
-- [ ] **Step 3: Verify focused utility tests**
+- [x] **Step 3: Verify focused utility tests**
 
 Run: `cd client && npm test -- --run src/features/stage/utils/__tests__/normalize-query-editor-payload.test.ts src/features/stage/utils/__tests__/resolve-tab-data-context.test.ts`
 
@@ -150,7 +152,7 @@ Expected after implementation: all tests pass.
 - Modify: `client/src/features/stage/persistence/stage-persistence-bootstrap.ts`
 - Modify: `client/src/features/stage/persistence/__tests__/stage-persistence-bootstrap.query-editor.test.ts`
 
-- [ ] **Step 1: Add failing tests for defaults and persistence**
+- [x] **Step 1: Add failing tests for defaults and persistence**
 
 Add cases equivalent to:
 
@@ -170,7 +172,7 @@ Run: `cd client && npm test -- --run src/stores/stage-store.test.ts src/features
 
 Expected before implementation: defaults or persistence assertions fail.
 
-- [ ] **Step 2: Implement mode-aware tab state**
+- [x] **Step 2: Implement mode-aware tab state**
 
 Persist these fields in query editor tab payload snapshots:
 
@@ -185,7 +187,7 @@ Persist these fields in query editor tab payload snapshots:
 
 When `useSessionContext` changes to `true`, clear runtime tab override and persist `contextOverride: null`. When dropdowns write a tab override, persist `useSessionContext: false`.
 
-- [ ] **Step 3: Verify focused store tests**
+- [x] **Step 3: Verify focused store tests**
 
 Run: `cd client && npm test -- --run src/stores/stage-store.test.ts src/features/stage/stores/sql-workbench-store.test.ts src/features/stage/persistence/__tests__/stage-persistence-bootstrap.query-editor.test.ts`
 
@@ -201,7 +203,7 @@ Expected after implementation: all tests pass.
 - Modify: `client/src/features/stage/utils/query-editor-actions.ts`
 - Modify: `client/src/features/stage/utils/query-editor-actions.test.ts`
 
-- [ ] **Step 1: Add failing adapter tests**
+- [x] **Step 1: Add failing adapter tests**
 
 Add cases equivalent to:
 
@@ -217,7 +219,7 @@ Run: `cd client && npm test -- --run src/features/stage/adapters/__tests__/Query
 
 Expected before implementation: schema and validation assertions fail.
 
-- [ ] **Step 2: Implement strict linked parameters**
+- [x] **Step 2: Implement strict linked parameters**
 
 Use this params contract:
 
@@ -247,7 +249,7 @@ if (params.database && !params.connectionId) {
 
 Expose read state with `useSessionContext`, `contextSource`, `connectionId`, `connectionName`, `database`, `schema`, `contextOverride`, `limit`, `availableDatabases`, and `availableSchemas`.
 
-- [ ] **Step 3: Verify adapter/action tests**
+- [x] **Step 3: Verify adapter/action tests**
 
 Run: `cd client && npm test -- --run src/features/stage/adapters/__tests__/QueryEditorAdapter.test.ts src/features/stage/adapters/__tests__/WorkspaceAdapter.test.ts src/features/stage/utils/query-editor-actions.test.ts`
 
@@ -261,7 +263,7 @@ Expected after implementation: all tests pass.
 - Modify: `client/src/features/stage/components/sql-limit-select.tsx`
 - Modify: `client/src/i18n/messages.ts`
 
-- [ ] **Step 1: Add failing component tests**
+- [x] **Step 1: Add failing component tests**
 
 Cover these visible labels and ordering:
 
@@ -278,7 +280,7 @@ Run: `cd client && npm test -- --run src/features/stage/components/sql-context-t
 
 Expected before implementation: test file fails because the component does not exist.
 
-- [ ] **Step 2: Implement compact controls**
+- [x] **Step 2: Implement compact controls**
 
 Props should include:
 
@@ -301,7 +303,7 @@ type SqlContextToolbarControlsProps = {
 
 Use shadcn/ui `Switch` for the mode, shadcn/ui `Select` for dropdowns, and `toast.error(...)` from `sonner` when refresh callbacks reject. Disabled session-following dropdowns still show the latest session values.
 
-- [ ] **Step 3: Verify component tests**
+- [x] **Step 3: Verify component tests**
 
 Run: `cd client && npm test -- --run src/features/stage/components/sql-context-toolbar-controls.test.tsx`
 
@@ -317,7 +319,7 @@ Expected after implementation: all tests pass.
 - Delete: `client/src/features/stage/components/sql-context-chip.tsx`
 - Delete: `client/src/features/stage/components/sql-context-chip.test.tsx`
 
-- [ ] **Step 1: Add failing integration tests**
+- [x] **Step 1: Add failing integration tests**
 
 Add cases equivalent to:
 
@@ -333,7 +335,7 @@ Run: `cd client && npm test -- --run src/features/stage/components/sql-editor-to
 
 Expected before implementation: existing popover behavior causes assertions to fail.
 
-- [ ] **Step 2: Replace popover wiring**
+- [x] **Step 2: Replace popover wiring**
 
 Change the toolbar prop from:
 
@@ -356,7 +358,7 @@ to:
 
 Keep `SqlLimitSelect` inside `SqlContextToolbarControls` so pagination remains the final control.
 
-- [ ] **Step 3: Verify toolbar/workbench tests and remove dead imports**
+- [x] **Step 3: Verify toolbar/workbench tests and remove dead imports**
 
 Run: `cd client && npm test -- --run src/features/stage/components/sql-editor-toolbar.test.tsx src/features/stage/components/sql-workbench-tab.test.tsx`
 Run: `cd client && rg -n "SqlContextChip|sql-context-chip" src`
@@ -371,7 +373,7 @@ Expected after implementation: tests pass and `rg` returns no matches.
 - Modify: `client/src/features/stage/components/sql-workbench-tab.tsx`
 - Modify: `client/src/features/stage/components/sql-workbench-tab.test.tsx`
 
-- [ ] **Step 1: Add failing refresh and failure tests**
+- [x] **Step 1: Add failing refresh and failure tests**
 
 Use mocked callbacks to assert each dropdown open refreshes data:
 
@@ -390,7 +392,7 @@ Run: `cd client && npm test -- --run src/features/stage/components/sql-context-t
 
 Expected before implementation: refresh count or toast assertions fail.
 
-- [ ] **Step 2: Implement linked reset semantics**
+- [x] **Step 2: Implement linked reset semantics**
 
 On manual connection change, immediately write:
 
@@ -416,7 +418,7 @@ On manual database change, immediately write:
 
 Never write `__empty__` into payload, store, or API-facing params. On refresh failure, keep the previous effective context and SQL text unchanged.
 
-- [ ] **Step 3: Verify refresh and failure tests**
+- [x] **Step 3: Verify refresh and failure tests**
 
 Run: `cd client && npm test -- --run src/features/stage/components/sql-context-toolbar-controls.test.tsx src/features/stage/components/sql-workbench-tab.test.tsx`
 
@@ -431,7 +433,7 @@ Expected after implementation: all tests pass.
 - Modify: `server/data-talk-application/src/test/java/com/datatalk/application/opencode/McpActionBridgeTest.java`
 - Modify: `docs/references/ui-objects-reference.md`
 
-- [ ] **Step 1: Add failing backend contract assertions**
+- [x] **Step 1: Add failing backend contract assertions**
 
 Assert the runtime prompt contains these rules:
 
@@ -446,7 +448,7 @@ Run: `cd server && mvn -q -pl data-talk-adapter -am -Dtest=AgentPromptContractTe
 
 Expected before implementation: prompt assertion fails.
 
-- [ ] **Step 2: Implement schema and docs**
+- [x] **Step 2: Implement schema and docs**
 
 Update `query_editor.set_context` server schema to advertise:
 
@@ -462,7 +464,7 @@ Update `query_editor.set_context` server schema to advertise:
 
 Update docs to state that `useSessionContext=true` cannot be combined with connection fields, `database` requires `connectionId`, and `schema` requires `connectionId + database`.
 
-- [ ] **Step 3: Verify backend contract tests**
+- [x] **Step 3: Verify backend contract tests**
 
 Run: `cd server && mvn -q -pl data-talk-adapter -am -Dtest=AgentPromptContractTest test`
 Run if schema assertions are touched: `cd server && mvn -q -pl data-talk-application -Dtest=McpActionBridgeTest test`
@@ -476,7 +478,7 @@ Expected after implementation: selected tests pass.
 - Modify: `docs/exec-plans/index.md`
 - Modify: `docs/DATA_SOURCE_TYPE_COMPATIBILITY.md` only if Task 1-7 discover new database-specific behavior.
 
-- [ ] **Step 1: Run consolidated verification**
+- [x] **Step 1: Run consolidated verification**
 
 Run:
 
@@ -498,11 +500,11 @@ git diff --check
 
 Expected: all commands exit zero.
 
-- [ ] **Step 2: Complete document housekeeping**
+- [x] **Step 2: Complete document housekeeping**
 
 Mark every checkbox in this plan complete, move this plan from Active to Completed in `docs/exec-plans/index.md`, and add a concise completion summary naming the verification commands. If `docs/DATA_SOURCE_TYPE_COMPATIBILITY.md` was updated, include the exact compatibility note in the final plan summary.
 
-- [ ] **Step 3: Commit implementation**
+- [x] **Step 3: Commit implementation**
 
 Stage only files touched for this plan and commit:
 

@@ -50,11 +50,48 @@ describe('stage-persistence-bootstrap - query editor payload subscription', () =
       tabId,
       expect.objectContaining({
         payload: expect.objectContaining({
+          useSessionContext: false,
           contextOverride: {
             connectionId: 'conn-2',
             database: 'warehouse',
             schema: 'analytics',
           },
+        }),
+        contentText: 'select 1',
+      }),
+    )
+  })
+
+  it('persists session-following mode with a cleared context override', () => {
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 'sess-1',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'blank',
+      initialContent: 'select 1',
+      connectionId: 'conn-1',
+      connectionName: 'Primary',
+      database: 'db_main',
+      schema: 'public',
+    })
+
+    useSqlWorkbenchStore.getState().setTabContext(tabId, {
+      connectionId: 'conn-2',
+      connectionName: 'Warehouse',
+      database: 'warehouse',
+      schema: 'analytics',
+      source: 'user_toolbar',
+    })
+    vi.mocked(coordinator.scheduleContentWrite).mockClear()
+
+    useSqlWorkbenchStore.getState().resetTabContext(tabId)
+
+    expect(coordinator.scheduleContentWrite).toHaveBeenCalledWith(
+      tabId,
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          useSessionContext: true,
+          contextOverride: null,
         }),
         contentText: 'select 1',
       }),

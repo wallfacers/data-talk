@@ -151,10 +151,11 @@ function sameNullableString(left: string | null | undefined, right: string | nul
 }
 
 function sameQueryEditorOverride(
-  left: Pick<SqlWorkbenchTabState, 'override'>,
-  right: Pick<SqlWorkbenchTabState, 'override'>,
+  left: Pick<SqlWorkbenchTabState, 'override' | 'useSessionContext'>,
+  right: Pick<SqlWorkbenchTabState, 'override' | 'useSessionContext'>,
 ) {
-  return sameNullableString(left.override?.connectionId, right.override?.connectionId)
+  return left.useSessionContext === right.useSessionContext
+    && sameNullableString(left.override?.connectionId, right.override?.connectionId)
     && sameNullableString(left.override?.database, right.override?.database)
     && sameNullableString(left.override?.schema, right.override?.schema)
 }
@@ -165,6 +166,7 @@ function buildPersistedQueryEditorPayload(
   prevTab?: SqlWorkbenchTabState,
 ) {
   const basePayload = isRecord(tab.payload) ? tab.payload : {}
+  const { contextPinMode: _contextPinMode, ...persistableBasePayload } = basePayload
   const normalizedPayload = normalizeQueryEditorPayload(tab.payload)
   const overrideChanged = !prevTab || !sameQueryEditorOverride(nextTab, prevTab)
   const contextOverride = overrideChanged
@@ -178,10 +180,11 @@ function buildPersistedQueryEditorPayload(
     : normalizedPayload.contextOverride
 
   return {
-    ...basePayload,
+    ...persistableBasePayload,
     initialSql: nextTab.sqlText,
     sqlText: nextTab.sqlText,
     contextOverride,
+    useSessionContext: nextTab.useSessionContext,
   }
 }
 

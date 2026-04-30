@@ -13,6 +13,90 @@ const sessionContext: SessionDataContext = {
 }
 
 describe('resolveTabDataContext', () => {
+  it('resolves session mode when useSessionContext is true', () => {
+    const resolved = resolveTabDataContext(
+      {
+        originSessionId: 'sess-1',
+        payload: {
+          useSessionContext: true,
+          contextOverride: { connectionId: 'conn-override', database: 'override-db', schema: null },
+        },
+      },
+      sessionContext,
+      {
+        inheritSessionContext: true,
+        connectionNameLookup: (connectionId) => (connectionId === 'conn-session' ? 'lookup-session' : null),
+      },
+    )
+
+    expect(resolved).toMatchObject({
+      useSessionContext: true,
+      sessionId: 'sess-1',
+      connectionId: 'conn-session',
+      connectionName: 'lookup-session',
+      database: 'session-db',
+      schema: 'session-schema',
+      contextSource: 'session',
+    })
+  })
+
+  it('resolves override mode when useSessionContext is false', () => {
+    const resolved = resolveTabDataContext(
+      {
+        originSessionId: 'sess-1',
+        payload: {
+          useSessionContext: false,
+          contextOverride: { connectionId: 'conn-override', database: 'override-db', schema: null },
+        },
+      },
+      sessionContext,
+      {
+        inheritSessionContext: true,
+        connectionNameLookup: (connectionId) => (connectionId === 'conn-override' ? 'lookup-override' : null),
+      },
+    )
+
+    expect(resolved).toMatchObject({
+      useSessionContext: false,
+      sessionId: 'sess-1',
+      connectionId: 'conn-override',
+      connectionName: 'lookup-override',
+      database: 'override-db',
+      schema: null,
+      contextSource: 'override',
+    })
+  })
+
+  it('defaults useSessionContext from contextOverride when the explicit boolean is absent', () => {
+    expect(resolveTabDataContext(
+      {
+        originSessionId: 'sess-1',
+        payload: { contextOverride: { connectionId: 'conn-override', database: 'override-db', schema: null } },
+      },
+      sessionContext,
+      { inheritSessionContext: true },
+    )).toMatchObject({
+      useSessionContext: false,
+      connectionId: 'conn-override',
+      database: 'override-db',
+      contextSource: 'override',
+    })
+
+    expect(resolveTabDataContext(
+      {
+        originSessionId: 'sess-1',
+        payload: { contextOverride: null, contextPinMode: 'session' },
+      },
+      sessionContext,
+      { inheritSessionContext: true },
+    )).toMatchObject({
+      useSessionContext: true,
+      connectionId: 'conn-session',
+      database: 'session-db',
+      contextSource: 'session',
+    })
+  })
+
   it('lets tab overrides win while still inheriting missing fields from the session context', () => {
     const resolved = resolveTabDataContext(
       {
@@ -30,11 +114,13 @@ describe('resolveTabDataContext', () => {
     )
 
     expect(resolved).toEqual({
+      useSessionContext: false,
       sessionId: 'sess-1',
       connectionId: 'conn-tab',
       connectionName: 'lookup-name',
       database: 'tab-db',
       schema: 'tab-schema',
+      contextSource: 'tab',
       selectedLevel: 'schema',
     })
   })
@@ -46,11 +132,13 @@ describe('resolveTabDataContext', () => {
       { inheritSessionContext: true },
     )
     expect(inherited).toEqual({
+      useSessionContext: true,
       sessionId: 'sess-1',
       connectionId: 'conn-session',
       connectionName: 'session-name',
       database: 'session-db',
       schema: 'session-schema',
+      contextSource: 'session',
       selectedLevel: 'schema',
     })
 
@@ -63,11 +151,13 @@ describe('resolveTabDataContext', () => {
       },
     )
     expect(snapshotOnly).toEqual({
+      useSessionContext: false,
       sessionId: 'sess-1',
       connectionId: 'conn-tab',
       connectionName: 'snapshot-name',
       database: null,
       schema: null,
+      contextSource: 'tab',
       selectedLevel: 'connection',
     })
   })
@@ -96,11 +186,13 @@ describe('resolveTabDataContext', () => {
     )
 
     expect(preferred).toEqual({
+      useSessionContext: true,
       sessionId: 'sess-1',
       connectionId: 'conn-session',
       connectionName: 'lookup-session',
       database: 'session-db',
       schema: 'session-schema',
+      contextSource: 'session',
       selectedLevel: 'schema',
     })
   })

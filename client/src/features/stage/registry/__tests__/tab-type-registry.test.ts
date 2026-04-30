@@ -7,6 +7,7 @@ import {
   getScope,
 } from '../tab-type-registry'
 import { useErTabsStore } from '../../stores/er-tabs-store'
+import { useSqlWorkbenchStore } from '../../stores/sql-workbench-store'
 
 describe('tab-type-registry', () => {
   it('query_editor is persistent and workspace-scoped', () => {
@@ -31,6 +32,25 @@ describe('tab-type-registry', () => {
   it('extractContent on query_editor returns sqlText', () => {
     const desc = getTabTypeDescriptor('query_editor')
     expect(desc.extractContent({ sqlText: 'SELECT 1' })).toBe('SELECT 1')
+  })
+
+  it('rehydrates query_editor useSessionContext from normalized payloads', () => {
+    useSqlWorkbenchStore.setState({ tabsById: {} })
+    const desc = getTabTypeDescriptor('query_editor')
+
+    desc.rehydrate?.('q-registry', {
+      sqlText: 'select 1',
+      contextOverride: {
+        connectionId: 'conn-1',
+        database: 'analytics',
+        schema: null,
+      },
+    })
+
+    expect(useSqlWorkbenchStore.getState().tabsById['q-registry']).toMatchObject({
+      sqlText: 'select 1',
+      useSessionContext: false,
+    })
   })
 
   it('extractContent is total — null/undefined/empty returns empty string', () => {

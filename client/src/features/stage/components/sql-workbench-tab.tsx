@@ -4,7 +4,6 @@ import type { StageTab } from '@/stores/stage-store'
 import { useSessionStore } from '@/stores/session-store'
 import { useConnectionStore } from '@/features/connection/store'
 import { useSessionDataContext } from '@/features/session/hooks/use-session-data-context'
-import type { SessionDataContext } from '@/services/api/session-data-context'
 import { cn } from '@/lib/utils'
 import { listConnections, getConnectionTargets } from '@/services/api/connection'
 import { resolveTabDataContext } from '@/features/stage/utils/resolve-tab-data-context'
@@ -14,15 +13,15 @@ import {
   formatQueryEditorSql,
   runQueryEditorSql,
   setQueryEditorContext,
-  resetQueryEditorContext,
   confirmQueryEditorSql,
   cancelQueryEditorConfirmation,
 } from '../utils/query-editor-actions'
 import { useSqlWorkbenchStore } from '../stores/sql-workbench-store'
 import type { SqlMonacoEditorHandle } from './sql-monaco-editor'
-import { SqlContextChip } from './sql-context-chip'
-import type { SqlContextConnectionTargets } from './sql-context-chip'
-import type { SqlContextValue } from './sql-context-chip'
+import {
+  SqlContextToolbarControls,
+  type SqlContextConnectionTargets,
+} from './sql-context-toolbar-controls'
 import { SqlEditorToolbar } from './sql-editor-toolbar'
 import { SqlMonacoEditor } from './sql-monaco-editor'
 import { SqlResultTabs } from './sql-result-tabs'
@@ -32,14 +31,6 @@ import { StageActivityRail } from './activity-rail/stage-activity-rail'
 import { useI18n } from '@/i18n/use-i18n'
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { SqlConfirmationCard } from '@/features/sql-confirmation/sql-confirmation-card'
-
-type TabExecutionContext = {
-  sessionId: string | null
-  connectionId: string | null
-  connectionName: string | null
-  database: string | null
-  schema: string | null
-}
 
 export type SqlWorkbenchTabActions = {
   insertAtCursor: (text: string) => void
@@ -191,52 +182,6 @@ function toContextValue(
   return { connectionId, connectionName, database, schema }
 }
 
-function resolveImplicitTabContextOverride(
-  tab: StageTab,
-  payload: ReturnType<typeof normalizeQueryEditorPayload>,
-  fallbackConnectionName: string | null,
-  connections: Array<{ id: string; name: string }>,
-) {
-  const connectionId = payload.connectionId ?? tab.connectionId ?? null
-  if (!connectionId) return null
-
-  const shouldTreatAsFixed = payload.entryMode !== 'blank' || !tab.originSessionId
-  if (!shouldTreatAsFixed) return null
-
-  return {
-    connectionId,
-    connectionName: connections.find((connection) => connection.id === connectionId)?.name
-      ?? payload.connectionName
-      ?? tab.connectionName
-      ?? fallbackConnectionName
-      ?? null,
-    database: payload.database ?? tab.database ?? null,
-    schema: payload.schema ?? tab.schema ?? null,
-    source: 'open_payload' as const,
-    setAt: 0,
-  }
-}
-
-function resolveImplicitSessionContextOverride(
-  payload: ReturnType<typeof normalizeQueryEditorPayload>,
-  sessionContext: SessionDataContext | null,
-  connections: Array<{ id: string; name: string }>,
-) {
-  if (payload.contextPinMode === 'session') return null
-  if (!sessionContext?.connectionId) return null
-
-  return {
-    connectionId: sessionContext.connectionId,
-    connectionName: connections.find((connection) => connection.id === sessionContext.connectionId)?.name
-      ?? sessionContext.connectionNameSnapshot
-      ?? null,
-    database: sessionContext.database ?? null,
-    schema: sessionContext.schema ?? null,
-    source: 'open_payload' as const,
-    setAt: 0,
-  }
-}
-
 export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
   const { t } = useI18n()
   const payload = normalizeQueryEditorPayload(tab.payload)
@@ -259,20 +204,6 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
   const activeSessionId = useSessionStore((state) => state.activeSessionId)
   const contextSessionId = tab.originSessionId ?? activeSessionId ?? null
   const sessionDataContext = useSessionDataContext(contextSessionId)
-
-  const resolvedContext = resolveTabDataContext(
-    {
-      originSessionId: contextSessionId,
-    },
-    sessionDataContext.context,
-    {
-      inheritSessionContext: true,
-      preferSessionContext: true,
-      fallbackConnectionId: activeConnectionId ?? null,
-      connectionNameLookup: (connectionId) =>
-        connections.find((connection) => connection.id === connectionId)?.name ?? null,
-    },
-  )
 
   const {
     ensureTab,
@@ -298,7 +229,42 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     })),
   )
 
-  const tabState = useSqlWorkbenchStore((state) => state.tabsById[tab.tabId]) ?? EMPTY_WORKBENCH_STATE
+  const actualTabState = useSqlWorkbenchStore((state) => state.tabsById[tab.tabId])
+  const tabState = actualTabState ?? EMPTY_WORKBENCH_STATE
+  const runtimeContextOverride = tabState.override
+    ? {
+        connectionId: tabState.override.connectionId,
+        database: tabState.override.database ?? null,
+        schema: tabState.override.schema ?? null,
+      }
+    : payload.contextOverride
+  const useSessionContext = actualTabState?.useSessionContext ?? payload.useSessionContext
+  const resolvedContext = resolveTabDataContext(
+    {
+      originSessionId: contextSessionId,
+      connectionId: payload.connectionId ?? tab.connectionId ?? null,
+      connectionName: payload.connectionName ?? tab.connectionName ?? null,
+      database: payload.database ?? tab.database ?? null,
+      schema: payload.schema ?? tab.schema ?? null,
+      payload: {
+        connectionId: payload.connectionId ?? tab.connectionId ?? null,
+        connectionName: payload.connectionName ?? tab.connectionName ?? null,
+        database: payload.database ?? tab.database ?? null,
+        schema: payload.schema ?? tab.schema ?? null,
+        contextOverride: runtimeContextOverride,
+        useSessionContext,
+      },
+    },
+    sessionDataContext.context,
+    {
+      inheritSessionContext: true,
+      preferSessionContext: useSessionContext,
+      fallbackConnectionId: activeConnectionId ?? null,
+      connectionNameLookup: (connectionId) =>
+        connections.find((connection) => connection.id === connectionId)?.name ?? null,
+    },
+  )
+
   const draftStorageKey = `${DRAFT_STORAGE_PREFIX}${tab.tabId}`
   const outline = useMemo(() => parseSqlOutline(tabState.sqlText), [tabState.sqlText])
   const totalLines = useMemo(() => Math.max(1, tabState.sqlText.split(/\r\n|\r|\n/).length), [tabState.sqlText])
@@ -337,8 +303,9 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     ensureTab(tab.tabId, {
       sqlText: payload.initialSql,
       source: payload.source,
+      useSessionContext: payload.useSessionContext,
     })
-  }, [ensureTab, payload.initialSql, payload.source, tab.tabId])
+  }, [ensureTab, payload.initialSql, payload.source, payload.useSessionContext, tab.tabId])
 
   useEffect(() => {
     autoRunRef.current = false
@@ -372,43 +339,13 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [tab.tabId, tabState.executeStatus])
 
-  const resolvedExecutionContext: TabExecutionContext = {
+  const effectiveContext = {
     sessionId: resolvedContext.sessionId ?? contextSessionId,
     connectionId: resolvedContext.connectionId,
     connectionName: resolvedContext.connectionName,
     database: resolvedContext.database,
     schema: resolvedContext.schema,
   }
-  const hydratedOverride = tabState.override ?? (payload.contextOverride
-    ? {
-        connectionId: payload.contextOverride.connectionId,
-        connectionName: connections.find((connection) => connection.id === payload.contextOverride?.connectionId)?.name
-          ?? payload.connectionName
-          ?? tab.connectionName
-          ?? null,
-        database: payload.contextOverride.database,
-        schema: payload.contextOverride.schema,
-      }
-    : (
-        resolveImplicitTabContextOverride(tab, payload, resolvedExecutionContext.connectionName, connections)
-        ?? resolveImplicitSessionContextOverride(payload, sessionDataContext.context, connections)
-      ))
-  const effectiveContext = hydratedOverride
-    ? {
-        sessionId: resolvedExecutionContext.sessionId ?? contextSessionId,
-        connectionId: hydratedOverride.connectionId,
-        connectionName: hydratedOverride.connectionName ?? resolvedExecutionContext.connectionName,
-        database: hydratedOverride.database ?? resolvedExecutionContext.database,
-        schema: hydratedOverride.schema ?? resolvedExecutionContext.schema,
-      }
-    : {
-        sessionId: resolvedExecutionContext.sessionId ?? contextSessionId,
-        connectionId: resolvedExecutionContext.connectionId,
-        connectionName: resolvedExecutionContext.connectionName,
-        database: resolvedExecutionContext.database,
-        schema: resolvedExecutionContext.schema,
-      }
-  const contextMode = hydratedOverride ? 'override' : 'session'
 
   const refreshConnections = useCallback(async () => {
     const nextConnections = await listConnections()
@@ -422,14 +359,14 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
       ? connections.some((connection) => connection.id === connectionId && connection.name.trim().length > 0)
       : false
     const shouldHydrateSelectedConnection = Boolean(connectionId) && !hasResolvedName
-    const shouldHydrateSelectableOptions = contextMode === 'session' && connections.length === 0
+    const shouldHydrateSelectableOptions = useSessionContext && connections.length === 0
     if (!shouldHydrateSelectedConnection && !shouldHydrateSelectableOptions) return
 
     void refreshConnections()
       .catch(() => {
         // best-effort hydration for connection name display
       })
-  }, [connections, contextMode, effectiveContext.connectionId, refreshConnections])
+  }, [connections, useSessionContext, effectiveContext.connectionId, refreshConnections])
 
   useEffect(() => {
     pendingConnectionTargetsRef.current.clear()
@@ -450,6 +387,7 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
       const targets = contextSessionId
         ? await sessionDataContext.listConnectionTargets(normalizedConnectionId)
         : await getConnectionTargets(normalizedConnectionId)
+      if (!targets) return
       setConnectionTargetsByConnectionId((previous) => {
         if (!options?.force && previous[normalizedConnectionId]) return previous
         return {
@@ -469,7 +407,7 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
   ])
 
   useEffect(() => {
-    if (contextMode !== 'session') return
+    if (!useSessionContext) return
 
     const connectionIds = Array.from(new Set([
       effectiveContext.connectionId,
@@ -483,13 +421,13 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     })
   }, [
     connections,
-    contextMode,
+    useSessionContext,
     effectiveContext.connectionId,
     fetchConnectionTargets,
   ])
 
   const canRun = Boolean(effectiveContext.connectionId) && tabState.sqlText.trim().length > 0
-  const contextChipContext = toContextValue(
+  const contextToolbarContext = toContextValue(
     effectiveContext.connectionId,
     effectiveContext.connectionName,
     effectiveContext.database,
@@ -577,8 +515,15 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     formatQueryEditorSql(tab.tabId)
   }, [tab.tabId])
 
-  const handleContextPin = useCallback((nextContext?: SqlContextValue) => {
-    const contextToPin = nextContext ?? contextChipContext
+  const handleUseSessionContextChange = useCallback((nextUseSessionContext: boolean) => {
+    if (nextUseSessionContext) {
+      setQueryEditorContext({
+        tabId: tab.tabId,
+        useSessionContext: true,
+      })
+      return
+    }
+    const contextToPin = contextToolbarContext
     if (!contextToPin) return
     setQueryEditorContext({
       tabId: tab.tabId,
@@ -586,11 +531,44 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
       database: contextToPin.database,
       schema: contextToPin.schema,
     })
-  }, [contextChipContext, tab.tabId])
+  }, [contextToolbarContext, tab.tabId])
 
-  const handleContextReset = useCallback(() => {
-    resetQueryEditorContext(tab.tabId)
+  const handleConnectionChange = useCallback((connectionId: string) => {
+    setQueryEditorContext({
+      tabId: tab.tabId,
+      connectionId,
+      database: null,
+      schema: null,
+    })
   }, [tab.tabId])
+
+  const handleDatabaseChange = useCallback((database: string | null) => {
+    if (!effectiveContext.connectionId) return
+    setQueryEditorContext({
+      tabId: tab.tabId,
+      connectionId: effectiveContext.connectionId,
+      database,
+      schema: null,
+    })
+  }, [effectiveContext.connectionId, tab.tabId])
+
+  const handleSchemaChange = useCallback((schema: string | null) => {
+    if (!effectiveContext.connectionId) return
+    setQueryEditorContext({
+      tabId: tab.tabId,
+      connectionId: effectiveContext.connectionId,
+      database: effectiveContext.database,
+      schema,
+    })
+  }, [effectiveContext.connectionId, effectiveContext.database, tab.tabId])
+
+  const handleOpenTargets = useCallback(async () => {
+    await fetchConnectionTargets(effectiveContext.connectionId, { force: true })
+  }, [effectiveContext.connectionId, fetchConnectionTargets])
+
+  const handleOpenConnections = useCallback(async () => {
+    await refreshConnections()
+  }, [refreshConnections])
 
   const handleCursorChange = useCallback(
     (cursor: { line: number; column: number }) => {
@@ -706,18 +684,20 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
             onRun={() => void handleRun()}
             onCancel={() => abortQueryEditorRun(tab.tabId)}
             onFormat={handleFormat}
-            limit={tabState.limit}
-            onLimitChange={(value) => setLimit(tab.tabId, value)}
-            contextChip={
-              <SqlContextChip
-                mode={contextMode}
-                context={contextChipContext}
+            contextControls={
+              <SqlContextToolbarControls
+                useSessionContext={useSessionContext}
+                context={contextToolbarContext}
                 connections={contextConnectionOptions}
-                connectionTargetsByConnectionId={connectionTargetsByConnectionId}
-                onRequestConnections={refreshConnections}
-                onRequestConnectionTargets={fetchConnectionTargets}
-                onSetTabContext={handleContextPin}
-                onResetTabContext={handleContextReset}
+                targets={effectiveContext.connectionId ? connectionTargetsByConnectionId[effectiveContext.connectionId] ?? null : null}
+                limit={tabState.limit}
+                onUseSessionContextChange={handleUseSessionContextChange}
+                onConnectionChange={handleConnectionChange}
+                onDatabaseChange={handleDatabaseChange}
+                onSchemaChange={handleSchemaChange}
+                onLimitChange={(value) => setLimit(tab.tabId, value)}
+                onOpenConnections={handleOpenConnections}
+                onOpenTargets={handleOpenTargets}
               />
             }
           />

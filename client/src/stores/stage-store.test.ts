@@ -131,7 +131,7 @@ describe('useStageStore (single-flag stage panel)', () => {
   })
 
   describe('tabs / library / workset', () => {
-    it('pins a blank query editor to the current session data context when no explicit context is supplied', () => {
+    it('defaults a blank query editor to follow the current session data context when no explicit context is supplied', () => {
       useSessionStore.setState({
         activeSessionId: 'sess-1',
         modeBySession: new Map(),
@@ -171,14 +171,11 @@ describe('useStageStore (single-flag stage panel)', () => {
         database: 'warehouse',
         schema: 'analytics',
       })
-      expect(payload.contextOverride).toEqual({
-        connectionId: 'conn-session',
-        database: 'warehouse',
-        schema: 'analytics',
-      })
+      expect(payload.useSessionContext).toBe(true)
+      expect(payload.contextOverride).toBeNull()
     })
 
-    it('pins a blank query editor to the active session when the open request has no session id', () => {
+    it('defaults a blank query editor to follow the active session when the open request has no session id', () => {
       useSessionStore.setState({
         activeSessionId: 'sess-active',
         modeBySession: new Map(),
@@ -218,10 +215,30 @@ describe('useStageStore (single-flag stage panel)', () => {
         database: 'active_db',
         schema: 'active_schema',
       })
+      expect(payload.useSessionContext).toBe(true)
+      expect(payload.contextOverride).toBeNull()
+    })
+
+    it('persists explicit query editor context opens as manual overrides', () => {
+      const { tabId } = useStageStore.getState().openQueryEditor({
+        sessionId: 'sess-1',
+        baseTitle: 'SQL',
+        openMode: 'always_new',
+        entryMode: 'ui_exec',
+        connectionId: 'conn-explicit',
+        connectionName: 'Explicit Warehouse',
+        database: 'explicit_db',
+        schema: 'explicit_schema',
+      })
+
+      const tab = useStageStore.getState().tabs.find((item) => item.tabId === tabId)
+      const payload = normalizeQueryEditorPayload(tab?.payload)
+
+      expect(payload.useSessionContext).toBe(false)
       expect(payload.contextOverride).toEqual({
-        connectionId: 'conn-active',
-        database: 'active_db',
-        schema: 'active_schema',
+        connectionId: 'conn-explicit',
+        database: 'explicit_db',
+        schema: 'explicit_schema',
       })
     })
 

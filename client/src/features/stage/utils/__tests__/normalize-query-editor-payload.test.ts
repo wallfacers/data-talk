@@ -135,18 +135,34 @@ describe('normalizeQueryEditorPayload', () => {
     })
   })
 
-  it('preserves the explicit session context pin mode marker', () => {
+  it('accepts the legacy session context pin mode marker as input only', () => {
     expect(normalizeQueryEditorPayload({
       contextOverride: null,
       contextPinMode: 'session',
     })).toMatchObject({
       contextOverride: null,
-      contextPinMode: 'session',
+      useSessionContext: true,
     })
 
     expect(normalizeQueryEditorPayload({
       contextPinMode: 'override',
-    }).contextPinMode).toBeNull()
+    }).useSessionContext).toBe(true)
+  })
+
+  it('migrates legacy context mode fields to useSessionContext', () => {
+    expect(normalizeQueryEditorPayload({
+      contextOverride: { connectionId: 'c1', database: 'db1', schema: null },
+    }).useSessionContext).toBe(false)
+
+    expect(normalizeQueryEditorPayload({
+      contextOverride: null,
+      contextPinMode: 'session',
+    }).useSessionContext).toBe(true)
+
+    expect(normalizeQueryEditorPayload({
+      useSessionContext: false,
+      contextOverride: null,
+    }).useSessionContext).toBe(false)
   })
 
   it('falls back to null for invalid contextOverride payloads', () => {
