@@ -10,7 +10,6 @@ describe('openOrFocusStageToolTab', () => {
     useStageStore.setState({
       open: false,
       maximized: false,
-      autoOpened: false,
       revealOrigin: null,
       sidebarCollapsed: false,
       sidebarSelection: null,

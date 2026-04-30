@@ -1,15 +1,11 @@
-import { useEffect, type CSSProperties } from 'react'
+import { type CSSProperties } from 'react'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { useBootstrapActions } from '@/features/actions/use-bootstrap-actions'
 import { SessionCanvas } from '@/features/session/session-canvas'
-import { ensureStageAutoOpenSubscribed } from '@/features/stage/use-stage-auto-open'
 import { AppSidebar } from './components/app-sidebar'
 
 export function HomePage() {
   useBootstrapActions()
-  useEffect(() => {
-    ensureStageAutoOpenSubscribed()
-  }, [])
 
   return (
     <SidebarProvider

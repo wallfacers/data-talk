@@ -68,7 +68,6 @@ function seedSessionResources() {
   })
   useStageStore.setState({
     open: true,
-    autoOpened: true,
     maximized: true,
     sidebarCollapsed: false,
     sidebarSelection: null,

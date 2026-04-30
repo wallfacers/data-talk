@@ -10,10 +10,6 @@ vi.mock('@/features/session/session-canvas', () => ({
   SessionCanvas: () => <div data-testid="session-canvas" />,
 }))
 
-vi.mock('@/features/stage/use-stage-auto-open', () => ({
-  ensureStageAutoOpenSubscribed: vi.fn(),
-}))
-
 vi.mock('./components/app-sidebar', () => ({
   AppSidebar: () => <aside data-testid="app-sidebar" />,
 }))

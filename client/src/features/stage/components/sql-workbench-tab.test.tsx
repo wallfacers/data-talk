@@ -218,7 +218,6 @@ describe('SqlWorkbenchTab', () => {
     editorHarness.fakeEditor?.revealLineNearTop.mockClear()
     useStageStore.setState({
       open: false,
-      autoOpened: false,
       maximized: false,
       revealOrigin: null,
       sidebarCollapsed: false,

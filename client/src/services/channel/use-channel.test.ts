@@ -665,6 +665,29 @@ describe('buildEventSink → action.invoke error payloads', () => {
     expect(handler).toHaveBeenCalledTimes(1)
   })
 
+  it('does not replay an already-dispatched action.invoke after a browser refresh', async () => {
+    const handler = vi.fn().mockResolvedValue({ tabId: 'q1' })
+    const { registerClientHandler } = await import('@/features/actions/registry')
+    registerClientHandler('datatalk.test.refresh_replay', handler)
+
+    const qc = new QueryClient()
+    const client = { actionResult: vi.fn().mockResolvedValue(undefined) } as any
+    const event = {
+      event: 'action.invoke',
+      data: { callId: 'call-refresh-replay', actionId: 'datatalk.test.refresh_replay', input: {} },
+    } as any
+
+    buildEventSink('s1', client, qc, null)(event)
+    await waitFor(() => expect(client.actionResult).toHaveBeenCalledTimes(1))
+    expect(handler).toHaveBeenCalledTimes(1)
+
+    __resetCallIdDispatchForTest({ keepPersisted: true })
+    buildEventSink('s1', client, qc, null)(event)
+
+    expect(handler).toHaveBeenCalledTimes(1)
+    expect(client.actionResult).toHaveBeenCalledTimes(1)
+  })
+
   it('returns an explicit error when a client action handler is not registered', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const qc = new QueryClient()

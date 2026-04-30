@@ -71,7 +71,11 @@ function mockTabOverflow() {
 }
 
 describe('StageTabBar', () => {
-  it('scrolls the active tab into view when active tab changes', () => {
+  it('scrolls the tab strip horizontally when the active tab is offscreen-right', () => {
+    // Avoid scrollIntoView: when the whole stage panel sits behind a
+    // translateX(100%) transform (closed state), scrollIntoView walks up to
+    // the document and drags the closed panel back into view. The component
+    // must instead mutate scrollLeft on the tab strip itself.
     const requestAnimationFrameSpy = vi
       .spyOn(window, 'requestAnimationFrame')
       .mockImplementation((callback: FrameRequestCallback) => {
@@ -84,10 +88,20 @@ describe('StageTabBar', () => {
       value: scrollIntoView,
     })
 
-    const { rerender } = render(<StageTabBar tabs={tabs} activeId="left" />)
+    const { container, rerender } = render(<StageTabBar tabs={tabs} activeId="left" />)
+
+    // Pin the layout: scroll viewport is 120px wide, the right tab starts at
+    // 200px. The effect should advance scrollLeft to (offsetLeft + width - clientWidth).
+    const scroller = container.querySelector('.overflow-x-auto') as HTMLDivElement
+    Object.defineProperty(scroller, 'clientWidth', { configurable: true, value: 120 })
+    const rightTab = scroller.querySelector('[data-tab-id="right"]') as HTMLElement
+    Object.defineProperty(rightTab, 'offsetLeft', { configurable: true, value: 200 })
+    Object.defineProperty(rightTab, 'offsetWidth', { configurable: true, value: 80 })
+
     rerender(<StageTabBar tabs={tabs} activeId="right" />)
 
-    expect(scrollIntoView).toHaveBeenCalled()
+    expect(scrollIntoView).not.toHaveBeenCalled()
+    expect(scroller.scrollLeft).toBe(200 + 80 - 120)
     requestAnimationFrameSpy.mockRestore()
   })
 

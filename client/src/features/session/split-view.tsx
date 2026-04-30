@@ -17,13 +17,23 @@ import { useOpencodeHealth } from './hooks/use-opencode-health'
 const DURATION = 240
 const EASE = 'cubic-bezier(0.32, 0.72, 0.24, 1)'
 const SPLIT_RATIO_KEY = 'split-view-ratio'
+const DEFAULT_SPLIT_RATIO = 0.46
+const MIN_SPLIT_RATIO = 0.2
+const MAX_SPLIT_RATIO = 0.62
+
+function clampSplitRatio(value: number): number {
+  return Math.min(MAX_SPLIT_RATIO, Math.max(MIN_SPLIT_RATIO, value))
+}
 
 function loadSavedRatio(): number {
   try {
     const v = localStorage.getItem(SPLIT_RATIO_KEY)
-    if (v) { const n = parseFloat(v); if (!isNaN(n) && n >= 0.2 && n <= 0.8) return n }
+    if (v) {
+      const n = parseFloat(v)
+      if (!isNaN(n)) return clampSplitRatio(n)
+    }
   } catch { /* ignore */ }
-  return 0.46
+  return DEFAULT_SPLIT_RATIO
 }
 
 export function SplitView() {
@@ -45,7 +55,8 @@ export function SplitView() {
 
   const splitResizable = useUISettingsStore((s) => s.splitResizable)
   const rootRef = useRef<HTMLDivElement>(null)
-  const [dragRatio, setDragRatio] = useState<number | null>(null)
+  const [dragRatio, setDragRatio] = useState(loadSavedRatio)
+  const latestDragRatioRef = useRef(dragRatio)
   const isDraggingRef = useRef(false)
 
   // Track structural changes only; streamed token growth follows through observers.
@@ -70,10 +81,7 @@ export function SplitView() {
     }
   }, [sid, scrollToBottom])
 
-  // Load saved ratio on mount
-  useEffect(() => { setDragRatio(loadSavedRatio()) }, [])
-
-  const effectiveRatio = dragRatio ?? 0.46
+  const effectiveRatio = dragRatio
   // Chat width never collapses to 0 — use translateX to slide it off screen during
   // maximize so inner content doesn't reflow (which caused message jitter).
   const chatWidth = open ? `${effectiveRatio * 100}%` : '100%'
@@ -81,6 +89,11 @@ export function SplitView() {
   const stageWidth = maximized ? '100%' : `${(1 - effectiveRatio) * 100}%`
   const stageTransform = open ? 'translateX(0)' : 'translateX(100%)'
 
+  // Stage `open` is restored synchronously from localStorage in the store's
+  // initial state, so on refresh the first paint already has the final
+  // transform — CSS transitions only fire on subsequent property changes,
+  // which means user-driven open/close animates but a refresh-while-open
+  // doesn't replay the slide-in.
   const chatTransition = maximized
     ? 'transform 180ms ease-in'
     : `transform ${DURATION}ms ${EASE} 60ms, width ${DURATION}ms ${EASE}`
@@ -209,15 +222,14 @@ export function SplitView() {
             const container = rootRef.current
             if (!container) return
             const rect = container.getBoundingClientRect()
-            const ratio = (e.clientX - rect.left) / rect.width
-            setDragRatio(Math.min(0.8, Math.max(0.2, ratio)))
+            const ratio = clampSplitRatio((e.clientX - rect.left) / rect.width)
+            latestDragRatioRef.current = ratio
+            setDragRatio(ratio)
           }}
           onPointerUp={() => {
             if (!isDraggingRef.current) return
             isDraggingRef.current = false
-            if (dragRatio !== null) {
-              try { localStorage.setItem(SPLIT_RATIO_KEY, String(dragRatio)) } catch { /* ignore */ }
-            }
+            try { localStorage.setItem(SPLIT_RATIO_KEY, String(latestDragRatioRef.current)) } catch { /* ignore */ }
           }}
         >
           <div className="absolute inset-y-0 left-1/2 w-px bg-border group-hover:bg-primary/50" />

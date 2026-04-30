@@ -33,7 +33,6 @@ describe('openDirectSqlQueryEditorTab', () => {
     } as any)
     useStageStore.setState({
       open: false,
-      autoOpened: false,
       maximized: false,
       revealOrigin: null,
       sidebarCollapsed: false,

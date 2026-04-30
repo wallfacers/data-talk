@@ -141,7 +141,6 @@ describe('SplitView stage panel', () => {
     })
     useStageStore.setState({
       open: false,
-      autoOpened: false,
       maximized: false,
       revealOrigin: null,
     })
@@ -161,6 +160,7 @@ describe('SplitView stage panel', () => {
       layoutVersion: 0,
       userSendVersion: 0,
     })
+    localStorage.removeItem('split-view-ratio')
   })
 
   afterEach(() => {
@@ -218,6 +218,40 @@ describe('SplitView stage panel', () => {
     rerender(<SplitView />)
     panel = findStagePanel(container)
     expect(panel.style.transform).toBe('translateX(0)')
+  })
+
+  it('clamps a stale wide-chat split ratio on reload so the stage remains usable', () => {
+    localStorage.setItem('split-view-ratio', '0.8')
+    useStageStore.setState({ open: true })
+
+    const { container } = render(<SplitView />, { wrapper })
+
+    const panel = findStagePanel(container)
+    expect(panel.style.width).toBe('38%')
+  })
+
+  it('does not render ER designer loading content after the stage is closed', () => {
+    useStageStore.setState({
+      open: false,
+      tabs: [
+        {
+          tabId: 'er-1',
+          type: 'er_designer',
+          title: 'ER 图设计器',
+          payload: {},
+          payloadVersion: 1,
+          createdAt: 0,
+          lastTouchedAt: 0,
+        },
+      ],
+      openTabIds: new Set(['er-1']),
+      openTabIdsOrdered: ['er-1'],
+      activeTabId: 'er-1',
+    } as never)
+
+    render(<SplitView />, { wrapper })
+
+    expect(screen.queryByText('加载 ER…')).toBeNull()
   })
 
   it('leaves browser scroll anchoring enabled on the chat scroller', () => {

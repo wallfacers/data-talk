@@ -24,12 +24,7 @@ describe('StageTabBarAddButton', () => {
   })
 
   it('ER designer menu item opens an er_designer tab', () => {
-    useStageStore.setState({
-      tabs: [],
-      openTabIds: new Set(),
-      openTabIdsOrdered: [],
-      activeTabId: null,
-    } as never)
+    useStageStore.getState().resetSessionResources()
 
     render(<StageTabBarAddButton />)
     fireEvent.click(screen.getByRole('button'))

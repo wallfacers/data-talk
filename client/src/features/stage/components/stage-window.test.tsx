@@ -144,7 +144,6 @@ describe('StageWindow', () => {
     useSessionStore.setState({ activeSessionId: null })
     useStageStore.setState({
       open: true,
-      autoOpened: false,
       maximized: false,
       sidebarCollapsed: false,
       sidebarSelection: null,

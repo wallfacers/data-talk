@@ -139,10 +139,25 @@ export function StageTabBar({
     const container = tabScrollRef.current
     if (!container) return
 
+    // We deliberately avoid `scrollIntoView({inline: 'nearest'})` here:
+    // when the entire stage panel is offscreen via `transform: translateX(100%)`
+    // (closed state), `scrollIntoView` walks the DOM up looking for a scrollable
+    // ancestor and ends up scrolling the document itself to "reveal" the tab —
+    // which drags the closed Stage half-way back into the viewport. Manual
+    // scrollLeft on the tab strip is self-contained and never affects ancestors.
     const rafId = window.requestAnimationFrame(() => {
       const activeTab = Array.from(container.querySelectorAll<HTMLElement>('[data-tab-id]'))
         .find((element) => element.dataset.tabId === activeId)
-      activeTab?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
+      if (!activeTab) return
+      const tabLeft = activeTab.offsetLeft
+      const tabRight = tabLeft + activeTab.offsetWidth
+      const viewLeft = container.scrollLeft
+      const viewRight = viewLeft + container.clientWidth
+      if (tabLeft < viewLeft) {
+        container.scrollLeft = tabLeft
+      } else if (tabRight > viewRight) {
+        container.scrollLeft = tabRight - container.clientWidth
+      }
     })
 
     return () => window.cancelAnimationFrame(rafId)

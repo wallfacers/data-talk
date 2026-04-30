@@ -4,8 +4,10 @@ import { useStageStore } from './stage-store'
 function reset() {
   localStorage.removeItem('stage.workset.order')
   localStorage.removeItem('stage.workset.active')
+  localStorage.removeItem('stage.open')
+  localStorage.removeItem('stage.userClosed')
   useStageStore.setState({
-    open: false, maximized: false, autoOpened: false,
+    open: false, maximized: false,
     sidebarCollapsed: false, sidebarSelection: null,
     resourceTreeExpanded: [], activeRailPanel: null,
     revealOrigin: null,
@@ -31,58 +33,91 @@ function makeTab(over: Record<string, unknown> = {}) {
   }
 }
 
-describe('useStageStore (P3 globalized)', () => {
+describe('useStageStore (single-flag stage panel)', () => {
   beforeEach(reset)
 
-  describe('open / close / autoOpened reset', () => {
-    it('openStage sets open=true', () => {
+  describe('open / close / toggle persistence', () => {
+    it('openStage flips open=true and persists stage.open=true', () => {
       useStageStore.getState().openStage()
       expect(useStageStore.getState().open).toBe(true)
+      expect(localStorage.getItem('stage.open')).toBe('true')
     })
 
-    it('closeStage resets autoOpened so next artifact can re-trigger auto-open', () => {
-      useStageStore.setState({ open: true, autoOpened: true } as never, false)
+    it('closeStage flips open=false and removes the persisted key', () => {
+      localStorage.setItem('stage.open', 'true')
+      useStageStore.setState({ open: true } as never, false)
       useStageStore.getState().closeStage()
       expect(useStageStore.getState().open).toBe(false)
-      expect(useStageStore.getState().autoOpened).toBe(false)
+      expect(localStorage.getItem('stage.open')).toBeNull()
     })
 
-    it('notifyArtifactArrived auto-opens once, then becomes idempotent until closeStage', () => {
-      const s = useStageStore.getState()
-      s.notifyArtifactArrived()
+    it('toggleStage flips and persists in both directions', () => {
+      useStageStore.getState().toggleStage()
       expect(useStageStore.getState().open).toBe(true)
-      expect(useStageStore.getState().autoOpened).toBe(true)
-      // call again → no-op
-      const before = useStageStore.getState()
-      s.notifyArtifactArrived()
-      expect(useStageStore.getState()).toBe(before)
-      // close → reset
-      s.closeStage()
-      // next artifact again triggers auto-open
-      s.notifyArtifactArrived()
-      expect(useStageStore.getState().open).toBe(true)
-      expect(useStageStore.getState().autoOpened).toBe(true)
-    })
+      expect(localStorage.getItem('stage.open')).toBe('true')
 
-    it('toggleStage from open → close resets autoOpened', () => {
-      useStageStore.setState({ open: true, autoOpened: true } as never, false)
       useStageStore.getState().toggleStage()
       expect(useStageStore.getState().open).toBe(false)
-      expect(useStageStore.getState().autoOpened).toBe(false)
+      expect(localStorage.getItem('stage.open')).toBeNull()
+    })
+
+    it('legacy stage.userClosed key is cleaned up by the store module', async () => {
+      // The legacy cleanup runs at module init time; reset and re-import
+      // forces a fresh purge cycle.
+      localStorage.setItem('stage.userClosed', 'true')
+      vi.resetModules()
+      await import('./stage-store')
+      expect(localStorage.getItem('stage.userClosed')).toBeNull()
+    })
+  })
+
+  describe('openTab / focusTab auto-reveal the panel', () => {
+    it('openTab on a closed stage reveals it and persists open=true', () => {
+      expect(useStageStore.getState().open).toBe(false)
+      useStageStore.getState().openTab(makeTab({ tabId: 'a' }))
+      const s = useStageStore.getState()
+      expect(s.open).toBe(true)
+      expect(s.tabs.map((t) => t.tabId)).toEqual(['a'])
+      expect(s.openTabIdsOrdered).toEqual(['a'])
+      expect(s.activeTabId).toBe('a')
+      expect(localStorage.getItem('stage.open')).toBe('true')
+    })
+
+    it('openTab on an already-open stage stays open and does not double-write the key', () => {
+      useStageStore.getState().openStage()
+      const setItem = vi.spyOn(Storage.prototype, 'setItem')
+      useStageStore.getState().openTab(makeTab({ tabId: 'a' }))
+      expect(useStageStore.getState().open).toBe(true)
+      expect(setItem.mock.calls.some(([k]) => k === 'stage.open')).toBe(false)
+      setItem.mockRestore()
+    })
+
+    it('focusTab brings a library tab into the workset and reveals stage', () => {
+      useStageStore.setState({
+        tabs: [makeTab({ tabId: 'a' })],
+      } as never, false)
+      useStageStore.getState().focusTab('a')
+      const s = useStageStore.getState()
+      expect(s.openTabIds.has('a')).toBe(true)
+      expect(s.activeTabId).toBe('a')
+      expect(s.open).toBe(true)
+      expect(localStorage.getItem('stage.open')).toBe('true')
+    })
+
+    it('focusTab on an archived tab is a no-op and does not reveal stage', () => {
+      useStageStore.setState({
+        tabs: [makeTab({ tabId: 'a', archived: true })],
+      } as never, false)
+      useStageStore.getState().focusTab('a')
+      const s = useStageStore.getState()
+      expect(s.openTabIds.has('a')).toBe(false)
+      expect(s.activeTabId).toBe(null)
+      expect(s.open).toBe(false)
+      expect(localStorage.getItem('stage.open')).toBeNull()
     })
   })
 
   describe('tabs / library / workset', () => {
-    it('openTab adds to tabs[] and workset, sets active', () => {
-      const tab = makeTab({ tabId: 'a' })
-      useStageStore.getState().openTab(tab)
-      const s = useStageStore.getState()
-      expect(s.tabs.map((t) => t.tabId)).toEqual(['a'])
-      expect(s.openTabIds.has('a')).toBe(true)
-      expect(s.openTabIdsOrdered).toEqual(['a'])
-      expect(s.activeTabId).toBe('a')
-    })
-
     it('detachFromWorkset removes from workset, picks previous order as new active', () => {
       useStageStore.setState({
         tabs: [makeTab({ tabId: 'a' }), makeTab({ tabId: 'b' }), makeTab({ tabId: 'c' })],
@@ -99,7 +134,6 @@ describe('useStageStore (P3 globalized)', () => {
     it('detachFromWorkset keeps the stage open when the last workset tab is removed', () => {
       useStageStore.setState({
         open: true,
-        autoOpened: true,
         tabs: [makeTab({ tabId: 'a' })],
         openTabIds: new Set(['a']),
         openTabIdsOrdered: ['a'],
@@ -112,7 +146,6 @@ describe('useStageStore (P3 globalized)', () => {
       expect(s.openTabIdsOrdered).toEqual([])
       expect(s.activeTabId).toBe(null)
       expect(s.open).toBe(true)
-      expect(s.autoOpened).toBe(true)
     })
 
     it('archiveTab(true) detaches and flips archived; archiveTab(false) only flips', () => {
@@ -132,26 +165,6 @@ describe('useStageStore (P3 globalized)', () => {
       // un-archive doesn't auto-add to workset
       expect(s.openTabIds.has('a')).toBe(false)
     })
-
-    it('focusTab on archived tab is a no-op', () => {
-      useStageStore.setState({
-        tabs: [makeTab({ tabId: 'a', archived: true })],
-      } as never, false)
-      useStageStore.getState().focusTab('a')
-      const s = useStageStore.getState()
-      expect(s.openTabIds.has('a')).toBe(false)
-      expect(s.activeTabId).toBe(null)
-    })
-
-    it('focusTab brings library tab into workset and sets active', () => {
-      useStageStore.setState({
-        tabs: [makeTab({ tabId: 'a' })],
-      } as never, false)
-      useStageStore.getState().focusTab('a')
-      const s = useStageStore.getState()
-      expect(s.openTabIds.has('a')).toBe(true)
-      expect(s.activeTabId).toBe('a')
-    })
   })
 
   describe('left rail prefs persistence', () => {
@@ -167,6 +180,7 @@ describe('useStageStore (P3 globalized)', () => {
       useStageStore.getState().toggleLeftRailCollapsed()
       expect(useStageStore.getState().leftRailCollapsed).toBe(true)
       expect(setItem).toHaveBeenCalledWith('stage.leftRail.collapsed', 'true')
+      setItem.mockRestore()
     })
   })
 
@@ -248,6 +262,46 @@ describe('useStageStore (P3 globalized)', () => {
       expect(s.openTabIdsOrdered).toEqual([])
       expect(s.openTabIds.size).toBe(0)
       expect(s.activeTabId).toBe(null)
+    })
+
+    it('hydration leaves the current `open` value untouched when closed', () => {
+      // Ctrl+R after the user closed Stage: persisted open is null, the
+      // store starts closed, and tab metadata hydrates without flipping the
+      // panel back open.
+      expect(useStageStore.getState().open).toBe(false)
+      useStageStore.getState().__hydrateAll([
+        makeTab({ tabId: 'a' }),
+      ])
+      const s = useStageStore.getState()
+      expect(s.open).toBe(false)
+      expect(s.openTabIdsOrdered).toEqual(['a'])
+      expect(s.activeTabId).toBe('a')
+    })
+
+    it('hydration leaves the current `open` value untouched when open', () => {
+      // Ctrl+R while Stage was open: the store reads stage.open=true at
+      // module init (covered separately), so by the time __hydrateAll runs
+      // the panel is already open. Hydration must not reset that.
+      useStageStore.setState({ open: true } as never, false)
+
+      useStageStore.getState().__hydrateAll([
+        makeTab({ tabId: 'a' }),
+      ])
+
+      const s = useStageStore.getState()
+      expect(s.open).toBe(true)
+      expect(s.openTabIdsOrdered).toEqual(['a'])
+      expect(s.activeTabId).toBe('a')
+    })
+
+    it('module reads stage.open=true synchronously so the first paint is open', async () => {
+      // The whole point of synchronous restore: no slide-in animation on
+      // refresh. Verifying the module init path means the very first store
+      // snapshot already has open=true.
+      localStorage.setItem('stage.open', 'true')
+      vi.resetModules()
+      const mod = await import('./stage-store')
+      expect(mod.useStageStore.getState().open).toBe(true)
     })
   })
 

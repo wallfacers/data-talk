@@ -10,7 +10,6 @@ describe('StageToggleButton', () => {
     useStageStore.setState({
       open: false,
       maximized: false,
-      autoOpened: false,
       revealOrigin: null,
     } as never)
     useSessionStore.setState({

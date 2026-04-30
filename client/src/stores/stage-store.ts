@@ -62,10 +62,15 @@ export interface StageTab {
 }
 
 export type StageState = {
-  // Global stage view state
+  // Stage panel visibility — the single in-memory source of truth. It is not
+  // persisted across page refreshes. AI-driven entries (workspace.open /
+  // open_er_designer / open_er_inspector / focus, etc.) all funnel through
+  // `openTab` / `focusTab`, which auto-open the panel; users toggle via the
+  // toggle button. There is intentionally no `autoOpened` shadow flag — the AI
+  // contract in server/.../agents/AGENTS.md already specifies explicit reveal
+  // verbs.
   open: boolean
   maximized: boolean
-  autoOpened: boolean
   sidebarCollapsed: boolean
   sidebarSelection: SidebarSelection | null
   resourceTreeExpanded: string[]
@@ -82,14 +87,14 @@ export type StageState = {
   leftRailWidth: number
   leftRailCollapsed: boolean
 
-  // Actions (no sid params)
+  // Stage panel actions — `openStage` is the only programmatic entry. AI
+  // adapters call it (directly or implicitly through `openTab`/`focusTab`),
+  // user toggle uses `toggleStage`, user close uses `closeStage`.
   openStage: () => void
   closeStage: () => void
   toggleStage: () => void
   toggleMaximized: () => void
   setRevealOrigin: (origin: RevealOrigin | null) => void
-  notifyArtifactArrived: () => void
-  syncCollapsed: (collapsed: boolean) => void
   toggleSidebarCollapsed: () => void
   setSidebarSelection: (selection: SidebarSelection | null) => void
   toggleResourceExpanded: (nodeId: string) => void
@@ -141,6 +146,33 @@ const LEFT_RAIL_WIDTH_KEY = 'stage.leftRail.width'
 const LEFT_RAIL_COLLAPSED_KEY = 'stage.leftRail.collapsed'
 const WORKSET_ORDER_KEY = 'stage.workset.order'
 const WORKSET_ACTIVE_KEY = 'stage.workset.active'
+const OPEN_KEY = 'stage.open'
+// Legacy key from a multi-flag predecessor design. Always purged on module
+// init so a stale entry can't influence the current single-flag persistence.
+const LEGACY_USER_CLOSED_KEY = 'stage.userClosed'
+
+function purgeLegacyKeys(): void {
+  try {
+    localStorage.removeItem(LEGACY_USER_CLOSED_KEY)
+  } catch {}
+}
+
+function readPersistedOpen(): boolean {
+  try {
+    return localStorage.getItem(OPEN_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
+function persistOpen(value: boolean): void {
+  try {
+    if (value) localStorage.setItem(OPEN_KEY, 'true')
+    else localStorage.removeItem(OPEN_KEY)
+  } catch {}
+}
+
+purgeLegacyKeys()
 
 function loadLeftRailWidth(): number {
   try {
@@ -325,9 +357,15 @@ function resolveHydratedWorkset(
 }
 
 export const useStageStore = create<StageState>((set, get) => ({
-  open: false,
+  // `open` is restored synchronously from localStorage so the very first
+  // render already has the correct `transform: translateX(0|100%)` baked in.
+  // This is what keeps the slide animation from playing on refresh — CSS
+  // transitions only fire when a property changes after mount, so reading
+  // the persisted value at module init means the first frame is the final
+  // frame for visibility. Tabs hydrate later via `__hydrateAll` (async),
+  // but they live INSIDE the panel — they don't move it.
+  open: readPersistedOpen(),
   maximized: false,
-  autoOpened: false,
   sidebarCollapsed: false,
   sidebarSelection: null,
   resourceTreeExpanded: [],
@@ -342,25 +380,21 @@ export const useStageStore = create<StageState>((set, get) => ({
   leftRailWidth: loadLeftRailWidth(),
   leftRailCollapsed: loadLeftRailCollapsed(),
 
-  openStage: () => set({ open: true }),
-  closeStage: () => set({ open: false, autoOpened: false }),
-  toggleStage: () => set((s) => ({ open: !s.open, ...(s.open ? { autoOpened: false } : {}) })),
+  openStage: () => {
+    persistOpen(true)
+    set({ open: true })
+  },
+  closeStage: () => {
+    persistOpen(false)
+    set({ open: false })
+  },
+  toggleStage: () => set((s) => {
+    const next = !s.open
+    persistOpen(next)
+    return { open: next }
+  }),
   toggleMaximized: () => set((s) => ({ maximized: !s.maximized })),
   setRevealOrigin: (origin) => set({ revealOrigin: origin }),
-
-  notifyArtifactArrived: () => set((s) => {
-    if (s.autoOpened) return s
-    if (s.open) return s
-    return { open: true, autoOpened: true }
-  }),
-
-  syncCollapsed: (collapsed) => set((s) => {
-    const nextOpen = !collapsed
-    if (s.open === nextOpen) return s
-    return collapsed
-      ? { open: false, autoOpened: false }
-      : { open: true }
-  }),
 
   toggleSidebarCollapsed: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
   setSidebarSelection: (selection) => set({ sidebarSelection: selection }),
@@ -379,27 +413,37 @@ export const useStageStore = create<StageState>((set, get) => ({
   })),
 
   // Tab CRUD
-  resetSessionResources: () => set({
-    open: false,
-    maximized: false,
-    autoOpened: false,
-    sidebarCollapsed: false,
-    sidebarSelection: null,
-    resourceTreeExpanded: [],
-    activeRailPanel: null,
-    revealOrigin: null,
-    tabs: [],
-    openTabIds: new Set(),
-    openTabIdsOrdered: [],
-    activeTabId: null,
-  }),
+  resetSessionResources: () => {
+    persistOpen(false)
+    set({
+      open: false,
+      maximized: false,
+      sidebarCollapsed: false,
+      sidebarSelection: null,
+      resourceTreeExpanded: [],
+      activeRailPanel: null,
+      revealOrigin: null,
+      tabs: [],
+      openTabIds: new Set(),
+      openTabIdsOrdered: [],
+      activeTabId: null,
+    })
+  },
 
-  openTab: (tab) => set((s) => ({
-    tabs: [...s.tabs, tab],
-    openTabIds: new Set([...s.openTabIds, tab.tabId]),
-    openTabIdsOrdered: [...s.openTabIdsOrdered, tab.tabId],
-    activeTabId: tab.tabId,
-  })),
+  // openTab is the canonical "AI/UI wants a tab visible" entry point. It
+  // unconditionally reveals the stage panel — that's how
+  // workspace.open/open_er_*/openArtifactPreviewTab/openQueryEditor all reach
+  // the user without each caller having to remember a separate openStage().
+  openTab: (tab) => set((s) => {
+    if (!s.open) persistOpen(true)
+    return {
+      tabs: [...s.tabs, tab],
+      openTabIds: new Set([...s.openTabIds, tab.tabId]),
+      openTabIdsOrdered: [...s.openTabIdsOrdered, tab.tabId],
+      activeTabId: tab.tabId,
+      open: true,
+    }
+  }),
 
   ensureOpenInWorkset: (tabId) => set((s) => {
     if (s.openTabIds.has(tabId)) return s
@@ -443,17 +487,22 @@ export const useStageStore = create<StageState>((set, get) => ({
     set((s) => ({ tabs: s.tabs.filter((t) => t.tabId !== tabId) }))
   },
 
+  // focusTab also reveals the stage panel — calling code (workspace.focus,
+  // tab-bar clicks, history navigation) all expect the focused tab to be
+  // visible afterwards.
   focusTab: (tabId) => set((s) => {
     const target = s.tabs.find((t) => t.tabId === tabId)
     if (!target) return s
     if (target.archived) return s
+    if (!s.open) persistOpen(true)
     const inWorkset = s.openTabIds.has(tabId)
-    if (inWorkset) return { activeTabId: tabId }
+    if (inWorkset) return { activeTabId: tabId, open: true }
     const nextIds = new Set(s.openTabIds); nextIds.add(tabId)
     return {
       openTabIds: nextIds,
       openTabIdsOrdered: [...s.openTabIdsOrdered, tabId],
       activeTabId: tabId,
+      open: true,
     }
   }),
 
@@ -482,7 +531,6 @@ export const useStageStore = create<StageState>((set, get) => ({
       (t) => t.type === 'artifact_preview' && (t.payload as { artifactId?: string })?.artifactId === artifactId,
     )
     if (existing) {
-      get().openStage()
       get().focusTab(existing.tabId)
       return
     }
@@ -493,7 +541,6 @@ export const useStageStore = create<StageState>((set, get) => ({
       payload: { artifactId, sessionId },
       createdAt: Date.now(),
     }
-    get().openStage()
     get().openTab(tab)
   },
 
@@ -576,7 +623,13 @@ export const useStageStore = create<StageState>((set, get) => ({
     for (const item of items) {
       if (!merged.some((t) => t.tabId === item.tabId)) merged.push(item)
     }
-    return { tabs: merged, ...resolveHydratedWorkset(s.openTabIds, s.openTabIdsOrdered, s.activeTabId, merged) }
+    // Hydration only restores tabs. Visibility (`open`) was already restored
+    // synchronously at module init from localStorage, so we deliberately
+    // leave `s.open` untouched here.
+    return {
+      tabs: merged,
+      ...resolveHydratedWorkset(s.openTabIds, s.openTabIdsOrdered, s.activeTabId, merged),
+    }
   }),
 
   __hydratePayload: (tabId, payload, version) => set((s) => {

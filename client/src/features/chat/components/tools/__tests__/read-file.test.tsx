@@ -19,7 +19,6 @@ function resetStores() {
 
   useStageStore.setState({
     open: false,
-    autoOpened: false,
     maximized: false,
     revealOrigin: null,
     sidebarCollapsed: false,

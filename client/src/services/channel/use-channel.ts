@@ -212,21 +212,52 @@ function upsertSessionErrorMessage(sessionId: string, eventId: number | undefine
 // 0 so already-handled action.invoke events can be replayed on the next turn.
 // Bounded FIFO keeps memory flat even on long-running sessions.
 const DISPATCHED_CALL_ID_MAX = 512
+const DISPATCHED_CALL_IDS_KEY = 'data-talk.dispatched-call-ids'
 const dispatchedCallIds = new Set<string>()
+let dispatchedCallIdsHydrated = false
+
+function loadDispatchedCallIds(): void {
+  if (dispatchedCallIdsHydrated) return
+  dispatchedCallIdsHydrated = true
+  try {
+    const raw = sessionStorage.getItem(DISPATCHED_CALL_IDS_KEY)
+    const parsed = raw ? JSON.parse(raw) : []
+    if (!Array.isArray(parsed)) return
+    for (const callId of parsed) {
+      if (typeof callId === 'string' && callId.length > 0) dispatchedCallIds.add(callId)
+    }
+  } catch {
+    // Session replay dedupe is best-effort; malformed storage should not break streaming.
+  }
+}
+
+function persistDispatchedCallIds(): void {
+  try {
+    sessionStorage.setItem(DISPATCHED_CALL_IDS_KEY, JSON.stringify([...dispatchedCallIds]))
+  } catch {
+    // Ignore storage failures; in-memory dedupe still protects the current runtime.
+  }
+}
 
 function markCallIdDispatched(callId: string | null | undefined): boolean {
   if (!callId) return true
+  loadDispatchedCallIds()
   if (dispatchedCallIds.has(callId)) return false
   if (dispatchedCallIds.size >= DISPATCHED_CALL_ID_MAX) {
     const oldest = dispatchedCallIds.values().next().value
     if (oldest) dispatchedCallIds.delete(oldest)
   }
   dispatchedCallIds.add(callId)
+  persistDispatchedCallIds()
   return true
 }
 
-export function __resetCallIdDispatchForTest() {
+export function __resetCallIdDispatchForTest(options?: { keepPersisted?: boolean }) {
   dispatchedCallIds.clear()
+  dispatchedCallIdsHydrated = false
+  if (!options?.keepPersisted) {
+    try { sessionStorage.removeItem(DISPATCHED_CALL_IDS_KEY) } catch {}
+  }
 }
 
 function normalizeActionInvokeError(err: unknown): ActionResultErrorInfo {

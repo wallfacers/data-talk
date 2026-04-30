@@ -16,6 +16,7 @@ import { WorkspaceAdapter } from '../adapters/WorkspaceAdapter'
 export function StageWindow() {
   const { t } = useI18n()
   const [showStartPage, setShowStartPage] = useState(false)
+  const open = useStageStore((s) => s.open)
   const closeStage = useStageStore((s) => s.closeStage)
   const maximized = useStageStore((s) => s.maximized)
   const toggleMaximized = useStageStore((s) => s.toggleMaximized)
@@ -206,7 +207,7 @@ export function StageWindow() {
           )}
 
           <div data-testid="stage-workspace-pane" className="flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-canvas">
-            {activeTabId && !showStartPage ? (
+            {!open ? null : activeTabId && !showStartPage ? (
               <div className="flex min-h-0 flex-1 overflow-hidden">
                 <StageTabContent />
               </div>
