@@ -4,11 +4,6 @@ import { SqlWorkbenchPage } from './pom/sql-workbench.page'
 import { ChatPanelPage } from './pom/chat-panel.page'
 import { switchToSqlEditorTab } from './pom/helpers'
 
-const MODEL = process.env.DATATALK_REAL_OPENCODE_MODEL
-
-// Skip entire suite when no real AI model is configured
-test.skip(!MODEL, 'DATATALK_REAL_OPENCODE_MODEL not set — skipping MCP tests')
-
 let stage: StagePage
 let sql: SqlWorkbenchPage
 let chat: ChatPanelPage

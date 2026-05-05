@@ -2,25 +2,25 @@ import { test, expect } from '@playwright/test'
 import { StagePage } from './pom/stage.page'
 import { SqlWorkbenchPage } from './pom/sql-workbench.page'
 import { switchToSqlEditorTab } from './pom/helpers'
-import { setupH2Connection, type H2TestSetup } from './fixtures/h2-setup'
+import { setupTestDb, type TestDbSetup } from './fixtures/h2-setup'
 
 let stage: StagePage
 let sql: SqlWorkbenchPage
-let h2: H2TestSetup | null = null
+let testDb: TestDbSetup | null = null
 
-// Setup H2 connection once for all tests that need it
+// Setup test DB connection once for all tests that need it
 test.beforeAll(async () => {
   try {
-    h2 = await setupH2Connection()
+    testDb = await setupTestDb()
   } catch {
-    h2 = null
+    testDb = null
   }
 })
 
 test.afterAll(async () => {
-  if (h2) {
-    await h2.cleanup()
-    h2 = null
+  if (testDb) {
+    await testDb.cleanup()
+    testDb = null
   }
 })
 
@@ -48,7 +48,7 @@ test.describe('批次 1: SQL 编辑器核心 UI 交互', () => {
   })
 
   test('1.2 输入并执行 SELECT', async ({ page }) => {
-    test.skip(!h2, 'H2 test connection not available')
+    test.skip(!testDb, 'Test DB connection not available')
     await switchToSqlEditorTab(page)
 
     await sql.setSql('SELECT 1 AS one')
@@ -66,7 +66,7 @@ test.describe('批次 1: SQL 编辑器核心 UI 交互', () => {
   })
 
   test('1.3 多语句执行', async ({ page }) => {
-    test.skip(!h2, 'H2 test connection not available')
+    test.skip(!testDb, 'Test DB connection not available')
     await switchToSqlEditorTab(page)
 
     await sql.setSql('SELECT 1; SELECT 2')
@@ -80,7 +80,7 @@ test.describe('批次 1: SQL 编辑器核心 UI 交互', () => {
   })
 
   test('1.4 高风险拦截', async ({ page }) => {
-    test.skip(!h2, 'H2 test connection not available')
+    test.skip(!testDb, 'Test DB connection not available')
     await switchToSqlEditorTab(page)
 
     await sql.setSql('DELETE FROM users')
@@ -146,21 +146,21 @@ test.describe('批次 1: SQL 编辑器核心 UI 交互', () => {
   test('1.8 Stage 最大化/还原', async ({ page }) => {
     await switchToSqlEditorTab(page)
 
-    const maxBtn = page.locator('[data-testid="stage-maximize-button"]')
-    if (await maxBtn.count() === 0) {
-      test.fixme(true, 'Stage maximize button not implemented yet')
-      return
-    }
+    // Button uses aria-label with i18n: "最大化" (zh) or "Maximize" (en)
+    const maxBtn = page.getByRole('button', { name: /最大化|Maximize/ })
+    expect(await maxBtn.count()).toBeGreaterThan(0)
 
     const stageEl = page.locator('[data-testid="stage-window"]').or(page.locator('.stage-window')).first()
     const beforeHeight = await stageEl.evaluate((el) => (el as HTMLElement).offsetHeight)
-    await stage.maximize()
+    await maxBtn.click()
     await page.waitForTimeout(500)
     const afterHeight = await stageEl.evaluate((el) => (el as HTMLElement).offsetHeight)
     expect(afterHeight).toBeGreaterThanOrEqual(beforeHeight)
 
-    // Restore
-    await stage.restore()
+    // Restore — button label now says "还原" / "Restore"
+    const restoreBtn = page.getByRole('button', { name: /还原|Restore/ })
+    expect(await restoreBtn.count()).toBeGreaterThan(0)
+    await restoreBtn.click()
     await page.waitForTimeout(500)
     const restoredHeight = await stageEl.evaluate((el) => (el as HTMLElement).offsetHeight)
     expect(restoredHeight).toBeLessThanOrEqual(afterHeight)
