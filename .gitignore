@@ -44,3 +44,7 @@ server/*/target/
 
 # Worktrees
 .worktrees/
+
+# MCP / Skill scratch (Playwright traces, brainstorming dumps, etc.)
+tmp/
+.playwright-mcp/
