@@ -75,12 +75,31 @@ This file is the map. Deep knowledge lives in `docs/`:
 | Reliability practices        | [docs/RELIABILITY.md](docs/RELIABILITY.md)                   |
 | Security guide               | [docs/SECURITY.md](docs/SECURITY.md)                         |
 | Tech debt tracker            | [docs/exec-plans/tech-debt-tracker.md](docs/exec-plans/tech-debt-tracker.md) |
+| BUG 跟踪与 E2E 缺陷登记       | [docs/bugs/index.md](docs/bugs/index.md)                     |
 
 ## Working Rules
 
 ### Bug Fixes
 
 - Proactively inspect related code when fixing a bug. In this 4-layer architecture, pay special attention: changes to domain sealed interfaces/records require checking application-layer exhaustive switches for sync updates
+
+### BUG Tracking Gate
+
+DataTalk 运行时偏差通过 `docs/bugs/` 集中记录。详见 [docs/bugs/index.md](docs/bugs/index.md) 与 [docs/bugs/README.md](docs/bugs/README.md)。
+
+**写入触发（MUST 新建/更新 BUG 文档）：**
+
+1. **E2E 测试发现产品行为偏差**：通过 `mcp__playwright__*` 或 `playwright-cli` skill 跑端到端测试时，发现按钮无响应、数据错误、UI 错位、控制台报错等任何与 spec 不符的行为，**MUST** 在 `docs/bugs/` 新建 BUG 文件，状态 `open`，并在 `index.md` 注册。**禁止只在对话里口头报告**。
+2. **修复一个已存在 BUG 时**：用户明确要求修某 BUG，或修代码恰好闭环了某 open BUG，**MUST** 把对应 BUG 文件状态改 `fixed`，回填 `fixCommit` / `fixPlanRef` 字段，并同步更新 `index.md` 表格行。
+
+**读取触发（MUST 先读 BUG 文档）：**
+
+3. **修复任何 BUG 前**：**MUST** 在 `docs/bugs/` grep 关键字 / 模块名，确认不是已知问题、不是已 `wontfix` 的设计取舍、不是已存在 BUG 的 `duplicate`。
+4. **写新功能 plan / spec 前**：**MUST** 浏览 `docs/bugs/index.md` 的 "Open BUGs" 与 "By Module"，看新 feature 范围是否会触碰已知 BUG 区域；若有，必须在 plan 的 "Risks" 或 "Known Issues" 中明确列出。
+
+**报告触发（MUST 在响应中说明）：**
+
+5. **用户主动要求 E2E 跑测时**（如 "端到端跑一遍 X 功能"、"用 playwright 验证 Y"），完成后 **MUST** 在最终响应中明确报告 "本次发现 N 个 BUG，已登记到 …"。**N=0 也要明确说**。
 
 ### Data Source Type Compatibility Gate
 
@@ -150,6 +169,7 @@ This file is the map. Deep knowledge lives in `docs/`:
 - Any temporary file produced by MCP servers or Skills (Playwright traces/screenshots, brainstorming scratch files, intermediate scripts, downloaded artifacts, exploratory dumps, etc.) **MUST** be written under the project root's `tmp/` directory (`/home/wallfacers/project/data-talk/tmp/`). Create the directory if it does not exist
 - **Forbidden** locations: repo root, `client/`, `server/`, `docs/`, system `/tmp`, `~/`, or any tracked source path
 - The `tmp/` directory is git-ignored and **MUST NOT** be committed. Do not add files inside it via `git add`, and never relocate generated artifacts out of `tmp/` just to bypass the ignore rule
+- **唯一豁免**：BUG 文档的归档证据截图（`docs/bugs/assets/<BUG-ID>/`，单张 PNG ≤ 500KB）允许入 git。trace / HAR / HTML 等大体积证据**仍须留在 `tmp/`**，不入 git
 
 ### Documentation Paths
 
