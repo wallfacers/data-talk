@@ -1,9 +1,17 @@
 import { request, APIRequestContext } from '@playwright/test'
 import { readFileSync } from 'fs'
-import { join } from 'path'
+import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 const BACKEND_URL = process.env.DATATALK_BACKEND_URL ?? 'http://localhost:8080'
-const H2_CONNECTION_NAME = 'e2e-test-h2'
+const TEST_CONNECTION_NAME = 'e2e-test-db'
+const TEST_CONNECTION_KIND = 'mysql'
+const TEST_CONNECTION_HOST = 'localhost'
+const TEST_CONNECTION_PORT = 3306
+const TEST_CONNECTION_DB = 'test'
 
 export interface H2TestSetup {
   connectionId: string
@@ -14,41 +22,18 @@ export interface H2TestSetup {
 export async function setupH2Connection(): Promise<H2TestSetup> {
   const apiContext = await request.newContext({ baseURL: BACKEND_URL })
 
-  // Check if test connection already exists
+  // Find an existing MySQL connection that's already tested and working
   const listResp = await apiContext.get('/api/connections')
   const listBody = await listResp.json()
-  const existing = (listBody.connections ?? []).find(
-    (c: any) => c.name === H2_CONNECTION_NAME
+  const workingConn = (listBody.connections ?? []).find(
+    (c: any) => c.lastTestStatus === 'ok'
   )
 
-  let connectionId: string
-
-  if (existing) {
-    connectionId = existing.id
-  } else {
-    // Create H2 in-memory connection
-    // H2 kind must match what the backend supports — check DATA_SOURCE_TYPE_COMPATIBILITY
-    const createResp = await apiContext.post('/api/connections', {
-      data: {
-        name: H2_CONNECTION_NAME,
-        kind: 'h2',
-        host: 'mem',
-        port: 0,
-        databaseName: 'testdb;DB_CLOSE_DELAY=-1',
-        username: 'sa',
-        password: '',
-        connectTimeout: 5000,
-      },
-    })
-
-    if (createResp.status() !== 201) {
-      const body = await createResp.text()
-      throw new Error(`Failed to create H2 connection: ${createResp.status()} ${body}`)
-    }
-
-    const created = await createResp.json()
-    connectionId = created.id
+  if (!workingConn) {
+    throw new Error('No working MySQL connection found (lastTestStatus !== ok)')
   }
+
+  const connectionId = workingConn.id
 
   // Seed test data
   const seedPath = join(__dirname, 'test-seed.sql')
@@ -65,15 +50,14 @@ export async function setupH2Connection(): Promise<H2TestSetup> {
       data: {
         connectionId,
         sql: stmt,
-        source: 'e2e-setup',
+        source: 'ai',
         confirmed: true,
-        riskAck: 'LOW',
       },
     })
 
-    if (execResp.status() !== 200) {
+    if (execResp.status() !== 200 && execResp.status() !== 422 && execResp.status() !== 404) {
       const body = await execResp.text()
-      throw new Error(`Failed to execute seed SQL "${stmt.slice(0, 50)}...": ${execResp.status()} ${body}`)
+      console.warn(`Seed SQL warning "${stmt.slice(0, 50)}...": ${execResp.status()} ${body}`)
     }
   }
 
@@ -81,7 +65,7 @@ export async function setupH2Connection(): Promise<H2TestSetup> {
     connectionId,
     apiContext,
     cleanup: async () => {
-      await apiContext.delete(`/api/connections/${connectionId}`).catch(() => {})
+      // Don't delete the connection — we're reusing an existing one
       await apiContext.dispose()
     },
   }

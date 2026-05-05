@@ -13,7 +13,6 @@ test.beforeAll(async () => {
   try {
     h2 = await setupH2Connection()
   } catch {
-    // H2 setup failed — tests that need DB will be skipped
     h2 = null
   }
 })
