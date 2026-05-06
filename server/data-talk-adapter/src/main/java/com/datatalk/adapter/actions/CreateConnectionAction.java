@@ -48,7 +48,8 @@ public class CreateConnectionAction implements ActionHandler<Map, Map> {
                 "databaseName", Map.of("type", "string"),
                 "username", Map.of("type", "string"),
                 "password", Map.of("type", "string"),
-                "connectTimeout", Map.of("type", "integer")
+                "connectTimeout", Map.of("type", "integer"),
+                "oracleServiceType", Map.of("type", "string")
             )),
             Map.entry("allOf", List.of(nonSqliteRequiresServerFieldsSchema()))
         );
@@ -98,7 +99,8 @@ public class CreateConnectionAction implements ActionHandler<Map, Map> {
             normalized.databaseName(),
             normalized.username(),
             normalized.password(),
-            normalized.connectTimeout()
+            normalized.connectTimeout(),
+            normalized.oracleServiceType()
         );
         var out = new LinkedHashMap<String, Object>();
         out.put("id", id);
@@ -118,7 +120,8 @@ public class CreateConnectionAction implements ActionHandler<Map, Map> {
             nullableString(input, "databaseName"),
             sqlite ? "" : string(input, "username"),
             sqlite ? (password == null ? "" : password) : string(input, "password"),
-            nullableInteger(input, "connectTimeout")
+            nullableInteger(input, "connectTimeout"),
+            nullableString(input, "oracleServiceType")
         );
     }
 
@@ -168,6 +171,7 @@ public class CreateConnectionAction implements ActionHandler<Map, Map> {
         String databaseName,
         String username,
         String password,
-        Integer connectTimeout
+        Integer connectTimeout,
+        String oracleServiceType
     ) {}
 }

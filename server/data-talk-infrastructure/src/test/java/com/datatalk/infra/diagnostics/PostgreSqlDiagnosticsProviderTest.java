@@ -237,8 +237,8 @@ class PostgreSqlDiagnosticsProviderTest {
     private ConnectionRecord testConn(String databaseName) {
         return new ConnectionRecord(
             "c1", "test", "postgresql", "localhost", 5432,
-            databaseName, "user", new byte[0], null, 0L, 5000, null, null
-        );
+            databaseName, "user", new byte[0], null, 0L, 5000, null, null,
+            null);
     }
 
     private Translator translator() {

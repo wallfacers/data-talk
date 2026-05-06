@@ -75,9 +75,16 @@ export class ErDesignerPage {
   // bind dialog
   async fillBindTarget(opts: { connectionId: string; connectionName?: string; database?: string; schema?: string }): Promise<void> {
     const dialog = this.page.locator('[role="dialog"]')
+    // Open the connection select dropdown
     await dialog.locator('#er-bind-target-connection').click()
-    // Ark UI SelectItem doesn't expose data-value; select by text content
     const name = opts.connectionName ?? 'testconn'
+    // If the connection is already selected, the dropdown might not show options.
+    // First try to select by text; if not found, close and re-open.
+    const opt = this.page.locator('[role="option"]').filter({ hasText: name }).first()
+    if ((await opt.count()) === 0) {
+      await this.page.keyboard.press('Escape')
+      await dialog.locator('#er-bind-target-connection').click()
+    }
     await this.page.locator('[role="option"]').filter({ hasText: name }).first().click()
     if (opts.database) {
       await dialog.locator('#er-bind-target-database').click()
@@ -117,8 +124,11 @@ export class ErDesignerPage {
 
   // table / column edit
   async openContextMenu(tableName: string): Promise<void> {
+    // Auto-layout first to ensure nodes don't overlap and right-click isn't intercepted by adjacent node's Select
+    await this.clickAutoLayout()
+    await this.page.waitForTimeout(800)
     const node = this.canvas.locator(`[data-er-table-name="${tableName}"]`).first()
-    await node.click({ button: 'right' })
+    await node.click({ button: 'right', force: true })
   }
   async clickContextMenuItem(label: 'rename' | 'addColumn' | 'deleteTable'): Promise<void> {
     const map: Record<string, RegExp> = {
@@ -131,11 +141,9 @@ export class ErDesignerPage {
   async renameTable(oldName: string, newName: string): Promise<void> {
     await this.openContextMenu(oldName)
     await this.clickContextMenuItem('rename')
-    // Context menu sets renameTableId which focuses the name input.
-    // The input is inside the node with data-er-table-name matching the current table name.
     await this.page.waitForTimeout(500)
-    // Find the focused input inside the ER canvas
-    const input = this.page.locator('[role="dialog"] ~ * input, [data-er-tab-id] [data-er-table-name] input:focus, [data-er-tab-id] input[aria-label*="Table name"]').first()
+    // Find the focused rename input by aria-label pattern, not by old table name
+    const input = this.page.locator('input[aria-label*="Table name"], input[data-er-rename-input]').first()
     await input.waitFor({ state: 'visible', timeout: 5_000 })
     await input.fill(newName)
     await input.press('Enter')

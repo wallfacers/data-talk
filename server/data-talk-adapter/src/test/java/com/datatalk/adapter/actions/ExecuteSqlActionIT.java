@@ -59,7 +59,7 @@ class ExecuteSqlActionIT {
             st.execute("INSERT INTO t VALUES(1,'a'),(2,'b'),(3,'c')");
         }
         connectionId = conn.create("Execute SQL Test", ConnectionKind.H2, "local", 0,
-            DATABASE_NAME, "sa", "", null);
+            DATABASE_NAME, "sa", "", null, null);
         sessRepo.upsert(new SessionRecord("s-exec", connectionId, "T", true, "oc-e", 0L, 0L, false));
     }
 
@@ -109,7 +109,7 @@ class ExecuteSqlActionIT {
         }
 
         String sqliteConnectionId = conn.create("Execute SQL SQLite", ConnectionKind.SQLITE, "", 0,
-            dbFile.toString(), "", "", null);
+            dbFile.toString(), "", "", null, null);
         sessRepo.upsert(new SessionRecord("s-exec-sqlite", sqliteConnectionId, "SQLite", true, "oc-sqlite", 0L, 0L, false));
 
         Map<String, Object> out = (Map<String, Object>) action.handle(

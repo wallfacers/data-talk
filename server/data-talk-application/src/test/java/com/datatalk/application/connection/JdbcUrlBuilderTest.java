@@ -62,8 +62,8 @@ class JdbcUrlBuilderTest {
             1L,
             3000,
             null,
-            null
-        );
+            null,
+            null);
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:sqlite:/tmp/app.db");
@@ -84,8 +84,8 @@ class JdbcUrlBuilderTest {
             1L,
             3000,
             null,
-            null
-        );
+            null,
+            null);
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:sqlite::memory:");
@@ -106,8 +106,8 @@ class JdbcUrlBuilderTest {
             1L,
             3000,
             null,
-            null
-        );
+            null,
+            null);
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:sqlite::memory:");
@@ -128,8 +128,8 @@ class JdbcUrlBuilderTest {
             1L,
             3000,
             null,
-            null
-        );
+            null,
+            null);
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:sqlite::memory:");
@@ -150,8 +150,8 @@ class JdbcUrlBuilderTest {
             1L,
             3000,
             null,
-            null
-        );
+            null,
+            null);
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:mariadb://host:3306/testdb");
@@ -172,8 +172,8 @@ class JdbcUrlBuilderTest {
             1L,
             3000,
             null,
-            null
-        );
+            null,
+            null);
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:mariadb://host:3306/");
@@ -194,10 +194,134 @@ class JdbcUrlBuilderTest {
             1L,
             3000,
             null,
-            null
-        );
+            null,
+            null);
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:mariadb://host:3307/mydb");
+    }
+
+    @Test
+    void oracle_service_name_builds_thin_url() {
+        var connection = new ConnectionRecord(
+            "oracle-1",
+            "Oracle Service Name",
+            ConnectionKind.ORACLE,
+            "host",
+            1521,
+            "orclpdb",
+            "system",
+            new byte[]{1},
+            null,
+            1L,
+            3000,
+            null,
+            null,
+            null);
+
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:oracle:thin:@//host:1521/orclpdb");
+    }
+
+    @Test
+    void oracle_sid_mode_builds_sid_url() {
+        var connection = new ConnectionRecord(
+            "oracle-2",
+            "Oracle SID",
+            ConnectionKind.ORACLE,
+            "host",
+            1521,
+            "ORCL",
+            "system",
+            new byte[]{1},
+            null,
+            1L,
+            3000,
+            null,
+            null,
+            "sid");
+
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:oracle:thin:@host:1521:ORCL");
+    }
+
+    @Test
+    void oracle_null_database_uses_default() {
+        var connection = new ConnectionRecord(
+            "oracle-3",
+            "Oracle Default DB",
+            ConnectionKind.ORACLE,
+            "host",
+            1521,
+            null,
+            "system",
+            new byte[]{1},
+            null,
+            1L,
+            3000,
+            null,
+            null,
+            null);
+
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:oracle:thin:@//host:1521/ORCL");
+    }
+
+    @Test
+    void oracle_sid_null_database_uses_default() {
+        var connection = new ConnectionRecord(
+            "oracle-4",
+            "Oracle SID Default DB",
+            ConnectionKind.ORACLE,
+            "host",
+            1521,
+            null,
+            "system",
+            new byte[]{1},
+            null,
+            1L,
+            3000,
+            null,
+            null,
+            "sid");
+
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:oracle:thin:@host:1521:ORCL");
+    }
+
+    @Test
+    void oracle_dbConnection_builds_service_name_url() {
+        var connection = new DbConnection(
+            "c1",
+            "oracle-root",
+            DbType.ORACLE,
+            "192.168.1.5",
+            1521,
+            "freepdb1",
+            "system",
+            "secret",
+            Instant.parse("2026-04-21T00:00:00Z")
+        );
+
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:oracle:thin:@//192.168.1.5:1521/freepdb1");
+    }
+
+    @Test
+    void oracle_dbConnection_null_database_uses_default() {
+        var connection = new DbConnection(
+            "c2",
+            "oracle-default",
+            DbType.ORACLE,
+            "localhost",
+            1521,
+            null,
+            "system",
+            "secret",
+            Instant.parse("2026-04-21T00:00:00Z")
+        );
+
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:oracle:thin:@//localhost:1521/ORCL");
     }
 }

@@ -6,13 +6,60 @@ export interface RecordedCall {
   timestamp: number
 }
 
+function recorderInitScript() {
+  if ((window as any).__mcpRecorder) return
+  ;(window as any).__mcpRecorder = []
+
+  function extractToolName(btn: HTMLButtonElement): string {
+    // TextShimmer renders the text twice (base + shimmer spans), so
+    // prefer the dedicated base span if present.
+    const base = btn.querySelector('[data-slot="text-shimmer-char-base"]')
+    if (base) return base.textContent?.trim() ?? ''
+
+    const text = btn.textContent?.trim() ?? ''
+    if (!text.startsWith('datatalk_')) return text
+
+    // Heuristic: dedupe when the string is exactly "X" + "X"
+    if (text.length % 2 === 0) {
+      const half = text.length / 2
+      if (text.substring(0, half) === text.substring(half)) {
+        return text.substring(0, half)
+      }
+    }
+    return text
+  }
+
+  function scan() {
+    const buttons = document.querySelectorAll(
+      '[data-component="session-turn"] button'
+    )
+    buttons.forEach((btn) => {
+      const text = extractToolName(btn as HTMLButtonElement)
+      if (!text.startsWith('datatalk_')) return
+      if ((btn as any).__mcpRecorded) return
+      ;(btn as any).__mcpRecorded = true
+
+      ;(window as any).__mcpRecorder.push({
+        tool: text,
+        params: {},
+        timestamp: Date.now(),
+      })
+    })
+  }
+
+  const observer = new MutationObserver(scan)
+  observer.observe(document.body, { childList: true, subtree: true })
+  ;(window as any).__mcpRecorderObserver = observer
+  scan()
+}
+
 /**
  * Mount a tool recorder that captures AI-triggered tool calls.
  *
- * Strategy: the frontend renders tool invocations as DOM cards
- * (data-testid="tool-call-card" / "tool-card") after receiving
- * SSE stream parts of type 'tool'.  We poll the DOM and extract
- * tool name + input from each card.
+ * Strategy: the frontend renders tool invocations as DOM buttons
+ * inside [data-component="session-turn"] with text starting with
+ * "datatalk_". We observe the DOM and extract the tool name from
+ * button textContent.
  *
  * NOTE: In the DataTalk architecture the actual MCP /mcp JSON-RPC
  * exchange happens server-side (OpenCode ↔ backend).  The frontend
@@ -21,45 +68,10 @@ export interface RecordedCall {
  * intercepting fetch.
  */
 export async function mountToolRecorder(page: Page) {
-  await page.addInitScript(() => {
-    ;(window as any).__mcpRecorder = []
-
-    const observer = new MutationObserver(() => {
-      const cards = document.querySelectorAll(
-        '[data-testid="tool-call-card"], [data-testid="tool-card"]'
-      )
-      cards.forEach((card) => {
-        const toolName =
-          card.getAttribute('data-tool-name') ??
-          card.getAttribute('data-tool') ??
-          card.querySelector('[data-tool-name]')?.getAttribute('data-tool-name') ??
-          ''
-        if (!toolName) return
-
-        const existing = ((window as any).__mcpRecorder as RecordedCall[]).some(
-          (c) => c.tool === toolName && Math.abs(c.timestamp - Date.now()) < 500
-        )
-        if (existing) return
-
-        const paramsAttr = card.getAttribute('data-params')
-        let params: Record<string, unknown> = {}
-        if (paramsAttr) {
-          try {
-            params = JSON.parse(paramsAttr)
-          } catch {}
-        }
-
-        ;(window as any).__mcpRecorder.push({
-          tool: toolName,
-          params,
-          timestamp: Date.now(),
-        })
-      })
-    })
-
-    observer.observe(document.body, { childList: true, subtree: true })
-    ;(window as any).__mcpRecorderObserver = observer
-  })
+  // Register for future navigations
+  await page.addInitScript(recorderInitScript)
+  // If page is already loaded, inject immediately
+  await page.evaluate(recorderInitScript)
 
   return {
     callsFor: async (tool: string): Promise<RecordedCall[]> =>

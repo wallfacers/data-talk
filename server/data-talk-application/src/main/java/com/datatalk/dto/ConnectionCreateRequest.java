@@ -8,5 +8,6 @@ public record ConnectionCreateRequest(
     String databaseName,  // optional - null for server-level connection
     String username,
     String password,
-    Integer connectTimeout  // optional, defaults to 3000ms
+    Integer connectTimeout,  // optional, defaults to 3000ms
+    String oracleServiceType  // optional - null or 'service' = service name mode, 'sid' = SID mode (Oracle only)
 ) {}

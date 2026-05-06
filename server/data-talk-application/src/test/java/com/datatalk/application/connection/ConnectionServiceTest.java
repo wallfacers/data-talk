@@ -31,7 +31,7 @@ class ConnectionServiceTest {
 
         when(repo.findById("c1")).thenReturn(Optional.of(
             new ConnectionRecord("c1", "测试连接", "h2", "localhost", 9999,
-                "mem:it;DB_CLOSE_DELAY=-1", "sa", new byte[]{}, null, 0, 3000, null, null)));
+                "mem:it;DB_CLOSE_DELAY=-1", "sa", new byte[]{}, null, 0, 3000, null, null, null)));
         when(vault.open(any())).thenReturn("");
 
         var r = svc.testConnection("c1");
@@ -45,7 +45,7 @@ class ConnectionServiceTest {
         var vault = mock(SecretVault.class);
         var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator());
         when(repo.findById("c1")).thenReturn(Optional.of(
-            new ConnectionRecord("c1", "测试连接", "mysql", "127.0.0.1", 1, "x", "u", new byte[]{}, null, 0, 3000, null, null)));
+            new ConnectionRecord("c1", "测试连接", "mysql", "127.0.0.1", 1, "x", "u", new byte[]{}, null, 0, 3000, null, null, null)));
         when(vault.open(any())).thenReturn("p");
 
         var r = svc.testConnection("c1");
@@ -62,7 +62,7 @@ class ConnectionServiceTest {
 
         when(repo.findById("c1")).thenReturn(Optional.of(
             new ConnectionRecord("c1", "测试连接", "h2", "localhost", 9999,
-                "mem:it;DB_CLOSE_DELAY=-1", "sa", new byte[]{}, null, 0, 3000, null, null)));
+                "mem:it;DB_CLOSE_DELAY=-1", "sa", new byte[]{}, null, 0, 3000, null, null, null)));
         when(vault.open(any())).thenReturn("");
 
         var r = svc.testConnection("c1");
@@ -79,7 +79,7 @@ class ConnectionServiceTest {
         var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, clock, translator());
 
         when(repo.findById("c1")).thenReturn(Optional.of(
-            new ConnectionRecord("c1", "测试连接", "mysql", "127.0.0.1", 1, "x", "u", new byte[]{}, null, 0, 3000, null, null)));
+            new ConnectionRecord("c1", "测试连接", "mysql", "127.0.0.1", 1, "x", "u", new byte[]{}, null, 0, 3000, null, null, null)));
         when(vault.open(any())).thenReturn("p");
 
         var r = svc.testConnection("c1");
@@ -96,7 +96,7 @@ class ConnectionServiceTest {
 
         when(repo.findById("c1")).thenReturn(Optional.of(
             new ConnectionRecord("c1", "测试连接", "mysql", "127.0.0.1", 3306,
-                "analytics", "u", new byte[]{1}, "digest", 123L, 3000, "ok", 456L)));
+                "analytics", "u", new byte[]{1}, "digest", 123L, 3000, "ok", 456L, null)));
 
         var dto = svc.get("c1");
 

@@ -352,7 +352,7 @@ Recorded 2026-05-01 integration smoke:
 - verify ER Designer CREATE-only SQLite behavior: `SqliteDdlGeneratorTest`
   passed.
 
-- [ ] **Step 3: Commit implementation**
+- [x] **Step 3: Commit implementation**
 
 Run:
 
@@ -364,7 +364,6 @@ git commit -m "feat(data-sources): complete sqlite coverage"
 
 Expected: commit succeeds after all checks pass.
 
-Status note: deferred for now because the shared `develop` worktree contains
-other unrelated local changes and untracked Wave B planning artifacts. Commit
-only the SQLite slice after those unrelated changes are separated or approved
-for inclusion.
+Status note: committed as `6841ad4 feat(data-sources): complete sqlite coverage`
++ follow-up `9eb57d2 fix(data-sources): tighten sqlite compatibility gates`.
+Both are on `develop`.

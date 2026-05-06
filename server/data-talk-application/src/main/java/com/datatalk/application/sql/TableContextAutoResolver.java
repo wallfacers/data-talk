@@ -154,7 +154,8 @@ public class TableContextAutoResolver {
             connection.createdAt(),
             connection.connectTimeout(),
             connection.lastTestStatus(),
-            connection.lastTestAt()
+            connection.lastTestAt(),
+            connection.oracleServiceType()
         );
     }
 

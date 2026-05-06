@@ -172,7 +172,8 @@ class ConnectionManagementActionsIT {
             "mem:update_confirmable;DB_CLOSE_DELAY=-1",
             "sa",
             "",
-            3000
+            3000,
+            null
         );
         sessionRepo.upsert(new SessionRecord("s-update", connectionId, "Update", false, null, 1L, 1L, false));
         contextRepo.upsert(new SessionDataContextRecord(
@@ -249,7 +250,8 @@ class ConnectionManagementActionsIT {
             "mem:update_confirmable_missing_token;DB_CLOSE_DELAY=-1",
             "sa",
             "",
-            3000
+            3000,
+            null
         );
         sessionRepo.upsert(new SessionRecord("s-update-token", connectionId, "Update", false, null, 1L, 1L, false));
         LocaleContextHolder.setLocale(Locale.SIMPLIFIED_CHINESE);

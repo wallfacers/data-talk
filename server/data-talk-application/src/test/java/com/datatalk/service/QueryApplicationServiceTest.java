@@ -94,8 +94,8 @@ class QueryApplicationServiceTest {
                 Instant.parse("2026-04-20T00:00:00Z").toEpochMilli(),
                 3000,
                 null,
-                null
-        );
+                null,
+            null);
         var connection = new DbConnection(
                 "conn-1",
                 "Primary",
@@ -140,8 +140,8 @@ class QueryApplicationServiceTest {
             Instant.parse("2026-04-20T00:00:00Z").toEpochMilli(),
             3000,
             null,
-            null
-        );
+            null,
+            null);
         when(sessionDataContextService.get("session-1")).thenReturn(new SessionDataContextRecord(
             "session-1",
             "conn-1",

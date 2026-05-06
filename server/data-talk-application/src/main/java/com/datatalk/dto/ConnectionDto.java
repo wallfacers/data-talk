@@ -11,5 +11,6 @@ public record ConnectionDto(
     long createdAt,
     int connectTimeout,
     String lastTestStatus,
-    Long lastTestAt
+    Long lastTestAt,
+    String oracleServiceType  // nullable - null or 'service' = service name mode, 'sid' = SID mode (Oracle only)
 ) {}

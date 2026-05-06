@@ -16,37 +16,58 @@ export class ChatPanelPage {
   }
 
   async getLastMessage(): Promise<string> {
-    const messages = this.page.locator('[data-testid="chat-message"]')
-      .or(this.page.locator('[data-testid="message-bubble"]'))
-    const count = await messages.count()
+    const turns = this.page.locator('[data-component="session-turn"]')
+    const count = await turns.count()
     if (count === 0) return ''
-    return await messages.last().textContent() ?? ''
+    return await turns.last().textContent() ?? ''
   }
 
   async getLastToolCallCard(): Promise<{ toolName: string; status: string } | null> {
-    const cards = this.page.locator('[data-testid="tool-call-card"]')
-      .or(this.page.locator('[data-testid="tool-card"]'))
-    const count = await cards.count()
+    // Tool calls are rendered as buttons with datatalk_ prefix inside session turns.
+    // TextShimmer doubles the textContent, so read from the base span when present.
+    const toolButtons = this.page.locator('[data-component="session-turn"] button')
+      .filter({ hasText: /^datatalk_/ })
+    const count = await toolButtons.count()
     if (count === 0) return null
-    const last = cards.last()
-    const toolName = await last.getAttribute('data-tool-name') ?? await last.getAttribute('data-tool') ?? ''
-    const status = await last.getAttribute('data-status') ?? ''
-    return { toolName, status }
+    const last = toolButtons.last()
+    const toolName = await last.locator('[data-slot="text-shimmer-char-base"]').textContent()
+      .catch(() => last.textContent()) ?? ''
+    return { toolName: toolName.trim(), status: '' }
   }
 
   async waitForAiResponse(timeout = 60_000): Promise<void> {
-    // Wait for streaming indicator to disappear or tool call to complete
-    const indicator = this.page.locator('[data-testid="ai-streaming-indicator"]')
-      .or(this.page.locator('text="AI 正在准备"'))
-      .or(this.page.locator('text="思考中"'))
+    // AI response lifecycle:
+    // 1. [data-testid="assistant-thinking-shell"] appears (visible) when AI starts
+    // 2. Shell becomes invisible when content starts streaming
+    // 3. Shell is removed from DOM when response completes
+    const thinkingShell = this.page.locator('[data-testid="assistant-thinking-shell"]')
+
+    // Phase 1: Wait for AI to start (shell appears)
     try {
-      await expect(indicator).toHaveCount(0, { timeout })
+      await expect(thinkingShell).toBeVisible({ timeout: 15000 })
     } catch {
-      // If no streaming indicator exists, just wait for any new message
+      // Shell may never appear if AI responds instantly or errors
     }
-    // Ensure at least one message exists
-    const messages = this.page.locator('[data-testid="chat-message"]')
-    await expect(messages).not.toHaveCount(0, { timeout: 5_000 })
+
+    // Phase 2: Wait for AI to finish (shell hidden/removed)
+    await expect(thinkingShell).toBeHidden({ timeout })
+
+    // Phase 3: Tool calls may render *after* the thinking shell disappears.
+    // Wait until the count of [data-component="basic-tool"] cards stays
+    // stable for a short period (1.5 s) so late tool buttons are captured.
+    await this.page.waitForFunction(
+      () => {
+        const key = '__dtAiResponseSettle'
+        const count = document.querySelectorAll('[data-component="basic-tool"]').length
+        const last = (window as any)[key]
+        if (!last || last.count !== count) {
+          ;(window as any)[key] = { count, time: Date.now() }
+          return false
+        }
+        return Date.now() - last.time >= 1500
+      },
+      { timeout: timeout - 15000, polling: 500 }
+    )
   }
 
   async isDegradedBannerVisible(): Promise<boolean> {

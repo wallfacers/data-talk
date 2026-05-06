@@ -20,15 +20,16 @@ public class ConnectionRepository {
         rs.getBytes("password_enc"), rs.getString("schema_digest"), rs.getLong("created_at"),
         rs.getInt("connect_timeout"),
         rs.getString("last_test_status"),
-        rs.getObject("last_test_at") instanceof Number n ? n.longValue() : null
+        rs.getObject("last_test_at") instanceof Number n ? n.longValue() : null,
+        rs.getString("oracle_service_type")
     );
 
     public void insert(ConnectionRecord c) {
         jdbc.update("""
-            INSERT INTO connections(id, name, kind, host, port, database_name, username, password_enc, schema_digest, created_at, connect_timeout)
-            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO connections(id, name, kind, host, port, database_name, username, password_enc, schema_digest, created_at, connect_timeout, oracle_service_type)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, c.id(), c.name(), c.kind(), c.host(), c.port(), c.databaseName(), c.username(),
-            c.passwordEnc(), c.schemaDigest(), c.createdAt(), c.connectTimeout());
+            c.passwordEnc(), c.schemaDigest(), c.createdAt(), c.connectTimeout(), c.oracleServiceType());
     }
 
     public List<ConnectionRecord> findAll() {
@@ -44,10 +45,10 @@ public class ConnectionRepository {
         int n = jdbc.update("""
             UPDATE connections
                SET name = ?, kind = ?, host = ?, port = ?, database_name = ?, username = ?,
-                   password_enc = ?, schema_digest = ?, connect_timeout = ?
+                   password_enc = ?, schema_digest = ?, connect_timeout = ?, oracle_service_type = ?
              WHERE id = ?
             """, c.name(), c.kind(), c.host(), c.port(), c.databaseName(), c.username(),
-            c.passwordEnc(), c.schemaDigest(), c.connectTimeout(), c.id());
+            c.passwordEnc(), c.schemaDigest(), c.connectTimeout(), c.oracleServiceType(), c.id());
         if (n == 0) throw new java.util.NoSuchElementException("unknown connection: " + c.id());
     }
 

@@ -120,10 +120,16 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
     }
 
     private SqlRiskAnalysis classifyDialectSpecific(String sql, String connectionKind) {
-        if (!ConnectionKind.SQLITE.equalsIgnoreCase(connectionKind)) {
-            return null;
+        if (ConnectionKind.SQLITE.equalsIgnoreCase(connectionKind)) {
+            return classifySqliteSpecific(sql);
         }
+        if (ConnectionKind.ORACLE.equalsIgnoreCase(connectionKind)) {
+            return classifyOracleSpecific(sql);
+        }
+        return null;
+    }
 
+    private SqlRiskAnalysis classifySqliteSpecific(String sql) {
         String normalized = stripLeadingComments(sql).toLowerCase(Locale.ROOT);
         if (normalized.isEmpty()) return null;
         if (normalized.startsWith("explain query plan")) {
@@ -142,6 +148,31 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
             || normalized.startsWith("vacuum")
             || normalized.startsWith("reindex")) {
             return SqlRiskAnalysis.high("sqlite_file_or_maintenance_command");
+        }
+        return null;
+    }
+
+    private SqlRiskAnalysis classifyOracleSpecific(String sql) {
+        String normalized = stripLeadingComments(sql).toLowerCase(Locale.ROOT);
+        if (normalized.isEmpty()) return null;
+        // EXPLAIN PLAN FOR is read-only (L1)
+        if (normalized.startsWith("explain plan")) {
+            return SqlRiskAnalysis.low("explain_plan");
+        }
+        // Oracle high-risk commands
+        if (normalized.startsWith("merge ")
+            || normalized.startsWith("merge\t")) {
+            return SqlRiskAnalysis.high("oracle_merge");
+        }
+        if (normalized.startsWith("call ")) {
+            return SqlRiskAnalysis.high("oracle_call");
+        }
+        if (normalized.startsWith("begin ")
+            || normalized.startsWith("declare ")) {
+            return SqlRiskAnalysis.high("oracle_plsql_block");
+        }
+        if (normalized.startsWith("truncate ")) {
+            return SqlRiskAnalysis.high("truncate");
         }
         return null;
     }

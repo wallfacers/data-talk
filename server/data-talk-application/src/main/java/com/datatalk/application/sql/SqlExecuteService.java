@@ -574,7 +574,8 @@ public class SqlExecuteService {
         }
         if (("postgres".equalsIgnoreCase(context.connection().kind())
             || "postgresql".equalsIgnoreCase(context.connection().kind())
-            || "h2".equalsIgnoreCase(context.connection().kind()))
+            || "h2".equalsIgnoreCase(context.connection().kind())
+            || "oracle".equalsIgnoreCase(context.connection().kind()))
             && hasText(context.schema())) {
             connection.setSchema(context.schema());
         }
@@ -594,7 +595,8 @@ public class SqlExecuteService {
             connection.createdAt(),
             connection.connectTimeout(),
             connection.lastTestStatus(),
-            connection.lastTestAt()
+            connection.lastTestAt(),
+            connection.oracleServiceType()
         );
     }
 

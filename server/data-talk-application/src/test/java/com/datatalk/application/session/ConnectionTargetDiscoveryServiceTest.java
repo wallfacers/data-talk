@@ -68,8 +68,8 @@ class ConnectionTargetDiscoveryServiceTest {
         }
 
         connectionRepo.insert(new ConnectionRecord(
-            "c1", "H2 主库", "h2", "localhost", 0, dbName, "sa", new byte[]{1}, null, 1L, 3000, null, null
-        ));
+            "c1", "H2 主库", "h2", "localhost", 0, dbName, "sa", new byte[]{1}, null, 1L, 3000, null, null,
+            null));
         Mockito.when(connectionService.decryptPassword("c1")).thenReturn("");
     }
 
@@ -95,8 +95,8 @@ class ConnectionTargetDiscoveryServiceTest {
         DriverManager.registerDriver(driver);
         try {
             connectionRepo.insert(new ConnectionRecord(
-                "mysql-1", "MySQL", "mysql", "localhost", 3306, "app", "root", new byte[]{1}, null, 2L, 3000, null, null
-            ));
+                "mysql-1", "MySQL", "mysql", "localhost", 3306, "app", "root", new byte[]{1}, null, 2L, 3000, null, null,
+            null));
             Mockito.when(connectionService.decryptPassword("mysql-1")).thenReturn("");
 
             var result = service.discover("mysql-1");
@@ -122,8 +122,8 @@ class ConnectionTargetDiscoveryServiceTest {
         DriverManager.registerDriver(driver);
         try {
             connectionRepo.insert(new ConnectionRecord(
-                "mariadb-1", "MariaDB", "mariadb", "localhost", 3306, "app", "root", new byte[]{1}, null, 2L, 3000, null, null
-            ));
+                "mariadb-1", "MariaDB", "mariadb", "localhost", 3306, "app", "root", new byte[]{1}, null, 2L, 3000, null, null,
+            null));
             Mockito.when(connectionService.decryptPassword("mariadb-1")).thenReturn("");
 
             var result = service.discover("mariadb-1");
@@ -151,8 +151,8 @@ class ConnectionTargetDiscoveryServiceTest {
             3L,
             3000,
             null,
-            null
-        ));
+            null,
+            null));
         Mockito.when(connectionService.decryptPassword("sqlite-memory")).thenReturn("");
 
         var result = service.discover("sqlite-memory");
@@ -177,13 +177,45 @@ class ConnectionTargetDiscoveryServiceTest {
             4L,
             3000,
             null,
-            null
-        ));
+            null,
+            null));
         Mockito.when(connectionService.decryptPassword("sqlite-invalid")).thenReturn("");
 
         assertThatThrownBy(() -> service.discover("sqlite-invalid"))
             .isInstanceOf(IllegalStateException.class)
             .hasMessageContaining(invalidTarget.toString());
+    }
+
+    @Test
+    void discover_oracle_discovers_schemas_and_filters_system_schemas() throws Exception {
+        Connection jdbc = mock(Connection.class);
+        var meta = mock(java.sql.DatabaseMetaData.class);
+        ResultSet schemas = mock(ResultSet.class);
+        when(jdbc.getMetaData()).thenReturn(meta);
+        when(meta.getSchemas()).thenReturn(schemas);
+        // Return schemas including Oracle system schemas that should be filtered
+        when(schemas.next()).thenReturn(
+            true, true, true, true, true, true, true, true, false);
+        when(schemas.getString("TABLE_SCHEM")).thenReturn(
+            "HR", "SYS", "SYSTEM", "SCOTT", "MDSYS", "DBSNMP", "XDB", "ORDSYS");
+        Driver driver = new StubDriver("jdbc:oracle:thin:@//", jdbc);
+        DriverManager.registerDriver(driver);
+        try {
+            connectionRepo.insert(new ConnectionRecord(
+                "oracle-1", "Oracle", "oracle", "host", 1521, "orclpdb", "system",
+                new byte[]{1}, null, 10L, 3000, null, null,
+                null));
+            Mockito.when(connectionService.decryptPassword("oracle-1")).thenReturn("pw");
+
+            var result = service.discover("oracle-1");
+
+            // Oracle: configured database (orclpdb) is in databaseNames
+            assertThat(result.databaseNames()).containsExactly("orclpdb");
+            // System schemas (SYS, SYSTEM, MDSYS, DBSNMP, XDB, ORDSYS) are filtered out
+            assertThat(result.schemaNames()).containsExactlyInAnyOrder("HR", "SCOTT");
+        } finally {
+            DriverManager.deregisterDriver(driver);
+        }
     }
 
     private Translator translator() {

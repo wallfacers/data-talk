@@ -294,7 +294,8 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
             connection.createdAt(),
             connection.connectTimeout(),
             connection.lastTestStatus(),
-            connection.lastTestAt()
+            connection.lastTestAt(),
+            connection.oracleServiceType()
         );
     }
 

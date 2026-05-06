@@ -87,7 +87,8 @@ abstract class AbstractDiagnosticsProvider implements DiagnosticsProvider {
             conn.createdAt(),
             conn.connectTimeout(),
             conn.lastTestStatus(),
-            conn.lastTestAt()
+            conn.lastTestAt(),
+            conn.oracleServiceType()
         );
     }
 

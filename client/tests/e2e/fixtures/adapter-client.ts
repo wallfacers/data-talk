@@ -25,12 +25,13 @@ export interface McpRpcResponse {
 export function adapterClient(request: APIRequestContext) {
   return {
     // ── MCP JSON-RPC (tool contract layer) ──
-    mcpCall: async (name: string, arguments_: Record<string, unknown>, opts?: { sessionId?: string }): Promise<McpRpcResponse> => {
+    mcpCall: async (name: string, arguments_: Record<string, unknown>, opts?: { sessionId?: string; timeout?: number }): Promise<McpRpcResponse> => {
       // Backend /mcp expects MCP tool name (e.g. 'read_schema'), not OpenCode name ('datatalk_read_schema')
       const mcpToolName = name.startsWith('datatalk_') ? name.slice('datatalk_'.length) : name
 
       // Inject bridge fields required by McpActionBridge
       const { getBridgeNonce, getLatestOpenCodeSession, getOpenCodeSessionForConnection, getOpenCodeSessionFor } = await import('./mcp-context')
+      const { getCachedHybridSession } = await import('./hybrid-session')
       const connId = (arguments_ as any).connectionId as string | undefined
       let ctx = null
       if (opts?.sessionId) {
@@ -38,7 +39,12 @@ export function adapterClient(request: APIRequestContext) {
         if (ocSid) ctx = { dataTalkSessionId: opts.sessionId, openCodeSessionId: ocSid }
       }
       if (!ctx) {
-        ctx = connId ? (getOpenCodeSessionForConnection(connId) ?? getLatestOpenCodeSession()) : getLatestOpenCodeSession()
+        const cached = getCachedHybridSession()
+        if (cached) {
+          ctx = cached
+        } else {
+          ctx = connId ? (getOpenCodeSessionForConnection(connId) ?? getLatestOpenCodeSession()) : getLatestOpenCodeSession()
+        }
       }
       const nonce = getBridgeNonce()
       const args: Record<string, unknown> = { ...arguments_ }
@@ -55,6 +61,7 @@ export function adapterClient(request: APIRequestContext) {
           method: 'tools/call',
           params: { name: mcpToolName, arguments: args },
         },
+        timeout: opts?.timeout ?? 30_000,
       })
       const json = await res.json() as McpRpcResponse
 

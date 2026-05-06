@@ -84,8 +84,8 @@ class UseTargetResolverTest {
         resolver = new UseTargetResolver(sessionRepo, connectionRepo, contextRepo, discovery, translator(),
             Clock.fixed(Instant.ofEpochMilli(1_710_000_100_000L), ZoneOffset.UTC));
 
-        connectionRepo.insert(new ConnectionRecord("c1", "主库", "h2", "localhost", 0, "app_db", "sa", new byte[]{1}, null, 1L, 3000, null, null));
-        connectionRepo.insert(new ConnectionRecord("c2", "analytics", "h2", "localhost", 0, "analytics_db", "sa", new byte[]{1}, null, 1L, 3000, null, null));
+        connectionRepo.insert(new ConnectionRecord("c1", "主库", "h2", "localhost", 0, "app_db", "sa", new byte[]{1}, null, 1L, 3000, null, null, null));
+        connectionRepo.insert(new ConnectionRecord("c2", "analytics", "h2", "localhost", 0, "analytics_db", "sa", new byte[]{1}, null, 1L, 3000, null, null, null));
         sessionRepo.upsert(new SessionRecord("s1", "c1", "ctx", false, null, 1L, 1L, false));
         contextRepo.upsert(new SessionDataContextRecord("s1", "c1", "主库", null, null, null, 1L));
     }

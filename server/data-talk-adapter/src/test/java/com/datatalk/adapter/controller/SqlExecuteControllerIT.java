@@ -45,7 +45,8 @@ class SqlExecuteControllerIT {
         // H2 in-memory DB: databaseName field is used by JdbcUrlBuilder for H2 URL suffix
         var cr = new ConnectionRecord(CONN_ID, "IT DB", "h2",
             "localhost", 0, "mem:sqlit;DB_CLOSE_DELAY=-1", "sa", vault.seal(""),
-            null, System.currentTimeMillis(), 10, null, null);
+            null, System.currentTimeMillis(), 10, null, null,
+            null);
         connRepo.insert(cr);
         // Seed test table in the H2 in-memory database
         try (var c = DriverManager.getConnection("jdbc:h2:mem:sqlit;DB_CLOSE_DELAY=-1", "sa", "");
@@ -125,7 +126,8 @@ class SqlExecuteControllerIT {
         connRepo.deleteAll();
         connRepo.insert(new ConnectionRecord(CONN_ID, "IT DB", "h2",
             "localhost", 0, "mem:sqlit;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false", "sa", vault.seal(""),
-            null, System.currentTimeMillis(), 10, null, null));
+            null, System.currentTimeMillis(), 10, null, null,
+            null));
 
         long now = System.currentTimeMillis();
         jdbc.update("""
@@ -322,8 +324,8 @@ class SqlExecuteControllerIT {
                 System.currentTimeMillis(),
                 10,
                 null,
-                null
-            ));
+                null,
+            null));
             try (var c = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
                  var st = c.createStatement()) {
                 st.execute("DROP TABLE IF EXISTS procedural_items");
@@ -403,8 +405,8 @@ class SqlExecuteControllerIT {
             System.currentTimeMillis(),
             3000,
             null,
-            null
-        ));
+            null,
+            null));
 
         mvc.perform(post("/api/sql/execute")
                 .contentType(MediaType.APPLICATION_JSON)

@@ -24,9 +24,15 @@ public final class JdbcUrlBuilder {
             case ConnectionKind.MARIADB ->
                 db != null ? "jdbc:mariadb://" + c.host() + ":" + c.port() + "/" + db
                            : "jdbc:mariadb://" + c.host() + ":" + c.port() + "/";
-            case ConnectionKind.ORACLE ->
-                throw new DataTalkException(DataTalkErrorCodes.DATABASE_KIND_UNSUPPORTED,
-                    "oracle connection not yet implemented", false);
+            case ConnectionKind.ORACLE -> {
+                String serviceType = c.oracleServiceType();
+                boolean useSid = "sid".equalsIgnoreCase(serviceType);
+                if (useSid) {
+                    yield "jdbc:oracle:thin:@" + c.host() + ":" + c.port() + ":" + (db != null ? db : "ORCL");
+                } else {
+                    yield "jdbc:oracle:thin:@//" + c.host() + ":" + c.port() + "/" + (db != null ? db : "ORCL");
+                }
+            }
             case ConnectionKind.SQLSERVER ->
                 throw new DataTalkException(DataTalkErrorCodes.DATABASE_KIND_UNSUPPORTED,
                     "sqlserver connection not yet implemented", false);
@@ -52,8 +58,7 @@ public final class JdbcUrlBuilder {
                 db != null ? "jdbc:mariadb://" + c.host() + ":" + c.port() + "/" + db
                            : "jdbc:mariadb://" + c.host() + ":" + c.port() + "/";
             case ORACLE ->
-                throw new DataTalkException(DataTalkErrorCodes.DATABASE_KIND_UNSUPPORTED,
-                    "oracle connection not yet implemented", false);
+                "jdbc:oracle:thin:@//" + c.host() + ":" + c.port() + "/" + (db != null ? db : "ORCL");
             case SQLSERVER ->
                 throw new DataTalkException(DataTalkErrorCodes.DATABASE_KIND_UNSUPPORTED,
                     "sqlserver connection not yet implemented", false);

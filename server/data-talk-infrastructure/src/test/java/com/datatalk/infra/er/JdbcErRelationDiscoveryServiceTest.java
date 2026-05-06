@@ -60,12 +60,12 @@ class JdbcErRelationDiscoveryServiceTest {
         var conn = mock(ConnectionService.class);
         when(repo.findById(CONNECTION_ID)).thenReturn(Optional.of(new ConnectionRecord(
             CONNECTION_ID, "ER discover test", "h2", "local", 0, DB, "sa",
-            new byte[0], null, 0L, 3000, null, null
-        )));
+            new byte[0], null, 0L, 3000, null, null,
+            null)));
         when(repo.findById(ORACLE_CONNECTION_ID)).thenReturn(Optional.of(new ConnectionRecord(
             ORACLE_CONNECTION_ID, "Oracle stub", "oracle", "local", 0, "x", "sa",
-            new byte[0], null, 0L, 3000, null, null
-        )));
+            new byte[0], null, 0L, 3000, null, null,
+            null)));
         when(conn.decryptPassword(CONNECTION_ID)).thenReturn("");
         discovery = new JdbcErRelationDiscoveryService(repo, conn);
     }

@@ -4,17 +4,25 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Array;
 import java.sql.SQLException;
+import java.sql.Clob;
+import java.sql.Blob;
+import java.io.InputStream;
+import java.io.IOException;
+import java.io.Reader;
 
 /**
  * Normalizes JDBC values so JSON consumers in JavaScript do not lose precision
  * for integer-like numbers outside the IEEE-754 safe integer range.
- * Also unwraps vendor-specific types (e.g., PGobject for JSON/JSONB) into
- * plain strings so Jackson serializes them correctly.
+ * Also unwraps vendor-specific types (e.g., PGobject for JSON/JSONB, Oracle CLOB/BLOB)
+ * into plain strings or byte arrays so Jackson serializes them correctly.
  */
 public final class JdbcResultValueNormalizer {
 
     private static final BigInteger JS_SAFE_INTEGER_MAX = BigInteger.valueOf(9_007_199_254_740_991L);
     private static final BigInteger JS_SAFE_INTEGER_MIN = JS_SAFE_INTEGER_MAX.negate();
+
+    /** Maximum CLOB/BLOB content to read for normalization (64 KB). */
+    private static final int MAX_LOB_LENGTH = 64 * 1024;
 
     private JdbcResultValueNormalizer() {}
 
@@ -31,6 +39,14 @@ public final class JdbcResultValueNormalizer {
         if (value instanceof BigDecimal bigDecimalValue && bigDecimalValue.scale() <= 0) {
             BigInteger integerValue = bigDecimalValue.toBigInteger();
             return isSafeInteger(integerValue) ? integerValue.longValue() : integerValue.toString();
+        }
+        // Oracle CLOB normalization: read as String (truncated if large)
+        if (value instanceof Clob clobValue) {
+            return unwrapClob(clobValue);
+        }
+        // Oracle BLOB normalization: read as byte[] (truncated if large)
+        if (value instanceof Blob blobValue) {
+            return unwrapBlob(blobValue);
         }
         if (value instanceof Array arrayValue) {
             return unwrapArray(arrayValue);
@@ -71,6 +87,63 @@ public final class JdbcResultValueNormalizer {
             return value.getClass().getMethod("getValue").invoke(value);
         } catch (Exception e) {
             return value.toString();
+        }
+    }
+
+    private static String unwrapClob(Clob clob) {
+        try {
+            long length = clob.length();
+            if (length <= 0) return "";
+            int readLen = (int) Math.min(length, MAX_LOB_LENGTH);
+            String result = clob.getSubString(1, readLen);
+            return result != null ? result : "";
+        } catch (SQLException e) {
+            // Fallback: try reading via Reader
+            try (Reader reader = clob.getCharacterStream()) {
+                if (reader == null) return "";
+                StringBuilder sb = new StringBuilder();
+                char[] buffer = new char[4096];
+                int total = 0;
+                int read;
+                while (total < MAX_LOB_LENGTH && (read = reader.read(buffer)) != -1) {
+                    int toAppend = Math.min(read, MAX_LOB_LENGTH - total);
+                    sb.append(buffer, 0, toAppend);
+                    total += toAppend;
+                }
+                return sb.toString();
+            } catch (IOException | SQLException ex) {
+                return clob.toString();
+            }
+        } finally {
+            try { clob.free(); } catch (SQLException ignored) {}
+        }
+    }
+
+    private static byte[] unwrapBlob(Blob blob) {
+        try {
+            long length = blob.length();
+            if (length <= 0) return new byte[0];
+            int readLen = (int) Math.min(length, MAX_LOB_LENGTH);
+            byte[] result = blob.getBytes(1, readLen);
+            return result != null ? result : new byte[0];
+        } catch (SQLException e) {
+            // Fallback: try reading via InputStream
+            try (InputStream is = blob.getBinaryStream()) {
+                if (is == null) return new byte[0];
+                byte[] buffer = new byte[MAX_LOB_LENGTH];
+                int total = is.read(buffer);
+                if (total <= 0) return new byte[0];
+                if (total < buffer.length) {
+                    byte[] trimmed = new byte[total];
+                    System.arraycopy(buffer, 0, trimmed, 0, total);
+                    return trimmed;
+                }
+                return buffer;
+            } catch (IOException | SQLException ex) {
+                return blob.toString().getBytes();
+            }
+        } finally {
+            try { blob.free(); } catch (SQLException ignored) {}
         }
     }
 }

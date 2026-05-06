@@ -32,8 +32,8 @@ class AbstractDiagnosticsProviderTest {
     private ConnectionRecord testConn() {
         return new ConnectionRecord(
             "c1", "test", "postgresql", "localhost", 5432,
-            "postgres", "user", new byte[0], null, 0L, 5000, null, null
-        );
+            "postgres", "user", new byte[0], null, 0L, 5000, null, null,
+            null);
     }
 
     private static class TestProvider extends AbstractDiagnosticsProvider {

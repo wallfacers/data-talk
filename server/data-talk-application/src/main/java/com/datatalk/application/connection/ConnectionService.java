@@ -37,12 +37,13 @@ public class ConnectionService {
     private static final int DEFAULT_CONNECT_TIMEOUT = 3000;
 
     public String create(String name, String kind, String host, int port, String databaseName,
-                         String username, String password, Integer connectTimeout) {
+                         String username, String password, Integer connectTimeout,
+                         String oracleServiceType) {
         byte[] enc = vault.seal(password);
         String id = java.util.UUID.randomUUID().toString();
         int timeout = connectTimeout != null ? connectTimeout : DEFAULT_CONNECT_TIMEOUT;
         String effectiveName = Strings.defaultIfBlank(name, translator.get("connection.default_name", id.substring(0, 8)));
-        repo.insert(new ConnectionRecord(id, effectiveName, kind, host, port, databaseName, username, enc, null, clock.millis(), timeout, null, null));
+        repo.insert(new ConnectionRecord(id, effectiveName, kind, host, port, databaseName, username, enc, null, clock.millis(), timeout, null, null, oracleServiceType));
         return id;
     }
 
@@ -67,15 +68,17 @@ public class ConnectionService {
     }
 
     public void update(String id, String name, String kind, String host, int port, String databaseName,
-                       String username, String password, Integer connectTimeout) {
+                       String username, String password, Integer connectTimeout,
+                       String oracleServiceType) {
         var existing = repo.findById(id)
             .orElseThrow(() -> new java.util.NoSuchElementException(translator.get("error.connection.unknown", id)));
         byte[] enc = password != null ? vault.seal(password) : existing.passwordEnc();
         int timeout = connectTimeout != null ? connectTimeout : existing.connectTimeout();
+        String effectiveOracleType = oracleServiceType != null ? oracleServiceType : existing.oracleServiceType();
         String effectiveName = Strings.defaultIfBlank(name, translator.get("connection.default_name", id.substring(0, 8)));
         repo.update(new ConnectionRecord(id, effectiveName, kind, host, port, databaseName, username,
             enc, existing.schemaDigest(), existing.createdAt(), timeout,
-            existing.lastTestStatus(), existing.lastTestAt()));
+            existing.lastTestStatus(), existing.lastTestAt(), effectiveOracleType));
     }
 
     public boolean deleteById(String id) {
@@ -102,6 +105,9 @@ public class ConnectionService {
         } else if (kind.equals(ConnectionKind.MARIADB)) {
             int timeoutMs = c.connectTimeout();
             url += (url.contains("?") ? "&" : "?") + "connectTimeout=" + timeoutMs;
+        } else if (kind.equals(ConnectionKind.ORACLE)) {
+            // Oracle JDBC supports oracle.jdbc.ReadTimeout and setLoginTimeout
+            // The URL-level timeout is limited; DriverManager.setLoginTimeout handles connect timeout
         } else if (kind.equals(ConnectionKind.POSTGRESQL)) {
             int timeoutSeconds = c.connectTimeout() / 1000;
             url += (url.contains("?") ? "&" : "?") + "connectTimeout=" + timeoutSeconds + "&socketTimeout=" + timeoutSeconds;
@@ -125,6 +131,6 @@ public class ConnectionService {
     private ConnectionDto toDto(ConnectionRecord c) {
         return new ConnectionDto(c.id(), c.name(), c.kind(), c.host(), c.port(),
             c.databaseName(), c.username(), c.createdAt(), c.connectTimeout(),
-            c.lastTestStatus(), c.lastTestAt());
+            c.lastTestStatus(), c.lastTestAt(), c.oracleServiceType());
     }
 }

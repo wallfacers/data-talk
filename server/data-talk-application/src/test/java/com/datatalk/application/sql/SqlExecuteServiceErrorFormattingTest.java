@@ -41,8 +41,8 @@ class SqlExecuteServiceErrorFormattingTest {
             Instant.parse("2026-04-22T00:00:00Z").toEpochMilli(),
             3000,
             null,
-            null
-        );
+            null,
+            null);
         when(connectionRepository.findById("conn-broken")).thenReturn(Optional.of(record));
         when(connectionService.decryptPassword("conn-broken")).thenReturn("bad-password");
         when(tableContextAutoResolver.resolve(new ResolvedExecutionContext(record, null, null), "SELECT 1"))

@@ -61,6 +61,17 @@ public class ConnectionTargetDiscoveryService {
                     // Fall through to getCatalogs() below.
                 }
             }
+            // Oracle uses schemas/owners as the primary namespace (not catalogs/databases).
+            // Discover schemas and treat them as the user-visible targets.
+            if (ConnectionKind.ORACLE.equals(connection.kind())) {
+                // Oracle does not enumerate "databases" via getCatalogs().
+                // The configured service name / SID is the database, not a catalog entry.
+                // Schema discovery below handles the rest.
+                databaseNames.clear();
+                if (configuredDatabase != null && !configuredDatabase.isBlank()) {
+                    databaseNames.add(configuredDatabase);
+                }
+            }
             if (databaseNames.isEmpty()) {
                 try (var catalogs = meta.getCatalogs()) {
                     while (catalogs.next()) {
@@ -111,8 +122,20 @@ public class ConnectionTargetDiscoveryService {
         return !normalized.equals("information_schema")
             && !normalized.equals("pg_catalog")
             && !normalized.equals("sys")
-            && !normalized.equals("system_lobs");
+            && !normalized.equals("system_lobs")
+            // Oracle system schemas to exclude
+            && !ORACLE_SYSTEM_SCHEMAS.contains(normalized);
     }
+
+    private static final Set<String> ORACLE_SYSTEM_SCHEMAS = Set.of(
+        "sys", "system", "dbsnmp", "appqossys", "dbsfwuser",
+        "gsmadmin_internal", "lbacsys", "mdsys", "olapsys",
+        "orddata", "ordplugins", "outln", "wmsys", "xdb",
+        "xs$null", "ctxsys", "ordsys", "sdo", "dvsys",
+        "oevmsys", "audsys", "ojsvd_users", "remote_scheduler_agent",
+        "dip", "sysbackup", "sysdg", "syskm", "sysrac",
+        "spatial_csw_admin_usr", "spatial_wfs_admin_usr"
+    );
 
     public record DiscoveryResult(
         String connectionId,

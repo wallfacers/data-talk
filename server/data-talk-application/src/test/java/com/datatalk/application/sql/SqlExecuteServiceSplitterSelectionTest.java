@@ -59,8 +59,8 @@ class SqlExecuteServiceSplitterSelectionTest {
             Instant.parse("2026-04-22T00:00:00Z").toEpochMilli(),
             3000,
             null,
-            null
-        );
+            null,
+            null);
         when(connectionRepository.findById("conn-1")).thenReturn(Optional.of(record));
         when(connectionService.decryptPassword("conn-1")).thenReturn("");
         when(tableContextAutoResolver.resolve(new ResolvedExecutionContext(record, record.databaseName(), null), "ignored script"))

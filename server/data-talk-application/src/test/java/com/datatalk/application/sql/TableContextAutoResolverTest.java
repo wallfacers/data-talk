@@ -121,8 +121,8 @@ class TableContextAutoResolverTest {
             Instant.parse("2026-04-21T00:00:00Z").toEpochMilli(),
             3000,
             null,
-            null
-        );
+            null,
+            null);
         when(connectionService.decryptPassword("sqlite-auto")).thenReturn("");
 
         ResolvedExecutionContext resolved = resolver.resolve(
@@ -149,8 +149,8 @@ class TableContextAutoResolverTest {
             Instant.parse("2026-04-21T00:00:00Z").toEpochMilli(),
             3000,
             null,
-            null
-        );
+            null,
+            null);
     }
 
     private static Translator translator() {

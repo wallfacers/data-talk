@@ -96,4 +96,11 @@ class DefaultSqlStatementSplittersTest {
                 "SELECT \"semi;colon\""
             );
     }
+
+    @Test
+    void routes_oracle_to_generic_splitter() {
+        // Oracle day-1 uses generic single-statement splitting.
+        assertThat(splitters.split("oracle", "SELECT 'a;b'; SELECT 1;"))
+            .containsExactly("SELECT 'a;b'", "SELECT 1");
+    }
 }

@@ -290,7 +290,8 @@ public class ReadSchemaAction implements ActionHandler<Map, Map> {
     private static void applySchema(Connection connection, String kind, String schema) throws java.sql.SQLException {
         if (("postgres".equalsIgnoreCase(kind)
             || "postgresql".equalsIgnoreCase(kind)
-            || "h2".equalsIgnoreCase(kind))
+            || "h2".equalsIgnoreCase(kind)
+            || "oracle".equalsIgnoreCase(kind))
             && hasText(schema)) {
             connection.setSchema(schema);
         }
@@ -310,7 +311,8 @@ public class ReadSchemaAction implements ActionHandler<Map, Map> {
             connection.createdAt(),
             connection.connectTimeout(),
             connection.lastTestStatus(),
-            connection.lastTestAt()
+            connection.lastTestAt(),
+            connection.oracleServiceType()
         );
     }
 

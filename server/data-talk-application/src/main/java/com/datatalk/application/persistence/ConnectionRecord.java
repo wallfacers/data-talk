@@ -5,5 +5,6 @@ public record ConnectionRecord(
     String databaseName,  // nullable - null for server-level connection
     String username, byte[] passwordEnc,
     String schemaDigest, long createdAt, int connectTimeout,
-    String lastTestStatus, Long lastTestAt
+    String lastTestStatus, Long lastTestAt,
+    String oracleServiceType  // nullable: null or 'service' = service name mode, 'sid' = SID mode
 ) {}

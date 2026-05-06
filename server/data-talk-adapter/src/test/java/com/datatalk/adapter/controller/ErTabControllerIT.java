@@ -52,7 +52,7 @@ class ErTabControllerIT {
             st.execute("CREATE TABLE users (id BIGINT PRIMARY KEY, email VARCHAR(255))");
             st.execute("CREATE TABLE orders (id BIGINT PRIMARY KEY, user_id BIGINT REFERENCES users(id))");
         }
-        connectionId = conn.create("ER ctrl IT", ConnectionKind.H2, "local", 0, DB, "sa", "", null);
+        connectionId = conn.create("ER ctrl IT", ConnectionKind.H2, "local", 0, DB, "sa", "", null, null);
     }
 
     @Test

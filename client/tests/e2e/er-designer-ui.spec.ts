@@ -612,6 +612,8 @@ test('D29: dialect=sqlite Generate DDL 含 skipped 信息（仅 CREATE TABLE）'
   // 加 FK relation（SQLite 无 ALTER ADD FK，应被 skipped）
   await page.evaluate((id) => {
     const er = (window as any).__DT_E2E__.er()
+    const current = er.designers.get(id)
+    const baseVersion = (current as unknown as { __v?: number })?.__v ?? 0
     er.applyDesignerPatch(id, [
       {
         op: 'add', path: '/relations/-',
@@ -621,7 +623,7 @@ test('D29: dialect=sqlite Generate DDL 含 skipped 信息（仅 CREATE TABLE）'
           type: 'one_to_many', constraintMethod: 'database_fk',
         },
       },
-    ])
+    ], { baseVersion })
   }, tabId)
   const designer = new ErDesignerPage(page, tabId)
   await designer.clickBindTarget()

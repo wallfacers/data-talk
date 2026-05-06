@@ -238,4 +238,79 @@ class CalciteSqlRiskAnalyzerTest {
         assertThat(result.riskLevel()).isNull();
         assertThat(result.fallbackUsed()).isTrue();
     }
+
+    // --- Oracle risk classification ---
+
+    @Test
+    void oracle_explainPlanIsL1() {
+        var result = analyzer.analyze("EXPLAIN PLAN FOR SELECT * FROM employees", Category.QUERY, "oracle");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L1);
+        assertThat(result.reason()).isEqualTo("explain_plan");
+    }
+
+    @Test
+    void oracle_mergeIsHighRisk() {
+        var result = analyzer.analyze(
+            "MERGE INTO employees e USING new_employees n ON (e.id = n.id) WHEN MATCHED THEN UPDATE SET e.name = n.name",
+            Category.MUTATION, "oracle");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("oracle_merge");
+    }
+
+    @Test
+    void oracle_callIsHighRisk() {
+        var result = analyzer.analyze("CALL my_procedure()", Category.QUERY, "oracle");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("oracle_call");
+    }
+
+    @Test
+    void oracle_beginBlockIsHighRisk() {
+        var result = analyzer.analyze("BEGIN DBMS_OUTPUT.PUT_LINE('hello'); END;", Category.QUERY, "oracle");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("oracle_plsql_block");
+    }
+
+    @Test
+    void oracle_declareBlockIsHighRisk() {
+        var result = analyzer.analyze("DECLARE v_name VARCHAR2(100); BEGIN SELECT name INTO v_name FROM users; END;", Category.QUERY, "oracle");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("oracle_plsql_block");
+    }
+
+    @Test
+    void oracle_truncateIsHighRisk() {
+        var result = analyzer.analyze("TRUNCATE TABLE temp_data", Category.DDL, "oracle");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("oracle_truncate");
+    }
+
+    @Test
+    void oracle_selectIsL1() {
+        var result = analyzer.analyze("SELECT * FROM employees WHERE department_id = 10", Category.QUERY, "oracle");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L1);
+        assertThat(result.fallbackUsed()).isFalse();
+    }
+
+    @Test
+    void oracle_insertIsL2() {
+        var result = analyzer.analyze("INSERT INTO employees(id, name) VALUES (1, 'Alice')", Category.MUTATION, "oracle");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L2);
+    }
+
+    @Test
+    void oracle_doesNotApplySqliteMaintenanceRules() {
+        var result = analyzer.analyze("VACUUM", Category.QUERY, "oracle");
+
+        assertThat(result.riskLevel()).isNull();
+        assertThat(result.fallbackUsed()).isTrue();
+    }
 }

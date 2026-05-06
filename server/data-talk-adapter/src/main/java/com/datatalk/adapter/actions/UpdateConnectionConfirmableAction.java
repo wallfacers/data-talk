@@ -73,6 +73,7 @@ public class UpdateConnectionConfirmableAction implements ActionHandler<Map, Map
                 Map.entry("username", Map.of("type", "string")),
                 Map.entry("password", Map.of("type", "string")),
                 Map.entry("connectTimeout", Map.of("type", "integer")),
+                Map.entry("oracleServiceType", Map.of("type", "string")),
                 Map.entry("confirm", Map.of("type", "boolean")),
                 Map.entry("confirmationToken", Map.of("type", "string"))
             )),
@@ -165,7 +166,8 @@ public class UpdateConnectionConfirmableAction implements ActionHandler<Map, Map
             normalized.databaseName(),
             normalized.username(),
             normalized.password(),
-            normalized.connectTimeout()
+            normalized.connectTimeout(),
+            normalized.oracleServiceType()
         );
         contextRefreshService.refreshByConnectionId(connectionId);
 
@@ -291,7 +293,8 @@ public class UpdateConnectionConfirmableAction implements ActionHandler<Map, Map
             nullableString(input, "databaseName"),
             sqlite ? "" : string(input, "username"),
             nullableString(input, "password"),
-            nullableInteger(input, "connectTimeout")
+            nullableInteger(input, "connectTimeout"),
+            nullableString(input, "oracleServiceType")
         );
     }
 
@@ -330,6 +333,7 @@ public class UpdateConnectionConfirmableAction implements ActionHandler<Map, Map
         String databaseName,
         String username,
         String password,
-        Integer connectTimeout
+        Integer connectTimeout,
+        String oracleServiceType
     ) {}
 }

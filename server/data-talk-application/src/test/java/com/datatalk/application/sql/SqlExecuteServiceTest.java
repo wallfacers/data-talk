@@ -87,8 +87,8 @@ class SqlExecuteServiceTest {
             Instant.parse("2026-04-22T00:00:00Z").toEpochMilli(),
             3000,
             null,
-            null
-        );
+            null,
+            null);
         when(connectionRepository.findById(CONN_ID)).thenReturn(Optional.of(record));
         when(connectionService.decryptPassword(CONN_ID)).thenReturn("");
 
@@ -260,8 +260,8 @@ class SqlExecuteServiceTest {
             Instant.parse("2026-04-22T00:00:00Z").toEpochMilli(),
             3000,
             null,
-            null
-        );
+            null,
+            null);
         when(connectionRepository.findById(CONN_ID)).thenReturn(Optional.of(mysqlRecord));
         ResolvedExecutionContext ctx = new ResolvedExecutionContext(mysqlRecord, mysqlRecord.databaseName(), null);
         when(tableContextAutoResolver.resolve(

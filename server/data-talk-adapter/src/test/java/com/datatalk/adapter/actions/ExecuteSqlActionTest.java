@@ -55,6 +55,7 @@ class ExecuteSqlActionTest {
             "mem:execsql;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
             "sa",
             "",
+            null,
             null
         );
         sessRepo.upsert(new SessionRecord("s-exec", connectionId, "T", true, "oc-e", 0L, 0L, false));
