@@ -47,4 +47,37 @@ public interface FileArtifactRepository {
     void deleteById(String id);
 
     void updateMetadata(String id, long sizeBytes, long updatedAtMillis);
+
+    int countCandidatesBySession(String sessionId);
+
+    /**
+     * Aggregate counts of file_artifact rows that belong to a connection
+     * (either via session_id of a child session or directly via connection_id).
+     * Used by Phase 1 of connection DELETE.
+     */
+    ConnectionResourceCounts countResourcesByConnection(String connectionId, java.util.List<String> sessionIds);
+
+    /**
+     * Bulk delete temporary + candidate rows for every session under a
+     * connection. Equivalent to calling {@link #deleteTransientByForSession}
+     * for each session_id.
+     */
+    void deleteTransientByForConnection(java.util.List<String> sessionIds);
+
+    /**
+     * Detach archived rows from a deleted connection. For every row matching
+     * connection_id, set connection_id = NULL and stamp metadata_json with
+     * the orphan provenance fields (spec §A.4 / §B.3.1):
+     *   orphanedFromConnection   = original connection.name (human-readable)
+     *   orphanedFromConnectionId = original connection.id
+     *   orphanedAt               = epoch millis at deletion time
+     *
+     * <p>Application layer must call this BEFORE the connection row itself
+     * is removed (so the name is still discoverable). Same transaction as
+     * the connection row delete.
+     */
+    void detachArchivedFromConnection(String connectionId, String connectionName, long deletedAtMillis);
+
+    record ConnectionResourceCounts(int sessions, int candidates, int temporary, int archived) {
+    }
 }

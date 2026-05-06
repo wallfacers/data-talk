@@ -1,5 +1,6 @@
 package com.datatalk.application.fileartifact;
 
+import com.datatalk.application.channel.IdGenerator;
 import com.datatalk.application.session.SessionBus;
 import com.datatalk.application.session.SessionBusRegistry;
 import com.datatalk.domain.event.DtEvent;
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -369,6 +371,81 @@ class FileArtifactServiceTest {
 
     private record MetadataUpdate(String id, long sizeBytes, long updatedAtMillis) {}
 
+    // --- archiveCandidate tests ---
+
+    @Test
+    void archiveCandidate_returns_PathRejected_for_dotdot_path() {
+        var result = service.archiveCandidate(
+                "ses_abc", "../escape.md",
+                FileArtifactKind.ER_DIAGRAM, null, null,
+                Clock.systemUTC(), new IdGenerator());
+
+        assertThat(result).isInstanceOf(FileArtifactService.ArchiveCandidateOutcome.PathRejected.class);
+        var rejected = (FileArtifactService.ArchiveCandidateOutcome.PathRejected) result;
+        assertThat(rejected.error()).isEqualTo(PathSafetyError.PATH_OUTSIDE_SESSION_DIR);
+    }
+
+    @Test
+    void archiveCandidate_inserts_new_candidate_row_when_no_existing() throws Exception {
+        Path file = sessionDir.resolve("orders-er.md");
+        Files.writeString(file, "# ER Diagram\n");
+
+        var result = service.archiveCandidate(
+                "ses_abc", "orders-er.md",
+                FileArtifactKind.ER_DIAGRAM, "Orders ER", "Entity-relationship diagram",
+                Clock.systemUTC(), new IdGenerator());
+
+        assertThat(result).isInstanceOf(FileArtifactService.ArchiveCandidateOutcome.Success.class);
+        var success = (FileArtifactService.ArchiveCandidateOutcome.Success) result;
+        assertThat(success.alreadyArchived()).isFalse();
+        assertThat(repo.inserted).hasSize(1);
+        assertThat(repo.inserted.get(0).status()).isEqualTo(FileArtifactStatus.CANDIDATE);
+        assertThat(repo.inserted.get(0).kind()).isEqualTo(FileArtifactKind.ER_DIAGRAM);
+    }
+
+    @Test
+    void archiveCandidate_promotes_existing_temporary_row() throws Exception {
+        Path file = sessionDir.resolve("x.md");
+        Files.writeString(file, "# temp\n");
+        String physicalPath = file.toRealPath().toString();
+        FileArtifact temporary = artifactAt("fid_temp", FileArtifactStatus.TEMPORARY, file);
+        repo.bySession = List.of(temporary);
+
+        var result = service.archiveCandidate(
+                "ses_abc", "x.md",
+                FileArtifactKind.OTHER, null, null,
+                Clock.systemUTC(), new IdGenerator());
+
+        assertThat(result).isInstanceOf(FileArtifactService.ArchiveCandidateOutcome.Success.class);
+        var success = (FileArtifactService.ArchiveCandidateOutcome.Success) result;
+        assertThat(success.fileArtifactId()).isEqualTo("fid_temp");
+        assertThat(success.alreadyArchived()).isFalse();
+        assertThat(repo.statusUpdates).containsExactly(new StatusUpdate("fid_temp", FileArtifactStatus.CANDIDATE));
+        assertThat(repo.inserted).isEmpty();
+    }
+
+    @Test
+    void archiveCandidate_is_idempotent_for_archived_row() throws Exception {
+        Path file = sessionDir.resolve("done.md");
+        Files.writeString(file, "# archived\n");
+        String physicalPath = file.toRealPath().toString();
+        FileArtifact archived = artifactAt("fid_arch", FileArtifactStatus.ARCHIVED, file);
+        repo.bySession = List.of(archived);
+
+        var result = service.archiveCandidate(
+                "ses_abc", "done.md",
+                FileArtifactKind.OTHER, null, null,
+                Clock.systemUTC(), new IdGenerator());
+
+        assertThat(result).isInstanceOf(FileArtifactService.ArchiveCandidateOutcome.Success.class);
+        var success = (FileArtifactService.ArchiveCandidateOutcome.Success) result;
+        assertThat(success.fileArtifactId()).isEqualTo("fid_arch");
+        assertThat(success.alreadyArchived()).isTrue();
+        assertThat(repo.statusUpdates).isEmpty();
+        assertThat(repo.inserted).isEmpty();
+        assertThat(repo.metadataUpdates).isEmpty();
+    }
+
     private static final class RecordingRepository implements FileArtifactRepository {
         Optional<FileArtifact> found = Optional.empty();
         List<FileArtifact> bySession = List.of();
@@ -457,6 +534,24 @@ class FileArtifactServiceTest {
         @Override
         public void updateMetadata(String id, long sizeBytes, long updatedAtMillis) {
             metadataUpdates.add(new MetadataUpdate(id, sizeBytes, updatedAtMillis));
+        }
+
+        @Override
+        public int countCandidatesBySession(String sessionId) {
+            return 0;
+        }
+
+        @Override
+        public ConnectionResourceCounts countResourcesByConnection(String connectionId, List<String> sessionIds) {
+            return new ConnectionResourceCounts(0, 0, 0, 0);
+        }
+
+        @Override
+        public void deleteTransientByForConnection(List<String> sessionIds) {
+        }
+
+        @Override
+        public void detachArchivedFromConnection(String connectionId, String connectionName, long deletedAtMillis) {
         }
     }
 }

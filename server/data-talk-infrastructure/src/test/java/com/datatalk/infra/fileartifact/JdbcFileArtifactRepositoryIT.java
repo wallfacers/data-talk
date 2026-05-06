@@ -1,5 +1,6 @@
 package com.datatalk.infra.fileartifact;
 
+import com.datatalk.application.fileartifact.FileArtifactRepository;
 import com.datatalk.domain.fileartifact.FileArtifact;
 import com.datatalk.domain.fileartifact.FileArtifactKind;
 import com.datatalk.domain.fileartifact.FileArtifactScope;
@@ -276,6 +277,88 @@ class JdbcFileArtifactRepositoryIT {
         var rows = repo.findAllWorkspaceScopedArchived();
 
         assertThat(rows).extracting(FileArtifact::id).containsExactlyInAnyOrder("w1", "w2");
+    }
+
+    @Test
+    void countCandidatesBySession_returns_count_of_candidate_rows() {
+        repo.insert(sample("temp1", FileArtifactStatus.TEMPORARY, "ses_x", null));
+        repo.insert(sample("cand1", FileArtifactStatus.CANDIDATE, "ses_x", null));
+        repo.insert(sample("cand2", FileArtifactStatus.CANDIDATE, "ses_x", null));
+        repo.insert(sample("cand_other", FileArtifactStatus.CANDIDATE, "ses_y", null));
+
+        assertThat(repo.countCandidatesBySession("ses_x")).isEqualTo(2);
+        assertThat(repo.countCandidatesBySession("ses_y")).isEqualTo(1);
+        assertThat(repo.countCandidatesBySession("ses_empty")).isEqualTo(0);
+    }
+
+    @Test
+    void countResourcesByConnection_aggregates_counts_across_sessions_and_archived() {
+        // Session 1: 1 candidate, 1 temporary
+        repo.insert(sample("s1_cand", FileArtifactStatus.CANDIDATE, "ses_1", "conn_p"));
+        repo.insert(sample("s1_temp", FileArtifactStatus.TEMPORARY, "ses_1", "conn_p"));
+        // Session 2: 2 candidates, 0 temporary
+        repo.insert(sample("s2_cand1", FileArtifactStatus.CANDIDATE, "ses_2", "conn_p"));
+        repo.insert(sample("s2_cand2", FileArtifactStatus.CANDIDATE, "ses_2", "conn_p"));
+        // Archived directly on connection
+        repo.insert(archivedAt("arch1", "conn_p", "2026-04-29T09:00:00Z"));
+        repo.insert(archivedAt("arch2", "conn_p", "2026-04-29T10:00:00Z"));
+        // Archived on other connection (should not count)
+        repo.insert(archivedAt("arch_other", "conn_q", "2026-04-29T09:00:00Z"));
+
+        FileArtifactRepository.ConnectionResourceCounts counts =
+                repo.countResourcesByConnection("conn_p", List.of("ses_1", "ses_2"));
+
+        assertThat(counts.sessions()).isEqualTo(2);
+        assertThat(counts.candidates()).isEqualTo(3);
+        assertThat(counts.temporary()).isEqualTo(1);
+        assertThat(counts.archived()).isEqualTo(2);
+    }
+
+    @Test
+    void deleteTransientByForConnection_bulk_deletes_transient_and_candidate_rows() {
+        repo.insert(sample("s1_temp", FileArtifactStatus.TEMPORARY, "ses_1", null));
+        repo.insert(sample("s1_cand", FileArtifactStatus.CANDIDATE, "ses_1", null));
+        repo.insert(sample("s2_temp", FileArtifactStatus.TEMPORARY, "ses_2", null));
+        repo.insert(archivedForSession("s1_arch", "ses_1", "conn_p")); // should remain
+        repo.insert(sample("s_other", FileArtifactStatus.TEMPORARY, "ses_other", null));
+
+        repo.deleteTransientByForConnection(List.of("ses_1", "ses_2"));
+
+        assertThat(repo.findById("s1_temp")).isEmpty();
+        assertThat(repo.findById("s1_cand")).isEmpty();
+        assertThat(repo.findById("s2_temp")).isEmpty();
+        assertThat(repo.findById("s1_arch")).isPresent();
+        assertThat(repo.findById("s_other")).isPresent();
+    }
+
+    @Test
+    void detachArchivedFromConnection_sets_connection_null_and_stamps_orphan_metadata() {
+        repo.insert(archivedAt("w1", "conn_p", "2026-04-29T09:00:00Z"));
+        repo.insert(archivedAt("w2", "conn_p", "2026-04-29T10:00:00Z"));
+        repo.insert(archivedAt("w_other", "conn_q", "2026-04-29T09:00:00Z"));
+
+        long deletedAt = Instant.parse("2026-05-07T01:00:00Z").toEpochMilli();
+        repo.detachArchivedFromConnection("conn_p", "Production DB", deletedAt);
+
+        // Verify w1 and w2 have connection_id = NULL
+        var w1 = repo.findById("w1").orElseThrow();
+        var w2 = repo.findById("w2").orElseThrow();
+        assertThat(w1.connectionId()).isNull();
+        assertThat(w2.connectionId()).isNull();
+
+        // Verify orphan metadata stamped
+        assertThat(w1.metadata()).containsEntry("orphanedFromConnection", "Production DB");
+        assertThat(w1.metadata()).containsEntry("orphanedFromConnectionId", "conn_p");
+        assertThat(w1.metadata()).containsEntry("orphanedAt", deletedAt);
+
+        assertThat(w2.metadata()).containsEntry("orphanedFromConnection", "Production DB");
+        assertThat(w2.metadata()).containsEntry("orphanedFromConnectionId", "conn_p");
+        assertThat(w2.metadata()).containsEntry("orphanedAt", deletedAt);
+
+        // w_other should be untouched
+        var wOther = repo.findById("w_other").orElseThrow();
+        assertThat(wOther.connectionId()).isEqualTo("conn_q");
+        assertThat(wOther.metadata()).doesNotContainKey("orphanedFromConnection");
     }
 
     private static FileArtifact sample(String id, FileArtifactStatus status, String sessionId, String connectionId) {

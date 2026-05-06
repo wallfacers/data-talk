@@ -184,6 +184,81 @@ public class JdbcFileArtifactRepository implements FileArtifactRepository {
                 id);
     }
 
+    @Override
+    public int countCandidatesBySession(String sessionId) {
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM file_artifact WHERE session_id = ? AND status = 'candidate'",
+                Integer.class,
+                sessionId);
+        return count != null ? count : 0;
+    }
+
+    @Override
+    public ConnectionResourceCounts countResourcesByConnection(String connectionId, List<String> sessionIds) {
+        int candidates = 0;
+        int temporary = 0;
+        int archived = 0;
+
+        // Count candidates and temporary across all sessions
+        for (String sessionId : sessionIds) {
+            Integer cand = jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM file_artifact WHERE session_id = ? AND status = 'candidate'",
+                    Integer.class,
+                    sessionId);
+            Integer temp = jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM file_artifact WHERE session_id = ? AND status = 'temporary'",
+                    Integer.class,
+                    sessionId);
+            candidates += cand != null ? cand : 0;
+            temporary += temp != null ? temp : 0;
+        }
+
+        // Count archived rows directly attached to connection (workspace scope)
+        Integer arch = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM file_artifact WHERE connection_id = ? AND scope = 'workspace' AND status = 'archived'",
+                Integer.class,
+                connectionId);
+        archived = arch != null ? arch : 0;
+
+        return new ConnectionResourceCounts(sessionIds.size(), candidates, temporary, archived);
+    }
+
+    @Override
+    public void deleteTransientByForConnection(List<String> sessionIds) {
+        if (sessionIds.isEmpty()) {
+            return;
+        }
+        String placeholders = sessionIds.stream().map(s -> "?").collect(java.util.stream.Collectors.joining(","));
+        jdbc.update(
+                "DELETE FROM file_artifact WHERE session_id IN (" + placeholders + ") AND status IN ('temporary', 'candidate')",
+                sessionIds.toArray());
+    }
+
+    @Override
+    public void detachArchivedFromConnection(String connectionId, String connectionName, long deletedAtMillis) {
+        // Fetch existing metadata_json for each row, merge orphan fields, write back
+        List<Map<String, Object>> rows = jdbc.query(
+                "SELECT id, metadata_json FROM file_artifact WHERE connection_id = ? AND scope = 'workspace' AND status = 'archived'",
+                (rs, rowNum) -> {
+                    String metadataJson = rs.getString("metadata_json");
+                    Map<String, Object> meta = new java.util.HashMap<>(readMetadata(metadataJson));
+                    meta.put("orphanedFromConnection", connectionName);
+                    meta.put("orphanedFromConnectionId", connectionId);
+                    meta.put("orphanedAt", deletedAtMillis);
+                    return Map.of("id", rs.getString("id"), "metadata", meta);
+                },
+                connectionId);
+
+        for (Map<String, Object> row : rows) {
+            String id = (String) row.get("id");
+            Map<String, Object> meta = (Map<String, Object>) row.get("metadata");
+            jdbc.update(
+                    "UPDATE file_artifact SET connection_id = NULL, metadata_json = ? WHERE id = ?",
+                    writeMetadata(meta),
+                    id);
+        }
+    }
+
     private RowMapper<FileArtifact> mapper() {
         return (ResultSet rs, int rowNum) -> new FileArtifact(
                 rs.getString("id"),
