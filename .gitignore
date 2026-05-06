@@ -48,3 +48,4 @@ server/*/target/
 # MCP / Skill scratch (Playwright traces, brainstorming dumps, etc.)
 tmp/
 .playwright-mcp/
+client/test-results/
