@@ -1,6 +1,6 @@
 # Data Source Coverage: MariaDB Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Add explicit MariaDB support as a verified first-class data-source kind, without silently treating MariaDB as MySQL.
 
@@ -86,7 +86,7 @@ Expected tests:
 
 ### Task 1: Approval Gate, Driver, And Reuse Decision
 
-- [ ] **Step 1: Confirm design approval**
+- [x] **Step 1: Confirm design approval**
 
 Run:
 
@@ -97,7 +97,7 @@ rg -n "Status: Draft for review|Status: Approved" docs/product-specs/2026-04-30-
 Expected: the design has been reviewed and marked approved before code edits
 start.
 
-- [ ] **Step 2: Re-read gates**
+- [x] **Step 2: Re-read gates**
 
 Run:
 
@@ -109,7 +109,7 @@ sed -n '1,360p' client/DESIGN.md
 Expected: output includes backend, frontend, MCP, Definition of Done, semantic
 token, global Stage, accessibility, and i18n constraints.
 
-- [ ] **Step 3: Record driver and MySQL reuse decisions**
+- [x] **Step 3: Record driver and MySQL reuse decisions**
 
 Add a short note under this task with:
 
@@ -125,7 +125,7 @@ ambiguity.
 
 ### Task 2: Connection Kind, URL, And Connection Test
 
-- [ ] **Step 1: Add failing backend tests**
+- [x] **Step 1: Add failing backend tests**
 
 Add tests for:
 
@@ -143,7 +143,7 @@ cd server && mvn -q -pl data-talk-application,data-talk-infrastructure -am test 
 
 Expected: tests fail until MariaDB connection behavior is implemented.
 
-- [ ] **Step 2: Implement connection behavior**
+- [x] **Step 2: Implement connection behavior**
 
 Add canonical kind routing, URL construction, driver dependency, connection
 test behavior, and any required generated DB schema docs. Do not persist
@@ -159,7 +159,7 @@ Expected: targeted tests pass.
 
 ### Task 3: Metadata, Target Resolution, SQL Execution, Splitter, And Risk
 
-- [ ] **Step 1: Add failing metadata and target tests**
+- [x] **Step 1: Add failing metadata and target tests**
 
 Add MariaDB cases for:
 
@@ -177,7 +177,7 @@ cd server && mvn -q -pl data-talk-application,data-talk-adapter -am test -Dtest=
 Expected: tests fail until MariaDB metadata behavior is implemented or a real
 fixture is wired.
 
-- [ ] **Step 2: Implement metadata and context behavior**
+- [x] **Step 2: Implement metadata and context behavior**
 
 Reuse MySQL database/catalog behavior only where MariaDB tests pass. Keep system
 databases filtered by default and preserve bounded discovery.
@@ -190,7 +190,7 @@ cd server && mvn -q -pl data-talk-application,data-talk-adapter -am test -Dtest=
 
 Expected: targeted tests pass.
 
-- [ ] **Step 3: Add failing SQL, splitter, risk, and normalization tests**
+- [x] **Step 3: Add failing SQL, splitter, risk, and normalization tests**
 
 Add MariaDB coverage for:
 
@@ -210,7 +210,7 @@ cd server && mvn -q -pl data-talk-application,data-talk-infrastructure,data-talk
 
 Expected: tests fail until MariaDB SQL behavior is explicit.
 
-- [ ] **Step 4: Implement SQL execution, splitter, risk, and normalization**
+- [x] **Step 4: Implement SQL execution, splitter, risk, and normalization**
 
 Route `mariadb` through proven MySQL components only where tests pass. Add
 MariaDB-specific branches or provider classes where MySQL behavior is not
@@ -226,7 +226,7 @@ Expected: targeted tests pass.
 
 ### Task 4: Diagnostics And ER Reuse
 
-- [ ] **Step 1: Add failing diagnostics and ER tests**
+- [x] **Step 1: Add failing diagnostics and ER tests**
 
 Add tests for:
 
@@ -244,7 +244,7 @@ cd server && mvn -q -pl data-talk-application,data-talk-infrastructure -am test 
 
 Expected: tests fail until MariaDB diagnostics and ER behavior are honest.
 
-- [ ] **Step 2: Implement diagnostics and ER behavior**
+- [x] **Step 2: Implement diagnostics and ER behavior**
 
 Add MariaDB to MySQL provider support only if every provider SQL query is valid
 against MariaDB. Otherwise create a MariaDB-specific provider. Reuse ER paths
@@ -260,7 +260,7 @@ Expected: diagnostics and ER tests pass.
 
 ### Task 5: Frontend And MCP Exposure
 
-- [ ] **Step 1: Add failing frontend tests**
+- [x] **Step 1: Add failing frontend tests**
 
 Add tests for:
 
@@ -279,7 +279,7 @@ cd client && npx vitest run src/features/settings/data-sources src/features/sess
 
 Expected: tests fail until MariaDB UI is implemented.
 
-- [ ] **Step 2: Implement frontend changes**
+- [x] **Step 2: Implement frontend changes**
 
 Expose MariaDB only after backend tests pass. Use semantic tokens, existing form
 patterns, accessible controls, and i18n keys from `client/DESIGN.md`.
@@ -293,7 +293,7 @@ cd client && npx tsc --noEmit
 
 Expected: frontend tests and typecheck pass.
 
-- [ ] **Step 3: Add MCP and prompt contract tests**
+- [x] **Step 3: Add MCP and prompt contract tests**
 
 Update action schema and runtime prompt tests so MariaDB is mentioned only with
 real capabilities or structured unsupported outputs.
@@ -306,7 +306,7 @@ cd server && mvn -q -pl data-talk-adapter -am test -Dtest=AgentPromptContractTes
 
 Expected: tests fail until schemas and prompt are aligned.
 
-- [ ] **Step 4: Update MCP schemas and runtime prompt**
+- [x] **Step 4: Update MCP schemas and runtime prompt**
 
 Update `ConnectionObjectType`, action schemas, messages, and `AGENTS.md` after
 backend and frontend capability gates are true. Do not tell users to create a
@@ -323,7 +323,7 @@ Expected: prompt and schema tests pass.
 
 ### Task 6: Documentation, Verification, Smoke, And Commit
 
-- [ ] **Step 1: Update docs**
+- [x] **Step 1: Update docs**
 
 Update `docs/DATA_SOURCE_TYPE_COMPATIBILITY.md` support snapshot from roadmap
 candidate to first-class only after all code gates pass. Update
@@ -339,7 +339,7 @@ git diff --check -- docs/DATA_SOURCE_TYPE_COMPATIBILITY.md docs/generated/db-sch
 
 Expected: docs are accurate and whitespace checks pass.
 
-- [ ] **Step 2: Run consolidated verification**
+- [x] **Step 2: Run consolidated verification**
 
 Run:
 
@@ -350,7 +350,7 @@ cd client && npx tsc --noEmit
 
 Expected: both commands succeed.
 
-- [ ] **Step 3: Run MariaDB smoke**
+- [x] **Step 3: Run MariaDB smoke**
 
 Exercise:
 
@@ -368,7 +368,7 @@ Exercise:
 Expected: smoke results match the approved design and are recorded in this plan
 before completion.
 
-- [ ] **Step 4: Commit implementation**
+- [x] **Step 4: Commit implementation**
 
 Run:
 

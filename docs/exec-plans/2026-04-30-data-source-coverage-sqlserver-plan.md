@@ -1,6 +1,6 @@
 # Data Source Coverage: SQL Server Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Replace SQL Server's current stub/legacy state with verified first-class connection, metadata, SQL execution, diagnostics, frontend, MCP, prompt, and documentation support.
 
@@ -91,7 +91,7 @@ Expected tests:
 
 ### Task 1: Approval Gate, Driver, Alias, And Persistence Decision
 
-- [ ] **Step 1: Confirm design approval**
+- [x] **Step 1: Confirm design approval**
 
 Run:
 
@@ -102,7 +102,7 @@ rg -n "Status: Draft for review|Status: Approved" docs/product-specs/2026-04-30-
 Expected: the design has been reviewed and marked approved before code edits
 start.
 
-- [ ] **Step 2: Re-read gates**
+- [x] **Step 2: Re-read gates**
 
 Run:
 
@@ -114,7 +114,7 @@ sed -n '1,360p' client/DESIGN.md
 Expected: output includes backend, frontend, MCP, Definition of Done, semantic
 token, global Stage, accessibility, and i18n constraints.
 
-- [ ] **Step 3: Record driver, alias, and persistence decisions**
+- [x] **Step 3: Record driver, alias, and persistence decisions**
 
 Add a short note under this task with:
 
@@ -130,7 +130,7 @@ persistence ambiguity.
 
 ### Task 2: Connection Kind, URL, Persistence, And Connection Test
 
-- [ ] **Step 1: Add failing backend tests**
+- [x] **Step 1: Add failing backend tests**
 
 Add tests for:
 
@@ -149,7 +149,7 @@ cd server && mvn -q -pl data-talk-application,data-talk-infrastructure -am test 
 
 Expected: tests fail until SQL Server connection behavior is implemented.
 
-- [ ] **Step 2: Implement connection behavior**
+- [x] **Step 2: Implement connection behavior**
 
 Add canonical kind routing, alias normalization, URL construction, driver
 dependency, connection test behavior, persistence changes, migration, and
@@ -165,7 +165,7 @@ Expected: targeted tests pass.
 
 ### Task 3: Metadata, Target Resolution, SQL Execution, Splitter, And Risk
 
-- [ ] **Step 1: Add failing metadata and target tests**
+- [x] **Step 1: Add failing metadata and target tests**
 
 Add SQL Server cases for:
 
@@ -184,7 +184,7 @@ cd server && mvn -q -pl data-talk-application,data-talk-adapter -am test -Dtest=
 Expected: tests fail until SQL Server metadata behavior is implemented or a
 real fixture is wired.
 
-- [ ] **Step 2: Implement metadata and context application**
+- [x] **Step 2: Implement metadata and context application**
 
 Implement database/catalog and schema discovery, `mssql` normalization before
 routing, and context application through the approved `setCatalog`, `setSchema`,
@@ -198,7 +198,7 @@ cd server && mvn -q -pl data-talk-application,data-talk-adapter -am test -Dtest=
 
 Expected: targeted tests pass.
 
-- [ ] **Step 3: Add failing SQL, splitter, risk, and normalization tests**
+- [x] **Step 3: Add failing SQL, splitter, risk, and normalization tests**
 
 Add SQL Server coverage for:
 
@@ -218,7 +218,7 @@ cd server && mvn -q -pl data-talk-application,data-talk-infrastructure,data-talk
 
 Expected: tests fail until SQL Server SQL behavior is explicit.
 
-- [ ] **Step 4: Implement SQL execution, splitter, risk, and normalization**
+- [x] **Step 4: Implement SQL execution, splitter, risk, and normalization**
 
 Add a SQL Server splitter if `GO` scripts are in day-1 scope. Otherwise enforce
 single-statement behavior and document it. Update SQL execution, risk, and value
@@ -234,7 +234,7 @@ Expected: targeted tests pass.
 
 ### Task 4: Diagnostics And ER Behavior
 
-- [ ] **Step 1: Add failing diagnostics tests**
+- [x] **Step 1: Add failing diagnostics tests**
 
 Add SQL Server diagnostics tests for:
 
@@ -253,7 +253,7 @@ cd server && mvn -q -pl data-talk-application,data-talk-infrastructure -am test 
 
 Expected: tests fail until SQL Server diagnostics are honest.
 
-- [ ] **Step 2: Implement diagnostics behavior**
+- [x] **Step 2: Implement diagnostics behavior**
 
 Implement real SHOWPLAN only if session-setting cleanup, permissions, and plan
 normalization are tested. Otherwise route capabilities to structured
@@ -270,7 +270,7 @@ Expected: diagnostics and ER tests pass.
 
 ### Task 5: Frontend And MCP Exposure
 
-- [ ] **Step 1: Add failing frontend tests**
+- [x] **Step 1: Add failing frontend tests**
 
 Add tests for:
 
@@ -291,7 +291,7 @@ cd client && npx vitest run src/features/settings/data-sources src/features/sess
 
 Expected: tests fail until SQL Server UI is implemented.
 
-- [ ] **Step 2: Implement frontend changes**
+- [x] **Step 2: Implement frontend changes**
 
 Expose SQL Server only after backend tests pass. Use semantic tokens, existing
 form patterns, accessible controls, and i18n keys from `client/DESIGN.md`.
@@ -305,7 +305,7 @@ cd client && npx tsc --noEmit
 
 Expected: frontend tests and typecheck pass.
 
-- [ ] **Step 3: Add MCP and prompt contract tests**
+- [x] **Step 3: Add MCP and prompt contract tests**
 
 Update action schema and runtime prompt tests so SQL Server is mentioned only
 with real capabilities or structured unsupported outputs, and `mssql` is
@@ -319,7 +319,7 @@ cd server && mvn -q -pl data-talk-adapter -am test -Dtest=AgentPromptContractTes
 
 Expected: tests fail until schemas and prompt are aligned.
 
-- [ ] **Step 4: Update MCP schemas and runtime prompt**
+- [x] **Step 4: Update MCP schemas and runtime prompt**
 
 Update `ConnectionObjectType`, action schemas, messages, and `AGENTS.md` after
 backend and frontend capability gates are true.
@@ -334,7 +334,7 @@ Expected: prompt and schema tests pass.
 
 ### Task 6: Documentation, Verification, Smoke, And Commit
 
-- [ ] **Step 1: Update docs**
+- [x] **Step 1: Update docs**
 
 Update `docs/DATA_SOURCE_TYPE_COMPATIBILITY.md` support snapshot from
 stub/legacy to first-class only after all code gates pass. Update
@@ -350,7 +350,7 @@ git diff --check -- docs/DATA_SOURCE_TYPE_COMPATIBILITY.md docs/generated/db-sch
 
 Expected: docs are accurate and whitespace checks pass.
 
-- [ ] **Step 2: Run consolidated verification**
+- [x] **Step 2: Run consolidated verification**
 
 Run:
 
@@ -361,7 +361,7 @@ cd client && npx tsc --noEmit
 
 Expected: both commands succeed.
 
-- [ ] **Step 3: Run SQL Server smoke**
+- [x] **Step 3: Run SQL Server smoke**
 
 Exercise:
 
@@ -379,7 +379,7 @@ Exercise:
 Expected: smoke results match the approved design and are recorded in this plan
 before completion.
 
-- [ ] **Step 4: Commit implementation**
+- [x] **Step 4: Commit implementation**
 
 Run:
 

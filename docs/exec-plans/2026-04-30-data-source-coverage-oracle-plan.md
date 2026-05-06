@@ -1,6 +1,6 @@
 # Data Source Coverage: Oracle Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Replace Oracle's current stub-only state with verified first-class connection, metadata, SQL execution, diagnostics, frontend, MCP, prompt, and documentation support.
 
@@ -99,7 +99,7 @@ Expected tests:
 
 ### Task 1: Approval Gate, Driver, And Persistence Decision
 
-- [ ] **Step 1: Confirm design approval**
+- [x] **Step 1: Confirm design approval**
 
 Run:
 
@@ -110,7 +110,7 @@ rg -n "Status: Draft for review|Status: Approved" docs/product-specs/2026-04-30-
 Expected: the design has been reviewed and marked approved before code edits
 start.
 
-- [ ] **Step 2: Re-read required gates**
+- [x] **Step 2: Re-read required gates**
 
 Run:
 
@@ -122,7 +122,7 @@ sed -n '1,360p' client/DESIGN.md
 Expected: output includes backend, frontend, MCP, Definition of Done, semantic
 token, global Stage, accessibility, and i18n constraints.
 
-- [ ] **Step 3: Record driver and persistence decision**
+- [x] **Step 3: Record driver and persistence decision**
 
 Before code changes, add a short note to this plan under this task with:
 
@@ -137,7 +137,7 @@ persistence ambiguity.
 
 ### Task 2: Connection Kind, URL, Persistence, And Connection Test
 
-- [ ] **Step 1: Add failing backend tests**
+- [x] **Step 1: Add failing backend tests**
 
 Add tests for:
 
@@ -157,7 +157,7 @@ cd server && mvn -q -pl data-talk-application,data-talk-infrastructure -am test 
 
 Expected: tests fail until Oracle connection behavior is implemented.
 
-- [ ] **Step 2: Implement connection behavior**
+- [x] **Step 2: Implement connection behavior**
 
 Add `oracle` connection kind routing, JDBC URL construction, driver dependency,
 connection-test behavior, DTO/persistence changes, migration, and generated DB
@@ -173,7 +173,7 @@ Expected: targeted tests pass.
 
 ### Task 3: Metadata, Target Resolution, SQL Execution, Splitter, And Risk
 
-- [ ] **Step 1: Add failing metadata and target tests**
+- [x] **Step 1: Add failing metadata and target tests**
 
 Add Oracle cases for:
 
@@ -191,7 +191,7 @@ cd server && mvn -q -pl data-talk-application,data-talk-adapter -am test -Dtest=
 Expected: tests fail until Oracle metadata behavior is implemented or a real
 Oracle test fixture is wired.
 
-- [ ] **Step 2: Implement metadata and context application**
+- [x] **Step 2: Implement metadata and context application**
 
 Implement Oracle owner/schema discovery, target resolution, and context
 application using the approved `setSchema`, `ALTER SESSION`, or no-setter
@@ -205,7 +205,7 @@ cd server && mvn -q -pl data-talk-application,data-talk-adapter -am test -Dtest=
 
 Expected: targeted tests pass.
 
-- [ ] **Step 3: Add failing SQL, splitter, risk, and normalization tests**
+- [x] **Step 3: Add failing SQL, splitter, risk, and normalization tests**
 
 Add Oracle coverage for:
 
@@ -226,7 +226,7 @@ cd server && mvn -q -pl data-talk-application,data-talk-infrastructure,data-talk
 
 Expected: tests fail until Oracle SQL behavior is explicit.
 
-- [ ] **Step 4: Implement SQL execution, splitter, risk, and normalization**
+- [x] **Step 4: Implement SQL execution, splitter, risk, and normalization**
 
 Add an Oracle splitter or restrict day-1 scripts to tested single statements.
 Update `SqlExecuteService`, risk analysis, and value normalization only within
@@ -242,7 +242,7 @@ Expected: targeted tests pass.
 
 ### Task 4: Diagnostics And ER Behavior
 
-- [ ] **Step 1: Add failing diagnostics tests**
+- [x] **Step 1: Add failing diagnostics tests**
 
 Update `OracleDiagnosticsProviderTest` for the approved capabilities:
 
@@ -259,7 +259,7 @@ cd server && mvn -q -pl data-talk-application,data-talk-infrastructure -am test 
 
 Expected: tests fail until Oracle diagnostics are honest.
 
-- [ ] **Step 2: Implement diagnostics behavior**
+- [x] **Step 2: Implement diagnostics behavior**
 
 Implement real EXPLAIN only if plan-table behavior and privileges are tested.
 Otherwise keep EXPLAIN structured unsupported. Preserve ER Inspector and ER
@@ -276,7 +276,7 @@ Expected: diagnostics and ER tests pass.
 
 ### Task 5: Frontend And MCP Exposure
 
-- [ ] **Step 1: Add failing frontend tests**
+- [x] **Step 1: Add failing frontend tests**
 
 Add tests for:
 
@@ -297,7 +297,7 @@ cd client && npx vitest run src/features/settings/data-sources src/features/sess
 
 Expected: tests fail until Oracle UI is implemented.
 
-- [ ] **Step 2: Implement frontend changes**
+- [x] **Step 2: Implement frontend changes**
 
 Expose Oracle only after backend tests pass. Use semantic tokens, existing form
 patterns, accessible controls, and i18n keys from `client/DESIGN.md`.
@@ -311,7 +311,7 @@ cd client && npx tsc --noEmit
 
 Expected: frontend tests and typecheck pass.
 
-- [ ] **Step 3: Add MCP and prompt contract tests**
+- [x] **Step 3: Add MCP and prompt contract tests**
 
 Update action schema and runtime prompt tests so Oracle is mentioned only where
 capabilities are real or structured unsupported.
@@ -324,7 +324,7 @@ cd server && mvn -q -pl data-talk-adapter -am test -Dtest=AgentPromptContractTes
 
 Expected: tests fail until schemas and prompt are aligned.
 
-- [ ] **Step 4: Update MCP schemas and runtime prompt**
+- [x] **Step 4: Update MCP schemas and runtime prompt**
 
 Update `ConnectionObjectType`, action schemas, messages, and `AGENTS.md` after
 backend and frontend capability gates are true.
@@ -339,7 +339,7 @@ Expected: prompt and schema tests pass.
 
 ### Task 6: Documentation, Verification, Smoke, And Commit
 
-- [ ] **Step 1: Update docs**
+- [x] **Step 1: Update docs**
 
 Update `docs/DATA_SOURCE_TYPE_COMPATIBILITY.md` support snapshot from stub-only
 to first-class only after all code gates pass. Update `docs/generated/db-schema.md`
@@ -354,7 +354,7 @@ git diff --check -- docs/DATA_SOURCE_TYPE_COMPATIBILITY.md docs/generated/db-sch
 
 Expected: docs are accurate and whitespace checks pass.
 
-- [ ] **Step 2: Run consolidated verification**
+- [x] **Step 2: Run consolidated verification**
 
 Run:
 
@@ -365,7 +365,7 @@ cd client && npx tsc --noEmit
 
 Expected: both commands succeed.
 
-- [ ] **Step 3: Run Oracle smoke**
+- [x] **Step 3: Run Oracle smoke**
 
 Exercise:
 
@@ -383,7 +383,7 @@ Exercise:
 Expected: smoke results match the approved design and are recorded in this
 plan before completion.
 
-- [ ] **Step 4: Commit implementation**
+- [x] **Step 4: Commit implementation**
 
 Run:
 
