@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { BarChart2Icon, DatabaseIcon, FileTextIcon, LayoutIcon, NetworkIcon, SearchCodeIcon } from 'lucide-react'
+import { BarChart2Icon, DatabaseIcon, FileTextIcon, LayoutIcon, NetworkIcon, PackageIcon, SearchCodeIcon } from 'lucide-react'
 import { useSqlWorkbenchStore } from '@/features/stage/stores/sql-workbench-store'
 import { useErTabsStore } from '@/features/stage/stores/er-tabs-store'
 import { normalizeQueryEditorPayload } from '@/features/stage/utils/normalize-query-editor-payload'
@@ -169,6 +169,22 @@ export const TAB_TYPE_REGISTRY: Record<string, TabTypeDescriptor> = {
     rehydrate: (tabId, p) => {
       useErTabsStore.getState().hydrateDesigner(tabId, p as ErDesignerPayload)
     },
+  },
+  files: {
+    type: 'files',
+    persistent: false,
+    scope: 'session',
+    icon: FileTextIcon,
+    labelKey: 'tabType.files',
+    extractContent: () => '',
+  },
+  files_library: {
+    type: 'files_library',
+    persistent: true,
+    scope: 'workspace',
+    icon: PackageIcon,
+    labelKey: 'tabType.filesLibrary',
+    extractContent: () => '',
   },
 }
 

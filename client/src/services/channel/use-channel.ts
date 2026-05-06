@@ -9,6 +9,7 @@ import { useOntologyStore } from '@/stores/ontology-store'
 import { useTimelineStore } from '@/stores/timeline-store'
 import { useSessionStore } from '@/stores/session-store'
 import { useConnectionStore } from '@/features/connection/store'
+import { useFileArtifactsStore } from '@/features/stage/stores/file-artifacts-store'
 import { useChannelStore } from '@/stores/channel-store'
 import { getClientHandler } from '@/features/actions/registry'
 import { normalizeError, showErrorToast } from '@/services/http-error'
@@ -442,6 +443,19 @@ export function buildEventSink(
       handler(input, { sessionId })
         .then((output) => client.actionResult(callId, true, output))
         .catch((err) => client.actionResult(callId, false, undefined, normalizeActionInvokeError(err)))
+    } else if (
+      event === 'file_artifact.detected' ||
+      event === 'file_artifact.archive_requested' ||
+      event === 'file_artifact.archived' ||
+      event === 'file_artifact.discarded' ||
+      event === 'file_artifact.legacy_migrated'
+    ) {
+      useFileArtifactsStore.getState().applyDtEvent({
+        type: event,
+        data: data as Parameters<
+          ReturnType<typeof useFileArtifactsStore.getState>['applyDtEvent']
+        >[0]['data'],
+      } as Parameters<ReturnType<typeof useFileArtifactsStore.getState>['applyDtEvent']>[0])
     }
   }
 }

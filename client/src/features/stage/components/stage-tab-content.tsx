@@ -7,6 +7,8 @@ import { DiagnosticsTab } from './diagnostics/diagnostics-tab'
 import { ErDesignerTab } from './er-designer-tab'
 import { ErInspectorTab } from './er-inspector-tab'
 import { FilePreviewTab } from './file-preview-tab'
+import { FilesTab } from './files-tab'
+import { FilesLibraryTab } from './files-library-tab'
 import { SqlWorkbenchTab } from './sql-workbench-tab'
 
 export function StageTabContent() {
@@ -74,6 +76,22 @@ export function StageTabContent() {
     return (
       <div className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <ErDesignerTab key={tab.tabId} tabId={tab.tabId} />
+      </div>
+    )
+  }
+
+  if (tab.type === 'files') {
+    return (
+      <div className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <FilesTab key={tab.tabId} />
+      </div>
+    )
+  }
+
+  if (tab.type === 'files_library') {
+    return (
+      <div className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <FilesLibraryTab key={tab.tabId} />
       </div>
     )
   }
