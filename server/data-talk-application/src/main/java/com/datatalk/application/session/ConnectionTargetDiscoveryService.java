@@ -72,6 +72,23 @@ public class ConnectionTargetDiscoveryService {
                     databaseNames.add(configuredDatabase);
                 }
             }
+            // SQL Server has two-level context (database + schema).
+            // Filter system databases and discover schemas.
+            if (ConnectionKind.SQLSERVER.equals(connection.kind())) {
+                // SQL Server getCatalogs() returns all databases including system ones.
+                // We query sys.databases to filter out system databases.
+                try (var stmt = jdbc.createStatement();
+                     var rs = stmt.executeQuery(
+                         "SELECT name FROM sys.databases WHERE name NOT IN ('master','tempdb','model','msdb','resource') ORDER BY name")) {
+                    databaseNames.clear();
+                    while (rs.next()) {
+                        String name = rs.getString(1);
+                        if (name != null && !name.isBlank()) databaseNames.add(name);
+                    }
+                } catch (Exception ignored) {
+                    // Fall through to getCatalogs() below.
+                }
+            }
             if (databaseNames.isEmpty()) {
                 try (var catalogs = meta.getCatalogs()) {
                     while (catalogs.next()) {

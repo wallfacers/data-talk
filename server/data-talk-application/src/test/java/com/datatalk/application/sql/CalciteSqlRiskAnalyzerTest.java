@@ -313,4 +313,88 @@ class CalciteSqlRiskAnalyzerTest {
         assertThat(result.riskLevel()).isNull();
         assertThat(result.fallbackUsed()).isTrue();
     }
+
+    // --- SQL Server risk classification ---
+
+    @Test
+    void sqlserver_mergeIsHighRisk() {
+        var result = analyzer.analyze(
+            "MERGE INTO employees AS t USING new_employees AS s ON (t.id = s.id) WHEN MATCHED THEN UPDATE SET t.name = s.name",
+            Category.MUTATION, "sqlserver");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("sqlserver_merge");
+    }
+
+    @Test
+    void sqlserver_execIsHighRisk() {
+        var result = analyzer.analyze("EXEC sp_who", Category.QUERY, "sqlserver");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("sqlserver_exec");
+    }
+
+    @Test
+    void sqlserver_executeIsHighRisk() {
+        var result = analyzer.analyze("EXECUTE sp_helpdb", Category.QUERY, "sqlserver");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("sqlserver_exec");
+    }
+
+    @Test
+    void sqlserver_backupIsHighRisk() {
+        var result = analyzer.analyze("BACKUP DATABASE mydb TO DISK = 'backup.bak'", Category.DDL, "sqlserver");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("sqlserver_backup_restore");
+    }
+
+    @Test
+    void sqlserver_restoreIsHighRisk() {
+        var result = analyzer.analyze("RESTORE DATABASE mydb FROM DISK = 'backup.bak'", Category.DDL, "sqlserver");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("sqlserver_backup_restore");
+    }
+
+    @Test
+    void sqlserver_dbccIsHighRisk() {
+        var result = analyzer.analyze("DBCC CHECKDB(mydb)", Category.QUERY, "sqlserver");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("sqlserver_dbcc");
+    }
+
+    @Test
+    void sqlserver_killIsHighRisk() {
+        var result = analyzer.analyze("KILL 53", Category.QUERY, "sqlserver");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("sqlserver_kill");
+    }
+
+    @Test
+    void sqlserver_denyIsHighRisk() {
+        var result = analyzer.analyze("DENY SELECT ON employees TO public", Category.DDL, "sqlserver");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("sqlserver_deny");
+    }
+
+    @Test
+    void sqlserver_selectIsL1() {
+        var result = analyzer.analyze("SELECT * FROM employees WHERE department_id = 10", Category.QUERY, "sqlserver");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L1);
+        assertThat(result.fallbackUsed()).isFalse();
+    }
+
+    @Test
+    void sqlserver_doesNotApplySqliteMaintenanceRules() {
+        var result = analyzer.analyze("VACUUM", Category.QUERY, "sqlserver");
+
+        assertThat(result.riskLevel()).isNull();
+        assertThat(result.fallbackUsed()).isTrue();
+    }
 }

@@ -36,6 +36,12 @@ public class DefaultSqlStatementSplitters implements SqlStatementSplitters {
             //  BEGIN...END blocks, EXECUTE IMMEDIATE, etc.)
             return genericSplitter.split(sql);
         }
+        if ("sqlserver".equalsIgnoreCase(connectionKind)) {
+            // TODO: SQL Server day-1 uses generic single-statement splitting.
+            //  Future: implement GO batch-aware splitting (GO separator,
+            //  batch scripts, sqlcmd mode, etc.)
+            return genericSplitter.split(sql);
+        }
         return genericSplitter.split(sql);
     }
 }

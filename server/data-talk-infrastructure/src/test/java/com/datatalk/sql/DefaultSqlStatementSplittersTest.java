@@ -103,4 +103,12 @@ class DefaultSqlStatementSplittersTest {
         assertThat(splitters.split("oracle", "SELECT 'a;b'; SELECT 1;"))
             .containsExactly("SELECT 'a;b'", "SELECT 1");
     }
+
+    @Test
+    void routes_sqlserver_to_generic_splitter() {
+        // SQL Server day-1 uses generic single-statement splitting.
+        // Future: implement GO batch-aware splitting.
+        assertThat(splitters.split("sqlserver", "SELECT 'a;b'; SELECT 1;"))
+            .containsExactly("SELECT 'a;b'", "SELECT 1");
+    }
 }

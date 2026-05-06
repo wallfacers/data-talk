@@ -126,6 +126,9 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
         if (ConnectionKind.ORACLE.equalsIgnoreCase(connectionKind)) {
             return classifyOracleSpecific(sql);
         }
+        if (ConnectionKind.SQLSERVER.equalsIgnoreCase(connectionKind)) {
+            return classifySqlServerSpecific(sql);
+        }
         return null;
     }
 
@@ -173,6 +176,42 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
         }
         if (normalized.startsWith("truncate ")) {
             return SqlRiskAnalysis.high("truncate");
+        }
+        return null;
+    }
+
+    private SqlRiskAnalysis classifySqlServerSpecific(String sql) {
+        String normalized = stripLeadingComments(sql).toLowerCase(Locale.ROOT);
+        if (normalized.isEmpty()) return null;
+        // MERGE statement
+        if (normalized.startsWith("merge ")
+            || normalized.startsWith("merge\t")) {
+            return SqlRiskAnalysis.high("sqlserver_merge");
+        }
+        // EXEC / EXECUTE (stored procedure execution)
+        if (normalized.startsWith("exec ")
+            || normalized.startsWith("exec\t")
+            || normalized.startsWith("execute ")
+            || normalized.startsWith("execute\t")) {
+            return SqlRiskAnalysis.high("sqlserver_exec");
+        }
+        // BACKUP / RESTORE
+        if (normalized.startsWith("backup ")
+            || normalized.startsWith("restore ")) {
+            return SqlRiskAnalysis.high("sqlserver_backup_restore");
+        }
+        // DBCC
+        if (normalized.startsWith("dbcc ")) {
+            return SqlRiskAnalysis.high("sqlserver_dbcc");
+        }
+        // KILL
+        if (normalized.startsWith("kill ")
+            || normalized.startsWith("kill\t")) {
+            return SqlRiskAnalysis.high("sqlserver_kill");
+        }
+        // DENY (SQL Server-specific permission command alongside GRANT/REVOKE)
+        if (normalized.startsWith("deny ")) {
+            return SqlRiskAnalysis.high("sqlserver_deny");
         }
         return null;
     }
