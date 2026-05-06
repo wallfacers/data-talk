@@ -179,29 +179,42 @@ export const useFileArtifactsStore = create<FileArtifactsState>((set, get) => ({
         }
         case 'file_artifact.archived': {
           const { fileArtifactId, sessionId, connectionId, filename, physicalPath } = event.data
+          // Session→connection archive path
+          let previous: FileArtifact | undefined
           if (sessionId && bySessionId[sessionId]) {
-            const previous = bySessionId[sessionId].find((f) => f.id === fileArtifactId)
+            previous = bySessionId[sessionId].find((f) => f.id === fileArtifactId)
             bySessionId[sessionId] = removeById(bySessionId[sessionId], fileArtifactId)
-            const archived: FileArtifact = {
-              id: fileArtifactId,
-              scope: 'workspace',
-              status: 'archived',
-              kind: previous?.kind ?? 'other',
-              sessionId,
-              connectionId,
-              filename,
-              physicalPath,
-              sizeBytes: previous?.sizeBytes ?? 0,
-              mimeType: previous?.mimeType ?? null,
-              title: previous?.title ?? null,
-              summary: previous?.summary ?? null,
-              createdAt: previous?.createdAt ?? new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              archivedAt: new Date().toISOString(),
-              metadata: previous?.metadata ?? {},
-            }
-            byConnectionId[connectionId] = upsertById(byConnectionId[connectionId] ?? [], archived)
           }
+          // Reattach path: find in existing connection lists (orphan→new connection)
+          if (!previous) {
+            for (const cid of Object.keys(byConnectionId)) {
+              const found = byConnectionId[cid].find((f) => f.id === fileArtifactId)
+              if (found) {
+                previous = found
+                byConnectionId[cid] = removeById(byConnectionId[cid], fileArtifactId)
+                break
+              }
+            }
+          }
+          const archived: FileArtifact = {
+            id: fileArtifactId,
+            scope: 'workspace',
+            status: 'archived',
+            kind: previous?.kind ?? 'other',
+            sessionId: sessionId ?? previous?.sessionId ?? null,
+            connectionId,
+            filename,
+            physicalPath,
+            sizeBytes: previous?.sizeBytes ?? 0,
+            mimeType: previous?.mimeType ?? null,
+            title: previous?.title ?? null,
+            summary: previous?.summary ?? null,
+            createdAt: previous?.createdAt ?? new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            archivedAt: new Date().toISOString(),
+            metadata: previous?.metadata ?? {},
+          }
+          byConnectionId[connectionId] = upsertById(byConnectionId[connectionId] ?? [], archived)
           break
         }
         case 'file_artifact.discarded': {

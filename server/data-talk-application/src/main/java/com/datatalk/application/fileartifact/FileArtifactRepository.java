@@ -73,8 +73,9 @@ public interface FileArtifactRepository {
      *   orphanedAt               = epoch millis at deletion time
      *
      * <p>Application layer must call this BEFORE the connection row itself
-     * is removed (so the name is still discoverable). Same transaction as
-     * the connection row delete.
+     * is removed (so the name is still discoverable). Must execute within
+     * the same {@code @Transactional} boundary as the connection row delete
+     * to guarantee atomicity.
      */
     void detachArchivedFromConnection(String connectionId, String connectionName, long deletedAtMillis);
 

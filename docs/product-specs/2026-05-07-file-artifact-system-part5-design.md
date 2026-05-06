@@ -145,7 +145,7 @@ HTTP 200 OK
 |------|------|------|
 | `not_found` | 404 | fid / sid / cid 不存在 |
 | `wrong_status` | 409 | archive 时行 status ≠ candidate；discard 已是 discarded |
-| `path_*` (8 类) | 409 | 复用 Part 1 `PathSafetyError.wire()` |
+| `path_*` (6 类) | 409 | 复用 Part 1 `PathSafetyError.wire()` |
 | `disk_full` | 507 | mv 时磁盘满 / 配额 |
 | `mv_failed` | 503 | mv 其它 IO 异常；可 retry |
 | `toctou_changed` | 503 | mv 前 stat 检测到属性变；可 retry |

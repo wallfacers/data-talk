@@ -13,6 +13,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
+import java.nio.file.Path;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -148,13 +149,15 @@ public class JdbcFileArtifactRepository implements FileArtifactRepository {
     @Override
     public void markArchived(String id, String connectionId, String newPhysicalPath) {
         long now = Instant.now().toEpochMilli();
+        String newFilename = Path.of(newPhysicalPath).getFileName().toString();
         jdbc.update(
                 "UPDATE file_artifact SET status = ?, scope = ?, connection_id = ?, "
-                        + "physical_path = ?, archived_at = ?, updated_at = ? WHERE id = ?",
+                        + "physical_path = ?, filename = ?, archived_at = ?, updated_at = ? WHERE id = ?",
                 FileArtifactStatus.ARCHIVED.dbValue(),
                 FileArtifactScope.WORKSPACE.dbValue(),
                 connectionId,
                 newPhysicalPath,
+                newFilename,
                 now,
                 now,
                 id);
