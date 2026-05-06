@@ -95,6 +95,7 @@ public class ConnectionTargetDiscoveryService {
         if (kind == null || kind.isBlank()) return true;
         String normalized = kind.toLowerCase(Locale.ROOT);
         return !ConnectionKind.MYSQL.equals(normalized)
+            && !ConnectionKind.MARIADB.equals(normalized)
             && !ConnectionKind.SQLITE.equals(normalized);
     }
 

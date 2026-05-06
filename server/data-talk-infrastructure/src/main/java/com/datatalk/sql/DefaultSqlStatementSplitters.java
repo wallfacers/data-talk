@@ -27,7 +27,7 @@ public class DefaultSqlStatementSplitters implements SqlStatementSplitters {
         if ("postgres".equalsIgnoreCase(connectionKind) || "postgresql".equalsIgnoreCase(connectionKind)) {
             return postgresSplitter.split(sql);
         }
-        if ("mysql".equalsIgnoreCase(connectionKind)) {
+        if ("mysql".equalsIgnoreCase(connectionKind) || "mariadb".equalsIgnoreCase(connectionKind)) {
             return mysqlSplitter.split(sql);
         }
         return genericSplitter.split(sql);

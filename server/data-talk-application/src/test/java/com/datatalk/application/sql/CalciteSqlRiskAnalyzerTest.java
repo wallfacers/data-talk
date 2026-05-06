@@ -207,4 +207,35 @@ class CalciteSqlRiskAnalyzerTest {
         assertThat(result.riskLevel()).isNull();
         assertThat(result.fallbackUsed()).isTrue();
     }
+
+    @Test
+    void mariadbSelectIsL1() {
+        var result = analyzer.analyze("SELECT * FROM orders", Category.QUERY, "mariadb");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L1);
+        assertThat(result.fallbackUsed()).isFalse();
+    }
+
+    @Test
+    void mariadbDeleteWithoutWhereIsL3() {
+        var result = analyzer.analyze("DELETE FROM logs", Category.QUERY, "mariadb");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("delete_without_where");
+    }
+
+    @Test
+    void mariadbInsertIsL2() {
+        var result = analyzer.analyze("INSERT INTO orders(id) VALUES (1)", Category.MUTATION, "mariadb");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L2);
+    }
+
+    @Test
+    void mariadbDoesNotApplySqliteMaintenanceRules() {
+        var result = analyzer.analyze("VACUUM", Category.QUERY, "mariadb");
+
+        assertThat(result.riskLevel()).isNull();
+        assertThat(result.fallbackUsed()).isTrue();
+    }
 }

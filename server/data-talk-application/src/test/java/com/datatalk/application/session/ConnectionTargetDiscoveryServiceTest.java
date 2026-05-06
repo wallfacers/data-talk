@@ -110,6 +110,33 @@ class ConnectionTargetDiscoveryServiceTest {
     }
 
     @Test
+    void discover_treats_mariadb_databases_as_catalogs_not_independent_schemas() throws Exception {
+        Connection jdbc = mock(Connection.class);
+        var meta = mock(java.sql.DatabaseMetaData.class);
+        ResultSet catalogs = mock(ResultSet.class);
+        when(jdbc.getMetaData()).thenReturn(meta);
+        when(meta.getCatalogs()).thenReturn(catalogs);
+        when(catalogs.next()).thenReturn(true, false);
+        when(catalogs.getString(1)).thenReturn("mydb");
+        Driver driver = new StubDriver("jdbc:mariadb://localhost:3306/", jdbc);
+        DriverManager.registerDriver(driver);
+        try {
+            connectionRepo.insert(new ConnectionRecord(
+                "mariadb-1", "MariaDB", "mariadb", "localhost", 3306, "app", "root", new byte[]{1}, null, 2L, 3000, null, null
+            ));
+            Mockito.when(connectionService.decryptPassword("mariadb-1")).thenReturn("");
+
+            var result = service.discover("mariadb-1");
+
+            assertThat(result.databaseNames()).containsExactly("app", "mydb");
+            assertThat(result.schemaNames()).isEmpty();
+            verify(meta, never()).getSchemas();
+        } finally {
+            DriverManager.deregisterDriver(driver);
+        }
+    }
+
+    @Test
     void discover_treats_sqlite_as_file_scoped_without_schema_namespace() {
         connectionRepo.insert(new ConnectionRecord(
             "sqlite-memory",
