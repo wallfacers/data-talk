@@ -8,6 +8,7 @@ public enum DbType {
     POSTGRESQL,
     SQLITE,
     H2,
+    MARIADB,
     SQLSERVER,
     ORACLE
 }
