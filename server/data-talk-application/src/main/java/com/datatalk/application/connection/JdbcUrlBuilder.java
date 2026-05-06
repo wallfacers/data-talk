@@ -22,8 +22,8 @@ public final class JdbcUrlBuilder {
             case ConnectionKind.SQLITE ->
                 "jdbc:sqlite:" + sqliteDatabaseName(db);
             case ConnectionKind.MARIADB ->
-                throw new DataTalkException(DataTalkErrorCodes.DATABASE_KIND_UNSUPPORTED,
-                    "mariadb connection not yet implemented", false);
+                db != null ? "jdbc:mariadb://" + c.host() + ":" + c.port() + "/" + db
+                           : "jdbc:mariadb://" + c.host() + ":" + c.port() + "/";
             case ConnectionKind.ORACLE ->
                 throw new DataTalkException(DataTalkErrorCodes.DATABASE_KIND_UNSUPPORTED,
                     "oracle connection not yet implemented", false);
@@ -49,8 +49,8 @@ public final class JdbcUrlBuilder {
             case SQLITE ->
                 "jdbc:sqlite:" + sqliteDatabaseName(db);
             case MARIADB ->
-                throw new DataTalkException(DataTalkErrorCodes.DATABASE_KIND_UNSUPPORTED,
-                    "mariadb connection not yet implemented", false);
+                db != null ? "jdbc:mariadb://" + c.host() + ":" + c.port() + "/" + db
+                           : "jdbc:mariadb://" + c.host() + ":" + c.port() + "/";
             case ORACLE ->
                 throw new DataTalkException(DataTalkErrorCodes.DATABASE_KIND_UNSUPPORTED,
                     "oracle connection not yet implemented", false);

@@ -99,6 +99,9 @@ public class ConnectionService {
         if (kind.equals(ConnectionKind.MYSQL)) {
             int timeoutMs = c.connectTimeout();
             url += (url.contains("?") ? "&" : "?") + "connectTimeout=" + timeoutMs + "&socketTimeout=" + timeoutMs;
+        } else if (kind.equals(ConnectionKind.MARIADB)) {
+            int timeoutMs = c.connectTimeout();
+            url += (url.contains("?") ? "&" : "?") + "connectTimeout=" + timeoutMs;
         } else if (kind.equals(ConnectionKind.POSTGRESQL)) {
             int timeoutSeconds = c.connectTimeout() / 1000;
             url += (url.contains("?") ? "&" : "?") + "connectTimeout=" + timeoutSeconds + "&socketTimeout=" + timeoutSeconds;

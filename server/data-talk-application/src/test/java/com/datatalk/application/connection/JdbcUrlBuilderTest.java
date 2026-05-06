@@ -134,4 +134,70 @@ class JdbcUrlBuilderTest {
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:sqlite::memory:");
     }
+
+    @Test
+    void mariadb_with_database_builds_jdbc_mariadb_url() {
+        var connection = new ConnectionRecord(
+            "mariadb-1",
+            "MariaDB Test",
+            ConnectionKind.MARIADB,
+            "host",
+            3306,
+            "testdb",
+            "root",
+            new byte[]{1},
+            null,
+            1L,
+            3000,
+            null,
+            null
+        );
+
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:mariadb://host:3306/testdb");
+    }
+
+    @Test
+    void mariadb_null_database_builds_url_without_db() {
+        var connection = new ConnectionRecord(
+            "mariadb-2",
+            "MariaDB No DB",
+            ConnectionKind.MARIADB,
+            "host",
+            3306,
+            null,
+            "root",
+            new byte[]{1},
+            null,
+            1L,
+            3000,
+            null,
+            null
+        );
+
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:mariadb://host:3306/");
+    }
+
+    @Test
+    void mariadb_custom_port() {
+        var connection = new ConnectionRecord(
+            "mariadb-3",
+            "MariaDB Custom Port",
+            ConnectionKind.MARIADB,
+            "host",
+            3307,
+            "mydb",
+            "root",
+            new byte[]{1},
+            null,
+            1L,
+            3000,
+            null,
+            null
+        );
+
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:mariadb://host:3307/mydb");
+    }
 }
