@@ -88,10 +88,12 @@ public class JdbcFileArtifactRepository implements FileArtifactRepository {
     public List<FileArtifact> findArchivedByConnection(String connectionId) {
         return jdbc.query(
                 "SELECT " + COLS + " FROM file_artifact "
-                        + "WHERE connection_id = ? AND scope = 'workspace' AND status = 'archived' "
+                        + "WHERE connection_id = ? AND scope = ? AND status = ? "
                         + "ORDER BY archived_at DESC",
                 mapper(),
-                connectionId);
+                connectionId,
+                FileArtifactScope.WORKSPACE.dbValue(),
+                FileArtifactStatus.ARCHIVED.dbValue());
     }
 
     @Override
@@ -147,8 +149,10 @@ public class JdbcFileArtifactRepository implements FileArtifactRepository {
     public void markArchived(String id, String connectionId, String newPhysicalPath) {
         long now = Instant.now().toEpochMilli();
         jdbc.update(
-                "UPDATE file_artifact SET status = 'archived', scope = 'workspace', connection_id = ?, "
+                "UPDATE file_artifact SET status = ?, scope = ?, connection_id = ?, "
                         + "physical_path = ?, archived_at = ?, updated_at = ? WHERE id = ?",
+                FileArtifactStatus.ARCHIVED.dbValue(),
+                FileArtifactScope.WORKSPACE.dbValue(),
                 connectionId,
                 newPhysicalPath,
                 now,

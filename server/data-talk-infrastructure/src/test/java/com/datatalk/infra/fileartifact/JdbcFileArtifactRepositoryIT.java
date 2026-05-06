@@ -332,6 +332,15 @@ class JdbcFileArtifactRepositoryIT {
     }
 
     @Test
+    void deleteTransientByForConnection_emptyList_doesNothing() {
+        // Insert some data to verify it's not deleted
+        repo.insert(sample("fa_test", FileArtifactStatus.TEMPORARY, "ses_test", null));
+        repo.deleteTransientByForConnection(List.of());
+        // Should still exist
+        assertThat(repo.findById("fa_test")).isPresent();
+    }
+
+    @Test
     void detachArchivedFromConnection_sets_connection_null_and_stamps_orphan_metadata() {
         repo.insert(archivedAt("w1", "conn_p", "2026-04-29T09:00:00Z"));
         repo.insert(archivedAt("w2", "conn_p", "2026-04-29T10:00:00Z"));
