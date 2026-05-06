@@ -36,7 +36,7 @@ public class ConnectionObjectType implements ObjectType {
             "required", List.of("id", "kind", "host", "port", "username"),
             "properties", Map.ofEntries(
                 Map.entry("id",           Map.of("type", "string")),
-                Map.entry("kind",         Map.of("type", "string", "enum", List.of("mysql", "postgresql", "sqlite", "h2"))),
+                Map.entry("kind",         Map.of("type", "string", "enum", List.of("mysql", "postgresql", "sqlite", "h2", "mariadb", "oracle", "sqlserver"))),
                 Map.entry("host",         Map.of("type", "string")),
                 Map.entry("port",         Map.of("type", "integer", "minimum", 1, "maximum", 65535)),
                 Map.entry("databaseName", Map.of("type", "string")),

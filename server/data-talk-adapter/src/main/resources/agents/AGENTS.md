@@ -292,7 +292,7 @@ verbs, and error contracts.
 | "show how X relates to other tables" | er_inspector (ER Diagram Viewer) | tables=[X], neighborDepth=1 |
 | "show me the ER for db Y" | er_inspector (ER Diagram Viewer) | tables = read_schema(db=Y, limit=100) |
 | "annotate an implicit link between A and B" | (existing er_inspector) | ui_patch /virtualRelations |
-| "design a schema for ..." | er_designer (ER Diagram Designer) | dialect required (mysql/postgresql/h2; sqlite CREATE-only). |
+| "design a schema for ..." | er_designer (ER Diagram Designer) | dialect required (mysql/postgresql/h2/mariadb; sqlite CREATE-only). |
 | "fork prod into a draft to edit" | er_inspector -> fork_to_designer | preserves table & column shapes. |
 | "apply this draft to the test DB" | er_designer + bind_target + diff_against_db + generate_ddl | DDL lands in a query_editor tab; user must confirm via L2/L3. |
 | "find the ER tab containing X" | datatalk_ui_find | filter.type=er_inspector or er_designer + query.mode=fts pattern=X |
@@ -307,6 +307,7 @@ verbs, and error contracts.
   SQL execution. Do not claim a designer action applied schema changes.
 - Oracle and SQL Server are not supported by ER. Use query_editor + read_schema
   instead.
+- MariaDB is supported by ER (reuses MySQL DDL generation).
 - Do not pass coordinates. Layout is computed client-side; auto_layout is one
   ui_exec call away if a relayout is wanted.
 
@@ -558,5 +559,38 @@ Tabs persist across app restarts; the same `tabId` identifies the same logical w
 Combine: `filter + query + output.mode=tabs_only` ≈ `grep -l`; `filter + query + read` narrows then reads.
 
 Output budget: defaults `headLimit=100`, `maxTabs=50`. For existence checks use `output.mode=count` or `tabs_only`. Use `mode=matches` only when matching lines are needed. Avoid full reads of many tabs at once.
+
+## Database Dialect Notes
+
+### MariaDB
+
+- Connection kind: `mariadb`. MySQL-compatible; uses MariaDB Connector/J driver.
+- Default port: 3306. Same fields as MySQL (host, port, database, username, password).
+- Metadata and SQL execution follow the same paths as MySQL.
+- Diagnostics reuse MySQL EXPLAIN.
+- ER Designer: supported. Reuses MySQL DDL generation. `kind=mariadb` connections bind to `mariadb` dialect designers; `kind=mysql` connections also bind to `mariadb` designers.
+- Schema visibility: database selector visible, schema hidden (same as MySQL).
+
+### Oracle
+
+- Connection kind: `oracle`. Has `oracleServiceType` field: `"service"` (default) or `"sid"`.
+- Default port: 1521. Fields: host, port, database (service name or SID), username, password.
+- Schema context uses Oracle owner/schema. No independent catalog — service name is set at connection level.
+- PL/SQL blocks risk: anonymous blocks (`BEGIN...END`) are high-risk. `EXECUTE IMMEDIATE` and dynamic SQL are flagged.
+- ER Designer: unsupported. Use query_editor + read_schema instead.
+- Diagnostics: structured execution plan unsupported. Use raw EXPLAIN PLAN FOR + DBMS_XPLAN.
+- Schema visibility: schema/owner visible, no independent catalog selector.
+
+### SQL Server
+
+- Connection kind: `sqlserver` (alias `mssql` is normalized to `sqlserver`).
+- Default port: 1433. Fields: host, port, database, username, password.
+- Extra connection options: `sqlserverEncrypt` (default true), `sqlserverTrustServerCertificate` (default true), `sqlserverInstanceName` (optional).
+- Schema context uses `databaseName` + schema (similar to PostgreSQL).
+- Risk keywords: `EXEC`, `EXECUTE`, `BACKUP`, `DBCC`, `KILL`, `SHUTDOWN` are flagged.
+- `GO` batch splitter is not in day-1 scope; multi-statement batches use semicolons.
+- ER Designer: unsupported. Use query_editor + read_schema instead.
+- Diagnostics: structured execution plan unsupported. Use `SET SHOWPLAN_TEXT ON` or SSMS.
+- Schema visibility: both database and schema visible (like PostgreSQL).
 
 {{STAGE_TAB_DIGEST}}
