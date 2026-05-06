@@ -311,7 +311,7 @@ test.describe('er_designer', () => {
   // FIXME: bind_target succeeds and persists targetConnectionId to payload,
   // but diff_against_db still returns "Bind a target connection first".
   // This is a backend bug tracked in docs/bugs/.
-  test.fixme('contract: diff_against_db after bind_target returns structured diff', async ({ page, request }) => {
+  test('contract: diff_against_db after bind_target returns structured diff', async ({ page, request }) => {
     await ensureHybridSession(page)
     const c = adapterClient(request)
     const openRpc = await c.mcpCall('datatalk_ui_exec', {
@@ -330,6 +330,22 @@ test.describe('er_designer', () => {
       params: { connectionId: PG_CONN_ID },
     })
     expect(bindRpc.error).toBeUndefined()
+
+    // Debug: read payload after bind_target
+    const readRpc = await c.mcpCall('datatalk_ui_read', {
+      object: 'er_designer',
+      target: tabId,
+      mode: 'state',
+    })
+    const designerPayload = readRpc.result as any
+    console.log('DEBUG payload after bind_target:', JSON.stringify(designerPayload, null, 2))
+
+    // Debug: call /api/er/diff directly with the payload
+    const directDiffRes = await request.post('http://localhost:8080/api/er/diff', {
+      data: { payload: designerPayload, connectionId: designerPayload?.targetConnectionId },
+    })
+    console.log('DEBUG direct /api/er/diff status:', directDiffRes.status())
+    console.log('DEBUG direct /api/er/diff body:', await directDiffRes.text())
 
     const diffRpc = await c.mcpCall('datatalk_ui_exec', {
       object: 'er_designer',

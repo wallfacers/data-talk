@@ -40,16 +40,19 @@ public class CreateConnectionAction implements ActionHandler<Map, Map> {
         return Map.ofEntries(
             Map.entry("type", "object"),
             Map.entry("required", List.of("name", "kind")),
-            Map.entry("properties", Map.of(
-                "name", Map.of("type", "string"),
-                "kind", Map.of("type", "string"),
-                "host", Map.of("type", "string"),
-                "port", Map.of("type", "integer"),
-                "databaseName", Map.of("type", "string"),
-                "username", Map.of("type", "string"),
-                "password", Map.of("type", "string"),
-                "connectTimeout", Map.of("type", "integer"),
-                "oracleServiceType", Map.of("type", "string")
+            Map.entry("properties", Map.ofEntries(
+                Map.entry("name", Map.of("type", "string")),
+                Map.entry("kind", Map.of("type", "string")),
+                Map.entry("host", Map.of("type", "string")),
+                Map.entry("port", Map.of("type", "integer")),
+                Map.entry("databaseName", Map.of("type", "string")),
+                Map.entry("username", Map.of("type", "string")),
+                Map.entry("password", Map.of("type", "string")),
+                Map.entry("connectTimeout", Map.of("type", "integer")),
+                Map.entry("oracleServiceType", Map.of("type", "string")),
+                Map.entry("sqlserverEncrypt", Map.of("type", "boolean")),
+                Map.entry("sqlserverTrustServerCertificate", Map.of("type", "boolean")),
+                Map.entry("sqlserverInstanceName", Map.of("type", "string"))
             )),
             Map.entry("allOf", List.of(nonSqliteRequiresServerFieldsSchema()))
         );
@@ -100,7 +103,10 @@ public class CreateConnectionAction implements ActionHandler<Map, Map> {
             normalized.username(),
             normalized.password(),
             normalized.connectTimeout(),
-            normalized.oracleServiceType()
+            normalized.oracleServiceType(),
+            normalized.sqlserverEncrypt(),
+            normalized.sqlserverTrustServerCertificate(),
+            normalized.sqlserverInstanceName()
         );
         var out = new LinkedHashMap<String, Object>();
         out.put("id", id);
@@ -121,7 +127,10 @@ public class CreateConnectionAction implements ActionHandler<Map, Map> {
             sqlite ? "" : string(input, "username"),
             sqlite ? (password == null ? "" : password) : string(input, "password"),
             nullableInteger(input, "connectTimeout"),
-            nullableString(input, "oracleServiceType")
+            nullableString(input, "oracleServiceType"),
+            nullableBoolean(input, "sqlserverEncrypt"),
+            nullableBoolean(input, "sqlserverTrustServerCertificate"),
+            nullableString(input, "sqlserverInstanceName")
         );
     }
 
@@ -163,6 +172,13 @@ public class CreateConnectionAction implements ActionHandler<Map, Map> {
         return Integer.parseInt(String.valueOf(value));
     }
 
+    private static Boolean nullableBoolean(Map input, String key) {
+        Object value = input.get(key);
+        if (value == null) return null;
+        if (value instanceof Boolean b) return b;
+        return Boolean.parseBoolean(String.valueOf(value));
+    }
+
     private record NormalizedConnectionInput(
         String name,
         String kind,
@@ -172,6 +188,9 @@ public class CreateConnectionAction implements ActionHandler<Map, Map> {
         String username,
         String password,
         Integer connectTimeout,
-        String oracleServiceType
+        String oracleServiceType,
+        Boolean sqlserverEncrypt,
+        Boolean sqlserverTrustServerCertificate,
+        String sqlserverInstanceName
     ) {}
 }

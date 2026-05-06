@@ -58,8 +58,8 @@ class SessionDataContextActionsIT {
         String suffix = Long.toString(System.nanoTime());
         c1Name = "分析库-" + suffix;
         c2Name = "运营库-" + suffix;
-        c1Id = connections.create(c1Name, "h2", "localhost", 0, "analytics", "sa", "", 3000, null);
-        c2Id = connections.create(c2Name, "h2", "localhost", 0, "ops", "sa", "", 3000, null);
+        c1Id = connections.create(c1Name, "h2", "localhost", 0, "analytics", "sa", "", 3000, null, null, null, null);
+        c2Id = connections.create(c2Name, "h2", "localhost", 0, "ops", "sa", "", 3000, null, null, null, null);
         sessions.upsert(new SessionRecord("s1", c1Id, "上下文动作测试", false, null, 1L, 1L, false));
     }
 

@@ -75,17 +75,11 @@ export class ErDesignerPage {
   // bind dialog
   async fillBindTarget(opts: { connectionId: string; connectionName?: string; database?: string; schema?: string }): Promise<void> {
     const dialog = this.page.locator('[role="dialog"]')
-    // Open the connection select dropdown
-    await dialog.locator('#er-bind-target-connection').click()
     const name = opts.connectionName ?? 'testconn'
-    // If the connection is already selected, the dropdown might not show options.
-    // First try to select by text; if not found, close and re-open.
-    const opt = this.page.locator('[role="option"]').filter({ hasText: name }).first()
-    if ((await opt.count()) === 0) {
-      await this.page.keyboard.press('Escape')
-      await dialog.locator('#er-bind-target-connection').click()
-    }
-    await this.page.locator('[role="option"]').filter({ hasText: name }).first().click()
+    // Open dropdown and select connection by text
+    await dialog.locator('#er-bind-target-connection').click()
+    await this.page.waitForTimeout(500)
+    await this.page.locator('[role="option"]').filter({ hasText: name }).first().click({ timeout: 5000 })
     if (opts.database) {
       await dialog.locator('#er-bind-target-database').click()
       await this.page.locator('[role="option"]').filter({ hasText: opts.database }).first().click()
@@ -124,11 +118,11 @@ export class ErDesignerPage {
 
   // table / column edit
   async openContextMenu(tableName: string): Promise<void> {
-    // Auto-layout first to ensure nodes don't overlap and right-click isn't intercepted by adjacent node's Select
-    await this.clickAutoLayout()
-    await this.page.waitForTimeout(800)
     const node = this.canvas.locator(`[data-er-table-name="${tableName}"]`).first()
-    await node.click({ button: 'right', force: true })
+    // Use force: true to bypass ReactFlow overlay interception,
+    // but first ensure the node is visible and stable
+    await node.waitFor({ state: 'visible', timeout: 3_000 })
+    await node.click({ button: 'right' })
   }
   async clickContextMenuItem(label: 'rename' | 'addColumn' | 'deleteTable'): Promise<void> {
     const map: Record<string, RegExp> = {
@@ -245,18 +239,36 @@ export class ErDesignerPage {
     edgeId: string,
     type: 'one_to_one' | 'one_to_many' | 'many_to_one' | 'many_to_many',
   ): Promise<void> {
-    await this.canvas.locator(`[data-er-edge][data-id="${edgeId}"]`).first().click()
-    const select = this.page.locator('[data-er-edge-type-select]').first()
+    // Click the edge using ReactFlow's built-in selector
+    const edgeGroup = this.canvas.locator(`.react-flow__edge[data-id="${edgeId}"]`).first()
+    if ((await edgeGroup.count()) > 0) {
+      await edgeGroup.click()
+    } else {
+      await this.canvas.locator(`[data-er-edge][data-id="${edgeId}"]`).first().click()
+    }
+    await this.page.waitForTimeout(500)
+    // Click the relation type select in the edge label
+    const select = this.page.locator('[aria-label*="Relation type"]').first()
     if ((await select.count()) > 0) {
       await select.click()
       await this.page.locator(`[role="option"]`).filter({ hasText: type }).first().click()
     }
   }
   async deleteEdge(edgeId: string): Promise<void> {
-    await this.canvas.locator(`[data-er-edge][data-id="${edgeId}"]`).first().click()
-    const delBtn = this.page.locator('[data-er-edge-delete]').first()
-    if ((await delBtn.count()) > 0) await delBtn.click()
-    else await this.page.keyboard.press('Delete')
+    const edgeGroup = this.canvas.locator(`.react-flow__edge[data-id="${edgeId}"]`).first()
+    if ((await edgeGroup.count()) > 0) {
+      await edgeGroup.click()
+    } else {
+      await this.canvas.locator(`[data-er-edge][data-id="${edgeId}"]`).first().click()
+    }
+    await this.page.waitForTimeout(500)
+    // Try the trash button in the edge label, fallback to Delete key
+    const delBtn = this.page.locator('[aria-label*="Delete"]').first()
+    if ((await delBtn.count()) > 0 && await delBtn.isVisible()) {
+      await delBtn.click()
+    } else {
+      await this.page.keyboard.press('Delete')
+    }
   }
 
   // keyboard
@@ -264,7 +276,12 @@ export class ErDesignerPage {
     await this.canvas.locator(`[data-er-table-name="${tableName}"]`).first().click()
   }
   async selectEdge(edgeId: string): Promise<void> {
-    await this.canvas.locator(`[data-er-edge][data-id="${edgeId}"]`).first().click()
+    const edgeGroup = this.canvas.locator(`.react-flow__edge[data-id="${edgeId}"]`).first()
+    if ((await edgeGroup.count()) > 0) {
+      await edgeGroup.click()
+    } else {
+      await this.canvas.locator(`[data-er-edge][data-id="${edgeId}"]`).first().click()
+    }
   }
   async pressDelete(): Promise<void> {
     await this.page.keyboard.press('Delete')

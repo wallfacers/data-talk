@@ -88,6 +88,7 @@ export class StagePersistenceCoordinator {
     if (metaInflight) await metaInflight
     if (this.metaPending.has(tabId)) await this.runMetadataWrite(tabId)
     if (this.contentPending.has(tabId)) await this.runContentWrite(tabId)
+    this.hydrationCache.delete(tabId)
   }
 
   async flushAll(): Promise<void> {

@@ -52,7 +52,7 @@ class ErTabControllerIT {
             st.execute("CREATE TABLE users (id BIGINT PRIMARY KEY, email VARCHAR(255))");
             st.execute("CREATE TABLE orders (id BIGINT PRIMARY KEY, user_id BIGINT REFERENCES users(id))");
         }
-        connectionId = conn.create("ER ctrl IT", ConnectionKind.H2, "local", 0, DB, "sa", "", null, null);
+        connectionId = conn.create("ER ctrl IT", ConnectionKind.H2, "local", 0, DB, "sa", "", null, null, null, null, null);
     }
 
     @Test
@@ -101,6 +101,31 @@ class ErTabControllerIT {
                 .content(body))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.code").value("connection_unavailable"));
+    }
+
+    @Test
+    void diffWithFrontendPayloadExtraFieldsReturns200() throws Exception {
+        // Frontend payload includes extra fields (kind, positions, collapsed, viewport)
+        // not present in the Java ErDesignerPayload record.
+        String body = om.writeValueAsString(Map.of(
+            "connectionId", connectionId,
+            "payload", Map.of(
+                "kind", "er_designer",
+                "dialect", "h2",
+                "targetConnectionId", connectionId,
+                "tables", List.of(),
+                "relations", List.of(),
+                "positions", Map.of(),
+                "collapsed", List.of(),
+                "viewport", Map.of("x", 0, "y", 0, "zoom", 1)
+            )
+        ));
+
+        mvc.perform(post("/api/er/diff")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.differences").isArray());
     }
 
 }

@@ -74,6 +74,9 @@ public class UpdateConnectionConfirmableAction implements ActionHandler<Map, Map
                 Map.entry("password", Map.of("type", "string")),
                 Map.entry("connectTimeout", Map.of("type", "integer")),
                 Map.entry("oracleServiceType", Map.of("type", "string")),
+                Map.entry("sqlserverEncrypt", Map.of("type", "boolean")),
+                Map.entry("sqlserverTrustServerCertificate", Map.of("type", "boolean")),
+                Map.entry("sqlserverInstanceName", Map.of("type", "string")),
                 Map.entry("confirm", Map.of("type", "boolean")),
                 Map.entry("confirmationToken", Map.of("type", "string"))
             )),
@@ -167,7 +170,10 @@ public class UpdateConnectionConfirmableAction implements ActionHandler<Map, Map
             normalized.username(),
             normalized.password(),
             normalized.connectTimeout(),
-            normalized.oracleServiceType()
+            normalized.oracleServiceType(),
+            normalized.sqlserverEncrypt(),
+            normalized.sqlserverTrustServerCertificate(),
+            normalized.sqlserverInstanceName()
         );
         contextRefreshService.refreshByConnectionId(connectionId);
 
@@ -294,7 +300,10 @@ public class UpdateConnectionConfirmableAction implements ActionHandler<Map, Map
             sqlite ? "" : string(input, "username"),
             nullableString(input, "password"),
             nullableInteger(input, "connectTimeout"),
-            nullableString(input, "oracleServiceType")
+            nullableString(input, "oracleServiceType"),
+            nullableBoolean(input, "sqlserverEncrypt"),
+            nullableBoolean(input, "sqlserverTrustServerCertificate"),
+            nullableString(input, "sqlserverInstanceName")
         );
     }
 
@@ -325,6 +334,13 @@ public class UpdateConnectionConfirmableAction implements ActionHandler<Map, Map
         return Integer.parseInt(String.valueOf(value));
     }
 
+    private static Boolean nullableBoolean(Map input, String key) {
+        Object value = input.get(key);
+        if (value == null) return null;
+        if (value instanceof Boolean b) return b;
+        return Boolean.parseBoolean(String.valueOf(value));
+    }
+
     private record NormalizedConnectionInput(
         String name,
         String kind,
@@ -334,6 +350,9 @@ public class UpdateConnectionConfirmableAction implements ActionHandler<Map, Map
         String username,
         String password,
         Integer connectTimeout,
-        String oracleServiceType
+        String oracleServiceType,
+        Boolean sqlserverEncrypt,
+        Boolean sqlserverTrustServerCertificate,
+        String sqlserverInstanceName
     ) {}
 }

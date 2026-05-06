@@ -157,6 +157,8 @@ export function ErEdge(props: EdgeProps<Edge<ErEdgeData>>) {
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth={strokeWidth}
+        data-er-edge
+        data-id={id}
       />
       {crossings.map((crossing, index) => {
         const radius = JUMP_RADIUS
