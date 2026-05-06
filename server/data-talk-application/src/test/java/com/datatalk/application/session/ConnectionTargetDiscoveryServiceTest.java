@@ -55,7 +55,10 @@ class ConnectionTargetDiscoveryServiceTest {
               created_at BIGINT NOT NULL,
               connect_timeout INTEGER NOT NULL DEFAULT 3000,
               last_test_status TEXT,
-              last_test_at BIGINT
+              last_test_at BIGINT,
+              sqlserver_encrypt INTEGER NOT NULL DEFAULT 1,
+              sqlserver_trust_server_certificate INTEGER NOT NULL DEFAULT 1,
+              sqlserver_instance_name TEXT
             )
             """);
         connectionRepo = new ConnectionRepository(new JdbcTemplate(new SingleConnectionDataSource(metaConn, true)));
@@ -69,7 +72,7 @@ class ConnectionTargetDiscoveryServiceTest {
 
         connectionRepo.insert(new ConnectionRecord(
             "c1", "H2 主库", "h2", "localhost", 0, dbName, "sa", new byte[]{1}, null, 1L, 3000, null, null,
-            null));
+            null, 1, true, null));
         Mockito.when(connectionService.decryptPassword("c1")).thenReturn("");
     }
 
@@ -96,7 +99,7 @@ class ConnectionTargetDiscoveryServiceTest {
         try {
             connectionRepo.insert(new ConnectionRecord(
                 "mysql-1", "MySQL", "mysql", "localhost", 3306, "app", "root", new byte[]{1}, null, 2L, 3000, null, null,
-            null));
+            null, 1, true, null));
             Mockito.when(connectionService.decryptPassword("mysql-1")).thenReturn("");
 
             var result = service.discover("mysql-1");
@@ -123,7 +126,7 @@ class ConnectionTargetDiscoveryServiceTest {
         try {
             connectionRepo.insert(new ConnectionRecord(
                 "mariadb-1", "MariaDB", "mariadb", "localhost", 3306, "app", "root", new byte[]{1}, null, 2L, 3000, null, null,
-            null));
+            null, 1, true, null));
             Mockito.when(connectionService.decryptPassword("mariadb-1")).thenReturn("");
 
             var result = service.discover("mariadb-1");
@@ -152,7 +155,7 @@ class ConnectionTargetDiscoveryServiceTest {
             3000,
             null,
             null,
-            null));
+            null, 1, true, null));
         Mockito.when(connectionService.decryptPassword("sqlite-memory")).thenReturn("");
 
         var result = service.discover("sqlite-memory");
@@ -178,7 +181,7 @@ class ConnectionTargetDiscoveryServiceTest {
             3000,
             null,
             null,
-            null));
+            null, 1, true, null));
         Mockito.when(connectionService.decryptPassword("sqlite-invalid")).thenReturn("");
 
         assertThatThrownBy(() -> service.discover("sqlite-invalid"))
@@ -204,7 +207,7 @@ class ConnectionTargetDiscoveryServiceTest {
             connectionRepo.insert(new ConnectionRecord(
                 "oracle-1", "Oracle", "oracle", "host", 1521, "orclpdb", "system",
                 new byte[]{1}, null, 10L, 3000, null, null,
-                null));
+                null, 1, true, null));
             Mockito.when(connectionService.decryptPassword("oracle-1")).thenReturn("pw");
 
             var result = service.discover("oracle-1");
@@ -213,6 +216,36 @@ class ConnectionTargetDiscoveryServiceTest {
             assertThat(result.databaseNames()).containsExactly("orclpdb");
             // System schemas (SYS, SYSTEM, MDSYS, DBSNMP, XDB, ORDSYS) are filtered out
             assertThat(result.schemaNames()).containsExactlyInAnyOrder("HR", "SCOTT");
+        } finally {
+            DriverManager.deregisterDriver(driver);
+        }
+    }
+
+    @Test
+    void discover_sqlserver_has_independent_schema_namespace_and_filters_sys_schema() throws Exception {
+        // SQL Server should have independent schema namespace (hasIndependentSchema = true)
+        // and should filter 'sys' schema
+        Connection jdbc = mock(Connection.class);
+        var meta = mock(java.sql.DatabaseMetaData.class);
+        ResultSet schemas = mock(ResultSet.class);
+        ResultSet catalogs = mock(ResultSet.class);
+        when(jdbc.getMetaData()).thenReturn(meta);
+        when(meta.getSchemas()).thenReturn(schemas);
+        when(schemas.next()).thenReturn(true, true, true, true, false);
+        when(schemas.getString("TABLE_SCHEM")).thenReturn("dbo", "sales", "sys", "guest");
+        Driver driver = new StubDriver("jdbc:sqlserver://", jdbc);
+        DriverManager.registerDriver(driver);
+        try {
+            connectionRepo.insert(new ConnectionRecord(
+                "sqlserver-1", "SQL Server", "sqlserver", "host", 1433, "mydb", "sa",
+                new byte[]{1}, null, 10L, 3000, null, null,
+                null, 1, true, null));
+            Mockito.when(connectionService.decryptPassword("sqlserver-1")).thenReturn("pw");
+
+            var result = service.discover("sqlserver-1");
+
+            // SQL Server: sys schema is filtered out
+            assertThat(result.schemaNames()).containsExactlyInAnyOrder("dbo", "sales", "guest");
         } finally {
             DriverManager.deregisterDriver(driver);
         }

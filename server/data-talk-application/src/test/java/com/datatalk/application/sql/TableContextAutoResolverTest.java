@@ -122,7 +122,7 @@ class TableContextAutoResolverTest {
             3000,
             null,
             null,
-            null);
+            null, 1, true, null);
         when(connectionService.decryptPassword("sqlite-auto")).thenReturn("");
 
         ResolvedExecutionContext resolved = resolver.resolve(
@@ -150,7 +150,7 @@ class TableContextAutoResolverTest {
             3000,
             null,
             null,
-            null);
+            null, 1, true, null);
     }
 
     private static Translator translator() {

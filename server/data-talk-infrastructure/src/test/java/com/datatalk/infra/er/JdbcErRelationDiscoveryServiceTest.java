@@ -26,6 +26,7 @@ class JdbcErRelationDiscoveryServiceTest {
         "mem:er-discover-test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE";
     private static final String CONNECTION_ID = "conn-er";
     private static final String ORACLE_CONNECTION_ID = "conn-oracle";
+    private static final String SQLSERVER_CONNECTION_ID = "conn-sqlserver";
 
     private JdbcErRelationDiscoveryService discovery;
 
@@ -61,11 +62,15 @@ class JdbcErRelationDiscoveryServiceTest {
         when(repo.findById(CONNECTION_ID)).thenReturn(Optional.of(new ConnectionRecord(
             CONNECTION_ID, "ER discover test", "h2", "local", 0, DB, "sa",
             new byte[0], null, 0L, 3000, null, null,
-            null)));
+            null, 1, true, null)));
         when(repo.findById(ORACLE_CONNECTION_ID)).thenReturn(Optional.of(new ConnectionRecord(
             ORACLE_CONNECTION_ID, "Oracle stub", "oracle", "local", 0, "x", "sa",
             new byte[0], null, 0L, 3000, null, null,
-            null)));
+            null, 1, true, null)));
+        when(repo.findById(SQLSERVER_CONNECTION_ID)).thenReturn(Optional.of(new ConnectionRecord(
+            SQLSERVER_CONNECTION_ID, "SQL Server stub", "sqlserver", "local", 0, "x", "sa",
+            new byte[0], null, 0L, 3000, null, null,
+            null, 1, true, null)));
         when(conn.decryptPassword(CONNECTION_ID)).thenReturn("");
         discovery = new JdbcErRelationDiscoveryService(repo, conn);
     }
@@ -132,5 +137,12 @@ class JdbcErRelationDiscoveryServiceTest {
         assertThatThrownBy(() -> discovery.discover(CONNECTION_ID, tables, 0))
             .isInstanceOf(ErErrors.ErPayloadOversizedException.class)
             .matches(e -> ((ErErrors.ErPayloadOversizedException) e).limit() == 100);
+    }
+
+    @Test
+    void sqlserverDialectThrowsDialectUnsupported() {
+        assertThatThrownBy(() -> discovery.discover(SQLSERVER_CONNECTION_ID, List.of("users"), 0))
+            .isInstanceOf(ErErrors.DialectUnsupportedException.class)
+            .matches(e -> ((ErErrors.DialectUnsupportedException) e).kind().equals("sqlserver"));
     }
 }

@@ -102,7 +102,7 @@ class SessionDataContextServiceTest {
         connectionRepo.insert(new ConnectionRecord(
             "c1", "主库", "postgres", "localhost", 5432, "app_db", "u",
             new byte[]{1}, null, 100L, 3000, null, null,
-            null));
+            null, 1, true, null));
         sessionRepo.upsert(new SessionRecord("s1", "c1", "测试会话", false, null, 100L, 100L, false));
     }
 

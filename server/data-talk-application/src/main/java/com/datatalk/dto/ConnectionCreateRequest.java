@@ -9,5 +9,8 @@ public record ConnectionCreateRequest(
     String username,
     String password,
     Integer connectTimeout,  // optional, defaults to 3000ms
-    String oracleServiceType  // optional - null or 'service' = service name mode, 'sid' = SID mode (Oracle only)
+    String oracleServiceType,  // optional - null or 'service' = service name mode, 'sid' = SID mode (Oracle only)
+    Boolean sqlserverEncrypt,  // optional - defaults to true
+    Boolean sqlserverTrustServerCertificate,  // optional - defaults to true
+    String sqlserverInstanceName  // optional - named instance
 ) {}

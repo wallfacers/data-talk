@@ -33,9 +33,19 @@ public final class JdbcUrlBuilder {
                     yield "jdbc:oracle:thin:@//" + c.host() + ":" + c.port() + "/" + (db != null ? db : "ORCL");
                 }
             }
-            case ConnectionKind.SQLSERVER ->
-                throw new DataTalkException(DataTalkErrorCodes.DATABASE_KIND_UNSUPPORTED,
-                    "sqlserver connection not yet implemented", false);
+            case ConnectionKind.SQLSERVER -> {
+                StringBuilder url = new StringBuilder("jdbc:sqlserver://");
+                if (c.sqlserverInstanceName() != null && !c.sqlserverInstanceName().isBlank()) {
+                    url.append(c.host()).append("\\").append(c.sqlserverInstanceName());
+                } else {
+                    url.append(c.host());
+                }
+                url.append(":").append(c.port());
+                if (db != null && !db.isBlank()) url.append(";databaseName=").append(db);
+                url.append(";encrypt=").append(c.sqlserverEncrypt() != 0);
+                url.append(";trustServerCertificate=").append(c.sqlserverTrustServerCertificate());
+                yield url.toString();
+            }
             default ->
                 throw new DataTalkException(DataTalkErrorCodes.DATABASE_KIND_UNSUPPORTED,
                     "unsupported database kind: " + c.kind(), false);
@@ -59,9 +69,13 @@ public final class JdbcUrlBuilder {
                            : "jdbc:mariadb://" + c.host() + ":" + c.port() + "/";
             case ORACLE ->
                 "jdbc:oracle:thin:@//" + c.host() + ":" + c.port() + "/" + (db != null ? db : "ORCL");
-            case SQLSERVER ->
-                throw new DataTalkException(DataTalkErrorCodes.DATABASE_KIND_UNSUPPORTED,
-                    "sqlserver connection not yet implemented", false);
+            case SQLSERVER -> {
+                StringBuilder url = new StringBuilder("jdbc:sqlserver://");
+                url.append(c.host()).append(":").append(c.port());
+                if (db != null && !db.isBlank()) url.append(";databaseName=").append(db);
+                url.append(";encrypt=true;trustServerCertificate=true");
+                yield url.toString();
+            }
             default ->
                 throw new DataTalkException(DataTalkErrorCodes.DATABASE_TYPE_UNSUPPORTED,
                     "unsupported database type: " + c.dbType(), false);

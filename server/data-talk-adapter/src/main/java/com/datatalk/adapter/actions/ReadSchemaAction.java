@@ -280,6 +280,10 @@ public class ReadSchemaAction implements ActionHandler<Map, Map> {
         if ("mysql".equalsIgnoreCase(kind) || "mariadb".equalsIgnoreCase(kind)) {
             return new MetadataScope(hasText(database) ? database : null, null);
         }
+        if ("sqlserver".equalsIgnoreCase(kind)) {
+            // SQL Server uses catalog for database, schema for schema
+            return new MetadataScope(hasText(database) ? database : null, schemaPattern(schema));
+        }
         return new MetadataScope(null, schemaPattern(schema));
     }
 
@@ -291,7 +295,8 @@ public class ReadSchemaAction implements ActionHandler<Map, Map> {
         if (("postgres".equalsIgnoreCase(kind)
             || "postgresql".equalsIgnoreCase(kind)
             || "h2".equalsIgnoreCase(kind)
-            || "oracle".equalsIgnoreCase(kind))
+            || "oracle".equalsIgnoreCase(kind)
+            || "sqlserver".equalsIgnoreCase(kind))
             && hasText(schema)) {
             connection.setSchema(schema);
         }
@@ -312,7 +317,10 @@ public class ReadSchemaAction implements ActionHandler<Map, Map> {
             connection.connectTimeout(),
             connection.lastTestStatus(),
             connection.lastTestAt(),
-            connection.oracleServiceType()
+            connection.oracleServiceType(),
+            connection.sqlserverEncrypt(),
+            connection.sqlserverTrustServerCertificate(),
+            connection.sqlserverInstanceName()
         );
     }
 

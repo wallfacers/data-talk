@@ -41,7 +41,8 @@ public class ConnectionController {
         try {
             String id = svc.create(body.name(), body.kind(), body.host(), body.port(),
                 body.databaseName(), body.username(), body.password(), body.connectTimeout(),
-                body.oracleServiceType());
+                body.oracleServiceType(),
+                body.sqlserverEncrypt(), body.sqlserverTrustServerCertificate(), body.sqlserverInstanceName());
             return ResponseEntity.status(HttpStatus.CREATED).body(new ConnectionCreatedDto(id));
         } catch (DataAccessException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).build();
@@ -58,7 +59,8 @@ public class ConnectionController {
         try {
             svc.update(id, body.name(), body.kind(), body.host(), body.port(),
                 body.databaseName(), body.username(), body.password(), body.connectTimeout(),
-                body.oracleServiceType());
+                body.oracleServiceType(),
+                body.sqlserverEncrypt(), body.sqlserverTrustServerCertificate(), body.sqlserverInstanceName());
             contextRefreshService.refreshByConnectionId(id);
             return ResponseEntity.noContent().build();
         } catch (java.util.NoSuchElementException e) {

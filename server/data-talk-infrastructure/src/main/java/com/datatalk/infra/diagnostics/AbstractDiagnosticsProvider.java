@@ -88,7 +88,10 @@ abstract class AbstractDiagnosticsProvider implements DiagnosticsProvider {
             conn.connectTimeout(),
             conn.lastTestStatus(),
             conn.lastTestAt(),
-            conn.oracleServiceType()
+            conn.oracleServiceType(),
+            conn.sqlserverEncrypt(),
+            conn.sqlserverTrustServerCertificate(),
+            conn.sqlserverInstanceName()
         );
     }
 

@@ -63,7 +63,7 @@ class JdbcUrlBuilderTest {
             3000,
             null,
             null,
-            null);
+            null, 1, true, null);
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:sqlite:/tmp/app.db");
@@ -85,7 +85,7 @@ class JdbcUrlBuilderTest {
             3000,
             null,
             null,
-            null);
+            null, 1, true, null);
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:sqlite::memory:");
@@ -107,7 +107,7 @@ class JdbcUrlBuilderTest {
             3000,
             null,
             null,
-            null);
+            null, 1, true, null);
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:sqlite::memory:");
@@ -129,7 +129,7 @@ class JdbcUrlBuilderTest {
             3000,
             null,
             null,
-            null);
+            null, 1, true, null);
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:sqlite::memory:");
@@ -151,7 +151,7 @@ class JdbcUrlBuilderTest {
             3000,
             null,
             null,
-            null);
+            null, 1, true, null);
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:mariadb://host:3306/testdb");
@@ -173,7 +173,7 @@ class JdbcUrlBuilderTest {
             3000,
             null,
             null,
-            null);
+            null, 1, true, null);
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:mariadb://host:3306/");
@@ -195,7 +195,7 @@ class JdbcUrlBuilderTest {
             3000,
             null,
             null,
-            null);
+            null, 1, true, null);
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:mariadb://host:3307/mydb");
@@ -217,7 +217,7 @@ class JdbcUrlBuilderTest {
             3000,
             null,
             null,
-            null);
+            null, 1, true, null);
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:oracle:thin:@//host:1521/orclpdb");
@@ -239,7 +239,7 @@ class JdbcUrlBuilderTest {
             3000,
             null,
             null,
-            "sid");
+            "sid", 1, true, null);
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:oracle:thin:@host:1521:ORCL");
@@ -261,7 +261,7 @@ class JdbcUrlBuilderTest {
             3000,
             null,
             null,
-            null);
+            null, 1, true, null);
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:oracle:thin:@//host:1521/ORCL");
@@ -283,7 +283,7 @@ class JdbcUrlBuilderTest {
             3000,
             null,
             null,
-            "sid");
+            "sid", 1, true, null);
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:oracle:thin:@host:1521:ORCL");
@@ -323,5 +323,131 @@ class JdbcUrlBuilderTest {
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:oracle:thin:@//localhost:1521/ORCL");
+    }
+
+    // --- SQL Server URL building ---
+
+    @Test
+    void sqlserver_with_database_builds_url() {
+        var connection = new ConnectionRecord(
+            "sqlserver-1",
+            "SQL Server Test",
+            ConnectionKind.SQLSERVER,
+            "db.example.com",
+            1433,
+            "mydb",
+            "sa",
+            new byte[]{1},
+            null,
+            1L,
+            3000,
+            null,
+            null,
+            null, 1, true, null);
+
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:sqlserver://db.example.com:1433;databaseName=mydb;encrypt=true;trustServerCertificate=true");
+    }
+
+    @Test
+    void sqlserver_null_database_omits_databaseName() {
+        var connection = new ConnectionRecord(
+            "sqlserver-2",
+            "SQL Server No DB",
+            ConnectionKind.SQLSERVER,
+            "db.example.com",
+            1433,
+            null,
+            "sa",
+            new byte[]{1},
+            null,
+            1L,
+            3000,
+            null,
+            null,
+            null, 1, true, null);
+
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:sqlserver://db.example.com:1433;encrypt=true;trustServerCertificate=true");
+    }
+
+    @Test
+    void sqlserver_with_instance_name_builds_url() {
+        var connection = new ConnectionRecord(
+            "sqlserver-3",
+            "SQL Server Instance",
+            ConnectionKind.SQLSERVER,
+            "db.example.com",
+            1433,
+            "mydb",
+            "sa",
+            new byte[]{1},
+            null,
+            1L,
+            3000,
+            null,
+            null,
+            null, 1, true, "SQLEXPRESS");
+
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:sqlserver://db.example.com\\SQLEXPRESS:1433;databaseName=mydb;encrypt=true;trustServerCertificate=true");
+    }
+
+    @Test
+    void sqlserver_encrypt_disabled_builds_url() {
+        var connection = new ConnectionRecord(
+            "sqlserver-4",
+            "SQL Server No Encrypt",
+            ConnectionKind.SQLSERVER,
+            "db.example.com",
+            1433,
+            "mydb",
+            "sa",
+            new byte[]{1},
+            null,
+            1L,
+            3000,
+            null,
+            null,
+            null, 0, false, null);
+
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:sqlserver://db.example.com:1433;databaseName=mydb;encrypt=false;trustServerCertificate=false");
+    }
+
+    @Test
+    void sqlserver_dbConnection_builds_url() {
+        var connection = new DbConnection(
+            "c1",
+            "sqlserver-root",
+            DbType.SQLSERVER,
+            "192.168.1.10",
+            1433,
+            "testdb",
+            "sa",
+            "secret",
+            Instant.parse("2026-04-21T00:00:00Z")
+        );
+
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:sqlserver://192.168.1.10:1433;databaseName=testdb;encrypt=true;trustServerCertificate=true");
+    }
+
+    @Test
+    void sqlserver_dbConnection_null_database_builds_url() {
+        var connection = new DbConnection(
+            "c2",
+            "sqlserver-default",
+            DbType.SQLSERVER,
+            "localhost",
+            1433,
+            null,
+            "sa",
+            "secret",
+            Instant.parse("2026-04-21T00:00:00Z")
+        );
+
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:sqlserver://localhost:1433;encrypt=true;trustServerCertificate=true");
     }
 }

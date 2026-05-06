@@ -6,5 +6,8 @@ public record ConnectionRecord(
     String username, byte[] passwordEnc,
     String schemaDigest, long createdAt, int connectTimeout,
     String lastTestStatus, Long lastTestAt,
-    String oracleServiceType  // nullable: null or 'service' = service name mode, 'sid' = SID mode
+    String oracleServiceType,  // nullable: null or 'service' = service name mode, 'sid' = SID mode
+    int sqlserverEncrypt,              // 1 = encrypt (default), 0 = no encryption
+    boolean sqlserverTrustServerCertificate,  // default true
+    String sqlserverInstanceName       // nullable: named instance
 ) {}

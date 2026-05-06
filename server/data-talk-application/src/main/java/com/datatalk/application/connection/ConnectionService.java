@@ -38,12 +38,17 @@ public class ConnectionService {
 
     public String create(String name, String kind, String host, int port, String databaseName,
                          String username, String password, Integer connectTimeout,
-                         String oracleServiceType) {
+                         String oracleServiceType,
+                         Boolean sqlserverEncrypt, Boolean sqlserverTrustServerCertificate, String sqlserverInstanceName) {
+        // Normalize mssql alias to sqlserver
+        String effectiveKind = "mssql".equalsIgnoreCase(kind) ? ConnectionKind.SQLSERVER : kind;
         byte[] enc = vault.seal(password);
         String id = java.util.UUID.randomUUID().toString();
         int timeout = connectTimeout != null ? connectTimeout : DEFAULT_CONNECT_TIMEOUT;
         String effectiveName = Strings.defaultIfBlank(name, translator.get("connection.default_name", id.substring(0, 8)));
-        repo.insert(new ConnectionRecord(id, effectiveName, kind, host, port, databaseName, username, enc, null, clock.millis(), timeout, null, null, oracleServiceType));
+        int encrypt = sqlserverEncrypt != null ? (sqlserverEncrypt ? 1 : 0) : 1;
+        boolean trustCert = sqlserverTrustServerCertificate == null || sqlserverTrustServerCertificate;
+        repo.insert(new ConnectionRecord(id, effectiveName, effectiveKind, host, port, databaseName, username, enc, null, clock.millis(), timeout, null, null, oracleServiceType, encrypt, trustCert, sqlserverInstanceName));
         return id;
     }
 
@@ -69,16 +74,23 @@ public class ConnectionService {
 
     public void update(String id, String name, String kind, String host, int port, String databaseName,
                        String username, String password, Integer connectTimeout,
-                       String oracleServiceType) {
+                       String oracleServiceType,
+                       Boolean sqlserverEncrypt, Boolean sqlserverTrustServerCertificate, String sqlserverInstanceName) {
+        // Normalize mssql alias to sqlserver
+        String effectiveKind = "mssql".equalsIgnoreCase(kind) ? ConnectionKind.SQLSERVER : kind;
         var existing = repo.findById(id)
             .orElseThrow(() -> new java.util.NoSuchElementException(translator.get("error.connection.unknown", id)));
         byte[] enc = password != null ? vault.seal(password) : existing.passwordEnc();
         int timeout = connectTimeout != null ? connectTimeout : existing.connectTimeout();
         String effectiveOracleType = oracleServiceType != null ? oracleServiceType : existing.oracleServiceType();
+        int encrypt = sqlserverEncrypt != null ? (sqlserverEncrypt ? 1 : 0) : existing.sqlserverEncrypt();
+        boolean trustCert = sqlserverTrustServerCertificate != null ? sqlserverTrustServerCertificate : existing.sqlserverTrustServerCertificate();
+        String effectiveInstanceName = sqlserverInstanceName != null ? sqlserverInstanceName : existing.sqlserverInstanceName();
         String effectiveName = Strings.defaultIfBlank(name, translator.get("connection.default_name", id.substring(0, 8)));
-        repo.update(new ConnectionRecord(id, effectiveName, kind, host, port, databaseName, username,
+        repo.update(new ConnectionRecord(id, effectiveName, effectiveKind, host, port, databaseName, username,
             enc, existing.schemaDigest(), existing.createdAt(), timeout,
-            existing.lastTestStatus(), existing.lastTestAt(), effectiveOracleType));
+            existing.lastTestStatus(), existing.lastTestAt(), effectiveOracleType,
+            encrypt, trustCert, effectiveInstanceName));
     }
 
     public boolean deleteById(String id) {
@@ -111,6 +123,9 @@ public class ConnectionService {
         } else if (kind.equals(ConnectionKind.POSTGRESQL)) {
             int timeoutSeconds = c.connectTimeout() / 1000;
             url += (url.contains("?") ? "&" : "?") + "connectTimeout=" + timeoutSeconds + "&socketTimeout=" + timeoutSeconds;
+        } else if (kind.equals(ConnectionKind.SQLSERVER)) {
+            // SQL Server JDBC supports loginTimeout via DriverManager.setLoginTimeout
+            // The encrypt/trustServerCertificate are already embedded in the URL by JdbcUrlBuilder
         }
         long started = clock.millis();
         try (var conn = java.sql.DriverManager.getConnection(url, c.username(), password)) {
@@ -131,6 +146,7 @@ public class ConnectionService {
     private ConnectionDto toDto(ConnectionRecord c) {
         return new ConnectionDto(c.id(), c.name(), c.kind(), c.host(), c.port(),
             c.databaseName(), c.username(), c.createdAt(), c.connectTimeout(),
-            c.lastTestStatus(), c.lastTestAt(), c.oracleServiceType());
+            c.lastTestStatus(), c.lastTestAt(), c.oracleServiceType(),
+            c.sqlserverEncrypt() != 0, c.sqlserverTrustServerCertificate(), c.sqlserverInstanceName());
     }
 }

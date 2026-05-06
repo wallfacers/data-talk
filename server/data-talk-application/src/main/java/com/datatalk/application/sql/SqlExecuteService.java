@@ -572,10 +572,15 @@ public class SqlExecuteService {
             && hasText(context.database())) {
             connection.setCatalog(context.database());
         }
+        if (("sqlserver".equalsIgnoreCase(context.connection().kind()))
+            && hasText(context.database())) {
+            connection.setCatalog(context.database());
+        }
         if (("postgres".equalsIgnoreCase(context.connection().kind())
             || "postgresql".equalsIgnoreCase(context.connection().kind())
             || "h2".equalsIgnoreCase(context.connection().kind())
-            || "oracle".equalsIgnoreCase(context.connection().kind()))
+            || "oracle".equalsIgnoreCase(context.connection().kind())
+            || "sqlserver".equalsIgnoreCase(context.connection().kind()))
             && hasText(context.schema())) {
             connection.setSchema(context.schema());
         }
@@ -596,7 +601,10 @@ public class SqlExecuteService {
             connection.connectTimeout(),
             connection.lastTestStatus(),
             connection.lastTestAt(),
-            connection.oracleServiceType()
+            connection.oracleServiceType(),
+            connection.sqlserverEncrypt(),
+            connection.sqlserverTrustServerCertificate(),
+            connection.sqlserverInstanceName()
         );
     }
 

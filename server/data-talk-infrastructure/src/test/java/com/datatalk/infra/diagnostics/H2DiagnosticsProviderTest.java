@@ -167,7 +167,7 @@ class H2DiagnosticsProviderTest {
         return new ConnectionRecord(
             "c1", "test", "h2", "localhost", 0,
             databaseName, "sa", new byte[0], null, 0L, 5000, null, null,
-            null);
+            null, 1, true, null);
     }
 
     private Translator translator() {

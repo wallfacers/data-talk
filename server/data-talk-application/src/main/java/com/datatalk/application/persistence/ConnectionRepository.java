@@ -21,15 +21,19 @@ public class ConnectionRepository {
         rs.getInt("connect_timeout"),
         rs.getString("last_test_status"),
         rs.getObject("last_test_at") instanceof Number n ? n.longValue() : null,
-        rs.getString("oracle_service_type")
+        rs.getString("oracle_service_type"),
+        rs.getInt("sqlserver_encrypt"),
+        rs.getBoolean("sqlserver_trust_server_certificate"),
+        rs.getString("sqlserver_instance_name")
     );
 
     public void insert(ConnectionRecord c) {
         jdbc.update("""
-            INSERT INTO connections(id, name, kind, host, port, database_name, username, password_enc, schema_digest, created_at, connect_timeout, oracle_service_type)
-            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO connections(id, name, kind, host, port, database_name, username, password_enc, schema_digest, created_at, connect_timeout, oracle_service_type, sqlserver_encrypt, sqlserver_trust_server_certificate, sqlserver_instance_name)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, c.id(), c.name(), c.kind(), c.host(), c.port(), c.databaseName(), c.username(),
-            c.passwordEnc(), c.schemaDigest(), c.createdAt(), c.connectTimeout(), c.oracleServiceType());
+            c.passwordEnc(), c.schemaDigest(), c.createdAt(), c.connectTimeout(), c.oracleServiceType(),
+            c.sqlserverEncrypt(), c.sqlserverTrustServerCertificate(), c.sqlserverInstanceName());
     }
 
     public List<ConnectionRecord> findAll() {
@@ -45,10 +49,12 @@ public class ConnectionRepository {
         int n = jdbc.update("""
             UPDATE connections
                SET name = ?, kind = ?, host = ?, port = ?, database_name = ?, username = ?,
-                   password_enc = ?, schema_digest = ?, connect_timeout = ?, oracle_service_type = ?
+                   password_enc = ?, schema_digest = ?, connect_timeout = ?, oracle_service_type = ?,
+                   sqlserver_encrypt = ?, sqlserver_trust_server_certificate = ?, sqlserver_instance_name = ?
              WHERE id = ?
             """, c.name(), c.kind(), c.host(), c.port(), c.databaseName(), c.username(),
-            c.passwordEnc(), c.schemaDigest(), c.connectTimeout(), c.oracleServiceType(), c.id());
+            c.passwordEnc(), c.schemaDigest(), c.connectTimeout(), c.oracleServiceType(),
+            c.sqlserverEncrypt(), c.sqlserverTrustServerCertificate(), c.sqlserverInstanceName(), c.id());
         if (n == 0) throw new java.util.NoSuchElementException("unknown connection: " + c.id());
     }
 

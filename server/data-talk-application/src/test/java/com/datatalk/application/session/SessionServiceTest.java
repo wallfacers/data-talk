@@ -329,6 +329,6 @@ class SessionServiceTest {
     private static ConnectionRecord connectionRecord(String id) {
         return new ConnectionRecord(id, "seed-" + id, "mysql", "h", 3306,
             null, "u", new byte[] {0}, null, 0L, 3000, null, null,
-            null);
+            null, 1, true, null);
     }
 }

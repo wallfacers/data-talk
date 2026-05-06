@@ -233,7 +233,7 @@ class DiagnosticsServiceTest {
     private ConnectionRecord testConn(String kind) {
         return new ConnectionRecord("c1", "test", kind, "localhost", 3306,
             "db", "user", new byte[0], null, 0L, 5000, null, null,
-            null);
+            null, 1, true, null);
     }
 
     private Translator translator() {

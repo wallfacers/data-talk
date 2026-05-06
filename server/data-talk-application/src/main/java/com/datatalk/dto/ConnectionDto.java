@@ -12,5 +12,8 @@ public record ConnectionDto(
     int connectTimeout,
     String lastTestStatus,
     Long lastTestAt,
-    String oracleServiceType  // nullable - null or 'service' = service name mode, 'sid' = SID mode (Oracle only)
+    String oracleServiceType,  // nullable - null or 'service' = service name mode, 'sid' = SID mode (Oracle only)
+    boolean sqlserverEncrypt,
+    boolean sqlserverTrustServerCertificate,
+    String sqlserverInstanceName  // nullable - named instance
 ) {}

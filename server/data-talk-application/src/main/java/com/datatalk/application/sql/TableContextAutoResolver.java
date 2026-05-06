@@ -155,7 +155,10 @@ public class TableContextAutoResolver {
             connection.connectTimeout(),
             connection.lastTestStatus(),
             connection.lastTestAt(),
-            connection.oracleServiceType()
+            connection.oracleServiceType(),
+            connection.sqlserverEncrypt(),
+            connection.sqlserverTrustServerCertificate(),
+            connection.sqlserverInstanceName()
         );
     }
 

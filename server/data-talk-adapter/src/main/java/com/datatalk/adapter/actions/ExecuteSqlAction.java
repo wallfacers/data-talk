@@ -274,7 +274,8 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
     private void applyExecutionContext(Connection connection, String kind, String schema) throws SQLException {
         if (("postgres".equalsIgnoreCase(kind)
             || "postgresql".equalsIgnoreCase(kind)
-            || "h2".equalsIgnoreCase(kind))
+            || "h2".equalsIgnoreCase(kind)
+            || "sqlserver".equalsIgnoreCase(kind))
             && hasText(schema)) {
             connection.setSchema(schema);
         }
@@ -295,7 +296,10 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
             connection.connectTimeout(),
             connection.lastTestStatus(),
             connection.lastTestAt(),
-            connection.oracleServiceType()
+            connection.oracleServiceType(),
+            connection.sqlserverEncrypt(),
+            connection.sqlserverTrustServerCertificate(),
+            connection.sqlserverInstanceName()
         );
     }
 
