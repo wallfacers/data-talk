@@ -21,13 +21,13 @@ class DialectTest {
         assertThat(Dialect.fromConnectionKind("mariadb")).contains(Dialect.MARIADB);
         assertThat(Dialect.fromConnectionKind("oracle")).contains(Dialect.ORACLE);
         assertThat(Dialect.fromConnectionKind("sqlserver")).contains(Dialect.SQLSERVER);
+        assertThat(Dialect.fromConnectionKind("mssql")).contains(Dialect.SQLSERVER);
     }
 
     @Test
     void fromConnectionKind_returnsEmptyForUnsupported() {
         assertThat(Dialect.fromConnectionKind("clickhouse")).isEmpty();
         assertThat(Dialect.fromConnectionKind("mongodb")).isEmpty();
-        assertThat(Dialect.fromConnectionKind("mssql")).isEmpty();
         assertThat(Dialect.fromConnectionKind(null)).isEmpty();
         assertThat(Dialect.fromConnectionKind("")).isEmpty();
     }

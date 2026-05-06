@@ -10,11 +10,32 @@
 
 ---
 
-Implementation cannot begin until
-`docs/product-specs/2026-04-30-data-source-coverage-mariadb-design.md` is
-reviewed and approved. MariaDB remains unsupported until every verification
-step in this plan passes and `docs/DATA_SOURCE_TYPE_COMPATIBILITY.md` is
-updated.
+## Status
+
+- **Created:** 2026-04-30
+- **State:** Completed — 全功能 first-class 支持，有意复用 MySQL 生态
+- **Design:** `docs/product-specs/2026-04-30-data-source-coverage-mariadb-design.md` (Draft，代码已先行落地)
+
+### 已完成
+
+- ConnectionKind 常量 `mariadb`、DbType 枚举、`mariadb-java-client` 3.5.3 驱动
+- JdbcUrlBuilder `jdbc:mariadb://` URL 构建（2 个重载）
+- ConnectionService 持久化 + 独立 connectTimeout 配置
+- SqlExecuteService 上下文（setCatalog，与 MySQL 共享路径）
+- DefaultSqlStatementSplitters 路由到 MySQL splitter
+- CalciteSqlRiskAnalyzer 4 个 MariaDB 专属测试覆盖通用路径
+- MySqlDiagnosticsProvider 声明 `supportedDriverTypes = {"mysql","mariadb"}`
+- DialectTypeRegistry 完整 MariaDB 类型映射 + MariaDbDdlGenerator 注册
+- ER Discovery `ER_SUPPORTED_DIALECTS` 含 MARIADB
+- 前端完整：连接表单/数据源选择/SQL 格式化（→mysql）/关键词 JSON/i18n
+- AGENTS.md 独立 MariaDB 章节 + ConnectionObjectType schema 含 mariadb
+- 6 后端 + 1 前端测试文件
+
+### Day 2 增强项（不阻塞收口）
+
+- MariaDB 独立 Risk Analyzer 特有规则（REPLACE INTO、HANDLER 等）
+- Diagnostics MariaDB 兼容性验证（performance_schema vs MariaDB 信息库差异）
+- 端到端真实 MariaDB Smoke
 
 ## Files
 

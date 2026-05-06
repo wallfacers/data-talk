@@ -10,10 +10,35 @@
 
 ---
 
-Implementation cannot begin until
-`docs/product-specs/2026-04-30-data-source-coverage-oracle-design.md` is
-reviewed and approved. Oracle remains stub-only until every verification step in
-this plan passes and `docs/DATA_SOURCE_TYPE_COMPATIBILITY.md` is updated.
+## Status
+
+- **Created:** 2026-04-30
+- **State:** Completed — first-class 支持（有意 unsupported: PL/SQL splitter / ER DDL / Diagnostics execution）
+- **Design:** `docs/product-specs/2026-04-30-data-source-coverage-oracle-design.md` (Draft，代码已先行落地)
+
+### 已完成
+
+- ConnectionKind 常量 `oracle`、DbType 枚举、`ojdbc11` 23.7 驱动
+- JdbcUrlBuilder SID + service name URL 构建（2 个重载）
+- ConnectionService 持久化（oracleServiceType）+ loginTimeout
+- SqlExecuteService 上下文（setSchema）+ withDatabase 透传 oracleServiceType
+- DefaultSqlStatementSplitters 路由到 generic（TODO: PL/SQL Day 2）
+- CalciteSqlRiskAnalyzer 6 条 Oracle 规则（EXPLAIN PLAN/MERGE/CALL/PLSQL/TRUNCATE）
+- OracleDiagnosticsProvider 注册但 capability 全部 unsupported（有意）
+- DiagnosticsService 含 Oracle 专属 unsupported i18n（6 keys）
+- DialectTypeRegistry 完整 Oracle 类型映射（INT/CLOB/NUMBER(1)/BLOB + 双引号引用）
+- ER: Dialect.ORACLE 注册但 autoIncrementPk 抛 UnsupportedOperationException（有意）
+- ReadSchemaAction schema-based metadata + ConnectionTargetDiscoveryService 30 系统过滤
+- 前端完整：连接表单 SID/service 切换/SQL 格式化（→plsql）/62 关键词/i18n/ER empty state
+- AGENTS.md 独立 Oracle 章节 + ConnectionObjectType schema 含 oracle
+- ~22 后端 + 4 前端测试文件
+
+### Day 2 增强项（不阻塞收口）
+
+- PL/SQL block-aware Splitter（BEGIN...END、/ terminator、EXECUTE IMMEDIATE）
+- Oracle Diagnostics EXPLAIN + Index Hints 实现
+- Oracle 连接错误提示优化
+- 端到端真实 Oracle Smoke
 
 ## Files
 

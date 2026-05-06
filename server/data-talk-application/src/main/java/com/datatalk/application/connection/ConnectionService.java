@@ -118,14 +118,14 @@ public class ConnectionService {
             int timeoutMs = c.connectTimeout();
             url += (url.contains("?") ? "&" : "?") + "connectTimeout=" + timeoutMs;
         } else if (kind.equals(ConnectionKind.ORACLE)) {
-            // Oracle JDBC supports oracle.jdbc.ReadTimeout and setLoginTimeout
-            // The URL-level timeout is limited; DriverManager.setLoginTimeout handles connect timeout
+            int timeoutSeconds = Math.max(1, c.connectTimeout() / 1000);
+            java.sql.DriverManager.setLoginTimeout(timeoutSeconds);
         } else if (kind.equals(ConnectionKind.POSTGRESQL)) {
             int timeoutSeconds = c.connectTimeout() / 1000;
             url += (url.contains("?") ? "&" : "?") + "connectTimeout=" + timeoutSeconds + "&socketTimeout=" + timeoutSeconds;
         } else if (kind.equals(ConnectionKind.SQLSERVER)) {
-            // SQL Server JDBC supports loginTimeout via DriverManager.setLoginTimeout
-            // The encrypt/trustServerCertificate are already embedded in the URL by JdbcUrlBuilder
+            int timeoutSeconds = Math.max(1, c.connectTimeout() / 1000);
+            url += ";loginTimeout=" + timeoutSeconds;
         }
         long started = clock.millis();
         try (var conn = java.sql.DriverManager.getConnection(url, c.username(), password)) {

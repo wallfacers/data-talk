@@ -10,11 +10,35 @@
 
 ---
 
-Implementation cannot begin until
-`docs/product-specs/2026-04-30-data-source-coverage-sqlserver-design.md` is
-reviewed and approved. SQL Server remains stub/legacy until every verification
-step in this plan passes and `docs/DATA_SOURCE_TYPE_COMPATIBILITY.md` is
-updated.
+## Status
+
+- **Created:** 2026-04-30
+- **State:** Completed — first-class 支持（有意 unsupported: GO splitter / ER DDL / Diagnostics execution）
+- **Design:** `docs/product-specs/2026-04-30-data-source-coverage-sqlserver-design.md` (Draft，代码已先行落地)
+
+### 已完成
+
+- ConnectionKind 常量 `sqlserver`、`mssql` alias normalization、DbType 枚举
+- `mssql-jdbc` 12.8.1.jre11 驱动 + V16 migration（encrypt/trust/instance 字段）
+- JdbcUrlBuilder instance name + encrypt + trust URL 构建（2 个重载）+ loginTimeout
+- ConnectionService 持久化（encrypt/trust/instance）+ mssql alias + loginTimeout
+- SqlExecuteService 上下文（setCatalog + setSchema）+ withDatabase 透传
+- DefaultSqlStatementSplitters 路由到 generic（TODO: GO batch Day 2）
+- CalciteSqlRiskAnalyzer 8 条 SQL Server 规则（MERGE/EXEC/BACKUP/DBCC/KILL/DENY）
+- SqlServerDiagnosticsProvider 注册但 capability 全部 unsupported（有意）
+- DialectTypeRegistry 完整 SQL Server 类型映射（INT/BIT/NVARCHAR(MAX)/VARBINARY(MAX) + [] 引用）
+- Dialect.fromConnectionKind 现支持 `mssql` alias
+- ReadSchemaAction catalog+schema metadata + ConnectionTargetDiscoveryService 系统库过滤
+- 前端完整：连接表单 encrypt/trust/instance/SQL 格式化（→transactsql）/66 关键词/i18n/ER empty state
+- AGENTS.md 独立 SQL Server 章节 + ConnectionObjectType schema 含 sqlserver
+- ~19 后端测试文件
+
+### Day 2 增强项（不阻塞收口）
+
+- GO batch-aware Splitter
+- SQL Server Diagnostics EXPLAIN + Index Hints 实现
+- SQL Server 连接错误提示优化
+- 端到端真实 SQL Server Smoke
 
 ## Files
 

@@ -25,7 +25,7 @@ public enum Dialect {
             case "h2" -> Optional.of(H2);
             case "sqlite" -> Optional.of(SQLITE);
             case "oracle" -> Optional.of(ORACLE);
-            case "sqlserver" -> Optional.of(SQLSERVER);
+            case "sqlserver", "mssql" -> Optional.of(SQLSERVER);
             default -> Optional.empty();
         };
     }
