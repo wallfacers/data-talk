@@ -4,9 +4,13 @@ import com.datatalk.application.i18n.Translator;
 import com.datatalk.dto.SessionCreateRequest;
 import com.datatalk.dto.SessionDto;
 import com.datatalk.dto.SessionRenameRequest;
+import com.datatalk.dto.SessionCandidateDto;
+import com.datatalk.dto.SessionDeleteBlockedDto;
 import com.datatalk.application.persistence.SessionRecord;
 import com.datatalk.application.session.CreateSessionResult;
+import com.datatalk.application.session.DeleteOutcome;
 import com.datatalk.application.session.SessionService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -60,13 +64,25 @@ public class SessionController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable String id) {
-        try {
-            svc.delete(id);
-            return ResponseEntity.noContent().build();
-        } catch (NoSuchElementException e) {
-            return ResponseEntity.notFound().build();
-        }
+    public ResponseEntity<?> delete(
+            @PathVariable String id,
+            @RequestParam(value = "force", defaultValue = "false") boolean force) {
+        DeleteOutcome out = svc.delete(id, force);
+        return switch (out) {
+            case DeleteOutcome.Ok ok -> ResponseEntity.noContent().build();
+            case DeleteOutcome.NotFound nf -> ResponseEntity.notFound().build();
+            case DeleteOutcome.BlockedByCandidates bc -> ResponseEntity
+                    .status(HttpStatus.CONFLICT)
+                    .body(SessionDeleteBlockedDto.of(
+                            bc.sessionId(),
+                            bc.candidates().stream()
+                                    .map(c -> new SessionCandidateDto(
+                                            c.id(), c.filename(), c.kind().dbValue(),
+                                            c.sizeBytes(), c.title(), c.summary()))
+                                    .toList()));
+            case DeleteOutcome.BlockedByResources br ->
+                    throw new IllegalStateException("session delete returned BlockedByResources unexpectedly");
+        };
     }
 
     @DeleteMapping
