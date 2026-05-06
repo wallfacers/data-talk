@@ -165,4 +165,42 @@ class AgentPromptBuilderTest {
 
         assertThat(result).isEqualTo(plain);
     }
+
+    @Test
+    void render_replaces_both_placeholder_occurrences_when_active_session_present() {
+        when(activeDir.currentSessionId()).thenReturn(Optional.of("ses_xyz"));
+        String tpl = """
+                <!-- file-artifact-section:begin -->
+                ## Output Files & Artifacts
+
+                Your current session has a dedicated working subdirectory at:
+
+                  {{ACTIVE_SESSION_DIR}}
+
+                **Rules**:
+                - Always write into your session subdirectory ({{ACTIVE_SESSION_DIR}}), not the parent cwd
+                <!-- file-artifact-section:end -->
+                """;
+        String result = builder.render(tpl);
+        assertThat(result).doesNotContain("{{ACTIVE_SESSION_DIR}}");
+        long occurrences = result.lines().filter(l -> l.contains("./sessions/ses_xyz/")).count();
+        assertThat(occurrences).isEqualTo(2L);
+    }
+
+    @Test
+    void render_replaces_both_placeholder_occurrences_with_sentinel_when_no_session() {
+        when(activeDir.currentSessionId()).thenReturn(Optional.empty());
+        String tpl = """
+                Your current session has a dedicated working subdirectory at:
+
+                  {{ACTIVE_SESSION_DIR}}
+
+                **Rules**:
+                - Always write into your session subdirectory ({{ACTIVE_SESSION_DIR}}), not the parent cwd
+                """;
+        String result = builder.render(tpl);
+        assertThat(result).doesNotContain("{{ACTIVE_SESSION_DIR}}");
+        long occurrences = result.lines().filter(l -> l.contains("<no active session>")).count();
+        assertThat(occurrences).isEqualTo(2L);
+    }
 }

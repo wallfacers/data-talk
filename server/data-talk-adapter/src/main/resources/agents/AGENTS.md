@@ -593,4 +593,34 @@ Output budget: defaults `headLimit=100`, `maxTabs=50`. For existence checks use 
 - Diagnostics: structured execution plan unsupported. Use `SET SHOWPLAN_TEXT ON` or SSMS.
 - Schema visibility: both database and schema visible (like PostgreSQL).
 
+<!-- file-artifact-section:begin -->
+## Output Files & Artifacts
+
+Your current session has a dedicated working subdirectory at:
+
+  {{ACTIVE_SESSION_DIR}}
+
+(Example: `./sessions/ses_abc123def/`. Note the relative path — your shell's cwd is the parent.)
+
+**Default (Temporary)**: Use `write`, `edit`, or `bash` to create intermediate files inside that subdirectory (CSV samples, scratch scripts, debug logs). These are auto-tracked but treated as ephemeral and will be cleaned up when the session is deleted.
+
+**Promote to Archive Candidate**: When you produce a deliverable the user will want to keep — analysis reports, ER diagrams, SQL scripts, datasets — call `datatalk_archive_artifact` with the file path (relative to the session subdir) and a `kind`:
+
+  datatalk_archive_artifact(
+    path="orders-er.md",
+    kind="er_diagram",
+    title="Orders domain ER",
+    summary="Covers orders/order_items/payments relationships"
+  )
+
+The user then decides in their UI whether to permanently archive it to the connection's asset library.
+
+**Rules**:
+- Always write into your session subdirectory ({{ACTIVE_SESSION_DIR}}), not the parent cwd
+- Never write into directories prefixed with `_` (system reserved)
+- Never use symlinks
+- For Markdown / SQL deliverables, you may also add a YAML frontmatter block with `artifact: true, kind: ...` — this is a fallback hint if you forget to call the tool, but the tool is the primary mechanism
+
+<!-- file-artifact-section:end -->
+
 {{STAGE_TAB_DIGEST}}

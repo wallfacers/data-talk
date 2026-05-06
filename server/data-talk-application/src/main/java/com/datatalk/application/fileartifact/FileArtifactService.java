@@ -11,11 +11,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import com.datatalk.application.channel.IdGenerator;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -335,5 +338,120 @@ public class FileArtifactService {
                 || before.isRegularFile() != after.isRegularFile()
                 || before.isDirectory() != after.isDirectory()
                 || before.isSymbolicLink() != after.isSymbolicLink();
+    }
+
+    // --- archiveCandidate use case ---
+
+    public sealed interface ArchiveCandidateOutcome {
+        record Success(String fileArtifactId, String physicalPath, boolean alreadyArchived) implements ArchiveCandidateOutcome {}
+        record PathRejected(PathSafetyError error) implements ArchiveCandidateOutcome {}
+    }
+
+    /**
+     * Promote or create a CANDIDATE file artifact for the given session path.
+     *
+     * <p>Idempotent: ARCHIVED rows return {@code alreadyArchived=true};
+     * CANDIDATE rows just get metadata refreshed; TEMPORARY rows are promoted.
+     * DISCARDED rows trigger a fresh insert.
+     */
+    public ArchiveCandidateOutcome archiveCandidate(
+            String sessionId,
+            String requestedPath,
+            FileArtifactKind kind,
+            String title,
+            String summary,
+            Clock clock,
+            IdGenerator idGenerator) {
+
+        // 1. Guard path safety
+        Optional<PathSafetyError> guardError = guardPath(sessionId, requestedPath);
+        if (guardError.isPresent()) {
+            return new ArchiveCandidateOutcome.PathRejected(guardError.get());
+        }
+
+        // 2. Resolve physical path and read file size
+        Path physicalPath;
+        long sizeBytes;
+        try {
+            Path base = workdir.require(sessionId);
+            physicalPath = base.resolve(requestedPath).toRealPath();
+            sizeBytes = Files.size(physicalPath);
+        } catch (IOException | IllegalArgumentException e) {
+            return new ArchiveCandidateOutcome.PathRejected(PathSafetyError.PATH_NOT_FOUND);
+        }
+
+        // 3. Look up existing row by physical path in session results
+        List<FileArtifact> sessionArtifacts = repo.findBySession(sessionId);
+        FileArtifact existing = sessionArtifacts.stream()
+                .filter(a -> physicalPath.toString().equals(a.physicalPath()))
+                .findFirst()
+                .orElse(null);
+
+        Instant now = Instant.now(clock);
+
+        if (existing != null) {
+            switch (existing.status()) {
+                case ARCHIVED -> {
+                    return new ArchiveCandidateOutcome.Success(
+                            existing.id(), physicalPath.toString(), true);
+                }
+                case DISCARDED -> {
+                    String newId = FileArtifactIds.next();
+                    FileArtifact row = new FileArtifact(
+                            newId,
+                            FileArtifactScope.SESSION,
+                            FileArtifactStatus.CANDIDATE,
+                            kind,
+                            sessionId,
+                            null,
+                            physicalPath.getFileName().toString(),
+                            physicalPath.toString(),
+                            sizeBytes,
+                            guessMime(physicalPath),
+                            title,
+                            summary,
+                            now,
+                            now,
+                            null,
+                            new LinkedHashMap<>());
+                    repo.insert(row);
+                    return new ArchiveCandidateOutcome.Success(
+                            newId, physicalPath.toString(), false);
+                }
+                case TEMPORARY -> {
+                    repo.updateStatus(existing.id(), FileArtifactStatus.CANDIDATE);
+                    repo.updateMetadata(existing.id(), sizeBytes, now.toEpochMilli());
+                    return new ArchiveCandidateOutcome.Success(
+                            existing.id(), physicalPath.toString(), false);
+                }
+                case CANDIDATE -> {
+                    repo.updateMetadata(existing.id(), sizeBytes, now.toEpochMilli());
+                    return new ArchiveCandidateOutcome.Success(
+                            existing.id(), physicalPath.toString(), false);
+                }
+            }
+        }
+
+        // 4. No existing row — insert new CANDIDATE
+        String newId = FileArtifactIds.next();
+        FileArtifact row = new FileArtifact(
+                newId,
+                FileArtifactScope.SESSION,
+                FileArtifactStatus.CANDIDATE,
+                kind,
+                sessionId,
+                null,
+                physicalPath.getFileName().toString(),
+                physicalPath.toString(),
+                sizeBytes,
+                guessMime(physicalPath),
+                title,
+                summary,
+                now,
+                now,
+                null,
+                new LinkedHashMap<>());
+        repo.insert(row);
+        return new ArchiveCandidateOutcome.Success(newId, physicalPath.toString(), false);
     }
 }
