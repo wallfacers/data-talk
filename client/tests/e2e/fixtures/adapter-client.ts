@@ -25,16 +25,71 @@ export interface McpRpcResponse {
 export function adapterClient(request: APIRequestContext) {
   return {
     // ── MCP JSON-RPC (tool contract layer) ──
-    mcpCall: async (name: string, arguments_: Record<string, unknown>): Promise<McpRpcResponse> => {
+    mcpCall: async (name: string, arguments_: Record<string, unknown>, opts?: { sessionId?: string }): Promise<McpRpcResponse> => {
+      // Backend /mcp expects MCP tool name (e.g. 'read_schema'), not OpenCode name ('datatalk_read_schema')
+      const mcpToolName = name.startsWith('datatalk_') ? name.slice('datatalk_'.length) : name
+
+      // Inject bridge fields required by McpActionBridge
+      const { getBridgeNonce, getLatestOpenCodeSession, getOpenCodeSessionForConnection, getOpenCodeSessionFor } = await import('./mcp-context')
+      const connId = (arguments_ as any).connectionId as string | undefined
+      let ctx = null
+      if (opts?.sessionId) {
+        const ocSid = getOpenCodeSessionFor(opts.sessionId)
+        if (ocSid) ctx = { dataTalkSessionId: opts.sessionId, openCodeSessionId: ocSid }
+      }
+      if (!ctx) {
+        ctx = connId ? (getOpenCodeSessionForConnection(connId) ?? getLatestOpenCodeSession()) : getLatestOpenCodeSession()
+      }
+      const nonce = getBridgeNonce()
+      const args: Record<string, unknown> = { ...arguments_ }
+      if (ctx && nonce) {
+        args.__dtOpenCodeSessionId = ctx.openCodeSessionId
+        args.__dtCallId = `e2e-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+        args.__dtBridgeNonce = nonce
+      }
+
       const res = await request.post(`${BASE}/mcp`, {
         data: {
           jsonrpc: '2.0',
           id: 1,
           method: 'tools/call',
-          params: { name, arguments: arguments_ },
+          params: { name: mcpToolName, arguments: args },
         },
       })
-      return res.json() as Promise<McpRpcResponse>
+      const json = await res.json() as McpRpcResponse
+
+      // Unwrap McpToolResult: backend wraps action output in { content, structuredContent, isError }.
+      // Prefer structuredContent; fall back to parsing the first text content block.
+      // When isError=true, surface the parsed content as an rpc.error so tests can assert uniformly.
+      if (json.result && !json.error) {
+        const result = json.result as any
+        if (result.isError === true && result.content && Array.isArray(result.content) && result.content.length > 0) {
+          try {
+            const parsed = JSON.parse(result.content[0].text)
+            if (parsed.message || parsed.code) {
+              return {
+                ...json,
+                result: undefined,
+                error: {
+                  code: parsed.code ?? -32603,
+                  message: parsed.message ?? 'tool execution error',
+                },
+              }
+            }
+            return { ...json, result: parsed }
+          } catch { /* fall through */ }
+        }
+        if (result.structuredContent) {
+          return { ...json, result: result.structuredContent as any }
+        }
+        if (result.content && Array.isArray(result.content) && result.content.length > 0) {
+          try {
+            const parsed = JSON.parse(result.content[0].text)
+            return { ...json, result: parsed }
+          } catch { /* fall through */ }
+        }
+      }
+      return json
     },
 
     // ── Sessions ──
