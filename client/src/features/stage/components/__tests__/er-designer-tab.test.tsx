@@ -138,6 +138,10 @@ describe('<ErDesignerTab>', () => {
         connectTimeout: 3000,
         lastTestStatus: null,
         lastTestAt: null,
+        oracleServiceType: null,
+        sqlserverEncrypt: true,
+        sqlserverTrustServerCertificate: true,
+        sqlserverInstanceName: null,
       },
     ])
     connectionApiMocks.getConnectionTargets.mockResolvedValue({
@@ -196,6 +200,10 @@ describe('<ErDesignerTab>', () => {
         connectTimeout: 3000,
         lastTestStatus: null,
         lastTestAt: null,
+        oracleServiceType: null,
+        sqlserverEncrypt: true,
+        sqlserverTrustServerCertificate: true,
+        sqlserverInstanceName: null,
       },
     ])
     connectionApiMocks.getConnectionTargets.mockResolvedValue({

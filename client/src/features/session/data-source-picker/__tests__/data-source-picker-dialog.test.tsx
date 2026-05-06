@@ -18,6 +18,10 @@ const connections: Connection[] = [
     connectTimeout: 3000,
     lastTestStatus: 'ok',
     lastTestAt: 10,
+    oracleServiceType: null,
+    sqlserverEncrypt: true,
+    sqlserverTrustServerCertificate: true,
+    sqlserverInstanceName: null,
   },
   {
     id: 'c2',
@@ -31,6 +35,10 @@ const connections: Connection[] = [
     connectTimeout: 3000,
     lastTestStatus: 'fail',
     lastTestAt: 20,
+    oracleServiceType: null,
+    sqlserverEncrypt: true,
+    sqlserverTrustServerCertificate: true,
+    sqlserverInstanceName: null,
   },
   {
     id: 'c3',
@@ -44,6 +52,10 @@ const connections: Connection[] = [
     connectTimeout: 3000,
     lastTestStatus: null,
     lastTestAt: null,
+    oracleServiceType: null,
+    sqlserverEncrypt: true,
+    sqlserverTrustServerCertificate: true,
+    sqlserverInstanceName: null,
   },
 ]
 

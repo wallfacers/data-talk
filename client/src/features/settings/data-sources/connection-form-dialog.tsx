@@ -44,10 +44,10 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
         port: editing.port, database: editing.databaseName ?? '',
         username: editing.username, password: '',
         connectTimeout: editing.connectTimeout ?? 3000,
-        oracleServiceType: (editing as Record<string, unknown>).oracleServiceType === 'sid' ? 'sid' : 'service',
-        sqlserverEncrypt: (editing as Record<string, unknown>).sqlserverEncrypt !== false,
-        sqlserverTrustServerCertificate: (editing as Record<string, unknown>).sqlserverTrustServerCertificate !== false,
-        sqlserverInstanceName: ((editing as Record<string, unknown>).sqlserverInstanceName as string) ?? '',
+        oracleServiceType: editing.oracleServiceType === 'sid' ? 'sid' : 'service',
+        sqlserverEncrypt: editing.sqlserverEncrypt !== false,
+        sqlserverTrustServerCertificate: editing.sqlserverTrustServerCertificate !== false,
+        sqlserverInstanceName: editing.sqlserverInstanceName ?? '',
       })
     } else {
       setForm({ name: '', kind: 'mysql', host: 'localhost', port: 3306,

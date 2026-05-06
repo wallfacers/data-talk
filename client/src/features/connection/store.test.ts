@@ -14,6 +14,10 @@ const connection: Connection = {
   connectTimeout: 3000,
   lastTestStatus: 'ok',
   lastTestAt: 2,
+  oracleServiceType: null,
+  sqlserverEncrypt: true,
+  sqlserverTrustServerCertificate: true,
+  sqlserverInstanceName: null,
 }
 
 describe('connection-store', () => {

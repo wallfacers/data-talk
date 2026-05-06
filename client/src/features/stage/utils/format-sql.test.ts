@@ -21,10 +21,24 @@ ORDER BY
     expect(formatSql('   \n\t ', 'mysql')).toBe('   \n\t ')
   })
 
+  it('maps Oracle to plsql dialect', () => {
+    expect(resolveSqlFormatterLanguage('oracle')).toBe('plsql')
+    expect(formatSql('select 1 from dual', 'oracle')).toBe(`SELECT
+  1
+FROM
+  dual`)
+  })
+
+  it('maps SQL Server to transactsql dialect', () => {
+    expect(resolveSqlFormatterLanguage('sqlserver')).toBe('transactsql')
+  })
+
+  it('maps MariaDB to mysql dialect', () => {
+    expect(resolveSqlFormatterLanguage('mariadb')).toBe('mysql')
+  })
+
   it('falls back to the generic sql dialect for unknown connection kinds', () => {
-    expect(resolveSqlFormatterLanguage('oracle')).toBe('sql')
-    expect(formatSql('select 1', 'oracle')).toBe(`SELECT
-  1`)
+    expect(resolveSqlFormatterLanguage('clickhouse')).toBe('sql')
   })
 
   it('uses the generic sql formatter for SQLite', () => {

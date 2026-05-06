@@ -47,6 +47,10 @@ describe('DataSourcePicker', () => {
         connectTimeout: 3000,
         lastTestStatus: 'ok',
         lastTestAt: 1,
+        oracleServiceType: null,
+        sqlserverEncrypt: true,
+        sqlserverTrustServerCertificate: true,
+        sqlserverInstanceName: null,
       },
       {
         id: 'c2',
@@ -60,6 +64,10 @@ describe('DataSourcePicker', () => {
         connectTimeout: 3000,
         lastTestStatus: 'ok',
         lastTestAt: 2,
+        oracleServiceType: null,
+        sqlserverEncrypt: true,
+        sqlserverTrustServerCertificate: true,
+        sqlserverInstanceName: null,
       },
       {
         id: 'c3',
@@ -73,6 +81,10 @@ describe('DataSourcePicker', () => {
         connectTimeout: 3000,
         lastTestStatus: 'ok',
         lastTestAt: 3,
+        oracleServiceType: null,
+        sqlserverEncrypt: true,
+        sqlserverTrustServerCertificate: true,
+        sqlserverInstanceName: null,
       },
     ])
     vi.mocked(sessionDataContextApi.getSessionDataContext).mockResolvedValue({

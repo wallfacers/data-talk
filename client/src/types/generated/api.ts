@@ -4,12 +4,16 @@ export interface ConnectionDto {
   kind: string
   host: string
   port: number
-  databaseName: string | null  // nullable - null for server-level connection
+  databaseName: string | null
   username: string
   createdAt: number
   connectTimeout: number
   lastTestStatus: string | null
   lastTestAt: number | null
+  oracleServiceType: string | null
+  sqlserverEncrypt: boolean
+  sqlserverTrustServerCertificate: boolean
+  sqlserverInstanceName: string | null
 }
 
 export interface ConnectionCreateRequest {

@@ -17,6 +17,10 @@ const connection: Connection = {
   connectTimeout: 3000,
   lastTestStatus: 'ok',
   lastTestAt: 10,
+  oracleServiceType: null,
+  sqlserverEncrypt: true,
+  sqlserverTrustServerCertificate: true,
+  sqlserverInstanceName: null,
 }
 
 let connectionsData: Connection[] | undefined
