@@ -15,5 +15,6 @@ public record ConnectionDto(
     String oracleServiceType,  // nullable - null or 'service' = service name mode, 'sid' = SID mode (Oracle only)
     boolean sqlserverEncrypt,
     boolean sqlserverTrustServerCertificate,
-    String sqlserverInstanceName  // nullable - named instance
+    String sqlserverInstanceName,  // nullable - named instance
+    boolean readOnly               // DuckDB read-only flag
 ) {}

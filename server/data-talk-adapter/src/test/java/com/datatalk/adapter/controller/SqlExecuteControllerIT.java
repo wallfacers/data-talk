@@ -46,7 +46,7 @@ class SqlExecuteControllerIT {
         var cr = new ConnectionRecord(CONN_ID, "IT DB", "h2",
             "localhost", 0, "mem:sqlit;DB_CLOSE_DELAY=-1", "sa", vault.seal(""),
             null, System.currentTimeMillis(), 10, null, null,
-            null, 1, true, null);
+            null, 1, true, null, false);
         connRepo.insert(cr);
         // Seed test table in the H2 in-memory database
         try (var c = DriverManager.getConnection("jdbc:h2:mem:sqlit;DB_CLOSE_DELAY=-1", "sa", "");
@@ -127,7 +127,7 @@ class SqlExecuteControllerIT {
         connRepo.insert(new ConnectionRecord(CONN_ID, "IT DB", "h2",
             "localhost", 0, "mem:sqlit;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false", "sa", vault.seal(""),
             null, System.currentTimeMillis(), 10, null, null,
-            null, 1, true, null));
+            null, 1, true, null, false));
 
         long now = System.currentTimeMillis();
         jdbc.update("""
@@ -325,7 +325,7 @@ class SqlExecuteControllerIT {
                 10,
                 null,
                 null,
-            null, 1, true, null));
+            null, 1, true, null, false));
             try (var c = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
                  var st = c.createStatement()) {
                 st.execute("DROP TABLE IF EXISTS procedural_items");
@@ -406,7 +406,7 @@ class SqlExecuteControllerIT {
             3000,
             null,
             null,
-            null, 1, true, null));
+            null, 1, true, null, false));
 
         mvc.perform(post("/api/sql/execute")
                 .contentType(MediaType.APPLICATION_JSON)

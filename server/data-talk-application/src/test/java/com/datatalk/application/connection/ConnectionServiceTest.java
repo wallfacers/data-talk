@@ -31,7 +31,7 @@ class ConnectionServiceTest {
 
         when(repo.findById("c1")).thenReturn(Optional.of(
             new ConnectionRecord("c1", "测试连接", "h2", "localhost", 9999,
-                "mem:it;DB_CLOSE_DELAY=-1", "sa", new byte[]{}, null, 0, 3000, null, null, null, 1, true, null)));
+                "mem:it;DB_CLOSE_DELAY=-1", "sa", new byte[]{}, null, 0, 3000, null, null, null, 1, true, null, false)));
         when(vault.open(any())).thenReturn("");
 
         var r = svc.testConnection("c1");
@@ -45,7 +45,7 @@ class ConnectionServiceTest {
         var vault = mock(SecretVault.class);
         var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator());
         when(repo.findById("c1")).thenReturn(Optional.of(
-            new ConnectionRecord("c1", "测试连接", "mysql", "127.0.0.1", 1, "x", "u", new byte[]{}, null, 0, 3000, null, null, null, 1, true, null)));
+            new ConnectionRecord("c1", "测试连接", "mysql", "127.0.0.1", 1, "x", "u", new byte[]{}, null, 0, 3000, null, null, null, 1, true, null, false)));
         when(vault.open(any())).thenReturn("p");
 
         var r = svc.testConnection("c1");
@@ -62,7 +62,7 @@ class ConnectionServiceTest {
 
         when(repo.findById("c1")).thenReturn(Optional.of(
             new ConnectionRecord("c1", "测试连接", "h2", "localhost", 9999,
-                "mem:it;DB_CLOSE_DELAY=-1", "sa", new byte[]{}, null, 0, 3000, null, null, null, 1, true, null)));
+                "mem:it;DB_CLOSE_DELAY=-1", "sa", new byte[]{}, null, 0, 3000, null, null, null, 1, true, null, false)));
         when(vault.open(any())).thenReturn("");
 
         var r = svc.testConnection("c1");
@@ -79,7 +79,7 @@ class ConnectionServiceTest {
         var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, clock, translator());
 
         when(repo.findById("c1")).thenReturn(Optional.of(
-            new ConnectionRecord("c1", "测试连接", "mysql", "127.0.0.1", 1, "x", "u", new byte[]{}, null, 0, 3000, null, null, null, 1, true, null)));
+            new ConnectionRecord("c1", "测试连接", "mysql", "127.0.0.1", 1, "x", "u", new byte[]{}, null, 0, 3000, null, null, null, 1, true, null, false)));
         when(vault.open(any())).thenReturn("p");
 
         var r = svc.testConnection("c1");
@@ -96,7 +96,7 @@ class ConnectionServiceTest {
 
         when(repo.findById("c1")).thenReturn(Optional.of(
             new ConnectionRecord("c1", "测试连接", "mysql", "127.0.0.1", 3306,
-                "analytics", "u", new byte[]{1}, "digest", 123L, 3000, "ok", 456L, null, 1, true, null)));
+                "analytics", "u", new byte[]{1}, "digest", 123L, 3000, "ok", 456L, null, 1, true, null, false)));
 
         var dto = svc.get("c1");
 
@@ -157,7 +157,7 @@ class ConnectionServiceTest {
         when(vault.seal("pw")).thenReturn(new byte[]{1});
         var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator());
 
-        svc.create("SQL Server Test", "sqlserver", "db.host", 1433, "mydb", "sa", "pw", 5000, null, null, null, null);
+        svc.create("SQL Server Test", "sqlserver", "db.host", 1433, "mydb", "sa", "pw", 5000, null, null, null, null, null);
 
         var captor = org.mockito.ArgumentCaptor.forClass(ConnectionRecord.class);
         verify(repo).insert(captor.capture());
@@ -175,10 +175,76 @@ class ConnectionServiceTest {
         when(vault.seal("pw")).thenReturn(new byte[]{1});
         var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator());
 
-        svc.create("MSSQL Alias", "mssql", "db.host", 1433, "mydb", "sa", "pw", 5000, null, null, null, null);
+        svc.create("MSSQL Alias", "mssql", "db.host", 1433, "mydb", "sa", "pw", 5000, null, null, null, null, null);
 
         var captor = org.mockito.ArgumentCaptor.forClass(ConnectionRecord.class);
         verify(repo).insert(captor.capture());
         assertThat(captor.getValue().kind()).isEqualTo("sqlserver");
+    }
+
+    @Test
+    void create_duckdb_connection_with_read_only_flag() {
+        var repo = mock(ConnectionRepository.class);
+        var vault = mock(SecretVault.class);
+        when(vault.seal("")).thenReturn(new byte[]{});
+        var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator());
+
+        svc.create("DuckDB Test", "duckdb", "", 0, "/path/to/mydb.db", "", "", 3000, null, null, null, null, true);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(ConnectionRecord.class);
+        verify(repo).insert(captor.capture());
+        ConnectionRecord captured = captor.getValue();
+        assertThat(captured.kind()).isEqualTo("duckdb");
+        assertThat(captured.readOnly()).isTrue();
+        assertThat(captured.host()).isEmpty();
+        assertThat(captured.port()).isZero();
+    }
+
+    @Test
+    void create_duckdb_connection_defaults_read_only_to_false() {
+        var repo = mock(ConnectionRepository.class);
+        var vault = mock(SecretVault.class);
+        when(vault.seal("")).thenReturn(new byte[]{});
+        var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator());
+
+        svc.create("DuckDB Default", "duckdb", "", 0, "/path/to/mydb.db", "", "", 3000, null, null, null, null, null);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(ConnectionRecord.class);
+        verify(repo).insert(captor.capture());
+        assertThat(captor.getValue().readOnly()).isFalse();
+    }
+
+    @Test
+    void update_duckdb_preserves_read_only_when_null() {
+        var repo = mock(ConnectionRepository.class);
+        var vault = mock(SecretVault.class);
+        when(repo.findById("c1")).thenReturn(Optional.of(
+            new ConnectionRecord("c1", "DuckDB", "duckdb", "", 0, "/path/to/mydb.db", "",
+                new byte[]{}, null, 1L, 3000, null, null, null, 1, true, null, true)));
+        when(vault.seal(any())).thenReturn(new byte[]{});
+        var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator());
+
+        svc.update("c1", "DuckDB Updated", "duckdb", "", 0, "/path/to/mydb.db", "", null, 3000, null, null, null, null, null);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(ConnectionRecord.class);
+        verify(repo).update(captor.capture());
+        assertThat(captor.getValue().readOnly()).isTrue();
+    }
+
+    @Test
+    void update_duckdb_sets_read_only_when_provided() {
+        var repo = mock(ConnectionRepository.class);
+        var vault = mock(SecretVault.class);
+        when(repo.findById("c1")).thenReturn(Optional.of(
+            new ConnectionRecord("c1", "DuckDB", "duckdb", "", 0, "/path/to/mydb.db", "",
+                new byte[]{}, null, 1L, 3000, null, null, null, 1, true, null, false)));
+        when(vault.seal(any())).thenReturn(new byte[]{});
+        var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator());
+
+        svc.update("c1", "DuckDB RO", "duckdb", "", 0, "/path/to/mydb.db", "", null, 3000, null, null, null, null, true);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(ConnectionRecord.class);
+        verify(repo).update(captor.capture());
+        assertThat(captor.getValue().readOnly()).isTrue();
     }
 }

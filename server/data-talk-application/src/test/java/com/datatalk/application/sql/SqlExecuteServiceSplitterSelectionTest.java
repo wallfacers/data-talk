@@ -60,7 +60,7 @@ class SqlExecuteServiceSplitterSelectionTest {
             3000,
             null,
             null,
-            null, 1, true, null);
+            null, 1, true, null, false);
         when(connectionRepository.findById("conn-1")).thenReturn(Optional.of(record));
         when(connectionService.decryptPassword("conn-1")).thenReturn("");
         when(tableContextAutoResolver.resolve(new ResolvedExecutionContext(record, record.databaseName(), null), "ignored script"))

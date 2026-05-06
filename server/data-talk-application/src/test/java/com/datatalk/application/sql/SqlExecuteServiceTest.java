@@ -88,7 +88,7 @@ class SqlExecuteServiceTest {
             3000,
             null,
             null,
-            null, 1, true, null);
+            null, 1, true, null, false);
         when(connectionRepository.findById(CONN_ID)).thenReturn(Optional.of(record));
         when(connectionService.decryptPassword(CONN_ID)).thenReturn("");
 
@@ -261,7 +261,7 @@ class SqlExecuteServiceTest {
             3000,
             null,
             null,
-            null, 1, true, null);
+            null, 1, true, null, false);
         when(connectionRepository.findById(CONN_ID)).thenReturn(Optional.of(mysqlRecord));
         ResolvedExecutionContext ctx = new ResolvedExecutionContext(mysqlRecord, mysqlRecord.databaseName(), null);
         when(tableContextAutoResolver.resolve(

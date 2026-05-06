@@ -50,7 +50,7 @@ class DiagnosticsClosedLoopIT {
         jdbc.update("DELETE FROM session_data_contexts");
         jdbc.update("DELETE FROM sessions");
         jdbc.update("DELETE FROM connections");
-        String connectionId = connections.create("MySQL Loop", "mysql", "localhost", 3306, "appdb", "user", "pw", 3000, null, null, null, null);
+        String connectionId = connections.create("MySQL Loop", "mysql", "localhost", 3306, "appdb", "user", "pw", 3000, null, null, null, null, null);
         sessions.upsert(new SessionRecord("s-loop", connectionId, "Diagnostics Loop", false, null, 1L, 1L, false));
         contexts.upsert(new SessionDataContextRecord("s-loop", connectionId, "MySQL Loop", "appdb", null, "database", 1L));
 

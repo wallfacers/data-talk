@@ -282,7 +282,7 @@ class MySqlDiagnosticsProviderTest {
         return new ConnectionRecord(
             "c1", "test", "mysql", "localhost", 3306,
             databaseName, "user", new byte[0], null, 0L, 5000, null, null,
-            null, 1, true, null);
+            null, 1, true, null, false);
     }
 
     private Translator translator() {

@@ -62,15 +62,15 @@ class JdbcErRelationDiscoveryServiceTest {
         when(repo.findById(CONNECTION_ID)).thenReturn(Optional.of(new ConnectionRecord(
             CONNECTION_ID, "ER discover test", "h2", "local", 0, DB, "sa",
             new byte[0], null, 0L, 3000, null, null,
-            null, 1, true, null)));
+            null, 1, true, null, false)));
         when(repo.findById(ORACLE_CONNECTION_ID)).thenReturn(Optional.of(new ConnectionRecord(
             ORACLE_CONNECTION_ID, "Oracle stub", "oracle", "local", 0, "x", "sa",
             new byte[0], null, 0L, 3000, null, null,
-            null, 1, true, null)));
+            null, 1, true, null, false)));
         when(repo.findById(SQLSERVER_CONNECTION_ID)).thenReturn(Optional.of(new ConnectionRecord(
             SQLSERVER_CONNECTION_ID, "SQL Server stub", "sqlserver", "local", 0, "x", "sa",
             new byte[0], null, 0L, 3000, null, null,
-            null, 1, true, null)));
+            null, 1, true, null, false)));
         when(conn.decryptPassword(CONNECTION_ID)).thenReturn("");
         discovery = new JdbcErRelationDiscoveryService(repo, conn);
     }

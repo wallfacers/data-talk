@@ -9,5 +9,6 @@ public record ConnectionRecord(
     String oracleServiceType,  // nullable: null or 'service' = service name mode, 'sid' = SID mode
     int sqlserverEncrypt,              // 1 = encrypt (default), 0 = no encryption
     boolean sqlserverTrustServerCertificate,  // default true
-    String sqlserverInstanceName       // nullable: named instance
+    String sqlserverInstanceName,       // nullable: named instance
+    boolean readOnly                    // DuckDB read-only flag
 ) {}

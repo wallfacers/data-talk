@@ -46,6 +46,17 @@ public final class JdbcUrlBuilder {
                 url.append(";trustServerCertificate=").append(c.sqlserverTrustServerCertificate());
                 yield url.toString();
             }
+            case ConnectionKind.DUCKDB -> {
+                if (db != null && db.equals(":memory:")) {
+                    String sessionId = c.id();
+                    String url = "jdbc:duckdb::memory:dt_mem_" + sessionId;
+                    if (c.readOnly()) {
+                        url += "?readonly=true";
+                    }
+                    yield url;
+                }
+                yield "jdbc:duckdb:" + db + (c.readOnly() ? "?readonly=true" : "");
+            }
             default ->
                 throw new DataTalkException(DataTalkErrorCodes.DATABASE_KIND_UNSUPPORTED,
                     "unsupported database kind: " + c.kind(), false);

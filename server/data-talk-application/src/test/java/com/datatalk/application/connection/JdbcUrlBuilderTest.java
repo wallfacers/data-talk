@@ -63,7 +63,7 @@ class JdbcUrlBuilderTest {
             3000,
             null,
             null,
-            null, 1, true, null);
+            null, 1, true, null, false);
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:sqlite:/tmp/app.db");
@@ -85,7 +85,7 @@ class JdbcUrlBuilderTest {
             3000,
             null,
             null,
-            null, 1, true, null);
+            null, 1, true, null, false);
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:sqlite::memory:");
@@ -107,7 +107,7 @@ class JdbcUrlBuilderTest {
             3000,
             null,
             null,
-            null, 1, true, null);
+            null, 1, true, null, false);
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:sqlite::memory:");
@@ -129,7 +129,7 @@ class JdbcUrlBuilderTest {
             3000,
             null,
             null,
-            null, 1, true, null);
+            null, 1, true, null, false);
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:sqlite::memory:");
@@ -151,7 +151,7 @@ class JdbcUrlBuilderTest {
             3000,
             null,
             null,
-            null, 1, true, null);
+            null, 1, true, null, false);
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:mariadb://host:3306/testdb");
@@ -173,7 +173,7 @@ class JdbcUrlBuilderTest {
             3000,
             null,
             null,
-            null, 1, true, null);
+            null, 1, true, null, false);
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:mariadb://host:3306/");
@@ -195,7 +195,7 @@ class JdbcUrlBuilderTest {
             3000,
             null,
             null,
-            null, 1, true, null);
+            null, 1, true, null, false);
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:mariadb://host:3307/mydb");
@@ -217,7 +217,7 @@ class JdbcUrlBuilderTest {
             3000,
             null,
             null,
-            null, 1, true, null);
+            null, 1, true, null, false);
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:oracle:thin:@//host:1521/orclpdb");
@@ -239,7 +239,7 @@ class JdbcUrlBuilderTest {
             3000,
             null,
             null,
-            "sid", 1, true, null);
+            "sid", 1, true, null, false);
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:oracle:thin:@host:1521:ORCL");
@@ -261,7 +261,7 @@ class JdbcUrlBuilderTest {
             3000,
             null,
             null,
-            null, 1, true, null);
+            null, 1, true, null, false);
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:oracle:thin:@//host:1521/ORCL");
@@ -283,7 +283,7 @@ class JdbcUrlBuilderTest {
             3000,
             null,
             null,
-            "sid", 1, true, null);
+            "sid", 1, true, null, false);
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:oracle:thin:@host:1521:ORCL");
@@ -343,7 +343,7 @@ class JdbcUrlBuilderTest {
             3000,
             null,
             null,
-            null, 1, true, null);
+            null, 1, true, null, false);
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:sqlserver://db.example.com:1433;databaseName=mydb;encrypt=true;trustServerCertificate=true");
@@ -365,7 +365,7 @@ class JdbcUrlBuilderTest {
             3000,
             null,
             null,
-            null, 1, true, null);
+            null, 1, true, null, false);
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:sqlserver://db.example.com:1433;encrypt=true;trustServerCertificate=true");
@@ -387,7 +387,7 @@ class JdbcUrlBuilderTest {
             3000,
             null,
             null,
-            null, 1, true, "SQLEXPRESS");
+            null, 1, true, "SQLEXPRESS", false);
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:sqlserver://db.example.com\\SQLEXPRESS:1433;databaseName=mydb;encrypt=true;trustServerCertificate=true");
@@ -409,7 +409,7 @@ class JdbcUrlBuilderTest {
             3000,
             null,
             null,
-            null, 0, false, null);
+            null, 0, false, null, false);
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:sqlserver://db.example.com:1433;databaseName=mydb;encrypt=false;trustServerCertificate=false");
@@ -449,5 +449,95 @@ class JdbcUrlBuilderTest {
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:sqlserver://localhost:1433;encrypt=true;trustServerCertificate=true");
+    }
+
+    // --- DuckDB URL building ---
+
+    @Test
+    void duckdb_in_memory_builds_named_memory_url() {
+        var connection = new ConnectionRecord(
+            "conn-duckdb-001",
+            "In-Memory DuckDB",
+            ConnectionKind.DUCKDB,
+            "",
+            0,
+            ":memory:",
+            "",
+            new byte[]{},
+            null,
+            1L,
+            3000,
+            null,
+            null,
+            null, 1, true, null, false);
+
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:duckdb::memory:dt_mem_conn-duckdb-001");
+    }
+
+    @Test
+    void duckdb_file_mode_builds_url() {
+        var connection = new ConnectionRecord(
+            "duckdb-file",
+            "File DuckDB",
+            ConnectionKind.DUCKDB,
+            "",
+            0,
+            "/home/user/.datatalk/duckdb/mydb.db",
+            "",
+            new byte[]{},
+            null,
+            1L,
+            3000,
+            null,
+            null,
+            null, 1, true, null, false);
+
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:duckdb:/home/user/.datatalk/duckdb/mydb.db");
+    }
+
+    @Test
+    void duckdb_file_read_only_builds_url_with_readonly_param() {
+        var connection = new ConnectionRecord(
+            "duckdb-ro",
+            "Read-Only DuckDB",
+            ConnectionKind.DUCKDB,
+            "",
+            0,
+            "/home/user/.datatalk/duckdb/mydb.db",
+            "",
+            new byte[]{},
+            null,
+            1L,
+            3000,
+            null,
+            null,
+            null, 1, true, null, true);
+
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:duckdb:/home/user/.datatalk/duckdb/mydb.db?readonly=true");
+    }
+
+    @Test
+    void duckdb_in_memory_read_only_builds_url_with_readonly_param() {
+        var connection = new ConnectionRecord(
+            "duckdb-mem-ro",
+            "Read-Only In-Memory DuckDB",
+            ConnectionKind.DUCKDB,
+            "",
+            0,
+            ":memory:",
+            "",
+            new byte[]{},
+            null,
+            1L,
+            3000,
+            null,
+            null,
+            null, 1, true, null, true);
+
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:duckdb::memory:dt_mem_duckdb-mem-ro?readonly=true");
     }
 }

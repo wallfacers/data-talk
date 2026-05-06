@@ -12,5 +12,6 @@ public record ConnectionCreateRequest(
     String oracleServiceType,  // optional - null or 'service' = service name mode, 'sid' = SID mode (Oracle only)
     Boolean sqlserverEncrypt,  // optional - defaults to true
     Boolean sqlserverTrustServerCertificate,  // optional - defaults to true
-    String sqlserverInstanceName  // optional - named instance
+    String sqlserverInstanceName,  // optional - named instance
+    Boolean readOnly               // optional - DuckDB read-only flag, defaults to false
 ) {}

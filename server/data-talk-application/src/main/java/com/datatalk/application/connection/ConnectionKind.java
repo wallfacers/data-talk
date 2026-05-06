@@ -9,4 +9,5 @@ public final class ConnectionKind {
     public static final String MARIADB = "mariadb";
     public static final String ORACLE = "oracle";
     public static final String SQLSERVER = "sqlserver";
+    public static final String DUCKDB = "duckdb";
 }

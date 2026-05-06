@@ -77,6 +77,7 @@ public class UpdateConnectionConfirmableAction implements ActionHandler<Map, Map
                 Map.entry("sqlserverEncrypt", Map.of("type", "boolean")),
                 Map.entry("sqlserverTrustServerCertificate", Map.of("type", "boolean")),
                 Map.entry("sqlserverInstanceName", Map.of("type", "string")),
+                Map.entry("readOnly", Map.of("type", "boolean")),
                 Map.entry("confirm", Map.of("type", "boolean")),
                 Map.entry("confirmationToken", Map.of("type", "string"))
             )),
@@ -173,7 +174,8 @@ public class UpdateConnectionConfirmableAction implements ActionHandler<Map, Map
             normalized.oracleServiceType(),
             normalized.sqlserverEncrypt(),
             normalized.sqlserverTrustServerCertificate(),
-            normalized.sqlserverInstanceName()
+            normalized.sqlserverInstanceName(),
+            nullableBoolean(input, "readOnly")
         );
         contextRefreshService.refreshByConnectionId(connectionId);
 
@@ -303,7 +305,8 @@ public class UpdateConnectionConfirmableAction implements ActionHandler<Map, Map
             nullableString(input, "oracleServiceType"),
             nullableBoolean(input, "sqlserverEncrypt"),
             nullableBoolean(input, "sqlserverTrustServerCertificate"),
-            nullableString(input, "sqlserverInstanceName")
+            nullableString(input, "sqlserverInstanceName"),
+            nullableBoolean(input, "readOnly")
         );
     }
 
@@ -353,6 +356,7 @@ public class UpdateConnectionConfirmableAction implements ActionHandler<Map, Map
         String oracleServiceType,
         Boolean sqlserverEncrypt,
         Boolean sqlserverTrustServerCertificate,
-        String sqlserverInstanceName
+        String sqlserverInstanceName,
+        Boolean readOnly
     ) {}
 }

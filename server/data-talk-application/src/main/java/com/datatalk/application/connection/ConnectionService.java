@@ -39,7 +39,8 @@ public class ConnectionService {
     public String create(String name, String kind, String host, int port, String databaseName,
                          String username, String password, Integer connectTimeout,
                          String oracleServiceType,
-                         Boolean sqlserverEncrypt, Boolean sqlserverTrustServerCertificate, String sqlserverInstanceName) {
+                         Boolean sqlserverEncrypt, Boolean sqlserverTrustServerCertificate, String sqlserverInstanceName,
+                         Boolean readOnly) {
         // Normalize mssql alias to sqlserver
         String effectiveKind = "mssql".equalsIgnoreCase(kind) ? ConnectionKind.SQLSERVER : kind;
         byte[] enc = vault.seal(password);
@@ -48,7 +49,8 @@ public class ConnectionService {
         String effectiveName = Strings.defaultIfBlank(name, translator.get("connection.default_name", id.substring(0, 8)));
         int encrypt = sqlserverEncrypt != null ? (sqlserverEncrypt ? 1 : 0) : 1;
         boolean trustCert = sqlserverTrustServerCertificate == null || sqlserverTrustServerCertificate;
-        repo.insert(new ConnectionRecord(id, effectiveName, effectiveKind, host, port, databaseName, username, enc, null, clock.millis(), timeout, null, null, oracleServiceType, encrypt, trustCert, sqlserverInstanceName));
+        boolean effectiveReadOnly = readOnly != null && readOnly;
+        repo.insert(new ConnectionRecord(id, effectiveName, effectiveKind, host, port, databaseName, username, enc, null, clock.millis(), timeout, null, null, oracleServiceType, encrypt, trustCert, sqlserverInstanceName, effectiveReadOnly));
         return id;
     }
 
@@ -75,7 +77,8 @@ public class ConnectionService {
     public void update(String id, String name, String kind, String host, int port, String databaseName,
                        String username, String password, Integer connectTimeout,
                        String oracleServiceType,
-                       Boolean sqlserverEncrypt, Boolean sqlserverTrustServerCertificate, String sqlserverInstanceName) {
+                       Boolean sqlserverEncrypt, Boolean sqlserverTrustServerCertificate, String sqlserverInstanceName,
+                       Boolean readOnly) {
         // Normalize mssql alias to sqlserver
         String effectiveKind = "mssql".equalsIgnoreCase(kind) ? ConnectionKind.SQLSERVER : kind;
         var existing = repo.findById(id)
@@ -86,11 +89,12 @@ public class ConnectionService {
         int encrypt = sqlserverEncrypt != null ? (sqlserverEncrypt ? 1 : 0) : existing.sqlserverEncrypt();
         boolean trustCert = sqlserverTrustServerCertificate != null ? sqlserverTrustServerCertificate : existing.sqlserverTrustServerCertificate();
         String effectiveInstanceName = sqlserverInstanceName != null ? sqlserverInstanceName : existing.sqlserverInstanceName();
+        boolean effectiveReadOnly = readOnly != null ? readOnly : existing.readOnly();
         String effectiveName = Strings.defaultIfBlank(name, translator.get("connection.default_name", id.substring(0, 8)));
         repo.update(new ConnectionRecord(id, effectiveName, effectiveKind, host, port, databaseName, username,
             enc, existing.schemaDigest(), existing.createdAt(), timeout,
             existing.lastTestStatus(), existing.lastTestAt(), effectiveOracleType,
-            encrypt, trustCert, effectiveInstanceName));
+            encrypt, trustCert, effectiveInstanceName, effectiveReadOnly));
     }
 
     public boolean deleteById(String id) {
@@ -111,6 +115,21 @@ public class ConnectionService {
         String password = vault.open(c.passwordEnc());
         String url = JdbcUrlBuilder.build(c);
         String kind = c.kind();
+        if (kind.equals(ConnectionKind.DUCKDB)) {
+            // DuckDB: no username/password needed, pass empty strings
+            long started = clock.millis();
+            try (var conn = java.sql.DriverManager.getConnection(url, "", "")) {
+                boolean ok = conn.isValid(5);
+                long ms = clock.millis() - started;
+                repo.updateTestStatus(id, ok ? "ok" : "fail", clock.millis());
+                return new TestResult(ok, ms, ok ? null : translator.get("connection.test.invalid"));
+            } catch (Throwable t) {
+                long ms = clock.millis() - started;
+                repo.updateTestStatus(id, "fail", clock.millis());
+                return new TestResult(false, ms, translator.get("connection.test.failure",
+                    t.getClass().getSimpleName(), t.getMessage()));
+            }
+        }
         if (kind.equals(ConnectionKind.MYSQL)) {
             int timeoutMs = c.connectTimeout();
             url += (url.contains("?") ? "&" : "?") + "connectTimeout=" + timeoutMs + "&socketTimeout=" + timeoutMs;
@@ -147,6 +166,7 @@ public class ConnectionService {
         return new ConnectionDto(c.id(), c.name(), c.kind(), c.host(), c.port(),
             c.databaseName(), c.username(), c.createdAt(), c.connectTimeout(),
             c.lastTestStatus(), c.lastTestAt(), c.oracleServiceType(),
-            c.sqlserverEncrypt() != 0, c.sqlserverTrustServerCertificate(), c.sqlserverInstanceName());
+            c.sqlserverEncrypt() != 0, c.sqlserverTrustServerCertificate(), c.sqlserverInstanceName(),
+            c.readOnly());
     }
 }

@@ -24,16 +24,17 @@ public class ConnectionRepository {
         rs.getString("oracle_service_type"),
         rs.getInt("sqlserver_encrypt"),
         rs.getBoolean("sqlserver_trust_server_certificate"),
-        rs.getString("sqlserver_instance_name")
+        rs.getString("sqlserver_instance_name"),
+        rs.getBoolean("read_only")
     );
 
     public void insert(ConnectionRecord c) {
         jdbc.update("""
-            INSERT INTO connections(id, name, kind, host, port, database_name, username, password_enc, schema_digest, created_at, connect_timeout, oracle_service_type, sqlserver_encrypt, sqlserver_trust_server_certificate, sqlserver_instance_name)
-            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO connections(id, name, kind, host, port, database_name, username, password_enc, schema_digest, created_at, connect_timeout, oracle_service_type, sqlserver_encrypt, sqlserver_trust_server_certificate, sqlserver_instance_name, read_only)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, c.id(), c.name(), c.kind(), c.host(), c.port(), c.databaseName(), c.username(),
             c.passwordEnc(), c.schemaDigest(), c.createdAt(), c.connectTimeout(), c.oracleServiceType(),
-            c.sqlserverEncrypt(), c.sqlserverTrustServerCertificate(), c.sqlserverInstanceName());
+            c.sqlserverEncrypt(), c.sqlserverTrustServerCertificate(), c.sqlserverInstanceName(), c.readOnly());
     }
 
     public List<ConnectionRecord> findAll() {
@@ -50,11 +51,13 @@ public class ConnectionRepository {
             UPDATE connections
                SET name = ?, kind = ?, host = ?, port = ?, database_name = ?, username = ?,
                    password_enc = ?, schema_digest = ?, connect_timeout = ?, oracle_service_type = ?,
-                   sqlserver_encrypt = ?, sqlserver_trust_server_certificate = ?, sqlserver_instance_name = ?
+                   sqlserver_encrypt = ?, sqlserver_trust_server_certificate = ?, sqlserver_instance_name = ?,
+                   read_only = ?
              WHERE id = ?
             """, c.name(), c.kind(), c.host(), c.port(), c.databaseName(), c.username(),
             c.passwordEnc(), c.schemaDigest(), c.connectTimeout(), c.oracleServiceType(),
-            c.sqlserverEncrypt(), c.sqlserverTrustServerCertificate(), c.sqlserverInstanceName(), c.id());
+            c.sqlserverEncrypt(), c.sqlserverTrustServerCertificate(), c.sqlserverInstanceName(),
+            c.readOnly(), c.id());
         if (n == 0) throw new java.util.NoSuchElementException("unknown connection: " + c.id());
     }
 

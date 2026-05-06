@@ -91,7 +91,8 @@ abstract class AbstractDiagnosticsProvider implements DiagnosticsProvider {
             conn.oracleServiceType(),
             conn.sqlserverEncrypt(),
             conn.sqlserverTrustServerCertificate(),
-            conn.sqlserverInstanceName()
+            conn.sqlserverInstanceName(),
+            conn.readOnly()
         );
     }
 

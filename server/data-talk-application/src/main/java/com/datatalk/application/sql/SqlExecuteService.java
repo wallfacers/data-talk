@@ -604,7 +604,8 @@ public class SqlExecuteService {
             connection.oracleServiceType(),
             connection.sqlserverEncrypt(),
             connection.sqlserverTrustServerCertificate(),
-            connection.sqlserverInstanceName()
+            connection.sqlserverInstanceName(),
+            connection.readOnly()
         );
     }
 

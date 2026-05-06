@@ -52,7 +52,8 @@ public class CreateConnectionAction implements ActionHandler<Map, Map> {
                 Map.entry("oracleServiceType", Map.of("type", "string")),
                 Map.entry("sqlserverEncrypt", Map.of("type", "boolean")),
                 Map.entry("sqlserverTrustServerCertificate", Map.of("type", "boolean")),
-                Map.entry("sqlserverInstanceName", Map.of("type", "string"))
+                Map.entry("sqlserverInstanceName", Map.of("type", "string")),
+                Map.entry("readOnly", Map.of("type", "boolean"))
             )),
             Map.entry("allOf", List.of(nonSqliteRequiresServerFieldsSchema()))
         );
@@ -106,7 +107,8 @@ public class CreateConnectionAction implements ActionHandler<Map, Map> {
             normalized.oracleServiceType(),
             normalized.sqlserverEncrypt(),
             normalized.sqlserverTrustServerCertificate(),
-            normalized.sqlserverInstanceName()
+            normalized.sqlserverInstanceName(),
+            nullableBoolean(input, "readOnly")
         );
         var out = new LinkedHashMap<String, Object>();
         out.put("id", id);
@@ -130,7 +132,8 @@ public class CreateConnectionAction implements ActionHandler<Map, Map> {
             nullableString(input, "oracleServiceType"),
             nullableBoolean(input, "sqlserverEncrypt"),
             nullableBoolean(input, "sqlserverTrustServerCertificate"),
-            nullableString(input, "sqlserverInstanceName")
+            nullableString(input, "sqlserverInstanceName"),
+            nullableBoolean(input, "readOnly")
         );
     }
 
@@ -191,6 +194,7 @@ public class CreateConnectionAction implements ActionHandler<Map, Map> {
         String oracleServiceType,
         Boolean sqlserverEncrypt,
         Boolean sqlserverTrustServerCertificate,
-        String sqlserverInstanceName
+        String sqlserverInstanceName,
+        Boolean readOnly
     ) {}
 }

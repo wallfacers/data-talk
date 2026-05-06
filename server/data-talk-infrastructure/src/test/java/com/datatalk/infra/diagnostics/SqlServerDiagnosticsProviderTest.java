@@ -29,7 +29,7 @@ class SqlServerDiagnosticsProviderTest {
         var conn = new com.datatalk.application.persistence.ConnectionRecord(
             "c1", "test", "sqlserver", "localhost", 1433,
             "mydb", "sa", new byte[0], null, 0L, 5000, null, null,
-            null, 1, true, null);
+            null, 1, true, null, false);
 
         assertThat(provider.explain("SELECT 1", conn, "pw", "mydb", "dbo").isUnsupported()).isTrue();
         assertThat(provider.indexHints("SELECT 1", null, conn, "pw").isUnsupported()).isTrue();

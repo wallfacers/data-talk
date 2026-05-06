@@ -158,7 +158,8 @@ public class TableContextAutoResolver {
             connection.oracleServiceType(),
             connection.sqlserverEncrypt(),
             connection.sqlserverTrustServerCertificate(),
-            connection.sqlserverInstanceName()
+            connection.sqlserverInstanceName(),
+            connection.readOnly()
         );
     }
 

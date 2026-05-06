@@ -42,7 +42,7 @@ class SqlExecuteServiceErrorFormattingTest {
             3000,
             null,
             null,
-            null, 1, true, null);
+            null, 1, true, null, false);
         when(connectionRepository.findById("conn-broken")).thenReturn(Optional.of(record));
         when(connectionService.decryptPassword("conn-broken")).thenReturn("bad-password");
         when(tableContextAutoResolver.resolve(new ResolvedExecutionContext(record, null, null), "SELECT 1"))

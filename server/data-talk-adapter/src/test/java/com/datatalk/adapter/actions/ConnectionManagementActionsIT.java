@@ -176,6 +176,7 @@ class ConnectionManagementActionsIT {
             null,
             null,
             null,
+            null,
             null
         );
         sessionRepo.upsert(new SessionRecord("s-update", connectionId, "Update", false, null, 1L, 1L, false));
@@ -254,6 +255,7 @@ class ConnectionManagementActionsIT {
             "sa",
             "",
             3000,
+            null,
             null,
             null,
             null,
