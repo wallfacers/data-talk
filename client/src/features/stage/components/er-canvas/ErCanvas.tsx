@@ -220,7 +220,25 @@ function ErCanvasInner(props: ErCanvasProps) {
   const onChangeDialect = useCallback((dialect: ErDesignerPayload['dialect']) => {
     onPatch([{ op: 'replace', path: '/dialect', value: dialect }])
   }, [onPatch])
-  const onAddVirtualRelation = useCallback(() => undefined, [])
+  const onAddVirtualRelation = useCallback(() => {
+    if (mode !== 'inspector') return
+    const snapshot = (payload as ErInspectorPayload).tablesSnapshot ?? []
+    const fromTable = snapshot[0]
+    const toTable = snapshot[1] ?? snapshot[0]
+    if (!fromTable || !toTable) return
+    const fromColumn = fromTable.columns[0]
+    const toColumn = toTable.columns[0]
+    if (!fromColumn || !toColumn) return
+    onPatch([{
+      op: 'add',
+      path: '/virtualRelations/-',
+      value: {
+        from: { table: fromTable.name, column: fromColumn.name },
+        to: { table: toTable.name, column: toColumn.name },
+        type: 'many_to_one',
+      },
+    }])
+  }, [mode, payload, onPatch])
   const onChangeNeighborDepth = useCallback((depth: 0 | 1 | 2) => {
     onPatch([{ op: 'replace', path: '/neighborDepth', value: depth }])
   }, [onPatch])

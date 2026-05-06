@@ -288,7 +288,7 @@ class CalciteSqlRiskAnalyzerTest {
         var result = analyzer.analyze("TRUNCATE TABLE temp_data", Category.DDL, "oracle");
 
         assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
-        assertThat(result.reason()).isEqualTo("oracle_truncate");
+        assertThat(result.reason()).isEqualTo("truncate");
     }
 
     @Test

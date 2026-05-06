@@ -18,10 +18,10 @@ class ErDesignerPayloadTest {
 
     @Test
     void dialectRejectsUnsupportedConnectionKindsWithErError() {
-        var payload = new ErDesignerPayload("oracle", "c1", null, null, List.of(), List.of());
+        var payload = new ErDesignerPayload("clickhouse", "c1", null, null, List.of(), List.of());
 
         assertThatThrownBy(payload::resolveDialect)
             .isInstanceOf(ErErrors.DialectUnsupportedException.class)
-            .matches(e -> ((ErErrors.DialectUnsupportedException) e).kind().equals("oracle"));
+            .matches(e -> ((ErErrors.DialectUnsupportedException) e).kind().equals("clickhouse"));
     }
 }

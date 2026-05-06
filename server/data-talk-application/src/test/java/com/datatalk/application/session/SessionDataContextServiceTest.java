@@ -58,7 +58,11 @@ class SessionDataContextServiceTest {
               created_at BIGINT NOT NULL,
               connect_timeout INTEGER NOT NULL DEFAULT 3000,
               last_test_status TEXT,
-              last_test_at BIGINT
+              last_test_at BIGINT,
+              oracle_service_type TEXT,
+              sqlserver_encrypt INTEGER DEFAULT 1,
+              sqlserver_trust_server_certificate INTEGER DEFAULT 1,
+              sqlserver_instance_name TEXT
             )
             """);
         conn.createStatement().execute("""

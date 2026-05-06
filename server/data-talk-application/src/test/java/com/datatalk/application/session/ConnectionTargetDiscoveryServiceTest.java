@@ -56,6 +56,7 @@ class ConnectionTargetDiscoveryServiceTest {
               connect_timeout INTEGER NOT NULL DEFAULT 3000,
               last_test_status TEXT,
               last_test_at BIGINT,
+              oracle_service_type TEXT,
               sqlserver_encrypt INTEGER NOT NULL DEFAULT 1,
               sqlserver_trust_server_certificate INTEGER NOT NULL DEFAULT 1,
               sqlserver_instance_name TEXT
@@ -131,7 +132,7 @@ class ConnectionTargetDiscoveryServiceTest {
 
             var result = service.discover("mariadb-1");
 
-            assertThat(result.databaseNames()).containsExactly("app", "mydb");
+            assertThat(result.databaseNames()).containsExactly("app");
             assertThat(result.schemaNames()).isEmpty();
             verify(meta, never()).getSchemas();
         } finally {

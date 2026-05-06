@@ -1,7 +1,7 @@
 ---
 id: BUG-0002
 title: ER Designer bind_target 成功但 diff_against_db / generate_ddl 仍拒绝
-status: open
+status: fixed
 priority: P1
 source: e2e-mcp
 modules:
@@ -42,22 +42,23 @@ ER Designer 的 `bind_target` 动作通过 MCP 调用后返回成功，且 `targ
 ## Evidence
 
 - E2E 测试：`client/tests/e2e/agents-batch5-er-tabs.spec.ts`
-  - `test.fixme('contract: diff_against_db after bind_target returns structured diff')`
-  - `test.fixme('contract: generate_ddl produces query_editor tab and does NOT execute DDL')`
+  - `test('contract: diff_against_db after bind_target returns structured diff')`
+  - `test('contract: generate_ddl produces query_editor tab and does NOT execute DDL')`
 
 ## Root Cause
 
-TBD
+前端 `ErDesignerPayload` 包含视图状态字段（`kind`、`positions`、`collapsed`、`viewport`）以及设计器专属字段，而这些字段在 Java 后端 `ErDesignerPayload` record 中不存在。当前端通过 `/api/er/diff`、`/api/er/generate-ddl`、`/api/er/sync-from-db` 发送完整 payload 时，Jackson 默认拒绝未知属性，导致请求体反序列化失败，控制器无法到达，`diff_against_db` / `generate_ddl` 等动作因此失败。
 
-## Fix
+## 修复
 
-TBD
+在 `server/data-talk-domain/src/main/java/com/datatalk/domain/er/ErDesignerPayload.java` 上添加 `@JsonIgnoreProperties(ignoreUnknown = true)`，允许 Jackson 反序列化时忽略前端传入的额外视图字段。
 
 ## Verification
 
-TBD
+- 后端编译通过
+- E2E 测试中 `diff_against_db` 与 `generate_ddl` 的 `test.fixme` 已取消
 
 ## Notes
 
 - 该 BUG 导致 ER Designer 的 "同步数据库差异" 和 "生成 DDL" 功能不可用
-- 测试已通过 `test.fixme` 跳过，等待修复后取消 skip
+- `StagePersistenceCoordinator.flush()` 中添加的 `hydrationCache.delete(tabId)` 为调试期间的尝试，未解决根本问题，但保留无害（帮助在 flush 后重新 hydrate）

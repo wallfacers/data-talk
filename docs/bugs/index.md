@@ -14,8 +14,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 | ID | Title | Priority | Source | Modules | Discovered |
 |----|-------|----------|--------|---------|------------|
-| BUG-0001 | ER Inspector "Add virtual relation" 按钮无效 | P1 | E2E test | er-canvas, er-inspector | 2026-05-06 |
-| BUG-0002 | ER Designer bind_target 成功但 diff_against_db / generate_ddl 仍拒绝 | P1 | E2E test | er-designer, stage | 2026-05-06 |
+| —  | 当前无 open BUG | — | — | — | — |
 
 ## In Progress（status = investigating | fixed 等待 verify）
 
@@ -27,18 +26,16 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 | ID | Title | Status | Closed Date | FixCommit |
 |----|-------|--------|-------------|-----------|
-| —  | 当前无最近关闭 BUG | — | — | — |
+| BUG-0001 | ER Inspector "Add virtual relation" 按钮无效 | fixed | 2026-05-06 | — |
+| BUG-0002 | ER Designer bind_target 成功但 diff_against_db / generate_ddl 仍拒绝 | fixed | 2026-05-06 | — |
 
 ## By Module（聚合视图，仅列 open + in-progress）
 
-- `er-canvas`: BUG-0001
-- `er-designer`: BUG-0002
-- `er-inspector`: BUG-0001
-- `stage`: BUG-0002
+- 当前无 open/in-progress BUG
 
 ## By Source（聚合视图，仅列 open + in-progress）
 
-- `E2E test`: BUG-0001, BUG-0002
+- 当前无 open/in-progress BUG
 
 ## Wontfix / Duplicate（终态归档，无时间限制）
 

@@ -1,7 +1,7 @@
 ---
 id: BUG-0001
 title: ER Inspector "Add virtual relation" toolbar 按钮无效
-status: open
+status: fixed
 priority: P1
 source: E2E test
 modules:
@@ -33,6 +33,10 @@ const onAddVirtualRelation = useCallback(() => undefined, [])
 ```
 
 回调是 noop。Designer 的 `onAddTable` 等其他 toolbar 按钮均有实现，唯独此按钮被遗留。
+
+## 修复
+
+在 `ErCanvas.tsx` 中实现 `onAddVirtualRelation`：读取当前 inspector payload 的 `tablesSnapshot`，取前两张表（或同一张表）的首列，构造一个默认的 `many_to_one` 虚拟关系，通过 `onPatch([{ op: 'add', path: '/virtualRelations/-', value: {...} }])` 写入。
 
 ## 影响
 

@@ -38,6 +38,10 @@ public class JdbcErRelationDiscoveryService implements ErRelationDiscoveryServic
         this.conn = conn;
     }
 
+    private static final Set<Dialect> ER_SUPPORTED_DIALECTS = Set.of(
+        Dialect.MYSQL, Dialect.POSTGRESQL, Dialect.H2, Dialect.SQLITE, Dialect.MARIADB
+    );
+
     @Override
     public ErGraph discover(String connectionId, List<String> seeds, int neighborDepth) {
         if (seeds == null || seeds.isEmpty()) {
@@ -49,8 +53,11 @@ public class JdbcErRelationDiscoveryService implements ErRelationDiscoveryServic
 
         ConnectionRecord cr = connRepo.findById(connectionId)
             .orElseThrow(() -> new IllegalArgumentException("connection not found: " + connectionId));
-        Dialect.fromConnectionKind(cr.kind())
+        Dialect dialect = Dialect.fromConnectionKind(cr.kind())
             .orElseThrow(() -> new ErErrors.DialectUnsupportedException(cr.kind()));
+        if (!ER_SUPPORTED_DIALECTS.contains(dialect)) {
+            throw new ErErrors.DialectUnsupportedException(cr.kind());
+        }
 
         String password = conn.decryptPassword(connectionId);
         String url = JdbcUrlBuilder.build(cr);
