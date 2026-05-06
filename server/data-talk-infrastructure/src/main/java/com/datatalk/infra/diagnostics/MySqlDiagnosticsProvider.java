@@ -29,7 +29,7 @@ public class MySqlDiagnosticsProvider extends AbstractDiagnosticsProvider {
 
     @Override
     public Set<String> supportedDriverTypes() {
-        return Set.of("mysql");
+        return Set.of("mysql", "mariadb");
     }
 
     @Override

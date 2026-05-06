@@ -27,8 +27,8 @@ class MySqlDiagnosticsProviderTest {
     }
 
     @Test
-    void supportedDriverTypes_returnsMysql() {
-        assertThat(provider.supportedDriverTypes()).containsExactly("mysql");
+    void supportedDriverTypes_returnsMysqlAndMariadb() {
+        assertThat(provider.supportedDriverTypes()).containsExactlyInAnyOrder("mysql", "mariadb");
     }
 
     @Test
