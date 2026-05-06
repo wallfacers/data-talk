@@ -13,7 +13,7 @@
 本 design 在父 spec 基础上做了 **一项关键策略调整**，必须在此显式登记，并在 Part 5 实现时反向更新父 spec §6.2 / §11：
 
 - **Connection DELETE 时 archived 文件不再丢弃**（父 spec §6.2 的 "force 时所有 archived 文件 mv 到 _trash + status 改 discarded + rm workspaces/<connId>/" 被本 design 取代）。
-- **取代方案**：archived 行 `connection_id` 置 NULL（与 session 删除时 archived 行 `session_id` 置 NULL 对称），**文件不动，留在原 `~/.data-talk/workspaces/<已删 cid>/`**；UI 层在 Settings → Maintenance 提供"孤儿归档资产"管理界面（§B.3）让用户主动 reattach 到其它 connection 或丢弃。
+- **取代方案**：archived 行 `connection_id` 置 NULL（与 session 删除时 archived 行 `session_id` 置 NULL 对称），**文件不动，留在原 `~/.data-talk/workspaces/<已删 cid>/`**；同步把原 connection 的 `name` / `id` / 删除时戳写入 `metadata_json` 的 `orphanedFromConnection` / `orphanedFromConnectionId` / `orphanedAt`，确保孤儿在 UI 仍可显示原归属（避免 connection 行删除后名字消失）；UI 层在 Settings → Maintenance 提供"孤儿归档资产"管理界面（§B.3）让用户主动 reattach 到其它 connection 或丢弃。
 - **理由**：父 spec §1.1 把 archived 定义为"跨 session 存活的用户级长期资产"。connection 删除是用户级高影响操作；一刀切丢弃 archived 资产违背该定位、与 session 删除的孤儿处理也不对称。本调整把"是否清理 archived 资产"的决策权显式交还给用户。
 - **代价**：磁盘上会留 `workspaces/<已删 cid>/` 孤儿目录；reconciler 必须扩展为"workspaces/ 下文件 + DB row.connection_id IS NULL"也算 valid，不重新登记（§C.4 风险表）。
 
@@ -184,8 +184,20 @@ FileArtifactService（已存在；扩展）
 │     DELETE WHERE session_id AND status IN (temporary, candidate)
 │     UPDATE SET session_id=NULL WHERE session_id AND status='archived'
 └── deleteConnectionFileArtifacts(connectionId)
-      调 sessionRepo 拿 connection 下所有 session_id；逐个调 deleteSessionFileArtifacts
-      UPDATE SET connection_id=NULL WHERE connection_id AND status='archived'
+      1. 调 connectionRepo.findById(connectionId) 拿 connection.name（必须在删除 connection 行 *之前* 拿）
+      2. 调 sessionRepo 拿 connection 下所有 session_id；逐个调 deleteSessionFileArtifacts
+      3. 对剩余 archived 行批量更新（同一事务）：
+         UPDATE file_artifact SET
+           connection_id = NULL,
+           metadata_json = json_set(
+             COALESCE(metadata_json, '{}'),
+             '$.orphanedFromConnection', <connection.name>,
+             '$.orphanedFromConnectionId', <connectionId>,
+             '$.orphanedAt', <now>
+           )
+         WHERE connection_id = <connectionId> AND status = 'archived'
+      4. 这 3 个 metadata_json 字段被 §B.3.1 orphaned-files 端点读出展示给用户；
+         reattach 成功后清空（json_remove），避免遗留
 
 SessionService.delete(sessionId, force: boolean) -> DeleteOutcome
   ├── 若 !force：检查 candidate count，若 > 0 返回 BlockedByCandidates(list)
@@ -209,9 +221,11 @@ ConnectionService.delete(connectionId, force: boolean) -> DeleteOutcome
 - focusRing 与 i18n key 严格按 `client/DESIGN.md`
 
 执行阶段：用户点 "确认删除" 后，前端串行：
-1. 对每个 candidate 调 archive 或 discard 端点
+1. 对每个 candidate 调 archive 或 discard 端点；**前端本地跟踪 per-candidate 操作状态**（`pending | in_progress | done | failed`），写到 modal 内 store
 2. 全部 ack 后调 `DELETE /api/sessions/{sid}?force=true`
-3. 任一步失败 → toast + 不进入 step 3，让用户 retry
+3. 任一步失败 → toast + 不进入 step 2，让用户 retry
+
+**Retry 幂等约束**：retry 时前端**仅对 `failed` 状态的 candidate** 重新发起请求；`done` 的不再调用。这是必须的，否则已成功 archive 的 candidate 在 retry 时会因源文件已 mv 走而拿到 `not_found`，把整个 retry 卡死。modal 关闭前 store 不清理，关 modal 才丢状态。
 
 ### A.6 终局确认 modal — connection（新设计）
 
@@ -308,8 +322,8 @@ plugins/, node_modules/, v*/, sessions/   // ← Part 1 引入的子目录树
 |------|------|------|
 | `/api/maintenance/storage-overview` | GET | 返回存储概览（lazy 计算，预计 < 200ms） |
 | `/api/maintenance/cleanup-trash` | POST | 立即跑 cleanupTrash（不等 cron）；返回清理统计 |
-| `/api/maintenance/orphaned-files` | GET | 返回 `status='archived' AND connection_id IS NULL` 的 `FileArtifact[]`，含原 `session_id`；`LIMIT 200` 兜底 |
-| `/api/files/{fid}/reattach` | POST `{ connectionId }` | 把 archived 文件从 `workspaces/<已删 cid>/` mv 到 `workspaces/<新 cid>/`，复用 §A.3 mover；UPDATE row `connection_id=<new>`、`physical_path=<new>`；emit DtEvent.FileArtifactArchived（前端按新 connection_id 重新分组） |
+| `/api/maintenance/orphaned-files` | GET | 返回 `status='archived' AND connection_id IS NULL` 的 `FileArtifact[]`，含原 `session_id` 与 `metadata_json` 的 `orphanedFromConnection` / `orphanedFromConnectionId` / `orphanedAt`（由 §A.4 在 connection 删除时写入）；`LIMIT 200` 兜底 |
+| `/api/files/{fid}/reattach` | POST `{ connectionId }` | 把 archived 文件从 `workspaces/<已删 cid>/` mv 到 `workspaces/<新 cid>/`，复用 §A.3 mover；UPDATE row `connection_id=<new>`、`physical_path=<new>`；同时 `json_remove(metadata_json, '$.orphanedFromConnection', '$.orphanedFromConnectionId', '$.orphanedAt')` 清孤儿元；emit DtEvent.FileArtifactArchived（前端按新 connection_id 重新分组） |
 
 #### B.3.2 storage-overview 响应
 
@@ -374,12 +388,14 @@ Settings: General │ Models │ Connections │ Maintenance ●
 ```
 
 **交互**：
+- 行级 "原属于" 字段从 `metadata_json.orphanedFromConnection` 读取（由 §A.4 在 connection 删除时写入），格式 `原属于："<原 connection 名>" (已删除)`；若该字段缺失（极端 fallback），降级为 `原属于：已删除的连接 (<conn id>)`，从 physical_path 解析 cid
 - "关联到 ▾" 下拉显示 *当前所有活跃 connection* 列表（从 `useConnectionStore` 取）
 - 选完 connection → POST reattach → 行从列表消失（drawer 自动刷新）
 - 批量：勾选 + 顶部批量操作；批量 reattach 到同一 connection；批量 discard 全部 mv `_trash`
 - Empty state（孤儿被清完）：drawer 自动关闭 + toast `"所有孤儿资产已整理"`
 - 批量中途失败：每个文件独立请求；返回 `{ succeeded: [...ids], failed: [{ id, reason }] }`；UI 列出 failed 子集 + retry
 - 数量 > 200：API 返回最多 200，drawer 顶部提示 "显示前 200 条，请清理后再看下一批"
+- **0 个活跃 connection**（用户删完了唯一 connection 只剩孤儿）：批量 reattach 下拉 + 行级 "关联到 ▾" 都 disabled，顶部 banner 显示 `"没有可关联的连接，请先新建连接（或丢弃这些孤儿资产）"`；批量丢弃 + 行级丢弃仍可用
 
 #### B.3.5 五态 token 映射（drawer + maintenance tab 关键控件）
 
@@ -447,6 +463,7 @@ maintenance.orphans.toast.reattachOk
 maintenance.orphans.toast.reattachPartial
 maintenance.orphans.confirm.discardBulk    // "丢弃 N 个文件？这些文件会进入 _trash..."
 maintenance.orphans.tooltip.over200
+maintenance.orphans.banner.noActiveConnection   // "没有可关联的连接，请先新建连接（或丢弃这些孤儿资产）"
 ```
 
 5a session/connection modal i18n（与 5b 分离，但都在本 design 内统一登记）：
@@ -480,6 +497,7 @@ connections.deleteModal.cancel
 - `FileArtifactArchiveRequested` — 不变（Part 1 markCandidate / Part 3 archiveCandidate）
 - `FileArtifactArchived` — 5a archive 端点 + 5b reattach 端点共用（payload 含 `connectionId`，前端 store 据此 re-group）
 - `FileArtifactDiscarded` — 5a discard 端点 + 5b cleanupTrash + reconcile 孤儿 candidate 共用（payload 含 `reason: "user" | "session_deleted" | "connection_deleted" | "reconcile_lost" | "trash_expired"`）
+  - **`session_deleted` / `connection_deleted` 的 reason 仅用于 `temporary` / `candidate` 文件**（这些文件随 session/connection 删除而被 mv 到 `_trash`）。Q2 决策后 `archived` 文件**不**因 connection 删除而 discard，因此 `archived` 行不会带 `connection_deleted` reason；`archived` 行的"被丢弃"仅来自用户主动 discard（`reason="user"`）或 _trash 7 天清理（`reason="trash_expired"`，针对已是 discarded 状态的行）
 - `LegacyMigrated` — 5b LegacyMigrationRunner（payload `filesMovedCount`）
 
 application 层 exhaustive switch 已对这 5 个全覆盖；5a/5b 不增加 case。
@@ -532,6 +550,8 @@ application 层 exhaustive switch 已对这 5 个全覆盖；5a/5b 不增加 cas
 | 孤儿 drawer 数量超过 200 | API LIMIT 200 + 顶部提示"显示前 200 条"；不做分页（典型场景孤儿数应 < 几十） |
 | OpenCode `session_diff/ses_*.json` 联动清理失败 | log warn 跳过，不阻塞 session 删除主流程；下一次 cron reconcile 时再清理 |
 | ConnectionService 在 infrastructure 层（与 SessionService 在 adapter 不同） | 5a 实现 connection DELETE 两阶段时严守现有分层；如果需要应用层 orchestrator，新建 `ConnectionDeletionService` 在 application 层；不重构现有 ConnectionController（避免范围扩散） |
+| §A.4 写 metadata_json `orphanedFromConnection` 时 connection 已 / 还未删除？ | 必须在 `connection_id` 置 NULL **之前** 拿到 connection.name（见 §A.4 顺序）；同一事务内先 `findById` 再 `update`，再删 connection 行；任一步失败整体回滚，避免 row 已 NULL 但 metadata 没写入造成"无法识别原归属"的 dead 孤儿 |
+| 修改 `metadata_json` 用 SQLite `json_set` 在多平台（H2/PostgreSQL）兼容性？ | 现有 SQLite metadata 仓 = data-talk.db；H2 用作测试。H2 也支持 json 函数语法但非完全兼容。实现时建议改用 application 层先 `SELECT metadata_json` → Java 反序列化为 Map → 修改 → 序列化写回，避免依赖方言差异；性能上 archived 行批量更新一次性拉一个 connection 下的全部行可接受 |
 
 ### C.5 范围之外（明确不做）
 
