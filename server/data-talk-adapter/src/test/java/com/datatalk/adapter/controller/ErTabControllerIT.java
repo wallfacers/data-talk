@@ -125,7 +125,7 @@ class ErTabControllerIT {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.differences").isArray());
+            .andExpect(jsonPath("$.diff").isArray());
     }
 
 }

@@ -45,7 +45,7 @@ public class JdbcErRelationDiscoveryService implements ErRelationDiscoveryServic
     @Override
     public ErGraph discover(String connectionId, List<String> seeds, int neighborDepth) {
         if (seeds == null || seeds.isEmpty()) {
-            throw new IllegalArgumentException("seed tables must be non-empty");
+            return new ErGraph(List.of(), List.of(), "", List.of());
         }
         if (seeds.size() > MAX_TABLES) {
             throw new ErErrors.ErPayloadOversizedException(seeds.size(), MAX_TABLES);

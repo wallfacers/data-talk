@@ -34,9 +34,7 @@ public class ErSchemaDiffService implements ErDdlGeneratorService.SchemaDiffPort
         }
 
         List<String> draftTableNames = draft.tables().stream().map(ErDesignerTable::name).toList();
-        ErGraph realGraph = draftTableNames.isEmpty()
-            ? new ErGraph(List.of(), List.of(), "", List.of())
-            : discovery.discover(targetConnectionId, draftTableNames, 0);
+        ErGraph realGraph = discovery.discover(targetConnectionId, draftTableNames, 0);
         Map<String, ErTableMeta> realByName = realTables(realGraph);
         Set<String> realFkKeys = realFkKeys(realGraph);
         List<ErSchemaDiff> diffs = new ArrayList<>();
