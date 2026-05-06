@@ -141,7 +141,7 @@ test('E5: 刷新页面后 ER Designer Tab 仍在；tables / relations / dialect 
     ],
   })
   await designer.clickBindTarget()
-  await designer.fillBindTarget({ connectionId: workingConnId })
+  await designer.fillBindTarget({ connectionId: workingConnId, connectionName: "testconn" })
   await designer.confirmBindTarget()
   await waitForPayloadVersion(page, tabId, (v) => v > 0, 5_000)
   const before = await readDesignerPayload(page, tabId)

@@ -73,17 +73,19 @@ export class ErDesignerPage {
   }
 
   // bind dialog
-  async fillBindTarget(opts: { connectionId: string; database?: string; schema?: string }): Promise<void> {
+  async fillBindTarget(opts: { connectionId: string; connectionName?: string; database?: string; schema?: string }): Promise<void> {
     const dialog = this.page.locator('[role="dialog"]')
     await dialog.locator('#er-bind-target-connection').click()
-    await this.page.locator(`[role="option"][data-value="${opts.connectionId}"]`).first().click()
+    // Ark UI SelectItem doesn't expose data-value; select by text content
+    const name = opts.connectionName ?? 'testconn'
+    await this.page.locator('[role="option"]').filter({ hasText: name }).first().click()
     if (opts.database) {
       await dialog.locator('#er-bind-target-database').click()
-      await this.page.locator(`[role="option"][data-value="${opts.database}"]`).first().click()
+      await this.page.locator('[role="option"]').filter({ hasText: opts.database }).first().click()
     }
     if (opts.schema) {
       await dialog.locator('#er-bind-target-schema').click()
-      await this.page.locator(`[role="option"][data-value="${opts.schema}"]`).first().click()
+      await this.page.locator('[role="option"]').filter({ hasText: opts.schema }).first().click()
     }
   }
   async confirmBindTarget(): Promise<void> {
@@ -129,7 +131,12 @@ export class ErDesignerPage {
   async renameTable(oldName: string, newName: string): Promise<void> {
     await this.openContextMenu(oldName)
     await this.clickContextMenuItem('rename')
-    const input = this.canvas.locator(`[data-er-table-name="${oldName}"] input`).first()
+    // Context menu sets renameTableId which focuses the name input.
+    // The input is inside the node with data-er-table-name matching the current table name.
+    await this.page.waitForTimeout(500)
+    // Find the focused input inside the ER canvas
+    const input = this.page.locator('[role="dialog"] ~ * input, [data-er-tab-id] [data-er-table-name] input:focus, [data-er-tab-id] input[aria-label*="Table name"]').first()
+    await input.waitFor({ state: 'visible', timeout: 5_000 })
     await input.fill(newName)
     await input.press('Enter')
   }
