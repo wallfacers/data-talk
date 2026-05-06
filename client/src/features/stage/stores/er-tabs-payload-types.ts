@@ -59,7 +59,7 @@ export interface ErInspectorPayload {
 
 export interface ErDesignerPayload {
   kind: 'er_designer'
-  dialect: 'mysql' | 'postgresql' | 'h2' | 'sqlite'
+  dialect: 'mysql' | 'postgresql' | 'h2' | 'sqlite' | 'mariadb'
   targetConnectionId?: string | null
   targetDatabase?: string | null
   targetSchema?: string | null

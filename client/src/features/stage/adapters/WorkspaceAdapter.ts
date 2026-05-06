@@ -159,7 +159,7 @@ function normalizeNeighborDepth(value: unknown): 0 | 1 | 2 {
 }
 
 function isSupportedDesignerDialect(value: unknown): value is SupportedDesignerDialect {
-  return value === 'mysql' || value === 'postgresql' || value === 'h2' || value === 'sqlite'
+  return value === 'mysql' || value === 'postgresql' || value === 'h2' || value === 'sqlite' || value === 'mariadb'
 }
 
 function createDesignerId(prefix: 't' | 'c' | 'r'): string {

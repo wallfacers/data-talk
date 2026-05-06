@@ -2,6 +2,9 @@ import mysqlKeywords from '../sql-dialects/mysql-keywords.json'
 import postgresKeywords from '../sql-dialects/postgres-keywords.json'
 import h2Keywords from '../sql-dialects/h2-keywords.json'
 import sqliteKeywords from '../sql-dialects/sqlite-keywords.json'
+import mariadbKeywords from '../sql-dialects/mariadb-keywords.json'
+import oracleKeywords from '../sql-dialects/oracle-keywords.json'
+import sqlserverKeywords from '../sql-dialects/sqlserver-keywords.json'
 
 export type SqlOutlineStatement = {
   line: number
@@ -14,7 +17,7 @@ type SqlOutlineStatementRange = SqlOutlineStatement & {
   endLine: number
 }
 
-const KEYWORDS = new Set([...mysqlKeywords, ...postgresKeywords, ...h2Keywords, ...sqliteKeywords])
+const KEYWORDS = new Set([...mysqlKeywords, ...postgresKeywords, ...h2Keywords, ...sqliteKeywords, ...mariadbKeywords, ...oracleKeywords, ...sqlserverKeywords])
 const HIGH_RISK_KINDS = new Set(['DROP', 'TRUNCATE', 'ALTER', 'ATTACH', 'DETACH', 'VACUUM', 'REINDEX'])
 const READ_ONLY_SQLITE_PRAGMAS = new Set([
   'application_id',

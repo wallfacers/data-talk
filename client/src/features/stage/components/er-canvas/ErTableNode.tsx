@@ -20,7 +20,7 @@ import type { ErColumnMeta } from '@/features/stage/stores/er-tabs-payload-types
 import type { ErNodeData } from './utils/payload-to-graph'
 
 export type ErTableNodeMode = 'inspector' | 'designer'
-export type ErDesignerDialect = 'mysql' | 'postgresql' | 'h2' | 'sqlite'
+export type ErDesignerDialect = 'mysql' | 'postgresql' | 'h2' | 'sqlite' | 'mariadb'
 
 export interface ErTableNodeData extends ErNodeData {
   mode: ErTableNodeMode
@@ -471,6 +471,59 @@ const DIALECT_COLUMN_TYPE_OPTIONS: Record<ErDesignerDialect, string[]> = {
     'NUMERIC',
     'TEXT',
     'BLOB',
+  ],
+  mariadb: [
+    'TINYINT',
+    'SMALLINT',
+    'MEDIUMINT',
+    'INT',
+    'INTEGER',
+    'BIGINT',
+    'SERIAL',
+    'DECIMAL',
+    'DECIMAL(10,2)',
+    'DEC',
+    'FIXED',
+    'NUMERIC',
+    'NUMERIC(10,2)',
+    'FLOAT',
+    'DOUBLE',
+    'DOUBLE PRECISION',
+    'REAL',
+    'BIT(1)',
+    'BOOL',
+    'BOOLEAN',
+    'CHAR',
+    'CHAR(255)',
+    'NCHAR(255)',
+    'VARCHAR(255)',
+    'NVARCHAR(255)',
+    'TINYTEXT',
+    'TEXT',
+    'MEDIUMTEXT',
+    'LONGTEXT',
+    'BINARY(16)',
+    'VARBINARY(255)',
+    'TINYBLOB',
+    'BLOB',
+    'MEDIUMBLOB',
+    'LONGBLOB',
+    'DATE',
+    'TIME',
+    'DATETIME',
+    'TIMESTAMP',
+    'YEAR',
+    'JSON',
+    "ENUM('value')",
+    "SET('value')",
+    'GEOMETRY',
+    'POINT',
+    'LINESTRING',
+    'POLYGON',
+    'MULTIPOINT',
+    'MULTILINESTRING',
+    'MULTIPOLYGON',
+    'GEOMETRYCOLLECTION',
   ],
 }
 

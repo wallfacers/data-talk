@@ -27,12 +27,13 @@ interface ErToolbarInspectorProps {
   onForkToDesigner: () => void
 }
 
-type DesignerDialect = 'mysql' | 'postgresql' | 'h2' | 'sqlite'
+type DesignerDialect = 'mysql' | 'postgresql' | 'h2' | 'sqlite' | 'mariadb'
 const DESIGNER_DIALECT_OPTIONS: Array<{ value: DesignerDialect; label: string }> = [
   { value: 'mysql', label: 'MySQL' },
   { value: 'postgresql', label: 'PostgreSQL' },
   { value: 'h2', label: 'H2' },
   { value: 'sqlite', label: 'SQLite' },
+  { value: 'mariadb', label: 'MariaDB' },
 ]
 
 interface ErToolbarDesignerProps {

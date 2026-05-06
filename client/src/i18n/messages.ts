@@ -122,6 +122,12 @@ const MESSAGES = {
     'dataSources.select': '选择数据源',
     'dataSources.searchPlaceholder': '搜索数据源',
     'dataSources.emptySearch': '没有匹配的数据源',
+    'dataSources.oracleServiceType': '连接模式',
+    'dataSources.oracleServiceName': 'Service Name',
+    'dataSources.oracleSid': 'SID',
+    'dataSources.sqlserverEncrypt': '加密连接',
+    'dataSources.sqlserverTrustCert': '信任服务器证书',
+    'dataSources.sqlserverInstance': '实例名（可选）',
 
     'workspace.createSession': '创建会话',
     'workspace.creatingSession': '创建中…',
@@ -185,6 +191,7 @@ const MESSAGES = {
     'erCanvas.dialect.postgresql': 'PostgreSQL',
     'erCanvas.dialect.h2': 'H2',
     'erCanvas.dialect.sqlite': 'SQLite',
+    'erCanvas.dialect.mariadb': 'MariaDB',
 
     'chat.doubleClickRename': '双击重命名',
     'chat.confirmDelete': '确定删除“{title}”？',
@@ -645,6 +652,12 @@ const MESSAGES = {
     'dataSources.select': 'Select Data Source',
     'dataSources.searchPlaceholder': 'Search data sources',
     'dataSources.emptySearch': 'No matching data sources',
+    'dataSources.oracleServiceType': 'Connection mode',
+    'dataSources.oracleServiceName': 'Service Name',
+    'dataSources.oracleSid': 'SID',
+    'dataSources.sqlserverEncrypt': 'Encrypt connection',
+    'dataSources.sqlserverTrustCert': 'Trust server certificate',
+    'dataSources.sqlserverInstance': 'Instance name (optional)',
 
     'workspace.createSession': 'Create Session',
     'workspace.creatingSession': 'Creating…',
@@ -708,6 +721,7 @@ const MESSAGES = {
     'erCanvas.dialect.postgresql': 'PostgreSQL',
     'erCanvas.dialect.h2': 'H2',
     'erCanvas.dialect.sqlite': 'SQLite',
+    'erCanvas.dialect.mariadb': 'MariaDB',
 
     'chat.doubleClickRename': 'Double-click to rename',
     'chat.confirmDelete': 'Delete "{title}"?',

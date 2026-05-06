@@ -96,6 +96,7 @@ function normalizeConnectionKind(kind: string | null | undefined) {
   const normalized = kind?.trim().toLowerCase()
   if (!normalized) return null
   if (normalized === 'postgres') return 'postgresql'
+  if (normalized === 'mssql') return 'sqlserver'
   return normalized
 }
 
@@ -110,6 +111,8 @@ function isBindableConnection(dialect: ErDesignerPayload['dialect'], connection:
       return kind === 'h2'
     case 'sqlite':
       return kind === 'sqlite'
+    case 'mariadb':
+      return kind === 'mariadb' || kind === 'mysql'
     default:
       return false
   }
@@ -135,7 +138,7 @@ function pickDefaultConnectionId(
 
 function hasIndependentSchemaNamespace(kind: string | null | undefined) {
   const normalizedKind = normalizeConnectionKind(kind)
-  return normalizedKind !== 'mysql' && normalizedKind !== 'sqlite'
+  return normalizedKind !== 'mysql' && normalizedKind !== 'sqlite' && normalizedKind !== 'mariadb'
 }
 
 export function ErDesignerTab({ tabId }: { tabId: string }) {

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -13,6 +14,9 @@ export const DATABASE_TYPES = {
   postgres: { label: 'PostgreSQL', port: 5432 },
   h2: { label: 'H2', port: 9092 },
   sqlite: { label: 'SQLite', port: 0 },
+  mariadb: { label: 'MariaDB', port: 3306 },
+  oracle: { label: 'Oracle', port: 1521 },
+  sqlserver: { label: 'SQL Server', port: 1433 },
 } as const
 
 export type DatabaseKind = keyof typeof DATABASE_TYPES
@@ -26,6 +30,10 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
     name: '', kind: 'mysql', host: 'localhost', port: 3306,
     database: '', username: '', password: '',
     connectTimeout: 3000,
+    oracleServiceType: 'service' as 'service' | 'sid',
+    sqlserverEncrypt: true,
+    sqlserverTrustServerCertificate: true,
+    sqlserverInstanceName: '',
   })
 
   useEffect(() => {
@@ -36,10 +44,16 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
         port: editing.port, database: editing.databaseName ?? '',
         username: editing.username, password: '',
         connectTimeout: editing.connectTimeout ?? 3000,
+        oracleServiceType: (editing as Record<string, unknown>).oracleServiceType === 'sid' ? 'sid' : 'service',
+        sqlserverEncrypt: (editing as Record<string, unknown>).sqlserverEncrypt !== false,
+        sqlserverTrustServerCertificate: (editing as Record<string, unknown>).sqlserverTrustServerCertificate !== false,
+        sqlserverInstanceName: ((editing as Record<string, unknown>).sqlserverInstanceName as string) ?? '',
       })
     } else {
       setForm({ name: '', kind: 'mysql', host: 'localhost', port: 3306,
-        database: '', username: '', password: '', connectTimeout: 3000 })
+        database: '', username: '', password: '', connectTimeout: 3000,
+        oracleServiceType: 'service', sqlserverEncrypt: true,
+        sqlserverTrustServerCertificate: true, sqlserverInstanceName: '' })
     }
   }, [editing])
 
@@ -48,19 +62,31 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
       const dbName = form.database.trim() || null
       const connName = form.name.trim() || t('dataSources.unnamed')
       const sqlite = form.kind === 'sqlite'
+      const base = {
+        name: connName, kind: form.kind, host: sqlite ? '' : form.host, port: sqlite ? 0 : form.port,
+        databaseName: dbName, username: sqlite ? '' : form.username,
+        password: form.password.length > 0 ? form.password : null,
+        connectTimeout: form.connectTimeout,
+      }
+      const dialectExtras: Record<string, unknown> = {}
+      if (form.kind === 'oracle') {
+        dialectExtras.oracleServiceType = form.oracleServiceType
+      }
+      if (form.kind === 'sqlserver') {
+        dialectExtras.sqlserverEncrypt = form.sqlserverEncrypt
+        dialectExtras.sqlserverTrustServerCertificate = form.sqlserverTrustServerCertificate
+        if (form.sqlserverInstanceName.trim()) {
+          dialectExtras.sqlserverInstanceName = form.sqlserverInstanceName.trim()
+        }
+      }
       if (editing) {
-        await updateConnection(editing.id, {
-          name: connName, kind: form.kind, host: sqlite ? '' : form.host, port: sqlite ? 0 : form.port,
-          databaseName: dbName, username: sqlite ? '' : form.username,
-          password: form.password.length > 0 ? form.password : null,
-          connectTimeout: form.connectTimeout,
-        })
+        await updateConnection(editing.id, { ...base, ...dialectExtras })
       } else {
         await createConnection({
-          name: connName, kind: form.kind, host: sqlite ? '' : form.host, port: sqlite ? 0 : form.port,
-          databaseName: dbName, username: sqlite ? '' : form.username, password: sqlite ? '' : form.password,
-          connectTimeout: form.connectTimeout,
-        })
+          ...base,
+          password: sqlite ? '' : form.password,
+          ...dialectExtras,
+        } as Parameters<typeof createConnection>[0])
       }
       qc.invalidateQueries({ queryKey: connectionsKey })
       qc.invalidateQueries({ queryKey: ['session-data-context'] })
@@ -69,6 +95,9 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
     onSuccess: () => toast.success(editing ? t('dataSources.updated') : t('dataSources.created')),
   })
   const isSqlite = form.kind === 'sqlite'
+  const isOracle = form.kind === 'oracle'
+  const isSqlserver = form.kind === 'sqlserver'
+  const hideHostPort = isSqlite
   const databaseLabel = isSqlite ? t('dataSources.sqliteFilePath') : t('dataSources.databaseOptional')
   const databasePlaceholder = isSqlite ? t('dataSources.sqliteFilePathPlaceholder') : t('dataSources.databasePlaceholder')
 
@@ -105,7 +134,7 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
             </SelectContent>
           </Select>
         </Field>
-        {isSqlite ? null : (
+        {hideHostPort ? null : (
           <>
             <Field label={t('dataSources.host')}>
               <Input aria-label={t('dataSources.host')} value={form.host}
@@ -117,11 +146,52 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
             </Field>
           </>
         )}
+        {isOracle ? (
+          <Field label={t('dataSources.oracleServiceType')}>
+            <Select value={form.oracleServiceType}
+              onValueChange={(v) => {
+                if (v === 'service' || v === 'sid') {
+                  setForm(f => ({ ...f, oracleServiceType: v }))
+                }
+              }}>
+              <SelectTrigger aria-label={t('dataSources.oracleServiceType')}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="service">{t('dataSources.oracleServiceName')}</SelectItem>
+                <SelectItem value="sid">{t('dataSources.oracleSid')}</SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
+        ) : null}
+        {isSqlserver ? (
+          <>
+            <Field label="">
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox checked={form.sqlserverEncrypt}
+                    onCheckedChange={(v) => setForm(f => ({ ...f, sqlserverEncrypt: v === true }))} />
+                  {t('dataSources.sqlserverEncrypt')}
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox checked={form.sqlserverTrustServerCertificate}
+                    onCheckedChange={(v) => setForm(f => ({ ...f, sqlserverTrustServerCertificate: v === true }))} />
+                  {t('dataSources.sqlserverTrustCert')}
+                </label>
+              </div>
+            </Field>
+            <Field label={t('dataSources.sqlserverInstance')}>
+              <Input aria-label={t('dataSources.sqlserverInstance')} value={form.sqlserverInstanceName}
+                placeholder={t('dataSources.sqlserverInstance')}
+                onChange={(e) => setForm(f => ({ ...f, sqlserverInstanceName: e.target.value }))} />
+            </Field>
+          </>
+        ) : null}
         <Field label={databaseLabel}>
           <Input aria-label={databaseLabel} value={form.database} placeholder={databasePlaceholder}
             onChange={(e) => setForm(f => ({ ...f, database: e.target.value }))} />
         </Field>
-        {isSqlite ? null : (
+        {hideHostPort ? null : (
           <>
             <Field label={t('dataSources.username')}>
               <Input aria-label={t('dataSources.username')} value={form.username}
