@@ -9,6 +9,7 @@ import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.persistence.SessionRecord;
 import com.datatalk.application.persistence.SessionRepository;
 import com.datatalk.application.stage.ActiveSessionRegistry;
+import com.datatalk.domain.fileartifact.FileArtifact;
 import com.datatalk.domain.util.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -109,10 +110,33 @@ public class SessionService {
             existing.hasEverSent(), existing.openCodeSid(), existing.createdAt(), now, true);
     }
 
-    public void delete(String id) {
-        SessionRecord rec = repo.findById(id)
-            .orElseThrow(() -> new NoSuchElementException(translator.get("error.session.not_found", id)));
+    public DeleteOutcome delete(String id, boolean force) {
+        SessionRecord rec = repo.findById(id).orElse(null);
+        if (rec == null) {
+            return new DeleteOutcome.NotFound(id);
+        }
+        if (!force) {
+            int candidateCount = fileArtifacts.countCandidatesBySession(id);
+            if (candidateCount > 0) {
+                List<FileArtifact> candidates = fileArtifacts.findCandidatesBySession(id);
+                return new DeleteOutcome.BlockedByCandidates(id, candidates);
+            }
+        }
         deleteRecord(rec);
+        return new DeleteOutcome.Ok();
+    }
+
+    /**
+     * Backwards-compatible shim. The {@code deleteAll} path needs an
+     * unconditional force-delete; existing callers that ignored candidates
+     * keep their behavior. New callers MUST go through {@link #delete(String, boolean)}.
+     */
+    @Deprecated
+    public void delete(String id) {
+        DeleteOutcome out = delete(id, true);
+        if (out instanceof DeleteOutcome.NotFound) {
+            throw new NoSuchElementException(translator.get("error.session.not_found", id));
+        }
     }
 
     public void deleteAll() {

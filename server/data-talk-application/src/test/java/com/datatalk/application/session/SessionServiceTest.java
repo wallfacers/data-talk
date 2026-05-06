@@ -10,7 +10,9 @@ import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.persistence.SessionRecord;
 import com.datatalk.application.persistence.SessionRepository;
+import com.datatalk.application.session.DeleteOutcome;
 import com.datatalk.application.stage.ActiveSessionRegistry;
+import com.datatalk.domain.fileartifact.FileArtifact;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -326,9 +328,92 @@ class SessionServiceTest {
         assertThat(record.connectionId()).isNull();
     }
 
+    // Two-phase delete tests
+
+    @Test
+    void delete_force_false_returns_BlockedByCandidates_when_candidates_exist() {
+        repo.upsert(new SessionRecord("ses_a", "c1", "t", false, null, 100L, 100L, false));
+        org.mockito.Mockito.when(fileArtifacts.countCandidatesBySession("ses_a")).thenReturn(2);
+        org.mockito.Mockito.when(fileArtifacts.findCandidatesBySession("ses_a"))
+            .thenReturn(java.util.List.of(anyArtifact("fa_1"), anyArtifact("fa_2")));
+
+        var out = svc.delete("ses_a", false);
+
+        assertThat(out).isInstanceOf(DeleteOutcome.BlockedByCandidates.class);
+        var blocked = (DeleteOutcome.BlockedByCandidates) out;
+        assertThat(blocked.candidates()).hasSize(2);
+        assertThat(blocked.sessionId()).isEqualTo("ses_a");
+        // Session should still exist
+        assertThat(repo.findById("ses_a")).isPresent();
+        verify(sessionMap, never()).unbind(anyString());
+        verify(fileArtifacts, never()).deleteTransientByForSession(anyString());
+    }
+
+    @Test
+    void delete_force_false_returns_Ok_when_no_candidates() {
+        repo.upsert(new SessionRecord("ses_a", "c1", "t", false, null, 100L, 100L, false));
+        workdirs.getOrCreate("ses_a", "c1");
+        org.mockito.Mockito.when(fileArtifacts.countCandidatesBySession("ses_a")).thenReturn(0);
+
+        var out = svc.delete("ses_a", false);
+
+        assertThat(out).isInstanceOf(DeleteOutcome.Ok.class);
+        assertThat(repo.findById("ses_a")).isEmpty();
+        verify(fileArtifacts).deleteTransientByForSession("ses_a");
+        verify(fileArtifacts).detachArchivedFromSession("ses_a");
+    }
+
+    @Test
+    void delete_force_true_proceeds_even_with_candidates() {
+        repo.upsert(new SessionRecord("ses_a", "c1", "t", false, null, 100L, 100L, false));
+        workdirs.getOrCreate("ses_a", "c1");
+        // countCandidatesBySession not called when force=true (verify lenient)
+
+        var out = svc.delete("ses_a", true);
+
+        assertThat(out).isInstanceOf(DeleteOutcome.Ok.class);
+        assertThat(repo.findById("ses_a")).isEmpty();
+        verify(fileArtifacts, never()).countCandidatesBySession(anyString());
+    }
+
+    @Test
+    void delete_returns_NotFound_for_unknown_id() {
+        var out = svc.delete("ses_nope", false);
+        assertThat(out).isInstanceOf(DeleteOutcome.NotFound.class);
+        var notFound = (DeleteOutcome.NotFound) out;
+        assertThat(notFound.id()).isEqualTo("ses_nope");
+    }
+
+    @Test
+    void deprecated_delete_shim_throws_NotFound() {
+        assertThatThrownBy(() -> svc.delete("nonexistent"))
+            .isInstanceOf(NoSuchElementException.class)
+            .hasMessage("session not found: nonexistent");
+    }
+
+    private static FileArtifact anyArtifact(String id) {
+        return new FileArtifact(
+            id,
+            com.datatalk.domain.fileartifact.FileArtifactScope.SESSION,
+            com.datatalk.domain.fileartifact.FileArtifactStatus.CANDIDATE,
+            com.datatalk.domain.fileartifact.FileArtifactKind.OTHER,
+            "ses_test",
+            null,
+            "test.txt",
+            "/tmp/test.txt",
+            100L,
+            "text/plain",
+            null,
+            null,
+            java.time.Instant.ofEpochMilli(100L),
+            java.time.Instant.ofEpochMilli(100L),
+            null,
+            null);
+    }
+
     private static ConnectionRecord connectionRecord(String id) {
         return new ConnectionRecord(id, "seed-" + id, "mysql", "h", 3306,
             null, "u", new byte[] {0}, null, 0L, 3000, null, null,
-            null, 1, true, null);
+            null, 1, true, null, false);
     }
 }
