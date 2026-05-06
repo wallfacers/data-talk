@@ -5,9 +5,6 @@
 ## 活跃计划
 
 Wave B child plans are listed in the recommended implementation order from the Wave B design.
-
-| 计划 | 创建日期 | 摘要 |
-|------|---------|------|
 | [Data Source Coverage: Apache Doris](./2026-05-01-data-source-coverage-apache-doris-plan.md) | 2026-05-01 | Wave B Apache Doris child implementation plan：在 child design 获批后新增 `apache_doris` kind 和 `doris` alias normalization，验证 MySQL protocol/driver 复用边界，再补齐 URL/连接测试、metadata、SQL execution、splitter/risk、diagnostics/ER、frontend、MCP/runtime prompt；实现完成前保持 unsupported。 |
 | [Data Source Coverage: StarRocks](./2026-05-01-data-source-coverage-starrocks-plan.md) | 2026-05-01 | Wave B StarRocks child implementation plan：在 child design 获批后补齐 `starrocks` kind、native JDBC driver、`catalog.database` URL 与 target resolution、metadata/read_schema、SQL execution、splitter/risk、diagnostics/ER、frontend、MCP/runtime prompt；实现完成前保持 unsupported。 |
 | [Data Source Coverage: ClickHouse](./2026-05-01-data-source-coverage-clickhouse-plan.md) | 2026-05-01 | Wave B ClickHouse child implementation plan：在 child design 获批后补齐 `clickhouse` kind、official JDBC driver、HTTP/HTTPS URL、类型归一化、metadata/read_schema、SQL execution、ClickHouse splitter/risk、diagnostics/ER、frontend、MCP/runtime prompt；实现完成前保持 unsupported。 |
@@ -29,6 +26,7 @@ Wave B child plans are listed in the recommended implementation order from the W
 
 | 计划 | 完成日期 | 摘要 |
 |------|---------|------|
+| [AGENTS.md 全量 MCP 工具 E2E 覆盖](./2026-05-06-agents-mcp-full-coverage-e2e-plan.md) | 2026-05-06 | 已完成全部 5 批次 Playwright E2E 测试。结果：39 passed / 66 skipped / 0 failed。产出：`adapter-client.ts`（含 `/mcp` JSON-RPC 封装 + bridge nonce 注入 + `McpToolResult` unwrap）、`mcp-context.ts`（SQLite 读 OpenCode session + nonce）、`mcp-tool-recorder.ts`（fetch hook 抓 action.invoke）、5 个 batch spec（batch1 session-context + connection mgmt 17 tests；batch2 schema/query/artifacts 12 tests；batch3 diagnostics + mutations 10 tests；batch4 UI workspace 24 tests 含 8 fixme；batch5 ER tabs 17 tests 含 12 fixme）。已知限制：client-side action（`ui_exec`/`ui_patch`/`ui_read`/`pin_artifact`）后端抛 `UnsupportedOperationException`，对应 contract tests 标记 `test.fixme`；`SqlRiskAnalyzer` 反射 bug 导致 batch2 DDL/DML 断言为 error 存在而非 4xx。0 产品 BUG 登记。 |
 | [SQL Editor MCP E2E Test](./2026-05-05-sql-editor-mcp-e2e-test-plan.md) | 2026-05-06 | 已完成全部 3 批次 Playwright E2E 测试。批次 1（UI 核心交互）7 通过 / 1 fixme（最大化按钮未实现）；批次 2（AI-MCP 联动）5 跳过（`DATATALK_REAL_OPENCODE_MODEL` 未配置，env-gated）；批次 3（边界容错）4 通过。总计 11 通过 / 6 跳过 / 0 失败 / 0 产品 BUG。产出：`playwright.config.ts`、3 个 POM 文件 + helpers、3 个测试 spec、H2/MySQL fixture、seed SQL。修复记录：Monaco lazy-load 超时提升、`__dirname` ESM 兼容、H2→MySQL 复用已有连接、POM 选择器精度优化。 |
 | [BUG Tracking System](./2026-05-05-bug-tracking-system-plan.md) | 2026-05-05 | 已落地 `docs/bugs/` BUG 跟踪文档体系：扁平 + 多视图 `index.md` + 写作协议 `README.md` + `assets/` 截图目录；CLAUDE.md / AGENTS.md 加 Knowledge Base 行 + `BUG Tracking Gate` Working Rules（5 条强约束：写入 2 / 读取 2 / 报告 1）+ MCP/Skill Temporary Files 豁免（PNG ≤ 500KB 入 git，trace 留 tmp/）。验证：`grep` / `diff` 交叉引用一致性检查全过；commit `3adb9d8`，9 文件 +1294 lines。配套设计 spec：[2026-05-05-bug-tracking-system-design.md](../product-specs/2026-05-05-bug-tracking-system-design.md)。 |
 | [Data Source Coverage: Wave B Artifact Plan](./2026-05-01-data-source-coverage-wave-b-plan.md) | 2026-05-01 | 已完成 Wave B 文档矩阵：创建总控设计和 `apache_doris` / `starrocks` / `clickhouse` / `hive` / `trino` / `presto` / `duckdb` 七个 child design + child implementation plan，并同步 compatibility gate、产品 spec 索引和执行计划索引。无数据库支持实现、UI 暴露、MCP schema 暴露或 runtime prompt 支持声明。 |
