@@ -1,6 +1,8 @@
 package com.datatalk.application.fileartifact;
 
 import com.datatalk.application.channel.IdGenerator;
+import com.datatalk.application.persistence.SessionRepository;
+import com.datatalk.application.persistence.SessionRecord;
 import com.datatalk.application.session.SessionBus;
 import com.datatalk.application.session.SessionBusRegistry;
 import com.datatalk.domain.event.DtEvent;
@@ -10,6 +12,7 @@ import com.datatalk.domain.fileartifact.FileArtifactScope;
 import com.datatalk.domain.fileartifact.FileArtifactStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -26,7 +29,11 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.endsWith;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -40,6 +47,8 @@ class FileArtifactServiceTest {
     SessionWorkdirService workdir;
     SessionBusRegistry buses;
     SessionBus bus;
+    SessionRepository sessionRepo;
+    FileArtifactPhysicalMover mover;
     FileArtifactService service;
     Path sessionDir;
 
@@ -52,7 +61,9 @@ class FileArtifactServiceTest {
         buses = mock(SessionBusRegistry.class);
         bus = mock(SessionBus.class);
         when(buses.getOrCreate(anyString())).thenReturn(bus);
-        service = new FileArtifactService(repo, workdir, buses, new ObjectMapper());
+        sessionRepo = mock(SessionRepository.class);
+        mover = new FileArtifactPhysicalMover();
+        service = new FileArtifactService(repo, workdir, buses, new ObjectMapper(), mover, sessionRepo);
     }
 
     @Test
@@ -154,7 +165,7 @@ class FileArtifactServiceTest {
 
         SessionWorkdirRoot linkedRoot = new SessionWorkdirRoot(tmp, opencode);
         SessionWorkdirService linkedWorkdir = new SessionWorkdirService(linkedRoot, new ObjectMapper());
-        FileArtifactService linkedService = new FileArtifactService(repo, linkedWorkdir, buses, new ObjectMapper());
+        FileArtifactService linkedService = new FileArtifactService(repo, linkedWorkdir, buses, new ObjectMapper(), mover, sessionRepo);
 
         assertThat(linkedService.guardPath("ses_linked", "report.md"))
                 .contains(PathSafetyError.PATH_CONTAINS_SYMLINK);
@@ -552,6 +563,146 @@ class FileArtifactServiceTest {
 
         @Override
         public void detachArchivedFromConnection(String connectionId, String connectionName, long deletedAtMillis) {
+        }
+    }
+
+    // ─────── archive / discard use case tests ───────
+
+    @Nested
+    class ArchiveDiscardTests {
+
+        @TempDir
+        Path tmp;
+
+        FileArtifactRepository repo;
+        SessionRepository sessionRepo;
+        SessionWorkdirService workdir;
+        SessionBusRegistry buses;
+        SessionBus bus;
+        FileArtifactPhysicalMover mover;
+        FileArtifactService svc;
+        Path sessionDir;
+
+        @BeforeEach
+        void setUp() {
+            repo = mock(FileArtifactRepository.class);
+            sessionRepo = mock(SessionRepository.class);
+            buses = mock(SessionBusRegistry.class);
+            bus = mock(SessionBus.class);
+            when(buses.getOrCreate(anyString())).thenReturn(bus);
+            mover = new FileArtifactPhysicalMover();
+
+            SessionWorkdirRoot root = new SessionWorkdirRoot(tmp, tmp.resolve("opencode"));
+            workdir = new SessionWorkdirService(root, new ObjectMapper());
+            sessionDir = workdir.getOrCreate("ses_a", "conn_x");
+
+            svc = new FileArtifactService(repo, workdir, buses, new ObjectMapper(), mover, sessionRepo);
+        }
+
+        // ─────── archive use case ───────
+
+        @Test
+        void archive_returns_NotFound_for_unknown_fid() {
+            when(repo.findById("fa_unknown")).thenReturn(Optional.empty());
+            var out = svc.archive("ses_a", "fa_unknown");
+            assertThat(out).isInstanceOf(FileArtifactService.ArchiveOutcome.NotFound.class);
+        }
+
+        @Test
+        void archive_returns_WrongStatus_when_row_is_temporary() {
+            FileArtifact row = candidateRow("fa_1", "ses_a", FileArtifactStatus.TEMPORARY);
+            when(repo.findById("fa_1")).thenReturn(Optional.of(row));
+            var out = svc.archive("ses_a", "fa_1");
+            assertThat(out).isInstanceOf(FileArtifactService.ArchiveOutcome.WrongStatus.class);
+        }
+
+        @Test
+        void archive_returns_ConnectionMissing_when_session_has_no_connection() throws Exception {
+            Path src = sessionDir.resolve("orders.md");
+            Files.writeString(src, "x");
+            FileArtifact row = candidateRow("fa_1", "ses_a", FileArtifactStatus.CANDIDATE, src.toString());
+            when(repo.findById("fa_1")).thenReturn(Optional.of(row));
+            when(sessionRepo.findById("ses_a")).thenReturn(Optional.of(
+                    new SessionRecord("ses_a", null, "t", true, null, 1L, 1L, false)));
+
+            var out = svc.archive("ses_a", "fa_1");
+            assertThat(out).isInstanceOf(FileArtifactService.ArchiveOutcome.ConnectionMissing.class);
+        }
+
+        @Test
+        void archive_happy_path_moves_file_and_returns_Success() throws Exception {
+            Path src = sessionDir.resolve("orders.md");
+            Files.writeString(src, "x");
+            FileArtifact row = candidateRow("fa_1", "ses_a", FileArtifactStatus.CANDIDATE, src.toString());
+            FileArtifact archived = withStatus(row, FileArtifactStatus.ARCHIVED);
+            when(repo.findById("fa_1")).thenReturn(Optional.of(row), Optional.of(archived));
+            when(sessionRepo.findById("ses_a")).thenReturn(Optional.of(
+                    new SessionRecord("ses_a", "conn_x", "t", true, null, 1L, 1L, false)));
+
+            var out = svc.archive("ses_a", "fa_1");
+
+            assertThat(out).isInstanceOf(FileArtifactService.ArchiveOutcome.Success.class);
+            verify(repo).markArchived(eq("fa_1"), eq("conn_x"), endsWith("orders.md"));
+            assertThat(Files.exists(src)).isFalse();
+        }
+
+        // ─────── discard use case ───────
+
+        @Test
+        void discard_returns_NotFound_for_unknown_fid() {
+            when(repo.findById("fa_unknown")).thenReturn(Optional.empty());
+            var out = svc.discard("fa_unknown");
+            assertThat(out).isInstanceOf(FileArtifactService.DiscardOutcome.NotFound.class);
+        }
+
+        @Test
+        void discard_returns_AlreadyDiscarded_when_row_already_discarded() {
+            FileArtifact row = candidateRow("fa_1", "ses_a", FileArtifactStatus.DISCARDED);
+            when(repo.findById("fa_1")).thenReturn(Optional.of(row));
+            var out = svc.discard("fa_1");
+            assertThat(out).isInstanceOf(FileArtifactService.DiscardOutcome.AlreadyDiscarded.class);
+        }
+
+        @Test
+        void discard_happy_path_moves_to_trash_and_marks_discarded() throws Exception {
+            Path src = sessionDir.resolve("waste.md");
+            Files.writeString(src, "x");
+            FileArtifact row = candidateRow("fa_1", "ses_a", FileArtifactStatus.TEMPORARY, src.toString());
+            FileArtifact discarded = withStatus(row, FileArtifactStatus.DISCARDED);
+            when(repo.findById("fa_1")).thenReturn(Optional.of(row), Optional.of(discarded));
+
+            var out = svc.discard("fa_1");
+
+            assertThat(out).isInstanceOf(FileArtifactService.DiscardOutcome.Success.class);
+            verify(repo).updateLocation(eq("fa_1"), eq(FileArtifactStatus.DISCARDED), any(), contains("_trash"), any());
+            assertThat(Files.exists(src)).isFalse();
+        }
+
+        // helpers
+        private FileArtifact candidateRow(String id, String sid, FileArtifactStatus status) {
+            return candidateRow(id, sid, status, "/tmp/" + id);
+        }
+
+        private FileArtifact candidateRow(String id, String sid, FileArtifactStatus status, String path) {
+            return new FileArtifact(
+                    id,
+                    FileArtifactScope.SESSION,
+                    status,
+                    FileArtifactKind.OTHER,
+                    sid, null,
+                    Path.of(path).getFileName().toString(),
+                    path,
+                    10L, null, null, null,
+                    Instant.now(), Instant.now(), null,
+                    Map.of());
+        }
+
+        private FileArtifact withStatus(FileArtifact r, FileArtifactStatus s) {
+            return new FileArtifact(
+                    r.id(), r.scope(), s, r.kind(),
+                    r.sessionId(), r.connectionId(), r.filename(), r.physicalPath(),
+                    r.sizeBytes(), r.mimeType(), r.title(), r.summary(),
+                    r.createdAt(), r.updatedAt(), r.archivedAt(), r.metadata());
         }
     }
 }
