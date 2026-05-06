@@ -66,7 +66,7 @@
 - Modify: `client/src/features/stage/components/er-canvas/ErTableNode.tsx`
 - Modify: `client/src/features/stage/components/er-canvas/ErToolbar.tsx`
 
-- [ ] **Step 1: 验证 `test-seed.sql` FK 状态**
+- [x] **Step 1: 验证 `test-seed.sql` FK 状态**
 
 ```bash
 grep -i 'FOREIGN KEY\|REFERENCES' client/tests/e2e/fixtures/test-seed.sql || echo 'NO FK'
@@ -74,7 +74,7 @@ grep -i 'FOREIGN KEY\|REFERENCES' client/tests/e2e/fixtures/test-seed.sql || ech
 
 Expected：当前输出 `NO FK`（`test-seed.sql` 无 FK 声明）→ 必须创建 `er-seed.sql`。如果输出含 FK 行 → 跳过 Step 2。
 
-- [ ] **Step 2: 创建 `er-seed.sql`（包含 FK + 隐式关联候选列）**
+- [x] **Step 2: 创建 `er-seed.sql`（包含 FK + 隐式关联候选列）**
 
 写入 `client/tests/e2e/fixtures/er-seed.sql`：
 
@@ -138,7 +138,7 @@ INSERT INTO order_items (id, order_id, product_id, product_sku, quantity) VALUES
 
 注：`orders.user_email` / `order_items.product_sku` 是隐式关联候选（与 `users.email` / `products.sku_code` 同语义）。
 
-- [ ] **Step 3: 重新 grep 验证 client services 无 XHR / Tauri HTTP 引入**
+- [x] **Step 3: 重新 grep 验证 client services 无 XHR / Tauri HTTP 引入**
 
 ```bash
 grep -rn 'XMLHttpRequest\|@tauri-apps/api/http\|new XHR' client/src/services 2>/dev/null || echo 'PURE FETCH'
@@ -146,7 +146,7 @@ grep -rn 'XMLHttpRequest\|@tauri-apps/api/http\|new XHR' client/src/services 2>/
 
 Expected：`PURE FETCH`。若出现命中 → INV-1 守卫失效，必须把 `startFetchRecorder` 改为 `page.route('**/api/sql/execute', ...)` 兜底（修订 Task 1 Step 1 实现）。
 
-- [ ] **Step 4: 给 `ErCanvas.tsx` 加 `data-payload-version`**
+- [x] **Step 4: 给 `ErCanvas.tsx` 加 `data-payload-version`**
 
 `client/src/features/stage/components/er-canvas/ErCanvas.tsx:289`：
 
@@ -164,7 +164,7 @@ Expected：`PURE FETCH`。若出现命中 → INV-1 守卫失效，必须把 `st
 
 理由：`er-tabs-store.ts` 内部用 `__v` 字段记录 payload version（`er-designer-tab.tsx:58` `designerVersion` 函数读 `__v`）。Inspector / Designer payload 复用同一字段。
 
-- [ ] **Step 5: 给 `ErTableNode.tsx` 加 `data-er-table-id` / `data-er-table-name` / `data-er-column-handle`**
+- [x] **Step 5: 给 `ErTableNode.tsx` 加 `data-er-table-id` / `data-er-table-name` / `data-er-column-handle`**
 
 读现状：
 
@@ -202,7 +202,7 @@ Handle 处（每个 `<Handle type="source"` / `type="target"` 实例）：
   ... />
 ```
 
-- [ ] **Step 6: 给 `ErToolbar.tsx` 加 `data-testid="er-toolbar-*"`**
+- [x] **Step 6: 给 `ErToolbar.tsx` 加 `data-testid="er-toolbar-*"`**
 
 读现状：
 
@@ -261,7 +261,7 @@ Neighbor depth `<select>` 加：
   ... />
 ```
 
-- [ ] **Step 7: 跑 type check + 既有单测**
+- [x] **Step 7: 跑 type check + 既有单测**
 
 ```bash
 cd client && npx tsc --noEmit
@@ -270,7 +270,7 @@ cd client && npm test -- ErCanvas ErTableNode ErToolbar
 
 Expected：tsc exit 0；vitest 全绿（既有 `__tests__/Er*.test.tsx` 不依赖 testid，加属性不破坏断言）。
 
-- [ ] **Step 8: 提交**
+- [x] **Step 8: 提交**
 
 ```bash
 git add client/tests/e2e/fixtures/er-seed.sql \
@@ -300,7 +300,7 @@ EOF
 - Modify: `client/tests/e2e/pom/er-inspector.page.ts`
 - Modify: `client/tests/e2e/pom/er-designer.page.ts`
 
-- [ ] **Step 1: 创建 `er-test-helpers.ts`**
+- [x] **Step 1: 创建 `er-test-helpers.ts`**
 
 写入 `client/tests/e2e/fixtures/er-test-helpers.ts`：
 
@@ -568,7 +568,7 @@ const stage = (window as any).__DT_E2E__?.stage()
 const er = (window as any).__DT_E2E__?.er()
 ```
 
-- [ ] **Step 2: 添加 dev-only `__DT_E2E__` 全局**
+- [x] **Step 2: 添加 dev-only `__DT_E2E__` 全局**
 
 `client/src/main.tsx`（应用入口）：
 
@@ -588,7 +588,7 @@ if (import.meta.env.DEV || import.meta.env.MODE === 'test') {
 
 修订 `er-test-helpers.ts` 中所有 `require(...).useXxxStore.getState()` 为 `(window as any).__DT_E2E__.xxx()`。
 
-- [ ] **Step 3: 扩充 `pom/er-inspector.page.ts`**
+- [x] **Step 3: 扩充 `pom/er-inspector.page.ts`**
 
 完整覆盖（新增 8 个方法 + 保留现有 6 个）：
 
@@ -721,7 +721,7 @@ export class ErInspectorPage {
 }
 ```
 
-- [ ] **Step 4: 扩充 `pom/er-designer.page.ts`**
+- [x] **Step 4: 扩充 `pom/er-designer.page.ts`**
 
 ```ts
 import type { Page, Locator } from '@playwright/test'
@@ -994,7 +994,7 @@ export class ErDesignerPage {
 }
 ```
 
-- [ ] **Step 5: 类型检查**
+- [x] **Step 5: 类型检查**
 
 ```bash
 cd client && npx tsc --noEmit
@@ -1002,7 +1002,7 @@ cd client && npx tsc --noEmit
 
 Expected：exit 0。若 `__DT_E2E__` 全局未定义 → 检查 Step 2 的 `main.tsx` 改动；若 ER POM 类型错 → 修方法签名。
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add client/tests/e2e/fixtures/er-test-helpers.ts \
@@ -1035,7 +1035,7 @@ EOF
 **Files:**
 - Create: `client/tests/e2e/er-inspector-ui.spec.ts`
 
-- [ ] **Step 1: 写 spec 头 + setup**
+- [x] **Step 1: 写 spec 头 + setup**
 
 ```ts
 import { test, expect } from '@playwright/test'
@@ -1064,7 +1064,7 @@ test.beforeEach(async ({ page }) => {
 })
 ```
 
-- [ ] **Step 2: I1 — Refresh button re-fetches schema and bumps snapshotAt**
+- [x] **Step 2: I1 — Refresh button re-fetches schema and bumps snapshotAt**
 
 ```ts
 test('I1: Refresh button re-fetches schema and bumps snapshotAt', async ({ page }) => {
@@ -1084,7 +1084,7 @@ test('I1: Refresh button re-fetches schema and bumps snapshotAt', async ({ page 
 })
 ```
 
-- [ ] **Step 3: I2 — Auto layout assigns non-zero positions**
+- [x] **Step 3: I2 — Auto layout assigns non-zero positions**
 
 ```ts
 test('I2: Auto layout assigns non-zero positions to all selected tables', async ({ page }) => {
@@ -1108,7 +1108,7 @@ test('I2: Auto layout assigns non-zero positions to all selected tables', async 
 })
 ```
 
-- [ ] **Step 4: I3 — Fit view writes /viewport patch**
+- [x] **Step 4: I3 — Fit view writes /viewport patch**
 
 ```ts
 test('I3: Fit view writes /viewport patch', async ({ page }) => {
@@ -1129,7 +1129,7 @@ test('I3: Fit view writes /viewport patch', async ({ page }) => {
 })
 ```
 
-- [ ] **Step 5: I4 — Neighbor depth 0/1/2 changes graph**
+- [x] **Step 5: I4 — Neighbor depth 0/1/2 changes graph**
 
 ```ts
 test('I4: Neighbor depth 0 → only selected; 1 → 直接邻居; 2 → 二跳邻居', async ({ page }) => {
@@ -1157,7 +1157,7 @@ test('I4: Neighbor depth 0 → only selected; 1 → 直接邻居; 2 → 二跳�
 })
 ```
 
-- [ ] **Step 6: I5 — Add virtual relation（预登 BUG-A，标 fixme）**
+- [x] **Step 6: I5 — Add virtual relation（预登 BUG-A，标 fixme）**
 
 ```ts
 test.fixme('I5: Add virtual relation 进入编辑模式 / 弹窗 / 回写 /virtualRelations', async ({ page }) => {
@@ -1176,7 +1176,7 @@ test.fixme('I5: Add virtual relation 进入编辑模式 / 弹窗 / 回写 /virtu
 })
 ```
 
-- [ ] **Step 7: I6 — Fork to designer**
+- [x] **Step 7: I6 — Fork to designer**
 
 ```ts
 test('I6: Fork to designer opens new er_designer tab', async ({ page }) => {
@@ -1204,7 +1204,7 @@ test('I6: Fork to designer opens new er_designer tab', async ({ page }) => {
 })
 ```
 
-- [ ] **Step 8: I7 — Drag node persists position**
+- [x] **Step 8: I7 — Drag node persists position**
 
 ```ts
 test('I7: Drag node persists position to /positions/{name}', async ({ page }) => {
@@ -1228,7 +1228,7 @@ test('I7: Drag node persists position to /positions/{name}', async ({ page }) =>
 })
 ```
 
-- [ ] **Step 9: I8 / I9 — Pan + Zoom**
+- [x] **Step 9: I8 / I9 — Pan + Zoom**
 
 ```ts
 test('I8: Pan canvas writes /viewport patch', async ({ page }) => {
@@ -1267,7 +1267,7 @@ test('I9: Zoom in/out via Controls writes /viewport zoom', async ({ page }) => {
 })
 ```
 
-- [ ] **Step 10: I10 / I11 — Empty state + INV-1**
+- [x] **Step 10: I10 / I11 — Empty state + INV-1**
 
 ```ts
 test('I10: Empty selection 显示 ErEmptyState reason=empty_selection', async ({ page }) => {
@@ -1309,7 +1309,7 @@ test('I11: Inspector 操作链路无 /api/sql/execute 调用', async ({ page }) 
 })
 ```
 
-- [ ] **Step 11: 跑 spec 1**
+- [x] **Step 11: 跑 spec 1**
 
 ```bash
 cd client && npx playwright test tests/e2e/er-inspector-ui.spec.ts --reporter=list
@@ -1317,7 +1317,7 @@ cd client && npx playwright test tests/e2e/er-inspector-ui.spec.ts --reporter=li
 
 Expected：10 passed + 1 fixme（I5）；任何 fail → 登 BUG，把对应 test 改 `test.fail` 并标注 `// see docs/bugs/BUG-NNNN-...md`。
 
-- [ ] **Step 12: 提交**
+- [x] **Step 12: 提交**
 
 ```bash
 git add client/tests/e2e/er-inspector-ui.spec.ts
@@ -1333,7 +1333,7 @@ git commit -m "test(er-e2e): add Inspector UI spec (I1-I11, 11 tests)"
 **Files:**
 - Create: `client/tests/e2e/er-designer-ui.spec.ts`
 
-- [ ] **Step 1: spec 头 + setup**
+- [x] **Step 1: spec 头 + setup**
 
 ```ts
 import { test, expect } from '@playwright/test'
@@ -1364,7 +1364,7 @@ test.beforeEach(async ({ page }) => {
 })
 ```
 
-- [ ] **Step 2: D1-D3 Toolbar add / layout / fit**
+- [x] **Step 2: D1-D3 Toolbar add / layout / fit**
 
 ```ts
 test('D1: Add table 添加 new_table 到 /tables/-', async ({ page }) => {
@@ -1416,7 +1416,7 @@ test('D3: Fit view 写 /viewport', async ({ page }) => {
 })
 ```
 
-- [ ] **Step 3: D4-D7 Toolbar bind/diff/ddl/dialect**
+- [x] **Step 3: D4-D7 Toolbar bind/diff/ddl/dialect**
 
 ```ts
 test('D4: Bind target 打开 dialog', async ({ page }) => {
@@ -1457,7 +1457,7 @@ test('D7: Dialect 切换 4 选项可选，写 /dialect 路径', async ({ page })
 })
 ```
 
-- [ ] **Step 4: D8-D13 Bind Dialog 全流程**
+- [x] **Step 4: D8-D13 Bind Dialog 全流程**
 
 ```ts
 test('D8: 连接列表按 dialect 过滤（mysql 只看到 mysql kind）', async ({ page }) => {
@@ -1536,7 +1536,7 @@ test('D13: Cancel 不写 payload', async ({ page }) => {
 })
 ```
 
-- [ ] **Step 5: D14-D16 右键菜单**
+- [x] **Step 5: D14-D16 右键菜单**
 
 ```ts
 test('D14: Rename 进入名称编辑态，回车写 /tables[id=X]/name', async ({ page }) => {
@@ -1600,7 +1600,7 @@ test('D16: Delete table 写 remove，关联 relations 一并删除', async ({ pa
 })
 ```
 
-- [ ] **Step 6: D17-D19 列内联**
+- [x] **Step 6: D17-D19 列内联**
 
 ```ts
 test('D17: 改列各字段走对应 replace patch', async ({ page }) => {
@@ -1667,7 +1667,7 @@ test('D19: 点 trash 删列 写 remove /columns[id=...]', async ({ page }) => {
 })
 ```
 
-- [ ] **Step 7: D20-D22 拖连边 / Edge**
+- [x] **Step 7: D20-D22 拖连边 / Edge**
 
 ```ts
 test('D20: 从列 source-handle 拖到另一列 target-handle 创建 relations/-', async ({ page }) => {
@@ -1754,7 +1754,7 @@ test('D22: Edge 删除 写 remove', async ({ page }) => {
 })
 ```
 
-- [ ] **Step 8: D23-D24 Delete 键**
+- [x] **Step 8: D23-D24 Delete 键**
 
 ```ts
 test('D23: 选中节点 + Delete 键删除，伴随 relations 清理', async ({ page }) => {
@@ -1820,7 +1820,7 @@ test('D24: 选中 edge + Delete 键删除', async ({ page }) => {
 })
 ```
 
-- [ ] **Step 9: D25 Empty state**
+- [x] **Step 9: D25 Empty state**
 
 ```ts
 test('D25: tables 为空显示 empty_designer + Add table CTA', async ({ page }) => {
@@ -1835,7 +1835,7 @@ test('D25: tables 为空显示 empty_designer + Add table CTA', async ({ page })
 })
 ```
 
-- [ ] **Step 10: D26-D29 DDL 跨 dialect**
+- [x] **Step 10: D26-D29 DDL 跨 dialect**
 
 ```ts
 test('D26: Bind 后 Generate DDL 生成 query_editor Tab；SQL 含 CREATE TABLE', async ({ page }) => {
@@ -1987,7 +1987,7 @@ test('D29: dialect=sqlite Generate DDL 含 skipped 信息（仅 CREATE TABLE）'
 })
 ```
 
-- [ ] **Step 11: D30 不变量**
+- [x] **Step 11: D30 不变量**
 
 ```ts
 test('D30: Designer 全程无任何 /api/sql/execute 调用', async ({ page }) => {
@@ -2024,7 +2024,7 @@ test('D30: Designer 全程无任何 /api/sql/execute 调用', async ({ page }) =
 })
 ```
 
-- [ ] **Step 12: 跑 spec 2**
+- [x] **Step 12: 跑 spec 2**
 
 ```bash
 cd client && npx playwright test tests/e2e/er-designer-ui.spec.ts --reporter=list
@@ -2034,7 +2034,7 @@ Expected：30 passed（或部分 skip：D8/D10 在 pgConnId 不可用时 skip；
 
 任何 fail → 登 BUG，把 test 改 `test.fail`。
 
-- [ ] **Step 13: 提交**
+- [x] **Step 13: 提交**
 
 ```bash
 git add client/tests/e2e/er-designer-ui.spec.ts
@@ -2050,7 +2050,7 @@ git commit -m "test(er-e2e): add Designer UI spec (D1-D30, 30 tests)"
 **Files:**
 - Create: `client/tests/e2e/er-entry-and-persistence.spec.ts`
 
-- [ ] **Step 1: 先 grep 真实 ER 入口候选**
+- [x] **Step 1: 先 grep 真实 ER 入口候选**
 
 ```bash
 grep -rn 'open_er_inspector\|open_er_designer\|er_inspector\|er_designer\|View ER\|ER 图' \
@@ -2061,7 +2061,7 @@ grep -rn 'open_er_inspector\|open_er_designer\|er_inspector\|er_designer\|View E
 
 把命中位置记到 spec 注释里。若 0 命中 → E1/E2 走 BUG-B 兜底路径；E3-E6 仍跑。
 
-- [ ] **Step 2: 写 spec 头**
+- [x] **Step 2: 写 spec 头**
 
 ```ts
 import { test, expect } from '@playwright/test'
@@ -2092,7 +2092,7 @@ test.beforeEach(async ({ page }) => {
 })
 ```
 
-- [ ] **Step 3: E1 / E2 真实入口（按 Step 1 grep 结果选路径）**
+- [x] **Step 3: E1 / E2 真实入口（按 Step 1 grep 结果选路径）**
 
 如果 grep 命中 Sidebar `[+]` ER 入口，写 happy path 测试：
 
@@ -2123,7 +2123,7 @@ test('E2: 若无真实入口 → BUG 登记 + fallback 用快捷路径开 Tab �
 
 如果 grep **0 命中** → E1 直接 `test.skip(true, 'BUG-B：ER 入口未接产品 UI')`，并在 Task 5 登记 BUG-B。
 
-- [ ] **Step 4: E3 Fork 跨 Tab**
+- [x] **Step 4: E3 Fork 跨 Tab**
 
 ```ts
 test('E3: Inspector → Fork to Designer 后 Designer 出现，schema 形态对齐', async ({ page }) => {
@@ -2154,7 +2154,7 @@ test('E3: Inspector → Fork to Designer 后 Designer 出现，schema 形态对�
 
 若返 `plan_b_only` 错误（toast 出现）→ 标 `test.fixme` + 登 BUG-D（"fork_to_designer 在当前环境不支持"）。
 
-- [ ] **Step 5: E4 Inspector 持久化**
+- [x] **Step 5: E4 Inspector 持久化**
 
 ```ts
 test('E4: 刷新页面后 ER Inspector Tab 仍在；selection / positions / viewport / neighborDepth 完整恢复', async ({ page }) => {
@@ -2186,7 +2186,7 @@ test('E4: 刷新页面后 ER Inspector Tab 仍在；selection / positions / view
 })
 ```
 
-- [ ] **Step 6: E5 Designer 持久化**
+- [x] **Step 6: E5 Designer 持久化**
 
 ```ts
 test('E5: 刷新页面后 ER Designer Tab 仍在；tables / relations / dialect / targetConnectionId 完整恢复', async ({ page }) => {
@@ -2217,7 +2217,7 @@ test('E5: 刷新页面后 ER Designer Tab 仍在；tables / relations / dialect 
 })
 ```
 
-- [ ] **Step 7: E6 切 session ER Tab 不消失**
+- [x] **Step 7: E6 切 session ER Tab 不消失**
 
 ```ts
 test('E6: 切换 session 后 ER Tab 不消失（验证 stage 全局非 per-session）', async ({ page }) => {
@@ -2238,7 +2238,7 @@ test('E6: 切换 session 后 ER Tab 不消失（验证 stage 全局非 per-sessi
 })
 ```
 
-- [ ] **Step 8: 跑 spec 3**
+- [x] **Step 8: 跑 spec 3**
 
 ```bash
 cd client && npx playwright test tests/e2e/er-entry-and-persistence.spec.ts --reporter=list
@@ -2246,7 +2246,7 @@ cd client && npx playwright test tests/e2e/er-entry-and-persistence.spec.ts --re
 
 Expected：6 passed 或 E1 skip + 5 passed（视入口 grep 结果）。
 
-- [ ] **Step 9: 提交**
+- [x] **Step 9: 提交**
 
 ```bash
 git add client/tests/e2e/er-entry-and-persistence.spec.ts
@@ -2264,7 +2264,7 @@ git commit -m "test(er-e2e): add Entry + Persistence spec (E1-E6, 6 tests)"
 - Create (条件): `docs/bugs/BUG-NNNN-er-canvas-missing-payload-version-attr.md`
 - Update: `docs/bugs/index.md`
 
-- [ ] **Step 1: 跑全量 47 tests**
+- [x] **Step 1: 跑全量 47 tests**
 
 ```bash
 cd client && npx playwright test \
@@ -2276,7 +2276,7 @@ cd client && npx playwright test \
 
 Expected：≥ 39 passed + ≤ 8 skip/fixme（fixme 至少 1 = I5；skip 视 D8/D10/E1/D11 环境）。任何 fail → BUG 登记。
 
-- [ ] **Step 2: 登记预登 BUG-A（onAddVirtualRelation noop）**
+- [x] **Step 2: 登记预登 BUG-A（onAddVirtualRelation noop）**
 
 读 `docs/bugs/index.md` 当前 NextID（"下一个分配 ID：BUG-NNNN"）。
 
@@ -2334,23 +2334,23 @@ P1 — 功能缺失但 AI 仍可走 `ui_patch /virtualRelations/-` 兜底路径�
 - Open BUGs 表加 BUG-NNNN 行
 - By Module / By Source 加聚合
 
-- [ ] **Step 3: 登记 BUG-B（仅当 Task 4 Step 1 grep 0 命中）**
+- [x] **Step 3: 登记 BUG-B（仅当 Task 4 Step 1 grep 0 命中）**
 
 如 ER 入口在产品 UI 完全不存在，建 `docs/bugs/BUG-NNNN-er-inspector-entry-missing.md`（priority P2，modules `er-inspector / connection-panel`）。同步 `index.md`。
 
-- [ ] **Step 4: 登记 BUG-C（仅当 Task 0 Step 4-6 产品代码改动被驳回）**
+- [x] **Step 4: 登记 BUG-C（仅当 Task 0 Step 4-6 产品代码改动被驳回）**
 
 如不允许加 `data-payload-version` testid 钩子，建 `docs/bugs/BUG-NNNN-er-canvas-missing-payload-version-attr.md`（priority P3，modules `er-canvas / e2e-testability`）。
 
-- [ ] **Step 5: 把本计划移到 Completed**
+- [x] **Step 5: 把本计划移到 Completed**
 
 读 `docs/exec-plans/index.md`，把 `2026-05-06-er-module-e2e-test-plan.md` 从 Active 区删，加到 Completed 区，附结果摘要（X passed / Y fixme / Z BUG 登记）。
 
-- [ ] **Step 6: 把所有 task checkbox 标完成**
+- [x] **Step 6: 把所有 task checkbox 标完成**
 
 编辑本 plan 文件，逐个 `- [ ]` → `- [x]`。
 
-- [ ] **Step 7: 提交 housekeeping**
+- [x] **Step 7: 提交 housekeeping**
 
 ```bash
 git add docs/bugs/ docs/exec-plans/
@@ -2367,7 +2367,7 @@ EOF
 )"
 ```
 
-- [ ] **Step 8: 在最终响应里报 BUG 计数**
+- [x] **Step 8: 在最终响应里报 BUG 计数**
 
 按 CLAUDE.md BUG Tracking Gate 规则：响应里必须明确说"本次发现 N 个 BUG，已登记到 docs/bugs/…"。N=0 也要明说。
 
