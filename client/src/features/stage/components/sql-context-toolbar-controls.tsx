@@ -167,7 +167,7 @@ export function SqlContextToolbarControls({
             aria-label={t('stage.context.field.connection')}
             className="w-36"
           >
-            <span className="flex flex-1 text-left">{connectionLabel}</span>
+            <span className="min-w-0 flex-1 truncate text-left">{connectionLabel}</span>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={EMPTY_SELECT_VALUE}>
@@ -194,7 +194,7 @@ export function SqlContextToolbarControls({
             aria-label={t('stage.context.field.database')}
             className="w-32"
           >
-            <span className="flex flex-1 text-left">{databaseLabel}</span>
+            <span className="min-w-0 flex-1 truncate text-left">{databaseLabel}</span>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={EMPTY_SELECT_VALUE}>
@@ -222,7 +222,7 @@ export function SqlContextToolbarControls({
               aria-label={t('stage.context.field.schema')}
               className="w-28"
             >
-              <span className="flex flex-1 text-left">{schemaLabel}</span>
+              <span className="min-w-0 flex-1 truncate text-left">{schemaLabel}</span>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={EMPTY_SELECT_VALUE}>
