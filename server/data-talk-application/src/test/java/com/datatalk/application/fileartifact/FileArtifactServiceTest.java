@@ -678,6 +678,25 @@ class FileArtifactServiceTest {
             assertThat(Files.exists(src)).isFalse();
         }
 
+        @Test
+        void discard_SourceMissing_still_marks_discarded_and_publishes() throws Exception {
+            Path src = sessionDir.resolve("gone.md");
+            Files.writeString(src, "x");
+            FileArtifact row = candidateRow("fa_1", "ses_a", FileArtifactStatus.TEMPORARY, src.toString());
+            FileArtifact discarded = withStatus(row, FileArtifactStatus.DISCARDED);
+            when(repo.findById("fa_1")).thenReturn(Optional.of(row), Optional.of(discarded));
+            // Mover throws SourceMissing (file was deleted externally before discard)
+            mover = mock(FileArtifactPhysicalMover.class);
+            when(mover.mv(any(), any(), any())).thenThrow(new FileArtifactPhysicalMover.SourceMissing("gone"));
+            svc = new FileArtifactService(repo, workdir, buses, new ObjectMapper(), mover, sessionRepo);
+
+            var out = svc.discard("fa_1");
+
+            assertThat(out).isInstanceOf(FileArtifactService.DiscardOutcome.Success.class);
+            verify(repo).updateLocation(eq("fa_1"), eq(FileArtifactStatus.DISCARDED), any(), any(), any());
+            verify(bus).publish(any(DtEvent.FileArtifactDiscarded.class));
+        }
+
         // helpers
         private FileArtifact candidateRow(String id, String sid, FileArtifactStatus status) {
             return candidateRow(id, sid, status, "/tmp/" + id);

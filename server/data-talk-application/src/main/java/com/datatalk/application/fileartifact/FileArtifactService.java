@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.datatalk.application.channel.IdGenerator;
 
@@ -489,6 +490,7 @@ public class FileArtifactService {
      * Move a CANDIDATE row's physical file to the connection's workspaces
      * directory and update DB row to ARCHIVED. Spec §A.1 / §A.3.
      */
+    @Transactional
     public ArchiveOutcome archive(String sessionId, String fileArtifactId) {
         FileArtifact row = repo.findById(fileArtifactId).orElse(null);
         if (row == null) {
@@ -539,7 +541,8 @@ public class FileArtifactService {
             // remaining the original is acceptable until a dedicated UI need arises.
         }
 
-        FileArtifact updated = repo.findById(fileArtifactId).orElseThrow();
+        FileArtifact updated = repo.findById(fileArtifactId)
+                .orElseThrow(() -> new IllegalStateException("row vanished after archive: " + fileArtifactId));
         publish(sessionId, new DtEvent.FileArtifactArchived(
                 updated.id(),
                 sessionId,
@@ -553,6 +556,7 @@ public class FileArtifactService {
      * Move any-status row's physical file to ~/.data-talk/_trash/ and update
      * DB row to DISCARDED. Spec §A.1 / §A.3.
      */
+    @Transactional
     public DiscardOutcome discard(String fileArtifactId) {
         FileArtifact row = repo.findById(fileArtifactId).orElse(null);
         if (row == null) {
@@ -573,7 +577,8 @@ public class FileArtifactService {
         } catch (FileArtifactPhysicalMover.SourceMissing e) {
             // file already gone — still mark row discarded so DB state catches up
             repo.updateLocation(fileArtifactId, FileArtifactStatus.DISCARDED, row.scope().dbValue(), row.physicalPath(), row.connectionId());
-            FileArtifact updated = repo.findById(fileArtifactId).orElseThrow();
+            FileArtifact updated = repo.findById(fileArtifactId)
+                    .orElseThrow(() -> new IllegalStateException("row vanished after discard (SourceMissing): " + fileArtifactId));
             publish(row.sessionId(), new DtEvent.FileArtifactDiscarded(updated.id(), "user_source_missing"));
             return new DiscardOutcome.Success(updated);
         } catch (FileArtifactPhysicalMover.TocTouChanged e) {
@@ -585,7 +590,8 @@ public class FileArtifactService {
         }
 
         repo.updateLocation(fileArtifactId, FileArtifactStatus.DISCARDED, row.scope().dbValue(), dst.toString(), row.connectionId());
-        FileArtifact updated = repo.findById(fileArtifactId).orElseThrow();
+        FileArtifact updated = repo.findById(fileArtifactId)
+                .orElseThrow(() -> new IllegalStateException("row vanished after discard: " + fileArtifactId));
         publish(row.sessionId(), new DtEvent.FileArtifactDiscarded(updated.id(), "user"));
         return new DiscardOutcome.Success(updated);
     }
