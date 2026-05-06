@@ -2257,3 +2257,101 @@ cd client && npm test -- --run
 - session DELETE 两阶段 409（Phase 1 阻断 + force=true 走 Phase 2）—— 与 Maintenance 在 Part 5 一起做
 - `HousekeepingScheduler` / `LegacyMigrationRunner` 后台任务接入；前端 `legacy_migrated` 事件已由 store 默认 no-op，Part 5 加 toast
 - File 内容预览：当前 `[打开]` 按钮在 Files Tab 与 Library Tab 是占位 `aria-label`，可在 Part 5 接 `file_preview` tab type（已存在）；本 Part 不实现
+
+---
+
+## Implementation Deviations（实施偏差记录）
+
+以下 7 项偏差在 2026-05-07 实施过程中发现并修正，计划原文保持不变以供追溯，实际代码以 repo 为准。
+
+### D1. `@testing-library/user-event` 未安装
+
+**计划代码使用：** `import userEvent from '@testing-library/user-event'` + `await userEvent.click(...)` / `await userEvent.type(...)`
+
+**问题：** 项目的 `package.json` 未安装 `@testing-library/user-event`，现有 146 个测试全部使用 `fireEvent` from `@testing-library/react`。
+
+**实际修正：** 用 `fireEvent` 替换所有 `userEvent` 调用：
+- `await userEvent.click(el)` → `fireEvent.click(el)`
+- `await userEvent.type(input, 'text')` → `fireEvent.change(input, { target: { value: 'text' } })`
+- `await userEvent.clear(input)` → `fireEvent.change(input, { target: { value: '' } })`
+
+涉及文件：files-tab.test.tsx / files-library-tab.test.tsx / datatalk-archive-artifact.test.tsx
+
+### D2. `t()` 的 `MessageKey` 类型约束
+
+**计划代码使用：** `t(titleKey)` 其中 `titleKey: string`
+
+**问题：** `t()` 参数类型为 `MessageKey`（从 `MESSAGES['zh-CN']` 推导的 union literal type），普通 `string` 类型不兼容。
+
+**实际修正：** `t(titleKey as never)` —— 项目中已有此惯例（files-library-tab.tsx 中 `t(\`files.library.section.$\{kind}\` as never)`），语义为"运行时 key 合法，TS 无法将模板字面量收窄为 union"。
+
+### D3. Zustand selector 返回新对象引用导致无限渲染
+
+**计划代码：**
+```tsx
+const groups = useFileArtifactsStore((s) =>
+  (activeSessionId ? s.selectSessionFiles(activeSessionId) : null))
+// selectSessionFiles 每次返回新 { temporary: [...], candidate: [...] }
+```
+
+**问题：** `selectSessionFiles` 内部用 `.filter()` 生成新数组 → 每次 selector 执行返回新对象引用 → Zustand `Object.is` 比较为 `false` → 触发 re-render。结合 `useEffect` 中的 `fetchForSession` → `set({ loading: true })` → store 变化 → selector 再执行 → 再返回新对象 → 无限循环。
+
+**实际修正：** 直接读 `s.bySessionId[activeSessionId]`（原始数组引用，稳定不变）+ `useMemo` 在组件内分组：
+```tsx
+const list = useFileArtifactsStore((s) =>
+  (activeSessionId ? s.bySessionId[activeSessionId] : undefined))
+const groups = useMemo(() => {
+  if (!list) return null
+  return { temporary: list.filter(f => f.status === 'temporary'), candidate: list.filter(f => f.status === 'candidate') }
+}, [list])
+```
+
+同样修正应用于 `files-library-tab.tsx` 中的 `selectConnectionFiles`。
+
+### D4. useEffect 依赖 `fetchForSession` 函数引用不稳定
+
+**计划代码：**
+```tsx
+const fetchForSession = useFileArtifactsStore((s) => s.fetchForSession)
+useEffect(() => {
+  if (activeSessionId) void fetchForSession(activeSessionId)
+}, [activeSessionId, fetchForSession])
+```
+
+**问题：** 与 D3 交互时加剧无限渲染。尽管 Zustand `create()` 中的函数引用理论上稳定，但配合 selector 每次执行的新对象引用，`useEffect` 在每次 store 变化后都被重新评估。
+
+**实际修正：** `useRef` 守卫 + `getState()` 直接调用，完全解耦 Zustand 订阅：
+```tsx
+const prevSessionIdRef = useRef<string | null>(null)
+useEffect(() => {
+  if (activeSessionId && activeSessionId !== prevSessionIdRef.current) {
+    prevSessionIdRef.current = activeSessionId
+    void useFileArtifactsStore.getState().fetchForSession(activeSessionId)
+  }
+}, [activeSessionId])
+```
+
+### D5. 组件测试未 mock API 调用
+
+**问题：** 计划中的三个组件测试（files-tab / files-library-tab / datatalk-archive-artifact）均未 mock `@/services/api/file-artifacts`。`fetchForSession`/`fetchForConnection` 在 jsdom 中发起真实 HTTP 请求（通过 ky），导致不可预期的副作用和测试不稳定。
+
+**实际修正：** 在每个测试文件顶部添加：
+```ts
+vi.mock('@/services/api/file-artifacts', async () => {
+  const actual = await vi.importActual<typeof import('@/services/api/file-artifacts')>('@/services/api/file-artifacts')
+  return { ...actual, listSessionFiles: vi.fn().mockResolvedValue([]), listConnectionFiles: vi.fn().mockResolvedValue([]), markCandidate: vi.fn().mockResolvedValue(undefined), archiveFile: vi.fn().mockResolvedValue(undefined), discardFile: vi.fn().mockResolvedValue(undefined) }
+})
+```
+`vi.importActual` 保留类型导出（`FileArtifact` 等 interface），仅替换函数实现。
+
+### D6. shadcn Select 组件在 jsdom 中不可交互
+
+**问题：** shadcn `<Select>` 底层是 Radix UI，选项渲染在 portal 中。`fireEvent.click` 在 jsdom 中无法可靠触发 portal 内选项的点击。
+
+**实际修正：** 放弃 `<Select>` 交互测试，改为验证数据层等效行为——搜索过滤和 kind 分组渲染。kind filter 的正确性由组件自身的 `useMemo` + `filteredGroups` 逻辑保证，这部分是纯 JS 逻辑，无需 DOM 交互测试。
+
+### D7. `screen.getByText` 精确匹配遗漏 count 后缀
+
+**问题：** LibrarySection header 渲染为 `t('files.library.section.er_diagram') + ' (' + files.length + ')'`，即 `files.library.section.er_diagram (2)`。测试断言使用 `screen.getByText('files.library.section.er_diagram')`（不含 count），`getByText` 默认精确匹配失败。
+
+**实际修正：** 断言改为含 count 的完整文本：`screen.getByText('files.library.section.er_diagram (2)')`
