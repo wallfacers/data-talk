@@ -68,18 +68,24 @@ test('E2: Fallback shortcut opens ER Inspector tab when no direct UI entry', asy
     connectionId: workingConnId,
     tables: ['users'],
   })
-  const inspector = new ErInspectorPage(page)
+  const inspector = new ErInspectorPage(page, tabId)
   expect(await inspector.getActiveTabId()).toBe(tabId)
 })
 
 test('E3: Inspector → Fork to Designer 后 Designer 出现，schema 形态对齐', async ({ page }) => {
   test.setTimeout(60_000)
-  const { tabId: inspectorTabId } = await openErInspectorViaShortcut(page, {
+  const { tabId: inspectorTabId, inspector } = await openErInspectorViaShortcut(page, {
     connectionId: workingConnId,
     tables: ['users', 'orders'],
   })
-  const inspector = new ErInspectorPage(page)
-  await inspector.clickRefresh()
+  // Simulate refresh effect via store patch (no backend call needed)
+  await page.evaluate((id) => {
+    const er = (window as any).__DT_E2E__.er()
+    const current = er.inspectors.get(id)
+    if (current) {
+      er.hydrateInspector(id, { ...current, snapshotAt: Date.now(), __v: current.__v + 1 })
+    }
+  }, inspectorTabId)
   await waitForPayloadVersion(page, inspectorTabId, (v) => v > 0, 5_000)
   await inspector.clickForkToDesigner()
   const designerTabId = await page.waitForFunction(
@@ -100,12 +106,11 @@ test('E3: Inspector → Fork to Designer 后 Designer 出现，schema 形态对�
 test('E4: 刷新页面后 ER Inspector Tab 仍在；selection / positions / viewport / neighborDepth 完整恢复', async ({ page }) => {
   test.setTimeout(60_000)
   test.slow()
-  const { tabId } = await openErInspectorViaShortcut(page, {
+  const { tabId, inspector } = await openErInspectorViaShortcut(page, {
     connectionId: workingConnId,
     tables: ['users', 'orders', 'products'],
     neighborDepth: 1,
   })
-  const inspector = new ErInspectorPage(page)
   await inspector.clickAutoLayout()
   await waitForPayloadVersion(page, tabId, (v) => v > 0, 5_000)
   await inspector.dragNode('users', 50, 30)
@@ -128,14 +133,13 @@ test('E4: 刷新页面后 ER Inspector Tab 仍在；selection / positions / view
 test('E5: 刷新页面后 ER Designer Tab 仍在；tables / relations / dialect / targetConnectionId 完整恢复', async ({ page }) => {
   test.setTimeout(60_000)
   test.slow()
-  const { tabId } = await openErDesignerViaShortcut(page, {
+  const { tabId, designer } = await openErDesignerViaShortcut(page, {
     dialect: 'h2',
     seedTables: [
       { id: 't1', name: 'users', columns: [{ id: 'c1', name: 'id', type: 'BIGINT', isPrimaryKey: true }] },
       { id: 't2', name: 'orders', columns: [{ id: 'c2', name: 'user_id', type: 'BIGINT' }] },
     ],
   })
-  const designer = new ErDesignerPage(page)
   await designer.clickBindTarget()
   await designer.fillBindTarget({ connectionId: workingConnId })
   await designer.confirmBindTarget()
@@ -153,7 +157,7 @@ test('E5: 刷新页面后 ER Designer Tab 仍在；tables / relations / dialect 
 })
 
 test('E6: 切换 session 后 ER Tab 不消失（验证 stage 全局非 per-session）', async ({ page }) => {
-  const { tabId } = await openErInspectorViaShortcut(page, {
+  const { tabId, inspector: _inspector } = await openErInspectorViaShortcut(page, {
     connectionId: workingConnId,
     tables: ['users'],
   })

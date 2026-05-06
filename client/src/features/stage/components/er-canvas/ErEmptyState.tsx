@@ -9,6 +9,7 @@ export interface ErEmptyStateProps {
   dialect?: string
   actionLabel?: string
   onAction?: () => void
+  tabId?: string
 }
 
 const REASON_ICONS: Record<ErEmptyReason, LucideIcon> = {
@@ -54,13 +55,13 @@ function resolveCopy(reason: ErEmptyReason, dialect: string | undefined, t: Retu
   }
 }
 
-export function ErEmptyState({ reason, dialect, actionLabel, onAction }: ErEmptyStateProps) {
+export function ErEmptyState({ reason, dialect, actionLabel, onAction, tabId }: ErEmptyStateProps) {
   const { t } = useI18n()
   const { title, body } = resolveCopy(reason, dialect, t)
   const Icon = REASON_ICONS[reason]
 
   return (
-    <div className="flex h-full w-full items-center justify-center bg-bg-canvas px-6 py-8">
+    <div className="flex h-full w-full items-center justify-center bg-bg-canvas px-6 py-8" data-er-tab-id={tabId}>
       <div className="flex max-w-md flex-col items-center text-center">
         <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-border-subtle bg-bg-subtle text-text-muted">
           <Icon

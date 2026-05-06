@@ -279,7 +279,7 @@ function ErCanvasInner(props: ErCanvasProps) {
   }, [])
 
   if (mode === 'inspector' && ((payload as ErInspectorPayload).selection ?? []).length === 0) {
-    return <ErEmptyState reason="empty_selection" />
+    return <ErEmptyState reason="empty_selection" tabId={tabId} />
   }
 
   const designerPayload = payload as ErDesignerPayload
@@ -316,6 +316,7 @@ function ErCanvasInner(props: ErCanvasProps) {
         {isEmptyDesigner ? (
           <ErEmptyState
             reason="empty_designer"
+            tabId={tabId}
             actionLabel={mode === 'designer' ? t('erCanvas.toolbar.addTable') : undefined}
             onAction={mode === 'designer' ? onAddTable : undefined}
           />

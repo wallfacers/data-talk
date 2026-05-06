@@ -28,8 +28,7 @@ test.beforeEach(async ({ page }) => {
 // Step 2: D1-D3 Toolbar add / layout / fit
 
 test('D1: Add table 添加 new_table 到 /tables/-', async ({ page }) => {
-  const { tabId } = await openErDesignerViaShortcut(page, { dialect: 'h2' })
-  const designer = new ErDesignerPage(page)
+  const { tabId, designer } = await openErDesignerViaShortcut(page, { dialect: 'h2' })
   const baseV = await designer.getPayloadVersion()
   await designer.clickAddTable()
   await waitForPayloadVersion(page, tabId, (v) => v > baseV, 3_000)
@@ -48,7 +47,7 @@ test('D2: Auto layout 重排所有节点位置', async ({ page }) => {
       { name: 'orders', columns: [{ name: 'id', type: 'BIGINT', nullable: false, isPrimaryKey: true }] },
     ],
   })
-  const designer = new ErDesignerPage(page)
+  const designer = new ErDesignerPage(page, tabId)
   const baseV = await designer.getPayloadVersion()
   await designer.clickAutoLayout()
   await waitForPayloadVersion(page, tabId, (v) => v > baseV, 5_000)
@@ -67,7 +66,7 @@ test('D3: Fit view 写 /viewport', async ({ page }) => {
     dialect: 'h2',
     seedTables: [{ name: 'users' }],
   })
-  const designer = new ErDesignerPage(page)
+  const designer = new ErDesignerPage(page, tabId)
   const baseV = await designer.getPayloadVersion()
   await designer.clickFitView()
   await waitForPayloadVersion(page, tabId, (v) => v > baseV, 5_000)
@@ -78,15 +77,13 @@ test('D3: Fit view 写 /viewport', async ({ page }) => {
 // Step 3: D4-D7 Toolbar bind/diff/ddl/dialect
 
 test('D4: Bind target 打开 dialog', async ({ page }) => {
-  await openErDesignerViaShortcut(page, { dialect: 'h2' })
-  const designer = new ErDesignerPage(page)
+  const { designer } = await openErDesignerViaShortcut(page, { dialect: 'h2' })
   await designer.clickBindTarget()
   await page.locator('[role="dialog"]').waitFor({ state: 'visible', timeout: 5_000 })
 })
 
 test('D5: Diff vs DB 在未 bind 时 disabled + tooltip', async ({ page }) => {
-  await openErDesignerViaShortcut(page, { dialect: 'h2' })
-  const designer = new ErDesignerPage(page)
+  const { designer } = await openErDesignerViaShortcut(page, { dialect: 'h2' })
   const { disabled } = await designer.clickDiffVsDb()
   expect(disabled).toBe(true)
   const hint = await designer.getDiffDisabledHint()
@@ -94,8 +91,7 @@ test('D5: Diff vs DB 在未 bind 时 disabled + tooltip', async ({ page }) => {
 })
 
 test('D6: Generate DDL 在未 bind 时 disabled + tooltip', async ({ page }) => {
-  await openErDesignerViaShortcut(page, { dialect: 'h2' })
-  const designer = new ErDesignerPage(page)
+  const { designer } = await openErDesignerViaShortcut(page, { dialect: 'h2' })
   const { disabled } = await designer.clickGenerateDdl()
   expect(disabled).toBe(true)
   const hint = await designer.getGenerateDdlDisabledHint()
@@ -104,7 +100,7 @@ test('D6: Generate DDL 在未 bind 时 disabled + tooltip', async ({ page }) => 
 
 test('D7: Dialect 切换 4 选项可选，写 /dialect 路径', async ({ page }) => {
   const { tabId } = await openErDesignerViaShortcut(page, { dialect: 'mysql' })
-  const designer = new ErDesignerPage(page)
+  const designer = new ErDesignerPage(page, tabId)
   for (const d of ['postgresql', 'h2', 'sqlite', 'mysql'] as const) {
     const baseV = await designer.getPayloadVersion()
     await designer.setDialect(d)
@@ -118,8 +114,7 @@ test('D7: Dialect 切换 4 选项可选，写 /dialect 路径', async ({ page })
 
 test('D8: 连接列表按 dialect 过滤（mysql 只看到 mysql kind）', async ({ page }) => {
   test.skip(!pgConnId, 'mock postgresql connection unavailable; see Risks.R3')
-  await openErDesignerViaShortcut(page, { dialect: 'mysql' })
-  const designer = new ErDesignerPage(page)
+  const { tabId, designer } = await openErDesignerViaShortcut(page, { dialect: 'mysql' })
   await designer.clickBindTarget()
   const opts = await designer.getBindDialogConnectionOptions()
   // pgConnId 是 postgresql kind，dialect=mysql 不应包含它
@@ -127,8 +122,7 @@ test('D8: 连接列表按 dialect 过滤（mysql 只看到 mysql kind）', async
 })
 
 test('D9: 选连接 → database / schema 级联加载', async ({ page }) => {
-  await openErDesignerViaShortcut(page, { dialect: 'h2' })
-  const designer = new ErDesignerPage(page)
+  const { tabId, designer } = await openErDesignerViaShortcut(page, { dialect: 'h2' })
   await designer.clickBindTarget()
   await designer.fillBindTarget({ connectionId: workingConnId })
   // database select 应可点 / 有选项（取决于真连接的 metadata）
@@ -139,24 +133,21 @@ test('D9: 选连接 → database / schema 级联加载', async ({ page }) => {
 test('D10: MySQL 不显示 schema select；PostgreSQL 显示', async ({ page }) => {
   test.skip(!pgConnId, 'mock postgresql connection unavailable')
   // 1) MySQL：用 H2 dialect（kind 同样无 schema）兼容
-  await openErDesignerViaShortcut(page, { dialect: 'mysql' })
-  let designer = new ErDesignerPage(page)
-  await designer.clickBindTarget()
-  expect(await designer.isSchemaSelectVisible()).toBe(false)
-  await designer.cancelBindTarget()
+  const { designer: d1 } = await openErDesignerViaShortcut(page, { dialect: 'mysql' })
+  await d1.clickBindTarget()
+  expect(await d1.isSchemaSelectVisible()).toBe(false)
+  await d1.cancelBindTarget()
   // 2) PostgreSQL：dialect=postgresql + 选 pgConnId
-  await openErDesignerViaShortcut(page, { dialect: 'postgresql' })
-  designer = new ErDesignerPage(page)
-  await designer.clickBindTarget()
-  await designer.fillBindTarget({ connectionId: pgConnId! })
-  expect(await designer.isSchemaSelectVisible()).toBe(true)
+  const { designer: d2 } = await openErDesignerViaShortcut(page, { dialect: 'postgresql' })
+  await d2.clickBindTarget()
+  await d2.fillBindTarget({ connectionId: pgConnId! })
+  expect(await d2.isSchemaSelectVisible()).toBe(true)
 })
 
 test('D11: 空连接列表显示 erCanvas.bindDialog.empty 文案', async ({ page }) => {
   // 用一个没有 mysql kind 连接的 fixture 切片：构造 dialect=mysql 但没有 mysql 连接
   // 假设 workingConnId 是 mysql/h2 kind，复用即可，否则 skip
-  await openErDesignerViaShortcut(page, { dialect: 'sqlite' }) // sqlite kind 通常无连接
-  const designer = new ErDesignerPage(page)
+  const { tabId, designer } = await openErDesignerViaShortcut(page, { dialect: 'sqlite' }) // sqlite kind 通常无连接
   await designer.clickBindTarget()
   const empty = await designer.getBindDialogEmptyText()
   // 若环境恰好有 sqlite 连接 → empty 为 null，跳过此断言
@@ -165,7 +156,7 @@ test('D11: 空连接列表显示 erCanvas.bindDialog.empty 文案', async ({ pag
 
 test('D12: Confirm 后写 targetConnectionId / targetDatabase / targetSchema 并启用 Diff/DDL', async ({ page }) => {
   const { tabId } = await openErDesignerViaShortcut(page, { dialect: 'h2' })
-  const designer = new ErDesignerPage(page)
+  const designer = new ErDesignerPage(page, tabId)
   await designer.clickBindTarget()
   await designer.fillBindTarget({ connectionId: workingConnId })
   const baseV = await designer.getPayloadVersion()
@@ -182,7 +173,7 @@ test('D12: Confirm 后写 targetConnectionId / targetDatabase / targetSchema 并
 
 test('D13: Cancel 不写 payload', async ({ page }) => {
   const { tabId } = await openErDesignerViaShortcut(page, { dialect: 'h2' })
-  const designer = new ErDesignerPage(page)
+  const designer = new ErDesignerPage(page, tabId)
   const before = await readDesignerPayload(page, tabId)
   await designer.clickBindTarget()
   await designer.fillBindTarget({ connectionId: workingConnId })
@@ -198,7 +189,7 @@ test('D14: Rename 进入名称编辑态，回车写 /tables[id=X]/name', async (
     dialect: 'h2',
     seedTables: [{ name: 'users', columns: [{ name: 'id', type: 'BIGINT' }] }],
   })
-  const designer = new ErDesignerPage(page)
+  const designer = new ErDesignerPage(page, tabId)
   const baseV = await designer.getPayloadVersion()
   await designer.renameTable('users', 'people')
   await waitForPayloadVersion(page, tabId, (v) => v > baseV, 3_000)
@@ -211,7 +202,7 @@ test('D15: Add column 写 /tables[id=X]/columns/-', async ({ page }) => {
     dialect: 'h2',
     seedTables: [{ name: 'users', columns: [] }],
   })
-  const designer = new ErDesignerPage(page)
+  const designer = new ErDesignerPage(page, tabId)
   await designer.openContextMenu('users')
   const baseV = await designer.getPayloadVersion()
   await designer.clickContextMenuItem('addColumn')
@@ -243,7 +234,7 @@ test('D16: Delete table 写 remove，关联 relations 一并删除', async ({ pa
       },
     ])
   }, tabId)
-  const designer = new ErDesignerPage(page)
+  const designer = new ErDesignerPage(page, tabId)
   const baseV = await designer.getPayloadVersion()
   await designer.openContextMenu('users')
   await designer.clickContextMenuItem('deleteTable')
@@ -269,7 +260,7 @@ test('D17: 改列各字段走对应 replace patch', async ({ page }) => {
       },
     ],
   })
-  const designer = new ErDesignerPage(page)
+  const designer = new ErDesignerPage(page, tabId)
   await designer.editColumnField('users', 'email', 'name', 'email_addr')
   await designer.editColumnField('users', 'email_addr', 'type', 'VARCHAR(255)')
   await designer.editColumnField('users', 'email_addr', 'nullable', false)
@@ -286,7 +277,7 @@ test('D18: 点 + 添加列追加 new_column VARCHAR(255)', async ({ page }) => {
     dialect: 'h2',
     seedTables: [{ id: 't_users', name: 'users', columns: [] }],
   })
-  const designer = new ErDesignerPage(page)
+  const designer = new ErDesignerPage(page, tabId)
   const baseV = await designer.getPayloadVersion()
   await designer.addColumnViaToolbarPlus('users')
   await waitForPayloadVersion(page, tabId, (v) => v > baseV, 3_000)
@@ -309,7 +300,7 @@ test('D19: 点 trash 删列 写 remove /columns[id=...]', async ({ page }) => {
       },
     ],
   })
-  const designer = new ErDesignerPage(page)
+  const designer = new ErDesignerPage(page, tabId)
   const baseV = await designer.getPayloadVersion()
   await designer.deleteColumn('users', 'email')
   await waitForPayloadVersion(page, tabId, (v) => v > baseV, 3_000)
@@ -330,7 +321,7 @@ test('D20: 从列 source-handle 拖到另一列 target-handle 创建 relations/-
     ],
   })
   // 先 auto layout 让节点不堆叠
-  const designer = new ErDesignerPage(page)
+  const designer = new ErDesignerPage(page, tabId)
   await designer.clickAutoLayout()
   await waitForPayloadVersion(page, tabId, (v) => v > 0, 5_000)
   const baseV = await designer.getPayloadVersion()
@@ -365,7 +356,7 @@ test('D21: Edge 改 relation type 写 /relations[id=X]/type', async ({ page }) =
       },
     ])
   }, { id: tabId, eid: edgeId })
-  const designer = new ErDesignerPage(page)
+  const designer = new ErDesignerPage(page, tabId)
   const baseV = await designer.getPayloadVersion()
   await designer.setEdgeRelationType(edgeId, 'one_to_many')
   await waitForPayloadVersion(page, tabId, (v) => v > baseV, 3_000)
@@ -395,7 +386,7 @@ test('D22: Edge 删除 写 remove', async ({ page }) => {
       },
     ])
   }, { id: tabId, eid: edgeId })
-  const designer = new ErDesignerPage(page)
+  const designer = new ErDesignerPage(page, tabId)
   const baseV = await designer.getPayloadVersion()
   await designer.deleteEdge(edgeId)
   await waitForPayloadVersion(page, tabId, (v) => v > baseV, 3_000)
@@ -426,7 +417,7 @@ test('D23: 选中节点 + Delete 键删除，伴随 relations 清理', async ({ 
       },
     ])
   }, tabId)
-  const designer = new ErDesignerPage(page)
+  const designer = new ErDesignerPage(page, tabId)
   await designer.selectNode('users')
   const baseV = await designer.getPayloadVersion()
   await designer.pressDelete()
@@ -458,7 +449,7 @@ test('D24: 选中 edge + Delete 键删除', async ({ page }) => {
       },
     ])
   }, { id: tabId, eid: edgeId })
-  const designer = new ErDesignerPage(page)
+  const designer = new ErDesignerPage(page, tabId)
   await designer.selectEdge(edgeId)
   const baseV = await designer.getPayloadVersion()
   await designer.pressDelete()
@@ -471,7 +462,7 @@ test('D24: 选中 edge + Delete 键删除', async ({ page }) => {
 
 test('D25: tables 为空显示 empty_designer + Add table CTA', async ({ page }) => {
   const { tabId } = await openErDesignerViaShortcut(page, { dialect: 'h2' })
-  const designer = new ErDesignerPage(page)
+  const designer = new ErDesignerPage(page, tabId)
   await designer.expectEmptyState()
   const baseV = await designer.getPayloadVersion()
   await designer.clickEmptyAddTable()
@@ -497,7 +488,7 @@ test('D26: Bind 后 Generate DDL 生成 query_editor Tab；SQL 含 CREATE TABLE'
       },
     ],
   })
-  const designer = new ErDesignerPage(page)
+  const designer = new ErDesignerPage(page, tabId)
   await designer.clickBindTarget()
   await designer.fillBindTarget({ connectionId: workingConnId })
   await designer.confirmBindTarget()
@@ -537,7 +528,7 @@ test('D27: Generate DDL 后 query_editor results === [] (未自动执行)', asyn
       { id: 't_users', name: 'users', columns: [{ id: 'c_id', name: 'id', type: 'BIGINT', isPrimaryKey: true }] },
     ],
   })
-  const designer = new ErDesignerPage(page)
+  const designer = new ErDesignerPage(page, tabId)
   await designer.clickBindTarget()
   await designer.fillBindTarget({ connectionId: workingConnId })
   await designer.confirmBindTarget()
@@ -574,7 +565,7 @@ test('D28: dialect=postgresql Generate DDL 用 PG 语法', async ({ page }) => {
       },
     ],
   })
-  const designer = new ErDesignerPage(page)
+  const designer = new ErDesignerPage(page, tabId)
   await designer.clickBindTarget()
   await designer.fillBindTarget({ connectionId: workingConnId })
   await designer.confirmBindTarget()
@@ -620,7 +611,7 @@ test('D29: dialect=sqlite Generate DDL 含 skipped 信息（仅 CREATE TABLE）'
       },
     ])
   }, tabId)
-  const designer = new ErDesignerPage(page)
+  const designer = new ErDesignerPage(page, tabId)
   await designer.clickBindTarget()
   await designer.fillBindTarget({ connectionId: workingConnId })
   await designer.confirmBindTarget()
@@ -650,7 +641,7 @@ test('D30: Designer 全程无任何 /api/sql/execute 调用', async ({ page }) =
     dialect: 'h2',
     seedTables: [{ id: 't_users', name: 'users', columns: [{ id: 'c_id', name: 'id', type: 'BIGINT', isPrimaryKey: true }] }],
   })
-  const designer = new ErDesignerPage(page)
+  const designer = new ErDesignerPage(page, tabId)
   await designer.clickAddTable()
   await waitForPayloadVersion(page, tabId, (v) => v >= 1, 3_000)
   await designer.setDialect('postgresql')

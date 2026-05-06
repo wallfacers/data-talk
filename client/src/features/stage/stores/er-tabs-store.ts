@@ -311,18 +311,28 @@ export const useErTabsStore = create<ErTabsState>((set, get) => ({
   designers: new Map(),
 
   hydrateInspector(tabId, payload) {
+    const next = { ...payload }
+    const prev = get().inspectors.get(tabId)
+    const prevV = typeof (prev as unknown as { __v?: unknown })?.__v === 'number'
+      ? (prev as unknown as { __v: number }).__v
+      : 0
+    ;(next as unknown as { __v: number }).__v = prevV + 1
     set((state) => {
-      const next = new Map(state.inspectors)
-      next.set(tabId, payload)
-      return { inspectors: next }
+      const inspectors = new Map(state.inspectors)
+      inspectors.set(tabId, next)
+      return { inspectors }
     })
   },
 
   hydrateDesigner(tabId, payload) {
+    const next = { ...payload }
+    const prev = get().designers.get(tabId)
+    const prevV = prev ? versionOf(prev) : 0
+    ;(next as unknown as { __v: number }).__v = prevV + 1
     set((state) => {
-      const next = new Map(state.designers)
-      next.set(tabId, payload)
-      return { designers: next }
+      const designers = new Map(state.designers)
+      designers.set(tabId, next)
+      return { designers }
     })
   },
 
@@ -337,10 +347,14 @@ export const useErTabsStore = create<ErTabsState>((set, get) => ({
     }
 
     const { stamped, assignedIds } = stampVirtualRelationAddOps(current, ops)
+    const previousVersion = typeof (current as unknown as { __v?: unknown }).__v === 'number'
+      ? (current as unknown as { __v: number }).__v
+      : 0
     const next = applyPatch(
       current as unknown as Record<string, unknown>,
       stamped,
     ) as unknown as ErInspectorPayload
+    ;(next as unknown as { __v: number }).__v = previousVersion + 1
 
     set((state) => {
       const inspectors = new Map(state.inspectors)
@@ -348,9 +362,6 @@ export const useErTabsStore = create<ErTabsState>((set, get) => ({
       return { inspectors }
     })
 
-    const previousVersion = typeof (current as unknown as { __v?: unknown }).__v === 'number'
-      ? (current as unknown as { __v: number }).__v
-      : 0
     return { newVersion: previousVersion + 1, assignedIds }
   },
 

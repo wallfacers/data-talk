@@ -2,9 +2,11 @@ import type { Page, Locator } from '@playwright/test'
 
 export class ErDesignerPage {
   readonly page: Page
+  readonly tabId: string
 
-  constructor(page: Page) {
+  constructor(page: Page, tabId = '') {
     this.page = page
+    this.tabId = tabId
   }
 
   private get canvas(): Locator {

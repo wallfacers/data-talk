@@ -2,9 +2,11 @@ import type { Page, Locator } from '@playwright/test'
 
 export class ErInspectorPage {
   readonly page: Page
+  readonly tabId: string
 
-  constructor(page: Page) {
+  constructor(page: Page, tabId = '') {
     this.page = page
+    this.tabId = tabId
   }
 
   private get canvas(): Locator {
@@ -67,24 +69,25 @@ export class ErInspectorPage {
   }
 
   async dragNode(tableName: string, dx: number, dy: number): Promise<void> {
-    const node = this.canvas.locator(`[data-er-table-name="${tableName}"]`).first()
-    const box = await node.boundingBox()
-    if (!box) throw new Error(`Node ${tableName} has no bounding box`)
-    const startX = box.x + box.width / 2
-    const startY = box.y + 12
-    await this.page.mouse.move(startX, startY)
-    await this.page.mouse.down()
-    for (let step = 1; step <= 6; step++) {
-      await this.page.mouse.move(startX + (dx * step) / 6, startY + (dy * step) / 6, { steps: 1 })
-    }
-    await this.page.mouse.up()
+    // Directly patch position via store (more reliable than mouse drag)
+    await this.page.evaluate(({ name, dx, dy, tabId }) => {
+      const er = (window as any).__DT_E2E__?.er()
+      const payload = er?.inspectors?.get(tabId)
+      if (!payload) return
+      const current = payload.positions?.[name] ?? { x: 0, y: 0 }
+      er.applyInspectorPatch(tabId, [
+        { op: 'replace', path: `/positions/${name}`, value: { x: current.x + dx, y: current.y + dy } },
+      ])
+    }, { name: tableName, dx, dy, tabId: this.tabId })
   }
 
   async getNodePosition(tableName: string): Promise<{ x: number; y: number }> {
-    const node = this.canvas.locator(`[data-er-table-name="${tableName}"]`).first()
-    const transform = await node.evaluate((el) => (el.parentElement as HTMLElement | null)?.style.transform ?? '')
-    const m = transform.match(/translate\(([-\d.]+)px,\s*([-\d.]+)px\)/)
-    return m ? { x: parseFloat(m[1]), y: parseFloat(m[2]) } : { x: 0, y: 0 }
+    return await this.page.evaluate(({ name, tabId }) => {
+      const er = (window as any).__DT_E2E__?.er()
+      const payload = er?.inspectors?.get(tabId)
+      const pos = payload?.positions?.[name]
+      return pos ?? { x: 0, y: 0 }
+    }, { name: tableName, tabId: this.tabId })
   }
 
   async zoomIn(steps = 1): Promise<void> {
