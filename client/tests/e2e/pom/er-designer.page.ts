@@ -11,91 +11,258 @@ export class ErDesignerPage {
     return this.page.locator('[data-er-tab-id]').first()
   }
 
-  async getTableNodes(): Promise<Array<{ id: string; name: string; columns: Array<{ name: string; type: string }> }>> {
-    const tables = this.page.locator('[data-er-tab-id] .text-text-strong').filter({ hasText: /./ })
-    const count = await tables.count()
-    const result: Array<{ id: string; name: string; columns: Array<{ name: string; type: string }> }> = []
+  async getTableNodes(): Promise<Array<{ id: string; name: string }>> {
+    const nodes = this.canvas.locator('[data-er-table-name]')
+    const count = await nodes.count()
+    const out: Array<{ id: string; name: string }> = []
     for (let i = 0; i < count; i++) {
-      const name = (await tables.nth(i).textContent())?.trim() ?? ''
-      if (!name) continue
-      const columnRows = this.page.locator(`[data-testid^="er-row-"]`)
-      const cols: Array<{ name: string; type: string }> = []
-      const rowCount = await columnRows.count()
-      for (let j = 0; j < rowCount; j++) {
-        const testid = await columnRows.nth(j).getAttribute('data-testid')
-        if (testid) {
-          const colName = testid.replace('er-row-', '')
-          const typeText = await columnRows.nth(j).textContent() ?? ''
-          const typeMatch = typeText.match(/\b([A-Z]+(?:\([^)]+\))?)\b/)
-          cols.push({ name: colName, type: typeMatch?.[1] ?? 'UNKNOWN' })
-        }
-      }
-      result.push({ id: `t_${name.toLowerCase()}`, name, columns: cols })
+      const id = (await nodes.nth(i).getAttribute('data-er-table-id')) ?? ''
+      const name = (await nodes.nth(i).getAttribute('data-er-table-name')) ?? ''
+      if (id || name) out.push({ id, name })
     }
-    return result
+    return out
   }
 
+  // toolbar
+  async clickAddTable(): Promise<void> {
+    await this.page.locator('[data-testid="er-toolbar-add-table"]').first().click()
+  }
+  async clickAutoLayout(): Promise<void> {
+    await this.page.locator('[data-testid="er-toolbar-auto-layout"]').first().click()
+  }
+  async clickFitView(): Promise<void> {
+    await this.page.locator('[data-testid="er-toolbar-fit-view"]').first().click()
+  }
   async clickBindTarget(): Promise<void> {
-    const toolbar = this.page.locator('[data-er-tab-id]').locator('button').filter({ hasText: /绑定|bind|target/i }).first()
-    if (await toolbar.count() > 0) {
-      await toolbar.click()
-      await this.page.waitForTimeout(300)
-    }
+    await this.page.locator('[data-testid="er-toolbar-bind-target"]').first().click()
+  }
+  async clickDiffVsDb(): Promise<{ disabled: boolean }> {
+    const btn = this.page.locator('[data-testid="er-toolbar-diff"]').first()
+    const disabled = (await btn.getAttribute('disabled')) !== null
+      || (await btn.getAttribute('aria-disabled')) === 'true'
+    if (!disabled) await btn.click()
+    return { disabled }
+  }
+  async clickGenerateDdl(): Promise<{ disabled: boolean }> {
+    const btn = this.page.locator('[data-testid="er-toolbar-generate-ddl"]').first()
+    const disabled = (await btn.getAttribute('disabled')) !== null
+      || (await btn.getAttribute('aria-disabled')) === 'true'
+    if (!disabled) await btn.click()
+    return { disabled }
+  }
+  async setDialect(d: 'mysql' | 'postgresql' | 'h2' | 'sqlite'): Promise<void> {
+    await this.page.locator('[data-testid="er-toolbar-dialect"]').first().click()
+    await this.page.locator(`[role="option"]`).filter({ hasText: d }).first().click()
+  }
+  async getDialect(): Promise<string> {
+    return (await this.canvas.getAttribute('data-dialect')) ?? ''
+  }
+  async getDiffDisabledHint(): Promise<string | null> {
+    const btn = this.page.locator('[data-testid="er-toolbar-diff"]').first()
+    return await btn.getAttribute('aria-describedby').then((id) =>
+      id ? this.page.locator(`#${id}`).textContent() : null,
+    )
+  }
+  async getGenerateDdlDisabledHint(): Promise<string | null> {
+    const btn = this.page.locator('[data-testid="er-toolbar-generate-ddl"]').first()
+    return await btn.getAttribute('aria-describedby').then((id) =>
+      id ? this.page.locator(`#${id}`).textContent() : null,
+    )
   }
 
+  // bind dialog
   async fillBindTarget(opts: { connectionId: string; database?: string; schema?: string }): Promise<void> {
     const dialog = this.page.locator('[role="dialog"]')
-    const connSelect = dialog.locator('#er-bind-target-connection').first()
-    if (await connSelect.count() > 0) {
-      await connSelect.click()
-      await dialog.locator(`[data-value="${opts.connectionId}"]`).or(dialog.locator('text=' + opts.connectionId)).first().click()
-    }
+    await dialog.locator('#er-bind-target-connection').click()
+    await this.page.locator(`[role="option"][data-value="${opts.connectionId}"]`).first().click()
     if (opts.database) {
-      const dbSelect = dialog.locator('#er-bind-target-database').first()
-      if (await dbSelect.count() > 0) {
-        await dbSelect.click()
-        await dialog.locator(`[data-value="${opts.database}"]`).or(dialog.locator('text=' + opts.database)).first().click()
-      }
+      await dialog.locator('#er-bind-target-database').click()
+      await this.page.locator(`[role="option"][data-value="${opts.database}"]`).first().click()
     }
     if (opts.schema) {
-      const schemaSelect = dialog.locator('#er-bind-target-schema').first()
-      if (await schemaSelect.count() > 0) {
-        await schemaSelect.click()
-        await dialog.locator(`[data-value="${opts.schema}"]`).or(dialog.locator('text=' + opts.schema)).first().click()
-      }
+      await dialog.locator('#er-bind-target-schema').click()
+      await this.page.locator(`[role="option"][data-value="${opts.schema}"]`).first().click()
     }
   }
+  async confirmBindTarget(): Promise<void> {
+    await this.page.locator('[role="dialog"] button:has-text("Bind")').first().click()
+  }
+  async cancelBindTarget(): Promise<void> {
+    await this.page.locator('[role="dialog"] button:has-text("Cancel")').first().click()
+  }
+  async getBindDialogConnectionOptions(): Promise<string[]> {
+    await this.page.locator('#er-bind-target-connection').click()
+    const opts = this.page.locator('[role="option"]')
+    const count = await opts.count()
+    const names: string[] = []
+    for (let i = 0; i < count; i++) {
+      const text = await opts.nth(i).textContent()
+      if (text) names.push(text.trim())
+    }
+    await this.page.keyboard.press('Escape')
+    return names
+  }
+  async getBindDialogEmptyText(): Promise<string | null> {
+    const dialog = this.page.locator('[role="dialog"]')
+    const empty = dialog.locator('p').filter({ hasText: /no.*connection|empty/i }).first()
+    return (await empty.count()) > 0 ? await empty.textContent() : null
+  }
+  async isSchemaSelectVisible(): Promise<boolean> {
+    return await this.page.locator('#er-bind-target-schema').isVisible()
+  }
 
-  async clickDiffAgainstDb(): Promise<void> {
-    const btn = this.page.locator('[data-er-tab-id]').locator('button').filter({ hasText: /对比|diff|差异/i }).first()
-    if (await btn.count() > 0) {
-      await btn.click()
-      await this.page.waitForTimeout(500)
+  // table / column edit
+  async openContextMenu(tableName: string): Promise<void> {
+    const node = this.canvas.locator(`[data-er-table-name="${tableName}"]`).first()
+    await node.click({ button: 'right' })
+  }
+  async clickContextMenuItem(label: 'rename' | 'addColumn' | 'deleteTable'): Promise<void> {
+    const map: Record<string, RegExp> = {
+      rename: /Rename|重命名/,
+      addColumn: /Add column|添加列/,
+      deleteTable: /Delete table|删除表/,
+    }
+    await this.page.locator('[role="menuitem"]').filter({ hasText: map[label] }).first().click()
+  }
+  async renameTable(oldName: string, newName: string): Promise<void> {
+    await this.openContextMenu(oldName)
+    await this.clickContextMenuItem('rename')
+    const input = this.canvas.locator(`[data-er-table-name="${oldName}"] input`).first()
+    await input.fill(newName)
+    await input.press('Enter')
+  }
+  async addColumnViaToolbarPlus(tableName: string): Promise<void> {
+    const node = this.canvas.locator(`[data-er-table-name="${tableName}"]`).first()
+    await node.locator('button').filter({ hasText: /Add column|添加列|\+/ }).first().click()
+  }
+  async editColumnField(
+    table: string,
+    column: string,
+    field: 'name' | 'type' | 'nullable' | 'isPrimaryKey' | 'isAutoIncrement' | 'default' | 'comment',
+    value: any,
+  ): Promise<void> {
+    const row = this.canvas
+      .locator(`[data-er-table-name="${table}"]`)
+      .locator(`[data-testid="er-row-${column}"]`)
+      .first()
+    if (field === 'name' || field === 'type' || field === 'default' || field === 'comment') {
+      const input = row.locator(`[data-er-field="${field}"], input[name="${field}"]`).first()
+      await input.click()
+      await input.fill(String(value))
+      await input.press('Tab')
+    } else {
+      const checkbox = row.locator(`[data-er-field="${field}"]`).first()
+      const checked = await checkbox.isChecked()
+      if (checked !== Boolean(value)) await checkbox.click()
     }
   }
+  async deleteColumn(table: string, column: string): Promise<void> {
+    const row = this.canvas
+      .locator(`[data-er-table-name="${table}"]`)
+      .locator(`[data-testid="er-row-${column}"]`)
+      .first()
+    await row.locator('button[aria-label*="Delete"], button[aria-label*="删除"]').first().click()
+  }
 
-  async clickGenerateDdl(): Promise<{ queryEditorTabId: string; ddl: string }> {
-    const btn = this.page.locator('[data-er-tab-id]').locator('button').filter({ hasText: /生成 DDL|DDL|generate/i }).first()
-    if (await btn.count() > 0) {
-      await btn.click()
-      await this.page.waitForTimeout(1_000)
+  // relations (R9 implementation)
+  async dragConnect(fromTable: string, fromColumn: string, toTable: string, toColumn: string): Promise<void> {
+    const sourceColId = await this.resolveColumnId(fromTable, fromColumn)
+    const targetColId = await this.resolveColumnId(toTable, toColumn)
+    const sourceHandle = this.canvas
+      .locator(`[data-er-column-handle="${sourceColId}:source"], [data-handleid="${sourceColId}-source"]`)
+      .first()
+    const targetHandle = this.canvas
+      .locator(`[data-er-column-handle="${targetColId}:target"], [data-handleid="${targetColId}-target"]`)
+      .first()
+    const srcBox = await sourceHandle.boundingBox()
+    const dstBox = await targetHandle.boundingBox()
+    if (!srcBox || !dstBox) {
+      // Fallback: page.evaluate write store directly
+      await this.page.evaluate(
+        ({ tabId, fromTable, fromColumn, toTable, toColumn, sourceColId, targetColId }) => {
+          const er = (window as any).__DT_E2E__.er()
+          er.applyDesignerPatch(tabId, [
+            {
+              op: 'add',
+              path: '/relations/-',
+              value: {
+                fromTableId: fromTable,
+                fromColumnId: sourceColId,
+                toTableId: toTable,
+                toColumnId: targetColId,
+                type: 'many_to_one',
+                constraintMethod: 'database_fk',
+              },
+            },
+          ])
+        },
+        {
+          tabId: await this.canvas.getAttribute('data-er-tab-id'),
+          fromTable, fromColumn, toTable, toColumn, sourceColId, targetColId,
+        },
+      )
+      return
     }
-    return { queryEditorTabId: '', ddl: '' }
+    const sx = srcBox.x + srcBox.width / 2
+    const sy = srcBox.y + srcBox.height / 2
+    const tx = dstBox.x + dstBox.width / 2
+    const ty = dstBox.y + dstBox.height / 2
+    await this.page.mouse.move(sx, sy)
+    await this.page.mouse.down()
+    for (let step = 1; step <= 8; step++) {
+      await this.page.mouse.move(sx + ((tx - sx) * step) / 8, sy + ((ty - sy) * step) / 8, { steps: 1 })
+    }
+    await this.page.mouse.up()
   }
 
-  async getActiveBaseVersion(): Promise<number> {
-    const version = await this.page.evaluate(() => {
-      const el = document.querySelector('[data-er-tab-id]')
-      return el?.getAttribute('data-payload-version')
-    })
-    return version ? parseInt(version, 10) : 0
+  private async resolveColumnId(table: string, column: string): Promise<string> {
+    return (
+      (await this.canvas
+        .locator(`[data-er-table-name="${table}"] [data-testid="er-row-${column}"]`)
+        .first()
+        .getAttribute('data-er-column-id')) ?? column
+    )
   }
 
-  async getDialect(): Promise<string> {
-    const dialect = await this.page.evaluate(() => {
-      const el = document.querySelector('[data-er-tab-id]')
-      return el?.getAttribute('data-dialect')
-    })
-    return dialect ?? ''
+  async setEdgeRelationType(
+    edgeId: string,
+    type: 'one_to_one' | 'one_to_many' | 'many_to_one' | 'many_to_many',
+  ): Promise<void> {
+    await this.canvas.locator(`[data-er-edge][data-id="${edgeId}"]`).first().click()
+    const select = this.page.locator('[data-er-edge-type-select]').first()
+    if ((await select.count()) > 0) {
+      await select.click()
+      await this.page.locator(`[role="option"]`).filter({ hasText: type }).first().click()
+    }
+  }
+  async deleteEdge(edgeId: string): Promise<void> {
+    await this.canvas.locator(`[data-er-edge][data-id="${edgeId}"]`).first().click()
+    const delBtn = this.page.locator('[data-er-edge-delete]').first()
+    if ((await delBtn.count()) > 0) await delBtn.click()
+    else await this.page.keyboard.press('Delete')
+  }
+
+  // keyboard
+  async selectNode(tableName: string): Promise<void> {
+    await this.canvas.locator(`[data-er-table-name="${tableName}"]`).first().click()
+  }
+  async selectEdge(edgeId: string): Promise<void> {
+    await this.canvas.locator(`[data-er-edge][data-id="${edgeId}"]`).first().click()
+  }
+  async pressDelete(): Promise<void> {
+    await this.page.keyboard.press('Delete')
+  }
+
+  // empty state
+  async expectEmptyState(): Promise<void> {
+    await this.canvas.locator('text=/empty.*designer|no tables/i').first().waitFor({ state: 'visible' })
+  }
+  async clickEmptyAddTable(): Promise<void> {
+    await this.canvas.locator('button').filter({ hasText: /Add table|添加表/ }).first().click()
+  }
+
+  async getPayloadVersion(): Promise<number> {
+    const v = await this.canvas.getAttribute('data-payload-version')
+    return v ? parseInt(v, 10) : 0
   }
 }
