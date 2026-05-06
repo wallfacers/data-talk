@@ -8,13 +8,14 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## 当前编号
 
-下一个分配 ID：**BUG-0002**（永不复用，单调递增）
+下一个分配 ID：**BUG-0003**（永不复用，单调递增）
 
 ## Open BUGs（按 priority 倒序，P0 → P2）
 
 | ID | Title | Priority | Source | Modules | Discovered |
 |----|-------|----------|--------|---------|------------|
 | BUG-0001 | ER Inspector "Add virtual relation" 按钮无效 | P1 | E2E test | er-canvas, er-inspector | 2026-05-06 |
+| BUG-0002 | ER Designer bind_target 成功但 diff_against_db / generate_ddl 仍拒绝 | P1 | E2E test | er-designer, stage | 2026-05-06 |
 
 ## In Progress（status = investigating | fixed 等待 verify）
 
@@ -31,11 +32,13 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 ## By Module（聚合视图，仅列 open + in-progress）
 
 - `er-canvas`: BUG-0001
+- `er-designer`: BUG-0002
 - `er-inspector`: BUG-0001
+- `stage`: BUG-0002
 
 ## By Source（聚合视图，仅列 open + in-progress）
 
-- `E2E test`: BUG-0001
+- `E2E test`: BUG-0001, BUG-0002
 
 ## Wontfix / Duplicate（终态归档，无时间限制）
 
