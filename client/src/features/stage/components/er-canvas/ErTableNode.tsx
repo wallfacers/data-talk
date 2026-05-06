@@ -73,6 +73,8 @@ export function ErTableNode({ id, data, selected }: NodeProps<ErTableReactFlowNo
         data.onOpenContextMenu({ tableId: id, x: event.clientX, y: event.clientY })
       }}
       data-er-mode={data.mode}
+      data-er-table-id={id}
+      data-er-table-name={data.table.name}
       className={[
         'w-80 overflow-hidden rounded-[10px] border bg-bg-canvas font-sans transition-colors',
         data.mode === 'designer'
@@ -244,6 +246,7 @@ function ColumnRow({
         id={`${columnId}-target`}
         className={handleAnchor}
         style={handleAnchorStyle}
+        data-er-column-handle={`${columnId}:target`}
       >
         <span className={targetBallClassName} data-er-handle-shape="solid" />
       </Handle>
@@ -321,6 +324,7 @@ function ColumnRow({
         id={`${columnId}-source`}
         className={handleAnchor}
         style={handleAnchorStyle}
+        data-er-column-handle={`${columnId}:source`}
       >
         <span className={sourceBallClassName} data-er-handle-shape="ring" />
       </Handle>

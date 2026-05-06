@@ -286,7 +286,7 @@ function ErCanvasInner(props: ErCanvasProps) {
   const isEmptyDesigner = mode === 'designer' && (designerPayload.tables?.length ?? 0) === 0
 
   return (
-    <div className="flex h-full w-full flex-col" data-er-tab-id={tabId}>
+    <div className="flex h-full w-full flex-col" data-er-tab-id={tabId} data-payload-version={(payload as unknown as { __v?: number })?.__v ?? 0}>
       {mode === 'designer' ? (
         <ErToolbar
           mode="designer"

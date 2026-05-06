@@ -65,16 +65,19 @@ export function ErToolbar(props: ErToolbarProps) {
           onClick={props.onAddTable}
           icon={<Plus className="size-4" />}
           label={label('erCanvas.toolbar.addTable', 'Add table')}
+          testId="er-toolbar-add-table"
         />
         <ToolbarButton
           onClick={props.onAutoLayout}
           icon={<LayoutTemplate className="size-4" />}
           label={label('erCanvas.toolbar.autoLayout', 'Auto layout')}
+          testId="er-toolbar-auto-layout"
         />
         <ToolbarButton
           onClick={props.onFitView}
           icon={<Maximize className="size-4" />}
           label={label('erCanvas.toolbar.fitView', 'Fit view')}
+          testId="er-toolbar-fit-view"
         />
 
         <Separator />
@@ -84,6 +87,7 @@ export function ErToolbar(props: ErToolbarProps) {
           icon={<Link className="size-4" />}
           label={label('erCanvas.toolbar.bindTarget', 'Bind target')}
           primary
+          testId="er-toolbar-bind-target"
         />
         <ToolbarButton
           onClick={props.onDiffVsDb}
@@ -92,6 +96,7 @@ export function ErToolbar(props: ErToolbarProps) {
           disabledHint={disabledHint}
           primary
           disabled={!props.hasTarget}
+          testId="er-toolbar-diff"
         />
         <ToolbarButton
           onClick={props.onGenerateDdl}
@@ -100,6 +105,7 @@ export function ErToolbar(props: ErToolbarProps) {
           disabledHint={disabledHint}
           primary
           disabled={!props.hasTarget}
+          testId="er-toolbar-generate-ddl"
         />
 
         <div className="ml-auto" />
@@ -112,6 +118,7 @@ export function ErToolbar(props: ErToolbarProps) {
           >
             <SelectTrigger
               size="sm"
+              data-testid="er-toolbar-dialect"
               aria-label={label('erCanvas.toolbar.dialect', 'Dialect')}
               className="min-w-28 rounded-md border-border-default bg-bg-canvas px-2 text-xs text-text-base"
             >
@@ -140,16 +147,19 @@ export function ErToolbar(props: ErToolbarProps) {
         onClick={props.onRefresh}
         icon={<RefreshCw className="size-4" />}
         label={label('erCanvas.toolbar.refresh', 'Refresh')}
+        testId="er-toolbar-refresh"
       />
       <ToolbarButton
         onClick={props.onAutoLayout}
         icon={<LayoutTemplate className="size-4" />}
         label={label('erCanvas.toolbar.autoLayout', 'Auto layout')}
+        testId="er-toolbar-auto-layout"
       />
       <ToolbarButton
         onClick={props.onFitView}
         icon={<Maximize className="size-4" />}
         label={label('erCanvas.toolbar.fitView', 'Fit view')}
+        testId="er-toolbar-fit-view"
       />
 
       <Separator />
@@ -157,6 +167,7 @@ export function ErToolbar(props: ErToolbarProps) {
       <label className="flex items-center gap-1.5 text-xs text-text-muted">
         <span>{label('erCanvas.toolbar.neighborDepth', 'Neighbor depth')}</span>
         <select
+          data-testid="er-toolbar-neighbor-depth"
           aria-label={label('erCanvas.toolbar.neighborDepth', 'Neighbor depth')}
           value={props.neighborDepth}
           onChange={(event) => props.onChangeNeighborDepth(Number(event.target.value) as 0 | 1 | 2)}
@@ -174,6 +185,7 @@ export function ErToolbar(props: ErToolbarProps) {
         onClick={props.onAddVirtualRelation}
         icon={<Plus className="size-4" />}
         label={label('erCanvas.toolbar.addVirtualRelation', 'Add virtual relation')}
+        testId="er-toolbar-add-virtual-relation"
       />
 
       <div className="ml-auto" />
@@ -183,6 +195,7 @@ export function ErToolbar(props: ErToolbarProps) {
         icon={<GitFork className="size-4" />}
         label={label('erCanvas.toolbar.forkToDesigner', 'Fork to designer')}
         primary
+        testId="er-toolbar-fork-to-designer"
       />
     </div>
   )
@@ -217,6 +230,7 @@ function ToolbarButton({
   primary,
   disabled,
   disabledHint,
+  testId,
 }: {
   onClick: () => void
   icon: ReactNode
@@ -224,6 +238,7 @@ function ToolbarButton({
   primary?: boolean
   disabled?: boolean
   disabledHint?: string
+  testId?: string
 }) {
   const disabledHintId = useId()
   const hasDisabledHint = Boolean(disabled && disabledHint)
@@ -236,6 +251,7 @@ function ToolbarButton({
       aria-label={label}
       aria-describedby={hasDisabledHint ? disabledHintId : undefined}
       disabled={disabled}
+      data-testid={testId}
       className={[
         primary
           ? 'h-7 rounded-md border-accent-primary px-2 text-xs text-accent-primary hover:bg-accent-primary-surface disabled:border-interaction-disabled disabled:text-interaction-disabled'
