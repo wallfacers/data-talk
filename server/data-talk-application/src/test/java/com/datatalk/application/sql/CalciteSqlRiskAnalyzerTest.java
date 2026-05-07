@@ -397,4 +397,166 @@ class CalciteSqlRiskAnalyzerTest {
         assertThat(result.riskLevel()).isNull();
         assertThat(result.fallbackUsed()).isTrue();
     }
+
+    // --- DuckDB risk classification ---
+
+    @Test
+    void duckdb_explainIsL1() {
+        var result = analyzer.analyze("EXPLAIN SELECT * FROM users", Category.QUERY, "duckdb");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L1);
+        assertThat(result.reason()).isEqualTo("explain");
+    }
+
+    @Test
+    void duckdb_describeIsL1() {
+        var result = analyzer.analyze("DESCRIBE users", Category.QUERY, "duckdb");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L1);
+        assertThat(result.reason()).isEqualTo("describe");
+    }
+
+    @Test
+    void duckdb_pragmaDatabaseListIsL1() {
+        var result = analyzer.analyze("PRAGMA database_list", Category.QUERY, "duckdb");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L1);
+        assertThat(result.reason()).isEqualTo("pragma_database_list");
+    }
+
+    @Test
+    void duckdb_pragmaTableInfoIsL1() {
+        var result = analyzer.analyze("PRAGMA table_info('t')", Category.QUERY, "duckdb");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L1);
+        assertThat(result.reason()).isEqualTo("pragma_table_info");
+    }
+
+    @Test
+    void duckdb_pragmaStorageInfoIsL1() {
+        var result = analyzer.analyze("PRAGMA storage_info('t')", Category.QUERY, "duckdb");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L1);
+        assertThat(result.reason()).isEqualTo("pragma_storage_info");
+    }
+
+    @Test
+    void duckdb_configPragmaIsHighRisk() {
+        var result = analyzer.analyze("PRAGMA memory_limit='1GB'", Category.QUERY, "duckdb");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("duckdb_config_pragma");
+    }
+
+    @Test
+    void duckdb_copyIsHighRisk() {
+        var result = analyzer.analyze("COPY users TO 'export.csv'", Category.QUERY, "duckdb");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("duckdb_copy");
+    }
+
+    @Test
+    void duckdb_exportDatabaseIsHighRisk() {
+        var result = analyzer.analyze("EXPORT DATABASE 'backup_dir'", Category.QUERY, "duckdb");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("duckdb_export_import");
+    }
+
+    @Test
+    void duckdb_importDatabaseIsHighRisk() {
+        var result = analyzer.analyze("IMPORT DATABASE 'backup_dir'", Category.QUERY, "duckdb");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("duckdb_export_import");
+    }
+
+    @Test
+    void duckdb_attachIsHighRisk() {
+        var result = analyzer.analyze("ATTACH 'other.db' AS other", Category.QUERY, "duckdb");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("duckdb_attach");
+    }
+
+    @Test
+    void duckdb_detachIsHighRisk() {
+        var result = analyzer.analyze("DETACH other", Category.QUERY, "duckdb");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("duckdb_attach");
+    }
+
+    @Test
+    void duckdb_installIsHighRisk() {
+        var result = analyzer.analyze("INSTALL httpfs", Category.QUERY, "duckdb");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("duckdb_extension");
+    }
+
+    @Test
+    void duckdb_loadIsHighRisk() {
+        var result = analyzer.analyze("LOAD httpfs", Category.QUERY, "duckdb");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("duckdb_extension");
+    }
+
+    @Test
+    void duckdb_createSecretIsHighRisk() {
+        var result = analyzer.analyze("CREATE SECRET my_secret (TYPE s3, KEY_ID 'id', SECRET 'secret')", Category.QUERY, "duckdb");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("duckdb_secret");
+    }
+
+    @Test
+    void duckdb_readCsvIsHighRisk() {
+        var result = analyzer.analyze("SELECT * FROM read_csv('data.csv')", Category.QUERY, "duckdb");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("duckdb_file_access");
+    }
+
+    @Test
+    void duckdb_readParquetIsHighRisk() {
+        var result = analyzer.analyze("SELECT * FROM read_parquet('data.parquet')", Category.QUERY, "duckdb");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("duckdb_file_access");
+    }
+
+    @Test
+    void duckdb_globIsHighRisk() {
+        var result = analyzer.analyze("SELECT * FROM glob('*.csv')", Category.QUERY, "duckdb");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("duckdb_file_access");
+    }
+
+    @Test
+    void duckdb_standardSelectFallsThroughToCalcite() {
+        var result = analyzer.analyze("SELECT * FROM orders WHERE id = 1", Category.QUERY, "duckdb");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L1);
+        assertThat(result.fallbackUsed()).isFalse();
+    }
+
+    @Test
+    void duckdb_standardInsertFallsThroughToCalcite() {
+        var result = analyzer.analyze("INSERT INTO orders(id) VALUES (1)", Category.MUTATION, "duckdb");
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L2);
+    }
+
+    @Test
+    void duckdb_doesNotApplySqliteMaintenanceRules() {
+        // VACUUM is SQLite-specific; DuckDB should not inherit SQLite rules
+        var result = analyzer.analyze("VACUUM", Category.QUERY, "duckdb");
+
+        assertThat(result.riskLevel()).isNull();
+        assertThat(result.fallbackUsed()).isTrue();
+    }
 }

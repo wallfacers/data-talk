@@ -55,14 +55,15 @@ public class CreateConnectionAction implements ActionHandler<Map, Map> {
                 Map.entry("sqlserverInstanceName", Map.of("type", "string")),
                 Map.entry("readOnly", Map.of("type", "boolean"))
             )),
-            Map.entry("allOf", List.of(nonSqliteRequiresServerFieldsSchema()))
+            Map.entry("allOf", List.of(embeddedKindSchema()))
         );
     }
 
-    private static Map<String, Object> nonSqliteRequiresServerFieldsSchema() {
+    // SQLite and DuckDB are embedded databases that don't need host/port/username/password
+    private static Map<String, Object> embeddedKindSchema() {
         return Map.of(
             "if", Map.of(
-                "properties", Map.of("kind", Map.of("const", ConnectionKind.SQLITE)),
+                "properties", Map.of("kind", Map.of("enum", List.of(ConnectionKind.SQLITE, ConnectionKind.DUCKDB))),
                 "required", List.of("kind")
             ),
             "else", Map.of("required", List.of("host", "port", "username", "password"))
@@ -118,16 +119,16 @@ public class CreateConnectionAction implements ActionHandler<Map, Map> {
 
     private static NormalizedConnectionInput normalizeInput(Map input) {
         String kind = string(input, "kind");
-        boolean sqlite = ConnectionKind.SQLITE.equalsIgnoreCase(kind);
+        boolean embedded = ConnectionKind.SQLITE.equalsIgnoreCase(kind) || ConnectionKind.DUCKDB.equalsIgnoreCase(kind);
         String password = nullableString(input, "password");
         return new NormalizedConnectionInput(
             string(input, "name"),
             kind,
-            sqlite ? "" : string(input, "host"),
-            sqlite ? 0 : number(input, "port"),
+            embedded ? "" : string(input, "host"),
+            embedded ? 0 : number(input, "port"),
             nullableString(input, "databaseName"),
-            sqlite ? "" : string(input, "username"),
-            sqlite ? (password == null ? "" : password) : string(input, "password"),
+            embedded ? "" : string(input, "username"),
+            embedded ? (password == null ? "" : password) : string(input, "password"),
             nullableInteger(input, "connectTimeout"),
             nullableString(input, "oracleServiceType"),
             nullableBoolean(input, "sqlserverEncrypt"),

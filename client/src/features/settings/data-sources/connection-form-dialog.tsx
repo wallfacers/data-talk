@@ -17,6 +17,7 @@ export const DATABASE_TYPES = {
   mariadb: { label: 'MariaDB', port: 3306 },
   oracle: { label: 'Oracle', port: 1521 },
   sqlserver: { label: 'SQL Server', port: 1433 },
+  duckdb: { label: 'DuckDB', port: 0 },
 } as const
 
 export type DatabaseKind = keyof typeof DATABASE_TYPES
@@ -34,10 +35,16 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
     sqlserverEncrypt: true,
     sqlserverTrustServerCertificate: true,
     sqlserverInstanceName: '',
+    duckdbMode: 'memory' as 'memory' | 'file',
+    duckdbReadOnly: false,
   })
 
   useEffect(() => {
     if (editing) {
+      const isDuckdb = editing.kind === 'duckdb'
+      const duckdbMode = isDuckdb
+        ? (!editing.databaseName || editing.databaseName === ':memory:' ? 'memory' : 'file')
+        : 'memory'
       setForm({
         name: editing.name ?? '',
         kind: editing.kind, host: editing.host,
@@ -48,23 +55,30 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
         sqlserverEncrypt: editing.sqlserverEncrypt !== false,
         sqlserverTrustServerCertificate: editing.sqlserverTrustServerCertificate !== false,
         sqlserverInstanceName: editing.sqlserverInstanceName ?? '',
+        duckdbMode,
+        duckdbReadOnly: isDuckdb ? (editing.readOnly === true) : false,
       })
     } else {
       setForm({ name: '', kind: 'mysql', host: 'localhost', port: 3306,
         database: '', username: '', password: '', connectTimeout: 3000,
         oracleServiceType: 'service', sqlserverEncrypt: true,
-        sqlserverTrustServerCertificate: true, sqlserverInstanceName: '' })
+        sqlserverTrustServerCertificate: true, sqlserverInstanceName: '',
+        duckdbMode: 'memory', duckdbReadOnly: false })
     }
   }, [editing])
 
   const save = useMutation({
     mutationFn: async () => {
-      const dbName = form.database.trim() || null
       const connName = form.name.trim() || t('dataSources.unnamed')
       const sqlite = form.kind === 'sqlite'
+      const isDuckdb = form.kind === 'duckdb'
+      const embedded = sqlite || isDuckdb
+      const dbName = isDuckdb
+        ? (form.duckdbMode === 'memory' ? ':memory:' : (form.database.trim() || null))
+        : (form.database.trim() || null)
       const base = {
-        name: connName, kind: form.kind, host: sqlite ? '' : form.host, port: sqlite ? 0 : form.port,
-        databaseName: dbName, username: sqlite ? '' : form.username,
+        name: connName, kind: form.kind, host: embedded ? '' : form.host, port: embedded ? 0 : form.port,
+        databaseName: dbName, username: embedded ? '' : form.username,
         password: form.password.length > 0 ? form.password : null,
         connectTimeout: form.connectTimeout,
       }
@@ -79,12 +93,15 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
           dialectExtras.sqlserverInstanceName = form.sqlserverInstanceName.trim()
         }
       }
+      if (isDuckdb) {
+        dialectExtras.readOnly = form.duckdbReadOnly
+      }
       if (editing) {
         await updateConnection(editing.id, { ...base, ...dialectExtras })
       } else {
         await createConnection({
           ...base,
-          password: sqlite ? '' : form.password,
+          password: embedded ? '' : form.password,
           ...dialectExtras,
         } as Parameters<typeof createConnection>[0])
       }
@@ -95,11 +112,16 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
     onSuccess: () => toast.success(editing ? t('dataSources.updated') : t('dataSources.created')),
   })
   const isSqlite = form.kind === 'sqlite'
+  const isDuckdb = form.kind === 'duckdb'
   const isOracle = form.kind === 'oracle'
   const isSqlserver = form.kind === 'sqlserver'
-  const hideHostPort = isSqlite
-  const databaseLabel = isSqlite ? t('dataSources.sqliteFilePath') : t('dataSources.databaseOptional')
-  const databasePlaceholder = isSqlite ? t('dataSources.sqliteFilePathPlaceholder') : t('dataSources.databasePlaceholder')
+  const hideHostPort = isSqlite || isDuckdb
+  const databaseLabel = isDuckdb
+    ? (form.duckdbMode === 'file' ? t('dataSources.duckdbFilePath') : '')
+    : (isSqlite ? t('dataSources.sqliteFilePath') : t('dataSources.databaseOptional'))
+  const databasePlaceholder = isDuckdb
+    ? t('dataSources.duckdbFilePathPlaceholder')
+    : (isSqlite ? t('dataSources.sqliteFilePathPlaceholder') : t('dataSources.databasePlaceholder'))
 
   return (
     <div className="rounded-lg border bg-card p-6">
@@ -116,13 +138,15 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
             onValueChange={(v) => {
               if (v && v in DATABASE_TYPES) {
                 const nextKind = v as DatabaseKind
+                const embedded = nextKind === 'sqlite' || nextKind === 'duckdb'
                 setForm(f => ({
                   ...f,
                   kind: nextKind,
-                  host: nextKind === 'sqlite' ? '' : f.host || 'localhost',
+                  host: embedded ? '' : f.host || 'localhost',
                   port: DATABASE_TYPES[nextKind].port,
-                  username: nextKind === 'sqlite' ? '' : f.username,
-                  password: nextKind === 'sqlite' ? '' : f.password,
+                  username: embedded ? '' : f.username,
+                  password: embedded ? '' : f.password,
+                  ...(nextKind === 'duckdb' ? { duckdbMode: 'memory' as const, duckdbReadOnly: false } : {}),
                 }))
               }
             }}>
@@ -187,10 +211,51 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
             </Field>
           </>
         ) : null}
-        <Field label={databaseLabel}>
-          <Input aria-label={databaseLabel} value={form.database} placeholder={databasePlaceholder}
-            onChange={(e) => setForm(f => ({ ...f, database: e.target.value }))} />
-        </Field>
+        {isDuckdb ? (
+          <>
+            <Field label={t('dataSources.duckdbMode')}>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={form.duckdbMode === 'memory' ? 'default' : 'outline'}
+                  onClick={() => setForm(f => ({ ...f, duckdbMode: 'memory' }))}
+                >
+                  {t('dataSources.duckdbModeMemory')}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={form.duckdbMode === 'file' ? 'default' : 'outline'}
+                  onClick={() => setForm(f => ({ ...f, duckdbMode: 'file' }))}
+                >
+                  {t('dataSources.duckdbModeFile')}
+                </Button>
+              </div>
+            </Field>
+            {form.duckdbMode === 'file' ? (
+              <Field label={t('dataSources.duckdbFilePath')}>
+                <Input aria-label={t('dataSources.duckdbFilePath')} value={form.database}
+                  placeholder={t('dataSources.duckdbFilePathPlaceholder')}
+                  onChange={(e) => setForm(f => ({ ...f, database: e.target.value }))} />
+              </Field>
+            ) : null}
+            <Field label="">
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox checked={form.duckdbReadOnly}
+                  onCheckedChange={(v) => setForm(f => ({ ...f, duckdbReadOnly: v === true }))} />
+                <span>{t('dataSources.duckdbReadOnly')}</span>
+              </label>
+              <span className="ml-2 text-xs text-muted-foreground">{t('dataSources.duckdbReadOnlyHint')}</span>
+            </Field>
+          </>
+        ) : null}
+        {!isDuckdb ? (
+          <Field label={databaseLabel}>
+            <Input aria-label={databaseLabel} value={form.database} placeholder={databasePlaceholder}
+              onChange={(e) => setForm(f => ({ ...f, database: e.target.value }))} />
+          </Field>
+        ) : null}
         {hideHostPort ? null : (
           <>
             <Field label={t('dataSources.username')}>

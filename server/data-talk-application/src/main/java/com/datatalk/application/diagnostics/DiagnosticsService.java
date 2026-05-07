@@ -281,25 +281,30 @@ public class DiagnosticsService {
             case "lock" -> switch (normalized) {
                 case "h2" -> translator.get("diagnostics.lock.unsupported.h2");
                 case "oracle" -> translator.get("diagnostics.lock.unsupported.oracle");
+                case "duckdb" -> translator.get("diagnostics.lock.unsupported.duckdb");
                 default -> translator.get("diagnostics.lock_not_supported", kind);
             };
             case "pool" -> switch (normalized) {
                 case "h2" -> translator.get("diagnostics.pool.unsupported.h2_embedded");
                 case "oracle" -> translator.get("diagnostics.pool.unsupported.oracle");
+                case "duckdb" -> translator.get("diagnostics.pool.unsupported.duckdb_embedded");
                 default -> translator.get("diagnostics.pool_not_supported", kind);
             };
             case "space" -> switch (normalized) {
                 case "oracle" -> translator.get("diagnostics.space.unsupported.oracle");
+                case "duckdb" -> translator.get("diagnostics.space.unsupported.duckdb");
                 default -> translator.get("diagnostics.tablespace_not_supported", kind);
             };
             case "terminate" -> switch (normalized) {
                 case "h2" -> translator.get("diagnostics.terminate.unsupported.h2");
                 case "oracle" -> translator.get("diagnostics.terminate.unsupported.oracle");
+                case "duckdb" -> translator.get("diagnostics.terminate.unsupported.duckdb");
                 default -> translator.get("diagnostics.terminate_not_supported", kind);
             };
             case "optimize" -> switch (normalized) {
                 case "h2" -> translator.get("diagnostics.optimize.unsupported.h2");
                 case "oracle" -> translator.get("diagnostics.optimize.unsupported.oracle");
+                case "duckdb" -> translator.get("diagnostics.optimize.unsupported.duckdb");
                 default -> translator.get("diagnostics.optimize_not_supported", kind);
             };
             default -> translator.get("diagnostics.no_provider", kind);

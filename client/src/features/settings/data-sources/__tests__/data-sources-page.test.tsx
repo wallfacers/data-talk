@@ -26,11 +26,11 @@ describe('DataSourcesPage', () => {
   })
   it('displays_connection_name_in_table', async () => {
     const qc = new QueryClient()
-    const connection = { id: 'c1', name: '测试数据源', kind: 'mysql', host: 'localhost', port: 3306, databaseName: 'test', username: 'root', createdAt: 0, connectTimeout: 3000, lastTestStatus: null, lastTestAt: null, oracleServiceType: null, sqlserverEncrypt: true, sqlserverTrustServerCertificate: true, sqlserverInstanceName: null }
+    const connection = { id: 'c1', name: '测试数据源', kind: 'mysql', host: 'localhost', port: 3306, databaseName: 'test', username: 'root', createdAt: 0, connectTimeout: 3000, lastTestStatus: null, lastTestAt: null, oracleServiceType: null, sqlserverEncrypt: true, sqlserverTrustServerCertificate: true, sqlserverInstanceName: null, readOnly: false }
     vi.mocked(api.listConnections).mockResolvedValue([connection])
     render(<QueryClientProvider client={qc}><DataSourcesPage /></QueryClientProvider>)
     expect(await screen.findByText('测试数据源')).toBeInTheDocument()
-    expect(screen.getByText('mysql')).toBeInTheDocument()
+    expect(screen.getByText('MySQL')).toBeInTheDocument()
     expect(useConnectionStore.getState().connections).toEqual([connection])
   })
   it('offers SQLite as a file-scoped connection type', async () => {
@@ -67,6 +67,7 @@ describe('DataSourcesPage', () => {
       lastTestStatus: null,
       lastTestAt: null,
       oracleServiceType: null,
+    readOnly: false,
       sqlserverEncrypt: true,
       sqlserverTrustServerCertificate: true,
       sqlserverInstanceName: null,

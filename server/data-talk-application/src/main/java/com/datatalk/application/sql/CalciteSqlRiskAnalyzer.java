@@ -51,6 +51,32 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
     private static final Pattern SQLITE_PRAGMA_NAME_PATTERN =
         Pattern.compile("(?is)^pragma\\s+([\\w.]+)");
 
+    private static final Set<String> DUCKDB_READ_ONLY_PRAGMAS = Set.of(
+        "database_list",
+        "database_size",
+        "show_databases",
+        "table_info",
+        "storage_info",
+        "version"
+    );
+
+    private static final Set<String> DUCKDB_DANGEROUS_FUNCTIONS = Set.of(
+        "read_csv",
+        "read_csv_auto",
+        "read_parquet",
+        "read_json",
+        "read_json_auto",
+        "glob",
+        "parquet_metadata",
+        "parquet_scan",
+        "curl",
+        "http_get",
+        "http_post"
+    );
+
+    private static final Pattern DUCKDB_PRAGMA_NAME_PATTERN =
+        Pattern.compile("(?is)^pragma\\s+([\\w.]+)");
+
     private final SqlStatementSplitters statementSplitters;
 
     public CalciteSqlRiskAnalyzer(SqlStatementSplitters statementSplitters) {
@@ -128,6 +154,9 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
         }
         if (ConnectionKind.SQLSERVER.equalsIgnoreCase(connectionKind)) {
             return classifySqlServerSpecific(sql);
+        }
+        if (ConnectionKind.DUCKDB.equalsIgnoreCase(connectionKind)) {
+            return classifyDuckDbSpecific(sql);
         }
         return null;
     }
@@ -213,6 +242,76 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
         if (normalized.startsWith("deny ")) {
             return SqlRiskAnalysis.high("sqlserver_deny");
         }
+        return null;
+    }
+
+    private SqlRiskAnalysis classifyDuckDbSpecific(String sql) {
+        String normalized = stripLeadingComments(sql).toLowerCase(Locale.ROOT);
+        if (normalized.isEmpty()) return null;
+
+        // EXPLAIN → L1
+        if (normalized.startsWith("explain ")) {
+            return SqlRiskAnalysis.low("explain");
+        }
+        // DESCRIBE → L1
+        if (normalized.startsWith("describe ") || normalized.startsWith("describe\t")) {
+            return SqlRiskAnalysis.low("describe");
+        }
+
+        // PRAGMA handling
+        Matcher pragma = DUCKDB_PRAGMA_NAME_PATTERN.matcher(normalized);
+        if (pragma.find()) {
+            String pragmaName = normalizeSqlitePragmaName(pragma.group(1));
+            // Configuration-setting PRAGMAs contain '=' — always high risk
+            if (normalized.contains("=")) {
+                return SqlRiskAnalysis.high("duckdb_config_pragma");
+            }
+            // Read-only PRAGMAs → L1
+            if (DUCKDB_READ_ONLY_PRAGMAS.contains(pragmaName)) {
+                return SqlRiskAnalysis.low("pragma_" + pragmaName);
+            }
+            // Unknown PRAGMA without '=' — treat as config pragma (safe default)
+            return SqlRiskAnalysis.high("duckdb_config_pragma");
+        }
+
+        // ATTACH / DETACH
+        if (normalized.startsWith("attach ") || normalized.startsWith("detach ")) {
+            return SqlRiskAnalysis.high("duckdb_attach");
+        }
+
+        // COPY (to/from file)
+        if (normalized.startsWith("copy ")) {
+            return SqlRiskAnalysis.high("duckdb_copy");
+        }
+
+        // EXPORT / IMPORT DATABASE
+        if (normalized.startsWith("export database")) {
+            return SqlRiskAnalysis.high("duckdb_export_import");
+        }
+        if (normalized.startsWith("import database")) {
+            return SqlRiskAnalysis.high("duckdb_export_import");
+        }
+
+        // INSTALL / LOAD (extensions)
+        if (normalized.startsWith("install ") || normalized.startsWith("load ")) {
+            return SqlRiskAnalysis.high("duckdb_extension");
+        }
+
+        // CREATE SECRET
+        if (normalized.startsWith("create secret")) {
+            return SqlRiskAnalysis.high("duckdb_secret");
+        }
+
+        // Dangerous functions in FROM clauses (read_csv, read_parquet, etc.)
+        // Match patterns like: FROM read_csv(...), FROM read_parquet(...), FROM glob(...)
+        if (normalized.contains(" from ")) {
+            for (String fn : DUCKDB_DANGEROUS_FUNCTIONS) {
+                if (normalized.contains(" from " + fn + "(") || normalized.contains(" from " + fn + " (")) {
+                    return SqlRiskAnalysis.high("duckdb_file_access");
+                }
+            }
+        }
+
         return null;
     }
 

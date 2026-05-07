@@ -126,6 +126,7 @@ class AgentPromptContractTest {
             .contains("Required input: `connectionId`")
             .contains("Required input: always include `name` and `kind`")
             .contains("For `kind=sqlite`, include `databaseName` as the SQLite file path or `:memory:`")
+            .contains("For `kind=duckdb`, include `databaseName` as the DuckDB file path or `:memory:`")
             .contains("For other kinds, also include `host`, `port`, `username`, and `password`")
             .contains("Required input: always include `connectionId`, `name`, and `kind`")
             .contains("For other kinds, also include `host`, `port`, and `username`")
@@ -173,6 +174,17 @@ class AgentPromptContractTest {
             .contains("SQLite has no independent schema selector")
             .contains("do not ask to switch SQLite schemas")
             .contains(":memory:` is ephemeral per JDBC connection");
+    }
+
+    @Test
+    void runtimePromptDocumentsDuckdbEmbeddedConnectionSemantics() throws IOException {
+        var prompt = loadPrompt();
+        assertThat(prompt).contains("kind=duckdb");
+        assertThat(prompt).contains("embedded");
+        // DuckDB should have dialect notes
+        assertThat(prompt).contains("DuckDB");
+        assertThat(prompt).contains("read_csv");
+        assertThat(prompt).contains("read_parquet");
     }
 
     @Test

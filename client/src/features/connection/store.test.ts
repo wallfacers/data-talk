@@ -15,6 +15,7 @@ const connection: Connection = {
   lastTestStatus: 'ok',
   lastTestAt: 2,
   oracleServiceType: null,
+    readOnly: false,
   sqlserverEncrypt: true,
   sqlserverTrustServerCertificate: true,
   sqlserverInstanceName: null,

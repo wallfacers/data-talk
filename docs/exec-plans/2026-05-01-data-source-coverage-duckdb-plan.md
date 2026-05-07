@@ -58,7 +58,7 @@ passes and `docs/DATA_SOURCE_TYPE_COMPATIBILITY.md` is updated.
 
 ### Task 1: Approval, Driver, And File Safety Contract
 
-- [ ] **Step 1: Confirm design approval**
+- [x] **Step 1: Confirm design approval**
 
 Run:
 
@@ -69,7 +69,7 @@ rg -n "^Status: Approved$" docs/product-specs/2026-05-01-data-source-coverage-du
 Expected: exactly one match. If the design still says `Status: Draft for
 review`, stop and return to design review.
 
-- [ ] **Step 2: Record driver and file decisions**
+- [x] **Step 2: Record driver and file decisions**
 
 Record driver artifact/version/license/native packaging, driver class, platform
 support, in-memory URL, file URL, read-only property, backend-local data-root
@@ -78,36 +78,36 @@ operations excluded from day-1.
 
 ### Task 2: Connection Contract And Metadata
 
-- [ ] **Step 1: Add failing connection tests**
+- [x] **Step 1: Add failing connection tests**
 
 Cover canonical kind routing, `jdbc:duckdb:` in-memory URL, file URL creation,
 read-only property, invalid path rejection, symlink behavior, no host/port
 requirements, and localized connection-test failures.
 
-- [ ] **Step 2: Implement connection behavior**
+- [x] **Step 2: Implement connection behavior**
 
 Add driver dependency, URL builder support, file path validation, read-only
 properties, and connection testing.
 
-- [ ] **Step 3: Add failing metadata tests**
+- [x] **Step 3: Add failing metadata tests**
 
 Cover schema discovery, table/view listing, internal filtering, bounded schema
 discover, explicit describe, keys, indexes, and comments where available.
 
-- [ ] **Step 4: Implement metadata behavior**
+- [x] **Step 4: Implement metadata behavior**
 
 Use JDBC metadata and DuckDB information schema pragmas only where bounded and
 tested.
 
 ### Task 3: SQL, Splitter, Risk, Diagnostics, And ER
 
-- [ ] **Step 1: Add failing SQL/type tests**
+- [x] **Step 1: Add failing SQL/type tests**
 
 Cover in-memory and file execution, read-only mutation blocking, schema context,
 decimals, huge integers, UUID, intervals, lists, structs, maps, dates/times, and
 blobs.
 
-- [ ] **Step 2: Add failing splitter/risk tests**
+- [x] **Step 2: Add failing splitter/risk tests**
 
 Cover `COPY`, `EXPORT`, `IMPORT`, `ATTACH`, `DETACH`, `INSTALL`, `LOAD`,
 `CREATE SECRET`, file/cloud access, broad DDL, read-only `PRAGMA` behavior, and
@@ -115,12 +115,12 @@ SELECT-shaped file/network access through `read_csv`, `read_parquet`,
 `read_json`, `glob`, `parquet_metadata`, `httpfs`, `s3`, `http`, and `https`
 paths.
 
-- [ ] **Step 3: Implement SQL, normalization, splitter, and risk**
+- [x] **Step 3: Implement SQL, normalization, splitter, and risk**
 
 Keep filesystem/network-affecting SQL behind L3 Workbench confirmation or
 structured unsupported responses.
 
-- [ ] **Step 4: Implement diagnostics and ER behavior**
+- [x] **Step 4: Implement diagnostics and ER behavior**
 
 Map EXPLAIN only if tested. Add ER Inspector/Designer only after DuckDB metadata
 and DDL tests pass; otherwise return structured unsupported or `SkippedOp`.
@@ -135,18 +135,18 @@ Expected: targeted tests pass.
 
 ### Task 4: Frontend, MCP, Prompt, And Verification
 
-- [ ] **Step 1: Add failing frontend and prompt tests**
+- [x] **Step 1: Add failing frontend and prompt tests**
 
 Cover label `DuckDB`, mode selector, file path input, read-only flag, no
 host/port fields, Query Editor schema context, formatter/outline, diagnostics
 state, i18n, MCP schema, and prompt filesystem warnings.
 
-- [ ] **Step 2: Implement frontend and MCP exposure**
+- [x] **Step 2: Implement frontend and MCP exposure**
 
 Expose `duckdb` only after backend behavior and file-safety prompt contracts are
 honest.
 
-- [ ] **Step 3: Run consolidated verification**
+- [x] **Step 3: Run consolidated verification**
 
 Run:
 
@@ -158,7 +158,7 @@ git diff --check -- server client docs
 
 Expected: all commands pass.
 
-- [ ] **Step 4: Update documents**
+- [x] **Step 4: Update documents**
 
 Do all housekeeping before claiming completion:
 

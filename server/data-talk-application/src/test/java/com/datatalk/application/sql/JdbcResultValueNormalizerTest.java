@@ -5,6 +5,10 @@ import org.junit.jupiter.api.Test;
 import java.math.BigInteger;
 import java.sql.Array;
 import java.sql.SQLException;
+import java.sql.Struct;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -63,6 +67,77 @@ class JdbcResultValueNormalizerTest {
         Object pgObject = new FakePGobject("jsonb", "{\"dept_ids\":[1,2,3]}");
         Object normalized = JdbcResultValueNormalizer.normalize(pgObject);
         assertThat(normalized).isEqualTo("{\"dept_ids\":[1,2,3]}");
+    }
+
+    @Test
+    void normalizes_uuid_to_string() {
+        UUID uuid = UUID.randomUUID();
+        Object normalized = JdbcResultValueNormalizer.normalize(uuid);
+        assertThat(normalized).isEqualTo(uuid.toString());
+    }
+
+    @Test
+    void normalizes_sql_struct_to_map() throws Exception {
+        Struct struct = new Struct() {
+            @Override
+            public String getSQLTypeName() { return "STRUCT"; }
+            @Override
+            public Object[] getAttributes() { return new Object[]{"hello", 42L}; }
+            @Override
+            public Object[] getAttributes(Map<String, Class<?>> map) { return getAttributes(); }
+        };
+        Object result = JdbcResultValueNormalizer.normalize(struct);
+        assertThat(result).isInstanceOf(Map.class);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> map = (Map<String, Object>) result;
+        assertThat(map).hasSize(2);
+        assertThat(map).containsEntry("field_0", "hello");
+        assertThat(map).containsEntry("field_1", 42L); // 42L is within JS safe integer range
+    }
+
+    @Test
+    void normalizes_map_values_recursively() {
+        Map<String, Object> inner = new LinkedHashMap<>();
+        inner.put("big", new BigInteger("9223372036854775807"));
+        Map<String, Object> outer = new LinkedHashMap<>();
+        outer.put("name", "test");
+        outer.put("nested", inner);
+        Object result = JdbcResultValueNormalizer.normalize(outer);
+        assertThat(result).isInstanceOf(Map.class);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> map = (Map<String, Object>) result;
+        assertThat(map.get("name")).isEqualTo("test");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> nested = (Map<String, Object>) map.get("nested");
+        assertThat(nested.get("big")).isEqualTo("9223372036854775807");
+    }
+
+    @Test
+    void handles_null_struct_attributes() throws Exception {
+        Struct struct = new Struct() {
+            @Override
+            public String getSQLTypeName() { return "STRUCT"; }
+            @Override
+            public Object[] getAttributes() { return new Object[]{null, "value"}; }
+            @Override
+            public Object[] getAttributes(Map<String, Class<?>> map) { return getAttributes(); }
+        };
+        Object result = JdbcResultValueNormalizer.normalize(struct);
+        assertThat(result).isInstanceOf(Map.class);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> map = (Map<String, Object>) result;
+        assertThat(map).containsEntry("field_0", null);
+        assertThat(map).containsEntry("field_1", "value");
+    }
+
+    @Test
+    void handles_empty_map() {
+        Map<String, Object> empty = Map.of();
+        Object result = JdbcResultValueNormalizer.normalize(empty);
+        assertThat(result).isInstanceOf(Map.class);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> map = (Map<String, Object>) result;
+        assertThat(map).isEmpty();
     }
 
     @SuppressWarnings("unused")

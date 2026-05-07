@@ -14,6 +14,7 @@ export interface ConnectionDto {
   sqlserverEncrypt: boolean
   sqlserverTrustServerCertificate: boolean
   sqlserverInstanceName: string | null
+  readOnly: boolean
 }
 
 export interface ConnectionCreateRequest {
@@ -25,6 +26,7 @@ export interface ConnectionCreateRequest {
   username: string
   password: string
   connectTimeout?: number  // optional, defaults to 3000ms
+  readOnly?: boolean
 }
 
 export interface ConnectionUpdateRequest {
@@ -36,6 +38,7 @@ export interface ConnectionUpdateRequest {
   username: string
   password: string | null
   connectTimeout?: number  // optional, defaults to 3000ms
+  readOnly?: boolean | null
 }
 
 export interface ConnectionTestResultDto {

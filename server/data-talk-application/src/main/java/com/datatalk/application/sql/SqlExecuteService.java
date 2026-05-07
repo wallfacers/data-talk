@@ -580,7 +580,8 @@ public class SqlExecuteService {
             || "postgresql".equalsIgnoreCase(context.connection().kind())
             || "h2".equalsIgnoreCase(context.connection().kind())
             || "oracle".equalsIgnoreCase(context.connection().kind())
-            || "sqlserver".equalsIgnoreCase(context.connection().kind()))
+            || "sqlserver".equalsIgnoreCase(context.connection().kind())
+            || "duckdb".equalsIgnoreCase(context.connection().kind()))
             && hasText(context.schema())) {
             connection.setSchema(context.schema());
         }

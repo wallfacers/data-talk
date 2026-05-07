@@ -13,6 +13,7 @@ export function resolveSqlFormatterLanguage(connectionKind: string | null | unde
     case 'sqlserver':
       return 'transactsql'
     case 'h2':
+    case 'duckdb':
     default:
       return 'sql'
   }

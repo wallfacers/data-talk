@@ -84,7 +84,7 @@ There are two separate contexts:
 
 - `datatalk_create_connection`
   Create a saved connection only when the user explicitly asks to add one.
-  Required input: always include `name` and `kind`. For `kind=sqlite`, include `databaseName` as the SQLite file path or `:memory:`. For other kinds, also include `host`, `port`, `username`, and `password`. Optional input: `connectTimeout`.
+  Required input: always include `name` and `kind`. For `kind=sqlite`, include `databaseName` as the SQLite file path or `:memory:`. For `kind=duckdb`, include `databaseName` as the DuckDB file path or `:memory:`, and `readOnly` as a boolean. For other kinds, also include `host`, `port`, `username`, and `password`. Optional input: `connectTimeout`.
 
 - `datatalk_test_connection`
   Test whether a saved connection is reachable.
@@ -92,11 +92,13 @@ There are two separate contexts:
 
 - `datatalk_update_connection_confirmable`
   Preview a saved-connection update first. Execute the confirmed update only after the user explicitly agrees.
-  Required input: always include `connectionId`, `name`, and `kind`. For `kind=sqlite`, include `databaseName` as the SQLite file path or `:memory:`. For other kinds, also include `host`, `port`, and `username`. Optional input: `password`, `connectTimeout`, `confirm`, `confirmationToken`; when `confirm=true`, `confirmationToken` is required.
+  Required input: always include `connectionId`, `name`, and `kind`. For `kind=sqlite`, include `databaseName` as the SQLite file path or `:memory:`. For `kind=duckdb`, include `databaseName` as the DuckDB file path or `:memory:`, and `readOnly` as a boolean. For other kinds, also include `host`, `port`, and `username`. Optional input: `password`, `connectTimeout`, `confirm`, `confirmationToken`; when `confirm=true`, `confirmationToken` is required.
 
 Confirmable mutation tools are two-phase. First call with `confirm=false` or omitted to get a preview and `confirmation_token`. When a confirmable mutation tool is called with `confirm=true`, include `confirmationToken` copied exactly from the preview. This applies to `datatalk_update_connection_confirmable`, `datatalk_terminate_session`, and `datatalk_optimize_table`.
 
 SQLite is file-scoped. For `kind=sqlite`, databaseName is the SQLite file path or `:memory:`. SQLite has no independent schema selector, so do not ask to switch SQLite schemas. `:memory:` is ephemeral per JDBC connection in the current backend model, so treat it as a temporary test target rather than a durable working database.
+
+DuckDB is an embedded analytical database. For `kind=duckdb`, `databaseName` is the file path or `:memory:` for in-memory mode. `readOnly` is a boolean (defaults to false). DuckDB has no host/port/username/password. External file operations (`COPY`, `EXPORT`, `IMPORT`), extension commands (`INSTALL`, `LOAD`), and external file/network access functions (`read_csv`, `read_parquet`, `httpfs`) are not supported. Use the SQL workbench for confirmed mutations. DuckDB schema selector shows (normally `main`); database selector is hidden.
 
 ### Schema, Query, and Artifacts
 
@@ -592,6 +594,21 @@ Output budget: defaults `headLimit=100`, `maxTabs=50`. For existence checks use 
 - ER Designer: unsupported. Use query_editor + read_schema instead.
 - Diagnostics: structured execution plan unsupported. Use `SET SHOWPLAN_TEXT ON` or SSMS.
 - Schema visibility: both database and schema visible (like PostgreSQL).
+
+### DuckDB
+
+- Connection kind: `duckdb`. Embedded analytical SQL engine — no host/port.
+- Fields: `databaseName` (file path or `:memory:`), `readOnly` (boolean, defaults to false). No host, port, username, or password.
+- `datatalk_execute_sql` remains read-only in the chat path.
+- File operations (`COPY`, `EXPORT DATABASE`, `IMPORT DATABASE`), extension commands (`INSTALL`, `LOAD`, `CREATE SECRET`), and external file/network access (`read_csv`, `read_parquet`, `read_json`, `glob`, `httpfs`, S3 paths) are not supported. Use the SQL workbench for confirmed mutations.
+- `ATTACH` and `DETACH` are not supported.
+- DuckDB file paths are backend-local only.
+- Read-only connections cannot execute mutations.
+- Schema context: schema selector is visible (normally `main`). No independent database selector.
+- SQL splitter: generic (no DELIMITER, no PL/SQL, no GO).
+- Diagnostics: structured unsupported. EXPLAIN, lock info, pool status, table space, index hints, terminate session, and optimize table are all unsupported.
+- ER Inspector: day-1 `dialect_unsupported` (embedded engine, foreign-key metadata not yet verified).
+- ER Designer: day-1 `dialect_unsupported`.
 
 <!-- file-artifact-section:begin -->
 ## Output Files & Artifacts

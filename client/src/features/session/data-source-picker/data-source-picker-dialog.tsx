@@ -108,6 +108,10 @@ export function DataSourcePickerDialog({
 
 function formatConnectionMeta(connection: Connection) {
   const kind = connection.kind.toUpperCase()
+  if (connection.kind.toLowerCase() === 'duckdb') {
+    const db = connection.databaseName ?? ''
+    return [kind, db === ':memory:' ? 'In-memory' : db || 'In-memory'].join(' · ')
+  }
   return [kind, connection.host, connection.databaseName ?? ''].filter(Boolean).join(' · ')
 }
 

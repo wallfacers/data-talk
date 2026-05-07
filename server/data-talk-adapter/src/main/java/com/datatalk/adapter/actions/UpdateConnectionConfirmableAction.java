@@ -82,16 +82,17 @@ public class UpdateConnectionConfirmableAction implements ActionHandler<Map, Map
                 Map.entry("confirmationToken", Map.of("type", "string"))
             )),
             Map.entry("allOf", List.of(
-                nonSqliteRequiresServerFieldsSchema(),
+                embeddedKindSchema(),
                 confirmRequiresTokenSchema()
             ))
         );
     }
 
-    private static Map<String, Object> nonSqliteRequiresServerFieldsSchema() {
+    // SQLite and DuckDB are embedded databases that don't need host/port/username
+    private static Map<String, Object> embeddedKindSchema() {
         return Map.of(
             "if", Map.of(
-                "properties", Map.of("kind", Map.of("const", ConnectionKind.SQLITE)),
+                "properties", Map.of("kind", Map.of("enum", List.of(ConnectionKind.SQLITE, ConnectionKind.DUCKDB))),
                 "required", List.of("kind")
             ),
             "else", Map.of("required", List.of("host", "port", "username"))
@@ -292,14 +293,14 @@ public class UpdateConnectionConfirmableAction implements ActionHandler<Map, Map
 
     private static NormalizedConnectionInput normalizeInput(Map input) {
         String kind = string(input, "kind");
-        boolean sqlite = ConnectionKind.SQLITE.equalsIgnoreCase(kind);
+        boolean embedded = ConnectionKind.SQLITE.equalsIgnoreCase(kind) || ConnectionKind.DUCKDB.equalsIgnoreCase(kind);
         return new NormalizedConnectionInput(
             string(input, "name"),
             kind,
-            sqlite ? "" : string(input, "host"),
-            sqlite ? 0 : number(input, "port"),
+            embedded ? "" : string(input, "host"),
+            embedded ? 0 : number(input, "port"),
             nullableString(input, "databaseName"),
-            sqlite ? "" : string(input, "username"),
+            embedded ? "" : string(input, "username"),
             nullableString(input, "password"),
             nullableInteger(input, "connectTimeout"),
             nullableString(input, "oracleServiceType"),

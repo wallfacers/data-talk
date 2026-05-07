@@ -57,16 +57,17 @@ This table describes the current repository state. Keep it accurate.
 | `oracle` | First-class | Connection UI, JDBC URL (SID / service-name modes), `ojdbc11` driver, metadata discovery with 30 system schema filters, SQL execution, generic SQL splitter, 6 risk rules, and structured unsupported diagnostics. Intentionally unsupported: PL/SQL splitter, ER DDL generation, diagnostics execution. Day-2 enhancements tracked in child plan. |
 | `sqlserver` | First-class | Connection UI, JDBC URL (instance name / encrypt / trust certificate), `mssql-jdbc` 12.8.1 driver, metadata discovery with system database filters, SQL execution, generic SQL splitter, 8 risk rules, and structured unsupported diagnostics. `mssql` alias normalized to `sqlserver`. Intentionally unsupported: GO batch splitter, ER DDL generation, diagnostics execution. Day-2 enhancements tracked in child plan. |
 | `mariadb` | First-class | Connection UI, JDBC URL, MariaDB Connector/J driver, metadata discovery, SQL execution. Intentionally reuses MySQL ecosystem: `MySqlSqlStatementSplitter`, `MySqlDiagnosticsProvider`, ER DDL via `MariaDbDdlGenerator`. First-class support proven by MariaDB-specific tests at every reuse point. Day-2 enhancements tracked in child plan. |
+| `duckdb` | First-class embedded/file support | Connection UI (mode selector, file path, read-only flag), JDBC URL (`jdbc:duckdb:`), DuckDB JDBC driver, in-memory and file modes, read-only connections, schema context (`main`), generic SQL splitter, DuckDB-specific risk rules (COPY/EXPORT/IMPORT/ATTACH/DETACH/INSTALL/LOAD/CREATE SECRET/read_csv/read_parquet/glob hard reject), type normalization (UUID, Struct, Map), structured unsupported diagnostics and ER. No host/port/username/password. MCP create/update schemas kind-conditional. Day-2: EXPLAIN diagnostics, ER DDL generation, extension/file-access sandbox. |
 
 ER Inspector follows this matrix: `mysql`, `postgresql` / `postgres`, `h2`,
 `mariadb`, and user `sqlite` file connections use JDBC `DatabaseMetaData.getImportedKeys`;
-`oracle` and `sqlserver` are explicitly unsupported and must return structured
+`oracle`, `sqlserver`, and `duckdb` are explicitly unsupported and must return structured
 `dialect_unsupported` guidance instead of a fake empty ER graph.
 
 ER Designer follows this DDL matrix: `mysql`, `postgresql` / `postgres`, `h2`,
 and `mariadb` generate day-1 DDL for `CREATE TABLE`, `ALTER ADD COLUMN`, `ALTER ADD FK`,
 and `CREATE INDEX`; `sqlite` is CREATE-only for table/index generation and must
-return `SkippedOp` for ALTER variants; `oracle` and `sqlserver` are explicitly
+return `SkippedOp` for ALTER variants; `oracle`, `sqlserver`, and `duckdb` are explicitly
 unsupported with `dialect_unsupported`. DROP, ALTER COLUMN type changes, and
 RENAME are N/A for day-1 automated generation because they are always returned
 as `SkippedOp` with `day1_unsupported`; users must write that SQL manually in
@@ -76,7 +77,7 @@ as `SkippedOp` with `day1_unsupported`; users must write that SQL manually in
 
 | Feature | Compatibility notes |
 |---|---|
-| ER Tabs (Inspector + Designer) | Inspector: mysql / postgresql / h2 / mariadb fully via JDBC `getImportedKeys`, and sqlite user file connections use the same metadata path with no extra schema selector; oracle / sqlserver `dialect_unsupported`. Designer day-1 DDL generation: mysql / postgresql / h2 / mariadb emit CREATE TABLE / ALTER ADD COLUMN / ALTER ADD FK / CREATE INDEX; sqlite is CREATE-only with all ALTER variants returning `SkippedOp`; oracle / sqlserver `dialect_unsupported`. DROP / ALTER COLUMN type / RENAME are always `SkippedOp` (`day1_unsupported`) regardless of dialect; users must write that SQL manually in the `query_editor` and run it through L2/L3 confirmation. |
+| ER Tabs (Inspector + Designer) | Inspector: mysql / postgresql / h2 / mariadb fully via JDBC `getImportedKeys`, and sqlite user file connections use the same metadata path with no extra schema selector; oracle / sqlserver / duckdb `dialect_unsupported`. Designer day-1 DDL generation: mysql / postgresql / h2 / mariadb emit CREATE TABLE / ALTER ADD COLUMN / ALTER ADD FK / CREATE INDEX; sqlite is CREATE-only with all ALTER variants returning `SkippedOp`; oracle / sqlserver / duckdb `dialect_unsupported`. DROP / ALTER COLUMN type / RENAME are always `SkippedOp` (`day1_unsupported`) regardless of dialect; users must write that SQL manually in the `query_editor` and run it through L2/L3 confirmation. |
 
 ### ER Designer Gate Notes
 
@@ -163,7 +164,7 @@ is updated.
 | `apache_doris` | `docs/product-specs/2026-05-01-data-source-coverage-apache-doris-design.md` | `docs/exec-plans/2026-05-01-data-source-coverage-apache-doris-plan.md` | Planned: explicit Doris design using MySQL protocol as a hypothesis to prove; support remains unsupported until implementation completes. |
 | `starrocks` | `docs/product-specs/2026-05-01-data-source-coverage-starrocks-design.md` | `docs/exec-plans/2026-05-01-data-source-coverage-starrocks-plan.md` | Planned: native StarRocks JDBC design with explicit catalog/database target resolution; support remains unsupported until implementation completes. |
 | `clickhouse` | `docs/product-specs/2026-05-01-data-source-coverage-clickhouse-design.md` | `docs/exec-plans/2026-05-01-data-source-coverage-clickhouse-plan.md` | Planned: ClickHouse analytical SQL design with explicit type, transaction, and diagnostics caveats; support remains unsupported until implementation completes. |
-| `duckdb` | `docs/product-specs/2026-05-01-data-source-coverage-duckdb-design.md` | `docs/exec-plans/2026-05-01-data-source-coverage-duckdb-plan.md` | Planned: embedded DuckDB design with file, in-memory, read-only, and extension-safety gates; support remains unsupported until implementation completes. |
+| `duckdb` | `docs/product-specs/2026-05-01-data-source-coverage-duckdb-design.md` | `docs/exec-plans/2026-05-01-data-source-coverage-duckdb-plan.md` | Completed 2026-05-07: first-class embedded/file support with connection UI, in-memory/file modes, read-only flag, generic splitter, DuckDB risk rules, type normalization, structured unsupported diagnostics/ER. Day-2: EXPLAIN, ER DDL, extension sandbox. |
 | `trino` | `docs/product-specs/2026-05-01-data-source-coverage-trino-design.md` | `docs/exec-plans/2026-05-01-data-source-coverage-trino-plan.md` | Planned: federated Trino design with catalog/schema context and connector-capability caveats; support remains unsupported until implementation completes. |
 | `presto` | `docs/product-specs/2026-05-01-data-source-coverage-presto-design.md` | `docs/exec-plans/2026-05-01-data-source-coverage-presto-plan.md` | Planned: PrestoDB design separate from Trino despite similar catalog/schema shape; support remains unsupported until implementation completes. |
 | `hive` | `docs/product-specs/2026-05-01-data-source-coverage-hive-design.md` | `docs/exec-plans/2026-05-01-data-source-coverage-hive-plan.md` | Planned: conservative HiveServer2 design with explicit transport/auth subset decisions; support remains unsupported until implementation completes. |
