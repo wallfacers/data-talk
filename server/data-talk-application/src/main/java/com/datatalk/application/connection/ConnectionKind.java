@@ -13,4 +13,7 @@ public final class ConnectionKind {
     public static final String CLICKHOUSE = "clickhouse";
     public static final String APACHE_DORIS = "apache_doris";
     public static final String STARROCKS = "starrocks";
+    public static final String TRINO = "trino";
+    public static final String PRESTO = "presto";
+    public static final String HIVE = "hive";
 }

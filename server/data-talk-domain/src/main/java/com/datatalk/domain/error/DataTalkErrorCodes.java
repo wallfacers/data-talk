@@ -19,4 +19,5 @@ public final class DataTalkErrorCodes {
     public static final String CHANNEL_RESUME_OUT_OF_WINDOW  = "channel.resume_out_of_window";
     public static final String DATABASE_KIND_UNSUPPORTED     = "error.database.kind.unsupported";
     public static final String DATABASE_TYPE_UNSUPPORTED     = "error.database.kind.unsupported";
+    public static final String DATABASE_NAME_REQUIRED        = "error.database.name_required";
 }

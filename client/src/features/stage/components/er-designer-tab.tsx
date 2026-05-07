@@ -138,7 +138,11 @@ function pickDefaultConnectionId(
 
 function hasIndependentSchemaNamespace(kind: string | null | undefined) {
   const normalizedKind = normalizeConnectionKind(kind)
-  return normalizedKind !== 'mysql' && normalizedKind !== 'sqlite' && normalizedKind !== 'mariadb'
+  return normalizedKind !== 'mysql'
+    && normalizedKind !== 'sqlite'
+    && normalizedKind !== 'mariadb'
+    && normalizedKind !== 'apache_doris'
+    && normalizedKind !== 'starrocks'
 }
 
 export function ErDesignerTab({ tabId }: { tabId: string }) {

@@ -8,7 +8,7 @@ export function resolveSqlFormatterLanguage(connectionKind: string | null | unde
     case 'mysql':
     case 'mariadb':
     case 'apache_doris':
-    case 'starrocks':
+    case 'starrocks': // sql-formatter has no starrocks dialect; mysql is the closest approximation (day-1). OLAP-specific syntax (PROPERTIES, KEY clauses, DISTRIBUTED BY) may format suboptimally.
       return 'mysql'
     case 'oracle':
       return 'plsql'

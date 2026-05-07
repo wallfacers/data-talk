@@ -757,7 +757,7 @@ class JdbcUrlBuilderTest {
             null, 1, true, null, false);
         assertThatThrownBy(() -> JdbcUrlBuilder.build(connection))
             .isInstanceOf(com.datatalk.domain.error.DataTalkException.class)
-            .hasMessageContaining("StarRocks requires a database name");
+            .hasMessageContaining("StarRocks");
     }
 
     @Test
@@ -780,5 +780,28 @@ class JdbcUrlBuilderTest {
             null, 1, true, null, false);
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:starrocks://host:9031/default_catalog.mydb");
+    }
+
+    // --- Trino ---
+    @Test
+    void trino_basic_url() {
+        var connection = new ConnectionRecord(
+            "tr-1", "Trino", ConnectionKind.TRINO,
+            "coordinator", 8080, null, "admin",
+            new byte[]{1}, null, 1L, 3000, null, null,
+            null, 1, true, null, false);
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:trino://coordinator:8080");
+    }
+
+    @Test
+    void trino_url_with_catalog() {
+        var connection = new ConnectionRecord(
+            "tr-2", "Trino Catalog", ConnectionKind.TRINO,
+            "coordinator", 8080, "hive", "admin",
+            new byte[]{1}, null, 1L, 3000, null, null,
+            null, 1, true, null, false);
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:trino://coordinator:8080/hive");
     }
 }

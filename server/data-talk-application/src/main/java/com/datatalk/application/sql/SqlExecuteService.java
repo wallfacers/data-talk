@@ -574,6 +574,11 @@ public class SqlExecuteService {
             && hasText(context.database())) {
             connection.setCatalog(context.database());
         }
+        if (("trino".equalsIgnoreCase(context.connection().kind())
+            || "presto".equalsIgnoreCase(context.connection().kind()))
+            && hasText(context.database())) {
+            connection.setCatalog(context.database());
+        }
         if (("sqlserver".equalsIgnoreCase(context.connection().kind()))
             && hasText(context.database())) {
             connection.setCatalog(context.database());
@@ -584,12 +589,20 @@ public class SqlExecuteService {
                 stmt.execute("USE " + context.database());
             }
         }
+        if ("hive".equalsIgnoreCase(context.connection().kind())
+            && hasText(context.database())) {
+            try (var stmt = connection.createStatement()) {
+                stmt.execute("USE `" + context.database() + "`");
+            }
+        }
         if (("postgres".equalsIgnoreCase(context.connection().kind())
             || "postgresql".equalsIgnoreCase(context.connection().kind())
             || "h2".equalsIgnoreCase(context.connection().kind())
             || "oracle".equalsIgnoreCase(context.connection().kind())
             || "sqlserver".equalsIgnoreCase(context.connection().kind())
-            || "duckdb".equalsIgnoreCase(context.connection().kind()))
+            || "duckdb".equalsIgnoreCase(context.connection().kind())
+            || "trino".equalsIgnoreCase(context.connection().kind())
+            || "presto".equalsIgnoreCase(context.connection().kind()))
             && hasText(context.schema())) {
             connection.setSchema(context.schema());
         }

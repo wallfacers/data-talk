@@ -184,6 +184,15 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
         if (ConnectionKind.STARROCKS.equalsIgnoreCase(connectionKind)) {
             return classifyStarrocksSpecific(sql);
         }
+        if (ConnectionKind.TRINO.equalsIgnoreCase(connectionKind)) {
+            return classifyTrinoSpecific(sql);
+        }
+        if (ConnectionKind.PRESTO.equalsIgnoreCase(connectionKind)) {
+            return classifyPrestoSpecific(sql);
+        }
+        if (ConnectionKind.HIVE.equalsIgnoreCase(connectionKind)) {
+            return classifyHiveSpecific(sql);
+        }
         return null;
     }
 
@@ -537,6 +546,15 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
         String normalized = stripLeadingComments(sql).toLowerCase(Locale.ROOT);
         if (normalized.isEmpty()) return null;
 
+        // L1 safe: SELECT (let through to Calcite for proper parsing)
+        if (normalized.startsWith("select ") || normalized.startsWith("with ")) {
+            return null;
+        }
+        // L2 mutation: INSERT, UPDATE, DELETE (let through to Calcite for WHERE analysis)
+        if (normalized.startsWith("insert into ") || normalized.startsWith("update ") || normalized.startsWith("delete from ")) {
+            return null;
+        }
+
         // L1 safe: SHOW, DESCRIBE, DESC, EXPLAIN
         if (normalized.startsWith("show ")) {
             return SqlRiskAnalysis.low("starrocks_show");
@@ -586,7 +604,7 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
         if (normalized.startsWith("create role")) {
             return SqlRiskAnalysis.high("starrocks_create_role");
         }
-        if (normalized.startsWith("create catalog")) {
+        if (normalized.startsWith("create catalog") || normalized.startsWith("create external catalog")) {
             return SqlRiskAnalysis.high("starrocks_create_catalog");
         }
         if (normalized.startsWith("drop catalog")) {
@@ -620,8 +638,12 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
         if (normalized.startsWith("set global")) {
             return SqlRiskAnalysis.high("starrocks_set_global");
         }
+        // L3: SET PASSWORD
+        if (normalized.startsWith("set password")) {
+            return SqlRiskAnalysis.high("starrocks_set_password");
+        }
         // L3: KILL
-        if (normalized.startsWith("kill ")) {
+        if (normalized.startsWith("kill ") || normalized.startsWith("kill\t")) {
             return SqlRiskAnalysis.high("starrocks_kill");
         }
         // L3: RENAME
@@ -635,8 +657,197 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
         if (normalized.startsWith("cancel task")) {
             return SqlRiskAnalysis.high("starrocks_cancel_task");
         }
+        // L3: INSERT OVERWRITE (destructive overwrite)
+        if (normalized.startsWith("insert overwrite")) {
+            return SqlRiskAnalysis.high("starrocks_insert_overwrite");
+        }
 
+        // Unrecognized StarRocks SQL defaults to L3 (conservative safety).
+        return SqlRiskAnalysis.high("starrocks_unrecognized");
+    }
+
+    private SqlRiskAnalysis classifyTrinoSpecific(String sql) {
+        String normalized = stripLeadingComments(sql).toLowerCase(Locale.ROOT);
+        if (normalized.isEmpty()) return null;
+        if (startsWithKeyword(normalized, "show")) {
+            return SqlRiskAnalysis.low("trino_show");
+        }
+        if (startsWithKeyword(normalized, "describe") || startsWithKeyword(normalized, "desc")) {
+            return SqlRiskAnalysis.low("trino_describe");
+        }
+        if (startsWithKeyword(normalized, "explain")) {
+            return SqlRiskAnalysis.low("trino_explain");
+        }
+        if (startsWithKeyword(normalized, "insert")) {
+            return SqlRiskAnalysis.medium("trino_insert");
+        }
+        if (startsWithKeyword(normalized, "create table")) {
+            return SqlRiskAnalysis.medium("trino_create_table");
+        }
+        if (startsWithKeyword(normalized, "create view")) {
+            return SqlRiskAnalysis.medium("trino_create_view");
+        }
+        if (startsWithKeyword(normalized, "update")) {
+            return SqlRiskAnalysis.medium("trino_update");
+        }
+        if (startsWithKeyword(normalized, "delete")) {
+            return SqlRiskAnalysis.medium("trino_delete");
+        }
+        if (startsWithKeyword(normalized, "drop")) {
+            return SqlRiskAnalysis.high("trino_drop");
+        }
+        if (startsWithKeyword(normalized, "truncate")) {
+            return SqlRiskAnalysis.high("trino_truncate");
+        }
+        if (startsWithKeyword(normalized, "alter")) {
+            return SqlRiskAnalysis.high("trino_alter");
+        }
+        if (startsWithKeyword(normalized, "grant")) {
+            return SqlRiskAnalysis.high("trino_grant");
+        }
+        if (startsWithKeyword(normalized, "revoke")) {
+            return SqlRiskAnalysis.high("trino_revoke");
+        }
+        if (startsWithKeyword(normalized, "create user")) {
+            return SqlRiskAnalysis.high("trino_create_user");
+        }
+        if (startsWithKeyword(normalized, "create role")) {
+            return SqlRiskAnalysis.high("trino_create_role");
+        }
+        if (startsWithKeyword(normalized, "call")) {
+            return SqlRiskAnalysis.high("trino_call");
+        }
+        if (startsWithKeyword(normalized, "set session")) {
+            return SqlRiskAnalysis.high("trino_set_session");
+        }
+        if (startsWithKeyword(normalized, "reset session")) {
+            return SqlRiskAnalysis.high("trino_reset_session");
+        }
         return null;
+    }
+
+    private SqlRiskAnalysis classifyPrestoSpecific(String sql) {
+        String normalized = stripLeadingComments(sql).toLowerCase(Locale.ROOT);
+        if (normalized.isEmpty()) return null;
+        if (startsWithKeyword(normalized, "show")) {
+            return SqlRiskAnalysis.low("presto_show");
+        }
+        if (startsWithKeyword(normalized, "describe") || startsWithKeyword(normalized, "desc")) {
+            return SqlRiskAnalysis.low("presto_describe");
+        }
+        if (startsWithKeyword(normalized, "explain")) {
+            return SqlRiskAnalysis.low("presto_explain");
+        }
+        if (startsWithKeyword(normalized, "insert")) {
+            return SqlRiskAnalysis.medium("presto_insert");
+        }
+        if (startsWithKeyword(normalized, "create table")) {
+            return SqlRiskAnalysis.medium("presto_create_table");
+        }
+        if (startsWithKeyword(normalized, "create view")) {
+            return SqlRiskAnalysis.medium("presto_create_view");
+        }
+        if (startsWithKeyword(normalized, "update")) {
+            return SqlRiskAnalysis.medium("presto_update");
+        }
+        if (startsWithKeyword(normalized, "delete")) {
+            return SqlRiskAnalysis.medium("presto_delete");
+        }
+        if (startsWithKeyword(normalized, "drop")) {
+            return SqlRiskAnalysis.high("presto_drop");
+        }
+        if (startsWithKeyword(normalized, "truncate")) {
+            return SqlRiskAnalysis.high("presto_truncate");
+        }
+        if (startsWithKeyword(normalized, "alter")) {
+            return SqlRiskAnalysis.high("presto_alter");
+        }
+        if (startsWithKeyword(normalized, "grant")) {
+            return SqlRiskAnalysis.high("presto_grant");
+        }
+        if (startsWithKeyword(normalized, "revoke")) {
+            return SqlRiskAnalysis.high("presto_revoke");
+        }
+        if (startsWithKeyword(normalized, "create user")) {
+            return SqlRiskAnalysis.high("presto_create_user");
+        }
+        if (startsWithKeyword(normalized, "create role")) {
+            return SqlRiskAnalysis.high("presto_create_role");
+        }
+        if (startsWithKeyword(normalized, "call")) {
+            return SqlRiskAnalysis.high("presto_call");
+        }
+        if (startsWithKeyword(normalized, "set session")) {
+            return SqlRiskAnalysis.high("presto_set_session");
+        }
+        if (startsWithKeyword(normalized, "reset session")) {
+            return SqlRiskAnalysis.high("presto_reset_session");
+        }
+        return null;
+    }
+
+    private SqlRiskAnalysis classifyHiveSpecific(String sql) {
+        String normalized = stripLeadingComments(sql).toLowerCase(Locale.ROOT);
+        if (normalized.isEmpty()) return null;
+        if (startsWithKeyword(normalized, "show")) {
+            return SqlRiskAnalysis.low("hive_show");
+        }
+        if (startsWithKeyword(normalized, "describe") || startsWithKeyword(normalized, "desc")) {
+            return SqlRiskAnalysis.low("hive_describe");
+        }
+        if (startsWithKeyword(normalized, "explain")) {
+            return SqlRiskAnalysis.low("hive_explain");
+        }
+        if (startsWithKeyword(normalized, "insert")) {
+            return SqlRiskAnalysis.medium("hive_insert");
+        }
+        if (startsWithKeyword(normalized, "create table")) {
+            return SqlRiskAnalysis.medium("hive_create_table");
+        }
+        if (startsWithKeyword(normalized, "create view")) {
+            return SqlRiskAnalysis.medium("hive_create_view");
+        }
+        if (startsWithKeyword(normalized, "analyze")) {
+            return SqlRiskAnalysis.medium("hive_analyze");
+        }
+        if (startsWithKeyword(normalized, "drop")) {
+            return SqlRiskAnalysis.high("hive_drop");
+        }
+        if (startsWithKeyword(normalized, "truncate")) {
+            return SqlRiskAnalysis.high("hive_truncate");
+        }
+        if (startsWithKeyword(normalized, "alter")) {
+            return SqlRiskAnalysis.high("hive_alter");
+        }
+        if (startsWithKeyword(normalized, "grant")) {
+            return SqlRiskAnalysis.high("hive_grant");
+        }
+        if (startsWithKeyword(normalized, "revoke")) {
+            return SqlRiskAnalysis.high("hive_revoke");
+        }
+        if (startsWithKeyword(normalized, "create user")) {
+            return SqlRiskAnalysis.high("hive_create_user");
+        }
+        if (startsWithKeyword(normalized, "create role")) {
+            return SqlRiskAnalysis.high("hive_create_role");
+        }
+        if (startsWithKeyword(normalized, "load data")) {
+            return SqlRiskAnalysis.high("hive_load_data");
+        }
+        if (startsWithKeyword(normalized, "msck repair")) {
+            return SqlRiskAnalysis.high("hive_msck_repair");
+        }
+        if (startsWithKeyword(normalized, "set")) {
+            return SqlRiskAnalysis.high("hive_set");
+        }
+        return null;
+    }
+
+    private boolean startsWithKeyword(String normalized, String keyword) {
+        if (!normalized.startsWith(keyword)) return false;
+        if (normalized.length() == keyword.length()) return true;
+        char next = normalized.charAt(keyword.length());
+        return !Character.isLetterOrDigit(next) && next != '_';
     }
 
     private String stripLeadingComments(String sql) {

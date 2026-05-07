@@ -72,11 +72,29 @@ public final class JdbcUrlBuilder {
                            : "jdbc:mysql://" + c.host() + ":" + c.port() + "/";
             case ConnectionKind.STARROCKS -> {
                 if (db == null || db.isBlank()) {
-                    throw new DataTalkException(DataTalkErrorCodes.DATABASE_KIND_UNSUPPORTED,
-                        "StarRocks requires a database name", false);
+                    throw new DataTalkException(DataTalkErrorCodes.DATABASE_NAME_REQUIRED,
+                        "StarRocks", false);
                 }
                 yield "jdbc:starrocks://" + c.host() + ":" + c.port() + "/default_catalog." + db;
             }
+            case ConnectionKind.TRINO -> {
+                StringBuilder url = new StringBuilder("jdbc:trino://").append(c.host()).append(":").append(c.port());
+                if (db != null && !db.isBlank()) {
+                    url.append("/").append(db);
+                }
+                yield url.toString();
+            }
+            case ConnectionKind.PRESTO -> {
+                StringBuilder url = new StringBuilder("jdbc:presto://")
+                    .append(c.host()).append(":").append(c.port());
+                if (db != null && !db.isBlank()) {
+                    url.append("/").append(db);
+                }
+                yield url.toString();
+            }
+            case ConnectionKind.HIVE ->
+                db != null ? "jdbc:hive2://" + c.host() + ":" + c.port() + "/" + db
+                           : "jdbc:hive2://" + c.host() + ":" + c.port() + "/";
             default ->
                 throw new DataTalkException(DataTalkErrorCodes.DATABASE_KIND_UNSUPPORTED,
                     "unsupported database kind: " + c.kind(), false);

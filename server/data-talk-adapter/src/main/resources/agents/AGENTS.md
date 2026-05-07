@@ -309,8 +309,8 @@ verbs, and error contracts.
   tab; the user runs it under the existing L2/L3 confirmation flow.
 - DDL lands in a query_editor tab and must be user-confirmed through guarded
   SQL execution. Do not claim a designer action applied schema changes.
-- Oracle and SQL Server are not supported by ER. Use query_editor + read_schema
-  instead.
+- DuckDB, ClickHouse, Apache Doris, StarRocks, Oracle and SQL Server are not
+  supported by ER. Use query_editor + read_schema instead.
 - MariaDB is supported by ER (reuses MySQL DDL generation).
 - Do not pass coordinates. Layout is computed client-side; auto_layout is one
   ui_exec call away if a relayout is wanted.
@@ -649,12 +649,12 @@ Output budget: defaults `headLimit=100`, `maxTabs=50`. For existence checks use 
 - `datatalk_execute_sql` remains read-only in the chat path.
 - Mutations (`INSERT`, `UPDATE`, `DELETE`, DDL) require the SQL workbench with confirmation.
 - Catalog operations (`CREATE/DROP CATALOG`), load operations (`LOAD LABEL`, `ROUTINE LOAD`, `STREAM LOAD`, `BROKER LOAD`), export, cluster management (`ADMIN`, `ALTER SYSTEM`), and global variable changes (`SET GLOBAL`) are not supported through the chat path.
-- SQL splitter: generic (procedural SQL behavior unverified for day-1).
-- Risk guard: `SHOW`, `DESCRIBE`, `EXPLAIN` are L1; `INSERT`, `CREATE TABLE`, `CREATE INDEX`, `ANALYZE` are L2; `DROP`, `TRUNCATE`, `ALTER`, `GRANT`, `REVOKE`, `CREATE USER/ROLE/CATALOG`, `DROP CATALOG`, `LOAD`, `ROUTINE LOAD`, `EXPORT`, `ADMIN`, `SET GLOBAL`, `KILL`, `SUBMIT TASK` are L3.
+- SQL splitter: reuses MySQL splitter (backtick identifier support, DELIMITER handling).
+- Risk guard: `SHOW`, `DESCRIBE`, `EXPLAIN` are L1; `INSERT`, `CREATE TABLE`, `CREATE INDEX`, `ANALYZE` are L2; `DROP`, `TRUNCATE`, `ALTER`, `GRANT`, `REVOKE`, `CREATE USER/ROLE/CATALOG`, `DROP CATALOG`, `LOAD`, `ROUTINE LOAD`, `STREAM LOAD`, `BROKER LOAD`, `CANCEL LOAD`, `EXPORT`, `ADMIN`, `SET GLOBAL`, `SET PASSWORD`, `KILL`, `SUBMIT TASK`, `CANCEL TASK`, `RENAME`, `INSERT OVERWRITE` are L3.
 - Schema context: database selector visible (StarRocks databases within default_catalog). Schema selector hidden.
 - Diagnostics: day-1 structured unsupported. EXPLAIN, lock info, pool status, table space, index hints, terminate session, and optimize table are all unsupported.
-- ER Inspector: day-1 `dialect_unsupported`.
-- ER Designer: day-1 `dialect_unsupported`.
+- ER Inspector: day-1 `dialect_unsupported` (StarRocks DDL has unique distribution/partition syntax).
+- ER Designer: day-1 `dialect_unsupported` (StarRocks DDL has unique distribution/partition syntax).
 
 <!-- file-artifact-section:begin -->
 ## Output Files & Artifacts

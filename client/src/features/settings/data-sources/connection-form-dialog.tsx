@@ -121,10 +121,12 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
   const isOracle = form.kind === 'oracle'
   const isSqlserver = form.kind === 'sqlserver'
   const isClickhouse = form.kind === 'clickhouse'
+  const isStarrocks = form.kind === 'starrocks'
   const hideHostPort = isSqlite || isDuckdb
   const databaseLabel = isDuckdb
     ? (form.duckdbMode === 'file' ? t('dataSources.duckdbFilePath') : '')
-    : (isSqlite ? t('dataSources.sqliteFilePath') : t('dataSources.databaseOptional'))
+    : (isSqlite ? t('dataSources.sqliteFilePath')
+       : isStarrocks ? t('dataSources.databaseRequired') : t('dataSources.databaseOptional'))
   const databasePlaceholder = isDuckdb
     ? t('dataSources.duckdbFilePathPlaceholder')
     : (isSqlite ? t('dataSources.sqliteFilePathPlaceholder') : t('dataSources.databasePlaceholder'))

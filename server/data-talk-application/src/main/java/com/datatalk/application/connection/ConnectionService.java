@@ -160,6 +160,12 @@ public class ConnectionService {
         } else if (kind.equals(ConnectionKind.STARROCKS)) {
             int timeoutMs = c.connectTimeout();
             url += (url.contains("?") ? "&" : "?") + "connectTimeout=" + timeoutMs + "&socketTimeout=" + timeoutMs;
+        } else if (kind.equals(ConnectionKind.TRINO)) {
+            java.sql.DriverManager.setLoginTimeout(Math.max(1, c.connectTimeout() / 1000));
+        } else if (kind.equals(ConnectionKind.PRESTO)) {
+            java.sql.DriverManager.setLoginTimeout(Math.max(1, c.connectTimeout() / 1000));
+        } else if (kind.equals(ConnectionKind.HIVE)) {
+            java.sql.DriverManager.setLoginTimeout(Math.max(1, c.connectTimeout() / 1000));
         }
         long started = clock.millis();
         try (var conn = java.sql.DriverManager.getConnection(url, c.username(), password)) {

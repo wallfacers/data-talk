@@ -27,7 +27,7 @@ public class DefaultSqlStatementSplitters implements SqlStatementSplitters {
         if ("postgres".equalsIgnoreCase(connectionKind) || "postgresql".equalsIgnoreCase(connectionKind)) {
             return postgresSplitter.split(sql);
         }
-        if ("mysql".equalsIgnoreCase(connectionKind) || "mariadb".equalsIgnoreCase(connectionKind) || "apache_doris".equalsIgnoreCase(connectionKind)) {
+        if ("mysql".equalsIgnoreCase(connectionKind) || "mariadb".equalsIgnoreCase(connectionKind) || "apache_doris".equalsIgnoreCase(connectionKind) || "starrocks".equalsIgnoreCase(connectionKind)) {
             return mysqlSplitter.split(sql);
         }
         if ("oracle".equalsIgnoreCase(connectionKind)) {
@@ -42,8 +42,10 @@ public class DefaultSqlStatementSplitters implements SqlStatementSplitters {
             //  batch scripts, sqlcmd mode, etc.)
             return genericSplitter.split(sql);
         }
-        if ("starrocks".equalsIgnoreCase(connectionKind)) {
-            // StarRocks day-1 uses generic splitter (procedural SQL behavior unverified).
+        if ("trino".equalsIgnoreCase(connectionKind)) {
+            return genericSplitter.split(sql);
+        }
+        if ("presto".equalsIgnoreCase(connectionKind)) {
             return genericSplitter.split(sql);
         }
         if ("duckdb".equalsIgnoreCase(connectionKind)) {

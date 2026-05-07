@@ -1025,7 +1025,7 @@ class CalciteSqlRiskAnalyzerTest {
     }
     @Test
     void starrocks_createCatalogIsL3() {
-        assertThat(analyzer.analyze("CREATE CATALOG hive PROPERTIES (...)\"", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(analyzer.analyze("CREATE EXTERNAL CATALOG hive PROPERTIES ('type' = 'hive')", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L3);
     }
     @Test
     void starrocks_dropCatalogIsL3() {
@@ -1040,6 +1040,18 @@ class CalciteSqlRiskAnalyzerTest {
         assertThat(analyzer.analyze("ROUTINE LOAD db.label ON t FROM kafka", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L3);
     }
     @Test
+    void starrocks_streamLoadIsL3() {
+        assertThat(analyzer.analyze("STREAM LOAD label1 INTO t FROM 'file'", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void starrocks_brokerLoadIsL3() {
+        assertThat(analyzer.analyze("BROKER LOAD label1 INTO t FROM 'hdfs://path'", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void starrocks_cancelLoadIsL3() {
+        assertThat(analyzer.analyze("CANCEL LOAD label1", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
     void starrocks_exportIsL3() {
         assertThat(analyzer.analyze("EXPORT TABLE t TO 'hdfs://path'", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L3);
     }
@@ -1052,24 +1064,126 @@ class CalciteSqlRiskAnalyzerTest {
         assertThat(analyzer.analyze("SET GLOBAL query_timeout = 300", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L3);
     }
     @Test
+    void starrocks_setPasswordIsL3() {
+        assertThat(analyzer.analyze("SET PASSWORD FOR user = 'newpw'", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
     void starrocks_killIsL3() {
         assertThat(analyzer.analyze("KILL QUERY 12345", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L3);
     }
     @Test
-    void starrocks_deleteWithWhereIsL2() {
-        assertThat(analyzer.analyze("DELETE FROM t WHERE id = 1", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L2);
+    void starrocks_killTabSeparatedIsL3() {
+        assertThat(analyzer.analyze("KILL\tQUERY 12345", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L3);
     }
     @Test
-    void starrocks_deleteWithoutWhereIsL3() {
-        assertThat(analyzer.analyze("DELETE FROM t", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L3);
+    void starrocks_renameIsL3() {
+        assertThat(analyzer.analyze("RENAME TABLE t TO t2", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L3);
     }
     @Test
     void starrocks_submitTaskIsL3() {
         assertThat(analyzer.analyze("SUBMIT TASK AS CREATE TABLE t AS SELECT 1", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L3);
     }
     @Test
+    void starrocks_cancelTaskIsL3() {
+        assertThat(analyzer.analyze("CANCEL TASK 123", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void starrocks_insertOverwriteIsL3() {
+        assertThat(analyzer.analyze("INSERT OVERWRITE t SELECT * FROM s", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void starrocks_unrecognizedFallbackIsL3() {
+        // Any unrecognised StarRocks statement must default to L3, not null.
+        var result = analyzer.analyze("RESUME ROUTINE LOAD FOR db.label", Category.QUERY, "starrocks");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
     void starrocks_doesNotApplyDorisRules() {
         var result = analyzer.analyze("DECOMMISSION BACKEND 'host:9050'", Category.QUERY, "starrocks");
-        assertThat(result.riskLevel()).isNotEqualTo(RiskLevel.L1);
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+
+    // --- Trino risk classification ---
+    @Test
+    void trino_selectIsL1() {
+        assertThat(analyzer.analyze("SELECT * FROM t", Category.QUERY, "trino").riskLevel()).isEqualTo(RiskLevel.L1);
+    }
+    @Test
+    void trino_showTablesIsL1() {
+        assertThat(analyzer.analyze("SHOW TABLES", Category.QUERY, "trino").riskLevel()).isEqualTo(RiskLevel.L1);
+    }
+    @Test
+    void trino_describeIsL1() {
+        assertThat(analyzer.analyze("DESCRIBE t", Category.QUERY, "trino").riskLevel()).isEqualTo(RiskLevel.L1);
+    }
+    @Test
+    void trino_explainIsL1() {
+        assertThat(analyzer.analyze("EXPLAIN SELECT * FROM t", Category.QUERY, "trino").riskLevel()).isEqualTo(RiskLevel.L1);
+    }
+    // L2
+    @Test
+    void trino_insertIsL2() {
+        assertThat(analyzer.analyze("INSERT INTO t VALUES (1)", Category.QUERY, "trino").riskLevel()).isEqualTo(RiskLevel.L2);
+    }
+    @Test
+    void trino_createTableIsL2() {
+        assertThat(analyzer.analyze("CREATE TABLE t (id INT)", Category.QUERY, "trino").riskLevel()).isEqualTo(RiskLevel.L2);
+    }
+    @Test
+    void trino_createViewIsL2() {
+        assertThat(analyzer.analyze("CREATE VIEW v AS SELECT 1", Category.QUERY, "trino").riskLevel()).isEqualTo(RiskLevel.L2);
+    }
+    @Test
+    void trino_createMaterializedViewIsL2() {
+        assertThat(analyzer.analyze("CREATE MATERIALIZED VIEW mv AS SELECT 1", Category.QUERY, "trino").riskLevel()).isEqualTo(RiskLevel.L2);
+    }
+    @Test
+    void trino_updateIsL2() {
+        assertThat(analyzer.analyze("UPDATE t SET x = 1 WHERE id = 1", Category.QUERY, "trino").riskLevel()).isEqualTo(RiskLevel.L2);
+    }
+    @Test
+    void trino_deleteIsL2() {
+        assertThat(analyzer.analyze("DELETE FROM t WHERE id = 1", Category.QUERY, "trino").riskLevel()).isEqualTo(RiskLevel.L2);
+    }
+    // L3
+    @Test
+    void trino_dropIsL3() {
+        assertThat(analyzer.analyze("DROP TABLE t", Category.QUERY, "trino").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void trino_truncateIsL3() {
+        assertThat(analyzer.analyze("TRUNCATE TABLE t", Category.QUERY, "trino").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void trino_alterIsL3() {
+        assertThat(analyzer.analyze("ALTER TABLE t ADD COLUMN x INT", Category.QUERY, "trino").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void trino_grantIsL3() {
+        assertThat(analyzer.analyze("GRANT SELECT ON t TO user", Category.QUERY, "trino").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void trino_revokeIsL3() {
+        assertThat(analyzer.analyze("REVOKE SELECT ON t FROM user", Category.QUERY, "trino").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void trino_createUserIsL3() {
+        assertThat(analyzer.analyze("CREATE USER alice", Category.QUERY, "trino").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void trino_createRoleIsL3() {
+        assertThat(analyzer.analyze("CREATE ROLE admin", Category.QUERY, "trino").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void trino_callIsL3() {
+        assertThat(analyzer.analyze("CALL system.runtime.kill_query('query_id')", Category.QUERY, "trino").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void trino_setSessionIsL3() {
+        assertThat(analyzer.analyze("SET SESSION join_distribution = 'AUTOMATIC'", Category.QUERY, "trino").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void trino_resetSessionIsL3() {
+        assertThat(analyzer.analyze("RESET SESSION join_distribution", Category.QUERY, "trino").riskLevel()).isEqualTo(RiskLevel.L3);
     }
 }
