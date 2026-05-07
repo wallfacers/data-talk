@@ -59,7 +59,8 @@ class ConnectionTargetDiscoveryServiceTest {
               oracle_service_type TEXT,
               sqlserver_encrypt INTEGER NOT NULL DEFAULT 1,
               sqlserver_trust_server_certificate INTEGER NOT NULL DEFAULT 1,
-              sqlserver_instance_name TEXT
+              sqlserver_instance_name TEXT,
+              read_only INTEGER NOT NULL DEFAULT 0
             )
             """);
         connectionRepo = new ConnectionRepository(new JdbcTemplate(new SingleConnectionDataSource(metaConn, true)));
@@ -73,7 +74,7 @@ class ConnectionTargetDiscoveryServiceTest {
 
         connectionRepo.insert(new ConnectionRecord(
             "c1", "H2 主库", "h2", "localhost", 0, dbName, "sa", new byte[]{1}, null, 1L, 3000, null, null,
-            null, 1, true, null));
+            null, 1, true, null, false));
         Mockito.when(connectionService.decryptPassword("c1")).thenReturn("");
     }
 
@@ -100,7 +101,7 @@ class ConnectionTargetDiscoveryServiceTest {
         try {
             connectionRepo.insert(new ConnectionRecord(
                 "mysql-1", "MySQL", "mysql", "localhost", 3306, "app", "root", new byte[]{1}, null, 2L, 3000, null, null,
-            null, 1, true, null));
+            null, 1, true, null, false));
             Mockito.when(connectionService.decryptPassword("mysql-1")).thenReturn("");
 
             var result = service.discover("mysql-1");
@@ -127,7 +128,7 @@ class ConnectionTargetDiscoveryServiceTest {
         try {
             connectionRepo.insert(new ConnectionRecord(
                 "mariadb-1", "MariaDB", "mariadb", "localhost", 3306, "app", "root", new byte[]{1}, null, 2L, 3000, null, null,
-            null, 1, true, null));
+            null, 1, true, null, false));
             Mockito.when(connectionService.decryptPassword("mariadb-1")).thenReturn("");
 
             var result = service.discover("mariadb-1");
@@ -156,7 +157,7 @@ class ConnectionTargetDiscoveryServiceTest {
             3000,
             null,
             null,
-            null, 1, true, null));
+            null, 1, true, null, false));
         Mockito.when(connectionService.decryptPassword("sqlite-memory")).thenReturn("");
 
         var result = service.discover("sqlite-memory");
@@ -182,7 +183,7 @@ class ConnectionTargetDiscoveryServiceTest {
             3000,
             null,
             null,
-            null, 1, true, null));
+            null, 1, true, null, false));
         Mockito.when(connectionService.decryptPassword("sqlite-invalid")).thenReturn("");
 
         assertThatThrownBy(() -> service.discover("sqlite-invalid"))
@@ -208,7 +209,7 @@ class ConnectionTargetDiscoveryServiceTest {
             connectionRepo.insert(new ConnectionRecord(
                 "oracle-1", "Oracle", "oracle", "host", 1521, "orclpdb", "system",
                 new byte[]{1}, null, 10L, 3000, null, null,
-                null, 1, true, null));
+                null, 1, true, null, false));
             Mockito.when(connectionService.decryptPassword("oracle-1")).thenReturn("pw");
 
             var result = service.discover("oracle-1");
@@ -240,7 +241,7 @@ class ConnectionTargetDiscoveryServiceTest {
             connectionRepo.insert(new ConnectionRecord(
                 "sqlserver-1", "SQL Server", "sqlserver", "host", 1433, "mydb", "sa",
                 new byte[]{1}, null, 10L, 3000, null, null,
-                null, 1, true, null));
+                null, 1, true, null, false));
             Mockito.when(connectionService.decryptPassword("sqlserver-1")).thenReturn("pw");
 
             var result = service.discover("sqlserver-1");

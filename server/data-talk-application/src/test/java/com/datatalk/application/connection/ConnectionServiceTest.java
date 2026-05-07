@@ -218,13 +218,13 @@ class ConnectionServiceTest {
     void update_duckdb_preserves_read_only_when_null() {
         var repo = mock(ConnectionRepository.class);
         var vault = mock(SecretVault.class);
-        when(repo.findById("c1")).thenReturn(Optional.of(
-            new ConnectionRecord("c1", "DuckDB", "duckdb", "", 0, "/path/to/mydb.db", "",
+        when(repo.findById("duckdb-conn-001")).thenReturn(Optional.of(
+            new ConnectionRecord("duckdb-conn-001", "DuckDB", "duckdb", "", 0, "/path/to/mydb.db", "",
                 new byte[]{}, null, 1L, 3000, null, null, null, 1, true, null, true)));
         when(vault.seal(any())).thenReturn(new byte[]{});
         var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator());
 
-        svc.update("c1", "DuckDB Updated", "duckdb", "", 0, "/path/to/mydb.db", "", null, 3000, null, null, null, null, null);
+        svc.update("duckdb-conn-001", "DuckDB Updated", "duckdb", "", 0, "/path/to/mydb.db", "", null, 3000, null, null, null, null, null);
 
         var captor = org.mockito.ArgumentCaptor.forClass(ConnectionRecord.class);
         verify(repo).update(captor.capture());
@@ -235,13 +235,13 @@ class ConnectionServiceTest {
     void update_duckdb_sets_read_only_when_provided() {
         var repo = mock(ConnectionRepository.class);
         var vault = mock(SecretVault.class);
-        when(repo.findById("c1")).thenReturn(Optional.of(
-            new ConnectionRecord("c1", "DuckDB", "duckdb", "", 0, "/path/to/mydb.db", "",
+        when(repo.findById("duckdb-conn-002")).thenReturn(Optional.of(
+            new ConnectionRecord("duckdb-conn-002", "DuckDB", "duckdb", "", 0, "/path/to/mydb.db", "",
                 new byte[]{}, null, 1L, 3000, null, null, null, 1, true, null, false)));
         when(vault.seal(any())).thenReturn(new byte[]{});
         var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator());
 
-        svc.update("c1", "DuckDB RO", "duckdb", "", 0, "/path/to/mydb.db", "", null, 3000, null, null, null, null, true);
+        svc.update("duckdb-conn-002", "DuckDB RO", "duckdb", "", 0, "/path/to/mydb.db", "", null, 3000, null, null, null, null, true);
 
         var captor = org.mockito.ArgumentCaptor.forClass(ConnectionRecord.class);
         verify(repo).update(captor.capture());

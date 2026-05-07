@@ -111,4 +111,12 @@ class DefaultSqlStatementSplittersTest {
         assertThat(splitters.split("sqlserver", "SELECT 'a;b'; SELECT 1;"))
             .containsExactly("SELECT 'a;b'", "SELECT 1");
     }
+
+    @Test
+    void routes_duckdb_to_generic_splitter() {
+        // DuckDB day-1 uses generic single-statement splitting.
+        // DuckDB has no DELIMITER, no PL/SQL, no GO.
+        assertThat(splitters.split("duckdb", "SELECT 'a;b'; SELECT 1;"))
+            .containsExactly("SELECT 'a;b'", "SELECT 1");
+    }
 }

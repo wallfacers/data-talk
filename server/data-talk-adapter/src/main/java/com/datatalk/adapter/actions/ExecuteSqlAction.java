@@ -299,7 +299,8 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
             connection.oracleServiceType(),
             connection.sqlserverEncrypt(),
             connection.sqlserverTrustServerCertificate(),
-            connection.sqlserverInstanceName()
+            connection.sqlserverInstanceName(),
+            connection.readOnly()
         );
     }
 

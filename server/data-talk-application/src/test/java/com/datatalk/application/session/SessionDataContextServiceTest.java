@@ -62,7 +62,8 @@ class SessionDataContextServiceTest {
               oracle_service_type TEXT,
               sqlserver_encrypt INTEGER DEFAULT 1,
               sqlserver_trust_server_certificate INTEGER DEFAULT 1,
-              sqlserver_instance_name TEXT
+              sqlserver_instance_name TEXT,
+              read_only INTEGER NOT NULL DEFAULT 0
             )
             """);
         conn.createStatement().execute("""
@@ -106,7 +107,7 @@ class SessionDataContextServiceTest {
         connectionRepo.insert(new ConnectionRecord(
             "c1", "主库", "postgres", "localhost", 5432, "app_db", "u",
             new byte[]{1}, null, 100L, 3000, null, null,
-            null, 1, true, null));
+            null, 1, true, null, false));
         sessionRepo.upsert(new SessionRecord("s1", "c1", "测试会话", false, null, 100L, 100L, false));
     }
 

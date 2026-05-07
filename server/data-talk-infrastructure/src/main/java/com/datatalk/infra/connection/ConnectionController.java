@@ -2,14 +2,17 @@ package com.datatalk.infra.connection;
 
 import com.datatalk.dto.ConnectionCreateRequest;
 import com.datatalk.dto.ConnectionCreatedDto;
+import com.datatalk.dto.ConnectionDeleteBlockedDto;
 import com.datatalk.dto.ConnectionDto;
 import com.datatalk.dto.ConnectionTargetsDto;
 import com.datatalk.dto.ConnectionTestResultDto;
 import com.datatalk.dto.ConnectionUpdateRequest;
 import com.datatalk.application.connection.ConnectionContextRefreshService;
+import com.datatalk.application.connection.ConnectionDeletionService;
 import com.datatalk.application.connection.ConnectionInUseException;
 import com.datatalk.application.connection.ConnectionService;
 import com.datatalk.application.session.ConnectionTargetDiscoveryService;
+import com.datatalk.application.session.DeleteOutcome;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

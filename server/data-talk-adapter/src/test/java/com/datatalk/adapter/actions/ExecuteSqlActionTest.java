@@ -59,6 +59,7 @@ class ExecuteSqlActionTest {
             null,
             null,
             null,
+            null,
             null
         );
         sessRepo.upsert(new SessionRecord("s-exec", connectionId, "T", true, "oc-e", 0L, 0L, false));

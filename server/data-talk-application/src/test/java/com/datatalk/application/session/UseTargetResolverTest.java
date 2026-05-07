@@ -54,7 +54,8 @@ class UseTargetResolverTest {
               oracle_service_type TEXT,
               sqlserver_encrypt INTEGER DEFAULT 1,
               sqlserver_trust_server_certificate INTEGER DEFAULT 1,
-              sqlserver_instance_name TEXT
+              sqlserver_instance_name TEXT,
+              read_only INTEGER NOT NULL DEFAULT 0
             )
             """);
         conn.createStatement().execute("""
@@ -88,8 +89,8 @@ class UseTargetResolverTest {
         resolver = new UseTargetResolver(sessionRepo, connectionRepo, contextRepo, discovery, translator(),
             Clock.fixed(Instant.ofEpochMilli(1_710_000_100_000L), ZoneOffset.UTC));
 
-        connectionRepo.insert(new ConnectionRecord("c1", "主库", "h2", "localhost", 0, "app_db", "sa", new byte[]{1}, null, 1L, 3000, null, null, null, 1, true, null));
-        connectionRepo.insert(new ConnectionRecord("c2", "analytics", "h2", "localhost", 0, "analytics_db", "sa", new byte[]{1}, null, 1L, 3000, null, null, null, 1, true, null));
+        connectionRepo.insert(new ConnectionRecord("c1", "主库", "h2", "localhost", 0, "app_db", "sa", new byte[]{1}, null, 1L, 3000, null, null, null, 1, true, null, false));
+        connectionRepo.insert(new ConnectionRecord("c2", "analytics", "h2", "localhost", 0, "analytics_db", "sa", new byte[]{1}, null, 1L, 3000, null, null, null, 1, true, null, false));
         sessionRepo.upsert(new SessionRecord("s1", "c1", "ctx", false, null, 1L, 1L, false));
         contextRepo.upsert(new SessionDataContextRecord("s1", "c1", "主库", null, null, null, 1L));
     }

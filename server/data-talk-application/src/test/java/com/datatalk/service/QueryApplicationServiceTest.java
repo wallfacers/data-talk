@@ -95,7 +95,7 @@ class QueryApplicationServiceTest {
                 3000,
                 null,
                 null,
-            null, 1, true, null);
+            null, 1, true, null, false);
         var connection = new DbConnection(
                 "conn-1",
                 "Primary",
@@ -141,7 +141,7 @@ class QueryApplicationServiceTest {
             3000,
             null,
             null,
-            null, 1, true, null);
+            null, 1, true, null, false);
         when(sessionDataContextService.get("session-1")).thenReturn(new SessionDataContextRecord(
             "session-1",
             "conn-1",
