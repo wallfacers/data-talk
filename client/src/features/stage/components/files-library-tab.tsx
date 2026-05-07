@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { FileIcon, FileSpreadsheetIcon, FileTextIcon, NetworkIcon, ScrollTextIcon, SearchIcon } from 'lucide-react'
+import { toast } from 'sonner'
 import { useI18n } from '@/i18n/use-i18n'
 import { useConnectionStore } from '@/features/connection/store'
 import { useFileArtifactsStore } from '@/features/stage/stores/file-artifacts-store'
@@ -164,9 +165,20 @@ function LibrarySection({ kind, files }: { kind: FileArtifactKind; files: FileAr
 function ArchivedRow({ file }: { file: FileArtifact }) {
   const { t } = useI18n()
   const Icon = KIND_ICON[file.kind]
+  const discard = useFileArtifactsStore((s) => s.discard)
   const fromSessionLabel = file.sessionId
     ? t('files.library.fromSession', { title: file.sessionId })
     : t('files.library.fromSessionDeleted')
+
+  const handleCopyPath = async () => {
+    try {
+      await navigator.clipboard.writeText(file.physicalPath)
+      toast.success(t('files.library.copyPathOk'))
+    } catch {
+      toast.error(t('files.library.copyPathFail'))
+    }
+  }
+
   return (
     <div className="rounded-md border border-subtle bg-panel px-3 py-2">
       <div className="flex items-center justify-between gap-3">
@@ -186,14 +198,24 @@ function ArchivedRow({ file }: { file: FileArtifact }) {
         <span className={file.sessionId ? 'text-info' : 'text-soft'}>{fromSessionLabel}</span>
       </div>
       <div className="mt-2 flex justify-end gap-1.5">
-        <Button variant="ghost" size="sm" aria-label={t('files.action.open')}>
+        <Button variant="ghost" size="sm" aria-label={t('files.action.open')} disabled>
           {t('files.action.open')}
         </Button>
-        <Button variant="ghost" size="sm" aria-label={t('files.action.copyPath')}>
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label={t('files.action.copyPath')}
+          onClick={handleCopyPath}
+        >
           {t('files.action.copyPath')}
         </Button>
-        <Button variant="ghost" size="sm" aria-label={t('files.action.delete')}>
-          {t('files.action.delete')}
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label={t('files.action.discard')}
+          onClick={() => void discard(file.id)}
+        >
+          {t('files.action.discard')}
         </Button>
       </div>
     </div>

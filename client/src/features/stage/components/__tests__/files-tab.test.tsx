@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { FilesTab } from '../files-tab'
 import { useFileArtifactsStore } from '@/features/stage/stores/file-artifacts-store'
 import type { FileArtifact } from '@/services/api/file-artifacts'
@@ -121,7 +121,9 @@ describe('FilesTab', () => {
     await waitFor(() => expect(fetchForSession).toHaveBeenCalledWith('ses_a'))
 
     mockActiveSessionId.mockReturnValue('ses_b')
-    useFileArtifactsStore.setState({ bySessionId: {} })
+    await act(async () => {
+      useFileArtifactsStore.setState({ bySessionId: {} })
+    })
     rerender(<FilesTab />)
     await waitFor(() => expect(fetchForSession).toHaveBeenCalledWith('ses_b'))
     fetchForSession.mockRestore()

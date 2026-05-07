@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { FilesLibraryTab } from '../files-library-tab'
 import { useFileArtifactsStore } from '@/features/stage/stores/file-artifacts-store'
 import type { FileArtifact } from '@/services/api/file-artifacts'
@@ -128,7 +128,9 @@ describe('FilesLibraryTab', () => {
     await waitFor(() => expect(fetchForConnection).toHaveBeenCalledWith('conn_x'))
 
     mockActiveConnectionId.mockReturnValue('conn_y')
-    useFileArtifactsStore.setState({ byConnectionId: {} })
+    await act(async () => {
+      useFileArtifactsStore.setState({ byConnectionId: {} })
+    })
     rerender(<FilesLibraryTab />)
     await waitFor(() => expect(fetchForConnection).toHaveBeenCalledWith('conn_y'))
     fetchForConnection.mockRestore()
