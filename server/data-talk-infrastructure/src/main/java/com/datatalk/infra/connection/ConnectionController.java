@@ -9,7 +9,6 @@ import com.datatalk.dto.ConnectionTestResultDto;
 import com.datatalk.dto.ConnectionUpdateRequest;
 import com.datatalk.application.connection.ConnectionContextRefreshService;
 import com.datatalk.application.connection.ConnectionDeletionService;
-import com.datatalk.application.connection.ConnectionInUseException;
 import com.datatalk.application.connection.ConnectionService;
 import com.datatalk.application.session.ConnectionTargetDiscoveryService;
 import com.datatalk.application.session.DeleteOutcome;
@@ -28,15 +27,18 @@ public class ConnectionController {
     private final ConnectionService svc;
     private final ConnectionContextRefreshService contextRefreshService;
     private final ConnectionTargetDiscoveryService discovery;
+    private final ConnectionDeletionService deletionService;
 
     public ConnectionController(
         ConnectionService svc,
         ConnectionContextRefreshService contextRefreshService,
-        ConnectionTargetDiscoveryService discovery
+        ConnectionTargetDiscoveryService discovery,
+        ConnectionDeletionService deletionService
     ) {
         this.svc = svc;
         this.contextRefreshService = contextRefreshService;
         this.discovery = discovery;
+        this.deletionService = deletionService;
     }
 
     @PostMapping
@@ -76,15 +78,24 @@ public class ConnectionController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Object> delete(@PathVariable String id) {
-        try {
-            return svc.deleteById(id)
-                ? ResponseEntity.noContent().build()
-                : ResponseEntity.notFound().build();
-        } catch (ConnectionInUseException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(Map.of("error", e.getMessage()));
-        }
+    public ResponseEntity<?> delete(
+            @PathVariable String id,
+            @RequestParam(value = "force", defaultValue = "false") boolean force) {
+        DeleteOutcome out = deletionService.delete(id, force);
+        return switch (out) {
+            case DeleteOutcome.Ok ok -> ResponseEntity.noContent().build();
+            case DeleteOutcome.NotFound nf -> ResponseEntity.notFound().build();
+            case DeleteOutcome.BlockedByResources br -> ResponseEntity
+                    .status(HttpStatus.CONFLICT)
+                    .body(ConnectionDeleteBlockedDto.of(
+                            br.connectionId(),
+                            br.counts().sessions(),
+                            br.counts().candidates(),
+                            br.counts().temporary(),
+                            br.counts().archived()));
+            case DeleteOutcome.BlockedByCandidates bc ->
+                    throw new IllegalStateException("connection delete returned BlockedByCandidates unexpectedly");
+        };
     }
 
     @PostMapping("/{id}/test")
