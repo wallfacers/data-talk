@@ -1,9 +1,23 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, expect, it, vi } from 'vitest'
 import { MaintenancePage } from '../maintenance-page'
 import * as maintenanceApi from '@/services/api/maintenance'
 
 vi.mock('@/services/api/maintenance')
+vi.mock('@/i18n/use-i18n', () => ({
+  useI18n: () => ({ t: (k: string, params?: Record<string, unknown>) => {
+    if (k === 'maintenance.storageOverview.orphanedCount') return `Orphaned (${params?.n ?? 0})`
+    return k
+  }})
+}))
+vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: vi.fn() }) }))
+
+const qc = new QueryClient()
+
+function wrap(ui: React.ReactElement) {
+  return <QueryClientProvider client={qc}>{ui}</QueryClientProvider>
+}
 
 describe('MaintenancePage', () => {
   it('renders storage overview with breakdown items', async () => {
@@ -21,7 +35,7 @@ describe('MaintenancePage', () => {
     })
     vi.mocked(maintenanceApi.getOrphanedFiles).mockResolvedValue([])
 
-    render(<MaintenancePage />)
+    render(wrap(<MaintenancePage />))
 
     await waitFor(() => {
       expect(screen.getByText('/home/user/.data-talk')).toBeInTheDocument()
@@ -34,10 +48,10 @@ describe('MaintenancePage', () => {
       workdir: '/tmp', totalBytes: 0, breakdown: {}, lastHousekeepingRunAt: null,
     })
     vi.mocked(maintenanceApi.getOrphanedFiles).mockResolvedValue([])
-    render(<MaintenancePage />)
+    render(wrap(<MaintenancePage />))
     await waitFor(() => expect(screen.getByText('/tmp')).toBeInTheDocument())
 
     fireEvent.click(screen.getByRole('button', { name: /maintenance\.storageOverview\.refresh/ }))
-    expect(maintenanceApi.getStorageOverview).toHaveBeenCalledTimes(2)
+    expect(maintenanceApi.getStorageOverview).toHaveBeenCalledTimes(3)
   })
 })

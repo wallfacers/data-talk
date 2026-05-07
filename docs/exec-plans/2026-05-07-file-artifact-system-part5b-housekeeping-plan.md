@@ -15,7 +15,7 @@
 - Part 5a — Deletion Flow + Archive/Discard Endpoints（已完成，5b 依赖其 connection DELETE 行为）
 - Part 5b（本计划）— Housekeeping + Legacy 迁移 + Maintenance UI（含孤儿整理）
 
-**执行状态：** 未开始。
+**执行状态：** 已完成。
 
 **Pre-existing code:** `HousekeepingScheduler.java` and `LegacyMigrationRunner.java` exist as scaffolds in `server/data-talk-application/src/main/java/com/datatalk/application/housekeeping/`. Each needs enhancement (logging, DB ops, DtEvent). `DtEvent.LegacyMigrated` already exists in domain.
 
