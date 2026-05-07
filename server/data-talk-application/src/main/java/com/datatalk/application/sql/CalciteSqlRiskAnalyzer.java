@@ -74,6 +74,23 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
         "http_post"
     );
 
+    private static final Set<String> CLICKHOUSE_DANGEROUS_TABLE_FUNCTIONS = Set.of(
+        "remote",
+        "remotesecure",
+        "url",
+        "s3",
+        "s3cluster",
+        "file",
+        "hdfs",
+        "postgresql",
+        "mysql",
+        "mongodb",
+        "odbc",
+        "jdbc",
+        "cluster",
+        "clusterallreplicas"
+    );
+
     private static final Pattern DUCKDB_PRAGMA_NAME_PATTERN =
         Pattern.compile("(?is)^pragma\\s+([\\w.]+)");
 
@@ -157,6 +174,9 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
         }
         if (ConnectionKind.DUCKDB.equalsIgnoreCase(connectionKind)) {
             return classifyDuckDbSpecific(sql);
+        }
+        if (ConnectionKind.CLICKHOUSE.equalsIgnoreCase(connectionKind)) {
+            return classifyClickhouseSpecific(sql);
         }
         return null;
     }
@@ -308,6 +328,91 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
             for (String fn : DUCKDB_DANGEROUS_FUNCTIONS) {
                 if (normalized.contains(" from " + fn + "(") || normalized.contains(" from " + fn + " (")) {
                     return SqlRiskAnalysis.high("duckdb_file_access");
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private SqlRiskAnalysis classifyClickhouseSpecific(String sql) {
+        String normalized = stripLeadingComments(sql).toLowerCase(Locale.ROOT);
+        if (normalized.isEmpty()) return null;
+
+        // L1 safe: EXPLAIN
+        if (normalized.startsWith("explain ")) {
+            return SqlRiskAnalysis.low("clickhouse_explain");
+        }
+        // L1 safe: DESCRIBE / DESC
+        if (normalized.startsWith("describe ") || normalized.startsWith("describe\t")
+            || normalized.startsWith("desc ") || normalized.startsWith("desc\t")) {
+            return SqlRiskAnalysis.low("clickhouse_describe");
+        }
+
+        // L2 mutation: safe CREATE TABLE (no AS SELECT, not CREATE OR REPLACE)
+        if (normalized.startsWith("create table ") && !normalized.contains(" as ")) {
+            return SqlRiskAnalysis.medium("clickhouse_create_table");
+        }
+
+        // L3 destructive: CREATE DICTIONARY
+        if (normalized.startsWith("create dictionary")) {
+            return SqlRiskAnalysis.high("clickhouse_create_dictionary");
+        }
+        // L3 destructive: CREATE USER
+        if (normalized.startsWith("create user")) {
+            return SqlRiskAnalysis.high("clickhouse_create_user");
+        }
+        // L3 destructive: CREATE ROLE
+        if (normalized.startsWith("create role")) {
+            return SqlRiskAnalysis.high("clickhouse_create_role");
+        }
+
+        // L3 destructive: TRUNCATE
+        if (normalized.startsWith("truncate ") || normalized.startsWith("truncate\t")) {
+            return SqlRiskAnalysis.high("clickhouse_truncate");
+        }
+        // L3 destructive: RENAME
+        if (normalized.startsWith("rename table")) {
+            return SqlRiskAnalysis.high("clickhouse_rename");
+        }
+        // L3 destructive: ALTER
+        if (normalized.startsWith("alter ")) {
+            return SqlRiskAnalysis.high("clickhouse_alter");
+        }
+        // L3 destructive: GRANT
+        if (normalized.startsWith("grant ")) {
+            return SqlRiskAnalysis.high("clickhouse_grant");
+        }
+        // L3 destructive: REVOKE
+        if (normalized.startsWith("revoke ")) {
+            return SqlRiskAnalysis.high("clickhouse_revoke");
+        }
+
+        // Hard reject: KILL
+        if (normalized.startsWith("kill ")) {
+            return SqlRiskAnalysis.high("clickhouse_kill");
+        }
+        // Hard reject: SYSTEM
+        if (normalized.startsWith("system ")) {
+            return SqlRiskAnalysis.high("clickhouse_system");
+        }
+        // Hard reject: OPTIMIZE
+        if (normalized.startsWith("optimize ")) {
+            return SqlRiskAnalysis.high("clickhouse_optimize");
+        }
+        // Hard reject: ATTACH / DETACH (ClickHouse table attach/detach, not SQLite)
+        if (normalized.startsWith("attach ")) {
+            return SqlRiskAnalysis.high("clickhouse_attach");
+        }
+        if (normalized.startsWith("detach ")) {
+            return SqlRiskAnalysis.high("clickhouse_detach");
+        }
+
+        // Hard reject: SELECT-shaped external table functions (s3, url, file, remote, etc.)
+        if (normalized.contains(" from ")) {
+            for (String fn : CLICKHOUSE_DANGEROUS_TABLE_FUNCTIONS) {
+                if (normalized.contains(" from " + fn + "(") || normalized.contains(" from " + fn + " (")) {
+                    return SqlRiskAnalysis.high("clickhouse_external_access");
                 }
             }
         }

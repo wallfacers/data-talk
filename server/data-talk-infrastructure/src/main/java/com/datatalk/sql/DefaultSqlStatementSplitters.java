@@ -46,6 +46,11 @@ public class DefaultSqlStatementSplitters implements SqlStatementSplitters {
             // DuckDB has no DELIMITER, no PL/SQL, no GO — generic splitter is sufficient.
             return genericSplitter.split(sql);
         }
+        if ("clickhouse".equalsIgnoreCase(connectionKind)) {
+            // ClickHouse has no DELIMITER, no PL/SQL, no GO — generic splitter handles
+            // comments (-- and /* */), single-quoted strings, FORMAT, and SETTINGS clauses.
+            return genericSplitter.split(sql);
+        }
         return genericSplitter.split(sql);
     }
 }

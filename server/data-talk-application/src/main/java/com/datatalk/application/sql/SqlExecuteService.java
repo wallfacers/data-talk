@@ -576,6 +576,12 @@ public class SqlExecuteService {
             && hasText(context.database())) {
             connection.setCatalog(context.database());
         }
+        if ("clickhouse".equalsIgnoreCase(context.connection().kind())
+            && hasText(context.database())) {
+            try (var stmt = connection.createStatement()) {
+                stmt.execute("USE " + context.database());
+            }
+        }
         if (("postgres".equalsIgnoreCase(context.connection().kind())
             || "postgresql".equalsIgnoreCase(context.connection().kind())
             || "h2".equalsIgnoreCase(context.connection().kind())

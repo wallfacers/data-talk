@@ -119,4 +119,36 @@ class DefaultSqlStatementSplittersTest {
         assertThat(splitters.split("duckdb", "SELECT 'a;b'; SELECT 1;"))
             .containsExactly("SELECT 'a;b'", "SELECT 1");
     }
+
+    @Test
+    void routes_clickhouse_to_generic_splitter() {
+        // ClickHouse uses generic splitter — handles comments, strings, FORMAT/SETTINGS clauses.
+        assertThat(splitters.split("clickhouse", "SELECT 'a;b'; SELECT 1;"))
+            .containsExactly("SELECT 'a;b'", "SELECT 1");
+    }
+
+    @Test
+    void clickhouse_handlesCommentsAndStrings() {
+        assertThat(splitters.split("clickhouse", """
+            -- comment; with semicolon
+            SELECT 'semi;colon';
+            /* block; comment */
+            SELECT 1;
+            """))
+            .containsExactly(
+                """
+                -- comment; with semicolon
+                SELECT 'semi;colon'""",
+                """
+                /* block; comment */
+                SELECT 1"""
+            );
+    }
+
+    @Test
+    void clickhouse_handlesFormatClause() {
+        // FORMAT clause should not cause splitting issues
+        assertThat(splitters.split("clickhouse", "SELECT 1 FORMAT TabSeparated; SELECT 2;"))
+            .containsExactly("SELECT 1 FORMAT TabSeparated", "SELECT 2");
+    }
 }

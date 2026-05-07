@@ -559,4 +559,277 @@ class CalciteSqlRiskAnalyzerTest {
         assertThat(result.riskLevel()).isNull();
         assertThat(result.fallbackUsed()).isTrue();
     }
+
+    // --- ClickHouse risk classification ---
+
+    // L1 safe: SELECT, WITH, SHOW, DESCRIBE, EXPLAIN
+    @Test
+    void clickhouse_selectIsL1() {
+        var result = analyzer.analyze("SELECT * FROM users", Category.QUERY, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L1);
+        assertThat(result.fallbackUsed()).isFalse();
+    }
+
+    @Test
+    void clickhouse_withSelectIsL1() {
+        var result = analyzer.analyze("WITH cte AS (SELECT 1) SELECT * FROM cte", Category.QUERY, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L1);
+        assertThat(result.fallbackUsed()).isFalse();
+    }
+
+    @Test
+    void clickhouse_showTablesIsL1() {
+        var result = analyzer.analyze("SHOW TABLES", Category.QUERY, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L1);
+    }
+
+    @Test
+    void clickhouse_describeIsL1() {
+        var result = analyzer.analyze("DESCRIBE users", Category.QUERY, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L1);
+        assertThat(result.reason()).isEqualTo("clickhouse_describe");
+    }
+
+    @Test
+    void clickhouse_explainIsL1() {
+        var result = analyzer.analyze("EXPLAIN SELECT * FROM users", Category.QUERY, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L1);
+        assertThat(result.reason()).isEqualTo("clickhouse_explain");
+    }
+
+    // L2 mutation: bounded INSERT (single table, no subquery source), safe CREATE TABLE
+    @Test
+    void clickhouse_boundedInsertIsL2() {
+        var result = analyzer.analyze("INSERT INTO users(id, name) VALUES (1, 'Alice')", Category.MUTATION, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L2);
+    }
+
+    @Test
+    void clickhouse_createTableIsL2() {
+        var result = analyzer.analyze(
+            "CREATE TABLE users (id UInt64, name String) ENGINE = MergeTree ORDER BY id",
+            Category.DDL, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L2);
+        assertThat(result.reason()).isEqualTo("clickhouse_create_table");
+    }
+
+    // L3 destructive: DROP, TRUNCATE, broad ALTER, RENAME, GRANT/REVOKE, CREATE USER/ROLE, dictionaries
+    @Test
+    void clickhouse_dropTableIsL3() {
+        var result = analyzer.analyze("DROP TABLE users", Category.DDL, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+
+    @Test
+    void clickhouse_truncateIsL3() {
+        var result = analyzer.analyze("TRUNCATE TABLE users", Category.DDL, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("clickhouse_truncate");
+    }
+
+    @Test
+    void clickhouse_alterIsL3() {
+        var result = analyzer.analyze("ALTER TABLE users ADD COLUMN email String", Category.DDL, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("clickhouse_alter");
+    }
+
+    @Test
+    void clickhouse_renameIsL3() {
+        var result = analyzer.analyze("RENAME TABLE users TO customers", Category.DDL, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("clickhouse_rename");
+    }
+
+    @Test
+    void clickhouse_grantIsL3() {
+        var result = analyzer.analyze("GRANT SELECT ON users TO reader", Category.DDL, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("clickhouse_grant");
+    }
+
+    @Test
+    void clickhouse_revokeIsL3() {
+        var result = analyzer.analyze("REVOKE SELECT ON users FROM reader", Category.DDL, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("clickhouse_revoke");
+    }
+
+    @Test
+    void clickhouse_createUserIsL3() {
+        var result = analyzer.analyze("CREATE USER admin IDENTIFIED BY 'secret'", Category.DDL, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("clickhouse_create_user");
+    }
+
+    @Test
+    void clickhouse_createRoleIsL3() {
+        var result = analyzer.analyze("CREATE ROLE analyst", Category.DDL, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("clickhouse_create_role");
+    }
+
+    @Test
+    void clickhouse_createDictionaryIsL3() {
+        var result = analyzer.analyze(
+            "CREATE DICTIONARY my_dict (id UInt64, name String) SOURCE(CLICKHOUSE(host 'localhost' port 9000))",
+            Category.DDL, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("clickhouse_create_dictionary");
+    }
+
+    // Hard reject: KILL QUERY, SYSTEM, OPTIMIZE, ATTACH, DETACH
+    @Test
+    void clickhouse_killQueryIsL3() {
+        var result = analyzer.analyze("KILL QUERY WHERE query_id = 'abc'", Category.QUERY, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("clickhouse_kill");
+    }
+
+    @Test
+    void clickhouse_systemIsL3() {
+        var result = analyzer.analyze("SYSTEM FLUSH LOGS", Category.QUERY, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("clickhouse_system");
+    }
+
+    @Test
+    void clickhouse_optimizeIsL3() {
+        var result = analyzer.analyze("OPTIMIZE TABLE users FINAL", Category.QUERY, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("clickhouse_optimize");
+    }
+
+    @Test
+    void clickhouse_attachIsL3() {
+        var result = analyzer.analyze("ATTACH TABLE users", Category.QUERY, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("clickhouse_attach");
+    }
+
+    @Test
+    void clickhouse_detachIsL3() {
+        var result = analyzer.analyze("DETACH TABLE users", Category.QUERY, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("clickhouse_detach");
+    }
+
+    // Hard reject: SELECT-shaped file/network functions
+    @Test
+    void clickhouse_remoteFunctionIsL3() {
+        var result = analyzer.analyze("SELECT * FROM remote('host:9000', 'db', 'table', 'user', 'pass')", Category.QUERY, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("clickhouse_external_access");
+    }
+
+    @Test
+    void clickhouse_remoteSecureFunctionIsL3() {
+        var result = analyzer.analyze("SELECT * FROM remoteSecure('host:9000', 'db', 'table')", Category.QUERY, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("clickhouse_external_access");
+    }
+
+    @Test
+    void clickhouse_urlFunctionIsL3() {
+        var result = analyzer.analyze("SELECT * FROM url('http://example.com/data.csv')", Category.QUERY, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("clickhouse_external_access");
+    }
+
+    @Test
+    void clickhouse_s3FunctionIsL3() {
+        var result = analyzer.analyze("SELECT * FROM s3('https://bucket/data.parquet')", Category.QUERY, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("clickhouse_external_access");
+    }
+
+    @Test
+    void clickhouse_s3ClusterFunctionIsL3() {
+        var result = analyzer.analyze("SELECT * FROM s3Cluster('my_cluster', 'https://bucket/data.parquet')", Category.QUERY, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("clickhouse_external_access");
+    }
+
+    @Test
+    void clickhouse_fileFunctionIsL3() {
+        var result = analyzer.analyze("SELECT * FROM file('data.csv')", Category.QUERY, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("clickhouse_external_access");
+    }
+
+    @Test
+    void clickhouse_hdfsFunctionIsL3() {
+        var result = analyzer.analyze("SELECT * FROM hdfs('hdfs://namenode/data')", Category.QUERY, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("clickhouse_external_access");
+    }
+
+    @Test
+    void clickhouse_postgresqlFunctionIsL3() {
+        var result = analyzer.analyze("SELECT * FROM postgresql('host:5432', 'db', 'table', 'user', 'pass')", Category.QUERY, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("clickhouse_external_access");
+    }
+
+    @Test
+    void clickhouse_mysqlFunctionIsL3() {
+        var result = analyzer.analyze("SELECT * FROM mysql('host:3306', 'db', 'table', 'user', 'pass')", Category.QUERY, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("clickhouse_external_access");
+    }
+
+    @Test
+    void clickhouse_mongodbFunctionIsL3() {
+        var result = analyzer.analyze("SELECT * FROM mongodb('host:27017', 'db', 'collection', 'user', 'pass')", Category.QUERY, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("clickhouse_external_access");
+    }
+
+    @Test
+    void clickhouse_odbcFunctionIsL3() {
+        var result = analyzer.analyze("SELECT * FROM odbc('dsn', 'table')", Category.QUERY, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("clickhouse_external_access");
+    }
+
+    @Test
+    void clickhouse_jdbcFunctionIsL3() {
+        var result = analyzer.analyze("SELECT * FROM jdbc('jdbc:url', 'table')", Category.QUERY, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("clickhouse_external_access");
+    }
+
+    @Test
+    void clickhouse_clusterFunctionIsL3() {
+        var result = analyzer.analyze("SELECT * FROM cluster('my_cluster', 'db', 'table')", Category.QUERY, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("clickhouse_external_access");
+    }
+
+    @Test
+    void clickhouse_clusterAllReplicasFunctionIsL3() {
+        var result = analyzer.analyze("SELECT * FROM clusterAllReplicas('my_cluster', 'db', 'table')", Category.QUERY, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("clickhouse_external_access");
+    }
+
+    @Test
+    void clickhouse_doesNotApplySqliteMaintenanceRules() {
+        var result = analyzer.analyze("VACUUM", Category.QUERY, "clickhouse");
+        assertThat(result.riskLevel()).isNull();
+        assertThat(result.fallbackUsed()).isTrue();
+    }
+
+    @Test
+    void clickhouse_standardSelectFallsThroughToCalcite() {
+        var result = analyzer.analyze("SELECT * FROM orders WHERE id = 1", Category.QUERY, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L1);
+        assertThat(result.fallbackUsed()).isFalse();
+    }
+
+    @Test
+    void clickhouse_standardInsertFallsThroughToCalcite() {
+        var result = analyzer.analyze("INSERT INTO orders(id) VALUES (1)", Category.MUTATION, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L2);
+    }
 }
