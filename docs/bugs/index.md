@@ -20,24 +20,25 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 | ID | Title | Status | Priority | Owner |
 |----|-------|--------|----------|-------|
-| BUG-0004 | Fork to Designer 不创建 er_designer tab | fixed | P1 | agent |
-| BUG-0005 | 页面刷新后 ER Inspector Tab 不恢复 | fixed | P1 | agent |
-| BUG-0006 | 页面刷新后 ER Designer Tab targetConnectionId 丢失 | fixed | P2 | agent |
+| —  | 当前无 in-progress BUG | — | — | — |
 
 ## Recently Closed（最近 30 天，status = verified | closed）
 
 | ID | Title | Status | Closed Date | FixCommit |
 |----|-------|--------|-------------|-----------|
-| BUG-0001 | ER Inspector "Add virtual relation" 按钮无效 | fixed | 2026-05-06 | — |
-| BUG-0002 | ER Designer bind_target 成功但 diff_against_db / generate_ddl 仍拒绝 | fixed | 2026-05-06 | — |
+| BUG-0001 | ER Inspector "Add virtual relation" 按钮无效 | verified | 2026-05-06 | — |
+| BUG-0002 | ER Designer bind_target 成功但 diff_against_db / generate_ddl 仍拒绝 | verified | 2026-05-06 | — |
+| BUG-0004 | Fork to Designer 不创建 er_designer tab | verified | 2026-05-07 | 9d67946 |
+| BUG-0005 | 页面刷新后 ER Inspector Tab 不恢复 | verified | 2026-05-07 | 9d67946 |
+| BUG-0006 | 页面刷新后 ER Designer Tab targetConnectionId 丢失 | verified | 2026-05-07 | 9d67946 |
 
 ## By Module（聚合视图，仅列 open + in-progress）
 
-- **ER Entry & Persistence**：BUG-0004 (P1), BUG-0005 (P1), BUG-0006 (P2)
+- （无）
 
 ## By Source（聚合视图，仅列 open + in-progress）
 
-- **e2e-playwright**：BUG-0004 (P1), BUG-0005 (P1), BUG-0006 (P2)
+- （无）
 
 ## Wontfix / Duplicate（终态归档，无时间限制）
 

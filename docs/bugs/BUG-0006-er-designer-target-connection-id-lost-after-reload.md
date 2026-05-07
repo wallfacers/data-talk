@@ -1,7 +1,7 @@
 ---
 id: BUG-0006
 title: 页面刷新后 ER Designer Tab targetConnectionId 丢失
-status: fixed
+status: verified
 priority: P2
 source: e2e-playwright
 modules:
@@ -9,8 +9,9 @@ modules:
   - er-designer
 discovered: 2026-05-07
 discoveredBy: agent
-fixCommit: null
+fixCommit: 9d67946
 fixPlanRef: null
+closedDate: 2026-05-07
 duplicateOf: null
 regression: false
 ---

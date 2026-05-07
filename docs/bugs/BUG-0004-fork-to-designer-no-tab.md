@@ -1,7 +1,7 @@
 ---
 id: BUG-0004
 title: Fork to Designer 不创建 er_designer tab
-status: fixed
+status: verified
 priority: P1
 source: e2e-playwright
 modules:
@@ -9,8 +9,9 @@ modules:
   - stage
 discovered: 2026-05-07
 discoveredBy: agent
-fixCommit: null
+fixCommit: 9d67946
 fixPlanRef: null
+closedDate: 2026-05-07
 duplicateOf: null
 regression: false
 ---

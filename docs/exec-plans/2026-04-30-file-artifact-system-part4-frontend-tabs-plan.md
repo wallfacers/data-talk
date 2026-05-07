@@ -1,6 +1,6 @@
 # File Artifact System · Part 4 — Frontend Tabs
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 落地 file artifact 系统的前端表层 —— Stage Files Tab（session-scope）、Files Library Tab（workspace-scope）、Chat 内联 file artifact 卡片，配套 `useFileArtifactsStore` Zustand store + `file-artifacts` REST 客户端 + DtEvent SSE 订阅 + i18n。本 Part 完成后用户可在 Stage 看到 AI 写入 session 子目录的临时文件、把候选标记或归档到 connection 资产库、在 Chat 里看到 `datatalk_archive_artifact` 工具结果卡片并直接归档/丢弃。终局确认 modal、Settings Maintenance 与 session/connection DELETE 两阶段流程留 Part 5。
 
@@ -12,12 +12,13 @@
 
 **关联 Part：**
 - Part 1 — Migration + Domain（已完成）
-- Part 2 — ArtifactWatcherService（io.methvin）+ reconcile + symlink 拒绝（待补）
-- Part 3 — `ArchiveArtifactActionHandler` MCP + classpath AGENTS.md + AgentsTemplateContractTest（待补）
-- Part 4（本计划）— Frontend Files Tab + Files Library Tab + Chat 内联卡片 + Zustand store + tab-type-registry + i18n
-- Part 5 — session/connection DELETE 两阶段 + 终局确认 modal + HousekeepingScheduler + LegacyMigrationRunner + Settings Maintenance + archive/discard REST 端点上线 + delete-session-modal & maintenance i18n
+- Part 2 — ArtifactWatcherService（io.methvin）+ reconcile + symlink 拒绝（已完成）
+- Part 3 — `ArchiveArtifactActionHandler` MCP + classpath AGENTS.md + AgentsTemplateContractTest（已完成）
+- Part 4（本计划）— Frontend Files Tab + Files Library Tab + Chat 内联卡片 + Zustand store + tab-type-registry + i18n（已完成）
+- Part 5a — Deletion Flow & Archive/Discard Endpoints（已完成）
+- Part 5b — Housekeeping & Maintenance（待实施）
 
-**执行状态：** 未开始。完成本 Part 后必须在 `docs/exec-plans/index.md` 把本行从「活跃」迁到「已完成」（CLAUDE.md "Post-Execution Document Housekeeping"）。
+**执行状态：** 已完成。代码已提交 `59b45e5` + `63eab22`，前端测试全绿。`archiveFile` / `discardFile` 占位调用已由 Part 5a 切为真实端点。
 
 ---
 
@@ -126,14 +127,14 @@
 
 ## Task 1: 注册计划
 
-- [ ] 已存在 `docs/exec-plans/2026-04-30-file-artifact-system-part4-frontend-tabs-plan.md`（本文件）
-- [ ] 在 `docs/exec-plans/index.md` 「活跃计划」表格替换 Part 4 占位行为正式链接：
+- [x] 已存在 `docs/exec-plans/2026-04-30-file-artifact-system-part4-frontend-tabs-plan.md`（本文件）
+- [x] 在 `docs/exec-plans/index.md` 「活跃计划」表格替换 Part 4 占位行为正式链接：
 
 ```markdown
 | [File Artifact System · Part 4 — Frontend Tabs](./2026-04-30-file-artifact-system-part4-frontend-tabs-plan.md) | 2026-04-30 | Stage Files Tab + Files Library Tab + Chat 内联 `datatalk_archive_artifact` 卡片 + `useFileArtifactsStore` Zustand store + `file-artifacts` REST 客户端 + 5 个 `file_artifact.*` SSE event 订阅 + i18n keys（不含终局 modal / maintenance）+ 完整 vitest 覆盖。 |
 ```
 
-- [ ] commit:
+- [x] commit:
 
 ```bash
 git add docs/exec-plans/2026-04-30-file-artifact-system-part4-frontend-tabs-plan.md \
@@ -147,7 +148,7 @@ git commit -m "docs(exec-plans): register file artifact system part 4 plan"
 
 ### 2.1 写文件
 
-- [ ] 创建 `client/src/services/api/file-artifacts.ts`：
+- [x] 创建 `client/src/services/api/file-artifacts.ts`：
 
 ```ts
 import { http } from '@/services/http'
@@ -221,7 +222,7 @@ export function discardFile(fileArtifactId: string): Promise<void> {
 
 ### 2.2 类型检查
 
-- [ ] 运行：
+- [x] 运行：
 
 ```bash
 cd client && npx tsc --noEmit
@@ -231,7 +232,7 @@ cd client && npx tsc --noEmit
 
 ### 2.3 commit
 
-- [ ] commit：
+- [x] commit：
 
 ```bash
 git add client/src/services/api/file-artifacts.ts
@@ -244,7 +245,7 @@ git commit -m "feat(api): add file-artifacts REST client and TS types"
 
 ### 3.1 先写测试（TDD red）
 
-- [ ] 创建 `client/src/features/stage/stores/__tests__/file-artifacts-store.test.ts`：
+- [x] 创建 `client/src/features/stage/stores/__tests__/file-artifacts-store.test.ts`：
 
 ```ts
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -396,7 +397,7 @@ describe('useFileArtifactsStore', () => {
 
 ### 3.2 实现 store
 
-- [ ] 创建 `client/src/features/stage/stores/file-artifacts-store.ts`：
+- [x] 创建 `client/src/features/stage/stores/file-artifacts-store.ts`：
 
 ```ts
 import { create } from 'zustand'
@@ -664,7 +665,7 @@ export const EMPTY_CONNECTION_FILE_GROUPS = EMPTY_KIND_GROUPS
 
 ### 3.3 跑测试
 
-- [ ] 运行：
+- [x] 运行：
 
 ```bash
 cd client && npm test -- --run client/src/features/stage/stores/__tests__/file-artifacts-store.test.ts
@@ -674,13 +675,13 @@ cd client && npm test -- --run client/src/features/stage/stores/__tests__/file-a
 
 ### 3.4 类型检查 + commit
 
-- [ ] 运行：
+- [x] 运行：
 
 ```bash
 cd client && npx tsc --noEmit
 ```
 
-- [ ] commit：
+- [x] commit：
 
 ```bash
 git add client/src/features/stage/stores/file-artifacts-store.ts \
@@ -694,13 +695,13 @@ git commit -m "feat(stage): add useFileArtifactsStore with DtEvent dispatch and 
 
 ### 4.1 修改 registry
 
-- [ ] 修改 `client/src/features/stage/registry/tab-type-registry.ts`，在 `import` 末尾加 `PackageIcon`：
+- [x] 修改 `client/src/features/stage/registry/tab-type-registry.ts`，在 `import` 末尾加 `PackageIcon`：
 
 ```ts
 import { BarChart2Icon, DatabaseIcon, FileTextIcon, LayoutIcon, NetworkIcon, PackageIcon, SearchCodeIcon, TableIcon } from 'lucide-react'
 ```
 
-- [ ] 在 `TAB_TYPE_REGISTRY` 末尾追加两条目：
+- [x] 在 `TAB_TYPE_REGISTRY` 末尾追加两条目：
 
 ```ts
   files: {
@@ -725,7 +726,7 @@ import { BarChart2Icon, DatabaseIcon, FileTextIcon, LayoutIcon, NetworkIcon, Pac
 
 ### 4.2 类型检查
 
-- [ ] 运行：
+- [x] 运行：
 
 ```bash
 cd client && npx tsc --noEmit
@@ -735,7 +736,7 @@ cd client && npx tsc --noEmit
 
 ### 4.3 commit
 
-- [ ] commit：
+- [x] commit：
 
 ```bash
 git add client/src/features/stage/registry/tab-type-registry.ts
@@ -748,7 +749,7 @@ git commit -m "feat(stage): register FILES and FILES_LIBRARY tab types"
 
 ### 5.1 修改 messages.ts
 
-- [ ] 修改 `client/src/i18n/messages.ts`，在 zh-CN 块的 `tabType.erDesigner` 之后追加：
+- [x] 修改 `client/src/i18n/messages.ts`，在 zh-CN 块的 `tabType.erDesigner` 之后追加：
 
 ```ts
     'tabType.files': '文件',
@@ -796,7 +797,7 @@ git commit -m "feat(stage): register FILES and FILES_LIBRARY tab types"
     'files.discardError': '丢弃失败：{message}',
 ```
 
-- [ ] 在 en-US 块对应位置（同样紧邻 `tabType.erDesigner`）追加：
+- [x] 在 en-US 块对应位置（同样紧邻 `tabType.erDesigner`）追加：
 
 ```ts
     'tabType.files': 'Files',
@@ -846,7 +847,7 @@ git commit -m "feat(stage): register FILES and FILES_LIBRARY tab types"
 
 ### 5.2 类型检查 + commit
 
-- [ ] 运行：
+- [x] 运行：
 
 ```bash
 cd client && npx tsc --noEmit
@@ -854,7 +855,7 @@ cd client && npx tsc --noEmit
 
 预期：零错误（messages 是 union literal 类型，新 key 自动并入）。
 
-- [ ] commit：
+- [x] commit：
 
 ```bash
 git add client/src/i18n/messages.ts
@@ -867,13 +868,13 @@ git commit -m "feat(i18n): add file artifacts keys (zh + en) for Files Tab and L
 
 ### 6.1 修改 use-channel.ts
 
-- [ ] 修改 `client/src/services/channel/use-channel.ts`，import 增加：
+- [x] 修改 `client/src/services/channel/use-channel.ts`，import 增加：
 
 ```ts
 import { useFileArtifactsStore } from '@/features/stage/stores/file-artifacts-store'
 ```
 
-- [ ] 在 `buildEventSink` 的 `if/else if` 链最末尾（`action.invoke` 之后、`}` 之前）追加：
+- [x] 在 `buildEventSink` 的 `if/else if` 链最末尾（`action.invoke` 之后、`}` 之前）追加：
 
 ```ts
     } else if (
@@ -898,7 +899,7 @@ import { useFileArtifactsStore } from '@/features/stage/stores/file-artifacts-st
 
 ### 6.2 类型检查
 
-- [ ] 运行：
+- [x] 运行：
 
 ```bash
 cd client && npx tsc --noEmit
@@ -908,7 +909,7 @@ cd client && npx tsc --noEmit
 
 ### 6.3 commit
 
-- [ ] commit：
+- [x] commit：
 
 ```bash
 git add client/src/services/channel/use-channel.ts
@@ -921,7 +922,7 @@ git commit -m "feat(channel): subscribe file_artifact.* DtEvent stream to useFil
 
 ### 7.1 先写测试
 
-- [ ] 创建 `client/src/features/stage/components/__tests__/file-artifact-status-badge.test.tsx`：
+- [x] 创建 `client/src/features/stage/components/__tests__/file-artifact-status-badge.test.tsx`：
 
 ```tsx
 import { describe, expect, it, vi } from 'vitest'
@@ -972,7 +973,7 @@ describe('FileArtifactStatusBadge', () => {
 
 ### 7.2 实现组件
 
-- [ ] 创建 `client/src/features/stage/components/file-artifact-status-badge.tsx`：
+- [x] 创建 `client/src/features/stage/components/file-artifact-status-badge.tsx`：
 
 ```tsx
 import type { FileArtifactStatus } from '@/services/api/file-artifacts'
@@ -1025,7 +1026,7 @@ export function FileArtifactStatusBadge({ status, className }: FileArtifactStatu
 
 ### 7.3 跑测试 + commit
 
-- [ ] 运行：
+- [x] 运行：
 
 ```bash
 cd client && npm test -- --run client/src/features/stage/components/__tests__/file-artifact-status-badge.test.tsx
@@ -1033,13 +1034,13 @@ cd client && npm test -- --run client/src/features/stage/components/__tests__/fi
 
 预期：5 个测试全绿。
 
-- [ ] 运行：
+- [x] 运行：
 
 ```bash
 cd client && npx tsc --noEmit
 ```
 
-- [ ] commit：
+- [x] commit：
 
 ```bash
 git add client/src/features/stage/components/file-artifact-status-badge.tsx \
@@ -1053,7 +1054,7 @@ git commit -m "feat(stage): add FileArtifactStatusBadge with double-channel (ico
 
 ### 8.1 先写测试
 
-- [ ] 创建 `client/src/features/stage/components/__tests__/files-tab.test.tsx`：
+- [x] 创建 `client/src/features/stage/components/__tests__/files-tab.test.tsx`：
 
 ```tsx
 import { describe, expect, it, vi, beforeEach } from 'vitest'
@@ -1181,7 +1182,7 @@ describe('FilesTab', () => {
 
 ### 8.2 实现组件
 
-- [ ] 创建 `client/src/features/stage/components/files-tab.tsx`：
+- [x] 创建 `client/src/features/stage/components/files-tab.tsx`：
 
 ```tsx
 import { useEffect, useState } from 'react'
@@ -1389,7 +1390,7 @@ function CandidateFileRow({ file, sessionId }: { file: FileArtifact; sessionId: 
 
 ### 8.3 跑测试 + commit
 
-- [ ] 运行：
+- [x] 运行：
 
 ```bash
 cd client && npm test -- --run client/src/features/stage/components/__tests__/files-tab.test.tsx
@@ -1397,13 +1398,13 @@ cd client && npm test -- --run client/src/features/stage/components/__tests__/fi
 
 预期：6 个测试全绿。
 
-- [ ] 运行：
+- [x] 运行：
 
 ```bash
 cd client && npx tsc --noEmit
 ```
 
-- [ ] commit：
+- [x] commit：
 
 ```bash
 git add client/src/features/stage/components/files-tab.tsx \
@@ -1417,7 +1418,7 @@ git commit -m "feat(stage): add Files Tab with TEMPORARY/CANDIDATES groups and p
 
 ### 9.1 先写测试
 
-- [ ] 创建 `client/src/features/stage/components/__tests__/files-library-tab.test.tsx`：
+- [x] 创建 `client/src/features/stage/components/__tests__/files-library-tab.test.tsx`：
 
 ```tsx
 import { describe, expect, it, vi, beforeEach } from 'vitest'
@@ -1544,7 +1545,7 @@ describe('FilesLibraryTab', () => {
 
 ### 9.2 实现组件
 
-- [ ] 创建 `client/src/features/stage/components/files-library-tab.tsx`：
+- [x] 创建 `client/src/features/stage/components/files-library-tab.tsx`：
 
 ```tsx
 import { useEffect, useMemo, useState } from 'react'
@@ -1738,7 +1739,7 @@ function ArchivedRow({ file }: { file: FileArtifact }) {
 
 ### 9.3 跑测试 + commit
 
-- [ ] 运行：
+- [x] 运行：
 
 ```bash
 cd client && npm test -- --run client/src/features/stage/components/__tests__/files-library-tab.test.tsx
@@ -1746,13 +1747,13 @@ cd client && npm test -- --run client/src/features/stage/components/__tests__/fi
 
 预期：6 个测试全绿。
 
-- [ ] 运行：
+- [x] 运行：
 
 ```bash
 cd client && npx tsc --noEmit
 ```
 
-- [ ] commit：
+- [x] commit：
 
 ```bash
 git add client/src/features/stage/components/files-library-tab.tsx \
@@ -1766,14 +1767,14 @@ git commit -m "feat(stage): add Files Library Tab with kind sections, search, ki
 
 ### 10.1 修改 dispatcher
 
-- [ ] 修改 `client/src/features/stage/components/stage-tab-content.tsx`，imports 增加：
+- [x] 修改 `client/src/features/stage/components/stage-tab-content.tsx`，imports 增加：
 
 ```ts
 import { FilesTab } from './files-tab'
 import { FilesLibraryTab } from './files-library-tab'
 ```
 
-- [ ] 在最后一个 `if (tab.type === 'er_designer')` 块之后追加：
+- [x] 在最后一个 `if (tab.type === 'er_designer')` 块之后追加：
 
 ```ts
   if (tab.type === 'files') {
@@ -1795,7 +1796,7 @@ import { FilesLibraryTab } from './files-library-tab'
 
 ### 10.2 类型检查 + commit
 
-- [ ] 运行：
+- [x] 运行：
 
 ```bash
 cd client && npx tsc --noEmit
@@ -1803,7 +1804,7 @@ cd client && npx tsc --noEmit
 
 预期：零错误。
 
-- [ ] commit：
+- [x] commit：
 
 ```bash
 git add client/src/features/stage/components/stage-tab-content.tsx
@@ -1816,7 +1817,7 @@ git commit -m "feat(stage): wire files / files_library tab types into StageTabCo
 
 ### 11.1 先写测试
 
-- [ ] 创建 `client/src/features/chat/components/tools/renderers/__tests__/datatalk-archive-artifact.test.tsx`：
+- [x] 创建 `client/src/features/chat/components/tools/renderers/__tests__/datatalk-archive-artifact.test.tsx`：
 
 ```tsx
 import { describe, expect, it, vi, beforeEach } from 'vitest'
@@ -1975,7 +1976,7 @@ describe('DatatalkArchiveArtifact', () => {
 
 ### 11.2 实现组件
 
-- [ ] 创建 `client/src/features/chat/components/tools/renderers/datatalk-archive-artifact.tsx`：
+- [x] 创建 `client/src/features/chat/components/tools/renderers/datatalk-archive-artifact.tsx`：
 
 ```tsx
 import { useMemo } from 'react'
@@ -2144,7 +2145,7 @@ export function DatatalkArchiveArtifact({ part }: ToolRendererProps) {
 
 ### 11.3 注册 renderer
 
-- [ ] 修改 `client/src/features/chat/components/tools/renderers/index.ts`：
+- [x] 修改 `client/src/features/chat/components/tools/renderers/index.ts`：
 
 ```ts
 import { ToolRegistry } from '../tool-registry'
@@ -2168,7 +2169,7 @@ export function registerBuiltInRenderers() {
 
 ### 11.4 跑测试 + commit
 
-- [ ] 运行：
+- [x] 运行：
 
 ```bash
 cd client && npm test -- --run client/src/features/chat/components/tools/renderers/__tests__/datatalk-archive-artifact.test.tsx
@@ -2176,13 +2177,13 @@ cd client && npm test -- --run client/src/features/chat/components/tools/rendere
 
 预期：6 个测试全绿。
 
-- [ ] 运行：
+- [x] 运行：
 
 ```bash
 cd client && npx tsc --noEmit
 ```
 
-- [ ] commit：
+- [x] commit：
 
 ```bash
 git add client/src/features/chat/components/tools/renderers/datatalk-archive-artifact.tsx \
@@ -2193,8 +2194,8 @@ git commit -m "feat(chat): add datatalk_archive_artifact tool renderer with live
 
 ## Task 12: 文档收尾（CLAUDE.md "Post-Execution Document Housekeeping"）
 
-- [ ] 更新本 plan 全部 task checkbox 为 `- [x]`，对偏差/跳过项写状态注。
-- [ ] 在 `docs/exec-plans/index.md`：
+- [x] 更新本 plan 全部 task checkbox 为 `- [x]`，对偏差/跳过项写状态注。
+- [x] 在 `docs/exec-plans/index.md`：
   - 把 Part 4 行从「活跃计划」表格删除
   - 在「已完成」表格新增一行：
 
@@ -2202,7 +2203,7 @@ git commit -m "feat(chat): add datatalk_archive_artifact tool renderer with live
 | [File Artifact System · Part 4 — Frontend Tabs](./2026-04-30-file-artifact-system-part4-frontend-tabs-plan.md) | 2026-04-30 | Stage Files Tab + Files Library Tab + Chat 内联 `datatalk_archive_artifact` 卡片 + `useFileArtifactsStore` Zustand store + `file-artifacts` REST 客户端 + 5 个 `file_artifact.*` SSE event 订阅 + i18n keys（不含终局 modal / maintenance）+ vitest 全绿。`archiveFile` / `discardFile` 端点占位调用，等待 Part 5 后端打通；其余路径与 Part 1 已上线的 `mark-candidate` 端点连通。 |
 ```
 
-- [ ] commit：
+- [x] commit：
 
 ```bash
 git add docs/exec-plans/2026-04-30-file-artifact-system-part4-frontend-tabs-plan.md \
