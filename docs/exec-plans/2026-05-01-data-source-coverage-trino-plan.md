@@ -57,7 +57,7 @@ passes and `docs/DATA_SOURCE_TYPE_COMPATIBILITY.md` is updated.
 
 ### Task 1: Approval, Driver, And Catalog Contract
 
-- [ ] **Step 1: Confirm design approval**
+- [x] **Step 1: Confirm design approval**
 
 Run:
 
@@ -68,7 +68,7 @@ rg -n "^Status: Approved$" docs/product-specs/2026-05-01-data-source-coverage-tr
 Expected: exactly one match. If the design still says `Status: Draft for
 review`, stop and return to design review.
 
-- [ ] **Step 2: Record driver and auth decisions**
+- [x] **Step 2: Record driver and auth decisions**
 
 Record driver version, cluster compatibility policy, license, driver class, SSL
 model, password/token/Kerberos support, catalog/schema persistence, and
@@ -76,23 +76,23 @@ unsupported optional properties.
 
 ### Task 2: Connection, Target Discovery, And Schema Read
 
-- [ ] **Step 1: Add failing connection tests**
+- [x] **Step 1: Add failing connection tests**
 
 Cover `jdbc:trino://` URL forms, catalog/schema URL segments, SSL defaults,
 auth properties, connection-test failures, and secret redaction.
 
-- [ ] **Step 2: Implement connection behavior**
+- [x] **Step 2: Implement connection behavior**
 
 Add driver dependency, URL builder branch, auth property handling, and localized
 errors.
 
-- [ ] **Step 3: Add failing target/schema tests**
+- [x] **Step 3: Add failing target/schema tests**
 
 Cover catalog discovery, schema discovery, `catalog.schema` resolution,
 ambiguous target handling, `system.jdbc` access errors, bounded discover, and
 explicit describe.
 
-- [ ] **Step 4: Implement target/schema behavior**
+- [x] **Step 4: Implement target/schema behavior**
 
 Use Trino metadata or bounded system queries with connector-safe limits. Any
 catalog/schema URL parser, target resolver helper, or connector capability
@@ -101,22 +101,22 @@ that does not contain a Trino-specific prefix.
 
 ### Task 3: SQL, Splitter, Risk, Diagnostics, And ER
 
-- [ ] **Step 1: Add failing SQL/type tests**
+- [x] **Step 1: Add failing SQL/type tests**
 
 Cover selected catalog/schema context, read-only SQL, timestamps, arrays, maps,
 rows, JSON, UUID/IP values, and chat-path mutation blocking.
 
-- [ ] **Step 2: Add failing splitter/risk tests**
+- [x] **Step 2: Add failing splitter/risk tests**
 
 Cover `CALL`, grants, roles, `CREATE TABLE AS`, `DROP`, `TRUNCATE`, broad
 `ALTER`, session/system changes, and connector procedure risk.
 
-- [ ] **Step 3: Implement SQL, normalization, splitter, and risk**
+- [x] **Step 3: Implement SQL, normalization, splitter, and risk**
 
 Keep connector-dependent writes behind Workbench confirmation or structured
 unsupported responses.
 
-- [ ] **Step 4: Implement diagnostics and ER behavior**
+- [x] **Step 4: Implement diagnostics and ER behavior**
 
 Map EXPLAIN only if tested. Return structured unsupported for connector-specific
 diagnostics and ER features by default.
@@ -131,17 +131,17 @@ Expected: targeted tests pass.
 
 ### Task 4: Frontend, MCP, Prompt, And Verification
 
-- [ ] **Step 1: Add failing frontend and prompt tests**
+- [x] **Step 1: Add failing frontend and prompt tests**
 
 Cover label `Trino`, catalog/schema fields, Query Editor context controls,
 formatter/outline behavior, diagnostics unsupported state, i18n, MCP schema,
 and prompt connector caveats.
 
-- [ ] **Step 2: Implement frontend and MCP exposure**
+- [x] **Step 2: Implement frontend and MCP exposure**
 
 Expose `trino` only after backend support and prompt contracts are honest.
 
-- [ ] **Step 3: Run consolidated verification**
+- [x] **Step 3: Run consolidated verification**
 
 Run:
 
@@ -153,7 +153,7 @@ git diff --check -- server client docs
 
 Expected: all commands pass.
 
-- [ ] **Step 4: Update documents**
+- [x] **Step 4: Update documents**
 
 Do all housekeeping before claiming completion:
 
