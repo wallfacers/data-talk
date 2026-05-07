@@ -18,6 +18,7 @@ export const DATABASE_TYPES = {
   oracle: { label: 'Oracle', port: 1521 },
   sqlserver: { label: 'SQL Server', port: 1433 },
   duckdb: { label: 'DuckDB', port: 0 },
+  clickhouse: { label: 'ClickHouse', port: 8123 },
 } as const
 
 export type DatabaseKind = keyof typeof DATABASE_TYPES
@@ -37,6 +38,7 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
     sqlserverInstanceName: '',
     duckdbMode: 'memory' as 'memory' | 'file',
     duckdbReadOnly: false,
+    clickhouseSSL: false,
   })
 
   useEffect(() => {
@@ -57,13 +59,14 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
         sqlserverInstanceName: editing.sqlserverInstanceName ?? '',
         duckdbMode,
         duckdbReadOnly: isDuckdb ? (editing.readOnly === true) : false,
+        clickhouseSSL: editing.kind === 'clickhouse' ? editing.port === 8443 : false,
       })
     } else {
       setForm({ name: '', kind: 'mysql', host: 'localhost', port: 3306,
         database: '', username: '', password: '', connectTimeout: 3000,
         oracleServiceType: 'service', sqlserverEncrypt: true,
         sqlserverTrustServerCertificate: true, sqlserverInstanceName: '',
-        duckdbMode: 'memory', duckdbReadOnly: false })
+        duckdbMode: 'memory', duckdbReadOnly: false, clickhouseSSL: false })
     }
   }, [editing])
 
@@ -115,6 +118,7 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
   const isDuckdb = form.kind === 'duckdb'
   const isOracle = form.kind === 'oracle'
   const isSqlserver = form.kind === 'sqlserver'
+  const isClickhouse = form.kind === 'clickhouse'
   const hideHostPort = isSqlite || isDuckdb
   const databaseLabel = isDuckdb
     ? (form.duckdbMode === 'file' ? t('dataSources.duckdbFilePath') : '')
@@ -147,6 +151,7 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
                   username: embedded ? '' : f.username,
                   password: embedded ? '' : f.password,
                   ...(nextKind === 'duckdb' ? { duckdbMode: 'memory' as const, duckdbReadOnly: false } : {}),
+                  ...(nextKind === 'clickhouse' ? { clickhouseSSL: false as const, port: 8123 } : {}),
                 }))
               }
             }}>
@@ -170,6 +175,28 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
             </Field>
           </>
         )}
+        {isClickhouse ? (
+          <Field label={t('dataSources.clickhouseProtocol')}>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={!form.clickhouseSSL ? 'default' : 'outline'}
+                onClick={() => setForm(f => ({ ...f, clickhouseSSL: false, port: 8123 }))}
+              >
+                HTTP
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={form.clickhouseSSL ? 'default' : 'outline'}
+                onClick={() => setForm(f => ({ ...f, clickhouseSSL: true, port: 8443 }))}
+              >
+                HTTPS
+              </Button>
+            </div>
+          </Field>
+        ) : null}
         {isOracle ? (
           <Field label={t('dataSources.oracleServiceType')}>
             <Select value={form.oracleServiceType}

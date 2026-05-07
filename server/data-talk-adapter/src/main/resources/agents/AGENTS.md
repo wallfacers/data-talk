@@ -100,6 +100,8 @@ SQLite is file-scoped. For `kind=sqlite`, databaseName is the SQLite file path o
 
 DuckDB is an embedded analytical database. For `kind=duckdb`, `databaseName` is the file path or `:memory:` for in-memory mode. `readOnly` is a boolean (defaults to false). DuckDB has no host/port/username/password. External file operations (`COPY`, `EXPORT`, `IMPORT`), extension commands (`INSTALL`, `LOAD`), and external file/network access functions (`read_csv`, `read_parquet`, `httpfs`) are not supported. Use the SQL workbench for confirmed mutations. DuckDB schema selector shows (normally `main`); database selector is hidden.
 
+ClickHouse is an analytical column-store database accessed over HTTP (default port 8123). For `kind=clickhouse`, use `host`, `port`, `username`, `password`, and `databaseName` as for other network databases. File and network access functions (`file`, `s3`, `url`, `remote`, `hdfs`, `odbc`, `jdbc`, `mysql`, `postgresql`) and cluster operations (`SYSTEM`, `KILL QUERY`, `OPTIMIZE`, `ATTACH`, `DETACH`) are not supported. Mutations are async and require the SQL workbench with confirmation. ER diagrams, index hints, and diagnostics are day-1 unsupported.
+
 ### Schema, Query, and Artifacts
 
 - `datatalk_read_schema`
@@ -609,6 +611,21 @@ Output budget: defaults `headLimit=100`, `maxTabs=50`. For existence checks use 
 - Diagnostics: structured unsupported. EXPLAIN, lock info, pool status, table space, index hints, terminate session, and optimize table are all unsupported.
 - ER Inspector: day-1 `dialect_unsupported` (embedded engine, foreign-key metadata not yet verified).
 - ER Designer: day-1 `dialect_unsupported`.
+
+### ClickHouse
+
+- Connection kind: `clickhouse`. Analytical column-store database over HTTP protocol.
+- Fields: `host` (hostname or IP), `port` (default 8123), `username`, `password`, `databaseName`. Protocol defaults to HTTP; set port to 8443 for HTTPS.
+- `datatalk_execute_sql` remains read-only in the chat path.
+- Mutations (`INSERT`, `ALTER`, `DELETE`) are async and require the SQL workbench with confirmation. Results may not be immediately visible.
+- File and network access functions (`file`, `s3`, `url`, `remote`, `hdfs`, `odbc`, `jdbc`, `mysql`, `postgresql`) are not supported.
+- Cluster and system operations (`SYSTEM`, `KILL QUERY`, `OPTIMIZE`, `ATTACH`, `DETACH`) are not supported.
+- SQL splitter: generic (no DELIMITER, no PL/SQL, no GO; format/SETTINGS clauses are statement-internal).
+- Risk guard: `SHOW`, `DESCRIBE`, `EXPLAIN` are L1; bounded `INSERT` and safe `CREATE TABLE` are L2; `DROP`, `TRUNCATE`, `ALTER`, `RENAME`, `GRANT`, `REVOKE`, `CREATE USER/ROLE/DICTIONARY` are L3. External table functions (`remote()`, `url()`, `s3()`, `file()`, etc.) are hard reject.
+- Schema context: database selector visible (replaces schema selector as ClickHouse has no schema layer). System databases (`system`, `INFORMATION_SCHEMA`, `_temporary_and_external_tables`) are filtered.
+- Diagnostics: structured unsupported. EXPLAIN, lock info, pool status, table space, index hints, terminate session, and optimize table are all unsupported.
+- ER Inspector: day-1 `dialect_unsupported` (no FK constraints in the OLTP sense).
+- ER Designer: day-1 `dialect_unsupported` (table engine decisions not mappable to DataTalk ER DDL contract).
 
 <!-- file-artifact-section:begin -->
 ## Output Files & Artifacts

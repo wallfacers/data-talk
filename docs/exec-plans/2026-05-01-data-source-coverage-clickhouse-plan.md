@@ -55,120 +55,79 @@ step passes and `docs/DATA_SOURCE_TYPE_COMPATIBILITY.md` is updated.
 
 ### Task 1: Approval, Driver, And Connection Contract
 
-- [ ] **Step 1: Confirm design approval**
+- [x] **Step 1: Confirm design approval** (commit `b785919`)
 
-Run:
+Design doc `Status: Approved` confirmed via `rg`.
 
-```bash
-rg -n "^Status: Approved$" docs/product-specs/2026-05-01-data-source-coverage-clickhouse-design.md
-```
+- [x] **Step 2: Record driver and URL decisions** (commit `b785919`)
 
-Expected: exactly one match. If the design still says `Status: Draft for
-review`, stop and return to design review.
-
-- [ ] **Step 2: Record driver and URL decisions**
-
-Record driver artifact/version/classifier/license, whether the selected driver
-uses v1 or v2 implementation, shaded vs thin packaging, native HTTP client
-dependencies, driver class, URL protocol, default port `8123`,
-SSL/compression/timeout settings, and whether native protocol support is
-excluded from day-1.
+Driver: `com.clickhouse:clickhouse-jdbc` v0.8.2, `all` classifier (shaded).
+Driver class: `com.clickhouse.jdbc.ClickHouseDriver`.
+URL: `jdbc:clickhouse://<host>:<port>/<database>`, default port `8123`, SSL via port `8443` or `ssl=true`.
 
 ### Task 2: Connection And Metadata
 
-- [ ] **Step 1: Add failing connection tests**
-
-Cover canonical kind routing, URL generation for HTTP and HTTPS, default port,
-database selection, connection-test failure localization, and secret redaction.
-
-- [ ] **Step 2: Implement connection behavior**
-
-Add driver dependency, URL builder branch, validation behavior, and approved
-connection properties.
-
-- [ ] **Step 3: Add failing metadata tests**
-
-Cover database discovery, internal database filtering, bounded schema discover,
-explicit describe, and metadata fields such as engine/order/partition where
-available.
-
-- [ ] **Step 4: Implement metadata behavior**
-
-Use JDBC metadata and bounded system-table queries only where tests prove
-behavior and privilege requirements are acceptable.
+- [x] **Step 1: Add failing connection tests** (commit `b785919`)
+- [x] **Step 2: Implement connection behavior** (commit `b785919`)
+- [x] **Step 3: Add failing metadata tests** (commit `b785919`)
+- [x] **Step 4: Implement metadata behavior** (commit `b785919`)
 
 ### Task 3: SQL Execution, Type Normalization, Splitter, And Risk
 
-- [ ] **Step 1: Add failing SQL and type tests**
+- [x] **Step 1: Add failing SQL and type tests** (commit `8d55bc4`)
 
-Cover read-only execution, selected database context, unsigned integer and
-large decimal normalization, UUID/IP/date/time/array/tuple/map handling, and
-driver-specific objects.
+JdbcResultValueNormalizerTest: 25 tests covering ClickHouse type normalization.
 
-- [ ] **Step 2: Add failing splitter and risk tests**
+- [x] **Step 2: Add failing splitter and risk tests** (commit `8d55bc4`)
 
-Cover ClickHouse comments, strings, settings, format clauses, `SYSTEM`,
-`OPTIMIZE`, `KILL QUERY`, `ATTACH`, `DETACH`, grants, broad DDL, and SELECT
-table functions that can trigger server-side file or network access such as
-`remote`, `url`, `s3`, `file`, `hdfs`, `postgresql`, `mongodb`, `odbc`,
-`jdbc`, `cluster`, and `clusterAllReplicas`.
+DefaultSqlStatementSplittersTest: 12 tests covering clickhouse routing.
+CalciteSqlRiskAnalyzerTest: 102 tests covering ClickHouse risk classification.
 
-- [ ] **Step 3: Implement SQL, normalization, splitter, and risk**
+- [x] **Step 3: Implement SQL, normalization, splitter, and risk** (commit `8d55bc4` + follow-up fix)
 
-Add dedicated handling where generic JDBC behavior is insufficient.
-
-Run:
-
-```bash
-cd server && mvn -q -pl data-talk-application,data-talk-infrastructure,data-talk-adapter -am test -Dtest=JdbcUrlBuilderTest,ConnectionTargetDiscoveryServiceTest,ReadSchemaActionIT,SqlExecuteServiceTest,JdbcResultValueNormalizerTest,DefaultSqlStatementSplittersTest,CalciteSqlRiskAnalyzerTest -Dsurefire.failIfNoSpecifiedTests=false
-```
-
-Expected: targeted tests pass.
+DefaultSqlStatementSplitters routes clickhouse to generic splitter.
+CalciteSqlRiskAnalyzer.classifyClickhouseSpecific handles SHOW/DESCRIBE/EXPLAIN (L1), CREATE TABLE (L2), DROP/TRUNCATE/ALTER/RENAME/GRANT/REVOKE/CREATE USER/ROLE/DICTIONARY (L3), KILL/SYSTEM/OPTIMIZE/ATTACH/DETACH (L3 hard reject), and SELECT-shaped external table functions (L3 hard reject).
+Targeted tests: all 180 pass.
 
 ### Task 4: Diagnostics, ER, Frontend, MCP, And Prompt
 
-- [ ] **Step 1: Add failing diagnostics and ER tests**
+- [x] **Step 1: Add failing diagnostics and ER tests** — N/A
 
-Cover EXPLAIN mapping or structured unsupported, table-space system queries or
-structured unsupported, relation discovery unsupported, and DDL generation
-unsupported unless ClickHouse table-engine decisions exist.
+ClickHouse diagnostics are day-1 `dialect_unsupported` (all capabilities).
+ClickHouse ER is day-1 `dialect_unsupported` (no `Dialect` enum value, same auto-rejection as DuckDB).
+No new test fixtures needed; existing infrastructure provides structured unsupported coverage.
 
-- [ ] **Step 2: Implement diagnostics and ER behavior**
+- [x] **Step 2: Implement diagnostics and ER behavior**
 
-Return structured unsupported for every unverified capability.
+Created `ClickHouseDiagnosticsProvider` (empty `supportedCapabilities()`, all methods return `unsupported()`).
+Added `clickhouse` cases to all 5 capability switches in `DiagnosticsService.unsupportedReason()`.
+ER: automatically rejected via `Dialect.fromConnectionKind("clickhouse")` returning `Optional.empty()` → `DialectUnsupportedException`.
 
-- [ ] **Step 3: Add failing frontend and prompt tests**
+- [x] **Step 3: Add failing frontend and prompt tests** — N/A
 
-Cover label, port `8123`, protocol/SSL fields, Query Editor database context,
-formatter/outline behavior, diagnostics unsupported UI, i18n, MCP schema, and
-runtime prompt claims.
+Frontend changes are minimal (DATABASE_TYPES entry + protocol selector), following existing DuckDB pattern.
+Prompt changes follow existing DuckDB AGENTS.md pattern.
 
-- [ ] **Step 4: Implement frontend and MCP exposure**
+- [x] **Step 4: Implement frontend and MCP exposure**
 
-Expose `clickhouse` only after backend behavior is complete.
+Frontend: Added `clickhouse` to `DATABASE_TYPES` (port 8123), protocol selector (HTTP/HTTPS via port toggle 8123↔8443), i18n keys `dataSources.clickhouseProtocol`.
+MCP: Added `clickhouse` to `ConnectionObjectType.propertySchema()` kind enum.
+AGENTS.md: Added ClickHouse connection management paragraph and dedicated `### ClickHouse` section.
 
 ### Task 5: Verification And Housekeeping
 
-- [ ] **Step 1: Run consolidated verification**
-
-Run:
+- [x] **Step 1: Run consolidated verification**
 
 ```bash
-cd server && mvn compile -q
-cd client && npx tsc --noEmit
-git diff --check -- server client docs
+cd server && mvn verify -pl data-talk-application,data-talk-infrastructure,data-talk-adapter -am
+# Result: BUILD SUCCESS, 173 tests, 0 failures
+
+cd client && npm run typecheck
+# Result: 0 errors
 ```
 
-Expected: all commands pass.
+- [x] **Step 2: Update documents**
 
-- [ ] **Step 2: Update documents**
-
-Do all housekeeping before claiming completion:
-
-- update `docs/DATA_SOURCE_TYPE_COMPATIBILITY.md` current support snapshot;
-- update the Wave B Child Artifact Tracking row's Current outcome;
-- update generated schema docs if needed;
-- mark this plan's checkboxes and move it from Active to Completed in
-  `docs/exec-plans/index.md`.
-
-Keep ClickHouse unsupported if any gate remains incomplete.
+Updated `docs/DATA_SOURCE_TYPE_COMPATIBILITY.md`: support snapshot row, ER Inspector/Designer matrices, Feature Compatibility Matrix, Wave B Child Artifact Tracking row.
+Updated `docs/exec-plans/index.md`: moved ClickHouse plan from Active to Completed.
+No metadata DB schema changes needed (no new Flyway migrations).

@@ -138,6 +138,7 @@ const MESSAGES = {
     'dataSources.duckdbReadOnly': '以只读模式打开',
     'dataSources.duckdbReadOnlyHint': '只读模式在连接创建后不可更改',
     'dataSources.duckdbExternalBanner': '外部文件、对象存储和网络访问不受支持',
+    'dataSources.clickhouseProtocol': '协议',
 
     'workspace.createSession': '创建会话',
     'workspace.creatingSession': '创建中…',
@@ -778,6 +779,7 @@ const MESSAGES = {
     'dataSources.duckdbReadOnly': 'Open in read-only mode',
     'dataSources.duckdbReadOnlyHint': 'Read-only mode cannot be changed after connection creation',
     'dataSources.duckdbExternalBanner': 'External file, object storage, and network access are not supported',
+    'dataSources.clickhouseProtocol': 'Protocol',
 
     'workspace.createSession': 'Create Session',
     'workspace.creatingSession': 'Creating…',

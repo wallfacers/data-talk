@@ -339,6 +339,10 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
         String normalized = stripLeadingComments(sql).toLowerCase(Locale.ROOT);
         if (normalized.isEmpty()) return null;
 
+        // L1 safe: SHOW
+        if (normalized.startsWith("show ")) {
+            return SqlRiskAnalysis.low("clickhouse_show");
+        }
         // L1 safe: EXPLAIN
         if (normalized.startsWith("explain ")) {
             return SqlRiskAnalysis.low("clickhouse_explain");
