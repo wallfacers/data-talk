@@ -41,8 +41,10 @@ public class ConnectionService {
                          String oracleServiceType,
                          Boolean sqlserverEncrypt, Boolean sqlserverTrustServerCertificate, String sqlserverInstanceName,
                          Boolean readOnly) {
-        // Normalize mssql alias to sqlserver
-        String effectiveKind = "mssql".equalsIgnoreCase(kind) ? ConnectionKind.SQLSERVER : kind;
+        // Normalize mssql alias to sqlserver, ch alias to clickhouse
+        String effectiveKind = "mssql".equalsIgnoreCase(kind) ? ConnectionKind.SQLSERVER
+            : "ch".equalsIgnoreCase(kind) ? ConnectionKind.CLICKHOUSE
+            : kind;
         byte[] enc = vault.seal(password);
         String id = java.util.UUID.randomUUID().toString();
         int timeout = connectTimeout != null ? connectTimeout : DEFAULT_CONNECT_TIMEOUT;
@@ -79,8 +81,10 @@ public class ConnectionService {
                        String oracleServiceType,
                        Boolean sqlserverEncrypt, Boolean sqlserverTrustServerCertificate, String sqlserverInstanceName,
                        Boolean readOnly) {
-        // Normalize mssql alias to sqlserver
-        String effectiveKind = "mssql".equalsIgnoreCase(kind) ? ConnectionKind.SQLSERVER : kind;
+        // Normalize mssql alias to sqlserver, ch alias to clickhouse
+        String effectiveKind = "mssql".equalsIgnoreCase(kind) ? ConnectionKind.SQLSERVER
+            : "ch".equalsIgnoreCase(kind) ? ConnectionKind.CLICKHOUSE
+            : kind;
         var existing = repo.findById(id)
             .orElseThrow(() -> new java.util.NoSuchElementException(translator.get("error.connection.unknown", id)));
         byte[] enc = password != null ? vault.seal(password) : existing.passwordEnc();
@@ -145,6 +149,9 @@ public class ConnectionService {
         } else if (kind.equals(ConnectionKind.SQLSERVER)) {
             int timeoutSeconds = Math.max(1, c.connectTimeout() / 1000);
             url += ";loginTimeout=" + timeoutSeconds;
+        } else if (kind.equals(ConnectionKind.CLICKHOUSE)) {
+            int timeoutSeconds = Math.max(1, c.connectTimeout() / 1000);
+            url += (url.contains("?") ? "&" : "?") + "connect_timeout=" + timeoutSeconds;
         }
         long started = clock.millis();
         try (var conn = java.sql.DriverManager.getConnection(url, c.username(), password)) {

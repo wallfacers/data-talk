@@ -79,6 +79,30 @@ public interface FileArtifactRepository {
      */
     void detachArchivedFromConnection(String connectionId, String connectionName, long deletedAtMillis);
 
+    /**
+     * Find archived rows with connection_id = NULL (orphaned after connection delete).
+     * Spec §B.3.1. LIMIT 200 imposed by caller.
+     */
+    List<FileArtifact> findOrphanedArchived(int limit);
+
+    /**
+     * Replace connection_id and physical_path for an archived row.
+     * Used by reattach — moves the file from orphan workspace dir to new connection.
+     */
+    void reattachArchived(String fileArtifactId, String newConnectionId, String newPhysicalPath, long updatedAtMillis);
+
+    /**
+     * Delete a single row by id, restricted to status='discarded'.
+     * Used by cleanupTrash after the physical file is rm'd.
+     */
+    void deleteDiscardedById(String id);
+
+    /**
+     * Count rows with status='archived' AND connection_id IS NULL.
+     * Used by storage-overview breakdown.workspaces.orphanedArchivedCount.
+     */
+    int countOrphanedArchived();
+
     record ConnectionResourceCounts(int sessions, int candidates, int temporary, int archived) {
     }
 }

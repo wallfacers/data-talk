@@ -452,7 +452,7 @@ class JdbcFileArtifactRepositoryIT {
                 sessionId,
                 connectionId,
                 "x.md",
-                "/abs/workspaces/" + connectionId + "/x.md",
+                "/abs/workspaces/" + (connectionId != null ? connectionId : "orphan") + "/x.md",
                 123L,
                 "text/markdown",
                 null,
@@ -461,5 +461,54 @@ class JdbcFileArtifactRepositoryIT {
                 now,
                 now,
                 Map.of());
+    }
+
+    private static FileArtifact insertArchived(String connectionId) {
+        return archivedForSession("fa_" + java.util.UUID.randomUUID().toString().substring(0, 6), null, connectionId);
+    }
+
+    @Test
+    void findOrphanedArchived_returns_archived_rows_with_null_connection_id() {
+        repo.insert(insertArchived(null)); // connection_id = NULL
+        repo.insert(insertArchived("conn_x"));
+        repo.insert(insertArchived(null));
+
+        var rows = repo.findOrphanedArchived(200);
+        assertThat(rows).hasSize(2);
+        assertThat(rows).allMatch(r -> r.connectionId() == null);
+    }
+
+    @Test
+    void reattachArchived_updates_connection_id_and_path() {
+        String id = "fa_reattach";
+        repo.insert(archivedForSession(id, null, null));
+        repo.reattachArchived(id, "conn_new", "/tmp/workspaces/conn_new/orders.md", 1_000L);
+
+        var row = repo.findById(id).orElseThrow();
+        assertThat(row.connectionId()).isEqualTo("conn_new");
+        assertThat(row.physicalPath()).isEqualTo("/tmp/workspaces/conn_new/orders.md");
+    }
+
+    @Test
+    void deleteDiscardedById_only_deletes_discarded_rows() {
+        String did = "fa_discarded";
+        String cid = "fa_candidate";
+        repo.insert(sample(did, FileArtifactStatus.DISCARDED, "ses_a", null));
+        repo.insert(sample(cid, FileArtifactStatus.CANDIDATE, "ses_a", null));
+
+        repo.deleteDiscardedById(did);
+        repo.deleteDiscardedById(cid); // no-op — status mismatch
+
+        assertThat(repo.findById(did)).isEmpty();
+        assertThat(repo.findById(cid)).isPresent();
+    }
+
+    @Test
+    void countOrphanedArchived_counts_correctly() {
+        repo.insert(insertArchived(null));
+        repo.insert(insertArchived(null));
+        repo.insert(insertArchived("conn_x"));
+
+        assertThat(repo.countOrphanedArchived()).isEqualTo(2);
     }
 }

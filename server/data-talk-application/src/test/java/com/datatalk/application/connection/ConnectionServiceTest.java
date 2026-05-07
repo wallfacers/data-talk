@@ -231,6 +231,97 @@ class ConnectionServiceTest {
         assertThat(captor.getValue().readOnly()).isTrue();
     }
 
+    // --- ClickHouse connection tests ---
+
+    @Test
+    void create_normalizes_ch_alias_to_clickhouse() {
+        var repo = mock(ConnectionRepository.class);
+        var vault = mock(SecretVault.class);
+        when(vault.seal("pw")).thenReturn(new byte[]{1});
+        var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator());
+
+        svc.create("CH Alias", "ch", "host", 8123, "mydb", "default", "pw", 3000, null, null, null, null, null);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(ConnectionRecord.class);
+        verify(repo).insert(captor.capture());
+        assertThat(captor.getValue().kind()).isEqualTo("clickhouse");
+    }
+
+    @Test
+    void create_clickhouse_kind_stored_as_is() {
+        var repo = mock(ConnectionRepository.class);
+        var vault = mock(SecretVault.class);
+        when(vault.seal("pw")).thenReturn(new byte[]{1});
+        var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator());
+
+        svc.create("ClickHouse", "clickhouse", "host", 8123, "mydb", "default", "pw", 3000, null, null, null, null, null);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(ConnectionRecord.class);
+        verify(repo).insert(captor.capture());
+        assertThat(captor.getValue().kind()).isEqualTo("clickhouse");
+    }
+
+    @Test
+    void update_normalizes_ch_alias_to_clickhouse() {
+        var repo = mock(ConnectionRepository.class);
+        var vault = mock(SecretVault.class);
+        when(repo.findById("clickhouse-conn-001")).thenReturn(Optional.of(
+            new ConnectionRecord("clickhouse-conn-001", "ClickHouse", "clickhouse", "host", 8123, "mydb", "default",
+                new byte[]{}, null, 1L, 3000, null, null, null, 1, true, null, false)));
+        when(vault.seal(any())).thenReturn(new byte[]{});
+        var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator());
+
+        svc.update("clickhouse-conn-001", "Updated", "ch", "host", 8123, "mydb", "default", null, 3000, null, null, null, null, null);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(ConnectionRecord.class);
+        verify(repo).update(captor.capture());
+        assertThat(captor.getValue().kind()).isEqualTo("clickhouse");
+    }
+
+    @Test
+    void testConnection_clickhouse_failure_localizes_error() {
+        var repo = mock(ConnectionRepository.class);
+        var vault = mock(SecretVault.class);
+        var translator = mock(Translator.class);
+        when(translator.get(eq("connection.default_name"), any())).thenAnswer(inv -> "DS-" + inv.getArgument(1));
+        when(translator.get(eq("connection.test.failure"), any(), any()))
+            .thenReturn("ClickHouse connection failed: Connection refused");
+        var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator);
+
+        when(repo.findById("clickhouse-fail-01")).thenReturn(Optional.of(
+            new ConnectionRecord("clickhouse-fail-01", "CH Fail", "clickhouse", "127.0.0.1", 1, "mydb", "default",
+                new byte[]{}, null, 1L, 3000, null, null, null, 1, true, null, false)));
+        when(vault.open(any())).thenReturn("secret_password");
+
+        var r = svc.testConnection("clickhouse-fail-01");
+        assertThat(r.ok()).isFalse();
+        assertThat(r.reason()).isEqualTo("ClickHouse connection failed: Connection refused");
+        // Verify the reason does NOT contain the raw password
+        assertThat(r.reason()).doesNotContain("secret_password");
+    }
+
+    @Test
+    void testConnection_clickhouse_failure_redacts_secret_from_message() {
+        var repo = mock(ConnectionRepository.class);
+        var vault = mock(SecretVault.class);
+        var translator = mock(Translator.class);
+        when(translator.get(eq("connection.default_name"), any())).thenAnswer(inv -> "DS-" + inv.getArgument(1));
+        // Translator returns the raw message - verify password is not leaked through URL
+        when(translator.get(eq("connection.test.failure"), any(), any()))
+            .thenAnswer(inv -> inv.getArgument(1) + ": " + inv.getArgument(2));
+        var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator);
+
+        when(repo.findById("clickhouse-leak-01")).thenReturn(Optional.of(
+            new ConnectionRecord("clickhouse-leak-01", "CH Leak", "clickhouse", "127.0.0.1", 1, "mydb", "default",
+                new byte[]{}, null, 1L, 3000, null, null, null, 1, true, null, false)));
+        when(vault.open(any())).thenReturn("super_secret_123");
+
+        var r = svc.testConnection("clickhouse-leak-01");
+        assertThat(r.ok()).isFalse();
+        // The JDBC URL does not contain the password; the reason should not leak it
+        assertThat(r.reason()).doesNotContain("super_secret_123");
+    }
+
     @Test
     void update_duckdb_sets_read_only_when_provided() {
         var repo = mock(ConnectionRepository.class);

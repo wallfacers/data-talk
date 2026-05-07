@@ -89,6 +89,21 @@ public class ConnectionTargetDiscoveryService {
                     // Fall through to getCatalogs() below.
                 }
             }
+            // ClickHouse uses SHOW DATABASES; filter system databases.
+            if (ConnectionKind.CLICKHOUSE.equals(connection.kind())) {
+                try (var stmt = jdbc.createStatement();
+                     var rs = stmt.executeQuery("SHOW DATABASES")) {
+                    databaseNames.clear();
+                    while (rs.next()) {
+                        String name = rs.getString(1);
+                        if (name != null && !name.isBlank() && !isClickHouseSystemDatabase(name)) {
+                            databaseNames.add(name);
+                        }
+                    }
+                } catch (Exception ignored) {
+                    // Fall through to getCatalogs() below.
+                }
+            }
             if (databaseNames.isEmpty()) {
                 try (var catalogs = meta.getCatalogs()) {
                     while (catalogs.next()) {
@@ -142,6 +157,13 @@ public class ConnectionTargetDiscoveryService {
             && !normalized.equals("system_lobs")
             // Oracle system schemas to exclude
             && !ORACLE_SYSTEM_SCHEMAS.contains(normalized);
+    }
+
+    private boolean isClickHouseSystemDatabase(String name) {
+        String normalized = name.toLowerCase(Locale.ROOT);
+        return normalized.equals("system")
+            || normalized.equals("information_schema")
+            || normalized.equals("_temporary_and_external_tables");
     }
 
     private static final Set<String> ORACLE_SYSTEM_SCHEMAS = Set.of(

@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class JdbcUrlBuilderTest {
 
@@ -517,6 +518,164 @@ class JdbcUrlBuilderTest {
 
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:duckdb:/home/user/.datatalk/duckdb/mydb.db?readonly=true");
+    }
+
+    // --- ClickHouse URL building ---
+
+    @Test
+    void clickhouse_with_database_builds_jdbc_url() {
+        var connection = new ConnectionRecord(
+            "clickhouse-1",
+            "ClickHouse Test",
+            ConnectionKind.CLICKHOUSE,
+            "host",
+            8123,
+            "mydb",
+            "default",
+            new byte[]{1},
+            null,
+            1L,
+            3000,
+            null,
+            null,
+            null, 1, true, null, false);
+
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:clickhouse://host:8123/mydb");
+    }
+
+    @Test
+    void clickhouse_null_database_builds_url_without_db() {
+        var connection = new ConnectionRecord(
+            "clickhouse-2",
+            "ClickHouse No DB",
+            ConnectionKind.CLICKHOUSE,
+            "host",
+            8123,
+            null,
+            "default",
+            new byte[]{1},
+            null,
+            1L,
+            3000,
+            null,
+            null,
+            null, 1, true, null, false);
+
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:clickhouse://host:8123/");
+    }
+
+    @Test
+    void clickhouse_custom_port_builds_url() {
+        var connection = new ConnectionRecord(
+            "clickhouse-3",
+            "ClickHouse Custom Port",
+            ConnectionKind.CLICKHOUSE,
+            "host",
+            9440,
+            "analytics",
+            "default",
+            new byte[]{1},
+            null,
+            1L,
+            3000,
+            null,
+            null,
+            null, 1, true, null, false);
+
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:clickhouse://host:9440/analytics");
+    }
+
+    @Test
+    void clickhouse_default_port_8123() {
+        var connection = new ConnectionRecord(
+            "clickhouse-4",
+            "ClickHouse Default Port",
+            ConnectionKind.CLICKHOUSE,
+            "localhost",
+            8123,
+            "testdb",
+            "default",
+            new byte[]{1},
+            null,
+            1L,
+            3000,
+            null,
+            null,
+            null, 1, true, null, false);
+
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:clickhouse://localhost:8123/testdb");
+    }
+
+    @Test
+    void clickhouse_unsupported_kind_throws() {
+        // Ensure that an unsupported kind still throws even with other kinds present
+        var connection = new ConnectionRecord(
+            "unknown-1",
+            "Unknown Kind",
+            "unknown_kind",
+            "host",
+            1234,
+            "db",
+            "user",
+            new byte[]{1},
+            null,
+            1L,
+            3000,
+            null,
+            null,
+            null, 1, true, null, false);
+
+        assertThatThrownBy(() -> JdbcUrlBuilder.build(connection))
+            .isInstanceOf(com.datatalk.domain.error.DataTalkException.class)
+            .hasMessageContaining("unsupported database kind");
+    }
+
+    @Test
+    void clickhouse_https_port_appends_ssl() {
+        var connection = new ConnectionRecord(
+            "clickhouse-ssl",
+            "ClickHouse HTTPS",
+            ConnectionKind.CLICKHOUSE,
+            "host",
+            8443,
+            "mydb",
+            "default",
+            new byte[]{1},
+            null,
+            1L,
+            3000,
+            null,
+            null,
+            null, 1, true, null, false);
+
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:clickhouse://host:8443/mydb?ssl=true");
+    }
+
+    @Test
+    void clickhouse_https_port_null_database_appends_ssl() {
+        var connection = new ConnectionRecord(
+            "clickhouse-ssl-nodb",
+            "ClickHouse HTTPS No DB",
+            ConnectionKind.CLICKHOUSE,
+            "host",
+            8443,
+            null,
+            "default",
+            new byte[]{1},
+            null,
+            1L,
+            3000,
+            null,
+            null,
+            null, 1, true, null, false);
+
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:clickhouse://host:8443/?ssl=true");
     }
 
     @Test

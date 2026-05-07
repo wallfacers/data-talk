@@ -30,6 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.endsWith;
@@ -63,7 +64,7 @@ class FileArtifactServiceTest {
         when(buses.getOrCreate(anyString())).thenReturn(bus);
         sessionRepo = mock(SessionRepository.class);
         mover = new FileArtifactPhysicalMover();
-        service = new FileArtifactService(repo, workdir, buses, new ObjectMapper(), mover, sessionRepo);
+        service = new FileArtifactService(repo, workdir, buses, new ObjectMapper(), mover, sessionRepo, null);
     }
 
     @Test
@@ -165,7 +166,7 @@ class FileArtifactServiceTest {
 
         SessionWorkdirRoot linkedRoot = new SessionWorkdirRoot(tmp, opencode);
         SessionWorkdirService linkedWorkdir = new SessionWorkdirService(linkedRoot, new ObjectMapper());
-        FileArtifactService linkedService = new FileArtifactService(repo, linkedWorkdir, buses, new ObjectMapper(), mover, sessionRepo);
+        FileArtifactService linkedService = new FileArtifactService(repo, linkedWorkdir, buses, new ObjectMapper(), mover, sessionRepo, null);
 
         assertThat(linkedService.guardPath("ses_linked", "report.md"))
                 .contains(PathSafetyError.PATH_CONTAINS_SYMLINK);
@@ -564,6 +565,24 @@ class FileArtifactServiceTest {
         @Override
         public void detachArchivedFromConnection(String connectionId, String connectionName, long deletedAtMillis) {
         }
+
+        @Override
+        public List<FileArtifact> findOrphanedArchived(int limit) {
+            return List.of();
+        }
+
+        @Override
+        public void reattachArchived(String fileArtifactId, String newConnectionId, String newPhysicalPath, long updatedAtMillis) {
+        }
+
+        @Override
+        public void deleteDiscardedById(String id) {
+        }
+
+        @Override
+        public int countOrphanedArchived() {
+            return 0;
+        }
     }
 
     // ─────── archive / discard use case tests ───────
@@ -596,7 +615,7 @@ class FileArtifactServiceTest {
             workdir = new SessionWorkdirService(root, new ObjectMapper());
             sessionDir = workdir.getOrCreate("ses_a", "conn_x");
 
-            svc = new FileArtifactService(repo, workdir, buses, new ObjectMapper(), mover, sessionRepo);
+            svc = new FileArtifactService(repo, workdir, buses, new ObjectMapper(), mover, sessionRepo, null);
         }
 
         // ─────── archive use case ───────
@@ -688,13 +707,51 @@ class FileArtifactServiceTest {
             // Mover throws SourceMissing (file was deleted externally before discard)
             mover = mock(FileArtifactPhysicalMover.class);
             when(mover.mv(any(), any(), any())).thenThrow(new FileArtifactPhysicalMover.SourceMissing("gone"));
-            svc = new FileArtifactService(repo, workdir, buses, new ObjectMapper(), mover, sessionRepo);
+            svc = new FileArtifactService(repo, workdir, buses, new ObjectMapper(), mover, sessionRepo, null);
 
             var out = svc.discard("fa_1");
 
             assertThat(out).isInstanceOf(FileArtifactService.DiscardOutcome.Success.class);
             verify(repo).updateLocation(eq("fa_1"), eq(FileArtifactStatus.DISCARDED), any(), any(), any());
             verify(bus).publish(any(DtEvent.FileArtifactDiscarded.class));
+        }
+
+        // ─────── reattach use case ───────
+
+        @Test
+        void reattach_happy_path_moves_file_and_updates_connection_id() throws Exception {
+            Path src = sessionDir.resolve("orphan-report.md");
+            Files.writeString(src, "x");
+            FileArtifact row = new FileArtifact(
+                    "fa_1", com.datatalk.domain.fileartifact.FileArtifactScope.WORKSPACE,
+                    FileArtifactStatus.ARCHIVED, com.datatalk.domain.fileartifact.FileArtifactKind.OTHER,
+                    null, null, "orphan-report.md", src.toString(),
+                    100L, null, null, null, Instant.now(), Instant.now(), Instant.now(),
+                    Map.of("orphanedFromConnection", "old-conn", "orphanedFromConnectionId", "conn_x", "orphanedAt", 1000L));
+            FileArtifact updated = new FileArtifact(
+                    "fa_1", com.datatalk.domain.fileartifact.FileArtifactScope.WORKSPACE,
+                    FileArtifactStatus.ARCHIVED, com.datatalk.domain.fileartifact.FileArtifactKind.OTHER,
+                    null, "conn_new", "orphan-report.md", "/tmp/workspaces/conn_new/orphan-report.md",
+                    100L, null, null, null, Instant.now(), Instant.now(), Instant.now(), Map.of());
+            when(repo.findById("fa_1")).thenReturn(Optional.of(row), Optional.of(updated));
+            com.datatalk.application.persistence.ConnectionRepository connRepo = mock(com.datatalk.application.persistence.ConnectionRepository.class);
+            when(connRepo.findById("conn_new")).thenReturn(Optional.of(
+                    new com.datatalk.application.persistence.ConnectionRecord(
+                            "conn_new", "prod-pg", "pg", "h", 5432, "db", "u", new byte[0],
+                            null, 0L, 3000, null, null, null, 1, false, null, false)));
+            svc = new FileArtifactService(repo, workdir, buses, new ObjectMapper(), mover, sessionRepo, connRepo);
+
+            var out = svc.reattach("fa_1", "conn_new");
+
+            assertThat(out).isInstanceOf(FileArtifactService.ReattachOutcome.Success.class);
+            verify(repo).reattachArchived(eq("fa_1"), eq("conn_new"), contains("conn_new"), anyLong());
+        }
+
+        @Test
+        void reattach_returns_NotFound_for_missing_fid() {
+            when(repo.findById("fa_unknown")).thenReturn(Optional.empty());
+            var out = svc.reattach("fa_unknown", "conn_new");
+            assertThat(out).isInstanceOf(FileArtifactService.ReattachOutcome.NotFound.class);
         }
 
         // helpers

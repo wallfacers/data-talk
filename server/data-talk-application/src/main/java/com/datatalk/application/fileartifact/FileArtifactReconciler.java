@@ -112,8 +112,40 @@ public class FileArtifactReconciler {
         }
     }
 
+    public void reconcileTrash() {
+        Path trashRoot = workdir.root().trashRoot();
+        if (!Files.isDirectory(trashRoot)) return;
+
+        // FS orphans: files in _trash with no DB discarded row
+        try (Stream<Path> walk = Files.list(trashRoot)) {
+            for (Path file : (Iterable<Path>) walk::iterator) {
+                if (!Files.isRegularFile(file)) continue;
+                String path = file.toAbsolutePath().normalize().toString();
+                if (repo.findByPhysicalPath(path).isEmpty()) {
+                    try { Files.deleteIfExists(file); }
+                    catch (IOException e) { log.warn("[reconcile-trash] rm failed: {}", file); }
+                }
+            }
+        } catch (IOException e) {
+            log.warn("[reconcile-trash] walk failed: {}", e.toString());
+        }
+
+        // DB orphans: discarded rows where file doesn't exist
+        for (FileArtifact row : repo.findAllSessionScoped()) {
+            if (row.status() != com.datatalk.domain.fileartifact.FileArtifactStatus.DISCARDED) continue;
+            if (!Files.exists(Path.of(row.physicalPath()))) {
+                repo.deleteById(row.id());
+                log.info("[reconcile-trash] removing stale discarded row {} (file missing)", row.id());
+            }
+        }
+    }
+
     private void reconcileWorkspacesTree(Set<String> knownSessionIds) {
         for (FileArtifact row : repo.findAllWorkspaceScopedArchived()) {
+            if (row.connectionId() == null) {
+                // Q2 decision: orphaned archived — valid state, skip
+                continue;
+            }
             if (Files.exists(Path.of(row.physicalPath()))) {
                 continue;
             }

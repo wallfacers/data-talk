@@ -14,6 +14,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -253,6 +255,34 @@ class FileArtifactReconcilerTest {
 
     private static SessionRecord session(String id) {
         return new SessionRecord(id, null, id, false, null, 1L, 1L, false);
+    }
+
+    @Test
+    void reconcileTrash_removes_fs_orphans_without_db_row() throws IOException {
+        Path trashDir = workdir.root().trashRoot();
+        Files.createDirectories(trashDir);
+        Path orphan = trashDir.resolve("conn_x__fa_99__orphan.md");
+        Files.writeString(orphan, "orphan");
+        when(repo.findAllSessionScoped()).thenReturn(List.of());
+
+        reconciler.reconcileTrash();
+
+        assertThat(Files.exists(orphan)).isFalse();
+    }
+
+    @Test
+    void reconcileWorkspacesTree_skips_null_connection_id_archived_rows() {
+        FileArtifact orphan = new FileArtifact(
+                "fa_orphan", com.datatalk.domain.fileartifact.FileArtifactScope.WORKSPACE,
+                FileArtifactStatus.ARCHIVED, com.datatalk.domain.fileartifact.FileArtifactKind.OTHER,
+                null, null, "report.md", "/nonexistent/report.md",
+                100L, null, null, null, Instant.now(), Instant.now(), Instant.now(), Map.of());
+        when(repo.findAllWorkspaceScopedArchived()).thenReturn(List.of(orphan));
+        when(repo.findAllSessionScoped()).thenReturn(List.of());
+
+        reconciler.runFullReconcile();
+
+        verify(repo, never()).deleteById("fa_orphan");
     }
 
     private static void createSymlinkOrSkip(Path link, Path target) throws Exception {

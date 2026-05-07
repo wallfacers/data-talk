@@ -10,4 +10,5 @@ public final class ConnectionKind {
     public static final String ORACLE = "oracle";
     public static final String SQLSERVER = "sqlserver";
     public static final String DUCKDB = "duckdb";
+    public static final String CLICKHOUSE = "clickhouse";
 }

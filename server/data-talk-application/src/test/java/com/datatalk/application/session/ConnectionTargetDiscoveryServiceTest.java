@@ -18,6 +18,7 @@ import java.sql.DriverManager;
 import java.sql.DriverPropertyInfo;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.nio.file.Files;
 import java.util.Locale;
 import java.util.Properties;
@@ -248,6 +249,99 @@ class ConnectionTargetDiscoveryServiceTest {
 
             // SQL Server: sys schema is filtered out
             assertThat(result.schemaNames()).containsExactlyInAnyOrder("dbo", "sales", "guest");
+        } finally {
+            DriverManager.deregisterDriver(driver);
+        }
+    }
+
+    // --- ClickHouse metadata discovery ---
+
+    @Test
+    void discover_clickhouse_uses_show_databases_query() throws Exception {
+        Connection jdbc = mock(Connection.class);
+        var meta = mock(java.sql.DatabaseMetaData.class);
+        Statement stmt = mock(Statement.class);
+        ResultSet dbRs = mock(ResultSet.class);
+        when(jdbc.getMetaData()).thenReturn(meta);
+        when(jdbc.createStatement()).thenReturn(stmt);
+        when(stmt.executeQuery("SHOW DATABASES")).thenReturn(dbRs);
+        when(dbRs.next()).thenReturn(true, true, true, true, true, true, false);
+        when(dbRs.getString(1)).thenReturn("mydb", "analytics", "system", "INFORMATION_SCHEMA", "_temporary_and_external_tables", "default");
+        Driver driver = new StubDriver("jdbc:clickhouse://", jdbc);
+        DriverManager.registerDriver(driver);
+        try {
+            connectionRepo.insert(new ConnectionRecord(
+                "clickhouse-1", "ClickHouse", "clickhouse", "host", 8123, "mydb", "default",
+                new byte[]{1}, null, 10L, 3000, null, null,
+                null, 1, true, null, false));
+            Mockito.when(connectionService.decryptPassword("clickhouse-1")).thenReturn("pw");
+
+            var result = service.discover("clickhouse-1");
+
+            // system, INFORMATION_SCHEMA, _temporary_and_external_tables should be filtered
+            assertThat(result.databaseNames()).containsExactlyInAnyOrder("mydb", "analytics", "default");
+        } finally {
+            DriverManager.deregisterDriver(driver);
+        }
+    }
+
+    @Test
+    void discover_clickhouse_has_independent_schema_namespace() throws Exception {
+        Connection jdbc = mock(Connection.class);
+        var meta = mock(java.sql.DatabaseMetaData.class);
+        Statement stmt = mock(Statement.class);
+        ResultSet dbRs = mock(ResultSet.class);
+        ResultSet schemas = mock(ResultSet.class);
+        when(jdbc.getMetaData()).thenReturn(meta);
+        when(jdbc.createStatement()).thenReturn(stmt);
+        when(stmt.executeQuery("SHOW DATABASES")).thenReturn(dbRs);
+        when(dbRs.next()).thenReturn(true, false);
+        when(dbRs.getString(1)).thenReturn("mydb");
+        when(meta.getSchemas()).thenReturn(schemas);
+        when(schemas.next()).thenReturn(true, true, true, false);
+        when(schemas.getString("TABLE_SCHEM")).thenReturn("default", "system", "my_schema");
+        Driver driver = new StubDriver("jdbc:clickhouse://", jdbc);
+        DriverManager.registerDriver(driver);
+        try {
+            connectionRepo.insert(new ConnectionRecord(
+                "clickhouse-2", "ClickHouse Schemas", "clickhouse", "host", 8123, "mydb", "default",
+                new byte[]{1}, null, 11L, 3000, null, null,
+                null, 1, true, null, false));
+            Mockito.when(connectionService.decryptPassword("clickhouse-2")).thenReturn("pw");
+
+            var result = service.discover("clickhouse-2");
+
+            // 'system' schema is filtered, but 'default' and 'my_schema' are kept
+            assertThat(result.schemaNames()).containsExactlyInAnyOrder("default", "my_schema");
+        } finally {
+            DriverManager.deregisterDriver(driver);
+        }
+    }
+
+    @Test
+    void discover_clickhouse_falls_back_to_getcatalogs_when_show_databases_fails() throws Exception {
+        Connection jdbc = mock(Connection.class);
+        var meta = mock(java.sql.DatabaseMetaData.class);
+        Statement stmt = mock(Statement.class);
+        ResultSet catalogs = mock(ResultSet.class);
+        when(jdbc.getMetaData()).thenReturn(meta);
+        when(jdbc.createStatement()).thenReturn(stmt);
+        when(stmt.executeQuery("SHOW DATABASES")).thenThrow(new RuntimeException("query failed"));
+        when(meta.getCatalogs()).thenReturn(catalogs);
+        when(catalogs.next()).thenReturn(true, true, false);
+        when(catalogs.getString(1)).thenReturn("mydb", "default");
+        Driver driver = new StubDriver("jdbc:clickhouse://", jdbc);
+        DriverManager.registerDriver(driver);
+        try {
+            connectionRepo.insert(new ConnectionRecord(
+                "clickhouse-3", "ClickHouse Fallback", "clickhouse", "host", 8123, null, "default",
+                new byte[]{1}, null, 12L, 3000, null, null,
+                null, 1, true, null, false));
+            Mockito.when(connectionService.decryptPassword("clickhouse-3")).thenReturn("pw");
+
+            var result = service.discover("clickhouse-3");
+
+            assertThat(result.databaseNames()).containsExactlyInAnyOrder("mydb", "default");
         } finally {
             DriverManager.deregisterDriver(driver);
         }

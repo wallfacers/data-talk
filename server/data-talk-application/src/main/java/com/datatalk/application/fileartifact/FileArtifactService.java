@@ -45,6 +45,7 @@ public class FileArtifactService {
     private final ObjectMapper json;
     private final FileArtifactPhysicalMover mover;
     private final SessionRepository sessionRepo;
+    private final com.datatalk.application.persistence.ConnectionRepository connRepo;
 
     public FileArtifactService(
             FileArtifactRepository repo,
@@ -52,13 +53,15 @@ public class FileArtifactService {
             SessionBusRegistry buses,
             ObjectMapper json,
             FileArtifactPhysicalMover mover,
-            SessionRepository sessionRepo) {
+            SessionRepository sessionRepo,
+            com.datatalk.application.persistence.ConnectionRepository connRepo) {
         this.repo = repo;
         this.workdir = workdir;
         this.buses = buses;
         this.json = json;
         this.mover = mover;
         this.sessionRepo = sessionRepo;
+        this.connRepo = connRepo;
     }
 
     public List<FileArtifact> listForSession(String sessionId) {
@@ -594,6 +597,52 @@ public class FileArtifactService {
                 .orElseThrow(() -> new IllegalStateException("row vanished after discard: " + fileArtifactId));
         publish(row.sessionId(), new DtEvent.FileArtifactDiscarded(updated.id(), "user"));
         return new DiscardOutcome.Success(updated);
+    }
+
+    // ───────── reattach use case (spec §B.3.1) ─────────
+
+    public sealed interface ReattachOutcome {
+        record Success(FileArtifact artifact) implements ReattachOutcome {}
+        record NotFound(String fid) implements ReattachOutcome {}
+        record NotArchived(String fid, FileArtifactStatus actual) implements ReattachOutcome {}
+        record ConnectionNotFound(String connectionId) implements ReattachOutcome {}
+        record MvFailed(String fid, String detail) implements ReattachOutcome {}
+    }
+
+    /**
+     * Move an archived orphan row's file to a new connection's workspaces
+     * directory and update DB. Spec §B.3.1.
+     */
+    public ReattachOutcome reattach(String fileArtifactId, String newConnectionId) {
+        FileArtifact row = repo.findById(fileArtifactId).orElse(null);
+        if (row == null) {
+            return new ReattachOutcome.NotFound(fileArtifactId);
+        }
+        if (row.status() != FileArtifactStatus.ARCHIVED) {
+            return new ReattachOutcome.NotArchived(fileArtifactId, row.status());
+        }
+        var conn = connRepo.findById(newConnectionId);
+        if (conn.isEmpty()) {
+            return new ReattachOutcome.ConnectionNotFound(newConnectionId);
+        }
+
+        Path src = Path.of(row.physicalPath());
+        Path dstDir = workdir.root().workspacesRoot().resolve(newConnectionId);
+
+        Path dst;
+        try {
+            dst = mover.mv(src, dstDir, row.filename());
+        } catch (FileArtifactPhysicalMover.MvFailed e) {
+            return new ReattachOutcome.MvFailed(fileArtifactId, e.getMessage());
+        }
+
+        long now = Instant.now().toEpochMilli();
+        repo.reattachArchived(fileArtifactId, newConnectionId, dst.toString(), now);
+
+        FileArtifact updated = repo.findById(fileArtifactId).orElseThrow();
+        publish(updated.sessionId(), new DtEvent.FileArtifactArchived(
+                updated.id(), updated.sessionId(), newConnectionId, updated.filename(), dst.toString()));
+        return new ReattachOutcome.Success(updated);
     }
 
     private static long sizeOrZero(Path p) {

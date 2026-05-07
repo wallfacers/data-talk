@@ -316,4 +316,33 @@ public class JdbcFileArtifactRepository implements FileArtifactRepository {
             return Map.of();
         }
     }
+
+    @Override
+    public List<FileArtifact> findOrphanedArchived(int limit) {
+        return jdbc.query(
+                "SELECT " + COLS + " FROM file_artifact WHERE status = 'archived' AND connection_id IS NULL ORDER BY archived_at DESC LIMIT ?",
+                mapper(),
+                limit);
+    }
+
+    @Override
+    public void reattachArchived(String fileArtifactId, String newConnectionId,
+                                  String newPhysicalPath, long updatedAtMillis) {
+        jdbc.update(
+                "UPDATE file_artifact SET connection_id = ?, physical_path = ?, updated_at = ? WHERE id = ?",
+                newConnectionId, newPhysicalPath, updatedAtMillis, fileArtifactId);
+    }
+
+    @Override
+    public void deleteDiscardedById(String id) {
+        jdbc.update("DELETE FROM file_artifact WHERE id = ? AND status = 'discarded'", id);
+    }
+
+    @Override
+    public int countOrphanedArchived() {
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM file_artifact WHERE status = 'archived' AND connection_id IS NULL",
+                Integer.class);
+        return count == null ? 0 : count;
+    }
 }

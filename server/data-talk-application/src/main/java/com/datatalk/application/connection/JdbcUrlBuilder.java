@@ -57,6 +57,16 @@ public final class JdbcUrlBuilder {
                 }
                 yield "jdbc:duckdb:" + db + (c.readOnly() ? "?readonly=true" : "");
             }
+            case ConnectionKind.CLICKHOUSE -> {
+                String base = db != null
+                    ? "jdbc:clickhouse://" + c.host() + ":" + c.port() + "/" + db
+                    : "jdbc:clickhouse://" + c.host() + ":" + c.port() + "/";
+                // Port 8443 is ClickHouse native HTTPS port — append ssl=true
+                if (c.port() == 8443) {
+                    yield base + "?ssl=true";
+                }
+                yield base;
+            }
             default ->
                 throw new DataTalkException(DataTalkErrorCodes.DATABASE_KIND_UNSUPPORTED,
                     "unsupported database kind: " + c.kind(), false);
