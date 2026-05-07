@@ -627,6 +627,20 @@ Output budget: defaults `headLimit=100`, `maxTabs=50`. For existence checks use 
 - ER Inspector: day-1 `dialect_unsupported` (no FK constraints in the OLTP sense).
 - ER Designer: day-1 `dialect_unsupported` (table engine decisions not mappable to DataTalk ER DDL contract).
 
+### Apache Doris
+
+- Connection kind: `apache_doris` (alias `doris` is normalized to `apache_doris`). OLAP database with MySQL-compatible network protocol.
+- Fields: `host` (FE hostname or IP), `port` (default 9030 for FE MySQL protocol), `username`, `password`, `databaseName`. Uses MySQL Connector/J driver.
+- `datatalk_execute_sql` remains read-only in the chat path.
+- Mutations (`INSERT`, `UPDATE`, `DELETE`, DDL) require the SQL workbench with confirmation. Doris DML may be async for some operations.
+- Bulk load operations (`LOAD LABEL`, `ROUTINE LOAD`, `STREAM LOAD`, `EXPORT`) and cluster management (`ADMIN`, `ALTER SYSTEM`, `SHUTDOWN`, `DECOMMISSION`) are not supported through the chat path.
+- SQL splitter: reuses MySQL splitter (DELIMITER, backtick identifiers, comment handling).
+- Risk guard: `SHOW`, `DESCRIBE`, `EXPLAIN` are L1; `INSERT`, `CREATE TABLE`, `CREATE INDEX`, `ANALYZE` are L2; `DROP`, `TRUNCATE`, `ALTER`, `GRANT`, `REVOKE`, `CREATE USER/ROLE`, `LOAD`, `ROUTINE LOAD`, `EXPORT`, `ADMIN`, `SHUTDOWN` are L3.
+- Schema context: database selector visible (Doris databases map to MySQL-style catalogs). Schema selector hidden (Doris has no independent schema layer).
+- Diagnostics: day-1 structured unsupported. EXPLAIN, lock info, pool status, table space, index hints, terminate session, and optimize table are all unsupported.
+- ER Inspector: day-1 `dialect_unsupported` (foreign-key metadata not verified for Doris).
+- ER Designer: day-1 `dialect_unsupported` (Doris DDL has unique distribution/partition syntax).
+
 <!-- file-artifact-section:begin -->
 ## Output Files & Artifacts
 

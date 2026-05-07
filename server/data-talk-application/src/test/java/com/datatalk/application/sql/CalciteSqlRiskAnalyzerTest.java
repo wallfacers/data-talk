@@ -859,4 +859,104 @@ class CalciteSqlRiskAnalyzerTest {
         var result = analyzer.analyze("INSERT INTO orders(id) VALUES (1)", Category.MUTATION, "clickhouse");
         assertThat(result.riskLevel()).isEqualTo(RiskLevel.L2);
     }
+
+    // --- Doris risk classification ---
+    // L1 safe
+    @Test
+    void doris_selectIsL1() {
+        assertThat(analyzer.analyze("SELECT * FROM t", Category.QUERY, "apache_doris").riskLevel()).isEqualTo(RiskLevel.L1);
+    }
+    @Test
+    void doris_showTablesIsL1() {
+        assertThat(analyzer.analyze("SHOW TABLES", Category.QUERY, "apache_doris").riskLevel()).isEqualTo(RiskLevel.L1);
+    }
+    @Test
+    void doris_describeIsL1() {
+        assertThat(analyzer.analyze("DESCRIBE t", Category.QUERY, "apache_doris").riskLevel()).isEqualTo(RiskLevel.L1);
+    }
+    @Test
+    void doris_explainIsL1() {
+        assertThat(analyzer.analyze("EXPLAIN SELECT * FROM t", Category.QUERY, "apache_doris").riskLevel()).isEqualTo(RiskLevel.L1);
+    }
+    // L2 mutation
+    @Test
+    void doris_boundedInsertIsL2() {
+        assertThat(analyzer.analyze("INSERT INTO t VALUES (1)", Category.MUTATION, "apache_doris").riskLevel()).isEqualTo(RiskLevel.L2);
+    }
+    @Test
+    void doris_createTableIsL2() {
+        assertThat(analyzer.analyze("CREATE TABLE t (id INT)", Category.DDL, "apache_doris").riskLevel()).isEqualTo(RiskLevel.L2);
+    }
+    @Test
+    void doris_createIndexIsL2() {
+        assertThat(analyzer.analyze("CREATE INDEX idx ON t(id)", Category.DDL, "apache_doris").riskLevel()).isEqualTo(RiskLevel.L2);
+    }
+    @Test
+    void doris_analyzeIsL2() {
+        assertThat(analyzer.analyze("ANALYZE TABLE t", Category.QUERY, "apache_doris").riskLevel()).isEqualTo(RiskLevel.L2);
+    }
+    // L3 destructive
+    @Test
+    void doris_dropTableIsL3() {
+        assertThat(analyzer.analyze("DROP TABLE t", Category.DDL, "apache_doris").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void doris_truncateIsL3() {
+        assertThat(analyzer.analyze("TRUNCATE TABLE t", Category.DDL, "apache_doris").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void doris_alterIsL3() {
+        assertThat(analyzer.analyze("ALTER TABLE t ADD COLUMN c INT", Category.DDL, "apache_doris").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void doris_alterSystemIsL3() {
+        assertThat(analyzer.analyze("ALTER SYSTEM DECOMMISSION BACKEND 'host:9050'", Category.QUERY, "apache_doris").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void doris_grantIsL3() {
+        assertThat(analyzer.analyze("GRANT SELECT ON db.t TO user", Category.DDL, "apache_doris").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void doris_revokeIsL3() {
+        assertThat(analyzer.analyze("REVOKE SELECT ON db.t FROM user", Category.DDL, "apache_doris").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void doris_createUserIsL3() {
+        assertThat(analyzer.analyze("CREATE USER test IDENTIFIED BY 'pw'", Category.DDL, "apache_doris").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void doris_createRoleIsL3() {
+        assertThat(analyzer.analyze("CREATE ROLE analyst", Category.DDL, "apache_doris").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void doris_loadLabelIsL3() {
+        assertThat(analyzer.analyze("LOAD LABEL label1 (DATA INFILE('file') INTO TABLE t)", Category.QUERY, "apache_doris").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void doris_routineLoadIsL3() {
+        assertThat(analyzer.analyze("ROUTINE LOAD db.label ON t FROM kafka", Category.QUERY, "apache_doris").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void doris_exportIsL3() {
+        assertThat(analyzer.analyze("EXPORT TABLE t TO 'hdfs://path'", Category.QUERY, "apache_doris").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void doris_adminIsL3() {
+        assertThat(analyzer.analyze("ADMIN SET FRONTEND CONFIG ('key' = 'val')", Category.QUERY, "apache_doris").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void doris_deleteWithoutWhereIsL3() {
+        assertThat(analyzer.analyze("DELETE FROM t", Category.QUERY, "apache_doris").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void doris_deleteWithWhereIsL2() {
+        assertThat(analyzer.analyze("DELETE FROM t WHERE id = 1", Category.QUERY, "apache_doris").riskLevel()).isEqualTo(RiskLevel.L2);
+    }
+    @Test
+    void doris_doesNotApplyClickhouseRules() {
+        // Doris should not use ClickHouse-specific rules
+        var result = analyzer.analyze("SYSTEM RELOAD DICTIONARY d", Category.QUERY, "apache_doris");
+        // Should be parsed by generic Calcite, not ClickHouse rules
+        assertThat(result.riskLevel()).isNotEqualTo(RiskLevel.L1);
+    }
 }

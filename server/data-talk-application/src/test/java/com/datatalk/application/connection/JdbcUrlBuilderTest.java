@@ -699,4 +699,39 @@ class JdbcUrlBuilderTest {
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:duckdb::memory:dt_mem_duckdb-mem-ro?readonly=true");
     }
+
+    // --- Apache Doris URL building ---
+
+    @Test
+    void doris_with_database_builds_jdbc_mysql_url() {
+        var connection = new ConnectionRecord(
+            "doris-1", "Doris Test", ConnectionKind.APACHE_DORIS,
+            "host", 9030, "analytics", "root",
+            new byte[]{1}, null, 1L, 3000, null, null,
+            null, 1, true, null, false);
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:mysql://host:9030/analytics");
+    }
+
+    @Test
+    void doris_null_database_builds_url_without_db() {
+        var connection = new ConnectionRecord(
+            "doris-2", "Doris No DB", ConnectionKind.APACHE_DORIS,
+            "host", 9030, null, "root",
+            new byte[]{1}, null, 1L, 3000, null, null,
+            null, 1, true, null, false);
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:mysql://host:9030/");
+    }
+
+    @Test
+    void doris_custom_port_builds_url() {
+        var connection = new ConnectionRecord(
+            "doris-3", "Doris Custom Port", ConnectionKind.APACHE_DORIS,
+            "host", 9031, "mydb", "root",
+            new byte[]{1}, null, 1L, 3000, null, null,
+            null, 1, true, null, false);
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:mysql://host:9031/mydb");
+    }
 }

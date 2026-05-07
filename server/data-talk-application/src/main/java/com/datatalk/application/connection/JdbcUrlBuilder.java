@@ -67,6 +67,9 @@ public final class JdbcUrlBuilder {
                 }
                 yield base;
             }
+            case ConnectionKind.APACHE_DORIS ->
+                db != null ? "jdbc:mysql://" + c.host() + ":" + c.port() + "/" + db
+                           : "jdbc:mysql://" + c.host() + ":" + c.port() + "/";
             default ->
                 throw new DataTalkException(DataTalkErrorCodes.DATABASE_KIND_UNSUPPORTED,
                     "unsupported database kind: " + c.kind(), false);

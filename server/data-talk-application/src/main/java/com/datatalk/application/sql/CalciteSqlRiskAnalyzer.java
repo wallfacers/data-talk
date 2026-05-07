@@ -178,6 +178,9 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
         if (ConnectionKind.CLICKHOUSE.equalsIgnoreCase(connectionKind)) {
             return classifyClickhouseSpecific(sql);
         }
+        if (ConnectionKind.APACHE_DORIS.equalsIgnoreCase(connectionKind)) {
+            return classifyDorisSpecific(sql);
+        }
         return null;
     }
 
@@ -425,6 +428,103 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
         }
         if (normalized.startsWith("detach ")) {
             return SqlRiskAnalysis.high("clickhouse_detach");
+        }
+
+        return null;
+    }
+
+    private SqlRiskAnalysis classifyDorisSpecific(String sql) {
+        String normalized = stripLeadingComments(sql).toLowerCase(Locale.ROOT);
+        if (normalized.isEmpty()) return null;
+
+        // L1 safe: SHOW, DESCRIBE, DESC, EXPLAIN
+        if (normalized.startsWith("show ")) {
+            return SqlRiskAnalysis.low("doris_show");
+        }
+        if (normalized.startsWith("describe ") || normalized.startsWith("describe\t")
+            || normalized.startsWith("desc ") || normalized.startsWith("desc\t")) {
+            return SqlRiskAnalysis.low("doris_describe");
+        }
+        if (normalized.startsWith("explain ")) {
+            return SqlRiskAnalysis.low("doris_explain");
+        }
+
+        // L2 mutation: safe CREATE TABLE / CREATE INDEX / CREATE MATERIALIZED VIEW
+        if (normalized.startsWith("create table ")) {
+            return SqlRiskAnalysis.medium("doris_create_table");
+        }
+        if (normalized.startsWith("create index ")) {
+            return SqlRiskAnalysis.medium("doris_create_index");
+        }
+        if (normalized.startsWith("build index ")) {
+            return SqlRiskAnalysis.medium("doris_build_index");
+        }
+        if (normalized.startsWith("analyze ")) {
+            return SqlRiskAnalysis.medium("doris_analyze");
+        }
+
+        // L3 destructive: DROP
+        if (normalized.startsWith("drop ")) {
+            return SqlRiskAnalysis.high("doris_drop");
+        }
+        // L3 destructive: TRUNCATE
+        if (normalized.startsWith("truncate ") || normalized.startsWith("truncate\t")) {
+            return SqlRiskAnalysis.high("doris_truncate");
+        }
+        // L3 destructive: ALTER (but ALTER SYSTEM is hard reject below)
+        if (normalized.startsWith("alter system")) {
+            return SqlRiskAnalysis.high("doris_alter_system");
+        }
+        if (normalized.startsWith("alter ")) {
+            return SqlRiskAnalysis.high("doris_alter");
+        }
+        // L3 destructive: GRANT / REVOKE
+        if (normalized.startsWith("grant ")) {
+            return SqlRiskAnalysis.high("doris_grant");
+        }
+        if (normalized.startsWith("revoke ")) {
+            return SqlRiskAnalysis.high("doris_revoke");
+        }
+        // L3 destructive: CREATE USER / ROLE
+        if (normalized.startsWith("create user")) {
+            return SqlRiskAnalysis.high("doris_create_user");
+        }
+        if (normalized.startsWith("create role")) {
+            return SqlRiskAnalysis.high("doris_create_role");
+        }
+        // L3 destructive: RENAME
+        if (normalized.startsWith("rename ")) {
+            return SqlRiskAnalysis.high("doris_rename");
+        }
+        // L3: LOAD (bulk load), ROUTINE LOAD, STREAM LOAD
+        if (normalized.startsWith("load label")) {
+            return SqlRiskAnalysis.high("doris_load");
+        }
+        if (normalized.startsWith("routine load")) {
+            return SqlRiskAnalysis.high("doris_routine_load");
+        }
+        if (normalized.startsWith("stream load")) {
+            return SqlRiskAnalysis.high("doris_stream_load");
+        }
+        // L3: CANCEL LOAD / ALTER ROUTINE LOAD
+        if (normalized.startsWith("cancel load")) {
+            return SqlRiskAnalysis.high("doris_cancel_load");
+        }
+        // L3: EXPORT
+        if (normalized.startsWith("export ")) {
+            return SqlRiskAnalysis.high("doris_export");
+        }
+        // L3: DELETE without WHERE will be caught by Calcite generic rules
+        // Hard reject: ADMIN SET/SHOW FRONTEND/BACKEND config
+        if (normalized.startsWith("admin ")) {
+            return SqlRiskAnalysis.high("doris_admin");
+        }
+        // Hard reject: SHUTDOWN / DECOMMISSION
+        if (normalized.startsWith("shutdown ")) {
+            return SqlRiskAnalysis.high("doris_shutdown");
+        }
+        if (normalized.startsWith("decommission ")) {
+            return SqlRiskAnalysis.high("doris_decommission");
         }
 
         return null;

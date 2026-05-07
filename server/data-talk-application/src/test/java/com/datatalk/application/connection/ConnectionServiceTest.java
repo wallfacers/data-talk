@@ -338,4 +338,51 @@ class ConnectionServiceTest {
         verify(repo).update(captor.capture());
         assertThat(captor.getValue().readOnly()).isTrue();
     }
+
+    // --- Apache Doris connection tests ---
+
+    @Test
+    void create_normalizes_doris_alias_to_apache_doris() {
+        var repo = mock(ConnectionRepository.class);
+        var vault = mock(SecretVault.class);
+        when(vault.seal("pw")).thenReturn(new byte[]{1});
+        var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator());
+
+        svc.create("Doris Alias", "doris", "host", 9030, "analytics", "root", "pw", 3000, null, null, null, null, null);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(ConnectionRecord.class);
+        verify(repo).insert(captor.capture());
+        assertThat(captor.getValue().kind()).isEqualTo("apache_doris");
+    }
+
+    @Test
+    void create_apache_doris_kind_stored_as_is() {
+        var repo = mock(ConnectionRepository.class);
+        var vault = mock(SecretVault.class);
+        when(vault.seal("pw")).thenReturn(new byte[]{1});
+        var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator());
+
+        svc.create("Doris", "apache_doris", "host", 9030, "analytics", "root", "pw", 3000, null, null, null, null, null);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(ConnectionRecord.class);
+        verify(repo).insert(captor.capture());
+        assertThat(captor.getValue().kind()).isEqualTo("apache_doris");
+    }
+
+    @Test
+    void update_normalizes_doris_alias_to_apache_doris() {
+        var repo = mock(ConnectionRepository.class);
+        var vault = mock(SecretVault.class);
+        when(repo.findById("doris-conn-001")).thenReturn(Optional.of(
+            new ConnectionRecord("doris-conn-001", "Doris", "apache_doris", "host", 9030, "analytics", "root",
+                new byte[]{}, null, 1L, 3000, null, null, null, 1, true, null, false)));
+        when(vault.seal(any())).thenReturn(new byte[]{});
+        var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator());
+
+        svc.update("doris-conn-001", "Updated", "doris", "host", 9030, "analytics", "root", null, 3000, null, null, null, null, null);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(ConnectionRecord.class);
+        verify(repo).update(captor.capture());
+        assertThat(captor.getValue().kind()).isEqualTo("apache_doris");
+    }
 }

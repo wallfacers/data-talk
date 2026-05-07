@@ -283,6 +283,7 @@ public class DiagnosticsService {
                 case "oracle" -> translator.get("diagnostics.lock.unsupported.oracle");
                 case "duckdb" -> translator.get("diagnostics.lock.unsupported.duckdb");
                 case "clickhouse" -> translator.get("diagnostics.lock.unsupported.clickhouse");
+                case "apache_doris" -> translator.get("diagnostics.lock_not_supported", kind);
                 default -> translator.get("diagnostics.lock_not_supported", kind);
             };
             case "pool" -> switch (normalized) {
@@ -290,12 +291,14 @@ public class DiagnosticsService {
                 case "oracle" -> translator.get("diagnostics.pool.unsupported.oracle");
                 case "duckdb" -> translator.get("diagnostics.pool.unsupported.duckdb_embedded");
                 case "clickhouse" -> translator.get("diagnostics.pool.unsupported.clickhouse");
+                case "apache_doris" -> translator.get("diagnostics.pool_not_supported", kind);
                 default -> translator.get("diagnostics.pool_not_supported", kind);
             };
             case "space" -> switch (normalized) {
                 case "oracle" -> translator.get("diagnostics.space.unsupported.oracle");
                 case "duckdb" -> translator.get("diagnostics.space.unsupported.duckdb");
                 case "clickhouse" -> translator.get("diagnostics.space.unsupported.clickhouse");
+                case "apache_doris" -> translator.get("diagnostics.tablespace_not_supported", kind);
                 default -> translator.get("diagnostics.tablespace_not_supported", kind);
             };
             case "terminate" -> switch (normalized) {
@@ -303,6 +306,7 @@ public class DiagnosticsService {
                 case "oracle" -> translator.get("diagnostics.terminate.unsupported.oracle");
                 case "duckdb" -> translator.get("diagnostics.terminate.unsupported.duckdb");
                 case "clickhouse" -> translator.get("diagnostics.terminate.unsupported.clickhouse");
+                case "apache_doris" -> translator.get("diagnostics.terminate_not_supported", kind);
                 default -> translator.get("diagnostics.terminate_not_supported", kind);
             };
             case "optimize" -> switch (normalized) {
@@ -310,6 +314,7 @@ public class DiagnosticsService {
                 case "oracle" -> translator.get("diagnostics.optimize.unsupported.oracle");
                 case "duckdb" -> translator.get("diagnostics.optimize.unsupported.duckdb");
                 case "clickhouse" -> translator.get("diagnostics.optimize.unsupported.clickhouse");
+                case "apache_doris" -> translator.get("diagnostics.optimize_not_supported", kind);
                 default -> translator.get("diagnostics.optimize_not_supported", kind);
             };
             default -> translator.get("diagnostics.no_provider", kind);

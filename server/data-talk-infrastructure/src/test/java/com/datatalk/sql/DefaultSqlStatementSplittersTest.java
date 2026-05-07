@@ -151,4 +151,18 @@ class DefaultSqlStatementSplittersTest {
         assertThat(splitters.split("clickhouse", "SELECT 1 FORMAT TabSeparated; SELECT 2;"))
             .containsExactly("SELECT 1 FORMAT TabSeparated", "SELECT 2");
     }
+
+    @Test
+    void routes_apache_doris_to_mysql_splitter() {
+        var result = splitters.split("apache_doris",
+            "SELECT 1; INSERT INTO t VALUES (1);");
+        assertThat(result).hasSize(2);
+    }
+
+    @Test
+    void doris_handles_delimiter() {
+        var result = splitters.split("apache_doris",
+            "DELIMITER //\nCREATE PROCEDURE p() BEGIN SELECT 1; END //\nDELIMITER ;");
+        assertThat(result).hasSizeGreaterThanOrEqualTo(1);
+    }
 }

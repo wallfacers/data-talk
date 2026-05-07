@@ -7,6 +7,7 @@ export function resolveSqlFormatterLanguage(connectionKind: string | null | unde
       return 'postgresql'
     case 'mysql':
     case 'mariadb':
+    case 'apache_doris':
       return 'mysql'
     case 'oracle':
       return 'plsql'

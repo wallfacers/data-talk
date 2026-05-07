@@ -78,6 +78,7 @@ function hasIndependentSchemaNamespace(kind: string | null | undefined) {
   return normalizedKind !== 'mysql'
     && normalizedKind !== 'sqlite'
     && normalizedKind !== 'mariadb'
+    && normalizedKind !== 'apache_doris'
 }
 
 export function SqlContextToolbarControls({

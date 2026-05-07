@@ -139,7 +139,8 @@ public class ConnectionTargetDiscoveryService {
         String normalized = kind.toLowerCase(Locale.ROOT);
         return !ConnectionKind.MYSQL.equals(normalized)
             && !ConnectionKind.MARIADB.equals(normalized)
-            && !ConnectionKind.SQLITE.equals(normalized);
+            && !ConnectionKind.SQLITE.equals(normalized)
+            && !ConnectionKind.APACHE_DORIS.equals(normalized);
     }
 
     private String effectiveDatabaseName(String kind, String databaseName) {
