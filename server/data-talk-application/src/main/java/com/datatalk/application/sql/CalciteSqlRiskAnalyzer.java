@@ -353,8 +353,23 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
             return SqlRiskAnalysis.low("clickhouse_describe");
         }
 
-        // L2 mutation: safe CREATE TABLE (no AS SELECT, not CREATE OR REPLACE)
-        if (normalized.startsWith("create table ") && !normalized.contains(" as ")) {
+        // Hard reject: external table functions (s3, url, file, remote, etc.)
+        // Must run before CREATE TABLE so that CREATE TABLE ... AS SELECT FROM s3(...)
+        // is correctly classified as L3 rather than L2.
+        if (normalized.contains(" from ")) {
+            for (String fn : CLICKHOUSE_DANGEROUS_TABLE_FUNCTIONS) {
+                if (normalized.contains(" from " + fn + "(") || normalized.contains(" from " + fn + " (")) {
+                    return SqlRiskAnalysis.high("clickhouse_external_access");
+                }
+            }
+        }
+
+        // L2 mutation: safe CREATE TABLE
+        // CREATE OR REPLACE TABLE does not startWith "create table " so it naturally
+        // fallthroughs to Calcite → unclassified HIGH.
+        // Column-level AS (MATERIALIZED/DEFAULT expressions) and statement-level
+        // AS SELECT are both L2; external functions in AS SELECT are caught above.
+        if (normalized.startsWith("create table ")) {
             return SqlRiskAnalysis.medium("clickhouse_create_table");
         }
 
@@ -410,15 +425,6 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
         }
         if (normalized.startsWith("detach ")) {
             return SqlRiskAnalysis.high("clickhouse_detach");
-        }
-
-        // Hard reject: SELECT-shaped external table functions (s3, url, file, remote, etc.)
-        if (normalized.contains(" from ")) {
-            for (String fn : CLICKHOUSE_DANGEROUS_TABLE_FUNCTIONS) {
-                if (normalized.contains(" from " + fn + "(") || normalized.contains(" from " + fn + " (")) {
-                    return SqlRiskAnalysis.high("clickhouse_external_access");
-                }
-            }
         }
 
         return null;

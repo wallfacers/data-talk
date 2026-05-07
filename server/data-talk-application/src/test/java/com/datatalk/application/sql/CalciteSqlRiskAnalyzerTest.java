@@ -613,6 +613,33 @@ class CalciteSqlRiskAnalyzerTest {
         assertThat(result.reason()).isEqualTo("clickhouse_create_table");
     }
 
+    @Test
+    void clickhouse_createTableWithMaterializedColumnIsL2() {
+        var result = analyzer.analyze(
+            "CREATE TABLE users (id UInt64, name String, hash UInt64 AS cityHash64(name)) ENGINE = MergeTree ORDER BY id",
+            Category.DDL, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L2);
+        assertThat(result.reason()).isEqualTo("clickhouse_create_table");
+    }
+
+    @Test
+    void clickhouse_createTableAsSelectIsL2() {
+        var result = analyzer.analyze(
+            "CREATE TABLE users_copy AS SELECT * FROM users",
+            Category.DDL, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L2);
+        assertThat(result.reason()).isEqualTo("clickhouse_create_table");
+    }
+
+    @Test
+    void clickhouse_createTableAsSelectFromExternalFunctionIsL3() {
+        var result = analyzer.analyze(
+            "CREATE TABLE external_copy AS SELECT * FROM s3('https://bucket/data.parquet')",
+            Category.DDL, "clickhouse");
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.L3);
+        assertThat(result.reason()).isEqualTo("clickhouse_external_access");
+    }
+
     // L3 destructive: DROP, TRUNCATE, broad ALTER, RENAME, GRANT/REVOKE, CREATE USER/ROLE, dictionaries
     @Test
     void clickhouse_dropTableIsL3() {
