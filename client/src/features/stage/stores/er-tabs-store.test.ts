@@ -23,14 +23,14 @@ describe('useErTabsStore - Inspector hydration', () => {
 
   it('stores hydrated inspector payloads under tabId', () => {
     useErTabsStore.getState().hydrateInspector('tab-1', samplePayload)
-    expect(useErTabsStore.getState().inspectors.get('tab-1')).toEqual(samplePayload)
+    expect(useErTabsStore.getState().inspectors.get('tab-1')).toEqual({ ...samplePayload, __v: 1 })
   })
 
   it('hydrating an existing tabId replaces its payload', () => {
     useErTabsStore.getState().hydrateInspector('tab-1', samplePayload)
     const updated = { ...samplePayload, selection: ['products'] }
     useErTabsStore.getState().hydrateInspector('tab-1', updated)
-    expect(useErTabsStore.getState().inspectors.get('tab-1')).toEqual(updated)
+    expect(useErTabsStore.getState().inspectors.get('tab-1')).toEqual({ ...updated, __v: 2 })
   })
 
   it('getInspectorView returns null for unknown tabId', () => {
@@ -179,7 +179,7 @@ describe('useErTabsStore - Designer hydration and view', () => {
 
     useErTabsStore.getState().hydrateDesigner('d-1', payload)
 
-    expect(useErTabsStore.getState().designers.get('d-1')).toEqual(payload)
+    expect(useErTabsStore.getState().designers.get('d-1')).toEqual({ ...payload, __v: 1 })
     expect(useErTabsStore.getState().getDesignerView('d-1')).toEqual({
       nodes: [
         {
@@ -271,7 +271,7 @@ describe('useErTabsStore - applyDesignerPatch', () => {
         path: '/tables[id=t_orders]/columns/-',
         value: { name: 'user_id', type: 'BIGINT', nullable: false, isPrimaryKey: false, isAutoIncrement: false },
       },
-    ], { baseVersion: 0 })
+    ], { baseVersion: 1 })
     const cOrdersUserId = columnResult.assignedIds['/tables[id=t_orders]/columns/0']
 
     const relationResult = useErTabsStore.getState().applyDesignerPatch('d-1', [
@@ -287,7 +287,7 @@ describe('useErTabsStore - applyDesignerPatch', () => {
           constraintMethod: 'database_fk',
         },
       },
-    ], { baseVersion: 1 })
+    ], { baseVersion: 2 })
 
     const tab = useErTabsStore.getState().designers.get('d-1')
     expect(cOrdersUserId).toMatch(/^c_/)
@@ -315,7 +315,7 @@ describe('useErTabsStore - applyDesignerPatch', () => {
     useErTabsStore.getState().applyDesignerPatch('d-1', [
       { op: 'replace', path: '/tables[id=t_users]/columns[id=c_email]/type', value: 'VARCHAR(255)' },
       { op: 'remove', path: '/tables[id=t_users]/columns[id=c_email]' },
-    ], { baseVersion: 0 })
+    ], { baseVersion: 1 })
 
     expect(useErTabsStore.getState().designers.get('d-1')?.tables[0]?.columns).toEqual([])
   })

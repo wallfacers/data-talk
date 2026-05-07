@@ -50,7 +50,7 @@ describe('stage-persistence-bootstrap - ER content subscription', () => {
     expect(coordinator.scheduleContentWrite).toHaveBeenCalledWith(
       'er-1',
       expect.objectContaining({
-        payload: inspectorPayload,
+        payload: expect.objectContaining(inspectorPayload),
         contentText: expect.stringContaining('users id BIGINT'),
         expectedVersion: 1,
       }),
