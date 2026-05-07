@@ -385,4 +385,37 @@ class ConnectionServiceTest {
         verify(repo).update(captor.capture());
         assertThat(captor.getValue().kind()).isEqualTo("apache_doris");
     }
+
+    // --- StarRocks connection tests ---
+
+    @Test
+    void create_starrocks_kind_stored_as_is() {
+        var repo = mock(ConnectionRepository.class);
+        var vault = mock(SecretVault.class);
+        when(vault.seal("pw")).thenReturn(new byte[]{1});
+        var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator());
+
+        svc.create("StarRocks", "starrocks", "host", 9030, "analytics", "root", "pw", 3000, null, null, null, null, null);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(ConnectionRecord.class);
+        verify(repo).insert(captor.capture());
+        assertThat(captor.getValue().kind()).isEqualTo("starrocks");
+    }
+
+    @Test
+    void update_starrocks_kind_preserved() {
+        var repo = mock(ConnectionRepository.class);
+        var vault = mock(SecretVault.class);
+        when(repo.findById("sr-conn-001")).thenReturn(Optional.of(
+            new ConnectionRecord("sr-conn-001", "StarRocks", "starrocks", "host", 9030, "analytics", "root",
+                new byte[]{}, null, 1L, 3000, null, null, null, 1, true, null, false)));
+        when(vault.seal(any())).thenReturn(new byte[]{});
+        var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator());
+
+        svc.update("sr-conn-001", "Updated", "starrocks", "host", 9030, "analytics", "root", null, 3000, null, null, null, null, null);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(ConnectionRecord.class);
+        verify(repo).update(captor.capture());
+        assertThat(captor.getValue().kind()).isEqualTo("starrocks");
+    }
 }

@@ -140,7 +140,8 @@ public class ConnectionTargetDiscoveryService {
         return !ConnectionKind.MYSQL.equals(normalized)
             && !ConnectionKind.MARIADB.equals(normalized)
             && !ConnectionKind.SQLITE.equals(normalized)
-            && !ConnectionKind.APACHE_DORIS.equals(normalized);
+            && !ConnectionKind.APACHE_DORIS.equals(normalized)
+            && !ConnectionKind.STARROCKS.equals(normalized);
     }
 
     private String effectiveDatabaseName(String kind, String databaseName) {

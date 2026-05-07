@@ -5,7 +5,7 @@ import type { ConnectionTargetsResponse } from '@/services/api/session-data-cont
 
 export type { Connection } from '@/types/generated/api'
 export type { ConnectionTargetsResponse } from '@/services/api/session-data-context'
-export type DbType = 'mysql' | 'postgres' | 'h2' | 'sqlite' | 'mariadb' | 'oracle' | 'sqlserver' | 'duckdb' | 'clickhouse' | 'apache_doris'
+export type DbType = 'mysql' | 'postgres' | 'h2' | 'sqlite' | 'mariadb' | 'oracle' | 'sqlserver' | 'duckdb' | 'clickhouse' | 'apache_doris' | 'starrocks'
 
 // Alias for create input with password
 export type CreateConnectionInput = ConnectionCreateInput

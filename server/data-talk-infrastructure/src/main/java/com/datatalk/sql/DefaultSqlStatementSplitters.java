@@ -42,6 +42,10 @@ public class DefaultSqlStatementSplitters implements SqlStatementSplitters {
             //  batch scripts, sqlcmd mode, etc.)
             return genericSplitter.split(sql);
         }
+        if ("starrocks".equalsIgnoreCase(connectionKind)) {
+            // StarRocks day-1 uses generic splitter (procedural SQL behavior unverified).
+            return genericSplitter.split(sql);
+        }
         if ("duckdb".equalsIgnoreCase(connectionKind)) {
             // DuckDB has no DELIMITER, no PL/SQL, no GO — generic splitter is sufficient.
             return genericSplitter.split(sql);

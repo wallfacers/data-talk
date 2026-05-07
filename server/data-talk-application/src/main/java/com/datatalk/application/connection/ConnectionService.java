@@ -157,6 +157,9 @@ public class ConnectionService {
         } else if (kind.equals(ConnectionKind.APACHE_DORIS)) {
             int timeoutMs = c.connectTimeout();
             url += (url.contains("?") ? "&" : "?") + "connectTimeout=" + timeoutMs + "&socketTimeout=" + timeoutMs;
+        } else if (kind.equals(ConnectionKind.STARROCKS)) {
+            int timeoutMs = c.connectTimeout();
+            url += (url.contains("?") ? "&" : "?") + "connectTimeout=" + timeoutMs + "&socketTimeout=" + timeoutMs;
         }
         long started = clock.millis();
         try (var conn = java.sql.DriverManager.getConnection(url, c.username(), password)) {

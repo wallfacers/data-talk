@@ -181,6 +181,9 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
         if (ConnectionKind.APACHE_DORIS.equalsIgnoreCase(connectionKind)) {
             return classifyDorisSpecific(sql);
         }
+        if (ConnectionKind.STARROCKS.equalsIgnoreCase(connectionKind)) {
+            return classifyStarrocksSpecific(sql);
+        }
         return null;
     }
 
@@ -525,6 +528,112 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
         }
         if (normalized.startsWith("decommission ")) {
             return SqlRiskAnalysis.high("doris_decommission");
+        }
+
+        return null;
+    }
+
+    private SqlRiskAnalysis classifyStarrocksSpecific(String sql) {
+        String normalized = stripLeadingComments(sql).toLowerCase(Locale.ROOT);
+        if (normalized.isEmpty()) return null;
+
+        // L1 safe: SHOW, DESCRIBE, DESC, EXPLAIN
+        if (normalized.startsWith("show ")) {
+            return SqlRiskAnalysis.low("starrocks_show");
+        }
+        if (normalized.startsWith("describe ") || normalized.startsWith("describe\t")
+            || normalized.startsWith("desc ") || normalized.startsWith("desc\t")) {
+            return SqlRiskAnalysis.low("starrocks_describe");
+        }
+        if (normalized.startsWith("explain ")) {
+            return SqlRiskAnalysis.low("starrocks_explain");
+        }
+
+        // L2 mutation: safe CREATE TABLE, CREATE INDEX, ANALYZE
+        if (normalized.startsWith("create table ")) {
+            return SqlRiskAnalysis.medium("starrocks_create_table");
+        }
+        if (normalized.startsWith("create index ")) {
+            return SqlRiskAnalysis.medium("starrocks_create_index");
+        }
+        if (normalized.startsWith("analyze ")) {
+            return SqlRiskAnalysis.medium("starrocks_analyze");
+        }
+
+        // L3 destructive: DROP
+        if (normalized.startsWith("drop ")) {
+            return SqlRiskAnalysis.high("starrocks_drop");
+        }
+        // L3 destructive: TRUNCATE
+        if (normalized.startsWith("truncate ") || normalized.startsWith("truncate\t")) {
+            return SqlRiskAnalysis.high("starrocks_truncate");
+        }
+        // L3 destructive: ALTER (includes ALTER SYSTEM, ALTER DATABASE, ALTER CATALOG)
+        if (normalized.startsWith("alter ")) {
+            return SqlRiskAnalysis.high("starrocks_alter");
+        }
+        // L3 destructive: GRANT / REVOKE
+        if (normalized.startsWith("grant ")) {
+            return SqlRiskAnalysis.high("starrocks_grant");
+        }
+        if (normalized.startsWith("revoke ")) {
+            return SqlRiskAnalysis.high("starrocks_revoke");
+        }
+        // L3: CREATE USER / ROLE / CATALOG
+        if (normalized.startsWith("create user")) {
+            return SqlRiskAnalysis.high("starrocks_create_user");
+        }
+        if (normalized.startsWith("create role")) {
+            return SqlRiskAnalysis.high("starrocks_create_role");
+        }
+        if (normalized.startsWith("create catalog")) {
+            return SqlRiskAnalysis.high("starrocks_create_catalog");
+        }
+        if (normalized.startsWith("drop catalog")) {
+            return SqlRiskAnalysis.high("starrocks_drop_catalog");
+        }
+        // L3: LOAD, ROUTINE LOAD, STREAM LOAD, BROKER LOAD
+        if (normalized.startsWith("load label")) {
+            return SqlRiskAnalysis.high("starrocks_load");
+        }
+        if (normalized.startsWith("routine load")) {
+            return SqlRiskAnalysis.high("starrocks_routine_load");
+        }
+        if (normalized.startsWith("stream load")) {
+            return SqlRiskAnalysis.high("starrocks_stream_load");
+        }
+        if (normalized.startsWith("broker load")) {
+            return SqlRiskAnalysis.high("starrocks_broker_load");
+        }
+        // L3: EXPORT, CANCEL LOAD
+        if (normalized.startsWith("export ")) {
+            return SqlRiskAnalysis.high("starrocks_export");
+        }
+        if (normalized.startsWith("cancel load")) {
+            return SqlRiskAnalysis.high("starrocks_cancel_load");
+        }
+        // L3: ADMIN SET/SHOW/REBALANCE/DROP FOLLOWER/LEADER
+        if (normalized.startsWith("admin ")) {
+            return SqlRiskAnalysis.high("starrocks_admin");
+        }
+        // L3: SET GLOBAL
+        if (normalized.startsWith("set global")) {
+            return SqlRiskAnalysis.high("starrocks_set_global");
+        }
+        // L3: KILL
+        if (normalized.startsWith("kill ")) {
+            return SqlRiskAnalysis.high("starrocks_kill");
+        }
+        // L3: RENAME
+        if (normalized.startsWith("rename ")) {
+            return SqlRiskAnalysis.high("starrocks_rename");
+        }
+        // L3: SUBMIT TASK, CANCEL TASK
+        if (normalized.startsWith("submit task")) {
+            return SqlRiskAnalysis.high("starrocks_submit_task");
+        }
+        if (normalized.startsWith("cancel task")) {
+            return SqlRiskAnalysis.high("starrocks_cancel_task");
         }
 
         return null;

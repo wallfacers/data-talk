@@ -734,4 +734,51 @@ class JdbcUrlBuilderTest {
         assertThat(JdbcUrlBuilder.build(connection))
             .isEqualTo("jdbc:mysql://host:9031/mydb");
     }
+
+    // --- StarRocks URL building ---
+
+    @Test
+    void starrocks_with_database_builds_jdbc_url() {
+        var connection = new ConnectionRecord(
+            "sr-1", "StarRocks Test", ConnectionKind.STARROCKS,
+            "host", 9030, "analytics", "root",
+            new byte[]{1}, null, 1L, 3000, null, null,
+            null, 1, true, null, false);
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:starrocks://host:9030/default_catalog.analytics");
+    }
+
+    @Test
+    void starrocks_null_database_throws() {
+        var connection = new ConnectionRecord(
+            "sr-2", "StarRocks No DB", ConnectionKind.STARROCKS,
+            "host", 9030, null, "root",
+            new byte[]{1}, null, 1L, 3000, null, null,
+            null, 1, true, null, false);
+        assertThatThrownBy(() -> JdbcUrlBuilder.build(connection))
+            .isInstanceOf(com.datatalk.domain.error.DataTalkException.class)
+            .hasMessageContaining("StarRocks requires a database name");
+    }
+
+    @Test
+    void starrocks_blank_database_throws() {
+        var connection = new ConnectionRecord(
+            "sr-3", "StarRocks Blank DB", ConnectionKind.STARROCKS,
+            "host", 9030, "   ", "root",
+            new byte[]{1}, null, 1L, 3000, null, null,
+            null, 1, true, null, false);
+        assertThatThrownBy(() -> JdbcUrlBuilder.build(connection))
+            .isInstanceOf(com.datatalk.domain.error.DataTalkException.class);
+    }
+
+    @Test
+    void starrocks_custom_port_builds_url() {
+        var connection = new ConnectionRecord(
+            "sr-4", "StarRocks Custom Port", ConnectionKind.STARROCKS,
+            "host", 9031, "mydb", "root",
+            new byte[]{1}, null, 1L, 3000, null, null,
+            null, 1, true, null, false);
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:starrocks://host:9031/default_catalog.mydb");
+    }
 }

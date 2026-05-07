@@ -70,6 +70,13 @@ public final class JdbcUrlBuilder {
             case ConnectionKind.APACHE_DORIS ->
                 db != null ? "jdbc:mysql://" + c.host() + ":" + c.port() + "/" + db
                            : "jdbc:mysql://" + c.host() + ":" + c.port() + "/";
+            case ConnectionKind.STARROCKS -> {
+                if (db == null || db.isBlank()) {
+                    throw new DataTalkException(DataTalkErrorCodes.DATABASE_KIND_UNSUPPORTED,
+                        "StarRocks requires a database name", false);
+                }
+                yield "jdbc:starrocks://" + c.host() + ":" + c.port() + "/default_catalog." + db;
+            }
             default ->
                 throw new DataTalkException(DataTalkErrorCodes.DATABASE_KIND_UNSUPPORTED,
                     "unsupported database kind: " + c.kind(), false);

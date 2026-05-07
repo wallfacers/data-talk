@@ -20,6 +20,7 @@ export const DATABASE_TYPES = {
   duckdb: { label: 'DuckDB', port: 0 },
   clickhouse: { label: 'ClickHouse', port: 8123 },
   apache_doris: { label: 'Apache Doris', port: 9030 },
+  starrocks: { label: 'StarRocks', port: 9030 },
 } as const
 
 export type DatabaseKind = keyof typeof DATABASE_TYPES

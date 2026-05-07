@@ -277,7 +277,7 @@ public class ReadSchemaAction implements ActionHandler<Map, Map> {
     }
 
     static MetadataScope metadataScope(String kind, String database, String schema) {
-        if ("mysql".equalsIgnoreCase(kind) || "mariadb".equalsIgnoreCase(kind) || "apache_doris".equalsIgnoreCase(kind)) {
+        if ("mysql".equalsIgnoreCase(kind) || "mariadb".equalsIgnoreCase(kind) || "apache_doris".equalsIgnoreCase(kind) || "starrocks".equalsIgnoreCase(kind)) {
             return new MetadataScope(hasText(database) ? database : null, null);
         }
         if ("sqlserver".equalsIgnoreCase(kind)) {

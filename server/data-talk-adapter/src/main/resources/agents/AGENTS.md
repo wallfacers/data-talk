@@ -641,6 +641,21 @@ Output budget: defaults `headLimit=100`, `maxTabs=50`. For existence checks use 
 - ER Inspector: day-1 `dialect_unsupported` (foreign-key metadata not verified for Doris).
 - ER Designer: day-1 `dialect_unsupported` (Doris DDL has unique distribution/partition syntax).
 
+### StarRocks
+
+- Connection kind: `starrocks`. OLAP database with native StarRocks JDBC driver.
+- Fields: `host` (FE hostname or IP), `port` (default 9030 for FE query port), `username`, `password`, `databaseName` (required, StarRocks database within `default_catalog`).
+- Catalog: day-1 uses `default_catalog` hardcoded in the JDBC URL (`jdbc:starrocks://host:9030/default_catalog.database`).
+- `datatalk_execute_sql` remains read-only in the chat path.
+- Mutations (`INSERT`, `UPDATE`, `DELETE`, DDL) require the SQL workbench with confirmation.
+- Catalog operations (`CREATE/DROP CATALOG`), load operations (`LOAD LABEL`, `ROUTINE LOAD`, `STREAM LOAD`, `BROKER LOAD`), export, cluster management (`ADMIN`, `ALTER SYSTEM`), and global variable changes (`SET GLOBAL`) are not supported through the chat path.
+- SQL splitter: generic (procedural SQL behavior unverified for day-1).
+- Risk guard: `SHOW`, `DESCRIBE`, `EXPLAIN` are L1; `INSERT`, `CREATE TABLE`, `CREATE INDEX`, `ANALYZE` are L2; `DROP`, `TRUNCATE`, `ALTER`, `GRANT`, `REVOKE`, `CREATE USER/ROLE/CATALOG`, `DROP CATALOG`, `LOAD`, `ROUTINE LOAD`, `EXPORT`, `ADMIN`, `SET GLOBAL`, `KILL`, `SUBMIT TASK` are L3.
+- Schema context: database selector visible (StarRocks databases within default_catalog). Schema selector hidden.
+- Diagnostics: day-1 structured unsupported. EXPLAIN, lock info, pool status, table space, index hints, terminate session, and optimize table are all unsupported.
+- ER Inspector: day-1 `dialect_unsupported`.
+- ER Designer: day-1 `dialect_unsupported`.
+
 <!-- file-artifact-section:begin -->
 ## Output Files & Artifacts
 

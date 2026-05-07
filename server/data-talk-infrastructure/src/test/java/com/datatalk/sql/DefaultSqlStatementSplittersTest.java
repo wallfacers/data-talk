@@ -165,4 +165,11 @@ class DefaultSqlStatementSplittersTest {
             "DELIMITER //\nCREATE PROCEDURE p() BEGIN SELECT 1; END //\nDELIMITER ;");
         assertThat(result).hasSizeGreaterThanOrEqualTo(1);
     }
+
+    @Test
+    void routes_starrocks_to_generic_splitter() {
+        var result = splitters.split("starrocks",
+            "SELECT 1; INSERT INTO t VALUES (1);");
+        assertThat(result).hasSize(2);
+    }
 }

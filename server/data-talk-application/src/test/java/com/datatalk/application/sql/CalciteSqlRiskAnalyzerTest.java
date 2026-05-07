@@ -959,4 +959,117 @@ class CalciteSqlRiskAnalyzerTest {
         // Should be parsed by generic Calcite, not ClickHouse rules
         assertThat(result.riskLevel()).isNotEqualTo(RiskLevel.L1);
     }
+
+    // --- StarRocks risk classification ---
+    @Test
+    void starrocks_selectIsL1() {
+        assertThat(analyzer.analyze("SELECT * FROM t", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L1);
+    }
+    @Test
+    void starrocks_showTablesIsL1() {
+        assertThat(analyzer.analyze("SHOW TABLES", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L1);
+    }
+    @Test
+    void starrocks_describeIsL1() {
+        assertThat(analyzer.analyze("DESCRIBE t", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L1);
+    }
+    @Test
+    void starrocks_explainIsL1() {
+        assertThat(analyzer.analyze("EXPLAIN SELECT * FROM t", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L1);
+    }
+    // L2
+    @Test
+    void starrocks_insertIsL2() {
+        assertThat(analyzer.analyze("INSERT INTO t VALUES (1)", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L2);
+    }
+    @Test
+    void starrocks_createTableIsL2() {
+        assertThat(analyzer.analyze("CREATE TABLE t (id INT)", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L2);
+    }
+    @Test
+    void starrocks_createIndexIsL2() {
+        assertThat(analyzer.analyze("CREATE INDEX idx ON t(id)", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L2);
+    }
+    @Test
+    void starrocks_analyzeIsL2() {
+        assertThat(analyzer.analyze("ANALYZE TABLE t", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L2);
+    }
+    // L3
+    @Test
+    void starrocks_dropTableIsL3() {
+        assertThat(analyzer.analyze("DROP TABLE t", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void starrocks_truncateIsL3() {
+        assertThat(analyzer.analyze("TRUNCATE TABLE t", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void starrocks_alterIsL3() {
+        assertThat(analyzer.analyze("ALTER TABLE t ADD COLUMN c INT", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void starrocks_grantIsL3() {
+        assertThat(analyzer.analyze("GRANT SELECT ON db.t TO user", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void starrocks_revokeIsL3() {
+        assertThat(analyzer.analyze("REVOKE SELECT ON db.t FROM user", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void starrocks_createUserIsL3() {
+        assertThat(analyzer.analyze("CREATE USER test IDENTIFIED BY 'pw'", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void starrocks_createRoleIsL3() {
+        assertThat(analyzer.analyze("CREATE ROLE analyst", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void starrocks_createCatalogIsL3() {
+        assertThat(analyzer.analyze("CREATE CATALOG hive PROPERTIES (...)\"", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void starrocks_dropCatalogIsL3() {
+        assertThat(analyzer.analyze("DROP CATALOG hive", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void starrocks_loadLabelIsL3() {
+        assertThat(analyzer.analyze("LOAD LABEL label1 (DATA INFILE('file') INTO TABLE t)", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void starrocks_routineLoadIsL3() {
+        assertThat(analyzer.analyze("ROUTINE LOAD db.label ON t FROM kafka", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void starrocks_exportIsL3() {
+        assertThat(analyzer.analyze("EXPORT TABLE t TO 'hdfs://path'", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void starrocks_adminIsL3() {
+        assertThat(analyzer.analyze("ADMIN SET FRONTEND CONFIG ('key' = 'val')", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void starrocks_setGlobalIsL3() {
+        assertThat(analyzer.analyze("SET GLOBAL query_timeout = 300", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void starrocks_killIsL3() {
+        assertThat(analyzer.analyze("KILL QUERY 12345", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void starrocks_deleteWithWhereIsL2() {
+        assertThat(analyzer.analyze("DELETE FROM t WHERE id = 1", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L2);
+    }
+    @Test
+    void starrocks_deleteWithoutWhereIsL3() {
+        assertThat(analyzer.analyze("DELETE FROM t", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void starrocks_submitTaskIsL3() {
+        assertThat(analyzer.analyze("SUBMIT TASK AS CREATE TABLE t AS SELECT 1", Category.QUERY, "starrocks").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void starrocks_doesNotApplyDorisRules() {
+        var result = analyzer.analyze("DECOMMISSION BACKEND 'host:9050'", Category.QUERY, "starrocks");
+        assertThat(result.riskLevel()).isNotEqualTo(RiskLevel.L1);
+    }
 }
