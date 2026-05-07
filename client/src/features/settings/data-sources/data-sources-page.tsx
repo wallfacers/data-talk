@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button'
 import { TrashIcon, PencilIcon, PlusIcon, CheckCircle2Icon, XCircleIcon, LoaderIcon } from 'lucide-react'
 import { useI18n } from '@/i18n/use-i18n'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { listConnections, deleteConnection, testConnection, connectionsKey, type Connection } from './api'
-import { ConnectionFormPanel } from './connection-form-dialog'
+import { listConnections, deleteConnection, testConnection, connectionsKey, type Connection, type ConnectionDeleteBlocked } from './api'
+import { ConnectionFormPanel, DATABASE_TYPES } from './connection-form-dialog'
 import { useConnectionStore } from '@/features/connection/store'
+import { DeleteConnectionModal } from '@/features/connection/components/delete-connection-modal'
 
 export function DataSourcesPage() {
   const { t } = useI18n()
@@ -20,6 +21,11 @@ export function DataSourcesPage() {
   const [editing, setEditing] = useState<Connection | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [testResult, setTestResult] = useState<Record<string, 'ok' | 'fail' | 'loading'>>({})
+  const [deleteModal, setDeleteModal] = useState<{
+    connectionId: string
+    connectionName: string
+    counts: { sessions: number; candidates: number; temporary: number; archived: number }
+  } | null>(null)
 
   useEffect(() => {
     if (connectionsData === undefined) return
@@ -32,9 +38,20 @@ export function DataSourcesPage() {
 
   const del = useMutation({
     mutationFn: deleteConnection,
-    onSuccess: () => {
+    onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: connectionsKey })
       qc.invalidateQueries({ queryKey: ['session-data-context'] })
+      // Check if blocked by resources
+      if (result !== undefined && 'counts' in result) {
+        const blocked = result as ConnectionDeleteBlocked
+        const conn = connections.find((c) => c.id === blocked.connectionId)
+        setDeleteModal({
+          connectionId: blocked.connectionId,
+          connectionName: conn?.name ?? '',
+          counts: blocked.counts,
+        })
+        return
+      }
       toast.success(t('common.deleted'))
     },
   })
@@ -81,7 +98,7 @@ export function DataSourcesPage() {
                 <td className="py-2 align-middle">
                   <Tooltip><TooltipTrigger render={<span className="truncate block" />}>{c.name}</TooltipTrigger><TooltipContent side="bottom" sideOffset={4}>{c.name}</TooltipContent></Tooltip>
                 </td>
-                <td className="py-2 align-middle">{c.kind}</td>
+                <td className="py-2 align-middle">{(DATABASE_TYPES as Record<string, { label: string }>)[c.kind]?.label ?? c.kind}</td>
                 <td className="align-middle">
                   <Tooltip><TooltipTrigger render={<span className="truncate block" />}>{addr}</TooltipTrigger><TooltipContent side="bottom" sideOffset={4}>{addr}</TooltipContent></Tooltip>
                 </td>
@@ -153,6 +170,18 @@ export function DataSourcesPage() {
             onSaved={() => setEditing(null)}
           />
         </div>
+      )}
+
+      {deleteModal && (
+        <DeleteConnectionModal
+          connectionId={deleteModal.connectionId}
+          connectionName={deleteModal.connectionName}
+          counts={deleteModal.counts}
+          open={deleteModal !== null}
+          onOpenChange={(open) => {
+            if (!open) setDeleteModal(null)
+          }}
+        />
       )}
     </div>
   )

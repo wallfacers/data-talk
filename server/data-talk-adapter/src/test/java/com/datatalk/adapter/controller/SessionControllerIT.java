@@ -310,6 +310,61 @@ class SessionControllerIT {
         org.assertj.core.api.Assertions.assertThat(afterContexts).isZero();
     }
 
+    @Test
+    void delete_withoutForce_returns_409_when_candidates_exist() throws Exception {
+        String id = createSession("conn-del", "有候选文件");
+
+        long now = System.currentTimeMillis();
+        jdbc.update("""
+            INSERT INTO file_artifact(id, scope, status, kind, session_id, connection_id,
+                filename, physical_path, size_bytes, mime_type, title, summary,
+                created_at, updated_at, archived_at, metadata_json)
+            VALUES(?, 'session', 'candidate', 'other', ?, NULL,
+                'report.md', '/abs/sessions/%s/report.md', 256, 'text/markdown',
+                'Test Report', 'A candidate file', ?, ?, NULL, NULL)
+            """.formatted(id),
+            "fa-cand-del", id, now, now);
+
+        mvc.perform(delete("/api/sessions/" + id))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.error").value("session_has_archive_candidates"))
+            .andExpect(jsonPath("$.sessionId").value(id))
+            .andExpect(jsonPath("$.candidates.length()").value(org.hamcrest.Matchers.greaterThan(0)))
+            .andExpect(jsonPath("$.candidates[0].id").value("fa-cand-del"))
+            .andExpect(jsonPath("$.candidates[0].filename").value("report.md"))
+            .andExpect(jsonPath("$.candidates[0].kind").value("other"))
+            .andExpect(jsonPath("$.candidates[0].sizeBytes").value(256));
+    }
+
+    @Test
+    void delete_withForce_deletes_session_even_with_candidates() throws Exception {
+        String id = createSession("conn-del", "强制删除");
+
+        long now = System.currentTimeMillis();
+        jdbc.update("""
+            INSERT INTO file_artifact(id, scope, status, kind, session_id, connection_id,
+                filename, physical_path, size_bytes, mime_type, title, summary,
+                created_at, updated_at, archived_at, metadata_json)
+            VALUES(?, 'session', 'candidate', 'other', ?, NULL,
+                'report.md', '/abs/sessions/%s/report.md', 256, 'text/markdown',
+                'Test Report', 'A candidate file', ?, ?, NULL, NULL)
+            """.formatted(id),
+            "fa-force-del", id, now, now);
+
+        mvc.perform(delete("/api/sessions/" + id).param("force", "true"))
+            .andExpect(status().isNoContent());
+
+        // Session row gone
+        Integer sessionCount = jdbc.queryForObject(
+            "SELECT COUNT(*) FROM sessions WHERE id = ?", Integer.class, id);
+        org.assertj.core.api.Assertions.assertThat(sessionCount).isZero();
+
+        // Candidate row gone (deleted as transient by force-delete)
+        Integer candidateCount = jdbc.queryForObject(
+            "SELECT COUNT(*) FROM file_artifact WHERE id = ?", Integer.class, "fa-force-del");
+        org.assertj.core.api.Assertions.assertThat(candidateCount).isZero();
+    }
+
     private String createSession(String connectionId, String title) throws Exception {
         String body = "{\"connectionId\":\"" + connectionId + "\",\"title\":\"" + title + "\"}";
         String json = mvc.perform(post("/api/sessions")

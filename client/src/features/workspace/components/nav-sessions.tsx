@@ -43,8 +43,10 @@ import {
 import { useOpenBlankSession } from '@/features/session/hooks/use-open-blank-session'
 import { displaySessionTitle } from '@/features/session/session-title'
 import { useSessionStore } from '@/stores/session-store'
-import { renameSession, deleteSession, type Session } from '@/services/api/session'
+import { renameSession, deleteSession, type Session, type BlockedByCandidates } from '@/services/api/session'
 import { useI18n } from '@/i18n/use-i18n'
+import { DeleteSessionModal, type DeleteSessionCandidate } from '@/features/session/components/delete-session-modal'
+import { useConnectionStore } from '@/features/connection/store'
 
 type SessionGroup = {
   label: string
@@ -105,7 +107,15 @@ export function NavSessions() {
   const openSession = useSessionStore((s) => s.openSession)
   const openBlankSession = useOpenBlankSession()
   const sessions = useSessions('all')
+  const connections = useConnectionStore((s) => s.connections)
   const qc = useQueryClient()
+
+  // Delete modal state
+  const [deleteModal, setDeleteModal] = useState<{
+    sessionId: string
+    candidates: DeleteSessionCandidate[]
+    connectionName: string
+  } | null>(null)
 
   const renameMut = useMutation({
     mutationFn: ({ id, title }: { id: string; title: string }) => renameSession(id, title),
@@ -117,8 +127,27 @@ export function NavSessions() {
 
   const deleteMut = useMutation({
     mutationFn: (id: string) => deleteSession(id),
-    onSuccess: (_, id) => {
+    onSuccess: (result, id) => {
       invalidateSessionLists(qc)
+      // Check if we got blocked by candidates
+      if (result && 'candidates' in result) {
+        const blocked = result as BlockedByCandidates
+        const session = (sessions.data ?? []).find((s) => s.id === blocked.sessionId)
+        const connName = connections.find((c) => c.id === session?.connectionId)?.name ?? ''
+        setDeleteModal({
+          sessionId: blocked.sessionId,
+          candidates: blocked.candidates.map((c) => ({
+            id: c.id,
+            filename: c.filename,
+            kind: c.kind,
+            sizeBytes: c.sizeBytes,
+            title: c.title,
+            summary: c.summary,
+          })),
+          connectionName: connName,
+        })
+        return
+      }
       if (useSessionStore.getState().activeSessionId === id) {
         void openBlankSession(id)
       }
@@ -170,6 +199,17 @@ export function NavSessions() {
           onDelete={(id) => deleteMut.mutate(id)}
         />
       ))}
+      {deleteModal && (
+        <DeleteSessionModal
+          sessionId={deleteModal.sessionId}
+          connectionName={deleteModal.connectionName}
+          candidates={deleteModal.candidates}
+          open={deleteModal !== null}
+          onOpenChange={(open) => {
+            if (!open) setDeleteModal(null)
+          }}
+        />
+      )}
     </>
   )
 }
