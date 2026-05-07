@@ -8,7 +8,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## 当前编号
 
-下一个分配 ID：**BUG-0003**（永不复用，单调递增）
+下一个分配 ID：**BUG-0007**（永不复用，单调递增）
 
 ## Open BUGs（按 priority 倒序，P0 → P2）
 
@@ -20,7 +20,9 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 | ID | Title | Status | Priority | Owner |
 |----|-------|--------|----------|-------|
-| —  | 当前无进行中 BUG | — | — | — |
+| BUG-0004 | Fork to Designer 不创建 er_designer tab | fixed | P1 | agent |
+| BUG-0005 | 页面刷新后 ER Inspector Tab 不恢复 | fixed | P1 | agent |
+| BUG-0006 | 页面刷新后 ER Designer Tab targetConnectionId 丢失 | fixed | P2 | agent |
 
 ## Recently Closed（最近 30 天，status = verified | closed）
 
@@ -31,11 +33,11 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## By Module（聚合视图，仅列 open + in-progress）
 
-- 当前无 open/in-progress BUG
+- **ER Entry & Persistence**：BUG-0004 (P1), BUG-0005 (P1), BUG-0006 (P2)
 
 ## By Source（聚合视图，仅列 open + in-progress）
 
-- 当前无 open/in-progress BUG
+- **e2e-playwright**：BUG-0004 (P1), BUG-0005 (P1), BUG-0006 (P2)
 
 ## Wontfix / Duplicate（终态归档，无时间限制）
 

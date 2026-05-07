@@ -69,6 +69,8 @@ export async function openErInspectorViaShortcut(
         title: 'ER Inspector (e2e)',
         connectionId: opts.connectionId,
         payload,
+        createdAt: Date.now(),
+        payloadVersion: 1,
       })
       er.hydrateInspector(tabId, payload)
     },
@@ -114,6 +116,8 @@ export async function openErDesignerViaShortcut(
         title: 'ER Designer (e2e)',
         connectionId: null,
         payload,
+        createdAt: Date.now(),
+        payloadVersion: 1,
       })
       er.hydrateDesigner(tabId, payload)
     },

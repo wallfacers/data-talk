@@ -21,12 +21,14 @@ export function ErInspectorTab({ tabId }: { tabId: string }) {
   }, [adapter])
 
   const onExec = useCallback((action: string, params?: unknown) => {
-    void adapter.exec(action, params)
+    adapter.exec(action, params).catch((error: unknown) => {
+      console.error(`[ErInspectorTab] exec("${action}") failed:`, error)
+    })
   }, [adapter])
 
   if (!payload) {
     return (
-      <div className="flex h-full items-center justify-center text-sm text-text-muted">
+      <div className="flex h-full items-center justify-center text-sm text-text-muted" data-er-tab-id={tabId}>
         {t('erCanvas.loading')}
       </div>
     )

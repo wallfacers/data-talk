@@ -315,7 +315,7 @@ export function ErDesignerTab({ tabId }: { tabId: string }) {
 
   if (!payload) {
     return (
-      <div className="flex h-full items-center justify-center text-sm text-text-muted">
+      <div className="flex h-full items-center justify-center text-sm text-text-muted" data-er-tab-id={tabId}>
         {t('erCanvas.loading')}
       </div>
     )

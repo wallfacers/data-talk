@@ -191,6 +191,7 @@ export class ErInspectorAdapter implements UIObject {
           return { success: false, error: `unknown action: ${action}` }
       }
     } catch (error) {
+      console.error(`ErInspectorAdapter.exec(${action}) failed:`, error)
       return { success: false, error: (error as Error).message }
     }
   }

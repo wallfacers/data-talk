@@ -312,6 +312,23 @@ function scheduleErChanges<P>(next: Map<string, P>, prev: Map<string, P>): void 
   })
 }
 
+// Flush pending persistence writes before the page unloads so tabs survive
+// a browser refresh. Async writes (metadata, debounced content) may still be
+// in-flight when the user navigates away — flushAll gives them one last
+// synchronous best-effort send via sendBeacon.
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
+    coordinator.flushAllSync()
+  })
+  // Also flush on visibilitychange (tab hidden / app backgrounded) for
+  // platforms that aggressively kill background pages.
+  window.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      coordinator.flushAllSync()
+    }
+  })
+}
+
 export function startStagePersistence() {
   return coordinator.start()
 }
