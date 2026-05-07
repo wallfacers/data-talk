@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Set;
 import java.util.stream.Stream;
 
@@ -47,24 +48,33 @@ public class LegacyMigrationRunner {
         }
 
         int filesMoved = 0;
+        boolean failed = false;
         try (Stream<Path> walk = Files.list(opencodeDir)) {
+            Path legacyDir = workdir.resolve("_legacy");
             for (Path entry : (Iterable<Path>) walk::iterator) {
                 String name = entry.getFileName().toString();
                 if (WHITELIST.contains(name)) continue;
                 if (name.startsWith("opencode.json.dt-bak-")) continue;
                 if (name.startsWith("package.json") || name.equals("node_modules") || name.equals("v") || name.equals("sessions")) continue;
 
-                Path legacyDir = workdir.resolve("_legacy");
-                Files.createDirectories(legacyDir);
-                Path dest = legacyDir.resolve(name);
-                Files.move(entry, dest);
-                filesMoved++;
+                try {
+                    Files.createDirectories(legacyDir);
+                    Path dest = legacyDir.resolve(name);
+                    Files.move(entry, dest, StandardCopyOption.REPLACE_EXISTING);
+                    filesMoved++;
+                } catch (IOException e) {
+                    failed = true;
+                    log.warn("[legacy-migration] failed to move {}: {}", name, e.toString());
+                }
             }
         } catch (IOException e) {
             log.warn("[legacy-migration] walk failed: {}", e.toString());
+            return;
         }
 
-        touchMarker(marker);
+        if (!failed) {
+            touchMarker(marker);
+        }
         if (filesMoved > 0) {
             log.info("[legacy-migration] moved {} files to _legacy", filesMoved);
         }

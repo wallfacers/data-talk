@@ -48,7 +48,7 @@ export function OrphanArchivesDrawer({ files, onClose }: Props) {
       const r = await doDiscard(id)
       if (r.ok) ok++
     }
-    toast(t('maintenance.orphans.toast.reattachPartial', { ok, fail: ids.length - ok }))
+    toast(t('maintenance.orphans.toast.batchResult', { ok, fail: ids.length - ok }))
     setProcessing(false)
     qc.invalidateQueries({ queryKey: ['maintenance'] })
   }
@@ -95,7 +95,7 @@ export function OrphanArchivesDrawer({ files, onClose }: Props) {
           <p className="px-4 py-1 text-xs text-status-warning">{t('maintenance.orphans.drawer.tooltipOver200')}</p>
         )}
         {files.map(f => (
-          <div key={f.id} className="flex items-center gap-3 px-4 py-2 border-b border-subtle hover:bg-hover">
+          <div key={f.id} className="flex items-center gap-3 px-4 py-2 border-b border-subtle hover:bg-interaction-hover">
             <Checkbox checked={selected.has(f.id)} onCheckedChange={() => toggle(f.id)} />
             <div className="flex-1 min-w-0">
               <div className="text-sm text-strong truncate">{f.filename}</div>

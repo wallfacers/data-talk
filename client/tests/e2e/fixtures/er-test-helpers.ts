@@ -229,3 +229,15 @@ export async function setupErFixture(): Promise<{
     },
   }
 }
+
+/**
+ * Flush pending stage persistence writes so tab state survives page.reload().
+ */
+export async function flushTab(page: Page, _tabId: string): Promise<void> {
+  await page.evaluate(() => {
+    const e2e = (window as any).__DT_E2E__
+    if (e2e?.coordinator) {
+      e2e.coordinator().flushAllSync()
+    }
+  })
+}

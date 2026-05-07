@@ -642,6 +642,7 @@ const MESSAGES = {
     'maintenance.orphans.drawer.confirmDiscardBulk': '丢弃 {n} 个文件？这些文件会进入 _trash，7 天后自动清理。',
     'maintenance.orphans.toast.allCleaned': '所有孤儿资产已整理',
     'maintenance.orphans.toast.reattachOk': '已关联到新连接',
+    'maintenance.orphans.toast.batchResult': '{ok} 个成功，{fail} 个失败',
     'maintenance.orphans.toast.reattachPartial': '{ok} 个成功，{fail} 个失败',
 
     'providers.baseUrlPlaceholder': 'https://api.example.com',
@@ -1283,6 +1284,7 @@ const MESSAGES = {
     'maintenance.orphans.drawer.confirmDiscardBulk': 'Discard {n} files? They will go to _trash and be auto-cleaned after 7 days.',
     'maintenance.orphans.toast.allCleaned': 'All orphaned assets organized',
     'maintenance.orphans.toast.reattachOk': 'Reattached to new connection',
+    'maintenance.orphans.toast.batchResult': '{ok} succeeded, {fail} failed',
     'maintenance.orphans.toast.reattachPartial': '{ok} succeeded, {fail} failed',
 
     'providers.baseUrlPlaceholder': 'https://api.example.com',

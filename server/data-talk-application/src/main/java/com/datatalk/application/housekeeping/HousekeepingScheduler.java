@@ -93,7 +93,7 @@ public class HousekeepingScheduler {
         rotateByPattern(dir, ".log", 5, 7, "rotate-log");
     }
 
-    public void cleanupTrash() {
+    public synchronized void cleanupTrash() {
         Path trashDir = workdir.resolve("_trash");
         if (!Files.isDirectory(trashDir)) return;
 
