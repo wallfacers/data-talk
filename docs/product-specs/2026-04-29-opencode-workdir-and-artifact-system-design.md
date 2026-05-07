@@ -3,7 +3,7 @@
 | 元 | 值 |
 |----|-----|
 | 日期 | 2026-04-29 |
-| 状态 | Draft v2 (Part 1+2 implemented; Parts 3-5 pending) |
+| 状态 | Draft v2 (Part 1+2+3+4+5a implemented; Part 5b pending) |
 | 范围 | Backend (domain/application/infrastructure/adapter) · Frontend (Stage tabs/Chat/Settings) · OpenCode runtime 集成 |
 | 修订 | 第二版：响应代码核实后的审阅意见，撤回 per-session cwd 假设、改子目录软隔离；新模型命名 `file_artifact` 与现有 `artifacts` 表区分；session_id 不设 FK、application 层管理引用 |
 
@@ -416,7 +416,7 @@ The user then decides in their UI whether to permanently archive it to the conne
 | 用户 [丢弃] | atomic mv 到 _trash/，文件名编码归属 → UPDATE status=discarded → DtEvent |
 | session DELETE Phase 1 | 若有 candidate → 409 + 列表 |
 | session DELETE Phase 2 (force) | 现有 deleteRecord() 走 FK CASCADE 处理 messages/artifacts/events；application 层主动 DELETE file_artifact (temporary/candidate WHERE session_id) + UPDATE archived 行 session_id=NULL；rm -rf opencode/sessions/<sid>/；联动清理 OpenCode session_diff/tool-output |
-| connection DELETE | 同上两阶段：若有 archived → 409 + 数量 → force 时所有 archived 文件 mv 到 _trash + 对应行 status 改 discarded + rm workspaces/<connId>/ |
+| connection DELETE | 同上两阶段：若有资源 → 409 + 数量 → force 时 archived 行保留（connection_id=NULL + metadata_json `orphanedFromConnection*` 标记，Q2 设计决策 Part 5a 落地）；temporary/candidate 在 child session 级联删除中清理；rm workspaces/<connId>/ |
 
 **候选不搬运文件**：物理移动只发生在 Candidate → Archived 这一次跃迁。理由：候选可能被丢弃（提前搬运浪费 IO），且 AI 可能继续编辑。
 
@@ -709,7 +709,7 @@ i18n key 添加到 `client/src/i18n/messages.ts`（按现有结构，与同级 k
 | **M2** | ArtifactWatcherService (io.methvin) + symlink 拒绝 + OVERFLOW reconcile + 启动时 + 定时 | 手动 touch sessions/<sid>/foo.csv 后日志出现 FileArtifactDetected |
 | **M3** | ArchiveArtifactActionHandler + classpath AGENTS.md 模板修改 + AgentsTemplateContractTest + WireMock 测试 | 真实 OpenCode session AI 调 archive_artifact 后端正确登记 |
 | **M4** | 前端 Files Tab + Files Library Tab + Zustand store + i18n + vitest | UI 看到文件出现/归档移动 |
-| **M5** | session DELETE 两阶段 + connection DELETE 级联 + Chat 卡片 + 终局确认 modal | 完整删除 UX；现有 artifacts FK CASCADE 不被破坏 |
+| **M5** | session DELETE 两阶段 + connection DELETE 级联 + Chat 卡片 + 终局确认 modal | ✅ Part 5a shipped：`DeleteOutcome` sealed + `PhysicalMover` TOCTOU + archive/discard REST + `DeleteSessionModal` + `DeleteConnectionModal`（orphan banner）；后端 73+32+19 测试全绿，前端 982 测试全绿 |
 | **M6** | HousekeepingScheduler + LegacyMigrationRunner + Settings Maintenance + housekeeping.log | 启动 toast；存储概览页；datatalk-tools-test-report.md 进 _legacy/ |
 
 每个 M 独立 PR、独立可演示。M0 是新增的预检阶段（响应审阅 #2 #3）。M1-M3 后端 + 协议先稳；M4-M5 前端叠加；M6 治理收尾。
@@ -739,6 +739,7 @@ i18n key 添加到 `client/src/i18n/messages.ts`（按现有结构，与同级 k
 - per-session OpenCode 进程隔离 —— 工程量大，当前子目录软隔离已够用
 - 性能基准与监控 dashboards —— 当前无明确性能目标
 - 现有 `artifacts` 表（payload 型）的任何改造
+- 跨 connection 移动 archived 文件（除孤儿 reattach 外）—— Part 5b 将提供孤儿 Drawer UI 供 reattach 到新连接
 
 ## 12. 数据建模新增 / 变更
 

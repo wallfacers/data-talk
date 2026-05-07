@@ -1,6 +1,6 @@
 # File Artifact System · Part 5a — Deletion Flow & Archive/Discard Endpoints Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Land Part 5a — the deletion flow (session + connection two-phase) and `archive` / `discard` REST endpoints — so Part 4's frontend `archiveFile` / `discardFile` placeholder calls become real wire paths, and so users can delete sessions/connections with archived asset protection (Q2 design decision).
 
@@ -20,7 +20,7 @@
 - Part 5a (本计划) — Deletion flow + archive/discard endpoints + delete modals
 - Part 5b — Housekeeping + LegacyMigration + Maintenance UI (含孤儿 Drawer)
 
-**执行状态：** 未开始（计划登记 only）。
+**执行状态：** 已完成（全部 15 个 Task 代码已实现，所有测试通过，已收口）。
 
 ---
 
@@ -145,7 +145,7 @@ per memory `feedback-design-control-states`：每个交互控件的五态 token 
 **Files:**
 - Modify: `docs/exec-plans/index.md`
 
-- [ ] **Step 1: Replace Part 5 placeholder row with Part 5a formal entry**
+- [x] **Step 1: Replace Part 5 placeholder row with Part 5a formal entry**
 
 打开 `docs/exec-plans/index.md`，找到"Part 5 — Deletion Flow & Housekeeping (待补正式计划)"行，把它**替换**为下面两行（5a 正式 + 5b 仍占位）：
 
@@ -154,11 +154,11 @@ per memory `feedback-design-control-states`：每个交互控件的五态 token 
 | File Artifact System · Part 5b — Housekeeping & Maintenance (待补正式计划) | TBD | Part 5a 落地后再写。范围：HousekeepingScheduler（4 任务）+ LegacyMigrationRunner + Settings Maintenance UI（含孤儿归档资产 Drawer）+ maintenance/orphan REST 端点 + maintenance.* 中英 i18n。spec §B 全段。 |
 ```
 
-- [ ] **Step 2: Update Roadmap row to reflect 5a in flight**
+- [x] **Step 2: Update Roadmap row to reflect 5a in flight**
 
 继续在同一文件，找到 `Next Implementation Roadmap` 行，把摘要里 `Part 3+4 已有正式 child plan（未执行）、Part 5 待补正式计划` 替换为 `Part 3+4 已有正式 child plan（未执行）、Part 5a 已有正式 child plan（未执行）、Part 5b 待补正式计划`。
 
-- [ ] **Step 3: Verify the plan file is on disk**
+- [x] **Step 3: Verify the plan file is on disk**
 
 ```bash
 ls -la /home/wallfacers/project/data-talk/docs/exec-plans/2026-05-07-file-artifact-system-part5a-deletion-and-archive-endpoints-plan.md
@@ -166,7 +166,7 @@ ls -la /home/wallfacers/project/data-talk/docs/exec-plans/2026-05-07-file-artifa
 
 Expected: file exists.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 cd /home/wallfacers/project/data-talk && \
@@ -188,7 +188,7 @@ cd /home/wallfacers/project/data-talk && \
 
 ### 2.1 Add interface methods
 
-- [ ] **Step 1: Open the interface file and append four methods before the last `}`:**
+- [x] **Step 1: Open the interface file and append four methods before the last `}`:**
 
 ```java
     int countCandidatesBySession(String sessionId);
@@ -225,7 +225,7 @@ cd /home/wallfacers/project/data-talk && \
     }
 ```
 
-- [ ] **Step 2: Compile**
+- [x] **Step 2: Compile**
 
 ```bash
 cd /home/wallfacers/project/data-talk/server && mvn compile -q -pl data-talk-application
@@ -235,7 +235,7 @@ Expected: BUILD FAILURE — `JdbcFileArtifactRepository` does not implement new 
 
 ### 2.2 Implement in JDBC repository
 
-- [ ] **Step 3: Open `JdbcFileArtifactRepository.java` and add the four methods before the final `}`:**
+- [x] **Step 3: Open `JdbcFileArtifactRepository.java` and add the four methods before the final `}`:**
 
 ```java
     @Override
@@ -341,7 +341,7 @@ Expected: BUILD FAILURE — `JdbcFileArtifactRepository` does not implement new 
     }
 ```
 
-- [ ] **Step 4: Compile**
+- [x] **Step 4: Compile**
 
 ```bash
 cd /home/wallfacers/project/data-talk/server && mvn compile -q
@@ -351,7 +351,7 @@ Expected: BUILD SUCCESS.
 
 ### 2.3 Test the JDBC implementation
 
-- [ ] **Step 5: Open `JdbcFileArtifactRepositoryIT.java` and append three test methods before the final `}`:**
+- [x] **Step 5: Open `JdbcFileArtifactRepositoryIT.java` and append three test methods before the final `}`:**
 
 Use existing fixture helpers (the file already has helpers for inserting rows). If unfamiliar, mirror the pattern of existing tests in this file by reading lines 1-50 first.
 
@@ -441,7 +441,7 @@ Use existing fixture helpers (the file already has helpers for inserting rows). 
 
 > **Note:** If `insertRowFor` / `insertArchived` already exist in the file, do NOT redefine them — reuse and adapt as needed.
 
-- [ ] **Step 6: Run the integration test**
+- [x] **Step 6: Run the integration test**
 
 ```bash
 cd /home/wallfacers/project/data-talk/server && \
@@ -452,14 +452,14 @@ Expected: existing tests + 3 new tests all pass.
 
 ### 2.4 Push application jar + commit
 
-- [ ] **Step 7: Push application module jar to local m2 (CLAUDE.md "Backend Run vs Compile")**
+- [x] **Step 7: Push application module jar to local m2 (CLAUDE.md "Backend Run vs Compile")**
 
 ```bash
 cd /home/wallfacers/project/data-talk/server && \
   mvn install -pl data-talk-application -am -DskipTests -q
 ```
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 cd /home/wallfacers/project/data-talk && \
@@ -478,7 +478,7 @@ cd /home/wallfacers/project/data-talk && \
 
 **Why:** Both `SessionService.delete(id, force)` and `ConnectionDeletionService.delete(id, force)` need a uniform return type that adapter layer maps to 200/204/409.
 
-- [ ] **Step 1: Write the file**
+- [x] **Step 1: Write the file**
 
 ```java
 package com.datatalk.application.session;
@@ -511,7 +511,7 @@ public sealed interface DeleteOutcome
 }
 ```
 
-- [ ] **Step 2: Compile**
+- [x] **Step 2: Compile**
 
 ```bash
 cd /home/wallfacers/project/data-talk/server && mvn compile -q -pl data-talk-application
@@ -519,7 +519,7 @@ cd /home/wallfacers/project/data-talk/server && mvn compile -q -pl data-talk-app
 
 Expected: BUILD SUCCESS.
 
-- [ ] **Step 3: Push jar + commit**
+- [x] **Step 3: Push jar + commit**
 
 ```bash
 cd /home/wallfacers/project/data-talk/server && \
@@ -541,7 +541,7 @@ cd /home/wallfacers/project/data-talk/server && \
 
 ### 4.1 Write the failing tests first (TDD red)
 
-- [ ] **Step 1: Create the test file**
+- [x] **Step 1: Create the test file**
 
 ```java
 package com.datatalk.application.fileartifact;
@@ -680,7 +680,7 @@ class FileArtifactPhysicalMoverTest {
 }
 ```
 
-- [ ] **Step 2: Run the failing test**
+- [x] **Step 2: Run the failing test**
 
 ```bash
 cd /home/wallfacers/project/data-talk/server && \
@@ -691,7 +691,7 @@ Expected: COMPILATION FAILURE (`FileArtifactPhysicalMover` not defined).
 
 ### 4.2 Implement the mover
 
-- [ ] **Step 3: Create the production class**
+- [x] **Step 3: Create the production class**
 
 ```java
 package com.datatalk.application.fileartifact;
@@ -840,7 +840,7 @@ public class FileArtifactPhysicalMover {
 }
 ```
 
-- [ ] **Step 4: Run the tests — should pass**
+- [x] **Step 4: Run the tests — should pass**
 
 ```bash
 cd /home/wallfacers/project/data-talk/server && \
@@ -851,7 +851,7 @@ Expected: 8 tests pass.
 
 ### 4.3 Push jar + commit
 
-- [ ] **Step 5: Push jar + commit**
+- [x] **Step 5: Push jar + commit**
 
 ```bash
 cd /home/wallfacers/project/data-talk/server && \
@@ -872,7 +872,7 @@ cd /home/wallfacers/project/data-talk/server && \
 
 ### 5.1 Add the use cases
 
-- [ ] **Step 1: Add `mover` + `sessionRepo` + `connRepo` dependencies via constructor; add `archive` and `discard` methods**
+- [x] **Step 1: Add `mover` + `sessionRepo` + `connRepo` dependencies via constructor; add `archive` and `discard` methods**
 
 Modify the constructor signature to:
 
@@ -910,7 +910,7 @@ Modify the constructor signature to:
 
 > If `SessionWorkdirService.root()` returns `SessionWorkdirRoot` already (it does — see line 149 of FileArtifactService), prefer reading `workdir.root().workspacesRoot()` over injecting `SessionWorkdirRoot` directly. **Recommendation:** drop the `workdirRoot` field, use `workdir.root().workspacesRoot()` and `workdir.root().dataTalkRoot().resolve("_trash")` inline.
 
-- [ ] **Step 2: Add archive + discard methods before the final `}`**
+- [x] **Step 2: Add archive + discard methods before the final `}`**
 
 ```java
     // ───────── archive / discard use cases (spec §A.1 / §A.3) ─────────
@@ -1044,7 +1044,7 @@ Modify the constructor signature to:
     }
 ```
 
-- [ ] **Step 3: Verify `SessionWorkdirRoot` has `workspacesRoot()`**
+- [x] **Step 3: Verify `SessionWorkdirRoot` has `workspacesRoot()`**
 
 ```bash
 grep -n "workspacesRoot\|workspaces" /home/wallfacers/project/data-talk/server/data-talk-application/src/main/java/com/datatalk/application/fileartifact/SessionWorkdirRoot.java
@@ -1052,7 +1052,7 @@ grep -n "workspacesRoot\|workspaces" /home/wallfacers/project/data-talk/server/d
 
 If `workspacesRoot()` is missing, add it as `Path workspacesRoot()` returning `dataTalkRoot().resolve("workspaces")`. Test in `SessionWorkdirRootTest` if exists.
 
-- [ ] **Step 4: Compile**
+- [x] **Step 4: Compile**
 
 ```bash
 cd /home/wallfacers/project/data-talk/server && mvn compile -q -pl data-talk-application
@@ -1062,7 +1062,7 @@ Expected: BUILD SUCCESS. If `DtEvent.FileArtifactArchived` constructor signature
 
 ### 5.2 Add unit tests
 
-- [ ] **Step 5: Open `FileArtifactServiceTest.java` and append archive/discard tests**
+- [x] **Step 5: Open `FileArtifactServiceTest.java` and append archive/discard tests**
 
 Read the file to understand existing fixture setup (mocks, `@TempDir`). Then add at the end:
 
@@ -1185,7 +1185,7 @@ Read the file to understand existing fixture setup (mocks, `@TempDir`). Then add
 > // ... and pass to new FileArtifactService(...)
 > ```
 
-- [ ] **Step 6: Run tests**
+- [x] **Step 6: Run tests**
 
 ```bash
 cd /home/wallfacers/project/data-talk/server && \
@@ -1196,7 +1196,7 @@ Expected: existing tests + ~7 new tests all pass.
 
 ### 5.3 Push jar + commit
 
-- [ ] **Step 7: Push + commit**
+- [x] **Step 7: Push + commit**
 
 ```bash
 cd /home/wallfacers/project/data-talk/server && \
@@ -1220,7 +1220,7 @@ cd /home/wallfacers/project/data-talk/server && \
 
 ### 6.1 Refactor delete to return `DeleteOutcome`
 
-- [ ] **Step 1: Replace the existing `delete(String id)` method with two methods**
+- [x] **Step 1: Replace the existing `delete(String id)` method with two methods**
 
 ```java
     public DeleteOutcome delete(String id, boolean force) {
@@ -1253,7 +1253,7 @@ cd /home/wallfacers/project/data-talk/server && \
     }
 ```
 
-- [ ] **Step 2: Update the import**
+- [x] **Step 2: Update the import**
 
 Add to imports:
 
@@ -1263,7 +1263,7 @@ import com.datatalk.domain.fileartifact.FileArtifact;
 
 (Replace the existing `findCandidatesBySession` references if needed — already exposed by the repo.)
 
-- [ ] **Step 3: Compile**
+- [x] **Step 3: Compile**
 
 ```bash
 cd /home/wallfacers/project/data-talk/server && mvn compile -q -pl data-talk-application
@@ -1273,7 +1273,7 @@ Expected: BUILD SUCCESS.
 
 ### 6.2 Add unit tests
 
-- [ ] **Step 4: Open `SessionServiceTest.java` and add force-flag tests**
+- [x] **Step 4: Open `SessionServiceTest.java` and add force-flag tests**
 
 Before adding, read the existing test file to understand fixture style. Append:
 
@@ -1330,7 +1330,7 @@ Before adding, read the existing test file to understand fixture style. Append:
 
 You may need helper methods `sessionWithId` and `anyArtifact`; add them or reuse if present.
 
-- [ ] **Step 5: Run tests**
+- [x] **Step 5: Run tests**
 
 ```bash
 cd /home/wallfacers/project/data-talk/server && \
@@ -1341,7 +1341,7 @@ Expected: existing tests + 4 new pass.
 
 ### 6.3 Push jar + commit
 
-- [ ] **Step 6:**
+- [x] **Step 6:**
 
 ```bash
 cd /home/wallfacers/project/data-talk/server && \
@@ -1365,7 +1365,7 @@ cd /home/wallfacers/project/data-talk/server && \
 
 ### 7.1 Write the orchestrator
 
-- [ ] **Step 1: Create the file**
+- [x] **Step 1: Create the file**
 
 ```java
 package com.datatalk.application.connection;
@@ -1460,7 +1460,7 @@ public class ConnectionDeletionService {
 }
 ```
 
-- [ ] **Step 2: Compile**
+- [x] **Step 2: Compile**
 
 ```bash
 cd /home/wallfacers/project/data-talk/server && mvn compile -q -pl data-talk-application
@@ -1470,7 +1470,7 @@ Expected: BUILD SUCCESS. If `ConnectionRecord.name()` accessor differs, fix.
 
 ### 7.2 Add unit test
 
-- [ ] **Step 3: Create the test**
+- [x] **Step 3: Create the test**
 
 ```java
 package com.datatalk.application.connection;
@@ -1583,7 +1583,7 @@ class ConnectionDeletionServiceTest {
 
 > If `ConnectionRecord` constructor signature differs, fix the `connRec` helper based on `server/data-talk-application/src/main/java/com/datatalk/application/persistence/ConnectionRecord.java`.
 
-- [ ] **Step 4: Run test**
+- [x] **Step 4: Run test**
 
 ```bash
 cd /home/wallfacers/project/data-talk/server && \
@@ -1594,7 +1594,7 @@ Expected: 4 tests pass.
 
 ### 7.3 Push jar + commit
 
-- [ ] **Step 5:**
+- [x] **Step 5:**
 
 ```bash
 cd /home/wallfacers/project/data-talk/server && \
@@ -1618,7 +1618,7 @@ cd /home/wallfacers/project/data-talk/server && \
 
 ### 8.1 Create the DTOs
 
-- [ ] **Step 1: `SessionCandidateDto`**
+- [x] **Step 1: `SessionCandidateDto`**
 
 ```java
 package com.datatalk.dto;
@@ -1633,7 +1633,7 @@ public record SessionCandidateDto(
 ) {}
 ```
 
-- [ ] **Step 2: `SessionDeleteBlockedDto`**
+- [x] **Step 2: `SessionDeleteBlockedDto`**
 
 ```java
 package com.datatalk.dto;
@@ -1651,7 +1651,7 @@ public record SessionDeleteBlockedDto(
 }
 ```
 
-- [ ] **Step 3: `ConnectionDeleteBlockedDto`**
+- [x] **Step 3: `ConnectionDeleteBlockedDto`**
 
 ```java
 package com.datatalk.dto;
@@ -1674,7 +1674,7 @@ public record ConnectionDeleteBlockedDto(
 
 ### 8.2 SessionController
 
-- [ ] **Step 4: Replace existing `delete` method**
+- [x] **Step 4: Replace existing `delete` method**
 
 ```java
     @DeleteMapping("/{id}")
@@ -1711,7 +1711,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 ### 8.3 FileArtifactController — add archive + discard endpoints
 
-- [ ] **Step 5: Add to FileArtifactController**
+- [x] **Step 5: Add to FileArtifactController**
 
 ```java
     @PostMapping("/sessions/{sessionId}/files/{fileArtifactId}/archive")
@@ -1760,7 +1760,7 @@ import com.datatalk.application.fileartifact.FileArtifactService;
 import org.springframework.http.HttpStatus;
 ```
 
-- [ ] **Step 6: Compile**
+- [x] **Step 6: Compile**
 
 ```bash
 cd /home/wallfacers/project/data-talk/server && mvn compile -q
@@ -1768,7 +1768,7 @@ cd /home/wallfacers/project/data-talk/server && mvn compile -q
 
 Expected: BUILD SUCCESS.
 
-- [ ] **Step 7: Commit (without tests yet — those land in Task 13)**
+- [x] **Step 7: Commit (without tests yet — those land in Task 13)**
 
 ```bash
 cd /home/wallfacers/project/data-talk && \
@@ -1789,7 +1789,7 @@ cd /home/wallfacers/project/data-talk && \
 
 ### 9.1 Replace the existing `delete` method
 
-- [ ] **Step 1: Inject `ConnectionDeletionService` and rewrite delete**
+- [x] **Step 1: Inject `ConnectionDeletionService` and rewrite delete**
 
 ```java
     private final ConnectionDeletionService deletionService;
@@ -1837,7 +1837,7 @@ import com.datatalk.dto.ConnectionDeleteBlockedDto;
 import org.springframework.web.bind.annotation.RequestParam;
 ```
 
-- [ ] **Step 2: Compile**
+- [x] **Step 2: Compile**
 
 ```bash
 cd /home/wallfacers/project/data-talk/server && mvn compile -q
@@ -1845,7 +1845,7 @@ cd /home/wallfacers/project/data-talk/server && mvn compile -q
 
 Expected: BUILD SUCCESS.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 cd /home/wallfacers/project/data-talk && \
@@ -1866,7 +1866,7 @@ This task lands all the integration tests promised by spec §C.2 Part 5a. Tests 
 
 ### 10.1 FileArtifactControllerIT — extend with archive/discard tests
 
-- [ ] **Step 1: Open the file and add the following tests at the bottom**
+- [x] **Step 1: Open the file and add the following tests at the bottom**
 
 Read existing fixture/setup first (mocking + workdir tempdir). Then append:
 
@@ -1933,7 +1933,7 @@ Read existing fixture/setup first (mocking + workdir tempdir). Then append:
 
 ### 10.2 SessionControllerIT — extend with force-flag tests
 
-- [ ] **Step 2: Append**
+- [x] **Step 2: Append**
 
 ```java
     @Test
@@ -1970,7 +1970,7 @@ Read existing fixture/setup first (mocking + workdir tempdir). Then append:
 
 ### 10.3 ConnectionDeletionIT (new file)
 
-- [ ] **Step 3: Create**
+- [x] **Step 3: Create**
 
 ```java
 package com.datatalk.adapter.controller;
@@ -2049,7 +2049,7 @@ class ConnectionDeletionIT {
 }
 ```
 
-- [ ] **Step 4: Run all three IT files**
+- [x] **Step 4: Run all three IT files**
 
 ```bash
 cd /home/wallfacers/project/data-talk/server && \
@@ -2061,7 +2061,7 @@ Expected: All tests pass. Fixture helper builds-out done as needed.
 
 ### 10.4 Commit
 
-- [ ] **Step 5:**
+- [x] **Step 5:**
 
 ```bash
 cd /home/wallfacers/project/data-talk && \
@@ -2082,7 +2082,7 @@ cd /home/wallfacers/project/data-talk && \
 
 ### 11.1 file-artifacts.ts
 
-- [ ] **Step 1: Update `archiveFile` and `discardFile` to match the new endpoints**
+- [x] **Step 1: Update `archiveFile` and `discardFile` to match the new endpoints**
 
 Open `client/src/services/api/file-artifacts.ts` and replace `archiveFile` / `discardFile`:
 
@@ -2102,7 +2102,7 @@ export async function discardFile(fileArtifactId: string): Promise<void> {
 
 ### 11.2 session.ts
 
-- [ ] **Step 2: Add a `BlockedByCandidates` type and a force-aware `deleteSession`**
+- [x] **Step 2: Add a `BlockedByCandidates` type and a force-aware `deleteSession`**
 
 Append:
 
@@ -2153,7 +2153,7 @@ If `deleteSession` already exists with a different signature, modify the existin
 
 ### 11.3 connection.ts
 
-- [ ] **Step 3: Add a parallel deleteConnection**
+- [x] **Step 3: Add a parallel deleteConnection**
 
 ```ts
 import { HTTPError } from 'ky'
@@ -2190,7 +2190,7 @@ export async function deleteConnection(
 }
 ```
 
-- [ ] **Step 4: Type-check**
+- [x] **Step 4: Type-check**
 
 ```bash
 cd /home/wallfacers/project/data-talk/client && npx tsc --noEmit
@@ -2198,7 +2198,7 @@ cd /home/wallfacers/project/data-talk/client && npx tsc --noEmit
 
 Expected: zero errors.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd /home/wallfacers/project/data-talk && \
@@ -2218,7 +2218,7 @@ cd /home/wallfacers/project/data-talk && \
 
 ### 12.1 Write the failing test (TDD red)
 
-- [ ] **Step 1: Write tests covering candidate listing, retry idempotency, and Ok button enable rules**
+- [x] **Step 1: Write tests covering candidate listing, retry idempotency, and Ok button enable rules**
 
 ```tsx
 import { render, screen, waitFor } from '@testing-library/react'
@@ -2315,7 +2315,7 @@ describe('DeleteSessionModal', () => {
 })
 ```
 
-- [ ] **Step 2: Run failing test**
+- [x] **Step 2: Run failing test**
 
 ```bash
 cd /home/wallfacers/project/data-talk/client && npm test -- --run client/src/features/session/components/delete-session-modal.test.tsx
@@ -2325,7 +2325,7 @@ Expected: FAIL — `DeleteSessionModal` not found.
 
 ### 12.2 Implement the modal
 
-- [ ] **Step 3: Create the component**
+- [x] **Step 3: Create the component**
 
 ```tsx
 import { useMemo, useState } from 'react'
@@ -2459,7 +2459,7 @@ export function DeleteSessionModal({ sessionId, connectionName, blocked, onClose
 
 > Verify the actual `Dialog` / `Button` API available in `client/src/components/ui/`. If different, adapt.
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 ```bash
 cd /home/wallfacers/project/data-talk/client && npm test -- --run client/src/features/session/components/delete-session-modal.test.tsx
@@ -2467,7 +2467,7 @@ cd /home/wallfacers/project/data-talk/client && npm test -- --run client/src/fea
 
 Expected: 3 tests pass.
 
-- [ ] **Step 5: Type-check**
+- [x] **Step 5: Type-check**
 
 ```bash
 cd /home/wallfacers/project/data-talk/client && npx tsc --noEmit
@@ -2477,7 +2477,7 @@ Expected: zero errors.
 
 ### 12.3 Commit
 
-- [ ] **Step 6:**
+- [x] **Step 6:**
 
 ```bash
 cd /home/wallfacers/project/data-talk && \
@@ -2496,7 +2496,7 @@ cd /home/wallfacers/project/data-talk && \
 
 ### 13.1 Failing test
 
-- [ ] **Step 1:**
+- [x] **Step 1:**
 
 ```tsx
 import { render, screen, waitFor } from '@testing-library/react'
@@ -2551,7 +2551,7 @@ describe('DeleteConnectionModal', () => {
 })
 ```
 
-- [ ] **Step 2: Run failing**
+- [x] **Step 2: Run failing**
 
 ```bash
 cd /home/wallfacers/project/data-talk/client && npm test -- --run client/src/features/connection/components/delete-connection-modal.test.tsx
@@ -2561,7 +2561,7 @@ Expected: FAIL.
 
 ### 13.2 Implement
 
-- [ ] **Step 3: Create component**
+- [x] **Step 3: Create component**
 
 ```tsx
 import { useState } from 'react'
@@ -2623,7 +2623,7 @@ export function DeleteConnectionModal({ connectionId, connectionName, blocked, o
 }
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 ```bash
 cd /home/wallfacers/project/data-talk/client && npm test -- --run client/src/features/connection/components/delete-connection-modal.test.tsx
@@ -2631,7 +2631,7 @@ cd /home/wallfacers/project/data-talk/client && npm test -- --run client/src/fea
 
 Expected: 4 tests pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd /home/wallfacers/project/data-talk && \
@@ -2650,13 +2650,13 @@ cd /home/wallfacers/project/data-talk && \
 
 ### 14.1 i18n
 
-- [ ] **Step 1: Find the existing top-level keys structure**
+- [x] **Step 1: Find the existing top-level keys structure**
 
 ```bash
 grep -n "deleteModal\|files:\|connections:" /home/wallfacers/project/data-talk/client/src/i18n/messages.ts | head -20
 ```
 
-- [ ] **Step 2: Add keys (中英对齐, follow existing structure)**
+- [x] **Step 2: Add keys (中英对齐, follow existing structure)**
 
 Append to both `en` and `zh-CN` namespaces:
 
@@ -2691,7 +2691,7 @@ Mirror in English.
 
 ### 14.2 Wire into existing delete UIs
 
-- [ ] **Step 3: Locate session delete trigger**
+- [x] **Step 3: Locate session delete trigger**
 
 ```bash
 grep -rn "deleteSession\|删除会话\|delete.*session" /home/wallfacers/project/data-talk/client/src/features/session /home/wallfacers/project/data-talk/client/src/features/sidebar 2>/dev/null | head
@@ -2706,7 +2706,7 @@ For every call site that currently triggers session deletion, change the flow to
 
 Provide minimal patches; do not refactor unrelated code.
 
-- [ ] **Step 4: Locate connection delete trigger**
+- [x] **Step 4: Locate connection delete trigger**
 
 ```bash
 grep -rn "DELETE.*connections\|deleteConnection\|删除连接" /home/wallfacers/project/data-talk/client/src/features/connection 2>/dev/null | head
@@ -2714,7 +2714,7 @@ grep -rn "DELETE.*connections\|deleteConnection\|删除连接" /home/wallfacers/
 
 Apply the same pattern with `DeleteConnectionModal`.
 
-- [ ] **Step 5: Type-check**
+- [x] **Step 5: Type-check**
 
 ```bash
 cd /home/wallfacers/project/data-talk/client && npx tsc --noEmit
@@ -2724,7 +2724,7 @@ Expected: zero errors.
 
 ### 14.3 Commit
 
-- [ ] **Step 6:**
+- [x] **Step 6:**
 
 ```bash
 cd /home/wallfacers/project/data-talk && \
@@ -2743,7 +2743,7 @@ cd /home/wallfacers/project/data-talk && \
 
 ### 15.1 Full backend regression
 
-- [ ] **Step 1: Run full backend test suite**
+- [x] **Step 1: Run full backend test suite**
 
 ```bash
 cd /home/wallfacers/project/data-talk/server && mvn clean verify -q
@@ -2753,7 +2753,7 @@ Expected: BUILD SUCCESS.
 
 ### 15.2 Full frontend regression
 
-- [ ] **Step 2:**
+- [x] **Step 2:**
 
 ```bash
 cd /home/wallfacers/project/data-talk/client && npx tsc --noEmit && npm test -- --run
@@ -2763,7 +2763,7 @@ Expected: 0 type errors; all vitest pass; no new flaky.
 
 ### 15.3 Manual smoke (optional, not gating)
 
-- [ ] **Step 3:**
+- [x] **Step 3:**
 
 ```bash
 cd /home/wallfacers/project/data-talk/server && mvn install -pl data-talk-application -am -DskipTests -q
@@ -2779,19 +2779,19 @@ Verify in browser:
 
 ### 15.4 BUG check (CLAUDE.md "BUG Tracking Gate")
 
-- [ ] **Step 4:**
+- [x] **Step 4:**
 
 If smoke testing or regression uncovers any product behavior deviation, register a BUG file in `docs/bugs/` per CLAUDE.md gate. **N=0 也要明确说**.
 
 ### 15.5 Document housekeeping (CLAUDE.md "Post-Execution Document Housekeeping")
 
-- [ ] **Step 5: Mark every task checkbox `- [x]` in this plan file**
+- [x] **Step 5: Mark every task checkbox `- [x]` in this plan file**
 
-- [ ] **Step 6: Update `docs/exec-plans/index.md`**
+- [x] **Step 6: Update `docs/exec-plans/index.md`**
 
 Move Part 5a row from "活跃计划" to "已完成计划"; replace the registration row with a completion summary listing actual outcomes (commit shas, test counts, deviations if any). Keep Part 5b in "活跃计划" as a placeholder.
 
-- [ ] **Step 7: Update parent spec sync items per design §E**
+- [x] **Step 7: Update parent spec sync items per design §E**
 
 Edit `docs/product-specs/2026-04-29-opencode-workdir-and-artifact-system-design.md`:
 1. §6.2 — change connection DELETE behavior wording to match Q2 decision (preserve archived w/ `connection_id=NULL` + metadata stamping)
@@ -2802,7 +2802,7 @@ Edit `docs/product-specs/2026-04-29-opencode-workdir-and-artifact-system-design.
 
 ### 15.6 Final commit
 
-- [ ] **Step 8:**
+- [x] **Step 8:**
 
 ```bash
 cd /home/wallfacers/project/data-talk && \
