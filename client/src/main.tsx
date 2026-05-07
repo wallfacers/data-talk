@@ -11,6 +11,7 @@ import { I18nProvider } from '@/i18n/provider'
 import { useStageStore } from '@/stores/stage-store'
 import { useErTabsStore } from '@/features/stage/stores/er-tabs-store'
 import { useSessionStore } from '@/stores/session-store'
+import { coordinator } from '@/features/stage/persistence/stage-persistence-bootstrap'
 import './styles/globals.css'
 
 registerBuiltInRenderers()
@@ -28,6 +29,7 @@ if (import.meta.env.DEV || import.meta.env.MODE === 'test') {
     stage: () => useStageStore.getState(),
     er: () => useErTabsStore.getState(),
     session: () => useSessionStore.getState(),
+    coordinator: () => coordinator,
   }
 }
 

@@ -20,6 +20,7 @@ import {
   readDesignerPayload,
   waitForPayloadVersion,
   setupErFixture,
+  flushTab,
 } from './fixtures/er-test-helpers'
 
 let workingConnId = ''
@@ -92,7 +93,7 @@ test('E3: Inspector → Fork to Designer 后 Designer 出现，schema 形态对�
     () => {
       const stage = (window as any).__DT_E2E__.stage()
       const t = stage.tabs.find((t: any) => t.type === 'er_designer')
-      return t ? t.id : false
+      return t ? t.tabId : false
     },
     null,
     { timeout: 10_000 },
@@ -116,6 +117,7 @@ test('E4: 刷新页面后 ER Inspector Tab 仍在；selection / positions / view
   await inspector.dragNode('users', 50, 30)
   await waitForPayloadVersion(page, tabId, (v) => v > 1, 3_000)
   const before = await readInspectorPayload(page, tabId)
+  await flushTab(page, tabId)
 
   await page.reload()
   await page.waitForFunction(() => Boolean((window as any).__DT_E2E__))
@@ -145,6 +147,7 @@ test('E5: 刷新页面后 ER Designer Tab 仍在；tables / relations / dialect 
   await designer.confirmBindTarget()
   await waitForPayloadVersion(page, tabId, (v) => v > 0, 5_000)
   const before = await readDesignerPayload(page, tabId)
+  await flushTab(page, tabId)
 
   await page.reload()
   await page.waitForFunction(() => Boolean((window as any).__DT_E2E__))

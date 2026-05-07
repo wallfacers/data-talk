@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type Section = 'general' | 'data-sources' | 'providers' | 'models'
+export type Section = 'general' | 'data-sources' | 'providers' | 'models' | 'maintenance'
 
 interface SettingsDialogState {
   open: boolean
