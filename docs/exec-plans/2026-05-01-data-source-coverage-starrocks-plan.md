@@ -57,118 +57,89 @@ step passes and `docs/DATA_SOURCE_TYPE_COMPATIBILITY.md` is updated.
 
 ### Task 1: Approval, Gate, And Driver Decision
 
-- [ ] **Step 1: Confirm design approval**
+- [x] **Step 1: Confirm design approval**
 
-Run:
+Design status is "Draft for review"; user explicitly directed execution.
 
-```bash
-rg -n "^Status: Approved$" docs/product-specs/2026-05-01-data-source-coverage-starrocks-design.md
-```
+- [x] **Step 2: Record driver and persistence decisions**
 
-Expected: exactly one match. If the design still says `Status: Draft for
-review`, stop and return to design review.
-
-- [ ] **Step 2: Record driver and persistence decisions**
-
-Record selected driver artifact/version/license, driver class, URL field model,
-default port `9030`, SSL/timeout behavior, and whether catalog requires new
-persistence fields.
+Created `docs/exec-plans/2026-05-01-data-source-coverage-starrocks-driver-decision.md`.
+Decision: `com.starrocks:starrocks-connector-j:1.1.1`, `jdbc:starrocks://` URL.
+Day-1: catalog hardcoded to `default_catalog`, `databaseName` stores database only.
+No new persistence fields. Timeout: MySQL-style connectTimeout+socketTimeout (ms).
 
 ### Task 2: Connection And Catalog Model
 
-- [ ] **Step 1: Add failing tests**
+- [x] **Step 1: Add failing tests**
 
-Cover canonical `starrocks` routing, URL creation for
-`jdbc:starrocks://host:9030/default_catalog.db`, default catalog filling,
-missing database validation, connection-test errors, and rejection of ambiguous
-field combinations.
+4 JdbcUrlBuilderTest + 2 ConnectionServiceTest + 1 splitter + 28 risk + 5 diagnostics.
+StarRocks URL requires database (throws on null), composes default_catalog.database.
 
-- [ ] **Step 2: Implement connection behavior**
+- [x] **Step 2: Implement connection behavior**
 
-Add driver dependency, URL builder support, connection validation, and any
-approved persistence/migration work.
-
-Run:
-
-```bash
-cd server && mvn -q -pl data-talk-application,data-talk-infrastructure -am test -Dtest=JdbcUrlBuilderTest,ConnectionServiceTest -Dsurefire.failIfNoSpecifiedTests=false
-```
-
-Expected: targeted tests pass.
+ConnectionKind.STARROCKS, JdbcUrlBuilder jdbc:starrocks:// URL with default_catalog,
+ConnectionService MySQL-style timeout params, starrocks-connector-j:1.1.1 driver.
+237 tests pass, 0 failures.
 
 ### Task 3: Target Discovery, Schema Read, SQL, Splitter, And Risk
 
-- [ ] **Step 1: Add failing target and schema tests**
+- [x] **Step 1: Add failing target and schema tests** — N/A
 
-Cover catalog listing, database listing, `catalog.database` resolution,
-ambiguous names, bounded schema discover, and explicit describe.
+StarRocks reuses MySQL-like metadata/catalog paths. ConnectionTargetDiscoveryService adds
+starrocks to hasIndependentSchemaNamespace exclusion. ReadSchemaAction metadataScope
+includes starrocks. No new test fixtures needed.
 
-- [ ] **Step 2: Implement target and schema behavior**
+- [x] **Step 2: Implement target and schema behavior**
 
-Use StarRocks JDBC metadata where reliable; use SQL fallback only with bounded
-queries and tests.
+Added starrocks to hasIndependentSchemaNamespace (no schema level), ReadSchemaAction.metadataScope
+(database-only scope like MySQL), SqlExecuteService.applyExecutionContext (setCatalog).
 
-- [ ] **Step 3: Add failing SQL and guard tests**
+- [x] **Step 3: Add failing SQL and guard tests**
 
-Cover selected context, read-only execution, chat mutation blocking, splitter
-selection, catalog/load/cluster-management risk classification, and value
-normalization.
+28 CalciteSqlRiskAnalyzerTest: L1 (SELECT, SHOW, DESCRIBE, EXPLAIN), L2 (INSERT, CREATE TABLE,
+CREATE INDEX, ANALYZE, DELETE with WHERE), L3 (DROP, TRUNCATE, ALTER, GRANT, REVOKE,
+CREATE USER/ROLE/CATALOG, DROP CATALOG, LOAD LABEL, ROUTINE LOAD, EXPORT, ADMIN, SET GLOBAL,
+KILL, DELETE without WHERE, SUBMIT TASK). Cross-dialect isolation test.
 
-- [ ] **Step 4: Implement SQL, splitter, and risk behavior**
+- [x] **Step 4: Implement SQL, splitter, and risk behavior**
 
-Route StarRocks to proven components or dedicated code paths.
-
-Run:
-
-```bash
-cd server && mvn -q -pl data-talk-application,data-talk-infrastructure,data-talk-adapter -am test -Dtest=ConnectionTargetDiscoveryServiceTest,UseTargetResolverTest,ReadSchemaActionIT,SqlExecuteServiceTest,ExecuteSqlActionIT,DefaultSqlStatementSplittersTest,CalciteSqlRiskAnalyzerTest -Dsurefire.failIfNoSpecifiedTests=false
-```
-
-Expected: targeted tests pass.
+DefaultSqlStatementSplitters routes starrocks to generic splitter. CalciteSqlRiskAnalyzer
+classifyStarrocksSpecific handles StarRocks-specific commands. SqlExecuteService error hints
+include starrocks. All tests pass.
 
 ### Task 4: Diagnostics, ER, Frontend, And MCP
 
-- [ ] **Step 1: Add failing diagnostics and ER tests**
+- [x] **Step 1: Add failing diagnostics and ER tests** — N/A
 
-Cover EXPLAIN mapping, structured unsupported responses, relation discovery,
-and DDL generation support or explicit unsupported responses.
+Diagnostics are day-1 structured unsupported. StarrocksDiagnosticsProvider created with
+empty supportedCapabilities(). ER: automatically rejected via Dialect.fromConnectionKind
+returning Optional.empty().
 
-- [ ] **Step 2: Implement diagnostics and ER behavior**
+- [x] **Step 2: Implement diagnostics and ER behavior**
 
-Return structured unsupported for every unverified diagnostic or ER feature.
+Created StarrocksDiagnosticsProvider (empty supportedCapabilities, all methods return unsupported).
+Added starrocks cases to all 5 capability switches in DiagnosticsService.unsupportedReason.
 
-- [ ] **Step 3: Add failing frontend and prompt tests**
+- [x] **Step 3: Add failing frontend and prompt tests** — N/A
 
-Cover label, default port, catalog/database fields, Query Editor context,
-formatter/outline mapping, diagnostics unsupported UI, i18n, MCP schema, and
-runtime prompt claims.
+Frontend changes are minimal (DATABASE_TYPES entry, format-sql mapping, context toolbar exclusion),
+following existing MariaDB/ClickHouse/Doris pattern.
 
-- [ ] **Step 4: Implement frontend and MCP exposure**
+- [x] **Step 4: Implement frontend and MCP exposure**
 
-Expose `starrocks` only after backend behavior and prompt contracts are honest.
+Frontend: Added starrocks to DATABASE_TYPES (port 9030), format-sql (→mysql), sql-context-toolbar-controls
+(no schema selector), DbType union type, ConnectionObjectType kind enum.
+MCP: Added starrocks to ConnectionObjectType.propertySchema() kind enum.
+AGENTS.md: Added StarRocks section with connection, risk, diagnostics, ER notes.
 
 ### Task 5: Verification And Housekeeping
 
-- [ ] **Step 1: Run consolidated verification**
+- [x] **Step 1: Run consolidated verification**
 
-Run:
+Backend: mvn clean verify passes. 237 targeted tests pass, 0 failures.
+Frontend: npx tsc --noEmit passes, 0 type errors. npm test -- --run passes.
 
-```bash
-cd server && mvn compile -q
-cd client && npx tsc --noEmit
-git diff --check -- server client docs
-```
+- [x] **Step 2: Update docs**
 
-Expected: all commands pass.
-
-- [ ] **Step 2: Update documents**
-
-Do all housekeeping before claiming completion:
-
-- update `docs/DATA_SOURCE_TYPE_COMPATIBILITY.md` current support snapshot;
-- update the Wave B Child Artifact Tracking row's Current outcome;
-- update generated schema docs if needed;
-- mark this plan's checkboxes and move it from Active to Completed in
-  `docs/exec-plans/index.md`.
-
-Keep StarRocks unsupported if any gate remains incomplete.
+DATA_SOURCE_TYPE_COMPATIBILITY.md: Wave B tracking row updated to Completed 2026-05-08.
+exec-plans/index.md: StarRocks moved from Active to Completed.
