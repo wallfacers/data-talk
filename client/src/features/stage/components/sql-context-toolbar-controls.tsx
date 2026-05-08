@@ -1,13 +1,13 @@
 import type { ReactNode } from 'react'
 import { toast } from 'sonner'
-import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
 } from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
 import { useI18n } from '@/i18n/use-i18n'
 import { SqlLimitSelect, type SqlLimitValue } from './sql-limit-select'
 
@@ -140,20 +140,20 @@ export function SqlContextToolbarControls({
       data-testid="sql-context-toolbar-controls"
       className="flex flex-wrap items-center justify-end gap-2"
     >
-      <div className="flex h-7 items-center gap-2 rounded-md border border-border/60 px-2">
-        <Label
-          id="sql-context-use-session-label"
-          className="text-xs font-medium text-muted-foreground"
-        >
+      <Tooltip>
+        <TooltipTrigger render={
+          <div className="flex h-7 items-center rounded-md border border-border/60 px-2">
+            <Switch
+              size="sm"
+              checked={useSessionContext}
+              onCheckedChange={(value) => onUseSessionContextChange(value)}
+            />
+          </div>
+        } />
+        <TooltipContent side="bottom" sideOffset={4}>
           {t('stage.context.toolbar.useSession')}
-        </Label>
-        <Switch
-          size="sm"
-          checked={useSessionContext}
-          onCheckedChange={(value) => onUseSessionContextChange(value)}
-          aria-labelledby="sql-context-use-session-label"
-        />
-      </div>
+        </TooltipContent>
+      </Tooltip>
 
       <ToolbarSelectFrame label={t('stage.context.field.connection')}>
         <Select
@@ -263,9 +263,16 @@ function ToolbarSelectFrame({
   children: ReactNode
 }) {
   return (
-    <div className="flex h-7 items-center gap-1.5">
-      <span className="text-xs font-medium text-muted-foreground">{label}</span>
-      {children}
-    </div>
+    <Tooltip>
+      <TooltipTrigger render={
+        <div className="flex h-7 items-center gap-1.5">
+          <span className="sr-only">{label}</span>
+          {children}
+        </div>
+      } />
+      <TooltipContent side="bottom" sideOffset={4}>
+        {label}
+      </TooltipContent>
+    </Tooltip>
   )
 }

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { PlayIcon, SquareIcon, SparklesIcon, SearchCodeIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useI18n } from '@/i18n/use-i18n'
 
 type SqlEditorToolbarProps = {
@@ -31,32 +32,49 @@ export function SqlEditorToolbar({
       data-testid="sql-editor-toolbar"
       className="flex min-h-11 flex-wrap items-center justify-between gap-3 border-b border-border/50 px-3 py-2"
     >
-      <div className="flex items-center gap-2">
-        <Button
-          size="sm"
-          variant={isRunning ? 'destructive' : 'default'}
-          onClick={isRunning ? onCancel : onRun}
-          disabled={isRunning ? false : !canRun}
-          className="min-w-20 justify-center"
-        >
-          {isRunning ? <SquareIcon /> : <PlayIcon />}
-          {isRunning ? t('stage.toolbar.cancel') : t('stage.toolbar.run')}
-        </Button>
-        <Button size="sm" variant="ghost" onClick={onFormat}>
-          <SparklesIcon />
-          {t('stage.toolbar.format')}
-        </Button>
+      <div className="flex items-center gap-1">
+        <Tooltip>
+          <TooltipTrigger render={
+            <Button
+              size="sm"
+              variant={isRunning ? 'destructive' : 'default'}
+              onClick={isRunning ? onCancel : onRun}
+              disabled={isRunning ? false : !canRun}
+              className="justify-center"
+            >
+              {isRunning ? <SquareIcon /> : <PlayIcon />}
+            </Button>
+          } />
+          <TooltipContent side="bottom" sideOffset={4}>
+            {isRunning ? t('stage.toolbar.cancel') : t('stage.toolbar.run')}
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger render={
+            <Button size="sm" variant="ghost" onClick={onFormat}>
+              <SparklesIcon />
+            </Button>
+          } />
+          <TooltipContent side="bottom" sideOffset={4}>
+            {t('stage.toolbar.format')}
+          </TooltipContent>
+        </Tooltip>
         {onExplain && (
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onExplain}
-            disabled={!canExplain}
-            aria-label={t('stage.toolbar.explain')}
-          >
-            <SearchCodeIcon />
-            {t('stage.toolbar.explain')}
-          </Button>
+          <Tooltip>
+            <TooltipTrigger render={
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={onExplain}
+                disabled={!canExplain}
+              >
+                <SearchCodeIcon />
+              </Button>
+            } />
+            <TooltipContent side="bottom" sideOffset={4}>
+              {t('stage.toolbar.explain')}
+            </TooltipContent>
+          </Tooltip>
         )}
       </div>
 
