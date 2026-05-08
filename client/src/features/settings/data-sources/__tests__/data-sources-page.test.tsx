@@ -86,4 +86,26 @@ describe('DataSourcesPage', () => {
     expect(screen.queryByLabelText('用户名')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('密码')).not.toBeInTheDocument()
   })
+
+  it('shows delete confirmation dialog before deleting', async () => {
+    const qc = new QueryClient()
+    const connection = { id: 'c1', name: 'Test Delete', kind: 'mysql', host: 'localhost', port: 3306, databaseName: 'test', username: 'root', createdAt: 0, connectTimeout: 3000, lastTestStatus: null, lastTestAt: null, oracleServiceType: null, sqlserverEncrypt: true, sqlserverTrustServerCertificate: true, sqlserverInstanceName: null, readOnly: false }
+    vi.mocked(api.listConnections).mockResolvedValue([connection])
+    vi.mocked(api.deleteConnection).mockResolvedValue(undefined)
+    render(<QueryClientProvider client={qc}><DataSourcesPage /></QueryClientProvider>)
+
+    // Click the trash icon delete button
+    const deleteBtn = await screen.findByRole('button', { name: '删除' })
+    fireEvent.click(deleteBtn)
+
+    // Dialog should appear with confirmation text
+    expect(await screen.findByText(/删除「.*Test Delete/)).toBeInTheDocument()
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByRole('button', { name: '取消' })).toBeInTheDocument()
+
+    // Click cancel, dialog should close, no API call
+    fireEvent.click(within(dialog).getByRole('button', { name: '取消' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(vi.mocked(api.deleteConnection)).not.toHaveBeenCalled()
+  })
 })

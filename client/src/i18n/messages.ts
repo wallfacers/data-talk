@@ -140,6 +140,9 @@ const MESSAGES = {
     'dataSources.duckdbReadOnlyHint': '只读模式在连接创建后不可更改',
     'dataSources.duckdbExternalBanner': '外部文件、对象存储和网络访问不受支持',
     'dataSources.clickhouseProtocol': '协议',
+    'dataSources.confirmDelete.title': '删除「{connectionName}」？',
+    'dataSources.confirmDelete.description': '此操作不可撤销。删除后需重新配置才能恢复连接。',
+    'dataSources.confirmDelete.confirm': '删除',
 
     'connections.kind.tidb': 'TiDB',
     'connections.tidb.kindLabel': 'TiDB (OSS / 自部署)',
@@ -813,6 +816,9 @@ const MESSAGES = {
     'dataSources.duckdbReadOnlyHint': 'Read-only mode cannot be changed after connection creation',
     'dataSources.duckdbExternalBanner': 'External file, object storage, and network access are not supported',
     'dataSources.clickhouseProtocol': 'Protocol',
+    'dataSources.confirmDelete.title': 'Delete "{connectionName}"?',
+    'dataSources.confirmDelete.description': 'This action cannot be undone. You will need to reconfigure the connection to restore it.',
+    'dataSources.confirmDelete.confirm': 'Delete',
 
     'connections.kind.tidb': 'TiDB',
     'connections.tidb.kindLabel': 'TiDB (OSS / self-hosted)',
