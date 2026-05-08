@@ -20,7 +20,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 | ID | Title | Status | Priority | Owner |
 |----|-------|--------|----------|-------|
-| [BUG-0007](BUG-0007-mcp-bridge-nonce-rotates-on-backend-restart.md) | 后端重启后 MCP bridge nonce 漂移导致 datatalk_* 工具全部 -32001 | fixed | P0 | agent |
+| —  | 当前无 in-progress BUG | — | — | — |
 
 ## Recently Closed（最近 30 天，status = verified | closed）
 
@@ -31,15 +31,15 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 | BUG-0004 | Fork to Designer 不创建 er_designer tab | verified | 2026-05-07 | 9d67946 |
 | BUG-0005 | 页面刷新后 ER Inspector Tab 不恢复 | verified | 2026-05-07 | 9d67946 |
 | BUG-0006 | 页面刷新后 ER Designer Tab targetConnectionId 丢失 | verified | 2026-05-07 | 9d67946 |
+| BUG-0007 | 后端重启后 MCP bridge nonce 漂移导致 datatalk_* 工具全部 -32001 | verified | 2026-05-08 | 4168e3f9 |
 
 ## By Module（聚合视图，仅列 open + in-progress）
 
-- `opencode`: BUG-0007
-- `mcp-bridge`: BUG-0007
+- （无）
 
 ## By Source（聚合视图，仅列 open + in-progress）
 
-- `manual-report`: BUG-0007
+- （无）
 
 ## Wontfix / Duplicate（终态归档，无时间限制）
 
