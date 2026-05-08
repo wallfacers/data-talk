@@ -76,7 +76,13 @@ export function StageRailRowMenu({ tab }: Props) {
       </DropdownMenu>
 
       <AlertDialog open={confirmTrashOpen} onOpenChange={setConfirmTrashOpen}>
-        <AlertDialogContent>
+        {/* The dialog renders in a portal but its React parent is the row's
+            trailingMenu, so synthetic events bubble up to the row's <li>
+            onClick (handleClick → focusTab). That re-focuses the tab being
+            deleted right after detachFromWorkset clears it, leaving stale
+            activeTabId / workset entries pointing at a deleted id. Stop
+            propagation at the dialog wrapper to keep clicks isolated. */}
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('stage.leftRail.confirmTrash.title')}</AlertDialogTitle>
             <AlertDialogDescription>

@@ -207,7 +207,7 @@ export function StageWindow() {
           )}
 
           <div data-testid="stage-workspace-pane" className="flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-canvas">
-            {!open ? null : activeTabId && !showStartPage ? (
+            {!open ? null : activeTab && !showStartPage ? (
               <div className="flex min-h-0 flex-1 overflow-hidden">
                 <StageTabContent />
               </div>

@@ -8,7 +8,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## 当前编号
 
-下一个分配 ID：**BUG-0008**（永不复用，单调递增）
+下一个分配 ID：**BUG-0009**（永不复用，单调递增）
 
 ## Open BUGs（按 priority 倒序，P0 → P2）
 
@@ -20,7 +20,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 | ID | Title | Status | Priority | Owner |
 |----|-------|--------|----------|-------|
-| —  | 当前无 in-progress BUG | — | — | — |
+| [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md) | Stage 永久删除最后一个 tab 后右侧工作区空白 | fixed | P1 | — |
 
 ## Recently Closed（最近 30 天，status = verified | closed）
 
@@ -35,11 +35,11 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## By Module（聚合视图，仅列 open + in-progress）
 
-- （无）
+- **stage**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md)
 
 ## By Source（聚合视图，仅列 open + in-progress）
 
-- （无）
+- **e2e-playwright**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md)
 
 ## Wontfix / Duplicate（终态归档，无时间限制）
 
