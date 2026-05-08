@@ -57,6 +57,69 @@ class OpenCodeBootstrapWriterTest {
     }
 
     @Test
+    void reusesExistingPluginNonceOnSubsequentWrite() throws Exception {
+        OpenCodeBridgeStatus status = new OpenCodeBridgeStatus(clock);
+        OpenCodeMcpProperties properties = props(tempDir);
+        OpenCodeBootstrapWriter writer = new OpenCodeBootstrapWriter(
+            properties,
+            objectMapper,
+            status,
+            clock,
+            () -> "Use datatalk_execute_sql"
+        );
+
+        OpenCodeBootstrapWriter.BootstrapArtifacts first = writer.write(8080);
+        String firstNonce = status.bridgeNonce();
+        assertThat(firstNonce).isNotBlank();
+        assertThat(Files.readString(first.pluginFile())).contains(firstNonce);
+
+        // Simulate a backend restart: a fresh BridgeStatus has empty nonce. write() must
+        // recover the persisted plugin nonce, so the long-lived OpenCode process (which
+        // loaded the plugin once at boot) keeps authenticating after every backend boot.
+        OpenCodeBridgeStatus rebooted = new OpenCodeBridgeStatus(clock);
+        OpenCodeBootstrapWriter rebootedWriter = new OpenCodeBootstrapWriter(
+            properties,
+            objectMapper,
+            rebooted,
+            clock,
+            () -> "Use datatalk_execute_sql"
+        );
+        OpenCodeBootstrapWriter.BootstrapArtifacts second = rebootedWriter.write(8080);
+
+        assertThat(rebooted.bridgeNonce()).isEqualTo(firstNonce);
+        assertThat(Files.readString(second.pluginFile())).contains(firstNonce);
+    }
+
+    @Test
+    void generatesNewNonceWhenPluginFileMissing() throws Exception {
+        OpenCodeBridgeStatus status = new OpenCodeBridgeStatus(clock);
+        OpenCodeMcpProperties properties = props(tempDir);
+        OpenCodeBootstrapWriter writer = new OpenCodeBootstrapWriter(
+            properties,
+            objectMapper,
+            status,
+            clock,
+            () -> "Use datatalk_execute_sql"
+        );
+
+        OpenCodeBootstrapWriter.BootstrapArtifacts first = writer.write(8080);
+        String firstNonce = status.bridgeNonce();
+        Files.delete(first.pluginFile());
+
+        OpenCodeBridgeStatus rebooted = new OpenCodeBridgeStatus(clock);
+        OpenCodeBootstrapWriter rebootedWriter = new OpenCodeBootstrapWriter(
+            properties,
+            objectMapper,
+            rebooted,
+            clock,
+            () -> "Use datatalk_execute_sql"
+        );
+        rebootedWriter.write(8080);
+
+        assertThat(rebooted.bridgeNonce()).isNotBlank().isNotEqualTo(firstNonce);
+    }
+
+    @Test
     void preservesUserFieldsAndDoesNotDuplicateManagedInstruction() throws Exception {
         OpenCodeBridgeStatus status = new OpenCodeBridgeStatus(clock);
         OpenCodeMcpProperties properties = props(tempDir);

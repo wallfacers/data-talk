@@ -23,6 +23,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Component
 public class OpenCodeBootstrapWriter {
@@ -31,6 +33,8 @@ public class OpenCodeBootstrapWriter {
     private static final String MCP_SERVER_NAME = "datatalk";
     private static final String INSTRUCTIONS_FILE_NAME = "AGENTS.md";
     private static final String PLUGIN_FILE_NAME = "datatalk-mcp-context.js";
+    private static final Pattern PLUGIN_NONCE_PATTERN =
+        Pattern.compile("BRIDGE_NONCE\\s*=\\s*'([^']+)'");
 
     private final OpenCodeMcpProperties properties;
     private final ObjectMapper objectMapper;
@@ -70,13 +74,18 @@ public class OpenCodeBootstrapWriter {
         Path configDir = properties.resolveConfigDir();
         Files.createDirectories(configDir);
 
-        String nonce = UUID.randomUUID().toString();
+        Path pluginFile = configDir.resolve("plugins").resolve(PLUGIN_FILE_NAME);
+        // OpenCode loads the plugin once at process start and locks BRIDGE_NONCE into the
+        // ESM closure; rewriting the file does not refresh the running OpenCode. In external
+        // OpenCode mode (datatalk.opencode.serve.enabled=false) the backend cannot restart
+        // OpenCode, so generating a fresh UUID on every backend boot would permanently break
+        // bridge auth (-32001). Treat the on-disk plugin as the authoritative nonce source.
+        String nonce = readExistingPluginNonce(pluginFile).orElseGet(() -> UUID.randomUUID().toString());
         bridgeStatus.rotateNonce(nonce);
 
         Path instructionsFile = configDir.resolve(INSTRUCTIONS_FILE_NAME);
         writeTextFile(instructionsFile, instructionsContent());
 
-        Path pluginFile = configDir.resolve("plugins").resolve(PLUGIN_FILE_NAME);
         Files.createDirectories(pluginFile.getParent());
         writeTextFile(pluginFile, pluginContent(nonce));
         trySetOwnerReadOnly(pluginFile);
@@ -182,6 +191,25 @@ public class OpenCodeBootstrapWriter {
             Files.setPosixFilePermissions(path, permissions);
         } catch (UnsupportedOperationException | IOException ignored) {
             // Ignore on non-POSIX filesystems.
+        }
+    }
+
+    private static java.util.Optional<String> readExistingPluginNonce(Path pluginFile) {
+        if (!Files.isRegularFile(pluginFile)) {
+            return java.util.Optional.empty();
+        }
+        try {
+            String body = Files.readString(pluginFile);
+            Matcher matcher = PLUGIN_NONCE_PATTERN.matcher(body);
+            if (matcher.find()) {
+                String existing = matcher.group(1);
+                if (existing != null && !existing.isBlank()) {
+                    return java.util.Optional.of(existing);
+                }
+            }
+            return java.util.Optional.empty();
+        } catch (IOException e) {
+            return java.util.Optional.empty();
         }
     }
 

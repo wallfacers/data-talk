@@ -8,7 +8,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## 当前编号
 
-下一个分配 ID：**BUG-0007**（永不复用，单调递增）
+下一个分配 ID：**BUG-0008**（永不复用，单调递增）
 
 ## Open BUGs（按 priority 倒序，P0 → P2）
 
@@ -20,7 +20,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 | ID | Title | Status | Priority | Owner |
 |----|-------|--------|----------|-------|
-| —  | 当前无 in-progress BUG | — | — | — |
+| [BUG-0007](BUG-0007-mcp-bridge-nonce-rotates-on-backend-restart.md) | 后端重启后 MCP bridge nonce 漂移导致 datatalk_* 工具全部 -32001 | investigating | P0 | agent |
 
 ## Recently Closed（最近 30 天，status = verified | closed）
 
@@ -34,11 +34,12 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## By Module（聚合视图，仅列 open + in-progress）
 
-- （无）
+- `opencode`: BUG-0007
+- `mcp-bridge`: BUG-0007
 
 ## By Source（聚合视图，仅列 open + in-progress）
 
-- （无）
+- `manual-report`: BUG-0007
 
 ## Wontfix / Duplicate（终态归档，无时间限制）
 
