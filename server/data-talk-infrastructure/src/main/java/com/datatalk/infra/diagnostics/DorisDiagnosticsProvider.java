@@ -5,8 +5,13 @@ import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.domain.diagnostics.*;
 import org.springframework.stereotype.Component;
 
+import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 @Component
 public class DorisDiagnosticsProvider extends AbstractDiagnosticsProvider {
@@ -22,19 +27,31 @@ public class DorisDiagnosticsProvider extends AbstractDiagnosticsProvider {
 
     @Override
     public Set<DiagnosticCapability> supportedCapabilities() {
-        return Set.of();
+        return Set.of(DiagnosticCapability.EXPLAIN);
     }
 
     @Override
     public DiagnosticResult<ExplainPlan> explain(String sql, ConnectionRecord conn, String decryptedPassword,
                                                  String database, String schema) {
-        return DiagnosticResult.unsupported(translator.get("diagnostics.explain_unsupported", "apache_doris"));
+        try {
+            List<Map<String, Object>> rows = queryForList(withDatabaseOverride(conn, database), decryptedPassword, "EXPLAIN " + sql);
+            StringBuilder raw = new StringBuilder();
+            for (var row : rows) {
+                for (Object v : row.values()) {
+                    if (v != null) raw.append(v).append('\n');
+                }
+            }
+            var nodes = applyOlapScanTypes(mapTextPlanToNodes(raw.toString(), DORIS_GRAMMAR), raw.toString());
+            return DiagnosticResult.ok(new ExplainPlan("apache_doris", raw.toString(), nodes, null, List.of()));
+        } catch (SQLException e) {
+            return mapPermissionOrDriverError(e, "EXPLAIN", "apache_doris");
+        }
     }
 
     @Override
     public DiagnosticResult<List<IndexRecommendation>> indexHints(String sql, ExplainPlan plan,
                                                                     ConnectionRecord conn, String decryptedPassword) {
-        return DiagnosticResult.unsupported(translator.get("diagnostics.index_hints_unsupported", "apache_doris"));
+        return DiagnosticResult.unsupported(translator.get("diagnostics.index_hints.unsupported.apache_doris"));
     }
 
     @Override
@@ -70,5 +87,69 @@ public class DorisDiagnosticsProvider extends AbstractDiagnosticsProvider {
     @Override
     public DiagnosticResult<OptimizeTableResult> optimizeTable(ConnectionRecord conn, String decryptedPassword, String table, String schemaName, String database) {
         return DiagnosticResult.unsupported(translator.get("diagnostics.optimize_not_supported", "apache_doris"));
+    }
+
+    // package-private static for Starrocks reuse
+    static final TextPlanGrammar DORIS_GRAMMAR = new TextPlanGrammar(
+        "doris",
+        line -> {
+            String t = line.stripLeading();
+            if (t.startsWith("PLAN FRAGMENT")) return -1;
+            if (t.matches("\\d+:[A-Z][A-Z_a-z\\s]+.*")) {
+                int spaces = line.length() - line.stripLeading().length();
+                return spaces / 2;
+            }
+            return -1;
+        },
+        line -> {
+            String t = line.stripLeading();
+            var m = Pattern.compile("^\\d+:([A-Z][A-Z_a-z\\s]+)").matcher(t);
+            return m.find() ? m.group(1).trim() : null;
+        },
+        line -> {
+            var m = Pattern.compile("TABLE:\\s+(\\S+)").matcher(line);
+            return m.find() ? Optional.of(m.group(1)) : Optional.empty();
+        },
+        line -> {
+            var m = Pattern.compile("cardinality=(\\d+)").matcher(line);
+            return m.find() ? Optional.of(Long.parseLong(m.group(1))) : Optional.empty();
+        }
+    );
+
+    // package-private static for Starrocks reuse
+    static List<ExplainNode> applyOlapScanTypes(List<ExplainNode> nodes, String raw) {
+        List<ExplainNode> out = new ArrayList<>();
+        for (ExplainNode n : nodes) {
+            ScanType st = ScanType.OTHER;
+            if ("OlapScanNode".equals(n.operation()) && n.table() != null) {
+                String segment = extractNodeSegment(raw, n.table());
+                boolean hasPredicates = segment.contains("PREDICATES:");
+                boolean preaggOn = segment.contains("PREAGGREGATION: ON");
+                String rollupName = extractAfter(segment, "rollup:");
+                if (rollupName == null) rollupName = extractAfter(segment, "ROLLUP:");
+                boolean rollupHit = rollupName != null && !rollupName.equals(n.table());
+                if (preaggOn && !hasPredicates) st = ScanType.FULL_SCAN;
+                else if (rollupHit && hasPredicates) st = ScanType.INDEX_SCAN;
+                else if (hasPredicates) st = ScanType.INDEX_RANGE;
+                else st = ScanType.FULL_SCAN;
+            }
+            out.add(new ExplainNode(n.operation(), n.table(), st, n.rows(), n.cost(), n.extra(),
+                applyOlapScanTypes(n.children(), raw)));
+        }
+        return out;
+    }
+
+    private static String extractNodeSegment(String raw, String tableHint) {
+        int idx = raw.indexOf("TABLE: " + tableHint);
+        if (idx < 0) return "";
+        int next = raw.indexOf("\n\n", idx);
+        return next < 0 ? raw.substring(idx) : raw.substring(idx, next);
+    }
+
+    private static String extractAfter(String s, String key) {
+        int i = s.indexOf(key);
+        if (i < 0) return null;
+        int end = s.indexOf('\n', i);
+        return s.substring(i + key.length(), end < 0 ? s.length() : end).trim();
     }
 }

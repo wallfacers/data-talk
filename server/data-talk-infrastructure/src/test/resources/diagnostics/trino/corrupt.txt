@@ -1,0 +1,2 @@
+- Output[value]
+  - TableScan[corrupt_bracket_missing

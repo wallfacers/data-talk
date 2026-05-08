@@ -1,0 +1,3 @@
+- Output[user_id]
+  - Aggregate(FINAL)
+    - TableScan[hive:default.orders]

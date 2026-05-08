@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-16"?>
+<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan" Version="1.539" Build="16.0.4131.2">
+  <BatchSequence><Batch><Statements><StmtSimple StatementCompId="1">
+    <QueryPlan>
+      <RelOp NodeId="0" PhysicalOp="Hash Match" LogicalOp="Inner Join" EstimateRows="5000" EstimatedTotalSubtreeCost="2.5">
+        <OutputList />
+        <RunTimeInformation />
+        <Hash>
+          <DefinedValues />
+          <HashKeysBuild>
+            <ColumnReference Database="[testdb]" Schema="[dbo]" Table="[customers]" Column="id" />
+          </HashKeysBuild>
+          <HashKeysProbe>
+            <ColumnReference Database="[testdb]" Schema="[dbo]" Table="[orders]" Column="customer_id" />
+          </HashKeysProbe>
+        </Hash>
+        <RelOp NodeId="1" PhysicalOp="Table Scan" LogicalOp="Table Scan" EstimateRows="10000" EstimatedTotalSubtreeCost="0.45">
+          <OutputList />
+          <RunTimeInformation />
+          <TableScan>
+            <DefinedValues />
+            <Object Database="[testdb]" Schema="[dbo]" Table="[customers]" />
+          </TableScan>
+        </RelOp>
+        <RelOp NodeId="2" PhysicalOp="Index Seek" LogicalOp="Index Seek" EstimateRows="50000" EstimatedTotalSubtreeCost="0.5">
+          <OutputList />
+          <RunTimeInformation />
+          <IndexScan Ordered="true">
+            <DefinedValues />
+            <Object Database="[testdb]" Schema="[dbo]" Table="[orders]" Index="[IX_orders_customer_id]" />
+          </IndexScan>
+        </RelOp>
+      </RelOp>
+    </QueryPlan>
+  </StmtSimple></Statements></Batch></BatchSequence>
+</ShowPlanXML>

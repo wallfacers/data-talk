@@ -1,0 +1,9 @@
+Aggregating
+  Expression
+    ReadFromMergeTree (default.events)
+      Indexes:
+        PrimaryKey
+          Keys: event_time
+          Condition: true
+          Parts: 12/12
+          Granules: 1000/1000

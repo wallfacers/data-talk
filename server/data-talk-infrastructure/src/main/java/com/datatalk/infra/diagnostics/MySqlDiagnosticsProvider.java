@@ -60,7 +60,7 @@ public class MySqlDiagnosticsProvider extends AbstractDiagnosticsProvider {
             JsonNode root = objectMapper.readTree(raw);
             JsonNode queryBlock = root.path("query_block");
 
-            List<ExplainNode> nodes = parseQueryBlock(queryBlock);
+            List<ExplainNode> nodes = parseMySqlJsonPlan(queryBlock);
             List<String> warnings = collectWarnings(nodes);
 
             return DiagnosticResult.ok(new ExplainPlan("mysql", raw, nodes, null, warnings));
@@ -298,47 +298,14 @@ public class MySqlDiagnosticsProvider extends AbstractDiagnosticsProvider {
         }
     }
 
-    List<ExplainNode> parseQueryBlock(JsonNode queryBlock) {
-        List<ExplainNode> nodes = new ArrayList<>();
-        if (queryBlock.has("table")) {
-            nodes.add(parseTableNode(queryBlock.path("table")));
-        }
-        JsonNode nl = queryBlock.path("nested_loop");
-        if (nl.isArray()) {
-            for (JsonNode item : nl) {
-                nodes.addAll(parseQueryBlock(item));
-            }
-        }
-        if (queryBlock.has("ordering_operation")) {
-            nodes.addAll(parseQueryBlock(queryBlock.path("ordering_operation")));
-        }
-        if (queryBlock.has("grouping_operation")) {
-            nodes.addAll(parseQueryBlock(queryBlock.path("grouping_operation")));
-        }
-        return nodes;
-    }
-
     ScanType mapAccessType(String accessType) {
-        if (accessType == null) return ScanType.OTHER;
-        return switch (accessType.toLowerCase()) {
-            case "all" -> ScanType.FULL_SCAN;
-            case "range" -> ScanType.INDEX_RANGE;
-            case "ref", "eq_ref" -> ScanType.REF;
-            case "index" -> ScanType.INDEX_SCAN;
-            case "const", "system" -> ScanType.CONST;
-            default -> ScanType.OTHER;
-        };
-    }
-
-    private ExplainNode parseTableNode(JsonNode table) {
-        String tableName = table.path("table_name").asText("");
-        String accessType = table.path("access_type").asText("");
-        long rows = table.path("rows_examined_per_scan").asLong(table.path("rows").asLong(0));
-        Double cost = table.has("filtered") ? table.path("filtered").asDouble() : null;
-        String key = table.path("key").asText(null);
-        String extra = key != null ? "key=" + key : null;
-
-        return new ExplainNode(accessType, tableName, mapAccessType(accessType), rows, cost, extra, List.of());
+        return parseScanType(accessType, Map.of(
+            "all", ScanType.FULL_SCAN,
+            "range", ScanType.INDEX_RANGE,
+            "ref", ScanType.REF, "eq_ref", ScanType.REF,
+            "index", ScanType.INDEX_SCAN,
+            "const", ScanType.CONST, "system", ScanType.CONST
+        ));
     }
 
     private List<String> collectWarnings(List<ExplainNode> nodes) {

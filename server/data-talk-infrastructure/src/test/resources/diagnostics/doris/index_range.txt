@@ -1,0 +1,18 @@
+PLAN FRAGMENT 0
+  OUTPUT EXPRS: id, status
+  PARTITION: UNPARTITIONED
+  RESULT SINK
+  1:EXCHANGE
+
+PLAN FRAGMENT 1
+  PARTITION: HASH_PARTITIONED: id
+  STREAM DATA SINK
+    EXCHANGE ID: 01
+  0:OlapScanNode
+     TABLE: orders
+     PARTITIONS: 1/1
+     ROLLUP: orders
+     PREAGGREGATION: OFF
+     PREDICATES: status = 'pending'
+     partitions=1/1, tablets=10/10
+     cardinality=500, avgRowSize=4.0

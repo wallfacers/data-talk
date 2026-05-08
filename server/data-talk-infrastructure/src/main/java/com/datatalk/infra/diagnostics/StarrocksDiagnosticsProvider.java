@@ -5,7 +5,9 @@ import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.domain.diagnostics.*;
 import org.springframework.stereotype.Component;
 
+import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Component
@@ -22,19 +24,35 @@ public class StarrocksDiagnosticsProvider extends AbstractDiagnosticsProvider {
 
     @Override
     public Set<DiagnosticCapability> supportedCapabilities() {
-        return Set.of();
+        return Set.of(DiagnosticCapability.EXPLAIN);
     }
 
     @Override
     public DiagnosticResult<ExplainPlan> explain(String sql, ConnectionRecord conn, String decryptedPassword,
                                                  String database, String schema) {
-        return DiagnosticResult.unsupported(translator.get("diagnostics.explain_unsupported", "starrocks"));
+        try {
+            List<Map<String, Object>> rows = queryForList(withDatabaseOverride(conn, database), decryptedPassword, "EXPLAIN " + sql);
+            StringBuilder raw = new StringBuilder();
+            for (var row : rows) {
+                for (Object v : row.values()) {
+                    if (v != null) raw.append(v).append('\n');
+                }
+            }
+            // Reuse Doris grammar and OlapScanType inference - StarRocks is a Doris fork with identical EXPLAIN format
+            var nodes = DorisDiagnosticsProvider.applyOlapScanTypes(
+                mapTextPlanToNodes(raw.toString(), DorisDiagnosticsProvider.DORIS_GRAMMAR),
+                raw.toString()
+            );
+            return DiagnosticResult.ok(new ExplainPlan("starrocks", raw.toString(), nodes, null, List.of()));
+        } catch (SQLException e) {
+            return mapPermissionOrDriverError(e, "EXPLAIN", "starrocks");
+        }
     }
 
     @Override
     public DiagnosticResult<List<IndexRecommendation>> indexHints(String sql, ExplainPlan plan,
                                                                     ConnectionRecord conn, String decryptedPassword) {
-        return DiagnosticResult.unsupported(translator.get("diagnostics.index_hints_unsupported", "starrocks"));
+        return DiagnosticResult.unsupported(translator.get("diagnostics.index_hints.unsupported.starrocks"));
     }
 
     @Override

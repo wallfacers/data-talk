@@ -5,7 +5,9 @@ import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.domain.diagnostics.*;
 import org.springframework.stereotype.Component;
 
+import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Component
@@ -22,19 +24,36 @@ public class TrinoDiagnosticsProvider extends AbstractDiagnosticsProvider {
 
     @Override
     public Set<DiagnosticCapability> supportedCapabilities() {
-        return Set.of();
+        return Set.of(DiagnosticCapability.EXPLAIN);
     }
 
     @Override
     public DiagnosticResult<ExplainPlan> explain(String sql, ConnectionRecord conn, String decryptedPassword,
                                                  String database, String schema) {
-        return DiagnosticResult.unsupported(translator.get("diagnostics.explain_unsupported", "trino"));
+        try {
+            List<Map<String, Object>> rows = queryForList(withDatabaseOverride(conn, database), decryptedPassword,
+                "EXPLAIN (TYPE LOGICAL) " + sql);
+            StringBuilder raw = new StringBuilder();
+            for (var row : rows) {
+                for (Object v : row.values()) {
+                    if (v != null) raw.append(v).append('\n');
+                }
+            }
+            // Reuse PrestoDiagnosticsProvider's TRINO_GRAMMAR and applyTrinoScanTypes
+            List<ExplainNode> nodes = PrestoDiagnosticsProvider.applyTrinoScanTypes(
+                mapTextPlanToNodes(raw.toString(), PrestoDiagnosticsProvider.TRINO_GRAMMAR)
+            );
+            List<String> warnings = List.of(translator.get("diagnostics.warning.federated_connector_pushdown"));
+            return DiagnosticResult.ok(new ExplainPlan("trino", raw.toString(), nodes, null, warnings));
+        } catch (SQLException e) {
+            return mapPermissionOrDriverError(e, "EXPLAIN", "trino");
+        }
     }
 
     @Override
     public DiagnosticResult<List<IndexRecommendation>> indexHints(String sql, ExplainPlan plan,
-                                                                    ConnectionRecord conn, String decryptedPassword) {
-        return DiagnosticResult.unsupported(translator.get("diagnostics.index_hints_unsupported", "trino"));
+                                                                   ConnectionRecord conn, String decryptedPassword) {
+        return DiagnosticResult.unsupported(translator.get("diagnostics.index_hints.unsupported.trino"));
     }
 
     @Override

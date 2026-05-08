@@ -4,11 +4,14 @@ import com.datatalk.application.diagnostics.DiagnosticsProviderRegistry;
 import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.domain.diagnostics.*;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.support.StaticMessageSource;
 
-import java.util.List;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
 import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -16,10 +19,33 @@ import static org.assertj.core.api.Assertions.assertThat;
 class DuckDbDiagnosticsProviderTest {
 
     private DuckDbDiagnosticsProvider provider;
+    private ConnectionRecord duckdbConn;
+    private Connection rawConnection;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         provider = new DuckDbDiagnosticsProvider(translator());
+
+        // Create DuckDB in-memory database with test data
+        String jdbcUrl = "jdbc:duckdb:";
+        rawConnection = DriverManager.getConnection(jdbcUrl);
+        try (Statement s = rawConnection.createStatement()) {
+            s.execute("CREATE TABLE orders (id INTEGER, user_id INTEGER, amount DECIMAL(10,2))");
+            s.execute("INSERT INTO orders VALUES (1, 100, 50.00), (2, 101, 75.50), (3, 102, 120.00)");
+        }
+
+        duckdbConn = new ConnectionRecord(
+            "test-duckdb", "test", "duckdb", null, 0,
+            null, null, new byte[0], null, 0L, 5000, null, null,
+            null, null, null, null, false
+        );
+    }
+
+    @AfterEach
+    void tearDown() throws Exception {
+        if (rawConnection != null) {
+            rawConnection.close();
+        }
     }
 
     @Test
@@ -28,21 +54,57 @@ class DuckDbDiagnosticsProviderTest {
     }
 
     @Test
-    void supportedCapabilities_isEmptyToForceStructuredUnsupported() {
-        assertThat(provider.supportedCapabilities()).isEmpty();
+    void supportedCapabilities_containsOnlyExplain() {
+        assertThat(provider.supportedCapabilities())
+            .containsExactly(DiagnosticCapability.EXPLAIN)
+            .doesNotContain(DiagnosticCapability.INDEX_HINTS);
     }
 
     @Test
-    void diagnosticsAndMutationsReturnStructuredUnsupported() {
-        assertUnsupported(provider.explain("SELECT 1", null, null, null, null), "EXPLAIN not supported for dialect: duckdb");
-        assertUnsupported(provider.indexHints("SELECT 1", null, null, null), "Index hints not supported for dialect: duckdb");
-        assertUnsupported(provider.lockInfo(null, null, null), "duckdb lock info is not yet supported");
-        assertUnsupported(provider.poolStatus(null, null), "duckdb connection pool info is not yet supported");
-        assertUnsupported(provider.tableSpaceInfo(null, null, null, List.of()), "duckdb table space info is not yet supported");
-        assertUnsupported(provider.terminateSessionPreview(null, null, "1", null), "duckdb session termination is not yet supported");
-        assertUnsupported(provider.terminateSession(null, null, "1", null), "duckdb session termination is not yet supported");
-        assertUnsupported(provider.optimizeTablePreview(null, null, "users", null, null), "duckdb table optimization is not yet supported");
-        assertUnsupported(provider.optimizeTable(null, null, "users", null, null), "duckdb table optimization is not yet supported");
+    void explain_returnsOkWithNonEmptyNodes() {
+        var result = provider.explain("SELECT * FROM orders WHERE user_id = 100", duckdbConn, null, null, null);
+
+        assertThat(result.isOk()).isTrue();
+        ExplainPlan plan = ((DiagnosticResult.Ok<ExplainPlan>) result).value();
+        assertThat(plan.dialect()).isEqualTo("duckdb");
+        assertThat(plan.raw()).isNotEmpty();
+        assertThat(plan.nodes()).isNotEmpty();
+    }
+
+    @Test
+    void explain_simpleQuery_returnsOkWithNodes() {
+        var result = provider.explain("SELECT COUNT(*) FROM orders", duckdbConn, null, null, null);
+
+        assertThat(result.isOk()).isTrue();
+        ExplainPlan plan = ((DiagnosticResult.Ok<ExplainPlan>) result).value();
+        assertThat(plan.nodes()).isNotEmpty();
+    }
+
+    @Test
+    void indexHints_returnsUnsupportedWithZoneMapReason() {
+        var result = provider.indexHints("SELECT * FROM orders WHERE user_id = 100", null, null, null);
+
+        assertThat(result).isInstanceOf(DiagnosticResult.Unsupported.class);
+        String reason = ((DiagnosticResult.Unsupported<List<IndexRecommendation>>) result).reason();
+        assertThat(reason).containsIgnoringCase("zone map");
+    }
+
+    @Test
+    void unsupportedMethodsReturnExplicitReasons() {
+        assertThat(((DiagnosticResult.Unsupported<LockReport>) provider.lockInfo(duckdbConn, null, null)).reason())
+            .contains("duckdb");
+        assertThat(((DiagnosticResult.Unsupported<PoolReport>) provider.poolStatus(duckdbConn, null)).reason())
+            .contains("duckdb");
+        assertThat(((DiagnosticResult.Unsupported<SpaceReport>) provider.tableSpaceInfo(duckdbConn, null, null, null)).reason())
+            .contains("duckdb");
+        assertThat(((DiagnosticResult.Unsupported<TerminateSessionPreview>) provider.terminateSessionPreview(duckdbConn, null, "1", null)).reason())
+            .contains("duckdb");
+        assertThat(((DiagnosticResult.Unsupported<TerminateSessionResult>) provider.terminateSession(duckdbConn, null, "1", null)).reason())
+            .contains("duckdb");
+        assertThat(((DiagnosticResult.Unsupported<OptimizeTablePreview>) provider.optimizeTablePreview(duckdbConn, null, "orders", null, null)).reason())
+            .contains("duckdb");
+        assertThat(((DiagnosticResult.Unsupported<OptimizeTableResult>) provider.optimizeTable(duckdbConn, null, "orders", null, null)).reason())
+            .contains("duckdb");
     }
 
     @Test
@@ -52,15 +114,10 @@ class DuckDbDiagnosticsProviderTest {
         assertThat(registry.find("duckdb").get()).isSameAs(provider);
     }
 
-    private static void assertUnsupported(DiagnosticResult<?> result, String reason) {
-        assertThat(result).isInstanceOf(DiagnosticResult.Unsupported.class);
-        assertThat(((DiagnosticResult.Unsupported<?>) result).reason()).isEqualTo(reason);
-    }
-
     private Translator translator() {
         var source = new StaticMessageSource();
-        source.addMessage("diagnostics.explain_unsupported", Locale.ENGLISH, "EXPLAIN not supported for dialect: {0}");
-        source.addMessage("diagnostics.index_hints_unsupported", Locale.ENGLISH, "Index hints not supported for dialect: {0}");
+        source.addMessage("diagnostics.index_hints.unsupported.duckdb", Locale.ENGLISH,
+            "DuckDB column store typically does not need manual B-tree indexes. If row scans dominate, check zone map hits in EXPLAIN.");
         source.addMessage("diagnostics.lock_not_supported", Locale.ENGLISH, "{0} lock info is not yet supported");
         source.addMessage("diagnostics.pool_not_supported", Locale.ENGLISH, "{0} connection pool info is not yet supported");
         source.addMessage("diagnostics.tablespace_not_supported", Locale.ENGLISH, "{0} table space info is not yet supported");

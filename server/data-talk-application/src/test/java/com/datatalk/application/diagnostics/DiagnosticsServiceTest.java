@@ -7,6 +7,7 @@ import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.persistence.SessionDataContextRecord;
 import com.datatalk.application.session.SessionDataContextService;
 import com.datatalk.domain.diagnostics.*;
+import com.datatalk.infra.diagnostics.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.support.StaticMessageSource;
@@ -234,6 +235,36 @@ class DiagnosticsServiceTest {
         return new ConnectionRecord("c1", "test", kind, "localhost", 3306,
             "db", "user", new byte[0], null, 0L, 5000, null, null,
             null, 1, true, null, false);
+    }
+
+    @Test
+    void routesToCorrectProvider_for_allDay2Kinds() {
+        var providers = List.of(
+            new SqliteDiagnosticsProvider(translator()),
+            new SqlServerDiagnosticsProvider(translator()),
+            new DuckDbDiagnosticsProvider(translator()),
+            new ClickHouseDiagnosticsProvider(translator()),
+            new DorisDiagnosticsProvider(translator()),
+            new StarrocksDiagnosticsProvider(translator()),
+            new PrestoDiagnosticsProvider(translator()),
+            new TrinoDiagnosticsProvider(translator()),
+            new HiveDiagnosticsProvider(translator()),
+            new TiDbDiagnosticsProvider(translator()),
+            new MySqlDiagnosticsProvider(translator())  // for mariadb
+        );
+        var registry = new DiagnosticsProviderRegistry(providers);
+
+        assertThat(registry.find("sqlite")).isPresent().get().isInstanceOf(SqliteDiagnosticsProvider.class);
+        assertThat(registry.find("sqlserver")).isPresent().get().isInstanceOf(SqlServerDiagnosticsProvider.class);
+        assertThat(registry.find("mariadb")).isPresent();  // routes to MySql via supportedDriverTypes("mariadb")
+        assertThat(registry.find("tidb")).isPresent().get().isInstanceOf(TiDbDiagnosticsProvider.class);
+        assertThat(registry.find("duckdb")).isPresent().get().isInstanceOf(DuckDbDiagnosticsProvider.class);
+        assertThat(registry.find("clickhouse")).isPresent().get().isInstanceOf(ClickHouseDiagnosticsProvider.class);
+        assertThat(registry.find("apache_doris")).isPresent().get().isInstanceOf(DorisDiagnosticsProvider.class);
+        assertThat(registry.find("starrocks")).isPresent().get().isInstanceOf(StarrocksDiagnosticsProvider.class);
+        assertThat(registry.find("presto")).isPresent().get().isInstanceOf(PrestoDiagnosticsProvider.class);
+        assertThat(registry.find("trino")).isPresent().get().isInstanceOf(TrinoDiagnosticsProvider.class);
+        assertThat(registry.find("hive")).isPresent().get().isInstanceOf(HiveDiagnosticsProvider.class);
     }
 
     private Translator translator() {

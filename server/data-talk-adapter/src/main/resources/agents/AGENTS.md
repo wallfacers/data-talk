@@ -193,6 +193,43 @@ ClickHouse is an analytical column-store database accessed over HTTP (default po
 12. Capacity/connection count question -> call `datatalk_pool_status`.
 13. If a diagnostic tool returns `{ unsupported: true }`, inform the user the capability is not available for their engine and explain the reason.
 
+### Diagnostics Capability Matrix (post Day-2)
+
+EXPLAIN supports all 14 first-class kinds: mysql, postgresql, h2, sqlite, sqlserver,
+mariadb, tidb, duckdb, clickhouse, apache_doris, starrocks, presto, trino, hive.
+EXPLAIN never executes user_sql (uses SET SHOWPLAN_XML ON for sqlserver, EXPLAIN PLAN
+for clickhouse, TYPE LOGICAL for presto/trino, plain EXPLAIN for the rest). Oracle
+remains structured unsupported.
+
+INDEX_HINTS (BTREE recommendations) supports row-store kinds only:
+mysql / postgresql / h2 / sqlite / sqlserver / mariadb / tidb. Column-store / federated
+/ data warehouse kinds (duckdb / clickhouse / apache_doris / starrocks / presto / trino
+/ hive) return structured Unsupported with kind-specific guidance pointing to
+partitioning / sort key / connector pushdown alternatives — never recommend B-tree
+indexes for those kinds.
+
+LOCK_INFO / POOL_STATUS / TABLE_SPACE / TERMINATE_SESSION / OPTIMIZE_TABLE are
+unchanged — supported on mysql/postgresql, partial on h2, structured unsupported on
+the other 12 kinds (Day-3 scope).
+
+### EXPLAIN Warnings
+
+- **Trino/Presto**: Logical plan shows `TableScan` as `FULL_SCAN`. Underlying connector
+  (Hive/Iceberg/MySQL) may push down filters — verify on source system EXPLAIN.
+- **Hive**: Partition pruning not detected in EXPLAIN output. Verify predicates include
+  partition columns manually; use `EXPLAIN EXTENDED` for details.
+- **DuckDB**: Zone map hits shown in EXPLAIN — if row scans dominate, check column
+  statistics before recommending indexes.
+
+### INDEX_HINTS Impact Tier
+
+Recommendations include impact level based on estimated rows from EXPLAIN:
+- `HIGH`: rows > 1000 (large table, significant improvement)
+- `MEDIUM`: rows > 100 (medium table, noticeable benefit)
+- `LOW`: rows <= 100 (small table, marginal benefit)
+
+SQLite has no row estimates; defaults to `MEDIUM`.
+
 ### UI Actions
 
 Only these UI object types are supported today:

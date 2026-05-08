@@ -1,0 +1,3 @@
+This is not valid Hive EXPLAIN output.
+Random text here.
+No proper structure.
