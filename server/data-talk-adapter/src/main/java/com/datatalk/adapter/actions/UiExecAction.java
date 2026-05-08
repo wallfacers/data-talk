@@ -38,7 +38,7 @@ public class UiExecAction implements ActionHandler<Map, Map> {
                                 "description", "Explicit object id. Omit only when the active object is already clear."
                         )
                 ),
-                "oneOf", List.of(workspaceExecSchema(), queryEditorExecSchema(), erInspectorExecSchema(), erDesignerExecSchema())
+                "oneOf", List.of(workspaceExecSchema(), queryEditorExecSchema(), erInspectorExecSchema(), erDesignerExecSchema(), dashboardExecSchema())
         );
     }
 
@@ -322,6 +322,37 @@ public class UiExecAction implements ActionHandler<Map, Map> {
                 )),
                 Map.entry("allOf", List.of(
                         actionRequiresParams("er_designer", "bind_target", List.of("connectionId"))
+                ))
+        );
+    }
+
+    private static Map<String, Object> dashboardExecSchema() {
+        return Map.ofEntries(
+                Map.entry("required", List.of("object", "action")),
+                Map.entry("properties", Map.ofEntries(
+                        Map.entry("object", Map.of("type", "string", "enum", List.of("dashboard"))),
+                        Map.entry("action", Map.of(
+                                "type", "string",
+                                "enum", List.of("create", "focus"),
+                                "description", "Dashboard verbs. create generates a new dashboard from a JSON payload; focus activates a dashboard tab."
+                        )),
+                        Map.entry("params", Map.of(
+                                "type", "object",
+                                "properties", Map.ofEntries(
+                                        Map.entry("dashboardJson", Map.of(
+                                                "type", "object",
+                                                "description", "Required for create: the full dashboard JSON payload conforming to dashboard-schema.json."
+                                        )),
+                                        Map.entry("target", Map.of(
+                                                "type", "string",
+                                                "description", "Required for focus: the dashboard id."
+                                        ))
+                                )
+                        ))
+                )),
+                Map.entry("allOf", List.of(
+                        actionRequiresParams("dashboard", "create", List.of("dashboardJson")),
+                        actionRequiresParams("dashboard", "focus", List.of("target"))
                 ))
         );
     }

@@ -1,9 +1,11 @@
 import type { LucideIcon } from 'lucide-react'
-import { BarChart2Icon, DatabaseIcon, FileTextIcon, LayoutIcon, NetworkIcon, PackageIcon, SearchCodeIcon } from 'lucide-react'
+import { BarChart2Icon, DatabaseIcon, FileTextIcon, LayoutDashboardIcon, LayoutIcon, NetworkIcon, PackageIcon, SearchCodeIcon } from 'lucide-react'
 import { useSqlWorkbenchStore } from '@/features/stage/stores/sql-workbench-store'
 import { useErTabsStore } from '@/features/stage/stores/er-tabs-store'
 import { normalizeQueryEditorPayload } from '@/features/stage/utils/normalize-query-editor-payload'
 import type { ErDesignerPayload, ErInspectorPayload } from '@/features/stage/stores/er-tabs-payload-types'
+import { useDashboardTabsStore } from '@/features/dashboard/stores/dashboard-tabs-store'
+import { dashboardSchema } from '@/features/dashboard/schema'
 
 export interface TabTypeDescriptor {
   type: string
@@ -168,6 +170,53 @@ export const TAB_TYPE_REGISTRY: Record<string, TabTypeDescriptor> = {
     },
     rehydrate: (tabId, p) => {
       useErTabsStore.getState().hydrateDesigner(tabId, p as ErDesignerPayload)
+    },
+  },
+  dashboard: {
+    type: 'dashboard',
+    persistent: true,
+    scope: 'workspace',
+    payloadSource: 'stage_tab',
+    icon: LayoutDashboardIcon,
+    labelKey: 'tabType.dashboard',
+    extractContent: (p) => {
+      const o = p as { title?: unknown; widgets?: unknown[]; parameters?: unknown[] } | null | undefined
+      if (!o) return ''
+      const parts: string[] = []
+      if (typeof o.title === 'string') parts.push(o.title)
+      if (Array.isArray(o.widgets)) {
+        for (const w of o.widgets) {
+          const wg = w as { type?: unknown; id?: unknown; options?: Record<string, unknown> } | null
+          if (!wg) continue
+          if (typeof wg.id === 'string') parts.push(wg.id)
+          if (wg.type === 'markdown' && wg.options && typeof wg.options.text === 'string') {
+            parts.push(wg.options.text)
+          }
+          if ((wg.type === 'chart' || wg.type === 'table') && wg.options && typeof wg.options.title === 'string') {
+            parts.push(wg.options.title)
+          }
+        }
+      }
+      if (Array.isArray(o.parameters)) {
+        for (const param of o.parameters) {
+          const pm = param as { name?: unknown; type?: unknown } | null
+          if (!pm) continue
+          if (typeof pm.name === 'string') parts.push(pm.name)
+        }
+      }
+      const joined = parts.join('\n')
+      return joined.length > 4096 ? joined.slice(0, 4096) : joined
+    },
+    rehydrate: (tabId, p) => {
+      const o = p as { fileArtifactId?: string } | Record<string, unknown> | null | undefined
+      if (!o) return
+      // If payload is a pointer (fileArtifactId), skip — actual data loaded lazily
+      if (o.fileArtifactId) return
+      // Otherwise treat as inline dashboard JSON
+      const parsed = dashboardSchema.safeParse(o)
+      if (parsed.success) {
+        useDashboardTabsStore.getState().hydrateTab(tabId, parsed.data)
+      }
     },
   },
   files: {

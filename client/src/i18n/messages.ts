@@ -178,6 +178,11 @@ const MESSAGES = {
     'tabType.files': '文件',
     'tabType.filesLibrary': '资产库',
 
+    'tabType.dashboard': '看板',
+    'tabType.dashboard.short': '看板',
+    'dashboard.editorMode': '编辑',
+    'dashboard.viewerMode': '完成编辑',
+
     'files.tabs.session': 'Files',
     'files.tabs.library': 'Files Library',
     'files.section.temporary': '临时',
@@ -853,6 +858,11 @@ const MESSAGES = {
 
     'tabType.files': 'Files',
     'tabType.filesLibrary': 'Files Library',
+
+    'tabType.dashboard': 'Dashboard',
+    'tabType.dashboard.short': 'Dashboard',
+    'dashboard.editorMode': 'Edit',
+    'dashboard.viewerMode': 'Done',
 
     'files.tabs.session': 'Files',
     'files.tabs.library': 'Files Library',

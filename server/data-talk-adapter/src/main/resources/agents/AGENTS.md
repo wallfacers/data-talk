@@ -531,6 +531,83 @@ If a message could plausibly be either a new task or a continuation, ask the use
 - When the chart is derived from a prior `datatalk_execute_sql` artifact, open the block with `chart:<artifactId>` (for example, start the opening fence as ```chart:art-abc123).
 - Call `datatalk_render_chart` only when a saved chart artifact is required.
 
+## Dashboards
+
+A dashboard is a persistent multi-widget layout backed by server-side JSON storage. Use dashboards when the user asks for a composed view with multiple charts, KPI tiles, tables, or markdown annotations arranged in a grid.
+
+### When to use dashboards vs single charts
+
+- Single chart -> use ```chart fenced block or `datatalk_render_chart`.
+- Multi-widget composed view (2+ visuals, filters, or text tiles) -> use a dashboard.
+
+### Creating a dashboard
+
+Use `datatalk_ui_exec` with `object=dashboard`, `action=create`, and `params.dashboardJson` containing the full dashboard JSON conforming to the dashboard schema:
+
+```
+ui_exec(object=dashboard, action=create, {
+  dashboardJson: {
+    schemaVersion: 1,
+    id: "dash_placeholder",
+    title: "Sales Overview",
+    parameters: [],
+    widgets: [
+      {
+        id: "chart_w_sales01",
+        type: "chart",
+        position: { x: 0, y: 0, w: 6, "h": 8 },
+        options: { title: "Monthly Revenue", echartsOption: {...} }
+      },
+      {
+        id: "chart_w_kpi01",
+        type: "kpi",
+        position: { x: 6, y: 0, w": 6, "h": 8 },
+        options: { title: "Total Orders" }
+      }
+    ],
+    layout: { engine: "grid", cols: 12, rowHeight: 32, gap: 8 },
+    version: 1
+  }
+})
+```
+
+The server replaces `id` with a fresh `dash_xxxxxxxx`, sets `version: 1`, and persists the document.
+
+### Incremental updates via ui_patch
+
+After the initial create, use `datatalk_ui_patch` with `object=dashboard` to apply incremental changes:
+
+- **Add a widget**: `{ op: "add", path: "/widgets/-", value: {...} }`
+- **Remove a widget**: `{ op: "remove", path: "/widgets[id=chart_w_sales01]" }`
+- **Replace a widget field**: `{ op: "replace", path: "/widgets[id=chart_w_sales01]/options/title", value: "New Title" }`
+- **Change top-level field**: `{ op: "replace", path: "/title", value: "New Dashboard Title" }`
+
+Always include `baseVersion` from the latest read. The server rejects stale versions with `version_conflict` (HTTP 409).
+
+### P1 widget types
+
+P1 supports: `chart`, `markdown`. Other types (`kpi`, `table`, `filter`, `section`, `divider`, `image`) are reserved for future phases.
+
+### Path addressing
+
+- Array matchKey: `/widgets[id=<widgetId>]/<field>` selects a widget by its `id` property.
+- Append: `/widgets/-` appends to the widgets array.
+- Plain: `/title`, `/layout/cols`, etc. for top-level and nested object fields.
+
+### Error handling
+
+| Code | HTTP | Meaning |
+|------|------|---------|
+| `version_conflict` | 409 | `baseVersion` does not match the current persisted version. Re-read and retry. |
+| `patch_rejected` | 422 | Invalid patch op or path. Fix the ops and retry. |
+| `validation_error` | 422 | Resulting dashboard does not pass schema or cross-widget validation. |
+| `payload_too_large` | 413 | Dashboard JSON exceeds 256 KB. Reduce widget count or payload size. |
+| `not_found` | 404 | Dashboard id does not exist. |
+
+### Relationship to single chart
+
+A dashboard can contain chart widgets with inline `echartsOption`. When a user's request shifts from a single chart to a multi-widget dashboard, create the dashboard and embed the chart as one widget. Do not call `datatalk_render_chart` separately for charts that are embedded in a dashboard.
+
 ## Recommended Workflows
 
 ### Inspect the Current SQL Editor

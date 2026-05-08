@@ -8,6 +8,7 @@ import {
 } from '../tab-type-registry'
 import { useErTabsStore } from '../../stores/er-tabs-store'
 import { useSqlWorkbenchStore } from '../../stores/sql-workbench-store'
+import { useDashboardTabsStore } from '@/features/dashboard/stores/dashboard-tabs-store'
 
 describe('tab-type-registry', () => {
   it('query_editor is persistent and workspace-scoped', () => {
@@ -226,5 +227,79 @@ describe('tab-type-registry', () => {
     getTabTypeDescriptor('er_designer').rehydrate?.('d-registry', payload)
 
     expect((useErTabsStore.getState().designers.get('d-registry') as { kind?: string } | undefined)?.kind).toBe('er_designer')
+  })
+
+  it('dashboard is registered as workspace-scope persistent', () => {
+    expect(TAB_TYPE_REGISTRY.dashboard).toBeDefined()
+    expect(isPersistent('dashboard')).toBe(true)
+    expect(getScope('dashboard')).toBe('workspace')
+  })
+
+  it('extractContent indexes dashboard title, widget ids, markdown text, and parameter names', () => {
+    const desc = getTabTypeDescriptor('dashboard')
+    const text = desc.extractContent({
+      schemaVersion: 1,
+      id: 'dash_sales',
+      title: 'Sales Dashboard',
+      parameters: [
+        { id: 'global:date_range', scope: 'global', name: 'dateRange', type: 'date_range', default: null },
+      ],
+      widgets: [
+        {
+          id: 'chart_w_sales',
+          type: 'chart',
+          position: { x: 0, y: 0, w: 6, h: 4 },
+          options: { echartsOption: {}, dataMapping: { rowsAsDataset: true }, title: 'Revenue Trend' },
+        },
+        {
+          id: 'md_w_notes',
+          type: 'markdown',
+          position: { x: 6, y: 0, w: 6, h: 3 },
+          options: { text: '## Key Insights\nRevenue grew 15% MoM.' },
+        },
+      ],
+      layout: { engine: 'grid', cols: 12, rowHeight: 32, gap: 8 },
+      version: 1,
+      createdAt: 0,
+      updatedAt: 0,
+    })
+
+    expect(text).toContain('Sales Dashboard')
+    expect(text).toContain('chart_w_sales')
+    expect(text).toContain('Revenue Trend')
+    expect(text).toContain('Key Insights')
+    expect(text).toContain('dateRange')
+  })
+
+  it('extractContent truncates at 4KB', () => {
+    const desc = getTabTypeDescriptor('dashboard')
+    const longText = 'x'.repeat(5000)
+    const text = desc.extractContent({
+      title: longText,
+      widgets: [],
+      parameters: [],
+    })
+    expect(text.length).toBeLessThanOrEqual(4096)
+  })
+
+  it('rehydrates dashboard payloads into the dashboard tabs store', () => {
+    useDashboardTabsStore.setState({ tabs: new Map() })
+    const payload = {
+      schemaVersion: 1,
+      id: 'dash_rehydrate',
+      title: 'Rehydrate Test',
+      parameters: [],
+      widgets: [],
+      layout: { engine: 'grid', cols: 12, rowHeight: 32, gap: 8 },
+      version: 1,
+      createdAt: 0,
+      updatedAt: 0,
+    }
+
+    getTabTypeDescriptor('dashboard').rehydrate?.('tab-dash-1', payload)
+
+    const tab = useDashboardTabsStore.getState().tabs.get('tab-dash-1')
+    expect(tab).toBeDefined()
+    expect(tab!.dashboard.title).toBe('Rehydrate Test')
   })
 })
