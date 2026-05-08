@@ -3,6 +3,7 @@ import { useDashboardTabsStore } from '../stores/dashboard-tabs-store'
 import { useStageStore } from '@/stores/stage-store'
 import { generateUuid } from '@/lib/uuid'
 import type { Dashboard } from '../schema'
+import { promoteDashboard, patchDashboard } from '../services/dashboard-api'
 
 const PATCH_CAPABILITIES: PatchCapability[] = [
   { pathPattern: '/title', ops: ['replace'] },
@@ -76,14 +77,28 @@ export class DashboardAdapter implements UIObject {
     }
   }
 
-  patch(ops: JsonPatchOp[], _reason?: string): PatchResult {
+  async patch(ops: JsonPatchOp[], _reason?: string): Promise<PatchResult> {
+    const tab = useDashboardTabsStore.getState().tabs.get(this.tabId)
+    if (!tab) return { status: 'error', message: 'tab not found' }
+
+    const currentVersion = tab.dashboard.version
+
     try {
+      // Optimistic local apply
       useDashboardTabsStore.getState().applyPatchOps(this.tabId, ops)
-      const tab = useDashboardTabsStore.getState().tabs.get(this.tabId)
+
+      // Persist to backend
+      const result = await patchDashboard(tab.dashboard.id, currentVersion, ops)
+      if (!result.ok) {
+        // Rollback on failure
+        useDashboardTabsStore.getState().hydrateTab(this.tabId, tab.dashboard)
+        return { status: 'error', message: result.error }
+      }
+
       return {
         status: 'applied',
         message: `applied ${ops.length} op(s)`,
-        newVersion: (tab?.dashboard.version ?? 0) + 1,
+        newVersion: result.version,
       }
     } catch (error) {
       return { status: 'error', message: (error as Error).message }
@@ -96,7 +111,17 @@ export class DashboardAdapter implements UIObject {
         const input = (params ?? {}) as { title?: string }
         const title = input.title ?? 'Untitled Dashboard'
         const dashboard = buildEmptyDashboard(title)
+
+        // Persist to backend
+        const result = await promoteDashboard(dashboard)
+        if (!result) {
+          return { success: false, error: 'failed to promote dashboard' }
+        }
+
         const tabId = `dashboard_${generateUuid()}`
+        // Update with server-assigned ID
+        dashboard.id = result.id
+        dashboard.version = result.version
 
         useDashboardTabsStore.getState().hydrateTab(tabId, dashboard)
         useStageStore.getState().openTab({

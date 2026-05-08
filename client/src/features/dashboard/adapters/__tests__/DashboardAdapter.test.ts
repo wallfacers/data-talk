@@ -3,6 +3,12 @@ import { DashboardAdapter } from '../DashboardAdapter'
 import { useDashboardTabsStore } from '../../stores/dashboard-tabs-store'
 import { useStageStore } from '@/stores/stage-store'
 
+vi.mock('../../services/dashboard-api', () => ({
+  promoteDashboard: vi.fn().mockResolvedValue({ id: 'dash_server1', version: 1 }),
+  patchDashboard: vi.fn().mockResolvedValue({ ok: true, version: 2 }),
+  fetchDashboard: vi.fn().mockResolvedValue(null),
+}))
+
 const sampleDashboard = {
   schemaVersion: 1,
   id: 'dash_test1',
@@ -19,7 +25,7 @@ describe('DashboardAdapter', () => {
   beforeEach(() => {
     useDashboardTabsStore.setState({ tabs: new Map() })
     useStageStore.getState().resetSessionResources()
-    global.fetch = vi.fn() as never
+    vi.clearAllMocks()
   })
 
   it('read("state") returns the dashboard payload', () => {
@@ -45,7 +51,7 @@ describe('DashboardAdapter', () => {
     expect(actions.map((a) => a.name)).toContain('create')
   })
 
-  it('patch applies ops via dashboard store', async () => {
+  it('patch applies ops via dashboard store and calls backend', async () => {
     useDashboardTabsStore.getState().hydrateTab('tab-d1', sampleDashboard as never)
     const adapter = new DashboardAdapter('tab-d1', () => null)
 
@@ -56,6 +62,11 @@ describe('DashboardAdapter', () => {
     expect(result.status).toBe('applied')
     const tab = useDashboardTabsStore.getState().tabs.get('tab-d1')
     expect(tab!.dashboard.title).toBe('Renamed Dashboard')
+    // Verify backend was called
+    const { patchDashboard } = await import('../../services/dashboard-api')
+    expect(patchDashboard).toHaveBeenCalledWith('dash_test1', 1, [
+      { op: 'replace', path: '/title', value: 'Renamed Dashboard' },
+    ])
   })
 
   it('patch returns error for missing tab', async () => {
@@ -63,6 +74,24 @@ describe('DashboardAdapter', () => {
     const result = await adapter.patch([{ op: 'replace', path: '/title', value: 'X' }])
 
     expect(result.status).toBe('error')
+  })
+
+  it('patch rolls back on backend failure', async () => {
+    const { patchDashboard } = await import('../../services/dashboard-api')
+    vi.mocked(patchDashboard).mockResolvedValueOnce({ ok: false, error: 'conflict' })
+
+    useDashboardTabsStore.getState().hydrateTab('tab-d1', sampleDashboard as never)
+    const adapter = new DashboardAdapter('tab-d1', () => null)
+
+    const result = await adapter.patch([
+      { op: 'replace', path: '/title', value: 'Renamed Dashboard' },
+    ])
+
+    expect(result.status).toBe('error')
+    expect(result.message).toBe('conflict')
+    // Verify rollback — title should be unchanged
+    const tab = useDashboardTabsStore.getState().tabs.get('tab-d1')
+    expect(tab!.dashboard.title).toBe('Test Dashboard')
   })
 
   it('exec("create") opens a new dashboard tab', async () => {
@@ -75,6 +104,25 @@ describe('DashboardAdapter', () => {
     const tab = useDashboardTabsStore.getState().tabs.get(data.tabId)
     expect(tab).toBeDefined()
     expect(tab!.dashboard.title).toBe('New Dashboard')
+  })
+
+  it('exec("create") calls promoteDashboard backend', async () => {
+    const { promoteDashboard } = await import('../../services/dashboard-api')
+    const adapter = new DashboardAdapter('tab-d1', () => null)
+    await adapter.exec('create', { title: 'Test' })
+
+    expect(promoteDashboard).toHaveBeenCalledTimes(1)
+  })
+
+  it('exec("create") returns error when backend fails', async () => {
+    const { promoteDashboard } = await import('../../services/dashboard-api')
+    vi.mocked(promoteDashboard).mockResolvedValueOnce(null)
+
+    const adapter = new DashboardAdapter('tab-d1', () => null)
+    const result = await adapter.exec('create', { title: 'Fail' })
+
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('failed to promote')
   })
 
   it('exec("archive") returns deferred', async () => {

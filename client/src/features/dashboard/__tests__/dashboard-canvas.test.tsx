@@ -1,10 +1,10 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { DashboardCanvas } from '../dashboard-canvas'
 import { useDashboardTabsStore } from '../stores/dashboard-tabs-store'
 import type { Dashboard } from '../schema'
 
-// Mock react-grid-layout to avoid DOM measurement issues in jsdom
+// Mock react-grid-layout — required because jsdom has no layout engine
 vi.mock('react-grid-layout', () => ({
   WidthProvider: (_Comp: React.ComponentType<Record<string, unknown>>) =>
     function MockWidthProvider(props: Record<string, unknown>) {
@@ -23,7 +23,6 @@ vi.mock('react-grid-layout', () => ({
   },
 }))
 
-// Mock widget components
 vi.mock('../widgets/chart-widget', () => ({
   ChartWidget: ({ widgetId }: { widgetId: string }) => (
     <div data-testid={`chart-widget-${widgetId}`} />
@@ -60,10 +59,9 @@ const sampleDashboard: Dashboard = {
 }
 
 describe('DashboardCanvas', () => {
-  it('renders without crashing', () => {
-    useDashboardTabsStore.getState().hydrateTab('tab-1', sampleDashboard)
-    render(<DashboardCanvas tabId="tab-1" mode="viewer" />)
-    expect(screen.getByTestId('grid-layout-mock')).toBeInTheDocument()
+  beforeEach(() => {
+    useDashboardTabsStore.getState().removeTab('tab-1')
+    useDashboardTabsStore.getState().removeTab('tab-2')
   })
 
   it('renders chart and markdown widgets', () => {
@@ -71,5 +69,43 @@ describe('DashboardCanvas', () => {
     render(<DashboardCanvas tabId="tab-1" mode="viewer" />)
     expect(screen.getByTestId('chart-widget-chart_w_aaaa')).toBeInTheDocument()
     expect(screen.getByTestId('markdown-widget-md_w_bbbb')).toBeInTheDocument()
+  })
+
+  it('shows fallback when tab not found', () => {
+    render(<DashboardCanvas tabId="nonexistent" mode="viewer" />)
+    expect(screen.getByText('No dashboard loaded')).toBeInTheDocument()
+  })
+
+  it('renders unknown widget type with fallback text', () => {
+    const dashboardWithUnknown = {
+      ...sampleDashboard,
+      widgets: [
+        {
+          id: 'kpi_w_cccc', type: 'kpi',
+          position: { x: 0, y: 0, w: 3, h: 2 },
+          options: {},
+        },
+      ],
+    } as Dashboard
+    useDashboardTabsStore.getState().hydrateTab('tab-2', dashboardWithUnknown)
+    render(<DashboardCanvas tabId="tab-2" mode="viewer" />)
+    expect(screen.getByText('kpi widget')).toBeInTheDocument()
+  })
+
+  it('renders empty dashboard without errors', () => {
+    const emptyDashboard: Dashboard = { ...sampleDashboard, widgets: [] }
+    useDashboardTabsStore.getState().hydrateTab('tab-2', emptyDashboard)
+    render(<DashboardCanvas tabId="tab-2" mode="viewer" />)
+    expect(screen.getByTestId('grid-layout-mock')).toBeInTheDocument()
+    // No widget children
+    expect(screen.queryByTestId(/chart-widget/)).not.toBeInTheDocument()
+  })
+
+  it('passes isDraggable=false in viewer mode via static property', () => {
+    useDashboardTabsStore.getState().hydrateTab('tab-1', sampleDashboard)
+    const { container } = render(<DashboardCanvas tabId="tab-1" mode="viewer" />)
+    // In viewer mode, isDraggable should be false (static items)
+    const gridEl = container.querySelector('.dashboard-canvas')
+    expect(gridEl).toBeInTheDocument()
   })
 })

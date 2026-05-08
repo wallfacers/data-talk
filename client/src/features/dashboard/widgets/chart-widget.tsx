@@ -19,7 +19,7 @@ export function ChartWidget({ title, option, height = 300, loading, error }: Cha
         </div>
       )}
       {error && !loading && (
-        <div data-testid="chart-error" className="flex items-center justify-center h-full text-sm text-red-500">
+        <div data-testid="chart-error" className="flex items-center justify-center h-full text-sm text-[var(--dt-danger)]">
           {error}
         </div>
       )}

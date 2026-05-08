@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useDashboardTabsStore } from './stores/dashboard-tabs-store'
 import { DashboardCanvas } from './dashboard-canvas'
 import { fetchDashboard } from './services/dashboard-api'
+import { cn } from '@/lib/utils'
 
 interface DashboardTabProps {
   tabId: string
@@ -48,7 +49,14 @@ export function DashboardTab({ tabId }: DashboardTabProps) {
         <h2 className="text-sm font-medium truncate flex-1">{tab.dashboard.title}</h2>
         <button
           type="button"
-          className="text-xs px-2 py-1 rounded border border-[var(--dt-border)] hover:bg-[var(--dt-accent)]"
+          className={cn(
+            "text-xs px-2 py-1 rounded border transition-colors",
+            "border-[var(--dt-border)] bg-transparent text-[var(--dt-text)]",
+            "hover:bg-[var(--dt-accent-surface)] hover:text-[var(--dt-accent)]",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dt-focus-ring)]",
+            "active:translate-y-px",
+            "disabled:opacity-50 disabled:pointer-events-none"
+          )}
           onClick={() => setMode(mode === 'viewer' ? 'editor' : 'viewer')}
         >
           {mode === 'viewer' ? 'Edit' : 'Done'}
