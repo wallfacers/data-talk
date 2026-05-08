@@ -167,7 +167,7 @@
   --dt-bg-subtle: oklch(0.27 0.012 255);
   --dt-bg-elevated: oklch(0.27 0.012 255);
   --dt-bg-overlay: oklch(0.15 0.01 255 / 0.72);
-  --dt-shadow-stage: 0 28px 72px color-mix(in srgb, var(--dt-text-strong) 38%, transparent);
+  --dt-shadow-stage: 0 16px 40px color-mix(in srgb, #000 25%, transparent);
   --dt-text-strong: oklch(0.985 0 0);
   --dt-text-base: oklch(0.93 0.01 255);
   --dt-text-muted: oklch(0.72 0.015 255);
