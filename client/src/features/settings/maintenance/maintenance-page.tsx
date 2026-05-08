@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
 import { useI18n } from '@/i18n/use-i18n'
 import { toast } from 'sonner'
 import { getStorageOverview, cleanupTrash, getOrphanedFiles } from '@/services/api/maintenance'
@@ -49,9 +48,7 @@ export function MaintenancePage() {
     },
   })
 
-  if (overview.isLoading) {
-    return <div className="p-4 space-y-2"><Skeleton className="h-4 w-3/4" /><Skeleton className="h-4 w-1/2" /></div>
-  }
+  if (overview.isLoading) return <div className="text-sm text-muted-foreground">{t('common.loading')}</div>
 
   const d = overview.data
   if (!d) return null
@@ -59,16 +56,16 @@ export function MaintenancePage() {
   const orphanCount = orphans.data?.length ?? 0
 
   return (
-    <div className="space-y-5 p-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-strong">{t('maintenance.tab.title')}</h3>
+    <div className="max-w-3xl">
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">{t('maintenance.tab.title')}</h1>
         <Button variant="ghost" size="sm" onClick={() => qc.invalidateQueries({ queryKey: ['maintenance'] })}>
           <RefreshCw className="mr-1 size-3.5" />
           {t('maintenance.storageOverview.refresh')}
         </Button>
       </div>
 
-      <div className="space-y-1 text-sm">
+      <div className="mb-4 space-y-1 text-sm">
         <div>
           <span className="text-base font-medium">{t('maintenance.storageOverview.workdir')}</span>
           <span className="ml-2 text-sm font-mono text-strong break-all">
@@ -80,7 +77,7 @@ export function MaintenancePage() {
         </div>
       </div>
 
-      <div className="rounded-md border border-default bg-panel p-3">
+      <div className="mb-4 rounded-md border border-default bg-panel p-3">
         <ul className="space-y-1.5 text-sm">
           {Object.entries(d.breakdown).map(([key, item]) => (
             <li key={key} className="flex items-center justify-between text-sm">
@@ -107,6 +104,7 @@ export function MaintenancePage() {
 
       <Button
         variant="destructive"
+        className="mb-6"
         onClick={() => setConfirmOpen(true)}
         disabled={cleanup.isPending}
       >
