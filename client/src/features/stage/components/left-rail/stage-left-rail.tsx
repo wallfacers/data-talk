@@ -102,7 +102,7 @@ export function StageLeftRail() {
       <div className="flex-1 overflow-y-auto px-1 py-2 flex flex-col gap-2">
         <StageRailGroup label={t('stage.leftRail.group.active')} count={active.length} defaultOpen>
           {active.length === 0 ? (
-            <li className="px-2 py-3 text-center text-xs text-text-soft">
+            <li className="px-2 py-3 text-center text-xs text-text-base whitespace-nowrap">
               {t('stage.leftRail.empty')}
             </li>
           ) : active.map((tab) => (

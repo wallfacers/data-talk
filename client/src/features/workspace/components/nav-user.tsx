@@ -3,7 +3,7 @@
 import { useState } from 'react'
 
 import { cn } from '@/lib/utils'
-import { DatabaseIcon, EllipsisVerticalIcon, Settings2Icon, SlidersHorizontalIcon, BoxIcon } from 'lucide-react'
+import { DatabaseIcon, EllipsisVerticalIcon, Settings2Icon, SlidersHorizontalIcon, BoxIcon, WrenchIcon } from 'lucide-react'
 import { useSettingsDialogStore } from '@/features/settings/settings-dialog-store'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
@@ -46,6 +46,7 @@ export function NavUser({
         { key: 'data-sources', label: t('settings.dataSources'), icon: DatabaseIcon, section: 'data-sources' as const },
         { key: 'providers', label: t('settings.providers'), icon: BoxIcon, section: 'providers' as const },
         { key: 'models', label: t('settings.models'), icon: SlidersHorizontalIcon, section: 'models' as const },
+        { key: 'maintenance', label: t('maintenance.tab.title'), icon: WrenchIcon, section: 'maintenance' as const },
       ],
     },
   ]

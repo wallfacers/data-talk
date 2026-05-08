@@ -503,7 +503,7 @@ const MESSAGES = {
     'stage.tabBar.addNew.menu.dashboard': 'Dashboard',
 
     'stage.leftRail.title': '工作台',
-    'stage.leftRail.empty': '尚无 Tab。请从对话中打开，或点击 +。',
+    'stage.leftRail.empty': '尚无 Tab，从对话或 + 打开',
     'stage.leftRail.search.placeholder': '搜索 Tab...',
     'stage.leftRail.collapse': '折叠工作台目录',
     'stage.leftRail.expand': '展开工作台目录',
@@ -613,7 +613,7 @@ const MESSAGES = {
     'action.status.completed': '已完成',
     'action.status.error': '错误',
     'chart.label': '图表',
-    'maintenance.tab.title': 'Maintenance',
+    'maintenance.tab.title': '存储治理',
     'maintenance.storageOverview.workdir': '工作目录',
     'maintenance.storageOverview.totalSize': '总占用',
     'maintenance.storageOverview.lastRun': '最近治理',
@@ -1146,7 +1146,7 @@ const MESSAGES = {
     'stage.tabBar.addNew.menu.dashboard': 'Dashboard',
 
     'stage.leftRail.title': 'Workbench',
-    'stage.leftRail.empty': 'No tabs yet. Open one from chat or click +.',
+    'stage.leftRail.empty': 'No tabs yet. Open from chat or +.',
     'stage.leftRail.search.placeholder': 'Search tabs...',
     'stage.leftRail.collapse': 'Collapse workbench list',
     'stage.leftRail.expand': 'Expand workbench list',
