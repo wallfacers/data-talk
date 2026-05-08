@@ -12,6 +12,7 @@ public enum FileArtifactKind {
     ER_DIAGRAM,
     SQL_SCRIPT,
     DATASET,
+    DASHBOARD,
     OTHER;
 
     @JsonValue
