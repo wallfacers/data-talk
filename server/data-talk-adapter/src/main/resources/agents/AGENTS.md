@@ -575,6 +575,35 @@ Output budget: defaults `headLimit=100`, `maxTabs=50`. For existence checks use 
 - ER Designer: supported. Reuses MySQL DDL generation. `kind=mariadb` connections bind to `mariadb` dialect designers; `kind=mysql` connections also bind to `mariadb` designers.
 - Schema visibility: database selector visible, schema hidden (same as MySQL).
 
+### TiDB
+
+- Canonical kind: `tidb`. Reject any user attempt to map TiDB to `mysql`.
+- Default port: 4000.
+- Protocol: MySQL 5.7/8.0 wire-compatible. SQL splitting, formatting, and
+  most DML/DDL behave like MySQL, but several statements are TiDB-only and
+  require guarded execution.
+- TiDB-only L3 (must surface confirmation): `ADMIN CANCEL/PAUSE/RESUME DDL
+  JOBS`, `BACKUP DATABASE`, `RESTORE DATABASE`, `IMPORT INTO`, `LOAD DATA
+  INFILE`, `FLASHBACK CLUSTER/DATABASE/TABLE`, `ALTER/CREATE/DROP PLACEMENT
+  POLICY`, `KILL TIDB`, `SET GLOBAL`, `BATCH ON ... INSERT/UPDATE/DELETE`.
+- TiDB-only L2: `SPLIT TABLE ... BETWEEN ... AND ...`, `RECOVER TABLE`,
+  `ANALYZE TABLE`, `ALTER TABLE ... COMPACT`, `ADMIN CHECK TABLE/INDEX`.
+- TiDB-only L1 read-only introspection (safe to suggest to the user):
+  `SHOW PLACEMENT`, `SHOW PLACEMENT FOR ...`, `SHOW PLACEMENT LABELS`,
+  `SHOW TABLE <t> REGIONS`, `SHOW SPLIT REGIONS`, `SHOW STATS_HEALTHY`,
+  `SHOW STATS_HISTOGRAMS`, `SHOW STATS_META`, `SHOW STATS_BUCKETS`,
+  `ADMIN SHOW DDL`, `ADMIN SHOW DDL JOBS`. Use these when the user asks
+  about cluster topology, region distribution, statistics health, or DDL
+  job state.
+- Diagnostics (lock/pool/table_space/EXPLAIN-real/index-hints/terminate/
+  optimize) are dialect_unsupported on TiDB Day-1. Suggest the user run
+  `EXPLAIN ANALYZE` or the L1 introspection statements above manually in
+  the Query Editor when execution plans, region distribution, or
+  statistics are needed.
+- ER Inspector and Designer are dialect_unsupported on TiDB Day-1.
+- User may type "TiDB", "tidb", "PingCAP TiDB". Map to canonical `tidb`
+  only. Do not invent aliases.
+
 ### Oracle
 
 - Connection kind: `oracle`. Has `oracleServiceType` field: `"service"` (default) or `"sid"`.

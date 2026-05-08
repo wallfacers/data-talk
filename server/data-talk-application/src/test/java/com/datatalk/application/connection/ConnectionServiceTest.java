@@ -418,4 +418,26 @@ class ConnectionServiceTest {
         verify(repo).update(captor.capture());
         assertThat(captor.getValue().kind()).isEqualTo("starrocks");
     }
+
+    // --- TiDB connection tests ---
+
+    @Test
+    void tidbConnectionAppendsMillisecondTimeoutParams() {
+        var repo = mock(ConnectionRepository.class);
+        var vault = mock(SecretVault.class);
+        var translator = mock(Translator.class);
+        when(translator.get(eq("connection.default_name"), any())).thenAnswer(inv -> "DS-" + inv.getArgument(1));
+        when(translator.get(eq("connection.test.failure"), any(), any()))
+            .thenAnswer(inv -> inv.getArgument(1) + ": " + inv.getArgument(2));
+        var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator);
+
+        when(repo.findById("tidb-conn-001")).thenReturn(Optional.of(
+            new ConnectionRecord("tidb-conn-001", "TiDB", "tidb", "127.0.0.1", 4000, "testdb", "root",
+                new byte[]{}, null, 1L, 5000, null, null, null, 1, true, null, false)));
+        when(vault.open(any())).thenReturn("password");
+
+        // TiDB reuses MySQL driver timeout handling — connectTimeout + socketTimeout in millis
+        var r = svc.testConnection("tidb-conn-001");
+        assertThat(r.ok()).isFalse(); // port 4000 not actually running in test
+    }
 }

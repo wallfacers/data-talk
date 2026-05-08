@@ -188,6 +188,30 @@ class AgentPromptContractTest {
     }
 
     @Test
+    void tidbAppearsInConnectionKindEnum() throws IOException {
+        String prompt = loadPrompt();
+
+        assertThat(prompt)
+            .contains("kind: `tidb`")
+            .contains("Default port: 4000")
+            .contains("Canonical kind: `tidb`")
+            .contains("TiDB-only L3")
+            .contains("TiDB-only L2")
+            .contains("TiDB-only L1")
+            .contains("dialect_unsupported on TiDB Day-1");
+    }
+
+    @Test
+    void agentsMdMentionsTidbCanonicalKind() throws IOException {
+        String prompt = loadPrompt();
+
+        assertThat(prompt)
+            .contains("Canonical kind: `tidb`")
+            .contains("Default port: 4000")
+            .contains("Reject any user attempt to map TiDB to `mysql`");
+    }
+
+    @Test
     void runtimePromptDocumentsDiagnosticsMutationClosedLoop() throws IOException {
         String prompt = loadPrompt();
 

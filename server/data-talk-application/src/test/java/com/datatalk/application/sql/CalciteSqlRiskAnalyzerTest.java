@@ -1186,4 +1186,170 @@ class CalciteSqlRiskAnalyzerTest {
     void trino_resetSessionIsL3() {
         assertThat(analyzer.analyze("RESET SESSION join_distribution", Category.QUERY, "trino").riskLevel()).isEqualTo(RiskLevel.L3);
     }
+
+    // --- TiDB risk classification ---
+
+    // L1: read-only introspection
+    @Test
+    void tidb_show_placement_is_l1() {
+        assertThat(analyzer.analyze("SHOW PLACEMENT FOR DATABASE analytics", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L1);
+    }
+    @Test
+    void tidb_show_table_regions_is_l1() {
+        assertThat(analyzer.analyze("SHOW TABLE t1 REGIONS", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L1);
+    }
+    @Test
+    void tidb_show_split_regions_is_l1() {
+        assertThat(analyzer.analyze("SHOW SPLIT REGIONS", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L1);
+    }
+    @Test
+    void tidb_show_stats_is_l1() {
+        assertThat(analyzer.analyze("SHOW STATS_HEALTHY", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L1);
+    }
+    @Test
+    void tidb_show_generic_is_l1() {
+        assertThat(analyzer.analyze("SHOW DATABASES", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L1);
+    }
+    @Test
+    void tidb_admin_show_ddl_is_l1() {
+        assertThat(analyzer.analyze("ADMIN SHOW DDL", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L1);
+    }
+    @Test
+    void tidb_admin_show_ddl_jobs_is_l1() {
+        assertThat(analyzer.analyze("ADMIN SHOW DDL JOBS", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L1);
+    }
+
+    // L2: bounded write or heavy read
+    @Test
+    void tidb_split_table_is_l2() {
+        assertThat(analyzer.analyze("SPLIT TABLE t1 BETWEEN (0) AND (1000) REGIONS 8", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L2);
+    }
+    @Test
+    void tidb_recover_table_is_l2() {
+        assertThat(analyzer.analyze("RECOVER TABLE t1", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L2);
+    }
+    @Test
+    void tidb_alter_table_compact_is_l2() {
+        assertThat(analyzer.analyze("ALTER TABLE t1 COMPACT", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L2);
+    }
+    @Test
+    void tidb_admin_check_table_is_l2() {
+        assertThat(analyzer.analyze("ADMIN CHECK TABLE t1", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L2);
+    }
+
+    // L3: destructive or cluster-affecting
+    @Test
+    void tidb_admin_cancel_ddl_is_l3() {
+        assertThat(analyzer.analyze("ADMIN CANCEL DDL JOBS 42", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void tidb_admin_pause_ddl_is_l3() {
+        assertThat(analyzer.analyze("ADMIN PAUSE DDL JOBS 42", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void tidb_admin_resume_ddl_is_l3() {
+        assertThat(analyzer.analyze("ADMIN RESUME DDL JOBS 42", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void tidb_admin_unrecognized_is_l3() {
+        assertThat(analyzer.analyze("ADMIN RECOVER INDEX t1 idx_a", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void tidb_backup_database_is_l3() {
+        assertThat(analyzer.analyze("BACKUP DATABASE analytics TO 's3://x/y'", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void tidb_restore_database_is_l3() {
+        assertThat(analyzer.analyze("RESTORE DATABASE analytics FROM 's3://x/y'", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void tidb_import_into_is_l3() {
+        assertThat(analyzer.analyze("IMPORT INTO t1 FROM 's3://x/data.csv'", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void tidb_load_data_infile_is_l3() {
+        assertThat(analyzer.analyze("LOAD DATA INFILE '/tmp/x.csv' INTO TABLE t1", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void tidb_flashback_cluster_is_l3() {
+        assertThat(analyzer.analyze("FLASHBACK CLUSTER TO TIMESTAMP '2026-01-01 00:00:00'", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void tidb_flashback_database_is_l3() {
+        assertThat(analyzer.analyze("FLASHBACK DATABASE analytics", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void tidb_flashback_table_is_l3() {
+        assertThat(analyzer.analyze("FLASHBACK TABLE analytics.t1", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void tidb_alter_placement_policy_is_l3() {
+        assertThat(analyzer.analyze("ALTER PLACEMENT POLICY p FOLLOWERS=3", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void tidb_create_placement_policy_is_l3() {
+        assertThat(analyzer.analyze("CREATE PLACEMENT POLICY p FOLLOWERS=2", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void tidb_drop_placement_policy_is_l3() {
+        assertThat(analyzer.analyze("DROP PLACEMENT POLICY p", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void tidb_kill_tidb_is_l3() {
+        assertThat(analyzer.analyze("KILL TIDB 12345", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void tidb_set_global_is_l3() {
+        assertThat(analyzer.analyze("SET GLOBAL tidb_gc_life_time = '24h'", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void tidb_session_set_is_not_l3() {
+        assertThat(analyzer.analyze("SET tidb_isolation_read_engines = 'tikv'", Category.QUERY, "tidb").riskLevel()).isNotEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void tidb_batch_on_insert_is_l3() {
+        assertThat(analyzer.analyze("BATCH ON id LIMIT 1000 INSERT INTO t2 SELECT * FROM t1", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void tidb_batch_on_update_is_l3() {
+        assertThat(analyzer.analyze("BATCH ON id LIMIT 1000 UPDATE t1 SET v = v + 1", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void tidb_batch_on_delete_is_l3() {
+        assertThat(analyzer.analyze("BATCH ON id LIMIT 1000 DELETE FROM t1 WHERE v < 0", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+
+    // Standard SQL falls through to Calcite generic
+    @Test
+    void tidb_select_is_l1() {
+        assertThat(analyzer.analyze("SELECT * FROM t1", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L1);
+    }
+    @Test
+    void tidb_insert_is_l2() {
+        assertThat(analyzer.analyze("INSERT INTO t1 VALUES (1)", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L2);
+    }
+    @Test
+    void tidb_update_with_where_is_l2() {
+        assertThat(analyzer.analyze("UPDATE t1 SET v=1 WHERE id=1", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L2);
+    }
+    @Test
+    void tidb_delete_with_where_is_l2() {
+        assertThat(analyzer.analyze("DELETE FROM t1 WHERE id=1", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L2);
+    }
+    @Test
+    void tidb_drop_table_is_l3() {
+        assertThat(analyzer.analyze("DROP TABLE t1", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void tidb_truncate_is_l3() {
+        assertThat(analyzer.analyze("TRUNCATE TABLE t1", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void tidb_alter_is_l3() {
+        assertThat(analyzer.analyze("ALTER TABLE t1 ADD COLUMN c INT", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void tidb_grant_is_l3() {
+        assertThat(analyzer.analyze("GRANT SELECT ON *.* TO u@'%'", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
 }

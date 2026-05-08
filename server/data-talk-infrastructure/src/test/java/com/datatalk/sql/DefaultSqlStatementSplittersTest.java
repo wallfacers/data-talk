@@ -2,6 +2,8 @@ package com.datatalk.sql;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class DefaultSqlStatementSplittersTest {
@@ -150,6 +152,14 @@ class DefaultSqlStatementSplittersTest {
         // FORMAT clause should not cause splitting issues
         assertThat(splitters.split("clickhouse", "SELECT 1 FORMAT TabSeparated; SELECT 2;"))
             .containsExactly("SELECT 1 FORMAT TabSeparated", "SELECT 2");
+    }
+
+    @Test
+    void tidbRoutesToMysqlSplitter() {
+        String sql = "DELIMITER //\nCREATE PROCEDURE p() BEGIN SELECT 1; END //\nDELIMITER ;";
+        List<String> parts = splitters.split("tidb", sql);
+        assertThat(parts).hasSize(1);
+        assertThat(parts.get(0)).contains("CREATE PROCEDURE");
     }
 
     @Test

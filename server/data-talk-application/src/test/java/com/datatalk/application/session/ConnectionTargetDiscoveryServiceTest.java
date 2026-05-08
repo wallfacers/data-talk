@@ -20,6 +20,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.nio.file.Files;
+import java.util.List;
 import java.util.Locale;
 import java.util.Properties;
 import java.util.logging.Logger;
@@ -345,6 +346,22 @@ class ConnectionTargetDiscoveryServiceTest {
         } finally {
             DriverManager.deregisterDriver(driver);
         }
+    }
+
+    // --- TiDB system database filtering ---
+
+    @Test
+    void tidbHasNoIndependentSchemaNamespace() {
+        assertThat(service.hasIndependentSchemaNamespace("tidb")).isFalse();
+    }
+
+    @Test
+    void tidbFiltersTidbSystemDatabases() {
+        var input = List.of("analytics", "INFORMATION_SCHEMA", "mysql", "PERFORMANCE_SCHEMA", "METRICS_SCHEMA", "sys", "myapp");
+        var filtered = input.stream()
+            .filter(name -> !service.isSystemDatabase("tidb", name))
+            .toList();
+        assertThat(filtered).containsExactly("analytics", "myapp");
     }
 
     private Translator translator() {

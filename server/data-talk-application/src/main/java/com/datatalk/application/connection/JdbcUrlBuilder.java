@@ -17,6 +17,11 @@ public final class JdbcUrlBuilder {
             case ConnectionKind.MYSQL ->
                 db != null ? "jdbc:mysql://" + c.host() + ":" + c.port() + "/" + db
                            : "jdbc:mysql://" + c.host() + ":" + c.port() + "/";
+            case ConnectionKind.TIDB -> {
+                boolean hasDb = db != null && !db.isBlank();
+                yield hasDb ? "jdbc:mysql://" + c.host() + ":" + c.port() + "/" + db + "?useSSL=false&allowPublicKeyRetrieval=true"
+                            : "jdbc:mysql://" + c.host() + ":" + c.port() + "/?useSSL=false&allowPublicKeyRetrieval=true";
+            }
             case ConnectionKind.H2 ->
                 "jdbc:h2:" + (db != null ? db : "mem:test");
             case ConnectionKind.SQLITE ->

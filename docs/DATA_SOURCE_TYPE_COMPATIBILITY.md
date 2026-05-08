@@ -64,16 +64,17 @@ This table describes the current repository state. Keep it accurate.
 | `presto` | First-class federated SQL support | Connection UI (host/port/username/password, default port 8080), JDBC URL (`jdbc:presto://` via Presto JDBC driver), catalog/schema two-level context selectors (catalog → databaseName, schema → schema), generic SQL splitter, Presto-specific risk rules (SHOW/DESCRIBE/EXPLAIN L1, INSERT/CREATE TABLE/CREATE VIEW/CREATE MATERIALIZED VIEW/UPDATE/DELETE L2, DROP/TRUNCATE/ALTER/GRANT/REVOKE/CREATE USER/ROLE/CALL/SET SESSION/RESET SESSION/SET PATH L3), connector caveat documented, structured unsupported diagnostics, structured unsupported ER. Separate from Trino (no `trino` alias). Day-2: EXPLAIN diagnostics, ER DDL generation, real connection smoke. |
 | `trino` | First-class federated SQL support | Connection UI (host/port/username/password, default port 8080), JDBC URL (`jdbc:trino://` via Trino JDBC driver), catalog/schema two-level context selectors, generic SQL splitter, Trino-specific risk rules, structured unsupported diagnostics, structured unsupported ER. Day-2: EXPLAIN diagnostics, ER DDL generation, real connection smoke. |
 | `hive` | First-class data warehouse SQL support | Connection UI (host/port/username/password, default port 10000), JDBC URL (`jdbc:hive2://` via Apache Hive JDBC driver), database context selector, generic SQL splitter, Hive-specific risk rules (SHOW/DESCRIBE/EXPLAIN L1, INSERT/CREATE TABLE/CREATE VIEW/ANALYZE L2, DROP/TRUNCATE/ALTER/GRANT/REVOKE/CREATE USER/ROLE/FUNCTION/LOAD DATA/ADD JAR/TRANSFORM/MSCK/SET/IMPORT/EXPORT L3), structured unsupported diagnostics, structured unsupported ER. Day-2: EXPLAIN diagnostics, ER DDL generation, HTTP/Kerberos/SSL/ZooKeeper transport support. |
+| `tidb` | First-class | Connection UI (host/port/username/password, default port 4000), JDBC URL (`jdbc:mysql://...?useSSL=false&allowPublicKeyRetrieval=true`) reusing existing `com.mysql:mysql-connector-j` driver, MySQL-protocol metadata reuse proven by 6 `TiDb*ReuseIT` concrete subclasses of the new `MySqlProtocolReuseRule` abstract base kit, `MySqlSqlStatementSplitter` reuse, `JdbcResultValueNormalizer` mysql baseline reuse, batch DML path, AUTO_RANDOM normalized as `BIGINT UNSIGNED`, independent `classifyTidbSpecific` risk rules covering 30+ TiDB-only patterns (ADMIN CANCEL/PAUSE/RESUME DDL JOBS L3, ADMIN CHECK TABLE L2, ADMIN SHOW DDL L1, SPLIT TABLE L2, RECOVER TABLE L2, ALTER TABLE COMPACT L2, BACKUP/RESTORE/IMPORT INTO/LOAD DATA INFILE/FLASHBACK/PLACEMENT POLICY/KILL TIDB/SET GLOBAL/BATCH ON L3, SHOW PLACEMENT/REGIONS/STATS_* L1), `TiDbDiagnosticsProvider` returning structured `dialect_unsupported` for all 7 hooks, structured unsupported ER. TiDB Cloud (Serverless / Dedicated) and TLS / SSL are out of scope for Day-1. Day-2: real diagnostics via EXPLAIN ANALYZE / Statement Summary / ADMIN SHOW DDL, ER Inspector / Designer, TiDB-only outline keywords, brand icon. Minimum supported server version: TiDB 6.5 LTS. |
 
 ER Inspector follows this matrix: `mysql`, `postgresql` / `postgres`, `h2`,
 `mariadb`, and user `sqlite` file connections use JDBC `DatabaseMetaData.getImportedKeys`;
-`oracle`, `sqlserver`, `duckdb`, `clickhouse`, `apache_doris`, `starrocks`, `trino`, `presto`, and `hive` are explicitly unsupported and must return structured
+`oracle`, `sqlserver`, `duckdb`, `clickhouse`, `apache_doris`, `starrocks`, `trino`, `presto`, `hive`, and `tidb` are explicitly unsupported and must return structured
 `dialect_unsupported` guidance instead of a fake empty ER graph.
 
 ER Designer follows this DDL matrix: `mysql`, `postgresql` / `postgres`, `h2`,
 and `mariadb` generate day-1 DDL for `CREATE TABLE`, `ALTER ADD COLUMN`, `ALTER ADD FK`,
 and `CREATE INDEX`; `sqlite` is CREATE-only for table/index generation and must
-return `SkippedOp` for ALTER variants; `oracle`, `sqlserver`, `duckdb`, `clickhouse`, `apache_doris`, `starrocks`, `trino`, `presto`, and `hive` are explicitly
+return `SkippedOp` for ALTER variants; `oracle`, `sqlserver`, `duckdb`, `clickhouse`, `apache_doris`, `starrocks`, `trino`, `presto`, `hive`, and `tidb` are explicitly
 unsupported with `dialect_unsupported`. DROP, ALTER COLUMN type changes, and
 RENAME are N/A for day-1 automated generation because they are always returned
 as `SkippedOp` with `day1_unsupported`; users must write that SQL manually in
@@ -83,7 +84,7 @@ as `SkippedOp` with `day1_unsupported`; users must write that SQL manually in
 
 | Feature | Compatibility notes |
 |---|---|
-| ER Tabs (Inspector + Designer) | Inspector: mysql / postgresql / h2 / mariadb fully via JDBC `getImportedKeys`, and sqlite user file connections use the same metadata path with no extra schema selector; oracle / sqlserver / duckdb / clickhouse / apache_doris / starrocks / trino / presto `dialect_unsupported`. Designer day-1 DDL generation: mysql / postgresql / h2 / mariadb emit CREATE TABLE / ALTER ADD COLUMN / ALTER ADD FK / CREATE INDEX; sqlite is CREATE-only with all ALTER variants returning `SkippedOp`; oracle / sqlserver / duckdb / clickhouse / apache_doris / starrocks / trino / presto `dialect_unsupported`. DROP / ALTER COLUMN type / RENAME are always `SkippedOp` (`day1_unsupported`) regardless of dialect; users must write that SQL manually in the `query_editor` and run it through L2/L3 confirmation. |
+| ER Tabs (Inspector + Designer) | Inspector: mysql / postgresql / h2 / mariadb fully via JDBC `getImportedKeys`, and sqlite user file connections use the same metadata path with no extra schema selector; oracle / sqlserver / duckdb / clickhouse / apache_doris / starrocks / trino / presto / tidb `dialect_unsupported`. Designer day-1 DDL generation: mysql / postgresql / h2 / mariadb emit CREATE TABLE / ALTER ADD COLUMN / ALTER ADD FK / CREATE INDEX; sqlite is CREATE-only with all ALTER variants returning `SkippedOp`; oracle / sqlserver / duckdb / clickhouse / apache_doris / starrocks / trino / presto / tidb `dialect_unsupported`. DROP / ALTER COLUMN type / RENAME are always `SkippedOp` (`day1_unsupported`) regardless of dialect; users must write that SQL manually in the `query_editor` and run it through L2/L3 confirmation. |
 
 ### ER Designer Gate Notes
 
@@ -141,7 +142,7 @@ drivers, license/redistribution, test fixture quality, and dialect risk.
 |---|---|---|
 | A — close partial/stub and common enterprise SQL | `oracle`, `sqlserver` / `mssql`, `mariadb` | Wave A completed 2026-05-07. All three kinds are now first-class. Remaining Day-2 items: Oracle PL/SQL splitter + diagnostics EXPLAIN; SQL Server GO splitter + diagnostics EXPLAIN; MariaDB standalone risk rules + diagnostics compatibility verification. |
 | B — analytics / OLAP SQL engines | `apache_doris` / `doris`, `starrocks`, `clickhouse`, `hive`, `trino`, `presto`, `duckdb` | Validate JDBC behavior, catalog/schema semantics, splitter safety, and whether diagnostics can be real or must return structured unsupported. These candidates have moved into the Wave B Child Artifact Tracking table below. |
-| C — domestic / enterprise compatibility | `gaussdb`, `opengauss`, `dameng` / `dm` / `dm8`, `kingbase` / `kingbasees`, `oceanbase`, `tidb` | Do not assume PostgreSQL/MySQL compatibility is enough. Each kind needs explicit driver, URL, catalog/schema, SQL dialect, and risk-analysis decisions. |
+| C — domestic / enterprise compatibility | `gaussdb`, `opengauss`, `dameng` / `dm` / `dm8`, `kingbase` / `kingbasees`, `oceanbase`, `tidb` | Wave C step 1 (`tidb`) completed 2026-05-08. TiDB is now first-class. Remaining C-band candidates: `gaussdb`, `opengauss`, `dameng`, `kingbase`, `oceanbase`. Do not assume PostgreSQL/MySQL compatibility is enough. Each kind needs explicit driver, URL, catalog/schema, SQL dialect, and risk-analysis decisions. |
 | D — cloud warehouses / lakehouse SQL | `snowflake`, `bigquery`, `redshift`, `databricks_sql` | Watch for non-standard authentication, warehouse/project/dataset fields, JDBC driver redistribution limits, billing-sensitive metadata scans, and result-limit semantics. |
 | E — non-SQL or semi-SQL sources | `mongodb`, `elasticsearch`, `opensearch`, optionally `redis` only if product scope expands beyond SQL | These require a separate read/query contract and should not be forced through fake SQL execution. Mutation and schema semantics must be designed before implementation. |
 
@@ -174,6 +175,16 @@ is updated.
 | `trino` | `docs/product-specs/2026-05-01-data-source-coverage-trino-design.md` | `docs/exec-plans/2026-05-01-data-source-coverage-trino-plan.md` | Planned: federated Trino design with catalog/schema context and connector-capability caveats; support remains unsupported until implementation completes. |
 | `presto` | `docs/product-specs/2026-05-01-data-source-coverage-presto-design.md` | `docs/exec-plans/2026-05-01-data-source-coverage-presto-plan.md` | Completed 2026-05-08: first-class federated SQL support with Presto JDBC driver (`jdbc:presto://`), catalog/schema two-level context selectors, generic SQL splitter, Presto-specific risk rules (SHOW/DESCRIBE/EXPLAIN L1, INSERT/CREATE TABLE/CREATE VIEW/UPDATE/DELETE L2, DROP/TRUNCATE/ALTER/GRANT/REVOKE/CREATE USER/ROLE/CALL/SET SESSION/RESET SESSION L3), connector caveat documented, structured unsupported diagnostics and ER. Separate from Trino. Day-2: EXPLAIN diagnostics, ER DDL generation, real connection smoke. |
 | `hive` | `docs/product-specs/2026-05-01-data-source-coverage-hive-design.md` | `docs/exec-plans/2026-05-01-data-source-coverage-hive-plan.md` | Completed 2026-05-08: first-class data warehouse SQL support with connection contract, metadata discovery via SHOW DATABASES, `hive-jdbc` 4.0.1 driver, generic SQL splitter, Hive risk rules, type normalization, structured unsupported diagnostics and ER. Connection UI with default port 10000, AGENTS.md prompt rules. Day-2: EXPLAIN diagnostics, ER DDL generation, HTTP/Kerberos/SSL/ZooKeeper transport support. |
+
+### Wave C Child Artifact Tracking
+
+Wave C child artifacts are documentation gates for domestic and enterprise
+compatibility kinds. A kind stays unsupported until its child implementation plan
+is executed, verified, and the support snapshot above is updated.
+
+| Kind | Child design | Child plan | Current outcome |
+|---|---|---|---|
+| `tidb` | `docs/product-specs/2026-05-08-data-source-coverage-tidb-design.md` | `docs/exec-plans/2026-05-08-data-source-coverage-tidb-plan.md` | Completed 2026-05-08: first-class OSS / self-hosted TiDB support via mysql-connector-j reuse; produced `MySqlProtocolReuseRule` 6-base kit with 6 TiDB concrete IT subclasses; 30+ TiDB-only risk rules; structured unsupported diagnostics + ER. Day-2: real diagnostics, ER, TiDB Cloud / TLS via cross-kind design. |
 
 ### Candidate Naming Notes
 

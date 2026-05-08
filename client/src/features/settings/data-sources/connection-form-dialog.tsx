@@ -15,6 +15,7 @@ export const DATABASE_TYPES = {
   h2: { label: 'H2', port: 9092 },
   sqlite: { label: 'SQLite', port: 0 },
   mariadb: { label: 'MariaDB', port: 3306 },
+  tidb: { label: 'TiDB', port: 4000 },
   oracle: { label: 'Oracle', port: 1521 },
   sqlserver: { label: 'SQL Server', port: 1433 },
   duckdb: { label: 'DuckDB', port: 0 },

@@ -176,10 +176,11 @@ public class ConnectionTargetDiscoveryService {
             // Discovery should degrade gracefully. Configured databaseName is still useful.
         }
 
+        databaseNames.removeIf(name -> isSystemDatabase(connection.kind(), name));
         return new DiscoveryResult(connection.id(), connection.name(), databaseNames, schemaNames);
     }
 
-    private boolean hasIndependentSchemaNamespace(String kind) {
+    boolean hasIndependentSchemaNamespace(String kind) {
         if (kind == null || kind.isBlank()) return true;
         String normalized = kind.toLowerCase(Locale.ROOT);
         return !ConnectionKind.MYSQL.equals(normalized)
@@ -187,7 +188,8 @@ public class ConnectionTargetDiscoveryService {
             && !ConnectionKind.SQLITE.equals(normalized)
             && !ConnectionKind.APACHE_DORIS.equals(normalized)
             && !ConnectionKind.STARROCKS.equals(normalized)
-            && !ConnectionKind.HIVE.equals(normalized);
+            && !ConnectionKind.HIVE.equals(normalized)
+            && !ConnectionKind.TIDB.equals(normalized);
     }
 
     private String effectiveDatabaseName(String kind, String databaseName) {
@@ -232,6 +234,28 @@ public class ConnectionTargetDiscoveryService {
         String normalized = name.toLowerCase(Locale.ROOT);
         return normalized.equals("system")
             || normalized.equals("jmx");
+    }
+
+    boolean isSystemDatabase(String kind, String name) {
+        if (name == null || name.isBlank()) return false;
+        String normalized = name.toLowerCase(Locale.ROOT);
+        return systemDatabases(kind).stream()
+            .anyMatch(sys -> sys.equalsIgnoreCase(normalized));
+    }
+
+    Set<String> systemDatabases(String kind) {
+        if (kind == null || kind.isBlank()) return Set.of();
+        String normalized = kind.toLowerCase(Locale.ROOT);
+        if (ConnectionKind.TIDB.equals(normalized)) {
+            return Set.of("INFORMATION_SCHEMA", "mysql", "PERFORMANCE_SCHEMA", "METRICS_SCHEMA", "sys");
+        }
+        if (ConnectionKind.MYSQL.equals(normalized)
+            || ConnectionKind.MARIADB.equals(normalized)
+            || ConnectionKind.APACHE_DORIS.equals(normalized)
+            || ConnectionKind.STARROCKS.equals(normalized)) {
+            return Set.of("INFORMATION_SCHEMA", "mysql", "PERFORMANCE_SCHEMA", "sys");
+        }
+        return Set.of();
     }
 
     private static final Set<String> ORACLE_SYSTEM_SCHEMAS = Set.of(

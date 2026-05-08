@@ -141,6 +141,13 @@ const MESSAGES = {
     'dataSources.duckdbExternalBanner': '外部文件、对象存储和网络访问不受支持',
     'dataSources.clickhouseProtocol': '协议',
 
+    'connections.kind.tidb': 'TiDB',
+    'connections.tidb.kindLabel': 'TiDB (OSS / 自部署)',
+    'connections.tidb.placeholder.host': '127.0.0.1',
+    'connections.tidb.placeholder.port': '4000',
+    'connections.tidb.placeholder.databaseOptional': '可选 — 留空表示连接级不绑库',
+    'connections.tidb.help.databaseOptional': '不填则按服务器默认 — 后续可在 Query Editor 用 USE 切换',
+
     'workspace.createSession': '创建会话',
     'workspace.creatingSession': '创建中…',
     'workspace.configureModelFirst': '请先在设置中配置模型',
@@ -783,6 +790,13 @@ const MESSAGES = {
     'dataSources.duckdbReadOnlyHint': 'Read-only mode cannot be changed after connection creation',
     'dataSources.duckdbExternalBanner': 'External file, object storage, and network access are not supported',
     'dataSources.clickhouseProtocol': 'Protocol',
+
+    'connections.kind.tidb': 'TiDB',
+    'connections.tidb.kindLabel': 'TiDB (OSS / self-hosted)',
+    'connections.tidb.placeholder.host': '127.0.0.1',
+    'connections.tidb.placeholder.port': '4000',
+    'connections.tidb.placeholder.databaseOptional': 'Optional — leave empty for connection-level unbound',
+    'connections.tidb.help.databaseOptional': 'Leave empty to use server default; switch later in Query Editor with USE',
 
     'workspace.createSession': 'Create Session',
     'workspace.creatingSession': 'Creating…',

@@ -193,6 +193,9 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
         if (ConnectionKind.HIVE.equalsIgnoreCase(connectionKind)) {
             return classifyHiveSpecific(sql);
         }
+        if (ConnectionKind.TIDB.equalsIgnoreCase(connectionKind)) {
+            return classifyTidbSpecific(sql);
+        }
         return null;
     }
 
@@ -814,6 +817,130 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
             return SqlRiskAnalysis.high("hive_set");
         }
         return null;
+    }
+
+    private SqlRiskAnalysis classifyTidbSpecific(String sql) {
+        String normalized = stripLeadingComments(sql).toLowerCase(Locale.ROOT);
+        if (normalized.isEmpty()) return null;
+
+        // L1: read-only introspection (specific SHOW/ADMIN forms first)
+        if (normalized.startsWith("show placement")) {
+            return SqlRiskAnalysis.low("tidb_show_placement");
+        }
+        if (normalized.startsWith("show table") && normalized.contains("regions")) {
+            return SqlRiskAnalysis.low("tidb_show_regions");
+        }
+        if (normalized.startsWith("show split regions")) {
+            return SqlRiskAnalysis.low("tidb_show_split_regions");
+        }
+        if (normalized.startsWith("show stats_")) {
+            return SqlRiskAnalysis.low("tidb_show_stats");
+        }
+        if (normalized.startsWith("admin show ddl")) {
+            return SqlRiskAnalysis.low("tidb_admin_show_ddl");
+        }
+        // Generic SHOW catch-all (after specific SHOW forms)
+        if (startsWithKeyword(normalized, "show")) {
+            return SqlRiskAnalysis.low("tidb_show");
+        }
+        if (startsWithKeyword(normalized, "describe") || startsWithKeyword(normalized, "desc")) {
+            return SqlRiskAnalysis.low("tidb_describe");
+        }
+        if (startsWithKeyword(normalized, "explain")) {
+            return SqlRiskAnalysis.low("tidb_explain");
+        }
+
+        // L2: bounded write or heavy read
+        if (normalized.startsWith("split table")) {
+            return SqlRiskAnalysis.medium("tidb_split_table");
+        }
+        if (normalized.startsWith("recover table")) {
+            return SqlRiskAnalysis.medium("tidb_recover_table");
+        }
+        if (normalized.startsWith("alter table") && normalized.contains("compact")) {
+            return SqlRiskAnalysis.medium("tidb_alter_compact");
+        }
+        if (normalized.startsWith("admin check table") || normalized.startsWith("admin check index")) {
+            return SqlRiskAnalysis.medium("tidb_admin_check");
+        }
+        if (startsWithKeyword(normalized, "analyze")) {
+            return SqlRiskAnalysis.medium("tidb_analyze");
+        }
+
+        // L3: destructive or cluster-affecting (specific ADMIN forms before generic)
+        if (normalized.startsWith("admin cancel ddl")
+            || normalized.startsWith("admin pause ddl")
+            || normalized.startsWith("admin resume ddl")) {
+            return SqlRiskAnalysis.high("tidb_admin_ddl_jobs");
+        }
+        if (startsWithKeyword(normalized, "admin")) {
+            return SqlRiskAnalysis.high("tidb_admin_unrecognized");
+        }
+        if (normalized.startsWith("backup database") || normalized.startsWith("backup table")) {
+            return SqlRiskAnalysis.high("tidb_backup");
+        }
+        if (normalized.startsWith("restore database") || normalized.startsWith("restore table")) {
+            return SqlRiskAnalysis.high("tidb_restore");
+        }
+        if (normalized.startsWith("import into")) {
+            return SqlRiskAnalysis.high("tidb_import_into");
+        }
+        if (normalized.startsWith("load data")) {
+            return SqlRiskAnalysis.high("tidb_load_data");
+        }
+        if (normalized.startsWith("flashback ")) {
+            return SqlRiskAnalysis.high("tidb_flashback");
+        }
+        if (normalized.contains("placement policy")
+            && (normalized.startsWith("create ") || normalized.startsWith("alter ") || normalized.startsWith("drop "))) {
+            return SqlRiskAnalysis.high("tidb_placement_policy");
+        }
+        if (normalized.startsWith("kill tidb")) {
+            return SqlRiskAnalysis.high("tidb_kill");
+        }
+        if (normalized.startsWith("set global")) {
+            return SqlRiskAnalysis.high("tidb_set_global");
+        }
+        if (normalized.startsWith("batch on") || normalized.startsWith("batch ")) {
+            return SqlRiskAnalysis.high("tidb_batch_dml");
+        }
+
+        // Standard SQL DDL/DCL — handled directly like other MySQL-protocol dialects
+        if (startsWithKeyword(normalized, "drop")) {
+            return SqlRiskAnalysis.high("tidb_drop");
+        }
+        if (startsWithKeyword(normalized, "truncate")) {
+            return SqlRiskAnalysis.high("tidb_truncate");
+        }
+        if (startsWithKeyword(normalized, "alter")) {
+            return SqlRiskAnalysis.high("tidb_alter");
+        }
+        if (startsWithKeyword(normalized, "grant")) {
+            return SqlRiskAnalysis.high("tidb_grant");
+        }
+        if (startsWithKeyword(normalized, "revoke")) {
+            return SqlRiskAnalysis.high("tidb_revoke");
+        }
+        if (startsWithKeyword(normalized, "rename")) {
+            return SqlRiskAnalysis.high("tidb_rename");
+        }
+        // Standard SQL DML / query — fall through to Calcite generic classifier
+        if (startsWithKeyword(normalized, "select")
+            || startsWithKeyword(normalized, "with")
+            || startsWithKeyword(normalized, "insert")
+            || startsWithKeyword(normalized, "update")
+            || startsWithKeyword(normalized, "delete")
+            || startsWithKeyword(normalized, "create")) {
+            return null;
+        }
+
+        // Session-level SET (not SET GLOBAL) — session-scoped, low risk
+        if (startsWithKeyword(normalized, "set")) {
+            return SqlRiskAnalysis.low("tidb_set_session");
+        }
+
+        // Catch-all for any unrecognized TiDB statement
+        return SqlRiskAnalysis.high("tidb_unrecognized");
     }
 
     private String stripLeadingComments(String sql) {

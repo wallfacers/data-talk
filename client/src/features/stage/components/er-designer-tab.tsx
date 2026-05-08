@@ -104,7 +104,7 @@ function isBindableConnection(dialect: ErDesignerPayload['dialect'], connection:
   const kind = normalizeConnectionKind(connection.kind)
   switch (dialect) {
     case 'mysql':
-      return kind === 'mysql'
+      return kind === 'mysql' || kind === 'tidb'
     case 'postgresql':
       return kind === 'postgresql'
     case 'h2':
@@ -112,7 +112,7 @@ function isBindableConnection(dialect: ErDesignerPayload['dialect'], connection:
     case 'sqlite':
       return kind === 'sqlite'
     case 'mariadb':
-      return kind === 'mariadb' || kind === 'mysql'
+      return kind === 'mariadb' || kind === 'mysql' || kind === 'tidb'
     default:
       return false
   }
@@ -141,6 +141,7 @@ function hasIndependentSchemaNamespace(kind: string | null | undefined) {
   return normalizedKind !== 'mysql'
     && normalizedKind !== 'sqlite'
     && normalizedKind !== 'mariadb'
+    && normalizedKind !== 'tidb'
     && normalizedKind !== 'apache_doris'
     && normalizedKind !== 'starrocks'
 }

@@ -782,6 +782,41 @@ class JdbcUrlBuilderTest {
             .isEqualTo("jdbc:starrocks://host:9031/default_catalog.mydb");
     }
 
+    // --- TiDB URL building ---
+
+    @Test
+    void buildTidbUrlWithDatabase() {
+        var connection = new ConnectionRecord(
+            "tidb-1", "TiDB Test", ConnectionKind.TIDB,
+            "127.0.0.1", 4000, "analytics", "root",
+            new byte[]{1}, null, 1L, 3000, null, null,
+            null, 1, true, null, false);
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:mysql://127.0.0.1:4000/analytics?useSSL=false&allowPublicKeyRetrieval=true");
+    }
+
+    @Test
+    void buildTidbUrlWithoutDatabase() {
+        var connection = new ConnectionRecord(
+            "tidb-2", "TiDB No DB", ConnectionKind.TIDB,
+            "127.0.0.1", 4000, null, "root",
+            new byte[]{1}, null, 1L, 3000, null, null,
+            null, 1, true, null, false);
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:mysql://127.0.0.1:4000/?useSSL=false&allowPublicKeyRetrieval=true");
+    }
+
+    @Test
+    void buildTidbUrlEmptyDatabaseTreatedAsNull() {
+        var connection = new ConnectionRecord(
+            "tidb-3", "TiDB Empty DB", ConnectionKind.TIDB,
+            "h", 4000, "", "root",
+            new byte[]{1}, null, 1L, 3000, null, null,
+            null, 1, true, null, false);
+        assertThat(JdbcUrlBuilder.build(connection))
+            .isEqualTo("jdbc:mysql://h:4000/?useSSL=false&allowPublicKeyRetrieval=true");
+    }
+
     // --- Trino ---
     @Test
     void trino_basic_url() {

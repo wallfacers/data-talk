@@ -136,7 +136,7 @@ public class ConnectionService {
                     t.getClass().getSimpleName(), t.getMessage()));
             }
         }
-        if (kind.equals(ConnectionKind.MYSQL)) {
+        if (kind.equals(ConnectionKind.MYSQL) || kind.equals(ConnectionKind.TIDB)) {
             int timeoutMs = c.connectTimeout();
             url += (url.contains("?") ? "&" : "?") + "connectTimeout=" + timeoutMs + "&socketTimeout=" + timeoutMs;
         } else if (kind.equals(ConnectionKind.MARIADB)) {
