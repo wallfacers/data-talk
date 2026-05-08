@@ -93,7 +93,16 @@ public class FlywayMigrationConfig {
                     log.info("Applying migration: {}", resource.getFilename());
                     String sql = readResource(resource);
                     for (String statement : SqlScriptSplitter.split(sql)) {
-                        jdbc.execute(statement);
+                        try {
+                            jdbc.execute(statement);
+                        } catch (Exception e) {
+                            if (isAlreadyExistsError(e)) {
+                                log.info("Skipping already-applied DDL in migration {}: {}",
+                                    resource.getFilename(), e.getMessage());
+                            } else {
+                                throw e;
+                            }
+                        }
                     }
                     jdbc.update("INSERT INTO schema_version (version, applied_at) VALUES (?, ?)",
                         version, System.currentTimeMillis());
@@ -102,6 +111,19 @@ public class FlywayMigrationConfig {
                     throw new RuntimeException("Failed to apply migration: " + resource.getFilename(), e);
                 }
             });
+    }
+
+    /**
+     * Detect SQLite "duplicate column name" errors so idempotent DDL
+     * (e.g. ADD COLUMN on an already-migrated table) does not abort startup.
+     */
+    private boolean isAlreadyExistsError(Throwable t) {
+        String msg = t.getMessage();
+        return msg != null && (
+            msg.contains("duplicate column name") ||
+            msg.contains("already exists") ||
+            msg.contains("table ") && msg.contains("already exists")
+        );
     }
 
     private String extractVersion(String filename) {
