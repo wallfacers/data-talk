@@ -33,7 +33,7 @@ describe("design system foundation", () => {
       </InputGroup>
     )
 
-    expect(screen.getByRole("group")).toHaveClass("rounded-2xl", "bg-card/95")
+    expect(screen.getByRole("group")).toHaveClass("rounded-2xl", "bg-bg-panel")
   })
 
   it("renders a structured table header and selected-row semantics", () => {

@@ -29,6 +29,7 @@ export const ALLOWED_DIRECT_STAGE_STORE_MUTATION_FILES = [
   'src/features/session/split-view.test.tsx',
   'src/features/settings/general/general-panel.test.tsx',
   'src/features/chat/components/tools/__tests__/read-file.test.tsx',
+  'src/features/stage/components/left-rail/stage-rail-row-menu.test.tsx',
 ]
 
 export function isAllowedDirectStageStoreMutationFile(filename) {
