@@ -9,6 +9,7 @@ import { decorateSqlBlocks, SQL_EXECUTE_EVENT, SQL_EXPLAIN_EVENT } from './sql-c
 import { extractTableModel } from './table-model'
 import { getDownloadFilename, toCsv, toDownloadableCsv, toJson, toMarkdownTable, toTsv } from './table-serializers'
 import { ChartBlock } from './chart-block'
+import { DashboardBlock } from './dashboard-block'
 import { copyToClipboard } from '@/lib/utils'
 import { useI18n } from '@/i18n/use-i18n'
 import './markdown.css'
@@ -293,6 +294,39 @@ function decorateChartBlocks(
   }
 }
 
+function decorateDashboardBlocks(
+  root: HTMLElement,
+  options: {
+    cacheKey?: string
+    streaming: boolean
+    messageId?: string
+    partId?: string
+  },
+) {
+  const codes = Array.from(root.querySelectorAll('pre > code')) as HTMLElement[]
+  let blockIndex = 0
+
+  for (const code of codes) {
+    const className = code.className ?? ''
+    if (!/(?:^|\s)language-dashboard(?:\s|$)/i.test(className)) continue
+
+    const pre = code.parentElement
+    if (!pre) continue
+
+    const mount = document.createElement('div')
+    mount.setAttribute('data-component', 'markdown-dashboard')
+    mount.setAttribute('data-dashboard-key', `${options.cacheKey ?? 'markdown'}:dashboard:${blockIndex}`)
+    mount.setAttribute('data-dashboard-json-b64', encodeUtf8Base64(code.textContent ?? ''))
+    mount.setAttribute('data-dashboard-streaming', String(options.streaming))
+    mount.setAttribute('data-dashboard-block-index', String(blockIndex))
+    mount.setAttribute('data-dashboard-message-id', options.messageId ?? options.cacheKey ?? '')
+    if (options.partId) mount.setAttribute('data-dashboard-part-id', options.partId)
+
+    pre.parentNode?.replaceChild(mount, pre)
+    blockIndex += 1
+  }
+}
+
 function renderHtml(text: string, cacheKey: string | undefined, streaming: boolean, copyLabel: string): string {
   if (!text) return ''
   try {
@@ -334,15 +368,19 @@ export function Markdown(props: {
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const chartRootsRef = useRef<Map<string, ChartRootEntry>>(new Map())
+  const dashboardRootsRef = useRef<Map<string, ChartRootEntry>>(new Map())
   const { t } = useI18n()
   const tRef = useRef(t)
   tRef.current = t
 
   useEffect(() => {
     const roots = chartRootsRef.current
+    const dashRoots = dashboardRootsRef.current
     return () => {
       for (const { root } of roots.values()) scheduleRootUnmount(root)
       roots.clear()
+      for (const { root } of dashRoots.values()) scheduleRootUnmount(root)
+      dashRoots.clear()
     }
   }, [])
 
@@ -351,9 +389,14 @@ export function Markdown(props: {
     if (!container) return
 
     const chartRoots = chartRootsRef.current
+    const dashboardRoots = dashboardRootsRef.current
     const clearChartRoots = () => {
       for (const { root } of chartRoots.values()) scheduleRootUnmount(root)
       chartRoots.clear()
+    }
+    const clearDashboardRoots = () => {
+      for (const { root } of dashboardRoots.values()) scheduleRootUnmount(root)
+      dashboardRoots.clear()
     }
 
     const copyLabel = tRef.current('common.copy')
@@ -367,6 +410,12 @@ export function Markdown(props: {
     const temp = document.createElement('div')
     temp.innerHTML = html
     decorateChartBlocks(temp, {
+      cacheKey: props.cacheKey,
+      streaming: props.streaming ?? false,
+      messageId: props.messageId,
+      partId: props.partId,
+    })
+    decorateDashboardBlocks(temp, {
       cacheKey: props.cacheKey,
       streaming: props.streaming ?? false,
       messageId: props.messageId,
@@ -391,6 +440,20 @@ export function Markdown(props: {
           }
           for (const attr of Array.from(toNode.attributes)) {
             if (attr.name.startsWith('data-chart-') || attr.name === 'data-component') {
+              fromNode.setAttribute(attr.name, attr.value)
+            }
+          }
+          return false
+        }
+
+        if (component === 'markdown-dashboard') {
+          for (const attr of Array.from(fromNode.attributes)) {
+            if (attr.name.startsWith('data-dashboard-') && !toNode.hasAttribute(attr.name)) {
+              fromNode.removeAttribute(attr.name)
+            }
+          }
+          for (const attr of Array.from(toNode.attributes)) {
+            if (attr.name.startsWith('data-dashboard-') || attr.name === 'data-component') {
               fromNode.setAttribute(attr.name, attr.value)
             }
           }
@@ -442,6 +505,48 @@ export function Markdown(props: {
       if (!liveKeys.has(key)) {
         scheduleRootUnmount(entry.root)
         chartRoots.delete(key)
+      }
+    }
+
+    // Dashboard blocks
+    const dashMountPoints = Array.from(
+      container.querySelectorAll('[data-component="markdown-dashboard"]'),
+    ) as HTMLElement[]
+    const liveDashKeys = new Set<string>()
+
+    for (const mountPoint of dashMountPoints) {
+      const dashKey = mountPoint.dataset.dashboardKey
+      if (!dashKey) continue
+      liveDashKeys.add(dashKey)
+
+      const encodedJson = mountPoint.dataset.dashboardJsonB64 ?? ''
+      const streaming = mountPoint.dataset.dashboardStreaming === 'true'
+      const messageId = mountPoint.dataset.dashboardMessageId ?? ''
+      const partId = mountPoint.dataset.dashboardPartId
+      const blockIndex = Number.parseInt(mountPoint.dataset.dashboardBlockIndex ?? '0', 10)
+      const json = decodeUtf8Base64(encodedJson)
+
+      let entry = dashboardRoots.get(dashKey)
+      if (!entry || entry.host !== mountPoint) {
+        if (entry) scheduleRootUnmount(entry.root)
+        entry = { root: createRoot(mountPoint), host: mountPoint }
+        dashboardRoots.set(dashKey, entry)
+      }
+
+      entry.root.render(
+        <DashboardBlock
+          json={json}
+          streaming={streaming}
+          messageId={messageId}
+          partId={partId || undefined}
+        />,
+      )
+    }
+
+    for (const [key, entry] of dashboardRoots) {
+      if (!liveDashKeys.has(key)) {
+        scheduleRootUnmount(entry.root)
+        dashboardRoots.delete(key)
       }
     }
   }, [props.text, props.cacheKey, props.streaming, props.messageId, props.partId])
