@@ -45,15 +45,12 @@ public class ChartArtifactController {
         @RequestBody(required = false) CreateChartArtifactRequest request
     ) {
         if (request == null || request.echartsOption() == null) {
-            return ResponseEntity.badRequest().body(messageBody(
-                "error.chart.echarts_option_required",
-                "echartsOption is required"
-            ));
+            return ResponseEntity.badRequest().body(messageBody("error.chart.echarts_option_required"));
         }
 
         if (serializedSize(request.echartsOption()) > MAX_ECHARTS_OPTION_BYTES) {
             return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
-                .body(messageBody("error.chart.echarts_option_too_large", "echartsOption exceeds 256KB"));
+                .body(messageBody("error.chart.echarts_option_too_large"));
         }
 
         if (sessionRepository.findById(sessionId).isEmpty()) {
@@ -83,11 +80,8 @@ public class ChartArtifactController {
         }
     }
 
-    private Map<String, Object> messageBody(String code, String fallback) {
-        String message = translator.getOrDefault(code, fallback);
-        if (message == null) {
-            message = fallback;
-        }
+    private Map<String, Object> messageBody(String code) {
+        String message = translator.get(code);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("message", message);
         return body;

@@ -116,7 +116,7 @@ export function ErTableNode({ id, data, selected }: NodeProps<ErTableReactFlowNo
           {data.mode === 'inspector' ? (
             <LockIcon
               className="size-3.5 shrink-0 text-text-soft"
-              aria-label="read-only inspector view"
+              aria-label={t('erCanvas.aria.readOnlyInspector')}
               data-testid="er-mode-indicator"
               data-er-mode="inspector"
             />
@@ -139,6 +139,7 @@ export function ErTableNode({ id, data, selected }: NodeProps<ErTableReactFlowNo
               dialect={data.dialect}
               onUpdateColumn={data.onUpdateColumn}
               onDeleteColumn={data.onDeleteColumn}
+              t={t}
             />
           ))}
           {hiddenColumnCount > 0 && (
@@ -148,7 +149,7 @@ export function ErTableNode({ id, data, selected }: NodeProps<ErTableReactFlowNo
                 className="nodrag w-full px-3 py-2 text-left text-xs leading-4 text-text-muted outline-none transition-colors hover:bg-interaction-hover hover:text-text-strong focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-interaction-focusRing"
                 onClick={() => setExpanded(true)}
               >
-                {hiddenColumnCount} more
+                {t('erCanvas.node.moreColumns', { count: hiddenColumnCount })}
               </button>
             </li>
           )}
@@ -175,12 +176,14 @@ function ColumnRow({
   dialect,
   onUpdateColumn,
   onDeleteColumn,
+  t,
 }: {
   column: ErColumnMeta
   mode: ErTableNodeMode
   dialect?: ErDesignerDialect
   onUpdateColumn?: (columnId: string, updates: Partial<ErColumnMeta>) => void
   onDeleteColumn?: (columnId: string) => void
+  t: ReturnType<typeof useI18n>['t']
 }) {
   const columnId = getColumnId(column)
   const role = rowRole(column)
@@ -255,13 +258,13 @@ function ColumnRow({
           {(role === 'pk' || role === 'pkfk') && (
             <KeyRoundIcon
               className="size-3 shrink-0 text-text-muted group-hover:text-accent-primary"
-              aria-label="primary key"
+              aria-label={t('erCanvas.aria.primaryKey')}
             />
           )}
           {(role === 'fk' || role === 'pkfk') && (
             <LinkIcon
               className="size-3 shrink-0 text-text-muted group-hover:text-accent-primary"
-              aria-label="foreign key"
+              aria-label={t('erCanvas.aria.foreignKey')}
             />
           )}
         </div>
@@ -269,7 +272,7 @@ function ColumnRow({
           <input
             type="text"
             value={column.name}
-            aria-label={`Column name ${column.name}`}
+            aria-label={t('erCanvas.aria.columnName', { name: column.name })}
             onChange={(event) => onUpdateColumn?.(columnId, { name: event.target.value })}
             className={[
               'nodrag min-w-0 flex-1 rounded-sm border border-transparent bg-transparent px-1 text-sm leading-5 outline-none focus:border-border-default focus:bg-bg-panel',
@@ -302,7 +305,7 @@ function ColumnRow({
       {column.nullable === false && (
         <span
           className="shrink-0 rounded-sm border border-border-subtle px-1.5 text-[10px] font-medium leading-4 text-text-soft"
-          aria-label="NOT NULL"
+          aria-label={t('erCanvas.aria.notNull')}
           data-er-nn-pill
         >
           NN
@@ -311,7 +314,7 @@ function ColumnRow({
       {mode === 'designer' && (
         <button
           type="button"
-          aria-label={`Delete column ${column.name}`}
+          aria-label={t('erCanvas.aria.deleteColumn', { name: column.name })}
           onClick={() => onDeleteColumn?.(columnId)}
           className="nodrag -mr-1 rounded p-1 text-text-soft opacity-0 transition-colors hover:bg-[var(--dt-status-danger-surface)] hover:text-status-danger group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-interaction-focusRing"
         >

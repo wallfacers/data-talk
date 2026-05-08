@@ -279,6 +279,13 @@ const MESSAGES = {
     'erCanvas.dialect.h2': 'H2',
     'erCanvas.dialect.sqlite': 'SQLite',
     'erCanvas.dialect.mariadb': 'MariaDB',
+    'erCanvas.aria.readOnlyInspector': '只读浏览模式',
+    'erCanvas.aria.primaryKey': '主键',
+    'erCanvas.aria.foreignKey': '外键',
+    'erCanvas.aria.notNull': '非空',
+    'erCanvas.aria.columnName': '列名 {name}',
+    'erCanvas.aria.deleteColumn': '删除列 {name}',
+    'erCanvas.node.moreColumns': '还有 {count} 列',
 
     'chat.doubleClickRename': '双击重命名',
     'chat.confirmDelete': '确定删除“{title}”？',
@@ -532,6 +539,11 @@ const MESSAGES = {
     'stage.leftRail.cta.openNew': '在工作台新建一个工作位',
 
     'common.clear': '清除',
+
+    'common.bytes.raw': '{count}{unit}',
+    'common.bytes.unit.b': 'B',
+    'common.bytes.unit.kb': 'KB',
+    'common.bytes.unit.mb': 'MB',
 
     'bangQuery.label': 'SQL · 直查',
     'bangQuery.userBadge': 'SQL 直查',
@@ -929,6 +941,13 @@ const MESSAGES = {
     'erCanvas.dialect.h2': 'H2',
     'erCanvas.dialect.sqlite': 'SQLite',
     'erCanvas.dialect.mariadb': 'MariaDB',
+    'erCanvas.aria.readOnlyInspector': 'Read-only inspector view',
+    'erCanvas.aria.primaryKey': 'Primary key',
+    'erCanvas.aria.foreignKey': 'Foreign key',
+    'erCanvas.aria.notNull': 'Not null',
+    'erCanvas.aria.columnName': 'Column name {name}',
+    'erCanvas.aria.deleteColumn': 'Delete column {name}',
+    'erCanvas.node.moreColumns': '{count} more',
 
     'chat.doubleClickRename': 'Double-click to rename',
     'chat.confirmDelete': 'Delete "{title}"?',
@@ -1182,6 +1201,11 @@ const MESSAGES = {
     'stage.leftRail.cta.openNew': 'Open a new workspace tool',
 
     'common.clear': 'Clear',
+
+    'common.bytes.raw': '{count} {unit}',
+    'common.bytes.unit.b': 'B',
+    'common.bytes.unit.kb': 'KB',
+    'common.bytes.unit.mb': 'MB',
 
     'bangQuery.label': 'SQL · Direct',
     'bangQuery.userBadge': 'SQL Direct',

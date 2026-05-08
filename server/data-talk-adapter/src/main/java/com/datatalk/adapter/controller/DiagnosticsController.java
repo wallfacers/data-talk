@@ -30,7 +30,7 @@ public class DiagnosticsController {
             @RequestBody Map<String, Object> body) {
         String sql = (String) body.get("sql");
         if (sql == null || sql.isBlank()) {
-            return ResponseEntity.badRequest().body(messageBody("error.sql.required", "SQL is required"));
+            return ResponseEntity.badRequest().body(messageBody("error.sql.required"));
         }
 
         DiagnosticResult<ExplainPlan> result = service.explain(sessionId, sql);
@@ -52,7 +52,7 @@ public class DiagnosticsController {
             @RequestBody Map<String, Object> body) {
         String sql = (String) body.get("sql");
         if (sql == null || sql.isBlank()) {
-            return ResponseEntity.badRequest().body(messageBody("error.sql.required", "SQL is required"));
+            return ResponseEntity.badRequest().body(messageBody("error.sql.required"));
         }
 
         DiagnosticResult<List<IndexRecommendation>> result = service.indexHints(sessionId, sql);
@@ -74,11 +74,8 @@ public class DiagnosticsController {
         });
     }
 
-    private Map<String, Object> messageBody(String code, String fallback) {
-        String message = translator.getOrDefault(code, fallback);
-        if (message == null) {
-            message = fallback;
-        }
+    private Map<String, Object> messageBody(String code) {
+        String message = translator.get(code);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("message", message);
         return body;

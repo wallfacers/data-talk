@@ -249,7 +249,7 @@ function CandidateRowView({
   const isFailed = row.state === 'failed'
   const isInProgress = row.state === 'in_progress'
 
-  const sizeLabel = formatBytes(row.candidate.sizeBytes)
+  const sizeLabel = formatBytes(row.candidate.sizeBytes, t)
 
   return (
     <div
@@ -307,10 +307,14 @@ function CandidateRowView({
   )
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+function formatBytes(bytes: number, t: ReturnType<typeof useI18n>['t']): string {
+  if (bytes < 1024) return t('common.bytes.raw', { count: bytes, unit: t('common.bytes.unit.b') })
+  if (bytes < 1024 * 1024) {
+    const val = (bytes / 1024).toFixed(1)
+    return t('common.bytes.raw', { count: val, unit: t('common.bytes.unit.kb') })
+  }
+  const val = (bytes / (1024 * 1024)).toFixed(1)
+  return t('common.bytes.raw', { count: val, unit: t('common.bytes.unit.mb') })
 }
 
 function cn(...classes: (string | false | undefined | null)[]) {
