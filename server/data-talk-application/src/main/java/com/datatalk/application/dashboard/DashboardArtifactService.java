@@ -4,17 +4,23 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import org.springframework.stereotype.Service;
+
 import java.io.IOException;
 import java.time.Clock;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Service for dashboard lifecycle: promote, load, patch.
  * Uses file-system storage via {@link DashboardStore}.
  */
+@Service
 public class DashboardArtifactService {
 
     private static final int MAX_PAYLOAD_BYTES = 256 * 1024; // 256 KB
+
+    private final ConcurrentHashMap<String, Object> locks = new ConcurrentHashMap<>();
 
     private final DashboardStore store;
     private final DashboardSchemaValidator validator;
@@ -95,11 +101,19 @@ public class DashboardArtifactService {
     /**
      * Patch an existing dashboard.
      * Validates baseVersion for optimistic locking, applies ops, validates result, persists.
+     * Per-id synchronization prevents lost updates from concurrent patches.
      */
     public PatchResult patch(String id, int baseVersion, List<JsonPatchApplier.PatchOp> ops) {
+        Object lock = locks.computeIfAbsent(id, k -> new Object());
+        synchronized (lock) {
+            return doPatch(id, baseVersion, ops);
+        }
+    }
+
+    private PatchResult doPatch(String id, int baseVersion, List<JsonPatchApplier.PatchOp> ops) {
         JsonNode current = load(id);
 
-        // Apply patch (includes version check)
+        // Apply patch (includes version check); patchApplier.apply already deep-copies
         JsonNode patched = patchApplier.apply(current, baseVersion, ops);
 
         // Validate result
@@ -109,7 +123,7 @@ public class DashboardArtifactService {
         }
 
         // Update timestamp
-        ObjectNode mutable = patched.deepCopy();
+        ObjectNode mutable = (ObjectNode) patched;
         mutable.put("updatedAt", clock.millis());
 
         try {

@@ -26,6 +26,10 @@ public sealed interface PatchPath {
         if (matcher.matches()) {
             return new MatchKey(matcher.group(1), matcher.group(2));
         }
+        // Intentional RFC 6902 compliance: bare numbers ARE array indices.
+        // Navigation and apply methods guard with isArray() checks, so numeric
+        // keys in JSON objects (which our schema doesn't allow) would get a clear
+        // PatchRejectException rather than silent data corruption.
         try {
             return new Index(Integer.parseInt(segment));
         } catch (NumberFormatException e) {

@@ -5,8 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import org.springframework.stereotype.Component;
+
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Applies a subset of RFC 6902 JSON Patch operations (add/remove/replace)
@@ -14,6 +17,7 @@ import java.util.List;
  *
  * Atomic: on any operation failure the original document is unchanged.
  */
+@Component
 public class JsonPatchApplier {
 
     private final ObjectMapper mapper;
@@ -21,6 +25,10 @@ public class JsonPatchApplier {
     public JsonPatchApplier(ObjectMapper mapper) {
         this.mapper = mapper;
     }
+
+    private static final Set<String> DANGEROUS_SEGMENTS = Set.of(
+        "__proto__", "constructor", "prototype"
+    );
 
     public record PatchOp(String op, String path, JsonNode value) {}
 
@@ -62,6 +70,9 @@ public class JsonPatchApplier {
 
         try {
             for (PatchOp op : ops) {
+                if (op.op() == null || op.path() == null) {
+                    throw new PatchRejectException("op and path must not be null");
+                }
                 applyOp(working, op);
             }
         } catch (PatchRejectException e) {
@@ -77,7 +88,18 @@ public class JsonPatchApplier {
     }
 
     private void applyOp(ObjectNode root, PatchOp op) {
+        if (op.path == null || op.path.isEmpty()) {
+            throw new PatchRejectException("Path must not be null or empty");
+        }
+
         String[] segments = parsePath(op.path);
+
+        // Reject dangerous segments (prototype pollution defense)
+        for (String seg : segments) {
+            if (DANGEROUS_SEGMENTS.contains(seg)) {
+                throw new PatchRejectException("Dangerous path segment rejected: " + seg);
+            }
+        }
 
         if (segments.length == 0) {
             throw new PatchRejectException("Empty path");

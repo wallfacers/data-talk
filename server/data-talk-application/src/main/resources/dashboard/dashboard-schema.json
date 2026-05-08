@@ -25,7 +25,7 @@
         "ownerWidgetId": { "type": ["string", "null"] },
         "name": { "type": "string" },
         "type": { "enum": ["date", "date_range", "string", "number", "string_list"] },
-        "defaultValue": {}
+        "default": {}
       }
     },
     "widget": {

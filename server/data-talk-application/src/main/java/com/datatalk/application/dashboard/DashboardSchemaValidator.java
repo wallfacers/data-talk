@@ -7,12 +7,15 @@ import com.networknt.schema.JsonSchemaFactory;
 import com.networknt.schema.SpecVersion;
 import com.networknt.schema.ValidationMessage;
 
+import org.springframework.stereotype.Component;
+
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+@Component
 public class DashboardSchemaValidator {
 
     private final JsonSchema schema;

@@ -147,7 +147,7 @@ class DashboardSchemaValidatorTest {
               "ownerWidgetId": null,
               "name": "dateRange",
               "type": "date_range",
-              "defaultValue": "last_7d"
+              "default": "last_7d"
             }
           ],
           "widgets": [
