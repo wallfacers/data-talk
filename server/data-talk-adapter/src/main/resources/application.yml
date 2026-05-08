@@ -60,7 +60,7 @@ datatalk:
     base-url: http://localhost:4096
     required: false
     serve:
-      enabled: false
+      enabled: true
       auto-upgrade: false
       version: 1.14.41
       base-port: 4096
