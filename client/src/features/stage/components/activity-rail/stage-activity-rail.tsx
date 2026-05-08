@@ -1,77 +1,19 @@
-import { DatabaseIcon, HistoryIcon, ListTreeIcon, SearchCodeIcon } from 'lucide-react'
+import { HistoryIcon, ListTreeIcon, SearchCodeIcon } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useI18n } from '@/i18n/use-i18n'
 import { cn } from '@/lib/utils'
 import { useStageStore, type RailPanel } from '@/stores/stage-store'
-import { normalizeQueryEditorPayload } from '../../utils/normalize-query-editor-payload'
 import { parseSqlOutline } from '../../utils/parse-sql-outline'
 import { useSqlWorkbenchStore } from '../../stores/sql-workbench-store'
 import { RailPanelShell } from './rail-panel-shell'
 import { HistoryPanel } from './history-panel'
 import { OutlinePanel } from './outline-panel'
-import { SchemaPanel, type SchemaPanelItem, type SchemaPanelContext } from './schema-panel'
 import { DiagnosticsPanel } from './diagnostics-panel'
 
 type Props = {
   className?: string
-}
-
-function buildSchemaItems(
-  context: SchemaPanelContext | null,
-  labels: { table: string; column: string },
-): SchemaPanelItem[] {
-  if (!context) return []
-
-  const items: SchemaPanelItem[] = [
-    {
-      id: 'schema-connection',
-      kind: 'connection',
-      label: context.connectionName ?? context.connectionId,
-      context: {
-        connectionId: context.connectionId,
-        connectionName: context.connectionName,
-        database: null,
-        schema: null,
-      },
-    },
-  ]
-
-  if (context.database) {
-    items.push({
-      id: 'schema-database',
-      kind: 'database',
-      label: context.database,
-      context: {
-        connectionId: context.connectionId,
-        connectionName: context.connectionName,
-        database: context.database,
-        schema: null,
-      },
-    })
-  }
-
-  if (context.schema) {
-    items.push({
-      id: 'schema-schema',
-      kind: 'schema',
-      label: context.schema,
-      context: {
-        connectionId: context.connectionId,
-        connectionName: context.connectionName,
-        database: context.database,
-        schema: context.schema,
-      },
-    })
-  }
-
-  items.push(
-    { id: 'schema-table', kind: 'table', label: labels.table, insertText: labels.table },
-    { id: 'schema-column', kind: 'column', label: labels.column, insertText: labels.column },
-  )
-
-  return items
 }
 
 export function StageActivityRail({ className }: Props) {
@@ -89,65 +31,26 @@ export function StageActivityRail({ className }: Props) {
   })
 
   const activeTabState = useSqlWorkbenchStore((state) => (activeTab ? state.tabsById[activeTab.tabId] ?? null : null))
-  const { setSqlText, setTabContext, clearHistory, setCursor } = useSqlWorkbenchStore(
+  const { setSqlText, clearHistory, setCursor } = useSqlWorkbenchStore(
     useShallow((state) => ({
       setSqlText: state.setSqlText,
-      setTabContext: state.setTabContext,
       clearHistory: state.clearHistory,
       setCursor: state.setCursor,
     })),
   )
 
-  const payloadContext = activeTab?.type === 'query_editor' ? normalizeQueryEditorPayload(activeTab.payload) : null
-  const schemaContext: SchemaPanelContext | null = (() => {
-    if (!activeTab || activeTab.type !== 'query_editor') return null
-
-    const connectionId =
-      activeTabState?.resolvedContext?.connectionId
-      ?? payloadContext?.connectionId
-      ?? activeTab.connectionId
-      ?? null
-
-    if (!connectionId) return null
-
-    return {
-      connectionId,
-      connectionName:
-        activeTabState?.resolvedContext?.connectionName
-        ?? payloadContext?.connectionName
-        ?? activeTab.connectionName
-        ?? null,
-      database:
-        activeTabState?.resolvedContext?.database
-        ?? payloadContext?.database
-        ?? activeTab.database
-        ?? null,
-      schema:
-        activeTabState?.resolvedContext?.schema
-        ?? payloadContext?.schema
-        ?? activeTab.schema
-        ?? null,
-    }
-  })()
-
-  const panelMeta: Array<{ panel: RailPanel; label: string; Icon: typeof DatabaseIcon }> = [
-    { panel: 'schema', label: t('stage.activityRail.schema.title'), Icon: DatabaseIcon },
+  const panelMeta: Array<{ panel: RailPanel; label: string; Icon: typeof HistoryIcon }> = [
     { panel: 'history', label: t('stage.activityRail.history.title'), Icon: HistoryIcon },
     { panel: 'outline', label: t('stage.activityRail.outline.title'), Icon: ListTreeIcon },
     { panel: 'diagnostics', label: t('stage.activityRail.diagnostics.title'), Icon: SearchCodeIcon },
   ]
 
   const panelTitles: Record<RailPanel, string> = {
-    schema: t('stage.activityRail.schema.title'),
     history: t('stage.activityRail.history.title'),
     outline: t('stage.activityRail.outline.title'),
     diagnostics: t('stage.activityRail.diagnostics.title'),
   }
 
-  const schemaItems = buildSchemaItems(schemaContext, {
-    table: t('stage.activityRail.schema.placeholder.table'),
-    column: t('stage.activityRail.schema.placeholder.column'),
-  })
   const historyEntries = activeTab?.type === 'query_editor' ? activeTabState?.history ?? [] : []
   const outlineStatements = parseSqlOutline(activeTabState?.sqlText ?? '')
 
@@ -157,14 +60,6 @@ export function StageActivityRail({ className }: Props) {
 
   function handleClosePanel() {
     setActiveRailPanel(null)
-  }
-
-  function handleSetSchemaContext(context: SchemaPanelContext) {
-    if (!activeTab || activeTab.type !== 'query_editor') return
-    setTabContext(activeTab.tabId, {
-      ...context,
-      source: 'user_schema_panel',
-    })
   }
 
   function handleAppendSql(sql: string) {
@@ -190,13 +85,6 @@ export function StageActivityRail({ className }: Props) {
     >
       {activePanel ? (
         <RailPanelShell title={panelTitles[activePanel]} onClose={handleClosePanel}>
-          {activePanel === 'schema' ? (
-            <SchemaPanel
-              items={schemaItems}
-              onSetTabContext={handleSetSchemaContext}
-              onInsertText={handleAppendSql}
-            />
-          ) : null}
           {activePanel === 'history' ? (
             <HistoryPanel entries={historyEntries} onAppendSql={handleAppendSql} onClear={handleClearHistory} />
           ) : null}

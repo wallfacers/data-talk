@@ -23,7 +23,7 @@ export type SidebarSelection =
       schema?: string | null
     }
 
-export type RailPanel = 'schema' | 'history' | 'outline' | 'diagnostics'
+export type RailPanel = 'history' | 'outline' | 'diagnostics'
 
 export type QueryEditorOpenMode = 'always_new' | 'reuse_by_resource_context'
 

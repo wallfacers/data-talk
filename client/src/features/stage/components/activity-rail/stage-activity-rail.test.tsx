@@ -79,18 +79,6 @@ describe('StageActivityRail', () => {
     })
   })
 
-  it('renders real panel content and preserves toggle behavior', () => {
-    render(<StageActivityRail />)
-
-    fireEvent.click(screen.getByRole('button', { name: t('stage.activityRail.schema.title') }))
-    expect(screen.getByTestId('schema-panel')).toBeTruthy()
-    expect(screen.getByText('Session Connection')).toBeTruthy()
-    expect(screen.getByRole('button', { name: t('stage.activityRail.closePanel') })).toBeTruthy()
-
-    fireEvent.click(screen.getByRole('button', { name: t('stage.activityRail.schema.title') }))
-    expect(screen.queryByTestId('schema-panel')).toBeNull()
-  })
-
   it('falls back to the workspace active query editor tab for history actions', async () => {
     useStageStore.setState({
       activeTabId: 'workspace-q1',
