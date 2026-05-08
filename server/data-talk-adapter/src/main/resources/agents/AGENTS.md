@@ -656,6 +656,54 @@ Output budget: defaults `headLimit=100`, `maxTabs=50`. For existence checks use 
 - ER Inspector: day-1 `dialect_unsupported` (StarRocks DDL has unique distribution/partition syntax).
 - ER Designer: day-1 `dialect_unsupported` (StarRocks DDL has unique distribution/partition syntax).
 
+### Trino
+
+- Connection kind: `trino`. Federated SQL query engine with official Trino JDBC driver.
+- Fields: `host` (Trino coordinator hostname or IP), `port` (default 8080), `username`, `password` (optional), `databaseName` (Trino catalog, optional).
+- Catalog/schema: two-level context model — `databaseName` maps to Trino catalog, schema maps to Trino schema. Both catalog and schema selectors are visible in the Query Editor. System catalogs (`system`, `memory`, `jmx`) are filtered from target discovery.
+- `datatalk_execute_sql` remains read-only in the chat path.
+- Mutations (`INSERT`, `CREATE TABLE AS`, `UPDATE`, `DELETE`, DDL) require the SQL workbench with confirmation. Write support is connector-dependent.
+- Connector caveat: different Trino connectors have different capabilities. Do not claim generic write, ER, or diagnostics support without connector-specific verification.
+- SQL splitter: generic (no DELIMITER, no PL/SQL, no GO).
+- Risk guard: `SHOW`, `DESCRIBE`, `EXPLAIN` are L1; `INSERT`, `CREATE TABLE`, `CREATE VIEW`, `CREATE MATERIALIZED VIEW`, `UPDATE`, `DELETE` are L2; `DROP`, `TRUNCATE`, `ALTER`, `GRANT`, `REVOKE`, `CREATE USER/ROLE/CATALOG`, `CALL`, `SET SESSION`, `RESET SESSION`, `SET PATH` are L3.
+- Schema context: database selector visible (Trino catalogs via `SHOW CATALOGS`), schema selector visible (Trino schemas). Catalog + schema are applied via `setCatalog()` + `setSchema()`.
+- Diagnostics: day-1 structured unsupported. EXPLAIN, lock info, pool status, table space, index hints, terminate session, and optimize table are all unsupported.
+- ER Inspector: day-1 `dialect_unsupported`.
+- ER Designer: day-1 `dialect_unsupported`.
+- `datatalk_resolve_use_target` is required before changing catalog or schema context.
+- Trino is NOT a Presto alias. Do not treat `trino` connections as Presto or route Trino SQL to Presto tools.
+
+### Presto
+
+- Connection kind: `presto`. Federated SQL query engine separate from Trino; uses Presto JDBC driver.
+- Fields: `host` (Presto coordinator hostname or IP), `port` (default 8080), `username`, `password`, `databaseName` (Presto catalog, optional), and schema (via session data context).
+- Catalog/schema: two-level context model — `databaseName` maps to Presto catalog, schema maps to Presto schema. Both catalog and schema selectors are visible in the Query Editor.
+- `datatalk_execute_sql` remains read-only in the chat path.
+- Mutations (`INSERT`, `CREATE TABLE AS`, `UPDATE`, `DELETE`, DDL) require the SQL workbench with confirmation. Write support is connector-dependent.
+- Connector caveat: different Presto connectors have different capabilities. Do not claim generic write, ER, or diagnostics support without connector-specific verification.
+- SQL splitter: generic (no DELIMITER, no PL/SQL, no GO).
+- Risk guard: `SHOW`, `DESCRIBE`, `EXPLAIN` are L1; `INSERT`, `CREATE TABLE`, `CREATE VIEW`, `CREATE MATERIALIZED VIEW`, `UPDATE`, `DELETE` are L2; `DROP`, `TRUNCATE`, `ALTER`, `GRANT`, `REVOKE`, `CREATE USER/ROLE`, `CALL`, `SET SESSION`, `RESET SESSION`, `SET PATH`, `PREPARE`, `EXECUTE`, `DEALLOCATE PREPARE`, `START TRANSACTION`, `COMMIT`, `ROLLBACK` are L3.
+- Schema context: database selector visible (Presto catalogs), schema selector visible (Presto schemas). System catalogs (`system`, `jmx`) are filtered from target discovery.
+- Diagnostics: day-1 structured unsupported. EXPLAIN, lock info, pool status, table space, index hints, terminate session, and optimize table are all unsupported.
+- ER Inspector: day-1 `dialect_unsupported`.
+- ER Designer: day-1 `dialect_unsupported`.
+- Presto is NOT a Trino alias. Do not treat `presto` connections as Trino or route Presto SQL to Trino tools.
+
+### Apache Hive
+
+- Connection kind: `hive`. Apache HiveServer2 data warehouse with Hive JDBC driver.
+- Fields: `host` (HiveServer2 hostname or IP), `port` (default 10000 for binary transport), `username`, `password`, `databaseName` (Hive database).
+- Transport/auth: day-1 supports binary transport only (port 10000) with username/password or username-only authentication. HTTP transport, SSL, Kerberos, ZooKeeper service discovery, custom headers/cookies, and Knox-style deployments are NOT supported.
+- Catalog/schema: database-only context — `databaseName` maps to Hive database. Schema selector is hidden in the Query Editor.
+- `datatalk_resolve_use_target` is required before changing database context via `USE`.
+- `datatalk_execute_sql` remains read-only in the chat path.
+- Mutations (`INSERT`, `CREATE TABLE`, `LOAD DATA`, DDL) require the SQL workbench with confirmation.
+- SQL splitter: generic (no DELIMITER, no PL/SQL, no GO).
+- Risk guard: `SHOW`, `DESCRIBE`, `EXPLAIN` are L1; `INSERT`, `CREATE TABLE`, `CREATE VIEW`, `ANALYZE` are L2; `DROP`, `TRUNCATE`, `ALTER`, `GRANT`, `REVOKE`, `CREATE USER/ROLE/FUNCTION`, `LOAD DATA`, `ADD JAR`, `TRANSFORM`, `MSCK`, `SET`, `IMPORT`, `EXPORT` are L3.
+- Diagnostics: day-1 structured unsupported. EXPLAIN, lock info, pool status, table space, index hints, terminate session, and optimize table are all unsupported.
+- ER Inspector: day-1 `dialect_unsupported`.
+- ER Designer: day-1 `dialect_unsupported`.
+
 <!-- file-artifact-section:begin -->
 ## Output Files & Artifacts
 

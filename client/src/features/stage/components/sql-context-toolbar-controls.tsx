@@ -80,6 +80,7 @@ function hasIndependentSchemaNamespace(kind: string | null | undefined) {
     && normalizedKind !== 'mariadb'
     && normalizedKind !== 'apache_doris'
     && normalizedKind !== 'starrocks'
+    && normalizedKind !== 'hive'
 }
 
 export function SqlContextToolbarControls({

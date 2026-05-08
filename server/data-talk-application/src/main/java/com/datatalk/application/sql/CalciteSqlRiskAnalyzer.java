@@ -448,224 +448,194 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
     private SqlRiskAnalysis classifyDorisSpecific(String sql) {
         String normalized = stripLeadingComments(sql).toLowerCase(Locale.ROOT);
         if (normalized.isEmpty()) return null;
-
-        // L1 safe: SHOW, DESCRIBE, DESC, EXPLAIN
-        if (normalized.startsWith("show ")) {
+        if (startsWithKeyword(normalized, "show")) {
             return SqlRiskAnalysis.low("doris_show");
         }
-        if (normalized.startsWith("describe ") || normalized.startsWith("describe\t")
-            || normalized.startsWith("desc ") || normalized.startsWith("desc\t")) {
+        if (startsWithKeyword(normalized, "describe") || startsWithKeyword(normalized, "desc")) {
             return SqlRiskAnalysis.low("doris_describe");
         }
-        if (normalized.startsWith("explain ")) {
+        if (startsWithKeyword(normalized, "explain")) {
             return SqlRiskAnalysis.low("doris_explain");
         }
-
-        // L2 mutation: safe CREATE TABLE / CREATE INDEX / CREATE MATERIALIZED VIEW
-        if (normalized.startsWith("create table ")) {
+        if (startsWithKeyword(normalized, "create table")) {
             return SqlRiskAnalysis.medium("doris_create_table");
         }
-        if (normalized.startsWith("create index ")) {
+        if (startsWithKeyword(normalized, "create index")) {
             return SqlRiskAnalysis.medium("doris_create_index");
         }
-        if (normalized.startsWith("build index ")) {
+        if (startsWithKeyword(normalized, "build index")) {
             return SqlRiskAnalysis.medium("doris_build_index");
         }
-        if (normalized.startsWith("analyze ")) {
+        if (startsWithKeyword(normalized, "analyze")) {
             return SqlRiskAnalysis.medium("doris_analyze");
         }
-
-        // L3 destructive: DROP
-        if (normalized.startsWith("drop ")) {
+        if (startsWithKeyword(normalized, "drop")) {
             return SqlRiskAnalysis.high("doris_drop");
         }
-        // L3 destructive: TRUNCATE
-        if (normalized.startsWith("truncate ") || normalized.startsWith("truncate\t")) {
+        if (startsWithKeyword(normalized, "truncate")) {
             return SqlRiskAnalysis.high("doris_truncate");
         }
-        // L3 destructive: ALTER (but ALTER SYSTEM is hard reject below)
-        if (normalized.startsWith("alter system")) {
+        if (startsWithKeyword(normalized, "alter system")) {
             return SqlRiskAnalysis.high("doris_alter_system");
         }
-        if (normalized.startsWith("alter ")) {
+        if (startsWithKeyword(normalized, "alter")) {
             return SqlRiskAnalysis.high("doris_alter");
         }
-        // L3 destructive: GRANT / REVOKE
-        if (normalized.startsWith("grant ")) {
+        if (startsWithKeyword(normalized, "grant")) {
             return SqlRiskAnalysis.high("doris_grant");
         }
-        if (normalized.startsWith("revoke ")) {
+        if (startsWithKeyword(normalized, "revoke")) {
             return SqlRiskAnalysis.high("doris_revoke");
         }
-        // L3 destructive: CREATE USER / ROLE
-        if (normalized.startsWith("create user")) {
+        if (startsWithKeyword(normalized, "create user")) {
             return SqlRiskAnalysis.high("doris_create_user");
         }
-        if (normalized.startsWith("create role")) {
+        if (startsWithKeyword(normalized, "create role")) {
             return SqlRiskAnalysis.high("doris_create_role");
         }
-        // L3 destructive: RENAME
-        if (normalized.startsWith("rename ")) {
+        if (startsWithKeyword(normalized, "rename")) {
             return SqlRiskAnalysis.high("doris_rename");
         }
-        // L3: LOAD (bulk load), ROUTINE LOAD, STREAM LOAD
-        if (normalized.startsWith("load label")) {
+        if (startsWithKeyword(normalized, "load label")) {
             return SqlRiskAnalysis.high("doris_load");
         }
-        if (normalized.startsWith("routine load")) {
+        if (startsWithKeyword(normalized, "routine load")) {
             return SqlRiskAnalysis.high("doris_routine_load");
         }
-        if (normalized.startsWith("stream load")) {
+        if (startsWithKeyword(normalized, "stream load")) {
             return SqlRiskAnalysis.high("doris_stream_load");
         }
-        // L3: CANCEL LOAD / ALTER ROUTINE LOAD
-        if (normalized.startsWith("cancel load")) {
+        if (startsWithKeyword(normalized, "cancel load")) {
             return SqlRiskAnalysis.high("doris_cancel_load");
         }
-        // L3: EXPORT
-        if (normalized.startsWith("export ")) {
+        if (startsWithKeyword(normalized, "export")) {
             return SqlRiskAnalysis.high("doris_export");
         }
-        // L3: DELETE without WHERE will be caught by Calcite generic rules
-        // Hard reject: ADMIN SET/SHOW FRONTEND/BACKEND config
-        if (normalized.startsWith("admin ")) {
+        if (startsWithKeyword(normalized, "admin")) {
             return SqlRiskAnalysis.high("doris_admin");
         }
-        // Hard reject: SHUTDOWN / DECOMMISSION
-        if (normalized.startsWith("shutdown ")) {
+        if (startsWithKeyword(normalized, "shutdown")) {
             return SqlRiskAnalysis.high("doris_shutdown");
         }
-        if (normalized.startsWith("decommission ")) {
+        if (startsWithKeyword(normalized, "decommission")) {
             return SqlRiskAnalysis.high("doris_decommission");
         }
-
         return null;
+    }
+
+    /** Match keyword followed by space, tab, or end-of-string. Prevents
+     *  \t-separated commands like KILL\tQUERY from bypassing risk rules. */
+    private boolean startsWithKeyword(String normalized, String keyword) {
+        if (normalized.startsWith(keyword)) {
+            int after = keyword.length();
+            if (after >= normalized.length()) return true;
+            char c = normalized.charAt(after);
+            return c == ' ' || c == '\t';
+        }
+        return false;
     }
 
     private SqlRiskAnalysis classifyStarrocksSpecific(String sql) {
         String normalized = stripLeadingComments(sql).toLowerCase(Locale.ROOT);
         if (normalized.isEmpty()) return null;
-
-        // L1 safe: SELECT (let through to Calcite for proper parsing)
-        if (normalized.startsWith("select ") || normalized.startsWith("with ")) {
-            return null;
-        }
-        // L2 mutation: INSERT, UPDATE, DELETE (let through to Calcite for WHERE analysis)
-        if (normalized.startsWith("insert into ") || normalized.startsWith("update ") || normalized.startsWith("delete from ")) {
-            return null;
-        }
-
-        // L1 safe: SHOW, DESCRIBE, DESC, EXPLAIN
-        if (normalized.startsWith("show ")) {
+        if (startsWithKeyword(normalized, "show")) {
             return SqlRiskAnalysis.low("starrocks_show");
         }
-        if (normalized.startsWith("describe ") || normalized.startsWith("describe\t")
-            || normalized.startsWith("desc ") || normalized.startsWith("desc\t")) {
+        if (startsWithKeyword(normalized, "describe") || startsWithKeyword(normalized, "desc")) {
             return SqlRiskAnalysis.low("starrocks_describe");
         }
-        if (normalized.startsWith("explain ")) {
+        if (startsWithKeyword(normalized, "explain")) {
             return SqlRiskAnalysis.low("starrocks_explain");
         }
-
-        // L2 mutation: safe CREATE TABLE, CREATE INDEX, ANALYZE
-        if (normalized.startsWith("create table ")) {
+        if (startsWithKeyword(normalized, "create table")) {
             return SqlRiskAnalysis.medium("starrocks_create_table");
         }
-        if (normalized.startsWith("create index ")) {
+        if (startsWithKeyword(normalized, "create index")) {
             return SqlRiskAnalysis.medium("starrocks_create_index");
         }
-        if (normalized.startsWith("analyze ")) {
+        if (startsWithKeyword(normalized, "analyze")) {
             return SqlRiskAnalysis.medium("starrocks_analyze");
         }
-
-        // L3 destructive: DROP
-        if (normalized.startsWith("drop ")) {
+        if (startsWithKeyword(normalized, "drop")) {
             return SqlRiskAnalysis.high("starrocks_drop");
         }
-        // L3 destructive: TRUNCATE
-        if (normalized.startsWith("truncate ") || normalized.startsWith("truncate\t")) {
+        if (startsWithKeyword(normalized, "truncate")) {
             return SqlRiskAnalysis.high("starrocks_truncate");
         }
-        // L3 destructive: ALTER (includes ALTER SYSTEM, ALTER DATABASE, ALTER CATALOG)
-        if (normalized.startsWith("alter ")) {
+        if (startsWithKeyword(normalized, "alter")) {
             return SqlRiskAnalysis.high("starrocks_alter");
         }
-        // L3 destructive: GRANT / REVOKE
-        if (normalized.startsWith("grant ")) {
+        if (startsWithKeyword(normalized, "grant")) {
             return SqlRiskAnalysis.high("starrocks_grant");
         }
-        if (normalized.startsWith("revoke ")) {
+        if (startsWithKeyword(normalized, "revoke")) {
             return SqlRiskAnalysis.high("starrocks_revoke");
         }
-        // L3: CREATE USER / ROLE / CATALOG
-        if (normalized.startsWith("create user")) {
+        if (startsWithKeyword(normalized, "create user")) {
             return SqlRiskAnalysis.high("starrocks_create_user");
         }
-        if (normalized.startsWith("create role")) {
+        if (startsWithKeyword(normalized, "create role")) {
             return SqlRiskAnalysis.high("starrocks_create_role");
         }
-        if (normalized.startsWith("create catalog") || normalized.startsWith("create external catalog")) {
+        if (startsWithKeyword(normalized, "create catalog") || normalized.startsWith("create external catalog")) {
             return SqlRiskAnalysis.high("starrocks_create_catalog");
         }
-        if (normalized.startsWith("drop catalog")) {
+        if (startsWithKeyword(normalized, "drop catalog")) {
             return SqlRiskAnalysis.high("starrocks_drop_catalog");
         }
-        // L3: LOAD, ROUTINE LOAD, STREAM LOAD, BROKER LOAD
-        if (normalized.startsWith("load label")) {
+        if (startsWithKeyword(normalized, "load label")) {
             return SqlRiskAnalysis.high("starrocks_load");
         }
-        if (normalized.startsWith("routine load")) {
+        if (startsWithKeyword(normalized, "routine load")) {
             return SqlRiskAnalysis.high("starrocks_routine_load");
         }
-        if (normalized.startsWith("stream load")) {
+        if (startsWithKeyword(normalized, "stream load")) {
             return SqlRiskAnalysis.high("starrocks_stream_load");
         }
-        if (normalized.startsWith("broker load")) {
+        if (startsWithKeyword(normalized, "broker load")) {
             return SqlRiskAnalysis.high("starrocks_broker_load");
         }
-        // L3: EXPORT, CANCEL LOAD
-        if (normalized.startsWith("export ")) {
+        if (startsWithKeyword(normalized, "export")) {
             return SqlRiskAnalysis.high("starrocks_export");
         }
-        if (normalized.startsWith("cancel load")) {
+        if (startsWithKeyword(normalized, "cancel load")) {
             return SqlRiskAnalysis.high("starrocks_cancel_load");
         }
-        // L3: ADMIN SET/SHOW/REBALANCE/DROP FOLLOWER/LEADER
-        if (normalized.startsWith("admin ")) {
+        if (startsWithKeyword(normalized, "admin")) {
             return SqlRiskAnalysis.high("starrocks_admin");
         }
-        // L3: SET GLOBAL
-        if (normalized.startsWith("set global")) {
+        if (startsWithKeyword(normalized, "set global")) {
             return SqlRiskAnalysis.high("starrocks_set_global");
         }
-        // L3: SET PASSWORD
-        if (normalized.startsWith("set password")) {
+        if (startsWithKeyword(normalized, "set password")) {
             return SqlRiskAnalysis.high("starrocks_set_password");
         }
-        // L3: KILL
-        if (normalized.startsWith("kill ") || normalized.startsWith("kill\t")) {
+        if (startsWithKeyword(normalized, "kill")) {
             return SqlRiskAnalysis.high("starrocks_kill");
         }
-        // L3: RENAME
-        if (normalized.startsWith("rename ")) {
+        if (startsWithKeyword(normalized, "rename")) {
             return SqlRiskAnalysis.high("starrocks_rename");
         }
-        // L3: SUBMIT TASK, CANCEL TASK
-        if (normalized.startsWith("submit task")) {
+        if (startsWithKeyword(normalized, "submit task")) {
             return SqlRiskAnalysis.high("starrocks_submit_task");
         }
-        if (normalized.startsWith("cancel task")) {
+        if (startsWithKeyword(normalized, "cancel task")) {
             return SqlRiskAnalysis.high("starrocks_cancel_task");
         }
-        // L3: INSERT OVERWRITE (destructive overwrite)
         if (normalized.startsWith("insert overwrite")) {
             return SqlRiskAnalysis.high("starrocks_insert_overwrite");
         }
-
-        // Unrecognized StarRocks SQL defaults to L3 (conservative safety).
+        // Standard SQL statements handled by Calcite parser
+        if (startsWithKeyword(normalized, "select")
+            || startsWithKeyword(normalized, "with")
+            || startsWithKeyword(normalized, "insert")
+            || startsWithKeyword(normalized, "update")
+            || startsWithKeyword(normalized, "delete")) {
+            return null;
+        }
+        // StarRocks-specific保底: any unrecognised StarRocks statement is L3.
         return SqlRiskAnalysis.high("starrocks_unrecognized");
     }
-
     private SqlRiskAnalysis classifyTrinoSpecific(String sql) {
         String normalized = stripLeadingComments(sql).toLowerCase(Locale.ROOT);
         if (normalized.isEmpty()) return null;
@@ -686,6 +656,9 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
         }
         if (startsWithKeyword(normalized, "create view")) {
             return SqlRiskAnalysis.medium("trino_create_view");
+        }
+        if (startsWithKeyword(normalized, "create materialized view")) {
+            return SqlRiskAnalysis.medium("trino_create_materialized_view");
         }
         if (startsWithKeyword(normalized, "update")) {
             return SqlRiskAnalysis.medium("trino_update");
@@ -841,13 +814,6 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
             return SqlRiskAnalysis.high("hive_set");
         }
         return null;
-    }
-
-    private boolean startsWithKeyword(String normalized, String keyword) {
-        if (!normalized.startsWith(keyword)) return false;
-        if (normalized.length() == keyword.length()) return true;
-        char next = normalized.charAt(keyword.length());
-        return !Character.isLetterOrDigit(next) && next != '_';
     }
 
     private String stripLeadingComments(String sql) {

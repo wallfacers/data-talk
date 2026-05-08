@@ -487,7 +487,7 @@ public class SqlExecuteService {
 
     private List<String> executionFailureHints(ConnectionRecord connection) {
         List<String> hints = new ArrayList<>();
-        if ("mysql".equalsIgnoreCase(connection.kind()) || "mariadb".equalsIgnoreCase(connection.kind()) || "apache_doris".equalsIgnoreCase(connection.kind()) || "starrocks".equalsIgnoreCase(connection.kind())) {
+        if ("mysql".equalsIgnoreCase(connection.kind()) || "mariadb".equalsIgnoreCase(connection.kind()) || "apache_doris".equalsIgnoreCase(connection.kind()) || "starrocks".equalsIgnoreCase(connection.kind()) || "trino".equalsIgnoreCase(connection.kind())) {
             hints.add(translator.get("sql.result.execution_failed.markdown.hint.mysql"));
         }
         hints.add(translator.get(
@@ -569,8 +569,14 @@ public class SqlExecuteService {
     private void applyExecutionContext(Connection connection, ResolvedExecutionContext context) throws SQLException {
         if (("mysql".equalsIgnoreCase(context.connection().kind())
             || "mariadb".equalsIgnoreCase(context.connection().kind())
-            || "apache_doris".equalsIgnoreCase(context.connection().kind())
-            || "starrocks".equalsIgnoreCase(context.connection().kind()))
+            || "apache_doris".equalsIgnoreCase(context.connection().kind()))
+            && hasText(context.database())) {
+            connection.setCatalog(context.database());
+        }
+        // starrocks: database is resolved via URL (default_catalog.<db>),
+        // no runtime setCatalog needed.
+        if (("trino".equalsIgnoreCase(context.connection().kind())
+            || "presto".equalsIgnoreCase(context.connection().kind()))
             && hasText(context.database())) {
             connection.setCatalog(context.database());
         }

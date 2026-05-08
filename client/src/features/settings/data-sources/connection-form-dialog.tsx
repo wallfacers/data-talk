@@ -21,6 +21,9 @@ export const DATABASE_TYPES = {
   clickhouse: { label: 'ClickHouse', port: 8123 },
   apache_doris: { label: 'Apache Doris', port: 9030 },
   starrocks: { label: 'StarRocks', port: 9030 },
+  trino: { label: 'Trino', port: 8080 },
+  hive: { label: 'Apache Hive', port: 10000 },
+  presto: { label: 'Presto', port: 8080 },
 } as const
 
 export type DatabaseKind = keyof typeof DATABASE_TYPES

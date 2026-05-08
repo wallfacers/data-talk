@@ -16,6 +16,9 @@ export function resolveSqlFormatterLanguage(connectionKind: string | null | unde
       return 'transactsql'
     case 'h2':
     case 'duckdb':
+    case 'trino':
+    case 'presto':
+    case 'hive':
     default:
       return 'sql'
   }
