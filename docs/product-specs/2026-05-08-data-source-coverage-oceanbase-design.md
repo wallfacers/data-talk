@@ -31,9 +31,14 @@ is updated.
   kind-private columns)
 - 6 concrete `OceanBase*ReuseIT` subclasses inheriting `MySqlProtocolReuseRule`
   (closes the cross-kind reuse loop that started with `tidb`, commit `273f1e1`)
-- `OceanBaseDiagnosticsProvider` Day-1 with 4 supported / 1 partial / 4
-  `dialect_unsupported` hooks; the 5 dialect_unsupported / partial hooks are
-  bidirectionally anchored to the Day-2 plan §Day-3 candidate matrix
+- `OceanBaseDiagnosticsProvider` Day-1 returning structured `dialect_unsupported`
+  for **all 9 hooks** (7 diagnostics real-execution hooks + 2 ER hooks),
+  consistent with Wave C umbrella §5 Day-1 unsupported set and the
+  opengauss step 2 precedent. Day-2/Day-3 upgrade path (§11) anchors
+  EXPLAIN-real and INDEX_HINTS to day2 plan §Day-3 oceanbase row; the
+  remaining 5 capabilities (`lock_info`, `pool_status`, `table_space`,
+  `terminate_session`, `optimize_table`) are deferred to an independent
+  Day-3 spec outside day2 plan scope.
 
 ## 2. Compatibility Gate Application
 
@@ -71,10 +76,36 @@ itself a compatibility decision, not a gate skip.
   consumers of `MultiModeConnectionShape` (kingbase plan kickoff hard gate).
 - [docs/DATA_SOURCE_TYPE_COMPATIBILITY.md](../DATA_SOURCE_TYPE_COMPATIBILITY.md)
   — hard compatibility checklist.
-- [client/DESIGN.md](../../client/DESIGN.md) — frontend connection form,
-  picker, Query Editor context, and unsupported-state UI must use semantic
-  tokens, accessible controls, global Stage state, and i18n keys. Multi-mode
-  field rendering and disabled-mode tooltip follow control-state matrix.
+- [client/DESIGN.md](../../client/DESIGN.md) — explicit constraints applied
+  to every UI surface introduced by this spec (multi-mode form, mode picker,
+  oceanbase tenant/cluster fields, dialect_unsupported toast):
+  - **Semantic token contract** (DESIGN.md §"Semantic Tokens" + §"Components"):
+    surface backgrounds use `bg.panel`; field borders use `border.default`;
+    focus uses `interaction.focusRing`; hover uses `interaction.hover`;
+    active/pressed uses `interaction.active`; disabled uses
+    `interaction.disabled` (must not rely on color alone, per DESIGN.md
+    line 282); selected mode chip uses `interaction.selected` +
+    `text.strong`. **No component-local color values invented.**
+  - **5-state control matrix** (default / hover / focus / active /
+    disabled) is **fully enumerated** for every interactive control (mode
+    picker, tenant input, cluster input, save button, dialect_unsupported
+    chip). Disabled mode option carries an accessible tooltip that names
+    the Day-3 candidate path. (Per memory record `feedback-design-control-states.md`:
+    no abbreviation; each control × 5 state token explicitly listed in the
+    child plan.)
+  - **Stage state is global, not per-session** (DESIGN.md line 310):
+    connection settings dialog opens as a global modal; `StageTab`
+    instances carry no `scope` field; switching active session does not
+    visually change the open connection dialog.
+  - **i18n keys** (DESIGN.md §"Internationalization"): every user-visible
+    string in oceanbase UI routes through `client/src/i18n/messages.ts`
+    with both `zh-CN` and `en-US` entries; key namespace per §12.4.
+  - **Accessibility** (DESIGN.md §"Accessibility"): all form controls have
+    explicit `aria-label` / `aria-describedby` for tenant requirement,
+    mode disabled reason, and password masking.
+  - **Light + dark theme parity** (DESIGN.md §"Theming"): every new style
+    consumes semantic tokens and inherits theme mapping; no theme-specific
+    branches in component code.
 - [docs/product-specs/2026-05-08-data-source-coverage-tidb-design.md](./2026-05-08-data-source-coverage-tidb-design.md)
   — `MySqlProtocolReuseRule` origin spec. OceanBase reuses every abstract
   base class produced by tidb step 1.
@@ -122,11 +153,11 @@ At the end of implementation, DataTalk must:
 - normalize JDBC return values (JSON, DECIMAL, BIT, `_BINARY`, ENUM, SET, YEAR)
   using the existing `JdbcResultValueNormalizer` proven equivalent on
   OceanBase via `AbstractMySqlResultNormalizationReuseTest`;
-- return structured diagnostics outcomes via `OceanBaseDiagnosticsProvider`:
-  4 supported hooks (`table_space`, `terminate_session`, `index_hints`,
-  `pool_status` partial) + 5 `dialect_unsupported` hooks (`lock_info`,
-  `optimize_table`, `explain_real`, `er_inspector`, `er_designer`) all
-  anchored to Day-2 plan §Day-3 oceanbase row;
+- return structured `dialect_unsupported` for the seven diagnostics hooks
+  (`lock_info`, `pool_status`, `table_space`, `terminate_session`,
+  `optimize_table`, `explain_real`, `index_hints`) and the two ER hooks
+  (`er_inspector`, `er_designer`) — consistent with Wave C umbrella §5 and
+  the opengauss step 2 precedent;
 - expose the `oceanbase` kind in MCP `ConnectionObjectType` enum, AGENTS.md
   prompt rules, and prompt contract tests **only after** child plan verify
   passes, never conflate it with `mysql`;
@@ -294,6 +325,19 @@ CREATE INDEX idx_connection_created_at ON connection(created_at);
 **Note**: child plan Task 2 verifies the exact DROP/CREATE INDEX list against
 the live schema before submission. Migration must be idempotent under
 re-run protection (Flyway version uniqueness).
+
+**Flyway version race condition**: V18 is reserved by this spec, but if
+opengauss / dameng / day2 follow-up plans also need migrations and ship
+ahead of oceanbase, the file number must shift. Child plan Task 2 **MUST**:
+1. At PR-creation time, run
+   `ls server/data-talk-infrastructure/src/main/resources/db/migration | sort -V | tail -3`
+   to identify the actual next available `V<n>__` number.
+2. If the next available number is **not** V18, rename this migration file
+   accordingly and update every reference in this spec, the child plan,
+   and any test using `V18` literally — fail loudly rather than silently
+   accept a duplicate version number.
+3. The plan-time pinning is documentation; the PR-time check is the
+   authoritative final number.
 
 `ConnectionRecord` updated record:
 
@@ -521,38 +565,48 @@ with the 11-dialect framework landed by Day-2 plan. Path:
 server/data-talk-infrastructure/src/main/java/com/datatalk/infra/diagnostics/OceanBaseDiagnosticsProvider.java
 ```
 
-### 9.2 9-Hook Decision Matrix
+### 9.2 9-Hook Decision Matrix — All `dialect_unsupported` Day-1
 
-| Hook | Day-1 Decision | Implementation Path |
+Per Wave C umbrella §5 Day-1 unsupported set and the opengauss step 2
+precedent (opengauss design §4 / §10), all 9 diagnostics hooks return
+structured `dialect_unsupported` Day-1. Cross-kind diagnostics reuse with
+mysql is **not exercised at Day-1**; reuse opportunities are reserved for
+Day-2/Day-3 upgrades (§11).
+
+| Hook | Day-1 Decision | Day-2/Day-3 Upgrade Owner |
 |---|---|---|
-| `pool_status` | **partial** | Reuse mysql `INFORMATION_SCHEMA.PROCESSLIST` query; OB increment fields (`gv$ob_processlist.tenant_id`, `user_client_ip`) not returned. i18n key `diagnostics.partial.oceanbase.pool_status`. |
-| `lock_info` | **dialect_unsupported** | OB uses `gv$ob_locks` / `gv$ob_transaction`; behavior diverges from mysql baseline; Day-3 upgrade. |
-| `table_space` | **supported** | Reuse mysql `INFORMATION_SCHEMA.TABLES.DATA_LENGTH` query; OB 4.x field semantic equivalent. |
-| `terminate_session` | **supported** | Reuse mysql `KILL <session_id>`. |
-| `optimize_table` | **dialect_unsupported** | OB `ALTER TABLE ... OPTIMIZE PARTITION` syntax 4.x+ only; behavior divergence too large; Day-3 upgrade. |
-| `explain_real` | **dialect_unsupported** | OB EXPLAIN JSON field mapping diverges from mysql; Day-3 reuses Day-2 `parseMySqlJsonPlan` framework + `OceanBasePlanFieldAdapter`. |
-| `index_hints` | **supported** | Reuse mysql `USE INDEX` / `FORCE INDEX` recommendation path; OB `/*+ INDEX(t idx) */` hint syntax Day-3 increment. |
-| `er_inspector` | **dialect_unsupported** | Wave C umbrella §5 Day-1 ER unsupported. |
-| `er_designer` | **dialect_unsupported** | Same as above. |
+| `lock_info` | `dialect_unsupported` | Independent Day-3 spec (out of day2 plan scope) |
+| `pool_status` | `dialect_unsupported` | Independent Day-3 spec |
+| `table_space` | `dialect_unsupported` | Independent Day-3 spec |
+| `terminate_session` | `dialect_unsupported` | Independent Day-3 spec |
+| `optimize_table` | `dialect_unsupported` | Independent Day-3 spec |
+| `explain_real` | `dialect_unsupported` | day2 plan §Day-3 oceanbase row (`EXPLAIN FORMAT=JSON` reusing `parseMySqlJsonPlan`) |
+| `index_hints` | `dialect_unsupported` | day2 plan §Day-3 oceanbase row (MySQL-style B-tree recommendation) |
+| `er_inspector` | `dialect_unsupported` | Wave C overall ER upgrade (umbrella §5) |
+| `er_designer` | `dialect_unsupported` | Same |
 
 ### 9.3 dialect_unsupported Anchor Format
 
-The 5 `dialect_unsupported` hook error messages share a structured anchor:
+All 9 hook error messages share a structured anchor consistent with
+opengauss `mapPermissionOrDriverError` + per-kind reason pattern:
 
 ```
 "OceanBase MySQL-mode does not support <hook> in Day-1.
- See Wave C Day-3 candidate (oceanbase mysql-mode upgrade matrix)
- in docs/exec-plans/2026-05-08-diagnostics-day2-plan.md §Day-3 Candidates."
+ See Wave C Day-3 candidate (oceanbase mysql-mode upgrade path)
+ in this spec §11."
 ```
 
-i18n keys (consistent with Day-2 plan naming):
+i18n keys (consistent with Day-2 plan naming and opengauss precedent):
 
 - `diagnostics.dialect_unsupported.oceanbase.lock_info`
+- `diagnostics.dialect_unsupported.oceanbase.pool_status`
+- `diagnostics.dialect_unsupported.oceanbase.table_space`
+- `diagnostics.dialect_unsupported.oceanbase.terminate_session`
 - `diagnostics.dialect_unsupported.oceanbase.optimize_table`
 - `diagnostics.dialect_unsupported.oceanbase.explain_real`
+- `diagnostics.dialect_unsupported.oceanbase.index_hints`
 - `diagnostics.dialect_unsupported.oceanbase.er_inspector`
 - `diagnostics.dialect_unsupported.oceanbase.er_designer`
-- `diagnostics.partial.oceanbase.pool_status`
 
 ### 9.4 Reuse Surface
 
@@ -566,23 +620,21 @@ abstract base classes:
 - `AbstractMySqlResultNormalizationReuseTest`
 - `AbstractMySqlConnectionTestReuseTest`
 
-The kit has **no** `DiagnosticsReuse` abstract base; diagnostics behavior
-is kind-specific by design (each kind decides its own supported / partial /
-dialect_unsupported matrix). OceanBase diagnostics tests are kind-private:
+The kit has **no** `DiagnosticsReuse` abstract base. This is by design:
+Wave C umbrella §5 sets all diagnostics hooks to `dialect_unsupported`
+Day-1, so there is no reuse surface to test at Day-1. Day-2/Day-3 upgrades
+introduce kind-specific real implementations; reuse abstractions for those
+upgrades (e.g., a future `PostgresJsonPlanParser` for PG-fork EXPLAIN, or
+a shared MySQL JSON plan adapter) are decided in their respective Day-3
+specs.
 
-- 4 supported hooks (`pool_status` partial, `table_space`,
-  `terminate_session`, `index_hints`) verified by `OceanBaseDiagnosticsSupportedTest`
-- 5 dialect_unsupported hooks verified by `OceanBaseDiagnosticsDialectUnsupportedTest`
-  (returns structured outcome with correct i18n key + Day-3 anchor message)
+OceanBase diagnostics tests Day-1 are therefore minimal and kind-private:
 
-### 9.5 OceanBase-Specific Diagnostics Tests
-
-Beyond reuse:
-
-- `OceanBaseDiagnosticsDialectUnsupportedTest` — verifies 5 dialect_unsupported
-  hooks return structured outcome with correct i18n key and anchor message.
-- `OceanBaseDiagnosticsPartialTest` — `pool_status` returns mysql-baseline
-  fields and i18n partial key.
+- `OceanBaseDiagnosticsDialectUnsupportedTest` — verifies all 9 hooks
+  return structured outcome with correct i18n key (per §9.3) and
+  consistent anchor message
+- `OceanBaseDiagnosticsProviderRegistrationTest` — verifies the provider
+  is registered and routed when `kind = oceanbase`
 
 ## 10. Reuse Kit Outputs — `MultiModeConnectionShape`
 
@@ -711,6 +763,23 @@ oceanbase invocation in `connection-form-dialog.tsx`:
 separately (not part of `MultiModeFields`). They ship in
 `oceanbase-connection-fields.tsx`.
 
+**5-state token contract for every control in this skeleton**
+(per client/DESIGN.md and memory record `feedback-design-control-states.md`;
+the child plan must list each row literally — no abbreviation):
+
+| Control | default | hover | focus | active/selected | disabled |
+|---|---|---|---|---|---|
+| Mode option chip (e.g., MySQL row) | `bg.panel` + `border.default` + `text.default` | `interaction.hover` | `interaction.focusRing` | `interaction.selected` + `text.strong` | `interaction.disabled` + tooltip |
+| Mode option chip (Oracle Day-1 disabled) | `bg.panel` + `border.default` + `text.muted` | n/a (disabled) | `interaction.focusRing` (still focusable for screen reader) | n/a | `interaction.disabled` + tooltip "Day-3 candidate; not supported in Day-1" |
+| Tenant text input | `bg.panel` + `border.default` | `border.strong` | `interaction.focusRing` | n/a | `interaction.disabled` |
+| Cluster text input (optional) | same as tenant | same | same | n/a | `interaction.disabled` |
+| Save button | `accent.primary` + `text.onAccent` | accent hover token | `interaction.focusRing` | accent active token | `interaction.disabled` |
+
+dialect_unsupported toast / inline notice (when user attempts mode-Oracle
+or any of the 9 diagnostics hooks): uses `feedback.warning.bg` +
+`feedback.warning.border` + `text.warning` per DESIGN.md feedback tokens;
+no inline color values.
+
 ### 10.5 ConnectionRecord Field Ownership Boundary
 
 Per umbrella §7.2:
@@ -744,39 +813,52 @@ kingbase consumes MultiModeConnectionShape v1
 
 ## 11. Day-2 / Day-3 Upgrade Path — Bidirectional Anchor
 
-### 11.1 Upgrade Matrix
+### 11.1 Upgrade Matrix Scope
 
-| Upgrade Item | Day-1 Status | Day-2/Day-3 Path | Day-2 Plan §Day-3 Anchor |
+day2 plan (`docs/exec-plans/2026-05-08-diagnostics-day2-plan.md`) §Day-3
+candidate matrix is bound to **EXPLAIN-real and INDEX_HINTS upgrade only**
+(per day2 plan §Day-3 line 3110: "Wave-C 4 kind Day-2 EXPLAIN/INDEX_HINTS
+真实化"). The other 5 capabilities (`lock_info`, `pool_status`,
+`table_space`, `terminate_session`, `optimize_table`) are explicitly
+out of day2 plan scope and live in independent Day-3 specs.
+
+### 11.2 Day-2 Plan §Day-3 Anchored Items (oceanbase row)
+
+These are bidirectionally anchored: this spec §11.2 enumerates them, and
+day2 plan §Day-3 candidate matrix oceanbase row already lists them
+(line 3117).
+
+| Upgrade Item | Day-1 Status | Day-2 Path | day2 plan §Day-3 oceanbase row |
 |---|---|---|---|
-| `lock_info` | `dialect_unsupported` | Implement `OceanBaseDiagnosticsProvider.fetchLockInfo()` via `gv$ob_locks` + `gv$ob_transaction`; columns mapped to Day-2 lockInfo schema (`holder_session` / `blocker_session` / `wait_started_at` / `lock_type`) | `lock_info upgrade` row added |
-| `optimize_table` | `dialect_unsupported` | Generate `ALTER TABLE ... OPTIMIZE PARTITION` clause; OB 4.x+ detection enables, lower versions remain unsupported | `optimize_table upgrade (4.x+ only)` row added |
-| `explain_real` | `dialect_unsupported` | Reuse Day-2 `parseMySqlJsonPlan` framework + new `OceanBasePlanFieldAdapter` mapping OB EXPLAIN JSON fields (`OPERATOR` / `EST.ROWS` / `EST.TIME(us)` / `OUTPUT & FILTERS`) to Day-2 standard plan fields (`operator` / `rows` / `cost` / `actualRows`) | `explain_real adapter` row added |
-| `pool_status` partial → full | partial | Increment returns `gv$ob_processlist.tenant_id` / `user_client_ip` and other OB-specific fields | `pool_status enrich` row added |
-| `index_hints` baseline → full | supported (baseline) | Increment recommends OB `/*+ INDEX(t idx) */` hint syntax | `index_hints OB syntax` row added |
-| Oracle-mode | dialect_unsupported (whole) | Independent Day-3 child plan: `compatibility_mode='oracle'` first-class; splitter / risk / discovery / diagnostics all Oracle-flavor rewritten; frontend `multi-mode-connection-fields.tsx` unlocks `oracle` | Independent Day-3 plan; not in Day-2 §Day-3 candidate matrix; reserved by wave-c roadmap §3.2 |
-| ER Inspector / Designer | `dialect_unsupported` | Bundled with wave-c overall ER upgrade; not in this spec | wave-c umbrella §5 |
+| `explain_real` (MySQL-mode) | `dialect_unsupported` | `EXPLAIN FORMAT=JSON` reusing day2 plan Task 0.3 base-class-elevated `parseMySqlJsonPlan`; new `OceanBasePlanFieldAdapter` if OB JSON fields diverge from MySQL baseline | ✅ already listed: "EXPLAIN FORMAT=JSON / 复用 parseMySqlJsonPlan" |
+| `index_hints` (MySQL-mode) | `dialect_unsupported` | MySQL-style B-tree recommendation (`USE INDEX` / `FORCE INDEX`); OB `/*+ INDEX(t idx) */` hint syntax as Day-3 increment | ✅ already listed: "MySQL-style B-tree" |
 
-### 11.2 Bidirectional Anchor Requirement
+The child plan documentation-housekeeping task verifies the bidirectional
+anchor (no new day2 plan backfill required at this child plan ship time —
+day2 plan §Day-3 oceanbase row is already complete).
 
-- This spec §11 explicitly enumerates 5 Day-2/Day-3 candidate items + 1
-  independent Day-3 (Oracle-mode) + 1 wave-c overall (ER).
-- `docs/exec-plans/2026-05-08-diagnostics-day2-plan.md` §Day-3 candidate
-  section **MUST** backfill the oceanbase row with these 5 items at the time
-  the oceanbase child plan ships:
-  - `lock_info upgrade`
-  - `optimize_table upgrade (4.x+ only)`
-  - `explain_real adapter`
-  - `pool_status enrich`
-  - `index_hints OB syntax`
-- The child plan documentation-housekeeping task verifies the bidirectional
-  anchor before Definition of Done.
+### 11.3 Independent Day-3 Specs (Out Of day2 Plan Scope)
 
-### 11.3 Out of Day-2/Day-3 Scope
+These capabilities are deferred to independent Day-3 specs, **not** added
+to day2 plan §Day-3 matrix:
 
-- Runtime / `USE` / session-level mode switching (umbrella §7.2 forbidden)
-- Oracle-mode (independent Day-3 plan, not in Day-2 §Day-3 upgrade range)
-- Multi-tenant cross-tenant metadata / SQL routing
-- OBProxy configuration management UI
+| Upgrade Item | Day-1 Status | Independent Day-3 Path |
+|---|---|---|
+| `lock_info` | `dialect_unsupported` | New spec implements `OceanBaseDiagnosticsProvider.fetchLockInfo()` via `gv$ob_locks` + `gv$ob_transaction`; columns mapped to Day-2 lockInfo schema (`holder_session` / `blocker_session` / `wait_started_at` / `lock_type`) |
+| `pool_status` | `dialect_unsupported` | New spec implements MySQL-baseline `INFORMATION_SCHEMA.PROCESSLIST` plus OB increment fields (`gv$ob_processlist.tenant_id`, `user_client_ip`) |
+| `table_space` | `dialect_unsupported` | New spec uses `INFORMATION_SCHEMA.TABLES.DATA_LENGTH` aggregation; OB 4.x semantic equivalent to MySQL |
+| `terminate_session` | `dialect_unsupported` | New spec uses `KILL <session_id>` (MySQL-equivalent) with OB tenant context guard |
+| `optimize_table` | `dialect_unsupported` | New spec generates `ALTER TABLE ... OPTIMIZE PARTITION` clause; OB 4.x+ detection enables, lower versions remain unsupported |
+
+### 11.4 Other Out-Of-Scope Day-3 Items
+
+| Item | Owner |
+|---|---|
+| Oracle-mode first-class | Independent Day-3 child plan; splitter / risk / discovery / diagnostics all Oracle-flavor rewritten; frontend `multi-mode-connection-fields.tsx` unlocks `oracle`. Reserved by wave-c roadmap §3.2 |
+| ER Inspector / Designer | Wave C overall ER upgrade (umbrella §5); not bound to oceanbase specifically |
+| Runtime / `USE` / session-level mode switching | Forbidden forever (umbrella §7.2); never enabled |
+| Multi-tenant cross-tenant metadata / SQL routing | Not on roadmap |
+| OBProxy configuration management UI | Not on roadmap |
 
 ## 12. Out-of-Scope / Test Fixture / i18n / AGENTS.md Timing
 
@@ -816,10 +898,14 @@ abstract bases (commit `273f1e1`), closing the cross-kind reuse loop
 
 - `OceanBaseRiskClassifierTest` — 6 anchored patterns (hit + boundary cases
   per §8.4) and `classifyMySqlBase` integration
-- `OceanBaseDiagnosticsSupportedTest` — 4 supported hooks (`pool_status`
-  partial, `table_space`, `terminate_session`, `index_hints`)
-- `OceanBaseDiagnosticsDialectUnsupportedTest` — 5 dialect_unsupported hooks
-  return structured outcome with correct i18n key and Day-3 anchor
+- `OceanBaseDiagnosticsDialectUnsupportedTest` — all 9 hooks (7 diagnostics
+  real-execution + 2 ER) return structured outcome with the correct i18n
+  key (per §9.3) and consistent Day-1 anchor message; covers
+  `lock_info`, `pool_status`, `table_space`, `terminate_session`,
+  `optimize_table`, `explain_real`, `index_hints`, `er_inspector`,
+  `er_designer`
+- `OceanBaseDiagnosticsProviderRegistrationTest` — verifies provider is
+  registered and routed when `kind = oceanbase`
 - `OceanBaseUsernameComposeTest` — `composeOceanBaseUsername` 3 cases
   (tenant-only / tenant+cluster / non-oceanbase guard)
 - `OceanBaseFlywayMigrationTest` — V18 migration + CHECK constraints
@@ -844,11 +930,14 @@ abstract bases (commit `273f1e1`), closing the cross-kind reuse loop
   - `connection.kind.oceanbase.cluster_placeholder` (form hint, optional)
   - `connection.kind.oceanbase.mode_oracle_unsupported_day1`
   - `diagnostics.dialect_unsupported.oceanbase.lock_info`
+  - `diagnostics.dialect_unsupported.oceanbase.pool_status`
+  - `diagnostics.dialect_unsupported.oceanbase.table_space`
+  - `diagnostics.dialect_unsupported.oceanbase.terminate_session`
   - `diagnostics.dialect_unsupported.oceanbase.optimize_table`
   - `diagnostics.dialect_unsupported.oceanbase.explain_real`
+  - `diagnostics.dialect_unsupported.oceanbase.index_hints`
   - `diagnostics.dialect_unsupported.oceanbase.er_inspector`
   - `diagnostics.dialect_unsupported.oceanbase.er_designer`
-  - `diagnostics.partial.oceanbase.pool_status`
 - AI prompt rules (post-verify) may include Chinese aliases (`蚂蚁 OceanBase`,
   `沃趣 OceanBase`) for user-typed-request recognition only; they are **not**
   alias targets for `ConnectionKind.normalize` (umbrella §7.5).
