@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { GridLayoutEngine } from '../grid-layout-engine'
 import type { Widget, GridLayout } from '../../schema'
-import type { ContainerSize } from '../layout-engine'
 
 const LAYOUT: GridLayout = { engine: 'grid', cols: 12, rowHeight: 32, gap: 8 }
 

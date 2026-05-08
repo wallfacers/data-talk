@@ -10,7 +10,7 @@ interface ChartWidgetProps {
   error?: string | null
 }
 
-export function ChartWidget({ widgetId, title, option, height = 300, loading, error }: ChartWidgetProps) {
+export function ChartWidget({ title, option, height = 300, loading, error }: ChartWidgetProps) {
   return (
     <WidgetShell title={title}>
       {loading && (

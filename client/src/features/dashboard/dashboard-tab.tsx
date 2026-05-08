@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { useDashboardTabsStore } from './stores/dashboard-tabs-store'
 import { DashboardCanvas } from './dashboard-canvas'
 import { fetchDashboard } from './services/dashboard-api'
-import type { Dashboard } from './schema'
 
 interface DashboardTabProps {
   tabId: string

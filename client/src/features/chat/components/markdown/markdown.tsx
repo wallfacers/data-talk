@@ -404,6 +404,7 @@ export function Markdown(props: {
     if (!html) {
       container.innerHTML = ''
       clearChartRoots()
+      clearDashboardRoots()
       return
     }
 
@@ -523,7 +524,6 @@ export function Markdown(props: {
       const streaming = mountPoint.dataset.dashboardStreaming === 'true'
       const messageId = mountPoint.dataset.dashboardMessageId ?? ''
       const partId = mountPoint.dataset.dashboardPartId
-      const blockIndex = Number.parseInt(mountPoint.dataset.dashboardBlockIndex ?? '0', 10)
       const json = decodeUtf8Base64(encodedJson)
 
       let entry = dashboardRoots.get(dashKey)

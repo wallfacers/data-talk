@@ -6,7 +6,7 @@ import type { Dashboard } from '../schema'
 
 // Mock react-grid-layout to avoid DOM measurement issues in jsdom
 vi.mock('react-grid-layout', () => ({
-  WidthProvider: (Comp: React.ComponentType<Record<string, unknown>>) =>
+  WidthProvider: (_Comp: React.ComponentType<Record<string, unknown>>) =>
     function MockWidthProvider(props: Record<string, unknown>) {
       return (
         <div data-testid="grid-layout-mock" {...props}>
