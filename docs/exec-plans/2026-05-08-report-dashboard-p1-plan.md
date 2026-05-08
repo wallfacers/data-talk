@@ -19,6 +19,14 @@
 - **Spec:** [docs/product-specs/2026-05-08-report-dashboard-design.md](../product-specs/2026-05-08-report-dashboard-design.md)
 - **Roadmap:** [docs/exec-plans/2026-04-25-next-implementation-roadmap-plan.md](./2026-04-25-next-implementation-roadmap-plan.md) Task 8 visualization 子切片
 
+## Review Round 1 — Known Deviations (2026-05-09)
+
+| # | Issue | Status | Plan |
+|---|-------|--------|------|
+| C6 | DashboardStore 绕开 FileArtifactService，spec §10 artifact 体系断链（连接删除/Files Library/FTS） | **Open** | 拆后续 PR 单独处理，需接入 FileArtifactService watcher/reconciler |
+| I1 | DashboardControllerIT 编译通过但运行受限于预存 DiagnosticsServiceTest 编译错误 | Test file exists | 待预存问题修复后验证 |
+| I2 | Playwright dashboard.spec.ts 为骨架，需运行环境 + 数据 seed | Skeleton | 待后续 E2E 专项执行 |
+
 ## Design Inputs（来自 client/DESIGN.md，本 P1 强制约束）
 
 - Stage chrome 用 `bg.subtle`；canvas 用 `bg.canvas`；padding 全 dashboard 统一 24px (`spacing.6`)
