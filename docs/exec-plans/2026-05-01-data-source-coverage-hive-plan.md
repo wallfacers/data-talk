@@ -1,6 +1,6 @@
 # Data Source Coverage: Hive Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Add conservative Apache HiveServer2 support as canonical kind `hive`, without overclaiming unimplemented auth, metadata, or diagnostics behavior.
 
@@ -56,7 +56,7 @@ and approved. Hive remains unsupported until every verification step passes and
 
 ### Task 1: Approval, Driver, And Auth Scope
 
-- [ ] **Step 1: Confirm design approval**
+- [x] **Step 1: Confirm design approval**
 
 Run:
 
@@ -67,7 +67,7 @@ rg -n "^Status: Approved$" docs/product-specs/2026-05-01-data-source-coverage-hi
 Expected: exactly one match. If the design still says `Status: Draft for
 review`, stop and return to design review.
 
-- [ ] **Step 2: Record support subset**
+- [x] **Step 2: Record support subset**
 
 Confirm the design-anchored minimum subset still holds: HiveServer2 binary
 transport on port `10000`, database context, username/password or username-only
@@ -78,44 +78,44 @@ minimum subset changes, stop and revise the design before implementation.
 
 ### Task 2: Connection And Metadata
 
-- [ ] **Step 1: Add failing connection tests**
+- [x] **Step 1: Add failing connection tests**
 
 Cover canonical kind routing, `jdbc:hive2://` URL building, selected transport
 mode, default port `10000`, password behavior, unsupported auth rejection, and
 localized connection-test failures.
 
-- [ ] **Step 2: Implement connection behavior**
+- [x] **Step 2: Implement connection behavior**
 
 Add driver dependency, URL builder support, selected auth fields, and structured
 unsupported errors for excluded auth modes.
 
-- [ ] **Step 3: Add failing metadata tests**
+- [x] **Step 3: Add failing metadata tests**
 
 Cover database discovery through JDBC metadata or bounded SQL fallback, system
 filtering, bounded schema discover, explicit describe, and partition metadata.
 
-- [ ] **Step 4: Implement metadata behavior**
+- [x] **Step 4: Implement metadata behavior**
 
 Use metadata APIs only where verified; otherwise implement bounded Hive SQL
 fallbacks.
 
 ### Task 3: SQL, Splitter, Risk, Diagnostics, And ER
 
-- [ ] **Step 1: Add failing SQL and normalization tests**
+- [x] **Step 1: Add failing SQL and normalization tests**
 
 Cover selected database context, primitive and complex values, query
 cancellation if claimed, and chat-path mutation blocking.
 
-- [ ] **Step 2: Add failing splitter and risk tests**
+- [x] **Step 2: Add failing splitter and risk tests**
 
 Cover `SET`, `ADD JAR`, `LOAD DATA`, `TRANSFORM`, `CREATE FUNCTION`, partition
 operations, grants, `DROP`, `TRUNCATE`, and broad `ALTER`.
 
-- [ ] **Step 3: Implement SQL, normalization, splitter, and risk**
+- [x] **Step 3: Implement SQL, normalization, splitter, and risk**
 
 Keep rollback claims disabled unless Hive transaction behavior is proven.
 
-- [ ] **Step 4: Implement diagnostics and ER behavior**
+- [x] **Step 4: Implement diagnostics and ER behavior**
 
 Map EXPLAIN only if tested. Return structured unsupported for lock, pool, table
 space, terminate, optimize, ER Inspector, and ER Designer until real support
@@ -131,18 +131,18 @@ Expected: targeted tests pass.
 
 ### Task 4: Frontend, MCP, Prompt, And Verification
 
-- [ ] **Step 1: Add failing frontend and prompt tests**
+- [x] **Step 1: Add failing frontend and prompt tests**
 
 Cover label `Apache Hive`, default port `10000`, selected auth fields,
 unsupported auth messaging, Query Editor database context, formatter/outline,
 diagnostics state, i18n, MCP schema, and runtime prompt claims.
 
-- [ ] **Step 2: Implement frontend and MCP exposure**
+- [x] **Step 2: Implement frontend and MCP exposure**
 
 Expose only the selected Hive support subset. Keep excluded auth modes and
 diagnostics explicitly unsupported.
 
-- [ ] **Step 3: Run consolidated verification**
+- [x] **Step 3: Run consolidated verification**
 
 Run:
 
@@ -154,7 +154,7 @@ git diff --check -- server client docs
 
 Expected: all commands pass.
 
-- [ ] **Step 4: Update documents**
+- [x] **Step 4: Update documents**
 
 Do all housekeeping before claiming completion:
 
