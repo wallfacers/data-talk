@@ -111,31 +111,37 @@ export function ErToolbar(props: ErToolbarProps) {
 
         <div className="ml-auto" />
 
-        <label className="flex items-center gap-1.5 text-xs text-text-muted">
-          <span>{label('erCanvas.toolbar.dialect', 'Dialect')}</span>
-          <Select
-            value={props.dialect}
-            onValueChange={(value) => props.onChangeDialect(value as DesignerDialect)}
-          >
-            <SelectTrigger
-              size="sm"
-              data-testid="er-toolbar-dialect"
-              aria-label={label('erCanvas.toolbar.dialect', 'Dialect')}
-              className="min-w-28 rounded-md border-border-default bg-bg-canvas px-2 text-xs text-text-base"
+        <Tooltip>
+          <TooltipTrigger render={
+            <span className="sr-only">{label('erCanvas.toolbar.dialect', 'Dialect')}</span>
+          }>
+            <Select
+              value={props.dialect}
+              onValueChange={(value) => props.onChangeDialect(value as DesignerDialect)}
             >
-              <span className="flex flex-1 text-left">
-                {DESIGNER_DIALECT_OPTIONS.find((option) => option.value === props.dialect)?.label ?? props.dialect}
-              </span>
-            </SelectTrigger>
-            <SelectContent>
-              {DESIGNER_DIALECT_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </label>
+              <SelectTrigger
+                size="sm"
+                data-testid="er-toolbar-dialect"
+                aria-label={label('erCanvas.toolbar.dialect', 'Dialect')}
+                className="min-w-28 rounded-md border-border-default bg-bg-canvas px-2 text-xs text-text-base"
+              >
+                <span className="flex flex-1 text-left">
+                  {DESIGNER_DIALECT_OPTIONS.find((option) => option.value === props.dialect)?.label ?? props.dialect}
+                </span>
+              </SelectTrigger>
+              <SelectContent>
+                {DESIGNER_DIALECT_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" sideOffset={4}>
+            {label('erCanvas.toolbar.dialect', 'Dialect')}
+          </TooltipContent>
+        </Tooltip>
       </div>
     )
   }
@@ -165,20 +171,26 @@ export function ErToolbar(props: ErToolbarProps) {
 
       <Separator />
 
-      <label className="flex items-center gap-1.5 text-xs text-text-muted">
-        <span>{label('erCanvas.toolbar.neighborDepth', 'Neighbor depth')}</span>
-        <select
-          data-testid="er-toolbar-neighbor-depth"
-          aria-label={label('erCanvas.toolbar.neighborDepth', 'Neighbor depth')}
-          value={props.neighborDepth}
-          onChange={(event) => props.onChangeNeighborDepth(Number(event.target.value) as 0 | 1 | 2)}
-          className="h-7 rounded-md border border-border-default bg-bg-canvas px-2 text-xs text-text-base outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing"
-        >
-          <option value={0}>0</option>
-          <option value={1}>1</option>
-          <option value={2}>2</option>
-        </select>
-      </label>
+      <Tooltip>
+        <TooltipTrigger render={
+          <span className="sr-only">{label('erCanvas.toolbar.neighborDepth', 'Neighbor depth')}</span>
+        }>
+          <select
+            data-testid="er-toolbar-neighbor-depth"
+            aria-label={label('erCanvas.toolbar.neighborDepth', 'Neighbor depth')}
+            value={props.neighborDepth}
+            onChange={(event) => props.onChangeNeighborDepth(Number(event.target.value) as 0 | 1 | 2)}
+            className="h-7 rounded-md border border-border-default bg-bg-canvas px-2 text-xs text-text-base outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing"
+          >
+            <option value={0}>0</option>
+            <option value={1}>1</option>
+            <option value={2}>2</option>
+          </select>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" sideOffset={4}>
+          {label('erCanvas.toolbar.neighborDepth', 'Neighbor depth')}
+        </TooltipContent>
+      </Tooltip>
 
       <Separator />
 
@@ -207,20 +219,26 @@ function ModeBadge({ mode, label }: { mode: ErToolbarProps['mode']; label: strin
   const Icon = isDesigner ? PencilIcon : LockIcon
 
   return (
-    <span
-      role="status"
-      aria-live="off"
-      data-testid="er-mode-badge"
-      data-er-mode={mode}
-      className={
-        isDesigner
-          ? 'inline-flex h-6 shrink-0 items-center gap-1.5 rounded-md bg-accent-primary-surface px-2 text-xs font-medium text-accent-primary'
-          : 'inline-flex h-6 shrink-0 items-center gap-1.5 rounded-md bg-bg-subtle px-2 text-xs font-medium text-text-muted'
-      }
-    >
-      <Icon className="size-3.5" />
-      <span>{label}</span>
-    </span>
+    <Tooltip>
+      <TooltipTrigger render={
+        <span
+          role="status"
+          aria-live="off"
+          data-testid="er-mode-badge"
+          data-er-mode={mode}
+          className={
+            isDesigner
+              ? 'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent-primary-surface text-xs font-medium text-accent-primary'
+              : 'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-bg-subtle text-xs font-medium text-text-muted'
+          }
+        >
+          <Icon className="size-3.5" />
+        </span>
+      } />
+      <TooltipContent side="bottom" sideOffset={4}>
+        {label}
+      </TooltipContent>
+    </Tooltip>
   )
 }
 
@@ -255,27 +273,31 @@ function ToolbarButton({
       data-testid={testId}
       className={[
         primary
-          ? 'h-7 rounded-md border-accent-primary px-2 text-xs text-accent-primary hover:bg-accent-primary-surface disabled:border-interaction-disabled disabled:text-interaction-disabled'
-          : 'h-7 rounded-md px-2 text-xs text-text-muted hover:bg-interaction-hover hover:text-text-strong disabled:text-interaction-disabled',
+          ? 'h-7 w-7 rounded-md border-accent-primary p-0 text-xs text-accent-primary hover:bg-accent-primary-surface disabled:border-interaction-disabled disabled:text-interaction-disabled'
+          : 'h-7 w-7 rounded-md p-2 text-xs text-text-muted hover:bg-interaction-hover hover:text-text-strong disabled:text-interaction-disabled',
         hasDisabledHint ? 'pointer-events-none' : '',
       ].join(' ')}
     >
       {icon}
-      <span>{label}</span>
     </Button>
   )
 
-  if (!hasDisabledHint) {
-    return button
+  if (hasDisabledHint) {
+    return (
+      <Tooltip>
+        <TooltipTrigger render={<span className="inline-flex cursor-not-allowed pointer-events-auto" />}>
+          {button}
+        </TooltipTrigger>
+        <TooltipContent>{disabledHint}</TooltipContent>
+        <span id={disabledHintId} className="sr-only">{disabledHint}</span>
+      </Tooltip>
+    )
   }
 
   return (
     <Tooltip>
-      <TooltipTrigger render={<span className="inline-flex cursor-not-allowed pointer-events-auto" />}>
-        {button}
-      </TooltipTrigger>
-      <TooltipContent>{disabledHint}</TooltipContent>
-      <span id={disabledHintId} className="sr-only">{disabledHint}</span>
+      <TooltipTrigger render={button} />
+      <TooltipContent side="bottom" sideOffset={4}>{label}</TooltipContent>
     </Tooltip>
   )
 }
