@@ -33,7 +33,7 @@ export function GenericToolCard({ part, descriptor }: { part: PartWithState; des
     <div className="my-2 rounded border bg-background p-2 text-xs">
       <div className="flex items-center gap-2">
         <Badge variant="outline" className={cn('rounded', statusStyles[status])}>{statusLabels[status]}</Badge>
-        <span className="font-mono">{descriptor.id}</span>
+        <span className="min-w-0 font-mono">{descriptor.id}</span>
       </div>
       <div className="mt-1 text-muted-foreground">{descriptor.description}</div>
     </div>

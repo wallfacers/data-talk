@@ -59,12 +59,12 @@ export function BasicTool(props: {
           data-component="tool-trigger"
           data-open={open ? 'true' : 'false'}
           onClick={handleToggle}
-          className="flex min-w-0 flex-1 items-start gap-2 text-left"
+          className="flex min-w-0 flex-1 select-text items-start gap-2 text-left"
         >
           {riskStyles && (
             <span
               data-slot="risk-dot"
-              className={cn('size-2 rounded-full', riskStyles.dot)}
+              className={cn('size-2 self-center rounded-full', riskStyles.dot)}
               aria-label={riskStyles.label}
             />
           )}
