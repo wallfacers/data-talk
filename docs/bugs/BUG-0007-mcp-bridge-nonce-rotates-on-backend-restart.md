@@ -1,7 +1,7 @@
 ---
 id: BUG-0007
 title: 后端重启后 MCP bridge nonce 漂移导致 datatalk_* 工具全部 -32001 unauthenticated bridge
-status: investigating
+status: fixed
 priority: P0
 source: manual-report
 modules:
@@ -10,7 +10,7 @@ modules:
 discovered: 2026-05-08
 discoveredBy: human
 testRunId: null
-fixCommit: null
+fixCommit: 4168e3f9
 fixPlanRef: null
 duplicateOf: null
 regression: false
@@ -112,6 +112,6 @@ OpenCode 在启动时把 plugin 当 ESM 模块加载一次，`BRIDGE_NONCE` 进�
 
 ## Notes
 
-- 修复代码已实现并 mvn verify 通过，但**尚未 commit**；fixCommit 待 commit 后回填，状态推进 `investigating → fixed` 也待 commit 后进行
 - 历史孤儿 OpenCode 进程 v1.4.7（与配置 `serve.version: 1.14.41` 不一致）是次要现象，本 BUG 不处理；用户后续重启应让 v1.14.41 真正接管
 - 当前修复假设 plugin 文件是 nonce 的权威源（与设计 spec §6.3 一致）。任何能改 plugin 文件的本机 actor 同样能改任何东西，因此复用文件 nonce 不引入新攻击面
+- `verified` 推进留待用户在重启后实景调用 `datatalk_get_data_context` / `datatalk_list_connections` 确认不再返回 -32001 之后再做

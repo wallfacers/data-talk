@@ -20,7 +20,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 | ID | Title | Status | Priority | Owner |
 |----|-------|--------|----------|-------|
-| [BUG-0007](BUG-0007-mcp-bridge-nonce-rotates-on-backend-restart.md) | 后端重启后 MCP bridge nonce 漂移导致 datatalk_* 工具全部 -32001 | investigating | P0 | agent |
+| [BUG-0007](BUG-0007-mcp-bridge-nonce-rotates-on-backend-restart.md) | 后端重启后 MCP bridge nonce 漂移导致 datatalk_* 工具全部 -32001 | fixed | P0 | agent |
 
 ## Recently Closed（最近 30 天，status = verified | closed）
 
