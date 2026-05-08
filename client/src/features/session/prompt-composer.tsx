@@ -337,9 +337,9 @@ function InnerComposer() {
       <InputGroup
         data-bang-query-mode={isBangQueryMode ? 'true' : undefined}
         className={cn(
-          'rounded-2xl border-border/80 !border-border/80 shadow-sm transition-all focus-within:!border-foreground/40 focus-within:shadow-md dark:!border-white/25 dark:focus-within:!border-white/40',
+          'rounded-2xl border-border/80 !border-border/80 !bg-bg-subtle/30 dark:!bg-bg-subtle/30 shadow-sm transition-all focus-within:!border-foreground/40 focus-within:shadow-md dark:!border-white/25 dark:focus-within:!border-white/40',
           isBangQueryMode && [
-            'border-amber-500/45 !border-amber-500/45 bg-amber-50/70 shadow-amber-950/5 focus-within:!border-amber-500/70 dark:!border-amber-400/40 dark:bg-amber-950/20 dark:shadow-none',
+            'border-amber-500/45 !border-amber-500/45 !bg-amber-50/70 shadow-amber-950/5 focus-within:!border-amber-500/70 dark:!border-amber-400/40 dark:!bg-amber-950/20 dark:shadow-none',
           ],
         )}
       >
