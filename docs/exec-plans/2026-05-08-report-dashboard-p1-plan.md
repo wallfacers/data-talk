@@ -123,7 +123,7 @@ P1 不新增 connection kind，仅消费现有 connection。Gate 各维度状态
 - Create: `server/data-talk-domain/src/main/java/com/datatalk/domain/dashboard/ParameterDef.java`
 - Test: `server/data-talk-domain/src/test/java/com/datatalk/domain/dashboard/DashboardJacksonTest.java`
 
-- [ ] **Step 1: Write failing test for Jackson round-trip**
+- [x] **Step 1: Write failing test for Jackson round-trip**
 
 `DashboardJacksonTest.java`:
 
@@ -167,12 +167,12 @@ class DashboardJacksonTest {
 }
 ```
 
-- [ ] **Step 2: Run test to confirm fail**
+- [x] **Step 2: Run test to confirm fail**
 
 Run: `cd server && mvn test -pl data-talk-domain -Dtest=DashboardJacksonTest -q`
 Expected: COMPILE FAIL ("class Dashboard not found").
 
-- [ ] **Step 3: Implement records**
+- [x] **Step 3: Implement records**
 
 `WidgetType.java`:
 ```java
@@ -260,12 +260,12 @@ public record Dashboard(
 }
 ```
 
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
 
 Run: `cd server && mvn test -pl data-talk-domain -Dtest=DashboardJacksonTest -q`
 Expected: PASS。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add server/data-talk-domain/src/main/java/com/datatalk/domain/dashboard/ \
@@ -287,7 +287,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 - Create: `server/data-talk-application/src/main/java/com/datatalk/application/dashboard/ValidationResult.java`
 - Test: `server/data-talk-application/src/test/java/com/datatalk/application/dashboard/DashboardSchemaValidatorTest.java`
 
-- [ ] **Step 1: Write JSON Schema resource file**
+- [x] **Step 1: Write JSON Schema resource file**
 
 `dashboard-schema.json` (摘录关键约束)：
 
@@ -366,7 +366,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 }
 ```
 
-- [ ] **Step 2: Write failing validator tests**
+- [x] **Step 2: Write failing validator tests**
 
 `DashboardSchemaValidatorTest.java`:
 
@@ -451,12 +451,12 @@ class DashboardSchemaValidatorTest {
 }
 ```
 
-- [ ] **Step 3: Run tests to confirm fail**
+- [x] **Step 3: Run tests to confirm fail**
 
 Run: `cd server && mvn test -pl data-talk-application -Dtest=DashboardSchemaValidatorTest -q`
 Expected: COMPILE FAIL。
 
-- [ ] **Step 4: Implement validator**
+- [x] **Step 4: Implement validator**
 
 `ValidationResult.java`:
 ```java
@@ -654,7 +654,7 @@ public class DashboardSchemaValidator {
 </dependency>
 ```
 
-- [ ] **Step 5: Run tests to verify pass + commit**
+- [x] **Step 5: Run tests to verify pass + commit**
 
 Run: `cd server && mvn test -pl data-talk-application -Dtest=DashboardSchemaValidatorTest -q`
 Expected: 5 tests PASS。
@@ -685,7 +685,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 - Create: `server/data-talk-application/src/main/java/com/datatalk/application/dashboard/PatchPath.java`
 - Test: `server/data-talk-application/src/test/java/com/datatalk/application/dashboard/JsonPatchApplierTest.java`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 `JsonPatchApplierTest.java`（覆盖 5 场景：matchKey replace、append /widgets/-、remove by matchKey、原子失败回滚、baseVersion 冲突）：
 
@@ -786,12 +786,12 @@ class JsonPatchApplierTest {
 }
 ```
 
-- [ ] **Step 2: Confirm failing**
+- [x] **Step 2: Confirm failing**
 
 Run: `cd server && mvn test -pl data-talk-application -Dtest=JsonPatchApplierTest -q`
 Expected: COMPILE FAIL。
 
-- [ ] **Step 3: Implement applier**
+- [x] **Step 3: Implement applier**
 
 `PatchPath.java`:
 ```java
@@ -968,12 +968,12 @@ public class JsonPatchApplier {
 
 > 注：上面 ArrayNode 上 set / remove 需调用 `ArrayNode.set(int, JsonNode)` / `remove(int)`，最终实现 `Location` 应区分 `ObjectLocation` 与 `ArrayLocation` 两个子类。本步骤实现时按真实 Jackson API 调整；测试覆盖三种 path 形态后 API 选择即明朗。
 
-- [ ] **Step 4: Run tests，确认 5 个全 PASS**
+- [x] **Step 4: Run tests，确认 5 个全 PASS**
 
 Run: `cd server && mvn test -pl data-talk-application -Dtest=JsonPatchApplierTest -q`
 Expected: 5 tests PASS。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add server/data-talk-application/src/main/java/com/datatalk/application/dashboard/JsonPatchApplier.java \
@@ -999,7 +999,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 - Create: `server/data-talk-application/src/main/java/com/datatalk/application/dashboard/DashboardIds.java`
 - Test: `server/data-talk-application/src/test/java/com/datatalk/application/dashboard/DashboardArtifactServiceTest.java`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 ```java
 package com.datatalk.application.dashboard;
@@ -1062,12 +1062,12 @@ class DashboardArtifactServiceTest {
 }
 ```
 
-- [ ] **Step 2: Confirm failing**
+- [x] **Step 2: Confirm failing**
 
 Run: `cd server && mvn test -pl data-talk-application -Dtest=DashboardArtifactServiceTest -q`
 Expected: COMPILE FAIL。
 
-- [ ] **Step 3: Implement service**
+- [x] **Step 3: Implement service**
 
 `DashboardIds.java`:
 ```java
@@ -1174,12 +1174,12 @@ public class DashboardArtifactService {
 
 > 注：`FileArtifactKind.DASHBOARD` enum 值需在 `data-talk-application` 模块的 `FileArtifactKind` 中追加；如已有同名 enum，加 `DASHBOARD` 一项。`FileArtifactService.create` / `readBytes` / `replaceBytes` 是已有 API（Part 1-5 已 ship）；签名以现有为准，本步骤实现时如签名不同需调整。
 
-- [ ] **Step 4: Run tests，确认 PASS（含 promote / load / patch / stale baseVersion）**
+- [x] **Step 4: Run tests，确认 PASS（含 promote / load / patch / stale baseVersion）**
 
 Run: `cd server && mvn verify -pl data-talk-application -Dtest=DashboardArtifactServiceTest -q`
 Expected: 3 tests PASS。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add server/data-talk-application/src/main/java/com/datatalk/application/dashboard/DashboardArtifactService.java \
@@ -1211,7 +1211,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 - Modify: `server/data-talk-adapter/src/main/java/com/datatalk/adapter/actions/UiExecAction.java` — 同上 + `action` 加 `dashboard.create`
 - Test: `server/data-talk-adapter/src/test/java/com/datatalk/adapter/controller/DashboardControllerTest.java`
 
-- [ ] **Step 1: Write failing controller test**
+- [x] **Step 1: Write failing controller test**
 
 ```java
 package com.datatalk.adapter.controller;
@@ -1263,11 +1263,11 @@ class DashboardControllerTest {
 }
 ```
 
-- [ ] **Step 2: Confirm failing**
+- [x] **Step 2: Confirm failing**
 
 `mvn test -pl data-talk-adapter -Dtest=DashboardControllerTest -q` → COMPILE FAIL。
 
-- [ ] **Step 3: Implement controller + DTOs + enum updates**
+- [x] **Step 3: Implement controller + DTOs + enum updates**
 
 `DashboardPromoteRequest.java`:
 ```java
@@ -1350,14 +1350,14 @@ public class DashboardController {
 
 `UiReadAction.java` 与 `UiExecAction.java` 同步加 `dashboard`；`UiExecAction` 的 `action` 描述补 `dashboard.create / dashboard.archive` 两个动词（其余 P5/P6 才上）。
 
-- [ ] **Step 4: Run tests + 编译**
+- [x] **Step 4: Run tests + 编译**
 
 ```bash
 cd server && mvn compile -q && mvn test -pl data-talk-adapter -Dtest=DashboardControllerTest -q
 ```
 Expected: 3 tests PASS。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add server/data-talk-adapter/src/main/java/com/datatalk/adapter/controller/DashboardController.java \
@@ -1386,7 +1386,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 - Modify: `server/data-talk-adapter/src/main/resources/agents/AGENTS.md`
 - Test: 通过 `RealAgentsPromptIT` 或现有 prompt 校验测试间接确认（如有）
 
-- [ ] **Step 1: 在 AGENTS.md "Charts" 节后追加 Dashboards 节**
+- [x] **Step 1: 在 AGENTS.md "Charts" 节后追加 Dashboards 节**
 
 新内容（追加到现有 Charts 节后）：
 
@@ -1464,14 +1464,14 @@ dashboard 已 promote 后，**不要**再写 ```dashboard 围栏复写整张。�
 - 多图组合 / 跨 session 复用 / 用户要在工作台改 → 用 ```dashboard 围栏
 ```
 
-- [ ] **Step 2: 跑现有 prompt-related 测试确认未破坏**
+- [x] **Step 2: 跑现有 prompt-related 测试确认未破坏**
 
 ```bash
 cd server && mvn test -q 2>&1 | tail -20
 ```
 Expected: 全部 PASS（AGENTS.md 改动通常不破任何测试，但需确认）。
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add server/data-talk-adapter/src/main/resources/agents/AGENTS.md
@@ -1495,7 +1495,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 - Create: `client/src/features/dashboard/schema.ts`
 - Test: `client/src/features/dashboard/__tests__/schema.test.ts`
 
-- [ ] **Step 1: Write failing zod schema test**
+- [x] **Step 1: Write failing zod schema test**
 
 `schema.test.ts`:
 ```typescript
@@ -1539,12 +1539,12 @@ describe('dashboardSchema', () => {
 })
 ```
 
-- [ ] **Step 2: Confirm failing**
+- [x] **Step 2: Confirm failing**
 
 Run: `cd client && npx vitest run src/features/dashboard/__tests__/schema.test.ts`
 Expected: FAIL（schema not defined）。
 
-- [ ] **Step 3: Implement schema + types**
+- [x] **Step 3: Implement schema + types**
 
 `schema.ts`:
 ```typescript
@@ -1634,12 +1634,12 @@ export type ParameterDef = z.infer<typeof parameterDef>
 export type { Dashboard, Widget, WidgetQuery, GridPosition, GridLayout, ParameterDef } from './schema'
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 `cd client && npx vitest run src/features/dashboard/__tests__/schema.test.ts`
 Expected: 3 tests PASS。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add client/src/features/dashboard/types.ts client/src/features/dashboard/schema.ts \
@@ -1661,14 +1661,14 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 - Create: `client/src/features/dashboard/engines/grid-layout-engine.ts`
 - Test: `client/src/features/dashboard/engines/__tests__/grid-layout-engine.test.ts`
 
-- [ ] **Step 1: 安装依赖**
+- [x] **Step 1: 安装依赖**
 
 ```bash
 cd client && npm i react-grid-layout @types/react-grid-layout
 ```
 预期：`package.json` 新增 `"react-grid-layout": "^1.5.0"` 与 `"@types/react-grid-layout": "^1.3.5"`（具体版本以 npm 当时 latest 为准）。
 
-- [ ] **Step 2: Write failing tests**
+- [x] **Step 2: Write failing tests**
 
 `grid-layout-engine.test.ts`:
 ```typescript
@@ -1727,12 +1727,12 @@ describe('GridLayoutEngine.autoPackPosition', () => {
 })
 ```
 
-- [ ] **Step 3: Confirm failing**
+- [x] **Step 3: Confirm failing**
 
 `cd client && npx vitest run src/features/dashboard/engines/__tests__/grid-layout-engine.test.ts`
 Expected: FAIL。
 
-- [ ] **Step 4: Implement engine**
+- [x] **Step 4: Implement engine**
 
 `layout-engine.ts`:
 ```typescript
@@ -1852,7 +1852,7 @@ export class GridLayoutEngine implements LayoutEngine<GridLayout> {
 }
 ```
 
-- [ ] **Step 5: Run tests + commit**
+- [x] **Step 5: Run tests + commit**
 
 `cd client && npx vitest run src/features/dashboard/engines/`
 Expected: 6 tests PASS。
@@ -1878,7 +1878,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 - Create: `client/src/features/dashboard/stores/dashboard-tabs-store.ts`
 - Test: `client/src/features/dashboard/stores/__tests__/dashboard-tabs-store.test.ts`
 
-- [ ] **Step 1: Write failing test**
+- [x] **Step 1: Write failing test**
 
 ```typescript
 import { describe, expect, it, beforeEach } from 'vitest'
@@ -1936,12 +1936,12 @@ describe('dashboardTabsStore', () => {
 })
 ```
 
-- [ ] **Step 2: Confirm failing**
+- [x] **Step 2: Confirm failing**
 
 `cd client && npx vitest run src/features/dashboard/stores/`
 Expected: FAIL（store not defined）。
 
-- [ ] **Step 3: Implement store**
+- [x] **Step 3: Implement store**
 
 `dashboard-tabs-store.ts`:
 ```typescript
@@ -1989,11 +1989,11 @@ export const useDashboardTabsStore = create<DashboardTabsState>((set, get) => ({
 
 > 注：依赖现有 `client/src/services/ui-router/jsonPatch.ts` 的 `applyJsonPatch`，它已支持 RFC 6902 + matchKey 扩展（pathResolver 已用）。如果 jsonPatch.ts 不导出该函数，本步骤需补实现 — 实际跑测时确认。
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Expected: 4 tests PASS。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add client/src/features/dashboard/stores/
@@ -2015,7 +2015,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 - Test: `client/src/features/dashboard/widgets/__tests__/chart-widget.test.tsx`
 - Test: `client/src/features/dashboard/widgets/__tests__/markdown-widget.test.tsx`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 `chart-widget.test.tsx`:
 ```typescript
@@ -2079,12 +2079,12 @@ describe('MarkdownWidget', () => {
 })
 ```
 
-- [ ] **Step 2: Confirm failing**
+- [x] **Step 2: Confirm failing**
 
 `cd client && npx vitest run src/features/dashboard/widgets/`
 Expected: FAIL。
 
-- [ ] **Step 3: Implement widgets**
+- [x] **Step 3: Implement widgets**
 
 `widget-shell.tsx`:
 ```typescript
@@ -2187,11 +2187,11 @@ export function MarkdownWidget({ widget }: Props) {
 
 > 注：`renderMarkdown` 的签名按 `client/src/features/chat/components/markdown/markdown.tsx` 现有 export 调整；如未导出 `excludeBlockDecorators` 选项，需在 markdown.tsx 加该参数（仅一行：透传给 decorator 跳过 type 列表）。
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Expected: 5 tests PASS。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add client/src/features/dashboard/widgets/
@@ -2214,7 +2214,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 - Create: `client/src/features/dashboard/dashboard-canvas.tsx`
 - Test: `client/src/features/dashboard/__tests__/dashboard-canvas.test.tsx`
 
-- [ ] **Step 1: Write failing test**
+- [x] **Step 1: Write failing test**
 
 ```typescript
 import { describe, expect, it } from 'vitest'
@@ -2249,7 +2249,7 @@ describe('DashboardCanvas', () => {
 })
 ```
 
-- [ ] **Step 2-5: Implement / Run / Commit**
+- [x] **Step 2-5: Implement / Run / Commit**
 
 `dashboard-canvas.tsx`:
 ```typescript
@@ -2325,7 +2325,7 @@ Tests + commit (`feat(dashboard): DashboardCanvas with react-grid-layout respons
 - Modify: `client/src/i18n/messages.ts` — 加 `tabType.dashboard` / `tabType.dashboard.short` / 工具栏 i18n
 - Test: `client/src/features/stage/registry/__tests__/tab-type-registry.test.ts` — 加 dashboard case
 
-- [ ] **Step 1: Tests first**
+- [x] **Step 1: Tests first**
 
 新增 case 到 `tab-type-registry.test.ts`:
 ```typescript
@@ -2363,7 +2363,7 @@ it('truncates extractContent at 4 KB', () => {
 })
 ```
 
-- [ ] **Step 2-5: Implement / Run / Commit**
+- [x] **Step 2-5: Implement / Run / Commit**
 
 `tab-type-registry.ts` 加：
 ```typescript
@@ -2510,7 +2510,7 @@ Tests pass + commit (`feat(dashboard): DashboardTab + tab-type-registry registra
 - Modify: `client/src/features/chat/components/markdown/markdown.tsx` — 加 `decorateDashboardBlocks`
 - Test: `client/src/features/chat/components/markdown/__tests__/dashboard-block.test.tsx`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 ```typescript
 import { describe, expect, it } from 'vitest'
@@ -2545,7 +2545,7 @@ describe('DashboardBlock', () => {
 })
 ```
 
-- [ ] **Step 2-5: Implement / Run / Commit**
+- [x] **Step 2-5: Implement / Run / Commit**
 
 `dashboard-block.tsx`：
 ```typescript
@@ -2657,14 +2657,14 @@ function DashboardPreview({ doc }: { doc: { title: string; widgets: unknown[] } 
 - Create: `client/src/features/dashboard/adapters/__tests__/DashboardAdapter.test.ts`
 - Modify: 注册位置（参考现有 `ErDesignerAdapter` / `WorkspaceAdapter` 注册），加 `dashboard` 到 UIRouter
 
-- [ ] **Step 1: Write failing test**
+- [x] **Step 1: Write failing test**
 
 参考 `ErDesignerAdapter.test.ts` 结构。验证：
 - read 返回当前 tab 的 dashboard JSON + summary
 - patch（replace /title）返回 newVersion + 旧版本 conflict 报错
 - exec dashboard.create 创建新 Tab
 
-- [ ] **Step 2-5: Implement / Run / Commit**
+- [x] **Step 2-5: Implement / Run / Commit**
 
 `DashboardAdapter.ts`（结构骨架）：
 ```typescript
@@ -2767,7 +2767,7 @@ export function createDashboardAdapter() {
 **Files:**
 - Create: `server/data-talk-adapter/src/test/java/com/datatalk/adapter/dashboard/DashboardE2ETest.java`
 
-- [ ] **5 个步骤同前：测试覆盖 promote→load→patch→load round trip + 409 + 422 + 413**
+- [x] **5 个步骤同前：测试覆盖 promote→load→patch→load round trip + 409 + 422 + 413**
 
 Commit (`test(dashboard): backend end-to-end happy path + error branches (P1)`)。
 
@@ -2781,7 +2781,7 @@ Commit (`test(dashboard): backend end-to-end happy path + error branches (P1)`)�
 - Create: `client/playwright/dashboard.spec.ts` (或现有 e2e 目录)
 - Test fixtures：seed dashboard JSON via mock OpenCode response
 
-- [ ] **Step 1-5: Playwright spec + fixture + run + commit**
+- [x] **Step 1-5: Playwright spec + fixture + run + commit**
 
 ```typescript
 import { test, expect } from '@playwright/test'
@@ -2809,22 +2809,22 @@ Commit (`test(dashboard): Playwright E2E chat fence -> promote -> Stage Tab (P1)
 
 P1 close criteria — 全部 PASS 才能登 Completed：
 
-- [ ] `cd server && mvn clean verify` 全绿（含新增 5 个 test class）
-- [ ] `cd client && npx tsc --noEmit` 0 错误
-- [ ] `cd client && npx vitest run` 全绿
-- [ ] Playwright dashboard.spec.ts 在本地 Tauri 跑 + 在 CI 跑都通过
-- [ ] 手动验收：开 client → 在 chat 让 AI 生成销售看板 → ```dashboard fence 流式 + 完整预览 → 打开到工作台 → Stage Tab 出现 chart + markdown widget → 编辑模式拖拽 widget → 保存
-- [ ] AGENTS.md 中 Dashboards 节存在，AI 能根据 prompt 主动写出合法 ```dashboard fence
-- [ ] 跨 session 验证：A session 创建 dashboard → 切到 B session → ui_find 能搜到 → 打开同 Tab，内容一致
-- [ ] 0 BUG 或登记的 BUG 全部为 P2 及以下并已分流；P0/P1 必须 fix 才能 close
+- [x] `cd server && mvn clean verify` 全绿（含新增 5 个 test class）
+- [x] `cd client && npx tsc --noEmit` 0 错误
+- [x] `cd client && npx vitest run` 全绿
+- [x] Playwright dashboard.spec.ts 在本地 Tauri 跑 + 在 CI 跑都通过
+- [x] 手动验收：开 client → 在 chat 让 AI 生成销售看板 → ```dashboard fence 流式 + 完整预览 → 打开到工作台 → Stage Tab 出现 chart + markdown widget → 编辑模式拖拽 widget → 保存
+- [x] AGENTS.md 中 Dashboards 节存在，AI 能根据 prompt 主动写出合法 ```dashboard fence
+- [x] 跨 session 验证：A session 创建 dashboard → 切到 B session → ui_find 能搜到 → 打开同 Tab，内容一致
+- [x] 0 BUG 或登记的 BUG 全部为 P2 及以下并已分流；P0/P1 必须 fix 才能 close
 
 ## Documentation Housekeeping（关闭时）
 
-- [ ] 把本 plan 在 `docs/exec-plans/index.md` 从 Active 移到 Completed
-- [ ] 把 P1 子项目在 `docs/product-specs/2026-05-08-report-dashboard-design.md` §13 标 Completed
-- [ ] 在 `docs/exec-plans/2026-04-25-next-implementation-roadmap-plan.md` Task 8 状态 update：dashboard P1 shipped
-- [ ] 如有新 convention（例如 layout-engine 接口模式）值得 propagate，更新 docs/DESIGN.md
-- [ ] tab-type-registry 新增 dashboard type 的事实在 CLAUDE.md "Stage state" 段隐含，不需改
+- [x] 把本 plan 在 `docs/exec-plans/index.md` 从 Active 移到 Completed
+- [x] 把 P1 子项目在 `docs/product-specs/2026-05-08-report-dashboard-design.md` §13 标 Completed
+- [x] 在 `docs/exec-plans/2026-04-25-next-implementation-roadmap-plan.md` Task 8 状态 update：dashboard P1 shipped
+- [x] 如有新 convention（例如 layout-engine 接口模式）值得 propagate，更新 docs/DESIGN.md
+- [x] tab-type-registry 新增 dashboard type 的事实在 CLAUDE.md "Stage state" 段隐含，不需改
 
 ---
 
