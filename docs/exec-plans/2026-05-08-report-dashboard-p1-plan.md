@@ -5,7 +5,7 @@
 **Goal:** 落地 Report/Dashboard 第一阶段端到端 happy path：chat ` ```dashboard ` 围栏首生成 → 工具栏"打开到工作台" → Stage Tab 内 12 栏栅格渲染 chart + markdown widget → 简化 ui_patch（widget add/remove/replace + layout）跑通增量改。
 
 **Architecture:**
-- 后端：Java 21 records 域模型 + JSON Schema 校验 + 自定义 JsonPatchApplier（matchKey 路径 → 数组下标，原子应用） + 复用 file_artifact Part 1-5 系统 + 新 `DashboardController` REST + 把 `dashboard` 加入 `UiPatchAction` / `UiReadAction` / `UiExecAction` 的 `object` enum。
+- 后端：Java 21 records 域模型 + JSON Schema 校验 + 自定义 JsonPatchApplier（matchKey 路径 → 数组下标，原子应用） + 接入 file_artifact Part 1-5 系统（**需要前置增强 — 见下文 Depends On**） + 新 `DashboardController` REST + 把 `dashboard` 加入 `UiPatchAction` / `UiReadAction` / `UiExecAction` 的 `object` enum。
 - 前端：`LayoutEngine` 接口 + `GridLayoutEngine`（react-grid-layout v1）+ Zustand `dashboard-tabs-store` + chart / markdown widget 复用 chart fence renderer + `DashboardCanvas` 组合 + `DashboardTab` Stage 容器 + `dashboard-block` chat 围栏 + `DashboardAdapter` 接 UIRouter。
 
 **Tech Stack:** Spring Boot 3.5 / Java 21 / Jackson；React 19 / TypeScript / Zustand / TanStack Query / vitest / Playwright；react-grid-layout 1.5+（新增）；echarts 5.6 / zod 4.3（已有）。
@@ -26,6 +26,16 @@
 | C6 | DashboardStore 绕开 FileArtifactService，spec §10 artifact 体系断链（连接删除/Files Library/FTS） | **Open** | 拆后续 PR 单独处理，需接入 FileArtifactService watcher/reconciler |
 | I1 | DashboardControllerIT 编译通过但运行受限于预存 DiagnosticsServiceTest 编译错误 | Test file exists | 待预存问题修复后验证 |
 | I2 | Playwright dashboard.spec.ts 为骨架，需运行环境 + 数据 seed | Skeleton | 待后续 E2E 专项执行 |
+
+## Depends On（先决前置）
+
+> **Task B4 阻塞前置**：本 plan Task B4 假设的 `FileArtifactService.create` / `readBytes` / `replaceBytes` 在当前代码中**不存在**（现有 API 是 `archiveCandidate` / `archive` / `discard`，且物理路径硬绑 `workspaces/<connectionId>/`，不容纳 dashboard 的"connection_id 表归属、不表物理位置"语义）。
+>
+> 必须先完成 dashboard ↔ file_artifact 集成增强（独立 plan）：在 `FileArtifactService` 新增 `registerExternal` / `readBytes` / `replaceBytesAtomic` API，加 `external` 行标记，让 `FileArtifactReconciler` 跳过 external 行的孤儿检查；同时启用 `FileArtifactKind.DASHBOARD` enum 值。
+>
+> - **Spec：** `docs/product-specs/2026-05-DD-dashboard-file-artifact-integration-design.md`（pending；写完回填日期）
+> - **Plan：** `docs/exec-plans/2026-05-DD-dashboard-file-artifact-integration-plan.md`（pending；写完回填日期）
+> - **影响范围：** Task B4 必须在前置 plan 全绿后再开工；其它 Task（B1/B2/B3/B5/B6/F\*）不依赖前置，可并行启动。
 
 ## Design Inputs（来自 client/DESIGN.md，本 P1 强制约束）
 
@@ -66,7 +76,7 @@ P1 不新增 connection kind，仅消费现有 connection。Gate 各维度状态
 | `server/data-talk-domain/src/main/java/com/datatalk/domain/dashboard/GridPosition.java` | record：x / y / w / h / z |
 | `server/data-talk-domain/src/main/java/com/datatalk/domain/dashboard/WidgetQuery.java` | record：connectionId / sql / paramRefs (Map<String,String>) |
 | `server/data-talk-domain/src/main/java/com/datatalk/domain/dashboard/ParameterDef.java` | record：id / scope / ownerWidgetId / name / type / default |
-| `server/data-talk-application/src/main/java/com/datatalk/application/dashboard/DashboardArtifactService.java` | promote / load / patch / writeback；调用 FileArtifactService |
+| `server/data-talk-application/src/main/java/com/datatalk/application/dashboard/DashboardArtifactService.java` | promote / load / patch / writeback；调用 FileArtifactService 待新增 API（`registerExternal` / `readBytes` / `replaceBytesAtomic`，由前置 integration plan 落地，见 §Depends On） |
 | `server/data-talk-application/src/main/java/com/datatalk/application/dashboard/DashboardSchemaValidator.java` | JSON 校验：schema 必填字段 + 跨 widget 引用 + 布局不变量 + paramRefs map 完整性 |
 | `server/data-talk-application/src/main/java/com/datatalk/application/dashboard/JsonPatchApplier.java` | 自定义 RFC 6902 子集（add/remove/replace），`/widgets[id=...]` matchKey 路径，原子性，baseVersion 校验 |
 | `server/data-talk-application/src/main/resources/dashboard/dashboard-schema.json` | JSON Schema 文件（前后端共用，validator 加载） |
@@ -1000,7 +1010,9 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 
 ### Task B4: DashboardArtifactService（file_artifact 集成 + 版本管理）
 
-**Goal:** 把 dashboard 文档持久化到 file_artifact 系统（kind=`dashboard`，路径 `~/.data-talk/dashboards/<id>.dashboard.json`），提供 promote / load / patch 三个语义。
+> ⚠️ **BLOCKED until prerequisite plan ships.** 本 task 依赖 dashboard ↔ file_artifact 集成增强 plan（见顶部 §Depends On）。在前置 plan 提供 `FileArtifactService.registerExternal` / `readBytes` / `replaceBytesAtomic` API、启用 `FileArtifactKind.DASHBOARD` enum、并完成 reconciler external-row 旁路之前，**禁止启动本 task 的实现**。下面的代码片段是落地后的目标形态，不是现状能直接编译的代码。
+
+**Goal:** 把 dashboard 文档持久化到 file_artifact 系统（kind=`dashboard`，物理路径 `~/.data-talk/dashboards/<id>.dashboard.json`，按 §10.1 不绑 connection 目录），提供 promote / load / patch 三个语义。Dashboard 物理文件由 `DashboardArtifactService` 自管，但通过前置 plan 引入的 external-registration API 在 `file_artifact` 表登记一行（`kind=dashboard`、`scope=workspace`、`connection_id=defaultConnectionId | NULL`、`external=true`），从而被 `ConnectionDeletionService` 两阶段清理 / Files Library / housekeeping 一致覆盖。
 
 **Files:**
 - Create: `server/data-talk-application/src/main/java/com/datatalk/application/dashboard/DashboardArtifactService.java`
@@ -1180,7 +1192,12 @@ public class DashboardArtifactService {
 }
 ```
 
-> 注：`FileArtifactKind.DASHBOARD` enum 值需在 `data-talk-application` 模块的 `FileArtifactKind` 中追加；如已有同名 enum，加 `DASHBOARD` 一项。`FileArtifactService.create` / `readBytes` / `replaceBytes` 是已有 API（Part 1-5 已 ship）；签名以现有为准，本步骤实现时如签名不同需调整。
+> **API 与 enum 落地由前置 integration plan 负责，本 task 仅消费：**
+>
+> - `FileArtifactKind` 位于 `com.datatalk.domain.fileartifact`（**domain** 模块，非 application；早期文档误写为 application），当前枚举值 `REPORT / ER_DIAGRAM / SQL_SCRIPT / DATASET / OTHER`，**`DASHBOARD` 值在前置 integration plan 中追加并接通 `dbValue()`**。本 task 直接 import `com.datatalk.domain.fileartifact.FileArtifactKind.DASHBOARD`。
+> - `FileArtifactService.create` / `readBytes` / `replaceBytes` **不是已有 API**（早期表述失实）。当前 `FileArtifactService` 只暴露 `archiveCandidate` / `archive` / `discard` 三套用于 frontmatter-driven session→workspace 归档的方法，假定物理路径在 `workspaces/<connectionId>/<filename>`，且要求 YAML frontmatter 头识别 kind/title — 这两个假设都与 dashboard（JSON 无 frontmatter、connection 与物理路径解耦）不兼容。
+> - 上述代码片段中调用的 `fileArtifactService.create(id, FileArtifactKind.DASHBOARD, connectionId, null, "dashboards/" + id + ".dashboard.json", bytes, originSessionId)` / `readBytes(id)` / `replaceBytes(id, bytes)` 是**前置 integration plan 引入的新 API 的目标形态**：`registerExternal(id, kind, scope, connectionId, sessionId, absolutePath, bytes, metadata)` / `readBytes(artifactId)` / `replaceBytesAtomic(artifactId, bytes)`；签名以前置 plan 实际落地为准，本 task 落地时按实际签名调整。
+> - 实施顺序：本 task **必须**在前置 integration plan 全绿（含 reconciler external-row 旁路测试通过）后再启动，否则上述测试既无法编译也无法运行。
 
 - [x] **Step 4: Run tests，确认 PASS（含 promote / load / patch / stale baseVersion）**
 
@@ -1192,14 +1209,14 @@ Expected: 3 tests PASS。
 ```bash
 git add server/data-talk-application/src/main/java/com/datatalk/application/dashboard/DashboardArtifactService.java \
         server/data-talk-application/src/main/java/com/datatalk/application/dashboard/DashboardIds.java \
-        server/data-talk-application/src/test/java/com/datatalk/application/dashboard/DashboardArtifactServiceTest.java \
-        server/data-talk-application/src/main/java/com/datatalk/application/fileartifact/FileArtifactKind.java
+        server/data-talk-application/src/test/java/com/datatalk/application/dashboard/DashboardArtifactServiceTest.java
 git commit -m "feat(dashboard): DashboardArtifactService promote/load/patch with file_artifact (P1)
 
 - Promote validates schema + assigns id/version/timestamps
 - File path ~/.data-talk/dashboards/<id>.dashboard.json (not connection-scoped)
 - Patch enforces baseVersion + 256 KB upper bound
-- Adds FileArtifactKind.DASHBOARD enum
+- Consumes FileArtifactKind.DASHBOARD + registerExternal/replaceBytesAtomic
+  (introduced by prerequisite dashboard-file-artifact-integration plan)
 
 Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 ```
@@ -2841,7 +2858,7 @@ P1 close criteria — 全部 PASS 才能登 Completed：
 - **react-grid-layout 与 React 19 兼容性**：v1.5+ 已支持 React 18，需在 install 时验证。如不兼容，降级到 react-resizable + 自实现简化布局（成本上升）
 - **markdown 渲染器 excludeBlockDecorators 参数**：现有 `markdown.tsx` 可能未导出该参数，需 1 行改动。如改动副作用大，改为新建 `dashboard-markdown.tsx` 复刻一个简化版
 - **JsonPatchApplier 复杂度**：matchKey path 与 ArrayNode location 的 set/remove 真实 API 需要在 Step 3 实现时按 Jackson 当前版本 ArrayNode 签名调整；测试覆盖足够即可放心调
-- **FileArtifactService API 签名**：本计划假设 `create` 接受 (id, kind, connectionId, sessionId, relativePath, bytes, originSessionId)；如 Part 1-5 实际签名不同，B4 实施时按现有签名调
+- **FileArtifactService 集成**：B4 假设的 `create` / `readBytes` / `replaceBytes` API 与 `FileArtifactKind.DASHBOARD` enum 当前**均不存在**（详见顶部 §Depends On）。这不是签名风险，是**真实的前置缺口**：必须先完成 dashboard ↔ file_artifact 集成增强 plan，才能开 B4。前置 plan 落地后，本 task 中的具体方法名 / 签名以前置 plan 为准。
 - **widgetId 格式 `<type>_w_<token>`**：与现有 ER 不一致（ER 用 `t_xxx` / `c_xxx`），但更具自描述性。如团队偏好与 ER 一致，可改为 `w_xxx` 简化
 - **Open Questions（spec §15）**：本 plan 不解决，留作 phase 之间的产品决策点
 
