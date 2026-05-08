@@ -32,7 +32,7 @@ public class UiPatchAction implements ActionHandler<Map, Map> {
                 Map.entry("properties", Map.ofEntries(
                         Map.entry("object", Map.of(
                                 "type", "string",
-                                "enum", List.of("query_editor", "er_inspector", "er_designer"),
+                                "enum", List.of("query_editor", "er_inspector", "er_designer", "dashboard"),
                                 "description", "Tab type that owns the patch target."
                         )),
                         Map.entry("target", Map.of(
