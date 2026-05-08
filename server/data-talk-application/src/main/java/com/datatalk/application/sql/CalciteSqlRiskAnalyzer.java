@@ -857,7 +857,7 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
         if (normalized.startsWith("recover table")) {
             return SqlRiskAnalysis.medium("tidb_recover_table");
         }
-        if (normalized.startsWith("alter table") && normalized.contains("compact")) {
+        if (normalized.startsWith("alter table") && normalized.matches("alter table\\s+\\S+\\s+compact(\\s.*)?")) {
             return SqlRiskAnalysis.medium("tidb_alter_compact");
         }
         if (normalized.startsWith("admin check table") || normalized.startsWith("admin check index")) {

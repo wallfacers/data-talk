@@ -1233,6 +1233,22 @@ class CalciteSqlRiskAnalyzerTest {
         assertThat(analyzer.analyze("ALTER TABLE t1 COMPACT", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L2);
     }
     @Test
+    void tidb_alter_table_compact_partition_is_l2() {
+        assertThat(analyzer.analyze("ALTER TABLE t1 COMPACT PARTITION p1", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L2);
+    }
+    @Test
+    void tidb_alter_table_add_column_with_compact_name_is_l3() {
+        assertThat(analyzer.analyze("ALTER TABLE orders ADD COLUMN is_compact TINYINT NOT NULL DEFAULT 0", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void tidb_alter_table_add_index_compact_name_is_l3() {
+        assertThat(analyzer.analyze("ALTER TABLE t ADD INDEX idx_compact (x)", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
+    void tidb_alter_table_comment_compact_is_l3() {
+        assertThat(analyzer.analyze("ALTER TABLE t MODIFY COLUMN x INT COMMENT 'compact storage'", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L3);
+    }
+    @Test
     void tidb_admin_check_table_is_l2() {
         assertThat(analyzer.analyze("ADMIN CHECK TABLE t1", Category.QUERY, "tidb").riskLevel()).isEqualTo(RiskLevel.L2);
     }
