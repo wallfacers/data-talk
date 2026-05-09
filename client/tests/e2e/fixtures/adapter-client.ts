@@ -191,5 +191,15 @@ export function adapterClient(request: APIRequestContext) {
     // ── Artifacts ──
     renderChart: (sessionId: string, body: Record<string, unknown>) =>
       request.post(`${BASE}/api/sessions/${sessionId}/artifacts/chart`, { data: body }),
+
+    // ── Dashboard ──
+    dashboardPromote: (body: unknown) =>
+      request.post(`${BASE}/api/dashboards/promote`, { data: body }),
+
+    dashboardGet: (dashboardId: string) =>
+      request.get(`${BASE}/api/dashboards/${dashboardId}`),
+
+    dashboardPatch: (dashboardId: string, body: unknown) =>
+      request.patch(`${BASE}/api/dashboards/${dashboardId}`, { data: body }),
   }
 }
