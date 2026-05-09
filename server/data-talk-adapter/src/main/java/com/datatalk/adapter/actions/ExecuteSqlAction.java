@@ -7,6 +7,7 @@ import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.persistence.*;
 import com.datatalk.application.session.SessionDataContextService;
 import com.datatalk.application.sql.JdbcResultValueNormalizer;
+import com.datatalk.application.sql.CalciteSqlRiskAnalyzer;
 import com.datatalk.application.sql.SqlRiskAnalysis;
 import com.datatalk.application.sql.SqlRiskAnalyzer;
 import com.datatalk.domain.action.*;
@@ -126,6 +127,20 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
     private Map<String, Object> execute(ActionContext ctx, Map<String, Object> input) {
         String sql = String.valueOf(input.get("sql"));
         var resolved = resolveContext(ctx, input);
+
+        // Dameng Channel 2 — dialect_unsupported entry gate (chat path, per spec §8.1)
+        if ("dameng".equalsIgnoreCase(resolved.connection().kind())) {
+            var unsupportedReason = ((CalciteSqlRiskAnalyzer) riskAnalyzer).detectDamengUnsupported(sql);
+            if (unsupportedReason.isPresent()) {
+                String i18nKey = switch (unsupportedReason.get()) {
+                    case CalciteSqlRiskAnalyzer.DamengUnsupportedReason.PLSQL_BLOCK -> "risk.dialect_unsupported.dameng.plsql_block";
+                    case CalciteSqlRiskAnalyzer.DamengUnsupportedReason.PROCEDURE_DDL -> "risk.dialect_unsupported.dameng.procedure_ddl";
+                    case CalciteSqlRiskAnalyzer.DamengUnsupportedReason.EXP_IMP_COMMAND -> "risk.dialect_unsupported.dameng.exp_imp_command";
+                };
+                throw new DataTalkException(DataTalkErrorCodes.DIALECT_UNSUPPORTED,
+                    translator.get(i18nKey), false);
+            }
+        }
 
         // L2 / L3 SQL is not executable from the chat tool path. The chat client
         // surfaces an "Open in SQL Workbench" CTA; the AlertDialog flow there

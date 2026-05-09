@@ -41,11 +41,8 @@ public class ConnectionService {
                          String oracleServiceType,
                          Boolean sqlserverEncrypt, Boolean sqlserverTrustServerCertificate, String sqlserverInstanceName,
                          Boolean readOnly) {
-        // Normalize mssql alias to sqlserver, ch alias to clickhouse, doris alias to apache_doris
-        String effectiveKind = "mssql".equalsIgnoreCase(kind) ? ConnectionKind.SQLSERVER
-            : "ch".equalsIgnoreCase(kind) ? ConnectionKind.CLICKHOUSE
-            : "doris".equalsIgnoreCase(kind) ? ConnectionKind.APACHE_DORIS
-            : kind;
+        // Normalize kind via canonical normalizer (accepts aliases, rejects dameng short forms)
+        String effectiveKind = ConnectionKind.normalize(kind);
         byte[] enc = vault.seal(password);
         String id = java.util.UUID.randomUUID().toString();
         int timeout = connectTimeout != null ? connectTimeout : DEFAULT_CONNECT_TIMEOUT;
@@ -82,11 +79,8 @@ public class ConnectionService {
                        String oracleServiceType,
                        Boolean sqlserverEncrypt, Boolean sqlserverTrustServerCertificate, String sqlserverInstanceName,
                        Boolean readOnly) {
-        // Normalize mssql alias to sqlserver, ch alias to clickhouse, doris alias to apache_doris
-        String effectiveKind = "mssql".equalsIgnoreCase(kind) ? ConnectionKind.SQLSERVER
-            : "ch".equalsIgnoreCase(kind) ? ConnectionKind.CLICKHOUSE
-            : "doris".equalsIgnoreCase(kind) ? ConnectionKind.APACHE_DORIS
-            : kind;
+        // Normalize kind via canonical normalizer (accepts aliases, rejects dameng short forms)
+        String effectiveKind = ConnectionKind.normalize(kind);
         var existing = repo.findById(id)
             .orElseThrow(() -> new java.util.NoSuchElementException(translator.get("error.connection.unknown", id)));
         byte[] enc = password != null ? vault.seal(password) : existing.passwordEnc();
