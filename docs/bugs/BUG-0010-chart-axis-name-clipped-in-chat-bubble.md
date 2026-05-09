@@ -8,7 +8,7 @@ modules: [chat, markdown, chart]
 discovered: 2026-05-09
 discoveredBy: human
 testRunId: null
-fixCommit: null
+fixCommit: 6bb1c93
 fixPlanRef: null
 duplicateOf: null
 regression: false
