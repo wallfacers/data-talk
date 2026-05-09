@@ -24,7 +24,8 @@ public record FileArtifact(
         Instant createdAt,
         Instant updatedAt,
         Instant archivedAt,
-        Map<String, Object> metadata
+        Map<String, Object> metadata,
+        boolean external
 ) {
     public Optional<String> sessionIdOpt() {
         return Optional.ofNullable(sessionId);

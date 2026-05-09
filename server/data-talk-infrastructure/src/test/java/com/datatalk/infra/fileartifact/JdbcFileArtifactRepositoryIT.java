@@ -53,7 +53,8 @@ class JdbcFileArtifactRepositoryIT {
                     created_at BIGINT NOT NULL,
                     updated_at BIGINT NOT NULL,
                     archived_at BIGINT,
-                    metadata_json CLOB
+                    metadata_json CLOB,
+                    "external" INTEGER NOT NULL DEFAULT 0
                 )
                 """);
         repo = new JdbcFileArtifactRepository(jdbc, new ObjectMapper());
@@ -79,7 +80,7 @@ class JdbcFileArtifactRepositoryIT {
                 created,
                 updated,
                 null,
-                Map.of("declared", true, "rows", 42));
+                Map.of("declared", true, "rows", 42), false);
 
         repo.insert(artifact);
 
@@ -101,8 +102,9 @@ class JdbcFileArtifactRepositoryIT {
         jdbc.update("""
                 INSERT INTO file_artifact (
                     id, scope, status, kind, session_id, connection_id, filename, physical_path,
-                    size_bytes, mime_type, title, summary, created_at, updated_at, archived_at, metadata_json
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    size_bytes, mime_type, title, summary, created_at, updated_at, archived_at, metadata_json,
+                    "external"
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 "bad_meta",
                 "session",
@@ -119,7 +121,8 @@ class JdbcFileArtifactRepositoryIT {
                 now,
                 now,
                 null,
-                "{not-json");
+                "{not-json",
+                false);
 
         assertThat(repo.findById("missing")).isEmpty();
         assertThat(repo.findById("bad_meta")).isPresent().get()
@@ -392,7 +395,7 @@ class JdbcFileArtifactRepositoryIT {
                 now,
                 now,
                 null,
-                Map.of());
+                Map.of(), false);
     }
 
     private static FileArtifact sampleAt(
@@ -418,7 +421,7 @@ class JdbcFileArtifactRepositoryIT {
                 created,
                 created,
                 null,
-                Map.of());
+                Map.of(), false);
     }
 
     private static FileArtifact archivedAt(String id, String connectionId, String archivedAt) {
@@ -439,7 +442,7 @@ class JdbcFileArtifactRepositoryIT {
                 archivedAtInstant,
                 archivedAtInstant,
                 archivedAtInstant,
-                Map.of());
+                Map.of(), false);
     }
 
     private static FileArtifact archivedForSession(String id, String sessionId, String connectionId) {
@@ -460,7 +463,7 @@ class JdbcFileArtifactRepositoryIT {
                 now,
                 now,
                 now,
-                Map.of());
+                Map.of(), false);
     }
 
     private static FileArtifact insertArchived(String connectionId) {

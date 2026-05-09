@@ -60,7 +60,7 @@ class FileArtifactTest {
             now,
             now,
             null,
-            Map.of());
+            Map.of(), false);
 
         assertThat(artifact.id()).isEqualTo("file_artifact_01");
         assertThat(artifact.sessionIdOpt()).contains("ses_abc");

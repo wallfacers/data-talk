@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { FileIcon, FileSpreadsheetIcon, FileTextIcon, NetworkIcon, ScrollTextIcon } from 'lucide-react'
+import { FileIcon, FileSpreadsheetIcon, FileTextIcon, NetworkIcon, ScrollTextIcon, LayoutDashboardIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useI18n } from '@/i18n/use-i18n'
 import { useStageStore, type StageTab } from '@/stores/stage-store'
@@ -14,6 +14,7 @@ const KIND_ICON: Record<FileArtifactKind, typeof FileIcon> = {
   er_diagram: NetworkIcon,
   sql_script: FileTextIcon,
   dataset: FileSpreadsheetIcon,
+  dashboard: LayoutDashboardIcon,
   other: FileIcon,
 }
 

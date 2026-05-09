@@ -227,7 +227,7 @@ public class FileArtifactService {
                 now,
                 now,
                 null,
-                new LinkedHashMap<>(safeFrontmatter));
+                new LinkedHashMap<>(safeFrontmatter), false);
         repo.insert(row);
         publish(sessionId, new DtEvent.FileArtifactDetected(
                 row.id(),
@@ -425,7 +425,7 @@ public class FileArtifactService {
                             now,
                             now,
                             null,
-                            new LinkedHashMap<>());
+                            new LinkedHashMap<>(), false);
                     repo.insert(row);
                     return new ArchiveCandidateOutcome.Success(
                             newId, physicalPath.toString(), false);
@@ -462,7 +462,7 @@ public class FileArtifactService {
                 now,
                 now,
                 null,
-                new LinkedHashMap<>());
+                new LinkedHashMap<>(), false);
         repo.insert(row);
         return new ArchiveCandidateOutcome.Success(newId, physicalPath.toString(), false);
     }
@@ -647,5 +647,88 @@ public class FileArtifactService {
 
     private static long sizeOrZero(Path p) {
         try { return Files.size(p); } catch (IOException e) { return 0L; }
+    }
+
+    // ───────── registerExternal use case (external file artifacts) ─────────
+
+    /**
+     * Register an externally-managed file (e.g. dashboard JSON) as a file artifact.
+     * The file is NOT moved; its absolute path is stored as-is.
+     * The row is created with status=ARCHIVED and external=true.
+     */
+    public FileArtifact registerExternal(
+            String id,
+            FileArtifactKind kind,
+            FileArtifactScope scope,
+            String connectionId,
+            String sessionId,
+            Path absolutePath,
+            String title,
+            String summary,
+            Map<String, Object> metadata) throws IOException {
+        Objects.requireNonNull(id, "id");
+        Objects.requireNonNull(kind, "kind");
+        Objects.requireNonNull(scope, "scope");
+        Objects.requireNonNull(absolutePath, "absolutePath");
+        if (!absolutePath.isAbsolute()) {
+            throw new IllegalArgumentException("absolutePath must be absolute: " + absolutePath);
+        }
+        if (repo.findById(id).isPresent()) {
+            throw new FileArtifactConflictException("file_artifact id already exists: " + id);
+        }
+        long size = Files.size(absolutePath);
+        Path normalized = absolutePath.toAbsolutePath().normalize();
+        Instant now = Instant.now();
+        FileArtifact row = new FileArtifact(
+                id, scope, FileArtifactStatus.ARCHIVED, kind,
+                sessionId, connectionId,
+                normalized.getFileName().toString(), normalized.toString(),
+                size, guessMime(normalized), title, summary,
+                now, now, now,
+                metadata == null ? new LinkedHashMap<>() : new LinkedHashMap<>(metadata),
+                true);
+        repo.insert(row);
+        return row;
+    }
+
+    // ───────── readBytes use case ─────────
+
+    /**
+     * Read the physical file bytes for a file artifact.
+     * For external rows, reads from the absolute physicalPath directly.
+     * For managed rows, resolves physicalPath against the DataTalk root.
+     * Throws FileArtifactNotFoundException if the row or file is missing.
+     */
+    public byte[] readBytes(String fileArtifactId) {
+        FileArtifact row = repo.findById(fileArtifactId)
+                .orElseThrow(() -> new FileArtifactNotFoundException(fileArtifactId, "row missing"));
+        Path file = row.external() ? Path.of(row.physicalPath())
+                                   : workdir.root().dataTalkRoot().resolve(row.physicalPath());
+        try {
+            return Files.readAllBytes(file);
+        } catch (IOException e) {
+            throw new FileArtifactNotFoundException(fileArtifactId, "physical file missing: " + file);
+        }
+    }
+
+    // ───────── replaceBytesAtomic use case ─────────
+
+    /**
+     * Atomically replace the file content for an external file artifact.
+     * Writes to a temp file then moves atomically to the target path.
+     * Updates size_bytes and updatedAt in the repository.
+     */
+    public FileArtifact replaceBytesAtomic(String fileArtifactId, byte[] bytes) throws IOException {
+        FileArtifact row = repo.findById(fileArtifactId)
+                .orElseThrow(() -> new FileArtifactNotFoundException(fileArtifactId, "row missing"));
+        if (!row.external()) {
+            throw new IllegalStateException("replaceBytesAtomic on managed row not supported (id=" + fileArtifactId + ")");
+        }
+        Path target = Path.of(row.physicalPath());
+        AtomicFileWriter.writeAtomically(target, bytes);
+        long now = System.currentTimeMillis();
+        repo.updateMetadata(fileArtifactId, bytes.length, now);
+        return repo.findById(fileArtifactId).orElseThrow(
+                () -> new IllegalStateException("row vanished after replaceBytesAtomic: " + fileArtifactId));
     }
 }
