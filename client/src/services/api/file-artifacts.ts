@@ -4,7 +4,7 @@ export type FileArtifactScope = 'session' | 'workspace'
 
 export type FileArtifactStatus = 'temporary' | 'candidate' | 'archived' | 'discarded'
 
-export type FileArtifactKind = 'report' | 'er_diagram' | 'sql_script' | 'dataset' | 'other'
+export type FileArtifactKind = 'report' | 'er_diagram' | 'sql_script' | 'dataset' | 'dashboard' | 'other'
 
 export interface FileArtifact {
   id: string

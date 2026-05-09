@@ -62,6 +62,7 @@ const EMPTY_KIND_GROUPS: ConnectionFileGroups = {
   er_diagram: [],
   sql_script: [],
   dataset: [],
+  dashboard: [],
   other: [],
 }
 
@@ -260,6 +261,7 @@ export const useFileArtifactsStore = create<FileArtifactsState>((set, get) => ({
       er_diagram: [],
       sql_script: [],
       dataset: [],
+      dashboard: [],
       other: [],
     }
     for (const file of list) {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { FileTextIcon, NetworkIcon, FileSpreadsheetIcon, ScrollTextIcon, FileIcon, ChevronDownIcon } from 'lucide-react'
+import { FileTextIcon, NetworkIcon, FileSpreadsheetIcon, ScrollTextIcon, FileIcon, ChevronDownIcon, LayoutDashboardIcon } from 'lucide-react'
 import { useI18n } from '@/i18n/use-i18n'
 import { useSessionStore } from '@/stores/session-store'
 import { useFileArtifactsStore } from '@/features/stage/stores/file-artifacts-store'
@@ -12,6 +12,7 @@ const KIND_ICON: Record<FileArtifactKind, typeof FileIcon> = {
   er_diagram: NetworkIcon,
   sql_script: FileTextIcon,
   dataset: FileSpreadsheetIcon,
+  dashboard: LayoutDashboardIcon,
   other: FileIcon,
 }
 
