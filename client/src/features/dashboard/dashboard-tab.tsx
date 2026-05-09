@@ -4,12 +4,14 @@ import { useDashboardTabsStore } from './stores/dashboard-tabs-store'
 import { DashboardCanvas } from './dashboard-canvas'
 import { coordinator } from '@/features/stage/persistence/stage-persistence-bootstrap'
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/i18n/use-i18n'
 
 interface DashboardTabProps {
   tab: StageTab
 }
 
 export function DashboardTab({ tab }: DashboardTabProps) {
+  const { t } = useI18n()
   const tabState = useDashboardTabsStore((s) => s.tabs.get(tab.tabId))
   const [loading, setLoading] = useState(!tabState)
 
@@ -27,7 +29,7 @@ export function DashboardTab({ tab }: DashboardTabProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full text-sm text-[var(--dt-muted-foreground)]">
-        Loading dashboard...
+        {t('dashboard.loading')}
       </div>
     )
   }
@@ -35,7 +37,7 @@ export function DashboardTab({ tab }: DashboardTabProps) {
   if (!tabState) {
     return (
       <div className="flex items-center justify-center h-full text-sm text-[var(--dt-muted-foreground)]">
-        Dashboard not found
+        {t('dashboard.notFound')}
       </div>
     )
   }
@@ -49,7 +51,7 @@ export function DashboardTab({ tab }: DashboardTabProps) {
           variant="outline"
           onClick={() => setMode(mode === 'viewer' ? 'editor' : 'viewer')}
         >
-          {mode === 'viewer' ? 'Edit' : 'Done'}
+          {mode === 'viewer' ? t('dashboard.editorMode') : t('dashboard.viewerMode')}
         </Button>
       </div>
       <div className="flex-1 min-h-0 overflow-auto">

@@ -235,7 +235,7 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
                 variant={!form.clickhouseSSL ? 'default' : 'outline'}
                 onClick={() => setForm(f => ({ ...f, clickhouseSSL: false, port: 8123 }))}
               >
-                HTTP
+                {t('dataSources.clickhouseHttp')}
               </Button>
               <Button
                 type="button"
@@ -243,7 +243,7 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
                 variant={form.clickhouseSSL ? 'default' : 'outline'}
                 onClick={() => setForm(f => ({ ...f, clickhouseSSL: true, port: 8443 }))}
               >
-                HTTPS
+                {t('dataSources.clickhouseHttps')}
               </Button>
             </div>
           </Field>

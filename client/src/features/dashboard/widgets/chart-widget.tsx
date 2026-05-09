@@ -1,5 +1,6 @@
 import { WidgetShell } from './widget-shell'
 import { ChartRenderer } from '@/features/chat/components/markdown/chart-renderer'
+import { useI18n } from '@/i18n/use-i18n'
 
 interface ChartWidgetProps {
   widgetId: string
@@ -11,11 +12,12 @@ interface ChartWidgetProps {
 }
 
 export function ChartWidget({ title, option, height = 300, loading, error }: ChartWidgetProps) {
+  const { t } = useI18n()
   return (
     <WidgetShell title={title}>
       {loading && (
         <div data-testid="chart-skeleton" className="flex items-center justify-center h-full">
-          <div className="animate-pulse text-sm text-[var(--dt-muted-foreground)]">Loading chart...</div>
+          <div className="animate-pulse text-sm text-[var(--dt-muted-foreground)]">{t('chart.loading')}</div>
         </div>
       )}
       {error && !loading && (

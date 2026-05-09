@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import { DashboardCanvas } from '../dashboard-canvas'
 import { useDashboardTabsStore } from '../stores/dashboard-tabs-store'
 import type { Dashboard } from '../schema'
+import { translateMessage } from '@/i18n/messages'
 
 // Mock react-grid-layout — required because jsdom has no layout engine
 vi.mock('react-grid-layout', () => ({
@@ -66,7 +67,7 @@ describe('DashboardCanvas', () => {
 
   it('shows fallback when tab not found', () => {
     render(<DashboardCanvas tabId="nonexistent" mode="viewer" />)
-    expect(screen.getByText('No dashboard loaded')).toBeInTheDocument()
+    expect(screen.getByText('未加载看板')).toBeInTheDocument()
   })
 
   it('renders unknown widget type with fallback text', () => {
@@ -82,7 +83,7 @@ describe('DashboardCanvas', () => {
     } as Dashboard
     useDashboardTabsStore.getState().hydrateTab('tab-2', dashboardWithUnknown)
     render(<DashboardCanvas tabId="tab-2" mode="viewer" />)
-    expect(screen.getByText('kpi widget')).toBeInTheDocument()
+    expect(screen.getByText(/kpi 组件/)).toBeInTheDocument()
   })
 
   it('renders empty dashboard without errors', () => {
@@ -104,7 +105,7 @@ describe('DashboardCanvas', () => {
 
   it('empty state remains visible when no dashboard is loaded', () => {
     render(<DashboardCanvas tabId="empty-tab" mode="viewer" />)
-    expect(screen.getByText('No dashboard loaded')).toBeInTheDocument()
+    expect(screen.getByText('未加载看板')).toBeInTheDocument()
   })
 
   it('chart widget container is rendered for chart widgets', () => {

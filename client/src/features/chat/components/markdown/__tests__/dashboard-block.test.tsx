@@ -67,12 +67,12 @@ describe('DashboardBlock', () => {
 
   it('shows promote button when stable', () => {
     render(<DashboardBlock json={validDashboardJson} streaming={false} />)
-    expect(screen.getByText('Open to workbench')).toBeInTheDocument()
+    expect(screen.getByText('打开到工作台')).toBeInTheDocument()
   })
 
   it('sanitizes hyphenated dashboard ID on promote', async () => {
     render(<DashboardBlock json={dashboardWithHyphenatedId} streaming={false} />)
-    fireEvent.click(screen.getByText('Open to workbench'))
+    fireEvent.click(screen.getByText('打开到工作台'))
 
     expect(hydrateTabMock).toHaveBeenCalledTimes(1)
     const promotedPayload = hydrateTabMock.mock.calls[0][1]

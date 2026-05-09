@@ -4,6 +4,12 @@ import { useStageStore } from '@/stores/stage-store'
 import { generateUuid } from '@/lib/uuid'
 import type { Dashboard } from '../schema'
 import { promoteDashboard, patchDashboard } from '../services/dashboard-api'
+import { translateMessage, type MessageKey } from '@/i18n/messages'
+import { getCurrentLanguage } from '@/stores/ui-settings-store'
+
+function t(key: MessageKey, values?: Record<string, string | number>): string {
+  return translateMessage(getCurrentLanguage(), key, values)
+}
 
 const PATCH_CAPABILITIES: PatchCapability[] = [
   { pathPattern: '/title', ops: ['replace'] },
@@ -55,7 +61,7 @@ export class DashboardAdapter implements UIObject {
   type = 'dashboard'
   objectId: string
   tabId: string
-  title = 'Dashboard'
+  title = t('dashboard.defaultTitle')
   patchCapabilities = PATCH_CAPABILITIES
 
   constructor(tabId: string, _sessionIdGetter: () => string | null) {
@@ -79,7 +85,7 @@ export class DashboardAdapter implements UIObject {
 
   async patch(ops: JsonPatchOp[], _reason?: string): Promise<PatchResult> {
     const tab = useDashboardTabsStore.getState().tabs.get(this.tabId)
-    if (!tab) return { status: 'error', message: 'tab not found' }
+    if (!tab) return { status: 'error', message: t('dashboard.error.tabNotFound') }
 
     const currentVersion = tab.dashboard.version
 
@@ -97,7 +103,7 @@ export class DashboardAdapter implements UIObject {
 
       return {
         status: 'applied',
-        message: `applied ${ops.length} op(s)`,
+        message: t('dashboard.patch.applied', { count: ops.length }),
         newVersion: result.version,
       }
     } catch (error) {
@@ -109,13 +115,13 @@ export class DashboardAdapter implements UIObject {
     switch (action) {
       case 'create': {
         const input = (params ?? {}) as { title?: string }
-        const title = input.title ?? 'Untitled Dashboard'
+        const title = input.title ?? t('dashboard.untitled')
         const dashboard = buildEmptyDashboard(title)
 
         // Persist to backend
         const result = await promoteDashboard(dashboard)
         if (!result) {
-          return { success: false, error: 'failed to promote dashboard' }
+          return { success: false, error: t('dashboard.error.promotionFailed') }
         }
 
         const tabId = `dashboard_${generateUuid()}`
@@ -142,7 +148,7 @@ export class DashboardAdapter implements UIObject {
       }
 
       default:
-        return { success: false, error: `unknown action: ${action}` }
+        return { success: false, error: t('dashboard.error.unknownAction', { action }) }
     }
   }
 }

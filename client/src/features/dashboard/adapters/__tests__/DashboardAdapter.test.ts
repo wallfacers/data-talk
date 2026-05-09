@@ -122,7 +122,7 @@ describe('DashboardAdapter', () => {
     const result = await adapter.exec('create', { title: 'Fail' })
 
     expect(result.success).toBe(false)
-    expect(result.error).toContain('failed to promote')
+    expect(result.error).toContain('Failed to promote')
   })
 
   it('exec("archive") returns deferred', async () => {
@@ -138,6 +138,6 @@ describe('DashboardAdapter', () => {
     const result = await adapter.exec('unknown_action')
 
     expect(result.success).toBe(false)
-    expect(result.error).toContain('unknown action')
+    expect(result.error).toContain('Unknown action')
   })
 })

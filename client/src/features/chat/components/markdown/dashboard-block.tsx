@@ -7,6 +7,8 @@ import { useStageStore } from '@/stores/stage-store'
 import { generateUuid } from '@/lib/uuid'
 import { cn } from '@/lib/utils'
 import { promoteDashboard as promoteDashboardApi } from '@/features/dashboard/services/dashboard-api'
+import { useI18n } from '@/i18n/use-i18n'
+import type { TranslationFn } from '@/i18n/provider'
 
 type DashboardBlockState = 'streaming' | 'preview' | 'error'
 
@@ -17,12 +19,12 @@ interface DashboardBlockProps {
   partId?: string
 }
 
-function parseDashboard(json: string): { ok: true; dashboard: Dashboard } | { ok: false; error: string } {
+function parseDashboard(json: string, t?: TranslationFn): { ok: true; dashboard: Dashboard } | { ok: false; error: string } {
   let parsed: unknown
   try {
     parsed = JSON.parse(json)
   } catch {
-    return { ok: false, error: 'Invalid JSON' }
+    return { ok: false, error: t ? t('dashboard.invalidJson') : 'Invalid JSON' }
   }
   // AI-generated dashboard IDs may contain hyphens (UUID format);
   // strip them to match the server schema ^dash_[a-zA-Z0-9_]{4,}$
@@ -66,18 +68,19 @@ function getWidgetLabel(w: Widget): string {
 }
 
 export function DashboardBlock({ json, streaming }: DashboardBlockProps) {
+  const { t } = useI18n()
   const [promoted, setPromoted] = useState(false)
 
   const state: DashboardBlockState = useMemo(() => {
     if (streaming) return 'streaming'
-    const parsed = parseDashboard(json)
+    const parsed = parseDashboard(json, t)
     if (parsed.ok) return 'preview'
     return 'error'
-  }, [json, streaming])
+  }, [json, streaming, t])
 
   const parsedDashboard = useMemo(() => {
     if (state !== 'preview') return null
-    const result = parseDashboard(json)
+    const result = parseDashboard(json, t)
     return result.ok ? result.dashboard : null
   }, [json, state])
 
@@ -88,7 +91,7 @@ export function DashboardBlock({ json, streaming }: DashboardBlockProps) {
         className="flex items-center gap-2 p-4 rounded border border-[var(--dt-border)] bg-[var(--dt-muted)]"
       >
         <LayoutDashboardIcon className="h-5 w-5 animate-pulse text-[var(--dt-muted-foreground)]" />
-        <span className="text-sm text-[var(--dt-muted-foreground)]">Generating dashboard...</span>
+        <span className="text-sm text-[var(--dt-muted-foreground)]">{t('dashboard.generating')}</span>
       </div>
     )
   }
@@ -102,9 +105,9 @@ export function DashboardBlock({ json, streaming }: DashboardBlockProps) {
       >
         <div className="flex items-center gap-2 text-sm text-[var(--dt-danger)]">
           <LayoutDashboardIcon className="h-4 w-4" />
-          <span className="font-medium">Dashboard Error</span>
+          <span className="font-medium">{t('dashboard.errorTitle')}</span>
         </div>
-        <p className="mt-1 text-xs text-[var(--dt-danger)]">{parseDashboard(json).ok ? '' : (parseDashboard(json) as { error: string }).error}</p>
+        <p className="mt-1 text-xs text-[var(--dt-danger)]">{parseDashboard(json, t).ok ? '' : (parseDashboard(json, t) as { error: string }).error}</p>
       </div>
     )
   }
@@ -120,7 +123,7 @@ export function DashboardBlock({ json, streaming }: DashboardBlockProps) {
         <LayoutDashboardIcon className="h-4 w-4 text-[var(--dt-muted-foreground)]" />
         <span className="text-sm font-medium">{dashboard.title}</span>
         <span className="text-xs text-[var(--dt-muted-foreground)]">
-          {dashboard.widgets.length} widget{dashboard.widgets.length !== 1 ? 's' : ''}
+          {t('dashboard.widgetCount', { count: dashboard.widgets.length })}
         </span>
       </div>
       {dashboard.widgets.length > 0 && (
@@ -136,7 +139,7 @@ export function DashboardBlock({ json, streaming }: DashboardBlockProps) {
           ))}
           {dashboard.widgets.length > 4 && (
             <div className="flex items-center px-2 py-1 rounded text-xs text-[var(--dt-muted-foreground)]">
-              +{dashboard.widgets.length - 4} more
+              {t('dashboard.moreWidgets', { count: dashboard.widgets.length - 4 })}
             </div>
           )}
         </div>
@@ -154,11 +157,11 @@ export function DashboardBlock({ json, streaming }: DashboardBlockProps) {
           onClick={() => { promoteDashboard(dashboard); setPromoted(true) }}
         >
           <ExternalLinkIcon className="h-3 w-3" />
-          Open to workbench
+          {t('dashboard.openToWorkbench')}
         </button>
       )}
       {promoted && (
-        <span className="text-xs text-[var(--dt-muted-foreground)]">Opened in workbench</span>
+        <span className="text-xs text-[var(--dt-muted-foreground)]">{t('dashboard.openedInWorkbench')}</span>
       )}
     </div>
   )
