@@ -108,6 +108,14 @@ public final class JdbcUrlBuilder {
             }
             case ConnectionKind.DAMENG ->
                 "jdbc:dm://" + c.host() + ":" + c.port();
+            case ConnectionKind.KINGBASE -> {
+                String kbDb = c.databaseName();
+                if (kbDb == null || kbDb.isBlank()) {
+                    throw new DataTalkException(DataTalkErrorCodes.DATABASE_NAME_REQUIRED,
+                        "kingbase requires database", false);
+                }
+                yield "jdbc:kingbase8://" + c.host() + ":" + c.port() + "/" + kbDb;
+            }
             default ->
                 throw new DataTalkException(DataTalkErrorCodes.DATABASE_KIND_UNSUPPORTED,
                     "unsupported database kind: " + c.kind(), false);
