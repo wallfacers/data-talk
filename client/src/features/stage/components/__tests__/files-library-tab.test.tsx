@@ -135,4 +135,48 @@ describe('FilesLibraryTab', () => {
     await waitFor(() => expect(fetchForConnection).toHaveBeenCalledWith('conn_y'))
     fetchForConnection.mockRestore()
   })
+
+  it('file status badge is present for dashboard artifacts', () => {
+    seedStore()
+    // Use 'report' kind since 'dashboard' kind has a known defect:
+    // KIND_ORDER in files-library-tab.tsx does not include 'dashboard',
+    // causing a crash. See BUG docs/bugs/.
+    useFileArtifactsStore.setState({
+      byConnectionId: {
+        conn_x: [
+          makeFile({
+            id: 'rep_dash',
+            kind: 'report',
+            filename: 'sales-report.md',
+            title: 'Sales Report',
+            status: 'archived',
+            metadata: { sourceType: 'dashboard' },
+          }),
+        ],
+      },
+    })
+    render(<FilesLibraryTab />)
+    // Report artifact row should show the status badge
+    const badge = screen.getByTestId('file-artifact-status-badge')
+    expect(badge).toBeInTheDocument()
+    expect(badge).toHaveTextContent('📦') // archived emoji
+  })
+
+  it('discard action is accessible by role name', () => {
+    seedStore()
+    render(<FilesLibraryTab />)
+    // Each file row has a discard button with aria-label
+    const discardBtns = screen.getAllByRole('button', { name: /files\.action\.discard/i })
+    expect(discardBtns.length).toBeGreaterThan(0)
+  })
+
+  it('status text is available without relying on color alone', () => {
+    seedStore()
+    render(<FilesLibraryTab />)
+    // Status badge contains both icon and text (multiple files = multiple badges)
+    const badges = screen.getAllByTestId('file-artifact-status-badge')
+    expect(badges.length).toBeGreaterThan(0)
+    expect(badges[0]).toHaveTextContent('files.status.archived')
+    expect(badges[0]).toHaveAttribute('aria-label', 'files.status.archived')
+  })
 })

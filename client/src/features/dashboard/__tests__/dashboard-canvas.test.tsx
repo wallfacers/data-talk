@@ -108,4 +108,31 @@ describe('DashboardCanvas', () => {
     const gridEl = container.querySelector('.dashboard-canvas')
     expect(gridEl).toBeInTheDocument()
   })
+
+  it('empty state remains visible when no dashboard is loaded', () => {
+    render(<DashboardCanvas tabId="empty-tab" mode="viewer" />)
+    expect(screen.getByText('No dashboard loaded')).toBeInTheDocument()
+  })
+
+  it('chart widget container is rendered for chart widgets', () => {
+    useDashboardTabsStore.getState().hydrateTab('tab-2', sampleDashboard)
+    render(<DashboardCanvas tabId="tab-2" mode="viewer" />)
+    const chartWidget = screen.getByTestId('chart-widget-chart_w_aaaa')
+    expect(chartWidget).toBeInTheDocument()
+  })
+
+  it('markdown widget container is rendered for markdown widgets', () => {
+    useDashboardTabsStore.getState().hydrateTab('tab-2', sampleDashboard)
+    render(<DashboardCanvas tabId="tab-2" mode="viewer" />)
+    const mdWidget = screen.getByTestId('markdown-widget-md_w_bbbb')
+    expect(mdWidget).toBeInTheDocument()
+  })
+
+  it('editor mode does not remove accessible widget titles', () => {
+    useDashboardTabsStore.getState().hydrateTab('tab-1', sampleDashboard)
+    render(<DashboardCanvas tabId="tab-1" mode="editor" />)
+    // Widget containers should still be present in editor mode
+    expect(screen.getByTestId('chart-widget-chart_w_aaaa')).toBeInTheDocument()
+    expect(screen.getByTestId('markdown-widget-md_w_bbbb')).toBeInTheDocument()
+  })
 })

@@ -41,4 +41,11 @@ describe('FileArtifactStatusBadge', () => {
     render(<FileArtifactStatusBadge status="candidate" />)
     expect(screen.getByTestId('file-artifact-status-badge')).toHaveAttribute('aria-label', 'files.status.candidate')
   })
+
+  it('renders status text alongside icon (not color alone)', () => {
+    render(<FileArtifactStatusBadge status="candidate" />)
+    // Status is communicated by both emoji icon AND text label
+    const badge = screen.getByTestId('file-artifact-status-badge')
+    expect(badge).toHaveTextContent('files.status.candidate')
+  })
 })

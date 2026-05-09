@@ -8,13 +8,13 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## 当前编号
 
-下一个分配 ID：**BUG-0009**（永不复用，单调递增）
+下一个分配 ID：**BUG-0010**（永不复用，单调递增）
 
 ## Open BUGs（按 priority 倒序，P0 → P2）
 
 | ID | Title | Priority | Source | Modules | Discovered |
 |----|-------|----------|--------|---------|------------|
-| —  | 当前无 open BUG | — | — | — | — |
+| BUG-0009 | Files Library Tab 渲染 dashboard kind 文件时崩溃 | P2 | E2E component test | stage/files-library-tab | 2026-05-09 |
 
 ## In Progress（status = investigating | fixed 等待 verify）
 
@@ -35,11 +35,12 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## By Module（聚合视图，仅列 open + in-progress）
 
-- **stage**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md)
+- **stage**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md), [BUG-0009](BUG-0009-dashboard-kind-missing-from-files-library.md)
 
 ## By Source（聚合视图，仅列 open + in-progress）
 
 - **e2e-playwright**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md)
+- **component-test**: [BUG-0009](BUG-0009-dashboard-kind-missing-from-files-library.md)
 
 ## Wontfix / Duplicate（终态归档，无时间限制）
 
