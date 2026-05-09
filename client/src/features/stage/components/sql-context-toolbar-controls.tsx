@@ -143,10 +143,12 @@ export function SqlContextToolbarControls({
       <Tooltip>
         <TooltipTrigger render={
           <div className="flex h-7 items-center rounded-md border border-border/60 px-2">
+            <span className="sr-only">{t('stage.context.toolbar.useSession')}</span>
             <Switch
               size="sm"
               checked={useSessionContext}
               onCheckedChange={(value) => onUseSessionContextChange(value)}
+              aria-label={t('stage.context.toolbar.useSession')}
             />
           </div>
         } />

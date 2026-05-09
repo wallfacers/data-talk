@@ -51,7 +51,7 @@ describe('<ErToolbar mode="designer">', () => {
     expect(screen.getByRole('button', { name: /bind target|绑定目标/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /diff vs db|对比数据库/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /generate ddl|生成 DDL/i })).toBeInTheDocument()
-    const dialectPicker = screen.getByRole('combobox', { name: /dialect|方言/i })
+    const dialectPicker = screen.getByTestId('er-toolbar-dialect')
     expect(dialectPicker).toBeInTheDocument()
     expect(dialectPicker.tagName).toBe('BUTTON')
     expect(dialectPicker).toHaveAttribute('data-slot', 'select-trigger')

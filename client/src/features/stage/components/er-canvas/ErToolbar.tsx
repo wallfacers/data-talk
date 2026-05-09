@@ -113,8 +113,6 @@ export function ErToolbar(props: ErToolbarProps) {
 
         <Tooltip>
           <TooltipTrigger render={
-            <span className="sr-only">{label('erCanvas.toolbar.dialect', 'Dialect')}</span>
-          }>
             <Select
               value={props.dialect}
               onValueChange={(value) => props.onChangeDialect(value as DesignerDialect)}
@@ -137,7 +135,7 @@ export function ErToolbar(props: ErToolbarProps) {
                 ))}
               </SelectContent>
             </Select>
-          </TooltipTrigger>
+          } />
           <TooltipContent side="bottom" sideOffset={4}>
             {label('erCanvas.toolbar.dialect', 'Dialect')}
           </TooltipContent>
@@ -173,8 +171,6 @@ export function ErToolbar(props: ErToolbarProps) {
 
       <Tooltip>
         <TooltipTrigger render={
-          <span className="sr-only">{label('erCanvas.toolbar.neighborDepth', 'Neighbor depth')}</span>
-        }>
           <select
             data-testid="er-toolbar-neighbor-depth"
             aria-label={label('erCanvas.toolbar.neighborDepth', 'Neighbor depth')}
@@ -186,7 +182,7 @@ export function ErToolbar(props: ErToolbarProps) {
             <option value={1}>1</option>
             <option value={2}>2</option>
           </select>
-        </TooltipTrigger>
+        } />
         <TooltipContent side="bottom" sideOffset={4}>
           {label('erCanvas.toolbar.neighborDepth', 'Neighbor depth')}
         </TooltipContent>

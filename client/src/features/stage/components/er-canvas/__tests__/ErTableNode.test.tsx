@@ -44,7 +44,7 @@ describe('<ErTableNode mode="inspector">', () => {
     renderNode()
 
     expect(screen.getByText('users')).toBeInTheDocument()
-    expect(screen.getByLabelText(/read-only/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/只读/)).toBeInTheDocument()
     expect(screen.getByTestId('er-mode-indicator')).toHaveAttribute('data-er-mode', 'inspector')
   })
 
@@ -56,8 +56,8 @@ describe('<ErTableNode mode="inspector">', () => {
     expect(screen.getByText('account_id')).toBeInTheDocument()
     expect(screen.getByText('email')).toBeInTheDocument()
     expect(screen.getByText('VARCHAR(255)')).toBeInTheDocument()
-    expect(screen.getByLabelText('primary key')).toBeInTheDocument()
-    expect(screen.getByLabelText('foreign key')).toBeInTheDocument()
+    expect(screen.getByLabelText('主键')).toBeInTheDocument()
+    expect(screen.getByLabelText('外键')).toBeInTheDocument()
     expect(screen.getByTestId('er-row-id')).toHaveAttribute('data-er-row-role', 'pk')
     expect(screen.getByTestId('er-row-account_id')).toHaveAttribute('data-er-row-role', 'fk')
     expect(screen.getByTestId('er-row-email')).toHaveAttribute('data-er-row-role', 'regular')
@@ -101,7 +101,7 @@ describe('<ErTableNode mode="inspector">', () => {
 
     renderNode({ ...data, columns: many, table: { ...data.table, columns: many } })
 
-    expect(screen.getByRole('button', { name: /3 more/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /3|还有/i })).toBeInTheDocument()
     expect(screen.getByText('c12')).toBeInTheDocument()
     expect(screen.queryByText('c13')).not.toBeInTheDocument()
   })
@@ -176,7 +176,7 @@ describe('<ErTableNode mode="designer">', () => {
     expect(screen.getByTestId('er-row-email').className).toContain('pl-0')
     expect(screen.getByTestId('er-row-email').className).toContain('pr-8')
     expect(screen.getByTestId('er-row-email').className).toContain('gap-2.5')
-    expect(screen.getByLabelText('primary key').parentElement?.className).toContain('w-6')
+    expect(screen.getByLabelText('主键').parentElement?.className).toContain('w-6')
     expect(screen.getByRole('combobox', { name: /type for email/i }).className).toContain('w-32')
   })
 
@@ -212,7 +212,7 @@ describe('<ErTableNode mode="designer">', () => {
       onDeleteColumn: vi.fn(),
     })
 
-    const deleteButton = screen.getByRole('button', { name: /delete column email/i })
+    const deleteButton = screen.getByRole('button', { name: /删除列 email/i })
 
     expect(deleteButton.className).toContain('opacity-0')
     expect(deleteButton.className).toContain('group-hover:opacity-100')
@@ -250,7 +250,7 @@ describe('<ErTableNode mode="designer">', () => {
     fireEvent.click(screen.getByRole('button', { name: /add column|添加列/i }))
     fireEvent.change(screen.getByDisplayValue('users'), { target: { value: 'accounts' } })
     fireEvent.change(screen.getByDisplayValue('email'), { target: { value: 'email_address' } })
-    fireEvent.click(screen.getByRole('button', { name: /delete column email/i }))
+    fireEvent.click(screen.getByRole('button', { name: /删除列 email/i }))
 
     expect(onAddColumn).toHaveBeenCalled()
     expect(onUpdateTable).toHaveBeenCalledWith('users', { name: 'accounts' })

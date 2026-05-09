@@ -40,6 +40,7 @@ export function SqlEditorToolbar({
               variant={isRunning ? 'destructive' : 'default'}
               onClick={isRunning ? onCancel : onRun}
               disabled={isRunning ? false : !canRun}
+              aria-label={isRunning ? t('stage.toolbar.cancel') : t('stage.toolbar.run')}
               className="justify-center"
             >
               {isRunning ? <SquareIcon /> : <PlayIcon />}
@@ -51,7 +52,7 @@ export function SqlEditorToolbar({
         </Tooltip>
         <Tooltip>
           <TooltipTrigger render={
-            <Button size="sm" variant="ghost" onClick={onFormat}>
+            <Button size="sm" variant="ghost" onClick={onFormat} aria-label={t('stage.toolbar.format')}>
               <SparklesIcon />
             </Button>
           } />
@@ -67,6 +68,7 @@ export function SqlEditorToolbar({
                 variant="ghost"
                 onClick={onExplain}
                 disabled={!canExplain}
+                aria-label={t('stage.toolbar.explain')}
               >
                 <SearchCodeIcon />
               </Button>
