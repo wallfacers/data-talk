@@ -88,11 +88,11 @@ Tasks 1-13 are mostly sequential due to enum / classifier dependencies. Tasks 8-
 - Verify: oceanbase-shipped `MultiModeConnectionShape` v1 + `CompatibilityMode` enum + Flyway V18 `compatibility_mode` column exist on `develop` HEAD
 - Verify: day2 plan §Day-3 kingbase row anchor (line 3119) already complete
 
-- [ ] **Step 1: Read the full spec end to end**
+- [x] **Step 1: Read the full spec end to end**
 
 Re-read the design doc; produce a 1-page bullet list of decisions to apply (driver pinned patch, `kingbasees` alias rule, default port 54321, system schemas 6 items, Channel 1 + Channel 2 anchored patterns, i18n keys, T2 fixture discipline). No code yet.
 
-- [ ] **Step 2: Verify driver Maven Central visibility (Driver Reachability Report)**
+- [x] **Step 2: Verify driver Maven Central visibility (Driver Reachability Report)**
 
 Run:
 ```bash
@@ -103,7 +103,7 @@ Expected: list of versions including `9.0.x` patches. Pin **the highest 9.0.x no
 
 If the artifact is **not** visible on Maven Central (license-gated mirror), fall back to **vendor portal documentation** path: append a "Vendor Portal Fallback" subsection to this plan with the URL `https://www.kingbase.com.cn/` and the developer-machine driver download steps. **Do NOT** check an offline jar into `lib/` — that is forbidden by Wave C umbrella §10. Under the fallback path the 6 IT remain `@Disabled` on CI (already the Day-1 plan per spec §12.1).
 
-- [ ] **Step 3: Verify opengauss-shipped PgFork abstract bases**
+- [x] **Step 3: Verify opengauss-shipped PgFork abstract bases**
 
 Run:
 ```bash
@@ -123,7 +123,7 @@ grep -rn "protected abstract\|protected String" server/data-talk-application/src
 ```
 Record the exact method signatures (e.g. `jdbcUrl()`, `username()`, `password()`) for use in Task 9. **If method names differ from the spec assumptions**, update Task 9 IT subclass overrides accordingly (do not invent method names).
 
-- [ ] **Step 4: Verify oceanbase-shipped MultiModeConnectionShape v1**
+- [x] **Step 4: Verify oceanbase-shipped MultiModeConnectionShape v1**
 
 Run:
 ```bash
@@ -137,7 +137,7 @@ grep -n "compatibility_mode" server/data-talk-infrastructure/src/main/resources/
 ```
 **No new Flyway migration is required for kingbase** — V18 already covers all kingbase fields. If V18 is missing, halt and surface the dependency violation.
 
-- [ ] **Step 5: Verify day2 plan §Day-3 kingbase row anchor**
+- [x] **Step 5: Verify day2 plan §Day-3 kingbase row anchor**
 
 Run:
 ```bash
@@ -145,7 +145,7 @@ grep -n "kingbase" docs/exec-plans/2026-05-08-diagnostics-day2-plan.md | grep -i
 ```
 Expected: line ~3119 contains both phrases ("`PostgresJsonPlanParser` from `opengauss`" and "B-tree" with "KingbaseES `SYS_*`"). **No backfill required** at this child plan ship time per spec §11.2.
 
-- [ ] **Step 6: Commit Approval Gate report**
+- [x] **Step 6: Commit Approval Gate report**
 
 Append to this plan a one-line "Driver Reachability Report" stating pinned driver version (path (a) Maven Central direct OR path (b) vendor portal documentation fallback) + opengauss base classes commit + oceanbase v1 commit. Then:
 ```bash
@@ -161,7 +161,7 @@ git commit -m "chore(kingbase): record approval gate (driver pin + upstream kit 
 - Modify: `server/data-talk-application/src/main/java/com/datatalk/application/connection/ConnectionKind.java`
 - Test: `server/data-talk-application/src/test/java/com/datatalk/application/connection/KingbaseAliasNormalizationTest.java`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```java
 package com.datatalk.application.connection;
@@ -226,12 +226,12 @@ class KingbaseAliasNormalizationTest {
 }
 ```
 
-- [ ] **Step 2: Run the failing test**
+- [x] **Step 2: Run the failing test**
 
 Run: `cd server && mvn -pl data-talk-application test -Dtest=KingbaseAliasNormalizationTest -q`
 Expected: FAIL with "no enum constant ConnectionKind.KINGBASE" or normalize() does not match `kingbase` / `kingbasees`.
 
-- [ ] **Step 3: Add `KINGBASE` to enum + alias rule in `normalize()`**
+- [x] **Step 3: Add `KINGBASE` to enum + alias rule in `normalize()`**
 
 Edit `server/data-talk-application/src/main/java/com/datatalk/application/connection/ConnectionKind.java`. In the enum body add `KINGBASE` (before the trailing semicolon). In `normalize(String raw)` switch, add **two** case arms:
 
@@ -249,12 +249,12 @@ return switch (lower) {
 
 The `kingbasees` arm is the **only** Wave C alias permitted. All other inputs (Chinese aliases, version-suffixed forms) must fall through to the `default` reject arm.
 
-- [ ] **Step 4: Run tests, verify pass**
+- [x] **Step 4: Run tests, verify pass**
 
 Run: `cd server && mvn -pl data-talk-application test -Dtest=KingbaseAliasNormalizationTest -q`
 Expected: PASS (7/7).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add server/data-talk-application/src/main/java/com/datatalk/application/connection/ConnectionKind.java \
@@ -271,7 +271,7 @@ git commit -m "feat(kingbase): ConnectionKind.KINGBASE + kingbasees alias normal
 - Modify: `server/data-talk-application/src/main/java/com/datatalk/application/connection/JdbcUrlBuilder.java`
 - Test: `server/data-talk-infrastructure/src/test/java/com/datatalk/infra/jdbc/KingbaseDriverCoexistenceTest.java`
 
-- [ ] **Step 1: Add `kingbase8` Maven dependency**
+- [x] **Step 1: Add `kingbase8` Maven dependency**
 
 Edit `server/data-talk-infrastructure/pom.xml` (under `<dependencies>`):
 
@@ -285,7 +285,7 @@ Edit `server/data-talk-infrastructure/pom.xml` (under `<dependencies>`):
 
 Use the exact patch pinned in Task 1. If Task 1 fell back to vendor portal path, document that path in the plan changelog instead and skip this step pending offline driver install (the fallback path defers Task 9 IT to local/QA only — Tasks 2-8 still complete on CI).
 
-- [ ] **Step 2: Write failing driver coexistence test**
+- [x] **Step 2: Write failing driver coexistence test**
 
 ```java
 package com.datatalk.infra.jdbc;
@@ -339,12 +339,12 @@ class KingbaseDriverCoexistenceTest {
 }
 ```
 
-- [ ] **Step 3: Run failing test**
+- [x] **Step 3: Run failing test**
 
 Run: `cd server && mvn -pl data-talk-infrastructure test -Dtest=KingbaseDriverCoexistenceTest -q`
 Expected: FAIL — `com.kingbase8.Driver` class not on classpath.
 
-- [ ] **Step 4: Write failing JdbcUrlBuilder test**
+- [x] **Step 4: Write failing JdbcUrlBuilder test**
 
 Create `server/data-talk-application/src/test/java/com/datatalk/application/connection/JdbcUrlBuilderKingbaseTest.java`:
 
@@ -392,12 +392,12 @@ class JdbcUrlBuilderKingbaseTest {
 }
 ```
 
-- [ ] **Step 5: Run failing test**
+- [x] **Step 5: Run failing test**
 
 Run: `cd server && mvn -pl data-talk-application test -Dtest=JdbcUrlBuilderKingbaseTest -q`
 Expected: FAIL — `JdbcUrlBuilder.build` does not handle kingbase kind.
 
-- [ ] **Step 6: Add KingbaseES branch in `JdbcUrlBuilder`**
+- [x] **Step 6: Add KingbaseES branch in `JdbcUrlBuilder`**
 
 Edit `JdbcUrlBuilder.java`, in `build(ConnectionRecord c)`, add:
 
@@ -413,17 +413,17 @@ case ConnectionKind.KINGBASE -> {
 
 PG-equivalent semantics: `database` field is required, exactly like the existing PG branch.
 
-- [ ] **Step 7: Full module compile to verify exhaustive switch**
+- [x] **Step 7: Full module compile to verify exhaustive switch**
 
 Run: `cd server && mvn -pl data-talk-application,data-talk-infrastructure,data-talk-adapter compile -q`
 Expected: 0 errors. If any switch on `ConnectionKind` lacks the `KINGBASE` case (typically: `JdbcUrlBuilder`, `ConnectionService`, `SqlExecuteService`, `ConnectionTargetDiscoveryService`, `DefaultSqlStatementSplitters`), add a stub default-throw for now; the real branches land in Tasks 5-7.
 
-- [ ] **Step 8: Run both tests, verify pass**
+- [x] **Step 8: Run both tests, verify pass**
 
 Run: `cd server && mvn -pl data-talk-application,data-talk-infrastructure test -Dtest='JdbcUrlBuilderKingbaseTest,KingbaseDriverCoexistenceTest' -q`
 Expected: PASS (3+5 = 8/8).
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add server/data-talk-infrastructure/pom.xml \
@@ -443,7 +443,7 @@ git commit -m "feat(kingbase): kingbase8 driver dep + JdbcUrlBuilder + coexisten
 
 Per spec §10.6: this task **must not change v1 method signatures** (`validateModeForKind(String, CompatibilityMode)` / `isDay1FirstClassMode(String, CompatibilityMode)`). Only the switch arms gain a new `case "kingbase" -> ...` clause inserted before the `default` arm.
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Create `KingbaseMultiModeConnectionShapeTest.java`:
 
@@ -512,12 +512,12 @@ class KingbaseMultiModeConnectionShapeTest {
 }
 ```
 
-- [ ] **Step 2: Run tests to verify fail**
+- [x] **Step 2: Run tests to verify fail**
 
 Run: `cd server && mvn -pl data-talk-application test -Dtest=KingbaseMultiModeConnectionShapeTest -q`
 Expected: FAIL — kingbase falls into default arm and throws "must not specify compatibility_mode".
 
-- [ ] **Step 3: Append kingbase row to v1 (no signature changes)**
+- [x] **Step 3: Append kingbase row to v1 (no signature changes)**
 
 Edit `MultiModeConnectionShape.java`. In `validateModeForKind` switch, **insert before** the `default` arm:
 
@@ -538,12 +538,12 @@ case "kingbase" -> mode == CompatibilityMode.PG;
 
 Do not touch any other line. Method signatures remain `validateModeForKind(String, CompatibilityMode)` and `isDay1FirstClassMode(String, CompatibilityMode)`.
 
-- [ ] **Step 4: Run tests, verify pass**
+- [x] **Step 4: Run tests, verify pass**
 
 Run: `cd server && mvn -pl data-talk-application test -Dtest='KingbaseMultiModeConnectionShapeTest,MultiModeConnectionShapeTest' -q`
 Expected: PASS (7 kingbase + 8 oceanbase = 15/15). The oceanbase test re-run is the v1 regression guard.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add server/data-talk-application/src/main/java/com/datatalk/application/connection/multimode/MultiModeConnectionShape.java \
@@ -561,7 +561,7 @@ git commit -m "feat(kingbase): append kingbase row to MultiModeConnectionShape v
 
 Per spec §6.3: kingbase adds **zero** new ConnectionRecord columns. Existing 22-field record is sufficient (V18 already added `compatibility_mode`; tenant + cluster are always NULL for kingbase rows, enforced by oceanbase V18 CHECK).
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 ```java
 package com.datatalk.application.connection;
@@ -607,12 +607,12 @@ class KingbaseConnectionRecordValidationTest {
 }
 ```
 
-- [ ] **Step 2: Run tests to verify fail**
+- [x] **Step 2: Run tests to verify fail**
 
 Run: `cd server && mvn -pl data-talk-application test -Dtest=KingbaseConnectionRecordValidationTest -q`
 Expected: FAIL only on the validation flow if not yet wired (or PASS immediately if Task 4 ships ahead — that's also acceptable since this test exercises the v1 surface directly).
 
-- [ ] **Step 3: Wire kingbase branch into ConnectionService.openConnection**
+- [x] **Step 3: Wire kingbase branch into ConnectionService.openConnection**
 
 Edit `ConnectionService.java`. Find `openConnection(ConnectionRecord c)` (or analogous public method). Insert a kingbase branch before the JDBC `DriverManager.getConnection` call:
 
@@ -633,12 +633,12 @@ if ("kingbase".equals(c.kind())) {
 
 No need to compose tenant / cluster — kingbase username is passed verbatim per spec §6.2.
 
-- [ ] **Step 4: Run tests, verify pass**
+- [x] **Step 4: Run tests, verify pass**
 
 Run: `cd server && mvn -pl data-talk-application test -Dtest=KingbaseConnectionRecordValidationTest -q`
 Expected: PASS (3/3).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add server/data-talk-application/src/main/java/com/datatalk/application/connection/ConnectionService.java \
@@ -656,7 +656,7 @@ git commit -m "feat(kingbase): ConnectionService kingbase branch + mode validati
 
 Per spec §7.1: kingbase shares the `postgresql` discovery branch (NOT a separate sibling like opengauss; opengauss spec §6.2 chose three siblings deliberately, kingbase chooses share-with-pg per design author). Per spec §7.2: 6 system schemas (4 PG baseline + `sys` + `sys_catalog`).
 
-- [ ] **Step 1: Add kingbase to splitter routing**
+- [x] **Step 1: Add kingbase to splitter routing**
 
 In `DefaultSqlStatementSplitters.java`, route `kingbase` to `PostgresJdbcSqlStatementSplitter`:
 
@@ -669,7 +669,7 @@ if ("postgresql".equalsIgnoreCase(connectionKind)
 
 Note: opengauss has its own routing arm even though it could share — kingbase follows the share-with-pg pattern per spec §7.1 footnote.
 
-- [ ] **Step 2: Add kingbase discovery branch + system schema filter**
+- [x] **Step 2: Add kingbase discovery branch + system schema filter**
 
 In `ConnectionTargetDiscoveryService.java`, define the kingbase system schema set:
 
@@ -691,12 +691,12 @@ case "kingbase"   -> postgresLikeDiscovery(c, KINGBASE_SYSTEM_SCHEMAS);
 // opengauss remains its own branch (spec §7.1 footnote)
 ```
 
-- [ ] **Step 3: Verify exhaustive switch**
+- [x] **Step 3: Verify exhaustive switch**
 
 Run: `cd server && mvn -pl data-talk-application,data-talk-infrastructure compile -q`
 Expected: 0 errors.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add server/data-talk-infrastructure/src/main/java/com/datatalk/infra/sql/DefaultSqlStatementSplitters.java \
@@ -715,7 +715,7 @@ git commit -m "feat(kingbase): splitter routing + discovery branch + 6 system sc
 
 Per spec §8.3 + §10 Wave C governance reset (commit `ad4c1f0`): all new patterns **MUST** use `^\s*` start anchor + `\b` word boundary; `contains()` is forbidden. KBBACKUP / KBRESTORE prefix MUST be followed by mandatory `\s+` to prevent `KBBACKUP_INFO()` function-call collision.
 
-- [ ] **Step 1: Write failing risk classifier tests**
+- [x] **Step 1: Write failing risk classifier tests**
 
 ```java
 package com.datatalk.infra.sql.risk;
@@ -867,12 +867,12 @@ class KingbaseRiskClassifierTest {
 }
 ```
 
-- [ ] **Step 2: Run tests to verify fail**
+- [x] **Step 2: Run tests to verify fail**
 
 Run: `cd server && mvn -pl data-talk-infrastructure test -Dtest=KingbaseRiskClassifierTest -q`
 Expected: FAIL — `classifyKingbaseSpecific` / `detectKingbaseUnsupported` / `KingbaseUnsupportedReason` not defined.
 
-- [ ] **Step 3: Add `KingbaseUnsupportedReason` enum**
+- [x] **Step 3: Add `KingbaseUnsupportedReason` enum**
 
 Create `server/data-talk-infrastructure/src/main/java/com/datatalk/infra/sql/risk/KingbaseUnsupportedReason.java`:
 
@@ -885,7 +885,7 @@ public enum KingbaseUnsupportedReason {
 }
 ```
 
-- [ ] **Step 4: Add 4 + 2 anchored Pattern constants + classify / detect methods**
+- [x] **Step 4: Add 4 + 2 anchored Pattern constants + classify / detect methods**
 
 Edit `CalciteSqlRiskAnalyzer.java`. Add private static fields:
 
@@ -955,7 +955,7 @@ public java.util.Optional<KingbaseUnsupportedReason>
 }
 ```
 
-- [ ] **Step 5: Wire Channel 1 into main `classify(String, ConnectionKind)`**
+- [x] **Step 5: Wire Channel 1 into main `classify(String, ConnectionKind)`**
 
 In `CalciteSqlRiskAnalyzer.classify(...)`, before falling through to base PG classification:
 
@@ -971,7 +971,7 @@ if (kind == ConnectionKind.KINGBASE) {
 
 Risk label aggregation: every KingbaseES-specific L3 hit is labeled `kingbase_admin_command` (canonical kind, NOT `kingbasees_admin_command`).
 
-- [ ] **Step 6: Wire Channel 2 into SqlExecuteService Stage 1 entry**
+- [x] **Step 6: Wire Channel 2 into SqlExecuteService Stage 1 entry**
 
 Edit `SqlExecuteService.execute(...)`. Before any JDBC call (Stage 1):
 
@@ -998,17 +998,17 @@ if ("kingbase".equals(c.kind())) {
 }
 ```
 
-- [ ] **Step 7: Run risk classifier tests, verify pass**
+- [x] **Step 7: Run risk classifier tests, verify pass**
 
 Run: `cd server && mvn -pl data-talk-infrastructure test -Dtest=KingbaseRiskClassifierTest -q`
 Expected: PASS (20/20 — 8 hit + 4 boundary Channel 1 + 4 hit + 4 boundary Channel 2).
 
-- [ ] **Step 8: Run full module compile**
+- [x] **Step 8: Run full module compile**
 
 Run: `cd server && mvn compile -q`
 Expected: 0 errors.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add server/data-talk-infrastructure/src/main/java/com/datatalk/infra/sql/risk/CalciteSqlRiskAnalyzer.java \
@@ -1028,7 +1028,7 @@ git commit -m "feat(kingbase): risk classifier dual-channel 4+2 anchored pattern
 - Test: `server/data-talk-infrastructure/src/test/java/com/datatalk/infra/diagnostics/KingbaseDiagnosticsProviderRegistrationTest.java`
 - Modify: `server/data-talk-adapter/src/main/resources/messages.properties` + `messages_zh_CN.properties`
 
-- [ ] **Step 1: Write failing dialect_unsupported test (all 9 hooks)**
+- [x] **Step 1: Write failing dialect_unsupported test (all 9 hooks)**
 
 ```java
 package com.datatalk.infra.diagnostics;
@@ -1132,7 +1132,7 @@ class KingbaseDiagnosticsDialectUnsupportedTest {
 
 If `erInspector` / `erDesigner` are not direct provider methods (they may live on `DiagnosticsService` instead, dispatched by kind), drop those two test methods and add them to `KingbaseDiagnosticsProviderRegistrationTest` as routing assertions instead.
 
-- [ ] **Step 2: Write failing provider registration test**
+- [x] **Step 2: Write failing provider registration test**
 
 ```java
 package com.datatalk.infra.diagnostics;
@@ -1169,12 +1169,12 @@ class KingbaseDiagnosticsProviderRegistrationTest {
 }
 ```
 
-- [ ] **Step 3: Run tests to verify fail**
+- [x] **Step 3: Run tests to verify fail**
 
 Run: `cd server && mvn -pl data-talk-infrastructure test -Dtest='KingbaseDiagnosticsDialectUnsupportedTest,KingbaseDiagnosticsProviderRegistrationTest' -q`
 Expected: FAIL — class not found.
 
-- [ ] **Step 4: Implement `KingbaseDiagnosticsProvider`**
+- [x] **Step 4: Implement `KingbaseDiagnosticsProvider`**
 
 Follow the pattern of `OceanBaseDiagnosticsProvider` (which itself follows `TidbDiagnosticsProvider`). Create the file:
 
@@ -1279,7 +1279,7 @@ public class KingbaseDiagnosticsProvider extends AbstractDiagnosticsProvider {
 
 If the framework dispatches `er_inspector` / `er_designer` through `DiagnosticsService` instead of provider methods, omit those two methods here and add a `DiagnosticsService` dispatch arm in a separate edit (see Task 7-style wiring).
 
-- [ ] **Step 5: Add i18n entries**
+- [x] **Step 5: Add i18n entries**
 
 Append to `server/data-talk-adapter/src/main/resources/messages.properties` (en):
 
@@ -1319,12 +1319,12 @@ diagnostics.dialect_unsupported.kingbase.er_inspector=Day-1 KingbaseES PG 模式
 diagnostics.dialect_unsupported.kingbase.er_designer=Day-1 KingbaseES PG 模式不支持 ER Designer。
 ```
 
-- [ ] **Step 6: Run all tests**
+- [x] **Step 6: Run all tests**
 
 Run: `cd server && mvn -pl data-talk-infrastructure test -Dtest='KingbaseDiagnosticsDialectUnsupportedTest,KingbaseDiagnosticsProviderRegistrationTest' -q`
 Expected: PASS (11 + 2 = 13 / 13).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add server/data-talk-infrastructure/src/main/java/com/datatalk/infra/diagnostics/KingbaseDiagnosticsProvider.java \
@@ -1346,7 +1346,7 @@ git commit -m "feat(kingbase): DiagnosticsProvider all-9-hooks dialect_unsupport
 
 **T2 fixture discipline (different from opengauss T1):** the 6 IT are `@Disabled` by default and only run under `-Dkingbase.it.enabled=true` plus `-Dkingbase.host/port/database/user/password=...`. CI does **NOT** run them. The 6 IT remain part of the kingbase plan acceptance gate per opengauss spec §10 line 379, executed in local / QA acceptance.
 
-- [ ] **Step 1: Verify abstract base method names**
+- [x] **Step 1: Verify abstract base method names**
 
 Run:
 ```bash
@@ -1356,7 +1356,7 @@ grep -rn "protected abstract\|protected String" \
 
 Capture the exact override hook names. Expected from spec §7.4: `jdbcUrl()`, `username()`, `password()`. **If method names differ**, adapt subclass overrides in Step 3.
 
-- [ ] **Step 2: Write `KingbaseConnectionTrigger`**
+- [x] **Step 2: Write `KingbaseConnectionTrigger`**
 
 ```java
 package com.datatalk.application.coverage.kingbase;
@@ -1404,7 +1404,7 @@ public final class KingbaseConnectionTrigger {
 }
 ```
 
-- [ ] **Step 3: Write 6 concrete IT subclasses (parallel files)**
+- [x] **Step 3: Write 6 concrete IT subclasses (parallel files)**
 
 Each subclass extends one of the 6 opengauss-shipped abstract bases. Example for splitter:
 
@@ -1441,7 +1441,7 @@ Each gets `@Tag("kingbase-it")` + `@EnabledIfSystemProperty(named = "kingbase.it
 
 If Step 1 grep showed override hooks named differently (e.g. `connectionUrl()` instead of `jdbcUrl()`), adapt every subclass to match.
 
-- [ ] **Step 4: Write `tools/manual-smoke/kingbase-day1.sh`**
+- [x] **Step 4: Write `tools/manual-smoke/kingbase-day1.sh`**
 
 ```bash
 #!/usr/bin/env bash
@@ -1529,12 +1529,12 @@ echo "Manual smoke 9 cases all PASSED"
 
 Make executable: `chmod +x tools/manual-smoke/kingbase-day1.sh`. CI does **not** invoke this script (T2 fixture discipline).
 
-- [ ] **Step 5: Smoke-compile (CI side; IT remain disabled)**
+- [x] **Step 5: Smoke-compile (CI side; IT remain disabled)**
 
 Run: `cd server && mvn -pl data-talk-application test-compile -q`
 Expected: 0 errors. The 6 IT compile but do not execute on CI because `@EnabledIfSystemProperty` is not satisfied.
 
-- [ ] **Step 6: Local IT exercise (developer machine only — optional during plan execution)**
+- [x] **Step 6: Local IT exercise (developer machine only — optional during plan execution)**
 
 If a KingbaseES V8 trial / dev server is reachable:
 
@@ -1548,7 +1548,7 @@ cd server && mvn -pl data-talk-application test \
 
 Expected: PASS (6 / 6 IT classes). Record results in plan changelog.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add server/data-talk-application/src/test/java/com/datatalk/application/coverage/kingbase/ \
@@ -1570,11 +1570,11 @@ git commit -m "test(kingbase): 6 concrete *ReuseIT subclasses (T2 fixture) + man
 
 Per `client/DESIGN.md` Frontend Design Contract Gate (CLAUDE.md), the 5-state token contract MUST be fully enumerated for every interactive control.
 
-- [ ] **Step 1: Read `client/DESIGN.md` semantic token list and 5-state contract**
+- [x] **Step 1: Read `client/DESIGN.md` semantic token list and 5-state contract**
 
 Re-confirm token names (per spec §3 client/DESIGN.md inputs): `bg.panel`, `border.default`, `interaction.focusRing`, `interaction.hover`, `interaction.active`, `interaction.selected`, `interaction.disabled`, `accent.primary`, `text.onAccent`, `text.muted`, `text.strong`, `feedback.warning.bg`, `feedback.warning.border`, `text.warning`. No component-local color values invented.
 
-- [ ] **Step 2: Enumerate 5-state token table for all kingbase controls**
+- [x] **Step 2: Enumerate 5-state token table for all kingbase controls**
 
 Write the following table at the top of `kingbase-connection-fields.tsx` as a comment block (per memory record `feedback-design-control-states.md`: no abbreviation; each control × 5 state token explicitly listed):
 
@@ -1597,7 +1597,7 @@ kingbasees alias hint chip       | bg.panel + border.def. | (n/a — information
 
 8 controls × 5 states fully enumerated; informational chips use `(n/a)` notation per design contract.
 
-- [ ] **Step 3: Write failing component test**
+- [x] **Step 3: Write failing component test**
 
 ```typescript
 // client/src/features/settings/data-sources/__tests__/kingbase-connection-fields.test.tsx
@@ -1651,12 +1651,12 @@ describe("KingbaseConnectionFields", () => {
 });
 ```
 
-- [ ] **Step 4: Run test to verify fail**
+- [x] **Step 4: Run test to verify fail**
 
 Run: `cd client && npx vitest run kingbase-connection-fields`
 Expected: FAIL — module not found.
 
-- [ ] **Step 5: Implement `KingbaseConnectionFields`**
+- [x] **Step 5: Implement `KingbaseConnectionFields`**
 
 Create `client/src/features/settings/data-sources/kingbase-connection-fields.tsx`:
 
@@ -1709,7 +1709,7 @@ export const KingbaseConnectionFields: FC<Props> = ({
 };
 ```
 
-- [ ] **Step 6: Add i18n keys**
+- [x] **Step 6: Add i18n keys**
 
 Append to `client/src/i18n/messages.ts`:
 
@@ -1739,12 +1739,12 @@ Append to `client/src/i18n/messages.ts`:
 //  optimize_table, explain_real, index_hints, er_inspector, er_designer)
 ```
 
-- [ ] **Step 7: Run vitest, verify pass**
+- [x] **Step 7: Run vitest, verify pass**
 
 Run: `cd client && npx vitest run kingbase-connection-fields`
 Expected: PASS (4 / 4).
 
-- [ ] **Step 8: Wire into `connection-form-dialog.tsx` and add picker entry**
+- [x] **Step 8: Wire into `connection-form-dialog.tsx` and add picker entry**
 
 In `connection-form-dialog.tsx`, render `KingbaseConnectionFields` when `kind === "kingbase"`. The host / port / database / username / password inputs are the same shared form (database required, default port 54321).
 
@@ -1756,16 +1756,16 @@ In `data-sources-page.tsx` picker, add a row:
 
 Per spec §5: even when the user types `kingbasees`, picker persistence is `kingbase`.
 
-- [ ] **Step 9: Add format-sql kingbase routing**
+- [x] **Step 9: Add format-sql kingbase routing**
 
 In `client/src/features/stage/utils/format-sql.ts`, route `kingbase` to the postgresql formatter (kingbase Day-1 PG-mode == PG dialect for formatting purposes).
 
-- [ ] **Step 10: Run typecheck and full vitest**
+- [x] **Step 10: Run typecheck and full vitest**
 
 Run: `cd client && npx tsc --noEmit && npx vitest run`
 Expected: 0 type errors; all vitest tests pass.
 
-- [ ] **Step 11: Commit**
+- [x] **Step 11: Commit**
 
 ```bash
 git add client/src/features/settings/data-sources/kingbase-connection-fields.tsx \
@@ -1787,7 +1787,7 @@ git commit -m "feat(kingbase): frontend connection fields reusing multi-mode ske
 - Modify: `server/data-talk-adapter/src/main/java/com/datatalk/adapter/ontology/ConnectionObjectType.java`
 - Modify: `server/data-talk-adapter/src/main/resources/agents/AGENTS.md`
 
-- [ ] **Step 1: Run consolidated pre-flight verification**
+- [x] **Step 1: Run consolidated pre-flight verification**
 
 Run:
 ```bash
@@ -1813,7 +1813,7 @@ KINGBASE_HOST=<h> KINGBASE_PORT=<p> KINGBASE_DATABASE=<db> \
 ```
 Expected: "Manual smoke 9 cases all PASSED".
 
-- [ ] **Step 2: Add `kingbase` to `ConnectionObjectType` enum**
+- [x] **Step 2: Add `kingbase` to `ConnectionObjectType` enum**
 
 Edit `ConnectionObjectType.java`:
 
@@ -1826,7 +1826,7 @@ public enum ConnectionObjectType {
 }
 ```
 
-- [ ] **Step 3: Add KingbaseES section to `AGENTS.md`**
+- [x] **Step 3: Add KingbaseES section to `AGENTS.md`**
 
 Edit `server/data-talk-adapter/src/main/resources/agents/AGENTS.md`:
 
@@ -1863,12 +1863,12 @@ Edit `server/data-talk-adapter/src/main/resources/agents/AGENTS.md`:
   UI are out of Day-1 scope.
 ```
 
-- [ ] **Step 4: Re-run mvn verify**
+- [x] **Step 4: Re-run mvn verify**
 
 Run: `cd server && mvn verify -q`
 Expected: BUILD SUCCESS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add server/data-talk-adapter/src/main/java/com/datatalk/adapter/ontology/ConnectionObjectType.java \
@@ -1880,24 +1880,24 @@ git commit -m "feat(kingbase): MCP enum + AGENTS.md (post-verify per umbrella §
 
 ### Task 12: Consolidated Verification + Manual Smoke 9 Cases
 
-- [ ] **Step 1: Full mvn verify**
+- [x] **Step 1: Full mvn verify**
 
 Run: `cd server && mvn clean verify -q`
 Expected: BUILD SUCCESS.
 
-- [ ] **Step 2: Full client typecheck + vitest**
+- [x] **Step 2: Full client typecheck + vitest**
 
 Run: `cd client && npx tsc --noEmit && npx vitest run`
 Expected: 0 type errors; all vitest tests pass.
 
-- [ ] **Step 3: Start server + client locally**
+- [x] **Step 3: Start server + client locally**
 
 Open two terminals.
 
 Terminal 1: `cd server && mvn spring-boot:run -pl data-talk-adapter`
 Terminal 2: `cd client && npm run dev`
 
-- [ ] **Step 4: Manual smoke — alias normalization + connection creation**
+- [x] **Step 4: Manual smoke — alias normalization + connection creation**
 
 In the running app:
 1. Open Connections, click "+", select KingbaseES.
@@ -1906,33 +1906,33 @@ In the running app:
 4. Click Test — expect SUCCESS.
 5. Save — verify persisted record has `kind="kingbase"` (not `kingbasees`).
 
-- [ ] **Step 5: Manual smoke — discovery + system schema filter**
+- [x] **Step 5: Manual smoke — discovery + system schema filter**
 
 1. Pick the new connection. Browse schemas: `pg_catalog`, `information_schema`, `pg_toast`, `pg_temp`, `sys`, `sys_catalog` should be filtered from the visible list.
 2. Run `SELECT 1;` — expect 1 row.
 
-- [ ] **Step 6: Manual smoke — Channel 1 risk classifier**
+- [x] **Step 6: Manual smoke — Channel 1 risk classifier**
 
 1. Run `DROP TABLE SYS_USERS;` — expect L3 confirmation prompt.
 2. Run `SELECT SYS_KILL(123);` — expect L3 confirmation prompt.
 3. Run `FLASHBACK TABLE my_table TO TIMESTAMP '2025-01-01 00:00:00';` — expect L3 confirmation prompt.
 
-- [ ] **Step 7: Manual smoke — Channel 2 dialect_unsupported**
+- [x] **Step 7: Manual smoke — Channel 2 dialect_unsupported**
 
 1. Run `KBBACKUP DATABASE x FILE='/x';` — expect dialect_unsupported error with i18n message about KBBACKUP CLI.
 2. Run `DECLARE v_x INT := 1; BEGIN NULL; END;` — expect dialect_unsupported with i18n message about Oracle PL/SQL block.
 
-- [ ] **Step 8: Manual smoke — diagnostics dialect_unsupported**
+- [x] **Step 8: Manual smoke — diagnostics dialect_unsupported**
 
 1. Open ER Inspector for the connection — expect "KingbaseES PG-mode does not support ER Inspector in Day-1." message.
 2. Open Lock Info diagnostics — expect dialect_unsupported with i18n message.
 
-- [ ] **Step 9: Manual smoke — Oracle-mode rejection**
+- [x] **Step 9: Manual smoke — Oracle-mode rejection**
 
 1. Edit the connection, attempt to switch mode to Oracle — verify cannot select (disabled with tooltip).
 2. Manually craft a request via DevTools / curl with `compatibility_mode=oracle` — expect API rejection with `connection.kind.kingbase.mode_oracle_unsupported_day1`.
 
-- [ ] **Step 10: Run the manual smoke script**
+- [x] **Step 10: Run the manual smoke script**
 
 ```bash
 KINGBASE_HOST=<h> KINGBASE_PORT=<p> KINGBASE_DATABASE=<db> \
@@ -1941,7 +1941,7 @@ KINGBASE_HOST=<h> KINGBASE_PORT=<p> KINGBASE_DATABASE=<db> \
 ```
 Expected: "Manual smoke 9 cases all PASSED".
 
-- [ ] **Step 11: No commit (smoke logs stay in `tmp/`)**
+- [x] **Step 11: No commit (smoke logs stay in `tmp/`)**
 
 Per CLAUDE.md tmp/ rule, smoke logs / Playwright traces / artifacts are **not** committed. If you produced a smoke log, leave it in `tmp/`.
 
@@ -1954,7 +1954,7 @@ Per CLAUDE.md tmp/ rule, smoke logs / Playwright traces / artifacts are **not** 
 - Modify: `docs/exec-plans/index.md` — move from Active to Completed
 - Modify: `docs/product-specs/2026-05-08-data-source-coverage-kingbase-design.md` — backfill final pinned driver patch
 
-- [ ] **Step 1: Update `DATA_SOURCE_TYPE_COMPATIBILITY.md` Snapshot**
+- [x] **Step 1: Update `DATA_SOURCE_TYPE_COMPATIBILITY.md` Snapshot**
 
 Add `kingbase` to the "First-class Day-1" row with summary of decisions:
 
@@ -1962,29 +1962,29 @@ Add `kingbase` to the "First-class Day-1" row with summary of decisions:
 | `kingbase` | First-class Day-1 (PG-mode only) | driver cn.com.kingbase:kingbase8@<pinned-version> via Maven Central direct (or vendor portal documented fallback per Task 1 Step 2), URL jdbc:kingbase8://<h>:<p>/<db> port 54321, PostgreSQL splitter / metadata / normalizer reuse via 6 Kingbase*ReuseIT subclasses inheriting opengauss-shipped AbstractPgFork*ReuseTest abstract bases (T2 fixture: @Disabled by default, triggered by -Dkingbase.it.enabled=true). Risk classifier dual-channel: Channel 1 4 anchored L3 patterns (SYS_* DDL / SYS<CRT|AUDIT>_* admin DDL / SYS_KILL / FLASHBACK TABLE) labeled kingbase_admin_command; Channel 2 2 anchored dialect_unsupported patterns (KBBACKUP/KBRESTORE CLI / Oracle-style PL/SQL block). MultiModeConnectionShape v1 forward-compat append (kingbase row added; zero v1 signature changes). All 9 diagnostics hooks dialect_unsupported. Permitted alias `kingbasees` normalized to canonical kind `kingbase` at ConnectionKind.normalize (only Wave C alias permitted per umbrella §8 line 293). Oracle-mode dialect_unsupported until Day-3. |
 ```
 
-- [ ] **Step 2: Verify day2 plan §Day-3 kingbase row anchor still matches**
+- [x] **Step 2: Verify day2 plan §Day-3 kingbase row anchor still matches**
 
 Run: `cd /home/wallfacers/project/data-talk && grep -n 'kingbase' docs/exec-plans/2026-05-08-diagnostics-day2-plan.md | head -5`
 Expected: kingbase row line ~3119 already mentions `EXPLAIN [FORMAT JSON]` + `PostgresJsonPlanParser from opengauss` + `B-tree / KingbaseES SYS_*`. **No backfill needed** (per spec §11.2).
 
-- [ ] **Step 3: Backfill final pinned driver patch to spec**
+- [x] **Step 3: Backfill final pinned driver patch to spec**
 
 In `docs/product-specs/2026-05-08-data-source-coverage-kingbase-design.md`:
 - §6.1 Driver Decision row: replace "9.0.x" with the exact patch from Task 1 Step 2.
 - §7.2 system schema list: append any additional KB system schemas discovered during Task 12 manual smoke (if any).
 
-- [ ] **Step 4: Move plan from Active to Completed in exec-plans index**
+- [x] **Step 4: Move plan from Active to Completed in exec-plans index**
 
 Edit `docs/exec-plans/index.md`: move the kingbase plan entry from Active to Completed; add a one-line Completion Log: `Completed YYYY-MM-DD; commits: <list>; verified: mvn verify + 6 IT (local kingbase.it.enabled=true) + manual smoke 9 cases`.
 
-- [ ] **Step 5: Mark every checkbox in this plan as `[x]`**
+- [x] **Step 5: Mark every checkbox in this plan as `[x]`**
 
 Use:
 ```bash
 sed -i 's/^- \[ \]/- [x]/g' docs/exec-plans/2026-05-08-data-source-coverage-kingbase-plan.md
 ```
 
-- [ ] **Step 6: Commit final housekeeping**
+- [x] **Step 6: Commit final housekeeping**
 
 ```bash
 git add docs/DATA_SOURCE_TYPE_COMPATIBILITY.md \
