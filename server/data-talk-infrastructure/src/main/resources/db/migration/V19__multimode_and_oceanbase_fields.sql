@@ -1,5 +1,8 @@
--- V18__multimode_and_oceanbase_fields.sql
+-- V19__multimode_and_oceanbase_fields.sql
 -- SQLite cannot ADD CHECK on existing tables. Rebuild required.
+-- Renamed from V18 to V19: dashboard branch already owns V18__file_artifact_dashboard.sql.
+-- Fixed: schema_digest nullable (V1 was TEXT, not TEXT NOT NULL).
+-- Fixed: duckdb_read_only → read_only (V17 added read_only, not duckdb_read_only).
 
 CREATE TABLE connection_new (
     id TEXT PRIMARY KEY,
@@ -10,16 +13,16 @@ CREATE TABLE connection_new (
     database_name TEXT,
     username TEXT,
     password_enc BLOB NOT NULL,
-    schema_digest TEXT NOT NULL,
+    schema_digest TEXT,
     created_at INTEGER NOT NULL,
-    connect_timeout INTEGER NOT NULL DEFAULT 10,
+    connect_timeout INTEGER NOT NULL DEFAULT 3000,
     last_test_status TEXT,
     last_test_at INTEGER,
     oracle_service_type TEXT,
     sqlserver_encrypt INTEGER NOT NULL DEFAULT 1,
     sqlserver_trust_server_certificate INTEGER NOT NULL DEFAULT 1,
     sqlserver_instance_name TEXT,
-    duckdb_read_only INTEGER NOT NULL DEFAULT 0,
+    read_only INTEGER NOT NULL DEFAULT 0,
 
     -- new Wave C step 3 columns
     compatibility_mode TEXT NULL,
@@ -37,7 +40,7 @@ INSERT INTO connection_new (
     schema_digest, created_at, connect_timeout, last_test_status,
     last_test_at, oracle_service_type, sqlserver_encrypt,
     sqlserver_trust_server_certificate, sqlserver_instance_name,
-    duckdb_read_only,
+    read_only,
     compatibility_mode, oceanbase_tenant, oceanbase_cluster
 )
 SELECT
@@ -45,7 +48,7 @@ SELECT
     schema_digest, created_at, connect_timeout, last_test_status,
     last_test_at, oracle_service_type, sqlserver_encrypt,
     sqlserver_trust_server_certificate, sqlserver_instance_name,
-    duckdb_read_only,
+    read_only,
     NULL, NULL, NULL
 FROM connections;
 
