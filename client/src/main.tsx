@@ -23,6 +23,8 @@ startStagePersistence().catch(() => {
   // and the app continues with in-memory-only tab state.
 })
 
+import { useDashboardTabsStore } from '@/features/dashboard/stores/dashboard-tabs-store'
+
 // Dev-only: expose Zustand stores to Playwright E2E tests
 if (import.meta.env.DEV || import.meta.env.MODE === 'test') {
   ;(window as any).__DT_E2E__ = {
@@ -30,6 +32,7 @@ if (import.meta.env.DEV || import.meta.env.MODE === 'test') {
     er: () => useErTabsStore.getState(),
     session: () => useSessionStore.getState(),
     coordinator: () => coordinator,
+    dashboard: () => useDashboardTabsStore.getState(),
   }
 }
 
