@@ -30,10 +30,11 @@ public class DefaultSqlStatementSplitters implements SqlStatementSplitters {
         if ("mysql".equalsIgnoreCase(connectionKind) || "mariadb".equalsIgnoreCase(connectionKind) || "apache_doris".equalsIgnoreCase(connectionKind) || "starrocks".equalsIgnoreCase(connectionKind) || "tidb".equalsIgnoreCase(connectionKind) || "oceanbase".equalsIgnoreCase(connectionKind)) {
             return mysqlSplitter.split(sql);
         }
-        if ("oracle".equalsIgnoreCase(connectionKind)) {
-            // TODO: Oracle day-1 uses generic single-statement splitting.
+        if ("oracle".equalsIgnoreCase(connectionKind) || "dameng".equalsIgnoreCase(connectionKind)) {
+            // Oracle day-1 uses generic single-statement splitting.
             //  Future: implement PL/SQL block-aware splitting (/ terminator,
             //  BEGIN...END blocks, EXECUTE IMMEDIATE, etc.)
+            // Dameng is Oracle-like and reuses the same GenericSqlStatementSplitter.
             return genericSplitter.split(sql);
         }
         if ("sqlserver".equalsIgnoreCase(connectionKind)) {

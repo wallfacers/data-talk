@@ -11,6 +11,8 @@ import com.datatalk.application.session.ResolvedExecutionContext;
 import com.datatalk.application.session.SessionDataContextService;
 import com.datatalk.domain.action.Category;
 import com.datatalk.domain.action.RiskLevel;
+import com.datatalk.domain.error.DataTalkErrorCodes;
+import com.datatalk.domain.error.DataTalkException;
 import com.datatalk.dto.ResolvedDataContextDto;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -113,6 +115,22 @@ public class SqlExecuteService {
 
         ResolvedExecutionContext context = tableContextAutoResolver.resolve(requestedContext, sql);
         ResolvedDataContextDto resolvedDto = toDto(context);
+
+        // Dameng Channel 2 — dialect_unsupported entry gate (per spec §8.1)
+        if ("dameng".equalsIgnoreCase(context.connection().kind())) {
+            for (String stmt : statements) {
+                var unsupportedReason = ((CalciteSqlRiskAnalyzer) riskAnalyzer).detectDamengUnsupported(stmt);
+                if (unsupportedReason.isPresent()) {
+                    String i18nKey = switch (unsupportedReason.get()) {
+                        case PLSQL_BLOCK -> "risk.dialect_unsupported.dameng.plsql_block";
+                        case PROCEDURE_DDL -> "risk.dialect_unsupported.dameng.procedure_ddl";
+                        case EXP_IMP_COMMAND -> "risk.dialect_unsupported.dameng.exp_imp_command";
+                    };
+                    throw new DataTalkException(DataTalkErrorCodes.DIALECT_UNSUPPORTED,
+                        translator.get(i18nKey), false);
+                }
+            }
+        }
 
         // Risk gate applies to BOTH user-typed and AI-prefilled SQL. The
         // Workbench tab is the single trusted execution surface for L2 / L3
@@ -616,6 +634,13 @@ public class SqlExecuteService {
             || "presto".equalsIgnoreCase(context.connection().kind()))
             && hasText(context.schema())) {
             connection.setSchema(context.schema());
+        }
+        // Dameng schema injection: SET SCHEMA (server-level URL, schema set post-connect)
+        if ("dameng".equalsIgnoreCase(context.connection().kind())
+            && hasText(context.database())) {
+            try (var stmt = connection.createStatement()) {
+                stmt.executeUpdate("SET SCHEMA " + context.database());
+            }
         }
     }
 

@@ -75,6 +75,13 @@ public class ConnectionTargetDiscoveryService {
                     databaseNames.add(configuredDatabase);
                 }
             }
+            // Dameng is Oracle-like: server-level connection, schema as primary namespace.
+            if (ConnectionKind.DAMENG.equals(connection.kind())) {
+                databaseNames.clear();
+                if (configuredDatabase != null && !configuredDatabase.isBlank()) {
+                    databaseNames.add(configuredDatabase);
+                }
+            }
             // SQL Server has two-level context (database + schema).
             // Filter system databases and discover schemas.
             if (ConnectionKind.SQLSERVER.equals(connection.kind())) {
@@ -192,7 +199,8 @@ public class ConnectionTargetDiscoveryService {
             && !ConnectionKind.APACHE_DORIS.equals(normalized)
             && !ConnectionKind.STARROCKS.equals(normalized)
             && !ConnectionKind.HIVE.equals(normalized)
-            && !ConnectionKind.TIDB.equals(normalized);
+            && !ConnectionKind.TIDB.equals(normalized)
+            && !ConnectionKind.DAMENG.equals(normalized);
     }
 
     private String effectiveDatabaseName(String kind, String databaseName) {
@@ -209,7 +217,9 @@ public class ConnectionTargetDiscoveryService {
             && !normalized.equals("sys")
             && !normalized.equals("system_lobs")
             // Oracle system schemas to exclude
-            && !ORACLE_SYSTEM_SCHEMAS.contains(normalized);
+            && !ORACLE_SYSTEM_SCHEMAS.contains(normalized)
+            // Dameng system schemas to exclude
+            && !DAMENG_SYSTEM_SCHEMAS.contains(normalized);
     }
 
     private boolean isClickHouseSystemDatabase(String name) {
@@ -269,6 +279,14 @@ public class ConnectionTargetDiscoveryService {
         "oevmsys", "audsys", "ojsvd_users", "remote_scheduler_agent",
         "dip", "sysbackup", "sysdg", "syskm", "sysrac",
         "spatial_csw_admin_usr", "spatial_wfs_admin_usr"
+    );
+
+    private static final Set<String> DAMENG_SYSTEM_SCHEMAS = Set.of(
+        "sys",         // system objects
+        "sysdba",      // DBA user
+        "sysauditor",  // audit
+        "syssso",      // security
+        "ctisys"       // full-text indexing
     );
 
     public record DiscoveryResult(

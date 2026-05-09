@@ -20,4 +20,5 @@ public final class DataTalkErrorCodes {
     public static final String DATABASE_KIND_UNSUPPORTED     = "error.database.kind.unsupported";
     public static final String DATABASE_TYPE_UNSUPPORTED     = "error.database.kind.unsupported";
     public static final String DATABASE_NAME_REQUIRED        = "error.database.name_required";
+    public static final String DIALECT_UNSUPPORTED           = "sql.dialect_unsupported";
 }

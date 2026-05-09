@@ -28,6 +28,7 @@ export const DATABASE_TYPES = {
   hive: { label: 'Apache Hive', port: 10000 },
   presto: { label: 'Presto', port: 8080 },
   oceanbase: { label: 'OceanBase', port: 2881 },
+  dameng: { label: 'Dameng (DM 8)', port: 5236 },
 } as const
 
 export type DatabaseKind = keyof typeof DATABASE_TYPES
@@ -145,14 +146,19 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
   const isClickhouse = form.kind === 'clickhouse'
   const isStarrocks = form.kind === 'starrocks'
   const isOceanbase = form.kind === 'oceanbase'
+  const isDameng = form.kind === 'dameng'
   const hideHostPort = isSqlite || isDuckdb
   const databaseLabel = isDuckdb
     ? (form.duckdbMode === 'file' ? t('dataSources.duckdbFilePath') : '')
     : (isSqlite ? t('dataSources.sqliteFilePath')
-       : isStarrocks ? t('dataSources.databaseRequired') : t('dataSources.databaseOptional'))
+       : isStarrocks ? t('dataSources.databaseRequired')
+       : isDameng ? t('dataSources.schemaOptional')
+       : t('dataSources.databaseOptional'))
   const databasePlaceholder = isDuckdb
     ? t('dataSources.duckdbFilePathPlaceholder')
-    : (isSqlite ? t('dataSources.sqliteFilePathPlaceholder') : t('dataSources.databasePlaceholder'))
+    : (isSqlite ? t('dataSources.sqliteFilePathPlaceholder')
+       : isDameng ? t('dataSources.schemaPlaceholder')
+       : t('dataSources.databasePlaceholder'))
 
   return (
     <div className="rounded-lg border bg-card p-6">
@@ -328,8 +334,13 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
         ) : null}
         {!isDuckdb ? (
           <Field label={databaseLabel}>
-            <Input aria-label={databaseLabel} value={form.database} placeholder={databasePlaceholder}
-              onChange={(e) => setForm(f => ({ ...f, database: e.target.value }))} />
+            <div className="flex flex-col gap-1">
+              <Input aria-label={databaseLabel} value={form.database} placeholder={databasePlaceholder}
+                onChange={(e) => setForm(f => ({ ...f, database: e.target.value }))} />
+              {isDameng ? (
+                <span className="text-xs text-muted-foreground">{t('dataSources.schemaHelp')}</span>
+              ) : null}
+            </div>
           </Field>
         ) : null}
         {hideHostPort ? null : (

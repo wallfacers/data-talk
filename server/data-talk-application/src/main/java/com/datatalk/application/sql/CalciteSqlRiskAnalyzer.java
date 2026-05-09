@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -93,6 +94,33 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
 
     private static final Pattern DUCKDB_PRAGMA_NAME_PATTERN =
         Pattern.compile("(?is)^pragma\\s+([\\w.]+)");
+
+    // ====== Dameng Channel 1 — 5 anchored L3 admin command patterns ======
+    private static final Pattern DAMENG_TABLESPACE_DDL = Pattern.compile(
+        "^\\s*(CREATE|ALTER|DROP)\\s+TABLESPACE\\b", Pattern.CASE_INSENSITIVE);
+    private static final Pattern DAMENG_USER_DDL = Pattern.compile(
+        "^\\s*(CREATE|ALTER|DROP)\\s+USER\\b", Pattern.CASE_INSENSITIVE);
+    private static final Pattern DAMENG_ROLE_DDL = Pattern.compile(
+        "^\\s*(CREATE|ALTER|DROP)\\s+ROLE\\b", Pattern.CASE_INSENSITIVE);
+    private static final Pattern DAMENG_GRANT_REVOKE = Pattern.compile(
+        "^\\s*(GRANT|REVOKE)\\b", Pattern.CASE_INSENSITIVE);
+    private static final Pattern DAMENG_DROP_OBJECT = Pattern.compile(
+        "^\\s*DROP\\s+(TABLE|VIEW|INDEX|SEQUENCE|SYNONYM)\\b", Pattern.CASE_INSENSITIVE);
+
+    // ====== Dameng Channel 2 — 3 anchored dialect_unsupported patterns ======
+    private static final Pattern DAMENG_PLSQL_BLOCK = Pattern.compile(
+        "^\\s*(DECLARE|BEGIN)\\b", Pattern.CASE_INSENSITIVE);
+    private static final Pattern DAMENG_PROCEDURE_DDL = Pattern.compile(
+        "^\\s*(CREATE|ALTER|DROP)(\\s+OR\\s+REPLACE)?\\s+(PROCEDURE|FUNCTION|TRIGGER|PACKAGE(\\s+BODY)?)\\b",
+        Pattern.CASE_INSENSITIVE);
+    private static final Pattern DAMENG_EXP_IMP = Pattern.compile(
+        "^\\s*(EXP|IMP)\\s+", Pattern.CASE_INSENSITIVE);
+
+    public enum DamengUnsupportedReason {
+        PLSQL_BLOCK,
+        PROCEDURE_DDL,
+        EXP_IMP_COMMAND
+    }
 
     private final SqlStatementSplitters statementSplitters;
 
@@ -198,6 +226,9 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
         }
         if (ConnectionKind.OCEANBASE.equalsIgnoreCase(connectionKind)) {
             return classifyOceanBaseSpecific(sql);
+        }
+        if (ConnectionKind.DAMENG.equalsIgnoreCase(connectionKind)) {
+            return classifyDamengSpecific(sql);
         }
         return null;
     }
@@ -1018,6 +1049,42 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
 
         // Catch-all for any unrecognized OceanBase statement → L3
         return SqlRiskAnalysis.high("oceanbase_unrecognized");
+    }
+
+    // ====== Dameng Channel 1 — L3 admin command classification ======
+
+    public SqlRiskAnalysis classifyDamengSpecific(String sql) {
+        if (sql == null) return null;
+        String stripped = stripLeadingComments(sql);
+        if (stripped.isEmpty()) return null;
+
+        if (DAMENG_TABLESPACE_DDL.matcher(stripped).find()
+            || DAMENG_USER_DDL.matcher(stripped).find()
+            || DAMENG_ROLE_DDL.matcher(stripped).find()
+            || DAMENG_GRANT_REVOKE.matcher(stripped).find()
+            || DAMENG_DROP_OBJECT.matcher(stripped).find()) {
+            return SqlRiskAnalysis.high("dameng_admin_command");
+        }
+        return null;
+    }
+
+    // ====== Dameng Channel 2 — dialect_unsupported detection ======
+
+    public Optional<DamengUnsupportedReason> detectDamengUnsupported(String sql) {
+        if (sql == null) return Optional.empty();
+        String stripped = stripLeadingComments(sql);
+        if (stripped.isEmpty()) return Optional.empty();
+
+        if (DAMENG_PLSQL_BLOCK.matcher(stripped).find()) {
+            return Optional.of(DamengUnsupportedReason.PLSQL_BLOCK);
+        }
+        if (DAMENG_PROCEDURE_DDL.matcher(stripped).find()) {
+            return Optional.of(DamengUnsupportedReason.PROCEDURE_DDL);
+        }
+        if (DAMENG_EXP_IMP.matcher(stripped).find()) {
+            return Optional.of(DamengUnsupportedReason.EXP_IMP_COMMAND);
+        }
+        return Optional.empty();
     }
 
     private String stripLeadingComments(String sql) {

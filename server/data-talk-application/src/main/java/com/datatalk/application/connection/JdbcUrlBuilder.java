@@ -106,6 +106,8 @@ public final class JdbcUrlBuilder {
                     ? "jdbc:oceanbase://" + c.host() + ":" + c.port() + "/" + obDb
                     : "jdbc:oceanbase://" + c.host() + ":" + c.port();
             }
+            case ConnectionKind.DAMENG ->
+                "jdbc:dm://" + c.host() + ":" + c.port();
             default ->
                 throw new DataTalkException(DataTalkErrorCodes.DATABASE_KIND_UNSUPPORTED,
                     "unsupported database kind: " + c.kind(), false);

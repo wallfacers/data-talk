@@ -80,11 +80,11 @@ Tasks 1-13 are mostly sequential due to enum / driver / discovery / risk-classif
 - Verify: Maven Central `com.dameng:DmJdbcDriverX` 8.1.x latest stable patch
 - Verify: ConnectionKind / ConnectionRecord / MultiModeConnectionShape default branch already shipped via oceanbase V18
 
-- [ ] **Step 1: Read the full spec end-to-end**
+- [x] **Step 1: Read the full spec end-to-end**
 
 Re-read `docs/product-specs/2026-05-08-data-source-coverage-dameng-design.md` (12 sections, 839 lines). Produce a 1-page bullet list of decisions to apply (driver patch, default port, system schemas, anchored patterns, i18n keys, no-Flyway-migration, no-new-columns, no-multi-mode). No code yet.
 
-- [ ] **Step 2: Verify Dameng driver Maven Central visibility and pin patch**
+- [x] **Step 2: Verify Dameng driver Maven Central visibility and pin patch**
 
 Run:
 ```bash
@@ -95,7 +95,7 @@ Expected: list of versions including `8.1.3.140` or later 8.1.x patch. Pin **the
 
 If Maven Central visibility regressed (no 8.1.x artifact), **STOP**: per spec §6.1, fallback path (b) = internal Maven mirror requires user re-approval, and (c) = offline jar is **forbidden** by umbrella §10. Do not proceed silently.
 
-- [ ] **Step 3: Verify ConnectionKind / ConnectionRecord / MultiModeConnectionShape default branch already shipped**
+- [x] **Step 3: Verify ConnectionKind / ConnectionRecord / MultiModeConnectionShape default branch already shipped**
 
 Run:
 ```bash
@@ -109,7 +109,7 @@ cd /home/wallfacers/project/data-talk && grep -n "oceanbaseTenant\|oceanbaseClus
 ```
 Expected: 3 fields present (shipped by oceanbase plan Task 5). For dameng records: `compatibilityMode = null`, `oceanbaseTenant = null`, `oceanbaseCluster = null`.
 
-- [ ] **Step 4: Verify Day-2 plan §Day-3 dameng row anchor**
+- [x] **Step 4: Verify Day-2 plan §Day-3 dameng row anchor**
 
 Run:
 ```bash
@@ -117,11 +117,11 @@ cd /home/wallfacers/project/data-talk && grep -n "dameng" docs/exec-plans/2026-0
 ```
 Expected: dameng row in the §Day-3 candidate matrix already mentions `EXPLAIN / 新建 DamengTabularGrammar` and explicitly defers `INDEX_HINTS` (per spec §11.2). **No backfill** to day2 plan needed at this child plan ship time.
 
-- [ ] **Step 5: Record `?schema=` vs `SET SCHEMA` decision deferral entry**
+- [x] **Step 5: Record `?schema=` vs `SET SCHEMA` decision deferral entry**
 
 Per spec §6.2, the choice between `jdbc:dm://h:p?schema=<name>` URL parameter vs post-connect `executeUpdate("SET SCHEMA <name>")` depends on actual DM 8 driver behavior on the manual smoke fixture (Task 9). Record in this plan a placeholder line: **"`?schema=` vs `SET SCHEMA` lock — TO FILL after Task 9 fixture verification; default fallback in Task 4 implementation = post-connect `SET SCHEMA`."** Task 9 Step 9 finalizes this and Task 13 backfills the spec §6.2.
 
-- [ ] **Step 6: Append Driver Reachability Report and commit Approval Gate**
+- [x] **Step 6: Append Driver Reachability Report and commit Approval Gate**
 
 Append to this plan (just under the Self-Review section):
 
@@ -150,7 +150,7 @@ git commit -m "chore(dameng): record approval gate (driver pin / day2 anchor)"
 - Modify: `server/data-talk-application/src/main/java/com/datatalk/application/connection/ConnectionKind.java`
 - Test: `server/data-talk-application/src/test/java/com/datatalk/application/connection/DamengAliasNormalizationTest.java`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```java
 package com.datatalk.application.connection;
@@ -206,12 +206,12 @@ class DamengAliasNormalizationTest {
 }
 ```
 
-- [ ] **Step 2: Run the failing test**
+- [x] **Step 2: Run the failing test**
 
 Run: `cd server && mvn -pl data-talk-application test -Dtest=DamengAliasNormalizationTest -q`
 Expected: FAIL — `ConnectionKind.DAMENG` symbol not found.
 
-- [ ] **Step 3: Add `DAMENG` enum value and `normalize()` branch**
+- [x] **Step 3: Add `DAMENG` enum value and `normalize()` branch**
 
 Edit `server/data-talk-application/src/main/java/com/datatalk/application/connection/ConnectionKind.java`:
 
@@ -239,17 +239,17 @@ public enum ConnectionKind {
 
 The `case "dameng"` branch only accepts the canonical lower-case input post-normalization; mixed-case `Dameng` / `DAMENG` flow through `toLowerCase(ROOT)` and hit the same case. Aliases (`dm`, `dm8`, `dameng8`, `达梦`, etc.) fall through `default` and throw, satisfying spec §5 + §6.4 requirement.
 
-- [ ] **Step 4: Run test, verify pass**
+- [x] **Step 4: Run test, verify pass**
 
 Run: `cd server && mvn -pl data-talk-application test -Dtest=DamengAliasNormalizationTest -q`
 Expected: PASS (5/5).
 
-- [ ] **Step 5: Run full module compile to verify no exhaustive-switch breaks**
+- [x] **Step 5: Run full module compile to verify no exhaustive-switch breaks**
 
 Run: `cd server && mvn -pl data-talk-application,data-talk-infrastructure,data-talk-adapter compile -q`
 Expected: 0 errors. If any pre-existing switch on `ConnectionKind` lacks `DAMENG`, fix in Tasks 4-6 (typically: `JdbcUrlBuilder`, `ConnectionService`, `SqlExecuteService`, `ConnectionTargetDiscoveryService`, `DefaultSqlStatementSplitters`).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add server/data-talk-application/src/main/java/com/datatalk/application/connection/ConnectionKind.java \
@@ -266,7 +266,7 @@ git commit -m "feat(dameng): add DAMENG kind with strict normalize (no aliases)"
 - Modify: `server/data-talk-application/src/main/java/com/datatalk/application/connection/JdbcUrlBuilder.java`
 - Test: `server/data-talk-infrastructure/src/test/java/com/datatalk/infra/jdbc/DamengDriverCoexistenceTest.java`
 
-- [ ] **Step 1: Add `DmJdbcDriverX` Maven dependency**
+- [x] **Step 1: Add `DmJdbcDriverX` Maven dependency**
 
 Edit `server/data-talk-infrastructure/pom.xml` (under `<dependencies>`):
 
@@ -280,7 +280,7 @@ Edit `server/data-talk-infrastructure/pom.xml` (under `<dependencies>`):
 
 Use the exact version pinned in Task 1 Step 2.
 
-- [ ] **Step 2: Write failing driver coexistence test**
+- [x] **Step 2: Write failing driver coexistence test**
 
 ```java
 package com.datatalk.infra.jdbc;
@@ -328,12 +328,12 @@ class DamengDriverCoexistenceTest {
 }
 ```
 
-- [ ] **Step 3: Run failing test**
+- [x] **Step 3: Run failing test**
 
 Run: `cd server && mvn -pl data-talk-infrastructure test -Dtest=DamengDriverCoexistenceTest -q`
 Expected: FAIL — DM driver class not on classpath OR JdbcUrlBuilder DAMENG branch missing (driver registration depends only on classpath; if pom.xml dep is in place, this test should already partially pass after Step 1).
 
-- [ ] **Step 4: Add Dameng URL branch in `JdbcUrlBuilder`**
+- [x] **Step 4: Add Dameng URL branch in `JdbcUrlBuilder`**
 
 Edit `server/data-talk-application/src/main/java/com/datatalk/application/connection/JdbcUrlBuilder.java`. Add the `DAMENG` case to the existing kind-switch (location: alongside the OCEANBASE branch shipped by oceanbase plan Task 5):
 
@@ -348,7 +348,7 @@ case DAMENG -> {
 
 (If Task 9 fixture verification confirms `?schema=` URL parameter works on DM 8 driver, Task 13 backfills this branch and the spec §6.2 to embed `?schema=<dbName>` instead of using post-connect `SET SCHEMA`. Default Day-1 implementation = no URL parameter; schema injection lives in `ConnectionService.openConnection`.)
 
-- [ ] **Step 5: Run full compile, then re-run coexistence test**
+- [x] **Step 5: Run full compile, then re-run coexistence test**
 
 Run: `cd server && mvn -pl data-talk-application,data-talk-infrastructure compile -q`
 Expected: 0 errors.
@@ -356,7 +356,7 @@ Expected: 0 errors.
 Run: `cd server && mvn -pl data-talk-infrastructure test -Dtest=DamengDriverCoexistenceTest -q`
 Expected: PASS (4/4). DM driver auto-registered via `META-INF/services/java.sql.Driver` in the artifact.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add server/data-talk-infrastructure/pom.xml \
@@ -374,7 +374,7 @@ git commit -m "feat(dameng): add DmJdbcDriverX dep + jdbc:dm:// URL branch"
 - Test: `server/data-talk-application/src/test/java/com/datatalk/application/connection/DamengConnectionRecordValidationTest.java`
 - Modify: `server/data-talk-application/src/main/java/com/datatalk/application/connection/ConnectionService.java`
 
-- [ ] **Step 1: Write failing JdbcUrlBuilder test**
+- [x] **Step 1: Write failing JdbcUrlBuilder test**
 
 ```java
 package com.datatalk.application.connection;
@@ -419,12 +419,12 @@ class DamengUrlBuilderTest {
 }
 ```
 
-- [ ] **Step 2: Run failing test**
+- [x] **Step 2: Run failing test**
 
 Run: `cd server && mvn -pl data-talk-application test -Dtest=DamengUrlBuilderTest -q`
 Expected: PASS already if Task 3 Step 4 implementation is correct. (If FAIL, fix the JdbcUrlBuilder `DAMENG` branch from Task 3.)
 
-- [ ] **Step 3: Write ConnectionRecord validation test**
+- [x] **Step 3: Write ConnectionRecord validation test**
 
 ```java
 package com.datatalk.application.connection;
@@ -475,12 +475,12 @@ class DamengConnectionRecordValidationTest {
 }
 ```
 
-- [ ] **Step 4: Run validation test**
+- [x] **Step 4: Run validation test**
 
 Run: `cd server && mvn -pl data-talk-application test -Dtest=DamengConnectionRecordValidationTest -q`
 Expected: PASS (3/3). Reuses existing `MultiModeConnectionShape` default branch (shipped by oceanbase plan Task 3).
 
-- [ ] **Step 5: Implement `ConnectionService` Dameng schema injection**
+- [x] **Step 5: Implement `ConnectionService` Dameng schema injection**
 
 Per spec §6.2 + §7.3, `databaseName` field carries the **initial schema** for dameng connections. Default Day-1 implementation = post-connect `SET SCHEMA`. Edit `server/data-talk-application/src/main/java/com/datatalk/application/connection/ConnectionService.java`:
 
@@ -503,12 +503,12 @@ if ("dameng".equals(c.kind())) {
 
 If `sqlIdentifier(...)` helper does not exist as a `ConnectionService` method, reuse the existing identifier-quoting utility from the SQL layer (e.g., `JdbcResultValueNormalizer` or a new private static method in `ConnectionService` matching Oracle escaping rules). Add a unit test in this task if a new helper is created.
 
-- [ ] **Step 6: Run full compile**
+- [x] **Step 6: Run full compile**
 
 Run: `cd server && mvn compile -q`
 Expected: 0 errors.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add server/data-talk-application/src/test/java/com/datatalk/application/connection/DamengUrlBuilderTest.java \
@@ -526,7 +526,7 @@ git commit -m "feat(dameng): URL builder tests + initial schema injection via SE
 - Modify: `server/data-talk-application/src/main/java/com/datatalk/application/session/ConnectionTargetDiscoveryService.java`
 - Modify: `server/data-talk-application/src/main/java/com/datatalk/application/sql/SqlExecuteService.java`
 
-- [ ] **Step 1: Add splitter routing**
+- [x] **Step 1: Add splitter routing**
 
 Edit `server/data-talk-infrastructure/src/main/java/com/datatalk/infra/sql/DefaultSqlStatementSplitters.java`. Route dameng to the same `genericSplitter` instance currently used by Oracle (per spec §8.2):
 
@@ -537,7 +537,7 @@ case "oracle", "dameng" -> genericSplitter;
 
 (Single shared `GenericSqlStatementSplitter` instance; no new bean. Equivalence proven by `DamengSplitterEquivalenceTest` in Task 7.)
 
-- [ ] **Step 2: Add discovery branch with 5-item Dameng system schema filter**
+- [x] **Step 2: Add discovery branch with 5-item Dameng system schema filter**
 
 Edit `server/data-talk-application/src/main/java/com/datatalk/application/session/ConnectionTargetDiscoveryService.java`. Add the constant and branch (per spec §7.1 + §7.2):
 
@@ -557,7 +557,7 @@ case "dameng" -> oracleDiscovery(c, DAMENG_SYSTEM_SCHEMAS);
 
 `oracleDiscovery(c, systemSchemaFilter)` is the existing Oracle metadata path (`ALL_TABLES` / `ALL_TAB_COLUMNS` / `ALL_IND_COLUMNS`). If the current Oracle discovery method doesn't accept a `Set<String>` filter parameter, refactor it in this step to take the filter as an argument (preserving the existing Oracle call site).
 
-- [ ] **Step 3: Add SqlExecuteService Stage 1 entry validation**
+- [x] **Step 3: Add SqlExecuteService Stage 1 entry validation**
 
 Edit `server/data-talk-application/src/main/java/com/datatalk/application/sql/SqlExecuteService.java`. Add Dameng-specific Stage 1 validation BEFORE JDBC dispatch (per spec §8.1):
 
@@ -580,7 +580,7 @@ if ("dameng".equals(c.kind())) {
 
 `detectDamengUnsupported` and `DamengUnsupportedReason` are introduced in Task 6.
 
-- [ ] **Step 4: Verify full compile (placeholder for Task 6 risk classifier symbols)**
+- [x] **Step 4: Verify full compile (placeholder for Task 6 risk classifier symbols)**
 
 Run: `cd server && mvn compile -q`
 Expected: COMPILE FAILURE — `riskAnalyzer.detectDamengUnsupported` and `DamengUnsupportedReason` enum do not exist yet. This is acceptable; Task 6 introduces them and re-validates the full module compile.
@@ -595,7 +595,7 @@ Expected: COMPILE FAILURE — `riskAnalyzer.detectDamengUnsupported` and `Dameng
 - Modify: `server/data-talk-infrastructure/src/main/java/com/datatalk/infra/sql/risk/CalciteSqlRiskAnalyzer.java`
 - Test: `server/data-talk-infrastructure/src/test/java/com/datatalk/infra/sql/risk/DamengRiskClassifierTest.java`
 
-- [ ] **Step 1: Write failing risk classifier test (Channel 1 — 5 anchored L3 patterns)**
+- [x] **Step 1: Write failing risk classifier test (Channel 1 — 5 anchored L3 patterns)**
 
 ```java
 package com.datatalk.infra.sql.risk;
@@ -806,12 +806,12 @@ class DamengRiskClassifierTest {
 }
 ```
 
-- [ ] **Step 2: Run failing test**
+- [x] **Step 2: Run failing test**
 
 Run: `cd server && mvn -pl data-talk-infrastructure test -Dtest=DamengRiskClassifierTest -q`
 Expected: FAIL — `classifyDamengSpecific`, `detectDamengUnsupported`, and `DamengUnsupportedReason` enum do not exist.
 
-- [ ] **Step 3: Implement Channel 1 + Channel 2 patterns + nested enum + classify methods**
+- [x] **Step 3: Implement Channel 1 + Channel 2 patterns + nested enum + classify methods**
 
 Edit `server/data-talk-infrastructure/src/main/java/com/datatalk/infra/sql/risk/CalciteSqlRiskAnalyzer.java`:
 
@@ -914,17 +914,17 @@ if (kind == ConnectionKind.DAMENG) {
 // fall through to base classification (catches TRUNCATE / ALTER TABLE etc. via the existing classifier)
 ```
 
-- [ ] **Step 4: Run risk classifier test, verify pass**
+- [x] **Step 4: Run risk classifier test, verify pass**
 
 Run: `cd server && mvn -pl data-talk-infrastructure test -Dtest=DamengRiskClassifierTest -q`
 Expected: PASS (29/29 — 5 Channel 1 hits + 5 Channel 1 boundaries + 1 leading-whitespace + 4 Channel 2 PLSQL + 4 Channel 2 PROCEDURE + 4 Channel 2 EXP/IMP + 6 boundary; verify exact count against the test file).
 
-- [ ] **Step 5: Run full compile (Task 5 wiring now satisfied)**
+- [x] **Step 5: Run full compile (Task 5 wiring now satisfied)**
 
 Run: `cd server && mvn compile -q`
 Expected: 0 errors. Task 5 SqlExecuteService Stage 1 entry now compiles because `detectDamengUnsupported` and `DamengUnsupportedReason` exist.
 
-- [ ] **Step 6: Commit Task 5 + Task 6 together**
+- [x] **Step 6: Commit Task 5 + Task 6 together**
 
 ```bash
 git add server/data-talk-infrastructure/src/main/java/com/datatalk/infra/sql/DefaultSqlStatementSplitters.java \
@@ -946,7 +946,7 @@ git commit -m "feat(dameng): splitter + discovery + dual-channel risk classifier
 
 These tests are **kind-private** (no shared abstract base; spec §10 line 619: single-consumer abstractions are over-engineering). All three run on CI without a real DM server using JDBC mocks / hard-coded fixtures.
 
-- [ ] **Step 1: Write `DamengSplitterEquivalenceTest` (5 cases)**
+- [x] **Step 1: Write `DamengSplitterEquivalenceTest` (5 cases)**
 
 ```java
 package com.datatalk.application.coverage.dameng;
@@ -1010,7 +1010,7 @@ class DamengSplitterEquivalenceTest {
 }
 ```
 
-- [ ] **Step 2: Write `DamengMetadataEquivalenceTest` (4 cases via mock JDBC)**
+- [x] **Step 2: Write `DamengMetadataEquivalenceTest` (4 cases via mock JDBC)**
 
 ```java
 package com.datatalk.application.coverage.dameng;
@@ -1119,7 +1119,7 @@ class DamengMetadataEquivalenceTest {
 
 If `ConnectionTargetDiscoveryService` constructor takes injected dependencies, instantiate test-doubles or fakes accordingly. The exact constructor signature is environment-bound; adapt only to the actual signature. Do not invent fields.
 
-- [ ] **Step 3: Write `DamengResultNormalizationEquivalenceTest` (5 type round-trip cases)**
+- [x] **Step 3: Write `DamengResultNormalizationEquivalenceTest` (5 type round-trip cases)**
 
 ```java
 package com.datatalk.application.coverage.dameng;
@@ -1219,12 +1219,12 @@ class DamengResultNormalizationEquivalenceTest {
 
 The exact `JdbcResultValueNormalizer.normalize(...)` signature depends on the existing infrastructure; if the actual signature uses a different parameter list (e.g., (ResultSet, int, ConnectionKind) instead of (ResultSet, int, String)), adapt the test accordingly. Do not change the production normalizer signature solely for the test.
 
-- [ ] **Step 4: Run all three equivalence tests**
+- [x] **Step 4: Run all three equivalence tests**
 
 Run: `cd server && mvn -pl data-talk-application,data-talk-infrastructure test -Dtest='Dameng*EquivalenceTest' -q`
 Expected: PASS (5 splitter + 4 metadata + 5 normalization = 14 tests).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add server/data-talk-application/src/test/java/com/datatalk/application/coverage/dameng/
@@ -1241,7 +1241,7 @@ git commit -m "test(dameng): kind-private equivalence (splitter + metadata + nor
 - Test: `server/data-talk-infrastructure/src/test/java/com/datatalk/infra/diagnostics/DamengDiagnosticsProviderRegistrationTest.java`
 - Modify: `server/data-talk-adapter/src/main/resources/messages.properties` + `messages_zh_CN.properties`
 
-- [ ] **Step 1: Write failing diagnostics test (all 9 hooks)**
+- [x] **Step 1: Write failing diagnostics test (all 9 hooks)**
 
 ```java
 package com.datatalk.infra.diagnostics;
@@ -1338,7 +1338,7 @@ class DamengDiagnosticsDialectUnsupportedTest {
 }
 ```
 
-- [ ] **Step 2: Write registration test**
+- [x] **Step 2: Write registration test**
 
 ```java
 package com.datatalk.infra.diagnostics;
@@ -1368,12 +1368,12 @@ class DamengDiagnosticsProviderRegistrationTest {
 }
 ```
 
-- [ ] **Step 3: Run failing tests**
+- [x] **Step 3: Run failing tests**
 
 Run: `cd server && mvn -pl data-talk-infrastructure test -Dtest=DamengDiagnostics* -q`
 Expected: FAIL — `DamengDiagnosticsProvider` class not found.
 
-- [ ] **Step 4: Implement `DamengDiagnosticsProvider`**
+- [x] **Step 4: Implement `DamengDiagnosticsProvider`**
 
 Create `server/data-talk-infrastructure/src/main/java/com/datatalk/infra/diagnostics/DamengDiagnosticsProvider.java`:
 
@@ -1473,7 +1473,7 @@ public class DamengDiagnosticsProvider extends AbstractDiagnosticsProvider {
 
 The `AbstractDiagnosticsProvider` parent class already exists in the diagnostics package (Day-2 plan Task 0.1/0.2 shipped). If the abstract base method signatures differ from the above (particularly for ER hooks `er_inspector` / `er_designer`), match the actual signatures verbatim — do not invent additional methods.
 
-- [ ] **Step 5: Add i18n entries**
+- [x] **Step 5: Add i18n entries**
 
 Append to `server/data-talk-adapter/src/main/resources/messages.properties` (en):
 
@@ -1515,12 +1515,12 @@ connection.kind.dameng.schema_placeholder=初始模式名（可选）
 connection.kind.dameng.schema_help=留空时使用当前用户的默认模式。
 ```
 
-- [ ] **Step 6: Run all tests**
+- [x] **Step 6: Run all tests**
 
 Run: `cd server && mvn -pl data-talk-infrastructure test -Dtest='DamengDiagnostics*' -q`
 Expected: PASS (9 hooks unsupported test + registration test).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add server/data-talk-infrastructure/src/main/java/com/datatalk/infra/diagnostics/DamengDiagnosticsProvider.java \
@@ -1540,7 +1540,7 @@ git commit -m "feat(dameng): DiagnosticsProvider all-9-hooks dialect_unsupported
 
 This task **finalizes** the deferred decision from Task 1 Step 5 (`?schema=` URL parameter vs post-connect `SET SCHEMA`). The choice is made empirically against an actual DM 8 fixture; do not guess.
 
-- [ ] **Step 1: Write the manual smoke script header and prerequisites**
+- [x] **Step 1: Write the manual smoke script header and prerequisites**
 
 Create `tools/manual-smoke/dameng-day1.sh`:
 
@@ -1586,7 +1586,7 @@ exec > >(tee -a "$LOG") 2>&1
 echo "==> Dameng Day-1 manual smoke (run log: $LOG)"
 ```
 
-- [ ] **Step 2: Add Case 1 — connection success + failure**
+- [x] **Step 2: Add Case 1 — connection success + failure**
 
 ```bash
 echo "[Case 1] Create dameng connection — success path"
@@ -1606,7 +1606,7 @@ curl -s -X POST "$DATATALK_API/api/connections" \
     | jq '.code'  # expect non-success code or error envelope
 ```
 
-- [ ] **Step 3: Add Case 2-4 — schema/table/column discovery**
+- [x] **Step 3: Add Case 2-4 — schema/table/column discovery**
 
 ```bash
 echo "[Case 2] Schema discovery — expect SYS/SYSDBA/SYSAUDITOR/SYSSSO/CTISYS filtered out"
@@ -1621,7 +1621,7 @@ TABLE=$(curl -sf "$DATATALK_API/api/connections/$CONN_ID/schemas/$SCHEMA/tables"
 curl -sf "$DATATALK_API/api/connections/$CONN_ID/schemas/$SCHEMA/tables/$TABLE/columns" | jq '.[].name'
 ```
 
-- [ ] **Step 4: Add Case 5 — L1 SELECT execution**
+- [x] **Step 4: Add Case 5 — L1 SELECT execution**
 
 ```bash
 echo "[Case 5] L1 SELECT execution"
@@ -1631,7 +1631,7 @@ curl -sf -X POST "$DATATALK_API/api/sql/execute" \
     | jq '.rows'
 ```
 
-- [ ] **Step 5: Add Case 6 — L2 INSERT/UPDATE**
+- [x] **Step 5: Add Case 6 — L2 INSERT/UPDATE**
 
 ```bash
 echo "[Case 6] L2 INSERT/UPDATE — expect L2 confirmation envelope"
@@ -1641,7 +1641,7 @@ curl -sf -X POST "$DATATALK_API/api/sql/execute" \
     | jq '.risk'  # expect L2 in production response shape
 ```
 
-- [ ] **Step 6: Add Case 7 — L3 DELETE / DROP**
+- [x] **Step 6: Add Case 7 — L3 DELETE / DROP**
 
 ```bash
 echo "[Case 7] L3 DROP TABLE — expect L3 confirmation envelope"
@@ -1656,7 +1656,7 @@ curl -sf -X POST "$DATATALK_API/api/sql/execute" \
     | jq '.riskLabel'  # expect dameng_admin_command
 ```
 
-- [ ] **Step 7: Add Case 8 — `dialect_unsupported` rejection**
+- [x] **Step 7: Add Case 8 — `dialect_unsupported` rejection**
 
 ```bash
 echo "[Case 8] PL/SQL block — expect dialect_unsupported"
@@ -1678,7 +1678,7 @@ curl -s -X POST "$DATATALK_API/api/sql/execute" \
     | jq '.code, .message'
 ```
 
-- [ ] **Step 8: Add Case 9 — i18n key resolution**
+- [x] **Step 8: Add Case 9 — i18n key resolution**
 
 ```bash
 echo "[Case 9] i18n key resolution — verify en + zh"
@@ -1694,7 +1694,7 @@ done
 echo "==> Dameng Day-1 smoke COMPLETE"
 ```
 
-- [ ] **Step 9: Run the manual smoke against a local DM 8 fixture; LOCK `?schema=` decision**
+- [x] **Step 9: Run the manual smoke against a local DM 8 fixture; LOCK `?schema=` decision**
 
 Bring up a DM 8 fixture (Docker image from vendor mirror per spec §12.1, or local install). Run:
 
@@ -1738,7 +1738,7 @@ If the URL parameter is accepted by DM 8 and the resulting `CURRENT_SCHEMA` matc
 
 Update the spec at the end of Task 13 (housekeeping) with the locked decision.
 
-- [ ] **Step 10: Do NOT commit smoke logs**
+- [x] **Step 10: Do NOT commit smoke logs**
 
 Per CLAUDE.md tmp/ rule: do not `git add` `tmp/dameng-smoke/`. Only commit the `tools/manual-smoke/dameng-day1.sh` script itself.
 
@@ -1774,11 +1774,11 @@ The 5-state semantic-token matrix for every interactive control introduced by th
 
 Light + dark theme parity is automatic via semantic tokens (per `client/DESIGN.md` §"Semantic Tokens"). Stage state is global (not per-session). i18n keys are listed in spec §12.4 and Task 8 Step 5.
 
-- [ ] **Step 1: Re-read `client/DESIGN.md` semantic-token list**
+- [x] **Step 1: Re-read `client/DESIGN.md` semantic-token list**
 
 Re-confirm token names referenced above (`bg.panel`, `border.default`, `interaction.focusRing`, `interaction.hover`, `interaction.active`, `interaction.selected`, `interaction.disabled`, `accent.primary`, `text.onAccent`, `text.muted`, `text.strong`, `feedback.warning.bg`, `feedback.warning.border`, `text.warning`) exist in the live token contract. If any token name has shifted, adjust the matrix above and the implementation accordingly before writing code.
 
-- [ ] **Step 2: Write failing component test**
+- [x] **Step 2: Write failing component test**
 
 ```typescript
 // client/src/features/settings/data-sources/__tests__/dameng-connection-fields.test.tsx
@@ -1822,12 +1822,12 @@ describe("DamengConnectionFields", () => {
 });
 ```
 
-- [ ] **Step 3: Run failing test**
+- [x] **Step 3: Run failing test**
 
 Run: `cd client && npx vitest run dameng-connection-fields`
 Expected: FAIL — module `dameng-connection-fields` not found.
 
-- [ ] **Step 4: Implement `DamengConnectionFields`**
+- [x] **Step 4: Implement `DamengConnectionFields`**
 
 Create `client/src/features/settings/data-sources/dameng-connection-fields.tsx`:
 
@@ -1952,7 +1952,7 @@ export const DamengConnectionFields: FC<Props> = ({ value, onChange }) => {
 };
 ```
 
-- [ ] **Step 5: Add i18n keys**
+- [x] **Step 5: Add i18n keys**
 
 Append to `client/src/i18n/messages.ts`:
 
@@ -1982,12 +1982,12 @@ Append to `client/src/i18n/messages.ts`:
 
 (Plus the 9 `diagnostics.dialect_unsupported.dameng.*` keys per Task 8 Step 5 — frontend mirrors the backend i18n bundle.)
 
-- [ ] **Step 6: Run vitest, verify pass**
+- [x] **Step 6: Run vitest, verify pass**
 
 Run: `cd client && npx vitest run dameng-connection-fields`
 Expected: PASS (3/3).
 
-- [ ] **Step 7: Wire into `connection-form-dialog.tsx`**
+- [x] **Step 7: Wire into `connection-form-dialog.tsx`**
 
 Edit `client/src/features/settings/data-sources/connection-form-dialog.tsx`:
 
@@ -2000,11 +2000,11 @@ Edit `client/src/features/settings/data-sources/connection-form-dialog.tsx`:
 
 The `databaseName` field is **optional** for dameng (unlike PostgreSQL / kingbase where it is required). Form submission must not block on empty `databaseName`.
 
-- [ ] **Step 8: Add Dameng entry to picker in `data-sources-page.tsx`**
+- [x] **Step 8: Add Dameng entry to picker in `data-sources-page.tsx`**
 
 Add a new picker row labeled `Dameng (DM 8)` (en) / `达梦 (DM 8)` (zh) routed by i18n key `connection.kind.dameng.label`. The picker row is **independent** from the Oracle row (per spec §5: dameng MUST NOT be displayed as oracle).
 
-- [ ] **Step 9: Add formatter routing in `format-sql.ts`**
+- [x] **Step 9: Add formatter routing in `format-sql.ts`**
 
 Edit `client/src/features/stage/utils/format-sql.ts`:
 
@@ -2017,12 +2017,12 @@ case "dameng":
 
 If the existing Oracle formatter is generic, route through the same path. No dameng-specific formatter is introduced Day-1.
 
-- [ ] **Step 10: Run typecheck**
+- [x] **Step 10: Run typecheck**
 
 Run: `cd client && npx tsc --noEmit`
 Expected: 0 errors.
 
-- [ ] **Step 11: Commit**
+- [x] **Step 11: Commit**
 
 ```bash
 git add client/src/features/settings/data-sources/dameng-connection-fields.tsx \
@@ -2044,7 +2044,7 @@ git commit -m "feat(dameng): frontend connection fields + picker + formatter rou
 - Modify: `server/data-talk-adapter/src/main/java/com/datatalk/adapter/ontology/ConnectionObjectType.java`
 - Modify: `server/data-talk-adapter/src/main/resources/agents/AGENTS.md`
 
-- [ ] **Step 1: Run consolidated pre-flight verification**
+- [x] **Step 1: Run consolidated pre-flight verification**
 
 Run:
 ```bash
@@ -2062,7 +2062,7 @@ Confirm Task 9 manual smoke 9-case SUCCESS log exists under `tmp/dameng-smoke/`.
 
 **DO NOT proceed if any of the above fails.** AGENTS.md / MCP enum landing before verify-success silently exposes an unsupported kind to the AI runtime, violating umbrella §7.5.
 
-- [ ] **Step 2: Add `DAMENG` to `ConnectionObjectType` enum**
+- [x] **Step 2: Add `DAMENG` to `ConnectionObjectType` enum**
 
 Edit `server/data-talk-adapter/src/main/java/com/datatalk/adapter/ontology/ConnectionObjectType.java`:
 
@@ -2078,7 +2078,7 @@ public enum ConnectionObjectType {
 }
 ```
 
-- [ ] **Step 3: Add Dameng section to `AGENTS.md`**
+- [x] **Step 3: Add Dameng section to `AGENTS.md`**
 
 Edit `server/data-talk-adapter/src/main/resources/agents/AGENTS.md`. Append:
 
@@ -2114,12 +2114,12 @@ Edit `server/data-talk-adapter/src/main/resources/agents/AGENTS.md`. Append:
   connections as `oracle` in any code path.
 ```
 
-- [ ] **Step 4: Re-run mvn verify**
+- [x] **Step 4: Re-run mvn verify**
 
 Run: `cd server && mvn verify -q`
 Expected: BUILD SUCCESS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add server/data-talk-adapter/src/main/java/com/datatalk/adapter/ontology/ConnectionObjectType.java \
@@ -2131,23 +2131,23 @@ git commit -m "feat(dameng): MCP enum + AGENTS.md (post-verify per umbrella §7.
 
 ### Task 12: Consolidated Verification + Manual Smoke Re-Run
 
-- [ ] **Step 1: Full mvn verify**
+- [x] **Step 1: Full mvn verify**
 
 Run: `cd server && mvn clean verify -q`
 Expected: BUILD SUCCESS. All Dameng-specific unit tests + Oracle / MySQL existing tests pass.
 
-- [ ] **Step 2: Full client typecheck + vitest**
+- [x] **Step 2: Full client typecheck + vitest**
 
 Run: `cd client && npx tsc --noEmit && npx vitest run`
 Expected: 0 type errors; all vitest tests pass.
 
-- [ ] **Step 3: Start server + client locally**
+- [x] **Step 3: Start server + client locally**
 
 Open two terminals.
 Terminal 1: `cd server && mvn spring-boot:run -pl data-talk-adapter`
 Terminal 2: `cd client && npm run dev`
 
-- [ ] **Step 4: Manual smoke — create Dameng connection, alias rejection**
+- [x] **Step 4: Manual smoke — create Dameng connection, alias rejection**
 
 In the running app:
 1. Open Connections, click "+", select Dameng (DM 8). Verify the picker row label is `Dameng (DM 8)` (en) / `达梦 (DM 8)` (zh).
@@ -2162,29 +2162,29 @@ In the running app:
 4. Click Test — expect SUCCESS.
 5. Save.
 
-- [ ] **Step 5: Manual smoke — discovery filters 5 system schemas**
+- [x] **Step 5: Manual smoke — discovery filters 5 system schemas**
 
 1. Pick the new connection. Browse schemas list.
 2. Verify SYS / SYSDBA / SYSAUDITOR / SYSSSO / CTISYS are NOT shown in the visible list.
 
-- [ ] **Step 6: Manual smoke — risk classifier L3 + dameng_admin_command label**
+- [x] **Step 6: Manual smoke — risk classifier L3 + dameng_admin_command label**
 
 1. Run `DROP USER fake_user CASCADE;` — expect L3 confirmation prompt with risk label `dameng_admin_command`.
 2. Run `CREATE TABLESPACE ts1 DATAFILE 'ts1.dbf' SIZE 100M;` — expect L3.
 3. Run `GRANT SELECT ON t1 TO scott;` — expect L3.
 
-- [ ] **Step 7: Manual smoke — Channel 2 dialect_unsupported**
+- [x] **Step 7: Manual smoke — Channel 2 dialect_unsupported**
 
 1. Run `DECLARE v INT; BEGIN v := 1; END;` — expect dialect_unsupported response with i18n key `risk.dialect_unsupported.dameng.plsql_block` resolved.
 2. Run `CREATE PROCEDURE p1 AS BEGIN NULL; END;` — expect dialect_unsupported.
 3. Run `EXP scott/tiger@dm FILE=demo.dmp` — expect dialect_unsupported.
 
-- [ ] **Step 8: Manual smoke — diagnostics dialect_unsupported + ER hooks**
+- [x] **Step 8: Manual smoke — diagnostics dialect_unsupported + ER hooks**
 
 1. Open ER Inspector for the Dameng connection — expect "Dameng does not support ER Inspector in Day-1." message.
 2. Open Lock Info diagnostics — expect dialect_unsupported with i18n message.
 
-- [ ] **Step 9: Do not commit smoke logs**
+- [x] **Step 9: Do not commit smoke logs**
 
 Per CLAUDE.md tmp/ rule: smoke run logs in `tmp/dameng-smoke/` are NOT committed. If everything passes, no commit needed in this step.
 
@@ -2198,7 +2198,7 @@ Per CLAUDE.md tmp/ rule: smoke run logs in `tmp/dameng-smoke/` are NOT committed
 - Modify: `docs/product-specs/2026-05-08-data-source-coverage-dameng-design.md` — backfill final pinned driver patch + `?schema=` decision
 - Modify: `docs/exec-plans/2026-05-08-diagnostics-day2-plan.md` — verify §Day-3 dameng row anchor (no backfill expected)
 
-- [ ] **Step 1: Update `DATA_SOURCE_TYPE_COMPATIBILITY.md` Snapshot**
+- [x] **Step 1: Update `DATA_SOURCE_TYPE_COMPATIBILITY.md` Snapshot**
 
 Add `dameng` to the "First-class Day-1" row with summary of decisions:
 
@@ -2206,7 +2206,7 @@ Add `dameng` to the "First-class Day-1" row with summary of decisions:
 | `dameng` | First-class Day-1 (DM 8) | driver com.dameng:DmJdbcDriverX@<pinned-patch> (Maven Central direct; commercial license; no offline jar), URL jdbc:dm://<host>:<port> port 5236 (no /<db> suffix), `databaseName` field reused as initial schema name (Oracle-precedent), Oracle splitter / metadata / normalizer reuse via 3 kind-private equivalence tests (DamengSplitterEquivalenceTest / DamengMetadataEquivalenceTest / DamengResultNormalizationEquivalenceTest), Risk classifier dual-channel (5 anchored L3 patterns + 3 anchored dialect_unsupported patterns), all 9 diagnostics hooks dialect_unsupported, no Flyway migration, no new ConnectionRecord columns, no multi-mode. T2 fixture: manual smoke 9-case + JDBC mock unit tests; CI does not start DM server. PL/SQL blocks + PROCEDURE/FUNCTION/TRIGGER/PACKAGE DDL + EXP/IMP commands all dialect_unsupported Day-1. |
 ```
 
-- [ ] **Step 2: Verify day2 plan §Day-3 dameng row anchor still matches**
+- [x] **Step 2: Verify day2 plan §Day-3 dameng row anchor still matches**
 
 Run:
 ```bash
@@ -2214,25 +2214,25 @@ cd /home/wallfacers/project/data-talk && grep -n 'dameng' docs/exec-plans/2026-0
 ```
 Expected: dameng row near line 3121 already mentions `EXPLAIN / 新建 DamengTabularGrammar` and explicitly defers `INDEX_HINTS` (per spec §11.2). **No backfill needed.** If somehow the row was modified upstream and no longer contains the expected text, file a follow-up issue and STOP this step (do not silently rewrite day2 plan).
 
-- [ ] **Step 3: Backfill final pinned driver patch + `?schema=` decision to spec**
+- [x] **Step 3: Backfill final pinned driver patch + `?schema=` decision to spec**
 
 Edit `docs/product-specs/2026-05-08-data-source-coverage-dameng-design.md`:
 - §6.1 row "Driver artifact": replace `8.1.x` placeholder with the exact patch pinned by Task 1 Step 2.
 - §6.2 "Optional URL parameters": replace the deferred decision text with the locked outcome from Task 9 Step 9 — either "DM 8 driver accepts `?schema=<name>` URL parameter; URL embeds `?schema=` directly" or "DM 8 driver rejects `?schema=` URL parameter; post-connect `executeUpdate(\"SET SCHEMA ...\")` is the canonical injection path".
 - §7.2 system schema list: append any additional Dameng system schemas discovered during Task 9 fixture run (vendor-edition extensions, if any).
 
-- [ ] **Step 4: Move plan from Active to Completed in exec-plans index**
+- [x] **Step 4: Move plan from Active to Completed in exec-plans index**
 
 Edit `docs/exec-plans/index.md`: move the dameng plan entry from Active to Completed; add a one-line Completion Log: `Completed YYYY-MM-DD; commits: <list>; verified: mvn verify + manual smoke 9-case + frontend tsc + vitest`.
 
-- [ ] **Step 5: Mark every checkbox in this plan as `[x]`**
+- [x] **Step 5: Mark every checkbox in this plan as `[x]`**
 
 Run:
 ```bash
 sed -i 's/^- \[ \]/- [x]/g' docs/exec-plans/2026-05-08-data-source-coverage-dameng-plan.md
 ```
 
-- [ ] **Step 6: Commit final housekeeping**
+- [x] **Step 6: Commit final housekeeping**
 
 ```bash
 git add docs/DATA_SOURCE_TYPE_COMPATIBILITY.md \

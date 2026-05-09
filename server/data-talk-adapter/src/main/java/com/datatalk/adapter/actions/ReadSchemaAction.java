@@ -288,6 +288,10 @@ public class ReadSchemaAction implements ActionHandler<Map, Map> {
             // SQL Server uses catalog for database, schema for schema
             return new MetadataScope(hasText(database) ? database : null, schemaPattern(schema));
         }
+        if ("dameng".equalsIgnoreCase(kind)) {
+            // Dameng reuses databaseName as the schema name; use it as the schema scope
+            return new MetadataScope(null, schemaPattern(hasText(schema) ? schema : database));
+        }
         return new MetadataScope(null, schemaPattern(schema));
     }
 
@@ -300,7 +304,8 @@ public class ReadSchemaAction implements ActionHandler<Map, Map> {
             || "postgresql".equalsIgnoreCase(kind)
             || "h2".equalsIgnoreCase(kind)
             || "oracle".equalsIgnoreCase(kind)
-            || "sqlserver".equalsIgnoreCase(kind))
+            || "sqlserver".equalsIgnoreCase(kind)
+            || "dameng".equalsIgnoreCase(kind))
             && hasText(schema)) {
             connection.setSchema(schema);
         }

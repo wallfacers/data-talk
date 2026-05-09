@@ -44,11 +44,8 @@ public class ConnectionService {
                          Boolean sqlserverEncrypt, Boolean sqlserverTrustServerCertificate, String sqlserverInstanceName,
                          Boolean readOnly,
                          String compatibilityMode, String oceanbaseTenant, String oceanbaseCluster) {
-        // Normalize mssql alias to sqlserver, ch alias to clickhouse, doris alias to apache_doris
-        String effectiveKind = "mssql".equalsIgnoreCase(kind) ? ConnectionKind.SQLSERVER
-            : "ch".equalsIgnoreCase(kind) ? ConnectionKind.CLICKHOUSE
-            : "doris".equalsIgnoreCase(kind) ? ConnectionKind.APACHE_DORIS
-            : kind;
+        // Normalize kind via canonical normalizer (accepts aliases, rejects dameng short forms)
+        String effectiveKind = ConnectionKind.normalize(kind);
         // Validate multi-mode connection shape for OceanBase
         if (ConnectionKind.OCEANBASE.equals(effectiveKind)) {
             CompatibilityMode mode = compatibilityMode != null ? CompatibilityMode.of(compatibilityMode) : CompatibilityMode.MYSQL;
@@ -95,11 +92,8 @@ public class ConnectionService {
                        Boolean sqlserverEncrypt, Boolean sqlserverTrustServerCertificate, String sqlserverInstanceName,
                        Boolean readOnly,
                        String compatibilityMode, String oceanbaseTenant, String oceanbaseCluster) {
-        // Normalize mssql alias to sqlserver, ch alias to clickhouse, doris alias to apache_doris
-        String effectiveKind = "mssql".equalsIgnoreCase(kind) ? ConnectionKind.SQLSERVER
-            : "ch".equalsIgnoreCase(kind) ? ConnectionKind.CLICKHOUSE
-            : "doris".equalsIgnoreCase(kind) ? ConnectionKind.APACHE_DORIS
-            : kind;
+        // Normalize kind via canonical normalizer (accepts aliases, rejects dameng short forms)
+        String effectiveKind = ConnectionKind.normalize(kind);
         var existing = repo.findById(id)
             .orElseThrow(() -> new java.util.NoSuchElementException(translator.get("error.connection.unknown", id)));
         byte[] enc = password != null ? vault.seal(password) : existing.passwordEnc();
@@ -196,6 +190,9 @@ public class ConnectionService {
             java.sql.DriverManager.setLoginTimeout(Math.max(1, c.connectTimeout() / 1000));
         } else if (kind.equals(ConnectionKind.HIVE)) {
             java.sql.DriverManager.setLoginTimeout(Math.max(1, c.connectTimeout() / 1000));
+        } else if (kind.equals(ConnectionKind.DAMENG)) {
+            int timeoutSeconds = Math.max(1, c.connectTimeout() / 1000);
+            java.sql.DriverManager.setLoginTimeout(timeoutSeconds);
         }
         long started = clock.millis();
         try (var conn = java.sql.DriverManager.getConnection(url, effectiveUsername, password)) {
