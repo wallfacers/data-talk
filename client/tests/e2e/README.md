@@ -19,6 +19,18 @@ Playwright and Vitest test suites for the DataTalk client.
 | `@smoke` | Small cross-surface confidence checks | Yes |
 | `@e2e` | Browser E2E workflow tests | Yes |
 
+## Test Suites
+
+| File | Tag | Tests |
+|------|-----|-------|
+| `preflight.spec.ts` | `@preflight` | 2 |
+| `dashboard-api-contract.spec.ts` | `@contract @dashboard` | 10 |
+| `dashboard-ui.spec.ts` | `@e2e @dashboard` | 7 |
+| `data-source-forms.spec.ts` | `@e2e @datasource` | 8 |
+| `file-artifacts.spec.ts` | `@e2e @files @dashboard` | 6 (3 active + 3 fixme) |
+| `visual-a11y.spec.ts` | `@visual @a11y` | 6 |
+| `real-db-smoke.spec.ts` | `@realdb @datasource` | 4 (env-gated) |
+
 ## Command Set
 
 ```bash
