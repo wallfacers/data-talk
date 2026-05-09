@@ -225,7 +225,7 @@ class DorisDiagnosticsProviderTest {
         return new ConnectionRecord(
             "c1", "test", "apache_doris", "localhost", 9030,
             databaseName, "user", new byte[0], null, 0L, 5000, null, null,
-            null, 1, true, null, false);
+            null, 1, true, null, false, null, null, null);
     }
 
     private Translator translator() {

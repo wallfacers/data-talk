@@ -22,6 +22,9 @@ const connection: Connection = {
   sqlserverEncrypt: true,
   sqlserverTrustServerCertificate: true,
   sqlserverInstanceName: null,
+  compatibilityMode: null,
+  oceanbaseTenant: null,
+  oceanbaseCluster: null,
 }
 
 let connectionsData: Connection[] | undefined

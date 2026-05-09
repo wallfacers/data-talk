@@ -195,7 +195,7 @@ class PrestoDiagnosticsProviderTest {
         return new ConnectionRecord(
             "c1", "test", "presto", "localhost", 8080,
             "default", "user", new byte[0], null, 0L, 5000, null, null,
-            null, 1, true, null, false);
+            null, 1, true, null, false, null, null, null);
     }
 
     private static Translator translator() {

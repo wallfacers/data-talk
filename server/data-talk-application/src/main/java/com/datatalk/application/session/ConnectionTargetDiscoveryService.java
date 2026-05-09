@@ -64,6 +64,19 @@ public class ConnectionTargetDiscoveryService {
                     // Fall through to getCatalogs() below.
                 }
             }
+            // KingbaseES follows PostgreSQL database discovery pattern
+            if (ConnectionKind.KINGBASE.equals(connection.kind())) {
+                try (var stmt = jdbc.createStatement();
+                     var rs = stmt.executeQuery(
+                         "SELECT datname FROM pg_database WHERE datistemplate = false ORDER BY datname")) {
+                    while (rs.next()) {
+                        String name = rs.getString(1);
+                        if (name != null && !name.isBlank()) databaseNames.add(name);
+                    }
+                } catch (Exception ignored) {
+                    // Fall through
+                }
+            }
             // Oracle uses schemas/owners as the primary namespace (not catalogs/databases).
             // Discover schemas and treat them as the user-visible targets.
             if (ConnectionKind.ORACLE.equals(connection.kind())) {
@@ -219,7 +232,9 @@ public class ConnectionTargetDiscoveryService {
             // Oracle system schemas to exclude
             && !ORACLE_SYSTEM_SCHEMAS.contains(normalized)
             // Dameng system schemas to exclude
-            && !DAMENG_SYSTEM_SCHEMAS.contains(normalized);
+            && !DAMENG_SYSTEM_SCHEMAS.contains(normalized)
+            // KingbaseES system schemas to exclude
+            && !KINGBASE_SYSTEM_SCHEMAS.contains(normalized);
     }
 
     private boolean isClickHouseSystemDatabase(String name) {
@@ -287,6 +302,11 @@ public class ConnectionTargetDiscoveryService {
         "sysauditor",  // audit
         "syssso",      // security
         "ctisys"       // full-text indexing
+    );
+
+    private static final Set<String> KINGBASE_SYSTEM_SCHEMAS = Set.of(
+        "pg_catalog", "information_schema", "pg_toast", "pg_temp",
+        "sys", "sys_catalog"
     );
 
     public record DiscoveryResult(

@@ -10,6 +10,7 @@ import { useI18n } from '@/i18n/use-i18n'
 import { createConnection, updateConnection, connectionsKey, type Connection } from './api'
 import { MultiModeConnectionFields, type CompatibilityMode } from './multi-mode-connection-fields'
 import { OceanBaseConnectionFields } from './oceanbase-connection-fields'
+import { KingbaseConnectionFields } from './kingbase-connection-fields'
 
 export const DATABASE_TYPES = {
   mysql: { label: 'MySQL', port: 3306 },
@@ -29,6 +30,7 @@ export const DATABASE_TYPES = {
   presto: { label: 'Presto', port: 8080 },
   oceanbase: { label: 'OceanBase', port: 2881 },
   dameng: { label: 'Dameng (DM 8)', port: 5236 },
+  kingbase: { label: 'KingbaseES', port: 54321 },
 } as const
 
 export type DatabaseKind = keyof typeof DATABASE_TYPES
@@ -52,6 +54,7 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
     compatibilityMode: 'mysql' as CompatibilityMode,
     oceanbaseTenant: '',
     oceanbaseCluster: '',
+    kingbaseCompatibilityMode: 'pg' as CompatibilityMode,
   })
 
   useEffect(() => {
@@ -77,6 +80,8 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
           ? editing.compatibilityMode : 'mysql',
         oceanbaseTenant: editing.oceanbaseTenant ?? '',
         oceanbaseCluster: editing.oceanbaseCluster ?? '',
+        kingbaseCompatibilityMode: editing.compatibilityMode === 'pg' || editing.compatibilityMode === 'oracle'
+          ? editing.compatibilityMode : 'pg',
       })
     } else {
       setForm({ name: '', kind: 'mysql', host: 'localhost', port: 3306,
@@ -84,7 +89,8 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
         oracleServiceType: 'service', sqlserverEncrypt: true,
         sqlserverTrustServerCertificate: true, sqlserverInstanceName: '',
         duckdbMode: 'memory', duckdbReadOnly: false, clickhouseSSL: false,
-        compatibilityMode: 'mysql', oceanbaseTenant: '', oceanbaseCluster: '' })
+        compatibilityMode: 'mysql', oceanbaseTenant: '', oceanbaseCluster: '',
+        kingbaseCompatibilityMode: 'pg' })
     }
   }, [editing])
 
@@ -124,6 +130,9 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
           dialectExtras.oceanbaseCluster = form.oceanbaseCluster.trim()
         }
       }
+      if (form.kind === 'kingbase') {
+        dialectExtras.compatibilityMode = form.kingbaseCompatibilityMode
+      }
       if (editing) {
         await updateConnection(editing.id, { ...base, ...dialectExtras })
       } else {
@@ -147,11 +156,12 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
   const isStarrocks = form.kind === 'starrocks'
   const isOceanbase = form.kind === 'oceanbase'
   const isDameng = form.kind === 'dameng'
+  const isKingbase = form.kind === 'kingbase'
   const hideHostPort = isSqlite || isDuckdb
   const databaseLabel = isDuckdb
     ? (form.duckdbMode === 'file' ? t('dataSources.duckdbFilePath') : '')
     : (isSqlite ? t('dataSources.sqliteFilePath')
-       : isStarrocks ? t('dataSources.databaseRequired')
+       : isStarrocks || isKingbase ? t('dataSources.databaseRequired')
        : isDameng ? t('dataSources.schemaOptional')
        : t('dataSources.databaseOptional'))
   const databasePlaceholder = isDuckdb
@@ -190,6 +200,9 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
                     oceanbaseCluster: '',
                   } : {}),
                   ...(nextKind === 'clickhouse' ? { clickhouseSSL: false as const, port: 8123 } : {}),
+                  ...(nextKind === 'kingbase' ? {
+                    kingbaseCompatibilityMode: 'pg' as CompatibilityMode,
+                  } : {}),
                 }))
               }
             }}>
@@ -292,6 +305,13 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
               onClusterChange={(v) => setForm((f) => ({ ...f, oceanbaseCluster: v }))}
             />
           </>
+        ) : null}
+        {isKingbase ? (
+          <KingbaseConnectionFields
+            kindInput={form.kind}
+            mode={form.kingbaseCompatibilityMode}
+            onModeChange={(m) => setForm((f) => ({ ...f, kingbaseCompatibilityMode: m }))}
+          />
         ) : null}
         {isDuckdb ? (
           <>

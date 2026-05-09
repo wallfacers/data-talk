@@ -32,7 +32,7 @@ class SqlServerDiagnosticsProviderTest {
         testConn = new ConnectionRecord(
             "c1", "test", "sqlserver", "localhost", 1433,
             "testdb", "sa", new byte[0], null, 0L, 5000, null, null,
-            null, 1, true, null, false);
+            null, 1, true, null, false, null, null, null);
     }
 
     @Test

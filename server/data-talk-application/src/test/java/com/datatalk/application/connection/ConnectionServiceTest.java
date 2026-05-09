@@ -31,7 +31,7 @@ class ConnectionServiceTest {
 
         when(repo.findById("c1")).thenReturn(Optional.of(
             new ConnectionRecord("c1", "测试连接", "h2", "localhost", 9999,
-                "mem:it;DB_CLOSE_DELAY=-1", "sa", new byte[]{}, null, 0, 3000, null, null, null, 1, true, null, false)));
+                "mem:it;DB_CLOSE_DELAY=-1", "sa", new byte[]{}, null, 0, 3000, null, null, null, 1, true, null, false, null, null, null)));
         when(vault.open(any())).thenReturn("");
 
         var r = svc.testConnection("c1");
@@ -45,7 +45,7 @@ class ConnectionServiceTest {
         var vault = mock(SecretVault.class);
         var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator());
         when(repo.findById("c1")).thenReturn(Optional.of(
-            new ConnectionRecord("c1", "测试连接", "mysql", "127.0.0.1", 1, "x", "u", new byte[]{}, null, 0, 3000, null, null, null, 1, true, null, false)));
+            new ConnectionRecord("c1", "测试连接", "mysql", "127.0.0.1", 1, "x", "u", new byte[]{}, null, 0, 3000, null, null, null, 1, true, null, false, null, null, null)));
         when(vault.open(any())).thenReturn("p");
 
         var r = svc.testConnection("c1");
@@ -62,7 +62,7 @@ class ConnectionServiceTest {
 
         when(repo.findById("c1")).thenReturn(Optional.of(
             new ConnectionRecord("c1", "测试连接", "h2", "localhost", 9999,
-                "mem:it;DB_CLOSE_DELAY=-1", "sa", new byte[]{}, null, 0, 3000, null, null, null, 1, true, null, false)));
+                "mem:it;DB_CLOSE_DELAY=-1", "sa", new byte[]{}, null, 0, 3000, null, null, null, 1, true, null, false, null, null, null)));
         when(vault.open(any())).thenReturn("");
 
         var r = svc.testConnection("c1");
@@ -79,7 +79,7 @@ class ConnectionServiceTest {
         var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, clock, translator());
 
         when(repo.findById("c1")).thenReturn(Optional.of(
-            new ConnectionRecord("c1", "测试连接", "mysql", "127.0.0.1", 1, "x", "u", new byte[]{}, null, 0, 3000, null, null, null, 1, true, null, false)));
+            new ConnectionRecord("c1", "测试连接", "mysql", "127.0.0.1", 1, "x", "u", new byte[]{}, null, 0, 3000, null, null, null, 1, true, null, false, null, null, null)));
         when(vault.open(any())).thenReturn("p");
 
         var r = svc.testConnection("c1");
@@ -96,7 +96,7 @@ class ConnectionServiceTest {
 
         when(repo.findById("c1")).thenReturn(Optional.of(
             new ConnectionRecord("c1", "测试连接", "mysql", "127.0.0.1", 3306,
-                "analytics", "u", new byte[]{1}, "digest", 123L, 3000, "ok", 456L, null, 1, true, null, false)));
+                "analytics", "u", new byte[]{1}, "digest", 123L, 3000, "ok", 456L, null, 1, true, null, false, null, null, null)));
 
         var dto = svc.get("c1");
 
@@ -157,7 +157,7 @@ class ConnectionServiceTest {
         when(vault.seal("pw")).thenReturn(new byte[]{1});
         var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator());
 
-        svc.create("SQL Server Test", "sqlserver", "db.host", 1433, "mydb", "sa", "pw", 5000, null, null, null, null, null);
+        svc.create("SQL Server Test", "sqlserver", "db.host", 1433, "mydb", "sa", "pw", 5000, null, null, null, null, null, null, null, null);
 
         var captor = org.mockito.ArgumentCaptor.forClass(ConnectionRecord.class);
         verify(repo).insert(captor.capture());
@@ -175,7 +175,7 @@ class ConnectionServiceTest {
         when(vault.seal("pw")).thenReturn(new byte[]{1});
         var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator());
 
-        svc.create("MSSQL Alias", "mssql", "db.host", 1433, "mydb", "sa", "pw", 5000, null, null, null, null, null);
+        svc.create("MSSQL Alias", "mssql", "db.host", 1433, "mydb", "sa", "pw", 5000, null, null, null, null, null, null, null, null);
 
         var captor = org.mockito.ArgumentCaptor.forClass(ConnectionRecord.class);
         verify(repo).insert(captor.capture());
@@ -189,7 +189,7 @@ class ConnectionServiceTest {
         when(vault.seal("")).thenReturn(new byte[]{});
         var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator());
 
-        svc.create("DuckDB Test", "duckdb", "", 0, "/path/to/mydb.db", "", "", 3000, null, null, null, null, true);
+        svc.create("DuckDB Test", "duckdb", "", 0, "/path/to/mydb.db", "", "", 3000, null, null, null, null, true, null, null, null);
 
         var captor = org.mockito.ArgumentCaptor.forClass(ConnectionRecord.class);
         verify(repo).insert(captor.capture());
@@ -207,7 +207,7 @@ class ConnectionServiceTest {
         when(vault.seal("")).thenReturn(new byte[]{});
         var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator());
 
-        svc.create("DuckDB Default", "duckdb", "", 0, "/path/to/mydb.db", "", "", 3000, null, null, null, null, null);
+        svc.create("DuckDB Default", "duckdb", "", 0, "/path/to/mydb.db", "", "", 3000, null, null, null, null, null, null, null, null);
 
         var captor = org.mockito.ArgumentCaptor.forClass(ConnectionRecord.class);
         verify(repo).insert(captor.capture());
@@ -220,11 +220,11 @@ class ConnectionServiceTest {
         var vault = mock(SecretVault.class);
         when(repo.findById("duckdb-conn-001")).thenReturn(Optional.of(
             new ConnectionRecord("duckdb-conn-001", "DuckDB", "duckdb", "", 0, "/path/to/mydb.db", "",
-                new byte[]{}, null, 1L, 3000, null, null, null, 1, true, null, true)));
+                new byte[]{}, null, 1L, 3000, null, null, null, 1, true, null, true, null, null, null)));
         when(vault.seal(any())).thenReturn(new byte[]{});
         var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator());
 
-        svc.update("duckdb-conn-001", "DuckDB Updated", "duckdb", "", 0, "/path/to/mydb.db", "", null, 3000, null, null, null, null, null);
+        svc.update("duckdb-conn-001", "DuckDB Updated", "duckdb", "", 0, "/path/to/mydb.db", "", null, 3000, null, null, null, null, null, null, null, null);
 
         var captor = org.mockito.ArgumentCaptor.forClass(ConnectionRecord.class);
         verify(repo).update(captor.capture());
@@ -240,7 +240,7 @@ class ConnectionServiceTest {
         when(vault.seal("pw")).thenReturn(new byte[]{1});
         var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator());
 
-        svc.create("CH Alias", "ch", "host", 8123, "mydb", "default", "pw", 3000, null, null, null, null, null);
+        svc.create("CH Alias", "ch", "host", 8123, "mydb", "default", "pw", 3000, null, null, null, null, null, null, null, null);
 
         var captor = org.mockito.ArgumentCaptor.forClass(ConnectionRecord.class);
         verify(repo).insert(captor.capture());
@@ -254,7 +254,7 @@ class ConnectionServiceTest {
         when(vault.seal("pw")).thenReturn(new byte[]{1});
         var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator());
 
-        svc.create("ClickHouse", "clickhouse", "host", 8123, "mydb", "default", "pw", 3000, null, null, null, null, null);
+        svc.create("ClickHouse", "clickhouse", "host", 8123, "mydb", "default", "pw", 3000, null, null, null, null, null, null, null, null);
 
         var captor = org.mockito.ArgumentCaptor.forClass(ConnectionRecord.class);
         verify(repo).insert(captor.capture());
@@ -267,11 +267,11 @@ class ConnectionServiceTest {
         var vault = mock(SecretVault.class);
         when(repo.findById("clickhouse-conn-001")).thenReturn(Optional.of(
             new ConnectionRecord("clickhouse-conn-001", "ClickHouse", "clickhouse", "host", 8123, "mydb", "default",
-                new byte[]{}, null, 1L, 3000, null, null, null, 1, true, null, false)));
+                new byte[]{}, null, 1L, 3000, null, null, null, 1, true, null, false, null, null, null)));
         when(vault.seal(any())).thenReturn(new byte[]{});
         var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator());
 
-        svc.update("clickhouse-conn-001", "Updated", "ch", "host", 8123, "mydb", "default", null, 3000, null, null, null, null, null);
+        svc.update("clickhouse-conn-001", "Updated", "ch", "host", 8123, "mydb", "default", null, 3000, null, null, null, null, null, null, null, null);
 
         var captor = org.mockito.ArgumentCaptor.forClass(ConnectionRecord.class);
         verify(repo).update(captor.capture());
@@ -290,7 +290,7 @@ class ConnectionServiceTest {
 
         when(repo.findById("clickhouse-fail-01")).thenReturn(Optional.of(
             new ConnectionRecord("clickhouse-fail-01", "CH Fail", "clickhouse", "127.0.0.1", 1, "mydb", "default",
-                new byte[]{}, null, 1L, 3000, null, null, null, 1, true, null, false)));
+                new byte[]{}, null, 1L, 3000, null, null, null, 1, true, null, false, null, null, null)));
         when(vault.open(any())).thenReturn("secret_password");
 
         var r = svc.testConnection("clickhouse-fail-01");
@@ -313,7 +313,7 @@ class ConnectionServiceTest {
 
         when(repo.findById("clickhouse-leak-01")).thenReturn(Optional.of(
             new ConnectionRecord("clickhouse-leak-01", "CH Leak", "clickhouse", "127.0.0.1", 1, "mydb", "default",
-                new byte[]{}, null, 1L, 3000, null, null, null, 1, true, null, false)));
+                new byte[]{}, null, 1L, 3000, null, null, null, 1, true, null, false, null, null, null)));
         when(vault.open(any())).thenReturn("super_secret_123");
 
         var r = svc.testConnection("clickhouse-leak-01");
@@ -328,11 +328,11 @@ class ConnectionServiceTest {
         var vault = mock(SecretVault.class);
         when(repo.findById("duckdb-conn-002")).thenReturn(Optional.of(
             new ConnectionRecord("duckdb-conn-002", "DuckDB", "duckdb", "", 0, "/path/to/mydb.db", "",
-                new byte[]{}, null, 1L, 3000, null, null, null, 1, true, null, false)));
+                new byte[]{}, null, 1L, 3000, null, null, null, 1, true, null, false, null, null, null)));
         when(vault.seal(any())).thenReturn(new byte[]{});
         var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator());
 
-        svc.update("duckdb-conn-002", "DuckDB RO", "duckdb", "", 0, "/path/to/mydb.db", "", null, 3000, null, null, null, null, true);
+        svc.update("duckdb-conn-002", "DuckDB RO", "duckdb", "", 0, "/path/to/mydb.db", "", null, 3000, null, null, null, null, true, null, null, null);
 
         var captor = org.mockito.ArgumentCaptor.forClass(ConnectionRecord.class);
         verify(repo).update(captor.capture());
@@ -348,7 +348,7 @@ class ConnectionServiceTest {
         when(vault.seal("pw")).thenReturn(new byte[]{1});
         var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator());
 
-        svc.create("Doris Alias", "doris", "host", 9030, "analytics", "root", "pw", 3000, null, null, null, null, null);
+        svc.create("Doris Alias", "doris", "host", 9030, "analytics", "root", "pw", 3000, null, null, null, null, null, null, null, null);
 
         var captor = org.mockito.ArgumentCaptor.forClass(ConnectionRecord.class);
         verify(repo).insert(captor.capture());
@@ -362,7 +362,7 @@ class ConnectionServiceTest {
         when(vault.seal("pw")).thenReturn(new byte[]{1});
         var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator());
 
-        svc.create("Doris", "apache_doris", "host", 9030, "analytics", "root", "pw", 3000, null, null, null, null, null);
+        svc.create("Doris", "apache_doris", "host", 9030, "analytics", "root", "pw", 3000, null, null, null, null, null, null, null, null);
 
         var captor = org.mockito.ArgumentCaptor.forClass(ConnectionRecord.class);
         verify(repo).insert(captor.capture());
@@ -375,11 +375,11 @@ class ConnectionServiceTest {
         var vault = mock(SecretVault.class);
         when(repo.findById("doris-conn-001")).thenReturn(Optional.of(
             new ConnectionRecord("doris-conn-001", "Doris", "apache_doris", "host", 9030, "analytics", "root",
-                new byte[]{}, null, 1L, 3000, null, null, null, 1, true, null, false)));
+                new byte[]{}, null, 1L, 3000, null, null, null, 1, true, null, false, null, null, null)));
         when(vault.seal(any())).thenReturn(new byte[]{});
         var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator());
 
-        svc.update("doris-conn-001", "Updated", "doris", "host", 9030, "analytics", "root", null, 3000, null, null, null, null, null);
+        svc.update("doris-conn-001", "Updated", "doris", "host", 9030, "analytics", "root", null, 3000, null, null, null, null, null, null, null, null);
 
         var captor = org.mockito.ArgumentCaptor.forClass(ConnectionRecord.class);
         verify(repo).update(captor.capture());
@@ -395,7 +395,7 @@ class ConnectionServiceTest {
         when(vault.seal("pw")).thenReturn(new byte[]{1});
         var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator());
 
-        svc.create("StarRocks", "starrocks", "host", 9030, "analytics", "root", "pw", 3000, null, null, null, null, null);
+        svc.create("StarRocks", "starrocks", "host", 9030, "analytics", "root", "pw", 3000, null, null, null, null, null, null, null, null);
 
         var captor = org.mockito.ArgumentCaptor.forClass(ConnectionRecord.class);
         verify(repo).insert(captor.capture());
@@ -408,11 +408,11 @@ class ConnectionServiceTest {
         var vault = mock(SecretVault.class);
         when(repo.findById("sr-conn-001")).thenReturn(Optional.of(
             new ConnectionRecord("sr-conn-001", "StarRocks", "starrocks", "host", 9030, "analytics", "root",
-                new byte[]{}, null, 1L, 3000, null, null, null, 1, true, null, false)));
+                new byte[]{}, null, 1L, 3000, null, null, null, 1, true, null, false, null, null, null)));
         when(vault.seal(any())).thenReturn(new byte[]{});
         var svc = new ConnectionService(repo, mock(SessionRepository.class), mock(StageTabRepository.class), vault, Clock.systemUTC(), translator());
 
-        svc.update("sr-conn-001", "Updated", "starrocks", "host", 9030, "analytics", "root", null, 3000, null, null, null, null, null);
+        svc.update("sr-conn-001", "Updated", "starrocks", "host", 9030, "analytics", "root", null, 3000, null, null, null, null, null, null, null, null);
 
         var captor = org.mockito.ArgumentCaptor.forClass(ConnectionRecord.class);
         verify(repo).update(captor.capture());
@@ -433,7 +433,7 @@ class ConnectionServiceTest {
 
         when(repo.findById("tidb-conn-001")).thenReturn(Optional.of(
             new ConnectionRecord("tidb-conn-001", "TiDB", "tidb", "127.0.0.1", 4000, "testdb", "root",
-                new byte[]{}, null, 1L, 5000, null, null, null, 1, true, null, false)));
+                new byte[]{}, null, 1L, 5000, null, null, null, 1, true, null, false, null, null, null)));
         when(vault.open(any())).thenReturn("password");
 
         // TiDB reuses MySQL driver timeout handling — connectTimeout + socketTimeout in millis

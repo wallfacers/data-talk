@@ -52,6 +52,9 @@ describe('DataSourcePicker', () => {
         sqlserverEncrypt: true,
         sqlserverTrustServerCertificate: true,
         sqlserverInstanceName: null,
+        compatibilityMode: null,
+        oceanbaseTenant: null,
+        oceanbaseCluster: null,
       },
       {
         id: 'c2',
@@ -70,6 +73,9 @@ describe('DataSourcePicker', () => {
         sqlserverEncrypt: true,
         sqlserverTrustServerCertificate: true,
         sqlserverInstanceName: null,
+        compatibilityMode: null,
+        oceanbaseTenant: null,
+        oceanbaseCluster: null,
       },
       {
         id: 'c3',
@@ -88,6 +94,9 @@ describe('DataSourcePicker', () => {
         sqlserverEncrypt: true,
         sqlserverTrustServerCertificate: true,
         sqlserverInstanceName: null,
+        compatibilityMode: null,
+        oceanbaseTenant: null,
+        oceanbaseCluster: null,
       },
     ])
     vi.mocked(sessionDataContextApi.getSessionDataContext).mockResolvedValue({

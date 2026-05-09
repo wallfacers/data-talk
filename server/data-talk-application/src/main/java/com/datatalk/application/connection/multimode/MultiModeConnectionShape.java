@@ -19,7 +19,12 @@ public final class MultiModeConnectionShape {
                         "oceanbase requires compatibility_mode in {mysql,oracle}");
                 }
             }
-            // kingbase row added by kingbase child plan
+            case "kingbase" -> {
+                if (mode != CompatibilityMode.PG && mode != CompatibilityMode.ORACLE) {
+                    throw new IllegalArgumentException(
+                        "kingbase requires compatibility_mode in {pg,oracle}");
+                }
+            }
             default -> {
                 if (mode != null) {
                     throw new IllegalArgumentException(
@@ -36,7 +41,7 @@ public final class MultiModeConnectionShape {
     public static boolean isDay1FirstClassMode(String kind, CompatibilityMode mode) {
         return switch (kind) {
             case "oceanbase" -> mode == CompatibilityMode.MYSQL;
-            // kingbase row added by kingbase child plan
+            case "kingbase" -> mode == CompatibilityMode.PG;
             default -> mode == null;
         };
     }

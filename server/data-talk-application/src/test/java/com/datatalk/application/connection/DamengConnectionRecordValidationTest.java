@@ -50,7 +50,7 @@ class DamengConnectionRecordValidationTest {
             "SYSDBA", new byte[0], null,
             System.currentTimeMillis(), 3000,
             null, null, null,
-            1, true, null, false
+            1, true, null, false, null, null, null
         );
     }
 }

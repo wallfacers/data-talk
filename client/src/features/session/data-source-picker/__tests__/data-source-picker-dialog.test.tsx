@@ -23,6 +23,9 @@ const connections: Connection[] = [
     sqlserverEncrypt: true,
     sqlserverTrustServerCertificate: true,
     sqlserverInstanceName: null,
+    compatibilityMode: null,
+    oceanbaseTenant: null,
+    oceanbaseCluster: null,
   },
   {
     id: 'c2',
@@ -41,6 +44,9 @@ const connections: Connection[] = [
     sqlserverEncrypt: true,
     sqlserverTrustServerCertificate: true,
     sqlserverInstanceName: null,
+    compatibilityMode: null,
+    oceanbaseTenant: null,
+    oceanbaseCluster: null,
   },
   {
     id: 'c3',
@@ -59,6 +65,9 @@ const connections: Connection[] = [
     sqlserverEncrypt: true,
     sqlserverTrustServerCertificate: true,
     sqlserverInstanceName: null,
+    compatibilityMode: null,
+    oceanbaseTenant: null,
+    oceanbaseCluster: null,
   },
 ]
 

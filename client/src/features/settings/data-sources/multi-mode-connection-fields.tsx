@@ -22,7 +22,6 @@ interface Props {
  * - disabled (opacity-50 + cursor-not-allowed)
  */
 export const MultiModeConnectionFields: FC<Props> = ({
-  kind,
   mode,
   onModeChange,
   modeOptions,

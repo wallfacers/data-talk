@@ -743,7 +743,7 @@ class FileArtifactServiceTest {
             when(connRepo.findById("conn_new")).thenReturn(Optional.of(
                     new com.datatalk.application.persistence.ConnectionRecord(
                             "conn_new", "prod-pg", "pg", "h", 5432, "db", "u", new byte[0],
-                            null, 0L, 3000, null, null, null, 1, false, null, false)));
+                            null, 0L, 3000, null, null, null, 1, false, null, false, null, null, null)));
             svc = new FileArtifactService(repo, workdir, buses, new ObjectMapper(), mover, sessionRepo, connRepo);
 
             var out = svc.reattach("fa_1", "conn_new");

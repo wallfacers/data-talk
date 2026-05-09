@@ -24,7 +24,7 @@ public class DefaultSqlStatementSplitters implements SqlStatementSplitters {
 
     @Override
     public List<String> split(String connectionKind, String sql) {
-        if ("postgres".equalsIgnoreCase(connectionKind) || "postgresql".equalsIgnoreCase(connectionKind)) {
+        if ("postgres".equalsIgnoreCase(connectionKind) || "postgresql".equalsIgnoreCase(connectionKind) || "kingbase".equalsIgnoreCase(connectionKind)) {
             return postgresSplitter.split(sql);
         }
         if ("mysql".equalsIgnoreCase(connectionKind) || "mariadb".equalsIgnoreCase(connectionKind) || "apache_doris".equalsIgnoreCase(connectionKind) || "starrocks".equalsIgnoreCase(connectionKind) || "tidb".equalsIgnoreCase(connectionKind) || "oceanbase".equalsIgnoreCase(connectionKind)) {

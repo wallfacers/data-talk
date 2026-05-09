@@ -97,7 +97,7 @@ class ConnectionDeletionServiceTest {
     private static ConnectionRecord connRec(String id, String name) {
         return new ConnectionRecord(
                 id, name, "mysql", "h", 3306, "db", "u", new byte[0],
-                null, 0L, 3000, null, null, null, 1, true, null, false);
+                null, 0L, 3000, null, null, null, 1, true, null, false, null, null, null);
     }
 
     private static SessionRecord sessionRec(String id, String connectionId) {

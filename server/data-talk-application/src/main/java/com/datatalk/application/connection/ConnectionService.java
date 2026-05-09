@@ -55,6 +55,15 @@ public class ConnectionService {
                     translator.get("error.connection.dialect_unsupported", effectiveKind, mode.wireValue()));
             }
         }
+        // KingbaseES multi-mode validation
+        if (ConnectionKind.KINGBASE.equals(effectiveKind)) {
+            CompatibilityMode mode = compatibilityMode != null ? CompatibilityMode.of(compatibilityMode) : CompatibilityMode.PG;
+            MultiModeConnectionShape.validateModeForKind(effectiveKind, mode);
+            if (!MultiModeConnectionShape.isDay1FirstClassMode(effectiveKind, mode)) {
+                throw new IllegalArgumentException(
+                    translator.get("error.connection.dialect_unsupported", effectiveKind, mode.wireValue()));
+            }
+        }
         byte[] enc = vault.seal(password);
         String id = java.util.UUID.randomUUID().toString();
         int timeout = connectTimeout != null ? connectTimeout : DEFAULT_CONNECT_TIMEOUT;
@@ -110,6 +119,15 @@ public class ConnectionService {
         // Validate multi-mode connection shape for OceanBase
         if (ConnectionKind.OCEANBASE.equals(effectiveKind)) {
             CompatibilityMode mode = effectiveCompatMode != null ? CompatibilityMode.of(effectiveCompatMode) : CompatibilityMode.MYSQL;
+            MultiModeConnectionShape.validateModeForKind(effectiveKind, mode);
+            if (!MultiModeConnectionShape.isDay1FirstClassMode(effectiveKind, mode)) {
+                throw new IllegalArgumentException(
+                    translator.get("error.connection.dialect_unsupported", effectiveKind, mode.wireValue()));
+            }
+        }
+        // KingbaseES multi-mode validation
+        if (ConnectionKind.KINGBASE.equals(effectiveKind)) {
+            CompatibilityMode mode = effectiveCompatMode != null ? CompatibilityMode.of(effectiveCompatMode) : CompatibilityMode.PG;
             MultiModeConnectionShape.validateModeForKind(effectiveKind, mode);
             if (!MultiModeConnectionShape.isDay1FirstClassMode(effectiveKind, mode)) {
                 throw new IllegalArgumentException(
@@ -191,6 +209,9 @@ public class ConnectionService {
         } else if (kind.equals(ConnectionKind.HIVE)) {
             java.sql.DriverManager.setLoginTimeout(Math.max(1, c.connectTimeout() / 1000));
         } else if (kind.equals(ConnectionKind.DAMENG)) {
+            int timeoutSeconds = Math.max(1, c.connectTimeout() / 1000);
+            java.sql.DriverManager.setLoginTimeout(timeoutSeconds);
+        } else if (kind.equals(ConnectionKind.KINGBASE)) {
             int timeoutSeconds = Math.max(1, c.connectTimeout() / 1000);
             java.sql.DriverManager.setLoginTimeout(timeoutSeconds);
         }
