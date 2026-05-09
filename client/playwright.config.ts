@@ -5,7 +5,8 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: 0,
-  reporter: [['list'], ['html', { outputFolder: 'tmp/playwright/report' }]],
+  outputDir: '../tmp/playwright/test-results',
+  reporter: [['list'], ['html', { outputFolder: '../tmp/playwright/report', open: 'never' }]],
   use: {
     baseURL: 'http://localhost:1420',
     trace: 'on-first-retry',

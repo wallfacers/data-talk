@@ -5,7 +5,7 @@ import { SqlWorkbenchPage } from './pom/sql-workbench.page'
 import { mountToolRecorder } from './fixtures/mcp-tool-recorder'
 import { adapterClient, type McpRpcResponse } from './fixtures/adapter-client'
 import { ensureHybridSession } from './fixtures/hybrid-session'
-import { setupH2Connection, type H2TestSetup } from './fixtures/h2-setup'
+import { setupTestDb, type TestDbSetup } from './fixtures/h2-setup'
 import { switchToSqlEditorTab } from './pom/helpers'
 
 const MODEL = process.env.DATATALK_REAL_OPENCODE_MODEL
@@ -13,11 +13,11 @@ const MODEL = process.env.DATATALK_REAL_OPENCODE_MODEL
 let stage: StagePage
 let chat: ChatPanelPage
 let sql: SqlWorkbenchPage
-let h2: H2TestSetup | null = null
+let h2: TestDbSetup | null = null
 
 test.beforeAll(async () => {
   try {
-    h2 = await setupH2Connection()
+    h2 = await setupTestDb()
   } catch {
     h2 = null
   }
