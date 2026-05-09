@@ -283,6 +283,7 @@ public class DiagnosticsService {
                 case "oracle" -> translator.get("diagnostics.lock.unsupported.oracle");
                 case "duckdb" -> translator.get("diagnostics.lock.unsupported.duckdb");
                 case "clickhouse" -> translator.get("diagnostics.lock.unsupported.clickhouse");
+                case "oceanbase" -> translator.get("diagnostics.dialect_unsupported.oceanbase.lock_info");
                 case "apache_doris" -> translator.get("diagnostics.lock_not_supported", kind);
                 case "starrocks" -> translator.get("diagnostics.lock_not_supported", kind);
                 case "trino" -> translator.get("diagnostics.lock_not_supported", kind);
@@ -294,6 +295,7 @@ public class DiagnosticsService {
                 case "oracle" -> translator.get("diagnostics.pool.unsupported.oracle");
                 case "duckdb" -> translator.get("diagnostics.pool.unsupported.duckdb_embedded");
                 case "clickhouse" -> translator.get("diagnostics.pool.unsupported.clickhouse");
+                case "oceanbase" -> translator.get("diagnostics.dialect_unsupported.oceanbase.pool_status");
                 case "apache_doris" -> translator.get("diagnostics.pool_not_supported", kind);
                 case "starrocks" -> translator.get("diagnostics.pool_not_supported", kind);
                 case "trino" -> translator.get("diagnostics.pool_not_supported", kind);
@@ -304,6 +306,7 @@ public class DiagnosticsService {
                 case "oracle" -> translator.get("diagnostics.space.unsupported.oracle");
                 case "duckdb" -> translator.get("diagnostics.space.unsupported.duckdb");
                 case "clickhouse" -> translator.get("diagnostics.space.unsupported.clickhouse");
+                case "oceanbase" -> translator.get("diagnostics.dialect_unsupported.oceanbase.table_space");
                 case "apache_doris" -> translator.get("diagnostics.tablespace_not_supported", kind);
                 case "starrocks" -> translator.get("diagnostics.tablespace_not_supported", kind);
                 case "trino" -> translator.get("diagnostics.tablespace_not_supported", kind);
@@ -315,6 +318,7 @@ public class DiagnosticsService {
                 case "oracle" -> translator.get("diagnostics.terminate.unsupported.oracle");
                 case "duckdb" -> translator.get("diagnostics.terminate.unsupported.duckdb");
                 case "clickhouse" -> translator.get("diagnostics.terminate.unsupported.clickhouse");
+                case "oceanbase" -> translator.get("diagnostics.dialect_unsupported.oceanbase.terminate_session");
                 case "apache_doris" -> translator.get("diagnostics.terminate_not_supported", kind);
                 case "starrocks" -> translator.get("diagnostics.terminate_not_supported", kind);
                 case "trino" -> translator.get("diagnostics.terminate_not_supported", kind);
@@ -326,6 +330,7 @@ public class DiagnosticsService {
                 case "oracle" -> translator.get("diagnostics.optimize.unsupported.oracle");
                 case "duckdb" -> translator.get("diagnostics.optimize.unsupported.duckdb");
                 case "clickhouse" -> translator.get("diagnostics.optimize.unsupported.clickhouse");
+                case "oceanbase" -> translator.get("diagnostics.dialect_unsupported.oceanbase.optimize_table");
                 case "apache_doris" -> translator.get("diagnostics.optimize_not_supported", kind);
                 case "starrocks" -> translator.get("diagnostics.optimize_not_supported", kind);
                 case "trino" -> translator.get("diagnostics.optimize_not_supported", kind);
