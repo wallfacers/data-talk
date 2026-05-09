@@ -233,7 +233,7 @@ describe('StageWindow', () => {
     expect(screen.getByRole('button', { name: /SQL 编辑器/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: /ER 图设计器/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: /报表/ })).toBeDisabled()
-    expect(screen.getByRole('button', { name: /Dashboard/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /Dashboard/ })).not.toBeDisabled()
   })
 
   it('does not render the activity rail at the window level (rail moved into SQL tab)', () => {

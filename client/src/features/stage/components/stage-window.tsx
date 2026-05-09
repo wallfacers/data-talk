@@ -12,6 +12,7 @@ import { StageWorkbenchEmptyState } from './stage-workbench-empty-state'
 import { StageLeftRail } from './left-rail/stage-left-rail'
 import { useI18n } from '@/i18n/use-i18n'
 import { WorkspaceAdapter } from '../adapters/WorkspaceAdapter'
+import { DashboardAdapter } from '@/features/dashboard/adapters/DashboardAdapter'
 
 export function StageWindow() {
   const { t } = useI18n()
@@ -107,6 +108,11 @@ export function StageWindow() {
   function handleOpenErDesigner() {
     setShowStartPage(false)
     void new WorkspaceAdapter(() => null).exec('open_er_designer')
+  }
+
+  function handleOpenDashboard() {
+    setShowStartPage(false)
+    void new DashboardAdapter('', () => null).exec('create')
   }
 
   const activeTab = openTabsOrdered.find((t) => t.tabId === activeTabId)
@@ -216,6 +222,7 @@ export function StageWindow() {
                 <StageWorkbenchEmptyState
                   onOpenSqlEditor={handleOpenSqlEditor}
                   onOpenErDesigner={handleOpenErDesigner}
+                  onOpenDashboard={handleOpenDashboard}
                 />
               </div>
             )}
