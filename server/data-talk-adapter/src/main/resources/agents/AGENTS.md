@@ -784,6 +784,24 @@ Output budget: defaults `headLimit=100`, `maxTabs=50`. For existence checks use 
 - ER Inspector: day-1 `dialect_unsupported` (foreign-key metadata not verified for Doris).
 - ER Designer: day-1 `dialect_unsupported` (Doris DDL has unique distribution/partition syntax).
 
+### OceanBase (MySQL-mode)
+
+- Connection kind: `oceanbase` (no aliases — `oceanbase-ce`, `ob`, `obcluster`, `OceanBase` are all rejected at `ConnectionKind.normalize`).
+- Day-1 first-class: MySQL-mode only. Oracle-mode (`compatibility_mode='oracle'`) returns `dialect_unsupported`.
+- Fields: `host`, `port` (default 2881), `username`, `password`, `databaseName`, `compatibilityMode` (required), `oceanbaseTenant` (required), `oceanbaseCluster` (optional).
+- Driver: `com.oceanbase:oceanbase-client`; URL `jdbc:oceanbase://<host>:<port>/<db>`; default port 2881.
+- Username form `<user>@<tenant>` or `<user>@<tenant>#<cluster>` is composed by ConnectionService; AI must NOT fabricate this; structured fields in MCP.
+- Chinese aliases (`蚂蚁 OceanBase`, `沃趣 OceanBase`) are recognized in user natural-language input only; they map to canonical kind `oceanbase`, NOT to `mysql`.
+- Day-1 unsupported: PROCEDURE / FUNCTION / TENANT / OUTLINE / RESOURCE POOL / ALTER SYSTEM / MAJOR-MINOR FREEZE / BACKUP-RESTORE — all classified L3 or dialect_unsupported.
+- `datatalk_execute_sql` remains read-only in the chat path.
+- Mutations (`INSERT`, `UPDATE`, `DELETE`, DDL) require the SQL workbench with confirmation.
+- SQL splitter: reuses MySQL splitter (backtick identifier support, DELIMITER handling).
+- Risk guard: `SHOW`, `DESCRIBE`, `EXPLAIN` are L1; `INSERT`, `CREATE TABLE`, `CREATE INDEX` are L2; `DROP`, `TRUNCATE`, `ALTER`, `GRANT`, `REVOKE`, `CREATE OUTLINE`, `ALTER OUTLINE`, `CREATE TENANT`, `ALTER TENANT`, `DROP TENANT`, `CREATE RESOURCE POOL/UNIT`, `ALTER RESOURCE POOL/UNIT`, `DROP RESOURCE POOL/UNIT`, `ALTER SYSTEM`, `MAJOR FREEZE`, `MINOR FREEZE`, `BACKUP`, `RESTORE` are L3.
+- Schema context: database selector visible (OceanBase databases). System schemas (`oceanbase`, `information_schema`, `mysql`, `SYS`, `LBACSYS`) are filtered from target discovery.
+- Diagnostics: day-1 structured unsupported. All 9 hooks (explain_real / index_hints / lock_info / pool_status / table_space / terminate_session / optimize_table / er_inspector / er_designer) return dialect_unsupported.
+- ER Inspector: day-1 `dialect_unsupported`.
+- ER Designer: day-1 `dialect_unsupported`.
+
 ### StarRocks
 
 - Connection kind: `starrocks`. OLAP database with native StarRocks JDBC driver.
