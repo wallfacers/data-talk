@@ -1,5 +1,7 @@
 package com.datatalk.application.connection;
 
+import com.datatalk.application.connection.multimode.CompatibilityMode;
+import com.datatalk.application.connection.multimode.MultiModeConnectionShape;
 import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.application.persistence.ConnectionRepository;
@@ -47,6 +49,15 @@ public class ConnectionService {
             : "ch".equalsIgnoreCase(kind) ? ConnectionKind.CLICKHOUSE
             : "doris".equalsIgnoreCase(kind) ? ConnectionKind.APACHE_DORIS
             : kind;
+        // Validate multi-mode connection shape for OceanBase
+        if (ConnectionKind.OCEANBASE.equals(effectiveKind)) {
+            CompatibilityMode mode = compatibilityMode != null ? CompatibilityMode.of(compatibilityMode) : CompatibilityMode.MYSQL;
+            MultiModeConnectionShape.validateModeForKind(effectiveKind, mode);
+            if (!MultiModeConnectionShape.isDay1FirstClassMode(effectiveKind, mode)) {
+                throw new IllegalArgumentException(
+                    translator.get("error.connection.dialect_unsupported", effectiveKind, mode.wireValue()));
+            }
+        }
         byte[] enc = vault.seal(password);
         String id = java.util.UUID.randomUUID().toString();
         int timeout = connectTimeout != null ? connectTimeout : DEFAULT_CONNECT_TIMEOUT;
@@ -102,6 +113,15 @@ public class ConnectionService {
         String effectiveCompatMode = compatibilityMode != null ? compatibilityMode : existing.compatibilityMode();
         String effectiveTenant = oceanbaseTenant != null ? oceanbaseTenant : existing.oceanbaseTenant();
         String effectiveCluster = oceanbaseCluster != null ? oceanbaseCluster : existing.oceanbaseCluster();
+        // Validate multi-mode connection shape for OceanBase
+        if (ConnectionKind.OCEANBASE.equals(effectiveKind)) {
+            CompatibilityMode mode = effectiveCompatMode != null ? CompatibilityMode.of(effectiveCompatMode) : CompatibilityMode.MYSQL;
+            MultiModeConnectionShape.validateModeForKind(effectiveKind, mode);
+            if (!MultiModeConnectionShape.isDay1FirstClassMode(effectiveKind, mode)) {
+                throw new IllegalArgumentException(
+                    translator.get("error.connection.dialect_unsupported", effectiveKind, mode.wireValue()));
+            }
+        }
         repo.update(new ConnectionRecord(id, effectiveName, effectiveKind, host, port, databaseName, username,
             enc, existing.schemaDigest(), existing.createdAt(), timeout,
             existing.lastTestStatus(), existing.lastTestAt(), effectiveOracleType,
@@ -194,7 +214,7 @@ public class ConnectionService {
     /**
      * Compose OceanBase username: <user>@<tenant>[#<cluster>]
      */
-    static String composeOceanBaseUsername(ConnectionRecord c) {
+    public static String composeOceanBaseUsername(ConnectionRecord c) {
         StringBuilder sb = new StringBuilder(c.username());
         sb.append('@').append(c.oceanbaseTenant());
         if (c.oceanbaseCluster() != null && !c.oceanbaseCluster().isBlank()) {

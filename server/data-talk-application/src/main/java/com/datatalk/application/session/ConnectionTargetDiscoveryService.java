@@ -41,9 +41,12 @@ public class ConnectionTargetDiscoveryService {
         }
 
         Set<String> schemaNames = new LinkedHashSet<>();
+        String effectiveUsername = ConnectionKind.OCEANBASE.equals(connection.kind())
+            ? ConnectionService.composeOceanBaseUsername(connection)
+            : connection.username();
         try (var jdbc = DriverManager.getConnection(
             JdbcUrlBuilder.build(connection),
-            connection.username(),
+            effectiveUsername,
             connectionService.decryptPassword(connectionId)
         )) {
             var meta = jdbc.getMetaData();

@@ -1,5 +1,6 @@
 package com.datatalk.application.sql;
 
+import com.datatalk.application.connection.ConnectionKind;
 import com.datatalk.application.connection.ConnectionService;
 import com.datatalk.application.connection.JdbcUrlBuilder;
 import com.datatalk.application.i18n.Translator;
@@ -143,9 +144,12 @@ public class SqlExecuteService {
         List<ResultItem> results = new ArrayList<>();
         DmlSummaryAccumulator pendingDmlSummary = null;
 
+        String effectiveUsername = ConnectionKind.OCEANBASE.equals(cr.kind())
+            ? ConnectionService.composeOceanBaseUsername(cr)
+            : cr.username();
         try (Connection c = DriverManager.getConnection(
                  JdbcUrlBuilder.build(withDatabase(cr, context.database())),
-                 cr.username(),
+                 effectiveUsername,
                  connSvc.decryptPassword(cr.id()))) {
             applyExecutionContext(c, context);
             c.setAutoCommit(false);

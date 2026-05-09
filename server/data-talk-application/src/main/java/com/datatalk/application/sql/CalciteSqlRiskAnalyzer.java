@@ -196,6 +196,9 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
         if (ConnectionKind.TIDB.equalsIgnoreCase(connectionKind)) {
             return classifyTidbSpecific(sql);
         }
+        if (ConnectionKind.OCEANBASE.equalsIgnoreCase(connectionKind)) {
+            return classifyOceanBaseSpecific(sql);
+        }
         return null;
     }
 
@@ -941,6 +944,80 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
 
         // Catch-all for any unrecognized TiDB statement
         return SqlRiskAnalysis.high("tidb_unrecognized");
+    }
+
+    private SqlRiskAnalysis classifyOceanBaseSpecific(String sql) {
+        String normalized = stripLeadingComments(sql).toLowerCase(Locale.ROOT);
+        if (normalized.isEmpty()) return null;
+
+        // L1: read-only introspection
+        if (startsWithKeyword(normalized, "show")) {
+            return SqlRiskAnalysis.low("oceanbase_show");
+        }
+        if (startsWithKeyword(normalized, "describe") || startsWithKeyword(normalized, "desc")) {
+            return SqlRiskAnalysis.low("oceanbase_describe");
+        }
+        if (startsWithKeyword(normalized, "explain")) {
+            return SqlRiskAnalysis.low("oceanbase_explain");
+        }
+
+        // L3: OceanBase-specific system commands
+        if (startsWithKeyword(normalized, "alter system")) {
+            return SqlRiskAnalysis.high("oceanbase_alter_system");
+        }
+        if (startsWithKeyword(normalized, "major compaction") || startsWithKeyword(normalized, "minor compaction")) {
+            return SqlRiskAnalysis.high("oceanbase_compaction");
+        }
+        if (startsWithKeyword(normalized, "flashback")) {
+            return SqlRiskAnalysis.high("oceanbase_flashback");
+        }
+        if (startsWithKeyword(normalized, "kill")) {
+            return SqlRiskAnalysis.high("oceanbase_kill");
+        }
+        if (startsWithKeyword(normalized, "switchover")) {
+            return SqlRiskAnalysis.high("oceanbase_switchover");
+        }
+        if (startsWithKeyword(normalized, "switch tenant")) {
+            return SqlRiskAnalysis.high("oceanbase_switch_tenant");
+        }
+
+        // L3: destructive DDL/DCL (handled explicitly before Calcite fallthrough)
+        if (startsWithKeyword(normalized, "drop")) {
+            return SqlRiskAnalysis.high("oceanbase_drop");
+        }
+        if (startsWithKeyword(normalized, "truncate")) {
+            return SqlRiskAnalysis.high("oceanbase_truncate");
+        }
+        if (startsWithKeyword(normalized, "alter")) {
+            return SqlRiskAnalysis.high("oceanbase_alter");
+        }
+        if (startsWithKeyword(normalized, "grant")) {
+            return SqlRiskAnalysis.high("oceanbase_grant");
+        }
+        if (startsWithKeyword(normalized, "revoke")) {
+            return SqlRiskAnalysis.high("oceanbase_revoke");
+        }
+        if (startsWithKeyword(normalized, "rename")) {
+            return SqlRiskAnalysis.high("oceanbase_rename");
+        }
+
+        // Standard SQL DML / query → fall through to Calcite generic classifier
+        if (startsWithKeyword(normalized, "select")
+            || startsWithKeyword(normalized, "with")
+            || startsWithKeyword(normalized, "insert")
+            || startsWithKeyword(normalized, "update")
+            || startsWithKeyword(normalized, "delete")
+            || startsWithKeyword(normalized, "create")) {
+            return null;
+        }
+
+        // Session-level SET (not SET GLOBAL) — session-scoped, low risk
+        if (startsWithKeyword(normalized, "set")) {
+            return SqlRiskAnalysis.low("oceanbase_set_session");
+        }
+
+        // Catch-all for any unrecognized OceanBase statement → L3
+        return SqlRiskAnalysis.high("oceanbase_unrecognized");
     }
 
     private String stripLeadingComments(String sql) {
