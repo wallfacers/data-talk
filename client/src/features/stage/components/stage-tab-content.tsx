@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { lazy, Suspense, useEffect, useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useStageStore } from '@/stores/stage-store'
 import { useSqlWorkbenchStore } from '../stores/sql-workbench-store'
@@ -10,7 +10,10 @@ import { FilePreviewTab } from './file-preview-tab'
 import { FilesTab } from './files-tab'
 import { FilesLibraryTab } from './files-library-tab'
 import { SqlWorkbenchTab } from './sql-workbench-tab'
-import { DashboardTab } from '@/features/dashboard/dashboard-tab'
+
+const DashboardTab = lazy(() =>
+  import('@/features/dashboard/dashboard-tab').then((m) => ({ default: m.DashboardTab }))
+)
 
 export function StageTabContent() {
   const cleanupTabs = useSqlWorkbenchStore((s) => s.cleanupTabs)
@@ -100,7 +103,9 @@ export function StageTabContent() {
   if (tab.type === 'dashboard') {
     return (
       <div className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <DashboardTab key={tab.tabId} tabId={tab.tabId} />
+        <Suspense fallback={<div className="flex items-center justify-center h-full text-sm text-text-soft">Loading…</div>}>
+          <DashboardTab key={tab.tabId} tabId={tab.tabId} />
+        </Suspense>
       </div>
     )
   }
