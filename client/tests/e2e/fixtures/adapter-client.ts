@@ -192,6 +192,22 @@ export function adapterClient(request: APIRequestContext) {
     renderChart: (sessionId: string, body: Record<string, unknown>) =>
       request.post(`${BASE}/api/sessions/${sessionId}/artifacts/chart`, { data: body }),
 
+    // ── File Artifacts ──
+    listSessionFiles: (sessionId: string) =>
+      request.get(`${BASE}/api/sessions/${sessionId}/files`),
+
+    listConnectionFiles: (connectionId: string) =>
+      request.get(`${BASE}/api/connections/${connectionId}/files`),
+
+    markCandidate: (fileArtifactId: string) =>
+      request.post(`${BASE}/api/files/${fileArtifactId}/mark-candidate`),
+
+    archiveFile: (sessionId: string, fileArtifactId: string) =>
+      request.post(`${BASE}/api/sessions/${sessionId}/files/${fileArtifactId}/archive`),
+
+    discardFile: (fileArtifactId: string) =>
+      request.post(`${BASE}/api/files/${fileArtifactId}/discard`),
+
     // ── Dashboard ──
     dashboardPromote: (body: unknown) =>
       request.post(`${BASE}/api/dashboards/promote`, { data: body }),
