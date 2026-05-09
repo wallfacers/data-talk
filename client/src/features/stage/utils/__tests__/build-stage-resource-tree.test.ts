@@ -21,6 +21,9 @@ const connections: Connection[] = [
     sqlserverEncrypt: true,
     sqlserverTrustServerCertificate: true,
     sqlserverInstanceName: null,
+    compatibilityMode: null,
+    oceanbaseTenant: null,
+    oceanbaseCluster: null,
   },
   {
     id: 'conn-b',
@@ -39,6 +42,9 @@ const connections: Connection[] = [
     sqlserverEncrypt: true,
     sqlserverTrustServerCertificate: true,
     sqlserverInstanceName: null,
+    compatibilityMode: null,
+    oceanbaseTenant: null,
+    oceanbaseCluster: null,
   },
 ]
 

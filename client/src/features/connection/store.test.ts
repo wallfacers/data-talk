@@ -19,6 +19,9 @@ const connection: Connection = {
   sqlserverEncrypt: true,
   sqlserverTrustServerCertificate: true,
   sqlserverInstanceName: null,
+  compatibilityMode: null,
+  oceanbaseTenant: null,
+  oceanbaseCluster: null,
 }
 
 describe('connection-store', () => {

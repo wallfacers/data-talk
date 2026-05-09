@@ -26,7 +26,7 @@ describe('DataSourcesPage', () => {
   })
   it('displays_connection_name_in_table', async () => {
     const qc = new QueryClient()
-    const connection = { id: 'c1', name: '测试数据源', kind: 'mysql', host: 'localhost', port: 3306, databaseName: 'test', username: 'root', createdAt: 0, connectTimeout: 3000, lastTestStatus: null, lastTestAt: null, oracleServiceType: null, sqlserverEncrypt: true, sqlserverTrustServerCertificate: true, sqlserverInstanceName: null, readOnly: false }
+    const connection = { id: 'c1', name: '测试数据源', kind: 'mysql', host: 'localhost', port: 3306, databaseName: 'test', username: 'root', createdAt: 0, connectTimeout: 3000, lastTestStatus: null, lastTestAt: null, oracleServiceType: null, sqlserverEncrypt: true, sqlserverTrustServerCertificate: true, sqlserverInstanceName: null, readOnly: false, compatibilityMode: null, oceanbaseTenant: null, oceanbaseCluster: null, }
     vi.mocked(api.listConnections).mockResolvedValue([connection])
     render(<QueryClientProvider client={qc}><DataSourcesPage /></QueryClientProvider>)
     expect(await screen.findByText('测试数据源')).toBeInTheDocument()
@@ -71,6 +71,9 @@ describe('DataSourcesPage', () => {
       sqlserverEncrypt: true,
       sqlserverTrustServerCertificate: true,
       sqlserverInstanceName: null,
+      compatibilityMode: null,
+      oceanbaseTenant: null,
+      oceanbaseCluster: null,
     }
     vi.mocked(api.listConnections).mockResolvedValue([connection])
 
@@ -89,7 +92,7 @@ describe('DataSourcesPage', () => {
 
   it('shows delete confirmation dialog before deleting', async () => {
     const qc = new QueryClient()
-    const connection = { id: 'c1', name: 'Test Delete', kind: 'mysql', host: 'localhost', port: 3306, databaseName: 'test', username: 'root', createdAt: 0, connectTimeout: 3000, lastTestStatus: null, lastTestAt: null, oracleServiceType: null, sqlserverEncrypt: true, sqlserverTrustServerCertificate: true, sqlserverInstanceName: null, readOnly: false }
+    const connection = { id: 'c1', name: 'Test Delete', kind: 'mysql', host: 'localhost', port: 3306, databaseName: 'test', username: 'root', createdAt: 0, connectTimeout: 3000, lastTestStatus: null, lastTestAt: null, oracleServiceType: null, sqlserverEncrypt: true, sqlserverTrustServerCertificate: true, sqlserverInstanceName: null, readOnly: false, compatibilityMode: null, oceanbaseTenant: null, oceanbaseCluster: null, }
     vi.mocked(api.listConnections).mockResolvedValue([connection])
     vi.mocked(api.deleteConnection).mockResolvedValue(undefined)
     render(<QueryClientProvider client={qc}><DataSourcesPage /></QueryClientProvider>)

@@ -96,6 +96,6 @@ class DamengDiagnosticsDialectUnsupportedTest {
     private static ConnectionRecord damengRecord() {
         return new ConnectionRecord(
             "id", "n", "dameng", "h", 5236, "SCOTT", "SYSDBA",
-            new byte[]{}, "", 0L, 10, null, null, null, 1, true, null, false);
+            new byte[]{}, "", 0L, 10, null, null, null, 1, true, null, false, null, null, null);
     }
 }

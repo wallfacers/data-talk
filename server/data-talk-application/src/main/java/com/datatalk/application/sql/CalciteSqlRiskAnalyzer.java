@@ -247,11 +247,7 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
             return classifyDamengSpecific(sql);
         }
         if (ConnectionKind.KINGBASE.equalsIgnoreCase(connectionKind)) {
-            var kbLevel = classifyKingbaseSpecific(sql);
-            if (kbLevel.isPresent()) {
-                return SqlRiskAnalysis.high("kingbase_admin_command");
-            }
-            return null;
+            return classifyKingbaseSpecific(sql);
         }
         return null;
     }
@@ -1112,15 +1108,17 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
 
     // ====== KingbaseES Channel 1 — L3 admin command classification ======
 
-    public Optional<RiskLevel> classifyKingbaseSpecific(String sql) {
-        if (sql == null) return Optional.empty();
-        if (KINGBASE_SYS_TABLE_DDL.matcher(sql).find()
-            || KINGBASE_SYS_ADMIN_SCHEMA_DDL.matcher(sql).find()
-            || KINGBASE_SYS_KILL.matcher(sql).find()
-            || KINGBASE_FLASHBACK.matcher(sql).find()) {
-            return Optional.of(RiskLevel.L3);
+    public SqlRiskAnalysis classifyKingbaseSpecific(String sql) {
+        if (sql == null) return null;
+        String stripped = stripLeadingComments(sql);
+        if (stripped.isEmpty()) return null;
+        if (KINGBASE_SYS_TABLE_DDL.matcher(stripped).find()
+            || KINGBASE_SYS_ADMIN_SCHEMA_DDL.matcher(stripped).find()
+            || KINGBASE_SYS_KILL.matcher(stripped).find()
+            || KINGBASE_FLASHBACK.matcher(stripped).find()) {
+            return SqlRiskAnalysis.high("kingbase_admin_command");
         }
-        return Optional.empty();
+        return null;
     }
 
     // ====== KingbaseES Channel 2 — dialect_unsupported detection ======
