@@ -1,17 +1,22 @@
 package com.datatalk.application.dashboard;
 
+import com.datatalk.application.fileartifact.FakeFileArtifactRepository;
+import com.datatalk.application.fileartifact.FileArtifactService;
+import com.datatalk.application.fileartifact.SessionWorkdirRoot;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.*;
 
 class DashboardArtifactServiceTest {
 
@@ -43,11 +48,22 @@ class DashboardArtifactServiceTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        DashboardStore store = new DashboardStore(tempDir, mapper);
-        store.init();
+        SessionWorkdirRoot root = new SessionWorkdirRoot(tempDir, tempDir.resolve("opencode"));
+        Files.createDirectories(root.dashboardsRoot());
+
+        FakeFileArtifactRepository repo = new FakeFileArtifactRepository();
+        FileArtifactService fileArtifactService = new FileArtifactService(
+                repo,
+                mock(com.datatalk.application.fileartifact.SessionWorkdirService.class),
+                mock(com.datatalk.application.session.SessionBusRegistry.class),
+                mapper,
+                mock(com.datatalk.application.fileartifact.FileArtifactPhysicalMover.class),
+                mock(com.datatalk.application.persistence.SessionRepository.class),
+                mock(com.datatalk.application.persistence.ConnectionRepository.class));
+
         DashboardSchemaValidator validator = new DashboardSchemaValidator(mapper);
         JsonPatchApplier patchApplier = new JsonPatchApplier(mapper);
-        service = new DashboardArtifactService(store, validator, patchApplier, mapper, clock);
+        service = new DashboardArtifactService(fileArtifactService, root, validator, patchApplier, mapper, clock);
     }
 
     @Test

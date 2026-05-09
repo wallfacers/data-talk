@@ -583,6 +583,11 @@ class FileArtifactServiceTest {
         public int countOrphanedArchived() {
             return 0;
         }
+
+        @Override
+        public List<FileArtifact> findExternalRowsByDir(String dirAbsolute) {
+            return List.of();
+        }
     }
 
     // ─────── archive / discard use case tests ───────
@@ -778,7 +783,7 @@ class FileArtifactServiceTest {
                     r.id(), r.scope(), s, r.kind(),
                     r.sessionId(), r.connectionId(), r.filename(), r.physicalPath(),
                     r.sizeBytes(), r.mimeType(), r.title(), r.summary(),
-                    r.createdAt(), r.updatedAt(), r.archivedAt(), r.metadata(), false);
+                    r.createdAt(), r.updatedAt(), r.archivedAt(), r.metadata(), r.external());
         }
     }
 }

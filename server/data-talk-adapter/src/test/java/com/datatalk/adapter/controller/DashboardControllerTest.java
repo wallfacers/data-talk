@@ -1,7 +1,9 @@
 package com.datatalk.adapter.controller;
 
 import com.datatalk.application.dashboard.*;
-import com.fasterxml.jackson.databind.JsonNode;
+import com.datatalk.adapter.controller.doubles.FakeFileArtifactRepository;
+import com.datatalk.application.fileartifact.FileArtifactService;
+import com.datatalk.application.fileartifact.SessionWorkdirRoot;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -9,9 +11,11 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
 
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
@@ -27,11 +31,22 @@ class DashboardControllerTest {
     @BeforeEach
     void setUp() throws Exception {
         Clock clock = Clock.fixed(Clock.systemUTC().instant(), Clock.systemUTC().getZone());
-        DashboardStore store = new DashboardStore(tempDir, mapper);
-        store.init();
+        SessionWorkdirRoot root = new SessionWorkdirRoot(tempDir, tempDir.resolve("opencode"));
+        Files.createDirectories(root.dashboardsRoot());
+
+        FakeFileArtifactRepository repo = new FakeFileArtifactRepository();
+        FileArtifactService fileArtifactService = new FileArtifactService(
+                repo,
+                mock(com.datatalk.application.fileartifact.SessionWorkdirService.class),
+                mock(com.datatalk.application.session.SessionBusRegistry.class),
+                mapper,
+                mock(com.datatalk.application.fileartifact.FileArtifactPhysicalMover.class),
+                mock(com.datatalk.application.persistence.SessionRepository.class),
+                mock(com.datatalk.application.persistence.ConnectionRepository.class));
+
         DashboardSchemaValidator validator = new DashboardSchemaValidator(mapper);
         JsonPatchApplier patchApplier = new JsonPatchApplier(mapper);
-        DashboardArtifactService service = new DashboardArtifactService(store, validator, patchApplier, mapper, clock);
+        DashboardArtifactService service = new DashboardArtifactService(fileArtifactService, root, validator, patchApplier, mapper, clock);
         mvc = standaloneSetup(new DashboardController(service)).build();
     }
 

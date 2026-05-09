@@ -1,6 +1,7 @@
 package com.datatalk.application.fileartifact;
 
 import java.nio.file.Path;
+import java.util.List;
 
 /**
  * Layout anchors for file artifact storage.
@@ -29,5 +30,13 @@ public record SessionWorkdirRoot(Path dataTalkRoot, Path opencodeCwd) {
 
     public Path legacyRoot() {
         return dataTalkRoot.resolve("_legacy");
+    }
+
+    public Path dashboardsRoot() {
+        return dataTalkRoot.resolve("dashboards");
+    }
+
+    public List<Path> externalManagedRoots() {
+        return List.of(dashboardsRoot());
     }
 }

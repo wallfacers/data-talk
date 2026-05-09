@@ -52,6 +52,7 @@ public class FileArtifactReconciler {
         Set<String> knownSessionIds = knownSessionIds();
         reconcileSessionsTree(knownSessionIds);
         reconcileWorkspacesTree(knownSessionIds);
+        reconcileExternalDirs(workdir.root().externalManagedRoots());
     }
 
     private void reconcileSessionsTree(Set<String> knownSessionIds) {
@@ -146,12 +147,48 @@ public class FileArtifactReconciler {
                 // Q2 decision: orphaned archived — valid state, skip
                 continue;
             }
+            if (row.external()) continue;
             if (Files.exists(Path.of(row.physicalPath()))) {
                 continue;
             }
             log.warn("file_artifact {} archived file missing: {}", row.id(), row.physicalPath());
             repo.deleteById(row.id());
             publishDiscarded(row, "reconcile", knownSessionIds);
+        }
+    }
+
+    public void reconcileExternalDirs(List<Path> dirs) {
+        Set<String> knownSessionIds = knownSessionIds();
+        for (Path dir : dirs) {
+            if (!Files.isDirectory(dir)) continue;
+
+            // Forward: files without DB row → delete file
+            try (Stream<Path> walk = Files.list(dir)) {
+                for (Path file : (Iterable<Path>) walk::iterator) {
+                    if (!Files.isRegularFile(file)) continue;
+                    String fname = file.getFileName().toString();
+                    if (fname.startsWith(".") || fname.endsWith(".tmp")) continue;
+                    String absolutePath = file.toAbsolutePath().normalize().toString();
+                    if (repo.findByPhysicalPath(absolutePath).isEmpty()) {
+                        try {
+                            Files.deleteIfExists(file);
+                            log.info("[reconcile-external] removed orphan file {}", absolutePath);
+                        } catch (IOException e) {
+                            log.warn("[reconcile-external] rm failed: {}", file, e);
+                        }
+                    }
+                }
+            } catch (IOException e) {
+                log.warn("[reconcile-external] walk failed for {}: {}", dir, e.toString());
+            }
+
+            // Reverse: DB external row without file → delete row
+            for (FileArtifact row : repo.findExternalRowsByDir(dir.toAbsolutePath().normalize().toString())) {
+                if (Files.exists(Path.of(row.physicalPath()))) continue;
+                log.warn("[reconcile-external] external row {} missing physical {}", row.id(), row.physicalPath());
+                repo.deleteById(row.id());
+                publishDiscarded(row, "reconcile-external", knownSessionIds);
+            }
         }
     }
 
