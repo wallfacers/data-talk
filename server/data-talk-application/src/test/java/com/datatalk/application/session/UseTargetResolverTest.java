@@ -55,7 +55,10 @@ class UseTargetResolverTest {
               sqlserver_encrypt INTEGER DEFAULT 1,
               sqlserver_trust_server_certificate INTEGER DEFAULT 1,
               sqlserver_instance_name TEXT,
-              read_only INTEGER NOT NULL DEFAULT 0
+              read_only INTEGER NOT NULL DEFAULT 0,
+              compatibility_mode TEXT,
+              oceanbase_tenant TEXT,
+              oceanbase_cluster TEXT
             )
             """);
         conn.createStatement().execute("""

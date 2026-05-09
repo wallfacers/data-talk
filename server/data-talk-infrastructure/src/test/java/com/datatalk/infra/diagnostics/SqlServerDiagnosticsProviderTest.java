@@ -201,7 +201,7 @@ class SqlServerDiagnosticsProviderTest {
     void indexHints_tableScanMediumRows_mediumImpact() throws Exception {
         // Create a plan with medium row count
         String xml = """
-            <?xml version="1.0" encoding="utf-16"?>
+            <?xml version="1.0" encoding="utf-8"?>
             <ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan" Version="1.539" Build="16.0.4131.2">
               <BatchSequence><Batch><Statements><StmtSimple StatementCompId="1">
                 <QueryPlan>
@@ -233,7 +233,7 @@ class SqlServerDiagnosticsProviderTest {
     @Test
     void indexHints_tableScanLowRows_lowImpact() throws Exception {
         String xml = """
-            <?xml version="1.0" encoding="utf-16"?>
+            <?xml version="1.0" encoding="utf-8"?>
             <ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan" Version="1.539" Build="16.0.4131.2">
               <BatchSequence><Batch><Statements><StmtSimple StatementCompId="1">
                 <QueryPlan>
@@ -251,10 +251,10 @@ class SqlServerDiagnosticsProviderTest {
             """;
         SqlServerDiagnosticsProvider provider = new TestableSqlServerProvider(translator, xml, null);
 
-        var explainResult = provider.explain("SELECT * FROM settings WHERE key = 'app_version'", testConn, "pw", "testdb", "dbo");
+        var explainResult = provider.explain("SELECT * FROM settings WHERE config_name = 'app_version'", testConn, "pw", "testdb", "dbo");
         ExplainPlan plan = ((DiagnosticResult.Ok<ExplainPlan>) explainResult).value();
 
-        var indexResult = provider.indexHints("SELECT * FROM settings WHERE key = 'app_version'", plan, testConn, "pw");
+        var indexResult = provider.indexHints("SELECT * FROM settings WHERE config_name = 'app_version'", plan, testConn, "pw");
 
         List<IndexRecommendation> recs = ((DiagnosticResult.Ok<List<IndexRecommendation>>) indexResult).value();
         assertThat(recs).hasSize(1);

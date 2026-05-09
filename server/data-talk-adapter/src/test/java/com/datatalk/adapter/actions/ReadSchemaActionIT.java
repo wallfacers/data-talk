@@ -56,7 +56,7 @@ class ReadSchemaActionIT {
             st.execute("CREATE TABLE orders (id INT PRIMARY KEY, user_id INT)");
             st.execute("CREATE TABLE analytics.audit_log (id INT PRIMARY KEY, action VARCHAR(255))");
         }
-        connectionId = conn.create("Read Schema Test", "h2", "", 0, DB_NAME, "sa", "", null, null, null, null, null, null);
+        connectionId = conn.create("Read Schema Test", "h2", "", 0, DB_NAME, "sa", "", null, null, null, null, null, null, null, null, null);
         long now = System.currentTimeMillis();
         datatalkJdbc.update("""
             INSERT INTO sessions(id, connection_id, title, has_ever_sent, opencode_sid, created_at, updated_at, title_locked)
@@ -327,6 +327,6 @@ class ReadSchemaActionIT {
             st.execute("CREATE TABLE report_cache(id INTEGER PRIMARY KEY)");
             st.execute("INSERT INTO accounts(name) VALUES ('Ada')");
         }
-        return conn.create("SQLite Schema Test", "sqlite", "", 0, dbFile.toString(), "", "", null, null, null, null, null, null);
+        return conn.create("SQLite Schema Test", "sqlite", "", 0, dbFile.toString(), "", "", null, null, null, null, null, null, null, null, null);
     }
 }

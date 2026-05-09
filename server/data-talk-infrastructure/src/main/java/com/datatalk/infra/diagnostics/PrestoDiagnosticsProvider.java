@@ -47,7 +47,7 @@ public class PrestoDiagnosticsProvider extends AbstractDiagnosticsProvider {
             int end = -1;
             for (int i = 0; i < rest.length(); i++) {
                 char c = rest.charAt(i);
-                if (c == '[' || c == ' ') { end = i; break; }
+                if (c == '[' || c == ' ' || c == '(') { end = i; break; }
             }
             return end < 0 ? rest.trim() : rest.substring(0, end);
         },

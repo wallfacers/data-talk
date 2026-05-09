@@ -86,7 +86,7 @@ class FlywayMigrationIT {
         assertThat(columns).containsExactly(
             "id", "scope", "status", "kind", "session_id", "connection_id",
             "filename", "physical_path", "size_bytes", "mime_type", "title",
-            "summary", "created_at", "updated_at", "archived_at", "metadata_json");
+            "summary", "created_at", "updated_at", "archived_at", "metadata_json", "external");
 
         List<String> indexes = datatalkJdbc.queryForList(
             "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='file_artifact' ORDER BY name",
@@ -94,7 +94,8 @@ class FlywayMigrationIT {
         assertThat(indexes).contains(
             "idx_file_artifact_session",
             "idx_file_artifact_connection",
-            "idx_file_artifact_status");
+            "idx_file_artifact_status",
+            "idx_file_artifact_external");
     }
 
     @Test

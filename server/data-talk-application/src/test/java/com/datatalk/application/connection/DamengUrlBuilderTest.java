@@ -35,7 +35,7 @@ class DamengUrlBuilderTest {
         String url = JdbcUrlBuilder.build(conn);
         assertThat(url).doesNotContain("/SCOTT");
         assertThat(url).doesNotContain("/scott");
-        assertThat(url).doesNotMatch(".*:/.*");
+        assertThat(url).doesNotMatch("jdbc:dm://[^/]+/[^/].*");
     }
 
     @Test

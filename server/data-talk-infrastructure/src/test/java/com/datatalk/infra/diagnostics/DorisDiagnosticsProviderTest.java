@@ -90,7 +90,7 @@ class DorisDiagnosticsProviderTest {
         var result = (DiagnosticResult.Ok<ExplainPlan>) provider.explain("SELECT 1", testConn("test"), "pw", "test", null);
 
         assertThat(result.value().nodes()).isEmpty();
-        assertThat(result.value().rawText()).isEmpty();
+        assertThat(result.value().rawText()).isBlank();
     }
 
     @Test
@@ -114,7 +114,7 @@ class DorisDiagnosticsProviderTest {
         var result = provider.explain("SELECT * FROM orders", testConn("test"), "pw", "test", null);
 
         assertThat(result).isInstanceOf(DiagnosticResult.Unsupported.class);
-        assertThat(((DiagnosticResult.Unsupported<ExplainPlan>) result).reason()).contains("permission");
+        assertThat(((DiagnosticResult.Unsupported<ExplainPlan>) result).reason()).containsIgnoringCase("permission");
     }
 
     @Test

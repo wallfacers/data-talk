@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -41,7 +42,7 @@ public class DorisDiagnosticsProvider extends AbstractDiagnosticsProvider {
                     if (v != null) raw.append(v).append('\n');
                 }
             }
-            var nodes = applyOlapScanTypes(mapTextPlanToNodes(raw.toString(), DORIS_GRAMMAR), raw.toString());
+            var nodes = applyOlapScanTypes(enrichFromRawText(mapTextPlanToNodes(raw.toString(), DORIS_GRAMMAR), raw.toString()), raw.toString());
             return DiagnosticResult.ok(new ExplainPlan("apache_doris", raw.toString(), nodes, null, List.of()));
         } catch (SQLException e) {
             return mapPermissionOrDriverError(e, "EXPLAIN", "apache_doris");
@@ -103,6 +104,7 @@ public class DorisDiagnosticsProvider extends AbstractDiagnosticsProvider {
         },
         line -> {
             String t = line.stripLeading();
+            if (t.matches("\\d+:EXCHANGE\\b.*")) return null;
             var m = Pattern.compile("^\\d+:([A-Z][A-Z_a-z\\s]+)").matcher(t);
             return m.find() ? m.group(1).trim() : null;
         },
@@ -115,6 +117,49 @@ public class DorisDiagnosticsProvider extends AbstractDiagnosticsProvider {
             return m.find() ? Optional.of(Long.parseLong(m.group(1))) : Optional.empty();
         }
     );
+
+    private static final Pattern OPERATOR_LINE = Pattern.compile("(?m)^(\\s*)(\\d+:\\S+)");
+    private static final Pattern TABLE_PAT = Pattern.compile("TABLE:\\s+(\\S+)");
+    private static final Pattern CARD_PAT = Pattern.compile("cardinality=(\\d+)");
+
+    // package-private static for Starrocks reuse
+    static List<ExplainNode> enrichFromRawText(List<ExplainNode> nodes, String raw) {
+        // mapTextPlanToNodes processes each line independently. In Doris/StarRocks EXPLAIN,
+        // TABLE and cardinality appear on continuation lines after the operator line, which
+        // indentFn skips (returns -1). Extract them here by scanning raw text per-node.
+        String[] blocks = raw.split("\\n\\n");
+        List<String> tables = new ArrayList<>();
+        List<Long> cardinalities = new ArrayList<>();
+        for (String block : blocks) {
+            if (!OPERATOR_LINE.matcher(block).find()) continue;
+            var tm = TABLE_PAT.matcher(block);
+            if (tm.find()) tables.add(tm.group(1));
+            var cm = CARD_PAT.matcher(block);
+            if (cm.find()) cardinalities.add(Long.parseLong(cm.group(1)));
+        }
+        var tablesIt = tables.iterator();
+        var cardIt = cardinalities.iterator();
+        return enrichFromRawTextRecursive(nodes, tablesIt, cardIt);
+    }
+
+    private static List<ExplainNode> enrichFromRawTextRecursive(List<ExplainNode> nodes,
+                                                                 Iterator<String> tables,
+                                                                 Iterator<Long> cardinalities) {
+        List<ExplainNode> result = new ArrayList<>();
+        for (ExplainNode n : nodes) {
+            String table = n.table();
+            if (table == null && tables.hasNext()) {
+                table = tables.next();
+            }
+            long rows = n.rows();
+            if (rows == 0L && cardinalities.hasNext()) {
+                rows = cardinalities.next();
+            }
+            result.add(new ExplainNode(n.operation(), table, n.scanType(), rows, n.cost(), n.extra(),
+                enrichFromRawTextRecursive(n.children(), tables, cardinalities)));
+        }
+        return result;
+    }
 
     // package-private static for Starrocks reuse
     static List<ExplainNode> applyOlapScanTypes(List<ExplainNode> nodes, String raw) {

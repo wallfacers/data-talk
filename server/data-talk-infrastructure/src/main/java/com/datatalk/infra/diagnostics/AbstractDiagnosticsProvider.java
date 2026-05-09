@@ -317,7 +317,7 @@ abstract class AbstractDiagnosticsProvider implements DiagnosticsProvider {
         NodeList objects = relOp.getElementsByTagName("Object");
         for (int i = 0; i < objects.getLength(); i++) {
             Element o = (Element) objects.item(i);
-            if (o.getParentNode() == relOp) {
+            if (isDescendantOf(o, relOp)) {
                 String t = o.getAttribute("Table");
                 if (t != null && !t.isBlank()) {
                     table = t.replaceAll("[\\[\\]]", "");
@@ -326,14 +326,24 @@ abstract class AbstractDiagnosticsProvider implements DiagnosticsProvider {
             }
         }
         List<ExplainNode> children = new ArrayList<>();
-        NodeList kids = relOp.getChildNodes();
-        for (int i = 0; i < kids.getLength(); i++) {
-            Node k = kids.item(i);
-            if (k.getNodeType() == Node.ELEMENT_NODE && "RelOp".equals(k.getNodeName())) {
-                children.add(parseRelOp((Element) k));
+        NodeList childRelOps = relOp.getElementsByTagName("RelOp");
+        for (int i = 0; i < childRelOps.getLength(); i++) {
+            Element child = (Element) childRelOps.item(i);
+            Node parent = child.getParentNode();
+            if (parent == relOp || (parent.getNodeType() == Node.ELEMENT_NODE && !"RelOp".equals(parent.getNodeName()))) {
+                children.add(parseRelOp(child));
             }
         }
         return new ExplainNode(op, table, ScanType.OTHER, rows, cost, null, List.copyOf(children));
+    }
+
+    private static boolean isDescendantOf(Element child, Element ancestor) {
+        Node parent = child.getParentNode();
+        while (parent != null) {
+            if (parent == ancestor) return true;
+            parent = parent.getParentNode();
+        }
+        return false;
     }
 
     private static Double parseDoubleOrNull(String s) {

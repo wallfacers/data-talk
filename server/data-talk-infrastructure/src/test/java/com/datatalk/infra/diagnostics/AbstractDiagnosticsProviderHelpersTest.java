@@ -48,7 +48,7 @@ class AbstractDiagnosticsProviderHelpersTest {
                 int dashIdx = line.indexOf("- ");
                 if (dashIdx < 0) return null;
                 String rest = line.substring(dashIdx + 2);
-                int end = Math.min(idxOr(rest, '['), idxOr(rest, ' '));
+                int end = Math.min(Math.min(idxOr(rest, '['), idxOr(rest, ' ')), idxOr(rest, '('));
                 return end < 0 ? rest.trim() : rest.substring(0, end);
             },
             line -> {

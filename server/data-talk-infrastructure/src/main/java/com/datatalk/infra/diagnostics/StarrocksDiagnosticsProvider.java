@@ -40,7 +40,9 @@ public class StarrocksDiagnosticsProvider extends AbstractDiagnosticsProvider {
             }
             // Reuse Doris grammar and OlapScanType inference - StarRocks is a Doris fork with identical EXPLAIN format
             var nodes = DorisDiagnosticsProvider.applyOlapScanTypes(
-                mapTextPlanToNodes(raw.toString(), DorisDiagnosticsProvider.DORIS_GRAMMAR),
+                DorisDiagnosticsProvider.enrichFromRawText(
+                    mapTextPlanToNodes(raw.toString(), DorisDiagnosticsProvider.DORIS_GRAMMAR),
+                    raw.toString()),
                 raw.toString()
             );
             return DiagnosticResult.ok(new ExplainPlan("starrocks", raw.toString(), nodes, null, List.of()));

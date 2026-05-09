@@ -18,6 +18,8 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import org.junit.jupiter.api.BeforeEach;
+
 @WebMvcTest(DiagnosticsController.class)
 @AutoConfigureMockMvc(addFilters = false)
 class DiagnosticsControllerTest {
@@ -26,6 +28,11 @@ class DiagnosticsControllerTest {
 
     @MockBean DiagnosticsService service;
     @MockBean Translator translator;
+
+    @BeforeEach
+    void stubTranslator() {
+        when(translator.get("error.sql.required")).thenReturn("SQL is required");
+    }
 
     @Test
     void explain_missingSql_returns400() throws Exception {

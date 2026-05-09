@@ -75,7 +75,7 @@ CREATE TABLE file_artifact (
   id            TEXT PRIMARY KEY,
   scope         TEXT NOT NULL CHECK(scope IN ('session','workspace')),
   status        TEXT NOT NULL CHECK(status IN ('temporary','candidate','archived','discarded')),
-  kind          TEXT NOT NULL CHECK(kind IN ('report','er_diagram','sql_script','dataset','other')),
+  kind          TEXT NOT NULL CHECK(kind IN ('report','er_diagram','sql_script','dataset','dashboard','other')),
   session_id    TEXT,
   connection_id TEXT,
   filename      TEXT NOT NULL,
@@ -87,8 +87,10 @@ CREATE TABLE file_artifact (
   created_at    INTEGER NOT NULL,
   updated_at    INTEGER NOT NULL,
   archived_at   INTEGER,
-  metadata_json TEXT
+  metadata_json TEXT,
+  external      INTEGER NOT NULL DEFAULT 0 CHECK(external IN (0, 1))
 );
 CREATE INDEX idx_file_artifact_session ON file_artifact(session_id);
 CREATE INDEX idx_file_artifact_connection ON file_artifact(connection_id);
 CREATE INDEX idx_file_artifact_status ON file_artifact(status);
+CREATE INDEX idx_file_artifact_external ON file_artifact(external);

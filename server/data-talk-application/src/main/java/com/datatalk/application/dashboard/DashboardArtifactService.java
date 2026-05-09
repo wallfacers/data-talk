@@ -82,7 +82,7 @@ public class DashboardArtifactService {
             throw new PayloadTooLargeException(bytes.length, MAX_PAYLOAD_BYTES);
         }
 
-        Path target = workdirRoot.dashboardsRoot().resolve(id + ".dashboard.json");
+        Path target = workdirRoot.dashboardsRoot().resolve(id + ".dashboard.json").toAbsolutePath();
         try {
             AtomicFileWriterBridge.write(target, bytes);
         } catch (IOException e) {

@@ -791,7 +791,7 @@ Output budget: defaults `headLimit=100`, `maxTabs=50`. For existence checks use 
 - Fields: `host`, `port` (default 2881), `username`, `password`, `databaseName`, `compatibilityMode` (required), `oceanbaseTenant` (required), `oceanbaseCluster` (optional).
 - Driver: `com.oceanbase:oceanbase-client`; URL `jdbc:oceanbase://<host>:<port>/<db>`; default port 2881.
 - Username form `<user>@<tenant>` or `<user>@<tenant>#<cluster>` is composed by ConnectionService; AI must NOT fabricate this; structured fields in MCP.
-- Chinese aliases (`蚂蚁 OceanBase`, `沃趣 OceanBase`) are recognized in user natural-language input only; they map to canonical kind `oceanbase`, NOT to `mysql`.
+- Chinese aliases (Ant OceanBase, Woqu OceanBase) are recognized in user natural-language input only; they map to canonical kind `oceanbase`, NOT to `mysql`.
 - Day-1 unsupported: PROCEDURE / FUNCTION / TENANT / OUTLINE / RESOURCE POOL / ALTER SYSTEM / MAJOR-MINOR FREEZE / BACKUP-RESTORE — all classified L3 or dialect_unsupported.
 - `datatalk_execute_sql` remains read-only in the chat path.
 - Mutations (`INSERT`, `UPDATE`, `DELETE`, DDL) require the SQL workbench with confirmation.
@@ -852,7 +852,7 @@ Output budget: defaults `headLimit=100`, `maxTabs=50`. For existence checks use 
 
 ### Dameng (kind: `dameng`)
 
-- **Canonical kind:** `dameng` (lower-case). **No aliases**: `dm`, `dm8`, `DM`, `DM8`, `DM7`, `dameng7`, `dameng8`, `武汉达梦`, `达梦` are all rejected at `ConnectionKind.normalize`.
+- **Canonical kind:** `dameng` (lower-case). **No aliases**: `dm`, `dm8`, `DM`, `DM8`, `DM7`, `dameng7`, `dameng8`, `Wuhan Dameng`, `Dameng` are all rejected at `ConnectionKind.normalize`.
 - **Driver:** `com.dameng:DmJdbcDriverX:8.1.x` (Maven Central direct; commercial license; offline jar in repo is **forbidden** by Wave C umbrella §10).
 - **Driver class:** `dm.jdbc.driver.DmDriver`.
 - **URL:** `jdbc:dm://<host>:<port>` (server-level; **no `/<database>` suffix**; default port 5236).

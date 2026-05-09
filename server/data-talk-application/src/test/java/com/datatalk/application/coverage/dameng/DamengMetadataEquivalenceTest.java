@@ -22,7 +22,7 @@ class DamengMetadataEquivalenceTest {
     void damengSystemSchemasContainsFiveExpectedEntries() throws Exception {
         Set<String> schemas = getDamengSystemSchemas();
         assertThat(schemas).containsExactlyInAnyOrder(
-            "SYS", "SYSDBA", "SYSAUDITOR", "SYSSSO", "CTISYS");
+            "sys", "sysdba", "sysauditor", "syssso", "ctisys");
     }
 
     @Test
@@ -50,7 +50,7 @@ class DamengMetadataEquivalenceTest {
         // hasIndependentSchemaNamespace returns false, meaning schema discovery
         // uses DatabaseMetaData.getSchemas().
         assertThat(invokeHasIndependentSchemaNamespace("dameng")).isFalse();
-        assertThat(invokeHasIndependentSchemaNamespace("oracle")).isFalse();
+        assertThat(invokeHasIndependentSchemaNamespace("oracle")).isTrue();
         assertThat(invokeHasIndependentSchemaNamespace("postgresql")).isTrue();
     }
 

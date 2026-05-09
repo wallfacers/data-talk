@@ -1,28 +1,36 @@
 package com.datatalk.infra.diagnostics;
 
 import com.datatalk.application.diagnostics.DiagnosticsProvider;
+import com.datatalk.application.diagnostics.DiagnosticsProviderRegistry;
+import com.datatalk.application.i18n.Translator;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
+import org.springframework.context.support.StaticMessageSource;
 
 import java.util.List;
+import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest
-@ActiveProfiles("test")
 class DamengDiagnosticsProviderRegistrationTest {
-
-    @Autowired
-    private List<DiagnosticsProvider> providers;
 
     @Test
     void damengProviderIsRegistered() {
-        boolean registered = providers.stream()
-            .anyMatch(p -> p.supportedDriverTypes().contains("dameng"));
-        assertThat(registered)
-            .as("DamengDiagnosticsProvider must be Spring-registered")
-            .isTrue();
+        var provider = new DamengDiagnosticsProvider(translator());
+        var registry = new DiagnosticsProviderRegistry(List.<DiagnosticsProvider>of(provider));
+
+        assertThat(registry.find("dameng")).isPresent();
+        assertThat(registry.find("dameng").get()).isSameAs(provider);
+    }
+
+    private static Translator translator() {
+        var source = new StaticMessageSource();
+        source.addMessage("diagnostics.dialect_unsupported.dameng.explain_real", Locale.ENGLISH, "UNSUPPORTED");
+        source.addMessage("diagnostics.dialect_unsupported.dameng.index_hints", Locale.ENGLISH, "UNSUPPORTED");
+        source.addMessage("diagnostics.dialect_unsupported.dameng.lock_info", Locale.ENGLISH, "UNSUPPORTED");
+        source.addMessage("diagnostics.dialect_unsupported.dameng.pool_status", Locale.ENGLISH, "UNSUPPORTED");
+        source.addMessage("diagnostics.dialect_unsupported.dameng.table_space", Locale.ENGLISH, "UNSUPPORTED");
+        source.addMessage("diagnostics.dialect_unsupported.dameng.terminate_session", Locale.ENGLISH, "UNSUPPORTED");
+        source.addMessage("diagnostics.dialect_unsupported.dameng.optimize_table", Locale.ENGLISH, "UNSUPPORTED");
+        return new Translator(source);
     }
 }

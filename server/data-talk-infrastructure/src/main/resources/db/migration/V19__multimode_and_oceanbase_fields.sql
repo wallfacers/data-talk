@@ -58,3 +58,4 @@ ALTER TABLE connection_new RENAME TO connections;
 -- Recreate indexes
 CREATE INDEX IF NOT EXISTS idx_connection_kind ON connections(kind);
 CREATE INDEX IF NOT EXISTS idx_connection_created_at ON connections(created_at);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_connections_name ON connections(name);

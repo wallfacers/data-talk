@@ -39,7 +39,7 @@ class TypicalQueryE2EIT {
             st.execute("INSERT INTO users(name) VALUES('Alice'),('Bob')");
         }
         String connectionId = conn.create("E2E Test Connection", ConnectionKind.H2, "local", 0,
-            DATABASE_NAME, "sa", "", null, null, null, null, null, null);
+            DATABASE_NAME, "sa", "", null, null, null, null, null, null, null, null, null);
         sessRepo.upsert(new SessionRecord("s-e2e", connectionId, "E2E Test", false, null, 0L, 0L, false));
     }
 

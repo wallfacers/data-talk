@@ -97,6 +97,8 @@ class ClickHouseDiagnosticsProviderTest {
             "ClickHouse index hints are based on ORDER BY and data skipping indices, not traditional B-tree indexes");
         source.addMessage("diagnostics.explain.unsupported.clickhouse", Locale.ENGLISH,
             "EXPLAIN requires sufficient privileges");
+        source.addMessage("diagnostics.explain.unsupported.clickhouse_permission", Locale.ENGLISH,
+            "EXPLAIN requires sufficient privileges");
         return new Translator(source);
     }
 
@@ -117,7 +119,7 @@ class ClickHouseDiagnosticsProviderTest {
 
     private String fixture(String name) {
         try {
-            Path path = Path.of("server/data-talk-infrastructure/src/test/resources/diagnostics/clickhouse/" + name);
+            Path path = Path.of("src/test/resources/diagnostics/clickhouse/" + name);
             return Files.readString(path);
         } catch (IOException e) {
             throw new RuntimeException("Failed to read fixture: " + name, e);

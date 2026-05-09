@@ -71,6 +71,7 @@ class DamengResultNormalizationEquivalenceTest {
     void clobPreview() throws Exception {
         Clob clob = mock(Clob.class);
         when(clob.length()).thenReturn(100L);
+        when(clob.getSubString(1, 100)).thenReturn("This is a CLOB preview...");
         when(clob.getCharacterStream()).thenReturn(
             new StringReader("This is a CLOB preview..."));
         // The normalizer reads up to MAX_LOB_LENGTH (64KB)
