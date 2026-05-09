@@ -279,7 +279,7 @@ export const ChartBlock = memo(function ChartBlock({
           </Tooltip>
         </div>
       </div>
-      <div data-testid="chart-canvas-host" className="w-full min-w-0 max-w-full">
+      <div data-testid="chart-canvas-host" className="w-full min-w-0 max-w-full p-3">
         <ChartErrorBoundary json={json} resetKey={json} title={t('chart.renderError')}>
           <ChartRenderer option={option} />
         </ChartErrorBoundary>

@@ -146,15 +146,11 @@ export function refreshChartThemesForCurrentMode() {
 
 // grid.bottom / grid.left must be large enough to fit axisLabel band +
 // nameGap + name text inside the grid (containLabel:true includes labels but
-// NOT axis.name).  At DEFAULT_HEIGHT=360:
-//   bottom ≥ axisLabel(~22) + nameGap(22) + fontHeight(~14) = ~58
-//   left   ≥ axisLabel(~40) + nameGap(28) + fontWidth(~14) = ~82
-// v4 used 96/96 which prevented clipping but produced excessive whitespace.
-// v6 tightens to 46/54 and reduces nameGap to match — verified via Playwright.
-const GRID_BOTTOM_FOR_X_NAME = 46
-const GRID_LEFT_FOR_Y_NAME = 54
-const GRID_TOP_FOR_BALANCE = 16
-const GRID_RIGHT_FOR_BALANCE = 16
+// NOT axis.name).  Visual margins are now handled by CSS padding on the
+// container (chart-block.tsx p-3), so these values only need to prevent
+// axis-name clipping at the canvas edge — no visual-margin responsibility.
+const GRID_BOTTOM_FOR_X_NAME = 32
+const GRID_LEFT_FOR_Y_NAME = 40
 
 function hasAxisWithName(axis: unknown): boolean {
   const named = (entry: unknown) =>
@@ -173,15 +169,13 @@ function withContainLabel(grid: unknown, option: Record<string, unknown>) {
   const inflate = (entry: Record<string, unknown>): Record<string, unknown> => {
     const result: Record<string, unknown> = { containLabel: true, ...entry }
     // AI-generated grid values are almost always too tight for the axis-name
-    // band, so we always override bottom/left. We set top/right to a small
-    // constant so the chart has consistent but compact margins.
+    // band, so we always override bottom/left. We do NOT set top/right —
+    // visual margins come from CSS padding on the container.
     if (hasXName) {
       result.bottom = GRID_BOTTOM_FOR_X_NAME
-      result.top = GRID_TOP_FOR_BALANCE
     }
     if (hasYName) {
       result.left = GRID_LEFT_FOR_Y_NAME
-      result.right = GRID_RIGHT_FOR_BALANCE
     }
     return result
   }
@@ -256,8 +250,8 @@ function hasPieSeries(series: unknown): boolean {
 // We move the name to nameLocation:'middle' so echarts always paints it
 // inside the grid — same product-contract approach as withContainLabel and
 // withCenteredPie. We only touch entries that have a non-empty `name`.
-const X_AXIS_NAME_GAP = 22
-const Y_AXIS_NAME_GAP = 28
+const X_AXIS_NAME_GAP = 16
+const Y_AXIS_NAME_GAP = 20
 
 function withInsetAxisName(axis: unknown, dim: 'x' | 'y'): unknown {
   const inset = (entry: unknown): unknown => {
