@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useI18n } from '@/i18n/use-i18n'
 import { createConnection, updateConnection, connectionsKey, type Connection } from './api'
+import { MultiModeConnectionFields, type CompatibilityMode } from './multi-mode-connection-fields'
+import { OceanBaseConnectionFields } from './oceanbase-connection-fields'
 
 export const DATABASE_TYPES = {
   mysql: { label: 'MySQL', port: 3306 },
@@ -25,6 +27,7 @@ export const DATABASE_TYPES = {
   trino: { label: 'Trino', port: 8080 },
   hive: { label: 'Apache Hive', port: 10000 },
   presto: { label: 'Presto', port: 8080 },
+  oceanbase: { label: 'OceanBase', port: 2881 },
 } as const
 
 export type DatabaseKind = keyof typeof DATABASE_TYPES
@@ -45,6 +48,9 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
     duckdbMode: 'memory' as 'memory' | 'file',
     duckdbReadOnly: false,
     clickhouseSSL: false,
+    compatibilityMode: 'mysql' as CompatibilityMode,
+    oceanbaseTenant: '',
+    oceanbaseCluster: '',
   })
 
   useEffect(() => {
@@ -66,13 +72,18 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
         duckdbMode,
         duckdbReadOnly: isDuckdb ? (editing.readOnly === true) : false,
         clickhouseSSL: editing.kind === 'clickhouse' ? editing.port === 8443 : false,
+        compatibilityMode: editing.compatibilityMode === 'oracle' || editing.compatibilityMode === 'pg'
+          ? editing.compatibilityMode : 'mysql',
+        oceanbaseTenant: editing.oceanbaseTenant ?? '',
+        oceanbaseCluster: editing.oceanbaseCluster ?? '',
       })
     } else {
       setForm({ name: '', kind: 'mysql', host: 'localhost', port: 3306,
         database: '', username: '', password: '', connectTimeout: 3000,
         oracleServiceType: 'service', sqlserverEncrypt: true,
         sqlserverTrustServerCertificate: true, sqlserverInstanceName: '',
-        duckdbMode: 'memory', duckdbReadOnly: false, clickhouseSSL: false })
+        duckdbMode: 'memory', duckdbReadOnly: false, clickhouseSSL: false,
+        compatibilityMode: 'mysql', oceanbaseTenant: '', oceanbaseCluster: '' })
     }
   }, [editing])
 
@@ -105,6 +116,13 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
       if (isDuckdb) {
         dialectExtras.readOnly = form.duckdbReadOnly
       }
+      if (form.kind === 'oceanbase') {
+        dialectExtras.compatibilityMode = form.compatibilityMode
+        dialectExtras.oceanbaseTenant = form.oceanbaseTenant
+        if (form.oceanbaseCluster.trim()) {
+          dialectExtras.oceanbaseCluster = form.oceanbaseCluster.trim()
+        }
+      }
       if (editing) {
         await updateConnection(editing.id, { ...base, ...dialectExtras })
       } else {
@@ -126,6 +144,7 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
   const isSqlserver = form.kind === 'sqlserver'
   const isClickhouse = form.kind === 'clickhouse'
   const isStarrocks = form.kind === 'starrocks'
+  const isOceanbase = form.kind === 'oceanbase'
   const hideHostPort = isSqlite || isDuckdb
   const databaseLabel = isDuckdb
     ? (form.duckdbMode === 'file' ? t('dataSources.duckdbFilePath') : '')
@@ -159,6 +178,11 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
                   username: embedded ? '' : f.username,
                   password: embedded ? '' : f.password,
                   ...(nextKind === 'duckdb' ? { duckdbMode: 'memory' as const, duckdbReadOnly: false } : {}),
+                  ...(nextKind === 'oceanbase' ? {
+                    compatibilityMode: 'mysql' as CompatibilityMode,
+                    oceanbaseTenant: '',
+                    oceanbaseCluster: '',
+                  } : {}),
                   ...(nextKind === 'clickhouse' ? { clickhouseSSL: false as const, port: 8123 } : {}),
                 }))
               }
@@ -244,6 +268,23 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
                 placeholder={t('dataSources.sqlserverInstance')}
                 onChange={(e) => setForm(f => ({ ...f, sqlserverInstanceName: e.target.value }))} />
             </Field>
+          </>
+        ) : null}
+        {isOceanbase ? (
+          <>
+            <MultiModeConnectionFields
+              kind="oceanbase"
+              mode={form.compatibilityMode}
+              onModeChange={(m) => setForm((f) => ({ ...f, compatibilityMode: m }))}
+              modeOptions={['mysql', 'oracle']}
+              modeDisabled={['oracle']}
+            />
+            <OceanBaseConnectionFields
+              tenant={form.oceanbaseTenant}
+              onTenantChange={(v) => setForm((f) => ({ ...f, oceanbaseTenant: v }))}
+              cluster={form.oceanbaseCluster}
+              onClusterChange={(v) => setForm((f) => ({ ...f, oceanbaseCluster: v }))}
+            />
           </>
         ) : null}
         {isDuckdb ? (

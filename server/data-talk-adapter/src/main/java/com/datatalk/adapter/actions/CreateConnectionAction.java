@@ -53,7 +53,10 @@ public class CreateConnectionAction implements ActionHandler<Map, Map> {
                 Map.entry("sqlserverEncrypt", Map.of("type", "boolean")),
                 Map.entry("sqlserverTrustServerCertificate", Map.of("type", "boolean")),
                 Map.entry("sqlserverInstanceName", Map.of("type", "string")),
-                Map.entry("readOnly", Map.of("type", "boolean"))
+                Map.entry("readOnly", Map.of("type", "boolean")),
+                Map.entry("compatibilityMode", Map.of("type", "string")),
+                Map.entry("oceanbaseTenant", Map.of("type", "string")),
+                Map.entry("oceanbaseCluster", Map.of("type", "string"))
             )),
             Map.entry("allOf", List.of(embeddedKindSchema()))
         );
@@ -109,7 +112,10 @@ public class CreateConnectionAction implements ActionHandler<Map, Map> {
             normalized.sqlserverEncrypt(),
             normalized.sqlserverTrustServerCertificate(),
             normalized.sqlserverInstanceName(),
-            nullableBoolean(input, "readOnly")
+            nullableBoolean(input, "readOnly"),
+            nullableString(input, "compatibilityMode"),
+            nullableString(input, "oceanbaseTenant"),
+            nullableString(input, "oceanbaseCluster")
         );
         var out = new LinkedHashMap<String, Object>();
         out.put("id", id);
@@ -134,7 +140,10 @@ public class CreateConnectionAction implements ActionHandler<Map, Map> {
             nullableBoolean(input, "sqlserverEncrypt"),
             nullableBoolean(input, "sqlserverTrustServerCertificate"),
             nullableString(input, "sqlserverInstanceName"),
-            nullableBoolean(input, "readOnly")
+            nullableBoolean(input, "readOnly"),
+            nullableString(input, "compatibilityMode"),
+            nullableString(input, "oceanbaseTenant"),
+            nullableString(input, "oceanbaseCluster")
         );
     }
 
@@ -196,6 +205,9 @@ public class CreateConnectionAction implements ActionHandler<Map, Map> {
         Boolean sqlserverEncrypt,
         Boolean sqlserverTrustServerCertificate,
         String sqlserverInstanceName,
-        Boolean readOnly
+        Boolean readOnly,
+        String compatibilityMode,
+        String oceanbaseTenant,
+        String oceanbaseCluster
     ) {}
 }

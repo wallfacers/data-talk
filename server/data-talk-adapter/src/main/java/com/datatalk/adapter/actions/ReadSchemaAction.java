@@ -1,5 +1,6 @@
 package com.datatalk.adapter.actions;
 
+import com.datatalk.application.connection.ConnectionKind;
 import com.datatalk.application.connection.ConnectionService;
 import com.datatalk.application.connection.JdbcUrlBuilder;
 import com.datatalk.application.i18n.Translator;
@@ -126,7 +127,10 @@ public class ReadSchemaAction implements ActionHandler<Map, Map> {
         }
 
         List<Map<String, Object>> tables = new ArrayList<>();
-        try (Connection c = DriverManager.getConnection(JdbcUrlBuilder.build(cr), cr.username(), password)) {
+        String effectiveUsername = ConnectionKind.OCEANBASE.equals(cr.kind())
+            ? ConnectionService.composeOceanBaseUsername(cr)
+            : cr.username();
+        try (Connection c = DriverManager.getConnection(JdbcUrlBuilder.build(cr), effectiveUsername, password)) {
             applySchema(c, cr.kind(), schema);
             MetadataScope scope = metadataScope(cr.kind(), database, schema);
             var meta = c.getMetaData();
@@ -277,7 +281,7 @@ public class ReadSchemaAction implements ActionHandler<Map, Map> {
     }
 
     static MetadataScope metadataScope(String kind, String database, String schema) {
-        if ("mysql".equalsIgnoreCase(kind) || "mariadb".equalsIgnoreCase(kind) || "apache_doris".equalsIgnoreCase(kind) || "starrocks".equalsIgnoreCase(kind) || "hive".equalsIgnoreCase(kind) || "trino".equalsIgnoreCase(kind) || "presto".equalsIgnoreCase(kind) || "tidb".equalsIgnoreCase(kind)) {
+        if ("mysql".equalsIgnoreCase(kind) || "mariadb".equalsIgnoreCase(kind) || "apache_doris".equalsIgnoreCase(kind) || "starrocks".equalsIgnoreCase(kind) || "hive".equalsIgnoreCase(kind) || "trino".equalsIgnoreCase(kind) || "presto".equalsIgnoreCase(kind) || "tidb".equalsIgnoreCase(kind) || "oceanbase".equalsIgnoreCase(kind)) {
             return new MetadataScope(hasText(database) ? database : null, null);
         }
         if ("sqlserver".equalsIgnoreCase(kind)) {
@@ -321,7 +325,10 @@ public class ReadSchemaAction implements ActionHandler<Map, Map> {
             connection.sqlserverEncrypt(),
             connection.sqlserverTrustServerCertificate(),
             connection.sqlserverInstanceName(),
-            connection.readOnly()
+            connection.readOnly(),
+            connection.compatibilityMode(),
+            connection.oceanbaseTenant(),
+            connection.oceanbaseCluster()
         );
     }
 

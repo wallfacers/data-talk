@@ -144,6 +144,18 @@ const MESSAGES = {
     'dataSources.confirmDelete.description': '此操作不可撤销。删除后需重新配置才能恢复连接。',
     'dataSources.confirmDelete.confirm': '删除',
 
+    // OceanBase connection fields
+    'connection.compatibilityMode': '兼容模式',
+    'connection.compatibilityMode.mysql': 'MySQL',
+    'connection.compatibilityMode.oracle': 'Oracle',
+    'connection.compatibilityMode.pg': 'PostgreSQL',
+    'connection.compatibilityMode.disabled.day3Candidate': 'Day-3 候选；Day-1 不支持',
+    'connection.kind.oceanbase.tenant': '租户',
+    'connection.kind.oceanbase.tenantPlaceholder': '租户（例如 sys）',
+    'connection.kind.oceanbase.cluster': '集群',
+    'connection.kind.oceanbase.clusterPlaceholder': '集群（可选）',
+    'connection.kind.oceanbase.tenantRequired': 'OceanBase 必须填写租户',
+
     'connections.kind.tidb': 'TiDB',
     'connections.tidb.kindLabel': 'TiDB (OSS / 自部署)',
     'connections.tidb.placeholder.host': '127.0.0.1',
@@ -824,6 +836,18 @@ const MESSAGES = {
     'dataSources.confirmDelete.title': 'Delete "{connectionName}"?',
     'dataSources.confirmDelete.description': 'This action cannot be undone. You will need to reconfigure the connection to restore it.',
     'dataSources.confirmDelete.confirm': 'Delete',
+
+    // OceanBase connection fields
+    'connection.compatibilityMode': 'Compatibility Mode',
+    'connection.compatibilityMode.mysql': 'MySQL',
+    'connection.compatibilityMode.oracle': 'Oracle',
+    'connection.compatibilityMode.pg': 'PostgreSQL',
+    'connection.compatibilityMode.disabled.day3Candidate': 'Day-3 candidate; not supported in Day-1',
+    'connection.kind.oceanbase.tenant': 'Tenant',
+    'connection.kind.oceanbase.tenantPlaceholder': 'Tenant (e.g. sys)',
+    'connection.kind.oceanbase.cluster': 'Cluster',
+    'connection.kind.oceanbase.clusterPlaceholder': 'Cluster (optional)',
+    'connection.kind.oceanbase.tenantRequired': 'OceanBase tenant is required',
 
     'connections.kind.tidb': 'TiDB',
     'connections.tidb.kindLabel': 'TiDB (OSS / self-hosted)',

@@ -48,7 +48,8 @@ public class ConnectionController {
                 body.databaseName(), body.username(), body.password(), body.connectTimeout(),
                 body.oracleServiceType(),
                 body.sqlserverEncrypt(), body.sqlserverTrustServerCertificate(), body.sqlserverInstanceName(),
-                body.readOnly());
+                body.readOnly(),
+                body.compatibilityMode(), body.oceanbaseTenant(), body.oceanbaseCluster());
             return ResponseEntity.status(HttpStatus.CREATED).body(new ConnectionCreatedDto(id));
         } catch (DataAccessException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).build();
@@ -67,7 +68,8 @@ public class ConnectionController {
                 body.databaseName(), body.username(), body.password(), body.connectTimeout(),
                 body.oracleServiceType(),
                 body.sqlserverEncrypt(), body.sqlserverTrustServerCertificate(), body.sqlserverInstanceName(),
-                body.readOnly());
+                body.readOnly(),
+                body.compatibilityMode(), body.oceanbaseTenant(), body.oceanbaseCluster());
             contextRefreshService.refreshByConnectionId(id);
             return ResponseEntity.noContent().build();
         } catch (java.util.NoSuchElementException e) {

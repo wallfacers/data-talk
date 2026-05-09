@@ -1,6 +1,7 @@
 package com.datatalk.adapter.actions;
 
 import com.datatalk.application.channel.IdGenerator;
+import com.datatalk.application.connection.ConnectionKind;
 import com.datatalk.application.connection.ConnectionService;
 import com.datatalk.application.connection.JdbcUrlBuilder;
 import com.datatalk.application.i18n.Translator;
@@ -151,7 +152,10 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
         List<Map<String, Object>> rows = new ArrayList<>();
         boolean truncated = false;
 
-        try (Connection c = DriverManager.getConnection(JdbcUrlBuilder.build(cr), cr.username(),
+        String effectiveUsername = ConnectionKind.OCEANBASE.equals(cr.kind())
+            ? ConnectionService.composeOceanBaseUsername(cr)
+            : cr.username();
+        try (Connection c = DriverManager.getConnection(JdbcUrlBuilder.build(cr), effectiveUsername,
                 connSvc.decryptPassword(cr.id()));
              PreparedStatement ps = c.prepareStatement(sql)) {
             applyExecutionContext(c, cr.kind(), resolved.schema());
@@ -300,7 +304,10 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
             connection.sqlserverEncrypt(),
             connection.sqlserverTrustServerCertificate(),
             connection.sqlserverInstanceName(),
-            connection.readOnly()
+            connection.readOnly(),
+            connection.compatibilityMode(),
+            connection.oceanbaseTenant(),
+            connection.oceanbaseCluster()
         );
     }
 

@@ -25,16 +25,20 @@ public class ConnectionRepository {
         rs.getInt("sqlserver_encrypt"),
         rs.getBoolean("sqlserver_trust_server_certificate"),
         rs.getString("sqlserver_instance_name"),
-        rs.getBoolean("read_only")
+        rs.getBoolean("read_only"),
+        rs.getString("compatibility_mode"),
+        rs.getString("oceanbase_tenant"),
+        rs.getString("oceanbase_cluster")
     );
 
     public void insert(ConnectionRecord c) {
         jdbc.update("""
-            INSERT INTO connections(id, name, kind, host, port, database_name, username, password_enc, schema_digest, created_at, connect_timeout, oracle_service_type, sqlserver_encrypt, sqlserver_trust_server_certificate, sqlserver_instance_name, read_only)
-            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO connections(id, name, kind, host, port, database_name, username, password_enc, schema_digest, created_at, connect_timeout, oracle_service_type, sqlserver_encrypt, sqlserver_trust_server_certificate, sqlserver_instance_name, read_only, compatibility_mode, oceanbase_tenant, oceanbase_cluster)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, c.id(), c.name(), c.kind(), c.host(), c.port(), c.databaseName(), c.username(),
             c.passwordEnc(), c.schemaDigest(), c.createdAt(), c.connectTimeout(), c.oracleServiceType(),
-            c.sqlserverEncrypt(), c.sqlserverTrustServerCertificate(), c.sqlserverInstanceName(), c.readOnly());
+            c.sqlserverEncrypt(), c.sqlserverTrustServerCertificate(), c.sqlserverInstanceName(), c.readOnly(),
+            c.compatibilityMode(), c.oceanbaseTenant(), c.oceanbaseCluster());
     }
 
     public List<ConnectionRecord> findAll() {
@@ -52,12 +56,12 @@ public class ConnectionRepository {
                SET name = ?, kind = ?, host = ?, port = ?, database_name = ?, username = ?,
                    password_enc = ?, schema_digest = ?, connect_timeout = ?, oracle_service_type = ?,
                    sqlserver_encrypt = ?, sqlserver_trust_server_certificate = ?, sqlserver_instance_name = ?,
-                   read_only = ?
+                   read_only = ?, compatibility_mode = ?, oceanbase_tenant = ?, oceanbase_cluster = ?
              WHERE id = ?
             """, c.name(), c.kind(), c.host(), c.port(), c.databaseName(), c.username(),
             c.passwordEnc(), c.schemaDigest(), c.connectTimeout(), c.oracleServiceType(),
             c.sqlserverEncrypt(), c.sqlserverTrustServerCertificate(), c.sqlserverInstanceName(),
-            c.readOnly(), c.id());
+            c.readOnly(), c.compatibilityMode(), c.oceanbaseTenant(), c.oceanbaseCluster(), c.id());
         if (n == 0) throw new java.util.NoSuchElementException("unknown connection: " + c.id());
     }
 

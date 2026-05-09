@@ -17,4 +17,5 @@ public final class ConnectionKind {
     public static final String PRESTO = "presto";
     public static final String HIVE = "hive";
     public static final String TIDB = "tidb";
+    public static final String OCEANBASE = "oceanbase";
 }

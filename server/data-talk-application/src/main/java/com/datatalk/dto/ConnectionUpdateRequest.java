@@ -13,5 +13,8 @@ public record ConnectionUpdateRequest(
     Boolean sqlserverEncrypt,  // optional - defaults to true
     Boolean sqlserverTrustServerCertificate,  // optional - defaults to true
     String sqlserverInstanceName,  // optional - named instance
-    Boolean readOnly               // optional - DuckDB read-only flag, preserves existing if null
+    Boolean readOnly,               // optional - DuckDB read-only flag, preserves existing if null
+    String compatibilityMode,       // optional - multi-mode compatibility mode
+    String oceanbaseTenant,         // optional - OceanBase tenant
+    String oceanbaseCluster         // optional - OceanBase cluster
 ) {}

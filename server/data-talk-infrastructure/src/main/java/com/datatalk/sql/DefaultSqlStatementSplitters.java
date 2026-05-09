@@ -27,7 +27,7 @@ public class DefaultSqlStatementSplitters implements SqlStatementSplitters {
         if ("postgres".equalsIgnoreCase(connectionKind) || "postgresql".equalsIgnoreCase(connectionKind)) {
             return postgresSplitter.split(sql);
         }
-        if ("mysql".equalsIgnoreCase(connectionKind) || "mariadb".equalsIgnoreCase(connectionKind) || "apache_doris".equalsIgnoreCase(connectionKind) || "starrocks".equalsIgnoreCase(connectionKind) || "tidb".equalsIgnoreCase(connectionKind)) {
+        if ("mysql".equalsIgnoreCase(connectionKind) || "mariadb".equalsIgnoreCase(connectionKind) || "apache_doris".equalsIgnoreCase(connectionKind) || "starrocks".equalsIgnoreCase(connectionKind) || "tidb".equalsIgnoreCase(connectionKind) || "oceanbase".equalsIgnoreCase(connectionKind)) {
             return mysqlSplitter.split(sql);
         }
         if ("oracle".equalsIgnoreCase(connectionKind)) {
