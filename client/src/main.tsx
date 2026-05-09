@@ -24,6 +24,9 @@ startStagePersistence().catch(() => {
 })
 
 import { useDashboardTabsStore } from '@/features/dashboard/stores/dashboard-tabs-store'
+import { DashboardBlock } from '@/features/chat/components/markdown/dashboard-block'
+import * as React from 'react'
+import * as ReactDOM from 'react-dom/client'
 
 // Dev-only: expose Zustand stores to Playwright E2E tests
 if (import.meta.env.DEV || import.meta.env.MODE === 'test') {
@@ -34,6 +37,10 @@ if (import.meta.env.DEV || import.meta.env.MODE === 'test') {
     coordinator: () => coordinator,
     dashboard: () => useDashboardTabsStore.getState(),
   }
+  // Expose React and DashboardBlock for inline component mounting in E2E tests
+  ;(window as any).reactForE2E = React
+  ;(window as any).reactDOMForE2E = ReactDOM
+  ;(window as any).dashboardBlockForE2E = { DashboardBlock }
 }
 
 const router = createRouter({ routeTree })
