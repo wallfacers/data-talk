@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/context-menu'
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -25,7 +26,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { useI18n } from '@/i18n/use-i18n'
 import { copyToClipboard } from '@/lib/utils'
-import { Download, Copy } from 'lucide-react'
+import { Download, Copy, Maximize2Icon, XIcon } from 'lucide-react'
 import {
   buildSqlResultExportFilename,
   selectSqlResultExportRows,
@@ -127,6 +128,7 @@ export function SqlResultTable({
   const pageSize = 100
   const [exportScope, setExportScope] = useState<SqlResultExportScope>('page')
   const [copiedAction, setCopiedAction] = useState<'csv' | 'json' | null>(null)
+  const [isExpanded, setIsExpanded] = useState(false)
   const pageCount = Math.max(1, Math.ceil(result.rows.length / pageSize))
   const pageStart = (page - 1) * pageSize
   const visibleRows = useMemo(
@@ -143,6 +145,7 @@ export function SqlResultTable({
     setContextTarget(null)
     setDetailTarget(null)
     setDetailFormatted(false)
+    setIsExpanded(false)
   }, [result.resultId])
 
   useLayoutEffect(() => {
@@ -233,6 +236,144 @@ export function SqlResultTable({
   const detailContent = detailFormatted && formattedDetail ? formattedDetail : detailRaw
   const detailLanguage = getContentLanguage(detailRaw)
 
+  // --- Extracted shared JSX ---
+
+  const resultTable = (keyPrefix: string) => (
+    <Table scrollContainer={false} className="min-w-max text-xs">
+      <TableHeader className="bg-muted">
+        <TableRow className="hover:bg-transparent">
+          <TableHead className={`${stickyHeaderCellClass} w-14 text-center`}>
+            {t('stage.queryEditor.result.rowNumber')}
+          </TableHead>
+          {result.columns.map((column, columnIndex) => (
+            <TableHead
+              key={`${keyPrefix}-${column}-${columnIndex}`}
+              className={stickyHeaderCellClass}
+              onContextMenu={() => setContextTarget({ column })}
+            >
+              {column}
+            </TableHead>
+          ))}
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {visibleRows.map((row, rowIndex) => (
+          <TableRow key={rowIndex} className="border-b border-border/30">
+            <TableCell
+              className="px-3 py-1.5 text-center text-muted-foreground"
+              onContextMenu={() => setContextTarget({ row, rowNumber: pageStart + rowIndex + 1 })}
+            >
+              {pageStart + rowIndex + 1}
+            </TableCell>
+            {row.map((cell, cellIndex) => (
+              <TableCell
+                key={cellIndex}
+                className="max-w-[360px] px-3 py-1.5"
+                onContextMenu={() =>
+                  setContextTarget({
+                    cellValue: cell,
+                    row,
+                    column: result.columns[cellIndex],
+                    rowNumber: pageStart + rowIndex + 1,
+                  })
+                }
+              >
+                <span className="block truncate">
+                  {cell == null ? (
+                    <span className="italic text-muted-foreground/70">
+                      {t('stage.queryEditor.cell.null')}
+                    </span>
+                  ) : typeof cell === 'object' ? (
+                    JSON.stringify(cell)
+                  ) : (
+                    String(cell)
+                  )}
+                </span>
+              </TableCell>
+            ))}
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  )
+
+  const contextMenuItems = (
+    <ContextMenuContent className="w-40 font-sans text-xs">
+      <ContextMenuItem
+        disabled={!contextTarget || !('cellValue' in contextTarget)}
+        onClick={() => openCellDetail(contextTarget)}
+      >
+        {t('stage.queryEditor.result.viewCell')}
+      </ContextMenuItem>
+      <ContextMenuItem
+        disabled={!contextTarget || !('cellValue' in contextTarget)}
+        onClick={copyCell}
+      >
+        {t('stage.queryEditor.result.copyCell')}
+      </ContextMenuItem>
+      <ContextMenuItem
+        disabled={!contextTarget?.row}
+        onClick={copyRow}
+      >
+        {t('stage.queryEditor.result.copyRow')}
+      </ContextMenuItem>
+      <ContextMenuItem
+        disabled={!contextTarget?.column}
+        onClick={copyColumnName}
+      >
+        {t('stage.queryEditor.result.copyColumnName')}
+      </ContextMenuItem>
+    </ContextMenuContent>
+  )
+
+  const toolbarContent = (showExpand = true) => (
+    <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border/50 px-3 py-2">
+      <span className="text-xs text-muted-foreground">{summaryLabel}</span>
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <Select value={exportScope} onValueChange={(value) => setExportScope(value as SqlResultExportScope)}>
+          <SelectTrigger size="sm" aria-label={t('stage.queryEditor.result.exportScope')}>
+            <span>{exportScope === 'page' ? t('stage.queryEditor.result.exportPage') : t('stage.queryEditor.result.exportResult')}</span>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="page">{t('stage.queryEditor.result.exportPage')}</SelectItem>
+            <SelectItem value="result">{t('stage.queryEditor.result.exportResult')}</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button size="sm" variant="outline" aria-label={t('stage.queryEditor.result.copyCsvAria')} onClick={() => void copyCsv()}>
+          <Copy className="size-3.5" />
+          {copiedAction === 'csv' ? t('stage.queryEditor.result.copied') : t('stage.queryEditor.result.copyCsv')}
+        </Button>
+        <Button size="sm" variant="outline" aria-label={t('stage.queryEditor.result.copyJsonAria')} onClick={() => void copyJson()}>
+          <Copy className="size-3.5" />
+          {copiedAction === 'json' ? t('stage.queryEditor.result.copied') : t('stage.queryEditor.result.copyJson')}
+        </Button>
+        <Button size="sm" variant="outline" aria-label={t('stage.queryEditor.result.downloadCsvAria')} onClick={downloadCsv}>
+          <Download className="size-3.5" />
+          {t('stage.queryEditor.result.downloadCsv')}
+        </Button>
+        {showExpand ? (
+          <Button size="sm" variant="outline" aria-label={t('stage.queryEditor.result.expandAria')} onClick={() => setIsExpanded(true)}>
+            <Maximize2Icon className="size-3.5" />
+            {t('stage.queryEditor.result.expand')}
+          </Button>
+        ) : null}
+        {pageCount > 1 ? (
+          <>
+            <span className="text-xs text-muted-foreground">
+              {t('stage.queryEditor.result.pageIndicator', { current: page, total: pageCount })}
+            </span>
+            <Button size="sm" variant="outline" disabled={page === 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>
+              {t('stage.queryEditor.result.previousPage')}
+            </Button>
+            <Button size="sm" variant="outline" disabled={page === pageCount} onClick={() => setPage((current) => Math.min(pageCount, current + 1))}>
+              {t('stage.queryEditor.result.nextPage')}
+            </Button>
+          </>
+        ) : null}
+      </div>
+    </div>
+  )
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <ContextMenu>
@@ -246,93 +387,11 @@ export function SqlResultTable({
               onContextMenuCapture={() => setContextTarget(null)}
               onScroll={handleScroll}
             >
-              <Table scrollContainer={false} className="min-w-max text-xs">
-                <TableHeader className="bg-muted">
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className={`${stickyHeaderCellClass} w-14 text-center`}>
-                      {t('stage.queryEditor.result.rowNumber')}
-                    </TableHead>
-                    {result.columns.map((column, columnIndex) => (
-                      <TableHead
-                        key={`${column}-${columnIndex}`}
-                        className={stickyHeaderCellClass}
-                        onContextMenu={() => setContextTarget({ column })}
-                      >
-                        {column}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {visibleRows.map((row, rowIndex) => (
-                    <TableRow key={rowIndex} className="border-b border-border/30">
-                      <TableCell
-                        className="px-3 py-1.5 text-center text-muted-foreground"
-                        onContextMenu={() => setContextTarget({ row, rowNumber: pageStart + rowIndex + 1 })}
-                      >
-                        {pageStart + rowIndex + 1}
-                      </TableCell>
-                      {row.map((cell, cellIndex) => {
-                        return (
-                          <TableCell
-                            key={cellIndex}
-                            className="max-w-[360px] px-3 py-1.5"
-                            onContextMenu={() =>
-                              setContextTarget({
-                                cellValue: cell,
-                                row,
-                                column: result.columns[cellIndex],
-                                rowNumber: pageStart + rowIndex + 1,
-                              })
-                            }
-                          >
-                            <span className="block truncate">
-                              {cell == null ? (
-                                <span className="italic text-muted-foreground/70">
-                                  {t('stage.queryEditor.cell.null')}
-                                </span>
-                              ) : typeof cell === 'object' ? (
-                                JSON.stringify(cell)
-                              ) : (
-                                String(cell)
-                              )}
-                            </span>
-                          </TableCell>
-                        )
-                      })}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              {resultTable('embedded')}
             </div>
           }
         />
-        <ContextMenuContent className="w-40 font-sans text-xs">
-          <ContextMenuItem
-            disabled={!contextTarget || !('cellValue' in contextTarget)}
-            onClick={() => openCellDetail(contextTarget)}
-          >
-            {t('stage.queryEditor.result.viewCell')}
-          </ContextMenuItem>
-          <ContextMenuItem
-            disabled={!contextTarget || !('cellValue' in contextTarget)}
-            onClick={copyCell}
-          >
-            {t('stage.queryEditor.result.copyCell')}
-          </ContextMenuItem>
-          <ContextMenuItem
-            disabled={!contextTarget?.row}
-            onClick={copyRow}
-          >
-            {t('stage.queryEditor.result.copyRow')}
-          </ContextMenuItem>
-          <ContextMenuItem
-            disabled={!contextTarget?.column}
-            onClick={copyColumnName}
-          >
-            {t('stage.queryEditor.result.copyColumnName')}
-          </ContextMenuItem>
-        </ContextMenuContent>
+        {contextMenuItems}
       </ContextMenu>
       <Dialog open={!!detailTarget} onOpenChange={(open) => {
         if (!open) setDetailTarget(null)
@@ -402,45 +461,46 @@ export function SqlResultTable({
           </div>
         </DialogContent>
       </Dialog>
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border/50 px-3 py-2">
-        <span className="text-xs text-muted-foreground">{summaryLabel}</span>
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <Select value={exportScope} onValueChange={(value) => setExportScope(value as SqlResultExportScope)}>
-            <SelectTrigger size="sm" aria-label={t('stage.queryEditor.result.exportScope')}>
-              <span>{exportScope === 'page' ? t('stage.queryEditor.result.exportPage') : t('stage.queryEditor.result.exportResult')}</span>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="page">{t('stage.queryEditor.result.exportPage')}</SelectItem>
-              <SelectItem value="result">{t('stage.queryEditor.result.exportResult')}</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button size="sm" variant="outline" aria-label={t('stage.queryEditor.result.copyCsvAria')} onClick={() => void copyCsv()}>
-            <Copy className="size-3.5" />
-            {copiedAction === 'csv' ? t('stage.queryEditor.result.copied') : t('stage.queryEditor.result.copyCsv')}
-          </Button>
-          <Button size="sm" variant="outline" aria-label={t('stage.queryEditor.result.copyJsonAria')} onClick={() => void copyJson()}>
-            <Copy className="size-3.5" />
-            {copiedAction === 'json' ? t('stage.queryEditor.result.copied') : t('stage.queryEditor.result.copyJson')}
-          </Button>
-          <Button size="sm" variant="outline" aria-label={t('stage.queryEditor.result.downloadCsvAria')} onClick={downloadCsv}>
-            <Download className="size-3.5" />
-            {t('stage.queryEditor.result.downloadCsv')}
-          </Button>
-          {pageCount > 1 ? (
-            <>
-              <span className="text-xs text-muted-foreground">
-                {t('stage.queryEditor.result.pageIndicator', { current: page, total: pageCount })}
-              </span>
-              <Button size="sm" variant="outline" disabled={page === 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>
-                {t('stage.queryEditor.result.previousPage')}
-              </Button>
-              <Button size="sm" variant="outline" disabled={page === pageCount} onClick={() => setPage((current) => Math.min(pageCount, current + 1))}>
-                {t('stage.queryEditor.result.nextPage')}
-              </Button>
-            </>
-          ) : null}
-        </div>
-      </div>
+      {toolbarContent()}
+      <Dialog open={isExpanded} onOpenChange={(open) => { if (!open) setIsExpanded(false) }}>
+        <DialogContent
+          showCloseButton={false}
+          className="flex max-h-[80vh] w-[70vw] max-w-none -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden !p-0 !rounded-xl"
+        >
+          <div className="flex items-center justify-between border-b border-border/60 px-4 py-2">
+            <DialogTitle className="font-mono text-[13px] leading-[18px]">
+              {result.title}
+            </DialogTitle>
+            <DialogClose
+              aria-label={t('stage.close')}
+              render={
+                <button
+                  type="button"
+                  className="h-7 rounded-md px-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                />
+              }
+            >
+              <XIcon className="size-4" />
+            </DialogClose>
+          </div>
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <ContextMenu>
+              <ContextMenuTrigger
+                render={
+                  <div
+                    className="min-h-0 flex-1 overflow-auto"
+                    onContextMenuCapture={() => setContextTarget(null)}
+                  >
+                    {resultTable('expanded')}
+                  </div>
+                }
+              />
+              {contextMenuItems}
+            </ContextMenu>
+            {toolbarContent(false)}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
