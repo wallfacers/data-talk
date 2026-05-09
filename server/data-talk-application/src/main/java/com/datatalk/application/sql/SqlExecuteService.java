@@ -646,7 +646,8 @@ public class SqlExecuteService {
             || "sqlserver".equalsIgnoreCase(context.connection().kind())
             || "duckdb".equalsIgnoreCase(context.connection().kind())
             || "trino".equalsIgnoreCase(context.connection().kind())
-            || "presto".equalsIgnoreCase(context.connection().kind()))
+            || "presto".equalsIgnoreCase(context.connection().kind())
+            || "kingbase".equalsIgnoreCase(context.connection().kind()))
             && hasText(context.schema())) {
             connection.setSchema(context.schema());
         }

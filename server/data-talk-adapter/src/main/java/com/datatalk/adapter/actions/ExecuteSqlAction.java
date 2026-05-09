@@ -9,6 +9,7 @@ import com.datatalk.application.persistence.*;
 import com.datatalk.application.session.SessionDataContextService;
 import com.datatalk.application.sql.JdbcResultValueNormalizer;
 import com.datatalk.application.sql.CalciteSqlRiskAnalyzer;
+import com.datatalk.application.sql.KingbaseUnsupportedReason;
 import com.datatalk.application.sql.SqlRiskAnalysis;
 import com.datatalk.application.sql.SqlRiskAnalyzer;
 import com.datatalk.domain.action.*;
@@ -137,6 +138,19 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
                     case CalciteSqlRiskAnalyzer.DamengUnsupportedReason.PLSQL_BLOCK -> "risk.dialect_unsupported.dameng.plsql_block";
                     case CalciteSqlRiskAnalyzer.DamengUnsupportedReason.PROCEDURE_DDL -> "risk.dialect_unsupported.dameng.procedure_ddl";
                     case CalciteSqlRiskAnalyzer.DamengUnsupportedReason.EXP_IMP_COMMAND -> "risk.dialect_unsupported.dameng.exp_imp_command";
+                };
+                throw new DataTalkException(DataTalkErrorCodes.DIALECT_UNSUPPORTED,
+                    translator.get(i18nKey), false);
+            }
+        }
+
+        // KingbaseES Channel 2 — dialect_unsupported entry gate (chat path)
+        if ("kingbase".equalsIgnoreCase(resolved.connection().kind())) {
+            var unsupportedReason = ((CalciteSqlRiskAnalyzer) riskAnalyzer).detectKingbaseUnsupported(sql);
+            if (unsupportedReason.isPresent()) {
+                String i18nKey = switch (unsupportedReason.get()) {
+                    case KingbaseUnsupportedReason.KB_BACKUP_RESTORE_CLI -> "risk.dialect_unsupported.kingbase.kb_backup_restore_cli";
+                    case KingbaseUnsupportedReason.ORACLE_PLSQL_BLOCK -> "risk.dialect_unsupported.kingbase.oracle_plsql_block";
                 };
                 throw new DataTalkException(DataTalkErrorCodes.DIALECT_UNSUPPORTED,
                     translator.get(i18nKey), false);
@@ -294,7 +308,8 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
         if (("postgres".equalsIgnoreCase(kind)
             || "postgresql".equalsIgnoreCase(kind)
             || "h2".equalsIgnoreCase(kind)
-            || "sqlserver".equalsIgnoreCase(kind))
+            || "sqlserver".equalsIgnoreCase(kind)
+            || "kingbase".equalsIgnoreCase(kind))
             && hasText(schema)) {
             connection.setSchema(schema);
         }

@@ -3,6 +3,7 @@ package com.datatalk.application.connection;
 import com.datatalk.domain.error.DataTalkErrorCodes;
 import com.datatalk.domain.error.DataTalkException;
 
+import java.util.HashSet;
 import java.util.Set;
 
 /** Constants for database connection kinds (matches ontology schema). */
@@ -36,12 +37,18 @@ public final class ConnectionKind {
     );
 
     /** Known but rejected inputs — these are NOT accepted as aliases. */
-    private static final Set<String> REJECTED_KNOWN = Set.of(
-        "dm", "dm8", "dm7",        // Dameng short aliases
-        "dameng7", "dameng8",       // Dameng version-suffixed
-        "kb", "kbase",              // KingbaseES short aliases
-        "kingbase7", "kingbase8", "kingbase9"  // KingbaseES version-suffixed
+    private static final Set<String> REJECTED_KNOWN_DAMENG = Set.of(
+        "dm", "dm8", "dm7",
+        "dameng7", "dameng8"
     );
+
+    private static final Set<String> REJECTED_KNOWN_KINGBASE = Set.of(
+        "kb", "kbase",
+        "kingbase7", "kingbase8", "kingbase9"
+    );
+
+    private static final Set<String> REJECTED_KNOWN =
+        union(REJECTED_KNOWN_DAMENG, REJECTED_KNOWN_KINGBASE);
 
     /**
      * Normalizes a user-provided kind string to a canonical constant.
@@ -81,10 +88,15 @@ public final class ConnectionKind {
         if (equalsIgnoreCase(trimmed, "doris")) return APACHE_DORIS;
         if (equalsIgnoreCase(trimmed, "kingbasees")) return KINGBASE;
 
-        // Known rejected inputs — give a helpful message
+        // Known rejected inputs — give a helpful, kind-aware message
         if (isKnownRejected(trimmed)) {
+            String lower = trimmed.toLowerCase();
+            if (REJECTED_KNOWN_DAMENG.contains(lower)) {
+                throw new DataTalkException(DataTalkErrorCodes.DATABASE_KIND_UNSUPPORTED,
+                    "unknown database kind '" + input + "'. Use 'dameng' for Dameng DM 8.", false);
+            }
             throw new DataTalkException(DataTalkErrorCodes.DATABASE_KIND_UNSUPPORTED,
-                "unknown database kind '" + input + "'. Use 'dameng' for Dameng DM 8.", false);
+                "unknown database kind '" + input + "'. Use 'kingbase' for KingbaseES.", false);
         }
 
         throw unknownKindError(input);
@@ -105,5 +117,11 @@ public final class ConnectionKind {
             if (r.equals(lower)) return true;
         }
         return false;
+    }
+
+    private static Set<String> union(Set<String> a, Set<String> b) {
+        Set<String> result = new HashSet<>(a);
+        result.addAll(b);
+        return Set.copyOf(result);
     }
 }
