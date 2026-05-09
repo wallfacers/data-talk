@@ -129,7 +129,7 @@ describe('chart-theme', () => {
     const xAxis = fixed.xAxis as Record<string, unknown>
     expect(xAxis.nameLocation).toBe('middle')
     expect(typeof xAxis.nameGap).toBe('number')
-    expect(xAxis.nameGap).toBeGreaterThanOrEqual(24)
+    expect(xAxis.nameGap).toBeGreaterThanOrEqual(20)
     // Non-name fields must be preserved verbatim.
     expect(xAxis.type).toBe('category')
     expect(xAxis.data).toEqual(['2026-01', '2026-02'])
@@ -149,7 +149,7 @@ describe('chart-theme', () => {
     expect(yAxis.nameLocation).toBe('middle')
     expect(yAxis.nameRotate).toBe(90)
     expect(typeof yAxis.nameGap).toBe('number')
-    expect(yAxis.nameGap).toBeGreaterThanOrEqual(30)
+    expect(yAxis.nameGap).toBeGreaterThanOrEqual(24)
     expect(yAxis.min).toBe(0)
     expect(yAxis.name).toBe('订单量')
   })
@@ -188,10 +188,10 @@ describe('chart-theme', () => {
     const grid = fixed.grid as Record<string, unknown>
     expect(grid.containLabel).toBe(true)
     expect(typeof grid.bottom).toBe('number')
-    expect(grid.bottom).toBeGreaterThanOrEqual(88)
-    // Equal-margins: top matches bottom for visual balance
+    expect(grid.bottom).toBeGreaterThanOrEqual(40)
+    // Compact top for visual balance
     expect(typeof grid.top).toBe('number')
-    expect(grid.top).toBeGreaterThanOrEqual(88)
+    expect(grid.top).toBeGreaterThanOrEqual(10)
     // No Y name → left/right untouched
     expect(grid.left).toBeUndefined()
     expect(grid.right).toBeUndefined()
@@ -209,10 +209,10 @@ describe('chart-theme', () => {
     const grid = fixed.grid as Record<string, unknown>
     expect(grid.containLabel).toBe(true)
     expect(typeof grid.left).toBe('number')
-    expect(grid.left).toBeGreaterThanOrEqual(88)
-    // Equal-margins: right matches left for visual balance
+    expect(grid.left).toBeGreaterThanOrEqual(48)
+    // Compact right for visual balance
     expect(typeof grid.right).toBe('number')
-    expect(grid.right).toBeGreaterThanOrEqual(88)
+    expect(grid.right).toBeGreaterThanOrEqual(10)
     // No X name → top/bottom untouched
     expect(grid.bottom).toBeUndefined()
     expect(grid.top).toBeUndefined()
@@ -231,14 +231,14 @@ describe('chart-theme', () => {
     const grid = fixed.grid as Record<string, unknown>
     // AI "3%" is far too small for axis-name band → must be overridden
     expect(typeof grid.bottom).toBe('number')
-    expect(grid.bottom).toBeGreaterThanOrEqual(88)
+    expect(grid.bottom).toBeGreaterThanOrEqual(40)
     expect(typeof grid.left).toBe('number')
-    expect(grid.left).toBeGreaterThanOrEqual(88)
-    // Equal-margins: right/top are set to match left/bottom
+    expect(grid.left).toBeGreaterThanOrEqual(48)
+    // Compact margins on opposite sides
     expect(typeof grid.right).toBe('number')
-    expect(grid.right).toBeGreaterThanOrEqual(88)
+    expect(grid.right).toBeGreaterThanOrEqual(10)
     expect(typeof grid.top).toBe('number')
-    expect(grid.top).toBeGreaterThanOrEqual(88)
+    expect(grid.top).toBeGreaterThanOrEqual(10)
   })
 
   it('injectOptionFix does not widen grid when no axis name is present', async () => {

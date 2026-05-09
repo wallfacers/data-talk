@@ -144,26 +144,17 @@ export function refreshChartThemesForCurrentMode() {
   registerChartThemes()
 }
 
-// ECharts grid.containLabel:true reserves space for axisLabel (tick text)
-// only — it does NOT reserve space for axis.name. After we move axis names
-// to nameLocation:'middle' (see withInsetAxisName below), the default grid
-// padding is too tight to hold axisLabel + nameGap + name and the centred
-// name gets clipped at the canvas edge. We therefore widen grid.bottom when
-// xAxis has a name and grid.left when yAxis has a name, but only if the
-// user/AI did not specify those dimensions explicitly.
-//
-// Sizing rationale at chart-renderer DEFAULT_HEIGHT=360 (raised in v4):
-//   bottom ≥ axisLabel band(~22) + nameGap(28) + name fontHeight(~14) + safety(~32) = 96
-//   left   ≥ axisLabel band(~40) + nameGap(36) + name fontHeight(~14) + safety(~6)  = 96
-// v1 (no padding) → name clipped at right edge (nameLocation:'end').
-// v2 (56 / 72)    → bottom too tight, lower half of name clipped at canvas bottom.
-// v3 (80 / 88)    → still ~10% visible per user regression — echarts' actual
-//                   axisLabel + nameGap layout consumed more than the textbook
-//                   estimate.
-// v4 raises both to 96 and widens the canvas (DEFAULT_HEIGHT 320→360) so the
-// axis-name band gets real breathing room instead of being squeezed.
-const GRID_BOTTOM_FOR_X_NAME = 96
-const GRID_LEFT_FOR_Y_NAME = 96
+// grid.bottom / grid.left must be large enough to fit axisLabel band +
+// nameGap + name text inside the grid (containLabel:true includes labels but
+// NOT axis.name).  At DEFAULT_HEIGHT=360:
+//   bottom ≥ axisLabel(~22) + nameGap(22) + fontHeight(~14) = ~58
+//   left   ≥ axisLabel(~40) + nameGap(28) + fontWidth(~14) = ~82
+// v4 used 96/96 which prevented clipping but produced excessive whitespace.
+// v6 tightens to 46/54 and reduces nameGap to match — verified via Playwright.
+const GRID_BOTTOM_FOR_X_NAME = 46
+const GRID_LEFT_FOR_Y_NAME = 54
+const GRID_TOP_FOR_BALANCE = 16
+const GRID_RIGHT_FOR_BALANCE = 16
 
 function hasAxisWithName(axis: unknown): boolean {
   const named = (entry: unknown) =>
@@ -181,18 +172,16 @@ function withContainLabel(grid: unknown, option: Record<string, unknown>) {
 
   const inflate = (entry: Record<string, unknown>): Record<string, unknown> => {
     const result: Record<string, unknown> = { containLabel: true, ...entry }
-    // We set nameLocation:'middle' + nameGap in withInsetAxisName, which
-    // REQUIRES sufficient grid padding. AI-generated options (e.g. "3%") are
-    // almost always too tight for the axis-name band, so we always override.
-    // To keep the chart visually balanced (等边距), we also set the opposite
-    // side to the same value: right matches left, top matches bottom.
+    // AI-generated grid values are almost always too tight for the axis-name
+    // band, so we always override bottom/left. We set top/right to a small
+    // constant so the chart has consistent but compact margins.
     if (hasXName) {
       result.bottom = GRID_BOTTOM_FOR_X_NAME
-      result.top = GRID_BOTTOM_FOR_X_NAME
+      result.top = GRID_TOP_FOR_BALANCE
     }
     if (hasYName) {
       result.left = GRID_LEFT_FOR_Y_NAME
-      result.right = GRID_LEFT_FOR_Y_NAME
+      result.right = GRID_RIGHT_FOR_BALANCE
     }
     return result
   }
@@ -267,8 +256,8 @@ function hasPieSeries(series: unknown): boolean {
 // We move the name to nameLocation:'middle' so echarts always paints it
 // inside the grid — same product-contract approach as withContainLabel and
 // withCenteredPie. We only touch entries that have a non-empty `name`.
-const X_AXIS_NAME_GAP = 28
-const Y_AXIS_NAME_GAP = 36
+const X_AXIS_NAME_GAP = 22
+const Y_AXIS_NAME_GAP = 28
 
 function withInsetAxisName(axis: unknown, dim: 'x' | 'y'): unknown {
   const inset = (entry: unknown): unknown => {
