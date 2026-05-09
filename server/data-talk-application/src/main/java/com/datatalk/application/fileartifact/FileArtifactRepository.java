@@ -103,6 +103,13 @@ public interface FileArtifactRepository {
      */
     int countOrphanedArchived();
 
+    /**
+     * List external=1 rows whose physical_path is under the given directory.
+     * Used by reconcileExternalDirs for reverse-orphan (DB has, disk doesn't) scanning.
+     * Match rule: physical_path LIKE dirAbsolute + '/%'.
+     */
+    List<FileArtifact> findExternalRowsByDir(String dirAbsolute);
+
     record ConnectionResourceCounts(int sessions, int candidates, int temporary, int archived) {
     }
 }

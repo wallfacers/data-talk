@@ -89,6 +89,6 @@ class MaintenanceControllerIT {
                 sessionId, connectionId, "f.md", "/tmp/f.md",
                 100L, null, null, null,
                 Instant.now(), Instant.now(), Instant.now(),
-                Map.of());
+                Map.of(), false);
     }
 }

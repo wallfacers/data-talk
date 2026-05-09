@@ -408,7 +408,7 @@ class SessionServiceTest {
             java.time.Instant.ofEpochMilli(100L),
             java.time.Instant.ofEpochMilli(100L),
             null,
-            null);
+            null, false);
     }
 
     private static ConnectionRecord connectionRecord(String id) {

@@ -227,7 +227,7 @@ public class FileArtifactService {
                 now,
                 now,
                 null,
-                new LinkedHashMap<>(safeFrontmatter));
+                new LinkedHashMap<>(safeFrontmatter), false);
         repo.insert(row);
         publish(sessionId, new DtEvent.FileArtifactDetected(
                 row.id(),
@@ -425,7 +425,7 @@ public class FileArtifactService {
                             now,
                             now,
                             null,
-                            new LinkedHashMap<>());
+                            new LinkedHashMap<>(), false);
                     repo.insert(row);
                     return new ArchiveCandidateOutcome.Success(
                             newId, physicalPath.toString(), false);
@@ -462,7 +462,7 @@ public class FileArtifactService {
                 now,
                 now,
                 null,
-                new LinkedHashMap<>());
+                new LinkedHashMap<>(), false);
         repo.insert(row);
         return new ArchiveCandidateOutcome.Success(newId, physicalPath.toString(), false);
     }

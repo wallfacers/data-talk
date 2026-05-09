@@ -355,7 +355,7 @@ class FileArtifactServiceTest {
                 now,
                 now,
                 null,
-                Map.of());
+                Map.of(), false);
     }
 
     private static FileArtifact artifactAt(String id, FileArtifactStatus status, Path path) {
@@ -376,7 +376,7 @@ class FileArtifactServiceTest {
                 now,
                 now,
                 null,
-                Map.of());
+                Map.of(), false);
     }
 
     private record StatusUpdate(String id, FileArtifactStatus status) {}
@@ -727,12 +727,12 @@ class FileArtifactServiceTest {
                     FileArtifactStatus.ARCHIVED, com.datatalk.domain.fileartifact.FileArtifactKind.OTHER,
                     null, null, "orphan-report.md", src.toString(),
                     100L, null, null, null, Instant.now(), Instant.now(), Instant.now(),
-                    Map.of("orphanedFromConnection", "old-conn", "orphanedFromConnectionId", "conn_x", "orphanedAt", 1000L));
+                    Map.of("orphanedFromConnection", "old-conn", "orphanedFromConnectionId", "conn_x", "orphanedAt", 1000L), false);
             FileArtifact updated = new FileArtifact(
                     "fa_1", com.datatalk.domain.fileartifact.FileArtifactScope.WORKSPACE,
                     FileArtifactStatus.ARCHIVED, com.datatalk.domain.fileartifact.FileArtifactKind.OTHER,
                     null, "conn_new", "orphan-report.md", "/tmp/workspaces/conn_new/orphan-report.md",
-                    100L, null, null, null, Instant.now(), Instant.now(), Instant.now(), Map.of());
+                    100L, null, null, null, Instant.now(), Instant.now(), Instant.now(), Map.of(), false);
             when(repo.findById("fa_1")).thenReturn(Optional.of(row), Optional.of(updated));
             com.datatalk.application.persistence.ConnectionRepository connRepo = mock(com.datatalk.application.persistence.ConnectionRepository.class);
             when(connRepo.findById("conn_new")).thenReturn(Optional.of(
@@ -770,7 +770,7 @@ class FileArtifactServiceTest {
                     path,
                     10L, null, null, null,
                     Instant.now(), Instant.now(), null,
-                    Map.of());
+                    Map.of(), false);
         }
 
         private FileArtifact withStatus(FileArtifact r, FileArtifactStatus s) {
@@ -778,7 +778,7 @@ class FileArtifactServiceTest {
                     r.id(), r.scope(), s, r.kind(),
                     r.sessionId(), r.connectionId(), r.filename(), r.physicalPath(),
                     r.sizeBytes(), r.mimeType(), r.title(), r.summary(),
-                    r.createdAt(), r.updatedAt(), r.archivedAt(), r.metadata());
+                    r.createdAt(), r.updatedAt(), r.archivedAt(), r.metadata(), false);
         }
     }
 }

@@ -130,7 +130,7 @@ class FileArtifactControllerIT {
             now,
             null,
             Map.of()
-        );
+        , false);
         repo.insert(candidate);
 
         // Archive the file
@@ -190,7 +190,7 @@ class FileArtifactControllerIT {
             now,
             null,
             Map.of()
-        ));
+        , false));
 
         mvc.perform(post("/api/sessions/{sessionId}/files/{fileArtifactId}/archive",
                 OTHER_SESSION_ID, "fa-archive-missing"))
@@ -217,7 +217,7 @@ class FileArtifactControllerIT {
             now,
             null,
             Map.of()
-        ));
+        , false));
 
         mvc.perform(post("/api/sessions/{sessionId}/files/{fileArtifactId}/archive",
                 SESSION_ID, "fa-archive-wrong"))
@@ -252,7 +252,7 @@ class FileArtifactControllerIT {
             now,
             null,
             Map.of()
-        ));
+        , false));
 
         mvc.perform(post("/api/files/{fileArtifactId}/discard", "fa-discard-it"))
             .andExpect(status().isNoContent());
@@ -296,7 +296,7 @@ class FileArtifactControllerIT {
             now,
             null,
             Map.of()
-        ));
+        , false));
 
         // Discarding an already-discarded row returns 204 (idempotent)
         mvc.perform(post("/api/files/{fileArtifactId}/discard", "fa-discard-done"))
@@ -322,6 +322,6 @@ class FileArtifactControllerIT {
             now,
             null,
             Map.of()
-        );
+        , false);
     }
 }

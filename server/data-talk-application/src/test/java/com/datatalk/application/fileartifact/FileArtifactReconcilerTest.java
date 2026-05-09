@@ -162,7 +162,7 @@ class FileArtifactReconcilerTest {
                 Instant.now(),
                 Instant.now(),
                 null,
-                Map.of());
+                Map.of(), false);
         when(repo.findAllSessionScoped()).thenReturn(List.of(row));
         when(repo.findAllWorkspaceScopedArchived()).thenReturn(List.of());
 
@@ -191,7 +191,7 @@ class FileArtifactReconcilerTest {
                 Instant.now(),
                 Instant.now(),
                 Instant.now(),
-                Map.of());
+                Map.of(), false);
         when(repo.findAllSessionScoped()).thenReturn(List.of());
         when(repo.findAllWorkspaceScopedArchived()).thenReturn(List.of(row));
 
@@ -250,7 +250,7 @@ class FileArtifactReconcilerTest {
                 now,
                 now,
                 null,
-                Map.of());
+                Map.of(), false);
     }
 
     private static SessionRecord session(String id) {
@@ -276,7 +276,7 @@ class FileArtifactReconcilerTest {
                 "fa_orphan", com.datatalk.domain.fileartifact.FileArtifactScope.WORKSPACE,
                 FileArtifactStatus.ARCHIVED, com.datatalk.domain.fileartifact.FileArtifactKind.OTHER,
                 null, null, "report.md", "/nonexistent/report.md",
-                100L, null, null, null, Instant.now(), Instant.now(), Instant.now(), Map.of());
+                100L, null, null, null, Instant.now(), Instant.now(), Instant.now(), Map.of(), false);
         when(repo.findAllWorkspaceScopedArchived()).thenReturn(List.of(orphan));
         when(repo.findAllSessionScoped()).thenReturn(List.of());
 

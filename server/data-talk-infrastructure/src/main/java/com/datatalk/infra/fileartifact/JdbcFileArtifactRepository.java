@@ -26,7 +26,7 @@ public class JdbcFileArtifactRepository implements FileArtifactRepository {
 
     private static final String COLS = """
             id, scope, status, kind, session_id, connection_id, filename, physical_path,
-            size_bytes, mime_type, title, summary, created_at, updated_at, archived_at, metadata_json
+            size_bytes, mime_type, title, summary, created_at, updated_at, archived_at, metadata_json, "external"
             """;
 
     private static final TypeReference<Map<String, Object>> METADATA_TYPE = new TypeReference<>() {
@@ -43,7 +43,7 @@ public class JdbcFileArtifactRepository implements FileArtifactRepository {
     @Override
     public void insert(FileArtifact artifact) {
         jdbc.update(
-                "INSERT INTO file_artifact (" + COLS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO file_artifact (" + COLS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 artifact.id(),
                 artifact.scope().dbValue(),
                 artifact.status().dbValue(),
@@ -59,7 +59,8 @@ public class JdbcFileArtifactRepository implements FileArtifactRepository {
                 artifact.createdAt().toEpochMilli(),
                 artifact.updatedAt().toEpochMilli(),
                 instantToMillis(artifact.archivedAt()),
-                writeMetadata(artifact.metadata()));
+                writeMetadata(artifact.metadata()),
+                artifact.external() ? 1 : 0);
     }
 
     @Override
@@ -283,7 +284,8 @@ public class JdbcFileArtifactRepository implements FileArtifactRepository {
                 Instant.ofEpochMilli(rs.getLong("created_at")),
                 Instant.ofEpochMilli(rs.getLong("updated_at")),
                 instantOrNull(rs, "archived_at"),
-                readMetadata(rs.getString("metadata_json")));
+                readMetadata(rs.getString("metadata_json")),
+                rs.getInt("external") == 1);
     }
 
     private static Long instantToMillis(Instant instant) {
@@ -344,5 +346,14 @@ public class JdbcFileArtifactRepository implements FileArtifactRepository {
                 "SELECT COUNT(*) FROM file_artifact WHERE status = 'archived' AND connection_id IS NULL",
                 Integer.class);
         return count == null ? 0 : count;
+    }
+
+    @Override
+    public List<FileArtifact> findExternalRowsByDir(String dirAbsolute) {
+        String prefix = dirAbsolute.endsWith("/") ? dirAbsolute + "%" : dirAbsolute + "/%";
+        return jdbc.query(
+                "SELECT " + COLS + " FROM file_artifact WHERE \"external\" = 1 AND physical_path LIKE ?",
+                mapper(),
+                prefix);
     }
 }
