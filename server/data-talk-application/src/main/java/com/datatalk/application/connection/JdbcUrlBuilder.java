@@ -100,6 +100,8 @@ public final class JdbcUrlBuilder {
             case ConnectionKind.HIVE ->
                 db != null ? "jdbc:hive2://" + c.host() + ":" + c.port() + "/" + db
                            : "jdbc:hive2://" + c.host() + ":" + c.port() + "/";
+            case ConnectionKind.DAMENG ->
+                "jdbc:dm://" + c.host() + ":" + c.port();
             default ->
                 throw new DataTalkException(DataTalkErrorCodes.DATABASE_KIND_UNSUPPORTED,
                     "unsupported database kind: " + c.kind(), false);

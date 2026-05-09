@@ -166,6 +166,9 @@ public class ConnectionService {
             java.sql.DriverManager.setLoginTimeout(Math.max(1, c.connectTimeout() / 1000));
         } else if (kind.equals(ConnectionKind.HIVE)) {
             java.sql.DriverManager.setLoginTimeout(Math.max(1, c.connectTimeout() / 1000));
+        } else if (kind.equals(ConnectionKind.DAMENG)) {
+            int timeoutSeconds = Math.max(1, c.connectTimeout() / 1000);
+            java.sql.DriverManager.setLoginTimeout(timeoutSeconds);
         }
         long started = clock.millis();
         try (var conn = java.sql.DriverManager.getConnection(url, c.username(), password)) {
