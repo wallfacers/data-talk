@@ -159,6 +159,21 @@ const MESSAGES = {
     'connection.kind.oceanbase.clusterPlaceholder': '集群（可选）',
     'connection.kind.oceanbase.tenantRequired': 'OceanBase 必须填写租户',
 
+    // KingbaseES connection fields
+    'connection.kind.kingbase.label': '人大金仓 KingbaseES',
+    'connection.kind.kingbase.alias_normalized': '输入 "kingbasees" 已归一化为规范类型 "kingbase"。',
+    'connection.kind.kingbase.mode_oracle_unsupported_day1': 'Oracle 兼容模式为 Day-3 候选；Day-1 仅支持 PostgreSQL 兼容模式。',
+    'risk.dialect_unsupported.kingbase.kb_backup_restore_cli': 'KingbaseES 物理备份/恢复需使用 sys_backup.sh / sys_restore 命令行工具，暂不支持通过 SQL 操作。',
+    'risk.dialect_unsupported.kingbase.oracle_plsql_block': 'KingbaseES Oracle 兼容模式下的 PL/SQL 匿名块暂不支持自动风险评估。',
+    'diagnostics.dialect_unsupported.kingbase.sys_settings': 'KingbaseES 使用 sys_settings 视图（非 pg_settings），部分诊断查询可能需适配。',
+    'diagnostics.dialect_unsupported.kingbase.sys_stat_statements': 'KingbaseES 使用 sys_stat_statements 扩展（非 pg_stat_statements），需确认已安装。',
+    'diagnostics.dialect_unsupported.kingbase.rls_policy': 'KingbaseES 行级安全策略语法与 PostgreSQL 兼容，但管理视图名称可能不同。',
+    'diagnostics.dialect_unsupported.kingbase.tablespace': 'KingbaseES 表空间管理使用 sys_tablespace（非 pg_tablespace）。',
+    'diagnostics.dialect_unsupported.kingbase.logical_replication': 'KingbaseES 逻辑复制需使用 sys_replication 插件，配置方式与 PostgreSQL 原生不同。',
+    'diagnostics.dialect_unsupported.kingbase.partition_pruning': 'KingbaseES 分区裁剪在 Oracle 兼容模式下行为可能与原生 PostgreSQL 不同。',
+    'diagnostics.dialect_unsupported.kingbase.xmlb_is_well_formed': 'KingbaseES 的 xmlb_is_well_formed 函数行为需验证，与 PostgreSQL 的 xml_is_well_formed 可能存在差异。',
+    'diagnostics.dialect_unsupported.kingbase.encryption_tde': 'KingbaseES TDE 透明加密需通过 sys_encrypt 插件启用，不兼容 PostgreSQL 原生加密方案。',
+
     'connections.kind.tidb': 'TiDB',
     'connections.tidb.kindLabel': 'TiDB (OSS / 自部署)',
     'connections.tidb.placeholder.host': '127.0.0.1',
@@ -854,6 +869,21 @@ const MESSAGES = {
     'connection.kind.oceanbase.cluster': 'Cluster',
     'connection.kind.oceanbase.clusterPlaceholder': 'Cluster (optional)',
     'connection.kind.oceanbase.tenantRequired': 'OceanBase tenant is required',
+
+    // KingbaseES connection fields
+    'connection.kind.kingbase.label': 'KingbaseES',
+    'connection.kind.kingbase.alias_normalized': 'Input "kingbasees" normalized to canonical kind "kingbase".',
+    'connection.kind.kingbase.mode_oracle_unsupported_day1': 'Oracle compatibility mode is a Day-3 candidate; only PostgreSQL compatibility is supported in Day-1.',
+    'risk.dialect_unsupported.kingbase.kb_backup_restore_cli': 'KingbaseES physical backup/restore requires sys_backup.sh / sys_restore CLI tools; SQL-based operations are not supported.',
+    'risk.dialect_unsupported.kingbase.oracle_plsql_block': 'PL/SQL anonymous blocks under KingbaseES Oracle compatibility mode do not support automatic risk assessment yet.',
+    'diagnostics.dialect_unsupported.kingbase.sys_settings': 'KingbaseES uses sys_settings view (not pg_settings); some diagnostic queries may need adaptation.',
+    'diagnostics.dialect_unsupported.kingbase.sys_stat_statements': 'KingbaseES uses sys_stat_statements extension (not pg_stat_statements); confirm it is installed.',
+    'diagnostics.dialect_unsupported.kingbase.rls_policy': 'KingbaseES RLS policy syntax is PostgreSQL-compatible, but admin view names may differ.',
+    'diagnostics.dialect_unsupported.kingbase.tablespace': 'KingbaseES tablespace management uses sys_tablespace (not pg_tablespace).',
+    'diagnostics.dialect_unsupported.kingbase.logical_replication': 'KingbaseES logical replication requires the sys_replication plugin; configuration differs from native PostgreSQL.',
+    'diagnostics.dialect_unsupported.kingbase.partition_pruning': 'KingbaseES partition pruning behavior under Oracle compatibility mode may differ from native PostgreSQL.',
+    'diagnostics.dialect_unsupported.kingbase.xmlb_is_well_formed': 'KingbaseES xmlb_is_well_formed function behavior needs verification; may differ from PostgreSQL xml_is_well_formed.',
+    'diagnostics.dialect_unsupported.kingbase.encryption_tde': 'KingbaseES TDE transparent encryption requires the sys_encrypt plugin; incompatible with PostgreSQL native encryption.',
 
     'connections.kind.tidb': 'TiDB',
     'connections.tidb.kindLabel': 'TiDB (OSS / self-hosted)',

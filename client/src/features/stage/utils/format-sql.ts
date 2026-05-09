@@ -4,6 +4,7 @@ export function resolveSqlFormatterLanguage(connectionKind: string | null | unde
   switch (connectionKind?.trim().toLowerCase()) {
     case 'postgres':
     case 'postgresql':
+    case 'kingbase':
       return 'postgresql'
     case 'mysql':
     case 'mariadb':
