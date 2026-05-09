@@ -27,7 +27,7 @@ vi.mock('@/i18n/use-i18n', () => ({
 }))
 
 vi.mock('react-grid-layout', () => {
-  const MockGridLayout = (_props: unknown) => null
-  const WidthProvider = (_Component: unknown) => MockGridLayout
-  return { Responsive: MockGridLayout, WidthProvider }
+  const MockResponsive = (_props: unknown) => null
+  const useContainerWidth = () => ({ width: 1024, mounted: true, containerRef: { current: null } })
+  return { Responsive: MockResponsive, useContainerWidth }
 })

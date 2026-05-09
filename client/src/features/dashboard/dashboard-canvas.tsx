@@ -1,12 +1,10 @@
-import { Responsive, WidthProvider } from 'react-grid-layout'
+import { Responsive, useContainerWidth } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 
 import { useDashboardTabsStore } from './stores/dashboard-tabs-store'
 import { ChartWidget } from './widgets/chart-widget'
 import { MarkdownWidget } from './widgets/markdown-widget'
 import type { Widget } from './schema'
-
-const ResponsiveGridLayout = WidthProvider(Responsive)
 
 const BREAKPOINTS = { lg: 1024, md: 768, sm: 0 }
 const COLS = { lg: 12, md: 6, sm: 1 }
@@ -53,6 +51,7 @@ function renderWidget(w: Widget): React.ReactNode {
 
 export function DashboardCanvas({ tabId, mode }: DashboardCanvasProps) {
   const tab = useDashboardTabsStore((s) => s.tabs.get(tabId))
+  const { width, containerRef, mounted } = useContainerWidth()
 
   if (!tab) {
     return (
@@ -93,25 +92,28 @@ export function DashboardCanvas({ tabId, mode }: DashboardCanvasProps) {
   }
 
   return (
-    <div data-testid="dashboard-canvas" className="h-full">
-      <ResponsiveGridLayout
-        className="dashboard-canvas"
-        layouts={layouts}
-        breakpoints={BREAKPOINTS}
-        cols={COLS}
-        rowHeight={dashboard.layout.rowHeight}
-        containerPadding={[0, 0]}
-        margin={[dashboard.layout.gap, dashboard.layout.gap]}
-        isDraggable={!isStatic}
-        isResizable={!isStatic}
-        draggableCancel="[data-component='dashboard-widget-shell'] button, [data-component='dashboard-widget-shell'] input"
-      >
-        {dashboard.widgets.map((w) => (
-          <div key={widgetKey(w)} style={{ overflow: 'hidden' }}>
-            {renderWidget(w)}
-          </div>
-        ))}
-      </ResponsiveGridLayout>
+    <div data-testid="dashboard-canvas" className="h-full" ref={containerRef}>
+      {mounted && (
+        <Responsive
+          className="dashboard-canvas"
+          width={width}
+          layouts={layouts}
+          breakpoints={BREAKPOINTS}
+          cols={COLS}
+          rowHeight={dashboard.layout.rowHeight}
+          containerPadding={[0, 0]}
+          margin={[dashboard.layout.gap, dashboard.layout.gap]}
+          isDraggable={!isStatic}
+          isResizable={!isStatic}
+          draggableCancel="[data-component='dashboard-widget-shell'] button, [data-component='dashboard-widget-shell'] input"
+        >
+          {dashboard.widgets.map((w) => (
+            <div key={widgetKey(w)} style={{ overflow: 'hidden' }}>
+              {renderWidget(w)}
+            </div>
+          ))}
+        </Responsive>
+      )}
     </div>
   )
 }

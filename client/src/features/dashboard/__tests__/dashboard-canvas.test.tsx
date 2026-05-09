@@ -6,14 +6,6 @@ import type { Dashboard } from '../schema'
 
 // Mock react-grid-layout — required because jsdom has no layout engine
 vi.mock('react-grid-layout', () => ({
-  WidthProvider: (_Comp: React.ComponentType<Record<string, unknown>>) =>
-    function MockWidthProvider(props: Record<string, unknown>) {
-      return (
-        <div data-testid="grid-layout-mock" {...props}>
-          {props.children as React.ReactNode}
-        </div>
-      )
-    },
   Responsive: function MockResponsive(props: Record<string, unknown>) {
     return (
       <div data-testid="grid-layout-responsive" {...props}>
@@ -21,6 +13,7 @@ vi.mock('react-grid-layout', () => ({
       </div>
     )
   },
+  useContainerWidth: () => ({ width: 1024, mounted: true, containerRef: { current: null } }),
 }))
 
 vi.mock('../widgets/chart-widget', () => ({
@@ -96,7 +89,7 @@ describe('DashboardCanvas', () => {
     const emptyDashboard: Dashboard = { ...sampleDashboard, widgets: [] }
     useDashboardTabsStore.getState().hydrateTab('tab-2', emptyDashboard)
     render(<DashboardCanvas tabId="tab-2" mode="viewer" />)
-    expect(screen.getByTestId('grid-layout-mock')).toBeInTheDocument()
+    expect(screen.getByTestId('grid-layout-responsive')).toBeInTheDocument()
     // No widget children
     expect(screen.queryByTestId(/chart-widget/)).not.toBeInTheDocument()
   })
