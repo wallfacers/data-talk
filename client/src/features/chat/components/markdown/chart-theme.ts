@@ -150,7 +150,8 @@ export function refreshChartThemesForCurrentMode() {
 // container (chart-block.tsx p-3), so these values only need to prevent
 // axis-name clipping at the canvas edge — no visual-margin responsibility.
 const GRID_BOTTOM_FOR_X_NAME = 32
-const GRID_LEFT_FOR_Y_NAME = 40
+const GRID_LEFT_FOR_Y_NAME = 24
+const GRID_RIGHT_FOR_Y_NAME = 24
 
 function hasAxisWithName(axis: unknown): boolean {
   const named = (entry: unknown) =>
@@ -169,13 +170,14 @@ function withContainLabel(grid: unknown, option: Record<string, unknown>) {
   const inflate = (entry: Record<string, unknown>): Record<string, unknown> => {
     const result: Record<string, unknown> = { containLabel: true, ...entry }
     // AI-generated grid values are almost always too tight for the axis-name
-    // band, so we always override bottom/left. We do NOT set top/right —
-    // visual margins come from CSS padding on the container.
+    // band, so we always override bottom/left. grid.right aligns with the
+    // left-side visual weight so the plot area looks centered.
     if (hasXName) {
       result.bottom = GRID_BOTTOM_FOR_X_NAME
     }
     if (hasYName) {
       result.left = GRID_LEFT_FOR_Y_NAME
+      result.right = GRID_RIGHT_FOR_Y_NAME
     }
     return result
   }
@@ -251,7 +253,7 @@ function hasPieSeries(series: unknown): boolean {
 // inside the grid — same product-contract approach as withContainLabel and
 // withCenteredPie. We only touch entries that have a non-empty `name`.
 const X_AXIS_NAME_GAP = 16
-const Y_AXIS_NAME_GAP = 20
+const Y_AXIS_NAME_GAP = 40
 
 function withInsetAxisName(axis: unknown, dim: 'x' | 'y'): unknown {
   const inset = (entry: unknown): unknown => {

@@ -149,7 +149,7 @@ describe('chart-theme', () => {
     expect(yAxis.nameLocation).toBe('middle')
     expect(yAxis.nameRotate).toBe(90)
     expect(typeof yAxis.nameGap).toBe('number')
-    expect(yAxis.nameGap).toBeGreaterThanOrEqual(16)
+    expect(yAxis.nameGap).toBeGreaterThanOrEqual(36)
     expect(yAxis.min).toBe(0)
     expect(yAxis.name).toBe('订单量')
   })
@@ -189,7 +189,7 @@ describe('chart-theme', () => {
     expect(grid.containLabel).toBe(true)
     expect(typeof grid.bottom).toBe('number')
     expect(grid.bottom).toBeGreaterThanOrEqual(28)
-    // Visual margins come from CSS padding, not grid.top/right
+    // grid.top is left to ECharts defaults
     expect(grid.top).toBeUndefined()
     // No Y name → left/right untouched
     expect(grid.left).toBeUndefined()
@@ -208,9 +208,9 @@ describe('chart-theme', () => {
     const grid = fixed.grid as Record<string, unknown>
     expect(grid.containLabel).toBe(true)
     expect(typeof grid.left).toBe('number')
-    expect(grid.left).toBeGreaterThanOrEqual(36)
-    // Visual margins come from CSS padding, not grid.top/right
-    expect(grid.right).toBeUndefined()
+    expect(grid.left).toBeGreaterThanOrEqual(20)
+    expect(typeof grid.right).toBe('number')
+    expect(grid.right).toBeGreaterThanOrEqual(20)
     // No X name → top/bottom untouched
     expect(grid.bottom).toBeUndefined()
     expect(grid.top).toBeUndefined()
@@ -231,10 +231,11 @@ describe('chart-theme', () => {
     expect(typeof grid.bottom).toBe('number')
     expect(grid.bottom).toBeGreaterThanOrEqual(28)
     expect(typeof grid.left).toBe('number')
-    expect(grid.left).toBeGreaterThanOrEqual(36)
-    // top/right are left to ECharts defaults — visual margin via CSS
+    expect(grid.left).toBeGreaterThanOrEqual(20)
+    // top is left to ECharts defaults — visual margin via CSS
     expect(grid.top).toBe('5%')
-    expect(grid.right).toBe('4%')
+    expect(typeof grid.right).toBe('number')
+    expect(grid.right).toBeGreaterThanOrEqual(20)
   })
 
   it('injectOptionFix does not widen grid when no axis name is present', async () => {

@@ -4,6 +4,7 @@
 -- Fixed: schema_digest nullable (V1 was TEXT, not TEXT NOT NULL).
 -- Fixed: duckdb_read_only → read_only (V17 added read_only, not duckdb_read_only).
 
+DROP TABLE IF EXISTS connection_new;
 CREATE TABLE connection_new (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -52,8 +53,10 @@ SELECT
     NULL, NULL, NULL
 FROM connections;
 
+PRAGMA foreign_keys = OFF;
 DROP TABLE connections;
 ALTER TABLE connection_new RENAME TO connections;
+PRAGMA foreign_keys = ON;
 
 -- Recreate indexes
 CREATE INDEX IF NOT EXISTS idx_connection_kind ON connections(kind);
