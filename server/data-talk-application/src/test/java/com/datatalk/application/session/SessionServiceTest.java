@@ -408,12 +408,12 @@ class SessionServiceTest {
             java.time.Instant.ofEpochMilli(100L),
             java.time.Instant.ofEpochMilli(100L),
             null,
-            null, false);
+            java.util.Map.of(), false);
     }
 
     private static ConnectionRecord connectionRecord(String id) {
         return new ConnectionRecord(id, "seed-" + id, "mysql", "h", 3306,
             null, "u", new byte[] {0}, null, 0L, 3000, null, null,
-            null, 1, true, null, false);
+            null, 1, true, null, false, null, null, null);
     }
 }

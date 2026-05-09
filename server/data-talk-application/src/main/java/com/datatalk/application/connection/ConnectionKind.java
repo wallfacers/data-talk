@@ -24,19 +24,23 @@ public final class ConnectionKind {
     public static final String TIDB = "tidb";
     public static final String OCEANBASE = "oceanbase";
     public static final String DAMENG = "dameng";
+    public static final String KINGBASE = "kingbase";
 
     /** Accepted aliases that normalize to a canonical kind (case-insensitive). */
     private static final Set<String> ACCEPTED_ALIASES = Set.of(
         "postgres",    // -> postgresql
         "mssql",       // -> sqlserver
         "ch",          // -> clickhouse
-        "doris"        // -> apache_doris
+        "doris",       // -> apache_doris
+        "kingbasees"   // -> kingbase (only Wave C alias permitted per umbrella §8 line 293)
     );
 
     /** Known but rejected inputs — these are NOT accepted as aliases. */
     private static final Set<String> REJECTED_KNOWN = Set.of(
         "dm", "dm8", "dm7",        // Dameng short aliases
-        "dameng7", "dameng8"       // Dameng version-suffixed
+        "dameng7", "dameng8",       // Dameng version-suffixed
+        "kb", "kbase",              // KingbaseES short aliases
+        "kingbase7", "kingbase8", "kingbase9"  // KingbaseES version-suffixed
     );
 
     /**
@@ -68,12 +72,14 @@ public final class ConnectionKind {
         if (equalsIgnoreCase(trimmed, TIDB)) return TIDB;
         if (equalsIgnoreCase(trimmed, OCEANBASE)) return OCEANBASE;
         if (equalsIgnoreCase(trimmed, DAMENG)) return DAMENG;
+        if (equalsIgnoreCase(trimmed, KINGBASE)) return KINGBASE;
 
         // Accepted aliases
         if (equalsIgnoreCase(trimmed, "postgres")) return POSTGRESQL;
         if (equalsIgnoreCase(trimmed, "mssql")) return SQLSERVER;
         if (equalsIgnoreCase(trimmed, "ch")) return CLICKHOUSE;
         if (equalsIgnoreCase(trimmed, "doris")) return APACHE_DORIS;
+        if (equalsIgnoreCase(trimmed, "kingbasees")) return KINGBASE;
 
         // Known rejected inputs — give a helpful message
         if (isKnownRejected(trimmed)) {
