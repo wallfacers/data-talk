@@ -1,31 +1,28 @@
 import { useEffect, useState } from 'react'
+import type { StageTab } from '@/stores/stage-store'
 import { useDashboardTabsStore } from './stores/dashboard-tabs-store'
 import { DashboardCanvas } from './dashboard-canvas'
-import { fetchDashboard } from './services/dashboard-api'
+import { coordinator } from '@/features/stage/persistence/stage-persistence-bootstrap'
 import { cn } from '@/lib/utils'
 
 interface DashboardTabProps {
-  tabId: string
+  tab: StageTab
 }
 
-export function DashboardTab({ tabId }: DashboardTabProps) {
-  const tab = useDashboardTabsStore((s) => s.tabs.get(tabId))
-  const [mode, setMode] = useState<'viewer' | 'editor'>('viewer')
-  const [loading, setLoading] = useState(!tab)
+export function DashboardTab({ tab }: DashboardTabProps) {
+  const tabState = useDashboardTabsStore((s) => s.tabs.get(tab.tabId))
+  const [loading, setLoading] = useState(!tabState)
 
   useEffect(() => {
-    if (tab) return
-    let cancelled = false
-    setLoading(true)
-    fetchDashboard(tabId).then((dash) => {
-      if (cancelled) return
-      if (dash) {
-        useDashboardTabsStore.getState().hydrateTab(tabId, dash)
-      }
-      setLoading(false)
-    })
-    return () => { cancelled = true }
-  }, [tabId, tab])
+    if (tabState) return
+    void coordinator.ensureHydrated(tab.tabId)
+  }, [tab.tabId, tabState])
+
+  useEffect(() => {
+    if (tabState && loading) setLoading(false)
+  }, [tabState, loading])
+
+  const [mode, setMode] = useState<'viewer' | 'editor'>('viewer')
 
   if (loading) {
     return (
@@ -35,7 +32,7 @@ export function DashboardTab({ tabId }: DashboardTabProps) {
     )
   }
 
-  if (!tab) {
+  if (!tabState) {
     return (
       <div className="flex items-center justify-center h-full text-sm text-[var(--dt-muted-foreground)]">
         Dashboard not found
@@ -45,8 +42,8 @@ export function DashboardTab({ tabId }: DashboardTabProps) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-2 px-4 py-2 border-b border-[var(--dt-border)]">
-        <h2 className="text-sm font-medium truncate flex-1">{tab.dashboard.title}</h2>
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-border/50">
+        <h2 className="text-sm font-medium truncate flex-1">{tabState.dashboard.title}</h2>
         <button
           type="button"
           className={cn(
@@ -63,7 +60,7 @@ export function DashboardTab({ tabId }: DashboardTabProps) {
         </button>
       </div>
       <div className="flex-1 min-h-0 overflow-auto">
-        <DashboardCanvas tabId={tabId} mode={mode} />
+        <DashboardCanvas tabId={tab.tabId} mode={mode} />
       </div>
     </div>
   )

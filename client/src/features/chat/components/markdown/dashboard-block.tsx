@@ -6,6 +6,7 @@ import { useDashboardTabsStore } from '@/features/dashboard/stores/dashboard-tab
 import { useStageStore } from '@/stores/stage-store'
 import { generateUuid } from '@/lib/uuid'
 import { cn } from '@/lib/utils'
+import { promoteDashboard as promoteDashboardApi } from '@/features/dashboard/services/dashboard-api'
 
 type DashboardBlockState = 'streaming' | 'preview' | 'error'
 
@@ -36,7 +37,7 @@ function parseDashboard(json: string): { ok: true; dashboard: Dashboard } | { ok
   return { ok: false, error: result.error.issues.map((i) => i.message).join('; ') }
 }
 
-function promoteDashboard(dashboard: Dashboard) {
+async function promoteDashboard(dashboard: Dashboard) {
   const tabId = `dashboard_${generateUuid()}`
   useDashboardTabsStore.getState().hydrateTab(tabId, dashboard)
   useStageStore.getState().openTab({
@@ -47,6 +48,7 @@ function promoteDashboard(dashboard: Dashboard) {
     createdAt: Date.now(),
   })
   useStageStore.getState().openStage()
+  await promoteDashboardApi(dashboard)
 }
 
 function WidgetTypeIcon({ type }: { type: string }) {

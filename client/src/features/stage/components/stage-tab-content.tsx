@@ -104,7 +104,7 @@ export function StageTabContent() {
     return (
       <div className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <Suspense fallback={<div className="flex items-center justify-center h-full text-sm text-text-soft">Loading…</div>}>
-          <DashboardTab key={tab.tabId} tabId={tab.tabId} />
+          <DashboardTab key={tab.tabId} tab={tab} />
         </Suspense>
       </div>
     )
