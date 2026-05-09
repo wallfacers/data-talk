@@ -184,7 +184,8 @@ class DamengRiskClassifierTest {
     // ====== Helpers ======
 
     private java.util.Optional<RiskLevel> channel1(String sql) {
-        return analyzer.classifyDamengSpecific(sql).map(SqlRiskAnalysis::riskLevel);
+        return java.util.Optional.ofNullable(analyzer.classifyDamengSpecific(sql))
+            .map(SqlRiskAnalysis::riskLevel);
     }
 
     private java.util.Optional<CalciteSqlRiskAnalyzer.DamengUnsupportedReason> channel2(String sql) {

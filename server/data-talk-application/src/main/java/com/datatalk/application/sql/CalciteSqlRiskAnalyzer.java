@@ -976,8 +976,8 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
 
     // ====== Dameng Channel 1 — L3 admin command classification ======
 
-    public Optional<SqlRiskAnalysis> classifyDamengSpecific(String sql) {
-        if (sql == null) return Optional.empty();
+    public SqlRiskAnalysis classifyDamengSpecific(String sql) {
+        if (sql == null) return null;
         String stripped = stripLeadingComments(sql);
         if (stripped.isEmpty()) return null;
 
@@ -986,7 +986,7 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
             || DAMENG_ROLE_DDL.matcher(stripped).find()
             || DAMENG_GRANT_REVOKE.matcher(stripped).find()
             || DAMENG_DROP_OBJECT.matcher(stripped).find()) {
-            return Optional.of(SqlRiskAnalysis.high("dameng_admin_command"));
+            return SqlRiskAnalysis.high("dameng_admin_command");
         }
         return null;
     }
