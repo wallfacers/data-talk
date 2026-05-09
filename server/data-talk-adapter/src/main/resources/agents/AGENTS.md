@@ -832,6 +832,23 @@ Output budget: defaults `headLimit=100`, `maxTabs=50`. For existence checks use 
 - ER Designer: day-1 `dialect_unsupported`.
 - Presto is NOT a Trino alias. Do not treat `presto` connections as Trino or route Presto SQL to Trino tools.
 
+### Dameng (kind: `dameng`)
+
+- **Canonical kind:** `dameng` (lower-case). **No aliases**: `dm`, `dm8`, `DM`, `DM8`, `DM7`, `dameng7`, `dameng8`, `武汉达梦`, `达梦` are all rejected at `ConnectionKind.normalize`.
+- **Driver:** `com.dameng:DmJdbcDriverX:8.1.x` (Maven Central direct; commercial license; offline jar in repo is **forbidden** by Wave C umbrella §10).
+- **Driver class:** `dm.jdbc.driver.DmDriver`.
+- **URL:** `jdbc:dm://<host>:<port>` (server-level; **no `/<database>` suffix**; default port 5236).
+- **`databaseName` field:** reused as the **initial schema name** (Oracle-precedent; not a separate database). Schema is injected post-connect via `SET SCHEMA <name>`.
+- **Day-1 unsupported (returns structured `dialect_unsupported`):**
+  - PL/SQL blocks (`DECLARE ... BEGIN ... END;`)
+  - PROCEDURE / FUNCTION / TRIGGER / PACKAGE DDL
+  - EXP / IMP CLI utility commands
+- **Day-1 L3 admin commands (risk label `dameng_admin_command`):**
+  TABLESPACE / USER / ROLE DDL, GRANT / REVOKE, DROP TABLE/VIEW/INDEX/SEQUENCE/SYNONYM.
+- **All 7 diagnostics hooks** (`lock_info`, `pool_status`, `table_space`, `terminate_session`, `optimize_table`, `explain_real`, `index_hints`) return structured `dialect_unsupported` Day-1.
+- **ER hooks** (`er_inspector`, `er_designer`) return structured `dialect_unsupported` Day-1.
+- Dameng is **not** an alias of Oracle. AI must not persist or display dameng connections as `oracle` in any code path.
+
 ### Apache Hive
 
 - Connection kind: `hive`. Apache HiveServer2 data warehouse with Hive JDBC driver.
