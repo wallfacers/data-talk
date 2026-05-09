@@ -24,7 +24,7 @@ const KIND_ICON: Record<FileArtifactKind, typeof FileIcon> = {
   other: FileIcon,
 }
 
-const KIND_ORDER: FileArtifactKind[] = ['er_diagram', 'report', 'sql_script', 'dataset', 'other']
+const KIND_ORDER: FileArtifactKind[] = ['er_diagram', 'report', 'dashboard', 'sql_script', 'dataset', 'other']
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`

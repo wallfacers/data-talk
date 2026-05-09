@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { toast } from 'sonner'
 import {
   archiveFile,
   discardFile,
@@ -239,7 +240,12 @@ export const useFileArtifactsStore = create<FileArtifactsState>((set, get) => ({
   },
 
   discard: async (fileArtifactId) => {
-    await discardFile(fileArtifactId)
+    try {
+      await discardFile(fileArtifactId)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err))
+      throw err
+    }
   },
 
   promote: async (fileArtifactId) => {
