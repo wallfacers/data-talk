@@ -190,16 +190,6 @@ test.describe('@e2e @dashboard Dashboard UI Promotion', () => {
       return stage.tabs.filter((t: any) => t.type === 'dashboard').length
     })
 
-    // Second promotion — the button text changes to "Opened in workbench"
-    // so we simulate the promoteDashboard function directly to test
-    // that the underlying store doesn't deduplicate
-    await page.evaluate(() => {
-      // Click the promoted state indicator is not clickable,
-      // so we call promoteDashboard-like logic to test store behavior.
-      // However, the UI already shows "Opened in workbench" which prevents
-      // a second click. Verify the UI reflects this.
-    })
-
     // Verify the button is no longer visible (replaced by "Opened in workbench")
     await expect(page.getByRole('button', { name: 'Open to workbench' })).not.toBeVisible()
     await expect(page.getByText('Opened in workbench')).toBeVisible()
@@ -238,22 +228,12 @@ test.describe('@e2e @dashboard Dashboard UI Promotion', () => {
     await dashboard.waitForDashboardTab('Widget Test')
     await dashboard.expectCanvasVisible()
 
-    // Verify chart widget renders (title "Metric" from fixture)
+    // Verify chart widget renders with title "Metric" from fixture
     const chartWidget = dashboard.widgetByTitle('Metric')
     await expect(chartWidget).toBeVisible()
 
-    // Verify markdown widget renders (title from options: "## Notes" → "Notes" or raw text)
-    // The fixture has markdown widget with options: { text: '## Notes' }
-    // WidgetShell shows the title from options.title if present, otherwise the type
-    // In our fixture, options.title is not set for markdown, so it shows "markdown"
-    // But wait — looking at the fixture: markdown widget has options: { text: '## Notes' }
-    // without a title. getWidgetLabel in dashboard-block returns w.type for markdown
-    // without title. But in the canvas, WidgetShell reads options.title separately.
-    // Let me check the actual rendered text.
-    const markdownWidget = dashboard.widgetByTitle('Notes')
-    // If title not set, the widget type name is shown
-    await expect(
-      page.locator('[data-component="dashboard-widget-shell"]').filter({ hasText: /Notes|markdown/i }),
-    ).toBeVisible()
+    // Verify markdown widget shell renders (no title in fixture, so check for shell count)
+    const widgetShells = page.locator('[data-component="dashboard-widget-shell"]')
+    await expect(widgetShells).toHaveCount(2)
   })
 })
