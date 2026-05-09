@@ -48,23 +48,21 @@ export function makeDashboardPayload(overrides: Partial<Dashboard> = {}): Dashbo
 
 /**
  * Build a dashboard payload that exceeds the 256 KB server limit.
- * Uses a single oversized markdown widget to push the serialized JSON
- * past 256 * 1024 bytes.
+ * Uses many small widgets with padding data to push the serialized JSON
+ * past 256 * 1024 bytes while keeping each widget individually valid.
  */
 export function makeOversizedDashboardPayload(): Dashboard {
-  // 256 KB = 262144 bytes.  Build a markdown string ~300 KB to safely exceed.
-  const bigText = 'A'.repeat(300 * 1024)
+  // Build ~20 widgets each ~15 KB of padding => ~300 KB total, well past 256 KB.
+  const widgets: Dashboard['widgets'] = Array.from({ length: 20 }, (_, i) => ({
+    id: `markdown_w_ovrsz${String(i).padStart(4, '0')}`,
+    type: 'markdown' as const,
+    position: { x: (i % 4) * 3, y: Math.floor(i / 4) * 3, w: 3, h: 3 },
+    options: { text: `## Block ${i}\n` + 'X'.repeat(14 * 1024) },
+  }))
 
   return makeDashboardPayload({
     id: `dash_e2e_oversized_${Date.now()}`,
     title: 'Oversized E2E Dashboard',
-    widgets: [
-      {
-        id: 'markdown_w_oversized',
-        type: 'markdown',
-        position: { x: 0, y: 0, w: 12, h: 4 },
-        options: { text: bigText },
-      },
-    ],
+    widgets,
   })
 }
