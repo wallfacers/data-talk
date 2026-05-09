@@ -300,7 +300,10 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
             connection.sqlserverEncrypt(),
             connection.sqlserverTrustServerCertificate(),
             connection.sqlserverInstanceName(),
-            connection.readOnly()
+            connection.readOnly(),
+            connection.compatibilityMode(),
+            connection.oceanbaseTenant(),
+            connection.oceanbaseCluster()
         );
     }
 

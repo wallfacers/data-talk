@@ -109,7 +109,10 @@ abstract class AbstractDiagnosticsProvider implements DiagnosticsProvider {
             conn.sqlserverEncrypt(),
             conn.sqlserverTrustServerCertificate(),
             conn.sqlserverInstanceName(),
-            conn.readOnly()
+            conn.readOnly(),
+            conn.compatibilityMode(),
+            conn.oceanbaseTenant(),
+            conn.oceanbaseCluster()
         );
     }
 

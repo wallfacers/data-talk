@@ -16,5 +16,9 @@ public record ConnectionDto(
     boolean sqlserverEncrypt,
     boolean sqlserverTrustServerCertificate,
     String sqlserverInstanceName,  // nullable - named instance
-    boolean readOnly               // DuckDB read-only flag
+    boolean readOnly,              // DuckDB read-only flag
+    // Wave C step 3 additions
+    String compatibilityMode,      // null | "mysql" | "oracle" | "pg"
+    String oceanbaseTenant,        // null unless kind='oceanbase'
+    String oceanbaseCluster        // optional even for oceanbase
 ) {}

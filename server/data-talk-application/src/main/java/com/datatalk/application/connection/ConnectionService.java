@@ -40,7 +40,8 @@ public class ConnectionService {
                          String username, String password, Integer connectTimeout,
                          String oracleServiceType,
                          Boolean sqlserverEncrypt, Boolean sqlserverTrustServerCertificate, String sqlserverInstanceName,
-                         Boolean readOnly) {
+                         Boolean readOnly,
+                         String compatibilityMode, String oceanbaseTenant, String oceanbaseCluster) {
         // Normalize mssql alias to sqlserver, ch alias to clickhouse, doris alias to apache_doris
         String effectiveKind = "mssql".equalsIgnoreCase(kind) ? ConnectionKind.SQLSERVER
             : "ch".equalsIgnoreCase(kind) ? ConnectionKind.CLICKHOUSE
@@ -53,7 +54,7 @@ public class ConnectionService {
         int encrypt = sqlserverEncrypt != null ? (sqlserverEncrypt ? 1 : 0) : 1;
         boolean trustCert = sqlserverTrustServerCertificate == null || sqlserverTrustServerCertificate;
         boolean effectiveReadOnly = readOnly != null && readOnly;
-        repo.insert(new ConnectionRecord(id, effectiveName, effectiveKind, host, port, databaseName, username, enc, null, clock.millis(), timeout, null, null, oracleServiceType, encrypt, trustCert, sqlserverInstanceName, effectiveReadOnly));
+        repo.insert(new ConnectionRecord(id, effectiveName, effectiveKind, host, port, databaseName, username, enc, null, clock.millis(), timeout, null, null, oracleServiceType, encrypt, trustCert, sqlserverInstanceName, effectiveReadOnly, compatibilityMode, oceanbaseTenant, oceanbaseCluster));
         return id;
     }
 
@@ -81,7 +82,8 @@ public class ConnectionService {
                        String username, String password, Integer connectTimeout,
                        String oracleServiceType,
                        Boolean sqlserverEncrypt, Boolean sqlserverTrustServerCertificate, String sqlserverInstanceName,
-                       Boolean readOnly) {
+                       Boolean readOnly,
+                       String compatibilityMode, String oceanbaseTenant, String oceanbaseCluster) {
         // Normalize mssql alias to sqlserver, ch alias to clickhouse, doris alias to apache_doris
         String effectiveKind = "mssql".equalsIgnoreCase(kind) ? ConnectionKind.SQLSERVER
             : "ch".equalsIgnoreCase(kind) ? ConnectionKind.CLICKHOUSE
@@ -97,10 +99,14 @@ public class ConnectionService {
         String effectiveInstanceName = sqlserverInstanceName != null ? sqlserverInstanceName : existing.sqlserverInstanceName();
         boolean effectiveReadOnly = readOnly != null ? readOnly : existing.readOnly();
         String effectiveName = Strings.defaultIfBlank(name, translator.get("connection.default_name", id.substring(0, 8)));
+        String effectiveCompatMode = compatibilityMode != null ? compatibilityMode : existing.compatibilityMode();
+        String effectiveTenant = oceanbaseTenant != null ? oceanbaseTenant : existing.oceanbaseTenant();
+        String effectiveCluster = oceanbaseCluster != null ? oceanbaseCluster : existing.oceanbaseCluster();
         repo.update(new ConnectionRecord(id, effectiveName, effectiveKind, host, port, databaseName, username,
             enc, existing.schemaDigest(), existing.createdAt(), timeout,
             existing.lastTestStatus(), existing.lastTestAt(), effectiveOracleType,
-            encrypt, trustCert, effectiveInstanceName, effectiveReadOnly));
+            encrypt, trustCert, effectiveInstanceName, effectiveReadOnly,
+            effectiveCompatMode, effectiveTenant, effectiveCluster));
     }
 
     public boolean deleteById(String id) {
@@ -136,6 +142,10 @@ public class ConnectionService {
                     t.getClass().getSimpleName(), t.getMessage()));
             }
         }
+        // OceanBase: compose username for MySQL-mode
+        String effectiveUsername = kind.equals(ConnectionKind.OCEANBASE)
+            ? composeOceanBaseUsername(c)
+            : c.username();
         if (kind.equals(ConnectionKind.MYSQL) || kind.equals(ConnectionKind.TIDB)) {
             int timeoutMs = c.connectTimeout();
             url += (url.contains("?") ? "&" : "?") + "connectTimeout=" + timeoutMs + "&socketTimeout=" + timeoutMs;
@@ -168,7 +178,7 @@ public class ConnectionService {
             java.sql.DriverManager.setLoginTimeout(Math.max(1, c.connectTimeout() / 1000));
         }
         long started = clock.millis();
-        try (var conn = java.sql.DriverManager.getConnection(url, c.username(), password)) {
+        try (var conn = java.sql.DriverManager.getConnection(url, effectiveUsername, password)) {
             boolean ok = conn.isValid(c.connectTimeout() / 1000);
             long ms = clock.millis() - started;
             repo.updateTestStatus(id, ok ? "ok" : "fail", clock.millis());
@@ -181,6 +191,18 @@ public class ConnectionService {
         }
     }
 
+    /**
+     * Compose OceanBase username: <user>@<tenant>[#<cluster>]
+     */
+    static String composeOceanBaseUsername(ConnectionRecord c) {
+        StringBuilder sb = new StringBuilder(c.username());
+        sb.append('@').append(c.oceanbaseTenant());
+        if (c.oceanbaseCluster() != null && !c.oceanbaseCluster().isBlank()) {
+            sb.append('#').append(c.oceanbaseCluster());
+        }
+        return sb.toString();
+    }
+
     public record TestResult(boolean ok, long latencyMs, String reason) {}
 
     private ConnectionDto toDto(ConnectionRecord c) {
@@ -188,6 +210,6 @@ public class ConnectionService {
             c.databaseName(), c.username(), c.createdAt(), c.connectTimeout(),
             c.lastTestStatus(), c.lastTestAt(), c.oracleServiceType(),
             c.sqlserverEncrypt() != 0, c.sqlserverTrustServerCertificate(), c.sqlserverInstanceName(),
-            c.readOnly());
+            c.readOnly(), c.compatibilityMode(), c.oceanbaseTenant(), c.oceanbaseCluster());
     }
 }

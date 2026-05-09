@@ -10,5 +10,9 @@ public record ConnectionRecord(
     int sqlserverEncrypt,              // 1 = encrypt (default), 0 = no encryption
     boolean sqlserverTrustServerCertificate,  // default true
     String sqlserverInstanceName,       // nullable: named instance
-    boolean readOnly                    // DuckDB read-only flag
+    boolean readOnly,                   // DuckDB read-only flag
+    // Wave C step 3 additions
+    String compatibilityMode,    // null | "mysql" | "oracle" | "pg"
+    String oceanbaseTenant,      // null unless kind='oceanbase'
+    String oceanbaseCluster      // optional even for oceanbase
 ) {}

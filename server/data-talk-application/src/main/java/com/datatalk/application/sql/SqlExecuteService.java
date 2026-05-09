@@ -634,7 +634,10 @@ public class SqlExecuteService {
             connection.sqlserverEncrypt(),
             connection.sqlserverTrustServerCertificate(),
             connection.sqlserverInstanceName(),
-            connection.readOnly()
+            connection.readOnly(),
+            connection.compatibilityMode(),
+            connection.oceanbaseTenant(),
+            connection.oceanbaseCluster()
         );
     }
 

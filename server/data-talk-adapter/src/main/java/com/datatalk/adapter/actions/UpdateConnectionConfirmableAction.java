@@ -78,6 +78,9 @@ public class UpdateConnectionConfirmableAction implements ActionHandler<Map, Map
                 Map.entry("sqlserverTrustServerCertificate", Map.of("type", "boolean")),
                 Map.entry("sqlserverInstanceName", Map.of("type", "string")),
                 Map.entry("readOnly", Map.of("type", "boolean")),
+                Map.entry("compatibilityMode", Map.of("type", "string")),
+                Map.entry("oceanbaseTenant", Map.of("type", "string")),
+                Map.entry("oceanbaseCluster", Map.of("type", "string")),
                 Map.entry("confirm", Map.of("type", "boolean")),
                 Map.entry("confirmationToken", Map.of("type", "string"))
             )),
@@ -176,7 +179,10 @@ public class UpdateConnectionConfirmableAction implements ActionHandler<Map, Map
             normalized.sqlserverEncrypt(),
             normalized.sqlserverTrustServerCertificate(),
             normalized.sqlserverInstanceName(),
-            nullableBoolean(input, "readOnly")
+            nullableBoolean(input, "readOnly"),
+            nullableString(input, "compatibilityMode"),
+            nullableString(input, "oceanbaseTenant"),
+            nullableString(input, "oceanbaseCluster")
         );
         contextRefreshService.refreshByConnectionId(connectionId);
 
@@ -307,7 +313,10 @@ public class UpdateConnectionConfirmableAction implements ActionHandler<Map, Map
             nullableBoolean(input, "sqlserverEncrypt"),
             nullableBoolean(input, "sqlserverTrustServerCertificate"),
             nullableString(input, "sqlserverInstanceName"),
-            nullableBoolean(input, "readOnly")
+            nullableBoolean(input, "readOnly"),
+            nullableString(input, "compatibilityMode"),
+            nullableString(input, "oceanbaseTenant"),
+            nullableString(input, "oceanbaseCluster")
         );
     }
 
@@ -358,6 +367,9 @@ public class UpdateConnectionConfirmableAction implements ActionHandler<Map, Map
         Boolean sqlserverEncrypt,
         Boolean sqlserverTrustServerCertificate,
         String sqlserverInstanceName,
-        Boolean readOnly
+        Boolean readOnly,
+        String compatibilityMode,
+        String oceanbaseTenant,
+        String oceanbaseCluster
     ) {}
 }

@@ -100,6 +100,12 @@ public final class JdbcUrlBuilder {
             case ConnectionKind.HIVE ->
                 db != null ? "jdbc:hive2://" + c.host() + ":" + c.port() + "/" + db
                            : "jdbc:hive2://" + c.host() + ":" + c.port() + "/";
+            case ConnectionKind.OCEANBASE -> {
+                String obDb = c.databaseName();
+                yield (obDb != null && !obDb.isBlank())
+                    ? "jdbc:oceanbase://" + c.host() + ":" + c.port() + "/" + obDb
+                    : "jdbc:oceanbase://" + c.host() + ":" + c.port();
+            }
             default ->
                 throw new DataTalkException(DataTalkErrorCodes.DATABASE_KIND_UNSUPPORTED,
                     "unsupported database kind: " + c.kind(), false);
