@@ -40,7 +40,7 @@ const ACTIONS: ActionDef[] = [
 function buildEmptyDashboard(title: string): Dashboard {
   return {
     schemaVersion: 1,
-    id: `dash_${generateUuid()}`,
+    id: `dash_${generateUuid().replace(/-/g, '')}`,
     title,
     parameters: [],
     widgets: [],

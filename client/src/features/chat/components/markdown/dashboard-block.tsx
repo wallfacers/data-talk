@@ -23,6 +23,12 @@ function parseDashboard(json: string): { ok: true; dashboard: Dashboard } | { ok
   } catch {
     return { ok: false, error: 'Invalid JSON' }
   }
+  // AI-generated dashboard IDs may contain hyphens (UUID format);
+  // strip them to match the server schema ^dash_[a-zA-Z0-9_]{4,}$
+  const obj = parsed as Record<string, unknown> | null
+  if (obj && typeof obj === 'object' && 'id' in obj && typeof obj.id === 'string') {
+    obj.id = obj.id.replace(/-/g, '')
+  }
   const result = dashboardSchema.safeParse(parsed)
   if (result.success) {
     return { ok: true, dashboard: result.data }
