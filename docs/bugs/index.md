@@ -8,7 +8,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## 当前编号
 
-下一个分配 ID：**BUG-0010**（永不复用，单调递增）
+下一个分配 ID：**BUG-0011**（永不复用，单调递增）
 
 ## Open BUGs（按 priority 倒序，P0 → P2）
 
@@ -21,6 +21,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 | ID | Title | Status | Priority | Owner |
 |----|-------|--------|----------|-------|
 | [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md) | Stage 永久删除最后一个 tab 后右侧工作区空白 | fixed | P1 | — |
+| [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md) | 聊天气泡内 ECharts X 轴标题（xAxis.name）右侧被裁 | fixed | P2 | — |
 
 ## Recently Closed（最近 30 天，status = verified | closed）
 
@@ -37,10 +38,14 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 ## By Module（聚合视图，仅列 open + in-progress）
 
 - **stage**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md)
+- **chat**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md)
+- **markdown**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md)
+- **chart**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md)
 
 ## By Source（聚合视图，仅列 open + in-progress）
 
 - **e2e-playwright**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md)
+- **manual-report**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md)
 
 ## Wontfix / Duplicate（终态归档，无时间限制）
 

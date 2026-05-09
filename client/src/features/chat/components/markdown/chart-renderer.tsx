@@ -51,7 +51,12 @@ echarts.use([
   CanvasRenderer,
 ])
 
-const DEFAULT_HEIGHT = 320
+// Chat-bubble charts must host title + legend + plot area + axisLabel + axis.name.
+// 320 left no margin below the grid for a centred X-axis name (BUG-0010 v1–v3
+// chased grid.bottom but kept getting clipped at the canvas edge), so the v4
+// fix grows the default canvas itself. Modal / dashboard / artifact callers
+// pass their own height and are unaffected.
+const DEFAULT_HEIGHT = 360
 
 type ChartRendererProps = {
   option: Record<string, unknown>

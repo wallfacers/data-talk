@@ -33,4 +33,19 @@ describe('ChartRenderer', () => {
     const lastCall = reactEchartsCalls[reactEchartsCalls.length - 1]
     expect(lastCall.style.width).toBe('100%')
   })
+
+  // BUG-0010 v4: chat-bubble charts must reserve enough vertical room for
+  // title + legend + plot area + axisLabel + axis.name. The previous default
+  // (320) plus chart-theme's grid.bottom (80) still clipped the centred
+  // X-axis name at the canvas bottom. v4 raises the default to ≥ 360 so
+  // there's a proper margin below the inflated grid.
+  it('uses a default height of at least 360px so chat-bubble charts can host an axis name without clipping', () => {
+    reactEchartsCalls.length = 0
+
+    render(<ChartRenderer option={PIE_OPTION} />)
+
+    const lastCall = reactEchartsCalls[reactEchartsCalls.length - 1]
+    expect(typeof lastCall.style.height).toBe('number')
+    expect(lastCall.style.height as number).toBeGreaterThanOrEqual(360)
+  })
 })

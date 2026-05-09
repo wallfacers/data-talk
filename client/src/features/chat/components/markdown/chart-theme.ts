@@ -144,16 +144,64 @@ export function refreshChartThemesForCurrentMode() {
   registerChartThemes()
 }
 
-function withContainLabel(grid: unknown) {
+// ECharts grid.containLabel:true reserves space for axisLabel (tick text)
+// only — it does NOT reserve space for axis.name. After we move axis names
+// to nameLocation:'middle' (see withInsetAxisName below), the default grid
+// padding is too tight to hold axisLabel + nameGap + name and the centred
+// name gets clipped at the canvas edge. We therefore widen grid.bottom when
+// xAxis has a name and grid.left when yAxis has a name, but only if the
+// user/AI did not specify those dimensions explicitly.
+//
+// Sizing rationale at chart-renderer DEFAULT_HEIGHT=360 (raised in v4):
+//   bottom ≥ axisLabel band(~22) + nameGap(28) + name fontHeight(~14) + safety(~32) = 96
+//   left   ≥ axisLabel band(~40) + nameGap(36) + name fontHeight(~14) + safety(~6)  = 96
+// v1 (no padding) → name clipped at right edge (nameLocation:'end').
+// v2 (56 / 72)    → bottom too tight, lower half of name clipped at canvas bottom.
+// v3 (80 / 88)    → still ~10% visible per user regression — echarts' actual
+//                   axisLabel + nameGap layout consumed more than the textbook
+//                   estimate.
+// v4 raises both to 96 and widens the canvas (DEFAULT_HEIGHT 320→360) so the
+// axis-name band gets real breathing room instead of being squeezed.
+const GRID_BOTTOM_FOR_X_NAME = 96
+const GRID_LEFT_FOR_Y_NAME = 96
+
+function hasAxisWithName(axis: unknown): boolean {
+  const named = (entry: unknown) =>
+    !!entry &&
+    typeof entry === 'object' &&
+    typeof (entry as Record<string, unknown>).name === 'string' &&
+    ((entry as Record<string, unknown>).name as string).length > 0
+  if (Array.isArray(axis)) return axis.some(named)
+  return named(axis)
+}
+
+function withContainLabel(grid: unknown, option: Record<string, unknown>) {
+  const hasXName = hasAxisWithName(option.xAxis)
+  const hasYName = hasAxisWithName(option.yAxis)
+
+  const inflate = (entry: Record<string, unknown>): Record<string, unknown> => {
+    const result: Record<string, unknown> = { containLabel: true, ...entry }
+    // We set nameLocation:'middle' + nameGap in withInsetAxisName, which
+    // REQUIRES sufficient grid padding. AI-generated options (e.g. "3%") are
+    // almost always too tight for the axis-name band, so we always override.
+    if (hasXName) {
+      result.bottom = GRID_BOTTOM_FOR_X_NAME
+    }
+    if (hasYName) {
+      result.left = GRID_LEFT_FOR_Y_NAME
+    }
+    return result
+  }
+
   if (Array.isArray(grid)) {
-    return grid.map((entry) => ({ containLabel: true, ...(entry as Record<string, unknown>) }))
+    return grid.map((entry) => inflate(entry as Record<string, unknown>))
   }
 
   if (grid && typeof grid === 'object') {
-    return { containLabel: true, ...(grid as Record<string, unknown>) }
+    return inflate(grid as Record<string, unknown>)
   }
 
-  return { containLabel: true }
+  return inflate({})
 }
 
 function withTransparentTitle(title: unknown) {
@@ -207,6 +255,33 @@ function hasPieSeries(series: unknown): boolean {
   return isPie(series)
 }
 
+// Cartesian axis names (xAxis.name / yAxis.name) default to nameLocation:'end'
+// in ECharts, painting the name just past the grid edge. In a chat-bubble
+// chart the parent has overflow:hidden and a non-negotiable max-width (the
+// bubble width is part of the product contract), so a long axis name like
+// '月份' or 'Order Count' gets clipped at the right/top edge of the canvas.
+// We move the name to nameLocation:'middle' so echarts always paints it
+// inside the grid — same product-contract approach as withContainLabel and
+// withCenteredPie. We only touch entries that have a non-empty `name`.
+const X_AXIS_NAME_GAP = 28
+const Y_AXIS_NAME_GAP = 36
+
+function withInsetAxisName(axis: unknown, dim: 'x' | 'y'): unknown {
+  const inset = (entry: unknown): unknown => {
+    if (!entry || typeof entry !== 'object') return entry
+    const record = entry as Record<string, unknown>
+    if (typeof record.name !== 'string' || record.name.length === 0) return entry
+    return {
+      ...record,
+      nameLocation: 'middle',
+      nameGap: dim === 'x' ? X_AXIS_NAME_GAP : Y_AXIS_NAME_GAP,
+      ...(dim === 'y' ? { nameRotate: 90 } : null),
+    }
+  }
+  if (Array.isArray(axis)) return axis.map(inset)
+  return inset(axis)
+}
+
 function withHorizontalLegend(legend: unknown): unknown {
   const flatten = (entry: unknown): unknown => {
     if (!entry || typeof entry !== 'object') return entry
@@ -227,11 +302,18 @@ function withHorizontalLegend(legend: unknown): unknown {
 export function injectOptionFix(option: Record<string, unknown>): Record<string, unknown> {
   const fixed: Record<string, unknown> = {
     ...option,
-    grid: withContainLabel(option.grid),
+    grid: withContainLabel(option.grid, option),
   }
 
   if (option.title !== undefined) {
     fixed.title = withTransparentTitle(option.title)
+  }
+
+  if (option.xAxis !== undefined) {
+    fixed.xAxis = withInsetAxisName(option.xAxis, 'x')
+  }
+  if (option.yAxis !== undefined) {
+    fixed.yAxis = withInsetAxisName(option.yAxis, 'y')
   }
 
   if (option.series !== undefined && hasPieSeries(option.series)) {
