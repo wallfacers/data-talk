@@ -2,13 +2,13 @@
 name: BUG-001-dashboard-kind-missing-from-files-library
 description: Files library tab crashes when a file artifact has kind='dashboard'
 type: project
-status: open
+status: fixed
 createdAt: 2026-05-09
 ---
 
 ## BUG-001: Dashboard kind missing from KIND_ORDER in Files Library Tab
 
-**Status:** open
+**Status:** fixed
 **Module:** client - stage/files-library-tab
 **Severity:** medium (crash when dashboard file exists in library)
 **Date:** 2026-05-09
@@ -43,3 +43,7 @@ This happens because `result[file.kind]` is `undefined` for `kind === 'dashboard
 ## Fix
 
 Add `'dashboard'` to `KIND_ORDER` array in `files-library-tab.tsx`.
+
+**Resolution:** Added `'dashboard'` between `'report'` and `'sql_script'` in `KIND_ORDER` (line 27).
+**Fixed at:** 2026-05-09
+**Fix plan ref:** —

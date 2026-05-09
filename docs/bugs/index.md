@@ -14,7 +14,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 | ID | Title | Priority | Source | Modules | Discovered |
 |----|-------|----------|--------|---------|------------|
-| BUG-0009 | Files Library Tab 渲染 dashboard kind 文件时崩溃 | P2 | E2E component test | stage/files-library-tab | 2026-05-09 |
+| —  | — | — | — | — | — |
 
 ## In Progress（status = investigating | fixed 等待 verify）
 
@@ -32,15 +32,15 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 | BUG-0005 | 页面刷新后 ER Inspector Tab 不恢复 | verified | 2026-05-07 | 9d67946 |
 | BUG-0006 | 页面刷新后 ER Designer Tab targetConnectionId 丢失 | verified | 2026-05-07 | 9d67946 |
 | BUG-0007 | 后端重启后 MCP bridge nonce 漂移导致 datatalk_* 工具全部 -32001 | verified | 2026-05-08 | 4168e3f9 |
+| BUG-0009 | Files Library Tab 渲染 dashboard kind 文件时崩溃 | fixed | 2026-05-09 | — |
 
 ## By Module（聚合视图，仅列 open + in-progress）
 
-- **stage**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md), [BUG-0009](BUG-0009-dashboard-kind-missing-from-files-library.md)
+- **stage**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md)
 
 ## By Source（聚合视图，仅列 open + in-progress）
 
 - **e2e-playwright**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md)
-- **component-test**: [BUG-0009](BUG-0009-dashboard-kind-missing-from-files-library.md)
 
 ## Wontfix / Duplicate（终态归档，无时间限制）
 
