@@ -184,11 +184,15 @@ function withContainLabel(grid: unknown, option: Record<string, unknown>) {
     // We set nameLocation:'middle' + nameGap in withInsetAxisName, which
     // REQUIRES sufficient grid padding. AI-generated options (e.g. "3%") are
     // almost always too tight for the axis-name band, so we always override.
+    // To keep the chart visually balanced (等边距), we also set the opposite
+    // side to the same value: right matches left, top matches bottom.
     if (hasXName) {
       result.bottom = GRID_BOTTOM_FOR_X_NAME
+      result.top = GRID_BOTTOM_FOR_X_NAME
     }
     if (hasYName) {
       result.left = GRID_LEFT_FOR_Y_NAME
+      result.right = GRID_LEFT_FOR_Y_NAME
     }
     return result
   }

@@ -189,6 +189,12 @@ describe('chart-theme', () => {
     expect(grid.containLabel).toBe(true)
     expect(typeof grid.bottom).toBe('number')
     expect(grid.bottom).toBeGreaterThanOrEqual(88)
+    // Equal-margins: top matches bottom for visual balance
+    expect(typeof grid.top).toBe('number')
+    expect(grid.top).toBeGreaterThanOrEqual(88)
+    // No Y name → left/right untouched
+    expect(grid.left).toBeUndefined()
+    expect(grid.right).toBeUndefined()
   })
 
   it('injectOptionFix widens grid.left enough that a rotated yAxis.name fits with comfortable margin from the canvas left edge', async () => {
@@ -204,13 +210,19 @@ describe('chart-theme', () => {
     expect(grid.containLabel).toBe(true)
     expect(typeof grid.left).toBe('number')
     expect(grid.left).toBeGreaterThanOrEqual(88)
+    // Equal-margins: right matches left for visual balance
+    expect(typeof grid.right).toBe('number')
+    expect(grid.right).toBeGreaterThanOrEqual(88)
+    // No X name → top/bottom untouched
+    expect(grid.bottom).toBeUndefined()
+    expect(grid.top).toBeUndefined()
   })
 
   it('injectOptionFix overrides AI-generated small grid values (e.g. "3%") when axis names need space', async () => {
     const { injectOptionFix } = await loadChartTheme()
 
     const fixed = injectOptionFix({
-      grid: { bottom: '3%', left: '3%', right: '4%' },
+      grid: { bottom: '3%', left: '3%', right: '4%', top: '5%' },
       xAxis: { type: 'category', name: '月份' },
       yAxis: { type: 'value', name: '订单量' },
       series: [{ type: 'line', data: [] }],
@@ -222,8 +234,11 @@ describe('chart-theme', () => {
     expect(grid.bottom).toBeGreaterThanOrEqual(88)
     expect(typeof grid.left).toBe('number')
     expect(grid.left).toBeGreaterThanOrEqual(88)
-    // Non-competing axis dimension must be preserved
-    expect(grid.right).toBe('4%')
+    // Equal-margins: right/top are set to match left/bottom
+    expect(typeof grid.right).toBe('number')
+    expect(grid.right).toBeGreaterThanOrEqual(88)
+    expect(typeof grid.top).toBe('number')
+    expect(grid.top).toBeGreaterThanOrEqual(88)
   })
 
   it('injectOptionFix does not widen grid when no axis name is present', async () => {
