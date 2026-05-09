@@ -12,6 +12,8 @@ export function resolveSqlFormatterLanguage(connectionKind: string | null | unde
     case 'starrocks': // sql-formatter has no starrocks dialect; mysql is the closest approximation (day-1). OLAP-specific syntax (PROPERTIES, KEY clauses, DISTRIBUTED BY) may format suboptimally.
       return 'mysql'
     case 'oracle':
+    case 'dameng':
+      // Dameng is Oracle-compatible (95%+ syntax overlap); reuse plsql formatter
       return 'plsql'
     case 'sqlserver':
       return 'transactsql'
