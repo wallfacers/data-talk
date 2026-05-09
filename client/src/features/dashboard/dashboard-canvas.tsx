@@ -93,23 +93,25 @@ export function DashboardCanvas({ tabId, mode }: DashboardCanvasProps) {
   }
 
   return (
-    <ResponsiveGridLayout
-      className="dashboard-canvas"
-      layouts={layouts}
-      breakpoints={BREAKPOINTS}
-      cols={COLS}
-      rowHeight={dashboard.layout.rowHeight}
-      containerPadding={[0, 0]}
-      margin={[dashboard.layout.gap, dashboard.layout.gap]}
-      isDraggable={!isStatic}
-      isResizable={!isStatic}
-      draggableCancel="[data-component='dashboard-widget-shell'] button, [data-component='dashboard-widget-shell'] input"
-    >
-      {dashboard.widgets.map((w) => (
-        <div key={widgetKey(w)} style={{ overflow: 'hidden' }}>
-          {renderWidget(w)}
-        </div>
-      ))}
-    </ResponsiveGridLayout>
+    <div data-testid="dashboard-canvas" className="h-full">
+      <ResponsiveGridLayout
+        className="dashboard-canvas"
+        layouts={layouts}
+        breakpoints={BREAKPOINTS}
+        cols={COLS}
+        rowHeight={dashboard.layout.rowHeight}
+        containerPadding={[0, 0]}
+        margin={[dashboard.layout.gap, dashboard.layout.gap]}
+        isDraggable={!isStatic}
+        isResizable={!isStatic}
+        draggableCancel="[data-component='dashboard-widget-shell'] button, [data-component='dashboard-widget-shell'] input"
+      >
+        {dashboard.widgets.map((w) => (
+          <div key={widgetKey(w)} style={{ overflow: 'hidden' }}>
+            {renderWidget(w)}
+          </div>
+        ))}
+      </ResponsiveGridLayout>
+    </div>
   )
 }
