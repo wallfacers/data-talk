@@ -15,6 +15,9 @@ export interface ConnectionDto {
   sqlserverTrustServerCertificate: boolean
   sqlserverInstanceName: string | null
   readOnly: boolean
+  compatibilityMode: string | null
+  oceanbaseTenant: string | null
+  oceanbaseCluster: string | null
 }
 
 export interface ConnectionCreateRequest {
@@ -27,6 +30,9 @@ export interface ConnectionCreateRequest {
   password: string
   connectTimeout?: number  // optional, defaults to 3000ms
   readOnly?: boolean
+  compatibilityMode?: string | null
+  oceanbaseTenant?: string | null
+  oceanbaseCluster?: string | null
 }
 
 export interface ConnectionUpdateRequest {
@@ -39,6 +45,9 @@ export interface ConnectionUpdateRequest {
   password: string | null
   connectTimeout?: number  // optional, defaults to 3000ms
   readOnly?: boolean | null
+  compatibilityMode?: string | null
+  oceanbaseTenant?: string | null
+  oceanbaseCluster?: string | null
 }
 
 export interface ConnectionTestResultDto {
