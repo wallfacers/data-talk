@@ -132,6 +132,21 @@ public class SqlExecuteService {
             }
         }
 
+        // KingbaseES Channel 2 — dialect_unsupported entry gate
+        if ("kingbase".equalsIgnoreCase(context.connection().kind())) {
+            for (String stmt : statements) {
+                var unsupportedReason = ((CalciteSqlRiskAnalyzer) riskAnalyzer).detectKingbaseUnsupported(stmt);
+                if (unsupportedReason.isPresent()) {
+                    String i18nKey = switch (unsupportedReason.get()) {
+                        case KB_BACKUP_RESTORE_CLI -> "risk.dialect_unsupported.kingbase.kb_backup_restore_cli";
+                        case ORACLE_PLSQL_BLOCK -> "risk.dialect_unsupported.kingbase.oracle_plsql_block";
+                    };
+                    throw new DataTalkException(DataTalkErrorCodes.DIALECT_UNSUPPORTED,
+                        translator.get(i18nKey), false);
+                }
+            }
+        }
+
         // Risk gate applies to BOTH user-typed and AI-prefilled SQL. The
         // Workbench tab is the single trusted execution surface for L2 / L3
         // statements; the source label never confers a trust bypass.

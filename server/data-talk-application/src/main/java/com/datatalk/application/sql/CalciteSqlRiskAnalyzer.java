@@ -116,6 +116,22 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
     private static final Pattern DAMENG_EXP_IMP = Pattern.compile(
         "^\\s*(EXP|IMP)\\s+", Pattern.CASE_INSENSITIVE);
 
+    // ==== Channel 1 — KingbaseES admin / DDL L3 patterns ====
+    private static final Pattern KINGBASE_SYS_TABLE_DDL =
+        Pattern.compile("^\\s*(DROP|ALTER|TRUNCATE)\\s+(TABLE\\s+)?SYS_[A-Z_]+\\b", Pattern.CASE_INSENSITIVE);
+    private static final Pattern KINGBASE_SYS_ADMIN_SCHEMA_DDL =
+        Pattern.compile("^\\s*(DROP|ALTER)\\s+(TABLE\\s+)?SYS(CRT|AUDIT)_[A-Z_]+\\b", Pattern.CASE_INSENSITIVE);
+    private static final Pattern KINGBASE_SYS_KILL =
+        Pattern.compile("^\\s*SELECT\\s+SYS_KILL\\b", Pattern.CASE_INSENSITIVE);
+    private static final Pattern KINGBASE_FLASHBACK =
+        Pattern.compile("^\\s*FLASHBACK\\s+TABLE\\b", Pattern.CASE_INSENSITIVE);
+
+    // ==== Channel 2 — KingbaseES Day-1 dialect_unsupported patterns ====
+    private static final Pattern KINGBASE_KB_BACKUP_RESTORE =
+        Pattern.compile("^\\s*(KBBACKUP|KBRESTORE)\\s+", Pattern.CASE_INSENSITIVE);
+    private static final Pattern KINGBASE_ORACLE_PLSQL_BLOCK =
+        Pattern.compile("^\\s*(DECLARE|BEGIN)\\b", Pattern.CASE_INSENSITIVE);
+
     public enum DamengUnsupportedReason {
         PLSQL_BLOCK,
         PROCEDURE_DDL,
@@ -229,6 +245,13 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
         }
         if (ConnectionKind.DAMENG.equalsIgnoreCase(connectionKind)) {
             return classifyDamengSpecific(sql);
+        }
+        if (ConnectionKind.KINGBASE.equalsIgnoreCase(connectionKind)) {
+            var kbLevel = classifyKingbaseSpecific(sql);
+            if (kbLevel.isPresent()) {
+                return SqlRiskAnalysis.high("kingbase_admin_command");
+            }
+            return null;
         }
         return null;
     }
@@ -1083,6 +1106,32 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
         }
         if (DAMENG_EXP_IMP.matcher(stripped).find()) {
             return Optional.of(DamengUnsupportedReason.EXP_IMP_COMMAND);
+        }
+        return Optional.empty();
+    }
+
+    // ====== KingbaseES Channel 1 — L3 admin command classification ======
+
+    public Optional<RiskLevel> classifyKingbaseSpecific(String sql) {
+        if (sql == null) return Optional.empty();
+        if (KINGBASE_SYS_TABLE_DDL.matcher(sql).find()
+            || KINGBASE_SYS_ADMIN_SCHEMA_DDL.matcher(sql).find()
+            || KINGBASE_SYS_KILL.matcher(sql).find()
+            || KINGBASE_FLASHBACK.matcher(sql).find()) {
+            return Optional.of(RiskLevel.L3);
+        }
+        return Optional.empty();
+    }
+
+    // ====== KingbaseES Channel 2 — dialect_unsupported detection ======
+
+    public Optional<KingbaseUnsupportedReason> detectKingbaseUnsupported(String sql) {
+        if (sql == null) return Optional.empty();
+        if (KINGBASE_KB_BACKUP_RESTORE.matcher(sql).find()) {
+            return Optional.of(KingbaseUnsupportedReason.KB_BACKUP_RESTORE_CLI);
+        }
+        if (KINGBASE_ORACLE_PLSQL_BLOCK.matcher(sql).find()) {
+            return Optional.of(KingbaseUnsupportedReason.ORACLE_PLSQL_BLOCK);
         }
         return Optional.empty();
     }
