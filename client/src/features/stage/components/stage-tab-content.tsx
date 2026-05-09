@@ -10,6 +10,7 @@ import { FilePreviewTab } from './file-preview-tab'
 import { FilesTab } from './files-tab'
 import { FilesLibraryTab } from './files-library-tab'
 import { SqlWorkbenchTab } from './sql-workbench-tab'
+import { DashboardTab } from '@/features/dashboard/dashboard-tab'
 
 export function StageTabContent() {
   const cleanupTabs = useSqlWorkbenchStore((s) => s.cleanupTabs)
@@ -92,6 +93,14 @@ export function StageTabContent() {
     return (
       <div className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <FilesLibraryTab key={tab.tabId} />
+      </div>
+    )
+  }
+
+  if (tab.type === 'dashboard') {
+    return (
+      <div className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <DashboardTab key={tab.tabId} tabId={tab.tabId} />
       </div>
     )
   }

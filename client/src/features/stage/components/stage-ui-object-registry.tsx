@@ -7,6 +7,7 @@ import { ErDesignerAdapter } from '../adapters/ErDesignerAdapter'
 import { ErInspectorAdapter } from '../adapters/ErInspectorAdapter'
 import { QueryEditorAdapter } from '../adapters/QueryEditorAdapter'
 import { WorkspaceAdapter } from '../adapters/WorkspaceAdapter'
+import { DashboardAdapter } from '@/features/dashboard/adapters/DashboardAdapter'
 
 function RegisteredInstance({ instance }: { instance: UIObject | null }) {
   useUIObjectRegistry(instance)
@@ -27,6 +28,12 @@ function RegisteredErInspector({ tabId, sessionId }: { tabId: string; sessionId:
 
 function RegisteredErDesigner({ tabId, sessionId }: { tabId: string; sessionId: string | null }) {
   const instance = useMemo(() => new ErDesignerAdapter(tabId, () => sessionId), [tabId, sessionId])
+  useUIObjectRegistry(instance)
+  return null
+}
+
+function RegisteredDashboard({ tabId }: { tabId: string }) {
+  const instance = useMemo(() => new DashboardAdapter(tabId, () => null), [tabId])
   useUIObjectRegistry(instance)
   return null
 }
@@ -52,6 +59,9 @@ export function StageUIObjectRegistry({ tabs }: { tabs: StageTab[] }) {
       {tabs
         .filter((tab) => tab.type === 'er_designer')
         .map((tab) => <RegisteredErDesigner key={tab.tabId} tabId={tab.tabId} sessionId={tab.originSessionId ?? null} />)}
+      {tabs
+        .filter((tab) => tab.type === 'dashboard')
+        .map((tab) => <RegisteredDashboard key={tab.tabId} tabId={tab.tabId} />)}
     </>
   )
 }

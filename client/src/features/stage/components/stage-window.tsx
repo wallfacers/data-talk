@@ -112,7 +112,7 @@ export function StageWindow() {
 
   function handleOpenDashboard() {
     setShowStartPage(false)
-    void new DashboardAdapter('', () => null).exec('create')
+    void new DashboardAdapter('_pending_', () => null).exec('create')
   }
 
   const activeTab = openTabsOrdered.find((t) => t.tabId === activeTabId)

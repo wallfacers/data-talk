@@ -25,3 +25,9 @@ vi.mock('@/i18n/use-i18n', () => ({
       translateMessage('zh-CN', key, values),
   }),
 }))
+
+vi.mock('react-grid-layout', () => {
+  const MockGridLayout = (_props: unknown) => null
+  const WidthProvider = (_Component: unknown) => MockGridLayout
+  return { Responsive: MockGridLayout, WidthProvider }
+})
