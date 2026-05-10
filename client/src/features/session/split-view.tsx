@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { ArrowDownIcon, DatabaseIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { cn } from '@/lib/utils'
 import { TurnList } from '@/features/chat/components/turn/turn-list'
 import { TurnListErrorBoundary } from '@/features/chat/components/turn/turn-list-error-boundary'
 import { StageWindow } from '@/features/stage/components/stage-window'
@@ -171,27 +172,38 @@ export function SplitView() {
                   </TurnListErrorBoundary>
                 </div>
               </div>
-              {!isAtBottom ? (
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon-lg"
-                        aria-label={scrollToBottomLabel}
-                        onClick={() => scrollToBottom('smooth')}
-                        className="absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-full border-border/80 bg-background/95 text-foreground shadow-md backdrop-blur hover:bg-muted"
-                      >
-                        <ArrowDownIcon className="size-4" />
-                      </Button>
-                    }
-                  />
-                  <TooltipContent side="top" sideOffset={6}>
-                    {scrollToBottomLabel}
-                  </TooltipContent>
-                </Tooltip>
-              ) : null}
+              {/*
+                Always-mount the back-to-bottom button and toggle visibility via
+                opacity + pointer-events. Conditional render produced a one-frame
+                stutter at the moment isAtBottom flipped: the scroll-event handler
+                set state, React mounted the Tooltip primitive (portal + listeners)
+                and the backdrop-blur button (new compositor layer) on the same
+                frame as the scroll, dropping that frame.
+              */}
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon-lg"
+                      aria-label={scrollToBottomLabel}
+                      aria-hidden={isAtBottom}
+                      tabIndex={isAtBottom ? -1 : 0}
+                      onClick={() => scrollToBottom('smooth')}
+                      className={cn(
+                        'absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-full border-border/80 bg-background/95 text-foreground shadow-md backdrop-blur hover:bg-muted',
+                        isAtBottom && 'pointer-events-none opacity-0',
+                      )}
+                    >
+                      <ArrowDownIcon className="size-4" />
+                    </Button>
+                  }
+                />
+                <TooltipContent side="top" sideOffset={6}>
+                  {scrollToBottomLabel}
+                </TooltipContent>
+              </Tooltip>
             </div>
             <div className="overflow-y-auto px-2 pt-1 pb-4" style={{ scrollbarGutter: 'stable' }}>
               <div id="composer-slot" className="mx-auto w-full min-w-0 max-w-3xl" />
