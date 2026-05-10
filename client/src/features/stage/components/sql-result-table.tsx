@@ -26,7 +26,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { useI18n } from '@/i18n/use-i18n'
 import { copyToClipboard } from '@/lib/utils'
-import { Download, Copy, Maximize2Icon, XIcon } from 'lucide-react'
+import { Download, Copy, Maximize2Icon, XIcon, SearchIcon, ArrowUpIcon, ArrowDownIcon } from 'lucide-react'
 import {
   buildSqlResultExportFilename,
   selectSqlResultExportRows,
@@ -55,6 +55,11 @@ type ResultContextTarget = {
   row?: unknown[]
   column?: string
   rowNumber?: number
+}
+
+type SortState = {
+  column: string | null
+  direction: 'asc' | 'desc' | null
 }
 
 function serializeResultValue(value: unknown) {
@@ -129,11 +134,39 @@ export function SqlResultTable({
   const [exportScope, setExportScope] = useState<SqlResultExportScope>('page')
   const [copiedAction, setCopiedAction] = useState<'csv' | 'json' | null>(null)
   const [isExpanded, setIsExpanded] = useState(false)
-  const pageCount = Math.max(1, Math.ceil(result.rows.length / pageSize))
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortState, setSortState] = useState<SortState>({ column: null, direction: null })
+
+  const filteredRows = useMemo(() => {
+    if (!searchQuery.trim()) return result.rows
+    const q = searchQuery.toLowerCase().trim()
+    return result.rows.filter(row =>
+      row.some(cell => serializeResultValue(cell).toLowerCase().includes(q)),
+    )
+  }, [result.rows, searchQuery])
+
+  const sortedRows = useMemo(() => {
+    if (!sortState.column || !sortState.direction) return filteredRows
+    const colIndex = result.columns.indexOf(sortState.column)
+    if (colIndex < 0) return filteredRows
+    const dir = sortState.direction === 'asc' ? 1 : -1
+    return [...filteredRows].sort((a, b) => {
+      const va = a[colIndex], vb = b[colIndex]
+      if (va == null && vb == null) return 0
+      if (va == null) return 1
+      if (vb == null) return -1
+      if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir
+      const sa = String(va).toLowerCase(), sb = String(vb).toLowerCase()
+      const cmp = sa < sb ? -1 : sa > sb ? 1 : 0
+      return cmp * dir
+    })
+  }, [filteredRows, sortState, result.columns])
+
+  const pageCount = Math.max(1, Math.ceil(sortedRows.length / pageSize))
   const pageStart = (page - 1) * pageSize
   const visibleRows = useMemo(
-    () => result.rows.slice(pageStart, pageStart + pageSize),
-    [pageStart, result.rows],
+    () => sortedRows.slice(pageStart, pageStart + pageSize),
+    [pageStart, sortedRows],
   )
   const exportRows = useMemo(
     () => selectSqlResultExportRows(result.rows, visibleRows, exportScope),
@@ -146,7 +179,22 @@ export function SqlResultTable({
     setDetailTarget(null)
     setDetailFormatted(false)
     setIsExpanded(false)
+    setSearchQuery('')
+    setSortState({ column: null, direction: null })
   }, [result.resultId])
+
+  useEffect(() => {
+    setPage(1)
+  }, [searchQuery])
+
+  const handleSortToggle = useCallback((column: string) => {
+    setSortState(prev => {
+      if (prev.column !== column) return { column, direction: 'asc' }
+      if (prev.direction === 'asc') return { column, direction: 'desc' }
+      return { column: null, direction: null }
+    })
+    setPage(1)
+  }, [])
 
   useLayoutEffect(() => {
     const container = scrollContainerRef.current
@@ -248,10 +296,19 @@ export function SqlResultTable({
           {result.columns.map((column, columnIndex) => (
             <TableHead
               key={`${keyPrefix}-${column}-${columnIndex}`}
-              className={stickyHeaderCellClass}
+              className={`${stickyHeaderCellClass} cursor-pointer select-none`}
+              onClick={() => handleSortToggle(column)}
               onContextMenu={() => setContextTarget({ column })}
             >
-              {column}
+              <span className="inline-flex items-center gap-1">
+                {column}
+                {sortState.column === column && sortState.direction === 'asc' && (
+                  <ArrowUpIcon className="size-3 text-muted-foreground" />
+                )}
+                {sortState.column === column && sortState.direction === 'desc' && (
+                  <ArrowDownIcon className="size-3 text-muted-foreground" />
+                )}
+              </span>
             </TableHead>
           ))}
         </TableRow>
@@ -326,6 +383,40 @@ export function SqlResultTable({
     </ContextMenuContent>
   )
 
+  const searchBarContent = () => (
+    <div className="flex shrink-0 items-center gap-2 border-t border-border/50 px-3 py-1.5">
+      <div className="flex h-7 items-center gap-1.5 rounded-md border border-border px-2 transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
+        <SearchIcon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder={t('stage.queryEditor.result.search.placeholder')}
+          aria-label={t('stage.queryEditor.result.search.ariaLabel')}
+          className="w-48 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+        />
+        {searchQuery ? (
+          <button
+            type="button"
+            aria-label={t('stage.queryEditor.result.search.clear')}
+            onClick={() => setSearchQuery('')}
+            className="text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <XIcon className="size-3.5" />
+          </button>
+        ) : null}
+      </div>
+      {searchQuery ? (
+        <span className="text-xs text-muted-foreground">
+          {t('stage.queryEditor.result.search.matchCount', {
+            matched: filteredRows.length,
+            total: result.rows.length,
+          })}
+        </span>
+      ) : null}
+    </div>
+  )
+
   const toolbarContent = (showExpand = true) => (
     <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border/50 px-3 py-2">
       <span className="text-xs text-muted-foreground">{summaryLabel}</span>
@@ -393,6 +484,7 @@ export function SqlResultTable({
         />
         {contextMenuItems}
       </ContextMenu>
+      {searchBarContent()}
       <Dialog open={!!detailTarget} onOpenChange={(open) => {
         if (!open) setDetailTarget(null)
       }}>
@@ -497,6 +589,7 @@ export function SqlResultTable({
               />
               {contextMenuItems}
             </ContextMenu>
+            {searchBarContent()}
             {toolbarContent(false)}
           </div>
         </DialogContent>
