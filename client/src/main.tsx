@@ -37,10 +37,11 @@ if (import.meta.env.DEV || import.meta.env.MODE === 'test') {
     coordinator: () => coordinator,
     dashboard: () => useDashboardTabsStore.getState(),
   }
-  // Expose React and DashboardBlock for inline component mounting in E2E tests
+  // Expose React, ReactDOM, DashboardBlock, and I18nProvider for inline component mounting in E2E tests
   ;(window as any).reactForE2E = React
   ;(window as any).reactDOMForE2E = ReactDOM
   ;(window as any).dashboardBlockForE2E = { DashboardBlock }
+  ;(window as any).i18nForE2E = { I18nProvider }
 }
 
 const router = createRouter({ routeTree })

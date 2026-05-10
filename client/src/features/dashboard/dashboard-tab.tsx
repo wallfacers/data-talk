@@ -17,7 +17,13 @@ export function DashboardTab({ tab }: DashboardTabProps) {
 
   useEffect(() => {
     if (tabState) return
-    void coordinator.ensureHydrated(tab.tabId)
+    coordinator.ensureHydrated(tab.tabId)
+      .catch(() => {
+        // Hydration failed (e.g. 404 — payload never persisted).
+        // Clear loading so the "not found" fallback renders instead of
+        // being stuck on the loading spinner forever.
+        setLoading(false)
+      })
   }, [tab.tabId, tabState])
 
   useEffect(() => {
