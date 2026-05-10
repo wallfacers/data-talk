@@ -75,20 +75,42 @@ export function PromptComposer() {
 
 function InnerComposer() {
   const { t } = useI18n()
-  const [text, setText] = useState('')
   const { sendMessage, abort, isStreaming, canAbort } = useChannel()
   const activeSessionId = useSessionStore((s) => s.activeSessionId)
   const openSession = useSessionStore((s) => s.openSession)
   const setPendingPrompt = useSessionStore((s) => s.setPendingPrompt)
   const composerRestoreDraft = useSessionStore((s) => s.composerRestoreDraft)
   const setComposerRestoreDraft = useSessionStore((s) => s.setComposerRestoreDraft)
+  const composerDrafts = useSessionStore((s) => s.composerDrafts)
+  const setComposerDraft = useSessionStore((s) => s.setComposerDraft)
   const setPendingModelPrompt = useSessionStore((s) => s.setPendingModelPrompt)
   const activeConnectionId = useConnectionStore((s) => s.activeConnectionId)
   const setActiveConnection = useConnectionStore((s) => s.setActive)
   const hasActiveModel = useHasActiveModel()
   const sessionDataContext = useSessionDataContext(activeSessionId)
   const qc = useQueryClient()
+
+  const draftKey = activeSessionId ?? '__nosession__'
+
+  const [text, setText] = useState(() => {
+    return composerDrafts[draftKey] ?? ''
+  })
+
   const isBangQueryMode = /^!\s*(select|with)\b/i.test(text.trim())
+
+  const updateText = (value: string) => {
+    setText(value)
+    setComposerDraft(draftKey, value)
+  }
+
+  // When session switches without remount, restore the new session's draft
+  const prevDraftKeyRef = useRef(draftKey)
+  useEffect(() => {
+    if (prevDraftKeyRef.current !== draftKey) {
+      setText(composerDrafts[draftKey] ?? '')
+      prevDraftKeyRef.current = draftKey
+    }
+  }, [draftKey, composerDrafts])
 
   useEffect(() => {
     if (!activeSessionId || !composerRestoreDraft) return
@@ -122,7 +144,7 @@ function InnerComposer() {
             createdSessionId = sess.id
             sessionId = sess.id
           } catch (err) {
-            setText(trimmed)
+            updateText(trimmed)
             showErrorToast(normalizeError(err))
             return
           }
@@ -146,7 +168,7 @@ function InnerComposer() {
             openSession(sessionId, false)
             invalidateSessionLists(qc)
           }
-          setText('')
+          updateText('')
         } catch (err) {
           if (createdSessionId) {
             try {
@@ -156,7 +178,7 @@ function InnerComposer() {
               // best-effort cleanup
             }
           }
-          setText(trimmed)
+          updateText(trimmed)
           showErrorToast(normalizeError(err))
         }
         return
@@ -185,7 +207,7 @@ function InnerComposer() {
             createdSessionId = sess.id
             sessionId = sess.id
           } catch (err) {
-            setText(trimmed)
+            updateText(trimmed)
             showErrorToast(normalizeError(err))
             return
           }
@@ -194,7 +216,7 @@ function InnerComposer() {
         if (!bangSessionId) return
 
         try {
-          setText('')
+          updateText('')
           const createdAt = Date.now()
           const persisted = await createBangQueryMessage(bangSessionId, trimmed, createdAt)
           useChatPartsStore.getState().upsertInfo(bangSessionId, {
@@ -231,7 +253,7 @@ function InnerComposer() {
             }
           }
           showErrorToast(normalizeError(err))
-          setText(trimmed) // restore user input on failure
+          updateText(trimmed) // restore user input on failure
         }
         return
       }
@@ -244,7 +266,7 @@ function InnerComposer() {
         setPendingModelPrompt(true)
         return
       }
-      setText('')
+      updateText('')
       setPendingPrompt(trimmed)
       try {
         // 使用用户输入的文本的前 50 个字符作为初始标题，实现标题快速填充
@@ -258,15 +280,15 @@ function InnerComposer() {
         // resume hook 会在 activeSessionId 就绪后消费 pendingPrompt
       } catch (err) {
         setPendingPrompt(null)
-        setText(trimmed)
+        updateText(trimmed)
         showErrorToast(normalizeError(err))
       }
       return
     }
 
-    setText('')
+    updateText('')
     const ok = await sendMessage([createTextPart(activeSessionId, trimmed)])
-    if (!ok) setText(trimmed)
+    if (!ok) updateText(trimmed)
   }
 
   const onSubmit = async (e: FormEvent) => {
@@ -284,11 +306,15 @@ function InnerComposer() {
   // 使 ref 同步最新值，供 window 事件 handler 避开闭包陷阱
   const textRef = useRef<string>('')
   const submitRef = useRef<(raw: string) => Promise<void>>(submitText)
+  const updateTextRef = useRef(updateText)
   useEffect(() => {
     textRef.current = text
   }, [text])
   useEffect(() => {
     submitRef.current = submitText
+  })
+  useEffect(() => {
+    updateTextRef.current = updateText
   })
 
   useEffect(() => {
@@ -299,7 +325,7 @@ function InnerComposer() {
       const current = textRef.current
       if (!current.trim()) {
         // composer 空：填入并自动 submit（用 override 绕过 stale state）
-        setText(sql)
+        updateTextRef.current(sql)
         textRef.current = sql
         queueMicrotask(() => {
           void submitRef.current(sql)
@@ -307,7 +333,7 @@ function InnerComposer() {
       } else {
         // 非空：追加，不 submit
         const next = current.endsWith('\n') ? current + sql : current + '\n' + sql
-        setText(next)
+        updateTextRef.current(next)
         textRef.current = next
         toast(t('chat.appendSql'))
       }
@@ -319,7 +345,7 @@ function InnerComposer() {
       const current = textRef.current
       const prefix = t('chat.explainSqlPrefix')
       const next = current ? current + '\n' + prefix + sql : prefix + sql
-      setText(next)
+      updateTextRef.current(next)
       textRef.current = next
     }
     window.addEventListener(SQL_EXECUTE_EVENT, onExecute)
@@ -345,7 +371,7 @@ function InnerComposer() {
       >
         <InputGroupTextarea
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => updateText(e.target.value)}
           onKeyDown={onKey}
           placeholder={t('chat.promptPlaceholder')}
           className={cn(

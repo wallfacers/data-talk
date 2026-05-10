@@ -22,6 +22,7 @@ type SessionState = {
   dataContextBySession: Map<string, SessionDataContext>
   pendingPrompt: string | null
   composerRestoreDraft: { sessionId: string; text: string } | null
+  composerDrafts: Record<string, string>
   pendingModelPrompt: boolean
   pendingConnectionPrompt: boolean
   pendingActionAfterConnectionPick: { kind: 'send' } | null
@@ -35,6 +36,7 @@ type SessionState = {
   clearSessionDataContext: (sessionId: string) => void
   setPendingPrompt: (text: string | null) => void
   setComposerRestoreDraft: (draft: { sessionId: string; text: string } | null) => void
+  setComposerDraft: (key: string, text: string) => void
   setPendingModelPrompt: (on: boolean) => void
   setPendingConnectionPrompt: (on: boolean) => void
   setPendingActionAfterConnectionPick: (action: { kind: 'send' } | null) => void
@@ -49,6 +51,7 @@ export const useSessionStore = create<SessionState>()(
       dataContextBySession: new Map(),
       pendingPrompt: null,
       composerRestoreDraft: null,
+      composerDrafts: {},
       pendingModelPrompt: false,
       pendingConnectionPrompt: false,
       pendingActionAfterConnectionPick: null,
@@ -103,6 +106,10 @@ export const useSessionStore = create<SessionState>()(
 
       setPendingPrompt: (text) => set({ pendingPrompt: text }),
       setComposerRestoreDraft: (draft) => set({ composerRestoreDraft: draft }),
+      setComposerDraft: (key, text) => set((s) => {
+        if (s.composerDrafts[key] === text) return s
+        return { composerDrafts: { ...s.composerDrafts, [key]: text } }
+      }),
       setPendingModelPrompt: (on) => set({ pendingModelPrompt: on }),
       setPendingConnectionPrompt: (on) => set({ pendingConnectionPrompt: on }),
       setPendingActionAfterConnectionPick: (action) => set({ pendingActionAfterConnectionPick: action }),
@@ -110,8 +117,7 @@ export const useSessionStore = create<SessionState>()(
     {
       name: 'data-talk.session',
       storage: createJSONStorage(() => localStorage),
-      // Only the active session id survives reload; Maps/transient state stay in-memory.
-      partialize: (s) => ({ activeSessionId: s.activeSessionId }),
+      partialize: (s) => ({ activeSessionId: s.activeSessionId, composerDrafts: s.composerDrafts }),
     },
   ),
 )
