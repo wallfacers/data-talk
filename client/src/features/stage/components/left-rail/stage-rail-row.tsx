@@ -51,7 +51,11 @@ export function StageRailRow({ tab, active, inWorkset, onClick, trailingMenu }: 
       </span>
 
       {trailingMenu ? (
-        <span className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-[180ms]">
+        <span
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-[180ms]"
+        >
           {trailingMenu}
         </span>
       ) : null}

@@ -449,8 +449,8 @@ describe('WorkspaceAdapter', () => {
     const archived = await adapter.exec('archive', { target: tabId })
     const unarchived = await adapter.exec('archive', { target: tabId, archived: false })
 
-    expect(archived).toEqual({ success: true })
-    expect(unarchived).toEqual({ success: true })
+    expect(archived).toEqual({ success: true, data: { succeeded: [tabId] } })
+    expect(unarchived).toEqual({ success: true, data: { succeeded: [tabId] } })
     expect(useStageStore.getState().openTabIds.has(tabId)).toBe(false)
     expect(useStageStore.getState().tabs).toEqual([
       expect.objectContaining({ tabId, archived: false, archivedAt: null }),
@@ -464,7 +464,7 @@ describe('WorkspaceAdapter', () => {
 
     const trashed = await adapter.exec('trash', { target: tabId })
 
-    expect(trashed).toEqual({ success: true })
+    expect(trashed).toEqual({ success: true, data: { succeeded: [tabId] } })
     expect(useStageStore.getState().tabs).toHaveLength(0)
     expect(useStageStore.getState().openTabIds.has(tabId)).toBe(false)
   })
@@ -572,5 +572,117 @@ describe('WorkspaceAdapter', () => {
       connectionName: 'warehouse-prod',
     })
     expect(useConnectionStore.getState().activeConnectionId).toBe('c9')
+  })
+
+  describe('batch operations', () => {
+    it('batch open creates multiple tabs and returns tabIds', async () => {
+      const adapter = new WorkspaceAdapter(() => 's1')
+      const res = await adapter.exec('open', {
+        tabs: [
+          { type: 'er_canvas', title: 'ER 1' },
+          { type: 'dashboard', title: 'Dashboard 1' },
+        ],
+      })
+
+      expect(res.success).toBe(true)
+      const data = res.data as { tabIds: string[] }
+      expect(data.tabIds).toHaveLength(2)
+      const tabIds = useStageStore.getState().tabs.map((t) => t.tabId)
+      expect(tabIds).toEqual(data.tabIds)
+    })
+
+    it('batch open falls back to single-open format when tabs is absent', async () => {
+      const adapter = new WorkspaceAdapter(() => 's1')
+      const res = await adapter.exec('open', { type: 'er_canvas', title: 'Single' })
+
+      expect(res.success).toBe(true)
+      const data = res.data as { tabId: string }
+      expect(typeof data.tabId).toBe('string')
+    })
+
+    it('batch archive archives multiple tabs', async () => {
+      const adapter = new WorkspaceAdapter(() => 's1')
+      await adapter.exec('open', { type: 'er_canvas', title: 'A' })
+      await adapter.exec('open', { type: 'dashboard', title: 'B' })
+      const ids = useStageStore.getState().tabs.map((t) => t.tabId)
+
+      const res = await adapter.exec('archive', { targets: ids })
+
+      expect(res.success).toBe(true)
+      const data = res.data as { succeeded: string[] }
+      expect(data.succeeded).toHaveLength(2)
+      for (const t of useStageStore.getState().tabs) {
+        expect(t.archived).toBe(true)
+      }
+    })
+
+    it('batch archive skips non-existent tabs', async () => {
+      const adapter = new WorkspaceAdapter(() => 's1')
+      await adapter.exec('open', { type: 'er_canvas', title: 'A' })
+      const [realId] = useStageStore.getState().tabs.map((t) => t.tabId)
+
+      const res = await adapter.exec('archive', { targets: [realId, 'ghost'] })
+
+      expect(res.success).toBe(true)
+      const data = res.data as { succeeded: string[] }
+      expect(data.succeeded).toEqual([realId])
+    })
+
+    it('batch trash deletes multiple tabs', async () => {
+      const adapter = new WorkspaceAdapter(() => 's1')
+      await adapter.exec('open', { type: 'er_canvas', title: 'A' })
+      await adapter.exec('open', { type: 'dashboard', title: 'B' })
+      const ids = useStageStore.getState().tabs.map((t) => t.tabId)
+
+      const res = await adapter.exec('trash', { targets: ids })
+
+      expect(res.success).toBe(true)
+      const data = res.data as { succeeded: string[] }
+      expect(data.succeeded).toHaveLength(2)
+      expect(useStageStore.getState().tabs).toHaveLength(0)
+    })
+
+    it('batch trash collects per-item failures', async () => {
+      const adapter = new WorkspaceAdapter(() => 's1')
+      await adapter.exec('open', { type: 'er_canvas', title: 'A' })
+      const [realId] = useStageStore.getState().tabs.map((t) => t.tabId)
+
+      // Mock coordinator.delete to fail for 'ghost'
+      const { coordinator } = await import('@/features/stage/persistence/stage-persistence-bootstrap')
+      const origDelete = coordinator.delete.bind(coordinator)
+      vi.spyOn(coordinator, 'delete').mockImplementation(async (id: string) => {
+        if (id === 'ghost') throw new Error('not found')
+        return origDelete(id)
+      })
+
+      const res = await adapter.exec('trash', { targets: [realId, 'ghost'] })
+
+      expect(res.success).toBe(true) // partial success
+      const data = res.data as { succeeded: string[]; failed: { target: string; error: string }[] }
+      expect(data.succeeded).toEqual([realId])
+      expect(data.failed).toEqual([{ target: 'ghost', error: 'not found' }])
+    })
+
+    it('archive falls back to single target when targets is absent', async () => {
+      const adapter = new WorkspaceAdapter(() => 's1')
+      const opened = await adapter.exec('open', { type: 'er_canvas', title: 'A' })
+      const tabId = (opened.data as { tabId: string }).tabId
+
+      const res = await adapter.exec('archive', { target: tabId })
+
+      expect(res.success).toBe(true)
+      expect(useStageStore.getState().tabs[0]?.archived).toBe(true)
+    })
+
+    it('trash falls back to single target when targets is absent', async () => {
+      const adapter = new WorkspaceAdapter(() => 's1')
+      const opened = await adapter.exec('open', { type: 'er_canvas', title: 'A' })
+      const tabId = (opened.data as { tabId: string }).tabId
+
+      const res = await adapter.exec('trash', { target: tabId })
+
+      expect(res.success).toBe(true)
+      expect(useStageStore.getState().tabs).toHaveLength(0)
+    })
   })
 })

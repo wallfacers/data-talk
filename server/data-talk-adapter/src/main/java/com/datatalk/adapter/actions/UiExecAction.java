@@ -100,10 +100,10 @@ public class UiExecAction implements ActionHandler<Map, Map> {
                         Map.entry("action", Map.of(
                                 "type", "string",
                                 "enum", List.of(
-                                        "open", "focus", "choose_connection", "detach", "archive", "trash",
+                                        "open", "focus", "choose_connection", "detach", "archive", "trash", "rename", "pin",
                                         "open_er_inspector", "open_er_designer"
                                 ),
-                                "description", "Workspace verbs for opening, focusing, detaching, archiving, deleting tabs, and creating ER inspector / designer tabs; choose_connection only when a database-related request needs a data source."
+                                "description", "Workspace verbs for opening, focusing, detaching, archiving, deleting, renaming, pinning tabs, and creating ER inspector / designer tabs; choose_connection only when a database-related request needs a data source."
                         )),
                         Map.entry("params", Map.of(
                                 "type", "object",
@@ -142,11 +142,26 @@ public class UiExecAction implements ActionHandler<Map, Map> {
                                                 )
                                         )),
                                         Map.entry("target", Map.of("type", "string")),
+                                        Map.entry("targets", Map.of(
+                                                "type", "array",
+                                                "items", Map.of("type", "string"),
+                                                "description", "Batch alternative to `target`. Applies the action to all listed tab IDs."
+                                        )),
                                         Map.entry("preferredConnectionId", Map.of("type", "string")),
+                                        Map.entry("tabs", Map.of(
+                                                "type", "array",
+                                                "items", Map.of("type", "object"),
+                                                "description", "Batch alternative for `action=open`. Each element accepts the same fields as a single open call (type, title, connection_id, database, schema, payload)."
+                                        )),
                                         Map.entry("archived", Map.of(
                                                 "type", "boolean",
                                                 "default", Boolean.TRUE,
                                                 "description", "Only used for `action=archive`. true=archive, false=unarchive."
+                                        )),
+                                        Map.entry("pinned", Map.of(
+                                                "type", "boolean",
+                                                "default", Boolean.TRUE,
+                                                "description", "Only used for `action=pin`. true=pin, false=unpin."
                                         )),
                                         Map.entry("tables", Map.of(
                                                 "type", "array",
@@ -188,6 +203,11 @@ public class UiExecAction implements ActionHandler<Map, Map> {
                         actionRequiresParams("workspace", "detach", List.of("target")),
                         actionRequiresParams("workspace", "archive", List.of("target")),
                         actionRequiresParams("workspace", "trash", List.of("target")),
+                        actionRequiresAnyParam("workspace", "trash", List.of("target", "targets")),
+                        actionRequiresParams("workspace", "archive", List.of("target")),
+                        actionRequiresAnyParam("workspace", "archive", List.of("target", "targets")),
+                        actionRequiresParams("workspace", "rename", List.of("target", "title")),
+                        actionRequiresParams("workspace", "pin", List.of("target")),
                         actionRequiresParams("workspace", "open_er_inspector", List.of("connectionId", "tables")),
                         actionRequiresParams("workspace", "open_er_designer", List.of("dialect"))
                 )

@@ -49,6 +49,7 @@ export function StageWindow() {
   }
 
   const handleCloseTab = (tabId: string) => useStageStore.getState().detachFromWorkset(tabId)
+  const handleRenameTab = (tabId: string, title: string) => useStageStore.getState().setTabTitle(tabId, title)
   const handleCloseOthers = (tabId: string) =>
     openTabsOrdered.filter((t) => t.tabId !== tabId).forEach((t) => useStageStore.getState().detachFromWorkset(t.tabId))
   const handleCloseAll = () =>
@@ -209,6 +210,7 @@ export function StageWindow() {
               onCloseLeft={handleCloseLeft}
               onCloseRight={handleCloseRight}
               onOpenStartPage={() => setShowStartPage(true)}
+              onRename={handleRenameTab}
             />
           )}
 

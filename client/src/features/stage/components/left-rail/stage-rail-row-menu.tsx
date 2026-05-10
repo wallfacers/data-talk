@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { MoreHorizontalIcon, ExternalLinkIcon, PinIcon, PinOffIcon, ArchiveIcon, ArchiveRestoreIcon, Trash2Icon } from 'lucide-react'
+import { useState, useRef, useEffect, type KeyboardEvent } from 'react'
+import { MoreHorizontalIcon, ExternalLinkIcon, PinIcon, PinOffIcon, ArchiveIcon, ArchiveRestoreIcon, PencilIcon, Trash2Icon } from 'lucide-react'
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
@@ -8,6 +8,7 @@ import {
   AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { useI18n } from '@/i18n/use-i18n'
 import { useStageStore } from '@/stores/stage-store'
 import type { StageTab } from '@/stores/stage-store'
@@ -17,11 +18,52 @@ type Props = { tab: StageTab }
 export function StageRailRowMenu({ tab }: Props) {
   const { t } = useI18n()
   const [confirmTrashOpen, setConfirmTrashOpen] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [editTitle, setEditTitle] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const focusTab = useStageStore((s) => s.focusTab)
   const setTabPinned = useStageStore((s) => s.setTabPinned)
   const archiveTab = useStageStore((s) => s.archiveTab)
   const trashTab = useStageStore((s) => s.trashTab)
+  const setTabTitle = useStageStore((s) => s.setTabTitle)
+
+  useEffect(() => {
+    if (editing) inputRef.current?.focus()
+  }, [editing])
+
+  const commitRename = () => {
+    const trimmed = editTitle.trim()
+    if (trimmed) {
+      setTabTitle(tab.tabId, trimmed)
+    }
+    setEditing(false)
+  }
+
+  const startRename = () => {
+    setEditTitle(tab.title)
+    setEditing(true)
+  }
+
+  if (editing) {
+    return (
+      <span onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+        <Input
+          ref={inputRef}
+          value={editTitle}
+          onChange={(e) => setEditTitle(e.target.value)}
+          onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+            e.stopPropagation()
+            if (e.key === 'Enter') commitRename()
+            if (e.key === 'Escape') setEditing(false)
+          }}
+          onBlur={commitRename}
+          onClick={(e) => e.stopPropagation()}
+          className="h-6 max-w-[160px] px-1.5 py-0 text-xs"
+        />
+      </span>
+    )
+  }
 
   return (
     <>
@@ -63,6 +105,10 @@ export function StageRailRowMenu({ tab }: Props) {
           >
             {tab.archived ? <ArchiveRestoreIcon className="size-4 mr-2 text-text-muted" /> : <ArchiveIcon className="size-4 mr-2 text-text-muted" />}
             {tab.archived ? t('stage.leftRail.row.menu.unarchive') : t('stage.leftRail.row.menu.archive')}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={startRename} className="focus:bg-accent focus:text-accent-foreground">
+            <PencilIcon className="size-4 mr-2 text-text-muted" />
+            {t('common.rename')}
           </DropdownMenuItem>
           <DropdownMenuSeparator className="bg-border-subtle" />
           <DropdownMenuItem

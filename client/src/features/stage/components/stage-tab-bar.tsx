@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import {
   BarChart2Icon,
   ChevronDownIcon,
@@ -16,6 +16,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
+import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useI18n } from '@/i18n/use-i18n'
@@ -38,6 +39,7 @@ type StageTabBarProps = {
   onCloseLeft?: (tabId: string) => void
   onCloseRight?: (tabId: string) => void
   onOpenStartPage?: () => void
+  onRename?: (tabId: string, title: string) => void
 }
 
 function getTabIcon(type?: string, isActive?: boolean) {
@@ -90,12 +92,33 @@ export function StageTabBar({
   onCloseLeft,
   onCloseRight,
   onOpenStartPage,
+  onRename,
 }: StageTabBarProps) {
   const { t } = useI18n()
   const [overflowOpen, setOverflowOpen] = useState(false)
   const [hasOverflow, setHasOverflow] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editTitle, setEditTitle] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
   const tabScrollRef = useRef<HTMLDivElement | null>(null)
   const overflowRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (editingId) inputRef.current?.focus()
+  }, [editingId])
+
+  const startRename = (tabId: string, currentTitle: string) => {
+    setEditingId(tabId)
+    setEditTitle(currentTitle)
+  }
+
+  const commitRename = () => {
+    const trimmed = editTitle.trim()
+    if (editingId && trimmed) {
+      onRename?.(editingId, trimmed)
+    }
+    setEditingId(null)
+  }
 
   useEffect(() => {
     const updateOverflow = () => {
@@ -188,6 +211,7 @@ export function StageTabBar({
             const hasRightTabs = index < tabs.length - 1
             const canCloseCurrent = tabs.length > 0
             const canCloseAll = tabs.length > 0
+            const isEditing = editingId === tab.tabId
             return (
               <ContextMenu key={tab.tabId}>
                 <ContextMenuTrigger
@@ -209,10 +233,30 @@ export function StageTabBar({
                           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing [&_svg]:shrink-0',
                         )}
                         onClick={() => onSelect?.(tab.tabId)}
+                        onDoubleClick={(e) => {
+                          e.stopPropagation()
+                          startRename(tab.tabId, tab.title)
+                        }}
                       >
                         {getTabIcon(tab.type, isActive)}
-                        <span className="min-w-0 truncate">{tab.title}</span>
-                        {tab.dirty ? (
+                        {isEditing ? (
+                          <Input
+                            ref={inputRef}
+                            value={editTitle}
+                            onChange={(e) => setEditTitle(e.target.value)}
+                            onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+                              e.stopPropagation()
+                              if (e.key === 'Enter') commitRename()
+                              if (e.key === 'Escape') setEditingId(null)
+                            }}
+                            onBlur={commitRename}
+                            onClick={(e) => e.stopPropagation()}
+                            className="h-6 max-w-[160px] px-1.5 py-0 text-[13px]"
+                          />
+                        ) : (
+                          <span className="min-w-0 truncate">{tab.title}</span>
+                        )}
+                        {tab.dirty && !isEditing ? (
                           <span
                             data-testid="dirty-indicator"
                             aria-hidden

@@ -68,7 +68,7 @@ function resolveTarget(input: { object?: string; target?: string; params?: unkno
 }
 
 const MUTATING_EXEC = new Set([
-  'open', 'focus', 'detach', 'archive', 'trash',
+  'open', 'focus', 'detach', 'archive', 'trash', 'rename', 'pin',
   'set_context', 'apply_text_edits', 'replace_content',
   'open_er_inspector', 'open_er_designer',
   'refresh', 'auto_layout', 'fit_view', 'add_neighbors', 'fork_to_designer',

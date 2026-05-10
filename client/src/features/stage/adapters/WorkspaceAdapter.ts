@@ -57,6 +57,22 @@ const ACTIONS: ActionDef[] = [
   { name: 'trash', description: 'Permanently delete a tab', paramsSchema: {
     type: 'object', required: ['target'], properties: { target: { type: 'string' } },
   } },
+  { name: 'rename', description: 'Rename a tab', paramsSchema: {
+    type: 'object',
+    required: ['target', 'title'],
+    properties: {
+      target: { type: 'string' },
+      title: { type: 'string' },
+    },
+  } },
+  { name: 'pin', description: 'Pin or unpin a tab', paramsSchema: {
+    type: 'object',
+    required: ['target'],
+    properties: {
+      target: { type: 'string' },
+      pinned: { type: 'boolean', default: true },
+    },
+  } },
   { name: 'focus', description: 'Focus a tab', paramsSchema: {
     type: 'object', required: ['target'], properties: { target: { type: 'string' } },
   } },
@@ -367,8 +383,11 @@ export class WorkspaceAdapter implements UIObject {
       schema?: string
       payload?: unknown
       target?: string
+      targets?: string[]
+      tabs?: unknown[]
       preferredConnectionId?: string
       archived?: boolean
+      pinned?: boolean
     }
     const store = useStageStore.getState()
     switch (action) {
@@ -477,45 +496,51 @@ export class WorkspaceAdapter implements UIObject {
         }
       }
       case 'open': {
-        if (!p.type) return execError('Missing param: type')
+        const batch = Array.isArray(p.tabs) && p.tabs.length > 0
+        const items = batch ? p.tabs! : [p]
         const sid = this.getSessionId()
-        if (p.type === 'query_editor') {
-          const payload = normalizeQueryEditorPayload(p.payload)
-          const connectionId = p.connection_id ?? payload.connectionId ?? undefined
-          const connectionName = p.connection_id && payload.connectionId !== p.connection_id
-            ? undefined
-            : payload.connectionName ?? undefined
-          const database = p.database ?? payload.database ?? undefined
-          const schema = p.schema ?? payload.schema ?? undefined
-          const { tabId } = store.openQueryEditor({
-            sessionId: sid,
-            baseTitle: p.title ?? p.type,
-            openMode: connectionId ? 'reuse_by_resource_context' : 'always_new',
-            entryMode: 'ui_exec',
-            initialContent: payload.initialSql,
-            autoRun: payload.autoRun,
-            connectionId,
-            connectionName,
-            database,
-            schema,
-          })
-          store.openStage()
-          return { success: true, data: { tabId } }
+        const tabIds: string[] = []
+        for (const raw of items) {
+          const item = (raw ?? {}) as typeof p
+          if (!item.type) return execError('Missing param: type')
+          if (item.type === 'query_editor') {
+            const payload = normalizeQueryEditorPayload(item.payload)
+            const connectionId = item.connection_id ?? payload.connectionId ?? undefined
+            const connectionName = item.connection_id && payload.connectionId !== item.connection_id
+              ? undefined
+              : payload.connectionName ?? undefined
+            const database = item.database ?? payload.database ?? undefined
+            const schema = item.schema ?? payload.schema ?? undefined
+            const { tabId } = store.openQueryEditor({
+              sessionId: sid,
+              baseTitle: item.title ?? item.type,
+              openMode: connectionId ? 'reuse_by_resource_context' : 'always_new',
+              entryMode: 'ui_exec',
+              initialContent: payload.initialSql,
+              autoRun: payload.autoRun,
+              connectionId,
+              connectionName,
+              database,
+              schema,
+            })
+            tabIds.push(tabId)
+          } else {
+            const tabId = `${item.type}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+            const isWorkspaceScoped = WORKSPACE_SCOPE_TYPES.has(item.type)
+            if (!isWorkspaceScoped && !sid) return execError('Cannot open session-scoped tab without active session')
+            const tab: StageTab = {
+              tabId, type: item.type, title: item.title ?? item.type,
+              connectionId: item.connection_id, database: item.database, schema: item.schema,
+              originSessionId: sid ?? undefined,
+              payload: item.payload ?? {},
+              createdAt: Date.now(),
+            }
+            store.openTab(tab)
+            tabIds.push(tabId)
+          }
         }
-
-        const tabId = `${p.type}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-        const isWorkspaceScoped = WORKSPACE_SCOPE_TYPES.has(p.type)
-        if (!isWorkspaceScoped && !sid) return execError('Cannot open session-scoped tab without active session')
-        const tab: StageTab = {
-          tabId, type: p.type, title: p.title ?? p.type,
-          connectionId: p.connection_id, database: p.database, schema: p.schema,
-          originSessionId: sid ?? undefined,
-          payload: p.payload ?? {},
-          createdAt: Date.now(),
-        }
-        store.openTab(tab)
-        if (sid) store.openStage()
-        return { success: true, data: { tabId } }
+        store.openStage()
+        return { success: true, data: batch ? { tabIds } : { tabId: tabIds[0] } }
       }
       case 'detach': {
         if (!p.target) return execError('Missing param: target')
@@ -523,13 +548,46 @@ export class WorkspaceAdapter implements UIObject {
         return { success: true }
       }
       case 'archive': {
-        if (!p.target) return execError('Missing param: target')
-        store.archiveTab(p.target, p.archived ?? true)
-        return { success: true }
+        const archiveTargets = p.targets ?? (p.target ? [p.target] : null)
+        if (!archiveTargets) return execError('Missing param: target or targets')
+        const succeeded: string[] = []
+        for (const t of archiveTargets) {
+          if (store.findTab(t)) {
+            store.archiveTab(t, p.archived ?? true)
+            succeeded.push(t)
+          }
+        }
+        return { success: true, data: { succeeded } }
       }
       case 'trash': {
+        const trashTargets = p.targets ?? (p.target ? [p.target] : null)
+        if (!trashTargets) return execError('Missing param: target or targets')
+        const succeeded: string[] = []
+        const failed: { target: string; error: string }[] = []
+        for (const t of trashTargets) {
+          try {
+            await store.trashTab(t)
+            succeeded.push(t)
+          } catch (e) {
+            failed.push({ target: t, error: e instanceof Error ? e.message : String(e) })
+          }
+        }
+        if (failed.length === 0) return { success: true, data: { succeeded } }
+        return { success: succeeded.length > 0, data: { succeeded, failed } }
+      }
+      case 'rename': {
         if (!p.target) return execError('Missing param: target')
-        await store.trashTab(p.target)
+        if (!p.title) return execError('Missing param: title')
+        const renameTab = store.findTab(p.target)
+        if (!renameTab) return execError({ code: 'tab_not_found', message: `Tab not found: ${p.target}` })
+        store.setTabTitle(p.target, p.title)
+        return { success: true }
+      }
+      case 'pin': {
+        if (!p.target) return execError('Missing param: target')
+        const pinTab = store.findTab(p.target)
+        if (!pinTab) return execError({ code: 'tab_not_found', message: `Tab not found: ${p.target}` })
+        store.setTabPinned(p.target, p.pinned ?? true)
         return { success: true }
       }
       case 'focus': {

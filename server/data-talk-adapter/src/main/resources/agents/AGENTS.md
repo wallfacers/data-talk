@@ -251,7 +251,7 @@ Registered UI actions:
   Patch a `query_editor`, `er_inspector`, or `er_designer` through JSON Patch `ops`. Add and replace ops require `value`; remove omits `value`. Query-editor text patches use `/content`, `/connectionId`, `/database`, and `/schema`; ER tab patches use the ER tab protocol path whitelist.
 
 - `datatalk_ui_exec`
-  Execute supported actions on `workspace`, `query_editor`, `er_inspector`, or `er_designer` through top-level `object`, optional `target`, `action`, and `params`. `apply_text_edits` requires `params.baseVersion` and every entry in `params.edits` requires `expectedText`. Workspace verbs include `open`, `focus`, `choose_connection`, `detach`, `archive(archived?: boolean = true)`, `trash`, `open_er_inspector`, and `open_er_designer`.
+  Execute supported actions on `workspace`, `query_editor`, `er_inspector`, or `er_designer` through top-level `object`, optional `target`, `action`, and `params`. `apply_text_edits` requires `params.baseVersion` and every entry in `params.edits` requires `expectedText`. Workspace verbs include `open`, `focus`, `choose_connection`, `detach`, `archive(archived?: boolean = true)`, `trash`, `rename`, `pin(pinned?: boolean = true)`, `open_er_inspector`, and `open_er_designer`. `open`, `archive`, and `trash` also accept batch params (`tabs` or `targets`) to operate on multiple items in one call.
 
 ## Exact UI Contract
 
@@ -281,8 +281,11 @@ Registered UI actions:
 `datatalk_ui_exec` always uses top-level `object`, `action`, and `params`.
 Required `params` by action:
 
-- `workspace/open`: `params.type`
-- `workspace/focus`, `workspace/detach`, `workspace/archive`, `workspace/trash`: `params.target`
+- `workspace/open`: `params.type` (or batch via `params.tabs` array)
+- `workspace/focus`, `workspace/detach`: `params.target`
+- `workspace/archive`, `workspace/trash`: `params.target` (or batch via `params.targets` array)
+- `workspace/rename`: `params.target` and `params.title`
+- `workspace/pin`: `params.target` (optional `params.pinned`, defaults to true)
 - `workspace/open_er_inspector`: `params.connectionId` and `params.tables`
 - `workspace/open_er_designer`: `params.dialect`
 - `query_editor/apply_text_edits`: `params.baseVersion` and `params.edits`; each edit requires `range`, `text`, and `expectedText`
@@ -292,12 +295,14 @@ Required `params` by action:
 
 For the workspace (uses snake_case `params.connection_id`):
 
-- `open` (`params.type=query_editor`): opens a tab. Optional `connection_id`, `database`, `schema`, `title`, `payload`. `params.payload` belongs to the query-editor open request and may include SQL text via `initialSql`, `content`, or legacy `sql` (`initialSql` wins over `content`, `content` wins over `sql`), plus `autoRun`, `connectionId`, `connectionName`, `database`, and `schema` for initial execution/context metadata.
+- `open` (`params.type=query_editor`): opens a tab. Optional `connection_id`, `database`, `schema`, `title`, `payload`. `params.payload` belongs to the query-editor open request and may include SQL text via `initialSql`, `content`, or legacy `sql` (`initialSql` wins over `content`, `content` wins over `sql`), plus `autoRun`, `connectionId`, `connectionName`, `database`, and `schema` for initial execution/context metadata. **Batch**: pass `params.tabs` (array of open specs) to open multiple tabs; returns `{ tabIds }`.
 - `choose_connection`: prompts the connection chooser. Optional `preferredConnectionId`.
 - `focus(target)`: ensures the tab is in the workset and active, and reveals the stage panel if the user had it hidden. Archived tabs return `tab_archived`.
 - `detach(target)`: removes from workset, keeps in library.
-- `archive(target, archived?=true)`: hides the tab; pass `archived=false` to unarchive.
-- `trash(target)`: permanent delete; only when the user explicitly asks.
+- `archive(target, archived?=true)`: hides the tab; pass `archived=false` to unarchive. **Batch**: pass `params.targets` (array of tab IDs) to archive/unarchive multiple tabs; returns `{ succeeded }`.
+- `trash(target)`: permanent delete; only when the user explicitly asks. **Batch**: pass `params.targets` to delete multiple tabs; returns `{ succeeded, failed }` where `failed` lists per-item errors.
+- `rename(target, title)`: renames a tab. Returns `{ success: true }`.
+- `pin(target, pinned?=true)`: pins or unpins a tab. Pass `pinned=false` to unpin. Returns `{ success: true }`.
 - State includes `open`, `maximized`, `tabs`, and `activeTabId`. `open` indicates whether the stage panel is currently visible. `maximized` indicates whether it is expanded to full height. Each query-editor tab entry exposes `tabId`, `type`, `title`, `connectionId`, `connectionName`, `database`, `schema`, `useSessionContext`, `contextSource`, `contextOverride`, and `limit`.
 
 For a query editor:
