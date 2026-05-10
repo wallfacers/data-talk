@@ -1,0 +1,639 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DataTalk — 项目概览</title>
+<style>
+  :root {
+    --ivory:   #FAF9F5;
+    --slate:   #141413;
+    --clay:    #D97757;
+    --clay-d:  #B85C3E;
+    --oat:     #E3DACC;
+    --olive:   #788C5D;
+    --rust:    #B04A3F;
+    --g50:     #F0EEE6;
+    --g200:    #D1CFC5;
+    --g500:    #87867F;
+    --g800:    #3D3D3A;
+    --white:   #FFFFFF;
+
+    --serif: ui-serif, Georgia, "Times New Roman", serif;
+    --sans:  system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono:  ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+    --radius-panel: 12px;
+    --radius-row:   8px;
+    --border: 1.5px solid var(--g200);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--ivory);
+    color: var(--g800);
+    font-size: 15px;
+    line-height: 1.6;
+    padding: 56px 24px 120px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 920px;
+    margin: 0 auto;
+  }
+
+  /* ── Header ── */
+  header {
+    margin-bottom: 40px;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--g500);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 20px;
+    height: 1.5px;
+    background: var(--clay);
+  }
+  h1 {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 42px;
+    line-height: 1.12;
+    letter-spacing: -0.015em;
+    color: var(--slate);
+    margin-bottom: 14px;
+  }
+  h1 em {
+    font-style: italic;
+    color: var(--clay);
+  }
+  .subtitle {
+    font-size: 16px;
+    color: var(--g500);
+    max-width: 600px;
+  }
+
+  /* ── TL;DR ── */
+  .tldr {
+    background: var(--slate);
+    color: var(--ivory);
+    border-radius: var(--radius-panel);
+    padding: 24px 28px;
+    margin-bottom: 52px;
+  }
+  .tldr-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--oat);
+    margin-bottom: 10px;
+  }
+  .tldr p {
+    font-size: 15.5px;
+    line-height: 1.65;
+    margin: 0;
+  }
+  .tldr code {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: rgba(250,249,245,0.12);
+    padding: 1px 6px;
+    border-radius: 4px;
+  }
+
+  /* ── Sections ── */
+  section {
+    margin-bottom: 56px;
+    scroll-margin-top: 24px;
+  }
+  h2 {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 26px;
+    letter-spacing: -0.01em;
+    color: var(--slate);
+    margin-bottom: 6px;
+  }
+  hr.rule {
+    border: none;
+    border-top: 1px solid var(--g200);
+    margin: 0 0 24px;
+  }
+  h3 {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 19px;
+    color: var(--slate);
+    margin: 28px 0 10px;
+  }
+
+  /* ── Architecture SVG ── */
+  .arch-wrap {
+    background: var(--white);
+    border: var(--border);
+    border-radius: var(--radius-panel);
+    padding: 32px 24px;
+    margin: 20px 0;
+    overflow-x: auto;
+  }
+  .arch-wrap svg {
+    display: block;
+    margin: 0 auto;
+    max-width: 100%;
+  }
+  .arch-wrap svg text {
+    font-family: var(--sans);
+  }
+
+  /* ── Layer cards ── */
+  .layers {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+    margin: 20px 0;
+  }
+  .layer-card {
+    background: var(--white);
+    border: var(--border);
+    border-radius: var(--radius-panel);
+    padding: 20px 22px;
+  }
+  .layer-card .layer-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--clay);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+  }
+  .layer-card h4 {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 18px;
+    color: var(--slate);
+    margin-bottom: 6px;
+  }
+  .layer-card p {
+    font-size: 13.5px;
+    color: var(--g500);
+    line-height: 1.5;
+  }
+  .layer-card code {
+    font-family: var(--mono);
+    font-size: 12px;
+    background: var(--g50);
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: var(--clay-d);
+  }
+
+  /* ── Collapsible steps ── */
+  .step {
+    border: var(--border);
+    border-radius: var(--radius-panel);
+    background: var(--white);
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  .step-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 20px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: var(--sans);
+    font-size: 15px;
+    color: var(--slate);
+    text-align: left;
+  }
+  .step-toggle:hover { background: var(--g50); }
+  .step-toggle .arrow {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--clay);
+    transition: transform 150ms ease;
+    flex-shrink: 0;
+  }
+  .step-body {
+    display: none;
+    padding: 0 20px 18px 42px;
+    font-size: 14px;
+    color: var(--g800);
+    line-height: 1.65;
+  }
+  .step-body.open { display: block; }
+  .step-body p { margin-bottom: 8px; }
+  .step-body code {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: var(--g50);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+  .step-body ul {
+    list-style: none;
+    padding: 0;
+  }
+  .step-body li {
+    position: relative;
+    padding-left: 18px;
+    margin-bottom: 6px;
+  }
+  .step-body li::before {
+    content: "";
+    position: absolute;
+    left: 2px;
+    top: 8px;
+    width: 5px;
+    height: 5px;
+    background: var(--g500);
+    border-radius: 2px;
+  }
+
+  /* ── Tech stack table ── */
+  .tech-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--white);
+    border: var(--border);
+    border-radius: var(--radius-panel);
+    overflow: hidden;
+  }
+  .tech-table th {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--g500);
+    text-align: left;
+    padding: 12px 20px;
+    background: var(--g50);
+    border-bottom: var(--border);
+  }
+  .tech-table td {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--g50);
+    font-size: 14px;
+  }
+  .tech-table tr:last-child td { border-bottom: none; }
+  .tech-table td:first-child {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--clay-d);
+    white-space: nowrap;
+  }
+
+  /* ── Pills ── */
+  .pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 16px 0;
+  }
+  .pill {
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    border: var(--border);
+    color: var(--g800);
+    background: var(--white);
+  }
+
+  /* ── Commands ── */
+  .cmd-block {
+    background: var(--slate);
+    color: var(--ivory);
+    border-radius: var(--radius-row);
+    padding: 14px 18px;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.7;
+    margin: 10px 0;
+    overflow-x: auto;
+  }
+  .cmd-block .cmt { color: var(--g500); }
+  .cmd-block .hl { color: var(--clay); }
+
+  /* ── FAQ ── */
+  .faq-item {
+    margin-bottom: 14px;
+  }
+  .faq-q {
+    font-weight: 600;
+    color: var(--slate);
+    margin-bottom: 4px;
+  }
+  .faq-a {
+    color: var(--g800);
+    padding-left: 16px;
+    border-left: 2px solid var(--g200);
+  }
+
+  /* ── Footer ── */
+  footer {
+    margin-top: 72px;
+    border-top: 1.5px solid var(--g200);
+    padding-top: 28px;
+    font-size: 13px;
+    color: var(--g500);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  footer .k {
+    font-family: var(--serif);
+    font-style: italic;
+    color: var(--g800);
+    font-size: 15px;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="eyebrow">Project Overview</div>
+    <h1>DataTalk — AI 驱动的 <em>智能数据库协作</em>平台</h1>
+    <p class="subtitle">Tauri 桌面应用 + Spring Boot 后端 + OpenCode AI 服务，三层架构，通过自然语言与数据库对话。</p>
+  </header>
+
+  <!-- TL;DR -->
+  <div class="tldr">
+    <div class="tldr-label">TL;DR</div>
+    <p>
+      DataTalk 是一个桌面数据库协作工具。你在聊天框里用自然语言提问，后端通过 <code>OpenCode</code> 协议与 AI 服务通信，
+      AI 生成 SQL 并执行，结果以表格、图表或 ER 图的形式呈现在前端。
+      支持 MySQL、PostgreSQL、H2 等数据库。技术栈：<code>Tauri v2</code> + <code>React 19</code> + <code>Spring Boot 3.5</code> + <code>Java 21</code>。
+    </p>
+  </div>
+
+  <!-- Architecture -->
+  <section>
+    <h2>系统架构</h2>
+    <hr class="rule">
+    <p>三层分离：桌面端 → 后端 → AI 服务，每层之间通过 HTTP（Streamable HTTP + SSE）通信。</p>
+
+    <div class="arch-wrap">
+      <svg viewBox="0 0 800 180" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#D97757"/></marker>
+          <marker id="ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#87867F"/></marker>
+        </defs>
+
+        <!-- Desktop -->
+        <rect x="10" y="30" width="200" height="120" rx="10" fill="#fff" stroke="#D1CFC5" stroke-width="1.5"/>
+        <text x="110" y="80" text-anchor="middle" font-family="ui-serif,Georgia,serif" font-size="17" fill="#141413" font-weight="500">Tauri Desktop</text>
+        <text x="110" y="100" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#87867F">React 19 + Vite</text>
+        <text x="110" y="120" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#87867F">Zustand + TanStack</text>
+        <text x="110" y="140" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#87867F">shadcn/ui + Recharts</text>
+
+        <!-- Arrow Desktop → Backend -->
+        <line x1="215" y1="75" x2="295" y2="75" stroke="#D97757" stroke-width="2" marker-end="url(#ah)"/>
+        <text x="255" y="66" text-anchor="middle" font-size="10" fill="#D97757" font-family="ui-monospace,monospace">HTTP/SSE</text>
+
+        <!-- Backend -->
+        <rect x="300" y="20" width="200" height="140" rx="10" fill="#fff" stroke="#D1CFC5" stroke-width="1.5"/>
+        <text x="400" y="65" text-anchor="middle" font-family="ui-serif,Georgia,serif" font-size="17" fill="#141413" font-weight="500">Spring Boot 3.5</text>
+        <text x="400" y="88" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#87867F">Java 21 · 虚拟线程</text>
+        <text x="400" y="108" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#87867F">JdbcTemplate · Flyway</text>
+        <text x="400" y="128" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#87867F">SQLite（元数据）</text>
+        <text x="400" y="148" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#87867F">动态 JDBC（用户库）</text>
+
+        <!-- Arrow Backend → AI -->
+        <line x1="505" y1="75" x2="585" y2="75" stroke="#87867F" stroke-width="2" marker-end="url(#ag)"/>
+        <text x="545" y="66" text-anchor="middle" font-size="10" fill="#87867F" font-family="ui-monospace,monospace">OpenCode</text>
+
+        <!-- AI Service -->
+        <rect x="590" y="35" width="200" height="110" rx="10" fill="#141413"/>
+        <text x="690" y="75" text-anchor="middle" font-family="ui-serif,Georgia,serif" font-size="17" fill="#FAF9F5" font-weight="500">OpenCode AI</text>
+        <text x="690" y="98" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#87867F">JSON-RPC</text>
+        <text x="690" y="118" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#87867F">SQL 生成 + 执行</text>
+        <text x="690" y="138" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#D97757">Streamable HTTP</text>
+      </svg>
+    </div>
+  </section>
+
+  <!-- Backend layers -->
+  <section>
+    <h2>后端分层架构</h2>
+    <hr class="rule">
+    <p>严格依赖方向：domain ← application ← infrastructure ← adapter（外层依赖内层，不可反向）。</p>
+    <div class="layers">
+      <div class="layer-card">
+        <div class="layer-num">01</div>
+        <h4>Domain</h4>
+        <p>领域模型：<code>DtEvent</code> sealed interface（22 种事件类型）、<code>Part</code>、<code>Action</code>、<code>Ontology</code></p>
+      </div>
+      <div class="layer-card">
+        <div class="layer-num">02</div>
+        <h4>Application</h4>
+        <p>应用服务：<code>SessionBus</code>、<code>OpenCodeGateway</code>、Action 注册与调度</p>
+      </div>
+      <div class="layer-card">
+        <div class="layer-num">03</div>
+        <h4>Infrastructure</h4>
+        <p>基础设施：JDBC 实现、OpenCode HTTP 客户端、数据源连接管理</p>
+      </div>
+      <div class="layer-card">
+        <div class="layer-num">04</div>
+        <h4>Adapter</h4>
+        <p>适配层：REST 控制器、Spring 配置、应用启动入口</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tech Stack -->
+  <section>
+    <h2>技术栈</h2>
+    <hr class="rule">
+    <table class="tech-table">
+      <thead>
+        <tr><th>Layer</th><th>Stack</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Desktop</td><td>Tauri v2, React 19, TanStack Router/Query, Zustand, Recharts</td></tr>
+        <tr><td>Backend</td><td>Spring Boot 3.5, Java 21（虚拟线程）, JdbcTemplate, Flyway</td></tr>
+        <tr><td>Database</td><td>SQLite（元数据）, 动态 JDBC（用户库：MySQL / PG / H2）</td></tr>
+        <tr><td>AI 通信</td><td>OpenCode HTTP（Streamable HTTP + SSE, JSON-RPC）</td></tr>
+        <tr><td>Testing</td><td>JUnit 5, AssertJ, WireMock 3.x（FakeOpenCodeServer）</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Communication flow -->
+  <section>
+    <h2>通信流程</h2>
+    <hr class="rule">
+    <p>用户在前端输入自然语言查询，整个请求链路如下：</p>
+
+    <div class="step">
+      <button class="step-toggle">
+        <span class="arrow">▼</span> 用户发送消息
+      </button>
+      <div class="step-body open">
+        <p>用户在聊天框输入自然语言查询（如 "上个月销售额最高的 10 个产品"），前端通过 <code>POST /api/session/{id}/chat</code> 发送到后端。</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <button class="step-toggle">
+        <span class="arrow">▶</span> 后端转发至 OpenCode AI
+      </button>
+      <div class="step-body">
+        <p><code>OpenCodeGateway</code> 将用户消息封装为 JSON-RPC 请求，通过 Streamable HTTP 发送到 OpenCode AI 服务。连接升级为 SSE，服务器持续推送事件。</p>
+        <ul>
+          <li><code>message.part.created</code> — AI 开始生成回复片段</li>
+          <li><code>message.part.delta</code> — 流式文本增量</li>
+          <li><code>action.invoke</code> — AI 请求执行 SQL（如 SELECT / EXPLAIN）</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="step">
+      <button class="step-toggle">
+        <span class="arrow">▶</span> AI 生成 SQL 并请求执行
+      </button>
+      <div class="step-body">
+        <p>AI 生成 SQL 语句，通过 <code>action.invoke</code> 事件发送给后端。后端通过 <code>ActionHandler</code> 路由到对应的执行器，使用动态 JDBC 连接目标数据库执行 SQL。</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <button class="step-toggle">
+        <span class="arrow">▶</span> 结果返回前端
+      </button>
+      <div class="step-body">
+        <p>执行结果通过 <code>action_result</code> 回传给 AI，AI 解读结果并生成自然语言回复。前端实时渲染流式文本、表格、图表和 ER 图。</p>
+        <ul>
+          <li>表格数据 → <code>DataGrid</code> 组件（排序、搜索、分页）</li>
+          <li>图表 → <code>Recharts</code> 渲染（折线图、柱状图、饼图）</li>
+          <li>ER 图 → 自定义 SVG 渲染（表关系可视化）</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="step">
+      <button class="step-toggle">
+        <span class="arrow">▶</span> 客户端回传 action 结果
+      </button>
+      <div class="step-body">
+        <p>前端执行完毕后，通过 <code>POST /api/session/{id}/action_result</code> 将结果回传给后端，后端再转发给 AI 服务，AI 据此继续生成回复或执行下一步操作。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Key Conventions -->
+  <section>
+    <h2>关键设计约定</h2>
+    <hr class="rule">
+
+    <h3>依赖方向</h3>
+    <p>domain ← application ← infrastructure ← adapter，外层依赖内层，不可反向。</p>
+
+    <h3>事件模型</h3>
+    <p><code>DtEvent</code> sealed interface，22 种事件类型，使用 exhaustive switch 保证编译时完整性。</p>
+
+    <h3>Action 注册</h3>
+    <p>创建 <code>@DataTalkAction</code> 注解的 <code>ActionHandler</code> Bean 即可自动注册，零核心代码改动。</p>
+
+    <h3>前端状态管理</h3>
+    <p>每个 feature 使用独立的 Zustand store，TanStack Query 管理服务端状态。<code>useStageStore</code> 是全局的、session 无关的——切换 session 不会改变 stage tabs 或 open/maximized 状态。</p>
+
+    <div class="pills">
+      <span class="pill">Java 21 虚拟线程</span>
+      <span class="pill">Streamable HTTP + SSE</span>
+      <span class="pill">JSON-RPC</span>
+      <span class="pill">Sealed Interface 事件</span>
+      <span class="pill">Exhaustive Switch</span>
+      <span class="pill">Zustand per Feature</span>
+      <span class="pill">TanStack Query</span>
+    </div>
+  </section>
+
+  <!-- Build & Run -->
+  <section>
+    <h2>构建与运行</h2>
+    <hr class="rule">
+    <h3>后端</h3>
+    <div class="cmd-block">
+      <span class="cmt"># 编译 + 全量测试</span><br>
+      <span class="hl">cd</span> server && mvn clean verify<br><br>
+      <span class="cmt"># 启动（端口 8080）</span><br>
+      <span class="hl">cd</span> server && mvn spring-boot:run -pl data-talk-adapter
+    </div>
+
+    <h3>前端</h3>
+    <div class="cmd-block">
+      <span class="cmt"># 开发服务器</span><br>
+      <span class="hl">cd</span> client && npm install && npm run dev<br><br>
+      <span class="cmt"># Tauri 桌面模式</span><br>
+      <span class="hl">cd</span> client && npm run tauri dev
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section>
+    <h2>FAQ</h2>
+    <hr class="rule">
+    <div class="faq-item">
+      <div class="faq-q">Q: 支持哪些数据库？</div>
+      <div class="faq-a">MySQL、PostgreSQL、H2。通过动态 JDBC 连接，用户可以随时添加新的数据源连接。详见 <code>docs/DATA_SOURCE_TYPE_COMPATIBILITY.md</code>。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Q: 修改 domain 层后如何让后端生效？</div>
+      <div class="faq-a">使用 <code>mvn install -pl &lt;module&gt; -am -DskipTests</code> 而不是 <code>mvn compile</code>——因为 <code>spring-boot:run</code> 从 <code>~/.m2</code> 加载非 adapter 模块的 jar 包。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Q: 如何添加新的 AI Action？</div>
+      <div class="faq-a">创建一个带有 <code>@DataTalkAction</code> 注解的 <code>ActionHandler</code> 实现类，Spring 会自动发现并注册它，无需修改核心代码。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Q: 前端的 stage 状态和 session 是什么关系？</div>
+      <div class="faq-a"><code>useStageStore</code> 是全局的、session 无关的。tabs、open、maximized、activeTabId 等是单一值，不是 per-session 的 map。切换活跃 session 不会改变 stage 的当前状态。</div>
+    </div>
+  </section>
+
+  <footer>
+    <span class="k">DataTalk</span>
+    <span>AI-powered intelligent database collaboration</span>
+    <span>Generated 2025-05-11</span>
+  </footer>
+</div>
+
+<script>
+  // Collapsible steps
+  document.querySelectorAll('.step-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const body = btn.nextElementSibling;
+      const open = body.classList.contains('open');
+      if (open) {
+        body.classList.remove('open');
+        btn.querySelector('.arrow').textContent = '▶';
+      } else {
+        body.classList.add('open');
+        btn.querySelector('.arrow').textContent = '▼';
+      }
+    });
+  });
+</script>
+</body>
+</html>
