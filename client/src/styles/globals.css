@@ -267,6 +267,9 @@
 ::-webkit-scrollbar-button {
   display: none;
 }
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
 
 [data-result-scrollbar="header-offset"]::-webkit-scrollbar:vertical {
   background: linear-gradient(to bottom, var(--muted) 0 2rem, transparent 2rem);
