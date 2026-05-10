@@ -1,6 +1,7 @@
 import { classifySqlRisk, stripComments } from '../helpers/risk'
 import { getCurrentLanguage } from '@/stores/ui-settings-store'
 import { translateMessage } from '@/i18n/messages'
+import { highlightSql } from './sql-highlight'
 
 export const SQL_EXECUTE_EVENT = 'datatalk.sql.execute'
 export const SQL_EXPLAIN_EVENT = 'datatalk.sql.explain'
@@ -57,5 +58,38 @@ export function decorateSqlBlocks(root: HTMLElement) {
       insertAction(createButton('sql-execute', executeLabel))
     }
     insertAction(createButton('sql-explain', explainLabel))
+
+    // Async syntax highlighting — apply when Shiki bundle loads
+    applySqlHighlight(code)
   }
+}
+
+function applySqlHighlight(code: HTMLElement) {
+  const raw = code.textContent ?? ''
+  if (!raw.trim()) return
+
+  const isDark = document.documentElement.classList.contains('dark')
+  highlightSql(raw, isDark).then((html) => {
+    // Shiki returns a full <pre class="shiki ...">...</pre> wrapper.
+    // Replace the existing <pre><code>...</code></pre> with Shiki's output
+    // while keeping the markdown-code wrapper structure intact.
+    const shikiPre = document.createRange().createContextualFragment(html).firstElementChild
+    if (!shikiPre || shikiPre.tagName !== 'PRE') return
+
+    const outerPre = code.parentElement
+    if (!outerPre) return
+
+    // Transfer Shiki classes and styles onto the existing <pre> to preserve
+    // the parent wrapper expectations (data-component, etc.)
+    outerPre.className = shikiPre.className
+    outerPre.removeAttribute('style') // remove any inline style from marked
+    outerPre.style.cssText = shikiPre.getAttribute('style') ?? ''
+
+    // Replace <code> children with Shiki's token spans
+    code.innerHTML = shikiPre.innerHTML
+    code.style.background = 'transparent'
+    code.style.padding = '0'
+  }).catch(() => {
+    // Shiki failed to load — leave plain text as fallback
+  })
 }
