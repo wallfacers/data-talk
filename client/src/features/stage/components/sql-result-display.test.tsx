@@ -90,6 +90,10 @@ vi.mock('@/components/ui/dialog', () => ({
   DialogDescription: ({ children }: { children?: ReactNode }) => <p>{children}</p>,
   DialogHeader: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   DialogTitle: ({ children }: { children?: ReactNode }) => <h2>{children}</h2>,
+  DialogClose: ({ children, render: Render }: { children?: ReactNode; render?: React.ComponentType<{ children?: ReactNode }> }) => {
+    const Comp = Render ?? 'button'
+    return <Comp>{children}</Comp>
+  },
 }))
 
 vi.mock('@/components/ui/select', () => ({

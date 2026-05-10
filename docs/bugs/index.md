@@ -8,7 +8,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## 当前编号
 
-下一个分配 ID：**BUG-0011**（永不复用，单调递增）
+下一个分配 ID：**BUG-0012**（永不复用，单调递增）
 
 ## Open BUGs（按 priority 倒序，P0 → P2）
 
@@ -22,6 +22,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 |----|-------|--------|----------|-------|
 | [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md) | Stage 永久删除最后一个 tab 后右侧工作区空白 | fixed | P1 | — |
 | [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md) | 聊天气泡内 ECharts X 轴标题（xAxis.name）右侧被裁 | fixed | P2 | — |
+| [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md) | sql-result-display 测试缺少 DialogClose mock 导致 10 个用例失败 | fixed | P2 | — |
 
 ## Recently Closed（最近 30 天，status = verified | closed）
 
@@ -37,14 +38,16 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## By Module（聚合视图，仅列 open + in-progress）
 
-- **stage**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md)
+- **stage**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md), [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md)
 - **chat**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md)
+- **testing**: [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md)
 - **markdown**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md)
 - **chart**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md)
 
 ## By Source（聚合视图，仅列 open + in-progress）
 
 - **e2e-playwright**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md)
+- **e2e-mcp**: [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md)
 - **manual-report**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md)
 
 ## Wontfix / Duplicate（终态归档，无时间限制）
