@@ -37,12 +37,15 @@ class DashboardControllerIT {
                 .content("""
                 {
                   "dashboard": {
-                    "schemaVersion": 1,
+                    "schemaVersion": 2,
                     "id": "dash_placeholder",
                     "title": "E2E Dashboard",
+                    "theme": "industry-neutral",
+                    "renderer": "bezel",
+                    "refresh": { "defaultIntervalMs": 10000, "pauseOnHidden": true },
                     "parameters": [],
                     "widgets": [],
-                    "layout": { "engine": "grid", "cols": 12, "rowHeight": 32, "gap": 8 },
+                    "layout": { "engine": "free" },
                     "version": 999
                   }
                 }
@@ -87,12 +90,15 @@ class DashboardControllerIT {
                 .content("""
                 {
                   "dashboard": {
-                    "schemaVersion": 1,
+                    "schemaVersion": 2,
                     "id": "dash_placeholder",
                     "title": "Version Test",
+                    "theme": "industry-neutral",
+                    "renderer": "bezel",
+                    "refresh": { "defaultIntervalMs": 10000, "pauseOnHidden": true },
                     "parameters": [],
                     "widgets": [],
-                    "layout": { "engine": "grid", "cols": 12, "rowHeight": 32, "gap": 8 },
+                    "layout": { "engine": "free" },
                     "version": 999
                   }
                 }

@@ -168,6 +168,7 @@ class UiActionsTest {
         assertThat(list(action.get("enum"), "enum"))
             .containsExactlyInAnyOrder(
                 "open", "focus", "choose_connection", "detach", "archive", "trash",
+                "rename", "pin",
                 "open_er_inspector", "open_er_designer"
             )
             .doesNotContain("close");

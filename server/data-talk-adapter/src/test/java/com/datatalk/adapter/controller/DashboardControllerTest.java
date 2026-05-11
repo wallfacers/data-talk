@@ -57,12 +57,15 @@ class DashboardControllerTest {
                 .content("""
                 {
                   "dashboard": {
-                    "schemaVersion": 1,
+                    "schemaVersion": 2,
                     "id": "dash_placeholder",
                     "title": "Test Dashboard",
+                    "theme": "industry-neutral",
+                    "renderer": "bezel",
+                    "refresh": { "defaultIntervalMs": 10000, "pauseOnHidden": true },
                     "parameters": [],
                     "widgets": [],
-                    "layout": { "engine": "grid", "cols": 12, "rowHeight": 32, "gap": 8 },
+                    "layout": { "engine": "free" },
                     "version": 999
                   }
                 }
@@ -80,12 +83,15 @@ class DashboardControllerTest {
                 .content("""
                 {
                   "dashboard": {
-                    "schemaVersion": 1,
+                    "schemaVersion": 2,
                     "id": "dash_placeholder",
                     "title": "Test Dashboard",
+                    "theme": "industry-neutral",
+                    "renderer": "bezel",
+                    "refresh": { "defaultIntervalMs": 10000, "pauseOnHidden": true },
                     "parameters": [],
                     "widgets": [],
-                    "layout": { "engine": "grid", "cols": 12, "rowHeight": 32, "gap": 8 },
+                    "layout": { "engine": "free" },
                     "version": 999
                   }
                 }
@@ -120,13 +126,16 @@ class DashboardControllerTest {
                 .content("""
                 {
                   "dashboard": {
-                    "schemaVersion": 1,
+                    "schemaVersion": 2,
                     "id": "dash_placeholder",
                     "title": "T",
+                    "theme": "industry-neutral",
+                    "renderer": "bezel",
+                    "refresh": { "defaultIntervalMs": 10000, "pauseOnHidden": true },
                     "description": "%s",
                     "parameters": [],
                     "widgets": [],
-                    "layout": { "engine": "grid", "cols": 12 },
+                    "layout": { "engine": "free" },
                     "version": 999
                   }
                 }
@@ -143,12 +152,15 @@ class DashboardControllerTest {
                 .content("""
                 {
                   "dashboard": {
-                    "schemaVersion": 1,
+                    "schemaVersion": 2,
                     "id": "dash_placeholder",
                     "title": "My Dashboard",
+                    "theme": "industry-neutral",
+                    "renderer": "bezel",
+                    "refresh": { "defaultIntervalMs": 10000, "pauseOnHidden": true },
                     "parameters": [],
                     "widgets": [],
-                    "layout": { "engine": "grid", "cols": 12, "rowHeight": 32, "gap": 8 },
+                    "layout": { "engine": "free" },
                     "version": 999
                   }
                 }
