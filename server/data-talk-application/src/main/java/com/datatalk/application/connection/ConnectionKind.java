@@ -26,6 +26,7 @@ public final class ConnectionKind {
     public static final String OCEANBASE = "oceanbase";
     public static final String DAMENG = "dameng";
     public static final String KINGBASE = "kingbase";
+    public static final String GAUSSDB = "gaussdb";
 
     /** Accepted aliases that normalize to a canonical kind (case-insensitive). */
     private static final Set<String> ACCEPTED_ALIASES = Set.of(
@@ -47,8 +48,12 @@ public final class ConnectionKind {
         "kingbase7", "kingbase8", "kingbase9"
     );
 
+    private static final Set<String> REJECTED_KNOWN_GAUSSDB = Set.of(
+        "gauss_db", "gauss", "gaussdb200"
+    );
+
     private static final Set<String> REJECTED_KNOWN =
-        union(REJECTED_KNOWN_DAMENG, REJECTED_KNOWN_KINGBASE);
+        union(union(REJECTED_KNOWN_DAMENG, REJECTED_KNOWN_KINGBASE), REJECTED_KNOWN_GAUSSDB);
 
     /**
      * Normalizes a user-provided kind string to a canonical constant.
@@ -80,6 +85,7 @@ public final class ConnectionKind {
         if (equalsIgnoreCase(trimmed, OCEANBASE)) return OCEANBASE;
         if (equalsIgnoreCase(trimmed, DAMENG)) return DAMENG;
         if (equalsIgnoreCase(trimmed, KINGBASE)) return KINGBASE;
+        if (equalsIgnoreCase(trimmed, GAUSSDB)) return GAUSSDB;
 
         // Accepted aliases
         if (equalsIgnoreCase(trimmed, "postgres")) return POSTGRESQL;
@@ -94,6 +100,10 @@ public final class ConnectionKind {
             if (REJECTED_KNOWN_DAMENG.contains(lower)) {
                 throw new DataTalkException(DataTalkErrorCodes.DATABASE_KIND_UNSUPPORTED,
                     "unknown database kind '" + input + "'. Use 'dameng' for Dameng DM 8.", false);
+            }
+            if (REJECTED_KNOWN_GAUSSDB.contains(lower)) {
+                throw new DataTalkException(DataTalkErrorCodes.DATABASE_KIND_UNSUPPORTED,
+                    "unknown database kind '" + input + "'. Use 'gaussdb' for GaussDB.", false);
             }
             throw new DataTalkException(DataTalkErrorCodes.DATABASE_KIND_UNSUPPORTED,
                 "unknown database kind '" + input + "'. Use 'kingbase' for KingbaseES.", false);

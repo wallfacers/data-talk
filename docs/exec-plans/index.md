@@ -5,7 +5,8 @@
 ## 活跃计划
 
 | [12 行业大屏独立精品化重设计](./2026-05-11-dashboard-premium-redesign-plan.md) | 2026-05-11 | tmp/Dashboard 下 12 个行业大屏 HTML 独立精品化重写实施计划。12 个 Task 按 3 Batch 并行：Batch 1（电商/制造/网络安全/金融）确立标杆，Batch 2（SaaS/物流/能源/医疗）扩展深化，Batch 3（HR/农业/教育/多屏总控）收尾完善。每屏 8-15 个图表/组件，行业专属美学 DNA，真实业务数据波动。纯 HTML+CSS+ECharts，直接覆盖原文件。Spec: [2026-05-11-dashboard-premium-redesign-design.md](../product-specs/2026-05-11-dashboard-premium-redesign-design.md)。 |
-| [Next Implementation Roadmap](./2026-04-25-next-implementation-roadmap-plan.md) | 2026-04-25 | 下一阶段路线图：Tasks 1-7 全部完成；Task 8 Dashboard P1+bezel+FileArtifact 集成已 ship，12 屏重设计在途；Task 9 Wave A 4/4 + Wave B 7/7 + Wave C 5/6 完成（16 个 first-class kind，仅 GaussDB 待补）；Task 10 三期占位；Task 11 5 Part 全链路闭环。明确排除虚拟滚动。 |
+| [GaussDB 数据源覆盖](./2026-05-12-data-source-coverage-gaussdb-plan.md) | 2026-05-12 | Wave C step 6 final：GaussDB 集中式 first-class 支持。密码连接，PG-fork 复用模式（PG splitter + 独立风险分类器 + dialect_unsupported diagnostics）。驱动 `com.huaweicloud:gaussdbjdbc:v2.0-8.218.0`，URL `jdbc:postgresql://host:8000/database`，默认端口 8000。8 Task。Spec: [2026-05-12-data-source-coverage-gaussdb-design.md](../product-specs/2026-05-12-data-source-coverage-gaussdb-design.md)。 |
+| [Next Implementation Roadmap](./2026-04-25-next-implementation-roadmap-plan.md) | 2026-04-25 | 下一阶段路线图：Tasks 1-7 全部完成；Task 8 Dashboard P1+bezel+FileArtifact 集成已 ship，12 屏重设计在途；Task 9 Wave A 4/4 + Wave B 7/7 + Wave C 6/6 完成（17 个 first-class kind）；Task 10 三期占位；Task 11 5 Part 全链路闭环。明确排除虚拟滚动。 |
 
 
 ## 已完成计划

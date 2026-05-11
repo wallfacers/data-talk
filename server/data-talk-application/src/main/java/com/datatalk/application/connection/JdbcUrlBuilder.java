@@ -116,6 +116,14 @@ public final class JdbcUrlBuilder {
                 }
                 yield "jdbc:kingbase8://" + c.host() + ":" + c.port() + "/" + kbDb;
             }
+            case ConnectionKind.GAUSSDB -> {
+                String gDb = c.databaseName();
+                if (gDb == null || gDb.isBlank()) {
+                    throw new DataTalkException(DataTalkErrorCodes.DATABASE_NAME_REQUIRED,
+                        "gaussdb requires database", false);
+                }
+                yield "jdbc:postgresql://" + c.host() + ":" + c.port() + "/" + gDb;
+            }
             default ->
                 throw new DataTalkException(DataTalkErrorCodes.DATABASE_KIND_UNSUPPORTED,
                     "unsupported database kind: " + c.kind(), false);

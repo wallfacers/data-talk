@@ -887,6 +887,20 @@ Output budget: defaults `headLimit=100`, `maxTabs=50`. For existence checks use 
 - ER Inspector: day-1 `dialect_unsupported`.
 - ER Designer: day-1 `dialect_unsupported`.
 
+## GaussDB
+
+- **Canonical kind:** `gaussdb`
+- **Protocol:** PostgreSQL-compatible (集中式), password authentication
+- **JDBC URL:** `jdbc:postgresql://host:8000/database`
+- **Default port:** 8000
+- **Driver:** `com.huaweicloud:gaussdbjdbc:v2.0-8.218.0`
+- **SQL splitter:** PG splitter (dollar-quoted, PL/pgSQL, stored procedures)
+- **Risk rules:** PG baseline + 5 GaussDB-specific L3 (CREATE RESOURCE POOL, ALTER COORDINATOR, DROP NODE, SHUTDOWN, ALTER SYSTEM SET)
+- **Diagnostics:** All unsupported (Day-1)
+- **ER:** Unsupported (Day-1)
+- **Day-2:** EXPLAIN diagnostics, ER DDL, SSL/TLS
+- **Day-3:** Distributed/DWS mode, Kerberos
+
 <!-- file-artifact-section:begin -->
 ## Output Files & Artifacts
 

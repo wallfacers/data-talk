@@ -182,4 +182,10 @@ class DefaultSqlStatementSplittersTest {
             "SELECT 1; INSERT INTO t VALUES (1);");
         assertThat(result).hasSize(2);
     }
+
+    @Test
+    void routes_gaussdb_to_postgres_splitter() {
+        assertThat(splitters.split("gaussdb", "SELECT $$a;b$$; SELECT 1;"))
+            .containsExactly("SELECT $$a;b$$", "SELECT 1");
+    }
 }

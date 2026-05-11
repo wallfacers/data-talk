@@ -5,6 +5,7 @@ export function resolveSqlFormatterLanguage(connectionKind: string | null | unde
     case 'postgres':
     case 'postgresql':
     case 'kingbase':
+    case 'gaussdb':
       return 'postgresql'
     case 'mysql':
     case 'mariadb':

@@ -214,6 +214,9 @@ public class ConnectionService {
         } else if (kind.equals(ConnectionKind.KINGBASE)) {
             int timeoutSeconds = Math.max(1, c.connectTimeout() / 1000);
             java.sql.DriverManager.setLoginTimeout(timeoutSeconds);
+        } else if (kind.equals(ConnectionKind.GAUSSDB)) {
+            int timeoutSeconds = Math.max(1, c.connectTimeout() / 1000);
+            java.sql.DriverManager.setLoginTimeout(timeoutSeconds);
         }
         long started = clock.millis();
         try (var conn = java.sql.DriverManager.getConnection(url, effectiveUsername, password)) {

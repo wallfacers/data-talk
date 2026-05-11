@@ -132,6 +132,18 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
     private static final Pattern KINGBASE_ORACLE_PLSQL_BLOCK =
         Pattern.compile("^\\s*(DECLARE|BEGIN)\\b", Pattern.CASE_INSENSITIVE);
 
+    // GaussDB L3 admin command patterns
+    private static final Pattern GAUSSDB_CREATE_RESOURCE_POOL =
+        Pattern.compile("^\\s*CREATE\\s+RESOURCE\\s+POOL\\b", Pattern.CASE_INSENSITIVE);
+    private static final Pattern GAUSSDB_ALTER_COORDINATOR =
+        Pattern.compile("^\\s*ALTER\\s+COORDINATOR\\b", Pattern.CASE_INSENSITIVE);
+    private static final Pattern GAUSSDB_DROP_NODE =
+        Pattern.compile("^\\s*DROP\\s+NODE\\b", Pattern.CASE_INSENSITIVE);
+    private static final Pattern GAUSSDB_SHUTDOWN =
+        Pattern.compile("^\\s*SHUTDOWN\\b", Pattern.CASE_INSENSITIVE);
+    private static final Pattern GAUSSDB_ALTER_SYSTEM_SET =
+        Pattern.compile("^\\s*ALTER\\s+SYSTEM\\s+SET\\b", Pattern.CASE_INSENSITIVE);
+
     public enum DamengUnsupportedReason {
         PLSQL_BLOCK,
         PROCEDURE_DDL,
@@ -248,6 +260,10 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
         }
         if (ConnectionKind.KINGBASE.equalsIgnoreCase(connectionKind)) {
             return classifyKingbaseSpecific(sql);
+        }
+        if (ConnectionKind.GAUSSDB.equalsIgnoreCase(connectionKind)) {
+            SqlRiskAnalysis gaussdbResult = classifyGaussdbSpecific(sql);
+            if (gaussdbResult != null) return gaussdbResult;
         }
         return null;
     }
@@ -1117,6 +1133,22 @@ public class CalciteSqlRiskAnalyzer implements SqlRiskAnalyzer {
             || KINGBASE_SYS_KILL.matcher(stripped).find()
             || KINGBASE_FLASHBACK.matcher(stripped).find()) {
             return SqlRiskAnalysis.high("kingbase_admin_command");
+        }
+        return null;
+    }
+
+    // ====== GaussDB L3 admin command classification ======
+
+    public SqlRiskAnalysis classifyGaussdbSpecific(String sql) {
+        if (sql == null) return null;
+        String stripped = stripLeadingComments(sql);
+        if (stripped.isEmpty()) return null;
+        if (GAUSSDB_CREATE_RESOURCE_POOL.matcher(stripped).find()
+            || GAUSSDB_ALTER_COORDINATOR.matcher(stripped).find()
+            || GAUSSDB_DROP_NODE.matcher(stripped).find()
+            || GAUSSDB_SHUTDOWN.matcher(stripped).find()
+            || GAUSSDB_ALTER_SYSTEM_SET.matcher(stripped).find()) {
+            return SqlRiskAnalysis.high("gaussdb_admin_command");
         }
         return null;
     }

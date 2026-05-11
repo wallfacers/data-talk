@@ -11,6 +11,7 @@ import { createConnection, updateConnection, connectionsKey, type Connection } f
 import { MultiModeConnectionFields, type CompatibilityMode } from './multi-mode-connection-fields'
 import { OceanBaseConnectionFields } from './oceanbase-connection-fields'
 import { KingbaseConnectionFields } from './kingbase-connection-fields'
+import { GaussDBConnectionFields } from './gaussdb-connection-fields'
 
 export const DATABASE_TYPES = {
   mysql: { label: 'MySQL', port: 3306 },
@@ -31,6 +32,7 @@ export const DATABASE_TYPES = {
   oceanbase: { label: 'OceanBase', port: 2881 },
   dameng: { label: 'Dameng (DM 8)', port: 5236 },
   kingbase: { label: 'KingbaseES', port: 54321 },
+  gaussdb: { label: 'GaussDB', port: 8000 },
 } as const
 
 export type DatabaseKind = keyof typeof DATABASE_TYPES
@@ -157,6 +159,7 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
   const isOceanbase = form.kind === 'oceanbase'
   const isDameng = form.kind === 'dameng'
   const isKingbase = form.kind === 'kingbase'
+  const isGaussdb = form.kind === 'gaussdb'
   const hideHostPort = isSqlite || isDuckdb
   const databaseLabel = isDuckdb
     ? (form.duckdbMode === 'file' ? t('dataSources.duckdbFilePath') : '')
@@ -312,6 +315,9 @@ export function ConnectionFormPanel({ editing, onCancel, onSaved }: Props) {
             mode={form.kingbaseCompatibilityMode}
             onModeChange={(m) => setForm((f) => ({ ...f, kingbaseCompatibilityMode: m }))}
           />
+        ) : null}
+        {isGaussdb ? (
+          <GaussDBConnectionFields kindInput={form.kind} />
         ) : null}
         {isDuckdb ? (
           <>

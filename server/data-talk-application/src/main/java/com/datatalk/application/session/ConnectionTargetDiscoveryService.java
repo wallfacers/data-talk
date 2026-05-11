@@ -234,7 +234,9 @@ public class ConnectionTargetDiscoveryService {
             // Dameng system schemas to exclude
             && !DAMENG_SYSTEM_SCHEMAS.contains(normalized)
             // KingbaseES system schemas to exclude
-            && !KINGBASE_SYSTEM_SCHEMAS.contains(normalized);
+            && !KINGBASE_SYSTEM_SCHEMAS.contains(normalized)
+            // GaussDB system schemas to exclude
+            && !GAUSSDB_SYSTEM_SCHEMAS.contains(normalized);
     }
 
     private boolean isClickHouseSystemDatabase(String name) {
@@ -307,6 +309,11 @@ public class ConnectionTargetDiscoveryService {
     private static final Set<String> KINGBASE_SYSTEM_SCHEMAS = Set.of(
         "pg_catalog", "information_schema", "pg_toast", "pg_temp",
         "sys", "sys_catalog"
+    );
+
+    private static final Set<String> GAUSSDB_SYSTEM_SCHEMAS = Set.of(
+        "pg_catalog", "information_schema", "pg_toast", "pg_temp_1", "pg_toast_temp_1",
+        "db_scheduler", "db4ai", "pkg_service", "sqladvisor", "wdr_snapshot", "snapshot"
     );
 
     public record DiscoveryResult(

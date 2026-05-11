@@ -165,6 +165,10 @@ const MESSAGES = {
     'connection.kind.kingbase.label': '人大金仓 KingbaseES',
     'connection.kind.kingbase.alias_normalized': '输入 "kingbasees" 已归一化为规范类型 "kingbase"。',
     'connection.kind.kingbase.mode_oracle_unsupported_day1': 'Oracle 兼容模式为 Day-3 候选；Day-1 仅支持 PostgreSQL 兼容模式。',
+
+    // GaussDB connection fields
+    'connection.kind.gaussdb.label': 'GaussDB',
+    'connection.kind.gaussdb.defaultPort': '8000',
     'risk.dialect_unsupported.kingbase.kb_backup_restore_cli': 'KingbaseES 物理备份/恢复需使用 sys_backup.sh / sys_restore 命令行工具，暂不支持通过 SQL 操作。',
     'risk.dialect_unsupported.kingbase.oracle_plsql_block': 'KingbaseES Oracle 兼容模式下的 PL/SQL 匿名块暂不支持自动风险评估。',
     'diagnostics.dialect_unsupported.kingbase.sys_settings': 'KingbaseES 使用 sys_settings 视图（非 pg_settings），部分诊断查询可能需适配。',
@@ -913,6 +917,10 @@ const MESSAGES = {
     'connection.kind.kingbase.label': 'KingbaseES',
     'connection.kind.kingbase.alias_normalized': 'Input "kingbasees" normalized to canonical kind "kingbase".',
     'connection.kind.kingbase.mode_oracle_unsupported_day1': 'Oracle compatibility mode is a Day-3 candidate; only PostgreSQL compatibility is supported in Day-1.',
+
+    // GaussDB connection fields
+    'connection.kind.gaussdb.label': 'GaussDB',
+    'connection.kind.gaussdb.defaultPort': '8000',
     'risk.dialect_unsupported.kingbase.kb_backup_restore_cli': 'KingbaseES physical backup/restore requires sys_backup.sh / sys_restore CLI tools; SQL-based operations are not supported.',
     'risk.dialect_unsupported.kingbase.oracle_plsql_block': 'PL/SQL anonymous blocks under KingbaseES Oracle compatibility mode do not support automatic risk assessment yet.',
     'diagnostics.dialect_unsupported.kingbase.sys_settings': 'KingbaseES uses sys_settings view (not pg_settings); some diagnostic queries may need adaptation.',
