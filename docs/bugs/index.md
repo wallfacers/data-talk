@@ -8,13 +8,13 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## 当前编号
 
-下一个分配 ID：**BUG-0012**（永不复用，单调递增）
+下一个分配 ID：**BUG-0013**（永不复用，单调递增）
 
 ## Open BUGs（按 priority 倒序，P0 → P2）
 
 | ID | Title | Priority | Source | Modules | Discovered |
 |----|-------|----------|--------|---------|------------|
-| —  | — | — | — | — | — |
+| [BUG-0012](BUG-0012-widget-data-endpoint-ignores-default-connection-id.md) | Widget data endpoint 不使用 dashboard defaultConnectionId 解析连接上下文 | P1 | e2e-playwright | dashboard | 2026-05-12 |
 
 ## In Progress（status = investigating | fixed 等待 verify）
 
@@ -43,10 +43,11 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 - **testing**: [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md)
 - **markdown**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md)
 - **chart**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md)
+- **dashboard**: [BUG-0012](BUG-0012-widget-data-endpoint-ignores-default-connection-id.md)
 
 ## By Source（聚合视图，仅列 open + in-progress）
 
-- **e2e-playwright**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md)
+- **e2e-playwright**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md), [BUG-0012](BUG-0012-widget-data-endpoint-ignores-default-connection-id.md)
 - **e2e-mcp**: [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md)
 - **manual-report**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md)
 

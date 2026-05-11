@@ -38,7 +38,10 @@ public class DashboardController {
             ));
         }
         try {
-            DashboardArtifactService.PromoteResult result = dashboardService.promote(request.dashboard());
+            byte[] htmlBytes = request.html() != null && !request.html().isEmpty()
+                    ? request.html().getBytes(StandardCharsets.UTF_8)
+                    : null;
+            DashboardArtifactService.PromoteResult result = dashboardService.promote(request.dashboard(), null, htmlBytes);
             return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
                 "id", result.id(),
                 "version", result.version()
