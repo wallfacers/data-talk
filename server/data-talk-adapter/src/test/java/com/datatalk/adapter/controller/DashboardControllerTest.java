@@ -47,7 +47,8 @@ class DashboardControllerTest {
         DashboardSchemaValidator validator = new DashboardSchemaValidator(mapper);
         JsonPatchApplier patchApplier = new JsonPatchApplier(mapper);
         DashboardArtifactService service = new DashboardArtifactService(fileArtifactService, root, validator, patchApplier, mapper, clock);
-        mvc = standaloneSetup(new DashboardController(service)).build();
+        WidgetDataService widgetDataService = mock(WidgetDataService.class);
+        mvc = standaloneSetup(new DashboardController(service, widgetDataService)).build();
     }
 
     @Test

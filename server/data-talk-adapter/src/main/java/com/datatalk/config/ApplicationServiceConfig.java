@@ -1,6 +1,8 @@
 package com.datatalk.config;
 
 import com.datatalk.application.connection.ConnectionService;
+import com.datatalk.application.dashboard.DashboardArtifactService;
+import com.datatalk.application.dashboard.WidgetDataService;
 import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.session.SessionDataContextService;
@@ -27,6 +29,26 @@ public class ApplicationServiceConfig {
             connectionRepository,
             connectionService,
             sessionDataContextService,
+            sqlExecutionRepository,
+            statementGuard,
+            tableContextAutoResolver,
+            translator
+        );
+    }
+
+    @Bean
+    public WidgetDataService widgetDataService(
+            DashboardArtifactService dashboardArtifactService,
+            ConnectionRepository connectionRepository,
+            ConnectionService connectionService,
+            SqlExecutionRepository sqlExecutionRepository,
+            SqlStatementGuard statementGuard,
+            TableContextAutoResolver tableContextAutoResolver,
+            Translator translator) {
+        return new WidgetDataService(
+            dashboardArtifactService,
+            connectionRepository,
+            connectionService,
             sqlExecutionRepository,
             statementGuard,
             tableContextAutoResolver,

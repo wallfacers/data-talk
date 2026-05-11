@@ -4,6 +4,7 @@ import com.datatalk.adapter.dto.DashboardPatchRequest;
 import com.datatalk.adapter.dto.DashboardPromoteRequest;
 import com.datatalk.application.dashboard.DashboardArtifactService;
 import com.datatalk.application.dashboard.JsonPatchApplier;
+import com.datatalk.application.dashboard.WidgetDataService;
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -20,9 +21,12 @@ import java.util.Map;
 public class DashboardController {
 
     private final DashboardArtifactService dashboardService;
+    private final WidgetDataService widgetDataService;
 
-    public DashboardController(DashboardArtifactService dashboardService) {
+    public DashboardController(DashboardArtifactService dashboardService,
+                               WidgetDataService widgetDataService) {
         this.dashboardService = dashboardService;
+        this.widgetDataService = widgetDataService;
     }
 
     @PostMapping("/promote")
@@ -123,5 +127,26 @@ public class DashboardController {
         return ResponseEntity.ok()
             .contentType(MediaType.TEXT_HTML)
             .body(body);
+    }
+
+    @CrossOrigin(origins = "null", allowCredentials = "false")
+    @PostMapping("/{id}/widgets/{wid}/data")
+    public ResponseEntity<?> fetchWidgetData(
+        @PathVariable String id, @PathVariable String wid,
+        @RequestBody Map<String, Object> body) {
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> params = (Map<String, Object>) body.getOrDefault("params", Map.of());
+            WidgetDataService.WidgetData data = widgetDataService.fetchWidgetData(id, wid, params);
+            return ResponseEntity.ok(Map.of(
+                "columns", data.columns(),
+                "rows", data.rows(),
+                "executedAt", data.executedAt()
+            ));
+        } catch (DashboardArtifactService.DashboardNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("code", "not_found"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("code", "bad_request", "message", e.getMessage()));
+        }
     }
 }
