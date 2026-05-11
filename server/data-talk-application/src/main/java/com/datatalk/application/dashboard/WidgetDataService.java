@@ -105,8 +105,18 @@ public class WidgetDataService {
             .orElseThrow(() -> new NoSuchElementException("Connection not found: " + connId));
 
         // 6. Resolve execution context (database, schema)
-        String database = connection.databaseName();
-        ResolvedExecutionContext context = new ResolvedExecutionContext(connection, database, null);
+        //    Priority: widget.query.database/schema > dashboard.defaultDatabase/Schema > connection.databaseName
+        //    A blank/null at higher priority falls through to the next level.
+        String database = firstNonBlank(
+            queryNode.path("database").asText(null),
+            dash.path("defaultDatabase").asText(null),
+            connection.databaseName()
+        );
+        String schema = firstNonBlank(
+            queryNode.path("schema").asText(null),
+            dash.path("defaultSchema").asText(null)
+        );
+        ResolvedExecutionContext context = new ResolvedExecutionContext(connection, database, schema);
         context = tableContextAutoResolver.resolve(context, sql);
 
         // 7. Execute
@@ -135,6 +145,13 @@ public class WidgetDataService {
             connectionService.decryptPassword(record.id()),
             Instant.ofEpochMilli(record.createdAt())
         );
+    }
+
+    private static String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) return value;
+        }
+        return null;
     }
 
     private DbType toDbType(String kind) {

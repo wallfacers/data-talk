@@ -25,7 +25,7 @@ const MYSQL_CONNECTION = {
   port: 3306,
   username: 'root',
   password: 'root123456',
-  database: 'test_store',
+  databaseName: 'test_store',
 }
 
 // ── v2 Dashboard JSON (source-of-truth) ────────────────────────────────────
@@ -38,6 +38,7 @@ function makeTestStoreDashboard(connectionId: string) {
     title: 'test_store 电商运营监控大屏',
     description: '基于本地 MySQL test_store 库的电商核心指标看板',
     defaultConnectionId: connectionId,
+    defaultDatabase: 'test_store',
     theme: 'industry-ecommerce',
     renderer: 'bezel',
     refresh: { defaultIntervalMs: 30000, pauseOnHidden: true },
@@ -393,15 +394,13 @@ test.describe('@e2e @dashboard @bezel @mysql test_store dashboard', () => {
     const res = await request.post(`/api/dashboards/${dashboardId}/widgets/chart_w_gmvtrend/data`, {
       data: { params: {} },
     })
-    // 200 = data returned, 400 = SQL context issue (no active connection session), 404 = dashboard not found
-    // BUG-0012: Widget data endpoint requires session-scoped connection context, returns 400 even with valid dashboard defaultConnectionId
-    expect([200, 400]).toContain(res.status())
-    if (res.status() === 200) {
-      const body = await res.json()
-      expect(body).toHaveProperty('columns')
-      expect(body).toHaveProperty('rows')
-      expect(body).toHaveProperty('executedAt')
-    }
+    // After BUG-0012 fix: dashboard.defaultDatabase scopes widget SQL execution,
+    // so the endpoint must return 200 with columns + rows.
+    expect(res.status()).toBe(200)
+    const body = await res.json()
+    expect(body).toHaveProperty('columns')
+    expect(body).toHaveProperty('rows')
+    expect(body).toHaveProperty('executedAt')
   })
 
   test('all widget data endpoints return data', async ({ request }) => {
@@ -419,13 +418,10 @@ test.describe('@e2e @dashboard @bezel @mysql test_store dashboard', () => {
       const res = await request.post(`/api/dashboards/${dashboardId}/widgets/${wid}/data`, {
         data: { params: {} },
       })
-      // Accept 200 (data) or 400 (SQL context issue) — 404 means endpoint broken
-      expect(res.status()).not.toBe(404)
-      if (res.status() === 200) {
-        const body = await res.json()
-        expect(body).toHaveProperty('columns')
-        expect(body).toHaveProperty('rows')
-      }
+      expect(res.status()).toBe(200)
+      const body = await res.json()
+      expect(body).toHaveProperty('columns')
+      expect(body).toHaveProperty('rows')
     }
   })
 
@@ -525,7 +521,7 @@ test.describe('@e2e @dashboard @bezel @mysql test_store dashboard', () => {
     const realErrors = errors.filter(e =>
       !e.includes('favicon') &&
       !e.includes('Failed to load resource') &&
-      !e.includes('Content Security Policy') && // BUG-0012: CSP meta tag blocks inline styles
+      !e.includes('Content Security Policy') && // CSP meta tag blocks inline styles — expected for sandboxed bezel HTML
       !e.includes('frame-ancestors')
     )
     expect(realErrors).toEqual([])

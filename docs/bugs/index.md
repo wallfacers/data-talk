@@ -14,7 +14,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 | ID | Title | Priority | Source | Modules | Discovered |
 |----|-------|----------|--------|---------|------------|
-| [BUG-0012](BUG-0012-widget-data-endpoint-ignores-default-connection-id.md) | Widget data endpoint 不使用 dashboard defaultConnectionId 解析连接上下文 | P1 | e2e-playwright | dashboard | 2026-05-12 |
+| — | — | — | — | — | — |
 
 ## In Progress（status = investigating | fixed 等待 verify）
 
@@ -23,6 +23,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 | [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md) | Stage 永久删除最后一个 tab 后右侧工作区空白 | fixed | P1 | — |
 | [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md) | 聊天气泡内 ECharts X 轴标题（xAxis.name）右侧被裁 | fixed | P2 | — |
 | [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md) | sql-result-display 测试缺少 DialogClose mock 导致 10 个用例失败 | fixed | P2 | — |
+| [BUG-0012](BUG-0012-widget-data-endpoint-ignores-default-connection-id.md) | Widget data endpoint 缺少 dashboard 级 database / schema 解析回路 | fixed | P1 | — |
 
 ## Recently Closed（最近 30 天，status = verified | closed）
 
@@ -43,11 +44,11 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 - **testing**: [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md)
 - **markdown**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md)
 - **chart**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md)
-- **dashboard**: [BUG-0012](BUG-0012-widget-data-endpoint-ignores-default-connection-id.md)
+- **dashboard**: [BUG-0012](BUG-0012-widget-data-endpoint-ignores-default-connection-id.md) *(fixed)*
 
 ## By Source（聚合视图，仅列 open + in-progress）
 
-- **e2e-playwright**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md), [BUG-0012](BUG-0012-widget-data-endpoint-ignores-default-connection-id.md)
+- **e2e-playwright**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md), [BUG-0012](BUG-0012-widget-data-endpoint-ignores-default-connection-id.md) *(fixed)*
 - **e2e-mcp**: [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md)
 - **manual-report**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md)
 
