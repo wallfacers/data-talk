@@ -8,7 +8,7 @@ modules: [dashboard]
 discovered: 2026-05-12
 discoveredBy: agent
 testRunId: pw-2026-05-12-test-store
-fixCommit: pending
+fixCommit: b8060d9
 fixPlanRef: null
 duplicateOf: null
 regression: false
