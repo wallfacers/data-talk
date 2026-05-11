@@ -41,7 +41,7 @@ DataTalk 的差异化在于 **AI 直接操作数据库**，但不能让 AI 蛮�
 | 创建/编辑连接 | 🟢 | MVP | 支持 MySQL / PostgreSQL / SQLite，密码加密存储 |
 | 连接测试 | 🟢 | MVP | 对话中询问即测，返回延迟 / 版本 |
 | 切换活跃连接 | 🟢 | MVP | "切到生产库"自然语言切换 |
-| 扩展支持主流 SQL/JDBC 数据源矩阵 | 🟢 | 二期 | 分批支持 Oracle / SQL Server / MariaDB / Apache Doris / StarRocks / ClickHouse / Hive / Trino / Presto / DuckDB / GaussDB / openGauss / 达梦 / KingbaseES / OceanBase / TiDB / Snowflake / BigQuery / Redshift / Databricks SQL / IBM Db2 / SAP HANA / Teradata 等；每种数据库必须按 [数据源兼容规范](../DATA_SOURCE_TYPE_COMPATIBILITY.md) 完成连接、元数据、执行、风险、诊断、前端和 AI prompt 门禁 |
+| 扩展支持主流 SQL/JDBC 数据源矩阵 | 🟢 | 二期 | **已 ship 16 种 first-class**：Wave A（SQLite / Oracle / SQL Server / MariaDB）、Wave B（Apache Doris / StarRocks / ClickHouse / Hive / Trino / Presto / DuckDB）、Wave C（TiDB / openGauss / OceanBase / KingbaseES / Dameng）。**待补**：GaussDB（Wave C）、Snowflake / BigQuery / Redshift / Databricks SQL（Wave D）、IBM Db2 / SAP HANA / Teradata 等。每种数据库必须按 [数据源兼容规范](../DATA_SOURCE_TYPE_COMPATIBILITY.md) 完成连接、元数据、执行、风险、诊断、前端和 AI prompt 门禁 |
 | 非 SQL / 半结构化数据源接入 | 🟢 | 三期 | MongoDB / Elasticsearch / OpenSearch 等不强行伪装成 SQL 数据库；需先定义 read/query contract、schema 映射、mutation 策略和 AI 工具语义 |
 | 连接池监控 | 🟢 | 二期 | 查看当前连接数、空闲连接 |
 | 连接凭据托管 | 🟢 | 三期 | 系统凭据管理器集成、SSH 隧道 |

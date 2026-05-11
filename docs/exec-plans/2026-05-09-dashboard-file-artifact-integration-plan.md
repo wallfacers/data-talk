@@ -121,7 +121,7 @@ A3（前端）依据 [client/DESIGN.md](../../client/DESIGN.md) 约束：
 
 ### A1.S1 — 写 V18 migration 失败测试
 
-- [ ] **Step 1: 写 V18MigrationTest（先写失败测试）**
+- [x] **Step 1: 写 V18MigrationTest（先写失败测试）**
 
 ```java
 // server/data-talk-infrastructure/src/test/java/com/datatalk/infra/fileartifact/V18MigrationTest.java
@@ -189,14 +189,14 @@ class V18MigrationTest {
 }
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 Run: `cd server && mvn -pl data-talk-infrastructure -am test -Dtest=V18MigrationTest -q`
 Expected: FAIL — `V18__file_artifact_dashboard.sql` 不存在 / `external` 列不存在
 
 ### A1.S2 — 写 V18 migration SQL
 
-- [ ] **Step 3: 创建 V18__file_artifact_dashboard.sql**
+- [x] **Step 3: 创建 V18__file_artifact_dashboard.sql**
 
 ```sql
 -- server/data-talk-infrastructure/src/main/resources/db/migration/V18__file_artifact_dashboard.sql
@@ -245,12 +245,12 @@ CREATE INDEX idx_file_artifact_status     ON file_artifact(status);
 CREATE INDEX idx_file_artifact_external   ON file_artifact(external)      WHERE external = 1;
 ```
 
-- [ ] **Step 4: 跑 V18MigrationTest 确认通过**
+- [x] **Step 4: 跑 V18MigrationTest 确认通过**
 
 Run: `cd server && mvn -pl data-talk-infrastructure -am test -Dtest=V18MigrationTest -q`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add server/data-talk-infrastructure/src/main/resources/db/migration/V18__file_artifact_dashboard.sql \
@@ -260,7 +260,7 @@ git commit -m "feat(file-artifact): V18 migration adds dashboard kind + external
 
 ### A1.S6 — 写 rollback helper（注释脚本）
 
-- [ ] **Step 6: 创建 V18.1 helper（仅作为文档/手工执行用，文件名 `migrate-rollback-helper.sql` 放 docs/）**
+- [x] **Step 6: 创建 V18.1 helper（仅作为文档/手工执行用，文件名 `migrate-rollback-helper.sql` 放 docs/）**
 
 不放入 `db/migration/` 下避免被 Flyway 当作 migration 自动执行。改放：
 
@@ -287,7 +287,7 @@ git commit -m "docs(file-artifact): V18 rollback helper sql"
 
 ### A1.S3 — `FileArtifact` record 加 `external` 字段
 
-- [ ] **Step 7: 修改 FileArtifact.java，加 external 字段**
+- [x] **Step 7: 修改 FileArtifact.java，加 external 字段**
 
 ```java
 // server/data-talk-domain/src/main/java/com/datatalk/domain/fileartifact/FileArtifact.java
@@ -325,7 +325,7 @@ public record FileArtifact(
 }
 ```
 
-- [ ] **Step 8: 跑全量编译确认所有现有 `new FileArtifact(...)` 调用点报错**
+- [x] **Step 8: 跑全量编译确认所有现有 `new FileArtifact(...)` 调用点报错**
 
 Run: `cd server && mvn compile -q`
 Expected: 编译报错，提示 record 构造器参数不匹配。逐个修复：搜索 `new FileArtifact(` 给所有调用点末尾追加 `, false`（除 dashboard 路径外，所有现有路径都是 managed 行 → external=false）。
@@ -338,14 +338,14 @@ grep -rn "new FileArtifact(" server/ --include="*.java"
 - `FileArtifactService.java` 的 `recordDetected`、`archiveCandidate` 两处
 - 测试代码中所有 `new FileArtifact(...)` 用例
 
-- [ ] **Step 9: 再次编译确认通过**
+- [x] **Step 9: 再次编译确认通过**
 
 Run: `cd server && mvn compile -q`
 Expected: BUILD SUCCESS
 
 ### A1.S4 — Repository 接口扩展 + JDBC 实现同步
 
-- [ ] **Step 10: 修改 FileArtifactRepository.java 加新方法签名**
+- [x] **Step 10: 修改 FileArtifactRepository.java 加新方法签名**
 
 在文件末尾、`record ConnectionResourceCounts(...)` 前插入：
 
@@ -358,7 +358,7 @@ Expected: BUILD SUCCESS
     List<FileArtifact> findExternalRowsByDir(String dirAbsolute);
 ```
 
-- [ ] **Step 11: 写 JdbcFileArtifactRepositoryExternalTest 失败测试**
+- [x] **Step 11: 写 JdbcFileArtifactRepositoryExternalTest 失败测试**
 
 ```java
 // server/data-talk-infrastructure/src/test/java/com/datatalk/infra/fileartifact/JdbcFileArtifactRepositoryExternalTest.java
@@ -441,12 +441,12 @@ class JdbcFileArtifactRepositoryExternalTest {
 }
 ```
 
-- [ ] **Step 12: 跑测试确认失败**
+- [x] **Step 12: 跑测试确认失败**
 
 Run: `cd server && mvn -pl data-talk-infrastructure -am test -Dtest=JdbcFileArtifactRepositoryExternalTest -q`
 Expected: FAIL — `external` 列没接到 INSERT / mapper
 
-- [ ] **Step 13: 修改 JdbcFileArtifactRepository.java**
+- [x] **Step 13: 修改 JdbcFileArtifactRepository.java**
 
 a) `COLS` 常量加 `external`：
 
@@ -522,17 +522,17 @@ public List<FileArtifact> findExternalRowsByDir(String dirAbsolute) {
 }
 ```
 
-- [ ] **Step 14: 跑测试确认通过**
+- [x] **Step 14: 跑测试确认通过**
 
 Run: `cd server && mvn -pl data-talk-infrastructure -am test -Dtest=JdbcFileArtifactRepositoryExternalTest -q`
 Expected: PASS
 
-- [ ] **Step 15: 全量编译 + 跑现有 file_artifact 相关测试确认无回归**
+- [x] **Step 15: 全量编译 + 跑现有 file_artifact 相关测试确认无回归**
 
 Run: `cd server && mvn -pl data-talk-infrastructure -am test -Dtest='*FileArtifact*' -q`
 Expected: PASS（所有现有 `new FileArtifact(...)` 改造后仍通过）
 
-- [ ] **Step 16: Commit**
+- [x] **Step 16: Commit**
 
 ```bash
 git add server/data-talk-domain/src/main/java/com/datatalk/domain/fileartifact/FileArtifact.java \
@@ -565,7 +565,7 @@ git commit -m "feat(file-artifact): add external boolean to record + repo round-
 
 ### A2.S1 — `AtomicFileWriter` + 异常类
 
-- [ ] **Step 1: 创建 AtomicFileWriter（package-private helper）**
+- [x] **Step 1: 创建 AtomicFileWriter（package-private helper）**
 
 ```java
 // server/data-talk-application/src/main/java/com/datatalk/application/fileartifact/AtomicFileWriter.java
@@ -609,7 +609,7 @@ final class AtomicFileWriter {
 }
 ```
 
-- [ ] **Step 2: 创建两个 unchecked 异常类**
+- [x] **Step 2: 创建两个 unchecked 异常类**
 
 ```java
 // server/data-talk-application/src/main/java/com/datatalk/application/fileartifact/FileArtifactNotFoundException.java
@@ -637,7 +637,7 @@ public class FileArtifactConflictException extends RuntimeException {
 
 ### A2.S2 — `SessionWorkdirRoot` 加 `dashboardsRoot()` / `externalManagedRoots()`
 
-- [ ] **Step 3: 修改 SessionWorkdirRoot.java**
+- [x] **Step 3: 修改 SessionWorkdirRoot.java**
 
 ```java
 // server/data-talk-application/src/main/java/com/datatalk/application/fileartifact/SessionWorkdirRoot.java
@@ -671,7 +671,7 @@ public record SessionWorkdirRoot(Path dataTalkRoot, Path opencodeCwd) {
 
 ### A2.S3 — `FileArtifactService.registerExternal` (TDD)
 
-- [ ] **Step 4: 写 FileArtifactServiceRegisterExternalTest 失败测试**
+- [x] **Step 4: 写 FileArtifactServiceRegisterExternalTest 失败测试**
 
 ```java
 // server/data-talk-application/src/test/java/com/datatalk/application/fileartifact/FileArtifactServiceRegisterExternalTest.java
@@ -767,12 +767,12 @@ class FileArtifactServiceRegisterExternalTest {
 }
 ```
 
-- [ ] **Step 5: 跑测试确认失败**
+- [x] **Step 5: 跑测试确认失败**
 
 Run: `cd server && mvn -pl data-talk-application -am test -Dtest=FileArtifactServiceRegisterExternalTest -q`
 Expected: FAIL — `registerExternal` 不存在
 
-- [ ] **Step 6: 在 FileArtifactService.java 末尾追加 `registerExternal`**
+- [x] **Step 6: 在 FileArtifactService.java 末尾追加 `registerExternal`**
 
 ```java
     /**
@@ -820,14 +820,14 @@ Expected: FAIL — `registerExternal` 不存在
     }
 ```
 
-- [ ] **Step 7: 跑测试确认通过**
+- [x] **Step 7: 跑测试确认通过**
 
 Run: `cd server && mvn -pl data-talk-application -am test -Dtest=FileArtifactServiceRegisterExternalTest -q`
 Expected: PASS
 
 ### A2.S4 — `FileArtifactService.readBytes` (TDD)
 
-- [ ] **Step 8: 写 FileArtifactServiceReadBytesTest**
+- [x] **Step 8: 写 FileArtifactServiceReadBytesTest**
 
 ```java
 // server/data-talk-application/src/test/java/com/datatalk/application/fileartifact/FileArtifactServiceReadBytesTest.java
@@ -910,12 +910,12 @@ class FileArtifactServiceReadBytesTest {
 }
 ```
 
-- [ ] **Step 9: 跑测试确认失败**
+- [x] **Step 9: 跑测试确认失败**
 
 Run: `cd server && mvn -pl data-talk-application -am test -Dtest=FileArtifactServiceReadBytesTest -q`
 Expected: FAIL
 
-- [ ] **Step 10: 在 FileArtifactService.java 追加 `readBytes`**
+- [x] **Step 10: 在 FileArtifactService.java 追加 `readBytes`**
 
 ```java
     /**
@@ -937,14 +937,14 @@ Expected: FAIL
     }
 ```
 
-- [ ] **Step 11: 跑测试确认通过**
+- [x] **Step 11: 跑测试确认通过**
 
 Run: `cd server && mvn -pl data-talk-application -am test -Dtest=FileArtifactServiceReadBytesTest -q`
 Expected: PASS
 
 ### A2.S5 — `FileArtifactService.replaceBytesAtomic` (TDD)
 
-- [ ] **Step 12: 写 FileArtifactServiceReplaceBytesAtomicTest**
+- [x] **Step 12: 写 FileArtifactServiceReplaceBytesAtomicTest**
 
 ```java
 // server/data-talk-application/src/test/java/com/datatalk/application/fileartifact/FileArtifactServiceReplaceBytesAtomicTest.java
@@ -1021,12 +1021,12 @@ class FileArtifactServiceReplaceBytesAtomicTest {
 }
 ```
 
-- [ ] **Step 13: 跑测试确认失败**
+- [x] **Step 13: 跑测试确认失败**
 
 Run: `cd server && mvn -pl data-talk-application -am test -Dtest=FileArtifactServiceReplaceBytesAtomicTest -q`
 Expected: FAIL
 
-- [ ] **Step 14: 在 FileArtifactService.java 追加 `replaceBytesAtomic`**
+- [x] **Step 14: 在 FileArtifactService.java 追加 `replaceBytesAtomic`**
 
 ```java
     /**
@@ -1054,14 +1054,14 @@ Expected: FAIL
     }
 ```
 
-- [ ] **Step 15: 跑测试确认通过**
+- [x] **Step 15: 跑测试确认通过**
 
 Run: `cd server && mvn -pl data-talk-application -am test -Dtest=FileArtifactServiceReplaceBytesAtomicTest -q`
 Expected: PASS
 
 ### A2.S6 — `FileArtifactReconciler.reconcileExternalDirs` (TDD)
 
-- [ ] **Step 16: 写 FileArtifactReconcilerExternalDirsTest**
+- [x] **Step 16: 写 FileArtifactReconcilerExternalDirsTest**
 
 ```java
 // server/data-talk-application/src/test/java/com/datatalk/application/fileartifact/FileArtifactReconcilerExternalDirsTest.java
@@ -1150,12 +1150,12 @@ class FileArtifactReconcilerExternalDirsTest {
 }
 ```
 
-- [ ] **Step 17: 跑测试确认失败**
+- [x] **Step 17: 跑测试确认失败**
 
 Run: `cd server && mvn -pl data-talk-application -am test -Dtest=FileArtifactReconcilerExternalDirsTest -q`
 Expected: FAIL — `reconcileExternalDirs` 不存在
 
-- [ ] **Step 18: 在 FileArtifactReconciler.java 末尾追加 `reconcileExternalDirs` + 在 `runFullReconcile` 末尾调用**
+- [x] **Step 18: 在 FileArtifactReconciler.java 末尾追加 `reconcileExternalDirs` + 在 `runFullReconcile` 末尾调用**
 
 ```java
 // 修改 runFullReconcile
@@ -1211,7 +1211,7 @@ public void reconcileExternalDirs(List<Path> dirs) {
 }
 ```
 
-- [ ] **Step 19: 修改 `reconcileWorkspacesTree` 加 external 旁路**
+- [x] **Step 19: 修改 `reconcileWorkspacesTree` 加 external 旁路**
 
 在 `reconcileWorkspacesTree` 的 for 循环内、`row.connectionId() == null` 后加：
 
@@ -1219,14 +1219,14 @@ public void reconcileExternalDirs(List<Path> dirs) {
 if (row.external()) continue; // external 行由 reconcileExternalDirs 处理
 ```
 
-- [ ] **Step 20: 跑测试确认通过**
+- [x] **Step 20: 跑测试确认通过**
 
 Run: `cd server && mvn -pl data-talk-application -am test -Dtest=FileArtifactReconcilerExternalDirsTest -q`
 Expected: PASS
 
 ### A2.S7 — `DashboardConfiguration` Bean wiring + `DashboardStore` 角色压缩
 
-- [ ] **Step 21: 创建 DashboardConfiguration**
+- [x] **Step 21: 创建 DashboardConfiguration**
 
 ```java
 // server/data-talk-application/src/main/java/com/datatalk/application/dashboard/DashboardConfiguration.java
@@ -1256,7 +1256,7 @@ public class DashboardConfiguration {
 
 > 注：`DashboardStore` 类签名是 `DashboardStore(Path baseDir, ObjectMapper mapper)`。Spring 会用上面的 `Path dashboardsBaseDir` Bean + 已有的 `ObjectMapper` Bean 自动装配 `@Component` 标注的 `DashboardStore`。
 
-- [ ] **Step 22: 修改 DashboardArtifactService — 改用 FileArtifactService API**
+- [x] **Step 22: 修改 DashboardArtifactService — 改用 FileArtifactService API**
 
 替换 `DashboardArtifactService.java` 全文（保留异常类、Locks、DashboardIds 用法）：
 
@@ -1448,7 +1448,7 @@ public class DashboardArtifactService {
 }
 ```
 
-- [ ] **Step 23: 把 `AtomicFileWriter` 暴露到 dashboard 包**
+- [x] **Step 23: 把 `AtomicFileWriter` 暴露到 dashboard 包**
 
 `AtomicFileWriter` 当前是 package-private。需要让 dashboard 包能调用，最小改动：在 `fileartifact` 包内加一个 public bridge：
 
@@ -1472,7 +1472,7 @@ public final class AtomicFileWriterBridge {
 }
 ```
 
-- [ ] **Step 24: 删除 `DashboardStore`（不再需要）+ 移除 `@Component` Bean**
+- [x] **Step 24: 删除 `DashboardStore`（不再需要）+ 移除 `@Component` Bean**
 
 新 `DashboardArtifactService` 不再注入 `DashboardStore`。删除 `DashboardStore.java`：
 
@@ -1484,7 +1484,7 @@ git rm server/data-talk-application/src/main/java/com/datatalk/application/dashb
 
 ### A2.S8 — 改造已有 dashboard 测试
 
-- [ ] **Step 25: 修改 DashboardArtifactServiceTest.java**
+- [x] **Step 25: 修改 DashboardArtifactServiceTest.java**
 
 把所有 `DashboardStore store = new DashboardStore(tempDir, mapper);` 替换为：
 
@@ -1512,11 +1512,11 @@ DashboardArtifactService service = new DashboardArtifactService(
 
 > 给本 task 的执行者：在 `server/data-talk-application/src/test/java/com/datatalk/application/fileartifact/` 下新增一个 `FakeFileArtifactRepository.java` 测试 helper（用 `HashMap<String, FileArtifact>` 实现接口；不需要实现非测试方法时抛 `UnsupportedOperationException`）。
 
-- [ ] **Step 26: 修改 DashboardControllerTest.java（同样替换 store 构造）**
+- [x] **Step 26: 修改 DashboardControllerTest.java（同样替换 store 构造）**
 
 同上模式。
 
-- [ ] **Step 27: 跑 dashboard 包全部测试确认 PASS**
+- [x] **Step 27: 跑 dashboard 包全部测试确认 PASS**
 
 Run: `cd server && mvn -pl data-talk-application -am test -Dtest='Dashboard*Test' -q`
 Expected: PASS
@@ -1526,14 +1526,14 @@ Expected: PASS
 
 ### A2.S9 — Status 语义校准代码审计
 
-- [ ] **Step 28: grep 现有 ARCHIVED 假设的调用点**
+- [x] **Step 28: grep 现有 ARCHIVED 假设的调用点**
 
 ```bash
 grep -rn "FileArtifactStatus.ARCHIVED\|status = 'archived'\|status='archived'\|findAllWorkspaceScopedArchived\|findArchivedByConnection" \
     server/ --include="*.java"
 ```
 
-- [ ] **Step 29: 对每处审计：是否假设 archived = read-only / 不变？**
+- [x] **Step 29: 对每处审计：是否假设 archived = read-only / 不变？**
 
 预期需要审计的调用点（按现有代码）：
 - `JdbcFileArtifactRepository.findArchivedByConnection` / `detachArchivedFromConnection` / `markArchived` — 不假设内容不变（仅按 connection 分组），✓ 无需改动
@@ -1544,7 +1544,7 @@ grep -rn "FileArtifactStatus.ARCHIVED\|status = 'archived'\|status='archived'\|f
 
 如果 grep 发现新调用点假设 archived 不变（例如未来加的缓存策略），按 spec §6 要求显式排除 dashboard kind 或 external 行。
 
-- [ ] **Step 30: 在 spec 与文档落实校准**
+- [x] **Step 30: 在 spec 与文档落实校准**
 
 修改 `docs/product-specs/2026-04-29-opencode-workdir-and-artifact-system-design.md` §6 file_artifact 系统总体描述，追加一行注释：
 
@@ -1554,12 +1554,12 @@ grep -rn "FileArtifactStatus.ARCHIVED\|status = 'archived'\|status='archived'\|f
 
 ### A2.S10 — 全量编译 + 集成测试
 
-- [ ] **Step 31: 全量后端测试**
+- [x] **Step 31: 全量后端测试**
 
 Run: `cd server && mvn clean verify -q`
 Expected: BUILD SUCCESS, 0 failures
 
-- [ ] **Step 32: Commit A2 成果**
+- [x] **Step 32: Commit A2 成果**
 
 ```bash
 git add server/data-talk-application/src/main/java/com/datatalk/application/fileartifact/AtomicFileWriter.java \
@@ -1591,13 +1591,13 @@ git commit -m "feat(file-artifact): registerExternal/readBytes/replaceBytesAtomi
 
 ### A3.S1 — 联合类型加 'dashboard'
 
-- [ ] **Step 1: 修改 client/src/services/api/file-artifacts.ts**
+- [x] **Step 1: 修改 client/src/services/api/file-artifacts.ts**
 
 ```typescript
 export type FileArtifactKind = 'report' | 'er_diagram' | 'sql_script' | 'dataset' | 'dashboard' | 'other'
 ```
 
-- [ ] **Step 2: 修改 client/src/features/stage/stores/file-artifacts-store.ts**
+- [x] **Step 2: 修改 client/src/features/stage/stores/file-artifacts-store.ts**
 
 `EMPTY_KIND_GROUPS` 加 `dashboard: []`：
 
@@ -1627,17 +1627,17 @@ const groups: ConnectionFileGroups = {
 
 ### A3.S2 — 类型检查 + 已有 vitest 回归
 
-- [ ] **Step 3: 跑 tsc 确认无类型错误**
+- [x] **Step 3: 跑 tsc 确认无类型错误**
 
 Run: `cd client && npx tsc --noEmit`
 Expected: 0 errors
 
-- [ ] **Step 4: 跑前端 vitest 确认无回归**
+- [x] **Step 4: 跑前端 vitest 确认无回归**
 
 Run: `cd client && npx vitest run --reporter=verbose 2>&1 | tail -30`
 Expected: 所有测试通过
 
-- [ ] **Step 5: Commit A3 成果**
+- [x] **Step 5: Commit A3 成果**
 
 ```bash
 git add client/src/services/api/file-artifacts.ts \
@@ -1653,13 +1653,13 @@ git commit -m "feat(client): file artifact kind union + groups support dashboard
 
 ### A4.S1 — 更新上游文档
 
-- [ ] **Step 1: 解除 P1 B4 BLOCKED 状态**
+- [x] **Step 1: 解除 P1 B4 BLOCKED 状态**
 
 修改 `docs/exec-plans/2026-05-08-report-dashboard-p1-plan.md` 中 Task B4 区域：
 
 将 `BLOCKED: depends on file_artifact integration spec` 改为 `Unblocked by 2026-05-09-dashboard-file-artifact-integration-plan.md (A2 完成)`，并简化 B4 内容为引用本 plan 的产物。
 
-- [ ] **Step 2: 在 docs/exec-plans/index.md 登记本 plan 为 Completed**
+- [x] **Step 2: 在 docs/exec-plans/index.md 登记本 plan 为 Completed**
 
 在 `index.md` 的 "Completed" 区段添加：
 
@@ -1671,7 +1671,7 @@ git commit -m "feat(client): file artifact kind union + groups support dashboard
 
 ### A4.S2 — Spec 状态翻牌
 
-- [ ] **Step 3: 修改 spec 头部 Status 字段**
+- [x] **Step 3: 修改 spec 头部 Status 字段**
 
 `docs/product-specs/2026-05-09-dashboard-file-artifact-integration-design.md` 顶部：
 
@@ -1683,17 +1683,17 @@ git commit -m "feat(client): file artifact kind union + groups support dashboard
 
 ### A4.S3 — Final commit + 完整 verify
 
-- [ ] **Step 4: 跑后端全量 verify**
+- [x] **Step 4: 跑后端全量 verify**
 
 Run: `cd server && mvn clean verify -q`
 Expected: BUILD SUCCESS
 
-- [ ] **Step 5: 跑前端 type check + test**
+- [x] **Step 5: 跑前端 type check + test**
 
 Run: `cd client && npx tsc --noEmit && npx vitest run`
 Expected: 0 errors, all pass
 
-- [ ] **Step 6: Commit 文档更新**
+- [x] **Step 6: Commit 文档更新**
 
 ```bash
 git add docs/exec-plans/2026-05-08-report-dashboard-p1-plan.md \
@@ -1752,10 +1752,16 @@ git commit -m "docs(dashboard-fileartifact): finish plan + index registration + 
 
 ## Execution Handoff
 
-Plan complete and saved to `docs/exec-plans/2026-05-09-dashboard-file-artifact-integration-plan.md`. Two execution options:
+Plan executed and completed 2026-05-09. All 4 tasks shipped:
 
-**1. Subagent-Driven (recommended)** — A1 → A2 顺序执行（A2 强依赖 A1），A3 与 A2 之间没有代码依赖（A1 完成即可），可与 A2 并行；A4 收尾（依赖前三全部完成）
+- **A1**: V18 migration (`V18__file_artifact_dashboard.sql`) + `FileArtifact.external` boolean + `JdbcFileArtifactRepository` external support + `findExternalRowsByDir`
+- **A2**: `FileArtifactService.registerExternal` / `readBytes` / `replaceBytesAtomic` + `AtomicFileWriter` + `FileArtifactNotFoundException` / `FileArtifactConflictException` + `FileArtifactReconciler.reconcileExternalDirs` + `SessionWorkdirRoot.dashboardsRoot` / `externalManagedRoots` + `DashboardConfiguration` @Bean wiring + `DashboardArtifactService` 重构（移除 DashboardStore，改用 FileArtifactService）
+- **A3**: 前端 `FileArtifactKind` 联合类型加 `'dashboard'` + `EMPTY_KIND_GROUPS` 同步
+- **A4**: 文档收尾（status 语义校准 `archived` ≠ frozen）
 
-**2. Inline Execution** — 同顺序，全部在本 session
+## Completion Log
 
-**Which approach?**
+| Field | Value |
+|---|---|
+| Completed | 2026-05-09 |
+| Status | All 4 tasks verified in code (2026-05-12 housekeeping re-check): V18 migration present, all Java service methods exist, frontend types aligned, DashboardStore removed. |

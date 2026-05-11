@@ -287,9 +287,13 @@ useEffect(() => {
 Run: `cd client && npx tsc --noEmit`
 Expected: PASS，零类型错误
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit** *(shipped 2026-05-10, documented 2026-05-12 housekeeping)*
 
-```bash
-git add client/src/features/stage/components/sql-result-table.tsx
-git commit -m "feat(sql-result): add fullscreen expand button with portal overlay"
-```
+---
+
+## Completion Log
+
+| Field | Value |
+|---|---|
+| Completed | 2026-05-10 |
+| Status | All 2 tasks shipped. i18n keys (en/zh 3 each) + Maximize2Icon button + createPortal overlay with Esc dismiss. Code verified present in `sql-result-table.tsx` and `messages.ts`. |

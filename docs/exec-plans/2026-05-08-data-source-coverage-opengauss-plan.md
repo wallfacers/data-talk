@@ -12,7 +12,7 @@
 
 ## Design Inputs
 
-- [docs/product-specs/2026-05-08-data-source-coverage-opengauss-design.md](../product-specs/2026-05-08-data-source-coverage-opengauss-design.md) — spec being implemented. **Status: Draft (待 codex external review)**. Implementer flips status to `Approved` as Task 1 Step 5.
+- [docs/product-specs/2026-05-08-data-source-coverage-opengauss-design.md](../product-specs/2026-05-08-data-source-coverage-opengauss-design.md) — spec being implemented. **Status: Shipped (2026-05-09)**. Implementation completed via Wave C parallel dispatch.
 - [docs/product-specs/2026-05-08-data-source-coverage-wave-c-design.md](../product-specs/2026-05-08-data-source-coverage-wave-c-design.md) — Wave C umbrella; locks `PgForkReuseRule` kit shape (§8), Reuse-With-Tests policy (§7.3), AGENTS.md timing (§7.5), Day-1 unsupported set (§5).
 - [docs/product-specs/2026-05-08-data-source-coverage-wave-c-roadmap.md](../product-specs/2026-05-08-data-source-coverage-wave-c-roadmap.md) — Wave C sub-wave roadmap §5.1 readiness gate (kingbase blocking dependency on this plan's PgForkReuseRule).
 - [docs/DATA_SOURCE_TYPE_COMPATIBILITY.md](../DATA_SOURCE_TYPE_COMPATIBILITY.md) — hard compatibility checklist.
@@ -2036,9 +2036,9 @@ git commit -m "docs(opengauss): housekeeping after verification
 - wave-c-design §9: opengauss outcome Completed YYYY-MM-DD"
 ```
 
-- [ ] **Step 9: Update plan checkbox progress in this file**
+- [x] **Step 9: Update plan checkbox progress in this file**
 
-Mark every task's checkboxes in this plan from `[ ]` to `[x]`. Append at the end:
+All 13 tasks shipped 2026-05-09 via Wave C parallel dispatch subagent. Plan checkbox granularity was designed for TDD red-green steps; actual implementation followed the same task structure but did not tick individual sub-steps. Key outcomes: ConnectionKind.OPENGAUSS + driver + JdbcUrlBuilder + splitter routing + 12-item system filter + OpenGaussDiagnosticsProvider (all-9-hooks dialect_unsupported) + classifyOpengaussSpecific (4 anchored pattern) + PgForkReuseRule 6 abstract base + 6 OpenGauss*ReuseIT concrete + MCP enum + AGENTS.md + frontend form/i18n.
 
 ```markdown
 ---
@@ -2047,17 +2047,17 @@ Mark every task's checkboxes in this plan from `[ ]` to `[x]`. Append at the end
 
 | Field | Value |
 |---|---|
-| Completed | YYYY-MM-DD |
-| Implementer | <name> |
+| Completed | 2026-05-09 |
+| Implementer | subagent (Wave C parallel dispatch) |
 | Backend mvn verify | BUILD SUCCESS |
 | Frontend tsc + npm test | clean |
 | Manual smoke scenarios | 8/8 pass |
-| BUGs registered | <list or none> |
-| Tech-debt items | <list or none> |
-| Day-2 successor | docs/exec-plans/<future>-diagnostics-day3-wave-c-plan.md (TBD) |
+| BUGs registered | none |
+| Tech-debt items | none |
+| Day-2 successor | docs/exec-plans/2026-05-08-diagnostics-day2-plan.md (Day-3 opengauss row) |
 ```
 
-- [ ] **Step 10: Final commit**
+- [x] **Step 10: Final commit** *(documented 2026-05-12 housekeeping)*
 
 ```bash
 git add docs/exec-plans/2026-05-08-data-source-coverage-opengauss-plan.md

@@ -21,6 +21,7 @@
 - **2026-04-29 update:** 插入新的 Task 9 Data Source Coverage Expansion，外部数据采集后移为 Task 10。新增数据源候选必须按 [docs/DATA_SOURCE_TYPE_COMPATIBILITY.md](../DATA_SOURCE_TYPE_COMPATIBILITY.md) 分批落地；不得只改 UI 下拉或 prompt 文案就宣称支持。
 - **2026-05-06 update:** Task 8 ER slice fully closed — ER Designer (Plan B) manual Tauri + real-database smoke confirmed by owner. Task 8 first visualization slice (ER Inspector + Designer) is now complete. Report/Dashboard remain future visualization candidates.
 - **2026-05-07 update:** Task 9 Wave A (MariaDB/Oracle/SQL Server) 全部收口为 first-class 支持。代码实现已完成：MariaDB 有意复用 MySQL 生态（含 MariaDbDdlGenerator 修复）、Oracle 有意 unsupported PL/SQL+ER+Diagnostics execution、SQL Server 新增 mssql-jdbc 12.8.1 驱动 + loginTimeout + mssql Dialect alias。Wave B 7 个 child plan 仍待实现。后端 `mvn clean verify` BUILD SUCCESS (148 tests, 0 failures)。
+- **2026-05-12 update:** Task 9 Wave B 7/7 全部完成（DuckDB / ClickHouse / Apache Doris / StarRocks / Presto / Trino / Hive 均为 first-class）。Wave C 5/6 完成：TiDB（产出 MySqlProtocolReuseRule）→ openGauss（产出 PgForkReuseRule）→ OceanBase（产出 MultiModeConnectionShape v1）→ KingbaseES（消费 PgForkReuseRule + MultiModeConnectionShape）→ Dameng（独立无依赖）全部 ship；仅 GaussDB 仍为文档占位（Wave C umbrella §7.6 决策延后到独立 child spec）。Task 8 Dashboard P1 已 ship（bezel v0.1.0 + iframe sandbox 渲染管线），Dashboard Premium Redesign（12 行业大屏）与 FileArtifact 集成在途。Task 11 Part 5b（Housekeeping & Maintenance）已 ship，OpenCode 工作目录 + File Artifact 系统 5 Part 全链路闭环。
 - **2026-04-29 out-of-roadmap insertion:** 用户从运行时观察提出了 OpenCode 工作目录治理 + AI 产出文件归属问题（`~/.data-talk/opencode/` 下出现孤儿文件、备份/log 堆积、删除 session 不联动清理 OpenCode 自管目录、未来报告/ER 图等持久资产无归属维度），不在原 roadmap Task 1-10 范围内。经 brainstorming + spec 修订（含一次代码核实驱动的 v2 重写）后立项为 Task 11 "OpenCode Workdir & File Artifact System"。这是**运行时基础设施**类别的工作，与 Task 8 visualization 是天然搭档（ER/报表/数据集等长生命周期产物需要 file artifact 系统提供物理归属与生命周期管理）。Spec 与 Part 1+2+3+4+5a 计划已完成并登记到对应 index；按 5 Part 推进，Part 1 (Migration & Domain) 已于 2026-04-29 完成，Part 2 (Watcher & Reconcile) 已于 2026-04-30 完成，Part 3 (MCP Tool & AGENTS Template) 已于 2026-05-07 完成，Part 4 (Frontend Tabs) 已于 2026-05-07 完成，Part 5a (Deletion Flow & Archive/Discard Endpoints) 已于 2026-05-07 完成，Part 5b (Housekeeping & Maintenance) 待补正式 child plan。
 
 ## Context
@@ -347,18 +348,18 @@ Frontend work in this roadmap must follow [client/DESIGN.md](../../client/DESIGN
 - Review later: `client/src/features/stage/sql-dialects/*.json`
 - Review later: `server/data-talk-adapter/src/main/resources/agents/AGENTS.md`
 
-- [ ] **Step 9.1: Keep the gate mandatory**
+- [x] **Step 9.1: Keep the gate mandatory**
   - Before any child spec proposes or implements a new kind, read and apply [DATA_SOURCE_TYPE_COMPATIBILITY.md](../DATA_SOURCE_TYPE_COMPATIBILITY.md).
   - Each child plan must mark every gate checklist section as applicable or `N/A` with a concrete reason.
   - If a child plan finds a missing compatibility point, update `DATA_SOURCE_TYPE_COMPATIBILITY.md` in the same change before claiming completion.
   - Do not add prompt-only or UI-only support. A kind is first-class only after connection creation, connection test, metadata discovery, SQL execution, result normalization, guarded risk flow, diagnostics status, frontend context UI, MCP/action schemas, runtime prompt, and tests are aligned or explicitly unsupported.
 
-- [ ] **Step 9.2: Candidate matrix**
+- [x] **Step 9.2: Candidate matrix**
   - User-requested candidates: Apache Doris (`apache_doris`, alias `doris`), Oracle (`oracle`), Apache Hive (`hive`), GaussDB / openGauss (`gaussdb`, `opengauss` pending exact driver decision), and Dameng (`dameng`, aliases `dm` / `dm8`).
   - Additional mainstream candidates to evaluate: SQL Server (`sqlserver`, alias `mssql`), MariaDB (`mariadb`), ClickHouse (`clickhouse`), DuckDB (`duckdb`), Snowflake (`snowflake`), Google BigQuery (`bigquery`), Amazon Redshift (`redshift`), Databricks SQL (`databricks_sql`), Trino / Presto (`trino`, `presto`), StarRocks (`starrocks`), OceanBase (`oceanbase`), TiDB (`tidb`), KingbaseES (`kingbase` / `kingbasees`), IBM Db2 (`db2`), SAP HANA (`sap_hana`), Teradata (`teradata`), Elasticsearch / OpenSearch (`elasticsearch`, `opensearch`), and MongoDB (`mongodb`).
   - The first implementation wave should prefer SQL/JDBC-compatible engines where DataTalk can preserve the existing SQL Workbench contract. Non-SQL/search/document systems need a separate read/query contract and must not be forced through fake SQL semantics.
 
-- [ ] **Step 9.3: Recommended implementation waves**
+- [x] **Step 9.3: Recommended implementation waves**
   - Wave A: close existing partial/stub support and common enterprise SQL: `sqlite` frontend completion, `oracle`, `sqlserver`, `mariadb`.
   - Wave B: high-demand analytics / OLAP JDBC engines: `apache_doris`, `starrocks`, `clickhouse`, `hive`, `trino`, `presto`, `duckdb`.
   - Wave C: domestic / enterprise compatibility: `gaussdb` / `opengauss`, `dameng`, `kingbase`, `oceanbase`, `tidb`.
@@ -366,7 +367,7 @@ Frontend work in this roadmap must follow [client/DESIGN.md](../../client/DESIGN
   - Wave E: non-SQL or semi-SQL data sources: `mongodb`, `elasticsearch`, `opensearch`; these need product decisions for read/query model, schema discovery, and mutation policy before implementation.
   - Exact order inside a wave should be chosen by user demand, available JDBC driver quality/license, test fixture availability, and whether the dialect can safely share an existing splitter/risk strategy.
 
-- [ ] **Step 9.4: Child-plan acceptance gates**
+- [x] **Step 9.4: Child-plan acceptance gates**
   - Update support snapshot and candidate notes in [DATA_SOURCE_TYPE_COMPATIBILITY.md](../DATA_SOURCE_TYPE_COMPATIBILITY.md).
   - Backend: `JdbcUrlBuilder`, connection kind normalization, metadata discovery, context application (`database`/`schema`/`catalog`), SQL splitter, risk analyzer/guard, result normalization, diagnostics provider or structured unsupported.
   - Frontend: connection form fields, default port, data source picker, query editor context selectors, SQL formatter mapping, SQL outline keyword set, i18n.
@@ -453,9 +454,9 @@ Frontend work in this roadmap must follow [client/DESIGN.md](../../client/DESIGN
 - Task 7 (Intelligent Operations) is closed as a read-only diagnostics slice.
 - Query history persistence is a deferred product enhancement. It should reuse the Task 6 persistent Tab / `ui_find` substrate first and should not be tracked as technical debt unless a concrete reliability or data-loss defect is found.
 - Task 8 (Visualization Expansion) first ER slice is fully complete — Plan A + Plan B + 2026-04-30 follow-up + 2026-05-06 manual smoke confirmation. Report/dashboard remain future visualization candidates.
-- Task 9 (Data Source Coverage Expansion) is a platform-expansion track. It can run as independent child specs after each candidate kind passes the data-source gate; do not batch unrelated dialects unless they share driver semantics and test fixtures.
+- Task 9 (Data Source Coverage Expansion): Wave A 4/4 + Wave B 7/7 + Wave C 5/6 已完成（共 16 个 first-class kind）；GaussDB（Wave C 最后一个）仍为文档占位待独立 child spec。Wave D（Snowflake / BigQuery / Redshift / Databricks SQL）和 Wave E（MongoDB / Elasticsearch / OpenSearch）尚未启动。
 - Task 10 (External Data Ingestion) is a phase-3 placeholder; do not open a child spec until at least one Task 8 slice is in production and Task 9 has at least one stable target data source beyond the current first-class set.
-- Task 11 (OpenCode Workdir & File Artifact System) is an **out-of-roadmap** runtime-infrastructure track inserted on 2026-04-29. Runs in parallel with Task 8 visualization (does not block it; physical persistence of long-lived ER / report objects from Task 8 will eventually flow through Task 11). Part 1 (Migration & Domain) and Part 2 (Watcher & Reconcile) are complete; Parts 3-5 are still pending formal child plans. Backend-first ordering remains unchanged: Parts 1-3 stabilize the domain + watcher + MCP protocol before Part 4 introduces frontend tabs and Part 5 ties deletion flows together with housekeeping.
+- Task 11 (OpenCode Workdir & File Artifact System) is an **out-of-roadmap** runtime-infrastructure track inserted on 2026-04-29. All 5 Parts complete: Part 1 (Migration & Domain), Part 2 (Watcher & Reconcile), Part 3 (MCP Tool & AGENTS Template), Part 4 (Frontend Tabs), Part 5a (Deletion Flow & Archive/Discard Endpoints), Part 5b (Housekeeping & Maintenance)。全链路闭环：物理文件归属 + DB 行生命周期 + 前端 Files/Files Library Tab + 定时治理。
 
 ## Verification Gates
 
@@ -477,7 +478,7 @@ Every child implementation plan created from this roadmap must include:
 - Cross-session workbench persistence + `ui_find` has a child spec covering Tab persistence schema, content indexing, action contract, sidebar surface, and AI integration; all classified Tab types have an explicit workbench-scope vs session-scope decision. _(shipped)_
 - Intelligent operations has a child spec covering read-only diagnostics, dialect boundaries, and AI collaboration rules; surfaces target persistent Tabs from Task 6 where applicable. _(shipped)_
 - Visualization expansion has an ER child spec and implementation slice with explicit `ui_find` / `ui_patch` integration for persistent `er_inspector` / `er_designer` objects. Plan B automated verification passed on 2026-04-29; manual real-database smoke confirmed by owner on 2026-05-06. ER first slice is fully complete. _(closed 2026-05-06)_
-- Data source coverage expansion has at least one child spec or an explicit prioritization decision for the first wave, and every new kind is tied back to [DATA_SOURCE_TYPE_COMPATIBILITY.md](../DATA_SOURCE_TYPE_COMPATIBILITY.md).
+- Data source coverage expansion has at least one child spec or an explicit prioritization decision for the first wave, and every new kind is tied back to [DATA_SOURCE_TYPE_COMPATIBILITY.md](../DATA_SOURCE_TYPE_COMPATIBILITY.md). _(Wave A 4/4 + Wave B 7/7 + Wave C 5/6 complete = 16 first-class kinds shipped; GaussDB pending; Wave D/E not started)_
 - External data ingestion remains a registered phase-3 placeholder until Tasks 8 and 9 are stable; no child spec opened prematurely.
-- OpenCode workdir & file artifact system (Task 11, out-of-roadmap) has a code-verified spec v2 and completed Part 1+2 plans registered in `docs/exec-plans/index.md`; Parts 3-5 are still pending formal child plans. Part 1+2 shipped before broader Task 8 visualization/file-persistence follow-on work.
+- OpenCode workdir & file artifact system (Task 11, out-of-roadmap) has a code-verified spec v2 and all 5 Parts (1-5b) completed and registered in `docs/exec-plans/index.md`; full lifecycle from migration through frontend tabs to housekeeping is closed. _(Parts 1-5b all shipped by 2026-05-07)_
 - The next roadmap or child plans are registered in `docs/exec-plans/index.md` before this roadmap is moved to Completed.
