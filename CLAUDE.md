@@ -65,6 +65,7 @@ This file is the map. Deep knowledge lives in `docs/`:
 | DB schema reference          | [docs/generated/db-schema.md](docs/generated/db-schema.md)   |
 | External protocol references | [docs/references/](docs/references/)                         |
 | ER tab protocol              | [docs/references/er-tab-protocol.md](docs/references/er-tab-protocol.md) |
+| Bezel dashboard skill 设计   | [docs/product-specs/2026-05-11-bezel-skill-design.md](docs/product-specs/2026-05-11-bezel-skill-design.md) |
 | Design patterns & conventions| [docs/DESIGN.md](docs/DESIGN.md)                             |
 | Client design contract       | [client/DESIGN.md](client/DESIGN.md)                         |
 | Backend dev guide            | [docs/BACKEND.md](docs/BACKEND.md)                           |
