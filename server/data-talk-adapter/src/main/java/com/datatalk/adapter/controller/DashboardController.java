@@ -5,10 +5,13 @@ import com.datatalk.adapter.dto.DashboardPromoteRequest;
 import com.datatalk.application.dashboard.DashboardArtifactService;
 import com.datatalk.application.dashboard.JsonPatchApplier;
 import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -108,5 +111,17 @@ public class DashboardController {
                 "errors", e.getResult().errors()
             ));
         }
+    }
+
+    @GetMapping(value = "/{id}/html", produces = MediaType.TEXT_HTML_VALUE)
+    public ResponseEntity<String> serveHtml(@PathVariable String id, HttpServletRequest req) {
+        var maybe = dashboardService.loadHtml(id);
+        if (maybe.isEmpty()) return ResponseEntity.notFound().build();
+        String origin = "http://" + req.getServerName() + ":" + req.getServerPort();
+        String body = new String(maybe.get(), StandardCharsets.UTF_8)
+            .replace("__BEZEL_SERVER_ORIGIN__", origin);
+        return ResponseEntity.ok()
+            .contentType(MediaType.TEXT_HTML)
+            .body(body);
     }
 }

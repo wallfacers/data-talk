@@ -13,11 +13,13 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
@@ -104,6 +106,52 @@ public class DashboardArtifactService {
         }
 
         return new PromoteResult(id, 1);
+    }
+
+    /**
+     * Promote with an optional HTML artifact. When htmlBytes is non-null and non-empty,
+     * it is validated via BezelHtmlValidator and stored alongside the dashboard JSON.
+     */
+    public PromoteResult promote(JsonNode dashboard, String originSessionId, byte[] htmlBytes) {
+        if (htmlBytes != null && htmlBytes.length > 0) {
+            var v = BezelHtmlValidator.validate(new String(htmlBytes, StandardCharsets.UTF_8));
+            if (!v.ok()) {
+                throw new ValidationException(new ValidationResult(
+                    v.errors().stream().map(e -> new ValidationResult.Error("", "bezel_html", e)).toList()));
+            }
+        }
+        var res = promote(dashboard, originSessionId);
+        if (htmlBytes != null && htmlBytes.length > 0) {
+            storeHtmlArtifact(res.id(), htmlBytes);
+        }
+        return res;
+    }
+
+    public Optional<byte[]> loadHtml(String dashboardId) {
+        try {
+            return Optional.of(fileArtifactService.readBytes(htmlArtifactId(dashboardId)));
+        } catch (Exception e) {
+            return Optional.empty();
+        }
+    }
+
+    private String htmlArtifactId(String dashboardId) { return dashboardId + ":html"; }
+
+    private void storeHtmlArtifact(String dashboardId, byte[] bytes) {
+        Path p = workdirRoot.dashboardsRoot().resolve(dashboardId + ".html");
+        try {
+            Files.createDirectories(p.getParent());
+            AtomicFileWriterBridge.write(p, bytes);
+        } catch (IOException e) {
+            throw new DashboardPersistenceException("Failed to store HTML artifact: " + dashboardId, e);
+        }
+        try {
+            fileArtifactService.registerExternal(
+                    htmlArtifactId(dashboardId), FileArtifactKind.DASHBOARD, FileArtifactScope.WORKSPACE,
+                    null, null, p, null, null, null);
+        } catch (IOException | FileArtifactConflictException e) {
+            // already registered — ignore
+        }
     }
 
     public JsonNode load(String id) {
