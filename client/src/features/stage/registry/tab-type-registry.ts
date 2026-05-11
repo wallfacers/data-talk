@@ -208,10 +208,17 @@ export const TAB_TYPE_REGISTRY: Record<string, TabTypeDescriptor> = {
       return joined.length > 4096 ? joined.slice(0, 4096) : joined
     },
     rehydrate: (tabId, p) => {
-      const o = p as { fileArtifactId?: string } | Record<string, unknown> | null | undefined
+      const o = p as { fileArtifactId?: string; schemaVersion?: unknown } | Record<string, unknown> | null | undefined
       if (!o) return
       // If payload is a pointer (fileArtifactId), skip — actual data loaded lazily
       if (o.fileArtifactId) return
+      // Normalize v1 payloads to v2
+      if (o.schemaVersion !== 2) {
+        ;(o as Record<string, unknown>).schemaVersion = 2
+        ;(o as Record<string, unknown>).theme = (o as Record<string, unknown>).theme ?? 'industry-default'
+        ;(o as Record<string, unknown>).renderer = 'bezel'
+        ;(o as Record<string, unknown>).layout = { engine: 'free' }
+      }
       // Otherwise treat as inline dashboard JSON
       const parsed = dashboardSchema.safeParse(o)
       if (parsed.success) {

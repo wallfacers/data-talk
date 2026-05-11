@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { StageTab } from '@/stores/stage-store'
 import { useDashboardTabsStore } from './stores/dashboard-tabs-store'
-import { DashboardCanvas } from './dashboard-canvas'
+import { DashboardIframeShell } from './iframe-shell'
 import { coordinator } from '@/features/stage/persistence/stage-persistence-bootstrap'
-import { Button } from '@/components/ui/button'
 import { useI18n } from '@/i18n/use-i18n'
 
 interface DashboardTabProps {
@@ -19,9 +18,6 @@ export function DashboardTab({ tab }: DashboardTabProps) {
     if (tabState) return
     coordinator.ensureHydrated(tab.tabId)
       .catch(() => {
-        // Hydration failed (e.g. 404 — payload never persisted).
-        // Clear loading so the "not found" fallback renders instead of
-        // being stuck on the loading spinner forever.
         setLoading(false)
       })
   }, [tab.tabId, tabState])
@@ -29,8 +25,6 @@ export function DashboardTab({ tab }: DashboardTabProps) {
   useEffect(() => {
     if (tabState && loading) setLoading(false)
   }, [tabState, loading])
-
-  const [mode, setMode] = useState<'viewer' | 'editor'>('viewer')
 
   if (loading) {
     return (
@@ -48,21 +42,14 @@ export function DashboardTab({ tab }: DashboardTabProps) {
     )
   }
 
+  const dashboardId = tabState.dashboard.id
+
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center gap-2 px-4 py-2 border-b border-border/50">
-        <h2 className="text-sm font-medium truncate flex-1">{tabState.dashboard.title}</h2>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setMode(mode === 'viewer' ? 'editor' : 'viewer')}
-        >
-          {mode === 'viewer' ? t('dashboard.editorMode') : t('dashboard.viewerMode')}
-        </Button>
-      </div>
-      <div className="flex-1 min-h-0 overflow-auto">
-        <DashboardCanvas tabId={tab.tabId} mode={mode} />
-      </div>
+    <div className="flex flex-col h-full bg-[var(--dt-canvas)]">
+      <DashboardIframeShell
+        dashboardId={dashboardId}
+        onError={(e) => console.error('[bezel widget error]', e)}
+      />
     </div>
   )
 }

@@ -1,1 +1,1 @@
-export type { Dashboard, Widget, WidgetQuery, GridPosition, GridLayout, ParameterDef } from './schema'
+export type { Dashboard, Widget, WidgetQuery, GridPosition, FreeLayout, ParameterDef, DashboardRefresh, WidgetRefresh } from './schema'

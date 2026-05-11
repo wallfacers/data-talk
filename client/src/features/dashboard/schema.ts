@@ -23,69 +23,47 @@ const parameterDef = z.object({
   default: z.unknown(),
 })
 
-const chartOptions = z.object({
-  title: z.string().optional(),
-  echartsOption: z.record(z.string(), z.unknown()),
-  dataMapping: z.object({ rowsAsDataset: z.literal(true) }),
-  emphasis: z.enum(['cobalt', 'amber', 'neutral']).optional(),
+const refreshPolicy = z.object({
+  intervalMs: z.number().int().min(1000).optional(),
+  strategy: z.enum(['data-only', 'full-rerender']).optional(),
 })
 
-const markdownOptions = z.object({
-  text: z.string().max(32768),
-  textAlign: z.enum(['left', 'center', 'right']).optional(),
+const dashboardRefresh = z.object({
+  defaultIntervalMs: z.number().int().min(1000).default(10000),
+  pauseOnHidden: z.boolean().default(true),
 })
 
-const imageOptions = z.object({
-  src: z.string().url().refine((u) => u.startsWith('https://'), 'image src must be https://'),
-  alt: z.string().min(1),
-  fit: z.enum(['cover', 'contain', 'fill']),
-})
-
-const widgetBase = z.object({
+const widget = z.object({
   id: z.string().regex(/^[a-z]+_w_[a-zA-Z0-9]{4,16}$/),
+  type: z.enum(['chart', 'kpi', 'table', 'markdown', 'filter', 'section', 'divider', 'image']),
+  patternId: z.string().regex(/^[a-z0-9-]+\.[a-z0-9-]+$/),
   position: gridPosition,
   parameters: z.array(parameterDef).optional(),
   query: widgetQuery.optional(),
+  refresh: refreshPolicy.optional(),
+  options: z.record(z.string(), z.unknown()),
 })
 
-const chartWidget = widgetBase.extend({
-  type: z.literal('chart'),
-  options: chartOptions,
-})
-
-const imageWidget = widgetBase.extend({
-  type: z.literal('image'),
-  options: imageOptions,
-})
-
-const markdownWidget = widgetBase.extend({
-  type: z.literal('markdown'),
-  options: markdownOptions,
-})
-
-const genericWidget = widgetBase.extend({
-  type: z.enum(['kpi', 'table', 'filter', 'section', 'divider']),
-  options: z.object({}).passthrough(),
-})
-
-const widget = z.union([chartWidget, imageWidget, markdownWidget, genericWidget])
-
-const gridLayout = z.object({
-  engine: z.literal('grid'),
-  cols: z.literal(12),
-  rowHeight: z.number().int().min(8).max(128),
-  gap: z.number().int().min(0).max(32),
+const freeLayout = z.object({
+  engine: z.literal('free'),
+  viewport: z.object({
+    minWidth: z.number().int().min(640),
+    aspect: z.string().regex(/^\d+:\d+$/),
+  }).optional(),
 })
 
 export const dashboardSchema = z.object({
-  schemaVersion: z.literal(1),
+  schemaVersion: z.literal(2),
   id: z.string().regex(/^dash_[a-zA-Z0-9_]{4,}$/),
   title: z.string().min(1).max(256),
   description: z.string().max(32768).optional(),
   defaultConnectionId: z.string().nullable().optional(),
+  theme: z.string().regex(/^industry-[a-z-]+$/),
+  renderer: z.literal('bezel'),
+  refresh: dashboardRefresh.optional(),
   parameters: z.array(parameterDef),
   widgets: z.array(widget),
-  layout: gridLayout,
+  layout: freeLayout,
   version: z.number().int().min(1),
   createdAt: z.number().int().min(0),
   updatedAt: z.number().int().min(0),
@@ -95,5 +73,7 @@ export type Dashboard = z.infer<typeof dashboardSchema>
 export type Widget = z.infer<typeof widget>
 export type WidgetQuery = z.infer<typeof widgetQuery>
 export type GridPosition = z.infer<typeof gridPosition>
-export type GridLayout = z.infer<typeof gridLayout>
+export type FreeLayout = z.infer<typeof freeLayout>
 export type ParameterDef = z.infer<typeof parameterDef>
+export type DashboardRefresh = z.infer<typeof dashboardRefresh>
+export type WidgetRefresh = z.infer<typeof refreshPolicy>

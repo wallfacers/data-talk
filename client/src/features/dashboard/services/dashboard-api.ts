@@ -40,3 +40,9 @@ export async function patchDashboard(
   const result = (await response.json()) as { version?: number }
   return { ok: true, version: result.version }
 }
+
+export async function fetchDashboardHtml(id: string): Promise<string | null> {
+  const response = await fetch(`/api/dashboards/${encodeURIComponent(id)}/html`)
+  if (!response.ok) return null
+  return await response.text()
+}

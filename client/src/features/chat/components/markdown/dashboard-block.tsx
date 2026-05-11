@@ -19,6 +19,17 @@ interface DashboardBlockProps {
   partId?: string
 }
 
+function normalizeV1toV2(obj: Record<string, unknown>): Record<string, unknown> {
+  if (obj.schemaVersion === 2) return obj
+  return {
+    ...obj,
+    schemaVersion: 2,
+    theme: obj.theme ?? 'industry-default',
+    renderer: 'bezel',
+    layout: { engine: 'free' as const },
+  }
+}
+
 function parseDashboard(json: string, t?: TranslationFn): { ok: true; dashboard: Dashboard } | { ok: false; error: string } {
   let parsed: unknown
   try {
@@ -26,13 +37,12 @@ function parseDashboard(json: string, t?: TranslationFn): { ok: true; dashboard:
   } catch {
     return { ok: false, error: t ? t('dashboard.invalidJson') : 'Invalid JSON' }
   }
-  // AI-generated dashboard IDs may contain hyphens (UUID format);
-  // strip them to match the server schema ^dash_[a-zA-Z0-9_]{4,}$
   const obj = parsed as Record<string, unknown> | null
   if (obj && typeof obj === 'object' && 'id' in obj && typeof obj.id === 'string') {
     obj.id = obj.id.replace(/-/g, '')
   }
-  const result = dashboardSchema.safeParse(parsed)
+  const normalized = obj ? normalizeV1toV2(obj) : obj
+  const result = dashboardSchema.safeParse(normalized)
   if (result.success) {
     return { ok: true, dashboard: result.data }
   }

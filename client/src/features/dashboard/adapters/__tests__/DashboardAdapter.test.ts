@@ -10,12 +10,14 @@ vi.mock('../../services/dashboard-api', () => ({
 }))
 
 const sampleDashboard = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   id: 'dash_test1',
   title: 'Test Dashboard',
+  theme: 'industry-default',
+  renderer: 'bezel',
   parameters: [],
   widgets: [],
-  layout: { engine: 'grid', cols: 12, rowHeight: 32, gap: 8 },
+  layout: { engine: 'free' },
   version: 1,
   createdAt: 0,
   updatedAt: 0,
@@ -33,7 +35,7 @@ describe('DashboardAdapter', () => {
     const adapter = new DashboardAdapter('tab-d1', () => null)
 
     const state = adapter.read('state') as Record<string, unknown>
-    expect(state).toMatchObject({ title: 'Test Dashboard', schemaVersion: 1 })
+    expect(state).toMatchObject({ title: 'Test Dashboard', schemaVersion: 2 })
   })
 
   it('read("schema") returns type and patchCapabilities', () => {

@@ -45,12 +45,14 @@ const ACTIONS: ActionDef[] = [
 
 function buildEmptyDashboard(title: string): Dashboard {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     id: `dash_${generateUuid().replace(/-/g, '')}`,
     title,
+    theme: 'industry-default',
+    renderer: 'bezel',
     parameters: [],
     widgets: [],
-    layout: { engine: 'grid', cols: 12, rowHeight: 32, gap: 8 },
+    layout: { engine: 'free' },
     version: 1,
     createdAt: Date.now(),
     updatedAt: Date.now(),

@@ -3,12 +3,14 @@ import { useDashboardTabsStore } from '../dashboard-tabs-store'
 import type { Dashboard } from '../../schema'
 
 const sampleDashboard: Dashboard = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   id: 'dash_test1',
   title: 'Test Dashboard',
+  theme: 'industry-default',
+  renderer: 'bezel',
   parameters: [],
   widgets: [],
-  layout: { engine: 'grid', cols: 12, rowHeight: 32, gap: 8 },
+  layout: { engine: 'free' },
   version: 1,
   createdAt: 0,
   updatedAt: 0,
@@ -41,14 +43,14 @@ describe('dashboard-tabs-store', () => {
     const dash: Dashboard = {
       ...sampleDashboard,
       widgets: [{
-        id: 'chart_w_aaaa', type: 'chart',
+        id: 'chart_w_aaaa', type: 'chart', patternId: 'test.pattern',
         position: { x: 0, y: 0, w: 6, h: 4 },
         options: { echartsOption: {}, dataMapping: { rowsAsDataset: true } },
       }],
     }
     useDashboardTabsStore.getState().hydrateTab('tab-1', dash)
     useDashboardTabsStore.getState().applyPatchOps('tab-1', [
-      { op: 'replace', path: '/widgets[id=chart_w_aaaa]', value: { id: 'chart_w_aaaa', type: 'chart', position: { x: 2, y: 0, w: 6, h: 4 }, options: { echartsOption: {}, dataMapping: { rowsAsDataset: true } } } },
+      { op: 'replace', path: '/widgets[id=chart_w_aaaa]', value: { id: 'chart_w_aaaa', type: 'chart', patternId: 'test.pattern', position: { x: 2, y: 0, w: 6, h: 4 }, options: { echartsOption: {}, dataMapping: { rowsAsDataset: true } } } },
     ])
     const tab = useDashboardTabsStore.getState().tabs.get('tab-1')
     expect(tab!.dashboard.widgets[0].position.x).toBe(2)
@@ -59,7 +61,7 @@ describe('dashboard-tabs-store', () => {
     useDashboardTabsStore.getState().applyPatchOps('tab-1', [
       {
         op: 'add', path: '/widgets/-',
-        value: { id: 'chart_w_aaaa', type: 'chart', position: { x: 0, y: 0, w: 6, h: 4 }, options: { echartsOption: {}, dataMapping: { rowsAsDataset: true } } },
+        value: { id: 'chart_w_aaaa', type: 'chart', patternId: 'test.pattern', position: { x: 0, y: 0, w: 6, h: 4 }, options: { echartsOption: {}, dataMapping: { rowsAsDataset: true } } },
       },
     ])
     const tab = useDashboardTabsStore.getState().tabs.get('tab-1')
