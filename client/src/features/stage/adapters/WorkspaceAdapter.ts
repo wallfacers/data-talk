@@ -399,6 +399,7 @@ export class WorkspaceAdapter implements UIObject {
     switch (action) {
       case 'open_er_designer': {
         const input = (params ?? {}) as OpenErDesignerParams
+        if (!input.title) return execError('Missing param: title')
         const dialect = input.dialect ?? 'mysql'
         if (!isSupportedDesignerDialect(dialect)) {
           const message = `dialect_unsupported: ER Designer does not support dialect: ${String(dialect)}`
@@ -452,6 +453,7 @@ export class WorkspaceAdapter implements UIObject {
       }
       case 'open_er_inspector': {
         const input = (params ?? {}) as OpenErInspectorParams
+        if (!input.title) return execError('Missing param: title')
         const connectionId = input.connectionId ?? input.connection_id
         if (!connectionId) return execError('Missing param: connectionId')
         const tables = Array.isArray(input.tables)
@@ -509,6 +511,7 @@ export class WorkspaceAdapter implements UIObject {
         for (const raw of items) {
           const item = (raw ?? {}) as typeof p
           if (!item.type) return execError('Missing param: type')
+          if (!item.title) return execError('Missing param: title')
           if (item.type === 'query_editor') {
             const payload = normalizeQueryEditorPayload(item.payload)
             const connectionId = item.connection_id ?? payload.connectionId ?? undefined

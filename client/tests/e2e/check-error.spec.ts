@@ -6,7 +6,7 @@ test('check actual error for missing connectionId', async ({ request }) => {
   const rpc = await c.mcpCall('datatalk_ui_exec', {
     object: 'workspace',
     action: 'open_er_inspector',
-    params: { tables: ['orders'] },
+    params: { tables: ['orders'], title: 'Check Error' },
   })
   console.log('RPC result:', JSON.stringify(rpc, null, 2))
   expect(rpc.error).toBeDefined()

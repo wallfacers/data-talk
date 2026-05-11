@@ -256,7 +256,8 @@ class UiActionsTest {
         Map<String, Object> schema = uiExecAction.inputSchema();
 
         assertInvalid(schema, Map.of("object", "workspace", "action", "open", "params", Map.of()));
-        assertValid(schema, Map.of("object", "workspace", "action", "open", "params", Map.of("type", "query_editor")));
+        assertInvalid(schema, Map.of("object", "workspace", "action", "open", "params", Map.of("type", "query_editor")));
+        assertValid(schema, Map.of("object", "workspace", "action", "open", "params", Map.of("type", "query_editor", "title", "My Query")));
 
         assertInvalid(schema, Map.of("object", "workspace", "action", "focus", "params", Map.of()));
         assertValid(schema, Map.of("object", "workspace", "action", "focus", "params", Map.of("target", "qe-1")));
@@ -266,11 +267,12 @@ class UiActionsTest {
         )));
         assertValid(schema, Map.of("object", "workspace", "action", "open_er_inspector", "params", Map.of(
             "connectionId", "conn-1",
-            "tables", List.of("orders")
+            "tables", List.of("orders"),
+            "title", "Orders ER"
         )));
 
         assertInvalid(schema, Map.of("object", "workspace", "action", "open_er_designer", "params", Map.of()));
-        assertValid(schema, Map.of("object", "workspace", "action", "open_er_designer", "params", Map.of("dialect", "mysql")));
+        assertValid(schema, Map.of("object", "workspace", "action", "open_er_designer", "params", Map.of("dialect", "mysql", "title", "Draft")));
 
         assertInvalid(schema, Map.of("object", "query_editor", "action", "set_context", "params", Map.of()));
         assertValid(schema, Map.of("object", "query_editor", "action", "set_context", "params", Map.of("database", "analytics")));

@@ -86,6 +86,7 @@ describe('WorkspaceAdapter', () => {
     const adapter = new WorkspaceAdapter(() => 's1')
     const result = await adapter.exec('open', {
       type: 'query_editor',
+      title: 'SQL',
       payload: {
         initialSql: 'select 2',
       },
@@ -97,7 +98,7 @@ describe('WorkspaceAdapter', () => {
     })
     expect(openQueryEditor).toHaveBeenCalledWith({
       sessionId: 's1',
-      baseTitle: 'query_editor',
+      baseTitle: 'SQL',
       openMode: 'always_new',
       entryMode: 'ui_exec',
       initialContent: 'select 2',
@@ -116,6 +117,7 @@ describe('WorkspaceAdapter', () => {
     const adapter = new WorkspaceAdapter(() => 's1')
     const result = await adapter.exec('open', {
       type: 'query_editor',
+      title: 'Content SQL',
       payload: {
         content: 'DROP DATABASE ecommerce;',
       },
@@ -173,6 +175,7 @@ describe('WorkspaceAdapter', () => {
     const adapter = new WorkspaceAdapter(() => 's1')
     await adapter.exec('open', {
       type: 'query_editor',
+      title: 'Mismatch Test',
       connection_id: 'top-conn',
       payload: {
         connectionId: 'payload-conn',
@@ -533,6 +536,12 @@ describe('WorkspaceAdapter', () => {
     expect(res.success).toBe(false)
   })
 
+  it('rejects open without title', async () => {
+    const adapter = new WorkspaceAdapter(() => 's1')
+    const res = await adapter.exec('open', { type: 'query_editor' })
+    expect(res.success).toBe(false)
+  })
+
   it('open_er_designer registers the stage tab BEFORE updating erTabsStore so persistence subscriber sees the tab', async () => {
     // The persistence layer's erTabsStore subscriber resolves the stage tab
     // via useStageStore.findTab(tabId) before scheduling a content write.
@@ -550,7 +559,7 @@ describe('WorkspaceAdapter', () => {
 
     try {
       const adapter = new WorkspaceAdapter(() => 's1')
-      const opened = await adapter.exec('open_er_designer', { dialect: 'mysql' })
+      const opened = await adapter.exec('open_er_designer', { dialect: 'mysql', title: 'Persistence Test' })
       expect(opened.success).toBe(true)
       expect(stageTabPresentWhenDesignerWritten).toBe(true)
     } finally {

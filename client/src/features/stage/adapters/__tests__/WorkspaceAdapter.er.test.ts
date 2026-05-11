@@ -51,6 +51,7 @@ describe('WorkspaceAdapter.exec(open_er_inspector)', () => {
     const result = await adapter.exec('open_er_inspector', {
       connectionId: 'c1',
       tables: ['orders'],
+      title: 'Orders ER',
       neighborDepth: 1,
     })
 
@@ -61,7 +62,7 @@ describe('WorkspaceAdapter.exec(open_er_inspector)', () => {
     expect(data.edges).toBe(1)
     expect(data.tables).toEqual(['users', 'orders'])
     expect(useStageStore.getState().tabs.find((tab) => tab.tabId === data.tabId)).toEqual(expect.objectContaining({
-      title: 'ER Diagram Viewer: orders',
+      title: 'Orders ER',
     }))
     expect(useErTabsStore.getState().inspectors.get(data.tabId)).toBeDefined()
   })
@@ -82,12 +83,22 @@ describe('WorkspaceAdapter.exec(open_er_inspector)', () => {
     const result = await adapter.exec('open_er_inspector', {
       connectionId: 'c1',
       tables: ['orders'],
+      title: 'Oracle ER',
       neighborDepth: 1,
     })
 
     expect(result.success).toBe(false)
     expect(result.error).toMatch(/oracle/i)
     expect(result.data).toMatchObject({ code: 'dialect_unsupported' })
+  })
+
+  it('rejects open_er_inspector without title', async () => {
+    const adapter = new WorkspaceAdapter(() => null)
+    const result = await adapter.exec('open_er_inspector', {
+      connectionId: 'c1',
+      tables: ['orders'],
+    })
+    expect(result.success).toBe(false)
   })
 })
 
@@ -105,7 +116,7 @@ describe('WorkspaceAdapter.exec(open_er_designer)', () => {
   it('creates a blank designer tab with the requested dialect', async () => {
     const adapter = new WorkspaceAdapter(() => null)
 
-    const result = await adapter.exec('open_er_designer', { dialect: 'mysql' })
+    const result = await adapter.exec('open_er_designer', { dialect: 'mysql', title: 'My Designer' })
 
     expect(result.success).toBe(true)
     const data = result.data as { tabId: string; summary: string; payloadVersion: number }
@@ -115,7 +126,7 @@ describe('WorkspaceAdapter.exec(open_er_designer)', () => {
     expect(useErTabsStore.getState().designers.get(data.tabId)?.dialect).toBe('mysql')
     expect(useStageStore.getState().activeTabId).toBe(data.tabId)
     expect(useStageStore.getState().tabs.find((tab) => tab.tabId === data.tabId)).toEqual(expect.objectContaining({
-      title: 'ER 图设计器 (mysql)',
+      title: 'My Designer',
     }))
   })
 
@@ -132,19 +143,19 @@ describe('WorkspaceAdapter.exec(open_er_designer)', () => {
     useUISettingsStore.setState({ language: 'en-US' })
     const adapter = new WorkspaceAdapter(() => null)
 
-    const result = await adapter.exec('open_er_designer', { dialect: 'postgresql' })
+    const result = await adapter.exec('open_er_designer', { dialect: 'postgresql', title: 'PG Designer' })
 
     expect(result.success).toBe(true)
     const data = result.data as { tabId: string }
     expect(useStageStore.getState().tabs.find((tab) => tab.tabId === data.tabId)).toEqual(expect.objectContaining({
-      title: 'ER Diagram Designer (postgresql)',
+      title: 'PG Designer',
     }))
   })
 
   it('rejects unsupported dialects with an English aiHint', async () => {
     const adapter = new WorkspaceAdapter(() => null)
 
-    const result = await adapter.exec('open_er_designer', { dialect: 'oracle' })
+    const result = await adapter.exec('open_er_designer', { dialect: 'oracle', title: 'Oracle Draft' })
 
     expect(result.success).toBe(false)
     expect(result.error).toMatch(/dialect_unsupported|oracle/i)
@@ -158,6 +169,7 @@ describe('WorkspaceAdapter.exec(open_er_designer)', () => {
 
     const result = await adapter.exec('open_er_designer', {
       dialect: 'postgresql',
+      title: 'Seed Designer',
       seedTables: [
         {
           name: 'users',
@@ -182,5 +194,11 @@ describe('WorkspaceAdapter.exec(open_er_designer)', () => {
     expect(payload?.tables).toHaveLength(2)
     expect((payload?.tables[0] as { name?: string }).name).toBe('users')
     expect(payload?.relations).toHaveLength(1)
+  })
+
+  it('rejects open_er_designer without title', async () => {
+    const adapter = new WorkspaceAdapter(() => null)
+    const result = await adapter.exec('open_er_designer', { dialect: 'mysql' })
+    expect(result.success).toBe(false)
   })
 })

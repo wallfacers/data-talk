@@ -467,7 +467,7 @@ test.describe('workspace.open_er_inspector', () => {
     const r1 = await c.mcpCall('datatalk_ui_exec', {
       object: 'workspace',
       action: 'open_er_inspector',
-      params: { tables: ['users'] },
+      params: { tables: ['users'], title: 'Users ER' },
     })
     expect(r1.error).toBeDefined()
 
@@ -475,7 +475,7 @@ test.describe('workspace.open_er_inspector', () => {
     const r2 = await c.mcpCall('datatalk_ui_exec', {
       object: 'workspace',
       action: 'open_er_inspector',
-      params: { connectionId: 'conn-123' },
+      params: { connectionId: 'conn-123', title: 'ER' },
     })
     expect(r2.error).toBeDefined()
   })
@@ -510,7 +510,7 @@ test.describe('workspace.open_er_designer', () => {
     const r = await c.mcpCall('datatalk_ui_exec', {
       object: 'workspace',
       action: 'open_er_designer',
-      params: { dialect: 'oracle' },
+      params: { dialect: 'oracle', title: 'Oracle Test' },
     })
     expect(r.error).toBeDefined()
   })
@@ -521,7 +521,7 @@ test.describe('workspace.open_er_designer', () => {
     const r = await c.mcpCall('datatalk_ui_exec', {
       object: 'workspace',
       action: 'open_er_designer',
-      params: { dialect: 'mysql' },
+      params: { dialect: 'mysql', title: 'MySQL Draft' },
     })
     const data = mcpToolResult(r)
     const tabId = (data as any).tabId ?? (data as any).data?.tabId

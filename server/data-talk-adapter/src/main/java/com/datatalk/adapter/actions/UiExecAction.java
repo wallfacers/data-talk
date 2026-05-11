@@ -113,7 +113,7 @@ public class UiExecAction implements ActionHandler<Map, Map> {
                                                 "enum", List.of("query_editor"),
                                                 "description", "workspace open supports query_editor. Use open_er_inspector for ER tabs."
                                         )),
-                                        Map.entry("title", Map.of("type", "string")),
+                                        Map.entry("title", Map.of("type", "string", "description", "Required for open, open_er_inspector, and open_er_designer. Human-readable tab title.")),
                                         Map.entry("connection_id", Map.of("type", "string")),
                                         Map.entry("connectionId", Map.of("type", "string")),
                                         Map.entry("database", Map.of("type", "string")),
@@ -198,15 +198,15 @@ public class UiExecAction implements ActionHandler<Map, Map> {
                         ))
                 ),
                 "allOf", List.of(
-                        actionRequiresParams("workspace", "open", List.of("type")),
+                        actionRequiresParams("workspace", "open", List.of("type", "title")),
                         actionRequiresParams("workspace", "focus", List.of("target")),
                         actionRequiresParams("workspace", "detach", List.of("target")),
                         actionRequiresAnyParam("workspace", "trash", List.of("target", "targets")),
                         actionRequiresAnyParam("workspace", "archive", List.of("target", "targets")),
                         actionRequiresParams("workspace", "rename", List.of("target", "title")),
                         actionRequiresParams("workspace", "pin", List.of("target")),
-                        actionRequiresParams("workspace", "open_er_inspector", List.of("connectionId", "tables")),
-                        actionRequiresParams("workspace", "open_er_designer", List.of("dialect"))
+                        actionRequiresParams("workspace", "open_er_inspector", List.of("connectionId", "tables", "title")),
+                        actionRequiresParams("workspace", "open_er_designer", List.of("dialect", "title"))
                 )
         );
     }

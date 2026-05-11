@@ -57,7 +57,7 @@ test.describe('er_inspector', () => {
     const rpc = await c.mcpCall('datatalk_ui_exec', {
       object: 'workspace',
       action: 'open_er_inspector',
-      params: { tables: [PG_TABLE] },
+      params: { tables: [PG_TABLE], title: 'Missing Conn' },
     })
     expect(rpc.error).toBeDefined()
   })
@@ -67,7 +67,7 @@ test.describe('er_inspector', () => {
     const rpc = await c.mcpCall('datatalk_ui_exec', {
       object: 'workspace',
       action: 'open_er_inspector',
-      params: { connectionId: PG_CONN_ID },
+      params: { connectionId: PG_CONN_ID, title: 'Missing Tables' },
     })
     expect(rpc.error).toBeDefined()
   })
@@ -78,7 +78,7 @@ test.describe('er_inspector', () => {
     const rpc = await c.mcpCall('datatalk_ui_exec', {
       object: 'workspace',
       action: 'open_er_inspector',
-      params: { connectionId: PG_CONN_ID, tables: [PG_TABLE], neighborDepth: 1 },
+      params: { connectionId: PG_CONN_ID, tables: [PG_TABLE], neighborDepth: 1, title: 'PG ER' },
     })
     expect(rpc.error).toBeUndefined()
     const result = rpc.result as any
@@ -111,7 +111,7 @@ test.describe('er_inspector', () => {
     const openRpc = await c.mcpCall('datatalk_ui_exec', {
       object: 'workspace',
       action: 'open_er_inspector',
-      params: { connectionId: PG_CONN_ID, tables: [PG_TABLE], neighborDepth: 1 },
+      params: { connectionId: PG_CONN_ID, tables: [PG_TABLE], neighborDepth: 1, title: 'Add Neighbors' },
     })
     expect(openRpc.error).toBeUndefined()
     const tabId = (openRpc.result as any).tabId ?? (openRpc.result as any).data?.tabId
@@ -133,7 +133,7 @@ test.describe('er_inspector', () => {
     const openRpc = await c.mcpCall('datatalk_ui_exec', {
       object: 'workspace',
       action: 'open_er_inspector',
-      params: { connectionId: PG_CONN_ID, tables: [PG_TABLE], neighborDepth: 1 },
+      params: { connectionId: PG_CONN_ID, tables: [PG_TABLE], neighborDepth: 1, title: 'VR Test' },
     })
     expect(openRpc.error).toBeUndefined()
     const tabId = (openRpc.result as any).tabId ?? (openRpc.result as any).data?.tabId
@@ -165,7 +165,7 @@ test.describe('er_inspector', () => {
     const openRpc = await c.mcpCall('datatalk_ui_exec', {
       object: 'workspace',
       action: 'open_er_inspector',
-      params: { connectionId: PG_CONN_ID, tables: [PG_TABLE], neighborDepth: 1 },
+      params: { connectionId: PG_CONN_ID, tables: [PG_TABLE], neighborDepth: 1, title: 'Non-Whitelist' },
     })
     expect(openRpc.error).toBeUndefined()
     const tabId = (openRpc.result as any).tabId ?? (openRpc.result as any).data?.tabId
@@ -200,7 +200,7 @@ test.describe('er_inspector', () => {
     const openRpc = await c.mcpCall('datatalk_ui_exec', {
       object: 'workspace',
       action: 'open_er_inspector',
-      params: { connectionId: PG_CONN_ID, tables: [PG_TABLE], neighborDepth: 1 },
+      params: { connectionId: PG_CONN_ID, tables: [PG_TABLE], neighborDepth: 1, title: 'Fork Source' },
     })
     expect(openRpc.error).toBeUndefined()
     const tabId = (openRpc.result as any).tabId ?? (openRpc.result as any).data?.tabId
@@ -257,7 +257,7 @@ test.describe('er_designer', () => {
     const rpc = await c.mcpCall('datatalk_ui_exec', {
       object: 'workspace',
       action: 'open_er_designer',
-      params: { dialect: 'oracle' },
+      params: { dialect: 'oracle', title: 'Oracle Draft' },
     })
     expect(rpc.error).toBeDefined()
   })
@@ -268,7 +268,7 @@ test.describe('er_designer', () => {
     const openRpc = await c.mcpCall('datatalk_ui_exec', {
       object: 'workspace',
       action: 'open_er_designer',
-      params: { dialect: 'h2' },
+      params: { dialect: 'h2', title: 'Bind Test' },
     })
     expect(openRpc.error).toBeUndefined()
     const tabId = (openRpc.result as any).tabId ?? (openRpc.result as any).data?.tabId
@@ -290,7 +290,7 @@ test.describe('er_designer', () => {
     const openRpc = await c.mcpCall('datatalk_ui_exec', {
       object: 'workspace',
       action: 'open_er_designer',
-      params: { dialect: 'h2' },
+      params: { dialect: 'h2', title: 'Diff Test' },
     })
     expect(openRpc.error).toBeUndefined()
     const tabId = (openRpc.result as any).tabId ?? (openRpc.result as any).data?.tabId

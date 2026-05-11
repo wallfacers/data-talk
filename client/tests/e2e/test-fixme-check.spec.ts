@@ -6,7 +6,7 @@ test('contract: open_er_inspector missing connectionId errors', async ({ request
   const rpc = await c.mcpCall('datatalk_ui_exec', {
     object: 'workspace',
     action: 'open_er_inspector',
-    params: { tables: ['orders'] },
+    params: { tables: ['orders'], title: 'Fixme Check' },
   })
   expect(rpc.error).toBeDefined()
 })

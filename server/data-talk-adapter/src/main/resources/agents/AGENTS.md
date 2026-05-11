@@ -281,13 +281,13 @@ Registered UI actions:
 `datatalk_ui_exec` always uses top-level `object`, `action`, and `params`.
 Required `params` by action:
 
-- `workspace/open`: `params.type` (or batch via `params.tabs` array)
+- `workspace/open`: `params.type` and `params.title` (or batch via `params.tabs` array; each element requires `title`)
 - `workspace/focus`, `workspace/detach`: `params.target`
 - `workspace/archive`, `workspace/trash`: `params.target` (or batch via `params.targets` array)
 - `workspace/rename`: `params.target` and `params.title`
 - `workspace/pin`: `params.target` (optional `params.pinned`, defaults to true)
-- `workspace/open_er_inspector`: `params.connectionId` and `params.tables`
-- `workspace/open_er_designer`: `params.dialect`
+- `workspace/open_er_inspector`: `params.connectionId`, `params.tables`, and `params.title`
+- `workspace/open_er_designer`: `params.dialect` and `params.title`
 - `query_editor/apply_text_edits`: `params.baseVersion` and `params.edits`; each edit requires `range`, `text`, and `expectedText`
 - `query_editor/set_context`: at least one of `params.useSessionContext`, `params.connectionId`, `params.database`, `params.schema`, or `params.limit`
 - `er_inspector/add_neighbors`: `params.table`
@@ -295,7 +295,7 @@ Required `params` by action:
 
 For the workspace (uses snake_case `params.connection_id`):
 
-- `open` (`params.type=query_editor`): opens a tab. Optional `connection_id`, `database`, `schema`, `title`, `payload`. `params.payload` belongs to the query-editor open request and may include SQL text via `initialSql`, `content`, or legacy `sql` (`initialSql` wins over `content`, `content` wins over `sql`), plus `autoRun`, `connectionId`, `connectionName`, `database`, and `schema` for initial execution/context metadata. **Batch**: pass `params.tabs` (array of open specs) to open multiple tabs; returns `{ tabIds }`.
+- `open` (`params.type=query_editor`): opens a tab. Required `title`. Optional `connection_id`, `database`, `schema`, `payload`. `params.payload` belongs to the query-editor open request and may include SQL text via `initialSql`, `content`, or legacy `sql` (`initialSql` wins over `content`, `content` wins over `sql`), plus `autoRun`, `connectionId`, `connectionName`, `database`, and `schema` for initial execution/context metadata. **Batch**: pass `params.tabs` (array of open specs) to open multiple tabs; each element requires `title`; returns `{ tabIds }`.
 - `choose_connection`: prompts the connection chooser. Optional `preferredConnectionId`.
 - `focus(target)`: ensures the tab is in the workset and active, and reveals the stage panel if the user had it hidden. Archived tabs return `tab_archived`.
 - `detach(target)`: removes from workset, keeps in library.
