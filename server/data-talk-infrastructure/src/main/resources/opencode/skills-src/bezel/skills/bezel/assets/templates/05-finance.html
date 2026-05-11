@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>财务数据分析中心</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+  :root {
+    --bg: #0c1929;
+    --gold: #c9a84c;
+    --gold-light: #e8d5a3;
+    --teal: #1e3a5f;
+    --blue: #4a90d9;
+    --blue-light: #7ab8f0;
+    --text: #d0d8e0;
+    --text-dim: #8a96a8;
+    --border: rgba(201,168,76,0.25);
+    --border-hover: rgba(201,168,76,0.65);
+    --card-bg: rgba(14,30,50,0.65);
+    --green: #4caf7a;
+    --red: #d94a4a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100vw; height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    overflow: hidden;
+  }
+
+  /* 顶部径向光晕 */
+  body::before {
+    content: '';
+    position: fixed; top: 0; left: 50%; width: 80vw; height: 40vh;
+    transform: translateX(-50%);
+    background: radial-gradient(ellipse at 50% 0%, rgba(74,144,217,0.08) 0%, transparent 70%);
+    pointer-events: none; z-index: 0;
+  }
+
+  .dashboard {
+    position: relative; z-index: 1;
+    width: 100vw; height: 100vh;
+    display: flex; flex-direction: column;
+    padding: 0.6vw 1vw 0.8vw;
+    gap: 0.8vw;
+  }
+
+  /* ===== 顶部标题区 ===== */
+  .header {
+    display: flex; flex-direction: column; align-items: center;
+    position: relative; padding-bottom: 0.4vw;
+  }
+  .header-title {
+    font-size: 1.8vw; font-weight: 600; letter-spacing: 0.3em;
+    color: var(--gold-light);
+    text-shadow: 0 0 20px rgba(201,168,76,0.3);
+    position: relative;
+  }
+  .header-title::after {
+    content: '';
+    display: block; margin: 0.3vw auto 0;
+    width: 12vw; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  }
+  .header-meta {
+    margin-top: 0.3vw;
+    font-size: 0.75vw; color: var(--text-dim);
+    font-family: 'SF Mono', 'Consolas', monospace;
+  }
+
+  /* ===== KPI 栏 ===== */
+  .kpi-bar {
+    display: flex; justify-content: space-between; gap: 0.8vw;
+    padding: 0 0.4vw;
+  }
+  .kpi-item {
+    flex: 1;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.7vw 0.6vw;
+    text-align: center;
+    position: relative;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    cursor: default;
+  }
+  .kpi-item:hover {
+    border-color: var(--border-hover);
+    box-shadow: 0 0 12px rgba(201,168,76,0.15);
+  }
+  .kpi-item:not(:last-child)::after {
+    content: '';
+    position: absolute; right: -0.45vw; top: 25%; height: 50%; width: 1px;
+    background: linear-gradient(180deg, transparent, var(--gold), transparent);
+    opacity: 0.4;
+  }
+  .kpi-label {
+    font-size: 0.75vw; color: var(--text-dim); letter-spacing: 0.08em;
+    margin-bottom: 0.3vw;
+  }
+  .kpi-value {
+    font-family: 'SF Mono', 'Consolas', monospace;
+    font-size: 1.5vw; font-weight: 600;
+    color: var(--gold);
+    text-shadow: 0 0 10px rgba(201,168,76,0.25);
+  }
+  .kpi-delta {
+    font-family: 'SF Mono', 'Consolas', monospace;
+    font-size: 0.72vw; margin-top: 0.2vw;
+  }
+  .kpi-delta.up { color: var(--green); }
+  .kpi-delta.down { color: var(--red); }
+
+  /* ===== 主体三列 ===== */
+  .main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1.1fr 1fr;
+    gap: 0.8vw;
+    min-height: 0;
+  }
+  .col { display: flex; flex-direction: column; gap: 0.8vw; min-height: 0; }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.6vw;
+    display: flex; flex-direction: column;
+    flex: 1; min-height: 0;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .card:hover {
+    border-color: var(--border-hover);
+    box-shadow: 0 0 14px rgba(201,168,76,0.12);
+  }
+  .card-title {
+    font-size: 0.85vw; font-weight: 500;
+    color: var(--gold-light);
+    padding-bottom: 0.35vw;
+    margin-bottom: 0.3vw;
+    border-bottom: 1px solid rgba(201,168,76,0.15);
+    display: flex; align-items: center; gap: 0.4vw;
+  }
+  .card-title::before {
+    content: '';
+    display: inline-block; width: 3px; height: 0.8vw;
+    background: linear-gradient(180deg, var(--gold), var(--blue));
+    border-radius: 2px;
+  }
+  .chart-box { flex: 1; min-height: 0; position: relative; }
+
+  /* ===== 底部 ===== */
+  .footer {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr;
+    gap: 0.8vw;
+    height: 18vh; min-height: 0;
+  }
+
+  /* 装饰线 */
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(201,168,76,0.3), transparent);
+    margin: 0 1vw;
+  }
+</style>
+</head>
+<body>
+<div class="dashboard">
+  <!-- 标题 -->
+  <div class="header">
+    <div class="header-title">财务数据分析中心</div>
+    <div class="header-meta" id="clock">--</div>
+  </div>
+
+  <!-- KPI -->
+  <div class="kpi-bar">
+    <div class="kpi-item">
+      <div class="kpi-label">年度总收入</div>
+      <div class="kpi-value" data-target="8.42" data-suffix="亿">0</div>
+      <div class="kpi-delta up">▲ 15.3%</div>
+    </div>
+    <div class="kpi-item">
+      <div class="kpi-label">净利润</div>
+      <div class="kpi-value" data-target="1.56" data-suffix="亿">0</div>
+      <div class="kpi-delta up">▲ 28.5%</div>
+    </div>
+    <div class="kpi-item">
+      <div class="kpi-label">净利润率</div>
+      <div class="kpi-value" data-target="18.6" data-suffix="%">0</div>
+      <div class="kpi-delta up">▲ 2.1pp</div>
+    </div>
+    <div class="kpi-item">
+      <div class="kpi-label">应收账款</div>
+      <div class="kpi-value" data-target="1.28" data-suffix="亿">0</div>
+      <div class="kpi-delta down">▼ 3.8%</div>
+    </div>
+    <div class="kpi-item">
+      <div class="kpi-label">预算执行率</div>
+      <div class="kpi-value" data-target="94.2" data-suffix="%">0</div>
+      <div class="kpi-delta up">▲ 1.5pp</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- 主体 -->
+  <div class="main">
+    <!-- 左列 -->
+    <div class="col">
+      <div class="card">
+        <div class="card-title">月度收入 & 利润趋势</div>
+        <div class="chart-box" id="chart-trend"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">收入结构分析</div>
+        <div class="chart-box" id="chart-revenue"></div>
+      </div>
+    </div>
+    <!-- 中列 -->
+    <div class="col">
+      <div class="card">
+        <div class="card-title">杜邦分析</div>
+        <div class="chart-box" id="chart-dupont"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">费用构成明细</div>
+        <div class="chart-box" id="chart-cost"></div>
+      </div>
+    </div>
+    <!-- 右列 -->
+    <div class="col">
+      <div class="card">
+        <div class="card-title">资产负债结构</div>
+        <div class="chart-box" id="chart-assets"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">应收账款账龄分布</div>
+        <div class="chart-box" id="chart-aging"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- 底部 -->
+  <div class="footer">
+    <div class="card">
+      <div class="card-title">现金流监控</div>
+      <div class="chart-box" id="chart-cashflow"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">预算执行仪表盘</div>
+      <div class="chart-box" id="chart-budget"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ========== 实时时钟 ========== */
+function updateClock() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  document.getElementById('clock').textContent =
+    `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+/* ========== KPI 滚动动画 ========== */
+function animateKPIs() {
+  const items = document.querySelectorAll('.kpi-value');
+  items.forEach(el => {
+    const target = parseFloat(el.dataset.target);
+    const suffix = el.dataset.suffix || '';
+    const duration = 2000;
+    const start = performance.now();
+    function tick(now) {
+      const p = Math.min((now - start) / duration, 1);
+      const ease = 1 - Math.pow(1 - p, 3);
+      const val = (target * ease).toFixed(target < 10 ? 2 : 1);
+      el.textContent = val + suffix;
+      if (p < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  });
+}
+setTimeout(animateKPIs, 300);
+
+/* ========== ECharts 暗色主题 ========== */
+const darkTheme = {
+  backgroundColor: 'transparent',
+  textStyle: { fontFamily: "'PingFang SC','Microsoft YaHei',sans-serif" },
+  title: { textStyle: { color: '#d0d8e0' } },
+  legend: { textStyle: { color: '#8a96a8' }, pageTextStyle: { color: '#8a96a8' } },
+  tooltip: {
+    backgroundColor: 'rgba(12,25,41,0.92)',
+    borderColor: 'rgba(201,168,76,0.4)',
+    textStyle: { color: '#d0d8e0' },
+    axisPointer: { lineStyle: { color: 'rgba(201,168,76,0.3)' } }
+  },
+  categoryAxis: {
+    axisLine: { lineStyle: { color: 'rgba(138,150,168,0.3)' } },
+    axisLabel: { color: '#8a96a8' },
+    splitLine: { lineStyle: { color: 'rgba(138,150,168,0.1)' } }
+  },
+  valueAxis: {
+    axisLine: { lineStyle: { color: 'rgba(138,150,168,0.3)' } },
+    axisLabel: { color: '#8a96a8' },
+    splitLine: { lineStyle: { color: 'rgba(138,150,168,0.1)' } }
+  }
+};
+
+echarts.registerTheme('dark-finance', darkTheme);
+
+/* ========== 图表初始化 ========== */
+const charts = {};
+function initChart(id, option) {
+  const dom = document.getElementById(id);
+  if (!dom) return null;
+  const c = echarts.init(dom, 'dark-finance', { renderer: 'canvas' });
+  c.setOption(option);
+  charts[id] = c;
+  return c;
+}
+
+/* ---------- 6. 月度收入 & 利润趋势 ---------- */
+initChart('chart-trend', {
+  tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
+  legend: { data: ['收入', '利润率'], top: 0, right: 0, itemGap: 12, textStyle: { fontSize: 11 } },
+  grid: { left: 48, right: 48, top: 32, bottom: 20 },
+  xAxis: {
+    type: 'category', data: ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
+    axisLabel: { fontSize: 10 }
+  },
+  yAxis: [
+    { type: 'value', name: '收入(亿)', nameTextStyle: { fontSize: 10, color: '#8a96a8' }, axisLabel: { fontSize: 10 } },
+    { type: 'value', name: '利润率(%)', nameTextStyle: { fontSize: 10, color: '#8a96a8' }, axisLabel: { fontSize: 10, formatter: '{value}%' } }
+  ],
+  series: [
+    {
+      name: '收入', type: 'bar', barWidth: '45%',
+      itemStyle: {
+        color: new echarts.graphic.LinearGradient(0,0,0,1,[
+          { offset: 0, color: '#e8d5a3' },
+          { offset: 1, color: '#c9a84c' }
+        ])
+      },
+      data: [0.52,0.48,0.61,0.58,0.72,0.69,0.75,0.82,0.79,0.88,0.85,0.73]
+    },
+    {
+      name: '利润率', type: 'line', yAxisIndex: 1, smooth: true, symbol: 'circle', symbolSize: 6,
+      lineStyle: { color: '#4a90d9', width: 2 },
+      itemStyle: { color: '#4a90d9', borderColor: '#0c1929', borderWidth: 2 },
+      data: [14.2,13.8,16.5,15.1,18.3,17.5,18.8,19.2,18.6,20.1,19.5,18.0]
+    }
+  ]
+});
+
+/* ---------- 7. 杜邦分析 treemap ---------- */
+initChart('chart-dupont', {
+  tooltip: { formatter: info => `${info.name}<br/>${info.value}%` },
+  series: [{
+    type: 'treemap',
+    roam: false,
+    nodeClick: 'zoomToNode',
+    breadcrumb: { show: true, itemStyle: { color: '#1e3a5f', borderColor: '#c9a84c', borderWidth: 1 }, textStyle: { color: '#d0d8e0' } },
+    itemStyle: { borderColor: '#0c1929', borderWidth: 2, gapWidth: 2 },
+    levels: [
+      { itemStyle: { borderColor: '#0c1929', borderWidth: 2, gapWidth: 2 } },
+      { colorSaturation: [0.3,0.6], itemStyle: { borderColorSaturation: 0.5, gapWidth: 2 } }
+    ],
+    data: [
+      {
+        name: 'ROE 18.6%', value: 18.6,
+        itemStyle: { color: '#c9a84c' },
+        children: [
+          {
+            name: '净利率 18.6%', value: 18.6,
+            itemStyle: { color: '#4a90d9' },
+            children: [
+              { name: '营业收入', value: 8.42, itemStyle: { color: '#7ab8f0' } },
+              { name: '营业成本', value: 5.21, itemStyle: { color: '#2e5c8a' } },
+              { name: '税金附加', value: 0.38, itemStyle: { color: '#3a6fa0' } },
+              { name: '期间费用', value: 1.27, itemStyle: { color: '#1e4a70' } }
+            ]
+          },
+          {
+            name: '资产周转率 0.82', value: 8.2,
+            itemStyle: { color: '#1e3a5f' },
+            children: [
+              { name: '流动资产', value: 4.8, itemStyle: { color: '#2e5c8a' } },
+              { name: '非流动资产', value: 5.5, itemStyle: { color: '#1e4a70' } }
+            ]
+          },
+          {
+            name: '权益乘数 1.22', value: 6.2,
+            itemStyle: { color: '#8a6e2f' },
+            children: [
+              { name: '资产总额', value: 10.3, itemStyle: { color: '#a68b4b' } },
+              { name: '所有者权益', value: 8.42, itemStyle: { color: '#c9a84c' } }
+            ]
+          }
+        ]
+      }
+    ]
+  }]
+});
+
+/* ---------- 8. 收入结构饼图 ---------- */
+initChart('chart-revenue', {
+  tooltip: { trigger: 'item', formatter: '{b}: {c}亿 ({d}%)' },
+  legend: { orient: 'vertical', right: 0, top: 'middle', itemGap: 8, textStyle: { fontSize: 11 } },
+  series: [{
+    type: 'pie', radius: ['42%','68%'], center: ['38%','50%'],
+    label: { show: true, color: '#d0d8e0', fontSize: 11, formatter: '{b}\n{d}%' },
+    labelLine: { lineStyle: { color: 'rgba(138,150,168,0.4)' } },
+    itemStyle: { borderColor: '#0c1929', borderWidth: 2 },
+    data: [
+      { value: 7.12, name: '主营业务', itemStyle: { color: '#c9a84c' } },
+      { value: 0.98, name: '投资收益', itemStyle: { color: '#4a90d9' } },
+      { value: 0.32, name: '其他收入', itemStyle: { color: '#1e3a5f' } }
+    ]
+  }]
+});
+
+/* ---------- 9. 费用构成树图 ---------- */
+initChart('chart-cost', {
+  tooltip: { trigger: 'item', formatter: '{b}: {c}千万' },
+  series: [{
+    type: 'tree',
+    orient: 'LR',
+    left: 10, right: 10, top: 6, bottom: 6,
+    symbol: 'emptyCircle', symbolSize: 8,
+    label: { position: 'left', verticalAlign: 'middle', align: 'right', fontSize: 11, color: '#d0d8e0' },
+    leaves: { label: { position: 'right', verticalAlign: 'middle', align: 'left' } },
+    expandAndCollapse: true,
+    initialTreeDepth: 2,
+    lineStyle: { color: 'rgba(201,168,76,0.35)', width: 1.5 },
+    itemStyle: { color: '#c9a84c', borderColor: '#c9a84c' },
+    data: [{
+      name: '期间费用 1.27亿',
+      children: [
+        {
+          name: '销售费用 0.42亿',
+          children: [
+            { name: '市场推广 0.18亿', value: 0.18 },
+            { name: '销售人员薪酬 0.15亿', value: 0.15 },
+            { name: '差旅费 0.09亿', value: 0.09 }
+          ]
+        },
+        {
+          name: '管理费用 0.38亿',
+          children: [
+            { name: '管理人员薪酬 0.20亿', value: 0.20 },
+            { name: '折旧摊销 0.10亿', value: 0.10 },
+            { name: '办公费 0.08亿', value: 0.08 }
+          ]
+        },
+        {
+          name: '研发费用 0.35亿',
+          children: [
+            { name: '研发人员薪酬 0.22亿', value: 0.22 },
+            { name: '材料费 0.08亿', value: 0.08 },
+            { name: '技术服务 0.05亿', value: 0.05 }
+          ]
+        },
+        {
+          name: '财务费用 0.12亿',
+          children: [
+            { name: '利息支出 0.08亿', value: 0.08 },
+            { name: '手续费 0.04亿', value: 0.04 }
+          ]
+        }
+      ]
+    }]
+  }]
+});
+
+/* ---------- 10. 资产负债堆叠面积图 ---------- */
+initChart('chart-assets', {
+  tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
+  legend: { data: ['流动资产','非流动资产','流动负债','非流动负债','所有者权益'], top: 0, right: 0, itemGap: 8, textStyle: { fontSize: 10 } },
+  grid: { left: 44, right: 10, top: 32, bottom: 20 },
+  xAxis: {
+    type: 'category', boundaryGap: false,
+    data: ['Q1','Q2','Q3','Q4'],
+    axisLabel: { fontSize: 10 }
+  },
+  yAxis: { type: 'value', name: '金额(亿)', nameTextStyle: { fontSize: 10, color: '#8a96a8' }, axisLabel: { fontSize: 10 } },
+  series: [
+    { name: '流动资产', type: 'line', stack: 'assets', areaStyle: { opacity: 0.35 }, smooth: true, lineStyle: { width: 1.5 }, itemStyle: { color: '#c9a84c' }, data: [4.2,4.5,4.7,4.8] },
+    { name: '非流动资产', type: 'line', stack: 'assets', areaStyle: { opacity: 0.35 }, smooth: true, lineStyle: { width: 1.5 }, itemStyle: { color: '#e8d5a3' }, data: [5.1,5.3,5.4,5.5] },
+    { name: '流动负债', type: 'line', stack: 'liab', areaStyle: { opacity: 0.35 }, smooth: true, lineStyle: { width: 1.5 }, itemStyle: { color: '#d94a4a' }, data: [2.8,2.9,3.0,3.1] },
+    { name: '非流动负债', type: 'line', stack: 'liab', areaStyle: { opacity: 0.35 }, smooth: true, lineStyle: { width: 1.5 }, itemStyle: { color: '#b03030' }, data: [0.6,0.6,0.7,0.7] },
+    { name: '所有者权益', type: 'line', stack: 'equity', areaStyle: { opacity: 0.35 }, smooth: true, lineStyle: { width: 1.5 }, itemStyle: { color: '#4a90d9' }, data: [7.5,7.8,8.1,8.42] }
+  ]
+});
+
+/* ---------- 11. 现金流瀑布图 ---------- */
+initChart('chart-cashflow', {
+  tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: params => {
+    const p = params[0];
+    const v = p.value;
+    const color = v >= 0 ? '#4caf7a' : '#d94a4a';
+    return `${p.name}<br/><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:4px;"></span>${v >= 0 ? '+' : ''}${v}亿`;
+  }},
+  grid: { left: 50, right: 20, top: 20, bottom: 24 },
+  xAxis: {
+    type: 'category', data: ['期初余额','经营活动','投资活动','筹资活动','净现金流','期末余额'],
+    axisLabel: { fontSize: 10, interval: 0 }
+  },
+  yAxis: { type: 'value', name: '金额(亿)', nameTextStyle: { fontSize: 10, color: '#8a96a8' }, axisLabel: { fontSize: 10 } },
+  series: [{
+    type: 'bar', barWidth: '50%',
+    data: [
+      { value: 1.85, itemStyle: { color: '#4a90d9' } },
+      { value: 1.42, itemStyle: { color: '#4caf7a' } },
+      { value: -0.68, itemStyle: { color: '#d94a4a' } },
+      { value: -0.35, itemStyle: { color: '#d94a4a' } },
+      { value: 0.39, itemStyle: { color: '#c9a84c' } },
+      { value: 2.24, itemStyle: { color: '#4a90d9' } }
+    ],
+    label: { show: true, position: 'top', color: '#d0d8e0', fontSize: 10, formatter: p => (p.value >= 0 ? '+' : '') + p.value + '亿' }
+  }]
+});
+
+/* ---------- 12. 应收账款账龄横向条形 ---------- */
+initChart('chart-aging', {
+  tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+  grid: { left: 70, right: 30, top: 10, bottom: 20 },
+  xAxis: { type: 'value', name: '金额(千万)', nameTextStyle: { fontSize: 10, color: '#8a96a8' }, axisLabel: { fontSize: 10 }, splitLine: { lineStyle: { color: 'rgba(138,150,168,0.1)' } } },
+  yAxis: {
+    type: 'category', data: ['3年以上','2-3年','1-2年','1年内'],
+    axisLabel: { fontSize: 11 }
+  },
+  series: [{
+    type: 'bar', barWidth: '55%',
+    data: [
+      { value: 2.8, itemStyle: { color: '#d94a4a' } },
+      { value: 5.2, itemStyle: { color: '#c97a4a' } },
+      { value: 12.5, itemStyle: { color: '#c9a84c' } },
+      { value: 42.5, itemStyle: { color: '#4caf7a' } }
+    ],
+    label: { show: true, position: 'right', color: '#d0d8e0', fontSize: 10, formatter: '{c}千万' }
+  }]
+});
+
+/* ---------- 预算执行仪表盘 ---------- */
+initChart('chart-budget', {
+  series: [{
+    type: 'gauge',
+    startAngle: 200, endAngle: -20,
+    min: 0, max: 100,
+    radius: '90%',
+    center: ['50%','55%'],
+    axisLine: {
+      lineStyle: {
+        width: 14,
+        color: [
+          [0.6, '#d94a4a'],
+          [0.8, '#c9a84c'],
+          [1, '#4caf7a']
+        ]
+      }
+    },
+    pointer: { itemStyle: { color: '#c9a84c' }, length: '65%', width: 4 },
+    axisTick: { distance: -18, length: 6, lineStyle: { color: '#8a96a8', width: 1 } },
+    splitLine: { distance: -20, length: 12, lineStyle: { color: '#8a96a8', width: 1 } },
+    axisLabel: { distance: 6, color: '#8a96a8', fontSize: 10 },
+    detail: {
+      valueAnimation: true,
+      formatter: '{value}%',
+      color: '#c9a84c',
+      fontSize: 22,
+      fontFamily: "'SF Mono','Consolas',monospace",
+      fontWeight: 600,
+      offsetCenter: [0, '60%']
+    },
+    data: [{ value: 94.2, name: '执行率', title: { offsetCenter: [0, '78%'], color: '#8a96a8', fontSize: 11 } }]
+  }]
+});
+
+/* ========== resize 监听 ========== */
+window.addEventListener('resize', () => {
+  Object.values(charts).forEach(c => c && c.resize());
+});
+</script>
+</body>
+</html>

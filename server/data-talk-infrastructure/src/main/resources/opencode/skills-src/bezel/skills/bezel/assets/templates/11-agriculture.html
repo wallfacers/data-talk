@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智慧农业大数据中心</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:100vw; height:100vh; overflow:hidden; font-family:'PingFang SC','Microsoft YaHei',sans-serif; background:#1a1209; color:#fff; }
+
+  /* 阳光光晕 */
+  .sun-glow {
+    position:absolute; top:-120px; left:50%; transform:translateX(-50%);
+    width:600px; height:300px; border-radius:50%;
+    background:radial-gradient(ellipse at center, rgba(245,158,11,0.35) 0%, rgba(245,158,11,0.12) 40%, transparent 70%);
+    pointer-events:none; z-index:0;
+    animation:sunPulse 6s ease-in-out infinite;
+  }
+  @keyframes sunPulse {
+    0%,100% { transform:translateX(-50%) scale(1); opacity:0.9; }
+    50% { transform:translateX(-50%) scale(1.15); opacity:1; }
+  }
+
+  /* 自然纹理背景 */
+  .bg-texture {
+    position:absolute; inset:0; z-index:0; pointer-events:none; opacity:0.06;
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+
+  .dashboard { position:relative; z-index:1; width:100vw; height:100vh; display:flex; flex-direction:column; padding:12px 16px; }
+
+  /* 顶部标题栏 */
+  .header {
+    display:flex; align-items:center; justify-content:space-between;
+    height:56px; flex-shrink:0; margin-bottom:10px;
+  }
+  .header-title {
+    font-size:26px; font-weight:700; letter-spacing:4px;
+    background:linear-gradient(90deg,#f59e0b,#22c55e); -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    text-shadow:0 0 20px rgba(245,158,11,0.2);
+  }
+  .header-time { font-size:14px; color:rgba(255,255,255,0.65); letter-spacing:1px; }
+
+  /* KPI 区域 */
+  .kpi-row {
+    display:flex; gap:16px; height:90px; flex-shrink:0; margin-bottom:12px;
+  }
+  .kpi-card {
+    flex:1; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);
+    border-radius:10px; padding:12px 16px; display:flex; align-items:center; gap:14px;
+    position:relative; overflow:hidden; transition:all 0.3s;
+  }
+  .kpi-card:hover { background:rgba(255,255,255,0.07); border-color:rgba(255,255,255,0.15); }
+  .kpi-card::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:2px;
+    background:linear-gradient(90deg,transparent,var(--accent),transparent); opacity:0.6;
+  }
+  .kpi-icon {
+    width:48px; height:48px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+    font-size:22px; flex-shrink:0; background:rgba(255,255,255,0.05);
+  }
+  .kpi-icon.green { color:#22c55e; border:1px solid rgba(34,197,94,0.25); }
+  .kpi-icon.gold { color:#f59e0b; border:1px solid rgba(245,158,11,0.25); }
+  .kpi-icon.purple { color:#8b5cf6; border:1px solid rgba(139,92,246,0.25); }
+  .kpi-icon.red { color:#ef4444; border:1px solid rgba(239,68,68,0.25); }
+  .kpi-info { flex:1; }
+  .kpi-label { font-size:12px; color:rgba(255,255,255,0.5); margin-bottom:4px; }
+  .kpi-value { font-size:24px; font-weight:700; color:#fff; letter-spacing:1px; }
+  .kpi-unit { font-size:13px; color:rgba(255,255,255,0.6); margin-left:2px; }
+  .kpi-change {
+    font-size:12px; font-weight:600; padding:2px 8px; border-radius:4px; margin-top:4px; display:inline-block;
+  }
+  .kpi-change.up { color:#22c55e; background:rgba(34,197,94,0.12); }
+  .kpi-change.warn { color:#f59e0b; background:rgba(245,158,11,0.12); }
+  .kpi-change.down { color:#ef4444; background:rgba(239,68,68,0.12); }
+
+  /* 主体布局 */
+  .main-body {
+    flex:1; display:flex; gap:12px; min-height:0;
+  }
+  .col-left, .col-right {
+    width:25%; display:flex; flex-direction:column; gap:10px; min-width:0;
+  }
+  .col-center {
+    width:50%; display:flex; flex-direction:column; gap:10px; min-width:0;
+  }
+
+  /* 面板 */
+  .panel {
+    background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06);
+    border-radius:10px; padding:10px; display:flex; flex-direction:column; flex:1; min-height:0;
+    position:relative; overflow:hidden;
+  }
+  .panel::after {
+    content:''; position:absolute; bottom:0; left:10%; right:10%; height:1px;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent);
+  }
+  .panel-title {
+    font-size:13px; font-weight:600; color:rgba(255,255,255,0.85);
+    padding:0 4px 8px; border-bottom:1px solid rgba(255,255,255,0.06);
+    display:flex; align-items:center; gap:6px; flex-shrink:0;
+  }
+  .panel-title::before {
+    content:''; width:3px; height:14px; border-radius:2px; background:var(--accent,#22c55e);
+  }
+  .panel-body { flex:1; min-height:0; position:relative; }
+
+  /* 数据故事条 */
+  .story-bar {
+    background:linear-gradient(90deg, rgba(34,197,94,0.08), rgba(245,158,11,0.08));
+    border:1px solid rgba(255,255,255,0.06); border-radius:8px;
+    padding:8px 16px; font-size:12px; color:rgba(255,255,255,0.7);
+    display:flex; align-items:center; gap:16px; flex-shrink:0; margin-bottom:10px;
+  }
+  .story-bar span { display:flex; align-items:center; gap:4px; }
+  .story-bar .dot { width:6px; height:6px; border-radius:50%; display:inline-block; }
+
+  /* 响应式 */
+  @media (max-width:1400px) {
+    .col-left,.col-right { width:26%; }
+    .col-center { width:48%; }
+  }
+</style>
+</head>
+<body>
+<div class="sun-glow"></div>
+<div class="bg-texture"></div>
+
+<div class="dashboard">
+  <div class="header">
+    <div class="header-title">智慧农业大数据中心</div>
+    <div class="header-time" id="clock">--</div>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi-card" style="--accent:#22c55e">
+      <div class="kpi-icon green">&#127793;</div>
+      <div class="kpi-info">
+        <div class="kpi-label">种植面积</div>
+        <div class="kpi-value"><span class="kpi-num" data-target="12480">0</span><span class="kpi-unit">亩</span></div>
+        <div class="kpi-change up">&#9650; 5%</div>
+      </div>
+    </div>
+    <div class="kpi-card" style="--accent:#f59e0b">
+      <div class="kpi-icon gold">&#127806;</div>
+      <div class="kpi-info">
+        <div class="kpi-label">预计产量</div>
+        <div class="kpi-value"><span class="kpi-num" data-target="8560">0</span><span class="kpi-unit">吨</span></div>
+        <div class="kpi-change up">&#9650; 8%</div>
+      </div>
+    </div>
+    <div class="kpi-card" style="--accent:#8b5cf6">
+      <div class="kpi-icon purple">&#127795;</div>
+      <div class="kpi-info">
+        <div class="kpi-label">土壤健康指数</div>
+        <div class="kpi-value"><span class="kpi-num" data-target="86">0</span><span class="kpi-unit">分</span></div>
+        <div class="kpi-change up">&#9650; 3</div>
+      </div>
+    </div>
+    <div class="kpi-card" style="--accent:#ef4444">
+      <div class="kpi-icon red">&#9888;</div>
+      <div class="kpi-info">
+        <div class="kpi-label">气象预警</div>
+        <div class="kpi-value"><span class="kpi-num" data-target="3">0</span><span class="kpi-unit">个区域</span></div>
+        <div class="kpi-change warn">黄色预警</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="story-bar">
+    <span><span class="dot" style="background:#22c55e"></span>预计产量 8,560 吨（&#9650;8%）</span>
+    <span><span class="dot" style="background:#8b5cf6"></span>土壤健康 86 分</span>
+    <span><span class="dot" style="background:#f59e0b"></span>病虫害预警 3 个区域黄色</span>
+  </div>
+
+  <div class="main-body">
+    <!-- 左侧 -->
+    <div class="col-left">
+      <div class="panel" style="--accent:#8b5cf6">
+        <div class="panel-title">土壤墒情监测</div>
+        <div class="panel-body" id="chart-soil"></div>
+      </div>
+      <div class="panel" style="--accent:#22c55e">
+        <div class="panel-title">气象数据组合</div>
+        <div class="panel-body" id="chart-weather"></div>
+      </div>
+    </div>
+
+    <!-- 中央 -->
+    <div class="col-center">
+      <div class="panel" style="--accent:#f59e0b; flex:1.6;">
+        <div class="panel-title">农场 GIS 地图</div>
+        <div class="panel-body" id="chart-map"></div>
+      </div>
+      <div class="panel" style="--accent:#22c55e; flex:1;">
+        <div class="panel-title">作物长势趋势（NDVI 近30天）</div>
+        <div class="panel-body" id="chart-ndvi"></div>
+      </div>
+    </div>
+
+    <!-- 右侧 -->
+    <div class="col-right">
+      <div class="panel" style="--accent:#f59e0b">
+        <div class="panel-title">农产品价格走势</div>
+        <div class="panel-body" id="chart-price"></div>
+      </div>
+      <div class="panel" style="--accent:#22c55e">
+        <div class="panel-title">积温积雨累积曲线</div>
+        <div class="panel-body" id="chart-accum"></div>
+      </div>
+      <div class="panel" style="--accent:#ef4444">
+        <div class="panel-title">病虫害预警等级</div>
+        <div class="panel-body" id="chart-pest"></div>
+      </div>
+      <div class="panel" style="--accent:#22c55e">
+        <div class="panel-title">灌溉用水效率</div>
+        <div class="panel-body" id="chart-irrigate"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ========== 通用暗色主题 ========== */
+const darkTheme = {
+  backgroundColor:'transparent',
+  textStyle:{ color:'rgba(255,255,255,0.7)' },
+  title:{ textStyle:{ color:'#fff' } },
+  legend:{ textStyle:{ color:'rgba(255,255,255,0.7)' }, pageTextStyle:{ color:'rgba(255,255,255,0.7)' } },
+  tooltip:{ backgroundColor:'rgba(20,15,10,0.92)', borderColor:'rgba(255,255,255,0.1)', textStyle:{ color:'#fff' } },
+  xAxis:{ axisLine:{ lineStyle:{ color:'rgba(255,255,255,0.1)' } }, axisLabel:{ color:'rgba(255,255,255,0.5)' }, splitLine:{ lineStyle:{ color:'rgba(255,255,255,0.05)' } } },
+  yAxis:{ axisLine:{ lineStyle:{ color:'rgba(255,255,255,0.1)' } }, axisLabel:{ color:'rgba(255,255,255,0.5)' }, splitLine:{ lineStyle:{ color:'rgba(255,255,255,0.05)' } } },
+  grid:{ left:45, right:20, top:35, bottom:25, containLabel:true }
+};
+
+/* ========== 实时时钟 ========== */
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.getFullYear()+'-'+(now.getMonth()+1).toString().padStart(2,'0')+'-'+now.getDate().toString().padStart(2,'0')+' '+
+    now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0')+':'+now.getSeconds().toString().padStart(2,'0');
+}
+setInterval(updateClock,1000); updateClock();
+
+/* ========== KPI 数字滚动 ========== */
+function animateKPIs() {
+  document.querySelectorAll('.kpi-num').forEach(el => {
+    const target = +el.dataset.target;
+    const duration = 1500;
+    const start = performance.now();
+    (function tick(now) {
+      const p = Math.min((now - start) / duration, 1);
+      const ease = 1 - Math.pow(1 - p, 3);
+      el.textContent = Math.round(target * ease).toLocaleString();
+      if (p < 1) requestAnimationFrame(tick);
+    })(start);
+  });
+}
+setTimeout(animateKPIs, 300);
+
+/* ========== 图表初始化 ========== */
+const charts = {};
+function initChart(id, option) {
+  const dom = document.getElementById(id);
+  if (!dom) return null;
+  const chart = echarts.init(dom, null, { renderer:'canvas' });
+  chart.setOption({ ...darkTheme, ...option });
+  charts[id] = chart;
+  return chart;
+}
+
+/* ---------- 5. 农场 GIS 地图 ---------- */
+fetch('https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json')
+  .then(r => r.json())
+  .then(geoJson => {
+    echarts.registerMap('china', geoJson);
+    const cropColors = { '小麦':'#f59e0b', '水稻':'#22c55e', '玉米':'#eab308', '大豆':'#8b5cf6', '其他':'#64748b' };
+    const cropData = [
+      {name:'河南',value:'小麦'},{name:'山东',value:'小麦'},{name:'河北',value:'小麦'},
+      {name:'黑龙江',value:'大豆'},{name:'吉林',value:'玉米'},{name:'辽宁',value:'玉米'},
+      {name:'江苏',value:'水稻'},{name:'安徽',value:'水稻'},{name:'湖北',value:'水稻'},
+      {name:'湖南',value:'水稻'},{name:'江西',value:'水稻'},{name:'四川',value:'水稻'},
+      {name:'新疆',value:'其他'},{name:'甘肃',value:'其他'},{name:'内蒙古',value:'其他'},
+      {name:'云南',value:'其他'},{name:'贵州',value:'其他'},{name:'广西',value:'水稻'},
+      {name:'广东',value:'水稻'},{name:'福建',value:'水稻'},{name:'浙江',value:'水稻'},
+      {name:'陕西',value:'小麦'},{name:'山西',value:'小麦'},{name:'宁夏',value:'其他'},
+      {name:'青海',value:'其他'},{name:'西藏',value:'其他'},{name:'重庆',value:'水稻'},
+      {name:'上海',value:'水稻'},{name:'北京',value:'小麦'},{name:'天津',value:'小麦'},
+      {name:'海南',value:'水稻'},{name:'台湾',value:'水稻'},{name:'香港',value:'其他'},{name:'澳门',value:'其他'}
+    ];
+    initChart('chart-map', {
+      tooltip:{ trigger:'item', formatter:p => p.name+'：'+p.value },
+      visualMap:{ show:false, type:'piecewise', categories:Object.keys(cropColors), inRange:{ color:Object.values(cropColors) } },
+      geo:{ map:'china', roam:true, zoom:1.15, center:[105,36], itemStyle:{ areaColor:'rgba(255,255,255,0.06)', borderColor:'rgba(255,255,255,0.15)', borderWidth:1 }, emphasis:{ itemStyle:{ areaColor:'rgba(245,158,11,0.35)' }, label:{ color:'#fff' } } },
+      series:[{ type:'map', map:'china', geoIndex:0, data:cropData, label:{ show:false }, emphasis:{ label:{ show:true, color:'#fff' } } }]
+    });
+  })
+  .catch(() => {
+    document.getElementById('chart-map').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:rgba(255,255,255,0.4);font-size:14px;">地图加载失败，请检查网络</div>';
+  });
+
+/* ---------- 6. 作物长势趋势 NDVI ---------- */
+const ndviDays = Array.from({length:30},(_,i)=>`D${i+1}`);
+const ndviData = [0.42,0.43,0.45,0.46,0.48,0.50,0.52,0.54,0.55,0.57,0.58,0.60,0.61,0.63,0.64,0.65,0.66,0.67,0.68,0.69,0.70,0.71,0.72,0.73,0.74,0.75,0.76,0.77,0.78,0.79];
+initChart('chart-ndvi', {
+  grid:{ left:45, right:20, top:30, bottom:20 },
+  tooltip:{ trigger:'axis' },
+  xAxis:{ type:'category', data:ndviDays, axisLabel:{ interval:4, fontSize:10 } },
+  yAxis:{ type:'value', min:0.3, max:0.9, axisLabel:{ fontSize:10 } },
+  series:[{
+    type:'line', data:ndviData, smooth:true, symbol:'none',
+    lineStyle:{ width:2, color:'#22c55e' },
+    areaStyle:{ color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(34,197,94,0.4)'},{offset:1,color:'rgba(34,197,94,0.02)'}]) }
+  }]
+});
+
+/* ---------- 7. 土壤墒情监测 ---------- */
+initChart('chart-soil', {
+  grid:{ left:10, right:10, top:20, bottom:10 },
+  tooltip:{ trigger:'item' },
+  series:[
+    { type:'gauge', center:['25%','55%'], radius:'70%', min:0, max:100, startAngle:210, endAngle:-30,
+      axisLine:{ lineStyle:{ width:8, color:[[0.68,'#22c55e'],[1,'rgba(255,255,255,0.08)']] } },
+      pointer:{ length:'55%', width:3, itemStyle:{ color:'#22c55e' } },
+      axisTick:{ show:false }, splitLine:{ show:false }, axisLabel:{ show:false }, detail:{ valueAnimation:true, fontSize:16, color:'#fff', offsetCenter:[0,'65%'], formatter:'{value}%' },
+      title:{ offsetCenter:[0,'90%'], fontSize:10, color:'rgba(255,255,255,0.5)' }, data:[{value:68,name:'湿度'}] },
+    { type:'gauge', center:['50%','55%'], radius:'70%', min:0, max:50, startAngle:210, endAngle:-30,
+      axisLine:{ lineStyle:{ width:8, color:[[0.44,'#f59e0b'],[1,'rgba(255,255,255,0.08)']] } },
+      pointer:{ length:'55%', width:3, itemStyle:{ color:'#f59e0b' } },
+      axisTick:{ show:false }, splitLine:{ show:false }, axisLabel:{ show:false }, detail:{ valueAnimation:true, fontSize:16, color:'#fff', offsetCenter:[0,'65%'], formatter:'{value}°C' },
+      title:{ offsetCenter:[0,'90%'], fontSize:10, color:'rgba(255,255,255,0.5)' }, data:[{value:22,name:'温度'}] },
+    { type:'gauge', center:['75%','55%'], radius:'70%', min:0, max:14, startAngle:210, endAngle:-30,
+      axisLine:{ lineStyle:{ width:8, color:[[0.486,'#8b5cf6'],[1,'rgba(255,255,255,0.08)']] } },
+      pointer:{ length:'55%', width:3, itemStyle:{ color:'#8b5cf6' } },
+      axisTick:{ show:false }, splitLine:{ show:false }, axisLabel:{ show:false }, detail:{ valueAnimation:true, fontSize:16, color:'#fff', offsetCenter:[0,'65%'] },
+      title:{ offsetCenter:[0,'90%'], fontSize:10, color:'rgba(255,255,255,0.5)' }, data:[{value:6.8,name:'pH'}] }
+  ]
+});
+
+/* ---------- 8. 气象数据组合 ---------- */
+const weatherDays = ['周一','周二','周三','周四','周五','周六','周日'];
+const tempData = [22,24,26,25,23,21,20];
+const rainData = [0,5,12,8,3,0,1];
+const lightData = [6.5,7.2,5.8,4.5,8.0,9.2,8.8];
+initChart('chart-weather', {
+  grid:{ left:45, right:45, top:30, bottom:20 },
+  tooltip:{ trigger:'axis', axisPointer:{ type:'cross' } },
+  legend:{ data:['温度','降雨量','光照'], top:0, textStyle:{ fontSize:10 }, itemWidth:12, itemHeight:8 },
+  xAxis:{ type:'category', data:weatherDays, axisLabel:{ fontSize:10 } },
+  yAxis:[
+    { type:'value', name:'°C', position:'left', axisLabel:{ fontSize:10 }, splitLine:{ lineStyle:{ color:'rgba(255,255,255,0.05)' } } },
+    { type:'value', name:'mm', position:'right', axisLabel:{ fontSize:10 }, splitLine:{ show:false } },
+    { type:'value', name:'h', position:'right', offset:40, axisLabel:{ fontSize:10 }, splitLine:{ show:false } }
+  ],
+  series:[
+    { name:'温度', type:'line', data:tempData, smooth:true, yAxisIndex:0, symbol:'circle', symbolSize:5, lineStyle:{ width:2, color:'#f59e0b' }, itemStyle:{ color:'#f59e0b' } },
+    { name:'降雨量', type:'bar', data:rainData, yAxisIndex:1, barWidth:'30%', itemStyle:{ color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#3b82f6'},{offset:1,color:'rgba(59,130,246,0.2)'}]), borderRadius:[3,3,0,0] } },
+    { name:'光照', type:'line', data:lightData, smooth:true, yAxisIndex:2, symbol:'circle', symbolSize:5, lineStyle:{ width:2, color:'#eab308', type:'dashed' }, itemStyle:{ color:'#eab308' } }
+  ]
+});
+
+/* ---------- 9. 农产品价格走势 ---------- */
+const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+const priceWheat = [2.52,2.55,2.58,2.60,2.62,2.65,2.68,2.70,2.72,2.75,2.78,2.80];
+const priceRice  = [2.80,2.82,2.85,2.88,2.90,2.92,2.95,2.98,3.00,3.02,3.05,3.08];
+const priceCorn  = [2.20,2.22,2.25,2.28,2.30,2.32,2.35,2.38,2.40,2.42,2.45,2.48];
+const priceBean  = [3.50,3.55,3.60,3.65,3.70,3.75,3.80,3.85,3.90,3.95,4.00,4.05];
+initChart('chart-price', {
+  grid:{ left:40, right:20, top:30, bottom:20 },
+  tooltip:{ trigger:'axis' },
+  legend:{ data:['小麦','水稻','玉米','大豆'], top:0, textStyle:{ fontSize:10 }, itemWidth:12, itemHeight:8 },
+  xAxis:{ type:'category', data:months, axisLabel:{ fontSize:10, interval:1 } },
+  yAxis:{ type:'value', name:'元/kg', axisLabel:{ fontSize:10 } },
+  series:[
+    { name:'小麦', type:'line', data:priceWheat, smooth:true, symbol:'none', lineStyle:{ width:2, color:'#f59e0b' } },
+    { name:'水稻', type:'line', data:priceRice,  smooth:true, symbol:'none', lineStyle:{ width:2, color:'#22c55e' } },
+    { name:'玉米', type:'line', data:priceCorn,  smooth:true, symbol:'none', lineStyle:{ width:2, color:'#eab308' } },
+    { name:'大豆', type:'line', data:priceBean,  smooth:true, symbol:'none', lineStyle:{ width:2, color:'#8b5cf6' } }
+  ]
+});
+
+/* ---------- 10. 积温积雨累积曲线 ---------- */
+const sowDays = Array.from({length:20},(_,i)=>`第${i+1}天`);
+const accumTemp = [12,25,40,58,78,100,125,152,180,210,242,275,310,348,388,430,472,515,560,608];
+const accumRain = [5,12,22,35,48,62,78,95,110,125,138,150,162,175,188,200,212,225,238,250];
+initChart('chart-accum', {
+  grid:{ left:50, right:50, top:30, bottom:20 },
+  tooltip:{ trigger:'axis' },
+  legend:{ data:['积温','积雨'], top:0, textStyle:{ fontSize:10 }, itemWidth:12, itemHeight:8 },
+  xAxis:{ type:'category', data:sowDays, axisLabel:{ fontSize:10, interval:2 } },
+  yAxis:[
+    { type:'value', name:'°C·d', position:'left', axisLabel:{ fontSize:10 } },
+    { type:'value', name:'mm', position:'right', axisLabel:{ fontSize:10 } }
+  ],
+  series:[
+    { name:'积温', type:'line', data:accumTemp, smooth:true, symbol:'none', yAxisIndex:0, lineStyle:{ width:2, color:'#f59e0b' }, areaStyle:{ color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(245,158,11,0.3)'},{offset:1,color:'rgba(245,158,11,0.02)'}]) } },
+    { name:'积雨', type:'line', data:accumRain, smooth:true, symbol:'none', yAxisIndex:1, lineStyle:{ width:2, color:'#3b82f6' }, areaStyle:{ color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(59,130,246,0.3)'},{offset:1,color:'rgba(59,130,246,0.02)'}]) } }
+  ]
+});
+
+/* ---------- 11. 病虫害预警等级 ---------- */
+const pestCrops = ['小麦','水稻','玉米','大豆','蔬菜'];
+const pestLevels = [1,2,3,1,2]; // 1=绿 2=黄 3=橙
+const pestColors = ['#22c55e','#f59e0b','#f97316','#ef4444'];
+initChart('chart-pest', {
+  grid:{ left:55, right:30, top:10, bottom:10 },
+  tooltip:{ trigger:'axis', formatter:p => p[0].name+'：'+['正常','黄色预警','橙色预警','红色预警'][p[0].value-1] },
+  xAxis:{ type:'value', max:4, axisLabel:{ formatter:v=>['','正常','黄色','橙色','红色'][v]||'', fontSize:10 }, splitLine:{ lineStyle:{ color:'rgba(255,255,255,0.05)' } } },
+  yAxis:{ type:'category', data:pestCrops, axisLabel:{ fontSize:11 }, inverse:true },
+  series:[{
+    type:'bar', data:pestLevels.map(v=>({value:v,itemStyle:{color:pestColors[v-1],borderRadius:[0,4,4,0]}})),
+    barWidth:14, label:{ show:true, position:'right', formatter:p=>['正常','黄色预警','橙色预警','红色预警'][p.value-1], fontSize:10, color:'rgba(255,255,255,0.6)' }
+  }]
+});
+
+/* ---------- 12. 灌溉用水效率 ---------- */
+const irrigateRegions = ['A区','B区','C区','D区','E区','F区'];
+const irrigateData = [320,285,350,260,295,310];
+const benchmark = 300;
+initChart('chart-irrigate', {
+  grid:{ left:45, right:30, top:15, bottom:10 },
+  tooltip:{ trigger:'axis', formatter:p => p[0].name+'：'+p[0].value+' m³/亩<br/>标杆：'+benchmark+' m³/亩' },
+  xAxis:{ type:'value', name:'m³/亩', axisLabel:{ fontSize:10 }, splitLine:{ lineStyle:{ color:'rgba(255,255,255,0.05)' } } },
+  yAxis:{ type:'category', data:irrigateRegions, axisLabel:{ fontSize:11 }, inverse:true },
+  series:[{
+    type:'bar', data:irrigateData, barWidth:12,
+    itemStyle:{ color:p => p.value > benchmark ? 'rgba(239,68,68,0.7)' : 'rgba(34,197,94,0.7)', borderRadius:[0,4,4,0] },
+    markLine:{ silent:true, symbol:'none', lineStyle:{ color:'#f59e0b', type:'dashed', width:1.5 }, data:[{ xAxis:benchmark, label:{ formatter:'标杆 {c}', position:'end', fontSize:10, color:'#f59e0b' } }] }
+  }]
+});
+
+/* ========== resize ========== */
+window.addEventListener('resize', () => {
+  Object.values(charts).forEach(c => c && c.resize());
+});
+</script>
+</body>
+</html>

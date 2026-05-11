@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SaaS 运营监控中心</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100vw; height: 100vh;
+    overflow: hidden;
+    background: #0a0f1a;
+    font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    color: #e2e8f0;
+  }
+
+  /* 波浪背景 */
+  .bg-wave {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    overflow: hidden;
+  }
+  .wave-circle {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: .35;
+  }
+  .wave-1 {
+    width: 60vw; height: 60vw;
+    background: radial-gradient(circle, rgba(20,184,166,.55), transparent 70%);
+    top: -10vw; left: -10vw;
+    animation: float1 12s ease-in-out infinite alternate;
+  }
+  .wave-2 {
+    width: 55vw; height: 55vw;
+    background: radial-gradient(circle, rgba(99,102,241,.55), transparent 70%);
+    bottom: -8vw; right: -8vw;
+    animation: float2 15s ease-in-out infinite alternate;
+  }
+  @keyframes float1 {
+    0%   { transform: translate(0, 0); }
+    100% { transform: translate(8vw, 6vw); }
+  }
+  @keyframes float2 {
+    0%   { transform: translate(0, 0); }
+    100% { transform: translate(-6vw, -8vw); }
+  }
+
+  /* 容器 */
+  .dashboard {
+    position: relative; z-index: 1;
+    width: 100vw; height: 100vh;
+    padding: 1.2vh 1.2vw;
+    display: flex; flex-direction: column; gap: 1.2vh;
+  }
+
+  /* 玻璃卡片 */
+  .glass {
+    background: rgba(255,255,255,.04);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(0,0,0,.25);
+    transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+  }
+  .glass:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 32px rgba(20,184,166,.12), 0 0 0 1px rgba(20,184,166,.25);
+    border-color: rgba(20,184,166,.35);
+  }
+
+  /* 顶部栏 */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1.2vw; flex-shrink: 0;
+  }
+  .north-star {
+    display: flex; align-items: baseline; gap: .6vw;
+  }
+  .north-star .label {
+    font-size: 1.1vw; color: #94a3b8; letter-spacing: .05em;
+  }
+  .north-star .value {
+    font-size: 3.2vw; font-weight: 700; color: #14b8a6;
+    font-family: 'SF Mono', monospace, 'PingFang SC', sans-serif;
+    text-shadow: 0 0 24px rgba(20,184,166,.35);
+  }
+  .kpis {
+    display: flex; gap: .8vw; flex: 1; justify-content: center;
+  }
+  .kpi-pill {
+    padding: .6vh 1vw;
+    border-radius: 999px;
+    display: flex; align-items: center; gap: .5vw;
+    font-size: .9vw;
+    background: rgba(255,255,255,.04);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,.08);
+    white-space: nowrap;
+  }
+  .kpi-pill .k-name { color: #94a3b8; font-size: .75vw; }
+  .kpi-pill .k-val  { font-weight: 700; font-family: 'SF Mono', monospace; font-size: 1vw; }
+  .kpi-pill .k-delta { font-size: .75vw; }
+  .kpi-pill.up .k-delta { color: #34d399; }
+  .kpi-pill.down .k-delta { color: #f87171; }
+
+  .clock {
+    font-family: 'SF Mono', monospace;
+    font-size: 1vw; color: #64748b; letter-spacing: .08em;
+    text-align: right; min-width: 7vw;
+  }
+
+  /* 主体三栏 */
+  .main {
+    flex: 1; display: flex; gap: 1vw;
+    min-height: 0;
+  }
+  .col { display: flex; flex-direction: column; gap: 1vh; min-height: 0; }
+  .col-left  { width: 28%; }
+  .col-center{ width: 44%; }
+  .col-right { width: 28%; }
+
+  .panel {
+    flex: 1; min-height: 0;
+    padding: 1vh 1vw;
+    display: flex; flex-direction: column;
+  }
+  .panel-title {
+    font-size: .85vw; color: #cbd5e1; font-weight: 600;
+    margin-bottom: .6vh; display: flex; align-items: center; gap: .4vw;
+    flex-shrink: 0;
+  }
+  .panel-title::before {
+    content: ''; width: 3px; height: .85vw; border-radius: 2px; display: inline-block;
+  }
+  .title-teal::before   { background: #14b8a6; box-shadow: 0 0 8px rgba(20,184,166,.5); }
+  .title-purple::before { background: #6366f1; box-shadow: 0 0 8px rgba(99,102,241,.5); }
+  .title-pink::before   { background: #f472b6; box-shadow: 0 0 8px rgba(244,114,182,.5); }
+
+  .chart-box { flex: 1; min-height: 0; position: relative; }
+
+  /* 用户旅程 */
+  .journey-wrap {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: .4vw; padding: 0 .4vw;
+  }
+  .j-step {
+    flex: 1; text-align: center; position: relative;
+  }
+  .j-step .j-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    margin: 0 auto .4vh;
+    box-shadow: 0 0 10px currentColor;
+  }
+  .j-step .j-label { font-size: .7vw; color: #94a3b8; }
+  .j-step .j-rate  { font-size: .9vw; font-weight: 700; font-family: 'SF Mono', monospace; margin-top: .3vh; }
+  .j-arrow {
+    color: #475569; font-size: .8vw; padding-bottom: 1.6vh;
+  }
+
+  /* 跑马灯 */
+  .marquee-bar {
+    flex-shrink: 0; height: 3.2vh;
+    display: flex; align-items: center; overflow: hidden;
+    padding: 0 1vw;
+    font-size: .8vw; color: #94a3b8;
+  }
+  .marquee-track {
+    display: flex; gap: 3vw;
+    white-space: nowrap;
+    animation: marquee 28s linear infinite;
+  }
+  .marquee-bar:hover .marquee-track { animation-play-state: paused; }
+  @keyframes marquee {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  .marquee-item { display: inline-flex; align-items: center; gap: .4vw; }
+  .marquee-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+
+  /* 滚动数字 */
+  .count-up { display: inline-block; }
+</style>
+</head>
+<body>
+<div class="bg-wave">
+  <div class="wave-circle wave-1"></div>
+  <div class="wave-circle wave-2"></div>
+</div>
+
+<div class="dashboard">
+  <!-- 顶部 -->
+  <div class="header">
+    <div class="north-star">
+      <span class="label">北极星指标 WAU</span>
+      <span class="value count-up" data-target="24856" id="ns-val">0</span>
+    </div>
+    <div class="kpis">
+      <div class="kpi-pill up">
+        <span class="k-name">活跃租户</span>
+        <span class="k-val count-up" data-target="24856">0</span>
+        <span class="k-delta">▲8.2%</span>
+      </div>
+      <div class="kpi-pill up">
+        <span class="k-name">SLA</span>
+        <span class="k-val" style="color:#a78bfa">99.97%</span>
+        <span class="k-delta">▲0.02%</span>
+      </div>
+      <div class="kpi-pill up">
+        <span class="k-name">MRR</span>
+        <span class="k-val" style="color:#f472b6">1,380万</span>
+        <span class="k-delta">▲8.3%</span>
+      </div>
+      <div class="kpi-pill up">
+        <span class="k-name">NPS</span>
+        <span class="k-val count-up" data-target="68" style="color:#14b8a6">0</span>
+        <span class="k-delta">▲10</span>
+      </div>
+    </div>
+    <div class="clock" id="clock">--:--:--</div>
+  </div>
+
+  <!-- 主体 -->
+  <div class="main">
+    <!-- 左栏 -->
+    <div class="col col-left">
+      <div class="glass panel">
+        <div class="panel-title title-teal">MRR / ARR 瀑布图</div>
+        <div class="chart-box" id="chart-waterfall"></div>
+      </div>
+      <div class="glass panel">
+        <div class="panel-title title-purple">套餐订阅分布</div>
+        <div class="chart-box" id="chart-plan"></div>
+      </div>
+    </div>
+
+    <!-- 中栏 -->
+    <div class="col col-center">
+      <div class="glass panel" style="flex:1.4">
+        <div class="panel-title title-teal">用户留存率</div>
+        <div class="chart-box" id="chart-retention"></div>
+      </div>
+      <div class="glass panel" style="flex:.9">
+        <div class="panel-title title-pink">用户旅程地图</div>
+        <div class="chart-box" style="display:flex;align-items:center;">
+          <div class="journey-wrap" style="width:100%">
+            <div class="j-step">
+              <div class="j-dot" style="background:#14b8a6;color:#14b8a6"></div>
+              <div class="j-label">注册</div>
+              <div class="j-rate" style="color:#14b8a6">100%</div>
+            </div>
+            <div class="j-arrow">→</div>
+            <div class="j-step">
+              <div class="j-dot" style="background:#6366f1;color:#6366f1"></div>
+              <div class="j-label">激活</div>
+              <div class="j-rate" style="color:#6366f1">65%</div>
+            </div>
+            <div class="j-arrow">→</div>
+            <div class="j-step">
+              <div class="j-dot" style="background:#f472b6;color:#f472b6"></div>
+              <div class="j-label">付费</div>
+              <div class="j-rate" style="color:#f472b6">28%</div>
+            </div>
+            <div class="j-arrow">→</div>
+            <div class="j-step">
+              <div class="j-dot" style="background:#a78bfa;color:#a78bfa"></div>
+              <div class="j-label">留存</div>
+              <div class="j-rate" style="color:#a78bfa">22%</div>
+            </div>
+            <div class="j-arrow">→</div>
+            <div class="j-step">
+              <div class="j-dot" style="background:#34d399;color:#34d399"></div>
+              <div class="j-label">推荐</div>
+              <div class="j-rate" style="color:#34d399">8%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="glass panel" style="flex:1.2">
+        <div class="panel-title title-purple">功能采用率热力图</div>
+        <div class="chart-box" id="chart-heatmap"></div>
+      </div>
+    </div>
+
+    <!-- 右栏 -->
+    <div class="col col-right">
+      <div class="glass panel">
+        <div class="panel-title title-teal">API 性能趋势 (24h)</div>
+        <div class="chart-box" id="chart-api"></div>
+      </div>
+      <div class="glass panel">
+        <div class="panel-title title-pink">Churn Rate 预测曲线</div>
+        <div class="chart-box" id="chart-churn"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 底部跑马灯 -->
+  <div class="glass marquee-bar">
+    <div class="marquee-track" id="marquee">
+      <span class="marquee-item"><span class="marquee-dot" style="background:#14b8a6"></span>MRR 达 1,380 万，环比增长 8.3%</span>
+      <span class="marquee-item"><span class="marquee-dot" style="background:#6366f1"></span>SLA 维持 99.97%，可用性持续提升</span>
+      <span class="marquee-item"><span class="marquee-dot" style="background:#f472b6"></span>Churn 率微升，需关注成长客户转化</span>
+      <span class="marquee-item"><span class="marquee-dot" style="background:#34d399"></span>NPS 68 分，用户口碑稳步上升</span>
+      <span class="marquee-item"><span class="marquee-dot" style="background:#a78bfa"></span>API P99 延迟优化至 120ms 以内</span>
+      <span class="marquee-item"><span class="marquee-dot" style="background:#fbbf24"></span>Pro 套餐占比提升 5.2%，结构优化明显</span>
+      <!-- duplicate for seamless loop -->
+      <span class="marquee-item"><span class="marquee-dot" style="background:#14b8a6"></span>MRR 达 1,380 万，环比增长 8.3%</span>
+      <span class="marquee-item"><span class="marquee-dot" style="background:#6366f1"></span>SLA 维持 99.97%，可用性持续提升</span>
+      <span class="marquee-item"><span class="marquee-dot" style="background:#f472b6"></span>Churn 率微升，需关注成长客户转化</span>
+      <span class="marquee-item"><span class="marquee-dot" style="background:#34d399"></span>NPS 68 分，用户口碑稳步上升</span>
+      <span class="marquee-item"><span class="marquee-dot" style="background:#a78bfa"></span>API P99 延迟优化至 120ms 以内</span>
+      <span class="marquee-item"><span class="marquee-dot" style="background:#fbbf24"></span>Pro 套餐占比提升 5.2%，结构优化明显</span>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------- 工具 ---------- */
+const fmt = n => n.toLocaleString('zh-CN');
+
+/* ---------- 时钟 ---------- */
+function tickClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleTimeString('zh-CN', { hour12: false });
+}
+setInterval(tickClock, 1000); tickClock();
+
+/* ---------- KPI 滚动动画 ---------- */
+function animateCount(el, target, duration = 1500) {
+  const start = performance.now();
+  const from = 0;
+  function step(t) {
+    const p = Math.min((t - start) / duration, 1);
+    const ease = 1 - Math.pow(1 - p, 3);
+    const cur = Math.floor(from + (target - from) * ease);
+    el.textContent = fmt(cur);
+    if (p < 1) requestAnimationFrame(step);
+    else el.textContent = fmt(target);
+  }
+  requestAnimationFrame(step);
+}
+document.querySelectorAll('.count-up[data-target]').forEach(el => {
+  animateCount(el, parseInt(el.dataset.target, 10));
+});
+
+/* ---------- ECharts 暗色主题 ---------- */
+const darkTheme = {
+  backgroundColor: 'transparent',
+  textStyle: { fontFamily: "'PingFang SC','Microsoft YaHei',sans-serif" },
+  title: { textStyle: { color: '#e2e8f0' } },
+  legend: { textStyle: { color: '#94a3b8' }, pageTextStyle: { color: '#94a3b8' } },
+  tooltip: {
+    backgroundColor: 'rgba(15,23,42,.9)',
+    borderColor: 'rgba(148,163,184,.25)',
+    textStyle: { color: '#e2e8f0' }
+  },
+  grid: { borderColor: '#1e293b' },
+  categoryAxis: {
+    axisLine: { lineStyle: { color: '#334155' } },
+    axisTick: { lineStyle: { color: '#334155' } },
+    axisLabel: { color: '#64748b' },
+    splitLine: { lineStyle: { color: '#0f172a' } }
+  },
+  valueAxis: {
+    axisLine: { lineStyle: { color: '#334155' } },
+    axisTick: { lineStyle: { color: '#334155' } },
+    axisLabel: { color: '#64748b' },
+    splitLine: { lineStyle: { color: 'rgba(51,65,85,.4)' } }
+  }
+};
+
+/* ---------- 1. 瀑布图 ---------- */
+const wf = echarts.init(document.getElementById('chart-waterfall'), darkTheme);
+const wfMonths = ['1月','2月','3月','4月','5月','6月'];
+const wfBase  = [0, 1200, 1280, 1350, 1420, 1500];
+const wfAdd   = [1200, 180, 150, 140, 160, 190];
+const wfExp   = [0, 80, 90, 100, 110, 130];
+const wfCon   = [0, -30, -40, -35, -45, -50];
+const wfChurn = [0, -50, -60, -55, -65, -70];
+const wfNet   = wfAdd.map((v,i)=>v+wfExp[i]+wfCon[i]+wfChurn[i]);
+
+wf.setOption({
+  tooltip: {
+    trigger: 'axis', axisPointer: { type: 'shadow' },
+    formatter(params) {
+      let h = `<div style="font-weight:700;margin-bottom:4px">${params[0].axisValue} MRR 变化</div>`;
+      params.forEach(p => { if(p.seriesName!=='净增') h += `<div>${p.marker} ${p.seriesName}: <b>${p.value>0?'+':''}${p.value}万</b></div>`; });
+      const net = params.find(p=>p.seriesName==='净增');
+      if(net) h += `<div style="margin-top:4px;border-top:1px solid #334155;padding-top:4px">${net.marker} 净增: <b style="color:#14b8a6">${net.value>0?'+':''}${net.value}万</b></div>`;
+      return h;
+    }
+  },
+  legend: { data: ['新增','扩展','收缩','流失','净增'], top: 0, textStyle:{fontSize:11} },
+  grid: { left:'3%', right:'4%', bottom:'3%', top:'14%', containLabel:true },
+  xAxis: { type:'category', data: wfMonths },
+  yAxis: { type:'value', name:'万元', nameTextStyle:{color:'#64748b'}, axisLabel:{formatter:'{value}'} },
+  series: [
+    { name:'新增', type:'bar', stack:'total', itemStyle:{color:'#34d399'}, data: wfAdd },
+    { name:'扩展', type:'bar', stack:'total', itemStyle:{color:'#6366f1'}, data: wfExp },
+    { name:'收缩', type:'bar', stack:'total', itemStyle:{color:'#fbbf24'}, data: wfCon },
+    { name:'流失', type:'bar', stack:'total', itemStyle:{color:'#f87171'}, data: wfChurn },
+    { name:'净增', type:'line', symbol:'circle', symbolSize:6, lineStyle:{color:'#14b8a6',width:2}, itemStyle:{color:'#14b8a6'}, data: wfNet }
+  ]
+});
+
+/* ---------- 2. 套餐环形图 ---------- */
+const plan = echarts.init(document.getElementById('chart-plan'), darkTheme);
+plan.setOption({
+  tooltip: { trigger:'item', formatter:'{b}: {c} ({d}%)' },
+  legend: { orient:'vertical', right:0, top:'center', textStyle:{fontSize:11}, itemWidth:10, itemHeight:10 },
+  series: [{
+    type:'pie', radius:['45%','70%'], center:['35%','50%'],
+    avoidLabelOverlap:false,
+    label:{show:false},
+    emphasis:{label:{show:true,fontSize:14,fontWeight:'bold',color:'#e2e8f0'}},
+    data:[
+      {value:4200, name:'Free', itemStyle:{color:'#94a3b8'}},
+      {value:6800, name:'Pro', itemStyle:{color:'#6366f1'}},
+      {value:3100, name:'Enterprise', itemStyle:{color:'#14b8a6'}},
+      {value:1200, name:'Custom', itemStyle:{color:'#f472b6'}}
+    ]
+  }]
+});
+
+/* ---------- 3. 留存率折线 ---------- */
+const ret = echarts.init(document.getElementById('chart-retention'), darkTheme);
+const cohorts = ['C1','C2','C3','C4','C5','C6','C7'];
+const days = ['Day 0','Day 7','Day 30','Day 60','Day 90','Day 180','Day 365'];
+const retData = [
+  [100,55,38,30,25,18,12],
+  [100,58,40,32,27,19,13],
+  [100,60,42,34,28,20,14],
+  [100,62,44,35,29,21,15],
+  [100,64,46,37,30,22,16],
+  [100,65,48,38,31,23,17],
+  [100,68,50,40,33,24,18]
+];
+const retColors = ['#14b8a6','#6366f1','#f472b6','#a78bfa','#34d399','#fbbf24','#f87171'];
+ret.setOption({
+  tooltip: { trigger:'axis' },
+  legend: { data: cohorts, top:0, textStyle:{fontSize:11} },
+  grid: { left:'3%', right:'4%', bottom:'3%', top:'14%', containLabel:true },
+  xAxis: { type:'category', boundaryGap:false, data:days },
+  yAxis: { type:'value', name:'%', max:100, nameTextStyle:{color:'#64748b'} },
+  series: cohorts.map((c,i)=>({
+    name:c, type:'line', smooth:true, symbol:'none',
+    lineStyle:{width:2, color:retColors[i]},
+    areaStyle:{color:retColors[i], opacity:.08},
+    data:retData[i]
+  }))
+});
+
+/* ---------- 4. API 性能 ---------- */
+const api = echarts.init(document.getElementById('chart-api'), darkTheme);
+const hours = Array.from({length:24},(_,i)=>`${String(i).padStart(2,'0')}:00`);
+const p50 = [45,42,40,38,36,35,34,35,38,42,48,52,55,58,56,54,52,50,48,46,44,42,41,40];
+const p95 = [120,110,105,100,95,92,90,95,105,115,125,135,140,138,135,130,128,125,122,118,115,112,110,108];
+const p99 = [220,200,190,180,170,165,160,170,185,200,215,230,240,235,230,225,220,215,210,205,200,195,190,185];
+api.setOption({
+  tooltip: { trigger:'axis' },
+  legend: { data:['P50','P95','P99'], top:0, textStyle:{fontSize:11} },
+  grid: { left:'3%', right:'4%', bottom:'3%', top:'14%', containLabel:true },
+  xAxis: { type:'category', boundaryGap:false, data:hours },
+  yAxis: { type:'value', name:'ms', nameTextStyle:{color:'#64748b'} },
+  series: [
+    {name:'P50',type:'line',smooth:true,symbol:'none',lineStyle:{width:2,color:'#34d399'},data:p50},
+    {name:'P95',type:'line',smooth:true,symbol:'none',lineStyle:{width:2,color:'#6366f1'},data:p95},
+    {name:'P99',type:'line',smooth:true,symbol:'none',lineStyle:{width:2,color:'#f472b6'},areaStyle:{color:'#f472b6',opacity:.06},data:p99}
+  ]
+});
+
+/* ---------- 5. 热力图 ---------- */
+const hm = echarts.init(document.getElementById('chart-heatmap'), darkTheme);
+const hmX = ['仪表盘','报表','API','协作','自动化','集成','移动端','告警'];
+const hmY = ['新用户','成长中','成熟期','流失风险'];
+const hmRaw = [
+  [0,0,92],[0,1,78],[0,2,65],[0,3,35],
+  [1,0,45],[1,1,88],[1,2,95],[1,3,40],
+  [2,0,30],[2,1,55],[2,2,85],[2,3,60],
+  [3,0,25],[3,1,48],[3,2,72],[3,3,20],
+  [4,0,15],[4,1,42],[4,2,68],[4,3,55],
+  [5,0,20],[5,1,50],[5,2,80],[5,3,45],
+  [6,0,35],[6,1,60],[6,2,75],[6,3,30],
+  [7,0,40],[7,1,70],[7,2,90],[7,3,50]
+];
+hm.setOption({
+  tooltip: { position:'top', formatter:p=>`${hmY[p.value[1]]} · ${hmX[p.value[0]]}: <b>${p.value[2]}%</b>` },
+  grid: { left:'12%', right:'8%', bottom:'12%', top:'5%' },
+  xAxis: { type:'category', data:hmX, splitArea:{show:true,areaStyle:{color:['rgba(255,255,255,.02)','rgba(255,255,255,.04)']}} },
+  yAxis: { type:'category', data:hmY, splitArea:{show:true} },
+  visualMap: {
+    min:0, max:100, calculable:false, orient:'horizontal', left:'center', bottom:0,
+    inRange:{ color:['#0f172a','#14b8a6','#6366f1','#f472b6'] },
+    textStyle:{color:'#94a3b8'}, itemWidth:12, itemHeight:100
+  },
+  series: [{
+    type:'heatmap', data:hmRaw,
+    label:{show:true, color:'#e2e8f0', fontSize:11, fontWeight:600, formatter:p=>p.value[2]+'%'},
+    itemStyle:{borderColor:'#0a0f1a', borderWidth:2, borderRadius:4}
+  }]
+});
+
+/* ---------- 6. Churn 预测 ---------- */
+const churn = echarts.init(document.getElementById('chart-churn'), darkTheme);
+const churnMonths = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月','1月(预)','2月(预)','3月(预)'];
+const churnHist = [2.8,2.7,2.6,2.5,2.4,2.5,2.6,2.7,2.8,2.9,3.0,3.1,null,null,null];
+const churnPred = [null,null,null,null,null,null,null,null,null,null,null,null,3.2,3.3,3.4];
+churn.setOption({
+  tooltip: { trigger:'axis', formatter(params) {
+    const p = params[0];
+    if(p.value==null) return '';
+    return `${p.axisValue}<br/>Churn: <b>${p.value}%</b>`;
+  }},
+  grid: { left:'3%', right:'4%', bottom:'3%', top:'10%', containLabel:true },
+  xAxis: { type:'category', boundaryGap:false, data:churnMonths, axisLabel:{fontSize:10,interval:0,rotate:30} },
+  yAxis: { type:'value', name:'%', min:2, max:4, nameTextStyle:{color:'#64748b'}, splitLine:{lineStyle:{color:'rgba(51,65,85,.3)'}} },
+  series: [
+    { name:'历史', type:'line', smooth:true, symbol:'circle', symbolSize:5,
+      lineStyle:{width:2.5,color:'#f472b6'}, itemStyle:{color:'#f472b6'}, data:churnHist },
+    { name:'预测', type:'line', smooth:true, symbol:'diamond', symbolSize:6,
+      lineStyle:{width:2.5,color:'#f472b6',type:'dashed'}, itemStyle:{color:'#f472b6'}, data:churnPred }
+  ]
+});
+
+/* ---------- resize ---------- */
+window.addEventListener('resize', () => {
+  [wf, plan, ret, api, hm, churn].forEach(c => c && c.resize());
+});
+</script>
+</body>
+</html>

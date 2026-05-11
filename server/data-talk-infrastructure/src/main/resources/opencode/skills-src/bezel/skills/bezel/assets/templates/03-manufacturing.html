@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>工业制造智能监控中心</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    background: #1a1a1e;
+    font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    color: #e5e7eb;
+  }
+
+  /* 扫描线纹理 */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; pointer-events: none; z-index: 9999;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 4px
+    );
+  }
+
+  /* LED 脉冲 */
+  @keyframes led-pulse {
+    0%, 100% { box-shadow: 0 0 6px currentColor; }
+    50% { box-shadow: 0 0 18px currentColor; }
+  }
+
+  /* 数字滚动 */
+  @keyframes count-up {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* 跑马灯 */
+  @keyframes marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+
+  /* 布局 */
+  .dashboard {
+    width: 100vw; height: 100vh;
+    display: flex; flex-direction: column;
+    padding: 12px 16px 8px;
+    gap: 10px;
+  }
+
+  /* 顶部 */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .title-wrap {
+    display: flex; align-items: center; gap: 14px;
+    position: relative;
+  }
+  .rivet {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #9ca3af, #4b5563 60%, #1f2937);
+    box-shadow: inset 0 1px 2px rgba(255,255,255,0.25), 0 1px 3px rgba(0,0,0,0.6);
+  }
+  .title-text {
+    font-size: 26px; font-weight: 700; letter-spacing: 4px;
+    background: linear-gradient(180deg, #f3f4f6 0%, #9ca3af 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+  }
+  .clock {
+    font-family: 'Consolas', monospace; font-size: 16px; color: #9ca3af;
+    letter-spacing: 1px;
+  }
+
+  /* KPI 盒 */
+  .kpi-row {
+    display: flex; gap: 12px; flex-shrink: 0;
+  }
+  .kpi-box {
+    flex: 1;
+    background: linear-gradient(145deg, #232329, #1a1a1e);
+    border: 1px solid #2e2e36;
+    border-radius: 8px;
+    padding: 14px 16px;
+    position: relative;
+    overflow: hidden;
+    transition: transform .2s, border-color .2s;
+  }
+  .kpi-box:hover {
+    transform: translateY(-2px);
+    border-color: #3f3f4a;
+  }
+  .kpi-box::after {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: currentColor;
+    opacity: .6;
+  }
+  .kpi-label {
+    font-size: 13px; color: #9ca3af; margin-bottom: 6px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .kpi-led {
+    width: 8px; height: 8px; border-radius: 50%;
+    animation: led-pulse 2s infinite;
+  }
+  .kpi-value {
+    font-family: 'Consolas', monospace; font-size: 28px; font-weight: 700;
+    animation: count-up .6s ease-out both;
+  }
+  .kpi-delta {
+    font-size: 12px; margin-top: 4px;
+    font-family: 'Consolas', monospace;
+  }
+  .kpi-green { color: #22c55e; }
+  .kpi-yellow { color: #facc15; }
+  .kpi-red { color: #ef4444; }
+
+  /* 主体网格 */
+  .main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1.4fr 1fr;
+    gap: 12px;
+    min-height: 0;
+  }
+  .col {
+    display: flex; flex-direction: column; gap: 12px; min-height: 0;
+  }
+  .card {
+    background: linear-gradient(145deg, #1f1f24, #18181c);
+    border: 1px solid #2a2a32;
+    border-radius: 8px;
+    padding: 12px;
+    display: flex; flex-direction: column;
+    flex: 1; min-height: 0;
+    transition: border-color .2s;
+  }
+  .card:hover { border-color: #3b3b46; }
+  .card-title {
+    font-size: 14px; font-weight: 600; color: #d1d5db;
+    margin-bottom: 8px;
+    display: flex; align-items: center; gap: 8px;
+    flex-shrink: 0;
+  }
+  .card-title::before {
+    content: '';
+    width: 4px; height: 14px; border-radius: 2px;
+    background: #f97316;
+  }
+  .chart { flex: 1; min-height: 0; }
+
+  /* 产线拓扑 */
+  .topology-wrap {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px; flex: 1;
+  }
+  .topology-line {
+    display: flex; align-items: center; gap: 0;
+    position: relative;
+  }
+  .topo-node {
+    width: 72px; height: 72px; border-radius: 10px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 4px;
+    font-size: 12px; font-weight: 600;
+    position: relative;
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 4px 12px rgba(0,0,0,0.4);
+    transition: transform .2s;
+  }
+  .topo-node:hover { transform: scale(1.05); }
+  .topo-node .node-name { font-size: 11px; color: rgba(255,255,255,0.7); }
+  .topo-node .node-id  { font-family: 'Consolas', monospace; font-size: 13px; }
+  .topo-node.green { background: linear-gradient(145deg, rgba(34,197,94,0.18), rgba(34,197,94,0.06)); color: #4ade80; }
+  .topo-node.yellow { background: linear-gradient(145deg, rgba(250,204,21,0.18), rgba(250,204,21,0.06)); color: #facc15; }
+  .topo-node.red { background: linear-gradient(145deg, rgba(239,68,68,0.18), rgba(239,68,68,0.06)); color: #f87171; }
+
+  .topo-conn {
+    width: 28px; height: 2px;
+    background: linear-gradient(90deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05));
+    position: relative;
+  }
+  .topo-conn::after {
+    content: '';
+    position: absolute; right: -4px; top: -3px;
+    width: 0; height: 0;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    border-left: 5px solid rgba(255,255,255,0.2);
+  }
+
+  /* 数字孪生面板 */
+  .twin-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    flex: 1;
+    overflow: auto;
+  }
+  .twin-card {
+    background: linear-gradient(145deg, #1e1e24, #17171b);
+    border: 1px solid #2a2a32;
+    border-radius: 8px;
+    padding: 10px;
+    display: flex; flex-direction: column; gap: 6px;
+    transition: border-color .2s;
+  }
+  .twin-card:hover { border-color: #3b3b46; }
+  .twin-name { font-size: 12px; color: #9ca3af; font-weight: 600; }
+  .twin-row {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px;
+  }
+  .twin-label { color: #6b7280; }
+  .twin-val {
+    font-family: 'Consolas', monospace; font-size: 13px; font-weight: 700; color: #e5e7eb;
+  }
+  .twin-val.warn { color: #facc15; }
+  .twin-val.danger { color: #ef4444; }
+
+  /* 跑马灯 */
+  .marquee-bar {
+    flex-shrink: 0;
+    height: 32px;
+    background: linear-gradient(90deg, #1f1f24, #18181c);
+    border-top: 1px solid #2a2a32;
+    display: flex; align-items: center;
+    overflow: hidden;
+    position: relative;
+  }
+  .marquee-label {
+    flex-shrink: 0;
+    background: #ef4444;
+    color: #fff;
+    font-size: 12px; font-weight: 700;
+    padding: 0 12px; height: 100%;
+    display: flex; align-items: center;
+    z-index: 2;
+  }
+  .marquee-track {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    mask-image: linear-gradient(90deg, transparent, #000 20px, #000 calc(100% - 20px), transparent);
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 20px, #000 calc(100% - 20px), transparent);
+  }
+  .marquee-content {
+    display: inline-block;
+    white-space: nowrap;
+    padding-left: 100%;
+    animation: marquee 30s linear infinite;
+    font-size: 13px; color: #d1d5db;
+    line-height: 32px;
+  }
+  .marquee-content span { margin-right: 60px; }
+  .marquee-content .m-warn { color: #facc15; }
+  .marquee-content .m-err { color: #f87171; }
+</style>
+</head>
+<body>
+<div class="dashboard">
+  <!-- 顶部 -->
+  <div class="header">
+    <div class="title-wrap">
+      <div class="rivet"></div>
+      <div class="rivet"></div>
+      <div class="title-text">工业制造智能监控中心</div>
+      <div class="rivet"></div>
+      <div class="rivet"></div>
+    </div>
+    <div class="clock" id="clock">--</div>
+  </div>
+
+  <!-- KPI -->
+  <div class="kpi-row">
+    <div class="kpi-box kpi-green">
+      <div class="kpi-label"><span class="kpi-led" style="background:#22c55e;color:#22c55e"></span>OEE 设备综合效率</div>
+      <div class="kpi-value" data-target="87.5" data-suffix="%">0%</div>
+      <div class="kpi-delta">▲ 3.2%</div>
+    </div>
+    <div class="kpi-box kpi-green">
+      <div class="kpi-label"><span class="kpi-led" style="background:#22c55e;color:#22c55e"></span>质量合格率</div>
+      <div class="kpi-value" data-target="99.2" data-suffix="%">0%</div>
+      <div class="kpi-delta">▲ 0.3pp</div>
+    </div>
+    <div class="kpi-box kpi-yellow">
+      <div class="kpi-label"><span class="kpi-led" style="background:#facc15;color:#facc15"></span>安全生产天数</div>
+      <div class="kpi-value" data-target="1247" data-suffix="天" data-int>0天</div>
+      <div class="kpi-delta">无事故</div>
+    </div>
+    <div class="kpi-box kpi-red">
+      <div class="kpi-label"><span class="kpi-led" style="background:#ef4444;color:#ef4444"></span>待维护设备</div>
+      <div class="kpi-value" data-target="4" data-suffix="台" data-int>0台</div>
+      <div class="kpi-delta">需关注</div>
+    </div>
+  </div>
+
+  <!-- 主体 -->
+  <div class="main">
+    <!-- 左列 -->
+    <div class="col">
+      <div class="card">
+        <div class="card-title">产线产能趋势</div>
+        <div class="chart" id="chart-capacity"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">能耗趋势</div>
+        <div class="chart" id="chart-energy"></div>
+      </div>
+    </div>
+
+    <!-- 中列 -->
+    <div class="col">
+      <div class="card">
+        <div class="card-title">产线总览 & 效率监控</div>
+        <div class="chart" id="chart-overview"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">产线拓扑</div>
+        <div class="topology-wrap">
+          <div class="topology-line">
+            <div class="topo-node green"><span class="node-name">冲压机</span><span class="node-id">P01</span></div>
+            <div class="topo-conn"></div>
+            <div class="topo-node green"><span class="node-name">焊接机</span><span class="node-id">W02</span></div>
+            <div class="topo-conn"></div>
+            <div class="topo-node yellow"><span class="node-name">喷涂线</span><span class="node-id">S03</span></div>
+            <div class="topo-conn"></div>
+            <div class="topo-node green"><span class="node-name">装配线</span><span class="node-id">A04</span></div>
+            <div class="topo-conn"></div>
+            <div class="topo-node red"><span class="node-name">检测站</span><span class="node-id">T05</span></div>
+            <div class="topo-conn"></div>
+            <div class="topo-node green"><span class="node-name">包装机</span><span class="node-id">B06</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">设备数字孪生面板</div>
+        <div class="twin-grid" id="twin-panel"></div>
+      </div>
+    </div>
+
+    <!-- 右列 -->
+    <div class="col">
+      <div class="card">
+        <div class="card-title">故障报警统计</div>
+        <div class="chart" id="chart-fault"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">SPC 质量控制图</div>
+        <div class="chart" id="chart-spc"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">安全监控</div>
+        <div class="chart" id="chart-safety"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 跑马灯 -->
+  <div class="marquee-bar">
+    <div class="marquee-label">实时告警</div>
+    <div class="marquee-track">
+      <div class="marquee-content" id="marquee">
+        <span class="m-err">[紧急] 检测站 T05 视觉系统异常 — 已自动切换备用通道</span>
+        <span class="m-warn">[警告] 喷涂线 S03 温度接近上限 — 建议检查温控阀</span>
+        <span>[通知] 早班产能达标 102% — 超额完成目标</span>
+        <span class="m-warn">[维护] 冲压机 P01 累计运行 1980h — 预约明日保养</span>
+        <span>[通知] 质量合格率连续 30 天 ≥ 99% — 达成卓越质量奖</span>
+        <span class="m-err">[紧急] 装配线 A04 供料延迟 3min — 物流调度已响应</span>
+        <span class="m-warn">[警告] 焊接机 W02 电极磨损度 78% — 建议本周更换</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------- 工具 ---------- */
+const $ = id => document.getElementById(id);
+const fmt = n => n.toLocaleString('zh-CN');
+
+/* ---------- 时钟 ---------- */
+function updateClock() {
+  const now = new Date();
+  $('clock').textContent = now.toLocaleString('zh-CN', {
+    year:'numeric', month:'2-digit', day:'2-digit',
+    hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false
+  });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+/* ---------- KPI 滚动动画 ---------- */
+function animateKPI() {
+  document.querySelectorAll('.kpi-value').forEach(el => {
+    const target = parseFloat(el.dataset.target);
+    const suffix = el.dataset.suffix || '';
+    const isInt = el.hasAttribute('data-int');
+    const dur = 1200;
+    const start = performance.now();
+    (function tick(now) {
+      const p = Math.min((now - start) / dur, 1);
+      const ease = 1 - Math.pow(1 - p, 3);
+      const cur = isInt ? Math.round(target * ease) : (target * ease).toFixed(1);
+      el.textContent = fmt(cur) + suffix;
+      if (p < 1) requestAnimationFrame(tick);
+    })(start);
+  });
+}
+setTimeout(animateKPI, 300);
+
+/* ---------- ECharts 暗色主题 ---------- */
+const darkTheme = {
+  backgroundColor: 'transparent',
+  textStyle: { color: '#9ca3af' },
+  title: { textStyle: { color: '#e5e7eb' } },
+  legend: { textStyle: { color: '#9ca3af' } },
+  tooltip: {
+    backgroundColor: 'rgba(26,26,30,0.95)',
+    borderColor: '#2e2e36',
+    textStyle: { color: '#e5e7eb' }
+  },
+  grid: { left: 10, right: 10, top: 30, bottom: 10, containLabel: true },
+  xAxis: {
+    axisLine: { lineStyle: { color: '#2e2e36' } },
+    axisLabel: { color: '#6b7280' },
+    splitLine: { show: false }
+  },
+  yAxis: {
+    axisLine: { show: false },
+    axisLabel: { color: '#6b7280' },
+    splitLine: { lineStyle: { color: '#25252c' } }
+  }
+};
+
+/* ---------- 图表 5: 产线产能趋势（堆叠柱状） ---------- */
+const chartCapacity = echarts.init($('chart-capacity'));
+chartCapacity.setOption({
+  ...darkTheme,
+  tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+  legend: { data: ['早班', '中班', '晚班'], top: 0, textStyle: { color: '#9ca3af', fontSize: 11 } },
+  xAxis: { type: 'category', data: ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00'] },
+  yAxis: { type: 'value', name: '件' },
+  series: [
+    { name: '早班', type: 'bar', stack: 'total', data: [320,350,380,360,340,370,390,410], itemStyle: { color: '#f97316' } },
+    { name: '中班', type: 'bar', stack: 'total', data: [280,310,330,320,300,340,360,380], itemStyle: { color: '#fb923c' } },
+    { name: '晚班', type: 'bar', stack: 'total', data: [260,290,300,310,280,320,340,350], itemStyle: { color: '#fdba74' } }
+  ]
+});
+
+/* ---------- 图表 6: 产线总览 & 效率监控（双轴） ---------- */
+const chartOverview = echarts.init($('chart-overview'));
+chartOverview.setOption({
+  ...darkTheme,
+  tooltip: { trigger: 'axis' },
+  legend: { data: ['产能', '效率'], top: 0, textStyle: { color: '#9ca3af', fontSize: 11 } },
+  xAxis: { type: 'category', data: ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00'] },
+  yAxis: [
+    { type: 'value', name: '件', position: 'left' },
+    { type: 'value', name: '%', position: 'right', max: 100, axisLabel: { formatter: '{value}%' } }
+  ],
+  series: [
+    { name: '产能', type: 'bar', data: [860,950,1010,990,920,1030,1090,1140], itemStyle: { color: '#f97316', borderRadius: [3,3,0,0] } },
+    { name: '效率', type: 'line', yAxisIndex: 1, data: [82,85,88,86,84,89,91,93], smooth: true, symbol: 'circle', symbolSize: 6, lineStyle: { color: '#22c55e', width: 3 }, itemStyle: { color: '#22c55e' } }
+  ]
+});
+
+/* ---------- 图表 7: 故障报警统计（横向条形） ---------- */
+const chartFault = echarts.init($('chart-fault'));
+chartFault.setOption({
+  ...darkTheme,
+  tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+  grid: { left: 10, right: 20, top: 10, bottom: 10, containLabel: true },
+  xAxis: { type: 'value', splitLine: { lineStyle: { color: '#25252c' } } },
+  yAxis: { type: 'category', data: ['包装机','装配线','喷涂线','焊接机','冲压机'], axisLabel: { color: '#9ca3af' } },
+  series: [
+    { name: '本月故障', type: 'bar', data: [1,3,5,4,2], itemStyle: { color: p => ['#f97316','#ef4444','#ef4444','#f97316','#22c55e'][p.dataIndex], borderRadius: [0,4,4,0] }, barWidth: 14 }
+  ]
+});
+
+/* ---------- 图表 8: 能耗趋势（堆叠面积） ---------- */
+const chartEnergy = echarts.init($('chart-energy'));
+chartEnergy.setOption({
+  ...darkTheme,
+  tooltip: { trigger: 'axis' },
+  legend: { data: ['电', '水', '气'], top: 0, textStyle: { color: '#9ca3af', fontSize: 11 } },
+  xAxis: { type: 'category', boundaryGap: false, data: ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00'] },
+  yAxis: { type: 'value', name: 'kWh / t / m³' },
+  series: [
+    { name: '电', type: 'line', stack: 'total', areaStyle: { opacity: 0.25 }, lineStyle: { width: 2 }, data: [120,135,150,145,138,160,175,190], itemStyle: { color: '#f97316' } },
+    { name: '水', type: 'line', stack: 'total', areaStyle: { opacity: 0.25 }, lineStyle: { width: 2 }, data: [30,35,38,36,34,40,42,45], itemStyle: { color: '#3b82f6' } },
+    { name: '气', type: 'line', stack: 'total', areaStyle: { opacity: 0.25 }, lineStyle: { width: 2 }, data: [80,85,92,88,86,95,100,110], itemStyle: { color: '#6b7280' } }
+  ]
+});
+
+/* ---------- 图表 9: SPC 质量控制图 ---------- */
+const chartSpc = echarts.init($('chart-spc'));
+const spcData = [10.1,10.3,9.9,10.0,10.2,10.4,9.8,10.1,10.3,10.0,9.9,10.2,10.1,10.3,10.0,9.8,10.2,10.1,10.4,10.0];
+const UCL = 10.6, LCL = 9.4, CL = 10.0;
+chartSpc.setOption({
+  ...darkTheme,
+  tooltip: { trigger: 'axis' },
+  grid: { left: 10, right: 20, top: 30, bottom: 10, containLabel: true },
+  xAxis: { type: 'category', data: spcData.map((_,i) => i+1) },
+  yAxis: { type: 'value', min: 9, max: 11 },
+  series: [
+    { name: '测量值', type: 'line', data: spcData, symbol: 'circle', symbolSize: 5, lineStyle: { color: '#22d3ee', width: 2 }, itemStyle: { color: '#22d3ee' },
+      markLine: {
+        silent: true,
+        lineStyle: { type: 'dashed', width: 1 },
+        data: [
+          { yAxis: UCL, lineStyle: { color: '#ef4444' }, label: { formatter: 'UCL', color: '#ef4444', fontSize: 10 } },
+          { yAxis: CL,  lineStyle: { color: '#22c55e' }, label: { formatter: 'CL',  color: '#22c55e', fontSize: 10 } },
+          { yAxis: LCL, lineStyle: { color: '#ef4444' }, label: { formatter: 'LCL', color: '#ef4444', fontSize: 10 } }
+        ]
+      }
+    }
+  ]
+});
+
+/* ---------- 图表 10: 安全监控（仪表盘） ---------- */
+const chartSafety = echarts.init($('chart-safety'));
+chartSafety.setOption({
+  ...darkTheme,
+  series: [
+    {
+      type: 'gauge',
+      startAngle: 200, endAngle: -20,
+      min: 0, max: 100,
+      splitNumber: 10,
+      radius: '90%',
+      center: ['50%', '55%'],
+      itemStyle: { color: '#22c55e' },
+      progress: { show: true, width: 14 },
+      pointer: { show: true, length: '60%', width: 4 },
+      axisLine: { lineStyle: { width: 14, color: [[1, '#2a2a32']] } },
+      axisTick: { show: false },
+      splitLine: { length: 8, lineStyle: { width: 2, color: '#4b5563' } },
+      axisLabel: { distance: 18, color: '#9ca3af', fontSize: 10 },
+      title: { show: true, offsetCenter: [0, '70%'], fontSize: 12, color: '#9ca3af' },
+      detail: { valueAnimation: true, fontSize: 24, fontFamily: 'Consolas, monospace', offsetCenter: [0, '40%'], formatter: '{value}%', color: '#e5e7eb' },
+      data: [{ value: 98.5, name: '安全指数' }]
+    }
+  ]
+});
+
+/* ---------- 数字孪生面板 ---------- */
+const devices = [
+  { name: '冲压机 P01', temp: 62.4, vib: 1.2, rpm: 1450, warn: false },
+  { name: '焊接机 W02', temp: 78.1, vib: 2.1, rpm: 2200, warn: true },
+  { name: '喷涂线 S03', temp: 85.3, vib: 0.8, rpm: 800,  warn: true },
+  { name: '装配线 A04', temp: 45.6, vib: 0.5, rpm: 600,  warn: false },
+  { name: '检测站 T05', temp: 55.0, vib: 0.3, rpm: 1200, warn: false },
+  { name: '包装机 B06', temp: 40.2, vib: 0.4, rpm: 300,  warn: false },
+];
+
+function renderTwin() {
+  const container = $('twin-panel');
+  container.innerHTML = devices.map((d, i) => `
+    <div class="twin-card">
+      <div class="twin-name">${d.name}</div>
+      <div class="twin-row"><span class="twin-label">温度</span><span class="twin-val ${d.temp>80?'danger':d.temp>70?'warn':''}" id="t${i}-temp">${d.temp.toFixed(1)}°C</span></div>
+      <div class="twin-row"><span class="twin-label">振动</span><span class="twin-val ${d.vib>1.5?'danger':d.vib>1.0?'warn':''}" id="t${i}-vib">${d.vib.toFixed(2)} mm/s</span></div>
+      <div class="twin-row"><span class="twin-label">转速</span><span class="twin-val" id="t${i}-rpm">${d.rpm} rpm</span></div>
+    </div>
+  `).join('');
+}
+renderTwin();
+
+setInterval(() => {
+  devices.forEach((d, i) => {
+    d.temp = Math.max(30, Math.min(100, d.temp + (Math.random() - 0.5) * 0.2));
+    d.vib  = Math.max(0,  d.vib  + (Math.random() - 0.5) * 0.1);
+    d.rpm  = Math.max(0,  Math.round(d.rpm + (Math.random() - 0.5) * 5));
+    const tEl = $(`t${i}-temp`); if(tEl) tEl.textContent = d.temp.toFixed(1) + '°C';
+    const vEl = $(`t${i}-vib`);  if(vEl) vEl.textContent = d.vib.toFixed(2) + ' mm/s';
+    const rEl = $(`t${i}-rpm`);  if(rEl) rEl.textContent = d.rpm + ' rpm';
+  });
+}, 1000);
+
+/* ---------- Resize ---------- */
+window.addEventListener('resize', () => {
+  chartCapacity.resize();
+  chartOverview.resize();
+  chartFault.resize();
+  chartEnergy.resize();
+  chartSpc.resize();
+  chartSafety.resize();
+});
+</script>
+</body>
+</html>

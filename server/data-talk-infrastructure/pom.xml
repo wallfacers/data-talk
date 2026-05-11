@@ -282,7 +282,34 @@
     </dependencies>
 
     <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <excludes>
+                    <exclude>opencode/skills-src/**</exclude>
+                </excludes>
+            </resource>
+        </resources>
         <plugins>
+            <plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>vendor-bezel</id>
+                        <phase>process-resources</phase>
+                        <goals><goal>single</goal></goals>
+                        <configuration>
+                            <descriptors>
+                                <descriptor>src/assembly/bezel.xml</descriptor>
+                            </descriptors>
+                            <finalName>bezel</finalName>
+                            <appendAssemblyId>false</appendAssemblyId>
+                            <outputDirectory>${project.build.outputDirectory}/opencode/skills</outputDirectory>
+                            <tarLongFileMode>posix</tarLongFileMode>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>

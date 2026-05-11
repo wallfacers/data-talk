@@ -49,3 +49,7 @@ server/*/target/
 tmp/
 .playwright-mcp/
 client/test-results/
+
+# bezel runtime install (extracted at server start)
+/.opencode/skills/bezel/
+/.opencode/.bezel-installed
