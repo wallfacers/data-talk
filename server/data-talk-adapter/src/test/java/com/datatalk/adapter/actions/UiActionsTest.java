@@ -283,6 +283,34 @@ class UiActionsTest {
     }
 
     @Test
+    void uiExec_workspaceTrash_acceptsBatchTargets() {
+        Map<String, Object> schema = uiExecAction.inputSchema();
+
+        // singular target
+        assertValid(schema, Map.of("object", "workspace", "action", "trash",
+            "params", Map.of("target", "qe-1")));
+        // batch targets
+        assertValid(schema, Map.of("object", "workspace", "action", "trash",
+            "params", Map.of("targets", List.of("qe-1", "qe-2"))));
+        // neither → invalid
+        assertInvalid(schema, Map.of("object", "workspace", "action", "trash", "params", Map.of()));
+    }
+
+    @Test
+    void uiExec_workspaceArchive_acceptsBatchTargets() {
+        Map<String, Object> schema = uiExecAction.inputSchema();
+
+        // singular target
+        assertValid(schema, Map.of("object", "workspace", "action", "archive",
+            "params", Map.of("target", "qe-1")));
+        // batch targets
+        assertValid(schema, Map.of("object", "workspace", "action", "archive",
+            "params", Map.of("targets", List.of("qe-1", "qe-2"))));
+        // neither → invalid
+        assertInvalid(schema, Map.of("object", "workspace", "action", "archive", "params", Map.of()));
+    }
+
+    @Test
     void uiExec_workspaceArchive_archivedFlagOptionalDefaultTrue() {
         Map<String, Object> schema = uiExecAction.inputSchema();
         Map<String, Object> wsBranch = findOneOfBranch(schema, "workspace");

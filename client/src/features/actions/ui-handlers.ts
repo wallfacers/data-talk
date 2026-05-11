@@ -103,7 +103,7 @@ registerClientHandler('datatalk.ui.patch', async (input) => {
 registerClientHandler('datatalk.ui.exec', async (input) => {
   const i = input as ExecInput
   const target = resolveTarget(i)
-  if (target) await coordinator.ensureHydrated(target)
+  if (target && i.action !== 'trash') await coordinator.ensureHydrated(target)
   // Force-flush BEFORE run_sql so the server sees the latest content
   if (i.action === 'run_sql' && target) await coordinator.flush(target)
   const result = await forward({ tool: 'ui_exec', object: i.object, target: i.target ?? 'active', payload: { action: i.action, params: i.params } })
