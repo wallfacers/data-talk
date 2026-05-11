@@ -109,7 +109,11 @@ public class DashboardArtifactService {
     public JsonNode load(String id) {
         try {
             byte[] bytes = fileArtifactService.readBytes(id);
-            return mapper.readTree(bytes);
+            JsonNode tree = mapper.readTree(bytes);
+            if (tree.path("schemaVersion").asInt(2) == 1) {
+                tree = migrateV1ToV2(tree, mapper);
+            }
+            return tree;
         } catch (FileArtifactNotFoundException e) {
             throw new DashboardNotFoundException(id);
         } catch (IOException e) {
@@ -151,6 +155,42 @@ public class DashboardArtifactService {
             throw new DashboardNotFoundException(id);
         }
         return new PatchResult(mutable.get("version").asInt());
+    }
+
+    public static JsonNode migrateV1ToV2(JsonNode v1, ObjectMapper mapper) {
+        ObjectNode v2 = v1.deepCopy();
+        v2.put("schemaVersion", 2);
+        v2.put("renderer", "bezel");
+        v2.put("theme", "industry-neutral");
+        v2.set("refresh", mapper.createObjectNode()
+                .put("defaultIntervalMs", 10000)
+                .put("pauseOnHidden", true));
+        if (v2.has("layout") && v2.get("layout").isObject()) {
+            ((ObjectNode) v2.get("layout")).put("engine", "free");
+        }
+        if (v2.has("widgets") && v2.get("widgets").isArray()) {
+            for (JsonNode w : v2.get("widgets")) {
+                ObjectNode wo = (ObjectNode) w;
+                if (!wo.has("patternId")) {
+                    wo.put("patternId", inferPatternFromType(wo.path("type").asText("chart")));
+                }
+            }
+        }
+        return v2;
+    }
+
+    private static String inferPatternFromType(String type) {
+        return switch (type) {
+            case "chart"    -> "generic.echarts-card";
+            case "kpi"      -> "generic.kpi-tile";
+            case "table"    -> "generic.table";
+            case "markdown" -> "generic.markdown";
+            case "filter"   -> "generic.filter-bar";
+            case "section"  -> "generic.section-header";
+            case "divider"  -> "generic.divider";
+            case "image"    -> "generic.image";
+            default         -> "generic.echarts-card";
+        };
     }
 
     public static final class PayloadTooLargeException extends RuntimeException {
