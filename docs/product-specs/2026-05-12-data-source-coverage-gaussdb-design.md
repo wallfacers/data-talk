@@ -218,21 +218,19 @@ GaussDB 和 PG splitter 对相同 SQL 文本产生相同分片结果。6 个标�
 
 ## 9. Diagnostics Provider
 
-`GaussDBDiagnosticsProvider` 全 9 hooks `dialect_unsupported`:
+`GaussDBDiagnosticsProvider` 全 9 hooks（7 个唯一 capability）`dialect_unsupported`:
 
-| Hook | Return | i18n key |
-|------|--------|----------|
-| explainPlan | `unsupported("gaussdb.explain.unsupported")` | gaussdb 不支持 EXPLAIN 诊断 |
-| indexHints | `unsupported("gaussdb.index_hints.unsupported")` | gaussdb 不支持索引推荐 |
-| tableSize | `unsupported("gaussdb.table_size.unsupported")` | |
-| indexUsage | `unsupported("gaussdb.index_usage.unsupported")` | |
-| longRunningQueries | `unsupported("gaussdb.long_running.unsupported")` | |
-| tableBloat | `unsupported("gaussdb.table_bloat.unsupported")` | |
-| connectionStats | `unsupported("gaussdb.connection_stats.unsupported")` | |
-| lockInfo | `unsupported("gaussdb.lock_info.unsupported")` | |
-| replicationLag | `unsupported("gaussdb.replication_lag.unsupported")` | |
+| Hook Method | capability param | i18n key (full) | en text |
+|-------------|-----------------|-----------------|---------|
+| explain | `explain_real` | `diagnostics.dialect_unsupported.gaussdb.explain_real` | GaussDB EXPLAIN analysis is not yet supported |
+| indexHints | `index_hints` | `diagnostics.dialect_unsupported.gaussdb.index_hints` | GaussDB index recommendations are not yet supported |
+| lockInfo | `lock_info` | `diagnostics.dialect_unsupported.gaussdb.lock_info` | GaussDB lock information is not yet supported |
+| poolStatus | `pool_status` | `diagnostics.dialect_unsupported.gaussdb.pool_status` | GaussDB pool status is not yet supported |
+| tableSpaceInfo | `table_space` | `diagnostics.dialect_unsupported.gaussdb.table_space` | GaussDB table space analysis is not yet supported |
+| terminateSessionPreview / terminateSession | `terminate_session` | `diagnostics.dialect_unsupported.gaussdb.terminate_session` | GaussDB session termination is not yet supported |
+| optimizeTablePreview / optimizeTable | `optimize_table` | `diagnostics.dialect_unsupported.gaussdb.optimize_table` | GaussDB table optimization is not yet supported |
 
-i18n keys: `diagnostics.gaussdb.*.unsupported` / `诊断.gaussdb.*.unsupported`
+i18n key pattern: `diagnostics.dialect_unsupported.gaussdb.<capability>` where `<capability>` matches the string argument to `dialectUnsupported()`
 
 ## 10. Reuse Outputs
 
