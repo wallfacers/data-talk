@@ -94,12 +94,19 @@ export class UIRouter {
         return { data: err.data, error: err.error }
       }
       const required = def.paramsSchema?.required ?? []
-      const missing = required.filter((k) => (params as Record<string, unknown> | undefined)?.[k] === undefined)
+      const anyOfGroups = def.paramsSchema?.anyOf ?? []
+      const anyOfFields = new Set(anyOfGroups.flatMap(g => g.required ?? []))
+
+      const missing = required.filter((k) => {
+        if (anyOfFields.has(k)) return false
+        return (params as Record<string, unknown> | undefined)?.[k] === undefined
+      })
       const missingAnyOf = this.missingAnyOfRequiredGroup(def, params)
-      if (missing.length || missingAnyOf) {
+      if (missing.length > 0 || missingAnyOf !== null) {
+        const parts = [...missing, ...(missingAnyOf ? [missingAnyOf] : [])]
         const detail: UIErrorDetail = {
           code: 'invalid_params',
-          message: `Missing required params for action '${action}': ${missing.length ? missing.join(', ') : missingAnyOf}`,
+          message: `Missing required params for action '${action}': ${parts.join(', ')}`,
           hint: `Provide the required fields and match the action schema for '${action}'.`,
           expectedSchema: def.paramsSchema,
         }

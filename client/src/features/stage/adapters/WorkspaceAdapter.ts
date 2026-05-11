@@ -48,14 +48,20 @@ const ACTIONS: ActionDef[] = [
   } },
   { name: 'archive', description: 'Archive or unarchive a tab', paramsSchema: {
     type: 'object',
-    required: ['target'],
+    anyOf: [{ required: ['target'] }, { required: ['targets'] }],
     properties: {
       target: { type: 'string' },
+      targets: { type: 'array', items: { type: 'string' } },
       archived: { type: 'boolean', default: true },
     },
   } },
   { name: 'trash', description: 'Permanently delete a tab', paramsSchema: {
-    type: 'object', required: ['target'], properties: { target: { type: 'string' } },
+    type: 'object',
+    anyOf: [{ required: ['target'] }, { required: ['targets'] }],
+    properties: {
+      target: { type: 'string' },
+      targets: { type: 'array', items: { type: 'string' } },
+    },
   } },
   { name: 'rename', description: 'Rename a tab', paramsSchema: {
     type: 'object',

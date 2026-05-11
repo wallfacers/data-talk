@@ -205,4 +205,28 @@ describe('UIRouter', () => {
     }))
   })
 
+  it('accepts exec params that satisfy an anyOf group even when another branch is unmet', async () => {
+    const actions = [
+      {
+        name: 'trash',
+        description: 'Permanently delete a tab',
+        paramsSchema: {
+          type: 'object' as const,
+          anyOf: [{ required: ['target'] }, { required: ['targets'] }],
+          properties: {
+            target: { type: 'string' },
+            targets: { type: 'array', items: { type: 'string' } },
+          },
+        },
+      },
+    ]
+    router.registerInstance('w1', makeStub('w1', { type: 'workspace', actions }))
+
+    const res = await router.handle({ tool: 'ui_exec', object: 'workspace', target: 'w1',
+      payload: { action: 'trash', params: { targets: ['a', 'b'] } } })
+
+    expect(res.error).toBeUndefined()
+    expect(res.data).toEqual({ success: true })
+  })
+
 })
