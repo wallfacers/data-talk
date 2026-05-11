@@ -10,6 +10,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -87,6 +88,7 @@ public class OpenCodeProcessManager implements SmartLifecycle {
 
     private void doStart() throws Exception {
         binaryResolver.ensureNodeModules();
+        binaryResolver.ensureBezelSkill(Paths.get(""));
         Path binary = resolveBinary();
         if (binary == null) {
             throw new IllegalStateException("No OpenCode binary available");
