@@ -29,15 +29,19 @@ class DashboardArtifactServiceTest {
 
     private static final String VALID_DASHBOARD = """
         {
-          "schemaVersion": 1,
+          "schemaVersion": 2,
           "id": "dash_placeholder",
           "title": "Test Dashboard",
+          "theme": "industry-neutral",
+          "renderer": "bezel",
+          "refresh": { "defaultIntervalMs": 30000, "pauseOnHidden": true },
           "parameters": [],
           "widgets": [
             {
               "id": "chart_w_abc12345",
               "type": "chart",
               "position": { "x": 0, "y": 0, "w": 6, "h": 8 },
+              "patternId": "generic.echarts-card",
               "options": { "title": "Chart A" }
             }
           ],
@@ -125,9 +129,12 @@ class DashboardArtifactServiceTest {
     void promoteInvalidDashboardThrows() throws Exception {
         String invalid = """
         {
-          "schemaVersion": 1,
+          "schemaVersion": 2,
           "id": "dash_test",
           "title": "",
+          "theme": "industry-neutral",
+          "renderer": "bezel",
+          "refresh": { "defaultIntervalMs": 30000, "pauseOnHidden": true },
           "parameters": [],
           "widgets": [],
           "layout": { "engine": "grid", "cols": 12 },

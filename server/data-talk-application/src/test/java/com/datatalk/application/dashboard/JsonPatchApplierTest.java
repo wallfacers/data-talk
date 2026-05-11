@@ -25,17 +25,21 @@ class JsonPatchApplierTest {
         applier = new JsonPatchApplier(mapper);
         baseDashboard = mapper.readTree("""
         {
-          "schemaVersion": 1,
+          "schemaVersion": 2,
           "id": "dash_test1234",
           "title": "Test Dashboard",
           "description": null,
           "defaultConnectionId": "conn_1",
+          "theme": "industry-neutral",
+          "renderer": "bezel",
+          "refresh": { "defaultIntervalMs": 30000, "pauseOnHidden": true },
           "parameters": [],
           "widgets": [
             {
               "id": "chart_w_abc12345",
               "type": "chart",
               "position": { "x": 0, "y": 0, "w": 6, "h": 8 },
+              "patternId": "generic.echarts-card",
               "options": { "title": "Chart A" }
             }
           ],
@@ -66,6 +70,7 @@ class JsonPatchApplierTest {
           "id": "chart_w_def67890",
           "type": "kpi",
           "position": { "x": 6, "y": 0, "w": 6, "h": 8 },
+          "patternId": "generic.kpi-card",
           "options": { "title": "KPI 1" }
         }
         """);

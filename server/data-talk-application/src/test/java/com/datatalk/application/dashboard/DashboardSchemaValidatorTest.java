@@ -47,21 +47,26 @@ class DashboardSchemaValidatorTest {
     void overlappingWidgetsFails() throws Exception {
         String json = """
         {
-          "schemaVersion": 1,
+          "schemaVersion": 2,
           "id": "dash_test1234",
           "title": "Test",
+          "theme": "industry-neutral",
+          "renderer": "bezel",
+          "refresh": { "defaultIntervalMs": 30000, "pauseOnHidden": true },
           "parameters": [],
           "widgets": [
             {
               "id": "chart_w_abc12345",
               "type": "chart",
               "position": { "x": 0, "y": 0, "w": 6, "h": 4 },
+              "patternId": "generic.echarts-card",
               "options": { "title": "A" }
             },
             {
               "id": "chart_w_def67890",
               "type": "chart",
               "position": { "x": 3, "y": 0, "w": 6, "h": 4 },
+              "patternId": "generic.echarts-card",
               "options": { "title": "B" }
             }
           ],
@@ -79,15 +84,19 @@ class DashboardSchemaValidatorTest {
     void nonZeroZInGridFails() throws Exception {
         String json = """
         {
-          "schemaVersion": 1,
+          "schemaVersion": 2,
           "id": "dash_test1234",
           "title": "Test",
+          "theme": "industry-neutral",
+          "renderer": "bezel",
+          "refresh": { "defaultIntervalMs": 30000, "pauseOnHidden": true },
           "parameters": [],
           "widgets": [
             {
               "id": "chart_w_abc12345",
               "type": "chart",
               "position": { "x": 0, "y": 0, "w": 6, "h": 4, "z": 3 },
+              "patternId": "generic.echarts-card",
               "options": { "title": "A" }
             }
           ],
@@ -105,21 +114,26 @@ class DashboardSchemaValidatorTest {
     void duplicateWidgetIdFails() throws Exception {
         String json = """
         {
-          "schemaVersion": 1,
+          "schemaVersion": 2,
           "id": "dash_test1234",
           "title": "Test",
+          "theme": "industry-neutral",
+          "renderer": "bezel",
+          "refresh": { "defaultIntervalMs": 30000, "pauseOnHidden": true },
           "parameters": [],
           "widgets": [
             {
               "id": "chart_w_abc12345",
               "type": "chart",
               "position": { "x": 0, "y": 0, "w": 6, "h": 4 },
+              "patternId": "generic.echarts-card",
               "options": { "title": "A" }
             },
             {
               "id": "chart_w_abc12345",
               "type": "kpi",
               "position": { "x": 6, "y": 0, "w": 6, "h": 4 },
+              "patternId": "generic.kpi-card",
               "options": { "title": "B" }
             }
           ],
@@ -135,11 +149,14 @@ class DashboardSchemaValidatorTest {
 
     private static final String CLEAN_DASHBOARD = """
         {
-          "schemaVersion": 1,
+          "schemaVersion": 2,
           "id": "dash_test1234",
           "title": "Sales Dashboard",
           "description": "Monthly overview",
           "defaultConnectionId": "conn_1",
+          "theme": "industry-neutral",
+          "renderer": "bezel",
+          "refresh": { "defaultIntervalMs": 30000, "pauseOnHidden": true },
           "parameters": [
             {
               "id": "global:date_range",
@@ -155,6 +172,7 @@ class DashboardSchemaValidatorTest {
               "id": "chart_w_abc12345",
               "type": "chart",
               "position": { "x": 0, "y": 0, "w": 6, "h": 8 },
+              "patternId": "generic.echarts-card",
               "parameters": [],
               "query": {
                 "connectionId": null,

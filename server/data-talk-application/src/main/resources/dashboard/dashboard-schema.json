@@ -1,21 +1,35 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "required": ["schemaVersion", "id", "title", "parameters", "widgets", "layout", "version"],
+  "required": ["schemaVersion", "id", "title", "parameters", "widgets", "layout", "version", "theme", "renderer", "refresh"],
   "properties": {
-    "schemaVersion": { "const": 1 },
+    "schemaVersion": { "const": 2 },
     "id": { "type": "string", "pattern": "^dash_[a-zA-Z0-9_]{4,}$" },
     "title": { "type": "string", "minLength": 1, "maxLength": 256 },
     "description": { "type": "string", "maxLength": 32768 },
     "defaultConnectionId": { "type": ["string", "null"] },
+    "theme": { "type": "string", "pattern": "^industry-" },
+    "renderer": { "type": "string", "const": "bezel" },
+    "refresh": { "$ref": "#/$defs/dashboardRefresh" },
     "version": { "type": "integer", "minimum": 1 },
     "createdAt": { "type": "integer", "minimum": 0 },
     "updatedAt": { "type": "integer", "minimum": 0 },
     "parameters": { "type": "array", "items": { "$ref": "#/$defs/parameterDef" } },
     "widgets": { "type": "array", "items": { "$ref": "#/$defs/widget" } },
-    "layout": { "$ref": "#/$defs/gridLayout" }
+    "layout": { "oneOf": [
+      { "$ref": "#/$defs/gridLayout" },
+      { "$ref": "#/$defs/freeLayout" }
+    ]}
   },
   "$defs": {
+    "dashboardRefresh": {
+      "type": "object",
+      "required": ["defaultIntervalMs", "pauseOnHidden"],
+      "properties": {
+        "defaultIntervalMs": { "type": "integer", "minimum": 1000 },
+        "pauseOnHidden": { "type": "boolean" }
+      }
+    },
     "parameterDef": {
       "type": "object",
       "required": ["id", "scope", "name", "type"],
@@ -30,14 +44,23 @@
     },
     "widget": {
       "type": "object",
-      "required": ["id", "type", "position", "options"],
+      "required": ["id", "type", "position", "options", "patternId"],
       "properties": {
         "id": { "type": "string", "pattern": "^[a-z]+_w_[a-zA-Z0-9]{4,16}$" },
         "type": { "enum": ["chart", "kpi", "table", "markdown", "filter", "section", "divider", "image"] },
         "position": { "$ref": "#/$defs/gridPosition" },
+        "patternId": { "type": "string", "pattern": "^[a-z0-9-]+\\.[a-z0-9-]+$" },
+        "refresh": { "$ref": "#/$defs/widgetRefresh" },
         "parameters": { "type": "array", "items": { "$ref": "#/$defs/parameterDef" } },
         "query": { "$ref": "#/$defs/widgetQuery" },
         "options": { "type": "object" }
+      }
+    },
+    "widgetRefresh": {
+      "type": "object",
+      "properties": {
+        "intervalMs": { "type": "integer", "minimum": 1000 },
+        "strategy": { "enum": ["DATA_ONLY", "FULL_RERENDER"] }
       }
     },
     "widgetQuery": {
@@ -68,6 +91,20 @@
         "cols": { "const": 12 },
         "rowHeight": { "type": "integer", "minimum": 8, "maximum": 128 },
         "gap": { "type": "integer", "minimum": 0, "maximum": 32 }
+      }
+    },
+    "freeLayout": {
+      "type": "object",
+      "required": ["engine"],
+      "properties": {
+        "engine": { "const": "free" },
+        "viewport": {
+          "type": "object",
+          "properties": {
+            "width": { "type": "integer", "minimum": 1 },
+            "height": { "type": "integer", "minimum": 1 }
+          }
+        }
       }
     }
   }
