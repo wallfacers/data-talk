@@ -27,6 +27,9 @@ public class OpenCodeBinaryResolver {
     private static final String CURRENT_FILE = ".current";
     static final String DEPS_RESOURCE = "opencode/opencode-deps.tar.gz";
     private static final String DEPS_MARKER = ".datatalk-deps-installed";
+    static final String BEZEL_RESOURCE = "opencode/skills/bezel.tar.gz";
+    static final String BEZEL_VERSION_RESOURCE = "opencode/skills/bezel.version";
+    static final String BEZEL_MARKER = ".bezel-installed";
 
     /**
      * Resolve local binary from the base directory.
@@ -210,6 +213,52 @@ public class OpenCodeBinaryResolver {
                 zip.closeEntry();
                 entry = zip.getNextEntry();
             }
+        }
+    }
+
+    /**
+     * Ensures the bundled Bezel skill is extracted into the project's
+     * {@code .opencode/skills/bezel/} directory. Idempotent — skips when the
+     * installed marker matches the embedded version.
+     */
+    public void ensureBezelSkill(Path projectRoot) {
+        Path opencodeDir = projectRoot.resolve(".opencode");
+        Path skillDir    = opencodeDir.resolve("skills").resolve("bezel");
+        Path marker      = opencodeDir.resolve(BEZEL_MARKER);
+
+        String embeddedVersion = readEmbeddedBezelVersion();
+        if (Files.exists(marker) && Files.isDirectory(skillDir)) {
+            try {
+                if (embeddedVersion.equals(Files.readString(marker).trim())) {
+                    return;
+                }
+            } catch (IOException ignored) { /* fall through to reinstall */ }
+            deleteRecursively(skillDir);
+        }
+
+        try (InputStream in = openClasspathResource(BEZEL_RESOURCE)) {
+            if (in == null) {
+                return;  // no bundled bezel, skip silently
+            }
+            Files.createDirectories(skillDir);
+            extractDepsTarGz(in, skillDir);
+            Files.createDirectories(opencodeDir);
+            Files.writeString(marker, embeddedVersion);
+        } catch (Exception e) {
+            log.warn("Failed to extract Bezel skill: {}", e.getMessage());
+        }
+    }
+
+    InputStream openClasspathResource(String name) {
+        return getClass().getClassLoader().getResourceAsStream(name);
+    }
+
+    String readEmbeddedBezelVersion() {
+        try (InputStream in = openClasspathResource(BEZEL_VERSION_RESOURCE)) {
+            if (in == null) return "";
+            return new String(in.readAllBytes()).trim();
+        } catch (IOException e) {
+            return "";
         }
     }
 
