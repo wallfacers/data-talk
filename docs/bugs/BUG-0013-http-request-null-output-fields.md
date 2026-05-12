@@ -1,14 +1,14 @@
 ---
 id: BUG-0013
 title: http_request action returns null for required output fields causing schema validation failure
-status: open
+status: fixed
 priority: P1
 source: e2e-playwright
 modules: [ingestion]
 discovered: 2026-05-12
 discoveredBy: agent
 testRunId: null
-fixCommit: null
+fixCommit: 4249a1f3
 fixPlanRef: null
 duplicateOf: null
 regression: false
@@ -63,6 +63,10 @@ After fix, re-run:
 - `cd client && npx playwright test ingestion-fetch-mcp.spec.ts --reporter=line`
 - `cd client && npx playwright test ingestion-ddl-mcp.spec.ts --reporter=line`
 
+## Resolution
+
+Commit `4249a1f3` (2026-05-12) implements option 1: `outputSchema()` now declares only `status` as required; `jobId` and `payloadArtifactId` are optional and may be omitted on the error path. All ingestion E2E specs that previously masked their real failure mode with `datatalk.http_request.output invalid` now surface the underlying error code.
+
 ## Notes
 
-This bug blocks ALL ingestion E2E tests that use `http_request` (fetch, infer, create_table pipeline).
+This bug blocked ALL ingestion E2E tests that use `http_request` (fetch, infer, create_table pipeline). The per-test `test.fixme(... 'Blocked on BUG-0013 ...')` annotations added in commit `30293c8a` remain for now because several `ingestion-fetch-mcp.spec.ts` assertions still reference handler output fields that don't exist (`payloadFormat`, `rowCount`, pagination parameter naming) — that is a separate spec/handler alignment task, not a regression of BUG-0013.

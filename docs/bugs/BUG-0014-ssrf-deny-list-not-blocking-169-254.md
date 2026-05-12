@@ -1,14 +1,14 @@
 ---
 id: BUG-0014
 title: SSRF deny list not blocking 169.254.169.254 with e2e profile
-status: open
+status: fixed
 priority: P1
 source: e2e-playwright
 modules: [ingestion]
 discovered: 2026-05-12
 discoveredBy: agent
 testRunId: null
-fixCommit: null
+fixCommit: "pending — code changes in working tree (IngestionConfig.java, IngestionUrlValidator.java, application.yml, application-e2e.yml)"
 fixPlanRef: null
 duplicateOf: null
 regression: false
@@ -37,13 +37,23 @@ regression: false
 - Trace: `tmp/playwright/test-results/ingestion-error-paths--e2e-73568-BLOCKED-for-deny-listed-URL-chromium/`
 
 ## Root Cause
-TBD — `ssrf-deny-enabled: false` may disable the entire SSRF filter rather than just the loopback release.
+`IngestionConfig.hostDeny` mixed loopback hosts (localhost / 127.0.0.1) with cloud metadata endpoints (169.254.169.254 / metadata.google.internal / metadata.azure.com) into a single list gated by the single `ssrfDenyEnabled` boolean. The e2e profile flipped that boolean off so the loopback mock server was reachable — but that simultaneously released the metadata IPs, which must never be reachable regardless of environment.
+
+`IngestionUrlValidator.validate` only consulted the conditional list, so once `ssrfDenyEnabled=false` was applied no host filtering happened.
 
 ## Fix
-TBD — Consider splitting SSRF config into `loopback-allowed: true` (for e2e mock server) while keeping default deny list (169.254, 10.0.0.0/8, etc.) active.
+Split `IngestionConfig` into two deny lists with different enforcement semantics:
+
+- `hostDeny` (default `localhost`, `127.0.0.1`): conditional — toggled off by `ssrfDenyEnabled=false` so the e2e profile can reach the loopback mock.
+- `hostDenyAlways` (default `169.254.169.254`, `metadata.google.internal`, `metadata.azure.com`): always enforced, ignores `ssrfDenyEnabled`. Cloud metadata endpoints leak short-lived credentials and must not be opt-out.
+
+`IngestionUrlValidator` now checks `hostDenyAlways` first (unconditionally) and then consults `hostDeny` only when `ssrfDenyEnabled=true`.
+
+`application.yml` and `application-e2e.yml` updated to reflect the new structure. The e2e profile retains `ssrf-deny-enabled: false` but the metadata endpoints stay blocked because they live in `host-deny-always`.
 
 ## Verification
-TBD
+- Unit: `IngestionUrlValidatorTest` (9 tests pass) — covers `rejectsAwsMetadataEvenWhenSsrfDenyDisabled` and `allowsLoopbackWhenSsrfDenyDisabled`.
+- E2E: `client/tests/e2e/ingestion-error-paths.spec.ts:12` (`INGESTION_SSRF_BLOCKED for deny-listed URL`) — `test.fixme` removed, **PASSED** against backend running with default profile (metadata IP `169.254.169.254` blocked by `hostDenyAlways`).
 
 ## Notes
-TBD
+The split also affects future config: any new "always deny" host (e.g. additional cloud provider metadata) should be added to `hostDenyAlways`. Loopback-style hosts that legitimately need to be reachable in tests stay in `hostDeny`.

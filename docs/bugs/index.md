@@ -14,9 +14,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 | ID | Title | Priority | Source | Modules | Discovered |
 |----|-------|----------|--------|---------|------------|
-| [BUG-0013](BUG-0013-http-request-null-output-fields.md) | http_request action returns null for required output fields causing schema validation failure | fixed | e2e-playwright | ingestion | 2026-05-12 |
-| [BUG-0014](BUG-0014-ssrf-deny-list-not-blocking-169-254.md) | SSRF deny list not blocking 169.254.169.254 with e2e profile | P1 | e2e-playwright | ingestion | 2026-05-12 |
-| [BUG-0015](BUG-0015-oversized-payload-not-marked-failed.md) | Oversized payload not marked as failed with INGESTION_PAYLOAD_TOO_LARGE | P1 | e2e-playwright | ingestion | 2026-05-12 |
+| —  | —     | —        | —      | —       | —          |
 
 ## In Progress（status = investigating | fixed 等待 verify）
 
@@ -26,12 +24,15 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 | [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md) | 聊天气泡内 ECharts X 轴标题（xAxis.name）右侧被裁 | fixed | P2 | — |
 | [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md) | sql-result-display 测试缺少 DialogClose mock 导致 10 个用例失败 | fixed | P2 | — |
 | [BUG-0012](BUG-0012-widget-data-endpoint-ignores-default-connection-id.md) | Widget data endpoint 缺少 dashboard 级 database / schema 解析回路 | fixed | P1 | — |
+| [BUG-0013](BUG-0013-http-request-null-output-fields.md) | http_request action returns null for required output fields causing schema validation failure | fixed | P1 | — |
+| [BUG-0014](BUG-0014-ssrf-deny-list-not-blocking-169-254.md) | SSRF deny list not blocking 169.254.169.254 with e2e profile | fixed | P1 | — |
+| [BUG-0015](BUG-0015-oversized-payload-not-marked-failed.md) | Oversized payload not marked as failed with INGESTION_PAYLOAD_TOO_LARGE | fixed | P1 | — |
 
 ## Recently Closed（最近 30 天，status = verified | closed）
 
 | ID | Title | Status | Closed Date | FixCommit |
 |----|-------|--------|-------------|-----------|
-| [BUG-0016](BUG-0016-credentials-section-missing-from-settings-dropdown.md) | Settings 下拉菜单缺少 Credentials 入口，无法通过 UI 导航到凭据页面 | verified | 2026-05-12 | — |
+| [BUG-0016](BUG-0016-credentials-section-missing-from-settings-dropdown.md) | Settings 下拉菜单缺少 Credentials 入口，无法通过 UI 导航到凭据页面 | verified | 2026-05-12 | 434d1ae9 |
 | BUG-0001 | ER Inspector "Add virtual relation" 按钮无效 | verified | 2026-05-06 | — |
 | BUG-0002 | ER Designer bind_target 成功但 diff_against_db / generate_ddl 仍拒绝 | verified | 2026-05-06 | — |
 | BUG-0004 | Fork to Designer 不创建 er_designer tab | verified | 2026-05-07 | 9d67946 |
@@ -42,8 +43,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## By Module（聚合视图，仅列 open + in-progress）
 
-- **ingestion**: [BUG-0013](BUG-0013-http-request-null-output-fields.md)
-- **settings**: [BUG-0016](BUG-0016-credentials-section-missing-from-settings-dropdown.md) *(verified)*
+- **ingestion**: [BUG-0013](BUG-0013-http-request-null-output-fields.md) *(fixed)*, [BUG-0014](BUG-0014-ssrf-deny-list-not-blocking-169-254.md) *(fixed)*, [BUG-0015](BUG-0015-oversized-payload-not-marked-failed.md) *(fixed)*
 - **stage**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md), [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md)
 - **chat**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md)
 - **testing**: [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md)
@@ -53,7 +53,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## By Source（聚合视图，仅列 open + in-progress）
 
-- **e2e-playwright**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md), [BUG-0012](BUG-0012-widget-data-endpoint-ignores-default-connection-id.md) *(fixed)*, [BUG-0013](BUG-0013-http-request-null-output-fields.md), [BUG-0016](BUG-0016-credentials-section-missing-from-settings-dropdown.md) *(verified)*
+- **e2e-playwright**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md), [BUG-0012](BUG-0012-widget-data-endpoint-ignores-default-connection-id.md) *(fixed)*, [BUG-0013](BUG-0013-http-request-null-output-fields.md) *(fixed)*, [BUG-0014](BUG-0014-ssrf-deny-list-not-blocking-169-254.md) *(fixed)*, [BUG-0015](BUG-0015-oversized-payload-not-marked-failed.md) *(fixed)*
 - **e2e-mcp**: [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md)
 - **manual-report**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md)
 

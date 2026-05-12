@@ -8,7 +8,7 @@ modules: [settings]
 discovered: 2026-05-12
 discoveredBy: agent
 testRunId: null
-fixCommit: null
+fixCommit: 434d1ae9
 fixPlanRef: null
 duplicateOf: null
 regression: false

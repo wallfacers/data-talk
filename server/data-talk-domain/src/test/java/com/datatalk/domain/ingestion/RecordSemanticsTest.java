@@ -27,7 +27,7 @@ class RecordSemanticsTest {
             Map.of(), Map.of(), null,
             null, null, PayloadFormat.JSON, null,
             "pending", null, null, null, null,
-            0, 0, 0L, 0L, 0L, null, null);
+            0, 0, 0L, null, 0L, 0L, null, null);
         assertThat(j.id()).isEqualTo("ing_1");
         assertThat(j.payloadFormat()).isEqualTo(PayloadFormat.JSON);
     }

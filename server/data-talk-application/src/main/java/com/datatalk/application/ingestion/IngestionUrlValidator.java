@@ -26,12 +26,24 @@ public class IngestionUrlValidator {
             throw new IllegalArgumentException("disallowed URL scheme: " + scheme);
         }
 
-        if (cfg.isSsrfDenyEnabled()) {
-            String host = uri.getHost();
-            if (host == null) {
-                throw new IllegalArgumentException("URL has no host");
+        String host = uri.getHost();
+        if (host == null) {
+            throw new IllegalArgumentException("URL has no host");
+        }
+        String lower = host.toLowerCase();
+
+        // Always-enforced deny list — cloud metadata endpoints etc. Cannot be
+        // disabled by ssrf-deny-enabled flag because they protect against
+        // credential exfiltration regardless of environment.
+        for (String denied : cfg.getHostDenyAlways()) {
+            if (lower.equals(denied.toLowerCase())) {
+                throw new IllegalArgumentException("host denied by SSRF rule: " + host);
             }
-            String lower = host.toLowerCase();
+        }
+
+        // Conditional deny list — toggleable for e2e/dev where the mock HTTP
+        // server lives on loopback.
+        if (cfg.isSsrfDenyEnabled()) {
             for (String denied : cfg.getHostDeny()) {
                 if (lower.equals(denied.toLowerCase())) {
                     throw new IllegalArgumentException("host denied by SSRF rule: " + host);

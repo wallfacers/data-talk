@@ -10,7 +10,6 @@ test.afterAll(async () => { await mock.stop() })
 
 test.describe('@e2e @ingestion @api @error Ingestion error codes', () => {
   test('INGESTION_SSRF_BLOCKED for deny-listed URL', async ({ request }) => {
-    test.fixme(true, 'BUG-0014: SSRF deny list gap with e2e profile')
     const c = adapterClient(request)
     const res = await c.mcpCall('http_request', {
       url: 'http://169.254.169.254/latest/meta-data/',
@@ -18,11 +17,9 @@ test.describe('@e2e @ingestion @api @error Ingestion error codes', () => {
     })
     if (res.error) {
       expect(res.error.message).toMatch(/ssrf|SSRF|blocked|denied|invalid/i)
-    } else if (res.result) {
+    } else {
       expect(res.result?.status).toBe('failed')
       expect(res.result?.errorCode).toBe('INGESTION_SSRF_BLOCKED')
-    } else {
-      test.fixme(true, 'SSRF not blocked — check if e2e profile is active')
     }
   })
 
@@ -85,7 +82,6 @@ test.describe('@e2e @ingestion @api @error Ingestion error codes', () => {
   })
 
   test('INGESTION_PAYLOAD_TOO_LARGE for oversized payload', async ({ request }) => {
-    test.fixme(true, 'BUG-0015: oversized payload not marked as failed')
     const c = adapterClient(request)
     const res = await c.mcpCall('http_request', {
       url: `${mock.baseUrl}/error/oversized`,
@@ -93,11 +89,10 @@ test.describe('@e2e @ingestion @api @error Ingestion error codes', () => {
     })
     if (res.error) {
       expect(res.error.message).toMatch(/too large|payload_too_large/i)
-    } else if (res.result?.status === 'failed') {
+    } else {
+      expect(res.result?.status).toBe('failed')
       expect(res.result?.errorCode).toBe('INGESTION_PAYLOAD_TOO_LARGE')
       expect(res.result?.userHint).toBeTruthy()
-    } else {
-      test.fixme(true, 'Oversized payload not detected — check payload-max-bytes in e2e profile')
     }
   })
 })

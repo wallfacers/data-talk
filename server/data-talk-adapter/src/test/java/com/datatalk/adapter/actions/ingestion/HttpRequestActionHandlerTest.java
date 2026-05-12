@@ -69,6 +69,7 @@ class HttpRequestActionHandlerTest {
             handler.handle(ctx, input).toCompletableFuture().get(5, TimeUnit.SECONDS);
 
         assertThat(result.get("status")).isEqualTo("failed");
+        assertThat(result.get("errorCode")).isEqualTo("INGESTION_SSRF_BLOCKED");
         assertThat(result.get("jobId")).isNull();
         assertThat(result.get("payloadArtifactId")).isNull();
         Map<String, String> error = (Map<String, String>) result.get("error");
@@ -94,6 +95,7 @@ class HttpRequestActionHandlerTest {
             handler.handle(ctx, input).toCompletableFuture().get(5, TimeUnit.SECONDS);
 
         assertThat(result.get("status")).isEqualTo("failed");
+        assertThat(result.get("errorCode")).isEqualTo("INGESTION_PAYLOAD_TOO_LARGE");
         Map<String, String> error = (Map<String, String>) result.get("error");
         assertThat(error.get("code")).isEqualTo("INGESTION_PAYLOAD_TOO_LARGE");
         assertThat(result.get("userHint")).asString().isNotBlank();
@@ -116,6 +118,7 @@ class HttpRequestActionHandlerTest {
             handler.handle(ctx, input).toCompletableFuture().get(5, TimeUnit.SECONDS);
 
         assertThat(result.get("status")).isEqualTo("failed");
+        assertThat(result.get("errorCode")).isEqualTo("INGESTION_FETCH_FAILED");
         Map<String, String> error = (Map<String, String>) result.get("error");
         assertThat(error.get("code")).isEqualTo("INGESTION_FETCH_FAILED");
     }
@@ -137,6 +140,7 @@ class HttpRequestActionHandlerTest {
             handler.handle(ctx, input).toCompletableFuture().get(5, TimeUnit.SECONDS);
 
         assertThat(result.get("status")).isEqualTo("failed");
+        assertThat(result.get("errorCode")).isEqualTo("INGESTION_FORMAT_UNSUPPORTED");
         Map<String, String> error = (Map<String, String>) result.get("error");
         assertThat(error.get("code")).isEqualTo("INGESTION_FORMAT_UNSUPPORTED");
     }

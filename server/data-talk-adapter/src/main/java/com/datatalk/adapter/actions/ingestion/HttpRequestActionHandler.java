@@ -55,19 +55,20 @@ public class HttpRequestActionHandler implements ActionHandler<Map, Map> {
 
     @Override
     public Map<String, Object> outputSchema() {
+        Map<String, Object> props = new LinkedHashMap<>();
+        props.put("jobId", Map.of("type", "string"));
+        props.put("payloadArtifactId", Map.of("type", "string"));
+        props.put("status", Map.of("type", "string"));
+        props.put("rowsFetched", Map.of("type", "integer"));
+        props.put("bytesFetched", Map.of("type", "integer"));
+        props.put("pagesFetched", Map.of("type", "integer"));
+        props.put("errorCode", Map.of("type", "string"));
+        props.put("error", Map.of("type", "object"));
+        props.put("userHint", Map.of("type", "string"));
         return Map.of(
             "type", "object",
             "required", List.of("status"),
-            "properties", Map.of(
-                "jobId", Map.of("type", "string"),
-                "payloadArtifactId", Map.of("type", "string"),
-                "status", Map.of("type", "string"),
-                "rowsFetched", Map.of("type", "integer"),
-                "bytesFetched", Map.of("type", "integer"),
-                "pagesFetched", Map.of("type", "integer"),
-                "error", Map.of("type", "object"),
-                "userHint", Map.of("type", "string")
-            )
+            "properties", props
         );
     }
 
@@ -157,6 +158,9 @@ public class HttpRequestActionHandler implements ActionHandler<Map, Map> {
     private Map<String, Object> errorNode(String code, String reason, String userHint) {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("status", "failed");
+        // BUG-0015: surface errorCode at the top level so MCP callers / E2E tests
+        // can branch on `res.result.errorCode` without unwrapping the nested error.
+        out.put("errorCode", code);
         Map<String, String> error = new LinkedHashMap<>();
         error.put("code", code);
         error.put("reason", reason);

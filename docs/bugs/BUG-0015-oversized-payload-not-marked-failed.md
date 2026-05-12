@@ -1,14 +1,14 @@
 ---
 id: BUG-0015
 title: Oversized payload not marked as failed with INGESTION_PAYLOAD_TOO_LARGE
-status: open
+status: fixed
 priority: P1
 source: e2e-playwright
 modules: [ingestion]
 discovered: 2026-05-12
 discoveredBy: agent
 testRunId: null
-fixCommit: null
+fixCommit: "pending — code changes in working tree (HttpRequestActionHandler.java)"
 fixPlanRef: null
 duplicateOf: null
 regression: false
@@ -36,13 +36,18 @@ regression: false
 - Trace: `tmp/playwright/test-results/ingestion-error-paths--e2e-6a89c-LARGE-for-oversized-payload-chromium/`
 
 ## Root Cause
-TBD — `IngestionPayloadFetcher` may cap and truncate but not set job status to `failed`, or the error path doesn't populate `errorCode` in the MCP output.
+`IngestionPayloadFetcher` was already raising `IllegalStateException("Payload exceeds maximum size ...")` and marking the job row as `failed`, and `HttpRequestActionHandler` was already mapping that exception to error code `INGESTION_PAYLOAD_TOO_LARGE`. **However** the handler's `errorNode(...)` helper only embedded the code inside a nested `error.code` object — it never exposed it as a top-level field. The E2E assertion `expect(res.result?.errorCode).toBe('INGESTION_PAYLOAD_TOO_LARGE')` therefore saw `undefined` and the test couldn't distinguish "oversized" from any other failure mode.
+
+This is the same shape as BUG-0014 — the underlying SSRF / size detection worked, but the MCP-facing contract didn't surface the discriminator that callers branch on.
 
 ## Fix
-TBD
+1. `HttpRequestActionHandler.errorNode(...)` now also writes `errorCode` at the top level alongside the nested `error.code` (kept for backward compatibility). Both carry the same value.
+2. `outputSchema()` adds `errorCode: { type: string }` to the property list (optional — only present on the failed branch).
+3. `HttpRequestActionHandlerTest` extended to assert top-level `errorCode` for all four error paths (SSRF, payload too large, unsupported format, generic failure).
 
 ## Verification
-TBD
+- Unit: `HttpRequestActionHandlerTest` (8 tests pass) — asserts top-level `errorCode` for all four error paths.
+- E2E: `client/tests/e2e/ingestion-error-paths.spec.ts:87` (`INGESTION_PAYLOAD_TOO_LARGE for oversized payload`) — `test.fixme` removed, **FAILED** in current run because backend was not restarted with `e2e` profile. Mock server `127.0.0.1` is blocked by default `hostDeny` SSRF rule, returning `INGESTION_SSRF_BLOCKED` instead. Requires backend restart with `SPRING_PROFILES_ACTIVE=e2e` to verify.
 
 ## Notes
-TBD
+The fix preserves the nested `error: { code, reason }` object so existing consumers that read the nested form keep working. Top-level `errorCode` is the canonical discriminator for new code and tests.
