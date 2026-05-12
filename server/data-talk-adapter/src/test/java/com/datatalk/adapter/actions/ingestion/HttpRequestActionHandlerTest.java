@@ -3,6 +3,7 @@ package com.datatalk.adapter.actions.ingestion;
 import com.datatalk.application.ingestion.IngestionPayloadFetcher;
 import com.datatalk.application.ingestion.IngestionPayloadFetcher.FetchResult;
 import com.datatalk.domain.action.ActionContext;
+import com.datatalk.domain.ingestion.PayloadFormat;
 import org.junit.jupiter.api.*;
 import org.mockito.*;
 
@@ -32,7 +33,7 @@ class HttpRequestActionHandlerTest {
     @SuppressWarnings("unchecked")
     void happyPathReturnsJobId() throws Exception {
         when(fetcher.fetch(any(), anyString())).thenReturn(
-            new FetchResult("ing_1", "fa_1", 100, 5000L, 2, "fetched"));
+            new FetchResult("ing_1", "fa_1", 100, 5000L, 2, "fetched", PayloadFormat.JSON));
 
         Map<String, Object> input = Map.of(
             "url", "https://api.example.com/data",
@@ -45,11 +46,36 @@ class HttpRequestActionHandlerTest {
         assertThat(result.get("jobId")).isEqualTo("ing_1");
         assertThat(result.get("status")).isEqualTo("fetched");
         assertThat(result.get("payloadArtifactId")).isEqualTo("fa_1");
+        assertThat(result.get("payloadFormat")).isEqualTo("json");
         assertThat(result.get("rowsFetched")).isEqualTo(100);
+        assertThat(result.get("rowCount")).isEqualTo(100);
         assertThat(result.get("bytesFetched")).isEqualTo(5000L);
         assertThat(result.get("pagesFetched")).isEqualTo(2);
         assertThat(result.get("error")).isNull();
         assertThat(result.get("userHint")).isNull();
+    }
+
+    // ───────── BUG-0017: payloadFormat emitted lowercase for each format ─────────
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void payloadFormatEmittedLowercaseForEachFormat() throws Exception {
+        for (PayloadFormat fmt : PayloadFormat.values()) {
+            when(fetcher.fetch(any(), anyString())).thenReturn(
+                new FetchResult("ing_x", "fa_x", 0, 0L, 1, "fetched", fmt));
+
+            Map<String, Object> input = Map.of(
+                "url", "https://api.example.com/data",
+                "method", "GET",
+                "payloadFormat", fmt.name());
+
+            Map<String, Object> result = (Map<String, Object>)
+                handler.handle(ctx, input).toCompletableFuture().get(5, TimeUnit.SECONDS);
+
+            assertThat(result.get("payloadFormat"))
+                .as("payloadFormat for %s", fmt)
+                .isEqualTo(fmt.name().toLowerCase());
+        }
     }
 
     // ───────── SSRF blocked ─────────
@@ -121,6 +147,30 @@ class HttpRequestActionHandlerTest {
         assertThat(result.get("errorCode")).isEqualTo("INGESTION_FETCH_FAILED");
         Map<String, String> error = (Map<String, String>) result.get("error");
         assertThat(error.get("code")).isEqualTo("INGESTION_FETCH_FAILED");
+    }
+
+    // ───────── BUG-0024: 401 maps to INGESTION_AUTH_FAILED ─────────
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void authFailedReturns401MappedError() throws Exception {
+        when(fetcher.fetch(any(), anyString())).thenThrow(
+            new com.datatalk.domain.ingestion.IngestionAuthFailedException(
+                "Upstream returned 401 Unauthorized"));
+
+        Map<String, Object> input = Map.of(
+            "url", "https://api.example.com/secured",
+            "method", "GET",
+            "payloadFormat", "JSON");
+
+        Map<String, Object> result = (Map<String, Object>)
+            handler.handle(ctx, input).toCompletableFuture().get(5, TimeUnit.SECONDS);
+
+        assertThat(result.get("status")).isEqualTo("failed");
+        assertThat(result.get("errorCode")).isEqualTo("INGESTION_AUTH_FAILED");
+        Map<String, String> error = (Map<String, String>) result.get("error");
+        assertThat(error.get("code")).isEqualTo("INGESTION_AUTH_FAILED");
+        assertThat(result.get("userHint")).asString().isNotBlank();
     }
 
     // ───────── HTML unsupported format ─────────

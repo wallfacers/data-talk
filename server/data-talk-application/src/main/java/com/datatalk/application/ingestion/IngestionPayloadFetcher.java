@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Base64;
 import java.util.*;
 
 /**
@@ -84,7 +85,8 @@ public class IngestionPayloadFetcher {
         int rowsFetched,
         long bytesFetched,
         int pagesFetched,
-        String status
+        String status,
+        PayloadFormat format
     ) {}
 
     // ───────── main entry point ─────────
@@ -210,7 +212,8 @@ public class IngestionPayloadFetcher {
                 jobId, artifactId, acc.totalRows(), finalPayload.length));
 
             return new FetchResult(jobId, artifactId, acc.totalRows(), finalPayload.length,
-                pagesFetched, IngestionJobStatus.toCode(new IngestionJobStatus.Fetched()));
+                pagesFetched, IngestionJobStatus.toCode(new IngestionJobStatus.Fetched()),
+                request.format());
 
         } catch (Exception e) {
             long failedAt = System.currentTimeMillis();
@@ -237,7 +240,19 @@ public class IngestionPayloadFetcher {
 
             switch (cred.scheme()) {
                 case BEARER -> headers.put("Authorization", "Bearer " + secret);
-                case BASIC -> headers.put("Authorization", "Basic " + secret);
+                case BASIC -> {
+                    // RFC 7617: Authorization: Basic <base64(username:password)>.
+                    // Username lives in configNonSecret; password is the vault-sealed secret.
+                    // If no explicit username (legacy), treat the secret as the already-concatenated form.
+                    String username = cred.configNonSecret() != null
+                        ? cred.configNonSecret().get("username") : null;
+                    String credentialPair = (username != null && !username.isEmpty())
+                        ? username + ":" + secret
+                        : secret;
+                    headers.put("Authorization",
+                        "Basic " + Base64.getEncoder().encodeToString(
+                            credentialPair.getBytes(StandardCharsets.UTF_8)));
+                }
                 case API_KEY_HEADER -> {
                     String headerName = cred.configNonSecret().get("headerName");
                     if (headerName != null) headers.put(headerName, secret);
@@ -296,7 +311,12 @@ public class IngestionPayloadFetcher {
         if (currentPage >= spec.maxPages()) return null;
 
         return switch (spec.type()) {
-            case PAGE, OFFSET -> request.url(); // same URL, params change
+            // BUG-0019 / BUG-0020: PAGE and OFFSET pagination must stop when the upstream
+            // returns an empty page. Without this guard, the loop continues until maxPages
+            // and over-fetches by one (visible to tests as 5 hits instead of 4).
+            case PAGE, OFFSET -> pageResult.rowCount() <= 0 ? null : request.url();
+            // CURSOR termination relies on cursorValue extraction (see BUG-0021 for the
+            // top-level "next" key fix in JsonAccumulator.extractCursor).
             case CURSOR -> pageResult.cursorValue() != null ? request.url() : null;
             default -> null;
         };
@@ -395,7 +415,10 @@ public class IngestionPayloadFetcher {
 
         private static String extractCursor(JsonNode node) {
             if (!node.isObject()) return null;
-            for (String key : new String[]{"next_cursor", "nextCursor", "cursor", "next_page_token", "nextPageToken"}) {
+            // BUG-0021: add `next` to the top-level search — common shape `{ items, next }`
+            // (used by GitHub / fixtures) previously fell through to null because `next`
+            // was only searched inside nested envelope objects.
+            for (String key : new String[]{"next_cursor", "nextCursor", "cursor", "next_page_token", "nextPageToken", "next"}) {
                 JsonNode candidate = node.get(key);
                 if (candidate != null && candidate.isTextual()) return candidate.asText();
             }

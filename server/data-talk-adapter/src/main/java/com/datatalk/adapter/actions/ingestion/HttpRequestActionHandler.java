@@ -4,6 +4,7 @@ import com.datatalk.application.ingestion.IngestionPayloadFetcher;
 import com.datatalk.application.ingestion.IngestionPayloadFetcher.FetchRequest;
 import com.datatalk.application.ingestion.IngestionPayloadFetcher.FetchResult;
 import com.datatalk.domain.action.*;
+import com.datatalk.domain.ingestion.IngestionAuthFailedException;
 import com.datatalk.domain.ingestion.PaginationSpec;
 import com.datatalk.domain.ingestion.PaginationType;
 import com.datatalk.domain.ingestion.PayloadFormat;
@@ -59,7 +60,9 @@ public class HttpRequestActionHandler implements ActionHandler<Map, Map> {
         props.put("jobId", Map.of("type", "string"));
         props.put("payloadArtifactId", Map.of("type", "string"));
         props.put("status", Map.of("type", "string"));
+        props.put("payloadFormat", Map.of("type", "string"));
         props.put("rowsFetched", Map.of("type", "integer"));
+        props.put("rowCount", Map.of("type", "integer"));
         props.put("bytesFetched", Map.of("type", "integer"));
         props.put("pagesFetched", Map.of("type", "integer"));
         props.put("errorCode", Map.of("type", "string"));
@@ -93,7 +96,11 @@ public class HttpRequestActionHandler implements ActionHandler<Map, Map> {
             out.put("jobId", result.jobId());
             out.put("payloadArtifactId", result.payloadArtifactId());
             out.put("status", result.status());
+            if (result.format() != null) {
+                out.put("payloadFormat", result.format().name().toLowerCase());
+            }
             out.put("rowsFetched", result.rowsFetched());
+            out.put("rowCount", result.rowsFetched());
             out.put("bytesFetched", result.bytesFetched());
             out.put("pagesFetched", result.pagesFetched());
             return CompletableFuture.completedFuture(out);
@@ -110,6 +117,10 @@ public class HttpRequestActionHandler implements ActionHandler<Map, Map> {
             return CompletableFuture.completedFuture(
                 errorNode("INGESTION_FORMAT_UNSUPPORTED", e.getMessage(),
                     "This payload format is not yet supported."));
+        } catch (IngestionAuthFailedException e) {
+            return CompletableFuture.completedFuture(
+                errorNode("INGESTION_AUTH_FAILED", e.getMessage(),
+                    "Check the credential's secret matches the upstream's expected value."));
         } catch (Exception e) {
             return CompletableFuture.completedFuture(
                 errorNode("INGESTION_FETCH_FAILED", e.getMessage(),

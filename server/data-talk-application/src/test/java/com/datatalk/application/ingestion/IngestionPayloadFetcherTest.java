@@ -230,6 +230,59 @@ class IngestionPayloadFetcherTest {
             anyMap(), isNull(), anyLong());
     }
 
+    // ───────── BUG-0018: Basic auth must be Base64(username:password) per RFC 7617 ─────────
+
+    @Test
+    void basicCredentialInjectedAsBase64() throws Exception {
+        when(credService.readSecret("cred_basic")).thenReturn("p@ss");
+        when(credRepo.findById("cred_basic")).thenReturn(Optional.of(
+            new IngestionCredential("cred_basic", "basic-cred", AuthScheme.BASIC,
+                Map.of("username", "alice"), "vault_1", 1L, 1L)));
+        when(http.fetch(anyString(), anyString(), anyMap(), anyMap(), any(), anyLong()))
+            .thenReturn("[]".getBytes());
+        when(artifactService.registerExternal(
+            anyString(), any(), any(), isNull(), isNull(), any(Path.class),
+            anyString(), isNull(), anyMap()))
+            .thenReturn(mock(FileArtifact.class));
+
+        var request = new IngestionPayloadFetcher.FetchRequest(
+            "https://api.example.com/basic-protected", "GET", Map.of(), Map.of(), null, "cred_basic",
+            PayloadFormat.JSON, null, null, 60000L);
+        fetcher.fetch(request, "sess-1");
+
+        String expected = "Basic " + java.util.Base64.getEncoder().encodeToString(
+            "alice:p@ss".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        verify(http).fetch(eq("https://api.example.com/basic-protected"), eq("GET"),
+            argThat(headers -> expected.equals(headers.get("Authorization"))),
+            anyMap(), isNull(), anyLong());
+    }
+
+    @Test
+    void basicCredentialFallsBackToSecretAsUserPassWhenNoUsernameSet() throws Exception {
+        // Legacy mode: secret already contains "user:pass" pre-concatenated.
+        when(credService.readSecret("cred_legacy")).thenReturn("admin:secret123");
+        when(credRepo.findById("cred_legacy")).thenReturn(Optional.of(
+            new IngestionCredential("cred_legacy", "legacy-basic", AuthScheme.BASIC,
+                Map.of(), "vault_1", 1L, 1L)));
+        when(http.fetch(anyString(), anyString(), anyMap(), anyMap(), any(), anyLong()))
+            .thenReturn("[]".getBytes());
+        when(artifactService.registerExternal(
+            anyString(), any(), any(), isNull(), isNull(), any(Path.class),
+            anyString(), isNull(), anyMap()))
+            .thenReturn(mock(FileArtifact.class));
+
+        var request = new IngestionPayloadFetcher.FetchRequest(
+            "https://api.example.com/x", "GET", Map.of(), Map.of(), null, "cred_legacy",
+            PayloadFormat.JSON, null, null, 60000L);
+        fetcher.fetch(request, "sess-1");
+
+        String expected = "Basic " + java.util.Base64.getEncoder().encodeToString(
+            "admin:secret123".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        verify(http).fetch(eq("https://api.example.com/x"), eq("GET"),
+            argThat(headers -> expected.equals(headers.get("Authorization"))),
+            anyMap(), isNull(), anyLong());
+    }
+
     // ───────── pagination with PAGE type ─────────
 
     @Test
@@ -256,6 +309,96 @@ class IngestionPayloadFetcherTest {
         assertThat(result.pagesFetched()).isEqualTo(2);
         verify(http, times(2)).fetch(eq("https://api.example.com/paged"),
             eq("GET"), anyMap(), anyMap(), isNull(), anyLong());
+    }
+
+    // ───────── BUG-0019: PAGE pagination stops on empty page ─────────
+
+    @Test
+    void pagePaginationStopsOnEmptyPage() throws Exception {
+        // Pages 1-3 return 2 items each, page 4 returns empty. maxPages=5 so without
+        // the fix we'd fetch 5 pages; with the fix we should stop after page 4.
+        byte[] page1 = "[{\"id\":1},{\"id\":2}]".getBytes();
+        byte[] page2 = "[{\"id\":3},{\"id\":4}]".getBytes();
+        byte[] page3 = "[{\"id\":5},{\"id\":6}]".getBytes();
+        byte[] pageEmpty = "[]".getBytes();
+        when(http.fetch(eq("https://api.example.com/page"), eq("GET"),
+            anyMap(), anyMap(), isNull(), anyLong()))
+            .thenReturn(page1, page2, page3, pageEmpty);
+
+        when(artifactService.registerExternal(
+            anyString(), any(), any(), isNull(), isNull(), any(Path.class),
+            anyString(), isNull(), anyMap()))
+            .thenReturn(mock(FileArtifact.class));
+
+        PaginationSpec spec = new PaginationSpec(PaginationType.PAGE,
+            Map.of("pageParam", "page"), 5, null);
+        var request = new IngestionPayloadFetcher.FetchRequest(
+            "https://api.example.com/page", "GET", Map.of(), Map.of(), null, null,
+            PayloadFormat.JSON, spec, null, 60000L);
+        var result = fetcher.fetch(request, "sess-1");
+
+        verify(http, times(4)).fetch(eq("https://api.example.com/page"),
+            eq("GET"), anyMap(), anyMap(), isNull(), anyLong());
+        assertThat(result.rowsFetched()).isEqualTo(6);
+    }
+
+    // ───────── BUG-0020: OFFSET pagination stops on empty page ─────────
+
+    @Test
+    void offsetPaginationStopsOnEmptyPage() throws Exception {
+        byte[] page1 = "[{\"id\":1},{\"id\":2}]".getBytes();
+        byte[] page2 = "[{\"id\":3},{\"id\":4}]".getBytes();
+        byte[] page3 = "[{\"id\":5},{\"id\":6}]".getBytes();
+        byte[] pageEmpty = "[]".getBytes();
+        when(http.fetch(eq("https://api.example.com/offset"), eq("GET"),
+            anyMap(), anyMap(), isNull(), anyLong()))
+            .thenReturn(page1, page2, page3, pageEmpty);
+
+        when(artifactService.registerExternal(
+            anyString(), any(), any(), isNull(), isNull(), any(Path.class),
+            anyString(), isNull(), anyMap()))
+            .thenReturn(mock(FileArtifact.class));
+
+        PaginationSpec spec = new PaginationSpec(PaginationType.OFFSET,
+            Map.of("offsetParam", "offset", "limit", 2), 5, null);
+        var request = new IngestionPayloadFetcher.FetchRequest(
+            "https://api.example.com/offset", "GET", Map.of(), Map.of(), null, null,
+            PayloadFormat.JSON, spec, null, 60000L);
+        var result = fetcher.fetch(request, "sess-1");
+
+        verify(http, times(4)).fetch(eq("https://api.example.com/offset"),
+            eq("GET"), anyMap(), anyMap(), isNull(), anyLong());
+        assertThat(result.rowsFetched()).isEqualTo(6);
+    }
+
+    // ───────── BUG-0021: CURSOR pagination follows top-level `next` key ─────────
+
+    @Test
+    void cursorPaginationFollowsTopLevelNextKey() throws Exception {
+        // Each response carries top-level `next` — the previous code only found `next`
+        // inside nested envelope objects, so it stopped after the first request.
+        byte[] pageA = "{\"items\":[{\"id\":1},{\"id\":2}],\"next\":\"B\"}".getBytes();
+        byte[] pageB = "{\"items\":[{\"id\":3},{\"id\":4}],\"next\":\"C\"}".getBytes();
+        byte[] pageC = "{\"items\":[{\"id\":5}],\"next\":null}".getBytes();
+        when(http.fetch(eq("https://api.example.com/cursor"), eq("GET"),
+            anyMap(), anyMap(), isNull(), anyLong()))
+            .thenReturn(pageA, pageB, pageC);
+
+        when(artifactService.registerExternal(
+            anyString(), any(), any(), isNull(), isNull(), any(Path.class),
+            anyString(), isNull(), anyMap()))
+            .thenReturn(mock(FileArtifact.class));
+
+        PaginationSpec spec = new PaginationSpec(PaginationType.CURSOR,
+            Map.of("cursorParam", "cursor"), 5, null);
+        var request = new IngestionPayloadFetcher.FetchRequest(
+            "https://api.example.com/cursor", "GET", Map.of(), Map.of(), null, null,
+            PayloadFormat.JSON, spec, null, 60000L);
+        var result = fetcher.fetch(request, "sess-1");
+
+        verify(http, times(3)).fetch(eq("https://api.example.com/cursor"),
+            eq("GET"), anyMap(), anyMap(), isNull(), anyLong());
+        assertThat(result.rowsFetched()).isEqualTo(5);
     }
 
     // ───────── http fetch error ─────────

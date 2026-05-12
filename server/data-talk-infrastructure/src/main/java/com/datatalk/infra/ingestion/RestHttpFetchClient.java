@@ -1,10 +1,7 @@
 package com.datatalk.infra.ingestion;
 
 import com.datatalk.application.ingestion.HttpFetchClient;
-import com.datatalk.domain.ingestion.AuthScheme;
-import com.datatalk.domain.ingestion.IngestionCredential;
-import com.datatalk.application.ingestion.IngestionCredentialService;
-import com.datatalk.application.ingestion.repository.IngestionCredentialRepository;
+import com.datatalk.domain.ingestion.IngestionAuthFailedException;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -13,9 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.util.Base64;
 import java.util.Map;
-import java.util.Objects;
 
 @Component
 public class RestHttpFetchClient implements HttpFetchClient {
@@ -46,6 +41,12 @@ public class RestHttpFetchClient implements HttpFetchClient {
             .headers(h -> h.addAll(httpHeaders))
             .body(body != null ? body : "")
             .retrieve()
+            // BUG-0024: surface 401 as a typed auth failure so the handler can map it to
+            // INGESTION_AUTH_FAILED instead of the generic INGESTION_FETCH_FAILED bucket.
+            .onStatus(status -> status.value() == 401, (req, resp) -> {
+                throw new IngestionAuthFailedException(
+                    "Upstream returned 401 Unauthorized — credential likely invalid or expired");
+            })
             .toEntity(byte[].class);
 
         return response.getBody() != null ? response.getBody() : new byte[0];

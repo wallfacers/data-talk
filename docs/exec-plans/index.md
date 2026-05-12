@@ -6,6 +6,7 @@
 
 | [Next Implementation Roadmap](./2026-04-25-next-implementation-roadmap-plan.md) | 2026-04-25 | 下一阶段路线图：Tasks 1-7 全部完成；Task 8 Dashboard P1+bezel+FileArtifact 集成已 ship，12 屏重设计已 ship；Task 9 Wave A 4/4 + Wave B 7/7 + Wave C 6/6 完成（17 个 first-class kind）；Task 10 已启动（外部数据采集 skill 驱动）；Task 11 5 Part 全链路闭环。明确排除虚拟滚动。 |
 | [Phase 3 Roadmap](./2026-05-12-phase-3-roadmap-plan.md) | 2026-05-12 | 三期路线图：砍掉传统 DBA 运维（权限/备份/迁移/存储过程），聚焦数据流通 + 智能报告。4 条主线：Task 12 AI 文件上传与智能识别（核心入口）→ Task 13 对话式数据导入导出（流通闭环）→ Task 14 智能报告生成 PDF/HTML/Markdown（分析产出）；Task 10 外部数据采集从二期延续。依赖链：12 → 13 → 14，10 与 13 可部分并行。 |
+| [Ingestion E2E BUGs Fix](./2026-05-13-ingestion-e2e-bugs-fix-plan.md) | 2026-05-13 | E2E 测试稳定后暴露 8 个后端 BUG（BUG-0017 → BUG-0024）：http_request 缺 payloadFormat、Basic auth 明文非 Base64、3 种分页终止条件失效、CSV/HTML 解析无类型转换、INTEGER_64 提升缺失、401 → INGESTION_AUTH_FAILED 错误码映射。5 个执行批次（独立批次内并行），目标 E2E API/MCP 套件 32 → ≥50/54 通过。Parent: [ingestion-e2e-playwright-plan](./2026-05-12-ingestion-e2e-playwright-plan.md)。 |
 
 
 ## 已完成计划

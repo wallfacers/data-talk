@@ -27,7 +27,9 @@ public class CsvPayloadParser implements PayloadParser {
             String[] row = rows.get(r);
             for (int c = 0; c < colCount; c++) {
                 String val = c < row.length ? row[c] : null;
-                columns.get(c).add(val);
+                // BUG-0022: coerce numeric / boolean cell strings so TypeInferrer
+                // can vote INTEGER / DECIMAL / BOOLEAN instead of STRING.
+                columns.get(c).add(TabularValueCoercer.coerce(val));
             }
         }
 
@@ -143,7 +145,11 @@ public class CsvPayloadParser implements PayloadParser {
                 String[] vals = parseCsvLine(line);
                 Map<String, Object> row = new LinkedHashMap<>();
                 for (int c = 0; c < hdr.length; c++) {
-                    row.put(hdr[c].trim(), c < vals.length ? vals[c].trim() : null);
+                    // BUG-0022: streaming ingest path mirrors the inference coercion so
+                    // declared INTEGER / DECIMAL columns receive correctly-typed values
+                    // for the JDBC insert.
+                    row.put(hdr[c].trim(),
+                        c < vals.length ? TabularValueCoercer.coerce(vals[c]) : null);
                 }
                 return row;
             }

@@ -91,13 +91,15 @@ class RowStreamTest {
         }
 
         assertThat(rows).hasSize(3);
+        // BUG-0022: CSV streaming coerces numeric cells so JDBC insert receives
+        // typed values, matching the inferred column types.
         assertThat(rows.get(0))
-            .containsEntry("id", "1")
+            .containsEntry("id", 1)
             .containsEntry("name", "Alice")
-            .containsEntry("score", "95");
+            .containsEntry("score", 95);
         assertThat(rows.get(2))
             .containsEntry("name", "Charlie")
-            .containsEntry("score", "72");
+            .containsEntry("score", 72);
     }
 
     @Test

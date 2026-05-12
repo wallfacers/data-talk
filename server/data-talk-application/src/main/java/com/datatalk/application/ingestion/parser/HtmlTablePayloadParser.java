@@ -51,7 +51,10 @@ public class HtmlTablePayloadParser implements PayloadParser {
                 Elements cells = dataRows.get(r).select("td");
                 for (int c = 0; c < colCount; c++) {
                     String val = c < cells.size() ? cells.get(c).text().trim() : null;
-                    columns.get(c).add(val.isEmpty() ? null : val);
+                    // BUG-0022: coerce numeric / boolean cell text so TypeInferrer
+                    // can vote INTEGER / DECIMAL / BOOLEAN for HTML <table> cells.
+                    columns.get(c).add(
+                        (val == null || val.isEmpty()) ? null : TabularValueCoercer.coerce(val));
                 }
             }
 
@@ -117,7 +120,10 @@ public class HtmlTablePayloadParser implements PayloadParser {
                 Map<String, Object> row = new LinkedHashMap<>();
                 for (int c = 0; c < colCount; c++) {
                     String val = c < cells.size() ? cells.get(c).text().trim() : null;
-                    row.put(headers.get(c), (val != null && val.isEmpty()) ? null : val);
+                    // BUG-0022: streaming ingest mirrors the inference coercion so
+                    // typed columns receive Java primitives for the JDBC insert.
+                    row.put(headers.get(c),
+                        (val == null || val.isEmpty()) ? null : TabularValueCoercer.coerce(val));
                 }
                 rows.add(row);
             }
