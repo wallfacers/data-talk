@@ -1,6 +1,6 @@
 # Ingestion Epic — End-to-End Playwright Verification Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans`. Steps use checkbox (`- [ ]`) syntax. Discovered product BUGs **MUST** be filed under `docs/bugs/` per CLAUDE.md "BUG Tracking Gate" — never report defects only in chat. Even N=0 must be stated in the final report.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans`. Steps use checkbox (`- [x]`) syntax. Discovered product BUGs **MUST** be filed under `docs/bugs/` per CLAUDE.md "BUG Tracking Gate" — never report defects only in chat. Even N=0 must be stated in the final report.
 
 **Goal:** Drive every user-visible and integration-visible behaviour delivered by the External Data Ingestion epic (parent plan `2026-05-12-external-data-ingestion-skills-plan.md` Phases 1-6 + follow-up plan `2026-05-12-ingestion-skills-followup-plan.md` Phases A-D) through Playwright end-to-end tests. Coverage spans REST + MCP + Stage UI + Settings UI + SSE event flow + skill bundle deployment + error paths.
 
@@ -489,7 +489,7 @@ cd client && npx playwright test ingestion-preflight.spec.ts --reporter=line
 8. DELETE by id → 204.
 9. DELETE while a job references the credential → 409 unless `?force=true`.
 
-- [ ] **Step T1.2.1: Write spec**
+- [x] **Step T1.2.1: Write spec**
 
 ```ts
 import { test, expect } from '@playwright/test'
@@ -587,7 +587,7 @@ test.describe('@e2e @ingestion @api Credential REST', () => {
 
 (Fill the three `/* mirror */` test bodies in full — repeat the same pattern with the relevant scheme. Do not abbreviate. The plan's "No Placeholders" rule applies to the engineer; this plan body shows the pattern once and asks for explicit repetition.)
 
-- [ ] **Step T1.2.2: Run + commit**
+- [x] **Step T1.2.2: Run + commit**
 
 ```bash
 cd client && npx playwright test ingestion-credentials-api.spec.ts --reporter=line
@@ -603,7 +603,7 @@ git commit -m "test(ingestion): T1.2 — credential REST CRUD across 5 auth sche
 
 **Scope (9 invariants):** SSRF allowed (e2e profile), JSON / JSONL / CSV / HTML formats roundtrip; bearer/header-key/query-key/basic auth schemes; pagination page/offset/cursor; oversized payload 413 mapping; atomic write integrity (job stays in `fetching` with `errorMessage` set on cap exceed).
 
-- [ ] **Step T1.3.1: Write spec**
+- [x] **Step T1.3.1: Write spec**
 
 ```ts
 import { test, expect } from '@playwright/test'
@@ -699,7 +699,7 @@ test.describe('@e2e @ingestion @api HTTP fetch via datatalk_http_request', () =>
 
 (Fill `/* mirror */` test bodies explicitly — three pagination variants and three auth variants. Do not abbreviate; the engineer reads tests linearly and must not be sent to look up a sibling test for the pattern.)
 
-- [ ] **Step T1.3.2: Run + commit**
+- [x] **Step T1.3.2: Run + commit**
 
 ```bash
 cd client && npx playwright test ingestion-fetch-mcp.spec.ts --reporter=line
@@ -723,7 +723,7 @@ git commit -m "test(ingestion): T1.3 — datatalk_http_request 4 formats + 4 aut
 7. Type inference promotes integers above 2³¹ to `INTEGER_64`.
 8. `mappingHash` persisted on job after infer — call `get_ingestion_job` and assert non-null SHA-256 hex string.
 
-- [ ] **Step T1.4.1: Write spec — full bodies, no abbreviation**
+- [x] **Step T1.4.1: Write spec — full bodies, no abbreviation**
 
 Follow the pattern in T1.3 (mock server `beforeAll`, reset `beforeEach`). For each invariant build a payload via the mock server (already includes `/json/users`, `/jsonl/events`, `/csv/orders`, `/html/leaderboard`), call `http_request`, then `infer_ingestion_schema`, then `get_ingestion_job` to assert the mapping plus `mappingHash` shape.
 
@@ -759,7 +759,7 @@ Add tests 5-7 by:
 - **Test 6** (heterogeneous values): extend the mock server with a new route `/json/heterogeneous-id` returning `[{"id":1},{"id":2},{"id":"3-abc"}]`. Add the route in this spec via `test.beforeAll` setup (separate small mock server), or amend `ingestion-fixtures.ts` to include the route — if amended, mention the diff in this task's commit message.
 - **Test 7** (INTEGER_64 promotion): mock returns `[{"v":3000000000}]` (> 2^31). Expected: `INTEGER_64`.
 
-- [ ] **Step T1.4.2: Run + commit**
+- [x] **Step T1.4.2: Run + commit**
 
 ```bash
 cd client && npx playwright test ingestion-infer-mcp.spec.ts --reporter=line
@@ -780,7 +780,7 @@ git commit -m "test(ingestion): T1.4 — schema inference per format + type fall
 4. `create_ingestion_table` with an unsupported `kind` (e.g. `oracle`, `mariadb`) returns `INGESTION_DIALECT_UNSUPPORTED` error code.
 5. Generated identifiers are dialect-correct quoted (backticks for MySQL, `"…"` for PG/H2/SQLite) — assert by parsing the returned `ddl` field.
 
-- [ ] **Step T1.5.1: Write spec**
+- [x] **Step T1.5.1: Write spec**
 
 ```ts
 import { test, expect } from '@playwright/test'
@@ -859,7 +859,7 @@ test.describe('@e2e @ingestion @api DDL generation + execution', () => {
 })
 ```
 
-- [ ] **Step T1.5.2: Run + commit**
+- [x] **Step T1.5.2: Run + commit**
 
 ```bash
 cd client && npx playwright test ingestion-ddl-mcp.spec.ts --reporter=line
@@ -886,11 +886,11 @@ git commit -m "test(ingestion): T1.5 — DDL adapter happy path + unsupported di
 9. `ingest_payload` against a malformed payload artifact → job status `failed`, `errorMessage` set.
 10. Streaming verification: ingest the `/error/oversized` payload — should NOT OOM (process stays alive) and either completes or fails cleanly within the timeout.
 
-- [ ] **Step T1.6.1: Write spec**
+- [x] **Step T1.6.1: Write spec**
 
 Use the `fetchInferConfirm` helper from T1.5 (extract to `ingestion-fixtures.ts` if multiple specs need it — mention in commit). Tests 4-6 chain through to `create_ingestion_table`. Test 7 either uses a backend test hook to shorten TTL or is marked `test.fixme` with a clear note pointing at `IngestionConfirmedTokenStoreTest` (which already covers it as unit test).
 
-- [ ] **Step T1.6.2: Run + commit**
+- [x] **Step T1.6.2: Run + commit**
 
 ```bash
 cd client && npx playwright test ingestion-execute-mcp.spec.ts --reporter=line
@@ -1065,17 +1065,17 @@ git commit -m "test(ingestion): T2.1 — Settings Credentials UI 5-scheme + crea
 12. DDL preview is visible whenever columns exist.
 13. PayloadPreviewTable populated from `/payload-preview` endpoint.
 
-- [ ] **Step T2.2.1: Seed approach**
+- [x] **Step T2.2.1: Seed approach**
 
 Each test seeds a fully populated `ingestion_job` row via REST (use `adapterClient.mcpCall('http_request', ...)` + `mcpCall('infer_ingestion_schema', ...)` against the mock server, then open the Tab by calling `useStageStore.getState().openTab(...)` through `__DT_E2E__`). The Tab renders against the seeded job — no AI loop required.
 
 For phase transitions in tests 6, 7, 8, 9: call the backend REST `confirm`/`cancel` endpoints directly (or insert appropriate status updates via REST) and assert the UI reacts within ~3 s (polling cadence is 3 s for the job detail query).
 
-- [ ] **Step T2.2.2: Write spec — full bodies for all 13 tests**
+- [x] **Step T2.2.2: Write spec — full bodies for all 13 tests**
 
 (The plan above gives the assertion goals. Each test must be self-contained with seeding + assertion + cleanup. Do not write helper functions that are referenced but not defined.)
 
-- [ ] **Step T2.2.3: Run + commit**
+- [x] **Step T2.2.3: Run + commit**
 
 ```bash
 cd client && npx playwright test ingestion-job-tab-ui.spec.ts --reporter=line
@@ -1096,11 +1096,11 @@ git commit -m "test(ingestion): T2.2 — Stage ingestion_job Tab 13 invariants (
 4. Search input filters by source URL / target table / id.
 5. Double-clicking a row opens the corresponding `ingestion_job` Tab.
 
-- [ ] **Step T2.3.1: Write spec — full bodies**
+- [x] **Step T2.3.1: Write spec — full bodies**
 
 Use `seedH2Connection` + `mcpCall('http_request', ...)` + `mcpCall('infer_ingestion_schema', ...)` to seed multiple jobs; for variety, intentionally cancel one job and let another fail (via `/error/401` route).
 
-- [ ] **Step T2.3.2: Run + commit**
+- [x] **Step T2.3.2: Run + commit**
 
 ```bash
 cd client && npx playwright test ingestion-library-tab-ui.spec.ts --reporter=line
@@ -1120,7 +1120,7 @@ For each of the 8 ingestion permits (`IngestionJobCreated`, `IngestionPayloadFet
 - The event is observable on the SessionBus SSE stream when the corresponding action runs.
 - The Stage UI reacts: for `IngestionJobCreated` → the Tab opens; for `IngestionWriteProgress` → the Writing phase updates `rowsInserted`; etc.
 
-- [ ] **Step T2.4.1: Hook EventSource via page.evaluate**
+- [x] **Step T2.4.1: Hook EventSource via page.evaluate**
 
 ```ts
 async function captureSse(page: import('@playwright/test').Page, sessionId: string) {
@@ -1148,7 +1148,7 @@ async function captureSse(page: import('@playwright/test').Page, sessionId: stri
 
 Then run a fetch → infer → confirm → create-table → ingest sequence and assert `await page.evaluate(() => (window as any).__SSE_CAPTURED)` contains entries for each event name.
 
-- [ ] **Step T2.4.2: Write 8 named tests; commit**
+- [x] **Step T2.4.2: Write 8 named tests; commit**
 
 ```bash
 cd client && npx playwright test ingestion-sse-events.spec.ts --reporter=line

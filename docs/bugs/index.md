@@ -14,7 +14,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 | ID | Title | Priority | Source | Modules | Discovered |
 |----|-------|----------|--------|---------|------------|
-| BUG-0013 | http_request action returns null for required output fields causing schema validation failure | P1 | e2e-playwright | ingestion | 2026-05-12 |
+| [BUG-0013](BUG-0013-http-request-null-output-fields.md) | http_request action returns null for required output fields causing schema validation failure | fixed | e2e-playwright | ingestion | 2026-05-12 |
 | [BUG-0014](BUG-0014-ssrf-deny-list-not-blocking-169-254.md) | SSRF deny list not blocking 169.254.169.254 with e2e profile | P1 | e2e-playwright | ingestion | 2026-05-12 |
 | [BUG-0015](BUG-0015-oversized-payload-not-marked-failed.md) | Oversized payload not marked as failed with INGESTION_PAYLOAD_TOO_LARGE | P1 | e2e-playwright | ingestion | 2026-05-12 |
 
