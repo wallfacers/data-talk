@@ -1,0 +1,11 @@
+# E2E test profile — NEVER load in production/staging/shared-dev
+# Relaxes SSRF deny so local mock HTTP server on 127.0.0.1 is reachable.
+# Lowers payload-max-bytes to 1 MB so "payload too large" path can be exercised quickly.
+datatalk:
+  ingestion:
+    ssrf-deny-enabled: false
+    fetch-timeout-ms: 5000
+    payload-max-bytes: 1048576
+spring:
+  flyway:
+    locations: classpath:db/migration

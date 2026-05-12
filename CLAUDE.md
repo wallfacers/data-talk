@@ -160,6 +160,11 @@ DataTalk 运行时偏差通过 `docs/bugs/` 集中记录。详见 [docs/bugs/ind
 - The 500MB cap is enforced by `IngestionPayloadFetcher` before final atomic rename — partial writes go to `payload.staging` and are deleted on overrun. Do not attempt to short-circuit the staging step
 - `IngestionConfirmedToken` is in-memory only (`ConcurrentHashMap`, 5-min TTL, single-use). It is not persisted across server restarts — clients must re-confirm after a restart
 
+### Ingestion E2E Profile
+
+- Playwright ingestion specs (`tests/e2e/ingestion-*.spec.ts`) require the backend to be launched with `SPRING_PROFILES_ACTIVE=e2e`. This relaxes SSRF deny so the local mock HTTP server on `127.0.0.1` is reachable and lowers `payload-max-bytes` to 1 MB so the "payload too large" path can be exercised within ~1 s
+- Never start the backend with this profile in production, staging, or shared dev environments
+
 ### Brainstorming
 
 - Major changes (new modules, architecture adjustments, cross-layer refactors spanning domain/application/infrastructure/adapter) **MUST** invoke the `brainstorming` skill first
