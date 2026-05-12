@@ -54,7 +54,8 @@ class InferIngestionSchemaActionHandlerTest {
         assertThat(columns).hasSize(2);
         assertThat(columns.get(0)).containsEntry("sourcePath", "$.name");
         assertThat(columns.get(0)).containsEntry("targetName", "name");
-        assertThat(columns.get(0)).containsEntry("type", "string_256");
+        // BUG-0025: handler emits uppercase enum name for MCP / E2E callers.
+        assertThat(columns.get(0)).containsEntry("type", "STRING_256");
 
         String ddl = (String) result.get("suggestedDdl");
         assertThat(ddl).contains("CREATE TABLE").contains("\"name\"").contains("VARCHAR(256)");

@@ -110,7 +110,10 @@ public class InferIngestionSchemaActionHandler implements ActionHandler<Map, Map
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("sourcePath", col.sourcePath());
         m.put("targetName", col.targetName());
-        m.put("type", col.type().dbValue());
+        // BUG-0025: emit the uppercase enum constant name (INTEGER_32, STRING_64, ...)
+        // so MCP callers / E2E tests can match against the canonical enum surface.
+        // `dbValue()` (lowercase) stays as the persistence / JSON-enum representation.
+        m.put("type", col.type().name());
         m.put("skip", col.skip());
         m.put("sampleValues", col.sampleValues());
         m.put("nullable", col.nullable());

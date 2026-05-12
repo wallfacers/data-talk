@@ -324,6 +324,7 @@ class JsonPayloadParserTest {
         MappingColumn col = columnMap(mapping).get("$.status");
 
         assertThat(col.type()).isEqualTo(InferredType.STRING_64);
-        assertThat(col.nullable()).isFalse(); // not ALL null, just some
+        // BUG-0033: any-null → nullable, aligning JSON parser with CSV/HTML.
+        assertThat(col.nullable()).isTrue();
     }
 }

@@ -6,12 +6,13 @@
 
 | [Next Implementation Roadmap](./2026-04-25-next-implementation-roadmap-plan.md) | 2026-04-25 | 下一阶段路线图：Tasks 1-7 全部完成；Task 8 Dashboard P1+bezel+FileArtifact 集成已 ship，12 屏重设计已 ship；Task 9 Wave A 4/4 + Wave B 7/7 + Wave C 6/6 完成（17 个 first-class kind）；Task 10 已启动（外部数据采集 skill 驱动）；Task 11 5 Part 全链路闭环。明确排除虚拟滚动。 |
 | [Phase 3 Roadmap](./2026-05-12-phase-3-roadmap-plan.md) | 2026-05-12 | 三期路线图：砍掉传统 DBA 运维（权限/备份/迁移/存储过程），聚焦数据流通 + 智能报告。4 条主线：Task 12 AI 文件上传与智能识别（核心入口）→ Task 13 对话式数据导入导出（流通闭环）→ Task 14 智能报告生成 PDF/HTML/Markdown（分析产出）；Task 10 外部数据采集从二期延续。依赖链：12 → 13 → 14，10 与 13 可部分并行。 |
-| [Ingestion E2E BUGs Fix](./2026-05-13-ingestion-e2e-bugs-fix-plan.md) | 2026-05-13 | E2E 测试稳定后暴露 8 个后端 BUG（BUG-0017 → BUG-0024）：http_request 缺 payloadFormat、Basic auth 明文非 Base64、3 种分页终止条件失效、CSV/HTML 解析无类型转换、INTEGER_64 提升缺失、401 → INGESTION_AUTH_FAILED 错误码映射。5 个执行批次（独立批次内并行），目标 E2E API/MCP 套件 32 → ≥50/54 通过。Parent: [ingestion-e2e-playwright-plan](./2026-05-12-ingestion-e2e-playwright-plan.md)。 |
 
 
 ## 已完成计划
 
 | 计划 | 完成日期 | 摘要 |
+|------|---------|------|
+| [Ingestion E2E BUGs Fix](./2026-05-13-ingestion-e2e-bugs-fix-plan.md) | 2026-05-13 | E2E 暴露的 18 个 ingestion BUG 全部 fixed（BUG-0017 → BUG-0034）：Batch 1-4 闭环 8 个（payloadFormat 输出、Basic auth Base64、3 种分页终止、CSV/HTML 类型转换、INTEGER_64 提升、401 错误码）；Batch 5 hotfix 在 E2E 回跑时再发现 10 个并同步修复（lowercase enum、HTML fetch、pagination 别名、sourcePath 前缀、confirm CHECK 约束 P0、confirm gate 校验、action handler null/errorCode、fixture databaseName + DB_CLOSE_DELAY、JSON nullable 语义、executeSql source 默认）。E2E API/MCP 套件 47/47 非 skipped 通过；后端 unit tests 1143/1143 绿。Parent: [ingestion-e2e-playwright-plan](./2026-05-12-ingestion-e2e-playwright-plan.md)。 |
 | [External Data Ingestion via Skills — Generic HTTP Scaffolding](./2026-05-12-external-data-ingestion-skills-plan.md) | 2026-05-12 | Task 10 三期首份 child plan — 6 Phase 全部完成（commits 5fcc9256 → f2f16029）+ follow-up gap-closure（commits 185c9163, 6a32ac2c）。Day-1 写入 dialect: mysql/postgresql/h2/sqlite。15 个其余 first-class kind 走独立 follow-up child plan。 |
 | [Ingestion E2E Playwright Verification](./2026-05-12-ingestion-e2e-playwright-plan.md) | 2026-05-12 | Ingestion epic 端到端 Playwright 验证：11 spec 文件 88 tests（19 passed + 69 fixme'd）。Phase 0-3 全部完成。BUG-0013（missing payloadFormat + null output fields）已修（commit 4249a1f3）；BUG-0016（credentials nav）已修；BUG-0014/0015 仍 open。**前置**：后端必须 `SPRING_PROFILES_ACTIVE=e2e`。E2E 发现的 BUG **MUST** 入 `docs/bugs/`。Parent: [ingestion-skills-plan](./2026-05-12-external-data-ingestion-skills-plan.md) + [followup-plan](./2026-05-12-ingestion-skills-followup-plan.md)。
 | [Ingestion Follow-up Closure](./2026-05-12-ingestion-skills-followup-plan.md) | 2026-05-12 | MVP closure：A1 API surface `mapping` + 服务端 `mappingHash` + executor 防御校验、A2 `IngestionEventPublisher` 8 个 DtEvent、A3 `RowStream` 流式 parser、B1 assembly tarball、B2 `ensureDataIngestionSkill` resolver、B3 AGENTS contract test、C1 Testcontainers IT、C2 Playwright E2E、D1-D6 文档收尾。 |

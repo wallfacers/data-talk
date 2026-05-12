@@ -189,20 +189,26 @@ class IngestionPayloadFetcherTest {
         verify(jobRepo).updateStatus(anyString(), eq("failed"), anyString(), anyLong());
     }
 
-    // ───────── HTML throws UnsupportedOperationException ─────────
+    // ───────── BUG-0026: HTML fetch keeps raw bytes for later parsing ─────────
 
     @Test
-    void htmlFormatThrowsNotImplemented() throws Exception {
+    void htmlFormatPassesPayloadThroughAccumulator() throws Exception {
         when(http.fetch(anyString(), anyString(), anyMap(), anyMap(), any(), anyLong()))
-            .thenReturn("<html><body>data</body></html>".getBytes());
+            .thenReturn("<html><body><table><tr><td>data</td></tr></table></body></html>".getBytes());
+        when(artifactService.registerExternal(
+            anyString(), any(), any(), isNull(), isNull(), any(Path.class),
+            anyString(), isNull(), anyMap()))
+            .thenReturn(mock(FileArtifact.class));
 
         var request = new IngestionPayloadFetcher.FetchRequest(
             "https://api.example.com/html", "GET", Map.of(), Map.of(), null, null,
             PayloadFormat.HTML, null, null, 60000L);
 
-        assertThatThrownBy(() -> fetcher.fetch(request, "sess-1"))
-            .isInstanceOf(UnsupportedOperationException.class)
-            .hasMessageContaining("not yet implemented");
+        var result = fetcher.fetch(request, "sess-1");
+
+        assertThat(result.status()).isEqualTo("fetched");
+        assertThat(result.format()).isEqualTo(PayloadFormat.HTML);
+        assertThat(result.bytesFetched()).isGreaterThan(0);
     }
 
     // ───────── credential injection ─────────

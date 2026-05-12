@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
-import { MultiModeConnectionFields, type CompatibilityMode } from '../multi-mode-connection-fields'
+import { MultiModeConnectionFields } from '../multi-mode-connection-fields'
 
 vi.mock('@/i18n/use-i18n', () => ({
   useI18n: () => ({
@@ -70,7 +70,7 @@ describe('MultiModeConnectionFields', () => {
   })
 
   it('selected option has a non-color state indicator (inner dot)', () => {
-    const { container } = renderMultiMode({ mode: 'mysql' })
+    renderMultiMode({ mode: 'mysql' })
     const selectedRadio = screen.getByRole('radio', { name: 'connection.compatibilityMode.mysql' })
     // The inner dot span should exist inside the selected radio
     const innerDot = selectedRadio.querySelector('span.rounded-full.bg-\\[var\\(--color-accent-primary\\)\\]')

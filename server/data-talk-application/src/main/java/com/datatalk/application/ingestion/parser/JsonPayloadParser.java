@@ -86,7 +86,10 @@ public class JsonPayloadParser implements PayloadParser {
             List<Object> values = entry.getValue();
 
             InferredType type = TypeInferrer.infer(values);
-            boolean nullable = TypeInferrer.allNull(values);
+            // BUG-0033: nullable should be true if ANY value is null, not only when ALL are.
+            // Aligns with CSV/HTML parsers; otherwise DDL emits NOT NULL for a column that
+            // legitimately contains nulls, breaking INSERTs.
+            boolean nullable = TypeInferrer.allNull(values) || values.stream().anyMatch(java.util.Objects::isNull);
             List<String> sampleValues = TypeInferrer.collectSampleValues(values, MAX_SAMPLE_VALUES);
 
             String targetName = sourcePath.startsWith("$.")

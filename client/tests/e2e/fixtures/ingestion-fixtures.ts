@@ -165,15 +165,19 @@ function error(res: ServerResponse, status: number, body: unknown) {
 
 export async function seedH2Connection(request: APIRequestContext, name = 'e2e_h2_target'): Promise<string> {
   const client = adapterClient(request)
+  // BUG-0032: backend DTO field is `databaseName`, not `database`. Pass an explicit
+  // in-memory H2 URL with DB_CLOSE_DELAY=-1 so the DB survives connection churn
+  // between create_ingestion_table and ingest_payload (each opens a fresh
+  // DriverManager connection — without DB_CLOSE_DELAY, H2 disposes the in-memory
+  // database when the last connection closes, and the second open sees an empty DB).
   const res = await client.createConnection({
     name,
     kind: 'h2',
     host: 'mem',
     port: 0,
-    database: `e2e_${Date.now()}`,
+    databaseName: `mem:e2e_${Date.now()};DB_CLOSE_DELAY=-1;MODE=PostgreSQL`,
     username: 'sa',
     password: '',
-    options: { mode: 'PostgreSQL' },
   })
   if (!res.ok()) throw new Error(`seed connection failed: ${res.status()}`)
   const body = await res.json()

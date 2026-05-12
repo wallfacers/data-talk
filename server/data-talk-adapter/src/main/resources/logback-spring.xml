@@ -28,8 +28,8 @@
         </rollingPolicy>
     </appender>
 
-    <!-- Dev profile (also default when no profile specified): console only -->
-    <springProfile name="dev,default">
+    <!-- Dev profile (also default when no profile specified) + e2e: console only -->
+    <springProfile name="dev,default,e2e">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
         </root>

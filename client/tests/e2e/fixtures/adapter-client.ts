@@ -161,8 +161,10 @@ export function adapterClient(request: APIRequestContext) {
       request.post(`${BASE}/api/stage/tabs/${id}/payload-beacon`, { data: body }),
 
     // ── SQL ──
+    // BUG-0034: backend requires source ∈ {'user','ai'} — fixture defaults to 'user'
+    // so simple SELECT smoke checks (`SELECT COUNT(*) FROM ...`) don't have to repeat it.
     executeSql: (body: Record<string, unknown>) =>
-      request.post(`${BASE}/api/sql/execute`, { data: body }),
+      request.post(`${BASE}/api/sql/execute`, { data: { source: 'user', ...body } }),
 
     // ── Diagnostics ──
     explainQuery: (sessionId: string, sql: string) =>

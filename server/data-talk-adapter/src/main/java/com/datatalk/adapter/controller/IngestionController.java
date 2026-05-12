@@ -295,10 +295,37 @@ public class IngestionController {
         if (job.isEmpty()) return ResponseEntity.notFound().build();
 
         IngestionJob j = job.get();
+        // BUG-0030: confirm requires (a) a populated mapping (infer must have run)
+        // and (b) the job is not in a terminal state (cancelled/failed/completed/writing).
+        // The status field never actually transitions to 'awaiting_confirm' in current
+        // main code — infer just persists the mapping and leaves status at 'fetched',
+        // so we gate on mapping presence + terminal-state exclusion.
+        if (j.mapping() == null) {
+            return ResponseEntity.status(409).body(Map.of(
+                "error", Map.of(
+                    "code", "INGESTION_JOB_NOT_CONFIRMABLE",
+                    "reason", "job has no mapping; run infer_ingestion_schema first"
+                ),
+                "userHint", "Run infer_ingestion_schema first to build the mapping."
+            ));
+        }
+        String s = j.status();
+        if ("cancelled".equals(s) || "failed".equals(s) || "completed".equals(s) || "writing".equals(s)) {
+            return ResponseEntity.status(409).body(Map.of(
+                "error", Map.of(
+                    "code", "INGESTION_JOB_NOT_CONFIRMABLE",
+                    "reason", "job is in terminal state: " + s
+                ),
+                "userHint", "Job already terminated; start a new ingestion."
+            ));
+        }
+
         String hash = j.mappingHash() != null ? j.mappingHash() : MappingHash.compute(j.mapping());
         var token = tokenStore.issue(id, hash);
 
-        jobRepo.updateStatus(id, "confirmed", null, System.currentTimeMillis());
+        // BUG-0029: do NOT write status='confirmed' — that value is not in the
+        // CHECK enum. Status stays at awaiting_confirm; the transition to 'writing'
+        // is owned by IngestionExecutor.createTable after it consumes the token.
         return ResponseEntity.ok(Map.of(
             "tokenId", token.tokenId(),
             "expiresAt", token.expiresAt(),

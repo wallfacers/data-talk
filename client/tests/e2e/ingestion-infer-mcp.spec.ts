@@ -1,6 +1,5 @@
 import { test, expect } from '@playwright/test'
 import { adapterClient } from './fixtures/adapter-client'
-import { execSqlite } from './fixtures/mcp-context'
 import { startMockIngestionServer, type MockServer } from './fixtures/ingestion-fixtures'
 
 let mock: MockServer
@@ -8,17 +7,14 @@ let mock: MockServer
 test.beforeAll(async ({ request }) => {
   mock = await startMockIngestionServer()
 
-  // Seed a session row with opencode_sid so MCP bridge can resolve context.
-  // Use 127.0.0.1 explicitly to avoid IPv6 ::1 resolution issues.
+  // Reuse the preloaded session (seeded before backend boot so it was
+  // registered in the in-memory OpenCodeSessionMap). Do NOT change
+  // opencode_sid — the backend's in-memory map was populated with the
+  // value present at boot time.
   const BASE = 'http://127.0.0.1:8080'
-  const createRes = await request.post(`${BASE}/api/sessions`, { data: { title: 'e2e-ingestion-test' } })
-  if (!createRes.ok()) throw new Error(`Failed to create session: ${createRes.status()}`)
-  const sessionBody = await createRes.json() as { id: string }
-  const sessionId = sessionBody.id
-  const ocSid = `e2e-oc-${Date.now()}`
-  // Use the shared Python sqlite3 helper so the spec doesn't depend on the
-  // sqlite3 CLI (absent on bare WSL2 / Ubuntu minimal setups).
-  execSqlite(`UPDATE sessions SET opencode_sid = '${ocSid}' WHERE id = '${sessionId}';`)
+  const listRes = await request.get(`${BASE}/api/sessions`)
+  const sessions = await listRes.json() as Array<{ id: string }>
+  if (!sessions.length) throw new Error('No sessions found — seed one before running tests')
 })
 test.afterAll(async () => { await mock.stop() })
 test.beforeEach(() => mock.reset())

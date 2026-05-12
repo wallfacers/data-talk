@@ -152,7 +152,29 @@ public class HttpRequestActionHandler implements ActionHandler<Map, Map> {
         if (paginationMap == null || paginationMap.isEmpty()) return null;
         String typeStr = String.valueOf(paginationMap.get("type"));
         PaginationType type = PaginationType.valueOf(typeStr.toUpperCase());
-        Map<String, Object> params = (Map<String, Object>) paginationMap.getOrDefault("params", Map.of());
+        Map<String, Object> params = new LinkedHashMap<>(
+            (Map<String, Object>) paginationMap.getOrDefault("params", Map.of()));
+
+        // BUG-0027: accept top-level shortcuts (`param`, `initial`, `pageSize`) and
+        // fold them into the canonical `params` map. Without this, the test-friendly
+        // shape `{ type: 'offset', param: 'offset', initial: 0, pageSize: 2 }` would
+        // be silently ignored and the fetcher would use default limit=100, breaking
+        // pagination loops in E2E tests.
+        Object paramAlias = paginationMap.get("param");
+        if (paramAlias instanceof String s && !s.isBlank()) {
+            params.putIfAbsent("pageParam", s);
+            params.putIfAbsent("offsetParam", s);
+            params.putIfAbsent("cursorParam", s);
+        }
+        Object pageSize = paginationMap.get("pageSize");
+        if (pageSize instanceof Number n) {
+            params.putIfAbsent("limit", n.intValue());
+        }
+        Object initial = paginationMap.get("initial");
+        if (initial instanceof Number n) {
+            params.putIfAbsent("offsetBase", n.intValue());
+        }
+
         int maxPages = paginationMap.get("maxPages") != null
             ? ((Number) paginationMap.get("maxPages")).intValue() : 10;
         Map<String, Object> hintMap = (Map<String, Object>) paginationMap.get("terminationHint");

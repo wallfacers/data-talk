@@ -8,7 +8,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## 当前编号
 
-下一个分配 ID：**BUG-0025**（永不复用，单调递增）
+下一个分配 ID：**BUG-0035**（永不复用，单调递增）
 
 ## Open BUGs（按 priority 倒序，P0 → P2）
 
@@ -35,6 +35,16 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 | [BUG-0022](BUG-0022-csv-html-parsers-no-coercion.md) | CSV / HTML parsers emit raw strings — no numeric / boolean coercion | fixed | P1 | — |
 | [BUG-0023](BUG-0023-integer-64-promotion-gap.md) | `INTEGER_64` promotion gap for values > 2^31 | fixed | P2 | — |
 | [BUG-0024](BUG-0024-upstream-401-not-mapped-to-auth-failed.md) | Upstream 401 → `INGESTION_FETCH_FAILED` instead of `INGESTION_AUTH_FAILED` | fixed | P1 | — |
+| [BUG-0025](BUG-0025-infer-type-lowercase-mismatch.md) | `infer_ingestion_schema` emits lowercase `type` instead of canonical enum name | fixed | P1 | — |
+| [BUG-0026](BUG-0026-html-fetch-throws-unsupported.md) | `http_request` with `payloadFormat=html` throws `UnsupportedOperationException` | fixed | P1 | — |
+| [BUG-0027](BUG-0027-pagination-top-level-aliases-ignored.md) | `http_request` ignores top-level pagination shortcuts (`param`/`initial`/`pageSize`) | fixed | P1 | — |
+| [BUG-0028](BUG-0028-tabular-source-path-missing-dollar.md) | CSV / HTML parsers emit `sourcePath = <header>` instead of `$.<header>` | fixed | P2 | — |
+| [BUG-0029](BUG-0029-confirm-status-violates-check-constraint.md) | `POST /jobs/{id}/confirm` HTTP 500 — `status='confirmed'` violates CHECK constraint | fixed | P0 | — |
+| [BUG-0030](BUG-0030-confirm-missing-mapping-gate.md) | `confirm` 缺 mapping / terminal-state 校验，可对未 infer 或已 cancelled job 发 token | fixed | P1 | — |
+| [BUG-0031](BUG-0031-action-output-schema-rejects-null-and-missing-errorcode.md) | `create_ingestion_table` / `ingest_payload` 输出 schema 拒 null + 缺顶层 `errorCode`，吞掉根因 | fixed | P1 | — |
+| [BUG-0032](BUG-0032-h2-fixture-uses-database-not-databasename.md) | `seedH2Connection` fixture 字段名笔误 → H2 fallback `mem:test` 全测试共享 | fixed | P1 | — |
+| [BUG-0033](BUG-0033-json-jsonl-nullable-only-on-all-null.md) | JSON/JSONL parser 只在全 null 时标 nullable，单元素 null 触发 DDL NOT NULL → INSERT 失败 | fixed | P1 | — |
+| [BUG-0034](BUG-0034-executesql-fixture-missing-source.md) | `executeSql` fixture 缺 `source` → 后端 `validateSource` 抛 400 | fixed | P2 | — |
 
 ## Recently Closed（最近 30 天，status = verified | closed）
 
@@ -51,7 +61,8 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## By Module（聚合视图，仅列 open + in-progress）
 
-- **ingestion**: [BUG-0013](BUG-0013-http-request-null-output-fields.md) *(fixed)*, [BUG-0014](BUG-0014-ssrf-deny-list-not-blocking-169-254.md) *(fixed)*, [BUG-0015](BUG-0015-oversized-payload-not-marked-failed.md) *(fixed)*, [BUG-0017](BUG-0017-http-request-missing-payload-format.md) *(fixed)*, [BUG-0018](BUG-0018-basic-auth-not-base64.md) *(fixed)*, [BUG-0019](BUG-0019-page-pagination-ignores-hasmore.md) *(fixed)*, [BUG-0020](BUG-0020-offset-pagination-ignores-nextoffset.md) *(fixed)*, [BUG-0021](BUG-0021-cursor-pagination-missing-next-key.md) *(fixed)*, [BUG-0022](BUG-0022-csv-html-parsers-no-coercion.md) *(fixed)*, [BUG-0023](BUG-0023-integer-64-promotion-gap.md) *(fixed)*, [BUG-0024](BUG-0024-upstream-401-not-mapped-to-auth-failed.md) *(fixed)*
+- **ingestion**: [BUG-0013](BUG-0013-http-request-null-output-fields.md) *(fixed)*, [BUG-0014](BUG-0014-ssrf-deny-list-not-blocking-169-254.md) *(fixed)*, [BUG-0015](BUG-0015-oversized-payload-not-marked-failed.md) *(fixed)*, [BUG-0017](BUG-0017-http-request-missing-payload-format.md) *(fixed)*, [BUG-0018](BUG-0018-basic-auth-not-base64.md) *(fixed)*, [BUG-0019](BUG-0019-page-pagination-ignores-hasmore.md) *(fixed)*, [BUG-0020](BUG-0020-offset-pagination-ignores-nextoffset.md) *(fixed)*, [BUG-0021](BUG-0021-cursor-pagination-missing-next-key.md) *(fixed)*, [BUG-0022](BUG-0022-csv-html-parsers-no-coercion.md) *(fixed)*, [BUG-0023](BUG-0023-integer-64-promotion-gap.md) *(fixed)*, [BUG-0024](BUG-0024-upstream-401-not-mapped-to-auth-failed.md) *(fixed)*, [BUG-0025](BUG-0025-infer-type-lowercase-mismatch.md) *(fixed)*, [BUG-0026](BUG-0026-html-fetch-throws-unsupported.md) *(fixed)*, [BUG-0027](BUG-0027-pagination-top-level-aliases-ignored.md) *(fixed)*, [BUG-0028](BUG-0028-tabular-source-path-missing-dollar.md) *(fixed)*, [BUG-0029](BUG-0029-confirm-status-violates-check-constraint.md) *(fixed)*, [BUG-0030](BUG-0030-confirm-missing-mapping-gate.md) *(fixed)*, [BUG-0031](BUG-0031-action-output-schema-rejects-null-and-missing-errorcode.md) *(fixed)*, [BUG-0032](BUG-0032-h2-fixture-uses-database-not-databasename.md) *(fixed)*, [BUG-0033](BUG-0033-json-jsonl-nullable-only-on-all-null.md) *(fixed)*, [BUG-0034](BUG-0034-executesql-fixture-missing-source.md) *(fixed)*
+- **testing**: [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md), [BUG-0032](BUG-0032-h2-fixture-uses-database-not-databasename.md) *(fixed)*, [BUG-0034](BUG-0034-executesql-fixture-missing-source.md) *(fixed)*
 - **security**: [BUG-0018](BUG-0018-basic-auth-not-base64.md) *(fixed)*
 - **stage**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md), [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md)
 - **chat**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md)

@@ -49,8 +49,8 @@ class CsvPayloadParserTest {
         IngestionMapping mapping = parser.infer(file, 100);
         Map<String, MappingColumn> cols = columnMap(mapping);
 
-        assertThat(cols.get("id").type()).isEqualTo(InferredType.INTEGER_32);
-        assertThat(cols.get("name").type()).isEqualTo(InferredType.STRING_64);
+        assertThat(cols.get("$.id").type()).isEqualTo(InferredType.INTEGER_32);
+        assertThat(cols.get("$.name").type()).isEqualTo(InferredType.STRING_64);
     }
 
     // BUG-0022: decimal column is inferred as DECIMAL.
@@ -66,7 +66,7 @@ class CsvPayloadParserTest {
         IngestionMapping mapping = parser.infer(file, 100);
         Map<String, MappingColumn> cols = columnMap(mapping);
 
-        assertThat(cols.get("total").type()).isEqualTo(InferredType.DECIMAL);
+        assertThat(cols.get("$.total").type()).isEqualTo(InferredType.DECIMAL);
     }
 
     // BUG-0022: boolean column is inferred as BOOLEAN.
@@ -83,7 +83,7 @@ class CsvPayloadParserTest {
         IngestionMapping mapping = parser.infer(file, 100);
         Map<String, MappingColumn> cols = columnMap(mapping);
 
-        assertThat(cols.get("active").type()).isEqualTo(InferredType.BOOLEAN);
+        assertThat(cols.get("$.active").type()).isEqualTo(InferredType.BOOLEAN);
     }
 
     // BUG-0023: column with value > 2^31 promotes to INTEGER_64.
@@ -100,7 +100,7 @@ class CsvPayloadParserTest {
         IngestionMapping mapping = parser.infer(file, 100);
         Map<String, MappingColumn> cols = columnMap(mapping);
 
-        assertThat(cols.get("v").type()).isEqualTo(InferredType.INTEGER_64);
+        assertThat(cols.get("$.v").type()).isEqualTo(InferredType.INTEGER_64);
     }
 
     // Mixed types fall back to STRING_64.
@@ -118,6 +118,6 @@ class CsvPayloadParserTest {
         Map<String, MappingColumn> cols = columnMap(mapping);
 
         // 1 → Integer, abc → String, 2 → Integer. Widest STRING_*.
-        assertThat(cols.get("id").type().name()).startsWith("STRING");
+        assertThat(cols.get("$.id").type().name()).startsWith("STRING");
     }
 }

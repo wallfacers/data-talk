@@ -3,6 +3,8 @@ package com.datatalk.adapter.actions.ingestion;
 import com.datatalk.application.ingestion.IngestionExecutor;
 import com.datatalk.domain.action.*;
 import com.datatalk.domain.ingestion.IngestionDialectUnsupportedException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -20,6 +22,7 @@ import java.util.concurrent.CompletionStage;
 )
 public class IngestPayloadActionHandler implements ActionHandler<Map, Map> {
 
+    private static final Logger log = LoggerFactory.getLogger(IngestPayloadActionHandler.class);
     private final IngestionExecutor executor;
 
     public IngestPayloadActionHandler(IngestionExecutor executor) {
@@ -75,14 +78,16 @@ public class IngestPayloadActionHandler implements ActionHandler<Map, Map> {
             out.put("status", result.status());
             out.put("rowsInserted", result.rowsInserted());
             out.put("durationMs", result.durationMs());
-            out.put("error", null);
-            out.put("userHint", null);
+            // BUG-0031: skip null `error` / `userHint` on success path.
             return CompletableFuture.completedFuture(out);
         } catch (IngestionDialectUnsupportedException e) {
             return CompletableFuture.completedFuture(
                 errorNode("INGESTION_DIALECT_UNSUPPORTED", e.getMessage(),
                     "Target connection dialect " + e.kind() + " is not supported."));
         } catch (Exception e) {
+            // BUG-0031: log the underlying failure — without this we'd silently swallow
+            // root causes (e.g. table missing, NULL violations) behind the generic error code.
+            log.error("ingest_payload failed", e);
             return CompletableFuture.completedFuture(
                 errorNode("INGESTION_PAYLOAD_FAILED", e.getMessage(),
                     "Payload ingestion failed. Check the data format and connection."));
@@ -92,6 +97,8 @@ public class IngestPayloadActionHandler implements ActionHandler<Map, Map> {
     private Map<String, Object> errorNode(String code, String reason, String userHint) {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("status", "failed");
+        // BUG-0031: surface errorCode at the top level (see HttpRequestActionHandler).
+        out.put("errorCode", code);
         Map<String, String> error = new LinkedHashMap<>();
         error.put("code", code);
         error.put("reason", reason);

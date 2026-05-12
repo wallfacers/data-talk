@@ -83,8 +83,8 @@ public class CreateIngestionTableActionHandler implements ActionHandler<Map, Map
             out.put("targetTable", result.targetTable());
             out.put("ddl", result.ddl());
             out.put("status", "table_created");
-            out.put("error", null);
-            out.put("userHint", null);
+            // BUG-0031: skip null `error` / `userHint` on success — JSON-Schema
+            // declares `type: object` / `type: string`, which rejects null.
             return CompletableFuture.completedFuture(out);
         } catch (IngestionTokenInvalidException e) {
             return CompletableFuture.completedFuture(
@@ -104,6 +104,10 @@ public class CreateIngestionTableActionHandler implements ActionHandler<Map, Map
     private Map<String, Object> errorNode(String code, String reason, String userHint) {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("status", "failed");
+        // BUG-0031: mirror the HttpRequestActionHandler convention — surface
+        // errorCode at the top level so MCP callers / E2E tests can branch
+        // on `res.result.errorCode` without unwrapping the nested error.
+        out.put("errorCode", code);
         Map<String, String> error = new LinkedHashMap<>();
         error.put("code", code);
         error.put("reason", reason);

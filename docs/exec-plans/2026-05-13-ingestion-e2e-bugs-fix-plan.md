@@ -145,15 +145,25 @@ Shared parser changes, single batch.
 - [x] Batch 2 lands: `HttpRequestActionHandlerTest.authFailedReturns401MappedError` green
 - [x] Batch 3 lands: `IngestionPayloadFetcherTest` `pagePaginationStopsOnEmptyPage` / `offsetPaginationStopsOnEmptyPage` / `cursorPaginationFollowsTopLevelNextKey` green
 - [x] Batch 4 lands: `TabularValueCoercerTest` (12) + `CsvPayloadParserTest` (5) + `HtmlTablePayloadParserTest` (3) green; `RowStreamTest.csvStreamsWithHeaderRow` updated for new typed coercion
-- [x] `mvn -pl data-talk-application,data-talk-adapter test` overall green (170 adapter + full application module)
+- [x] `mvn -pl data-talk-application,data-talk-adapter test` overall green (170 adapter + 973 application = 1143 tests, 0 failures)
 - [x] `mvn -pl data-talk-infrastructure test` overall green (343 / 343)
-- [ ] E2E ingestion suite ≥ 50/54 API/MCP tests pass — **pending backend restart with `SPRING_PROFILES_ACTIVE=e2e`**
-- [x] All 8 BUGs transitioned to `fixed` with `fixCommit: "pending — Batch N"` placeholder (will be retrofilled after the code commit)
-- [x] `docs/bugs/index.md` reflects new state
-- [ ] `docs/exec-plans/index.md` plan entry moved from Active → Completed — pending E2E verification
+- [x] E2E ingestion API/MCP suite: **47/47 non-skipped tests passing** (15 skipped under env gates: MySQL/PG/SqlGuard URL env vars + write_to_database with seeded jobs). Covers 8 specs: fetch-mcp, infer-mcp, ddl-mcp, execute-mcp, error-paths, preflight, credentials-api, sse-events.
+- [x] All BUGs transitioned to `fixed` and indexed
+- [x] `docs/exec-plans/index.md` plan entry moved from Active → Completed
 
-## Out-of-Plan Follow-ups (登记后续)
+## Batch 5 Hotfix Findings (post-batch verification)
 
-- UI suites: re-enable after adding a `seedIngestionJob()` fixture (separate plan).
-- `FORMAT_UNSUPPORTED` Content-Type test: requires mock server enhancement (separate task).
-- Delete-in-use 409 cross-test scenario: cross-test lifecycle harness needed.
+E2E re-run after Batch 1-4 ship surfaced 6 additional defects, all fixed in the same iteration:
+
+- **BUG-0025**: `InferIngestionSchemaActionHandler` emits lowercase `type` (`dbValue()`) instead of canonical enum name. Fix: switch to `col.type().name()`.
+- **BUG-0026**: `IngestionPayloadFetcher` rejects `payloadFormat=html` at fetch time with `UnsupportedOperationException` even though `HtmlTablePayloadParser` exists. Fix: new `HtmlAccumulator` that buffers raw HTML for downstream infer.
+- **BUG-0027**: `HttpRequestActionHandler.buildPagination` ignores top-level pagination shortcuts (`param`/`initial`/`pageSize`) only honoring nested `params.*`. Fix: fold shortcuts into the canonical params map.
+- **BUG-0028**: CSV / HTML parsers emit `sourcePath=<header>` instead of `$.<header>`. Fix: prefix `$.`.
+- **BUG-0029** (P0): `POST /jobs/{id}/confirm` HTTP 500 — wrote `status='confirmed'` which violates the CHECK enum. Fix: drop the status write; token store represents confirmation. Cascaded into 9 downstream test failures.
+- **BUG-0030**: After BUG-0029 fix, confirm gate too permissive — any job (uninferred / cancelled / completed / writing) could mint a token. Fix: enforce `mapping != null && status ∉ terminal-set`.
+- **BUG-0031**: `create_ingestion_table` / `ingest_payload` success path wrote null `error`/`userHint` violating output schema (`type: object` rejects null). Error path also missing top-level `errorCode`. Fix: drop null fields on success; surface top-level `errorCode` on error (sibling of HttpRequestActionHandler); add `log.error` on catch to surface root cause stacks.
+- **BUG-0032** (test infra): `seedH2Connection` fixture used field `database` (backend DTO uses `databaseName`) → JdbcUrlBuilder fell back to `jdbc:h2:mem:test`, sharing one in-memory H2 across all tests + losing state on connection close. Fix: rename field + use `mem:e2e_<ts>;DB_CLOSE_DELAY=-1;MODE=PostgreSQL`.
+- **BUG-0033**: JSON / JSONL parsers required **all** values null to mark column nullable; CSV/HTML use **any** null. Inconsistency caused DDL `NOT NULL` on mixed-null columns → INSERT failures. Fix: align to "any null → nullable".
+- **BUG-0034** (test infra): `executeSql` fixture didn't default `source`, backend `validateSource` requires `'user'|'ai'` → 400. Fix: default `source: 'user'` in helper.
+
+Logback `springProfile name="dev,default"` extended to also cover `e2e` so error stacks aren't silently dropped under that profile (test-only logging gap; not registered as BUG).

@@ -69,7 +69,8 @@ public class JsonlPayloadParser implements PayloadParser {
             List<Object> values = entry.getValue();
 
             InferredType type = TypeInferrer.infer(values);
-            boolean nullable = TypeInferrer.allNull(values);
+            // BUG-0033: nullable if ANY value is null (align with CSV/HTML parsers).
+            boolean nullable = TypeInferrer.allNull(values) || values.stream().anyMatch(java.util.Objects::isNull);
             List<String> sampleValues = TypeInferrer.collectSampleValues(values, MAX_SAMPLE_VALUES);
 
             String targetName = sourcePath.startsWith("$.")

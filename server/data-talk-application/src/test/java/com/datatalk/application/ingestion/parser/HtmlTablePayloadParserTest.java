@@ -52,8 +52,8 @@ class HtmlTablePayloadParserTest {
         IngestionMapping mapping = parser.infer(file, 100);
         Map<String, MappingColumn> cols = columnMap(mapping);
 
-        assertThat(cols.get("rank").type()).isEqualTo(InferredType.INTEGER_32);
-        assertThat(cols.get("player").type()).isEqualTo(InferredType.STRING_64);
+        assertThat(cols.get("$.rank").type()).isEqualTo(InferredType.INTEGER_32);
+        assertThat(cols.get("$.player").type()).isEqualTo(InferredType.STRING_64);
     }
 
     // BUG-0023: HTML cell > 2^31 promotes to INTEGER_64.
@@ -73,7 +73,7 @@ class HtmlTablePayloadParserTest {
         IngestionMapping mapping = parser.infer(file, 100);
         Map<String, MappingColumn> cols = columnMap(mapping);
 
-        assertThat(cols.get("v").type()).isEqualTo(InferredType.INTEGER_64);
+        assertThat(cols.get("$.v").type()).isEqualTo(InferredType.INTEGER_64);
     }
 
     // BUG-0022: decimal HTML cell coerces to DECIMAL.
@@ -93,6 +93,6 @@ class HtmlTablePayloadParserTest {
         IngestionMapping mapping = parser.infer(file, 100);
         Map<String, MappingColumn> cols = columnMap(mapping);
 
-        assertThat(cols.get("score").type()).isEqualTo(InferredType.DECIMAL);
+        assertThat(cols.get("$.score").type()).isEqualTo(InferredType.DECIMAL);
     }
 }

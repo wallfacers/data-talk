@@ -153,11 +153,6 @@ public class IngestionPayloadFetcher {
                     nextUrl, request.method(), mergedHeaders,
                     pageParams, request.body(), timeoutMs);
 
-                if (request.format() == PayloadFormat.HTML) {
-                    throw new UnsupportedOperationException(
-                        "HTML payload parsing is not yet implemented (P3)");
-                }
-
                 // Accumulate and check termination
                 PageResult pageResult = acc.accumulate(response, pagesFetched == 0);
                 pagesFetched++;
@@ -347,8 +342,10 @@ public class IngestionPayloadFetcher {
             case JSON -> new JsonAccumulator(om);
             case JSONL -> new JsonlAccumulator();
             case CSV -> new CsvAccumulator();
-            case HTML -> throw new UnsupportedOperationException(
-                "HTML payload parsing is not yet implemented (P3)");
+            // BUG-0026: HTML fetch path now keeps raw bytes per page so the artifact
+            // can be parsed later by HtmlTablePayloadParser. The fetcher itself does
+            // not parse HTML — pagination over HTML pages is unusual but supported.
+            case HTML -> new HtmlAccumulator();
         };
     }
 
@@ -459,6 +456,27 @@ public class IngestionPayloadFetcher {
         }
 
         @Override public int totalRows() { return rows; }
+        @Override public long currentSize() { return sb.length(); }
+        @Override public byte[] toBytes() { return sb.toString().getBytes(StandardCharsets.UTF_8); }
+    }
+
+    // ── HTML: raw passthrough — parsing happens at infer time ──
+
+    private static class HtmlAccumulator implements PayloadAccumulator {
+        private final StringBuilder sb = new StringBuilder();
+
+        @Override
+        public PageResult accumulate(byte[] response, boolean isFirstPage) {
+            String text = new String(response, StandardCharsets.UTF_8);
+            if (sb.length() > 0) sb.append('\n');
+            sb.append(text);
+            // We don't parse HTML at fetch time; row count is unknown until infer.
+            // Return non-zero so the pagination loop doesn't short-circuit on the
+            // first (and typically only) page.
+            return PageResult.of(text.isBlank() ? 0 : 1);
+        }
+
+        @Override public int totalRows() { return 0; /* parsed lazily */ }
         @Override public long currentSize() { return sb.length(); }
         @Override public byte[] toBytes() { return sb.toString().getBytes(StandardCharsets.UTF_8); }
     }

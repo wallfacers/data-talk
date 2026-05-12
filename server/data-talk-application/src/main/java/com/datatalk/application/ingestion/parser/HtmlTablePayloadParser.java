@@ -65,7 +65,8 @@ public class HtmlTablePayloadParser implements PayloadParser {
                 InferredType type = TypeInferrer.infer(values);
                 List<String> samples = TypeInferrer.collectSampleValues(values, 2);
                 boolean nullable = TypeInferrer.allNull(values) || values.stream().anyMatch(Objects::isNull);
-                mappingColumns.add(new MappingColumn(header, header, type, false, samples, nullable));
+                // BUG-0028: emit sourcePath as `$.<header>` to align with JSON/JSONL paths.
+                mappingColumns.add(new MappingColumn("$." + header, header, type, false, samples, nullable));
             }
 
             return new IngestionMapping("map_" + UUID.randomUUID(), mappingColumns);

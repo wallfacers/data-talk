@@ -40,7 +40,10 @@ public class CsvPayloadParser implements PayloadParser {
             InferredType type = TypeInferrer.infer(values);
             List<String> samples = TypeInferrer.collectSampleValues(values, 2);
             boolean nullable = TypeInferrer.allNull(values) || values.stream().anyMatch(Objects::isNull);
-            mappingColumns.add(new MappingColumn(header, header, type, false, samples, nullable));
+            // BUG-0028: emit sourcePath as `$.<header>` to align with JSON/JSONL paths.
+            // The `$.` prefix is the canonical sourcePath form across all parsers so
+            // mapping consumers don't need format-specific logic.
+            mappingColumns.add(new MappingColumn("$." + header, header, type, false, samples, nullable));
         }
 
         return new IngestionMapping("map_" + UUID.randomUUID(), mappingColumns);
