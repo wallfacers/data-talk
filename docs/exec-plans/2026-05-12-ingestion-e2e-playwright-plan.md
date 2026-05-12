@@ -955,7 +955,7 @@ git commit --allow-empty -m "chore(ingestion-e2e): Phase 1 closure (7 API specs 
 6. Delete button removes the credential and the empty state returns.
 7. Dual-source note banner is visible.
 
-- [ ] **Step T2.1.1: Write spec — use `data-testid` hooks from T0.3**
+- [x] **Step T2.1.1: Write spec — use `data-testid` hooks from T0.3**
 
 ```ts
 import { test, expect } from '@playwright/test'
@@ -1036,7 +1036,7 @@ test.describe('@e2e @ingestion @ui Credentials Settings page', () => {
 })
 ```
 
-- [ ] **Step T2.1.2: Run + commit**
+- [x] **Step T2.1.2: Run + commit** — 7/7 passed. BUG-0016 (Credentials missing from settings dropdown) discovered and fixed inline by adding entry to `nav-user.tsx`.
 
 ```bash
 cd client && npx playwright test ingestion-credentials-ui.spec.ts --reporter=line

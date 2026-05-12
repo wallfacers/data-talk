@@ -8,7 +8,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## 当前编号
 
-下一个分配 ID：**BUG-0016**（永不复用，单调递增）
+下一个分配 ID：**BUG-0017**（永不复用，单调递增）
 
 ## Open BUGs（按 priority 倒序，P0 → P2）
 
@@ -31,6 +31,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 | ID | Title | Status | Closed Date | FixCommit |
 |----|-------|--------|-------------|-----------|
+| [BUG-0016](BUG-0016-credentials-section-missing-from-settings-dropdown.md) | Settings 下拉菜单缺少 Credentials 入口，无法通过 UI 导航到凭据页面 | verified | 2026-05-12 | — |
 | BUG-0001 | ER Inspector "Add virtual relation" 按钮无效 | verified | 2026-05-06 | — |
 | BUG-0002 | ER Designer bind_target 成功但 diff_against_db / generate_ddl 仍拒绝 | verified | 2026-05-06 | — |
 | BUG-0004 | Fork to Designer 不创建 er_designer tab | verified | 2026-05-07 | 9d67946 |
@@ -42,6 +43,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 ## By Module（聚合视图，仅列 open + in-progress）
 
 - **ingestion**: [BUG-0013](BUG-0013-http-request-null-output-fields.md)
+- **settings**: [BUG-0016](BUG-0016-credentials-section-missing-from-settings-dropdown.md) *(verified)*
 - **stage**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md), [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md)
 - **chat**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md)
 - **testing**: [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md)
@@ -51,7 +53,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## By Source（聚合视图，仅列 open + in-progress）
 
-- **e2e-playwright**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md), [BUG-0012](BUG-0012-widget-data-endpoint-ignores-default-connection-id.md) *(fixed)*, [BUG-0013](BUG-0013-http-request-null-output-fields.md)
+- **e2e-playwright**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md), [BUG-0012](BUG-0012-widget-data-endpoint-ignores-default-connection-id.md) *(fixed)*, [BUG-0013](BUG-0013-http-request-null-output-fields.md), [BUG-0016](BUG-0016-credentials-section-missing-from-settings-dropdown.md) *(verified)*
 - **e2e-mcp**: [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md)
 - **manual-report**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md)
 
