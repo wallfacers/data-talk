@@ -57,6 +57,12 @@ function route(req: IncomingMessage, res: ServerResponse, url: string, headers: 
     { id: 3, name: 'Carol', score: null, active: true,  joined: '2024-03-20T14:00:00Z' },
   ])
 
+  // ── Heterogeneous id values (mixed types → STRING fallback) ──
+  if (url === '/json/heterogeneous-id') return json(res, [{ id: 1 }, { id: 2 }, { id: '3-abc' }])
+
+  // ── Large integer > 2^31 (INTEGER_64 promotion) ──
+  if (url === '/json/large-int') return json(res, [{ v: 3000000000 }, { v: 2147483648 }, { v: 9007199254740991 }])
+
   // ── JSON envelope (Object with .data array) ──
   if (url === '/json/envelope') return json(res, { meta: { total: 2 }, data: [{ id: 1 }, { id: 2 }] })
 
