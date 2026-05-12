@@ -96,7 +96,7 @@
 **Files:**
 - Create: `server/data-talk-adapter/src/main/resources/application-e2e.yml`
 
-- [ ] **Step T0.1.1: Author the profile**
+- [x] **Step T0.1.1: Author the profile**
 
 ```yaml
 datatalk:
@@ -111,7 +111,7 @@ spring:
 
 The flag flip is the only critical line; the rest re-states defaults so the profile is self-contained. Document in the YAML's leading comment that this profile is **never** to be loaded in production.
 
-- [ ] **Step T0.1.2: Add doc note in CLAUDE.md `Working Rules`**
+- [x] **Step T0.1.2: Add doc note in CLAUDE.md `Working Rules`**
 
 Append:
 
@@ -122,7 +122,7 @@ Append:
 - Never start the backend with this profile in production, staging, or shared dev environments
 ```
 
-- [ ] **Step T0.1.3: Commit**
+- [x] **Step T0.1.3: Commit**
 
 ```bash
 git add server/data-talk-adapter/src/main/resources/application-e2e.yml CLAUDE.md
@@ -134,7 +134,7 @@ git commit -m "test(ingestion): T0.1 — e2e Spring profile relaxes SSRF + lower
 **Files:**
 - Create: `client/tests/e2e/fixtures/ingestion-fixtures.ts`
 
-- [ ] **Step T0.2.1: Author the mock server + seed helpers**
+- [x] **Step T0.2.1: Author the mock server + seed helpers**
 
 ```ts
 import http, { type IncomingMessage, type ServerResponse, type Server } from 'node:http'
@@ -357,7 +357,7 @@ export async function waitForJobStatus(
 
 (Function bodies above are complete reference implementations; do not stub them with `// TODO`.)
 
-- [ ] **Step T0.2.2: Quick smoke**
+- [x] **Step T0.2.2: Quick smoke**
 
 ```bash
 cd client && node -e "(async () => { const m = await import('./tests/e2e/fixtures/ingestion-fixtures.ts').catch(() => null); console.log('compiles OK if no throw'); })()"
@@ -365,7 +365,7 @@ cd client && node -e "(async () => { const m = await import('./tests/e2e/fixture
 
 (If TypeScript-direct execution is not configured, instead do `npx tsc --noEmit tests/e2e/fixtures/ingestion-fixtures.ts`.)
 
-- [ ] **Step T0.2.3: Commit**
+- [x] **Step T0.2.3: Commit**
 
 ```bash
 git add client/tests/e2e/fixtures/ingestion-fixtures.ts
@@ -376,25 +376,25 @@ git commit -m "test(ingestion): T0.2 — shared mock HTTP server + seeding helpe
 
 **Files:** see "Frontend test-id additions" under File Structure above.
 
-- [ ] **Step T0.3.1: Add the data-testid attributes**
+- [x] **Step T0.3.1: Add the data-testid attributes**
 
 Open each file in the test-id additions list. Insert `data-testid="…"` on the targeted JSX element. **Do not refactor surrounding code** — only attribute additions. Each file gets the test-ids listed for it.
 
-- [ ] **Step T0.3.2: Type-check**
+- [x] **Step T0.3.2: Type-check**
 
 ```bash
 cd client && npx tsc --noEmit
 ```
 Expected: zero errors.
 
-- [ ] **Step T0.3.3: Vitest smoke**
+- [x] **Step T0.3.3: Vitest smoke**
 
 ```bash
 cd client && npx vitest run features/ingestion features/settings/credentials
 ```
 Expected: green (no behaviour changes).
 
-- [ ] **Step T0.3.4: Commit**
+- [x] **Step T0.3.4: Commit**
 
 ```bash
 git add client/src/features/ingestion client/src/features/settings/credentials
