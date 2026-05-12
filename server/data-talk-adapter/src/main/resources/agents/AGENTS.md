@@ -890,7 +890,7 @@ Output budget: defaults `headLimit=100`, `maxTabs=50`. For existence checks use 
 ## GaussDB
 
 - **Canonical kind:** `gaussdb`
-- **Protocol:** PostgreSQL-compatible (集中式), password authentication
+- **Protocol:** PostgreSQL-compatible (centralized mode), password authentication
 - **JDBC URL:** `jdbc:postgresql://host:8000/database`
 - **Default port:** 8000
 - **Driver:** `com.huaweicloud:gaussdbjdbc:v2.0-8.218.0`

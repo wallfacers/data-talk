@@ -109,6 +109,31 @@ public sealed interface DtEvent {
     @JsonTypeName("legacy.migrated")
     record LegacyMigrated(int filesMovedCount) implements DtEvent {}
 
+    @JsonTypeName("ingestion.job.created")
+    record IngestionJobCreated(String jobId, String sourceUrl) implements DtEvent {}
+
+    @JsonTypeName("ingestion.payload.fetched")
+    record IngestionPayloadFetched(String jobId, String payloadArtifactId,
+                                    int rowCount, long bytesFetched) implements DtEvent {}
+
+    @JsonTypeName("ingestion.mapping.proposed")
+    record IngestionMappingProposed(String jobId, String mappingId, int columnCount) implements DtEvent {}
+
+    @JsonTypeName("ingestion.job.confirmed")
+    record IngestionJobConfirmed(String jobId, String tokenId) implements DtEvent {}
+
+    @JsonTypeName("ingestion.write.started")
+    record IngestionWriteStarted(String jobId, String targetTable) implements DtEvent {}
+
+    @JsonTypeName("ingestion.write.progress")
+    record IngestionWriteProgress(String jobId, int rowsInserted, int totalRows) implements DtEvent {}
+
+    @JsonTypeName("ingestion.completed")
+    record IngestionCompleted(String jobId, String targetTable, int finalRowCount, long durationMs) implements DtEvent {}
+
+    @JsonTypeName("ingestion.failed")
+    record IngestionFailed(String jobId, String phase, String errorMessage) implements DtEvent {}
+
     @JsonTypeName("heartbeat")
     record Heartbeat(long ts) implements DtEvent {}
     @JsonTypeName("ping")
@@ -150,6 +175,14 @@ public sealed interface DtEvent {
             case FileArtifactArchived fa  -> "file_artifact.archived";
             case FileArtifactDiscarded fd -> "file_artifact.discarded";
             case LegacyMigrated lm        -> "legacy.migrated";
+            case IngestionJobCreated ijc  -> "ingestion.job.created";
+            case IngestionPayloadFetched ipf -> "ingestion.payload.fetched";
+            case IngestionMappingProposed imp -> "ingestion.mapping.proposed";
+            case IngestionJobConfirmed ijconf -> "ingestion.job.confirmed";
+            case IngestionWriteStarted iws -> "ingestion.write.started";
+            case IngestionWriteProgress iwp -> "ingestion.write.progress";
+            case IngestionCompleted ic    -> "ingestion.completed";
+            case IngestionFailed ifl      -> "ingestion.failed";
             case Heartbeat hb             -> "heartbeat";
             case PingPong pp              -> "ping";
             case StreamError se           -> "error";
