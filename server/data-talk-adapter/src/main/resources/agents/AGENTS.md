@@ -931,4 +931,26 @@ The user then decides in their UI whether to permanently archive it to the conne
 
 <!-- file-artifact-section:end -->
 
+## Data Ingestion (skill: data-ingestion)
+
+When the user asks to fetch external data (REST API / CSV / HTML table) and write it into a connected database, use the data-ingestion skill tools.
+
+**Full skill reference**: `skills/data-ingestion/SKILL.md`
+
+**Tool chain** (execute in this order):
+
+1. `datatalk_http_request` — Fetch payload from URL. Handles pagination (page/offset/cursor), auth (None/Bearer/API Key/Basic via credentialId), SSRF protection. Returns `jobId` + `payloadArtifactId`.
+2. `datatalk_infer_ingestion_schema` — Analyze the fetched payload, return column mapping with inferred types + suggested DDL.
+3. **Wait for user confirmation** — The ingestion_job Tab shows the mapping editor. User reviews and clicks "Confirm and Ingest". This issues a 5-minute single-use `IngestionConfirmedToken`.
+4. `datatalk_create_ingestion_table` — Execute `CREATE TABLE` on the target connection. Requires `tokenId` from the confirmation step.
+5. `datatalk_ingest_payload` — Stream payload rows and batch INSERT into the created table.
+
+**Supported formats**: JSON, JSONL, CSV, static HTML `<table>`
+**Supported target dialects (Day-1)**: mysql, postgresql, h2, sqlite
+**Auth schemes**: none, bearer, api_key_header, api_key_query, basic
+
+**Credentials**: Managed via Settings → Credentials (stored in SecretVault with AES-256-GCM). Create via `POST /api/ingestion/credentials` before using `credentialId` in fetch requests.
+
+**Error handling**: Each tool returns structured error codes (`INGESTION_SSRF_BLOCKED`, `INGESTION_AUTH_FAILED`, `INGESTION_DIALECT_UNSUPPORTED`, `INGESTION_TOKEN_INVALID`, `INGESTION_PAYLOAD_TOO_LARGE`). See `skills/data-ingestion/SKILL.md` for the full error → action mapping.
+
 {{STAGE_TAB_DIGEST}}

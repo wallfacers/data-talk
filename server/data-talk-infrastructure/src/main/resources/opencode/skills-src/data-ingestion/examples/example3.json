@@ -1,0 +1,17 @@
+{
+  "tool": "datatalk_http_request",
+  "input": {
+    "url": "https://api.example.com/v1/records",
+    "method": "GET",
+    "headers": { "Authorization": "Bearer {{token}}" },
+    "payloadFormat": "json",
+    "credentialId": "cred_abc123",
+    "pagination": {
+      "type": "cursor",
+      "params": { "cursorParam": "cursor", "pageSizeParam": "limit", "pageSize": 100 },
+      "maxPages": 50,
+      "terminationHint": { "type": "json_path_count_zero", "jsonPath": "$.data" }
+    },
+    "timeoutMs": 60000
+  }
+}

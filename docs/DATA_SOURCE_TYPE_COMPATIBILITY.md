@@ -856,3 +856,31 @@ A database-type implementation is not done until all of these are true:
 - `CLAUDE.md` / `AGENTS.md` still point future AI agents to this gate.
 - Verification commands relevant to the touched stack have been run and their
   outcomes are reported.
+
+## Ingestion DDL Adapter (Day-1)
+
+The external data ingestion feature (`data-ingestion` skill) uses `IngestionDdlAdapter` to generate dialect-specific DDL and INSERT statements. Day-1 supports 4 of 19 first-class connection kinds.
+
+| Kind | Day-1 Status | Adapter Class | Notes |
+|------|-------------|---------------|-------|
+| mysql | Supported | `MysqlIngestionDdlAdapter` | Backtick quoting, DATETIME, JSON type |
+| postgresql | Supported | `PostgresIngestionDdlAdapter` | Double-quote quoting, TIMESTAMP, JSONB |
+| h2 | Supported | `H2IngestionDdlAdapter` | Double-quote quoting, CLOB for long text/JSON |
+| sqlite | Supported | `SqliteIngestionDdlAdapter` | Double-quote quoting, TEXT for all strings/dates, NUMERIC |
+| mariadb | Unsupported | — | Follow-up: mirror MySQL adapter with MariaDB-specific types |
+| oracle | Unsupported | — | Follow-up child plan required |
+| sqlserver | Unsupported | — | Follow-up: bracket quoting, DATETIME2, NVARCHAR |
+| duckdb | Unsupported | — | Follow-up child plan required |
+| clickhouse | Unsupported | — | Follow-up: MergeTree engine, specialized types |
+| apache_doris | Unsupported | — | Follow-up child plan required |
+| starrocks | Unsupported | — | Follow-up child plan required |
+| trino | Unsupported | — | Follow-up child plan required |
+| presto | Unsupported | — | Follow-up child plan required |
+| hive | Unsupported | — | Follow-up child plan required |
+| tidb | Unsupported | — | Follow-up: likely MySQL-compatible |
+| oceanbase | Unsupported | — | Follow-up child plan required |
+| dameng | Unsupported | — | Follow-up child plan required |
+| kingbase | Unsupported | — | Follow-up child plan required |
+| gaussdb | Unsupported | — | Follow-up child plan required |
+
+Unsupported kinds throw `IngestionDialectUnsupportedException` → MCP action returns `INGESTION_DIALECT_UNSUPPORTED` error code → frontend shows `ingestion.dialect_unsupported.<kind>` i18n message.
