@@ -24,8 +24,6 @@ test.describe('@e2e @ingestion @api @error Ingestion error codes', () => {
   })
 
   test('INGESTION_AUTH_FAILED for wrong credentials', async ({ request }) => {
-    test.fixme(true, 'BUG-0013: http_request output schema validation masks errors')
-    test.fixme(true, 'BUG-0013: http_request output schema validation masks errors')
     const c = adapterClient(request)
     // Use bearer credential with WRONG secret
     const credId = await seedCredential(request, 'bearer', { secret: 'wrong-token' })
@@ -54,7 +52,6 @@ test.describe('@e2e @ingestion @api @error Ingestion error codes', () => {
   })
 
   test('INGESTION_TOKEN_INVALID re-assertion', async ({ request }) => {
-    test.fixme(true, 'BUG-0013: http_request output schema validation masks errors')
     // Re-assert the token invalidation path via a fresh token with wrong mappingHash
     const c = adapterClient(request)
     const fetched = await c.mcpCall('http_request', {

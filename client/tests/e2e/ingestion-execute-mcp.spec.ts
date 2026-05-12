@@ -12,7 +12,6 @@ test.afterAll(async () => { await mock.stop() })
 
 test.describe('@e2e @ingestion @api Confirm, cancel, token + ingest', () => {
   test('confirm returns tokenId, expiresAt, mappingHash', async ({ request }) => {
-    test.fixme(true, 'Blocked on BUG-0013: http_request returns null for required output fields')
     const connId = await seedH2Connection(request, `e2e_h2_confirm_${Date.now()}`)
     const c = adapterClient(request)
     const fetched = await c.mcpCall('http_request', { url: `${mock.baseUrl}/json/users`, payloadFormat: 'JSON' })
@@ -27,7 +26,6 @@ test.describe('@e2e @ingestion @api Confirm, cancel, token + ingest', () => {
   })
 
   test('confirm without prior infer returns 409', async ({ request }) => {
-    test.fixme(true, 'Blocked on BUG-0013: http_request returns null for required output fields')
     const connId = await seedH2Connection(request, `e2e_h2_no_infer_${Date.now()}`)
     const c = adapterClient(request)
     const fetched = await c.mcpCall('http_request', { url: `${mock.baseUrl}/json/users`, payloadFormat: 'JSON' })
@@ -38,7 +36,6 @@ test.describe('@e2e @ingestion @api Confirm, cancel, token + ingest', () => {
   })
 
   test('cancel flips status to cancelled', async ({ request }) => {
-    test.fixme(true, 'Blocked on BUG-0013: http_request returns null for required output fields')
     const connId = await seedH2Connection(request, `e2e_h2_cancel_${Date.now()}`)
     const c = adapterClient(request)
     const fetched = await c.mcpCall('http_request', { url: `${mock.baseUrl}/json/users`, payloadFormat: 'JSON' })
@@ -52,7 +49,6 @@ test.describe('@e2e @ingestion @api Confirm, cancel, token + ingest', () => {
   })
 
   test('create_ingestion_table with valid token works', async ({ request }) => {
-    test.fixme(true, 'Blocked on BUG-0013: http_request returns null for required output fields')
     const connId = await seedH2Connection(request, `e2e_h2_create_tbl_${Date.now()}`)
     const c = adapterClient(request)
     const fetched = await c.mcpCall('http_request', { url: `${mock.baseUrl}/json/users`, payloadFormat: 'JSON' })
@@ -69,7 +65,6 @@ test.describe('@e2e @ingestion @api Confirm, cancel, token + ingest', () => {
   })
 
   test('re-consuming same token returns INGESTION_TOKEN_INVALID', async ({ request }) => {
-    test.fixme(true, 'Blocked on BUG-0013: http_request returns null for required output fields')
     const connId = await seedH2Connection(request, `e2e_h2_reconsume_${Date.now()}`)
     const c = adapterClient(request)
     const fetched = await c.mcpCall('http_request', { url: `${mock.baseUrl}/json/users`, payloadFormat: 'JSON' })
@@ -92,7 +87,6 @@ test.describe('@e2e @ingestion @api Confirm, cancel, token + ingest', () => {
   })
 
   test('mappingHash mismatch returns INGESTION_TOKEN_INVALID', async ({ request }) => {
-    test.fixme(true, 'Blocked on BUG-0013: http_request returns null for required output fields')
     const connId = await seedH2Connection(request, `e2e_h2_hashmismatch_${Date.now()}`)
     const c = adapterClient(request)
     const fetched = await c.mcpCall('http_request', { url: `${mock.baseUrl}/json/users`, payloadFormat: 'JSON' })
@@ -114,7 +108,6 @@ test.describe('@e2e @ingestion @api Confirm, cancel, token + ingest', () => {
   })
 
   test('ingest_payload after create_table populates rows', async ({ request }) => {
-    test.fixme(true, 'Blocked on BUG-0013: http_request returns null for required output fields')
     const connId = await seedH2Connection(request, `e2e_h2_ingest_${Date.now()}`)
     const c = adapterClient(request)
     const fetched = await c.mcpCall('http_request', { url: `${mock.baseUrl}/json/users`, payloadFormat: 'JSON' })
@@ -163,7 +156,6 @@ test.describe('@e2e @ingestion @api Confirm, cancel, token + ingest', () => {
   })
 
   test('streaming oversized payload does not OOM', async ({ request }) => {
-    test.fixme(true, 'BUG-0015: oversized payload not detected as failed')
     const c = adapterClient(request)
     const res = await c.mcpCall('http_request', { url: `${mock.baseUrl}/error/oversized`, payloadFormat: 'JSON' })
     // Should either fail with payload_too_large or complete within timeout
