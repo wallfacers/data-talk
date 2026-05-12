@@ -38,10 +38,12 @@ const mockListIngestionJobs = vi.fn<(params?: Record<string, unknown>) => Promis
 vi.mock('../api/ingestion-api', () => ({
   getIngestionJob: (id: string) => mockGetIngestionJob(id),
   listIngestionJobs: (params?: Record<string, unknown>) => mockListIngestionJobs(params),
+  getPayloadPreview: vi.fn().mockResolvedValue({ columns: [], rows: [], totalRows: 0 }),
   confirmIngestionJob: vi.fn(),
   cancelIngestionJob: vi.fn(),
   ingestionJobsKey: ['ingestion-jobs'] as const,
   ingestionJobKey: (id: string) => ['ingestion-jobs', id] as const,
+  payloadPreviewKey: (id: string) => ['ingestion-jobs', id, 'payload-preview'] as const,
 }))
 
 // Mock useStageStore.openTab for IngestionLibraryTab
@@ -266,13 +268,13 @@ describe('Ingestion E2E smoke — IngestionJobTab rendering', () => {
   })
 
   it('renders phase stepper dots for all active phases', async () => {
-    const job = makeJob({ status: 'mapped' })
+    const job = makeJob({ status: 'writing', rowCount: 100, rowsInserted: 50 })
     mockGetIngestionJob.mockResolvedValue(job)
 
     const tab: StageTab = {
-      tabId: 'tab_job_mapped',
+      tabId: 'tab_job_writing_dots',
       type: 'ingestion_job',
-      title: 'Job mapped',
+      title: 'Job writing',
       payload: { id: job.id },
       createdAt: Date.now(),
     }
@@ -327,7 +329,7 @@ describe('Ingestion E2E smoke — IngestionLibraryTab rendering', () => {
     ]
     mockListIngestionJobs.mockResolvedValue({ items: jobs, total: 2 })
 
-    render(<IngestionLibraryTab />)
+    renderWithClient(<IngestionLibraryTab />)
 
     await waitFor(() => {
       expect(screen.getByText('https://example.com/sales.csv')).toBeInTheDocument()
@@ -345,7 +347,7 @@ describe('Ingestion E2E smoke — IngestionLibraryTab rendering', () => {
   it('renders title and filter controls', async () => {
     mockListIngestionJobs.mockResolvedValue({ items: [], total: 0 })
 
-    render(<IngestionLibraryTab />)
+    renderWithClient(<IngestionLibraryTab />)
 
     // Title rendered via t() key
     expect(screen.getByText('ingestion.library.title')).toBeInTheDocument()
