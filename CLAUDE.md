@@ -19,6 +19,11 @@ client/                            # Tauri v2 + React 19 + Vite + shadcn/ui
   src/features/                    # Feature modules: chat, session, connection, workspace, data-grid
   src/components/ui/               # shadcn/ui base components
   src-tauri/                       # Tauri Rust backend
+
+openspec/                          # OpenSpec SDD: changes, specs, archive (spec-driven schema)
+  changes/                         # Active change proposals — one directory per change
+  changes/archive/                 # Completed changes (YYYY-MM-DD-<name>)
+  specs/                           # Canonical system behavior specs (GIVEN/WHEN/THEN)
 ```
 
 ## Tech Stack
@@ -35,6 +40,7 @@ client/                            # Tauri v2 + React 19 + Vite + shadcn/ui
 
 ```bash
 # Backend
+export JAVA_HOME=/path/to/jdk-21                              # or ensure `java -version` is 21.x
 cd server && mvn clean verify                                # compile + full test suite
 cd server && mvn spring-boot:run -pl data-talk-adapter       # start (port 8080)
 
@@ -52,33 +58,76 @@ cd client && npm run tauri dev                               # Tauri dev mode
 - **Frontend state**: Zustand store per feature, TanStack Query for server state
 - **Stage state**: `useStageStore` is **session-independent / global** — `tabs[]`, `open`, `maximized`, `activeTabId` etc. are single values, not per-session maps. `StageTab` instances have **no `scope` field**; type-level scope (workspace vs session) lives only in `tab-type-registry.ts` as `TabTypeDescriptor.scope`. Switching the active session does not change stage tabs or open/maximized state
 
-## Knowledge Base Navigation (docs/)
+## OpenSpec Workflow (SDD)
+
+DataTalk uses **OpenSpec (spec-driven schema)** as the primary workflow for proposing, designing, implementing, and archiving changes.
+
+### Commands
+
+| Command | Purpose |
+|---------|---------|
+| `/opsx:explore [topic]` | Open-ended exploration — think, compare, diagram. No artifacts, no code. |
+| `/opsx:propose <change-name>` | Create a change with proposal.md + design.md + tasks.md + delta specs |
+| `/opsx:apply [change]` | Work through tasks.md checkbox by checkbox, implementing each task |
+| `/opsx:archive [change]` | Merge delta specs into base specs, move change to `archive/YYYY-MM-DD-<name>/` |
+
+### Workflow
+
+```
+/opsx:explore "idea"        → Think, compare, diagram (no artifacts)
+        ↓ idea crystallizes
+/opsx:propose <kebab-name> → Generate proposal + design + tasks + delta specs
+        ↓ review artifacts
+/opsx:apply                 → Implement tasks checkbox by checkbox
+        ↓ all complete
+/opsx:archive               → Merge delta specs, move to archive/
+```
+
+### Artifact Layout (per change)
+
+```
+openspec/changes/<change-name>/
+  .openspec.yaml          # Change metadata
+  proposal.md             # Why & What — motivation, scope, impact
+  design.md               # How — technical decisions, risks, migration plan
+  tasks.md                # Implementation checklist (- [ ] ...)
+  specs/                  # Delta specs (ADDED/MODIFIED/REMOVED)
+    <capability>/spec.md
+```
+
+### Integration with Existing docs/
+
+- **New work** → OpenSpec (`openspec/changes/<name>/`). After `/opsx:archive`, the completed change lives in `openspec/changes/archive/`.
+- **Historical docs** → `docs/product-specs/` and `docs/exec-plans/` remain as reference. No new documents should be added there.
+- **Canonical specs** → `openspec/specs/` is the source of truth for current system behavior. Delta specs in each change track deviations until archive.
+
+## Knowledge Base Navigation
 
 This file is the map. Deep knowledge lives in `docs/`:
 
 | Looking for...               | Go to                                                        |
 |------------------------------|--------------------------------------------------------------|
+| Active change proposals      | `openspec/changes/` (run `openspec list`)                   |
+| System behavior specs        | `openspec/specs/`                                           |
+| Completed/archived changes   | `openspec/changes/archive/`                                  |
 | System architecture & layers | [ARCHITECTURE.md](ARCHITECTURE.md)                           |
 | Design docs & core beliefs   | [docs/design-docs/index.md](docs/design-docs/index.md)      |
-| Current status & exec plans  | [docs/exec-plans/index.md](docs/exec-plans/index.md)         |
-| Product specs & features     | [docs/product-specs/index.md](docs/product-specs/index.md)   |
+| Historical exec plans        | [docs/exec-plans/index.md](docs/exec-plans/index.md)         |
+| Historical product specs     | [docs/product-specs/index.md](docs/product-specs/index.md)   |
 | DB schema reference          | [docs/generated/db-schema.md](docs/generated/db-schema.md)   |
-| Ingestion plan (closed)      | [docs/exec-plans/2026-05-12-external-data-ingestion-skills-plan.md](docs/exec-plans/2026-05-12-external-data-ingestion-skills-plan.md) |
-| Ingestion follow-up plan     | [docs/exec-plans/2026-05-12-ingestion-skills-followup-plan.md](docs/exec-plans/2026-05-12-ingestion-skills-followup-plan.md) |
 | External protocol references | [docs/references/](docs/references/)                         |
 | ER tab protocol              | [docs/references/er-tab-protocol.md](docs/references/er-tab-protocol.md) |
-| Bezel dashboard skill 设计   | [docs/product-specs/2026-05-11-bezel-skill-design.md](docs/product-specs/2026-05-11-bezel-skill-design.md) |
+| Bezel dashboard skill design  | [docs/product-specs/2026-05-11-bezel-skill-design.md](docs/product-specs/2026-05-11-bezel-skill-design.md) |
 | Design patterns & conventions| [docs/DESIGN.md](docs/DESIGN.md)                             |
 | Client design contract       | [client/DESIGN.md](client/DESIGN.md)                         |
 | Backend dev guide            | [docs/BACKEND.md](docs/BACKEND.md)                           |
 | Frontend dev guide           | [docs/FRONTEND.md](docs/FRONTEND.md)                         |
 | Data source type compatibility | [docs/DATA_SOURCE_TYPE_COMPATIBILITY.md](docs/DATA_SOURCE_TYPE_COMPATIBILITY.md) |
-| Plan workflow                | [docs/PLANS.md](docs/PLANS.md)                               |
 | Quality standards & scoring  | [docs/QUALITY.md](docs/QUALITY.md)                           |
 | Reliability practices        | [docs/RELIABILITY.md](docs/RELIABILITY.md)                   |
 | Security guide               | [docs/SECURITY.md](docs/SECURITY.md)                         |
 | Tech debt tracker            | [docs/exec-plans/tech-debt-tracker.md](docs/exec-plans/tech-debt-tracker.md) |
-| BUG 跟踪与 E2E 缺陷登记       | [docs/bugs/index.md](docs/bugs/index.md)                     |
+| BUG tracking & E2E defect registry | [docs/bugs/index.md](docs/bugs/index.md)                     |
 | Internationalization guide   | [docs/I18N.md](docs/I18N.md)                             |
 
 ## Working Rules
@@ -89,21 +138,21 @@ This file is the map. Deep knowledge lives in `docs/`:
 
 ### BUG Tracking Gate
 
-DataTalk 运行时偏差通过 `docs/bugs/` 集中记录。详见 [docs/bugs/index.md](docs/bugs/index.md) 与 [docs/bugs/README.md](docs/bugs/README.md)。
+Runtime deviations are centrally tracked in `docs/bugs/`. See [docs/bugs/index.md](docs/bugs/index.md) and [docs/bugs/README.md](docs/bugs/README.md).
 
-**写入触发（MUST 新建/更新 BUG 文档）：**
+**Write triggers (MUST create/update BUG documents):**
 
-1. **E2E 测试发现产品行为偏差**：通过 `mcp__playwright__*` 或 `playwright-cli` skill 跑端到端测试时，发现按钮无响应、数据错误、UI 错位、控制台报错等任何与 spec 不符的行为，**MUST** 在 `docs/bugs/` 新建 BUG 文件，状态 `open`，并在 `index.md` 注册。**禁止只在对话里口头报告**。
-2. **修复一个已存在 BUG 时**：用户明确要求修某 BUG，或修代码恰好闭环了某 open BUG，**MUST** 把对应 BUG 文件状态改 `fixed`，回填 `fixCommit` / `fixPlanRef` 字段，并同步更新 `index.md` 表格行。
+1. **E2E test discovers product behavior deviation**: When running end-to-end tests via `mcp__playwright__*` or `playwright-cli` skill, any spec deviation — unresponsive buttons, incorrect data, UI misalignment, console errors — **MUST** create a new BUG file under `docs/bugs/` with status `open`, and register it in `index.md`. **Verbal-only reporting is forbidden.**
+2. **Fixing an existing BUG**: When the user explicitly requests a BUG fix, or code changes happen to close an open BUG, **MUST** update the corresponding BUG file status to `fixed`, backfill `fixCommit` / `fixPlanRef` fields, and sync the `index.md` row.
 
-**读取触发（MUST 先读 BUG 文档）：**
+**Read triggers (MUST read BUG documents first):**
 
-3. **修复任何 BUG 前**：**MUST** 在 `docs/bugs/` grep 关键字 / 模块名，确认不是已知问题、不是已 `wontfix` 的设计取舍、不是已存在 BUG 的 `duplicate`。
-4. **写新功能 plan / spec 前**：**MUST** 浏览 `docs/bugs/index.md` 的 "Open BUGs" 与 "By Module"，看新 feature 范围是否会触碰已知 BUG 区域；若有，必须在 plan 的 "Risks" 或 "Known Issues" 中明确列出。
+3. **Before fixing any BUG**: **MUST** grep `docs/bugs/` for keywords/module names to confirm it is not a known issue, not a `wontfix` design trade-off, and not a `duplicate` of an existing BUG.
+4. **Before writing a new feature plan/spec**: **MUST** browse `docs/bugs/index.md` "Open BUGs" and "By Module" to check whether the new feature scope overlaps with known BUG areas. If so, must explicitly list them in the plan's "Risks" or "Known Issues."
 
-**报告触发（MUST 在响应中说明）：**
+**Report trigger (MUST state in response):**
 
-5. **用户主动要求 E2E 跑测时**（如 "端到端跑一遍 X 功能"、"用 playwright 验证 Y"），完成后 **MUST** 在最终响应中明确报告 "本次发现 N 个 BUG，已登记到 …"。**N=0 也要明确说**。
+5. **When the user explicitly requests E2E testing** (e.g., "run through feature X end-to-end", "verify Y with Playwright"), upon completion **MUST** clearly report in the final response: "Found N BUGs in this run, registered at …". **Must state this even when N=0.**
 
 ### Data Source Type Compatibility Gate
 
@@ -126,10 +175,6 @@ DataTalk 运行时偏差通过 `docs/bugs/` 集中记录。详见 [docs/bugs/ind
 
 - Be concise and direct. No filler
 
-### Plan Mode
-
-- Multi-step changes **MUST** use `/plan` to align on approach before writing code. Follow the existing plan workflow in [docs/PLANS.md](docs/PLANS.md)
-
 ### Frontend Design Contract Gate
 
 - Any task that writes or modifies frontend requirements, product specs, design docs, execution plans, implementation proposals, or UI implementation for `client/` **MUST** read [client/DESIGN.md](client/DESIGN.md) first.
@@ -142,32 +187,22 @@ DataTalk 运行时偏差通过 `docs/bugs/` 集中记录。详见 [docs/bugs/ind
 
 ### Frontend Plan Gate
 
-- Before entering `/plan` for any `client/` UI, UX, visual, layout, component, page-shell, interaction, or design-system change, the agent **MUST**:
+- Before drafting any proposal or design for `client/` UI, UX, visual, layout, component, page-shell, interaction, or design-system change, the agent **MUST**:
   1. read [client/DESIGN.md](client/DESIGN.md)
   2. summarize the applicable design constraints
-  3. only then draft the plan/spec
-- Frontend `/plan` output **MUST** include a `Design Inputs` section that cites `client/DESIGN.md` and the constraints applied.
+  3. only then draft the proposal/design
+- OpenSpec `proposal.md` / `design.md` output for frontend changes **MUST** include a `Design Inputs` section that cites `client/DESIGN.md` and the constraints applied.
 
-### Parallel Plan Execution
+### Exploration & Brainstorming
 
-- When executing an implementation plan from `docs/exec-plans/`, write code for independent tasks in **concurrent batches** (dispatch parallel subagents — see the `superpowers:dispatching-parallel-agents` and `superpowers:subagent-driven-development` skills), not sequentially one task at a time
-- Within a batch, **skip per-edit `mvn compile` / `tsc --noEmit`**. Run a single consolidated verification pass — full compile, integration tests, end-to-end smoke — only after every task in the batch has its code written
-- Tasks with explicit ordering dependencies declared in the plan document **MUST** still execute in declared order; only mutually independent tasks are eligible for batching
+- **OpenSpec explore**: For any new idea, design discussion, or problem investigation, use `/opsx:explore` as the primary thinking tool. It provides OpenSpec context awareness (reads existing specs, active changes) and visual exploration without writing code.
+- **Superpowers brainstorming**: `superpowers:brainstorming` skill remains available for major architectural changes (new modules, cross-layer refactors). For routine feature work, prefer `/opsx:explore`.
 
-### Ingestion Artifact Path Convention
+### OpenSpec Apply & Parallel Execution
 
-- HTTP-fetched payloads are persisted under `~/.data-talk/ingestion/<jobId>/payload.<json|jsonl|csv|html>` (separate from the standard artifact directory). They are registered in `file_artifact` with `kind=ingestion_payload` and `physical_path` set to the absolute filesystem path
-- The 500MB cap is enforced by `IngestionPayloadFetcher` before final atomic rename — partial writes go to `payload.staging` and are deleted on overrun. Do not attempt to short-circuit the staging step
-- `IngestionConfirmedToken` is in-memory only (`ConcurrentHashMap`, 5-min TTL, single-use). It is not persisted across server restarts — clients must re-confirm after a restart
-
-### Ingestion E2E Profile
-
-- Playwright ingestion specs (`tests/e2e/ingestion-*.spec.ts`) require the backend to be launched with `SPRING_PROFILES_ACTIVE=e2e`. This relaxes SSRF deny so the local mock HTTP server on `127.0.0.1` is reachable and lowers `payload-max-bytes` to 1 MB so the "payload too large" path can be exercised within ~1 s
-- Never start the backend with this profile in production, staging, or shared dev environments
-
-### Brainstorming
-
-- Major changes (new modules, architecture adjustments, cross-layer refactors spanning domain/application/infrastructure/adapter) **MUST** invoke the `brainstorming` skill first
+- When executing tasks via `/opsx:apply`, independent tasks within a batch **MUST** be dispatched in parallel (use `superpowers:dispatching-parallel-agents` and `superpowers:subagent-driven-development` skills).
+- Within a batch, **skip per-edit `mvn compile` / `tsc --noEmit`**. Run a single consolidated verification pass — full compile, integration tests, end-to-end smoke — only after every task in the batch has its code written.
+- Tasks with explicit ordering dependencies declared in `tasks.md` **MUST** still execute in declared order; only mutually independent tasks are eligible for batching.
 
 ### Testing
 
@@ -184,23 +219,42 @@ DataTalk 运行时偏差通过 `docs/bugs/` 集中记录。详见 [docs/bugs/ind
 - Any temporary file produced by MCP servers or Skills (Playwright traces/screenshots, brainstorming scratch files, intermediate scripts, downloaded artifacts, exploratory dumps, etc.) **MUST** be written under the project root's `tmp/` directory (`/home/wallfacers/project/data-talk/tmp/`). Create the directory if it does not exist
 - **Forbidden** locations: repo root, `client/`, `server/`, `docs/`, system `/tmp`, `~/`, or any tracked source path
 - The `tmp/` directory is git-ignored and **MUST NOT** be committed. Do not add files inside it via `git add`, and never relocate generated artifacts out of `tmp/` just to bypass the ignore rule
-- **唯一豁免**：BUG 文档的归档证据截图（`docs/bugs/assets/<BUG-ID>/`，单张 PNG ≤ 500KB）允许入 git。trace / HAR / HTML 等大体积证据**仍须留在 `tmp/`**，不入 git
+- **Sole exception**: BUG evidence screenshots (`docs/bugs/assets/<BUG-ID>/`, PNG ≤ 500KB each) may be committed to git. Large artifacts (trace, HAR, HTML, etc.) **must remain in `tmp/`** and must not be committed
 
-### Documentation Paths
+### Ingestion Artifact Path Convention
 
-- Design specifications generated by the Superpowers `brainstorming` skill **MUST** be stored at `docs/product-specs/YYYY-MM-DD-<topic>-design.md` and indexed in [docs/product-specs/index.md](docs/product-specs/index.md) under §8 "Individual Design Documents"
-- Execution plans generated by the Superpowers `writing-plans` skill **MUST** be stored at `docs/exec-plans/YYYY-MM-DD-<topic>-plan.md` and indexed in [docs/exec-plans/index.md](docs/exec-plans/index.md) under the applicable section (Active / Completed)
-- The skills' built-in default paths (`docs/superpowers/specs/` and `docs/superpowers/plans/`) are **deprecated**; the paths above supersede them in all cases
+- HTTP-fetched payloads are persisted under `~/.data-talk/ingestion/<jobId>/payload.<json|jsonl|csv|html>` (separate from the standard artifact directory). They are registered in `file_artifact` with `kind=ingestion_payload` and `physical_path` set to the absolute filesystem path
+- The 500MB cap is enforced by `IngestionPayloadFetcher` before final atomic rename — partial writes go to `payload.staging` and are deleted on overrun. Do not attempt to short-circuit the staging step
+- `IngestionConfirmedToken` is in-memory only (`ConcurrentHashMap`, 5-min TTL, single-use). It is not persisted across server restarts — clients must re-confirm after a restart
 
-### Plan Document Registration
+### Ingestion E2E Profile
 
-- Every plan produced by the `/plan` command **MUST** be persisted as a standalone file under `docs/exec-plans/`, named `YYYY-MM-DD-<topic>-plan.md` (kebab-case topic, ISO date prefix). Inline plans that live only in chat are not acceptable
-- Immediately after the file is written, register it in [docs/exec-plans/index.md](docs/exec-plans/index.md) under the appropriate section (Active while in progress, Completed once finished). A plan that is not indexed is considered non-existent
+- Playwright ingestion specs (`tests/e2e/ingestion-*.spec.ts`) require the backend to be launched with `SPRING_PROFILES_ACTIVE=e2e`. This relaxes SSRF deny so the local mock HTTP server on `127.0.0.1` is reachable and lowers `payload-max-bytes` to 1 MB so the "payload too large" path can be exercised within ~1 s
+- Never start the backend with this profile in production, staging, or shared dev environments
 
-### Post-Execution Document Housekeeping
+---
 
-- When a plan or spec finishes execution, document housekeeping is **mandatory** and part of the task's definition of done — not optional follow-up:
-  1. Mark every task/checklist item in the plan file as completed, with status notes for any deviations, skipped steps, or deferred work
-  2. Move the entry in [docs/exec-plans/index.md](docs/exec-plans/index.md) from Active to Completed (and mirror the same for specs in [docs/product-specs/index.md](docs/product-specs/index.md) where applicable)
-  3. Propagate any material outcomes (new conventions, schema changes, architectural decisions) back into the canonical docs they affect — CLAUDE.md, ARCHITECTURE.md, docs/DESIGN.md, docs/generated/db-schema.md, etc.
-- A task is **not** "done" until this housekeeping is complete. Do not open PRs, claim completion, or move on to the next plan before the index and parent documents reflect the new state
+## [DEPRECATED] Legacy Workflow Rules
+
+> **Note**: The rules below are from the pre-OpenSpec workflow and have been **superseded by OpenSpec**. All new work **must** follow `/opsx:propose → /opsx:apply → /opsx:archive`. These legacy rules are preserved here only for reference when working with **historical documents** still in `docs/product-specs/` and `docs/exec-plans/`. Do NOT add new files to those directories.
+
+### [DEPRECATED] Plan Mode
+
+- ~~Multi-step changes **MUST** use `/plan` to align on approach before writing code.~~ → Replaced by `/opsx:propose`
+- Legacy plan workflow documented in [docs/PLANS.md](docs/PLANS.md) — still applicable for maintaining existing plans in `docs/exec-plans/`, but not for new changes.
+
+### [DEPRECATED] Documentation Paths
+
+- ~~Design specs from Superpowers `brainstorming` → `docs/product-specs/YYYY-MM-DD-<topic>-design.md`~~ → Replaced by OpenSpec `proposal.md` + `design.md`
+- ~~Execution plans from Superpowers `writing-plans` → `docs/exec-plans/YYYY-MM-DD-<topic>-plan.md`~~ → Replaced by OpenSpec `tasks.md`
+- Historical files remain in `docs/product-specs/` and `docs/exec-plans/` as reference.
+
+### [DEPRECATED] Plan Document Registration
+
+- ~~Every plan **MUST** be persisted under `docs/exec-plans/`, named `YYYY-MM-DD-<topic>-plan.md`~~ → OpenSpec uses `openspec new change <name>` to auto-create the change directory.
+- ~~Register plans in `docs/exec-plans/index.md`~~ → Replaced by `openspec list` to view active changes.
+
+### [DEPRECATED] Post-Execution Document Housekeeping
+
+- ~~Mark tasks complete in plan file, move index entry from Active to Completed, propagate outcomes~~ → Replaced by `/opsx:archive`, which auto-merges delta specs and moves the change directory to archive.
+- Existing active/completed entries in `docs/exec-plans/index.md` are **no longer maintained** — they remain as a read-only historical snapshot.
