@@ -1,9 +1,7 @@
 import { test, expect } from '@playwright/test'
-import { execSync } from 'child_process'
 import { adapterClient } from './fixtures/adapter-client'
+import { execSqlite } from './fixtures/mcp-context'
 import { startMockIngestionServer, type MockServer } from './fixtures/ingestion-fixtures'
-
-const DB_PATH = '/home/wushengzhou/workspace/github/data-talk/server/data-talk-adapter/data/datatalk.db'
 
 let mock: MockServer
 
@@ -18,14 +16,15 @@ test.beforeAll(async ({ request }) => {
   const sessionBody = await createRes.json() as { id: string }
   const sessionId = sessionBody.id
   const ocSid = `e2e-oc-${Date.now()}`
-  execSync(`sqlite3 "${DB_PATH}" "UPDATE sessions SET opencode_sid = '${ocSid}' WHERE id = '${sessionId}';"`)
+  // Use the shared Python sqlite3 helper so the spec doesn't depend on the
+  // sqlite3 CLI (absent on bare WSL2 / Ubuntu minimal setups).
+  execSqlite(`UPDATE sessions SET opencode_sid = '${ocSid}' WHERE id = '${sessionId}';`)
 })
 test.afterAll(async () => { await mock.stop() })
 test.beforeEach(() => mock.reset())
 
 test.describe('@e2e @ingestion @api Schema inference + mappingHash', () => {
   test('JSON inference produces typed columns', async ({ request }) => {
-    test.fixme(true, 'Blocked on BUG-0013: http_request returns null for required output fields')
     const c = adapterClient(request)
     const fetched = await c.mcpCall('http_request', { url: `${mock.baseUrl}/json/users`, payloadFormat: 'JSON' })
     expect(fetched.error).toBeUndefined()
@@ -39,7 +38,6 @@ test.describe('@e2e @ingestion @api Schema inference + mappingHash', () => {
   })
 
   test('JSONL inference produces typed columns', async ({ request }) => {
-    test.fixme(true, 'Blocked on BUG-0013: http_request returns null for required output fields')
     const c = adapterClient(request)
     const fetched = await c.mcpCall('http_request', { url: `${mock.baseUrl}/jsonl/events`, payloadFormat: 'JSONL' })
     expect(fetched.error).toBeUndefined()
@@ -52,7 +50,6 @@ test.describe('@e2e @ingestion @api Schema inference + mappingHash', () => {
   })
 
   test('CSV inference parses headers as column names', async ({ request }) => {
-    test.fixme(true, 'Blocked on BUG-0013: http_request returns null for required output fields')
     const c = adapterClient(request)
     const fetched = await c.mcpCall('http_request', { url: `${mock.baseUrl}/csv/orders`, payloadFormat: 'CSV' })
     expect(fetched.error).toBeUndefined()
@@ -67,7 +64,6 @@ test.describe('@e2e @ingestion @api Schema inference + mappingHash', () => {
   })
 
   test('HTML inference parses <th> as column names', async ({ request }) => {
-    test.fixme(true, 'Blocked on BUG-0013: http_request returns null for required output fields')
     const c = adapterClient(request)
     const fetched = await c.mcpCall('http_request', { url: `${mock.baseUrl}/html/leaderboard`, payloadFormat: 'HTML' })
     expect(fetched.error).toBeUndefined()
@@ -82,7 +78,6 @@ test.describe('@e2e @ingestion @api Schema inference + mappingHash', () => {
   })
 
   test('mappingHash persisted after infer', async ({ request }) => {
-    test.fixme(true, 'Blocked on BUG-0013: http_request returns null for required output fields')
     const c = adapterClient(request)
     const f = await c.mcpCall('http_request', { url: `${mock.baseUrl}/json/users`, payloadFormat: 'JSON' })
     expect(f.error).toBeUndefined()
@@ -94,7 +89,6 @@ test.describe('@e2e @ingestion @api Schema inference + mappingHash', () => {
   })
 
   test('JSON envelope unwrap with dataPath', async ({ request }) => {
-    test.fixme(true, 'Blocked on BUG-0013: http_request returns null for required output fields')
     const c = adapterClient(request)
     const fetched = await c.mcpCall('http_request', { url: `${mock.baseUrl}/json/envelope`, payloadFormat: 'JSON' })
     expect(fetched.error).toBeUndefined()
@@ -110,7 +104,6 @@ test.describe('@e2e @ingestion @api Schema inference + mappingHash', () => {
   })
 
   test('Heterogeneous values fallback to STRING type', async ({ request }) => {
-    test.fixme(true, 'Blocked on BUG-0013: http_request returns null for required output fields')
     const c = adapterClient(request)
     const fetched = await c.mcpCall('http_request', { url: `${mock.baseUrl}/json/heterogeneous-id`, payloadFormat: 'JSON' })
     expect(fetched.error).toBeUndefined()
@@ -124,7 +117,6 @@ test.describe('@e2e @ingestion @api Schema inference + mappingHash', () => {
   })
 
   test('INTEGER_64 promotion for values > 2^31', async ({ request }) => {
-    test.fixme(true, 'Blocked on BUG-0013: http_request returns null for required output fields')
     const c = adapterClient(request)
     const fetched = await c.mcpCall('http_request', { url: `${mock.baseUrl}/json/large-int`, payloadFormat: 'JSON' })
     expect(fetched.error).toBeUndefined()
