@@ -3,592 +3,621 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net/ https://__BEZEL_SERVER_ORIGIN__; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://__BEZEL_SERVER_ORIGIN__; frame-ancestors 'self';">
+<meta name="__JSON_HASH__" content="">
 <title>电商运营实时监控中心</title>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 <style>
+  :root {
+    --bg-rgb: 18,14,10;
+    --accent-primary-rgb: 255,68,68;
+    --accent-secondary-rgb: 255,193,7;
+    --bezel-bg-app: #0d0a07;
+    --bezel-accent-primary: #ff4444;
+    --bezel-accent-secondary: #ffc107;
+    --bezel-text-strong: #e0e8f0;
+    --bezel-text-muted: #8899aa;
+    --bezel-font-stack: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    --card-radius: 4px;
+    --card-bg: rgba(var(--bg-rgb), 0.85);
+    --card-border: none;
+    --card-shadow: none;
+    --card-padding: 10px;
+    --card-blur: 0;
+    --motion-duration: 150ms;
+    --motion-easing: cubic-bezier(0.4, 0, 0.2, 1);
+    --motion-ambient: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    :root {
+      --motion-duration: 0ms;
+      --motion-ambient: none;
+    }
+  }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body {
     width: 100vw; height: 100vh; overflow: hidden;
-    background: #0d0a07;
-    font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-    color: #e0e8f0;
+    background: linear-gradient(135deg, var(--bezel-bg-app) 0%, rgba(var(--accent-primary-rgb), 0.03) 100%);
+    font-family: var(--bezel-font-stack);
+    color: var(--bezel-text-strong);
   }
 
-  /* 粒子背景 */
-  #particles {
-    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  /* Grid layout */
+  .dashboard {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: 80px 1fr 1fr 1fr;
+    gap: 6px;
+    padding: 6px;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    grid-template-areas:
+      "title  kpi1   kpi2   kpi3"
+      "funnel funnel channel gauge"
+      "treemap treemap cohort cohort"
+      "trend    trend  matrix category";
   }
 
-  /* 顶部栏 */
-  .topbar {
-    position: relative; z-index: 10;
-    display: flex; align-items: center; justify-content: space-between;
-    height: 72px; padding: 0 24px;
-    background: rgba(20,14,10,0.6);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid rgba(255,68,68,0.25);
+  /* Card base */
+  .card {
+    background: var(--card-bg);
+    border-radius: var(--card-radius);
+    border: var(--card-border);
+    padding: var(--card-padding);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+    transition: transform var(--motion-duration) var(--motion-easing);
   }
-  .logo { display: flex; flex-direction: column; gap: 2px; }
-  .logo h1 { font-size: 22px; font-weight: 700; color: #ffc107; letter-spacing: 2px; }
-  .logo span { font-size: 11px; color: #ff6b35; letter-spacing: 1px; text-transform: uppercase; }
+  .card:hover {
+    transform: translateY(-2px);
+  }
+  .card-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--bezel-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 6px;
+  }
+  .card-body {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+  }
 
-  .kpi-row {
-    display: flex; gap: 16px; align-items: center;
+  /* Title cell */
+  .cell-title {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 12px;
+    background: var(--card-bg);
+    border-radius: var(--card-radius);
   }
-  .kpi-pill {
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    min-width: 140px; height: 52px; padding: 0 18px;
-    background: rgba(255,68,68,0.08);
-    border: 1px solid rgba(255,68,68,0.35);
-    border-radius: 28px;
-    backdrop-filter: blur(8px);
-    transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
+  .cell-title h1 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--bezel-accent-secondary);
+    letter-spacing: 2px;
   }
-  .kpi-pill:hover { transform: scale(1.05); border-color: #ff4444; box-shadow: 0 0 14px rgba(255,68,68,0.35); }
-  .kpi-pill .label { font-size: 11px; color: #8899aa; margin-bottom: 2px; }
-  .kpi-pill .value { font-size: 20px; font-weight: 700; color: #ffc107; font-variant-numeric: tabular-nums; }
-  .kpi-pill .value.big { font-size: 28px; color: #ff4444; }
-  .kpi-pill .trend { font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }
-  .trend.up { color: #ff4444; }
+  .cell-title .subtitle {
+    font-size: 10px;
+    color: var(--bezel-text-muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+  .cell-title .clock {
+    font-size: 12px;
+    color: var(--bezel-text-muted);
+    font-variant-numeric: tabular-nums;
+    margin-top: 4px;
+  }
+
+  /* KPI blocks */
+  .kpi-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    background: var(--card-bg);
+    border-radius: var(--card-radius);
+  }
+  .kpi-block .value {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--bezel-text-strong);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+  .kpi-block .value.highlight {
+    color: var(--bezel-accent-primary);
+  }
+  .kpi-block .value.gold {
+    color: var(--bezel-accent-secondary);
+  }
+  .kpi-block .label {
+    font-size: 10px;
+    color: var(--bezel-text-muted);
+    margin-top: 4px;
+  }
+  .kpi-block .trend {
+    font-size: 10px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    margin-top: 2px;
+  }
+  .trend.up { color: var(--bezel-accent-primary); }
   .trend.down { color: #00e676; }
 
-  .clock {
-    font-size: 15px; font-weight: 600; color: #ffc107;
-    font-variant-numeric: tabular-nums; letter-spacing: 1px;
-    min-width: 170px; text-align: right;
-  }
+  /* Grid area assignments */
+  .area-title   { grid-area: title; }
+  .area-kpi1    { grid-area: kpi1; }
+  .area-kpi2    { grid-area: kpi2; }
+  .area-kpi3    { grid-area: kpi3; }
+  .area-funnel  { grid-area: funnel; }
+  .area-channel { grid-area: channel; }
+  .area-gauge   { grid-area: gauge; }
+  .area-map     { grid-area: treemap; }
+  .area-cohort  { grid-area: cohort; }
+  .area-trend   { grid-area: trend; }
+  .area-matrix  { grid-area: matrix; }
+  .area-category { grid-area: category; }
 
-  /* 主体 */
-  .main {
-    position: relative; z-index: 5;
-    display: flex; gap: 16px;
-    height: calc(100vh - 72px - 56px);
-    padding: 16px 16px 0 16px;
+  /* Funnel */
+  .funnel-wrap {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 4px;
+    height: 100%;
+    padding-bottom: 4px;
   }
-  .col-left {
-    width: 38%; display: flex; flex-direction: column; gap: 14px;
-  }
-  .col-right {
-    width: 62%; display: flex; flex-direction: column; gap: 14px;
-  }
-  .row { display: flex; gap: 14px; flex: 1; min-height: 0; }
-  .row.half { flex: 1.15; }
-
-  /* 卡片 */
-  .card {
-    flex: 1; min-width: 0; min-height: 0;
-    background: rgba(30,20,14,0.55);
-    border: 1px solid rgba(255,68,68,0.18);
-    border-radius: 12px;
-    backdrop-filter: blur(12px);
-    padding: 12px 14px;
-    display: flex; flex-direction: column;
-    transition: transform .3s ease, border-color .3s ease, box-shadow .3s ease;
-  }
-  .card:hover { transform: scale(1.02); border-color: rgba(255,68,68,0.55); box-shadow: 0 0 18px rgba(255,68,68,0.15); }
-  .card-title {
-    font-size: 13px; font-weight: 700; color: #ffc107;
-    margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
-    letter-spacing: 1px;
-  }
-  .card-title::before {
-    content: ''; display: inline-block; width: 4px; height: 14px;
-    background: linear-gradient(180deg, #ff4444, #ff6b35); border-radius: 2px;
-  }
-  .card-body { flex: 1; min-height: 0; position: relative; }
-
-  /* 漏斗 */
-  .funnel-wrap { display: flex; align-items: center; justify-content: space-between; gap: 6px; height: 100%; padding: 0 4px; }
   .funnel-step {
-    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+    justify-content: flex-end;
   }
   .funnel-bar {
-    width: 100%; border-radius: 8px; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; color: #fff; font-weight: 700;
-    font-size: 13px; padding: 8px 4px; text-align: center; line-height: 1.3;
-    background: linear-gradient(135deg, rgba(255,68,68,0.85), rgba(255,107,53,0.85));
-    box-shadow: 0 4px 14px rgba(255,68,68,0.25);
-    transition: transform .25s ease;
+    width: 100%;
+    border-radius: 2px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 700;
+    font-size: 12px;
+    padding: 6px 2px;
+    text-align: center;
+    line-height: 1.3;
+    background: var(--bezel-accent-primary);
   }
-  .funnel-bar:hover { transform: translateY(-4px); }
-  .funnel-bar small { font-size: 10px; font-weight: 400; opacity: .9; }
-  .funnel-arrow {
-    display: flex; flex-direction: column; align-items: center; color: #ff6b35;
-    font-size: 11px; font-weight: 600; min-width: 44px; text-align: center;
+  .funnel-bar small {
+    font-size: 9px;
+    font-weight: 400;
+    opacity: .9;
   }
-  .funnel-arrow .arr { font-size: 16px; color: #ff4444; }
-
-  /* 跑马灯 */
-  .marquee-bar {
-    position: relative; z-index: 10;
-    height: 56px; display: flex; align-items: center;
-    background: rgba(20,14,10,0.7);
-    border-top: 1px solid rgba(255,68,68,0.25);
-    overflow: hidden;
+  .funnel-label {
+    font-size: 10px;
+    color: var(--bezel-text-muted);
+    margin-top: 3px;
   }
-  .marquee-track {
-    display: flex; white-space: nowrap;
-    animation: marquee 25s linear infinite;
-  }
-  .marquee-item {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 0 28px; font-size: 13px; color: #e0e8f0;
-  }
-  .marquee-item .dot {
-    width: 6px; height: 6px; border-radius: 50%; background: #ff4444;
-    box-shadow: 0 0 6px #ff4444; animation: pulse 1.2s ease-in-out infinite;
-  }
-  .marquee-item .time { color: #8899aa; font-size: 11px; }
-  .marquee-item .name { color: #ffc107; font-weight: 600; }
-  .marquee-item .amount { color: #ff6b35; font-weight: 700; font-variant-numeric: tabular-nums; }
-  @keyframes marquee {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
-  }
-  @keyframes pulse {
-    0%,100% { opacity: 1; transform: scale(1); }
-    50% { opacity: .4; transform: scale(.6); }
+  .funnel-pct {
+    font-size: 9px;
+    color: var(--bezel-accent-secondary);
+    font-weight: 600;
   }
 </style>
 </head>
 <body>
 
-<canvas id="particles"></canvas>
-
-<!-- 顶部栏 -->
-<div class="topbar">
-  <div class="logo">
-    <h1>电商运营实时监控中心</h1>
-    <span>E-Commerce Real-Time Operations Center</span>
+<div class="dashboard">
+  <!-- Title cell -->
+  <div class="area-title cell-title" role="region" aria-label="Dashboard title">
+    <h1>电商运营监控</h1>
+    <div class="subtitle">E-Commerce Operations</div>
+    <div class="clock" id="clock">0000-00-00 00:00:00</div>
   </div>
-  <div class="kpi-row">
-    <div class="kpi-pill">
-      <div class="label">今日 GMV</div>
-      <div class="value big" data-target="2847" data-suffix="万">0</div>
-      <div class="trend up">▲ 24.6%</div>
-    </div>
-    <div class="kpi-pill">
-      <div class="label">订单量</div>
-      <div class="value" data-target="156.8" data-suffix="万">0</div>
-      <div class="trend up">▲ 18.3%</div>
-    </div>
-    <div class="kpi-pill">
-      <div class="label">转化率</div>
-      <div class="value" data-target="4.8" data-suffix="%">0</div>
-      <div class="trend up">▲ 0.6pp</div>
-    </div>
-    <div class="kpi-pill">
-      <div class="label">客单价</div>
-      <div class="value" data-target="892" data-suffix="元">0</div>
-      <div class="trend down">▼ 3.2%</div>
-    </div>
-  </div>
-  <div class="clock" id="clock">0000-00-00 00:00:00</div>
-</div>
 
-<!-- 主体 -->
-<div class="main">
-  <div class="col-left">
-    <!-- 漏斗 -->
-    <div class="card" style="flex:1.1">
-      <div class="card-title">转化漏斗</div>
-      <div class="card-body">
-        <div class="funnel-wrap">
-          <div class="funnel-step">
-            <div class="funnel-bar" style="height:90%">
-              <div>UV</div>
-              <small>286万</small>
-            </div>
+  <!-- KPI 1: GMV -->
+  <div class="area-kpi1 kpi-block" role="region" aria-label="KPI: Today GMV">
+    <div class="value highlight" data-target="2847" data-suffix="万" data-decimal="0">0</div>
+    <div class="label">今日 GMV</div>
+    <div class="trend up">+24.6%</div>
+  </div>
+
+  <!-- KPI 2: Orders -->
+  <div class="area-kpi2 kpi-block" role="region" aria-label="KPI: Orders">
+    <div class="value gold" data-target="156.8" data-suffix="万" data-decimal="1">0</div>
+    <div class="label">订单量</div>
+    <div class="trend up">+18.3%</div>
+  </div>
+
+  <!-- KPI 3: Conversion -->
+  <div class="area-kpi3 kpi-block" role="region" aria-label="KPI: Conversion rate">
+    <div class="value" data-target="4.8" data-suffix="%" data-decimal="1">0</div>
+    <div class="label">转化率</div>
+    <div class="trend up">+0.6pp</div>
+  </div>
+
+  <!-- Funnel -->
+  <div class="area-funnel card" role="region" aria-label="Conversion funnel">
+    <div class="card-title">转化漏斗</div>
+    <div class="card-body">
+      <div class="funnel-wrap">
+        <div class="funnel-step">
+          <div class="funnel-bar" style="height:90%">
+            <div>UV</div>
+            <small>286万</small>
           </div>
-          <div class="funnel-arrow">
-            <div class="arr">&#10132;</div>
-            <div>25.2%</div>
+          <div class="funnel-label">25.2%</div>
+        </div>
+        <div class="funnel-step">
+          <div class="funnel-bar" style="height:72%">
+            <div>详情页</div>
+            <small>72万</small>
           </div>
-          <div class="funnel-step">
-            <div class="funnel-bar" style="height:72%">
-              <div>详情页</div>
-              <small>72万</small>
-            </div>
+          <div class="funnel-label">25.0%</div>
+        </div>
+        <div class="funnel-step">
+          <div class="funnel-bar" style="height:54%">
+            <div>加购</div>
+            <small>18万</small>
           </div>
-          <div class="funnel-arrow">
-            <div class="arr">&#10132;</div>
-            <div>25.0%</div>
+          <div class="funnel-label">86.7%</div>
+        </div>
+        <div class="funnel-step">
+          <div class="funnel-bar" style="height:46%">
+            <div>支付</div>
+            <small>15.6万</small>
           </div>
-          <div class="funnel-step">
-            <div class="funnel-bar" style="height:54%">
-              <div>加购</div>
-              <small>18万</small>
-            </div>
-          </div>
-          <div class="funnel-arrow">
-            <div class="arr">&#10132;</div>
-            <div>86.7%</div>
-          </div>
-          <div class="funnel-step">
-            <div class="funnel-bar" style="height:46%">
-              <div>支付成功</div>
-              <small>15.6万</small>
-            </div>
-          </div>
+          <div class="funnel-pct">4.8%总转化</div>
         </div>
       </div>
     </div>
-    <div class="row">
-      <div class="card">
-        <div class="card-title">渠道 GMV 占比</div>
-        <div class="card-body" id="chart-channel"></div>
-      </div>
-      <div class="card">
-        <div class="card-title">大促目标达成率</div>
-        <div class="card-body" id="chart-gauge"></div>
-      </div>
-    </div>
-    <div class="row">
-      <div class="card">
-        <div class="card-title">品类销售排行 TOP10</div>
-        <div class="card-body" id="chart-category"></div>
-      </div>
-      <div class="card">
-        <div class="card-title">客单价分布</div>
-        <div class="card-body" id="chart-atv"></div>
-      </div>
-    </div>
   </div>
 
-  <div class="col-right">
-    <div class="row half">
-      <div class="card" style="flex:1.6">
-        <div class="card-title">全国订单热力分布</div>
-        <div class="card-body" id="chart-map"></div>
-      </div>
-      <div class="card" style="flex:1">
-        <div class="card-title">用户留存 Cohort</div>
-        <div class="card-body" id="chart-cohort"></div>
-      </div>
-    </div>
-    <div class="row half">
-      <div class="card" style="flex:1">
-        <div class="card-title">品类关联购买矩阵</div>
-        <div class="card-body" id="chart-matrix"></div>
-      </div>
-      <div class="card" style="flex:1.6">
-        <div class="card-title">实时 GMV 趋势 & 订单量</div>
-        <div class="card-body" id="chart-trend"></div>
-      </div>
-    </div>
+  <!-- Channel pie -->
+  <div class="area-channel card" role="region" aria-label="Channel GMV distribution">
+    <div class="card-title">渠道 GMV 占比</div>
+    <div class="card-body" id="chart-channel"></div>
   </div>
-</div>
 
-<!-- 底部跑马灯 -->
-<div class="marquee-bar">
-  <div class="marquee-track" id="marquee"></div>
+  <!-- Gauge -->
+  <div class="area-gauge card" role="region" aria-label="Campaign target completion">
+    <div class="card-title">大促目标达成率</div>
+    <div class="card-body" id="chart-gauge"></div>
+  </div>
+
+  <!-- Regional Treemap -->
+  <div class="area-map card" role="region" aria-label="Regional sales treemap">
+    <div class="card-title">区域销售分布</div>
+    <div class="card-body" id="chart-treemap"></div>
+  </div>
+
+  <!-- Cohort -->
+  <div class="area-cohort card" role="region" aria-label="User retention cohort">
+    <div class="card-title">用户留存 Cohort</div>
+    <div class="card-body" id="chart-cohort"></div>
+  </div>
+
+  <!-- GMV Trend -->
+  <div class="area-trend card" role="region" aria-label="Realtime GMV trend and orders">
+    <div class="card-title">实时 GMV 趋势 & 订单量</div>
+    <div class="card-body" id="chart-trend"></div>
+  </div>
+
+  <!-- Matrix -->
+  <div class="area-matrix card" role="region" aria-label="Category correlation matrix">
+    <div class="card-title">品类关联购买矩阵</div>
+    <div class="card-body" id="chart-matrix"></div>
+  </div>
+
+  <!-- Category Ranking -->
+  <div class="area-category card" role="region" aria-label="Top 10 category sales ranking">
+    <div class="card-title">品类销售排行 TOP10</div>
+    <div class="card-body" id="chart-category"></div>
+  </div>
 </div>
 
 <script>
-/* ================= 粒子背景 ================= */
+/* ==================== BEZEL CONFIG ==================== */
+window.__BEZEL_CONFIG__ = {
+  dashboardId: "02-ecommerce",
+  style: "mosaic",
+  refreshInterval: 30000,
+  widgets: [
+    { id: "channel", type: "pie" },
+    { id: "gauge", type: "gauge" },
+    { id: "treemap", type: "treemap" },
+    { id: "cohort", type: "heatmap" },
+    { id: "trend", type: "bar" },
+    { id: "matrix", type: "heatmap" },
+    { id: "category", type: "bar" }
+  ]
+};
+
+/* ==================== POLLING SCHEDULER ==================== */
 (function() {
-  const c = document.getElementById('particles');
-  const ctx = c.getContext('2d');
-  let W, H, particles = [];
-  function resize() { W = c.width = window.innerWidth; H = c.height = window.innerHeight; }
-  resize();
-  window.addEventListener('resize', resize);
-  for (let i = 0; i < 80; i++) {
-    particles.push({
-      x: Math.random() * W, y: Math.random() * H,
-      r: Math.random() * 2 + 0.5,
-      vy: -(Math.random() * 0.6 + 0.2),
-      alpha: Math.random() * 0.5 + 0.1,
-      color: Math.random() > 0.5 ? '255,68,68' : '255,193,7'
+  var cfg = window.__BEZEL_CONFIG__;
+  var interval = cfg.refreshInterval || 30000;
+  function poll() {
+    cfg.widgets.forEach(function(w) {
+      var url = "/api/dashboards/" + cfg.dashboardId + "/widgets/" + w.id + "/data";
+      fetch(url).then(function(r) { return r.json(); }).then(function(data) {
+        window.dispatchEvent(new CustomEvent("bezel:data:" + w.id, { detail: data }));
+      }).catch(function() {});
     });
   }
-  function draw() {
-    ctx.clearRect(0,0,W,H);
-    particles.forEach(p => {
-      p.y += p.vy;
-      if (p.y < -10) { p.y = H + 10; p.x = Math.random() * W; }
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
-      ctx.fillStyle = `rgba(${p.color},${p.alpha})`;
-      ctx.fill();
-    });
-    requestAnimationFrame(draw);
-  }
-  draw();
+  setInterval(poll, interval);
 })();
 
-/* ================= 时钟 ================= */
+/* ==================== CLOCK ==================== */
 function updateClock() {
-  const now = new Date();
-  const pad = n => String(n).padStart(2,'0');
+  var now = new Date();
+  var pad = function(n) { return String(n).padStart(2, '0'); };
   document.getElementById('clock').textContent =
-    `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    now.getFullYear() + '-' + pad(now.getMonth()+1) + '-' + pad(now.getDate()) + ' ' +
+    pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
 }
 setInterval(updateClock, 1000);
 updateClock();
 
-/* ================= KPI 滚动动画 ================= */
-function animateKPI(el) {
-  const target = parseFloat(el.dataset.target);
-  const suffix = el.dataset.suffix || '';
-  const isFloat = String(el.dataset.target).includes('.');
-  const duration = 1500;
-  const start = performance.now();
-  function step(now) {
-    const t = Math.min((now - start) / duration, 1);
-    const ease = 1 - Math.pow(1 - t, 3);
-    const val = target * ease;
-    el.textContent = (isFloat ? val.toFixed(1) : Math.round(val).toLocaleString()) + suffix;
-    if (t < 1) requestAnimationFrame(step);
+/* ==================== KPI COUNT-UP ==================== */
+function countUp(el, target, duration) {
+  duration = duration || 800;
+  var suffix = el.dataset.suffix || '';
+  var decimal = parseInt(el.dataset.decimal) || 0;
+  var startTime = null;
+  function tick(ts) {
+    if (!startTime) startTime = ts;
+    var p = Math.min((ts - startTime) / duration, 1);
+    var ease = 1 - Math.pow(1 - p, 3);
+    var val = target * ease;
+    el.textContent = (decimal > 0 ? val.toFixed(decimal) : Math.round(val).toLocaleString()) + suffix;
+    if (p < 1) requestAnimationFrame(tick);
   }
-  requestAnimationFrame(step);
+  requestAnimationFrame(tick);
 }
-document.querySelectorAll('.kpi-pill .value').forEach(animateKPI);
+document.querySelectorAll('.kpi-block .value[data-target]').forEach(function(el) {
+  countUp(el, parseFloat(el.dataset.target));
+});
 
-/* ================= 跑马灯 ================= */
-const orders = [
-  {t:'14:32:18',n:'iPhone 16 Pro',a:'¥8,999'},
-  {t:'14:32:05',n:'戴森吹风机',a:'¥2,999'},
-  {t:'14:31:52',n:'SK-II 神仙水',a:'¥1,540'},
-  {t:'14:31:41',n:'小米空气净化器',a:'¥899'},
-  {t:'14:31:28',n:'乐高 布加迪',a:'¥2,699'},
-  {t:'14:31:15',n:'索尼 WH-1000XM5',a:'¥2,499'},
-  {t:'14:30:58',n:'Switch OLED',a:'¥2,099'},
-  {t:'14:30:42',n:'海蓝之谜面霜',a:'¥3,080'},
-  {t:'14:30:31',n:'戴森吸尘器',a:'¥4,490'},
-  {t:'14:30:19',n:'MacBook Air M3',a:'¥10,499'},
-  {t:'14:30:07',n:'华为 Mate 60',a:'¥5,999'},
-  {t:'14:29:55',n:'雅诗兰黛小棕瓶',a:'¥935'},
-];
-function buildMarquee() {
-  const track = document.getElementById('marquee');
-  const html = orders.map(o =>
-    `<div class="marquee-item"><span class="dot"></span><span class="time">${o.t}</span><span class="name">${o.n}</span><span class="amount">${o.a}</span></div>`
-  ).join('');
-  track.innerHTML = html + html;
-}
-buildMarquee();
-
-/* ================= ECharts 暗色通用配置 ================= */
-const darkText = '#e0e8f0';
-const darkSub = '#8899aa';
-const darkGrid = { borderColor: 'rgba(136,153,170,0.12)', lineStyle: { type: 'dashed', color: 'rgba(136,153,170,0.15)' } };
-const commonTooltip = {
-  backgroundColor: 'rgba(20,14,10,0.92)',
-  borderColor: 'rgba(255,68,68,0.45)',
+/* ==================== ECHARTS COMMON ==================== */
+var commonTooltip = {
+  backgroundColor: 'rgba(13,10,7,0.92)',
+  borderColor: 'rgba(255,68,68,0.35)',
   textStyle: { color: '#e0e8f0', fontSize: 12 },
-  padding: [8,12]
+  padding: [8, 12]
 };
+var darkSub = '#8899aa';
+var charts = [];
 
-const charts = [];
-
-/* 1. 渠道占比 */
-const chartChannel = echarts.init(document.getElementById('chart-channel'));
+/* ==================== 1. CHANNEL PIE ==================== */
+var chartChannel = echarts.init(document.getElementById('chart-channel'));
 chartChannel.setOption({
-  tooltip: { ...commonTooltip, trigger: 'item', formatter: '{b}: {c}万 ({d}%)' },
+  tooltip: Object.assign({}, commonTooltip, { trigger: 'item', formatter: '{b}: {c}万 ({d}%)' }),
   legend: { show: false },
   series: [{
-    type: 'pie', radius: ['42%', '68%'], center: ['50%','55%'],
-    itemStyle: { borderRadius: 6, borderColor: '#0d0a07', borderWidth: 2 },
-    label: { color: darkSub, fontSize: 11, formatter: '{b}\n{d}%' },
-    labelLine: { lineStyle: { color: 'rgba(136,153,170,0.4)' } },
+    type: 'pie', radius: ['40%', '66%'], center: ['50%', '55%'],
+    itemStyle: { borderRadius: 0, borderColor: '#0d0a07', borderWidth: 2 },
+    label: { color: darkSub, fontSize: 10, formatter: '{b}\n{d}%' },
+    labelLine: { lineStyle: { color: 'rgba(136,153,170,0.3)' } },
     data: [
-      {value: 982, name: '淘宝', itemStyle:{color:'#ff4444'}},
-      {value: 625, name: '京东', itemStyle:{color:'#ff6b35'}},
-      {value: 498, name: '拼多多', itemStyle:{color:'#ffc107'}},
-      {value: 512, name: '抖音', itemStyle:{color:'#ff8a65'}},
-      {value: 230, name: '其他', itemStyle:{color:'#5c6bc0'}},
+      { value: 982, name: '淘宝', itemStyle: { color: '#ff4444' } },
+      { value: 625, name: '京东', itemStyle: { color: '#ff6b35' } },
+      { value: 498, name: '拼多多', itemStyle: { color: '#ffc107' } },
+      { value: 512, name: '抖音', itemStyle: { color: '#ff8a65' } },
+      { value: 230, name: '其他', itemStyle: { color: '#5c6bc0' } }
     ]
   }]
 });
 charts.push(chartChannel);
 
-/* 2. 品类排行 */
-const chartCategory = echarts.init(document.getElementById('chart-category'));
-const catData = [
-  {n:'手机数码',v:520},{n:'美妆护肤',v:410},{n:'家用电器',v:385},{n:'服装鞋包',v:340},
-  {n:'食品饮料',v:290},{n:'母婴用品',v:245},{n:'运动户外',v:210},{n:'家居家装',v:185},
-  {n:'图书文具',v:140},{n:'汽车用品',v:95}
-];
-chartCategory.setOption({
-  tooltip: commonTooltip,
-  grid: { left: 8, right: 18, top: 8, bottom: 8, containLabel: true },
-  xAxis: { type: 'value', axisLabel:{color:darkSub,fontSize:10}, splitLine:{...darkGrid.lineStyle}, axisLine:{show:false}, axisTick:{show:false} },
-  yAxis: { type: 'category', data: catData.map(d=>d.n).reverse(), axisLabel:{color:darkSub,fontSize:10}, axisLine:{show:false}, axisTick:{show:false} },
-  series: [{
-    type: 'bar', data: catData.map(d=>d.v).reverse(),
-    itemStyle: { borderRadius: [0,4,4,0], color: new echarts.graphic.LinearGradient(0,0,1,0,[{offset:0,color:'#ff6b35'},{offset:1,color:'#ff4444'}]) },
-    barWidth: 10, label: { show:true, position:'right', color:darkSub, fontSize:10, formatter:'{c}万' }
-  }]
-});
-charts.push(chartCategory);
-
-/* 3. 地图 */
-const chartMap = echarts.init(document.getElementById('chart-map'));
-fetch('https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json')
-  .then(r => r.json())
-  .then(geoJson => {
-    echarts.registerMap('china', geoJson);
-    const mapData = [
-      {name:'广东',value:28500},{name:'浙江',value:24200},{name:'江苏',value:21800},{name:'上海',value:19500},
-      {name:'北京',value:18200},{name:'山东',value:16800},{name:'四川',value:14200},{name:'河南',value:12800},
-      {name:'湖北',value:11500},{name:'福建',value:10800},{name:'湖南',value:9600},{name:'安徽',value:8900},
-      {name:'河北',value:8200},{name:'陕西',value:7500},{name:'重庆',value:7100},{name:'辽宁',value:6400},
-      {name:'云南',value:5800},{name:'江西',value:5200},{name:'广西',value:4800},{name:'山西',value:4200},
-      {name:'吉林',value:3600},{name:'贵州',value:3400},{name:'甘肃',value:2800},{name:'内蒙古',value:2600},
-      {name:'新疆',value:2200},{name:'海南',value:1900},{name:'宁夏',value:1200},{name:'青海',value:900},
-      {name:'西藏',value:600},{name:'天津',value:10500},{name:'黑龙江',value:4500}
-    ];
-    chartMap.setOption({
-      tooltip: { ...commonTooltip, trigger: 'item', formatter: '{b}<br/>订单量: {c}' },
-      visualMap: {
-        min: 0, max: 30000, left: 8, bottom: 8,
-        text: ['高','低'], textStyle:{color:darkSub,fontSize:10},
-        inRange: { color: ['#1a0f0a','#3e1a12','#7a2e1e','#b83e28','#e05038','#ff4444','#ff6b35','#ffc107'] },
-        calculable: true, itemWidth: 10, itemHeight: 80
-      },
-      geo: {
-        map: 'china', roam: false,
-        itemStyle: { areaColor: '#1a120e', borderColor: 'rgba(255,68,68,0.25)', borderWidth: 1 },
-        emphasis: { itemStyle: { areaColor: '#ff6b35' }, label:{color:'#fff'} }
-      },
-      series: [{
-        type: 'map', map: 'china', geoIndex: 0,
-        data: mapData,
-        emphasis: { label:{show:true,color:'#fff'} }
-      }]
-    });
-  })
-  .catch(() => {
-    chartMap.setOption({
-      title: { text: '地图加载失败', left:'center', top:'center', textStyle:{color:darkSub,fontSize:14} }
-    });
-  });
-charts.push(chartMap);
-
-/* 4. GMV 趋势 & 订单量 */
-const chartTrend = echarts.init(document.getElementById('chart-trend'));
-const hours = Array.from({length:24},(_,i)=>`${String(i).padStart(2,'0')}:00`);
-const gmvData = [45,38,32,28,25,30,42,68,95,128,156,182,210,195,178,165,188,215,245,268,285,240,180,120];
-const orderData = [1.2,1.0,0.8,0.7,0.6,0.9,1.5,2.8,4.2,6.1,7.8,9.5,11.2,10.5,9.2,8.5,9.8,11.5,13.2,14.8,15.6,12.8,9.2,6.1];
-chartTrend.setOption({
-  tooltip: { ...commonTooltip, trigger: 'axis', axisPointer:{type:'cross'} },
-  legend: { data:['GMV','订单量'], textStyle:{color:darkSub,fontSize:11}, top:0, right:8 },
-  grid: { left: 48, right: 48, top: 32, bottom: 24 },
-  xAxis: { type:'category', data:hours, axisLabel:{color:darkSub,fontSize:10}, axisLine:{lineStyle:{color:'rgba(136,153,170,0.2)'}}, axisTick:{show:false} },
-  yAxis: [
-    { type:'value', name:'GMV(万)', nameTextStyle:{color:darkSub,fontSize:10}, axisLabel:{color:darkSub,fontSize:10}, splitLine:{...darkGrid.lineStyle}, axisLine:{show:false}, axisTick:{show:false} },
-    { type:'value', name:'订单量(万)', nameTextStyle:{color:darkSub,fontSize:10}, axisLabel:{color:darkSub,fontSize:10}, splitLine:{show:false}, axisLine:{show:false}, axisTick:{show:false} }
-  ],
-  series: [
-    { name:'GMV', type:'bar', data:gmvData, barWidth:10,
-      itemStyle:{ color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#ff4444'},{offset:1,color:'rgba(255,68,68,0.15)'}]), borderRadius:[3,3,0,0] } },
-    { name:'订单量', type:'line', yAxisIndex:1, data:orderData, smooth:true, symbol:'circle', symbolSize:5,
-      lineStyle:{color:'#ffc107',width:2}, itemStyle:{color:'#ffc107',borderColor:'#fff',borderWidth:1},
-      areaStyle:{ color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(255,193,7,0.25)'},{offset:1,color:'rgba(255,193,7,0)'}]) } }
-  ]
-});
-charts.push(chartTrend);
-
-/* 5. 留存 Cohort */
-const chartCohort = echarts.init(document.getElementById('chart-cohort'));
-const cohortDays = ['Day 0','Day 1','Day 3','Day 7','Day 14','Day 30'];
-const cohortDates = ['05-05','05-06','05-07','05-08','05-09','05-10','05-11'];
-const cohortRaw = [
-  [100,45,35,28,22,18],
-  [100,46,36,29,23,19],
-  [100,44,34,27,21,17],
-  [100,47,37,30,24,20],
-  [100,43,33,26,20,16],
-  [100,48,38,31,25,21],
-  [100,45,35,28,22,18],
-];
-const cohortData = [];
-for (let i=0;i<cohortDates.length;i++)
-  for (let j=0;j<cohortDays.length;j++)
-    cohortData.push([i, j, cohortRaw[i][j]]);
-chartCohort.setOption({
-  tooltip: { ...commonTooltip, formatter: p => `${cohortDates[p.value[0]]} ${cohortDays[p.value[1]]}<br/>留存率: ${p.value[2]}%` },
-  grid: { left: 52, right: 8, top: 8, bottom: 28 },
-  xAxis: { type:'category', data:cohortDates, axisLabel:{color:darkSub,fontSize:10}, axisLine:{lineStyle:{color:'rgba(136,153,170,0.2)'}}, axisTick:{show:false} },
-  yAxis: { type:'category', data:cohortDays, axisLabel:{color:darkSub,fontSize:10}, axisLine:{show:false}, axisTick:{show:false}, splitLine:{show:false} },
-  visualMap: {
-    min:0, max:100, show:false,
-    inRange:{ color: ['#1a0f0a','#3e1a12','#7a2e1e','#b83e28','#e05038','#ff4444','#ff6b35','#ffc107'] }
-  },
-  series: [{
-    type:'heatmap', data:cohortData, label:{show:true,color:'#fff',fontSize:10,formatter:p=>p.value[2]+'%'},
-    itemStyle:{borderColor:'#0d0a07',borderWidth:2,borderRadius:4}
-  }]
-});
-charts.push(chartCohort);
-
-/* 6. 关联矩阵 */
-const chartMatrix = echarts.init(document.getElementById('chart-matrix'));
-const matrixCats = ['手机','美妆','家电','服装','食品','母婴','运动','家居'];
-const matrixData = [];
-for (let i=0;i<matrixCats.length;i++)
-  for (let j=0;j<matrixCats.length;j++) {
-    let v = Math.random()*0.6+0.1;
-    if (i===j) v = 1.0;
-    if (Math.abs(i-j)===1) v = Math.random()*0.25+0.55;
-    matrixData.push([j, i, parseFloat(v.toFixed(2))]);
-  }
-chartMatrix.setOption({
-  tooltip: { ...commonTooltip, formatter: p => `${matrixCats[p.value[1]]} x ${matrixCats[p.value[0]]}<br/>关联度: ${p.value[2]}` },
-  grid: { left: 52, right: 8, top: 8, bottom: 28 },
-  xAxis: { type:'category', data:matrixCats, axisLabel:{color:darkSub,fontSize:9,rotate:30}, axisLine:{show:false}, axisTick:{show:false}, splitLine:{show:false} },
-  yAxis: { type:'category', data:matrixCats, axisLabel:{color:darkSub,fontSize:9}, axisLine:{show:false}, axisTick:{show:false}, splitLine:{show:false} },
-  visualMap: {
-    min:0, max:1, show:false,
-    inRange:{ color: ['#1a0f0a','#3e1a12','#7a2e1e','#b83e28','#e05038','#ff4444','#ff6b35','#ffc107'] }
-  },
-  series: [{
-    type:'heatmap', data:matrixData,
-    itemStyle:{borderColor:'#0d0a07',borderWidth:2,borderRadius:3}
-  }]
-});
-charts.push(chartMatrix);
-
-/* 7. 仪表盘 */
-const chartGauge = echarts.init(document.getElementById('chart-gauge'));
+/* ==================== 2. GAUGE ==================== */
+var chartGauge = echarts.init(document.getElementById('chart-gauge'));
 chartGauge.setOption({
   series: [{
-    type:'gauge', startAngle:200, endAngle:-20, min:0, max:100,
-    splitNumber:10,
-    itemStyle:{color:'#ff4444'},
-    progress:{show:true, width:14},
-    pointer:{show:true, length:'65%', width:5, itemStyle:{color:'#ffc107'}},
-    axisLine:{lineStyle:{width:14, color:[[0.5,'#5c6bc0'],[0.8,'#ff6b35'],[1,'#ff4444']]}},
-    axisTick:{show:false}, splitLine:{length:8, lineStyle:{width:1,color:'#8899aa'}},
-    axisLabel:{distance:18, color:darkSub, fontSize:10, formatter:v=>v===0||v===50||v===100?v:''},
-    anchor:{show:true, showAbove:true, size:16, itemStyle:{borderColor:'#ff4444',borderWidth:2,color:'#0d0a07'}},
-    title:{show:false}, detail:{
-      valueAnimation:true, fontSize:22, color:'#ffc107', fontWeight:700,
-      offsetCenter:[0,'70%'], formatter:'{value}%'
-    },
-    data:[{value:78}]
+    type: 'gauge', startAngle: 200, endAngle: -20, min: 0, max: 100,
+    splitNumber: 10,
+    itemStyle: { color: '#ff4444' },
+    progress: { show: true, width: 12 },
+    pointer: { show: true, length: '60%', width: 4, itemStyle: { color: '#ffc107' } },
+    axisLine: { lineStyle: { width: 12, color: [[1, 'rgba(136,153,170,0.15)']] } },
+    axisTick: { show: false },
+    splitLine: { length: 6, lineStyle: { width: 1, color: '#8899aa' } },
+    axisLabel: { distance: 14, color: darkSub, fontSize: 9, formatter: function(v) { return (v === 0 || v === 50 || v === 100) ? v : ''; } },
+    anchor: { show: true, showAbove: true, size: 12, itemStyle: { borderColor: '#ff4444', borderWidth: 2, color: '#0d0a07' } },
+    title: { show: false },
+    detail: { valueAnimation: true, fontSize: 20, color: '#ffc107', fontWeight: 700, offsetCenter: [0, '70%'], formatter: '{value}%' },
+    data: [{ value: 78 }]
   }]
 });
 charts.push(chartGauge);
 
-/* 8. 客单价分布 */
-const chartAtv = echarts.init(document.getElementById('chart-atv'));
-chartAtv.setOption({
-  tooltip: commonTooltip,
-  grid: { left: 8, right: 18, top: 8, bottom: 24, containLabel: true },
-  xAxis: { type:'category', data:['50-100','100-200','200-300','300-500','500+'], axisLabel:{color:darkSub,fontSize:10}, axisLine:{lineStyle:{color:'rgba(136,153,170,0.2)'}}, axisTick:{show:false} },
-  yAxis: { type:'value', axisLabel:{color:darkSub,fontSize:10}, splitLine:{...darkGrid.lineStyle}, axisLine:{show:false}, axisTick:{show:false} },
+/* ==================== 3. REGIONAL TREEMAP ==================== */
+var chartTreemap = echarts.init(document.getElementById('chart-treemap'));
+var regionData = [
+  { name: '华东', value: 82500, children: [
+    { name: '上海', value: 19500 }, { name: '江苏', value: 21800 },
+    { name: '浙江', value: 24200 }, { name: '福建', value: 10800 }, { name: '安徽', value: 8900 }
+  ]},
+  { name: '华南', value: 43400, children: [
+    { name: '广东', value: 28500 }, { name: '湖南', value: 9600 },
+    { name: '广西', value: 4800 }
+  ]},
+  { name: '华北', value: 43200, children: [
+    { name: '北京', value: 18200 }, { name: '山东', value: 16800 },
+    { name: '河北', value: 8200 }
+  ]},
+  { name: '西南', value: 28400, children: [
+    { name: '四川', value: 14200 }, { name: '重庆', value: 7100 },
+    { name: '云南', value: 5800 }, { name: '贵州', value: 3400 }
+  ]},
+  { name: '华中', value: 18500, children: [
+    { name: '河南', value: 12800 }, { name: '湖北', value: 11500 }
+  ]},
+  { name: '其他', value: 22700, children: [
+    { name: '辽宁', value: 6400 }, { name: '陕西', value: 7500 },
+    { name: '天津', value: 10500 }
+  ]}
+];
+chartTreemap.setOption({
+  tooltip: Object.assign({}, commonTooltip, { formatter: function(p) { return p.name + '<br/>GMV: ' + p.value + '万'; } }),
   series: [{
-    type:'bar', data:[12.5,28.3,35.6,18.4,5.2], barWidth:16,
-    itemStyle:{ borderRadius:[4,4,0,0], color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#ffc107'},{offset:1,color:'rgba(255,193,7,0.15)'}]) },
-    label:{show:true,position:'top',color:darkSub,fontSize:10,formatter:'{c}%'}
+    type: 'treemap',
+    breadcrumb: { show: false },
+    roam: false,
+    nodeClick: false,
+    itemStyle: {
+      borderColor: '#0d0a07',
+      borderWidth: 2,
+      gapWidth: 2
+    },
+    label: {
+      fontSize: 11,
+      color: '#e0e8f0',
+      formatter: function(p) { return p.name + '\n' + p.value + '万'; }
+    },
+    levels: [{
+      itemStyle: {
+        borderColor: '#0d0a07',
+        borderWidth: 2,
+        gapWidth: 2
+      },
+      color: ['#ff4444', '#ff6b35', '#ffc107', '#ff8a65', '#5c6bc0', '#e05038']
+    }, {
+      itemStyle: {
+        borderColor: '#0d0a07',
+        borderWidth: 1,
+        gapWidth: 1
+      },
+      colorSaturation: [0.3, 0.7]
+    }],
+    data: regionData
   }]
 });
-charts.push(chartAtv);
+charts.push(chartTreemap);
 
-/* resize */
-window.addEventListener('resize', () => charts.forEach(c => c.resize()));
+/* ==================== 4. COHORT HEATMAP ==================== */
+var chartCohort = echarts.init(document.getElementById('chart-cohort'));
+var cohortDays = ['Day 0', 'Day 1', 'Day 3', 'Day 7', 'Day 14', 'Day 30'];
+var cohortDates = ['05-05', '05-06', '05-07', '05-08', '05-09', '05-10', '05-11'];
+var cohortRaw = [
+  [100, 45, 35, 28, 22, 18], [100, 46, 36, 29, 23, 19],
+  [100, 44, 34, 27, 21, 17], [100, 47, 37, 30, 24, 20],
+  [100, 43, 33, 26, 20, 16], [100, 48, 38, 31, 25, 21],
+  [100, 45, 35, 28, 22, 18]
+];
+var cohortData = [];
+for (var ci = 0; ci < cohortDates.length; ci++)
+  for (var cj = 0; cj < cohortDays.length; cj++)
+    cohortData.push([ci, cj, cohortRaw[ci][cj]]);
+chartCohort.setOption({
+  tooltip: Object.assign({}, commonTooltip, { formatter: function(p) { return cohortDates[p.value[0]] + ' ' + cohortDays[p.value[1]] + '<br/>留存率: ' + p.value[2] + '%'; } }),
+  grid: { left: 32, right: 8, top: 8, bottom: 24 },
+  xAxis: { type: 'category', data: cohortDates, axisLabel: { color: darkSub, fontSize: 9 }, axisLine: { lineStyle: { color: 'rgba(136,153,170,0.15)' } }, axisTick: { show: false } },
+  yAxis: { type: 'category', data: cohortDays, axisLabel: { color: darkSub, fontSize: 9 }, axisLine: { show: false }, axisTick: { show: false }, splitLine: { show: false } },
+  visualMap: {
+    min: 0, max: 100, show: false,
+    inRange: { color: ['#1a0f0a', '#3e1a12', '#7a2e1e', '#b83e28', '#e05038', '#ff4444', '#ff6b35', '#ffc107'] }
+  },
+  series: [{
+    type: 'heatmap', data: cohortData,
+    label: { show: true, color: '#fff', fontSize: 9, formatter: function(p) { return p.value[2] + '%'; } },
+    itemStyle: { borderColor: '#0d0a07', borderWidth: 2, borderRadius: 2 }
+  }]
+});
+charts.push(chartCohort);
+
+/* ==================== 5. GMV TREND (bar + step line) ==================== */
+var chartTrend = echarts.init(document.getElementById('chart-trend'));
+var hours = [];
+for (var hi = 0; hi < 24; hi++) hours.push(String(hi).padStart(2, '0') + ':00');
+var gmvData = [45,38,32,28,25,30,42,68,95,128,156,182,210,195,178,165,188,215,245,268,285,240,180,120];
+var orderData = [1.2,1.0,0.8,0.7,0.6,0.9,1.5,2.8,4.2,6.1,7.8,9.5,11.2,10.5,9.2,8.5,9.8,11.5,13.2,14.8,15.6,12.8,9.2,6.1];
+chartTrend.setOption({
+  tooltip: Object.assign({}, commonTooltip, { trigger: 'axis', axisPointer: { type: 'shadow' } }),
+  legend: { data: ['GMV', '订单量'], textStyle: { color: darkSub, fontSize: 10 }, top: 0, right: 8 },
+  grid: { left: 32, right: 40, top: 28, bottom: 20 },
+  xAxis: { type: 'category', data: hours, axisLabel: { color: darkSub, fontSize: 9, interval: 3 }, axisLine: { lineStyle: { color: 'rgba(136,153,170,0.15)' } }, axisTick: { show: false } },
+  yAxis: [
+    { type: 'value', name: 'GMV(万)', nameTextStyle: { color: darkSub, fontSize: 9 }, axisLabel: { color: darkSub, fontSize: 9 }, splitLine: { lineStyle: { color: 'rgba(136,153,170,0.08)' } }, axisLine: { show: false }, axisTick: { show: false } },
+    { type: 'value', name: '订单(万)', nameTextStyle: { color: darkSub, fontSize: 9 }, axisLabel: { color: darkSub, fontSize: 9 }, splitLine: { show: false }, axisLine: { show: false }, axisTick: { show: false } }
+  ],
+  series: [
+    { name: 'GMV', type: 'bar', data: gmvData, barWidth: '50%',
+      itemStyle: { color: '#ff4444', borderRadius: [0, 0, 0, 0] },
+      emphasis: { itemStyle: { color: '#ffc107' } } },
+    { name: '订单量', type: 'line', yAxisIndex: 1, data: orderData, smooth: false, step: 'end', symbol: 'none',
+      lineStyle: { color: '#ffc107', width: 1.5 },
+      areaStyle: { color: 'rgba(255,193,7,0.08)' } }
+  ]
+});
+charts.push(chartTrend);
+
+/* ==================== 6. MATRIX HEATMAP ==================== */
+var chartMatrix = echarts.init(document.getElementById('chart-matrix'));
+var matrixCats = ['手机', '美妆', '家电', '服装', '食品', '母婴', '运动', '家居'];
+var matrixData = [];
+for (var mi = 0; mi < matrixCats.length; mi++)
+  for (var mj = 0; mj < matrixCats.length; mj++) {
+    var mv = Math.random() * 0.6 + 0.1;
+    if (mi === mj) mv = 1.0;
+    if (Math.abs(mi - mj) === 1) mv = Math.random() * 0.25 + 0.55;
+    matrixData.push([mj, mi, parseFloat(mv.toFixed(2))]);
+  }
+chartMatrix.setOption({
+  tooltip: Object.assign({}, commonTooltip, { formatter: function(p) { return matrixCats[p.value[1]] + ' x ' + matrixCats[p.value[0]] + '<br/>关联度: ' + p.value[2]; } }),
+  grid: { left: 32, right: 8, top: 8, bottom: 24 },
+  xAxis: { type: 'category', data: matrixCats, axisLabel: { color: darkSub, fontSize: 8, rotate: 30 }, axisLine: { show: false }, axisTick: { show: false }, splitLine: { show: false } },
+  yAxis: { type: 'category', data: matrixCats, axisLabel: { color: darkSub, fontSize: 8 }, axisLine: { show: false }, axisTick: { show: false }, splitLine: { show: false } },
+  visualMap: {
+    min: 0, max: 1, show: false,
+    inRange: { color: ['#1a0f0a', '#3e1a12', '#7a2e1e', '#b83e28', '#e05038', '#ff4444', '#ff6b35', '#ffc107'] }
+  },
+  series: [{
+    type: 'heatmap', data: matrixData,
+    itemStyle: { borderColor: '#0d0a07', borderWidth: 2, borderRadius: 2 }
+  }]
+});
+charts.push(chartMatrix);
+
+/* ==================== 7. CATEGORY RANKING ==================== */
+var chartCategory = echarts.init(document.getElementById('chart-category'));
+var catData = [
+  { n: '手机数码', v: 520 }, { n: '美妆护肤', v: 410 }, { n: '家用电器', v: 385 },
+  { n: '服装鞋包', v: 340 }, { n: '食品饮料', v: 290 }, { n: '母婴用品', v: 245 },
+  { n: '运动户外', v: 210 }, { n: '家居家装', v: 185 }, { n: '图书文具', v: 140 },
+  { n: '汽车用品', v: 95 }
+];
+chartCategory.setOption({
+  tooltip: commonTooltip,
+  grid: { left: 32, right: 8, top: 8, bottom: 8, containLabel: true },
+  xAxis: { type: 'value', axisLabel: { color: darkSub, fontSize: 9 }, splitLine: { lineStyle: { color: 'rgba(136,153,170,0.08)' } }, axisLine: { show: false }, axisTick: { show: false } },
+  yAxis: { type: 'category', data: catData.map(function(d) { return d.n; }).reverse(), axisLabel: { color: darkSub, fontSize: 9 }, axisLine: { show: false }, axisTick: { show: false } },
+  series: [{
+    type: 'bar', data: catData.map(function(d) { return d.v; }).reverse(),
+    itemStyle: { color: '#ff4444', borderRadius: [0, 0, 0, 0] },
+    barWidth: '55%',
+    label: { show: true, position: 'right', color: darkSub, fontSize: 9, formatter: '{c}万' },
+    emphasis: { itemStyle: { color: '#ffc107' } }
+  }]
+});
+charts.push(chartCategory);
+
+/* ==================== RESIZE ==================== */
+window.addEventListener('resize', function() {
+  charts.forEach(function(c) { c && c.resize(); });
+});
 </script>
 </body>
 </html>

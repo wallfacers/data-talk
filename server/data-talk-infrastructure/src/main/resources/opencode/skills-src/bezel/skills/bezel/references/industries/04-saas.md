@@ -5,20 +5,12 @@
 - **分析维度**: MRR/ARR 瀑布图(新增/扩展/收缩/流失), 套餐订阅分布, 用户留存率(多 Cohort 折线), 用户旅程地图(注册->激活->付费->留存->推荐), 功能采用率热力图, API 性能趋势(P50/P95/P99), Churn Rate 预测曲线
 - **典型用户**: SaaS CEO, 产品运营, 客户成功经理, SRE
 
-## 视觉签名
-- Primary color `#14b8a6` (teal) / Secondary color `#6366f1` (indigo) / Accent `#f472b6` (pink) / Background `#0a0f1a`
-- Floating wave circles: teal radial-gradient (60vw) top-left + indigo (55vw) bottom-right, animated float
-- Glass morphism cards: `rgba(255,255,255,0.04)` bg, `blur(16px)`, `rgba(255,255,255,0.08)` border
-- Hover: teal shadow + teal border glow
-- Panel title color-coded dots: `.title-teal`, `.title-purple`, `.title-pink`
-- KPI pills: rounded 999px, glass bg
-- ECharts theme: transparent bg, `#94a3b8` text, `#0f172a` grid, `#334155` axis lines
-- Tooltip: `rgba(15,23,42,0.9)` bg, `rgba(148,163,184,0.25)` border
+## 风格与颜色覆盖
 
-## 推荐布局骨架
-- Header: ~5vh — North Star metric left + KPI pills center + clock right
-- Body: 3 columns 28% / 44% / 28%
-- Bottom marquee: 3.2vh glass bar with teal/indigo/pink dots
+- **映射风格:** Mosaic (`references/styles/mosaic.md`)
+- `--bezel-bg-app`: `#0a0f1a`
+- `--bezel-accent-primary`: `#14b8a6` (teal)
+- `--bezel-accent-secondary`: `#6366f1` (indigo)
 
 ## 典型 widget pattern（6 个）
 

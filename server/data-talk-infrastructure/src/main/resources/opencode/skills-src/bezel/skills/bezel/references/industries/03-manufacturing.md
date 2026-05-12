@@ -5,20 +5,12 @@
 - **分析维度**: 产线产能趋势(早/中/晚班), 产线总览&效率监控, 产线拓扑, 设备数字孪生面板, 故障报警统计, SPC 质量控制图, 能耗趋势(电/水/气), 安全监控指数
 - **典型用户**: 工厂厂长、生产主管、设备维护工程师、质量工程师
 
-## 视觉签名
-- Primary color `#f97316` (orange) / Secondary color `#22c55e` (green) / Background `#1a1a1e`
-- Scan-line texture overlay (2px repeating gradient, 8% black)
-- LED pulse animation on KPI indicators
-- Card background: `linear-gradient(145deg, #1f1f24, #18181c)`, border: `#2a2a32`
-- KPI boxes with top-edge color bar (currentColor, 2px), LED dot with pulse animation
-- ECharts theme: transparent bg, `#9ca3af` text, `#25252c` grid lines, `#6b7280` labels
-- Tooltip: `rgba(26,26,30,0.95)` bg, `#2e2e36` border
+## 风格与颜色覆盖
 
-## 推荐布局骨架
-- Header: ~50px — rivet-decorated title + clock
-- KPI row: 4 boxes with LED dots, ~90px
-- Body: 3-column grid `1fr 1.4fr 1fr`
-- Bottom marquee: 32px — alert feed with red label tag
+- **映射风格:** Horizon (`references/styles/horizon.md`)
+- `--bezel-bg-app`: `#1a1a1e`
+- `--bezel-accent-primary`: `#f97316` (orange)
+- `--bezel-accent-secondary`: `#facc15`
 
 ## 典型 widget pattern（6 个）
 

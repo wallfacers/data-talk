@@ -5,20 +5,12 @@
 - **分析维度**: 课程分类学习时长, 热门课程排行 TOP10, 学习时段分布热力图, 课程完成率(仪表盘), 学习路径阶段(注册->选课->学习->作业->考试->证书), 在线人数趋势(24h), 满意度趋势, 学习活跃度七日留存, 知识点掌握度热力图, 完课率漏斗
 - **典型用户**: 教育平台运营, 课程产品经理, 教师, 教务处
 
-## 视觉签名
-- Primary color `#facc15` (yellow) / Secondary color `#22c55e` (green) / Accent `#3b82f6` (blue) / Background `#0f172a`
-- Top yellow radial glow (60vw x 200px, 8% opacity)
-- Book texture: vertical repeating lines (1.5% yellow opacity, 3px spacing)
-- KPI pills: 12px border-radius, glass bg, icon badges (yellow/green/blue)
-- Card title: 3px yellow left bar
-- Path flow: horizontal step dots with connecting lines (done/progress/pending states)
-- ECharts registered theme `dark`: transparent bg, `#94a3b8` text, `#f1f5f9` title, `#64748b` muted
+## 风格与颜色覆盖
 
-## 推荐布局骨架
-- Header: ~40px — yellow gradient title + clock
-- KPI row: 5 pills
-- Body: 3 columns 27.5% / 45% / 27.5%
-- No bottom bar
+- **映射风格:** Organic (`references/styles/organic.md`)
+- `--bezel-bg-app`: `#0f172a`
+- `--bezel-accent-primary`: `#facc15` (yellow)
+- `--bezel-accent-secondary`: `#3b82f6` (blue)
 
 ## 典型 widget pattern（5 个）
 

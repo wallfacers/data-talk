@@ -1,6 +1,37 @@
-# Bezel Patterns Catalog
+# Bezel Patterns Catalog v2
 
-Master index of all 12 industry dashboard templates and their widget patterns.
+## Read Order
+1. This file → determine industry and mapped style
+2. references/styles/<style>.md → complete visual specification
+3. references/industries/<industry>.md → data semantics and color overrides
+4. references/compile-rules.md → JSON → HTML assembly
+5. references/data-contract.md → JSON schema and polling protocol
+
+## Industry-to-Style Mapping
+| # | Industry ID | Chinese Name | Style | Style File |
+|---|---|---|---|---|
+| 01 | multi-screen | 多屏综合监控 | Orbital | styles/orbital.md |
+| 02 | ecommerce | 电商运营实时监控中心 | Mosaic | styles/mosaic.md |
+| 03 | manufacturing | 工业制造智能监控中心 | Horizon | styles/horizon.md |
+| 04 | saas | SaaS 运营监控中心 | Mosaic | styles/mosaic.md |
+| 05 | finance | 财务数据分析中心 | Monument | styles/monument.md |
+| 06 | logistics | 物流供应链监控中心 | Horizon | styles/horizon.md |
+| 07 | healthcare | 医疗健康大数据中心 | Organic | styles/organic.md |
+| 08 | hr | 人力资源分析中心 | Organic | styles/organic.md |
+| 09 | energy | 能源环保监控中心 | Terrain | styles/terrain.md |
+| 10 | cybersecurity | 网络安全态势感知中心 | Orbital | styles/orbital.md |
+| 11 | agriculture | 智慧农业大数据中心 | Terrain | styles/terrain.md |
+| 12 | education | 在线教育数据中心 | Organic | styles/organic.md |
+
+## Style Selection Guide (Custom Industries)
+Decision tree:
+1. Monitoring, surveillance, 360-degree awareness → Orbital
+2. KPI-driven, dense metrics, ops cockpit → Mosaic
+3. Sequential process, pipeline, flow → Horizon
+4. People, care, learning, HR → Organic
+5. Money, regulation, compliance, authority → Monument
+6. Nature, geography, environment, spatial → Terrain
+7. Still unclear? Default to Mosaic.
 
 ## Industry Index
 
@@ -112,6 +143,8 @@ All HTML templates live under `skills/bezel/assets/templates/`:
 
 1. Receive the user's SQL result set and query context.
 2. Apply **Pattern Selection Priority Rules** to pick an industry ID.
-3. Read the corresponding `industries/NN-*.md` file for detailed widget patterns.
-4. Mix industry-specific widgets with `generic.*` widgets as needed.
-5. Generate the dashboard HTML using the template as the visual baseline.
+3. Look up the mapped **Style** in the Industry-to-Style Mapping table above.
+4. Read `references/styles/<style>.md` for the complete visual specification (layout, cards, charts, background, motion).
+5. Read the corresponding `industries/NN-*.md` file for data semantics, KPI list, color overrides, and widget recommendations.
+6. Mix industry-specific widgets with `generic.*` widgets as needed.
+7. Generate the dashboard HTML using the template as the visual baseline.

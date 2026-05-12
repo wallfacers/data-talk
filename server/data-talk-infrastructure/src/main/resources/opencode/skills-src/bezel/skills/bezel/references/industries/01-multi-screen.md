@@ -5,19 +5,12 @@
 - **分析维度**: 行业场景对比(12 个行业), 系统资源(CPU/内存/网络), 24h 服务可用性, API 响应时间(P50/P95/P99), 系统负载趋势, 7 日数据量趋势
 - **典型用户**: 运维总监、CIO、多业务线管理者
 
-## 视觉签名
-- Primary color `#00d4ff` (cyan) / Secondary color `#10e873` (green) / Background `#060b14`
-- Starfield canvas background (180 animated white dots)
-- Grid overlay (40px spacing, 3% cyan opacity)
-- Card top-edge gradient line (transparent -> cyan -> transparent)
-- ECharts theme: transparent background, `#e2e8f0` text, cyan-tinted tooltip border
+## 风格与颜色覆盖
 
-## 推荐布局骨架
-- Header: 10vh — logo center + KPI pills left/right
-- Body: 76vh — CSS Grid `22vw | 56vw | 22vw` with `38vh + 38vh` rows
-- Scene grid: 4x3 card grid in center column
-- Bottom ticker: 14vh — horizontal scrollable timeline
-- Floating overlay: bottom-right 34vw x 22vh 7-day trend chart (z-index 10)
+- **映射风格:** Orbital (`references/styles/orbital.md`)
+- `--bezel-bg-app`: `#060b14`
+- `--bezel-accent-primary`: `#00d4ff` (cyan)
+- `--bezel-accent-secondary`: `#10e873` (green)
 
 ## 典型 widget pattern（6 个）
 

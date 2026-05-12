@@ -3,630 +3,632 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net/ https://__BEZEL_SERVER_ORIGIN__; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://__BEZEL_SERVER_ORIGIN__; frame-ancestors 'self';">
+  <meta name="__JSON_HASH__" content="">
   <title>网络安全态势感知中心</title>
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
   <style>
+    :root {
+      --bg-rgb: 0,10,0;
+      --accent-primary-rgb: 0,255,65;
+      --accent-secondary-rgb: 255,0,64;
+      --bezel-bg-app: #000a00;
+      --bezel-accent-primary: #00ff41;
+      --bezel-accent-secondary: #ff0040;
+      --bezel-text-strong: #00ff41;
+      --bezel-text-muted: rgba(0,255,65,0.5);
+      --card-radius: 24px;
+      --card-bg: rgba(var(--bg-rgb), 0.35);
+      --card-border: 1px dashed rgba(var(--accent-primary-rgb), 0.30);
+      --card-shadow: none;
+      --card-padding: 16px;
+      --card-blur: 6px;
+      --motion-duration: 400ms;
+      --motion-easing: ease-in-out;
+      --motion-ambient: orbit 12s linear infinite;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      :root {
+        --motion-duration: 0ms;
+        --motion-ambient: none;
+      }
+    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body {
       width: 100vw; height: 100vh;
-      background: #000a00;
-      color: #00ff41;
-      font-family: 'Courier New', Courier, monospace;
       overflow: hidden;
+      background: var(--bezel-bg-app);
+      font-family: 'Courier New', Courier, monospace;
+      color: var(--bezel-accent-primary);
     }
 
-    /* 矩阵雨背景层 */
-    #matrix-bg {
-      position: fixed; top: 0; left: 0;
-      width: 100vw; height: 100vh;
+    /* Background canvas */
+    #bg-radar {
+      position: fixed; inset: 0;
+      z-index: 0; pointer-events: none;
+    }
+
+    /* Orbit arcs */
+    .orbit-arc {
+      position: fixed;
+      border-radius: 50%;
+      border: 1px solid rgba(var(--accent-primary-rgb), 0.08);
       pointer-events: none;
       z-index: 0;
-      overflow: hidden;
+      will-change: transform;
     }
-    .matrix-col {
-      position: absolute;
-      top: -2rem;
-      font-size: 14px;
-      line-height: 18px;
-      color: #00ff41;
-      opacity: 0.35;
-      white-space: pre;
-      writing-mode: vertical-rl;
-      text-orientation: upright;
-      letter-spacing: 2px;
-      user-select: none;
+    .arc-1 {
+      width: 50vw; height: 50vw;
+      top: calc(50% - 25vw); left: calc(50% - 25vw);
+      animation: var(--motion-ambient);
+      animation-duration: 15s;
     }
-
-    /* 扫描线 */
-    body::after {
-      content: '';
-      position: fixed; top: 0; left: 0;
-      width: 100vw; height: 100vh;
-      pointer-events: none;
-      z-index: 9999;
-      background: repeating-linear-gradient(
-        0deg,
-        rgba(0,0,0,0) 0px,
-        rgba(0,0,0,0) 2px,
-        rgba(0,255,65,0.03) 2px,
-        rgba(0,255,65,0.03) 4px
-      );
+    .arc-2 {
+      width: 70vw; height: 70vw;
+      top: calc(50% - 35vw); left: calc(50% - 35vw);
+      animation: var(--motion-ambient);
+      animation-duration: 22s;
+      animation-direction: reverse;
+    }
+    @keyframes orbit {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .orbit-arc { animation: none; }
     }
 
-    /* 主容器 */
+    /* Dashboard */
     .dashboard {
       position: relative;
-      z-index: 1;
       width: 100vw; height: 100vh;
-      display: flex;
-      flex-direction: column;
-      padding: 0.6rem 1rem;
+      z-index: 1;
+      overflow: hidden;
     }
 
-    /* 顶部告警条 */
-    .threat-bar {
-      background: rgba(255,0,64,0.12);
-      border: 1px solid #ff0040;
-      padding: 0.35rem 1rem;
+    /* Header */
+    .header {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 48px;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      font-size: 0.85rem;
-      letter-spacing: 2px;
-      margin-bottom: 0.5rem;
+      justify-content: center;
+      z-index: 10;
+      background: rgba(var(--bg-rgb), 0.60);
+      backdrop-filter: blur(8px);
     }
-    .threat-level {
+    .header h1 {
+      font-size: 20px;
+      font-weight: 400;
+      letter-spacing: 4px;
+      color: var(--bezel-accent-primary);
+      text-shadow: 0 0 8px rgba(0,255,65,0.3);
+    }
+    .header .threat-level {
+      position: absolute;
+      left: 24px;
+      font-size: 12px;
       color: #ff0040;
       font-weight: bold;
       animation: blink 0.8s step-end infinite;
     }
     @keyframes blink { 50% { opacity: 0; } }
-
-    /* 标题区 */
-    .header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 0.6rem;
-      border-bottom: 1px solid rgba(0,255,65,0.25);
-      padding-bottom: 0.4rem;
-    }
-    .header-title {
-      font-size: 1.6rem;
-      font-weight: bold;
-      letter-spacing: 4px;
-      text-shadow: 0 0 8px rgba(0,255,65,0.4);
-    }
-    .header-sub {
-      font-size: 0.75rem;
-      color: rgba(0,255,65,0.6);
-      margin-top: 0.15rem;
-    }
-    .header-clock {
-      font-size: 1.1rem;
+    .header .clock {
+      position: absolute;
+      right: 24px;
+      font-size: 13px;
+      color: var(--bezel-accent-primary);
       letter-spacing: 2px;
-      color: #00ff41;
+      font-variant-numeric: tabular-nums;
       text-shadow: 0 0 6px rgba(0,255,65,0.3);
     }
 
-    /* KPI 区 */
-    .kpi-row {
-      display: flex;
-      gap: 1rem;
-      margin-bottom: 0.7rem;
-    }
-    .kpi-box {
-      flex: 1;
-      border: 1px solid rgba(0,255,65,0.3);
-      background: rgba(0,10,0,0.7);
-      padding: 0.6rem 0.8rem;
-      position: relative;
-    }
-    .kpi-box::before {
-      content: '> ';
-      position: absolute; left: 0.4rem; top: 0.35rem;
-      font-size: 0.7rem; color: #00ff41; opacity: 0.6;
-    }
-    .kpi-label {
-      font-size: 0.7rem;
-      color: rgba(0,255,65,0.6);
-      letter-spacing: 1px;
-      margin-bottom: 0.3rem;
-      padding-left: 0.6rem;
-    }
-    .kpi-value {
-      font-size: 1.5rem;
-      font-weight: bold;
-      padding-left: 0.6rem;
-    }
-    .kpi-delta {
-      font-size: 0.75rem;
-      padding-left: 0.6rem;
-      margin-top: 0.15rem;
-    }
-    .kpi-red { color: #ff0040; }
-    .kpi-green { color: #00ff41; }
-    .kpi-yellow { color: #ffd700; }
-    .kpi-cyan { color: #00bfff; }
-
-    /* 主体网格 3x2 */
-    .main-grid {
-      flex: 1;
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      grid-template-rows: 1fr 1fr;
-      gap: 0.7rem;
-      min-height: 0;
-      margin-bottom: 0.6rem;
-    }
-    .chart-panel {
-      border: 1px solid rgba(0,255,65,0.25);
-      background: rgba(0,10,0,0.6);
+    /* Card */
+    .card {
+      background: var(--card-bg);
+      border: var(--card-border);
+      border-radius: var(--card-radius);
+      backdrop-filter: blur(var(--card-blur));
+      padding: var(--card-padding);
       display: flex;
       flex-direction: column;
-      min-height: 0;
+      position: absolute;
+      transition: border var(--motion-duration) var(--motion-easing),
+                  box-shadow var(--motion-duration) var(--motion-easing);
     }
-    .panel-header {
-      font-size: 0.8rem;
+    .card:hover {
+      border-style: solid;
+      border-color: rgba(var(--accent-primary-rgb), 0.55);
+      box-shadow: 0 0 20px rgba(var(--accent-primary-rgb), 0.15);
+    }
+    .card-title {
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--bezel-accent-primary);
+      text-align: center;
       letter-spacing: 2px;
-      padding: 0.35rem 0.6rem;
-      border-bottom: 1px solid rgba(0,255,65,0.15);
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
+      margin-bottom: 8px;
     }
-    .panel-header::before {
-      content: '[$]';
-      color: #00ff41;
-      opacity: 0.7;
-      font-size: 0.7rem;
-    }
-    .chart-body {
+    .card-body {
       flex: 1;
       min-height: 0;
-      position: relative;
-    }
-    .chart-body > div {
-      width: 100%; height: 100%;
     }
 
-    /* 底部日志 */
+    /* Core widget - centered */
+    .widget-core {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 32%; height: 38%;
+    }
+
+    /* KPI ring */
+    .kpi-ring {
+      width: 80px; height: 80px;
+    }
+
+    /* Log bar */
     .log-bar {
-      height: 5.5rem;
-      border: 1px solid rgba(0,255,65,0.25);
-      background: rgba(0,10,0,0.7);
+      position: absolute;
+      bottom: 0; left: 1%; right: 1%;
+      height: 5rem;
+      background: rgba(var(--bg-rgb), 0.35);
+      border: 1px dashed rgba(var(--accent-primary-rgb), 0.30);
+      border-radius: 24px;
+      backdrop-filter: blur(var(--card-blur));
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      padding: 8px 16px;
     }
     .log-header {
-      font-size: 0.7rem;
+      font-size: 10px;
       letter-spacing: 2px;
-      padding: 0.25rem 0.6rem;
-      border-bottom: 1px solid rgba(0,255,65,0.15);
       color: rgba(0,255,65,0.7);
+      margin-bottom: 4px;
+      text-align: center;
     }
     .log-content {
       flex: 1;
       overflow-y: auto;
-      padding: 0.3rem 0.6rem;
-      font-size: 0.72rem;
+      font-size: 11px;
       line-height: 1.5;
     }
-    .log-line {
-      display: flex;
-      gap: 0.6rem;
-    }
+    .log-line { display: flex; gap: 8px; }
     .log-time { color: rgba(0,255,65,0.5); min-width: 5.5rem; }
     .log-level-info { color: #00bfff; }
     .log-level-warn { color: #ffd700; }
     .log-level-alert { color: #ff0040; }
     .log-msg { color: rgba(0,255,65,0.85); }
 
-    /* 滚动条 */
-    ::-webkit-scrollbar { width: 4px; }
-    ::-webkit-scrollbar-track { background: #000a00; }
-    ::-webkit-scrollbar-thumb { background: rgba(0,255,65,0.3); }
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(0,255,65,0.3); border-radius: 2px; }
   </style>
 </head>
 <body>
-  <div id="matrix-bg"></div>
+  <canvas id="bg-radar"></canvas>
+  <div class="orbit-arc arc-1"></div>
+  <div class="orbit-arc arc-2"></div>
 
   <div class="dashboard">
-    <!-- 威胁告警条 -->
-    <div class="threat-bar">
-      <span>SYSTEM STATUS: ONLINE | FIREWALL: ACTIVE | IDS: MONITORING</span>
-      <span class="threat-level">THREAT LEVEL: HIGH</span>
-      <span>LAST UPDATE: <span id="last-update">--:--:--</span></span>
-    </div>
-
-    <!-- 标题 -->
+    <!-- Header -->
     <div class="header">
-      <div>
-        <div class="header-title">网络安全态势感知中心</div>
-        <div class="header-sub">CYBERSECURITY SITUATIONAL AWARENESS CENTER // SECURE TERMINAL v4.2</div>
-      </div>
-      <div class="header-clock" id="clock">00:00:00</div>
+      <span class="threat-level">THREAT LEVEL: HIGH</span>
+      <h1>网络安全态势感知中心</h1>
+      <div class="clock" id="clock">00:00:00</div>
     </div>
 
-    <!-- KPI -->
-    <div class="kpi-row">
-      <div class="kpi-box">
-        <div class="kpi-label">ATTACK COUNT / 攻击次数</div>
-        <div class="kpi-value kpi-red">2,847</div>
-        <div class="kpi-delta kpi-red">▲ 18.6%</div>
-      </div>
-      <div class="kpi-box">
-        <div class="kpi-label">BLOCK RATE / 拦截率</div>
-        <div class="kpi-value kpi-green">99.8%</div>
-        <div class="kpi-delta kpi-green">▲ 0.3pp</div>
-      </div>
-      <div class="kpi-box">
-        <div class="kpi-label">PENDING VULN / 待修复漏洞</div>
-        <div class="kpi-value kpi-yellow">34</div>
-        <div class="kpi-delta kpi-yellow">▼ 12</div>
-      </div>
-      <div class="kpi-box">
-        <div class="kpi-label">SECURITY SCORE / 安全评分</div>
-        <div class="kpi-value kpi-cyan">91</div>
-        <div class="kpi-delta kpi-cyan">▲ 3</div>
-      </div>
+    <!-- KPI ring: top-left -->
+    <div class="card kpi-ring" style="top:8%; left:3%; width:110px; height:110px;" aria-label="攻击次数 2847">
+      <div id="kpi-attacks"></div>
     </div>
 
-    <!-- 主体图表 3x2 -->
-    <div class="main-grid">
-      <div class="chart-panel">
-        <div class="panel-header">24H ATTACK TREND / 24小时攻击趋势</div>
-        <div class="chart-body"><div id="chart-trend"></div></div>
-      </div>
-      <div class="chart-panel">
-        <div class="panel-header">ATTACK TYPE DISTRIBUTION / 攻击类型分布</div>
-        <div class="chart-body"><div id="chart-type"></div></div>
-      </div>
-      <div class="chart-panel">
-        <div class="panel-header">TOP ATTACK SOURCES / TOP攻击源国家</div>
-        <div class="chart-body"><div id="chart-source"></div></div>
-      </div>
-      <div class="chart-panel">
-        <div class="panel-header">VULNERABILITY STATUS / 漏洞修复状态</div>
-        <div class="chart-body"><div id="chart-vuln"></div></div>
-      </div>
-      <div class="chart-panel">
-        <div class="panel-header">ATT&CK COVERAGE MATRIX / ATT&CK覆盖矩阵</div>
-        <div class="chart-body"><div id="chart-attack"></div></div>
-      </div>
-      <div class="chart-panel">
-        <div class="panel-header">KILL CHAIN / 攻击链</div>
-        <div class="chart-body"><div id="chart-kill"></div></div>
-      </div>
+    <!-- KPI ring: top-right -->
+    <div class="card kpi-ring" style="top:8%; right:3%; width:110px; height:110px;" aria-label="拦截率 99.8%">
+      <div id="kpi-block"></div>
     </div>
 
-    <!-- 底部日志 -->
+    <!-- KPI ring: mid-left -->
+    <div class="card kpi-ring" style="top:28%; left:1%; width:110px; height:110px;" aria-label="待修复漏洞 34">
+      <div id="kpi-vuln"></div>
+    </div>
+
+    <!-- KPI ring: mid-right -->
+    <div class="card kpi-ring" style="top:28%; right:1%; width:110px; height:110px;" aria-label="安全评分 91">
+      <div id="kpi-score"></div>
+    </div>
+
+    <!-- Attack Type: left side -->
+    <div class="card" style="top:52%; left:1%; width:22%; height:30%;">
+      <div class="card-title">攻击类型分布</div>
+      <div class="card-body" id="chart-type"></div>
+    </div>
+
+    <!-- Core: 24H Attack Trend (Radar) -->
+    <div class="card widget-core">
+      <div class="card-title">ATT&CK 覆盖矩阵</div>
+      <div class="card-body" id="chart-attack"></div>
+    </div>
+
+    <!-- Attack Source: right side -->
+    <div class="card" style="top:16%; right:14%; width:20%; height:32%;">
+      <div class="card-title">TOP 攻击源</div>
+      <div class="card-body" id="chart-source"></div>
+    </div>
+
+    <!-- Vuln Status: right-bottom -->
+    <div class="card" style="top:52%; right:1%; width:22%; height:30%;">
+      <div class="card-title">漏洞修复状态</div>
+      <div class="card-body" id="chart-vuln"></div>
+    </div>
+
+    <!-- Kill Chain: bottom-center-left -->
+    <div class="card" style="top:52%; left:25%; width:24%; height:30%;">
+      <div class="card-title">Kill Chain</div>
+      <div class="card-body" id="chart-kill"></div>
+    </div>
+
+    <!-- 24H trend: bottom-center-right -->
+    <div class="card" style="top:52%; right:25%; width:24%; height:30%;">
+      <div class="card-title">24H 攻击趋势</div>
+      <div class="card-body" id="chart-trend"></div>
+    </div>
+
+    <!-- Log bar -->
     <div class="log-bar">
-      <div class="log-header">SYSTEM LOG / 系统日志</div>
+      <div class="log-header">SYSTEM LOG</div>
       <div class="log-content" id="log-content"></div>
     </div>
   </div>
 
   <script>
-    // ========== 矩阵雨背景 ==========
-    const matrixBg = document.getElementById('matrix-bg');
-    const chars = '0123456789ABCDEFabcdef@#$%&*!';
-    const colCount = Math.floor(window.innerWidth / 16);
-    const cols = [];
+    /* ==================== BEZEL CONFIG ==================== */
+    window.__BEZEL_CONFIG__ = {
+      dashboardId: "10-cybersecurity",
+      style: "orbital",
+      refreshInterval: 30000,
+      widgets: [
+        { id: "attack-trend", type: "line" },
+        { id: "attack-type", type: "pie" },
+        { id: "attack-source", type: "bar" },
+        { id: "vuln-status", type: "bar" },
+        { id: "attack-matrix", type: "heatmap" },
+        { id: "kill-chain", type: "funnel" }
+      ]
+    };
 
-    for (let i = 0; i < colCount; i++) {
-      const span = document.createElement('span');
-      span.className = 'matrix-col';
-      const left = (i * 16) + Math.random() * 8;
-      span.style.left = left + 'px';
-      span.style.fontSize = (12 + Math.random() * 4) + 'px';
-      span.style.opacity = 0.15 + Math.random() * 0.25;
-      matrixBg.appendChild(span);
-      cols.push({ el: span, speed: 0.5 + Math.random() * 1.5, offset: Math.random() * 100, len: 15 + Math.floor(Math.random() * 20) });
-    }
+    /* ==================== POLLING SCHEDULER ==================== */
+    (function() {
+      var cfg = window.__BEZEL_CONFIG__;
+      var interval = cfg.refreshInterval || 30000;
+      function poll() {
+        cfg.widgets.forEach(function(w) {
+          var url = "/api/dashboards/" + cfg.dashboardId + "/widgets/" + w.id + "/data";
+          fetch(url).then(function(r) { return r.json(); }).then(function(data) {
+            window.dispatchEvent(new CustomEvent("bezel:data:" + w.id, { detail: data }));
+          }).catch(function() {});
+        });
+      }
+      setInterval(poll, interval);
+    })();
 
-    let matrixTick = 0;
-    function updateMatrix() {
-      matrixTick++;
-      cols.forEach(c => {
-        if (matrixTick % Math.floor(3 / c.speed) === 0) {
-          let str = '';
-          for (let i = 0; i < c.len; i++) {
-            str += chars[Math.floor(Math.random() * chars.length)];
-          }
-          c.el.textContent = str;
+    /* ==================== BG CONCENTRIC CIRCLES ==================== */
+    (function() {
+      var c = document.getElementById("bg-radar");
+      var ctx = c.getContext("2d", { alpha: false });
+      function draw() {
+        c.width = window.innerWidth;
+        c.height = window.innerHeight;
+        var cx = c.width / 2, cy = c.height / 2;
+        var maxR = Math.max(cx, cy) * 1.2;
+        ctx.fillStyle = "#000a00";
+        ctx.fillRect(0, 0, c.width, c.height);
+        for (var r = 60; r < maxR; r += 60) {
+          ctx.beginPath();
+          ctx.arc(cx, cy, r, 0, Math.PI * 2);
+          ctx.strokeStyle = "rgba(0,255,65,0.06)";
+          ctx.lineWidth = 1;
+          ctx.stroke();
         }
-        const y = ((matrixTick * c.speed + c.offset) % (window.innerHeight + 100)) - 50;
-        c.el.style.transform = `translateY(${y}px)`;
-      });
-      requestAnimationFrame(updateMatrix);
-    }
-    updateMatrix();
+      }
+      draw();
+      window.addEventListener("resize", draw);
+    })();
 
-    // ========== 时钟 ==========
+    /* ==================== CLOCK ==================== */
     function updateClock() {
-      const now = new Date();
-      const pad = n => String(n).padStart(2, '0');
-      const str = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-      document.getElementById('clock').textContent = str;
-      document.getElementById('last-update').textContent = str;
+      var now = new Date();
+      var pad = function(n) { return String(n).padStart(2, "0"); };
+      document.getElementById("clock").textContent =
+        pad(now.getHours()) + ":" + pad(now.getMinutes()) + ":" + pad(now.getSeconds());
     }
     setInterval(updateClock, 1000);
     updateClock();
 
-    // ========== 日志 ==========
-    const logData = [
-      { t: '10:42:18', l: 'alert', m: '检测到来自 185.220.101.44 的暴力破解攻击，已自动阻断' },
-      { t: '10:41:55', l: 'warn',  m: 'Web应用防火墙触发 SQL 注入规则 #WAF-2047' },
-      { t: '10:41:32', l: 'info',  m: '漏洞扫描任务完成，发现 3 个新 CVE，已入库' },
-      { t: '10:40:09', l: 'alert', m: 'DDoS 攻击峰值 12.4Gbps，清洗中心已介入' },
-      { t: '10:39:47', l: 'info',  m: '威胁情报库同步完成，更新 1,247 条 IOC' },
-      { t: '10:38:21', l: 'warn',  m: '终端 EDR 上报可疑 PowerShell 脚本执行' },
-      { t: '10:37:58', l: 'info',  m: '防火墙策略自动优化完成，放行误报 -2' },
-      { t: '10:36:14', l: 'alert', m: 'C2 通信特征匹配成功，主机 10.0.4.22 已隔离' },
-      { t: '10:35:02', l: 'info',  m: '全量日志归档完成，压缩率 87.3%' },
-      { t: '10:33:49', l: 'warn',  m: 'SSL 证书将于 7 天后过期，域名: api.internal.corp' },
-      { t: '10:32:11', l: 'info',  m: '蜜罐捕获新型扫描行为，指纹已提取' },
-      { t: '10:30:55', l: 'alert', m: '异常出站流量告警，目的 IP 归属地: 俄罗斯' },
-    ];
-    const logContent = document.getElementById('log-content');
-    function renderLogs() {
-      logContent.innerHTML = logData.map(d => `
-        <div class="log-line">
-          <span class="log-time">[${d.t}]</span>
-          <span class="log-level-${d.l}">[${d.l.toUpperCase()}]</span>
-          <span class="log-msg">${d.m}</span>
-        </div>
-      `).join('');
+    /* ==================== KPI RING GAUGES ==================== */
+    function makeKPIGauge(el, value, max, label, color) {
+      var chart = echarts.init(el);
+      chart.setOption({
+        backgroundColor: "transparent",
+        series: [{
+          type: "gauge",
+          startAngle: 90,
+          endAngle: -270,
+          min: 0, max: max,
+          radius: "90%",
+          center: ["50%", "55%"],
+          axisLine: {
+            lineStyle: {
+              width: 4,
+              color: [[value / max, color], [1, "rgba(0,255,65,0.12)"]]
+            }
+          },
+          pointer: { show: false },
+          axisTick: { show: false },
+          splitLine: { show: false },
+          axisLabel: { show: false },
+          detail: {
+            valueAnimation: true,
+            fontSize: 14,
+            fontWeight: "bold",
+            color: "#00ff41",
+            offsetCenter: [0, "-5%"],
+            formatter: function(v) { return String(v); }
+          },
+          title: {
+            show: true,
+            fontSize: 9,
+            color: "rgba(0,255,65,0.5)",
+            offsetCenter: [0, "25%"]
+          },
+          data: [{ value: value, name: label }]
+        }]
+      });
+      return chart;
     }
-    renderLogs();
+    var kpiCharts = [
+      makeKPIGauge(document.getElementById("kpi-attacks"), 2847, 5000, "攻击次数", "#ff0040"),
+      makeKPIGauge(document.getElementById("kpi-block"), 99.8, 100, "拦截率%", "#00ff41"),
+      makeKPIGauge(document.getElementById("kpi-vuln"), 34, 100, "待修复漏洞", "#ffd700"),
+      makeKPIGauge(document.getElementById("kpi-score"), 91, 100, "安全评分", "#00bfff")
+    ];
 
-    // ========== ECharts 通用主题 ==========
-    const chartFont = "'Courier New', monospace";
-    const chartText = '#00ff41';
-    const chartTextDim = 'rgba(0,255,65,0.5)';
+    /* ==================== ECHARTS COMMON ==================== */
+    var chartFont = "'Courier New', monospace";
+    var chartText = "#00ff41";
+    var chartTextDim = "rgba(0,255,65,0.5)";
 
     function commonOption() {
       return {
-        backgroundColor: 'transparent',
+        backgroundColor: "transparent",
         textStyle: { fontFamily: chartFont },
         tooltip: {
-          backgroundColor: 'rgba(0,10,0,0.9)',
-          borderColor: '#00ff41',
-          textStyle: { color: '#00ff41', fontFamily: chartFont },
+          backgroundColor: "rgba(0,10,0,0.9)",
+          borderColor: "#00ff41",
+          textStyle: { color: "#00ff41", fontFamily: chartFont }
         },
         legend: {
           textStyle: { color: chartTextDim, fontFamily: chartFont },
           bottom: 2,
-          itemWidth: 12, itemHeight: 8,
+          itemWidth: 12, itemHeight: 8
         },
-        grid: { left: 45, right: 15, top: 30, bottom: 30 },
+        grid: { left: 45, right: 15, top: 30, bottom: 30 }
       };
     }
 
-    // ---------- 1. 24H 攻击趋势 ----------
-    const chartTrend = echarts.init(document.getElementById('chart-trend'));
-    const hours = Array.from({length:24}, (_,i) => `${String(i).padStart(2,'0')}:00`);
-    const trendData = [45,38,32,28,25,30,55,120,210,340,520,680,590,480,390,420,560,740,920,850,620,410,280,150];
-    chartTrend.setOption({
-      ...commonOption(),
-      grid: { left: 45, right: 15, top: 20, bottom: 25 },
+    /* ==================== 24H ATTACK TREND ==================== */
+    var chartTrend = echarts.init(document.getElementById("chart-trend"));
+    var trendHours = []; for (var th = 0; th < 24; th++) trendHours.push(String(th).padStart(2, "0") + ":00");
+    var trendData = [45,38,32,28,25,30,55,120,210,340,520,680,590,480,390,420,560,740,920,850,620,410,280,150];
+    chartTrend.setOption(Object.assign({}, commonOption(), {
+      grid: { left: 40, right: 10, top: 15, bottom: 20 },
       xAxis: {
-        type: 'category', data: hours,
-        axisLine: { lineStyle: { color: 'rgba(0,255,65,0.2)' } },
-        axisLabel: { color: chartTextDim, fontFamily: chartFont, fontSize: 10, interval: 2 },
-        axisTick: { show: false },
+        type: "category", data: trendHours,
+        axisLine: { lineStyle: { color: "rgba(0,255,65,0.2)" } },
+        axisLabel: { color: chartTextDim, fontFamily: chartFont, fontSize: 8, interval: 4 },
+        axisTick: { show: false }
       },
       yAxis: {
-        type: 'value',
-        splitLine: { lineStyle: { color: 'rgba(0,255,65,0.08)' } },
+        type: "value",
+        splitLine: { lineStyle: { color: "rgba(0,255,65,0.08)" } },
         axisLine: { show: false },
-        axisLabel: { color: chartTextDim, fontFamily: chartFont, fontSize: 10 },
+        axisLabel: { color: chartTextDim, fontFamily: chartFont, fontSize: 9 }
       },
       series: [{
-        type: 'line', data: trendData, smooth: true,
-        symbol: 'none',
-        lineStyle: { color: '#ff0040', width: 2 },
-        areaStyle: {
-          color: new echarts.graphic.LinearGradient(0,0,0,1,[
-            { offset: 0, color: 'rgba(255,0,64,0.5)' },
-            { offset: 1, color: 'rgba(255,0,64,0.02)' },
-          ])
-        },
+        type: "line", data: trendData, smooth: true,
+        symbol: "none",
+        lineStyle: { color: "#ff0040", width: 2 },
+        areaStyle: { color: "rgba(255,0,64,0.15)" }
       }]
-    });
+    }));
 
-    // ---------- 2. 攻击类型分布（玫瑰图） ----------
-    const chartType = echarts.init(document.getElementById('chart-type'));
-    chartType.setOption({
-      ...commonOption(),
-      legend: { ...commonOption().legend, orient: 'vertical', right: 5, top: 'center', itemGap: 6 },
+    /* ==================== ATTACK TYPE DISTRIBUTION (DONUT) ==================== */
+    var chartType = echarts.init(document.getElementById("chart-type"));
+    chartType.setOption(Object.assign({}, commonOption(), {
+      legend: Object.assign({}, commonOption().legend, { orient: "vertical", right: 5, top: "center", itemGap: 6 }),
       series: [{
-        type: 'pie',
-        radius: ['20%', '70%'],
-        center: ['38%', '50%'],
-        roseType: 'area',
-        itemStyle: { borderRadius: 3, borderColor: '#000a00', borderWidth: 2 },
-        label: { color: chartText, fontFamily: chartFont, fontSize: 10 },
-        labelLine: { lineStyle: { color: 'rgba(0,255,65,0.3)' } },
+        type: "pie",
+        radius: ["20%", "65%"],
+        center: ["38%", "50%"],
+        avoidLabelOverlap: true,
+        itemStyle: { borderRadius: 4, borderColor: "#000a00", borderWidth: 2 },
+        label: { color: chartText, fontFamily: chartFont, fontSize: 9 },
+        labelLine: { lineStyle: { color: "rgba(0,255,65,0.3)" } },
         data: [
-          { value: 820, name: 'DDoS', itemStyle: { color: '#ff0040' } },
-          { value: 640, name: 'SQL注入', itemStyle: { color: '#ff3366' } },
-          { value: 480, name: 'XSS', itemStyle: { color: '#ffd700' } },
-          { value: 390, name: '钓鱼', itemStyle: { color: '#00bfff' } },
-          { value: 310, name: '恶意软件', itemStyle: { color: '#00ff41' } },
-          { value: 207, name: '其他', itemStyle: { color: 'rgba(0,255,65,0.4)' } },
+          { value: 820, name: "DDoS", itemStyle: { color: "#ff0040" } },
+          { value: 640, name: "SQL注入", itemStyle: { color: "#ff3366" } },
+          { value: 480, name: "XSS", itemStyle: { color: "#ffd700" } },
+          { value: 390, name: "钓鱼", itemStyle: { color: "#00bfff" } },
+          { value: 310, name: "恶意软件", itemStyle: { color: "#00ff41" } },
+          { value: 207, name: "其他", itemStyle: { color: "rgba(0,255,65,0.4)" } }
         ]
       }]
-    });
+    }));
 
-    // ---------- 3. TOP 攻击源国家 ----------
-    const chartSource = echarts.init(document.getElementById('chart-source'));
-    chartSource.setOption({
-      ...commonOption(),
-      grid: { left: 80, right: 30, top: 15, bottom: 20 },
-      xAxis: {
-        type: 'value',
-        splitLine: { lineStyle: { color: 'rgba(0,255,65,0.08)' } },
-        axisLabel: { color: chartTextDim, fontFamily: chartFont, fontSize: 10 },
+    /* ==================== TOP ATTACK SOURCES (POLAR BAR) ==================== */
+    var chartSource = echarts.init(document.getElementById("chart-source"));
+    var sourceCountries = ["印度", "巴西", "俄罗斯", "美国", "中国"];
+    var sourceValues = [320, 480, 650, 890, 1240];
+    chartSource.setOption(Object.assign({}, commonOption(), {
+      polar: { radius: ["15%", "70%"], center: ["50%", "55%"] },
+      angleAxis: { max: 1300, startAngle: 90,
+        axisLine: { lineStyle: { color: "rgba(0,255,65,0.15)" } },
+        axisLabel: { color: chartTextDim, fontFamily: chartFont, fontSize: 8 },
+        splitLine: { lineStyle: { color: "rgba(0,255,65,0.08)" } }
       },
-      yAxis: {
-        type: 'category',
-        data: ['🇮🇳 印度', '🇧🇷 巴西', '🇷🇺 俄罗斯', '🇺🇸 美国', '🇨🇳 中国'],
-        axisLine: { lineStyle: { color: 'rgba(0,255,65,0.2)' } },
-        axisLabel: { color: chartText, fontFamily: chartFont, fontSize: 11 },
-        axisTick: { show: false },
+      radiusAxis: {
+        type: "category", data: sourceCountries,
+        axisLine: { lineStyle: { color: "rgba(0,255,65,0.15)" } },
+        axisLabel: { color: chartTextDim, fontFamily: chartFont, fontSize: 9 }
       },
       series: [{
-        type: 'bar', data: [320, 480, 650, 890, 1240],
-        barWidth: 14,
-        itemStyle: {
-          color: new echarts.graphic.LinearGradient(1,0,0,0,[
-            { offset: 0, color: '#ff0040' },
-            { offset: 1, color: 'rgba(255,0,64,0.3)' },
-          ]),
-          borderRadius: [0,3,3,0],
-        },
-        label: {
-          show: true, position: 'right',
-          color: chartTextDim, fontFamily: chartFont, fontSize: 10,
-          formatter: '{c}'
-        }
+        type: "bar",
+        coordinateSystem: "polar",
+        data: sourceValues,
+        itemStyle: { color: "#ff0040" }
       }]
-    });
+    }));
 
-    // ---------- 4. 漏洞修复状态 ----------
-    const chartVuln = echarts.init(document.getElementById('chart-vuln'));
-    const vulnCats = ['操作系统','中间件','数据库','Web应用','网络设备','容器平台'];
-    chartVuln.setOption({
-      ...commonOption(),
-      grid: { left: 70, right: 15, top: 20, bottom: 30 },
-      legend: { ...commonOption().legend, data: ['已修复','修复中','待修复'] },
+    /* ==================== VULNERABILITY STATUS ==================== */
+    var chartVuln = echarts.init(document.getElementById("chart-vuln"));
+    var vulnCats = ["操作系统", "中间件", "数据库", "Web应用", "网络设备", "容器平台"];
+    chartVuln.setOption(Object.assign({}, commonOption(), {
+      grid: { left: 60, right: 10, top: 20, bottom: 25 },
+      legend: Object.assign({}, commonOption().legend, { data: ["已修复", "修复中", "待修复"] }),
       xAxis: {
-        type: 'category', data: vulnCats,
-        axisLine: { lineStyle: { color: 'rgba(0,255,65,0.2)' } },
-        axisLabel: { color: chartTextDim, fontFamily: chartFont, fontSize: 10 },
-        axisTick: { show: false },
+        type: "category", data: vulnCats,
+        axisLine: { lineStyle: { color: "rgba(0,255,65,0.2)" } },
+        axisLabel: { color: chartTextDim, fontFamily: chartFont, fontSize: 8 },
+        axisTick: { show: false }
       },
       yAxis: {
-        type: 'value',
-        splitLine: { lineStyle: { color: 'rgba(0,255,65,0.08)' } },
-        axisLabel: { color: chartTextDim, fontFamily: chartFont, fontSize: 10 },
+        type: "value",
+        splitLine: { lineStyle: { color: "rgba(0,255,65,0.08)" } },
+        axisLabel: { color: chartTextDim, fontFamily: chartFont, fontSize: 9 }
       },
       series: [
-        { name: '已修复', type: 'bar', stack: 'total', barWidth: 18,
+        { name: "已修复", type: "bar", stack: "total", barWidth: 14,
           data: [42,28,19,35,14,8],
-          itemStyle: { color: '#00ff41' } },
-        { name: '修复中', type: 'bar', stack: 'total',
+          itemStyle: { color: "#00ff41" } },
+        { name: "修复中", type: "bar", stack: "total",
           data: [8,5,3,10,4,2],
-          itemStyle: { color: '#00bfff' } },
-        { name: '待修复', type: 'bar', stack: 'total',
+          itemStyle: { color: "#00bfff" } },
+        { name: "待修复", type: "bar", stack: "total",
           data: [5,4,2,12,6,5],
-          itemStyle: { color: '#ffd700' } },
+          itemStyle: { color: "#ffd700" } }
       ]
-    });
+    }));
 
-    // ---------- 5. ATT&CK 覆盖矩阵（热力图） ----------
-    const chartAttack = echarts.init(document.getElementById('chart-attack'));
-    const tactics = ['初始访问','执行','持久化','权限提升','防御规避','凭证访问','发现','横向移动','收集','C2','数据窃取','影响'];
-    const techniques = ['T1','T2','T3','T4','T5','T6','T7','T8'];
-    const heatData = [];
-    for (let i = 0; i < tactics.length; i++) {
-      for (let j = 0; j < techniques.length; j++) {
-        const v = Math.random();
-        let val;
-        if (v > 0.7) val = Math.floor(Math.random() * 30 + 70);
-        else if (v > 0.4) val = Math.floor(Math.random() * 30 + 40);
-        else if (v > 0.2) val = Math.floor(Math.random() * 20 + 10);
-        else val = 0;
-        heatData.push([j, i, val]);
+    /* ==================== ATT&CK MATRIX (HEATMAP) ==================== */
+    var chartAttack = echarts.init(document.getElementById("chart-attack"));
+    var tactics = ["初始访问", "执行", "持久化", "权限提升", "防御规避", "凭证访问", "发现", "横向移动", "收集", "C2", "数据窃取", "影响"];
+    var techniques = ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8"];
+    var heatData = [];
+    for (var hi = 0; hi < tactics.length; hi++) {
+      for (var hj = 0; hj < techniques.length; hj++) {
+        var rv = Math.random();
+        var hval;
+        if (rv > 0.7) hval = Math.floor(Math.random() * 30 + 70);
+        else if (rv > 0.4) hval = Math.floor(Math.random() * 30 + 40);
+        else if (rv > 0.2) hval = Math.floor(Math.random() * 20 + 10);
+        else hval = 0;
+        heatData.push([hj, hi, hval]);
       }
     }
-    chartAttack.setOption({
-      ...commonOption(),
-      grid: { left: 75, right: 10, top: 10, bottom: 35 },
-      tooltip: {
-        ...commonOption().tooltip,
-        formatter: p => `${tactics[p.data[1]]} / ${techniques[p.data[0]]}<br/>覆盖度: ${p.data[2]}%`
-      },
+    chartAttack.setOption(Object.assign({}, commonOption(), {
+      grid: { left: 65, right: 8, top: 8, bottom: 28 },
+      tooltip: Object.assign({}, commonOption().tooltip, {
+        formatter: function(p) { return tactics[p.data[1]] + " / " + techniques[p.data[0]] + "<br/>覆盖度: " + p.data[2] + "%"; }
+      }),
       xAxis: {
-        type: 'category', data: techniques,
-        axisLine: { lineStyle: { color: 'rgba(0,255,65,0.2)' } },
+        type: "category", data: techniques,
+        axisLine: { lineStyle: { color: "rgba(0,255,65,0.2)" } },
         axisLabel: { color: chartTextDim, fontFamily: chartFont, fontSize: 9 },
         axisTick: { show: false },
-        splitArea: { show: true, areaStyle: { color: 'rgba(0,255,65,0.02)' } }
+        splitArea: { show: true, areaStyle: { color: "rgba(0,255,65,0.02)" } }
       },
       yAxis: {
-        type: 'category', data: tactics,
-        axisLine: { lineStyle: { color: 'rgba(0,255,65,0.2)' } },
-        axisLabel: { color: chartTextDim, fontFamily: chartFont, fontSize: 9 },
+        type: "category", data: tactics,
+        axisLine: { lineStyle: { color: "rgba(0,255,65,0.2)" } },
+        axisLabel: { color: chartTextDim, fontFamily: chartFont, fontSize: 8 },
         axisTick: { show: false },
-        splitArea: { show: true, areaStyle: { color: 'rgba(0,255,65,0.02)' } }
+        splitArea: { show: true, areaStyle: { color: "rgba(0,255,65,0.02)" } }
       },
       visualMap: {
-        min: 0, max: 100,
-        show: false,
-        inRange: {
-          color: ['#000a00', '#003300', '#006600', '#00aa33', '#00ff41']
-        }
+        min: 0, max: 100, show: false,
+        inRange: { color: ["#000a00", "#003300", "#006600", "#00aa33", "#00ff41"] }
       },
       series: [{
-        type: 'heatmap',
+        type: "heatmap",
         data: heatData,
         label: { show: false },
-        itemStyle: {
-          borderColor: '#000a00',
-          borderWidth: 1
-        },
-        emphasis: {
-          itemStyle: { borderColor: '#00ff41', borderWidth: 2 }
-        }
+        itemStyle: { borderColor: "#000a00", borderWidth: 1 },
+        emphasis: { itemStyle: { borderColor: "#00ff41", borderWidth: 2 } }
       }]
-    });
+    }));
 
-    // ---------- 6. Kill Chain 漏斗图 ----------
-    const chartKill = echarts.init(document.getElementById('chart-kill'));
-    chartKill.setOption({
-      ...commonOption(),
-      legend: { ...commonOption().legend, show: false },
+    /* ==================== KILL CHAIN (FUNNEL) ==================== */
+    var chartKill = echarts.init(document.getElementById("chart-kill"));
+    chartKill.setOption(Object.assign({}, commonOption(), {
+      legend: Object.assign({}, commonOption().legend, { show: false }),
       series: [{
-        type: 'funnel',
-        left: '10%', top: 10, bottom: 10, width: '80%',
+        type: "funnel",
+        left: "10%", top: 10, bottom: 10, width: "80%",
         min: 0, max: 100,
-        minSize: '0%', maxSize: '100%',
-        sort: 'descending',
+        minSize: "0%", maxSize: "100%",
+        sort: "descending",
         gap: 2,
         label: {
-          show: true,
-          position: 'inside',
-          color: '#000a00',
-          fontFamily: chartFont,
-          fontSize: 10,
-          fontWeight: 'bold',
-          formatter: '{b}\n{c}%'
+          show: true, position: "inside",
+          color: "#000a00", fontFamily: chartFont, fontSize: 9, fontWeight: "bold",
+          formatter: "{b}\n{c}%"
         },
-        labelLine: { length: 10, lineStyle: { width: 1, type: 'solid' } },
-        itemStyle: { borderColor: '#000a00', borderWidth: 1 },
-        emphasis: {
-          label: { fontSize: 11 }
-        },
+        labelLine: { length: 10, lineStyle: { width: 1, type: "solid" } },
+        itemStyle: { borderColor: "#000a00", borderWidth: 1 },
+        emphasis: { label: { fontSize: 10 } },
         data: [
-          { value: 100, name: '侦察', itemStyle: { color: '#00ff41' } },
-          { value: 85, name: '武器化', itemStyle: { color: '#66ff66' } },
-          { value: 72, name: '投递', itemStyle: { color: '#99ff66' } },
-          { value: 58, name: '利用', itemStyle: { color: '#ccff66' } },
-          { value: 45, name: '安装', itemStyle: { color: '#ffd700' } },
-          { value: 32, name: 'C2', itemStyle: { color: '#ff9900' } },
-          { value: 18, name: '达成目标', itemStyle: { color: '#ff0040' } },
+          { value: 100, name: "侦察", itemStyle: { color: "#00ff41" } },
+          { value: 85, name: "武器化", itemStyle: { color: "#66ff66" } },
+          { value: 72, name: "投递", itemStyle: { color: "#99ff66" } },
+          { value: 58, name: "利用", itemStyle: { color: "#ccff66" } },
+          { value: 45, name: "安装", itemStyle: { color: "#ffd700" } },
+          { value: 32, name: "C2", itemStyle: { color: "#ff9900" } },
+          { value: 18, name: "达成目标", itemStyle: { color: "#ff0040" } }
         ]
       }]
-    });
+    }));
 
-    // ========== Resize ==========
-    const allCharts = [chartTrend, chartType, chartSource, chartVuln, chartAttack, chartKill];
-    window.addEventListener('resize', () => {
-      allCharts.forEach(c => c && c.resize());
+    /* ==================== LOG DATA ==================== */
+    var logData = [
+      { t: "10:42:18", l: "alert", m: "检测到来自 185.220.101.44 的暴力破解攻击，已自动阻断" },
+      { t: "10:41:55", l: "warn",  m: "Web应用防火墙触发 SQL 注入规则 #WAF-2047" },
+      { t: "10:41:32", l: "info",  m: "漏洞扫描任务完成，发现 3 个新 CVE，已入库" },
+      { t: "10:40:09", l: "alert", m: "DDoS 攻击峰值 12.4Gbps，清洗中心已介入" },
+      { t: "10:39:47", l: "info",  m: "威胁情报库同步完成，更新 1,247 条 IOC" },
+      { t: "10:38:21", l: "warn",  m: "终端 EDR 上报可疑 PowerShell 脚本执行" },
+      { t: "10:37:58", l: "info",  m: "防火墙策略自动优化完成，放行误报 -2" },
+      { t: "10:36:14", l: "alert", m: "C2 通信特征匹配成功，主机 10.0.4.22 已隔离" },
+      { t: "10:35:02", l: "info",  m: "全量日志归档完成，压缩率 87.3%" },
+      { t: "10:33:49", l: "warn",  m: "SSL 证书将于 7 天后过期，域名: api.internal.corp" },
+      { t: "10:32:11", l: "info",  m: "蜜罐捕获新型扫描行为，指纹已提取" },
+      { t: "10:30:55", l: "alert", m: "异常出站流量告警，目的 IP 归属地: 俄罗斯" }
+    ];
+    var logContent = document.getElementById("log-content");
+    logContent.innerHTML = logData.map(function(d) {
+      return '<div class="log-line">' +
+        '<span class="log-time">[' + d.t + ']</span>' +
+        '<span class="log-level-' + d.l + '">[' + d.l.toUpperCase() + ']</span>' +
+        '<span class="log-msg">' + d.m + '</span>' +
+        '</div>';
+    }).join("");
+
+    /* ==================== RESIZE ==================== */
+    var allCharts = [chartTrend, chartType, chartSource, chartVuln, chartAttack, chartKill].concat(kpiCharts);
+    window.addEventListener("resize", function() {
+      allCharts.forEach(function(c) { c && c.resize(); });
     });
   </script>
 </body>

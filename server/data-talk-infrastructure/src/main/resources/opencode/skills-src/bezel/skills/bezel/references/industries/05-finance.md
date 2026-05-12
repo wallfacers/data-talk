@@ -5,20 +5,12 @@
 - **分析维度**: 月度收入&利润趋势, 杜邦分析(ROE 分解), 收入结构, 费用构成明细(树图), 资产负债结构(堆叠面积), 现金流监控(瀑布), 应收账款账龄分布, 预算执行仪表盘
 - **典型用户**: CFO, 财务总监, 财务分析师
 
-## 视觉签名
-- Primary color `#c9a84c` (gold) / Secondary color `#4a90d9` (blue) / Background `#0c1929`
-- Top radial glow: `rgba(74,144,217,0.08)` ellipse
-- Divider lines: `linear-gradient(90deg, transparent, rgba(201,168,76,0.3), transparent)`
-- Card bg: `rgba(14,30,50,0.65)`, border: `rgba(201,168,76,0.25)`, hover: `rgba(201,168,76,0.65)`
-- KPI items with gold separator lines between them
-- Card title bar: 3px gradient `gold -> blue` left bar
-- ECharts registered theme `dark-finance`: `#d0d8e0` text, `#8a96a8` sub, gold/blue tooltip border
+## 风格与颜色覆盖
 
-## 推荐布局骨架
-- Header: centered title + clock, ~5vh
-- KPI bar: 5 equal items, ~6vh
-- Body: 3-column grid `1fr 1.1fr 1fr`
-- Footer: 2-column `1.6fr 1fr`, 18vh (cashflow + budget gauge)
+- **映射风格:** Monument (`references/styles/monument.md`)
+- `--bezel-bg-app`: `#0c1929`
+- `--bezel-accent-primary`: `#c9a84c` (gold)
+- `--bezel-accent-secondary`: `#4a90d9` (blue)
 
 ## 典型 widget pattern（8 个）
 

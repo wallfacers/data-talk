@@ -5,20 +5,12 @@
 - **分析维度**: 转化漏斗(UV->详情页->加购->支付), 渠道 GMV 占比, 品类销售排行 TOP10, 客单价分布, 全国订单热力分布, 用户留存 Cohort, 品类关联购买矩阵, 实时 GMV 趋势
 - **典型用户**: 电商运营总监、活动运营、品类经理
 
-## 视觉签名
-- Primary color `#ff4444` (red) / Secondary color `#ffc107` (gold) / Background `#0d0a07`
-- Particle canvas background (80 red/gold floating particles)
-- Card border: `rgba(255,68,68,0.18)`, hover: `rgba(255,68,68,0.55)` with red glow
-- Card title bar: 4px gradient bar `#ff4444 -> #ff6b35`
-- KPI pills: rounded capsule, `rgba(255,68,68,0.08)` bg, `rgba(255,68,68,0.35)` border
-- Bottom marquee: 56px bar with scrolling order feed, pulsing red dots
-- ECharts dark text: `#e0e8f0`, sub: `#8899aa`, grid dashed `rgba(136,153,170,0.15)`
-- Tooltip: `rgba(20,14,10,0.92)` bg, `rgba(255,68,68,0.45)` border
+## 风格与颜色覆盖
 
-## 推荐布局骨架
-- Header: 72px — logo + 4 KPI pills + clock
-- Body: `calc(100vh - 72px - 56px)` — left 38% + right 62%, column flex
-- Bottom marquee: 56px — infinite scroll order feed
+- **映射风格:** Mosaic (`references/styles/mosaic.md`)
+- `--bezel-bg-app`: `#0d0a07`
+- `--bezel-accent-primary`: `#ff4444` (red)
+- `--bezel-accent-secondary`: `#ffc107` (gold)
 
 ## 典型 widget pattern（8 个）
 

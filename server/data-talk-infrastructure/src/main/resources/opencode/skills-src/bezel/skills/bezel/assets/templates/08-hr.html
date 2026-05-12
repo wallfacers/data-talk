@@ -1,410 +1,592 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>人力资源分析中心</title>
-  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; overflow: hidden; font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #1f2937; color: #e5e7eb; }
-    #bg-canvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
-    .dashboard { position: relative; z-index: 1; width: 100vw; height: 100vh; display: flex; flex-direction: column; padding: 12px 16px; gap: 12px; }
-    .header { display: flex; align-items: center; justify-content: space-between; padding: 0 8px; }
-    .header h1 { font-size: 22px; font-weight: 700; letter-spacing: 2px; color: #f97316; text-shadow: 0 0 12px rgba(249,115,22,0.35); }
-    .clock { font-size: 14px; color: #9ca3af; font-variant-numeric: tabular-nums; }
-    .kpi-row { display: flex; gap: 12px; }
-    .kpi-card { flex: 1; background: rgba(31,41,55,0.7); border: 1px solid rgba(75,85,99,0.5); border-radius: 10px; padding: 14px 16px; text-align: center; transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease; backdrop-filter: blur(6px); }
-    .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.35); border-color: rgba(249,115,22,0.45); }
-    .kpi-label { font-size: 12px; color: #9ca3af; margin-bottom: 6px; }
-    .kpi-value { font-size: 26px; font-weight: 700; color: #f3f4f6; line-height: 1.2; }
-    .kpi-sub { font-size: 12px; margin-top: 4px; font-weight: 500; }
-    .kpi-sub.up { color: #22c55e; }
-    .kpi-sub.down { color: #ef4444; }
-    .kpi-sub.neutral { color: #9ca3af; }
-    .main { flex: 1; display: flex; gap: 12px; min-height: 0; }
-    .col { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
-    .col-left { width: 25%; }
-    .col-center { width: 50%; }
-    .col-right { width: 25%; }
-    .card { flex: 1; background: rgba(31,41,55,0.7); border: 1px solid rgba(75,85,99,0.5); border-radius: 10px; padding: 10px; display: flex; flex-direction: column; min-height: 0; transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease; backdrop-filter: blur(6px); }
-    .card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.3); border-color: rgba(59,130,246,0.4); }
-    .card-title { font-size: 13px; font-weight: 600; color: #f97316; margin-bottom: 8px; padding-left: 6px; border-left: 3px solid #f97316; flex-shrink: 0; }
-    .chart { flex: 1; min-height: 0; }
-    .structure-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; flex: 1; min-height: 0; }
-    .mini-chart { min-height: 0; }
-    .funnel-wrap { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
-    .funnel { display: flex; align-items: center; gap: 6px; }
-    .funnel-step { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-    .funnel-bar { background: linear-gradient(180deg, #3b82f6, #1d4ed8); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 12px; font-weight: 700; box-shadow: 0 2px 8px rgba(59,130,246,0.35); transition: transform 0.2s ease; }
-    .funnel-bar:hover { transform: scale(1.05); }
-    .funnel-label { font-size: 11px; color: #9ca3af; }
-    .funnel-arrow { color: #6b7280; font-size: 14px; }
-    .funnel-rate { font-size: 10px; color: #f97316; font-weight: 600; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'none';
+               script-src https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js 'unsafe-inline';
+               style-src 'unsafe-inline';
+               img-src data: https: blob:;
+               font-src https://cdn.jsdelivr.net/;
+               connect-src __BEZEL_SERVER_ORIGIN__;
+               frame-ancestors 'self';
+               base-uri 'none';
+               form-action 'none'">
+<meta name="__JSON_HASH__" content="sha256:placeholder">
+<title>人力资源分析中心</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+:root {
+  /* Color palette -- Organic HR orange */
+  --bezel-bg-app: #1f2937;
+  --bezel-bg-rgb: 31,41,55;
+  --bezel-accent-primary: #f97316;
+  --bezel-accent-secondary: #3b82f6;
+  --bezel-accent-primary-rgb: 249,115,22;
+  --bezel-accent-secondary-rgb: 59,130,246;
+  --bezel-text-strong: #e2e8f0;
+  --bezel-text-muted: #94a3b8;
+  --bezel-font-stack: 'PingFang SC','Microsoft YaHei',sans-serif;
+
+  /* Card tokens */
+  --card-radius: 18px;
+  --card-bg: rgba(31,41,55,0.40);
+  --card-border: 1px solid rgba(249,115,22,0.12);
+  --card-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.06);
+  --card-padding: 20px;
+  --card-blur: 14px;
+
+  /* Motion tokens */
+  --motion-duration: 500ms;
+  --motion-easing: cubic-bezier(0.25,0.1,0.25,1);
+  --motion-ambient: breathing 6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration: 0ms;
+    --motion-ambient: none;
+  }
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+  width: 100%; height: 100%; overflow: hidden;
+  font-family: var(--bezel-font-stack);
+  color: var(--bezel-text-strong);
+  background: var(--bezel-bg-app);
+}
+
+body {
+  margin: 0; padding: 0;
+  background: linear-gradient(135deg, var(--bezel-bg-app) 0%, rgba(249,115,22,0.08) 50%, var(--bezel-bg-app) 100%);
+}
+
+/* Background blobs */
+.bg-blob {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(100px);
+  pointer-events: none;
+  z-index: 0;
+  will-change: transform;
+}
+.blob-1 {
+  width: 60vw; height: 60vw;
+  top: -15vw; left: -10vw;
+  background: radial-gradient(circle, rgba(249,115,22,0.18), transparent 70%);
+  animation: drift1 10s ease-in-out infinite alternate;
+}
+.blob-2 {
+  width: 50vw; height: 50vw;
+  bottom: -10vw; right: -10vw;
+  background: radial-gradient(circle, rgba(59,130,246,0.15), transparent 70%);
+  animation: drift2 12s ease-in-out infinite alternate;
+}
+.blob-3 {
+  width: 35vw; height: 35vw;
+  top: 40%; left: 55%;
+  background: radial-gradient(circle, rgba(249,115,22,0.10), transparent 70%);
+  animation: drift3 14s ease-in-out infinite alternate;
+}
+@keyframes drift1 { to { transform: translate(5vw, 3vw); } }
+@keyframes drift2 { to { transform: translate(-4vw, -5vw); } }
+@keyframes drift3 { to { transform: translate(-3vw, 4vw); } }
+@media (prefers-reduced-motion: reduce) {
+  .bg-blob { animation: none; filter: blur(80px); }
+}
+
+/* Dashboard layout -- flex-wrap Organic */
+.dashboard {
+  position: relative;
+  z-index: 1;
+  width: 100vw;
+  height: 100vh;
+  padding: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-content: flex-start;
+  overflow: hidden;
+}
+
+/* Header */
+.header {
+  width: 100%;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.header h1 {
+  font-size: 20px;
+  font-weight: 400;
+  letter-spacing: 3px;
+  color: var(--bezel-text-strong);
+}
+
+/* Widgets */
+.widget-wide { flex: 2 1 55%; min-width: 300px; }
+.widget-narrow { flex: 1 1 30%; min-width: 200px; }
+.widget-breathe { margin-top: 12px; }
+
+/* Card */
+.card {
+  background: var(--card-bg);
+  border-radius: var(--card-radius);
+  border: 1px solid rgba(249,115,22,0.12);
+  backdrop-filter: blur(var(--card-blur));
+  padding: var(--card-padding);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.06);
+  transition: transform var(--motion-duration) var(--motion-easing),
+              box-shadow var(--motion-duration) var(--motion-easing);
+  height: 100%;
+}
+.card:hover {
+  transform: scale(1.01);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.10), 0 12px 32px rgba(0,0,0,0.10);
+}
+
+.card-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--bezel-text-strong);
+  text-align: left;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+}
+.chart-box { flex: 1; min-height: 0; }
+
+/* Breathing animation */
+@keyframes breathing {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.008); }
+}
+.card-breathe {
+  animation: breathing 6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-breathe { animation: none; }
+}
+
+/* KPI soft cards */
+.kpi-row {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.kpi-soft {
+  background: rgba(31,41,55,0.25);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 120px;
+  flex: 1;
+}
+.kpi-soft .icon {
+  width: 28px; height: 28px;
+  color: var(--bezel-accent-primary);
+  margin-bottom: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+}
+.kpi-soft .value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--bezel-text-strong);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.kpi-soft .label {
+  font-size: 12px;
+  color: var(--bezel-text-muted);
+}
+.kpi-soft .description {
+  font-size: 11px;
+  color: var(--bezel-text-muted);
+  opacity: 0.7;
+  margin-top: 2px;
+}
+
+/* Funnel */
+.funnel-wrap { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
+.funnel { display: flex; align-items: center; gap: 6px; }
+.funnel-step { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.funnel-bar {
+  background: linear-gradient(180deg, #3b82f6, #1d4ed8);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 12px; font-weight: 700;
+  box-shadow: 0 2px 8px rgba(59,130,246,0.35);
+  transition: transform var(--motion-duration) var(--motion-easing);
+}
+.funnel-bar:hover { transform: scale(1.05); }
+.funnel-label { font-size: 11px; color: var(--bezel-text-muted); }
+.funnel-arrow { color: #6b7280; font-size: 14px; }
+.funnel-rate { font-size: 10px; color: #f97316; font-weight: 600; }
+</style>
 </head>
 <body>
-  <canvas id="bg-canvas"></canvas>
-  <div class="dashboard">
-    <div class="header">
-      <h1>人力资源分析中心</h1>
-      <div class="clock" id="clock">--</div>
+<div class="bg-blob blob-1"></div>
+<div class="bg-blob blob-2"></div>
+<div class="bg-blob blob-3"></div>
+
+<div class="dashboard">
+  <!-- Header -->
+  <div class="header">
+    <h1>人力资源分析中心</h1>
+  </div>
+
+  <!-- KPI soft row -->
+  <div class="kpi-row">
+    <div class="kpi-soft" aria-label="总人数 1247人 全公司在职">
+      <div class="icon">P</div>
+      <div class="value" data-target="1247" data-suffix="人">0</div>
+      <div class="label">总人数</div>
+      <div class="description">全公司在职</div>
     </div>
-    <div class="kpi-row">
-      <div class="kpi-card">
-        <div class="kpi-label">总人数</div>
-        <div class="kpi-value" data-target="1247" data-suffix="人">0</div>
-        <div class="kpi-sub neutral">全公司在职</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">本月入职</div>
-        <div class="kpi-value" data-target="28" data-suffix="人">0</div>
-        <div class="kpi-sub up">▲ 12%</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">本月离职</div>
-        <div class="kpi-value" data-target="15" data-suffix="人" style="color:#ef4444">0</div>
-        <div class="kpi-sub down">▼ 8%</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">人均效能</div>
-        <div class="kpi-value" data-target="38.5" data-suffix="万/人" data-decimal="1">0</div>
-        <div class="kpi-sub up">▲ 5.2%</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">招聘完成率</div>
-        <div class="kpi-value" data-target="78" data-suffix="%">0</div>
-        <div class="kpi-sub down">▼ 5pp</div>
-      </div>
+    <div class="kpi-soft" aria-label="本月入职 28人 同比增长12%">
+      <div class="icon">+</div>
+      <div class="value" data-target="28" data-suffix="人">0</div>
+      <div class="label">本月入职</div>
+      <div class="description">同比 +12%</div>
     </div>
-    <div class="main">
-      <div class="col col-left">
-        <div class="card">
-          <div class="card-title">人员结构</div>
-          <div class="structure-grid">
-            <div class="mini-chart" id="chart-age"></div>
-            <div class="mini-chart" id="chart-edu"></div>
-            <div class="mini-chart" id="chart-level"></div>
-          </div>
+    <div class="kpi-soft" aria-label="本月离职 15人 同比下降8%">
+      <div class="icon">-</div>
+      <div class="value" data-target="15" data-suffix="人" style="color:#ef4444">0</div>
+      <div class="label">本月离职</div>
+      <div class="description">同比 -8%</div>
+    </div>
+    <div class="kpi-soft" aria-label="人均效能 38.5万每人 同比增长5.2%">
+      <div class="icon">*</div>
+      <div class="value" data-target="38.5" data-decimal="1" data-suffix="万/人">0</div>
+      <div class="label">人均效能</div>
+      <div class="description">同比 +5.2%</div>
+    </div>
+    <div class="kpi-soft" aria-label="招聘完成率 78% 下降5个百分点">
+      <div class="icon">%</div>
+      <div class="value" data-target="78" data-suffix="%">0</div>
+      <div class="label">招聘完成率</div>
+      <div class="description">同比 -5pp</div>
+    </div>
+  </div>
+
+  <!-- Row 1: wide org force graph + narrow structure -->
+  <div class="widget-wide card card-breathe">
+    <div class="card-title">组织架构力导向图</div>
+    <div class="chart-box" id="chart-org"></div>
+  </div>
+  <div class="widget-narrow card">
+    <div class="card-title">人员结构</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;flex:1;min-height:0;">
+      <div class="chart-box" id="chart-age"></div>
+      <div class="chart-box" id="chart-edu"></div>
+      <div class="chart-box" id="chart-level"></div>
+    </div>
+  </div>
+
+  <!-- Row 2: wide nine-box + narrow turnover -->
+  <div class="widget-wide card">
+    <div class="card-title">人才九宫格</div>
+    <div class="chart-box" id="chart-nine"></div>
+  </div>
+  <div class="widget-narrow card">
+    <div class="card-title">离职趋势（12个月）</div>
+    <div class="chart-box" id="chart-turnover"></div>
+  </div>
+
+  <!-- Row 3: wide pay + narrow funnel -->
+  <div class="widget-wide card widget-breathe">
+    <div class="card-title">薪酬带宽对标</div>
+    <div class="chart-box" id="chart-pay"></div>
+  </div>
+  <div class="widget-narrow card">
+    <div class="card-title">招聘漏斗</div>
+    <div class="funnel-wrap">
+      <div class="funnel">
+        <div class="funnel-step">
+          <div class="funnel-bar" style="width:72px;height:64px;">500</div>
+          <div class="funnel-label">简历</div>
         </div>
-        <div class="card">
-          <div class="card-title">人才九宫格</div>
-          <div class="chart" id="chart-nine"></div>
+        <div class="funnel-step">
+          <div class="funnel-arrow">-></div>
+          <div class="funnel-rate">24%</div>
         </div>
-      </div>
-      <div class="col col-center">
-        <div class="card" style="flex:1;">
-          <div class="card-title">组织架构力导向图</div>
-          <div class="chart" id="chart-org"></div>
+        <div class="funnel-step">
+          <div class="funnel-bar" style="width:64px;height:56px;">120</div>
+          <div class="funnel-label">面试</div>
         </div>
-      </div>
-      <div class="col col-right">
-        <div class="card">
-          <div class="card-title">离职趋势（12个月）</div>
-          <div class="chart" id="chart-turnover"></div>
+        <div class="funnel-step">
+          <div class="funnel-arrow">-></div>
+          <div class="funnel-rate">37.5%</div>
         </div>
-        <div class="card">
-          <div class="card-title">招聘漏斗</div>
-          <div class="funnel-wrap">
-            <div class="funnel">
-              <div class="funnel-step">
-                <div class="funnel-bar" style="width:72px;height:64px;">500</div>
-                <div class="funnel-label">简历</div>
-              </div>
-              <div class="funnel-step">
-                <div class="funnel-arrow">→</div>
-                <div class="funnel-rate">24%</div>
-              </div>
-              <div class="funnel-step">
-                <div class="funnel-bar" style="width:64px;height:56px;">120</div>
-                <div class="funnel-label">面试</div>
-              </div>
-              <div class="funnel-step">
-                <div class="funnel-arrow">→</div>
-                <div class="funnel-rate">37.5%</div>
-              </div>
-              <div class="funnel-step">
-                <div class="funnel-bar" style="width:56px;height:48px;">45</div>
-                <div class="funnel-label">Offer</div>
-              </div>
-              <div class="funnel-step">
-                <div class="funnel-arrow">→</div>
-                <div class="funnel-rate">62.2%</div>
-              </div>
-              <div class="funnel-step">
-                <div class="funnel-bar" style="width:48px;height:40px;">28</div>
-                <div class="funnel-label">入职</div>
-              </div>
-            </div>
-          </div>
+        <div class="funnel-step">
+          <div class="funnel-bar" style="width:56px;height:48px;">45</div>
+          <div class="funnel-label">Offer</div>
         </div>
-        <div class="card">
-          <div class="card-title">员工满意度趋势</div>
-          <div class="chart" id="chart-sat"></div>
+        <div class="funnel-step">
+          <div class="funnel-arrow">-></div>
+          <div class="funnel-rate">62.2%</div>
         </div>
-        <div class="card">
-          <div class="card-title">薪酬带宽对标</div>
-          <div class="chart" id="chart-pay"></div>
-        </div>
-        <div class="card">
-          <div class="card-title">AI 离职风险预测热力</div>
-          <div class="chart" id="chart-risk"></div>
+        <div class="funnel-step">
+          <div class="funnel-bar" style="width:48px;height:40px;">28</div>
+          <div class="funnel-label">入职</div>
         </div>
       </div>
     </div>
   </div>
 
-  <script>
-    // ---------- Background network canvas ----------
-    const canvas = document.getElementById('bg-canvas');
-    const ctx = canvas.getContext('2d');
-    let W, H;
-    function resizeCanvas() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-    const DOT_COUNT = 80;
-    const CONNECT_DIST = 140;
-    const dots = Array.from({length: DOT_COUNT}, () => ({
-      x: Math.random() * W, y: Math.random() * H,
-      vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
-      r: Math.random() * 1.5 + 0.8
-    }));
-    function drawBg() {
-      ctx.clearRect(0,0,W,H);
-      for (let i=0;i<DOT_COUNT;i++) {
-        const d = dots[i];
-        d.x += d.vx; d.y += d.vy;
-        if (d.x < 0 || d.x > W) d.vx *= -1;
-        if (d.y < 0 || d.y > H) d.vy *= -1;
-        ctx.beginPath();
-        ctx.arc(d.x, d.y, d.r, 0, Math.PI*2);
-        ctx.fillStyle = 'rgba(148,163,184,0.25)';
-        ctx.fill();
-      }
-      for (let i=0;i<DOT_COUNT;i++) {
-        for (let j=i+1;j<DOT_COUNT;j++) {
-          const dx = dots[i].x - dots[j].x, dy = dots[i].y - dots[j].y;
-          const dist = Math.sqrt(dx*dx + dy*dy);
-          if (dist < CONNECT_DIST) {
-            ctx.beginPath();
-            ctx.moveTo(dots[i].x, dots[i].y);
-            ctx.lineTo(dots[j].x, dots[j].y);
-            ctx.strokeStyle = `rgba(148,163,184,${0.12 * (1 - dist/CONNECT_DIST)})`;
-            ctx.lineWidth = 0.8;
-            ctx.stroke();
-          }
-        }
-      }
-      requestAnimationFrame(drawBg);
-    }
-    drawBg();
+  <!-- Row 4: wide risk heatmap + narrow satisfaction -->
+  <div class="widget-wide card">
+    <div class="card-title">AI 离职风险预测热力</div>
+    <div class="chart-box" id="chart-risk"></div>
+  </div>
+  <div class="widget-narrow card widget-breathe">
+    <div class="card-title">员工满意度趋势</div>
+    <div class="chart-box" id="chart-sat"></div>
+  </div>
+</div>
 
-    // ---------- Clock ----------
-    function updateClock() {
-      const now = new Date();
-      const pad = n => String(n).padStart(2,'0');
-      document.getElementById('clock').textContent = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-    }
-    setInterval(updateClock, 1000);
-    updateClock();
+<script>
+/* ==================== BEZEL CONFIG ==================== */
+window.__BEZEL_CONFIG__ = {
+  dashboardId: "08-hr",
+  style: "organic",
+  refreshInterval: 30000,
+  widgets: [
+    { id: "org", type: "graph" },
+    { id: "age", type: "pie" },
+    { id: "edu", type: "pie" },
+    { id: "level", type: "pie" },
+    { id: "nine", type: "scatter" },
+    { id: "turnover", type: "line" },
+    { id: "pay", type: "boxplot" },
+    { id: "risk", type: "heatmap" },
+    { id: "sat", type: "line" }
+  ]
+};
 
-    // ---------- KPI rolling animation ----------
-    document.querySelectorAll('.kpi-value').forEach(el => {
-      const target = parseFloat(el.dataset.target);
-      const suffix = el.dataset.suffix || '';
-      const decimal = parseInt(el.dataset.decimal || '0', 10);
-      const duration = 1200;
-      const start = performance.now();
-      function tick(now) {
-        const p = Math.min((now - start) / duration, 1);
-        const ease = 1 - Math.pow(1 - p, 3);
-        const val = target * ease;
-        el.textContent = (decimal ? val.toFixed(decimal) : Math.round(val).toLocaleString()) + suffix;
-        if (p < 1) requestAnimationFrame(tick);
-      }
-      requestAnimationFrame(tick);
+/* ==================== POLLING SCHEDULER ==================== */
+(function() {
+  var cfg = window.__BEZEL_CONFIG__;
+  var interval = cfg.refreshInterval || 30000;
+  function poll() {
+    cfg.widgets.forEach(function(w) {
+      var url = "/api/dashboards/" + cfg.dashboardId + "/widgets/" + w.id + "/data";
+      fetch(url).then(function(r) { return r.json(); }).then(function(data) {
+        window.dispatchEvent(new CustomEvent("bezel:data:" + w.id, { detail: data }));
+      }).catch(function() {});
     });
+  }
+  setInterval(poll, interval);
+})();
 
-    // ---------- ECharts common theme ----------
-    const darkTheme = {
-      backgroundColor: 'transparent',
-      textStyle: { fontFamily: "'PingFang SC','Microsoft YaHei',sans-serif" },
-      title: { textStyle: { color: '#e5e7eb' } },
-      legend: { textStyle: { color: '#9ca3af' } },
-      tooltip: { backgroundColor: 'rgba(17,24,39,0.92)', borderColor: '#374151', textStyle: { color: '#e5e7eb' } }
-    };
-    function makeChart(dom, option) {
-      const chart = echarts.init(dom, null, { renderer: 'canvas' });
-      chart.setOption({ ...darkTheme, ...option });
-      window.addEventListener('resize', () => chart.resize());
-      return chart;
-    }
+/* ==================== KPI COUNT-UP ==================== */
+function countUp(el, target, duration) {
+  duration = duration || 1500;
+  var decimal = parseInt(el.dataset.decimal || '0', 10);
+  var suffix = el.dataset.suffix || '';
+  var startTime = null;
+  function tick(ts) {
+    if (!startTime) startTime = ts;
+    var p = Math.min((ts - startTime) / duration, 1);
+    var ease = 1 - Math.pow(1 - p, 3);
+    el.textContent = (decimal > 0 ? (target * ease).toFixed(decimal) : Math.round(target * ease).toLocaleString()) + suffix;
+    if (p < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
 
-    // ---------- 6. Org force graph ----------
-    const depts = ['研发部','销售部','市场部','运营部','财务部','人力部','产品部','客服部'];
-    const deptSizes = [320,180,95,140,60,45,110,85];
-    const deptRisk = [2,1,0,1,0,0,1,0]; // 0=green 1=yellow 2=red
-    const riskColors = ['#22c55e','#f59e0b','#ef4444'];
-    const orgNodes = depts.map((name,i)=>({id:String(i),name,value:deptSizes[i],symbolSize:Math.sqrt(deptSizes[i])*3.2,itemStyle:{color:riskColors[deptRisk[i]]},label:{show:true,color:'#e5e7eb',fontSize:12}}));
-    const orgLinks = [];
-    for (let i=0;i<depts.length;i++) for (let j=i+1;j<depts.length;j++) if (Math.random()>0.55) orgLinks.push({source:String(i),target:String(j),lineStyle:{color:'rgba(148,163,184,0.25)',width:1}});
-    makeChart(document.getElementById('chart-org'), {
-      tooltip: { formatter: p => p.dataType==='node'?`${p.data.name}<br/>人数：${p.data.value}`:'' },
-      series: [{
-        type: 'graph', layout: 'force', roam: true, draggable: true,
-        data: orgNodes, links: orgLinks,
-        force: { repulsion: 380, edgeLength: [60,140], gravity: 0.06 },
-        emphasis: { focus: 'adjacency', lineStyle: { width: 2, color: '#f97316' } },
-        lineStyle: { curveness: 0.15 }
-      }]
-    });
+document.querySelectorAll('.kpi-soft .value').forEach(function(el) {
+  var target = parseFloat(el.dataset.target);
+  countUp(el, target, 1500);
+});
 
-    // ---------- 7. Personnel structure (3 mini pies) ----------
-    const pieCommon = {
-      type: 'pie', radius: ['42%','68%'], center: ['50%','55%'],
-      label: { show: true, color: '#e5e7eb', fontSize: 10, formatter: '{b}\n{d}%' },
-      labelLine: { lineStyle: { color: '#6b7280' } }
-    };
-    makeChart(document.getElementById('chart-age'), {
-      title: { text: '年龄', left: 'center', top: 0, textStyle: { color: '#9ca3af', fontSize: 11 } },
-      series: [{ ...pieCommon, data: [
-        {value: 210, name: '25岁以下', itemStyle:{color:'#3b82f6'}},
-        {value: 520, name: '26-35岁', itemStyle:{color:'#f97316'}},
-        {value: 380, name: '36-45岁', itemStyle:{color:'#22c55e'}},
-        {value: 137, name: '45岁以上', itemStyle:{color:'#8b5cf6'}}
-      ]}]
-    });
-    makeChart(document.getElementById('chart-edu'), {
-      title: { text: '学历', left: 'center', top: 0, textStyle: { color: '#9ca3af', fontSize: 11 } },
-      series: [{ ...pieCommon, data: [
-        {value: 180, name: '硕士及以上', itemStyle:{color:'#3b82f6'}},
-        {value: 720, name: '本科', itemStyle:{color:'#f97316'}},
-        {value: 280, name: '大专', itemStyle:{color:'#22c55e'}},
-        {value: 67, name: '其他', itemStyle:{color:'#8b5cf6'}}
-      ]}]
-    });
-    makeChart(document.getElementById('chart-level'), {
-      title: { text: '职级', left: 'center', top: 0, textStyle: { color: '#9ca3af', fontSize: 11 } },
-      series: [{ ...pieCommon, data: [
-        {value: 45, name: '高管', itemStyle:{color:'#ef4444'}},
-        {value: 180, name: '总监', itemStyle:{color:'#f97316'}},
-        {value: 420, name: '经理', itemStyle:{color:'#3b82f6'}},
-        {value: 602, name: '专员', itemStyle:{color:'#22c55e'}}
-      ]}]
-    });
+/* ==================== ECHARTS ==================== */
+var darkTheme = {
+  backgroundColor: 'transparent',
+  textStyle: { fontFamily: "'PingFang SC','Microsoft YaHei',sans-serif", color: '#cbd5e1' },
+  tooltip: { backgroundColor: 'rgba(31,41,55,0.92)', borderColor: 'rgba(249,115,22,0.20)', textStyle: { color: '#e2e8f0' } }
+};
 
-    // ---------- 8. Turnover trend ----------
-    const months = ['6月','7月','8月','9月','10月','11月','12月','1月','2月','3月','4月','5月'];
-    const turnoverData = [18,22,19,25,21,28,24,20,16,14,15,15];
-    makeChart(document.getElementById('chart-turnover'), {
-      tooltip: { trigger: 'axis' },
-      grid: { left: 36, right: 12, top: 24, bottom: 20 },
-      xAxis: { type: 'category', data: months, axisLine: { lineStyle: { color: '#4b5563' } }, axisLabel: { color: '#9ca3af', fontSize: 10 } },
-      yAxis: { type: 'value', splitLine: { lineStyle: { color: 'rgba(75,85,99,0.3)' } }, axisLabel: { color: '#9ca3af', fontSize: 10 } },
-      series: [{
-        type: 'line', data: turnoverData, smooth: true, symbol: 'circle', symbolSize: 6,
-        lineStyle: { color: '#ef4444', width: 2 }, itemStyle: { color: '#ef4444' },
-        areaStyle: { color: { type: 'linear', x:0,y:0,x2:0,y2:1, colorStops:[{offset:0,color:'rgba(239,68,68,0.25)'},{offset:1,color:'rgba(239,68,68,0.02)'}] } }
-      }]
-    });
+function makeChart(dom, option) {
+  var chart = echarts.init(dom, null, { renderer: 'canvas' });
+  chart.setOption(Object.assign({}, darkTheme, option));
+  return chart;
+}
 
-    // ---------- 10. Satisfaction trend ----------
-    makeChart(document.getElementById('chart-sat'), {
-      tooltip: { trigger: 'axis' },
-      grid: { left: 36, right: 12, top: 24, bottom: 20 },
-      xAxis: { type: 'category', data: ['Q1','Q2','Q3','Q4'], axisLine: { lineStyle: { color: '#4b5563' } }, axisLabel: { color: '#9ca3af', fontSize: 10 } },
-      yAxis: { type: 'value', min: 3, max: 5, splitLine: { lineStyle: { color: 'rgba(75,85,99,0.3)' } }, axisLabel: { color: '#9ca3af', fontSize: 10 } },
-      series: [{
-        type: 'line', data: [4.12,4.25,4.18,4.35], smooth: true, symbol: 'circle', symbolSize: 7,
-        lineStyle: { color: '#22c55e', width: 2.5 }, itemStyle: { color: '#22c55e' },
-        markLine: { silent: true, data: [{yAxis:4.2}], lineStyle:{color:'rgba(249,115,22,0.6)',type:'dashed'}, label:{show:false} }
-      }]
-    });
+var charts = {};
 
-    // ---------- 11. Nine-box grid ----------
-    const nineData = [
-      [1,1,8],[1,2,12],[1,3,6],[1,4,3],[1,5,2],
-      [2,1,10],[2,2,22],[2,3,18],[2,4,9],[2,5,5],
-      [3,1,6],[3,2,28],[3,3,35],[3,4,20],[3,5,8],
-      [4,1,4],[4,2,15],[4,3,30],[4,4,42],[4,5,18],
-      [5,1,2],[5,2,8],[5,3,18],[5,4,35],[5,5,22]
-    ];
-    const nineLabels = ['待提升','一般','骨干','明星','超明星'];
-    makeChart(document.getElementById('chart-nine'), {
-      tooltip: { formatter: p => `绩效 ${p.data[0]} · 潜力 ${p.data[1]}<br/>人数：${p.data[2]}` },
-      grid: { left: 36, right: 18, top: 18, bottom: 28 },
-      xAxis: { type: 'value', min: 0.5, max: 5.5, splitLine: { show: false }, axisLine: { lineStyle: { color: '#4b5563' } }, axisLabel: { color: '#9ca3af', fontSize: 10, formatter: v => v>=1&&v<=5?String(v):'' }, name: '绩效', nameTextStyle: { color: '#9ca3af', fontSize: 10 } },
-      yAxis: { type: 'value', min: 0.5, max: 5.5, splitLine: { show: false }, axisLine: { lineStyle: { color: '#4b5563' } }, axisLabel: { color: '#9ca3af', fontSize: 10, formatter: v => v>=1&&v<=5?String(v):'' }, name: '潜力', nameTextStyle: { color: '#9ca3af', fontSize: 10 } },
-      series: [{
-        type: 'scatter', data: nineData,
-        symbolSize: d => Math.sqrt(d[2])*5.5,
-        itemStyle: { color: d => {
-          const s = d.data[0]+d.data[1];
-          if (s>=9) return '#ef4444';
-          if (s>=7) return '#f97316';
-          if (s>=5) return '#3b82f6';
-          return '#6b7280';
-        }, opacity: 0.85 },
-        markArea: {
-          silent: true,
-          data: [
-            [{xAxis:0.5,yAxis:0.5},{xAxis:2.5,yAxis:2.5,itemStyle:{color:'rgba(107,114,128,0.08)'}}],
-            [{xAxis:2.5,yAxis:0.5},{xAxis:4.5,yAxis:2.5,itemStyle:{color:'rgba(59,130,246,0.08)'}}],
-            [{xAxis:4.5,yAxis:0.5},{xAxis:5.5,yAxis:2.5,itemStyle:{color:'rgba(249,115,22,0.08)'}}],
-            [{xAxis:0.5,yAxis:2.5},{xAxis:2.5,yAxis:4.5,itemStyle:{color:'rgba(59,130,246,0.08)'}}],
-            [{xAxis:2.5,yAxis:2.5},{xAxis:4.5,yAxis:4.5,itemStyle:{color:'rgba(34,197,94,0.08)'}}],
-            [{xAxis:4.5,yAxis:2.5},{xAxis:5.5,yAxis:4.5,itemStyle:{color:'rgba(249,115,22,0.08)'}}],
-            [{xAxis:0.5,yAxis:4.5},{xAxis:2.5,yAxis:5.5,itemStyle:{color:'rgba(249,115,22,0.08)'}}],
-            [{xAxis:2.5,yAxis:4.5},{xAxis:4.5,yAxis:5.5,itemStyle:{color:'rgba(249,115,22,0.08)'}}],
-            [{xAxis:4.5,yAxis:4.5},{xAxis:5.5,yAxis:5.5,itemStyle:{color:'rgba(239,68,68,0.08)'}}]
-          ]
-        },
-        markLine: {
-          silent: true, symbol: 'none',
-          lineStyle: { color: 'rgba(148,163,184,0.35)', type: 'dashed', width: 1 },
-          data: [{xAxis:2.5},{xAxis:4.5},{yAxis:2.5},{yAxis:4.5}]
-        }
-      }]
-    });
+/* 1. Org force graph */
+var depts = ['研发部','销售部','市场部','运营部','财务部','人力部','产品部','客服部'];
+var deptSizes = [320,180,95,140,60,45,110,85];
+var deptRisk = [2,1,0,1,0,0,1,0];
+var riskColors = ['#22c55e','#f59e0b','#ef4444'];
+var orgNodes = depts.map(function(name,i){
+  return { id: String(i), name: name, value: deptSizes[i], symbolSize: Math.sqrt(deptSizes[i])*3.2, itemStyle: { color: riskColors[deptRisk[i]] }, label: { show: true, color: '#e2e8f0', fontSize: 12 } };
+});
+var orgLinks = [];
+for (var i=0;i<depts.length;i++) for (var j=i+1;j<depts.length;j++) if (Math.random()>0.55) orgLinks.push({source:String(i),target:String(j),lineStyle:{color:'rgba(148,163,184,0.25)',width:1}});
 
-    // ---------- 12. Pay bandwidth boxplot ----------
-    const levels = ['P3','P4','P5','P6','P7'];
-    const boxData = [
-      [8,10,12,14,18],
-      [12,15,18,22,28],
-      [18,24,30,38,48],
-      [30,40,52,65,85],
-      [50,68,88,110,145]
-    ];
-    const market50 = [11,17,29,50,82];
-    makeChart(document.getElementById('chart-pay'), {
-      tooltip: { trigger: 'item', formatter: p => p.seriesType==='boxplot'?`${p.name}<br/>最低：${p.data[1]}万<br/>Q1：${p.data[2]}万<br/>中位：${p.data[3]}万<br/>Q3：${p.data[4]}万<br/>最高：${p.data[5]}万`:'' },
-      grid: { left: 36, right: 18, top: 24, bottom: 24 },
-      xAxis: { type: 'category', data: levels, axisLine: { lineStyle: { color: '#4b5563' } }, axisLabel: { color: '#9ca3af', fontSize: 10 } },
-      yAxis: { type: 'value', name: '万/年', nameTextStyle: { color: '#9ca3af', fontSize: 10 }, splitLine: { lineStyle: { color: 'rgba(75,85,99,0.3)' } }, axisLabel: { color: '#9ca3af', fontSize: 10 } },
-      series: [
-        { type: 'boxplot', data: boxData.map((d,i)=>({name:levels[i],value:d})), itemStyle: { color: 'rgba(59,130,246,0.25)', borderColor: '#3b82f6', borderWidth: 1.5 } },
-        { type: 'line', data: market50, symbol: 'diamond', symbolSize: 8, lineStyle: { color: '#f97316', width: 2, type: 'dashed' }, itemStyle: { color: '#f97316' }, markLine: { silent: true, data: [], label: { show: false } } }
+charts.org = makeChart(document.getElementById('chart-org'), {
+  tooltip: { formatter: function(p){ return p.dataType==='node' ? p.data.name+'<br/>人数：'+p.data.value : ''; } },
+  series: [{
+    type: 'graph', layout: 'force', roam: true, draggable: true,
+    data: orgNodes, links: orgLinks,
+    force: { repulsion: 380, edgeLength: [60,140], gravity: 0.06 },
+    emphasis: { focus: 'adjacency', lineStyle: { width: 2, color: '#f97316' } },
+    lineStyle: { curveness: 0.15 }
+  }]
+});
+
+/* 2. Personnel structure (3 mini pies) */
+var pieCommon = {
+  type: 'pie', radius: ['42%','68%'], center: ['50%','55%'],
+  label: { show: true, color: '#e2e8f0', fontSize: 10, formatter: '{b}\n{d}%' },
+  labelLine: { lineStyle: { color: '#6b7280' } }
+};
+
+charts.age = makeChart(document.getElementById('chart-age'), {
+  title: { text: '年龄', left: 'center', top: 0, textStyle: { color: '#94a3b8', fontSize: 11 } },
+  series: [Object.assign({}, pieCommon, { data: [
+    {value:210, name:'25岁以下', itemStyle:{color:'#3b82f6'}},
+    {value:520, name:'26-35岁', itemStyle:{color:'#f97316'}},
+    {value:380, name:'36-45岁', itemStyle:{color:'#22c55e'}},
+    {value:137, name:'45岁以上', itemStyle:{color:'#8b5cf6'}}
+  ]})]
+});
+
+charts.edu = makeChart(document.getElementById('chart-edu'), {
+  title: { text: '学历', left: 'center', top: 0, textStyle: { color: '#94a3b8', fontSize: 11 } },
+  series: [Object.assign({}, pieCommon, { data: [
+    {value:180, name:'硕士及以上', itemStyle:{color:'#3b82f6'}},
+    {value:720, name:'本科', itemStyle:{color:'#f97316'}},
+    {value:280, name:'大专', itemStyle:{color:'#22c55e'}},
+    {value:67, name:'其他', itemStyle:{color:'#8b5cf6'}}
+  ]})]
+});
+
+charts.level = makeChart(document.getElementById('chart-level'), {
+  title: { text: '职级', left: 'center', top: 0, textStyle: { color: '#94a3b8', fontSize: 11 } },
+  series: [Object.assign({}, pieCommon, { data: [
+    {value:45, name:'高管', itemStyle:{color:'#ef4444'}},
+    {value:180, name:'总监', itemStyle:{color:'#f97316'}},
+    {value:420, name:'经理', itemStyle:{color:'#3b82f6'}},
+    {value:602, name:'专员', itemStyle:{color:'#22c55e'}}
+  ]})]
+});
+
+/* 3. Turnover trend (smooth line) */
+var months = ['6月','7月','8月','9月','10月','11月','12月','1月','2月','3月','4月','5月'];
+var turnoverData = [18,22,19,25,21,28,24,20,16,14,15,15];
+charts.turnover = makeChart(document.getElementById('chart-turnover'), {
+  tooltip: { trigger: 'axis' },
+  grid: { left: 36, right: 12, top: 24, bottom: 20 },
+  xAxis: { type: 'category', data: months, axisLine: { lineStyle: { color: '#4b5563' } }, axisLabel: { color: '#94a3b8', fontSize: 10 } },
+  yAxis: { type: 'value', splitLine: { lineStyle: { color: 'rgba(75,85,99,0.3)' } }, axisLabel: { color: '#94a3b8', fontSize: 10 } },
+  series: [{
+    type: 'line', data: turnoverData, smooth: true, symbol: 'circle', symbolSize: 6,
+    lineStyle: { color: '#ef4444', width: 2 }, itemStyle: { color: '#ef4444' },
+    areaStyle: { color: { type: 'linear', x:0,y:0,x2:0,y2:1, colorStops:[{offset:0,color:'rgba(239,68,68,0.25)'},{offset:1,color:'rgba(239,68,68,0.02)'}] } }
+  }]
+});
+
+/* 4. Satisfaction trend */
+charts.sat = makeChart(document.getElementById('chart-sat'), {
+  tooltip: { trigger: 'axis' },
+  grid: { left: 36, right: 12, top: 24, bottom: 20 },
+  xAxis: { type: 'category', data: ['Q1','Q2','Q3','Q4'], axisLine: { lineStyle: { color: '#4b5563' } }, axisLabel: { color: '#94a3b8', fontSize: 10 } },
+  yAxis: { type: 'value', min: 3, max: 5, splitLine: { lineStyle: { color: 'rgba(75,85,99,0.3)' } }, axisLabel: { color: '#94a3b8', fontSize: 10 } },
+  series: [{
+    type: 'line', data: [4.12,4.25,4.18,4.35], smooth: true, symbol: 'circle', symbolSize: 7,
+    lineStyle: { color: '#22c55e', width: 2.5 }, itemStyle: { color: '#22c55e' },
+    markLine: { silent: true, data: [{yAxis:4.2}], lineStyle: {color:'rgba(249,115,22,0.6)',type:'dashed'}, label: {show:false} }
+  }]
+});
+
+/* 5. Nine-box grid */
+var nineData = [
+  [1,1,8],[1,2,12],[1,3,6],[1,4,3],[1,5,2],
+  [2,1,10],[2,2,22],[2,3,18],[2,4,9],[2,5,5],
+  [3,1,6],[3,2,28],[3,3,35],[3,4,20],[3,5,8],
+  [4,1,4],[4,2,15],[4,3,30],[4,4,42],[4,5,18],
+  [5,1,2],[5,2,8],[5,3,18],[5,4,35],[5,5,22]
+];
+charts.nine = makeChart(document.getElementById('chart-nine'), {
+  tooltip: { formatter: function(p){ return '绩效 '+p.data[0]+' · 潜力 '+p.data[1]+'<br/>人数：'+p.data[2]; } },
+  grid: { left: 36, right: 18, top: 18, bottom: 28 },
+  xAxis: { type: 'value', min: 0.5, max: 5.5, splitLine: { show: false }, axisLine: { lineStyle: { color: '#4b5563' } }, axisLabel: { color: '#94a3b8', fontSize: 10, formatter: function(v){ return v>=1&&v<=5?String(v):''; } }, name: '绩效', nameTextStyle: { color: '#94a3b8', fontSize: 10 } },
+  yAxis: { type: 'value', min: 0.5, max: 5.5, splitLine: { show: false }, axisLine: { lineStyle: { color: '#4b5563' } }, axisLabel: { color: '#94a3b8', fontSize: 10, formatter: function(v){ return v>=1&&v<=5?String(v):''; } }, name: '潜力', nameTextStyle: { color: '#94a3b8', fontSize: 10 } },
+  series: [{
+    type: 'scatter', data: nineData,
+    symbolSize: function(d){ return Math.sqrt(d[2])*5.5; },
+    itemStyle: { color: function(d){ var s=d.data[0]+d.data[1]; if(s>=9) return '#ef4444'; if(s>=7) return '#f97316'; if(s>=5) return '#3b82f6'; return '#6b7280'; }, opacity: 0.85 },
+    markArea: {
+      silent: true,
+      data: [
+        [{xAxis:0.5,yAxis:0.5},{xAxis:2.5,yAxis:2.5,itemStyle:{color:'rgba(107,114,128,0.08)'}}],
+        [{xAxis:2.5,yAxis:0.5},{xAxis:4.5,yAxis:2.5,itemStyle:{color:'rgba(59,130,246,0.08)'}}],
+        [{xAxis:4.5,yAxis:0.5},{xAxis:5.5,yAxis:2.5,itemStyle:{color:'rgba(249,115,22,0.08)'}}],
+        [{xAxis:0.5,yAxis:2.5},{xAxis:2.5,yAxis:4.5,itemStyle:{color:'rgba(59,130,246,0.08)'}}],
+        [{xAxis:2.5,yAxis:2.5},{xAxis:4.5,yAxis:4.5,itemStyle:{color:'rgba(34,197,94,0.08)'}}],
+        [{xAxis:4.5,yAxis:2.5},{xAxis:5.5,yAxis:4.5,itemStyle:{color:'rgba(249,115,22,0.08)'}}],
+        [{xAxis:0.5,yAxis:4.5},{xAxis:2.5,yAxis:5.5,itemStyle:{color:'rgba(249,115,22,0.08)'}}],
+        [{xAxis:2.5,yAxis:4.5},{xAxis:4.5,yAxis:5.5,itemStyle:{color:'rgba(249,115,22,0.08)'}}],
+        [{xAxis:4.5,yAxis:4.5},{xAxis:5.5,yAxis:5.5,itemStyle:{color:'rgba(239,68,68,0.08)'}}]
       ]
-    });
+    },
+    markLine: {
+      silent: true, symbol: 'none',
+      lineStyle: { color: 'rgba(148,163,184,0.35)', type: 'dashed', width: 1 },
+      data: [{xAxis:2.5},{xAxis:4.5},{yAxis:2.5},{yAxis:4.5}]
+    }
+  }]
+});
 
-    // ---------- 13. AI risk heatmap ----------
-    const riskMatrix = [
-      [0,0,1,2,3],[0,1,1,2,2],[1,1,2,2,3],[0,0,1,1,2],[0,1,1,2,2],[0,0,0,1,1],[0,1,2,2,3],[0,0,1,1,2]
-    ];
-    const riskColorsHM = ['#22c55e','#f59e0b','#f97316','#ef4444'];
-    makeChart(document.getElementById('chart-risk'), {
-      tooltip: { formatter: p => `${depts[p.data[1]]} · ${levels[p.data[0]]}<br/>风险等级：${['低','中','高','极高'][p.data[2]]}` },
-      grid: { left: 72, right: 12, top: 8, bottom: 24 },
-      xAxis: { type: 'category', data: levels, axisLine: { lineStyle: { color: '#4b5563' } }, axisLabel: { color: '#9ca3af', fontSize: 10 } },
-      yAxis: { type: 'category', data: depts, axisLine: { lineStyle: { color: '#4b5563' } }, axisLabel: { color: '#9ca3af', fontSize: 10 } },
-      visualMap: { min: 0, max: 3, show: false, inRange: { color: riskColorsHM } },
-      series: [{
-        type: 'heatmap', data: riskMatrix.flatMap((row, y) => row.map((v, x) => [x, y, v])),
-        label: { show: true, color: '#fff', fontSize: 10, formatter: p => ['低','中','高','极高'][p.data[2]] },
-        itemStyle: { borderColor: '#1f2937', borderWidth: 2, borderRadius: 4 }
-      }]
-    });
-  </script>
+/* 6. Pay bandwidth boxplot */
+var levels = ['P3','P4','P5','P6','P7'];
+var boxData = [[8,10,12,14,18],[12,15,18,22,28],[18,24,30,38,48],[30,40,52,65,85],[50,68,88,110,145]];
+var market50 = [11,17,29,50,82];
+charts.pay = makeChart(document.getElementById('chart-pay'), {
+  tooltip: { trigger: 'item', formatter: function(p){ return p.seriesType==='boxplot' ? p.name+'<br/>最低：'+p.data[1]+'万<br/>Q1：'+p.data[2]+'万<br/>中位：'+p.data[3]+'万<br/>Q3：'+p.data[4]+'万<br/>最高：'+p.data[5]+'万' : ''; } },
+  grid: { left: 36, right: 18, top: 24, bottom: 24 },
+  xAxis: { type: 'category', data: levels, axisLine: { lineStyle: { color: '#4b5563' } }, axisLabel: { color: '#94a3b8', fontSize: 10 } },
+  yAxis: { type: 'value', name: '万/年', nameTextStyle: { color: '#94a3b8', fontSize: 10 }, splitLine: { lineStyle: { color: 'rgba(75,85,99,0.3)' } }, axisLabel: { color: '#94a3b8', fontSize: 10 } },
+  series: [
+    { type: 'boxplot', data: boxData.map(function(d,i){return {name:levels[i],value:d}}), itemStyle: { color: 'rgba(59,130,246,0.25)', borderColor: '#3b82f6', borderWidth: 1.5 } },
+    { type: 'line', data: market50, symbol: 'diamond', symbolSize: 8, lineStyle: { color: '#f97316', width: 2, type: 'dashed' }, itemStyle: { color: '#f97316' } }
+  ]
+});
+
+/* 7. AI risk heatmap */
+var riskMatrix = [
+  [0,0,1,2,3],[0,1,1,2,2],[1,1,2,2,3],[0,0,1,1,2],[0,1,1,2,2],[0,0,0,1,1],[0,1,2,2,3],[0,0,1,1,2]
+];
+var riskColorsHM = ['#22c55e','#f59e0b','#f97316','#ef4444'];
+charts.risk = makeChart(document.getElementById('chart-risk'), {
+  tooltip: { formatter: function(p){ return depts[p.data[1]]+' · '+levels[p.data[0]]+'<br/>风险等级：'+['低','中','高','极高'][p.data[2]]; } },
+  grid: { left: 72, right: 12, top: 8, bottom: 24 },
+  xAxis: { type: 'category', data: levels, axisLine: { lineStyle: { color: '#4b5563' } }, axisLabel: { color: '#94a3b8', fontSize: 10 } },
+  yAxis: { type: 'category', data: depts, axisLine: { lineStyle: { color: '#4b5563' } }, axisLabel: { color: '#94a3b8', fontSize: 10 } },
+  visualMap: { min: 0, max: 3, show: false, inRange: { color: riskColorsHM } },
+  series: [{
+    type: 'heatmap',
+    data: riskMatrix.reduce(function(acc,row,y){ return acc.concat(row.map(function(v,x){ return [x,y,v]; })); }, []),
+    label: { show: true, color: '#fff', fontSize: 10, formatter: function(p){ return ['低','中','高','极高'][p.data[2]]; } },
+    itemStyle: { borderColor: '#1f2937', borderWidth: 2, borderRadius: 4 }
+  }]
+});
+
+/* Resize */
+window.addEventListener('resize', function() {
+  Object.keys(charts).forEach(function(k) { if(charts[k]) charts[k].resize(); });
+});
+</script>
 </body>
 </html>

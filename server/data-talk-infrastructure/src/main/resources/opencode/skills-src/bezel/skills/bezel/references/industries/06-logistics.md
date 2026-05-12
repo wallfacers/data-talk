@@ -5,21 +5,12 @@
 - **分析维度**: 运输方式占比(公路/铁路/航空/水运), 异常订单分析(延误/破损/丢失/拒收), 配送满意度(仪表盘), 全国物流节点分布(地图), 发货量&签收时效趋势, 仓库利用率, 最后一公里时效分布, 供应链风险预警矩阵
 - **典型用户**: 物流总监, 供应链经理, 仓储主管, 配送站长
 
-## 视觉签名
-- Primary color `#0ea5e9` (sky blue) / Secondary color `#f97316` (orange) / Background `#0a0e1a`
-- Grid background: dual-layer cyan grid (20px + 80px spacing, 6%/3% opacity)
-- Header: gradient title shine animation `#0ea5e9 -> #38bdf8`
-- KPI cards: hexagonal clip-path `polygon(0 0, calc(100% - 20px) 0, 100% 50%, ...)`
-- Panel top-edge: 2px gradient line `transparent -> #0ea5e9 -> transparent`
-- Story bar: data insight strip with colored highlights
-- ECharts theme: transparent bg, `#cbd5e1` text, `#94a3b8` labels, cyan tooltip border
+## 风格与颜色覆盖
 
-## 推荐布局骨架
-- Header: 72px — gradient title + time
-- Story bar: 36px — insight highlights
-- KPI bar: 100px — 4 hexagonal cards
-- Body: flex, left 26% + center 74%
-- Bottom bar: 180px — 3 charts in row
+- **映射风格:** Horizon (`references/styles/horizon.md`)
+- `--bezel-bg-app`: `#0a0e1a`
+- `--bezel-accent-primary`: `#0ea5e9` (sky blue)
+- `--bezel-accent-secondary`: `#38bdf8`
 
 ## 典型 widget pattern（8 个）
 

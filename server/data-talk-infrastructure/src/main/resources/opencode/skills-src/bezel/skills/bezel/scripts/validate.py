@@ -33,6 +33,29 @@ def check_script_src_whitelist(html: str) -> list[str]:
             errors.append(f"non-whitelisted script src: {src}")
     return errors
 
+REQUIRED_CSS_TOKENS = [
+    "--card-radius",
+    "--card-bg",
+    "--card-border",
+    "--card-padding",
+    "--card-blur",
+    "--motion-duration",
+    "--motion-easing",
+]
+
+def check_css_tokens(html: str) -> list[str]:
+    """Check that all required style tokens are defined in :root."""
+    errors = []
+    root_match = re.search(r':root\s*\{([^}]+)\}', html, re.DOTALL)
+    if not root_match:
+        errors.append("no :root CSS block found")
+        return errors
+    root_css = root_match.group(1)
+    for token in REQUIRED_CSS_TOKENS:
+        if token not in root_css:
+            errors.append(f"missing style token in :root: {token}")
+    return errors
+
 def check_fetch_url_shape(html: str) -> list[str]:
     """Heuristic: every fetch() URL should target /api/dashboards/.../widgets/.../data."""
     errors = []
@@ -56,6 +79,7 @@ def validate(html_path: Path) -> int:
 
     failures.extend(check_script_src_whitelist(html))
     failures.extend(check_fetch_url_shape(html))
+    failures.extend(check_css_tokens(html))
 
     if failures:
         print(f"[bezel.validate] FAIL: {html_path}", file=sys.stderr)

@@ -3,688 +3,593 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net/ https://__BEZEL_SERVER_ORIGIN__; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://__BEZEL_SERVER_ORIGIN__; frame-ancestors 'self';">
+  <meta name="__JSON_HASH__" content="">
   <title>企业级数据大屏监控系统</title>
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
   <style>
+    :root {
+      --bg-rgb: 6,11,20;
+      --accent-primary-rgb: 0,212,255;
+      --accent-secondary-rgb: 16,232,115;
+      --bezel-bg-app: #060b14;
+      --bezel-accent-primary: #00d4ff;
+      --bezel-accent-secondary: #10e873;
+      --bezel-text-strong: #e2e8f0;
+      --bezel-text-muted: #94a3b8;
+      --card-radius: 24px;
+      --card-bg: rgba(var(--bg-rgb), 0.35);
+      --card-border: 1px dashed rgba(var(--accent-primary-rgb), 0.30);
+      --card-shadow: none;
+      --card-padding: 16px;
+      --card-blur: 6px;
+      --motion-duration: 400ms;
+      --motion-easing: ease-in-out;
+      --motion-ambient: orbit 12s linear infinite;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      :root {
+        --motion-duration: 0ms;
+        --motion-ambient: none;
+      }
+    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body {
       width: 100vw; height: 100vh;
       overflow: hidden;
-      background: #060b14;
+      background: var(--bezel-bg-app);
       font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-      color: #e2e8f0;
+      color: var(--bezel-text-strong);
     }
-    #star-canvas {
-      position: fixed; top: 0; left: 0;
-      width: 100vw; height: 100vh;
+
+    /* Background canvas */
+    #bg-radar {
+      position: fixed; inset: 0;
       z-index: 0; pointer-events: none;
     }
+
+    /* Orbit arcs */
+    .orbit-arc {
+      position: fixed;
+      border-radius: 50%;
+      border: 1px solid rgba(var(--accent-primary-rgb), 0.08);
+      pointer-events: none;
+      z-index: 0;
+      will-change: transform;
+    }
+    .arc-1 {
+      width: 50vw; height: 50vw;
+      top: calc(50% - 25vw); left: calc(50% - 25vw);
+      animation: var(--motion-ambient);
+      animation-duration: 15s;
+    }
+    .arc-2 {
+      width: 70vw; height: 70vw;
+      top: calc(50% - 35vw); left: calc(50% - 35vw);
+      animation: var(--motion-ambient);
+      animation-duration: 22s;
+      animation-direction: reverse;
+    }
+    @keyframes orbit {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .orbit-arc { animation: none; }
+    }
+
+    /* Dashboard container */
     .dashboard {
-      position: relative; z-index: 1;
-      width: 100vw; height: 100vh;
-      display: grid;
-      grid-template-columns: 22vw 56vw 22vw;
-      grid-template-rows: 10vh 38vh 38vh 14vh;
-      gap: 12px;
-      padding: 12px;
-    }
-    .card {
-      background: rgba(10, 18, 36, 0.7);
-      border: 1px solid rgba(0, 212, 255, 0.15);
-      border-radius: 8px;
       position: relative;
+      width: 100vw; height: 100vh;
+      z-index: 1;
       overflow: hidden;
-      transition: box-shadow 0.3s ease, border-color 0.3s ease;
     }
-    .card::before {
-      content: '';
-      position: absolute; top: 0; left: 0; right: 0; height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.4), transparent);
-    }
-    .card:hover {
-      border-color: rgba(0, 212, 255, 0.5);
-      box-shadow: 0 0 20px rgba(0, 212, 255, 0.15);
-    }
-    .card-title {
-      font-size: 14px; font-weight: 600;
-      color: #00d4ff;
-      letter-spacing: 2px;
-      padding: 10px 14px 6px;
-      display: flex; align-items: center; justify-content: space-between;
-    }
-    .card-title::before {
-      content: '';
-      display: inline-block;
-      width: 4px; height: 14px;
-      background: #00d4ff;
-      border-radius: 2px;
-      margin-right: 8px;
-      vertical-align: middle;
-    }
-    .card-body { width: 100%; height: calc(100% - 36px); }
 
     /* Header */
     .header {
-      grid-column: 1 / 4; grid-row: 1;
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 0 24px;
-      background: rgba(10, 18, 36, 0.6);
-      border: 1px solid rgba(0, 212, 255, 0.15);
-      border-radius: 8px;
-      position: relative;
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      background: rgba(var(--bg-rgb), 0.60);
+      backdrop-filter: blur(8px);
     }
-    .header::after {
-      content: '';
-      position: absolute; top: 0; left: 50%; transform: translateX(-50%);
-      width: 60vw; height: 100%;
-      background: radial-gradient(ellipse at 50% 0%, rgba(0, 212, 255, 0.12) 0%, transparent 70%);
-      pointer-events: none;
+    .header h1 {
+      font-size: 20px;
+      font-weight: 400;
+      letter-spacing: 4px;
+      color: var(--bezel-text-strong);
     }
-    .header-left, .header-right {
-      display: flex; gap: 32px; z-index: 2;
-    }
-    .kpi {
-      text-align: center;
-    }
-    .kpi-value {
-      font-size: 22px; font-weight: 700;
-      color: #00d4ff;
-      letter-spacing: 1px;
-    }
-    .kpi-label {
-      font-size: 11px; color: #94a3b8;
-      margin-top: 2px; letter-spacing: 1px;
-    }
-    .header-center {
-      z-index: 2; text-align: center;
-    }
-    .header-center h1 {
-      font-size: 28px; font-weight: 700;
-      color: #e2e8f0;
-      letter-spacing: 8px;
-      animation: breathe 3s ease-in-out infinite;
-    }
-    .header-center .subtitle {
-      font-size: 12px; color: #64748b;
-      letter-spacing: 4px; margin-top: 4px;
-    }
-    .header-center .clock {
-      font-size: 13px; color: #00d4ff;
-      letter-spacing: 2px; margin-top: 4px;
+    .header .clock {
+      position: absolute;
+      right: 24px;
+      font-size: 13px;
+      color: var(--bezel-accent-primary);
+      letter-spacing: 2px;
       font-variant-numeric: tabular-nums;
     }
-    @keyframes breathe {
-      0%, 100% { text-shadow: 0 0 10px rgba(0,212,255,0.5), 0 0 20px rgba(0,212,255,0.3); }
-      50% { text-shadow: 0 0 30px rgba(0,212,255,0.8), 0 0 60px rgba(0,212,255,0.4); }
+
+    /* Card */
+    .card {
+      background: var(--card-bg);
+      border: var(--card-border);
+      border-radius: var(--card-radius);
+      backdrop-filter: blur(var(--card-blur));
+      padding: var(--card-padding);
+      display: flex;
+      flex-direction: column;
+      position: absolute;
+      transition: border var(--motion-duration) var(--motion-easing),
+                  box-shadow var(--motion-duration) var(--motion-easing);
+    }
+    .card:hover {
+      border-style: solid;
+      border-color: rgba(var(--accent-primary-rgb), 0.55);
+      box-shadow: 0 0 20px rgba(var(--accent-primary-rgb), 0.15);
+    }
+    .card-title {
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--bezel-accent-primary);
+      text-align: center;
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+    }
+    .card-body {
+      flex: 1;
+      min-height: 0;
     }
 
-    /* Scene Grid */
+    /* Core widget - centered */
+    .widget-core {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 36%; height: 42%;
+    }
+
+    /* KPI ring gauges */
+    .kpi-ring {
+      width: 80px; height: 80px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Scene grid inside core */
     .scene-grid {
-      grid-column: 2; grid-row: 2 / 4;
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       grid-template-rows: repeat(3, 1fr);
-      gap: 10px;
-      padding: 12px;
+      gap: 8px;
+      width: 100%; height: 100%;
     }
     .scene-card {
       background: rgba(15, 23, 42, 0.6);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 6px;
+      border: 1px dashed rgba(var(--accent-primary-rgb), 0.15);
+      border-radius: 12px;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      cursor: pointer;
-      position: relative;
-      overflow: hidden;
-      transition: all 0.3s ease;
+      transition: border var(--motion-duration) var(--motion-ease);
     }
     .scene-card:hover {
-      transform: translateY(-2px);
+      border-style: solid;
       border-color: currentColor;
-      box-shadow: 0 0 16px currentColor;
+      box-shadow: 0 0 12px currentColor;
     }
     .scene-thumb {
-      width: 48px; height: 48px;
+      width: 32px; height: 32px;
       border-radius: 8px;
-      margin-bottom: 8px;
+      margin-bottom: 4px;
       opacity: 0.9;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
     }
     .scene-name {
-      font-size: 13px; font-weight: 600;
-      color: #e2e8f0; letter-spacing: 1px;
+      font-size: 11px; font-weight: 600;
+      color: var(--bezel-text-strong);
+      letter-spacing: 1px;
     }
     .scene-activity {
-      font-size: 11px; color: #94a3b8;
-      margin-top: 4px;
+      font-size: 10px; color: var(--bezel-text-muted);
+      margin-top: 2px;
     }
     .scene-activity span {
-      color: #10e873; font-weight: 600;
-      margin-left: 4px;
-    }
-
-    /* Charts */
-    .radar { grid-column: 1; grid-row: 2; }
-    .gauge { grid-column: 3; grid-row: 2; }
-    .heatmap { grid-column: 1; grid-row: 3; }
-    .api-dist { grid-column: 3; grid-row: 3; }
-    .timeline { grid-column: 1 / 3; grid-row: 4; }
-    .load-trend { grid-column: 3; grid-row: 4; }
-
-    /* Timeline */
-    .timeline-body {
-      padding: 0 14px 10px;
-      overflow-x: auto;
-      display: flex; align-items: center;
-    }
-    .timeline-track {
-      display: flex; gap: 12px;
-      padding: 4px;
-    }
-    .timeline-item {
-      flex-shrink: 0;
-      width: 180px;
-      background: rgba(15, 23, 42, 0.5);
-      border-left: 3px solid;
-      border-radius: 0 6px 6px 0;
-      padding: 8px 12px;
-      animation: slideIn 0.5s ease-out;
-    }
-    .timeline-item.info { border-color: #00d4ff; }
-    .timeline-item.warn { border-color: #f59e0b; }
-    .timeline-item.alert { border-color: #ef4444; }
-    .timeline-item.critical { border-color: #a855f7; }
-    .timeline-time {
-      font-size: 11px; color: #64748b;
-      font-variant-numeric: tabular-nums;
-    }
-    .timeline-msg {
-      font-size: 12px; color: #cbd5e1;
-      margin-top: 4px; line-height: 1.4;
-    }
-    .timeline-tag {
-      display: inline-block;
-      font-size: 10px; padding: 1px 6px;
-      border-radius: 3px; margin-top: 6px;
-      color: #fff;
-    }
-    .timeline-tag.info { background: rgba(0,212,255,0.25); }
-    .timeline-tag.warn { background: rgba(245,158,11,0.25); }
-    .timeline-tag.alert { background: rgba(239,68,68,0.25); }
-    .timeline-tag.critical { background: rgba(168,85,247,0.25); }
-    @keyframes slideIn {
-      from { opacity: 0; transform: translateX(30px); }
-      to { opacity: 1; transform: translateX(0); }
+      color: var(--bezel-accent-secondary);
+      font-weight: 600;
     }
 
     /* Scrollbar */
     ::-webkit-scrollbar { width: 4px; height: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.2); border-radius: 2px; }
-
-    /* Grid overlay */
-    .grid-overlay {
-      position: fixed; top: 0; left: 0;
-      width: 100vw; height: 100vh;
-      z-index: 0; pointer-events: none;
-      background-image:
-        linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
-      background-size: 40px 40px;
-    }
+    ::-webkit-scrollbar-thumb { background: rgba(var(--accent-primary-rgb), 0.2); border-radius: 2px; }
   </style>
 </head>
 <body>
-  <canvas id="star-canvas"></canvas>
-  <div class="grid-overlay"></div>
+  <canvas id="bg-radar"></canvas>
+  <div class="orbit-arc arc-1"></div>
+  <div class="orbit-arc arc-2"></div>
 
   <div class="dashboard">
     <!-- Header -->
     <div class="header">
-      <div class="header-left">
-        <div class="kpi">
-          <div class="kpi-value" data-target="2400" data-suffix=" PB" data-decimals="1">0 PB</div>
-          <div class="kpi-label">总数据量</div>
-        </div>
-        <div class="kpi">
-          <div class="kpi-value" data-target="2847" data-suffix="">0</div>
-          <div class="kpi-label">API QPS</div>
-        </div>
-      </div>
-      <div class="header-center">
-        <h1>企业级数据大屏监控系统</h1>
-        <div class="subtitle">MULTI-SCENE MONITORING CENTER</div>
-        <div class="clock" id="clock">--:--:--</div>
-      </div>
-      <div class="header-right">
-        <div class="kpi">
-          <div class="kpi-value" data-target="99.97" data-suffix="%" data-decimals="2">0%</div>
-          <div class="kpi-label">服务健康度</div>
-        </div>
-        <div class="kpi">
-          <div class="kpi-value" data-target="12480" data-suffix="">0</div>
-          <div class="kpi-label">在线用户数</div>
-        </div>
-      </div>
+      <h1>企业级数据大屏监控系统</h1>
+      <div class="clock" id="clock">--:--:--</div>
     </div>
 
-    <!-- Radar -->
-    <div class="card radar">
+    <!-- KPI ring: top-left of center -->
+    <div class="card kpi-ring" style="top:10%; left:4%; width:110px; height:110px;" aria-label="总数据量 2400 PB">
+      <div id="kpi-data"></div>
+    </div>
+
+    <!-- KPI ring: top-right of center -->
+    <div class="card kpi-ring" style="top:10%; right:4%; width:110px; height:110px;" aria-label="API QPS 2847">
+      <div id="kpi-qps"></div>
+    </div>
+
+    <!-- KPI ring: bottom-left of center -->
+    <div class="card kpi-ring" style="bottom:10%; left:4%; width:110px; height:110px;" aria-label="服务健康度 99.97%">
+      <div id="kpi-health"></div>
+    </div>
+
+    <!-- KPI ring: bottom-right of center -->
+    <div class="card kpi-ring" style="bottom:10%; right:4%; width:110px; height:110px;" aria-label="在线用户数 12480">
+      <div id="kpi-users"></div>
+    </div>
+
+    <!-- Radar: left of center -->
+    <div class="card" style="top:20%; left:1%; width:22%; height:50%;">
       <div class="card-title">跨行业数据对比</div>
       <div class="card-body" id="radarChart"></div>
     </div>
 
-    <!-- Scene Grid -->
-    <div class="card scene-grid" id="sceneGrid"></div>
+    <!-- Core: Scene Grid -->
+    <div class="card widget-core">
+      <div class="card-title">场景监控矩阵</div>
+      <div class="card-body">
+        <div class="scene-grid" id="sceneGrid"></div>
+      </div>
+    </div>
 
-    <!-- Gauge -->
-    <div class="card gauge">
+    <!-- Gauge: right of center -->
+    <div class="card" style="top:18%; right:1%; width:22%; height:32%;">
       <div class="card-title">系统资源监控</div>
       <div class="card-body" id="gaugeChart"></div>
     </div>
 
-    <!-- Heatmap -->
-    <div class="card heatmap">
+    <!-- Heatmap: left-bottom -->
+    <div class="card" style="bottom:2%; left:1%; width:22%; height:30%;">
       <div class="card-title">24h 服务可用性</div>
       <div class="card-body" id="heatmapChart"></div>
     </div>
 
-    <!-- API Dist -->
-    <div class="card api-dist">
-      <div class="card-title">API 响应时间分布</div>
+    <!-- API Dist: right-bottom -->
+    <div class="card" style="bottom:2%; right:1%; width:22%; height:30%;">
+      <div class="card-title">API 响应分布</div>
       <div class="card-body" id="apiChart"></div>
     </div>
 
-    <!-- Timeline -->
-    <div class="card timeline">
-      <div class="card-title">实时告警事件</div>
-      <div class="card-body timeline-body">
-        <div class="timeline-track" id="timelineTrack"></div>
-      </div>
-    </div>
-
-    <!-- Load Trend -->
-    <div class="card load-trend">
+    <!-- Load Trend: bottom-center -->
+    <div class="card" style="bottom:2%; left:28%; width:44%; height:16%;">
       <div class="card-title">系统负载趋势</div>
       <div class="card-body" id="loadChart"></div>
     </div>
   </div>
 
-  <!-- 7-day trend line chart floating overlay -->
-  <div class="card" style="position:fixed;bottom:12px;right:12px;width:34vw;height:22vh;z-index:10;">
-    <div class="card-title">各场景数据量趋势（7天）</div>
-    <div class="card-body" id="trendChart"></div>
-  </div>
-
   <script>
-    // ================= Starfield =================
-    const canvas = document.getElementById('star-canvas');
-    const ctx = canvas.getContext('2d');
-    let stars = [];
-    function resizeCanvas() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    }
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
+    /* ==================== BEZEL CONFIG ==================== */
+    window.__BEZEL_CONFIG__ = {
+      dashboardId: "01-multi-screen",
+      style: "orbital",
+      refreshInterval: 30000,
+      widgets: [
+        { id: "radar", type: "radar" },
+        { id: "gauge", type: "gauge" },
+        { id: "heatmap", type: "heatmap" },
+        { id: "api-dist", type: "bar" },
+        { id: "load-trend", type: "line" }
+      ]
+    };
 
-    const STAR_COUNT = 180;
-    for (let i = 0; i < STAR_COUNT; i++) {
-      stars.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        r: Math.random() * 1.2 + 0.3,
-        vx: (Math.random() - 0.5) * 0.15,
-        vy: (Math.random() - 0.5) * 0.15,
-        alpha: Math.random() * 0.5 + 0.3
-      });
-    }
-    function drawStars() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      stars.forEach(s => {
-        s.x += s.vx; s.y += s.vy;
-        if (s.x < 0) s.x = canvas.width;
-        if (s.x > canvas.width) s.x = 0;
-        if (s.y < 0) s.y = canvas.height;
-        if (s.y > canvas.height) s.y = 0;
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255,255,255,${s.alpha})`;
-        ctx.fill();
-      });
-      requestAnimationFrame(drawStars);
-    }
-    drawStars();
+    /* ==================== POLLING SCHEDULER ==================== */
+    (function() {
+      var cfg = window.__BEZEL_CONFIG__;
+      var interval = cfg.refreshInterval || 30000;
+      function poll() {
+        cfg.widgets.forEach(function(w) {
+          var url = "/api/dashboards/" + cfg.dashboardId + "/widgets/" + w.id + "/data";
+          fetch(url).then(function(r) { return r.json(); }).then(function(data) {
+            window.dispatchEvent(new CustomEvent("bezel:data:" + w.id, { detail: data }));
+          }).catch(function() {});
+        });
+      }
+      setInterval(poll, interval);
+    })();
 
-    // ================= Clock =================
+    /* ==================== BG CONCENTRIC CIRCLES ==================== */
+    (function() {
+      var c = document.getElementById("bg-radar");
+      var ctx = c.getContext("2d", { alpha: false });
+      function draw() {
+        c.width = window.innerWidth;
+        c.height = window.innerHeight;
+        var cx = c.width / 2, cy = c.height / 2;
+        var maxR = Math.max(cx, cy) * 1.2;
+        ctx.fillStyle = "#060b14";
+        ctx.fillRect(0, 0, c.width, c.height);
+        for (var r = 60; r < maxR; r += 60) {
+          ctx.beginPath();
+          ctx.arc(cx, cy, r, 0, Math.PI * 2);
+          ctx.strokeStyle = "rgba(0,212,255,0.06)";
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      }
+      draw();
+      window.addEventListener("resize", draw);
+    })();
+
+    /* ==================== CLOCK ==================== */
     function updateClock() {
-      const now = new Date();
-      document.getElementById('clock').textContent =
-        now.toLocaleTimeString('zh-CN', { hour12: false });
+      var now = new Date();
+      document.getElementById("clock").textContent =
+        now.toLocaleTimeString("zh-CN", { hour12: false });
     }
     setInterval(updateClock, 1000);
     updateClock();
 
-    // ================= KPI Counter Animation =================
-    function animateKPI(el) {
-      const target = parseFloat(el.dataset.target);
-      const suffix = el.dataset.suffix || '';
-      const decimals = parseInt(el.dataset.decimals || '0');
-      const duration = 2000;
-      const start = performance.now();
-      function tick(now) {
-        const p = Math.min((now - start) / duration, 1);
-        const ease = 1 - Math.pow(1 - p, 3);
-        const val = (target * ease).toFixed(decimals);
-        el.textContent = (decimals > 0 ? parseFloat(val).toLocaleString('zh-CN', {minimumFractionDigits: decimals, maximumFractionDigits: decimals}) : parseInt(val).toLocaleString('zh-CN')) + suffix;
-        if (p < 1) requestAnimationFrame(tick);
-      }
-      requestAnimationFrame(tick);
-    }
-    document.querySelectorAll('.kpi-value').forEach(animateKPI);
-
-    // ================= Scene Grid =================
-    const scenes = [
-      { name: '电商', color: '#ff4444', activity: 92 },
-      { name: '制造', color: '#f97316', activity: 78 },
-      { name: 'SaaS', color: '#14b8a6', activity: 85 },
-      { name: '金融', color: '#c9a84c', activity: 88 },
-      { name: '物流', color: '#0ea5e9', activity: 74 },
-      { name: '医疗', color: '#10b981', activity: 81 },
-      { name: '人力', color: '#f97316', activity: 66 },
-      { name: '能源', color: '#22c55e', activity: 71 },
-      { name: '网络安全', color: '#00ff41', activity: 95 },
-      { name: '农业', color: '#f59e0b', activity: 58 },
-      { name: '教育', color: '#facc15', activity: 63 },
-      { name: '监控中心', color: '#00d4ff', activity: 99 },
+    /* ==================== SCENE GRID ==================== */
+    var scenes = [
+      { name: "电商", color: "#ff4444", activity: 92 },
+      { name: "制造", color: "#f97316", activity: 78 },
+      { name: "SaaS", color: "#14b8a6", activity: 85 },
+      { name: "金融", color: "#c9a84c", activity: 88 },
+      { name: "物流", color: "#0ea5e9", activity: 74 },
+      { name: "医疗", color: "#10b981", activity: 81 },
+      { name: "人力", color: "#f97316", activity: 66 },
+      { name: "能源", color: "#22c55e", activity: 71 },
+      { name: "网络安全", color: "#00ff41", activity: 95 },
+      { name: "农业", color: "#f59e0b", activity: 58 },
+      { name: "教育", color: "#facc15", activity: 63 },
+      { name: "监控中心", color: "#00d4ff", activity: 99 }
     ];
-    const gridEl = document.getElementById('sceneGrid');
-    scenes.forEach(s => {
-      const card = document.createElement('div');
-      card.className = 'scene-card';
+    var gridEl = document.getElementById("sceneGrid");
+    scenes.forEach(function(s) {
+      var card = document.createElement("div");
+      card.className = "scene-card";
       card.style.color = s.color;
-      card.innerHTML = `
-        <div class="scene-thumb" style="background:${s.color}22;border:1px solid ${s.color}44;"></div>
-        <div class="scene-name">${s.name}</div>
-        <div class="scene-activity">活跃度<span>${s.activity}%</span></div>
-      `;
+      card.innerHTML =
+        '<div class="scene-thumb" style="background:' + s.color + '22;border:1px dashed ' + s.color + '44;border-radius:50%;"></div>' +
+        '<div class="scene-name">' + s.name + '</div>' +
+        '<div class="scene-activity">活跃度<span>' + s.activity + '%</span></div>';
       gridEl.appendChild(card);
     });
 
-    // ================= ECharts Dark Theme =================
-    const darkTheme = {
-      backgroundColor: 'transparent',
-      textStyle: { fontFamily: 'PingFang SC, Microsoft YaHei, sans-serif' },
-      title: { textStyle: { color: '#e2e8f0' } },
-      legend: { textStyle: { color: '#94a3b8' } },
+    /* ==================== KPI RING GAUGES ==================== */
+    function makeKPIGauge(el, value, max, label, color) {
+      var chart = echarts.init(el);
+      chart.setOption({
+        backgroundColor: "transparent",
+        series: [{
+          type: "gauge",
+          startAngle: 90,
+          endAngle: -270,
+          min: 0, max: max,
+          radius: "90%",
+          center: ["50%", "55%"],
+          axisLine: {
+            lineStyle: {
+              width: 4,
+              color: [[value / max, color], [1, "rgba(0,212,255,0.12)"]]
+            }
+          },
+          pointer: { show: false },
+          axisTick: { show: false },
+          splitLine: { show: false },
+          axisLabel: { show: false },
+          detail: {
+            valueAnimation: true,
+            fontSize: 14,
+            fontWeight: "bold",
+            color: "#e2e8f0",
+            offsetCenter: [0, "-5%"],
+            formatter: function(v) {
+              if (max >= 1000) return (v / 1000).toFixed(1) + "K";
+              return v + "%";
+            }
+          },
+          title: {
+            show: true,
+            fontSize: 9,
+            color: "#94a3b8",
+            offsetCenter: [0, "25%"]
+          },
+          data: [{ value: value, name: label }]
+        }]
+      });
+      return chart;
+    }
+    var kpiCharts = [
+      makeKPIGauge(document.getElementById("kpi-data"), 2400, 3000, "数据量 PB", "#00d4ff"),
+      makeKPIGauge(document.getElementById("kpi-qps"), 2847, 5000, "API QPS", "#10e873"),
+      makeKPIGauge(document.getElementById("kpi-health"), 99.97, 100, "健康度", "#00d4ff"),
+      makeKPIGauge(document.getElementById("kpi-users"), 12480, 15000, "在线用户", "#10e873")
+    ];
+
+    /* ==================== ECHARTS COMMON ==================== */
+    var darkTheme = {
+      backgroundColor: "transparent",
+      textStyle: { fontFamily: "PingFang SC, Microsoft YaHei, sans-serif" },
+      title: { textStyle: { color: "#e2e8f0" } },
+      legend: { textStyle: { color: "#94a3b8" } },
       tooltip: {
-        backgroundColor: 'rgba(10,18,36,0.95)',
-        borderColor: 'rgba(0,212,255,0.3)',
-        textStyle: { color: '#e2e8f0' }
-      },
-      categoryAxis: {
-        axisLine: { lineStyle: { color: 'rgba(148,163,184,0.2)' } },
-        axisLabel: { color: '#64748b' },
-        splitLine: { lineStyle: { color: 'rgba(148,163,184,0.08)' } }
-      },
-      valueAxis: {
-        axisLine: { lineStyle: { color: 'rgba(148,163,184,0.2)' } },
-        axisLabel: { color: '#64748b' },
-        splitLine: { lineStyle: { color: 'rgba(148,163,184,0.08)' } }
+        backgroundColor: "rgba(6,11,20,0.95)",
+        borderColor: "rgba(0,212,255,0.3)",
+        textStyle: { color: "#e2e8f0" }
       }
     };
 
-    // ================= Radar Chart =================
-    const radarChart = echarts.init(document.getElementById('radarChart'));
-    radarChart.setOption({
-      ...darkTheme,
+    /* ==================== RADAR CHART ==================== */
+    var radarChart = echarts.init(document.getElementById("radarChart"));
+    radarChart.setOption(Object.assign({}, darkTheme, {
       tooltip: {},
       radar: {
-        indicator: scenes.map(s => ({ name: s.name, max: 100 })),
-        center: ['50%', '55%'], radius: '65%',
-        axisName: { color: '#94a3b8', fontSize: 11 },
-        splitArea: { areaStyle: { color: ['rgba(0,212,255,0.02)', 'rgba(0,212,255,0.05)'] } },
-        splitLine: { lineStyle: { color: 'rgba(0,212,255,0.1)' } },
-        axisLine: { lineStyle: { color: 'rgba(0,212,255,0.15)' } }
+        indicator: scenes.map(function(s) { return { name: s.name, max: 100 }; }),
+        center: ["50%", "55%"], radius: "65%",
+        axisName: { color: "#94a3b8", fontSize: 10 },
+        splitArea: { show: false },
+        splitLine: { lineStyle: { color: "rgba(0,212,255,0.10)" } },
+        axisLine: { lineStyle: { color: "rgba(0,212,255,0.20)" } }
       },
       series: [{
-        type: 'radar',
+        type: "radar",
         data: [{
-          value: scenes.map(s => s.activity),
-          name: '综合评分',
-          areaStyle: { color: 'rgba(0,212,255,0.15)' },
-          lineStyle: { color: '#00d4ff', width: 2 },
-          itemStyle: { color: '#00d4ff' }
+          value: scenes.map(function(s) { return s.activity; }),
+          name: "综合评分",
+          areaStyle: { color: "rgba(0,212,255,0.20)" },
+          lineStyle: { color: "#00d4ff", width: 2 },
+          itemStyle: { color: "#00d4ff" }
         }]
       }]
-    });
+    }));
 
-    // ================= Gauge Chart =================
-    const gaugeChart = echarts.init(document.getElementById('gaugeChart'));
+    /* ==================== GAUGE CHART ==================== */
+    var gaugeChart = echarts.init(document.getElementById("gaugeChart"));
     function makeGauge(name, value, color, offsetX) {
       return {
-        type: 'gauge',
-        center: [offsetX + '%', '55%'],
-        radius: '55%',
-        startAngle: 200, endAngle: -20,
+        type: "gauge",
+        center: [offsetX + "%", "55%"],
+        radius: "50%",
+        startAngle: 90, endAngle: -270,
         min: 0, max: 100,
-        splitNumber: 5,
         axisLine: {
           lineStyle: {
-            width: 8,
-            color: [[value/100, color], [1, 'rgba(148,163,184,0.1)']]
+            width: 6,
+            color: [[value / 100, color], [1, "rgba(0,212,255,0.12)"]]
           }
         },
-        pointer: { length: '50%', width: 3, itemStyle: { color } },
+        pointer: { show: false },
         axisTick: { show: false },
-        splitLine: { length: 8, lineStyle: { color: 'rgba(148,163,184,0.2)', width: 1 } },
-        axisLabel: { distance: 12, color: '#64748b', fontSize: 9 },
+        splitLine: { show: false },
+        axisLabel: { show: false },
         detail: {
           valueAnimation: true,
-          formatter: '{value}%',
-          color, fontSize: 16, fontWeight: 'bold',
-          offsetCenter: [0, '65%']
+          formatter: "{value}%",
+          color: color, fontSize: 14, fontWeight: "bold",
+          offsetCenter: [0, "10%"]
         },
-        title: { offsetCenter: [0, '90%'], fontSize: 11, color: '#94a3b8' },
-        data: [{ value, name }]
+        title: { offsetCenter: [0, "30%"], fontSize: 10, color: "#94a3b8" },
+        data: [{ value: value, name: name }]
       };
     }
-    gaugeChart.setOption({
-      ...darkTheme,
+    gaugeChart.setOption(Object.assign({}, darkTheme, {
       series: [
-        makeGauge('CPU', 67, '#00d4ff', 18),
-        makeGauge('内存', 58, '#10e873', 50),
-        makeGauge('网络', 42, '#a855f7', 82)
+        makeGauge("CPU", 67, "#00d4ff", 18),
+        makeGauge("内存", 58, "#10e873", 50),
+        makeGauge("网络", 42, "#a855f7", 82)
       ]
-    });
+    }));
 
-    // ================= Heatmap =================
-    const heatmapChart = echarts.init(document.getElementById('heatmapChart'));
-    const services = ['API网关', '订单服务', '支付服务', '用户中心', '消息队列', '数据仓库'];
-    const hours = Array.from({length: 24}, (_, i) => i + 'h');
-    const heatData = [];
-    for (let i = 0; i < services.length; i++) {
-      for (let j = 0; j < 24; j++) {
-        let v = 100;
+    /* ==================== HEATMAP ==================== */
+    var heatmapChart = echarts.init(document.getElementById("heatmapChart"));
+    var services = ["API网关", "订单服务", "支付服务", "用户中心", "消息队列", "数据仓库"];
+    var hours = []; for (var h = 0; h < 24; h++) hours.push(h + "h");
+    var heatData = [];
+    for (var i = 0; i < services.length; i++) {
+      for (var j = 0; j < 24; j++) {
+        var v = 100;
         if (Math.random() < 0.05) v = 98 + Math.random() * 1.5;
         if (Math.random() < 0.02) v = 95 + Math.random() * 3;
         heatData.push([j, i, parseFloat(v.toFixed(2))]);
       }
     }
-    heatmapChart.setOption({
-      ...darkTheme,
-      tooltip: { position: 'top' },
-      grid: { top: 5, bottom: 20, left: 70, right: 10 },
+    heatmapChart.setOption(Object.assign({}, darkTheme, {
+      tooltip: { position: "top" },
+      grid: { top: 5, bottom: 20, left: 60, right: 10 },
       xAxis: {
-        type: 'category', data: hours,
-        splitArea: { show: true, areaStyle: { color: 'rgba(0,212,255,0.02)' } },
-        axisLabel: { color: '#64748b', fontSize: 9, interval: 2 }
+        type: "category", data: hours,
+        axisLabel: { color: "#64748b", fontSize: 8, interval: 3 }
       },
       yAxis: {
-        type: 'category', data: services,
-        splitArea: { show: true },
-        axisLabel: { color: '#94a3b8', fontSize: 10 }
+        type: "category", data: services,
+        axisLabel: { color: "#94a3b8", fontSize: 9 }
       },
       visualMap: {
-        min: 95, max: 100,
-        calculable: false,
-        orient: 'horizontal',
-        left: 'center', bottom: 0,
-        itemWidth: 10, itemHeight: 60,
-        inRange: {
-          color: ['#ef4444', '#f59e0b', '#10e873']
-        },
-        textStyle: { color: '#64748b', fontSize: 9 }
+        min: 95, max: 100, calculable: false,
+        orient: "horizontal", left: "center", bottom: 0,
+        itemWidth: 10, itemHeight: 50,
+        inRange: { color: ["#ef4444", "#f59e0b", "#10e873"] },
+        textStyle: { color: "#64748b", fontSize: 8 }
       },
       series: [{
-        type: 'heatmap', data: heatData,
+        type: "heatmap", data: heatData,
         label: { show: false },
-        itemStyle: { borderColor: '#060b14', borderWidth: 1 }
+        itemStyle: { borderColor: "#060b14", borderWidth: 1 }
       }]
-    });
+    }));
 
-    // ================= API Response Distribution =================
-    const apiChart = echarts.init(document.getElementById('apiChart'));
-    apiChart.setOption({
-      ...darkTheme,
-      tooltip: { trigger: 'axis' },
-      grid: { top: 20, bottom: 30, left: 50, right: 20 },
-      xAxis: {
-        type: 'category', data: ['P50', 'P95', 'P99'],
-        axisLabel: { color: '#94a3b8' }
-      },
-      yAxis: {
-        type: 'value', name: 'ms',
-        nameTextStyle: { color: '#64748b' },
-        axisLabel: { color: '#64748b' },
-        splitLine: { lineStyle: { color: 'rgba(148,163,184,0.08)' } }
-      },
+    /* ==================== API RESPONSE DISTRIBUTION (DONUT) ==================== */
+    var apiChart = echarts.init(document.getElementById("apiChart"));
+    apiChart.setOption(Object.assign({}, darkTheme, {
+      tooltip: { trigger: "item" },
       series: [{
-        type: 'bar',
+        type: "pie",
+        radius: ["30%", "65%"],
+        center: ["50%", "55%"],
+        avoidLabelOverlap: true,
+        itemStyle: { borderRadius: 6, borderColor: "#060b14", borderWidth: 2 },
+        label: { color: "#e2e8f0", fontSize: 11 },
+        labelLine: { lineStyle: { color: "rgba(0,212,255,0.3)" } },
         data: [
-          { value: 12, itemStyle: { color: '#10e873' } },
-          { value: 45, itemStyle: { color: '#f59e0b' } },
-          { value: 89, itemStyle: { color: '#ef4444' } }
-        ],
-        barWidth: '40%',
-        label: { show: true, position: 'top', color: '#e2e8f0', formatter: '{c} ms' }
+          { value: 12, name: "P50 (12ms)", itemStyle: { color: "#10e873" } },
+          { value: 45, name: "P95 (45ms)", itemStyle: { color: "#f59e0b" } },
+          { value: 89, name: "P99 (89ms)", itemStyle: { color: "#ef4444" } }
+        ]
       }]
-    });
+    }));
 
-    // ================= Load Trend =================
-    const loadChart = echarts.init(document.getElementById('loadChart'));
-    const loadHours = Array.from({length: 24}, (_, i) => i + ':00');
-    const cpuData = loadHours.map((_, i) => 30 + Math.sin(i/3)*15 + Math.random()*10);
-    const memData = loadHours.map((_, i) => 40 + Math.cos(i/4)*12 + Math.random()*8);
-    loadChart.setOption({
-      ...darkTheme,
-      tooltip: { trigger: 'axis' },
-      legend: { data: ['CPU', '内存'], textStyle: { color: '#94a3b8', fontSize: 10 }, top: 0 },
-      grid: { top: 25, bottom: 20, left: 40, right: 15 },
+    /* ==================== LOAD TREND (POLAR BAR) ==================== */
+    var loadChart = echarts.init(document.getElementById("loadChart"));
+    var loadHours = []; for (var lh = 0; lh < 24; lh++) loadHours.push(lh + ":00");
+    var cpuData = loadHours.map(function(_, i) { return 30 + Math.sin(i / 3) * 15 + Math.random() * 10; });
+    var memData = loadHours.map(function(_, i) { return 40 + Math.cos(i / 4) * 12 + Math.random() * 8; });
+    loadChart.setOption(Object.assign({}, darkTheme, {
+      tooltip: { trigger: "axis" },
+      legend: { data: ["CPU", "内存"], textStyle: { color: "#94a3b8", fontSize: 10 }, top: 0 },
+      grid: { top: 22, bottom: 10, left: 40, right: 15 },
       xAxis: {
-        type: 'category', boundaryGap: false, data: loadHours,
-        axisLabel: { color: '#64748b', fontSize: 9, interval: 3 }
+        type: "category", boundaryGap: false, data: loadHours,
+        axisLabel: { color: "#64748b", fontSize: 8, interval: 4 }
       },
       yAxis: {
-        type: 'value', max: 100,
-        axisLabel: { color: '#64748b', fontSize: 9 },
-        splitLine: { lineStyle: { color: 'rgba(148,163,184,0.08)' } }
+        type: "value", max: 100,
+        axisLabel: { color: "#64748b", fontSize: 8 },
+        splitLine: { lineStyle: { color: "rgba(148,163,184,0.08)" } }
       },
       series: [
         {
-          name: 'CPU', type: 'line', smooth: true,
-          data: cpuData,
-          areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(0,212,255,0.3)'},{offset:1,color:'rgba(0,212,255,0.02)'}]) },
-          lineStyle: { color: '#00d4ff', width: 2 },
+          name: "CPU", type: "line", smooth: true, data: cpuData,
+          lineStyle: { color: "#00d4ff", width: 2 },
+          areaStyle: { color: "rgba(0,212,255,0.15)" },
           showSymbol: false
         },
         {
-          name: '内存', type: 'line', smooth: true,
-          data: memData,
-          areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(16,232,115,0.3)'},{offset:1,color:'rgba(16,232,115,0.02)'}]) },
-          lineStyle: { color: '#10e873', width: 2 },
+          name: "内存", type: "line", smooth: true, data: memData,
+          lineStyle: { color: "#10e873", width: 2 },
+          areaStyle: { color: "rgba(16,232,115,0.15)" },
           showSymbol: false
         }
       ]
-    });
-
-    // ================= 7-day Trend =================
-    const trendChart = echarts.init(document.getElementById('trendChart'));
-    const days = ['周一','周二','周三','周四','周五','周六','周日'];
-    const trendSeries = scenes.map((s, idx) => ({
-      name: s.name,
-      type: 'line',
-      smooth: true,
-      data: days.map(() => Math.floor(Math.random() * 500 + 200 + (s.activity - 50) * 3)),
-      lineStyle: { width: 2, color: s.color },
-      itemStyle: { color: s.color },
-      showSymbol: false,
-      emphasis: { focus: 'series' }
     }));
-    trendChart.setOption({
-      ...darkTheme,
-      tooltip: { trigger: 'axis' },
-      legend: {
-        data: scenes.map(s => s.name),
-        textStyle: { color: '#94a3b8', fontSize: 9 },
-        top: 0, itemWidth: 12, itemHeight: 8,
-        selected: Object.fromEntries(scenes.map((s, i) => [s.name, i < 4]))
-      },
-      grid: { top: 28, bottom: 20, left: 45, right: 15 },
-      xAxis: {
-        type: 'category', data: days,
-        axisLabel: { color: '#64748b', fontSize: 9 }
-      },
-      yAxis: {
-        type: 'value',
-        axisLabel: { color: '#64748b', fontSize: 9 },
-        splitLine: { lineStyle: { color: 'rgba(148,163,184,0.08)' } }
-      },
-      series: trendSeries
-    });
 
-    // ================= Timeline =================
-    const timelineData = [
-      { time: '10:42:18', msg: '电商场景数据量激增 35%，触发扩容预警', level: 'warn' },
-      { time: '10:38:05', msg: 'API网关 P99 响应时间超过 120ms', level: 'alert' },
-      { time: '10:25:33', msg: '支付服务可用性恢复至 99.99%', level: 'info' },
-      { time: '10:12:07', msg: '数据仓库节点 #3 磁盘使用率 87%', level: 'warn' },
-      { time: '09:58:44', msg: '用户中心数据库连接池耗尽', level: 'critical' },
-      { time: '09:45:21', msg: '消息队列堆积量超过 50万 条', level: 'alert' },
-      { time: '09:30:09', msg: '网络安全模块规则库自动更新完成', level: 'info' },
-      { time: '09:15:56', msg: '制造场景实时流处理延迟 > 5s', level: 'warn' },
-      { time: '09:02:12', msg: 'SaaS 租户隔离策略变更生效', level: 'info' },
-      { time: '08:48:37', msg: '金融场景风控模型热更新失败', level: 'critical' },
-      { time: '08:35:04', msg: '物流轨迹同步服务重启成功', level: 'info' },
-      { time: '08:22:51', msg: '医疗场景 HIPAA 审计日志归档', level: 'info' },
-      { time: '08:10:28', msg: '能源采集设备离线率 3.2%', level: 'warn' },
-      { time: '07:55:15', msg: '农业气象数据接入延迟', level: 'warn' },
-      { time: '07:42:00', msg: '教育系统并发峰值 8,200', level: 'info' },
-    ];
-    const track = document.getElementById('timelineTrack');
-    function renderTimeline() {
-      track.innerHTML = '';
-      timelineData.forEach(item => {
-        const el = document.createElement('div');
-        el.className = `timeline-item ${item.level}`;
-        el.innerHTML = `
-          <div class="timeline-time">${item.time}</div>
-          <div class="timeline-msg">${item.msg}</div>
-          <span class="timeline-tag ${item.level}">${item.level.toUpperCase()}</span>
-        `;
-        track.appendChild(el);
-      });
-    }
-    renderTimeline();
-
-    // ================= Resize =================
-    window.addEventListener('resize', () => {
-      radarChart.resize();
-      gaugeChart.resize();
-      heatmapChart.resize();
-      apiChart.resize();
-      loadChart.resize();
-      trendChart.resize();
+    /* ==================== RESIZE ==================== */
+    var allCharts = [radarChart, gaugeChart, heatmapChart, apiChart, loadChart].concat(kpiCharts);
+    window.addEventListener("resize", function() {
+      allCharts.forEach(function(c) { c && c.resize(); });
     });
   </script>
 </body>

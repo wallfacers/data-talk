@@ -5,20 +5,12 @@
 - **分析维度**: 能耗趋势(火电/水电/风电/光伏/核电堆叠面积), 各工厂能耗对比, 能源流拓扑(发电->传输->分配->消耗), 能源类型占比, 节能减排目标达成追踪, 碳排放趋势(实际vs目标), 空气质量指数热力图, 环保指标达标率(4 仪表盘), 异常排放事件时间轴
 - **典型用户**: 能源部长, 环保总监, 碳排放管理师, 厂长
 
-## 视觉签名
-- Primary color `#22c55e` (green) / Secondary color `#0ea5e9` (sky) / Accent `#f59e0b` (amber) / Background `#0a1f14`
-- SVG wave background at bottom (animated, 25% opacity)
-- Panel title: 3px green left border, `.blue` and `.yellow` variants
-- Energy flow topology: circular nodes with animated connector pulses
-- Story bar: green bg strip with tag badge
-- ECharts theme: transparent bg, `#cbd5e1` text, `#94a3b8` labels, green tooltip border
+## 风格与颜色覆盖
 
-## 推荐布局骨架
-- Header: ~40px — gradient title + clock
-- Story bar: ~36px — insight highlights
-- KPI row: 4 cards grid, ~80px
-- Body: 3-column grid `1.05fr 1fr 1.05fr`
-- Bottom: 170px, 2-column `1.6fr 1fr` (gauges + timeline)
+- **映射风格:** Terrain (`references/styles/terrain.md`)
+- `--bezel-bg-app`: `#0a1f14`
+- `--bezel-accent-primary`: `#22c55e` (green)
+- `--bezel-accent-secondary`: `#0ea5e9` (sky blue)
 
 ## 典型 widget pattern（7 个）
 

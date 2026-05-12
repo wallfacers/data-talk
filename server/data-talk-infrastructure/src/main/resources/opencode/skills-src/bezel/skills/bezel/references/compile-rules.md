@@ -74,6 +74,7 @@ __POLLING_SCHEDULER_IIFE__
 | `__SHA256_VALUE__` | `sha256:` + base64 of SHA-256 digest of `JSON.stringify(dashboard.json)` | `sha256:abc123...` |
 | `__DASHBOARD_TITLE__` | `dashboard.json` → `title` | `"Sales Overview"` |
 | `__INDUSTRY_CSS_VARIABLES__` | `references/industries/<industry>.md` → CSS variables block | See industry files |
+| `__STYLE_CSS__` | `references/styles/<style>.md` → full CSS template | Orbital/Mosaic/... CSS |
 | `__FONT_FAMILY__` | Industry theme or `dashboard.json` → `theme.fontFamily` | `"Inter, system-ui, sans-serif"` |
 | `__WIDGET_CLASS__` | Derived constant: `"bezel-widget"` | — |
 | `__WIDGET_CONTAINERS__` | Generated per widget (see Section 4, step 4) | — |
@@ -251,14 +252,24 @@ STEP 1 — Parse and Resolve
   Resolve layout.engine (currently only 'free' is supported).
   Collect the set of patternIds from widgets[].
 
-STEP 2 — Load Industry Reference
+STEP 2 — Load Industry Reference + Style Reference
   Read references/industries/<dashboard.json.industry>.md.
   Extract:
-    - CSS variables block (root colors, spacing, typography)
-    - Layout skeleton rules (grid behavior, widget sizing defaults)
-    - Font family declaration
+    - Color overrides (--bezel-accent-primary, --bezel-accent-secondary, --bezel-bg-app)
+    - KPI list and widget recommendations
+    - AI trigger keywords
+  Resolve style name from patterns-catalog.md mapping table.
+  Read references/styles/<style>.md.
+  Extract:
+    - Layout skeleton CSS
+    - Card, KPI, title component CSS
+    - Chart configuration templates
+    - Background implementation HTML+CSS
+    - Motion tokens
   If the industry file does not exist, FAIL with error:
     "Industry reference not found: <industry>"
+  If the style file does not exist, FAIL with error:
+    "Style reference not found: <style>"
 
 STEP 3 — Assemble <head>
   Create the <head> element with:
@@ -272,7 +283,11 @@ STEP 3 — Assemble <head>
     e. <title> from dashboard.json.title
     f. ECharts CDN <script src="...">
     g. <style> block:
-       - CSS variables from industry reference
+       - Layer 1: Base tokens from design-language.md (spacing, typography)
+       - Layer 2: Style tokens from style file (card, motion, layout)
+       - Layer 3: Industry color overrides (accent colors, bg)
+       - Component CSS from style file (card, KPI, title, background)
+       (Layers are sequential :root blocks — later declarations win via cascade)
        - Layout styles (html/body reset, .bezel-widget class)
 
 STEP 4 — Assemble <body> Widget Containers

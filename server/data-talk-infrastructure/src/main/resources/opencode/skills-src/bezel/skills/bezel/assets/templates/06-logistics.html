@@ -1,696 +1,609 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>物流供应链监控中心</title>
-  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body {
-      width: 100%; height: 100%;
-      background: #0a0e1a;
-      font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-      color: #e2e8f0;
-      overflow: hidden;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'none';
+               script-src https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js 'unsafe-inline';
+               style-src 'unsafe-inline';
+               img-src data: https: blob:;
+               font-src https://cdn.jsdelivr.net/;
+               connect-src __BEZEL_SERVER_ORIGIN__;
+               frame-ancestors 'self';
+               base-uri 'none';
+               form-action 'none'">
+<meta name="__JSON_HASH__" content="sha256:placeholder">
+<title>物流供应链监控中心</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+:root {
+  /* Color palette — Logistics sky blue */
+  --bezel-bg-app: #0a0e1a;
+  --bezel-bg-rgb: 10,14,26;
+  --bezel-accent-primary: #0ea5e9;
+  --bezel-accent-secondary: #38bdf8;
+  --bezel-accent-primary-rgb: 14,165,233;
+  --bezel-accent-secondary-rgb: 56,189,248;
+  --bezel-text-strong: #e2e8f0;
+  --bezel-text-muted: #94a3b8;
+  --bezel-font-stack: 'PingFang SC','Microsoft YaHei',sans-serif;
 
-    /* 网格背景 */
-    .bg-grid {
-      position: fixed; inset: 0; pointer-events: none; z-index: 0;
-      background:
-        linear-gradient(rgba(14,165,233,0.06) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(14,165,233,0.06) 1px, transparent 1px);
-      background-size: 20px 20px;
-    }
-    .bg-grid::after {
-      content: '';
-      position: absolute; inset: 0;
-      background:
-        linear-gradient(rgba(14,165,233,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(14,165,233,0.03) 1px, transparent 1px);
-      background-size: 80px 80px;
-    }
+  /* Card tokens */
+  --card-radius: 8px;
+  --card-bg: rgba(10,14,26,0.50);
+  --card-border: none;
+  --card-border-bottom: 1px solid rgba(14,165,233,0.30);
+  --card-shadow: none;
+  --card-padding: 12px 20px;
+  --card-blur: 8px;
 
-    /* 顶部标题栏 */
-    .header {
-      position: relative; z-index: 10;
-      height: 72px;
-      display: flex; align-items: center; justify-content: center;
-      background: linear-gradient(180deg, rgba(14,165,233,0.12) 0%, transparent 100%);
-      border-bottom: 1px solid rgba(14,165,233,0.2);
-    }
-    .header-title {
-      font-size: 28px; font-weight: 700;
-      letter-spacing: 6px;
-      background: linear-gradient(90deg, #0ea5e9, #38bdf8, #0ea5e9);
-      background-size: 200% auto;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      animation: titleShine 4s linear infinite;
-    }
-    @keyframes titleShine {
-      0% { background-position: 0% center; }
-      100% { background-position: 200% center; }
-    }
-    .header-time {
-      position: absolute; right: 24px; top: 50%; transform: translateY(-50%);
-      font-size: 14px; color: #94a3b8; letter-spacing: 1px;
-    }
+  /* Motion tokens */
+  --motion-duration: 250ms;
+  --motion-easing: ease-out;
+  --motion-ambient: scan 4s ease-in-out infinite;
+}
 
-    /* KPI 区域 */
-    .kpi-bar {
-      position: relative; z-index: 10;
-      height: 100px;
-      display: flex; align-items: center; justify-content: center;
-      gap: 24px; padding: 0 24px;
-    }
-    .kpi-card {
-      position: relative;
-      width: 240px; height: 72px;
-      clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 50%, calc(100% - 20px) 100%, 0 100%, 14px 50%);
-      display: flex; align-items: center;
-      padding: 0 28px 0 24px;
-      transition: transform 0.3s;
-    }
-    .kpi-card:hover { transform: translateY(-2px); }
-    .kpi-card.cyan {
-      background: linear-gradient(90deg, rgba(14,165,233,0.25), rgba(14,165,233,0.08));
-      border-left: 3px solid #0ea5e9;
-    }
-    .kpi-card.green {
-      background: linear-gradient(90deg, rgba(34,197,94,0.25), rgba(34,197,94,0.08));
-      border-left: 3px solid #22c55e;
-    }
-    .kpi-card.orange {
-      background: linear-gradient(90deg, rgba(249,115,22,0.25), rgba(249,115,22,0.08));
-      border-left: 3px solid #f97316;
-    }
-    .kpi-card.red {
-      background: linear-gradient(90deg, rgba(239,68,68,0.25), rgba(239,68,68,0.08));
-      border-left: 3px solid #ef4444;
-    }
-    .kpi-icon {
-      width: 40px; height: 40px; border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 18px; margin-right: 14px; flex-shrink: 0;
-    }
-    .kpi-card.cyan .kpi-icon { background: rgba(14,165,233,0.2); color: #0ea5e9; }
-    .kpi-card.green .kpi-icon { background: rgba(34,197,94,0.2); color: #22c55e; }
-    .kpi-card.orange .kpi-icon { background: rgba(249,115,22,0.2); color: #f97316; }
-    .kpi-card.red .kpi-icon { background: rgba(239,68,68,0.2); color: #ef4444; }
-    .kpi-info { flex: 1; }
-    .kpi-label { font-size: 13px; color: #94a3b8; margin-bottom: 4px; }
-    .kpi-value { font-size: 22px; font-weight: 700; }
-    .kpi-card.cyan .kpi-value { color: #0ea5e9; }
-    .kpi-card.green .kpi-value { color: #22c55e; }
-    .kpi-card.orange .kpi-value { color: #f97316; }
-    .kpi-card.red .kpi-value { color: #ef4444; }
-    .kpi-trend {
-      font-size: 12px; font-weight: 600; margin-top: 2px;
-    }
-    .kpi-trend.up { color: #22c55e; }
-    .kpi-trend.down { color: #ef4444; }
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration: 0ms;
+    --motion-ambient: none;
+  }
+}
 
-    /* 主体布局 */
-    .main {
-      position: relative; z-index: 10;
-      display: flex;
-      height: calc(100vh - 72px - 100px - 180px);
-      padding: 0 16px; gap: 12px;
-    }
-    .left-col {
-      width: 26%; display: flex; flex-direction: column; gap: 10px;
-    }
-    .center-col {
-      width: 74%; display: flex; flex-direction: column; gap: 10px;
-    }
-    .panel {
-      background: rgba(15,23,42,0.6);
-      border: 1px solid rgba(14,165,233,0.15);
-      border-radius: 8px;
-      position: relative; overflow: hidden;
-    }
-    .panel::before {
-      content: '';
-      position: absolute; top: 0; left: 0; right: 0; height: 2px;
-      background: linear-gradient(90deg, transparent, #0ea5e9, transparent);
-      opacity: 0.6;
-    }
-    .panel-title {
-      font-size: 14px; font-weight: 600;
-      padding: 10px 14px 6px;
-      color: #e2e8f0;
-      display: flex; align-items: center; gap: 8px;
-    }
-    .panel-title::before {
-      content: '';
-      width: 4px; height: 14px; border-radius: 2px;
-      background: #0ea5e9;
-    }
-    .chart-box { width: 100%; flex: 1; min-height: 0; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+  width: 100%; height: 100%; overflow: hidden;
+  font-family: var(--bezel-font-stack);
+  color: var(--bezel-text-strong);
+  background: var(--bezel-bg-app);
+}
 
-    /* 底部仓库区 */
-    .bottom-bar {
-      position: relative; z-index: 10;
-      height: 180px;
-      padding: 0 16px 12px;
-    }
-    .bottom-panel {
-      height: 100%;
-      background: rgba(15,23,42,0.6);
-      border: 1px solid rgba(14,165,233,0.15);
-      border-radius: 8px;
-      position: relative; overflow: hidden;
-      display: flex; flex-direction: column;
-    }
-    .bottom-panel::before {
-      content: '';
-      position: absolute; top: 0; left: 0; right: 0; height: 2px;
-      background: linear-gradient(90deg, transparent, #0ea5e9, transparent);
-      opacity: 0.6;
-    }
+/* ── Background layers ── */
+.bg-contour {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent, transparent 59px,
+      rgba(14,165,233,0.06) 59px,
+      rgba(14,165,233,0.06) 60px
+    ),
+    linear-gradient(
+      180deg,
+      #0a0e1a 0%,
+      rgba(14,165,233,0.04) 40%,
+      rgba(14,165,233,0.08) 60%,
+      #0a0e1a 100%
+    );
+}
+.bg-scan {
+  position: fixed; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(14,165,233,0.25), transparent);
+  z-index: 0; pointer-events: none;
+  will-change: top, opacity;
+  animation: var(--motion-ambient);
+}
+@keyframes scan {
+  0%   { top: 0; opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { top: 100vh; opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bg-scan { animation: none; display: none; }
+}
 
-    /* 数据故事条 */
-    .story-bar {
-      position: relative; z-index: 10;
-      height: 36px;
-      display: flex; align-items: center; justify-content: center;
-      background: rgba(14,165,233,0.08);
-      border-top: 1px solid rgba(14,165,233,0.15);
-      border-bottom: 1px solid rgba(14,165,233,0.15);
-      font-size: 13px; color: #cbd5e1;
-      gap: 24px;
-    }
-    .story-bar span { display: flex; align-items: center; gap: 6px; }
-    .story-bar .highlight-o { color: #f97316; font-weight: 700; }
-    .story-bar .highlight-g { color: #22c55e; font-weight: 700; }
-    .story-bar .highlight-r { color: #ef4444; font-weight: 700; }
-  </style>
+/* ── Dashboard layout ── */
+.dashboard {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column;
+  width: 100vw; height: 100vh;
+  overflow: hidden; gap: 0;
+}
+
+/* ── Band separator ── */
+.band-separator {
+  height: 1px; flex-shrink: 0;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(14,165,233,0.30) 20%,
+    rgba(14,165,233,0.30) 80%,
+    transparent 100%
+  );
+  margin: 0 20px;
+}
+
+/* ── Band 1: Strategy / header ── */
+.band-strategy {
+  flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px 8px;
+}
+.band-strategy h1 {
+  font-size: 20px; font-weight: 500;
+  letter-spacing: 2px;
+  color: var(--bezel-text-strong);
+  border-bottom: 2px solid var(--bezel-accent-primary);
+  padding-bottom: 4px;
+}
+.clock {
+  font-family: 'Consolas', monospace;
+  font-size: 14px; color: var(--bezel-text-muted);
+  letter-spacing: 1px;
+}
+
+/* ── Story bar ── */
+.band-story {
+  flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: center;
+  padding: 4px 20px 6px;
+  font-size: 13px; color: #cbd5e1;
+  gap: 24px;
+}
+.band-story span { display: flex; align-items: center; gap: 6px; }
+.highlight-o { color: #f97316; font-weight: 700; }
+.highlight-g { color: #22c55e; font-weight: 700; }
+.highlight-r { color: #ef4444; font-weight: 700; }
+
+/* ── Band 2: KPI row ── */
+.band-kpi {
+  flex: 0 0 auto;
+  display: flex; flex-direction: row;
+  gap: 10px; padding: 6px 20px 10px;
+}
+.kpi-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px;
+  background: rgba(10,14,26,0.35);
+  border-bottom: 1px solid rgba(14,165,233,0.20);
+  border-radius: 6px;
+  min-width: 180px; flex: 1;
+  transition: border-bottom-color var(--motion-duration) var(--motion-easing);
+}
+.kpi-bar:hover { border-bottom-color: rgba(14,165,233,0.50); }
+.kpi-bar .label {
+  font-size: 12px; color: var(--bezel-text-muted);
+  white-space: nowrap;
+}
+.kpi-bar .separator {
+  width: 1px; height: 24px;
+  background: rgba(14,165,233,0.20);
+  margin: 0 12px;
+}
+.kpi-bar .value {
+  font-size: 22px; font-weight: 700;
+  color: var(--bezel-text-strong);
+  font-variant-numeric: tabular-nums;
+  font-family: 'Consolas', monospace;
+}
+
+/* ── Band 3: Main charts ── */
+.band-charts {
+  flex: 3;
+  display: flex; gap: 12px;
+  padding: 0 20px 8px;
+  min-height: 0;
+}
+
+/* ── Band 4: Detail row ── */
+.band-detail {
+  flex: 2;
+  display: flex; gap: 12px;
+  padding: 0 20px 8px;
+  min-height: 0;
+}
+
+/* ── Card ── */
+.card {
+  background: var(--card-bg);
+  border-radius: var(--card-radius);
+  border: none;
+  border-bottom: var(--card-border-bottom);
+  backdrop-filter: blur(var(--card-blur));
+  padding: var(--card-padding);
+  display: flex; flex-direction: column;
+  position: relative;
+  transition: border-bottom-color var(--motion-duration) var(--motion-easing);
+}
+.card:hover {
+  border-bottom-color: rgba(14,165,233,0.60);
+}
+.card-title {
+  font-size: 13px; font-weight: 500;
+  color: var(--bezel-text-strong);
+  text-align: left; letter-spacing: 1px;
+  margin-bottom: 8px; padding-bottom: 4px;
+  border-bottom: 1px solid rgba(14,165,233,0.20);
+  flex-shrink: 0;
+}
+.chart-wrap { flex: 1; min-height: 0; }
+</style>
 </head>
 <body>
-  <div class="bg-grid"></div>
+<div class="bg-contour"></div>
+<div class="bg-scan"></div>
 
-  <div class="header">
-    <div class="header-title">物流供应链监控中心</div>
-    <div class="header-time" id="clock">--</div>
-  </div>
+<div class="dashboard">
+  <!-- Band 1: Strategy -->
+  <section class="band-strategy">
+    <h1>物流供应链监控中心</h1>
+    <div class="clock" id="clock">--</div>
+  </section>
 
-  <div class="story-bar">
+  <!-- Story bar -->
+  <section class="band-story">
     <span>今日发货 <span class="highlight-o">15.2 万</span>（↑12%）</span>
     <span>平均时效降至 <span class="highlight-g">30h</span>（↓4h）</span>
     <span>异常订单需 <span class="highlight-r">关注</span></span>
-  </div>
+  </section>
 
-  <div class="kpi-bar">
-    <div class="kpi-card cyan">
-      <div class="kpi-icon">📦</div>
-      <div class="kpi-info">
-        <div class="kpi-label">在途运单</div>
-        <div class="kpi-value" data-target="12486" data-suffix="">0</div>
-        <div class="kpi-trend up">▲ 9.8%</div>
-      </div>
-    </div>
-    <div class="kpi-card green">
-      <div class="kpi-icon">✓</div>
-      <div class="kpi-info">
-        <div class="kpi-label">准时送达率</div>
-        <div class="kpi-value" data-target="96.8" data-suffix="%">0%</div>
-        <div class="kpi-trend up">▲ 1.5pp</div>
-      </div>
-    </div>
-    <div class="kpi-card orange">
-      <div class="kpi-icon">🚚</div>
-      <div class="kpi-info">
-        <div class="kpi-label">今日发货</div>
-        <div class="kpi-value" data-target="15.2" data-suffix="万">0万</div>
-        <div class="kpi-trend up">▲ 12%</div>
-      </div>
-    </div>
-    <div class="kpi-card red">
-      <div class="kpi-icon">⏱</div>
-      <div class="kpi-info">
-        <div class="kpi-label">平均时效</div>
-        <div class="kpi-value" data-target="30" data-suffix="h">0h</div>
-        <div class="kpi-trend down">▼ 4h</div>
-      </div>
-    </div>
-  </div>
+  <div class="band-separator"></div>
 
-  <div class="main">
-    <div class="left-col">
-      <div class="panel" style="flex: 1; display: flex; flex-direction: column;">
-        <div class="panel-title">运输方式占比</div>
-        <div class="chart-box" id="chart-transport"></div>
-      </div>
-      <div class="panel" style="flex: 1; display: flex; flex-direction: column;">
-        <div class="panel-title">异常订单分析</div>
-        <div class="chart-box" id="chart-abnormal"></div>
-      </div>
-      <div class="panel" style="flex: 1; display: flex; flex-direction: column;">
-        <div class="panel-title">配送满意度</div>
-        <div class="chart-box" id="chart-satisfaction"></div>
-      </div>
+  <!-- Band 2: KPI -->
+  <section class="band-kpi">
+    <div class="kpi-bar">
+      <span class="label">在途运单</span>
+      <span class="separator"></span>
+      <span class="value" data-target="12486" data-suffix="" data-decimal="0" aria-label="在途运单 12,486">0</span>
     </div>
-    <div class="center-col">
-      <div class="panel" style="flex: 2; display: flex; flex-direction: column;">
-        <div class="panel-title">全国物流节点分布</div>
-        <div class="chart-box" id="chart-map"></div>
-      </div>
-      <div class="panel" style="flex: 1; display: flex; flex-direction: column;">
-        <div class="panel-title">发货量 & 签收时效趋势</div>
-        <div class="chart-box" id="chart-trend"></div>
-      </div>
+    <div class="kpi-bar">
+      <span class="label">准时送达率</span>
+      <span class="separator"></span>
+      <span class="value" data-target="96.8" data-suffix="%" data-decimal="1" aria-label="准时送达率 96.8%">0%</span>
     </div>
-  </div>
-
-  <div class="bottom-bar">
-    <div class="bottom-panel">
-      <div class="panel-title">仓库利用率 / 最后一公里时效分布 / 供应链风险预警矩阵</div>
-      <div style="flex:1; display:flex; gap:10px; padding:0 10px 10px;">
-        <div class="chart-box" id="chart-warehouse" style="flex:1;"></div>
-        <div class="chart-box" id="chart-lastmile" style="flex:1;"></div>
-        <div class="chart-box" id="chart-risk" style="flex:1;"></div>
-      </div>
+    <div class="kpi-bar">
+      <span class="label">今日发货</span>
+      <span class="separator"></span>
+      <span class="value" data-target="15.2" data-suffix="万" data-decimal="1" aria-label="今日发货 15.2万">0万</span>
     </div>
-  </div>
+    <div class="kpi-bar">
+      <span class="label">平均时效</span>
+      <span class="separator"></span>
+      <span class="value" data-target="30" data-suffix="h" data-decimal="0" aria-label="平均时效 30h">0h</span>
+    </div>
+  </section>
 
-  <script>
-    // ========== 实时时钟 ==========
-    function updateClock() {
-      const now = new Date();
-      const pad = n => String(n).padStart(2, '0');
-      document.getElementById('clock').textContent =
-        `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-    }
-    updateClock();
-    setInterval(updateClock, 1000);
+  <div class="band-separator"></div>
 
-    // ========== KPI 数字滚动 ==========
-    function animateKPIs() {
-      document.querySelectorAll('.kpi-value').forEach(el => {
-        const target = parseFloat(el.dataset.target);
-        const suffix = el.dataset.suffix || '';
-        const isFloat = target % 1 !== 0;
-        const duration = 1500;
-        const start = performance.now();
-        function step(now) {
-          const p = Math.min((now - start) / duration, 1);
-          const ease = 1 - Math.pow(1 - p, 3);
-          const val = target * ease;
-          el.textContent = (isFloat ? val.toFixed(1) : Math.round(val).toLocaleString()) + suffix;
-          if (p < 1) requestAnimationFrame(step);
-        }
-        requestAnimationFrame(step);
+  <!-- Band 3: Main charts (2 wide-flat) -->
+  <section class="band-charts">
+    <div class="card" style="flex:2;">
+      <div class="card-title">发货量 &amp; 签收时效趋势</div>
+      <div class="chart-wrap" id="chart-trend"></div>
+    </div>
+    <div class="card" style="flex:1;">
+      <div class="card-title">运输方式占比</div>
+      <div class="chart-wrap" id="chart-transport"></div>
+    </div>
+  </section>
+
+  <div class="band-separator"></div>
+
+  <!-- Band 4: Detail row -->
+  <section class="band-detail">
+    <div class="card" style="flex:1;">
+      <div class="card-title">异常订单分析</div>
+      <div class="chart-wrap" id="chart-abnormal"></div>
+    </div>
+    <div class="card" style="flex:1;">
+      <div class="card-title">仓库利用率</div>
+      <div class="chart-wrap" id="chart-warehouse"></div>
+    </div>
+    <div class="card" style="flex:1;">
+      <div class="card-title">最后一公里时效分布</div>
+      <div class="chart-wrap" id="chart-lastmile"></div>
+    </div>
+    <div class="card" style="flex:1;">
+      <div class="card-title">配送满意度</div>
+      <div class="chart-wrap" id="chart-satisfaction"></div>
+    </div>
+  </section>
+</div>
+
+<script>
+window.__BEZEL_CONFIG__ = {
+  dashboardId: "dash_logistics_monitor01",
+  defaultIntervalMs: 10000,
+  pauseOnHidden: true,
+  widgets: [
+    { id: "chart-trend", patternId: "logistics.trend-dual", endpoint: "/api/dashboards/dash_logistics_monitor01/widgets/chart-trend/data", intervalMs: 10000, params: {}, paramRefs: [] },
+    { id: "chart-transport", patternId: "logistics.transport-pie", endpoint: "/api/dashboards/dash_logistics_monitor01/widgets/chart-transport/data", intervalMs: 10000, params: {}, paramRefs: [] },
+    { id: "chart-abnormal", patternId: "logistics.abnormal-bar", endpoint: "/api/dashboards/dash_logistics_monitor01/widgets/chart-abnormal/data", intervalMs: 10000, params: {}, paramRefs: [] },
+    { id: "chart-warehouse", patternId: "logistics.warehouse-bar", endpoint: "/api/dashboards/dash_logistics_monitor01/widgets/chart-warehouse/data", intervalMs: 10000, params: {}, paramRefs: [] },
+    { id: "chart-lastmile", patternId: "logistics.lastmile-bar", endpoint: "/api/dashboards/dash_logistics_monitor01/widgets/chart-lastmile/data", intervalMs: 10000, params: {}, paramRefs: [] },
+    { id: "chart-satisfaction", patternId: "logistics.satisfaction-gauge", endpoint: "/api/dashboards/dash_logistics_monitor01/widgets/chart-satisfaction/data", intervalMs: 10000, params: {}, paramRefs: [] }
+  ]
+};
+
+(function() {
+  var cfg = window.__BEZEL_CONFIG__;
+  if (!cfg) return;
+  var charts = {};
+  var timers = {};
+  var paused = false;
+
+  function bindWidget(w) {
+    var el = document.getElementById(w.id);
+    if (!el) return;
+    charts[w.id] = echarts.init(el);
+    schedule(w);
+  }
+
+  function schedule(w) {
+    var interval = w.intervalMs || cfg.defaultIntervalMs || 10000;
+    timers[w.id] = setTimeout(function tick() {
+      if (paused) { timers[w.id] = setTimeout(tick, interval); return; }
+      fetch(w.endpoint, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ params: w.params || {} })
+      }).then(function(res) {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      }).then(function(data) {
+        var ch = charts[w.id];
+        if (ch) ch.setOption({ dataset: { source: data.rows } }, { lazyUpdate: true });
+      }).catch(function(e) {
+        parent.postMessage({ type: "error", widgetId: w.id, message: String(e) }, "*");
       });
+      timers[w.id] = setTimeout(tick, interval);
+    }, interval);
+  }
+
+  if (cfg.pauseOnHidden !== false) {
+    document.addEventListener("visibilitychange", function() { paused = document.hidden; });
+  }
+
+  window.addEventListener("message", function(ev) {
+    var m = ev.data;
+    if (!m || typeof m !== "object") return;
+    if (m.type === "refresh/pause") paused = true;
+    if (m.type === "refresh/resume") paused = false;
+    if (m.type === "params/update") {
+      cfg.widgets.forEach(function(w) { w.params = Object.assign({}, w.params || {}, m.params); });
     }
-    setTimeout(animateKPIs, 300);
+  });
 
-    // ========== ECharts 暗色主题 ==========
-    const darkTheme = {
-      backgroundColor: 'transparent',
-      textStyle: { color: '#cbd5e1' },
-      title: { textStyle: { color: '#e2e8f0' } },
-      legend: { textStyle: { color: '#94a3b8' } },
-      tooltip: {
-        backgroundColor: 'rgba(15,23,42,0.95)',
-        borderColor: 'rgba(14,165,233,0.3)',
-        textStyle: { color: '#e2e8f0' }
-      },
-      axisLine: { lineStyle: { color: 'rgba(148,163,184,0.3)' } },
-      splitLine: { lineStyle: { color: 'rgba(148,163,184,0.1)' } }
-    };
+  cfg.widgets.forEach(bindWidget);
+  parent.postMessage({ type: "ready", jsonHash: document.querySelector('meta[name="__JSON_HASH__"]') ? document.querySelector('meta[name="__JSON_HASH__"]').content : null }, "*");
+})();
+</script>
 
-    // ========== 图表初始化 ==========
-    const chartTransport = echarts.init(document.getElementById('chart-transport'));
-    const chartAbnormal  = echarts.init(document.getElementById('chart-abnormal'));
-    const chartSatisfaction = echarts.init(document.getElementById('chart-satisfaction'));
-    const chartMap = echarts.init(document.getElementById('chart-map'));
-    const chartTrend = echarts.init(document.getElementById('chart-trend'));
-    const chartWarehouse = echarts.init(document.getElementById('chart-warehouse'));
-    const chartLastmile = echarts.init(document.getElementById('chart-lastmile'));
-    const chartRisk = echarts.init(document.getElementById('chart-risk'));
+<script>
+/* ── Clock ── */
+function updateClock() {
+  var now = new Date();
+  var pad = function(n) { return String(n).padStart(2, "0"); };
+  document.getElementById("clock").textContent =
+    now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-" + pad(now.getDate()) + " " +
+    pad(now.getHours()) + ":" + pad(now.getMinutes()) + ":" + pad(now.getSeconds());
+}
+updateClock();
+setInterval(updateClock, 1000);
 
-    const charts = [chartTransport, chartAbnormal, chartSatisfaction, chartMap, chartTrend, chartWarehouse, chartLastmile, chartRisk];
+/* ── KPI count-up ── */
+function countUp(el, target, duration) {
+  duration = duration || 1500;
+  var decimal = parseInt(el.dataset.decimal, 10) || 0;
+  var suffix = el.dataset.suffix || "";
+  var startTime = null;
+  function tick(ts) {
+    if (!startTime) startTime = ts;
+    var p = Math.min((ts - startTime) / duration, 1);
+    var ease = 1 - Math.pow(1 - p, 3);
+    var val = target * ease;
+    var text = decimal > 0 ? val.toFixed(decimal) : Math.round(val).toLocaleString();
+    el.textContent = text + suffix;
+    if (p < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+document.querySelectorAll(".kpi-bar .value").forEach(function(el) {
+  var target = parseFloat(el.dataset.target);
+  setTimeout(function() { countUp(el, target, 1500); }, 300);
+});
 
-    // ========== 1. 运输方式占比（饼图） ==========
-    chartTransport.setOption({
-      ...darkTheme,
-      tooltip: { trigger: 'item', formatter: '{b}: {c}% ({d}%)' },
-      legend: { bottom: 4, textStyle: { color: '#94a3b8', fontSize: 11 }, itemWidth: 10, itemHeight: 10 },
-      series: [{
-        type: 'pie',
-        radius: ['40%', '65%'],
-        center: ['50%', '45%'],
-        avoidLabelOverlap: true,
-        itemStyle: { borderRadius: 4, borderColor: '#0a0e1a', borderWidth: 2 },
-        label: { show: true, color: '#cbd5e1', fontSize: 11, formatter: '{b}\n{d}%' },
-        labelLine: { lineStyle: { color: 'rgba(148,163,184,0.4)' } },
-        data: [
-          { value: 58, name: '公路', itemStyle: { color: '#0ea5e9' } },
-          { value: 22, name: '铁路', itemStyle: { color: '#22c55e' } },
-          { value: 12, name: '航空', itemStyle: { color: '#f97316' } },
-          { value: 8, name: '水运', itemStyle: { color: '#8b5cf6' } }
-        ]
-      }]
-    });
+/* ── ECharts dark theme ── */
+var darkTheme = {
+  backgroundColor: "transparent",
+  textStyle: { color: "#94a3b8" },
+  title: { textStyle: { color: "#e2e8f0" } },
+  legend: { textStyle: { color: "#94a3b8", fontSize: 11 } },
+  tooltip: {
+    backgroundColor: "rgba(10,14,26,0.95)",
+    borderColor: "rgba(14,165,233,0.30)",
+    textStyle: { color: "#e2e8f0" }
+  },
+  grid: { left: 48, right: 16, top: 24, bottom: 32, containLabel: false },
+  xAxis: {
+    axisLine: { lineStyle: { color: "rgba(14,165,233,0.20)" } },
+    axisLabel: { color: "#94a3b8", fontSize: 11 },
+    splitLine: { show: false }
+  },
+  yAxis: {
+    axisLine: { show: false },
+    axisLabel: { color: "#94a3b8", fontSize: 11 },
+    splitLine: { lineStyle: { color: "rgba(14,165,233,0.08)" } }
+  }
+};
 
-    // ========== 2. 异常订单分析（横向条形） ==========
-    chartAbnormal.setOption({
-      ...darkTheme,
-      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-      grid: { left: 10, right: 20, top: 10, bottom: 10, containLabel: true },
-      xAxis: { type: 'value', axisLabel: { color: '#94a3b8', fontSize: 11 }, splitLine: { lineStyle: { color: 'rgba(148,163,184,0.1)' } } },
-      yAxis: {
-        type: 'category',
-        data: ['延误', '破损', '丢失', '拒收'],
-        axisLabel: { color: '#cbd5e1', fontSize: 12 },
-        axisLine: { show: false },
-        axisTick: { show: false }
-      },
-      series: [{
-        type: 'bar',
-        data: [
-          { value: 342, itemStyle: { color: '#f97316' } },
-          { value: 128, itemStyle: { color: '#ef4444' } },
-          { value: 56, itemStyle: { color: '#dc2626' } },
-          { value: 89, itemStyle: { color: '#f59e0b' } }
-        ],
-        barWidth: 14,
-        itemStyle: { borderRadius: [0, 4, 4, 0] },
-        label: { show: true, position: 'right', color: '#cbd5e1', fontSize: 11 }
-      }]
-    });
-
-    // ========== 3. 配送满意度（仪表盘） ==========
-    chartSatisfaction.setOption({
-      ...darkTheme,
-      series: [{
-        type: 'gauge',
-        startAngle: 200, endAngle: -20,
-        min: 0, max: 100,
-        radius: '90%',
-        center: ['50%', '55%'],
-        splitNumber: 10,
-        axisLine: {
-          lineStyle: {
-            width: 10,
-            color: [
-              [0.6, '#ef4444'],
-              [0.8, '#f97316'],
-              [0.9, '#0ea5e9'],
-              [1, '#22c55e']
-            ]
-          }
-        },
-        pointer: { length: '55%', width: 4, itemStyle: { color: '#0ea5e9' } },
-        axisTick: { distance: -10, length: 4, lineStyle: { color: '#fff', width: 1 } },
-        splitLine: { distance: -10, length: 10, lineStyle: { color: '#fff', width: 2 } },
-        axisLabel: { color: '#94a3b8', distance: 16, fontSize: 10 },
-        anchor: { show: true, size: 12, itemStyle: { color: '#0ea5e9' } },
-        title: { show: true, offsetCenter: [0, '70%'], fontSize: 12, color: '#94a3b8' },
-        detail: {
-          valueAnimation: true,
-          fontSize: 24,
-          fontWeight: 700,
-          offsetCenter: [0, '30%'],
-          formatter: '{value}',
-          color: '#22c55e'
-        },
-        data: [{ value: 96.8, name: '满意度评分' }]
-      }]
-    });
-
-    // ========== 4. 全国物流节点分布（地图） ==========
-    const hubCities = [
-      { name: '上海', value: [121.47, 31.23, 4200] },
-      { name: '北京', value: [116.40, 39.90, 3800] },
-      { name: '深圳', value: [114.06, 22.54, 3600] },
-      { name: '广州', value: [113.26, 23.13, 3100] },
-      { name: '杭州', value: [120.15, 30.28, 2600] },
-      { name: '成都', value: [104.06, 30.67, 2400] },
-      { name: '武汉', value: [114.30, 30.59, 2200] },
-      { name: '西安', value: [108.93, 34.34, 1900] },
-      { name: '重庆', value: [106.55, 29.56, 2100] },
-      { name: '南京', value: [118.78, 32.07, 2000] },
-      { name: '郑州', value: [113.62, 34.75, 1800] },
-      { name: '苏州', value: [120.58, 31.30, 1700] },
-      { name: '天津', value: [117.20, 39.08, 1600] },
-      { name: '青岛', value: [120.38, 36.07, 1500] },
-      { name: '长沙', value: [112.93, 28.23, 1400] },
-      { name: '沈阳', value: [123.43, 41.80, 1200] },
-      { name: '昆明', value: [102.83, 24.88, 1000] },
-      { name: '乌鲁木齐', value: [87.62, 43.83, 800] }
-    ];
-
-    const lineData = [];
-    const origins = [
-      { name: '上海', coord: [121.47, 31.23] },
-      { name: '深圳', coord: [114.06, 22.54] },
-      { name: '北京', coord: [116.40, 39.90] }
-    ];
-    const destinations = hubCities.filter(c => !['上海','深圳','北京'].includes(c.name));
-    origins.forEach(origin => {
-      destinations.forEach(dest => {
-        lineData.push({
-          fromName: origin.name,
-          toName: dest.name,
-          coords: [origin.coord, dest.value.slice(0, 2)]
-        });
-      });
-    });
-
-    fetch('https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json')
-      .then(r => r.json())
-      .then(geoJson => {
-        echarts.registerMap('china', geoJson);
-        chartMap.setOption({
-          ...darkTheme,
-          geo: {
-            map: 'china',
-            roam: true,
-            zoom: 1.2,
-            center: [105, 36],
-            label: { show: false },
-            itemStyle: {
-              areaColor: 'rgba(14,165,233,0.08)',
-              borderColor: 'rgba(14,165,233,0.3)',
-              borderWidth: 1
-            },
-            emphasis: {
-              itemStyle: { areaColor: 'rgba(14,165,233,0.18)' },
-              label: { show: false }
-            }
-          },
-          series: [
-            {
-              type: 'effectScatter',
-              coordinateSystem: 'geo',
-              data: hubCities,
-              symbolSize: v => Math.sqrt(v[2]) / 1.8,
-              showEffectOn: 'render',
-              rippleEffect: { brushType: 'stroke', scale: 3, period: 4 },
-              label: { show: true, formatter: '{b}', position: 'right', color: '#e2e8f0', fontSize: 10 },
-              itemStyle: { color: '#0ea5e9', shadowBlur: 10, shadowColor: '#0ea5e9' },
-              zlevel: 2
-            },
-            {
-              type: 'lines',
-              zlevel: 1,
-              effect: {
-                show: true,
-                period: 4,
-                trailLength: 0.6,
-                color: '#f97316',
-                symbolSize: 3
-              },
-              lineStyle: {
-                color: '#f97316',
-                width: 0.8,
-                curveness: 0.2,
-                opacity: 0.5
-              },
-              data: lineData
-            }
+/* ── Chart 1: Shipment trend dual-axis ── */
+var months = ["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
+var chartTrend = echarts.init(document.getElementById("chart-trend"));
+chartTrend.setOption(Object.assign({}, darkTheme, {
+  tooltip: { trigger: "axis", axisPointer: { type: "cross" }, backgroundColor: "rgba(10,14,26,0.95)", borderColor: "rgba(14,165,233,0.30)", textStyle: { color: "#e2e8f0" } },
+  legend: { data: ["发货量","签收时效"], top: 0, textStyle: { color: "#94a3b8", fontSize: 11 } },
+  grid: { left: 48, right: 48, top: 32, bottom: 32 },
+  xAxis: { type: "category", data: months,
+    axisLine: { lineStyle: { color: "rgba(14,165,233,0.20)" } },
+    axisLabel: { color: "#94a3b8", fontSize: 11 }, splitLine: { show: false } },
+  yAxis: [
+    { type: "value", name: "发货量(万)", position: "left",
+      axisLine: { show: false }, axisLabel: { color: "#94a3b8", fontSize: 11 },
+      splitLine: { lineStyle: { color: "rgba(14,165,233,0.08)" } },
+      nameTextStyle: { color: "#94a3b8", fontSize: 11 } },
+    { type: "value", name: "时效(h)", position: "right", inverse: true,
+      axisLine: { show: false }, axisLabel: { color: "#94a3b8", fontSize: 11 },
+      splitLine: { show: false },
+      nameTextStyle: { color: "#94a3b8", fontSize: 11 } }
+  ],
+  series: [
+    { name: "发货量", type: "bar", barWidth: "40%",
+      itemStyle: { color: "#0ea5e9", borderRadius: [3,3,0,0] },
+      data: [10.5, 9.2, 11.8, 12.5, 13.2, 14.1, 13.8, 14.5, 15.0, 14.8, 15.5, 15.2] },
+    { name: "签收时效", type: "line", yAxisIndex: 1, smooth: true, symbol: "circle", symbolSize: 6,
+      lineStyle: { color: "#f97316", width: 2 }, itemStyle: { color: "#f97316" },
+      areaStyle: {
+        color: { type: "linear", x: 0, y: 0, x2: 1, y2: 0,
+          colorStops: [
+            { offset: 0, color: "rgba(249,115,22,0.25)" },
+            { offset: 1, color: "rgba(249,115,22,0.02)" }
           ]
-        });
-      })
-      .catch(() => {
-        chartMap.setOption({
-          title: { text: '地图加载失败，请检查网络', left: 'center', top: 'center', textStyle: { color: '#ef4444' } }
-        });
-      });
-
-    // ========== 5. 发货量 & 签收时效趋势（双轴） ==========
-    const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
-    chartTrend.setOption({
-      ...darkTheme,
-      tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
-      legend: { top: 4, textStyle: { color: '#94a3b8', fontSize: 11 } },
-      grid: { left: 10, right: 10, top: 36, bottom: 24, containLabel: true },
-      xAxis: {
-        type: 'category',
-        data: months,
-        axisLabel: { color: '#94a3b8', fontSize: 11 },
-        axisLine: { lineStyle: { color: 'rgba(148,163,184,0.3)' } }
-      },
-      yAxis: [
-        {
-          type: 'value',
-          name: '发货量(万)',
-          nameTextStyle: { color: '#94a3b8', fontSize: 11 },
-          axisLabel: { color: '#94a3b8', fontSize: 11 },
-          splitLine: { lineStyle: { color: 'rgba(148,163,184,0.1)' } }
-        },
-        {
-          type: 'value',
-          name: '时效(h)',
-          nameTextStyle: { color: '#94a3b8', fontSize: 11 },
-          axisLabel: { color: '#94a3b8', fontSize: 11 },
-          inverse: true,
-          splitLine: { show: false }
         }
-      ],
-      series: [
-        {
-          name: '发货量',
-          type: 'bar',
-          barWidth: '40%',
-          itemStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[
-            { offset: 0, color: '#0ea5e9' },
-            { offset: 1, color: 'rgba(14,165,233,0.3)' }
-          ]), borderRadius: [3,3,0,0] },
-          data: [10.5, 9.2, 11.8, 12.5, 13.2, 14.1, 13.8, 14.5, 15.0, 14.8, 15.5, 15.2]
-        },
-        {
-          name: '签收时效',
-          type: 'line',
-          yAxisIndex: 1,
-          smooth: true,
-          symbol: 'circle',
-          symbolSize: 6,
-          lineStyle: { color: '#f97316', width: 2 },
-          itemStyle: { color: '#f97316', borderColor: '#fff', borderWidth: 1 },
-          areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[
-            { offset: 0, color: 'rgba(249,115,22,0.25)' },
-            { offset: 1, color: 'rgba(249,115,22,0)' }
-          ]) },
-          data: [42, 40, 38, 37, 36, 35, 34, 33, 32, 31, 30, 30]
-        }
-      ]
-    });
+      },
+      data: [42, 40, 38, 37, 36, 35, 34, 33, 32, 31, 30, 30] }
+  ]
+}));
 
-    // ========== 6. 仓库利用率（3D 感柱状图） ==========
-    chartWarehouse.setOption({
-      ...darkTheme,
-      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-      grid: { left: 10, right: 10, top: 10, bottom: 24, containLabel: true },
-      xAxis: {
-        type: 'category',
-        data: ['华东仓', '华南仓', '华北仓', '西南仓', '华中仓', '东北仓'],
-        axisLabel: { color: '#94a3b8', fontSize: 11 },
-        axisLine: { lineStyle: { color: 'rgba(148,163,184,0.3)' } }
-      },
-      yAxis: {
-        type: 'value',
-        max: 100,
-        axisLabel: { color: '#94a3b8', fontSize: 11, formatter: '{value}%' },
-        splitLine: { lineStyle: { color: 'rgba(148,163,184,0.1)' } }
-      },
-      series: [{
-        type: 'bar',
-        barWidth: 22,
-        data: [
-          { value: 92, itemStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#ef4444'},{offset:1,color:'rgba(239,68,68,0.4)'}]) } },
-          { value: 85, itemStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#f97316'},{offset:1,color:'rgba(249,115,22,0.4)'}]) } },
-          { value: 78, itemStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#0ea5e9'},{offset:1,color:'rgba(14,165,233,0.4)'}]) } },
-          { value: 72, itemStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#0ea5e9'},{offset:1,color:'rgba(14,165,233,0.4)'}]) } },
-          { value: 68, itemStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#22c55e'},{offset:1,color:'rgba(34,197,94,0.4)'}]) } },
-          { value: 55, itemStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#22c55e'},{offset:1,color:'rgba(34,197,94,0.4)'}]) } }
-        ],
-        itemStyle: { borderRadius: [4,4,0,0], shadowBlur: 8, shadowColor: 'rgba(0,0,0,0.3)', shadowOffsetY: 3 },
-        label: { show: true, position: 'top', color: '#cbd5e1', fontSize: 11, formatter: '{c}%' }
-      }]
-    });
+/* ── Chart 2: Transport mode pie ── */
+var chartTransport = echarts.init(document.getElementById("chart-transport"));
+chartTransport.setOption(Object.assign({}, darkTheme, {
+  tooltip: { trigger: "item", formatter: "{b}: {c}% ({d}%)", backgroundColor: "rgba(10,14,26,0.95)", borderColor: "rgba(14,165,233,0.30)", textStyle: { color: "#e2e8f0" } },
+  legend: { bottom: 4, textStyle: { color: "#94a3b8", fontSize: 11 }, itemWidth: 10, itemHeight: 10 },
+  series: [{
+    type: "pie",
+    radius: ["40%","65%"],
+    center: ["50%","45%"],
+    avoidLabelOverlap: true,
+    itemStyle: { borderRadius: 4, borderColor: "#0a0e1a", borderWidth: 2 },
+    label: { show: true, color: "#cbd5e1", fontSize: 11, formatter: "{b}\n{d}%" },
+    labelLine: { lineStyle: { color: "rgba(148,163,184,0.4)" } },
+    data: [
+      { value: 58, name: "公路", itemStyle: { color: "#0ea5e9" } },
+      { value: 22, name: "铁路", itemStyle: { color: "#22c55e" } },
+      { value: 12, name: "航空", itemStyle: { color: "#f97316" } },
+      { value: 8, name: "水运", itemStyle: { color: "#8b5cf6" } }
+    ]
+  }]
+}));
 
-    // ========== 7. 最后一公里时效分布（横向条形） ==========
-    chartLastmile.setOption({
-      ...darkTheme,
-      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-      grid: { left: 10, right: 20, top: 10, bottom: 10, containLabel: true },
-      xAxis: { type: 'value', axisLabel: { color: '#94a3b8', fontSize: 11, formatter: '{value}%' }, splitLine: { lineStyle: { color: 'rgba(148,163,184,0.1)' } } },
-      yAxis: {
-        type: 'category',
-        data: ['当天达', '次日达', '2-3日', '3日+'],
-        axisLabel: { color: '#cbd5e1', fontSize: 12 },
-        axisLine: { show: false },
-        axisTick: { show: false }
-      },
-      series: [{
-        type: 'bar',
-        data: [
-          { value: 28, itemStyle: { color: '#22c55e' } },
-          { value: 45, itemStyle: { color: '#0ea5e9' } },
-          { value: 20, itemStyle: { color: '#f97316' } },
-          { value: 7, itemStyle: { color: '#ef4444' } }
-        ],
-        barWidth: 14,
-        itemStyle: { borderRadius: [0, 4, 4, 0] },
-        label: { show: true, position: 'right', color: '#cbd5e1', fontSize: 11, formatter: '{c}%' }
-      }]
-    });
+/* ── Chart 3: Abnormal orders horizontal bar ── */
+var chartAbnormal = echarts.init(document.getElementById("chart-abnormal"));
+chartAbnormal.setOption(Object.assign({}, darkTheme, {
+  tooltip: { trigger: "axis", axisPointer: { type: "shadow" }, backgroundColor: "rgba(10,14,26,0.95)", borderColor: "rgba(14,165,233,0.30)", textStyle: { color: "#e2e8f0" } },
+  grid: { left: 48, right: 24, top: 12, bottom: 12, containLabel: true },
+  xAxis: { type: "value",
+    axisLine: { show: false }, axisLabel: { color: "#94a3b8", fontSize: 11 },
+    splitLine: { lineStyle: { color: "rgba(14,165,233,0.08)" } } },
+  yAxis: { type: "category", data: ["延误","破损","丢失","拒收"],
+    axisLabel: { color: "#cbd5e1", fontSize: 12 },
+    axisLine: { show: false }, axisTick: { show: false } },
+  series: [{
+    type: "bar", barWidth: "55%",
+    data: [
+      { value: 342, itemStyle: { color: "#f97316", borderRadius: [0,3,3,0] } },
+      { value: 128, itemStyle: { color: "#ef4444", borderRadius: [0,3,3,0] } },
+      { value: 56, itemStyle: { color: "#dc2626", borderRadius: [0,3,3,0] } },
+      { value: 89, itemStyle: { color: "#f59e0b", borderRadius: [0,3,3,0] } }
+    ],
+    label: { show: true, position: "right", color: "#cbd5e1", fontSize: 11 }
+  }]
+}));
 
-    // ========== 8. 供应链风险预警矩阵（散点图） ==========
-    chartRisk.setOption({
-      ...darkTheme,
-      tooltip: {
-        trigger: 'item',
-        formatter: p => `${p.data[3]}<br/>概率: ${p.data[0]}<br/>影响度: ${p.data[1]}<br/>损失: ${p.data[2]}万`
-      },
-      grid: { left: 10, right: 10, top: 10, bottom: 24, containLabel: true },
-      xAxis: {
-        type: 'value', min: 0, max: 10, name: '发生概率', nameTextStyle: { color: '#94a3b8', fontSize: 11 },
-        axisLabel: { color: '#94a3b8', fontSize: 11 },
-        splitLine: { lineStyle: { color: 'rgba(148,163,184,0.1)' } }
-      },
-      yAxis: {
-        type: 'value', min: 0, max: 10, name: '影响度', nameTextStyle: { color: '#94a3b8', fontSize: 11 },
-        axisLabel: { color: '#94a3b8', fontSize: 11 },
-        splitLine: { lineStyle: { color: 'rgba(148,163,184,0.1)' } }
-      },
-      series: [{
-        type: 'scatter',
-        symbolSize: d => Math.max(8, d[2] / 10000),
-        data: [
-          [8.5, 9.0, 850000, '供应商断供'],
-          [7.2, 8.5, 620000, '港口拥堵'],
-          [6.0, 7.5, 480000, '运力不足'],
-          [5.5, 6.0, 350000, '天气灾害'],
-          [4.0, 5.5, 220000, '设备故障'],
-          [3.5, 4.0, 150000, '人员短缺'],
-          [2.0, 3.0, 80000, '系统故障'],
-          [6.5, 5.0, 280000, '政策变化'],
-          [7.8, 4.5, 310000, '汇率波动'],
-          [4.5, 8.0, 550000, '原材料涨价']
-        ],
-        itemStyle: {
-          color: p => {
-            const v = p.data[0] * p.data[1];
-            if (v > 60) return '#ef4444';
-            if (v > 30) return '#f97316';
-            return '#0ea5e9';
-          },
-          shadowBlur: 8,
-          shadowColor: 'rgba(0,0,0,0.4)'
-        },
-        label: { show: true, formatter: p => p.data[3], color: '#cbd5e1', fontSize: 10, position: 'top' }
-      }]
-    });
+/* ── Chart 4: Warehouse utilization bar ── */
+var chartWarehouse = echarts.init(document.getElementById("chart-warehouse"));
+chartWarehouse.setOption(Object.assign({}, darkTheme, {
+  tooltip: { trigger: "axis", axisPointer: { type: "shadow" }, backgroundColor: "rgba(10,14,26,0.95)", borderColor: "rgba(14,165,233,0.30)", textStyle: { color: "#e2e8f0" } },
+  grid: { left: 48, right: 16, top: 16, bottom: 32, containLabel: true },
+  xAxis: { type: "category", data: ["华东仓","华南仓","华北仓","西南仓","华中仓","东北仓"],
+    axisLine: { lineStyle: { color: "rgba(14,165,233,0.20)" } },
+    axisLabel: { color: "#94a3b8", fontSize: 11 }, splitLine: { show: false } },
+  yAxis: { type: "value", max: 100,
+    axisLabel: { color: "#94a3b8", fontSize: 11, formatter: "{value}%" },
+    axisLine: { show: false },
+    splitLine: { lineStyle: { color: "rgba(14,165,233,0.08)" } },
+    nameTextStyle: { color: "#94a3b8" } },
+  series: [{
+    type: "bar", barWidth: "50%",
+    data: [
+      { value: 92, itemStyle: { color: "#ef4444", borderRadius: [3,3,0,0] } },
+      { value: 85, itemStyle: { color: "#f97316", borderRadius: [3,3,0,0] } },
+      { value: 78, itemStyle: { color: "#0ea5e9", borderRadius: [3,3,0,0] } },
+      { value: 72, itemStyle: { color: "#0ea5e9", borderRadius: [3,3,0,0] } },
+      { value: 68, itemStyle: { color: "#22c55e", borderRadius: [3,3,0,0] } },
+      { value: 55, itemStyle: { color: "#22c55e", borderRadius: [3,3,0,0] } }
+    ],
+    label: { show: true, position: "top", color: "#cbd5e1", fontSize: 11, formatter: "{c}%" }
+  }]
+}));
 
-    // ========== Resize 监听 ==========
-    window.addEventListener('resize', () => {
-      charts.forEach(c => c.resize());
-    });
-  </script>
+/* ── Chart 5: Last-mile horizontal bar ── */
+var chartLastmile = echarts.init(document.getElementById("chart-lastmile"));
+chartLastmile.setOption(Object.assign({}, darkTheme, {
+  tooltip: { trigger: "axis", axisPointer: { type: "shadow" }, backgroundColor: "rgba(10,14,26,0.95)", borderColor: "rgba(14,165,233,0.30)", textStyle: { color: "#e2e8f0" } },
+  grid: { left: 48, right: 24, top: 12, bottom: 12, containLabel: true },
+  xAxis: { type: "value",
+    axisLabel: { color: "#94a3b8", fontSize: 11, formatter: "{value}%" },
+    axisLine: { show: false },
+    splitLine: { lineStyle: { color: "rgba(14,165,233,0.08)" } } },
+  yAxis: { type: "category", data: ["当天达","次日达","2-3日","3日+"],
+    axisLabel: { color: "#cbd5e1", fontSize: 12 },
+    axisLine: { show: false }, axisTick: { show: false } },
+  series: [{
+    type: "bar", barWidth: "55%",
+    data: [
+      { value: 28, itemStyle: { color: "#22c55e", borderRadius: [0,3,3,0] } },
+      { value: 45, itemStyle: { color: "#0ea5e9", borderRadius: [0,3,3,0] } },
+      { value: 20, itemStyle: { color: "#f97316", borderRadius: [0,3,3,0] } },
+      { value: 7, itemStyle: { color: "#ef4444", borderRadius: [0,3,3,0] } }
+    ],
+    label: { show: true, position: "right", color: "#cbd5e1", fontSize: 11, formatter: "{c}%" }
+  }]
+}));
+
+/* ── Chart 6: Satisfaction gauge ── */
+var chartSatisfaction = echarts.init(document.getElementById("chart-satisfaction"));
+chartSatisfaction.setOption(Object.assign({}, darkTheme, {
+  series: [{
+    type: "gauge",
+    startAngle: 200, endAngle: -20,
+    min: 0, max: 100,
+    radius: "90%",
+    center: ["50%","55%"],
+    splitNumber: 10,
+    axisLine: {
+      lineStyle: {
+        width: 10,
+        color: [
+          [0.6, "#ef4444"],
+          [0.8, "#f97316"],
+          [0.9, "#0ea5e9"],
+          [1, "#22c55e"]
+        ]
+      }
+    },
+    pointer: { length: "55%", width: 4, itemStyle: { color: "#0ea5e9" } },
+    axisTick: { distance: -10, length: 4, lineStyle: { color: "#fff", width: 1 } },
+    splitLine: { distance: -10, length: 10, lineStyle: { color: "#fff", width: 2 } },
+    axisLabel: { color: "#94a3b8", distance: 16, fontSize: 10 },
+    anchor: { show: true, size: 12, itemStyle: { color: "#0ea5e9" } },
+    title: { show: true, offsetCenter: [0,"70%"], fontSize: 12, color: "#94a3b8" },
+    detail: {
+      valueAnimation: true, fontSize: 24, fontWeight: 700,
+      offsetCenter: [0,"30%"], formatter: "{value}",
+      color: "#22c55e"
+    },
+    data: [{ value: 96.8, name: "满意度评分" }]
+  }]
+}));
+
+/* ── Resize ── */
+var allCharts = [chartTrend, chartTransport, chartAbnormal, chartWarehouse, chartLastmile, chartSatisfaction];
+window.addEventListener("resize", function() {
+  allCharts.forEach(function(c) { c.resize(); });
+});
+</script>
 </body>
 </html>

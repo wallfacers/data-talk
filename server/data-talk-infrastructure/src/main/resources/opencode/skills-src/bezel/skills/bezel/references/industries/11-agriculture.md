@@ -5,20 +5,12 @@
 - **分析维度**: 土壤墒情监测(湿度/温度/pH 三仪表), 气象数据组合(温度/降雨/光照), 农场 GIS 地图(作物分布), 作物长势趋势(NDVI 近30天), 农产品价格走势, 积温积雨累积曲线, 病虫害预警等级, 灌溉用水效率
 - **典型用户**: 农场主, 农业技术员, 气象局, 农业局
 
-## 视觉签名
-- Primary color `#f59e0b` (amber/gold) / Secondary color `#22c55e` (green) / Accent `#8b5cf6` (purple) / Background `#1a1209`
-- Sun glow: radial-gradient ellipse top-center, animated pulse
-- SVG cross texture background (6% white opacity)
-- Panel title: 3px left bar with `--accent` CSS variable per panel
-- KPI cards: icon badges with colored borders (green/gold/purple/red)
-- Story bar: gradient green-gold bg
-- ECharts theme: transparent bg, `rgba(255,255,255,0.7)` text, `rgba(255,255,255,0.1)` axes
+## 风格与颜色覆盖
 
-## 推荐布局骨架
-- Header: 56px — gradient gold-green title + clock
-- KPI row: 4 cards, 90px
-- Story bar: ~30px insight strip
-- Body: 3 columns 25% / 50% / 25%
+- **映射风格:** Terrain (`references/styles/terrain.md`)
+- `--bezel-bg-app`: `#1a1209`
+- `--bezel-accent-primary`: `#f59e0b` (amber)
+- `--bezel-accent-secondary`: `#22c55e` (green)
 
 ## 典型 widget pattern（7 个）
 

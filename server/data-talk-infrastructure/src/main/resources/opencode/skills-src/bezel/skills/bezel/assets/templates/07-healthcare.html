@@ -1,651 +1,610 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>医疗健康大数据中心</title>
-  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body {
-      width: 100vw; height: 100vh;
-      background: #0f172a;
-      font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-      color: #e2e8f0;
-      overflow: hidden;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'none';
+               script-src https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js 'unsafe-inline';
+               style-src 'unsafe-inline';
+               img-src data: https: blob:;
+               font-src https://cdn.jsdelivr.net/;
+               connect-src __BEZEL_SERVER_ORIGIN__;
+               frame-ancestors 'self';
+               base-uri 'none';
+               form-action 'none'">
+<meta name="__JSON_HASH__" content="sha256:placeholder">
+<title>医疗健康大数据中心</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+:root {
+  /* Color palette -- Organic healthcare emerald */
+  --bezel-bg-app: #0f172a;
+  --bezel-bg-rgb: 15,23,42;
+  --bezel-accent-primary: #10b981;
+  --bezel-accent-secondary: #3b82f6;
+  --bezel-accent-primary-rgb: 16,185,129;
+  --bezel-accent-secondary-rgb: 59,130,246;
+  --bezel-text-strong: #e2e8f0;
+  --bezel-text-muted: #94a3b8;
+  --bezel-font-stack: 'PingFang SC','Microsoft YaHei',sans-serif;
 
-    /* 顶部标题栏 */
-    .header {
-      height: 64px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 24px;
-      background: linear-gradient(180deg, rgba(15,23,42,0.95), rgba(15,23,42,0.7));
-      border-bottom: 1px solid rgba(59,130,246,0.15);
-      position: relative;
-    }
-    .header-left { display: flex; align-items: center; gap: 12px; }
-    .header-left .cross-badge {
-      width: 36px; height: 36px;
-      position: relative;
-    }
-    .header-left .cross-badge::before,
-    .header-left .cross-badge::after {
-      content: '';
-      position: absolute;
-      background: #10b981;
-      border-radius: 2px;
-    }
-    .header-left .cross-badge::before { width: 10px; height: 32px; left: 13px; top: 2px; }
-    .header-left .cross-badge::after { width: 32px; height: 10px; left: 2px; top: 13px; }
-    .header-title {
-      font-size: 22px;
-      font-weight: 700;
-      letter-spacing: 2px;
-      background: linear-gradient(90deg, #10b981, #3b82f6);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .header-time {
-      font-size: 14px;
-      color: #94a3b8;
-      letter-spacing: 1px;
-    }
+  /* Card tokens */
+  --card-radius: 18px;
+  --card-bg: rgba(15,23,42,0.40);
+  --card-border: 1px solid rgba(16,185,129,0.12);
+  --card-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.06);
+  --card-padding: 20px;
+  --card-blur: 14px;
 
-    /* 心率线装饰 */
-    .heartbeat-line {
-      position: absolute;
-      bottom: 0; left: 0; right: 0;
-      height: 40px;
-      overflow: hidden;
-      pointer-events: none;
-    }
-    .heartbeat-line svg {
-      width: 200%; height: 100%;
-      animation: heartbeatMove 8s linear infinite;
-    }
-    .heartbeat-line path {
-      fill: none;
-      stroke: #10b981;
-      stroke-width: 1.5;
-      stroke-dasharray: 1200;
-      stroke-dashoffset: 1200;
-      animation: heartbeatDraw 3s ease-in-out infinite;
-      opacity: 0.5;
-    }
-    @keyframes heartbeatMove {
-      0% { transform: translateX(0); }
-      100% { transform: translateX(-50%); }
-    }
-    @keyframes heartbeatDraw {
-      0% { stroke-dashoffset: 1200; }
-      50% { stroke-dashoffset: 0; }
-      100% { stroke-dashoffset: -1200; }
-    }
+  /* Motion tokens */
+  --motion-duration: 500ms;
+  --motion-easing: cubic-bezier(0.25,0.1,0.25,1);
+  --motion-ambient: breathing 6s ease-in-out infinite;
+}
 
-    /* KPI 胶囊区 */
-    .kpi-bar {
-      display: flex;
-      gap: 16px;
-      padding: 16px 24px;
-      justify-content: space-between;
-    }
-    .kpi-pill {
-      flex: 1;
-      background: rgba(30,41,59,0.7);
-      border: 1px solid rgba(59,130,246,0.1);
-      border-radius: 16px;
-      padding: 14px 20px;
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      transition: all 0.3s ease;
-      backdrop-filter: blur(8px);
-    }
-    .kpi-pill:hover {
-      box-shadow: 0 8px 24px rgba(16,185,129,0.08);
-      border-color: rgba(16,185,129,0.25);
-      transform: translateY(-2px);
-    }
-    .kpi-icon {
-      width: 44px; height: 44px;
-      border-radius: 12px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 20px;
-    }
-    .kpi-icon.green { background: rgba(16,185,129,0.12); color: #10b981; }
-    .kpi-icon.blue { background: rgba(59,130,246,0.12); color: #3b82f6; }
-    .kpi-icon.yellow { background: rgba(245,158,11,0.12); color: #f59e0b; }
-    .kpi-icon.red { background: rgba(239,68,68,0.12); color: #ef4444; }
-    .kpi-body { flex: 1; }
-    .kpi-label { font-size: 12px; color: #94a3b8; margin-bottom: 4px; }
-    .kpi-value-row { display: flex; align-items: baseline; gap: 8px; }
-    .kpi-value { font-size: 24px; font-weight: 700; color: #f1f5f9; }
-    .kpi-unit { font-size: 13px; color: #64748b; }
-    .kpi-trend { font-size: 12px; font-weight: 600; }
-    .kpi-trend.up { color: #10b981; }
-    .kpi-trend.down { color: #ef4444; }
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration: 0ms;
+    --motion-ambient: none;
+  }
+}
 
-    /* 主体网格 */
-    .main-grid {
-      display: grid;
-      grid-template-columns: 30% 40% 30%;
-      gap: 16px;
-      padding: 0 24px 16px;
-      height: calc(100vh - 64px - 90px);
-    }
-    .col { display: flex; flex-direction: column; gap: 16px; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+  width: 100%; height: 100%; overflow: hidden;
+  font-family: var(--bezel-font-stack);
+  color: var(--bezel-text-strong);
+  background: var(--bezel-bg-app);
+}
 
-    /* 卡片 */
-    .card {
-      background: rgba(30,41,59,0.5);
-      border: 1px solid rgba(59,130,246,0.08);
-      border-radius: 16px;
-      padding: 16px;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      transition: all 0.3s ease;
-      position: relative;
-      overflow: hidden;
-    }
-    .card:hover {
-      box-shadow: 0 4px 20px rgba(16,185,129,0.06);
-      border-color: rgba(59,130,246,0.18);
-    }
-    .card-title {
-      font-size: 14px;
-      font-weight: 600;
-      color: #cbd5e1;
-      margin-bottom: 10px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .card-title::before {
-      content: '';
-      width: 4px; height: 16px;
-      border-radius: 2px;
-      background: #10b981;
-    }
-    .card-title.blue::before { background: #3b82f6; }
-    .card-title.yellow::before { background: #f59e0b; }
-    .card-title.red::before { background: #ef4444; }
-    .chart-box { flex: 1; min-height: 0; }
+body {
+  margin: 0; padding: 0;
+  background: linear-gradient(135deg, var(--bezel-bg-app) 0%, rgba(16,185,129,0.08) 50%, var(--bezel-bg-app) 100%);
+}
 
-    /* 慢病漏斗 */
-    .funnel-steps {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      flex: 1;
-      justify-content: center;
-    }
-    .funnel-step {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .funnel-bar-wrap {
-      flex: 1;
-      height: 28px;
-      background: rgba(15,23,42,0.5);
-      border-radius: 6px;
-      overflow: hidden;
-      position: relative;
-    }
-    .funnel-bar {
-      height: 100%;
-      border-radius: 6px;
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      padding-right: 10px;
-      font-size: 12px;
-      font-weight: 600;
-      color: #fff;
-      transition: width 1.2s ease;
-    }
-    .funnel-label {
-      width: 60px;
-      font-size: 12px;
-      color: #94a3b8;
-      text-align: right;
-      flex-shrink: 0;
-    }
-    .funnel-pct {
-      width: 44px;
-      font-size: 13px;
-      font-weight: 700;
-      color: #e2e8f0;
-      text-align: right;
-      flex-shrink: 0;
-    }
+/* Background blobs */
+.bg-blob {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(100px);
+  pointer-events: none;
+  z-index: 0;
+  will-change: transform;
+}
+.blob-1 {
+  width: 60vw; height: 60vw;
+  top: -15vw; left: -10vw;
+  background: radial-gradient(circle, rgba(16,185,129,0.18), transparent 70%);
+  animation: drift1 10s ease-in-out infinite alternate;
+}
+.blob-2 {
+  width: 50vw; height: 50vw;
+  bottom: -10vw; right: -10vw;
+  background: radial-gradient(circle, rgba(59,130,246,0.15), transparent 70%);
+  animation: drift2 12s ease-in-out infinite alternate;
+}
+.blob-3 {
+  width: 35vw; height: 35vw;
+  top: 40%; left: 55%;
+  background: radial-gradient(circle, rgba(16,185,129,0.10), transparent 70%);
+  animation: drift3 14s ease-in-out infinite alternate;
+}
+@keyframes drift1 { to { transform: translate(5vw, 3vw); } }
+@keyframes drift2 { to { transform: translate(-4vw, -5vw); } }
+@keyframes drift3 { to { transform: translate(-3vw, 4vw); } }
+@media (prefers-reduced-motion: reduce) {
+  .bg-blob { animation: none; filter: blur(80px); }
+}
 
-    /* 底部数据故事 */
-    .story-bar {
-      padding: 10px 24px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 13px;
-      color: #64748b;
-      border-top: 1px solid rgba(59,130,246,0.08);
-    }
-    .story-bar .story-highlight {
-      color: #10b981;
-      font-weight: 600;
-    }
-    .story-bar .story-warn {
-      color: #f59e0b;
-      font-weight: 600;
-    }
+/* Dashboard layout -- flex-wrap Organic */
+.dashboard {
+  position: relative;
+  z-index: 1;
+  width: 100vw;
+  height: 100vh;
+  padding: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-content: flex-start;
+  overflow: hidden;
+}
 
-    /* 十字徽章小装饰 */
-    .cross-mini {
-      width: 12px; height: 12px;
-      position: relative;
-      display: inline-block;
-    }
-    .cross-mini::before, .cross-mini::after {
-      content: '';
-      position: absolute;
-      background: currentColor;
-      border-radius: 1px;
-    }
-    .cross-mini::before { width: 4px; height: 12px; left: 4px; top: 0; }
-    .cross-mini::after { width: 12px; height: 4px; left: 0; top: 4px; }
-  </style>
+/* Header */
+.header {
+  width: 100%;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.header h1 {
+  font-size: 20px;
+  font-weight: 400;
+  letter-spacing: 3px;
+  color: var(--bezel-text-strong);
+}
+
+/* Widgets */
+.widget-wide { flex: 2 1 55%; min-width: 300px; }
+.widget-narrow { flex: 1 1 30%; min-width: 200px; }
+.widget-breathe { margin-top: 12px; }
+
+/* Card */
+.card {
+  background: var(--card-bg);
+  border-radius: var(--card-radius);
+  border: 1px solid rgba(16,185,129,0.12);
+  backdrop-filter: blur(var(--card-blur));
+  padding: var(--card-padding);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.06);
+  transition: transform var(--motion-duration) var(--motion-easing),
+              box-shadow var(--motion-duration) var(--motion-easing);
+  height: 100%;
+}
+.card:hover {
+  transform: scale(1.01);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.10), 0 12px 32px rgba(0,0,0,0.10);
+}
+
+.card-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--bezel-text-strong);
+  text-align: left;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+}
+.chart-box { flex: 1; min-height: 0; }
+
+/* Breathing animation */
+@keyframes breathing {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.008); }
+}
+.card-breathe {
+  animation: breathing 6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-breathe { animation: none; }
+}
+
+/* KPI soft cards */
+.kpi-row {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.kpi-soft {
+  background: rgba(15,23,42,0.25);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 120px;
+  flex: 1;
+}
+.kpi-soft .icon {
+  width: 28px; height: 28px;
+  color: var(--bezel-accent-primary);
+  margin-bottom: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+}
+.kpi-soft .value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--bezel-text-strong);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.kpi-soft .label {
+  font-size: 12px;
+  color: var(--bezel-text-muted);
+}
+.kpi-soft .description {
+  font-size: 11px;
+  color: var(--bezel-text-muted);
+  opacity: 0.7;
+  margin-top: 2px;
+}
+
+/* Funnel */
+.funnel-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  justify-content: center;
+}
+.funnel-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.funnel-bar-wrap {
+  flex: 1;
+  height: 28px;
+  background: rgba(15,23,42,0.5);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.funnel-bar {
+  height: 100%;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  transition: width 1.2s var(--motion-easing);
+}
+.funnel-label {
+  width: 60px;
+  font-size: 12px;
+  color: var(--bezel-text-muted);
+  text-align: right;
+  flex-shrink: 0;
+}
+.funnel-pct {
+  width: 44px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--bezel-text-strong);
+  text-align: right;
+  flex-shrink: 0;
+}
+</style>
 </head>
 <body>
-  <!-- 顶部 -->
+<div class="bg-blob blob-1"></div>
+<div class="bg-blob blob-2"></div>
+<div class="bg-blob blob-3"></div>
+
+<div class="dashboard">
+  <!-- Header -->
   <div class="header">
-    <div class="header-left">
-      <div class="cross-badge"></div>
-      <div class="header-title">医疗健康大数据中心</div>
+    <h1>医疗健康大数据中心</h1>
+  </div>
+
+  <!-- KPI soft row -->
+  <div class="kpi-row">
+    <div class="kpi-soft" aria-label="门诊量 2847人每日 同比增长5.2%">
+      <div class="icon">+</div>
+      <div class="value" data-target="2847" data-suffix="人/日">0</div>
+      <div class="label">门诊量</div>
+      <div class="description">同比 +5.2%</div>
     </div>
-    <div class="header-time" id="clock">--</div>
-    <div class="heartbeat-line">
-      <svg viewBox="0 0 1200 40" preserveAspectRatio="none">
-        <path d="M0,20 L100,20 L110,5 L120,35 L130,5 L140,35 L150,20 L300,20 L310,5 L320,35 L330,5 L340,35 L350,20 L500,20 L510,5 L520,35 L530,5 L540,35 L550,20 L700,20 L710,5 L720,35 L730,5 L740,35 L750,20 L900,20 L910,5 L920,35 L930,5 L940,35 L950,20 L1200,20"/>
-      </svg>
+    <div class="kpi-soft" aria-label="住院量 1256床 同比增长2.1%">
+      <div class="icon">H</div>
+      <div class="value" data-target="1256" data-suffix="床">0</div>
+      <div class="label">住院量</div>
+      <div class="description">同比 +2.1%</div>
+    </div>
+    <div class="kpi-soft" aria-label="手术量 86台 同比增长8.3%">
+      <div class="icon">*</div>
+      <div class="value" data-target="86" data-suffix="台">0</div>
+      <div class="label">手术量</div>
+      <div class="description">同比 +8.3%</div>
+    </div>
+    <div class="kpi-soft" aria-label="急救响应时间 4.2分钟 下降0.3分钟">
+      <div class="icon">~</div>
+      <div class="value" data-target="4.2" data-decimal="1" data-suffix="min">0</div>
+      <div class="label">急救响应时间</div>
+      <div class="description">同比下降 0.3min</div>
+    </div>
+    <div class="kpi-soft" aria-label="患者满意度 94.2% 提升1.5个百分点">
+      <div class="icon">^</div>
+      <div class="value" data-target="94.2" data-decimal="1" data-suffix="%">0</div>
+      <div class="label">患者满意度</div>
+      <div class="description">同比 +1.5pp</div>
     </div>
   </div>
 
-  <!-- KPI 胶囊 -->
-  <div class="kpi-bar">
-    <div class="kpi-pill">
-      <div class="kpi-icon green">
-        <span class="cross-mini" style="color:#10b981"></span>
+  <!-- Row 1: wide gauge + narrow dept rank -->
+  <div class="widget-wide card card-breathe">
+    <div class="card-title">床位使用率</div>
+    <div class="chart-box" id="chart-gauge"></div>
+  </div>
+  <div class="widget-narrow card">
+    <div class="card-title">科室门诊量排行 TOP10</div>
+    <div class="chart-box" id="chart-dept-rank"></div>
+  </div>
+
+  <!-- Row 2: wide heatmap + narrow drug -->
+  <div class="widget-wide card">
+    <div class="card-title">科室效率热力图</div>
+    <div class="chart-box" id="chart-heatmap"></div>
+  </div>
+  <div class="widget-narrow card">
+    <div class="card-title">药品耗材 TOP10</div>
+    <div class="chart-box" id="chart-drug"></div>
+  </div>
+
+  <!-- Row 3: wide surgery + narrow satisfaction -->
+  <div class="widget-wide card">
+    <div class="card-title">手术排程日历（本周）</div>
+    <div class="chart-box" id="chart-surgery-cal"></div>
+  </div>
+  <div class="widget-narrow card">
+    <div class="card-title">满意度趋势</div>
+    <div class="chart-box" id="chart-satisfaction"></div>
+  </div>
+
+  <!-- Row 4: wide age + narrow er-wait -->
+  <div class="widget-wide card widget-breathe">
+    <div class="card-title">患者年龄分布</div>
+    <div class="chart-box" id="chart-age"></div>
+  </div>
+  <div class="widget-narrow card">
+    <div class="card-title">急诊分级等候时间</div>
+    <div class="chart-box" id="chart-er-wait"></div>
+  </div>
+
+  <!-- Row 5: wide funnel -->
+  <div class="widget-wide card">
+    <div class="card-title">慢病管理漏斗</div>
+    <div class="funnel-steps" id="funnel-chronic">
+      <div class="funnel-step">
+        <span class="funnel-label">筛查</span>
+        <div class="funnel-bar-wrap"><div class="funnel-bar" style="width:100%;background:#10b981">100%</div></div>
+        <span class="funnel-pct">100%</span>
       </div>
-      <div class="kpi-body">
-        <div class="kpi-label">门诊量</div>
-        <div class="kpi-value-row">
-          <span class="kpi-value" data-target="2847">0</span>
-          <span class="kpi-unit">人/日</span>
-          <span class="kpi-trend up">▲ 5.2%</span>
-        </div>
+      <div class="funnel-step">
+        <span class="funnel-label">确诊</span>
+        <div class="funnel-bar-wrap"><div class="funnel-bar" style="width:78%;background:#34d399">78%</div></div>
+        <span class="funnel-pct">78%</span>
       </div>
-    </div>
-    <div class="kpi-pill">
-      <div class="kpi-icon blue">🏥</div>
-      <div class="kpi-body">
-        <div class="kpi-label">住院量</div>
-        <div class="kpi-value-row">
-          <span class="kpi-value" data-target="1256">0</span>
-          <span class="kpi-unit">床</span>
-          <span class="kpi-trend up">▲ 2.1%</span>
-        </div>
+      <div class="funnel-step">
+        <span class="funnel-label">建档</span>
+        <div class="funnel-bar-wrap"><div class="funnel-bar" style="width:65%;background:#3b82f6">65%</div></div>
+        <span class="funnel-pct">65%</span>
       </div>
-    </div>
-    <div class="kpi-pill">
-      <div class="kpi-icon green">🔬</div>
-      <div class="kpi-body">
-        <div class="kpi-label">手术量</div>
-        <div class="kpi-value-row">
-          <span class="kpi-value" data-target="86">0</span>
-          <span class="kpi-unit">台</span>
-          <span class="kpi-trend up">▲ 8.3%</span>
-        </div>
+      <div class="funnel-step">
+        <span class="funnel-label">随访</span>
+        <div class="funnel-bar-wrap"><div class="funnel-bar" style="width:52%;background:#60a5fa">52%</div></div>
+        <span class="funnel-pct">52%</span>
       </div>
-    </div>
-    <div class="kpi-pill">
-      <div class="kpi-icon yellow">🚑</div>
-      <div class="kpi-body">
-        <div class="kpi-label">急救响应时间</div>
-        <div class="kpi-value-row">
-          <span class="kpi-value" data-target="4.2" data-decimal="1">0</span>
-          <span class="kpi-unit">分钟</span>
-          <span class="kpi-trend down">▼ 0.3min</span>
-        </div>
-      </div>
-    </div>
-    <div class="kpi-pill">
-      <div class="kpi-icon green">😊</div>
-      <div class="kpi-body">
-        <div class="kpi-label">患者满意度</div>
-        <div class="kpi-value-row">
-          <span class="kpi-value" data-target="94.2" data-decimal="1">0</span>
-          <span class="kpi-unit">%</span>
-          <span class="kpi-trend up">▲ 1.5pp</span>
-        </div>
+      <div class="funnel-step">
+        <span class="funnel-label">控制达标</span>
+        <div class="funnel-bar-wrap"><div class="funnel-bar" style="width:38%;background:#f59e0b">38%</div></div>
+        <span class="funnel-pct">38%</span>
       </div>
     </div>
   </div>
+</div>
 
-  <!-- 主体 -->
-  <div class="main-grid">
-    <!-- 左列 -->
-    <div class="col">
-      <div class="card">
-        <div class="card-title">科室门诊量排行 TOP10</div>
-        <div class="chart-box" id="chart-dept-rank"></div>
-      </div>
-      <div class="card">
-        <div class="card-title blue">药品耗材 TOP10</div>
-        <div class="chart-box" id="chart-drug"></div>
-      </div>
-      <div class="card">
-        <div class="card-title yellow">患者年龄分布</div>
-        <div class="chart-box" id="chart-age"></div>
-      </div>
-    </div>
+<script>
+/* ==================== BEZEL CONFIG ==================== */
+window.__BEZEL_CONFIG__ = {
+  dashboardId: "07-healthcare",
+  style: "organic",
+  refreshInterval: 30000,
+  widgets: [
+    { id: "gauge", type: "gauge" },
+    { id: "dept-rank", type: "bar" },
+    { id: "heatmap", type: "heatmap" },
+    { id: "drug", type: "bar" },
+    { id: "surgery-cal", type: "bar" },
+    { id: "satisfaction", type: "line" },
+    { id: "age", type: "bar" },
+    { id: "er-wait", type: "bar" }
+  ]
+};
 
-    <!-- 中列 -->
-    <div class="col">
-      <div class="card">
-        <div class="card-title">床位使用率</div>
-        <div class="chart-box" id="chart-gauge"></div>
-      </div>
-      <div class="card">
-        <div class="card-title blue">科室效率热力图</div>
-        <div class="chart-box" id="chart-heatmap"></div>
-      </div>
-      <div class="card">
-        <div class="card-title">手术排程日历（本周）</div>
-        <div class="chart-box" id="chart-surgery-cal"></div>
-      </div>
-    </div>
-
-    <!-- 右列 -->
-    <div class="col">
-      <div class="card">
-        <div class="card-title">满意度趋势</div>
-        <div class="chart-box" id="chart-satisfaction"></div>
-      </div>
-      <div class="card">
-        <div class="card-title red">急诊分级等候时间</div>
-        <div class="chart-box" id="chart-er-wait"></div>
-      </div>
-      <div class="card">
-        <div class="card-title">慢病管理漏斗</div>
-        <div class="funnel-steps" id="funnel-chronic">
-          <div class="funnel-step">
-            <span class="funnel-label">筛查</span>
-            <div class="funnel-bar-wrap"><div class="funnel-bar" style="width:100%;background:#10b981">100%</div></div>
-            <span class="funnel-pct">100%</span>
-          </div>
-          <div class="funnel-step">
-            <span class="funnel-label">确诊</span>
-            <div class="funnel-bar-wrap"><div class="funnel-bar" style="width:78%;background:#34d399">78%</div></div>
-            <span class="funnel-pct">78%</span>
-          </div>
-          <div class="funnel-step">
-            <span class="funnel-label">建档</span>
-            <div class="funnel-bar-wrap"><div class="funnel-bar" style="width:65%;background:#3b82f6">65%</div></div>
-            <span class="funnel-pct">65%</span>
-          </div>
-          <div class="funnel-step">
-            <span class="funnel-label">随访</span>
-            <div class="funnel-bar-wrap"><div class="funnel-bar" style="width:52%;background:#60a5fa">52%</div></div>
-            <span class="funnel-pct">52%</span>
-          </div>
-          <div class="funnel-step">
-            <span class="funnel-label">控制达标</span>
-            <div class="funnel-bar-wrap"><div class="funnel-bar" style="width:38%;background:#f59e0b">38%</div></div>
-            <span class="funnel-pct">38%</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 底部数据故事 -->
-  <div class="story-bar">
-    <span class="cross-mini" style="color:#10b981"></span>
-    <span>数据洞察：</span>
-    <span>门诊量 <span class="story-highlight">2,847</span> 人/日，床位使用率 <span class="story-highlight">87%</span>，急救响应 <span class="story-highlight">4.2</span> 分钟，但</span>
-    <span class="story-warn">三级候诊偏长</span>
-    <span>，建议优化分诊流程。</span>
-  </div>
-
-  <script>
-    // 实时时钟
-    function updateClock() {
-      const now = new Date();
-      const y = now.getFullYear();
-      const m = String(now.getMonth()+1).padStart(2,'0');
-      const d = String(now.getDate()).padStart(2,'0');
-      const h = String(now.getHours()).padStart(2,'0');
-      const min = String(now.getMinutes()).padStart(2,'0');
-      const s = String(now.getSeconds()).padStart(2,'0');
-      document.getElementById('clock').textContent = `${y}-${m}-${d} ${h}:${min}:${s}`;
-    }
-    updateClock();
-    setInterval(updateClock, 1000);
-
-    // KPI 数字滚动
-    function animateKPIs() {
-      document.querySelectorAll('.kpi-value').forEach(el => {
-        const target = parseFloat(el.dataset.target);
-        const decimal = parseInt(el.dataset.decimal || '0');
-        const duration = 1500;
-        const start = performance.now();
-        function tick(now) {
-          const p = Math.min((now - start) / duration, 1);
-          const ease = 1 - Math.pow(1 - p, 3);
-          const val = target * ease;
-          el.textContent = decimal > 0 ? val.toFixed(decimal) : Math.round(val).toLocaleString();
-          if (p < 1) requestAnimationFrame(tick);
-        }
-        requestAnimationFrame(tick);
-      });
-    }
-    animateKPIs();
-
-    // ECharts 暗色主题色板
-    const darkTheme = {
-      bg: 'transparent',
-      text: '#cbd5e1',
-      textDim: '#64748b',
-      grid: 'rgba(59,130,246,0.06)',
-      colors: ['#10b981','#3b82f6','#f59e0b','#ef4444','#8b5cf6','#06b6d4']
-    };
-
-    const charts = {};
-
-    // 1. 床位 occupancy 大仪表盘
-    charts.gauge = echarts.init(document.getElementById('chart-gauge'));
-    charts.gauge.setOption({
-      series: [{
-        type: 'gauge',
-        radius: '90%',
-        startAngle: 210,
-        endAngle: -30,
-        min: 0,
-        max: 100,
-        splitNumber: 10,
-        axisLine: {
-          lineStyle: {
-            width: 18,
-            color: [
-              [0.6, '#ef4444'],
-              [0.8, '#f59e0b'],
-              [1, '#10b981']
-            ]
-          }
-        },
-        pointer: { length: '65%', width: 5, itemStyle: { color: '#10b981' } },
-        axisTick: { distance: -22, length: 6, lineStyle: { color: '#fff', width: 1 } },
-        splitLine: { distance: -24, length: 12, lineStyle: { color: '#fff', width: 2 } },
-        axisLabel: { color: '#94a3b8', distance: 8, fontSize: 10 },
-        detail: {
-          valueAnimation: true,
-          formatter: '{value}%',
-          color: '#f1f5f9',
-          fontSize: 36,
-          fontWeight: 700,
-          offsetCenter: [0, '60%']
-        },
-        data: [{ value: 87 }],
-        title: { offsetCenter: [0, '85%'], fontSize: 12, color: '#94a3b8' }
-      }]
+/* ==================== POLLING SCHEDULER ==================== */
+(function() {
+  var cfg = window.__BEZEL_CONFIG__;
+  var interval = cfg.refreshInterval || 30000;
+  function poll() {
+    cfg.widgets.forEach(function(w) {
+      var url = "/api/dashboards/" + cfg.dashboardId + "/widgets/" + w.id + "/data";
+      fetch(url).then(function(r) { return r.json(); }).then(function(data) {
+        window.dispatchEvent(new CustomEvent("bezel:data:" + w.id, { detail: data }));
+      }).catch(function() {});
     });
+  }
+  setInterval(poll, interval);
+})();
 
-    // 2. 科室效率热力图
-    const depts = ['内科','外科','儿科','妇产科','骨科','眼科','口腔科','皮肤科'];
-    const hours = Array.from({length:24},(_,i)=>i+'时');
-    const heatData = [];
-    for(let i=0;i<depts.length;i++){
-      for(let j=0;j<24;j++){
-        let v = Math.floor(Math.random()*40)+5;
-        if(j>=8&&j<=11) v += 25;
-        if(j>=14&&j<=16) v += 15;
-        heatData.push([j,i,v]);
+/* ==================== KPI COUNT-UP ==================== */
+function countUp(el, target, duration) {
+  duration = duration || 1500;
+  var decimal = parseInt(el.dataset.decimal || '0', 10);
+  var suffix = el.dataset.suffix || '';
+  var start = 0;
+  var startTime = null;
+  function tick(ts) {
+    if (!startTime) startTime = ts;
+    var p = Math.min((ts - startTime) / duration, 1);
+    var ease = 1 - Math.pow(1 - p, 3);
+    el.textContent = (decimal > 0 ? (target * ease).toFixed(decimal) : Math.round(target * ease).toLocaleString()) + suffix;
+    if (p < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+document.querySelectorAll('.kpi-soft .value').forEach(function(el) {
+  var target = parseFloat(el.dataset.target);
+  countUp(el, target, 1500);
+});
+
+/* ==================== ECHARTS ==================== */
+var darkTheme = {
+  backgroundColor: 'transparent',
+  textStyle: { fontFamily: "'PingFang SC','Microsoft YaHei',sans-serif", color: '#cbd5e1' },
+  tooltip: { backgroundColor: 'rgba(15,23,42,0.92)', borderColor: 'rgba(16,185,129,0.20)', textStyle: { color: '#e2e8f0' } }
+};
+
+function makeChart(dom, option) {
+  var chart = echarts.init(dom, null, { renderer: 'canvas' });
+  chart.setOption(Object.assign({}, darkTheme, option));
+  return chart;
+}
+
+var charts = {};
+
+/* 1. Bed occupancy gauge */
+charts.gauge = makeChart(document.getElementById('chart-gauge'), {
+  series: [{
+    type: 'gauge',
+    radius: '90%',
+    startAngle: 210,
+    endAngle: -30,
+    min: 0, max: 100,
+    splitNumber: 10,
+    axisLine: {
+      lineStyle: {
+        width: 18,
+        color: [[0.6, '#ef4444'], [0.8, '#f59e0b'], [1, '#10b981']]
       }
-    }
-    charts.heatmap = echarts.init(document.getElementById('chart-heatmap'));
-    charts.heatmap.setOption({
-      tooltip: { position: 'top' },
-      grid: { top: 8, bottom: 24, left: 60, right: 8 },
-      xAxis: { type: 'category', data: hours, splitArea: { show: true, areaStyle:{color:['rgba(30,41,59,0.3)','rgba(30,41,59,0.5)']} }, axisLabel:{color:'#94a3b8',fontSize:10}, axisLine:{lineStyle:{color:'rgba(59,130,246,0.1)'}} },
-      yAxis: { type: 'category', data: depts, splitArea: { show: true }, axisLabel:{color:'#94a3b8',fontSize:10}, axisLine:{lineStyle:{color:'rgba(59,130,246,0.1)'}} },
-      visualMap: { min: 0, max: 70, calculable: false, orient: 'horizontal', left: 'center', bottom: 0, itemWidth: 10, itemHeight: 80, textStyle:{color:'#94a3b8',fontSize:10}, inRange:{color:['#0f172a','#10b981','#f59e0b','#ef4444']} },
-      series: [{ name: '候诊人数', type: 'heatmap', data: heatData, label:{show:false}, itemStyle:{borderColor:'rgba(15,23,42,0.5)',borderWidth:1}, emphasis:{itemStyle:{shadowBlur:10,shadowColor:'rgba(0,0,0,0.5)'}}}]
-    });
+    },
+    pointer: { length: '65%', width: 5, itemStyle: { color: '#10b981' } },
+    axisTick: { distance: -22, length: 6, lineStyle: { color: '#fff', width: 1 } },
+    splitLine: { distance: -24, length: 12, lineStyle: { color: '#fff', width: 2 } },
+    axisLabel: { color: '#94a3b8', distance: 8, fontSize: 10 },
+    detail: {
+      valueAnimation: true, formatter: '{value}%',
+      color: '#f1f5f9', fontSize: 36, fontWeight: 700,
+      offsetCenter: [0, '60%']
+    },
+    data: [{ value: 87 }],
+    title: { offsetCenter: [0, '85%'], fontSize: 12, color: '#94a3b8' }
+  }]
+});
 
-    // 3. 科室门诊量排行 TOP10
-    const deptRankData = [
-      {name:'内科',value:482},{name:'外科',value:421},{name:'儿科',value:395},
-      {name:'妇产科',value:356},{name:'骨科',value:312},{name:'眼科',value:278},
-      {name:'口腔科',value:245},{name:'皮肤科',value:218},{name:'耳鼻喉科',value:186},{name:'中医科',value:154}
-    ].reverse();
-    charts.deptRank = echarts.init(document.getElementById('chart-dept-rank'));
-    charts.deptRank.setOption({
-      grid: { top: 8, bottom: 8, left: 72, right: 32 },
-      xAxis: { type: 'value', splitLine:{lineStyle:{color:darkTheme.grid}}, axisLabel:{color:'#64748b',fontSize:10} },
-      yAxis: { type: 'category', data: deptRankData.map(d=>d.name), axisLabel:{color:'#cbd5e1',fontSize:11}, axisLine:{show:false}, axisTick:{show:false} },
-      series: [{
-        type: 'bar',
-        data: deptRankData.map(d=>d.value),
-        barWidth: 14,
-        itemStyle: { borderRadius: [0,7,7,0], color: new echarts.graphic.LinearGradient(0,0,1,0,[{offset:0,color:'#10b981'},{offset:1,color:'#34d399'}]) },
-        label: { show: true, position: 'right', color: '#94a3b8', fontSize: 11, formatter:'{c}' }
-      }]
-    });
+/* 2. Dept rank TOP10 */
+var deptRankData = [
+  {name:'内科',value:482},{name:'外科',value:421},{name:'儿科',value:395},
+  {name:'妇产科',value:356},{name:'骨科',value:312},{name:'眼科',value:278},
+  {name:'口腔科',value:245},{name:'皮肤科',value:218},{name:'耳鼻喉科',value:186},{name:'中医科',value:154}
+].reverse();
+charts.deptRank = makeChart(document.getElementById('chart-dept-rank'), {
+  grid: { top: 8, bottom: 8, left: 72, right: 32 },
+  xAxis: { type: 'value', splitLine: { lineStyle: { color: 'rgba(59,130,246,0.06)' } }, axisLabel: { color: '#64748b', fontSize: 10 } },
+  yAxis: { type: 'category', data: deptRankData.map(function(d){return d.name}), axisLabel: { color: '#cbd5e1', fontSize: 11 }, axisLine: { show: false }, axisTick: { show: false } },
+  series: [{
+    type: 'bar', data: deptRankData.map(function(d){return d.value}), barWidth: 14,
+    itemStyle: { borderRadius: [0,7,7,0], color: new echarts.graphic.LinearGradient(0,0,1,0,[{offset:0,color:'#10b981'},{offset:1,color:'#34d399'}]) },
+    label: { show: true, position: 'right', color: '#94a3b8', fontSize: 11, formatter: '{c}' }
+  }]
+});
 
-    // 4. 药品耗材 TOP10
-    const drugData = [
-      {name:'注射用头孢',value:1280},{name:'氯化钠注射液',value:1156},{name:'葡萄糖注射液',value:1024},
-      {name:'阿莫西林胶囊',value:968},{name:'布洛芬缓释片',value:872},{name:'奥美拉唑肠溶',value:798},
-      {name:'二甲双胍片',value:756},{name:'氨氯地平片',value:712},{name:'阿司匹林肠溶',value:680},{name:'胰岛素',value:624}
-    ].reverse();
-    charts.drug = echarts.init(document.getElementById('chart-drug'));
-    charts.drug.setOption({
-      grid: { top: 8, bottom: 8, left: 90, right: 32 },
-      xAxis: { type: 'value', splitLine:{lineStyle:{color:darkTheme.grid}}, axisLabel:{color:'#64748b',fontSize:10} },
-      yAxis: { type: 'category', data: drugData.map(d=>d.name), axisLabel:{color:'#cbd5e1',fontSize:11}, axisLine:{show:false}, axisTick:{show:false} },
-      series: [{
-        type: 'bar',
-        data: drugData.map(d=>d.value),
-        barWidth: 14,
-        itemStyle: { borderRadius: [0,7,7,0], color: new echarts.graphic.LinearGradient(0,0,1,0,[{offset:0,color:'#3b82f6'},{offset:1,color:'#60a5fa'}]) },
-        label: { show: true, position: 'right', color: '#94a3b8', fontSize: 11, formatter:'{c}' }
-      }]
-    });
+/* 3. Dept efficiency heatmap */
+var depts = ['内科','外科','儿科','妇产科','骨科','眼科','口腔科','皮肤科'];
+var hours = []; for(var hi=0;hi<24;hi++) hours.push(hi+'时');
+var heatData = [];
+for(var i=0;i<depts.length;i++){
+  for(var j=0;j<24;j++){
+    var v = Math.floor(Math.random()*40)+5;
+    if(j>=8&&j<=11) v += 25;
+    if(j>=14&&j<=16) v += 15;
+    heatData.push([j,i,v]);
+  }
+}
+charts.heatmap = makeChart(document.getElementById('chart-heatmap'), {
+  tooltip: { position: 'top' },
+  grid: { top: 8, bottom: 24, left: 60, right: 8 },
+  xAxis: { type: 'category', data: hours, splitArea: { show: true, areaStyle: { color: ['rgba(15,23,42,0.3)','rgba(15,23,42,0.5)'] } }, axisLabel: { color: '#94a3b8', fontSize: 10 }, axisLine: { lineStyle: { color: 'rgba(59,130,246,0.1)' } } },
+  yAxis: { type: 'category', data: depts, splitArea: { show: true }, axisLabel: { color: '#94a3b8', fontSize: 10 }, axisLine: { lineStyle: { color: 'rgba(59,130,246,0.1)' } } },
+  visualMap: { min: 0, max: 70, calculable: false, orient: 'horizontal', left: 'center', bottom: 0, itemWidth: 10, itemHeight: 80, textStyle: { color: '#94a3b8', fontSize: 10 }, inRange: { color: ['#0f172a','#10b981','#f59e0b','#ef4444'] } },
+  series: [{ name: '候诊人数', type: 'heatmap', data: heatData, label: { show: false }, itemStyle: { borderColor: 'rgba(15,23,42,0.5)', borderWidth: 1 }, emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.5)' } } }]
+});
 
-    // 5. 患者年龄分布
-    charts.age = echarts.init(document.getElementById('chart-age'));
-    charts.age.setOption({
-      grid: { top: 16, bottom: 24, left: 40, right: 16 },
-      xAxis: { type: 'category', data: ['0-18','19-35','36-50','51-65','65+'], axisLabel:{color:'#94a3b8',fontSize:11}, axisLine:{lineStyle:{color:'rgba(59,130,246,0.1)'}}, axisTick:{show:false} },
-      yAxis: { type: 'value', splitLine:{lineStyle:{color:darkTheme.grid}}, axisLabel:{color:'#64748b',fontSize:10} },
-      series: [{
-        type: 'bar',
-        data: [312,486,524,398,267],
-        barWidth: 24,
-        itemStyle: { borderRadius: [6,6,0,0], color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#f59e0b'},{offset:1,color:'#fbbf24'}]) },
-        label: { show: true, position: 'top', color: '#fbbf24', fontSize: 11 }
-      }]
-    });
+/* 4. Drug TOP10 */
+var drugData = [
+  {name:'注射用头孢',value:1280},{name:'氯化钠注射液',value:1156},{name:'葡萄糖注射液',value:1024},
+  {name:'阿莫西林胶囊',value:968},{name:'布洛芬缓释片',value:872},{name:'奥美拉唑肠溶',value:798},
+  {name:'二甲双胍片',value:756},{name:'氨氯地平片',value:712},{name:'阿司匹林肠溶',value:680},{name:'胰岛素',value:624}
+].reverse();
+charts.drug = makeChart(document.getElementById('chart-drug'), {
+  grid: { top: 8, bottom: 8, left: 90, right: 32 },
+  xAxis: { type: 'value', splitLine: { lineStyle: { color: 'rgba(59,130,246,0.06)' } }, axisLabel: { color: '#64748b', fontSize: 10 } },
+  yAxis: { type: 'category', data: drugData.map(function(d){return d.name}), axisLabel: { color: '#cbd5e1', fontSize: 11 }, axisLine: { show: false }, axisTick: { show: false } },
+  series: [{
+    type: 'bar', data: drugData.map(function(d){return d.value}), barWidth: 14,
+    itemStyle: { borderRadius: [0,7,7,0], color: new echarts.graphic.LinearGradient(0,0,1,0,[{offset:0,color:'#3b82f6'},{offset:1,color:'#60a5fa'}]) },
+    label: { show: true, position: 'right', color: '#94a3b8', fontSize: 11, formatter: '{c}' }
+  }]
+});
 
-    // 6. 满意度趋势
-    charts.satisfaction = echarts.init(document.getElementById('chart-satisfaction'));
-    charts.satisfaction.setOption({
-      grid: { top: 16, bottom: 24, left: 40, right: 16 },
-      xAxis: { type: 'category', data: ['Q1','Q2','Q3','Q4'], axisLabel:{color:'#94a3b8',fontSize:11}, axisLine:{lineStyle:{color:'rgba(59,130,246,0.1)'}}, axisTick:{show:false} },
-      yAxis: { type: 'value', min: 85, max: 100, splitLine:{lineStyle:{color:darkTheme.grid}}, axisLabel:{color:'#64748b',fontSize:10,formatter:'{value}%'} },
-      series: [{
-        type: 'line',
-        data: [89.5,91.2,92.7,94.2],
-        smooth: true,
-        symbol: 'circle',
-        symbolSize: 8,
-        lineStyle: { width: 3, color: '#10b981' },
-        itemStyle: { color: '#10b981', borderColor: '#0f172a', borderWidth: 2 },
-        areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(16,185,129,0.25)'},{offset:1,color:'rgba(16,185,129,0.02)'}]) },
-        label: { show: true, position: 'top', color: '#10b981', fontSize: 11, formatter:'{c}%' }
-      }]
-    });
+/* 5. Surgery calendar stacked bar */
+var weekDays = ['周一','周二','周三','周四','周五','周六','周日'];
+charts.surgeryCal = makeChart(document.getElementById('chart-surgery-cal'), {
+  tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+  legend: { data: ['择期手术','急诊手术','微创手术'], textStyle: { color: '#94a3b8', fontSize: 10 }, top: 0, right: 0, itemWidth: 10, itemHeight: 10 },
+  grid: { top: 28, bottom: 20, left: 36, right: 8 },
+  xAxis: { type: 'category', data: weekDays, axisLabel: { color: '#94a3b8', fontSize: 11 }, axisLine: { lineStyle: { color: 'rgba(59,130,246,0.1)' } }, axisTick: { show: false } },
+  yAxis: { type: 'value', splitLine: { lineStyle: { color: 'rgba(59,130,246,0.06)' } }, axisLabel: { color: '#64748b', fontSize: 10 } },
+  series: [
+    { name: '择期手术', type: 'bar', stack: 'total', data: [12,15,18,14,16,8,6], itemStyle: { color: '#3b82f6', borderRadius: [0,0,0,0] } },
+    { name: '急诊手术', type: 'bar', stack: 'total', data: [3,2,4,3,5,6,4], itemStyle: { color: '#ef4444' } },
+    { name: '微创手术', type: 'bar', stack: 'total', data: [5,6,7,5,8,3,2], itemStyle: { color: '#10b981', borderRadius: [4,4,0,0] } }
+  ]
+});
 
-    // 7. 急诊分级等候时间
-    const erLevels = ['五级','四级','三级','二级','一级'];
-    const erColors = ['#3b82f6','#10b981','#f59e0b','#f97316','#ef4444'];
-    const erWaits = [8,18,45,12,3];
-    charts.erWait = echarts.init(document.getElementById('chart-er-wait'));
-    charts.erWait.setOption({
-      grid: { top: 8, bottom: 8, left: 48, right: 48 },
-      xAxis: { type: 'value', splitLine:{lineStyle:{color:darkTheme.grid}}, axisLabel:{color:'#64748b',fontSize:10,formatter:'{value}min'} },
-      yAxis: { type: 'category', data: erLevels, axisLabel:{color:'#cbd5e1',fontSize:11}, axisLine:{show:false}, axisTick:{show:false} },
-      series: [{
-        type: 'bar',
-        data: erWaits.map((v,i)=>({value:v,itemStyle:{color:erColors[i],borderRadius:[0,7,7,0]}})),
-        barWidth: 18,
-        label: { show: true, position: 'right', color: '#94a3b8', fontSize: 11, formatter:'{c} min' }
-      }]
-    });
+/* 6. Satisfaction trend (smooth line) */
+charts.satisfaction = makeChart(document.getElementById('chart-satisfaction'), {
+  grid: { top: 16, bottom: 24, left: 40, right: 16 },
+  xAxis: { type: 'category', data: ['Q1','Q2','Q3','Q4'], axisLabel: { color: '#94a3b8', fontSize: 11 }, axisLine: { lineStyle: { color: 'rgba(59,130,246,0.1)' } }, axisTick: { show: false } },
+  yAxis: { type: 'value', min: 85, max: 100, splitLine: { lineStyle: { color: 'rgba(59,130,246,0.06)' } }, axisLabel: { color: '#64748b', fontSize: 10, formatter: '{value}%' } },
+  series: [{
+    type: 'line', data: [89.5,91.2,92.7,94.2], smooth: true, symbol: 'circle', symbolSize: 6,
+    lineStyle: { width: 2.5, color: '#10b981' },
+    itemStyle: { color: '#10b981', borderColor: '#0f172a', borderWidth: 2 },
+    areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(16,185,129,0.25)'},{offset:1,color:'rgba(16,185,129,0.02)'}]) },
+    label: { show: true, position: 'top', color: '#10b981', fontSize: 11, formatter: '{c}%' }
+  }]
+});
 
-    // 8. 手术排程日历（堆叠柱状）
-    const weekDays = ['周一','周二','周三','周四','周五','周六','周日'];
-    charts.surgeryCal = echarts.init(document.getElementById('chart-surgery-cal'));
-    charts.surgeryCal.setOption({
-      tooltip: { trigger: 'axis', axisPointer:{type:'shadow'} },
-      legend: { data: ['择期手术','急诊手术','微创手术'], textStyle:{color:'#94a3b8',fontSize:10}, top: 0, right: 0, itemWidth:10, itemHeight:10 },
-      grid: { top: 28, bottom: 20, left: 36, right: 8 },
-      xAxis: { type: 'category', data: weekDays, axisLabel:{color:'#94a3b8',fontSize:11}, axisLine:{lineStyle:{color:'rgba(59,130,246,0.1)'}}, axisTick:{show:false} },
-      yAxis: { type: 'value', splitLine:{lineStyle:{color:darkTheme.grid}}, axisLabel:{color:'#64748b',fontSize:10} },
-      series: [
-        { name: '择期手术', type: 'bar', stack: 'total', data: [12,15,18,14,16,8,6], itemStyle:{color:'#3b82f6',borderRadius:[0,0,0,0]} },
-        { name: '急诊手术', type: 'bar', stack: 'total', data: [3,2,4,3,5,6,4], itemStyle:{color:'#ef4444'} },
-        { name: '微创手术', type: 'bar', stack: 'total', data: [5,6,7,5,8,3,2], itemStyle:{color:'#10b981',borderRadius:[4,4,0,0]} }
-      ]
-    });
+/* 7. Patient age distribution */
+charts.age = makeChart(document.getElementById('chart-age'), {
+  grid: { top: 16, bottom: 24, left: 40, right: 16 },
+  xAxis: { type: 'category', data: ['0-18','19-35','36-50','51-65','65+'], axisLabel: { color: '#94a3b8', fontSize: 11 }, axisLine: { lineStyle: { color: 'rgba(59,130,246,0.1)' } }, axisTick: { show: false } },
+  yAxis: { type: 'value', splitLine: { lineStyle: { color: 'rgba(59,130,246,0.06)' } }, axisLabel: { color: '#64748b', fontSize: 10 } },
+  series: [{
+    type: 'bar', data: [312,486,524,398,267], barWidth: 24,
+    itemStyle: { borderRadius: [6,6,0,0], color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#f59e0b'},{offset:1,color:'#fbbf24'}]) },
+    label: { show: true, position: 'top', color: '#fbbf24', fontSize: 11 }
+  }]
+});
 
-    // Resize 监听
-    window.addEventListener('resize', () => {
-      Object.values(charts).forEach(c => c && c.resize());
-    });
+/* 8. ER wait */
+var erLevels = ['五级','四级','三级','二级','一级'];
+var erColors = ['#3b82f6','#10b981','#f59e0b','#f97316','#ef4444'];
+var erWaits = [8,18,45,12,3];
+charts.erWait = makeChart(document.getElementById('chart-er-wait'), {
+  grid: { top: 8, bottom: 8, left: 48, right: 48 },
+  xAxis: { type: 'value', splitLine: { lineStyle: { color: 'rgba(59,130,246,0.06)' } }, axisLabel: { color: '#64748b', fontSize: 10, formatter: '{value}min' } },
+  yAxis: { type: 'category', data: erLevels, axisLabel: { color: '#cbd5e1', fontSize: 11 }, axisLine: { show: false }, axisTick: { show: false } },
+  series: [{
+    type: 'bar',
+    data: erWaits.map(function(v,i){return {value:v,itemStyle:{color:erColors[i],borderRadius:[0,7,7,0]}}}),
+    barWidth: 18,
+    label: { show: true, position: 'right', color: '#94a3b8', fontSize: 11, formatter: '{c} min' }
+  }]
+});
 
-    // 慢病漏斗条动画
-    setTimeout(() => {
-      document.querySelectorAll('.funnel-bar').forEach(bar => {
-        const w = bar.style.width;
-        bar.style.width = '0%';
-        setTimeout(() => { bar.style.width = w; }, 100);
-      });
-    }, 500);
-  </script>
+/* Resize */
+window.addEventListener('resize', function() {
+  Object.keys(charts).forEach(function(k) { if(charts[k]) charts[k].resize(); });
+});
+
+/* Funnel bar animation */
+setTimeout(function() {
+  document.querySelectorAll('.funnel-bar').forEach(function(bar) {
+    var w = bar.style.width;
+    bar.style.width = '0%';
+    setTimeout(function() { bar.style.width = w; }, 100);
+  });
+}, 500);
+</script>
 </body>
 </html>

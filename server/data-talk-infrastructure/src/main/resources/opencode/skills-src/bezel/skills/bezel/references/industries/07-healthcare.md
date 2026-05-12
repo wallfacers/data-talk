@@ -5,20 +5,12 @@
 - **分析维度**: 科室门诊量排行 TOP10, 药品耗材 TOP10, 患者年龄分布, 床位使用率, 科室效率热力图, 手术排程日历, 满意度趋势, 急诊分级等候时间, 慢病管理漏斗
 - **典型用户**: 院长, 医务科主任, 护理部主任, 运营管理
 
-## 视觉签名
-- Primary color `#10b981` (emerald) / Secondary color `#3b82f6` (blue) / Background `#0f172a`
-- Cross badge logo (CSS-only green cross)
-- Heartbeat SVG line animation along header bottom edge
-- KPI pills: rounded 16px, `rgba(30,41,59,0.7)` bg, icon badges (green/blue/yellow/red)
-- Card title left bars: green default, `.blue`, `.yellow`, `.red` variants
-- ECharts theme: transparent bg, `#cbd5e1` text, `#64748b` dim, `#f1f5f9` values
-- Heatmap gradient: `#0f172a -> #10b981 -> #f59e0b -> #ef4444`
+## 风格与颜色覆盖
 
-## 推荐布局骨架
-- Header: 64px — cross badge + title + heartbeat SVG + clock
-- KPI bar: 5 pills with icon badges, ~90px
-- Body: 3-column grid 30% / 40% / 30%
-- Bottom story bar: ~36px insight text
+- **映射风格:** Organic (`references/styles/organic.md`)
+- `--bezel-bg-app`: `#0f172a`
+- `--bezel-accent-primary`: `#10b981` (emerald)
+- `--bezel-accent-secondary`: `#3b82f6` (blue)
 
 ## 典型 widget pattern（7 个）
 

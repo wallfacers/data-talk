@@ -5,23 +5,12 @@
 - **分析维度**: 24h 攻击趋势, 攻击类型分布(玫瑰图), TOP 攻击源国家, 漏洞修复状态(已修复/修复中/待修复), ATT&CK 覆盖矩阵, Kill Chain 漏斗, 系统日志实时流
 - **典型用户**: CISO, SOC 分析师, 安全运维工程师
 
-## 视觉签名
-- Primary color `#00ff41` (terminal green) / Alert color `#ff0040` (red) / Background `#000a00`
-- Matrix rain background (vertical hex character columns, animated)
-- Scan-line overlay (4px repeating gradient, 3% green opacity)
-- Monospace font throughout: `'Courier New', Courier, monospace`
-- Threat alert bar: red bg, blinking "THREAT LEVEL: HIGH"
-- KPI boxes: `rgba(0,10,0,0.7)` bg, `>` prefix decoration
-- Panel headers: `[$]` prefix, green text
-- Log bar: terminal-style scrolling log with `[INFO]`, `[WARN]`, `[ALERT]` levels
-- ECharts: ALL text in monospace, green dim `rgba(0,255,65,0.5)`, green bright `#00ff41`
+## 风格与颜色覆盖
 
-## 推荐布局骨架
-- Threat bar: top alert strip
-- Header: title + subtitle + clock
-- KPI row: 4 boxes
-- Body: 3x2 grid (6 chart panels)
-- Log bar: bottom 5.5rem terminal
+- **映射风格:** Orbital (`references/styles/orbital.md`)
+- `--bezel-bg-app`: `#000a00`
+- `--bezel-accent-primary`: `#00ff41` (terminal green)
+- `--bezel-accent-secondary`: `#ff0040` (red)
 
 ## 典型 widget pattern（6 个）
 

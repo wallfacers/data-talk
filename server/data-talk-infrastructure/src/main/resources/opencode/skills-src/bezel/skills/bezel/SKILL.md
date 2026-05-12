@@ -25,16 +25,16 @@ Two artifacts per request:
 
 ## Reference layout
 
-- `references/design-language.md` — color, typography, spacing, motion tokens
-- `references/data-contract.md` — JSON schema v2 spec + polling protocol + `window.__BEZEL_CONFIG__` contract
-- `references/compile-rules.md` — JSON → HTML assembly algorithm + must-include elements + security constraints
-- `references/patterns-catalog.md` — 12 industry index + pattern selection priority
-- `references/industries/NN-name.md` — per-industry visual signature, layout skeleton, widget recipes, AI trigger cues
-- `assets/templates/NN-name.html` — original visual references (read-only inspiration)
-- `scripts/validate.py` — compile-output self-check; run before promoting
-- `scripts/preview.py` — local JSON + mock-data → HTML preview for debugging
-
-Read `patterns-catalog.md` first to pick the industry, then the per-industry file, then `compile-rules.md` for assembly, then `data-contract.md` to wire the polling layer.
+Read in this order:
+1. `references/patterns-catalog.md` → look up industry + mapped style
+2. `references/styles/<style>.md` → complete visual spec (layout, cards, charts, background, motion)
+3. `references/industries/<industry>.md` → data semantics, KPI list, color overrides, widget recommendations
+4. `references/design-language.md` → base tokens (spacing, typography, naming)
+5. `references/compile-rules.md` → JSON → HTML assembly algorithm
+6. `references/data-contract.md` → JSON schema v2 + polling protocol + `window.__BEZEL_CONFIG__` contract
+7. `assets/templates/NN-name.html` → original visual references (read-only inspiration)
+8. `scripts/validate.py` → compile-output self-check; run before promoting
+9. `scripts/preview.py` → local JSON + mock-data → HTML preview for debugging
 
 ## Key invariants
 
