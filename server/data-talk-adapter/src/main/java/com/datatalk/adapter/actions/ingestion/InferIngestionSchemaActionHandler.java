@@ -48,7 +48,7 @@ public class InferIngestionSchemaActionHandler implements ActionHandler<Map, Map
     public Map<String, Object> outputSchema() {
         return Map.of(
             "type", "object",
-            "required", List.of("mappingId", "columns", "rowsAnalyzed"),
+            "required", List.of("columns", "rowsAnalyzed"),
             "properties", Map.of(
                 "mappingId", Map.of("type", "string"),
                 "columns", Map.of("type", "array"),
@@ -89,8 +89,6 @@ public class InferIngestionSchemaActionHandler implements ActionHandler<Map, Map
             out.put("suggestedDdl", buildSuggestedDdl(mapping));
             out.put("rowsAnalyzed", sampleSize);
             out.put("status", "inferred");
-            out.put("error", null);
-            out.put("userHint", null);
             return CompletableFuture.completedFuture(out);
 
         } catch (IllegalArgumentException e) {
@@ -157,9 +155,7 @@ public class InferIngestionSchemaActionHandler implements ActionHandler<Map, Map
     private Map<String, Object> errorNode(String code, String reason, String userHint) {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("status", "failed");
-        out.put("mappingId", null);
         out.put("columns", List.of());
-        out.put("suggestedDdl", null);
         out.put("rowsAnalyzed", 0);
         Map<String, String> error = new LinkedHashMap<>();
         error.put("code", code);

@@ -11,12 +11,10 @@ test.beforeAll(async () => { mock = await startMockIngestionServer() })
 test.afterAll(async () => { await mock.stop() })
 
 test.describe('@e2e @ingestion @api Confirm, cancel, token + ingest', () => {
-  // BUG-0013: http_request output schema validation fails on error path (null for required fields).
-  test.fixme(true, 'BUG-0013 — http_request output schema validation masks original errors')
   test('confirm returns tokenId, expiresAt, mappingHash', async ({ request }) => {
     const connId = await seedH2Connection(request, `e2e_h2_confirm_${Date.now()}`)
     const c = adapterClient(request)
-    const fetched = await c.mcpCall('http_request', { url: `${mock.baseUrl}/json/users` })
+    const fetched = await c.mcpCall('http_request', { url: `${mock.baseUrl}/json/users`, payloadFormat: 'JSON' })
     const jobId = fetched.result!.jobId as string
     await c.mcpCall('infer_ingestion_schema', { jobId })
     const confirm = await request.post(`${BASE}/api/ingestion/jobs/${jobId}/confirm`, { data: {} })
@@ -30,7 +28,7 @@ test.describe('@e2e @ingestion @api Confirm, cancel, token + ingest', () => {
   test('confirm without prior infer returns 409', async ({ request }) => {
     const connId = await seedH2Connection(request, `e2e_h2_no_infer_${Date.now()}`)
     const c = adapterClient(request)
-    const fetched = await c.mcpCall('http_request', { url: `${mock.baseUrl}/json/users` })
+    const fetched = await c.mcpCall('http_request', { url: `${mock.baseUrl}/json/users`, payloadFormat: 'JSON' })
     const jobId = fetched.result!.jobId as string
     // Do NOT call infer — go straight to confirm
     const confirm = await request.post(`${BASE}/api/ingestion/jobs/${jobId}/confirm`, { data: {} })
@@ -40,7 +38,7 @@ test.describe('@e2e @ingestion @api Confirm, cancel, token + ingest', () => {
   test('cancel flips status to cancelled', async ({ request }) => {
     const connId = await seedH2Connection(request, `e2e_h2_cancel_${Date.now()}`)
     const c = adapterClient(request)
-    const fetched = await c.mcpCall('http_request', { url: `${mock.baseUrl}/json/users` })
+    const fetched = await c.mcpCall('http_request', { url: `${mock.baseUrl}/json/users`, payloadFormat: 'JSON' })
     const jobId = fetched.result!.jobId as string
     await c.mcpCall('infer_ingestion_schema', { jobId })
     const cancel = await request.post(`${BASE}/api/ingestion/jobs/${jobId}/cancel`, { data: {} })
@@ -53,7 +51,7 @@ test.describe('@e2e @ingestion @api Confirm, cancel, token + ingest', () => {
   test('create_ingestion_table with valid token works', async ({ request }) => {
     const connId = await seedH2Connection(request, `e2e_h2_create_tbl_${Date.now()}`)
     const c = adapterClient(request)
-    const fetched = await c.mcpCall('http_request', { url: `${mock.baseUrl}/json/users` })
+    const fetched = await c.mcpCall('http_request', { url: `${mock.baseUrl}/json/users`, payloadFormat: 'JSON' })
     const jobId = fetched.result!.jobId as string
     await c.mcpCall('infer_ingestion_schema', { jobId })
     const confirm = await request.post(`${BASE}/api/ingestion/jobs/${jobId}/confirm`, { data: {} })
@@ -69,7 +67,7 @@ test.describe('@e2e @ingestion @api Confirm, cancel, token + ingest', () => {
   test('re-consuming same token returns INGESTION_TOKEN_INVALID', async ({ request }) => {
     const connId = await seedH2Connection(request, `e2e_h2_reconsume_${Date.now()}`)
     const c = adapterClient(request)
-    const fetched = await c.mcpCall('http_request', { url: `${mock.baseUrl}/json/users` })
+    const fetched = await c.mcpCall('http_request', { url: `${mock.baseUrl}/json/users`, payloadFormat: 'JSON' })
     const jobId = fetched.result!.jobId as string
     await c.mcpCall('infer_ingestion_schema', { jobId })
     const confirm = await request.post(`${BASE}/api/ingestion/jobs/${jobId}/confirm`, { data: {} })
@@ -91,7 +89,7 @@ test.describe('@e2e @ingestion @api Confirm, cancel, token + ingest', () => {
   test('mappingHash mismatch returns INGESTION_TOKEN_INVALID', async ({ request }) => {
     const connId = await seedH2Connection(request, `e2e_h2_hashmismatch_${Date.now()}`)
     const c = adapterClient(request)
-    const fetched = await c.mcpCall('http_request', { url: `${mock.baseUrl}/json/users` })
+    const fetched = await c.mcpCall('http_request', { url: `${mock.baseUrl}/json/users`, payloadFormat: 'JSON' })
     const jobId = fetched.result!.jobId as string
     await c.mcpCall('infer_ingestion_schema', { jobId })
     const confirm = await request.post(`${BASE}/api/ingestion/jobs/${jobId}/confirm`, { data: {} })
@@ -112,7 +110,7 @@ test.describe('@e2e @ingestion @api Confirm, cancel, token + ingest', () => {
   test('ingest_payload after create_table populates rows', async ({ request }) => {
     const connId = await seedH2Connection(request, `e2e_h2_ingest_${Date.now()}`)
     const c = adapterClient(request)
-    const fetched = await c.mcpCall('http_request', { url: `${mock.baseUrl}/json/users` })
+    const fetched = await c.mcpCall('http_request', { url: `${mock.baseUrl}/json/users`, payloadFormat: 'JSON' })
     const jobId = fetched.result!.jobId as string
     await c.mcpCall('infer_ingestion_schema', { jobId })
     const confirm = await request.post(`${BASE}/api/ingestion/jobs/${jobId}/confirm`, { data: {} })
@@ -134,7 +132,7 @@ test.describe('@e2e @ingestion @api Confirm, cancel, token + ingest', () => {
     // Create a job with a deliberately bad artifact
     // For this test, use the /error/401 mock route which will fail fetch
     const c = adapterClient(request)
-    const fetched = await c.mcpCall('http_request', { url: `${mock.baseUrl}/error/401` })
+    const fetched = await c.mcpCall('http_request', { url: `${mock.baseUrl}/error/401`, payloadFormat: 'JSON' })
     // If fetch failed, the job should be in failed status
     if (fetched.result?.status === 'fetched') {
       const jobId = fetched.result!.jobId as string

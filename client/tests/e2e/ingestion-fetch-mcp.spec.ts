@@ -9,14 +9,9 @@ test.afterAll(async () => { await mock.stop() })
 test.beforeEach(() => mock.reset())
 
 test.describe('@e2e @ingestion @api HTTP fetch via datatalk_http_request', () => {
-  // Gate all tests at describe level due to BUG-0013
-  test.beforeEach(async ({ request }) => {
-    test.fixme(true, 'BUG-0013: http_request output schema validation masks errors — tests will run once fixed')
-  })
-
   test('JSON array payload yields jobId + payloadArtifactId', async ({ request }) => {
     const client = adapterClient(request)
-    const res = await client.mcpCall('http_request', { url: `${mock.baseUrl}/json/users` })
+    const res = await client.mcpCall('http_request', { url: `${mock.baseUrl}/json/users`, payloadFormat: 'JSON' })
     expect(res.error).toBeUndefined()
     expect(res.result?.jobId).toMatch(/^[a-zA-Z0-9_-]+$/)
     expect(res.result?.payloadArtifactId).toBeTruthy()
@@ -25,19 +20,19 @@ test.describe('@e2e @ingestion @api HTTP fetch via datatalk_http_request', () =>
   })
 
   test('JSONL payload', async ({ request }) => {
-    const res = await adapterClient(request).mcpCall('http_request', { url: `${mock.baseUrl}/jsonl/events` })
+    const res = await adapterClient(request).mcpCall('http_request', { url: `${mock.baseUrl}/jsonl/events`, payloadFormat: 'JSONL' })
     expect(res.error).toBeUndefined()
     expect(res.result?.payloadFormat).toBe('jsonl')
   })
 
   test('CSV payload', async ({ request }) => {
-    const res = await adapterClient(request).mcpCall('http_request', { url: `${mock.baseUrl}/csv/orders` })
+    const res = await adapterClient(request).mcpCall('http_request', { url: `${mock.baseUrl}/csv/orders`, payloadFormat: 'CSV' })
     expect(res.error).toBeUndefined()
     expect(res.result?.payloadFormat).toBe('csv')
   })
 
   test('HTML <table> payload', async ({ request }) => {
-    const res = await adapterClient(request).mcpCall('http_request', { url: `${mock.baseUrl}/html/leaderboard` })
+    const res = await adapterClient(request).mcpCall('http_request', { url: `${mock.baseUrl}/html/leaderboard`, payloadFormat: 'HTML' })
     expect(res.error).toBeUndefined()
     expect(res.result?.payloadFormat).toBe('html')
   })
@@ -47,6 +42,7 @@ test.describe('@e2e @ingestion @api HTTP fetch via datatalk_http_request', () =>
     const res = await adapterClient(request).mcpCall('http_request', {
       url: `${mock.baseUrl}/auth/bearer`,
       credentialId: credId,
+      payloadFormat: 'JSON',
     })
     expect(res.error).toBeUndefined()
     expect(mock.hits.find((h) => h.url === '/auth/bearer')?.headers.authorization).toBe('Bearer test-token-42')
@@ -60,6 +56,7 @@ test.describe('@e2e @ingestion @api HTTP fetch via datatalk_http_request', () =>
     const res = await adapterClient(request).mcpCall('http_request', {
       url: `${mock.baseUrl}/auth/api-key-header`,
       credentialId: credId,
+      payloadFormat: 'JSON',
     })
     expect(res.error).toBeUndefined()
   })
@@ -72,6 +69,7 @@ test.describe('@e2e @ingestion @api HTTP fetch via datatalk_http_request', () =>
     const res = await adapterClient(request).mcpCall('http_request', {
       url: `${mock.baseUrl}/auth/api-key-query`,
       credentialId: credId,
+      payloadFormat: 'JSON',
     })
     expect(res.error).toBeUndefined()
     const hit = mock.hits.find((h) => h.url.startsWith('/auth/api-key-query'))
@@ -87,6 +85,7 @@ test.describe('@e2e @ingestion @api HTTP fetch via datatalk_http_request', () =>
     const res = await adapterClient(request).mcpCall('http_request', {
       url: `${mock.baseUrl}/auth/basic`,
       credentialId: credId,
+      payloadFormat: 'JSON',
     })
     expect(res.error).toBeUndefined()
     expect(mock.hits.find((h) => h.url === '/auth/basic')?.headers.authorization).toBe(expectedAuth)
@@ -95,6 +94,7 @@ test.describe('@e2e @ingestion @api HTTP fetch via datatalk_http_request', () =>
   test('Pagination — page param walks N pages then stops', async ({ request }) => {
     const res = await adapterClient(request).mcpCall('http_request', {
       url: `${mock.baseUrl}/paged/page`,
+      payloadFormat: 'JSON',
       pagination: { type: 'page', param: 'page', initial: 1, maxPages: 5 },
     })
     expect(res.error).toBeUndefined()
@@ -105,6 +105,7 @@ test.describe('@e2e @ingestion @api HTTP fetch via datatalk_http_request', () =>
   test('Pagination — offset param', async ({ request }) => {
     const res = await adapterClient(request).mcpCall('http_request', {
       url: `${mock.baseUrl}/paged/offset`,
+      payloadFormat: 'JSON',
       pagination: { type: 'offset', param: 'offset', initial: 0, pageSize: 2, maxPages: 5 },
     })
     expect(res.error).toBeUndefined()
@@ -115,6 +116,7 @@ test.describe('@e2e @ingestion @api HTTP fetch via datatalk_http_request', () =>
   test('Pagination — cursor param', async ({ request }) => {
     const res = await adapterClient(request).mcpCall('http_request', {
       url: `${mock.baseUrl}/paged/cursor`,
+      payloadFormat: 'JSON',
       pagination: { type: 'cursor', param: 'cursor', initial: 'A', maxPages: 5 },
     })
     expect(res.error).toBeUndefined()
@@ -125,6 +127,7 @@ test.describe('@e2e @ingestion @api HTTP fetch via datatalk_http_request', () =>
   test('Oversized payload trips payload-max-bytes and surfaces error', async ({ request }) => {
     const res = await adapterClient(request).mcpCall('http_request', {
       url: `${mock.baseUrl}/error/oversized`,
+      payloadFormat: 'JSON',
     })
     if (res.error) {
       expect(res.error.code).toBe(-32603)

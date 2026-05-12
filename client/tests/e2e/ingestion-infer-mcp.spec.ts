@@ -24,8 +24,6 @@ test.afterAll(async () => { await mock.stop() })
 test.beforeEach(() => mock.reset())
 
 test.describe('@e2e @ingestion @api Schema inference + mappingHash', () => {
-  test.fixme(true, 'BUG-0013: http_request output schema validation masks errors — tests will run once fixed')
-
   test('JSON inference produces typed columns', async ({ request }) => {
     const c = adapterClient(request)
     const fetched = await c.mcpCall('http_request', { url: `${mock.baseUrl}/json/users`, payloadFormat: 'JSON' })

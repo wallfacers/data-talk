@@ -10,8 +10,6 @@ test.afterAll(async () => { await mock.stop() })
 test.beforeEach(() => mock.reset())
 
 test.describe('@e2e @ingestion @ui @sse Ingestion SSE events', () => {
-  test.fixme(true, 'BUG-0013: http_request output schema validation masks errors — blocks full ingestion pipeline needed for SSE events')
-
   /**
    * Inject a fetch interceptor into the page that captures SSE data from the
    * channel endpoint.  The channel-client uses fetch (POST) + eventsource-parser,

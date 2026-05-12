@@ -57,7 +57,7 @@ public class HttpRequestActionHandler implements ActionHandler<Map, Map> {
     public Map<String, Object> outputSchema() {
         return Map.of(
             "type", "object",
-            "required", List.of("jobId", "payloadArtifactId", "status"),
+            "required", List.of("status"),
             "properties", Map.of(
                 "jobId", Map.of("type", "string"),
                 "payloadArtifactId", Map.of("type", "string"),
@@ -95,8 +95,6 @@ public class HttpRequestActionHandler implements ActionHandler<Map, Map> {
             out.put("rowsFetched", result.rowsFetched());
             out.put("bytesFetched", result.bytesFetched());
             out.put("pagesFetched", result.pagesFetched());
-            out.put("error", null);
-            out.put("userHint", null);
             return CompletableFuture.completedFuture(out);
 
         } catch (IllegalArgumentException e) {
@@ -159,8 +157,6 @@ public class HttpRequestActionHandler implements ActionHandler<Map, Map> {
     private Map<String, Object> errorNode(String code, String reason, String userHint) {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("status", "failed");
-        out.put("jobId", null);
-        out.put("payloadArtifactId", null);
         Map<String, String> error = new LinkedHashMap<>();
         error.put("code", code);
         error.put("reason", reason);

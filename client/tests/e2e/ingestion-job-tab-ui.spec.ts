@@ -9,8 +9,6 @@ test.beforeAll(async () => { mock = await startMockIngestionServer() })
 test.afterAll(async () => { await mock.stop() })
 
 test.describe('@e2e @ingestion @ui Ingestion job tab', () => {
-  test.fixme(true, 'BUG-0013: http_request output schema validation masks errors — blocks seeding ingestion jobs')
-
   test('Tab opens in Stage via __DT_E2E__', async ({ page }) => {
     await page.goto('/')
     await page.waitForFunction(() => Boolean((window as any).__DT_E2E__))

@@ -12,7 +12,7 @@ test.afterAll(async () => { await mock.stop() })
 
 async function fetchInferConfirm(request, connId: string, sourceUrl: string) {
   const c = adapterClient(request)
-  const f = await c.mcpCall('http_request', { url: sourceUrl })
+  const f = await c.mcpCall('http_request', { url: sourceUrl, payloadFormat: 'JSON' })
   const jobId = f.result!.jobId as string
   await c.mcpCall('infer_ingestion_schema', { jobId })
   const confirm = await request.post(
@@ -25,10 +25,6 @@ async function fetchInferConfirm(request, connId: string, sourceUrl: string) {
 }
 
 test.describe('@e2e @ingestion @api DDL generation + execution', () => {
-  // All tests in this block depend on http_request returning a valid jobId.
-  // BUG-0013: http_request output schema validation fails on error path (null for required fields).
-  test.fixme(true, 'BUG-0013 — http_request output schema validation masks original errors')
-
   test('H2 round-trip — CREATE TABLE then SELECT', async ({ request }) => {
     const connId = await seedH2Connection(request, `e2e_h2_ddl_${Date.now()}`)
     const { jobId, tokenId, mappingHash } = await fetchInferConfirm(request, connId, `${mock.baseUrl}/json/users`)

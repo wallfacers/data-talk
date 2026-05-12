@@ -11,8 +11,6 @@ const BASE = process.env.DATATALK_ADAPTER_BASE_URL ?? 'http://localhost:8080'
  * The test bodies are fully written and will activate once BUG-0013 is fixed.
  */
 test.describe('@e2e @ingestion @ui Ingestion library tab', () => {
-  test.fixme(true, 'BUG-0013: http_request output schema validation masks errors — blocks seeding ingestion jobs for library tab')
-
   const now = Date.now()
 
   function mockJob(overrides: Record<string, unknown> = {}) {

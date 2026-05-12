@@ -65,8 +65,6 @@ public class GetIngestionJobActionHandler implements ActionHandler<Map, Map> {
         }
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("job", jobToMap(job.get()));
-        out.put("error", null);
-        out.put("userHint", (Object) null);
         return CompletableFuture.completedFuture(out);
     }
 
