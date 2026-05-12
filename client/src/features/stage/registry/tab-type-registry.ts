@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { BarChart2Icon, DatabaseIcon, FileTextIcon, LayoutDashboardIcon, LayoutIcon, NetworkIcon, PackageIcon, SearchCodeIcon } from 'lucide-react'
+import { BarChart2Icon, DatabaseIcon, DownloadIcon, FileTextIcon, LayoutDashboardIcon, LayoutIcon, LibraryIcon, NetworkIcon, PackageIcon, SearchCodeIcon } from 'lucide-react'
 import { useSqlWorkbenchStore } from '@/features/stage/stores/sql-workbench-store'
 import { useErTabsStore } from '@/features/stage/stores/er-tabs-store'
 import { normalizeQueryEditorPayload } from '@/features/stage/utils/normalize-query-editor-payload'
@@ -240,6 +240,26 @@ export const TAB_TYPE_REGISTRY: Record<string, TabTypeDescriptor> = {
     scope: 'workspace',
     icon: PackageIcon,
     labelKey: 'tabType.filesLibrary',
+    extractContent: () => '',
+  },
+  ingestion_job: {
+    type: 'ingestion_job',
+    persistent: true,
+    scope: 'workspace',
+    payloadSource: 'stage_tab',
+    icon: DownloadIcon,
+    labelKey: 'ingestion.job.title',
+    extractContent: (p) => {
+      const o = p as { sourceUrl?: unknown; id?: unknown } | null | undefined
+      return [typeof o?.sourceUrl === 'string' ? o.sourceUrl : '', typeof o?.id === 'string' ? o.id : ''].filter(Boolean).join(' ')
+    },
+  },
+  ingestion_library: {
+    type: 'ingestion_library',
+    persistent: true,
+    scope: 'workspace',
+    icon: LibraryIcon,
+    labelKey: 'ingestion.library.title',
     extractContent: () => '',
   },
 }
