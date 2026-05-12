@@ -27,30 +27,30 @@ context: |
 
 rules:
   proposal:
-    - Keep it concise (1-2 pages). Focus on WHY not HOW — implementation details belong in design.md.
-    - Identify affected code, APIs, dependencies, and systems in the Impact section.
-    - If the change touches database/data-source types, MUST consult docs/DATA_SOURCE_TYPE_COMPATIBILITY.md and document compatibility impact.
-    - If the change touches client/ UI, MUST reference client/DESIGN.md constraints in a Design Inputs section.
-    - Check docs/bugs/index.md for open BUGs in the affected module area — list any that overlap in Risks.
+    - "Keep it concise (1-2 pages). Focus on WHY not HOW — implementation details belong in design.md."
+    - "Identify affected code, APIs, dependencies, and systems in the Impact section."
+    - "If the change touches database/data-source types, MUST consult docs/DATA_SOURCE_TYPE_COMPATIBILITY.md and document compatibility impact."
+    - "If the change touches client/ UI, MUST reference client/DESIGN.md constraints in a Design Inputs section."
+    - "Check docs/bugs/index.md for open BUGs in the affected module area — list any that overlap in Risks."
 
   specs:
-    - Use normative language: SHALL/MUST for requirements. Each requirement MUST have at least one scenario.
-    - Scenarios MUST use #### Scenario: header (exactly 4 hashtags). Use GIVEN/WHEN/THEN or WHEN/THEN format.
-    - Delta operations: ADDED (new), MODIFIED (changed — include FULL updated requirement text), REMOVED (include Reason + Migration), RENAMED (FROM:/TO:).
-    - Specs should be testable — each scenario is a potential test case.
+    - "Use normative language: SHALL/MUST for requirements. Each requirement MUST have at least one scenario."
+    - "Scenarios MUST use #### Scenario: header (exactly 4 hashtags). Use GIVEN/WHEN/THEN or WHEN/THEN format."
+    - "Delta operations: ADDED (new), MODIFIED (changed — include FULL updated requirement text), REMOVED (include Reason + Migration), RENAMED (FROM:/TO:)."
+    - "Specs should be testable — each scenario is a potential test case."
 
   design:
-    - Only create design.md when: cross-cutting change, new external dependency, significant data model change, security/performance/migration complexity, or ambiguity needing upfront technical decisions.
-    - Must include: Context, Goals/Non-Goals, Decisions (with rationale — why X over Y?), Risks/Trade-offs, Migration Plan, Open Questions.
-    - For backend: note whether Flyway migration needed, which modules affected, any sealed interface/switch exhaustiveness impact.
-    - For frontend: cite client/DESIGN.md token usage and explicit design constraints.
+    - "Only create design.md when: cross-cutting change, new external dependency, significant data model change, security/performance/migration complexity, or ambiguity needing upfront technical decisions."
+    - "Must include: Context, Goals/Non-Goals, Decisions (with rationale — why X over Y?), Risks/Trade-offs, Migration Plan, Open Questions."
+    - "For backend: note whether Flyway migration needed, which modules affected, any sealed interface/switch exhaustiveness impact."
+    - "For frontend: cite client/DESIGN.md token usage and explicit design constraints."
 
   tasks:
-    - Each task MUST be a checkbox: - [ ] X.Y Task description
-    - Group under ## numbered headings. Order by dependency.
-    - Tasks should be small enough to complete in one session.
-    - Must include verification step: compile/typecheck/test for each task group.
-    - Within a batch, dispatch independent tasks in parallel (superpowers:dispatching-parallel-agents); run a single consolidated mvn compile / tsc --noEmit / test pass after the batch completes — do NOT verify after each individual task.
-    - Backend tasks: note when mvn install -pl <module> -am -DskipTests is needed (domain/application/infrastructure edits).
-    - Frontend tasks: note Design Inputs from client/DESIGN.md where applicable.
-    - If change touches database type compatibility, include a checklist item for docs/DATA_SOURCE_TYPE_COMPATIBILITY.md update.
+    - "Each task MUST be a checkbox: - [ ] X.Y Task description"
+    - "Group under ## numbered headings. Order by dependency."
+    - "Tasks should be small enough to complete in one session."
+    - "Must include verification step: compile/typecheck/test for each task group."
+    - "Within a batch, dispatch independent tasks in parallel (superpowers:dispatching-parallel-agents); run a single consolidated mvn compile / tsc --noEmit / test pass after the batch completes — do NOT verify after each individual task."
+    - "Backend tasks: note when mvn install -pl <module> -am -DskipTests is needed (domain/application/infrastructure edits)."
+    - "Frontend tasks: note Design Inputs from client/DESIGN.md where applicable."
+    - "If change touches database type compatibility, include a checklist item for docs/DATA_SOURCE_TYPE_COMPATIBILITY.md update."
