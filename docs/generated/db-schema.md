@@ -179,6 +179,59 @@ FTS5 虚表，列：
 - 通过 `rowid = stage_tabs.rowid` 与 `stage_tabs` 对齐
 - V13 迁移会重建 rowid 映射，确保历史索引命中不漂移
 
+### `ingestion_credential`
+
+| Column | Type | Constraints | Notes |
+|--------|------|-------------|-------|
+| id | TEXT | PK | UUID, `cred_` prefix |
+| name | TEXT | NOT NULL UNIQUE | user-visible label |
+| auth_scheme | TEXT | NOT NULL CHECK IN (none, bearer, api_key_header, api_key_query, basic) | |
+| config_json | TEXT | NOT NULL | JSON map — header names, query keys, etc. |
+| vault_id | TEXT | NULL | NULL when scheme=none |
+| created_at | INTEGER | NOT NULL | epoch millis |
+| updated_at | INTEGER | NOT NULL | |
+
+### `ingestion_job`
+
+| Column | Type | Constraints | Notes |
+|--------|------|-------------|-------|
+| id | TEXT | PK | UUID, `ing_` prefix |
+| source_url | TEXT | NOT NULL | |
+| source_method | TEXT | NOT NULL CHECK IN (GET, POST) | |
+| source_headers_json | TEXT | NULL | serialized Map<String,String> |
+| source_query_params_json | TEXT | NULL | serialized Map<String,String> |
+| source_body_json | TEXT | NULL | |
+| credential_id | TEXT | NULL | references ingestion_credential.id |
+| pagination_json | TEXT | NULL | serialized PaginationSpec |
+| payload_format | TEXT | NOT NULL CHECK IN (json, jsonl, csv, html) | |
+| payload_artifact_id | TEXT | NULL | references file_artifact.id |
+| status | TEXT | NOT NULL CHECK IN (pending, fetching, fetched, mapping, awaiting_confirm, writing, completed, failed, cancelled) | |
+| connection_id | TEXT | NULL | references connection.id |
+| target_schema | TEXT | NULL | |
+| target_table | TEXT | NULL | |
+| mapping_json | TEXT | NULL | serialized IngestionMapping |
+| mapping_hash | TEXT | NULL | SHA-256 hex, computed server-side at confirm (V22) |
+| row_count | INTEGER | NULL | from inference |
+| rows_inserted | INTEGER | NULL DEFAULT 0 | from execution |
+| bytes_fetched | INTEGER | NULL | |
+| created_at | INTEGER | NOT NULL | |
+| updated_at | INTEGER | NOT NULL | |
+| completed_at | INTEGER | NULL | |
+| error_message | TEXT | NULL | last error if status in (failed, cancelled) |
+
+Indexes: `idx_ingestion_job_status`, `idx_ingestion_job_connection` (WHERE connection_id NOT NULL), `idx_ingestion_job_created`
+
+### `ingestion_vault_store`
+
+| Column | Type | Constraints | Notes |
+|--------|------|-------------|-------|
+| vault_id | TEXT | PK | UUID, `vault_` prefix |
+| sealed_bytes | BLOB | NOT NULL | AES-256-GCM ciphertext |
+
+### `file_artifact.kind` CHECK extension (V20)
+
+V20 extends the `kind` CHECK to allow `ingestion_payload`. This is the only artifact kind that lives on the local filesystem under `~/.data-talk/ingestion/<jobId>/payload.<ext>` rather than under the standard artifact directory.
+
 同步触发器：
 - `stage_tabs_ai`
 - `stage_tabs_au`

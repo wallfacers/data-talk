@@ -63,6 +63,8 @@ This file is the map. Deep knowledge lives in `docs/`:
 | Current status & exec plans  | [docs/exec-plans/index.md](docs/exec-plans/index.md)         |
 | Product specs & features     | [docs/product-specs/index.md](docs/product-specs/index.md)   |
 | DB schema reference          | [docs/generated/db-schema.md](docs/generated/db-schema.md)   |
+| Ingestion plan (closed)      | [docs/exec-plans/2026-05-12-external-data-ingestion-skills-plan.md](docs/exec-plans/2026-05-12-external-data-ingestion-skills-plan.md) |
+| Ingestion follow-up plan     | [docs/exec-plans/2026-05-12-ingestion-skills-followup-plan.md](docs/exec-plans/2026-05-12-ingestion-skills-followup-plan.md) |
 | External protocol references | [docs/references/](docs/references/)                         |
 | ER tab protocol              | [docs/references/er-tab-protocol.md](docs/references/er-tab-protocol.md) |
 | Bezel dashboard skill 设计   | [docs/product-specs/2026-05-11-bezel-skill-design.md](docs/product-specs/2026-05-11-bezel-skill-design.md) |
@@ -151,6 +153,12 @@ DataTalk 运行时偏差通过 `docs/bugs/` 集中记录。详见 [docs/bugs/ind
 - When executing an implementation plan from `docs/exec-plans/`, write code for independent tasks in **concurrent batches** (dispatch parallel subagents — see the `superpowers:dispatching-parallel-agents` and `superpowers:subagent-driven-development` skills), not sequentially one task at a time
 - Within a batch, **skip per-edit `mvn compile` / `tsc --noEmit`**. Run a single consolidated verification pass — full compile, integration tests, end-to-end smoke — only after every task in the batch has its code written
 - Tasks with explicit ordering dependencies declared in the plan document **MUST** still execute in declared order; only mutually independent tasks are eligible for batching
+
+### Ingestion Artifact Path Convention
+
+- HTTP-fetched payloads are persisted under `~/.data-talk/ingestion/<jobId>/payload.<json|jsonl|csv|html>` (separate from the standard artifact directory). They are registered in `file_artifact` with `kind=ingestion_payload` and `physical_path` set to the absolute filesystem path
+- The 500MB cap is enforced by `IngestionPayloadFetcher` before final atomic rename — partial writes go to `payload.staging` and are deleted on overrun. Do not attempt to short-circuit the staging step
+- `IngestionConfirmedToken` is in-memory only (`ConcurrentHashMap`, 5-min TTL, single-use). It is not persisted across server restarts — clients must re-confirm after a restart
 
 ### Brainstorming
 

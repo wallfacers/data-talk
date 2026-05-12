@@ -6,7 +6,7 @@
 | 状态 | Draft v1 |
 | Roadmap | [Task 10 — External Data Ingestion via Skills](../exec-plans/2026-04-25-next-implementation-roadmap-plan.md#task-10-external-data-ingestion-via-skills-phase-3-placeholder) |
 | 推广总设计 | [产品总设计 §3.12 外部数据接入与自动采集（Skill 驱动）](./index.md) |
-| Phase | 三期 — 首份 child spec（generic HTTP scaffolding only） |
+| Phase | 三期 — 首份 child spec (shipped 2026-05-12) |
 | 后续 child plans | 平台特定 skill（Taobao / JD / Pinduoduo / Douyin / etc）每个一份独立 child plan |
 
 ## 0. Gate 与前提
