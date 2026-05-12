@@ -1,6 +1,7 @@
 package com.datatalk.adapter.controller;
 
 import com.datatalk.application.fileartifact.FileArtifactRepository;
+import com.datatalk.application.ingestion.IngestionConfirmedTokenStore;
 import com.datatalk.application.ingestion.IngestionCredentialService;
 import com.datatalk.application.ingestion.repository.IngestionCredentialRepository;
 import com.datatalk.application.ingestion.repository.IngestionJobRepository;
@@ -26,17 +27,20 @@ public class IngestionController {
     private final IngestionCredentialRepository credRepo;
     private final IngestionJobRepository jobRepo;
     private final FileArtifactRepository artifactRepo;
+    private final IngestionConfirmedTokenStore tokenStore;
     private final ObjectMapper om;
 
     public IngestionController(IngestionCredentialService credService,
                                IngestionCredentialRepository credRepo,
                                IngestionJobRepository jobRepo,
                                FileArtifactRepository artifactRepo,
+                               IngestionConfirmedTokenStore tokenStore,
                                ObjectMapper om) {
         this.credService = credService;
         this.credRepo = credRepo;
         this.jobRepo = jobRepo;
         this.artifactRepo = artifactRepo;
+        this.tokenStore = tokenStore;
         this.om = om;
     }
 
@@ -264,5 +268,31 @@ public class IngestionController {
         map.put("completedAt", j.completedAt());
         map.put("errorMessage", j.errorMessage());
         return map;
+    }
+
+    public record ConfirmRequest(String mappingHash) {}
+
+    @PostMapping("/jobs/{id}/confirm")
+    public ResponseEntity<Map<String, Object>> confirm(@PathVariable String id,
+                                                        @RequestBody ConfirmRequest req) {
+        var job = jobRepo.findById(id);
+        if (job.isEmpty()) return ResponseEntity.notFound().build();
+
+        String hash = req.mappingHash() != null ? req.mappingHash() : "";
+        var token = tokenStore.issue(id, hash);
+
+        jobRepo.updateStatus(id, "confirmed", null, System.currentTimeMillis());
+        return ResponseEntity.ok(Map.of(
+            "tokenId", token.tokenId(),
+            "expiresAt", token.expiresAt()
+        ));
+    }
+
+    @PostMapping("/jobs/{id}/cancel")
+    public ResponseEntity<Void> cancel(@PathVariable String id) {
+        var job = jobRepo.findById(id);
+        if (job.isEmpty()) return ResponseEntity.notFound().build();
+        jobRepo.updateStatus(id, "cancelled", null, System.currentTimeMillis());
+        return ResponseEntity.noContent().build();
     }
 }
