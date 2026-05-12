@@ -26,7 +26,7 @@ export function CredentialsPage() {
     <div className="max-w-4xl">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">{t('ingestion.credential.title')}</h1>
-        <Button onClick={() => setFormOpen(true)} size="sm">
+        <Button data-testid="credentials-create-btn" onClick={() => setFormOpen(true)} size="sm">
           <PlusIcon className="size-4" /> {t('ingestion.credential.create')}
         </Button>
       </div>
@@ -38,15 +38,17 @@ export function CredentialsPage() {
       </div>
 
       {/* List */}
+      <div data-testid="credentials-list">
       {credentials.isLoading ? (
         <div className="text-sm text-muted-foreground">{t('common.loading')}</div>
       ) : items.length === 0 ? (
-        <div className="rounded border border-dashed p-8 text-center text-sm text-muted-foreground">
+        <div data-testid="credentials-empty-state" className="rounded border border-dashed p-8 text-center text-sm text-muted-foreground">
           {t('ingestion.credential.empty')}
         </div>
       ) : (
         <CredentialList credentials={items} />
       )}
+      </div>
 
       {/* Create dialog */}
       <Dialog open={formOpen} onOpenChange={(open) => { if (!createMut.isPending) setFormOpen(open) }}>

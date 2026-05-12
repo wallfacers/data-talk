@@ -57,6 +57,7 @@ export function MappingPhase({ job, onConfirm, onCancel }: MappingPhaseProps) {
 
       <div className="flex items-center gap-2 pt-2">
         <button
+          data-testid="ingestion-confirm-btn"
           onClick={onConfirm}
           disabled={columns.length === 0}
           className="px-4 py-1.5 rounded-md text-ui-sm font-medium bg-accent-primary text-text-inverse hover:bg-accent-primaryHover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-interaction-focusRing disabled:opacity-60 disabled:cursor-not-allowed"
@@ -64,6 +65,7 @@ export function MappingPhase({ job, onConfirm, onCancel }: MappingPhaseProps) {
           {t('ingestion.confirm.button')}
         </button>
         <button
+          data-testid="ingestion-cancel-btn"
           onClick={onCancel}
           className="px-4 py-1.5 rounded-md text-ui-sm text-text-muted border border-border-default hover:bg-interaction-hover hover:text-text-base focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-interaction-focusRing"
         >

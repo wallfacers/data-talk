@@ -45,11 +45,12 @@ export function CredentialForm({ onSubmit, submitting }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form data-testid="credential-form" onSubmit={handleSubmit} className="space-y-4">
       <div>
         <Label htmlFor="cred-name">{t('ingestion.credential.name')}</Label>
         <Input
           id="cred-name"
+          data-testid="credential-name-input"
           required
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -71,6 +72,7 @@ export function CredentialForm({ onSubmit, submitting }: Props) {
                 id={`scheme-${s}`}
                 name="auth-scheme"
                 value={s}
+                data-testid={`credential-scheme-${s}`}
                 checked={scheme === s}
                 onChange={() => setScheme(s)}
                 className="accent-interaction-focusRing"
@@ -144,7 +146,7 @@ export function CredentialForm({ onSubmit, submitting }: Props) {
         </>
       )}
 
-      <Button type="submit" disabled={submitting} variant="default">
+      <Button type="submit" data-testid="credential-submit-btn" disabled={submitting} variant="default">
         {t('ingestion.credential.create')}
       </Button>
     </form>

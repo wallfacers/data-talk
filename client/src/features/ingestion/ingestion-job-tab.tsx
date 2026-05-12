@@ -71,7 +71,7 @@ export function IngestionJobTab({ tab }: IngestionJobTabProps) {
   const currentPhase = phaseIndex(job.status)
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" data-testid="ingestion-job-tab">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-2 border-b border-border-default">
         <span className="text-ui-md font-medium text-text-strong truncate">
@@ -90,6 +90,7 @@ export function IngestionJobTab({ tab }: IngestionJobTabProps) {
             return (
               <div
                 key={phase}
+                data-testid={`ingestion-stepper-dot-${phase}`}
                 className={`h-2 w-2 rounded-full transition-colors ${
                   isDone
                     ? 'bg-status-success'
@@ -108,14 +109,16 @@ export function IngestionJobTab({ tab }: IngestionJobTabProps) {
 
       {/* Phase content */}
       <div className="flex-1 overflow-auto">
-        {job.status === 'fetching' && <FetchingPhase job={job} />}
+        {job.status === 'fetching' && <div data-testid="ingestion-phase-fetching"><FetchingPhase job={job} /></div>}
         {(job.status === 'fetched' || job.status === 'mapped') && (
-          <MappingPhase job={job} onConfirm={handleConfirm} onCancel={handleCancel} />
+          <div data-testid="ingestion-phase-mapping">
+            <MappingPhase job={job} onConfirm={handleConfirm} onCancel={handleCancel} />
+          </div>
         )}
-        {job.status === 'confirmed' && <FetchingPhase job={job} />}
-        {job.status === 'writing' && <WritingPhase job={job} />}
-        {job.status === 'completed' && <CompletedPhase job={job} />}
-        {(job.status === 'failed' || job.status === 'cancelled') && <FailedPhase job={job} />}
+        {job.status === 'confirmed' && <div data-testid="ingestion-phase-fetching"><FetchingPhase job={job} /></div>}
+        {job.status === 'writing' && <div data-testid="ingestion-phase-writing"><WritingPhase job={job} /></div>}
+        {job.status === 'completed' && <div data-testid="ingestion-phase-completed"><CompletedPhase job={job} /></div>}
+        {(job.status === 'failed' || job.status === 'cancelled') && <div data-testid="ingestion-phase-failed"><FailedPhase job={job} /></div>}
       </div>
     </div>
   )

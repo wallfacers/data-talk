@@ -65,7 +65,7 @@ export function IngestionLibraryTab() {
   }, [openTab])
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" data-testid="ingestion-library-tab">
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border-default">
         <div className="flex items-center gap-1.5 text-text-base font-medium">
           <Download className="h-4 w-4" />
@@ -73,7 +73,7 @@ export function IngestionLibraryTab() {
         </div>
         <div className="flex-1" />
         <Select value={statusFilter} onValueChange={(v) => { if (v != null) setStatusFilter(v) }}>
-          <SelectTrigger className="w-[140px] h-7 text-ui-xs">
+          <SelectTrigger data-testid="ingestion-status-filter" className="w-[140px] h-7 text-ui-xs">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -87,6 +87,7 @@ export function IngestionLibraryTab() {
         <div className="relative">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-soft" />
           <Input
+            data-testid="ingestion-search-input"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search jobs..."
@@ -117,6 +118,7 @@ export function IngestionLibraryTab() {
               jobs.map((job) => (
                 <TableRow
                   key={job.id}
+                  data-testid={`ingestion-library-row-${job.id}`}
                   className="hover:bg-interaction-hover cursor-pointer"
                   onDoubleClick={() => openJobTab(job)}
                 >

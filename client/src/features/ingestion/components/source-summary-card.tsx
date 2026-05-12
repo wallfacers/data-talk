@@ -9,7 +9,7 @@ interface SourceSummaryCardProps {
 
 export function SourceSummaryCard({ sourceUrl, payloadFormat, bytesFetched, rowCount }: SourceSummaryCardProps) {
   return (
-    <div className="flex items-center gap-4 px-3 py-2 bg-bg-subtle rounded-md text-ui-sm">
+    <div data-testid="ingestion-source-summary" className="flex items-center gap-4 px-3 py-2 bg-bg-subtle rounded-md text-ui-sm">
       <span className="flex items-center gap-1.5 text-text-muted">
         <Globe className="h-3.5 w-3.5" />
         <span className="truncate max-w-[200px]" title={sourceUrl}>{sourceUrl}</span>

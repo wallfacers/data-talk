@@ -87,7 +87,7 @@ export function CredentialList({ credentials }: Props) {
         </thead>
         <tbody>
           {credentials.map((cred) => (
-            <tr key={cred.id} className="border-t">
+            <tr key={cred.id} data-testid={`credential-row-${cred.id}`} className="border-t">
               <td className="py-2 align-middle">
                 <span className="truncate block">{cred.name}</span>
               </td>
@@ -103,6 +103,7 @@ export function CredentialList({ credentials }: Props) {
                 <Button
                   size="sm"
                   variant="ghost"
+                  data-testid={`credential-delete-${cred.id}`}
                   aria-label={t('common.delete')}
                   onClick={() => handleDeleteClick(cred)}
                   className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
