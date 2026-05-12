@@ -31,6 +31,10 @@ public class OpenCodeBinaryResolver {
     static final String BEZEL_VERSION_RESOURCE = "opencode/skills/bezel.version";
     static final String BEZEL_MARKER = ".bezel-installed";
 
+    static final String DATA_INGESTION_RESOURCE = "opencode/skills/data-ingestion.tar.gz";
+    static final String DATA_INGESTION_VERSION_RESOURCE = "opencode/skills/data-ingestion.version";
+    static final String DATA_INGESTION_MARKER = ".data-ingestion-installed";
+
     /**
      * Resolve local binary from the base directory.
      * Checks ~/.data-talk/opencode/.current and verifies the binary exists.
@@ -255,6 +259,41 @@ public class OpenCodeBinaryResolver {
 
     String readEmbeddedBezelVersion() {
         try (InputStream in = openClasspathResource(BEZEL_VERSION_RESOURCE)) {
+            if (in == null) return "";
+            return new String(in.readAllBytes()).trim();
+        } catch (IOException e) {
+            return "";
+        }
+    }
+
+    public void ensureDataIngestionSkill(Path projectRoot) {
+        Path opencodeDir = projectRoot.resolve(".opencode");
+        Path skillDir    = opencodeDir.resolve("skills").resolve("data-ingestion");
+        Path marker      = opencodeDir.resolve(DATA_INGESTION_MARKER);
+
+        String embeddedVersion = readEmbeddedDataIngestionVersion();
+        if (Files.exists(marker) && Files.isDirectory(skillDir)) {
+            try {
+                if (embeddedVersion.equals(Files.readString(marker).trim())) {
+                    return;
+                }
+            } catch (IOException ignored) { /* fall through to reinstall */ }
+            deleteRecursively(skillDir);
+        }
+
+        try (InputStream in = openClasspathResource(DATA_INGESTION_RESOURCE)) {
+            if (in == null) return;
+            Files.createDirectories(skillDir);
+            extractDepsTarGz(in, skillDir);
+            Files.createDirectories(opencodeDir);
+            Files.writeString(marker, embeddedVersion);
+        } catch (Exception e) {
+            log.warn("Failed to extract data-ingestion skill: {}", e.getMessage());
+        }
+    }
+
+    String readEmbeddedDataIngestionVersion() {
+        try (InputStream in = openClasspathResource(DATA_INGESTION_VERSION_RESOURCE)) {
             if (in == null) return "";
             return new String(in.readAllBytes()).trim();
         } catch (IOException e) {

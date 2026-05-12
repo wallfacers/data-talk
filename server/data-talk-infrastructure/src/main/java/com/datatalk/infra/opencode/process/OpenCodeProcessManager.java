@@ -89,6 +89,7 @@ public class OpenCodeProcessManager implements SmartLifecycle {
     private void doStart() throws Exception {
         binaryResolver.ensureNodeModules();
         binaryResolver.ensureBezelSkill(Paths.get(""));
+        binaryResolver.ensureDataIngestionSkill(Paths.get(""));
         Path binary = resolveBinary();
         if (binary == null) {
             throw new IllegalStateException("No OpenCode binary available");

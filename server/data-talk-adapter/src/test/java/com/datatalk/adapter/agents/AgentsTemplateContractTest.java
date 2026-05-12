@@ -65,6 +65,27 @@ class AgentsTemplateContractTest {
         assertThat(section).contains("**Rules**");
     }
 
+    @Test
+    void agentsTemplateContainsDataIngestionSection() throws IOException {
+        String tpl = load();
+        assertThat(tpl)
+            .contains("## Data Ingestion (skill: data-ingestion)")
+            .contains("skills/data-ingestion/SKILL.md")
+            .contains("`datatalk_http_request`")
+            .contains("`datatalk_infer_ingestion_schema`")
+            .contains("`datatalk_create_ingestion_table`")
+            .contains("`datatalk_ingest_payload`")
+            .contains("INGESTION_SSRF_BLOCKED")
+            .contains("INGESTION_DIALECT_UNSUPPORTED")
+            .contains("INGESTION_TOKEN_INVALID");
+    }
+
+    @Test
+    void agentsTemplateContainsStageTabDigestPlaceholder() throws IOException {
+        String tpl = load();
+        assertThat(tpl).contains("{{STAGE_TAB_DIGEST}}");
+    }
+
     private static String sectionBody(String tpl) {
         int begin = tpl.indexOf(BEGIN);
         int end = tpl.indexOf(END);
