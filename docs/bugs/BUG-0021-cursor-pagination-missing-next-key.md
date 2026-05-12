@@ -8,7 +8,7 @@ modules: [ingestion]
 discovered: 2026-05-13
 discoveredBy: agent
 testRunId: null
-fixCommit: "pending — Batch 3 of ingestion-e2e-bugs-fix-plan (code in working tree)"
+fixCommit: "40a9a3d4 (Batch 3)"
 fixPlanRef: docs/exec-plans/2026-05-13-ingestion-e2e-bugs-fix-plan.md
 duplicateOf: null
 regression: false
