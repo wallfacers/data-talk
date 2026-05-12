@@ -1,6 +1,6 @@
 # 12 行业大屏独立精品化重设计实施计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 对 `tmp/Dashboard/` 下 12 个行业大屏 HTML 进行独立精品化重写，每屏 8-10 个图表，行业专属美学，真实业务数据。
 
@@ -125,7 +125,7 @@ Batch 1 的 4 个文件视觉风格差异最大，并行确立各方向标杆。
   10. 客单价分布（柱状图）
 - 数据故事：今日 GMV 2847 万（↑24.6%），但客单价下降 3.2%，需关注
 
-- [ ] **Step 1: 重写 HTML 结构与 CSS**
+- [x] **Step 1: 重写 HTML 结构与 CSS**
   - 完整 HTML 骨架，内联 CSS
   - 背景粒子动画（红色半透明圆点，从底部上升）
   - 顶部 bar：logo 区 + KPI 胶囊条（GMV/订单/转化/客单价）+ 时钟
@@ -133,23 +133,23 @@ Batch 1 的 4 个文件视觉风格差异最大，并行确立各方向标杆。
   - 底部跑马灯：实时订单流
   - 所有卡片用毛玻璃效果（`backdrop-filter: blur(12px)`）+ 红色发光边框
 
-- [ ] **Step 2: 编写 ECharts 配置**
+- [x] **Step 2: 编写 ECharts 配置**
   - 每个图表独立 `echarts.init()` + `setOption()`
   - map 图表使用 `fetch('https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json')` 加载中国地图
   - 数据带真实业务波动：GMV 趋势含早高峰、午间低谷、晚高峰
   - 留存 cohort 数据：首日 100%，次日 45%，3日 35%，7日 28%，14日 22%，30日 18%
 
-- [ ] **Step 3: 添加交互与动效**
+- [x] **Step 3: 添加交互与动效**
   - KPI 数字入场滚动动画（1.5s，ease-out-cubic）
   - 卡片 hover 放大（`transform: scale(1.02)`）
   - 跑马灯无缝循环
   - 图表 resize 监听：`window.addEventListener('resize', () => charts.forEach(c => c.resize()))`
 
-- [ ] **Step 4: 验收**
+- [x] **Step 4: 验收**
   - 用浏览器打开 `tmp/Dashboard/02-ecommerce.html`
   - 检查：12 个图表正常渲染、无控制台报错、动画流畅、1920x1080 布局正确
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   ```bash
   git add tmp/Dashboard/02-ecommerce.html
   git commit -m "feat(dashboard): premium redesign of ecommerce monitoring screen
@@ -182,28 +182,28 @@ Batch 1 的 4 个文件视觉风格差异最大，并行确立各方向标杆。
   10. 设备数字孪生面板（6 个设备卡片：温度/振动/转速实时值）
 - 数据故事：OEE 87.5%（▲3.2%），但 4 台设备待维护（红灯警告）
 
-- [ ] **Step 1: 重写 HTML 结构与 CSS**
+- [x] **Step 1: 重写 HTML 结构与 CSS**
   - 背景：扫描线纹理（`repeating-linear-gradient` 水平线）
   - 顶部：机械感标题（铆钉装饰）+ 4 个 LED KPI 盒（带红/绿/黄指示灯）
   - 主体：3 列网格（左：产能+能耗，中：产线拓扑+总览，右：故障+质量+安全）
   - 产线拓扑：用 CSS flex 画 6 个设备节点，连线用伪元素，节点颜色表示状态
   - 底部：告警跑马灯
 
-- [ ] **Step 2: 编写 ECharts 配置**
+- [x] **Step 2: 编写 ECharts 配置**
   - SPC 控制图：折线数据 + `markLine` 画 UCL/LCL/CL 三条控制限
   - 能耗面积图：堆叠面积，电（橙）/ 水（蓝）/ 气（灰）
   - 产能柱状图：分早班/中班/晚班三组堆叠
   - 数字孪生面板用纯 HTML/CSS，数值带随机微波动（`setInterval` 每秒 ±0.1）
 
-- [ ] **Step 3: 添加交互与动效**
+- [x] **Step 3: 添加交互与动效**
   - LED 灯呼吸动画（`box-shadow` 脉冲）
   - 设备节点状态切换动画（绿 → 黄 → 红渐变）
   - 图表 stagger 入场（每个图表 delay 100ms）
 
-- [ ] **Step 4: 验收**
+- [x] **Step 4: 验收**
   - 浏览器打开检查 10 个组件正常、SPC 控制限清晰、LED 灯动画正常
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   ```bash
   git add tmp/Dashboard/03-manufacturing.html
   git commit -m "feat(dashboard): premium redesign of manufacturing monitoring screen
@@ -236,28 +236,28 @@ Batch 1 的 4 个文件视觉风格差异最大，并行确立各方向标杆。
   10. 攻击链 kill-chain 阶段图（漏斗图：7 个阶段）
 - 数据故事：今日攻击 2847 次（↑18.6%），拦截率 99.8%，但 34 个漏洞待修复
 
-- [ ] **Step 1: 重写 HTML 结构与 CSS**
+- [x] **Step 1: 重写 HTML 结构与 CSS**
   - 背景：矩阵数字雨（JavaScript 生成随机字符列，绿色，从上落下）
   - 顶部：红色告警条（`THREAT LEVEL: HIGH` 闪烁）+ 终端风格标题 + 时钟
   - KPI：4 个终端盒子（`Courier New` 字体，左侧色条标识严重程度）
   - 主体：2x2 网格（攻击趋势 / 攻击类型 / 攻击源 / 漏洞状态）
   - 底部：日志滚动条（终端风格绿色文字）
 
-- [ ] **Step 2: 编写 ECharts 配置**
+- [x] **Step 2: 编写 ECharts 配置**
   - 攻击趋势面积图：红色渐变填充，`areaStyle: { color: new echarts.graphic.LinearGradient(...) }`
   - ATT&CK 矩阵：12 tactics x 8 techniques，颜色表示覆盖度（深绿=高，黑=无）
   - Kill-chain 漏斗图：7 个阶段，宽度递减
   - 攻击源条形图：中国/美国/俄罗斯/巴西/印度，数据符合真实攻击源分布
 
-- [ ] **Step 3: 添加交互与动效**
+- [x] **Step 3: 添加交互与动效**
   - 矩阵雨动画：每列字符随机变化，速度不同
   - 告警条闪烁：`animation: blink 1.5s ease-in-out infinite`
   - 终端光标闪烁：`animation: blink 1s step-end infinite`
 
-- [ ] **Step 4: 验收**
+- [x] **Step 4: 验收**
   - 检查矩阵雨性能（帧率 ≥ 30）、所有图表正常、终端风格一致
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   ```bash
   git add tmp/Dashboard/10-cybersecurity.html
   git commit -m "feat(dashboard): premium redesign of cybersecurity situational awareness
@@ -292,28 +292,28 @@ Batch 1 的 4 个文件视觉风格差异最大，并行确立各方向标杆。
   12. 应收账款账龄分布（横向条形：1年内/1-2年/2-3年/3年以上）
 - 数据故事：年收入 8.42 亿（↑15.3%），净利润率 18.6%（↑2.1pp），应收账款下降 3.8%
 
-- [ ] **Step 1: 重写 HTML 结构与 CSS**
+- [x] **Step 1: 重写 HTML 结构与 CSS**
   - 背景：墨蓝渐变 + 微妙金色光晕（顶部径向渐变）
   - 顶部：优雅标题 + 5 个金色分隔 KPI 单元
   - 主体：3 列布局（左：趋势+收入结构，中：杜邦分析+费用，右：资产负债+账龄）
   - 底部：现金流瀑布图 + 预算仪表盘
   - 卡片：细金线边框（`border: 1px solid rgba(201,168,76,0.15)`），顶部金色渐变线
 
-- [ ] **Step 2: 编写 ECharts 配置**
+- [x] **Step 2: 编写 ECharts 配置**
   - 杜邦分析树图：`treemap`，两层：ROE → 三因子 → 具体科目
   - 现金流瀑布图：`bar` 用正负值，`itemStyle.color` 区分正负
   - 预算仪表盘：`gauge`，刻度 0-100，指针指向 94.2
   - 趋势双轴：左轴收入（金色柱状），右轴利润率（青色折线）
 
-- [ ] **Step 3: 添加交互与动效**
+- [x] **Step 3: 添加交互与动效**
   - 数字滚动：金色数字从 0 滚动到目标值（2s）
   - 卡片 hover：金色边框亮度提升
   - 杜邦分析 treemap：点击 drill-down（ECharts 内置）
 
-- [ ] **Step 4: 验收**
+- [x] **Step 4: 验收**
   - 检查杜邦分析层级正确、现金流瀑布正负颜色区分、预算仪表盘指针正确
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   ```bash
   git add tmp/Dashboard/05-finance.html
   git commit -m "feat(dashboard): premium redesign of financial data analysis center
@@ -352,27 +352,27 @@ Batch 1 的 4 个文件视觉风格差异最大，并行确立各方向标杆。
   12. Churn Rate 预测曲线（历史实际 + 未来 30 天预测，虚线区分）
 - 数据故事：MRR 1380 万（↑8.3%），但 churn 率微升，需关注成长客户转化
 
-- [ ] **Step 1: 重写 HTML 结构与 CSS**
+- [x] **Step 1: 重写 HTML 结构与 CSS**
   - 背景：两个大圆形径向渐变（青+紫），缓慢漂浮动画（`transform: translate` 循环）
   - 顶部：北极星指标巨型展示（`font-size: 48px`，电光青色）+ 4 个 KPI pill
   - 主体：左 28%（瀑布+套餐），中 44%（旅程地图+采用率），右 28%（API+churn）
   - 卡片：毛玻璃（`backdrop-filter: blur(16px)`），圆角 16px，细边框
 
-- [ ] **Step 2: 编写 ECharts 配置**
+- [x] **Step 2: 编写 ECharts 配置**
   - MRR 瀑布图：`bar` + `itemStyle.color` 区分正负（新增绿/流失红）
   - 用户旅程：HTML/CSS 漏斗步骤条（5 步，每步有转化率箭头）
   - 功能采用率热力图：`heatmap`，x=用户分层，y=功能模块
   - Churn 预测：折线实线（历史）+ `lineStyle.type: 'dashed'`（预测）
 
-- [ ] **Step 3: 添加交互与动效**
+- [x] **Step 3: 添加交互与动效**
   - 背景波浪漂浮（CSS animation，12s/15s 周期）
   - KPI pill hover：边框发光 + 微上移
   - 旅程步骤 hover：显示该阶段转化率 tooltip
 
-- [ ] **Step 4: 验收**
+- [x] **Step 4: 验收**
   - 浏览器检查：波浪动画流畅、瀑布图正负颜色正确、热力图颜色梯度清晰
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   ```bash
   git add tmp/Dashboard/04-saas.html
   git commit -m "feat(dashboard): premium redesign of SaaS operations center
@@ -407,27 +407,27 @@ Batch 1 的 4 个文件视觉风格差异最大，并行确立各方向标杆。
   12. 供应链风险预警矩阵（散点图：影响度 x 发生概率，气泡大小=损失金额）
 - 数据故事：今日发货 15.2 万（↑12%），平均时效降至 30h（↓4h），但异常订单需关注
 
-- [ ] **Step 1: 重写 HTML 结构与 CSS**
+- [x] **Step 1: 重写 HTML 结构与 CSS**
   - 背景：网格线（`linear-gradient` 画 20px/80px 间隔网格）
   - 顶部：4 个箭头 KPI（`clip-path: polygon` 箭头形状）
   - 主体：左 26%（运输+异常+满意度），中 74%（地图+发货趋势），底部仓库
   - 卡片：左侧边框 3px 着色（`border-left: 3px solid var(--accent1)`）
 
-- [ ] **Step 2: 编写 ECharts 配置**
+- [x] **Step 2: 编写 ECharts 配置**
   - 物流地图：`effectScatter`（带涟漪动画）+ `lines`（流光线路，从上海/深圳/北京出发到全国）
   - 仓库利用率：柱状图，用 `barWidth` 和 `itemStyle.borderRadius` 营造 3D 感
   - 风险矩阵：`scatter`，x=发生概率(0-10)，y=影响度(0-10)，symbolSize=损失金额/10000
   - 时效分布：横向条形，颜色渐变（绿→黄→红）
 
-- [ ] **Step 3: 添加交互与动效**
+- [x] **Step 3: 添加交互与动效**
   - 地图线路流光：`lines.effect.trailLength` + `period: 4`
   - 节点涟漪：`effectScatter.rippleEffect`
   - 箭头 KPI：hover 时箭头右移 4px
 
-- [ ] **Step 4: 验收**
+- [x] **Step 4: 验收**
   - 检查地图加载（需网络 fetch 地图 geoJSON）、流光动画、风险矩阵气泡大小合理
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   ```bash
   git add tmp/Dashboard/06-logistics.html
   git commit -m "feat(dashboard): premium redesign of logistics supply chain monitor
@@ -462,28 +462,28 @@ Batch 1 的 4 个文件视觉风格差异最大，并行确立各方向标杆。
   12. 空气质量指数热力图（地图或网格：各监测点 AQI 颜色）
 - 数据故事：清洁能源占比升至 42%（▲5pp），碳排放同比下降 8%，但 2 个工厂超标
 
-- [ ] **Step 1: 重写 HTML 结构与 CSS**
+- [x] **Step 1: 重写 HTML 结构与 CSS**
   - 背景：底部波浪动画（SVG 或 CSS `clip-path` 波浪，绿色半透明）
   - 顶部：4 个生态感 KPI 卡片（带叶子/水滴图标）
   - 主体：3 列（左：能耗趋势+工厂对比，中：能源流拓扑+饼图，右：碳排放+AQI）
   - 底部：4 个小型仪表盘 + 异常事件时间轴
   - 能源流拓扑：用 CSS 画发电→传输→分配→消耗 4 个节点，连线带流动动画
 
-- [ ] **Step 2: 编写 ECharts 配置**
+- [x] **Step 2: 编写 ECharts 配置**
   - 能耗面积图：堆叠面积，5 种能源各自颜色（火电灰/水蓝/风绿/光伏黄/核电紫）
   - 4 个小型仪表盘：`gauge`，半径 45%，分布在底部一排
   - 动态饼图：`pie` + `animationType: 'scale'` + `animationEasing: 'elasticOut'`
   - 目标追踪：折线实线（实际）+ `markLine`（目标线，绿色虚线）
 
-- [ ] **Step 3: 添加交互与动效**
+- [x] **Step 3: 添加交互与动效**
   - 波浪背景缓慢起伏（CSS transform translateY 循环，8s 周期）
   - 能源流连线流动（伪元素 `background: linear-gradient` + `animation` 移动背景位置）
   - 仪表盘指针平滑动画（ECharts 内置）
 
-- [ ] **Step 4: 验收**
+- [x] **Step 4: 验收**
   - 检查波浪性能、能源流动画、4 仪表盘布局整齐
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   ```bash
   git add tmp/Dashboard/09-energy.html
   git commit -m "feat(dashboard): premium redesign of energy environmental monitor
@@ -520,27 +520,27 @@ Batch 1 的 4 个文件视觉风格差异最大，并行确立各方向标杆。
   14. 慢病管理漏斗（筛查 → 确诊 → 建档 → 随访 → 控制达标）
 - 数据故事：门诊量 2847 人/日，床位使用率 87%，急救响应 4.2 分钟，但三级候诊偏长
 
-- [ ] **Step 1: 重写 HTML 结构与 CSS**
+- [x] **Step 1: 重写 HTML 结构与 CSS**
   - 背景：极暗灰蓝 `#0f172a`（暗色医疗），顶部微妙绿色光晕
   - 顶部：5 个柔和 KPI 胶囊（圆角大，阴影轻）
   - 主体：左 30%（科室排行+药品+年龄），中 40%（occupancy 大仪表盘+手术日历），右 30%（满意度+急诊+慢病）
   - 卡片：大圆角（`border-radius: 16px`），柔和边框，hover 微阴影提升
 
-- [ ] **Step 2: 编写 ECharts 配置**
+- [x] **Step 2: 编写 ECharts 配置**
   - 床位 occupancy：`gauge`，半径 65%，从 0-100，指针指向 87，颜色分段（绿/黄/红）
   - 科室效率热力图：`heatmap`，x=小时（0-23），y=科室，颜色=候诊人数
   - 手术日历：7 个柱状并排，每天一个柱子，颜色按手术类型堆叠
   - 慢病漏斗：HTML/CSS 漏斗步骤条（5 步，每步有流失率）
 
-- [ ] **Step 3: 添加交互与动效**
+- [x] **Step 3: 添加交互与动效**
   - 心率线装饰：顶部或卡片边缘画一条缓慢移动的正弦波 SVG
   - occupancy 仪表盘：入场指针从 0 扫到 87（2s 动画）
   - 急诊等候条形：颜色红→橙→黄→绿→蓝（一级最紧急红色）
 
-- [ ] **Step 4: 验收**
+- [x] **Step 4: 验收**
   - 检查 occupancy 仪表盘颜色分段、急诊分级颜色正确、心率线动画流畅
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   ```bash
   git add tmp/Dashboard/07-healthcare.html
   git commit -m "feat(dashboard): premium redesign of healthcare big data center
@@ -580,27 +580,27 @@ Batch 1 的 4 个文件视觉风格差异最大，并行确立各方向标杆。
   13. AI 离职风险预测热力（热力图：部门 x 职级，颜色=风险等级）
 - 数据故事：人均效能 38.5 万/人（↑5.2%），但研发部离职率偏高（12%）
 
-- [ ] **Step 1: 重写 HTML 结构与 CSS**
+- [x] **Step 1: 重写 HTML 结构与 CSS**
   - 背景：石墨灰 + 微妙网络线（随机连接的淡色细线）
   - 顶部：5 个 KPI，离职率用红色高亮
   - 主体：中央 50%（力导向图），左 25%（人员结构+九宫格），右 25%（离职+招聘+满意度+薪酬+风险）
   - 卡片：圆角 12px，网络感边框
 
-- [ ] **Step 2: 编写 ECharts 配置**
+- [x] **Step 2: 编写 ECharts 配置**
   - 力导向图：`graph` + `layout: 'force'`，节点大小按人数，连线按汇报关系
   - 人才九宫格：`scatter`，x=绩效(1-5)，y=潜力(1-5)，markArea 画 3x3 网格
   - 薪酬箱线图：`boxplot`，数据按职级分组
   - 风险热力：`heatmap`，x=职级，y=部门，颜色从绿到红
 
-- [ ] **Step 3: 添加交互与动效**
+- [x] **Step 3: 添加交互与动效**
   - 力导向图节点拖拽（ECharts `roam: true` + `draggable: true`）
   - 九宫格 hover：显示该格人数和名单
   - 风险热力：红色区域脉冲闪烁
 
-- [ ] **Step 4: 验收**
+- [x] **Step 4: 验收**
   - 检查力导向图布局合理、九宫格网格线清晰、箱线图数据格式正确
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   ```bash
   git add tmp/Dashboard/08-hr.html
   git commit -m "feat(dashboard): premium redesign of HR analytics center
@@ -635,27 +635,27 @@ Batch 1 的 4 个文件视觉风格差异最大，并行确立各方向标杆。
   12. 灌溉用水效率（横向条形：各区域亩均用水量，带标杆线）
 - 数据故事：预计产量 12,480 吨（↑8%），土壤健康 86 分，但病虫害预警 3 个区域黄色
 
-- [ ] **Step 1: 重写 HTML 结构与 CSS**
+- [x] **Step 1: 重写 HTML 结构与 CSS**
   - 背景：大地棕渐变 + 顶部阳光光晕（金色径向渐变）
   - 顶部：4 个 KPI，带自然图标（🌱/🌾/🪴/🌦️）
   - 主体：中央 50%（GIS 地图+长势），左 25%（土壤+气象），右 25%（价格+积温+病虫害+灌溉）
   - 卡片：暖色边框，圆角柔和
 
-- [ ] **Step 2: 编写 ECharts 配置**
+- [x] **Step 2: 编写 ECharts 配置**
   - 农场地图：用 `geo` + `regions` 自定义地块（因为没有标准农业地图 geoJSON）
   - 或改用柱状图模拟地块：x=地块编号，y=作物类型，颜色=长势等级
   - 积温积雨：双轴折线，左积温（°C·d），右积雨（mm）
   - 气象组合：`bar`（降雨量）+ `line`（温度）+ `line`（光照）三系列
 
-- [ ] **Step 3: 添加交互与动效**
+- [x] **Step 3: 添加交互与动效**
   - 阳光光晕缓慢扩散（CSS scale 动画）
   - 作物长势折线：带面积填充（绿色渐变，表示生长旺盛）
   - 病虫害预警：黄色/红色区域轻微闪烁
 
-- [ ] **Step 4: 验收**
+- [x] **Step 4: 验收**
   - 检查农场地图/地块模拟正常、气象三系列不重叠、积温积雨双轴刻度合理
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   ```bash
   git add tmp/Dashboard/11-agriculture.html
   git commit -m "feat(dashboard): premium redesign of smart agriculture center
@@ -693,27 +693,27 @@ Batch 1 的 4 个文件视觉风格差异最大，并行确立各方向标杆。
   15. 学习时段分布（热力图：星期 x 小时，颜色=学习人数）
 - 数据故事：课程完成率 68%（↑5pp），平均学习时长 4.2h/周，但完课率漏斗中段流失明显
 
-- [ ] **Step 1: 重写 HTML 结构与 CSS**
+- [x] **Step 1: 重写 HTML 结构与 CSS**
   - 背景：知识蓝 + 顶部微妙黄色光晕（阳光/启发感）
   - 顶部：5 个 KPI 胶囊，完成率用黄色高亮
   - 主体：中央 45%（大仪表盘+路径），左 27.5%（课程+排行+时段），右 27.5%（在线+满意度+留存+掌握度+漏斗）
   - 卡片：大圆角，活泼但不幼稚
 
-- [ ] **Step 2: 编写 ECharts 配置**
+- [x] **Step 2: 编写 ECharts 配置**
   - 大仪表盘：`gauge`，半径 50%，从 0-100，指针指向 68，颜色分段
   - 七日留存 cohort：`heatmap`，x=日期，y=Day 0-6，颜色=留存率
   - 知识点掌握度：`heatmap`，x=学员群体（新/成长/高阶），y=知识点，颜色=掌握度
   - 学习时段分布：`heatmap`，x=小时（0-23），y=星期（一-日）
 
-- [ ] **Step 3: 添加交互与动效**
+- [x] **Step 3: 添加交互与动效**
   - 大仪表盘指针从 0 扫到 68（2s）
   - 学习路径步骤：完成步骤打勾动画（CSS checkmark draw）
   - 完课率漏斗：每步之间的转化率用箭头标注
 
-- [ ] **Step 4: 验收**
+- [x] **Step 4: 验收**
   - 检查大仪表盘居中、3 个热力图颜色区分度、cohort 数据合理
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   ```bash
   git add tmp/Dashboard/12-education.html
   git commit -m "feat(dashboard): premium redesign of online education data center
@@ -748,7 +748,7 @@ Batch 1 的 4 个文件视觉风格差异最大，并行确立各方向标杆。
   12. 系统负载趋势（面积图，CPU + 内存双轴）
 - 数据故事：系统整体健康 99.97%，API QPS 2847，但电商场景数据量激增 35%
 
-- [ ] **Step 1: 重写 HTML 结构与 CSS**
+- [x] **Step 1: 重写 HTML 结构与 CSS**
   - 背景：星空粒子（白色小点随机分布，缓慢移动）+ 网格线
   - 顶部：中央科幻标题（发光文字）+ 两侧系统 KPI
   - 中央：12 场景网格（3 列 x 4 行 或 4 列 x 3 行），每个格子有：
@@ -759,22 +759,22 @@ Batch 1 的 4 个文件视觉风格差异最大，并行确立各方向标杆。
   - 四周：雷达图（左上）+ 资源仪表盘（右上）+ 可用性热力图（左下）+ API 响应（右下）
   - 底部：告警时间轴 + 系统负载趋势
 
-- [ ] **Step 2: 编写 ECharts 配置**
+- [x] **Step 2: 编写 ECharts 配置**
   - 雷达图：12 个维度（对应 12 场景），颜色区分当前选中 vs 其他
   - 3 个小型仪表盘：CPU（0-100%）、内存（0-100%）、网络（0-1000Mbps）
   - 可用性热力图：24 小时 x 6 个核心服务，颜色绿=100%/黄=99%/红=<99%
   - 场景趋势：12 条折线，用 `legend` 控制显示/隐藏
 
-- [ ] **Step 3: 添加交互与动效**
+- [x] **Step 3: 添加交互与动效**
   - 星空粒子缓慢漂移（CSS animation，随机方向）
   - 场景网格 hover：放大 + 发光边框 + 显示该场景 3 个核心指标
   - 中央标题：呼吸发光（`text-shadow` 脉冲）
   - 告警时间轴：新告警从右侧滑入
 
-- [ ] **Step 4: 验收**
+- [x] **Step 4: 验收**
   - 检查 12 场景网格整齐、雷达图 12 维度不拥挤、星空性能流畅
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   ```bash
   git add tmp/Dashboard/01-multi-screen-dashboard.html
   git commit -m "feat(dashboard): premium redesign of multi-screen command center
@@ -790,14 +790,14 @@ Batch 1 的 4 个文件视觉风格差异最大，并行确立各方向标杆。
 
 所有 12 个文件完成后，执行最终验收：
 
-- [ ] **视觉一致性检查**：打开每个文件，确认主题色与行业匹配，无未修改的遗留样式
-- [ ] **图表数量检查**：每个文件 ≥ 8 个图表/组件
-- [ ] **控制台检查**：浏览器 DevTools Console 无报错、无 404（地图 geoJSON 除外）
-- [ ] **动画流畅度**：帧率稳定 ≥ 30fps，无卡顿
-- [ ] **布局检查**：1920x1080 满屏正确，1366x768 无严重错位
-- [ ] **数据真实性**：时间序列有波动，有异常点，有对比维度
-- [ ] **交互功能**：hover tooltip 正常，数字滚动正常，时钟更新正常，跑马灯循环正常
-- [ ] **ECharts resize**：窗口缩放时所有图表自适应
+- [x] **视觉一致性检查**：打开每个文件，确认主题色与行业匹配，无未修改的遗留样式
+- [x] **图表数量检查**：每个文件 ≥ 8 个图表/组件
+- [x] **控制台检查**：浏览器 DevTools Console 无报错、无 404（地图 geoJSON 除外）
+- [x] **动画流畅度**：帧率稳定 ≥ 30fps，无卡顿
+- [x] **布局检查**：1920x1080 满屏正确，1366x768 无严重错位
+- [x] **数据真实性**：时间序列有波动，有异常点，有对比维度
+- [x] **交互功能**：hover tooltip 正常，数字滚动正常，时钟更新正常，跑马灯循环正常
+- [x] **ECharts resize**：窗口缩放时所有图表自适应
 
 ---
 
