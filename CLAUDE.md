@@ -196,7 +196,7 @@ Runtime deviations are centrally tracked in `docs/bugs/`. See [docs/bugs/index.m
 ### Exploration & Brainstorming
 
 - **OpenSpec explore**: For any new idea, design discussion, or problem investigation, use `/opsx:explore` as the primary thinking tool. It provides OpenSpec context awareness (reads existing specs, active changes) and visual exploration without writing code.
-- **Superpowers brainstorming**: `superpowers:brainstorming` skill remains available for major architectural changes (new modules, cross-layer refactors). For routine feature work, prefer `/opsx:explore`.
+- **Superpowers brainstorming**: Major architectural changes (new modules, cross-layer refactors spanning domain/application/infrastructure/adapter) **MUST** invoke `superpowers:brainstorming` before `/opsx:propose`. For routine feature work, use `/opsx:explore`.
 
 ### OpenSpec Apply & Parallel Execution
 

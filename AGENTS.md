@@ -56,6 +56,14 @@ cd client && npm run dev                # dev server
 5. **Post-edit** → `mvn compile -q` (backend) or `npx tsc --noEmit` (frontend)
 6. **Temp files** → `tmp/` only (git-ignored). Never: repo root, `client/`, `server/`, `docs/`, system `/tmp`
 
+## Hard MUSTs
+
+- **Testing**: New features MUST have tests. No tests = not done.
+- **Clarify**: If requirements or approach are unclear, MUST ask before acting. Never guess.
+- **BUG reporting**: After E2E runs, MUST report "Found N BUGs" even when N=0.
+- **Major architecture**: MUST invoke `superpowers:brainstorming` before `/opsx:propose`.
+- **BUG evidence**: Screenshots at `docs/bugs/assets/<BUG-ID>/` (PNG ≤ 500KB) may be committed. Traces/HAR/HTML stay in `tmp/`.
+
 ## Key Conventions
 
 - **Architecture**: domain ← application ← infrastructure ← adapter (no reverse)

@@ -13,9 +13,11 @@ context: |
 
   Testing: JUnit 5 + AssertJ + WireMock 3.x (FakeOpenCodeServer) for backend, vitest for frontend.
 
-  Database: SQLite metadata + dynamic JDBC user DBs (MySQL/PG/H2 + 16 first-class kinds: sqlite, oracle, sqlserver, mariadb, apache_doris, starrocks, clickhouse, hive, trino, presto, duckdb, tidb, opengauss, oceanbase, kingbase, dameng, gaussdb). Any DB change MUST read docs/DATA_SOURCE_TYPE_COMPATIBILITY.md.
+  Database: SQLite metadata + dynamic JDBC user DBs (MySQL/PG/H2 + 16 additional first-class kinds: sqlite, oracle, sqlserver, mariadb, apache_doris, starrocks, clickhouse, hive, trino, presto, duckdb, tidb, oceanbase, kingbase, dameng, gaussdb). Any DB change MUST read docs/DATA_SOURCE_TYPE_COMPATIBILITY.md.
 
   Frontend UI changes MUST read client/DESIGN.md first and explicitly cite applicable design constraints.
+
+  Event model: DtEvent sealed interface, 22 event types, exhaustive switch compile-time completeness. Changes to domain sealed interfaces/records MUST check application-layer exhaustive switches for sync — the most common silent compile-failure scenario.
 
   BUG tracking: docs/bugs/ centralized. E2E-discovered deviations MUST create BUG files (never verbal-only). Before any bug fix, grep docs/bugs/ first. Before any new plan, check open BUGs for overlap.
 
@@ -48,6 +50,7 @@ rules:
     - Group under ## numbered headings. Order by dependency.
     - Tasks should be small enough to complete in one session.
     - Must include verification step: compile/typecheck/test for each task group.
+    - Within a batch, dispatch independent tasks in parallel (superpowers:dispatching-parallel-agents); run a single consolidated mvn compile / tsc --noEmit / test pass after the batch completes — do NOT verify after each individual task.
     - Backend tasks: note when mvn install -pl <module> -am -DskipTests is needed (domain/application/infrastructure edits).
     - Frontend tasks: note Design Inputs from client/DESIGN.md where applicable.
     - If change touches database type compatibility, include a checklist item for docs/DATA_SOURCE_TYPE_COMPATIBILITY.md update.
