@@ -37,16 +37,11 @@ export function IngestionJobTab({ tab }: IngestionJobTabProps) {
   const payload = tab.payload as { id?: string } | null
   const jobId = payload?.id ?? ''
   const { data: job, isLoading } = useIngestionJobQuery(jobId)
-  const editingMapping = useIngestionJobsStore((s) => s.editingMapping)
+  const hydrateFromJob = useIngestionJobsStore((s) => s.hydrateFromJob)
   const [, setConfirming] = useState(false)
   useEffect(() => {
-    if (!job || !jobId) return
-    if (editingMapping.has(jobId)) return
-    if (job.status !== 'fetched' && job.status !== 'mapped') return
-    // We need columns from the mapping — this would come from the infer schema action result
-    // For now, the mapping editor only shows once the AI calls infer_ingestion_schema
-    // and the result is stored. The mapping phase shows an empty editor until then.
-  }, [job, jobId, editingMapping])
+    if (job) hydrateFromJob(job)
+  }, [job, hydrateFromJob])
 
   const handleConfirm = useCallback(async () => {
     if (!jobId) return

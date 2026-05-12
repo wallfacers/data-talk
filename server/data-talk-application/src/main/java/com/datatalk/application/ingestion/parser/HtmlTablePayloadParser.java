@@ -70,4 +70,66 @@ public class HtmlTablePayloadParser implements PayloadParser {
             throw new RuntimeException("Failed to parse HTML table: " + payloadFile, e);
         }
     }
+
+    // streaming intentionally deferred — HTML payload bounded to 50MB hard cap
+
+    @Override
+    public RowStream openRowStream(Path payloadFile) {
+        try {
+            Document doc = Jsoup.parse(payloadFile.toFile(), "UTF-8");
+            Element table = doc.selectFirst("table");
+            if (table == null) {
+                return new RowStream() {
+                    @Override public boolean hasNext() { return false; }
+                    @Override public Map<String, Object> next() { throw new NoSuchElementException(); }
+                    @Override public void close() {}
+                };
+            }
+
+            Elements headerCells = table.select("thead tr th");
+            if (headerCells.isEmpty()) {
+                Elements firstRow = table.select("tr").first().select("td, th");
+                headerCells = firstRow;
+            }
+
+            List<String> headers = new ArrayList<>();
+            for (Element cell : headerCells) {
+                headers.add(cell.text().trim());
+            }
+            if (headers.isEmpty()) {
+                return new RowStream() {
+                    @Override public boolean hasNext() { return false; }
+                    @Override public Map<String, Object> next() { throw new NoSuchElementException(); }
+                    @Override public void close() {}
+                };
+            }
+
+            int colCount = headers.size();
+            Elements dataRows = table.select("tbody tr");
+            if (dataRows.isEmpty()) {
+                dataRows = table.select("tr");
+                if (!dataRows.isEmpty()) dataRows = new Elements(dataRows.subList(1, dataRows.size()));
+            }
+
+            List<Map<String, Object>> rows = new ArrayList<>();
+            for (Element tr : dataRows) {
+                Elements cells = tr.select("td");
+                Map<String, Object> row = new LinkedHashMap<>();
+                for (int c = 0; c < colCount; c++) {
+                    String val = c < cells.size() ? cells.get(c).text().trim() : null;
+                    row.put(headers.get(c), (val != null && val.isEmpty()) ? null : val);
+                }
+                rows.add(row);
+            }
+
+            final java.util.Iterator<Map<String, Object>> iter = rows.iterator();
+            return new RowStream() {
+                @Override public boolean hasNext() { return iter.hasNext(); }
+                @Override public Map<String, Object> next() { return iter.next(); }
+                @Override public void close() {}
+            };
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to parse HTML table: " + payloadFile, e);
+        }
+    }
 }

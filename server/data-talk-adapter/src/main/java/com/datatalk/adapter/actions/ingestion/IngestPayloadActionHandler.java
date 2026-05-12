@@ -69,7 +69,7 @@ public class IngestPayloadActionHandler implements ActionHandler<Map, Map> {
             int batchSize = input.get("batchSize") != null
                 ? ((Number) input.get("batchSize")).intValue() : 1000;
 
-            var result = executor.ingestPayload(jobId, batchSize);
+            var result = executor.ingestPayload(jobId, batchSize, ctx.sessionId());
             Map<String, Object> out = new LinkedHashMap<>();
             out.put("jobId", result.jobId());
             out.put("status", result.status());

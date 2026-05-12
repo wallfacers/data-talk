@@ -21,6 +21,7 @@ public record IngestionJob(
     Integer rowCount,
     Integer rowsInserted,
     Long bytesFetched,
+    String mappingHash,
     long createdAt,
     long updatedAt,
     Long completedAt,

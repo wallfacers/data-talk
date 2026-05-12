@@ -79,7 +79,7 @@ public class InferIngestionSchemaActionHandler implements ActionHandler<Map, Map
             int sampleSize = input.get("sampleSize") != null
                 ? ((Number) input.get("sampleSize")).intValue() : 100;
 
-            IngestionMapping mapping = inferrer.infer(jobId, sampleSize);
+            IngestionMapping mapping = inferrer.infer(jobId, sampleSize, ctx.sessionId());
 
             Map<String, Object> out = new LinkedHashMap<>();
             out.put("mappingId", mapping.mappingId());

@@ -6,6 +6,7 @@ import com.datatalk.domain.fileartifact.FileArtifactScope;
 import com.datatalk.application.fileartifact.FileArtifactService;
 import com.datatalk.application.ingestion.repository.IngestionCredentialRepository;
 import com.datatalk.application.ingestion.repository.IngestionJobRepository;
+import com.datatalk.domain.event.DtEvent;
 import com.datatalk.domain.ingestion.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -39,6 +40,7 @@ public class IngestionPayloadFetcher {
     private final IngestionJobRepository jobRepo;
     private final FileArtifactService artifactService;
     private final IngestionConfig config;
+    private final IngestionEventPublisher eventPublisher;
     private final ObjectMapper om;
 
     public IngestionPayloadFetcher(HttpFetchClient http,
@@ -48,6 +50,7 @@ public class IngestionPayloadFetcher {
                                    IngestionJobRepository jobRepo,
                                    FileArtifactService artifactService,
                                    IngestionConfig config,
+                                   IngestionEventPublisher eventPublisher,
                                    ObjectMapper om) {
         this.http = http;
         this.urlValidator = urlValidator;
@@ -56,6 +59,7 @@ public class IngestionPayloadFetcher {
         this.jobRepo = jobRepo;
         this.artifactService = artifactService;
         this.config = config;
+        this.eventPublisher = eventPublisher;
         this.om = om;
     }
 
@@ -85,7 +89,7 @@ public class IngestionPayloadFetcher {
 
     // ───────── main entry point ─────────
 
-    public FetchResult fetch(FetchRequest request) {
+    public FetchResult fetch(FetchRequest request, String sessionId) {
         Objects.requireNonNull(request, "request");
         Objects.requireNonNull(request.url(), "url");
         Objects.requireNonNull(request.method(), "method");
@@ -116,11 +120,14 @@ public class IngestionPayloadFetcher {
             null,       // rowCount
             null,       // rowsInserted
             null,       // bytesFetched
+            null,       // mappingHash
             now,        // createdAt
             now,        // updatedAt
             null,       // completedAt
             null        // errorMessage
         ));
+
+        eventPublisher.publish(sessionId, new DtEvent.IngestionJobCreated(jobId, request.url()));
 
         try {
             // 3. Resolve credential
@@ -199,6 +206,9 @@ public class IngestionPayloadFetcher {
             jobRepo.updateStatus(jobId, IngestionJobStatus.toCode(new IngestionJobStatus.Fetched()),
                 null, updatedAt);
 
+            eventPublisher.publish(sessionId, new DtEvent.IngestionPayloadFetched(
+                jobId, artifactId, acc.totalRows(), finalPayload.length));
+
             return new FetchResult(jobId, artifactId, acc.totalRows(), finalPayload.length,
                 pagesFetched, IngestionJobStatus.toCode(new IngestionJobStatus.Fetched()));
 
@@ -207,6 +217,7 @@ public class IngestionPayloadFetcher {
             String msg = e.getMessage();
             jobRepo.updateStatus(jobId, IngestionJobStatus.toCode(new IngestionJobStatus.Failed(msg)),
                 msg, failedAt);
+            eventPublisher.publish(sessionId, new DtEvent.IngestionFailed(jobId, "fetch", msg));
             if (e instanceof RuntimeException re) throw re;
             throw new RuntimeException("fetch failed: " + msg, e);
         }

@@ -31,7 +31,7 @@ class HttpRequestActionHandlerTest {
     @Test
     @SuppressWarnings("unchecked")
     void happyPathReturnsJobId() throws Exception {
-        when(fetcher.fetch(any())).thenReturn(
+        when(fetcher.fetch(any(), anyString())).thenReturn(
             new FetchResult("ing_1", "fa_1", 100, 5000L, 2, "fetched"));
 
         Map<String, Object> input = Map.of(
@@ -57,7 +57,7 @@ class HttpRequestActionHandlerTest {
     @Test
     @SuppressWarnings("unchecked")
     void ssrfBlockedReturnsUserHint() throws Exception {
-        when(fetcher.fetch(any())).thenThrow(
+        when(fetcher.fetch(any(), anyString())).thenThrow(
             new IllegalArgumentException("host denied by SSRF rule: localhost"));
 
         Map<String, Object> input = Map.of(
@@ -82,7 +82,7 @@ class HttpRequestActionHandlerTest {
     @Test
     @SuppressWarnings("unchecked")
     void payloadTooLargeReturnsError() throws Exception {
-        when(fetcher.fetch(any())).thenThrow(
+        when(fetcher.fetch(any(), anyString())).thenThrow(
             new IllegalStateException("Payload exceeds maximum size of 524288000 bytes"));
 
         Map<String, Object> input = Map.of(
@@ -104,7 +104,7 @@ class HttpRequestActionHandlerTest {
     @Test
     @SuppressWarnings("unchecked")
     void genericFailureReturnsError() throws Exception {
-        when(fetcher.fetch(any())).thenThrow(
+        when(fetcher.fetch(any(), anyString())).thenThrow(
             new RuntimeException("Connection refused"));
 
         Map<String, Object> input = Map.of(
@@ -125,7 +125,7 @@ class HttpRequestActionHandlerTest {
     @Test
     @SuppressWarnings("unchecked")
     void htmlUnsupportedReturnsError() throws Exception {
-        when(fetcher.fetch(any())).thenThrow(
+        when(fetcher.fetch(any(), anyString())).thenThrow(
             new UnsupportedOperationException("HTML payload parsing is not yet implemented (P3)"));
 
         Map<String, Object> input = Map.of(

@@ -14,4 +14,10 @@ public interface PayloadParser {
      * and return an inferred column mapping.
      */
     IngestionMapping infer(Path payloadFile, int sampleSize);
+
+    /**
+     * Open a streaming row iterator over the payload file.
+     * The caller must close the returned {@link RowStream}.
+     */
+    RowStream openRowStream(Path payloadFile);
 }

@@ -86,7 +86,7 @@ public class HttpRequestActionHandler implements ActionHandler<Map, Map> {
     public CompletionStage<Map> handle(ActionContext ctx, Map input) {
         try {
             FetchRequest req = buildRequest(input);
-            FetchResult result = fetcher.fetch(req);
+            FetchResult result = fetcher.fetch(req, ctx.sessionId());
 
             Map<String, Object> out = new LinkedHashMap<>();
             out.put("jobId", result.jobId());

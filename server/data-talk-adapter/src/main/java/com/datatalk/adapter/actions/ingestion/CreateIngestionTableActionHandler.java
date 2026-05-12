@@ -77,7 +77,7 @@ public class CreateIngestionTableActionHandler implements ActionHandler<Map, Map
             String mappingHash = str(input, "mappingHash");
             String tokenId = str(input, "tokenId");
 
-            var result = executor.createTable(jobId, connectionId, schema, table, mappingHash, tokenId);
+            var result = executor.createTable(jobId, connectionId, schema, table, mappingHash, tokenId, ctx.sessionId());
             Map<String, Object> out = new LinkedHashMap<>();
             out.put("jobId", result.jobId());
             out.put("targetTable", result.targetTable());

@@ -3,6 +3,7 @@ package com.datatalk.adapter.actions.ingestion;
 import com.datatalk.application.ingestion.repository.IngestionJobRepository;
 import com.datatalk.domain.action.*;
 import com.datatalk.domain.ingestion.IngestionJob;
+import com.datatalk.domain.ingestion.IngestionMapping;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -79,6 +80,8 @@ public class GetIngestionJobActionHandler implements ActionHandler<Map, Map> {
         map.put("connectionId", j.connectionId());
         map.put("targetSchema", j.targetSchema());
         map.put("targetTable", j.targetTable());
+        map.put("mapping", mappingToMap(j.mapping()));
+        map.put("mappingHash", j.mappingHash());
         map.put("rowCount", j.rowCount());
         map.put("rowsInserted", j.rowsInserted());
         map.put("bytesFetched", j.bytesFetched());
@@ -87,6 +90,21 @@ public class GetIngestionJobActionHandler implements ActionHandler<Map, Map> {
         map.put("completedAt", j.completedAt());
         map.put("errorMessage", j.errorMessage());
         return map;
+    }
+
+    private Map<String, Object> mappingToMap(IngestionMapping mapping) {
+        if (mapping == null) return null;
+        List<Map<String, Object>> cols = mapping.columns().stream().map(c -> {
+            Map<String, Object> col = new LinkedHashMap<>();
+            col.put("sourcePath", c.sourcePath());
+            col.put("targetName", c.targetName());
+            col.put("type", c.type() != null ? c.type().name() : null);
+            col.put("skip", c.skip());
+            col.put("sampleValues", c.sampleValues());
+            col.put("nullable", c.nullable());
+            return col;
+        }).toList();
+        return Map.of("mappingId", mapping.mappingId(), "columns", cols);
     }
 
     private static String str(Map input, String key) {

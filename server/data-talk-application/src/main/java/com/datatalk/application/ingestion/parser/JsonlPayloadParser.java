@@ -82,4 +82,62 @@ public class JsonlPayloadParser implements PayloadParser {
 
         return new IngestionMapping(mappingId, mappingColumns);
     }
+
+    // ───────── streaming ─────────
+
+    @Override
+    public RowStream openRowStream(Path payloadFile) {
+        BufferedReader reader;
+        try {
+            reader = Files.newBufferedReader(payloadFile);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to open JSONL file: " + payloadFile, e);
+        }
+
+        return new RowStream() {
+            private String nextLine;
+
+            @Override
+            public boolean hasNext() {
+                if (nextLine != null) return true;
+                try {
+                    while ((nextLine = reader.readLine()) != null) {
+                        if (!nextLine.isBlank()) return true;
+                    }
+                    return false;
+                } catch (IOException e) {
+                    throw new RuntimeException("Failed to read JSONL line", e);
+                }
+            }
+
+            @Override
+            public Map<String, Object> next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                String line = nextLine;
+                nextLine = null;
+                try {
+                    JsonNode node = om.readTree(line.trim());
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    node.fields().forEachRemaining(f -> row.put(f.getKey(), convertNode(f.getValue())));
+                    return row;
+                } catch (IOException e) {
+                    throw new RuntimeException("Failed to parse JSONL line: " + line, e);
+                }
+            }
+
+            @Override
+            public void close() {
+                try { reader.close(); } catch (IOException ignored) {}
+            }
+
+            private Object convertNode(JsonNode node) {
+                if (node.isBoolean()) return node.asBoolean();
+                if (node.isInt()) return node.asInt();
+                if (node.isLong()) return node.asLong();
+                if (node.isDouble()) return node.asDouble();
+                if (node.isNull()) return null;
+                return node.asText();
+            }
+        };
+    }
 }

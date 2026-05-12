@@ -88,4 +88,70 @@ public class CsvPayloadParser implements PayloadParser {
         fields.add(current.toString());
         return fields.toArray(new String[0]);
     }
+
+    // ───────── streaming ─────────
+
+    @Override
+    public RowStream openRowStream(Path payloadFile) {
+        BufferedReader reader;
+        try {
+            reader = Files.newBufferedReader(payloadFile);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to open CSV file: " + payloadFile, e);
+        }
+
+        // Read header line
+        String[] headers;
+        try {
+            String headerLine = reader.readLine();
+            if (headerLine == null || headerLine.isBlank()) {
+                reader.close();
+                return new RowStream() {
+                    @Override public boolean hasNext() { return false; }
+                    @Override public Map<String, Object> next() { throw new NoSuchElementException(); }
+                    @Override public void close() {}
+                };
+            }
+            headers = parseCsvLine(headerLine);
+        } catch (IOException e) {
+            try { reader.close(); } catch (IOException ignored) {}
+            throw new RuntimeException("Failed to read CSV header: " + payloadFile, e);
+        }
+
+        final String[] hdr = headers;
+        return new RowStream() {
+            private String nextLine;
+
+            @Override
+            public boolean hasNext() {
+                if (nextLine != null) return true;
+                try {
+                    while ((nextLine = reader.readLine()) != null) {
+                        if (!nextLine.isBlank()) return true;
+                    }
+                    return false;
+                } catch (IOException e) {
+                    throw new RuntimeException("Failed to read CSV line", e);
+                }
+            }
+
+            @Override
+            public Map<String, Object> next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                String line = nextLine;
+                nextLine = null;
+                String[] vals = parseCsvLine(line);
+                Map<String, Object> row = new LinkedHashMap<>();
+                for (int c = 0; c < hdr.length; c++) {
+                    row.put(hdr[c].trim(), c < vals.length ? vals[c].trim() : null);
+                }
+                return row;
+            }
+
+            @Override
+            public void close() {
+                try { reader.close(); } catch (IOException ignored) {}
+            }
+        };
+    }
 }

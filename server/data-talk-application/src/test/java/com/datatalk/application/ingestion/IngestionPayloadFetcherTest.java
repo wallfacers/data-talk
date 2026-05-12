@@ -27,6 +27,7 @@ class IngestionPayloadFetcherTest {
     @Mock IngestionCredentialRepository credRepo;
     @Mock IngestionJobRepository jobRepo;
     @Mock FileArtifactService artifactService;
+    @Mock IngestionEventPublisher eventPublisher;
 
     IngestionConfig config = new IngestionConfig();
     ObjectMapper om = new ObjectMapper();
@@ -36,7 +37,7 @@ class IngestionPayloadFetcherTest {
     void setup() {
         MockitoAnnotations.openMocks(this);
         fetcher = new IngestionPayloadFetcher(
-            http, urlValidator, credService, credRepo, jobRepo, artifactService, config, om);
+            http, urlValidator, credService, credRepo, jobRepo, artifactService, config, eventPublisher, om);
     }
 
     private IngestionPayloadFetcher.FetchRequest jsonGetRequest(String url) {
@@ -52,7 +53,7 @@ class IngestionPayloadFetcherTest {
         doThrow(new IllegalArgumentException("host denied by SSRF rule: localhost"))
             .when(urlValidator).validate("http://localhost/x");
 
-        assertThatThrownBy(() -> fetcher.fetch(jsonGetRequest("http://localhost/x")))
+        assertThatThrownBy(() -> fetcher.fetch(jsonGetRequest("http://localhost/x"), "sess-1"))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("denied");
 
@@ -78,7 +79,7 @@ class IngestionPayloadFetcherTest {
             .thenReturn(mockArtifact);
 
         // Act
-        var result = fetcher.fetch(jsonGetRequest("https://api.example.com/data"));
+        var result = fetcher.fetch(jsonGetRequest("https://api.example.com/data"), "sess-1");
 
         // Assert
         assertThat(result.status()).isEqualTo("fetched");
@@ -110,7 +111,7 @@ class IngestionPayloadFetcherTest {
             anyString(), isNull(), anyMap()))
             .thenReturn(mock(FileArtifact.class));
 
-        var result = fetcher.fetch(jsonGetRequest("https://api.example.com/envelope"));
+        var result = fetcher.fetch(jsonGetRequest("https://api.example.com/envelope"), "sess-1");
 
         assertThat(result.rowsFetched()).isEqualTo(3);
     }
@@ -135,7 +136,7 @@ class IngestionPayloadFetcherTest {
         var request = new IngestionPayloadFetcher.FetchRequest(
             "https://api.example.com/jsonl", "GET", Map.of(), Map.of(), null, null,
             PayloadFormat.JSONL, null, null, 60000L);
-        var result = fetcher.fetch(request);
+        var result = fetcher.fetch(request, "sess-1");
 
         assertThat(result.rowsFetched()).isEqualTo(3);
         assertThat(result.status()).isEqualTo("fetched");
@@ -161,7 +162,7 @@ class IngestionPayloadFetcherTest {
         var request = new IngestionPayloadFetcher.FetchRequest(
             "https://api.example.com/csv", "GET", Map.of(), Map.of(), null, null,
             PayloadFormat.CSV, null, null, 60000L);
-        var result = fetcher.fetch(request);
+        var result = fetcher.fetch(request, "sess-1");
 
         assertThat(result.status()).isEqualTo("fetched");
         assertThat(result.rowsFetched()).isEqualTo(3); // header + 2 data rows
@@ -180,7 +181,7 @@ class IngestionPayloadFetcherTest {
         when(http.fetch(anyString(), anyString(), anyMap(), anyMap(), any(), anyLong()))
             .thenReturn(responsePayload);
 
-        assertThatThrownBy(() -> fetcher.fetch(jsonGetRequest("https://api.example.com/big")))
+        assertThatThrownBy(() -> fetcher.fetch(jsonGetRequest("https://api.example.com/big"), "sess-1"))
             .isInstanceOf(IllegalStateException.class)
             .hasMessageContaining("exceeds maximum size");
 
@@ -199,7 +200,7 @@ class IngestionPayloadFetcherTest {
             "https://api.example.com/html", "GET", Map.of(), Map.of(), null, null,
             PayloadFormat.HTML, null, null, 60000L);
 
-        assertThatThrownBy(() -> fetcher.fetch(request))
+        assertThatThrownBy(() -> fetcher.fetch(request, "sess-1"))
             .isInstanceOf(UnsupportedOperationException.class)
             .hasMessageContaining("not yet implemented");
     }
@@ -222,7 +223,7 @@ class IngestionPayloadFetcherTest {
         var request = new IngestionPayloadFetcher.FetchRequest(
             "https://api.example.com/secured", "GET", Map.of(), Map.of(), null, "cred_test",
             PayloadFormat.JSON, null, null, 60000L);
-        fetcher.fetch(request);
+        fetcher.fetch(request, "sess-1");
 
         verify(http).fetch(eq("https://api.example.com/secured"), eq("GET"),
             argThat(headers -> "Bearer my-token-123".equals(headers.get("Authorization"))),
@@ -249,7 +250,7 @@ class IngestionPayloadFetcherTest {
         var request = new IngestionPayloadFetcher.FetchRequest(
             "https://api.example.com/paged", "GET", Map.of(), Map.of(), null, null,
             PayloadFormat.JSON, spec, null, 60000L);
-        var result = fetcher.fetch(request);
+        var result = fetcher.fetch(request, "sess-1");
 
         assertThat(result.rowsFetched()).isEqualTo(4);
         assertThat(result.pagesFetched()).isEqualTo(2);
@@ -264,7 +265,7 @@ class IngestionPayloadFetcherTest {
         when(http.fetch(anyString(), anyString(), anyMap(), anyMap(), any(), anyLong()))
             .thenThrow(new RuntimeException("Connection refused"));
 
-        assertThatThrownBy(() -> fetcher.fetch(jsonGetRequest("https://api.example.com/down")))
+        assertThatThrownBy(() -> fetcher.fetch(jsonGetRequest("https://api.example.com/down"), "sess-1"))
             .isInstanceOf(RuntimeException.class)
             .hasMessageContaining("Connection refused");
 

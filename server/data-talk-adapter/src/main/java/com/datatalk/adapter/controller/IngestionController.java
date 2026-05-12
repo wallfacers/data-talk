@@ -3,12 +3,14 @@ package com.datatalk.adapter.controller;
 import com.datatalk.application.fileartifact.FileArtifactRepository;
 import com.datatalk.application.ingestion.IngestionConfirmedTokenStore;
 import com.datatalk.application.ingestion.IngestionCredentialService;
+import com.datatalk.application.ingestion.MappingHash;
 import com.datatalk.application.ingestion.repository.IngestionCredentialRepository;
 import com.datatalk.application.ingestion.repository.IngestionJobRepository;
 import com.datatalk.domain.fileartifact.FileArtifact;
 import com.datatalk.domain.ingestion.AuthScheme;
 import com.datatalk.domain.ingestion.IngestionCredential;
 import com.datatalk.domain.ingestion.IngestionJob;
+import com.datatalk.domain.ingestion.IngestionMapping;
 import com.datatalk.domain.ingestion.PayloadFormat;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -260,6 +262,8 @@ public class IngestionController {
         map.put("connectionId", j.connectionId());
         map.put("targetSchema", j.targetSchema());
         map.put("targetTable", j.targetTable());
+        map.put("mapping", mappingToMap(j.mapping()));
+        map.put("mappingHash", j.mappingHash());
         map.put("rowCount", j.rowCount());
         map.put("rowsInserted", j.rowsInserted());
         map.put("bytesFetched", j.bytesFetched());
@@ -270,21 +274,35 @@ public class IngestionController {
         return map;
     }
 
-    public record ConfirmRequest(String mappingHash) {}
+    private Map<String, Object> mappingToMap(IngestionMapping mapping) {
+        if (mapping == null) return null;
+        List<Map<String, Object>> cols = mapping.columns().stream().map(c -> {
+            Map<String, Object> col = new LinkedHashMap<>();
+            col.put("sourcePath", c.sourcePath());
+            col.put("targetName", c.targetName());
+            col.put("type", c.type() != null ? c.type().name() : null);
+            col.put("skip", c.skip());
+            col.put("sampleValues", c.sampleValues());
+            col.put("nullable", c.nullable());
+            return col;
+        }).toList();
+        return Map.of("mappingId", mapping.mappingId(), "columns", cols);
+    }
 
     @PostMapping("/jobs/{id}/confirm")
-    public ResponseEntity<Map<String, Object>> confirm(@PathVariable String id,
-                                                        @RequestBody ConfirmRequest req) {
+    public ResponseEntity<Map<String, Object>> confirm(@PathVariable String id) {
         var job = jobRepo.findById(id);
         if (job.isEmpty()) return ResponseEntity.notFound().build();
 
-        String hash = req.mappingHash() != null ? req.mappingHash() : "";
+        IngestionJob j = job.get();
+        String hash = j.mappingHash() != null ? j.mappingHash() : MappingHash.compute(j.mapping());
         var token = tokenStore.issue(id, hash);
 
         jobRepo.updateStatus(id, "confirmed", null, System.currentTimeMillis());
         return ResponseEntity.ok(Map.of(
             "tokenId", token.tokenId(),
-            "expiresAt", token.expiresAt()
+            "expiresAt", token.expiresAt(),
+            "mappingHash", hash
         ));
     }
 

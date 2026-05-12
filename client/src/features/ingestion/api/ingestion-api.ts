@@ -1,5 +1,14 @@
 import { http } from '@/services/http'
 
+export interface MappingColumnView {
+  sourcePath: string
+  targetName: string
+  type: string
+  skip: boolean
+  sampleValues: string[]
+  nullable: boolean
+}
+
 export interface IngestionJobView {
   id: string
   sourceUrl: string
@@ -12,6 +21,8 @@ export interface IngestionJobView {
   rowCount: number | null
   rowsInserted: number | null
   bytesFetched: number | null
+  mappingHash: string | null
+  mapping: { mappingId: string; columns: MappingColumnView[] } | null
   createdAt: number
   updatedAt: number
   completedAt: number | null
@@ -51,8 +62,13 @@ export async function getPayloadPreview(jobId: string, limit = 100): Promise<Pay
   return http.get(`ingestion/jobs/${jobId}/payload-preview`, { searchParams: { limit: String(limit) } }).json<PayloadPreviewResponse>()
 }
 
-export async function confirmIngestionJob(jobId: string): Promise<{ token: string }> {
-  return http.post(`ingestion/jobs/${jobId}/confirm`).json<{ token: string }>()
+export async function confirmIngestionJob(jobId: string): Promise<{
+  tokenId: string
+  expiresAt: number
+  mappingHash: string
+}> {
+  return http.post(`ingestion/jobs/${jobId}/confirm`, { json: {} })
+    .json<{ tokenId: string; expiresAt: number; mappingHash: string }>()
 }
 
 export async function cancelIngestionJob(jobId: string): Promise<void> {

@@ -25,7 +25,7 @@ public class JdbcIngestionJobRepository implements IngestionJobRepository {
         id, source_url, source_method, source_headers_json, source_query_params_json,
         source_body_json, credential_id, pagination_json, payload_format,
         payload_artifact_id, status, connection_id, target_schema, target_table,
-        mapping_json, row_count, rows_inserted, bytes_fetched,
+        mapping_json, row_count, rows_inserted, bytes_fetched, mapping_hash,
         created_at, updated_at, completed_at, error_message
         """;
 
@@ -53,23 +53,25 @@ public class JdbcIngestionJobRepository implements IngestionJobRepository {
             "source_query_params_json=?, source_body_json=?, credential_id=?, pagination_json=?, " +
             "payload_format=?, payload_artifact_id=?, status=?, connection_id=?, " +
             "target_schema=?, target_table=?, mapping_json=?, row_count=?, rows_inserted=?, " +
-            "bytes_fetched=?, updated_at=?, completed_at=?, error_message=? WHERE id=?",
+            "bytes_fetched=?, mapping_hash=?, updated_at=?, completed_at=?, error_message=? WHERE id=?",
             j.sourceUrl(), j.sourceMethod(), headersJson, queryParamsJson, bodyJson,
             j.credentialId(), paginationJson, j.payloadFormat().dbValue(),
             j.payloadArtifactId(), j.status(), j.connectionId(),
             j.targetSchema(), j.targetTable(), mappingJson,
             j.rowCount(), j.rowsInserted(), j.bytesFetched(),
+            j.mappingHash(),
             j.updatedAt(), j.completedAt(), j.errorMessage(), j.id());
 
         if (updated == 0) {
             jdbc.update(
                 "INSERT INTO ingestion_job (" + COLS + ") VALUES (" +
-                "?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 j.id(), j.sourceUrl(), j.sourceMethod(), headersJson, queryParamsJson,
                 bodyJson, j.credentialId(), paginationJson,
                 j.payloadFormat().dbValue(), j.payloadArtifactId(),
                 j.status(), j.connectionId(), j.targetSchema(), j.targetTable(),
                 mappingJson, j.rowCount(), j.rowsInserted(), j.bytesFetched(),
+                j.mappingHash(),
                 j.createdAt(), j.updatedAt(), j.completedAt(), j.errorMessage());
         }
     }
@@ -150,6 +152,13 @@ public class JdbcIngestionJobRepository implements IngestionJobRepository {
     }
 
     @Override
+    public void updateMappingHash(String id, String mappingHash, long updatedAt) {
+        jdbc.update(
+            "UPDATE ingestion_job SET mapping_hash=?, updated_at=? WHERE id=?",
+            mappingHash, updatedAt, id);
+    }
+
+    @Override
     public void updateTargetTable(String id, String connectionId, String schema, String table, long updatedAt) {
         jdbc.update(
             "UPDATE ingestion_job SET connection_id=?, target_schema=?, target_table=?, updated_at=? WHERE id=?",
@@ -190,6 +199,7 @@ public class JdbcIngestionJobRepository implements IngestionJobRepository {
             readIntOrNull(rs, "row_count"),
             readIntOrNull(rs, "rows_inserted"),
             readLongOrNull(rs, "bytes_fetched"),
+            rs.getString("mapping_hash"),
             rs.getLong("created_at"),
             rs.getLong("updated_at"),
             readLongOrNull(rs, "completed_at"),

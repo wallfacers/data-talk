@@ -3,6 +3,7 @@ package com.datatalk.application.ingestion;
 import com.datatalk.application.fileartifact.FileArtifactRepository;
 import com.datatalk.application.ingestion.parser.*;
 import com.datatalk.application.ingestion.repository.IngestionJobRepository;
+import com.datatalk.domain.event.DtEvent;
 import com.datatalk.domain.fileartifact.FileArtifact;
 import com.datatalk.domain.ingestion.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -24,17 +25,21 @@ public class IngestionSchemaInferrer {
     private final Map<PayloadFormat, PayloadParser> parsers;
     private final FileArtifactRepository artifactRepo;
     private final IngestionJobRepository jobRepo;
+    private final IngestionEventPublisher eventPublisher;
     private final ObjectMapper om;
 
     public IngestionSchemaInferrer(JsonPayloadParser j, JsonlPayloadParser jl,
                                    CsvPayloadParser c, HtmlTablePayloadParser h,
                                    FileArtifactRepository artifactRepo,
-                                   IngestionJobRepository jobRepo, ObjectMapper om) {
+                                   IngestionJobRepository jobRepo,
+                                   IngestionEventPublisher eventPublisher,
+                                   ObjectMapper om) {
         this.parsers = Map.of(
             PayloadFormat.JSON, j, PayloadFormat.JSONL, jl,
             PayloadFormat.CSV, c, PayloadFormat.HTML, h);
         this.artifactRepo = artifactRepo;
         this.jobRepo = jobRepo;
+        this.eventPublisher = eventPublisher;
         this.om = om;
     }
 
@@ -43,10 +48,11 @@ public class IngestionSchemaInferrer {
      *
      * @param jobId      the ingestion job ID (must have a payloadArtifactId)
      * @param sampleSize max number of rows to sample from the payload
+     * @param sessionId  the session ID for event publishing
      * @return the inferred {@link IngestionMapping}
      * @throws IllegalArgumentException if the job or its payload artifact is not found
      */
-    public IngestionMapping infer(String jobId, int sampleSize) {
+    public IngestionMapping infer(String jobId, int sampleSize, String sessionId) {
         var job = jobRepo.findById(jobId)
             .orElseThrow(() -> new IllegalArgumentException("job not found: " + jobId));
 
@@ -72,6 +78,12 @@ public class IngestionSchemaInferrer {
         } catch (JsonProcessingException e) {
             throw new RuntimeException("failed to serialize mapping", e);
         }
+
+        String hash = MappingHash.compute(mapping);
+        jobRepo.updateMappingHash(jobId, hash, System.currentTimeMillis());
+
+        eventPublisher.publish(sessionId, new DtEvent.IngestionMappingProposed(
+            jobId, mapping.mappingId(), mapping.columns().size()));
 
         return mapping;
     }

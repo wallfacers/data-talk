@@ -8,6 +8,7 @@ import com.datatalk.application.ingestion.parser.*;
 import com.datatalk.application.ingestion.repository.IngestionJobRepository;
 import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.application.persistence.ConnectionRepository;
+import com.datatalk.domain.event.DtEvent;
 import com.datatalk.domain.fileartifact.FileArtifact;
 import com.datatalk.domain.ingestion.*;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -28,6 +29,7 @@ public class IngestionExecutor {
     private final ConnectionRepository connRepo;
     private final ConnectionService connService;
     private final FileArtifactRepository artifactRepo;
+    private final IngestionEventPublisher eventPublisher;
     private final Map<PayloadFormat, PayloadParser> parsers;
     private final ObjectMapper om;
 
@@ -39,6 +41,7 @@ public class IngestionExecutor {
                              FileArtifactRepository artifactRepo,
                              JsonPayloadParser j, JsonlPayloadParser jl,
                              CsvPayloadParser c, HtmlTablePayloadParser h,
+                             IngestionEventPublisher eventPublisher,
                              ObjectMapper om) {
         this.jobRepo = jobRepo;
         this.tokenStore = tokenStore;
@@ -49,6 +52,7 @@ public class IngestionExecutor {
         this.parsers = Map.of(
             PayloadFormat.JSON, j, PayloadFormat.JSONL, jl,
             PayloadFormat.CSV, c, PayloadFormat.HTML, h);
+        this.eventPublisher = eventPublisher;
         this.om = om;
     }
 
@@ -56,7 +60,8 @@ public class IngestionExecutor {
 
     public CreateTableResult createTable(String jobId, String connectionId,
                                           String schema, String table,
-                                          String mappingHash, String tokenId) {
+                                          String mappingHash, String tokenId,
+                                          String sessionId) {
         var job = jobRepo.findById(jobId)
             .orElseThrow(() -> new IllegalArgumentException("job not found: " + jobId));
         tokenStore.consume(tokenId, jobId, mappingHash);
@@ -71,13 +76,17 @@ public class IngestionExecutor {
         String ddl = adapter.generateCreateTable(schema, table, mapping.columns());
         executeDdl(cr, ddl);
 
+        String targetTable = schema != null ? schema + "." + table : table;
         jobRepo.updateTargetTable(jobId, connectionId, schema, table, System.currentTimeMillis());
         jobRepo.updateStatus(jobId, "writing", null, System.currentTimeMillis());
 
-        return new CreateTableResult(jobId, schema != null ? schema + "." + table : table, ddl);
+        eventPublisher.publish(sessionId, new DtEvent.IngestionJobConfirmed(jobId, tokenId));
+        eventPublisher.publish(sessionId, new DtEvent.IngestionWriteStarted(jobId, targetTable));
+
+        return new CreateTableResult(jobId, targetTable, ddl);
     }
 
-    public IngestResult ingestPayload(String jobId, int batchSize) {
+    public IngestResult ingestPayload(String jobId, int batchSize, String sessionId) {
         var job = jobRepo.findById(jobId)
             .orElseThrow(() -> new IllegalArgumentException("job not found: " + jobId));
 
@@ -98,15 +107,27 @@ public class IngestionExecutor {
         long start = System.currentTimeMillis();
 
         try {
-            rowsInserted = executeBatchInsert(cr, insertSql, payloadPath, job.payloadFormat(), mapping.columns(), batchSize);
+            PayloadParser parser = parsers.get(job.payloadFormat());
+            if (parser == null) {
+                throw new UnsupportedOperationException(
+                    "unsupported payload format: " + job.payloadFormat());
+            }
+            rowsInserted = executeBatchInsert(cr, insertSql, payloadPath, parser, mapping.columns(), batchSize, jobId, sessionId);
         } catch (Exception e) {
             jobRepo.updateStatus(jobId, "failed", e.getMessage(), System.currentTimeMillis());
+            eventPublisher.publish(sessionId, new DtEvent.IngestionFailed(jobId, "ingest", e.getMessage()));
             throw new RuntimeException("ingestion failed: " + e.getMessage(), e);
         }
 
         long durationMs = System.currentTimeMillis() - start;
         jobRepo.updateCompleted(jobId, rowsInserted, System.currentTimeMillis(), System.currentTimeMillis());
         jobRepo.updateStatus(jobId, "completed", null, System.currentTimeMillis());
+
+        String targetTable = job.targetSchema() != null
+            ? job.targetSchema() + "." + job.targetTable()
+            : job.targetTable();
+        eventPublisher.publish(sessionId, new DtEvent.IngestionCompleted(
+            jobId, targetTable, rowsInserted, durationMs));
 
         return new IngestResult(jobId, "completed", rowsInserted, durationMs);
     }
@@ -132,22 +153,21 @@ public class IngestionExecutor {
     }
 
     private int executeBatchInsert(ConnectionRecord cr, String insertSql, Path payloadPath,
-                                    PayloadFormat format, List<MappingColumn> columns, int batchSize) throws Exception {
+                                    PayloadParser parser, List<MappingColumn> columns,
+                                    int batchSize, String jobId, String sessionId) throws Exception {
         List<MappingColumn> active = columns.stream().filter(c -> !c.skip()).toList();
         if (active.isEmpty()) return 0;
 
         String url = JdbcUrlBuilder.build(cr);
         String password = connService.decryptPassword(cr.id());
 
-        String content = java.nio.file.Files.readString(payloadPath);
-        List<Map<String, Object>> rows = parseRows(content, format);
-
-        try (Connection conn = DriverManager.getConnection(url, cr.username(), password);
+        try (RowStream rs = parser.openRowStream(payloadPath);
+             Connection conn = DriverManager.getConnection(url, cr.username(), password);
              PreparedStatement ps = conn.prepareStatement(insertSql)) {
             conn.setAutoCommit(false);
             int count = 0;
-            for (int i = 0; i < rows.size(); i++) {
-                Map<String, Object> row = rows.get(i);
+            while (rs.hasNext()) {
+                Map<String, Object> row = rs.next();
                 for (int c = 0; c < active.size(); c++) {
                     MappingColumn col = active.get(c);
                     Object val = row.get(col.targetName());
@@ -159,80 +179,13 @@ public class IngestionExecutor {
                 if (count % batchSize == 0) {
                     ps.executeBatch();
                     conn.commit();
+                    eventPublisher.publish(sessionId, new DtEvent.IngestionWriteProgress(jobId, count, -1));
                 }
             }
             ps.executeBatch();
             conn.commit();
             return count;
         }
-    }
-
-    private List<Map<String, Object>> parseRows(String content, PayloadFormat format) throws Exception {
-        List<Map<String, Object>> rows = new ArrayList<>();
-        switch (format) {
-            case JSON -> {
-                JsonNode root = om.readTree(content);
-                if (root.isArray()) {
-                    for (JsonNode item : root) {
-                        Map<String, Object> row = new LinkedHashMap<>();
-                        item.fields().forEachRemaining(f -> row.put(f.getKey(), convertNode(f.getValue())));
-                        rows.add(row);
-                    }
-                }
-            }
-            case JSONL -> {
-                for (String line : content.split("\n")) {
-                    if (line.isBlank()) continue;
-                    JsonNode node = om.readTree(line);
-                    Map<String, Object> row = new LinkedHashMap<>();
-                    node.fields().forEachRemaining(f -> row.put(f.getKey(), convertNode(f.getValue())));
-                    rows.add(row);
-                }
-            }
-            case CSV -> {
-                String[] lines = content.split("\n");
-                if (lines.length == 0) break;
-                String[] headers = parseCsvLine(lines[0]);
-                for (int i = 1; i < lines.length; i++) {
-                    if (lines[i].isBlank()) continue;
-                    String[] vals = parseCsvLine(lines[i]);
-                    Map<String, Object> row = new LinkedHashMap<>();
-                    for (int c = 0; c < headers.length; c++) {
-                        row.put(headers[c].trim(), c < vals.length ? vals[c].trim() : null);
-                    }
-                    rows.add(row);
-                }
-            }
-            default -> throw new UnsupportedOperationException("unsupported format for ingestion: " + format);
-        }
-        return rows;
-    }
-
-    private String[] parseCsvLine(String line) {
-        List<String> fields = new ArrayList<>();
-        StringBuilder current = new StringBuilder();
-        boolean inQuotes = false;
-        for (int i = 0; i < line.length(); i++) {
-            char ch = line.charAt(i);
-            if (inQuotes) {
-                if (ch == '"') {
-                    if (i + 1 < line.length() && line.charAt(i + 1) == '"') {
-                        current.append('"');
-                        i++;
-                    } else {
-                        inQuotes = false;
-                    }
-                } else {
-                    current.append(ch);
-                }
-            } else {
-                if (ch == '"') inQuotes = true;
-                else if (ch == ',') { fields.add(current.toString()); current = new StringBuilder(); }
-                else current.append(ch);
-            }
-        }
-        fields.add(current.toString());
-        return fields.toArray(new String[0]);
     }
 
     private Object convertNode(JsonNode node) {

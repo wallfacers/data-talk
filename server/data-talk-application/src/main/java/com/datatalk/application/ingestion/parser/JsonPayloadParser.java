@@ -3,6 +3,8 @@ package com.datatalk.application.ingestion.parser;
 import com.datatalk.domain.ingestion.InferredType;
 import com.datatalk.domain.ingestion.IngestionMapping;
 import com.datatalk.domain.ingestion.MappingColumn;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -96,5 +98,104 @@ public class JsonPayloadParser implements PayloadParser {
         }
 
         return new IngestionMapping(mappingId, mappingColumns);
+    }
+
+    // ───────── streaming ─────────
+
+    @Override
+    public RowStream openRowStream(Path payloadFile) {
+        ObjectMapper objectMapper = flattener.objectMapper();
+        JsonParser jp;
+        try {
+            jp = objectMapper.getFactory().createParser(payloadFile.toFile());
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to open JSON file: " + payloadFile, e);
+        }
+
+        try {
+            JsonToken token = jp.nextToken();
+            if (token == JsonToken.START_ARRAY) {
+                return new JsonArrayRowStream(jp, objectMapper);
+            } else if (token == JsonToken.START_OBJECT) {
+                // Single-object envelope: wrap into a single-row stream
+                JsonNode node = objectMapper.readTree(jp);
+                jp.close();
+                Map<String, Object> row = new LinkedHashMap<>();
+                if (node.isObject()) {
+                    node.fields().forEachRemaining(f -> row.put(f.getKey(), convertNode(f.getValue())));
+                }
+                final java.util.Iterator<Map<String, Object>> iter = List.of(row).iterator();
+                return new RowStream() {
+                    @Override public boolean hasNext() { return iter.hasNext(); }
+                    @Override public Map<String, Object> next() { return iter.next(); }
+                    @Override public void close() {}
+                };
+            } else {
+                jp.close();
+                return new RowStream() {
+                    @Override public boolean hasNext() { return false; }
+                    @Override public Map<String, Object> next() { throw new NoSuchElementException(); }
+                    @Override public void close() {}
+                };
+            }
+        } catch (IOException e) {
+            try { jp.close(); } catch (IOException ignored) {}
+            throw new RuntimeException("Failed to parse JSON file: " + payloadFile, e);
+        }
+    }
+
+    private static Object convertNode(JsonNode node) {
+        if (node.isBoolean()) return node.asBoolean();
+        if (node.isInt()) return node.asInt();
+        if (node.isLong()) return node.asLong();
+        if (node.isDouble()) return node.asDouble();
+        if (node.isNull()) return null;
+        return node.asText();
+    }
+
+    private static class JsonArrayRowStream implements RowStream {
+        private final JsonParser jp;
+        private final ObjectMapper om;
+        private boolean exhausted = false;
+
+        JsonArrayRowStream(JsonParser jp, ObjectMapper om) {
+            this.jp = jp;
+            this.om = om;
+        }
+
+        @Override
+        public boolean hasNext() {
+            if (exhausted) return false;
+            try {
+                JsonToken token = jp.nextToken();
+                if (token == JsonToken.END_ARRAY || token == null) {
+                    exhausted = true;
+                    return false;
+                }
+                return true;
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to read JSON token", e);
+            }
+        }
+
+        @Override
+        public Map<String, Object> next() {
+            if (exhausted) throw new NoSuchElementException();
+            try {
+                JsonNode node = jp.readValueAsTree();
+                Map<String, Object> row = new LinkedHashMap<>();
+                if (node.isObject()) {
+                    node.fields().forEachRemaining(f -> row.put(f.getKey(), JsonPayloadParser.convertNode(f.getValue())));
+                }
+                return row;
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to parse JSON array element", e);
+            }
+        }
+
+        @Override
+        public void close() {
+            try { jp.close(); } catch (IOException ignored) {}
+        }
     }
 }

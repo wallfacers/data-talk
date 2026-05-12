@@ -38,7 +38,7 @@ class InferIngestionSchemaActionHandlerTest {
         MappingColumn col2 = new MappingColumn("$.age", "age", InferredType.INTEGER_32, false, List.of("30"), false);
         IngestionMapping mapping = new IngestionMapping("map_abc123", List.of(col1, col2));
 
-        when(inferrer.infer("ing_1", 100)).thenReturn(mapping);
+        when(inferrer.infer("ing_1", 100, "sess-1")).thenReturn(mapping);
 
         Map<String, Object> input = Map.of("jobId", "ing_1");
         Map<String, Object> result = (Map<String, Object>)
@@ -66,7 +66,7 @@ class InferIngestionSchemaActionHandlerTest {
     @SuppressWarnings("unchecked")
     void customSampleSize() throws Exception {
         IngestionMapping mapping = new IngestionMapping("map_1", List.of());
-        when(inferrer.infer("ing_2", 50)).thenReturn(mapping);
+        when(inferrer.infer("ing_2", 50, "sess-1")).thenReturn(mapping);
 
         Map<String, Object> input = Map.of("jobId", "ing_2", "sampleSize", 50);
         Map<String, Object> result = (Map<String, Object>)
@@ -81,13 +81,13 @@ class InferIngestionSchemaActionHandlerTest {
     @SuppressWarnings("unchecked")
     void defaultSampleSizeIs100() throws Exception {
         IngestionMapping mapping = new IngestionMapping("map_1", List.of());
-        when(inferrer.infer("ing_3", 100)).thenReturn(mapping);
+        when(inferrer.infer("ing_3", 100, "sess-1")).thenReturn(mapping);
 
         Map<String, Object> input = Map.of("jobId", "ing_3");
         Map<String, Object> result = (Map<String, Object>)
             handler.handle(ctx, input).toCompletableFuture().get(5, TimeUnit.SECONDS);
 
-        verify(inferrer).infer("ing_3", 100);
+        verify(inferrer).infer("ing_3", 100, "sess-1");
         assertThat(result.get("rowsAnalyzed")).isEqualTo(100);
     }
 
@@ -96,7 +96,7 @@ class InferIngestionSchemaActionHandlerTest {
     @Test
     @SuppressWarnings("unchecked")
     void jobNotFoundReturnsError() throws Exception {
-        when(inferrer.infer(eq("missing"), anyInt()))
+        when(inferrer.infer(eq("missing"), anyInt(), eq("sess-1")))
             .thenThrow(new IllegalArgumentException("job not found: missing"));
 
         Map<String, Object> input = Map.of("jobId", "missing");
@@ -116,7 +116,7 @@ class InferIngestionSchemaActionHandlerTest {
     @Test
     @SuppressWarnings("unchecked")
     void unsupportedFormatReturnsError() throws Exception {
-        when(inferrer.infer(eq("ing_4"), anyInt()))
+        when(inferrer.infer(eq("ing_4"), anyInt(), eq("sess-1")))
             .thenThrow(new UnsupportedOperationException("unsupported payload format: XML"));
 
         Map<String, Object> input = Map.of("jobId", "ing_4");
@@ -133,7 +133,7 @@ class InferIngestionSchemaActionHandlerTest {
     @Test
     @SuppressWarnings("unchecked")
     void genericFailureReturnsError() throws Exception {
-        when(inferrer.infer(eq("ing_5"), anyInt()))
+        when(inferrer.infer(eq("ing_5"), anyInt(), eq("sess-1")))
             .thenThrow(new RuntimeException("I/O error reading file"));
 
         Map<String, Object> input = Map.of("jobId", "ing_5");
@@ -171,7 +171,7 @@ class InferIngestionSchemaActionHandlerTest {
         MappingColumn textCol = new MappingColumn("$.bio", "bio", InferredType.STRING_LONG, false, List.of(), true);
         IngestionMapping mapping = new IngestionMapping("map_types", List.of(boolCol, longCol, decCol, dateCol, textCol));
 
-        when(inferrer.infer("ing_types", 10)).thenReturn(mapping);
+        when(inferrer.infer("ing_types", 10, "sess-1")).thenReturn(mapping);
 
         Map<String, Object> input = Map.of("jobId", "ing_types", "sampleSize", 10);
         Map<String, Object> result = (Map<String, Object>)
