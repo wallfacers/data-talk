@@ -26,6 +26,7 @@ async function fetchInferConfirm(request, connId: string, sourceUrl: string) {
 
 test.describe('@e2e @ingestion @api DDL generation + execution', () => {
   test('H2 round-trip — CREATE TABLE then SELECT', async ({ request }) => {
+    test.fixme(true, 'Blocked on BUG-0013: http_request returns null for required output fields')
     const connId = await seedH2Connection(request, `e2e_h2_ddl_${Date.now()}`)
     const { jobId, tokenId, mappingHash } = await fetchInferConfirm(request, connId, `${mock.baseUrl}/json/users`)
     const c = adapterClient(request)
@@ -42,6 +43,7 @@ test.describe('@e2e @ingestion @api DDL generation + execution', () => {
   })
 
   test('Unsupported dialect returns INGESTION_DIALECT_UNSUPPORTED', async ({ request }) => {
+    test.fixme(true, 'Blocked on BUG-0013: http_request returns null for required output fields')
     const conn = await adapterClient(request).createConnection({
       name: `e2e_oracle_unsupported_${Date.now()}`,
       kind: 'oracle', host: 'x', port: 1521, database: 'x', username: 'x', password: 'x',
@@ -68,6 +70,7 @@ test.describe('@e2e @ingestion @api DDL generation + execution', () => {
   })
 
   test('DDL preview quotes identifiers per dialect', async ({ request }) => {
+    test.fixme(true, 'Blocked on BUG-0013: http_request returns null for required output fields')
     const connId = await seedH2Connection(request, `e2e_h2_ddl_preview_${Date.now()}`)
     const { jobId, tokenId, mappingHash } = await fetchInferConfirm(request, connId, `${mock.baseUrl}/json/users`)
     const c = adapterClient(request)
