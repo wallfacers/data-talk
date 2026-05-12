@@ -925,14 +925,14 @@ git commit -m "test(ingestion): T1.7 — 5 INGESTION_* error codes + userHint su
 
 ### Phase 1 gate
 
-- [ ] **Step Phase1.G.1: Run all Phase 1 specs together**
+- [x] **Step Phase1.G.1: Run all Phase 1 specs together**
 
 ```bash
 cd client && npx playwright test --grep "@e2e @ingestion @api"
 ```
 Expected: 7 spec files green. If failures appear, classify each: spec bug vs product BUG. Product BUGs **MUST** be filed under `docs/bugs/` per the BUG Tracking Gate.
 
-- [ ] **Step Phase1.G.2: Marker commit**
+- [x] **Step Phase1.G.2: Marker commit**
 
 ```bash
 git commit --allow-empty -m "chore(ingestion-e2e): Phase 1 closure (7 API specs green)"
@@ -1160,20 +1160,20 @@ git commit -m "test(ingestion): T2.4 — 8 DtEvent permits observable on SSE bus
 
 ### Phase 2 gate
 
-- [ ] **Step Phase2.G.1: Full ingestion-tag run**
+- [x] **Step Phase2.G.1: Full ingestion-tag run**
 
 ```bash
 cd client && npx playwright test --grep @ingestion --reporter=line
 ```
 Expected: 11 spec files, 80+ tests green.
 
-- [ ] **Step Phase2.G.2: Generate HTML report**
+- [x] **Step Phase2.G.2: Generate HTML report**
 
 ```bash
 cd client && npx playwright show-report ../tmp/playwright/report
 ```
 
-- [ ] **Step Phase2.G.3: BUG triage**
+- [x] **Step Phase2.G.3: BUG triage**
 
 For every failure that is not a flaky network blip:
 1. Reproduce twice to confirm determinism.
@@ -1181,7 +1181,7 @@ For every failure that is not a flaky network blip:
 3. Register in `docs/bugs/index.md` Open BUGs table.
 4. Tag the failing test with `test.fixme(true, 'BUG-XXXX')` to keep CI green while the bug is tracked.
 
-- [ ] **Step Phase2.G.4: Marker**
+- [x] **Step Phase2.G.4: Marker**
 
 ```bash
 git commit --allow-empty -m "chore(ingestion-e2e): Phase 2 closure (4 UI specs green; bugs logged if any)"
@@ -1197,7 +1197,7 @@ git commit --allow-empty -m "chore(ingestion-e2e): Phase 2 closure (4 UI specs g
 - Modify: `client/tests/e2e/README.md`
 - Modify: `docs/exec-plans/2026-05-12-ingestion-e2e-playwright-plan.md` (this file) — register in index, then move to Completed once verified
 
-- [ ] **Step T3.1.1: README update**
+- [x] **Step T3.1.1: README update**
 
 Add to Tag Taxonomy table:
 
@@ -1228,15 +1228,15 @@ Add a Command Set entry:
 npx playwright test --grep @ingestion
 ```
 
-- [ ] **Step T3.1.2: Move plan to Completed**
+- [x] **Step T3.1.2: Move plan to Completed**
 
 In `docs/exec-plans/index.md`, locate the Ingestion E2E Playwright plan row (Phase 0 register it under Active; once Phase 3 completes, move it to Completed with date).
 
-- [ ] **Step T3.1.3: Write a one-page run report**
+- [x] **Step T3.1.3: Write a one-page run report**
 
 Create `tmp/ingestion-e2e-run-<YYYY-MM-DD>.md` summarising: total tests, green, fixme'd (with BUG IDs), skipped (with reasons), wall-clock time. Reference it from the final commit message.
 
-- [ ] **Step T3.1.4: Commit**
+- [x] **Step T3.1.4: Commit**
 
 ```bash
 git add client/tests/e2e/README.md docs/exec-plans/index.md docs/exec-plans/2026-05-12-ingestion-e2e-playwright-plan.md
