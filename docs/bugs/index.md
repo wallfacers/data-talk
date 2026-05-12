@@ -8,13 +8,13 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## 当前编号
 
-下一个分配 ID：**BUG-0013**（永不复用，单调递增）
+下一个分配 ID：**BUG-0014**（永不复用，单调递增）
 
 ## Open BUGs（按 priority 倒序，P0 → P2）
 
 | ID | Title | Priority | Source | Modules | Discovered |
 |----|-------|----------|--------|---------|------------|
-| — | — | — | — | — | — |
+| BUG-0013 | http_request action returns null for required output fields causing schema validation failure | P1 | e2e-playwright | ingestion | 2026-05-12 |
 
 ## In Progress（status = investigating | fixed 等待 verify）
 
@@ -39,6 +39,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## By Module（聚合视图，仅列 open + in-progress）
 
+- **ingestion**: [BUG-0013](BUG-0013-http-request-null-output-fields.md)
 - **stage**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md), [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md)
 - **chat**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md)
 - **testing**: [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md)
@@ -48,7 +49,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## By Source（聚合视图，仅列 open + in-progress）
 
-- **e2e-playwright**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md), [BUG-0012](BUG-0012-widget-data-endpoint-ignores-default-connection-id.md) *(fixed)*
+- **e2e-playwright**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md), [BUG-0012](BUG-0012-widget-data-endpoint-ignores-default-connection-id.md) *(fixed)*, [BUG-0013](BUG-0013-http-request-null-output-fields.md)
 - **e2e-mcp**: [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md)
 - **manual-report**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md)
 
