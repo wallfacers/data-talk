@@ -52,23 +52,13 @@ export function CredentialsPage() {
         </Button>
       </div>
 
-      {showForm ? (
+      {showForm || editing ? (
         <CredentialFormPanel
-          editing={null}
-          onCancel={() => setShowForm(false)}
-          onSaved={() => setShowForm(false)}
+          editing={editing}
+          onCancel={() => { setShowForm(false); setEditing(null) }}
+          onSaved={() => { setShowForm(false); setEditing(null) }}
         />
       ) : listContent}
-
-      {!showForm && editing && (
-        <div className="mt-6">
-          <CredentialFormPanel
-            editing={editing}
-            onCancel={() => setEditing(null)}
-            onSaved={() => setEditing(null)}
-          />
-        </div>
-      )}
     </div>
   )
 }
