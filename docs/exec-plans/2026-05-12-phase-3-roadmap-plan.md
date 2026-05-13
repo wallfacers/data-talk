@@ -90,6 +90,7 @@ Frontend work in this roadmap must follow [client/DESIGN.md](../../client/DESIGN
 | File artifact system | `server/data-talk-application/src/main/java/com/datatalk/application/fileartifact/FileArtifactService.java` |
 | Dashboard | `client/src/features/stage/components/dashboard-tab.tsx`, bezel HTML rendering pipeline |
 | Report generation | `server/data-talk-application/` (new report service), `client/src/features/stage/tabs/` (new report tab) |
+| Operation log | `server/data-talk-application/src/main/java/com/datatalk/application/operationlog/` (interceptor + service + repo), `server/data-talk-infrastructure/src/main/resources/db/migration/` (Flyway) |
 | Skill system | `server/data-talk-adapter/src/main/resources/opencode/skills-src/` |
 
 ---
@@ -316,6 +317,91 @@ Frontend work in this roadmap must follow [client/DESIGN.md](../../client/DESIGN
     4. 导入 CSV → 分析 → 生成报告 → 验证导入数据出现在报告中
     5. 外部采集 → 分析 → 生成报告 → 验证采集数据出现在报告中
 
+### Task 15: 全局操作日志与回滚（Undo Log）
+
+**定位**：平台级安全网。参考分布式事务 Seata 的 undo_log 机制，自动记录所有 DML 操作（UPDATE / DELETE / INSERT）的前后数据快照，支持按操作维度一键回滚。让"AI 对话驱动"的数据操作有后悔药——无论是用户手动执行的 SQL，还是 AI 自动生成的导入/导出/采集操作，所有写入均可追溯、可撤销。
+
+**Files:**
+- Create: `docs/product-specs/YYYY-MM-DD-global-operation-log-design.md`
+- Create: `docs/exec-plans/YYYY-MM-DD-global-operation-log-plan.md`
+- New: `server/data-talk-application/src/main/java/com/datatalk/application/operationlog/OperationLogService.java` (操作日志记录与回滚核心)
+- New: `server/data-talk-application/src/main/java/com/datatalk/application/operationlog/model/OperationLogEntry.java` (日志实体)
+- New: `server/data-talk-adapter/src/main/java/com/datatalk/adapter/controller/OperationLogController.java` (查询与回滚 REST 端点)
+- New: `server/data-talk-adapter/src/main/java/com/datatalk/adapter/actions/OperationLogAction.java` (MCP tools: `datatalk_list_operations`, `datatalk_rollback_operation`)
+- New: `server/data-talk-infrastructure/src/main/java/com/datatalk/infra/operationlog/JdbcOperationLogRepository.java` (JDBC 持久化)
+- New: `server/data-talk-application/src/main/java/com/datatalk/application/operationlog/OperationLogInterceptor.java` (SQL 执行拦截器，自动捕获 before/after image)
+- Modify: `server/data-talk-application/src/main/java/com/datatalk/application/sql/SqlExecuteService.java` (集成拦截器)
+- New: `server/data-talk-infrastructure/src/main/resources/db/migration/V__create_operation_log.sql` (Flyway 迁移脚本)
+- New: `client/src/features/stage/components/operation-log-panel.tsx` (操作日志查询面板)
+- New: `client/src/features/stage/components/rollback-preview-panel.tsx` (回滚预览面板)
+
+- [ ] **Step 15.1: 数据模型设计**
+  - `operation_log` 表结构（SQLite metadata store）：
+    - `id` (UUID PK) — 唯一操作 ID
+    - `session_id` (VARCHAR) — 关联 session
+    - `connection_id` (VARCHAR) — 关联数据源连接
+    - `operation_type` (ENUM: INSERT/UPDATE/DELETE)
+    - `table_name` (VARCHAR) — 目标表
+    - `schema_name` (VARCHAR) — 目标 schema
+    - `before_image` (TEXT/JSON) — 操作前数据快照（DELETE/UPDATE 时记录）
+    - `after_image` (TEXT/JSON) — 操作后数据快照（INSERT/UPDATE 时记录）
+    - `affected_rows` (INT) — 影响行数
+    - `sql_text` (TEXT) — 原始 SQL
+    - `created_at` (TIMESTAMP) — 操作时间
+    - `status` (ENUM: PENDING/COMMITTED/ROLLED_BACK)
+    - `rollback_sql` (TEXT, 可选) — 预生成的回滚 SQL
+  - 大字段存储策略：`before_image` / `after_image` 以 JSON 数组格式存储行级快照，单操作上限 10MB，超出时只存储主键 + 行计数，不存完整内容。
+  - 按 connection_id + created_at 建立复合索引，支持按连接/时间范围/操作类型快速查询。
+
+- [ ] **Step 15.2: 自动拦截与快照捕获**
+  - `OperationLogInterceptor`：拦截所有通过 `SqlExecuteService` 执行的 DML 语句。
+  - **Before Image**：在执行 UPDATE/DELETE 之前，根据 WHERE 条件先 `SELECT *` 取出受影响的行，序列化为 JSON 写入 `before_image`。
+  - **After Image**：在执行 INSERT/UPDATE 之后，根据受影响的行 `SELECT *` 取出结果，序列化为 JSON 写入 `after_image`。
+  - **主键识别**：优先使用主键定位行；无主键时使用 ROWID（SQLite）或全部列作为定位条件。
+  - **事务绑定**：日志写入与原始 DML 在同一事务中——如果 DML 回滚，日志不写；日志写入失败，不阻断原始 DML（降级为无日志模式）。
+  - **不拦截 SELECT**：只记录写入操作。
+
+- [ ] **Step 15.3: 全链路操作来源统一记录**
+  - 不仅拦截用户手动执行的 SQL，还需覆盖：
+    - AI 对话生成的 SQL（自动执行的 L2 确认流）
+    - Task 12/13 的文件导入（批量 INSERT）
+    - Task 10 的外部数据采集落库
+    - Task 14 的报告生成过程中的临时表操作
+  - 通过 `session_id` + 操作来源标记（user_manual / ai_auto / import / ingestion / report）区分操作来源，方便后续按来源筛选。
+
+- [ ] **Step 15.4: 回滚执行**
+  - **单条回滚**：根据 `operation_id`，使用 `before_image` 逆向生成 SQL：
+    - DELETE → 反向 INSERT（从 before_image 恢复数据）
+    - UPDATE → 反向 UPDATE（用 before_image 的值覆盖）
+    - INSERT → 反向 DELETE（根据主键删除新插入的行）
+  - **批量回滚**：支持按 session_id / 时间范围 / 表名 批量选择操作，按执行时间的逆序回滚（后执行的先回滚）。
+  - **回滚预览**：执行回滚前展示 before/after 对比，用户确认后才执行。
+  - **幂等性**：已回滚的操作不能重复回滚；连续回滚同一操作不产生副作用。
+  - **审计**：回滚操作本身也记录到 `operation_log` 中，形成完整审计链。
+
+- [ ] **Step 15.5: 操作日志查询面板**
+  - Stage Tab 内嵌 `operation_log` Tab type：
+    - 筛选器：按连接 / 表名 / 操作类型 / 时间范围 / 来源类型
+    - 列表视图：操作时间 + 类型（彩色标签） + 表名 + 影响行数 + 状态（已提交/已回滚）
+    - 展开详情：before/after 行级对比（高亮变更的单元格）
+  - 右键菜单 / 操作按钮："回滚此操作"、"批量回滚"、"导出日志"
+  - 支持 chat 内联查询："查看刚才对 orders 表做了什么操作" → AI 调 `datatalk_list_operations` 并在聊天中展示
+
+- [ ] **Step 15.6: 日志清理与生命周期管理**
+  - 自动清理：超过 30 天的已提交操作日志自动归档到历史表（可按连接配置 TTL）。
+  - 回滚后的日志保留：已回滚的日志不删除，状态标记为 `ROLLED_BACK`，保留审计价值。
+  - 空间控制：单连接操作日志总大小上限（默认 500MB），超限后按 FIFO 清理最老的已提交日志。
+  - `VACUUM` / `ANALYZE` 维护脚本：定期优化 SQLite metadata store。
+
+- [ ] **Step 15.7: 定义验收**
+  - Backend: `mvn compile -q` + OperationLogService 单元测试（before/after image 捕获 + 回滚 SQL 生成） + OperationLogInterceptor 集成测试。
+  - Frontend: `npx tsc --noEmit` + OperationLogPanel 组件测试 + 回滚预览 vitest。
+  - E2E: Playwright 覆盖——
+    1. 执行 UPDATE → 操作日志面板可见 → 回滚 → 验证数据恢复
+    2. 执行 DELETE → 回滚 → 验证数据完整恢复
+    3. 批量导入 1000 行 → 回滚导入操作 → 验证数据清零
+    4. AI 对话自动执行 SQL → 日志自动记录 → 用户通过聊天回滚
+
 ---
 
 ## Ordering And Parallelism
@@ -330,12 +416,17 @@ Task 12 (文件上传) ──┬──> Task 13 (导入导出) ──┐
                     Task 6 (ER Designer) ─────┤
                                               │
                     对话/查询结果 ─────────────┘
+
+Task 15 (操作日志) ──┬──> 依赖: Task 13 (拦截导入操作)
+                    ├──> 依赖: SqlExecuteService (已有 DML 拦截点)
+                    └──> 独立模块，与 Task 12/10/14 可并行开发
 ```
 
 - **Task 12 必须最先**：文件上传是所有"数据进 DataTalk"的统一入口，Task 13 的导入和 Task 10 的采集结果落库都依赖它。
 - **Task 13 第二**：导入导出是数据流通闭环的核心，被 Task 10 和 Task 14 依赖。
 - **Task 10 与 Task 13 可部分并行**：通用 HTTP skill 脚手架可在 Task 13 导入管线开发期间并行设计；但落库集成必须等 Task 13 `DataImportService` 就绪。
-- **Task 14 最后**：报告生成是**所有分析成果的统一出口**——消费全平台数据源（对话、查询、Dashboard、ER 图、导入数据、外部采集数据），聚合为正式报告。依赖 Task 13 的导出管线（HTML/PDF 渲染）+ Task 8 的 Dashboard 底座 + Task 6 的 ER 图数据 + Task 10/12 的数据入口。
+- **Task 14 最后**：报告生成是**所有分析成果的统一出口**——消费全平台数据源，聚合为正式报告。
+- **Task 15 独立但依赖 Task 13**：操作日志是基础设施层能力，核心拦截器不依赖任何前端功能。但需要接入 Task 13 的导入管线（批量 INSERT 日志化）和 Task 10 的采集落库链路，确保所有写入路径都有日志覆盖。
 
 ## Verification Gates
 
@@ -354,5 +445,6 @@ Every child implementation plan created from this roadmap must include:
 - [ ] Task 13 shipped: 自然语言导入导出全链路打通——一句话导出表/查询结果到 CSV/JSON/SQL/Excel，上传文件导入建表 + L2 确认。
 - [ ] Task 10 shipped: 通用 HTTP/REST skill 脚手架可用，至少一个示范采集→落库→查询链路跑通。
 - [ ] Task 14 shipped: 基于对话/查询结果/Dashboard 生成 Markdown/HTML/PDF 报告，产物进入 File Artifact 系统。
+- [ ] Task 15 shipped: 全局操作日志拦截器生效，UPDATE/DELETE/INSERT 自动记录 before/after image；操作日志面板可按连接/表名/类型筛选，支持单条和批量回滚；回滚幂等且自身可审计。
 - [ ] All child plans registered in `docs/exec-plans/index.md` and `docs/product-specs/index.md`.
 - [ ] Phase 2 roadmap (`2026-04-25-next-implementation-roadmap-plan.md`) updated: Task 10 moved from placeholder to active + Phase 3 roadmap reference added.
