@@ -292,6 +292,17 @@ export function buildEventSink(
   _connectionId: string | null = null,
   pendingUserId: string | null = null,
 ) {
+  // Wall-clock baseline for "subscribe just opened". After CTRL+R the client
+  // re-issues GET /api/sessions/{id}/channel; if no Last-Event-ID is sent
+  // (or the cursor's async sessionStorage flush has not landed yet) the
+  // backend ChannelController replays from cursor 0, which can include a
+  // stale SessionIdle / session.status=idle / session.error from the
+  // previous turn. Honoring those would immediately flip streamingBySession
+  // off and the composer back to "send". Suppress turn-done signals during
+  // the first 500ms after this sink is built — by then the live deltas of
+  // the in-flight turn (if any) will have arrived past the replay tail and
+  // the next genuine idle will be a real one.
+  const subscribeAt = Date.now()
   return (evt: StreamEvent) => {
     const { event, data } = evt
     // Dedupe by event id. A live session has two subscribers at once
@@ -358,6 +369,13 @@ export function buildEventSink(
       // composer flips back to the send button and the thinking indicator exits.
       // Message-level time.completed (set via message.updated) drives per-message
       // UI state separately.
+      if (Date.now() - subscribeAt < 500) {
+        // Stale replay event from the SessionBus buffer (e.g. previous turn's
+        // idle). After CTRL+R the backend GET /subscribe replays from cursor 0
+        // by default and that old idle would flip the stop button back to send
+        // mid-stream. See BUG-0037 follow-up.
+        return
+      }
       useChatPartsStore.getState().markSessionTurnCompleted(sessionId)
       useChatPartsStore.getState().setStreaming(sessionId, false)
     } else if (event === 'session.meta.updated') {
@@ -407,6 +425,12 @@ export function buildEventSink(
         useTimelineStore.getState().addArtifact(sessionId, d.id, d.patch?.supersedesId)
       }
     } else if (event === 'session.error') {
+      if (Date.now() - subscribeAt < 500) {
+        // Same replay window as session.idle above — a stale session.error
+        // from the previous turn's tail would otherwise clear streaming and
+        // surface a misleading toast right after CTRL+R.
+        return
+      }
       const { error } = data as { error?: string }
       const language = getCurrentLanguage()
       const message = error ?? translateMessage(language, 'session.errorFallback')

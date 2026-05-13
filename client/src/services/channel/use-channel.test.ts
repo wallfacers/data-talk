@@ -415,9 +415,22 @@ describe('buildEventSink → turn-done clears streamingBySession', () => {
     })
   })
 
+  // Build a sink whose subscribe baseline is already older than the 500ms
+  // replay-suppression window. The dedicated replay-suppression tests below
+  // cover the in-window behavior; these tests assert the steady-state path.
+  function buildSinkPastReplayWindow(sessionId: string, qc: QueryClient) {
+    const realNow = Date.now
+    Date.now = () => realNow.call(Date) - 1000
+    try {
+      return buildEventSink(sessionId, null, qc, null, null)
+    } finally {
+      Date.now = realNow
+    }
+  }
+
   it('clears streamingBySession on session.idle event', () => {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    const sink = buildEventSink('ses_a', null, qc, null, null)
+    const sink = buildSinkPastReplayWindow('ses_a', qc)
 
     sink({ id: 1, event: 'session.idle', data: { sessionId: 'ses_a' } })
 
@@ -426,7 +439,7 @@ describe('buildEventSink → turn-done clears streamingBySession', () => {
 
   it('clears streamingBySession on session.status=idle event', () => {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    const sink = buildEventSink('ses_a', null, qc, null, null)
+    const sink = buildSinkPastReplayWindow('ses_a', qc)
 
     sink({ id: 1, event: 'session.status', data: { status: 'idle', retryInfo: {} } })
 
@@ -435,7 +448,7 @@ describe('buildEventSink → turn-done clears streamingBySession', () => {
 
   it('does NOT clear streamingBySession on session.status=busy', () => {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    const sink = buildEventSink('ses_a', null, qc, null, null)
+    const sink = buildSinkPastReplayWindow('ses_a', qc)
 
     sink({ id: 1, event: 'session.status', data: { status: 'busy', retryInfo: {} } })
 
@@ -447,12 +460,63 @@ describe('buildEventSink → turn-done clears streamingBySession', () => {
       streamingBySession: new Set<string>(['ses_a', 'ses_b']),
     })
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    const sink = buildEventSink('ses_a', null, qc, null, null)
+    const sink = buildSinkPastReplayWindow('ses_a', qc)
 
     sink({ id: 1, event: 'session.idle', data: { sessionId: 'ses_a' } })
 
     expect(useChatPartsStore.getState().streamingBySession.has('ses_a')).toBe(false)
     expect(useChatPartsStore.getState().streamingBySession.has('ses_b')).toBe(true)
+  })
+})
+
+describe('buildEventSink → replay suppression after CTRL+R (BUG-0037 follow-up)', () => {
+  beforeEach(() => {
+    useChatPartsStore.setState({
+      partsBySession: new Map(),
+      infoBySession: new Map(),
+      partIndexBySession: new Map(),
+      streamingBySession: new Set<string>(['ses_a']),
+    })
+  })
+
+  it('ignores session.idle delivered within 500ms of subscribe (stale replay)', () => {
+    vi.useFakeTimers()
+    try {
+      const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      const sink = buildEventSink('ses_a', null, qc, null, null)
+
+      // Immediately replayed idle from the previous turn — must be ignored
+      // because the backend GET /subscribe replays from cursor 0 by default.
+      sink({ id: 1, event: 'session.idle', data: { sessionId: 'ses_a' } })
+      expect(useChatPartsStore.getState().streamingBySession.has('ses_a')).toBe(true)
+
+      sink({ id: 2, event: 'session.status', data: { status: 'idle' } })
+      expect(useChatPartsStore.getState().streamingBySession.has('ses_a')).toBe(true)
+
+      // Beyond the 500ms window, a fresh idle is treated as real turn-done.
+      vi.advanceTimersByTime(600)
+      sink({ id: 3, event: 'session.idle', data: { sessionId: 'ses_a' } })
+      expect(useChatPartsStore.getState().streamingBySession.has('ses_a')).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('ignores session.error delivered within the 500ms window', () => {
+    vi.useFakeTimers()
+    try {
+      const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      const sink = buildEventSink('ses_a', null, qc, null, null)
+
+      sink({ id: 1, event: 'session.error', data: { error: 'stale replayed error' } } as any)
+      expect(useChatPartsStore.getState().streamingBySession.has('ses_a')).toBe(true)
+
+      vi.advanceTimersByTime(600)
+      sink({ id: 2, event: 'session.error', data: { error: 'real error' } } as any)
+      expect(useChatPartsStore.getState().streamingBySession.has('ses_a')).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 
@@ -466,9 +530,21 @@ describe('buildEventSink → session.error (TD-014)', () => {
     })
   })
 
+  // Move the subscribe baseline past the 500ms replay-suppression window so
+  // these steady-state assertions are not affected by the BUG-0037 follow-up.
+  function buildSinkPastReplayWindow(sessionId: string, qc: QueryClient) {
+    const realNow = Date.now
+    Date.now = () => realNow.call(Date) - 1000
+    try {
+      return buildEventSink(sessionId, null, qc, null)
+    } finally {
+      Date.now = realNow
+    }
+  }
+
   it('clears streaming flag on session.error', () => {
     const qc = new QueryClient()
-    const sink = buildEventSink('ses_a', null, qc, null)
+    const sink = buildSinkPastReplayWindow('ses_a', qc)
     sink({ event: 'session.error', data: { error: 'model unavailable' } } as any)
     expect(useChatPartsStore.getState().streamingBySession.has('ses_a')).toBe(false)
   })
@@ -481,7 +557,7 @@ describe('buildEventSink → session.error (TD-014)', () => {
       time: { created: 100 },
     })
     const qc = new QueryClient()
-    const sink = buildEventSink('ses_a', null, qc, null)
+    const sink = buildSinkPastReplayWindow('ses_a', qc)
 
     sink({ id: 42, event: 'session.error', data: { error: 'unknown certificate verification error' } } as any)
 
@@ -520,7 +596,7 @@ describe('buildEventSink → session.error (TD-014)', () => {
       time: { created: 110 },
     })
     const qc = new QueryClient()
-    const sink = buildEventSink('ses_a', null, qc, null)
+    const sink = buildSinkPastReplayWindow('ses_a', qc)
 
     sink({ id: 43, event: 'session.error', data: { error: 'unknown certificate verification error' } } as any)
 

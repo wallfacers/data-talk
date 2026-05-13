@@ -357,4 +357,32 @@ describe('streamingBySession persistence', () => {
     expect(JSON.parse(sessionStorage.getItem('data-talk.chat-parts')!).state.streamingBySession)
       .toEqual([])
   })
+
+  // Regression: BUG-0037 hydration round-trip. The synchronous write to
+  // sessionStorage is only half the fix — the other half is that on page
+  // reload Zustand persist's `merge` must restore streamingBySession from the
+  // persisted array back into a Set. If hydration is broken (e.g. partialize
+  // wipes adjacent state, merge fails to coerce array→Set), the stop button
+  // flips back to "send" even though storage holds the right value.
+  it('hydration restores streamingBySession from sessionStorage after reload (BUG-0037)', async () => {
+    // 1) Write streaming=true synchronously (simulates state at the moment of CTRL+R).
+    useChatPartsStore.getState().setStreaming('ses_reload', true)
+    const raw = sessionStorage.getItem('data-talk.chat-parts')
+    expect(raw).toBeTruthy()
+    expect(JSON.parse(raw!).state.streamingBySession).toEqual(['ses_reload'])
+
+    // 2) Simulate page reload: drop the module cache so the next import re-creates
+    //    the Zustand store, forcing persist middleware to hydrate fresh from
+    //    sessionStorage (which jsdom preserves across resetModules).
+    vi.resetModules()
+    const mod = await import('../chat-parts-store')
+    const reloaded = mod.useChatPartsStore
+
+    // Zustand persist hydrates synchronously when storage.getItem is sync
+    // (sessionStorage is). The merge function must coerce the array back to
+    // a Set so .has(...) works.
+    const streaming = reloaded.getState().streamingBySession
+    expect(streaming).toBeInstanceOf(Set)
+    expect(streaming.has('ses_reload')).toBe(true)
+  })
 })
