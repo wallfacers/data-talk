@@ -125,12 +125,12 @@
    <pre>; we pick which set is live based on the ancestor `.dark` class so
    theme switches are pure CSS, no JS re-render needed. */
 [data-component="markdown-code"] pre.shiki {
-  background-color: var(--shiki-light-bg) !important;
+  background-color: var(--dt-bg-canvas) !important;
   color: var(--shiki-light);
 }
 [data-component="markdown-code"] pre.shiki span {
   color: var(--shiki-light);
-  background-color: var(--shiki-light-bg);
+  background-color: transparent;
 }
 .dark [data-component="markdown-code"] pre.shiki {
   background-color: var(--shiki-dark-bg) !important;
@@ -138,7 +138,7 @@
 }
 .dark [data-component="markdown-code"] pre.shiki span {
   color: var(--shiki-dark);
-  background-color: var(--shiki-dark-bg);
+  background-color: transparent;
 }
 
 [data-component="markdown-table"] {

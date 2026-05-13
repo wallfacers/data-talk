@@ -384,8 +384,8 @@ export function SqlResultTable({
   )
 
   const searchBarContent = () => (
-    <div className="flex shrink-0 items-center gap-2 border-t border-border/50 bg-bg-subtle px-3 py-1.5">
-      <div className="flex h-7 items-center gap-1.5 rounded-md border border-border px-2 transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
+    <div className="flex shrink-0 items-center gap-2 border-t border-border/50 px-3 py-1.5">
+      <div className="flex h-7 items-center gap-1.5 rounded-md border border-border bg-bg-canvas px-2 transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
         <SearchIcon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
         <input
           type="text"
@@ -418,7 +418,7 @@ export function SqlResultTable({
   )
 
   const toolbarContent = (showExpand = true) => (
-    <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border/50 bg-bg-subtle px-3 py-2">
+    <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border/50 px-3 py-2">
       <span className="text-xs text-muted-foreground">{summaryLabel}</span>
       <div className="flex flex-wrap items-center justify-end gap-2">
         <Select value={exportScope} onValueChange={(value) => setExportScope(value as SqlResultExportScope)}>
@@ -466,7 +466,7 @@ export function SqlResultTable({
   )
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex h-full min-h-0 flex-col bg-bg-soft">
       <ContextMenu>
         <ContextMenuTrigger
           render={
@@ -474,7 +474,7 @@ export function SqlResultTable({
               ref={scrollContainerRef}
               data-testid="sql-result-table-scroll"
               data-result-scrollbar="header-offset"
-              className="min-h-0 flex-1 overflow-auto"
+              className="min-h-0 flex-1 overflow-auto bg-bg-canvas"
               onContextMenuCapture={() => setContextTarget(null)}
               onScroll={handleScroll}
             >
@@ -575,12 +575,12 @@ export function SqlResultTable({
               <XIcon className="size-4" />
             </DialogClose>
           </div>
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-soft">
             <ContextMenu>
               <ContextMenuTrigger
                 render={
                   <div
-                    className="min-h-0 flex-1 overflow-auto"
+                    className="min-h-0 flex-1 overflow-auto bg-bg-canvas"
                     onContextMenuCapture={() => setContextTarget(null)}
                   >
                     {resultTable('expanded')}

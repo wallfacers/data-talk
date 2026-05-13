@@ -59,8 +59,9 @@ semantic:
   light:
     bg:
       app: "neutral.50"
-      canvas: "neutral.0"
-      panel: "neutral.0"
+      canvas: "neutral.25"
+      panel: "neutral.25"
+      soft: "neutral.50"
       subtle: "neutral.100"
       elevated: "neutral.0"
       overlay: "rgba(55, 53, 47, 0.40)"
@@ -95,6 +96,7 @@ semantic:
       app: "neutral.950"
       canvas: "neutral.900"
       panel: "neutral.900"
+      soft: "neutral.900"
       subtle: "neutral.800"
       elevated: "neutral.800"
       overlay: "rgba(2, 6, 23, 0.72)"
@@ -264,12 +266,14 @@ Typography families in this contract are the target design tokens; the current r
 
 DataTalk ships light and dark as equal first-class themes. Components do not invent theme-specific behavior; they consume semantic tokens and inherit the current theme mapping.
 
-Light surfaces use a warm-neutral spine: `bg.app` is paper-warm off-white, `bg.canvas` / `bg.panel` are true white for floating cards, and `bg.subtle` is a deeper warm gray used for sidebar chrome and grouping. The three surfaces sit at distinct lightness levels so hierarchy reads without relying on borders. Dark surfaces inherit the same semantic names with progressively brighter elevated layers over a near-black app frame.
+Light surfaces use a warm-neutral spine arranged as four chrome tiers: `bg.subtle` (deepest chrome) → `bg.soft` (light chrome) → `bg.app` (workspace frame) → `bg.canvas` / `bg.panel` (near-white work surface) → `bg.elevated` (pure white for floating dialogs / popovers). Canvas is intentionally **not** pure white — it carries a hint of warmth (`neutral.25`) so editor body and table cells harmonize with the warm chrome instead of fighting it. Dark surfaces inherit the same semantic names with progressively brighter elevated layers over a near-black app frame.
 
 - `bg.app` is the application frame.
-- `bg.canvas` is the main reading or work surface.
+- `bg.canvas` is the main reading or work surface (warm off-white, not pure white).
 - `bg.panel` is the default contained surface for controls and focused work areas.
-- `bg.subtle` is the low-emphasis navigation or grouping surface.
+- `bg.soft` is the light chrome tier — Stage tab toolbars, the activity rail strip, and rail panels use it to sit between work-surface canvas and the deeper navigation chrome.
+- `bg.subtle` is the low-emphasis navigation or grouping surface (Sidebar, deeper chrome).
+- `bg.elevated` is reserved for floating popovers / dialogs that need pure-white separation.
 - `text.strong` and `text.base` carry primary reading flow.
 - `text.muted` and `text.soft` carry metadata, chrome, and low-priority detail.
 - `accent.primary` is reserved for current object, primary action, and selected emphasis.
@@ -308,7 +312,7 @@ The YAML `components` block below is the approved DataTalk alias contract (`bg`,
 - Sidebar uses `bg.subtle`, `border.subtle`, `interaction.selected`, and `text.strong`. It is navigation skeleton, not the main stage.
 - Composer uses `bg.panel`, `border.default`, and `interaction.focusRing`. It is a composed work control, not a plain textarea shell.
 - Messages distinguish user, assistant, tool, and error surfaces with semantics instead of saturated bubbles.
-- Stage uses `bg.subtle` for chrome and `bg.canvas` for the main work surface. Tabs, rail, running state, and selection must be readable at a glance.
+- Stage uses `bg.soft` for the activity rail strip + Tab-level chrome (SQL editor toolbar, result-set wrapper) and `bg.canvas` for work content (Monaco body, table rows, rail panel body). Sidebar (outside Stage) keeps `bg.subtle` as the deepest chrome. The active rail icon carries a 2px `accent.primary` left marker so the selected state is unambiguous against the soft chrome strip. Tabs, rail, running state, and selection must be readable at a glance.
 - Stage state is **global, not per-session**: tab list, workset, open / maximized, sidebar selection, and active rail panel are single values shared across all chat sessions. Switching session must not visually change the workbench. `StageTab` records carry no `scope` field on the instance; type-level scope is metadata in `tab-type-registry`.
 - Tables use stable header hierarchy, light hover, explicit selected state, and mono treatment for numeric or technical content.
 - Charts use neutral context with semantic color emphasis: focus object, compare object, and status objects each have one role.

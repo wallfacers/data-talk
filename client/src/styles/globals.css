@@ -52,6 +52,7 @@
   --color-bg-app: var(--dt-bg-app);
   --color-bg-canvas: var(--dt-bg-canvas);
   --color-bg-panel: var(--dt-bg-panel);
+  --color-bg-soft: var(--dt-bg-soft);
   --color-bg-subtle: var(--dt-bg-subtle);
   --color-bg-elevated: var(--dt-bg-elevated);
   --color-bg-overlay: var(--dt-bg-overlay);
@@ -96,8 +97,9 @@
      #5E5E5B / #858481 (neutral.800 / 700 / 600 / 500). Borders & interaction overlays use
      α-warm-dark rgba(55, 53, 47, ...) so they self-adapt across white panels and warm app bg. */
   --dt-bg-app: oklch(0.97 0.004 80);
-  --dt-bg-canvas: oklch(1 0 0);
-  --dt-bg-panel: oklch(1 0 0);
+  --dt-bg-canvas: oklch(0.995 0.002 80);
+  --dt-bg-panel: oklch(0.995 0.002 80);
+  --dt-bg-soft: oklch(0.965 0.005 80);
   --dt-bg-subtle: oklch(0.945 0.005 80);
   --dt-bg-elevated: oklch(1 0 0);
   --dt-bg-overlay: oklch(0.29 0.008 80 / 0.4);
@@ -169,6 +171,7 @@
   --dt-bg-app: oklch(0.16 0.008 255);
   --dt-bg-canvas: oklch(0.21 0.01 255);
   --dt-bg-panel: oklch(0.21 0.01 255);
+  --dt-bg-soft: oklch(0.245 0.011 255);
   --dt-bg-subtle: oklch(0.27 0.012 255);
   --dt-bg-elevated: oklch(0.27 0.012 255);
   --dt-bg-overlay: oklch(0.15 0.01 255 / 0.72);

@@ -19,7 +19,7 @@ export function RailPanelShell({ title, onClose, children, className }: RailPane
     <section
       data-testid="rail-panel-shell"
       className={cn(
-        'flex h-full w-[280px] shrink-0 flex-col overflow-hidden border-l border-border/50 bg-background/95',
+        'flex h-full w-[280px] shrink-0 flex-col overflow-hidden border-l border-border/50 bg-bg-canvas',
         className,
       )}
     >

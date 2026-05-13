@@ -101,3 +101,26 @@
 - [x] 7.1 `git status` 确认仅改 `client/DESIGN.md` 与 `client/src/styles/globals.css` 两个文件 + 本 change 目录 ✓
 - [x] 7.2 commit message 准备：`feat(theme): refresh light theme to warm-neutral spine, inspired by manus.im (token-only migration)`
 - [x] 7.3 不在本变更内执行 `/opsx:archive` —— 由用户在 apply 完成后手动触发
+
+## 8. Stage chrome differentiation pass（follow-up after live UI review）
+
+用户在 ca2d9384 落地后基于浏览器实际体验提出工作台分割感不足、active 状态不明显、白底偏冷等问题，本节追加 chrome 层级与 canvas 微暖化调整：
+
+- [x] 8.1 新增 `--dt-bg-soft` token：`:root` 注入 `oklch(0.965 0.005 80)`、`.dark` 注入 `oklch(0.245 0.011 255)`；`@theme inline` 注册 `--color-bg-soft`
+- [x] 8.2 软化 light `--dt-bg-canvas` / `--dt-bg-panel`：`oklch(1 0 0)` → `oklch(0.995 0.002 80)`（≈ `#FCFCFB` / `neutral.25`）；`--dt-bg-elevated` 保持 `oklch(1 0 0)` 让 popover / dialog 仍然真白
+- [x] 8.3 Stage 工具栏 chrome 切到 `bg.soft`：
+  - `sql-editor-toolbar.tsx` `bg-bg-subtle` → `bg-bg-soft`
+  - `sql-editor-header.tsx` `bg-bg-subtle` → `bg-bg-soft`
+- [x] 8.4 Result set 整体外层套 `bg.soft`，内部 scroll 容器显式 `bg.canvas` 保留表格白底；search bar / bottom toolbar 取消 `bg-bg-subtle` 继承外层 soft；expanded dialog 版本同步处理
+- [x] 8.5 Result set 搜索框 input 容器加 `bg-bg-canvas`，让边框 + 输入区与外层 soft chrome 分离
+- [x] 8.6 Activity rail：`stage-activity-rail.tsx` 外层 `bg-muted/10` → `bg-bg-soft`；图标条移除 `bg-background/70`（继承外层）
+- [x] 8.7 `rail-panel-shell.tsx` 容器 `bg-background/95` → `bg-bg-canvas`（与表格行同色，让 panel 内容感与 strip chrome 区分）
+- [x] 8.8 Active rail icon：`bg-background` → `bg-bg-canvas` + `text-accent-primary` + 2px cobalt left bar `before:` 伪元素，明确选中态像素块
+- [x] 8.9 Monaco editor：`monaco-theme.ts` LIGHT.bg `FFFFFF` → `FCFCFB`、widgetBg 同步，与 canvas 暖化对齐
+- [x] 8.10 Markdown 代码块：`markdown.css` `pre.shiki` 背景由 `var(--shiki-light-bg)`（github-light 主题的纯白）改为 `var(--dt-bg-canvas)`，token span 背景置 transparent 让外层 canvas 透出
+- [x] 8.11 DESIGN.md 同步：
+  - 新增 `semantic.light.bg.soft = neutral.50`、`semantic.dark.bg.soft = neutral.900`
+  - light `bg.canvas` / `bg.panel` 引用 `neutral.0` → `neutral.25`
+  - `Theme Semantics` 段重写：四阶 chrome 层级（subtle → soft → app → canvas/panel → elevated），明确 canvas "intentionally not pure white"
+  - `Component Rules` Stage 段补 `bg.soft` 用途 + active rail icon 2px accent marker 规则
+- [x] 8.12 Playwright 抽样验真：所有 chrome 区采到 `oklch(0.965 0.005 80)` = `bg.soft`，canvas 区采到 `oklch(0.995 0.002 80)`；用户验证视觉满意

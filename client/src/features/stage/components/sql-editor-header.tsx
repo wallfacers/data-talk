@@ -24,7 +24,7 @@ export function SqlEditorHeader({
   onRun,
 }: SqlEditorHeaderProps) {
   return (
-    <div className="flex min-h-11 flex-wrap items-center justify-between gap-3 border-b border-border/50 bg-bg-subtle px-3 py-2">
+    <div className="flex min-h-11 flex-wrap items-center justify-between gap-3 border-b border-border/50 bg-bg-soft px-3 py-2">
       <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground">
         <Badge variant="secondary">{entryLabel}</Badge>
         <span className="truncate">{connectionLabel}</span>

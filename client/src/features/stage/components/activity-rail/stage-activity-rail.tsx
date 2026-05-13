@@ -81,7 +81,7 @@ export function StageActivityRail({ className }: Props) {
   return (
     <div
       data-testid="stage-activity-rail"
-      className={cn('flex h-full shrink-0 items-stretch border-l border-border/40 bg-muted/10', className)}
+      className={cn('flex h-full shrink-0 items-stretch border-l border-border/40 bg-bg-soft', className)}
     >
       {activePanel ? (
         <RailPanelShell title={panelTitles[activePanel]} onClose={handleClosePanel}>
@@ -97,7 +97,7 @@ export function StageActivityRail({ className }: Props) {
         </RailPanelShell>
       ) : null}
 
-      <div className="flex w-7 shrink-0 flex-col items-stretch border-l border-border/40 bg-background/70 py-1">
+      <div className="flex w-7 shrink-0 flex-col items-stretch border-l border-border/40 py-1">
         {panelMeta.map(({ panel, label, Icon }) => {
           const isActive = activePanel === panel
           return (
@@ -113,8 +113,10 @@ export function StageActivityRail({ className }: Props) {
                     data-state={isActive ? 'active' : 'inactive'}
                     onClick={() => handlePanelClick(panel)}
                     className={cn(
-                      'w-7 rounded-none border-0 text-muted-foreground transition-colors',
-                      isActive ? 'bg-background text-foreground' : 'hover:bg-muted hover:text-foreground',
+                      'relative w-7 rounded-none border-0 text-muted-foreground transition-colors',
+                      isActive
+                        ? 'bg-bg-canvas text-accent-primary before:absolute before:inset-y-0 before:left-0 before:w-[2px] before:bg-accent-primary'
+                        : 'hover:bg-muted hover:text-foreground',
                     )}
                   >
                     <Icon className="size-3.5" />

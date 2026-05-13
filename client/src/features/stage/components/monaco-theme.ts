@@ -20,19 +20,18 @@ const LIGHT = {
   operator: '5E5E5B',   // neutral.600 — text.muted
   delimiter: 'B9B9B7',  // neutral.400 — text.muted lighter
   // backgrounds — warm-neutral spine; Monaco cannot read CSS vars, so values
-  // are hand-mirrored to client/DESIGN.md primitives.neutral.* in sync with
-  // globals.css :root.
-  bg: 'FFFFFF',         // neutral.0 — bg.canvas (true white, matches surrounding Stage panel)
-  gutterBg: 'F1F1EF',   // neutral.100 — bg.subtle
+  // are hand-mirrored to globals.css :root --dt-bg-* tokens.
+  bg: 'FCFCFB',         // bg.canvas — near-white with hint of warmth (oklch 0.995 0.002 80)
+  gutterBg: 'F1F1EF',   // bg.subtle (chrome stripe behind line numbers)
   textFg: '34322D',     // neutral.800 — text.strong
   lineNum: 'D1D1CD',    // neutral.300
   lineNumActive: '34322D',
-  lineHighlight: 'F1F1EF',  // neutral.100
+  lineHighlight: 'F1F1EF',  // bg.subtle
   selection: 'E5E5E2',  // neutral.200
   cursor: '34322D',
   indentGuide: 'E5E5E2',
   indentGuideActive: 'D1D1CD',
-  widgetBg: 'FFFFFF',   // neutral.0 — bg.elevated
+  widgetBg: 'FCFCFB',   // bg.canvas — matches editor body
   widgetBorder: 'E5E5E2',
   suggestSelected: 'F1F1EF',
   listHover: 'F1F1EF',
