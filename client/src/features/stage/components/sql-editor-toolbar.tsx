@@ -30,7 +30,7 @@ export function SqlEditorToolbar({
   return (
     <div
       data-testid="sql-editor-toolbar"
-      className="flex min-h-11 flex-wrap items-center justify-between gap-3 border-b border-border/50 px-3 py-2"
+      className="flex min-h-11 flex-wrap items-center justify-between gap-3 border-b border-border/50 bg-bg-subtle px-3 py-2"
     >
       <div className="flex items-center gap-1">
         <Tooltip>
