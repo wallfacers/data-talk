@@ -12,33 +12,35 @@ const LIGHT = {
   keyword: '1D4ED8',    // cobalt.700 — accent.primary
   type: '1D4ED8',       // cobalt.700 — accent.primary
   variable: 'D97706',   // amber.600 — accent.warn hover
-  function_: '0F172A',  // neutral.900 — text.strong
-  string: '475569',     // neutral.600 — text.muted
-  number: '1E293B',     // neutral.800 — text.base
-  comment: '64748B',    // neutral.500 — text.soft
-  identifier: '1E293B', // neutral.800 — text.base
-  operator: '475569',   // neutral.600 — text.muted
-  delimiter: '94A3B8',  // neutral.400 — text.muted lighter
-  // backgrounds
-  bg: 'FCFDFE',         // neutral.25 — bg.canvas (light)
-  gutterBg: 'F8FAFC',   // neutral.50 — bg.subtle
-  textFg: '0F172A',     // neutral.900 — text.strong
-  lineNum: 'CBD5E1',    // neutral.300
-  lineNumActive: '0F172A',
-  lineHighlight: 'F1F5F9',  // neutral.100
-  selection: 'E2E8F0',  // neutral.200
-  cursor: '0F172A',
-  indentGuide: 'E2E8F0',
-  indentGuideActive: 'CBD5E1',
+  function_: '34322D',  // neutral.800 — text.strong (warm)
+  string: '5E5E5B',     // neutral.600 — text.muted
+  number: '34322D',     // neutral.800 — text.base
+  comment: '858481',    // neutral.500 — text.soft
+  identifier: '34322D', // neutral.800 — text.base
+  operator: '5E5E5B',   // neutral.600 — text.muted
+  delimiter: 'B9B9B7',  // neutral.400 — text.muted lighter
+  // backgrounds — warm-neutral spine; Monaco cannot read CSS vars, so values
+  // are hand-mirrored to client/DESIGN.md primitives.neutral.* in sync with
+  // globals.css :root.
+  bg: 'FFFFFF',         // neutral.0 — bg.canvas (true white, matches surrounding Stage panel)
+  gutterBg: 'F1F1EF',   // neutral.100 — bg.subtle
+  textFg: '34322D',     // neutral.800 — text.strong
+  lineNum: 'D1D1CD',    // neutral.300
+  lineNumActive: '34322D',
+  lineHighlight: 'F1F1EF',  // neutral.100
+  selection: 'E5E5E2',  // neutral.200
+  cursor: '34322D',
+  indentGuide: 'E5E5E2',
+  indentGuideActive: 'D1D1CD',
   widgetBg: 'FFFFFF',   // neutral.0 — bg.elevated
-  widgetBorder: 'E2E8F0',
-  suggestSelected: 'F1F5F9',
-  listHover: 'F1F5F9',
-  listActive: 'F1F5F9',
-  scrollbar: 'CBD5E170',
-  scrollbarHover: '94A3B880',
-  menuBorder: 'E2E8F0',
-  menuSeparator: 'E2E8F0',
+  widgetBorder: 'E5E5E2',
+  suggestSelected: 'F1F1EF',
+  listHover: 'F1F1EF',
+  listActive: 'F1F1EF',
+  scrollbar: 'D1D1CD70',
+  scrollbarHover: 'B9B9B780',
+  menuBorder: 'E5E5E2',
+  menuSeparator: 'E5E5E2',
   overviewRuler: '#00000000',
 }
 

@@ -20,7 +20,11 @@ const FALLBACK_TOKENS: ChartTokens = {
   textMuted: '#475569',
 }
 
-const PALETTE_TAIL = ['#64748B', '#0EA5E9', '#22C55E', '#EF4444']
+// PALETTE_TAIL provides series colors 3+ when a chart has more than {focus, compare}.
+// Slot 0 is a neutral (warm gray per new light-theme spine, dark-theme renders fine too);
+// slots 1-3 are saturated semantic colors (info / success / danger) that read the same
+// against either warm or cool background.
+const PALETTE_TAIL = ['#858481', '#0EA5E9', '#22C55E', '#EF4444']
 
 export const CHART_THEME_LIGHT = 'datatalk-light'
 export const CHART_THEME_DARK = 'datatalk-dark'
