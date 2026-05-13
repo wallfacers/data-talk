@@ -90,24 +90,29 @@
 }
 
 :root {
-  --dt-bg-app: oklch(0.985 0.002 255);
+  /* Light theme — warm-neutral spine (hue ≈ 80°) inspired by manus.im paper-like surface.
+     bg.app off-white #F8F8F7 → bg.subtle #F1F1EF → bg.canvas/panel/elevated #FFFFFF gives ΔL ≈ 3% / 5%
+     so cards visually float without depending on borders. Text uses warm-dark #34322D / #4A4A47 /
+     #5E5E5B / #858481 (neutral.800 / 700 / 600 / 500). Borders & interaction overlays use
+     α-warm-dark rgba(55, 53, 47, ...) so they self-adapt across white panels and warm app bg. */
+  --dt-bg-app: oklch(0.97 0.004 80);
   --dt-bg-canvas: oklch(1 0 0);
   --dt-bg-panel: oklch(1 0 0);
-  --dt-bg-subtle: oklch(0.97 0.004 255);
+  --dt-bg-subtle: oklch(0.945 0.005 80);
   --dt-bg-elevated: oklch(1 0 0);
-  --dt-bg-overlay: oklch(0.28 0.01 255 / 0.4);
-  --dt-text-strong: oklch(0.21 0.015 255);
-  --dt-text-base: oklch(0.29 0.01 255);
-  --dt-text-muted: oklch(0.47 0.02 255);
-  --dt-text-soft: oklch(0.56 0.015 255);
+  --dt-bg-overlay: oklch(0.29 0.008 80 / 0.4);
+  --dt-text-strong: oklch(0.29 0.008 80);
+  --dt-text-base: oklch(0.375 0.007 80);
+  --dt-text-muted: oklch(0.45 0.006 80);
+  --dt-text-soft: oklch(0.585 0.006 80);
   --dt-text-inverse: oklch(0.985 0 0);
-  --dt-border-subtle: oklch(0.92 0.005 255);
-  --dt-border-default: oklch(0.86 0.01 255);
-  --dt-border-strong: oklch(0.74 0.015 255);
+  --dt-border-subtle: oklch(0.29 0.008 80 / 0.06);
+  --dt-border-default: oklch(0.29 0.008 80 / 0.09);
+  --dt-border-strong: oklch(0.29 0.008 80 / 0.14);
   --dt-accent-primary: oklch(0.53 0.2 262);
   --dt-accent-primary-hover: oklch(0.45 0.19 262);
-  --dt-accent-primary-surface: oklch(0.97 0.016 255);
-  --dt-accent-primary-border: oklch(0.9 0.03 255);
+  --dt-accent-primary-surface: oklch(0.96 0.025 258);
+  --dt-accent-primary-border: oklch(0.9 0.03 258);
   --dt-accent-warn: oklch(0.72 0.16 75);
   --dt-accent-warn-surface: oklch(0.98 0.02 90);
   --dt-status-success: oklch(0.72 0.19 145);
@@ -119,10 +124,10 @@
   --dt-status-info: oklch(0.74 0.14 235);
   --dt-status-info-surface: oklch(0.96 0.025 230);
   --dt-interaction-focus-ring: oklch(0.67 0.15 258 / 0.35);
-  --dt-interaction-hover: oklch(0.28 0.01 255 / 0.04);
-  --dt-interaction-active: oklch(0.28 0.01 255 / 0.08);
-  --dt-interaction-selected: oklch(0.97 0.016 255);
-  --dt-interaction-disabled: oklch(0.28 0.01 255 / 0.38);
+  --dt-interaction-hover: oklch(0.29 0.008 80 / 0.04);
+  --dt-interaction-active: oklch(0.29 0.008 80 / 0.08);
+  --dt-interaction-selected: oklch(0.96 0.025 258);
+  --dt-interaction-disabled: oklch(0.29 0.008 80 / 0.38);
   --dt-chart-focus: var(--dt-accent-primary);
   --dt-chart-compare: #F59E0B;
   --dt-chart-grid: var(--dt-border-subtle);

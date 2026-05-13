@@ -10,18 +10,18 @@ themes:
 primitives:
   neutral:
     0: "#FFFFFF"
-    25: "#FCFDFE"
-    50: "#F8FAFC"
-    100: "#F1F5F9"
-    200: "#E2E8F0"
-    300: "#CBD5E1"
-    400: "#94A3B8"
-    500: "#64748B"
-    600: "#475569"
-    700: "#334155"
-    800: "#1E293B"
-    900: "#0F172A"
-    950: "#020617"
+    25: "#FCFCFB"
+    50: "#F8F8F7"
+    100: "#F1F1EF"
+    200: "#E5E5E2"
+    300: "#D1D1CD"
+    400: "#B9B9B7"
+    500: "#858481"
+    600: "#5E5E5B"
+    700: "#4A4A47"
+    800: "#34322D"
+    900: "#1A1A19"
+    950: "#0F0F0E"
   cobalt:
     50: "#EFF6FF"
     100: "#DBEAFE"
@@ -58,22 +58,22 @@ primitives:
 semantic:
   light:
     bg:
-      app: "neutral.25"
+      app: "neutral.50"
       canvas: "neutral.0"
       panel: "neutral.0"
-      subtle: "neutral.50"
+      subtle: "neutral.100"
       elevated: "neutral.0"
-      overlay: "rgba(15, 23, 42, 0.40)"
+      overlay: "rgba(55, 53, 47, 0.40)"
     text:
-      strong: "neutral.900"
-      base: "neutral.800"
+      strong: "neutral.800"
+      base: "neutral.700"
       muted: "neutral.600"
       soft: "neutral.500"
       inverse: "neutral.0"
     border:
-      subtle: "neutral.200"
-      default: "neutral.300"
-      strong: "neutral.400"
+      subtle: "rgba(55, 53, 47, 0.06)"
+      default: "rgba(55, 53, 47, 0.09)"
+      strong: "rgba(55, 53, 47, 0.14)"
     accent:
       primary: "cobalt.700"
       primaryHover: "cobalt.800"
@@ -129,16 +129,16 @@ interaction:
     light: "rgba(37, 99, 235, 0.35)"
     dark: "rgba(96, 165, 250, 0.38)"
   hover:
-    light: "rgba(15, 23, 42, 0.04)"
+    light: "rgba(55, 53, 47, 0.04)"
     dark: "rgba(255, 255, 255, 0.06)"
   active:
-    light: "rgba(15, 23, 42, 0.08)"
+    light: "rgba(55, 53, 47, 0.08)"
     dark: "rgba(255, 255, 255, 0.10)"
   selected:
     light: "cobalt.50"
     dark: "rgba(37, 99, 235, 0.18)"
   disabled:
-    light: "rgba(15, 23, 42, 0.38)"
+    light: "rgba(55, 53, 47, 0.38)"
     dark: "rgba(255, 255, 255, 0.34)"
 typography:
   ui-xs:
@@ -263,6 +263,8 @@ Typography families in this contract are the target design tokens; the current r
 ## Theme Semantics
 
 DataTalk ships light and dark as equal first-class themes. Components do not invent theme-specific behavior; they consume semantic tokens and inherit the current theme mapping.
+
+Light surfaces use a warm-neutral spine: `bg.app` is paper-warm off-white, `bg.canvas` / `bg.panel` are true white for floating cards, and `bg.subtle` is a deeper warm gray used for sidebar chrome and grouping. The three surfaces sit at distinct lightness levels so hierarchy reads without relying on borders. Dark surfaces inherit the same semantic names with progressively brighter elevated layers over a near-black app frame.
 
 - `bg.app` is the application frame.
 - `bg.canvas` is the main reading or work surface.
