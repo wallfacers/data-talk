@@ -4,7 +4,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { useI18n } from '@/i18n/use-i18n'
 import { toast } from 'sonner'
-import { getStorageOverview, cleanupTrash, getOrphanedFiles, reattachFile, type OrphanedFileDto } from '@/services/api/maintenance'
+import { getStorageOverview, cleanupTrash, cleanupLegacy, getOrphanedFiles, reattachFile, type OrphanedFileDto } from '@/services/api/maintenance'
 import { discardFile } from '@/services/api/file-artifacts'
 import { useConnectionStore } from '@/features/connection/store'
 import { useState } from 'react'
@@ -31,6 +31,7 @@ export function MaintenancePage() {
   const qc = useQueryClient()
   const [view, setView] = useState<'overview' | 'orphans'>('overview')
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirmLegacyOpen, setConfirmLegacyOpen] = useState(false)
 
   const overview = useQuery({
     queryKey: ['maintenance', 'storage-overview'],
@@ -48,6 +49,19 @@ export function MaintenancePage() {
       setConfirmOpen(false)
       toast.success(t('maintenance.toast.cleanupTrashDone'))
       qc.invalidateQueries({ queryKey: ['maintenance'] })
+    },
+  })
+
+  const cleanupLegacyMut = useMutation({
+    mutationFn: cleanupLegacy,
+    onSuccess: () => {
+      setConfirmLegacyOpen(false)
+      toast.success(t('maintenance.toast.cleanupLegacyDone'))
+      qc.invalidateQueries({ queryKey: ['maintenance'] })
+    },
+    onError: (err) => {
+      setConfirmLegacyOpen(false)
+      toast.error(err instanceof Error ? err.message : String(err))
     },
   })
 
@@ -116,14 +130,22 @@ export function MaintenancePage() {
         </ul>
       </div>
 
-      <Button
-        variant="destructive"
-        className="mb-6"
-        onClick={() => setConfirmOpen(true)}
-        disabled={cleanup.isPending}
-      >
-        {t('maintenance.action.cleanupTrash')}
-      </Button>
+      <div className="mb-6 flex gap-2">
+        <Button
+          variant="destructive"
+          onClick={() => setConfirmOpen(true)}
+          disabled={cleanup.isPending}
+        >
+          {t('maintenance.action.cleanupTrash')}
+        </Button>
+        <Button
+          variant="destructive"
+          onClick={() => setConfirmLegacyOpen(true)}
+          disabled={cleanupLegacyMut.isPending}
+        >
+          {t('maintenance.action.cleanupLegacy')}
+        </Button>
+      </div>
 
       <AlertDialog
         open={confirmOpen}
@@ -149,6 +171,35 @@ export function MaintenancePage() {
               }}
             >
               {cleanup.isPending ? t('common.saving') : t('common.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={confirmLegacyOpen}
+        onOpenChange={(open) => {
+          if (!cleanupLegacyMut.isPending) setConfirmLegacyOpen(open)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('maintenance.action.cleanupLegacy')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('maintenance.toast.cleanupLegacyDone')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              {t('common.cancel')}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={cleanupLegacyMut.isPending}
+              onClick={(event) => {
+                event.preventDefault()
+                cleanupLegacyMut.mutate()
+              }}
+            >
+              {cleanupLegacyMut.isPending ? t('common.saving') : t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -93,11 +93,20 @@ public class HousekeepingScheduler {
         rotateByPattern(dir, ".log", 5, 7, "rotate-log");
     }
 
-    public synchronized void cleanupTrash() {
-        Path trashDir = workdir.resolve("_trash");
-        if (!Files.isDirectory(trashDir)) return;
+    public synchronized int cleanupTrash() {
+        return cleanupTrashOlderThan(java.time.Duration.ofDays(7));
+    }
 
-        Instant cutoff = clock.instant().minus(java.time.Duration.ofDays(7));
+    /** User-triggered immediate cleanup — ignores the 7-day retention window. */
+    public synchronized int cleanupTrashNow() {
+        return cleanupTrashOlderThan(java.time.Duration.ZERO);
+    }
+
+    private int cleanupTrashOlderThan(java.time.Duration minAge) {
+        Path trashDir = workdir.resolve("_trash");
+        if (!Files.isDirectory(trashDir)) return 0;
+
+        Instant cutoff = clock.instant().minus(minAge);
         int removed = 0;
         try (Stream<Path> walk = Files.list(trashDir)) {
             for (Path file : (Iterable<Path>) walk::iterator) {
@@ -105,7 +114,7 @@ public class HousekeepingScheduler {
                 BasicFileAttributes attrs;
                 try { attrs = Files.readAttributes(file, BasicFileAttributes.class); }
                 catch (IOException e) { log.warn("[housekeeping] trash stat failed: {}", file); continue; }
-                if (attrs.lastModifiedTime().toInstant().isBefore(cutoff)) {
+                if (!attrs.lastModifiedTime().toInstant().isAfter(cutoff)) {
                     String filename = file.getFileName().toString();
                     String fid = extractFidFromTrashName(filename);
                     try { Files.deleteIfExists(file); }
@@ -123,11 +132,36 @@ public class HousekeepingScheduler {
         } catch (IOException e) {
             log.warn("[housekeeping] trash walk failed: {}", e.toString());
         }
-        log.info("[housekeeping] cleanupTrash removed {} files", removed);
+        log.info("[housekeeping] cleanupTrash (minAge={}) removed {} files", minAge, removed);
+        return removed;
     }
 
     void reconcileFileArtifacts() {
         reconciler.runFullReconcile();
+    }
+
+    /** User-triggered immediate cleanup of the _legacy archive directory (recursive). */
+    public synchronized int cleanupLegacyNow() {
+        Path legacyDir = workdir.resolve("_legacy");
+        if (!Files.isDirectory(legacyDir)) return 0;
+        int removed = 0;
+        try (Stream<Path> walk = Files.walk(legacyDir)) {
+            List<Path> entries = walk.sorted(Comparator.reverseOrder()).toList();
+            for (Path p : entries) {
+                if (p.equals(legacyDir)) continue;
+                boolean isFile = Files.isRegularFile(p);
+                try {
+                    Files.deleteIfExists(p);
+                    if (isFile) removed++;
+                } catch (IOException e) {
+                    log.warn("[housekeeping] legacy rm failed: {}", p);
+                }
+            }
+        } catch (IOException e) {
+            log.warn("[housekeeping] legacy walk failed: {}", e.toString());
+        }
+        log.info("[housekeeping] cleanupLegacyNow removed {} files", removed);
+        return removed;
     }
 
     // --- internals ---

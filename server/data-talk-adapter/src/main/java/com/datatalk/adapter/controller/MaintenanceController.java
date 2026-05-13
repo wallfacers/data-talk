@@ -78,8 +78,14 @@ public class MaintenanceController {
 
     @PostMapping("/cleanup-trash")
     public ResponseEntity<CleanupStatsDto> cleanupTrash() {
-        scheduler.cleanupTrash();
-        return ResponseEntity.ok(new CleanupStatsDto(0, 0)); // stats tracked internally by scheduler
+        int removed = scheduler.cleanupTrashNow();
+        return ResponseEntity.ok(new CleanupStatsDto(removed, removed));
+    }
+
+    @PostMapping("/cleanup-legacy")
+    public ResponseEntity<CleanupStatsDto> cleanupLegacy() {
+        int removed = scheduler.cleanupLegacyNow();
+        return ResponseEntity.ok(new CleanupStatsDto(removed, 0));
     }
 
     @GetMapping("/orphaned-files")

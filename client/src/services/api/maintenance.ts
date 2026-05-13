@@ -39,6 +39,10 @@ export async function cleanupTrash(): Promise<CleanupStatsDto> {
   return http.post('maintenance/cleanup-trash').json<CleanupStatsDto>()
 }
 
+export async function cleanupLegacy(): Promise<CleanupStatsDto> {
+  return http.post('maintenance/cleanup-legacy').json<CleanupStatsDto>()
+}
+
 export async function getOrphanedFiles(): Promise<OrphanedFileDto[]> {
   return http.get('maintenance/orphaned-files').json<OrphanedFileDto[]>()
 }

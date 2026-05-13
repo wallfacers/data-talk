@@ -51,6 +51,45 @@ class HousekeepingSchedulerTest {
     }
 
     @Test
+    void cleanupLegacyNow_recursively_deletes_legacy_contents() throws IOException {
+        Path legacy = workdir.resolve("_legacy");
+        Path v146 = legacy.resolve("v1.4.6");
+        Files.createDirectories(v146);
+        Files.writeString(legacy.resolve("note.md"), "x");
+        Files.writeString(v146.resolve("package.json"), "{}");
+        Files.writeString(v146.resolve("lock.json"), "{}");
+
+        int removed = scheduler.cleanupLegacyNow();
+
+        assertThat(removed).isEqualTo(3);
+        assertThat(Files.exists(legacy)).isTrue();      // root preserved
+        assertThat(Files.exists(v146)).isFalse();        // subdirs gone
+        assertThat(Files.list(legacy).count()).isEqualTo(0L);
+    }
+
+    @Test
+    void cleanupTrashNow_deletes_all_files_regardless_of_age() throws IOException {
+        Path trashDir = workdir.resolve("_trash");
+        Files.createDirectories(trashDir);
+        Path oldFile = trashDir.resolve("ses_a__fa_1__report.md");
+        Files.writeString(oldFile, "old");
+        Files.setLastModifiedTime(oldFile, java.nio.file.attribute.FileTime.from(
+                Instant.parse("2026-04-01T00:00:00Z")));
+        Path recentFile = trashDir.resolve("ses_b__fa_2__orders.md");
+        Files.writeString(recentFile, "recent");
+        Files.setLastModifiedTime(recentFile, java.nio.file.attribute.FileTime.from(
+                Instant.parse("2026-05-06T00:00:00Z")));
+
+        int removed = scheduler.cleanupTrashNow();
+
+        assertThat(removed).isEqualTo(2);
+        assertThat(Files.exists(oldFile)).isFalse();
+        assertThat(Files.exists(recentFile)).isFalse();
+        verify(fileArtifactRepo).deleteDiscardedById("fa_1");
+        verify(fileArtifactRepo).deleteDiscardedById("fa_2");
+    }
+
+    @Test
     void rotateOpencodeBackups_keeps_5_recent_and_within_7_days() throws IOException {
         Path opencodeDir = workdir.resolve("opencode");
         Files.createDirectories(opencodeDir);
