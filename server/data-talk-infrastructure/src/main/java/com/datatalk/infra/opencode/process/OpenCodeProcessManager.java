@@ -220,7 +220,7 @@ public class OpenCodeProcessManager implements SmartLifecycle {
         }
     }
 
-    static Path opencodeWorkingDir(Path homeDir) {
+    public static Path opencodeWorkingDir(Path homeDir) {
         return homeDir.resolve(OpenCodeBinaryResolver.OPENCODE_DIR);
     }
 

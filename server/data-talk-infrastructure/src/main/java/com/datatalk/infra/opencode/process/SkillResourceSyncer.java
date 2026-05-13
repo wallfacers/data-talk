@@ -26,7 +26,7 @@ public class SkillResourceSyncer {
 
     private final PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
 
-    void syncSkill(String skillName, Path projectRoot) {
+    public void syncSkill(String skillName, Path projectRoot) {
         Path opencodeDir = projectRoot.resolve(".opencode");
         Path targetDir = opencodeDir.resolve("skills").resolve(skillName);
         Path marker = opencodeDir.resolve("." + skillName + "-skill-synced");
