@@ -48,6 +48,8 @@ server/*/target/
 # MCP / Skill scratch (Playwright traces, brainstorming dumps, etc.)
 tmp/
 .playwright-mcp/
+.playwright-cli/
+client/.playwright-cli/
 client/test-results/
 
 # bezel runtime install (extracted at server start)
