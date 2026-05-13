@@ -349,11 +349,21 @@ public class IngestionController {
     public ResponseEntity<Void> deleteJob(@PathVariable String id) {
         var job = jobRepo.findById(id);
         if (job.isEmpty()) return ResponseEntity.notFound().build();
-        String s = job.get().status();
-        if (!Set.of("completed", "failed", "cancelled", "fetched", "mapped").contains(s)) {
-            return ResponseEntity.status(409).build();
-        }
         jobRepo.deleteById(id);
         return ResponseEntity.noContent().build();
+    }
+
+    public record BatchDeleteRequest(List<String> ids) {}
+
+    @DeleteMapping("/jobs")
+    public ResponseEntity<Map<String, Object>> batchDeleteJobs(@RequestBody BatchDeleteRequest req) {
+        if (req.ids() == null || req.ids().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "ids must not be empty"));
+        }
+        if (req.ids().size() > 100) {
+            return ResponseEntity.badRequest().body(Map.of("error", "batch size must not exceed 100"));
+        }
+        int deleted = jobRepo.deleteByIds(req.ids());
+        return ResponseEntity.ok(Map.of("deleted", deleted));
     }
 }

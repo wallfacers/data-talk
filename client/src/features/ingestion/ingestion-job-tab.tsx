@@ -3,6 +3,7 @@ import { useI18n } from '@/i18n/use-i18n'
 import { useIngestionJobQuery } from './hooks/use-ingestion-job-query'
 import { useIngestionJobsStore } from './stores/use-ingestion-jobs-store'
 import { confirmIngestionJob, cancelIngestionJob, deleteIngestionJob, ingestionJobsKey, ingestionJobKey } from './api/ingestion-api'
+import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
 import { useStageStore } from '@/stores/stage-store'
 import { coordinator } from '@/features/stage/persistence/stage-persistence-bootstrap'
@@ -21,7 +22,7 @@ interface IngestionJobTabProps {
 
 const PHASE_ORDER = ['fetching', 'fetched', 'mapped', 'confirmed', 'writing', 'completed', 'failed', 'cancelled'] as const
 
-const DELETABLE_STATUSES = new Set(['completed', 'failed', 'cancelled', 'fetched', 'mapped'])
+const DELETABLE_STATUSES = new Set(['completed', 'failed', 'cancelled', 'fetched', 'mapped', 'confirmed'])
 
 function phaseIndex(status: string): number {
   const idx = PHASE_ORDER.indexOf(status as typeof PHASE_ORDER[number])
@@ -62,22 +63,24 @@ export function IngestionJobTab({ tab }: IngestionJobTabProps) {
       await confirmIngestionJob(jobId)
       await queryClient.invalidateQueries({ queryKey: ingestionJobKey(jobId) })
       await queryClient.invalidateQueries({ queryKey: ingestionJobsKey })
+      toast.success(t('ingestion.toast.confirm.success'))
     } catch (e) {
-      console.error('Confirm failed:', e)
+      toast.error(t('ingestion.toast.confirm.failed'))
     } finally {
       setConfirming(false)
     }
-  }, [jobId, confirming, queryClient])
+  }, [jobId, confirming, queryClient, t])
 
   const handleCancel = useCallback(async () => {
     if (!jobId) return
     try {
       await cancelIngestionJob(jobId)
       await queryClient.invalidateQueries({ queryKey: ingestionJobKey(jobId) })
+      toast.success(t('ingestion.toast.cancel.success'))
     } catch (e) {
-      console.error('Cancel failed:', e)
+      toast.error(t('ingestion.toast.cancel.failed'))
     }
-  }, [jobId, queryClient])
+  }, [jobId, queryClient, t])
 
   const handleDelete = useCallback(async () => {
     if (!jobId || deleting) return
@@ -86,11 +89,12 @@ export function IngestionJobTab({ tab }: IngestionJobTabProps) {
       await deleteIngestionJob(jobId)
       await queryClient.invalidateQueries({ queryKey: ingestionJobsKey })
       detachFromWorkset(tab.tabId)
+      toast.success(t('ingestion.toast.delete.success'))
     } catch (e) {
-      console.error('Delete failed:', e)
+      toast.error(t('ingestion.toast.delete.failed'))
       setDeleting(false)
     }
-  }, [jobId, deleting, queryClient, detachFromWorkset, tab.tabId])
+  }, [jobId, deleting, queryClient, detachFromWorkset, tab.tabId, t])
 
   if (!jobId) {
     return (
@@ -119,8 +123,7 @@ export function IngestionJobTab({ tab }: IngestionJobTabProps) {
           {t('ingestion.job.title', { id: jobId.slice(0, 8) })}
         </span>
         <Badge variant="outline" className={`text-xs px-1.5 py-0 ${statusColor(job.status)}`}>
-          {job.status}
-        </Badge>
+          {t(`ingestion.status.${job.status}` as any)}        </Badge>
         <div className="flex-1" />
         {/* Phase stepper dots */}
         <div className="flex items-center gap-1">

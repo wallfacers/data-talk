@@ -2,7 +2,8 @@ import { useState, useCallback } from 'react'
 import { useI18n } from '@/i18n/use-i18n'
 import { useIngestionJobsQuery } from './hooks/use-ingestion-jobs-query'
 import { useStageStore } from '@/stores/stage-store'
-import { deleteIngestionJob } from './api/ingestion-api'
+import { batchDeleteIngestionJobs } from './api/ingestion-api'
+import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
 import { ingestionJobsKey } from './api/ingestion-api'
 import { Badge } from '@/components/ui/badge'
@@ -28,9 +29,7 @@ import type { IngestionJobView } from './api/ingestion-api'
 
 const STATUS_OPTIONS = ['all', 'fetching', 'fetched', 'mapped', 'confirmed', 'writing', 'completed', 'failed', 'cancelled'] as const
 
-const DELETABLE_STATUSES = new Set(['completed', 'failed', 'cancelled', 'fetched', 'mapped'])
-
-const PAGE_SIZE = 20
+const PAGE_SIZE = 100
 
 function statusColor(status: string): string {
   switch (status) {
@@ -86,7 +85,6 @@ export function IngestionLibraryTab() {
 
   const total = data?.total ?? 0
   const pageCount = Math.min(Math.max(1, Math.ceil(total / PAGE_SIZE)), 100)
-  const deletableSelected = jobs.filter((j) => selectedIds.has(j.id) && DELETABLE_STATUSES.has(j.status))
   const allSelected = jobs.length > 0 && jobs.every((j) => selectedIds.has(j.id))
 
   const openJobTab = useCallback((job: IngestionJobView) => {
@@ -106,26 +104,28 @@ export function IngestionLibraryTab() {
   }, [openTab, focusTab, listTabs])
 
   const handleBatchDelete = useCallback(async () => {
-    if (deleting || deletableSelected.length === 0) return
+    if (deleting || selectedIds.size === 0) return
     setDeleting(true)
     try {
-      await Promise.all(deletableSelected.map((job) => deleteIngestionJob(job.id)))
-      for (const job of deletableSelected) {
-        const tabId = `ingestion_job_${job.id}`
+      const ids = Array.from(selectedIds)
+      await batchDeleteIngestionJobs(ids)
+      for (const id of ids) {
+        const tabId = `ingestion_job_${id}`
         const existing = listTabs().find((t) => t.tabId === tabId)
         if (existing) detachFromWorkset(tabId)
       }
       setSelectedIds(new Set())
       await queryClient.invalidateQueries({ queryKey: ingestionJobsKey })
-      if (page > 1 && jobs.length === deletableSelected.length) {
+      if (page > 1 && jobs.length === ids.length) {
         setPage((p) => Math.max(1, p - 1))
       }
+      toast.success(t('ingestion.toast.batch_delete.success', { count: ids.length }))
     } catch (e) {
-      console.error('Batch delete failed:', e)
+      toast.error(t('ingestion.toast.batch_delete.failed'))
     } finally {
       setDeleting(false)
     }
-  }, [deleting, deletableSelected, detachFromWorkset, listTabs, queryClient, page, jobs.length])
+  }, [deleting, selectedIds, detachFromWorkset, listTabs, queryClient, page, jobs.length, t])
 
   const toggleRow = useCallback((id: string) => {
     setSelectedIds((prev) => {
@@ -244,7 +244,7 @@ export function IngestionLibraryTab() {
                   </TableCell>
                   <TableCell className="px-3 py-1.5">
                     <Badge variant="outline" className={`text-xs px-1.5 py-0 ${statusColor(job.status)}`}>
-                      {job.status}
+                      {t(`ingestion.status.${job.status}` as any)}
                     </Badge>
                   </TableCell>
                   <TableCell className="max-w-[300px] px-3 py-1.5 truncate" title={job.sourceUrl}>
@@ -285,17 +285,15 @@ export function IngestionLibraryTab() {
               <Eye className="size-3.5" />
               {t('ingestion.library.view')}
             </button>
-            {deletableSelected.length > 0 && (
-              <button
-                data-testid="ingestion-delete-btn"
-                onClick={() => void handleBatchDelete()}
-                disabled={deleting}
-                className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-              >
-                {deleting ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
-                {deletableSelected.length > 1 ? t('ingestion.library.deleteCount', { count: deletableSelected.length }) : t('ingestion.library.delete')}
-              </button>
-            )}
+            <button
+              data-testid="ingestion-delete-btn"
+              onClick={() => void handleBatchDelete()}
+              disabled={deleting}
+              className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+            >
+              {deleting ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+              {selectedIds.size > 1 ? t('ingestion.library.deleteCount', { count: selectedIds.size }) : t('ingestion.library.delete')}
+            </button>
           </div>
         )}
         {pageCount > 1 && (

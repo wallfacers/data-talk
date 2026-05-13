@@ -184,6 +184,17 @@ public class JdbcIngestionJobRepository implements IngestionJobRepository {
         jdbc.update("DELETE FROM ingestion_job WHERE id=?", id);
     }
 
+    @Override
+    public int deleteByIds(List<String> ids) {
+        if (ids == null || ids.isEmpty()) return 0;
+        StringBuilder sql = new StringBuilder("DELETE FROM ingestion_job WHERE id IN (");
+        for (int i = 0; i < ids.size(); i++) {
+            sql.append(i == 0 ? "?" : ",?");
+        }
+        sql.append(")");
+        return jdbc.update(sql.toString(), ids.toArray());
+    }
+
     private IngestionJob mapRow(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
         return new IngestionJob(
             rs.getString("id"),
