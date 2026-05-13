@@ -89,6 +89,18 @@ public class IngestionController {
             .orElse(ResponseEntity.notFound().build());
     }
 
+    @PutMapping("/credentials/{id}")
+    public ResponseEntity<Map<String, Object>> update(@PathVariable String id,
+                                                       @RequestBody CredentialCreateRequest req) {
+        var existing = credRepo.findById(id);
+        if (existing.isEmpty()) return ResponseEntity.notFound().build();
+        AuthScheme scheme = AuthScheme.valueOf(req.authScheme().toUpperCase());
+        credService.update(id, req.name(), scheme,
+            req.configNonSecret() == null ? Map.of() : req.configNonSecret(),
+            req.secret());
+        return ResponseEntity.ok(Map.of("id", id));
+    }
+
     @DeleteMapping("/credentials/{id}")
     public ResponseEntity<Void> delete(@PathVariable String id,
                                        @RequestParam(defaultValue = "false") boolean force) {

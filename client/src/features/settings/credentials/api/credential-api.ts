@@ -33,6 +33,10 @@ export async function createCredential(req: CredentialCreateRequest): Promise<{ 
   return http.post('ingestion/credentials', { json: req }).json<{ id: string }>()
 }
 
+export async function updateCredential(id: string, req: CredentialCreateRequest): Promise<{ id: string }> {
+  return http.put(`ingestion/credentials/${id}`, { json: req }).json<{ id: string }>()
+}
+
 export async function deleteCredential(id: string, force = false): Promise<CredentialDeleteBlocked | void> {
   try {
     await http.delete(`ingestion/credentials/${id}${force ? '?force=true' : ''}`)

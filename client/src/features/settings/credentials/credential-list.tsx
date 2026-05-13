@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useI18n } from '@/i18n/use-i18n'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { TrashIcon } from 'lucide-react'
+import { TrashIcon, PencilIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -35,9 +35,10 @@ const SCHEME_LABEL_MAP: Record<string, string> = {
 
 interface Props {
   credentials: CredentialView[]
+  onEdit: (credential: CredentialView) => void
 }
 
-export function CredentialList({ credentials }: Props) {
+export function CredentialList({ credentials, onEdit }: Props) {
   const { t } = useI18n()
   const del = useDeleteCredentialMutation()
   const [confirmDelete, setConfirmDelete] = useState<{
@@ -82,7 +83,7 @@ export function CredentialList({ credentials }: Props) {
             <th className="pb-2 align-middle">{t('ingestion.credential.name')}</th>
             <th className="pb-2 w-36 align-middle">{t('ingestion.credential.scheme.label')}</th>
             <th className="pb-2 w-28 align-middle">Created</th>
-            <th className="pb-2 w-20 align-middle pl-3">{t('dataSources.actions')}</th>
+            <th className="pb-2 w-[100px] align-middle pl-3">{t('dataSources.actions')}</th>
           </tr>
         </thead>
         <tbody>
@@ -100,17 +101,28 @@ export function CredentialList({ credentials }: Props) {
                 {formatTimestamp(cred.createdAt)}
               </td>
               <td className="py-2 align-middle">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  data-testid={`credential-delete-${cred.id}`}
+                <div className="flex gap-1 items-center">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    aria-label={t('dataSources.edit')}
+                    onClick={() => onEdit(cred)}
+                    className="h-8 w-8 p-0"
+                  >
+                    <PencilIcon className="size-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    data-testid={`credential-delete-${cred.id}`}
                   aria-label={t('common.delete')}
                   onClick={() => handleDeleteClick(cred)}
                   className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                   disabled={del.isPending}
                 >
-                  <TrashIcon className="size-4" />
-                </Button>
+                    <TrashIcon className="size-4" />
+                  </Button>
+                </div>
               </td>
             </tr>
           ))}

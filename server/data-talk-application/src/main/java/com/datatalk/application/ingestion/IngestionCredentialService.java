@@ -58,6 +58,24 @@ public class IngestionCredentialService {
         return vault.open(reader.read(c.vaultId()));
     }
 
+    public void update(String credentialId, String name, AuthScheme scheme,
+                       Map<String, String> configNonSecret, String rawSecret) {
+        var existing = repo.findById(credentialId).orElseThrow(() ->
+            new IllegalArgumentException("credential not found: " + credentialId));
+        if (!existing.name().equals(name) && repo.findByName(name).isPresent()) {
+            throw new IllegalArgumentException("credential name already used: " + name);
+        }
+        String vaultId = existing.vaultId();
+        if (scheme != AuthScheme.NONE && rawSecret != null && !rawSecret.isEmpty()) {
+            if (vaultId == null) {
+                vaultId = "vault_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+            }
+            writer.write(vaultId, vault.seal(rawSecret));
+        }
+        long now = System.currentTimeMillis();
+        repo.save(new IngestionCredential(credentialId, name, scheme, configNonSecret, vaultId, existing.createdAt(), now));
+    }
+
     public void delete(String credentialId, boolean force) {
         int refs = repo.countReferencingJobs(credentialId);
         if (refs > 0 && !force) {
