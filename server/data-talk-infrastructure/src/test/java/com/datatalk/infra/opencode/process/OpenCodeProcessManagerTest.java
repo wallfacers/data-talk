@@ -2,6 +2,8 @@ package com.datatalk.infra.opencode.process;
 
 import org.junit.jupiter.api.Test;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -10,6 +12,15 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class OpenCodeProcessManagerTest {
+
+    @Test
+    void opencodeWorkingDirIsUnderHomeDataTalkSoSkillsAlignWithProcessCwd() {
+        Path home = Paths.get("/tmp/fake-home");
+
+        Path cwd = OpenCodeProcessManager.opencodeWorkingDir(home);
+
+        assertThat(cwd).isEqualTo(home.resolve(".data-talk/opencode"));
+    }
 
     @Test
     void proxyEnvironmentIsInheritedByDefault() {

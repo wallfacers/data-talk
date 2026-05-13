@@ -10,7 +10,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -88,8 +87,9 @@ public class OpenCodeProcessManager implements SmartLifecycle {
 
     private void doStart() throws Exception {
         binaryResolver.ensureNodeModules();
-        binaryResolver.ensureBezelSkill(Paths.get(""));
-        binaryResolver.ensureDataIngestionSkill(Paths.get(""));
+        Path opencodeCwd = opencodeWorkingDir(homeDir);
+        binaryResolver.ensureBezelSkill(opencodeCwd);
+        binaryResolver.ensureDataIngestionSkill(opencodeCwd);
         Path binary = resolveBinary();
         if (binary == null) {
             throw new IllegalStateException("No OpenCode binary available");
@@ -110,7 +110,7 @@ public class OpenCodeProcessManager implements SmartLifecycle {
         log.info("Starting OpenCode: {}", String.join(" ", cmd));
 
         ProcessBuilder pb = new ProcessBuilder(cmd)
-            .directory(homeDir.resolve(OpenCodeBinaryResolver.OPENCODE_DIR).toFile())
+            .directory(opencodeCwd.toFile())
             .redirectErrorStream(true);
         pb.environment().put("OPENCODE_CONFIG_DIR", configDir.toString());
         pb.environment().put("OPENCODE_CONFIG", configDir.resolve("opencode.json").toString());
@@ -220,6 +220,10 @@ public class OpenCodeProcessManager implements SmartLifecycle {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    static Path opencodeWorkingDir(Path homeDir) {
+        return homeDir.resolve(OpenCodeBinaryResolver.OPENCODE_DIR);
     }
 
     static void applyProxyEnvironmentPolicy(Map<String, String> environment, OpenCodeServeProperties serveProps) {
