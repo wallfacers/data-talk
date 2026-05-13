@@ -76,6 +76,11 @@ public class ChannelService {
         // binding survives backend restarts (otherwise the AI loses context
         // on restart because a fresh OpenCode session gets created).
         String ocSid = session.openCodeSid();
+        if (Strings.isNotBlank(ocSid) && !ocSid.startsWith("ses_")) {
+            log.warn("[channel] discarding malformed opencode_sid for {}: {} (must start with ses_)",
+                sessionId, ocSid);
+            ocSid = null;
+        }
         if (Strings.isBlank(ocSid)) {
             ocSid = sessionMap.openCodeFor(sessionId);
         }
