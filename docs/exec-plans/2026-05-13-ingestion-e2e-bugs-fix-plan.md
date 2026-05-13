@@ -14,9 +14,9 @@ related:
 
 ## Background
 
-After fixing BUG-0013/0014/0015 and infrastructure issues (sqlite3 CLI, session seeding, e2e profile), the 11 ingestion E2E spec files now run **stably**. The remaining failures (22 out of 54 active tests in API/MCP suites, plus 19 UI tests with missing seed data) are **real backend defects** — field-name misalignment, auth encoding, pagination, parser type coercion, error-code surfacing. This plan groups them into 8 distinct BUGs (BUG-0017 → BUG-0024) and 5 execution batches.
+After fixing BUG-0013/0014/0015 and infrastructure issues (sqlite3 CLI, session seeding, e2e profile), the 11 ingestion E2E spec files now run **stably**. The remaining failures (22 out of 54 active tests in API/MCP suites) are **real backend defects** — field-name misalignment, auth encoding, pagination, parser type coercion, error-code surfacing. This plan groups them into 8 distinct BUGs (BUG-0017 → BUG-0024) and 5 execution batches.
 
-UI tests (`ingestion-job-tab-ui.spec.ts`, `ingestion-library-tab-ui.spec.ts`) are **out of scope** — their failures stem from missing seed jobs, not product bugs. They will be revisited in a separate plan after the API layer is green.
+UI tests (`ingestion-job-tab-ui.spec.ts`, `ingestion-library-tab-ui.spec.ts`) use `page.route()` mock strategy and are **not affected** by seed data — they run independently. Verified 19/19 passing after API layer went green.
 
 ## Goals
 
@@ -33,7 +33,7 @@ UI tests (`ingestion-job-tab-ui.spec.ts`, `ingestion-library-tab-ui.spec.ts`) ar
 
 ## Scope (out)
 
-- UI-suite tests (`ingestion-{job,library}-tab-ui.spec.ts`) — separate seeding plan.
+- UI-suite tests — verified 19/19 passing independently after API layer green; no seed data required (`page.route()` mock strategy).
 - 4 already-`test.fixme`'d tests (`FORMAT_UNSUPPORTED` Content-Type contract, Token TTL covered by unit, `delete in-use 409` cross-test lifecycle, AGENTS.md endpoint missing).
 - Frontend changes (none expected — bugs are backend-only).
 
@@ -136,7 +136,7 @@ Shared parser changes, single batch.
 - **Confirm NPE diagnosis uncertain**: Agent D flagged a possible NPE in `IngestionController.confirm` when `mapping` is null, but the code path may already short-circuit via `j.mappingHash()` being non-null after `infer_ingestion_schema`. Will verify with a targeted test before declaring a BUG.
 - **CSV coercion regression risk**: existing CSV consumers may rely on values being all-strings; `coerceCsvValue` must preserve `null` and empty-string semantics exactly.
 - **Basic auth credential model ambiguity**: depends on whether the vault stores `username:password` pre-concatenated or just the password. Will inspect `IngestionCredentialService` before fix and document in BUG-0018.
-- **The 19 UI test failures are NOT bugs** — they require seeded ingestion jobs. Out of scope here; separate fixture plan needed.
+- **UI tests confirmed green**: 19/19 passing (`page.route()` mock strategy, no seed data needed).
 
 ## Verification Checklist
 
@@ -148,6 +148,7 @@ Shared parser changes, single batch.
 - [x] `mvn -pl data-talk-application,data-talk-adapter test` overall green (170 adapter + 973 application = 1143 tests, 0 failures)
 - [x] `mvn -pl data-talk-infrastructure test` overall green (343 / 343)
 - [x] E2E ingestion API/MCP suite: **47/47 non-skipped tests passing** (15 skipped under env gates: MySQL/PG/SqlGuard URL env vars + write_to_database with seeded jobs). Covers 8 specs: fetch-mcp, infer-mcp, ddl-mcp, execute-mcp, error-paths, preflight, credentials-api, sse-events.
+- [x] E2E ingestion UI suite: **19/19 tests passing** (13 job-tab + 6 library-tab). Uses `page.route()` mock strategy, no seed data required.
 - [x] All BUGs transitioned to `fixed` and indexed
 - [x] `docs/exec-plans/index.md` plan entry moved from Active → Completed
 
