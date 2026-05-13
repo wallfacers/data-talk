@@ -342,4 +342,19 @@ describe('streamingBySession persistence', () => {
     expect(parsed.state.partsBySession).toBeUndefined()
     expect(parsed.state.infoBySession).toBeUndefined()
   })
+
+  // Regression: BUG-0037 — CTRL+R during streaming flipped the stop/spinner
+  // back to the send button because Zustand persist's flush is scheduled in a
+  // microtask (storage.setItem is awaited internally) and can be skipped if
+  // the webview reloads before the microtask runs. setStreaming must write to
+  // sessionStorage synchronously on BOTH on=true and on=false so a reload
+  // happening at any instant sees the latest streamingBySession.
+  it('setStreaming writes streamingBySession synchronously on every toggle (BUG-0037)', () => {
+    useChatPartsStore.getState().setStreaming('ses_x', true)
+    expect(JSON.parse(sessionStorage.getItem('data-talk.chat-parts')!).state.streamingBySession)
+      .toEqual(['ses_x'])
+    useChatPartsStore.getState().setStreaming('ses_x', false)
+    expect(JSON.parse(sessionStorage.getItem('data-talk.chat-parts')!).state.streamingBySession)
+      .toEqual([])
+  })
 })

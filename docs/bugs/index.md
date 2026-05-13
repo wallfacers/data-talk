@@ -8,7 +8,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## 当前编号
 
-下一个分配 ID：**BUG-0037**（永不复用，单调递增）
+下一个分配 ID：**BUG-0038**（永不复用，单调递增）
 
 ## Open BUGs（按 priority 倒序，P0 → P2）
 
@@ -47,6 +47,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 | [BUG-0033](BUG-0033-json-jsonl-nullable-only-on-all-null.md) | JSON/JSONL parser 只在全 null 时标 nullable，单元素 null 触发 DDL NOT NULL → INSERT 失败 | fixed | P1 | — |
 | [BUG-0034](BUG-0034-executesql-fixture-missing-source.md) | `executeSql` fixture 缺 `source` → 后端 `validateSource` 抛 400 | fixed | P2 | — |
 | [BUG-0036](BUG-0036-skills-extracted-to-wrong-cwd-not-found-by-opencode.md) | bezel / data-ingestion skill 解压到 JVM cwd 而非 OpenCode 进程 cwd，OpenCode 找不到 skill | fixed | P1 | — |
+| [BUG-0037](BUG-0037-ctrl-r-during-streaming-flips-stop-button-to-send.md) | AI streaming 期间 CTRL+R 让转圈停止按钮误回"待发送"态 | fixed | P1 | — |
 
 ## Recently Closed（最近 30 天，status = verified | closed）
 
@@ -73,12 +74,14 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 - **chart**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md)
 - **dashboard**: [BUG-0012](BUG-0012-widget-data-endpoint-ignores-default-connection-id.md) *(fixed)*
 - **opencode**: [BUG-0036](BUG-0036-skills-extracted-to-wrong-cwd-not-found-by-opencode.md) *(fixed)*
+- **session**: [BUG-0037](BUG-0037-ctrl-r-during-streaming-flips-stop-button-to-send.md) *(fixed)*
+- **chat**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md), [BUG-0037](BUG-0037-ctrl-r-during-streaming-flips-stop-button-to-send.md) *(fixed)*
 
 ## By Source（聚合视图，仅列 open + in-progress）
 
 - **e2e-playwright**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md), [BUG-0012](BUG-0012-widget-data-endpoint-ignores-default-connection-id.md) *(fixed)*, [BUG-0013](BUG-0013-http-request-null-output-fields.md) *(fixed)*, [BUG-0014](BUG-0014-ssrf-deny-list-not-blocking-169-254.md) *(fixed)*, [BUG-0015](BUG-0015-oversized-payload-not-marked-failed.md) *(fixed)*, [BUG-0017](BUG-0017-http-request-missing-payload-format.md) *(fixed)*, [BUG-0018](BUG-0018-basic-auth-not-base64.md) *(fixed)*, [BUG-0019](BUG-0019-page-pagination-ignores-hasmore.md) *(fixed)*, [BUG-0020](BUG-0020-offset-pagination-ignores-nextoffset.md) *(fixed)*, [BUG-0021](BUG-0021-cursor-pagination-missing-next-key.md) *(fixed)*, [BUG-0022](BUG-0022-csv-html-parsers-no-coercion.md) *(fixed)*, [BUG-0023](BUG-0023-integer-64-promotion-gap.md) *(fixed)*, [BUG-0024](BUG-0024-upstream-401-not-mapped-to-auth-failed.md) *(fixed)*
 - **e2e-mcp**: [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md)
-- **manual-report**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md), [BUG-0036](BUG-0036-skills-extracted-to-wrong-cwd-not-found-by-opencode.md) *(fixed)*
+- **manual-report**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md), [BUG-0036](BUG-0036-skills-extracted-to-wrong-cwd-not-found-by-opencode.md) *(fixed)*, [BUG-0037](BUG-0037-ctrl-r-during-streaming-flips-stop-button-to-send.md) *(fixed)*
 
 ## Wontfix / Duplicate（终态归档，无时间限制）
 

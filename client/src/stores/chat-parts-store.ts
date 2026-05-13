@@ -284,14 +284,33 @@ export const useChatPartsStore = create<ChatPartsState>()(
         })
       },
 
-      setStreaming: (sessionId, on) => set((s) => {
-        const has = s.streamingBySession.has(sessionId)
-        if (on === has) return {}
-        const next = new Set(s.streamingBySession)
-        if (on) next.add(sessionId)
-        else next.delete(sessionId)
-        return { streamingBySession: next, version: s.version + 1, layoutVersion: nextLayoutVersion(s) }
-      }),
+      setStreaming: (sessionId, on) => {
+        let nextSet: Set<string> | null = null
+        set((s) => {
+          const has = s.streamingBySession.has(sessionId)
+          if (on === has) return {}
+          const next = new Set(s.streamingBySession)
+          if (on) next.add(sessionId)
+          else next.delete(sessionId)
+          nextSet = next
+          return { streamingBySession: next, version: s.version + 1, layoutVersion: nextLayoutVersion(s) }
+        })
+        // 同步持久化到 sessionStorage，避免 CTRL+R 刷新时 Zustand persist 中间件
+        // 尚未 flush 导致 streaming 标志丢失（按钮误回"待发送"态）。
+        if (nextSet && typeof window !== 'undefined') {
+          try {
+            const raw = sessionStorage.getItem('data-talk.chat-parts')
+            const parsed = raw ? JSON.parse(raw) : null
+            const wrapped =
+              parsed && typeof parsed === 'object' && 'state' in parsed
+                ? (parsed as { state: Record<string, unknown>; version?: number })
+                : { state: {} as Record<string, unknown>, version: 0 }
+            wrapped.state = wrapped.state ?? {}
+            wrapped.state.streamingBySession = Array.from(nextSet)
+            sessionStorage.setItem('data-talk.chat-parts', JSON.stringify(wrapped))
+          } catch { /* 非关键路径，静默降级 */ }
+        }
+      },
 
       getParts: (sessionId) => {
         const byMessage = get().partsBySession.get(sessionId)
