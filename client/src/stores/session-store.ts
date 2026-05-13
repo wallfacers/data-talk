@@ -106,10 +106,24 @@ export const useSessionStore = create<SessionState>()(
 
       setPendingPrompt: (text) => set({ pendingPrompt: text }),
       setComposerRestoreDraft: (draft) => set({ composerRestoreDraft: draft }),
-      setComposerDraft: (key, text) => set((s) => {
-        if (s.composerDrafts[key] === text) return s
-        return { composerDrafts: { ...s.composerDrafts, [key]: text } }
-      }),
+      setComposerDraft: (key, text) => {
+        set((s) => {
+          if (s.composerDrafts[key] === text) return s
+          return { composerDrafts: { ...s.composerDrafts, [key]: text } }
+        })
+        // 同步持久化到 localStorage，避免页面刷新（CTRL+R）时 Zustand persist
+        // 中间件尚未 flush 导致草稿残留
+        if (typeof window !== 'undefined') {
+          try {
+            const raw = localStorage.getItem('data-talk.session')
+            const data = raw ? (JSON.parse(raw) as Record<string, unknown>) : {}
+            const drafts = (data.composerDrafts as Record<string, string>) ?? {}
+            drafts[key] = text
+            data.composerDrafts = drafts
+            localStorage.setItem('data-talk.session', JSON.stringify(data))
+          } catch { /* 非关键路径，静默降级 */ }
+        }
+      },
       setPendingModelPrompt: (on) => set({ pendingModelPrompt: on }),
       setPendingConnectionPrompt: (on) => set({ pendingConnectionPrompt: on }),
       setPendingActionAfterConnectionPick: (action) => set({ pendingActionAfterConnectionPick: action }),
