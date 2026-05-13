@@ -54,6 +54,9 @@ const MESSAGES = {
     'general.sessions.clearing': '清理中…',
     'general.sessions.clearAllSuccess': '已清空全部会话',
     'general.sessions.clearAllError': '清空会话失败',
+    'general.timezone': '时区',
+    'general.timezoneDesc': 'SQL 查询结果中的时间字段将按所选时区显示',
+    'general.dateFormat': '日期格式',
 
     'providers.title': '提供商',
     'providers.connected': '已连接的提供商',
@@ -926,6 +929,9 @@ const MESSAGES = {
     'general.sessions.clearing': 'Clearing…',
     'general.sessions.clearAllSuccess': 'All sessions cleared',
     'general.sessions.clearAllError': 'Failed to clear sessions',
+    'general.timezone': 'Timezone',
+    'general.timezoneDesc': 'Time fields in SQL query results will be displayed in the selected timezone',
+    'general.dateFormat': 'Date Format',
 
     'providers.title': 'Providers',
     'providers.connected': 'Connected Providers',

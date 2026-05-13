@@ -4,8 +4,10 @@ import com.datatalk.application.connection.ConnectionService;
 import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.application.persistence.ConnectionRepository;
+import com.datatalk.application.preference.UserPreferencesService;
 import com.datatalk.application.session.ResolvedExecutionContext;
 import com.datatalk.application.session.SessionDataContextService;
+import com.datatalk.domain.preference.UserPreferences;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.support.StaticMessageSource;
 
@@ -49,6 +51,9 @@ class SqlExecuteServiceErrorFormattingTest {
             .thenReturn(new ResolvedExecutionContext(record, null, null));
         when(sqlStatementSplitters.split("mysql", "SELECT 1")).thenReturn(List.of("SELECT 1"));
 
+        UserPreferencesService userPrefsService = mock(UserPreferencesService.class);
+        when(userPrefsService.getPreferences()).thenReturn(UserPreferences.DEFAULT);
+
         SqlExecuteService service = new SqlExecuteService(
             new CalciteSqlRiskAnalyzer(sqlStatementSplitters),
             connectionRepository,
@@ -56,6 +61,7 @@ class SqlExecuteServiceErrorFormattingTest {
             sessionDataContextService,
             tableContextAutoResolver,
             sqlStatementSplitters,
+            userPrefsService,
             translator(),
             100
         );

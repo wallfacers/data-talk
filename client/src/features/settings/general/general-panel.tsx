@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { SunIcon, MoonIcon, MonitorIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -32,8 +32,13 @@ import { useChannelStore } from '@/stores/channel-store'
 import { useOpenBlankSession } from '@/features/session/hooks/use-open-blank-session'
 import { clearAllSessions } from '@/services/api/session'
 import { useI18n } from '@/i18n/use-i18n'
+import { TimezoneSelector } from './timezone-selector'
+import { DateFormatSelector } from './date-format-selector'
+import { fetchPreferences, updatePreferences, type UserPreferencesDto } from './preferences-api'
 import type { LanguageOption } from '@/i18n/messages'
 import type { Theme } from '@/stores/theme-store'
+
+const preferencesQueryKey = ['preferences'] as const
 
 interface GeneralPanelProps {
   theme?: Theme
@@ -95,6 +100,23 @@ export function GeneralSettingsPanel({
     { value: 'zh-CN', label: t('general.language.zh-CN') },
     { value: 'en-US', label: t('general.language.en-US') },
   ]
+  const { data: prefs } = useQuery({
+    queryKey: preferencesQueryKey,
+    queryFn: fetchPreferences,
+    staleTime: 5 * 60 * 1000,
+  })
+  const prefsMutation = useMutation({
+    mutationFn: (patch: Partial<UserPreferencesDto>) => updatePreferences(patch),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: preferencesQueryKey })
+    },
+    onError: () => {
+      toast.error(t('general.sessions.clearAllError'))
+    },
+  })
+  const timezone = prefs?.timezone ?? 'UTC'
+  const dateFormat = prefs?.dateFormat ?? 'yyyy-MM-dd HH:mm:ss'
+
   const clearAllMutation = useMutation({
     mutationFn: clearAllSessions,
     onSuccess: async () => {
@@ -154,6 +176,25 @@ export function GeneralSettingsPanel({
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      {/* Timezone selection */}
+      <div>
+        <label className="text-sm font-medium text-foreground mb-3 block">{t('general.timezone')}</label>
+        <p className="text-xs text-muted-foreground mb-2">{t('general.timezoneDesc')}</p>
+        <TimezoneSelector
+          value={timezone}
+          onChange={(v) => prefsMutation.mutate({ timezone: v })}
+        />
+      </div>
+
+      {/* Date format selection */}
+      <div>
+        <label className="text-sm font-medium text-foreground mb-3 block">{t('general.dateFormat')}</label>
+        <DateFormatSelector
+          value={dateFormat}
+          onChange={(v) => prefsMutation.mutate({ dateFormat: v })}
+        />
       </div>
 
       <div className="flex items-center justify-between">

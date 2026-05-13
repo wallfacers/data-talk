@@ -4,8 +4,10 @@ import com.datatalk.application.connection.ConnectionService;
 import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.application.persistence.ConnectionRepository;
+import com.datatalk.application.preference.UserPreferencesService;
 import com.datatalk.application.session.ResolvedExecutionContext;
 import com.datatalk.application.session.SessionDataContextService;
+import com.datatalk.domain.preference.UserPreferences;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.support.StaticMessageSource;
@@ -71,6 +73,9 @@ class SqlExecuteServiceSplitterSelectionTest {
                 "SELECT name FROM items WHERE id = 2"
             ));
 
+        UserPreferencesService userPrefsService = mock(UserPreferencesService.class);
+        when(userPrefsService.getPreferences()).thenReturn(UserPreferences.DEFAULT);
+
         service = new SqlExecuteService(
             new CalciteSqlRiskAnalyzer(sqlStatementSplitters),
             connectionRepository,
@@ -78,6 +83,7 @@ class SqlExecuteServiceSplitterSelectionTest {
             sessionDataContextService,
             tableContextAutoResolver,
             sqlStatementSplitters,
+            userPrefsService,
             translator(),
             100
         );

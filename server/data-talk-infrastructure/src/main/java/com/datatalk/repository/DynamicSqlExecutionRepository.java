@@ -1,7 +1,9 @@
 package com.datatalk.repository;
 
 import com.datatalk.application.connection.JdbcUrlBuilder;
+import com.datatalk.application.preference.UserPreferencesService;
 import com.datatalk.application.sql.JdbcResultValueNormalizer;
+import com.datatalk.domain.preference.UserPreferences;
 import com.datatalk.entity.DbConnection;
 import com.datatalk.entity.DbType;
 import com.datatalk.exception.SqlExecutionException;
@@ -12,10 +14,17 @@ import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.stereotype.Repository;
 
 import java.sql.*;
+import java.time.ZoneId;
 import java.util.*;
 
 @Repository
 public class DynamicSqlExecutionRepository implements SqlExecutionRepository {
+
+    private final UserPreferencesService userPrefsService;
+
+    public DynamicSqlExecutionRepository(UserPreferencesService userPrefsService) {
+        this.userPrefsService = userPrefsService;
+    }
 
     @Override
     public QueryResult execute(DbConnection connection, String sql, String schema) {
@@ -31,19 +40,26 @@ public class DynamicSqlExecutionRepository implements SqlExecutionRepository {
                 ResultSetMetaData meta = rs.getMetaData();
                 int columnCount = meta.getColumnCount();
                 List<String> columns = new ArrayList<>();
+                List<Integer> columnTypes = new ArrayList<>();
                 for (int i = 1; i <= columnCount; i++) {
                     columns.add(meta.getColumnLabel(i).toLowerCase());
+                    columnTypes.add(meta.getColumnType(i));
                 }
+
+                UserPreferences prefs = userPrefsService.getPreferences();
+                ZoneId userZoneId = prefs.timezone();
+                String dateFormat = prefs.dateFormat();
 
                 while (rs.next()) {
                     Map<String, Object> row = new LinkedHashMap<>();
                     for (int i = 1; i <= columnCount; i++) {
-                        row.put(columns.get(i - 1), JdbcResultValueNormalizer.normalize(rs.getObject(i)));
+                        row.put(columns.get(i - 1), JdbcResultValueNormalizer.normalize(
+                            rs.getObject(i), columnTypes.get(i - 1), userZoneId, dateFormat));
                     }
                     rows.add(row);
                 }
 
-                return new QueryResult(columns, rows, System.currentTimeMillis() - start);
+                return new QueryResult(columns, rows, System.currentTimeMillis() - start, columnTypes);
             }
         } catch (SQLException e) {
             throw new SqlExecutionException("Failed to execute SQL: " + e.getMessage(), e);

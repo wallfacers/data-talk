@@ -7,9 +7,18 @@ import java.sql.SQLException;
 import java.sql.Struct;
 import java.sql.Clob;
 import java.sql.Blob;
+import java.sql.Types;
 import java.io.InputStream;
 import java.io.IOException;
 import java.io.Reader;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -31,6 +40,10 @@ public final class JdbcResultValueNormalizer {
     private JdbcResultValueNormalizer() {}
 
     public static Object normalize(Object value) {
+        return normalize(value, Types.NULL, null, null);
+    }
+
+    public static Object normalize(Object value, int sqlType, ZoneId userZoneId, String dateFormat) {
         if (value == null) {
             return null;
         }
@@ -43,6 +56,37 @@ public final class JdbcResultValueNormalizer {
         if (value instanceof BigDecimal bigDecimalValue && bigDecimalValue.scale() <= 0) {
             BigInteger integerValue = bigDecimalValue.toBigInteger();
             return isSafeInteger(integerValue) ? integerValue.longValue() : integerValue.toString();
+        }
+        // Temporal types — normalize to user timezone
+        if (userZoneId != null && dateFormat != null) {
+            DateTimeFormatter fmt = DateTimeFormatter.ofPattern(dateFormat);
+            // java.sql.Timestamp (extends java.util.Date — check before Date)
+            if (value instanceof java.sql.Timestamp ts) {
+                return ZonedDateTime.ofInstant(ts.toInstant(), userZoneId).format(fmt);
+            }
+            // SQL date-only types: no timezone shift
+            if (value instanceof java.sql.Date d) {
+                return d.toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE);
+            }
+            if (value instanceof java.sql.Time t) {
+                return t.toLocalTime().format(DateTimeFormatter.ISO_LOCAL_TIME);
+            }
+            // java.time types
+            if (value instanceof OffsetDateTime odt) {
+                return ZonedDateTime.ofInstant(odt.toInstant(), userZoneId).format(fmt);
+            }
+            if (value instanceof Instant inst) {
+                return ZonedDateTime.ofInstant(inst, userZoneId).format(fmt);
+            }
+            if (value instanceof LocalDateTime ldt) {
+                return ldt.format(fmt);
+            }
+            if (value instanceof LocalDate ld) {
+                return ld.format(DateTimeFormatter.ISO_LOCAL_DATE);
+            }
+            if (value instanceof LocalTime lt) {
+                return lt.format(DateTimeFormatter.ISO_LOCAL_TIME);
+            }
         }
         // Oracle CLOB normalization: read as String (truncated if large)
         if (value instanceof Clob clobValue) {
@@ -68,8 +112,6 @@ public final class JdbcResultValueNormalizer {
             return unwrapMap(mapValue);
         }
         // Vendor-specific JDBC wrapper types (e.g., PGobject for JSON/JSONB)
-        // expose the actual value via a getValue() method. Skip standard library
-        // types to avoid unnecessary reflection overhead.
         String className = value.getClass().getName();
         if (!className.startsWith("java.") && !className.startsWith("javax.") && hasGetValue(value)) {
             return invokeGetValue(value);
@@ -114,7 +156,6 @@ public final class JdbcResultValueNormalizer {
             String result = clob.getSubString(1, readLen);
             return result != null ? result : "";
         } catch (SQLException e) {
-            // Fallback: try reading via Reader
             try (Reader reader = clob.getCharacterStream()) {
                 if (reader == null) return "";
                 StringBuilder sb = new StringBuilder();
@@ -143,7 +184,6 @@ public final class JdbcResultValueNormalizer {
             byte[] result = blob.getBytes(1, readLen);
             return result != null ? result : new byte[0];
         } catch (SQLException e) {
-            // Fallback: try reading via InputStream
             try (InputStream is = blob.getBinaryStream()) {
                 if (is == null) return new byte[0];
                 byte[] buffer = new byte[MAX_LOB_LENGTH];
@@ -166,7 +206,6 @@ public final class JdbcResultValueNormalizer {
     private static Map<String, Object> unwrapStruct(Struct struct) {
         try {
             Object[] attrs = struct.getAttributes();
-            // Try DuckDB-specific getFieldNames() via reflection; fall back to indexed keys
             String[] fieldNames = null;
             try {
                 var method = struct.getClass().getMethod("getFieldNames");

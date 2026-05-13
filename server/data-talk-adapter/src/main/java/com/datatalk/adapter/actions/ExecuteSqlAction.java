@@ -6,6 +6,7 @@ import com.datatalk.application.connection.ConnectionService;
 import com.datatalk.application.connection.JdbcUrlBuilder;
 import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.persistence.*;
+import com.datatalk.application.preference.UserPreferencesService;
 import com.datatalk.application.session.SessionDataContextService;
 import com.datatalk.application.sql.JdbcResultValueNormalizer;
 import com.datatalk.application.sql.CalciteSqlRiskAnalyzer;
@@ -15,11 +16,13 @@ import com.datatalk.application.sql.SqlRiskAnalyzer;
 import com.datatalk.domain.action.*;
 import com.datatalk.domain.error.DataTalkErrorCodes;
 import com.datatalk.domain.error.DataTalkException;
+import com.datatalk.domain.preference.UserPreferences;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 
 import java.sql.*;
 import java.time.Clock;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -58,6 +61,7 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
     private final SqlRiskAnalyzer riskAnalyzer;
     private final ArtifactRepository artifacts;
     private final QueryResultRepository queryResults;
+    private final UserPreferencesService userPrefsService;
     private final ObjectMapper om;
     private final Clock clock;
     private final IdGenerator ids;
@@ -66,7 +70,9 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
 
     public ExecuteSqlAction(ConnectionRepository connRepo, ConnectionService connSvc,
                             SqlRiskAnalyzer riskAnalyzer, ArtifactRepository artifacts,
-                            QueryResultRepository queryResults, ObjectMapper om, Clock clock,
+                            QueryResultRepository queryResults,
+                            UserPreferencesService userPrefsService,
+                            ObjectMapper om, Clock clock,
                             IdGenerator ids,
                             SessionDataContextService sessionContexts,
                             Translator translator) {
@@ -75,6 +81,7 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
         this.riskAnalyzer = riskAnalyzer;
         this.artifacts = artifacts;
         this.queryResults = queryResults;
+        this.userPrefsService = userPrefsService;
         this.om = om;
         this.clock = clock;
         this.ids = ids;
@@ -176,8 +183,13 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
         ConnectionRecord cr = withDatabase(resolved.connection(), resolved.database());
         int pageSize = pageSize(input.get("pageSize"));
 
+        UserPreferences prefs = userPrefsService.getPreferences();
+        ZoneId userZoneId = prefs.timezone();
+        String dateFormat = prefs.dateFormat();
+
         long started = clock.millis();
         List<String> columns = new ArrayList<>();
+        List<Integer> columnTypes = new ArrayList<>();
         List<Map<String, Object>> rows = new ArrayList<>();
         boolean truncated = false;
 
@@ -192,7 +204,10 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
             ps.setMaxRows(pageSize + 1);
             try (ResultSet rs = ps.executeQuery()) {
                 var md = rs.getMetaData();
-                for (int i = 1; i <= md.getColumnCount(); i++) columns.add(md.getColumnLabel(i));
+                for (int i = 1; i <= md.getColumnCount(); i++) {
+                    columns.add(md.getColumnLabel(i));
+                    columnTypes.add(md.getColumnType(i));
+                }
                 while (rs.next()) {
                     if (rows.size() >= pageSize) {
                         truncated = true;
@@ -200,7 +215,8 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
                     }
                     Map<String, Object> row = new LinkedHashMap<>();
                     for (int i = 1; i <= md.getColumnCount(); i++) {
-                        row.put(columns.get(i - 1), JdbcResultValueNormalizer.normalize(rs.getObject(i)));
+                        row.put(columns.get(i - 1), JdbcResultValueNormalizer.normalize(
+                            rs.getObject(i), columnTypes.get(i - 1), userZoneId, dateFormat));
                     }
                     rows.add(row);
                 }

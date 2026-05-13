@@ -6,6 +6,15 @@ import java.math.BigInteger;
 import java.sql.Array;
 import java.sql.SQLException;
 import java.sql.Struct;
+import java.sql.Timestamp;
+import java.sql.Types;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -281,5 +290,116 @@ class JdbcResultValueNormalizerTest {
         private final String value;
         public FakeClickHouseDateTimeWrapper(String value) { this.value = value; }
         @Override public String toString() { return value; }
+    }
+
+    // --- Timezone-aware normalization ---
+
+    @Test
+    void timestamp_converted_to_user_timezone() {
+        Timestamp ts = Timestamp.from(Instant.parse("2025-06-15T08:00:00Z"));
+        ZoneId shanghai = ZoneId.of("Asia/Shanghai");
+        Object result = JdbcResultValueNormalizer.normalize(ts, Types.TIMESTAMP, shanghai, "yyyy-MM-dd HH:mm:ss");
+        assertThat(result).isEqualTo("2025-06-15 16:00:00");
+    }
+
+    @Test
+    void timestamp_converted_to_new_york_timezone() {
+        Timestamp ts = Timestamp.from(Instant.parse("2025-06-15T08:00:00Z"));
+        ZoneId ny = ZoneId.of("America/New_York");
+        Object result = JdbcResultValueNormalizer.normalize(ts, Types.TIMESTAMP, ny, "yyyy-MM-dd HH:mm:ss");
+        assertThat(result).isEqualTo("2025-06-15 04:00:00");
+    }
+
+    @Test
+    void timestamp_with_us_date_format() {
+        Timestamp ts = Timestamp.from(Instant.parse("2025-06-15T08:00:00Z"));
+        ZoneId ny = ZoneId.of("America/New_York");
+        Object result = JdbcResultValueNormalizer.normalize(ts, Types.TIMESTAMP, ny, "MM/dd/yyyy hh:mm:ss a");
+        assertThat(result).isEqualTo("06/15/2025 04:00:00 AM");
+    }
+
+    @Test
+    void timestamp_on_winter_date_dst_off() {
+        Timestamp ts = Timestamp.from(Instant.parse("2025-01-15T08:00:00Z"));
+        ZoneId ny = ZoneId.of("America/New_York");
+        Object result = JdbcResultValueNormalizer.normalize(ts, Types.TIMESTAMP, ny, "yyyy-MM-dd HH:mm:ss");
+        assertThat(result).isEqualTo("2025-01-15 03:00:00");
+    }
+
+    @Test
+    void sql_date_not_converted() {
+        java.sql.Date d = java.sql.Date.valueOf("2025-06-15");
+        ZoneId shanghai = ZoneId.of("Asia/Shanghai");
+        Object result = JdbcResultValueNormalizer.normalize(d, Types.DATE, shanghai, "yyyy-MM-dd HH:mm:ss");
+        assertThat(result).isEqualTo("2025-06-15");
+    }
+
+    @Test
+    void sql_time_not_converted() {
+        java.sql.Time t = java.sql.Time.valueOf("14:30:00");
+        ZoneId shanghai = ZoneId.of("Asia/Shanghai");
+        Object result = JdbcResultValueNormalizer.normalize(t, Types.TIME, shanghai, "yyyy-MM-dd HH:mm:ss");
+        assertThat(result).isEqualTo("14:30:00");
+    }
+
+    @Test
+    void offset_date_time_converted() {
+        OffsetDateTime odt = OffsetDateTime.of(2025, 6, 15, 8, 0, 0, 0, ZoneOffset.UTC);
+        ZoneId ny = ZoneId.of("America/New_York");
+        Object result = JdbcResultValueNormalizer.normalize(odt, Types.TIMESTAMP_WITH_TIMEZONE, ny, "yyyy-MM-dd HH:mm:ss");
+        assertThat(result).isEqualTo("2025-06-15 04:00:00");
+    }
+
+    @Test
+    void instant_converted() {
+        Instant inst = Instant.parse("2025-06-15T08:00:00Z");
+        ZoneId shanghai = ZoneId.of("Asia/Shanghai");
+        Object result = JdbcResultValueNormalizer.normalize(inst, Types.TIMESTAMP, shanghai, "yyyy-MM-dd HH:mm:ss");
+        assertThat(result).isEqualTo("2025-06-15 16:00:00");
+    }
+
+    @Test
+    void local_date_time_not_converted() {
+        LocalDateTime ldt = LocalDateTime.of(2025, 6, 15, 14, 30, 0);
+        ZoneId shanghai = ZoneId.of("Asia/Shanghai");
+        Object result = JdbcResultValueNormalizer.normalize(ldt, Types.TIMESTAMP, shanghai, "yyyy-MM-dd HH:mm:ss");
+        assertThat(result).isEqualTo("2025-06-15 14:30:00");
+    }
+
+    @Test
+    void local_date_not_converted() {
+        LocalDate ld = LocalDate.of(2025, 6, 15);
+        ZoneId shanghai = ZoneId.of("Asia/Shanghai");
+        Object result = JdbcResultValueNormalizer.normalize(ld, Types.DATE, shanghai, "yyyy-MM-dd HH:mm:ss");
+        assertThat(result).isEqualTo("2025-06-15");
+    }
+
+    @Test
+    void local_time_not_converted() {
+        LocalTime lt = LocalTime.of(14, 30, 0);
+        ZoneId shanghai = ZoneId.of("Asia/Shanghai");
+        Object result = JdbcResultValueNormalizer.normalize(lt, Types.TIME, shanghai, "yyyy-MM-dd HH:mm:ss");
+        assertThat(result).isEqualTo("14:30:00");
+    }
+
+    @Test
+    void no_timezone_preference_passes_through() {
+        Timestamp ts = Timestamp.valueOf("2025-06-15 08:00:00.000000000");
+        Object result = JdbcResultValueNormalizer.normalize(ts, Types.TIMESTAMP, null, null);
+        assertThat(result).isInstanceOf(Timestamp.class);
+    }
+
+    @Test
+    void string_value_passes_through_with_timezone() {
+        ZoneId shanghai = ZoneId.of("Asia/Shanghai");
+        Object result = JdbcResultValueNormalizer.normalize("2025-06-15 08:00:00", Types.VARCHAR, shanghai, "yyyy-MM-dd HH:mm:ss");
+        assertThat(result).isEqualTo("2025-06-15 08:00:00");
+    }
+
+    @Test
+    void existing_normalize_delegates_to_no_timezone() {
+        Timestamp ts = Timestamp.valueOf("2025-06-15 08:00:00.000000000");
+        Object result = JdbcResultValueNormalizer.normalize(ts);
+        assertThat(result).isInstanceOf(Timestamp.class);
     }
 }

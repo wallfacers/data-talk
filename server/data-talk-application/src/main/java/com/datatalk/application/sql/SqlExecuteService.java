@@ -7,17 +7,20 @@ import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.persistence.SessionDataContextRecord;
+import com.datatalk.application.preference.UserPreferencesService;
 import com.datatalk.application.session.ResolvedExecutionContext;
 import com.datatalk.application.session.SessionDataContextService;
 import com.datatalk.domain.action.Category;
 import com.datatalk.domain.action.RiskLevel;
 import com.datatalk.domain.error.DataTalkErrorCodes;
 import com.datatalk.domain.error.DataTalkException;
+import com.datatalk.domain.preference.UserPreferences;
 import com.datatalk.dto.ResolvedDataContextDto;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.sql.*;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -78,6 +81,7 @@ public class SqlExecuteService {
     private final TableContextAutoResolver tableContextAutoResolver;
     private final SqlStatementSplitters sqlStatementSplitters;
     private final SqlExecutionPlanner sqlExecutionPlanner = new SqlExecutionPlanner();
+    private final UserPreferencesService userPrefsService;
     private final Translator translator;
     private final int maxRows;
 
@@ -87,6 +91,7 @@ public class SqlExecuteService {
                              SessionDataContextService sessionDataContextService,
                              TableContextAutoResolver tableContextAutoResolver,
                              SqlStatementSplitters sqlStatementSplitters,
+                             UserPreferencesService userPrefsService,
                              Translator translator,
                              @Value("${datatalk.sql.max-rows:5000}") int maxRows) {
         this.riskAnalyzer = riskAnalyzer;
@@ -95,6 +100,7 @@ public class SqlExecuteService {
         this.sessionDataContextService = sessionDataContextService;
         this.tableContextAutoResolver = tableContextAutoResolver;
         this.sqlStatementSplitters = sqlStatementSplitters;
+        this.userPrefsService = userPrefsService;
         this.translator = translator;
         this.maxRows = maxRows;
     }
@@ -373,9 +379,14 @@ public class SqlExecuteService {
         ResultSetMetaData md = rs.getMetaData();
         int colCount = md.getColumnCount();
         List<String> columns = new ArrayList<>(colCount);
+        List<Integer> columnTypes = new ArrayList<>(colCount);
         for (int i = 1; i <= colCount; i++) {
             columns.add(md.getColumnLabel(i));
+            columnTypes.add(md.getColumnType(i));
         }
+        UserPreferences prefs = userPrefsService.getPreferences();
+        ZoneId userZoneId = prefs.timezone();
+        String dateFormat = prefs.dateFormat();
         List<List<Object>> rows = new ArrayList<>();
         boolean truncated = false;
         while (rs.next()) {
@@ -385,7 +396,8 @@ public class SqlExecuteService {
             }
             List<Object> row = new ArrayList<>(colCount);
             for (int i = 1; i <= colCount; i++) {
-                row.add(JdbcResultValueNormalizer.normalize(rs.getObject(i)));
+                row.add(JdbcResultValueNormalizer.normalize(
+                    rs.getObject(i), columnTypes.get(i - 1), userZoneId, dateFormat));
             }
             rows.add(row);
         }
