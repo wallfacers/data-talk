@@ -101,7 +101,7 @@
   --dt-bg-panel: oklch(0.995 0.002 80);
   --dt-bg-soft: oklch(0.965 0.005 80);
   --dt-bg-subtle: oklch(0.945 0.005 80);
-  --dt-bg-elevated: oklch(1 0 0);
+  --dt-bg-elevated: oklch(0.995 0.002 80);
   --dt-bg-overlay: oklch(0.29 0.008 80 / 0.4);
   --dt-text-strong: oklch(0.29 0.008 80);
   --dt-text-base: oklch(0.375 0.007 80);

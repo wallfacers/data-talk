@@ -63,7 +63,7 @@ semantic:
       panel: "neutral.25"
       soft: "neutral.50"
       subtle: "neutral.100"
-      elevated: "neutral.0"
+      elevated: "neutral.25"
       overlay: "rgba(55, 53, 47, 0.40)"
     text:
       strong: "neutral.800"
@@ -266,14 +266,14 @@ Typography families in this contract are the target design tokens; the current r
 
 DataTalk ships light and dark as equal first-class themes. Components do not invent theme-specific behavior; they consume semantic tokens and inherit the current theme mapping.
 
-Light surfaces use a warm-neutral spine arranged as four chrome tiers: `bg.subtle` (deepest chrome) → `bg.soft` (light chrome) → `bg.app` (workspace frame) → `bg.canvas` / `bg.panel` (near-white work surface) → `bg.elevated` (pure white for floating dialogs / popovers). Canvas is intentionally **not** pure white — it carries a hint of warmth (`neutral.25`) so editor body and table cells harmonize with the warm chrome instead of fighting it. Dark surfaces inherit the same semantic names with progressively brighter elevated layers over a near-black app frame.
+Light surfaces use a warm-neutral spine arranged as four chrome tiers: `bg.subtle` (deepest chrome) → `bg.soft` (light chrome) → `bg.app` (workspace frame) → `bg.canvas` / `bg.panel` / `bg.elevated` (near-white work and popover surface). Canvas is intentionally **not** pure white — it carries a hint of warmth (`neutral.25`) so editor body, table cells, and floating dialogs harmonize with the warm chrome instead of fighting it. Popovers / dialogs use the same `neutral.25` body and rely on `shadow` + `ring-foreground/10` (not pure-white bg) to signal elevation. Dark surfaces inherit the same semantic names with progressively brighter elevated layers over a near-black app frame.
 
 - `bg.app` is the application frame.
 - `bg.canvas` is the main reading or work surface (warm off-white, not pure white).
 - `bg.panel` is the default contained surface for controls and focused work areas.
 - `bg.soft` is the light chrome tier — Stage tab toolbars, the activity rail strip, and rail panels use it to sit between work-surface canvas and the deeper navigation chrome.
 - `bg.subtle` is the low-emphasis navigation or grouping surface (Sidebar, deeper chrome).
-- `bg.elevated` is reserved for floating popovers / dialogs that need pure-white separation.
+- `bg.elevated` matches `bg.canvas` in light mode; popovers / dialogs lean on shadow and ring instead of a whiter body.
 - `text.strong` and `text.base` carry primary reading flow.
 - `text.muted` and `text.soft` carry metadata, chrome, and low-priority detail.
 - `accent.primary` is reserved for current object, primary action, and selected emphasis.

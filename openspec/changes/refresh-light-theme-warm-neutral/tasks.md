@@ -124,3 +124,4 @@
   - `Theme Semantics` 段重写：四阶 chrome 层级（subtle → soft → app → canvas/panel → elevated），明确 canvas "intentionally not pure white"
   - `Component Rules` Stage 段补 `bg.soft` 用途 + active rail icon 2px accent marker 规则
 - [x] 8.12 Playwright 抽样验真：所有 chrome 区采到 `oklch(0.965 0.005 80)` = `bg.soft`，canvas 区采到 `oklch(0.995 0.002 80)`；用户验证视觉满意
+- [x] 8.13 Popover / Dialog 弹层（user 菜单、设置弹窗）软化：`--dt-bg-elevated` light 从 `oklch(1 0 0)` → `oklch(0.995 0.002 80)`（与 canvas 同），消除 popover 与 canvas 之间的"纯白突兀"。Shadow + ring-foreground/10 继续承担 elevation 视觉职责。DESIGN.md `semantic.light.bg.elevated` 同步改为 `neutral.25`
