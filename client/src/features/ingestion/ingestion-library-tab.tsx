@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useI18n } from '@/i18n/use-i18n'
 import { useIngestionJobsQuery } from './hooks/use-ingestion-jobs-query'
 import { useStageStore } from '@/stores/stage-store'
@@ -26,6 +26,16 @@ import {
 } from '@/components/ui/table'
 import { Search, Download, Trash2, Eye, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { IngestionJobView } from './api/ingestion-api'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 const STATUS_OPTIONS = ['all', 'fetching', 'fetched', 'mapped', 'confirmed', 'writing', 'completed', 'failed', 'cancelled'] as const
 
@@ -61,6 +71,7 @@ export function IngestionLibraryTab() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [page, setPage] = useState(1)
   const [deleting, setDeleting] = useState(false)
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const openTab = useStageStore((s) => s.openTab)
   const focusTab = useStageStore((s) => s.focusTab)
   const listTabs = useStageStore((s) => s.listTabs)
@@ -86,8 +97,10 @@ export function IngestionLibraryTab() {
   const total = data?.total ?? 0
   const pageCount = Math.min(Math.max(1, Math.ceil(total / PAGE_SIZE)), 100)
   const allSelected = jobs.length > 0 && jobs.every((j) => selectedIds.has(j.id))
+  const lastClickTimeRef = useRef(0)
 
   const openJobTab = useCallback((job: IngestionJobView) => {
+    lastClickTimeRef.current = 0 // 双击已消费，重置
     const tabId = `ingestion_job_${job.id}`
     const existing = listTabs().find((t) => t.tabId === tabId)
     if (existing) {
@@ -127,6 +140,15 @@ export function IngestionLibraryTab() {
     }
   }, [deleting, selectedIds, detachFromWorkset, listTabs, queryClient, page, jobs.length, t])
 
+  const handleDeleteClick = useCallback(() => {
+    if (selectedIds.size > 0) setShowConfirmDelete(true)
+  }, [selectedIds.size])
+
+  const executeDelete = useCallback(() => {
+    setShowConfirmDelete(false)
+    void handleBatchDelete()
+  }, [handleBatchDelete])
+
   const toggleRow = useCallback((id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev)
@@ -135,6 +157,22 @@ export function IngestionLibraryTab() {
       return next
     })
   }, [])
+
+  const handleRowClick = useCallback((job: IngestionJobView) => {
+    const now = Date.now()
+    if (now - lastClickTimeRef.current < 300) {
+      // 双击的第一次 click，忽略选中
+      openJobTab(job)
+      return
+    }
+    lastClickTimeRef.current = now
+    // 延迟执行，等待可能的第二次 click（双击）
+    setTimeout(() => {
+      if (Date.now() - lastClickTimeRef.current >= 250) {
+        toggleRow(job.id)
+      }
+    }, 250)
+  }, [openJobTab, toggleRow])
 
   const toggleAll = useCallback(() => {
     if (allSelected) {
@@ -165,6 +203,7 @@ export function IngestionLibraryTab() {
   }, [])
 
   return (
+    <>
     <div className="flex flex-col h-full" data-testid="ingestion-library-tab">
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border/50 px-3 py-2">
         <div className="flex items-center gap-1.5">
@@ -229,6 +268,7 @@ export function IngestionLibraryTab() {
                 <TableRow
                   key={job.id}
                   data-testid={`ingestion-library-row-${job.id}`}
+                  onClick={() => handleRowClick(job)}
                   onDoubleClick={() => openJobTab(job)}
                   className={`border-b border-border/30 hover:bg-muted/50 cursor-pointer ${
                     selectedIds.has(job.id) ? 'bg-primary/8' : ''
@@ -287,7 +327,7 @@ export function IngestionLibraryTab() {
             </button>
             <button
               data-testid="ingestion-delete-btn"
-              onClick={() => void handleBatchDelete()}
+              onClick={handleDeleteClick}
               disabled={deleting}
               className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
             >
@@ -323,5 +363,31 @@ export function IngestionLibraryTab() {
         )}
       </div>
     </div>
+
+    {/* Delete confirmation dialog */}
+    <AlertDialog open={showConfirmDelete} onOpenChange={(open) => { if (!open && !deleting) setShowConfirmDelete(false) }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t('common.delete')}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {t('ingestion.library.delete.confirm', { count: selectedIds.size })}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={deleting}>{t('common.cancel')}</AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            disabled={deleting}
+            onClick={(event) => {
+              event.preventDefault()
+              executeDelete()
+            }}
+          >
+            {deleting ? t('common.loading') : t('common.delete')}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   )
 }
