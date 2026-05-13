@@ -1,5 +1,9 @@
 import { test, expect } from '@playwright/test'
 
+// Strategy: real backend — exercises /api/ingestion/credentials CRUD directly.
+// See openspec/specs/ingestion-ui-e2e-testing/spec.md for the rule that justifies hitting
+// the real backend here (no MCP wrapper; sync REST CRUD; no overlap with API specs).
+
 const BASE = process.env.DATATALK_ADAPTER_BASE_URL ?? 'http://localhost:8080'
 
 /** Navigate to Settings > Credentials via the user avatar dropdown. */
@@ -13,12 +17,14 @@ async function navigateToCredentials(page: Awaited<ReturnType<typeof test>> exte
 
 test.describe('@e2e @ingestion @ui Credentials Settings page', () => {
   test.beforeEach(async ({ page, request }) => {
-    // Clean up credentials before each test
+    // Clean up any e2e credential before each test — robust against orphans left by
+    // interrupted credentials-api runs (which use e2e_cred_* prefix and afterEach hooks
+    // that don't fire on crash).
     const list = await request.get(`${BASE}/api/ingestion/credentials`)
     if (list.ok()) {
       const body = await list.json() as { items: Array<{ id: string; name: string }> }
       for (const c of body.items) {
-        if (c.name.startsWith('e2e_ui_')) {
+        if (c.name.startsWith('e2e_')) {
           await request.delete(`${BASE}/api/ingestion/credentials/${c.id}?force=true`)
         }
       }

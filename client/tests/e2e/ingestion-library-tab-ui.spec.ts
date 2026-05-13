@@ -1,19 +1,34 @@
 import { test, expect, type Page } from '@playwright/test'
+import type { IngestionJobView } from '@/features/ingestion/api/ingestion-api'
+
+// Strategy: page.route() mocking — see openspec/specs/ingestion-ui-e2e-testing/spec.md
+// Library tab is a stateless list renderer over GET /api/ingestion/jobs. Backend lifecycle
+// is covered by the ingestion-*-mcp API specs; UI-side coverage stays at the HTTP boundary.
 
 const BASE = process.env.DATATALK_ADAPTER_BASE_URL ?? 'http://localhost:8080'
 
-/**
- * E2E tests for the ingestion library tab UI.
- *
- * All tests are gated with fixme because BUG-0013 causes http_request to
- * return null for required output fields (jobId, payloadArtifactId), which
- * makes it impossible to seed ingestion jobs through the normal MCP pipeline.
- * The test bodies are fully written and will activate once BUG-0013 is fixed.
- */
 test.describe('@e2e @ingestion @ui Ingestion library tab', () => {
   const now = Date.now()
 
-  function mockJob(overrides: Record<string, unknown> = {}) {
+  test.beforeEach(async ({ page, request }) => {
+    // Clean up server-side stage_tab persistence — openTab persists tabs to
+    // /api/stage/tabs, and without this hook ingestion_* tabs accumulate across
+    // runs (observed: 34 tabs wedging the workbench panel). Also clear
+    // localStorage for the open/active flags.
+    const list = await request.get(`${BASE}/api/stage/tabs?limit=200`)
+    if (list.ok()) {
+      const body = await list.json() as { items?: Array<{ tabId: string; type: string }> } | Array<{ tabId: string; type: string }>
+      const items = Array.isArray(body) ? body : (body.items ?? [])
+      for (const t of items) {
+        if (t.type?.startsWith('ingestion_')) {
+          await request.delete(`${BASE}/api/stage/tabs/${t.tabId}`)
+        }
+      }
+    }
+    await page.addInitScript(() => localStorage.clear())
+  })
+
+  function mockJob(overrides: Partial<IngestionJobView> = {}): IngestionJobView {
     return {
       id: `job_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       sourceUrl: 'http://example.com/api/data',
@@ -40,7 +55,13 @@ test.describe('@e2e @ingestion @ui Ingestion library tab', () => {
     await page.evaluate(() => {
       const stage = (window as any).__DT_E2E__?.stage()
       if (stage?.openTab) {
-        stage.openTab({ type: 'ingestion_library' })
+        stage.openTab({
+          tabId: `lib_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          type: 'ingestion_library',
+          title: 'Ingestion Library',
+          payload: {},
+          createdAt: Date.now(),
+        })
       }
     })
   }
@@ -65,7 +86,7 @@ test.describe('@e2e @ingestion @ui Ingestion library tab', () => {
       mockJob({ id: 'job_005', sourceUrl: 'http://epsilon.example.com/metrics', status: 'writing' }),
     ]
 
-    await page.route(`${BASE}/api/ingestion/jobs*`, async (route) => {
+    await page.route(`**/api/ingestion/jobs*`, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -97,11 +118,16 @@ test.describe('@e2e @ingestion @ui Ingestion library tab', () => {
       mockJob({ id: 'job_failed_1', sourceUrl: 'http://err.example.com', status: 'failed' }),
     ]
 
-    await page.route(`${BASE}/api/ingestion/jobs*`, async (route) => {
+    // Mock honors the `status` query param so the test exercises the real
+    // server-side-filter contract — list endpoint must respect ?status=<x>.
+    await page.route(`**/api/ingestion/jobs*`, async (route) => {
+      const url = new URL(route.request().url())
+      const statusFilter = url.searchParams.get('status')
+      const filtered = statusFilter ? jobs.filter((j) => j.status === statusFilter) : jobs
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ items: jobs, total: jobs.length }),
+        body: JSON.stringify({ items: filtered, total: filtered.length }),
       })
     })
 
@@ -129,7 +155,7 @@ test.describe('@e2e @ingestion @ui Ingestion library tab', () => {
       mockJob({ id: 'job_gamma', sourceUrl: 'http://gamma.example.com/events', targetTable: 'events' }),
     ]
 
-    await page.route(`${BASE}/api/ingestion/jobs*`, async (route) => {
+    await page.route(`**/api/ingestion/jobs*`, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -169,7 +195,17 @@ test.describe('@e2e @ingestion @ui Ingestion library tab', () => {
       mockJob({ id: 'job_dblclick', sourceUrl: 'http://dblclick.example.com/data', status: 'completed' }),
     ]
 
-    await page.route(`${BASE}/api/ingestion/jobs*`, async (route) => {
+    // Single handler covering both /jobs (list) and /jobs/{id} (detail).
+    // Uses a regex so it also catches the detail path (default `*` glob stops at `/`).
+    await page.route(/\/api\/ingestion\/jobs(\/[^/?#]+)?(\?.*)?$/, async (route) => {
+      const url = new URL(route.request().url())
+      const m = url.pathname.match(/\/api\/ingestion\/jobs\/([^/]+)$/)
+      if (m) {
+        const id = m[1]
+        const found = jobs.find((j) => j.id === id)
+        if (!found) return route.fulfill({ status: 404, body: '{}' })
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(found) })
+      }
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -192,7 +228,7 @@ test.describe('@e2e @ingestion @ui Ingestion library tab', () => {
     await page.goto('/')
     await page.waitForFunction(() => Boolean((window as any).__DT_E2E__))
 
-    await page.route(`${BASE}/api/ingestion/jobs*`, async (route) => {
+    await page.route(`**/api/ingestion/jobs*`, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
