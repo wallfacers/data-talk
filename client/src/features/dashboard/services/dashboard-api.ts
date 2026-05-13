@@ -2,6 +2,7 @@ import type { Dashboard } from '../schema'
 import { dashboardSchema } from '../schema'
 
 export async function fetchDashboard(id: string): Promise<Dashboard | null> {
+  if (!id || id === 'undefined' || id === 'null') return null
   const response = await fetch(`/api/dashboards/${encodeURIComponent(id)}`)
   if (!response.ok) return null
   const data = await response.json()
@@ -24,6 +25,7 @@ export async function patchDashboard(
   baseVersion: number,
   ops: unknown[],
 ): Promise<{ ok: boolean; version?: number; error?: string }> {
+  if (!id || id === 'undefined' || id === 'null') return { ok: false, error: 'invalid dashboard id' }
   const response = await fetch(`/api/dashboards/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     headers: { 'content-type': 'application/json' },
@@ -42,6 +44,7 @@ export async function patchDashboard(
 }
 
 export async function fetchDashboardHtml(id: string): Promise<string | null> {
+  if (!id || id === 'undefined' || id === 'null') return null
   const response = await fetch(`/api/dashboards/${encodeURIComponent(id)}/html`)
   if (!response.ok) return null
   return await response.text()

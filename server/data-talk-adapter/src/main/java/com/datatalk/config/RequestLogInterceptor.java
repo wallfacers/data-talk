@@ -52,9 +52,12 @@ public class RequestLogInterceptor implements HandlerInterceptor {
                 String errorMsg = ex.getClass().getSimpleName() + ": " + truncate(ex.getMessage(), 100);
                 suffix = " [ERROR] " + errorMsg;
                 log.error("{} {} | ip={}{} → {} | {}ms{}", method, uri, ip, uaPart, status, elapsedMs, suffix);
-            } else if (status >= 400) {
+            } else if (status >= 500) {
                 suffix = " [ERROR]";
                 log.error("{} {} | ip={}{} → {} | {}ms{}", method, uri, ip, uaPart, status, elapsedMs, suffix);
+            } else if (status >= 400) {
+                suffix = " [WARN]";
+                log.warn("{} {} | ip={}{} → {} | {}ms{}", method, uri, ip, uaPart, status, elapsedMs, suffix);
             } else if (elapsedMs >= slowRequestThresholdMs) {
                 suffix = " [SLOW]";
                 log.warn("{} {} | ip={}{} → {} | {}ms{}", method, uri, ip, uaPart, status, elapsedMs, suffix);
