@@ -70,14 +70,19 @@ class AgentsTemplateContractTest {
         String tpl = load();
         assertThat(tpl)
             .contains("## Data Ingestion (skill: data-ingestion)")
-            .contains("skills/data-ingestion/SKILL.md")
+            .contains("Skill auto-loaded")
+            .doesNotContain("skills/data-ingestion/SKILL.md")
             .contains("`datatalk_http_request`")
             .contains("`datatalk_infer_ingestion_schema`")
             .contains("`datatalk_create_ingestion_table`")
             .contains("`datatalk_ingest_payload`")
             .contains("INGESTION_SSRF_BLOCKED")
             .contains("INGESTION_DIALECT_UNSUPPORTED")
-            .contains("INGESTION_TOKEN_INVALID");
+            .contains("INGESTION_TOKEN_INVALID")
+            .contains("INGESTION_PAYLOAD_TOO_LARGE")
+            .contains("INGESTION_FETCH_FAILED")
+            .contains("INGESTION_FORMAT_UNSUPPORTED")
+            .contains("INGESTION_INFER_FAILED");
     }
 
     @Test

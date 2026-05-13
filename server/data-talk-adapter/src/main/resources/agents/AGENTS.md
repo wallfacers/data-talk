@@ -935,7 +935,7 @@ The user then decides in their UI whether to permanently archive it to the conne
 
 When the user asks to fetch external data (REST API / CSV / HTML table) and write it into a connected database, use the data-ingestion skill tools.
 
-**Full skill reference**: `skills/data-ingestion/SKILL.md`
+**Skill auto-loaded**: The `data-ingestion` skill is loaded into OpenCode automatically — do NOT attempt to Read its `SKILL.md` by any path (whether under `~/.agents/`, `~/.data-talk/`, or any other location). The skill's tool surface is already available as the MCP tools listed below; this section is the authoritative reference.
 
 **Tool chain** (execute in this order):
 
@@ -951,6 +951,17 @@ When the user asks to fetch external data (REST API / CSV / HTML table) and writ
 
 **Credentials**: Managed via Settings → Credentials (stored in SecretVault with AES-256-GCM). Create via `POST /api/ingestion/credentials` before using `credentialId` in fetch requests.
 
-**Error handling**: Each tool returns structured error codes (`INGESTION_SSRF_BLOCKED`, `INGESTION_AUTH_FAILED`, `INGESTION_DIALECT_UNSUPPORTED`, `INGESTION_TOKEN_INVALID`, `INGESTION_PAYLOAD_TOO_LARGE`). See `skills/data-ingestion/SKILL.md` for the full error → action mapping.
+**Error handling**: Each tool returns one of the structured error codes below. Map them to user-actionable messages — do NOT Read any external `SKILL.md` for further detail; this table is complete:
+
+| Error code | User-actionable response |
+|------------|--------------------------|
+| `INGESTION_SSRF_BLOCKED` | Ask user to use a public HTTPS URL or contact admin |
+| `INGESTION_PAYLOAD_TOO_LARGE` | Reduce pageSize, narrow time range, or reduce maxPages |
+| `INGESTION_AUTH_FAILED` | Check credentials in Settings → Credentials |
+| `INGESTION_TOKEN_INVALID` | Re-open the ingestion Tab, click Confirm again (fresh 5-min token) |
+| `INGESTION_DIALECT_UNSUPPORTED` | Switch to mysql/postgresql/h2/sqlite connection |
+| `INGESTION_FETCH_FAILED` | Check URL, network, timeout |
+| `INGESTION_FORMAT_UNSUPPORTED` | Day-1 supports JSON/JSONL/CSV/HTML only |
+| `INGESTION_INFER_FAILED` | Check payload file is valid |
 
 {{STAGE_TAB_DIGEST}}
