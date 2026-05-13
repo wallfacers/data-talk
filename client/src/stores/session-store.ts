@@ -107,20 +107,28 @@ export const useSessionStore = create<SessionState>()(
       setPendingPrompt: (text) => set({ pendingPrompt: text }),
       setComposerRestoreDraft: (draft) => set({ composerRestoreDraft: draft }),
       setComposerDraft: (key, text) => {
+        let nextDrafts: Record<string, string> | null = null
         set((s) => {
           if (s.composerDrafts[key] === text) return s
-          return { composerDrafts: { ...s.composerDrafts, [key]: text } }
+          const merged = { ...s.composerDrafts, [key]: text }
+          nextDrafts = merged
+          return { composerDrafts: merged }
         })
         // 同步持久化到 localStorage，避免页面刷新（CTRL+R）时 Zustand persist
-        // 中间件尚未 flush 导致草稿残留
-        if (typeof window !== 'undefined') {
+        // 中间件尚未 flush（setItem 走 microtask）导致刚清空的草稿在 hydrate 阶段
+        // 又被旧值覆盖（参见 BUG-0037 同类问题）。必须写到 Zustand persist 的
+        // 规范 schema：{ state: { ... }, version }，否则 hydrate 读不到。
+        if (nextDrafts && typeof window !== 'undefined') {
           try {
             const raw = localStorage.getItem('data-talk.session')
-            const data = raw ? (JSON.parse(raw) as Record<string, unknown>) : {}
-            const drafts = (data.composerDrafts as Record<string, string>) ?? {}
-            drafts[key] = text
-            data.composerDrafts = drafts
-            localStorage.setItem('data-talk.session', JSON.stringify(data))
+            const parsed = raw ? JSON.parse(raw) : null
+            const wrapped =
+              parsed && typeof parsed === 'object' && 'state' in parsed
+                ? (parsed as { state: Record<string, unknown>; version?: number })
+                : { state: {} as Record<string, unknown>, version: 0 }
+            wrapped.state = wrapped.state ?? {}
+            wrapped.state.composerDrafts = nextDrafts
+            localStorage.setItem('data-talk.session', JSON.stringify(wrapped))
           } catch { /* 非关键路径，静默降级 */ }
         }
       },
