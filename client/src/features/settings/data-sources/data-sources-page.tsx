@@ -139,23 +139,13 @@ export function DataSourcesPage() {
         </Button>
       </div>
 
-      {showForm ? (
+      {showForm || editing ? (
         <ConnectionFormPanel
           editing={editing}
           onCancel={() => { setShowForm(false); setEditing(null) }}
           onSaved={() => { setShowForm(false); setEditing(null) }}
         />
       ) : listContent}
-
-      {!showForm && editing && (
-        <div className="mt-6">
-          <ConnectionFormPanel
-            editing={editing}
-            onCancel={() => setEditing(null)}
-            onSaved={() => setEditing(null)}
-          />
-        </div>
-      )}
 
       {deleteModal && (
         <DeleteConnectionModal
