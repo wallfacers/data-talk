@@ -1,19 +1,11 @@
 import { useEffect, useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { TrashIcon, PencilIcon, PlusIcon, CheckCircle2Icon, XCircleIcon, LoaderIcon, AlertTriangleIcon } from 'lucide-react'
+import { TrashIcon, PencilIcon, PlusIcon, CheckCircle2Icon, XCircleIcon, LoaderIcon } from 'lucide-react'
 import { useI18n } from '@/i18n/use-i18n'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog'
-import { listConnections, deleteConnection, testConnection, connectionsKey, type Connection, type ConnectionDeleteBlocked } from './api'
+import { listConnections, testConnection, connectionsKey, type Connection } from './api'
 import { ConnectionFormPanel, DATABASE_TYPES } from './connection-form-dialog'
 import { useConnectionStore } from '@/features/connection/store'
 import { DeleteConnectionModal } from '@/features/connection/components/delete-connection-modal'
@@ -34,7 +26,6 @@ export function DataSourcesPage() {
     connectionName: string
     counts: { sessions: number; candidates: number; temporary: number; archived: number }
   } | null>(null)
-  const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null)
 
   useEffect(() => {
     if (connectionsData === undefined) return
@@ -44,26 +35,6 @@ export function DataSourcesPage() {
   function getStatus(c: Connection): 'ok' | 'fail' | 'loading' | null {
     return testResult[c.id] ?? (c.lastTestStatus === 'ok' || c.lastTestStatus === 'fail' ? c.lastTestStatus : null)
   }
-
-  const del = useMutation({
-    mutationFn: deleteConnection,
-    onSuccess: (result) => {
-      qc.invalidateQueries({ queryKey: connectionsKey })
-      qc.invalidateQueries({ queryKey: ['session-data-context'] })
-      // Check if blocked by resources
-      if (result !== undefined && 'counts' in result) {
-        const blocked = result as ConnectionDeleteBlocked
-        const conn = connections.find((c) => c.id === blocked.connectionId)
-        setDeleteModal({
-          connectionId: blocked.connectionId,
-          connectionName: conn?.name ?? '',
-          counts: blocked.counts,
-        })
-        return
-      }
-      toast.success(t('common.deleted'))
-    },
-  })
 
   async function runTest(id: string) {
     setTestResult(r => ({ ...r, [id]: 'loading' }))
@@ -138,9 +109,14 @@ export function DataSourcesPage() {
                       size="sm"
                       variant="ghost"
                       aria-label={t('common.delete')}
-                      onClick={() => setPendingDelete({ id: c.id, name: c.name })}
+                      onClick={() => {
+                        setDeleteModal({
+                          connectionId: c.id,
+                          connectionName: c.name,
+                          counts: { sessions: 0, candidates: 0, temporary: 0, archived: 0 },
+                        })
+                      }}
                       className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                      disabled={del.isPending}
                     >
                       <TrashIcon className="size-4" />
                     </Button>
@@ -179,44 +155,6 @@ export function DataSourcesPage() {
             onSaved={() => setEditing(null)}
           />
         </div>
-      )}
-
-      {pendingDelete && (
-        <Dialog open={pendingDelete !== null} onOpenChange={(open) => { if (!open) setPendingDelete(null) }}>
-          <DialogContent className="w-[480px] bg-canvas p-6" showCloseButton={!del.isPending}>
-            <DialogHeader>
-              <DialogTitle className="text-lg">
-                {t('dataSources.confirmDelete.title', { connectionName: pendingDelete.name })}
-              </DialogTitle>
-              <DialogDescription>
-                {t('dataSources.confirmDelete.description')}
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="flex items-start gap-2 rounded-md border border-status-warning bg-status-warningSurface p-3 text-sm text-status-warning">
-              <AlertTriangleIcon className="mt-0.5 size-4 shrink-0" />
-              <span>{t('dataSources.confirmDelete.confirm')}</span>
-            </div>
-
-            <DialogFooter>
-              <Button
-                variant="ghost"
-                onClick={() => setPendingDelete(null)}
-                disabled={del.isPending}
-                className="h-8 text-sm"
-              >
-                {t('common.cancel')}
-              </Button>
-              <Button
-                onClick={() => { del.mutate(pendingDelete.id); setPendingDelete(null) }}
-                disabled={del.isPending}
-                className="h-8 text-sm bg-accent-primary text-inverse hover:bg-accent-primaryHover"
-              >
-                {del.isPending ? t('common.loading') : t('dataSources.confirmDelete.confirm')}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       )}
 
       {deleteModal && (

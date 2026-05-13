@@ -69,7 +69,7 @@ export function DeleteConnectionModal({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="w-[480px] bg-canvas p-6" showCloseButton={!deleteMut.isPending}>
+      <DialogContent className="w-[480px] bg-bg-panel p-6" showCloseButton={!deleteMut.isPending}>
         <DialogHeader>
           <DialogTitle className="text-lg">
             {t('connections.deleteModal.title', { connectionName })}
@@ -109,17 +109,16 @@ export function DeleteConnectionModal({
 
         <DialogFooter>
           <Button
-            variant="ghost"
+            variant="outline"
             onClick={() => handleOpenChange(false)}
             disabled={deleteMut.isPending}
-            className="h-8 text-sm"
           >
             {t('connections.deleteModal.cancel')}
           </Button>
           <Button
+            variant="destructive"
             onClick={handleConfirm}
             disabled={deleteMut.isPending}
-            className="h-8 text-sm bg-accent-primary text-inverse hover:bg-accent-primaryHover"
           >
             {deleteMut.isPending ? t('common.loading') : t('connections.deleteModal.confirm')}
           </Button>

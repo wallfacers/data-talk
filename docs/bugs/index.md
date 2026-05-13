@@ -8,7 +8,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## 当前编号
 
-下一个分配 ID：**BUG-0035**（永不复用，单调递增）
+下一个分配 ID：**BUG-0036**（永不复用，单调递增）
 
 ## Open BUGs（按 priority 倒序，P0 → P2）
 
@@ -20,6 +20,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 | ID | Title | Status | Priority | Owner |
 |----|-------|--------|----------|-------|
+| [BUG-0035](BUG-0035-dialog-bg-canvas-typo-causes-transparent-background.md) | 数据源/凭据管理设置页删除弹框背景半透明，bg-canvas 类拼写错误 | fixed | P2 | — |
 | [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md) | Stage 永久删除最后一个 tab 后右侧工作区空白 | fixed | P1 | — |
 | [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md) | 聊天气泡内 ECharts X 轴标题（xAxis.name）右侧被裁 | fixed | P2 | — |
 | [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md) | sql-result-display 测试缺少 DialogClose mock 导致 10 个用例失败 | fixed | P2 | — |

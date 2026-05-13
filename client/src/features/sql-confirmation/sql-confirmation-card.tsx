@@ -1,5 +1,3 @@
-import { useEffect, useRef } from 'react'
-import { Button } from '@/components/ui/button'
 import { useI18n } from '@/i18n/use-i18n'
 import { cn } from '@/lib/utils'
 
@@ -12,24 +10,10 @@ export type SqlRisk = {
 export type SqlConfirmationCardProps = {
   risk: SqlRisk
   sqlPreview: string
-  pending?: boolean
-  onCancel: () => void
-  onExecute: () => void
 }
 
-export function SqlConfirmationCard({
-  risk,
-  sqlPreview,
-  pending = false,
-  onCancel,
-  onExecute,
-}: SqlConfirmationCardProps) {
+export function SqlConfirmationCard({ risk, sqlPreview }: SqlConfirmationCardProps) {
   const { t } = useI18n()
-  const cancelRef = useRef<HTMLButtonElement | null>(null)
-
-  useEffect(() => {
-    cancelRef.current?.focus()
-  }, [])
 
   const isL3 = risk.level === 'L3'
   const objectsLabel = risk.affectedObjects.length > 0
@@ -38,40 +22,42 @@ export function SqlConfirmationCard({
 
   return (
     <div
-      className={cn(
-        'rounded-md border p-4 space-y-3',
-        isL3
-          ? 'border-[var(--dt-status-danger)]/40 bg-[var(--dt-status-danger-surface)] text-[var(--dt-status-danger)]'
-          : 'border-[var(--dt-accent-warn)]/40 bg-[var(--dt-accent-warn-surface)] text-[var(--dt-accent-warn)]',
-      )}
+      className="space-y-3"
+      data-testid="sql-risk-panel"
       role="group"
       aria-label={isL3 ? t('sqlConfirmation.l3.title') : t('sqlConfirmation.l2.title')}
     >
-      <div className="flex items-center gap-2 font-medium">
-        <span
-          aria-hidden
-          className={cn(
-            'inline-block h-2 w-2 rounded-full',
-            isL3 ? 'bg-[var(--dt-status-danger)]' : 'bg-[var(--dt-accent-warn)]',
-          )}
-        />
-        {isL3 ? t('sqlConfirmation.l3.title') : t('sqlConfirmation.l2.title')}
-      </div>
+      <div
+        aria-hidden
+        className={cn(
+          'h-1 w-full rounded-full',
+          isL3 ? 'bg-[var(--dt-status-danger)]' : 'bg-[var(--dt-accent-warn)]',
+        )}
+      />
 
-      <pre className="rounded bg-[var(--dt-bg-canvas)] p-2 font-mono text-sm overflow-x-auto whitespace-pre text-[var(--foreground)]">
+      <pre
+        className={cn(
+          'rounded-md border p-3 font-mono text-sm overflow-x-auto whitespace-pre text-[var(--dt-text-strong)]',
+          isL3
+            ? 'border-[color-mix(in_srgb,var(--dt-status-danger)_30%,transparent)] bg-[var(--dt-status-danger-surface)]'
+            : 'border-[color-mix(in_srgb,var(--dt-accent-warn)_30%,transparent)] bg-[var(--dt-accent-warn-surface)]',
+        )}
+      >
         {sqlPreview}
       </pre>
 
       <div className="text-sm">
-        <div className="font-medium mb-1">{t('sqlConfirmation.affectedObjects')}</div>
-        <ul className="font-mono text-xs space-y-0.5">
+        <div className="mb-1 font-medium text-[var(--dt-text-strong)]">
+          {t('sqlConfirmation.affectedObjects')}
+        </div>
+        <ul className="space-y-0.5 font-mono text-xs text-[var(--dt-text-muted)]">
           {risk.affectedObjects.map((obj) => (
             <li key={obj}>{obj}</li>
           ))}
         </ul>
       </div>
 
-      <div className="text-sm">
+      <div className="text-sm text-[var(--dt-text-base)]">
         {isL3
           ? t('sqlConfirmation.l3.body', { objects: objectsLabel })
           : t('sqlConfirmation.l2.body', { objects: objectsLabel })}
@@ -82,26 +68,6 @@ export function SqlConfirmationCard({
           {t('sqlConfirmation.l3.irreversible')}
         </div>
       )}
-
-      <div className="flex justify-end gap-2 pt-1">
-        <Button
-          ref={cancelRef}
-          variant="outline"
-          size="sm"
-          disabled={pending}
-          onClick={onCancel}
-        >
-          {t('sqlConfirmation.cancel')}
-        </Button>
-        <Button
-          size="sm"
-          disabled={pending}
-          variant={isL3 ? 'destructive' : 'default'}
-          onClick={onExecute}
-        >
-          {pending ? t('sqlConfirmation.executing') : t('sqlConfirmation.execute')}
-        </Button>
-      </div>
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { translateMessage } from '@/i18n/messages'
 import { SqlConfirmationCard } from './sql-confirmation-card'
 
@@ -16,26 +16,40 @@ const renderCard = (props: Partial<React.ComponentProps<typeof SqlConfirmationCa
     <SqlConfirmationCard
       risk={{ level: 'L2', reason: 'update_with_where', affectedObjects: ['orders'] }}
       sqlPreview="UPDATE orders SET status = 'paid' WHERE id = 1"
-      onCancel={() => {}}
-      onExecute={() => {}}
       {...props}
     />,
   )
 
 describe('SqlConfirmationCard', () => {
-  it('renders L2 visuals with bounded-mutation copy', () => {
+  it('renders the panel root with sql-risk-panel testid for E2E targeting', () => {
     renderCard()
-    expect(screen.getByText('Bounded mutation')).toBeInTheDocument()
+    expect(screen.getByTestId('sql-risk-panel')).toBeInTheDocument()
+  })
+
+  it('does not render a duplicate L2/L3 title inside the card body (badge lives in the dialog header)', () => {
+    const { rerender } = renderCard()
+    // Card should NOT contain its own "Bounded mutation" heading — that label belongs in the dialog header badge.
+    expect(screen.queryByText(/^Bounded mutation$/)).not.toBeInTheDocument()
+    rerender(
+      <SqlConfirmationCard
+        risk={{ level: 'L3', reason: 'drop_table', affectedObjects: ['temp_log'] }}
+        sqlPreview="DROP TABLE temp_log"
+      />,
+    )
+    expect(screen.queryByText(/^Destructive operation$/)).not.toBeInTheDocument()
+  })
+
+  it('renders L2 body copy with affected objects interpolated', () => {
+    renderCard()
     expect(screen.getByText(/will modify data in orders/i)).toBeInTheDocument()
     expect(screen.queryByText(/cannot be undone/i)).not.toBeInTheDocument()
   })
 
-  it('renders L3 visuals with irreversibility warning', () => {
+  it('renders L3 body copy plus the irreversibility warning', () => {
     renderCard({
       risk: { level: 'L3', reason: 'drop_table', affectedObjects: ['temp_log'] },
       sqlPreview: 'DROP TABLE temp_log',
     })
-    expect(screen.getByText('Destructive operation')).toBeInTheDocument()
     expect(screen.getByText(/will permanently affect temp_log/i)).toBeInTheDocument()
     expect(screen.getByText('This action cannot be undone.')).toBeInTheDocument()
   })
@@ -53,24 +67,32 @@ describe('SqlConfirmationCard', () => {
     expect(screen.getByText('order_items')).toBeInTheDocument()
   })
 
-  it('initial focus lands on Cancel to prevent accidental destructive activation', () => {
-    renderCard({ risk: { level: 'L3', reason: 'drop_table', affectedObjects: ['t'] } })
-    expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus()
+  it('renders the amber top band for L2 risk', () => {
+    renderCard()
+    const panel = screen.getByTestId('sql-risk-panel')
+    const band = panel.querySelector('[aria-hidden]')
+    expect(band).not.toBeNull()
+    expect(band!.className).toMatch(/bg-\[var\(--dt-accent-warn\)\]/)
+    expect(band!.className).not.toMatch(/bg-\[var\(--dt-status-danger\)\]/)
   })
 
-  it('calls onCancel and onExecute exactly once each on click', () => {
-    const onCancel = vi.fn()
-    const onExecute = vi.fn()
-    renderCard({ onCancel, onExecute })
-    fireEvent.click(screen.getByRole('button', { name: 'Execute' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
-    expect(onExecute).toHaveBeenCalledTimes(1)
-    expect(onCancel).toHaveBeenCalledTimes(1)
+  it('renders the danger top band for L3 risk', () => {
+    renderCard({
+      risk: { level: 'L3', reason: 'drop_table', affectedObjects: ['temp_log'] },
+      sqlPreview: 'DROP TABLE temp_log',
+    })
+    const panel = screen.getByTestId('sql-risk-panel')
+    const band = panel.querySelector('[aria-hidden]')
+    expect(band).not.toBeNull()
+    expect(band!.className).toMatch(/bg-\[var\(--dt-status-danger\)\]/)
+    expect(band!.className).not.toMatch(/bg-\[var\(--dt-accent-warn\)\]/)
   })
 
-  it('shows Executing... and disables both buttons while pending', () => {
-    renderCard({ pending: true })
-    expect(screen.getByRole('button', { name: 'Executing…' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled()
+  it('renders em-dash placeholder when affected objects is empty', () => {
+    renderCard({
+      risk: { level: 'L2', reason: 'update_no_where', affectedObjects: [] },
+    })
+    // Body interpolates "—" when no affected objects are listed
+    expect(screen.getByText(/will modify data in —/i)).toBeInTheDocument()
   })
 })

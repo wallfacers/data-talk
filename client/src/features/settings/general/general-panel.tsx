@@ -209,13 +209,12 @@ export function GeneralSettingsPanel({
             <AlertDialogTitle>{t('general.sessions.confirmTitle')}</AlertDialogTitle>
             <AlertDialogDescription>{t('general.sessions.confirmDesc')}</AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="border-t-0 bg-transparent pt-2">
-            <AlertDialogCancel className="border-0 bg-transparent hover:bg-muted/50">
+          <AlertDialogFooter>
+            <AlertDialogCancel>
               {t('common.cancel')}
             </AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
-              className="border-0 bg-transparent"
               disabled={clearAllMutation.isPending}
               onClick={(event) => {
                 event.preventDefault()

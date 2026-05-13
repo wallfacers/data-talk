@@ -141,7 +141,7 @@ export function DeleteSessionModal({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="w-[480px] bg-canvas p-6" showCloseButton={!processMut.isPending}>
+      <DialogContent className="w-[480px] bg-bg-panel p-6" showCloseButton={!processMut.isPending}>
         <DialogHeader>
           <DialogTitle className="text-lg">{t('files.deleteModal.title')}</DialogTitle>
           <DialogDescription>
@@ -208,17 +208,16 @@ export function DeleteSessionModal({
 
         <DialogFooter>
           <Button
-            variant="ghost"
+            variant="outline"
             onClick={() => handleOpenChange(false)}
             disabled={processMut.isPending}
-            className="h-8 text-sm"
           >
             {t('files.deleteModal.cancel')}
           </Button>
           <Button
+            variant="destructive"
             onClick={handleConfirm}
             disabled={!allDecided || anyInProgress}
-            className="h-8 text-sm bg-accent-primary text-inverse hover:bg-accent-primaryHover"
           >
             {processMut.isPending ? t('common.loading') : t('files.deleteModal.confirm')}
           </Button>

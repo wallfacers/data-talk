@@ -157,13 +157,12 @@ export function ChatHeader() {
             {t('workspace.confirmDeleteDescription', { title })}
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter className="border-t-0 bg-transparent pt-2">
-          <AlertDialogCancel className="border-0 bg-transparent hover:bg-muted/50">
+        <AlertDialogFooter>
+          <AlertDialogCancel>
             {t('common.cancel')}
           </AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
-            className="border-0 bg-transparent"
             onClick={() => {
               if (sid) del.mutate(sid)
               setDeleteConfirmOpen(false)

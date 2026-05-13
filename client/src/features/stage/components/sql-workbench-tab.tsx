@@ -29,7 +29,16 @@ import { SqlResultPanel } from './sql-result-panel'
 import type { ResultScrollPosition } from './sql-result-table'
 import { StageActivityRail } from './activity-rail/stage-activity-rail'
 import { useI18n } from '@/i18n/use-i18n'
-import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Badge } from '@/components/ui/badge'
 import { SqlConfirmationCard } from '@/features/sql-confirmation/sql-confirmation-card'
 import { coordinator } from '../persistence/stage-persistence-bootstrap'
 
@@ -788,29 +797,59 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
       </div>
       <StageActivityRail />
       {isPending && tabState.confirmation ? (
-        <AlertDialog open>
-          <AlertDialogContent data-testid="sql-confirmation-dialog">
-            <AlertDialogHeader>
-              <AlertDialogTitle>{t('stage.queryEditor.confirmation.title')}</AlertDialogTitle>
-            </AlertDialogHeader>
-            <SqlConfirmationCard
-              risk={{
-                level: tabState.confirmation.level,
-                reason: tabState.confirmation.reason,
-                affectedObjects: tabState.confirmation.affectedObjects,
-              }}
-              sqlPreview={tabState.confirmation.sqlPreview}
-              pending={tabState.executeStatus === 'confirming'}
-              onCancel={handleCancelConfirmation}
-              onExecute={() => void handleConfirmExecute()}
-            />
-            {tabState.confirmationInvalid && (
-              <p data-testid="sql-confirmation-invalid-message" className="text-sm text-[var(--dt-status-danger)]">
-                {tabState.confirmationInvalid.message}
-              </p>
-            )}
-          </AlertDialogContent>
-        </AlertDialog>
+        (() => {
+          const confirmation = tabState.confirmation
+          const isL3 = confirmation.level === 'L3'
+          const pending = tabState.executeStatus === 'confirming'
+          return (
+            <AlertDialog open>
+              <AlertDialogContent data-testid="sql-confirmation-dialog">
+                <AlertDialogHeader>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <AlertDialogTitle>{t('stage.queryEditor.confirmation.title')}</AlertDialogTitle>
+                    <Badge
+                      variant={isL3 ? 'destructive' : 'secondary'}
+                      className={cn(
+                        !isL3
+                          && 'bg-[var(--dt-accent-warn-surface)] text-[var(--dt-accent-warn)] border-[color-mix(in_srgb,var(--dt-accent-warn)_30%,transparent)]',
+                      )}
+                    >
+                      {isL3 ? t('sqlConfirmation.l3.title') : t('sqlConfirmation.l2.title')}
+                    </Badge>
+                  </div>
+                </AlertDialogHeader>
+                <SqlConfirmationCard
+                  risk={{
+                    level: confirmation.level,
+                    reason: confirmation.reason,
+                    affectedObjects: confirmation.affectedObjects,
+                  }}
+                  sqlPreview={confirmation.sqlPreview}
+                />
+                {tabState.confirmationInvalid && (
+                  <p data-testid="sql-confirmation-invalid-message" className="text-sm text-[var(--dt-status-danger)]">
+                    {tabState.confirmationInvalid.message}
+                  </p>
+                )}
+                <AlertDialogFooter>
+                  <AlertDialogCancel
+                    disabled={pending}
+                    onClick={handleCancelConfirmation}
+                  >
+                    {t('sqlConfirmation.cancel')}
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    variant={isL3 ? 'destructive' : 'warning'}
+                    disabled={pending}
+                    onClick={() => void handleConfirmExecute()}
+                  >
+                    {pending ? t('sqlConfirmation.executing') : t('sqlConfirmation.execute')}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )
+        })()
       ) : null}
     </div>
   )

@@ -52,7 +52,7 @@ export function CredentialsPage() {
 
       {/* Create dialog */}
       <Dialog open={formOpen} onOpenChange={(open) => { if (!createMut.isPending) setFormOpen(open) }}>
-        <DialogContent className="w-[520px] bg-canvas p-6" showCloseButton={!createMut.isPending}>
+        <DialogContent className="w-[520px] bg-bg-panel p-6" showCloseButton={!createMut.isPending}>
           <DialogHeader>
             <DialogTitle>{t('ingestion.credential.create')}</DialogTitle>
             <DialogDescription>

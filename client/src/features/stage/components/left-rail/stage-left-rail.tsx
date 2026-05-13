@@ -141,10 +141,9 @@ export function StageLeftRail() {
               {t('stage.leftRail.confirmUnarchive.body', { title: pendingUnarchiveTab?.title ?? '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="border-t-0 bg-transparent pt-2">
-            <AlertDialogCancel className="border-0 bg-transparent hover:bg-muted/50">{t('common.cancel')}</AlertDialogCancel>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction
-              className="border-0 bg-transparent"
               onClick={() => {
                 if (!pendingUnarchiveTab) return
                 archiveTab(pendingUnarchiveTab.tabId, false)

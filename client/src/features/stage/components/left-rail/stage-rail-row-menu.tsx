@@ -135,13 +135,12 @@ export function StageRailRowMenu({ tab }: Props) {
               {t('stage.leftRail.confirmTrash.body', { title: tab.title })}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="border-t-0 bg-transparent pt-2">
-            <AlertDialogCancel className="border-0 bg-transparent hover:bg-muted/50">
+          <AlertDialogFooter>
+            <AlertDialogCancel>
               {t('common.cancel')}
             </AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
-              className="border-0 bg-transparent"
               onClick={() => { void trashTab(tab.tabId); setConfirmTrashOpen(false) }}
             >
               {t('stage.leftRail.confirmTrash.confirm')}

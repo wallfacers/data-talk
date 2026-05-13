@@ -342,11 +342,10 @@ function SessionGroupView({
               })}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="bg-transparent border-t-0 pt-2">
-            <AlertDialogCancel className="border-0 bg-transparent hover:bg-muted/50">{t('common.cancel')}</AlertDialogCancel>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
-              className="border-0 bg-transparent"
               onClick={() => {
                 if (deleteTarget && canManageSession(deleteTarget)) {
                   onDelete(deleteTarget.id)
