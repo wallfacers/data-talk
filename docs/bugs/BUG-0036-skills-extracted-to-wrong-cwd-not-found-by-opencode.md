@@ -8,7 +8,7 @@ modules: [ingestion, opencode]
 discovered: 2026-05-13
 discoveredBy: human
 testRunId: null
-fixCommit: null
+fixCommit: da41f530
 fixPlanRef: null
 duplicateOf: null
 regression: false
