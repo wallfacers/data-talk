@@ -14,6 +14,7 @@ import com.datatalk.infra.opencode.process.OpenCodeBinaryResolver;
 import com.datatalk.infra.opencode.process.OpenCodeBootstrapReconciler;
 import com.datatalk.infra.opencode.process.OpenCodeBootstrapWriter;
 import com.datatalk.infra.opencode.process.OpenCodePortAllocator;
+import com.datatalk.infra.opencode.process.SkillResourceSyncer;
 import com.datatalk.infra.opencode.process.OpenCodeProcessManager;
 import com.datatalk.infra.opencode.process.OpenCodeServeProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -46,6 +47,7 @@ public class OpenCodeGatewayBeans {
     private final OpenCodeBridgeStatus bridgeStatus;
     private final OpenCodeProcessManager processManager;
     private final OpenCodeEventLoop eventLoop;
+    private final SkillResourceSyncer skillSyncer;
     private OpenCodeGateway gateway;
 
     public OpenCodeGatewayBeans(OpenCodeHttpClient client,
@@ -71,6 +73,7 @@ public class OpenCodeGatewayBeans {
         Path homeDir = Paths.get(System.getProperty("user.home"));
         OpenCodeBinaryResolver resolver = new OpenCodeBinaryResolver();
         OpenCodePortAllocator allocator = new OpenCodePortAllocator();
+        this.skillSyncer = new SkillResourceSyncer();
         this.eventLoop = new OpenCodeEventLoop(defaultBaseUrl, om, translator, buses, sessionMap, null);
         this.processManager = new OpenCodeProcessManager(
             serveProps,
@@ -133,6 +136,10 @@ public class OpenCodeGatewayBeans {
 
     private boolean startEmbedded(int serverPort) {
         try {
+            Path opencodeCwd = OpenCodeProcessManager.opencodeWorkingDir(Paths.get(System.getProperty("user.home")));
+            skillSyncer.syncSkill("bezel", opencodeCwd);
+            skillSyncer.syncSkill("data-ingestion", opencodeCwd);
+
             if (mcpProps.isEnabled()) {
                 bootstrapReconciler.writeManagedConfig(serverPort);
             } else {

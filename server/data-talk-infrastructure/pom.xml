@@ -298,39 +298,6 @@
         </resources>
         <plugins>
             <plugin>
-                <artifactId>maven-assembly-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>vendor-bezel</id>
-                        <phase>process-resources</phase>
-                        <goals><goal>single</goal></goals>
-                        <configuration>
-                            <descriptors>
-                                <descriptor>src/assembly/bezel.xml</descriptor>
-                            </descriptors>
-                            <finalName>bezel</finalName>
-                            <appendAssemblyId>false</appendAssemblyId>
-                            <outputDirectory>${project.build.outputDirectory}/opencode/skills</outputDirectory>
-                            <tarLongFileMode>posix</tarLongFileMode>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>vendor-data-ingestion</id>
-                        <phase>process-resources</phase>
-                        <goals><goal>single</goal></goals>
-                        <configuration>
-                            <descriptors>
-                                <descriptor>src/assembly/data-ingestion.xml</descriptor>
-                            </descriptors>
-                            <finalName>data-ingestion</finalName>
-                            <appendAssemblyId>false</appendAssemblyId>
-                            <outputDirectory>${project.build.outputDirectory}/opencode/skills</outputDirectory>
-                            <tarLongFileMode>posix</tarLongFileMode>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.5.0</version>
