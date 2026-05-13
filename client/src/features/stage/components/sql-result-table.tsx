@@ -27,6 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/u
 import { useI18n } from '@/i18n/use-i18n'
 import { copyToClipboard } from '@/lib/utils'
 import { Download, Copy, Maximize2Icon, XIcon, SearchIcon, ArrowUpIcon, ArrowDownIcon } from 'lucide-react'
+import { toast } from 'sonner'
 import {
   buildSqlResultExportFilename,
   selectSqlResultExportRows,
@@ -261,6 +262,13 @@ export function SqlResultTable({
     void copyToClipboard(serializeResultValue(contextTarget.cellValue))
   }, [contextTarget])
 
+  const handleCellDoubleClick = useCallback((cell: unknown) => {
+    const text = serializeResultValue(cell)
+    void copyToClipboard(text).then((ok) => {
+      if (ok) toast.success(t('stage.queryEditor.result.copied'))
+    })
+  }, [t])
+
   const copyRow = useCallback(() => {
     if (!contextTarget?.row) return
     void copyToClipboard(serializeResultRow(contextTarget.row))
@@ -325,7 +333,8 @@ export function SqlResultTable({
             {row.map((cell, cellIndex) => (
               <TableCell
                 key={cellIndex}
-                className="max-w-[360px] px-3 py-1.5"
+                className="max-w-[360px] cursor-default px-3 py-1.5 select-text"
+                onDoubleClick={() => handleCellDoubleClick(cell)}
                 onContextMenu={() =>
                   setContextTarget({
                     cellValue: cell,

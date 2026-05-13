@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { useI18n } from '@/i18n/use-i18n'
 import { useStageStore } from '@/stores/stage-store'
 import type { StageTab } from '@/stores/stage-store'
+import { toast } from 'sonner'
 
 type Props = { tab: StageTab; onStartRename?: () => void }
 
@@ -22,6 +23,14 @@ export function StageRailRowMenu({ tab, onStartRename }: Props) {
   const setTabPinned = useStageStore((s) => s.setTabPinned)
   const archiveTab = useStageStore((s) => s.archiveTab)
   const trashTab = useStageStore((s) => s.trashTab)
+
+  const handleConfirmTrash = () => {
+    setConfirmTrashOpen(false)
+    trashTab(tab.tabId).then(
+      () => toast.success(t('stage.leftRail.confirmTrash.success', { title: tab.title })),
+      () => toast.error(t('stage.leftRail.confirmTrash.failed', { title: tab.title })),
+    )
+  }
 
   return (
     <>
@@ -93,7 +102,7 @@ export function StageRailRowMenu({ tab, onStartRename }: Props) {
             </AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
-              onClick={() => { void trashTab(tab.tabId); setConfirmTrashOpen(false) }}
+              onClick={handleConfirmTrash}
             >
               {t('stage.leftRail.confirmTrash.confirm')}
             </AlertDialogAction>
