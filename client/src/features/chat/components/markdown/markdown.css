@@ -120,6 +120,27 @@
   white-space: pre;
 }
 
+/* Shiki dual-theme mapping. The highlighter emits `--shiki-light(-bg)` and
+   `--shiki-dark(-bg)` CSS variables on each token span and the wrapping
+   <pre>; we pick which set is live based on the ancestor `.dark` class so
+   theme switches are pure CSS, no JS re-render needed. */
+[data-component="markdown-code"] pre.shiki {
+  background-color: var(--shiki-light-bg) !important;
+  color: var(--shiki-light);
+}
+[data-component="markdown-code"] pre.shiki span {
+  color: var(--shiki-light);
+  background-color: var(--shiki-light-bg);
+}
+.dark [data-component="markdown-code"] pre.shiki {
+  background-color: var(--shiki-dark-bg) !important;
+  color: var(--shiki-dark);
+}
+.dark [data-component="markdown-code"] pre.shiki span {
+  color: var(--shiki-dark);
+  background-color: var(--shiki-dark-bg);
+}
+
 [data-component="markdown-table"] {
   margin: 0.875em 0;
   overflow: hidden;

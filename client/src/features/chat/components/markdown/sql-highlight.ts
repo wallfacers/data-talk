@@ -14,11 +14,19 @@ export async function getSqlHighlighter() {
   return highlighterPromise
 }
 
-export function highlightSql(code: string, dark: boolean): Promise<string> {
+// Emits dual-theme HTML using CSS variables so theme switches are driven by
+// the ancestor `.dark` class via CSS, not a JS re-render. With
+// `defaultColor: false` Shiki sets only `--shiki-light` / `--shiki-dark`
+// (and `--shiki-light-bg` / `--shiki-dark-bg`) instead of a fixed `color`.
+export function highlightSql(code: string): Promise<string> {
   return getSqlHighlighter().then((hl) =>
     hl.codeToHtml(code, {
       lang: 'sql',
-      theme: dark ? 'github-dark' : 'github-light',
+      themes: {
+        light: 'github-light',
+        dark: 'github-dark',
+      },
+      defaultColor: false,
     }),
   )
 }

@@ -68,8 +68,9 @@ function applySqlHighlight(code: HTMLElement) {
   const raw = code.textContent ?? ''
   if (!raw.trim()) return
 
-  const isDark = document.documentElement.classList.contains('dark')
-  highlightSql(raw, isDark).then((html) => {
+  // Theme is driven by CSS — Shiki emits dual-theme CSS variables, and
+  // markdown.css flips them based on the ancestor `.dark` class.
+  highlightSql(raw).then((html) => {
     // Shiki returns a full <pre class="shiki ...">...</pre> wrapper.
     // Replace the existing <pre><code>...</code></pre> with Shiki's output
     // while keeping the markdown-code wrapper structure intact.
