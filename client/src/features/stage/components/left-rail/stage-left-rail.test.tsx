@@ -92,7 +92,7 @@ describe('StageLeftRail', () => {
     expect(row).toHaveClass('hover:bg-sidebar-accent')
   })
 
-  it('uses compact type labels in active list rows', () => {
+  it('renders tab title without type badge', () => {
     useStageStore.setState({
       tabs: [makeTab({ tabId: 'er-1', type: 'er_designer', title: 'ER 图设计器' })],
       openTabIds: new Set(['er-1']),
@@ -102,7 +102,8 @@ describe('StageLeftRail', () => {
 
     render(<StageLeftRail />)
 
-    expect(screen.getByText('tabType.erDesigner.short')).toBeInTheDocument()
+    expect(screen.getByText('ER 图设计器')).toBeInTheDocument()
+    expect(screen.queryByText('tabType.erDesigner.short')).not.toBeInTheDocument()
     expect(screen.queryByText('tabType.erDesigner')).not.toBeInTheDocument()
   })
 

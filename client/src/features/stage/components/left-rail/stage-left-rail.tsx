@@ -12,7 +12,6 @@ import { useI18n } from '@/i18n/use-i18n'
 import { StageRailSearch } from './stage-rail-search'
 import { StageRailGroup } from './stage-rail-group'
 import { StageRailRow } from './stage-rail-row'
-import { StageRailRowMenu } from './stage-rail-row-menu'
 import type { StageTab } from '@/stores/stage-store'
 
 export function StageLeftRail() {
@@ -112,7 +111,6 @@ export function StageLeftRail() {
               active={tab.tabId === activeTabId}
               inWorkset={openTabIds.has(tab.tabId)}
               onClick={() => handleClick(tab)}
-              trailingMenu={<StageRailRowMenu tab={tab} />}
             />
           ))}
         </StageRailGroup>
@@ -126,7 +124,6 @@ export function StageLeftRail() {
                 active={false}
                 inWorkset={false}
                 onClick={() => handleClick(tab)}
-                trailingMenu={<StageRailRowMenu tab={tab} />}
               />
             ))}
           </StageRailGroup>

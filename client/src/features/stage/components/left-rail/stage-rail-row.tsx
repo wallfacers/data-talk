@@ -1,20 +1,59 @@
-import { useI18n } from '@/i18n/use-i18n'
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { Input } from '@/components/ui/input'
 import { getTabTypeDescriptor } from '@/features/stage/registry/tab-type-registry'
+import { useStageStore } from '@/stores/stage-store'
 import type { StageTab } from '@/stores/stage-store'
+import { StageRailRowMenu } from './stage-rail-row-menu'
 
 type Props = {
   tab: StageTab
   active: boolean
   inWorkset: boolean
   onClick: () => void
-  trailingMenu?: React.ReactNode
 }
 
-export function StageRailRow({ tab, active, inWorkset, onClick, trailingMenu }: Props) {
-  const { t } = useI18n()
+export function StageRailRow({ tab, active, inWorkset, onClick }: Props) {
   const desc = getTabTypeDescriptor(tab.type)
-  const labelKey = desc.railLabelKey ?? desc.labelKey
   const Icon = desc.icon
+  const [editing, setEditing] = useState(false)
+  const [editTitle, setEditTitle] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+  const setTabTitle = useStageStore((s) => s.setTabTitle)
+
+  useEffect(() => {
+    if (editing) inputRef.current?.focus()
+  }, [editing])
+
+  const startRename = () => {
+    setEditTitle(tab.title)
+    setEditing(true)
+  }
+
+  const commitRename = () => {
+    const trimmed = editTitle.trim()
+    if (trimmed && trimmed !== tab.title) {
+      setTabTitle(tab.tabId, trimmed)
+    }
+    setEditing(false)
+  }
+
+  if (editing) {
+    return (
+      <li className="relative flex h-8 items-center rounded-md bg-interaction-selected px-1">
+        <Input
+          ref={inputRef}
+          value={editTitle}
+          onChange={(e) => setEditTitle(e.target.value)}
+          onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+            if (e.key === 'Enter') commitRename()
+            if (e.key === 'Escape') setEditing(false)
+          }}
+          onBlur={commitRename}
+          className="h-6 w-full rounded border-0 bg-surface-base px-2 text-sm focus:ring-0 focus:outline-none"
+        />
+      </li>
+    )
+  }
 
   return (
     <li
@@ -35,8 +74,6 @@ export function StageRailRow({ tab, active, inWorkset, onClick, trailingMenu }: 
         'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
         active ? 'bg-interaction-selected text-text-strong' : '',
         tab.archived ? 'opacity-60 text-text-soft' : '',
-        // focus ring renders for both selected and non-selected rows so keyboard
-        // focus is always visible (DESIGN.md focusRing is a stable token).
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing',
       ].filter(Boolean).join(' ')}
     >
@@ -46,19 +83,13 @@ export function StageRailRow({ tab, active, inWorkset, onClick, trailingMenu }: 
 
       <span className="flex-1 truncate text-sm">{tab.title}</span>
 
-      <span className="shrink-0 rounded bg-bg-subtle px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-text-soft">
-        {t(labelKey as Parameters<typeof t>[0])}
+      <span
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-[180ms]"
+      >
+        <StageRailRowMenu tab={tab} onStartRename={startRename} />
       </span>
-
-      {trailingMenu ? (
-        <span
-          onClick={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
-          className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-[180ms]"
-        >
-          {trailingMenu}
-        </span>
-      ) : null}
     </li>
   )
 }
