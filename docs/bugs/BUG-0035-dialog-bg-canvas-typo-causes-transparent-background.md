@@ -8,8 +8,8 @@ modules: [settings, connection, dialog]
 discovered: 2026-05-13
 discoveredBy: human
 testRunId: null
-fixCommit: pending-commit
-fixPlanRef: openspec/changes/unify-sql-confirmation-dialog/
+fixCommit: bb33f1bc
+fixPlanRef: openspec/changes/archive/2026-05-13-unify-sql-confirmation-dialog/
 duplicateOf: null
 regression: false
 ---
