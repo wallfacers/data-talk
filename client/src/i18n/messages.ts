@@ -738,6 +738,7 @@ const MESSAGES = {
     'maintenance.action.viewLog': '查看 housekeeping 日志',
     'maintenance.toast.cleanupTrashDone': '_trash 已清空',
     'maintenance.toast.legacyMigrated': '已迁移 {n} 个遗留文件到 _legacy',
+    'maintenance.orphans.drawer.back': '返回',
     'maintenance.orphans.drawer.title': '孤儿归档资产 ({n})',
     'maintenance.orphans.drawer.description': '这些文件原属于已删除的连接，未被自动清理。可重新关联到现有连接，或丢弃到 _trash（7 天后自动清理）。',
     'maintenance.orphans.drawer.selectAll': '全选',

@@ -258,31 +258,60 @@ function OrphanArchivesView({
         </Button>
       </div>
 
-      <div className="overflow-y-auto max-h-[calc(100vh-400px)]">
-        {files.length > 200 && (
-          <p className="py-1 text-xs text-status-warning">{t('maintenance.orphans.drawer.tooltipOver200')}</p>
-        )}
-        {files.map(f => (
-          <div key={f.id} className="flex items-center gap-3 px-2 py-2.5 border-b border-subtle hover:bg-interaction-hover">
-            <Checkbox checked={selected.has(f.id)} onCheckedChange={() => toggle(f.id)} />
-            <div className="flex-1 min-w-0">
-              <div className="text-sm text-strong truncate">{f.filename}</div>
-              <div className="text-xs text-muted">{f.kind} · <span className="font-mono">{(f.sizeBytes / 1024).toFixed(1)} KB</span></div>
-              {f.orphanedFromConnection && (
-                <div className="text-xs text-muted mt-0.5">{t('maintenance.orphans.drawer.originalConnection', { name: f.orphanedFromConnection })}</div>
-              )}
-            </div>
+      <table className="w-full text-sm table-fixed">
+        <thead className="text-left text-muted-foreground">
+          <tr>
+            <th className="pb-2 w-8 align-middle"></th>
+            <th className="pb-2 align-middle">File</th>
+            <th className="pb-2 w-32 align-middle">Kind</th>
+            <th className="pb-2 w-24 align-middle">Size</th>
             {connections.length > 0 && (
-              <Button variant="ghost" size="sm" disabled={processing} onClick={async () => { await doReattach(f.id, targetConn); qc.invalidateQueries({ queryKey: ['maintenance'] }) }}>
-                {t('maintenance.orphans.drawer.reattach')}
-              </Button>
+              <>
+                <th className="pb-2 w-28 align-middle"></th>
+                <th className="pb-2 w-20 align-middle pl-3">{t('dataSources.actions')}</th>
+              </>
             )}
-            <Button variant="ghost" size="sm" disabled={processing} onClick={async () => { await doDiscard(f.id); qc.invalidateQueries({ queryKey: ['maintenance'] }) }}>
-              {t('maintenance.orphans.drawer.discard')}
-            </Button>
-          </div>
-        ))}
-      </div>
+          </tr>
+        </thead>
+        <tbody>
+          {files.map(f => (
+            <tr key={f.id} className="border-t">
+              <td className="py-2 align-middle">
+                <Checkbox checked={selected.has(f.id)} onCheckedChange={() => toggle(f.id)} />
+              </td>
+              <td className="py-2 align-middle">
+                <span className="truncate block text-strong">{f.filename}</span>
+                {f.orphanedFromConnection && (
+                  <div className="text-xs text-muted-foreground mt-0.5">{t('maintenance.orphans.drawer.originalConnection', { name: f.orphanedFromConnection })}</div>
+                )}
+              </td>
+              <td className="py-2 align-middle text-muted-foreground">{f.kind}</td>
+              <td className="py-2 align-middle font-mono text-muted-foreground">{(f.sizeBytes / 1024).toFixed(1)} KB</td>
+              {connections.length > 0 && (
+                <>
+                  <td className="py-2 align-middle">
+                    <Button variant="ghost" size="sm" disabled={processing} onClick={async () => { await doReattach(f.id, targetConn); qc.invalidateQueries({ queryKey: ['maintenance'] }) }}>
+                      {t('maintenance.orphans.drawer.reattach')}
+                    </Button>
+                  </td>
+                  <td className="py-2 align-middle">
+                    <Button variant="ghost" size="sm" disabled={processing} onClick={async () => { await doDiscard(f.id); qc.invalidateQueries({ queryKey: ['maintenance'] }) }}>
+                      {t('maintenance.orphans.drawer.discard')}
+                    </Button>
+                  </td>
+                </>
+              )}
+              {connections.length === 0 && (
+                <td className="py-2 align-middle">
+                  <Button variant="ghost" size="sm" disabled={processing} onClick={async () => { await doDiscard(f.id); qc.invalidateQueries({ queryKey: ['maintenance'] }) }}>
+                    {t('maintenance.orphans.drawer.discard')}
+                  </Button>
+                </td>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }
