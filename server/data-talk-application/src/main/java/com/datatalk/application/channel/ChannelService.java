@@ -79,6 +79,7 @@ public class ChannelService {
         if (Strings.isNotBlank(ocSid) && !ocSid.startsWith("ses_")) {
             log.warn("[channel] discarding malformed opencode_sid for {}: {} (must start with ses_)",
                 sessionId, ocSid);
+            sessionMap.unbind(sessionId);
             ocSid = null;
         }
         if (Strings.isBlank(ocSid)) {

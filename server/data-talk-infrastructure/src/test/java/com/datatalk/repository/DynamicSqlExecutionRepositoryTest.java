@@ -1,5 +1,7 @@
 package com.datatalk.repository;
 
+import com.datatalk.application.preference.UserPreferencesService;
+import com.datatalk.domain.preference.UserPreferences;
 import com.datatalk.entity.DbConnection;
 import com.datatalk.entity.DbType;
 import org.junit.jupiter.api.Test;
@@ -9,6 +11,8 @@ import java.time.Instant;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class DynamicSqlExecutionRepositoryTest {
 
@@ -22,7 +26,9 @@ class DynamicSqlExecutionRepositoryTest {
             st.execute("INSERT INTO t(id) VALUES (9007199254740993)");
         }
 
-        DynamicSqlExecutionRepository repository = new DynamicSqlExecutionRepository();
+        var userPrefsService = mock(UserPreferencesService.class);
+        when(userPrefsService.getPreferences()).thenReturn(UserPreferences.DEFAULT);
+        DynamicSqlExecutionRepository repository = new DynamicSqlExecutionRepository(userPrefsService);
         DbConnection connection = new DbConnection(
             "c-dynamic",
             "dynamic",
