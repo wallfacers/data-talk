@@ -10,19 +10,21 @@ export function CompletedPhase({ job }: CompletedPhaseProps) {
   const { t } = useI18n()
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-12">
-      <CheckCircle2 className="h-8 w-8 text-status-success" />
-      <p className="text-ui-md font-medium text-text-strong">{t('ingestion.job.phase.completed')}</p>
-      <div className="text-ui-sm text-text-muted flex flex-col items-center gap-1">
+      <CheckCircle2 className="size-8 text-status-success" />
+      <p className="text-sm font-medium">{t('ingestion.job.phase.completed')}</p>
+      <div className="text-xs text-muted-foreground flex flex-col items-center gap-1">
         {job.targetTable && (
           <span>
-            {job.rowsInserted?.toLocaleString() ?? 0} rows written to{' '}
-            {job.targetSchema ? `${job.targetSchema}.` : ''}{job.targetTable}
+            {t('ingestion.completed.rowsWrittenTo', {
+              count: job.rowsInserted?.toLocaleString() ?? 0,
+              table: `${job.targetSchema ? `${job.targetSchema}.` : ''}${job.targetTable}`,
+            })}
           </span>
         )}
-        {job.bytesFetched != null && <span>{formatBytes(job.bytesFetched)} fetched</span>}
+        {job.bytesFetched != null && <span>{t('ingestion.completed.bytesFetched', { bytes: formatBytes(job.bytesFetched) })}</span>}
         {job.completedAt && (
-          <span className="text-ui-xs text-text-soft">
-            Completed at {new Date(job.completedAt).toLocaleString()}
+          <span className="text-xs text-muted-foreground">
+            {t('ingestion.completed.completedAt', { date: new Date(job.completedAt).toLocaleString() })}
           </span>
         )}
       </div>

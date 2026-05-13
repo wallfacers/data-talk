@@ -3,6 +3,7 @@ package com.datatalk.adapter.controller;
 import com.datatalk.application.fileartifact.FileArtifactRepository;
 import com.datatalk.application.ingestion.IngestionConfirmedTokenStore;
 import com.datatalk.application.ingestion.IngestionCredentialService;
+import com.datatalk.application.ingestion.IngestionExecutor;
 import com.datatalk.application.ingestion.MappingHash;
 import com.datatalk.application.ingestion.repository.IngestionCredentialRepository;
 import com.datatalk.application.ingestion.repository.IngestionJobRepository;
@@ -30,6 +31,7 @@ public class IngestionController {
     private final IngestionJobRepository jobRepo;
     private final FileArtifactRepository artifactRepo;
     private final IngestionConfirmedTokenStore tokenStore;
+    private final IngestionExecutor executor;
     private final ObjectMapper om;
 
     public IngestionController(IngestionCredentialService credService,
@@ -37,12 +39,14 @@ public class IngestionController {
                                IngestionJobRepository jobRepo,
                                FileArtifactRepository artifactRepo,
                                IngestionConfirmedTokenStore tokenStore,
+                               IngestionExecutor executor,
                                ObjectMapper om) {
         this.credService = credService;
         this.credRepo = credRepo;
         this.jobRepo = jobRepo;
         this.artifactRepo = artifactRepo;
         this.tokenStore = tokenStore;
+        this.executor = executor;
         this.om = om;
     }
 
@@ -323,13 +327,13 @@ public class IngestionController {
         String hash = j.mappingHash() != null ? j.mappingHash() : MappingHash.compute(j.mapping());
         var token = tokenStore.issue(id, hash);
 
-        // BUG-0029: do NOT write status='confirmed' — that value is not in the
-        // CHECK enum. Status stays at awaiting_confirm; the transition to 'writing'
-        // is owned by IngestionExecutor.createTable after it consumes the token.
+        executor.createTable(id, j.connectionId(), j.targetSchema(), j.targetTable(),
+                             hash, token.tokenId(), null);
+        var result = executor.ingestPayload(id, 1000, null);
+
         return ResponseEntity.ok(Map.of(
-            "tokenId", token.tokenId(),
-            "expiresAt", token.expiresAt(),
-            "mappingHash", hash
+            "status", result.status(),
+            "rowsInserted", result.rowsInserted()
         ));
     }
 
@@ -338,6 +342,18 @@ public class IngestionController {
         var job = jobRepo.findById(id);
         if (job.isEmpty()) return ResponseEntity.notFound().build();
         jobRepo.updateStatus(id, "cancelled", null, System.currentTimeMillis());
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/jobs/{id}")
+    public ResponseEntity<Void> deleteJob(@PathVariable String id) {
+        var job = jobRepo.findById(id);
+        if (job.isEmpty()) return ResponseEntity.notFound().build();
+        String s = job.get().status();
+        if (!Set.of("completed", "failed", "cancelled", "fetched", "mapped").contains(s)) {
+            return ResponseEntity.status(409).build();
+        }
+        jobRepo.deleteById(id);
         return ResponseEntity.noContent().build();
     }
 }

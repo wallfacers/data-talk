@@ -1,11 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import {
-  BarChart2Icon,
   ChevronDownIcon,
-  DatabaseIcon,
-  FileTextIcon,
   HomeIcon,
-  NetworkIcon,
   SparklesIcon,
   XIcon,
 } from 'lucide-react'
@@ -18,6 +14,7 @@ import {
 } from '@/components/ui/context-menu'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import { getTabTypeDescriptor } from '../registry/tab-type-registry'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useI18n } from '@/i18n/use-i18n'
 import { StageTabBarAddButton } from './stage-tab-bar-add-button'
@@ -44,42 +41,12 @@ type StageTabBarProps = {
 
 function getTabIcon(type?: string, isActive?: boolean) {
   const color = isActive ? 'text-accent-primary' : 'text-text-muted'
-  switch (type) {
-    case 'sql':
-    case 'query_editor':
-      return (
-        <DatabaseIcon
-          className={cn('size-4 transition-colors', color)}
-        />
-      )
-    case 'er':
-    case 'er_canvas':
-    case 'er_inspector':
-    case 'er_designer':
-      return (
-        <NetworkIcon
-          className={cn('size-4 transition-colors', color)}
-        />
-      )
-    case 'file_preview':
-      return (
-        <FileTextIcon
-          className={cn('size-4 transition-colors', color)}
-        />
-      )
-    case 'artifact_preview':
-      return (
-        <BarChart2Icon
-          className={cn('size-4 transition-colors', color)}
-        />
-      )
-    default:
-      return (
-        <SparklesIcon
-          className={cn('size-4 transition-colors', color)}
-        />
-      )
+  if (type) {
+    const desc = getTabTypeDescriptor(type)
+    const Icon = desc.icon
+    if (Icon) return <Icon className={cn('size-4 transition-colors', color)} />
   }
+  return <SparklesIcon className={cn('size-4 transition-colors', color)} />
 }
 
 export function StageTabBar({

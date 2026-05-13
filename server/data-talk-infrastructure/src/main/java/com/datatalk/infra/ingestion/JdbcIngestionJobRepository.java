@@ -179,6 +179,11 @@ public class JdbcIngestionJobRepository implements IngestionJobRepository {
             finalRowCount, completedAt, updatedAt, id);
     }
 
+    @Override
+    public void deleteById(String id) {
+        jdbc.update("DELETE FROM ingestion_job WHERE id=?", id);
+    }
+
     private IngestionJob mapRow(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
         return new IngestionJob(
             rs.getString("id"),

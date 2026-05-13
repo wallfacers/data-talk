@@ -14,20 +14,25 @@ export function WritingPhase({ job }: WritingPhaseProps) {
 
   return (
     <div className="flex flex-col items-center justify-center gap-4 py-12">
-      <Loader2 className="h-8 w-8 animate-spin text-accent-primary" />
-      <p className="text-ui-md">{t('ingestion.job.phase.writing')}</p>
-      <div className="w-64 h-2 rounded-full bg-bg-subtle overflow-hidden">
+      <Loader2 className="size-8 animate-spin text-primary" />
+      <p className="text-sm">{t('ingestion.job.phase.writing')}</p>
+      <div className="w-64 h-2 rounded-full bg-muted overflow-hidden">
         <div
-          className="h-full bg-accent-primary rounded-full transition-all duration-300"
+          className="h-full bg-primary rounded-full transition-all duration-300"
           style={{ width: `${progress}%` }}
         />
       </div>
-      <p className="text-ui-xs text-text-muted">
-        {job.rowsInserted?.toLocaleString() ?? 0} / {job.rowCount?.toLocaleString() ?? '?'} rows
+      <p className="text-xs text-muted-foreground">
+        {t('ingestion.writing.progressRows', {
+          inserted: job.rowsInserted?.toLocaleString() ?? 0,
+          total: job.rowCount?.toLocaleString() ?? '?',
+        })}
       </p>
       {job.targetTable && (
-        <p className="text-ui-xs text-text-soft">
-          → {job.targetSchema ? `${job.targetSchema}.` : ''}{job.targetTable}
+        <p className="text-xs text-muted-foreground">
+          {t('ingestion.writing.writingTo', {
+            table: `${job.targetSchema ? `${job.targetSchema}.` : ''}${job.targetTable}`,
+          })}
         </p>
       )}
     </div>

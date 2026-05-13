@@ -224,6 +224,131 @@ test.describe('@e2e @ingestion @ui Ingestion library tab', () => {
     await expect(page.getByTestId('ingestion-job-tab')).toBeVisible({ timeout: 5000 })
   })
 
+  test('Double-clicking the same job row twice opens only one tab', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForFunction(() => Boolean((window as any).__DT_E2E__))
+
+    const jobs = [
+      mockJob({ id: 'job_dedup', sourceUrl: 'http://dedup.example.com/data', status: 'completed' }),
+    ]
+
+    await page.route(/\/api\/ingestion\/jobs(\/[^/?#]+)?(\?.*)?$/, async (route) => {
+      const url = new URL(route.request().url())
+      const m = url.pathname.match(/\/api\/ingestion\/jobs\/([^/]+)$/)
+      if (m) {
+        const id = m[1]
+        const found = jobs.find((j) => j.id === id)
+        if (!found) return route.fulfill({ status: 404, body: '{}' })
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(found) })
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ items: jobs, total: jobs.length }),
+      })
+    })
+
+    await openLibraryTab(page)
+    const row = page.getByTestId('ingestion-library-row-job_dedup')
+    await expect(row).toBeVisible({ timeout: 10000 })
+
+    // First double-click opens the job tab
+    await row.dblclick()
+    await expect(page.getByTestId('ingestion-job-tab')).toBeVisible({ timeout: 5000 })
+
+    // Verify only one tab with this tabId exists
+    const tabCount1 = await page.evaluate(() => {
+      const stage = (window as any).__DT_E2E__?.stage()
+      const tabs = stage?.listTabs?.() ?? []
+      return tabs.filter((t: { tabId: string }) => t.tabId === 'ingestion_job_job_dedup').length
+    })
+    expect(tabCount1).toBe(1)
+
+    // Switch back to library tab and double-click the same row again
+    await page.evaluate(() => {
+      const stage = (window as any).__DT_E2E__?.stage()
+      const libTab = stage?.listTabs?.()?.find((t: { type: string }) => t.type === 'ingestion_library')
+      if (libTab) stage?.focusTab?.(libTab.tabId)
+    })
+    await page.waitForTimeout(300)
+    const rowAgain = page.getByTestId('ingestion-library-row-job_dedup')
+    await expect(rowAgain).toBeVisible({ timeout: 5000 })
+    await rowAgain.dblclick()
+
+    // After second double-click, still only one tab (focused, not duplicated)
+    const tabCount2 = await page.evaluate(() => {
+      const stage = (window as any).__DT_E2E__?.stage()
+      const tabs = stage?.listTabs?.() ?? []
+      return tabs.filter((t: { tabId: string }) => t.tabId === 'ingestion_job_job_dedup').length
+    })
+    expect(tabCount2).toBe(1)
+  })
+
+  test('Single-click selects row, double-click opens job tab', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForFunction(() => Boolean((window as any).__DT_E2E__))
+
+    const jobs = [
+      mockJob({ id: 'job_select', sourceUrl: 'http://select.example.com/data', status: 'completed' }),
+      mockJob({ id: 'job_other', sourceUrl: 'http://other.example.com/data', status: 'completed' }),
+    ]
+
+    await page.route(/\/api\/ingestion\/jobs(\/[^/?#]+)?(\?.*)?$/, async (route) => {
+      const url = new URL(route.request().url())
+      const m = url.pathname.match(/\/api\/ingestion\/jobs\/([^/]+)$/)
+      if (m) {
+        const id = m[1]
+        const found = jobs.find((j) => j.id === id)
+        if (!found) return route.fulfill({ status: 404, body: '{}' })
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(found) })
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ items: jobs, total: jobs.length }),
+      })
+    })
+
+    await openLibraryTab(page)
+    const row = page.getByTestId('ingestion-library-row-job_select')
+    await expect(row).toBeVisible({ timeout: 10000 })
+
+    // Single-click selects the row (no tab open yet)
+    await row.click()
+    // After single-click, the job tab should NOT be open yet
+    await expect(page.getByTestId('ingestion-job-tab')).not.toBeVisible({ timeout: 2000 })
+
+    // Double-click opens the job tab
+    await row.dblclick()
+    await expect(page.getByTestId('ingestion-job-tab')).toBeVisible({ timeout: 5000 })
+  })
+
+  test('Created column shows yyyy-MM-dd HH:mm:ss format', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForFunction(() => Boolean((window as any).__DT_E2E__))
+
+    // Use a fixed timestamp to ensure deterministic format
+    const fixedTime = new Date('2026-05-12T18:50:21').getTime()
+    const jobs = [
+      mockJob({ id: 'job_date', sourceUrl: 'http://date.example.com/data', status: 'completed', createdAt: fixedTime }),
+    ]
+
+    await page.route(`**/api/ingestion/jobs*`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ items: jobs, total: jobs.length }),
+      })
+    })
+
+    await openLibraryTab(page)
+    const row = page.getByTestId('ingestion-library-row-job_date')
+    await expect(row).toBeVisible({ timeout: 10000 })
+
+    // Verify the Created cell shows yyyy-MM-dd HH:mm:ss
+    await expect(row.getByText('2026-05-12 18:50:21')).toBeVisible()
+  })
+
   test('Empty state when no jobs exist', async ({ page }) => {
     await page.goto('/')
     await page.waitForFunction(() => Boolean((window as any).__DT_E2E__))

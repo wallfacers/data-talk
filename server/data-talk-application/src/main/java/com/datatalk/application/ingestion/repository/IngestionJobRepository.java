@@ -18,4 +18,5 @@ public interface IngestionJobRepository {
     void updateTargetTable(String id, String connectionId, String schema, String table, long updatedAt);
     void updateProgress(String id, int rowsInserted, long updatedAt);
     void updateCompleted(String id, int finalRowCount, long completedAt, long updatedAt);
+    void deleteById(String id);
 }

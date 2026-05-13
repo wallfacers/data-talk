@@ -8,8 +8,8 @@ interface DdlPreviewProps {
 export function DdlPreview({ ddl, className }: DdlPreviewProps) {
   if (!ddl) return null
   return (
-    <div data-testid="ingestion-ddl-preview" className={cn('rounded-md border border-border-default bg-bg-subtle p-3 overflow-auto max-h-[200px]', className)}>
-      <pre className="text-ui-xs font-mono text-text-base whitespace-pre-wrap break-all">{ddl}</pre>
+    <div data-testid="ingestion-ddl-preview" className={cn('rounded-md border border-border bg-muted p-3 overflow-auto max-h-[200px]', className)}>
+      <pre className="text-xs font-mono whitespace-pre-wrap break-all">{ddl}</pre>
     </div>
   )
 }

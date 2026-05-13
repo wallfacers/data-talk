@@ -75,6 +75,10 @@ export async function cancelIngestionJob(jobId: string): Promise<void> {
   await http.post(`ingestion/jobs/${jobId}/cancel`)
 }
 
+export async function deleteIngestionJob(id: string): Promise<void> {
+  await http.delete(`ingestion/jobs/${id}`)
+}
+
 export const ingestionJobsKey = ['ingestion-jobs'] as const
 export const ingestionJobKey = (id: string) => ['ingestion-jobs', id] as const
 export const payloadPreviewKey = (id: string) => ['ingestion-jobs', id, 'payload-preview'] as const
