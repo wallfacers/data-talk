@@ -56,6 +56,7 @@ export function MaintenancePage() {
       <OrphanArchivesView
         files={orphans.data ?? []}
         isLoading={orphans.isLoading}
+        onRefresh={() => orphans.refetch()}
         onBack={() => { setView('overview'); qc.invalidateQueries({ queryKey: ['maintenance'] }) }}
       />
     )
@@ -160,13 +161,14 @@ function OrphanArchivesView({
   files,
   isLoading,
   onBack,
+  onRefresh,
 }: {
   files: OrphanedFileDto[]
   isLoading: boolean
   onBack: () => void
+  onRefresh: () => void
 }) {
   const { t } = useI18n()
-  const qc = useQueryClient()
   const connections = useConnectionStore(s => s.connections)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [targetConn, setTargetConn] = useState<string>(connections[0]?.id ?? '')
@@ -200,20 +202,18 @@ function OrphanArchivesView({
       if (r.ok) ok++
     }
     toast(t('maintenance.orphans.toast.batchResult', { ok, fail: ids.length - ok }))
+    setSelected(new Set())
     setProcessing(false)
-    qc.invalidateQueries({ queryKey: ['maintenance'] })
+    onRefresh()
   }
 
   if (isLoading) return <div className="text-sm text-muted-foreground">{t('common.loading')}</div>
 
   return (
     <div className="max-w-3xl">
-      <div className="flex items-center gap-2 mb-4">
-        <Button variant="ghost" size="sm" onClick={onBack}>
-          <ArrowLeft className="size-4 mr-1" />
-          {t('maintenance.orphans.drawer.back')}
-        </Button>
-      </div>
+      <Button variant="ghost" size="icon-sm" onClick={onBack} className="mb-3 -ml-1.5">
+        <ArrowLeft className="size-4" />
+      </Button>
 
       <h2 className="text-lg font-semibold text-strong mb-2">
         {t('maintenance.orphans.drawer.title', { n: files.length })}
@@ -228,7 +228,6 @@ function OrphanArchivesView({
       )}
 
       <div className="flex items-center gap-2 mb-4 pb-3 border-b border-subtle">
-        <Button variant="ghost" size="sm" onClick={toggleAll}>{t('maintenance.orphans.drawer.selectAll')}</Button>
         {connections.length > 0 && (
           <>
             <Select value={targetConn} onValueChange={v => { if (v != null) setTargetConn(v) }}>
@@ -248,8 +247,9 @@ function OrphanArchivesView({
               let ok = 0
               for (const id of selected) { const r = await doReattach(id, targetConn); if (r.ok) ok++ }
               toast(t('maintenance.orphans.toast.reattachPartial', { ok, fail: selected.size - ok }))
+              setSelected(new Set())
               setProcessing(false)
-              qc.invalidateQueries({ queryKey: ['maintenance'] })
+              onRefresh()
             }}>{t('maintenance.orphans.drawer.reattachBulk')}</Button>
           </>
         )}
@@ -261,10 +261,12 @@ function OrphanArchivesView({
       <table className="w-full text-sm table-fixed">
         <thead className="text-left text-muted-foreground">
           <tr>
-            <th className="pb-2 w-8 align-middle"></th>
-            <th className="pb-2 align-middle">File</th>
-            <th className="pb-2 w-32 align-middle">Kind</th>
-            <th className="pb-2 w-24 align-middle">Size</th>
+            <th className="pb-2 w-8 align-middle">
+              <Checkbox checked={selected.size === files.length && files.length > 0} onCheckedChange={toggleAll} />
+            </th>
+            <th className="pb-2 align-middle">{t('maintenance.orphans.drawer.columnFile')}</th>
+            <th className="pb-2 w-32 align-middle">{t('maintenance.orphans.drawer.columnKind')}</th>
+            <th className="pb-2 w-24 align-middle">{t('maintenance.orphans.drawer.columnSize')}</th>
             {connections.length > 0 && (
               <>
                 <th className="pb-2 w-28 align-middle"></th>
@@ -290,12 +292,12 @@ function OrphanArchivesView({
               {connections.length > 0 && (
                 <>
                   <td className="py-2 align-middle">
-                    <Button variant="ghost" size="sm" disabled={processing} onClick={async () => { await doReattach(f.id, targetConn); qc.invalidateQueries({ queryKey: ['maintenance'] }) }}>
+                    <Button variant="ghost" size="sm" disabled={processing} onClick={async () => { await doReattach(f.id, targetConn); onRefresh() }}>
                       {t('maintenance.orphans.drawer.reattach')}
                     </Button>
                   </td>
                   <td className="py-2 align-middle">
-                    <Button variant="ghost" size="sm" disabled={processing} onClick={async () => { await doDiscard(f.id); qc.invalidateQueries({ queryKey: ['maintenance'] }) }}>
+                    <Button variant="ghost" size="sm" disabled={processing} onClick={async () => { await doDiscard(f.id); onRefresh() }}>
                       {t('maintenance.orphans.drawer.discard')}
                     </Button>
                   </td>
@@ -303,7 +305,7 @@ function OrphanArchivesView({
               )}
               {connections.length === 0 && (
                 <td className="py-2 align-middle">
-                  <Button variant="ghost" size="sm" disabled={processing} onClick={async () => { await doDiscard(f.id); qc.invalidateQueries({ queryKey: ['maintenance'] }) }}>
+                  <Button variant="ghost" size="sm" disabled={processing} onClick={async () => { await doDiscard(f.id); onRefresh() }}>
                     {t('maintenance.orphans.drawer.discard')}
                   </Button>
                 </td>
