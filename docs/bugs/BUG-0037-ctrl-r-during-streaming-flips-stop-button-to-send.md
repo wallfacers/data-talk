@@ -8,7 +8,7 @@ modules: [session, chat]
 discovered: 2026-05-13
 discoveredBy: human
 testRunId: null
-fixCommit: null
+fixCommit: 0d4e8fcc
 fixPlanRef: null
 duplicateOf: null
 regression: false
