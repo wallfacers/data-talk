@@ -12,7 +12,7 @@ import { X } from 'lucide-react'
 
 interface Props {
   files: OrphanedFileDto[]
-  onClose: () => void
+  onClose?: () => void
 }
 
 export function OrphanArchivesDrawer({ files, onClose }: Props) {
