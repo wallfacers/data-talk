@@ -31,6 +31,7 @@ test.describe('@e2e @ingestion @ui Ingestion library tab', () => {
   function mockJob(overrides: Partial<IngestionJobView> = {}): IngestionJobView {
     return {
       id: `job_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      name: 'mock job',
       sourceUrl: 'http://example.com/api/data',
       status: 'completed',
       payloadFormat: 'json',
@@ -43,6 +44,8 @@ test.describe('@e2e @ingestion @ui Ingestion library tab', () => {
       bytesFetched: 4096,
       mapping: null,
       mappingHash: null,
+      createdBy: { kind: 'ai', sessionId: 'sess_mock', label: 'AI · mock' },
+      heartbeatAt: now,
       createdAt: now,
       updatedAt: now,
       completedAt: now,

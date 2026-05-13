@@ -57,6 +57,7 @@ vi.mock('@/stores/stage-store', () => ({
 function makeJob(overrides: Partial<IngestionJobView> = {}): IngestionJobView {
   return {
     id: 'job_abc123def456',
+    name: 'smoke test job',
     sourceUrl: 'https://example.com/data.csv',
     status: 'fetching',
     payloadFormat: 'csv',
@@ -69,6 +70,8 @@ function makeJob(overrides: Partial<IngestionJobView> = {}): IngestionJobView {
     bytesFetched: null,
     mappingHash: null,
     mapping: null,
+    createdBy: { kind: 'ai', sessionId: 'sess_mock', label: 'AI · smoke' },
+    heartbeatAt: null,
     createdAt: Date.now(),
     updatedAt: Date.now(),
     completedAt: null,

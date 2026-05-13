@@ -1,6 +1,7 @@
 package com.datatalk.application.ingestion;
 
 import com.datatalk.application.fileartifact.FileArtifactService;
+import com.datatalk.application.stage.SessionTitleLookup;
 import com.datatalk.domain.fileartifact.FileArtifact;
 import com.datatalk.application.ingestion.repository.IngestionCredentialRepository;
 import com.datatalk.application.ingestion.repository.IngestionJobRepository;
@@ -28,16 +29,19 @@ class IngestionPayloadFetcherTest {
     @Mock IngestionJobRepository jobRepo;
     @Mock FileArtifactService artifactService;
     @Mock IngestionEventPublisher eventPublisher;
+    @Mock SessionTitleLookup sessionTitleLookup;
 
     IngestionConfig config = new IngestionConfig();
     ObjectMapper om = new ObjectMapper();
+    IngestionRunRegistry runRegistry = new IngestionRunRegistry();
     IngestionPayloadFetcher fetcher;
 
     @BeforeEach
     void setup() {
         MockitoAnnotations.openMocks(this);
         fetcher = new IngestionPayloadFetcher(
-            http, urlValidator, credService, credRepo, jobRepo, artifactService, config, eventPublisher, om);
+            http, urlValidator, credService, credRepo, jobRepo, artifactService, config, eventPublisher,
+            runRegistry, sessionTitleLookup, om);
     }
 
     private IngestionPayloadFetcher.FetchRequest jsonGetRequest(String url) {

@@ -1,8 +1,9 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { useI18n } from '@/i18n/use-i18n'
 import { useIngestionJobsQuery } from './hooks/use-ingestion-jobs-query'
 import { useStageStore } from '@/stores/stage-store'
-import { batchDeleteIngestionJobs } from './api/ingestion-api'
+import { useSessionStore } from '@/stores/session-store'
+import { batchDeleteIngestionJobs, stopIngestionJob } from './api/ingestion-api'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
 import { ingestionJobsKey } from './api/ingestion-api'
@@ -24,7 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Search, Download, Trash2, Eye, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, Download, Trash2, Eye, Loader2, ChevronLeft, ChevronRight, Square } from 'lucide-react'
 import type { IngestionJobView } from './api/ingestion-api'
 import {
   AlertDialog,
@@ -40,6 +41,12 @@ import {
 const STATUS_OPTIONS = ['all', 'fetching', 'fetched', 'mapped', 'confirmed', 'writing', 'completed', 'failed', 'cancelled'] as const
 
 const PAGE_SIZE = 100
+
+const STOPPABLE_STATUSES = new Set([
+  'pending', 'fetching', 'mapping', 'fetched', 'mapped', 'confirmed', 'writing',
+])
+
+const FORCE_STOP_THRESHOLD_MS = 30_000
 
 function statusColor(status: string): string {
   switch (status) {
@@ -72,10 +79,15 @@ export function IngestionLibraryTab() {
   const [page, setPage] = useState(1)
   const [deleting, setDeleting] = useState(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
+  const [stopTarget, setStopTarget] = useState<IngestionJobView | null>(null)
+  const [stopping, setStopping] = useState(false)
+  const [stopRequestedAt, setStopRequestedAt] = useState<Record<string, number>>({})
+  const [, tick] = useState(0)
   const openTab = useStageStore((s) => s.openTab)
   const focusTab = useStageStore((s) => s.focusTab)
   const listTabs = useStageStore((s) => s.listTabs)
   const detachFromWorkset = useStageStore((s) => s.detachFromWorkset)
+  const openSession = useSessionStore((s) => s.openSession)
   const queryClient = useQueryClient()
 
   const { data } = useIngestionJobsQuery(
@@ -110,11 +122,18 @@ export function IngestionLibraryTab() {
     openTab({
       tabId,
       type: 'ingestion_job',
-      title: `Job ${job.id.slice(0, 8)}`,
+      title: job.name ?? t('ingestion.tab.titleFallback', { id: job.id.slice(0, 8) }),
       payload: { id: job.id, sourceUrl: job.sourceUrl },
       createdAt: Date.now(),
     })
-  }, [openTab, focusTab, listTabs])
+  }, [openTab, focusTab, listTabs, t])
+
+  // Re-render every second so the 30s force-stop threshold turns on without waiting for query poll.
+  useEffect(() => {
+    if (Object.keys(stopRequestedAt).length === 0) return
+    const handle = setInterval(() => tick((n) => n + 1), 1_000)
+    return () => clearInterval(handle)
+  }, [stopRequestedAt])
 
   const handleBatchDelete = useCallback(async () => {
     if (deleting || selectedIds.size === 0) return
@@ -143,6 +162,31 @@ export function IngestionLibraryTab() {
   const handleDeleteClick = useCallback(() => {
     if (selectedIds.size > 0) setShowConfirmDelete(true)
   }, [selectedIds.size])
+
+  const handleStopClick = useCallback((job: IngestionJobView) => {
+    setStopTarget(job)
+  }, [])
+
+  const executeStop = useCallback(async (force: boolean) => {
+    if (!stopTarget || stopping) return
+    const jobId = stopTarget.id
+    setStopping(true)
+    try {
+      await stopIngestionJob(jobId, force)
+      setStopRequestedAt((prev) => ({ ...prev, [jobId]: Date.now() }))
+      await queryClient.invalidateQueries({ queryKey: ingestionJobsKey })
+      toast.success(t('ingestion.stop.success'))
+      setStopTarget(null)
+    } catch {
+      toast.error(t('ingestion.stop.failed'))
+    } finally {
+      setStopping(false)
+    }
+  }, [stopTarget, stopping, queryClient, t])
+
+  const handleCreatorClick = useCallback((sessionId: string) => {
+    openSession(sessionId, true)
+  }, [openSession])
 
   const executeDelete = useCallback(() => {
     setShowConfirmDelete(false)
@@ -249,28 +293,39 @@ export function IngestionLibraryTab() {
                   className="size-3.5"
                 />
               </TableHead>
+              <TableHead className={`${stickyHeaderCellClass} font-medium`}>{t('ingestion.library.columns.name')}</TableHead>
               <TableHead className={`${stickyHeaderCellClass} font-medium`}>{t('ingestion.library.columns.status')}</TableHead>
               <TableHead className={`${stickyHeaderCellClass} font-medium`}>{t('ingestion.library.sourceUrl')}</TableHead>
               <TableHead className={`${stickyHeaderCellClass} font-medium`}>{t('ingestion.library.columns.target')}</TableHead>
               <TableHead className={`${stickyHeaderCellClass} font-medium w-20`}>{t('ingestion.library.columns.rows')}</TableHead>
               <TableHead className={`${stickyHeaderCellClass} font-medium w-40`}>{t('ingestion.library.columns.created')}</TableHead>
+              <TableHead className={`${stickyHeaderCellClass} font-medium w-40`}>{t('ingestion.library.columns.creator')}</TableHead>
+              <TableHead className={`${stickyHeaderCellClass} w-12`} aria-hidden />
             </TableRow>
           </TableHeader>
           <TableBody>
             {jobs.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                   {t('ingestion.no.jobs')}
                 </TableCell>
               </TableRow>
             ) : (
-              jobs.map((job) => (
+              jobs.map((job) => {
+                const stoppable = STOPPABLE_STATUSES.has(job.status)
+                const requestedAt = stopRequestedAt[job.id]
+                const showForceStop = requestedAt != null && Date.now() - requestedAt >= FORCE_STOP_THRESHOLD_MS
+                const stopLabel = showForceStop ? t('ingestion.action.forceStop') : t('ingestion.action.stop')
+                const stopBtnClass = showForceStop
+                  ? 'inline-flex items-center gap-1 rounded-md border border-status-danger/30 bg-status-danger/15 px-1.5 py-0.5 text-[11px] text-status-danger hover:bg-status-danger/25'
+                  : 'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:bg-status-danger/10 hover:text-status-danger'
+                return (
                 <TableRow
                   key={job.id}
                   data-testid={`ingestion-library-row-${job.id}`}
                   onClick={() => handleRowClick(job)}
                   onDoubleClick={() => openJobTab(job)}
-                  className={`border-b border-border/30 hover:bg-muted/50 cursor-pointer ${
+                  className={`group border-b border-border/30 hover:bg-muted/50 cursor-pointer ${
                     selectedIds.has(job.id) ? 'bg-primary/8' : ''
                   }`}
                 >
@@ -281,6 +336,13 @@ export function IngestionLibraryTab() {
                       aria-label={t('ingestion.library.selectJob', { id: job.id })}
                       className="size-3.5"
                     />
+                  </TableCell>
+                  <TableCell
+                    className="max-w-[200px] truncate px-3 py-1.5 font-medium"
+                    data-testid={`ingestion-name-${job.id}`}
+                    title={job.name ?? ''}
+                  >
+                    {job.name ?? '—'}
                   </TableCell>
                   <TableCell className="px-3 py-1.5">
                     <Badge variant="outline" className={`text-xs px-1.5 py-0 ${statusColor(job.status)}`}>
@@ -299,8 +361,50 @@ export function IngestionLibraryTab() {
                   <TableCell className="px-3 py-1.5 font-mono">
                     {formatDateTime(job.createdAt)}
                   </TableCell>
+                  <TableCell
+                    className="px-3 py-1.5"
+                    data-testid={`ingestion-creator-${job.id}`}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {(() => {
+                      const c = job.createdBy
+                      if (!c) return <span className="text-muted-foreground">{t('ingestion.creator.unknown')}</span>
+                      const label = c.label ?? ''
+                      if (c.kind === 'ai') {
+                        if (c.sessionId) {
+                          return (
+                            <button
+                              type="button"
+                              data-testid={`ingestion-creator-link-${job.id}`}
+                              onClick={() => handleCreatorClick(c.sessionId!)}
+                              className="text-primary hover:underline"
+                            >
+                              {t('ingestion.creator.ai', { label })}
+                            </button>
+                          )
+                        }
+                        return <span>{t('ingestion.creator.aiNoSession')}</span>
+                      }
+                      return <span>{t('ingestion.creator.user', { label })}</span>
+                    })()}
+                  </TableCell>
+                  <TableCell className="px-3 py-1.5" onClick={(e) => e.stopPropagation()}>
+                    {stoppable ? (
+                      <button
+                        type="button"
+                        data-testid={`ingestion-stop-${job.id}`}
+                        onClick={() => handleStopClick(job)}
+                        className={stopBtnClass}
+                        title={showForceStop ? t('ingestion.stop.forceHint') : undefined}
+                      >
+                        <Square className="size-3" />
+                        {stopLabel}
+                      </button>
+                    ) : null}
+                  </TableCell>
                 </TableRow>
-              ))
+                )
+              })
             )}
           </TableBody>
         </Table>
@@ -363,6 +467,42 @@ export function IngestionLibraryTab() {
         )}
       </div>
     </div>
+
+    {/* Stop confirmation dialog */}
+    <AlertDialog open={stopTarget != null} onOpenChange={(open) => { if (!open && !stopping) setStopTarget(null) }}>
+      <AlertDialogContent data-testid="ingestion-stop-dialog">
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t('ingestion.stop.confirm.title')}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {stopTarget && stopTarget.targetTable
+              ? t('ingestion.stop.confirm.dropWarning', {
+                  table: stopTarget.targetSchema
+                    ? `${stopTarget.targetSchema}.${stopTarget.targetTable}`
+                    : stopTarget.targetTable,
+                })
+              : t('ingestion.stop.confirm.dropWarning', { table: '—' })}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={stopping}>{t('common.cancel')}</AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            disabled={stopping}
+            data-testid="ingestion-stop-confirm"
+            onClick={(event) => {
+              event.preventDefault()
+              const force =
+                stopTarget != null &&
+                stopRequestedAt[stopTarget.id] != null &&
+                Date.now() - stopRequestedAt[stopTarget.id] >= FORCE_STOP_THRESHOLD_MS
+              void executeStop(force)
+            }}
+          >
+            {stopping ? t('common.loading') : t('ingestion.stop.confirm.button')}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
 
     {/* Delete confirmation dialog */}
     <AlertDialog open={showConfirmDelete} onOpenChange={(open) => { if (!open && !deleting) setShowConfirmDelete(false) }}>

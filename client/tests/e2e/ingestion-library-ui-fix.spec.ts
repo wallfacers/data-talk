@@ -24,6 +24,7 @@ const NOW = Date.now()
 function mockJob(overrides: Partial<IngestionJobView> = {}): IngestionJobView {
   return {
     id: `job_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    name: 'mock job',
     sourceUrl: 'http://example.com/api/data',
     status: 'completed',
     payloadFormat: 'json',
@@ -36,6 +37,8 @@ function mockJob(overrides: Partial<IngestionJobView> = {}): IngestionJobView {
     bytesFetched: 4096,
     mapping: null,
     mappingHash: null,
+    createdBy: { kind: 'ai', sessionId: 'sess_mock', label: 'AI · mock' },
+    heartbeatAt: NOW,
     createdAt: NOW,
     updatedAt: NOW,
     completedAt: NOW,

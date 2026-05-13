@@ -82,7 +82,9 @@ class IngestionExecutorPostgresIT {
             jobRepo, tokenStore, List.of(new PostgresIngestionDdlAdapter()),
             connRepo, connService, artifactRepo,
             jsonParser, jsonlParser, csvParser, htmlParser,
-            publisher, om
+            publisher,
+            new com.datatalk.application.ingestion.IngestionRunRegistry(),
+            om
         );
 
         connId = "conn_pg_it";
@@ -122,9 +124,10 @@ class IngestionExecutorPostgresIT {
         String mappingHash = com.datatalk.application.ingestion.MappingHash.compute(mapping);
 
         IngestionJob job = new IngestionJob(
-            jobId, "https://example.com/api", "GET", Map.of(), Map.of(), null, null, null,
+            jobId, "pg basic test", "https://example.com/api", "GET", Map.of(), Map.of(), null, null, null,
             PayloadFormat.JSON, "art_pg_001", "writing", connId, null, "pg_test_table",
             mapping, null, null, null, mappingHash,
+            "ai", null, null, null,
             System.currentTimeMillis(), System.currentTimeMillis(), null, null
         );
         when(jobRepo.findById(jobId)).thenReturn(Optional.of(job));
@@ -173,9 +176,10 @@ class IngestionExecutorPostgresIT {
         String mappingHash = com.datatalk.application.ingestion.MappingHash.compute(mapping);
 
         IngestionJob job = new IngestionJob(
-            jobId, "https://example.com/types", "GET", Map.of(), Map.of(), null, null, null,
+            jobId, "pg type round-trip", "https://example.com/types", "GET", Map.of(), Map.of(), null, null, null,
             PayloadFormat.JSON, "art_pg_types", "writing", connId, null, "pg_type_test",
             mapping, null, null, null, mappingHash,
+            "ai", null, null, null,
             System.currentTimeMillis(), System.currentTimeMillis(), null, null
         );
         when(jobRepo.findById(jobId)).thenReturn(Optional.of(job));

@@ -46,6 +46,14 @@ public class MysqlIngestionDdlAdapter implements IngestionDdlAdapter {
     }
 
     @Override
+    public String generateDropTable(String schema, String table) {
+        StringBuilder sb = new StringBuilder("DROP TABLE IF EXISTS ");
+        if (schema != null && !schema.isBlank()) sb.append('`').append(schema).append("`.");
+        sb.append('`').append(table).append('`');
+        return sb.toString();
+    }
+
+    @Override
     public String sqlTypeFor(InferredType inferred) {
         return switch (inferred) {
             case BOOLEAN -> "TINYINT(1)";

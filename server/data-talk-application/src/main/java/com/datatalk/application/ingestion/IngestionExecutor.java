@@ -30,6 +30,7 @@ public class IngestionExecutor {
     private final ConnectionService connService;
     private final FileArtifactRepository artifactRepo;
     private final IngestionEventPublisher eventPublisher;
+    private final IngestionRunRegistry runRegistry;
     private final Map<PayloadFormat, PayloadParser> parsers;
     private final ObjectMapper om;
 
@@ -42,6 +43,7 @@ public class IngestionExecutor {
                              JsonPayloadParser j, JsonlPayloadParser jl,
                              CsvPayloadParser c, HtmlTablePayloadParser h,
                              IngestionEventPublisher eventPublisher,
+                             IngestionRunRegistry runRegistry,
                              ObjectMapper om) {
         this.jobRepo = jobRepo;
         this.tokenStore = tokenStore;
@@ -53,6 +55,7 @@ public class IngestionExecutor {
             PayloadFormat.JSON, j, PayloadFormat.JSONL, jl,
             PayloadFormat.CSV, c, PayloadFormat.HTML, h);
         this.eventPublisher = eventPublisher;
+        this.runRegistry = runRegistry;
         this.om = om;
     }
 
@@ -106,13 +109,16 @@ public class IngestionExecutor {
         int rowsInserted = 0;
         long start = System.currentTimeMillis();
 
-        try {
+        try (IngestionRunRegistry.RegistryEntry __ = runRegistry.register(jobId)) {
             PayloadParser parser = parsers.get(job.payloadFormat());
             if (parser == null) {
                 throw new UnsupportedOperationException(
                     "unsupported payload format: " + job.payloadFormat());
             }
             rowsInserted = executeBatchInsert(cr, insertSql, payloadPath, parser, mapping.columns(), batchSize, jobId, sessionId);
+        } catch (IngestionCancelledException ce) {
+            // Status / target-table cleanup is owned by IngestionStopService; surface upward.
+            throw ce;
         } catch (Exception e) {
             jobRepo.updateStatus(jobId, "failed", e.getMessage(), System.currentTimeMillis());
             eventPublisher.publish(sessionId, new DtEvent.IngestionFailed(jobId, "ingest", e.getMessage()));
@@ -160,6 +166,8 @@ public class IngestionExecutor {
 
         String url = JdbcUrlBuilder.build(cr);
         String password = connService.decryptPassword(cr.id());
+        java.util.concurrent.atomic.AtomicBoolean cancelled = runRegistry.getCancelled(jobId);
+        int rowsCommitted = 0;
 
         try (RowStream rs = parser.openRowStream(payloadPath);
              Connection conn = DriverManager.getConnection(url, cr.username(), password);
@@ -167,6 +175,10 @@ public class IngestionExecutor {
             conn.setAutoCommit(false);
             int count = 0;
             while (rs.hasNext()) {
+                if ((cancelled != null && cancelled.get()) || Thread.currentThread().isInterrupted()) {
+                    try { conn.rollback(); } catch (java.sql.SQLException ignore) {}
+                    throw new IngestionCancelledException(rowsCommitted);
+                }
                 Map<String, Object> row = rs.next();
                 for (int c = 0; c < active.size(); c++) {
                     MappingColumn col = active.get(c);
@@ -179,6 +191,8 @@ public class IngestionExecutor {
                 if (count % batchSize == 0) {
                     ps.executeBatch();
                     conn.commit();
+                    rowsCommitted = count;
+                    jobRepo.updateHeartbeat(jobId, System.currentTimeMillis());
                     eventPublisher.publish(sessionId, new DtEvent.IngestionWriteProgress(jobId, count, -1));
                 }
             }

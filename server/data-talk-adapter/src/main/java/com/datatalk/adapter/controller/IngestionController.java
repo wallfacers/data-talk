@@ -4,6 +4,7 @@ import com.datatalk.application.fileartifact.FileArtifactRepository;
 import com.datatalk.application.ingestion.IngestionConfirmedTokenStore;
 import com.datatalk.application.ingestion.IngestionCredentialService;
 import com.datatalk.application.ingestion.IngestionExecutor;
+import com.datatalk.application.ingestion.IngestionStopService;
 import com.datatalk.application.ingestion.MappingHash;
 import com.datatalk.application.ingestion.repository.IngestionCredentialRepository;
 import com.datatalk.application.ingestion.repository.IngestionJobRepository;
@@ -32,6 +33,7 @@ public class IngestionController {
     private final FileArtifactRepository artifactRepo;
     private final IngestionConfirmedTokenStore tokenStore;
     private final IngestionExecutor executor;
+    private final IngestionStopService stopService;
     private final ObjectMapper om;
 
     public IngestionController(IngestionCredentialService credService,
@@ -40,6 +42,7 @@ public class IngestionController {
                                FileArtifactRepository artifactRepo,
                                IngestionConfirmedTokenStore tokenStore,
                                IngestionExecutor executor,
+                               IngestionStopService stopService,
                                ObjectMapper om) {
         this.credService = credService;
         this.credRepo = credRepo;
@@ -47,6 +50,7 @@ public class IngestionController {
         this.artifactRepo = artifactRepo;
         this.tokenStore = tokenStore;
         this.executor = executor;
+        this.stopService = stopService;
         this.om = om;
     }
 
@@ -271,6 +275,7 @@ public class IngestionController {
     private Map<String, Object> jobToMap(IngestionJob j) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", j.id());
+        map.put("name", j.name());
         map.put("sourceUrl", j.sourceUrl());
         map.put("status", j.status());
         map.put("payloadFormat", j.payloadFormat() != null ? j.payloadFormat().name() : null);
@@ -283,6 +288,12 @@ public class IngestionController {
         map.put("rowCount", j.rowCount());
         map.put("rowsInserted", j.rowsInserted());
         map.put("bytesFetched", j.bytesFetched());
+        Map<String, Object> createdBy = new LinkedHashMap<>();
+        createdBy.put("kind", j.createdByKind() != null ? j.createdByKind() : "ai");
+        createdBy.put("sessionId", j.createdBySessionId());
+        createdBy.put("label", j.createdByLabel());
+        map.put("createdBy", createdBy);
+        map.put("heartbeatAt", j.heartbeatAt());
         map.put("createdAt", j.createdAt());
         map.put("updatedAt", j.updatedAt());
         map.put("completedAt", j.completedAt());
@@ -349,12 +360,28 @@ public class IngestionController {
         ));
     }
 
+    /**
+     * @deprecated since the {@code stop} endpoint provides true cancellation
+     * (interrupts the worker, drops the target table if it has been created,
+     * cleans the payload artifact). This legacy route is kept for backward
+     * compatibility and internally forwards to {@code /stop}.
+     */
+    @Deprecated
     @PostMapping("/jobs/{id}/cancel")
     public ResponseEntity<Void> cancel(@PathVariable String id) {
-        var job = jobRepo.findById(id);
-        if (job.isEmpty()) return ResponseEntity.notFound().build();
-        jobRepo.updateStatus(id, "cancelled", null, System.currentTimeMillis());
-        return ResponseEntity.noContent().build();
+        return stop(id, false);
+    }
+
+    @PostMapping("/jobs/{id}/stop")
+    public ResponseEntity<Void> stop(@PathVariable String id,
+                                      @RequestParam(defaultValue = "false") boolean force) {
+        IngestionStopService.StopOutcome outcome = stopService.stop(id, force);
+        return switch (outcome) {
+            case NOT_FOUND -> ResponseEntity.notFound().build();
+            case ALREADY_TERMINAL -> ResponseEntity.status(409).build();
+            case SIGNALLED -> ResponseEntity.accepted().build();
+            case APPLIED -> ResponseEntity.noContent().build();
+        };
     }
 
     @DeleteMapping("/jobs/{id}")

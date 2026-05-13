@@ -23,12 +23,16 @@ class RecordSemanticsTest {
     }
     @Test void ingestionJobHoldsAllSpecFields() {
         IngestionJob j = new IngestionJob(
-            "ing_1", "https://x", "GET",
+            "ing_1", "demo job", "https://x", "GET",
             Map.of(), Map.of(), null,
             null, null, PayloadFormat.JSON, null,
             "pending", null, null, null, null,
-            0, 0, 0L, null, 0L, 0L, null, null);
+            0, 0, 0L, null,
+            "ai", "sess_x", "AI · demo", null,
+            0L, 0L, null, null);
         assertThat(j.id()).isEqualTo("ing_1");
+        assertThat(j.name()).isEqualTo("demo job");
+        assertThat(j.createdByKind()).isEqualTo("ai");
         assertThat(j.payloadFormat()).isEqualTo(PayloadFormat.JSON);
     }
 }

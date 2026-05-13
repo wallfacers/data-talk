@@ -9,8 +9,15 @@ export interface MappingColumnView {
   nullable: boolean
 }
 
+export interface IngestionJobCreatorView {
+  kind: 'ai' | 'user'
+  sessionId: string | null
+  label: string | null
+}
+
 export interface IngestionJobView {
   id: string
+  name: string | null
   sourceUrl: string
   status: string
   payloadFormat: string | null
@@ -23,6 +30,8 @@ export interface IngestionJobView {
   bytesFetched: number | null
   mappingHash: string | null
   mapping: { mappingId: string; columns: MappingColumnView[] } | null
+  createdBy: IngestionJobCreatorView | null
+  heartbeatAt: number | null
   createdAt: number
   updatedAt: number
   completedAt: number | null
@@ -71,8 +80,20 @@ export async function confirmIngestionJob(jobId: string): Promise<{
     .json<{ tokenId: string; expiresAt: number; mappingHash: string }>()
 }
 
+/** @deprecated use stopIngestionJob — server forwards /cancel to /stop, kept for backward compatibility */
 export async function cancelIngestionJob(jobId: string): Promise<void> {
   await http.post(`ingestion/jobs/${jobId}/cancel`)
+}
+
+/**
+ * Stop a running ingestion job. The backend DROPs the target table when a target exists,
+ * deletes the payload artifact, and flips status to `cancelled`. `force=true` bypasses
+ * the active-worker check (used to reclaim zombie rows after a restart).
+ */
+export async function stopIngestionJob(jobId: string, force = false): Promise<void> {
+  await http.post(`ingestion/jobs/${jobId}/stop`, {
+    searchParams: force ? { force: 'true' } : undefined,
+  })
 }
 
 export async function deleteIngestionJob(id: string): Promise<void> {

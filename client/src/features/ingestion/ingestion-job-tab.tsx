@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useI18n } from '@/i18n/use-i18n'
 import { useIngestionJobQuery } from './hooks/use-ingestion-job-query'
 import { useIngestionJobsStore } from './stores/use-ingestion-jobs-store'
-import { confirmIngestionJob, cancelIngestionJob, deleteIngestionJob, ingestionJobsKey, ingestionJobKey } from './api/ingestion-api'
+import { confirmIngestionJob, cancelIngestionJob, deleteIngestionJob, stopIngestionJob, ingestionJobsKey, ingestionJobKey } from './api/ingestion-api'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
 import { useStageStore } from '@/stores/stage-store'
@@ -13,8 +13,18 @@ import { WritingPhase } from './phases/writing-phase'
 import { CompletedPhase } from './phases/completed-phase'
 import { FailedPhase } from './phases/failed-phase'
 import { Badge } from '@/components/ui/badge'
-import { Trash2, Loader2 } from 'lucide-react'
+import { Trash2, Loader2, Square } from 'lucide-react'
 import type { StageTab } from '@/stores/stage-store'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 interface IngestionJobTabProps {
   tab: StageTab
@@ -23,6 +33,12 @@ interface IngestionJobTabProps {
 const PHASE_ORDER = ['fetching', 'fetched', 'mapped', 'confirmed', 'writing', 'completed', 'failed', 'cancelled'] as const
 
 const DELETABLE_STATUSES = new Set(['completed', 'failed', 'cancelled', 'fetched', 'mapped', 'confirmed'])
+
+const STOPPABLE_STATUSES = new Set([
+  'pending', 'fetching', 'mapping', 'fetched', 'mapped', 'confirmed', 'writing',
+])
+
+const FORCE_STOP_THRESHOLD_MS = 30_000
 
 function phaseIndex(status: string): number {
   const idx = PHASE_ORDER.indexOf(status as typeof PHASE_ORDER[number])
@@ -47,7 +63,12 @@ export function IngestionJobTab({ tab }: IngestionJobTabProps) {
   const hydrateFromJob = useIngestionJobsStore((s) => s.hydrateFromJob)
   const [confirming, setConfirming] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [showStopDialog, setShowStopDialog] = useState(false)
+  const [stopping, setStopping] = useState(false)
+  const [stopRequestedAt, setStopRequestedAt] = useState<number | null>(null)
+  const [, tick] = useState(0)
   const detachFromWorkset = useStageStore((s) => s.detachFromWorkset)
+  const setTabTitle = useStageStore((s) => s.setTabTitle)
   const queryClient = useQueryClient()
   useEffect(() => {
     void coordinator.ensureHydrated(tab.tabId)
@@ -55,6 +76,22 @@ export function IngestionJobTab({ tab }: IngestionJobTabProps) {
   useEffect(() => {
     if (job) hydrateFromJob(job)
   }, [job, hydrateFromJob])
+
+  // Sync tab title to job.name (fall back to short id) so the live record drives the label.
+  useEffect(() => {
+    if (!job) return
+    const nextTitle = job.name ?? t('ingestion.tab.titleFallback', { id: jobId.slice(0, 8) })
+    if (tab.title !== nextTitle) {
+      setTabTitle(tab.tabId, nextTitle)
+    }
+  }, [job, t, jobId, tab.title, tab.tabId, setTabTitle])
+
+  // Re-render every 1s while a stop is in flight so the 30s force-stop threshold turns on without polling.
+  useEffect(() => {
+    if (stopRequestedAt == null) return
+    const handle = setInterval(() => tick((n) => n + 1), 1_000)
+    return () => clearInterval(handle)
+  }, [stopRequestedAt])
 
   const handleConfirm = useCallback(async () => {
     if (!jobId || confirming) return
@@ -81,6 +118,23 @@ export function IngestionJobTab({ tab }: IngestionJobTabProps) {
       toast.error(t('ingestion.toast.cancel.failed'))
     }
   }, [jobId, queryClient, t])
+
+  const executeStop = useCallback(async (force: boolean) => {
+    if (!jobId || stopping) return
+    setStopping(true)
+    try {
+      await stopIngestionJob(jobId, force)
+      setStopRequestedAt(Date.now())
+      await queryClient.invalidateQueries({ queryKey: ingestionJobKey(jobId) })
+      await queryClient.invalidateQueries({ queryKey: ingestionJobsKey })
+      toast.success(t('ingestion.stop.success'))
+      setShowStopDialog(false)
+    } catch {
+      toast.error(t('ingestion.stop.failed'))
+    } finally {
+      setStopping(false)
+    }
+  }, [jobId, stopping, queryClient, t])
 
   const handleDelete = useCallback(async () => {
     if (!jobId || deleting) return
@@ -114,13 +168,16 @@ export function IngestionJobTab({ tab }: IngestionJobTabProps) {
 
   const currentPhase = phaseIndex(job.status)
   const canDelete = DELETABLE_STATUSES.has(job.status)
+  const canStop = STOPPABLE_STATUSES.has(job.status)
+  const showForceStop =
+    stopRequestedAt != null && Date.now() - stopRequestedAt >= FORCE_STOP_THRESHOLD_MS
 
   return (
     <div className="flex flex-col h-full" data-testid="ingestion-job-tab">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-2 border-b border-border">
         <span className="text-sm font-medium truncate">
-          {t('ingestion.job.title', { id: jobId.slice(0, 8) })}
+          {job.name ?? t('ingestion.tab.titleFallback', { id: jobId.slice(0, 8) })}
         </span>
         <Badge variant="outline" className={`text-xs px-1.5 py-0 ${statusColor(job.status)}`}>
           {t(`ingestion.status.${job.status}` as any)}        </Badge>
@@ -149,6 +206,22 @@ export function IngestionJobTab({ tab }: IngestionJobTabProps) {
             )
           })}
         </div>
+        {canStop && (
+          <button
+            data-testid="ingestion-job-stop-btn"
+            onClick={() => setShowStopDialog(true)}
+            disabled={stopping}
+            title={showForceStop ? t('ingestion.stop.forceHint') : undefined}
+            className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors disabled:opacity-50 ${
+              showForceStop
+                ? 'border border-status-danger/30 bg-status-danger/15 text-status-danger hover:bg-status-danger/25'
+                : 'text-muted-foreground hover:bg-status-danger/10 hover:text-status-danger'
+            }`}
+          >
+            {stopping ? <Loader2 className="size-3.5 animate-spin" /> : <Square className="size-3.5" />}
+            {showForceStop ? t('ingestion.action.forceStop') : t('ingestion.action.stop')}
+          </button>
+        )}
         {canDelete && (
           <button
             data-testid="ingestion-job-delete-btn"
@@ -174,6 +247,37 @@ export function IngestionJobTab({ tab }: IngestionJobTabProps) {
         {job.status === 'completed' && <div data-testid="ingestion-phase-completed"><CompletedPhase job={job} /></div>}
         {(job.status === 'failed' || job.status === 'cancelled') && <div data-testid="ingestion-phase-failed"><FailedPhase job={job} /></div>}
       </div>
+
+      {/* Stop confirmation dialog */}
+      <AlertDialog open={showStopDialog} onOpenChange={(open) => { if (!open && !stopping) setShowStopDialog(false) }}>
+        <AlertDialogContent data-testid="ingestion-job-stop-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('ingestion.stop.confirm.title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('ingestion.stop.confirm.dropWarning', {
+                table:
+                  job.targetSchema && job.targetTable
+                    ? `${job.targetSchema}.${job.targetTable}`
+                    : job.targetTable ?? '—',
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={stopping}>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={stopping}
+              data-testid="ingestion-job-stop-confirm"
+              onClick={(event) => {
+                event.preventDefault()
+                void executeStop(showForceStop)
+              }}
+            >
+              {stopping ? t('common.loading') : t('ingestion.stop.confirm.button')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

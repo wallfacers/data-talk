@@ -22,10 +22,11 @@ import java.util.Optional;
 public class JdbcIngestionJobRepository implements IngestionJobRepository {
 
     private static final String COLS = """
-        id, source_url, source_method, source_headers_json, source_query_params_json,
+        id, name, source_url, source_method, source_headers_json, source_query_params_json,
         source_body_json, credential_id, pagination_json, payload_format,
         payload_artifact_id, status, connection_id, target_schema, target_table,
         mapping_json, row_count, rows_inserted, bytes_fetched, mapping_hash,
+        created_by_kind, created_by_session_id, created_by_label, heartbeat_at,
         created_at, updated_at, completed_at, error_message
         """;
 
@@ -49,29 +50,32 @@ public class JdbcIngestionJobRepository implements IngestionJobRepository {
         String mappingJson = writeJson(j.mapping());
 
         int updated = jdbc.update(
-            "UPDATE ingestion_job SET source_url=?, source_method=?, source_headers_json=?, " +
+            "UPDATE ingestion_job SET name=?, source_url=?, source_method=?, source_headers_json=?, " +
             "source_query_params_json=?, source_body_json=?, credential_id=?, pagination_json=?, " +
             "payload_format=?, payload_artifact_id=?, status=?, connection_id=?, " +
             "target_schema=?, target_table=?, mapping_json=?, row_count=?, rows_inserted=?, " +
-            "bytes_fetched=?, mapping_hash=?, updated_at=?, completed_at=?, error_message=? WHERE id=?",
-            j.sourceUrl(), j.sourceMethod(), headersJson, queryParamsJson, bodyJson,
+            "bytes_fetched=?, mapping_hash=?, created_by_kind=?, created_by_session_id=?, " +
+            "created_by_label=?, heartbeat_at=?, updated_at=?, completed_at=?, error_message=? WHERE id=?",
+            j.name(), j.sourceUrl(), j.sourceMethod(), headersJson, queryParamsJson, bodyJson,
             j.credentialId(), paginationJson, j.payloadFormat().dbValue(),
             j.payloadArtifactId(), j.status(), j.connectionId(),
             j.targetSchema(), j.targetTable(), mappingJson,
             j.rowCount(), j.rowsInserted(), j.bytesFetched(),
             j.mappingHash(),
+            j.createdByKind(), j.createdBySessionId(), j.createdByLabel(), j.heartbeatAt(),
             j.updatedAt(), j.completedAt(), j.errorMessage(), j.id());
 
         if (updated == 0) {
             jdbc.update(
                 "INSERT INTO ingestion_job (" + COLS + ") VALUES (" +
-                "?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                j.id(), j.sourceUrl(), j.sourceMethod(), headersJson, queryParamsJson,
+                "?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                j.id(), j.name(), j.sourceUrl(), j.sourceMethod(), headersJson, queryParamsJson,
                 bodyJson, j.credentialId(), paginationJson,
                 j.payloadFormat().dbValue(), j.payloadArtifactId(),
                 j.status(), j.connectionId(), j.targetSchema(), j.targetTable(),
                 mappingJson, j.rowCount(), j.rowsInserted(), j.bytesFetched(),
                 j.mappingHash(),
+                j.createdByKind(), j.createdBySessionId(), j.createdByLabel(), j.heartbeatAt(),
                 j.createdAt(), j.updatedAt(), j.completedAt(), j.errorMessage());
         }
     }
@@ -180,6 +184,42 @@ public class JdbcIngestionJobRepository implements IngestionJobRepository {
     }
 
     @Override
+    public void updateHeartbeat(String id, long ts) {
+        jdbc.update(
+            "UPDATE ingestion_job SET heartbeat_at=?, updated_at=? WHERE id=?",
+            ts, ts, id);
+    }
+
+    @Override
+    public int batchFailByStatus(List<String> statusList, String reason, long updatedAt) {
+        if (statusList == null || statusList.isEmpty()) return 0;
+        String placeholders = String.join(",", java.util.Collections.nCopies(statusList.size(), "?"));
+        String sql = "UPDATE ingestion_job SET status='failed', error_message=?, updated_at=? " +
+                     "WHERE status IN (" + placeholders + ")";
+        Object[] args = new Object[statusList.size() + 2];
+        args[0] = reason;
+        args[1] = updatedAt;
+        for (int i = 0; i < statusList.size(); i++) args[i + 2] = statusList.get(i);
+        return jdbc.update(sql, args);
+    }
+
+    @Override
+    public int batchFailIfHeartbeatBefore(List<String> statusList, long heartbeatDeadline,
+                                           String reason, long updatedAt) {
+        if (statusList == null || statusList.isEmpty()) return 0;
+        String placeholders = String.join(",", java.util.Collections.nCopies(statusList.size(), "?"));
+        String sql = "UPDATE ingestion_job SET status='failed', error_message=?, updated_at=? " +
+                     "WHERE status IN (" + placeholders + ") " +
+                     "AND (heartbeat_at IS NULL OR heartbeat_at < ?)";
+        Object[] args = new Object[statusList.size() + 3];
+        args[0] = reason;
+        args[1] = updatedAt;
+        for (int i = 0; i < statusList.size(); i++) args[i + 2] = statusList.get(i);
+        args[statusList.size() + 2] = heartbeatDeadline;
+        return jdbc.update(sql, args);
+    }
+
+    @Override
     public void deleteById(String id) {
         jdbc.update("DELETE FROM ingestion_job WHERE id=?", id);
     }
@@ -198,6 +238,7 @@ public class JdbcIngestionJobRepository implements IngestionJobRepository {
     private IngestionJob mapRow(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
         return new IngestionJob(
             rs.getString("id"),
+            rs.getString("name"),
             rs.getString("source_url"),
             rs.getString("source_method"),
             readJsonMap(rs.getString("source_headers_json")),
@@ -216,6 +257,10 @@ public class JdbcIngestionJobRepository implements IngestionJobRepository {
             readIntOrNull(rs, "rows_inserted"),
             readLongOrNull(rs, "bytes_fetched"),
             rs.getString("mapping_hash"),
+            rs.getString("created_by_kind"),
+            rs.getString("created_by_session_id"),
+            rs.getString("created_by_label"),
+            readLongOrNull(rs, "heartbeat_at"),
             rs.getLong("created_at"),
             rs.getLong("updated_at"),
             readLongOrNull(rs, "completed_at"),

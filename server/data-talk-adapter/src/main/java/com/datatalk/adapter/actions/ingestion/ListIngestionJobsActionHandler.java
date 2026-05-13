@@ -72,6 +72,7 @@ public class ListIngestionJobsActionHandler implements ActionHandler<Map, Map> {
     private Map<String, Object> jobToMap(IngestionJob j) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", j.id());
+        map.put("name", j.name());
         map.put("sourceUrl", j.sourceUrl());
         map.put("status", j.status());
         map.put("payloadFormat", j.payloadFormat() != null ? j.payloadFormat().name() : null);
@@ -79,6 +80,12 @@ public class ListIngestionJobsActionHandler implements ActionHandler<Map, Map> {
         map.put("targetSchema", j.targetSchema());
         map.put("targetTable", j.targetTable());
         map.put("rowCount", j.rowCount());
+        Map<String, Object> createdBy = new LinkedHashMap<>();
+        createdBy.put("kind", j.createdByKind() != null ? j.createdByKind() : "ai");
+        createdBy.put("sessionId", j.createdBySessionId());
+        createdBy.put("label", j.createdByLabel());
+        map.put("createdBy", createdBy);
+        map.put("heartbeatAt", j.heartbeatAt());
         map.put("createdAt", j.createdAt());
         return map;
     }

@@ -6,6 +6,7 @@ import com.datatalk.domain.fileartifact.FileArtifactScope;
 import com.datatalk.application.fileartifact.FileArtifactService;
 import com.datatalk.application.ingestion.repository.IngestionCredentialRepository;
 import com.datatalk.application.ingestion.repository.IngestionJobRepository;
+import com.datatalk.application.stage.SessionTitleLookup;
 import com.datatalk.domain.event.DtEvent;
 import com.datatalk.domain.ingestion.*;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -42,6 +43,8 @@ public class IngestionPayloadFetcher {
     private final FileArtifactService artifactService;
     private final IngestionConfig config;
     private final IngestionEventPublisher eventPublisher;
+    private final IngestionRunRegistry runRegistry;
+    private final SessionTitleLookup sessionTitleLookup;
     private final ObjectMapper om;
 
     public IngestionPayloadFetcher(HttpFetchClient http,
@@ -52,6 +55,8 @@ public class IngestionPayloadFetcher {
                                    FileArtifactService artifactService,
                                    IngestionConfig config,
                                    IngestionEventPublisher eventPublisher,
+                                   IngestionRunRegistry runRegistry,
+                                   SessionTitleLookup sessionTitleLookup,
                                    ObjectMapper om) {
         this.http = http;
         this.urlValidator = urlValidator;
@@ -61,7 +66,28 @@ public class IngestionPayloadFetcher {
         this.artifactService = artifactService;
         this.config = config;
         this.eventPublisher = eventPublisher;
+        this.runRegistry = runRegistry;
+        this.sessionTitleLookup = sessionTitleLookup;
         this.om = om;
+    }
+
+    /**
+     * Materializes a creator label such as {@code "AI · Q2 reporting"} at write time.
+     * The result is frozen on the ingestion_job row so future renames of the session
+     * do not retroactively change ingestion history (and deletes do not blank it).
+     */
+    private String resolveCreatorLabel(CreatorKind kind, String sessionId) {
+        if (kind == CreatorKind.AI) {
+            if (sessionId == null || sessionId.isBlank()) return "AI";
+            try {
+                var titles = sessionTitleLookup.titlesByIds(java.util.List.of(sessionId));
+                String title = titles.get(sessionId);
+                return (title != null && !title.isBlank()) ? "AI · " + title : "AI";
+            } catch (Exception e) {
+                return "AI";
+            }
+        }
+        return kind.dbValue();
     }
 
     // ───────── request / result records ─────────
@@ -92,10 +118,16 @@ public class IngestionPayloadFetcher {
     // ───────── main entry point ─────────
 
     public FetchResult fetch(FetchRequest request, String sessionId) {
+        return fetch(request, sessionId, CreatorKind.AI, null);
+    }
+
+    public FetchResult fetch(FetchRequest request, String sessionId,
+                              CreatorKind creatorKind, String name) {
         Objects.requireNonNull(request, "request");
         Objects.requireNonNull(request.url(), "url");
         Objects.requireNonNull(request.method(), "method");
         Objects.requireNonNull(request.format(), "format");
+        Objects.requireNonNull(creatorKind, "creatorKind");
 
         // 1. SSRF URL validation
         urlValidator.validate(request.url());
@@ -103,8 +135,10 @@ public class IngestionPayloadFetcher {
         // 2. Create ingestion_job row (status=fetching)
         String jobId = "ing_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
         long now = System.currentTimeMillis();
+        String creatorLabel = resolveCreatorLabel(creatorKind, sessionId);
         jobRepo.save(new IngestionJob(
             jobId,
+            name,           // name (MCP schema enforces required; legacy/internal callers may pass null)
             request.url(),
             request.method(),
             request.headers(),
@@ -113,25 +147,29 @@ public class IngestionPayloadFetcher {
             request.credentialId(),
             request.pagination(),
             request.format(),
-            null,       // payloadArtifactId
+            null,           // payloadArtifactId
             IngestionJobStatus.toCode(new IngestionJobStatus.Fetching()),
-            null,       // connectionId
-            null,       // targetSchema
-            null,       // targetTable
-            null,       // mapping
-            null,       // rowCount
-            null,       // rowsInserted
-            null,       // bytesFetched
-            null,       // mappingHash
-            now,        // createdAt
-            now,        // updatedAt
-            null,       // completedAt
-            null        // errorMessage
+            null,           // connectionId
+            null,           // targetSchema
+            null,           // targetTable
+            null,           // mapping
+            null,           // rowCount
+            null,           // rowsInserted
+            null,           // bytesFetched
+            null,           // mappingHash
+            creatorKind.dbValue(),
+            sessionId,
+            creatorLabel,
+            now,            // heartbeatAt — fetching loop ticks on each page
+            now,            // createdAt
+            now,            // updatedAt
+            null,           // completedAt
+            null            // errorMessage
         ));
 
         eventPublisher.publish(sessionId, new DtEvent.IngestionJobCreated(jobId, request.url()));
 
-        try {
+        try (IngestionRunRegistry.RegistryEntry __ = runRegistry.register(jobId)) {
             // 3. Resolve credential
             Map<String, String> mergedHeaders = resolveHeaders(request);
 
@@ -143,8 +181,13 @@ public class IngestionPayloadFetcher {
             String nextUrl = request.url();
             String cursorValue = null;
             int pageOrOffset = 1;
+            java.util.concurrent.atomic.AtomicBoolean cancelled = runRegistry.getCancelled(jobId);
 
             while (nextUrl != null && pagesFetched < maxPages(request.pagination())) {
+                if ((cancelled != null && cancelled.get()) || Thread.currentThread().isInterrupted()) {
+                    throw new IngestionCancelledException(0);
+                }
+
                 // Build per-page query params for pagination
                 Map<String, String> pageParams = buildPageParams(
                     request.queryParams(), request.pagination(), pageOrOffset, cursorValue);
@@ -156,6 +199,9 @@ public class IngestionPayloadFetcher {
                 // Accumulate and check termination
                 PageResult pageResult = acc.accumulate(response, pagesFetched == 0);
                 pagesFetched++;
+
+                // Refresh heartbeat after each successful page fetch
+                jobRepo.updateHeartbeat(jobId, System.currentTimeMillis());
 
                 // Check payload size limit
                 if (acc.currentSize() > config.getPayloadMaxBytes()) {
@@ -210,6 +256,10 @@ public class IngestionPayloadFetcher {
                 pagesFetched, IngestionJobStatus.toCode(new IngestionJobStatus.Fetched()),
                 request.format());
 
+        } catch (IngestionCancelledException ce) {
+            // Cancellation flips status / cleans up in IngestionStopService; rethrow so the
+            // caller doesn't treat the fetch as a generic failure.
+            throw ce;
         } catch (Exception e) {
             long failedAt = System.currentTimeMillis();
             String msg = e.getMessage();

@@ -937,9 +937,11 @@ When the user asks to fetch external data (REST API / CSV / HTML table) and writ
 
 **Skill auto-loaded**: The `data-ingestion` skill is loaded into OpenCode automatically — do NOT attempt to Read its `SKILL.md` by any path (whether under `~/.agents/`, `~/.data-talk/`, or any other location). The skill's tool surface is already available as the MCP tools listed below; this section is the authoritative reference.
 
+**Task name is required**: every `datatalk_http_request` call MUST pass a `name` (1–80 chars) that describes WHAT is being fetched and the SCOPE. The Ingestion Library and Tab header use it as the headline. Bad: "fetch users". Good: "Stripe customers — 2026-05", "GitHub issues for anthropic/cookbook", "Sales orders — Q2 2026". If the user did not specify scope, ask them before calling.
+
 **Tool chain** (execute in this order):
 
-1. `datatalk_http_request` — Fetch payload from URL. Handles pagination (page/offset/cursor), auth (None/Bearer/API Key/Basic via credentialId), SSRF protection. Returns `jobId` + `payloadArtifactId`.
+1. `datatalk_http_request` — Fetch payload from URL. Requires `name` (task name) + `url` + `payloadFormat`. Handles pagination (page/offset/cursor), auth (None/Bearer/API Key/Basic via credentialId), SSRF protection. Returns `jobId` + `payloadArtifactId` + `name` + `createdBy`.
 2. `datatalk_infer_ingestion_schema` — Analyze the fetched payload, return column mapping with inferred types + suggested DDL.
 3. **Wait for user confirmation** — The ingestion_job Tab shows the mapping editor. User reviews and clicks "Confirm and Ingest". This issues a 5-minute single-use `IngestionConfirmedToken`.
 4. `datatalk_create_ingestion_table` — Execute `CREATE TABLE` on the target connection. Requires `tokenId` from the confirmation step.
@@ -963,5 +965,7 @@ When the user asks to fetch external data (REST API / CSV / HTML table) and writ
 | `INGESTION_FETCH_FAILED` | Check URL, network, timeout |
 | `INGESTION_FORMAT_UNSUPPORTED` | Day-1 supports JSON/JSONL/CSV/HTML only |
 | `INGESTION_INFER_FAILED` | Check payload file is valid |
+| `INGESTION_NAME_REQUIRED` | Re-call with a meaningful `name` (1–80 chars) describing what is being fetched |
+| `INGESTION_ALREADY_TERMINAL` | Job has already completed / failed / cancelled — start a new ingestion if you need to retry |
 
 {{STAGE_TAB_DIGEST}}

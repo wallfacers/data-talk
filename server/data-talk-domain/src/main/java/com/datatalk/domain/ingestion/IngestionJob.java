@@ -4,6 +4,7 @@ import java.util.Map;
 
 public record IngestionJob(
     String id,
+    String name,
     String sourceUrl,
     String sourceMethod,
     Map<String, String> sourceHeaders,
@@ -22,6 +23,10 @@ public record IngestionJob(
     Integer rowsInserted,
     Long bytesFetched,
     String mappingHash,
+    String createdByKind,
+    String createdBySessionId,
+    String createdByLabel,
+    Long heartbeatAt,
     long createdAt,
     long updatedAt,
     Long completedAt,

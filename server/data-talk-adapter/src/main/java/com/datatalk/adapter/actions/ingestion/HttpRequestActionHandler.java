@@ -3,8 +3,11 @@ package com.datatalk.adapter.actions.ingestion;
 import com.datatalk.application.ingestion.IngestionPayloadFetcher;
 import com.datatalk.application.ingestion.IngestionPayloadFetcher.FetchRequest;
 import com.datatalk.application.ingestion.IngestionPayloadFetcher.FetchResult;
+import com.datatalk.application.ingestion.repository.IngestionJobRepository;
 import com.datatalk.domain.action.*;
+import com.datatalk.domain.ingestion.CreatorKind;
 import com.datatalk.domain.ingestion.IngestionAuthFailedException;
+import com.datatalk.domain.ingestion.IngestionJob;
 import com.datatalk.domain.ingestion.PaginationSpec;
 import com.datatalk.domain.ingestion.PaginationType;
 import com.datatalk.domain.ingestion.PayloadFormat;
@@ -29,28 +32,40 @@ import java.util.concurrent.CompletionStage;
 public class HttpRequestActionHandler implements ActionHandler<Map, Map> {
 
     private final IngestionPayloadFetcher fetcher;
+    private final IngestionJobRepository jobRepo;
 
-    public HttpRequestActionHandler(IngestionPayloadFetcher fetcher) {
+    public HttpRequestActionHandler(IngestionPayloadFetcher fetcher,
+                                    IngestionJobRepository jobRepo) {
         this.fetcher = fetcher;
+        this.jobRepo = jobRepo;
     }
 
     @Override
     public Map<String, Object> inputSchema() {
+        Map<String, Object> properties = new LinkedHashMap<>();
+        properties.put("name", Map.of(
+            "type", "string",
+            "minLength", 1,
+            "maxLength", 80,
+            "description",
+            "Human-readable task name shown in the Ingestion Library and Tab title. " +
+            "Must clearly describe what is being fetched and the scope " +
+            "(e.g., 'Stripe customers — 2026-05', 'GitHub issues for anthropic/cookbook'). " +
+            "Bad: 'fetch users'. Good: 'Sales orders — Q2 2026'."));
+        properties.put("url", Map.of("type", "string", "description", "Target URL to fetch"));
+        properties.put("method", Map.of("type", "string", "description", "HTTP method", "default", "GET"));
+        properties.put("headers", Map.of("type", "object", "description", "Request headers"));
+        properties.put("queryParams", Map.of("type", "object", "description", "Query parameters"));
+        properties.put("body", Map.of("type", "string", "description", "Request body"));
+        properties.put("credentialId", Map.of("type", "string", "description", "ID of stored credential"));
+        properties.put("payloadFormat", Map.of("type", "string", "enum", List.of("JSON", "JSONL", "CSV", "HTML")));
+        properties.put("pagination", Map.of("type", "object", "description", "Pagination spec"));
+        properties.put("htmlSelector", Map.of("type", "string", "description", "CSS selector for HTML parsing"));
+        properties.put("timeoutMs", Map.of("type", "integer", "description", "Per-request timeout in ms"));
         return Map.of(
             "type", "object",
-            "required", List.of("url", "payloadFormat"),
-            "properties", Map.of(
-                "url", Map.of("type", "string", "description", "Target URL to fetch"),
-                "method", Map.of("type", "string", "description", "HTTP method", "default", "GET"),
-                "headers", Map.of("type", "object", "description", "Request headers"),
-                "queryParams", Map.of("type", "object", "description", "Query parameters"),
-                "body", Map.of("type", "string", "description", "Request body"),
-                "credentialId", Map.of("type", "string", "description", "ID of stored credential"),
-                "payloadFormat", Map.of("type", "string", "enum", List.of("JSON", "JSONL", "CSV", "HTML")),
-                "pagination", Map.of("type", "object", "description", "Pagination spec"),
-                "htmlSelector", Map.of("type", "string", "description", "CSS selector for HTML parsing"),
-                "timeoutMs", Map.of("type", "integer", "description", "Per-request timeout in ms")
-            )
+            "required", List.of("name", "url", "payloadFormat"),
+            "properties", properties
         );
     }
 
@@ -58,6 +73,7 @@ public class HttpRequestActionHandler implements ActionHandler<Map, Map> {
     public Map<String, Object> outputSchema() {
         Map<String, Object> props = new LinkedHashMap<>();
         props.put("jobId", Map.of("type", "string"));
+        props.put("name", Map.of("type", "string", "description", "Echoes the task name back for confirmation"));
         props.put("payloadArtifactId", Map.of("type", "string"));
         props.put("status", Map.of("type", "string"));
         props.put("payloadFormat", Map.of("type", "string"));
@@ -65,6 +81,13 @@ public class HttpRequestActionHandler implements ActionHandler<Map, Map> {
         props.put("rowCount", Map.of("type", "integer"));
         props.put("bytesFetched", Map.of("type", "integer"));
         props.put("pagesFetched", Map.of("type", "integer"));
+        props.put("createdBy", Map.of(
+            "type", "object",
+            "properties", Map.of(
+                "kind", Map.of("type", "string", "enum", List.of("ai", "user")),
+                "sessionId", Map.of("type", "string"),
+                "label", Map.of("type", "string")
+            )));
         props.put("errorCode", Map.of("type", "string"));
         props.put("error", Map.of("type", "object"));
         props.put("userHint", Map.of("type", "string"));
@@ -89,11 +112,19 @@ public class HttpRequestActionHandler implements ActionHandler<Map, Map> {
     @SuppressWarnings("unchecked")
     public CompletionStage<Map> handle(ActionContext ctx, Map input) {
         try {
+            String name = str(input, "name");
+            if (name.isBlank() || name.length() > 80) {
+                return CompletableFuture.completedFuture(
+                    errorNode("INGESTION_NAME_REQUIRED",
+                        "name must be 1..80 characters",
+                        "Provide a meaningful name (1–80 chars) describing the data and scope."));
+            }
             FetchRequest req = buildRequest(input);
-            FetchResult result = fetcher.fetch(req, ctx.sessionId());
+            FetchResult result = fetcher.fetch(req, ctx.sessionId(), CreatorKind.AI, name);
 
             Map<String, Object> out = new LinkedHashMap<>();
             out.put("jobId", result.jobId());
+            out.put("name", name);
             out.put("payloadArtifactId", result.payloadArtifactId());
             out.put("status", result.status());
             if (result.format() != null) {
@@ -103,6 +134,14 @@ public class HttpRequestActionHandler implements ActionHandler<Map, Map> {
             out.put("rowCount", result.rowsFetched());
             out.put("bytesFetched", result.bytesFetched());
             out.put("pagesFetched", result.pagesFetched());
+            IngestionJob saved = jobRepo.findById(result.jobId()).orElse(null);
+            if (saved != null) {
+                Map<String, Object> createdBy = new LinkedHashMap<>();
+                createdBy.put("kind", saved.createdByKind() != null ? saved.createdByKind() : "ai");
+                createdBy.put("sessionId", saved.createdBySessionId());
+                createdBy.put("label", saved.createdByLabel());
+                out.put("createdBy", createdBy);
+            }
             return CompletableFuture.completedFuture(out);
 
         } catch (IllegalArgumentException e) {

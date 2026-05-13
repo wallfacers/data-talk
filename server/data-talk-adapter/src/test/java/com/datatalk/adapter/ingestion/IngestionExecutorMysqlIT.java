@@ -83,7 +83,9 @@ class IngestionExecutorMysqlIT {
             jobRepo, tokenStore, List.of(new MysqlIngestionDdlAdapter()),
             connRepo, connService, artifactRepo,
             jsonParser, jsonlParser, csvParser, htmlParser,
-            publisher, om
+            publisher,
+            new com.datatalk.application.ingestion.IngestionRunRegistry(),
+            om
         );
 
         jobId = "ing_it_test_001";
@@ -128,9 +130,10 @@ class IngestionExecutorMysqlIT {
         String mappingHash = com.datatalk.application.ingestion.MappingHash.compute(mapping);
 
         IngestionJob job = new IngestionJob(
-            jobId, "https://example.com/api", "GET", Map.of(), Map.of(), null, null, null,
+            jobId, "mysql basic test", "https://example.com/api", "GET", Map.of(), Map.of(), null, null, null,
             PayloadFormat.JSON, "art_001", "writing", connId, null, "ingest_test_table",
             mapping, null, null, null, mappingHash,
+            "ai", null, null, null,
             System.currentTimeMillis(), System.currentTimeMillis(), null, null
         );
         when(jobRepo.findById(jobId)).thenReturn(Optional.of(job));
@@ -186,9 +189,10 @@ class IngestionExecutorMysqlIT {
 
         String typesJobId = "ing_types_001";
         IngestionJob job = new IngestionJob(
-            typesJobId, "https://example.com/types", "GET", Map.of(), Map.of(), null, null, null,
+            typesJobId, "mysql type round-trip", "https://example.com/types", "GET", Map.of(), Map.of(), null, null, null,
             PayloadFormat.JSON, "art_types", "writing", connId, null, "type_test",
             mapping, null, null, null, mappingHash,
+            "ai", null, null, null,
             System.currentTimeMillis(), System.currentTimeMillis(), null, null
         );
         when(jobRepo.findById(typesJobId)).thenReturn(Optional.of(job));
