@@ -1636,6 +1636,7 @@ const MESSAGES = {
     'maintenance.toast.cleanupTrashDone': '_trash emptied',
     'maintenance.toast.cleanupLegacyDone': '_legacy emptied',
     'maintenance.toast.legacyMigrated': 'Migrated {n} legacy files to _legacy',
+    'maintenance.orphans.drawer.back': 'Back',
     'maintenance.orphans.drawer.title': 'Orphaned Archives ({n})',
     'maintenance.orphans.drawer.description': 'These files belonged to deleted connections. You can reattach them to an existing connection or discard them to _trash (auto-cleaned after 7 days).',
     'maintenance.orphans.drawer.selectAll': 'Select all',
