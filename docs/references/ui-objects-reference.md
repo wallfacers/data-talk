@@ -32,14 +32,18 @@ Discovery entrypoint: `datatalk.ui.find`.
 
 | mode | Returns |
 |------|---------|
-| `state` | `{ tabs: Array<{tabId, type, title, connectionId, connectionName?, database?, schema?, useSessionContext?, contextSource?, contextOverride?, limit?}>, activeTabId: string \| null }` |
+| `state` | `{ tabs: Array<{tabId, type, title, connectionId, connectionName?, database?, schema?, source?, boundSessionId?, isMismatched?, useSessionContext?, contextSource?, contextOverride?, limit?}>, activeTabId: string \| null }` |
 | `schema` | `{ type: 'object', properties: { tabs: array, activeTabId: string\|null } }` |
 | `actions` | exec actions listed below |
 | `full` | merged `{ state, schema, actions }` |
 
 For `query_editor` rows:
 - `connectionId / connectionName / database / schema` reflect the currently effective context
-- `useSessionContext` and `limit` mirror the query editor state summary
+- `source` is `'user'` or `'ai'` and records how this editor was opened
+- `boundSessionId` is the session this editor tracks for context binding (always set after hydrate; AI editors re-bind on manual toggle, user editors are fixed at creation time)
+- `isMismatched` is `true` when `boundSessionId !== activeSessionId` (AI editor whose bound session is no longer active); UI shows a "来自会话: <name>" badge in this case
+- `useSessionContext` is a **derived** UI flag (`boundSessionId === activeSessionId && contextOverride == null`); it is not the persisted source of truth and should not be written back to storage
+- `limit` mirrors the query editor state summary
 - `contextSource` is one of `session`, `override`, or `tab`
 - `contextOverride` remains the explicit override metadata
 
@@ -72,8 +76,8 @@ Not supported. `workspace` is read-only through `patch`; use `exec`.
 
 | mode | Returns |
 |------|---------|
-| `state` | `{ tabId, title, content, language: 'sql', version, dirty, cursor, selection, useSessionContext, connectionId, connectionName, database, schema, contextSource, contextOverride, entryMode, autoRun, executeStatus, results, activeResultId, limit, inWorkset }` |
-| `schema` | `{ type: 'object', properties: { tabId, title, content, language, version, dirty, cursor, selection, useSessionContext, connectionId, connectionName, database, schema, contextSource, contextOverride, entryMode, autoRun, executeStatus, results, activeResultId, limit, inWorkset } }` |
+| `state` | `{ tabId, title, content, language: 'sql', version, dirty, cursor, selection, source, boundSessionId, isMismatched, useSessionContext, connectionId, connectionName, database, schema, contextSource, contextOverride, entryMode, autoRun, executeStatus, results, activeResultId, limit, inWorkset }` |
+| `schema` | `{ type: 'object', properties: { tabId, title, content, language, version, dirty, cursor, selection, source, boundSessionId, isMismatched, useSessionContext, connectionId, connectionName, database, schema, contextSource, contextOverride, entryMode, autoRun, executeStatus, results, activeResultId, limit, inWorkset } }` |
 | `actions` | exec actions listed below |
 | `full` | merged `{ state, schema, actions, capabilities }` |
 
@@ -96,7 +100,10 @@ Not supported. `workspace` is read-only through `patch`; use `exec`.
 - `version`: SQL content version, used with `baseVersion`
 - `dirty`: whether unsaved document edits exist
 - `cursor` / `selection`: editor caret and selection state
-- `useSessionContext`: whether this editor follows the session data context instead of a tab override
+- `source`: `'user'` (manually opened) or `'ai'` (opened from chat / AI workspace.open); determines toolbar UI (user editors hide the session toggle)
+- `boundSessionId`: session this editor tracks for execution context resolution; AI editors re-bind on manual toggle ON, user editors are fixed at creation time
+- `isMismatched`: `true` when `boundSessionId !== activeSessionId`; UI surfaces a `来自会话: <name>` badge so the user sees why the connection doesn't follow the active session
+- `useSessionContext`: **derived** UI flag (`boundSessionId === activeSessionId && contextOverride == null`); not a persisted source of truth, never written back to storage
 - `connectionId / connectionName / database / schema`: currently effective execution context
 - `contextSource`: where the effective context comes from; one of `session`, `override`, or `tab`
 - `contextOverride`: explicit override metadata, separate from the effective context fields
@@ -129,6 +136,8 @@ Supported whitelist paths:
 
 `set_context` linked parameter rules:
 - `useSessionContext=true` cannot be combined with `connectionId`, `database`, or `schema`.
+- `useSessionContext=true` on a `source='user'` editor is a no-op (returns `{ success: true, data: { noop: true, reason: 'source=user editor cannot follow session' } }`); user editors are pinned to their originating session and cannot be re-bound by AI.
+- `useSessionContext=true` on a `source='ai'` editor re-binds the editor to the currently active session and clears any prior `contextOverride`.
 - `database` requires an effective `connectionId`, either from the current editor context or an explicit `connectionId`.
 - `schema` requires an effective `connectionId` and `database`, either from the current editor context or explicit params.
 - `limit` may be set independently; accepted values are `10`, `100`, `1000`, or `null`.

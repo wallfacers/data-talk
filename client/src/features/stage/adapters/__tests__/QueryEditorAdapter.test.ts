@@ -193,6 +193,9 @@ describe('QueryEditorAdapter', () => {
       activeResultId: string | null
       limit: 10 | 100 | 1000 | null
       inWorkset: boolean
+      source: 'user' | 'ai'
+      boundSessionId: string | null
+      isMismatched: boolean
     }
 
     expect(state).toEqual({
@@ -249,6 +252,9 @@ describe('QueryEditorAdapter', () => {
       activeResultId: 'result-2',
       limit: 10,
       inWorkset: true,
+      source: 'ai',
+      boundSessionId: 's1',
+      isMismatched: true,
     })
     expect(state.results[0]).not.toHaveProperty('rows')
     expect(state.results[1]).not.toHaveProperty('rows')
@@ -822,7 +828,7 @@ describe('QueryEditorAdapter', () => {
       sessionId: 's1',
       baseTitle: 'SQL',
       openMode: 'always_new',
-      entryMode: 'blank',
+      entryMode: 'ai_open',
       connectionId: 'conn-1',
       database: 'app',
       schema: 'public',

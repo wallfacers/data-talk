@@ -65,7 +65,11 @@ describe('tab-type-registry', () => {
     getTabTypeDescriptor('query_editor').rehydrate?.('q-mounted', {
       sqlText: 'select 42',
       source: 'ai',
-      useSessionContext: false,
+      contextOverride: {
+        connectionId: 'conn-1',
+        database: 'analytics',
+        schema: null,
+      },
     })
 
     expect(useSqlWorkbenchStore.getState().tabsById['q-mounted']).toMatchObject({

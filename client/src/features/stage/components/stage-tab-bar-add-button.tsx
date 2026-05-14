@@ -23,7 +23,9 @@ export function StageTabBarAddButton() {
   }
 
   function openErDesigner() {
-    void new WorkspaceAdapter(() => sessionId ?? null).exec('open_er_designer')
+    void new WorkspaceAdapter(() => sessionId ?? null).exec('open_er_designer', {
+      title: t('stage.tabBar.addNew.menu.er'),
+    })
   }
 
   return (

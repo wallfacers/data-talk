@@ -180,6 +180,10 @@ vi.mock('@/features/session/hooks/use-session-data-context', () => ({
   }),
 }))
 
+vi.mock('@/features/session/hooks/use-sessions', () => ({
+  useSessions: () => ({ data: undefined, isLoading: true, error: null }),
+}))
+
 vi.mock('./activity-rail/stage-activity-rail', () => ({
   StageActivityRail: () => (
     <div data-testid="stage-activity-rail-stub" data-session-id="" />
@@ -464,15 +468,15 @@ describe('SqlWorkbenchTab', () => {
         tab={{
           ...tab,
           tabId: 'tab-legacy-active-session-context',
-          originSessionId: undefined,
+          originSessionId: 'session-active',
           connectionId: undefined,
           connectionName: undefined,
           database: undefined,
           schema: undefined,
           payload: {
             initialSql: 'select 1;',
-            source: 'user',
-            entryMode: 'blank',
+            source: 'ai',
+            entryMode: 'ai_open',
             contextOverride: null,
           },
         }}
@@ -508,15 +512,15 @@ describe('SqlWorkbenchTab', () => {
         tab={{
           ...tab,
           tabId: 'tab-explicit-unpinned-active-session-context',
-          originSessionId: undefined,
+          originSessionId: 'session-active',
           connectionId: undefined,
           connectionName: undefined,
           database: undefined,
           schema: undefined,
           payload: {
             initialSql: 'select 1;',
-            source: 'user',
-            entryMode: 'blank',
+            source: 'ai',
+            entryMode: 'ai_open',
             contextOverride: null,
             useSessionContext: true,
           },
@@ -546,7 +550,8 @@ describe('SqlWorkbenchTab', () => {
       database: undefined,
       payload: {
         initialSql: 'select 1;',
-        source: 'user' as const,
+        source: 'ai' as const,
+        entryMode: 'ai_open' as const,
       },
     }
     useStageStore.setState({
@@ -562,7 +567,6 @@ describe('SqlWorkbenchTab', () => {
 
     await waitFor(() => expect(listConnectionTargetsMock).toHaveBeenCalledTimes(1))
 
-    fireEvent.click(screen.getByRole('switch', { name: t('stage.context.toolbar.useSession') }))
     const databaseSelect = screen.getByRole('combobox', { name: t('stage.context.field.database') })
     await waitFor(() => expect(databaseSelect).not.toBeDisabled())
     fireEvent.click(databaseSelect)

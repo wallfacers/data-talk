@@ -303,17 +303,19 @@ For the workspace (uses snake_case `params.connection_id`):
 - `trash(target)`: permanent delete; only when the user explicitly asks. **Batch**: pass `params.targets` to delete multiple tabs; returns `{ succeeded, failed }` where `failed` lists per-item errors.
 - `rename(target, title)`: renames a tab. Returns `{ success: true }`.
 - `pin(target, pinned?=true)`: pins or unpins a tab. Pass `pinned=false` to unpin. Returns `{ success: true }`.
-- State includes `open`, `maximized`, `tabs`, and `activeTabId`. `open` indicates whether the stage panel is currently visible. `maximized` indicates whether it is expanded to full height. Each query-editor tab entry exposes `tabId`, `type`, `title`, `connectionId`, `connectionName`, `database`, `schema`, `useSessionContext`, `contextSource`, `contextOverride`, and `limit`.
+- State includes `open`, `maximized`, `tabs`, and `activeTabId`. `open` indicates whether the stage panel is currently visible. `maximized` indicates whether it is expanded to full height. Each query-editor tab entry exposes `tabId`, `type`, `title`, `connectionId`, `connectionName`, `database`, `schema`, `source`, `boundSessionId`, `isMismatched`, `useSessionContext`, `contextSource`, `contextOverride`, and `limit`.
 
 For a query editor:
 
 - Read the editor through `datatalk_ui_read` with `object=query_editor`.
-- A query editor state includes `tabId`, `title`, `content`, `version`, `useSessionContext`, `connectionId`, `connectionName`, `database`, `schema`, `contextSource`, `contextOverride`, `results`, `activeResultId`, `limit`, and `inWorkset`.
+- A query editor state includes `tabId`, `title`, `content`, `version`, `source`, `boundSessionId`, `isMismatched`, `useSessionContext`, `connectionId`, `connectionName`, `database`, `schema`, `contextSource`, `contextOverride`, `results`, `activeResultId`, `limit`, and `inWorkset`.
+- `source` is `'user'` (user manually opened) or `'ai'` (you opened it via `workspace/open` with `type=query_editor`). The session-binding model differs by source — see below.
+- `boundSessionId` is the session this editor tracks for context resolution. For AI editors this can be re-bound; for user editors it is fixed at creation. `isMismatched=true` means the editor's bound session is no longer the active one.
 - Full SQL replacement uses `datatalk_ui_patch` on `/content` with `baseVersion`.
 - Context patching uses `/connectionId`, `/database`, and `/schema`.
 - Targeted SQL edits use `datatalk_ui_exec`, `object=query_editor`, `action=apply_text_edits`, `params.baseVersion`, and `params.edits`. Each edit entry must include `expectedText`.
 - Query editor context updates use `datatalk_ui_exec`, `object=query_editor`, `action=set_context`, with `params.useSessionContext`, `params.connectionId`, `params.database`, `params.schema`, and `params.limit`.
-- Use `set_context({ useSessionContext: true })` to make an editor follow the session data context. `useSessionContext=true` cannot be combined with `connectionId`, `database`, or `schema`.
+- Use `set_context({ useSessionContext: true })` to re-bind an editor to follow the currently active session. **On `source='ai'` editors** this re-binds `boundSessionId` to the active session and clears any prior `contextOverride`. **On `source='user'` editors** this is a no-op (returns `{ success: true, data: { noop: true, reason: 'source=user editor cannot follow session' } }`); user editors are pinned to their originating session. `useSessionContext=true` cannot be combined with `connectionId`, `database`, or `schema`.
 - Linked parameter rules: `database requires an effective connectionId`; `schema requires an effective connectionId and database`; omitted fields keep the current editor context when those effective fields already exist; `limit` may be set independently.
 - SQLite query-editor context is file-scoped: use the SQLite file path in `database`, leave `schema` unset, and do not ask the user to pick a separate schema.
 - Query editor actions are `apply_text_edits`, `set_context`, `run_sql`, `format_sql`, and `focus`.

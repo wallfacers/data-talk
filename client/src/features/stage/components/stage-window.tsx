@@ -108,7 +108,9 @@ export function StageWindow() {
 
   function handleOpenErDesigner() {
     setShowStartPage(false)
-    void new WorkspaceAdapter(() => null).exec('open_er_designer')
+    void new WorkspaceAdapter(() => null).exec('open_er_designer', {
+      title: t('stage.toolRow.er'),
+    })
   }
 
   function handleOpenDashboard() {

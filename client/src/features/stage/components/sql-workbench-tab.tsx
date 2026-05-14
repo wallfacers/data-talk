@@ -285,6 +285,9 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
   const useSessionContext = effectiveBoundSessionId != null
     && effectiveBoundSessionId === activeSessionId
     && !hasOverride
+  // Resolver semantic: "use the bound session's live data context"; true whenever no override pins the tab.
+  // This is independent of whether bound === active (we always read from the bound session when unpinned).
+  const followSessionForResolution = !hasOverride
   // Mismatch badge: shown only for AI editors when bound !== active and the bound session still exists.
   // For orphaned bound sessions, the toast (above) handles the user notification instead.
   const mismatchBoundSessionTitle = payload.source === 'ai'
@@ -306,13 +309,13 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
         database: payload.database ?? tab.database ?? null,
         schema: payload.schema ?? tab.schema ?? null,
         contextOverride: runtimeContextOverride,
-        useSessionContext,
+        useSessionContext: followSessionForResolution,
       },
     },
     sessionDataContext.context,
     {
       inheritSessionContext: true,
-      preferSessionContext: useSessionContext,
+      preferSessionContext: followSessionForResolution,
       fallbackConnectionId: activeConnectionId ?? null,
       connectionNameLookup: (connectionId) =>
         connections.find((connection) => connection.id === connectionId)?.name ?? null,
@@ -418,14 +421,15 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
       ? connections.some((connection) => connection.id === connectionId && connection.name.trim().length > 0)
       : false
     const shouldHydrateSelectedConnection = Boolean(connectionId) && !hasResolvedName
-    const shouldHydrateSelectableOptions = useSessionContext && connections.length === 0
+    const isAiSessionLocked = payload.source === 'ai' && useSessionContext
+    const shouldHydrateSelectableOptions = !isAiSessionLocked && connections.length === 0
     if (!shouldHydrateSelectedConnection && !shouldHydrateSelectableOptions) return
 
     void refreshConnections()
       .catch(() => {
         // best-effort hydration for connection name display
       })
-  }, [connections, useSessionContext, effectiveContext.connectionId, refreshConnections])
+  }, [connections, useSessionContext, payload.source, effectiveContext.connectionId, refreshConnections])
 
   useEffect(() => {
     pendingConnectionTargetsRef.current.clear()
@@ -469,7 +473,8 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
   ])
 
   useEffect(() => {
-    if (!useSessionContext) return
+    const isAiSessionLocked = payload.source === 'ai' && useSessionContext
+    if (isAiSessionLocked) return
 
     const connectionIds = Array.from(new Set([
       effectiveContext.connectionId,
@@ -483,6 +488,7 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     })
   }, [
     connections,
+    payload.source,
     useSessionContext,
     effectiveContext.connectionId,
     fetchConnectionTargets,

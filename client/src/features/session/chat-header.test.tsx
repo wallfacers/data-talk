@@ -54,7 +54,7 @@ describe('ChatHeader', () => {
     fireEvent.click(screen.getByRole('button'))
     fireEvent.click(screen.getByText('删除'))
     fireEvent.click(
-      within(await screen.findByRole('alertdialog')).getByRole('button', { name: '删除' }),
+      within(await screen.findByRole('dialog')).getByRole('button', { name: '删除' }),
     )
 
     await waitFor(() => expect(delSpy).toHaveBeenCalledWith('s1'))
@@ -80,7 +80,7 @@ describe('ChatHeader', () => {
     fireEvent.click(screen.getByRole('button'))
     fireEvent.click(screen.getByText('删除'))
     fireEvent.click(
-      within(await screen.findByRole('alertdialog')).getByRole('button', { name: '删除' }),
+      within(await screen.findByRole('dialog')).getByRole('button', { name: '删除' }),
     )
 
     await waitFor(() => expect(delSpy).toHaveBeenCalledWith('s1'))
@@ -111,7 +111,7 @@ describe('ChatHeader', () => {
     fireEvent.click(screen.getByRole('button'))
     fireEvent.click(screen.getByText('删除'))
     fireEvent.click(
-      within(await screen.findByRole('alertdialog')).getByRole('button', { name: '取消' }),
+      within(await screen.findByRole('dialog')).getByRole('button', { name: '取消' }),
     )
 
     expect(spy).not.toHaveBeenCalled()
