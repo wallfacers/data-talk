@@ -31,7 +31,7 @@ export async function openDirectSqlQueryEditorTab({ sessionId, connectionId, sql
     autoRun,
     connectionId,
     connectionName,
-    database: sessionContext?.database ?? null,
+    database: sessionContext?.database ?? undefined,
     schema: sessionContext?.schema ?? null,
   })
   if (sessionId) store.openStage()

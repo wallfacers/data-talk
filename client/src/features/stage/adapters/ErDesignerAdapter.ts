@@ -271,7 +271,7 @@ export class ErDesignerAdapter implements UIObject {
           initialContent: data.ddl,
           autoRun: false,
           connectionId: payload.targetConnectionId,
-          database: payload.targetDatabase ?? null,
+          database: payload.targetDatabase ?? undefined,
           schema: payload.targetSchema ?? null,
         })
         useStageStore.getState().openStage()

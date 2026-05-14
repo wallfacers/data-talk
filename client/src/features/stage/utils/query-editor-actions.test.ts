@@ -841,4 +841,161 @@ describe('query-editor-actions', () => {
       schema: 'analytics',
     }, expect.any(AbortSignal))
   })
+
+  describe('connection default database fallback', () => {
+    function seedConnections() {
+      useConnectionStore.setState({
+        activeConnectionId: null,
+        connections: [
+          { id: 'conn-A', name: 'A', kind: 'postgres', databaseName: 'analytics' } as any,
+          { id: 'conn-B', name: 'B', kind: 'postgres', databaseName: 'warehouse' } as any,
+          { id: 'conn-C', name: 'C', kind: 'postgres', databaseName: null } as any,
+        ],
+      })
+    }
+
+    it('(a) connectionId only → fallback fills database from connection.databaseName', () => {
+      seedConnections()
+      const { tabId } = useStageStore.getState().openQueryEditor({
+        sessionId: 'sess-1',
+        baseTitle: 'SQL',
+        openMode: 'always_new',
+        entryMode: 'blank',
+        initialContent: 'select 1',
+      })
+
+      setQueryEditorContext({ tabId, connectionId: 'conn-A' })
+
+      expect(normalizeQueryEditorPayload(getStageTab(tabId)?.payload).contextOverride).toEqual({
+        connectionId: 'conn-A',
+        database: 'analytics',
+        schema: null,
+      })
+    })
+
+    it('(b) explicit database: null preserved (no fallback)', () => {
+      seedConnections()
+      const { tabId } = useStageStore.getState().openQueryEditor({
+        sessionId: 'sess-1',
+        baseTitle: 'SQL',
+        openMode: 'always_new',
+        entryMode: 'blank',
+        initialContent: 'select 1',
+      })
+
+      setQueryEditorContext({ tabId, connectionId: 'conn-A', database: null })
+
+      expect(normalizeQueryEditorPayload(getStageTab(tabId)?.payload).contextOverride).toEqual({
+        connectionId: 'conn-A',
+        database: null,
+        schema: null,
+      })
+    })
+
+    it('(c) explicit database: "manual" preserved (caller wins)', () => {
+      seedConnections()
+      const { tabId } = useStageStore.getState().openQueryEditor({
+        sessionId: 'sess-1',
+        baseTitle: 'SQL',
+        openMode: 'always_new',
+        entryMode: 'blank',
+        initialContent: 'select 1',
+      })
+
+      setQueryEditorContext({ tabId, connectionId: 'conn-A', database: 'manual' })
+
+      expect(normalizeQueryEditorPayload(getStageTab(tabId)?.payload).contextOverride).toEqual({
+        connectionId: 'conn-A',
+        database: 'manual',
+        schema: null,
+      })
+    })
+
+    it('(d) switching connection A → B re-seeds database from B.databaseName', () => {
+      seedConnections()
+      const { tabId } = useStageStore.getState().openQueryEditor({
+        sessionId: 'sess-1',
+        baseTitle: 'SQL',
+        openMode: 'always_new',
+        entryMode: 'blank',
+        initialContent: 'select 1',
+        connectionId: 'conn-A',
+        connectionName: 'A',
+        database: 'analytics',
+      })
+
+      setQueryEditorContext({ tabId, connectionId: 'conn-B' })
+
+      expect(normalizeQueryEditorPayload(getStageTab(tabId)?.payload).contextOverride).toEqual({
+        connectionId: 'conn-B',
+        database: 'warehouse',
+        schema: null,
+      })
+    })
+
+    it('(e) same connection, database omitted → keeps prior database (no fallback)', () => {
+      seedConnections()
+      const { tabId } = useStageStore.getState().openQueryEditor({
+        sessionId: 'sess-1',
+        baseTitle: 'SQL',
+        openMode: 'always_new',
+        entryMode: 'blank',
+        initialContent: 'select 1',
+        connectionId: 'conn-A',
+        connectionName: 'A',
+        database: 'custom_db',
+      })
+
+      setQueryEditorContext({ tabId, connectionId: 'conn-A', schema: 'public' })
+
+      expect(normalizeQueryEditorPayload(getStageTab(tabId)?.payload).contextOverride).toEqual({
+        connectionId: 'conn-A',
+        database: 'custom_db',
+        schema: 'public',
+      })
+    })
+
+    it('(f) useSessionContext=true bypasses fallback (clears override)', () => {
+      seedConnections()
+      useSessionStore.setState({
+        activeSessionId: 'sess-1',
+        modeBySession: new Map(),
+        hasEverSentBySession: new Map(),
+        dataContextBySession: new Map([[
+          'sess-1',
+          {
+            sessionId: 'sess-1',
+            connectionId: 'conn-B',
+            connectionNameSnapshot: 'B',
+            database: null,
+            schema: null,
+            selectedLevel: 'connection',
+            updatedAt: 1,
+          },
+        ]]),
+        pendingPrompt: null,
+        composerRestoreDraft: null,
+        pendingModelPrompt: false,
+        pendingConnectionPrompt: false,
+        pendingActionAfterConnectionPick: null,
+      })
+
+      const { tabId } = useStageStore.getState().openQueryEditor({
+        sessionId: 'sess-1',
+        baseTitle: 'SQL',
+        openMode: 'always_new',
+        entryMode: 'blank',
+        initialContent: 'select 1',
+        connectionId: 'conn-A',
+        connectionName: 'A',
+        database: 'analytics',
+      })
+
+      setQueryEditorContext({ tabId, useSessionContext: true })
+
+      const normalized = normalizeQueryEditorPayload(getStageTab(tabId)?.payload)
+      expect(normalized.contextOverride).toBeNull()
+      expect(normalized.useSessionContext).toBe(true)
+    })
+  })
 })

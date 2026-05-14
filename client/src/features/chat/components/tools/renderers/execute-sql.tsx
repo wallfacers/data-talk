@@ -65,7 +65,7 @@ function BlockedInChatCard({
       autoRun: false,
       connectionId,
       connectionName,
-      database: sessionContext?.database ?? null,
+      database: sessionContext?.database ?? undefined,
       schema: sessionContext?.schema ?? null,
     })
     stage.openStage()

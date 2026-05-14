@@ -8,13 +8,14 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## 当前编号
 
-下一个分配 ID：**BUG-0042**（永不复用，单调递增）
+下一个分配 ID：**BUG-0044**（永不复用，单调递增）
 
 ## Open BUGs（按 priority 倒序，P0 → P2）
 
 | ID | Title | Priority | Source | Modules | Discovered |
 |----|-------|----------|--------|---------|------------|
-| —  | —     | —        | —      | —       | —          |
+| [BUG-0042](BUG-0042-sql-editor-session-follow-mode-ignores-connection-default-database.md) | SQL editor session-follow 模式下不应用 connection 默认 database | P1 | manual-report | stage, query-editor, connection | 2026-05-14 |
+| [BUG-0043](BUG-0043-sql-editor-tab-switch-loses-default-connection.md) | Chat Run SQL 打开多个 SQL 编辑器，切换 tab 导致默认 connection 丢失 | P1 | manual-report | stage, query-editor, chat | 2026-05-14 |
 
 ## In Progress（status = investigating | fixed 等待 verify）
 
@@ -71,7 +72,9 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 - **ingestion**: [BUG-0013](BUG-0013-http-request-null-output-fields.md) *(fixed)*, [BUG-0014](BUG-0014-ssrf-deny-list-not-blocking-169-254.md) *(fixed)*, [BUG-0015](BUG-0015-oversized-payload-not-marked-failed.md) *(fixed)*, [BUG-0017](BUG-0017-http-request-missing-payload-format.md) *(fixed)*, [BUG-0018](BUG-0018-basic-auth-not-base64.md) *(fixed)*, [BUG-0019](BUG-0019-page-pagination-ignores-hasmore.md) *(fixed)*, [BUG-0020](BUG-0020-offset-pagination-ignores-nextoffset.md) *(fixed)*, [BUG-0021](BUG-0021-cursor-pagination-missing-next-key.md) *(fixed)*, [BUG-0022](BUG-0022-csv-html-parsers-no-coercion.md) *(fixed)*, [BUG-0023](BUG-0023-integer-64-promotion-gap.md) *(fixed)*, [BUG-0024](BUG-0024-upstream-401-not-mapped-to-auth-failed.md) *(fixed)*, [BUG-0025](BUG-0025-infer-type-lowercase-mismatch.md) *(fixed)*, [BUG-0026](BUG-0026-html-fetch-throws-unsupported.md) *(fixed)*, [BUG-0027](BUG-0027-pagination-top-level-aliases-ignored.md) *(fixed)*, [BUG-0028](BUG-0028-tabular-source-path-missing-dollar.md) *(fixed)*, [BUG-0029](BUG-0029-confirm-status-violates-check-constraint.md) *(fixed)*, [BUG-0030](BUG-0030-confirm-missing-mapping-gate.md) *(fixed)*, [BUG-0031](BUG-0031-action-output-schema-rejects-null-and-missing-errorcode.md) *(fixed)*, [BUG-0032](BUG-0032-h2-fixture-uses-database-not-databasename.md) *(fixed)*, [BUG-0033](BUG-0033-json-jsonl-nullable-only-on-all-null.md) *(fixed)*, [BUG-0034](BUG-0034-executesql-fixture-missing-source.md) *(fixed)*
 - **testing**: [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md), [BUG-0032](BUG-0032-h2-fixture-uses-database-not-databasename.md) *(fixed)*, [BUG-0034](BUG-0034-executesql-fixture-missing-source.md) *(fixed)*
 - **security**: [BUG-0018](BUG-0018-basic-auth-not-base64.md) *(fixed)*
-- **stage**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md), [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md)
+- **stage**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md), [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md), [BUG-0042](BUG-0042-sql-editor-session-follow-mode-ignores-connection-default-database.md), [BUG-0043](BUG-0043-sql-editor-tab-switch-loses-default-connection.md)
+- **query-editor**: [BUG-0042](BUG-0042-sql-editor-session-follow-mode-ignores-connection-default-database.md), [BUG-0043](BUG-0043-sql-editor-tab-switch-loses-default-connection.md)
+- **connection**: [BUG-0042](BUG-0042-sql-editor-session-follow-mode-ignores-connection-default-database.md)
 - **chat**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md)
 - **testing**: [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md)
 - **markdown**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md), [BUG-0041](BUG-0041-sql-code-block-theme-color-mismatch.md) *(fixed)*
@@ -86,7 +89,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 - **e2e-playwright**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md), [BUG-0012](BUG-0012-widget-data-endpoint-ignores-default-connection-id.md) *(fixed)*, [BUG-0013](BUG-0013-http-request-null-output-fields.md) *(fixed)*, [BUG-0014](BUG-0014-ssrf-deny-list-not-blocking-169-254.md) *(fixed)*, [BUG-0015](BUG-0015-oversized-payload-not-marked-failed.md) *(fixed)*, [BUG-0017](BUG-0017-http-request-missing-payload-format.md) *(fixed)*, [BUG-0018](BUG-0018-basic-auth-not-base64.md) *(fixed)*, [BUG-0019](BUG-0019-page-pagination-ignores-hasmore.md) *(fixed)*, [BUG-0020](BUG-0020-offset-pagination-ignores-nextoffset.md) *(fixed)*, [BUG-0021](BUG-0021-cursor-pagination-missing-next-key.md) *(fixed)*, [BUG-0022](BUG-0022-csv-html-parsers-no-coercion.md) *(fixed)*, [BUG-0023](BUG-0023-integer-64-promotion-gap.md) *(fixed)*, [BUG-0024](BUG-0024-upstream-401-not-mapped-to-auth-failed.md) *(fixed)*
 - **e2e-mcp**: [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md)
-- **manual-report**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md), [BUG-0036](BUG-0036-skills-extracted-to-wrong-cwd-not-found-by-opencode.md) *(fixed)*, [BUG-0037](BUG-0037-ctrl-r-during-streaming-flips-stop-button-to-send.md) *(fixed)*, [BUG-0038](BUG-0038-replay-idle-on-resubscribe-clears-streaming-flag.md) *(fixed)*, [BUG-0039](BUG-0039-composer-draft-sync-write-wrong-schema.md) *(fixed)*, [BUG-0040](BUG-0040-agents-md-skill-path-triggers-llm-hallucination.md) *(fixed)*, [BUG-0041](BUG-0041-sql-code-block-theme-color-mismatch.md) *(fixed)*
+- **manual-report**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md), [BUG-0036](BUG-0036-skills-extracted-to-wrong-cwd-not-found-by-opencode.md) *(fixed)*, [BUG-0037](BUG-0037-ctrl-r-during-streaming-flips-stop-button-to-send.md) *(fixed)*, [BUG-0038](BUG-0038-replay-idle-on-resubscribe-clears-streaming-flag.md) *(fixed)*, [BUG-0039](BUG-0039-composer-draft-sync-write-wrong-schema.md) *(fixed)*, [BUG-0040](BUG-0040-agents-md-skill-path-triggers-llm-hallucination.md) *(fixed)*, [BUG-0041](BUG-0041-sql-code-block-theme-color-mismatch.md) *(fixed)*, [BUG-0042](BUG-0042-sql-editor-session-follow-mode-ignores-connection-default-database.md), [BUG-0043](BUG-0043-sql-editor-tab-switch-loses-default-connection.md)
 
 ## Wontfix / Duplicate（终态归档，无时间限制）
 

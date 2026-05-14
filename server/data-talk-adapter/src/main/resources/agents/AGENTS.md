@@ -317,6 +317,12 @@ For a query editor:
 - Query editor context updates use `datatalk_ui_exec`, `object=query_editor`, `action=set_context`, with `params.useSessionContext`, `params.connectionId`, `params.database`, `params.schema`, and `params.limit`.
 - Use `set_context({ useSessionContext: true })` to re-bind an editor to follow the currently active session. **On `source='ai'` editors** this re-binds `boundSessionId` to the active session and clears any prior `contextOverride`. **On `source='user'` editors** this is a no-op (returns `{ success: true, data: { noop: true, reason: 'source=user editor cannot follow session' } }`); user editors are pinned to their originating session. `useSessionContext=true` cannot be combined with `connectionId`, `database`, or `schema`.
 - Linked parameter rules: `database requires an effective connectionId`; `schema requires an effective connectionId and database`; omitted fields keep the current editor context when those effective fields already exist; `limit` may be set independently.
+- `set_context.database` semantics — distinguish *omitted* vs *explicit null*:
+  - **Omit** `database` (or send `undefined`): the system falls back to the target `Connection`'s configured `databaseName`. Use this when you want the connection's default database.
+  - **Explicit `null`**: clears `database`. Use this when you specifically want an empty database (rare; typically only for connection kinds where database is optional).
+  - **String**: pins that exact database.
+  - On `connectionId` change without `database`, the fallback re-fires from the *new* connection's default. To preserve the old database across a connection switch, pass `database: "<old value>"` explicitly.
+  - Schema-with-connection-change in one call: when sending `{ connectionId: 'B', schema: 'public' }` with no `database`, the schema guard evaluates the post-fallback database (B's `databaseName`), so the call succeeds as long as B has a configured `databaseName`.
 - SQLite query-editor context is file-scoped: use the SQLite file path in `database`, leave `schema` unset, and do not ask the user to pick a separate schema.
 - Query editor actions are `apply_text_edits`, `set_context`, `run_sql`, `format_sql`, and `focus`.
 - Query editor actions and state use camelCase such as `connectionId` and `baseVersion`.

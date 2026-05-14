@@ -942,6 +942,83 @@ describe('QueryEditorAdapter', () => {
     await expect(adapter.exec('set_context', { useSessionContext: true, connectionId: 'conn-1' })).resolves.toEqual(expect.objectContaining({ success: false }))
   })
 
+  it('exec set_context (a) AI sends { connectionId: A } only → contextOverride.database = connection A databaseName', async () => {
+    useConnectionStore.setState({
+      activeConnectionId: null,
+      connections: [
+        { id: 'conn-A', name: 'A', kind: 'postgres', databaseName: 'analytics' } as never,
+      ],
+    })
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 's1',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'ai_open',
+    })
+
+    const adapter = new QueryEditorAdapter(tabId)
+
+    await expect(adapter.exec('set_context', { connectionId: 'conn-A' })).resolves.toEqual({ success: true })
+    expect(useSqlWorkbenchStore.getState().tabsById[tabId]?.override).toMatchObject({
+      connectionId: 'conn-A',
+      database: 'analytics',
+    })
+  })
+
+  it('exec set_context (b) AI sends { connectionId: A, database: null } → contextOverride.database = null', async () => {
+    useConnectionStore.setState({
+      activeConnectionId: null,
+      connections: [
+        { id: 'conn-A', name: 'A', kind: 'postgres', databaseName: 'analytics' } as never,
+      ],
+    })
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 's1',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'ai_open',
+    })
+
+    const adapter = new QueryEditorAdapter(tabId)
+
+    await expect(adapter.exec('set_context', { connectionId: 'conn-A', database: null })).resolves.toEqual({ success: true })
+    expect(useSqlWorkbenchStore.getState().tabsById[tabId]?.override).toMatchObject({
+      connectionId: 'conn-A',
+      database: null,
+    })
+  })
+
+  it('exec set_context (c) AI switches connection + sets schema in same call → guard sees post-fallback database, succeeds', async () => {
+    useConnectionStore.setState({
+      activeConnectionId: null,
+      connections: [
+        { id: 'conn-A', name: 'A', kind: 'postgres', databaseName: null } as never,
+        { id: 'conn-B', name: 'B', kind: 'postgres', databaseName: 'warehouse' } as never,
+      ],
+    })
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 's1',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'ai_open',
+      connectionId: 'conn-A',
+      connectionName: 'A',
+      database: null,
+    })
+
+    const adapter = new QueryEditorAdapter(tabId)
+
+    await expect(
+      adapter.exec('set_context', { connectionId: 'conn-B', schema: 'public' }),
+    ).resolves.toEqual({ success: true })
+
+    expect(useSqlWorkbenchStore.getState().tabsById[tabId]?.override).toMatchObject({
+      connectionId: 'conn-B',
+      database: 'warehouse',
+      schema: 'public',
+    })
+  })
+
   it('focus clears the current session-active tab when focusing a workspace query editor', async () => {
     openTab({
       tabId: 'ws-q1',

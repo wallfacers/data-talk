@@ -7,6 +7,7 @@ import { useSessionStore } from '@/stores/session-store'
 import { useStageStore } from '@/stores/stage-store'
 import { translateMessage } from '@/i18n/messages'
 import { toast } from 'sonner'
+import { applyConnectionDefaultDatabase } from './apply-connection-default-database'
 import { formatSql } from './format-sql'
 import { normalizeQueryEditorPayload } from './normalize-query-editor-payload'
 import { resolveTabDataContext } from './resolve-tab-data-context'
@@ -717,7 +718,19 @@ export function setQueryEditorContext(params: {
   stageStore.setQueryEditorContext(tabId, persistedBaseContext)
 
   const nextConnectionId = params.connectionId === undefined ? effectiveContext.connectionId : params.connectionId
-  const nextDatabase = params.database === undefined ? effectiveContext.database : params.database
+  const projected = applyConnectionDefaultDatabase({
+    patch: { connectionId: params.connectionId, database: params.database },
+    current: { connectionId: effectiveContext.connectionId, database: effectiveContext.database },
+    connections: useConnectionStore.getState().connections,
+  })
+  const nextDatabase = projected.database
+  if (projected.appliedFallback) {
+    console.debug('[query-editor] connection default applied:', {
+      tabId,
+      connectionId: nextConnectionId,
+      database: nextDatabase,
+    })
+  }
   const nextSchema = params.schema === undefined ? effectiveContext.schema : params.schema
 
   if (nextConnectionId == null) {

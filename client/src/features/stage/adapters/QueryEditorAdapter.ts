@@ -6,6 +6,7 @@ import { normalizeQueryEditorPayload } from '@/features/stage/utils/normalize-qu
 import { useSqlWorkbenchStore } from '@/features/stage/stores/sql-workbench-store'
 import { useSessionStore } from '@/stores/session-store'
 import { formatQueryEditorSql, runQueryEditorSql, setQueryEditorContext } from '@/features/stage/utils/query-editor-actions'
+import { applyConnectionDefaultDatabase } from '@/features/stage/utils/apply-connection-default-database'
 import { resolveTabDataContext } from '@/features/stage/utils/resolve-tab-data-context'
 
 type ContentPatchOp = JsonPatchOp
@@ -496,9 +497,17 @@ export class QueryEditorAdapter implements UIObject {
         const effectiveConnectionId = p.connectionId === undefined
           ? currentContext?.connectionId ?? null
           : p.connectionId
-        const effectiveDatabase = p.database === undefined
-          ? currentContext?.database ?? null
-          : p.database
+        // Route through the same helper as the downstream write so the guards
+        // below evaluate the post-fallback database, not the pre-fallback one.
+        const projected = applyConnectionDefaultDatabase({
+          patch: { connectionId: p.connectionId, database: p.database },
+          current: {
+            connectionId: currentContext?.connectionId ?? null,
+            database: currentContext?.database ?? null,
+          },
+          connections: useConnectionStore.getState().connections,
+        })
+        const effectiveDatabase = projected.database
         if (p.schema && (!effectiveConnectionId || !effectiveDatabase)) {
           return execError('schema requires an effective connectionId and database')
         }
@@ -521,6 +530,9 @@ export class QueryEditorAdapter implements UIObject {
               return { success: true, data: { noop: true, reason: 'source=user editor cannot follow session' } }
             }
           }
+          // database: p.database may be `undefined` (key omitted by AI). Downstream
+          // setQueryEditorContext checks `=== undefined` and routes through
+          // applyConnectionDefaultDatabase to fill the connection default.
           setQueryEditorContext({
             tabId: this.objectId,
             useSessionContext: p.useSessionContext,

@@ -5,6 +5,8 @@ import {
   type SqlWorkbenchTextEdit,
 } from '@/features/stage/stores/sql-workbench-store'
 import { resolveUniqueTabTitle } from '@/features/stage/utils/unique-tab-title'
+import { applyConnectionDefaultDatabase } from '@/features/stage/utils/apply-connection-default-database'
+import { useConnectionStore } from '@/features/connection/store'
 import { generateUuid } from '@/lib/uuid'
 import { useSessionStore } from './session-store'
 
@@ -204,6 +206,13 @@ function normalizeContextValue(value: string | null | undefined) {
   return trimmed.length > 0 && trimmed !== '__empty__' ? trimmed : null
 }
 
+// Preserve `undefined` (the fallback signal) instead of collapsing to `null`.
+// Strings still go through trim/empty-sentinel normalization.
+function preserveUndefinedContextValue(value: string | null | undefined): string | null | undefined {
+  if (value === undefined) return undefined
+  return normalizeContextValue(value)
+}
+
 type ResolvedQueryEditorOpenContext = {
   originSessionId: string | null
   connectionId: string | null
@@ -215,13 +224,22 @@ type ResolvedQueryEditorOpenContext = {
 
 function resolveQueryEditorOpenContext(input: QueryEditorOpenInput): ResolvedQueryEditorOpenContext {
   const sessionState = useSessionStore.getState()
+  const connections = useConnectionStore.getState().connections
   const explicitConnectionId = normalizeContextValue(input.connectionId)
   if (explicitConnectionId) {
+    const projected = applyConnectionDefaultDatabase({
+      patch: {
+        connectionId: explicitConnectionId,
+        database: preserveUndefinedContextValue(input.database),
+      },
+      current: { connectionId: null, database: null },
+      connections,
+    })
     return {
       originSessionId: input.sessionId ?? null,
       connectionId: explicitConnectionId,
       connectionName: normalizeContextValue(input.connectionName),
-      database: normalizeContextValue(input.database),
+      database: projected.database,
       schema: normalizeContextValue(input.schema),
       useSessionContext: false,
     }
@@ -233,11 +251,23 @@ function resolveQueryEditorOpenContext(input: QueryEditorOpenInput): ResolvedQue
     : null
   const sessionConnectionId = normalizeContextValue(sessionContext?.connectionId)
   if (sessionConnectionId) {
+    // Session-context branch: treat both null and undefined `sessionContext.database`
+    // as "unspecified" so the connection default fires. Sessions that want to pin
+    // an empty database carry it as a non-null sentinel elsewhere.
+    const sessionDatabaseSignal = sessionContext?.database == null ? undefined : sessionContext.database
+    const projected = applyConnectionDefaultDatabase({
+      patch: {
+        connectionId: sessionConnectionId,
+        database: sessionDatabaseSignal,
+      },
+      current: { connectionId: null, database: null },
+      connections,
+    })
     return {
       originSessionId: contextSessionId,
       connectionId: sessionConnectionId,
       connectionName: normalizeContextValue(sessionContext?.connectionNameSnapshot),
-      database: normalizeContextValue(sessionContext?.database),
+      database: projected.database,
       schema: normalizeContextValue(sessionContext?.schema),
       useSessionContext: true,
     }

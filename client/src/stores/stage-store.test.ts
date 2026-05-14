@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { normalizeQueryEditorPayload } from '@/features/stage/utils/normalize-query-editor-payload'
+import { useConnectionStore } from '@/features/connection/store'
 import { useSessionStore } from './session-store'
 import { useStageStore } from './stage-store'
 
@@ -27,6 +28,10 @@ function reset() {
     pendingModelPrompt: false,
     pendingConnectionPrompt: false,
     pendingActionAfterConnectionPick: null,
+  })
+  useConnectionStore.setState({
+    activeConnectionId: null,
+    connections: [],
   })
 }
 
@@ -239,6 +244,103 @@ describe('useStageStore (single-flag stage panel)', () => {
         connectionId: 'conn-explicit',
         database: 'explicit_db',
         schema: 'explicit_schema',
+      })
+    })
+
+    it('(4.4a) toolbar + with session whose connectionContext has connection A and database=null fills database from A.databaseName', () => {
+      useConnectionStore.setState({
+        activeConnectionId: null,
+        connections: [
+          { id: 'conn-A', name: 'A', kind: 'postgres', databaseName: 'analytics' } as never,
+        ],
+      })
+      useSessionStore.setState({
+        activeSessionId: 'sess-1',
+        modeBySession: new Map(),
+        hasEverSentBySession: new Map(),
+        dataContextBySession: new Map([[
+          'sess-1',
+          {
+            sessionId: 'sess-1',
+            connectionId: 'conn-A',
+            connectionNameSnapshot: 'A',
+            database: null,
+            schema: null,
+            selectedLevel: 'connection',
+            updatedAt: 1,
+          },
+        ]]),
+        pendingPrompt: null,
+        composerRestoreDraft: null,
+        pendingModelPrompt: false,
+        pendingConnectionPrompt: false,
+        pendingActionAfterConnectionPick: null,
+      })
+
+      const { tabId } = useStageStore.getState().openQueryEditor({
+        sessionId: 'sess-1',
+        baseTitle: 'SQL',
+        openMode: 'always_new',
+        entryMode: 'blank',
+      })
+
+      const tab = useStageStore.getState().tabs.find((item) => item.tabId === tabId)
+      expect(tab).toMatchObject({
+        connectionId: 'conn-A',
+        database: 'analytics',
+      })
+    })
+
+    it('(4.4b) explicit input { connectionId: A } with no database fills database from A.databaseName', () => {
+      useConnectionStore.setState({
+        activeConnectionId: null,
+        connections: [
+          { id: 'conn-A', name: 'A', kind: 'postgres', databaseName: 'analytics' } as never,
+        ],
+      })
+
+      const { tabId } = useStageStore.getState().openQueryEditor({
+        sessionId: 'sess-1',
+        baseTitle: 'SQL',
+        openMode: 'always_new',
+        entryMode: 'ui_exec',
+        connectionId: 'conn-A',
+        connectionName: 'A',
+      })
+
+      const tab = useStageStore.getState().tabs.find((item) => item.tabId === tabId)
+      const payload = normalizeQueryEditorPayload(tab?.payload)
+      expect(payload.contextOverride).toEqual({
+        connectionId: 'conn-A',
+        database: 'analytics',
+        schema: null,
+      })
+    })
+
+    it('(4.4c) explicit input { connectionId: A, database: null } preserves null', () => {
+      useConnectionStore.setState({
+        activeConnectionId: null,
+        connections: [
+          { id: 'conn-A', name: 'A', kind: 'postgres', databaseName: 'analytics' } as never,
+        ],
+      })
+
+      const { tabId } = useStageStore.getState().openQueryEditor({
+        sessionId: 'sess-1',
+        baseTitle: 'SQL',
+        openMode: 'always_new',
+        entryMode: 'ui_exec',
+        connectionId: 'conn-A',
+        connectionName: 'A',
+        database: null,
+      })
+
+      const tab = useStageStore.getState().tabs.find((item) => item.tabId === tabId)
+      const payload = normalizeQueryEditorPayload(tab?.payload)
+      expect(payload.contextOverride).toEqual({
+        connectionId: 'conn-A',
+        database: null,
+        schema: null,
       })
     })
 

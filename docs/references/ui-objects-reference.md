@@ -139,8 +139,15 @@ Supported whitelist paths:
 - `useSessionContext=true` on a `source='user'` editor is a no-op (returns `{ success: true, data: { noop: true, reason: 'source=user editor cannot follow session' } }`); user editors are pinned to their originating session and cannot be re-bound by AI.
 - `useSessionContext=true` on a `source='ai'` editor re-binds the editor to the currently active session and clears any prior `contextOverride`.
 - `database` requires an effective `connectionId`, either from the current editor context or an explicit `connectionId`.
-- `schema` requires an effective `connectionId` and `database`, either from the current editor context or explicit params.
+- `schema` requires an effective `connectionId` and `database`, either from the current editor context or explicit params. The effective `database` is evaluated **after** the connection-default fallback (see next bullet), so a single call that switches `connectionId` and sets `schema` will succeed if the new connection has a configured `databaseName`.
+- `database` value semantics — *omitted* vs *explicit `null`*:
+  - **Omit** (or send `undefined`): the system falls back to the target `Connection`'s configured `databaseName`. Use this to inherit the connection's default. If the target connection has no `databaseName`, the resulting effective database is `null`.
+  - **Explicit `null`**: clears the editor's database. Use this only when you specifically need an empty database (rare).
+  - **String**: pins that exact database.
+  - On `connectionId` change without `database`, fallback re-fires from the *new* connection's default. To preserve the old database across a connection switch, pass `database` explicitly.
 - `limit` may be set independently; accepted values are `10`, `100`, `1000`, or `null`.
+
+The same `undefined` vs `null` contract applies to the **initial-open** path (`workspace.open` of a `query_editor`, plus chat "Run SQL" buttons and ER designer DDL handoff): omitting `database` triggers the connection-default fallback; explicit `null` clears.
 
 ---
 
