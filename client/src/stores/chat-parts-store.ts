@@ -285,31 +285,18 @@ export const useChatPartsStore = create<ChatPartsState>()(
       },
 
       setStreaming: (sessionId, on) => {
-        let nextSet: Set<string> | null = null
+        // BUG-0046: streaming 的权威源是 OpenCode `SessionStatus`（经
+        // GET /api/sessions/{id}/status 透传），mount 时 reconcile。
+        // 不再持久化到 sessionStorage —— 持久化曾在 fetch abort 场景下被
+        // 错误清空（[[BUG-0046]]），且会让 shouldSkipReplace 卡死历史加载。
         set((s) => {
           const has = s.streamingBySession.has(sessionId)
           if (on === has) return {}
           const next = new Set(s.streamingBySession)
           if (on) next.add(sessionId)
           else next.delete(sessionId)
-          nextSet = next
           return { streamingBySession: next, version: s.version + 1, layoutVersion: nextLayoutVersion(s) }
         })
-        // 同步持久化到 sessionStorage，避免 CTRL+R 刷新时 Zustand persist 中间件
-        // 尚未 flush 导致 streaming 标志丢失（按钮误回"待发送"态）。
-        if (nextSet && typeof window !== 'undefined') {
-          try {
-            const raw = sessionStorage.getItem('data-talk.chat-parts')
-            const parsed = raw ? JSON.parse(raw) : null
-            const wrapped =
-              parsed && typeof parsed === 'object' && 'state' in parsed
-                ? (parsed as { state: Record<string, unknown>; version?: number })
-                : { state: {} as Record<string, unknown>, version: 0 }
-            wrapped.state = wrapped.state ?? {}
-            wrapped.state.streamingBySession = Array.from(nextSet)
-            sessionStorage.setItem('data-talk.chat-parts', JSON.stringify(wrapped))
-          } catch { /* 非关键路径，静默降级 */ }
-        }
       },
 
       getParts: (sessionId) => {
@@ -493,17 +480,12 @@ export const useChatPartsStore = create<ChatPartsState>()(
     {
       name: 'data-talk.chat-parts',
       storage: createJSONStorage(() => sessionStorage),
-      partialize: (s) => ({
-        streamingBySession: Array.from(s.streamingBySession),
-      }) as unknown as ChatPartsState,
-      merge: (persisted, current) => {
-        const p = persisted as { streamingBySession?: string[] } | undefined
-        const arr = p?.streamingBySession ?? []
-        return {
-          ...current,
-          streamingBySession: new Set<string>(arr),
-        }
-      },
+      // BUG-0046: streamingBySession 不再持久化（权威源迁到服务端
+      // GET /api/sessions/{id}/status）。partialize 返回空对象使 persist
+      // 不向 sessionStorage 写入任何 store 字段；保留 persist 包装本身以
+      // 维持中间件 API 兼容（其它代码可能依赖 .persist 句柄）。
+      partialize: () => ({}) as unknown as ChatPartsState,
+      merge: (_persisted, current) => current,
     },
   ),
 )

@@ -216,4 +216,48 @@ class OpenCodeHttpClientTest {
         assertThat(node.path("datatalk").path("status").asText()).isEqualTo("connected");
         wm.verify(getRequestedFor(urlEqualTo("/mcp")));
     }
+
+    @Test
+    void getSessionStatuses_returns_busy_entry() {
+        wm.stubFor(get(urlEqualTo("/session/status"))
+            .willReturn(okJson("""
+                {"oc-1":{"type":"busy"},"oc-2":{"type":"retry","attempt":1,"message":"x","next":2}}
+                """)));
+
+        JsonNode node = client.getSessionStatuses();
+
+        assertThat(node.path("oc-1").path("type").asText()).isEqualTo("busy");
+        assertThat(node.path("oc-2").path("type").asText()).isEqualTo("retry");
+        wm.verify(getRequestedFor(urlEqualTo("/session/status")));
+    }
+
+    @Test
+    void getSessionStatuses_returns_empty_when_no_busy_sessions() {
+        wm.stubFor(get(urlEqualTo("/session/status"))
+            .willReturn(okJson("{}")));
+
+        JsonNode node = client.getSessionStatuses();
+
+        assertThat(node.isObject()).isTrue();
+        assertThat(node.size()).isZero();
+    }
+
+    @Test
+    void getSessionStatuses_fail_open_on_5xx() {
+        wm.stubFor(get(urlEqualTo("/session/status"))
+            .willReturn(aResponse().withStatus(503)));
+
+        JsonNode node = client.getSessionStatuses();
+
+        assertThat(node.isObject()).isTrue();
+        assertThat(node.size()).isZero();
+    }
+
+    @Test
+    void getSessionStatuses_fail_open_on_connection_error() {
+        wm.stop();
+        JsonNode node = client.getSessionStatuses();
+        assertThat(node.isObject()).isTrue();
+        assertThat(node.size()).isZero();
+    }
 }

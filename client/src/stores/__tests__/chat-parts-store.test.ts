@@ -309,7 +309,12 @@ describe('chat-parts-store', () => {
   })
 })
 
-describe('streamingBySession persistence', () => {
+// BUG-0046: streamingBySession 的权威源迁到 OpenCode 服务端
+// (GET /api/sessions/{id}/status)。store 不再把它写入 sessionStorage —— 旧的
+// 持久化路径在 fetch abort 场景下被错误清空，并让 shouldSkipReplace 永久卡死
+// 历史加载。setStreaming 仍维护 in-memory state，但 reload 后需要由
+// useSessionSubscribe 调用 fetchSessionStatus 来重新写入 true。
+describe('streamingBySession (BUG-0046 — server-authoritative, no persistence)', () => {
   beforeEach(() => {
     useChatPartsStore.setState({
       partsBySession: new Map(),
@@ -324,12 +329,14 @@ describe('streamingBySession persistence', () => {
     sessionStorage.clear()
   })
 
-  it('persists streamingBySession to sessionStorage', () => {
+  it('setStreaming does NOT write streamingBySession to sessionStorage', () => {
     useChatPartsStore.getState().setStreaming('ses_a', true)
     const raw = sessionStorage.getItem('data-talk.chat-parts')
-    expect(raw).toBeTruthy()
-    const parsed = JSON.parse(raw!)
-    expect(parsed.state.streamingBySession).toEqual(['ses_a'])
+    // persist 仍会写一个空 state 包装（schema 兼容），但 streamingBySession 必须缺席
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      expect(parsed.state?.streamingBySession).toBeUndefined()
+    }
   })
 
   it('does NOT persist the big partsBySession / infoBySession maps', () => {
@@ -337,52 +344,24 @@ describe('streamingBySession persistence', () => {
       id: 'm1', role: 'user', sessionID: 'ses_a', time: { created: 1 },
     })
     const raw = sessionStorage.getItem('data-talk.chat-parts')
-    expect(raw).toBeTruthy()
-    const parsed = JSON.parse(raw!)
-    expect(parsed.state.partsBySession).toBeUndefined()
-    expect(parsed.state.infoBySession).toBeUndefined()
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      expect(parsed.state?.partsBySession).toBeUndefined()
+      expect(parsed.state?.infoBySession).toBeUndefined()
+    }
   })
 
-  // Regression: BUG-0037 — CTRL+R during streaming flipped the stop/spinner
-  // back to the send button because Zustand persist's flush is scheduled in a
-  // microtask (storage.setItem is awaited internally) and can be skipped if
-  // the webview reloads before the microtask runs. setStreaming must write to
-  // sessionStorage synchronously on BOTH on=true and on=false so a reload
-  // happening at any instant sees the latest streamingBySession.
-  it('setStreaming writes streamingBySession synchronously on every toggle (BUG-0037)', () => {
-    useChatPartsStore.getState().setStreaming('ses_x', true)
-    expect(JSON.parse(sessionStorage.getItem('data-talk.chat-parts')!).state.streamingBySession)
-      .toEqual(['ses_x'])
-    useChatPartsStore.getState().setStreaming('ses_x', false)
-    expect(JSON.parse(sessionStorage.getItem('data-talk.chat-parts')!).state.streamingBySession)
-      .toEqual([])
-  })
-
-  // Regression: BUG-0037 hydration round-trip. The synchronous write to
-  // sessionStorage is only half the fix — the other half is that on page
-  // reload Zustand persist's `merge` must restore streamingBySession from the
-  // persisted array back into a Set. If hydration is broken (e.g. partialize
-  // wipes adjacent state, merge fails to coerce array→Set), the stop button
-  // flips back to "send" even though storage holds the right value.
-  it('hydration restores streamingBySession from sessionStorage after reload (BUG-0037)', async () => {
-    // 1) Write streaming=true synchronously (simulates state at the moment of CTRL+R).
+  it('reload does NOT restore streamingBySession (no persistence)', async () => {
     useChatPartsStore.getState().setStreaming('ses_reload', true)
-    const raw = sessionStorage.getItem('data-talk.chat-parts')
-    expect(raw).toBeTruthy()
-    expect(JSON.parse(raw!).state.streamingBySession).toEqual(['ses_reload'])
 
-    // 2) Simulate page reload: drop the module cache so the next import re-creates
-    //    the Zustand store, forcing persist middleware to hydrate fresh from
-    //    sessionStorage (which jsdom preserves across resetModules).
+    // Simulate page reload: drop module cache so persist middleware
+    // re-hydrates from (empty / non-streaming) sessionStorage.
     vi.resetModules()
     const mod = await import('../chat-parts-store')
     const reloaded = mod.useChatPartsStore
 
-    // Zustand persist hydrates synchronously when storage.getItem is sync
-    // (sessionStorage is). The merge function must coerce the array back to
-    // a Set so .has(...) works.
     const streaming = reloaded.getState().streamingBySession
     expect(streaming).toBeInstanceOf(Set)
-    expect(streaming.has('ses_reload')).toBe(true)
+    expect(streaming.has('ses_reload')).toBe(false)
   })
 })

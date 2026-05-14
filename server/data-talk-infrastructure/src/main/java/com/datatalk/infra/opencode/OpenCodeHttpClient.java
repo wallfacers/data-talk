@@ -3,10 +3,13 @@ package com.datatalk.infra.opencode;
 import com.datatalk.application.ai.OpenCodeProviderClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.time.Duration;
 import java.util.Map;
 
 /**
@@ -14,6 +17,9 @@ import java.util.Map;
  * core path, while MCP bootstrap/reconcile uses /config and /mcp helpers.
  */
 public class OpenCodeHttpClient implements OpenCodeProviderClient {
+
+    private static final Logger log = LoggerFactory.getLogger(OpenCodeHttpClient.class);
+    private static final Duration STATUS_TIMEOUT = Duration.ofSeconds(2);
 
     private volatile String baseUrl;
     private volatile WebClient wc;
@@ -169,6 +175,35 @@ public class OpenCodeHttpClient implements OpenCodeProviderClient {
             .bodyToMono(String.class)
             .block();
         return readJson(body, "/mcp");
+    }
+
+    /**
+     * Calls OpenCode {@code GET /session/status}, returning a {@code Map<sessionID, {type}>}-shaped
+     * {@link JsonNode}. OpenCode's contract treats idle as absent — i.e. only busy / retry sessions
+     * appear in the map.
+     *
+     * <p>Fails open: on connection error / timeout / non-2xx the method returns an empty object node
+     * so callers can treat "unknown" as idle without branching on exceptions.</p>
+     */
+    public JsonNode getSessionStatuses() {
+        try {
+            String body = wc.get().uri("/session/status")
+                .retrieve()
+                .bodyToMono(String.class)
+                .timeout(STATUS_TIMEOUT)
+                .block();
+            if (body == null || body.isBlank()) {
+                return om.createObjectNode();
+            }
+            JsonNode node = om.readTree(body);
+            if (node == null || !node.isObject()) {
+                return om.createObjectNode();
+            }
+            return node;
+        } catch (Exception e) {
+            log.warn("[opencode-http] GET /session/status failed, treating as idle: {}", e.toString());
+            return om.createObjectNode();
+        }
     }
 
     public JsonNode getMcpStatus() {
