@@ -187,9 +187,12 @@ export function SqlContextToolbarControls({
           <span className="text-muted-foreground">
             {t('stage.queryEditor.fromSession')}
           </span>
-          <span className="truncate text-foreground" title={mismatchBoundSessionTitle}>
-            {mismatchBoundSessionTitle}
-          </span>
+          <Tooltip>
+            <TooltipTrigger render={<span className="truncate text-foreground" />}>
+              {mismatchBoundSessionTitle}
+            </TooltipTrigger>
+            <TooltipContent side="bottom" sideOffset={4}>{mismatchBoundSessionTitle}</TooltipContent>
+          </Tooltip>
         </span>
       ) : null}
 

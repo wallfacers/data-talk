@@ -35,6 +35,32 @@ vi.mock('@/i18n/use-i18n', () => ({
 const mockGetIngestionJob = vi.fn<(id: string) => Promise<IngestionJobView>>()
 const mockListIngestionJobs = vi.fn<(params?: Record<string, unknown>) => Promise<{ items: IngestionJobView[]; total: number }>>()
 
+// Mock stage-persistence-bootstrap (imported by IngestionJobTab)
+vi.mock('@/features/stage/persistence/stage-persistence-bootstrap', () => ({
+  coordinator: {
+    ensureHydrated: vi.fn(),
+    start: vi.fn(),
+    flushAllSync: vi.fn(),
+    scheduleMetadataWrite: vi.fn(),
+    scheduleContentWrite: vi.fn(),
+    delete: vi.fn(),
+  },
+}))
+
+// Mock session-store (imported by IngestionLibraryTab)
+vi.mock('@/stores/session-store', () => ({
+  useSessionStore: Object.assign(
+    <T,>(selector: (s: { openSession: (id: string, hasEverSent: boolean) => void }) => T) =>
+      selector({ openSession: vi.fn() }),
+    { getState: () => ({ openSession: vi.fn() }), subscribe: vi.fn() },
+  ),
+}))
+
+// Mock sonner toast (used by both components)
+vi.mock('sonner', () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
+}))
+
 vi.mock('../api/ingestion-api', () => ({
   getIngestionJob: (id: string) => mockGetIngestionJob(id),
   listIngestionJobs: (params?: Record<string, unknown>) => mockListIngestionJobs(params),
@@ -46,10 +72,28 @@ vi.mock('../api/ingestion-api', () => ({
   payloadPreviewKey: (id: string) => ['ingestion-jobs', id, 'payload-preview'] as const,
 }))
 
-// Mock useStageStore.openTab for IngestionLibraryTab
+// Mock useStageStore for IngestionJobTab / IngestionLibraryTab
+// IngestionJobTab uses selectors for detachFromWorkset, setTabTitle
+// IngestionLibraryTab uses selectors for openTab, focusTab, listTabs, detachFromWorkset
+// stage-persistence-bootstrap calls useStageStore.getState() at module level
+const mockStoreFns = {
+  openTab: vi.fn(),
+  focusTab: vi.fn(),
+  listTabs: vi.fn(() => []),
+  detachFromWorkset: vi.fn(),
+  setTabTitle: vi.fn(),
+  findTab: vi.fn(() => null),
+  __hydrateAll: vi.fn(),
+  __hydratePayload: vi.fn(),
+  __setPayloadVersion: vi.fn(),
+}
+
 vi.mock('@/stores/stage-store', () => ({
-  useStageStore: <T,>(selector: (s: { openTab: (tab: StageTab) => void }) => T) =>
-    selector({ openTab: vi.fn() }),
+  useStageStore: Object.assign(
+    <T,>(selector: (s: typeof mockStoreFns) => T) => selector(mockStoreFns),
+    { getState: () => mockStoreFns, subscribe: vi.fn() },
+  ),
+  // Re-export StageTab type is fine — it's only used as a TypeScript type
 }))
 
 // ── Fixtures ───────────────────────────────────────────────────────────────
@@ -159,9 +203,9 @@ describe('Ingestion E2E smoke — IngestionJobTab rendering', () => {
 
     renderWithClient(<IngestionJobTab tab={tab} />)
 
-    // Should show a loading indicator (the component renders "Loading..." text)
+    // Should show a loading indicator (the component renders the i18n key 'ingestion.job.loading')
     await waitFor(() => {
-      expect(screen.getByText('Loading...')).toBeInTheDocument()
+      expect(screen.getByText('ingestion.job.loading')).toBeInTheDocument()
     })
   })
 
@@ -175,7 +219,8 @@ describe('Ingestion E2E smoke — IngestionJobTab rendering', () => {
     }
 
     const { container } = renderWithClient(<IngestionJobTab tab={tab} />)
-    expect(container.innerHTML).toBe('')
+    // When no jobId, the component renders a loading message div, not empty HTML
+    expect(container.textContent).toContain('ingestion.job.loading')
   })
 
   it('renders fetching phase when job is in fetching status', async () => {
@@ -193,8 +238,8 @@ describe('Ingestion E2E smoke — IngestionJobTab rendering', () => {
     renderWithClient(<IngestionJobTab tab={tab} />)
 
     await waitFor(() => {
-      // The fetching phase renders a status badge with the status text
-      expect(screen.getByText('fetching')).toBeInTheDocument()
+      // The fetching phase renders a status badge with the i18n key
+      expect(screen.getByText('ingestion.status.fetching')).toBeInTheDocument()
     })
   })
 
@@ -218,7 +263,7 @@ describe('Ingestion E2E smoke — IngestionJobTab rendering', () => {
     renderWithClient(<IngestionJobTab tab={tab} />)
 
     await waitFor(() => {
-      expect(screen.getByText('completed')).toBeInTheDocument()
+      expect(screen.getByText('ingestion.status.completed')).toBeInTheDocument()
     })
   })
 
@@ -240,7 +285,7 @@ describe('Ingestion E2E smoke — IngestionJobTab rendering', () => {
     renderWithClient(<IngestionJobTab tab={tab} />)
 
     await waitFor(() => {
-      expect(screen.getByText('failed')).toBeInTheDocument()
+      expect(screen.getByText('ingestion.status.failed')).toBeInTheDocument()
       expect(screen.getByText('Connection refused: example.com:443')).toBeInTheDocument()
     })
   })
@@ -264,9 +309,10 @@ describe('Ingestion E2E smoke — IngestionJobTab rendering', () => {
     renderWithClient(<IngestionJobTab tab={tab} />)
 
     await waitFor(() => {
-      expect(screen.getByText('writing')).toBeInTheDocument()
-      // WritingPhase shows row counts
-      expect(screen.getByText(/500.*1,000/)).toBeInTheDocument()
+      expect(screen.getByText('ingestion.status.writing')).toBeInTheDocument()
+      // WritingPhase shows progress info via i18n keys
+      expect(screen.getByText('ingestion.writing.progressRows')).toBeInTheDocument()
+      expect(screen.getByText('ingestion.writing.writingTo')).toBeInTheDocument()
     })
   })
 
@@ -286,7 +332,8 @@ describe('Ingestion E2E smoke — IngestionJobTab rendering', () => {
 
     await waitFor(() => {
       // Phase stepper has 6 dots (PHASE_ORDER.slice(0, 6))
-      const dots = screen.getAllByTitle(/^(fetching|fetched|mapped|confirmed|writing|completed)$/)
+      const phases = ['fetching', 'fetched', 'mapped', 'confirmed', 'writing', 'completed']
+      const dots = phases.map((p) => screen.getByTestId(`ingestion-stepper-dot-${p}`))
       expect(dots).toHaveLength(6)
     })
   })
@@ -305,9 +352,9 @@ describe('Ingestion E2E smoke — IngestionLibraryTab rendering', () => {
 
     renderWithClient(<IngestionLibraryTab />)
 
-    // Should show the "No ingestion jobs found" empty state
+    // Should show the empty state text (i18n key 'ingestion.no.jobs')
     await waitFor(() => {
-      expect(screen.getByText('No ingestion jobs found')).toBeInTheDocument()
+      expect(screen.getByText('ingestion.no.jobs')).toBeInTheDocument()
     })
   })
 
@@ -339,12 +386,12 @@ describe('Ingestion E2E smoke — IngestionLibraryTab rendering', () => {
       expect(screen.getByText('https://example.com/users.json')).toBeInTheDocument()
     })
 
-    // Status badges
-    expect(screen.getByText('completed')).toBeInTheDocument()
-    expect(screen.getByText('failed')).toBeInTheDocument()
+    // Status badges use i18n keys
+    expect(screen.getByText('ingestion.status.completed')).toBeInTheDocument()
+    expect(screen.getByText('ingestion.status.failed')).toBeInTheDocument()
 
-    // Footer showing total count
-    expect(screen.getByText(/2 jobs total/)).toBeInTheDocument()
+    // Footer showing total count (i18n key with interpolation)
+    expect(screen.getByText('ingestion.library.jobCount')).toBeInTheDocument()
   })
 
   it('renders title and filter controls', async () => {

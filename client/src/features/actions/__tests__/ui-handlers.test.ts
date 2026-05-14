@@ -118,7 +118,7 @@ describe('ui-handlers', () => {
     expect(coordinator.flush).toHaveBeenCalledWith('tab-a')
   })
 
-  it('ui_exec flushes the params target before workspace trash', async () => {
+  it('ui_exec skips hydration but flushes for workspace trash', async () => {
     uiRouter.registerInstance('tab-b', stubObject('tab-b', { content: 'select 2' }))
     useStageStore.setState({ activeTabId: 'tab-b' } as never)
 
@@ -130,9 +130,10 @@ describe('ui-handlers', () => {
       params: { target: 'tab-b' },
     }, { sessionId: 's1' })
 
-    const hydrateOrder = (coordinator.ensureHydrated as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0]
-    const flushOrder = (coordinator.flush as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0]
-    expect(hydrateOrder).toBeLessThan(flushOrder)
+    // trash skips ensureHydrated (deleted content need not be loaded)
+    expect(coordinator.ensureHydrated).not.toHaveBeenCalled()
+    // but flush is still called after forwarding (trash is a mutating exec)
+    expect(coordinator.flush).toHaveBeenCalledWith('tab-b')
   })
 
   it('ensureHydrated -> forward -> flush ordering for patch handler', async () => {

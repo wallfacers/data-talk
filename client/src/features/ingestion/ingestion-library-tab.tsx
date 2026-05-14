@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useI18n } from '@/i18n/use-i18n'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useIngestionJobsQuery } from './hooks/use-ingestion-jobs-query'
 import { useStageStore } from '@/stores/stage-store'
 import { useSessionStore } from '@/stores/session-store'
@@ -340,17 +341,26 @@ export function IngestionLibraryTab() {
                   <TableCell
                     className="max-w-[200px] truncate px-3 py-1.5 font-medium"
                     data-testid={`ingestion-name-${job.id}`}
-                    title={job.name ?? ''}
                   >
-                    {job.name ?? '—'}
+                    <Tooltip>
+                      <TooltipTrigger render={<span className="truncate block" />}>
+                        {job.name ?? '—'}
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" sideOffset={4}>{job.name ?? ''}</TooltipContent>
+                    </Tooltip>
                   </TableCell>
                   <TableCell className="px-3 py-1.5">
                     <Badge variant="outline" className={`text-xs px-1.5 py-0 ${statusColor(job.status)}`}>
                       {t(`ingestion.status.${job.status}` as any)}
                     </Badge>
                   </TableCell>
-                  <TableCell className="max-w-[300px] px-3 py-1.5 truncate" title={job.sourceUrl}>
-                    {job.sourceUrl}
+                  <TableCell className="max-w-[300px] px-3 py-1.5 truncate">
+                    <Tooltip>
+                      <TooltipTrigger render={<span className="truncate block" />}>
+                        {job.sourceUrl}
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" sideOffset={4}>{job.sourceUrl}</TooltipContent>
+                    </Tooltip>
                   </TableCell>
                   <TableCell className="px-3 py-1.5">
                     {job.targetSchema && job.targetTable ? `${job.targetSchema}.${job.targetTable}` : job.targetTable ?? '—'}
@@ -390,16 +400,20 @@ export function IngestionLibraryTab() {
                   </TableCell>
                   <TableCell className="px-3 py-1.5" onClick={(e) => e.stopPropagation()}>
                     {stoppable ? (
-                      <button
-                        type="button"
-                        data-testid={`ingestion-stop-${job.id}`}
-                        onClick={() => handleStopClick(job)}
-                        className={stopBtnClass}
-                        title={showForceStop ? t('ingestion.stop.forceHint') : undefined}
-                      >
-                        <Square className="size-3" />
-                        {stopLabel}
-                      </button>
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={<button
+                            type="button"
+                            data-testid={`ingestion-stop-${job.id}`}
+                            onClick={() => handleStopClick(job)}
+                            className={stopBtnClass}
+                          />}
+                        >
+                          <Square className="size-3" />
+                          {stopLabel}
+                        </TooltipTrigger>
+                        {showForceStop && <TooltipContent side="bottom" sideOffset={4}>{t('ingestion.stop.forceHint')}</TooltipContent>}
+                      </Tooltip>
                     ) : null}
                   </TableCell>
                 </TableRow>

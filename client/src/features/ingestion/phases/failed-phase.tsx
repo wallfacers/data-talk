@@ -1,6 +1,7 @@
 import { AlertCircle, Copy } from 'lucide-react'
 import { useCallback, useState } from 'react'
 import { useI18n } from '@/i18n/use-i18n'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { IngestionJobView } from '../api/ingestion-api'
 
 interface FailedPhaseProps {
@@ -62,18 +63,21 @@ export function FailedPhase({ job }: FailedPhaseProps) {
               data-testid="ingestion-cleanup-sql-copy"
               onClick={() => void handleCopy()}
               className="rounded p-1 text-muted-foreground hover:bg-background hover:text-foreground"
-              aria-label="Copy"
+              aria-label={t('common.copy')}
             >
               <Copy className="size-3.5" />
             </button>
           </div>
-          {copied && <span className="text-[11px] text-status-success">Copied</span>}
+          {copied && <span className="text-[11px] text-status-success">{t('common.copied')}</span>}
         </div>
       )}
       {job.sourceUrl && (
-        <p className="text-xs text-muted-foreground max-w-[400px] truncate" title={job.sourceUrl}>
-          {job.sourceUrl}
-        </p>
+        <Tooltip>
+          <TooltipTrigger render={<p className="text-xs text-muted-foreground max-w-[400px] truncate" />}>
+            {job.sourceUrl}
+          </TooltipTrigger>
+          <TooltipContent side="bottom" sideOffset={4}>{job.sourceUrl}</TooltipContent>
+        </Tooltip>
       )}
     </div>
   )

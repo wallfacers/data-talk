@@ -12,6 +12,11 @@ import { ChartBlock } from './chart-block'
 import { DashboardBlock } from './dashboard-block'
 import { copyToClipboard } from '@/lib/utils'
 import { useI18n } from '@/i18n/use-i18n'
+import { useSessionStore } from '@/stores/session-store'
+import { openDirectSqlQueryEditorTab } from '@/features/stage/utils/open-direct-sql-query-editor-tab'
+import { toast } from 'sonner'
+import { getCurrentLanguage } from '@/stores/ui-settings-store'
+import { translateMessage } from '@/i18n/messages'
 import './markdown.css'
 
 type Entry = { hash: string; html: string }
@@ -607,18 +612,13 @@ export function Markdown(props: {
 
       if (!content) return
       if (btn.matches('[data-slot="sql-execute"]')) {
-        const { useSessionStore } = await import('@/stores/session-store')
         const sessionId = useSessionStore.getState().activeSessionId
         const ctx = sessionId ? useSessionStore.getState().dataContextBySession.get(sessionId) : null
         const connectionId = ctx?.connectionId ?? null
         if (!connectionId) {
-          const { toast } = await import('sonner')
-          const { getCurrentLanguage } = await import('@/stores/ui-settings-store')
-          const { translateMessage } = await import('@/i18n/messages')
           toast.error(translateMessage(getCurrentLanguage(), 'error.connection.missing'))
           return
         }
-        const { openDirectSqlQueryEditorTab } = await import('@/features/stage/utils/open-direct-sql-query-editor-tab')
         await openDirectSqlQueryEditorTab({ sessionId, connectionId, sql: content, autoRun: true })
         return
       }

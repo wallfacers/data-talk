@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useI18n } from '@/i18n/use-i18n'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useIngestionJobQuery } from './hooks/use-ingestion-job-query'
 import { useIngestionJobsStore } from './stores/use-ingestion-jobs-store'
 import { confirmIngestionJob, cancelIngestionJob, deleteIngestionJob, stopIngestionJob, ingestionJobsKey, ingestionJobKey } from './api/ingestion-api'
@@ -189,38 +190,45 @@ export function IngestionJobTab({ tab }: IngestionJobTabProps) {
             const isCurrent = currentPhase === i
             const isError = (job.status === 'failed' || job.status === 'cancelled') && isCurrent
             return (
-              <div
-                key={phase}
-                data-testid={`ingestion-stepper-dot-${phase}`}
-                className={`size-2 rounded-full transition-colors ${
-                  isDone
-                    ? 'bg-status-success'
-                    : isError
-                      ? 'bg-status-danger'
-                      : isCurrent
-                        ? 'bg-primary'
-                        : 'bg-border'
-                }`}
-                title={phase}
-              />
+              <Tooltip key={phase}>
+                <TooltipTrigger
+                  render={<div
+                    data-testid={`ingestion-stepper-dot-${phase}`}
+                    className={`size-2 rounded-full transition-colors ${
+                      isDone
+                        ? 'bg-status-success'
+                        : isError
+                          ? 'bg-status-danger'
+                          : isCurrent
+                            ? 'bg-primary'
+                            : 'bg-border'
+                    }`}
+                  />}
+                />
+                <TooltipContent side="bottom" sideOffset={4}>{phase}</TooltipContent>
+              </Tooltip>
             )
           })}
         </div>
         {canStop && (
-          <button
-            data-testid="ingestion-job-stop-btn"
-            onClick={() => setShowStopDialog(true)}
-            disabled={stopping}
-            title={showForceStop ? t('ingestion.stop.forceHint') : undefined}
-            className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors disabled:opacity-50 ${
-              showForceStop
-                ? 'border border-status-danger/30 bg-status-danger/15 text-status-danger hover:bg-status-danger/25'
-                : 'text-muted-foreground hover:bg-status-danger/10 hover:text-status-danger'
-            }`}
-          >
-            {stopping ? <Loader2 className="size-3.5 animate-spin" /> : <Square className="size-3.5" />}
-            {showForceStop ? t('ingestion.action.forceStop') : t('ingestion.action.stop')}
-          </button>
+          <Tooltip>
+            <TooltipTrigger
+              render={<button
+                data-testid="ingestion-job-stop-btn"
+                onClick={() => setShowStopDialog(true)}
+                disabled={stopping}
+                className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors disabled:opacity-50 ${
+                  showForceStop
+                    ? 'border border-status-danger/30 bg-status-danger/15 text-status-danger hover:bg-status-danger/25'
+                    : 'text-muted-foreground hover:bg-status-danger/10 hover:text-status-danger'
+                }`}
+              />}
+            >
+              {stopping ? <Loader2 className="size-3.5 animate-spin" /> : <Square className="size-3.5" />}
+              {showForceStop ? t('ingestion.action.forceStop') : t('ingestion.action.stop')}
+            </TooltipTrigger>
+            {showForceStop && <TooltipContent side="bottom" sideOffset={4}>{t('ingestion.stop.forceHint')}</TooltipContent>}
+          </Tooltip>
         )}
         {canDelete && (
           <button

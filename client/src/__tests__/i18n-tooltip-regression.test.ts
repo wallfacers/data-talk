@@ -5,7 +5,7 @@ import { join, relative } from 'node:path'
 
 const SRC_ROOT = join(process.cwd(), 'src')
 const DOM_PROP_COMPONENTS = new Set(['TableCell'])
-const COMPONENT_TITLE_PROPS = new Set(['ChartError', 'ChartErrorBoundary', 'RailPanelShell', 'Section'])
+const COMPONENT_TITLE_PROPS = new Set(['ChartError', 'ChartErrorBoundary', 'RailPanelShell', 'Section', 'iframe'])
 
 function walk(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

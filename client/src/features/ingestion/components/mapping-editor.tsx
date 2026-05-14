@@ -2,6 +2,7 @@ import { cn } from '@/lib/utils'
 import { useI18n } from '@/i18n/use-i18n'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   Select,
   SelectContent,
@@ -55,20 +56,23 @@ export function MappingEditor({ columns, ddl: _ddl, onChange, className }: Mappi
       {/* Skip chips - horizontal */}
       <div className="flex flex-wrap gap-1.5">
         {columns.map((col, i) => (
-          <button
-            key={col.sourcePath}
-            type="button"
-            onClick={() => updateColumn(i, { skip: !col.skip })}
-            className={cn(
-              'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs border transition-colors cursor-pointer',
-              col.skip
-                ? 'bg-muted text-muted-foreground line-through border-border/50'
-                : 'bg-background text-foreground border-border hover:bg-muted/50',
-            )}
-            title={t('ingestion.mapping.column.skip')}
-          >
-            {col.sourcePath.replace(/^\$\.?/, '')}
-          </button>
+          <Tooltip key={col.sourcePath}>
+            <TooltipTrigger
+              render={<button
+                type="button"
+                onClick={() => updateColumn(i, { skip: !col.skip })}
+                className={cn(
+                  'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs border transition-colors cursor-pointer',
+                  col.skip
+                    ? 'bg-muted text-muted-foreground line-through border-border/50'
+                    : 'bg-background text-foreground border-border hover:bg-muted/50',
+                )}
+              />}
+            >
+              {col.sourcePath.replace(/^\$\.?/, '')}
+            </TooltipTrigger>
+            <TooltipContent side="bottom" sideOffset={4}>{t('ingestion.mapping.column.skip')}</TooltipContent>
+          </Tooltip>
         ))}
       </div>
 
@@ -95,8 +99,13 @@ export function MappingEditor({ columns, ddl: _ddl, onChange, className }: Mappi
                     col.skip && 'bg-muted/50 text-muted-foreground',
                   )}
                 >
-                  <TableCell className="px-3 py-1.5 font-mono text-muted-foreground truncate max-w-[180px]" title={col.sourcePath}>
-                    {col.sourcePath.replace(/^\$\.?/, '')}
+                  <TableCell className="px-3 py-1.5 font-mono text-muted-foreground truncate max-w-[180px]">
+                    <Tooltip>
+                      <TooltipTrigger render={<span className="truncate block" />}>
+                        {col.sourcePath.replace(/^\$\.?/, '')}
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" sideOffset={4}>{col.sourcePath}</TooltipContent>
+                    </Tooltip>
                   </TableCell>
                   <TableCell className="px-3 py-1.5">
                     <Input
@@ -124,8 +133,13 @@ export function MappingEditor({ columns, ddl: _ddl, onChange, className }: Mappi
                       </SelectContent>
                     </Select>
                   </TableCell>
-                  <TableCell className="px-3 py-1.5 text-muted-foreground truncate max-w-[120px]" title={col.sampleValues.join(', ')}>
-                    {col.sampleValues.join(', ')}
+                  <TableCell className="px-3 py-1.5 text-muted-foreground truncate max-w-[120px]">
+                    <Tooltip>
+                      <TooltipTrigger render={<span className="truncate block" />}>
+                        {col.sampleValues.join(', ')}
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" sideOffset={4}>{col.sampleValues.join(', ')}</TooltipContent>
+                    </Tooltip>
                   </TableCell>
                   <TableCell className="px-3 py-1.5">
                     <Switch

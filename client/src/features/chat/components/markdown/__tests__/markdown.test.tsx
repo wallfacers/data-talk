@@ -4,7 +4,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { Markdown } from '../markdown'
-import { SQL_EXPLAIN_EVENT, SQL_EXECUTE_EVENT } from '../sql-code-block'
+import { SQL_EXPLAIN_EVENT } from '../sql-code-block'
 
 const markdownCss = readFileSync(
   resolve(dirname(fileURLToPath(import.meta.url)), '../markdown.css'),
@@ -75,10 +75,10 @@ describe('Markdown', () => {
     })
   })
 
-  it('dispatches SQL execute and explain events from the shared chrome', async () => {
-    const onExecute = vi.fn()
+  it('does not dispatch SQL execute event on click (behavior moved to query editor)', async () => {
+    // The old SQL_EXECUTE_EVENT dispatch path has been removed.
+    // Clicking "Execute SQL" now opens the query editor directly.
     const onExplain = vi.fn()
-    window.addEventListener(SQL_EXECUTE_EVENT, onExecute)
     window.addEventListener(SQL_EXPLAIN_EVENT, onExplain)
 
     const { container } = render(<Markdown text={'```sql\nselect 1;\n```'} cacheKey="sql-2" />)
@@ -88,12 +88,11 @@ describe('Markdown', () => {
     })
 
     fireEvent.click(container.querySelector('[data-slot="sql-execute"]') as HTMLElement)
-    fireEvent.click(container.querySelector('[data-slot="sql-explain"]') as HTMLElement)
 
-    expect(onExecute).toHaveBeenCalledTimes(1)
+    // Explain still dispatches event
+    fireEvent.click(container.querySelector('[data-slot="sql-explain"]') as HTMLElement)
     expect(onExplain).toHaveBeenCalledTimes(1)
 
-    window.removeEventListener(SQL_EXECUTE_EVENT, onExecute)
     window.removeEventListener(SQL_EXPLAIN_EVENT, onExplain)
   })
 

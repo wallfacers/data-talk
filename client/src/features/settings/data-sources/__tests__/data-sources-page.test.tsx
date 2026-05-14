@@ -102,7 +102,7 @@ describe('DataSourcesPage', () => {
     fireEvent.click(deleteBtn)
 
     // Dialog should appear with confirmation text
-    expect(await screen.findByText(/删除「.*Test Delete/)).toBeInTheDocument()
+    expect(await screen.findByText(/删除连接「Test Delete」？/)).toBeInTheDocument()
     const dialog = screen.getByRole('dialog')
     expect(within(dialog).getByRole('button', { name: '取消' })).toBeInTheDocument()
 

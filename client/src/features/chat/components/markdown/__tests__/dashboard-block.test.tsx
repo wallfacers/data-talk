@@ -13,6 +13,10 @@ vi.mock('@/stores/stage-store', () => ({
 
 const hydrateTabMock = vi.fn()
 
+vi.mock('@/features/dashboard/services/dashboard-api', () => ({
+  promoteDashboard: vi.fn().mockResolvedValue(undefined),
+}))
+
 vi.mock('@/features/dashboard/stores/dashboard-tabs-store', () => ({
   useDashboardTabsStore: {
     getState: () => ({
