@@ -35,39 +35,57 @@ export class ChatPanelPage {
     return { toolName: toolName.trim(), status: '' }
   }
 
-  async waitForAiResponse(timeout = 60_000): Promise<void> {
+  async waitForAiResponse(timeout = 180_000): Promise<void> {
     // AI response lifecycle:
     // 1. [data-testid="assistant-thinking-shell"] appears (visible) when AI starts
     // 2. Shell becomes invisible when content starts streaming
-    // 3. Shell is removed from DOM when response completes
+    // 3. The composer's stop button (Loader2Icon, type="button" variant=destructive)
+    //    is rendered while `isStreaming` is true. Once `session.idle` arrives,
+    //    `setStreaming(sessionId, false)` flips it back to the submit button
+    //    (type="submit"). That submit-vs-stop transition is the authoritative
+    //    signal — relying solely on shell visibility OR basic-tool count
+    //    stability fires prematurely between successive tool batches.
     const thinkingShell = this.page.locator('[data-testid="assistant-thinking-shell"]')
 
-    // Phase 1: Wait for AI to start (shell appears)
+    // Phase 1: Wait for AI to start (shell appears). Best-effort: a very fast
+    // first chunk can skip the shell entirely.
     try {
       await expect(thinkingShell).toBeVisible({ timeout: 15000 })
     } catch {
       // Shell may never appear if AI responds instantly or errors
     }
 
-    // Phase 2: Wait for AI to finish (shell hidden/removed)
-    await expect(thinkingShell).toBeHidden({ timeout })
-
-    // Phase 3: Tool calls may render *after* the thinking shell disappears.
-    // Wait until the count of [data-component="basic-tool"] cards stays
-    // stable for a short period (1.5 s) so late tool buttons are captured.
+    // Phase 2: Wait for the streaming flag to clear by polling the composer.
+    // While `isStreaming` is true, the composer renders an icon button without
+    // type=submit; once cleared, the send button is a `type="submit"`. We
+    // require the submit form to be present and the stop loader (`.animate-spin`)
+    // to be gone for a stable settle window so tool parts that render *after*
+    // session.idle still land in the recorder.
     await this.page.waitForFunction(
-      () => {
-        const key = '__dtAiResponseSettle'
-        const count = document.querySelectorAll('[data-component="basic-tool"]').length
-        const last = (window as any)[key]
-        if (!last || last.count !== count) {
-          ;(window as any)[key] = { count, time: Date.now() }
+      (settleMs) => {
+        const composer = document.getElementById('composer-slot')
+        if (!composer) return false
+        const hasSubmit = !!composer.querySelector('button[type="submit"]')
+        const hasStopLoader = !!composer.querySelector('button .animate-spin')
+        const settled = hasSubmit && !hasStopLoader
+        const key = '__dtAiResponseSettleV2'
+        const winAny = window as unknown as Record<string, { settled: boolean; time: number } | undefined>
+        const last = winAny[key]
+        if (!last || last.settled !== settled) {
+          winAny[key] = { settled, time: Date.now() }
           return false
         }
-        return Date.now() - last.time >= 1500
+        return settled && Date.now() - last.time >= settleMs
       },
-      { timeout: timeout - 15000, polling: 500 }
+      1500,
+      { timeout, polling: 250 },
     )
+
+    // Phase 3: After streaming clears, give React a tick to flush any final
+    // tool-part renders so the recorder tap sees the terminal status.
+    await this.page.waitForTimeout(200)
+    // Belt-and-braces: ensure thinking shell is hidden (it should already be).
+    await expect(thinkingShell).toBeHidden({ timeout: 5_000 }).catch(() => undefined)
   }
 
   async isDegradedBannerVisible(): Promise<boolean> {

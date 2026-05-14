@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import type { PartComponentProps } from './part-dispatcher'
 import type { ToolPart as ToolPartType } from '@/services/channel/types'
 import { ToolRegistry } from '../tools/tool-registry'
@@ -19,6 +20,35 @@ export function ToolPart(props: PartComponentProps) {
     requiresConnection: false,
     timeoutMs: 30000,
   }
+
+  // E2E tap: expose tool name + full input to a window-side ring buffer so
+  // Playwright tests can assert routing decisions without scraping nested
+  // tool-card DOM (GenericTool only flattens primitive args). Cheap, no-op
+  // outside a browser context.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const w = window as unknown as {
+      __dtToolPartTap?: (entry: {
+        tool: string
+        input: Record<string, unknown> | undefined
+        status: string | undefined
+        callID: string | undefined
+        partId: string
+      }) => void
+    }
+    if (typeof w.__dtToolPartTap !== 'function') return
+    try {
+      w.__dtToolPartTap({
+        tool: part.tool,
+        input: part.state?.input,
+        status: part.state?.status,
+        callID: part.callID,
+        partId: part.id,
+      })
+    } catch {
+      // tap must never break rendering
+    }
+  }, [part.id, part.tool, part.callID, part.state?.status, part.state?.input])
 
   // Priority: actions/registry customRenderer > ToolRegistry > GenericTool
   const custom = getRenderers(part.tool)

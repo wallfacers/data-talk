@@ -3,69 +3,70 @@ import type { Page } from '@playwright/test'
 export interface RecordedCall {
   tool: string
   params: Record<string, unknown>
+  status?: string
+  callId?: string
+  partId?: string
   timestamp: number
 }
 
 function recorderInitScript() {
-  if ((window as any).__mcpRecorder) return
-  ;(window as any).__mcpRecorder = []
-
-  function extractToolName(btn: HTMLButtonElement): string {
-    // TextShimmer renders the text twice (base + shimmer spans), so
-    // prefer the dedicated base span if present.
-    const base = btn.querySelector('[data-slot="text-shimmer-char-base"]')
-    if (base) return base.textContent?.trim() ?? ''
-
-    const text = btn.textContent?.trim() ?? ''
-    if (!text.startsWith('datatalk_')) return text
-
-    // Heuristic: dedupe when the string is exactly "X" + "X"
-    if (text.length % 2 === 0) {
-      const half = text.length / 2
-      if (text.substring(0, half) === text.substring(half)) {
-        return text.substring(0, half)
-      }
-    }
-    return text
+  const w = window as unknown as {
+    __mcpRecorder?: RecordedCall[]
+    __mcpRecorderSeen?: Set<string>
+    __dtToolPartTap?: (entry: {
+      tool: string
+      input: Record<string, unknown> | undefined
+      status: string | undefined
+      callID: string | undefined
+      partId: string
+    }) => void
   }
+  if (w.__mcpRecorder) return
+  w.__mcpRecorder = []
+  w.__mcpRecorderSeen = new Set<string>()
 
-  function scan() {
-    const buttons = document.querySelectorAll(
-      '[data-component="session-turn"] button'
-    )
-    buttons.forEach((btn) => {
-      const text = extractToolName(btn as HTMLButtonElement)
-      if (!text.startsWith('datatalk_')) return
-      if ((btn as any).__mcpRecorded) return
-      ;(btn as any).__mcpRecorded = true
-
-      ;(window as any).__mcpRecorder.push({
-        tool: text,
-        params: {},
-        timestamp: Date.now(),
-      })
+  w.__dtToolPartTap = (entry) => {
+    const seen = w.__mcpRecorderSeen!
+    const key = entry.callID ?? entry.partId
+    // Reset the same call's record when it transitions status (pending → running
+    // → completed) so the final `input` (which the model may stream in) wins.
+    const sameKey = `${key}|${entry.status ?? ''}`
+    if (seen.has(sameKey)) return
+    seen.add(sameKey)
+    const list = w.__mcpRecorder!
+    // Drop earlier rows for the same callId so callsFor returns latest snapshot.
+    for (let i = list.length - 1; i >= 0; i--) {
+      const k = list[i].callId ?? list[i].partId
+      if (k === key) { list.splice(i, 1) }
+    }
+    const tool = entry.tool.startsWith('datatalk_')
+      ? entry.tool
+      : entry.tool.startsWith('datatalk.')
+        ? 'datatalk_' + entry.tool.slice('datatalk.'.length).replace(/[.\-]/g, '_')
+        : entry.tool
+    list.push({
+      tool,
+      params: (entry.input ?? {}) as Record<string, unknown>,
+      status: entry.status,
+      callId: entry.callID,
+      partId: entry.partId,
+      timestamp: Date.now(),
     })
   }
-
-  const observer = new MutationObserver(scan)
-  observer.observe(document.body, { childList: true, subtree: true })
-  ;(window as any).__mcpRecorderObserver = observer
-  scan()
 }
 
 /**
  * Mount a tool recorder that captures AI-triggered tool calls.
  *
- * Strategy: the frontend renders tool invocations as DOM buttons
- * inside [data-component="session-turn"] with text starting with
- * "datatalk_". We observe the DOM and extract the tool name from
- * button textContent.
+ * Strategy: production code in `tool-part.tsx` calls `window.__dtToolPartTap`
+ * (a no-op if undefined) with `{ tool, input, status, callID, partId }`. The
+ * recorder installs the tap before the page navigates and accumulates entries
+ * deduped by `(callID, status)`.
  *
  * NOTE: In the DataTalk architecture the actual MCP /mcp JSON-RPC
- * exchange happens server-side (OpenCode ↔ backend).  The frontend
- * only sees the results streamed back through the chat channel.
- * Therefore this recorder inspects rendered UI state rather than
- * intercepting fetch.
+ * exchange happens server-side (OpenCode ↔ backend). The frontend only sees
+ * tool parts streamed back through the chat channel, so this recorder reads
+ * those rendered parts via the React-level tap.
  */
 export async function mountToolRecorder(page: Page) {
   // Register for future navigations
@@ -77,16 +78,20 @@ export async function mountToolRecorder(page: Page) {
     callsFor: async (tool: string): Promise<RecordedCall[]> =>
       page.evaluate(
         (t) =>
-          ((window as any).__mcpRecorder ?? []).filter(
-            (c: RecordedCall) => c.tool === t
+          ((window as unknown as { __mcpRecorder?: RecordedCall[] }).__mcpRecorder ?? []).filter(
+            (c: RecordedCall) => c.tool === t,
           ),
-        tool
+        tool,
       ),
     all: async (): Promise<RecordedCall[]> =>
-      page.evaluate(() => (window as any).__mcpRecorder ?? []),
+      page.evaluate(
+        () => (window as unknown as { __mcpRecorder?: RecordedCall[] }).__mcpRecorder ?? [],
+      ),
     clear: async (): Promise<void> => {
       await page.evaluate(() => {
-        ;(window as any).__mcpRecorder = []
+        const w = window as unknown as { __mcpRecorder?: RecordedCall[]; __mcpRecorderSeen?: Set<string> }
+        w.__mcpRecorder = []
+        w.__mcpRecorderSeen = new Set<string>()
       })
     },
   }
