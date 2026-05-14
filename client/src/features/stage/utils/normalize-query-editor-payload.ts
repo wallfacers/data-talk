@@ -46,7 +46,20 @@ export type NormalizedQueryEditorPayload = {
   database: string | null
   schema: string | null
   contextOverride: NormalizedQueryEditorContextOverride
+  /**
+   * @deprecated Derived UI value; toggle = boundSessionId === activeSessionId && contextOverride == null.
+   * Kept on the normalized shape so existing readers continue to compile during the migration. Future
+   * cleanups SHOULD remove all reads of this field; do NOT persist it back to storage as the source of
+   * truth.
+   */
   useSessionContext: boolean
+  /**
+   * Session this editor currently tracks for its execution context.
+   * `source = 'ai'`: updated on manual re-bind (user clicks the toggle ON).
+   * `source = 'user'`: fixed at creation to the originating session id, never re-bound.
+   * Null only for transient pre-hydrate payloads; the normalizer back-fills from `originSessionId` when omitted.
+   */
+  boundSessionId: string | null
 }
 
 const EMPTY_CONTEXT_SELECT_VALUE = '__empty__'
@@ -147,9 +160,9 @@ export function normalizeQueryEditorPayload(payload: unknown): NormalizedQueryEd
   const source = normalizeSource(value.source)
   const initialResult = normalizeResult(value.initialResult)
   const contextOverride = normalizeContextOverride(value.contextOverride)
-  const useSessionContext = typeof value.useSessionContext === 'boolean'
-    ? value.useSessionContext
-    : contextOverride == null
+  const boundSessionId = normalizeString(value.boundSessionId)
+    ?? normalizeString(value.originSessionId)
+  const useSessionContext = contextOverride == null
   const initialSql = typeof value.initialSql === 'string'
     ? value.initialSql
     : typeof value.content === 'string'
@@ -177,6 +190,7 @@ export function normalizeQueryEditorPayload(payload: unknown): NormalizedQueryEd
     schema: normalizeString(value.schema),
     contextOverride,
     useSessionContext,
+    boundSessionId,
   }
 }
 
@@ -239,6 +253,7 @@ export function isNormalizedQueryEditorPayload(payload: unknown): payload is Nor
     record.database === normalized.database &&
     record.schema === normalized.schema &&
     sameNormalizedContextOverride(record.contextOverride, normalized.contextOverride) &&
-    record.useSessionContext === normalized.useSessionContext
+    record.useSessionContext === normalized.useSessionContext &&
+    record.boundSessionId === normalized.boundSessionId
   )
 }

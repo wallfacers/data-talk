@@ -237,6 +237,16 @@ function updateQueryEditorPayloadContextOverride(
   })
 }
 
+function updateQueryEditorPayloadBoundSession(tabId: string, boundSessionId: string | null) {
+  useStageStore.getState().updateTabPayload(tabId, (payload) => {
+    const basePayload = isPlainObject(payload) ? payload : {}
+    return {
+      ...basePayload,
+      boundSessionId,
+    }
+  })
+}
+
 function resetTabExecutionState(tabId: string) {
   useSqlWorkbenchStore.getState().resetExecutionState(tabId)
 }
@@ -305,7 +315,14 @@ function resolveQueryEditorContexts(tabId: string, sessionIdOverride: string | n
   const sqlWorkbenchState = useSqlWorkbenchStore.getState()
   const tabState = sqlWorkbenchState.tabsById[tabId] ?? null
   const connectionState = useConnectionStore.getState()
-  const sessionId = sessionIdOverride ?? tab?.originSessionId ?? useSessionStore.getState().activeSessionId ?? null
+  const activeSessionId = useSessionStore.getState().activeSessionId ?? null
+  // Bound session: where the editor reads context from. Same rule for AI and user editors.
+  // Mutated only by manual re-bind (AI editor toggle ON) — switching active sessions does not change it.
+  const boundSessionId = tabState?.boundSessionId
+    ?? payload.boundSessionId
+    ?? tab?.originSessionId
+    ?? null
+  const sessionId = sessionIdOverride ?? boundSessionId ?? activeSessionId
   const sessionContext = sessionId
     ? useSessionStore.getState().dataContextBySession.get(sessionId) ?? null
     : null
@@ -316,7 +333,11 @@ function resolveQueryEditorContexts(tabId: string, sessionIdOverride: string | n
         schema: tabState.override.schema ?? null,
       }
     : payload.contextOverride
-  const useSessionContext = tabState?.useSessionContext ?? payload.useSessionContext
+  // Derived: an editor "uses session context" iff there is no override. This collapses what was previously
+  // a stored runtime flag into a single source of truth (override presence). The bound-vs-active distinction
+  // happens upstream when we pick `sessionId`; the resolver just needs to know whether to prefer the
+  // resolved session context over tab snapshots.
+  const useSessionContext = contextOverride == null
   const contextPayload = {
     connectionId: payload.connectionId ?? tab?.connectionId ?? null,
     connectionName: payload.connectionName ?? tab?.connectionName ?? null,
@@ -677,14 +698,19 @@ export function setQueryEditorContext(params: {
   const sqlWorkbenchStore = useSqlWorkbenchStore.getState()
 
   if (params.useSessionContext === true) {
+    // Manual ON / AI re-bind: bind this editor to the currently active session and clear any override.
+    // For source='user' editors this is a no-op semantically — the toolbar never exposes the toggle,
+    // so callers that reach this branch on a user editor (e.g., via the adapter) accept the re-bind.
+    const activeSessionId = useSessionStore.getState().activeSessionId ?? null
     stageStore.setQueryEditorContext(tabId, {
       connectionId: null,
       connectionName: null,
       database: null,
       schema: null,
     })
-    sqlWorkbenchStore.resetTabContext(tabId)
+    sqlWorkbenchStore.rebindToSession(tabId, activeSessionId)
     updateQueryEditorPayloadContextOverride(tabId, null, true)
+    updateQueryEditorPayloadBoundSession(tabId, activeSessionId)
     return
   }
 

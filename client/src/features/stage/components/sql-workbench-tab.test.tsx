@@ -409,6 +409,7 @@ describe('SqlWorkbenchTab', () => {
           savedSqlText: 'select 1;',
           limit: 100,
           useSessionContext: true,
+          boundSessionId: 'session-1',
           cursor: { line: 1, column: 1 },
         },
       },

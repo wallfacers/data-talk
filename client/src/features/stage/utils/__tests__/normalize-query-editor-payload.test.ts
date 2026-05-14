@@ -149,20 +149,49 @@ describe('normalizeQueryEditorPayload', () => {
     }).useSessionContext).toBe(true)
   })
 
-  it('migrates legacy context mode fields to useSessionContext', () => {
-    expect(normalizeQueryEditorPayload({
-      contextOverride: { connectionId: 'c1', database: 'db1', schema: null },
-    }).useSessionContext).toBe(false)
-
+  it('derives useSessionContext from contextOverride and ignores stored values', () => {
+    // No override → derived true regardless of stored flag
     expect(normalizeQueryEditorPayload({
       contextOverride: null,
-      contextPinMode: 'session',
+      useSessionContext: false,
     }).useSessionContext).toBe(true)
 
+    // Override present → derived false regardless of stored flag
     expect(normalizeQueryEditorPayload({
-      useSessionContext: false,
-      contextOverride: null,
+      contextOverride: { connectionId: 'c1', database: 'db1', schema: null },
+      useSessionContext: true,
     }).useSessionContext).toBe(false)
+
+    // Legacy useSessionContext: true with no override stays consistent
+    expect(normalizeQueryEditorPayload({
+      useSessionContext: true,
+      contextOverride: null,
+    }).useSessionContext).toBe(true)
+  })
+
+  it('back-fills boundSessionId from payload, then originSessionId', () => {
+    expect(normalizeQueryEditorPayload({
+      boundSessionId: 'sess-bound',
+      originSessionId: 'sess-origin',
+    }).boundSessionId).toBe('sess-bound')
+
+    expect(normalizeQueryEditorPayload({
+      originSessionId: 'sess-origin',
+    }).boundSessionId).toBe('sess-origin')
+
+    expect(normalizeQueryEditorPayload({}).boundSessionId).toBe(null)
+  })
+
+  it('migrates legacy payload (no boundSessionId, useSessionContext only) by back-filling from originSessionId', () => {
+    const legacy = {
+      sql: 'select 1',
+      source: 'ai',
+      useSessionContext: true,
+      originSessionId: 'sess-A',
+    }
+    const normalized = normalizeQueryEditorPayload(legacy)
+    expect(normalized.boundSessionId).toBe('sess-A')
+    expect(normalized.useSessionContext).toBe(true)
   })
 
   it('falls back to null for invalid contextOverride payloads', () => {

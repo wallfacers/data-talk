@@ -36,6 +36,18 @@ export type SqlContextToolbarControlsProps = {
   connections: SqlContextConnectionOption[]
   targets: SqlContextConnectionTargets | null
   limit: SqlLimitValue
+  /**
+   * Whether to render the "follow session" toggle widget.
+   * `true` for AI editors (source='ai'); `false` for user editors (source='user') which
+   * never re-bind and use the toolbar purely as direct connection/db/schema selection.
+   */
+  showSessionToggle?: boolean
+  /**
+   * When set, renders an inline mismatch badge "来自会话: <title>" next to the toggle,
+   * indicating the editor is tracking a different session than the active one.
+   * Only shown for AI editors when bound !== active and no orphan fallback is in effect.
+   */
+  mismatchBoundSessionTitle?: string | null
   onUseSessionContextChange: (value: boolean) => void
   onConnectionChange: (connectionId: string) => void
   onDatabaseChange: (database: string | null) => void
@@ -90,6 +102,8 @@ export function SqlContextToolbarControls({
   connections,
   targets,
   limit,
+  showSessionToggle = true,
+  mismatchBoundSessionTitle = null,
   onUseSessionContextChange,
   onConnectionChange,
   onDatabaseChange,
@@ -135,32 +149,54 @@ export function SqlContextToolbarControls({
     })
   }
 
+  // Selects are disabled only when (a) the toggle is visible and currently ON.
+  // For user editors (showSessionToggle=false), selects are always enabled because the editor
+  // operates purely on its own overrides — there is no "follow session" mode to gate against.
+  const selectsDisabled = showSessionToggle && useSessionContext
+
   return (
     <div
       data-testid="sql-context-toolbar-controls"
       className="flex flex-wrap items-center justify-end gap-2"
     >
-      <Tooltip>
-        <TooltipTrigger render={
-          <div className="flex h-7 items-center rounded-md border border-border/60 px-2">
-            <span className="sr-only">{t('stage.context.toolbar.useSession')}</span>
-            <Switch
-              size="sm"
-              checked={useSessionContext}
-              onCheckedChange={(value) => onUseSessionContextChange(value)}
-              aria-label={t('stage.context.toolbar.useSession')}
-            />
-          </div>
-        } />
-        <TooltipContent side="bottom" sideOffset={4}>
-          {t('stage.context.toolbar.useSession')}
-        </TooltipContent>
-      </Tooltip>
+      {showSessionToggle ? (
+        <Tooltip>
+          <TooltipTrigger render={
+            <div className="flex h-7 items-center rounded-md border border-border/60 px-2">
+              <span className="sr-only">{t('stage.context.toolbar.useSession')}</span>
+              <Switch
+                size="sm"
+                data-testid="sql-context-session-toggle"
+                checked={useSessionContext}
+                onCheckedChange={(value) => onUseSessionContextChange(value)}
+                aria-label={t('stage.context.toolbar.useSession')}
+              />
+            </div>
+          } />
+          <TooltipContent side="bottom" sideOffset={4}>
+            {t('stage.context.toolbar.useSession')}
+          </TooltipContent>
+        </Tooltip>
+      ) : null}
+
+      {mismatchBoundSessionTitle ? (
+        <span
+          data-testid="sql-context-mismatch-badge"
+          className="flex h-7 max-w-[14rem] items-center gap-1 px-1 text-xs"
+        >
+          <span className="text-muted-foreground">
+            {t('stage.queryEditor.fromSession')}
+          </span>
+          <span className="truncate text-foreground" title={mismatchBoundSessionTitle}>
+            {mismatchBoundSessionTitle}
+          </span>
+        </span>
+      ) : null}
 
       <ToolbarSelectFrame label={t('stage.context.field.connection')}>
         <Select
           value={connectionValue}
-          disabled={useSessionContext}
+          disabled={selectsDisabled}
           onOpenChange={refreshConnectionsOnOpen}
           onValueChange={(value) => {
             const connectionId = normalizeValue(value)
@@ -192,7 +228,7 @@ export function SqlContextToolbarControls({
       <ToolbarSelectFrame label={t('stage.context.field.database')}>
         <Select
           value={toSelectValue(context?.database)}
-          disabled={useSessionContext}
+          disabled={selectsDisabled}
           onOpenChange={refreshTargetsOnOpen}
           onValueChange={(value) => onDatabaseChange(fromSelectValue(value))}
         >

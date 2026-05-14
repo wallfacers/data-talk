@@ -79,12 +79,23 @@ export type SqlWorkbenchTabState = {
   history: HistoryEntry[]
   savedSqlText: string
   limit: 10 | 100 | 1000 | null
+  /**
+   * @deprecated UI-derived value; equals (boundSessionId === activeSessionId && override == null) for AI editors,
+   * and effectively `override == null` for user editors. Retained on the store for backward-compatible reads
+   * during the migration. Mutators no longer treat it as the source of truth — they update `override` and
+   * `boundSessionId` directly.
+   */
   useSessionContext: boolean
+  /**
+   * Session this editor currently tracks. Updated by `rebindToActiveSession` (manual ON).
+   * Null only for transient pre-hydrate states; the workbench tab back-fills from payload or origin.
+   */
+  boundSessionId: string | null
   cursor: { line: number; column: number }
 }
 
-type EnsureTabInput = Partial<Pick<SqlWorkbenchTabState, 'sqlText' | 'source' | 'useSessionContext'>>
-type HydrateTabInput = Pick<SqlWorkbenchTabState, 'sqlText' | 'source' | 'useSessionContext'>
+type EnsureTabInput = Partial<Pick<SqlWorkbenchTabState, 'sqlText' | 'source' | 'useSessionContext' | 'boundSessionId'>>
+type HydrateTabInput = Pick<SqlWorkbenchTabState, 'sqlText' | 'source' | 'useSessionContext' | 'boundSessionId'>
 
 type SqlWorkbenchState = {
   tabsById: Record<string, SqlWorkbenchTabState>
@@ -107,6 +118,7 @@ type SqlWorkbenchState = {
   setError: (tabId: string, message: string, result?: SqlExecuteResultItem | null) => void
   setTabContext: (tabId: string, ctx: Omit<TabContextOverride, 'setAt'>) => void
   resetTabContext: (tabId: string) => void
+  rebindToSession: (tabId: string, sessionId: string | null) => void
   appendHistoryEntry: (tabId: string, entry: HistoryEntry) => void
   clearHistory: (tabId: string) => void
   markSaved: (tabId: string) => void
@@ -137,6 +149,7 @@ function createDefaultTabState(initial?: EnsureTabInput): SqlWorkbenchTabState {
     savedSqlText: initialSqlText,
     limit: 100,
     useSessionContext: initial?.useSessionContext ?? true,
+    boundSessionId: initial?.boundSessionId ?? null,
     cursor: { line: 1, column: 1 },
   }
 }
@@ -276,12 +289,14 @@ export const useSqlWorkbenchStore = create<SqlWorkbenchState>((set, get) => ({
       savedSqlText: snapshot.sqlText,
       source: snapshot.source,
       useSessionContext: snapshot.useSessionContext,
+      boundSessionId: snapshot.boundSessionId,
     }
     if (
       next.sqlText === current.sqlText
       && next.savedSqlText === current.savedSqlText
       && next.source === current.source
       && next.useSessionContext === current.useSessionContext
+      && next.boundSessionId === current.boundSessionId
     ) {
       return state
     }
@@ -571,6 +586,18 @@ export const useSqlWorkbenchStore = create<SqlWorkbenchState>((set, get) => ({
       ...state.tabsById,
       [tabId]: {
         ...ensureTabState(state.tabsById, tabId),
+        override: null,
+        useSessionContext: true,
+      },
+    },
+  })),
+
+  rebindToSession: (tabId, sessionId) => set((state) => ({
+    tabsById: {
+      ...state.tabsById,
+      [tabId]: {
+        ...ensureTabState(state.tabsById, tabId),
+        boundSessionId: sessionId,
         override: null,
         useSessionContext: true,
       },

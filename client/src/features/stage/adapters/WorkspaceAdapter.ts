@@ -353,6 +353,9 @@ export class WorkspaceAdapter implements UIObject {
               contextSource: 'session' | 'override' | 'tab'
               contextOverride: unknown
               limit: 10 | 100 | 1000 | null
+              source: 'user' | 'ai'
+              boundSessionId: string | null
+              isMismatched: boolean
             }
 
             return {
@@ -367,6 +370,9 @@ export class WorkspaceAdapter implements UIObject {
               contextSource: queryEditorState.contextSource,
               contextOverride: queryEditorState.contextOverride,
               limit: queryEditorState.limit,
+              source: queryEditorState.source,
+              boundSessionId: queryEditorState.boundSessionId,
+              isMismatched: queryEditorState.isMismatched,
             }
           }),
           activeTabId: store.activeTabId,

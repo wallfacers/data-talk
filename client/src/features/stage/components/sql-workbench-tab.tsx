@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { useShallow } from 'zustand/react/shallow'
+import { toast } from 'sonner'
 import type { StageTab } from '@/stores/stage-store'
 import { useSessionStore } from '@/stores/session-store'
 import { useConnectionStore } from '@/features/connection/store'
 import { useSessionDataContext } from '@/features/session/hooks/use-session-data-context'
+import { useSessions } from '@/features/session/hooks/use-sessions'
 import { cn } from '@/lib/utils'
 import { listConnections, getConnectionTargets } from '@/services/api/connection'
 import { resolveTabDataContext } from '@/features/stage/utils/resolve-tab-data-context'
@@ -213,8 +215,36 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     })),
   )
   const activeSessionId = useSessionStore((state) => state.activeSessionId)
-  const contextSessionId = tab.originSessionId ?? activeSessionId ?? null
+  // boundSessionId is the session this editor tracks for context resolution.
+  // Both AI and user editors read from bound; only AI editors permit re-binding via the toggle.
+  // Fallback chain: runtime store override → payload → originSessionId (set at creation) → active.
+  const effectiveBoundSessionId = useSqlWorkbenchStore((state) =>
+    state.tabsById[tab.tabId]?.boundSessionId,
+  ) ?? payload.boundSessionId ?? tab.originSessionId ?? null
+  // Sessions list (cached by React Query) drives orphan detection and badge title lookup.
+  // We don't need it to be perfectly fresh; if the cache is empty, orphan check is deferred.
+  const sessionsQuery = useSessions('all')
+  const boundSession = useMemo(() => {
+    if (effectiveBoundSessionId == null) return null
+    return sessionsQuery.data?.find((session) => session.id === effectiveBoundSessionId) ?? null
+  }, [sessionsQuery.data, effectiveBoundSessionId])
+  // Orphan: we have a bound id but the session is known not to exist in the cache.
+  // Guard against the unloaded state (sessionsQuery.data == null) so we don't false-positive on initial render.
+  const isOrphanedBoundSession = effectiveBoundSessionId != null
+    && sessionsQuery.data != null
+    && boundSession == null
+  const contextSessionId = isOrphanedBoundSession
+    ? activeSessionId
+    : (effectiveBoundSessionId ?? activeSessionId ?? null)
   const sessionDataContext = useSessionDataContext(contextSessionId)
+  // Show a one-time toast when the bound session disappears (Group 6 orphan handling).
+  const orphanToastedRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!isOrphanedBoundSession || effectiveBoundSessionId == null) return
+    if (orphanToastedRef.current === effectiveBoundSessionId) return
+    orphanToastedRef.current = effectiveBoundSessionId
+    toast.info(t('stage.queryEditor.boundSessionMissing'))
+  }, [isOrphanedBoundSession, effectiveBoundSessionId, t])
 
   const {
     ensureTab,
@@ -249,7 +279,20 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
         schema: tabState.override.schema ?? null,
       }
     : payload.contextOverride
-  const useSessionContext = actualTabState?.useSessionContext ?? payload.useSessionContext
+  // Derived toggle state: ON iff bound session matches active and no override is configured.
+  // Stored useSessionContext is kept readable on legacy payloads but no longer the source of truth.
+  const hasOverride = runtimeContextOverride != null
+  const useSessionContext = effectiveBoundSessionId != null
+    && effectiveBoundSessionId === activeSessionId
+    && !hasOverride
+  // Mismatch badge: shown only for AI editors when bound !== active and the bound session still exists.
+  // For orphaned bound sessions, the toast (above) handles the user notification instead.
+  const mismatchBoundSessionTitle = payload.source === 'ai'
+    && effectiveBoundSessionId != null
+    && effectiveBoundSessionId !== activeSessionId
+    && !isOrphanedBoundSession
+    ? boundSession?.title ?? null
+    : null
   const resolvedContext = resolveTabDataContext(
     {
       originSessionId: contextSessionId,
@@ -710,6 +753,8 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
                 connections={contextConnectionOptions}
                 targets={effectiveContext.connectionId ? connectionTargetsByConnectionId[effectiveContext.connectionId] ?? null : null}
                 limit={tabState.limit}
+                showSessionToggle={payload.source === 'ai'}
+                mismatchBoundSessionTitle={mismatchBoundSessionTitle}
                 onUseSessionContextChange={handleUseSessionContextChange}
                 onConnectionChange={handleConnectionChange}
                 onDatabaseChange={handleDatabaseChange}

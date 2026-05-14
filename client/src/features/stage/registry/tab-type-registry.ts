@@ -46,6 +46,7 @@ export const TAB_TYPE_REGISTRY: Record<string, TabTypeDescriptor> = {
         sqlText: typeof o?.sqlText === 'string' ? o.sqlText : '',
         source: normalizedPayload.source,
         useSessionContext: normalizedPayload.useSessionContext,
+        boundSessionId: normalizedPayload.boundSessionId,
       })
     },
   },

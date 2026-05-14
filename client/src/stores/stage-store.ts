@@ -644,6 +644,7 @@ export const useStageStore = create<StageState>((set, get) => ({
       sqlText: input.initialContent ?? '',
       source: payload.source,
       useSessionContext: payload.useSessionContext,
+      boundSessionId: openContext.originSessionId ?? null,
     })
     return { tabId, created: true }
   },

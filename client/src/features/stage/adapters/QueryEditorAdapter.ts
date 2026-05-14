@@ -249,6 +249,15 @@ export class QueryEditorAdapter implements UIObject {
       schema: resolvedContext.schema,
     }
 
+    const boundSessionId = workbenchTab?.boundSessionId
+      ?? payload.boundSessionId
+      ?? tab?.originSessionId
+      ?? null
+    const activeSessionId = useSessionStore.getState().activeSessionId ?? null
+    const isMismatched = payload.source === 'ai'
+      && boundSessionId != null
+      && boundSessionId !== activeSessionId
+
     return {
       tab,
       payload,
@@ -257,11 +266,13 @@ export class QueryEditorAdapter implements UIObject {
       effectiveContext,
       contextSource: resolvedContext.contextSource,
       useSessionContext: resolvedContext.useSessionContext,
+      boundSessionId,
+      isMismatched,
     }
   }
 
   read(mode: 'state' | 'schema' | 'actions' | 'full'): unknown {
-    const { tab, payload, workbenchTab, hydratedOverride, effectiveContext, contextSource, useSessionContext } = this.getResolvedState()
+    const { tab, payload, workbenchTab, hydratedOverride, effectiveContext, contextSource, useSessionContext, boundSessionId, isMismatched } = this.getResolvedState()
     const fallbackResults = payload.lastRun
       ? [{
           resultId: 'last-run',
@@ -288,6 +299,9 @@ export class QueryEditorAdapter implements UIObject {
       useSessionContext,
       contextSource,
       contextOverride: hydratedOverride,
+      source: payload.source,
+      boundSessionId,
+      isMismatched,
       availableDatabases: availableDatabases(effectiveContext.connectionId, effectiveContext.database),
       availableSchemas: availableSchemas(effectiveContext.schema),
       entryMode: payload.entryMode,
@@ -323,6 +337,9 @@ export class QueryEditorAdapter implements UIObject {
             useSessionContext: { type: 'boolean' },
             contextSource: { type: 'string' },
             contextOverride: { type: ['object', 'null'] },
+            source: { type: 'string', enum: ['user', 'ai'] },
+            boundSessionId: { type: ['string', 'null'] },
+            isMismatched: { type: 'boolean' },
             availableDatabases: { type: 'array' },
             availableSchemas: { type: 'array' },
             entryMode: { type: 'string' },
@@ -495,6 +512,15 @@ export class QueryEditorAdapter implements UIObject {
           useSqlWorkbenchStore.getState().setLimit(this.objectId, p.limit)
         }
         if (hasMode || hasConnectionField) {
+          // Source gate: user-opened editors are pinned to their originating session.
+          // AI cannot "follow current session" them — useSessionContext=true is a no-op (returns success
+          // for idempotency). AI can still override their connection/database/schema (passes through below).
+          if (p.useSessionContext === true && !hasConnectionField) {
+            const sourceCheck = normalizeQueryEditorPayload(tab?.payload).source
+            if (sourceCheck === 'user') {
+              return { success: true, data: { noop: true, reason: 'source=user editor cannot follow session' } }
+            }
+          }
           setQueryEditorContext({
             tabId: this.objectId,
             useSessionContext: p.useSessionContext,
