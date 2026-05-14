@@ -59,7 +59,12 @@ public final class JdbcResultValueNormalizer {
         }
         // Temporal types — normalize to user timezone
         if (userZoneId != null && dateFormat != null) {
-            DateTimeFormatter fmt = DateTimeFormatter.ofPattern(dateFormat);
+            DateTimeFormatter fmt;
+            try {
+                fmt = DateTimeFormatter.ofPattern(dateFormat);
+            } catch (IllegalArgumentException ignored) {
+                fmt = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+            }
             // java.sql.Timestamp (extends java.util.Date — check before Date)
             if (value instanceof java.sql.Timestamp ts) {
                 return ZonedDateTime.ofInstant(ts.toInstant(), userZoneId).format(fmt);

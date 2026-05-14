@@ -85,6 +85,7 @@ export function GeneralSettingsPanel({
 }: GeneralPanelProps) {
   const { t } = useI18n()
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [dateFormatError, setDateFormatError] = useState<string | undefined>()
   const autoExpandReasoning = useUISettingsStore((s) => s.autoExpandReasoning)
   const setAutoExpandReasoning = useUISettingsStore((s) => s.setAutoExpandReasoning)
   const splitResizable = useUISettingsStore((s) => s.splitResizable)
@@ -119,7 +120,14 @@ export function GeneralSettingsPanel({
       if (context?.snapshot) {
         queryClient.setQueryData(preferencesQueryKey, context.snapshot)
       }
+      if (_patch.dateFormat !== undefined) {
+        const data = (_err as any)?.data as { error?: string } | undefined
+        setDateFormatError(data?.error ?? t('general.dateFormatInvalid'))
+      }
       toast.error(t('general.sessions.clearAllError'))
+    },
+    onSuccess: () => {
+      setDateFormatError(undefined)
     },
   })
   const timezone = prefs?.timezone ?? 'UTC'
@@ -202,6 +210,7 @@ export function GeneralSettingsPanel({
         <DateFormatSelector
           value={dateFormat}
           onChange={(v) => prefsMutation.mutate({ dateFormat: v })}
+          error={dateFormatError}
         />
       </div>
 

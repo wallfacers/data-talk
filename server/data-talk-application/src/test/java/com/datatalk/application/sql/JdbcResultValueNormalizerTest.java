@@ -402,4 +402,12 @@ class JdbcResultValueNormalizerTest {
         Object result = JdbcResultValueNormalizer.normalize(ts);
         assertThat(result).isInstanceOf(Timestamp.class);
     }
+
+    @Test
+    void invalid_date_format_falls_back_to_iso() {
+        LocalDateTime ldt = LocalDateTime.of(2025, 6, 15, 16, 0, 0);
+        ZoneId shanghai = ZoneId.of("Asia/Shanghai");
+        Object result = JdbcResultValueNormalizer.normalize(ldt, Types.TIMESTAMP, shanghai, "!!invalid!!");
+        assertThat(result).isEqualTo("2025-06-15T16:00:00");
+    }
 }

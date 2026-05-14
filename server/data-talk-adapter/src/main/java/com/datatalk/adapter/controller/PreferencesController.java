@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.DateTimeException;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 
 @RestController
 public class PreferencesController {
@@ -44,6 +45,12 @@ public class PreferencesController {
             current = service.updateTimeZone(newTimezone);
         }
         if (newDateFormat != null && !newDateFormat.isBlank()) {
+            try {
+                DateTimeFormatter.ofPattern(newDateFormat);
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest()
+                    .body(new ErrorResponse("Invalid date format pattern: " + newDateFormat));
+            }
             current = service.updateDateFormat(newDateFormat);
         }
         return ResponseEntity.ok(new UserPreferencesResponse(

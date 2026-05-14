@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
@@ -14,13 +14,15 @@ type Mode = 'preset' | 'custom'
 interface DateFormatSelectorProps {
   value: string
   onChange: (value: string) => void
+  error?: string
 }
 
-export function DateFormatSelector({ value, onChange }: DateFormatSelectorProps) {
+export function DateFormatSelector({ value, onChange, error }: DateFormatSelectorProps) {
   const customInputId = useId()
   const isPreset = DATE_FORMAT_PRESETS.some((p) => p.value === value)
   const [mode, setMode] = useState<Mode>(isPreset ? 'preset' : 'custom')
   const [customValue, setCustomValue] = useState(isPreset ? '' : value)
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(null)
 
   useEffect(() => {
     if (isPreset) {
@@ -30,6 +32,10 @@ export function DateFormatSelector({ value, onChange }: DateFormatSelectorProps)
       setCustomValue(value)
     }
   }, [isPreset, value])
+
+  useEffect(() => () => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+  }, [])
 
   return (
     <div className="space-y-2">
@@ -75,12 +81,15 @@ export function DateFormatSelector({ value, onChange }: DateFormatSelectorProps)
             id={customInputId}
             value={mode === 'custom' && !isPreset ? value : customValue}
             onChange={(e) => {
-              setCustomValue(e.target.value)
-              onChange(e.target.value)
+              const v = e.target.value
+              setCustomValue(v)
+              if (debounceRef.current) clearTimeout(debounceRef.current)
+              debounceRef.current = setTimeout(() => onChange(v), 500)
             }}
             placeholder="yyyy-MM-dd HH:mm:ss"
             className="h-9 w-60 font-mono text-sm"
           />
+          {error && <p className="text-destructive text-xs mt-1">{error}</p>}
         </div>
       )}
     </div>

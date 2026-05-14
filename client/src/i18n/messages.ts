@@ -57,6 +57,7 @@ const MESSAGES = {
     'general.timezone': '时区',
     'general.timezoneDesc': 'SQL 查询结果中的时间字段将按所选时区显示',
     'general.dateFormat': '日期格式',
+    'general.dateFormatInvalid': '无效的日期格式',
 
     'providers.title': '提供商',
     'providers.connected': '已连接的提供商',
@@ -949,6 +950,7 @@ const MESSAGES = {
     'general.timezone': 'Timezone',
     'general.timezoneDesc': 'Time fields in SQL query results will be displayed in the selected timezone',
     'general.dateFormat': 'Date Format',
+    'general.dateFormatInvalid': 'Invalid date format',
 
     'providers.title': 'Providers',
     'providers.connected': 'Connected Providers',

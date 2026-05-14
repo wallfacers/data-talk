@@ -84,6 +84,30 @@ class PreferencesControllerTest {
     }
 
     @Test
+    void putPreferences_invalidDateFormat_returns400() throws Exception {
+        when(service.getPreferences()).thenReturn(UserPreferences.DEFAULT);
+
+        mvc.perform(put("/api/preferences")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"dateFormat\":\"'unclosed\"}"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error").value("Invalid date format pattern: 'unclosed"));
+    }
+
+    @Test
+    void putPreferences_validDateFormatWithMillis_succeeds() throws Exception {
+        when(service.updateDateFormat("yyyy-MM-dd HH:mm:ss.SSS")).thenReturn(
+            new UserPreferences("default", ZoneId.of("UTC"), "yyyy-MM-dd HH:mm:ss.SSS", 1000L));
+
+        mvc.perform(put("/api/preferences")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"dateFormat\":\"yyyy-MM-dd HH:mm:ss.SSS\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.timezone").value("UTC"))
+            .andExpect(jsonPath("$.dateFormat").value("yyyy-MM-dd HH:mm:ss.SSS"));
+    }
+
+    @Test
     void putPreferences_emptyBody_returns200NoChanges() throws Exception {
         when(service.getPreferences()).thenReturn(UserPreferences.DEFAULT);
 
