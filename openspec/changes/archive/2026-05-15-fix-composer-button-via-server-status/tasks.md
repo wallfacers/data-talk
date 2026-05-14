@@ -31,5 +31,5 @@
 
 - [x] 4.1 更新 `docs/bugs/BUG-0046-*.md` 状态为 `fixed`，回填 `fixCommit`（提交后回填实际 SHA）。
 - [x] 4.2 更新 `docs/bugs/index.md`：把 BUG-0046 行从 Open BUGs 移到 In Progress（status=fixed）。
-- [ ] 4.3 `git status` 检查后提交单一 commit。
-- [ ] 4.4 `/opsx:archive fix-composer-button-via-server-status`。
+- [x] 4.3 `git status` 检查后提交（2bc199f1 主修复 + 4d68295e 回填 SHA）。
+- [x] 4.4 `/opsx:archive fix-composer-button-via-server-status`。
