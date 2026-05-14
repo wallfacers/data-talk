@@ -2,11 +2,11 @@
 
 ### Requirement: Connection default database fallback on context-override write
 
-When a SQL editor's `contextOverride` is written with a `connectionId` and the `database` field is **unspecified** (i.e., the caller's input omits the field or sets it to `undefined`), the system SHALL substitute the target `Connection`'s configured `databaseName` for `database` before persisting. When the caller specifies `database` explicitly (including `null`), the system SHALL persist the caller's value as-is.
+When a SQL editor's `contextOverride` is written with a `connectionId` and the `database` field is **unspecified** (caller passes `undefined` / omits the field), the system SHALL substitute the target `Connection`'s configured `databaseName` for `database` before persisting. When the caller specifies `database` explicitly (including `null`), the system SHALL persist the caller's value as-is.
 
 #### Scenario: User opens new SQL editor with a connection that has a default database
 - **GIVEN** a Connection `A` with `databaseName = "analytics"` configured in settings
-- **WHEN** the user opens a new SQL editor (toolbar "+" or empty-state button) and the open input specifies `connectionId = "A"` with no `database` field
+- **WHEN** the user opens a new SQL editor (toolbar `+` or empty-state button) and the open input specifies `connectionId = "A"` with no `database` field
 - **THEN** the resulting `contextOverride.database` MUST be `"analytics"`
 
 #### Scenario: User opens new SQL editor with a connection that has no default database
@@ -36,6 +36,48 @@ When a SQL editor's `contextOverride` is written with a `connectionId` and the `
 - **THEN** the call MUST succeed (the schema guard MUST evaluate `database` after fallback substitution, not against the prior `null`)
 - **AND** the editor's `contextOverride` MUST become `{ connectionId: "B", database: "warehouse", schema: "public" }`
 
+### Requirement: Chat-driven "Run SQL" path honors connection default
+
+When the user clicks the "Run SQL" button on a SQL code block in the AI chat, the resulting query editor SHALL receive `database` from the **session's current `dataContext.database` if non-null**, otherwise from the **target Connection's `databaseName`**, otherwise `null`. The same priority applies to the AI `execute_sql` tool renderer that opens a query editor.
+
+#### Scenario: Chat "Run SQL" with session that already has a database
+- **GIVEN** the current session's `dataContext = { connectionId: "A", database: "analytics", schema: null }`
+- **WHEN** the user clicks "Run SQL" on a code block
+- **THEN** the opened editor's `contextOverride.database` MUST be `"analytics"`
+
+#### Scenario: Chat "Run SQL" with session that has connection but no database
+- **GIVEN** the current session's `dataContext = { connectionId: "A", database: null, schema: null }`
+- **AND** Connection `A` has `databaseName = "analytics"`
+- **WHEN** the user clicks "Run SQL" on a code block
+- **THEN** the opened editor's `contextOverride.database` MUST be `"analytics"` (connection default applied)
+
+#### Scenario: Chat "Run SQL" with connection that has no default
+- **GIVEN** the current session's `dataContext = { connectionId: "B", database: null, schema: null }`
+- **AND** Connection `B` has `databaseName = null`
+- **WHEN** the user clicks "Run SQL" on a code block
+- **THEN** the opened editor's `contextOverride.database` MUST be `null`
+
+#### Scenario: Chat execute_sql tool renderer opens query editor
+- **GIVEN** the AI emitted an `execute_sql` tool message and the current session has `dataContext = { connectionId: "A", database: null }` while Connection `A` has `databaseName = "analytics"`
+- **WHEN** the user clicks the renderer's "Open in query editor" button
+- **THEN** the opened editor's `contextOverride.database` MUST be `"analytics"`
+
+### Requirement: ER designer DDL handoff honors connection default
+
+When the ER designer generates DDL and opens it in a query editor, if the user did not pick a `targetDatabase` for the DDL (or picked nothing), the opened editor SHALL receive `database` from the target Connection's `databaseName`. When the user explicitly chose a target database, that value SHALL be preserved.
+
+#### Scenario: ER designer with explicit target database
+- **GIVEN** an ER designer draft with `targetConnectionId = "A"`, `targetDatabase = "staging"`
+- **AND** Connection `A` has `databaseName = "analytics"`
+- **WHEN** the user generates DDL and clicks "Open in query editor"
+- **THEN** the opened editor's `contextOverride.database` MUST be `"staging"` (user's explicit choice wins)
+
+#### Scenario: ER designer without target database falls back to connection default
+- **GIVEN** an ER designer draft with `targetConnectionId = "A"`, `targetDatabase = null`
+- **AND** Connection `A` has `databaseName = "analytics"`
+- **WHEN** the user generates DDL and clicks "Open in query editor"
+- **THEN** the opened editor's `contextOverride.database` MUST be `"analytics"` (connection default applied)
+
 ### Requirement: Re-seed database on connection change
 
 When `setQueryEditorContext` is called with a `connectionId` that differs from the editor's current `connectionId` AND the patch does not specify `database`, the system SHALL re-seed `database` from the new connection's `databaseName`. The previous database value SHALL NOT be carried over.
@@ -43,7 +85,7 @@ When `setQueryEditorContext` is called with a `connectionId` that differs from t
 #### Scenario: User switches the connection in the toolbar dropdown
 - **GIVEN** an editor currently bound to Connection `A` (`databaseName = "analytics"`) with `contextOverride.database = "analytics"`
 - **AND** a Connection `B` exists with `databaseName = "warehouse"`
-- **WHEN** the user picks `B` in the connection dropdown (and the dropdown's onChange omits `database`)
+- **WHEN** the user picks `B` in the connection dropdown (dropdown's onChange omits `database`)
 - **THEN** the editor's `contextOverride.database` MUST become `"warehouse"`
 
 #### Scenario: User switches to a connection without a default database
@@ -63,7 +105,7 @@ When the caller writes `database: null` explicitly (e.g., user picks the empty o
 
 #### Scenario: User picks "无 / None" in the database dropdown
 - **GIVEN** an editor bound to Connection `A` (`databaseName = "analytics"`) with `contextOverride.database = "analytics"`
-- **WHEN** the user picks the empty option in the database dropdown (toolbar emits `setQueryEditorContext({ database: null })`)
+- **WHEN** the user picks the empty option (toolbar emits `setQueryEditorContext({ database: null })`)
 - **THEN** the editor's `contextOverride.database` MUST be `null`
 - **AND** the value MUST remain `null` until the user makes another explicit change
 
