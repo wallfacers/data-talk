@@ -597,6 +597,11 @@ const MESSAGES = {
     'stage.result.error.default': 'SQL 执行失败',
     'stage.result.error.askAi': '问 AI',
     'stage.result.error.askAiTitle': 'SQL 执行报错',
+    'stage.result.error.messageSource': '消息来源：查询编辑器 Tab「{tabTitle}」',
+    'stage.result.error.availableDatabases': '该连接可用的数据库',
+    'stage.result.error.availableSchemas': '该连接可用的 Schema',
+    'stage.result.error.guidance': '请在{tabTitle} Tab 的工具栏中设置 database 和 schema。点击连接名称右侧的下拉框即可选择。',
+    'stage.result.error.guidanceNoTab': '请在对应该 Tab 的工具栏中设置 database 和 schema。点击连接名称右侧的下拉框即可选择。',
 
     'stage.tabBar.addNew': '新建工作位',
     'stage.tabBar.addNew.menu.sql': 'SQL 编辑器',
@@ -1495,6 +1500,11 @@ const MESSAGES = {
     'stage.result.error.default': 'SQL execution failed',
     'stage.result.error.askAi': 'Ask AI',
     'stage.result.error.askAiTitle': 'SQL Execution Error',
+    'stage.result.error.messageSource': 'Message source: Query Editor Tab "{tabTitle}"',
+    'stage.result.error.availableDatabases': 'Available databases for this connection',
+    'stage.result.error.availableSchemas': 'Available schemas for this connection',
+    'stage.result.error.guidance': 'Please set database and schema in the "{tabTitle}" tab toolbar. Click the dropdown next to the connection name to select.',
+    'stage.result.error.guidanceNoTab': 'Please set database and schema in the corresponding tab toolbar. Click the dropdown next to the connection name to select.',
 
     'stage.tabBar.addNew': 'New workspace tool',
     'stage.tabBar.addNew.menu.sql': 'SQL editor',

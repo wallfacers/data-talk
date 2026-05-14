@@ -18,6 +18,9 @@ type SqlResultPanelProps = {
   database?: string | null
   schema?: string | null
   connectionId?: string | null
+  tabTitle?: string | null
+  availableDatabases?: string[] | null
+  availableSchemas?: string[] | null
 }
 
 export function SqlResultPanel({
@@ -32,6 +35,9 @@ export function SqlResultPanel({
   database,
   schema,
   connectionId,
+  tabTitle,
+  availableDatabases,
+  availableSchemas,
 }: SqlResultPanelProps) {
   const { t } = useI18n()
 
@@ -65,6 +71,9 @@ export function SqlResultPanel({
           database={database}
           schema={schema}
           connectionId={connectionId}
+          tabTitle={tabTitle}
+          availableDatabases={availableDatabases}
+          availableSchemas={availableSchemas}
         />
       )
     }
@@ -89,6 +98,9 @@ export function SqlResultPanel({
         database={database}
         schema={schema}
         connectionId={connectionId}
+        tabTitle={tabTitle}
+        availableDatabases={availableDatabases}
+        availableSchemas={availableSchemas}
       />
     )
   }

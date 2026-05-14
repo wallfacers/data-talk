@@ -13,6 +13,9 @@ type SqlErrorResultPanelProps = {
   database?: string | null
   schema?: string | null
   connectionId?: string | null
+  tabTitle?: string | null
+  availableDatabases?: string[] | null
+  availableSchemas?: string[] | null
 }
 
 export function SqlErrorResultPanel({
@@ -22,6 +25,9 @@ export function SqlErrorResultPanel({
   database,
   schema,
   connectionId,
+  tabTitle,
+  availableDatabases,
+  availableSchemas,
 }: SqlErrorResultPanelProps) {
   const { t } = useI18n()
   const markdown = result.errorMessage ?? t('stage.result.error.default')
@@ -34,6 +40,9 @@ export function SqlErrorResultPanel({
     schema,
     statementText: result.statementText || undefined,
     errorMessage: result.errorMessage ?? undefined,
+    tabTitle,
+    availableDatabases,
+    availableSchemas,
   }
 
   const { askAI, isAvailable } = useAskAIAboutError(errorContext)

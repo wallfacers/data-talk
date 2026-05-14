@@ -845,6 +845,9 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
                     database={resolvedContext.database}
                     schema={resolvedContext.schema}
                     connectionId={resolvedContext.connectionId}
+                    tabTitle={tab.title}
+                    availableDatabases={effectiveContext.connectionId ? connectionTargetsByConnectionId[effectiveContext.connectionId]?.databases ?? null : null}
+                    availableSchemas={effectiveContext.connectionId ? connectionTargetsByConnectionId[effectiveContext.connectionId]?.schemas ?? null : null}
                   />
                 </div>
               </div>
