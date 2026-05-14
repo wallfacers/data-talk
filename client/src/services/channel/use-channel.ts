@@ -519,16 +519,28 @@ export function useChannel() {
       // 发送消息后刷新会话列表，让 hasEverSent 更新
       invalidateSessionLists(queryClient)
       const sink = buildEventSink(sessionId, client, queryClient, connectionId, pendingId)
+      // BUG-0046: clearing streamingBySession in a finally racing with a Ctrl+R
+      // navigation abort would synchronously flip the composer back to "send"
+      // mid-turn (BUG-0037's sync sessionStorage write makes this deterministic).
+      // Use the `connected` SSE frame to distinguish pre-stream failures (clear
+      // streaming) from post-stream aborts (leave streaming on; the long-lived
+      // GET subscribe sink will observe the eventual session.idle).
+      let streamOpened = false
+      const guardedSink: typeof sink = (evt) => {
+        if (!streamOpened && evt.event === 'connected') streamOpened = true
+        sink(evt)
+      }
       try {
-        await client.sendMessage(parts, sink)
+        await client.sendMessage(parts, guardedSink)
         return true
       } catch (err) {
+        if (!streamOpened) {
+          useChatPartsStore.getState().setStreaming(sessionId, false)
+        }
         const msg = err instanceof Error ? err.message : String(err)
         useChatPartsStore.getState().markPendingUserFailed(sessionId, pendingId, msg)
         showErrorToast(normalizeError(err))
         return false
-      } finally {
-        useChatPartsStore.getState().setStreaming(sessionId, false)
       }
     },
     [client, sessionId, enterSplit, markSessionSent, queryClient, connectionId],
@@ -547,16 +559,23 @@ export function useChannel() {
       })
       useChatPartsStore.getState().setStreaming(sessionId, true)
       const sink = buildEventSink(sessionId, client, queryClient, connectionId)
+      // BUG-0046: same stream-lifecycle vs request-lifecycle split as sendMessage.
+      let streamOpened = false
+      const guardedSink: typeof sink = (evt) => {
+        if (!streamOpened && evt.event === 'connected') streamOpened = true
+        sink(evt)
+      }
       try {
-        await client.sendMessage(parts, sink)
+        await client.sendMessage(parts, guardedSink)
         return true
       } catch (err) {
+        if (!streamOpened) {
+          useChatPartsStore.getState().setStreaming(sessionId, false)
+        }
         const msg = err instanceof Error ? err.message : String(err)
         useChatPartsStore.getState().markPendingUserFailed(sessionId, pendingId, msg)
         showErrorToast(normalizeError(err))
         return false
-      } finally {
-        useChatPartsStore.getState().setStreaming(sessionId, false)
       }
     },
     [client, sessionId, queryClient, connectionId],

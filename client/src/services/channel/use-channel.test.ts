@@ -3,6 +3,8 @@ import { createElement, type ReactNode } from 'react'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { buildEventSink, useChannel, __resetCallIdDispatchForTest } from './use-channel'
+import { ChannelClient } from './channel-client'
+import { createTextPart } from './types'
 import { useChatPartsStore } from '@/stores/chat-parts-store'
 import { useChannelStore } from '@/stores/channel-store'
 import { useOntologyStore } from '@/stores/ontology-store'
@@ -646,6 +648,138 @@ describe('buildEventSink → session.diff (TD-017)', () => {
     expect(() =>
       sink({ event: 'session.diff', data: { sessionId: 's1', payload: { unknown: true } } } as any)
     ).not.toThrow()
+  })
+})
+
+describe('useChannel · BUG-0046 stream-lifecycle vs request-lifecycle', () => {
+  const wrapper = ({ children }: { children: ReactNode }) => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    return createElement(QueryClientProvider, { client: qc }, children)
+  }
+
+  beforeEach(() => {
+    useChatPartsStore.setState({
+      partsBySession: new Map(),
+      infoBySession: new Map(),
+      partIndexBySession: new Map(),
+      streamingBySession: new Set<string>(),
+      pendingDeltasBySession: new Map(),
+    })
+    useSessionStore.setState({ activeSessionId: 's1' } as any)
+    useChannelStore.setState({ lastEventIdBySession: new Map(), isConnected: false })
+  })
+
+  it('sendMessage clears streaming when POST fails before connected frame (pre-stream failure)', async () => {
+    const sendSpy = vi.spyOn(ChannelClient.prototype, 'sendMessage')
+      .mockImplementation(async () => { throw new Error('network down') })
+    try {
+      const { result } = renderHook(() => useChannel(), { wrapper })
+
+      let ok: boolean | undefined
+      await act(async () => {
+        ok = await result.current.sendMessage([createTextPart('s1', 'hi')])
+      })
+
+      expect(ok).toBe(false)
+      expect(useChatPartsStore.getState().streamingBySession.has('s1')).toBe(false)
+    } finally {
+      sendSpy.mockRestore()
+    }
+  })
+
+  it('sendMessage preserves streaming when POST fails AFTER connected frame (Ctrl+R abort)', async () => {
+    const sendSpy = vi.spyOn(ChannelClient.prototype, 'sendMessage')
+      .mockImplementation(async (_parts, onEvent) => {
+        onEvent({ event: 'connected', id: 1, data: { sessionId: 's1', serverRev: 1 } })
+        throw new Error('aborted')
+      })
+    try {
+      const { result } = renderHook(() => useChannel(), { wrapper })
+
+      let ok: boolean | undefined
+      await act(async () => {
+        ok = await result.current.sendMessage([createTextPart('s1', 'hi')])
+      })
+
+      expect(ok).toBe(false)
+      // The long-lived GET subscribe sink (not modeled in this test) is
+      // expected to clear streaming on the eventual real session.idle.
+      expect(useChatPartsStore.getState().streamingBySession.has('s1')).toBe(true)
+    } finally {
+      sendSpy.mockRestore()
+    }
+  })
+
+  it('sendMessage clears streaming via session.idle on natural completion (not via finally)', async () => {
+    const realNow = Date.now
+    const sendSpy = vi.spyOn(ChannelClient.prototype, 'sendMessage')
+      .mockImplementation(async (_parts, onEvent) => {
+        onEvent({ event: 'connected', id: 1, data: { sessionId: 's1', serverRev: 1 } })
+        // Skip past BUG-0038's 500ms replay-suppression window so the idle is
+        // honoured by the sink.
+        Date.now = () => realNow.call(Date) + 1000
+        onEvent({ event: 'session.idle', id: 5, data: { sessionId: 's1' } })
+      })
+    try {
+      const { result } = renderHook(() => useChannel(), { wrapper })
+
+      let ok: boolean | undefined
+      await act(async () => {
+        ok = await result.current.sendMessage([createTextPart('s1', 'hi')])
+      })
+
+      expect(ok).toBe(true)
+      expect(useChatPartsStore.getState().streamingBySession.has('s1')).toBe(false)
+    } finally {
+      Date.now = realNow
+      sendSpy.mockRestore()
+    }
+  })
+
+  it('retryPendingUser preserves streaming when POST aborts AFTER connected frame', async () => {
+    const sendSpy = vi.spyOn(ChannelClient.prototype, 'sendMessage')
+      .mockImplementation(async (_parts, onEvent) => {
+        onEvent({ event: 'connected', id: 1, data: { sessionId: 's1', serverRev: 1 } })
+        throw new Error('aborted')
+      })
+    try {
+      const pendingId = useChatPartsStore.getState().upsertPendingUser('s1', 'retry me')
+      // Simulate a previous failure so retryPendingUser has a target.
+      useChatPartsStore.getState().markPendingUserFailed('s1', pendingId, 'previous error')
+
+      const { result } = renderHook(() => useChannel(), { wrapper })
+
+      let ok: boolean | undefined
+      await act(async () => {
+        ok = await result.current.retryPendingUser(pendingId, [createTextPart('s1', 'retry me')])
+      })
+
+      expect(ok).toBe(false)
+      expect(useChatPartsStore.getState().streamingBySession.has('s1')).toBe(true)
+    } finally {
+      sendSpy.mockRestore()
+    }
+  })
+
+  it('retryPendingUser clears streaming on pre-stream failure', async () => {
+    const sendSpy = vi.spyOn(ChannelClient.prototype, 'sendMessage')
+      .mockImplementation(async () => { throw new Error('network down') })
+    try {
+      const pendingId = useChatPartsStore.getState().upsertPendingUser('s1', 'retry me')
+      useChatPartsStore.getState().markPendingUserFailed('s1', pendingId, 'previous error')
+
+      const { result } = renderHook(() => useChannel(), { wrapper })
+
+      let ok: boolean | undefined
+      await act(async () => {
+        ok = await result.current.retryPendingUser(pendingId, [createTextPart('s1', 'retry me')])
+      })
+
+      expect(ok).toBe(false)
+      expect(useChatPartsStore.getState().streamingBySession.has('s1')).toBe(false)
+    } finally {
+      sendSpy.mockRestore()
+    }
   })
 })
 
