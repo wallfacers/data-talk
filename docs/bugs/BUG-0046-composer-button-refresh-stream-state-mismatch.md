@@ -8,7 +8,7 @@ modules: [session, chat, channel]
 discovered: 2026-05-15
 discoveredBy: human
 testRunId: null
-fixCommit: pending
+fixCommit: 2bc199f1
 fixPlanRef: openspec/changes/fix-composer-button-via-server-status
 duplicateOf: null
 regression: true

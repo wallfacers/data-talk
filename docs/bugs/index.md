@@ -49,7 +49,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 | [BUG-0039](BUG-0039-composer-draft-sync-write-wrong-schema.md) | setComposerDraft 同步写入 schema 错位，CTRL+R 后已发送内容回填到输入框 | fixed | P1 | — |
 | [BUG-0040](BUG-0040-agents-md-skill-path-triggers-llm-hallucination.md) | AGENTS.md 引用 `skills/data-ingestion/SKILL.md` 触发 LLM 幻觉绝对路径 Read 卡住 | fixed | P1 | — |
 | [BUG-0041](BUG-0041-sql-code-block-theme-color-mismatch.md) | 聊天 SQL 代码块 Shiki 高亮在 dark 主题下串成 light 色板，identifier 几乎不可见 | fixed | P2 | — |
-| [BUG-0046](BUG-0046-composer-button-refresh-stream-state-mismatch.md) | CTRL+R 刷新 streaming 中 → composer 按钮回退到"待发送"（首次刷新场景，regression） | fixed | P1 | — |
+| [BUG-0046](BUG-0046-composer-button-refresh-stream-state-mismatch.md) | CTRL+R 刷新 streaming 中 → composer 按钮回退到"待发送"（首次刷新场景，regression） | fixed | P1 | — (2bc199f1) |
 
 ## Recently Closed（最近 30 天，status = verified | closed）
 
