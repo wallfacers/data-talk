@@ -1,4 +1,4 @@
-import { useId } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
@@ -9,7 +9,7 @@ const DATE_FORMAT_PRESETS = [
   { value: 'yyyy年MM月dd日 HH:mm:ss', label: 'CN Long', example: '2025年06月15日 16:00:00' },
 ]
 
-const CUSTOM_VALUE = '__custom__'
+type Mode = 'preset' | 'custom'
 
 interface DateFormatSelectorProps {
   value: string
@@ -19,7 +19,17 @@ interface DateFormatSelectorProps {
 export function DateFormatSelector({ value, onChange }: DateFormatSelectorProps) {
   const customInputId = useId()
   const isPreset = DATE_FORMAT_PRESETS.some((p) => p.value === value)
-  const selectedValue = isPreset ? value : CUSTOM_VALUE
+  const [mode, setMode] = useState<Mode>(isPreset ? 'preset' : 'custom')
+  const [customValue, setCustomValue] = useState(isPreset ? '' : value)
+
+  useEffect(() => {
+    if (isPreset) {
+      setMode('preset')
+    } else {
+      setMode('custom')
+      setCustomValue(value)
+    }
+  }, [isPreset, value])
 
   return (
     <div className="space-y-2">
@@ -28,11 +38,11 @@ export function DateFormatSelector({ value, onChange }: DateFormatSelectorProps)
           <button
             key={preset.value}
             type="button"
-            onClick={() => onChange(preset.value)}
+            onClick={() => { setMode('preset'); onChange(preset.value) }}
             className={cn(
               'flex flex-col items-start gap-0.5 rounded-lg border px-3 py-2 text-left transition-colors',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing',
-              value === preset.value
+              mode === 'preset' && value === preset.value
                 ? 'border-primary bg-primary/5 text-foreground'
                 : 'border-input bg-transparent text-muted-foreground hover:text-foreground hover:border-foreground/30'
             )}
@@ -42,13 +52,12 @@ export function DateFormatSelector({ value, onChange }: DateFormatSelectorProps)
           </button>
         ))}
         <button
-          key={CUSTOM_VALUE}
           type="button"
-          onClick={() => onChange(value)}
+          onClick={() => setMode('custom')}
           className={cn(
             'flex flex-col items-start gap-0.5 rounded-lg border px-3 py-2 text-left transition-colors',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing',
-            selectedValue === CUSTOM_VALUE
+            mode === 'custom'
               ? 'border-primary bg-primary/5 text-foreground'
               : 'border-input bg-transparent text-muted-foreground hover:text-foreground hover:border-foreground/30'
           )}
@@ -57,15 +66,18 @@ export function DateFormatSelector({ value, onChange }: DateFormatSelectorProps)
           <span className="text-xs opacity-60">Custom format</span>
         </button>
       </div>
-      {selectedValue === CUSTOM_VALUE && (
+      {mode === 'custom' && (
         <div>
           <label htmlFor={customInputId} className="text-xs text-muted-foreground mb-1 block">
             Custom format pattern
           </label>
           <Input
             id={customInputId}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
+            value={mode === 'custom' && !isPreset ? value : customValue}
+            onChange={(e) => {
+              setCustomValue(e.target.value)
+              onChange(e.target.value)
+            }}
             placeholder="yyyy-MM-dd HH:mm:ss"
             className="h-9 w-60 font-mono text-sm"
           />

@@ -18,11 +18,11 @@ function PopoverContent({
 }: PopoverPrimitive.Popup.Props) {
   return (
     <PopoverPrimitive.Portal>
-      <PopoverPrimitive.Positioner>
+      <PopoverPrimitive.Positioner className="z-[60]">
         <PopoverPrimitive.Popup
           data-slot="popover-content"
           className={cn(
-            "z-50 rounded-xl bg-popover p-4 text-sm text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+            "rounded-xl bg-popover p-4 text-sm text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
             className
           )}
           {...props}

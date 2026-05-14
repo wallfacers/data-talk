@@ -107,10 +107,18 @@ export function GeneralSettingsPanel({
   })
   const prefsMutation = useMutation({
     mutationFn: (patch: Partial<UserPreferencesDto>) => updatePreferences(patch),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: preferencesQueryKey })
+    onMutate: async (patch) => {
+      await queryClient.cancelQueries({ queryKey: preferencesQueryKey })
+      const snapshot = queryClient.getQueryData<UserPreferencesDto>(preferencesQueryKey)
+      if (snapshot) {
+        queryClient.setQueryData<UserPreferencesDto>(preferencesQueryKey, { ...snapshot, ...patch })
+      }
+      return { snapshot }
     },
-    onError: () => {
+    onError: (_err, _patch, context) => {
+      if (context?.snapshot) {
+        queryClient.setQueryData(preferencesQueryKey, context.snapshot)
+      }
       toast.error(t('general.sessions.clearAllError'))
     },
   })
