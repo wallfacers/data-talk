@@ -1,14 +1,14 @@
 ---
 id: BUG-0046
 title: AI streaming 期间 Ctrl+R 让停止按钮误回"待发送"态（BUG-0037/0038 残留路径）
-status: fixed
+status: open
 priority: P1
 source: manual-report
 modules: [session, chat, channel]
 discovered: 2026-05-15
 discoveredBy: human
 testRunId: null
-fixCommit: 2c3e3de9
+fixCommit: null
 fixPlanRef: openspec/changes/fix-composer-button-on-refresh-during-stream/
 duplicateOf: null
 regression: true

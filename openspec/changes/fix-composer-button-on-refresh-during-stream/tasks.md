@@ -37,9 +37,9 @@ Design Inputs: [client/DESIGN.md](../../../client/DESIGN.md) — no token / visu
 ## 5. BUG Closure
 
 - [x] 5.1 Update `docs/bugs/BUG-0046-*.md` Root Cause / Fix / Verification sections with concrete content (filled during initial registration)
-- [x] 5.2 Change frontmatter `status` to `fixed`, fill `fixCommit` with the implementation commit short SHA, optionally fill `testRunId` (fixCommit=2c3e3de9; testRunId left null as manual Tauri repro is deferred)
-- [x] 5.3 Move BUG-0046 row from "Open BUGs" to "In Progress" in `docs/bugs/index.md` with `status=fixed`
-- [x] 5.4 Update "By Module" entries for `session`, `chat`, `channel` to include BUG-0046 (fixed)
+- [ ] 5.2 Change frontmatter `status` to `fixed`, fill `fixCommit` with the implementation commit short SHA, optionally fill `testRunId` (**deferred until commit is created**)
+- [ ] 5.3 Move BUG-0046 row from "Open BUGs" to "In Progress" in `docs/bugs/index.md` with `status=fixed` (**deferred until 5.2**)
+- [ ] 5.4 Update "By Module" entries for `session`, `chat`, `channel` to include BUG-0046 (fixed) (**deferred until 5.2**)
 
 ## 6. OpenSpec Archive
 
