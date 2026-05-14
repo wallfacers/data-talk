@@ -12,12 +12,13 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import java.util.HexFormat;
 
 /**
  * Syncs skill directories from classpath resources ({@code skills/<name>/**})
  * into the OpenCode project root ({@code .opencode/skills/<name>/}).
- * Uses a SHA-256 hash of {@code SKILL.md} as the idempotency marker.
+ * Uses a SHA-256 hash of <b>all</b> classpath resources as the idempotency marker.
  */
 public class SkillResourceSyncer {
 
@@ -31,24 +32,20 @@ public class SkillResourceSyncer {
         Path targetDir = opencodeDir.resolve("skills").resolve(skillName);
         Path marker = opencodeDir.resolve("." + skillName + "-skill-synced");
 
-        String manifest = readManifest(skillName);
-        if (manifest == null) {
-            return;
-        }
+        try {
+            Resource[] resources = resolver.getResources("classpath*:" + CLASSPATH_PREFIX + skillName + "/**");
+            String sourceHash = hashResources(resources, skillName);
+            if (sourceHash == null) {
+                return;
+            }
 
-        String sourceHash = sha256(manifest.getBytes());
-
-        if (Files.exists(marker) && Files.isDirectory(targetDir)) {
-            try {
+            if (Files.exists(marker) && Files.isDirectory(targetDir)) {
                 if (sourceHash.equals(Files.readString(marker).trim())) {
                     return;
                 }
-            } catch (IOException ignored) { /* fall through to reinstall */ }
-            deleteRecursively(targetDir);
-        }
+                deleteRecursively(targetDir);
+            }
 
-        try {
-            Resource[] resources = resolver.getResources("classpath*:" + CLASSPATH_PREFIX + skillName + "/**");
             Files.createDirectories(targetDir);
 
             int copied = 0;
@@ -71,13 +68,29 @@ public class SkillResourceSyncer {
         }
     }
 
-    private String readManifest(String skillName) {
-        try (var in = getClass().getClassLoader().getResourceAsStream(CLASSPATH_PREFIX + skillName + "/SKILL.md")) {
-            if (in == null) return null;
-            return new String(in.readAllBytes());
-        } catch (IOException e) {
+    private String hashResources(Resource[] resources, String skillName) throws IOException {
+        MessageDigest md;
+        try {
+            md = MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+
+        boolean found = false;
+        for (Resource resource : resources) {
+            if (!resource.isReadable()) continue;
+            String relative = extractRelativePath(resource, skillName);
+            if (relative == null || relative.isEmpty()) continue;
+
+            found = true;
+            md.update(relative.getBytes());
+            md.update(resource.getInputStream().readAllBytes());
+        }
+
+        if (!found) {
             return null;
         }
+        return HexFormat.of().formatHex(md.digest());
     }
 
     private String extractRelativePath(Resource resource, String skillName) {
