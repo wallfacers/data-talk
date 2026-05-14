@@ -5,7 +5,7 @@ import DOMPurify from 'dompurify'
 import morphdom from 'morphdom'
 import { stream, type Block } from './markdown-stream'
 import { decorateTables, normalizePipeTables } from './markdown-table'
-import { decorateSqlBlocks, SQL_EXECUTE_EVENT, SQL_EXPLAIN_EVENT } from './sql-code-block'
+import { decorateSqlBlocks, SQL_EXPLAIN_EVENT } from './sql-code-block'
 import { extractTableModel } from './table-model'
 import { getDownloadFilename, toCsv, toDownloadableCsv, toJson, toMarkdownTable, toTsv } from './table-serializers'
 import { ChartBlock } from './chart-block'
@@ -607,7 +607,19 @@ export function Markdown(props: {
 
       if (!content) return
       if (btn.matches('[data-slot="sql-execute"]')) {
-        window.dispatchEvent(new CustomEvent(SQL_EXECUTE_EVENT, { detail: { sql: content } }))
+        const { useSessionStore } = await import('@/stores/session-store')
+        const sessionId = useSessionStore.getState().activeSessionId
+        const ctx = sessionId ? useSessionStore.getState().dataContextBySession.get(sessionId) : null
+        const connectionId = ctx?.connectionId ?? null
+        if (!connectionId) {
+          const { toast } = await import('sonner')
+          const { getCurrentLanguage } = await import('@/stores/ui-settings-store')
+          const { translateMessage } = await import('@/i18n/messages')
+          toast.error(translateMessage(getCurrentLanguage(), 'error.connection.missing'))
+          return
+        }
+        const { openDirectSqlQueryEditorTab } = await import('@/features/stage/utils/open-direct-sql-query-editor-tab')
+        await openDirectSqlQueryEditorTab({ sessionId, connectionId, sql: content, autoRun: true })
         return
       }
       if (btn.matches('[data-slot="sql-explain"]')) {

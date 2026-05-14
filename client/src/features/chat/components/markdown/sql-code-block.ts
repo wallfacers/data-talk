@@ -3,7 +3,6 @@ import { getCurrentLanguage } from '@/stores/ui-settings-store'
 import { translateMessage } from '@/i18n/messages'
 import { highlightSql } from './sql-highlight'
 
-export const SQL_EXECUTE_EVENT = 'datatalk.sql.execute'
 export const SQL_EXPLAIN_EVENT = 'datatalk.sql.explain'
 
 export function statementType(sql: string): string | null {

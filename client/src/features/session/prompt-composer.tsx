@@ -4,7 +4,6 @@ import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type Keyb
 import { createPortal } from 'react-dom'
 import { ArrowUpIcon, Loader2Icon } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
   InputGroup,
@@ -27,7 +26,7 @@ import { createBangQueryMessage } from '@/services/api/bang-query-message'
 import { useHasActiveModel } from './hooks/use-has-active-model'
 import { useSessionDataContext } from './hooks/use-session-data-context'
 import { invalidateSessionLists } from './hooks/use-sessions'
-import { SQL_EXECUTE_EVENT, SQL_EXPLAIN_EVENT } from '@/features/chat/components/markdown/sql-code-block'
+import { SQL_EXPLAIN_EVENT } from '@/features/chat/components/markdown/sql-code-block'
 import { useI18n } from '@/i18n/use-i18n'
 import { useDataSourcePickerStore } from './data-source-picker/data-source-picker-store'
 import { cn } from '@/lib/utils'
@@ -318,26 +317,6 @@ function InnerComposer() {
   })
 
   useEffect(() => {
-    const onExecute = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { sql?: string } | undefined
-      const sql = detail?.sql
-      if (!sql) return
-      const current = textRef.current
-      if (!current.trim()) {
-        // composer 空：填入并自动 submit（用 override 绕过 stale state）
-        updateTextRef.current(sql)
-        textRef.current = sql
-        queueMicrotask(() => {
-          void submitRef.current(sql)
-        })
-      } else {
-        // 非空：追加，不 submit
-        const next = current.endsWith('\n') ? current + sql : current + '\n' + sql
-        updateTextRef.current(next)
-        textRef.current = next
-        toast(t('chat.appendSql'))
-      }
-    }
     const onExplain = (e: Event) => {
       const detail = (e as CustomEvent).detail as { sql?: string } | undefined
       const sql = detail?.sql
@@ -348,10 +327,8 @@ function InnerComposer() {
       updateTextRef.current(next)
       textRef.current = next
     }
-    window.addEventListener(SQL_EXECUTE_EVENT, onExecute)
     window.addEventListener(SQL_EXPLAIN_EVENT, onExplain)
     return () => {
-      window.removeEventListener(SQL_EXECUTE_EVENT, onExecute)
       window.removeEventListener(SQL_EXPLAIN_EVENT, onExplain)
     }
   }, [])
