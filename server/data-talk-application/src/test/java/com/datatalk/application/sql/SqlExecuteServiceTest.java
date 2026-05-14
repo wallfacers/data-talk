@@ -7,6 +7,7 @@ import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.preference.UserPreferencesService;
 import com.datatalk.application.session.ResolvedExecutionContext;
 import com.datatalk.application.session.SessionDataContextService;
+import com.datatalk.application.sql.UndoLogCapture;
 import com.datatalk.domain.action.RiskLevel;
 import com.datatalk.domain.preference.UserPreferences;
 import org.junit.jupiter.api.BeforeEach;
@@ -97,6 +98,8 @@ class SqlExecuteServiceTest {
         UserPreferencesService userPrefsService = mock(UserPreferencesService.class);
         when(userPrefsService.getPreferences()).thenReturn(UserPreferences.DEFAULT);
 
+        UndoLogCapture undoLogCapture = mock(UndoLogCapture.class);
+
         service = new SqlExecuteService(
             new CalciteSqlRiskAnalyzer(sqlStatementSplitters),
             connectionRepository,
@@ -106,6 +109,7 @@ class SqlExecuteServiceTest {
             sqlStatementSplitters,
             userPrefsService,
             translator(),
+            undoLogCapture,
             100
         );
     }

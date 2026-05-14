@@ -10,16 +10,28 @@ type SqlResultPanelProps = {
   executeStatus: SqlWorkbenchExecuteStatus
   activeResult: SqlExecuteResultItem | null
   errorMessage: string | null
+  tabId: string
   activeScrollPosition?: ResultScrollPosition
   onActiveScrollPositionChange?: (position: ResultScrollPosition) => void
+  connectionName?: string | null
+  connectionKind?: string | null
+  database?: string | null
+  schema?: string | null
+  connectionId?: string | null
 }
 
 export function SqlResultPanel({
   executeStatus,
   activeResult,
   errorMessage,
+  tabId,
   activeScrollPosition,
   onActiveScrollPositionChange,
+  connectionName,
+  connectionKind,
+  database,
+  schema,
+  connectionId,
 }: SqlResultPanelProps) {
   const { t } = useI18n()
 
@@ -48,6 +60,11 @@ export function SqlResultPanel({
             truncated: false,
             errorMessage: errorMessage ?? t('stage.queryEditor.runFailed'),
           }}
+          connectionName={connectionName}
+          connectionKind={connectionKind}
+          database={database}
+          schema={schema}
+          connectionId={connectionId}
         />
       )
     }
@@ -60,11 +77,20 @@ export function SqlResultPanel({
   }
 
   if (activeResult.kind === 'dml_summary') {
-    return <SqlDmlSummaryPanel result={activeResult} />
+    return <SqlDmlSummaryPanel result={activeResult} tabId={tabId} />
   }
 
   if (activeResult.kind === 'error') {
-    return <SqlErrorResultPanel result={activeResult} />
+    return (
+      <SqlErrorResultPanel
+        result={activeResult}
+        connectionName={connectionName}
+        connectionKind={connectionKind}
+        database={database}
+        schema={schema}
+        connectionId={connectionId}
+      />
+    )
   }
 
   return (

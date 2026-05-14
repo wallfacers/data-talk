@@ -409,6 +409,7 @@ describe('SqlWorkbenchTab', () => {
           confirmationInvalid: null,
           lastRequest: null,
           override: null,
+          undoStates: {},
           history: [],
           savedSqlText: 'select 1;',
           limit: 100,

@@ -14,5 +14,7 @@ public record SqlExecuteResultItem(
     long executionMs,
     boolean truncated,
     Integer affectedRows,
-    String errorMessage
+    String errorMessage,
+    String undoLogId,
+    Boolean undoable
 ) {}

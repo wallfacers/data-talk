@@ -590,10 +590,10 @@ export const useStageStore = create<StageState>((set, get) => ({
     if (!target) return s
     if (target.archived) return s
     if (!s.open) persistOpen(true)
-    const tabs = s.tabs.map((t) =>
-      t.tabId === tabId ? { ...t, lastTouchedAt: Date.now() } : t,
-    )
     const inWorkset = s.openTabIds.has(tabId)
+    const tabs = inWorkset
+      ? s.tabs
+      : s.tabs.map((t) => t.tabId === tabId ? { ...t, lastTouchedAt: Date.now() } : t)
     if (inWorkset) return { tabs, activeTabId: tabId, open: true }
     const nextIds = new Set(s.openTabIds); nextIds.add(tabId)
     return {

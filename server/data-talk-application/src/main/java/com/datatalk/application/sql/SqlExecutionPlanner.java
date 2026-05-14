@@ -99,7 +99,7 @@ public class SqlExecutionPlanner {
         );
     }
 
-    private boolean isDml(String statement) {
+    public static boolean isDml(String statement) {
         String keyword = firstKeyword(statement);
         return "INSERT".equals(keyword) || "UPDATE".equals(keyword) || "DELETE".equals(keyword);
     }

@@ -342,6 +342,7 @@ describe('Sql result displays', () => {
   it('renders dml summary as a table row instead of plain text blocks', () => {
     render(
       <SqlDmlSummaryPanel
+        tabId="test-tab"
         result={{
           resultId: 'dml-1',
           kind: 'dml_summary',
@@ -409,6 +410,7 @@ describe('Sql result displays', () => {
         executeStatus="error"
         activeResult={null}
         errorMessage={'## Connection failed\n\nMySQL is down.'}
+        tabId="test-tab"
       />,
     )
 

@@ -595,6 +595,8 @@ const MESSAGES = {
     'stage.status.error': '错误',
     'stage.status.requiresConfirmation': '待确认',
     'stage.result.error.default': 'SQL 执行失败',
+    'stage.result.error.askAi': '问 AI',
+    'stage.result.error.askAiTitle': 'SQL 执行报错',
 
     'stage.tabBar.addNew': '新建工作位',
     'stage.tabBar.addNew.menu.sql': 'SQL 编辑器',
@@ -1491,6 +1493,8 @@ const MESSAGES = {
     'stage.status.error': 'Error',
     'stage.status.requiresConfirmation': 'Awaiting confirmation',
     'stage.result.error.default': 'SQL execution failed',
+    'stage.result.error.askAi': 'Ask AI',
+    'stage.result.error.askAiTitle': 'SQL Execution Error',
 
     'stage.tabBar.addNew': 'New workspace tool',
     'stage.tabBar.addNew.menu.sql': 'SQL editor',

@@ -837,8 +837,14 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
                     executeStatus={tabState.executeStatus}
                     activeResult={activeResult}
                     errorMessage={tabState.errorMessage}
+                    tabId={tab.tabId}
                     activeScrollPosition={activeResultScrollPosition}
                     onActiveScrollPositionChange={handleActiveResultScrollPositionChange}
+                    connectionName={resolvedContext.connectionName}
+                    connectionKind={resolvedContext.connectionId ? connections.find((c) => c.id === resolvedContext.connectionId)?.kind ?? null : null}
+                    database={resolvedContext.database}
+                    schema={resolvedContext.schema}
+                    connectionId={resolvedContext.connectionId}
                   />
                 </div>
               </div>

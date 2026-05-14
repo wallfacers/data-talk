@@ -77,6 +77,7 @@ export type SqlWorkbenchTabState = {
   lastRequest: SqlExecuteRequest | null
   override: TabContextOverride | null
   history: HistoryEntry[]
+  undoStates: Record<string, { status: 'idle' | 'confirming' | 'undoing' | 'undone' | 'error'; inverseSql?: string; error?: string }>
   savedSqlText: string
   limit: 10 | 100 | 1000 | null
   /**
@@ -126,6 +127,8 @@ type SqlWorkbenchState = {
   setCursor: (tabId: string, line: number, column: number) => void
   resetExecutionState: (tabId: string) => void
   cleanupTabs: (activeTabIds: string[]) => void
+  setUndoConfirming: (tabId: string, resultId: string, inverseSql: string) => void
+  setUndoResult: (tabId: string, resultId: string, status: 'undone' | 'error', error?: string) => void
 }
 
 function createDefaultTabState(initial?: EnsureTabInput): SqlWorkbenchTabState {
@@ -145,6 +148,7 @@ function createDefaultTabState(initial?: EnsureTabInput): SqlWorkbenchTabState {
     confirmationInvalid: null,
     lastRequest: null,
     override: null,
+    undoStates: {},
     history: [],
     savedSqlText: initialSqlText,
     limit: 100,
@@ -690,5 +694,31 @@ export const useSqlWorkbenchStore = create<SqlWorkbenchState>((set, get) => ({
       return state
     }
     return { tabsById: nextTabsById }
+  }),
+
+  setUndoConfirming: (tabId, resultId, inverseSql) => set((state) => {
+    const tabState = ensureTabState(state.tabsById, tabId)
+    return {
+      tabsById: {
+        ...state.tabsById,
+        [tabId]: {
+          ...tabState,
+          undoStates: { ...tabState.undoStates, [resultId]: { status: 'confirming', inverseSql } },
+        },
+      },
+    }
+  }),
+
+  setUndoResult: (tabId, resultId, status, error) => set((state) => {
+    const tabState = ensureTabState(state.tabsById, tabId)
+    return {
+      tabsById: {
+        ...state.tabsById,
+        [tabId]: {
+          ...tabState,
+          undoStates: { ...tabState.undoStates, [resultId]: { status, error } },
+        },
+      },
+    }
   }),
 }))

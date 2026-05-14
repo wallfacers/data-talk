@@ -136,6 +136,8 @@ The system SHALL preserve the existing rule for enabling the run button:
 
 The system SHALL NOT require a database or schema selection to enable the run button.
 
+Additionally, the system SHALL make the "问 AI" button available on error result panels whenever `effectiveContext.connectionId` is populated (the same condition as `canRun` without the SQL text requirement). The button SHALL use the tab's `resolvedContext` to assemble the error-to-AI markdown context.
+
 #### Scenario: Run enabled with connection only
 
 - **GIVEN** an AI editor whose bound session has `{conn: data-uat, db: null, schema: null}` and SQL text is `SELECT 1`
@@ -148,6 +150,18 @@ The system SHALL NOT require a database or schema selection to enable the run bu
 - **WHEN** the toolbar renders
 - **THEN** the run button SHALL be disabled
 - **AND** a tooltip SHALL explain why (e.g., "请选择数据连接")
+
+#### Scenario: Ask AI button available when connection exists
+
+- **GIVEN** a SQL editor tab with an error result and `resolvedContext.connectionId != null`
+- **WHEN** the error panel renders
+- **THEN** the "问 AI" button SHALL be visible and enabled
+
+#### Scenario: Ask AI button hidden when connection is null
+
+- **GIVEN** a SQL editor tab with an error result and `resolvedContext.connectionId == null`
+- **WHEN** the error panel renders
+- **THEN** the "问 AI" button SHALL NOT render
 
 ### Requirement: AI set_context action honors the new model
 

@@ -14,6 +14,8 @@ import com.datatalk.domain.action.Category;
 import com.datatalk.domain.action.RiskLevel;
 import com.datatalk.domain.error.DataTalkErrorCodes;
 import com.datatalk.domain.error.DataTalkException;
+import com.datatalk.domain.undo.UndoCapture;
+import com.datatalk.domain.undo.UndoOutcome;
 import com.datatalk.domain.preference.UserPreferences;
 import com.datatalk.dto.ResolvedDataContextDto;
 import org.springframework.beans.factory.annotation.Value;
@@ -71,7 +73,9 @@ public class SqlExecuteService {
         long executionMs,
         boolean truncated,
         Integer affectedRows,
-        String errorMessage
+        String errorMessage,
+        String undoLogId,
+        Boolean undoable
     ) {}
 
     private final SqlRiskAnalyzer riskAnalyzer;
@@ -83,6 +87,7 @@ public class SqlExecuteService {
     private final SqlExecutionPlanner sqlExecutionPlanner = new SqlExecutionPlanner();
     private final UserPreferencesService userPrefsService;
     private final Translator translator;
+    private final UndoLogCapture undoLogCapture;
     private final int maxRows;
 
     public SqlExecuteService(SqlRiskAnalyzer riskAnalyzer,
@@ -93,6 +98,7 @@ public class SqlExecuteService {
                              SqlStatementSplitters sqlStatementSplitters,
                              UserPreferencesService userPrefsService,
                              Translator translator,
+                             UndoLogCapture undoLogCapture,
                              @Value("${datatalk.sql.max-rows:5000}") int maxRows) {
         this.riskAnalyzer = riskAnalyzer;
         this.connRepo = connRepo;
@@ -102,6 +108,7 @@ public class SqlExecuteService {
         this.sqlStatementSplitters = sqlStatementSplitters;
         this.userPrefsService = userPrefsService;
         this.translator = translator;
+        this.undoLogCapture = undoLogCapture;
         this.maxRows = maxRows;
     }
 
@@ -174,14 +181,15 @@ public class SqlExecuteService {
             }
         }
 
-        List<ResultItem> items = runStatements(context, statements);
+        List<ResultItem> items = runStatements(context, statements, sessionId);
         return new Executed(resolvedDto, context.contextNotice(), items);
     }
 
-    private List<ResultItem> runStatements(ResolvedExecutionContext context, List<String> statements) {
+    private List<ResultItem> runStatements(ResolvedExecutionContext context, List<String> statements, String sessionId) {
         ConnectionRecord cr = context.connection();
         List<ResultItem> results = new ArrayList<>();
         DmlSummaryAccumulator pendingDmlSummary = null;
+        List<String> pendingUndoLogIds = new ArrayList<>();
 
         String effectiveUsername = ConnectionKind.OCEANBASE.equals(cr.kind())
             ? ConnectionService.composeOceanBaseUsername(cr)
@@ -197,6 +205,18 @@ public class SqlExecuteService {
                 List<SqlExecutionPlanner.ExecutionUnit> executionUnits = sqlExecutionPlanner.plan(statements);
                 for (SqlExecutionPlanner.ExecutionUnit executionUnit : executionUnits) {
                     if (executionUnit instanceof SqlExecutionPlanner.DmlBatch dmlBatch) {
+                        List<UndoOutcome> undoOutcomes = new ArrayList<>();
+                        for (String dmlSql : dmlBatch.statementTexts()) {
+                            try {
+                                UndoOutcome outcome = undoLogCapture.capture(
+                                    c, dmlSql, sessionId, cr.id(),
+                                    context.database(), context.schema());
+                                undoOutcomes.add(outcome);
+                            } catch (Exception ignored) {
+                                undoOutcomes.add(new UndoOutcome.NotUndoable("capture_failed"));
+                            }
+                        }
+
                         long started = System.currentTimeMillis();
                         try (Statement stmt = c.createStatement()) {
                             stmt.setQueryTimeout(30);
@@ -210,15 +230,34 @@ public class SqlExecuteService {
                                 affectedRows = sumAffectedRows(stmt.executeBatch());
                             }
                             long executionMs = System.currentTimeMillis() - started;
+
+                            String batchUndoLogId = null;
+                            Boolean batchUndoable = null;
+                            for (UndoOutcome outcome : undoOutcomes) {
+                                if (outcome instanceof UndoOutcome.Captured captured) {
+                                    pendingUndoLogIds.add(captured.capture().undoLogId());
+                                    if (batchUndoLogId == null) {
+                                        batchUndoLogId = captured.capture().undoLogId();
+                                        batchUndoable = true;
+                                    }
+                                }
+                            }
+
                             pendingDmlSummary = appendPendingDmlSummary(
                                 pendingDmlSummary,
                                 dmlBatch.startIndex(),
                                 dmlBatch.endIndex(),
                                 dmlBatch.statementTexts(),
                                 affectedRows,
-                                executionMs
+                                executionMs,
+                                batchUndoLogId,
+                                batchUndoable
                             );
                         } catch (SQLException e) {
+                            for (String undoLogId : pendingUndoLogIds) {
+                                undoLogCapture.discardPendingCapture(undoLogId);
+                            }
+                            pendingUndoLogIds.clear();
                             pendingDmlSummary = flushPendingDmlSummary(results, pendingDmlSummary);
                             long executionMs = System.currentTimeMillis() - started;
                             results.add(new ResultItem(
@@ -233,7 +272,8 @@ public class SqlExecuteService {
                                 executionMs,
                                 false,
                                 null,
-                                sanitizeSqlErrorMessage(e)
+                                sanitizeSqlErrorMessage(e),
+                                null, null
                             ));
                             c.rollback();
                             failed = true;
@@ -245,6 +285,26 @@ public class SqlExecuteService {
                     SqlExecutionPlanner.SingleStatement single = (SqlExecutionPlanner.SingleStatement) executionUnit;
                     String statementText = single.statementText();
                     int statementIndex = single.statementIndex();
+
+                    boolean isDml = sqlExecutionPlanner.isDml(statementText);
+                    String singleUndoLogId = null;
+                    Boolean singleUndoable = null;
+
+                    if (isDml) {
+                        try {
+                            UndoOutcome outcome = undoLogCapture.capture(
+                                c, statementText, sessionId, cr.id(),
+                                context.database(), context.schema());
+                            if (outcome instanceof UndoOutcome.Captured captured) {
+                                singleUndoLogId = captured.capture().undoLogId();
+                                singleUndoable = true;
+                                pendingUndoLogIds.add(singleUndoLogId);
+                            }
+                        } catch (Exception ignored) {
+                            // undo capture failure should not block DML execution
+                        }
+                    }
+
                     long started = System.currentTimeMillis();
                     try (Statement stmt = c.createStatement()) {
                         stmt.setQueryTimeout(30);
@@ -266,7 +326,8 @@ public class SqlExecuteService {
                                     executionMs,
                                     resultSetData.truncated(),
                                     null,
-                                    null
+                                    null,
+                                    null, null
                                 ));
                             }
                         } else {
@@ -277,10 +338,16 @@ public class SqlExecuteService {
                                 statementIndex,
                                 List.of(statementText),
                                 affectedRows,
-                                executionMs
+                                executionMs,
+                                singleUndoLogId,
+                                singleUndoable
                             );
                         }
                     } catch (SQLException e) {
+                        for (String undoLogId : pendingUndoLogIds) {
+                            undoLogCapture.discardPendingCapture(undoLogId);
+                        }
+                        pendingUndoLogIds.clear();
                         pendingDmlSummary = flushPendingDmlSummary(results, pendingDmlSummary);
                         long executionMs = System.currentTimeMillis() - started;
                         results.add(new ResultItem(
@@ -295,7 +362,8 @@ public class SqlExecuteService {
                             executionMs,
                             false,
                             null,
-                            sanitizeSqlErrorMessage(e)
+                            sanitizeSqlErrorMessage(e),
+                            null, null
                         ));
                         c.rollback();
                         failed = true;
@@ -305,6 +373,9 @@ public class SqlExecuteService {
                 if (!failed) {
                     flushPendingDmlSummary(results, pendingDmlSummary);
                     c.commit();
+                    for (String undoLogId : pendingUndoLogIds) {
+                        undoLogCapture.activateCapture(undoLogId);
+                    }
                 }
             } catch (SQLException e) {
                 rollbackQuietly(c);
@@ -333,7 +404,9 @@ public class SqlExecuteService {
         int endIndex,
         List<String> statementTexts,
         int affectedRows,
-        long executionMs
+        long executionMs,
+        String undoLogId,
+        Boolean undoable
     ) {
         if (pendingDmlSummary == null) {
             return new DmlSummaryAccumulator(
@@ -341,7 +414,9 @@ public class SqlExecuteService {
                 endIndex,
                 new ArrayList<>(statementTexts),
                 affectedRows,
-                executionMs
+                executionMs,
+                undoLogId,
+                undoable
             );
         }
         pendingDmlSummary.statementTexts().addAll(statementTexts);
@@ -430,7 +505,9 @@ public class SqlExecuteService {
             pendingDmlSummary.executionMs(),
             false,
             pendingDmlSummary.affectedRows(),
-            null
+            null,
+            pendingDmlSummary.undoLogId(),
+            pendingDmlSummary.undoable()
         ));
         return null;
     }
@@ -723,10 +800,12 @@ public class SqlExecuteService {
         int endIndex,
         List<String> statementTexts,
         int affectedRows,
-        long executionMs
+        long executionMs,
+        String undoLogId,
+        Boolean undoable
     ) {
         private DmlSummaryAccumulator with(int endIndex, int affectedRows, long executionMs) {
-            return new DmlSummaryAccumulator(startIndex, endIndex, statementTexts, affectedRows, executionMs);
+            return new DmlSummaryAccumulator(startIndex, endIndex, statementTexts, affectedRows, executionMs, undoLogId, undoable);
         }
     }
 }

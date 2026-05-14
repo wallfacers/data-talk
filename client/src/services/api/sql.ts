@@ -35,6 +35,8 @@ export interface SqlExecuteResultItem {
   truncated: boolean
   affectedRows?: number | null
   errorMessage?: string | null
+  undoLogId?: string | null
+  undoable?: boolean | null
 }
 
 export type SqlConfirmationPayload = {
@@ -76,4 +78,31 @@ export async function executeSql(req: SqlExecuteRequest, signal?: AbortSignal): 
     throw new Error((err as any).message ?? 'SQL execution failed')
   }
   return res.json() as Promise<SqlExecuteResponse>
+}
+
+export interface UndoDmlRequest {
+  undoLogId: string
+  confirmed?: boolean
+  riskAck?: 'L1' | 'L2' | 'L3'
+}
+
+export type UndoDmlResponse =
+  | { status: 'requires_confirmation'; inverseSql: string; affectedRows: number; tableName: string }
+  | { status: 'undone'; affectedRows: number }
+  | { status: 'expired'; message: string }
+  | { status: 'already_undone'; message: string }
+  | { status: 'not_found'; message: string }
+
+export async function undoDml(req: UndoDmlRequest, signal?: AbortSignal): Promise<UndoDmlResponse> {
+  const res = await fetch(`${BASE}/api/sql/undo`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(req),
+    signal,
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: 'Undo failed' }))
+    throw new Error((err as any).message ?? 'Undo failed')
+  }
+  return res.json() as Promise<UndoDmlResponse>
 }

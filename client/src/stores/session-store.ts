@@ -26,6 +26,7 @@ type SessionState = {
   pendingModelPrompt: boolean
   pendingConnectionPrompt: boolean
   pendingActionAfterConnectionPick: { kind: 'send' } | null
+  composerInsertText: { sessionId: string; text: string } | null
 
   openSession: (id: string, hasEverSent: boolean) => void
   closeSession: () => void
@@ -40,6 +41,7 @@ type SessionState = {
   setPendingModelPrompt: (on: boolean) => void
   setPendingConnectionPrompt: (on: boolean) => void
   setPendingActionAfterConnectionPick: (action: { kind: 'send' } | null) => void
+  setComposerInsertText: (draft: { sessionId: string; text: string } | null) => void
 }
 
 export const useSessionStore = create<SessionState>()(
@@ -55,6 +57,7 @@ export const useSessionStore = create<SessionState>()(
       pendingModelPrompt: false,
       pendingConnectionPrompt: false,
       pendingActionAfterConnectionPick: null,
+      composerInsertText: null,
 
       openSession: (id, hasEverSent) => set((s) => {
         // Cache wins: once we've observed hasEverSent=true locally, never demote.
@@ -135,6 +138,7 @@ export const useSessionStore = create<SessionState>()(
       setPendingModelPrompt: (on) => set({ pendingModelPrompt: on }),
       setPendingConnectionPrompt: (on) => set({ pendingConnectionPrompt: on }),
       setPendingActionAfterConnectionPick: (action) => set({ pendingActionAfterConnectionPick: action }),
+      setComposerInsertText: (draft) => set({ composerInsertText: draft }),
     }),
     {
       name: 'data-talk.session',

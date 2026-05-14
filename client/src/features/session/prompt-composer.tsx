@@ -82,6 +82,8 @@ function InnerComposer() {
   const setComposerRestoreDraft = useSessionStore((s) => s.setComposerRestoreDraft)
   const composerDrafts = useSessionStore((s) => s.composerDrafts)
   const setComposerDraft = useSessionStore((s) => s.setComposerDraft)
+  const composerInsertText = useSessionStore((s) => s.composerInsertText)
+  const setComposerInsertText = useSessionStore((s) => s.setComposerInsertText)
   const setPendingModelPrompt = useSessionStore((s) => s.setPendingModelPrompt)
   const activeConnectionId = useConnectionStore((s) => s.activeConnectionId)
   const setActiveConnection = useConnectionStore((s) => s.setActive)
@@ -118,6 +120,28 @@ function InnerComposer() {
     setText((current) => current.trim().length > 0 ? current : composerRestoreDraft.text)
     setComposerRestoreDraft(null)
   }, [activeSessionId, composerRestoreDraft, setComposerRestoreDraft])
+
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+
+  useEffect(() => {
+    if (!composerInsertText) return
+    if (!activeSessionId || composerInsertText.sessionId !== activeSessionId) return
+
+    setText(composerInsertText.text)
+    setComposerDraft(draftKey, composerInsertText.text)
+    setComposerInsertText(null)
+
+    // Focus the textarea after the next render
+    requestAnimationFrame(() => {
+      const el = textareaRef.current
+      if (el) {
+        el.focus()
+        // Place cursor at end of text
+        const len = el.value.length
+        el.setSelectionRange(len, len)
+      }
+    })
+  }, [activeSessionId, composerInsertText, setComposerInsertText, setComposerDraft, draftKey])
 
   const submitText = async (raw: string) => {
     const trimmed = raw.trim()
@@ -347,6 +371,7 @@ function InnerComposer() {
         )}
       >
         <InputGroupTextarea
+          ref={textareaRef}
           value={text}
           onChange={(e) => updateText(e.target.value)}
           onKeyDown={onKey}

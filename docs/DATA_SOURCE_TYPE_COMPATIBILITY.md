@@ -883,4 +883,32 @@ The external data ingestion feature (`data-ingestion` skill) uses `IngestionDdlA
 | kingbase | Unsupported | — | Follow-up child plan required |
 | gaussdb | Unsupported | — | Follow-up child plan required |
 
+## Undo Log (DML Rollback) Compatibility
+
+The Undo Log feature captures before-state snapshots of DML operations and generates inverse SQL for one-click rollback. Compatibility depends on primary key availability and Calcite SQL parsing support.
+
+| Kind | Undo Support | Notes |
+|------|-------------|-------|
+| mysql | Full | `getPrimaryKeys()` supported, Calcite parses MySQL DML correctly |
+| postgresql | Full | `getPrimaryKeys()` supported, Calcite parses PG DML correctly |
+| h2 | Full | `getPrimaryKeys()` supported, Calcite parses H2 DML correctly |
+| sqlite | Full | `getPrimaryKeys()` supported, Calcite parses SQLite DML correctly |
+| mariadb | Full | MySQL-compatible, same support level |
+| oracle | Partial | `getPrimaryKeys()` supported; some Oracle-specific syntax may fail Calcite parsing → undoable=false |
+| sqlserver | Partial | `getPrimaryKeys()` supported; T-SQL syntax may fail Calcite parsing → undoable=false |
+| duckdb | Partial | `getPrimaryKeys()` supported; some DuckDB-specific extensions may fail parsing |
+| tidb | Full | MySQL-compatible, same support level |
+| clickhouse | None | MergeTree tables may lack traditional primary keys; Calcite parsing limited for ClickHouse dialect |
+| hive | None | Hive tables often lack primary keys; limited DML support in Hive |
+| trino | None | Trino is query-oriented, limited DML, tables may lack primary keys |
+| presto | None | Same as Trino |
+| apache_doris | Partial | MySQL-compatible DML, `getPrimaryKeys()` may work depending on table model |
+| starrocks | Partial | MySQL-compatible DML, similar to Doris |
+| oceanbase | Partial | MySQL-compatible, `getPrimaryKeys()` supported |
+| dameng | Partial | `getPrimaryKeys()` supported; DM-specific syntax may fail Calcite parsing |
+| kingbase | Partial | PG-compatible, `getPrimaryKeys()` supported |
+| gaussdb | Partial | PG-compatible, `getPrimaryKeys()` supported |
+
+Fallback behavior: When `getPrimaryKeys()` returns empty or Calcite parsing fails, the DML is recorded in `undo_log` with `undoable=false` (audit-only, no Undo button shown).
+
 Unsupported kinds throw `IngestionDialectUnsupportedException` → MCP action returns `INGESTION_DIALECT_UNSUPPORTED` error code → frontend shows `ingestion.dialect_unsupported.<kind>` i18n message.

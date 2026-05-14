@@ -370,6 +370,8 @@ export function Markdown(props: {
   className?: string
   messageId?: string
   partId?: string
+  /** When true, skip chart/dashboard/SQL-action decorations (used for user bubbles) */
+  disableActions?: boolean
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const chartRootsRef = useRef<Map<string, ChartRootEntry>>(new Map())
@@ -415,20 +417,24 @@ export function Markdown(props: {
 
     const temp = document.createElement('div')
     temp.innerHTML = html
-    decorateChartBlocks(temp, {
-      cacheKey: props.cacheKey,
-      streaming: props.streaming ?? false,
-      messageId: props.messageId,
-      partId: props.partId,
-    })
-    decorateDashboardBlocks(temp, {
-      cacheKey: props.cacheKey,
-      streaming: props.streaming ?? false,
-      messageId: props.messageId,
-      partId: props.partId,
-    })
+    if (!props.disableActions) {
+      decorateChartBlocks(temp, {
+        cacheKey: props.cacheKey,
+        streaming: props.streaming ?? false,
+        messageId: props.messageId,
+        partId: props.partId,
+      })
+      decorateDashboardBlocks(temp, {
+        cacheKey: props.cacheKey,
+        streaming: props.streaming ?? false,
+        messageId: props.messageId,
+        partId: props.partId,
+      })
+    }
     decorateCodeBlocks(temp, copyLabel)
-    decorateSqlBlocks(temp)
+    if (!props.disableActions) {
+      decorateSqlBlocks(temp)
+    }
     decorateTables(temp, tRef.current)
 
     morphdom(container, temp, {

@@ -10,10 +10,7 @@ import { useSessionStore } from '@/stores/session-store'
 import { openDirectSqlQueryEditorTab } from '@/features/stage/utils/open-direct-sql-query-editor-tab'
 import { shouldAutoRunDirectSql } from '@/features/stage/utils/direct-sql-auto-run-policy'
 import { normalizeError, showErrorToast } from '@/services/http-error'
-
-function HighlightedText(props: { text: string }) {
-  return <>{props.text}</>
-}
+import { Markdown } from '@/features/chat/components/markdown/markdown'
 
 function extractBangQuerySql(text: string): string | null {
   const trimmed = text.trim()
@@ -99,8 +96,13 @@ export function UserBubble(props: { info: MessageInfo; parts: Part[] }) {
             >
               <TerminalIcon className="size-3" aria-hidden="true" />
             </span>
-            <span className="min-w-0 flex-1 whitespace-pre-wrap break-words leading-5">
-              <HighlightedText text={text} />
+            <span className="min-w-0 flex-1">
+              <Markdown
+                text={text}
+                cacheKey={`user:${info.id}`}
+                disableActions
+                className="text-primary-foreground text-sm"
+              />
             </span>
             {bangQuerySql ? (
               <Tooltip>
@@ -126,7 +128,12 @@ export function UserBubble(props: { info: MessageInfo; parts: Part[] }) {
             ) : null}
           </div>
         ) : (
-          <HighlightedText text={text} />
+          <Markdown
+            text={text}
+            cacheKey={`user:${info.id}`}
+            disableActions
+            className="text-primary-foreground text-sm"
+          />
         )}
         {retrying && <span className="ml-2 inline-block animate-spin">⟳</span>}
       </div>
