@@ -299,8 +299,8 @@ export function IngestionLibraryTab() {
               <TableHead className={`${stickyHeaderCellClass} font-medium`}>{t('ingestion.library.columns.target')}</TableHead>
               <TableHead className={`${stickyHeaderCellClass} font-medium w-20`}>{t('ingestion.library.columns.rows')}</TableHead>
               <TableHead className={`${stickyHeaderCellClass} font-medium w-40`}>{t('ingestion.library.columns.created')}</TableHead>
-              <TableHead className={`${stickyHeaderCellClass} font-medium w-40`}>{t('ingestion.library.columns.creator')}</TableHead>
-              <TableHead className={`${stickyHeaderCellClass} w-12`} aria-hidden />
+              <TableHead className={`${stickyHeaderCellClass} font-medium`}>{t('ingestion.library.columns.creator')}</TableHead>
+              <TableHead className={`${stickyHeaderCellClass} font-medium w-20`}>{t('ingestion.library.columns.actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -318,7 +318,7 @@ export function IngestionLibraryTab() {
                 const stopLabel = showForceStop ? t('ingestion.action.forceStop') : t('ingestion.action.stop')
                 const stopBtnClass = showForceStop
                   ? 'inline-flex items-center gap-1 rounded-md border border-status-danger/30 bg-status-danger/15 px-1.5 py-0.5 text-[11px] text-status-danger hover:bg-status-danger/25'
-                  : 'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:bg-status-danger/10 hover:text-status-danger'
+                  : 'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-status-danger/10 hover:text-status-danger'
                 return (
                 <TableRow
                   key={job.id}
