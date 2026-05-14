@@ -445,6 +445,6 @@ Every child implementation plan created from this roadmap must include:
 - [ ] Task 13 shipped: 自然语言导入导出全链路打通——一句话导出表/查询结果到 CSV/JSON/SQL/Excel，上传文件导入建表 + L2 确认。
 - [ ] Task 10 shipped: 通用 HTTP/REST skill 脚手架可用，至少一个示范采集→落库→查询链路跑通。
 - [ ] Task 14 shipped: 基于对话/查询结果/Dashboard 生成 Markdown/HTML/PDF 报告，产物进入 File Artifact 系统。
-- [ ] Task 15 shipped: 全局操作日志拦截器生效，UPDATE/DELETE/INSERT 自动记录 before/after image；操作日志面板可按连接/表名/类型筛选，支持单条和批量回滚；回滚幂等且自身可审计。
+- [x] Task 15 shipped: 全局操作日志拦截器生效，DML 自动记录 before-state + inverse SQL；SQL 结果面板支持单条 Undo 回滚（确认弹窗 + inverse SQL 预览）；UndoLogCleanupScheduler 每日清理过期记录。OpenSpec change `2026-05-14-undo-log` 已归档。注：完整操作日志面板（按连接/表名/类型筛选 + 批量回滚 UI）未包含在首版，留作后续增强。
 - [ ] All child plans registered in `docs/exec-plans/index.md` and `docs/product-specs/index.md`.
 - [ ] Phase 2 roadmap (`2026-04-25-next-implementation-roadmap-plan.md`) updated: Task 10 moved from placeholder to active + Phase 3 roadmap reference added.
