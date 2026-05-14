@@ -25,7 +25,7 @@ CREATE TABLE ingestion_job (
   payload_format           TEXT NOT NULL CHECK(payload_format IN ('json','jsonl','csv','html')),
   payload_artifact_id      TEXT,
   status                   TEXT NOT NULL CHECK(status IN
-                             ('pending','fetching','fetched','mapping','awaiting_confirm',
+                             ('pending','fetching','fetched','mapping','confirmed',
                               'writing','completed','failed','cancelled')),
   connection_id            TEXT,
   target_schema            TEXT,

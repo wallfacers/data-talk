@@ -22,7 +22,7 @@ public sealed interface IngestionJobStatus
             case Fetching f -> "fetching";
             case Fetched f -> "fetched";
             case Mapping m -> "mapping";
-            case AwaitingConfirm a -> "awaiting_confirm";
+            case AwaitingConfirm a -> "confirmed";
             case Writing w -> "writing";
             case Completed c -> "completed";
             case Failed f -> "failed";
@@ -36,7 +36,7 @@ public sealed interface IngestionJobStatus
             case "fetching" -> new Fetching();
             case "fetched" -> new Fetched();
             case "mapping" -> new Mapping();
-            case "awaiting_confirm" -> new AwaitingConfirm();
+            case "confirmed" -> new AwaitingConfirm();
             case "writing" -> new Writing();
             case "completed" -> new Completed();
             case "failed" -> new Failed(errorMessage == null ? "" : errorMessage);

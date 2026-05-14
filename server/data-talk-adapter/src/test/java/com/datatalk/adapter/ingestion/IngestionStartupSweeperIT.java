@@ -6,6 +6,7 @@ import com.datatalk.domain.ingestion.IngestionJob;
 import com.datatalk.domain.ingestion.PayloadFormat;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -25,7 +26,7 @@ class IngestionStartupSweeperIT {
 
     @Autowired IngestionStartupSweeper sweeper;
     @Autowired IngestionJobRepository repo;
-    @Autowired JdbcTemplate jdbc;
+    @Autowired @Qualifier("datatalkJdbc") JdbcTemplate jdbc;
 
     @Test
     void flipsAllNonTerminalStatusesToFailed() {
