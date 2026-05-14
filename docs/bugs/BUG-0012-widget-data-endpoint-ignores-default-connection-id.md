@@ -1,7 +1,7 @@
 ---
 id: BUG-0012
 title: Widget data endpoint 缺少 dashboard 级 database / schema 解析回路
-status: fixed
+status: verified
 priority: P1
 source: e2e-playwright
 modules: [dashboard]

@@ -1,15 +1,16 @@
 ---
 id: BUG-0043
 title: Chat Run SQL 打开多个 SQL 编辑器，切换 tab 导致默认 connection 丢失
-status: fixed
+status: verified
 priority: P1
 source: manual-report
 modules: [stage, query-editor, chat]
 discovered: 2026-05-14
 discoveredBy: human
 testRunId: null
-fixCommit: pending
+fixCommit: bbbdf015
 fixPlanRef: openspec/changes/query-editor-connection-default-fallback/
+closedDate: 2026-05-14
 duplicateOf: null
 regression: false
 ---

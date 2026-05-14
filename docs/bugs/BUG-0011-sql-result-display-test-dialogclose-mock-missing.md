@@ -1,7 +1,7 @@
 ---
 id: BUG-0011
 title: sql-result-display 测试缺少 DialogClose mock 导致 10 个用例失败
-status: fixed
+status: verified
 priority: P2
 source: e2e-mcp
 modules: [stage]

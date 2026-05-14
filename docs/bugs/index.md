@@ -14,21 +14,14 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 | ID | Title | Priority | Source | Modules | Discovered |
 |----|-------|----------|--------|---------|------------|
-| [BUG-0045](BUG-0045-ingestion-sweeper-it-missing-schema.md) | IngestionHeartbeatSweeperIT / IngestionStartupSweeperIT 测试库无 ingestion_job 表 | P2 | regression-test-sweep | ingestion | 2026-05-14 |
+| — | 当前无 open BUG | — | — | — | — |
 
 
 ## In Progress（status = investigating | fixed 等待 verify）
 
 | ID | Title | Status | Priority | Owner |
 |----|-------|--------|----------|-------|
-| [BUG-0044](BUG-0044-user-bubble-markdown-invisible-on-primary-bg.md) | 用户气泡 Markdown 代码块/表格白字白底（双主题均不可读） | fixed | P2 | — |
-| [BUG-0042](BUG-0042-sql-editor-session-follow-mode-ignores-connection-default-database.md) | SQL editor session-follow 模式下不应用 connection 默认 database | fixed | P1 | — |
-| [BUG-0043](BUG-0043-sql-editor-tab-switch-loses-default-connection.md) | Chat Run SQL 打开多个 SQL 编辑器，切换 tab 导致默认 connection 丢失 | fixed | P1 | — |
 | [BUG-0035](BUG-0035-dialog-bg-canvas-typo-causes-transparent-background.md) | 数据源/凭据管理设置页删除弹框背景半透明，bg-canvas 类拼写错误 | fixed | P2 | — |
-| [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md) | Stage 永久删除最后一个 tab 后右侧工作区空白 | fixed | P1 | — |
-| [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md) | 聊天气泡内 ECharts X 轴标题（xAxis.name）右侧被裁 | fixed | P2 | — |
-| [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md) | sql-result-display 测试缺少 DialogClose mock 导致 10 个用例失败 | fixed | P2 | — |
-| [BUG-0012](BUG-0012-widget-data-endpoint-ignores-default-connection-id.md) | Widget data endpoint 缺少 dashboard 级 database / schema 解析回路 | fixed | P1 | — |
 | [BUG-0013](BUG-0013-http-request-null-output-fields.md) | http_request action returns null for required output fields causing schema validation failure | fixed | P1 | — |
 | [BUG-0014](BUG-0014-ssrf-deny-list-not-blocking-169-254.md) | SSRF deny list not blocking 169.254.169.254 with e2e profile | fixed | P1 | — |
 | [BUG-0015](BUG-0015-oversized-payload-not-marked-failed.md) | Oversized payload not marked as failed with INGESTION_PAYLOAD_TOO_LARGE | fixed | P1 | — |
@@ -61,6 +54,14 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 | ID | Title | Status | Closed Date | FixCommit |
 |----|-------|--------|-------------|-----------|
+| [BUG-0044](BUG-0044-user-bubble-markdown-invisible-on-primary-bg.md) | 用户气泡 Markdown 代码块/表格白字白底（双主题均不可读） | verified | 2026-05-14 | c28058c5 |
+| [BUG-0043](BUG-0043-sql-editor-tab-switch-loses-default-connection.md) | Chat Run SQL 打开多个 SQL 编辑器，切换 tab 导致默认 connection 丢失 | verified | 2026-05-14 | bbbdf015 |
+| [BUG-0042](BUG-0042-sql-editor-session-follow-mode-ignores-connection-default-database.md) | SQL editor session-follow 模式下不应用 connection 默认 database | verified | 2026-05-14 | bbbdf015 |
+| [BUG-0045](BUG-0045-ingestion-sweeper-it-missing-schema.md) | IngestionHeartbeatSweeperIT / IngestionStartupSweeperIT 测试库无 ingestion_job 表 | verified | 2026-05-14 | 6403fa9c |
+| [BUG-0012](BUG-0012-widget-data-endpoint-ignores-default-connection-id.md) | Widget data endpoint 缺少 dashboard 级 database / schema 解析回路 | verified | 2026-05-14 | b8060d9 |
+| [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md) | sql-result-display 测试缺少 DialogClose mock 导致 10 个用例失败 | verified | 2026-05-14 | 49f2e85 |
+| [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md) | 聊天气泡内 ECharts X 轴标题（xAxis.name）右侧被裁 | verified | 2026-05-14 | 6bb1c93 |
+| [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md) | Stage 永久删除最后一个 tab 后右侧工作区空白 | verified | 2026-05-14 | — |
 | [BUG-0016](BUG-0016-credentials-section-missing-from-settings-dropdown.md) | Settings 下拉菜单缺少 Credentials 入口，无法通过 UI 导航到凭据页面 | verified | 2026-05-12 | 434d1ae9 |
 | BUG-0001 | ER Inspector "Add virtual relation" 按钮无效 | verified | 2026-05-06 | — |
 | BUG-0002 | ER Designer bind_target 成功但 diff_against_db / generate_ddl 仍拒绝 | verified | 2026-05-06 | — |

@@ -1,7 +1,7 @@
 ---
 id: BUG-0008
 title: Stage 永久删除最后一个 tab 后右侧工作区空白（应显示新建工作位菜单）
-status: fixed
+status: verified
 priority: P1
 source: e2e-playwright
 modules: [stage]

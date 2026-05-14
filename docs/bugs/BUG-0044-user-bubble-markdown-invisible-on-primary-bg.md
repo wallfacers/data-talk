@@ -1,7 +1,7 @@
 ---
 id: BUG-0044
 title: 用户气泡 Markdown 代码块/表格白字白底（双主题均不可读）
-status: fixed
+status: verified
 priority: P2
 source: manual-report
 modules: [chat, markdown]

@@ -1,15 +1,16 @@
 ---
 id: BUG-0045
 title: IngestionHeartbeatSweeperIT / IngestionStartupSweeperIT 测试库无 ingestion_job 表（H2 schema 未初始化）
-status: open
+status: verified
 priority: P2
 source: regression-test-sweep
 modules: [ingestion]
 discovered: 2026-05-14
 discoveredBy: agents-md-skills-refactor implementation
 testRunId: null
-fixCommit: null
+fixCommit: 6403fa9c
 fixPlanRef: null
+closedDate: 2026-05-14
 duplicateOf: null
 regression: false
 ---

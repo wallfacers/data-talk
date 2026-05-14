@@ -1,7 +1,7 @@
 ---
 id: BUG-0010
 title: 聊天气泡内 ECharts X 轴标题（xAxis.name）右侧被裁
-status: fixed
+status: verified
 priority: P2
 source: manual-report
 modules: [chat, markdown, chart]

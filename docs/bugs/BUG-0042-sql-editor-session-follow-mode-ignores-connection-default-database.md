@@ -1,15 +1,16 @@
 ---
 id: BUG-0042
 title: SQL editor session-follow 模式下不应用 connection 默认 database
-status: fixed
+status: verified
 priority: P1
 source: manual-report
 modules: [stage, query-editor, connection]
 discovered: 2026-05-14
 discoveredBy: human
 testRunId: null
-fixCommit: pending
+fixCommit: bbbdf015
 fixPlanRef: openspec/changes/query-editor-connection-default-fallback/
+closedDate: 2026-05-14
 duplicateOf: null
 regression: false
 ---
