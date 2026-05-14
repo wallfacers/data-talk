@@ -500,8 +500,9 @@ export const useStageStore = create<StageState>((set, get) => ({
   // the user without each caller having to remember a separate openStage().
   openTab: (tab) => set((s) => {
     if (!s.open) persistOpen(true)
+    const withTouch = tab.lastTouchedAt == null ? { ...tab, lastTouchedAt: Date.now() } : tab
     return {
-      tabs: [...s.tabs, tab],
+      tabs: [...s.tabs, withTouch],
       openTabIds: new Set([...s.openTabIds, tab.tabId]),
       openTabIdsOrdered: [...s.openTabIdsOrdered, tab.tabId],
       activeTabId: tab.tabId,
@@ -559,10 +560,14 @@ export const useStageStore = create<StageState>((set, get) => ({
     if (!target) return s
     if (target.archived) return s
     if (!s.open) persistOpen(true)
+    const tabs = s.tabs.map((t) =>
+      t.tabId === tabId ? { ...t, lastTouchedAt: Date.now() } : t,
+    )
     const inWorkset = s.openTabIds.has(tabId)
-    if (inWorkset) return { activeTabId: tabId, open: true }
+    if (inWorkset) return { tabs, activeTabId: tabId, open: true }
     const nextIds = new Set(s.openTabIds); nextIds.add(tabId)
     return {
+      tabs,
       openTabIds: nextIds,
       openTabIdsOrdered: [...s.openTabIdsOrdered, tabId],
       activeTabId: tabId,

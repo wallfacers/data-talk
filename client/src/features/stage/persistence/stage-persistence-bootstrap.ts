@@ -130,7 +130,7 @@ function diffMetaAndSchedule(next: TabSummary[], prev: TabSummary[]): void {
     }
     const patch: Record<string, unknown> = {}
     let changed = false
-    for (const key of ['title', 'connectionId', 'database', 'schema', 'pinned', 'archived'] as const) {
+    for (const key of ['title', 'connectionId', 'database', 'schema', 'pinned', 'archived', 'lastTouchedAt'] as const) {
       if ((nextTab as Record<string, unknown>)[key] !== (prevTab as Record<string, unknown>)[key]) {
         patch[key] = (nextTab as Record<string, unknown>)[key]
         changed = true
