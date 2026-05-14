@@ -8,12 +8,13 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## 当前编号
 
-下一个分配 ID：**BUG-0045**（永不复用，单调递增）
+下一个分配 ID：**BUG-0046**（永不复用，单调递增）
 
 ## Open BUGs（按 priority 倒序，P0 → P2）
 
 | ID | Title | Priority | Source | Modules | Discovered |
 |----|-------|----------|--------|---------|------------|
+| [BUG-0045](BUG-0045-ingestion-sweeper-it-missing-schema.md) | IngestionHeartbeatSweeperIT / IngestionStartupSweeperIT 测试库无 ingestion_job 表 | P2 | regression-test-sweep | ingestion | 2026-05-14 |
 
 
 ## In Progress（status = investigating | fixed 等待 verify）

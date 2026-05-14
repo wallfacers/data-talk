@@ -61,6 +61,8 @@ description: Use when the user asks to fetch external data (REST/JSON/CSV/static
 | `INGESTION_FETCH_FAILED` | Check URL, network, timeout |
 | `INGESTION_FORMAT_UNSUPPORTED` | Day-1 supports JSON/JSONL/CSV/HTML only |
 | `INGESTION_INFER_FAILED` | Check payload file is valid |
+| `INGESTION_NAME_REQUIRED` | Re-call with a meaningful `name` (1–80 chars) describing what is being fetched |
+| `INGESTION_ALREADY_TERMINAL` | Job has already completed / failed / cancelled — start a new ingestion if you need to retry |
 
 ## DDL dialect limits
 

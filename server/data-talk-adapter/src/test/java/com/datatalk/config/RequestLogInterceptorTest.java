@@ -86,7 +86,7 @@ class RequestLogInterceptorTest {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/sessions/999");
         MockHttpServletResponse response = new MockHttpServletResponse();
         interceptor.preHandle(request, response, new Object());
-        response.setStatus(404);
+        response.setStatus(500);
 
         interceptor.afterCompletion(request, response, new Object(), null);
 

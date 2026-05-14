@@ -139,6 +139,17 @@ public class OpenCodeGatewayBeans {
             Path opencodeCwd = OpenCodeProcessManager.opencodeWorkingDir(Paths.get(System.getProperty("user.home")));
             skillSyncer.syncSkill("bezel", opencodeCwd);
             skillSyncer.syncSkill("data-ingestion", opencodeCwd);
+            skillSyncer.syncSkill("sql-execution", opencodeCwd);
+            skillSyncer.syncSkill("query-editor-workflow", opencodeCwd);
+            skillSyncer.syncSkill("ui-contract", opencodeCwd);
+            skillSyncer.syncSkill("tab-management", opencodeCwd);
+            skillSyncer.syncSkill("er-tabs", opencodeCwd);
+            skillSyncer.syncSkill("concurrency-contract", opencodeCwd);
+            skillSyncer.syncSkill("charts-and-dashboards", opencodeCwd);
+            skillSyncer.syncSkill("artifacts-output", opencodeCwd);
+            skillSyncer.syncSkill("connection-management", opencodeCwd);
+            skillSyncer.syncSkill("sql-error-diagnostics", opencodeCwd);
+            skillSyncer.syncSkill("database-dialects", opencodeCwd);
 
             if (mcpProps.isEnabled()) {
                 bootstrapReconciler.writeManagedConfig(serverPort);
