@@ -21,6 +21,39 @@
 [data-component="markdown"] code { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.9em; }
 [data-component="markdown"] :not(pre) > code { background: var(--muted, #f5f5f5); padding: 1px 4px; border-radius: 3px; }
 
+/* Plain variant: used inside the user bubble where the bubble itself supplies
+   a saturated background (bg.primary). Decorations and themed surfaces would
+   collide with that background, so fenced code, tables, and headings are
+   degraded to inherit-color plain text and inline code uses a translucent
+   currentColor wash so contrast follows the bubble's text color in both
+   light and dark themes. */
+[data-component="markdown"][data-variant="plain"] :not(pre) > code {
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  color: inherit;
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+[data-component="markdown"][data-variant="plain"] pre[data-plain-code] {
+  margin: 0.5em 0;
+  padding: 8px 10px;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.9em;
+  line-height: 1.45;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  color: inherit;
+  border-radius: 6px;
+  overflow-x: auto;
+  white-space: pre;
+}
+[data-component="markdown"][data-variant="plain"] p {
+  margin: 0.25em 0;
+}
+[data-component="markdown"][data-variant="plain"] a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 [data-component="markdown-code"] {
   margin: 0.75em 0;
   overflow: hidden;

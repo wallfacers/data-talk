@@ -100,7 +100,7 @@ export function UserBubble(props: { info: MessageInfo; parts: Part[] }) {
               <Markdown
                 text={text}
                 cacheKey={`user:${info.id}`}
-                disableActions
+                variant="plain"
                 className="text-primary-foreground text-sm"
               />
             </span>
@@ -131,7 +131,7 @@ export function UserBubble(props: { info: MessageInfo; parts: Part[] }) {
           <Markdown
             text={text}
             cacheKey={`user:${info.id}`}
-            disableActions
+            variant="plain"
             className="text-primary-foreground text-sm"
           />
         )}

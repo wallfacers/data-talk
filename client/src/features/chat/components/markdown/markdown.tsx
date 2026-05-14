@@ -229,6 +229,35 @@ function renderStreamingCodeBlock(block: Block, copyLabel: string): string {
   ].join('')
 }
 
+function plainifyComplexBlocks(root: HTMLElement) {
+  for (const pre of Array.from(root.querySelectorAll('pre'))) {
+    const code = pre.querySelector('code')
+    const text = code?.textContent ?? pre.textContent ?? ''
+    const replacement = document.createElement('pre')
+    replacement.setAttribute('data-plain-code', '')
+    replacement.textContent = text.replace(/\n+$/, '')
+    pre.parentNode?.replaceChild(replacement, pre)
+  }
+  for (const table of Array.from(root.querySelectorAll('table'))) {
+    const lines: string[] = []
+    for (const row of Array.from(table.querySelectorAll('tr'))) {
+      const cells = Array.from(row.querySelectorAll('th, td')).map((c) => c.textContent?.trim() ?? '')
+      lines.push(cells.join(' | '))
+    }
+    const replacement = document.createElement('pre')
+    replacement.setAttribute('data-plain-code', '')
+    replacement.textContent = lines.join('\n')
+    table.parentNode?.replaceChild(replacement, table)
+  }
+  for (const heading of Array.from(root.querySelectorAll('h1, h2, h3, h4, h5, h6'))) {
+    const p = document.createElement('p')
+    const strong = document.createElement('strong')
+    strong.innerHTML = heading.innerHTML
+    p.appendChild(strong)
+    heading.parentNode?.replaceChild(p, heading)
+  }
+}
+
 function decorateCodeBlocks(root: HTMLElement, copyLabel: string) {
   const pres = Array.from(root.querySelectorAll('pre'))
   for (const pre of pres) {
@@ -370,9 +399,17 @@ export function Markdown(props: {
   className?: string
   messageId?: string
   partId?: string
-  /** When true, skip chart/dashboard/SQL-action decorations (used for user bubbles) */
-  disableActions?: boolean
+  /**
+   * Visual variant. `'rich'` (default) renders the full assistant experience
+   * with chart/dashboard/SQL/code-block/table decorations. `'plain'` strips
+   * all decorations and degrades fenced code blocks, tables, and headings to
+   * inherit-color plain text — used for the user bubble where the bubble's
+   * primary background is too saturated for decorated surfaces.
+   */
+  variant?: 'plain' | 'rich'
 }) {
+  const variant = props.variant ?? 'rich'
+  const isPlain = variant === 'plain'
   const ref = useRef<HTMLDivElement>(null)
   const chartRootsRef = useRef<Map<string, ChartRootEntry>>(new Map())
   const dashboardRootsRef = useRef<Map<string, ChartRootEntry>>(new Map())
@@ -417,7 +454,9 @@ export function Markdown(props: {
 
     const temp = document.createElement('div')
     temp.innerHTML = html
-    if (!props.disableActions) {
+    if (isPlain) {
+      plainifyComplexBlocks(temp)
+    } else {
       decorateChartBlocks(temp, {
         cacheKey: props.cacheKey,
         streaming: props.streaming ?? false,
@@ -430,12 +469,10 @@ export function Markdown(props: {
         messageId: props.messageId,
         partId: props.partId,
       })
-    }
-    decorateCodeBlocks(temp, copyLabel)
-    if (!props.disableActions) {
+      decorateCodeBlocks(temp, copyLabel)
       decorateSqlBlocks(temp)
+      decorateTables(temp, tRef.current)
     }
-    decorateTables(temp, tRef.current)
 
     morphdom(container, temp, {
       childrenOnly: true,
@@ -560,7 +597,7 @@ export function Markdown(props: {
         dashboardRoots.delete(key)
       }
     }
-  }, [props.text, props.cacheKey, props.streaming, props.messageId, props.partId])
+  }, [props.text, props.cacheKey, props.streaming, props.messageId, props.partId, isPlain])
 
   useEffect(() => {
     const container = ref.current
@@ -636,5 +673,5 @@ export function Markdown(props: {
     return () => container.removeEventListener('click', onClick)
   }, [])
 
-  return <div ref={ref} data-component="markdown" className={props.className} />
+  return <div ref={ref} data-component="markdown" data-variant={variant} className={props.className} />
 }
