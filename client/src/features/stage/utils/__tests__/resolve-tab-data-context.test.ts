@@ -213,6 +213,57 @@ describe('resolveTabDataContext', () => {
     })
   })
 
+  it('falls back to tab.database in session-follow mode when the session has no database pinned (BUG-0042)', () => {
+    // openQueryEditor write-time fallback stamps StageTab.database with the connection's
+    // configured databaseName. Without this fallback, the session-follow branch read
+    // sessionContext.database directly and ignored the freshly-written tab field.
+    const sessionWithoutDatabase: SessionDataContext = {
+      sessionId: 'sess-1',
+      connectionId: 'conn-session',
+      connectionNameSnapshot: 'session-name',
+      database: null,
+      schema: null,
+      selectedLevel: 'connection',
+      updatedAt: 1,
+    }
+    const resolved = resolveTabDataContext(
+      {
+        originSessionId: 'sess-1',
+        connectionId: 'conn-session',
+        database: 'analytics',
+        payload: { useSessionContext: true },
+      },
+      sessionWithoutDatabase,
+      { inheritSessionContext: true, preferSessionContext: true },
+    )
+
+    expect(resolved).toMatchObject({
+      useSessionContext: true,
+      connectionId: 'conn-session',
+      database: 'analytics',
+      contextSource: 'session',
+      selectedLevel: 'database',
+    })
+  })
+
+  it('still lets the session database win over tab.database when both are set in session-follow mode', () => {
+    const resolved = resolveTabDataContext(
+      {
+        originSessionId: 'sess-1',
+        connectionId: 'conn-session',
+        database: 'tab-default',
+        payload: { useSessionContext: true },
+      },
+      sessionContext,
+      { inheritSessionContext: true, preferSessionContext: true },
+    )
+
+    expect(resolved).toMatchObject({
+      database: 'session-db',
+      contextSource: 'session',
+    })
+  })
+
   it('treats the SQL context empty sentinel as an unset database and schema', () => {
     const resolved = resolveTabDataContext(
       {

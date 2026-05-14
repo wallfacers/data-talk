@@ -117,7 +117,10 @@ export function resolveTabDataContext(
   const sessionConnectionId = normalizeContextValue(sessionContext?.connectionId)
   if (useSessionContext && inheritSessionContext && sessionConnectionId != null) {
     const connectionId = sessionConnectionId
-    const database = normalizeContextValue(sessionContext?.database)
+    // BUG-0042: session-follow editors must surface the connection-default database
+    // that openQueryEditor wrote into StageTab.database / payload.database when the
+    // session itself did not pin one. Session value still wins when present.
+    const database = pickField(tab.database, payload.database, sessionContext?.database, true, true)
     const schema = normalizeContextValue(sessionContext?.schema)
     const connectionName = resolveConnectionName(
       connectionId,

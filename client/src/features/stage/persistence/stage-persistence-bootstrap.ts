@@ -217,16 +217,21 @@ function buildPersistedQueryEditorPayload(
   const basePayload = isRecord(tab.payload) ? tab.payload : {}
   const { contextPinMode: _contextPinMode, ...persistableBasePayload } = basePayload
   const normalizedPayload = normalizeQueryEditorPayload(tab.payload)
-  const overrideChanged = !prevTab || !sameQueryEditorOverride(nextTab, prevTab)
-  const contextOverride = overrideChanged
-    ? (nextTab.override
-      ? {
-          connectionId: nextTab.override.connectionId,
-          database: nextTab.override.database ?? null,
-          schema: nextTab.override.schema ?? null,
-        }
-      : null)
-    : normalizedPayload.contextOverride
+  // Distinguish "user/AI explicitly cleared override" (prevTab existed, now null) from
+  // "store hasn't been initialized yet for this freshly-opened tab" (prevTab undefined,
+  // store.override defaults to null). The latter must NOT overwrite payload.contextOverride
+  // that openQueryEditor already wrote — otherwise the persisted contextOverride is silently
+  // wiped on the first content-write tick after open. See BUG-0043.
+  const overrideExplicitlyCleared = prevTab != null && !sameQueryEditorOverride(nextTab, prevTab)
+  const contextOverride = nextTab.override
+    ? {
+        connectionId: nextTab.override.connectionId,
+        database: nextTab.override.database ?? null,
+        schema: nextTab.override.schema ?? null,
+      }
+    : overrideExplicitlyCleared
+      ? null
+      : normalizedPayload.contextOverride
 
   return {
     ...persistableBasePayload,

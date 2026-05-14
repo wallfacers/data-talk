@@ -98,6 +98,37 @@ describe('stage-persistence-bootstrap - query editor payload subscription', () =
     )
   })
 
+  it('preserves payload.contextOverride on the first content-write tick after open (BUG-0043)', () => {
+    // openQueryEditor with an explicit connection takes the explicit-connection branch
+    // (useSessionContext=false, contextOverride is written into payload). Internally it
+    // also calls useSqlWorkbenchStore.ensureTab, which fires the workbench-store subscribe
+    // → diffContentAndSchedule → buildPersistedQueryEditorPayload before the user has
+    // touched any context controls. Without the fix, that first tick would observe
+    // store.override === null and overwrite the freshly-written contextOverride with null.
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 'sess-1',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'blank',
+      initialContent: 'select 1',
+      connectionId: 'conn-1',
+      connectionName: 'Primary',
+      database: 'db_main',
+      schema: 'public',
+    })
+
+    const persistedPayload = vi.mocked(coordinator.scheduleContentWrite).mock.calls
+      .find(([id]) => id === tabId)?.[1].payload
+    expect(persistedPayload).toMatchObject({
+      contextOverride: {
+        connectionId: 'conn-1',
+        database: 'db_main',
+        schema: 'public',
+      },
+      useSessionContext: false,
+    })
+  })
+
   it('strips legacy contextPinMode when rewriting session-following payloads', () => {
     const { tabId } = useStageStore.getState().openQueryEditor({
       sessionId: 'sess-1',

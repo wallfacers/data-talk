@@ -1,14 +1,14 @@
 ---
 id: BUG-0043
 title: Chat Run SQL 打开多个 SQL 编辑器，切换 tab 导致默认 connection 丢失
-status: open
+status: fixed
 priority: P1
 source: manual-report
 modules: [stage, query-editor, chat]
 discovered: 2026-05-14
 discoveredBy: human
 testRunId: null
-fixCommit: null
+fixCommit: pending
 fixPlanRef: openspec/changes/query-editor-connection-default-fallback/
 duplicateOf: null
 regression: false
@@ -58,11 +58,46 @@ regression: false
 
 ## Root Cause
 
-TBD（需 playwright 复现 + 状态快照）
+持久化层 `buildPersistedQueryEditorPayload`（`client/src/features/stage/persistence/stage-persistence-bootstrap.ts:220`）在新 tab 首次 subscribe 触发时把 payload.contextOverride 抹成 null。
+
+完整链路：
+1. `openQueryEditor` → `payload.contextOverride = {connectionId: 'tide', database, schema}` ✓
+2. 内部立即 `useSqlWorkbenchStore.ensureTab(tabId, {sqlText, source, useSessionContext})` — **不传 override 字段**
+3. `createDefaultTabState` 用 `override: null` 初始化 sql-workbench-store entry
+4. zustand subscribe 触发 → `diffContentAndSchedule`：
+   - `prevTab=undefined`（新 tab 第一次写入 sql-workbench-store）
+   - 原代码：`overrideChanged = !prevTab || ... = true`
+   - `nextTab.override = null` → 走 `contextOverride: null` 分支
+   - 把 server 上的 payload.contextOverride 抹成 null
+5. UI 此时还是 OK，因为 `runtimeContextOverride = tabState.override || payload.contextOverride`，in-memory `tab.payload` 还在
+6. 切 tab → `coordinator.ensureHydrated` 重拉 server payload → `__hydratePayload` 用 server 的 null 更新 in-memory `tab.payload`
+7. 连接选择器空 ❌
+
+用户观察"手动改 database 后切 tab 不丢"恰好符合这条链：手动 `setQueryEditorContext` → 写 `sql-workbench-store.override` → 后续 subscribe 触发时 `nextTab.override` 不再是 null，写入正确 contextOverride，不会再被抹。
 
 ## Fix
 
-TBD
+`buildPersistedQueryEditorPayload` 区分"用户/AI 主动 reset override"（prevTab 存在，转为 null）与"sql-workbench-store 刚初始化"（prevTab 没有）：
+
+```ts
+// Before
+const overrideChanged = !prevTab || !sameQueryEditorOverride(nextTab, prevTab)
+const contextOverride = overrideChanged
+  ? (nextTab.override ? {...} : null)
+  : normalizedPayload.contextOverride
+
+// After
+const overrideExplicitlyCleared = prevTab != null && !sameQueryEditorOverride(nextTab, prevTab)
+const contextOverride = nextTab.override
+  ? {...}
+  : overrideExplicitlyCleared
+    ? null
+    : normalizedPayload.contextOverride
+```
+
+新 tab 首次 subscribe 时（prevTab undefined）保留 `normalizedPayload.contextOverride`（即 openQueryEditor 写入的值），不再抹除。
+
+测试覆盖：`stage-persistence-bootstrap.query-editor.test.ts` 新增 "preserves payload.contextOverride on the first content-write tick after open (BUG-0043)"，断言 `openQueryEditor` 触发的首次 `scheduleContentWrite` 写入正确的 `contextOverride`。
 
 ## Verification
 

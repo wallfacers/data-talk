@@ -1,14 +1,14 @@
 ---
 id: BUG-0042
 title: SQL editor session-follow 模式下不应用 connection 默认 database
-status: open
+status: fixed
 priority: P1
 source: manual-report
 modules: [stage, query-editor, connection]
 discovered: 2026-05-14
 discoveredBy: human
 testRunId: null
-fixCommit: null
+fixCommit: pending
 fixPlanRef: openspec/changes/query-editor-connection-default-fallback/
 duplicateOf: null
 regression: false
@@ -71,7 +71,21 @@ write-time fallback 在 session-follow 分支无效，因为：
 
 ## Fix
 
-TBD — 跟 BUG-0043 一起评估，可能需要更新 `query-editor-connection-default-fallback` change 的 design.md。
+采用**方案 A**：在 `resolveTabDataContext` 的 session-follow 分支用 `pickField(tab.database, payload.database, sessionContext?.database, true, true)` 替代直接 `normalizeContextValue(sessionContext?.database)`（`client/src/features/stage/utils/resolve-tab-data-context.ts:120`）。
+
+`pickField` 在 `preferSessionContext=true` 时仍然让 session 值优先（session 主动 pin database 的语义保留），只在 session 缺该字段时落到 `tab.database` / `payload.database` —— 即 write-time fallback 写入的值能被 resolver 看到。
+
+D1 "resolver stays pure" 原则的解读：resolver 仍然是纯函数（不读 store / 不写 DOM），只是这条分支的 fallback 顺序从单源（session）改为多源（session > tab > payload）。这跟 resolver 其他分支（line 162-166）的 pickField 用法一致，没有引入新的副作用。
+
+**Schema 不改**：connection 配置没有 schema 字段（per design D3），保持原样。
+
+### 浏览器复现验证
+
+- Settings 已配 data-uat connection（databaseName='tide'）
+- chat 选 data-uat 作为数据源 → session.connectionId='data-uat', session.database=null
+- Stage `+` → SQL Editor → toolbar 显示 **Connection=data-uat, Database=tide** ✓
+
+修复前打开的 editor（tab.database 已经持久化为 null）仍然显示 Not set —— 修复只对新打开/重新写入 tab 字段的 editor 生效。已有污染 tab 需要用户手动重新选 connection 触发 fallback 重写。
 
 ## Verification
 
