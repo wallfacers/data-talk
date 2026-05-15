@@ -171,17 +171,26 @@ export function ErToolbar(props: ErToolbarProps) {
 
       <Tooltip>
         <TooltipTrigger render={
-          <select
-            data-testid="er-toolbar-neighbor-depth"
-            aria-label={label('erCanvas.toolbar.neighborDepth', 'Neighbor depth')}
-            value={props.neighborDepth}
-            onChange={(event) => props.onChangeNeighborDepth(Number(event.target.value) as 0 | 1 | 2)}
-            className="h-7 rounded-md border border-border-default bg-bg-canvas px-2 text-xs text-text-base outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing"
+          <Select
+            value={String(props.neighborDepth)}
+            onValueChange={(value) => props.onChangeNeighborDepth(Number(value) as 0 | 1 | 2)}
           >
-            <option value={0}>0</option>
-            <option value={1}>1</option>
-            <option value={2}>2</option>
-          </select>
+            <SelectTrigger
+              size="sm"
+              data-testid="er-toolbar-neighbor-depth"
+              aria-label={label('erCanvas.toolbar.neighborDepth', 'Neighbor depth')}
+              className="min-w-16 rounded-md border-border-default bg-bg-canvas px-2 text-xs text-text-base"
+            >
+              <span className="flex flex-1 text-left">
+                {props.neighborDepth}
+              </span>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="0">0</SelectItem>
+              <SelectItem value="1">1</SelectItem>
+              <SelectItem value="2">2</SelectItem>
+            </SelectContent>
+          </Select>
         } />
         <TooltipContent side="bottom" sideOffset={4}>
           {label('erCanvas.toolbar.neighborDepth', 'Neighbor depth')}
