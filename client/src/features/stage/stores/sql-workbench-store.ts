@@ -477,6 +477,8 @@ export const useSqlWorkbenchStore = create<SqlWorkbenchState>((set, get) => ({
       [tabId]: {
         ...ensureTabState(state.tabsById, tabId),
         executeStatus: 'running',
+        results: [],
+        activeResultId: null,
         errorMessage: null,
         confirmation: null,
         confirmationInvalid: null,
