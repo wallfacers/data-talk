@@ -12,7 +12,9 @@
 | `id` | `string` | **是** | 格式 `dash_[a-zA-Z0-9_]{4,}` |
 | `title` | `string` | **是** | 1–256 字符 |
 | `description` | `string` | 否 | 最长 32768 字符 |
-| `defaultConnectionId` | `string \| null` | 否 | 默认数据源连接 ID |
+| `defaultConnectionId` | `string \| null` | **是\*** | 默认数据源连接 ID。\*技术上 schema 是 `optional`，但 AI 在用户已绑定连接时**必须**填写。 |
+| `defaultDatabase` | `string \| null` | **是\*** | 默认 database 名（widget SQL 未限定 database 时使用）。\*只有当用户在会话里**真的没绑定 database** 时才允许为 null，否则 AI 必须填会话当前选中的 database。**这是 AI 的责任，不是后端兜底的责任**——后端虽然有 `X-DataTalk-Session-Id` header 兜底，但只用于客户端注入失效的极端竞态情况，不是默认路径。空缺时 widget 接口会报 `表 X 命中多个候选：a, b。请先明确选择 database/schema`。 |
+| `defaultSchema` | `string \| null` | 否 | 默认 schema 名。Postgres / SQL Server 等使用 schema 的方言下，若选中了非默认 schema（非 `public`/`dbo`），AI **必须**填；MySQL/SQLite 等不使用 schema 的方言可省略。 |
 | `theme` | `string` | **是** | 格式 `industry-[a-z-]+`，如 `industry-ecommerce` |
 | `renderer` | `"bezel"` | **是** | 固定值，标识渲染器 |
 | `refresh` | `DashboardRefresh` | 否 | 全局刷新策略（默认 `10000ms / pauseOnHidden: true`） |

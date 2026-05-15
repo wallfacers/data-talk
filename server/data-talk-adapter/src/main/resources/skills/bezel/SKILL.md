@@ -48,6 +48,9 @@ This is the only correct delivery path. Any deviation breaks the workbench rende
      "title": "...",
      "theme": "industry-<kebab-case>",
      "renderer": "bezel",
+     "defaultConnectionId": "<the connection the chat session is currently using>",
+     "defaultDatabase":     "<the database the chat session is currently using>",
+     "defaultSchema":       "<the schema, if the dialect requires one; otherwise null>",
      "layout": { "engine": "free" },
      "parameters": [],
      "widgets": [
@@ -66,12 +69,28 @@ This is the only correct delivery path. Any deviation breaks the workbench rende
      "updatedAt": <epoch-ms>
    }
    ```
+
+   **Data-context fields are MANDATORY when you know them — do NOT outsource the decision to the server.**
+   - `defaultConnectionId` — read from the chat session's data context (the user's currently selected connection).
+   - `defaultDatabase` — read from the chat session's data context. **Required** whenever:
+     - the connection exposes more than one database (MySQL/Postgres usually do), OR
+     - the connection record has no fixed `databaseName` configured.
+     If you skip it, widget SQL like `SELECT ... FROM users` will reach `TableContextAutoResolver` with no scope hint and return HTTP 400 `表 X 命中多个候选：a, b。请先明确选择 database/schema` — the user sees blank widgets.
+   - `defaultSchema` — required for Postgres/SQL Server dialects when the schema isn't `public`/`dbo`. Omit (`null`) only if the dialect doesn't use schemas (MySQL/SQLite/etc.).
+   - You *may* set `defaultConnectionId` only if the user truly hasn't bound a database, but **never relax `defaultDatabase` when a real database is selected.** The server has a `X-DataTalk-Session-Id`-driven backstop that fills blanks from the session's data context, but it is a *safety net for race conditions*, not a substitute for explicit AI emission. Relying on it hides genuine ambiguity and produces dashboards that silently bind to whatever database the user last switched to.
 4. **What happens after you emit the blocks**:
    - Frontend `decorateDashboardBlocks` detects `language-dashboard` and mounts `DashboardBlock`; if a `language-dashboard-html` block follows, the HTML is base64-attached to the same mount as `data-dashboard-html-b64` and removed from the visible chat stream.
    - `DashboardBlock` parses + Zod-validates the JSON and shows a preview card with widget icons.
    - User clicks **"在工作台打开"** → `promoteDashboard(dashboard, html)` opens a `dashboard` stage tab and `POST /api/dashboards/promote` persists **both** the JSON and the HTML.
    - `DashboardTab` → `DashboardIframeShell` → `GET /api/dashboards/{id}/html` returns the stored HTML, which is loaded into a sandboxed iframe via `srcDoc`. The polling scheduler inside the HTML calls `POST /api/dashboards/{id}/widgets/{wid}/data` per widget refresh interval. If the HTML block was missing the iframe falls back to the v1 missing placeholder — that is the user-visible signal that you skipped the `dashboard-html` block.
 5. **Verification before responding**: the dashboard JSON you emit must round-trip through `dashboardSchema` (see `client/src/features/dashboard/schema.ts`). If you cannot satisfy the regex constraints (`id`, `widget.id`, `widget.patternId`, `theme`), fix the JSON — never relax delivery by falling back to `write`.
+
+6. **Pre-emit checklist for the data-context block**:
+   1. Did you read the current chat session's selected `connectionId` / `database` / `schema`?
+   2. Is `defaultConnectionId` set in the JSON?
+   3. Is `defaultDatabase` set in the JSON? **If the user hasn't selected one yet, STOP and ask them which database to bind the dashboard to** — do not guess and do not leave it blank.
+   4. Is `defaultSchema` set (or explicitly `null` for dialects without schemas)?
+   5. Does every `widget.query.sql` use unqualified table names that resolve under the chosen `database` + `schema`? If you mix unqualified and `db.table.column` references, document why.
 
 ## Reference layout
 
@@ -94,3 +113,4 @@ Read in this order:
 4. Refresh updates ECharts data only (`setOption({ dataset })`); never rebuild DOM.
 5. CSP is enforced via `<meta http-equiv="Content-Security-Policy">` inside the HTML, with placeholder `__BEZEL_SERVER_ORIGIN__` that the host server replaces on serve.
 6. Every widget SQL must be a single SELECT — no DDL/DML, no admin commands. Server-side `SqlStatementGuard` will reject otherwise.
+7. **Widget layout is CSS Grid, 12 columns — never `position: absolute`.** The compiled HTML `<body>` is a CSS Grid container (`display: grid; grid-template-columns: repeat(12, minmax(0, 1fr))`). Every `.bezel-widget` element is a grid child placed via inline `grid-column: <position.x + 1> / span <position.w>; grid-row: <position.y + 1> / span <position.h>` derived from the JSON's `widget.position = {x, y, w, h}`. **Forbidden:** applying `position: absolute` (or any `top`/`left`/`width`/`height`) to `.bezel-widget`. That detaches widgets from the grid, causes them to stack on top of each other in the top-left corner, and the user sees only one or two visible widgets out of N. This was a real defect — guard against regenerating it. Decorative pseudo-elements *inside* a widget (`.card::after`, etc.) may still use `position: absolute` relative to the widget itself.

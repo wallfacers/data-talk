@@ -26,26 +26,40 @@
 
 ### CSS Implementation
 
-The outer container uses `position: relative`. All widgets are `position: absolute` with `top`/`left` percentages specified by the industry file. The core widget is centered via:
+**Widget placement uses the 12-column CSS Grid defined by `compile-rules.md` — `.bezel-widget` must remain a grid child (never `position: absolute`).** The "orbital" feel is achieved by *choosing grid coordinates* for the core widget and by layering decorative rings as `body::before`/`body::after` pseudo-elements behind the grid.
 
 ```css
-.dashboard {
-  position: relative;
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
-}
-.widget-core {
+/* Body is already a 12-column grid from compile-rules.md.
+   Decorative orbital rings sit behind every grid child. */
+body::before,
+body::after {
+  content: '';
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 36%;
-  height: 42%;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(circle at center,
+    transparent 28%,
+    rgba(var(--accent-primary-rgb), 0.10) 28.3%,
+    transparent 28.6%,
+    transparent 44%,
+    rgba(var(--accent-primary-rgb), 0.07) 44.3%,
+    transparent 44.6%);
+}
+.bezel-widget { z-index: 1; }
+
+/* The "core" widget lives in the center of the grid.
+   For an 8-row layout, place the core at rows 3-6, columns 4-9 (1-indexed). */
+.bezel-widget.widget-core {
+  grid-column: 4 / span 6;
+  grid-row: 3 / span 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 ```
 
-Surrounding widgets are positioned by the industry file via inline `style="top:X%; left:Y%; width:W%; height:H%"`.
+Surrounding widgets get their normal `grid-column` / `grid-row` from `widget.position` in the JSON — the industry file should pick `{x, y, w, h}` values that visually surround the core widget's cells, instead of overriding to absolute coordinates.
 
 ### Header
 

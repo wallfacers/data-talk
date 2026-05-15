@@ -38,16 +38,34 @@ html, body {
   margin: 0;
   padding: 0;
   width: 100%;
-  height: 100%;
-  overflow: hidden;
+  min-height: 100%;
   font-family: __FONT_FAMILY__;
   background: var(--bg-primary, #0f172a);
   color: var(--text-primary, #e2e8f0);
 }
 
+/* The dashboard body is a 12-column CSS Grid; every widget is a grid child.
+   Each widget's column/row span comes from dashboard.json widget.position
+   ({x:0-11, y:>=0, w:1-12, h:>=1}) via inline grid-column / grid-row.
+   IMPORTANT: .bezel-widget MUST NOT use `position: absolute` or inline
+   `top/left/width/height`. Doing so detaches widgets from the grid and
+   causes them to overlap on top of each other. */
+body {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-auto-rows: minmax(64px, auto);
+  gap: 12px;
+  padding: 12px;
+  overflow: auto;
+}
+
 .__WIDGET_CLASS__ {
-  position: absolute;
-  /* top / left / width / height set per-widget from dashboard.json layout */
+  /* grid-column / grid-row are set per-widget via inline style from widget.position.
+     Do NOT add `position: absolute` here — widgets must remain grid items. */
+  min-width: 0;
+  min-height: 0;
+  position: relative; /* allow inner ::before/::after decorations to be absolutely positioned */
 }
   </style>
 </head>
@@ -294,16 +312,26 @@ STEP 4 — Assemble <body> Widget Containers
   For each widget w in dashboard.json.widgets[]:
     a. Resolve w.patternId to its HTML fragment template
        (pattern templates are defined in pattern reference files)
-    b. Compute absolute positioning from w.layout:
-       - top:    w.layout.top    (CSS % or px)
-       - left:   w.layout.left   (CSS % or px)
-       - width:  w.layout.width  (CSS % or px)
-       - height: w.layout.height (CSS % or px)
+    b. Compute CSS Grid placement from w.position {x, y, w, h}.
+       w.position is in 12-column grid units:
+         x ∈ [0, 11]   (column start, 0-indexed)
+         y ∈ [0, +∞)   (row start, 0-indexed)
+         w ∈ [1, 12]   (column span)
+         h ∈ [1, +∞)   (row span)
+       Map to CSS Grid (which is 1-indexed):
+         grid-column-start = w.position.x + 1
+         grid-column-end   = w.position.x + 1 + w.position.w     // i.e. span w
+         grid-row-start    = w.position.y + 1
+         grid-row-end      = w.position.y + 1 + w.position.h     // i.e. span h
+       FORBIDDEN: emitting `position: absolute`, `top`, `left`, or inline `width`/`height`
+       on a `.bezel-widget` element. Doing so detaches the widget from the 12-column grid
+       and causes overlap. Always express placement via grid-column / grid-row.
     c. Generate:
        <div id="<w.id>"
             class="bezel-widget"
-            style="top:<w.layout.top>;left:<w.layout.left>;
-                   width:<w.layout.width>;height:<w.layout.height>">
+            style="grid-column: <w.position.x + 1> / span <w.position.w>;
+                   grid-row: <w.position.y + 1> / span <w.position.h>;">
+         <!-- patternId-derived HTML fragment goes here -->
        </div>
     d. Append to body.
 
@@ -457,6 +485,7 @@ The `scripts/validate.py` validator emits these error codes. Assembly code shoul
 | `E_CONFIG_MALFORMED` | Config JSON is not valid or missing required fields | Check JSON serialization |
 | `E_WIDGET_COUNT` | Number of `.bezel-widget` divs does not match config.widgets length | Sync Step 4 and Step 5 |
 | `E_WIDGET_ID` | A widget ID in config does not have a matching `<div>` element | Ensure IDs match between Step 4 and Step 5 |
+| `E_WIDGET_ABSOLUTE_POSITION` | A `.bezel-widget` rule contains `position: absolute`, or a `.bezel-widget` element's inline style contains `position`/`top`/`left`/`width`/`height` instead of `grid-column`/`grid-row` | Switch to 12-column CSS Grid placement per Section 1 layout styles and Section 4 Step 4 |
 | `E_IIFE_MISSING` | Polling scheduler IIFE not found | Ensure Step 6 is executed |
 | `E_VISIBILITY_MISSING` | `visibilitychange` listener not found (and pauseOnHidden is not false) | Ensure IIFE includes the visibility listener |
 | `E_EVAL_USAGE` | Code contains `eval(`, `new Function(`, or `document.write(` | Remove forbidden calls |

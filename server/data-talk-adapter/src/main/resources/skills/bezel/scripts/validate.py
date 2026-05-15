@@ -65,6 +65,46 @@ def check_fetch_url_shape(html: str) -> list[str]:
             errors.append(f"suspicious fetch URL: {url}")
     return errors
 
+# E_WIDGET_ABSOLUTE_POSITION: regressions where .bezel-widget is taken out of the 12-column grid
+# (either via a CSS rule or inline style) cause all widgets to stack in the top-left and overlap.
+_BEZEL_WIDGET_CSS_RULE = re.compile(r"\.bezel-widget\b[^{}]*\{([^}]*)\}", re.DOTALL)
+_BEZEL_WIDGET_INLINE_DIV = re.compile(
+    r'<div\b[^>]*\bclass\s*=\s*["\'][^"\']*\bbezel-widget\b[^"\']*["\'][^>]*>',
+    re.IGNORECASE,
+)
+_INLINE_STYLE_ATTR = re.compile(r'\bstyle\s*=\s*"([^"]*)"|\bstyle\s*=\s*\'([^\']*)\'', re.IGNORECASE)
+
+def check_widget_grid_layout(html: str) -> list[str]:
+    """Reject .bezel-widget rules / elements that escape the 12-column CSS Grid."""
+    errors = []
+    for m in _BEZEL_WIDGET_CSS_RULE.finditer(html):
+        body = m.group(1)
+        if re.search(r"position\s*:\s*absolute", body, re.IGNORECASE):
+            errors.append(
+                "E_WIDGET_ABSOLUTE_POSITION: .bezel-widget CSS rule contains `position: absolute` — "
+                "widgets must remain grid items (use grid-column / grid-row instead)"
+            )
+            break
+    for m in _BEZEL_WIDGET_INLINE_DIV.finditer(html):
+        tag = m.group(0)
+        sm = _INLINE_STYLE_ATTR.search(tag)
+        if not sm:
+            continue
+        style = (sm.group(1) or sm.group(2) or "").lower()
+        if re.search(r"position\s*:\s*absolute", style):
+            errors.append(
+                "E_WIDGET_ABSOLUTE_POSITION: a .bezel-widget element has inline `position: absolute` — "
+                "remove it and use grid-column / grid-row"
+            )
+            break
+        if re.search(r"\b(?:top|left)\s*:", style) and not re.search(r"grid-(?:column|row)\s*:", style):
+            errors.append(
+                "E_WIDGET_ABSOLUTE_POSITION: a .bezel-widget element uses inline top/left without grid-column/grid-row — "
+                "express placement via 12-column grid coordinates from widget.position"
+            )
+            break
+    return errors
+
 def validate(html_path: Path) -> int:
     html = html_path.read_text(encoding="utf-8")
     failures: list[str] = []
@@ -80,6 +120,7 @@ def validate(html_path: Path) -> int:
     failures.extend(check_script_src_whitelist(html))
     failures.extend(check_fetch_url_shape(html))
     failures.extend(check_css_tokens(html))
+    failures.extend(check_widget_grid_layout(html))
 
     if failures:
         print(f"[bezel.validate] FAIL: {html_path}", file=sys.stderr)
