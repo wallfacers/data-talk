@@ -11,7 +11,7 @@ import java.util.concurrent.CompletionStage;
 
 @Component
 @DataTalkAction(
-    id = "datatalk_semantic_lookup",
+    id = "datatalk.semantic_lookup",
     executor = Executor.SERVER,
     description = "Search semantic model entities, dimensions, measures, or metrics by name or label. Use this to understand business terminology before writing SQL.",
     timeoutMs = 5_000,

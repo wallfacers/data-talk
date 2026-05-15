@@ -14,7 +14,7 @@ import java.util.concurrent.CompletionStage;
 
 @Component
 @DataTalkAction(
-    id = "datatalk_skill_create",
+    id = "datatalk.skill_create",
     executor = Executor.SERVER,
     description = "Create a new business domain semantic model (skill). This is the primary output channel for the skill-creator. Writes to pending/ for user review.",
     timeoutMs = 10_000,

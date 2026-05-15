@@ -863,7 +863,10 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
           const pending = tabState.executeStatus === 'confirming'
           return (
             <AlertDialog open>
-              <AlertDialogContent data-testid="sql-confirmation-dialog">
+              <AlertDialogContent
+                data-testid="sql-confirmation-dialog"
+                className="max-h-[85vh] overflow-hidden"
+              >
                 <AlertDialogHeader>
                   <div className="flex flex-wrap items-center gap-2">
                     <AlertDialogTitle>{t('stage.queryEditor.confirmation.title')}</AlertDialogTitle>

@@ -12,7 +12,7 @@ import java.util.concurrent.CompletionStage;
 
 @Component
 @DataTalkAction(
-    id = "datatalk_verified_query_find",
+    id = "datatalk.verified_query_find",
     executor = Executor.SERVER,
     description = "Search verified queries (L0 exact match, L1 normalized match, L2 top-K candidates). Always call this before writing SQL — it may return a cached, human-confirmed answer.",
     timeoutMs = 5_000,

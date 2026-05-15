@@ -12,7 +12,7 @@ import java.util.concurrent.CompletionStage;
 
 @Component
 @DataTalkAction(
-    id = "datatalk_literal_mapping_add",
+    id = "datatalk.literal_mapping_add",
     executor = Executor.SERVER,
     description = "Add a natural-language-to-database-value mapping for a dimension. E.g. map '已完成' to 'COMPLETED' for the order_status dimension.",
     timeoutMs = 5_000,

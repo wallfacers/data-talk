@@ -22,7 +22,7 @@ export function SqlConfirmationCard({ risk, sqlPreview }: SqlConfirmationCardPro
 
   return (
     <div
-      className="space-y-3"
+      className="min-w-0 space-y-3"
       data-testid="sql-risk-panel"
       role="group"
       aria-label={isL3 ? t('sqlConfirmation.l3.title') : t('sqlConfirmation.l2.title')}
@@ -37,7 +37,7 @@ export function SqlConfirmationCard({ risk, sqlPreview }: SqlConfirmationCardPro
 
       <pre
         className={cn(
-          'rounded-md border p-3 font-mono text-sm overflow-x-auto whitespace-pre text-[var(--dt-text-strong)]',
+          'max-h-48 overflow-auto rounded-md border p-3 font-mono text-sm whitespace-pre text-[var(--dt-text-strong)]',
           isL3
             ? 'border-[color-mix(in_srgb,var(--dt-status-danger)_30%,transparent)] bg-[var(--dt-status-danger-surface)]'
             : 'border-[color-mix(in_srgb,var(--dt-accent-warn)_30%,transparent)] bg-[var(--dt-accent-warn-surface)]',
@@ -50,9 +50,9 @@ export function SqlConfirmationCard({ risk, sqlPreview }: SqlConfirmationCardPro
         <div className="mb-1 font-medium text-[var(--dt-text-strong)]">
           {t('sqlConfirmation.affectedObjects')}
         </div>
-        <ul className="space-y-0.5 font-mono text-xs text-[var(--dt-text-muted)]">
+        <ul className="max-h-24 space-y-0.5 overflow-auto font-mono text-xs text-[var(--dt-text-muted)]">
           {risk.affectedObjects.map((obj) => (
-            <li key={obj}>{obj}</li>
+            <li key={obj} className="truncate">{obj}</li>
           ))}
         </ul>
       </div>

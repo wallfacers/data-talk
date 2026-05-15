@@ -10,7 +10,7 @@ import java.util.concurrent.CompletionStage;
 
 @Component
 @DataTalkAction(
-    id = "datatalk_script_list",
+    id = "datatalk.script_list",
     executor = Executor.SERVER,
     description = "action.script_list.description",
     timeoutMs = 3_000,

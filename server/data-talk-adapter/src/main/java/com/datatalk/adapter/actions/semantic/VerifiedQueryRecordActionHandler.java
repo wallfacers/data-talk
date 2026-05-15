@@ -16,7 +16,7 @@ import java.util.concurrent.CompletionStage;
 
 @Component
 @DataTalkAction(
-    id = "datatalk_verified_query_record",
+    id = "datatalk.verified_query_record",
     executor = Executor.SERVER,
     description = "Record a user-confirmed question-SQL pair as a verified query. Call this when the user marks an AI-generated SQL as correct.",
     timeoutMs = 5_000,

@@ -14,7 +14,7 @@ import java.util.concurrent.CompletionStage;
 
 @Component
 @DataTalkAction(
-    id = "datatalk_semantic_propose_change",
+    id = "datatalk.semantic_propose_change",
     executor = Executor.SERVER,
     description = "Propose a new or modified semantic model YAML. Writes to pending/ for user review. Use this when AI infers a new domain or the user asks to create a semantic model.",
     timeoutMs = 10_000,
