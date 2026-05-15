@@ -8,7 +8,7 @@ modules: [dashboard, stage, bezel]
 discovered: 2026-05-16
 discoveredBy: human
 testRunId: null
-fixCommit: pending
+fixCommit: c22da358
 fixPlanRef: null
 duplicateOf: null
 regression: false
