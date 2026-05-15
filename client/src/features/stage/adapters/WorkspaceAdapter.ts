@@ -530,7 +530,7 @@ export class WorkspaceAdapter implements UIObject {
               sessionId: sid,
               baseTitle: item.title ?? item.type,
               openMode: connectionId ? 'reuse_by_resource_context' : 'always_new',
-              entryMode: 'ui_exec',
+              entryMode: 'ai_open',
               initialContent: payload.initialSql,
               autoRun: payload.autoRun,
               connectionId,
