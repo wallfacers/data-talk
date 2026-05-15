@@ -12,12 +12,18 @@ import type { Artifact } from '@/services/channel/event-reducer'
  * holds for this session. Used to avoid wiping optimistic pending messages and
  * in-flight SSE parts when a re-mounting subscriber triggers a background
  * refetch that returns before the backend has persisted the new turn.
+ *
+ * [[BUG-0052]] The streaming-flag guard must also require `storeMsgCount > 0`.
+ * Otherwise, when use-session-subscribe wins the race and sets the flag before
+ * the very first history fetch lands, an *empty* store gets locked into
+ * staying empty — there is no optimistic / in-flight data to protect, and the
+ * server snapshot is strictly better than nothing.
  */
 function shouldSkipReplace(sessionId: string, serverMsgCount: number, serverArtifactCount: number): boolean {
   const partsStore = useChatPartsStore.getState()
-  if (partsStore.streamingBySession.has(sessionId)) return true
   const storeMsgCount = partsStore.infoBySession.get(sessionId)?.size ?? 0
   const storeArtifactCount = useOntologyStore.getState().artifactsBySession.get(sessionId)?.size ?? 0
+  if (partsStore.streamingBySession.has(sessionId) && storeMsgCount > 0) return true
   return (
     (serverMsgCount === 0 && storeMsgCount > 0) ||
     (serverArtifactCount === 0 && storeArtifactCount > 0)

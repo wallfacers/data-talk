@@ -100,6 +100,48 @@ describe('useSessionHistory — replace guard', () => {
     })
   })
 
+  // [[BUG-0052]] First time entering a session whose OpenCode status is `busy`:
+  // use-session-subscribe's fetchSessionStatus wins the race against
+  // useSessionHistory's /messages query and sets streamingBySession before the
+  // history effect runs. Before the fix, shouldSkipReplace returned true on
+  // any streaming flag, so the (empty) store stayed empty and the UI was blank.
+  // The fix: streaming flag must only protect the store when the store is
+  // already populated — otherwise stale-but-present data is strictly better
+  // than no data at all.
+  it('loads server history on first entry even when streaming flag is set (race fix)', async () => {
+    vi.spyOn(http, 'get').mockImplementation(((input: any) => ({
+      json: async () =>
+        String(input).endsWith('/messages')
+          ? [
+              {
+                info: { id: 'm1', role: 'user', sessionID: SID, time: { created: 1 } },
+                parts: [
+                  {
+                    type: 'text',
+                    id: 'p1',
+                    sessionID: SID,
+                    messageID: 'm1',
+                    text: 'hi',
+                    metadata: {},
+                  },
+                ],
+              },
+            ]
+          : { artifacts: [] },
+    })) as any)
+
+    // Race condition: subscribe set the streaming flag before history landed.
+    useChatPartsStore.getState().setStreaming(SID, true)
+    expect(useChatPartsStore.getState().infoBySession.get(SID)?.size ?? 0).toBe(0)
+
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    renderHook(() => useSessionHistory(SID), { wrapper: wrapper(qc) })
+
+    await waitFor(() => {
+      expect(useChatPartsStore.getState().infoBySession.get(SID)?.size).toBe(1)
+    })
+  })
+
   it('preserves bang query metadata when hydrating synthetic user history', async () => {
     vi.spyOn(http, 'get').mockImplementation(((input: any) => ({
       json: async () =>
