@@ -137,6 +137,13 @@ export function GeneralSettingsPanel({
     mutationFn: clearAllSessions,
     onSuccess: async () => {
       clearAllLocalSessionResources()
+      // Clean up all composer draft keys
+      const keysToRemove: string[] = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i)
+        if (k?.startsWith('dt.draft.')) keysToRemove.push(k)
+      }
+      keysToRemove.forEach((k) => localStorage.removeItem(k))
       queryClient.removeQueries({ queryKey: ['sessions'] })
       queryClient.removeQueries({ queryKey: ['session-history'] })
       await openBlankSession()

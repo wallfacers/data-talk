@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import type { SessionDataContext } from '@/services/api/session-data-context'
 import { useSessionStore } from './session-store'
 
+const DRAFT_PREFIX = 'dt.draft.'
+
 describe('session-store', () => {
   beforeEach(() => {
     useSessionStore.setState({
@@ -16,6 +18,13 @@ describe('session-store', () => {
       pendingConnectionPrompt: false,
       pendingActionAfterConnectionPick: null,
     } as unknown as Record<string, unknown>)
+    // Clean up all draft keys
+    const keysToRemove: string[] = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)
+      if (k?.startsWith(DRAFT_PREFIX)) keysToRemove.push(k)
+    }
+    keysToRemove.forEach((k) => localStorage.removeItem(k))
   })
 
   it('setSessionMode is idempotent for the same mode', () => {
@@ -60,10 +69,7 @@ describe('session-store', () => {
   })
 })
 
-// BUG-0046 — composerDrafts 不再持久化：CTRL+R 后 hydrate 不应回填草稿。
-// 历史上 BUG-0037/0039 反复处理同步落盘 race，现在改为不持久化，让 reload
-// 后输入框总是空，规避整条 race 链。partialize 也不再包含 composerDrafts。
-describe('composerDrafts persistence removed (BUG-0046)', () => {
+describe('composerDrafts independent localStorage key persistence', () => {
   beforeEach(() => {
     useSessionStore.setState({
       activeSessionId: null,
@@ -77,23 +83,76 @@ describe('composerDrafts persistence removed (BUG-0046)', () => {
       pendingConnectionPrompt: false,
       pendingActionAfterConnectionPick: null,
     } as unknown as Record<string, unknown>)
-    localStorage.clear()
-  })
-
-  it('setComposerDraft updates in-memory state only, never writes composerDrafts to localStorage', () => {
-    useSessionStore.getState().setComposerDraft('key1', 'hello')
-    expect(useSessionStore.getState().composerDrafts.key1).toBe('hello')
-
-    const raw = localStorage.getItem('data-talk.session')
-    if (raw) {
-      const parsed = JSON.parse(raw)
-      expect(parsed.state?.composerDrafts).toBeUndefined()
-      expect((parsed as Record<string, unknown>).composerDrafts).toBeUndefined()
+    const keysToRemove: string[] = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)
+      if (k?.startsWith(DRAFT_PREFIX)) keysToRemove.push(k)
     }
+    keysToRemove.forEach((k) => localStorage.removeItem(k))
   })
 
-  it('partialize excludes composerDrafts so reload starts with empty drafts', () => {
-    useSessionStore.getState().setComposerDraft('key1', 'hello')
+  it('setComposerDraft writes to independent localStorage key', () => {
+    useSessionStore.getState().setComposerDraft('s1', 'hello')
+    expect(useSessionStore.getState().composerDrafts.s1).toBe('hello')
+    expect(localStorage.getItem('dt.draft.s1')).toBe('hello')
+  })
+
+  it('setComposerDraft with empty string removes localStorage key', () => {
+    useSessionStore.getState().setComposerDraft('s1', 'hello')
+    expect(localStorage.getItem('dt.draft.s1')).toBe('hello')
+
+    useSessionStore.getState().setComposerDraft('s1', '')
+    expect(localStorage.getItem('dt.draft.s1')).toBeNull()
+  })
+
+  it('setComposerDraft for __nosession__ key', () => {
+    useSessionStore.getState().setComposerDraft('__nosession__', 'no session text')
+    expect(localStorage.getItem('dt.draft.__nosession__')).toBe('no session text')
+    expect(useSessionStore.getState().composerDrafts['__nosession__']).toBe('no session text')
+  })
+
+  it('clearComposerDraft removes localStorage key and memory entry', () => {
+    useSessionStore.getState().setComposerDraft('s1', 'hello')
+    expect(localStorage.getItem('dt.draft.s1')).toBe('hello')
+
+    useSessionStore.getState().clearComposerDraft('s1')
+    expect(localStorage.getItem('dt.draft.s1')).toBeNull()
+    expect(useSessionStore.getState().composerDrafts.s1).toBeUndefined()
+  })
+
+  it('clearComposerDraft on non-existent key is a no-op', () => {
+    useSessionStore.getState().clearComposerDraft('nonexistent')
+    expect(localStorage.getItem('dt.draft.nonexistent')).toBeNull()
+  })
+
+  it('hydrateComposerDraft reads from localStorage and writes to memory', () => {
+    localStorage.setItem('dt.draft.s1', 'restored')
+    const result = useSessionStore.getState().hydrateComposerDraft('s1')
+    expect(result).toBe('restored')
+    expect(useSessionStore.getState().composerDrafts.s1).toBe('restored')
+  })
+
+  it('hydrateComposerDraft returns null for missing key', () => {
+    const result = useSessionStore.getState().hydrateComposerDraft('missing')
+    expect(result).toBeNull()
+  })
+
+  it('send path: setComposerDraft then clearComposerDraft leaves localStorage empty', () => {
+    // Simulate keystroke
+    useSessionStore.getState().setComposerDraft('s1', 'hello world')
+    expect(localStorage.getItem('dt.draft.s1')).toBe('hello world')
+
+    // Simulate send: clear draft
+    useSessionStore.getState().clearComposerDraft('s1')
+    expect(localStorage.getItem('dt.draft.s1')).toBeNull()
+
+    // Simulate CTRL+R: hydrate should return null
+    const hydrated = useSessionStore.getState().hydrateComposerDraft('s1')
+    expect(hydrated).toBeNull()
+  })
+
+  it('partialize still excludes composerDrafts', () => {
+    useSessionStore.getState().setComposerDraft('s1', 'hello')
     const raw = localStorage.getItem('data-talk.session')
     if (raw) {
       const parsed = JSON.parse(raw)

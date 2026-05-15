@@ -82,6 +82,7 @@ function InnerComposer() {
   const setComposerRestoreDraft = useSessionStore((s) => s.setComposerRestoreDraft)
   const composerDrafts = useSessionStore((s) => s.composerDrafts)
   const setComposerDraft = useSessionStore((s) => s.setComposerDraft)
+  const hydrateComposerDraft = useSessionStore((s) => s.hydrateComposerDraft)
   const composerInsertText = useSessionStore((s) => s.composerInsertText)
   const setComposerInsertText = useSessionStore((s) => s.setComposerInsertText)
   const setPendingModelPrompt = useSessionStore((s) => s.setPendingModelPrompt)
@@ -94,7 +95,9 @@ function InnerComposer() {
   const draftKey = activeSessionId ?? '__nosession__'
 
   const [text, setText] = useState(() => {
-    return composerDrafts[draftKey] ?? ''
+    if (composerDrafts[draftKey]) return composerDrafts[draftKey]
+    const stored = hydrateComposerDraft(draftKey)
+    return stored ?? ''
   })
 
   const isBangQueryMode = /^!\s*(select|with)\b/i.test(text.trim())
@@ -108,10 +111,11 @@ function InnerComposer() {
   const prevDraftKeyRef = useRef(draftKey)
   useEffect(() => {
     if (prevDraftKeyRef.current !== draftKey) {
-      setText(composerDrafts[draftKey] ?? '')
+      const stored = hydrateComposerDraft(draftKey)
+      setText(composerDrafts[draftKey] ?? stored ?? '')
       prevDraftKeyRef.current = draftKey
     }
-  }, [draftKey, composerDrafts])
+  }, [draftKey, composerDrafts, hydrateComposerDraft])
 
   useEffect(() => {
     if (!activeSessionId || !composerRestoreDraft) return

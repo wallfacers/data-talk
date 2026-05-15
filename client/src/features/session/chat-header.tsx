@@ -63,6 +63,7 @@ export function ChatHeader() {
   const del = useMutation({
     mutationFn: (id: string) => deleteSession(id),
     onSuccess: (_, id) => {
+      localStorage.removeItem(`dt.draft.${id}`)
       invalidateSessionLists(qc)
       void openBlankSession(id)
       toast.success(t('common.deleted'))

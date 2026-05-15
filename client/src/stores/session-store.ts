@@ -38,6 +38,8 @@ type SessionState = {
   setPendingPrompt: (text: string | null) => void
   setComposerRestoreDraft: (draft: { sessionId: string; text: string } | null) => void
   setComposerDraft: (key: string, text: string) => void
+  clearComposerDraft: (key: string) => void
+  hydrateComposerDraft: (key: string) => string | null
   setPendingModelPrompt: (on: boolean) => void
   setPendingConnectionPrompt: (on: boolean) => void
   setPendingActionAfterConnectionPick: (action: { kind: 'send' } | null) => void
@@ -109,10 +111,38 @@ export const useSessionStore = create<SessionState>()(
 
       setPendingPrompt: (text) => set({ pendingPrompt: text }),
       setComposerRestoreDraft: (draft) => set({ composerRestoreDraft: draft }),
-      setComposerDraft: (key, text) => set((s) => {
-        if (s.composerDrafts[key] === text) return s
-        return { composerDrafts: { ...s.composerDrafts, [key]: text } }
-      }),
+      setComposerDraft: (key, text) => {
+        if (typeof window !== 'undefined') {
+          const lsKey = `dt.draft.${key}`
+          if (text) localStorage.setItem(lsKey, text)
+          else localStorage.removeItem(lsKey)
+        }
+        set((s) => {
+          if (s.composerDrafts[key] === text) return s
+          return { composerDrafts: { ...s.composerDrafts, [key]: text } }
+        })
+      },
+      clearComposerDraft: (key) => {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem(`dt.draft.${key}`)
+        }
+        set((s) => {
+          if (!(key in s.composerDrafts)) return s
+          const { [key]: _, ...rest } = s.composerDrafts
+          return { composerDrafts: rest }
+        })
+      },
+      hydrateComposerDraft: (key) => {
+        if (typeof window === 'undefined') return null
+        const stored = localStorage.getItem(`dt.draft.${key}`)
+        if (stored !== null) {
+          set((s) => {
+            if (s.composerDrafts[key] === stored) return s
+            return { composerDrafts: { ...s.composerDrafts, [key]: stored } }
+          })
+        }
+        return stored
+      },
       setPendingModelPrompt: (on) => set({ pendingModelPrompt: on }),
       setPendingConnectionPrompt: (on) => set({ pendingConnectionPrompt: on }),
       setPendingActionAfterConnectionPick: (action) => set({ pendingActionAfterConnectionPick: action }),

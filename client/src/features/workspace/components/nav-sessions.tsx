@@ -128,6 +128,7 @@ export function NavSessions() {
   const deleteMut = useMutation({
     mutationFn: (id: string) => deleteSession(id),
     onSuccess: (result, id) => {
+      localStorage.removeItem(`dt.draft.${id}`)
       invalidateSessionLists(qc)
       // Check if we got blocked by candidates
       if (result && 'candidates' in result) {

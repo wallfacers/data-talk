@@ -113,6 +113,7 @@ export function DeleteSessionModal({
     },
     onSuccess: () => {
       didProcessRef.current = true
+      localStorage.removeItem(`dt.draft.${sessionId}`)
       qc.invalidateQueries({ queryKey: ['sessions'] })
       toast.success(t('common.deleted'))
       onOpenChange(false)
