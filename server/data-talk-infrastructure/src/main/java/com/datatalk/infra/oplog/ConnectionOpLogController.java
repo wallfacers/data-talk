@@ -57,13 +57,12 @@ public class ConnectionOpLogController {
         @RequestParam(defaultValue = "50") int size,
         @RequestParam(required = false) List<String> status,
         @RequestParam(required = false) List<String> operation,
-        @RequestParam(required = false) String table,
         @RequestParam(required = false) Long from,
         @RequestParam(required = false) Long to,
         @RequestParam(required = false) String q
     ) {
         UndoLogRepository.OpLogFilters filters =
-            new UndoLogRepository.OpLogFilters(status, operation, table, from, to, q);
+            new UndoLogRepository.OpLogFilters(status, operation, from, to, q);
         return undoLogRepo.findByConnectionId(connectionId, page, size, filters);
     }
 

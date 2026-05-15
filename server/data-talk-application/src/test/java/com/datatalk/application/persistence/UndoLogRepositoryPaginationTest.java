@@ -100,20 +100,20 @@ class UndoLogRepositoryPaginationTest {
             "active", "DELETE FROM orders", null, 2000L));
 
         var page0 = repo.findByConnectionId("conn-A", 0, 3,
-            new UndoLogRepository.OpLogFilters(null, null, null, null, null, null));
+            new UndoLogRepository.OpLogFilters(null, null, null, null, null));
         assertThat(page0.items()).hasSize(3);
         assertThat(page0.total()).isEqualTo(5);
         assertThat(page0.page()).isEqualTo(0);
         assertThat(page0.size()).isEqualTo(3);
 
         var page1 = repo.findByConnectionId("conn-A", 1, 3,
-            new UndoLogRepository.OpLogFilters(null, null, null, null, null, null));
+            new UndoLogRepository.OpLogFilters(null, null, null, null, null));
         assertThat(page1.items()).hasSize(2);
         assertThat(page1.total()).isEqualTo(5);
 
         // conn-B should only have the one record
         var pageB = repo.findByConnectionId("conn-B", 0, 10,
-            new UndoLogRepository.OpLogFilters(null, null, null, null, null, null));
+            new UndoLogRepository.OpLogFilters(null, null, null, null, null));
         assertThat(pageB.items()).hasSize(1);
         assertThat(pageB.total()).isEqualTo(1);
         assertThat(pageB.items().get(0).id()).isEqualTo("log-other");
@@ -130,7 +130,7 @@ class UndoLogRepositoryPaginationTest {
             "active", "DELETE 3", null, 3000L));
 
         var result = repo.findByConnectionId("conn-A", 0, 10,
-            new UndoLogRepository.OpLogFilters(null, null, null, null, null, null));
+            new UndoLogRepository.OpLogFilters(null, null, null, null, null));
         assertThat(result.items()).hasSize(3);
         // Most recent first
         assertThat(result.items().get(0).id()).isEqualTo("log-3");
@@ -149,14 +149,14 @@ class UndoLogRepositoryPaginationTest {
             "expired", "SQL3", null, 3000L));
 
         var result = repo.findByConnectionId("conn-A", 0, 10,
-            new UndoLogRepository.OpLogFilters(List.of("active"), null, null, null, null, null));
+            new UndoLogRepository.OpLogFilters(List.of("active"), null, null, null, null));
         assertThat(result.items()).hasSize(1);
         assertThat(result.items().get(0).id()).isEqualTo("log-1");
         assertThat(result.total()).isEqualTo(1);
 
         // Multiple statuses
         var multiResult = repo.findByConnectionId("conn-A", 0, 10,
-            new UndoLogRepository.OpLogFilters(List.of("active", "undone"), null, null, null, null, null));
+            new UndoLogRepository.OpLogFilters(List.of("active", "undone"), null, null, null, null));
         assertThat(multiResult.items()).hasSize(2);
         assertThat(multiResult.total()).isEqualTo(2);
     }
@@ -172,23 +172,30 @@ class UndoLogRepositoryPaginationTest {
             "active", "SQL3", null, 3000L));
 
         var result = repo.findByConnectionId("conn-A", 0, 10,
-            new UndoLogRepository.OpLogFilters(null, List.of("INSERT"), null, null, null, null));
+            new UndoLogRepository.OpLogFilters(null, List.of("INSERT"), null, null, null));
         assertThat(result.items()).hasSize(1);
         assertThat(result.items().get(0).operation()).isEqualTo("INSERT");
     }
 
     @Test
-    void findByConnectionId_filtersByTableNameLike() {
+    void findByConnectionId_filtersByQ() {
         insertSession("sess-1", "Test Session");
         repo.insert(entry("log-1", "sess-1", "conn-A", "user_accounts", "INSERT",
             "active", "SQL1", null, 1000L));
         repo.insert(entry("log-2", "sess-1", "conn-A", "orders", "INSERT",
             "active", "SQL2", null, 2000L));
 
-        var result = repo.findByConnectionId("conn-A", 0, 10,
-            new UndoLogRepository.OpLogFilters(null, null, "user", null, null, null));
-        assertThat(result.items()).hasSize(1);
-        assertThat(result.items().get(0).tableName()).isEqualTo("user_accounts");
+        // q matches table_name
+        var byTable = repo.findByConnectionId("conn-A", 0, 10,
+            new UndoLogRepository.OpLogFilters(null, null, null, null, "user"));
+        assertThat(byTable.items()).hasSize(1);
+        assertThat(byTable.items().get(0).tableName()).isEqualTo("user_accounts");
+
+        // q matches original_sql
+        var bySql = repo.findByConnectionId("conn-A", 0, 10,
+            new UndoLogRepository.OpLogFilters(null, null, null, null, "SQL2"));
+        assertThat(bySql.items()).hasSize(1);
+        assertThat(bySql.items().get(0).id()).isEqualTo("log-2");
     }
 
     @Test
@@ -203,19 +210,19 @@ class UndoLogRepositoryPaginationTest {
 
         // from filter
         var fromResult = repo.findByConnectionId("conn-A", 0, 10,
-            new UndoLogRepository.OpLogFilters(null, null, null, 1500L, null, null));
+            new UndoLogRepository.OpLogFilters(null, null, null, 1500L, null));
         assertThat(fromResult.items()).hasSize(2);
         assertThat(fromResult.total()).isEqualTo(2);
 
         // to filter
         var toResult = repo.findByConnectionId("conn-A", 0, 10,
-            new UndoLogRepository.OpLogFilters(null, null, null, null, 2500L, null));
+            new UndoLogRepository.OpLogFilters(null, null, null, null, 2500L));
         assertThat(toResult.items()).hasSize(2);
         assertThat(toResult.total()).isEqualTo(2);
 
         // range filter
         var rangeResult = repo.findByConnectionId("conn-A", 0, 10,
-            new UndoLogRepository.OpLogFilters(null, null, null, 1500L, 2500L, null));
+            new UndoLogRepository.OpLogFilters(null, null, null, 1500L, 2500L));
         assertThat(rangeResult.items()).hasSize(1);
         assertThat(rangeResult.total()).isEqualTo(1);
     }
@@ -229,7 +236,7 @@ class UndoLogRepositoryPaginationTest {
             "active", "UPDATE users SET name = 'Bob' WHERE id = 1", null, 2000L));
 
         var result = repo.findByConnectionId("conn-A", 0, 10,
-            new UndoLogRepository.OpLogFilters(null, null, null, null, null, "Alice"));
+            new UndoLogRepository.OpLogFilters(null, null, null, null, "Alice"));
         assertThat(result.items()).hasSize(1);
         assertThat(result.items().get(0).id()).isEqualTo("log-1");
     }
@@ -241,7 +248,7 @@ class UndoLogRepositoryPaginationTest {
             "active", "SQL", null, 1000L));
 
         var result = repo.findByConnectionId("conn-A", 0, 10,
-            new UndoLogRepository.OpLogFilters(null, null, null, null, null, null));
+            new UndoLogRepository.OpLogFilters(null, null, null, null, null));
         assertThat(result.items()).hasSize(1);
         assertThat(result.items().get(0).sessionTitle()).isEqualTo("My Session Title");
     }
@@ -260,7 +267,7 @@ class UndoLogRepositoryPaginationTest {
             1, 1, "active", Long.MAX_VALUE, 1000L, null);
 
         var result = repo.findByConnectionId("conn-A", 0, 10,
-            new UndoLogRepository.OpLogFilters(null, null, null, null, null, null));
+            new UndoLogRepository.OpLogFilters(null, null, null, null, null));
         assertThat(result.items()).hasSize(1);
         assertThat(result.items().get(0).sessionTitle()).isNull();
     }
@@ -268,7 +275,7 @@ class UndoLogRepositoryPaginationTest {
     @Test
     void findByConnectionId_emptyResults_returnsEmptyWithTotalZero() {
         var result = repo.findByConnectionId("conn-nonexistent", 0, 10,
-            new UndoLogRepository.OpLogFilters(null, null, null, null, null, null));
+            new UndoLogRepository.OpLogFilters(null, null, null, null, null));
         assertThat(result.items()).isEmpty();
         assertThat(result.total()).isEqualTo(0);
     }

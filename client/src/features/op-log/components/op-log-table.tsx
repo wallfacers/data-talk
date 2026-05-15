@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { Fragment, useCallback, useMemo, useState } from 'react'
 import {
   useReactTable,
   getCoreRowModel,
@@ -11,6 +11,8 @@ import { ChevronDownIcon, ChevronUpIcon, ChevronsUpDownIcon, Undo2Icon } from 'l
 import { useQueryClient } from '@tanstack/react-query'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/i18n/use-i18n'
+import type { MessageKey } from '@/i18n/messages'
 import type { OpLogItem } from '@/services/api/connection-op-log'
 import { batchUndoOpLogs } from '@/services/api/connection-op-log'
 import { OpLogStatusBadge } from './op-log-status-badge'
@@ -28,6 +30,8 @@ interface OpLogTableProps {
   page: number
   size: number
   onPageChange: (page: number) => void
+  batchUndoCount: number
+  onBatchUndo: () => void
 }
 
 function formatTime(ts: number): string {
@@ -35,17 +39,18 @@ function formatTime(ts: number): string {
   return d.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 
-function SortHeader({ column, title }: {
+function SortHeader({ column, titleKey }: {
   column: { getIsSorted: () => false | 'asc' | 'desc'; toggleSorting: (desc: boolean) => void }
-  title: string
+  titleKey: MessageKey
 }) {
+  const { t } = useI18n()
   const sorted = column.getIsSorted()
   return (
     <button
       className="flex items-center gap-1 text-text-muted hover:text-text-base"
       onClick={() => column.toggleSorting(sorted === 'asc')}
     >
-      <span>{title}</span>
+      <span>{t(titleKey)}</span>
       {sorted === 'asc' ? <ChevronUpIcon className="h-3 w-3 text-accent-primary" />
         : sorted === 'desc' ? <ChevronDownIcon className="h-3 w-3 text-accent-primary" />
         : <ChevronsUpDownIcon className="h-3 w-3" />}
@@ -53,7 +58,8 @@ function SortHeader({ column, title }: {
   )
 }
 
-export function OpLogTable({ data, isLoading, selectedIds, onToggleRow, connectionId, total, page, size, onPageChange }: OpLogTableProps) {
+export function OpLogTable({ data, isLoading, selectedIds, onToggleRow, connectionId, total, page, size, onPageChange, batchUndoCount, onBatchUndo }: OpLogTableProps) {
+  const { t } = useI18n()
   const [sorting, setSorting] = useState<SortingState>([])
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const queryClient = useQueryClient()
@@ -85,41 +91,42 @@ export function OpLogTable({ data, isLoading, selectedIds, onToggleRow, connecti
           className="h-3.5 w-3.5"
         />
       ),
-      size: 32,
+      size: 36,
     },
     {
       accessorKey: 'createdAt',
-      header: ({ column }) => <SortHeader column={column} title="Time" />,
+      header: ({ column }) => <SortHeader column={column} titleKey="opLog.table.time" />,
       cell: ({ getValue }) => (
-        <span className="text-[13px] leading-[18px] text-text-base">{formatTime(getValue<number>())}</span>
+        <span className="block truncate text-text-base">{formatTime(getValue<number>())}</span>
       ),
       size: 80,
     },
     {
       accessorKey: 'operation',
-      header: 'Operation',
+      header: ({ column }) => <SortHeader column={column} titleKey="opLog.table.operation" />,
       cell: ({ row }) => <OpLogOperationBadge operation={row.original.operation} />,
       size: 100,
       enableSorting: false,
     },
     {
       accessorKey: 'tableName',
-      header: ({ column }) => <SortHeader column={column} title="Table" />,
+      header: ({ column }) => <SortHeader column={column} titleKey="opLog.table.table" />,
       cell: ({ getValue }) => (
-        <span className="text-[13px] leading-[18px] text-text-base">{getValue<string>()}</span>
+        <span className="block truncate text-text-base">{getValue<string>()}</span>
       ),
+      size: 160,
     },
     {
       accessorKey: 'affectedRows',
-      header: ({ column }) => <SortHeader column={column} title="Rows" />,
+      header: ({ column }) => <SortHeader column={column} titleKey="opLog.table.rows" />,
       cell: ({ getValue }) => (
-        <span className="font-mono text-[13px] leading-[18px] text-text-base">{getValue<number>()}</span>
+        <span className="block truncate font-mono text-text-base">{getValue<number>()}</span>
       ),
       size: 64,
     },
     {
       accessorKey: 'status',
-      header: ({ column }) => <SortHeader column={column} title="Status" />,
+      header: ({ column }) => <SortHeader column={column} titleKey="opLog.table.status" />,
       cell: ({ row }) => <OpLogStatusBadge status={row.original.status} />,
       size: 100,
     },
@@ -137,13 +144,13 @@ export function OpLogTable({ data, isLoading, selectedIds, onToggleRow, connecti
             onClick={(e) => { e.stopPropagation(); handleSingleUndo(item.id) }}
           >
             <Undo2Icon className="h-3 w-3" />
-            Undo
+            {t('opLog.table.undo')}
           </Button>
         )
       },
       size: 80,
     },
-  ], [data, selectedIds, onToggleRow, handleSingleUndo])
+  ], [data, selectedIds, onToggleRow, handleSingleUndo, t])
 
   const table = useReactTable({
     data,
@@ -155,18 +162,18 @@ export function OpLogTable({ data, isLoading, selectedIds, onToggleRow, connecti
   })
 
   if (isLoading) {
-    return <div className="flex flex-1 items-center justify-center text-sm text-text-muted">Loading...</div>
+    return <div className="flex flex-1 items-center justify-center text-sm text-text-muted">{t('opLog.table.loading')}</div>
   }
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <div className="flex-1 overflow-auto">
-        <table className="w-full border-collapse">
-          <thead className="sticky top-0 z-10 bg-bg-subtle">
+        <table className="w-full text-xs border-collapse">
+          <thead className="sticky top-0 z-10 bg-muted">
             {table.getHeaderGroups().map(hg => (
-              <tr key={hg.id} className="border-b border-border-default">
+              <tr key={hg.id} className="border-b border-border/50 hover:bg-transparent">
                 {hg.headers.map(header => (
-                  <th key={header.id} className="px-3 py-1.5 text-left text-xs font-medium text-text-muted" style={{ width: header.getSize() }}>
+                  <th key={header.id} className="h-8 px-3 text-left align-middle font-medium whitespace-nowrap text-foreground" style={{ width: header.getSize() }}>
                     {flexRender(header.column.columnDef.header, header.getContext())}
                   </th>
                 ))}
@@ -179,16 +186,16 @@ export function OpLogTable({ data, isLoading, selectedIds, onToggleRow, connecti
               const isSelected = selectedIds.has(item.id)
               const isExpanded = expandedId === item.id
               return (
-                <tbody key={item.id}>
+                <Fragment key={item.id}>
                   <tr
-                    className={`cursor-pointer border-b border-border-subtle transition-colors ${
-                      isSelected ? 'bg-interaction-selected' : 'hover:bg-interaction-hover'
+                    className={`cursor-pointer border-b border-border/30 transition-colors ${
+                      isSelected ? 'bg-interaction-selected' : 'hover:bg-muted/50'
                     }`}
                     style={{ transitionDuration: '120ms' }}
                     onClick={() => setExpandedId(isExpanded ? null : item.id)}
                   >
                     {row.getVisibleCells().map(cell => (
-                      <td key={cell.id} className="px-3 py-1.5">
+                      <td key={cell.id} className="px-3 py-1.5 align-middle whitespace-nowrap">
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </td>
                     ))}
@@ -204,20 +211,20 @@ export function OpLogTable({ data, isLoading, selectedIds, onToggleRow, connecti
                       </td>
                     </tr>
                   )}
-                </tbody>
+                </Fragment>
               )
             })}
             {data.length === 0 && (
               <tr>
                 <td colSpan={columns.length} className="py-8 text-center text-sm text-text-muted">
-                  No operations found
+                  {t('opLog.table.empty')}
                 </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
-      <OpLogPagination total={total} page={page} size={size} onPageChange={onPageChange} />
+      <OpLogPagination total={total} page={page} size={size} onPageChange={onPageChange} batchUndoCount={batchUndoCount} onBatchUndo={onBatchUndo} />
     </div>
   )
 }

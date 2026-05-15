@@ -101,7 +101,6 @@ public class UndoLogRepository {
     public record OpLogFilters(
         List<String> status,
         List<String> operation,
-        String tableName,
         Long from,
         Long to,
         String q
@@ -167,9 +166,11 @@ public class UndoLogRepository {
             where.append(" AND ul.operation IN (").append(placeholders).append(")");
             params.addAll(filters.operation());
         }
-        if (filters.tableName() != null && !filters.tableName().isBlank()) {
-            where.append(" AND ul.table_name LIKE ?");
-            params.add("%" + filters.tableName() + "%");
+        if (filters.q() != null && !filters.q().isBlank()) {
+            where.append(" AND (ul.original_sql LIKE ? OR ul.table_name LIKE ?)");
+            String pattern = "%" + filters.q() + "%";
+            params.add(pattern);
+            params.add(pattern);
         }
         if (filters.from() != null) {
             where.append(" AND ul.created_at >= ?");
@@ -178,10 +179,6 @@ public class UndoLogRepository {
         if (filters.to() != null) {
             where.append(" AND ul.created_at <= ?");
             params.add(filters.to());
-        }
-        if (filters.q() != null && !filters.q().isBlank()) {
-            where.append(" AND ul.original_sql LIKE ?");
-            params.add("%" + filters.q() + "%");
         }
 
         // Count query

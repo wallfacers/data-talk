@@ -1,4 +1,6 @@
 import type { StageState, StageTab } from '@/stores/stage-store'
+import { translateMessage } from '@/i18n/messages'
+import { useUISettingsStore } from '@/stores/ui-settings-store'
 
 interface OpenOpLogTabInput {
   getState: () => Pick<StageState, 'tabs' | 'activeTabId' | 'openTab' | 'focusTab'>
@@ -9,7 +11,6 @@ interface OpenOpLogTabInput {
 export function openOrFocusOpLogTab({ getState, connectionId, connectionName }: OpenOpLogTabInput): { tabId: string; created: boolean } {
   const { tabs, openTab, focusTab } = getState()
 
-  // Dedup: same connectionId -> focus existing tab
   const identityKey = `operation_log::${connectionId}`
   const existing = tabs.find((tab) =>
     tab.type === 'operation_log' && tab.connectionId === connectionId
@@ -19,11 +20,14 @@ export function openOrFocusOpLogTab({ getState, connectionId, connectionName }: 
     return { tabId: existing.tabId, created: false }
   }
 
+  const language = useUISettingsStore.getState().language
+  const title = translateMessage(language, 'opLog.tabTitle')
+
   const tabId = `operation_log_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
   const tab: StageTab = {
     tabId,
     type: 'operation_log',
-    title: `${connectionName} — Operations`,
+    title,
     connectionId,
     connectionName,
     payload: {

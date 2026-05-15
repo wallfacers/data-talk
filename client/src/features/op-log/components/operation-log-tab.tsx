@@ -5,7 +5,6 @@ import { listOpLogs, batchUndoOpLogs, type OpLogFilters, type OpLogListResponse 
 import { subscribeOpLogStream } from '@/services/api/connection-op-log-sse'
 import { OpLogFilterBar } from './op-log-filter-bar'
 import { OpLogTable } from './op-log-table'
-import { BatchUndoBar } from './batch-undo-bar'
 import { BatchUndoConfirmDialog } from './batch-undo-confirm-dialog'
 
 interface OperationLogTabProps {
@@ -83,7 +82,7 @@ export function OperationLogTab({ tab }: OperationLogTabProps) {
 
   return (
     <div className="flex h-full flex-col bg-bg-canvas">
-      <OpLogFilterBar filters={filters} onFiltersChange={setFilters} onClear={clearFilters} />
+      <OpLogFilterBar filters={filters} onFiltersChange={setFilters} onClear={clearFilters} connectionId={connectionId} />
       <OpLogTable
         data={data?.items ?? []}
         isLoading={isLoading}
@@ -94,13 +93,9 @@ export function OperationLogTab({ tab }: OperationLogTabProps) {
         page={page}
         size={size}
         onPageChange={setPage}
+        batchUndoCount={undoableSelected.length}
+        onBatchUndo={() => setConfirmDialogOpen(true)}
       />
-      {undoableSelected.length > 0 && (
-        <BatchUndoBar
-          count={undoableSelected.length}
-          onUndo={() => setConfirmDialogOpen(true)}
-        />
-      )}
       <BatchUndoConfirmDialog
         open={confirmDialogOpen}
         items={undoableSelected}

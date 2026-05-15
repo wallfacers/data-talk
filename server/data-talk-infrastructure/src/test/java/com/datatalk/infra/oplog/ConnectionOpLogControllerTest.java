@@ -96,7 +96,7 @@ class ConnectionOpLogControllerTest {
                 .param("status", "active")
                 .param("status", "undone")
                 .param("operation", "INSERT")
-                .param("table", "user")
+                .param("q", "user")
                 .param("from", "1000")
                 .param("to", "2000")
                 .param("q", "select"))

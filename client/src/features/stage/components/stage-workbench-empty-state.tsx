@@ -2,10 +2,14 @@ import {
   DatabaseIcon,
   LineChartIcon,
   NetworkIcon,
+  ScrollText,
   Table2Icon,
 } from 'lucide-react'
 import { useI18n } from '@/i18n/use-i18n'
 import { cn } from '@/lib/utils'
+import { useDataSourcePickerStore } from '@/features/session/data-source-picker/data-source-picker-store'
+import { openOrFocusOpLogTab } from '@/features/op-log/utils/open-op-log-tab'
+import { useStageStore } from '@/stores/stage-store'
 import { StageTabBarAddButton } from './stage-tab-bar-add-button'
 
 type Props = {
@@ -15,7 +19,7 @@ type Props = {
 }
 
 type StageEmptyAction = {
-  id: 'sql' | 'er' | 'report' | 'dashboard'
+  id: 'sql' | 'er' | 'oplog' | 'report' | 'dashboard'
   label: string
   Icon: typeof DatabaseIcon
   enabled: boolean
@@ -28,6 +32,18 @@ export function StageWorkbenchEmptyState({
   onOpenDashboard,
 }: Props) {
   const { t } = useI18n()
+  const requestPick = useDataSourcePickerStore((s) => s.requestPick)
+
+  async function handleOpenOpLog() {
+    const result = await requestPick({ reason: 'oplog' })
+    if ('cancelled' in result) return
+    openOrFocusOpLogTab({
+      getState: useStageStore.getState,
+      connectionId: result.connectionId,
+      connectionName: result.connectionName,
+    })
+  }
+
   const actions: StageEmptyAction[] = [
     {
       id: 'sql',
@@ -42,6 +58,13 @@ export function StageWorkbenchEmptyState({
       Icon: NetworkIcon,
       enabled: Boolean(onOpenErDesigner),
       onClick: onOpenErDesigner,
+    },
+    {
+      id: 'oplog',
+      label: t('stage.toolRow.oplog'),
+      Icon: ScrollText,
+      enabled: true,
+      onClick: handleOpenOpLog,
     },
     {
       id: 'report',
