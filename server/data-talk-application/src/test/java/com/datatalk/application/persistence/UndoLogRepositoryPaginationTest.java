@@ -210,19 +210,19 @@ class UndoLogRepositoryPaginationTest {
 
         // from filter
         var fromResult = repo.findByConnectionId("conn-A", 0, 10,
-            new UndoLogRepository.OpLogFilters(null, null, null, 1500L, null));
+            new UndoLogRepository.OpLogFilters(null, null, 1500L, null, null));
         assertThat(fromResult.items()).hasSize(2);
         assertThat(fromResult.total()).isEqualTo(2);
 
         // to filter
         var toResult = repo.findByConnectionId("conn-A", 0, 10,
-            new UndoLogRepository.OpLogFilters(null, null, null, null, 2500L));
+            new UndoLogRepository.OpLogFilters(null, null, null, 2500L, null));
         assertThat(toResult.items()).hasSize(2);
         assertThat(toResult.total()).isEqualTo(2);
 
         // range filter
         var rangeResult = repo.findByConnectionId("conn-A", 0, 10,
-            new UndoLogRepository.OpLogFilters(null, null, null, 1500L, 2500L));
+            new UndoLogRepository.OpLogFilters(null, null, 1500L, 2500L, null));
         assertThat(rangeResult.items()).hasSize(1);
         assertThat(rangeResult.total()).isEqualTo(1);
     }
