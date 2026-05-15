@@ -5,6 +5,7 @@ import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.persistence.SessionRecord;
 import com.datatalk.application.persistence.SessionRepository;
+import com.datatalk.application.semantic.SemanticModelRepository;
 import com.datatalk.application.session.DeleteOutcome;
 import com.datatalk.application.session.SessionService;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,6 +23,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -32,13 +34,14 @@ class ConnectionDeletionServiceTest {
     @Mock SessionRepository sessions;
     @Mock SessionService sessionService;
     @Mock FileArtifactRepository fileArtifacts;
+    @Mock SemanticModelRepository semanticModelRepository;
     Clock clock = Clock.fixed(Instant.ofEpochMilli(1_000L), ZoneOffset.UTC);
 
     ConnectionDeletionService svc;
 
     @BeforeEach
     void setUp() {
-        svc = new ConnectionDeletionService(connections, sessions, sessionService, fileArtifacts, clock);
+        svc = new ConnectionDeletionService(connections, sessions, sessionService, fileArtifacts, semanticModelRepository, clock);
     }
 
     @Test
@@ -92,6 +95,54 @@ class ConnectionDeletionServiceTest {
 
         assertThat(out).isInstanceOf(DeleteOutcome.Ok.class);
         verify(connections).deleteById("conn_x");
+    }
+
+    @Test
+    void delete_force_false_blocks_when_only_verified_queries_present() {
+        when(connections.findById("conn_x")).thenReturn(Optional.of(connRec("conn_x", "prod-mysql")));
+        when(sessions.listByConnection("conn_x")).thenReturn(List.of());
+        when(fileArtifacts.countResourcesByConnection(eq("conn_x"), any()))
+                .thenReturn(new FileArtifactRepository.ConnectionResourceCounts(0, 0, 0, 0));
+        when(semanticModelRepository.countVerifiedQueriesByConnection("conn_x")).thenReturn(7);
+
+        var out = svc.delete("conn_x", false);
+
+        assertThat(out).isInstanceOf(DeleteOutcome.BlockedByResources.class);
+        var blocked = (DeleteOutcome.BlockedByResources) out;
+        assertThat(blocked.verifiedQueries()).isEqualTo(7);
+        verify(connections, never()).deleteById(any());
+        verify(semanticModelRepository, never()).moveToTrash(any(), anyLong());
+    }
+
+    @Test
+    void delete_force_true_moves_semantic_model_to_trash_BEFORE_row_delete() {
+        when(connections.findById("conn_x")).thenReturn(Optional.of(connRec("conn_x", "prod-mysql")));
+        when(sessions.listByConnection("conn_x")).thenReturn(List.of());
+
+        var out = svc.delete("conn_x", true);
+
+        assertThat(out).isInstanceOf(DeleteOutcome.Ok.class);
+
+        var inOrder = inOrder(semanticModelRepository, fileArtifacts, connections);
+        inOrder.verify(semanticModelRepository).moveToTrash("conn_x", 1_000L);
+        inOrder.verify(fileArtifacts).detachArchivedFromConnection("conn_x", "prod-mysql", 1_000L);
+        inOrder.verify(connections).deleteById("conn_x");
+    }
+
+    @Test
+    void delete_force_false_BlockedByResources_includes_zero_VQ_when_only_file_resources() {
+        when(connections.findById("conn_x")).thenReturn(Optional.of(connRec("conn_x", "prod-mysql")));
+        when(sessions.listByConnection("conn_x")).thenReturn(List.of(sessionRec("ses_a", "conn_x")));
+        when(fileArtifacts.countResourcesByConnection(eq("conn_x"), any()))
+                .thenReturn(new FileArtifactRepository.ConnectionResourceCounts(1, 0, 0, 0));
+        when(semanticModelRepository.countVerifiedQueriesByConnection("conn_x")).thenReturn(0);
+
+        var out = svc.delete("conn_x", false);
+
+        assertThat(out).isInstanceOf(DeleteOutcome.BlockedByResources.class);
+        var blocked = (DeleteOutcome.BlockedByResources) out;
+        assertThat(blocked.verifiedQueries()).isEqualTo(0);
+        assertThat(blocked.counts().sessions()).isEqualTo(1);
     }
 
     private static ConnectionRecord connRec(String id, String name) {

@@ -5,6 +5,7 @@ import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.persistence.SessionRecord;
 import com.datatalk.application.persistence.SessionRepository;
+import com.datatalk.application.semantic.SemanticModelRepository;
 import com.datatalk.application.session.DeleteOutcome;
 import com.datatalk.application.session.SessionService;
 import org.slf4j.Logger;
@@ -31,6 +32,7 @@ public class ConnectionDeletionService {
     private final SessionRepository sessions;
     private final SessionService sessionService;
     private final FileArtifactRepository fileArtifacts;
+    private final SemanticModelRepository semanticModelRepository;
     private final Clock clock;
 
     public ConnectionDeletionService(
@@ -38,11 +40,13 @@ public class ConnectionDeletionService {
             SessionRepository sessions,
             SessionService sessionService,
             FileArtifactRepository fileArtifacts,
+            SemanticModelRepository semanticModelRepository,
             Clock clock) {
         this.connections = connections;
         this.sessions = sessions;
         this.sessionService = sessionService;
         this.fileArtifacts = fileArtifacts;
+        this.semanticModelRepository = semanticModelRepository;
         this.clock = clock;
     }
 
@@ -58,9 +62,11 @@ public class ConnectionDeletionService {
         if (!force) {
             FileArtifactRepository.ConnectionResourceCounts counts =
                     fileArtifacts.countResourcesByConnection(connectionId, childSessionIds);
+            int vqCount = semanticModelRepository.countVerifiedQueriesByConnection(connectionId);
             if (counts.sessions() > 0 || counts.candidates() > 0
-                    || counts.temporary() > 0 || counts.archived() > 0) {
-                return new DeleteOutcome.BlockedByResources(connectionId, counts);
+                    || counts.temporary() > 0 || counts.archived() > 0
+                    || vqCount > 0) {
+                return new DeleteOutcome.BlockedByResources(connectionId, counts, vqCount);
             }
             // No resources at all — just drop the connection row.
             connections.deleteById(connectionId);
@@ -68,11 +74,14 @@ public class ConnectionDeletionService {
         }
 
         // force = true: cascade
-        // 1) detach archived rows + stamp orphan metadata (MUST happen BEFORE
+        // 1) move semantic model to trash first
+        semanticModelRepository.moveToTrash(connectionId, clock.millis());
+
+        // 2) detach archived rows + stamp orphan metadata (MUST happen BEFORE
         //    connection row deletion so the name is still discoverable, spec §A.4).
         fileArtifacts.detachArchivedFromConnection(connectionId, rec.name(), clock.millis());
 
-        // 2) delete every child session forcefully (its own transient
+        // 3) delete every child session forcefully (its own transient
         //    file_artifacts get cleaned up + archived rows already detached).
         for (String sid : childSessionIds) {
             try {

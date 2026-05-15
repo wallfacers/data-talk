@@ -118,6 +118,11 @@ public sealed interface DtEvent {
     @JsonTypeName("script.run.completed")
     record ScriptRunCompleted(String runId, int exitCode, long durationMs, int rowsWritten) implements DtEvent {}
 
+    @JsonTypeName("semantic.pending.created")
+    record SemanticPendingCreated(String connectionId, String domain, String reason) implements DtEvent {}
+    @JsonTypeName("semantic.verified_query.recorded")
+    record VerifiedQueryRecorded(String vqId, String question, String modelRef) implements DtEvent {}
+
     @JsonTypeName("heartbeat")
     record Heartbeat(long ts) implements DtEvent {}
     @JsonTypeName("ping")
@@ -162,6 +167,8 @@ public sealed interface DtEvent {
             case ScriptRunStarted srs    -> "script.run.started";
             case ScriptRunOutput sro      -> "script.run.output";
             case ScriptRunCompleted src   -> "script.run.completed";
+            case SemanticPendingCreated spc -> "semantic.pending.created";
+            case VerifiedQueryRecorded vqr -> "semantic.verified_query.recorded";
             case Heartbeat hb             -> "heartbeat";
             case PingPong pp              -> "ping";
             case StreamError se           -> "error";

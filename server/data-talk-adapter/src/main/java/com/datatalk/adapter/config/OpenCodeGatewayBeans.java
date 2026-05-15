@@ -150,6 +150,8 @@ public class OpenCodeGatewayBeans {
             skillSyncer.syncSkill("sql-error-diagnostics", opencodeCwd);
             skillSyncer.syncSkill("database-dialects", opencodeCwd);
             skillSyncer.syncSkill("data-collection", opencodeCwd);
+            skillSyncer.syncSkill("skill-creator", opencodeCwd);
+            skillSyncer.syncSkill("semantic-model-usage", opencodeCwd);
 
             if (mcpProps.isEnabled()) {
                 bootstrapReconciler.writeManagedConfig(serverPort);

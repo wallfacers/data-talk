@@ -129,6 +129,8 @@ This file is the map. Deep knowledge lives in `docs/`:
 | Tech debt tracker            | [docs/exec-plans/tech-debt-tracker.md](docs/exec-plans/tech-debt-tracker.md) |
 | BUG tracking & E2E defect registry | [docs/bugs/index.md](docs/bugs/index.md)                     |
 | Internationalization guide   | [docs/I18N.md](docs/I18N.md)                             |
+| Semantic Model architecture  | `openspec/changes/semantic-model-foundation/design.md`   |
+| Semantic Model skills        | `server/.../skills/skill-creator/SKILL.md`, `semantic-model-usage/SKILL.md` |
 
 ## Working Rules
 

@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { BarChart2Icon, DatabaseIcon, FileTextIcon, LayoutDashboardIcon, LayoutIcon, NetworkIcon, PackageIcon, SearchCodeIcon, TerminalIcon } from 'lucide-react'
+import { BarChart2Icon, BrainIcon, DatabaseIcon, FileTextIcon, LayoutDashboardIcon, LayoutIcon, NetworkIcon, PackageIcon, SearchCodeIcon, TerminalIcon } from 'lucide-react'
 import { useSqlWorkbenchStore } from '@/features/stage/stores/sql-workbench-store'
 import { useErTabsStore } from '@/features/stage/stores/er-tabs-store'
 import { normalizeQueryEditorPayload } from '@/features/stage/utils/normalize-query-editor-payload'
@@ -253,6 +253,18 @@ export const TAB_TYPE_REGISTRY: Record<string, TabTypeDescriptor> = {
     extractContent: (p) => {
       const o = p as { scriptText?: unknown } | null | undefined
       return typeof o?.scriptText === 'string' ? o.scriptText : ''
+    },
+  },
+  semantic_model_editor: {
+    type: 'semantic_model_editor',
+    persistent: true,
+    scope: 'workspace',
+    payloadSource: 'stage_tab',
+    icon: BrainIcon,
+    labelKey: 'tabType.semanticModelEditor',
+    extractContent: (p) => {
+      const o = p as { domain?: unknown; description?: unknown } | null | undefined
+      return [typeof o?.domain === 'string' ? o.domain : '', typeof o?.description === 'string' ? o.description : ''].filter(Boolean).join(' ')
     },
   },
 }

@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://datatalk.local/semantic/verified-query-schema.json",
+  "title": "Verified Query Line Schema",
+  "description": "JSON Schema for a single line in verified_queries.jsonl",
+  "type": "object",
+  "required": ["id", "question", "sql", "modelRef", "hitCount"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^vq_[a-z0-9_]+$",
+      "description": "Unique verified query identifier, e.g. vq_orders_gmv_001"
+    },
+    "question": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The natural language question that triggers this query"
+    },
+    "sql": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The verified SQL statement"
+    },
+    "modelRef": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Reference to the domain model this query belongs to, e.g. orders"
+    },
+    "hitCount": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 1,
+      "description": "Number of times this query has been reused"
+    },
+    "lastHit": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of the most recent hit"
+    },
+    "confirmedBy": {
+      "type": "string",
+      "description": "Who confirmed this query (user name or 'ai')"
+    },
+    "confirmedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of initial confirmation"
+    },
+    "stale": {
+      "type": "boolean",
+      "default": false,
+      "description": "Marked true when referenced schema objects no longer exist"
+    }
+  }
+}

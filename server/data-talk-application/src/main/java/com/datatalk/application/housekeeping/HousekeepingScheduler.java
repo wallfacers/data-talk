@@ -2,6 +2,8 @@ package com.datatalk.application.housekeeping;
 
 import com.datatalk.application.fileartifact.FileArtifactReconciler;
 import com.datatalk.application.fileartifact.FileArtifactRepository;
+import com.datatalk.application.semantic.SemanticModelLoader;
+import com.datatalk.application.semantic.SemanticModelRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -12,15 +14,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
-import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 
 /**
- * Nightly housekeeping — 4 independent tasks, 03:00 UTC.
- * Spec §B.1.
+ * Nightly housekeeping — 7 independent tasks, 03:00 UTC.
+ * Spec §B.1 + semantic model compaction/pending/trash.
  */
 @Component
 public class HousekeepingScheduler {
@@ -29,15 +31,21 @@ public class HousekeepingScheduler {
 
     private final FileArtifactReconciler reconciler;
     private final FileArtifactRepository fileArtifactRepo;
+    private final SemanticModelRepository semanticRepo;
+    private final SemanticModelLoader semanticLoader;
     private final Clock clock;
     private final Path workdir;
 
     public HousekeepingScheduler(
             FileArtifactReconciler reconciler,
             FileArtifactRepository fileArtifactRepo,
+            SemanticModelRepository semanticRepo,
+            SemanticModelLoader semanticLoader,
             Clock clock) {
         this.reconciler = reconciler;
         this.fileArtifactRepo = fileArtifactRepo;
+        this.semanticRepo = semanticRepo;
+        this.semanticLoader = semanticLoader;
         this.clock = clock;
         this.workdir = resolveWorkdir();
     }
@@ -51,7 +59,10 @@ public class HousekeepingScheduler {
         try { rotateOpencodeLogs(); logHousekeepingTask("rotate-log", "ok", started); } catch (Exception e) { failed++; logHousekeepingTask("rotate-log", "failed", started); log.warn("[housekeeping] rotate-log failed: {}", e.toString()); }
         try { cleanupTrash(); logHousekeepingTask("cleanupTrash", "ok", started); } catch (Exception e) { failed++; logHousekeepingTask("cleanupTrash", "failed", started); log.warn("[housekeeping] cleanupTrash failed: {}", e.toString()); }
         try { reconcileFileArtifacts(); logHousekeepingTask("reconcile", "ok", started); } catch (Exception e) { failed++; logHousekeepingTask("reconcile", "failed", started); log.warn("[housekeeping] reconcile failed: {}", e.toString()); }
-        writeHousekeepingLog(started, 4 - failed, failed);
+        try { compactPatches(); logHousekeepingTask("compactPatches", "ok", started); } catch (Exception e) { failed++; logHousekeepingTask("compactPatches", "failed", started); log.warn("[housekeeping] compactPatches failed: {}", e.toString()); }
+        try { cleanupExpiredPending(); logHousekeepingTask("cleanupExpiredPending", "ok", started); } catch (Exception e) { failed++; logHousekeepingTask("cleanupExpiredPending", "failed", started); log.warn("[housekeeping] cleanupExpiredPending failed: {}", e.toString()); }
+        try { cleanupSemanticTrash(); logHousekeepingTask("cleanupSemanticTrash", "ok", started); } catch (Exception e) { failed++; logHousekeepingTask("cleanupSemanticTrash", "failed", started); log.warn("[housekeeping] cleanupSemanticTrash failed: {}", e.toString()); }
+        writeHousekeepingLog(started, 7 - failed, failed);
         log.info("[housekeeping] completed in {} ms", clock.instant().toEpochMilli() - started.toEpochMilli());
     }
 
@@ -205,6 +216,104 @@ public class HousekeepingScheduler {
         int second = filename.indexOf("__", first + 2);
         if (second < 0) return null;
         return filename.substring(first + 2, second);
+    }
+
+    /** Compact patches.jsonl files with > 200 lines back into the model yaml. */
+    synchronized int compactPatches() {
+        Path semanticDir = workdir.resolve("semantic");
+        if (!Files.isDirectory(semanticDir)) return 0;
+        int compacted = 0;
+        try (Stream<Path> connDirs = Files.list(semanticDir)) {
+            for (Path connDir : (Iterable<Path>) connDirs::iterator) {
+                if (!Files.isDirectory(connDir)) continue;
+                String connectionId = connDir.getFileName().toString();
+                try (Stream<Path> files = Files.list(connDir)) {
+                    for (Path file : (Iterable<Path>) files::iterator) {
+                        String name = file.getFileName().toString();
+                        if (!name.endsWith(".patches.jsonl")) continue;
+                        String domain = name.substring(0, name.length() - ".patches.jsonl".length());
+                        List<String> lines = Files.readAllLines(file);
+                        if (lines.size() > 200) {
+                            var model = semanticRepo.loadDomain(connectionId, domain);
+                            if (model.isPresent()) {
+                                semanticLoader.compact(connectionId, domain, model.get());
+                                compacted++;
+                                log.info("[housekeeping] compacted patches for {}/{} ({} lines)", connectionId, domain, lines.size());
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (IOException e) {
+            log.warn("[housekeeping] compactPatches failed: {}", e.toString());
+        }
+        return compacted;
+    }
+
+    /** Move pending proposals older than 30 days to _trash. */
+    synchronized int cleanupExpiredPending() {
+        Path semanticDir = workdir.resolve("semantic");
+        if (!Files.isDirectory(semanticDir)) return 0;
+        Instant cutoff = clock.instant().minus(Duration.ofDays(30));
+        int cleaned = 0;
+        try (Stream<Path> connDirs = Files.list(semanticDir)) {
+            for (Path connDir : (Iterable<Path>) connDirs::iterator) {
+                Path pendingDir = connDir.resolve("pending");
+                if (!Files.isDirectory(pendingDir)) continue;
+                try (Stream<Path> pendingFiles = Files.list(pendingDir)) {
+                    for (Path pf : (Iterable<Path>) pendingFiles::iterator) {
+                        BasicFileAttributes attrs;
+                        try { attrs = Files.readAttributes(pf, BasicFileAttributes.class); }
+                        catch (IOException e) { continue; }
+                        if (attrs.lastModifiedTime().toInstant().isBefore(cutoff)) {
+                            Path trashTarget = workdir.resolve("_trash/semantic")
+                                .resolve(attrs.lastModifiedTime().toInstant().toEpochMilli() + "-expired-" + pf.getFileName().toString());
+                            Files.createDirectories(trashTarget.getParent());
+                            Files.move(pf, trashTarget);
+                            cleaned++;
+                        }
+                    }
+                }
+            }
+        } catch (IOException e) {
+            log.warn("[housekeeping] cleanupExpiredPending failed: {}", e.toString());
+        }
+        if (cleaned > 0) log.info("[housekeeping] cleanupExpiredPending moved {} expired pending files", cleaned);
+        return cleaned;
+    }
+
+    /** Physically delete _trash/semantic/<ts>-* directories older than 30 days. */
+    synchronized int cleanupSemanticTrash() {
+        Path trashSemanticDir = workdir.resolve("_trash/semantic");
+        if (!Files.isDirectory(trashSemanticDir)) return 0;
+        Instant cutoff = clock.instant().minus(Duration.ofDays(30));
+        int removed = 0;
+        try (Stream<Path> entries = Files.list(trashSemanticDir)) {
+            for (Path entry : (Iterable<Path>) entries::iterator) {
+                BasicFileAttributes attrs;
+                try { attrs = Files.readAttributes(entry, BasicFileAttributes.class); }
+                catch (IOException e) { continue; }
+                if (attrs.lastModifiedTime().toInstant().isBefore(cutoff)) {
+                    deleteRecursively(entry);
+                    removed++;
+                }
+            }
+        } catch (IOException e) {
+            log.warn("[housekeeping] cleanupSemanticTrash failed: {}", e.toString());
+        }
+        if (removed > 0) log.info("[housekeeping] cleanupSemanticTrash removed {} directories", removed);
+        return removed;
+    }
+
+    private void deleteRecursively(Path dir) throws IOException {
+        if (Files.isDirectory(dir)) {
+            try (Stream<Path> files = Files.list(dir)) {
+                for (Path file : files.toList()) {
+                    deleteRecursively(file);
+                }
+            }
+        }
+        Files.deleteIfExists(dir);
     }
 
     private Path resolveWorkdir() {

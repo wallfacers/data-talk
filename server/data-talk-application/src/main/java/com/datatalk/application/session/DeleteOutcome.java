@@ -22,7 +22,12 @@ public sealed interface DeleteOutcome
 
     record BlockedByCandidates(String sessionId, List<FileArtifact> candidates) implements DeleteOutcome {}
 
-    record BlockedByResources(String connectionId, ConnectionResourceCounts counts) implements DeleteOutcome {}
+    record BlockedByResources(String connectionId, ConnectionResourceCounts counts, int verifiedQueries) implements DeleteOutcome {
+        /** Backward-compatible constructor when VQ count is unknown. */
+        public BlockedByResources(String connectionId, ConnectionResourceCounts counts) {
+            this(connectionId, counts, 0);
+        }
+    }
 
     record NotFound(String id) implements DeleteOutcome {}
 }

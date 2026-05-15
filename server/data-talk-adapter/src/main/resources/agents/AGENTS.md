@@ -73,6 +73,12 @@ Tool catalogue — one-line purpose + owning skill. Required input details, erro
 | `datatalk_script_run` | Prepare script execution (validate env, issue token, return runId) | skill:data-collection |
 | `datatalk_script_stop` | Cancel a running script | skill:data-collection |
 | `datatalk_script_list` | List script run history | skill:data-collection |
+| `datatalk_semantic_lookup` | Search semantic model by name/label (entity/measure/metric/dimension) | skill:semantic-model-usage |
+| `datatalk_verified_query_find` | Find cached verified queries (L0/L1 exact, L2 top-K) | skill:semantic-model-usage |
+| `datatalk_verified_query_record` | Record a user-confirmed question-SQL pair | skill:semantic-model-usage |
+| `datatalk_semantic_propose_change` | Propose a new/modified semantic model YAML (write to pending/) | skill:semantic-model-usage |
+| `datatalk_literal_mapping_add` | Add natural-language-to-db-value mapping for a dimension | skill:semantic-model-usage |
+| `datatalk_skill_create` | Create a new business domain semantic model (AI self-skill) | skill:skill-creator |
 
 Supported UI object types: `workspace`, `query_editor`, `er_inspector`, `er_designer`, `dashboard`.
 
@@ -94,6 +100,7 @@ When any row matches the current situation, you **MUST** load the listed skill b
 | create / update / delete a saved connection, switch session data context, or trigger any two-phase **confirmable mutation** (`confirm=true` + `confirmationToken`) | skill:connection-management |
 | write dialect-specific SQL or reason about kind / port / driver / risk levels for MySQL / PostgreSQL / Oracle / SQLServer / SQLite / DuckDB / ClickHouse / TiDB / OceanBase / StarRocks / Trino / Presto / Dameng / Hive / GaussDB / Apache Doris | skill:database-dialects |
 | call any `datatalk_script_run` / `datatalk_script_stop` / `datatalk_script_list` tool, or user asks to collect data / scrape / fetch external data / run Python/Node.js script | skill:data-collection |
+| user asks for a business metric / uses business term ("销售额" / "GMV" / 自然语言度量) / asks to define or look up semantic model entities, dimensions, or measures | skill:semantic-model-usage |
 
 ## Skill Index
 
@@ -112,5 +119,8 @@ All routable skills (auto-loaded by OpenCode; do not Read their files by path). 
 - skill:database-dialects — Per-dialect kind / port / driver / SQL splitter / risk levels / ER & diagnostics support for MariaDB / TiDB / Oracle / SQL Server / DuckDB / ClickHouse / Apache Doris / OceanBase / StarRocks / Trino / Presto / Dameng / Apache Hive / GaussDB.
 - skill:bezel — Premium industrial dashboards (KPI big-screen / monitoring screens / industry visualization) rendered as self-contained HTML from JSON descriptor.
 - skill:data-collection — Execute Python/Node.js scripts locally to collect external data (REST fetch / web scrape / API calls) and write into SQL connections via backend write API.
+- skill:semantic-model-usage — Semantic Model contract: 6 Actions (lookup / find / record / propose_change / literal_mapping_add / skill_create), L0-L3 Verified Query routing, when to propose changes vs record VQs.
+- skill:skill-creator — Create new business domain Semantic Model YAML skills. Output goes through `datatalk_skill_create` Action to `pending/` for user review.
 
 {{STAGE_TAB_DIGEST}}
+{{SEMANTIC_MODEL_DIGEST}}

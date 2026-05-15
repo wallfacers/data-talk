@@ -1,0 +1,139 @@
+name: saas
+version: 1
+description: "通用 SaaS 语义模型 — subscriptions / users / events 三域，覆盖 MRR / ARR / churn / DAU/MAU 等核心指标"
+last_modified: "2026-05-15T00:00:00Z"
+authored_by: user_authored
+
+entities:
+  - name: subscription
+    type: primary
+    physical:
+      table: subscriptions
+    primary_key: ["id"]
+    description: "订阅主实体"
+  - name: user
+    type: primary
+    physical:
+      table: users
+    primary_key: ["id"]
+    description: "用户主实体"
+  - name: event
+    type: primary
+    physical:
+      table: events
+    primary_key: ["id"]
+    description: "用户行为事件"
+
+dimensions:
+  - name: subscription_plan
+    entity: subscription
+    expr: plan
+    type: categorical
+    label_zh: "订阅计划"
+    label_en: "Subscription Plan"
+  - name: subscription_status
+    entity: subscription
+    expr: status
+    type: categorical
+    label_zh: "订阅状态"
+    label_en: "Subscription Status"
+  - name: subscription_start_date
+    entity: subscription
+    expr: started_at
+    type: time
+    time_granularity: day
+    label_zh: "订阅开始日期"
+    label_en: "Subscription Start Date"
+  - name: user_signup_date
+    entity: user
+    expr: signed_up_at
+    type: time
+    time_granularity: day
+    label_zh: "注册日期"
+    label_en: "Sign-up Date"
+  - name: event_date
+    entity: event
+    expr: occurred_at
+    type: time
+    time_granularity: day
+    label_zh: "事件日期"
+    label_en: "Event Date"
+  - name: event_type
+    entity: event
+    expr: type
+    type: categorical
+    label_zh: "事件类型"
+    label_en: "Event Type"
+
+measures:
+  - name: mrr_amount
+    entity: subscription
+    agg: sum
+    expr: monthly_amount
+    filter: "status = 'ACTIVE'"
+    label_zh: "月经常性收入(MRR)"
+    label_en: "MRR"
+  - name: active_subscription_count
+    entity: subscription
+    agg: count
+    expr: id
+    filter: "status = 'ACTIVE'"
+    label_zh: "活跃订阅数"
+    label_en: "Active Subscriptions"
+  - name: total_subscription_count
+    entity: subscription
+    agg: count
+    expr: id
+    label_zh: "总订阅数"
+    label_en: "Total Subscriptions"
+  - name: user_count
+    entity: user
+    agg: count_distinct
+    expr: id
+    label_zh: "总用户数"
+    label_en: "Total Users"
+  - name: dau
+    entity: event
+    agg: count_distinct
+    expr: user_id
+    label_zh: "日活跃用户(DAU)"
+    label_en: "DAU"
+  - name: event_count
+    entity: event
+    agg: count
+    expr: id
+    label_zh: "事件总数"
+    label_en: "Event Count"
+
+metrics:
+  - name: arr
+    type: derived
+    base: mrr_amount
+    time_offset: "12mo"
+    label_zh: "年经常性收入(ARR)"
+    label_en: "ARR"
+  - name: churn_rate
+    type: ratio
+    numerator: total_subscription_count
+    denominator: active_subscription_count
+    label_zh: "流失率"
+    label_en: "Churn Rate"
+  - name: arpu
+    type: ratio
+    numerator: mrr_amount
+    denominator: active_subscription_count
+    label_zh: "每用户平均收入(ARPU)"
+    label_en: "ARPU"
+
+literal_mappings:
+  subscription_status:
+    活跃: ACTIVE
+    取消: CANCELLED
+    暂停: PAUSED
+    试用: TRIAL
+    逾期: PAST_DUE
+  subscription_plan:
+    基础版: BASIC
+    专业版: PRO
+    企业版: ENTERPRISE
+    免费版: FREE

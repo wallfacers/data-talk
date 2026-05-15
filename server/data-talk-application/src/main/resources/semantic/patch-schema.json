@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://datatalk.local/semantic/patch-schema.json",
+  "title": "Semantic Model Patch Line Schema",
+  "description": "JSON Schema for a single line in a .patches.jsonl file. Only three op types are allowed.",
+  "type": "object",
+  "required": ["op", "at"],
+  "properties": {
+    "op": {
+      "type": "string",
+      "enum": ["ADD_VERIFIED_QUERY", "INC_HIT_COUNT", "ADD_LITERAL_MAPPING"]
+    },
+    "by": {
+      "type": "string",
+      "enum": ["ai", "user"],
+      "description": "Who triggered this patch"
+    },
+    "at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the patch was created"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "op": { "const": "ADD_VERIFIED_QUERY" } }
+      },
+      "then": {
+        "required": ["payload"],
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": ["id", "question", "sql", "modelRef"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "question": { "type": "string", "minLength": 1 },
+              "sql": { "type": "string", "minLength": 1 },
+              "modelRef": { "type": "string", "minLength": 1 },
+              "hitCount": { "type": "integer", "default": 1, "minimum": 1 },
+              "lastHit": { "type": "string", "format": "date-time" },
+              "confirmedBy": { "type": "string" },
+              "confirmedAt": { "type": "string", "format": "date-time" },
+              "stale": { "type": "boolean", "default": false }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "op": { "const": "INC_HIT_COUNT" } }
+      },
+      "then": {
+        "required": ["vq_id", "delta"],
+        "properties": {
+          "vq_id": { "type": "string", "minLength": 1 },
+          "delta": { "type": "integer", "minimum": 1, "default": 1 }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "op": { "const": "ADD_LITERAL_MAPPING" } }
+      },
+      "then": {
+        "required": ["dimension", "map"],
+        "properties": {
+          "dimension": { "type": "string", "minLength": 1 },
+          "map": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": { "type": "string" }
+          }
+        }
+      }
+    }
+  ]
+}

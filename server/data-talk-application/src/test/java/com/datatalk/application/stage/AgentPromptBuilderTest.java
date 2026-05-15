@@ -1,5 +1,6 @@
 package com.datatalk.application.stage;
 
+import com.datatalk.application.semantic.SemanticModelDigester;
 import com.datatalk.domain.stage.StageTab;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,6 +14,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class AgentPromptBuilderTest {
@@ -20,6 +22,8 @@ class AgentPromptBuilderTest {
     private StageTabRepository repo;
     private SessionTitleLookup lookup;
     private ActiveSessionDirProvider activeDir;
+    private SemanticModelDigester semanticDigester;
+    private ConnectionIdProvider connectionIdProvider;
     private AgentPromptBuilder builder;
 
     @BeforeEach
@@ -27,8 +31,10 @@ class AgentPromptBuilderTest {
         repo = mock(StageTabRepository.class);
         lookup = mock(SessionTitleLookup.class);
         activeDir = mock(ActiveSessionDirProvider.class);
+        semanticDigester = mock(SemanticModelDigester.class);
+        connectionIdProvider = () -> Optional.empty();
         when(lookup.titlesByIds(anyList())).thenReturn(Map.of());
-        builder = new AgentPromptBuilder(repo, lookup, activeDir);
+        builder = new AgentPromptBuilder(repo, lookup, activeDir, semanticDigester, connectionIdProvider);
     }
 
     private StageTab mkTab(String id, String title) {
@@ -202,5 +208,55 @@ class AgentPromptBuilderTest {
         assertThat(result).doesNotContain("{{ACTIVE_SESSION_DIR}}");
         long occurrences = result.lines().filter(l -> l.contains("<no active session>")).count();
         assertThat(occurrences).isEqualTo(2L);
+    }
+
+    @Test
+    void render_replaces_semantic_model_digest_when_connection_present() {
+        AgentPromptBuilder b = new AgentPromptBuilder(repo, lookup, activeDir,
+            semanticDigester, () -> Optional.of("conn_42"));
+        when(semanticDigester.digest("conn_42")).thenReturn("## Semantic Model Snapshot\nDomains: orders");
+
+        String result = b.render("Pre\n{{SEMANTIC_MODEL_DIGEST}}\nPost");
+
+        assertThat(result)
+            .contains("## Semantic Model Snapshot")
+            .contains("Domains: orders")
+            .doesNotContain("{{SEMANTIC_MODEL_DIGEST}}");
+        verify(semanticDigester).digest("conn_42");
+    }
+
+    @Test
+    void render_replaces_semantic_model_digest_with_sentinel_when_no_connection() {
+        AgentPromptBuilder b = new AgentPromptBuilder(repo, lookup, activeDir,
+            semanticDigester, () -> Optional.empty());
+
+        String result = b.render("X{{SEMANTIC_MODEL_DIGEST}}Y");
+
+        assertThat(result)
+            .contains("<no semantic model — please bind a connection>")
+            .doesNotContain("{{SEMANTIC_MODEL_DIGEST}}");
+        verifyNoInteractions(semanticDigester);
+    }
+
+    @Test
+    void render_replaces_all_three_placeholders_independently() {
+        when(activeDir.currentSessionId()).thenReturn(Optional.of("ses_z"));
+        when(repo.recentByLastTouched(anyInt())).thenReturn(List.of());
+        when(repo.countActive()).thenReturn(0);
+        when(repo.countArchived()).thenReturn(0);
+        AgentPromptBuilder b = new AgentPromptBuilder(repo, lookup, activeDir,
+            semanticDigester, () -> Optional.of("conn_X"));
+        when(semanticDigester.digest("conn_X")).thenReturn("SEM_DIGEST_BODY");
+
+        String result = b.render(
+            "Tabs:\n{{STAGE_TAB_DIGEST}}\nDir={{ACTIVE_SESSION_DIR}}\nSem={{SEMANTIC_MODEL_DIGEST}}");
+
+        assertThat(result)
+            .contains("## Open Tabs Snapshot")
+            .contains("Dir=./sessions/ses_z/")
+            .contains("Sem=SEM_DIGEST_BODY")
+            .doesNotContain("{{STAGE_TAB_DIGEST}}")
+            .doesNotContain("{{ACTIVE_SESSION_DIR}}")
+            .doesNotContain("{{SEMANTIC_MODEL_DIGEST}}");
     }
 }

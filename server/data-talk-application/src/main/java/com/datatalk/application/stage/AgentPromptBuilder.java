@@ -1,5 +1,6 @@
 package com.datatalk.application.stage;
 
+import com.datatalk.application.semantic.SemanticModelDigester;
 import com.datatalk.domain.stage.StageTab;
 import com.datatalk.domain.stage.StageTabContent;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -14,13 +15,14 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Renders the {@code {{STAGE_TAB_DIGEST}}} placeholder in the AGENTS.md template
- * with a compact snapshot of recently-touched tabs for the AI agent context.
+ * Renders the {@code {{STAGE_TAB_DIGEST}}}, {@code {{ACTIVE_SESSION_DIR}}},
+ * and {@code {{SEMANTIC_MODEL_DIGEST}}} placeholders in the AGENTS.md template.
  */
 @Component
 public class AgentPromptBuilder {
     private static final String PLACEHOLDER_STAGE_DIGEST = "{{STAGE_TAB_DIGEST}}";
     private static final String PLACEHOLDER_ACTIVE_DIR = "{{ACTIVE_SESSION_DIR}}";
+    private static final String PLACEHOLDER_SEMANTIC_DIGEST = "{{SEMANTIC_MODEL_DIGEST}}";
     private static final String NO_ACTIVE_SENTINEL = "<no active session>";
     private static final int MAX_TABS = 10;
     private static final int MAX_TITLE_CHARS = 80;
@@ -30,18 +32,24 @@ public class AgentPromptBuilder {
     private final StageTabRepository repo;
     private final SessionTitleLookup lookup;
     private final ActiveSessionDirProvider activeDir;
+    private final SemanticModelDigester semanticDigester;
+    private final ConnectionIdProvider connectionIdProvider;
 
     @Autowired
     public AgentPromptBuilder(StageTabRepository repo,
                               SessionTitleLookup lookup,
-                              ActiveSessionDirProvider activeDir) {
+                              ActiveSessionDirProvider activeDir,
+                              SemanticModelDigester semanticDigester,
+                              ConnectionIdProvider connectionIdProvider) {
         this.repo = repo;
         this.lookup = lookup;
         this.activeDir = activeDir;
+        this.semanticDigester = semanticDigester;
+        this.connectionIdProvider = connectionIdProvider;
     }
 
     public AgentPromptBuilder(StageTabRepository repo, SessionTitleLookup lookup) {
-        this(repo, lookup, () -> Optional.empty());
+        this(repo, lookup, () -> Optional.empty(), null, () -> Optional.empty());
     }
 
     public String render(String template) {
@@ -58,6 +66,12 @@ public class AgentPromptBuilder {
                 .map(sid -> "./sessions/" + sid + "/")
                 .orElse(NO_ACTIVE_SENTINEL);
             result = result.replace(PLACEHOLDER_ACTIVE_DIR, value);
+        }
+        if (result.contains(PLACEHOLDER_SEMANTIC_DIGEST)) {
+            String value = connectionIdProvider.currentConnectionId()
+                .map(cid -> semanticDigester != null ? semanticDigester.digest(cid) : "<no semantic model — please bind a connection>")
+                .orElse("<no semantic model — please bind a connection>");
+            result = result.replace(PLACEHOLDER_SEMANTIC_DIGEST, value);
         }
         return result;
     }

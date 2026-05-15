@@ -114,6 +114,8 @@ class AgentPromptBuilderPlaceholderTest {
         SessionTitleLookup lookup = mock(SessionTitleLookup.class);
         when(lookup.titlesByIds(List.of())).thenReturn(Map.of());
         ActiveSessionDirProvider provider = () -> sessionId;
-        return new AgentPromptBuilder(repo, lookup, provider);
+        var semanticDigester = mock(com.datatalk.application.semantic.SemanticModelDigester.class);
+        var connectionIdProvider = mock(com.datatalk.application.stage.ConnectionIdProvider.class);
+        return new AgentPromptBuilder(repo, lookup, provider, semanticDigester, connectionIdProvider);
     }
 }

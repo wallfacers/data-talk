@@ -65,7 +65,7 @@ public class InverseSqlGenerator {
         if (beforeState == null || beforeState.isEmpty()) {
             throw new IllegalStateException("DELETE inverse requires before-state");
         }
-        List<String> columns = new ArrayList<>(beforeState.get(0).keySet());
+        List<String> columns = beforeState.get(0).keySet().stream().sorted().toList();
         List<String> valueRows = beforeState.stream()
             .map(row -> columns.stream()
                 .map(col -> formatValue(row.get(col)))
