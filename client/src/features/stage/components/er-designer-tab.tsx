@@ -30,6 +30,7 @@ import { useI18n } from '@/i18n/use-i18n'
 import { ErDesignerAdapter } from '../adapters/ErDesignerAdapter'
 import { coordinator } from '../persistence/stage-persistence-bootstrap'
 import { ErCanvas } from './er-canvas/ErCanvas'
+import { TabContentLoader } from './tab-content-loader'
 
 type ErDesignerCanvasProps = {
   tabId: string
@@ -320,8 +321,8 @@ export function ErDesignerTab({ tabId }: { tabId: string }) {
 
   if (!payload) {
     return (
-      <div className="flex h-full items-center justify-center text-sm text-text-muted" data-er-tab-id={tabId}>
-        {t('erCanvas.loading')}
+      <div data-er-tab-id={tabId} className="h-full">
+        <TabContentLoader />
       </div>
     )
   }

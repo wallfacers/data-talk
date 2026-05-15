@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useMemo } from 'react'
 import { useErTabsStore } from '@/features/stage/stores/er-tabs-store'
 import type { JsonPatchOp } from '@/features/stage/stores/er-tabs-payload-types'
-import { useI18n } from '@/i18n/use-i18n'
 import { ErInspectorAdapter } from '../adapters/ErInspectorAdapter'
 import { coordinator } from '../persistence/stage-persistence-bootstrap'
 import { ErCanvas } from './er-canvas/ErCanvas'
+import { TabContentLoader } from './tab-content-loader'
 
 export function ErInspectorTab({ tabId }: { tabId: string }) {
-  const { t } = useI18n()
   const payload = useErTabsStore((state) => state.inspectors.get(tabId) ?? null)
 
   useEffect(() => {
@@ -28,8 +27,8 @@ export function ErInspectorTab({ tabId }: { tabId: string }) {
 
   if (!payload) {
     return (
-      <div className="flex h-full items-center justify-center text-sm text-text-muted" data-er-tab-id={tabId}>
-        {t('erCanvas.loading')}
+      <div data-er-tab-id={tabId} className="h-full">
+        <TabContentLoader />
       </div>
     )
   }

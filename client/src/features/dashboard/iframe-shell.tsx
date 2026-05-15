@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { fetchDashboardHtml } from './services/dashboard-api'
 import { isIframeToHost, type HostToIframe, type IframeToHost } from './iframe-protocol'
+import { TabContentLoader } from '@/features/stage/components/tab-content-loader'
 
 export interface DashboardIframeShellProps {
   dashboardId: string
@@ -49,7 +50,7 @@ export function DashboardIframeShell({ dashboardId, params, onError }: Dashboard
     </div>
   }
   if (html === null) {
-    return <div role="status" className="flex items-center justify-center h-full text-[var(--dt-muted-foreground)]">加载中…</div>
+    return <TabContentLoader />
   }
   return <iframe
     ref={ref}

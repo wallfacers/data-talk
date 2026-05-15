@@ -10,6 +10,7 @@ import { FilePreviewTab } from './file-preview-tab'
 import { FilesTab } from './files-tab'
 import { FilesLibraryTab } from './files-library-tab'
 import { SqlWorkbenchTab } from './sql-workbench-tab'
+import { TabContentLoader } from './tab-content-loader'
 
 const DashboardTab = lazy(() =>
   import('@/features/dashboard/dashboard-tab').then((m) => ({ default: m.DashboardTab }))
@@ -112,7 +113,7 @@ export function StageTabContent() {
   if (tab.type === 'dashboard') {
     return (
       <div className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <Suspense fallback={<div className="flex items-center justify-center h-full text-sm text-text-soft">Loading…</div>}>
+        <Suspense fallback={<TabContentLoader />}>
           <DashboardTab key={tab.tabId} tab={tab} />
         </Suspense>
       </div>
@@ -122,7 +123,7 @@ export function StageTabContent() {
   if (tab.type === 'script_editor') {
     return (
       <div className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <Suspense fallback={<div className="flex items-center justify-center h-full text-sm text-text-soft">Loading…</div>}>
+        <Suspense fallback={<TabContentLoader />}>
           <ScriptEditorTab key={tab.tabId} tabId={tab.tabId} />
         </Suspense>
       </div>
@@ -132,7 +133,7 @@ export function StageTabContent() {
   if (tab.type === 'operation_log') {
     return (
       <div className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <Suspense fallback={<div className="flex items-center justify-center h-full text-sm text-text-soft">Loading…</div>}>
+        <Suspense fallback={<TabContentLoader />}>
           <OperationLogTab key={tab.tabId} tab={tab} />
         </Suspense>
       </div>
