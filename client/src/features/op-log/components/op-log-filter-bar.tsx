@@ -21,6 +21,7 @@ interface OpLogFilterBarProps {
   onFiltersChange: (filters: OpLogFilters) => void
   onClear: () => void
   connectionId: string
+  connectionName: string
 }
 
 const STATUS_OPTIONS: { value: string, labelKey: MessageKey }[] = [
@@ -36,7 +37,7 @@ const OPERATION_OPTIONS: { value: string, labelKey: MessageKey }[] = [
   { value: 'DELETE', labelKey: 'opLog.operation.delete' },
 ]
 
-export function OpLogFilterBar({ filters, onFiltersChange, onClear, connectionId }: OpLogFilterBarProps) {
+export function OpLogFilterBar({ filters, onFiltersChange, onClear, connectionId, connectionName }: OpLogFilterBarProps) {
   const { t } = useI18n()
   const { data: connections } = useConnections()
 
@@ -115,7 +116,7 @@ export function OpLogFilterBar({ filters, onFiltersChange, onClear, connectionId
       {connections && connections.length > 0 && (
         <Select value={connectionId} onValueChange={handleConnectionSwitch}>
           <SelectTrigger size="sm" className="h-7 w-auto max-w-48 text-[13px]">
-            <SelectValue />
+            <span className="truncate">{connectionName}</span>
           </SelectTrigger>
           <SelectContent>
             {connections.map(conn => (

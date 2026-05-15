@@ -13,6 +13,7 @@ interface OperationLogTabProps {
 
 export function OperationLogTab({ tab }: OperationLogTabProps) {
   const connectionId = tab.connectionId!
+  const connectionName = tab.connectionName!
   const queryClient = useQueryClient()
 
   const [page, setPage] = useState(0)
@@ -82,7 +83,7 @@ export function OperationLogTab({ tab }: OperationLogTabProps) {
 
   return (
     <div className="flex h-full flex-col bg-bg-canvas">
-      <OpLogFilterBar filters={filters} onFiltersChange={setFilters} onClear={clearFilters} connectionId={connectionId} />
+      <OpLogFilterBar filters={filters} onFiltersChange={setFilters} onClear={clearFilters} connectionId={connectionId} connectionName={connectionName} />
       <OpLogTable
         data={data?.items ?? []}
         isLoading={isLoading}
