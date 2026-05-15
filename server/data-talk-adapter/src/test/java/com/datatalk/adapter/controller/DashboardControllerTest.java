@@ -48,7 +48,9 @@ class DashboardControllerTest {
         JsonPatchApplier patchApplier = new JsonPatchApplier(mapper);
         DashboardArtifactService service = new DashboardArtifactService(fileArtifactService, root, validator, patchApplier, mapper, clock);
         WidgetDataService widgetDataService = mock(WidgetDataService.class);
-        mvc = standaloneSetup(new DashboardController(service, widgetDataService)).build();
+        com.datatalk.application.session.SessionDataContextService sessionDataContextService =
+            mock(com.datatalk.application.session.SessionDataContextService.class);
+        mvc = standaloneSetup(new DashboardController(service, widgetDataService, sessionDataContextService)).build();
     }
 
     @Test

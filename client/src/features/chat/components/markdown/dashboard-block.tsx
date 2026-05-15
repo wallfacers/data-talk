@@ -72,7 +72,9 @@ async function promoteDashboard(dashboard: Dashboard, html?: string) {
   // Persist first so we know the server-assigned id; iframe shell calls
   // GET /api/dashboards/{id}/html with this exact id, so the client store
   // must mirror it.
-  const result = await promoteDashboardApi(enriched, html)
+  // Also pass sessionId so the server can backstop missing defaultDatabase/Schema
+  // from the chat session's data-context if our client-side enrichment didn't fire.
+  const result = await promoteDashboardApi(enriched, html, sessionId)
   const tabId = `dashboard_${generateUuid()}`
   const finalDashboard: Dashboard = result
     ? { ...enriched, id: result.id, version: result.version }

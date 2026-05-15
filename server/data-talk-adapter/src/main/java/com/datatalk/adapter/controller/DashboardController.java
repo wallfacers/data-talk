@@ -5,7 +5,10 @@ import com.datatalk.adapter.dto.DashboardPromoteRequest;
 import com.datatalk.application.dashboard.DashboardArtifactService;
 import com.datatalk.application.dashboard.JsonPatchApplier;
 import com.datatalk.application.dashboard.WidgetDataService;
+import com.datatalk.application.persistence.SessionDataContextRecord;
+import com.datatalk.application.session.SessionDataContextService;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -15,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -29,28 +33,43 @@ public class DashboardController {
     private static final Pattern CONFIG_DASHBOARD_ID =
         Pattern.compile("(\"dashboardId\"\\s*:\\s*\")[^\"]+(\")");
 
+    // Header carrying the chat session id whose data-context should be used as a
+    // server-side fallback when the AI-emitted dashboard JSON omits
+    // defaultConnectionId / defaultDatabase / defaultSchema. Keeps widget data
+    // queries unambiguous on multi-database connections even when the frontend's
+    // optimistic enrichment failed to fire (Vite stale cache, useSessionDataContext
+    // never mounted, React Query race, etc.).
+    public static final String SESSION_ID_HEADER = "X-DataTalk-Session-Id";
+
     private final DashboardArtifactService dashboardService;
     private final WidgetDataService widgetDataService;
+    private final SessionDataContextService sessionDataContextService;
 
     public DashboardController(DashboardArtifactService dashboardService,
-                               WidgetDataService widgetDataService) {
+                               WidgetDataService widgetDataService,
+                               SessionDataContextService sessionDataContextService) {
         this.dashboardService = dashboardService;
         this.widgetDataService = widgetDataService;
+        this.sessionDataContextService = sessionDataContextService;
     }
 
     @PostMapping("/promote")
-    public ResponseEntity<?> promote(@RequestBody DashboardPromoteRequest request) {
+    public ResponseEntity<?> promote(
+        @RequestHeader(value = SESSION_ID_HEADER, required = false) String sessionId,
+        @RequestBody DashboardPromoteRequest request
+    ) {
         if (request.dashboard() == null) {
             return ResponseEntity.badRequest().body(Map.of(
                 "code", "invalid_request",
                 "message", "dashboard payload is required"
             ));
         }
+        JsonNode dashboard = enrichFromSessionContext(request.dashboard(), sessionId);
         try {
             byte[] htmlBytes = request.html() != null && !request.html().isEmpty()
                     ? request.html().getBytes(StandardCharsets.UTF_8)
                     : null;
-            DashboardArtifactService.PromoteResult result = dashboardService.promote(request.dashboard(), null, htmlBytes);
+            DashboardArtifactService.PromoteResult result = dashboardService.promote(dashboard, sessionId, htmlBytes);
             return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
                 "id", result.id(),
                 "version", result.version()
@@ -144,6 +163,49 @@ public class DashboardController {
         return ResponseEntity.ok()
             .contentType(new MediaType(MediaType.TEXT_HTML, StandardCharsets.UTF_8))
             .body(body);
+    }
+
+    /**
+     * Fill in blank `defaultConnectionId` / `defaultDatabase` / `defaultSchema` from
+     * the chat session's current data context. The AI typically only emits
+     * defaultConnectionId, leaving the database/schema implicit — on a connection
+     * that lacks a configured databaseName *and* exposes multiple databases this
+     * makes widget SQL like `SELECT ... FROM users` ambiguous and the resolver
+     * rejects it with `表 X 命中多个候选`. This step is a backstop that runs even
+     * when client-side enrichment didn't fire.
+     */
+    private JsonNode enrichFromSessionContext(JsonNode dashboard, String sessionId) {
+        if (sessionId == null || sessionId.isBlank() || !(dashboard instanceof ObjectNode obj)) {
+            return dashboard;
+        }
+        SessionDataContextRecord ctx;
+        try {
+            ctx = sessionDataContextService.get(sessionId);
+        } catch (NoSuchElementException e) {
+            // Session disappeared between client send and server promote — skip enrichment.
+            return dashboard;
+        }
+        if (isBlankField(obj, "defaultConnectionId") && nonBlank(ctx.connectionId())) {
+            obj.put("defaultConnectionId", ctx.connectionId());
+        }
+        if (isBlankField(obj, "defaultDatabase") && nonBlank(ctx.databaseName())) {
+            obj.put("defaultDatabase", ctx.databaseName());
+        }
+        if (isBlankField(obj, "defaultSchema") && nonBlank(ctx.schemaName())) {
+            obj.put("defaultSchema", ctx.schemaName());
+        }
+        return obj;
+    }
+
+    private static boolean isBlankField(ObjectNode obj, String field) {
+        JsonNode node = obj.get(field);
+        if (node == null || node.isNull()) return true;
+        if (node.isTextual()) return node.asText().isBlank();
+        return false;
+    }
+
+    private static boolean nonBlank(String s) {
+        return s != null && !s.isBlank();
     }
 
     @CrossOrigin(origins = "null", allowCredentials = "false")

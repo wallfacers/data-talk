@@ -1,5 +1,10 @@
 package com.datatalk.adapter.controller;
 
+import com.datatalk.application.connection.ConnectionService;
+import com.datatalk.application.persistence.SessionRecord;
+import com.datatalk.application.persistence.SessionRepository;
+import com.datatalk.application.session.SessionDataContextService;
+import com.datatalk.dto.SessionDataContextUpdateRequest;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -13,6 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.nio.charset.StandardCharsets;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -30,6 +36,15 @@ class DashboardControllerIT {
 
     @Autowired
     ObjectMapper mapper;
+
+    @Autowired
+    ConnectionService connections;
+
+    @Autowired
+    SessionRepository sessions;
+
+    @Autowired
+    SessionDataContextService sessionDataContexts;
 
     @Test
     void fullLifecycle_promoteLoadPatch() throws Exception {
@@ -124,6 +139,162 @@ class DashboardControllerIT {
     void getReturns404ForUnknownId() throws Exception {
         mvc.perform(get("/api/dashboards/dash_nonexistent"))
             .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void promoteEnrichesDefaultDatabaseSchemaFromSessionHeader() throws Exception {
+        // Reproduces BUG: AI emits only defaultConnectionId. On a connection without a
+        // configured databaseName that exposes multiple databases, widget SQL like
+        // `SELECT ... FROM users` later trips TableContextAutoResolver's
+        // multi-candidate guard. The server-side promote enrichment uses the chat
+        // session's data-context (passed via X-DataTalk-Session-Id) to fill in the
+        // missing fields BEFORE the dashboard is persisted.
+        String suffix = Long.toString(System.nanoTime());
+        String connectionId = connections.create(
+            "enrich-conn-" + suffix, "h2", "localhost", 0,
+            "<unused-database-name>", "sa", "", 3000,
+            null, null, null, null, null, null, null, null);
+        String sessionId = "promote-enrich-sess-" + suffix;
+        sessions.upsert(new SessionRecord(sessionId, connectionId, "promote enrich", false, null, 1L, 1L, false));
+        sessionDataContexts.set(sessionId, new SessionDataContextUpdateRequest(
+            connectionId, "test_store", "public", "schema"
+        ));
+
+        String body = """
+            {
+              "dashboard": {
+                "schemaVersion": 2,
+                "id": "dash_placeholder",
+                "title": "Enrichment Test",
+                "theme": "industry-neutral",
+                "renderer": "bezel",
+                "defaultConnectionId": "%s",
+                "refresh": { "defaultIntervalMs": 10000, "pauseOnHidden": true },
+                "parameters": [],
+                "widgets": [],
+                "layout": { "engine": "free" },
+                "version": 999
+              }
+            }
+            """.formatted(connectionId);
+
+        String promoteResponse = mvc.perform(post("/api/dashboards/promote")
+                .header(DashboardController.SESSION_ID_HEADER, sessionId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+            .andExpect(status().isCreated())
+            .andReturn().getResponse().getContentAsString();
+        String id = mapper.readTree(promoteResponse).get("id").asText();
+
+        mvc.perform(get("/api/dashboards/" + id))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.defaultConnectionId").value(connectionId))
+            .andExpect(jsonPath("$.defaultDatabase").value("test_store"))
+            .andExpect(jsonPath("$.defaultSchema").value("public"));
+    }
+
+    @Test
+    void promoteWithoutSessionHeaderSkipsEnrichment() throws Exception {
+        // No header → no enrichment, defaults remain null/absent. Guards against the
+        // backstop overreaching and silently rewriting AI-emitted JSON when the
+        // client deliberately didn't supply a session context.
+        String body = """
+            {
+              "dashboard": {
+                "schemaVersion": 2,
+                "id": "dash_placeholder",
+                "title": "No Session Header",
+                "theme": "industry-neutral",
+                "renderer": "bezel",
+                "refresh": { "defaultIntervalMs": 10000, "pauseOnHidden": true },
+                "parameters": [],
+                "widgets": [],
+                "layout": { "engine": "free" },
+                "version": 999
+              }
+            }
+            """;
+
+        String promoteResponse = mvc.perform(post("/api/dashboards/promote")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+            .andExpect(status().isCreated())
+            .andReturn().getResponse().getContentAsString();
+        String id = mapper.readTree(promoteResponse).get("id").asText();
+
+        JsonNode dash = mapper.readTree(
+            mvc.perform(get("/api/dashboards/" + id))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+        assertThat(dash.path("defaultDatabase").isMissingNode() || dash.path("defaultDatabase").isNull())
+            .as("defaultDatabase should remain unset without session header")
+            .isTrue();
+        assertThat(dash.path("defaultSchema").isMissingNode() || dash.path("defaultSchema").isNull())
+            .as("defaultSchema should remain unset without session header")
+            .isTrue();
+    }
+
+    @Test
+    void widgetDataAcceptsNullOriginCorsPreflightForSandboxedIframe() throws Exception {
+        // The bezel dashboard iframe uses sandbox="allow-scripts" (no allow-same-origin),
+        // which gives it a null origin. Browsers refuse to send POSTs there without a
+        // successful CORS preflight. The global CorsFilter on /api/** does not allow
+        // null origin, so a separate credential-less mapping must claim this path.
+        mvc.perform(options("/api/dashboards/dash_anything/widgets/w_x/data")
+                .header("Origin", "null")
+                .header("Access-Control-Request-Method", "POST")
+                .header("Access-Control-Request-Headers", "content-type"))
+            .andExpect(status().isOk())
+            .andExpect(header().string("Access-Control-Allow-Origin", "null"))
+            .andExpect(header().string("Access-Control-Allow-Methods", containsString("POST")));
+    }
+
+    @Test
+    void promoteEnrichmentDoesNotOverrideExplicitJsonValues() throws Exception {
+        // When the AI did set defaultDatabase explicitly, the backstop must not
+        // clobber it — explicit JSON wins.
+        String suffix = Long.toString(System.nanoTime());
+        String connectionId = connections.create(
+            "explicit-conn-" + suffix, "h2", "localhost", 0,
+            "<unused>", "sa", "", 3000,
+            null, null, null, null, null, null, null, null);
+        String sessionId = "promote-explicit-sess-" + suffix;
+        sessions.upsert(new SessionRecord(sessionId, connectionId, "explicit", false, null, 1L, 1L, false));
+        sessionDataContexts.set(sessionId, new SessionDataContextUpdateRequest(
+            connectionId, "session_db", "session_schema", "schema"
+        ));
+
+        String body = """
+            {
+              "dashboard": {
+                "schemaVersion": 2,
+                "id": "dash_placeholder",
+                "title": "Explicit Wins",
+                "theme": "industry-neutral",
+                "renderer": "bezel",
+                "defaultConnectionId": "%s",
+                "defaultDatabase": "ai_picked_db",
+                "refresh": { "defaultIntervalMs": 10000, "pauseOnHidden": true },
+                "parameters": [],
+                "widgets": [],
+                "layout": { "engine": "free" },
+                "version": 999
+              }
+            }
+            """.formatted(connectionId);
+
+        String promoteResponse = mvc.perform(post("/api/dashboards/promote")
+                .header(DashboardController.SESSION_ID_HEADER, sessionId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+            .andExpect(status().isCreated())
+            .andReturn().getResponse().getContentAsString();
+        String id = mapper.readTree(promoteResponse).get("id").asText();
+
+        mvc.perform(get("/api/dashboards/" + id))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.defaultDatabase").value("ai_picked_db"))
+            .andExpect(jsonPath("$.defaultSchema").value("session_schema"));
     }
 
     @Test

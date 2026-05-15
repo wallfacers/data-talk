@@ -10,12 +10,22 @@ export async function fetchDashboard(id: string): Promise<Dashboard | null> {
   return parsed.success ? parsed.data : null
 }
 
-export async function promoteDashboard(payload: unknown, html?: string): Promise<{ id: string; version: number } | null> {
+export async function promoteDashboard(
+  payload: unknown,
+  html?: string,
+  sessionId?: string | null,
+): Promise<{ id: string; version: number } | null> {
   const body: Record<string, unknown> = { dashboard: payload }
   if (html != null && html.length > 0) body.html = html
+  const headers: Record<string, string> = { 'content-type': 'application/json' }
+  // Server-side enrichment backstop: when the AI-emitted JSON omits
+  // defaultDatabase/defaultSchema, the backend uses this session's data-context
+  // to fill them in before persisting. Required for multi-database connections
+  // whose connection record has no default databaseName configured.
+  if (sessionId) headers['X-DataTalk-Session-Id'] = sessionId
   const response = await fetch('/api/dashboards/promote', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers,
     body: JSON.stringify(body),
   })
   if (!response.ok) return null

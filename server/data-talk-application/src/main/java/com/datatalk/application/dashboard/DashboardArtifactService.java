@@ -138,7 +138,10 @@ public class DashboardArtifactService {
     private String htmlArtifactId(String dashboardId) { return dashboardId + ":html"; }
 
     private void storeHtmlArtifact(String dashboardId, byte[] bytes) {
-        Path p = workdirRoot.dashboardsRoot().resolve(dashboardId + ".html");
+        // Match the JSON-side absolutification — FileArtifactService.registerExternal rejects
+        // relative paths, which surfaces when the workdir is configured as a relative path
+        // (e.g. `./target/...` in the test profile).
+        Path p = workdirRoot.dashboardsRoot().resolve(dashboardId + ".html").toAbsolutePath();
         try {
             Files.createDirectories(p.getParent());
             AtomicFileWriterBridge.write(p, bytes);
