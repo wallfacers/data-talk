@@ -1,14 +1,14 @@
 ---
 id: BUG-0052
 title: 重新打开 streaming=busy 的会话时历史消息全空，根因是 streaming flag 与 history fetch 的并发竞争
-status: open
+status: fixed
 priority: P1
 source: manual-report
 modules: [session, chat, channel]
 discovered: 2026-05-16
 discoveredBy: human
 testRunId: null
-fixCommit: null
+fixCommit: ad7c6a2b
 fixPlanRef: null
 duplicateOf: null
 regression: false
@@ -43,7 +43,8 @@ regression: false
 
 ## Evidence
 
-- ![空白画布现场](assets/BUG-0052/screenshot-01-empty-canvas.png) — 进入「当前可用数据库列表」后主区域无任何消息气泡，仅标题 / composer / 下滚按钮
+- ![空白画布现场](assets/BUG-0052/screenshot-01-empty-canvas.png) — 修复前：进入「当前可用数据库列表」后主区域无任何消息气泡，仅标题 / composer / 下滚按钮
+- ![修复后历史正常加载](assets/BUG-0052/screenshot-02-after-fix.png) — 修复后：同一会话同一刻进入，9 个 turn 全部渲染，工具调用、表格、模型时序信息齐全
 - 后端响应：
   - `GET /api/sessions/c988708c.../messages` → 200，size=315436 字节，`length=33`，`roles={'user':9, 'assistant':24}`
   - `GET /api/sessions/c988708c.../status` → 200，`{"type":"busy"}`（由 `SessionStatusController` 透传 OpenCode 真实状态）
@@ -103,16 +104,26 @@ regression: false
 
 ## Fix
 
-TBD（待修复，建议方向，写到 fix plan 中）：
+选取最小改动方案（选项 A）。提交 `ad7c6a2b` 修改 `client/src/features/session/hooks/use-session-history.ts:16-25` 的 `shouldSkipReplace`：
 
-- 选项 A（最小改动）：`shouldSkipReplace` 增加 `storeMsgCount > 0` 条件——"streaming 中且 store 已有数据"才跳过；空 store 永远允许首次 replace。
-- 选项 B（更稳）：把 `setStreaming(true)` 推迟到 `useSessionHistory` 的 `replaceSession` 之后再调用（例如让 subscribe 等 history 的 query 状态 = success），消除时序依赖。
-- 选项 C：服务端在 OpenCode 报 busy 但 stream 已死锁时主动 reconcile（与 BUG-0038 修复路径同源），属于纵深防御，不能替代 A / B。
-- 建议同时补一条 vitest：useSessionHistory `replaceSession` 应在 "首次进入 + streaming=true + 空 store" 场景被调用，覆盖 race 模型。
+```diff
+- if (partsStore.streamingBySession.has(sessionId)) return true
+  const storeMsgCount = partsStore.infoBySession.get(sessionId)?.size ?? 0
++ if (partsStore.streamingBySession.has(sessionId) && storeMsgCount > 0) return true
+```
+
+streaming guard 改为"streaming + store 非空"才跳过——本质是回到这个 guard 的设计意图（保护乐观/in-flight 数据），空 store 没有数据可保护，不该被锁死。这同时消除了与 `use-session-subscribe.ts:40-47` 的时序依赖，注释里的"`setStreaming(true)` must happen after history has been loaded"不再是隐性约束。
+
+未选 B（重排 effect 时序）：跨 hook 同步会引入新 race；A 已经把症状从根上解掉。  
+未选 C（后端 OpenCode 端 reconcile 幽灵 busy）：超出本 BUG 范围；与 BUG-0038 同源，可独立立项。
+
+测试同提交补 `client/src/features/session/hooks/__tests__/use-session-history.test.tsx`：新增 `loads server history on first entry even when streaming flag is set (race fix)`，验证空 store + streaming=true 时 server snapshot 仍会 replace。三条既有保护（pending user、post-stream remount、空 server snapshot）测试不动且全部继续通过。
 
 ## Verification
 
-TBD：修复后需以本会话 ID（busy 状态）再次进入，应在 < 1s 内看到 33 条 turn 全部渲染，且最后一条 assistant turn 顶部显示 streaming 占位（不会被覆盖）。
+- 单元测试：`npx vitest run src/features/session/hooks/__tests__/use-session-history.test.tsx` 6/6 通过（含新增 race-fix 用例）；相关链路（chat-parts-store、use-background-session-subscribe、prompt-composer 等）65/65 通过。
+- 类型检查：`npx tsc --noEmit` exit 0。
+- E2E 实证：以同一 `c988708c-...` 会话（OpenCode 端仍 `busy`，sessionStorage 中游标 `lastEventIdBySession=9742`）再次进入，主区域 `<main>` 文本量从 258 字节 → 4046 字节，消息容器从 0 children → 1 children (`flex min-w-0 flex-col gap-2`)，内含 **9 个 turn**（精确对应后端 9 条 user message），包含 reasoning 段、`datatalk_list_connections` 等工具调用、表格 / Markdown 等富内容。截图见 `screenshot-02-after-fix.png`。
 
 ## Notes
 
