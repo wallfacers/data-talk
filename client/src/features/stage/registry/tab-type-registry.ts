@@ -47,6 +47,15 @@ export const TAB_TYPE_REGISTRY: Record<string, TabTypeDescriptor> = {
         source: normalizedPayload.source,
         useSessionContext: normalizedPayload.useSessionContext,
         boundSessionId: normalizedPayload.boundSessionId,
+        override: normalizedPayload.contextOverride
+          ? {
+              connectionId: normalizedPayload.contextOverride.connectionId,
+              database: normalizedPayload.contextOverride.database,
+              schema: normalizedPayload.contextOverride.schema,
+              source: 'open_payload',
+              setAt: Date.now(),
+            }
+          : null,
       })
     },
   },

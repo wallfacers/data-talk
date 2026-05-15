@@ -156,6 +156,9 @@ function diffContentAndSchedule(
     const prevTab = prev[tabId]
     const tab = useStageStore.getState().findTab(tabId)
     if (!tab || !isPersistent(tab.type)) continue
+    // Skip content writes for tabs whose payload hasn't been hydrated from the
+    // backend yet — writing a placeholder {} would wipe persisted contextOverride.
+    if (isRecord(tab.payload) && Object.keys(tab.payload).length === 0) continue
     if (prevTab && nextTab.sqlText === prevTab.sqlText && sameQueryEditorOverride(nextTab, prevTab)) continue
     coordinator.scheduleContentWrite(tabId, {
       payload: buildPersistedQueryEditorPayload(tab, nextTab, prevTab),
@@ -222,7 +225,9 @@ function buildPersistedQueryEditorPayload(
   // store.override defaults to null). The latter must NOT overwrite payload.contextOverride
   // that openQueryEditor already wrote — otherwise the persisted contextOverride is silently
   // wiped on the first content-write tick after open. See BUG-0043.
-  const overrideExplicitlyCleared = prevTab != null && !sameQueryEditorOverride(nextTab, prevTab)
+  const overrideExplicitlyCleared = prevTab != null
+    && prevTab.override != null
+    && nextTab.override == null
   const contextOverride = nextTab.override
     ? {
         connectionId: nextTab.override.connectionId,

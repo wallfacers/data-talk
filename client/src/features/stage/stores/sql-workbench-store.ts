@@ -96,7 +96,7 @@ export type SqlWorkbenchTabState = {
 }
 
 type EnsureTabInput = Partial<Pick<SqlWorkbenchTabState, 'sqlText' | 'source' | 'useSessionContext' | 'boundSessionId'>>
-type HydrateTabInput = Pick<SqlWorkbenchTabState, 'sqlText' | 'source' | 'useSessionContext' | 'boundSessionId'>
+type HydrateTabInput = Pick<SqlWorkbenchTabState, 'sqlText' | 'source' | 'useSessionContext' | 'boundSessionId' | 'override'>
 
 type SqlWorkbenchState = {
   tabsById: Record<string, SqlWorkbenchTabState>
@@ -294,6 +294,7 @@ export const useSqlWorkbenchStore = create<SqlWorkbenchState>((set, get) => ({
       source: snapshot.source,
       useSessionContext: snapshot.useSessionContext,
       boundSessionId: snapshot.boundSessionId,
+      override: snapshot.override ?? current.override,
     }
     if (
       next.sqlText === current.sqlText
@@ -301,6 +302,7 @@ export const useSqlWorkbenchStore = create<SqlWorkbenchState>((set, get) => ({
       && next.source === current.source
       && next.useSessionContext === current.useSessionContext
       && next.boundSessionId === current.boundSessionId
+      && next.override === current.override
     ) {
       return state
     }
