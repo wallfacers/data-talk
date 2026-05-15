@@ -55,7 +55,7 @@ This is the only correct delivery path. Any deviation breaks the workbench rende
      "parameters": [],
      "widgets": [
        {
-         "id": "<lowercase>_w_<4-16 alphanumerics>",
+         "id": "<lowercase>+_w_<4-32 alphanumerics-or-underscores>",  // regex: ^[a-z]+_w_[a-zA-Z0-9_]{4,32}$
          "type": "chart" | "kpi" | "table" | "markdown" | "filter" | "section" | "divider" | "image",
          "patternId": "<kebab>.<kebab>",
          "position": { "x": 0, "y": 0, "w": 12, "h": 8 },
@@ -69,6 +69,13 @@ This is the only correct delivery path. Any deviation breaks the workbench rende
      "updatedAt": <epoch-ms>
    }
    ```
+
+   **Widget id examples** — the suffix after `_w_` must be ≥4 characters; pure short abbreviations are forbidden:
+   - ✓ `kpi_w_orders01`
+   - ✓ `kpi_w_total_gmv`
+   - ✓ `chart_w_funnel01`
+   - ✗ `kpi_w_gmv` (suffix is only 3 chars < 4 — Zod will reject)
+   - ✗ `kpi_w_a` (suffix is only 1 char < 4 — Zod will reject)
 
    **Data-context fields are MANDATORY when you know them — do NOT outsource the decision to the server.**
    - `defaultConnectionId` — read from the chat session's data context (the user's currently selected connection).
@@ -91,6 +98,7 @@ This is the only correct delivery path. Any deviation breaks the workbench rende
    3. Is `defaultDatabase` set in the JSON? **If the user hasn't selected one yet, STOP and ask them which database to bind the dashboard to** — do not guess and do not leave it blank.
    4. Is `defaultSchema` set (or explicitly `null` for dialects without schemas)?
    5. Does every `widget.query.sql` use unqualified table names that resolve under the chosen `database` + `schema`? If you mix unqualified and `db.table.column` references, document why.
+   6. For each `widget.id`, run it through `^[a-z]+_w_[a-zA-Z0-9_]{4,32}$` — the suffix after `_w_` MUST be ≥4 characters. Do not use short English abbreviations (e.g. `gmv`, `cpu`, `qps`) as suffixes; use informative forms like `gmv01` or `total_gmv` instead.
 
 ## Reference layout
 

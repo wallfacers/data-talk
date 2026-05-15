@@ -103,4 +103,139 @@ describe('DashboardBlock', () => {
     render(<DashboardBlock json={legacyV1DashboardJson} streaming={false} />)
     expect(screen.getByTestId('dashboard-preview')).toBeInTheDocument()
   })
+
+  describe('error humanization', () => {
+    function makeDashboard(overrides: Record<string, unknown>): string {
+      return JSON.stringify({
+        schemaVersion: 2,
+        id: 'dash_test',
+        title: 'Test Dashboard',
+        theme: 'industry-default',
+        renderer: 'bezel',
+        parameters: [],
+        widgets: [],
+        layout: { engine: 'free' },
+        version: 1,
+        createdAt: 0,
+        updatedAt: 0,
+        ...overrides,
+      })
+    }
+
+    function expandErrorCard() {
+      const trigger = screen.getByTestId('dashboard-error').querySelector('[data-component="tool-trigger"]')
+      expect(trigger).not.toBeNull()
+      fireEvent.click(trigger as HTMLElement)
+    }
+
+    it('shows widget id suffix-too-short message in zh-CN', () => {
+      const json = makeDashboard({
+        widgets: [
+          {
+            id: 'kpi_w_gmv',
+            type: 'kpi',
+            patternId: 'kpi.label',
+            position: { x: 0, y: 0, w: 4, h: 4 },
+            options: {},
+          },
+        ],
+      })
+      render(<DashboardBlock json={json} streaming={false} />)
+      expandErrorCard()
+
+      const items = screen.getAllByTestId('dashboard-error-issue')
+      expect(items.length).toBeGreaterThan(0)
+      const widgetIdItem = items.find((el) => el.textContent?.includes('widgets[0].id'))
+      expect(widgetIdItem).toBeTruthy()
+      expect(widgetIdItem!.textContent).toContain('kpi_w_gmv')
+      expect(widgetIdItem!.textContent).toMatch(/3|≥4/)
+    })
+
+    it('shows dashboard id format error in zh-CN', () => {
+      const json = makeDashboard({ id: 'my-dashboard' })
+      render(<DashboardBlock json={json} streaming={false} />)
+      expandErrorCard()
+
+      const items = screen.getAllByTestId('dashboard-error-issue')
+      const idItem = items.find((el) => el.textContent?.startsWith('id') || el.textContent?.includes('dashboard.id'))
+      expect(idItem).toBeTruthy()
+      expect(idItem!.textContent).toContain('dash_')
+    })
+
+    it('lists all issues when multiple violations co-occur', () => {
+      const json = makeDashboard({
+        theme: 'modern',
+        widgets: [
+          {
+            id: 'kpi_w_gmv',
+            type: 'kpi',
+            patternId: 'kpi.label',
+            position: { x: 0, y: 0, w: 4, h: 4 },
+            options: {},
+          },
+        ],
+      })
+      render(<DashboardBlock json={json} streaming={false} />)
+      expandErrorCard()
+
+      const items = screen.getAllByTestId('dashboard-error-issue')
+      expect(items.length).toBeGreaterThanOrEqual(2)
+      const paths = items.map((el) => el.querySelector('span')?.textContent).filter(Boolean)
+      expect(paths).toEqual(expect.arrayContaining(['widgets[0].id', 'theme']))
+    })
+
+    it('falls back to raw zod message for unknown issue', () => {
+      const json = makeDashboard({ version: '1' })
+      render(<DashboardBlock json={json} streaming={false} />)
+      expandErrorCard()
+
+      const items = screen.getAllByTestId('dashboard-error-issue')
+      const versionItem = items.find((el) => el.textContent?.startsWith('version'))
+      expect(versionItem).toBeTruthy()
+      expect(versionItem!.textContent).toMatch(/expected number|received string/i)
+    })
+
+    it('exposes raw JSON in expandable region without disabling text selection', () => {
+      const buggy = makeDashboard({
+        widgets: [
+          {
+            id: 'kpi_w_gmv',
+            type: 'kpi',
+            patternId: 'kpi.label',
+            position: { x: 0, y: 0, w: 4, h: 4 },
+            options: {},
+          },
+        ],
+      })
+      render(<DashboardBlock json={buggy} streaming={false} />)
+      expandErrorCard()
+
+      const rawToggle = screen.getByText('原始 JSON')
+      fireEvent.click(rawToggle)
+
+      const pre = screen.getByTestId('dashboard-error-raw-json')
+      expect(pre).toBeInTheDocument()
+      expect(pre.textContent).toContain('kpi_w_gmv')
+      expect(pre.className).toContain('select-text')
+      expect(pre.className).not.toContain('select-none')
+    })
+
+    it('renders summary "N 项错误" in error card header', () => {
+      const json = makeDashboard({
+        theme: 'modern',
+        widgets: [
+          {
+            id: 'kpi_w_gmv',
+            type: 'kpi',
+            patternId: 'kpi.label',
+            position: { x: 0, y: 0, w: 4, h: 4 },
+            options: {},
+          },
+        ],
+      })
+      render(<DashboardBlock json={json} streaming={false} />)
+      const summary = screen.getByTestId('dashboard-error-summary')
+      expect(summary.textContent).toMatch(/\d+ 项错误/)
+    })
+  })
 })

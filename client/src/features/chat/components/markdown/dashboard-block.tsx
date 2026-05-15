@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from 'react'
 import { LayoutDashboardIcon, ExternalLinkIcon, BarChart2Icon, FileTextIcon, ChevronDownIcon } from 'lucide-react'
 import { dashboardSchema } from '@/features/dashboard/schema'
 import type { Dashboard, Widget } from '@/features/dashboard/schema'
+import { humanizeZodIssue, type HumanizedIssue } from '@/features/dashboard/zod-issue-humanizer'
 import { useDashboardTabsStore } from '@/features/dashboard/stores/dashboard-tabs-store'
 import { useStageStore } from '@/stores/stage-store'
 import { useSessionStore } from '@/stores/session-store'
@@ -35,12 +36,16 @@ function normalizeV1toV2(obj: Record<string, unknown>): Record<string, unknown> 
   }
 }
 
-function parseDashboard(json: string, t?: TranslationFn): { ok: true; dashboard: Dashboard } | { ok: false; error: string } {
+type ParseResult =
+  | { ok: true; dashboard: Dashboard }
+  | { ok: false; issues: HumanizedIssue[] }
+
+function parseDashboard(json: string, t: TranslationFn): ParseResult {
   let parsed: unknown
   try {
     parsed = JSON.parse(json)
   } catch {
-    return { ok: false, error: t ? t('dashboard.invalidJson') : 'Invalid JSON' }
+    return { ok: false, issues: [{ path: '', friendly: t('dashboard.invalidJson') }] }
   }
   const obj = parsed as Record<string, unknown> | null
   if (obj && typeof obj === 'object' && 'id' in obj && typeof obj.id === 'string') {
@@ -51,7 +56,8 @@ function parseDashboard(json: string, t?: TranslationFn): { ok: true; dashboard:
   if (result.success) {
     return { ok: true, dashboard: result.data }
   }
-  return { ok: false, error: result.error.issues.map((i) => i.message).join('; ') }
+  const issues = result.error.issues.map((issue) => humanizeZodIssue(issue, normalized, t))
+  return { ok: false, issues }
 }
 
 async function promoteDashboard(dashboard: Dashboard, html?: string) {
@@ -108,6 +114,7 @@ export function DashboardBlock({ json, html, streaming }: DashboardBlockProps) {
   const { t } = useI18n()
   const [promoted, setPromoted] = useState(false)
   const [errorOpen, setErrorOpen] = useState(false)
+  const [rawJsonOpen, setRawJsonOpen] = useState(false)
   const [copied, setCopied] = useState(false)
 
   const handleCopy = useCallback(async () => {
@@ -118,18 +125,10 @@ export function DashboardBlock({ json, html, streaming }: DashboardBlockProps) {
     }
   }, [json])
 
-  const state: DashboardBlockState = useMemo(() => {
-    if (streaming) return 'streaming'
-    const parsed = parseDashboard(json, t)
-    if (parsed.ok) return 'preview'
-    return 'error'
-  }, [json, streaming, t])
-
-  const parsedDashboard = useMemo(() => {
-    if (state !== 'preview') return null
-    const result = parseDashboard(json, t)
-    return result.ok ? result.dashboard : null
-  }, [json, state])
+  const parsed = useMemo(() => (streaming ? null : parseDashboard(json, t)), [json, streaming, t])
+  const state: DashboardBlockState = streaming ? 'streaming' : parsed?.ok ? 'preview' : 'error'
+  const parsedDashboard = parsed?.ok ? parsed.dashboard : null
+  const issues = parsed && !parsed.ok ? parsed.issues : []
 
   if (state === 'streaming') {
     return (
@@ -146,10 +145,11 @@ export function DashboardBlock({ json, html, streaming }: DashboardBlockProps) {
   }
 
   if (state === 'error') {
-    const errMsg = parseDashboard(json, t).ok ? '' : (parseDashboard(json, t) as { error: string }).error
+    const summary = t('dashboard.errorSummary', { count: issues.length })
 
     return (
       <div
+        role="alert"
         data-testid="dashboard-error"
         data-component="basic-tool"
         data-status="error"
@@ -160,6 +160,7 @@ export function DashboardBlock({ json, html, streaming }: DashboardBlockProps) {
             type="button"
             data-component="tool-trigger"
             data-open={errorOpen ? 'true' : 'false'}
+            aria-expanded={errorOpen}
             onClick={() => setErrorOpen((v) => !v)}
             className="flex min-w-0 flex-1 select-text items-center gap-2 text-left"
           >
@@ -169,16 +170,17 @@ export function DashboardBlock({ json, html, streaming }: DashboardBlockProps) {
                 <span className="font-medium text-[var(--dt-status-danger)] whitespace-nowrap">
                   {t('dashboard.errorTitle')}
                 </span>
-                {errMsg && (
-                  <span className="min-w-0 max-w-full truncate text-xs text-muted-foreground">
-                    {errMsg}
-                  </span>
-                )}
+                <span
+                  data-testid="dashboard-error-summary"
+                  className="min-w-0 max-w-full truncate text-xs text-[var(--dt-text-muted)]"
+                >
+                  {summary}
+                </span>
               </div>
             </div>
             <span
               className={cn(
-                'flex size-4 shrink-0 items-center justify-center text-muted-foreground transition-transform',
+                'flex size-4 shrink-0 items-center justify-center text-[var(--dt-text-muted)] duration-[120ms] [transition-property:transform] [transition-timing-function:cubic-bezier(0.2,0,0,1)]',
                 errorOpen && 'rotate-180',
               )}
             >
@@ -198,10 +200,52 @@ export function DashboardBlock({ json, html, streaming }: DashboardBlockProps) {
           </div>
         </div>
         {errorOpen && (
-          <div className="border-t px-3 py-2">
-            <pre className="max-h-[220px] overflow-auto font-mono text-[13px] leading-[18px] text-[var(--dt-text-muted)]">
-              {json}
-            </pre>
+          <div className="border-t bg-[var(--dt-status-danger-surface)]">
+            <ul
+              data-testid="dashboard-error-issue-list"
+              className="space-y-1.5 px-3 py-2"
+            >
+              {issues.map((it, i) => (
+                <li
+                  key={`${it.path}-${i}`}
+                  data-testid="dashboard-error-issue"
+                  className="flex select-text flex-col gap-0.5"
+                >
+                  {it.path ? (
+                    <span className="font-mono text-[13px] leading-[18px] text-[var(--dt-text-muted)]">
+                      {it.path}
+                    </span>
+                  ) : null}
+                  <span className="text-[13px] leading-[18px] text-[var(--dt-text-base)]">
+                    {it.friendly}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <div className="border-t border-[var(--dt-status-danger)]/20">
+              <button
+                type="button"
+                aria-expanded={rawJsonOpen}
+                onClick={() => setRawJsonOpen((v) => !v)}
+                className="flex w-full items-center justify-between px-3 py-1.5 text-xs text-[var(--dt-text-muted)] hover:text-[var(--dt-text-base)] duration-[120ms] [transition-property:color] [transition-timing-function:cubic-bezier(0.2,0,0,1)]"
+              >
+                <span>{t('dashboard.errorRawJsonToggle')}</span>
+                <ChevronDownIcon
+                  className={cn(
+                    'size-3.5 duration-[120ms] [transition-property:transform] [transition-timing-function:cubic-bezier(0.2,0,0,1)]',
+                    rawJsonOpen && 'rotate-180',
+                  )}
+                />
+              </button>
+              {rawJsonOpen && (
+                <pre
+                  data-testid="dashboard-error-raw-json"
+                  className="max-h-[220px] select-text overflow-auto px-3 pb-2 font-mono text-[13px] leading-[18px] text-[var(--dt-text-muted)]"
+                >
+                  {json}
+                </pre>
+              )}
+            </div>
           </div>
         )}
       </div>
