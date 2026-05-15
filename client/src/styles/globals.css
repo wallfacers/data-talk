@@ -287,6 +287,31 @@
   margin-top: 2rem;
 }
 
+/* React Flow Controls — override default white background for dark theme */
+.react-flow__controls {
+  background-color: var(--dt-bg-elevated);
+  border-color: var(--dt-border-default);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--dt-text-strong) 12%, transparent);
+}
+
+.react-flow__controls-button {
+  background-color: var(--dt-bg-elevated);
+  border-color: var(--dt-border-subtle);
+  color: var(--dt-text-base);
+}
+
+.react-flow__controls-button:hover {
+  background-color: var(--dt-interaction-hover);
+}
+
+.react-flow__controls-button:active {
+  background-color: var(--dt-interaction-active);
+}
+
+.react-flow__controls-button svg {
+  fill: var(--dt-text-base);
+}
+
 /* Reduced motion: all stage / chat / drag-handle transitions degrade to instant */
 @media (prefers-reduced-motion: reduce) {
   [data-stage-panel],
