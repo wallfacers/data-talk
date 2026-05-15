@@ -4,6 +4,7 @@ import { dashboardSchema } from '@/features/dashboard/schema'
 import type { Dashboard, Widget } from '@/features/dashboard/schema'
 import { useDashboardTabsStore } from '@/features/dashboard/stores/dashboard-tabs-store'
 import { useStageStore } from '@/stores/stage-store'
+import { useSessionStore } from '@/stores/session-store'
 import { generateUuid } from '@/lib/uuid'
 import { cn, copyToClipboard } from '@/lib/utils'
 import { promoteDashboard as promoteDashboardApi } from '@/features/dashboard/services/dashboard-api'
@@ -54,14 +55,28 @@ function parseDashboard(json: string, t?: TranslationFn): { ok: true; dashboard:
 }
 
 async function promoteDashboard(dashboard: Dashboard, html?: string) {
+  // AI typically only fills defaultConnectionId, leaving defaultDatabase/Schema blank,
+  // which leaves widget SQL like `SELECT ... FROM users` ambiguous when the connection
+  // has multiple databases. Fall back to the active session's data context so the
+  // server-side TableContextAutoResolver lands on the same db/schema the chat was using.
+  const sessionState = useSessionStore.getState()
+  const sessionId = sessionState.activeSessionId
+  const sessionContext = sessionId ? sessionState.dataContextBySession.get(sessionId) ?? null : null
+  const enriched: Dashboard = {
+    ...dashboard,
+    defaultConnectionId: dashboard.defaultConnectionId ?? sessionContext?.connectionId ?? null,
+    defaultDatabase: dashboard.defaultDatabase ?? sessionContext?.database ?? null,
+    defaultSchema: dashboard.defaultSchema ?? sessionContext?.schema ?? null,
+  }
+
   // Persist first so we know the server-assigned id; iframe shell calls
   // GET /api/dashboards/{id}/html with this exact id, so the client store
   // must mirror it.
-  const result = await promoteDashboardApi(dashboard, html)
+  const result = await promoteDashboardApi(enriched, html)
   const tabId = `dashboard_${generateUuid()}`
   const finalDashboard: Dashboard = result
-    ? { ...dashboard, id: result.id, version: result.version }
-    : dashboard
+    ? { ...enriched, id: result.id, version: result.version }
+    : enriched
   useDashboardTabsStore.getState().hydrateTab(tabId, finalDashboard)
   useStageStore.getState().openTab({
     tabId,

@@ -58,6 +58,8 @@ export const dashboardSchema = z.object({
   title: z.string().min(1).max(256),
   description: z.string().max(32768).optional(),
   defaultConnectionId: z.string().nullable().optional(),
+  defaultDatabase: z.string().nullable().optional(),
+  defaultSchema: z.string().nullable().optional(),
   theme: z.string().regex(/^industry-[a-z-]+$/),
   renderer: z.literal('bezel'),
   refresh: dashboardRefresh.optional(),
