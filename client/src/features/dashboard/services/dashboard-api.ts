@@ -10,11 +10,13 @@ export async function fetchDashboard(id: string): Promise<Dashboard | null> {
   return parsed.success ? parsed.data : null
 }
 
-export async function promoteDashboard(payload: unknown): Promise<{ id: string; version: number } | null> {
+export async function promoteDashboard(payload: unknown, html?: string): Promise<{ id: string; version: number } | null> {
+  const body: Record<string, unknown> = { dashboard: payload }
+  if (html != null && html.length > 0) body.html = html
   const response = await fetch('/api/dashboards/promote', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ dashboard: payload }),
+    body: JSON.stringify(body),
   })
   if (!response.ok) return null
   return response.json()

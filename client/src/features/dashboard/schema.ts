@@ -34,7 +34,7 @@ const dashboardRefresh = z.object({
 })
 
 const widget = z.object({
-  id: z.string().regex(/^[a-z]+_w_[a-zA-Z0-9]{4,16}$/),
+  id: z.string().regex(/^[a-z]+_w_[a-zA-Z0-9_]{4,32}$/),
   type: z.enum(['chart', 'kpi', 'table', 'markdown', 'filter', 'section', 'divider', 'image']),
   patternId: z.string().regex(/^[a-z0-9-]+\.[a-z0-9-]+$/),
   position: gridPosition,

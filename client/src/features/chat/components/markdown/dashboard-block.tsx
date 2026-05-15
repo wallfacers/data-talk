@@ -1,19 +1,23 @@
-import { useState, useMemo } from 'react'
-import { LayoutDashboardIcon, ExternalLinkIcon, BarChart2Icon, FileTextIcon } from 'lucide-react'
+import { useState, useMemo, useCallback } from 'react'
+import { LayoutDashboardIcon, ExternalLinkIcon, BarChart2Icon, FileTextIcon, ChevronDownIcon } from 'lucide-react'
 import { dashboardSchema } from '@/features/dashboard/schema'
 import type { Dashboard, Widget } from '@/features/dashboard/schema'
 import { useDashboardTabsStore } from '@/features/dashboard/stores/dashboard-tabs-store'
 import { useStageStore } from '@/stores/stage-store'
 import { generateUuid } from '@/lib/uuid'
-import { cn } from '@/lib/utils'
+import { cn, copyToClipboard } from '@/lib/utils'
 import { promoteDashboard as promoteDashboardApi } from '@/features/dashboard/services/dashboard-api'
 import { useI18n } from '@/i18n/use-i18n'
 import type { TranslationFn } from '@/i18n/provider'
+
+const COPY_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`
+const CHECK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check"><path d="M20 6 9 17l-5-5"/></svg>`
 
 type DashboardBlockState = 'streaming' | 'preview' | 'error'
 
 interface DashboardBlockProps {
   json: string
+  html?: string
   streaming: boolean
   messageId?: string
   partId?: string
@@ -49,18 +53,24 @@ function parseDashboard(json: string, t?: TranslationFn): { ok: true; dashboard:
   return { ok: false, error: result.error.issues.map((i) => i.message).join('; ') }
 }
 
-async function promoteDashboard(dashboard: Dashboard) {
+async function promoteDashboard(dashboard: Dashboard, html?: string) {
+  // Persist first so we know the server-assigned id; iframe shell calls
+  // GET /api/dashboards/{id}/html with this exact id, so the client store
+  // must mirror it.
+  const result = await promoteDashboardApi(dashboard, html)
   const tabId = `dashboard_${generateUuid()}`
-  useDashboardTabsStore.getState().hydrateTab(tabId, dashboard)
+  const finalDashboard: Dashboard = result
+    ? { ...dashboard, id: result.id, version: result.version }
+    : dashboard
+  useDashboardTabsStore.getState().hydrateTab(tabId, finalDashboard)
   useStageStore.getState().openTab({
     tabId,
     type: 'dashboard',
-    title: dashboard.title,
-    payload: dashboard,
+    title: finalDashboard.title,
+    payload: finalDashboard,
     createdAt: Date.now(),
   })
   useStageStore.getState().openStage()
-  await promoteDashboardApi(dashboard)
 }
 
 function WidgetTypeIcon({ type }: { type: string }) {
@@ -77,9 +87,19 @@ function getWidgetLabel(w: Widget): string {
   return w.type
 }
 
-export function DashboardBlock({ json, streaming }: DashboardBlockProps) {
+export function DashboardBlock({ json, html, streaming }: DashboardBlockProps) {
   const { t } = useI18n()
   const [promoted, setPromoted] = useState(false)
+  const [errorOpen, setErrorOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = useCallback(async () => {
+    const success = await copyToClipboard(json)
+    if (success) {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }, [json])
 
   const state: DashboardBlockState = useMemo(() => {
     if (streaming) return 'streaming'
@@ -98,26 +118,75 @@ export function DashboardBlock({ json, streaming }: DashboardBlockProps) {
     return (
       <div
         data-testid="dashboard-skeleton"
-        className="flex items-center gap-2 p-4 rounded border border-[var(--dt-border)] bg-[var(--dt-muted)]"
+        data-component="basic-tool"
+        data-status="running"
+        className="my-2 flex items-center gap-2 rounded-md border px-3 py-2"
       >
-        <LayoutDashboardIcon className="h-5 w-5 animate-pulse text-[var(--dt-muted-foreground)]" />
-        <span className="text-sm text-[var(--dt-muted-foreground)]">{t('dashboard.generating')}</span>
+        <LayoutDashboardIcon className="h-4 w-4 shrink-0 animate-pulse text-muted-foreground" />
+        <span className="text-sm text-muted-foreground">{t('dashboard.generating')}</span>
       </div>
     )
   }
 
   if (state === 'error') {
+    const errMsg = parseDashboard(json, t).ok ? '' : (parseDashboard(json, t) as { error: string }).error
+
     return (
       <div
         data-testid="dashboard-error"
-        className="p-4 rounded border bg-[var(--dt-danger-surface)]"
-        style={{ borderColor: 'var(--dt-danger-border)' }}
+        data-component="basic-tool"
+        data-status="error"
+        className="my-2 rounded-md border border-[var(--dt-status-danger)]"
       >
-        <div className="flex items-center gap-2 text-sm text-[var(--dt-danger)]">
-          <LayoutDashboardIcon className="h-4 w-4" />
-          <span className="font-medium">{t('dashboard.errorTitle')}</span>
+        <div className="flex w-full items-start gap-2 px-3 py-2">
+          <button
+            type="button"
+            data-component="tool-trigger"
+            data-open={errorOpen ? 'true' : 'false'}
+            onClick={() => setErrorOpen((v) => !v)}
+            className="flex min-w-0 flex-1 select-text items-start gap-2 text-left"
+          >
+            <LayoutDashboardIcon className="mt-0.5 h-4 w-4 shrink-0 text-[var(--dt-status-danger)]" />
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+                <span className="font-medium text-[var(--dt-status-danger)] whitespace-nowrap">
+                  {t('dashboard.errorTitle')}
+                </span>
+                {errMsg && (
+                  <span className="min-w-0 max-w-full truncate text-xs text-muted-foreground">
+                    {errMsg}
+                  </span>
+                )}
+              </div>
+            </div>
+            <span
+              className={cn(
+                'mt-0.5 flex size-4 shrink-0 items-center justify-center text-muted-foreground transition-transform',
+                errorOpen && 'rotate-180',
+              )}
+            >
+              <ChevronDownIcon className="pointer-events-none size-4" />
+            </span>
+          </button>
+          <div data-slot="markdown-code-actions" className="relative z-10 shrink-0">
+            <button
+              type="button"
+              data-slot="markdown-copy-button"
+              data-copied={copied ? 'true' : undefined}
+              onClick={handleCopy}
+              aria-label={t('common.copy')}
+            >
+              <span dangerouslySetInnerHTML={{ __html: copied ? CHECK_SVG : COPY_SVG }} />
+            </button>
+          </div>
         </div>
-        <p className="mt-1 text-xs text-[var(--dt-danger)]">{parseDashboard(json, t).ok ? '' : (parseDashboard(json, t) as { error: string }).error}</p>
+        {errorOpen && (
+          <div className="border-t px-3 py-2">
+            <pre className="max-h-[220px] overflow-auto font-mono text-[13px] leading-[18px] text-[var(--dt-text-muted)]">
+              {json}
+            </pre>
+          </div>
+        )}
       </div>
     )
   }
@@ -127,17 +196,38 @@ export function DashboardBlock({ json, streaming }: DashboardBlockProps) {
   return (
     <div
       data-testid="dashboard-preview"
-      className="p-4 rounded border border-[var(--dt-border)] bg-[var(--dt-card)]"
+      data-component="basic-tool"
+      data-status="completed"
+      className="my-2 rounded-md border"
     >
-      <div className="flex items-center gap-2 mb-2">
-        <LayoutDashboardIcon className="h-4 w-4 text-[var(--dt-muted-foreground)]" />
-        <span className="text-sm font-medium">{dashboard.title}</span>
-        <span className="text-xs text-[var(--dt-muted-foreground)]">
-          {t('dashboard.widgetCount', { count: dashboard.widgets.length })}
-        </span>
+      <div className="flex w-full items-start gap-2 px-3 py-2">
+        <LayoutDashboardIcon className="mt-0.5 h-4 w-4 shrink-0 text-[var(--dt-muted-foreground)]" />
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+            <span className="font-medium [overflow-wrap:anywhere]">{dashboard.title}</span>
+            <span className="text-xs text-muted-foreground">
+              {t('dashboard.widgetCount', { count: dashboard.widgets.length })}
+            </span>
+          </div>
+        </div>
+        <div data-slot="markdown-code-actions" className="relative z-10 shrink-0">
+          {!promoted ? (
+            <button
+              type="button"
+              onClick={() => { promoteDashboard(dashboard, html); setPromoted(true) }}
+            >
+              <ExternalLinkIcon className="h-3.5 w-3.5" />
+              <span>{t('dashboard.openToWorkbench')}</span>
+            </button>
+          ) : (
+            <span className="px-2 text-xs text-muted-foreground">
+              {t('dashboard.openedInWorkbench')}
+            </span>
+          )}
+        </div>
       </div>
       {dashboard.widgets.length > 0 && (
-        <div className="grid grid-cols-2 gap-1 mt-2">
+        <div className="grid grid-cols-2 gap-1 border-t px-3 py-2">
           {dashboard.widgets.slice(0, 4).map((w) => (
             <div
               key={w.id}
@@ -148,30 +238,11 @@ export function DashboardBlock({ json, streaming }: DashboardBlockProps) {
             </div>
           ))}
           {dashboard.widgets.length > 4 && (
-            <div className="flex items-center px-2 py-1 rounded text-xs text-[var(--dt-muted-foreground)]">
+            <div className="flex items-center px-2 py-1 rounded text-xs text-muted-foreground">
               {t('dashboard.moreWidgets', { count: dashboard.widgets.length - 4 })}
             </div>
           )}
         </div>
-      )}
-      {!promoted && (
-        <button
-          type="button"
-          className={cn(
-            "flex items-center gap-1 text-xs px-2 py-1 rounded border transition-colors",
-            "border-[var(--dt-border)] bg-transparent text-[var(--dt-text)]",
-            "hover:bg-[var(--dt-accent-surface)] hover:text-[var(--dt-accent)]",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dt-focus-ring)]",
-            "active:translate-y-px"
-          )}
-          onClick={() => { promoteDashboard(dashboard); setPromoted(true) }}
-        >
-          <ExternalLinkIcon className="h-3 w-3" />
-          {t('dashboard.openToWorkbench')}
-        </button>
-      )}
-      {promoted && (
-        <span className="text-xs text-[var(--dt-muted-foreground)]">{t('dashboard.openedInWorkbench')}</span>
       )}
     </div>
   )

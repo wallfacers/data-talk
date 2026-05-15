@@ -46,7 +46,7 @@
       "type": "object",
       "required": ["id", "type", "position", "options", "patternId"],
       "properties": {
-        "id": { "type": "string", "pattern": "^[a-z]+_w_[a-zA-Z0-9]{4,16}$" },
+        "id": { "type": "string", "pattern": "^[a-z]+_w_[a-zA-Z0-9_]{4,32}$" },
         "type": { "enum": ["chart", "kpi", "table", "markdown", "filter", "section", "divider", "image"] },
         "position": { "$ref": "#/$defs/gridPosition" },
         "patternId": { "type": "string", "pattern": "^[a-z0-9-]+\\.[a-z0-9-]+$" },

@@ -8,13 +8,14 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## 当前编号
 
-下一个分配 ID：**BUG-0047**（永不复用，单调递增）
+下一个分配 ID：**BUG-0051**（永不复用，单调递增）
 
 ## Open BUGs（按 priority 倒序，P0 → P2）
 
 | ID | Title | Priority | Source | Modules | Discovered |
 |----|-------|----------|--------|---------|------------|
-| — | 当前无 open BUG | — | — | — | — |
+| [BUG-0050](BUG-0050-dashboard-json-widgets-skeleton-only-no-data.md) | 大屏 JSON 模式 widget 仅渲染骨架，未调接口取数 + 文本乱码 | P1 | manual-report | dashboard, stage | 2026-05-15 |
+| [BUG-0049](BUG-0049-bezel-dashboard-html-chinese-garbled.md) | bezel 大屏 HTML iframe 内中文字符显示乱码 | P2 | manual-report | dashboard, chat, opencode | 2026-05-15 |
 
 
 ## In Progress（status = investigating | fixed 等待 verify）
@@ -50,6 +51,8 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 | [BUG-0040](BUG-0040-agents-md-skill-path-triggers-llm-hallucination.md) | AGENTS.md 引用 `skills/data-ingestion/SKILL.md` 触发 LLM 幻觉绝对路径 Read 卡住 | fixed | P1 | — |
 | [BUG-0041](BUG-0041-sql-code-block-theme-color-mismatch.md) | 聊天 SQL 代码块 Shiki 高亮在 dark 主题下串成 light 色板，identifier 几乎不可见 | fixed | P2 | — |
 | [BUG-0046](BUG-0046-composer-button-refresh-stream-state-mismatch.md) | CTRL+R 刷新 streaming 中 → composer 按钮回退到"待发送"（首次刷新场景，regression） | fixed | P1 | — (2bc199f1) |
+| [BUG-0047](BUG-0047-bezel-dashboard-unreachable-from-ai-and-block-render-fails.md) | bezel 大屏 skill 从 AI 端不可触达，且 chat 中 DashboardBlock 渲染抛 i18n 错误 | fixed | P1 | — |
+| [BUG-0048](BUG-0048-dashboard-promote-v1-misses-html.md) | v1 dashboard promote 不透传 HTML，stage iframe 永远显示 missing 占位 | fixed | P1 | — |
 
 ## Recently Closed（最近 30 天，status = verified | closed）
 
@@ -77,24 +80,24 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 - **ingestion**: [BUG-0013](BUG-0013-http-request-null-output-fields.md) *(fixed)*, [BUG-0014](BUG-0014-ssrf-deny-list-not-blocking-169-254.md) *(fixed)*, [BUG-0015](BUG-0015-oversized-payload-not-marked-failed.md) *(fixed)*, [BUG-0017](BUG-0017-http-request-missing-payload-format.md) *(fixed)*, [BUG-0018](BUG-0018-basic-auth-not-base64.md) *(fixed)*, [BUG-0019](BUG-0019-page-pagination-ignores-hasmore.md) *(fixed)*, [BUG-0020](BUG-0020-offset-pagination-ignores-nextoffset.md) *(fixed)*, [BUG-0021](BUG-0021-cursor-pagination-missing-next-key.md) *(fixed)*, [BUG-0022](BUG-0022-csv-html-parsers-no-coercion.md) *(fixed)*, [BUG-0023](BUG-0023-integer-64-promotion-gap.md) *(fixed)*, [BUG-0024](BUG-0024-upstream-401-not-mapped-to-auth-failed.md) *(fixed)*, [BUG-0025](BUG-0025-infer-type-lowercase-mismatch.md) *(fixed)*, [BUG-0026](BUG-0026-html-fetch-throws-unsupported.md) *(fixed)*, [BUG-0027](BUG-0027-pagination-top-level-aliases-ignored.md) *(fixed)*, [BUG-0028](BUG-0028-tabular-source-path-missing-dollar.md) *(fixed)*, [BUG-0029](BUG-0029-confirm-status-violates-check-constraint.md) *(fixed)*, [BUG-0030](BUG-0030-confirm-missing-mapping-gate.md) *(fixed)*, [BUG-0031](BUG-0031-action-output-schema-rejects-null-and-missing-errorcode.md) *(fixed)*, [BUG-0032](BUG-0032-h2-fixture-uses-database-not-databasename.md) *(fixed)*, [BUG-0033](BUG-0033-json-jsonl-nullable-only-on-all-null.md) *(fixed)*, [BUG-0034](BUG-0034-executesql-fixture-missing-source.md) *(fixed)*
 - **testing**: [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md), [BUG-0032](BUG-0032-h2-fixture-uses-database-not-databasename.md) *(fixed)*, [BUG-0034](BUG-0034-executesql-fixture-missing-source.md) *(fixed)*
 - **security**: [BUG-0018](BUG-0018-basic-auth-not-base64.md) *(fixed)*
-- **stage**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md), [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md), [BUG-0042](BUG-0042-sql-editor-session-follow-mode-ignores-connection-default-database.md) *(fixed)*, [BUG-0043](BUG-0043-sql-editor-tab-switch-loses-default-connection.md) *(fixed)*
+- **stage**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md), [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md), [BUG-0042](BUG-0042-sql-editor-session-follow-mode-ignores-connection-default-database.md) *(fixed)*, [BUG-0043](BUG-0043-sql-editor-tab-switch-loses-default-connection.md) *(fixed)*, [BUG-0050](BUG-0050-dashboard-json-widgets-skeleton-only-no-data.md)
 - **query-editor**: [BUG-0042](BUG-0042-sql-editor-session-follow-mode-ignores-connection-default-database.md) *(fixed)*, [BUG-0043](BUG-0043-sql-editor-tab-switch-loses-default-connection.md) *(fixed)*
 - **connection**: [BUG-0042](BUG-0042-sql-editor-session-follow-mode-ignores-connection-default-database.md) *(fixed)*
 - **chat**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md)
 - **testing**: [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md)
 - **markdown**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md), [BUG-0041](BUG-0041-sql-code-block-theme-color-mismatch.md) *(fixed)*, [BUG-0044](BUG-0044-user-bubble-markdown-invisible-on-primary-bg.md) *(fixed)*
 - **chart**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md)
-- **dashboard**: [BUG-0012](BUG-0012-widget-data-endpoint-ignores-default-connection-id.md) *(fixed)*
-- **opencode**: [BUG-0036](BUG-0036-skills-extracted-to-wrong-cwd-not-found-by-opencode.md) *(fixed)*, [BUG-0040](BUG-0040-agents-md-skill-path-triggers-llm-hallucination.md) *(fixed)*
+- **dashboard**: [BUG-0012](BUG-0012-widget-data-endpoint-ignores-default-connection-id.md) *(fixed)*, [BUG-0049](BUG-0049-bezel-dashboard-html-chinese-garbled.md), [BUG-0050](BUG-0050-dashboard-json-widgets-skeleton-only-no-data.md)
+- **opencode**: [BUG-0036](BUG-0036-skills-extracted-to-wrong-cwd-not-found-by-opencode.md) *(fixed)*, [BUG-0040](BUG-0040-agents-md-skill-path-triggers-llm-hallucination.md) *(fixed)*, [BUG-0049](BUG-0049-bezel-dashboard-html-chinese-garbled.md)
 - **session**: [BUG-0037](BUG-0037-ctrl-r-during-streaming-flips-stop-button-to-send.md) *(fixed)*, [BUG-0038](BUG-0038-replay-idle-on-resubscribe-clears-streaming-flag.md) *(fixed)*, [BUG-0039](BUG-0039-composer-draft-sync-write-wrong-schema.md) *(fixed)*, [BUG-0046](BUG-0046-composer-button-refresh-stream-state-mismatch.md) *(fixed)*
 - **channel**: [BUG-0038](BUG-0038-replay-idle-on-resubscribe-clears-streaming-flag.md) *(fixed)*, [BUG-0046](BUG-0046-composer-button-refresh-stream-state-mismatch.md) *(fixed)*
-- **chat**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md), [BUG-0037](BUG-0037-ctrl-r-during-streaming-flips-stop-button-to-send.md) *(fixed)*, [BUG-0038](BUG-0038-replay-idle-on-resubscribe-clears-streaming-flag.md) *(fixed)*, [BUG-0039](BUG-0039-composer-draft-sync-write-wrong-schema.md) *(fixed)*, [BUG-0041](BUG-0041-sql-code-block-theme-color-mismatch.md) *(fixed)*, [BUG-0044](BUG-0044-user-bubble-markdown-invisible-on-primary-bg.md) *(fixed)*, [BUG-0046](BUG-0046-composer-button-refresh-stream-state-mismatch.md) *(fixed)*
+- **chat**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md), [BUG-0037](BUG-0037-ctrl-r-during-streaming-flips-stop-button-to-send.md) *(fixed)*, [BUG-0038](BUG-0038-replay-idle-on-resubscribe-clears-streaming-flag.md) *(fixed)*, [BUG-0039](BUG-0039-composer-draft-sync-write-wrong-schema.md) *(fixed)*, [BUG-0041](BUG-0041-sql-code-block-theme-color-mismatch.md) *(fixed)*, [BUG-0044](BUG-0044-user-bubble-markdown-invisible-on-primary-bg.md) *(fixed)*, [BUG-0046](BUG-0046-composer-button-refresh-stream-state-mismatch.md) *(fixed)*, [BUG-0049](BUG-0049-bezel-dashboard-html-chinese-garbled.md)
 
 ## By Source（聚合视图，仅列 open + in-progress）
 
 - **e2e-playwright**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md), [BUG-0012](BUG-0012-widget-data-endpoint-ignores-default-connection-id.md) *(fixed)*, [BUG-0013](BUG-0013-http-request-null-output-fields.md) *(fixed)*, [BUG-0014](BUG-0014-ssrf-deny-list-not-blocking-169-254.md) *(fixed)*, [BUG-0015](BUG-0015-oversized-payload-not-marked-failed.md) *(fixed)*, [BUG-0017](BUG-0017-http-request-missing-payload-format.md) *(fixed)*, [BUG-0018](BUG-0018-basic-auth-not-base64.md) *(fixed)*, [BUG-0019](BUG-0019-page-pagination-ignores-hasmore.md) *(fixed)*, [BUG-0020](BUG-0020-offset-pagination-ignores-nextoffset.md) *(fixed)*, [BUG-0021](BUG-0021-cursor-pagination-missing-next-key.md) *(fixed)*, [BUG-0022](BUG-0022-csv-html-parsers-no-coercion.md) *(fixed)*, [BUG-0023](BUG-0023-integer-64-promotion-gap.md) *(fixed)*, [BUG-0024](BUG-0024-upstream-401-not-mapped-to-auth-failed.md) *(fixed)*
 - **e2e-mcp**: [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md)
-- **manual-report**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md), [BUG-0036](BUG-0036-skills-extracted-to-wrong-cwd-not-found-by-opencode.md) *(fixed)*, [BUG-0037](BUG-0037-ctrl-r-during-streaming-flips-stop-button-to-send.md) *(fixed)*, [BUG-0038](BUG-0038-replay-idle-on-resubscribe-clears-streaming-flag.md) *(fixed)*, [BUG-0039](BUG-0039-composer-draft-sync-write-wrong-schema.md) *(fixed)*, [BUG-0040](BUG-0040-agents-md-skill-path-triggers-llm-hallucination.md) *(fixed)*, [BUG-0041](BUG-0041-sql-code-block-theme-color-mismatch.md) *(fixed)*, [BUG-0042](BUG-0042-sql-editor-session-follow-mode-ignores-connection-default-database.md) *(fixed)*, [BUG-0043](BUG-0043-sql-editor-tab-switch-loses-default-connection.md) *(fixed)*, [BUG-0044](BUG-0044-user-bubble-markdown-invisible-on-primary-bg.md) *(fixed)*
+- **manual-report**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md), [BUG-0036](BUG-0036-skills-extracted-to-wrong-cwd-not-found-by-opencode.md) *(fixed)*, [BUG-0037](BUG-0037-ctrl-r-during-streaming-flips-stop-button-to-send.md) *(fixed)*, [BUG-0038](BUG-0038-replay-idle-on-resubscribe-clears-streaming-flag.md) *(fixed)*, [BUG-0039](BUG-0039-composer-draft-sync-write-wrong-schema.md) *(fixed)*, [BUG-0040](BUG-0040-agents-md-skill-path-triggers-llm-hallucination.md) *(fixed)*, [BUG-0041](BUG-0041-sql-code-block-theme-color-mismatch.md) *(fixed)*, [BUG-0042](BUG-0042-sql-editor-session-follow-mode-ignores-connection-default-database.md) *(fixed)*, [BUG-0043](BUG-0043-sql-editor-tab-switch-loses-default-connection.md) *(fixed)*, [BUG-0044](BUG-0044-user-bubble-markdown-invisible-on-primary-bg.md) *(fixed)*, [BUG-0049](BUG-0049-bezel-dashboard-html-chinese-garbled.md), [BUG-0050](BUG-0050-dashboard-json-widgets-skeleton-only-no-data.md)
 
 ## Wontfix / Duplicate（终态归档，无时间限制）
 
