@@ -1,10 +1,12 @@
 package com.datatalk.application.sql;
 
+import com.datatalk.application.connection.ConnectionService;
 import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.persistence.UndoLogRepository;
 import com.datatalk.domain.undo.UndoLogEntry;
 import com.datatalk.domain.undo.UndoResult;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Optional;
 
@@ -15,7 +17,9 @@ class UndoExecuteServiceTest {
 
     private final UndoLogRepository repo = mock(UndoLogRepository.class);
     private final ConnectionRepository connRepo = mock(ConnectionRepository.class);
-    private final UndoExecuteService service = new UndoExecuteService(repo, connRepo, null);
+    private final ConnectionService connSvc = mock(ConnectionService.class);
+    private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
+    private final UndoExecuteService service = new UndoExecuteService(repo, connRepo, connSvc, eventPublisher);
 
     private UndoLogEntry entry(String status, boolean undoable, long expiresAt) {
         return new UndoLogEntry(

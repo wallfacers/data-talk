@@ -23,6 +23,8 @@ import { useI18n } from '@/i18n/use-i18n'
 import { RotateCcw } from 'lucide-react'
 import { useState, useCallback } from 'react'
 import { useSqlWorkbenchStore } from '@/features/stage/stores/sql-workbench-store'
+import { openOrFocusOpLogTab } from '@/features/op-log/utils/open-op-log-tab'
+import { useStageStore } from '@/stores/stage-store'
 import { toast } from 'sonner'
 
 type SqlDmlSummaryPanelProps = {
@@ -42,7 +44,6 @@ export function SqlDmlSummaryPanel({ result, tabId }: SqlDmlSummaryPanelProps) {
   )
 
   const isUndone = undoState?.status === 'undone'
-  const undoError = undoState?.status === 'error' ? undoState.error : null
 
   const handleUndoClick = useCallback(async () => {
     if (!result.undoLogId) return
@@ -121,20 +122,40 @@ export function SqlDmlSummaryPanel({ result, tabId }: SqlDmlSummaryPanelProps) {
             <TableCell className="px-3 py-1.5">{result.executionMs}ms</TableCell>
             <TableCell className="max-w-[640px] truncate px-3 py-1.5">{result.statementText}</TableCell>
             <TableCell className="px-3 py-1.5">
-              {result.undoable && !isUndone && (
+              <div className="flex items-center gap-2">
+                {result.undoable && !isUndone && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-6 gap-1 text-xs"
+                    onClick={handleUndoClick}
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    {t('stage.queryEditor.undo.button')}
+                  </Button>
+                )}
+                {isUndone && (
+                  <span className="text-xs text-muted-foreground">{t('stage.queryEditor.undo.reverted')}</span>
+                )}
                 <Button
-                  variant="outline"
+                  variant="link"
                   size="sm"
-                  className="h-6 gap-1 text-xs"
-                  onClick={handleUndoClick}
+                  className="h-6 gap-1 text-xs text-accent-primary hover:text-accent-primary-hover p-0"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    const tab = useStageStore.getState().tabs.find(t => t.tabId === tabId)
+                    if (tab?.connectionId) {
+                      openOrFocusOpLogTab({
+                        getState: useStageStore.getState,
+                        connectionId: tab.connectionId,
+                        connectionName: tab.connectionName ?? tab.connectionId,
+                      })
+                    }
+                  }}
                 >
-                  <RotateCcw className="h-3 w-3" />
-                  {t('stage.queryEditor.undo.button')}
+                  View all operations
                 </Button>
-              )}
-              {isUndone && (
-                <span className="text-xs text-muted-foreground">{t('stage.queryEditor.undo.reverted')}</span>
-              )}
+              </div>
             </TableCell>
           </TableRow>
         </TableBody>

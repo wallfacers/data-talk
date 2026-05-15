@@ -5,6 +5,7 @@ import com.datatalk.domain.undo.UndoOutcome;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -18,7 +19,8 @@ import static org.mockito.Mockito.*;
 class UndoLogCaptureTest {
 
     private final UndoLogRepository repo = mock(UndoLogRepository.class);
-    private final UndoLogCapture capture = new UndoLogCapture(repo);
+    private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
+    private final UndoLogCapture capture = new UndoLogCapture(repo, eventPublisher);
 
     private Connection h2;
 

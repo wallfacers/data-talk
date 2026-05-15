@@ -7,6 +7,7 @@ import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.persistence.UndoLogRepository;
 import com.datatalk.domain.undo.UndoLogEntry;
 import com.datatalk.domain.undo.UndoResult;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.sql.Connection;
@@ -20,11 +21,13 @@ public class UndoExecuteService {
     private final UndoLogRepository undoLogRepo;
     private final ConnectionRepository connRepo;
     private final ConnectionService connSvc;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public UndoExecuteService(UndoLogRepository undoLogRepo, ConnectionRepository connRepo, ConnectionService connSvc) {
+    public UndoExecuteService(UndoLogRepository undoLogRepo, ConnectionRepository connRepo, ConnectionService connSvc, ApplicationEventPublisher eventPublisher) {
         this.undoLogRepo = undoLogRepo;
         this.connRepo = connRepo;
         this.connSvc = connSvc;
+        this.eventPublisher = eventPublisher;
     }
 
     public UndoResult execute(String undoLogId, boolean confirmed) {
@@ -76,6 +79,7 @@ public class UndoExecuteService {
         try {
             int affectedRows = executeInverseOnConnection(entry, connection, decryptedPassword);
             undoLogRepo.markUndone(undoLogId, System.currentTimeMillis());
+            eventPublisher.publishEvent(new UndoLogStatusChangedEvent(this, undoLogId, entry.connectionId(), "undone", System.currentTimeMillis()));
             return new UndoResult.Undone(affectedRows);
         } catch (SQLException e) {
             throw new RuntimeException("Undo execution failed: " + e.getMessage(), e);

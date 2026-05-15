@@ -13,6 +13,7 @@ import org.apache.calcite.sql.parser.SqlParseException;
 import org.apache.calcite.sql.parser.SqlParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 import java.sql.Connection;
@@ -36,9 +37,11 @@ public class UndoLogCapture {
     private static final int MAX_UNDO_ROWS = 100;
 
     private final UndoLogRepository undoLogRepo;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public UndoLogCapture(UndoLogRepository undoLogRepo) {
+    public UndoLogCapture(UndoLogRepository undoLogRepo, ApplicationEventPublisher eventPublisher) {
         this.undoLogRepo = undoLogRepo;
+        this.eventPublisher = eventPublisher;
     }
 
     public UndoOutcome capture(
@@ -86,6 +89,7 @@ public class UndoLogCapture {
                 operation, dmlSql, null, null, 0, false
             );
             undoLogRepo.insert(entry);
+            eventPublisher.publishEvent(new UndoLogCreatedEvent(this, entry.id(), entry.connectionId(), entry.operation(), entry.tableName(), entry.affectedRows(), entry.createdAt()));
             return new UndoOutcome.NotUndoable("no_primary_key");
         }
 
@@ -97,6 +101,7 @@ public class UndoLogCapture {
                 operation, dmlSql, null, null, 0, true
             );
             undoLogRepo.insert(entry);
+            eventPublisher.publishEvent(new UndoLogCreatedEvent(this, entry.id(), entry.connectionId(), entry.operation(), entry.tableName(), entry.affectedRows(), entry.createdAt()));
             return new UndoOutcome.Captured(new UndoCapture(
                 true, entry.id(), null, null, tableName, operation, 0, pkColumns
             ));
@@ -126,6 +131,7 @@ public class UndoLogCapture {
                 operation, dmlSql, null, null, count, false
             );
             undoLogRepo.insert(entry);
+            eventPublisher.publishEvent(new UndoLogCreatedEvent(this, entry.id(), entry.connectionId(), entry.operation(), entry.tableName(), entry.affectedRows(), entry.createdAt()));
             return new UndoOutcome.NotUndoable("too_many_rows:" + count);
         }
 
@@ -145,6 +151,7 @@ public class UndoLogCapture {
             operation, dmlSql, inverseSql, toJson(beforeState), count, true
         );
         undoLogRepo.insert(entry);
+        eventPublisher.publishEvent(new UndoLogCreatedEvent(this, entry.id(), entry.connectionId(), entry.operation(), entry.tableName(), entry.affectedRows(), entry.createdAt()));
 
         return new UndoOutcome.Captured(new UndoCapture(
             true, entry.id(), beforeState, inverseSql, tableName, operation, count, pkColumns

@@ -19,6 +19,10 @@ const ScriptEditorTab = lazy(() =>
   import('@/features/script/components/script-editor-tab').then((m) => ({ default: m.ScriptEditorTab }))
 )
 
+const OperationLogTab = lazy(() =>
+  import('@/features/op-log/components/operation-log-tab').then((m) => ({ default: m.OperationLogTab }))
+)
+
 
 export function StageTabContent() {
   const cleanupTabs = useSqlWorkbenchStore((s) => s.cleanupTabs)
@@ -120,6 +124,16 @@ export function StageTabContent() {
       <div className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <Suspense fallback={<div className="flex items-center justify-center h-full text-sm text-text-soft">Loading…</div>}>
           <ScriptEditorTab key={tab.tabId} tabId={tab.tabId} />
+        </Suspense>
+      </div>
+    )
+  }
+
+  if (tab.type === 'operation_log') {
+    return (
+      <div className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <Suspense fallback={<div className="flex items-center justify-center h-full text-sm text-text-soft">Loading…</div>}>
+          <OperationLogTab key={tab.tabId} tab={tab} />
         </Suspense>
       </div>
     )

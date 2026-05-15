@@ -2,10 +2,13 @@ import { useLayoutEffect, useMemo, useState } from 'react'
 import { CheckCircle2Icon, SearchIcon, XCircleIcon } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu'
 import type { Connection } from '@/services/api/connection'
 import { SETTINGS_DIALOG_DIMENSIONS } from '@/features/settings/shared/utils'
 import { useI18n } from '@/i18n/use-i18n'
 import { cn } from '@/lib/utils'
+import { openOrFocusOpLogTab } from '@/features/op-log/utils/open-op-log-tab'
+import { useStageStore } from '@/stores/stage-store'
 import { rankConnections } from './recent-connections'
 
 type Props = {
@@ -68,31 +71,45 @@ export function DataSourcePickerDialog({
           {ordered.length ? (
             <div className="flex flex-col gap-2">
               {ordered.map((connection) => (
-                <button
-                  key={connection.id}
-                  type="button"
-                  aria-label={connection.name}
-                  onClick={() => {
-                    onPick(connection)
-                    onOpenChange(false)
-                  }}
-                  className={cn(
-                    'flex w-full items-start justify-between rounded-lg border px-3 py-3 text-left hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing',
-                    preferredConnectionId === connection.id && 'border-primary/40 bg-accent/30',
-                  )}
-                >
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-medium">{connection.name}</div>
-                    <div className="truncate text-xs text-muted-foreground">
-                      {formatConnectionMeta(connection)}
+                <ContextMenu key={connection.id}>
+                  <ContextMenuTrigger
+                    aria-label={connection.name}
+                    onClick={() => {
+                      onPick(connection)
+                      onOpenChange(false)
+                    }}
+                    className={cn(
+                      'flex w-full items-start justify-between rounded-lg border px-3 py-3 text-left hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing',
+                      preferredConnectionId === connection.id && 'border-primary/40 bg-accent/30',
+                    )}
+                  >
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium">{connection.name}</div>
+                      <div className="truncate text-xs text-muted-foreground">
+                        {formatConnectionMeta(connection)}
+                      </div>
                     </div>
-                  </div>
-                  <StatusBadge
-                    status={connection.lastTestStatus}
-                    okLabel={t('dataSources.status.ok')}
-                    failedLabel={t('dataSources.status.failed')}
-                  />
-                </button>
+                    <StatusBadge
+                      status={connection.lastTestStatus}
+                      okLabel={t('dataSources.status.ok')}
+                      failedLabel={t('dataSources.status.failed')}
+                    />
+                  </ContextMenuTrigger>
+                  <ContextMenuContent className="bg-bg-elevated border border-border-default">
+                    <ContextMenuItem
+                      className="text-text-base"
+                      onClick={() => {
+                        openOrFocusOpLogTab({
+                          getState: useStageStore.getState,
+                          connectionId: connection.id,
+                          connectionName: connection.name,
+                        })
+                      }}
+                    >
+                      View Operation Log
+                    </ContextMenuItem>
+                  </ContextMenuContent>
+                </ContextMenu>
               ))}
             </div>
           ) : (
