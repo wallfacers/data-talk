@@ -14,14 +14,15 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 | ID | Title | Priority | Source | Modules | Discovered |
 |----|-------|----------|--------|---------|------------|
-| [BUG-0050](BUG-0050-dashboard-json-widgets-skeleton-only-no-data.md) | 大屏 JSON 模式 widget 仅渲染骨架，未调接口取数 + 文本乱码 | P1 | manual-report | dashboard, stage | 2026-05-15 |
-| [BUG-0049](BUG-0049-bezel-dashboard-html-chinese-garbled.md) | bezel 大屏 HTML iframe 内中文字符显示乱码 | P2 | manual-report | dashboard, chat, opencode | 2026-05-15 |
+| —  | —     | —        | —      | —       | —          |
 
 
 ## In Progress（status = investigating | fixed 等待 verify）
 
 | ID | Title | Status | Priority | Owner |
 |----|-------|--------|----------|-------|
+| [BUG-0050](BUG-0050-dashboard-json-widgets-skeleton-only-no-data.md) | 大屏 JSON 模式 widget 仅渲染骨架，未调接口取数 + 文本乱码 | fixed | P1 | — (pending) |
+| [BUG-0049](BUG-0049-bezel-dashboard-html-chinese-garbled.md) | bezel 大屏 HTML iframe 内中文字符显示乱码 | fixed | P2 | — (pending) |
 | [BUG-0035](BUG-0035-dialog-bg-canvas-typo-causes-transparent-background.md) | 数据源/凭据管理设置页删除弹框背景半透明，bg-canvas 类拼写错误 | fixed | P2 | — |
 | [BUG-0013](BUG-0013-http-request-null-output-fields.md) | http_request action returns null for required output fields causing schema validation failure | fixed | P1 | — |
 | [BUG-0014](BUG-0014-ssrf-deny-list-not-blocking-169-254.md) | SSRF deny list not blocking 169.254.169.254 with e2e profile | fixed | P1 | — |

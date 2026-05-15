@@ -126,9 +126,11 @@ public class DashboardController {
         if (maybe.isEmpty()) return ResponseEntity.notFound().build();
         String origin = "http://" + req.getServerName() + ":" + req.getServerPort();
         String body = new String(maybe.get(), StandardCharsets.UTF_8)
-            .replace("__BEZEL_SERVER_ORIGIN__", origin);
+            .replace("__BEZEL_SERVER_ORIGIN__", origin)
+            .replace("\"/api/dashboards/", "\"" + origin + "/api/dashboards/")
+            .replace("'/api/dashboards/", "'" + origin + "/api/dashboards/");
         return ResponseEntity.ok()
-            .contentType(MediaType.TEXT_HTML)
+            .contentType(new MediaType(MediaType.TEXT_HTML, StandardCharsets.UTF_8))
             .body(body);
     }
 

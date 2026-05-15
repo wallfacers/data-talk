@@ -1,14 +1,14 @@
 ---
 id: BUG-0050
 title: 大屏 JSON 模式 widget 仅渲染骨架，未调接口取数 + 文本乱码
-status: open
+status: fixed
 priority: P1
 source: manual-report
 modules: [dashboard, stage]
 discovered: 2026-05-15
 discoveredBy: agent
 testRunId: null
-fixCommit: null
+fixCommit: pending
 fixPlanRef: null
 duplicateOf: null
 regression: false
@@ -54,21 +54,48 @@ bezel skill 产物中的 dashboard JSON 在 stage 渲染时，widget 区只显�
 
 ## Root Cause
 
-未定位。可疑路径：
+两个独立成因叠加：
 
-1. **widget data endpoint 调用链断裂**：bezel JSON 模式下 widget 渲染器可能没有挂接 widget data 取数（v1 → v2 升级遗漏？）
-2. **paramRefs 未解析**：widget JSON 的 `paramRefs: {}` 空对象 + dashboard params 缺省导致 data endpoint 拒绝服务（参考 BUG-0012 已修但场景不同）
-3. **连接 / database 未透传**：与 BUG-0012 同源——widget data 调用未携带 dashboard 级 default connection / database
-4. **Renderer 路由错误**：JSON 中 `theme: 'industry-default'` + `renderer: 'bezel'` 等字段在前端没有对应实现，回退到通用 skeleton renderer 上
-5. **中文乱码**：dashboard JSON `title` 字段中的中文字面量在 OpenCode SSE 传输或前后端往返过程中破坏（可能与 [BUG-0049](BUG-0049-bezel-dashboard-html-chinese-garbled.md) 同源，但作用于不同字段）
+1. **前端 `decodeUtf8Base64` typo 导致 chat → promote 链路双编码**：与 [BUG-0049](BUG-0049-bezel-dashboard-html-chinese-garbled.md) 同根。`markdown.tsx` 的 `decodeUtf8Base64` 误调用 module-local `escape`（HTML 实体转义器，行 42-46）代替全局 `escape`（URL `%xx` 转义器），导致解 base64 后 UTF-8 字节被双重编码后随 promote 落盘。HTML 中 inline `<script>` 的中文字面量（widget 标题、`legend.data: ['GMV', '订单量']` 等）变为非法 UTF-8 字节，浏览器 JS parser 抛 SyntaxError → **整段 polling scheduler 不执行** → ECharts 实例不创建 → fetch 不发出 → widget 容器空荡荡（"仅渲染骨架"），DevTools Network 也看不到 widget data 请求。详见 BUG-0049 Root Cause。
+
+2. **widget endpoint 用相对路径，sandbox srcdoc iframe 解析失败**：AI 实际生成的 HTML 把 `window.__BEZEL_CONFIG__.widgets[].endpoint` 写成 `/api/dashboards/.../widgets/.../data`。`DashboardIframeShell` 用 `sandbox="allow-scripts"`（无 `allow-same-origin`）加 `srcDoc=html` 加载 iframe，iframe origin 为 `null`，base URL 为 `about:srcdoc`。相对 URL 在 `about:srcdoc` 下不可解析，`fetch` 直接抛错（被 catch 静默吞掉，或在第一种成因仍存在时根本走不到这里）。即使第一种成因修复后，仍会显示 "加载失败" 而非真实数据。
 
 ## Fix
 
-TBD
+**主修复（前端）**：`client/src/features/chat/components/markdown/markdown.tsx` 的 `decodeUtf8Base64` 改为基于 `TextDecoder('utf-8')` 的字节解码，参见 [BUG-0049](BUG-0049-bezel-dashboard-html-chinese-garbled.md) Fix 段。
+
+**辅修复（后端）**：`DashboardController.serveHtml` 一处合并改动：
+
+```java
+String body = new String(maybe.get(), StandardCharsets.UTF_8)
+    .replace("__BEZEL_SERVER_ORIGIN__", origin)
+    .replace("\"/api/dashboards/", "\"" + origin + "/api/dashboards/")
+    .replace("'/api/dashboards/", "'" + origin + "/api/dashboards/");
+return ResponseEntity.ok()
+    .contentType(new MediaType(MediaType.TEXT_HTML, StandardCharsets.UTF_8))
+    .body(body);
+```
+
+- `charset=UTF-8` 是深度防御层：即使将来某处又往磁盘塞了非 ASCII 字节，serve 时不会再被 ISO-8859-1 重编
+- 把字面量出现的 `"/api/dashboards/` 和 `'/api/dashboards/` 重写为 `"<origin>/api/dashboards/`，让 null-origin srcdoc iframe 中的 fetch 能拿到绝对 URL；CSP 替换后 `connect-src` 也指向同一 origin，widget data endpoint 自身已带 `@CrossOrigin(origins = "null")` 允许 null-origin 跨域
 
 ## Verification
 
-TBD
+端到端 curl 验证（与 [BUG-0049](BUG-0049-bezel-dashboard-html-chinese-garbled.md) 同一回合）：
+
+```
+$ curl -s .../api/dashboards/<id>/html | grep endpoint
+window.__BEZEL_CONFIG__ = {
+  "widgets":[
+    {"id":"w_a","endpoint":"http://localhost:8080/api/dashboards/dash_x/widgets/w_a/data"},
+    {"id":"w_b","endpoint":"http://localhost:8080/api/dashboards/dash_x/widgets/w_b/data"}
+  ]
+};
+```
+
+相对路径被改写为绝对 URL。配合 Content-Type charset，scheduler 不再因 SyntaxError 死掉，能真实发出 POST 拉到数据。
+
+IT 测试：`DashboardControllerIT#serveHtmlPreservesUtf8AndRewritesRelativeEndpoints` 同时断言 charset 与 endpoint 重写。
 
 ## Notes
 

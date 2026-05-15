@@ -1,14 +1,14 @@
 ---
 id: BUG-0049
 title: bezel 大屏 HTML iframe 内中文字符显示乱码
-status: open
+status: fixed
 priority: P2
 source: manual-report
 modules: [dashboard, chat, opencode]
 discovered: 2026-05-15
 discoveredBy: agent
 testRunId: null
-fixCommit: null
+fixCommit: pending
 fixPlanRef: null
 duplicateOf: null
 regression: false
@@ -46,23 +46,70 @@ AI 通过 bezel skill 生成的 dashboard HTML 在 stage iframe 渲染后，所�
 
 ## Root Cause
 
-未定位。可疑路径（按优先级排序）：
+**真正根因在前端**：`client/src/features/chat/components/markdown/markdown.tsx` 第 65 行 `decodeUtf8Base64` 误用本地 `escape` 函数。
 
-1. **OpenCode SSE 传输环节**：AI 通过 SSE stream 写入 `dashboard-html` fenced block 时，部分多字节 chunk 在边界处被错误切分，重组后中文字面量丢失字节
-2. **AI 端模板替换**：bezel skill 的 `assets/templates/NN-<industry>.html` 模板在 AI prompt 内可能以拉丁化转写或转义形式被注入到 LLM，LLM 输出时未正确恢复 UTF-8
-3. **markdown 解码层**：`decorateDashboardBlocks` 读取 `<pre>` 子节点 `textContent` 时若 chat stream 在中途被插入零宽字符或 BOM，可能影响后续 base64 序列化
-4. **后端落库 / 取出**：`POST /api/dashboards/promote` 落库 `dashboard_html` 字段时若按 latin-1 处理或 driver 误判 charset，再 GET 时取回的字节流已损坏
+文件顶部行 42-46 定义了 module-local `escape(text)` —— HTML 实体转义器（`& < > " '` → 实体）。`decodeUtf8Base64` 的经典写法本应是 `decodeURIComponent(escape(atob(text)))`，但这里的 `escape` 指**全局 `escape()`**（把字节字符串中每个 codepoint 转 `%xx`，已 deprecated 但仍存在），不是 HTML 转义器。本地定义 shadow 了全局，于是：
+
+1. `atob(b64)` 解出原始 UTF-8 字节串（每个 char codepoint 0–255）
+2. 本地 HTML `escape` 对 ≥0x80 字节无作用（中文字节里没有 `& < > " '`）
+3. `decodeURIComponent` 期待 `%xx` 形式，看到裸字节 0xE7 → 抛 URIError
+4. catch 分支 fallback `return atob(text)` 直接返回字节字符串
+5. promote 时该 latin1-风格字符串经 `JSON.stringify` → fetch 发出，浏览器把 codepoint 0xE7/0x94/0xB5 各自当独立字符按 UTF-8 编码 → 落盘双编码字节 `C3 A7 C2 94 C2 B5`
+
+Node 复现（用同样的本地 escape 定义）：base64 = `55S15ZWG...`（电商运营 的 UTF-8 base64），OLD decode 字节 `c3a7c294c2b5...`，完全匹配磁盘 `dash_ksnn4qiu.dashboard.json` title 字段的字节。
+
+**附带的后端薄弱点**：`DashboardController.serveHtml` 用 `MediaType.TEXT_HTML`（无 charset），Spring 6.2.7 `StringHttpMessageConverter.DEFAULT_CHARSET = ISO_8859_1`（已 javap 确认），即使前端发出干净 UTF-8 字节，serve 时仍会再被按 latin1 编码一次。属于深度防御层面也需修。
 
 ## Fix
 
-TBD。建议逐层验证：
-- (a) 在 `decorateDashboardBlocks` 写入 `data-dashboard-html-b64` 前打印 HTML 的中文片段（hex dump）确认 chat 端 DOM 文本已损坏 / 未损坏
-- (b) 比对后端 `dashboard_html` 落库原文（直接 sqlite `SELECT` 看 hex）与前端发送 body 是否一致
-- (c) iframe 内 HTML `<head>` 强制 `<meta charset="UTF-8">` 及外层 srcDoc 字符编码一致性
+**主修复（前端）**：`client/src/features/chat/components/markdown/markdown.tsx:65-72`
+
+```tsx
+function decodeUtf8Base64(text: string): string {
+  try {
+    const bin = atob(text)
+    const bytes = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+    return new TextDecoder('utf-8').decode(bytes)
+  } catch {
+    return atob(text)
+  }
+}
+```
+
+用 `TextDecoder('utf-8')` 直接吃字节，避开 `escape` / `unescape` 与本地同名函数冲突的陷阱。
+
+**辅修复（后端，深度防御 + 解决 BUG-0050 widget 取数）**：`DashboardController.serveHtml`
+
+```java
+String body = new String(maybe.get(), StandardCharsets.UTF_8)
+    .replace("__BEZEL_SERVER_ORIGIN__", origin)
+    .replace("\"/api/dashboards/", "\"" + origin + "/api/dashboards/")
+    .replace("'/api/dashboards/", "'" + origin + "/api/dashboards/");
+return ResponseEntity.ok()
+    .contentType(new MediaType(MediaType.TEXT_HTML, StandardCharsets.UTF_8))
+    .body(body);
+```
 
 ## Verification
 
-TBD
+端到端 curl 验证（commit pending，本地 spring-boot:run）：
+
+```
+$ curl -i .../api/dashboards/<id>/html | head -8
+HTTP/1.1 200
+Content-Type: text/html;charset=UTF-8     ← 修复后
+...
+$ curl -s .../api/dashboards/<id>/html | xxd | grep '<title>' -A1
+<title>...
+00000130: 746c 653e e794 b5e5 9586 e8bf 90e8 90a5  tle>............
+```
+
+`<title>` 后 12 字节 `E7 94 B5 / E5 95 86 / E8 BF 90 / E8 90 A5` = `电 / 商 / 运 / 营` 的 UTF-8 三字节序列，完整未损坏。
+
+IT 测试覆盖：`DashboardControllerIT#serveHtmlPreservesUtf8AndRewritesRelativeEndpoints` 断言：
+- 响应头 `Content-Type` 含 `charset=UTF-8`
+- 中文字符在 body 字节流中以原始 UTF-8 出现，无 `?` 代换
 
 ## Notes
 

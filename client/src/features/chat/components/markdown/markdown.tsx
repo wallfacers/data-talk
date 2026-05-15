@@ -64,7 +64,10 @@ function encodeUtf8Base64(text: string): string {
 
 function decodeUtf8Base64(text: string): string {
   try {
-    return decodeURIComponent(escape(atob(text)))
+    const bin = atob(text)
+    const bytes = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+    return new TextDecoder('utf-8').decode(bytes)
   } catch {
     return atob(text)
   }
