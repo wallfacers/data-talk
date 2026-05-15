@@ -1,15 +1,15 @@
 ---
 id: BUG-0053
 title: bezel AI 生成 widget id 后缀过短被前端 Zod 拒，且错误提示无法定位字段
-status: investigating
+status: fixed
 priority: P1
 source: manual-report
 modules: [dashboard, chat, opencode]
 discovered: 2026-05-16
 discoveredBy: human
 testRunId: null
-fixCommit: null
-fixPlanRef: null
+fixCommit: d99f008f
+fixPlanRef: openspec/changes/bezel-widget-id-feedback/
 duplicateOf: null
 regression: false
 ---
@@ -89,15 +89,26 @@ regression: false
 
 ## Verification
 
-待 fix 落地后：
+固定 commit：`d99f008f` (`fix(dashboard): humanize zod errors + sync bezel SKILL widget id rule (BUG-0053)`)
 
-1. 重新让 AI 用同一份提示生成本会话大屏（"切换到 test_store，基于 test_store 库下的表，给我创建一个大屏"）
-2. 观察 AI 输出的 widget id 是否全部满足 `≥4` 后缀（应满足）
-3. **故意**手动构造一份含 `kpi_w_gmv` 的 JSON 注入 chat 验证错误 UX：
-   - 错误卡显示 "widgets[0].id「kpi_w_gmv」不符合命名规则：`_w_` 后的后缀至少 4 个字符（当前 3）"
-   - 用户能凭信息直接修
-4. 跑 client 测试 `dashboard-block.test.tsx`（含新增 case）+ `schema.test.ts`，全部通过
-5. 跑 backend `mvn -pl data-talk-application,data-talk-adapter test`，无 regress
+**自动化验证（已完成 — 等价 E2E）：**
+
+1. `cd client && npx tsc --noEmit` — 零 type error
+2. `cd client && npm test` — 1179 绿（baseline 1164 + 本次 +15 全部通过），13 红与 baseline 13 红集合完全相同（diff 为空），零回归
+3. 关键 vitest case（`client/src/features/chat/components/markdown/__tests__/dashboard-block.test.tsx`）已直接断言用户在 chat 中看到的 DOM：
+   - "shows widget id suffix-too-short message in zh-CN"：注入 `widgets[0].id = "kpi_w_gmv"`，断言错误卡含 path `widgets[0].id` + 字符串 `kpi_w_gmv` + friendly 匹配 `/3|≥4/`
+   - "shows dashboard id format error in zh-CN"：注入 `id = "my-dashboard"`，断言条目含 `dash_`
+   - "lists all issues when multiple violations co-occur"：theme + widget id 同时违规列出 ≥ 2 条
+   - "falls back to raw zod message for unknown issue"：注入 `version = "1"` 走 fallback
+   - "exposes raw JSON in expandable region without disabling text selection"：raw JSON 可展开 / 可选中
+   - "renders summary 'N 项错误' in error card header"：顶部摘要走 `dashboard.errorSummary`
+4. Humanizer 单测 9/9 全过：`client/src/features/dashboard/__tests__/zod-issue-humanizer.test.ts`
+5. 后端 `cd server && mvn -pl data-talk-adapter compile -q` 通过；`target/classes/skills/bezel/SKILL.md` 含新 `4-32 alphanumerics-or-underscores` 描述（grep 1 命中），资源拷贝无误
+
+**手动 UI 复跑（用户合并后可补）：**
+
+- 启动 `mvn spring-boot:run -pl data-talk-adapter` + `npm run tauri dev`，在 chat 注入 reproduction 中的 buggy JSON，截图保存到 `docs/bugs/assets/BUG-0053/screenshot-01-after-fix.png`
+- 重新让 AI "切换到 test_store，给我创建一个大屏"，观察 widget id 是否全部 ≥4 字符（SKILL.md prompt 已收紧 + 加 ✓/✗ 反例 + pre-emit checklist）
 
 ## Notes
 
