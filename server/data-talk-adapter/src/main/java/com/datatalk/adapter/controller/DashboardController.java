@@ -33,6 +33,17 @@ public class DashboardController {
     private static final Pattern CONFIG_DASHBOARD_ID =
         Pattern.compile("(\"dashboardId\"\\s*:\\s*\")[^\"]+(\")");
 
+    // Bezel HTML hard-codes echarts from cdn.jsdelivr.net. Sandboxed iframes (opaque
+    // origin) can't reuse the parent's HTTP cache and on slow/offline networks the
+    // CDN load stalls for many seconds, leaving the iframe area white. We ship the
+    // same echarts build at /bezel/echarts.min.js (classpath:/static/bezel/) and
+    // rewrite both the <script src> and the CSP script-src directive at serve time.
+    // AI-emitted HTML keeps the jsdelivr URL (which BezelHtmlValidator still
+    // whitelists), so promote-time validation is unaffected.
+    private static final String ECHARTS_CDN_URL =
+        "https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js";
+    private static final String ECHARTS_LOCAL_PATH = "/bezel/echarts.min.js";
+
     // Header carrying the chat session id whose data-context should be used as a
     // server-side fallback when the AI-emitted dashboard JSON omits
     // defaultConnectionId / defaultDatabase / defaultSchema. Keeps widget data
@@ -156,7 +167,11 @@ public class DashboardController {
         String body = new String(maybe.get(), StandardCharsets.UTF_8)
             .replace("__BEZEL_SERVER_ORIGIN__", origin)
             .replace("\"/api/dashboards/", "\"" + origin + "/api/dashboards/")
-            .replace("'/api/dashboards/", "'" + origin + "/api/dashboards/");
+            .replace("'/api/dashboards/", "'" + origin + "/api/dashboards/")
+            // Localize the echarts CDN: both <script src="https://cdn.jsdelivr.net/..."> and
+            // the matching CSP script-src token get the same string replacement, so the
+            // policy continues to allow the new origin-relative URL.
+            .replace(ECHARTS_CDN_URL, origin + ECHARTS_LOCAL_PATH);
         String replacement = Matcher.quoteReplacement(id);
         body = WIDGET_URL_DASHBOARD_ID.matcher(body).replaceAll("$1" + replacement + "$2");
         body = CONFIG_DASHBOARD_ID.matcher(body).replaceAll("$1" + replacement + "$2");

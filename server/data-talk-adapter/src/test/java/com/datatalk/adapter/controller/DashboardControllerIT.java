@@ -378,4 +378,61 @@ class DashboardControllerIT {
         assertThat(decoded).doesNotContain("__BEZEL_SERVER_ORIGIN__");
         assertThat(decoded).contains("connect-src http://localhost");
     }
+
+    @Test
+    void serveHtmlRewritesEchartsCdnToLocalAsset() throws Exception {
+        // AI-emitted HTML pulls echarts from jsdelivr (the only CDN whitelisted by
+        // BezelHtmlValidator). In sandboxed iframes on a slow/offline link this
+        // stalls the iframe for many seconds, producing a long blank screen.
+        // serveHtml must rewrite the URL in BOTH the CSP and the <script src> so the
+        // iframe loads the same build from the local /bezel/ static path instead.
+        String html = """
+            <!doctype html>
+            <html>
+            <head>
+            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js 'unsafe-inline'; connect-src __BEZEL_SERVER_ORIGIN__; frame-ancestors 'self'">
+            <meta name="__JSON_HASH__" content="sha256:cdn">
+            <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+            </head>
+            <body>
+            <script>window.__BEZEL_CONFIG__ = { "dashboardId": "dash_cdn_seed" };</script>
+            </body>
+            </html>
+            """;
+        String body = """
+            {
+              "dashboard": {
+                "schemaVersion": 2,
+                "id": "dash_placeholder",
+                "title": "cdn",
+                "theme": "industry-neutral",
+                "renderer": "bezel",
+                "refresh": { "defaultIntervalMs": 10000, "pauseOnHidden": true },
+                "parameters": [],
+                "widgets": [],
+                "layout": { "engine": "free" },
+                "version": 1
+              },
+              "html": %s
+            }
+            """.formatted(mapper.writeValueAsString(html));
+
+        String promoteResponse = mvc.perform(post("/api/dashboards/promote")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+            .andExpect(status().isCreated())
+            .andReturn().getResponse().getContentAsString();
+        String id = mapper.readTree(promoteResponse).get("id").asText();
+
+        var res = mvc.perform(get("/api/dashboards/" + id + "/html"))
+            .andExpect(status().isOk())
+            .andReturn().getResponse();
+        String decoded = new String(res.getContentAsByteArray(), StandardCharsets.UTF_8);
+
+        // jsdelivr URL must be gone in both occurrences (script tag and CSP).
+        assertThat(decoded).doesNotContain("https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js");
+        // Both occurrences must point at the local origin-relative path.
+        assertThat(decoded).contains("script-src http://localhost").contains("/bezel/echarts.min.js");
+        assertThat(decoded).contains("<script src=\"http://localhost").contains("/bezel/echarts.min.js\"");
+    }
 }

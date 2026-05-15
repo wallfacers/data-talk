@@ -49,17 +49,29 @@ export function DashboardIframeShell({ dashboardId, params, onError }: Dashboard
       <p>v1 dashboard — 在 chat 中说「重新生成视觉」生成新版 HTML</p>
     </div>
   }
-  if (html === null) {
-    return <TabContentLoader />
-  }
-  return <iframe
-    ref={ref}
-    sandbox="allow-scripts"
-    srcDoc={html}
-    referrerPolicy="no-referrer"
-    className="w-full h-full border-0"
-    title={`dashboard ${dashboardId}`}
-    data-status={status}
-    data-json-hash={hash ?? ''}
-  />
+  // Mount the iframe as soon as html is available so its CDN+JS load starts in
+  // parallel, but keep the loader on top until the iframe posts {type:'ready'}.
+  // Otherwise the loader vanishes the moment the HTML byte stream arrives,
+  // exposing a multi-second white area while echarts/fonts/widget-data still load.
+  return (
+    <div className="relative w-full h-full">
+      {html !== null && (
+        <iframe
+          ref={ref}
+          sandbox="allow-scripts"
+          srcDoc={html}
+          referrerPolicy="no-referrer"
+          className="w-full h-full border-0"
+          title={`dashboard ${dashboardId}`}
+          data-status={status}
+          data-json-hash={hash ?? ''}
+        />
+      )}
+      {status !== 'ready' && (
+        <div className="absolute inset-0">
+          <TabContentLoader />
+        </div>
+      )}
+    </div>
+  )
 }
