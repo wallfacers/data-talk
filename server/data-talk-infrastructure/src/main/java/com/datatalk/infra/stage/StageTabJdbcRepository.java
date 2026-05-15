@@ -170,7 +170,7 @@ public class StageTabJdbcRepository implements StageTabRepository {
             sql.append(" AND last_touched_at < ?");
             params.add(filter.lastTouchedBefore());
         }
-        sql.append(" ORDER BY last_touched_at DESC");
+        sql.append(" ORDER BY created_at DESC");
         sql.append(" LIMIT ?");
         params.add(filter.limit());
 

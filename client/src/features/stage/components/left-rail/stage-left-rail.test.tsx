@@ -61,12 +61,12 @@ describe('StageLeftRail', () => {
     expect(screen.getByText('stage.leftRail.empty')).toBeInTheDocument()
   })
 
-  it('renders active tabs sorted by pinned first then lastTouchedAt desc', () => {
+  it('renders active tabs sorted by pinned first then createdAt desc', () => {
     useStageStore.setState({
       tabs: [
-        makeTab({ tabId: 'a', title: 'old', lastTouchedAt: 1, pinned: false }),
-        makeTab({ tabId: 'b', title: 'newer', lastTouchedAt: 5, pinned: false }),
-        makeTab({ tabId: 'c', title: 'pinned', lastTouchedAt: 2, pinned: true }),
+        makeTab({ tabId: 'a', title: 'old', createdAt: 1, pinned: false }),
+        makeTab({ tabId: 'b', title: 'newer', createdAt: 5, pinned: false }),
+        makeTab({ tabId: 'c', title: 'pinned', createdAt: 2, pinned: true }),
       ],
     } as never, false)
     render(<StageLeftRail />)

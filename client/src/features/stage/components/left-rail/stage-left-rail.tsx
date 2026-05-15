@@ -35,7 +35,7 @@ export function StageLeftRail() {
     const active = allTabs.filter((t) => !t.archived).filter(filter)
       .sort((a, b) => {
         if (!!b.pinned !== !!a.pinned) return (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)
-        return (b.lastTouchedAt ?? 0) - (a.lastTouchedAt ?? 0)
+        return (b.createdAt ?? 0) - (a.createdAt ?? 0)
       })
     const archived = allTabs.filter((t) => t.archived).filter(filter)
     return { active, archived }
