@@ -26,12 +26,23 @@ public class UndoLogRepository {
         rs.getString("inverse_sql"),
         rs.getString("before_state"),
         rs.getInt("affected_rows"),
-        rs.getBoolean("undoable"),
+        rs.getInt("undoable") == 1,
         rs.getString("status"),
-        rs.getLong("expires_at"),
-        rs.getLong("created_at"),
-        rs.getObject("undone_at", Long.class)
+        toLong(rs.getObject("expires_at")),
+        toLong(rs.getObject("created_at")),
+        toNullableLong(rs.getObject("undone_at"))
     );
+
+    private static long toLong(Object value) {
+        if (value instanceof Number n) return n.longValue();
+        if (value instanceof String s) return Long.parseLong(s.trim());
+        throw new IllegalArgumentException("Cannot convert to long: " + value);
+    }
+
+    private static Long toNullableLong(Object value) {
+        if (value == null) return null;
+        return toLong(value);
+    }
 
     public UndoLogRepository(@Qualifier("datatalkJdbc") JdbcTemplate jdbc) {
         this.jdbc = jdbc;

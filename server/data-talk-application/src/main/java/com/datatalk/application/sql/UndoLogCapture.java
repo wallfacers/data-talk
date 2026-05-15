@@ -11,6 +11,8 @@ import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.SqlUpdate;
 import org.apache.calcite.sql.parser.SqlParseException;
 import org.apache.calcite.sql.parser.SqlParser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.sql.Connection;
@@ -22,6 +24,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -29,6 +32,7 @@ import java.util.UUID;
 @Component
 public class UndoLogCapture {
 
+    private static final Logger log = LoggerFactory.getLogger(UndoLogCapture.class);
     private static final int MAX_UNDO_ROWS = 100;
 
     private final UndoLogRepository undoLogRepo;
@@ -63,14 +67,20 @@ public class UndoLogCapture {
 
         String operation = extractOperation(node);
 
-        Set<String> pkColumns;
+        PkDetection pkDetection;
         try {
-            pkColumns = detectPrimaryKeys(userConn, schema, tableName);
+            pkDetection = detectPrimaryKeys(userConn, database, schema, tableName);
         } catch (SQLException e) {
+            log.warn("PK detection failed for table {}: {}", tableName, e.getMessage());
             return new UndoOutcome.NotUndoable("pk_detection_failed");
         }
 
+        // Use the actual table name from the database (fixes Calcite uppercasing)
+        tableName = pkDetection.actualTableName();
+        Set<String> pkColumns = pkDetection.pkColumns();
+
         if (pkColumns.isEmpty()) {
+            log.info("Table {} has no primary key, DML not undoable (database={}, schema={})", tableName, database, schema);
             UndoLogEntry entry = buildEntry(
                 sessionId, connectionId, database, schema, tableName,
                 operation, dmlSql, null, null, 0, false
@@ -78,6 +88,8 @@ public class UndoLogCapture {
             undoLogRepo.insert(entry);
             return new UndoOutcome.NotUndoable("no_primary_key");
         }
+
+        log.debug("Detected PK columns for {}: {}", tableName, pkColumns);
 
         if (node instanceof SqlInsert) {
             UndoLogEntry entry = buildEntry(
@@ -140,12 +152,14 @@ public class UndoLogCapture {
     }
 
     public void completeInsertCapture(String undoLogId, int affectedRows, List<Map<String, Object>> generatedKeys, Set<String> pkColumns) {
-        undoLogRepo.findById(undoLogId).ifPresent(entry -> {
+        undoLogRepo.findById(undoLogId).ifPresentOrElse(entry -> {
             List<Map<String, Object>> keys = generatedKeys;
             if (keys == null || keys.isEmpty()) {
                 keys = extractPkValuesFromInsert(entry.originalSql(), pkColumns);
+                log.debug("getGeneratedKeys() empty, extracted PK values from SQL: {}", keys);
             }
             if (keys == null || keys.isEmpty()) {
+                log.warn("Cannot complete INSERT undo capture: no generated keys and failed to extract from SQL (undoLogId={})", undoLogId);
                 return;
             }
             String inverseSql = InverseSqlGenerator.generate("INSERT", entry.tableName(), pkColumns, null, keys);
@@ -156,6 +170,9 @@ public class UndoLogCapture {
             );
             undoLogRepo.deletePending(undoLogId);
             undoLogRepo.insert(updated);
+            log.info("INSERT undo completed: undoLogId={}, inverseSql={}", undoLogId, inverseSql);
+        }, () -> {
+            log.warn("INSERT undo log entry not found: {}", undoLogId);
         });
     }
 
@@ -187,15 +204,43 @@ public class UndoLogCapture {
         return "UNKNOWN";
     }
 
-    private Set<String> detectPrimaryKeys(Connection conn, String schema, String tableName) throws SQLException {
+    /** Result of PK detection: actual table name from the database + PK column names. */
+    record PkDetection(String actualTableName, Set<String> pkColumns) {}
+
+    private PkDetection detectPrimaryKeys(Connection conn, String database, String schema, String tableName) throws SQLException {
         DatabaseMetaData meta = conn.getMetaData();
-        Set<String> pks = new LinkedHashSet<>();
-        try (ResultSet rs = meta.getPrimaryKeys(null, schema, tableName)) {
-            while (rs.next()) {
-                pks.add(rs.getString("COLUMN_NAME"));
+
+        // Calcite uppercases unquoted identifiers, but databases store them differently:
+        // PostgreSQL: stores as lowercase → try lowercase first
+        // MySQL: uses catalog (database name) for table lookup
+        // H2/Oracle: stores as uppercase → Calcite's default works
+        String catalog = database;
+
+        // Try original (Calcite-uppercased), then lowercase, then the connection's current catalog
+        String[] candidates = {tableName, tableName.toLowerCase(Locale.ROOT)};
+        if (catalog != null) {
+            for (String candidate : candidates) {
+                PkDetection result = queryPrimaryKeys(meta, catalog, schema, candidate);
+                if (!result.pkColumns().isEmpty()) return result;
             }
         }
-        return pks;
+        for (String candidate : candidates) {
+            PkDetection result = queryPrimaryKeys(meta, null, schema, candidate);
+            if (!result.pkColumns().isEmpty()) return result;
+        }
+        return new PkDetection(tableName, Set.of());
+    }
+
+    private PkDetection queryPrimaryKeys(DatabaseMetaData meta, String catalog, String schema, String tableName) throws SQLException {
+        Set<String> pks = new LinkedHashSet<>();
+        String actualTableName = tableName;
+        try (ResultSet rs = meta.getPrimaryKeys(catalog, schema, tableName)) {
+            while (rs.next()) {
+                pks.add(rs.getString("COLUMN_NAME"));
+                actualTableName = rs.getString("TABLE_NAME");
+            }
+        }
+        return new PkDetection(actualTableName, pks);
     }
 
     private String buildBeforeStateSelectSql(SqlNode node, String tableName) {
@@ -273,7 +318,7 @@ public class UndoLogCapture {
     }
 
     private static String quoteId(String identifier) {
-        return '"' + identifier.replace("\"", "\"\"") + '"';
+        return identifier;
     }
 
     private List<Map<String, Object>> extractPkValuesFromInsert(String originalSql, Set<String> pkColumns) {
@@ -302,8 +347,11 @@ public class UndoLogCapture {
                 Map<String, Object> row = new java.util.HashMap<>();
                 for (int i = 0; i < values.size() && i < columnNames.size(); i++) {
                     String colName = columnNames.get(i);
-                    if (pkColumns.contains(colName)) {
-                        row.put(colName, sqlLiteralToValue(values.get(i)));
+                    String matchedPkCol = pkColumns.stream()
+                        .filter(pk -> pk.equalsIgnoreCase(colName))
+                        .findFirst().orElse(null);
+                    if (matchedPkCol != null) {
+                        row.put(matchedPkCol, sqlLiteralToValue(values.get(i)));
                     }
                 }
                 if (!row.isEmpty()) {

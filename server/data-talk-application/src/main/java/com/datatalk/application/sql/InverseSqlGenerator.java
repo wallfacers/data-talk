@@ -86,6 +86,6 @@ public class InverseSqlGenerator {
 
     static String quoteIdentifier(String identifier) {
         if (identifier == null) return "";
-        return '"' + identifier.replace("\"", "\"\"") + '"';
+        return identifier;
     }
 }

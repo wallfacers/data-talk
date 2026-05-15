@@ -3,6 +3,7 @@ package com.datatalk.application.sql;
 import com.datatalk.application.connection.ConnectionService;
 import com.datatalk.application.connection.JdbcUrlBuilder;
 import com.datatalk.application.persistence.ConnectionRecord;
+import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.persistence.UndoLogRepository;
 import com.datatalk.domain.undo.UndoLogEntry;
 import com.datatalk.domain.undo.UndoResult;
@@ -17,10 +18,12 @@ import java.sql.Statement;
 public class UndoExecuteService {
 
     private final UndoLogRepository undoLogRepo;
+    private final ConnectionRepository connRepo;
     private final ConnectionService connSvc;
 
-    public UndoExecuteService(UndoLogRepository undoLogRepo, ConnectionService connSvc) {
+    public UndoExecuteService(UndoLogRepository undoLogRepo, ConnectionRepository connRepo, ConnectionService connSvc) {
         this.undoLogRepo = undoLogRepo;
+        this.connRepo = connRepo;
         this.connSvc = connSvc;
     }
 
@@ -44,46 +47,10 @@ public class UndoExecuteService {
             );
         }
 
-        try {
-            int affectedRows = executeInverseSql(entry);
-            undoLogRepo.markUndone(undoLogId, System.currentTimeMillis());
-            return new UndoResult.Undone(affectedRows);
-        } catch (SQLException e) {
-            throw new RuntimeException("Undo execution failed: " + e.getMessage(), e);
-        }
-    }
-
-    private int executeInverseSql(UndoLogEntry entry) throws SQLException {
-        String url = JdbcUrlBuilder.build(entry.connectionId() != null
-            ? buildConnectionRecord(entry) : null);
-        try (Connection c = DriverManager.getConnection(
-                 JdbcUrlBuilder.build(withDatabase(buildConnectionRecord(entry), entry.databaseName())),
-                 "sa", "")) {
-            c.setAutoCommit(false);
-            try (Statement stmt = c.createStatement()) {
-                stmt.setQueryTimeout(30);
-                int total = 0;
-                for (String sql : entry.inverseSql().split(";\\s*\n")) {
-                    if (!sql.isBlank()) {
-                        boolean hasRs = stmt.execute(sql);
-                        if (!hasRs) {
-                            int uc = stmt.getUpdateCount();
-                            if (uc > 0) total += uc;
-                        }
-                    }
-                }
-                c.commit();
-                return total > 0 ? total : entry.affectedRows();
-            } catch (SQLException e) {
-                c.rollback();
-                throw e;
-            }
-        }
-    }
-
-    private ConnectionRecord buildConnectionRecord(UndoLogEntry entry) {
-        throw new UnsupportedOperationException(
-            "Connection lookup by connectionId requires ConnectionRepository — use the overloaded method");
+        ConnectionRecord cr = connRepo.findById(entry.connectionId())
+            .orElseThrow(() -> new IllegalArgumentException("Connection not found: " + entry.connectionId()));
+        String password = connSvc.decryptPassword(cr.id());
+        return execute(undoLogId, confirmed, cr, password);
     }
 
     public UndoResult execute(String undoLogId, boolean confirmed, ConnectionRecord connection, String decryptedPassword) {

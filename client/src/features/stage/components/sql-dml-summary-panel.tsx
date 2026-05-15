@@ -23,6 +23,7 @@ import { useI18n } from '@/i18n/use-i18n'
 import { RotateCcw } from 'lucide-react'
 import { useState, useCallback } from 'react'
 import { useSqlWorkbenchStore } from '@/features/stage/stores/sql-workbench-store'
+import { toast } from 'sonner'
 
 type SqlDmlSummaryPanelProps = {
   result: SqlExecuteResultItem
@@ -53,9 +54,9 @@ export function SqlDmlSummaryPanel({ result, tabId }: SqlDmlSummaryPanelProps) {
         setConfirmOpen(true)
       }
     } catch {
-      // error handled silently — user can retry
+      toast.error(t('stage.queryEditor.undo.failed', { error: t('stage.queryEditor.confirmFailed') }))
     }
-  }, [result.undoLogId, result.resultId, tabId, setUndoConfirming])
+  }, [result.undoLogId, result.resultId, tabId, setUndoConfirming, t])
 
   const handleConfirmUndo = useCallback(async () => {
     if (!result.undoLogId) return
@@ -64,16 +65,24 @@ export function SqlDmlSummaryPanel({ result, tabId }: SqlDmlSummaryPanelProps) {
       const res = await undoDml({ undoLogId: result.undoLogId, confirmed: true, riskAck: 'L2' })
       if (res.status === 'undone') {
         setUndoResult(tabId, result.resultId, 'undone')
+        setConfirmOpen(false)
+        toast.success(t('stage.queryEditor.undo.success'))
       } else {
         setUndoResult(tabId, result.resultId, 'error', res.status)
+        setConfirmOpen(false)
+        toast.error(t('stage.queryEditor.undo.failed', { error: res.status }))
       }
     } catch (e) {
-      setUndoResult(tabId, result.resultId, 'error', e instanceof Error ? e.message : 'Undo failed')
+      const msg = e instanceof Error ? e.message : t('stage.queryEditor.confirmFailed')
+      setUndoResult(tabId, result.resultId, 'error', msg)
+      setConfirmOpen(false)
+      toast.error(t('stage.queryEditor.undo.failed', { error: msg }))
     } finally {
       setUndoing(false)
-      setConfirmOpen(false)
     }
-  }, [result.undoLogId, result.resultId, tabId, setUndoResult])
+  }, [result.undoLogId, result.resultId, tabId, setUndoResult, t])
+
+  const tableName = result.statementText?.match(/\b(?:FROM|INTO|UPDATE)\s+(\w+)/i)?.[1] ?? 'unknown'
 
   return (
     <div className="h-full overflow-auto">
@@ -103,7 +112,7 @@ export function SqlDmlSummaryPanel({ result, tabId }: SqlDmlSummaryPanelProps) {
             <TableCell className="px-3 py-1.5 text-center text-muted-foreground">1</TableCell>
             <TableCell className="px-3 py-1.5">
               {isUndone ? (
-                <span className="text-muted-foreground">{result.title} (undone)</span>
+                <span className="text-muted-foreground">{result.title} ({t('stage.queryEditor.undo.reverted')})</span>
               ) : (
                 result.title
               )}
@@ -120,14 +129,11 @@ export function SqlDmlSummaryPanel({ result, tabId }: SqlDmlSummaryPanelProps) {
                   onClick={handleUndoClick}
                 >
                   <RotateCcw className="h-3 w-3" />
-                  Undo
+                  {t('stage.queryEditor.undo.button')}
                 </Button>
               )}
               {isUndone && (
-                <span className="text-xs text-muted-foreground">Reverted</span>
-              )}
-              {undoError && (
-                <span className="text-xs text-destructive">{undoError}</span>
+                <span className="text-xs text-muted-foreground">{t('stage.queryEditor.undo.reverted')}</span>
               )}
             </TableCell>
           </TableRow>
@@ -137,28 +143,28 @@ export function SqlDmlSummaryPanel({ result, tabId }: SqlDmlSummaryPanelProps) {
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Undo this change?</AlertDialogTitle>
+            <AlertDialogTitle>{t('stage.queryEditor.undo.confirmTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              The following SQL will revert this change:
+              {t('stage.queryEditor.undo.confirmDescription')}
             </AlertDialogDescription>
             <div className="space-y-2 mt-2">
               <pre className="max-h-48 overflow-auto rounded-md bg-muted p-3 text-xs font-mono">
                 {inverseSql}
               </pre>
               <p className="text-sm text-muted-foreground">
-                Affected table: <code className="font-mono">{result.statementText?.match(/\b(?:FROM|INTO|UPDATE)\s+(\w+)/i)?.[1] ?? 'unknown'}</code>
-                {' '}({result.affectedRows ?? 0} rows)
+                {t('stage.queryEditor.undo.affectedTable')}：<code className="font-mono">{tableName}</code>
+                {' '}({t('stage.queryEditor.undo.rows', { count: result.affectedRows ?? 0 })})
               </p>
             </div>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={undoing}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={undoing}>{t('stage.queryEditor.undo.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmUndo}
               disabled={undoing}
               className="bg-[var(--dt-accent-warn)] text-white hover:bg-[var(--dt-accent-warn)]/90"
             >
-              {undoing ? 'Undoing...' : 'Confirm Undo'}
+              {undoing ? t('stage.queryEditor.undo.undoing') : t('stage.queryEditor.undo.confirm')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

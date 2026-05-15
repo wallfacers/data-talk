@@ -218,7 +218,12 @@ public class SqlExecuteService {
                                     c, dmlSql, sessionId, cr.id(),
                                     context.database(), context.schema());
                                 undoOutcomes.add(outcome);
-                            } catch (Exception ignored) {
+                                if (outcome instanceof UndoOutcome.NotUndoable notUndoable) {
+                                    log.info("Batch DML not undoable: {} — reason: {}",
+                                        dmlSql.substring(0, Math.min(60, dmlSql.length())), notUndoable.reason());
+                                }
+                            } catch (Exception e) {
+                                log.warn("Batch undo capture failed: {}", dmlSql.substring(0, Math.min(60, dmlSql.length())), e);
                                 undoOutcomes.add(new UndoOutcome.NotUndoable("capture_failed"));
                             }
                         }
@@ -309,6 +314,9 @@ public class SqlExecuteService {
                                 singlePkColumns = captured.capture().pkColumns();
                                 isInsert = "INSERT".equals(captured.capture().operation());
                                 pendingUndoLogIds.add(singleUndoLogId);
+                                log.info("DML undo captured: {} (undoLogId={}, pkColumns={})",
+                                    statementText.substring(0, Math.min(60, statementText.length())),
+                                    singleUndoLogId, singlePkColumns);
                             } else if (outcome instanceof UndoOutcome.NotUndoable notUndoable) {
                                 log.info("DML not undoable: {} — reason: {}", statementText.substring(0, Math.min(80, statementText.length())), notUndoable.reason());
                             }
@@ -819,7 +827,8 @@ public class SqlExecuteService {
                 Map<String, Object> row = new java.util.HashMap<>();
                 for (int i = 1; i <= colCount; i++) {
                     String colName = md.getColumnLabel(i);
-                    if (pkColumns.contains(colName) || colCount == 1) {
+                    boolean isPkColumn = pkColumns.stream().anyMatch(pk -> pk.equalsIgnoreCase(colName));
+                    if (isPkColumn || colCount == 1) {
                         row.put(colName, rs.getObject(i));
                     }
                 }
