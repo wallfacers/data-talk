@@ -155,15 +155,15 @@ export function DashboardBlock({ json, html, streaming }: DashboardBlockProps) {
         data-status="error"
         className="my-2 rounded-md border border-[var(--dt-status-danger)]"
       >
-        <div className="flex w-full items-start gap-2 px-3 py-2">
+        <div className="flex w-full items-center gap-2 px-3 py-2">
           <button
             type="button"
             data-component="tool-trigger"
             data-open={errorOpen ? 'true' : 'false'}
             onClick={() => setErrorOpen((v) => !v)}
-            className="flex min-w-0 flex-1 select-text items-start gap-2 text-left"
+            className="flex min-w-0 flex-1 select-text items-center gap-2 text-left"
           >
-            <LayoutDashboardIcon className="mt-0.5 h-4 w-4 shrink-0 text-[var(--dt-status-danger)]" />
+            <LayoutDashboardIcon className="h-4 w-4 shrink-0 text-[var(--dt-status-danger)]" />
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
                 <span className="font-medium text-[var(--dt-status-danger)] whitespace-nowrap">
@@ -178,7 +178,7 @@ export function DashboardBlock({ json, html, streaming }: DashboardBlockProps) {
             </div>
             <span
               className={cn(
-                'mt-0.5 flex size-4 shrink-0 items-center justify-center text-muted-foreground transition-transform',
+                'flex size-4 shrink-0 items-center justify-center text-muted-foreground transition-transform',
                 errorOpen && 'rotate-180',
               )}
             >
