@@ -18,6 +18,8 @@ import com.datatalk.domain.undo.UndoCapture;
 import com.datatalk.domain.undo.UndoOutcome;
 import com.datatalk.domain.preference.UserPreferences;
 import com.datatalk.dto.ResolvedDataContextDto;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -26,11 +28,15 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 public class SqlExecuteService {
+
+    private static final Logger log = LoggerFactory.getLogger(SqlExecuteService.class);
 
     public sealed interface Outcome permits Executed, RequiresConfirmation, ConfirmationInvalid {
         ResolvedDataContextDto resolvedContext();
@@ -289,6 +295,8 @@ public class SqlExecuteService {
                     boolean isDml = sqlExecutionPlanner.isDml(statementText);
                     String singleUndoLogId = null;
                     Boolean singleUndoable = null;
+                    Set<String> singlePkColumns = null;
+                    boolean isInsert = false;
 
                     if (isDml) {
                         try {
@@ -298,17 +306,23 @@ public class SqlExecuteService {
                             if (outcome instanceof UndoOutcome.Captured captured) {
                                 singleUndoLogId = captured.capture().undoLogId();
                                 singleUndoable = true;
+                                singlePkColumns = captured.capture().pkColumns();
+                                isInsert = "INSERT".equals(captured.capture().operation());
                                 pendingUndoLogIds.add(singleUndoLogId);
+                            } else if (outcome instanceof UndoOutcome.NotUndoable notUndoable) {
+                                log.info("DML not undoable: {} — reason: {}", statementText.substring(0, Math.min(80, statementText.length())), notUndoable.reason());
                             }
-                        } catch (Exception ignored) {
-                            // undo capture failure should not block DML execution
+                        } catch (Exception e) {
+                            log.warn("Undo capture failed for DML: {}", statementText.substring(0, Math.min(80, statementText.length())), e);
                         }
                     }
 
                     long started = System.currentTimeMillis();
                     try (Statement stmt = c.createStatement()) {
                         stmt.setQueryTimeout(30);
-                        boolean hasResultSet = stmt.execute(statementText);
+                        boolean hasResultSet = isInsert
+                            ? stmt.execute(statementText, Statement.RETURN_GENERATED_KEYS)
+                            : stmt.execute(statementText);
                         long executionMs = System.currentTimeMillis() - started;
                         if (hasResultSet) {
                             pendingDmlSummary = flushPendingDmlSummary(results, pendingDmlSummary);
@@ -332,6 +346,14 @@ public class SqlExecuteService {
                             }
                         } else {
                             int affectedRows = normalizeAffectedRows(stmt.getUpdateCount());
+                            if (isInsert && singleUndoLogId != null && singlePkColumns != null) {
+                                try {
+                                    List<Map<String, Object>> generatedKeys = readGeneratedKeys(stmt, singlePkColumns);
+                                    undoLogCapture.completeInsertCapture(singleUndoLogId, affectedRows, generatedKeys, singlePkColumns);
+                                } catch (Exception e) {
+                                    log.warn("Failed to complete INSERT undo capture for {}: {}", singleUndoLogId, e.getMessage());
+                                }
+                            }
                             pendingDmlSummary = appendPendingDmlSummary(
                                 pendingDmlSummary,
                                 statementIndex,
@@ -786,6 +808,27 @@ public class SqlExecuteService {
             }
         }
         return null;
+    }
+
+    private static List<Map<String, Object>> readGeneratedKeys(Statement stmt, Set<String> pkColumns) throws SQLException {
+        List<Map<String, Object>> keys = new ArrayList<>();
+        try (ResultSet rs = stmt.getGeneratedKeys()) {
+            ResultSetMetaData md = rs.getMetaData();
+            int colCount = md.getColumnCount();
+            while (rs.next()) {
+                Map<String, Object> row = new java.util.HashMap<>();
+                for (int i = 1; i <= colCount; i++) {
+                    String colName = md.getColumnLabel(i);
+                    if (pkColumns.contains(colName) || colCount == 1) {
+                        row.put(colName, rs.getObject(i));
+                    }
+                }
+                if (!row.isEmpty()) {
+                    keys.add(row);
+                }
+            }
+        }
+        return keys;
     }
 
     private record ResultSetData(

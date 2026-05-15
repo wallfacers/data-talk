@@ -2,6 +2,7 @@ package com.datatalk.domain.undo;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public record UndoCapture(
     boolean undoable,
@@ -10,5 +11,6 @@ public record UndoCapture(
     String inverseSql,
     String tableName,
     String operation,
-    int affectedRows
+    int affectedRows,
+    Set<String> pkColumns
 ) {}

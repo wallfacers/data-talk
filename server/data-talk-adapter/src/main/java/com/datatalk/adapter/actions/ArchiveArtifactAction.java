@@ -3,6 +3,7 @@ package com.datatalk.adapter.actions;
 import com.datatalk.application.channel.IdGenerator;
 import com.datatalk.application.fileartifact.FileArtifactService;
 import com.datatalk.application.fileartifact.FileArtifactService.ArchiveCandidateOutcome;
+import com.datatalk.application.fileartifact.PathSafetyError;
 import com.datatalk.domain.action.ActionContext;
 import com.datatalk.domain.action.ActionHandler;
 import com.datatalk.domain.action.Category;
@@ -58,17 +59,18 @@ public class ArchiveArtifactAction implements ActionHandler<Map, Map> {
 
     @Override
     public Map<String, Object> outputSchema() {
+        Map<String, Object> properties = new LinkedHashMap<>();
+        properties.put("ok", Map.of("type", "boolean"));
+        properties.put("fileArtifactId", Map.of("type", "string"));
+        properties.put("status", Map.of("type", "string"));
+        properties.put("physicalPath", Map.of("type", "string"));
+        properties.put("warn", Map.of("type", "string"));
+        properties.put("error", Map.of("type", "string"));
+        properties.put("hint", Map.of("type", "string"));
         return Map.of(
             "type", "object",
             "required", List.of("ok"),
-            "properties", Map.of(
-                "ok", Map.of("type", "boolean"),
-                "fileArtifactId", Map.of("type", "string"),
-                "status", Map.of("type", "string"),
-                "physicalPath", Map.of("type", "string"),
-                "warn", Map.of("type", "string"),
-                "error", Map.of("type", "string")
-            )
+            "properties", properties
         );
     }
 
@@ -87,12 +89,12 @@ public class ArchiveArtifactAction implements ActionHandler<Map, Map> {
     public CompletionStage<Map> handle(ActionContext ctx, Map input) {
         String sessionId = ctx.sessionId();
         if (sessionId == null || sessionId.isBlank()) {
-            return CompletableFuture.completedFuture(errorResult("path_not_found"));
+            return CompletableFuture.completedFuture(errorResult("path_not_found", null));
         }
 
         String path = input.get("path") != null ? String.valueOf(input.get("path")).trim() : "";
         if (path.isEmpty()) {
-            return CompletableFuture.completedFuture(errorResult("path_not_found"));
+            return CompletableFuture.completedFuture(errorResult("path_not_found", null));
         }
 
         String kindRaw = input.get("kind") != null ? String.valueOf(input.get("kind")).trim() : "";
@@ -100,7 +102,7 @@ public class ArchiveArtifactAction implements ActionHandler<Map, Map> {
         try {
             kind = FileArtifactKind.fromDb(kindRaw);
         } catch (IllegalArgumentException e) {
-            return CompletableFuture.completedFuture(errorResult("path_not_found"));
+            return CompletableFuture.completedFuture(errorResult("path_not_found", null));
         }
 
         String title = input.get("title") != null ? String.valueOf(input.get("title")).trim() : null;
@@ -128,13 +130,30 @@ public class ArchiveArtifactAction implements ActionHandler<Map, Map> {
         }
 
         if (outcome instanceof ArchiveCandidateOutcome.PathRejected r) {
-            return CompletableFuture.completedFuture(errorResult(r.error().wire()));
+            return CompletableFuture.completedFuture(errorResult(r.error().wire(), hintFor(r.error())));
         }
 
-        return CompletableFuture.completedFuture(errorResult("path_not_found"));
+        return CompletableFuture.completedFuture(errorResult("path_not_found", null));
     }
 
-    private static Map<String, Object> errorResult(String error) {
-        return Map.of("ok", false, "error", error);
+    private static Map<String, Object> errorResult(String error, String hint) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("ok", false);
+        m.put("error", error);
+        if (hint != null) {
+            m.put("hint", hint);
+        }
+        return m;
+    }
+
+    private static String hintFor(PathSafetyError err) {
+        return switch (err) {
+            case PATH_OUTSIDE_SESSION_DIR -> "archive_artifact requires the file to be located under the current session's working directory (~/.data-talk/opencode/<sessionId>/...). Move the file under the session dir, or skip archiving for ad-hoc artifacts.";
+            case PATH_NOT_FOUND -> "The requested path does not exist on disk. Confirm the file was actually written before calling archive_artifact.";
+            case PATH_IS_DIRECTORY -> "archive_artifact only accepts regular files, not directories.";
+            case PATH_IS_SYSTEM -> "Cannot archive files from system directories (/proc, /sys, /etc, etc).";
+            case PATH_CONTAINS_SYMLINK -> "archive_artifact rejects symlinks to prevent path traversal attacks. Pass the real file path.";
+            case PATH_TOCTOU_RACE -> "Path safety re-check failed (file changed between validations). Retry the call.";
+        };
     }
 }

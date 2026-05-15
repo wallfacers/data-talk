@@ -1,4 +1,10 @@
-## MODIFIED Requirements
+# agent-skill-routing Specification
+
+## Purpose
+
+定义 OpenCode AI 通过 AGENTS.md 与 SKILL.md 进行意图路由的契约：AGENTS.md 骨架体积、Trigger Gate 表与 skill 的双向闭合关系、`SkillResourceSyncer` 与 classpath 资源的一致性。该 spec 保证 AI 可基于精简骨架快速找到匹配 skill，且打包资源与运行时注册不会漂移。
+
+## Requirements
 
 ### Requirement: AGENTS.md 骨架体积上限
 
@@ -50,11 +56,3 @@ AGENTS.md 中的 `## Trigger Gate` 章节 SHALL 以 Markdown 表格出现，每�
 
 - **WHEN** 扫描 `classpath:/skills/*/SKILL.md` 的目录名集合
 - **THEN** 该集合等于 `OpenCodeGatewayBeans` 中 `syncSkill` 调用的参数集合
-
-## REMOVED Requirements
-
-### Requirement: SKILL.md frontmatter 契约（ingestion 部分）
-
-**Reason**: `data-ingestion` skill 被删除，替换为 `data-collection` skill。新 skill 的 frontmatter 遵循相同的 `name` + `description` 契约。
-
-**Migration**: `data-ingestion/SKILL.md` → `data-collection/SKILL.md`，recipes 和 examples 完全重写。

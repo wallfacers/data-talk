@@ -103,3 +103,9 @@ title: Q2 2026 revenue summary
 ```
 
 This is a fallback only. The tool call (`datatalk_archive_artifact`) remains the primary mechanism; rely on frontmatter only when re-issuing a tool call is not practical (e.g., the file was produced as a side effect of another action and the archive moment has already passed).
+
+## Known Limits
+
+- **Path must live under the session working directory.** `datatalk_archive_artifact` only accepts files inside `~/.data-talk/opencode/<sessionId>/...`. Paths outside the active session's directory return `{ok: false, error: "path_outside_session_dir"}` with a human-readable `hint` field explaining the constraint. To archive an ad-hoc file, move it under the session dir first, or accept that it stays unarchived.
+- **Inspect the `hint` field on every error.** All `PathSafetyError` rejections (`path_not_found`, `path_is_directory`, `path_is_system`, `path_contains_symlink`, `path_toctou_race`, `path_outside_session_dir`) now carry a `hint` string describing what to do next. Surface that hint to the user instead of guessing.
+- **No active session ⇒ `path_not_found`.** If the action is invoked outside a session (`ctx.sessionId()` is null/blank), it short-circuits to `path_not_found` for safety — bind a session before archiving.

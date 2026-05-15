@@ -527,7 +527,15 @@ export class QueryEditorAdapter implements UIObject {
           if (p.useSessionContext === true && !hasConnectionField) {
             const sourceCheck = normalizeQueryEditorPayload(tab?.payload).source
             if (sourceCheck === 'user') {
-              return { success: true, data: { noop: true, reason: 'source=user editor cannot follow session' } }
+              return {
+                success: true,
+                data: {
+                  noop: true,
+                  reason: 'user_editor_pinned_to_origin',
+                  detail:
+                    "This editor was opened by the user and is explicitly bound to its origin session. AI cannot make it follow the active session; use an AI-opened editor or have the user explicitly switch context.",
+                },
+              }
             }
           }
           // database: p.database may be `undefined` (key omitted by AI). Downstream

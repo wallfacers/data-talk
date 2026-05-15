@@ -86,7 +86,7 @@ public class UndoLogCapture {
             );
             undoLogRepo.insert(entry);
             return new UndoOutcome.Captured(new UndoCapture(
-                true, entry.id(), null, null, tableName, operation, 0
+                true, entry.id(), null, null, tableName, operation, 0, pkColumns
             ));
         }
 
@@ -135,13 +135,20 @@ public class UndoLogCapture {
         undoLogRepo.insert(entry);
 
         return new UndoOutcome.Captured(new UndoCapture(
-            true, entry.id(), beforeState, inverseSql, tableName, operation, count
+            true, entry.id(), beforeState, inverseSql, tableName, operation, count, pkColumns
         ));
     }
 
-    public void completeInsertCapture(String undoLogId, int affectedRows, List<Map<String, Object>> generatedKeys) {
+    public void completeInsertCapture(String undoLogId, int affectedRows, List<Map<String, Object>> generatedKeys, Set<String> pkColumns) {
         undoLogRepo.findById(undoLogId).ifPresent(entry -> {
-            String inverseSql = InverseSqlGenerator.generate("INSERT", entry.tableName(), Set.of("id"), null, generatedKeys);
+            List<Map<String, Object>> keys = generatedKeys;
+            if (keys == null || keys.isEmpty()) {
+                keys = extractPkValuesFromInsert(entry.originalSql(), pkColumns);
+            }
+            if (keys == null || keys.isEmpty()) {
+                return;
+            }
+            String inverseSql = InverseSqlGenerator.generate("INSERT", entry.tableName(), pkColumns, null, keys);
             UndoLogEntry updated = new UndoLogEntry(
                 entry.id(), entry.sessionId(), entry.connectionId(), entry.databaseName(),
                 entry.schemaName(), entry.tableName(), entry.operation(), entry.originalSql(),
@@ -267,5 +274,58 @@ public class UndoLogCapture {
 
     private static String quoteId(String identifier) {
         return '"' + identifier.replace("\"", "\"\"") + '"';
+    }
+
+    private List<Map<String, Object>> extractPkValuesFromInsert(String originalSql, Set<String> pkColumns) {
+        try {
+            SqlNode node = SqlParser.create(originalSql).parseStmt();
+            if (!(node instanceof SqlInsert insert)) return null;
+            SqlNode source = insert.getSource();
+            if (!(source instanceof org.apache.calcite.sql.SqlBasicCall call)) return null;
+            List<SqlNode> operands = call.getOperandList();
+            if (operands == null || operands.isEmpty()) return null;
+
+            List<String> columnNames = new ArrayList<>();
+            if (insert.getTargetColumnList() != null) {
+                for (SqlNode col : insert.getTargetColumnList()) {
+                    if (col instanceof SqlIdentifier id && !id.names.isEmpty()) {
+                        columnNames.add(id.names.get(id.names.size() - 1));
+                    }
+                }
+            }
+
+            List<Map<String, Object>> result = new ArrayList<>();
+            for (SqlNode operand : operands) {
+                if (!(operand instanceof org.apache.calcite.sql.SqlBasicCall rowCtor)) continue;
+                List<SqlNode> values = rowCtor.getOperandList();
+                if (values == null) continue;
+                Map<String, Object> row = new java.util.HashMap<>();
+                for (int i = 0; i < values.size() && i < columnNames.size(); i++) {
+                    String colName = columnNames.get(i);
+                    if (pkColumns.contains(colName)) {
+                        row.put(colName, sqlLiteralToValue(values.get(i)));
+                    }
+                }
+                if (!row.isEmpty()) {
+                    result.add(row);
+                }
+            }
+            return result.isEmpty() ? null : result;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static Object sqlLiteralToValue(SqlNode node) {
+        if (node instanceof org.apache.calcite.sql.SqlNumericLiteral num) {
+            return num.bigDecimalValue();
+        }
+        if (node instanceof org.apache.calcite.sql.SqlLiteral lit) {
+            String s = lit.toValue();
+            if ("TRUE".equalsIgnoreCase(s)) return true;
+            if ("FALSE".equalsIgnoreCase(s)) return false;
+            return s;
+        }
+        return node.toString();
     }
 }

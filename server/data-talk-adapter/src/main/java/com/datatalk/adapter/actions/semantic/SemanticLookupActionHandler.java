@@ -2,7 +2,10 @@ package com.datatalk.adapter.actions.semantic;
 
 import com.datatalk.application.semantic.SemanticModelRepository;
 import com.datatalk.domain.action.*;
+import com.datatalk.domain.error.DataTalkException;
 import com.datatalk.domain.semantic.SemanticModel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -20,6 +23,8 @@ import java.util.concurrent.CompletionStage;
     category = { Category.METADATA }
 )
 public class SemanticLookupActionHandler implements ActionHandler<Map, Map> {
+
+    private static final Logger log = LoggerFactory.getLogger(SemanticLookupActionHandler.class);
 
     private final SemanticModelRepository repository;
 
@@ -59,54 +64,104 @@ public class SemanticLookupActionHandler implements ActionHandler<Map, Map> {
     @Override
     @SuppressWarnings("unchecked")
     public CompletionStage<Map> handle(ActionContext ctx, Map input) {
-        String query = ((String) input.get("query")).toLowerCase();
-        String kind = (String) input.getOrDefault("kind", null);
         String connectionId = ctx.connectionId();
+        Object rawQuery = input != null ? input.get("query") : null;
+        String queryStr = rawQuery instanceof String s ? s : null;
 
-        List<Map<String, Object>> matches = new ArrayList<>();
-        for (String domain : repository.listDomains(connectionId)) {
-            var modelOpt = repository.loadDomain(connectionId, domain);
-            if (modelOpt.isEmpty()) continue;
-            SemanticModel m = modelOpt.get();
-
-            if (kind == null || "entity".equals(kind)) {
-                for (var e : m.entities()) {
-                    if (matchesQuery(query, e.name(), e.description())) {
-                        matches.add(Map.of("kind", "entity", "name", e.name(), "domain", domain,
-                            "table", e.physical().table(), "type", e.type()));
-                    }
-                }
-            }
-            if (kind == null || "measure".equals(kind)) {
-                for (var e : m.measures()) {
-                    if (matchesQuery(query, e.name(), e.labelZh(), e.labelEn(), e.description())) {
-                        matches.add(Map.of("kind", "measure", "name", e.name(), "domain", domain,
-                            "label_zh", e.labelZh(), "label_en", e.labelEn(), "agg", e.agg()));
-                    }
-                }
-            }
-            if (kind == null || "metric".equals(kind)) {
-                for (var e : m.metrics()) {
-                    if (matchesQuery(query, e.name(), e.labelZh(), e.labelEn(), e.description())) {
-                        matches.add(Map.of("kind", "metric", "name", e.name(), "domain", domain,
-                            "label_zh", e.labelZh(), "label_en", e.labelEn(), "type", e.type()));
-                    }
-                }
-            }
-            if (kind == null || "dimension".equals(kind)) {
-                for (var e : m.dimensions()) {
-                    if (matchesQuery(query, e.name(), e.labelZh(), e.labelEn(), e.description())) {
-                        matches.add(Map.of("kind", "dimension", "name", e.name(), "domain", domain,
-                            "label_zh", e.labelZh(), "label_en", e.labelEn(), "dim_type", e.type()));
-                    }
-                }
-            }
+        if (queryStr == null || queryStr.isBlank()) {
+            Map<String, Object> empty = new LinkedHashMap<>();
+            empty.put("matches", List.of());
+            empty.put("total", 0);
+            empty.put("warning", "empty_query");
+            return CompletableFuture.completedFuture(empty);
         }
 
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("matches", matches);
-        result.put("total", matches.size());
-        return CompletableFuture.completedFuture(result);
+        if (connectionId == null || connectionId.isBlank()) {
+            Map<String, Object> empty = new LinkedHashMap<>();
+            empty.put("matches", List.of());
+            empty.put("total", 0);
+            empty.put("warning", "no_active_connection");
+            return CompletableFuture.completedFuture(empty);
+        }
+
+        String query = queryStr.toLowerCase();
+        String kind = (String) (input != null ? input.getOrDefault("kind", null) : null);
+
+        try {
+            List<Map<String, Object>> matches = new ArrayList<>();
+            for (String domain : repository.listDomains(connectionId)) {
+                var modelOpt = repository.loadDomain(connectionId, domain);
+                if (modelOpt.isEmpty()) continue;
+                SemanticModel m = modelOpt.get();
+
+                if (kind == null || "entity".equals(kind)) {
+                    for (var e : m.entities()) {
+                        if (matchesQuery(query, e.name(), e.description())) {
+                            Map<String, Object> match = new LinkedHashMap<>();
+                            match.put("kind", "entity");
+                            match.put("name", e.name());
+                            match.put("domain", domain);
+                            match.put("table", e.physical() != null ? e.physical().table() : null);
+                            match.put("type", e.type());
+                            matches.add(match);
+                        }
+                    }
+                }
+                if (kind == null || "measure".equals(kind)) {
+                    for (var e : m.measures()) {
+                        if (matchesQuery(query, e.name(), e.labelZh(), e.labelEn(), e.description())) {
+                            Map<String, Object> match = new LinkedHashMap<>();
+                            match.put("kind", "measure");
+                            match.put("name", e.name());
+                            match.put("domain", domain);
+                            match.put("label_zh", e.labelZh());
+                            match.put("label_en", e.labelEn());
+                            match.put("agg", e.agg());
+                            matches.add(match);
+                        }
+                    }
+                }
+                if (kind == null || "metric".equals(kind)) {
+                    for (var e : m.metrics()) {
+                        if (matchesQuery(query, e.name(), e.labelZh(), e.labelEn(), e.description())) {
+                            Map<String, Object> match = new LinkedHashMap<>();
+                            match.put("kind", "metric");
+                            match.put("name", e.name());
+                            match.put("domain", domain);
+                            match.put("label_zh", e.labelZh());
+                            match.put("label_en", e.labelEn());
+                            match.put("type", e.type());
+                            matches.add(match);
+                        }
+                    }
+                }
+                if (kind == null || "dimension".equals(kind)) {
+                    for (var e : m.dimensions()) {
+                        if (matchesQuery(query, e.name(), e.labelZh(), e.labelEn(), e.description())) {
+                            Map<String, Object> match = new LinkedHashMap<>();
+                            match.put("kind", "dimension");
+                            match.put("name", e.name());
+                            match.put("domain", domain);
+                            match.put("label_zh", e.labelZh());
+                            match.put("label_en", e.labelEn());
+                            match.put("dim_type", e.type());
+                            matches.add(match);
+                        }
+                    }
+                }
+            }
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("matches", matches);
+            result.put("total", matches.size());
+            return CompletableFuture.completedFuture(result);
+        } catch (RuntimeException ex) {
+            log.error("semantic_lookup failed: connectionId={} query={}", connectionId, query, ex);
+            String detail = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
+            DataTalkException wrapped = new DataTalkException("semantic.lookup_failed", detail, false);
+            wrapped.initCause(ex);
+            throw wrapped;
+        }
     }
 
     private static boolean matchesQuery(String query, String... fields) {

@@ -227,12 +227,13 @@ function ColumnRow({
   return (
     <li
       className={[
-        'group relative flex items-center justify-between border-b border-border-subtle last:border-b-0 hover:bg-interaction-hover',
+        'group relative flex items-center justify-between border-b last:border-b-0 hover:bg-interaction-hover',
         rowMinHeight,
         rowPadding,
         rowHorizontalPadding,
         rowGap,
       ].join(' ')}
+      style={{ borderBottomColor: 'color-mix(in srgb, var(--dt-text-base) 18%, transparent)' }}
       data-testid={`er-row-${column.name}`}
       data-er-row-role={role}
     >

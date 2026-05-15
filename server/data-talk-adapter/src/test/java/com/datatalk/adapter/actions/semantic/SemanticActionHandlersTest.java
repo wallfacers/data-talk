@@ -3,6 +3,7 @@ package com.datatalk.adapter.actions.semantic;
 import com.datatalk.application.semantic.SemanticModelRepository;
 import com.datatalk.application.semantic.VerifiedQueryRouter;
 import com.datatalk.domain.action.ActionContext;
+import com.datatalk.domain.error.DataTalkException;
 import com.datatalk.domain.event.DtEvent;
 import com.datatalk.domain.semantic.*;
 import org.junit.jupiter.api.Test;
@@ -11,6 +12,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
+
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -92,6 +95,119 @@ class SemanticActionHandlersTest {
 
         assertThat((List<?>) result.get("matches")).isEmpty();
         assertThat(result).containsEntry("total", 0);
+    }
+
+    // ---- SemanticLookupActionHandler: defensive guards (T29) ----
+
+    @Test
+    void semanticLookup_missingQueryField_returnsEmptyMatchesWithWarning() throws Exception {
+        var handler = new SemanticLookupActionHandler(repo);
+
+        Map result = handler.handle(ctx("conn1"), Map.of()).toCompletableFuture().get();
+
+        assertThat((List<?>) result.get("matches")).isEmpty();
+        assertThat(result).containsEntry("total", 0);
+        assertThat(result).containsEntry("warning", "empty_query");
+        verifyNoInteractions(repo);
+    }
+
+    @Test
+    void semanticLookup_blankQueryString_returnsEmptyMatchesWithWarning() throws Exception {
+        var handler = new SemanticLookupActionHandler(repo);
+
+        Map result = handler.handle(ctx("conn1"), Map.of("query", "   "))
+            .toCompletableFuture().get();
+
+        assertThat((List<?>) result.get("matches")).isEmpty();
+        assertThat(result).containsEntry("warning", "empty_query");
+    }
+
+    @Test
+    void semanticLookup_noModelDirectory_returnsEmptyMatchesWithoutWarning() throws Exception {
+        when(repo.listDomains("conn_no_yaml")).thenReturn(List.of());
+        var handler = new SemanticLookupActionHandler(repo);
+
+        Map result = handler.handle(ctx("conn_no_yaml"), Map.of("query", "订单"))
+            .toCompletableFuture().get();
+
+        assertThat((List<?>) result.get("matches")).isEmpty();
+        assertThat(result).containsEntry("total", 0);
+        assertThat(result).doesNotContainKey("warning");
+    }
+
+    @Test
+    void semanticLookup_entityWithNullDescription_returnsMatchWithoutNPE() throws Exception {
+        // Entity.description is the only currently-nullable extracted-or-matched field.
+        // Verifies the matchesQuery path tolerates null description and the response
+        // builder (LinkedHashMap-based, not Map.of) accepts a model with null optionals.
+        SemanticModel model = new SemanticModel(
+            "orders", 1, "Orders",
+            List.of(new Entity("orders_table_xyz", "fact",
+                new Entity.Physical(null, null, "orders_phys"),
+                List.of("id"), List.of(), null /* description */)),
+            List.of(),
+            List.of(),
+            List.of(),
+            Map.of(),
+            List.of(),
+            Instant.now(),
+            "test"
+        );
+        when(repo.listDomains("conn1")).thenReturn(List.of("orders"));
+        when(repo.loadDomain("conn1", "orders")).thenReturn(Optional.of(model));
+        var handler = new SemanticLookupActionHandler(repo);
+
+        Map result = handler.handle(ctx("conn1"), Map.of("query", "orders_table_xyz"))
+            .toCompletableFuture().get();
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> matches = (List<Map<String, Object>>) result.get("matches");
+        assertThat(matches).anySatisfy(m -> {
+            assertThat(m).containsEntry("kind", "entity");
+            assertThat(m).containsEntry("name", "orders_table_xyz");
+            assertThat(m).containsEntry("table", "orders_phys");
+        });
+    }
+
+    @Test
+    void semanticLookup_nullConnectionId_shortCircuitsBeforeRepository() throws Exception {
+        // Real FsSemanticModelRepository NPEs at Path.resolve(null) — verified
+        // in production stack trace. Handler must short-circuit BEFORE touching
+        // the repository when connectionId is missing.
+        var handler = new SemanticLookupActionHandler(repo);
+
+        Map result = handler.handle(ctx(null), Map.of("query", "订单"))
+            .toCompletableFuture().get();
+
+        assertThat((List<?>) result.get("matches")).isEmpty();
+        assertThat(result).containsEntry("total", 0);
+        assertThat(result).containsEntry("warning", "no_active_connection");
+        verifyNoInteractions(repo);
+    }
+
+    @Test
+    void semanticLookup_blankConnectionId_shortCircuitsBeforeRepository() throws Exception {
+        var handler = new SemanticLookupActionHandler(repo);
+
+        Map result = handler.handle(ctx("   "), Map.of("query", "订单"))
+            .toCompletableFuture().get();
+
+        assertThat(result).containsEntry("warning", "no_active_connection");
+        verifyNoInteractions(repo);
+    }
+
+    @Test
+    void semanticLookup_repositoryThrowsRuntimeException_translatesToDataTalkException() {
+        when(repo.listDomains("conn1")).thenThrow(new IllegalStateException("disk full"));
+        var handler = new SemanticLookupActionHandler(repo);
+
+        // handle() synchronously throws on the wrapped exception path (the success
+        // path returns a completed future; the error path skips the future altogether).
+        assertThatThrownBy(() -> handler.handle(ctx("conn1"), Map.of("query", "x")))
+            .isInstanceOf(DataTalkException.class)
+            .hasMessageContaining("disk full")
+            .hasCauseInstanceOf(IllegalStateException.class)
+            .satisfies(t -> assertThat(((DataTalkException) t).code()).isEqualTo("semantic.lookup_failed"));
     }
 
     // ---- VerifiedQueryFindActionHandler ----

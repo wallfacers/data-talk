@@ -127,3 +127,9 @@ Apply Tab Reuse vs New Tab from `[[tab-management]]`.
 3. Targeted edit: `datatalk_ui_exec object=query_editor action=apply_text_edits` — see `[[ui-contract]]`.
 4. On conflict: follow the recovery steps in `[[concurrency-contract]]`.
 5. If execution context must change, use `datatalk_ui_exec object=query_editor action=set_context`.
+
+## Known Limits
+
+- **User-source editors are pinned to their origin session.** Calling `set_context` with `useSessionContext: true` on a user-opened editor returns a graceful noop: `{success: true, data: {noop: true, reason: "user_editor_pinned_to_origin", detail: "..."}}`. This is by design — AI cannot make a user-bound editor follow the active session. Open a new AI-source editor instead, or ask the user to switch context manually.
+- **`reason: "user_editor_pinned_to_origin"` is the structured signal.** When you see this reason, treat the call as successfully ignored (idempotent noop), not failed. The `detail` field carries the human-readable explanation for surfacing to the user.
+- **You can still override connection/database/schema on user editors.** The pin only blocks "follow active session"; explicit `connectionId` / `database` / `schema` parameters in the same `set_context` call still apply.

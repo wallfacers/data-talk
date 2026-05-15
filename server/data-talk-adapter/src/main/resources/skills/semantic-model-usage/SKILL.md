@@ -87,3 +87,9 @@ User asks a data question
 - Structural changes (measures, entities, metrics) MUST go through `propose_change` → `pending/` → user review
 - All 6 actions require an active connection — if no connection is bound, they return `NO_ACTIVE_CONNECTION`
 - The `{{SEMANTIC_MODEL_DIGEST}}` in AGENTS.md provides a live summary of the current connection's semantic model
+
+## Known Limits
+
+- **Missing model returns empty matches, never errors.** `datatalk_semantic_lookup` against a connection with no `.model.yaml` files returns `{matches: [], total: 0}`. Do not interpret an empty list as a failure — the connection simply has no semantic model yet. Use `datatalk_skill_create` or `datatalk_semantic_propose_change` to bootstrap one.
+- **Empty `query` is tolerated.** Calling `datatalk_semantic_lookup` with `query=""` or whitespace returns `{matches: [], total: 0, warning: "empty_query"}` rather than an error. Validate inputs before calling if you want to short-circuit.
+- **Unexpected failures translate to `semantic.lookup_failed`.** If the action throws (e.g., corrupt YAML), the response carries error code `semantic.lookup_failed` with the underlying message — retry with a narrower `kind` filter or inspect the connection's `~/.data-talk/semantic/<connectionId>/` directory.
