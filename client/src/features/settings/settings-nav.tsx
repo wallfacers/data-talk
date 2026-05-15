@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils'
-import { Settings, Database, Box, Sparkles, Wrench, KeyRound } from 'lucide-react'
+import { Settings, Database, Box, Sparkles, Wrench } from 'lucide-react'
 import { useI18n } from '@/i18n/use-i18n'
 import type { Section } from './settings-dialog-store'
 
@@ -18,7 +18,6 @@ export function SettingsNav({ activeSection, onSectionChange }: SettingsNavProps
       { key: 'data-sources', label: t('settings.dataSources'), icon: Database },
       { key: 'providers', label: t('settings.providers'), icon: Box },
       { key: 'models', label: t('settings.models'), icon: Sparkles },
-      { key: 'credentials', label: t('settings.credentials'), icon: KeyRound },
       { key: 'maintenance', label: t('maintenance.tab.title'), icon: Wrench },
     ]},
   ]

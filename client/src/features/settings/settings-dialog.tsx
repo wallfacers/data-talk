@@ -7,7 +7,6 @@ import { DataSourcesPage } from './data-sources/data-sources-page'
 import { ProvidersPage } from './providers/providers-page'
 import { ModelsPage } from './models/models-page'
 import { MaintenancePage } from './maintenance/maintenance-page'
-import { CredentialsPage } from './credentials/credentials-page'
 import { useSettingsDialogStore, type Section } from './settings-dialog-store'
 
 const PAGE_BY_SECTION: Record<Section, React.ReactNode> = {
@@ -15,7 +14,6 @@ const PAGE_BY_SECTION: Record<Section, React.ReactNode> = {
   'data-sources': <DataSourcesPage />,
   'providers': <ProvidersPage />,
   'models': <ModelsPage />,
-  'credentials': <CredentialsPage />,
   'maintenance': <MaintenancePage />,
 }
 

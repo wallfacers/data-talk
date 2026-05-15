@@ -1,9 +1,0 @@
-{
-  "tool": "datatalk_http_request",
-  "input": {
-    "url": "https://data.example.com/export.csv",
-    "method": "GET",
-    "payloadFormat": "csv",
-    "timeoutMs": 120000
-  }
-}

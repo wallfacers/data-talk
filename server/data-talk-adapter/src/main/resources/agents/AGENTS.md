@@ -28,6 +28,8 @@ Use the **server data workflow** only when the assistant must inspect query resu
 
 If the user explicitly asks to use the SQL editor, current editor, workspace, or query editor result grid, the query editor UI workflow wins. If the user explicitly asks for analysis, reporting, insight, trend explanation, or charting, the server data workflow may be used.
 
+If the user wants to collect/scrape/fetch external data, or write/run a Python/Node.js data collection script, route to `datatalk_script_run` and open a `script_editor` tab.
+
 ## Context Model
 
 There are two separate contexts:
@@ -68,12 +70,9 @@ Tool catalogue — one-line purpose + owning skill. Required input details, erro
 | `datatalk_ui_read` | Read workspace / query_editor / er_inspector / er_designer state | skill:ui-contract |
 | `datatalk_ui_patch` | JSON-Patch a query_editor / er_inspector / er_designer / dashboard | skill:ui-contract |
 | `datatalk_ui_exec` | Execute supported actions on workspace / query_editor / er_inspector / er_designer / dashboard | skill:ui-contract |
-| `datatalk_http_request` | Fetch external payload (REST / CSV / HTML) for ingestion | skill:data-ingestion |
-| `datatalk_infer_ingestion_schema` | Infer column mapping + suggested DDL from fetched payload | skill:data-ingestion |
-| `datatalk_create_ingestion_table` | Execute CREATE TABLE on target connection (post-confirm) | skill:data-ingestion |
-| `datatalk_ingest_payload` | Batch INSERT rows from payload into target table | skill:data-ingestion |
-| `datatalk_get_ingestion_job` | Read an ingestion job state | skill:data-ingestion |
-| `datatalk_list_ingestion_jobs` | List ingestion jobs (filter by status / connection) | skill:data-ingestion |
+| `datatalk_script_run` | Prepare script execution (validate env, issue token, return runId) | skill:data-collection |
+| `datatalk_script_stop` | Cancel a running script | skill:data-collection |
+| `datatalk_script_list` | List script run history | skill:data-collection |
 
 Supported UI object types: `workspace`, `query_editor`, `er_inspector`, `er_designer`, `dashboard`.
 
@@ -94,6 +93,7 @@ When any row matches the current situation, you **MUST** load the listed skill b
 | user asks for a chart, dashboard, KPI tile, monitoring screen, or report (per-language trigger words live in each SKILL.md description) | skill:charts-and-dashboards |
 | create / update / delete a saved connection, switch session data context, or trigger any two-phase **confirmable mutation** (`confirm=true` + `confirmationToken`) | skill:connection-management |
 | write dialect-specific SQL or reason about kind / port / driver / risk levels for MySQL / PostgreSQL / Oracle / SQLServer / SQLite / DuckDB / ClickHouse / TiDB / OceanBase / StarRocks / Trino / Presto / Dameng / Hive / GaussDB / Apache Doris | skill:database-dialects |
+| call any `datatalk_script_run` / `datatalk_script_stop` / `datatalk_script_list` tool, or user asks to collect data / scrape / fetch external data / run Python/Node.js script | skill:data-collection |
 
 ## Skill Index
 
@@ -111,6 +111,6 @@ All routable skills (auto-loaded by OpenCode; do not Read their files by path). 
 - skill:sql-error-diagnostics — Three diagnostic classes (syntax / object-not-found / ambiguous), 5 diagnostic tools (`datatalk_explain_query` / `datatalk_index_hints` / `datatalk_lock_info` / `datatalk_pool_status` / `datatalk_table_space`), diagnostics workflow rules + capability matrix.
 - skill:database-dialects — Per-dialect kind / port / driver / SQL splitter / risk levels / ER & diagnostics support for MariaDB / TiDB / Oracle / SQL Server / DuckDB / ClickHouse / Apache Doris / OceanBase / StarRocks / Trino / Presto / Dameng / Apache Hive / GaussDB.
 - skill:bezel — Premium industrial dashboards (KPI big-screen / monitoring screens / industry visualization) rendered as self-contained HTML from JSON descriptor.
-- skill:data-ingestion — Fetch external data (REST / JSON / CSV / static HTML table) and write into a SQL connection: HTTP fetch → schema inference → user-confirmed CREATE TABLE → batch INSERT.
+- skill:data-collection — Execute Python/Node.js scripts locally to collect external data (REST fetch / web scrape / API calls) and write into SQL connections via backend write API.
 
 {{STAGE_TAB_DIGEST}}

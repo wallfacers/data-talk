@@ -912,3 +912,44 @@ The Undo Log feature captures before-state snapshots of DML operations and gener
 Fallback behavior: When `getPrimaryKeys()` returns empty or Calcite parsing fails, the DML is recorded in `undo_log` with `undoable=false` (audit-only, no Undo button shown).
 
 Unsupported kinds throw `IngestionDialectUnsupportedException` → MCP action returns `INGESTION_DIALECT_UNSUPPORTED` error code → frontend shows `ingestion.dialect_unsupported.<kind>` i18n message.
+
+## Script Data Write Compatibility
+
+The script data write feature enables programmatic batch data insertion into user databases via standard JDBC. All registered first-class database types are supported for data writing. The write mechanism uses standard JDBC `PreparedStatement` batch execution and does not rely on database-specific bulk-load utilities.
+
+### Write Mechanism
+
+- **CREATE TABLE with type inference**: Automatically creates the target table if it does not exist. Type mapping: `string` → `VARCHAR(255)`, `integer` → `BIGINT`, `float` → `DOUBLE`, `boolean` → `BOOLEAN`, `null` → `TEXT`.
+- **Batch INSERT**: Uses `PreparedStatement.executeBatch()` for all databases. Rows are bound via parameterized `INSERT INTO ... VALUES (?, ?, ...)` statements.
+- **Standard JDBC**: No database-specific bulk-load extensions (`LOAD DATA`, `COPY`, `BULK INSERT`, etc.) are used in the Day-1 implementation.
+
+### Compatibility Matrix
+
+| Kind | Write Support | Notes |
+|------|--------------|-------|
+| mysql | Supported | Standard JDBC batch INSERT. VARCHAR/BIGINT/DOUBLE/BOOLEAN type inference. |
+| postgresql | Supported | Standard JDBC batch INSERT. Type inference compatible with PG column types. |
+| h2 | Supported | Standard JDBC batch INSERT. Fully compatible with H2 type system. |
+| sqlite | Supported | Standard JDBC batch INSERT. SQLite uses type affinity; VARCHAR/BIGINT/DOUBLE map to native storage. |
+| mariadb | Supported | Standard JDBC batch INSERT. MySQL-compatible type inference. |
+| oracle | Supported | Standard JDBC batch INSERT. VARCHAR2/NUMBER type mapping via standard JDBC types. |
+| sqlserver | Supported | Standard JDBC batch INSERT. NVARCHAR/BIGINT/FLOAT/BIT type mapping. |
+| duckdb | Supported | Standard JDBC batch INSERT. DuckDB column-store accepts standard batch writes. |
+| clickhouse | Supported | Standard JDBC batch INSERT. MergeTree tables accept batch INSERT via JDBC driver. Performance may differ from native `INSERT FORMAT` bulk loading. |
+| tidb | Supported | Standard JDBC batch INSERT. MySQL-compatible type inference and batch execution. |
+| oceanbase | Supported | Standard JDBC batch INSERT. MySQL-mode compatible type inference. |
+| starrocks | Supported | Standard JDBC batch INSERT. MySQL-protocol compatible via StarRocks Connector/J. |
+| trino | Supported | Standard JDBC batch INSERT. Subject to connector write capabilities; some connectors may reject INSERT. |
+| presto | Supported | Standard JDBC batch INSERT. Subject to connector write capabilities; some connectors may reject INSERT. |
+| dameng | Supported | Standard JDBC batch INSERT. DM 8 type system compatible with standard JDBC types. |
+| kingbase | Supported | Standard JDBC batch INSERT. PG-compatible type inference. |
+| gaussdb | Supported | Standard JDBC batch INSERT. PG-compatible type inference. |
+| apache_doris | Supported | Standard JDBC batch INSERT. MySQL-protocol compatible via MySQL Connector/J. |
+| apache_hive | Supported | Standard JDBC batch INSERT. Hive supports INSERT INTO for managed tables; external tables and some storage formats may have limitations. |
+
+### Known Limitations
+
+- Performance for large datasets may benefit from database-specific bulk-load utilities (e.g., MySQL `LOAD DATA`, PostgreSQL `COPY`, ClickHouse `INSERT FORMAT`). These are not used in Day-1.
+- Trino and Presto write support depends on the underlying connector. Connectors that do not support INSERT will propagate a connector-level error.
+- Hive INSERT performance depends on the storage format and table type (managed vs external). ACID transactions are required for INSERT into transactional tables in Hive 3.x.
+- Type inference uses fixed-width mappings (e.g., `VARCHAR(255)` for strings). Columns requiring longer strings, LOBs, or specialized types must be pre-created manually before running script data write.

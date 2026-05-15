@@ -15,12 +15,10 @@ const DashboardTab = lazy(() =>
   import('@/features/dashboard/dashboard-tab').then((m) => ({ default: m.DashboardTab }))
 )
 
-const IngestionJobTab = lazy(() =>
-  import('@/features/ingestion/ingestion-job-tab').then((m) => ({ default: m.IngestionJobTab }))
+const ScriptEditorTab = lazy(() =>
+  import('@/features/script/components/script-editor-tab').then((m) => ({ default: m.ScriptEditorTab }))
 )
-const IngestionLibraryTab = lazy(() =>
-  import('@/features/ingestion/ingestion-library-tab').then((m) => ({ default: m.IngestionLibraryTab }))
-)
+
 
 export function StageTabContent() {
   const cleanupTabs = useSqlWorkbenchStore((s) => s.cleanupTabs)
@@ -117,21 +115,11 @@ export function StageTabContent() {
     )
   }
 
-  if (tab.type === 'ingestion_job') {
+  if (tab.type === 'script_editor') {
     return (
       <div className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <Suspense fallback={<div className="flex items-center justify-center h-full text-sm text-text-soft">Loading…</div>}>
-          <IngestionJobTab key={tab.tabId} tab={tab} />
-        </Suspense>
-      </div>
-    )
-  }
-
-  if (tab.type === 'ingestion_library') {
-    return (
-      <div className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <Suspense fallback={<div className="flex items-center justify-center h-full text-sm text-text-soft">Loading…</div>}>
-          <IngestionLibraryTab key={tab.tabId} />
+          <ScriptEditorTab key={tab.tabId} tabId={tab.tabId} />
         </Suspense>
       </div>
     )
