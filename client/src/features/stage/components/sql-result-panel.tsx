@@ -86,7 +86,7 @@ export function SqlResultPanel({
   }
 
   if (activeResult.kind === 'dml_summary') {
-    return <SqlDmlSummaryPanel result={activeResult} tabId={tabId} />
+    return <SqlDmlSummaryPanel result={activeResult} tabId={tabId} connectionKind={connectionKind} />
   }
 
   if (activeResult.kind === 'error') {

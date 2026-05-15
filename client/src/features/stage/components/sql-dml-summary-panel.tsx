@@ -19,24 +19,34 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { useI18n } from '@/i18n/use-i18n'
 import { RotateCcw } from 'lucide-react'
 import { useState, useCallback } from 'react'
 import { useSqlWorkbenchStore } from '@/features/stage/stores/sql-workbench-store'
-import { openOrFocusOpLogTab } from '@/features/op-log/utils/open-op-log-tab'
-import { useStageStore } from '@/stores/stage-store'
+import { formatSql } from '@/features/stage/utils/format-sql'
+import { copyToClipboard } from '@/lib/utils'
 import { toast } from 'sonner'
 
 type SqlDmlSummaryPanelProps = {
   result: SqlExecuteResultItem
   tabId: string
+  connectionKind?: string | null
 }
 
-export function SqlDmlSummaryPanel({ result, tabId }: SqlDmlSummaryPanelProps) {
+export function SqlDmlSummaryPanel({ result, tabId, connectionKind }: SqlDmlSummaryPanelProps) {
   const { t } = useI18n()
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [inverseSql, setInverseSql] = useState<string | null>(null)
   const [undoing, setUndoing] = useState(false)
+  const [sqlDetailOpen, setSqlDetailOpen] = useState(false)
+  const [sqlFormatted, setSqlFormatted] = useState(false)
   const setUndoConfirming = useSqlWorkbenchStore((s) => s.setUndoConfirming)
   const setUndoResult = useSqlWorkbenchStore((s) => s.setUndoResult)
   const undoState = useSqlWorkbenchStore(
@@ -86,42 +96,47 @@ export function SqlDmlSummaryPanel({ result, tabId }: SqlDmlSummaryPanelProps) {
   const tableName = result.statementText?.match(/\b(?:FROM|INTO|UPDATE)\s+(\w+)/i)?.[1] ?? 'unknown'
 
   return (
-    <div className="h-full overflow-auto">
-      <Table className="text-xs">
+    <div className="h-full overflow-y-auto">
+      <Table className="w-full table-fixed text-xs">
         <TableHeader className="sticky top-0 bg-muted/40">
           <TableRow className="hover:bg-transparent">
-            <TableHead className="h-8 w-14 border-b border-border/50 px-3 text-center">
+            <TableHead className="h-8 w-10 border-b border-border/50 px-2 text-center">
               {t('stage.queryEditor.result.rowNumber')}
             </TableHead>
-            <TableHead className="h-8 border-b border-border/50 px-3">
+            <TableHead className="h-8 w-24 border-b border-border/50 px-2">
               {t('stage.queryEditor.result.action')}
             </TableHead>
-            <TableHead className="h-8 border-b border-border/50 px-3">
+            <TableHead className="h-8 w-20 border-b border-border/50 px-2">
               {t('stage.queryEditor.result.affectedRows')}
             </TableHead>
-            <TableHead className="h-8 border-b border-border/50 px-3">
+            <TableHead className="h-8 w-16 border-b border-border/50 px-2">
               {t('stage.queryEditor.result.duration')}
             </TableHead>
-            <TableHead className="h-8 border-b border-border/50 px-3">
+            <TableHead className="h-8 border-b border-border/50 px-2">
               {t('stage.queryEditor.result.sql')}
             </TableHead>
-            <TableHead className="h-8 w-20 border-b border-border/50 px-3" />
+            <TableHead className="h-8 w-24 border-b border-border/50 px-2" />
           </TableRow>
         </TableHeader>
         <TableBody>
           <TableRow className="border-b border-border/30">
-            <TableCell className="px-3 py-1.5 text-center text-muted-foreground">1</TableCell>
-            <TableCell className="px-3 py-1.5">
+            <TableCell className="px-2 py-1.5 text-center text-muted-foreground">1</TableCell>
+            <TableCell className="px-2 py-1.5">
               {isUndone ? (
                 <span className="text-muted-foreground">{result.title} ({t('stage.queryEditor.undo.reverted')})</span>
               ) : (
                 result.title
               )}
             </TableCell>
-            <TableCell className="px-3 py-1.5">{result.affectedRows ?? 0}</TableCell>
-            <TableCell className="px-3 py-1.5">{result.executionMs}ms</TableCell>
-            <TableCell className="max-w-[640px] truncate px-3 py-1.5">{result.statementText}</TableCell>
-            <TableCell className="px-3 py-1.5">
+            <TableCell className="px-2 py-1.5">{result.affectedRows ?? 0}</TableCell>
+            <TableCell className="px-2 py-1.5">{result.executionMs}ms</TableCell>
+            <TableCell
+              className="cursor-pointer truncate px-2 py-1.5 text-muted-foreground hover:text-foreground"
+              onClick={() => setSqlDetailOpen(true)}
+            >
+              {result.statementText}
+            </TableCell>
+            <TableCell className="px-2 py-1.5">
               <div className="flex items-center gap-2">
                 {result.undoable && !isUndone && (
                   <Button
@@ -137,29 +152,68 @@ export function SqlDmlSummaryPanel({ result, tabId }: SqlDmlSummaryPanelProps) {
                 {isUndone && (
                   <span className="text-xs text-muted-foreground">{t('stage.queryEditor.undo.reverted')}</span>
                 )}
-                <Button
-                  variant="link"
-                  size="sm"
-                  className="h-6 gap-1 text-xs text-accent-primary hover:text-accent-primary-hover p-0"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    const tab = useStageStore.getState().tabs.find(t => t.tabId === tabId)
-                    if (tab?.connectionId) {
-                      openOrFocusOpLogTab({
-                        getState: useStageStore.getState,
-                        connectionId: tab.connectionId,
-                        connectionName: tab.connectionName ?? tab.connectionId,
-                      })
-                    }
-                  }}
-                >
-                  View all operations
-                </Button>
               </div>
             </TableCell>
           </TableRow>
         </TableBody>
       </Table>
+
+      <Dialog open={sqlDetailOpen} onOpenChange={(open) => { if (!open) setSqlDetailOpen(false) }}>
+        <DialogContent className="h-[min(720px,calc(100vh-4rem))] max-w-4xl !p-0 overflow-hidden">
+          <DialogHeader className="border-b border-border/60 px-4 py-3 pr-12">
+            <DialogTitle className="text-sm">
+              {t('stage.queryEditor.result.cellDetailTitle')}
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              {t('stage.queryEditor.result.cellDetailDescription', {
+                row: '-',
+                column: 'SQL',
+                length: result.statementText?.length ?? 0,
+              })}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 p-4">
+            <div
+              data-component="markdown-code"
+              className="flex h-full min-h-0 flex-col"
+              style={{ margin: 0 }}
+            >
+              <div data-slot="markdown-code-bar">
+                <span data-slot="markdown-code-language">SQL</span>
+                <div data-slot="markdown-code-actions">
+                  <button
+                    type="button"
+                    aria-pressed={sqlFormatted}
+                    onClick={() => setSqlFormatted((current) => !current)}
+                  >
+                    {t('stage.queryEditor.result.formatContent')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void copyToClipboard(sqlFormatted ? formatSql(result.statementText ?? '', connectionKind) : (result.statementText ?? ''))}
+                  >
+                    {t('stage.queryEditor.result.copyCell')}
+                  </button>
+                </div>
+              </div>
+              <pre
+                className="min-h-0 flex-1"
+                style={{ overflow: 'auto' }}
+              >
+                <code
+                  style={{
+                    whiteSpace: 'pre-wrap',
+                    overflowWrap: 'break-word',
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {sqlFormatted ? formatSql(result.statementText ?? '', connectionKind) : result.statementText}
+                </code>
+              </pre>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
