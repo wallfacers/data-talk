@@ -59,10 +59,10 @@
 
 ## 8. BUG 收尾
 
-- [ ] 8.1 编辑 `docs/bugs/BUG-0053-bezel-ai-widget-id-too-short-and-zod-error-unhelpful.md`：`status: investigating` → `status: fixed`，回填 `fixCommit` 短 SHA，Verification 章节填 task 7 截图证据路径
-- [ ] 8.2 编辑 `docs/bugs/index.md`：BUG-0053 行的 Status 列从 `investigating` 改为 `fixed`，Owner 列加上短 SHA
-- [ ] 8.3 commit 时 message 关联 BUG-0053（如 `fix(dashboard): humanize zod errors + sync bezel SKILL widget id rule (BUG-0053)`）
+- [x] 8.1 BUG-0053 文档：`status: investigating → fixed`、`fixCommit: d99f008f`、`fixPlanRef: openspec/changes/bezel-widget-id-feedback/`；Verification 章节列出 5 项自动化证据 + UI 复跑指南（commit `6c4632dd`）
+- [x] 8.2 `docs/bugs/index.md`：BUG-0053 行 Status 改 `fixed`，Owner 加 `(d99f008f)`；By Module 段同步替换 `*(investigating)*` 为 `*(fixed)*`（commit `6c4632dd`）
+- [x] 8.3 fix commit message 已带 `(BUG-0053)`：`fix(dashboard): humanize zod errors + sync bezel SKILL widget id rule (BUG-0053)` (commit `d99f008f`)
 
 ## 9. 收尾归档
 
-- [ ] 9.1 全部任务完成后，运行 `/opsx:archive bezel-widget-id-feedback`，让 delta spec 合入 `openspec/specs/dashboard-emit-feedback/spec.md`，change 目录移至 `openspec/changes/archive/YYYY-MM-DD-bezel-widget-id-feedback/`
+- [x] 9.1 运行 `/opsx:archive bezel-widget-id-feedback`：delta spec 合入新建 `openspec/specs/dashboard-emit-feedback/spec.md`，change 目录移至 `openspec/changes/archive/2026-05-16-bezel-widget-id-feedback/`
