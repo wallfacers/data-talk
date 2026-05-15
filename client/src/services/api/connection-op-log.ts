@@ -42,6 +42,7 @@ export interface BatchUndoResult {
 export interface OpLogFilters {
   status?: string[]
   operation?: string[]
+  table?: string
   from?: number
   to?: number
   q?: string
@@ -61,6 +62,7 @@ export async function listOpLogs(
   }
   if (filters?.status?.length) searchParams.status = filters.status.join(',')
   if (filters?.operation?.length) searchParams.operation = filters.operation.join(',')
+  if (filters?.table) searchParams.table = filters.table
   if (filters?.from != null) searchParams.from = String(filters.from)
   if (filters?.to != null) searchParams.to = String(filters.to)
   if (filters?.q) searchParams.q = filters.q

@@ -11,7 +11,8 @@ vi.mock('@/services/http', () => ({
 import { http } from '@/services/http'
 import { listOpLogs, getOpLogDetail, batchUndoOpLogs } from './connection-op-log'
 
-const mockedHttp = vi.mocked(http)
+const mockedGet = vi.mocked(http.get)
+const mockedPost = vi.mocked(http.post)
 
 describe('connection-op-log API', () => {
   beforeEach(() => {
@@ -21,12 +22,12 @@ describe('connection-op-log API', () => {
   describe('listOpLogs', () => {
     it('fetches paginated op-logs with default params', async () => {
       const mockResponse = { items: [], total: 0, page: 0, size: 50 }
-      mockedHttp.get.mockReturnValue({
+      mockedGet.mockReturnValue({
         json: () => Promise.resolve(mockResponse),
       } as any)
 
       const result = await listOpLogs('conn-1')
-      expect(mockedHttp.get).toHaveBeenCalledWith('connections/conn-1/op-logs', {
+      expect(mockedGet).toHaveBeenCalledWith('connections/conn-1/op-logs', {
         searchParams: { page: '0', size: '50' },
       })
       expect(result).toEqual(mockResponse)
@@ -34,7 +35,7 @@ describe('connection-op-log API', () => {
 
     it('passes filters as comma-joined search params for arrays', async () => {
       const mockResponse = { items: [], total: 0, page: 0, size: 50 }
-      mockedHttp.get.mockReturnValue({
+      mockedGet.mockReturnValue({
         json: () => Promise.resolve(mockResponse),
       } as any)
 
@@ -47,7 +48,7 @@ describe('connection-op-log API', () => {
         q: 'SELECT',
       })
 
-      expect(mockedHttp.get).toHaveBeenCalledWith('connections/conn-1/op-logs', {
+      expect(mockedGet).toHaveBeenCalledWith('connections/conn-1/op-logs', {
         searchParams: {
           page: '1',
           size: '25',
@@ -63,7 +64,7 @@ describe('connection-op-log API', () => {
 
     it('joins multiple status/operation values with commas', async () => {
       const mockResponse = { items: [], total: 0, page: 0, size: 50 }
-      mockedHttp.get.mockReturnValue({
+      mockedGet.mockReturnValue({
         json: () => Promise.resolve(mockResponse),
       } as any)
 
@@ -72,7 +73,7 @@ describe('connection-op-log API', () => {
         operation: ['INSERT', 'DELETE'],
       })
 
-      expect(mockedHttp.get).toHaveBeenCalledWith('connections/conn-1/op-logs', {
+      expect(mockedGet).toHaveBeenCalledWith('connections/conn-1/op-logs', {
         searchParams: {
           page: '0',
           size: '50',
@@ -84,13 +85,13 @@ describe('connection-op-log API', () => {
 
     it('omits filter params when filters are undefined or empty', async () => {
       const mockResponse = { items: [], total: 0, page: 0, size: 50 }
-      mockedHttp.get.mockReturnValue({
+      mockedGet.mockReturnValue({
         json: () => Promise.resolve(mockResponse),
       } as any)
 
       await listOpLogs('conn-1', 0, 50, {})
 
-      const callArgs = mockedHttp.get.mock.calls[0]
+      const callArgs = mockedGet.mock.calls[0]
       const searchParams = (callArgs![1] as any).searchParams
       expect(searchParams).toEqual({ page: '0', size: '50' })
       expect(searchParams).not.toHaveProperty('status')
@@ -101,12 +102,12 @@ describe('connection-op-log API', () => {
   describe('getOpLogDetail', () => {
     it('fetches a single op-log detail', async () => {
       const mockDetail = { id: 'log-1', originalSql: 'INSERT INTO ...' } as any
-      mockedHttp.get.mockReturnValue({
+      mockedGet.mockReturnValue({
         json: () => Promise.resolve(mockDetail),
       } as any)
 
       const result = await getOpLogDetail('conn-1', 'log-1')
-      expect(mockedHttp.get).toHaveBeenCalledWith('connections/conn-1/op-logs/log-1')
+      expect(mockedGet).toHaveBeenCalledWith('connections/conn-1/op-logs/log-1')
       expect(result).toEqual(mockDetail)
     })
   })
@@ -114,12 +115,12 @@ describe('connection-op-log API', () => {
   describe('batchUndoOpLogs', () => {
     it('sends batch undo request', async () => {
       const mockResult = { results: [{ id: 'log-1', status: 'undone' }] }
-      mockedHttp.post.mockReturnValue({
+      mockedPost.mockReturnValue({
         json: () => Promise.resolve(mockResult),
       } as any)
 
       const result = await batchUndoOpLogs('conn-1', ['log-1', 'log-2'])
-      expect(mockedHttp.post).toHaveBeenCalledWith('connections/conn-1/op-logs/batch-undo', {
+      expect(mockedPost).toHaveBeenCalledWith('connections/conn-1/op-logs/batch-undo', {
         json: { undoLogIds: ['log-1', 'log-2'] },
       })
       expect(result).toEqual(mockResult)
