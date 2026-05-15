@@ -140,9 +140,9 @@ class DashboardControllerIT {
             <body>
             <h1>GMV 总额</h1>
             <script>
-            window.__BEZEL_CONFIG__ = { "widgets": [
-              { "id": "w_a", "endpoint": "/api/dashboards/dash_x/widgets/w_a/data" },
-              { "id": "w_b", "endpoint": '/api/dashboards/dash_x/widgets/w_b/data' }
+            window.__BEZEL_CONFIG__ = { "dashboardId": "dash_test_store_ecommerce", "widgets": [
+              { "id": "w_a", "endpoint": "/api/dashboards/dash_test_store_ecommerce/widgets/w_a/data" },
+              { "id": "w_b", "endpoint": '/api/dashboards/dash_test_store_ecommerce/widgets/w_b/data' }
             ]};
             </script>
             </body>
@@ -197,6 +197,11 @@ class DashboardControllerIT {
         assertThat(decoded).contains("'http://localhost").contains("/api/dashboards/" + id + "/widgets/w_b/data");
         assertThat(decoded).doesNotContain("\"/api/dashboards/");
         assertThat(decoded).doesNotContain("'/api/dashboards/");
+
+        // AI-emitted dashboardId in widget URLs and __BEZEL_CONFIG__ must be rewritten to the
+        // server-assigned id so widget data fetches don't 404.
+        assertThat(decoded).doesNotContain("dash_test_store_ecommerce");
+        assertThat(decoded).contains("\"dashboardId\": \"" + id + "\"");
 
         // CSP token still gets substituted.
         assertThat(decoded).doesNotContain("__BEZEL_SERVER_ORIGIN__");

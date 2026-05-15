@@ -15,10 +15,19 @@ import org.springframework.web.bind.annotation.*;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("/api/dashboards")
 public class DashboardController {
+
+    // AI emits its own dashboardId in widget endpoint URLs and the __BEZEL_CONFIG__ literal;
+    // promote assigns a fresh server-side id, so both must be rewritten before serving.
+    private static final Pattern WIDGET_URL_DASHBOARD_ID =
+        Pattern.compile("(/api/dashboards/)[A-Za-z0-9_]+(/widgets/)");
+    private static final Pattern CONFIG_DASHBOARD_ID =
+        Pattern.compile("(\"dashboardId\"\\s*:\\s*\")[^\"]+(\")");
 
     private final DashboardArtifactService dashboardService;
     private final WidgetDataService widgetDataService;
@@ -129,6 +138,9 @@ public class DashboardController {
             .replace("__BEZEL_SERVER_ORIGIN__", origin)
             .replace("\"/api/dashboards/", "\"" + origin + "/api/dashboards/")
             .replace("'/api/dashboards/", "'" + origin + "/api/dashboards/");
+        String replacement = Matcher.quoteReplacement(id);
+        body = WIDGET_URL_DASHBOARD_ID.matcher(body).replaceAll("$1" + replacement + "$2");
+        body = CONFIG_DASHBOARD_ID.matcher(body).replaceAll("$1" + replacement + "$2");
         return ResponseEntity.ok()
             .contentType(new MediaType(MediaType.TEXT_HTML, StandardCharsets.UTF_8))
             .body(body);
