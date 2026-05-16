@@ -45,12 +45,21 @@ This skill activates when a user message contains a `file_upload` part. The part
 - Describe available metadata (size, partial preview)
 - Ask user for intent
 
+### Image Files (analysis.type = "IMAGE")
+- Acknowledge the uploaded image to the user
+- Report dimensions from `analysis.summary.width` × `analysis.summary.height` and `analysis.summary.format`
+- Use `datatalk_file_read` to retrieve the image content (returned as `data:{mimeType};base64,{encoded}`)
+- Provide the image content to the AI context for visual understanding
+- Do NOT suggest database import
+- Common use cases: screenshot analysis, chart interpretation, diagram explanation
+
 ## On-Demand File Reading
 
 Use `datatalk_file_read` action to read specific portions of the file:
 - Parameters: `fileId` (required), `offset` (default 0), `limit` (default/max 4096)
+- For image files: returns `data:{mimeType};base64,{encoded}` — no offset/limit applied
 - Use sparingly — only read what you need to make a routing decision
-- Never attempt to read the entire file at once
+- For text files: never attempt to read the entire file at once
 
 ## Cross-References
 

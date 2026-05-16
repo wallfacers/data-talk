@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowUpIcon, Loader2Icon } from 'lucide-react'
+import { ArrowUpIcon, Loader2Icon, Paperclip } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import {
@@ -146,6 +146,7 @@ function InnerComposer() {
   }, [activeSessionId, composerRestoreDraft, setComposerRestoreDraft])
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     if (!composerInsertText) return
@@ -412,6 +413,20 @@ function InnerComposer() {
           ],
         )}
       >
+        {attachments.length > 0 && (
+          <div
+            className="flex flex-row gap-1.5 overflow-x-auto px-3 pt-3 pb-1"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            {attachments.map((a, i) => (
+              <FileAttachmentChip
+                key={`${a.file.name}-${i}`}
+                attachment={a}
+                onRemove={() => removeAttachment(i)}
+              />
+            ))}
+          </div>
+        )}
         <InputGroupTextarea
           ref={textareaRef}
           value={text}
@@ -425,17 +440,6 @@ function InnerComposer() {
           )}
           rows={3}
         />
-        {attachments.length > 0 && (
-          <div className="flex flex-col gap-1.5 px-3 pb-1">
-            {attachments.map((a, i) => (
-              <FileAttachmentChip
-                key={`${a.file.name}-${i}`}
-                attachment={a}
-                onRemove={() => removeAttachment(i)}
-              />
-            ))}
-          </div>
-        )}
         <InputGroupAddon align="block-end" className="pt-2">
           <div className="flex w-full items-center gap-2">
             {isBangQueryMode && (
@@ -454,6 +458,30 @@ function InnerComposer() {
 
             {/* Spacer */}
             <div className="flex-1" />
+
+            {/* File upload button */}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              className="rounded-full text-text-muted"
+              aria-label={t('chat.attachFiles')}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Paperclip className="size-3.5" />
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files && e.target.files.length > 0) {
+                  addFiles(e.target.files)
+                  e.target.value = ''
+                }
+              }}
+            />
 
             {/* Send / Stop button */}
             {isStreaming ? (

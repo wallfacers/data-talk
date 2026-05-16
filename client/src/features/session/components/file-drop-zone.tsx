@@ -1,7 +1,8 @@
 import { useState, useRef, useCallback, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/i18n/use-i18n'
 
-const ALLOWED_EXTENSIONS = new Set(['csv', 'xlsx', 'xls', 'json', 'jsonl', 'sql', 'txt', 'md', 'log'])
+const ALLOWED_EXTENSIONS = new Set(['csv', 'xlsx', 'xls', 'json', 'jsonl', 'sql', 'txt', 'md', 'log', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'])
 const MAX_SIZE_BYTES = 50 * 1024 * 1024 // 50 MB
 
 function filterFiles(fileList: FileList): File[] {
@@ -22,6 +23,7 @@ export function FileDropZone({
   children: ReactNode
 }) {
   const [isDragging, setIsDragging] = useState(false)
+  const { t } = useI18n()
   const dragCounter = useRef(0)
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
@@ -84,7 +86,7 @@ export function FileDropZone({
           )}
         >
           <span className="text-sm font-medium text-accent-primary">
-            Drop files here
+            {t('chat.dropFilesHere')}
           </span>
         </div>
       )}

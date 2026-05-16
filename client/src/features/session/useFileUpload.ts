@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { uploadFile } from '@/services/api/file-upload'
 import type { FileUploadResponse } from '@/services/api/file-upload'
+import { useI18n } from '@/i18n/use-i18n'
 
 export interface FileAttachment {
   file: File
@@ -10,17 +11,18 @@ export interface FileAttachment {
   error?: string
 }
 
-const ALLOWED_EXTENSIONS = ['.csv', '.xlsx', '.xls', '.json', '.jsonl', '.sql', '.txt', '.md', '.log']
+const ALLOWED_EXTENSIONS = ['.csv', '.xlsx', '.xls', '.json', '.jsonl', '.sql', '.txt', '.md', '.log', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp']
 const MAX_SIZE_BYTES = 50 * 1024 * 1024 // 50MB
 
 export function useFileUpload(sessionId: string) {
   const [attachments, setAttachments] = useState<FileAttachment[]>([])
+  const { t } = useI18n()
 
   const validateFile = (file: File): string | null => {
     const ext = '.' + file.name.split('.').pop()?.toLowerCase()
-    if (!ALLOWED_EXTENSIONS.includes(ext)) return `Unsupported file type: ${ext}`
-    if (file.size === 0) return 'File is empty'
-    if (file.size > MAX_SIZE_BYTES) return 'File exceeds 50MB limit'
+    if (!ALLOWED_EXTENSIONS.includes(ext)) return t('chat.fileUpload.unsupportedType', { ext })
+    if (file.size === 0) return t('chat.fileUpload.emptyFile')
+    if (file.size > MAX_SIZE_BYTES) return t('chat.fileUpload.exceedsLimit')
     return null
   }
 

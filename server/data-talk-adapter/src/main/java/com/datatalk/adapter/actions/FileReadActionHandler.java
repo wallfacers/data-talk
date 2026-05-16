@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -87,6 +88,25 @@ public class FileReadActionHandler implements ActionHandler<Map, Map> {
                 return errorResult("Physical file not found on disk");
             }
 
+            // Binary read path for image files — return base64 data URI, ignore offset/limit
+            String mimeType = uploaded.mimeType();
+            if (mimeType != null && mimeType.startsWith("image/")) {
+                try {
+                    byte[] allBytes = Files.readAllBytes(path);
+                    String encoded = Base64.getEncoder().encodeToString(allBytes);
+                    String dataUri = "data:" + mimeType + ";base64," + encoded;
+                    Map<String, Object> out = new LinkedHashMap<>();
+                    out.put("fileId", fileId);
+                    out.put("offset", 0);
+                    out.put("content", dataUri);
+                    out.put("bytesRead", allBytes.length);
+                    return out;
+                } catch (Exception e) {
+                    return errorResult("Failed to read image file: " + e.getMessage());
+                }
+            }
+
+            // Text read path for non-image files
             try (RandomAccessFile raf = new RandomAccessFile(path.toFile(), "r")) {
                 long fileLen = raf.length();
                 int from = (int) Math.min(offset, fileLen);

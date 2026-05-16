@@ -11,7 +11,12 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.springframework.stereotype.Service;
 
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
+import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -19,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -30,7 +36,7 @@ import java.util.regex.Pattern;
 /**
  * Analyzes uploaded files locally (no AI) and returns structured metadata.
  * <p>
- * Supports SQL, CSV, Excel, JSON, and plain-text files.
+ * Supports SQL, CSV, Excel, JSON, plain-text, and image files (PNG, JPEG, GIF, WebP, BMP).
  * Files smaller than 4 KB include their full content in the result;
  * larger files only return a type-specific summary.
  */
@@ -75,6 +81,7 @@ public class FileAnalysisService {
                      "application/vnd.ms-excel" -> analyzeExcel(file);
                 case "application/json", "application/jsonl" -> analyzeJson(file);
                 case "text/plain", "text/markdown" -> analyzeText(file);
+                case "image/png", "image/jpeg", "image/gif", "image/webp", "image/bmp" -> analyzeImage(file, mime);
                 default -> analyzeUnknown(file);
             };
         } catch (IOException e) {
@@ -104,6 +111,11 @@ public class FileAnalysisService {
             case "txt" -> "text/plain";
             case "md" -> "text/markdown";
             case "log" -> "text/plain";
+            case "png" -> "image/png";
+            case "jpg", "jpeg" -> "image/jpeg";
+            case "gif" -> "image/gif";
+            case "webp" -> "image/webp";
+            case "bmp" -> "image/bmp";
             default -> null;
         };
     }
@@ -468,6 +480,48 @@ public class FileAnalysisService {
         summary.put("preview", preview);
 
         return new FileAnalysisResult("TEXT", cd.fullContent, cd.content, summary);
+    }
+
+    // ── Image analysis ──────────────────────────────────────────────────
+
+    private FileAnalysisResult analyzeImage(Path file, String mime) throws IOException {
+        long sizeBytes = Files.size(file);
+
+        String format = mime.substring(mime.indexOf('/') + 1); // e.g. "png", "jpeg", "gif", "webp", "bmp"
+
+        int width = 0;
+        int height = 0;
+
+        // Try ImageIO first — works for PNG, JPEG, GIF, BMP
+        byte[] bytes = Files.readAllBytes(file);
+        BufferedImage image = ImageIO.read(new ByteArrayInputStream(bytes));
+        if (image != null) {
+            width = image.getWidth();
+            height = image.getHeight();
+        } else {
+            // Fallback: use ImageReader API which handles more formats (including WebP if a reader is registered)
+            try (ImageInputStream iis = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
+                Iterator<ImageReader> readers = ImageIO.getImageReaders(iis);
+                if (readers.hasNext()) {
+                    ImageReader reader = readers.next();
+                    try {
+                        reader.setInput(iis);
+                        width = reader.getWidth(0);
+                        height = reader.getHeight(0);
+                    } finally {
+                        reader.dispose();
+                    }
+                }
+            }
+        }
+
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("width", width);
+        summary.put("height", height);
+        summary.put("format", format);
+        summary.put("sizeBytes", sizeBytes);
+
+        return new FileAnalysisResult("IMAGE", false, null, summary);
     }
 
     // ── Unknown fallback ────────────────────────────────────────────────
