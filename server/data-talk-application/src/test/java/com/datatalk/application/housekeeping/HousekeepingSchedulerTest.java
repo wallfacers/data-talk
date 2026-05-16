@@ -4,6 +4,7 @@ import com.datatalk.application.fileartifact.FileArtifactReconciler;
 import com.datatalk.application.fileartifact.FileArtifactRepository;
 import com.datatalk.application.semantic.SemanticModelLoader;
 import com.datatalk.application.semantic.SemanticModelRepository;
+import com.datatalk.application.upload.UploadedFileRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -26,13 +27,14 @@ class HousekeepingSchedulerTest {
     FileArtifactRepository fileArtifactRepo = mock(FileArtifactRepository.class);
     SemanticModelRepository semanticRepo = mock(SemanticModelRepository.class);
     SemanticModelLoader semanticLoader = mock(SemanticModelLoader.class);
+    UploadedFileRepository uploadedFileRepo = mock(UploadedFileRepository.class);
     Clock clock = Clock.fixed(Instant.parse("2026-05-07T03:00:00Z"), ZoneOffset.UTC);
     HousekeepingScheduler scheduler;
 
     @BeforeEach
     void setUp() {
         System.setProperty("DATA_TALK_WORKDIR", workdir.toString());
-        scheduler = new HousekeepingScheduler(reconciler, fileArtifactRepo, semanticRepo, semanticLoader, clock);
+        scheduler = new HousekeepingScheduler(reconciler, fileArtifactRepo, semanticRepo, semanticLoader, uploadedFileRepo, clock);
         System.clearProperty("DATA_TALK_WORKDIR");
     }
 
