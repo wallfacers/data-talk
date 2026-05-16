@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback, type JSX } from 'react'
-import { FileText, FileSpreadsheet, FileJson, ImageIcon } from 'lucide-react'
+import { FileText, FileSpreadsheet, FileJson, ImageIcon, Maximize2, Minimize2, XIcon } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -66,6 +66,7 @@ export function FilePreviewDialog({
   const { t } = useI18n()
   const [textContent, setTextContent] = useState<string | null>(null)
   const [readError, setReadError] = useState<string | null>(null)
+  const [maximized, setMaximized] = useState(false)
 
   const file = attachment?.file ?? null
   const filename = file?.name ?? ''
@@ -118,8 +119,19 @@ export function FilePreviewDialog({
   const showCode = isCode(filename)
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[80vh] max-w-3xl flex-col gap-0 overflow-hidden p-0">
+    <Dialog open={open} onOpenChange={(next) => {
+      if (!next) setMaximized(false)
+      onOpenChange(next)
+    }}>
+      <DialogContent
+        showCloseButton={false}
+        className={cn(
+          'flex flex-col gap-0 overflow-hidden p-0',
+          maximized
+            ? 'top-0 left-0 right-0 bottom-0 -translate-x-0 -translate-y-0 h-screen w-screen max-w-none rounded-none'
+            : 'max-h-[80vh] max-w-3xl',
+        )}
+      >
         {/* Header */}
         <div className="relative flex items-center border-b px-4 py-3">
           <span className="text-text-muted mr-2">{fileTypeIcon(filename)}</span>
@@ -129,6 +141,27 @@ export function FilePreviewDialog({
           <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-xs text-text-muted">
             {fileTypeLabel} · {formatSize(file.size)}
           </span>
+          <div className="ml-auto flex items-center gap-0.5">
+            <button
+              type="button"
+              className="rounded-sm p-1.5 text-text-muted transition-colors hover:bg-bg-subtle hover:text-text-base"
+              onClick={() => setMaximized((v) => !v)}
+              aria-label={maximized ? t('stage.restore') : t('stage.maximize')}
+            >
+              {maximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            </button>
+            <button
+              type="button"
+              className="rounded-sm p-1.5 text-text-muted transition-colors hover:bg-bg-subtle hover:text-text-base"
+              onClick={() => {
+                setMaximized(false)
+                onOpenChange(false)
+              }}
+              aria-label={t('common.close')}
+            >
+              <XIcon className="h-4 w-4" />
+            </button>
+          </div>
         </div>
         <DialogDescription className="sr-only">
           {t('chat.filePreview.title', { filename })}
@@ -141,7 +174,10 @@ export function FilePreviewDialog({
               <img
                 src={imageUrl}
                 alt={filename}
-                className="max-h-[65vh] max-w-full rounded-md object-contain"
+                className={cn(
+                  'max-w-full rounded-md object-contain',
+                  maximized ? 'max-h-[calc(100dvh-52px)]' : 'max-h-[65vh]',
+                )}
               />
             </div>
           )}
