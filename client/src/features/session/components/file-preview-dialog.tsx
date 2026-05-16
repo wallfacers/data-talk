@@ -128,7 +128,7 @@ export function FilePreviewDialog({
         className={cn(
           'flex flex-col gap-0 overflow-hidden p-0',
           maximized
-            ? 'top-0 left-0 right-0 bottom-0 -translate-x-0 -translate-y-0 h-screen w-screen max-w-none rounded-none'
+            ? 'max-h-[calc(100dvh-4rem)] max-w-[calc(100dvw-4rem)]'
             : 'max-h-[80vh] max-w-3xl',
         )}
       >
@@ -176,7 +176,7 @@ export function FilePreviewDialog({
                 alt={filename}
                 className={cn(
                   'max-w-full rounded-md object-contain',
-                  maximized ? 'max-h-[calc(100dvh-52px)]' : 'max-h-[65vh]',
+                  maximized ? 'max-h-[calc(100dvh-6rem)]' : 'max-h-[65vh]',
                 )}
               />
             </div>
