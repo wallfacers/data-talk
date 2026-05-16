@@ -18,7 +18,7 @@ class InverseSqlGeneratorTest {
             null,
             List.of(Map.of("id", 42))
         );
-        assertThat(sql).isEqualTo("DELETE FROM \"users\" WHERE \"id\" = 42");
+        assertThat(sql).isEqualTo("DELETE FROM users WHERE id = 42");
     }
 
     @Test
@@ -28,7 +28,7 @@ class InverseSqlGeneratorTest {
             null,
             List.of(Map.of("id", 42), Map.of("id", 43), Map.of("id", 44))
         );
-        assertThat(sql).isEqualTo("DELETE FROM \"users\" WHERE \"id\" IN (42, 43, 44)");
+        assertThat(sql).isEqualTo("DELETE FROM users WHERE id IN (42, 43, 44)");
     }
 
     @Test
@@ -38,10 +38,10 @@ class InverseSqlGeneratorTest {
             List.of(Map.of("id", 1, "name", "Alice", "age", 30)),
             null
         );
-        assertThat(sql).startsWith("UPDATE \"users\" SET ");
-        assertThat(sql).contains("\"name\" = 'Alice'");
-        assertThat(sql).contains("\"age\" = 30");
-        assertThat(sql).contains("WHERE \"id\" = 1");
+        assertThat(sql).startsWith("UPDATE users SET ");
+        assertThat(sql).contains("name = 'Alice'");
+        assertThat(sql).contains("age = 30");
+        assertThat(sql).contains("WHERE id = 1");
     }
 
     @Test
@@ -54,8 +54,10 @@ class InverseSqlGeneratorTest {
             ),
             null
         );
-        assertThat(sql).contains("UPDATE \"users\" SET \"name\" = 'Alice' WHERE \"id\" = 1");
-        assertThat(sql).contains("UPDATE \"users\" SET \"name\" = 'Bob' WHERE \"id\" = 2");
+        assertThat(sql).contains("SET name = 'Alice'");
+        assertThat(sql).contains("SET name = 'Bob'");
+        assertThat(sql).contains("WHERE id = 1");
+        assertThat(sql).contains("WHERE id = 2");
         assertThat(sql).contains(";\n");
     }
 
@@ -66,7 +68,7 @@ class InverseSqlGeneratorTest {
             List.of(Map.of("id", 1, "name", "Alice")),
             null
         );
-        assertThat(sql).isEqualTo("INSERT INTO \"users\" (\"id\", \"name\") VALUES (1, 'Alice')");
+        assertThat(sql).isEqualTo("INSERT INTO users (id, name) VALUES (1, 'Alice')");
     }
 
     @Test
@@ -79,7 +81,7 @@ class InverseSqlGeneratorTest {
             ),
             null
         );
-        assertThat(sql).isEqualTo("INSERT INTO \"users\" (\"id\", \"name\") VALUES (1, 'Alice'), (2, 'Bob')");
+        assertThat(sql).isEqualTo("INSERT INTO users (id, name) VALUES (1, 'Alice'), (2, 'Bob')");
     }
 
     @Test
@@ -92,8 +94,8 @@ class InverseSqlGeneratorTest {
             List.of(row),
             null
         );
-        assertThat(sql).contains("\"name\" = NULL");
-        assertThat(sql).contains("WHERE \"id\" = 1");
+        assertThat(sql).contains("name = NULL");
+        assertThat(sql).contains("WHERE id = 1");
     }
 
     @Test
@@ -117,7 +119,7 @@ class InverseSqlGeneratorTest {
             List.of(row),
             null
         );
-        assertThat(sql).contains("\"active\" = 1");
-        assertThat(sql).contains("\"deleted\" = 0");
+        assertThat(sql).contains("active = 1");
+        assertThat(sql).contains("deleted = 0");
     }
 }

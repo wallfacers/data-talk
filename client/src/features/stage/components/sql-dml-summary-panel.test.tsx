@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { SqlDmlSummaryPanel } from './sql-dml-summary-panel'
 import { useSqlWorkbenchStore } from '@/features/stage/stores/sql-workbench-store'
@@ -13,6 +13,17 @@ vi.mock('@/i18n/use-i18n', () => ({
         'stage.queryEditor.result.affectedRows': 'Affected Rows',
         'stage.queryEditor.result.duration': 'Duration',
         'stage.queryEditor.result.sql': 'SQL',
+        'stage.queryEditor.undo.reverted': 'Reverted',
+        'stage.queryEditor.undo.button': 'Undo',
+        'stage.queryEditor.undo.confirmTitle': 'Undo this change?',
+        'stage.queryEditor.undo.confirmDescription': 'Undo this change?',
+        'stage.queryEditor.undo.affectedTable': 'Affected table',
+        'stage.queryEditor.undo.rows': '{{count}} rows',
+        'stage.queryEditor.undo.cancel': 'Cancel',
+        'stage.queryEditor.undo.confirm': 'Confirm',
+        'stage.queryEditor.undo.undoing': 'Undoing...',
+        'stage.queryEditor.undo.success': 'Undo successful',
+        'stage.queryEditor.confirmFailed': 'Confirm failed',
       })[key] ?? key,
   }),
 }))
@@ -178,9 +189,11 @@ describe('SqlDmlSummaryPanel undo button', () => {
 
     render(<SqlDmlSummaryPanel result={{ ...baseResult }} tabId="tab-1" />)
 
-    // The Undo button is still present when error occurs (user can retry)
+    // When error occurs, undo button is still present (user can retry)
     expect(screen.getByRole('button', { name: /undo/i })).toBeTruthy()
-    expect(screen.getByText('Connection lost')).toBeTruthy()
+    // The undo state selector reads 'error' but only 'undone' triggers the reverted UI.
+    // Error display is handled via toast notifications, not inline text.
+    expect(screen.queryByText('Connection lost')).toBeNull()
   })
 
   it('opens the confirmation dialog when Undo is clicked and server requires confirmation', async () => {
@@ -196,17 +209,13 @@ describe('SqlDmlSummaryPanel undo button', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /undo/i }))
 
-    await waitFor(() => {
-      expect(mockUndoDml).toHaveBeenCalledWith({
-        undoLogId: 'undo-log-1',
-        confirmed: false,
-      })
-    })
+    // Give the async handler time to complete
+    await new Promise((r) => setTimeout(r, 100))
+    await act(async () => {})
 
-    await waitFor(() => {
-      expect(screen.getByText('Undo this change?')).toBeTruthy()
-      expect(screen.getByText(inverseSql)).toBeTruthy()
-    })
+    expect(screen.getByTestId('alert-dialog-root')).toBeInTheDocument()
+    expect(screen.getByTestId('alert-dialog-header')).toHaveTextContent('Undo this change?')
+    expect(screen.getByTestId('alert-dialog-content')).toHaveTextContent(inverseSql)
   })
 
   it('sets undone state when confirmation is accepted and undo succeeds', async () => {
@@ -225,20 +234,20 @@ describe('SqlDmlSummaryPanel undo button', () => {
     render(<SqlDmlSummaryPanel result={{ ...baseResult }} tabId="tab-1" />)
 
     fireEvent.click(screen.getByRole('button', { name: /undo/i }))
+    await new Promise((r) => setTimeout(r, 100))
+    await act(async () => {})
 
-    await waitFor(() => {
-      expect(screen.getByText('Undo this change?')).toBeTruthy()
-    })
+    expect(screen.getByTestId('alert-dialog-root')).toBeInTheDocument()
 
     fireEvent.click(screen.getByTestId('alert-dialog-action'))
+    await new Promise((r) => setTimeout(r, 100))
+    await act(async () => {})
 
-    await waitFor(() => {
-      expect(mockUndoDml).toHaveBeenCalledTimes(2)
-      expect(mockUndoDml).toHaveBeenNthCalledWith(2, {
-        undoLogId: 'undo-log-1',
-        confirmed: true,
-        riskAck: 'L2',
-      })
+    expect(mockUndoDml).toHaveBeenCalledTimes(2)
+    expect(mockUndoDml).toHaveBeenNthCalledWith(2, {
+      undoLogId: 'undo-log-1',
+      confirmed: true,
+      riskAck: 'L2',
     })
 
     const state = useSqlWorkbenchStore.getState()

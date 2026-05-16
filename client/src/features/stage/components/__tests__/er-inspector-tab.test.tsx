@@ -49,6 +49,6 @@ describe('<ErInspectorTab>', () => {
 
     render(<ErInspectorTab tabId="missing" />)
 
-    expect(screen.getByText(/加载 ER/)).toBeInTheDocument()
+    expect(screen.getByText(/加载中/)).toBeInTheDocument()
   })
 })

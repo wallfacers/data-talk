@@ -30,6 +30,9 @@ export const ALLOWED_DIRECT_STAGE_STORE_MUTATION_FILES = [
   'src/features/settings/general/general-panel.test.tsx',
   'src/features/chat/components/tools/__tests__/read-file.test.tsx',
   'src/features/stage/components/left-rail/stage-rail-row-menu.test.tsx',
+  // DML summary panel / undo tests — need setState to seed undo states.
+  'src/features/stage/components/sql-dml-summary-panel.test.tsx',
+  'src/features/stage/stores/sql-workbench-store-undo.test.ts',
 ]
 
 export function isAllowedDirectStageStoreMutationFile(filename) {

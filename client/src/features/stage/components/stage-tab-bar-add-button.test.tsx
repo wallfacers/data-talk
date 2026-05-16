@@ -19,7 +19,7 @@ describe('StageTabBarAddButton', () => {
     fireEvent.click(screen.getByRole('button'))
     // ER designer is now available; only Report and Dashboard remain pending.
     const menuItems = screen.getAllByRole('menuitem')
-    expect(menuItems).toHaveLength(4)
+    expect(menuItems).toHaveLength(5)
     expect(screen.getByText('stage.tabBar.addNew.menu.er')).toBeInTheDocument()
   })
 

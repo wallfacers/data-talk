@@ -98,13 +98,14 @@ describe('DataSourcePickerDialog', () => {
       />,
     )
 
-    const buttons = screen.getAllByRole('button')
-      .map((button) => button.textContent ?? '')
-      .filter((text) =>
-        text.includes('orders-prod') || text.includes('analytics-dev') || text.includes('warehouse-stage'),
-      )
-    expect(buttons[0]).toContain('orders-prod')
-    expect(buttons[1]).toContain('analytics-dev')
+    // Connection items are ContextMenuTrigger divs with aria-label, not role="button"
+    const ordersBtn = screen.getByLabelText('orders-prod')
+    const analyticsBtn = screen.getByLabelText('analytics-dev')
+    expect(ordersBtn).toBeInTheDocument()
+    expect(analyticsBtn).toBeInTheDocument()
+
+    // Verify ranking by DOM order: c2 (orders-prod) should appear before c1 (analytics-dev)
+    expect(ordersBtn.compareDocumentPosition(analyticsBtn)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
 
   it('filters connections by name, host, and database name', () => {
@@ -122,19 +123,19 @@ describe('DataSourcePickerDialog', () => {
     fireEvent.change(screen.getByPlaceholderText('搜索数据源'), {
       target: { value: 'warehouse' },
     })
-    expect(screen.getByRole('button', { name: 'warehouse-stage' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'orders-prod' })).not.toBeInTheDocument()
+    expect(screen.getByLabelText('warehouse-stage')).toBeInTheDocument()
+    expect(screen.queryByLabelText('orders-prod')).not.toBeInTheDocument()
 
     fireEvent.change(screen.getByPlaceholderText('搜索数据源'), {
       target: { value: 'prod.db.local' },
     })
-    expect(screen.getByRole('button', { name: 'orders-prod' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'analytics-dev' })).not.toBeInTheDocument()
+    expect(screen.getByLabelText('orders-prod')).toBeInTheDocument()
+    expect(screen.queryByLabelText('analytics-dev')).not.toBeInTheDocument()
 
     fireEvent.change(screen.getByPlaceholderText('搜索数据源'), {
       target: { value: 'analytics' },
     })
-    expect(screen.getByRole('button', { name: 'analytics-dev' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'warehouse-stage' })).not.toBeInTheDocument()
+    expect(screen.getByLabelText('analytics-dev')).toBeInTheDocument()
+    expect(screen.queryByLabelText('warehouse-stage')).not.toBeInTheDocument()
   })
 })
