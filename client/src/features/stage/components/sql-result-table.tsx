@@ -590,6 +590,7 @@ export function SqlResultTable({
                 render={
                   <div
                     className="min-h-0 flex-1 overflow-auto bg-bg-canvas"
+                    data-result-scrollbar="header-offset"
                     onContextMenuCapture={() => setContextTarget(null)}
                   >
                     {resultTable('expanded')}
