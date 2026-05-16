@@ -226,6 +226,7 @@ const MESSAGES = {
     'tabType.files': '文件',
     'tabType.filesLibrary': '资产库',
     'tabType.scriptEditor': '脚本编辑器',
+    'tabType.scriptLibrary': '脚本库',
 
     'tabType.dashboard': '看板',
     'tabType.dashboard.short': '看板',
@@ -302,6 +303,15 @@ const MESSAGES = {
     'files.discardSuccess': '已丢弃 {filename}',
     'files.archiveError': '归档失败：{message}',
     'files.discardError': '丢弃失败：{message}',
+
+    'script.library.empty.noConnection': '选择一个连接以查看脚本运行历史',
+    'script.library.empty.noRuns': '当前连接还没有脚本运行记录',
+    'script.library.empty.noMatch': '没有匹配的运行记录',
+    'script.library.search.placeholder': '搜索脚本名称 / 目标表',
+    'script.library.status.running': '运行中',
+    'script.library.status.completed': '已完成',
+    'script.library.status.failed': '失败',
+    'script.library.status.cancelled': '已取消',
 
     'files.deleteModal.title': '删除会话前需处理候选文件',
     'files.deleteModal.description': '以下文件是归档候选，需要先决定每个文件的去向：归档到「{connectionName}」或丢弃',
@@ -1072,6 +1082,7 @@ const MESSAGES = {
     'tabType.files': 'Files',
     'tabType.filesLibrary': 'Files Library',
     'tabType.scriptEditor': 'Script Editor',
+    'tabType.scriptLibrary': 'Script Library',
 
     'tabType.dashboard': 'Dashboard',
     'tabType.dashboard.short': 'Dashboard',
@@ -1148,6 +1159,15 @@ const MESSAGES = {
     'files.discardSuccess': 'Discarded {filename}',
     'files.archiveError': 'Archive failed: {message}',
     'files.discardError': 'Discard failed: {message}',
+
+    'script.library.empty.noConnection': 'Select a connection to view script run history',
+    'script.library.empty.noRuns': 'No script runs for this connection',
+    'script.library.empty.noMatch': 'No matching runs',
+    'script.library.search.placeholder': 'Search by name / target table',
+    'script.library.status.running': 'Running',
+    'script.library.status.completed': 'Completed',
+    'script.library.status.failed': 'Failed',
+    'script.library.status.cancelled': 'Cancelled',
 
     'files.deleteModal.title': 'Handle Candidates Before Deleting',
     'files.deleteModal.description': 'The following files are archive candidates — decide the destination of each: archive to "{connectionName}" or discard',

@@ -214,9 +214,23 @@ window.__BEZEL_CONFIG__ = {
   widgets: [
     {
       id: 'chart_w_xxx',
+      type: 'chart',
       intervalMs: 5000,
       endpoint: '/api/dashboards/dash_xxx/widgets/chart_w_xxx/data',
-      params: { dt: '2026-05-11' }
+      params: { dt: '2026-05-11' },
+      baseOption: {
+        xAxis: { type: 'category' },
+        yAxis: { type: 'value' },
+        series: [{ type: 'line', encode: { x: 'dt', y: 'gmv' } }]
+      }
+    },
+    {
+      id: 'kpi_w_orders01',
+      type: 'kpi',
+      intervalMs: 5000,
+      endpoint: '/api/dashboards/dash_xxx/widgets/kpi_w_orders01/data',
+      params: {},
+      baseOption: null
     }
   ]
 };
@@ -228,15 +242,54 @@ window.__BEZEL_CONFIG__ = {
 ```
 1. 读取 window.__BEZEL_CONFIG__
 2. 对每个 widget:
-   a. document.getElementById(widget.id) → ECharts.init(el)
-   b. 启动 setInterval / setTimeout 循环:
-      - 暂停中 → 跳过本轮，等下一轮
+   a. el = document.getElementById(widget.id);若不存在 → 跳过该 widget
+   b. 按 widget.type 分流初始化:
+      ┌─────────────────────────────────────────────────────────────┐
+      │ if (widget.type === 'chart'):                              │
+      │   ch = echarts.init(el)                                    │
+      │   ch.setOption(widget.baseOption)   ← 首屏 base option,    │
+      │                                       必须存在            │
+      │   charts[widget.id] = ch                                   │
+      │ else:                                                       │
+      │   // HTML-only widget,容器已由编译期 HTML 渲染好           │
+      │   // 禁止 echarts.init                                      │
+      └─────────────────────────────────────────────────────────────┘
+   c. 若 widget.intervalMs > 0 → 启动 setTimeout 循环:
+      - 暂停中 → 跳过本轮,等下一轮
       - 未暂停 → fetch(widget.endpoint, POST, { params: widget.params })
-      - 成功 → ch.setOption({ dataset: { source: data.rows } }, { lazyUpdate: true })
-      - 失败 → 保留上一帧数据，postMessage({ type: 'error', ... }) 给 host
+      - 成功 → applyWidgetData(widget, data)
+      - 失败 → 保留上一帧数据,postMessage({ type: 'error', ... }) 给 host
+   注:widget.intervalMs === 0 表示静态/事件驱动(markdown/section/divider/image/filter),
+      不启动轮询
 3. document.visibilitychange → 切换 paused 状态
 4. window message listener → 接收 host 的 params/update / refresh/pause / refresh/resume
 5. 初始化完成后 postMessage({ type: 'ready', jsonHash }) 给 host
+
+──────────────────────────────────────────────────────────────────────
+applyWidgetData(widget, data) 算法:
+  if (widget.type === 'chart'):
+    charts[widget.id].setOption(
+      { dataset: { source: data.rows } },
+      { lazyUpdate: true }
+    )
+    // 禁止传 series / xAxis / yAxis 等结构字段
+    // 那些已在 baseOption 里设过,继承即可
+  else:
+    applyHtmlData(widget.type, el, data.rows)
+
+──────────────────────────────────────────────────────────────────────
+applyHtmlData(kind, el, rows) 算法:
+  switch (kind):
+    case 'kpi':
+      // 编译期已在 el 内放好 .label / .value / .delta / .trend 元素
+      // rows[0] 形如 { label, value, delta, trend }
+      重写 el.querySelector('.value').textContent / .delta / .trend
+    case 'table':
+      // 编译期已在 el 内放好 <table><thead>...</thead><tbody></tbody></table>
+      重写 el.querySelector('tbody') 的 <tr> 行,每行字段按 thead 列顺序
+    case 'markdown' | 'section' | 'divider' | 'image' | 'filter':
+      // 静态或事件驱动,正常路径下 intervalMs 即为 0 不会进 polling
+      若 polling 真的触发(不规范的 JSON),no-op,不报错
 ```
 
 ## 4. 错误处理
@@ -273,17 +326,34 @@ interface BezelConfig {
 }
 
 interface BezelWidgetConfig {
-  /** Widget DOM id，同时是 ECharts 容器 id */
+  /** Widget DOM id;type === 'chart' 时同时是 ECharts 容器 id */
   id: string
 
-  /** 轮询间隔 ms，覆盖 defaultIntervalMs */
+  /**
+   * Widget 类型,决定调度器初始化与刷新分流。
+   * 由后端 DashboardArtifactService 从 dashboard.json widget.type 拷入。
+   * - 'chart': echarts.init + setOption(baseOption) + 轮询 setOption({dataset})
+   * - 其他: HTML 渲染,禁止 echarts.init;轮询走 applyHtmlData
+   */
+  type: 'chart' | 'kpi' | 'table' | 'markdown' | 'filter' | 'section' | 'divider' | 'image'
+
+  /** 轮询间隔 ms,覆盖 defaultIntervalMs;0 表示不轮询(静态/事件驱动) */
   intervalMs: number
 
-  /** 数据 API endpoint，格式 /api/dashboards/{id}/widgets/{wid}/data */
+  /** 数据 API endpoint,格式 /api/dashboards/{id}/widgets/{wid}/data */
   endpoint: string
 
-  /** 附加参数，随 POST body 发送 */
+  /** 附加参数,随 POST body 发送 */
   params: Record<string, unknown>
+
+  /**
+   * 首屏 ECharts option(series / xAxis / yAxis / 等结构字段)。
+   * - type === 'chart': SHALL 非 null;调度器初始化时 ch.setOption(baseOption)
+   * - type !== 'chart': SHALL 为 null;HTML widget 的 DOM 在编译期已渲染
+   * 编译期由 DashboardArtifactService 从 dashboard.json widget.options 拷入(chart only)。
+   * scripts/validate.py 会强制校验本不变量。
+   */
+  baseOption: object | null
 }
 ```
 

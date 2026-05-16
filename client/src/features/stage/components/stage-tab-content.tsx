@@ -9,6 +9,7 @@ import { ErInspectorTab } from './er-inspector-tab'
 import { FilePreviewTab } from './file-preview-tab'
 import { FilesTab } from './files-tab'
 import { FilesLibraryTab } from './files-library-tab'
+import { ScriptLibraryTab } from '@/features/script/components/script-library-tab'
 import { SqlWorkbenchTab } from './sql-workbench-tab'
 import { TabContentLoader } from './tab-content-loader'
 
@@ -106,6 +107,14 @@ export function StageTabContent() {
     return (
       <div className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <FilesLibraryTab key={tab.tabId} />
+      </div>
+    )
+  }
+
+  if (tab.type === 'script_library') {
+    return (
+      <div className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <ScriptLibraryTab key={tab.tabId} />
       </div>
     )
   }

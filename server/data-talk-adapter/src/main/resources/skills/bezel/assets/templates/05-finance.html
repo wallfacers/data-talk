@@ -338,14 +338,20 @@ window.__BEZEL_CONFIG__ = {
   defaultIntervalMs: 30000,
   pauseOnHidden: true,
   widgets: [
-    { id: "chart-trend", patternId: "finance.monthly-trend", endpoint: "/api/dashboards/05-finance/widgets/chart-trend/data", intervalMs: null, params: {}, paramRefs: [] },
-    { id: "chart-revenue", patternId: "finance.revenue-structure", endpoint: "/api/dashboards/05-finance/widgets/chart-revenue/data", intervalMs: null, params: {}, paramRefs: [] },
-    { id: "chart-cost", patternId: "finance.cost-breakdown", endpoint: "/api/dashboards/05-finance/widgets/chart-cost/data", intervalMs: null, params: {}, paramRefs: [] },
-    { id: "chart-assets", patternId: "finance.asset-liability", endpoint: "/api/dashboards/05-finance/widgets/chart-assets/data", intervalMs: null, params: {}, paramRefs: [] },
-    { id: "chart-aging", patternId: "finance.ar-aging", endpoint: "/api/dashboards/05-finance/widgets/chart-aging/data", intervalMs: null, params: {}, paramRefs: [] },
-    { id: "chart-budget", patternId: "finance.budget-gauge", endpoint: "/api/dashboards/05-finance/widgets/chart-budget/data", intervalMs: null, params: {}, paramRefs: [] }
+    { id: "chart-trend", type: "chart", patternId: "finance.monthly-trend", endpoint: "/api/dashboards/05-finance/widgets/chart-trend/data", intervalMs: null, params: {}, paramRefs: [], baseOption: {} },
+    { id: "chart-revenue", type: "chart", patternId: "finance.revenue-structure", endpoint: "/api/dashboards/05-finance/widgets/chart-revenue/data", intervalMs: null, params: {}, paramRefs: [], baseOption: {} },
+    { id: "chart-cost", type: "chart", patternId: "finance.cost-breakdown", endpoint: "/api/dashboards/05-finance/widgets/chart-cost/data", intervalMs: null, params: {}, paramRefs: [], baseOption: {} },
+    { id: "chart-assets", type: "chart", patternId: "finance.asset-liability", endpoint: "/api/dashboards/05-finance/widgets/chart-assets/data", intervalMs: null, params: {}, paramRefs: [], baseOption: {} },
+    { id: "chart-aging", type: "chart", patternId: "finance.ar-aging", endpoint: "/api/dashboards/05-finance/widgets/chart-aging/data", intervalMs: null, params: {}, paramRefs: [], baseOption: {} },
+    { id: "chart-budget", type: "chart", patternId: "finance.budget-gauge", endpoint: "/api/dashboards/05-finance/widgets/chart-budget/data", intervalMs: null, params: {}, paramRefs: [], baseOption: {} }
   ]
 };
+
+/* Safe ECharts init — returns null if element missing, preventing getAttribute crash */
+function safeInit(id) {
+  var el = document.getElementById(id);
+  return el ? echarts.init(el) : null;
+}
 
 /* ==================== POLLING SCHEDULER IIFE ==================== */
 (function() {
@@ -358,44 +364,88 @@ window.__BEZEL_CONFIG__ = {
   function bindWidget(w) {
     var el = document.getElementById(w.id);
     if (!el) return;
-
-/* Safe ECharts init — returns null if element missing, preventing getAttribute crash */
-function safeInit(id) {
-  var el = document.getElementById(id);
-  return el ? echarts.init(el) : null;
-}
-    charts[w.id] = echarts.init(el);
-    schedule(w);
+    // Type-aware initialization (BUG-0055 fix):
+    // only chart widgets get echarts.init; KPI/table/etc. are HTML-rendered.
+    if (w.type === 'chart') {
+      var ch = echarts.init(el);
+      // First-paint base option so the chart has series/axes before the first poll.
+      if (w.baseOption) ch.setOption(w.baseOption);
+      charts[w.id] = ch;
+    }
+    if (w.intervalMs && w.intervalMs > 0) schedule(w);
   }
 
   function schedule(w) {
     var interval = w.intervalMs || cfg.defaultIntervalMs || 10000;
     timers[w.id] = setTimeout(function tick() {
       if (paused) { timers[w.id] = setTimeout(tick, interval); return; }
-      try {
-        fetch(w.endpoint, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ params: w.params || {} })
-        }).then(function(res) {
-          if (!res.ok) throw new Error('HTTP ' + res.status);
-          return res.json();
-        }).then(function(data) {
-          applyWidgetData(w, data);
-        }).catch(function(e) {
-          parent.postMessage({ type: 'error', widgetId: w.id, message: String(e) }, '*');
-        });
-      } catch (e) {
+      fetch(w.endpoint, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ params: w.params || {} })
+      }).then(function(res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      }).then(function(data) {
+        applyWidgetData(w, data);
+      }).catch(function(e) {
         parent.postMessage({ type: 'error', widgetId: w.id, message: String(e) }, '*');
-      }
+      });
       timers[w.id] = setTimeout(tick, interval);
     }, interval);
   }
 
   function applyWidgetData(w, data) {
-    var ch = charts[w.id];
-    if (!ch) return;
-    ch.setOption({ dataset: { source: data.rows } }, { lazyUpdate: true });
+    if (w.type === 'chart') {
+      var ch = charts[w.id];
+      if (!ch) return;
+      ch.setOption({ dataset: { source: data.rows } }, { lazyUpdate: true });
+      return;
+    }
+    var el = document.getElementById(w.id);
+    if (!el) return;
+    applyHtmlData(w.type, el, data.rows || []);
+  }
+
+  function applyHtmlData(kind, el, rows) {
+    if (kind === 'kpi') {
+      var row = rows[0] || {};
+      var setText = function(sel, v) {
+        var t = el.querySelector(sel);
+        if (t && v !== undefined && v !== null) t.textContent = String(v);
+      };
+      setText('.value', row.value);
+      setText('.label', row.label);
+      setText('.delta', row.delta);
+      var trendEl = el.querySelector('.trend');
+      if (trendEl && row.trend) {
+        trendEl.classList.remove('up', 'down');
+        trendEl.classList.add(row.trend === 'down' ? 'down' : 'up');
+      }
+      return;
+    }
+    if (kind === 'table') {
+      var tbody = el.querySelector('tbody');
+      if (!tbody) return;
+      var headerCells = el.querySelectorAll('thead th');
+      var cols = Array.prototype.slice.call(headerCells).map(function(th) {
+        return th.dataset.column || th.textContent.trim();
+      });
+      var html = rows.map(function(r) {
+        var tds = cols.map(function(c) {
+          return '<td>' + escapeHtml(String(r[c] == null ? '' : r[c])) + '</td>';
+        }).join('');
+        return '<tr>' + tds + '</tr>';
+      }).join('');
+      tbody.innerHTML = html;
+      return;
+    }
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, function(c) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+    });
   }
 
   if (cfg.pauseOnHidden !== false) {
@@ -408,12 +458,15 @@ function safeInit(id) {
     if (m.type === 'refresh/pause') paused = true;
     if (m.type === 'refresh/resume') paused = false;
     if (m.type === 'params/update') {
-      cfg.widgets.forEach(function(w) { w.params = Object.assign({}, w.params || {}, m.params); });
+      cfg.widgets.forEach(function(w) {
+        w.params = Object.assign({}, w.params || {}, m.params);
+      });
     }
   });
 
   cfg.widgets.forEach(bindWidget);
-  parent.postMessage({ type: 'ready', jsonHash: document.querySelector('meta[name=__JSON_HASH__]') ? document.querySelector('meta[name=__JSON_HASH__]').content : null }, '*');
+  var hm = document.querySelector('meta[name="__JSON_HASH__"]');
+  parent.postMessage({ type: 'ready', jsonHash: hm ? hm.content : null }, '*');
 })();
 
 /* ==================== CLOCK ==================== */

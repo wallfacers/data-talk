@@ -307,14 +307,20 @@ window.__BEZEL_CONFIG__ = {
   defaultIntervalMs: 10000,
   pauseOnHidden: true,
   widgets: [
-    { id: "chart-trend", patternId: "logistics.trend-dual", endpoint: "/api/dashboards/dash_logistics_monitor01/widgets/chart-trend/data", intervalMs: 10000, params: {}, paramRefs: [] },
-    { id: "chart-transport", patternId: "logistics.transport-pie", endpoint: "/api/dashboards/dash_logistics_monitor01/widgets/chart-transport/data", intervalMs: 10000, params: {}, paramRefs: [] },
-    { id: "chart-abnormal", patternId: "logistics.abnormal-bar", endpoint: "/api/dashboards/dash_logistics_monitor01/widgets/chart-abnormal/data", intervalMs: 10000, params: {}, paramRefs: [] },
-    { id: "chart-warehouse", patternId: "logistics.warehouse-bar", endpoint: "/api/dashboards/dash_logistics_monitor01/widgets/chart-warehouse/data", intervalMs: 10000, params: {}, paramRefs: [] },
-    { id: "chart-lastmile", patternId: "logistics.lastmile-bar", endpoint: "/api/dashboards/dash_logistics_monitor01/widgets/chart-lastmile/data", intervalMs: 10000, params: {}, paramRefs: [] },
-    { id: "chart-satisfaction", patternId: "logistics.satisfaction-gauge", endpoint: "/api/dashboards/dash_logistics_monitor01/widgets/chart-satisfaction/data", intervalMs: 10000, params: {}, paramRefs: [] }
+    { id: "chart-trend", type: "chart", patternId: "logistics.trend-dual", endpoint: "/api/dashboards/dash_logistics_monitor01/widgets/chart-trend/data", intervalMs: 10000, params: {}, paramRefs: [], baseOption: {} },
+    { id: "chart-transport", type: "chart", patternId: "logistics.transport-pie", endpoint: "/api/dashboards/dash_logistics_monitor01/widgets/chart-transport/data", intervalMs: 10000, params: {}, paramRefs: [], baseOption: {} },
+    { id: "chart-abnormal", type: "chart", patternId: "logistics.abnormal-bar", endpoint: "/api/dashboards/dash_logistics_monitor01/widgets/chart-abnormal/data", intervalMs: 10000, params: {}, paramRefs: [], baseOption: {} },
+    { id: "chart-warehouse", type: "chart", patternId: "logistics.warehouse-bar", endpoint: "/api/dashboards/dash_logistics_monitor01/widgets/chart-warehouse/data", intervalMs: 10000, params: {}, paramRefs: [], baseOption: {} },
+    { id: "chart-lastmile", type: "chart", patternId: "logistics.lastmile-bar", endpoint: "/api/dashboards/dash_logistics_monitor01/widgets/chart-lastmile/data", intervalMs: 10000, params: {}, paramRefs: [], baseOption: {} },
+    { id: "chart-satisfaction", type: "chart", patternId: "logistics.satisfaction-gauge", endpoint: "/api/dashboards/dash_logistics_monitor01/widgets/chart-satisfaction/data", intervalMs: 10000, params: {}, paramRefs: [], baseOption: {} }
   ]
 };
+
+/* Safe ECharts init — returns null if element missing, preventing getAttribute crash */
+function safeInit(id) {
+  var el = document.getElementById(id);
+  return el ? echarts.init(el) : null;
+}
 
 (function() {
   var cfg = window.__BEZEL_CONFIG__;
@@ -326,14 +332,15 @@ window.__BEZEL_CONFIG__ = {
   function bindWidget(w) {
     var el = document.getElementById(w.id);
     if (!el) return;
-
-/* Safe ECharts init — returns null if element missing, preventing getAttribute crash */
-function safeInit(id) {
-  var el = document.getElementById(id);
-  return el ? echarts.init(el) : null;
-}
-    charts[w.id] = echarts.init(el);
-    schedule(w);
+    // Type-aware initialization (BUG-0055 fix):
+    // only chart widgets get echarts.init; KPI/table/etc. are HTML-rendered.
+    if (w.type === 'chart') {
+      var ch = echarts.init(el);
+      // First-paint base option so the chart has series/axes before the first poll.
+      if (w.baseOption) ch.setOption(w.baseOption);
+      charts[w.id] = ch;
+    }
+    if (w.intervalMs && w.intervalMs > 0) schedule(w);
   }
 
   function schedule(w) {
@@ -341,38 +348,93 @@ function safeInit(id) {
     timers[w.id] = setTimeout(function tick() {
       if (paused) { timers[w.id] = setTimeout(tick, interval); return; }
       fetch(w.endpoint, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ params: w.params || {} })
       }).then(function(res) {
-        if (!res.ok) throw new Error("HTTP " + res.status);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
         return res.json();
       }).then(function(data) {
-        var ch = charts[w.id];
-        if (ch) ch.setOption({ dataset: { source: data.rows } }, { lazyUpdate: true });
+        applyWidgetData(w, data);
       }).catch(function(e) {
-        parent.postMessage({ type: "error", widgetId: w.id, message: String(e) }, "*");
+        parent.postMessage({ type: 'error', widgetId: w.id, message: String(e) }, '*');
       });
       timers[w.id] = setTimeout(tick, interval);
     }, interval);
   }
 
-  if (cfg.pauseOnHidden !== false) {
-    document.addEventListener("visibilitychange", function() { paused = document.hidden; });
+  function applyWidgetData(w, data) {
+    if (w.type === 'chart') {
+      var ch = charts[w.id];
+      if (!ch) return;
+      ch.setOption({ dataset: { source: data.rows } }, { lazyUpdate: true });
+      return;
+    }
+    var el = document.getElementById(w.id);
+    if (!el) return;
+    applyHtmlData(w.type, el, data.rows || []);
   }
 
-  window.addEventListener("message", function(ev) {
+  function applyHtmlData(kind, el, rows) {
+    if (kind === 'kpi') {
+      var row = rows[0] || {};
+      var setText = function(sel, v) {
+        var t = el.querySelector(sel);
+        if (t && v !== undefined && v !== null) t.textContent = String(v);
+      };
+      setText('.value', row.value);
+      setText('.label', row.label);
+      setText('.delta', row.delta);
+      var trendEl = el.querySelector('.trend');
+      if (trendEl && row.trend) {
+        trendEl.classList.remove('up', 'down');
+        trendEl.classList.add(row.trend === 'down' ? 'down' : 'up');
+      }
+      return;
+    }
+    if (kind === 'table') {
+      var tbody = el.querySelector('tbody');
+      if (!tbody) return;
+      var headerCells = el.querySelectorAll('thead th');
+      var cols = Array.prototype.slice.call(headerCells).map(function(th) {
+        return th.dataset.column || th.textContent.trim();
+      });
+      var html = rows.map(function(r) {
+        var tds = cols.map(function(c) {
+          return '<td>' + escapeHtml(String(r[c] == null ? '' : r[c])) + '</td>';
+        }).join('');
+        return '<tr>' + tds + '</tr>';
+      }).join('');
+      tbody.innerHTML = html;
+      return;
+    }
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, function(c) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+    });
+  }
+
+  if (cfg.pauseOnHidden !== false) {
+    document.addEventListener('visibilitychange', function() { paused = document.hidden; });
+  }
+
+  window.addEventListener('message', function(ev) {
     var m = ev.data;
-    if (!m || typeof m !== "object") return;
-    if (m.type === "refresh/pause") paused = true;
-    if (m.type === "refresh/resume") paused = false;
-    if (m.type === "params/update") {
-      cfg.widgets.forEach(function(w) { w.params = Object.assign({}, w.params || {}, m.params); });
+    if (!m || typeof m !== 'object') return;
+    if (m.type === 'refresh/pause') paused = true;
+    if (m.type === 'refresh/resume') paused = false;
+    if (m.type === 'params/update') {
+      cfg.widgets.forEach(function(w) {
+        w.params = Object.assign({}, w.params || {}, m.params);
+      });
     }
   });
 
   cfg.widgets.forEach(bindWidget);
-  parent.postMessage({ type: "ready", jsonHash: document.querySelector('meta[name="__JSON_HASH__"]') ? document.querySelector('meta[name="__JSON_HASH__"]').content : null }, "*");
+  var hm = document.querySelector('meta[name="__JSON_HASH__"]');
+  parent.postMessage({ type: 'ready', jsonHash: hm ? hm.content : null }, '*');
 })();
 </script>
 

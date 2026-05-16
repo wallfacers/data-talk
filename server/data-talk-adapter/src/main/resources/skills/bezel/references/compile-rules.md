@@ -155,28 +155,49 @@ The `scripts/validate.py` script checks every compiled HTML file for the presenc
     "widgets": [
       {
         "id": "<string>",
+        "type": "chart" | "kpi" | "table" | "markdown" | "filter" | "section" | "divider" | "image",
         "patternId": "<string>",
         "endpoint": "<URL string>",
-        "intervalMs": <number | null>,
+        "intervalMs": <number>,
         "params": {},
-        "paramRefs": []
+        "paramRefs": [],
+        "baseOption": <object | null>
       }
     ]
   }
   ```
 - `widgets` array length must match the number of widget container `<div>` elements in the body.
+- For every widget in `widgets`:
+  - `type === 'chart'` → `baseOption` MUST be a non-null object containing at minimum `series` OR (`xAxis` AND `yAxis`) (validator code `E_CHART_MISSING_BASE_OPTION`).
+  - `type !== 'chart'` → `baseOption` MUST be `null` (validator code `E_NONCHART_HAS_BASE_OPTION`).
+  - `type` MUST be present (validator code `E_CONFIG_TYPE_MISSING`).
 
 ### 2.5 Polling Scheduler IIFE
 
 The standard polling scheduler IIFE (see Section 5) must be present as an immediately-invoked function expression within a `<script>` block. The validator checks for the signature `(function() {` at the start and `})();` at the end of the relevant code region.
 
-### 2.6 Widget ECharts Init Segments
+### 2.6 Type-Aware Widget Initialization Segments
 
-For every widget `w` in the config, the polling scheduler must call `echarts.init(el)` where `el = document.getElementById(w.id)`. The validator ensures:
-- A `<div id="<w.id>" class="bezel-widget">` element exists in the body for each widget.
+For every widget `w` in the config, the polling scheduler MUST follow type-aware initialization:
+
+- **`w.type === 'chart'`** → `echarts.init(el)` SHALL be called once, followed by `ch.setOption(w.baseOption)` for first-paint, where `el = document.getElementById(w.id)`. The chart instance is stored in the scheduler's local `charts[w.id]` registry for use by subsequent polling.
+- **`w.type !== 'chart'`** (`kpi` / `table` / `markdown` / `filter` / `section` / `divider` / `image`) → `echarts.init(el)` SHALL NOT be called. The widget container's DOM has already been rendered during compile-time HTML assembly (Section 4 Step 4). Polling refreshes go through `applyHtmlData(w.type, el, data.rows)`.
+
+The validator ensures:
+
+- For every widget `w`, a `<div id="<w.id>" class="bezel-widget">` element exists in the body.
 - The polling scheduler references every widget ID.
+- For every widget where `w.type !== 'chart'`, its container `<div>` SHALL carry attribute `data-bezel-render-kind="<w.type>"` (validator code `E_HTML_KIND_ATTR_MISSING`).
+- The compiled scheduler script SHALL contain a runtime branch `if (w.type === 'chart')` (or semantically equivalent guard) before any `echarts.init(` call (validator code `E_NONCHART_HAS_ECHARTS_INIT`). Calling `echarts.init` unconditionally on every widget is **forbidden** and was the root cause of BUG-0055.
 
-### 2.7 Visibility Change Listener
+### 2.7 Pattern Initialization Invariant
+
+`compile-rules.md` and `data-contract.md` together encode the following two-step ECharts contract for chart widgets:
+
+1. **Pattern initialization** (compile-time + iframe load-time): `ch.setOption(w.baseOption)` runs ONCE per chart widget when the iframe loads, before any polling fetch. `w.baseOption` is the verbatim copy of `dashboard.json` `widget.options` (containing `series`, `xAxis`, `yAxis`, `encode`, etc.), injected by `DashboardArtifactService` into `BezelWidgetConfig.baseOption`. **There is no separate "pattern initialization" step performed by the scheduler — the scheduler IS where it happens.** Without this step, ECharts has no structural information and cannot render any data the polling scheduler later supplies.
+2. **Data application** (each poll tick): `ch.setOption({ dataset: { source: rows } }, { lazyUpdate: true })` updates ONLY the dataset. The series / axes / encode definitions are inherited from the first-paint `baseOption`. Never re-emit structural fields here — that would defeat lazyUpdate and cause flicker.
+
+### 2.8 Visibility Change Listener
 
 ```js
 document.addEventListener('visibilitychange', ...);
@@ -325,12 +346,24 @@ STEP 4 — Assemble <body> Widget Containers
        on a `.bezel-widget` element. Doing so detaches the widget from the 12-column grid
        and causes overlap. Always express placement via grid-column / grid-row.
     c. Generate:
-       <div id="<w.id>"
-            class="bezel-widget"
-            style="grid-column: <w.position.x + 1> / span <w.position.w>;
-                   grid-row: <w.position.y + 1> / span <w.position.h>;">
-         <!-- patternId-derived HTML fragment goes here -->
-       </div>
+       if w.type === 'chart':
+         <div id="<w.id>"
+              class="bezel-widget"
+              style="grid-column: <w.position.x + 1> / span <w.position.w>;
+                     grid-row: <w.position.y + 1> / span <w.position.h>;">
+           <!-- chart container is empty; ECharts will render canvas at runtime -->
+         </div>
+       else:
+         <div id="<w.id>"
+              class="bezel-widget"
+              data-bezel-render-kind="<w.type>"
+              style="grid-column: <w.position.x + 1> / span <w.position.w>;
+                     grid-row: <w.position.y + 1> / span <w.position.h>;">
+           <!-- patternId-derived HTML fragment (KPI markup, table skeleton, etc.) -->
+         </div>
+       The `data-bezel-render-kind` attribute is REQUIRED for every non-chart widget — it
+       lets the runtime `applyHtmlData(kind, el, rows)` select the right DOM update strategy
+       without re-parsing widget metadata.
     d. Append to body.
 
 STEP 5 — Assemble <script> window.__BEZEL_CONFIG__
@@ -341,15 +374,29 @@ STEP 5 — Assemble <script> window.__BEZEL_CONFIG__
       pauseOnHidden: dashboard.json.pauseOnHidden !== false,
       widgets: dashboard.json.widgets.map(w => ({
         id:         w.id,
+        type:       w.type,             // REQUIRED — drives scheduler init branching
         patternId:  w.patternId,
-        endpoint:   w.endpoint,        // resolved URL for data fetch
-        intervalMs: w.intervalMs,       // null means use defaultIntervalMs
+        endpoint:   w.endpoint,         // resolved URL for data fetch
+        intervalMs: w.intervalMs ?? (dashboard.json.defaultIntervalMs || 10000),
         params:     w.params || {},
-        paramRefs:  w.paramRefs || []
+        paramRefs:  w.paramRefs || [],
+        baseOption: (w.type === 'chart') ? (w.options || {}) : null
+                    // chart: verbatim copy of widget.options for first-paint setOption
+                    // non-chart: MUST be null (validator enforced)
       }))
     }
   Serialize as JSON and embed:
     <script>window.__BEZEL_CONFIG__ = <serialized JSON>;</script>
+
+  NOTES on baseOption integrity:
+    - The baseOption MUST be JSON-serializable. Function-valued formatters
+      (e.g. `formatter: function(p){...}`) will be silently dropped by
+      JSON.stringify. Use ECharts 5+ string templates instead
+      (e.g. `formatter: '{b}: {c}'`).
+    - DashboardArtifactService MAY wrap baseOption parse failures with a
+      placeholder `{ title: { text: 'widget options invalid', textStyle: { color: '#f87171' } } }`
+      so a single broken widget does not crash the whole iframe. Other
+      widgets in the same dashboard SHALL still initialize normally.
 
 STEP 6 — Assemble Polling Scheduler
   Append the standard polling scheduler IIFE (see Section 5)
@@ -402,8 +449,19 @@ This is the canonical polling scheduler implementation. Copy-paste this exactly 
   function bindWidget(w) {
     const el = document.getElementById(w.id);
     if (!el) return;
-    charts[w.id] = echarts.init(el);
-    schedule(w);
+    // Type-aware initialization: only chart widgets get echarts.init.
+    // KPI/table/markdown/etc. are HTML-rendered at compile time; calling
+    // echarts.init on them corrupts the container (see BUG-0055).
+    if (w.type === 'chart') {
+      const ch = echarts.init(el);
+      // First-paint base option: series/xAxis/yAxis/encode come from
+      // dashboard.json widget.options, copied into w.baseOption by the
+      // backend compiler. Without this step ECharts has no structural
+      // info and cannot render any data the scheduler later supplies.
+      if (w.baseOption) ch.setOption(w.baseOption);
+      charts[w.id] = ch;
+    }
+    if (w.intervalMs && w.intervalMs > 0) schedule(w);
   }
 
   function schedule(w) {
@@ -427,9 +485,58 @@ This is the canonical polling scheduler implementation. Copy-paste this exactly 
   }
 
   function applyWidgetData(w, data) {
-    const ch = charts[w.id];
-    if (!ch) return;
-    ch.setOption({ dataset: { source: data.rows } }, { lazyUpdate: true });
+    if (w.type === 'chart') {
+      const ch = charts[w.id];
+      if (!ch) return;
+      // Only dataset — series/xAxis/yAxis inherited from baseOption.
+      ch.setOption({ dataset: { source: data.rows } }, { lazyUpdate: true });
+      return;
+    }
+    const el = document.getElementById(w.id);
+    if (!el) return;
+    applyHtmlData(w.type, el, data.rows || []);
+  }
+
+  // HTML-widget refresh strategies. Each kind rewrites only the data-bearing
+  // sub-elements that the compile-time HTML already laid out.
+  function applyHtmlData(kind, el, rows) {
+    if (kind === 'kpi') {
+      const row = rows[0] || {};
+      const set = (sel, v) => {
+        const t = el.querySelector(sel);
+        if (t && v !== undefined && v !== null) t.textContent = String(v);
+      };
+      set('.value', row.value);
+      set('.label', row.label);
+      set('.delta', row.delta);
+      const trendEl = el.querySelector('.trend');
+      if (trendEl && row.trend) {
+        trendEl.classList.remove('up', 'down');
+        trendEl.classList.add(row.trend === 'down' ? 'down' : 'up');
+      }
+      return;
+    }
+    if (kind === 'table') {
+      const tbody = el.querySelector('tbody');
+      if (!tbody) return;
+      const headerCells = el.querySelectorAll('thead th');
+      const cols = Array.from(headerCells).map(th => th.dataset.column || th.textContent.trim());
+      const html = rows.map(r => {
+        const tds = cols.map(c => `<td>${escapeHtml(String(r[c] ?? ''))}</td>`).join('');
+        return `<tr>${tds}</tr>`;
+      }).join('');
+      tbody.innerHTML = html;
+      return;
+    }
+    // markdown / section / divider / image / filter:
+    // static or event-driven; intervalMs SHOULD already be 0,
+    // so polling SHOULD NOT reach this branch. No-op as defensive fallback.
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, c => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
   }
 
   if (cfg.pauseOnHidden !== false) {
@@ -455,13 +562,15 @@ This is the canonical polling scheduler implementation. Copy-paste this exactly 
 
 | Feature | Behavior |
 |---|---|
-| **Widget binding** | On load, iterates `cfg.widgets` and calls `bindWidget(w)` for each. Creates an `echarts.ECharts` instance per widget `<div>`. |
-| **Polling** | Each widget gets its own `setTimeout` chain. First fetch fires after `intervalMs`. Subsequent fetches fire `intervalMs` after the previous fetch completes (not on a fixed cadence). |
+| **Widget binding** | On load, iterates `cfg.widgets` and calls `bindWidget(w)` for each. **Type-aware**: only `w.type === 'chart'` triggers `echarts.init` + `setOption(w.baseOption)`. Non-chart widgets skip ECharts entirely and rely on the compile-time HTML inside their container. |
+| **Pattern initialization (chart only)** | Immediately after `echarts.init(el)`, the scheduler calls `ch.setOption(w.baseOption)` so the chart has its series/axes/encode definitions before the first poll arrives. `baseOption` is the verbatim copy of `dashboard.json` `widget.options`. Without this step the chart canvas exists but is blank, even if polling later supplies data. |
+| **Polling** | Each widget where `w.intervalMs > 0` gets its own `setTimeout` chain. First fetch fires after `intervalMs`. Subsequent fetches fire `intervalMs` after the previous fetch completes (not on a fixed cadence). HTML widgets MAY participate in polling (e.g. KPI tile refreshing its number every 5s); chart widgets always do. |
 | **Pause on hidden** | When `cfg.pauseOnHidden !== false`, listens for `visibilitychange` and sets `paused = true` when the document is hidden. Timers still fire but skip the fetch and reschedule. |
 | **Error reporting** | On fetch failure, posts `{ type: 'error', widgetId, message }` to `parent`. Does **not** stop the timer chain — next tick will retry. |
 | **Host message protocol** | Accepts three message types from the host page: `refresh/pause`, `refresh/resume`, `params/update`. The `params/update` message merges new params into every widget's param map. |
 | **Ready signal** | After all widgets are bound, posts `{ type: 'ready', jsonHash }` to `parent`. The host page uses this to confirm the iframe has loaded and to cross-check the JSON hash. |
-| **Data application** | `applyWidgetData` sets ECharts option with `{ dataset: { source: data.rows } }` and `{ lazyUpdate: true }`. The chart option (series, axes, etc.) is determined by the pattern template and is set once during pattern initialization, not by the scheduler. |
+| **Data application (chart)** | `applyWidgetData` with `w.type === 'chart'` calls `ch.setOption({ dataset: { source: data.rows } }, { lazyUpdate: true })`. Series/axes/encode are inherited from the pattern-initialization `baseOption` and MUST NOT be re-emitted here. |
+| **Data application (HTML)** | `applyWidgetData` with `w.type !== 'chart'` dispatches to `applyHtmlData(kind, el, rows)`. KPI rewrites `.value`/`.label`/`.delta`/`.trend` element text; table rewrites `<tbody>` rows in column order from `<thead th data-column>`; markdown/section/divider/image/filter are static no-ops. **Never calls any ECharts API on HTML widgets.** |
 
 ---
 
@@ -488,3 +597,8 @@ The `scripts/validate.py` validator emits these error codes. Assembly code shoul
 | `E_VISIBILITY_MISSING` | `visibilitychange` listener not found (and pauseOnHidden is not false) | Ensure IIFE includes the visibility listener |
 | `E_EVAL_USAGE` | Code contains `eval(`, `new Function(`, or `document.write(` | Remove forbidden calls |
 | `E_SETTIMEOUT_STRING` | `setTimeout` or `setInterval` called with a string argument | Use function references only |
+| `E_CONFIG_TYPE_MISSING` | A `BezelWidgetConfig` entry is missing the required `type` field | Update Step 5 to copy `w.type` from `dashboard.json` |
+| `E_CHART_MISSING_BASE_OPTION` | A widget with `type === 'chart'` has `baseOption: null` or `baseOption` is missing `series` and (`xAxis`+`yAxis`) | Ensure `widget.options` is a complete ECharts option before compile |
+| `E_NONCHART_HAS_BASE_OPTION` | A widget with `type !== 'chart'` has a non-null `baseOption` | Step 5 MUST force `baseOption = null` for non-chart widgets |
+| `E_HTML_KIND_ATTR_MISSING` | A non-chart widget `<div>` is missing the `data-bezel-render-kind="<type>"` attribute | Update Step 4 to emit the attribute for non-chart widgets |
+| `E_NONCHART_HAS_ECHARTS_INIT` | The compiled scheduler IIFE calls `echarts.init` unconditionally on every widget (no `w.type === 'chart'` guard before init) | Use the Section 5 standard IIFE verbatim; do not strip the type guard |

@@ -14,32 +14,18 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class V18MigrationTest {
+class FileArtifactDashboardKindTest {
 
     @Test
-    void v18_adds_dashboard_kind_and_external_column(@TempDir Path tmp) throws Exception {
+    void file_artifact_supports_dashboard_kind_and_external_column(@TempDir Path tmp) throws Exception {
         String url = "jdbc:sqlite:" + tmp.resolve("dt.db");
-
-        List<String> migrationFiles = List.of(
-                "V1__init.sql", "V2__ai_prefs.sql", "V3__cascade_session_delete.sql",
-                "V4__session_title_locked.sql", "V5__connection_connect_timeout.sql",
-                "V6__connection_test_status.sql", "V7__connection_name.sql",
-                "V8__drop_messages.sql", "V9__synthetic_bang_query_messages.sql",
-                "V10__session_data_context.sql", "V11__artifact_origin.sql",
-                "V12__stage_tabs.sql", "V13__stage_tabs_workspace_only.sql",
-                "V14__file_artifact.sql", "V15__oracle_connection_fields.sql",
-                "V16__sqlserver_connection_fields.sql", "V17__duckdb_readonly.sql",
-                "V18__file_artifact_dashboard.sql"
-        );
 
         try (Connection c = DriverManager.getConnection(url);
              Statement s = c.createStatement()) {
-            for (String filename : migrationFiles) {
-                String sql = new String(
-                        new ClassPathResource("db/migration/" + filename).getInputStream().readAllBytes());
-                for (String statement : SqlScriptSplitter.split(sql)) {
-                    s.executeUpdate(statement);
-                }
+            String sql = new String(
+                    new ClassPathResource("db/migration/V1__init.sql").getInputStream().readAllBytes());
+            for (String statement : SqlScriptSplitter.split(sql)) {
+                s.executeUpdate(statement);
             }
 
             // V18 should allow kind='dashboard' and external=1

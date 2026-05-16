@@ -1,1 +1,0 @@
-ALTER TABLE connections ADD COLUMN read_only INTEGER NOT NULL DEFAULT 0;

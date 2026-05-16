@@ -13,7 +13,6 @@ public enum FileArtifactKind {
     SQL_SCRIPT,
     DATASET,
     DASHBOARD,
-    INGESTION_PAYLOAD,
     OTHER;
 
     @JsonValue

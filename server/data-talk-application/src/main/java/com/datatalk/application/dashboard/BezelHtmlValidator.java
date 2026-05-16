@@ -12,7 +12,20 @@ public final class BezelHtmlValidator {
         new Required("csp_meta", Pattern.compile("<meta\\s+http-equiv\\s*=\\s*[\"']Content-Security-Policy[\"']", Pattern.CASE_INSENSITIVE)),
         new Required("bezel_origin_placeholder", Pattern.compile("__BEZEL_SERVER_ORIGIN__")),
         new Required("json_hash_meta", Pattern.compile("<meta\\s+name\\s*=\\s*[\"']__JSON_HASH__[\"']", Pattern.CASE_INSENSITIVE)),
-        new Required("bezel_config", Pattern.compile("window\\.__BEZEL_CONFIG__\\s*="))
+        new Required("bezel_config", Pattern.compile("window\\.__BEZEL_CONFIG__\\s*=")),
+        // BUG-0055 regression guard: the scheduler IIFE must branch on widget type
+        // before calling echarts.init. A scheduler that calls echarts.init on every
+        // widget regardless of type corrupts KPI/table/markdown containers.
+        // Tolerates whitespace, single/double quotes, and === vs == around 'chart'.
+        // Skipped when widgets array is empty (no widgets => no scheduler needed).
+        // The empty-array shortcut tolerates both JS literal (widgets:) and JSON ("widgets":) key forms.
+        new Required("type_aware_scheduler",
+            Pattern.compile("widgets[\"']?\\s*:\\s*\\[\\s*\\]|\\bw\\.type\\s*===?\\s*[\"']chart[\"']")),
+        // Every BezelWidgetConfig entry must carry a 'type' field so the runtime
+        // scheduler can branch. Absence indicates the AI generated old-schema config.
+        // Skipped when widgets array is empty. Supports JS literal and JSON-style keys.
+        new Required("widget_config_type_field",
+            Pattern.compile("widgets[\"']?\\s*:\\s*\\[\\s*\\]|[\"']?type[\"']?\\s*:\\s*[\"'](?:chart|kpi|table|markdown|filter|section|divider|image)[\"']"))
     );
 
     // frame-ancestors is NOT required — browsers ignore it in <meta> tags;

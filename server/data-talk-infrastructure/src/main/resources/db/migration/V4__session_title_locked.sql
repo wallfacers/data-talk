@@ -1,1 +1,0 @@
-ALTER TABLE sessions ADD COLUMN title_locked INTEGER NOT NULL DEFAULT 0;

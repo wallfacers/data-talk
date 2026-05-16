@@ -252,6 +252,14 @@ export const TAB_TYPE_REGISTRY: Record<string, TabTypeDescriptor> = {
     labelKey: 'tabType.filesLibrary',
     extractContent: () => '',
   },
+  script_library: {
+    type: 'script_library',
+    persistent: true,
+    scope: 'workspace',
+    icon: TerminalIcon,
+    labelKey: 'tabType.scriptLibrary',
+    extractContent: () => '',
+  },
   script_editor: {
     type: 'script_editor',
     persistent: true,

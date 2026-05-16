@@ -26,7 +26,7 @@ class JdbcFileArtifactRepositoryExternalTest {
     @BeforeEach
     void setup(@TempDir Path tmp) {
         String url = "jdbc:sqlite:" + tmp.resolve("dt.db");
-        // Apply V14 (creates table) + V18 (adds external column + dashboard kind)
+        // Apply V1 (creates full v0.0.1 schema including file_artifact with external column)
         new FlywayWrapper().migrate(url);
         var ds = new DriverManagerDataSource(url);
         repo = new JdbcFileArtifactRepository(new JdbcTemplate(ds), new ObjectMapper());
@@ -74,22 +74,16 @@ class JdbcFileArtifactRepositoryExternalTest {
                 now, now, now, Map.of(), false);
     }
 
-    /** Helper to apply migrations against a fresh SQLite DB without depending on Flyway library. */
+    /** Helper to apply V1 migration against a fresh SQLite DB. */
     private static class FlywayWrapper {
         void migrate(String url) {
             try {
-                // Apply V14 first (creates file_artifact table)
-                String v14 = new String(getClass().getClassLoader()
-                        .getResourceAsStream("db/migration/V14__file_artifact.sql").readAllBytes());
-                String v18 = new String(getClass().getClassLoader()
-                        .getResourceAsStream("db/migration/V18__file_artifact_dashboard.sql").readAllBytes());
+                String v1 = new String(getClass().getClassLoader()
+                        .getResourceAsStream("db/migration/V1__init.sql").readAllBytes());
 
                 try (var c = java.sql.DriverManager.getConnection(url);
                      var s = c.createStatement()) {
-                    for (String sql : com.datatalk.infra.persistence.SqlScriptSplitter.split(v14)) {
-                        s.executeUpdate(sql);
-                    }
-                    for (String sql : com.datatalk.infra.persistence.SqlScriptSplitter.split(v18)) {
+                    for (String sql : com.datatalk.infra.persistence.SqlScriptSplitter.split(v1)) {
                         s.executeUpdate(sql);
                     }
                 }

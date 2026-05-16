@@ -10,6 +10,8 @@ import com.datatalk.domain.fileartifact.FileArtifactScope;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -24,6 +26,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class DashboardArtifactService {
+
+    private static final Logger log = LoggerFactory.getLogger(DashboardArtifactService.class);
 
     private static final int MAX_PAYLOAD_BYTES = 256 * 1024; // 256 KB
 
@@ -222,6 +226,15 @@ public class DashboardArtifactService {
         if (v2.has("widgets") && v2.get("widgets").isArray()) {
             for (JsonNode w : v2.get("widgets")) {
                 ObjectNode wo = (ObjectNode) w;
+                // Step 1: ensure widget has a type. v1 schema sometimes omitted it,
+                // and the runtime scheduler now branches on type to decide whether
+                // to call echarts.init. Missing type -> infer from patternId.
+                if (!wo.has("type") || wo.path("type").asText("").isBlank()) {
+                    String patternId = wo.path("patternId").asText("");
+                    String inferred = inferTypeFromPattern(patternId);
+                    wo.put("type", inferred);
+                }
+                // Step 2: ensure widget has a patternId (existing v1 backfill).
                 if (!wo.has("patternId")) {
                     wo.put("patternId", inferPatternFromType(wo.path("type").asText("chart")));
                 }
@@ -242,6 +255,34 @@ public class DashboardArtifactService {
             case "image"    -> "generic.image";
             default         -> "generic.echarts-card";
         };
+    }
+
+    /**
+     * Reverse of inferPatternFromType: derive widget type from patternId for v1 JSON
+     * that omitted the type field. The mapping mirrors patterns-catalog.md.
+     * Unknown patternId falls back to 'chart' (the safest default — chart widgets
+     * tolerate empty baseOption, HTML widgets corrupt without proper compile-time DOM).
+     */
+    private static String inferTypeFromPattern(String patternId) {
+        if (patternId == null || patternId.isBlank()) {
+            log.warn("widget missing both type and patternId, defaulting type='chart'");
+            return "chart";
+        }
+        String type = switch (patternId) {
+            case "generic.kpi-tile"        -> "kpi";
+            case "generic.echarts-card"    -> "chart";
+            case "generic.table"           -> "table";
+            case "generic.markdown"        -> "markdown";
+            case "generic.section-header"  -> "section";
+            case "generic.divider"         -> "divider";
+            case "generic.image"           -> "image";
+            case "generic.filter-bar"      -> "filter";
+            default                        -> null;
+        };
+        if (type != null) return type;
+        // Industry-specific patterns (e.g. ecommerce.funnel-gradient) default to chart.
+        log.warn("widget patternId '{}' not in catalog, defaulting type='chart'", patternId);
+        return "chart";
     }
 
     public static final class PayloadTooLargeException extends RuntimeException {

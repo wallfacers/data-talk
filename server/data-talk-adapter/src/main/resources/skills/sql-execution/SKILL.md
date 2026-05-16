@@ -20,7 +20,7 @@ description: Use when the user asks to query data, read table metadata, run SELE
 - Writing data (INSERT/UPDATE/DELETE/DDL) — `datatalk_execute_sql` rejects it. For confirmed mutations use the SQL workbench.
 - Switching session connection / database / schema — see `[[connection-management]]` for `datatalk_set_data_context` and `datatalk_resolve_use_target`.
 - Charting from a result — once the table artifact is in hand, hand off to the charts skill.
-- Ingesting external HTTP/CSV/JSON sources — that is `[[data-ingestion]]`.
+- Ingesting external HTTP/CSV/JSON sources — that is `[[data-collection]]`.
 
 ## Tool surface
 

@@ -8,13 +8,13 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## 当前编号
 
-下一个分配 ID：**BUG-0055**（永不复用，单调递增）
+下一个分配 ID：**BUG-0056**（永不复用，单调递增）
 
 ## Open BUGs（按 priority 倒序，P0 → P2）
 
 | ID | Title | Priority | Source | Modules | Discovered |
 |----|-------|----------|--------|---------|------------|
-| —  | —     | —        | —      | —       | —          |
+| [BUG-0055](BUG-0055-bezel-scheduler-no-type-aware-init.md) | bezel polling scheduler 对所有 widget 无差别 echarts.init,且 chart 缺首屏 base option | P1 | agent-generated-dashboard | bezel, dashboard | 2026-05-17 |
 
 
 ## In Progress（status = investigating | fixed 等待 verify）

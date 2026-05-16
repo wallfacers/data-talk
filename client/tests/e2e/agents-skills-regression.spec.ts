@@ -12,7 +12,7 @@ import { mountToolRecorder } from './fixtures/mcp-tool-recorder'
  *  1. Browse table (skill:query-editor-workflow + skill:ui-contract)
  *  2. ER design (skill:er-tabs)
  *  3. Chart (skill:charts-and-dashboards)
- *  4. Data ingestion baseline (skill:data-ingestion — unchanged)
+ *  4. Data collection baseline (skill:data-collection)
  *  5. SQL error diagnostics (skill:sql-error-diagnostics → skill:sql-execution)
  *
  * All tests are gated by `DATATALK_REAL_OPENCODE_MODEL` per project convention.
@@ -189,23 +189,23 @@ test.describe('agents-skills-refactor regression', () => {
   })
 
   // ─────────────────────────────────────────────────────────────────────
-  // Scenario 4: data ingestion baseline (skill:data-ingestion)
-  // Verifies the existing skill still auto-matches after the refactor.
-  // Assertion: datatalk_http_request is invoked.
+  // Scenario 4: data collection baseline (skill:data-collection)
+  // Verifies script-runner skill auto-matches after the refactor.
+  // Assertion: datatalk_script_run is invoked.
   // ─────────────────────────────────────────────────────────────────────
-  test('scenario 4: data ingestion auto-matches after refactor (skill:data-ingestion)', async ({
+  test('scenario 4: data collection auto-matches after refactor (skill:data-collection)', async ({
     page,
   }) => {
     test.skip(!MODEL, 'DATATALK_REAL_OPENCODE_MODEL not set')
 
     const recorder = await mountToolRecorder(page)
-    await chat.sendMessage('把 https://example.com/orders.csv 的数据落到我的 H2 数据库')
+    await chat.sendMessage('用 Python 脚本把 https://example.com/orders.csv 的数据落到我的 H2 数据库')
     await chat.waitForAiResponse()
 
-    const fetchCalls = await recorder.callsFor('datatalk_http_request')
+    const scriptCalls = await recorder.callsFor('datatalk_script_run')
     expect(
-      fetchCalls.length,
-      'agent must invoke datatalk_http_request for ingestion intent'
+      scriptCalls.length,
+      'agent must invoke datatalk_script_run for data collection intent'
     ).toBeGreaterThanOrEqual(1)
   })
 

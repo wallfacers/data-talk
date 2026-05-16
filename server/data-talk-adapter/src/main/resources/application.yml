@@ -37,17 +37,6 @@ server:
   shutdown: graceful
 
 datatalk:
-  ingestion:
-    fetch-timeout-ms: 60000
-    payload-max-bytes: 524288000
-    ssrf-deny-enabled: true
-    host-deny:
-      - localhost
-      - 127.0.0.1
-    host-deny-always:
-      - 169.254.169.254
-      - metadata.google.internal
-      - metadata.azure.com
   diagnostics:
     lock:
       long-wait-ms: 5000

@@ -78,16 +78,17 @@ export function FilePreviewDialog({
     return t('chat.filePreview.file')
   }, [filename, t])
 
-  const imageUrl = useMemo(() => {
-    if (!file || !isImage(filename)) return null
-    return URL.createObjectURL(file)
-  }, [file, filename])
+  const [imageUrl, setImageUrl] = useState<string | null>(null)
 
   useEffect(() => {
-    return () => {
-      if (imageUrl) URL.revokeObjectURL(imageUrl)
+    if (!file || !isImage(filename)) {
+      setImageUrl(null)
+      return
     }
-  }, [imageUrl])
+    const url = URL.createObjectURL(file)
+    setImageUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [file, filename])
 
   const loadText = useCallback(async () => {
     if (!file || isImage(filename)) return
@@ -118,14 +119,14 @@ export function FilePreviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[80vh] max-w-3xl flex-col gap-0 p-0">
+      <DialogContent className="flex max-h-[80vh] max-w-3xl flex-col gap-0 overflow-hidden p-0">
         {/* Header */}
-        <div className="flex items-center gap-2 border-b px-4 py-3">
-          <span className="text-text-muted">{fileTypeIcon(filename)}</span>
-          <DialogTitle className="text-sm font-medium truncate flex-1">
+        <div className="relative flex items-center border-b px-4 py-3">
+          <span className="text-text-muted mr-2">{fileTypeIcon(filename)}</span>
+          <DialogTitle className="text-sm font-medium truncate">
             {filename}
           </DialogTitle>
-          <span className="shrink-0 text-xs text-text-muted">
+          <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-xs text-text-muted">
             {fileTypeLabel} · {formatSize(file.size)}
           </span>
         </div>

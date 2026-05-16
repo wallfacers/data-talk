@@ -312,10 +312,11 @@ class DashboardControllerIT {
             <h1>GMV 总额</h1>
             <script>
             window.__BEZEL_CONFIG__ = { "dashboardId": "dash_test_store_ecommerce", "widgets": [
-              { "id": "w_a", "endpoint": "/api/dashboards/dash_test_store_ecommerce/widgets/w_a/data" },
-              { "id": "w_b", "endpoint": '/api/dashboards/dash_test_store_ecommerce/widgets/w_b/data' }
+              { "id": "w_a", "type": "chart", "endpoint": "/api/dashboards/dash_test_store_ecommerce/widgets/w_a/data", "baseOption": {} },
+              { "id": "w_b", "type": "chart", "endpoint": '/api/dashboards/dash_test_store_ecommerce/widgets/w_b/data', "baseOption": {} }
             ]};
             </script>
+            <script>(function(){cfg.widgets.forEach(function(w){if(w.type === 'chart'){}});})();</script>
             </body>
             </html>
             """;
@@ -395,7 +396,7 @@ class DashboardControllerIT {
             <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
             </head>
             <body>
-            <script>window.__BEZEL_CONFIG__ = { "dashboardId": "dash_cdn_seed" };</script>
+            <script>window.__BEZEL_CONFIG__ = { "dashboardId": "dash_cdn_seed", "widgets": [] };</script>
             </body>
             </html>
             """;

@@ -54,6 +54,24 @@ export interface BatchCloseResponse {
   tableName: string
 }
 
+export interface ScriptRunListItem {
+  id: string
+  language: string
+  status: string
+  exitCode: number | null
+  connectionId: string
+  targetTable: string | null
+  rowsWritten: number
+  name: string | null
+  startedAt: string | null
+  finishedAt: string | null
+  durationMs: number | null
+}
+
+export interface ListRunsResponse {
+  runs: ScriptRunListItem[]
+}
+
 export const scriptApi = {
   runPrepare: (req: RunPrepareRequest) =>
     http.post('script/run-prepare', { json: req }).json<RunPrepareResponse>(),
@@ -69,4 +87,7 @@ export const scriptApi = {
 
   batchClose: (sessionId: string) =>
     http.post('script-data/batch/close', { json: { sessionId } }).json<BatchCloseResponse>(),
+
+  listRuns: (connectionId?: string, limit = 50) =>
+    http.get('script/runs', { searchParams: { connectionId: connectionId ?? '', limit: String(limit) } }).json<ListRunsResponse>(),
 }

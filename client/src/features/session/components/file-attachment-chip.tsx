@@ -1,5 +1,5 @@
 import { FileText, FileSpreadsheet, FileJson, XIcon } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FileAttachment } from '../useFileUpload'
 import { cn } from '@/lib/utils'
 import { FilePreviewDialog } from './file-preview-dialog'
@@ -44,9 +44,16 @@ export function FileAttachmentChip({
   const [previewOpen, setPreviewOpen] = useState(false)
   const { t } = useI18n()
 
-  const thumbnailUrl = useMemo(() => {
-    if (!isImage) return null
-    return URL.createObjectURL(file)
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!isImage) {
+      setThumbnailUrl(null)
+      return
+    }
+    const url = URL.createObjectURL(file)
+    setThumbnailUrl(url)
+    return () => URL.revokeObjectURL(url)
   }, [isImage, file])
 
   return (

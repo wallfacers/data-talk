@@ -26,7 +26,7 @@ A *simple row count* means a single-table `COUNT(*)` without grouping, trend, co
 - Switching the session data context — see `[[connection-management]]` (`datatalk_set_data_context`, `datatalk_resolve_use_target`, `use xxx`).
 - ER schema viewing / designing — see `[[er-tabs]]`.
 - Dashboard / chart creation — see `[[charts-and-dashboards]]`.
-- Fetching external data into a new table — see `[[data-ingestion]]`.
+- Fetching external data into a new table — see `[[data-collection]]`.
 
 If the user explicitly asks for analysis, reporting, insight, trend explanation, or charting, the server data workflow wins; if the user explicitly asks for the SQL editor / current editor / workspace / query editor result grid, this workflow wins.
 

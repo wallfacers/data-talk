@@ -1,1 +1,0 @@
-ALTER TABLE connections ADD COLUMN connect_timeout INTEGER NOT NULL DEFAULT 3000;

@@ -79,7 +79,7 @@ CREATE TABLE file_artifact (
   id            TEXT PRIMARY KEY,
   scope         TEXT NOT NULL CHECK(scope IN ('session','workspace')),
   status        TEXT NOT NULL CHECK(status IN ('temporary','candidate','archived','discarded')),
-  kind          TEXT NOT NULL CHECK(kind IN ('report','er_diagram','sql_script','dataset','dashboard','ingestion_payload','other')),
+  kind          TEXT NOT NULL CHECK(kind IN ('report','er_diagram','sql_script','dataset','dashboard','other')),
   session_id    TEXT,
   connection_id TEXT,
   filename      TEXT NOT NULL,

@@ -13,7 +13,7 @@ Playwright and Vitest test suites for the DataTalk client.
 | `@dashboard` | Dashboard API/UI/workbench tests | Yes |
 | `@datasource` | Data-source form and workflow tests | Yes |
 | `@files` | File artifact integration tests | Yes |
-| `@ingestion` | External data ingestion E2E (REST + MCP + UI + SSE) | Yes |
+| `@script` | Script runner E2E (REST + Tauri + UI) | Yes |
 | `@visual` | Visual layout smoke checks | Scheduled or targeted |
 | `@a11y` | Accessibility smoke checks | Scheduled or targeted |
 | `@realdb` | External real database smoke tests | Opt-in only |
@@ -31,17 +31,6 @@ Playwright and Vitest test suites for the DataTalk client.
 | `file-artifacts.spec.ts` | `@e2e @files @dashboard` | 6 (3 active + 3 fixme) |
 | `visual-a11y.spec.ts` | `@visual @a11y` | 6 |
 | `real-db-smoke.spec.ts` | `@realdb @datasource` | 4 (env-gated) |
-| `ingestion-preflight.spec.ts` | `@preflight @ingestion @skill` | 4 |
-| `ingestion-credentials-api.spec.ts` | `@e2e @ingestion @api` | 9 |
-| `ingestion-credentials-ui.spec.ts` | `@e2e @ingestion @ui` | 7 |
-| `ingestion-fetch-mcp.spec.ts` | `@e2e @ingestion @api` | 12 |
-| `ingestion-infer-mcp.spec.ts` | `@e2e @ingestion @api` | 8 |
-| `ingestion-ddl-mcp.spec.ts` | `@e2e @ingestion @api` | 5 |
-| `ingestion-execute-mcp.spec.ts` | `@e2e @ingestion @api` | 10 |
-| `ingestion-error-paths.spec.ts` | `@e2e @ingestion @api @error` | 5 |
-| `ingestion-job-tab-ui.spec.ts` | `@e2e @ingestion @ui` | 13 |
-| `ingestion-library-tab-ui.spec.ts` | `@e2e @ingestion @ui` | 6 |
-| `ingestion-sse-events.spec.ts` | `@e2e @ingestion @ui @sse` | 8 |
 
 ## Command Set
 
@@ -66,8 +55,8 @@ npx playwright test --grep @realdb
 # All default CI
 npx playwright test --grep "@preflight|@contract|@dashboard|@datasource|@files"
 
-# Ingestion epic E2E (requires backend with SPRING_PROFILES_ACTIVE=e2e)
-npx playwright test --grep @ingestion
+# Script runner E2E
+npx playwright test --grep @script
 ```
 
 ## Artifact Output
