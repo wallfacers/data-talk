@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net/ https://__BEZEL_SERVER_ORIGIN__; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://__BEZEL_SERVER_ORIGIN__; frame-ancestors 'self';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net/ https://__BEZEL_SERVER_ORIGIN__; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://__BEZEL_SERVER_ORIGIN__;">
   <meta name="__JSON_HASH__" content="">
   <title>网络安全态势感知中心</title>
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -350,6 +350,12 @@
 
     /* ==================== KPI RING GAUGES ==================== */
     function makeKPIGauge(el, value, max, label, color) {
+
+/* Safe ECharts init — returns null if element missing, preventing getAttribute crash */
+function safeInit(id) {
+  var el = document.getElementById(id);
+  return el ? echarts.init(el) : null;
+}
       var chart = echarts.init(el);
       chart.setOption({
         backgroundColor: "transparent",
@@ -420,7 +426,7 @@
     }
 
     /* ==================== 24H ATTACK TREND ==================== */
-    var chartTrend = echarts.init(document.getElementById("chart-trend"));
+    var chartTrend = safeInit('chart-trend');
     var trendHours = []; for (var th = 0; th < 24; th++) trendHours.push(String(th).padStart(2, "0") + ":00");
     var trendData = [45,38,32,28,25,30,55,120,210,340,520,680,590,480,390,420,560,740,920,850,620,410,280,150];
     chartTrend.setOption(Object.assign({}, commonOption(), {
@@ -446,7 +452,7 @@
     }));
 
     /* ==================== ATTACK TYPE DISTRIBUTION (DONUT) ==================== */
-    var chartType = echarts.init(document.getElementById("chart-type"));
+    var chartType = safeInit('chart-type');
     chartType.setOption(Object.assign({}, commonOption(), {
       legend: Object.assign({}, commonOption().legend, { orient: "vertical", right: 5, top: "center", itemGap: 6 }),
       series: [{
@@ -469,7 +475,7 @@
     }));
 
     /* ==================== TOP ATTACK SOURCES (POLAR BAR) ==================== */
-    var chartSource = echarts.init(document.getElementById("chart-source"));
+    var chartSource = safeInit('chart-source');
     var sourceCountries = ["印度", "巴西", "俄罗斯", "美国", "中国"];
     var sourceValues = [320, 480, 650, 890, 1240];
     chartSource.setOption(Object.assign({}, commonOption(), {
@@ -493,7 +499,7 @@
     }));
 
     /* ==================== VULNERABILITY STATUS ==================== */
-    var chartVuln = echarts.init(document.getElementById("chart-vuln"));
+    var chartVuln = safeInit('chart-vuln');
     var vulnCats = ["操作系统", "中间件", "数据库", "Web应用", "网络设备", "容器平台"];
     chartVuln.setOption(Object.assign({}, commonOption(), {
       grid: { left: 60, right: 10, top: 20, bottom: 25 },
@@ -523,7 +529,7 @@
     }));
 
     /* ==================== ATT&CK MATRIX (HEATMAP) ==================== */
-    var chartAttack = echarts.init(document.getElementById("chart-attack"));
+    var chartAttack = safeInit('chart-attack');
     var tactics = ["初始访问", "执行", "持久化", "权限提升", "防御规避", "凭证访问", "发现", "横向移动", "收集", "C2", "数据窃取", "影响"];
     var techniques = ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8"];
     var heatData = [];
@@ -571,7 +577,7 @@
     }));
 
     /* ==================== KILL CHAIN (FUNNEL) ==================== */
-    var chartKill = echarts.init(document.getElementById("chart-kill"));
+    var chartKill = safeInit('chart-kill');
     chartKill.setOption(Object.assign({}, commonOption(), {
       legend: Object.assign({}, commonOption().legend, { show: false }),
       series: [{

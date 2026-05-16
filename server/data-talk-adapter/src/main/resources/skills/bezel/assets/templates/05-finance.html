@@ -10,7 +10,6 @@
                img-src data: https: blob:;
                font-src https://cdn.jsdelivr.net/ https://fonts.googleapis.com https://fonts.gstatic.com;
                connect-src __BEZEL_SERVER_ORIGIN__;
-               frame-ancestors 'self';
                base-uri 'none';
                form-action 'none'">
 <meta name="__JSON_HASH__" content="">
@@ -359,6 +358,12 @@ window.__BEZEL_CONFIG__ = {
   function bindWidget(w) {
     var el = document.getElementById(w.id);
     if (!el) return;
+
+/* Safe ECharts init — returns null if element missing, preventing getAttribute crash */
+function safeInit(id) {
+  var el = document.getElementById(id);
+  return el ? echarts.init(el) : null;
+}
     charts[w.id] = echarts.init(el);
     schedule(w);
   }
@@ -459,7 +464,7 @@ var allCharts = [];
 
 /* ==================== 1. MONTHLY TREND (BAR + LINE) ==================== */
 (function() {
-  var ch = echarts.init(document.getElementById('chart-trend'));
+  var ch = safeInit('chart-trend');
   ch.setOption({
     tooltip: Object.assign({}, commonTooltip, {
       trigger: 'axis',
@@ -518,7 +523,7 @@ var allCharts = [];
 
 /* ==================== 2. REVENUE STRUCTURE (DONUT PIE) ==================== */
 (function() {
-  var ch = echarts.init(document.getElementById('chart-revenue'));
+  var ch = safeInit('chart-revenue');
   ch.setOption({
     tooltip: Object.assign({}, commonTooltip, {
       trigger: 'item', formatter: '{b}: {c}亿 ({d}%)'
@@ -544,7 +549,7 @@ var allCharts = [];
 
 /* ==================== 3. COST BREAKDOWN (HORIZONTAL BAR) ==================== */
 (function() {
-  var ch = echarts.init(document.getElementById('chart-cost'));
+  var ch = safeInit('chart-cost');
   var categories = ['财务费用','研发费用','管理费用','销售费用'];
   var values = [0.12, 0.35, 0.38, 0.42];
   var colors = ['#1e3a5f', blueColor, '#8a6e2f', goldColor];
@@ -582,7 +587,7 @@ var allCharts = [];
 
 /* ==================== 4. ASSET LIABILITY (STACKED BAR) ==================== */
 (function() {
-  var ch = echarts.init(document.getElementById('chart-assets'));
+  var ch = safeInit('chart-assets');
   ch.setOption({
     tooltip: Object.assign({}, commonTooltip, {
       trigger: 'axis', axisPointer: { type: 'shadow' }
@@ -623,7 +628,7 @@ var allCharts = [];
 
 /* ==================== 5. AR AGING (HORIZONTAL BAR) ==================== */
 (function() {
-  var ch = echarts.init(document.getElementById('chart-aging'));
+  var ch = safeInit('chart-aging');
   ch.setOption({
     tooltip: Object.assign({}, commonTooltip, {
       trigger: 'axis', axisPointer: { type: 'shadow' }
@@ -658,7 +663,7 @@ var allCharts = [];
 
 /* ==================== 6. BUDGET GAUGE ==================== */
 (function() {
-  var ch = echarts.init(document.getElementById('chart-budget'));
+  var ch = safeInit('chart-budget');
   ch.setOption({
     series: [{
       type: 'gauge',

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net/ https://__BEZEL_SERVER_ORIGIN__; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://__BEZEL_SERVER_ORIGIN__; frame-ancestors 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net/ https://__BEZEL_SERVER_ORIGIN__; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://__BEZEL_SERVER_ORIGIN__;">
 <meta name="__JSON_HASH__" content="">
 <title>电商运营实时监控中心</title>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -401,8 +401,14 @@ var commonTooltip = {
 var darkSub = '#8899aa';
 var charts = [];
 
+/* Safe ECharts init — returns null if element missing, preventing getAttribute crash */
+function safeInit(id) {
+  var el = document.getElementById(id);
+  return el ? echarts.init(el) : null;
+}
+
 /* ==================== 1. CHANNEL PIE ==================== */
-var chartChannel = echarts.init(document.getElementById('chart-channel'));
+var chartChannel = safeInit('chart-channel');
 chartChannel.setOption({
   tooltip: Object.assign({}, commonTooltip, { trigger: 'item', formatter: '{b}: {c}万 ({d}%)' }),
   legend: { show: false },
@@ -423,7 +429,7 @@ chartChannel.setOption({
 charts.push(chartChannel);
 
 /* ==================== 2. GAUGE ==================== */
-var chartGauge = echarts.init(document.getElementById('chart-gauge'));
+var chartGauge = safeInit('chart-gauge');
 chartGauge.setOption({
   series: [{
     type: 'gauge', startAngle: 200, endAngle: -20, min: 0, max: 100,
@@ -444,7 +450,7 @@ chartGauge.setOption({
 charts.push(chartGauge);
 
 /* ==================== 3. REGIONAL TREEMAP ==================== */
-var chartTreemap = echarts.init(document.getElementById('chart-treemap'));
+var chartTreemap = safeInit('chart-treemap');
 var regionData = [
   { name: '华东', value: 82500, children: [
     { name: '上海', value: 19500 }, { name: '江苏', value: 21800 },
@@ -508,7 +514,7 @@ chartTreemap.setOption({
 charts.push(chartTreemap);
 
 /* ==================== 4. COHORT HEATMAP ==================== */
-var chartCohort = echarts.init(document.getElementById('chart-cohort'));
+var chartCohort = safeInit('chart-cohort');
 var cohortDays = ['Day 0', 'Day 1', 'Day 3', 'Day 7', 'Day 14', 'Day 30'];
 var cohortDates = ['05-05', '05-06', '05-07', '05-08', '05-09', '05-10', '05-11'];
 var cohortRaw = [
@@ -539,7 +545,7 @@ chartCohort.setOption({
 charts.push(chartCohort);
 
 /* ==================== 5. GMV TREND (bar + step line) ==================== */
-var chartTrend = echarts.init(document.getElementById('chart-trend'));
+var chartTrend = safeInit('chart-trend');
 var hours = [];
 for (var hi = 0; hi < 24; hi++) hours.push(String(hi).padStart(2, '0') + ':00');
 var gmvData = [45,38,32,28,25,30,42,68,95,128,156,182,210,195,178,165,188,215,245,268,285,240,180,120];
@@ -565,7 +571,7 @@ chartTrend.setOption({
 charts.push(chartTrend);
 
 /* ==================== 6. MATRIX HEATMAP ==================== */
-var chartMatrix = echarts.init(document.getElementById('chart-matrix'));
+var chartMatrix = safeInit('chart-matrix');
 var matrixCats = ['手机', '美妆', '家电', '服装', '食品', '母婴', '运动', '家居'];
 var matrixData = [];
 for (var mi = 0; mi < matrixCats.length; mi++)
@@ -592,7 +598,7 @@ chartMatrix.setOption({
 charts.push(chartMatrix);
 
 /* ==================== 7. CATEGORY RANKING ==================== */
-var chartCategory = echarts.init(document.getElementById('chart-category'));
+var chartCategory = safeInit('chart-category');
 var catData = [
   { n: '手机数码', v: 520 }, { n: '美妆护肤', v: 410 }, { n: '家用电器', v: 385 },
   { n: '服装鞋包', v: 340 }, { n: '食品饮料', v: 290 }, { n: '母婴用品', v: 245 },

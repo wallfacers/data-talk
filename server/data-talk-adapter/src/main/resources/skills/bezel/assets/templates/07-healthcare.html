@@ -10,7 +10,6 @@
                img-src data: https: blob:;
                font-src https://cdn.jsdelivr.net/;
                connect-src __BEZEL_SERVER_ORIGIN__;
-               frame-ancestors 'self';
                base-uri 'none';
                form-action 'none'">
 <meta name="__JSON_HASH__" content="sha256:placeholder">
@@ -444,6 +443,7 @@ var darkTheme = {
 };
 
 function makeChart(dom, option) {
+  if (!dom) return null;
   var chart = echarts.init(dom, null, { renderer: 'canvas' });
   chart.setOption(Object.assign({}, darkTheme, option));
   return chart;

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net/ https://__BEZEL_SERVER_ORIGIN__; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://__BEZEL_SERVER_ORIGIN__; frame-ancestors 'self';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net/ https://__BEZEL_SERVER_ORIGIN__; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://__BEZEL_SERVER_ORIGIN__;">
   <meta name="__JSON_HASH__" content="">
   <title>企业级数据大屏监控系统</title>
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -371,6 +371,12 @@
 
     /* ==================== KPI RING GAUGES ==================== */
     function makeKPIGauge(el, value, max, label, color) {
+
+/* Safe ECharts init — returns null if element missing, preventing getAttribute crash */
+function safeInit(id) {
+  var el = document.getElementById(id);
+  return el ? echarts.init(el) : null;
+}
       var chart = echarts.init(el);
       chart.setOption({
         backgroundColor: "transparent",
@@ -434,7 +440,7 @@
     };
 
     /* ==================== RADAR CHART ==================== */
-    var radarChart = echarts.init(document.getElementById("radarChart"));
+    var radarChart = safeInit('radarChart');
     radarChart.setOption(Object.assign({}, darkTheme, {
       tooltip: {},
       radar: {
@@ -458,7 +464,7 @@
     }));
 
     /* ==================== GAUGE CHART ==================== */
-    var gaugeChart = echarts.init(document.getElementById("gaugeChart"));
+    var gaugeChart = safeInit('gaugeChart');
     function makeGauge(name, value, color, offsetX) {
       return {
         type: "gauge",
@@ -495,7 +501,7 @@
     }));
 
     /* ==================== HEATMAP ==================== */
-    var heatmapChart = echarts.init(document.getElementById("heatmapChart"));
+    var heatmapChart = safeInit('heatmapChart');
     var services = ["API网关", "订单服务", "支付服务", "用户中心", "消息队列", "数据仓库"];
     var hours = []; for (var h = 0; h < 24; h++) hours.push(h + "h");
     var heatData = [];
@@ -533,7 +539,7 @@
     }));
 
     /* ==================== API RESPONSE DISTRIBUTION (DONUT) ==================== */
-    var apiChart = echarts.init(document.getElementById("apiChart"));
+    var apiChart = safeInit('apiChart');
     apiChart.setOption(Object.assign({}, darkTheme, {
       tooltip: { trigger: "item" },
       series: [{
@@ -553,7 +559,7 @@
     }));
 
     /* ==================== LOAD TREND (POLAR BAR) ==================== */
-    var loadChart = echarts.init(document.getElementById("loadChart"));
+    var loadChart = safeInit('loadChart');
     var loadHours = []; for (var lh = 0; lh < 24; lh++) loadHours.push(lh + ":00");
     var cpuData = loadHours.map(function(_, i) { return 30 + Math.sin(i / 3) * 15 + Math.random() * 10; });
     var memData = loadHours.map(function(_, i) { return 40 + Math.cos(i / 4) * 12 + Math.random() * 8; });

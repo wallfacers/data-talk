@@ -10,7 +10,6 @@
                img-src data: https: blob:;
                font-src https://cdn.jsdelivr.net/;
                connect-src __BEZEL_SERVER_ORIGIN__;
-               frame-ancestors 'self';
                base-uri 'none';
                form-action 'none'">
 <meta name="__JSON_HASH__" content="sha256:placeholder">
@@ -535,7 +534,7 @@ var darkTheme = {
 };
 
 /* ── Chart 1: Capacity stacked bar ── */
-var chartCapacity = echarts.init($("chart-capacity"));
+var chartCapacity = safeInit("chart-capacity");
 chartCapacity.setOption(Object.assign({}, darkTheme, {
   tooltip: { trigger: "axis", axisPointer: { type: "shadow" }, backgroundColor: "rgba(26,26,30,0.95)", borderColor: "rgba(249,115,22,0.25)", textStyle: { color: "#e5e7eb" } },
   legend: { data: ["早班","中班","晚班"], top: 0, textStyle: { color: "#9ca3af", fontSize: 11 } },
@@ -555,7 +554,7 @@ chartCapacity.setOption(Object.assign({}, darkTheme, {
 }));
 
 /* ── Chart 2: Overview dual-axis ── */
-var chartOverview = echarts.init($("chart-overview"));
+var chartOverview = safeInit("chart-overview");
 chartOverview.setOption(Object.assign({}, darkTheme, {
   tooltip: { trigger: "axis", backgroundColor: "rgba(26,26,30,0.95)", borderColor: "rgba(249,115,22,0.25)", textStyle: { color: "#e5e7eb" } },
   legend: { data: ["产能","效率"], top: 0, textStyle: { color: "#9ca3af", fontSize: 11 } },
@@ -584,7 +583,7 @@ chartOverview.setOption(Object.assign({}, darkTheme, {
 }));
 
 /* ── Chart 3: Energy stacked area ── */
-var chartEnergy = echarts.init($("chart-energy"));
+var chartEnergy = safeInit("chart-energy");
 chartEnergy.setOption(Object.assign({}, darkTheme, {
   tooltip: { trigger: "axis", backgroundColor: "rgba(26,26,30,0.95)", borderColor: "rgba(249,115,22,0.25)", textStyle: { color: "#e5e7eb" } },
   legend: { data: ["电","水","气"], top: 0, textStyle: { color: "#9ca3af", fontSize: 11 } },
@@ -607,7 +606,7 @@ chartEnergy.setOption(Object.assign({}, darkTheme, {
 }));
 
 /* ── Chart 4: Fault horizontal bar ── */
-var chartFault = echarts.init($("chart-fault"));
+var chartFault = safeInit("chart-fault");
 chartFault.setOption(Object.assign({}, darkTheme, {
   tooltip: { trigger: "axis", axisPointer: { type: "shadow" }, backgroundColor: "rgba(26,26,30,0.95)", borderColor: "rgba(249,115,22,0.25)", textStyle: { color: "#e5e7eb" } },
   grid: { left: 48, right: 24, top: 12, bottom: 12, containLabel: true },
@@ -631,7 +630,7 @@ chartFault.setOption(Object.assign({}, darkTheme, {
 }));
 
 /* ── Chart 5: SPC control chart ── */
-var chartSpc = echarts.init($("chart-spc"));
+var chartSpc = safeInit("chart-spc");
 var spcData = [10.1,10.3,9.9,10.0,10.2,10.4,9.8,10.1,10.3,10.0,9.9,10.2,10.1,10.3,10.0,9.8,10.2,10.1,10.4,10.0];
 var UCL = 10.6, LCL = 9.4, CL = 10.0;
 chartSpc.setOption(Object.assign({}, darkTheme, {
@@ -659,7 +658,7 @@ chartSpc.setOption(Object.assign({}, darkTheme, {
 }));
 
 /* ── Chart 6: Safety gauge ── */
-var chartSafety = echarts.init($("chart-safety"));
+var chartSafety = safeInit("chart-safety");
 chartSafety.setOption(Object.assign({}, darkTheme, {
   series: [{
     type: "gauge",

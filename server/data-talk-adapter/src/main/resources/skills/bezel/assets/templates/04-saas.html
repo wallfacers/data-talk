@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net/ https://__BEZEL_SERVER_ORIGIN__; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://__BEZEL_SERVER_ORIGIN__; frame-ancestors 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net/ https://__BEZEL_SERVER_ORIGIN__; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://__BEZEL_SERVER_ORIGIN__;">
 <meta name="__JSON_HASH__" content="">
 <title>SaaS 运营监控中心</title>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -378,8 +378,14 @@ var commonTooltip = {
 var darkSub = '#94a3b8';
 var charts = [];
 
+/* Safe ECharts init — returns null if element missing, preventing getAttribute crash */
+function safeInit(id) {
+  var el = document.getElementById(id);
+  return el ? echarts.init(el) : null;
+}
+
 /* ==================== 1. RETENTION LINES ==================== */
-var chartRetention = echarts.init(document.getElementById('chart-retention'));
+var chartRetention = safeInit('chart-retention');
 var cohorts = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7'];
 var days = ['Day 0', 'Day 7', 'Day 30', 'Day 60', 'Day 90', 'Day 180', 'Day 365'];
 var retData = [
@@ -407,7 +413,7 @@ chartRetention.setOption({
 charts.push(chartRetention);
 
 /* ==================== 2. MRR WATERFALL ==================== */
-var chartWaterfall = echarts.init(document.getElementById('chart-waterfall'));
+var chartWaterfall = safeInit('chart-waterfall');
 var wfMonths = ['1月', '2月', '3月', '4月', '5月', '6月'];
 var wfAdd   = [1200, 180, 150, 140, 160, 190];
 var wfExp   = [0, 80, 90, 100, 110, 130];
@@ -441,7 +447,7 @@ chartWaterfall.setOption({
 charts.push(chartWaterfall);
 
 /* ==================== 3. PLAN PIE ==================== */
-var chartPlan = echarts.init(document.getElementById('chart-plan'));
+var chartPlan = safeInit('chart-plan');
 chartPlan.setOption({
   tooltip: Object.assign({}, commonTooltip, { trigger: 'item', formatter: '{b}: {c} ({d}%)' }),
   legend: { orient: 'vertical', right: 4, top: 'center', textStyle: { color: darkSub, fontSize: 9 }, itemWidth: 8, itemHeight: 8 },
@@ -462,7 +468,7 @@ chartPlan.setOption({
 charts.push(chartPlan);
 
 /* ==================== 4. FEATURE HEATMAP ==================== */
-var chartHeatmap = echarts.init(document.getElementById('chart-heatmap'));
+var chartHeatmap = safeInit('chart-heatmap');
 var hmX = ['仪表盘', '报表', 'API', '协作', '自动化', '集成', '移动端', '告警'];
 var hmY = ['新用户', '成长中', '成熟期', '流失风险'];
 var hmRaw = [
@@ -493,7 +499,7 @@ chartHeatmap.setOption({
 charts.push(chartHeatmap);
 
 /* ==================== 5. API PERFORMANCE ==================== */
-var chartApi = echarts.init(document.getElementById('chart-api'));
+var chartApi = safeInit('chart-api');
 var hours = [];
 for (var hi = 0; hi < 24; hi++) hours.push(String(hi).padStart(2, '0') + ':00');
 var p50 = [45,42,40,38,36,35,34,35,38,42,48,52,55,58,56,54,52,50,48,46,44,42,41,40];
@@ -514,7 +520,7 @@ chartApi.setOption({
 charts.push(chartApi);
 
 /* ==================== 6. CHURN PREDICTION ==================== */
-var chartChurn = echarts.init(document.getElementById('chart-churn'));
+var chartChurn = safeInit('chart-churn');
 var churnMonths = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月','1月p','2月p','3月p'];
 var churnHist = [2.8,2.7,2.6,2.5,2.4,2.5,2.6,2.7,2.8,2.9,3.0,3.1,null,null,null];
 var churnPred = [null,null,null,null,null,null,null,null,null,null,null,null,3.2,3.3,3.4];

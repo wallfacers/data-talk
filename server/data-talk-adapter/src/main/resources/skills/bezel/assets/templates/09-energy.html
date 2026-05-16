@@ -10,7 +10,6 @@
                img-src data: https: blob:;
                font-src https://cdn.jsdelivr.net/;
                connect-src __BEZEL_SERVER_ORIGIN__;
-               frame-ancestors 'self';
                base-uri 'none';
                form-action 'none'">
 <meta name="__JSON_HASH__" content="sha256:placeholder">
@@ -370,7 +369,13 @@ var darkTheme = {
 };
 
 /* ==================== CHART 1: 能耗趋势 (堆叠面积) ==================== */
-var chartTrend = echarts.init(document.getElementById("chart-trend"));
+
+/* Safe ECharts init — returns null if element missing, preventing getAttribute crash */
+function safeInit(id) {
+  var el = document.getElementById(id);
+  return el ? echarts.init(el) : null;
+}
+var chartTrend = safeInit('chart-trend');
 var months = ["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
 chartTrend.setOption(Object.assign({}, darkTheme, {
   tooltip: { trigger: "axis" },
@@ -396,7 +401,7 @@ chartTrend.setOption(Object.assign({}, darkTheme, {
 }));
 
 /* ==================== CHART 2: 工厂能耗对比 (pictorialBar) ==================== */
-var chartFactory = echarts.init(document.getElementById("chart-factory"));
+var chartFactory = safeInit('chart-factory');
 chartFactory.setOption(Object.assign({}, darkTheme, {
   tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
   grid: { left: 10, right: 24, top: 10, bottom: 10, containLabel: true },
@@ -429,7 +434,7 @@ chartFactory.setOption(Object.assign({}, darkTheme, {
 }));
 
 /* ==================== CHART 3: 碳排放趋势 (折线+目标线) ==================== */
-var chartCarbon = echarts.init(document.getElementById("chart-carbon"));
+var chartCarbon = safeInit('chart-carbon');
 chartCarbon.setOption(Object.assign({}, darkTheme, {
   tooltip: { trigger: "axis" },
   legend: { data: ["实际排放","目标线"], bottom: 0, textStyle: { fontSize: 11 } },
@@ -451,7 +456,7 @@ chartCarbon.setOption(Object.assign({}, darkTheme, {
 }));
 
 /* ==================== CHART 4: 能源监测站 effectScatter ==================== */
-var chartScatter = echarts.init(document.getElementById("chart-scatter"));
+var chartScatter = safeInit('chart-scatter');
 // Simulated energy monitoring stations with lat/lng-like coordinates
 var stations = [
   { name: "华北电站", value: [116.4, 39.9, 850] },

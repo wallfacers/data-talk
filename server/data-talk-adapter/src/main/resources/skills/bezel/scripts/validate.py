@@ -14,15 +14,18 @@ ALLOWED_CDN = ("https://cdn.jsdelivr.net/",)
 REQUIRED_CHECKS = [
     ("csp_meta", r'<meta\s+http-equiv\s*=\s*["\']Content-Security-Policy["\']'),
     ("bezel_origin_placeholder", r"__BEZEL_SERVER_ORIGIN__"),
-    ("frame_ancestors_self", r"frame-ancestors\s+'self'"),
     ("json_hash_meta", r'<meta\s+name\s*=\s*["\']__JSON_HASH__["\']'),
     ("bezel_config", r"window\.__BEZEL_CONFIG__\s*="),
 ]
+
+# frame-ancestors is NOT checked — browsers ignore it in <meta> tags and the
+# iframe is already sandboxed by the host page.
 
 FORBIDDEN_CHECKS = [
     ("inline_event_handler", r"\bon[a-z]+\s*="),
     ("unsafe_eval", r"unsafe-eval"),
     ("wildcard_in_default_src", r"default-src[^;]*\*"),
+    ("frame_ancestors_in_meta", r"frame-ancestors\s+"),
 ]
 
 def check_script_src_whitelist(html: str) -> list[str]:

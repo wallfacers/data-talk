@@ -21,7 +21,6 @@ Every compiled dashboard HTML file follows this exact skeleton. Placeholder toke
                  img-src data: https: blob:;
                  font-src https://cdn.jsdelivr.net/;
                  connect-src __BEZEL_SERVER_ORIGIN__;
-                 frame-ancestors 'self';
                  base-uri 'none';
                  form-action 'none'">
   <meta name="__JSON_HASH__" content="__SHA256_VALUE__">
@@ -112,7 +111,7 @@ The `scripts/validate.py` script checks every compiled HTML file for the presenc
 ```
 
 **Rules:**
-- `frame-ancestors 'self'` must be present (prevents clickjacking).
+- `frame-ancestors` is omitted because browsers ignore it in `<meta>` tags; the iframe is already sandboxed by the host page.
 - `connect-src` must contain `__BEZEL_SERVER_ORIGIN__` (the only allowed fetch target).
 - `script-src` must **not** contain `unsafe-eval`.
 - `default-src 'none'` is the baseline; everything is explicitly allowlisted.
@@ -224,7 +223,6 @@ Any other `src` attribute value causes validation failure. Inline `<script>` blo
 | `img-src` | `data:` `https:` `blob:` |
 | `font-src` | `https://cdn.jsdelivr.net/` |
 | `connect-src` | `__BEZEL_SERVER_ORIGIN__` (replaced at assembly time) |
-| `frame-ancestors` | `'self'` |
 | `base-uri` | `'none'` |
 | `form-action` | `'none'` |
 
@@ -475,7 +473,7 @@ The `scripts/validate.py` validator emits these error codes. Assembly code shoul
 |---|---|---|
 | `E_CSP_MISSING` | CSP meta tag not found | Ensure Step 3c is executed |
 | `E_CSP_UNSAFE_EVAL` | CSP contains `unsafe-eval` in script-src | Remove from CSP template |
-| `E_CSP_FRAME_ANCESTORS` | CSP missing `frame-ancestors 'self'` | Add to CSP template |
+| `E_CSP_FRAME_ANCESTORS` | CSP contains `frame-ancestors` directive (not supported in meta) | Remove from CSP template |
 | `E_CSP_CONNECT_SRC` | CSP missing `connect-src` or contains wildcard | Set connect-src to server origin |
 | `E_HASH_MISSING` | `__JSON_HASH__` meta tag not found | Ensure Step 7 is executed |
 | `E_HASH_INVALID` | Hash value does not start with `sha256:` or fails base64 decode | Re-compute hash in Step 7 |

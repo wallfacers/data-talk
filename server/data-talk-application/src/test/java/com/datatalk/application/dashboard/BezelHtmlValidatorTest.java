@@ -8,7 +8,7 @@ class BezelHtmlValidatorTest {
 
     private static final String OK_HTML = """
         <!doctype html><html><head>
-        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' https://cdn.jsdelivr.net; connect-src __BEZEL_SERVER_ORIGIN__; frame-ancestors 'self'">
+        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' https://cdn.jsdelivr.net; connect-src __BEZEL_SERVER_ORIGIN__">
         <meta name="__JSON_HASH__" content="sha256:abc">
         <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
         </head><body><div id="w1"></div>

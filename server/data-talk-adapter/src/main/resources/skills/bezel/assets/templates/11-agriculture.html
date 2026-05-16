@@ -10,7 +10,6 @@
                img-src data: https: blob:;
                font-src https://cdn.jsdelivr.net/;
                connect-src __BEZEL_SERVER_ORIGIN__;
-               frame-ancestors 'self';
                base-uri 'none';
                form-action 'none'">
 <meta name="__JSON_HASH__" content="sha256:placeholder">
@@ -369,7 +368,13 @@ var darkTheme = {
 };
 
 /* ==================== CHART 1: 土壤墒情监测 (3 gauge) ==================== */
-var chartSoil = echarts.init(document.getElementById("chart-soil"));
+
+/* Safe ECharts init — returns null if element missing, preventing getAttribute crash */
+function safeInit(id) {
+  var el = document.getElementById(id);
+  return el ? echarts.init(el) : null;
+}
+var chartSoil = safeInit('chart-soil');
 chartSoil.setOption(Object.assign({}, darkTheme, {
   series: [
     {
@@ -406,7 +411,7 @@ chartSoil.setOption(Object.assign({}, darkTheme, {
 }));
 
 /* ==================== CHART 2: 气象数据组合 ==================== */
-var chartWeather = echarts.init(document.getElementById("chart-weather"));
+var chartWeather = safeInit('chart-weather');
 var weatherDays = ["周一","周二","周三","周四","周五","周六","周日"];
 var tempData = [22, 24, 26, 25, 23, 21, 20];
 var rainData = [0, 5, 12, 8, 3, 0, 1];
@@ -434,7 +439,7 @@ chartWeather.setOption(Object.assign({}, darkTheme, {
 }));
 
 /* ==================== CHART 3: 农产品价格走势 ==================== */
-var chartPrice = echarts.init(document.getElementById("chart-price"));
+var chartPrice = safeInit('chart-price');
 var months = ["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
 var priceWheat = [2.52,2.55,2.58,2.60,2.62,2.65,2.68,2.70,2.72,2.75,2.78,2.80];
 var priceRice  = [2.80,2.82,2.85,2.88,2.90,2.92,2.95,2.98,3.00,3.02,3.05,3.08];
@@ -465,7 +470,7 @@ chartPrice.setOption(Object.assign({}, darkTheme, {
 }));
 
 /* ==================== CHART 4: 作物分布热力图 ==================== */
-var chartHeatmap = echarts.init(document.getElementById("chart-heatmap"));
+var chartHeatmap = safeInit('chart-heatmap');
 var cropTypes = ["小麦","水稻","玉米","大豆","蔬菜"];
 var regions = ["华北","华东","华南","西南","东北","西北","华中"];
 var heatData = [];

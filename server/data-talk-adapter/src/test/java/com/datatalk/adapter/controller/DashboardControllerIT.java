@@ -304,7 +304,7 @@ class DashboardControllerIT {
             <html lang="zh-CN">
             <head>
             <meta charset="utf-8">
-            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src __BEZEL_SERVER_ORIGIN__; frame-ancestors 'self'">
+            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src __BEZEL_SERVER_ORIGIN__">
             <meta name="__JSON_HASH__" content="sha256:test">
             <title>电商运营监控</title>
             </head>
@@ -390,7 +390,7 @@ class DashboardControllerIT {
             <!doctype html>
             <html>
             <head>
-            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js 'unsafe-inline'; connect-src __BEZEL_SERVER_ORIGIN__; frame-ancestors 'self'">
+            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js 'unsafe-inline'; connect-src __BEZEL_SERVER_ORIGIN__">
             <meta name="__JSON_HASH__" content="sha256:cdn">
             <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
             </head>

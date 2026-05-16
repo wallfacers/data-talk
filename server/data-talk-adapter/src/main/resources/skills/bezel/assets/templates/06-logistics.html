@@ -10,7 +10,6 @@
                img-src data: https: blob:;
                font-src https://cdn.jsdelivr.net/;
                connect-src __BEZEL_SERVER_ORIGIN__;
-               frame-ancestors 'self';
                base-uri 'none';
                form-action 'none'">
 <meta name="__JSON_HASH__" content="sha256:placeholder">
@@ -327,6 +326,12 @@ window.__BEZEL_CONFIG__ = {
   function bindWidget(w) {
     var el = document.getElementById(w.id);
     if (!el) return;
+
+/* Safe ECharts init — returns null if element missing, preventing getAttribute crash */
+function safeInit(id) {
+  var el = document.getElementById(id);
+  return el ? echarts.init(el) : null;
+}
     charts[w.id] = echarts.init(el);
     schedule(w);
   }
@@ -431,7 +436,7 @@ var darkTheme = {
 
 /* ── Chart 1: Shipment trend dual-axis ── */
 var months = ["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
-var chartTrend = echarts.init(document.getElementById("chart-trend"));
+var chartTrend = safeInit('chart-trend');
 chartTrend.setOption(Object.assign({}, darkTheme, {
   tooltip: { trigger: "axis", axisPointer: { type: "cross" }, backgroundColor: "rgba(10,14,26,0.95)", borderColor: "rgba(14,165,233,0.30)", textStyle: { color: "#e2e8f0" } },
   legend: { data: ["发货量","签收时效"], top: 0, textStyle: { color: "#94a3b8", fontSize: 11 } },
@@ -468,7 +473,7 @@ chartTrend.setOption(Object.assign({}, darkTheme, {
 }));
 
 /* ── Chart 2: Transport mode pie ── */
-var chartTransport = echarts.init(document.getElementById("chart-transport"));
+var chartTransport = safeInit('chart-transport');
 chartTransport.setOption(Object.assign({}, darkTheme, {
   tooltip: { trigger: "item", formatter: "{b}: {c}% ({d}%)", backgroundColor: "rgba(10,14,26,0.95)", borderColor: "rgba(14,165,233,0.30)", textStyle: { color: "#e2e8f0" } },
   legend: { bottom: 4, textStyle: { color: "#94a3b8", fontSize: 11 }, itemWidth: 10, itemHeight: 10 },
@@ -490,7 +495,7 @@ chartTransport.setOption(Object.assign({}, darkTheme, {
 }));
 
 /* ── Chart 3: Abnormal orders horizontal bar ── */
-var chartAbnormal = echarts.init(document.getElementById("chart-abnormal"));
+var chartAbnormal = safeInit('chart-abnormal');
 chartAbnormal.setOption(Object.assign({}, darkTheme, {
   tooltip: { trigger: "axis", axisPointer: { type: "shadow" }, backgroundColor: "rgba(10,14,26,0.95)", borderColor: "rgba(14,165,233,0.30)", textStyle: { color: "#e2e8f0" } },
   grid: { left: 48, right: 24, top: 12, bottom: 12, containLabel: true },
@@ -513,7 +518,7 @@ chartAbnormal.setOption(Object.assign({}, darkTheme, {
 }));
 
 /* ── Chart 4: Warehouse utilization bar ── */
-var chartWarehouse = echarts.init(document.getElementById("chart-warehouse"));
+var chartWarehouse = safeInit('chart-warehouse');
 chartWarehouse.setOption(Object.assign({}, darkTheme, {
   tooltip: { trigger: "axis", axisPointer: { type: "shadow" }, backgroundColor: "rgba(10,14,26,0.95)", borderColor: "rgba(14,165,233,0.30)", textStyle: { color: "#e2e8f0" } },
   grid: { left: 48, right: 16, top: 16, bottom: 32, containLabel: true },
@@ -540,7 +545,7 @@ chartWarehouse.setOption(Object.assign({}, darkTheme, {
 }));
 
 /* ── Chart 5: Last-mile horizontal bar ── */
-var chartLastmile = echarts.init(document.getElementById("chart-lastmile"));
+var chartLastmile = safeInit('chart-lastmile');
 chartLastmile.setOption(Object.assign({}, darkTheme, {
   tooltip: { trigger: "axis", axisPointer: { type: "shadow" }, backgroundColor: "rgba(10,14,26,0.95)", borderColor: "rgba(14,165,233,0.30)", textStyle: { color: "#e2e8f0" } },
   grid: { left: 48, right: 24, top: 12, bottom: 12, containLabel: true },
@@ -564,7 +569,7 @@ chartLastmile.setOption(Object.assign({}, darkTheme, {
 }));
 
 /* ── Chart 6: Satisfaction gauge ── */
-var chartSatisfaction = echarts.init(document.getElementById("chart-satisfaction"));
+var chartSatisfaction = safeInit('chart-satisfaction');
 chartSatisfaction.setOption(Object.assign({}, darkTheme, {
   series: [{
     type: "gauge",
