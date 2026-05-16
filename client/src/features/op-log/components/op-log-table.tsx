@@ -34,9 +34,15 @@ interface OpLogTableProps {
   onBatchUndo: () => void
 }
 
-function formatTime(ts: number): string {
+function formatDateTime(ts: number): string {
   const d = new Date(ts)
-  return d.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  const h = String(d.getHours()).padStart(2, '0')
+  const min = String(d.getMinutes()).padStart(2, '0')
+  const s = String(d.getSeconds()).padStart(2, '0')
+  return `${y}-${m}-${day} ${h}:${min}:${s}`
 }
 
 function SortHeader({ column, titleKey }: {
@@ -97,9 +103,17 @@ export function OpLogTable({ data, isLoading, selectedIds, onToggleRow, connecti
       accessorKey: 'createdAt',
       header: ({ column }) => <SortHeader column={column} titleKey="opLog.table.time" />,
       cell: ({ getValue }) => (
-        <span className="block truncate text-text-base">{formatTime(getValue<number>())}</span>
+        <span className="block truncate font-mono text-text-base">{formatDateTime(getValue<number>())}</span>
       ),
-      size: 80,
+      size: 160,
+    },
+    {
+      accessorKey: 'expiresAt',
+      header: ({ column }) => <SortHeader column={column} titleKey="opLog.table.expires" />,
+      cell: ({ getValue }) => (
+        <span className="block truncate font-mono text-text-base">{formatDateTime(getValue<number>())}</span>
+      ),
+      size: 160,
     },
     {
       accessorKey: 'operation',
