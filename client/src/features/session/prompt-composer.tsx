@@ -350,9 +350,9 @@ function InnerComposer() {
     const ok = await sendMessage(parts)
     if (ok) {
       clearDone()
-    } else {
-      updateText(trimmed)
     }
+    // !ok: the failed pending user bubble owns retry; restoring here would also
+    // re-persist the draft via setComposerDraft and resurrect on next CTRL+R.
   }
 
   const onSubmit = async (e: FormEvent) => {

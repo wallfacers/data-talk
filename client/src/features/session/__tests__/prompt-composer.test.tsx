@@ -206,7 +206,7 @@ describe('PromptComposer', () => {
     expect(useSessionStore.getState().hasEverSentBySession.get('sess-ai-first')).toBe(true)
   })
 
-  it('restores the textarea immediately when an active-session AI send fails', async () => {
+  it('does not refill the textarea or revive the draft when an active-session AI send fails', async () => {
     channel.sendMessage.mockResolvedValueOnce(false)
 
     useConnectionStore.setState({ activeConnectionId: 'conn-1', connections: [{ id: 'conn-1', name: 'Main' } as any] })
@@ -225,10 +225,18 @@ describe('PromptComposer', () => {
     renderWithClient(<PromptComposer />)
     const textarea = screen.getByPlaceholderText('用自然语言查询你的数据库...') as HTMLTextAreaElement
     fireEvent.change(textarea, { target: { value: '你好' } })
+    expect(localStorage.getItem('dt.draft.sess-1')).toBe('你好')
+
     fireEvent.click(document.querySelector('button[type="submit"]') as HTMLButtonElement)
 
     await waitFor(() => expect(channel.sendMessage).toHaveBeenCalled())
-    await waitFor(() => expect(textarea.value).toBe('你好'))
+    // Failed send must not refill the textarea — the failed pending user bubble
+    // owns retry. And the just-sent draft must stay cleared so CTRL+R will not
+    // resurrect it (BUG-0039 followup: the previous restore path re-wrote
+    // localStorage via setComposerDraft after send).
+    await waitFor(() => expect(textarea.value).toBe(''))
+    expect(localStorage.getItem('dt.draft.sess-1')).toBeNull()
+    expect(useSessionStore.getState().composerDrafts['sess-1'] ?? '').toBe('')
   })
 
   it('re-hydrates the textarea from a queued restore draft', async () => {
