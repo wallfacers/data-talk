@@ -152,6 +152,7 @@ public class OpenCodeGatewayBeans {
             skillSyncer.syncSkill("data-collection", opencodeCwd);
             skillSyncer.syncSkill("skill-creator", opencodeCwd);
             skillSyncer.syncSkill("semantic-model-usage", opencodeCwd);
+            skillSyncer.syncSkill("file-upload-routing", opencodeCwd);
 
             if (mcpProps.isEnabled()) {
                 bootstrapReconciler.writeManagedConfig(serverPort);

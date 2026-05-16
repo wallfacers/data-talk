@@ -12,6 +12,7 @@ import com.datatalk.application.session.SessionBusRegistry;
 import com.datatalk.domain.event.DtEvent;
 import com.datatalk.domain.event.ErrorInfo;
 import com.datatalk.domain.part.FilePart;
+import com.datatalk.domain.part.FileUploadPart;
 import com.datatalk.domain.part.Part;
 import com.datatalk.domain.part.TextPart;
 import com.datatalk.domain.util.Strings;
@@ -132,6 +133,15 @@ public class ChannelService {
             if (f.filename() != null) out.put("filename", f.filename());
             if (f.url() != null) out.put("url", f.url());
             if (f.source() != null) out.put("source", f.source());
+            return out;
+        }
+        if (p instanceof FileUploadPart u) {
+            out.put("type", "file");
+            out.put("mime", u.mimeType());
+            out.put("filename", u.filename());
+            out.put("sizeBytes", u.sizeBytes());
+            out.put("fileId", u.fileId());
+            if (u.analysis() != null) out.put("analysis", u.analysis());
             return out;
         }
         log.warn("[channel] dropping unsupported outbound part type for OpenCode: {}",

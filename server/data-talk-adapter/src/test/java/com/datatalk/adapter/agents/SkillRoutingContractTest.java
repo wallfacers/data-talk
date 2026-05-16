@@ -39,7 +39,7 @@ class SkillRoutingContractTest {
         "## Skill Index"
     );
 
-    /** 11 new skills introduced by this change (excludes pre-existing bezel + data-ingestion). */
+    /** 11 new skills introduced by this change (excludes pre-existing bezel). */
     private static final List<String> NEW_SKILL_NAMES = List.of(
         "sql-execution",
         "query-editor-workflow",
@@ -54,8 +54,16 @@ class SkillRoutingContractTest {
         "database-dialects"
     );
 
+    /** Skills added after the refactor that must be covered by syncSkill registration. */
+    private static final List<String> POST_REFACTOR_SKILL_NAMES = List.of(
+        "data-collection",
+        "skill-creator",
+        "semantic-model-usage",
+        "file-upload-routing"
+    );
+
     /** Pre-existing skills that the syncSkill registration block must still cover. */
-    private static final List<String> EXISTING_SKILL_NAMES = List.of("bezel", "data-ingestion");
+    private static final List<String> EXISTING_SKILL_NAMES = List.of("bezel");
 
     /**
      * Keyword → owning-skill map from
@@ -147,6 +155,7 @@ class SkillRoutingContractTest {
         Set<String> expected = new LinkedHashSet<>();
         expected.addAll(EXISTING_SKILL_NAMES);
         expected.addAll(NEW_SKILL_NAMES);
+        expected.addAll(POST_REFACTOR_SKILL_NAMES);
         assertThat(registered)
             .as("OpenCodeGatewayBeans syncSkill calls must include all expected skill names")
             .containsAll(expected);

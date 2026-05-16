@@ -72,10 +72,19 @@ export type AgentPart = BasePart & {
   source?: { start: number; end: number }
 }
 
+export type FileUploadPart = BasePart & {
+  type: 'file_upload'
+  fileId: string
+  filename: string
+  mimeType: string
+  sizeBytes: number
+  analysis: Record<string, unknown>
+}
+
 export type Part =
   | TextPart | ReasoningPart | ToolPart
   | StepStartPart | StepFinishPart | CompactionPart
-  | FilePart | AgentPart
+  | FilePart | AgentPart | FileUploadPart
   | (BasePart & { type: string; [k: string]: unknown })
 
 export type MessageInfo = {
@@ -109,5 +118,26 @@ export function createTextPart(sessionId: string, text: string): TextPart {
     messageID: '',
     text,
     metadata: {},
+  }
+}
+
+export function createFileUploadPart(
+  sessionId: string,
+  fileId: string,
+  filename: string,
+  mimeType: string,
+  sizeBytes: number,
+  analysis: Record<string, unknown>,
+): FileUploadPart {
+  return {
+    type: 'file_upload',
+    id: generateUuid(),
+    sessionID: sessionId,
+    messageID: '',
+    fileId,
+    filename,
+    mimeType,
+    sizeBytes,
+    analysis,
   }
 }

@@ -66,8 +66,16 @@ class AgentPromptContractTest {
     void runtimePromptStaysEnglishAndAvoidsUnsupportedWorkspaceTargets() throws IOException {
         String prompt = loadPrompt();
 
-        assertThat(HAN_PATTERN.matcher(prompt).find())
-            .as("runtime prompt should stay English-only")
+        // The Trigger Gate table intentionally contains CJK trigger words for
+        // routing (e.g. 大屏, 销售额, 用户上传了文件).  Only the body before
+        // the Trigger Gate must stay English-only.
+        int triggerGateIdx = prompt.indexOf("## Trigger Gate");
+        String bodyBeforeTriggerGate = triggerGateIdx >= 0
+            ? prompt.substring(0, triggerGateIdx)
+            : prompt;
+
+        assertThat(HAN_PATTERN.matcher(bodyBeforeTriggerGate).find())
+            .as("runtime prompt body (before Trigger Gate) should stay English-only")
             .isFalse();
         assertThat(prompt)
             .doesNotContain("`er_canvas`")

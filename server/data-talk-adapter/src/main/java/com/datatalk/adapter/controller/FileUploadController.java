@@ -1,0 +1,143 @@
+package com.datatalk.adapter.controller;
+
+import com.datatalk.application.upload.FileAnalysisResult;
+import com.datatalk.application.upload.FileAnalysisService;
+import com.datatalk.application.upload.UploadedFileRepository;
+import com.datatalk.domain.upload.UploadedFile;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Clock;
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/files")
+public class FileUploadController {
+
+    private static final Logger log = LoggerFactory.getLogger(FileUploadController.class);
+    private static final long MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB
+
+    private final FileAnalysisService analysisService;
+    private final UploadedFileRepository uploadedFileRepo;
+    private final Clock clock;
+
+    public FileUploadController(FileAnalysisService analysisService,
+                                UploadedFileRepository uploadedFileRepo,
+                                Clock clock) {
+        this.analysisService = analysisService;
+        this.uploadedFileRepo = uploadedFileRepo;
+        this.clock = clock;
+    }
+
+    @PostMapping("/upload")
+    public ResponseEntity<?> upload(@RequestParam("file") MultipartFile file,
+                                    @RequestParam("sessionId") String sessionId) throws IOException {
+        // 1. Validate file not empty
+        if (file.isEmpty()) {
+            return error(HttpStatus.UNPROCESSABLE_ENTITY, "File is empty");
+        }
+
+        // 2. Detect MIME type
+        String originalFilename = file.getOriginalFilename();
+        Path tempTarget = Files.createTempFile("upload-", ".tmp");
+        try {
+            file.transferTo(tempTarget.toFile());
+        } catch (IOException e) {
+            Files.deleteIfExists(tempTarget);
+            throw e;
+        }
+
+        String mimeType = analysisService.detectMime(tempTarget, originalFilename);
+        if (mimeType == null) {
+            Files.deleteIfExists(tempTarget);
+            return error(HttpStatus.UNPROCESSABLE_ENTITY, "Unsupported file type");
+        }
+
+        // 3. Validate size
+        if (file.getSize() > MAX_SIZE_BYTES) {
+            Files.deleteIfExists(tempTarget);
+            return error(HttpStatus.UNPROCESSABLE_ENTITY, "File exceeds 50 MB limit");
+        }
+
+        // 4. Generate fileId and store to permanent location
+        String fileId = UUID.randomUUID().toString();
+        Path uploadBase = Path.of(System.getProperty("user.home"), ".data-talk", "uploads");
+        Path fileDir = uploadBase.resolve(fileId);
+        Files.createDirectories(fileDir);
+        Path permanentPath = fileDir.resolve(originalFilename);
+        try {
+            Files.move(tempTarget, permanentPath);
+        } catch (IOException e) {
+            Files.deleteIfExists(tempTarget);
+            throw e;
+        }
+
+        // 5. Analyze file
+        FileAnalysisResult analysis;
+        try {
+            analysis = analysisService.analyze(permanentPath, mimeType, originalFilename);
+        } catch (Exception e) {
+            log.warn("[file-upload] analysis failed for {}: {}", originalFilename, e.toString());
+            analysis = new FileAnalysisResult("UNKNOWN", false, null, Map.of());
+        }
+
+        // 6. Create domain record and persist
+        UploadedFile uploaded = new UploadedFile(
+            fileId,
+            sessionId,
+            originalFilename,
+            mimeType,
+            file.getSize(),
+            permanentPath.toAbsolutePath().toString(),
+            analysisToMap(analysis),
+            clock.instant()
+        );
+        uploadedFileRepo.insert(uploaded);
+
+        // 7. Build response
+        Map<String, Object> analysisJson = new LinkedHashMap<>();
+        analysisJson.put("type", analysis.type());
+        analysisJson.put("fullContent", analysis.fullContent());
+        if (analysis.content() != null) {
+            analysisJson.put("content", analysis.content());
+        }
+        if (analysis.summary() != null) {
+            analysisJson.put("summary", analysis.summary());
+        }
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("fileId", fileId);
+        response.put("filename", originalFilename);
+        response.put("mimeType", mimeType);
+        response.put("sizeBytes", file.getSize());
+        response.put("analysis", analysisJson);
+
+        return ResponseEntity.ok(response);
+    }
+
+    private static ResponseEntity<Map<String, String>> error(HttpStatus status, String message) {
+        return ResponseEntity.status(status).body(Map.of("error", message));
+    }
+
+    private static Map<String, Object> analysisToMap(FileAnalysisResult a) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("type", a.type());
+        map.put("fullContent", a.fullContent());
+        if (a.content() != null) map.put("content", a.content());
+        if (a.summary() != null) map.put("summary", a.summary());
+        return map;
+    }
+}

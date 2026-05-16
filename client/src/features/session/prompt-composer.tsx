@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowUpIcon, Loader2Icon } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -17,7 +17,7 @@ import { useSessionStore } from '@/stores/session-store'
 import { useChatPartsStore } from '@/stores/chat-parts-store'
 import { useConnectionStore } from '@/features/connection/store'
 import { useChannel } from '@/services/channel/use-channel'
-import { createTextPart } from '@/services/channel/types'
+import { createTextPart, createFileUploadPart } from '@/services/channel/types'
 import { createSession, deleteSession } from '@/services/api/session'
 import { normalizeError, showErrorToast } from '@/services/http-error'
 import { StageToggleButton } from '@/features/stage/components/stage-toggle-button'
@@ -31,6 +31,9 @@ import { useI18n } from '@/i18n/use-i18n'
 import { useDataSourcePickerStore } from './data-source-picker/data-source-picker-store'
 import { cn } from '@/lib/utils'
 import { shouldAutoRunDirectSql } from '@/features/stage/utils/direct-sql-auto-run-policy'
+import { useFileUpload } from './useFileUpload'
+import { FileAttachmentChip } from './components/file-attachment-chip'
+import { FileDropZone } from './components/file-drop-zone'
 
 function useComposerSlot(): HTMLElement | null {
   const [slot, setSlot] = useState<HTMLElement | null>(null)
@@ -91,6 +94,23 @@ function InnerComposer() {
   const hasActiveModel = useHasActiveModel()
   const sessionDataContext = useSessionDataContext(activeSessionId)
   const qc = useQueryClient()
+
+  const {
+    attachments,
+    addFiles,
+    removeAttachment,
+    uploadAll,
+    clearDone,
+    hasUploads,
+  } = useFileUpload(activeSessionId ?? '')
+
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    const files = e.clipboardData.files
+    if (files.length > 0) {
+      e.preventDefault()
+      addFiles(files)
+    }
+  }, [addFiles])
 
   const draftKey = activeSessionId ?? '__nosession__'
 
@@ -314,8 +334,25 @@ function InnerComposer() {
     }
 
     updateText('')
-    const ok = await sendMessage([createTextPart(activeSessionId, trimmed)])
-    if (!ok) updateText(trimmed)
+
+    // Upload pending files first
+    if (attachments.some(a => a.status === 'pending')) {
+      await uploadAll()
+    }
+
+    // Build parts array with text + any completed file uploads
+    const parts: unknown[] = [createTextPart(activeSessionId, trimmed)]
+    const doneResponses = attachments.filter(a => a.status === 'done' && a.response).map(a => a.response!)
+    for (const r of doneResponses) {
+      parts.push(createFileUploadPart(activeSessionId, r.fileId, r.filename, r.mimeType, r.sizeBytes, r.analysis as Record<string, unknown>))
+    }
+
+    const ok = await sendMessage(parts)
+    if (ok) {
+      clearDone()
+    } else {
+      updateText(trimmed)
+    }
   }
 
   const onSubmit = async (e: FormEvent) => {
@@ -361,10 +398,11 @@ function InnerComposer() {
     }
   }, [])
 
-  const canSend = text.trim().length > 0 && !isStreaming
+  const canSend = (text.trim().length > 0 || attachments.length > 0) && !isStreaming && !hasUploads
 
   return (
     <form onSubmit={onSubmit} className="w-full">
+      <FileDropZone onFiles={addFiles}>
       <InputGroup
         data-bang-query-mode={isBangQueryMode ? 'true' : undefined}
         className={cn(
@@ -379,6 +417,7 @@ function InnerComposer() {
           value={text}
           onChange={(e) => updateText(e.target.value)}
           onKeyDown={onKey}
+          onPaste={handlePaste}
           placeholder={t('chat.promptPlaceholder')}
           className={cn(
             'h-[90px] resize-none overflow-y-auto px-4 py-4 text-base leading-relaxed text-black dark:text-white [&::-webkit-scrollbar-track]:my-3',
@@ -386,6 +425,17 @@ function InnerComposer() {
           )}
           rows={3}
         />
+        {attachments.length > 0 && (
+          <div className="flex flex-col gap-1.5 px-3 pb-1">
+            {attachments.map((a, i) => (
+              <FileAttachmentChip
+                key={`${a.file.name}-${i}`}
+                attachment={a}
+                onRemove={() => removeAttachment(i)}
+              />
+            ))}
+          </div>
+        )}
         <InputGroupAddon align="block-end" className="pt-2">
           <div className="flex w-full items-center gap-2">
             {isBangQueryMode && (
@@ -434,6 +484,7 @@ function InnerComposer() {
           </div>
         </InputGroupAddon>
       </InputGroup>
+      </FileDropZone>
     </form>
   )
 }

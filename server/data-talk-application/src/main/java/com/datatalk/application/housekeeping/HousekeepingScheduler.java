@@ -4,6 +4,8 @@ import com.datatalk.application.fileartifact.FileArtifactReconciler;
 import com.datatalk.application.fileartifact.FileArtifactRepository;
 import com.datatalk.application.semantic.SemanticModelLoader;
 import com.datatalk.application.semantic.SemanticModelRepository;
+import com.datatalk.application.upload.UploadedFileRepository;
+import com.datatalk.domain.upload.UploadedFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -33,6 +35,7 @@ public class HousekeepingScheduler {
     private final FileArtifactRepository fileArtifactRepo;
     private final SemanticModelRepository semanticRepo;
     private final SemanticModelLoader semanticLoader;
+    private final UploadedFileRepository uploadedFileRepo;
     private final Clock clock;
     private final Path workdir;
 
@@ -41,11 +44,13 @@ public class HousekeepingScheduler {
             FileArtifactRepository fileArtifactRepo,
             SemanticModelRepository semanticRepo,
             SemanticModelLoader semanticLoader,
+            UploadedFileRepository uploadedFileRepo,
             Clock clock) {
         this.reconciler = reconciler;
         this.fileArtifactRepo = fileArtifactRepo;
         this.semanticRepo = semanticRepo;
         this.semanticLoader = semanticLoader;
+        this.uploadedFileRepo = uploadedFileRepo;
         this.clock = clock;
         this.workdir = resolveWorkdir();
     }
@@ -62,7 +67,8 @@ public class HousekeepingScheduler {
         try { compactPatches(); logHousekeepingTask("compactPatches", "ok", started); } catch (Exception e) { failed++; logHousekeepingTask("compactPatches", "failed", started); log.warn("[housekeeping] compactPatches failed: {}", e.toString()); }
         try { cleanupExpiredPending(); logHousekeepingTask("cleanupExpiredPending", "ok", started); } catch (Exception e) { failed++; logHousekeepingTask("cleanupExpiredPending", "failed", started); log.warn("[housekeeping] cleanupExpiredPending failed: {}", e.toString()); }
         try { cleanupSemanticTrash(); logHousekeepingTask("cleanupSemanticTrash", "ok", started); } catch (Exception e) { failed++; logHousekeepingTask("cleanupSemanticTrash", "failed", started); log.warn("[housekeeping] cleanupSemanticTrash failed: {}", e.toString()); }
-        writeHousekeepingLog(started, 7 - failed, failed);
+        try { cleanupUploadedFiles(); logHousekeepingTask("cleanupUploadedFiles", "ok", started); } catch (Exception e) { failed++; logHousekeepingTask("cleanupUploadedFiles", "failed", started); log.warn("[housekeeping] cleanupUploadedFiles failed: {}", e.toString()); }
+        writeHousekeepingLog(started, 8 - failed, failed);
         log.info("[housekeeping] completed in {} ms", clock.instant().toEpochMilli() - started.toEpochMilli());
     }
 
@@ -216,6 +222,34 @@ public class HousekeepingScheduler {
         int second = filename.indexOf("__", first + 2);
         if (second < 0) return null;
         return filename.substring(first + 2, second);
+    }
+
+    /** Delete uploaded files older than 24 hours. */
+    synchronized int cleanupUploadedFiles() {
+        Instant cutoff = clock.instant().minus(Duration.ofHours(24));
+        List<UploadedFile> oldFiles = uploadedFileRepo.findOlderThan(cutoff);
+        int cleaned = 0;
+        for (UploadedFile uf : oldFiles) {
+            Path physical = Path.of(uf.physicalPath());
+            try {
+                Files.deleteIfExists(physical);
+                // Remove parent dir (<fileId>/) if empty
+                Path parent = physical.getParent();
+                if (parent != null) {
+                    try (Stream<Path> listing = Files.list(parent)) {
+                        if (listing.findFirst().isEmpty()) {
+                            Files.deleteIfExists(parent);
+                        }
+                    }
+                }
+            } catch (IOException e) {
+                log.warn("[housekeeping] uploaded file rm failed: {}", physical);
+            }
+            uploadedFileRepo.deleteById(uf.id());
+            cleaned++;
+        }
+        if (cleaned > 0) log.info("[housekeeping] cleanupUploadedFiles removed {} uploads older than {}", cleaned, cutoff);
+        return cleaned;
     }
 
     /** Compact patches.jsonl files with > 200 lines back into the model yaml. */

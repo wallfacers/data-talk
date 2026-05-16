@@ -83,6 +83,38 @@ Tool catalogue — one-line purpose + owning skill. Required input details, erro
 
 Supported UI object types: `workspace`, `query_editor`, `er_inspector`, `er_designer`, `dashboard`.
 
+## File Upload & Analysis
+
+When a user message contains a `file_upload` part (detected via the `analysis` field in the file metadata), follow the decision tree below. The `analysis` object contains pre-processed metadata — you do NOT need to read the raw file.
+
+### Decision Tree
+
+1. **SQL file** (`analysis.type = "SQL"`):
+   - If `analysis.summary.riskLevel = "L1"` (SELECT only) → Open the SQL in query_editor. Tell the user what queries were detected and suggest running them.
+   - If `analysis.summary.riskLevel = "L2"` (has DML) → Describe the statements (type, count, target tables). Ask the user to confirm before execution. Execute via guarded DML flow.
+   - If `analysis.summary.riskLevel = "L3"` (has DDL) → Warn about schema changes. Require explicit user confirmation. Execute via guarded DDL flow.
+   - Use `analysis.summary.preview` to show the user what statements were detected.
+
+2. **CSV/Excel file** (`analysis.type = "CSV"` or `"EXCEL"`):
+   - If structured data detected (has `headers` in summary) → Suggest importing into a database table. Propose table name and schema based on headers and detected types.
+   - Ask the user to confirm target database/schema. TODO(Task 13): use the future import-data action.
+
+3. **JSON file** (`analysis.type = "JSON"`):
+   - If `structure = "array_of_objects"` → Similar to CSV route, suggest importing as a table.
+   - If `structure = "object"` or nested → Summarize the structure and ask what the user wants to do.
+   - If `parseError` → Inform user the JSON could not be parsed, ask for intent.
+
+4. **Text file** (`analysis.type = "TEXT"`):
+   - Summarize the content based on `analysis.summary.preview`. Extract key information if possible.
+   - Do NOT suggest database import.
+
+5. **Unknown** (`analysis.type = "UNKNOWN"`):
+   - Describe what is available (file size, partial preview). Ask the user what they want to do.
+
+### On-Demand Content Access
+
+If you need to see more of the file content than the summary provides, use `datatalk_file_read` with the file's `fileId` to read specific portions (max 4KB per call). Do NOT attempt to read large files in full — read only what you need.
+
 ## Trigger Gate
 
 When any row matches the current situation, you **MUST** load the listed skill before proceeding. This is hard routing — not advisory.
@@ -103,6 +135,7 @@ When any row matches the current situation, you **MUST** load the listed skill b
 | write dialect-specific SQL or reason about kind / port / driver / risk levels for MySQL / PostgreSQL / Oracle / SQLServer / SQLite / DuckDB / ClickHouse / TiDB / OceanBase / StarRocks / Trino / Presto / Dameng / Hive / GaussDB / Apache Doris | skill:database-dialects |
 | call any `datatalk_script_run` / `datatalk_script_stop` / `datatalk_script_list` tool, or user asks to collect data / scrape / fetch external data / run Python/Node.js script | skill:data-collection |
 | user asks for a business metric / uses business term ("销售额" / "GMV" / 自然语言度量) / asks to define or look up semantic model entities, dimensions, or measures | skill:semantic-model-usage |
+| user message contains a `file_upload` part / user uploaded a file / 用户上传了文件 | skill:file-upload-routing |
 
 ## Skill Index
 
@@ -123,6 +156,7 @@ All routable skills (auto-loaded by OpenCode; do not Read their files by path). 
 - skill:data-collection — Execute Python/Node.js scripts locally to collect external data (REST fetch / web scrape / API calls) and write into SQL connections via backend write API.
 - skill:semantic-model-usage — Semantic Model contract: 6 Actions (lookup / find / record / propose_change / literal_mapping_add / skill_create), L0-L3 Verified Query routing, when to propose changes vs record VQs.
 - skill:skill-creator — Create new business domain Semantic Model YAML skills. Output goes through `datatalk_skill_create` Action to `pending/` for user review.
+- skill:file-upload-routing — Routes uploaded files (SQL/CSV/Excel/JSON/Text/Unknown) to appropriate actions based on pre-analysis summary. Activated when user message contains a `file_upload` part.
 
 {{STAGE_TAB_DIGEST}}
 {{SEMANTIC_MODEL_DIGEST}}

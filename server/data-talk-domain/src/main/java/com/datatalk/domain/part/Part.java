@@ -15,11 +15,12 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
         @JsonSubTypes.Type(value = FilePart.class, name = "file"),
         @JsonSubTypes.Type(value = StepStartPart.class, name = "step_start"),
         @JsonSubTypes.Type(value = StepFinishPart.class, name = "step_finish"),
-        @JsonSubTypes.Type(value = SubtaskPart.class, name = "subtask")
+        @JsonSubTypes.Type(value = SubtaskPart.class, name = "subtask"),
+        @JsonSubTypes.Type(value = FileUploadPart.class, name = "file_upload")
 })
 public sealed interface Part
         permits TextPart, ReasoningPart, ToolPart, FilePart,
-                StepStartPart, StepFinishPart, SubtaskPart {
+                StepStartPart, StepFinishPart, SubtaskPart, FileUploadPart {
 
     String id();
     String sessionID();

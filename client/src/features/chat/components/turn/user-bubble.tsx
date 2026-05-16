@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { CopyIcon, CheckIcon, PlayIcon, TerminalIcon } from 'lucide-react'
-import type { MessageInfo, Part, TextPart } from '@/services/channel/types'
+import type { MessageInfo, Part, TextPart, FileUploadPart } from '@/services/channel/types'
 import { useChannel } from '@/services/channel/use-channel'
 import { cn, copyToClipboard } from '@/lib/utils'
 import { useI18n } from '@/i18n/use-i18n'
@@ -11,6 +11,7 @@ import { openDirectSqlQueryEditorTab } from '@/features/stage/utils/open-direct-
 import { shouldAutoRunDirectSql } from '@/features/stage/utils/direct-sql-auto-run-policy'
 import { normalizeError, showErrorToast } from '@/services/http-error'
 import { Markdown } from '@/features/chat/components/markdown/markdown'
+import { FileUploadCard } from '@/features/session/components/file-upload-card'
 
 function extractBangQuerySql(text: string): string | null {
   const trimmed = text.trim()
@@ -25,6 +26,7 @@ export function UserBubble(props: { info: MessageInfo; parts: Part[] }) {
   const { t, language } = useI18n()
   const { info, parts } = props
   const textPart = parts.find((p) => p.type === 'text') as TextPart | undefined
+  const fileParts = parts.filter((p): p is FileUploadPart => p.type === 'file_upload')
   const text = textPart?.text ?? ''
   const displayKind = (textPart?.metadata as { displayKind?: string } | undefined)?.displayKind
   const isBangQueryUser = displayKind === 'bang_query_user'
@@ -87,6 +89,11 @@ export function UserBubble(props: { info: MessageInfo; parts: Part[] }) {
           failed && 'border-2 border-red-500',
         )}
       >
+        {fileParts.length > 0 && (
+          <div className="flex flex-col gap-1.5 mb-2">
+            {fileParts.map(p => <FileUploadCard key={p.id} part={p} />)}
+          </div>
+        )}
         {isBangQueryUser ? (
           <div className="flex items-center gap-1.5">
             <span

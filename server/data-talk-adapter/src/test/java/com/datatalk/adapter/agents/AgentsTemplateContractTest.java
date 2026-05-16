@@ -63,23 +63,20 @@ class AgentsTemplateContractTest {
             .doesNotContain("INGESTION_SSRF_BLOCKED")
             .doesNotContain("INGESTION_PAYLOAD_TOO_LARGE")
             .doesNotContain("skills/data-ingestion/SKILL.md")
-            .contains("skill:data-ingestion");
+            .doesNotContain("skill:data-ingestion")
+            .contains("skill:data-collection");
     }
 
     @Test
-    void dataIngestionSkillRetainsIngestionErrorCodesSampling() throws IOException {
-        // Sample-only assertion: full coverage of all 10 codes is enforced
-        // organically by SKILL.md's "Error handling" table; this test guards
-        // against accidental deletion / regression.
-        String skill = loadSkillMd("data-ingestion");
+    void dataCollectionSkillRetainsScriptRunnerContract() throws IOException {
+        // The data-collection skill replaced data-ingestion and owns the
+        // script-runner contract (run/stop/list).
+        String skill = loadSkillMd("data-collection");
         assertThat(skill)
-            .as("skills/data-ingestion/SKILL.md must still document the structured error codes")
-            .contains("INGESTION_SSRF_BLOCKED")
-            .contains("INGESTION_DIALECT_UNSUPPORTED")
-            .contains("INGESTION_TOKEN_INVALID")
-            .contains("INGESTION_INFER_FAILED")
-            .contains("INGESTION_NAME_REQUIRED")
-            .contains("INGESTION_ALREADY_TERMINAL");
+            .as("skills/data-collection/SKILL.md must document the script-runner tools")
+            .contains("datatalk_script_run")
+            .contains("datatalk_script_stop")
+            .contains("datatalk_script_list");
     }
 
     @Test
