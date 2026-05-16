@@ -30,6 +30,8 @@ Two logical artifacts exist internally, but only the JSON is what you "produce" 
 
 This is the only correct delivery path. Any deviation breaks the workbench rendering pipeline.
 
+**CRITICAL — every chat turn that emits a `dashboard` block MUST also emit its paired `dashboard-html` block.** This applies to ALL scenarios: first-time generation, regeneration after user feedback, JSON edits via `ui_patch`, title changes, theme changes, widget adjustments — no exceptions. The frontend `DashboardBlock` pairs the Nth `dashboard` with the Nth `dashboard-html` in document order. If you skip the HTML block, the user clicks "打开到工作台" and sees a dead placeholder. Even if the user only asked for a small JSON change, you MUST recompile and emit the full HTML. There is no such thing as "the HTML is unchanged so I can skip it" — the promote API stores whatever you emit, and the iframe loads whatever was stored.
+
 1. **Output channel**: emit **two** fenced code blocks **in this order** in the chat reply:
    1. ```` ```dashboard ```` — body = the dashboard JSON, schemaVersion 2 (source-of-truth).
    2. ```` ```dashboard-html ```` — body = the self-contained HTML compiled from the JSON per `references/compile-rules.md`. Base it on the matching `assets/templates/NN-<industry>.html` template; replace the placeholder tokens (`__BEZEL_SERVER_ORIGIN__`, `__JSON_HASH__`, `__DASHBOARD_TITLE__`, `__WIDGET_CONTAINERS__`, `__BEZEL_CONFIG_JSON__`, `__POLLING_SCHEDULER_IIFE__`, industry/style CSS variables) with concrete values, then inline the polling scheduler IIFE from `compile-rules.md` Section 5. The host server replaces `__BEZEL_SERVER_ORIGIN__` again on serve, so leaving that placeholder intact is acceptable.
@@ -39,7 +41,7 @@ This is the only correct delivery path. Any deviation breaks the workbench rende
    - ❌ `write` tool to materialize HTML or JSON to any filesystem path (including the active session directory). The workbench has **no file-pickup pipeline**; files dropped on disk are invisible to the host.
    - ❌ `bash` redirection (`> file.html`) or any other path that bypasses the chat fenced blocks.
    - ❌ Emitting raw HTML in a generic ```` ```html ```` fence or as inline `<html>` markup — only the `dashboard-html` fence is recognized.
-   - ❌ Skipping the `dashboard-html` block — if you only emit the JSON, the stage tab will render the v1 missing placeholder ("v1 dashboard — 在 chat 中说『重新生成视觉』生成新版 HTML"), and the user sees no chart.
+   - ❌ Skipping the `dashboard-html` block — if you only emit the JSON, the stage tab will render the v1 missing placeholder ("v1 dashboard — 在 chat 中说「重新生成视觉」生成新版 HTML"), and the user sees no chart. **This is the #1 cause of user-reported dashboard bugs. Never skip the HTML block, even in follow-up turns.**
 3. **JSON skeleton — minimum required fields** (the frontend `dashboardSchema` will reject anything missing these):
    ```json
    {
@@ -100,6 +102,12 @@ This is the only correct delivery path. Any deviation breaks the workbench rende
    5. Does every `widget.query.sql` use unqualified table names that resolve under the chosen `database` + `schema`? If you mix unqualified and `db.table.column` references, document why.
    6. For each `widget.id`, run it through `^[a-z]+_w_[a-zA-Z0-9_]{4,32}$` — the suffix after `_w_` MUST be ≥4 characters. Do not use short English abbreviations (e.g. `gmv`, `cpu`, `qps`) as suffixes; use informative forms like `gmv01` or `total_gmv` instead.
 
+7. **Pre-emit checklist for the HTML block** — run this AFTER the JSON is finalized and BEFORE sending the reply:
+   1. Did you compile a fresh `dashboard-html` block from the final JSON using `references/compile-rules.md`?
+   2. Is the `dashboard-html` block placed immediately after the `dashboard` block (adjacent, no other fenced blocks in between)?
+   3. Did you verify the HTML compiles without errors by running `scripts/validate.py`? (python3 scripts/validate.py --html-only <path-to-html>)
+   4. **If ANY of the above is "no", STOP and fix before sending.** A reply with only a `dashboard` block and no `dashboard-html` block is a broken reply.
+
 ## Reference layout
 
 Read in this order:
@@ -118,7 +126,9 @@ Read in this order:
 1. **Delivery is a fenced `dashboard` block in chat — never a file write.** The OpenCode `write` tool, `bash` shell redirection, or any other filesystem materialization of the HTML/JSON breaks the workbench pipeline. See "Delivery contract" above.
 2. JSON is source-of-truth; HTML is derived. Never hand-edit HTML.
 3. HTML must self-contain — no runtime dependency on bezel after production.
-4. Refresh updates ECharts data only (`setOption({ dataset })`); never rebuild DOM.
+4. **Refresh path is type-aware**:
+   - `widget.type === 'chart'` → 编译期把 `widget.options` 拷为 `BezelWidgetConfig.baseOption`;iframe 初始化时 `echarts.init(el) → ch.setOption(baseOption)`;轮询只 `ch.setOption({ dataset: { source: rows } }, { lazyUpdate: true })`,never rebuild DOM
+   - `widget.type !== 'chart'`(`kpi` / `table` / `markdown` / `filter` / `section` / `divider` / `image`)→ **从不调用 `echarts.init`**;DOM 在编译期渲染好;若 `intervalMs > 0`,轮询通过 `applyHtmlData(widget.type, el, rows)` 重写 `textContent` / `<tbody>` 等,never call ECharts API。详见 `references/data-contract.md` §3 调度器算法
 5. CSP is enforced via `<meta http-equiv="Content-Security-Policy">` inside the HTML, with placeholder `__BEZEL_SERVER_ORIGIN__` that the host server replaces on serve.
 6. Every widget SQL must be a single SELECT — no DDL/DML, no admin commands. Server-side `SqlStatementGuard` will reject otherwise.
 7. **Widget layout is CSS Grid, 12 columns — never `position: absolute`.** The compiled HTML `<body>` is a CSS Grid container (`display: grid; grid-template-columns: repeat(12, minmax(0, 1fr))`). Every `.bezel-widget` element is a grid child placed via inline `grid-column: <position.x + 1> / span <position.w>; grid-row: <position.y + 1> / span <position.h>` derived from the JSON's `widget.position = {x, y, w, h}`. **Forbidden:** applying `position: absolute` (or any `top`/`left`/`width`/`height`) to `.bezel-widget`. That detaches widgets from the grid, causes them to stack on top of each other in the top-left corner, and the user sees only one or two visible widgets out of N. This was a real defect — guard against regenerating it. Decorative pseudo-elements *inside* a widget (`.card::after`, etc.) may still use `position: absolute` relative to the widget itself.

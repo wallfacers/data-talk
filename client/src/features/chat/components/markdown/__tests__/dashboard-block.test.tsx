@@ -2,27 +2,23 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { DashboardBlock } from '../dashboard-block'
 
+const openTabMock = vi.fn()
+const openStageMock = vi.fn()
+
 vi.mock('@/stores/stage-store', () => ({
   useStageStore: {
     getState: () => ({
-      openTab: vi.fn(),
-      openStage: vi.fn(),
+      openTab: openTabMock,
+      openStage: openStageMock,
     }),
   },
 }))
-
-const hydrateTabMock = vi.fn()
 
 vi.mock('@/features/dashboard/services/dashboard-api', () => ({
-  promoteDashboard: vi.fn().mockResolvedValue(undefined),
-}))
-
-vi.mock('@/features/dashboard/stores/dashboard-tabs-store', () => ({
-  useDashboardTabsStore: {
-    getState: () => ({
-      hydrateTab: hydrateTabMock,
-    }),
-  },
+  promoteDashboard: vi.fn().mockImplementation(async (dashboard) => ({
+    id: dashboard.id,
+    version: dashboard.version ?? 1,
+  })),
 }))
 
 const validDashboardJson = JSON.stringify({
@@ -85,17 +81,25 @@ describe('DashboardBlock', () => {
     expect(screen.getByTestId('dashboard-error')).toBeInTheDocument()
   })
 
-  it('shows promote button when stable', () => {
+  it('shows regenerate hint when HTML is missing', () => {
     render(<DashboardBlock json={validDashboardJson} streaming={false} />)
+    expect(screen.getByText('重新生成视觉')).toBeInTheDocument()
+    expect(screen.getByText('仪表盘缺少视觉文件，请在 chat 中说「重新生成视觉」生成新版 HTML')).toBeInTheDocument()
+  })
+
+  it('shows promote button when HTML is provided', () => {
+    render(<DashboardBlock json={validDashboardJson} streaming={false} html="<div>test</div>" />)
     expect(screen.getByText('打开到工作台')).toBeInTheDocument()
   })
 
   it('sanitizes hyphenated dashboard ID on promote', async () => {
-    render(<DashboardBlock json={dashboardWithHyphenatedId} streaming={false} />)
+    render(<DashboardBlock json={dashboardWithHyphenatedId} streaming={false} html="<div>test</div>" />)
     fireEvent.click(screen.getByText('打开到工作台'))
 
-    expect(hydrateTabMock).toHaveBeenCalledTimes(1)
-    const promotedPayload = hydrateTabMock.mock.calls[0][1]
+    await vi.waitFor(() => {
+      expect(openTabMock).toHaveBeenCalledTimes(1)
+    })
+    const promotedPayload = openTabMock.mock.calls[0][0].payload
     expect(promotedPayload.id).toBe('dash_a11fe0478a8e449b876b3d4d8ae5db80')
   })
 

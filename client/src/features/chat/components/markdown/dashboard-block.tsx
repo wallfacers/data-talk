@@ -253,12 +253,13 @@ export function DashboardBlock({ json, html, streaming }: DashboardBlockProps) {
   }
 
   const dashboard = parsedDashboard!
+  const hasHtml = html != null && html.length > 0
 
   return (
     <div
       data-testid="dashboard-preview"
       data-component="basic-tool"
-      data-status="completed"
+      data-status={hasHtml ? 'completed' : 'missing-html'}
       className="my-2 rounded-md border"
     >
       <div className="flex w-full items-start gap-2 px-3 py-2">
@@ -270,9 +271,18 @@ export function DashboardBlock({ json, html, streaming }: DashboardBlockProps) {
               {t('dashboard.widgetCount', { count: dashboard.widgets.length })}
             </span>
           </div>
+          {!hasHtml && (
+            <p className="text-xs text-[var(--dt-status-warning)] leading-relaxed">
+              {t('dashboard.missingHtml')}
+            </p>
+          )}
         </div>
         <div data-slot="markdown-code-actions" className="relative z-10 shrink-0">
-          {!promoted ? (
+          {!hasHtml ? (
+            <span className="px-2 text-xs text-muted-foreground">
+              {t('dashboard.regenerateVisual')}
+            </span>
+          ) : !promoted ? (
             <button
               type="button"
               onClick={() => { promoteDashboard(dashboard, html); setPromoted(true) }}
