@@ -21,16 +21,10 @@ test.describe('@e2e @files @dashboard File Artifact Browser', () => {
 
   // ── test: promoted dashboard appears in file library ─────────────────────
 
-  test.fixme(
-    'promoted dashboard appears in file library',
-    'Missing route: FileArtifactController has no POST endpoint to create a ' +
-    'file artifact with kind="dashboard". Dashboard promotion (POST /api/dashboards/promote) ' +
-    'creates a dashboard entity but does not produce a FileArtifact row. ' +
-    'Implementation notes: expose FileArtifactService.registerExternal as ' +
-    'POST /api/connections/{connectionId}/files/external or add a ' +
-    'dashboard-to-file-artifact bridge in the promotion flow. ' +
-    'See BUG-0009: KIND_ORDER in files-library-tab.tsx also needs "dashboard" added.',
-    async ({ page }) => {
+  // fixme: Missing route: FileArtifactController has no POST endpoint to create a file artifact
+  // with kind="dashboard". Dashboard promotion creates a dashboard entity but does not produce
+  // a FileArtifact row. See BUG-0009: KIND_ORDER also needs "dashboard" added.
+  test.fixme('promoted dashboard appears in file library', async ({ page }) => {
       await page.goto('/')
       await page.waitForFunction(() => Boolean((window as any).__DT_E2E__))
 
@@ -55,7 +49,8 @@ test.describe('@e2e @files @dashboard File Artifact Browser', () => {
     // Get an existing connection and check for archived files via the API
     const client = adapterClient(request)
     const connectionsRes = await client.listConnections()
-    const connections = await connectionsRes.json() as Array<Record<string, unknown>>
+    const connectionsBody = await connectionsRes.json() as Record<string, unknown>
+    const connections = (connectionsBody.connections ?? connectionsBody) as Array<Record<string, unknown>>
 
     test.skip(connections.length === 0, 'No connections available to test file artifacts')
 
@@ -102,14 +97,9 @@ test.describe('@e2e @files @dashboard File Artifact Browser', () => {
 
   // ── test: selecting dashboard file opens/focuses dashboard workbench tab ─
 
-  test.fixme(
-    'selecting dashboard file opens or focuses the dashboard workbench tab',
-    'Missing route: The "Open" button in ArchivedRow (files-library-tab.tsx line 202) ' +
-    'is disabled (disabled prop set). There is no handler to open a dashboard file artifact ' +
-    'in the workbench. Implementation notes: wire the Open button to navigate to the ' +
-    'dashboard workbench tab using the dashboard id stored in file.metadata.dashboardId, ' +
-    'and dispatch the stage tab creation action.',
-    async ({ page }) => {
+  // fixme: Missing route: The "Open" button in ArchivedRow is disabled. No handler to open
+  // a dashboard file artifact in the workbench.
+  test.fixme('selecting dashboard file opens or focuses the dashboard workbench tab', async ({ page }) => {
       await page.goto('/')
       await page.waitForFunction(() => Boolean((window as any).__DT_E2E__))
 
@@ -130,7 +120,8 @@ test.describe('@e2e @files @dashboard File Artifact Browser', () => {
 
     // Get an existing connection with archived files
     const connectionsRes = await client.listConnections()
-    const connections = await connectionsRes.json() as Array<Record<string, unknown>>
+    const connectionsBody = await connectionsRes.json() as Record<string, unknown>
+    const connections = (connectionsBody.connections ?? connectionsBody) as Array<Record<string, unknown>>
 
     test.skip(connections.length === 0, 'No connections available')
 
@@ -158,7 +149,8 @@ test.describe('@e2e @files @dashboard File Artifact Browser', () => {
     if (discardRes.status() === 204) {
       // Re-list connections to find which connection had the file
       const connectionsRes2 = await client.listConnections()
-      const connections2 = await connectionsRes2.json() as Array<Record<string, unknown>>
+      const connectionsBody2 = await connectionsRes2.json() as Record<string, unknown>
+      const connections2 = (connectionsBody2.connections ?? connectionsBody2) as Array<Record<string, unknown>>
 
       for (const conn of connections2) {
         const connId = conn.id as string
@@ -173,16 +165,9 @@ test.describe('@e2e @files @dashboard File Artifact Browser', () => {
 
   // ── test: failed discard response surfaces an accessible error ───────────
 
-  test.fixme(
-    'failed discard response surfaces an accessible error',
-    'Missing UI: The discard action in files-library-tab.tsx (line 217) calls ' +
-    'useFileArtifactsStore.getState().discard(file.id) but does not catch or ' +
-    'surface errors. When the backend returns 404 (NotFound) or 503 (TocTou, ' +
-    'MvFailed), the promise rejects silently with no toast, alert, or ' +
-    'accessible error message. Implementation notes: wrap the discard call in ' +
-    'a try/catch, show a toast.error with the translated error message, and ' +
-    'ensure the error is announced via aria-live region.',
-    async ({ page }) => {
+  // fixme: Missing UI: The discard action does not catch or surface errors.
+  // When the backend returns 404 or 503, the promise rejects silently.
+  test.fixme('failed discard response surfaces an accessible error', async ({ page }) => {
       await page.goto('/')
       await page.waitForFunction(() => Boolean((window as any).__DT_E2E__))
 
@@ -211,7 +196,8 @@ test.describe('@e2e @files @dashboard File Artifact Browser', () => {
 
     // Get an existing connection
     const connectionsRes = await client.listConnections()
-    const connections = await connectionsRes.json() as Array<Record<string, unknown>>
+    const connectionsBody = await connectionsRes.json() as Record<string, unknown>
+    const connections = (connectionsBody.connections ?? connectionsBody) as Array<Record<string, unknown>>
 
     test.skip(connections.length === 0, 'No connections available')
 
@@ -262,7 +248,8 @@ test.describe('@e2e @files @dashboard File Artifact Browser', () => {
 
     // Get an existing connection with files to find a temporary one
     const connectionsRes = await client.listConnections()
-    const connections = await connectionsRes.json() as Array<Record<string, unknown>>
+    const connectionsBody = await connectionsRes.json() as Record<string, unknown>
+    const connections = (connectionsBody.connections ?? connectionsBody) as Array<Record<string, unknown>>
 
     test.skip(connections.length === 0, 'No connections available')
 
