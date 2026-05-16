@@ -128,7 +128,7 @@ export function FilePreviewDialog({
         className={cn(
           'flex flex-col gap-0 overflow-hidden p-0',
           maximized
-            ? 'max-h-[calc(100dvh-4rem)] max-w-[calc(100dvw-4rem)]'
+            ? 'max-h-[90vh] max-w-[90vw]'
             : 'max-h-[80vh] max-w-3xl',
         )}
       >
@@ -168,16 +168,16 @@ export function FilePreviewDialog({
         </DialogDescription>
 
         {/* Body */}
-        <div className="flex-1 overflow-auto min-h-0">
+        <div className={cn(
+          'flex-1 min-h-0',
+          showImage ? 'flex flex-col overflow-hidden' : 'overflow-auto',
+        )}>
           {showImage && imageUrl && (
-            <div className="flex items-center justify-center p-4">
+            <div className="flex flex-1 items-center justify-center p-4 min-h-0">
               <img
                 src={imageUrl}
                 alt={filename}
-                className={cn(
-                  'max-w-full rounded-md object-contain',
-                  maximized ? 'max-h-[calc(100dvh-6rem)]' : 'max-h-[65vh]',
-                )}
+                className="max-h-full max-w-full rounded-md object-contain"
               />
             </div>
           )}
