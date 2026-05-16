@@ -16,6 +16,7 @@
 
 | 文档 | 状态 | 摘要 |
 |------|------|------|
+| [a2ui-function-workspace](2026-05-16-a2ui-function-workspace.md) | review | 下一代工作台架构：以 Function 为唯一可调用单元统辖现有 Action、UI 渲染、Tab 生命周期；A2UI Composer 协议作为 UI 类 Function 的声明式调用语法；Live Synthesis 支持 AI 运行时新建 Function。本文档不包含 roadmap |
 | [sql-dml-batch-execution-design](../product-specs/2026-04-29-sql-dml-batch-execution-design.md) | shipped | `/api/sql/execute` 执行层增加连续 DML JDBC batch 与同表 `INSERT ... VALUES` rewrite，保持现有结果契约与事务回滚语义 |
 | [guarded-ddl-dml-execution-design](../product-specs/2026-04-25-guarded-ddl-dml-execution-design.md) | shipped | 将后端 L1/L2/L3 风险分级转化为用户可见的两步确认流：`/api/sql/execute` 与 `ExecuteSqlAction` 引入 `confirmed` + `riskAck`，Workbench 用 `AlertDialog`、chat 沿用 `preview-sql.tsx` inline 卡片，二者共享 `<SqlConfirmationCard>` 内核；`DELETE WITH WHERE` 由 L3 调整为 L2，与 `UPDATE WITH WHERE` 对称 |
 | [sql-result-export-design](../product-specs/2026-04-25-sql-result-export-design.md) | shipped | Stage SQL result set 首版导出设计已落地：复制 CSV、复制 JSON、下载 CSV；范围限定当前页或当前已返回 bounded result |
