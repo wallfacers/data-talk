@@ -108,3 +108,37 @@
 - [x] 14.7 `cd server && mvn -pl data-talk-adapter test -Dtest='ImageCompressorTest,FileReadActionHandlerTest'` — 18 用例全绿（含新 regression）
 - [x] 14.8 `cd server && mvn clean && mvn install -DskipTests && mvn verify` — 5/5 modules BUILD SUCCESS，192 IT 全绿，无回归（BUG-0056/0057 守护测试仍 pass）。注意：必须 `mvn clean`（不能仅 `-pl adapter clean`）清理 infrastructure 模块中 `V2__user_message_attachments.sql` 的 target/classes 残留（V2 已在 commit 1c7ade11 merged into V1）
 - [x] 14.9 BUG-0058 frontmatter 不动（status 仍 fixed），文末「Follow-up (2026-05-18)」章节追加「第一轮阈值修复不够，第二轮 MAX_EDGE+quality 联动调整」+ 实测矩阵；fixCommit 在 commit 后回填
+
+## 15. ImageCompressor 第三轮收敛（2026-05-18 夜）
+
+> **Trigger**：用户标 task 11.4 「1920×1080 fixture (58KB) → AI 正确返回」之后，第二天再次手测发现 AI 描述的内容与真实图片不一致。排查日志发现 OpenCode tool-output 目录里多出一个 65KB truncation 文件（`tool_e3702abfe00152TdbIkYBrsPt5`），对应的就是那张 1920×1080 fixture。即 task 11.4 当时 AI 是基于 truncation stub 在瞎猜，并非真正"看到了"图片内容。第一轮选定的 maxEdge=1024 + q=0.75 对 1920×1080 这种主流截图分辨率仍不够。
+
+- [x] 15.1 实测矩阵采样 4 maxEdge × 4 quality 共 16 组，对用户两张真实文件（824×569 / 40KB + 1920×1080 / 58KB）双验证 → 选定 maxEdge=800 + q=0.75
+- [x] 15.2 `ImageCompressor.MAX_EDGE` 从 `1024` 改为 `800`；javadoc 加入三轮迭代历史 + 1920×1080 实测验证
+- [x] 15.3 `file-read-image-pipeline/spec.md` 同步：maxEdge 全部 1024→800；resize 段加双 case 实测背书
+- [x] 15.4 `design.md` D2 同步：表格 maxEdge 全部 1024→800；正文增「第二轮针对 1920×1080」实测矩阵 + 为什么不选 1024 的说明
+- [x] 15.5 BUG-0058 Follow-up 章节追加第三轮调查（task 11.4 假阳性 + 1920×1080 案例 + 800 选定 rationale）
+- [x] 15.6 `cd server && mvn -pl data-talk-adapter test -Dtest='ImageCompressorTest,FileReadActionHandlerTest'` — 18 用例全绿（33s）
+- [x] 15.7 `cd server && mvn clean && mvn install -DskipTests && mvn verify` — 5/5 modules BUILD SUCCESS（4m55s）
+
+## 16. MCP image content block 包装（2026-05-18 凌晨决定性根因）
+
+> **Trigger**：完成第三轮压缩参数收敛 + 重启后端后，用户继续报告"AI 描述的图片内容与上传图不一致"。
+> 深入排查发现：
+> 1. 后端日志清晰输出 `compressedBytes=19242 applied=true`，证明压缩到位（base64≈25KB，远小于 OpenCode 50KB inline cap）
+> 2. 19KB JPEG Claude 自己肉眼能逐行读出全部 15 条文本，证明压缩质量充足
+> 3. 直接调 OpenCode API（`POST /session/{id}/message` 用 `{type:"file", url:"data:image/jpeg;base64,..."}`）传 19KB JPEG 给 qwen3.6-plus → 模型完整识别全部 15 条文本
+> 4. **但走 DataTalk MCP 链路时模型只看到 base64 字符串而非图片** ← 这才是 BUG-0058 之前未解决的根本原因
+>
+> 根因：`DataTalkMcpService.toToolResult` 把所有 action 输出整体 JSON 序列化塞进单条 `{type:"text"}` MCP content block，image data URI 沦为纯文本。
+> MCP spec 要求 image 用专门的 `{type:"image", data:<raw base64>, mimeType:...}` content block，AI SDK 才会转成 LLM provider 的 vision message part。
+
+- [x] 16.1 `DataTalkMcpService.toToolResult` 检测 image data URI（output map 含 `content` 字段且匹配 `data:image/...;base64,...`），拆为 text + image 两个 MCP content block
+- [x] 16.2 image content `data` 字段 strip `data:` 前缀（MCP spec 要求 raw base64），`mimeType` 优先用 `compressedMimeType`，缺失从 URI header 回退
+- [x] 16.3 text content 序列化时剔除原 `content` 字段，避免 base64 在 text + image 两处重复占 token
+- [x] 16.4 `structuredContent` 保留完整原始 output（含 content data URI），程序化客户端无损可消费
+- [x] 16.5 错误响应（`isError=true`）即使含 image data URI 也不拆分（防御性 gating）
+- [x] 16.6 `DataTalkMcpServiceTest` 新增 4 用例（imageDataUriOutput / missingCompressedMimeType / nonImageContent / errorWithImageDataUri）— 9/9 全绿
+- [x] 16.7 `file-read-image-pipeline/spec.md` 新增 Requirement「MCP image content block emission」+ 4 个 scenario
+- [x] 16.8 新建 `docs/bugs/BUG-0060-mcp-image-served-as-text-content.md`（status=fixed, P0），index.md 顺延下一编号到 0061
+- [x] 16.9 E2E 真实链路验证：`POST /api/sessions/{sid}/channel send_message[file_upload + text]` → OpenCode 调 datatalk_file_read → qwen3.6-plus 完整识别 15 条文本（用户上传的 824×569 截图）

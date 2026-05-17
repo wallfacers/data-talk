@@ -8,7 +8,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## 当前编号
 
-下一个分配 ID：**BUG-0060**（永不复用，单调递增）
+下一个分配 ID：**BUG-0061**（永不复用，单调递增）
 
 ## Open BUGs（按 priority 倒序，P0 → P2）
 
@@ -19,6 +19,7 @@ _(无 open BUGs)_
 
 | ID | Title | Status | Priority | Owner |
 |----|-------|--------|----------|-------|
+| [BUG-0060](BUG-0060-mcp-image-served-as-text-content.md) | MCP file_read 把 image data URI 塞进 text content，模型只看到 base64 字符串 | fixed | P0 | — (pending) |
 | [BUG-0055](BUG-0055-bezel-scheduler-no-type-aware-init.md) | bezel polling scheduler 对所有 widget 无差别 echarts.init,且 chart 缺首屏 base option | fixed | P1 | — (562fe466) |
 | [BUG-0054](BUG-0054-composer-restore-on-send-failure-resurrects-draft.md) | AI 发送失败后输入框被回填，且草稿写回 localStorage，CTRL+R 仍能复活已发送内容 | fixed | P1 | — (pending) |
 | [BUG-0053](BUG-0053-bezel-ai-widget-id-too-short-and-zod-error-unhelpful.md) | bezel AI 生成 widget id 后缀过短被前端 Zod 拒，且错误提示无法定位字段 | fixed | P1 | — (d99f008f) |

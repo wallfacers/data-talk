@@ -6,15 +6,19 @@
 
 | 原 mime | 压缩动作 | 输出 mime |
 |---------|---------|----------|
-| `image/png` | resize maxEdge=1024 + JPEG q=0.75 重编码 | `image/jpeg` |
-| `image/jpeg` | resize maxEdge=1024 + JPEG q=0.75 重编码 | `image/jpeg` |
-| `image/webp` | resize maxEdge=1024 + JPEG q=0.75 重编码 | `image/jpeg` |
-| `image/bmp` | resize maxEdge=1024 + JPEG q=0.75 重编码 | `image/jpeg` |
+| `image/png` | resize maxEdge=800 + JPEG q=0.75 重编码 | `image/jpeg` |
+| `image/jpeg` | resize maxEdge=800 + JPEG q=0.75 重编码 | `image/jpeg` |
+| `image/webp` | resize maxEdge=800 + JPEG q=0.75 重编码 | `image/jpeg` |
+| `image/bmp` | resize maxEdge=800 + JPEG q=0.75 重编码 | `image/jpeg` |
 | `image/gif` | passthrough（原字节直接 base64） | `image/gif` |
 
-resize SHALL 保持宽高比；若原图任一边 ≤ 1024，则 MUST NOT 放大（仅可能缩小或保持原尺寸）。
+resize SHALL 保持宽高比；若原图任一边 ≤ 800，则 MUST NOT 放大（仅可能缩小或保持原尺寸）。
 
-**实测背书**：典型 UI 截图（含密集文字 + 色块）在源宽 824–1280px 时，若不强制 downscale，JPEG q=0.85 输出常 1.5–2.5× 大于源 PNG（实测 824×569 PNG 40,678 byte → JPEG q=0.85 91,971 byte）。maxEdge=1024 + q=0.75 是经过 30+ 实测矩阵采样后确定的"既能压缩，又 OCR 可读，又 fits OpenCode cap"的参数组合。
+**实测背书**（两轮迭代）：
+- 第一轮 maxEdge=1024 + q=0.75：824×569 PNG (40KB) 压到 30KB JPEG (40KB base64 FITS)，但 1920×1080 PNG (58KB) 压到 48KB JPEG (65KB base64 OVER cap)
+- 第二轮 maxEdge=800 + q=0.75：1920×1080 PNG (58KB) → 800×450 → 30KB JPEG (40KB base64 FITS)，824×569 (40KB) → 800×552 → 19KB JPEG (26KB base64 FITS)，两类典型截图同时通过
+
+JPEG 质量保持 q=0.75 — 经实测在 800×450 downscale 后，order 列表 / 表名等典型 UI 文字仍可清晰识别。
 
 #### Scenario: PNG 截图被压缩为 JPEG
 
@@ -144,3 +148,61 @@ resize SHALL 保持宽高比；若原图任一边 ≤ 1024，则 MUST NOT 放大
 - **WHEN** Thumbnailator 抛 IOException
 - **THEN** 应用日志 SHALL 出现一条 WARN 级别记录
 - **AND** 记录 SHALL 包含 `compressionSkipReason="decode_failed"` 与异常 message
+
+### Requirement: MCP image content block emission
+
+`DataTalkMcpService.toToolResult` 在收到 action 输出包含 image data URI 时，MUST 将 MCP `content` 数组拆为 **两个** content block，以符合 MCP spec 的 `ImageContent` 约定，让 OpenCode / AI SDK 能把图片转发为 LLM provider 的 vision message part。
+
+**Detection 规则**（同时满足才走 image 路径）：
+- outcome 为 success（`isError=false`）
+- output 是 `Map<String, Object>`
+- output 含 `content` 字段且为 `data:image/<sub>;base64,<raw>` 字符串
+
+**输出结构**（image 路径）：
+```json
+{
+  "content": [
+    {"type": "text", "text": "<output JSON with `content` field stripped>"},
+    {"type": "image", "data": "<raw base64, NO data URI prefix>", "mimeType": "<compressedMimeType || mime from URI>"}
+  ],
+  "structuredContent": { /* 完整原始 output，含 content data URI */ }
+}
+```
+
+**关键约束**：
+1. text content 的 metadata JSON MUST NOT 包含原 `content` 字段 — 避免 base64 在 text + image 两处重复，让 prompt token 翻倍。
+2. image content 的 `data` MUST 是 raw base64（**剥离** `data:image/...;base64,` 前缀），MCP spec 与 AI SDK 校验器均拒绝带前缀的形式。
+3. `mimeType` 优先取 output 的 `compressedMimeType`，缺失时 fallback 到 `mimeType` 字段，再缺失则从 data URI header 解析。
+4. `structuredContent` MUST 保留完整原始 output（包含 content data URI），供程序化客户端无损消费。
+5. 错误响应（`isError=true`）即使含 image data URI 也 MUST NOT 拆分（防御性，避免将错误 payload 误塞到 vision 通道）。
+6. 非 image 输出 MUST 保持原行为：单个 `{type:"text", text:"<serialized>"}` content block。
+
+#### Scenario: image data URI 输出被拆为 text + image 两个 content block
+
+- **GIVEN** AI 调用 `datatalk.file_read(fileId=xxx)`，xxx 为 PNG 图片
+- **WHEN** handler 返回 `{fileId, content:"data:image/jpeg;base64,<B>", compressedMimeType:"image/jpeg", compressionApplied:true, ...}`
+- **THEN** MCP `result.content` SHALL 含 2 个 element
+- **AND** `content[0]` SHALL = `{type:"text", text:<JSON 含 fileId / compressionApplied / compressedMimeType，不含 `content` 字段>}`
+- **AND** `content[1]` SHALL = `{type:"image", data:"<B>", mimeType:"image/jpeg"}`（`data` 不含 `data:` 前缀）
+- **AND** `result.structuredContent.content` SHALL 仍然以 `data:image/jpeg;base64,` 开头（完整原始）
+
+#### Scenario: 缺 compressedMimeType 时从 data URI 头推断 mime
+
+- **GIVEN** output 是 `{fileId, content:"data:image/png;base64,<B>"}`（仅旧字段）
+- **WHEN** MCP 包装
+- **THEN** `content[1].mimeType` SHALL = `"image/png"`（从 URI header 解析）
+- **AND** `content[1].data` SHALL = `<B>`
+
+#### Scenario: 非 image action 输出保持单 text content
+
+- **GIVEN** `datatalk.file_read` 读取 CSV，output `content` 是 `"id,name\n1,foo\n"`
+- **WHEN** MCP 包装
+- **THEN** `result.content` SHALL 仅含 1 个 `{type:"text"}` element
+- **AND** `result.content[0].text` SHALL 包含 `"id,name"` 子串
+
+#### Scenario: 错误响应不触发 image content 拆分
+
+- **GIVEN** outcome 是 error，payload 含 `content:"data:image/jpeg;base64,..."`（譬如校验失败时回显输入）
+- **WHEN** MCP 包装
+- **THEN** `result.content` SHALL 仅含 1 个 `{type:"text"}` element
+- **AND** `result.isError` SHALL = `true`

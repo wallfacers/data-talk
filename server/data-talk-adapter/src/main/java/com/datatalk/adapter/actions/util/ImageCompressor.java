@@ -73,15 +73,19 @@ public final class ImageCompressor {
     /**
      * Target max edge for resize; aspect ratio preserved, never upscaled.
      *
-     * <p>Initial implementation used 2048 (display-quality), but real-world UI
-     * screenshots at 800–1280 wide ended up NOT being resized — and JPEG q=0.85
-     * of full-resolution text-dense PNGs is consistently 1.5–2.5× LARGER than
-     * the source PNG (measured: 824×569 PNG 40,678 byte → JPEG q=0.85 91,971 byte).
-     * Lowered to 1024 to force a real pixel reduction on the typical screenshot
-     * dimensions that drive {@link com.datatalk.adapter.actions.FileReadActionHandler}
-     * payload size.
+     * <p>Iteration history:
+     * <ul>
+     *   <li>Initial 2048 — never triggered resize on real UI screenshots (824–1280 wide),
+     *       JPEG q=0.85 of full-resolution text-dense PNGs was 1.5–2.5× LARGER than source</li>
+     *   <li>Lowered to 1024 — fixed the 824×569 case (JPEG 30KB, fits cap) but 1920×1080
+     *       screenshots still produced 48KB JPEG → 65KB base64 → OpenCode truncation</li>
+     *   <li>Lowered to 800 — handles both 800–1024 source (no-op or tiny resize) AND
+     *       1920×1080 source (2.4× downscale → 30KB JPEG → 40KB base64 → fits ~50KB cap).
+     *       Empirically validated on the user's actual 1920×1080 dashboard fixture:
+     *       text remains legible after 0.75 quality re-encode</li>
+     * </ul>
      */
-    static final int MAX_EDGE = 1024;
+    static final int MAX_EDGE = 800;
     /** Refuse to decode if any single edge exceeds this (header-peeked). */
     static final int MAX_SOURCE_EDGE = 16384;
     /** Refuse to decode if total pixel count exceeds this (header-peeked). */

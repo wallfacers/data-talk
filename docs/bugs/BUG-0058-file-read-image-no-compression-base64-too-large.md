@@ -187,4 +187,37 @@ BUG-0056 / BUG-0057 守护测试 grep 验证：
 
 新增 `mediumPng_inOpenCodeTruncationDangerZone_isCompressed` 守护用例（`writeRealisticScreenshot(1000, 700)` 真实 UI 截图风格 fixture，断言 base64 < 40KB）防止再次回归。
 
-frontmatter `status: fixed` 不动 — 同属一次 fix 的两轮迭代；fixCommit 在最终 commit 后回填合并 commit 的 short SHA。
+### 第三轮调查（2026-05-18 夜）：1920×1080 仍 OVER cap，用户 task 11.4 是假阳性
+
+二次修复（maxEdge=1024 + q=0.75）后用户标 task 11.4 「1920×1080 fixture → qwen3.6-plus 正确返回」并把 BUG status 改为 `verified`。但第二天用户再发现 AI 回答与真实图片不一致。重新排查日志：
+
+- 在 `~/.local/share/opencode/tool-output/` 找到新生成的 truncation 文件 `tool_e3702abfe00152TdbIkYBrsPt5`（**65,176 byte**），时间戳与 task 11.4 当时上传一致
+- 文件 metadata 显示 `originalBytes=58764`、`compressedBytes=48715`、`compressionApplied=true`、`compressedMimeType=image/jpeg` — 即**二次修复的代码确实在跑**，1024 + 0.75 也确实压缩了，但**1920×1080 PNG → 800×450 → 48KB JPEG → base64 65KB → 仍 OVER OpenCode ~50KB cap**
+- 即 task 11.4 当时 AI 实际拿到的是 truncation stub（"Output too large, saved to file, use Task tool..."），AI 在没有图的情况下"瞎说"了一通通用 dashboard 描述。用户没有交叉验证 AI 回答与图片的具体内容是否对得上，错误地标了 pass
+
+**16 组矩阵实测**（用户 1920×1080 dashboard fixture，58,764 byte）：
+
+| maxEdge | quality | JPEG byte | base64 byte | fits ~50KB cap? |
+|---------|---------|-----------|-------------|----------------|
+| 1024 | 0.75 | 48,715 | 64,956 | **OVER** ← 二次修复失败 |
+| 896 | 0.75 | 38,710 | 51,616 | OVER |
+| 896 | 0.65 | 31,931 | 42,576 | FITS（贴边） |
+| **800** | **0.75** | **30,170** | **40,228** | **FITS ← 第三次选用** |
+| 800 | 0.65 | 25,948 | 34,600 | FITS（更保守） |
+| 700 | 0.75 | 24,948 | 33,264 | FITS（更保守） |
+
+### 三次修复（同 change task batch 15）
+
+| 常量 | 二次后 | 三次改 | 理由 |
+|------|--------|--------|------|
+| `MAX_EDGE` | 1024 | **800** | 1024 在 1920×1080（主流分辨率）上仍出 65KB base64；800 让 1920×1080 → 800×450 → 40KB base64 fits |
+
+q=0.75 / SIZE_THRESHOLD_BYTES=25KB 保持不变。视觉验证：1920×1080 dashboard fixture 经 800 + 0.75 压缩后，order/amount 数字仍清晰可识别。
+
+### 教训
+
+1. **「fixed」≠「verified」**：第一轮和第二轮都通过了单元测试 + mosaic fixture 测试，但都没在真实截图上跑通。今后跨 LLM tool_result 体积/格式约束的修复，**必须在真实文件上端到端验证 AI 回答与图片内容的具体匹配性**，不能只看"AI 给出了 plausible 描述"
+2. **检查日志中的 truncation 文件**：`~/.local/share/opencode/tool-output/<id>` 是 OpenCode 在内联输出超限时的外溢路径；任何 file_read 调用后都应该 grep 这个目录确认没有生成新 stub
+3. **status=`verified` 也可以回退**：用户已经把 BUG status 改为 verified，但实测发现仍有缺陷。frontmatter 暂保持 `verified` 让用户再确认本轮修复
+
+frontmatter `status: verified` 由用户手测后最终确认；fixCommit 在最终 commit 后回填合并 commit 的 short SHA。

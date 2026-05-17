@@ -8,10 +8,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Component
 public class DataTalkMcpService {
@@ -90,10 +93,27 @@ public class DataTalkMcpService {
     private Map<String, Object> toToolResult(McpActionBridge.ToolCallOutcome outcome) {
         Object output = outputWithinBudget(outcome.output());
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("content", List.of(Map.of(
-            "type", "text",
-            "text", serialize(output)
-        )));
+
+        List<Map<String, Object>> content = new ArrayList<>(2);
+        ImagePayload image = !outcome.isError() ? extractImagePayload(output) : null;
+        if (image != null) {
+            // Strip the data URI from the text serialization so the same base64 payload
+            // is not duplicated as both text and vision input — the model already "sees"
+            // the bytes via the image content block, and the text block keeps the
+            // observability metadata (fileId, originalBytes, compressionApplied, …).
+            Map<String, Object> metadata = new LinkedHashMap<>((Map<String, Object>) output);
+            metadata.remove("content");
+            content.add(Map.of("type", "text", "text", serialize(metadata)));
+            content.add(Map.of(
+                "type", "image",
+                "data", image.data(),
+                "mimeType", image.mimeType()
+            ));
+        } else {
+            content.add(Map.of("type", "text", "text", serialize(output)));
+        }
+        result.put("content", content);
+
         if (!outcome.isError()) {
             if (output instanceof Map<?, ?> rawMap) {
                 result.put("structuredContent", (Map<String, Object>) rawMap);
@@ -106,6 +126,48 @@ public class DataTalkMcpService {
         }
         return result;
     }
+
+    private static final Pattern IMAGE_DATA_URI = Pattern.compile(
+        "^data:(image/[a-zA-Z0-9.+-]+);base64,(.+)$", Pattern.DOTALL);
+
+    /**
+     * Detect a base64-encoded image payload in the action output and split it into a
+     * MCP {@code image} content block. Models cannot OCR a raw base64 string embedded
+     * inside a JSON text response — the MCP spec requires images to travel as their own
+     * {@code {type:"image", data, mimeType}} content block so the AI SDK can forward
+     * them as a vision part to the underlying LLM provider.
+     *
+     * <p>Detection rules (intentionally narrow to avoid false positives):
+     * <ul>
+     *   <li>output must be a {@link Map}</li>
+     *   <li>{@code content} must be a {@code data:image/...;base64,...} string</li>
+     *   <li>{@code compressedMimeType} OR {@code mimeType} must be present and image/*</li>
+     * </ul>
+     * Returns {@code null} when not an image payload — caller falls back to single
+     * text content for full backwards compatibility with non-image actions.
+     */
+    private static ImagePayload extractImagePayload(Object output) {
+        if (!(output instanceof Map<?, ?> map)) {
+            return null;
+        }
+        Object contentValue = map.get("content");
+        if (!(contentValue instanceof String contentStr)) {
+            return null;
+        }
+        Matcher matcher = IMAGE_DATA_URI.matcher(contentStr);
+        if (!matcher.matches()) {
+            return null;
+        }
+        String mimeFromUri = matcher.group(1);
+        Object declared = map.get("compressedMimeType");
+        if (!(declared instanceof String s) || s.isBlank()) {
+            declared = map.get("mimeType");
+        }
+        String mimeType = declared instanceof String resolved && !resolved.isBlank() ? resolved : mimeFromUri;
+        return new ImagePayload(matcher.group(2), mimeType);
+    }
+
+    private record ImagePayload(String data, String mimeType) {}
 
     private Object outputWithinBudget(Object output) {
         String serialized = serialize(output);

@@ -59,10 +59,10 @@ DataTalk 当前的文件上传链路覆盖三段责任：
 
 | 原 mime | 行为 | 压缩后 mime |
 |---------|------|-----------|
-| image/png | resize maxEdge=1024 + JPEG q=0.75 | image/jpeg |
-| image/jpeg | resize maxEdge=1024 + JPEG q=0.75 重编码；若原图边均 ≤1024 且字节 ≤25KB 跳过 | image/jpeg |
-| image/webp | resize maxEdge=1024 + JPEG q=0.75 | image/jpeg |
-| image/bmp | resize maxEdge=1024 + JPEG q=0.75 | image/jpeg |
+| image/png | resize maxEdge=800 + JPEG q=0.75 | image/jpeg |
+| image/jpeg | resize maxEdge=800 + JPEG q=0.75 重编码；若原图边均 ≤800 且字节 ≤25KB 跳过 | image/jpeg |
+| image/webp | resize maxEdge=800 + JPEG q=0.75 | image/jpeg |
+| image/bmp | resize maxEdge=800 + JPEG q=0.75 | image/jpeg |
 | image/gif | **passthrough（原样 base64）** | image/gif |
 
 - 阈值：原图字节 ≤ 25KB → skip（已经够小，CPU 不值）
@@ -84,7 +84,9 @@ UI 截图（文字 + 色块）的 JPEG q=0.85 经常**比 PNG 大 1.5–2.5×**�
 2. UI 色块的硬边 → JPEG 块效应需要更多比特保留
 3. PNG 的 deflate + 滤波器对此类内容更友好
 
-**实测参数矩阵**（用户那张 824×569 / 40KB PNG，2026-05-18）：
+**实测参数矩阵**（两轮迭代）：
+
+第一轮针对用户的 824×569 / 40KB PNG（2026-05-18 晚）：
 
 ```
 maxEdge q     JPEG     base64    fits cap?
@@ -92,12 +94,27 @@ maxEdge q     JPEG     base64    fits cap?
 2048   0.50  69,727    92,972    OVER
 1280   0.75  40,962    54,616    OVER
 1024   0.85  35,803    47,740    OVER（贴边）
-1024   0.75  30,095    40,128    FITS  ← 选定
-1024   0.65  26,639    35,520    FITS（更保守）
- 800   0.85  23,301    31,068    FITS（更保守）
+1024   0.75  30,095    40,128    FITS  ← 第一轮选定
 ```
 
-选 maxEdge=1024 + q=0.75 是 **OCR 文字可读性 × 输出大小**的甜蜜点。再激进的话 OCR 在小字号 UI 上开始模糊，再保守就贴 cap 边缘没裕度
+第二轮针对 1920×1080 / 58KB PNG（2026-05-18 夜，task 11.4 后暴露）：
+
+```
+maxEdge q     JPEG     base64    fits cap?
+1024   0.75  48,715    64,956    OVER  ← 第一轮失败
+ 896   0.75  38,710    51,616    OVER
+ 896   0.65  31,931    42,576    FITS（贴边）
+ 800   0.75  30,170    40,228    FITS  ← 第二轮选定
+ 800   0.65  25,948    34,600    FITS（更保守）
+ 700   0.75  24,948    33,264    FITS（更保守）
+```
+
+最终选 **maxEdge=800 + q=0.75**：
+- 1920×1080 → 800×450（2.4× downscale）→ 30KB JPEG / 40KB base64 — 贴 OpenCode 40KB 安全阈但 fits
+- 824×569 → 800×552（基本无缩放）→ 19KB JPEG / 26KB base64 — 充足裕度
+- q=0.75 保留经实测：用户 1920×1080 dashboard 截图 downscale 后 order 文字仍清晰可识别（避免 q=0.65 在小字 UI 上的 block artifacts）
+
+为什么不选 maxEdge=1024：实测显示 1024 在 1920×1080 这种主流截图分辨率上**仍然 OVER cap**，而 800 是 "支持 ≥1920×1080 截图 + 保持 ≤800 截图基本不缩放" 的折衷
 
 **阈值反算（25KB 取值依据）**：
 
