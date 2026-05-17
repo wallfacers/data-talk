@@ -29,7 +29,7 @@ Design Inputs (from client/DESIGN.md): ghost 按钮 `text-text-muted`，`size="i
 ## 5. AI 路由与集成
 
 - [x] 5.1 `skills/file-upload-routing/SKILL.md`: 新增图片类型路由规则，图片文件路由为上下文附件（提供元数据 + base64 内容给 AI）
-- [ ] 5.2 集成验证: 手动端到端验证——上传图片 → AI 收到图片上下文 → 基于图片内容回答
+- [x] 5.2 集成验证: 手动端到端验证——上传图片 → AI 收到图片上下文 → 基于图片内容回答
 
 ## 6. 最终验证
 

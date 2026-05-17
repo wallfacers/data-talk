@@ -51,4 +51,4 @@
 
 - [x] 7.1 Backend full test suite: `cd server && mvn verify` — compile + unit + integration tests pass.
 - [x] 7.2 Frontend full test suite: `cd client && npx tsc --noEmit && npx vitest run` — typecheck + unit tests pass.
-- [ ] 7.3 E2E smoke test (manual or Playwright): drag CSV file → verify upload chip appears → send message → verify AI response suggests import. Drag SQL file → verify AI describes statements and asks confirmation.
+- [x] 7.3 E2E smoke test (manual or Playwright): drag CSV file → verify upload chip appears → send message → verify AI response suggests import. Drag SQL file → verify AI describes statements and asks confirmation.

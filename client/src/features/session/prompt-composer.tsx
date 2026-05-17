@@ -336,15 +336,13 @@ function InnerComposer() {
 
     updateText('')
 
-    // Upload pending files first
-    if (attachments.some(a => a.status === 'pending')) {
-      await uploadAll()
-    }
+    // Upload pending files first; uploadAll returns responses directly to avoid stale-closure
+    const alreadyDone = attachments.filter(a => a.status === 'done' && a.response).map(a => a.response!)
+    const newlyDone = attachments.some(a => a.status === 'pending') ? await uploadAll() : []
 
     // Build parts array with text + any completed file uploads
     const parts: unknown[] = [createTextPart(activeSessionId, trimmed)]
-    const doneResponses = attachments.filter(a => a.status === 'done' && a.response).map(a => a.response!)
-    for (const r of doneResponses) {
+    for (const r of [...alreadyDone, ...newlyDone]) {
       parts.push(createFileUploadPart(activeSessionId, r.fileId, r.filename, r.mimeType, r.sizeBytes, r.analysis as Record<string, unknown>))
     }
 

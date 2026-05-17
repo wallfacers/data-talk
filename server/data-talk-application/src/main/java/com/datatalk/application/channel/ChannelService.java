@@ -136,17 +136,55 @@ public class ChannelService {
             return out;
         }
         if (p instanceof FileUploadPart u) {
-            out.put("type", "file");
-            out.put("mime", u.mimeType());
-            out.put("filename", u.filename());
-            out.put("sizeBytes", u.sizeBytes());
-            out.put("fileId", u.fileId());
-            if (u.analysis() != null) out.put("analysis", u.analysis());
+            // OpenCode strict Zod validation rejects custom fields (fileId, analysis, sizeBytes).
+            // Convert to a text part so the AI sees the metadata and can call datatalk_file_read.
+            out.put("type", "text");
+            out.put("text", buildFileUploadContext(u));
             return out;
         }
         log.warn("[channel] dropping unsupported outbound part type for OpenCode: {}",
             p.getClass().getSimpleName());
         return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private String buildFileUploadContext(FileUploadPart u) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("[Uploaded file: ").append(u.filename());
+        sb.append(" | fileId: ").append(u.fileId());
+        sb.append(" | mimeType: ").append(u.mimeType());
+        sb.append(" | sizeBytes: ").append(u.sizeBytes());
+
+        if (u.analysis() != null) {
+            Map<String, Object> analysis = u.analysis();
+            Object type = analysis.get("type");
+            if (type != null) sb.append(" | type: ").append(type);
+
+            Object summary = analysis.get("summary");
+            if (summary instanceof Map<?, ?> s) {
+                Object headers = s.get("headers");
+                if (headers != null) sb.append(" | headers: ").append(headers);
+                Object estimatedRows = s.get("estimatedRows");
+                if (estimatedRows != null) sb.append(" | estimatedRows: ").append(estimatedRows);
+                Object detectedTypes = s.get("detectedTypes");
+                if (detectedTypes != null) sb.append(" | detectedTypes: ").append(detectedTypes);
+            }
+
+            // For small files, include full content so the AI can work without a second round-trip
+            Boolean fullContent = analysis.get("fullContent") instanceof Boolean b && b;
+            Object content = analysis.get("content");
+            if (fullContent && content instanceof String c && !c.isEmpty()) {
+                sb.append("]\n\n").append(c);
+            } else {
+                sb.append("]");
+            }
+        } else {
+            sb.append("]");
+        }
+
+        sb.append("\n\nUse `datatalk_file_read` with fileId `").append(u.fileId())
+          .append("` if you need the full file content.");
+        return sb.toString();
     }
 
     /**

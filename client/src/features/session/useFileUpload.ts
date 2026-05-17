@@ -44,16 +44,18 @@ export function useFileUpload(sessionId: string) {
     setAttachments(prev => prev.filter((_, i) => i !== index))
   }, [])
 
-  const uploadAll = useCallback(async () => {
+  const uploadAll = useCallback(async (): Promise<FileUploadResponse[]> => {
     const pending = attachments.filter(a => a.status === 'pending')
-    if (pending.length === 0) return
+    if (pending.length === 0) return []
 
+    const responses: FileUploadResponse[] = []
     for (const attachment of pending) {
       setAttachments(prev =>
         prev.map(a => a === attachment ? { ...a, status: 'uploading', progress: 0 } : a)
       )
       try {
         const response = await uploadFile(attachment.file, sessionId)
+        responses.push(response)
         setAttachments(prev =>
           prev.map(a => a === attachment ? { ...a, status: 'done', progress: 100, response } : a)
         )
@@ -63,6 +65,7 @@ export function useFileUpload(sessionId: string) {
         )
       }
     }
+    return responses
   }, [attachments, sessionId])
 
   const clearDone = useCallback(() => {
