@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { StageTab } from '@/stores/stage-store'
 import { listOpLogs, batchUndoOpLogs, type OpLogFilters, type OpLogListResponse } from '@/services/api/connection-op-log'
 import { subscribeOpLogStream } from '@/services/api/connection-op-log-sse'
+import { useConnections } from '@/features/connection/hooks/use-connections'
 import { OpLogFilterBar } from './op-log-filter-bar'
 import { OpLogTable } from './op-log-table'
 import { BatchUndoConfirmDialog } from './batch-undo-confirm-dialog'
@@ -13,7 +14,8 @@ interface OperationLogTabProps {
 
 export function OperationLogTab({ tab }: OperationLogTabProps) {
   const connectionId = tab.connectionId!
-  const connectionName = tab.connectionName!
+  const { data: connections } = useConnections()
+  const connectionName = tab.connectionName ?? connections?.find(c => c.id === connectionId)?.name ?? ''
   const queryClient = useQueryClient()
 
   const [page, setPage] = useState(0)
