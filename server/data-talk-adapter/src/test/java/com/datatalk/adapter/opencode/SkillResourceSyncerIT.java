@@ -34,17 +34,16 @@ class SkillResourceSyncerIT {
     }
 
     @Test
-    void syncDataIngestionSkill() {
+    void syncDataCollectionSkill() {
         SkillResourceSyncer syncer = new SkillResourceSyncer();
-        syncer.syncSkill("data-ingestion", tempDir);
+        syncer.syncSkill("data-collection", tempDir);
 
-        Path skillDir = tempDir.resolve(".opencode/skills/data-ingestion");
+        Path skillDir = tempDir.resolve(".opencode/skills/data-collection");
         assertThat(skillDir).isDirectory();
         assertThat(skillDir.resolve("SKILL.md")).isRegularFile();
-        assertThat(skillDir.resolve("recipes/basic-rest-fetch.md")).isRegularFile();
-        assertThat(skillDir.resolve("examples/example1.json")).isRegularFile();
+        assertThat(skillDir.resolve("recipes/python-rest-fetch.md")).isRegularFile();
 
-        Path marker = tempDir.resolve(".opencode/.data-ingestion-skill-synced");
+        Path marker = tempDir.resolve(".opencode/.data-collection-skill-synced");
         assertThat(marker).isRegularFile();
     }
 }
