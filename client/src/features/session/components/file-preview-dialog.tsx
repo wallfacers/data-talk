@@ -97,11 +97,19 @@ export function FilePreviewDialog({
     return t('chat.filePreview.file')
   }, [filename, t])
 
+  // Stable identity for useEffect: compare by primitive value (fileId) or
+  // File reference instead of the source object itself, so parent re-renders
+  // during streaming do not trigger a re-fetch / image flash.
+  const sourceKey = source?.kind === 'remote' ? source.fileId
+    : source?.kind === 'local' ? source.file : null
+
   // Unified byte loader: dispatches on source.kind, normalizes cleanup
   // (revoke any objectURL that was created locally OR from a remote blob).
+  // NOTE: `open` is intentionally excluded from deps so the blob URL survives
+  // the Dialog's close animation.  Content stays visible during fade-out;
+  // cleanup happens when sourceKey changes or the component unmounts.
   useEffect(() => {
-    if (!source || !open) {
-      // Reset state when there is nothing to show or dialog is closed
+    if (!source) {
       setTextContent(null)
       setReadError(null)
       setImageUrl(null)
@@ -175,7 +183,7 @@ export function FilePreviewDialog({
         URL.revokeObjectURL(createdObjectUrl)
       }
     }
-  }, [source, open, filename])
+  }, [sourceKey, filename])
 
   if (!source) return null
 

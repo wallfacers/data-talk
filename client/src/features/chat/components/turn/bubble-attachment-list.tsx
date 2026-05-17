@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { FileChip } from '@/features/session/components/file-chip'
-import { FilePreviewDialog } from '@/features/session/components/file-preview-dialog'
+import { FilePreviewDialog, type PreviewSource } from '@/features/session/components/file-preview-dialog'
 import { getFileContentUrl } from '@/services/api/file-upload'
 import type { FileUploadPart } from '@/services/channel/types'
 
@@ -39,6 +39,17 @@ export function BubbleAttachmentList({ parts }: BubbleAttachmentListProps) {
 
   if (parts.length === 0) return null
 
+  const previewSource = useMemo<PreviewSource | null>(() => {
+    if (!activePart?.fileId) return null
+    return {
+      kind: 'remote',
+      fileId: activePart.fileId,
+      filename: activePart.filename,
+      mimeType: activePart.mimeType,
+      sizeBytes: activePart.sizeBytes,
+    }
+  }, [activePart])
+
   return (
     <div
       className="ml-auto max-w-[85%] flex flex-row gap-1.5 overflow-x-auto justify-end pb-1"
@@ -64,17 +75,7 @@ export function BubbleAttachmentList({ parts }: BubbleAttachmentListProps) {
         )
       })}
       <FilePreviewDialog
-        source={
-          activePart && activePart.fileId
-            ? {
-                kind: 'remote',
-                fileId: activePart.fileId,
-                filename: activePart.filename,
-                mimeType: activePart.mimeType,
-                sizeBytes: activePart.sizeBytes,
-              }
-            : null
-        }
+        source={previewSource}
         open={previewOpen}
         onOpenChange={(next) => {
           setPreviewOpen(next)
