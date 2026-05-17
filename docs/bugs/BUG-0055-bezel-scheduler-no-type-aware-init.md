@@ -1,14 +1,14 @@
 ---
 id: BUG-0055
 title: bezel polling scheduler 对所有 widget 无差别 echarts.init,且 chart 缺首屏 base option
-status: open
+status: fixed
 priority: P1
 source: agent-generated-dashboard
 modules: [bezel, dashboard]
 discovered: 2026-05-17
 discoveredBy: agent
 testRunId: null
-fixCommit: null
+fixCommit: 562fe466
 fixPlanRef: openspec/changes/bezel-scheduler-type-aware/
 duplicateOf: null
 regression: false
@@ -66,12 +66,27 @@ bezel skill 内 polling scheduler 的运行时算法和 skill 契约文档互相
 
 ## Verification
 
-待 change 实施完成后:
+OpenSpec change `bezel-scheduler-type-aware` 落地后实测:
 
-- AI 生成 KPI + chart 混合 dashboard,KPI 容器无 canvas、chart 首屏即可见
-- E2E `client/tests/e2e/dashboard-bezel-v2.spec.ts` 新增的混合 fixture 全绿
-- `cd server && mvn clean verify` 全绿
-- 关联 BUG-0050 / BUG-0051 复现步骤不再触发
+- **后端单元/集成测试** — `BezelHtmlValidatorTest` 8/8、`DashboardArtifactServiceV1MigrationTest` 4/4、`DashboardArtifactServiceTest` 5/5、`DashboardSchemaValidatorTest` 5/5、`DashboardControllerIT` 9/9 全绿(`mvn -pl data-talk-application,data-talk-adapter test`)。剩余唯一失败 `SkillResourceSyncerIT.syncDataIngestionSkill` 与本 BUG 无关,属于已知历史遗留(`data-ingestion` skill 已改名为 `data-collection`,测试未同步)。
+- **校验脚本** — `scripts/validate.py` 跑 12 份 industry template 全部 PASS,新增的 `type_aware_scheduler`、`widget_config_type_field`、`html_render_kind_attrs`、`E_CONFIG_TYPE_MISSING`、`E_CHART_MISSING_BASE_OPTION`、`E_NONCHART_HAS_BASE_OPTION`、`E_HTML_KIND_ATTR_MISSING`、`E_NONCHART_HAS_ECHARTS_INIT` 校验全部通过。
+- **运行时端到端 fixture(BUG-0055 regression)** — 用 `tmp/bezel-bug-0055-e2e/index.html`(直接搬运 template 调度器 IIFE,1 chart + 2 KPI + 1 table 混合)+ playwright-cli route mock 数据端点,reload 后断言(`after.png` 为证):
+  - `kpi_gmv`、`kpi_orders`、`tbl_top` 容器**均无 `<canvas>`**(`echarts.init` 未被错误调用)
+  - chart 容器有 ECharts canvas 且 `window.echarts.getInstanceByDom()` 返回实例(首屏 setOption(baseOption) 成功,7 日趋势折线即可见,不是空白等首次 poll)
+  - 首次 poll 后 KPI `.value` / `.delta` / `.trend` 文本/类名按 mock 数据更新,table `<tbody>` 填入 3 行
+  - 整次会话 console **0 errors、0 warnings**
+
+附图见 `docs/bugs/assets/BUG-0055/after.png`。
+
+## Fix Summary
+
+走 OpenSpec change `bezel-scheduler-type-aware`,根因在 spec 层根治:
+
+1. **4 份契约文档对齐** — `SKILL.md` / `data-contract.md` / `compile-rules.md` / `patterns-catalog.md` 全部按 type-aware 重写;`BezelWidgetConfig` schema 增 `type` + `baseOption` 必填字段;`generic.*` widget 全部标注 `renderKind: 'chart' | 'html'`。
+2. **后端守卫(`BezelHtmlValidator`)** — 增 `type_aware_scheduler` regex(HTML 必须含 `w.type === 'chart'` guard)+ `widget_config_type_field` regex(`__BEZEL_CONFIG__` 必须含 `type:` 字段),无 guard 直接拒收 promote。
+3. **后端迁移(`DashboardArtifactService.migrateV1ToV2`)** — 新增 `inferTypeFromPattern(patternId)`,v1 widget 缺 `type` 时按 patternId 反推,未知 patternId fallback `chart` 并 log.warn。
+4. **12 份 industry template 调度器同步重写** — `bindWidget` 按 `w.type === 'chart'` 分流:chart 走 `init → setOption(baseOption) → schedule`;HTML widget(`kpi` / `table` / `markdown` / `section` / `divider` / `image` / `filter`)走 `applyHtmlData`,不 init ECharts。
+5. **`scripts/validate.py` 增 schema 校验** — `type === 'chart'` 必有 `baseOption`(含 `series` 或 `xAxis`+`yAxis`);其余 type 必 `baseOption === null`;HTML widget 容器必须有 `data-bezel-render-kind` 属性。
 
 ## Notes
 

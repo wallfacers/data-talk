@@ -14,13 +14,14 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 | ID | Title | Priority | Source | Modules | Discovered |
 |----|-------|----------|--------|---------|------------|
-| [BUG-0055](BUG-0055-bezel-scheduler-no-type-aware-init.md) | bezel polling scheduler 对所有 widget 无差别 echarts.init,且 chart 缺首屏 base option | P1 | agent-generated-dashboard | bezel, dashboard | 2026-05-17 |
+| —  | — | — | — | — | — |
 
 
 ## In Progress（status = investigating | fixed 等待 verify）
 
 | ID | Title | Status | Priority | Owner |
 |----|-------|--------|----------|-------|
+| [BUG-0055](BUG-0055-bezel-scheduler-no-type-aware-init.md) | bezel polling scheduler 对所有 widget 无差别 echarts.init,且 chart 缺首屏 base option | fixed | P1 | — (562fe466) |
 | [BUG-0054](BUG-0054-composer-restore-on-send-failure-resurrects-draft.md) | AI 发送失败后输入框被回填，且草稿写回 localStorage，CTRL+R 仍能复活已发送内容 | fixed | P1 | — (pending) |
 | [BUG-0053](BUG-0053-bezel-ai-widget-id-too-short-and-zod-error-unhelpful.md) | bezel AI 生成 widget id 后缀过短被前端 Zod 拒，且错误提示无法定位字段 | fixed | P1 | — (d99f008f) |
 | [BUG-0052](BUG-0052-long-session-empty-canvas-streaming-flag-race.md) | 重新打开 streaming=busy 的会话时历史消息全空，根因是 streaming flag 与 history fetch 的并发竞争 | fixed | P1 | — (ad7c6a2b) |
