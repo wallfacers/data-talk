@@ -64,6 +64,11 @@ cd client && npm run dev                # dev server
 - **Major architecture**: MUST invoke `superpowers:brainstorming` before `/opsx:propose`.
 - **BUG evidence**: Screenshots at `docs/bugs/assets/<BUG-ID>/` (PNG ≤ 500KB) may be committed. Traces/HAR/HTML stay in `tmp/`.
 
+## Branching & Release
+
+- Push to `master` triggers 3-platform release build (see [docs/BRANCH_STRATEGY.md](docs/BRANCH_STRATEGY.md))
+- Version source of truth: `client/src-tauri/tauri.conf.json`; use [Conventional Commits](https://www.conventionalcommits.org/)
+
 ## Key Conventions
 
 - **Architecture**: domain ← application ← infrastructure ← adapter (no reverse)

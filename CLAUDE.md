@@ -234,6 +234,11 @@ Runtime deviations are centrally tracked in `docs/bugs/`. See [docs/bugs/index.m
 - Playwright ingestion specs (`tests/e2e/ingestion-*.spec.ts`) require the backend to be launched with `SPRING_PROFILES_ACTIVE=e2e`. This relaxes SSRF deny so the local mock HTTP server on `127.0.0.1` is reachable and lowers `payload-max-bytes` to 1 MB so the "payload too large" path can be exercised within ~1 s
 - Never start the backend with this profile in production, staging, or shared dev environments
 
+### Branching & Release
+
+- Push to `master` triggers 3-platform release build (see [docs/BRANCH_STRATEGY.md](docs/BRANCH_STRATEGY.md))
+- Version source of truth: `client/src-tauri/tauri.conf.json`; use [Conventional Commits](https://www.conventionalcommits.org/)
+
 ---
 
 ## [DEPRECATED] Legacy Workflow Rules
