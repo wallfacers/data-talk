@@ -83,19 +83,31 @@ DataTalk 的 `DataTalkMcpService.toToolResult` 不区分 action 输出形态，�
 
 ## Verification
 
-1. 单元测试 `DataTalkMcpServiceTest`（5 → 9 个用例）：
+1. 单元测试 `DataTalkMcpServiceTest`（5 → 12 个用例，全绿）：
    - `imageDataUriOutputIsSplitIntoTextAndImageContentBlocks` — 拆分正确、metadata 不带 base64、`data` 为 raw base64
-   - `imageBranchToleratesMissingCompressedMimeTypeViaDataUriHeader` — 缺 `compressedMimeType` 时从 URI 推断 mime
+   - `outputWithoutCompressedMimeTypeIsNotSplitEvenIfContentLooksLikeDataUri` — 强 gate（缺 `compressedMimeType` → 不拆）
+   - `textFileWithEmbeddedDataUriStringIsNotMisclassifiedAsImage` — CSV 单元格内嵌 data URI 不被误识别为图片
+   - `unrelatedActionWithCoincidentalDataUriDoesNotEmitImageContent` — 非 file_read action 输出含 data URI 字符串也不触发
+   - `independentImageCallsEachProduceTheirOwnImageContentBlock` — 批量/混合场景：多次独立调用各自正确产生 content
    - `nonImageContentFieldStaysAsSingleTextBlock` — text/CSV 输出不被误拆
    - `errorOutputWithImageDataUriDoesNotEmitImageContent` — 错误路径不拆
 
-2. E2E（绕 DataTalk channel 真实链路）：
+2. E2E 单图（绕 DataTalk channel 真实链路）：
    ```
    POST /api/sessions/{sid}/channel  send_message[file_upload + text]
    → OpenCode 调 datatalk_file_read
    → MCP 拆出 image content block
    → qwen3.6-plus 完整识别 15 条文本（按钮 + 表头 + 10 张表名一字不差）
    ```
+
+3. E2E 混合（图 + 内含 `data:image/...;base64,` 单元格的 CSV）：
+   ```
+   send_message[file_upload(img) + file_upload(csv) + text]
+   → AI 顺序调 file_read 两次
+   → 图片走 image content block（compressedMimeType=image/jpeg, applied=true, 19242 bytes）→ AI 识别 15 行
+   → CSV 走单 text content（无 compressedMimeType gate → 不拆）→ AI 识别 4 行原文（含 base64 字符串原样）
+   ```
+   两个调用互不污染，证明批量 / 混合场景已被加固覆盖。
 
 ## Notes
 

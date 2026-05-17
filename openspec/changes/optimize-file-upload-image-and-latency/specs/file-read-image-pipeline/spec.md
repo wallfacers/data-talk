@@ -153,9 +153,10 @@ JPEG 质量保持 q=0.75 — 经实测在 800×450 downscale 后，order 列表 
 
 `DataTalkMcpService.toToolResult` 在收到 action 输出包含 image data URI 时，MUST 将 MCP `content` 数组拆为 **两个** content block，以符合 MCP spec 的 `ImageContent` 约定，让 OpenCode / AI SDK 能把图片转发为 LLM provider 的 vision message part。
 
-**Detection 规则**（同时满足才走 image 路径）：
+**Detection 规则**（所有条件 MUST 同时满足才走 image 路径 — 任一不满足 → 单 text content，零误拆）：
 - outcome 为 success（`isError=false`）
 - output 是 `Map<String, Object>`
+- output 含 `compressedMimeType` 字段，为非空的 `image/*` 字符串 — **这是强 gate**：只有 `FileReadActionHandler` image branch 才会输出该字段，避免非 image action 或 text branch 的 content 字段巧合是 data URI 字符串（如 CSV 单元格、JSON 值、execute_sql 行输出）时被误识别
 - output 含 `content` 字段且为 `data:image/<sub>;base64,<raw>` 字符串
 
 **输出结构**（image 路径）：
@@ -172,10 +173,11 @@ JPEG 质量保持 q=0.75 — 经实测在 800×450 downscale 后，order 列表 
 **关键约束**：
 1. text content 的 metadata JSON MUST NOT 包含原 `content` 字段 — 避免 base64 在 text + image 两处重复，让 prompt token 翻倍。
 2. image content 的 `data` MUST 是 raw base64（**剥离** `data:image/...;base64,` 前缀），MCP spec 与 AI SDK 校验器均拒绝带前缀的形式。
-3. `mimeType` 优先取 output 的 `compressedMimeType`，缺失时 fallback 到 `mimeType` 字段，再缺失则从 data URI header 解析。
-4. `structuredContent` MUST 保留完整原始 output（包含 content data URI），供程序化客户端无损消费。
+3. `mimeType` 直接取 output 的 `compressedMimeType`（强 gate 已保证字段存在）。
+4. image 路径的 `structuredContent` MUST 与 text content 镜像（同样剔除 `content` 字段）— 避免任何 client 把整个 result 二次喂给 LLM 时双重消耗 token；想要原始字节的 client 应消费 `content[1].data`（标准 MCP 用法）或重新调 file_read（幂等）。
 5. 错误响应（`isError=true`）即使含 image data URI 也 MUST NOT 拆分（防御性，避免将错误 payload 误塞到 vision 通道）。
 6. 非 image 输出 MUST 保持原行为：单个 `{type:"text", text:"<serialized>"}` content block。
+7. 批量 / 混合场景：每次 `tools/call` 是独立 MCP invocation，独立流经 `toToolResult`，相互无共享状态 — 同会话内多次 file_read（多图 / 图+文 / 多个独立调用）天然支持，无需特殊处理。
 
 #### Scenario: image data URI 输出被拆为 text + image 两个 content block
 
@@ -186,23 +188,46 @@ JPEG 质量保持 q=0.75 — 经实测在 800×450 downscale 后，order 列表 
 - **AND** `content[1]` SHALL = `{type:"image", data:"<B>", mimeType:"image/jpeg"}`（`data` 不含 `data:` 前缀）
 - **AND** `result.structuredContent.content` SHALL 仍然以 `data:image/jpeg;base64,` 开头（完整原始）
 
-#### Scenario: 缺 compressedMimeType 时从 data URI 头推断 mime
+#### Scenario: image 路径 structuredContent 不重复 base64
 
-- **GIVEN** output 是 `{fileId, content:"data:image/png;base64,<B>"}`（仅旧字段）
+- **GIVEN** image 输出走 split 路径成功
+- **WHEN** MCP 返回 result
+- **THEN** `result.structuredContent` MUST NOT 含 `content` 字段
+- **AND** `result.structuredContent` SHALL 含 `compressedMimeType` 等可观测字段
+- **AND** 整个 result 序列化后 SHALL 只在 `content[1].data` 出现一次原始 base64 串
+
+#### Scenario: 缺 compressedMimeType 时不拆（防御 future 错误返回）
+
+- **GIVEN** output 是 `{fileId, content:"data:image/png;base64,<B>"}`（手工构造或 future code 漏 set 字段）
 - **WHEN** MCP 包装
-- **THEN** `content[1].mimeType` SHALL = `"image/png"`（从 URI header 解析）
-- **AND** `content[1].data` SHALL = `<B>`
+- **THEN** `result.content` SHALL 仅含 1 个 `{type:"text"}` element（守好强 gate）
 
-#### Scenario: 非 image action 输出保持单 text content
+#### Scenario: text 文件 content 字段含 data URI 字符串不被误识别
 
-- **GIVEN** `datatalk.file_read` 读取 CSV，output `content` 是 `"id,name\n1,foo\n"`
+- **GIVEN** `datatalk.file_read` 读取一个 CSV，`content` 是 `"data:image/jpeg;base64,/9j/4AAQ...\n..."`（用户业务数据 unit cell 巧合）
+- **AND** output 不含 `compressedMimeType` 字段（text branch 不输出该字段）
 - **WHEN** MCP 包装
 - **THEN** `result.content` SHALL 仅含 1 个 `{type:"text"}` element
-- **AND** `result.content[0].text` SHALL 包含 `"id,name"` 子串
+- **AND** `result.content[0].text` SHALL 包含 `"data:image/jpeg;base64,"` 原文（作为 CSV 内容透传）
+
+#### Scenario: 非 file_read action 输出含 data URI 字符串不被误识别
+
+- **GIVEN** `datatalk.execute_sql` 返回行 `{artifactId, sampleRow:"data:image/png;base64,..."}`
+- **WHEN** MCP 包装
+- **THEN** `result.content` SHALL 仅含 1 个 `{type:"text"}` element
+- **AND** `result.structuredContent.artifactId` SHALL 保持原值
+
+#### Scenario: 多次 file_read 独立调用各自正确产出
+
+- **GIVEN** 同一会话内 AI 顺序调用 `datatalk.file_read` 两次：第一次读 image1，第二次读 image2
+- **WHEN** 两次调用各自完成
+- **THEN** 第一次 `result.content[1].data` SHALL = image1 raw base64，`mimeType` 匹配 image1 真实压缩类型
+- **AND** 第二次 `result.content[1].data` SHALL = image2 raw base64，`mimeType` 匹配 image2 真实压缩类型
+- **AND** 两次之间无共享状态 / 无 cross contamination（每次 invocation 流经独立的 `toToolResult`）
 
 #### Scenario: 错误响应不触发 image content 拆分
 
-- **GIVEN** outcome 是 error，payload 含 `content:"data:image/jpeg;base64,..."`（譬如校验失败时回显输入）
+- **GIVEN** outcome 是 error，payload 含 `content:"data:image/jpeg;base64,..."` + `compressedMimeType:"image/jpeg"`
 - **WHEN** MCP 包装
 - **THEN** `result.content` SHALL 仅含 1 个 `{type:"text"}` element
 - **AND** `result.isError` SHALL = `true`

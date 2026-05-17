@@ -96,14 +96,15 @@ public class DataTalkMcpService {
 
         List<Map<String, Object>> content = new ArrayList<>(2);
         ImagePayload image = !outcome.isError() ? extractImagePayload(output) : null;
+        Map<String, Object> imageMetadata = null;
         if (image != null) {
             // Strip the data URI from the text serialization so the same base64 payload
             // is not duplicated as both text and vision input — the model already "sees"
             // the bytes via the image content block, and the text block keeps the
             // observability metadata (fileId, originalBytes, compressionApplied, …).
-            Map<String, Object> metadata = new LinkedHashMap<>((Map<String, Object>) output);
-            metadata.remove("content");
-            content.add(Map.of("type", "text", "text", serialize(metadata)));
+            imageMetadata = new LinkedHashMap<>((Map<String, Object>) output);
+            imageMetadata.remove("content");
+            content.add(Map.of("type", "text", "text", serialize(imageMetadata)));
             content.add(Map.of(
                 "type", "image",
                 "data", image.data(),
@@ -115,7 +116,14 @@ public class DataTalkMcpService {
         result.put("content", content);
 
         if (!outcome.isError()) {
-            if (output instanceof Map<?, ?> rawMap) {
+            if (image != null) {
+                // structuredContent mirrors the metadata-only view: callers that want the
+                // raw bytes should consume the dedicated image content block (or re-call
+                // file_read which is idempotent). Keeping the data URI here would let
+                // any caller that pastes the whole tool result into prompt context
+                // double-pay the base64 token cost.
+                result.put("structuredContent", imageMetadata);
+            } else if (output instanceof Map<?, ?> rawMap) {
                 result.put("structuredContent", (Map<String, Object>) rawMap);
             } else if (output instanceof List<?> list) {
                 result.put("structuredContent", Map.of("items", list));
@@ -137,17 +145,26 @@ public class DataTalkMcpService {
      * {@code {type:"image", data, mimeType}} content block so the AI SDK can forward
      * them as a vision part to the underlying LLM provider.
      *
-     * <p>Detection rules (intentionally narrow to avoid false positives):
+     * <p>Detection rules (intentionally strict — every clause MUST hold to avoid
+     * misclassifying ordinary text outputs that happen to embed a data URI string,
+     * e.g. a CSV cell or a JSON value):
      * <ul>
-     *   <li>output must be a {@link Map}</li>
-     *   <li>{@code content} must be a {@code data:image/...;base64,...} string</li>
-     *   <li>{@code compressedMimeType} OR {@code mimeType} must be present and image/*</li>
+     *   <li>output is a {@link Map}</li>
+     *   <li>{@code compressedMimeType} is a non-blank {@code image/*} string — this is
+     *       the strong signal that {@code FileReadActionHandler} actually walked the
+     *       image branch and produced base64 bytes (text branch never emits this
+     *       field, no other action emits it either)</li>
+     *   <li>{@code content} is a {@code data:image/...;base64,...} string</li>
      * </ul>
-     * Returns {@code null} when not an image payload — caller falls back to single
-     * text content for full backwards compatibility with non-image actions.
+     * Returns {@code null} otherwise — caller falls back to a single text content
+     * block, preserving the legacy behaviour for every non-image case.
      */
     private static ImagePayload extractImagePayload(Object output) {
         if (!(output instanceof Map<?, ?> map)) {
+            return null;
+        }
+        Object declared = map.get("compressedMimeType");
+        if (!(declared instanceof String mimeType) || mimeType.isBlank() || !mimeType.startsWith("image/")) {
             return null;
         }
         Object contentValue = map.get("content");
@@ -158,12 +175,6 @@ public class DataTalkMcpService {
         if (!matcher.matches()) {
             return null;
         }
-        String mimeFromUri = matcher.group(1);
-        Object declared = map.get("compressedMimeType");
-        if (!(declared instanceof String s) || s.isBlank()) {
-            declared = map.get("mimeType");
-        }
-        String mimeType = declared instanceof String resolved && !resolved.isBlank() ? resolved : mimeFromUri;
         return new ImagePayload(matcher.group(2), mimeType);
     }
 

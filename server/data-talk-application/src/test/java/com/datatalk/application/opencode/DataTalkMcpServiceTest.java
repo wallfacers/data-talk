@@ -16,6 +16,7 @@ import java.util.concurrent.CompletableFuture;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -151,17 +152,24 @@ class DataTalkMcpServiceTest {
         // forbids the prefix and AI SDK validators reject it.
         assertThat(imageBlock.get("data")).isEqualTo(base64);
 
-        // structuredContent retains the full original output (incl. content data URI)
-        // so programmatic clients can still recover the unmodified handler response.
+        // structuredContent mirrors the metadata view (NO content data URI). Clients
+        // that need the raw bytes should consume the dedicated image content block
+        // — keeping a second copy here would let any caller that pastes the whole
+        // tool result into prompt context double-pay the base64 token cost.
         @SuppressWarnings("unchecked")
         Map<String, Object> structured = (Map<String, Object>) result.get("structuredContent");
-        assertThat(structured.get("content")).asString().startsWith("data:image/jpeg;base64,");
+        assertThat(structured).doesNotContainKey("content");
+        assertThat(structured).containsEntry("compressedMimeType", "image/jpeg");
+        assertThat(structured).containsEntry("compressionApplied", true);
     }
 
     @Test
-    void imageBranchToleratesMissingCompressedMimeTypeViaDataUriHeader() {
-        // Older callers may only set the data URI without compressedMimeType.
-        // We should still emit an `image` content block, inferring mimeType from the URI.
+    void outputWithoutCompressedMimeTypeIsNotSplitEvenIfContentLooksLikeDataUri() {
+        // Strict gate: extraction REQUIRES `compressedMimeType` to be a non-blank
+        // image/* string — otherwise we may misclassify ordinary text outputs that
+        // happen to embed a data URI in some field. This protects future handlers
+        // and tolerates the (defensive) case where a caller manually built a
+        // data-URI-shaped string but did not walk the real image branch.
         String base64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=";
         Map<String, Object> output = Map.of(
             "fileId", "f2",
@@ -176,9 +184,109 @@ class DataTalkMcpServiceTest {
 
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> content = (List<Map<String, Object>>) result.get("content");
-        assertThat(content).hasSize(2);
-        assertThat(content.get(1).get("mimeType")).isEqualTo("image/png");
-        assertThat(content.get(1).get("data")).isEqualTo(base64);
+        assertThat(content).hasSize(1);
+        assertThat(content.get(0).get("type")).isEqualTo("text");
+    }
+
+    @Test
+    void textFileWithEmbeddedDataUriStringIsNotMisclassifiedAsImage() {
+        // Real-world false-positive guard: a CSV / JSON file whose content STARTS WITH
+        // `data:image/...` (e.g. a column storing avatar data URIs) must stay as a
+        // single text content block. Without the `compressedMimeType` strict gate the
+        // current pattern-only matcher would split it and ship the bytes as a vision
+        // input — which is both wrong (it is text, not a screenshot) and wasteful.
+        Map<String, Object> output = Map.of(
+            "fileId", "f3",
+            "offset", 0,
+            "content", "data:image/jpeg;base64,/9j/4AAQAVATARjpeg-from-csv-cell\n",
+            "bytesRead", 60
+        );
+        when(bridge.handle(anyString(), any())).thenReturn(
+            CompletableFuture.completedFuture(McpActionBridge.ToolCallOutcome.success(output))
+        );
+
+        Map<String, Object> result = service.callTool("file_read", Map.of()).toCompletableFuture().join();
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> content = (List<Map<String, Object>>) result.get("content");
+        assertThat(content).hasSize(1);
+        assertThat(content.get(0).get("type")).isEqualTo("text");
+        // structuredContent preserves the full text payload — clients can still parse it.
+        @SuppressWarnings("unchecked")
+        Map<String, Object> structured = (Map<String, Object>) result.get("structuredContent");
+        assertThat(structured.get("content")).asString().startsWith("data:image/jpeg;base64,");
+    }
+
+    @Test
+    void unrelatedActionWithCoincidentalDataUriDoesNotEmitImageContent() {
+        // Any non-file_read action (e.g. execute_sql echoing a row whose first column
+        // is a data URI) must keep the legacy single-text-block path. The strong gate
+        // is `compressedMimeType`, which only FileReadActionHandler's image branch
+        // emits.
+        Map<String, Object> output = Map.of(
+            "artifactId", "a1",
+            "rowCount", 1,
+            "sampleRow", "data:image/png;base64,iVBORw0KGgo"
+        );
+        when(bridge.handle(anyString(), any())).thenReturn(
+            CompletableFuture.completedFuture(McpActionBridge.ToolCallOutcome.success(output))
+        );
+
+        Map<String, Object> result = service.callTool("execute_sql", Map.of()).toCompletableFuture().join();
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> content = (List<Map<String, Object>>) result.get("content");
+        assertThat(content).hasSize(1);
+        assertThat(content.get(0).get("type")).isEqualTo("text");
+        // Structured content remains unmodified for programmatic consumption.
+        @SuppressWarnings("unchecked")
+        Map<String, Object> structured = (Map<String, Object>) result.get("structuredContent");
+        assertThat(structured.get("artifactId")).isEqualTo("a1");
+    }
+
+    @Test
+    void independentImageCallsEachProduceTheirOwnImageContentBlock() {
+        // Batch / mixed scenarios are handled at the orchestration layer: each
+        // file_read call is an independent MCP tool invocation that flows through
+        // toToolResult in isolation. This test verifies that two back-to-back image
+        // calls each yield their own correctly-structured content array — no cross
+        // contamination, no shared state.
+        String base64a = "AAA111";
+        String base64b = "BBB222";
+        when(bridge.handle(eq("file_read"), any())).thenReturn(
+            CompletableFuture.completedFuture(McpActionBridge.ToolCallOutcome.success(Map.of(
+                "fileId", "img1",
+                "content", "data:image/jpeg;base64," + base64a,
+                "compressedMimeType", "image/jpeg",
+                "compressionApplied", true,
+                "compressedBytes", 6
+            )))
+        );
+        Map<String, Object> firstResult = service.callTool("file_read", Map.of()).toCompletableFuture().join();
+
+        when(bridge.handle(eq("file_read"), any())).thenReturn(
+            CompletableFuture.completedFuture(McpActionBridge.ToolCallOutcome.success(Map.of(
+                "fileId", "img2",
+                "content", "data:image/png;base64," + base64b,
+                "compressedMimeType", "image/png",
+                "compressionApplied", false,
+                "compressionSkipReason", "below_threshold",
+                "compressedBytes", 6
+            )))
+        );
+        Map<String, Object> secondResult = service.callTool("file_read", Map.of()).toCompletableFuture().join();
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> c1 = (List<Map<String, Object>>) firstResult.get("content");
+        assertThat(c1).hasSize(2);
+        assertThat(c1.get(1).get("data")).isEqualTo(base64a);
+        assertThat(c1.get(1).get("mimeType")).isEqualTo("image/jpeg");
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> c2 = (List<Map<String, Object>>) secondResult.get("content");
+        assertThat(c2).hasSize(2);
+        assertThat(c2.get(1).get("data")).isEqualTo(base64b);
+        assertThat(c2.get(1).get("mimeType")).isEqualTo("image/png");
     }
 
     @Test

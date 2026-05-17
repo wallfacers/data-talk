@@ -142,3 +142,19 @@
 - [x] 16.7 `file-read-image-pipeline/spec.md` 新增 Requirement「MCP image content block emission」+ 4 个 scenario
 - [x] 16.8 新建 `docs/bugs/BUG-0060-mcp-image-served-as-text-content.md`（status=fixed, P0），index.md 顺延下一编号到 0061
 - [x] 16.9 E2E 真实链路验证：`POST /api/sessions/{sid}/channel send_message[file_upload + text]` → OpenCode 调 datatalk_file_read → qwen3.6-plus 完整识别 15 条文本（用户上传的 824×569 截图）
+
+## 17. MCP image content 包装加固：批量/混合/误识别场景（2026-05-18）
+
+> **Trigger**：BUG-0060 修复后用户追加要求评估批量场景、混合场景（文件 + 图片）、以及非 image 文件（CSV/JSON）是否受影响。
+> 审计发现 3 个潜在风险：
+> 1. CSV/JSON 单元格内嵌 `data:image/...;base64,...` 字符串会被仅靠 content 字段的正则误识别为图
+> 2. 其他 action（execute_sql 等）输出含 data URI 字符串同样会误触发
+> 3. image 路径 structuredContent 保留 content data URI，若 client 把整个 result 二次喂给 LLM 会双重消耗 token
+
+- [x] 17.1 `extractImagePayload` 加强 gate：require `compressedMimeType` 为非空 `image/*`（FileReadActionHandler image branch 独占字段，其他 path 永不输出）
+- [x] 17.2 image 路径 `structuredContent` 与 text content 镜像（同样剔除 `content` 字段），整个 result 仅 `content[1].data` 出现一次 base64
+- [x] 17.3 `DataTalkMcpServiceTest` 新增 3 用例：`textFileWithEmbeddedDataUriStringIsNotMisclassifiedAsImage` / `unrelatedActionWithCoincidentalDataUriDoesNotEmitImageContent` / `independentImageCallsEachProduceTheirOwnImageContentBlock`；替换旧的 `imageBranchToleratesMissingCompressedMimeType` 为 `outputWithoutCompressedMimeTypeIsNotSplitEvenIfContentLooksLikeDataUri`（gate 加强后语义反转），9 → 12 全绿
+- [x] 17.4 `file-read-image-pipeline/spec.md` 补 5 个 scenario：image structuredContent 不重复 base64 / 缺 compressedMimeType 不拆 / CSV 含 data URI 字符串不拆 / 非 file_read 输出不拆 / 多次独立调用无 cross contamination；Detection 规则段强调 `compressedMimeType` 为强 gate
+- [x] 17.5 E2E 真实链路混合场景验证：上传图片 + 内含 `data:image/...;base64,` 单元格的 CSV，AI 顺序调 file_read 两次 → 图片成功识别 15 行文字 + CSV 不被误识别且 AI 完整读出 4 行原文（含 base64 字符串）
+- [x] 17.6 `cd server && mvn -pl data-talk-application test` — 991/991 全绿（无回归）
+- [x] 17.7 BUG-0060 文档 Verification 段更新（12 用例 + 单图 e2e + 混合 e2e 两条证据）
