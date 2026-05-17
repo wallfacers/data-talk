@@ -1,8 +1,11 @@
 package com.datatalk.adapter.actions;
 
+import com.datatalk.adapter.actions.util.ImageCompressor;
 import com.datatalk.application.upload.UploadedFileRepository;
 import com.datatalk.domain.action.*;
 import com.datatalk.domain.upload.UploadedFile;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.io.RandomAccessFile;
@@ -25,6 +28,7 @@ import java.util.concurrent.CompletionStage;
 )
 public class FileReadActionHandler implements ActionHandler<Map, Map> {
 
+    private static final Logger log = LoggerFactory.getLogger(FileReadActionHandler.class);
     private static final int MAX_LIMIT = 4096;
 
     private final UploadedFileRepository uploadedFileRepo;
@@ -46,13 +50,21 @@ public class FileReadActionHandler implements ActionHandler<Map, Map> {
 
     @Override
     public Map<String, Object> outputSchema() {
-        return Map.of("type", "object",
-            "properties", Map.of(
-                "fileId", Map.of("type", "string"),
-                "offset", Map.of("type", "integer"),
-                "content", Map.of("type", "string"),
-                "bytesRead", Map.of("type", "integer")
-            ));
+        // additive schema: keep existing 4 fields, add 5 optional fields for image
+        // observability. Old clients reading by name (Jackson / JsonNode.get) tolerate
+        // missing fields; new clients can surface compression metrics.
+        Map<String, Object> properties = new LinkedHashMap<>();
+        properties.put("fileId", Map.of("type", "string"));
+        properties.put("offset", Map.of("type", "integer"));
+        properties.put("content", Map.of("type", "string"));
+        properties.put("bytesRead", Map.of("type", "integer"));
+        // ADDED — only present on the image branch
+        properties.put("originalBytes", Map.of("type", "integer"));
+        properties.put("compressedBytes", Map.of("type", "integer"));
+        properties.put("compressionApplied", Map.of("type", "boolean"));
+        properties.put("compressedMimeType", Map.of("type", "string"));
+        properties.put("compressionSkipReason", Map.of("type", "string"));
+        return Map.of("type", "object", "properties", properties);
     }
 
     @Override
@@ -88,25 +100,48 @@ public class FileReadActionHandler implements ActionHandler<Map, Map> {
                 return errorResult("Physical file not found on disk");
             }
 
-            // Binary read path for image files — return base64 data URI, ignore offset/limit
+            // Binary read path for image files — transparent compression (resize +
+            // JPEG re-encode) then base64 data URI. Offset / limit ignored, image
+            // content is consumed whole by the LLM. See ImageCompressor for the policy.
             String mimeType = uploaded.mimeType();
             if (mimeType != null && mimeType.startsWith("image/")) {
                 try {
-                    byte[] allBytes = Files.readAllBytes(path);
-                    String encoded = Base64.getEncoder().encodeToString(allBytes);
-                    String dataUri = "data:" + mimeType + ";base64," + encoded;
+                    long originalBytes = Files.size(path);
+                    ImageCompressor.CompressionResult result = ImageCompressor.maybeCompress(path, mimeType);
+                    String encoded = Base64.getEncoder().encodeToString(result.bytes());
+                    String dataUri = "data:" + result.mimeType() + ";base64," + encoded;
+
                     Map<String, Object> out = new LinkedHashMap<>();
                     out.put("fileId", fileId);
                     out.put("offset", 0);
                     out.put("content", dataUri);
-                    out.put("bytesRead", allBytes.length);
+                    // bytesRead = the number of decoded payload bytes the AI actually
+                    // consumes (= compressedBytes); preserves historical semantics.
+                    out.put("bytesRead", result.bytes().length);
+                    out.put("originalBytes", originalBytes);
+                    out.put("compressedBytes", result.bytes().length);
+                    out.put("compressionApplied", result.applied());
+                    out.put("compressedMimeType", result.mimeType());
+                    if (!result.applied()) {
+                        out.put("compressionSkipReason", result.skipReason());
+                    }
+
+                    // Structured logging — INFO for the common path, WARN for decode failures.
+                    if ("decode_failed".equals(result.skipReason())) {
+                        log.warn("[file-read] image compression decode failed: fileId={} originalBytes={} mimeType={} reason={} durationMs={}",
+                            fileId, originalBytes, mimeType, result.skipReason(), result.durationMs());
+                    } else {
+                        log.info("[file-read] image compression: fileId={} originalBytes={} compressedBytes={} applied={} skipReason={} compressionDurationMs={}",
+                            fileId, originalBytes, result.bytes().length, result.applied(),
+                            result.skipReason(), result.durationMs());
+                    }
                     return out;
                 } catch (Exception e) {
                     return errorResult("Failed to read image file: " + e.getMessage());
                 }
             }
 
-            // Text read path for non-image files
+            // Text read path for non-image files — unchanged behaviour.
             try (RandomAccessFile raf = new RandomAccessFile(path.toFile(), "r")) {
                 long fileLen = raf.length();
                 int from = (int) Math.min(offset, fileLen);

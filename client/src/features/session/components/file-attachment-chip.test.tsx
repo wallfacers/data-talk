@@ -15,6 +15,7 @@ beforeAll(() => {
 
 function makeAttachment(overrides: Partial<FileAttachment> = {}): FileAttachment {
   return {
+    id: 'att-test',
     file: new File(['x'.repeat(1024)], 'test.csv', { type: 'text/csv' }),
     status: 'pending',
     progress: 0,

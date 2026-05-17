@@ -94,11 +94,22 @@ public class FileUploadController {
         try {
             Files.move(tempTarget, permanentPath);
         } catch (IOException e) {
+            // Move may fail mid-write (cross-device, IO error, client abort). Clean up
+            // both the temp file and any partial permanent write, plus the now-empty
+            // fileDir, to avoid orphan dirs under ~/.data-talk/uploads/.
+            // See openspec/changes/optimize-file-upload-image-and-latency/design.md D8.
             Files.deleteIfExists(tempTarget);
+            Files.deleteIfExists(permanentPath);
+            Files.deleteIfExists(fileDir);
             throw e;
         }
 
         // 5. Analyze file
+        // NOTE: analysis failure does NOT delete permanentPath. The file metadata is
+        // still about to be persisted into uploaded_file, and the AI can degrade to
+        // calling datatalk_file_read with the UNKNOWN type to consume raw bytes.
+        // Removing the file here would strand a DB row pointing at a missing path —
+        // a strictly worse failure mode. See design.md D8 / task 3.2.
         FileAnalysisResult analysis;
         try {
             analysis = analysisService.analyze(permanentPath, mimeType, originalFilename);

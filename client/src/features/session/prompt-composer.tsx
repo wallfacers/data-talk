@@ -1,5 +1,10 @@
 "use client"
 
+// 按钮多态与 chip abort 态遵循 client/DESIGN.md L282-288 (interaction tokens)
+// 和 L330-338 (accessibility). uploading / sending 共用 disabled 视觉 (opacity-40 +
+// cursor-not-allowed)，叠加 Loader2Icon spinner + aria-busy="true" 以满足 L335
+// "state cannot be communicated by color alone". prefers-reduced-motion 下用 dot
+// pulse 替代自旋（DESIGN.md L263 "Motion as Confirmation" + L337）。
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowUpIcon, Loader2Icon, Paperclip } from 'lucide-react'
@@ -102,7 +107,12 @@ function InnerComposer() {
     uploadAll,
     clearDone,
     hasUploads,
+    hasInflight,
   } = useFileUpload(activeSessionId ?? '')
+
+  // sendMessage 期间的本地 inflight 跟踪 — 与 hasInflight (upload) 区分，
+  // 共同决定按钮多态（uploading / sending）。
+  const [isSendInflight, setIsSendInflight] = useState(false)
 
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     const files = e.clipboardData.files
@@ -336,22 +346,28 @@ function InnerComposer() {
 
     updateText('')
 
-    // Upload pending files first; uploadAll returns responses directly to avoid stale-closure
-    const alreadyDone = attachments.filter(a => a.status === 'done' && a.response).map(a => a.response!)
-    const newlyDone = attachments.some(a => a.status === 'pending') ? await uploadAll() : []
+    setIsSendInflight(true)
+    try {
+      // Eager upload (D4 in design.md) has typically drained pending → done by the
+      // time the user hits Enter; uploadAll() returns immediately. The await stays
+      // as a fallback for the (rare) race where Enter outpaces the in-flight uploads.
+      const responses = attachments.length > 0 ? await uploadAll() : []
 
-    // Build parts array with text + any completed file uploads
-    const parts: unknown[] = [createTextPart(activeSessionId, trimmed)]
-    for (const r of [...alreadyDone, ...newlyDone]) {
-      parts.push(createFileUploadPart(activeSessionId, r.fileId, r.filename, r.mimeType, r.sizeBytes, r.analysis as Record<string, unknown>))
-    }
+      // Build parts array with text + any completed file uploads
+      const parts: unknown[] = [createTextPart(activeSessionId, trimmed)]
+      for (const r of responses) {
+        parts.push(createFileUploadPart(activeSessionId, r.fileId, r.filename, r.mimeType, r.sizeBytes, r.analysis as Record<string, unknown>))
+      }
 
-    const ok = await sendMessage(parts)
-    if (ok) {
-      clearDone()
+      const ok = await sendMessage(parts)
+      if (ok) {
+        clearDone()
+      }
+      // !ok: the failed pending user bubble owns retry; restoring here would also
+      // re-persist the draft via setComposerDraft and resurrect on next CTRL+R.
+    } finally {
+      setIsSendInflight(false)
     }
-    // !ok: the failed pending user bubble owns retry; restoring here would also
-    // re-persist the draft via setComposerDraft and resurrect on next CTRL+R.
   }
 
   const onSubmit = async (e: FormEvent) => {
@@ -399,6 +415,22 @@ function InnerComposer() {
 
   const canSend = (text.trim().length > 0 || attachments.length > 0) && !isStreaming && !hasUploads
 
+  // Composer button state machine (see spec "发送按钮多态视觉反馈" + DESIGN.md L282-288):
+  //   streaming  → destructive variant + spinner + abort
+  //   sending    → disabled visual + spinner + aria-busy (sendMessage in flight)
+  //   uploading  → disabled visual + spinner + aria-busy (any pending/uploading chip)
+  //   idle       → primary background + ArrowUp icon
+  // uploading and sending share visuals on purpose: the user perceives both as "the
+  // message is being sent"; only aria-label disambiguates (screen reader semantics).
+  type ComposerButtonState = 'idle' | 'uploading' | 'sending' | 'streaming'
+  const composerButtonState: ComposerButtonState = isStreaming
+    ? 'streaming'
+    : isSendInflight
+      ? 'sending'
+      : hasInflight
+        ? 'uploading'
+        : 'idle'
+
   return (
     <form onSubmit={onSubmit} className="w-full">
       <FileDropZone onFiles={addFiles}>
@@ -416,11 +448,11 @@ function InnerComposer() {
             className="flex flex-row gap-1.5 overflow-x-auto px-3 pt-3 pb-1"
             onMouseDown={(e) => e.stopPropagation()}
           >
-            {attachments.map((a, i) => (
+            {attachments.map((a) => (
               <FileAttachmentChip
-                key={`${a.file.name}-${i}`}
+                key={a.id}
                 attachment={a}
-                onRemove={() => removeAttachment(i)}
+                onRemove={() => removeAttachment(a.id)}
               />
             ))}
           </div>
@@ -481,20 +513,45 @@ function InnerComposer() {
               }}
             />
 
-            {/* Send / Stop button */}
-            {isStreaming ? (
+            {/* Send / Stop button — state machine: idle | uploading | sending | streaming */}
+            {composerButtonState === 'streaming' ? (
               <Button
                 type="button"
                 variant="destructive"
                 size="icon-xs"
                 className="rounded-full"
                 disabled={!canAbort}
+                aria-busy="true"
                 onClick={() => {
                   if (!canAbort) return
                   void abort()
                 }}
               >
-                <Loader2Icon className="size-3.5 animate-spin" />
+                <Loader2Icon className="size-3.5 animate-spin motion-reduce:hidden" />
+                <span
+                  className="hidden motion-reduce:inline-block size-2 rounded-full bg-current opacity-60"
+                  aria-hidden="true"
+                />
+              </Button>
+            ) : composerButtonState === 'uploading' || composerButtonState === 'sending' ? (
+              <Button
+                type="button"
+                size="icon-xs"
+                className="rounded-full bg-primary text-primary-foreground opacity-40 cursor-not-allowed"
+                aria-disabled="true"
+                aria-busy="true"
+                aria-label={
+                  composerButtonState === 'uploading'
+                    ? t('chat.composer.uploadingLabel')
+                    : t('chat.composer.sendingLabel')
+                }
+                disabled
+              >
+                <Loader2Icon className="size-3.5 animate-spin motion-reduce:hidden text-text-inverse" />
+                <span
+                  className="hidden motion-reduce:inline-block size-2 rounded-full bg-current opacity-60"
+                  aria-hidden="true"
+                />
               </Button>
             ) : (
               <Button

@@ -13,15 +13,29 @@ export interface FileUploadResponse {
   }
 }
 
-export async function uploadFile(file: File, sessionId: string): Promise<FileUploadResponse> {
+export async function uploadFile(
+  file: File,
+  sessionId: string,
+  signal?: AbortSignal,
+): Promise<FileUploadResponse> {
   const formData = new FormData()
   formData.append('file', file)
   formData.append('sessionId', sessionId)
 
-  const response = await fetch('/api/files/upload', {
-    method: 'POST',
-    body: formData,
-  })
+  let response: Response
+  try {
+    response = await fetch('/api/files/upload', {
+      method: 'POST',
+      body: formData,
+      signal,
+    })
+  } catch (err) {
+    // AbortError 是调用方主动取消（removeAttachment → controller.abort）；上层 silent
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw err
+    }
+    throw err
+  }
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'Upload failed' }))

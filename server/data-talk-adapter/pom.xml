@@ -43,6 +43,14 @@
             <version>2.8.6</version>
         </dependency>
 
+        <!-- Image compression for datatalk.file_read MCP tool (resize + JPEG re-encode).
+             See openspec/changes/optimize-file-upload-image-and-latency/design.md D1. -->
+        <dependency>
+            <groupId>net.coobird</groupId>
+            <artifactId>thumbnailator</artifactId>
+            <version>0.4.20</version>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webflux</artifactId>
