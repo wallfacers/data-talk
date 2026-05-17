@@ -42,12 +42,14 @@ public class ChannelService {
     private final OpenCodeSessionMap sessionMap;
     private final AiUserPrefsRepository userPrefs;
     private final Translator translator;
+    private final PendingFileUploadEchoRegistry fileUploadEcho;
 
     public ChannelService(SessionRepository sessions,
                           SessionBusRegistry buses, PendingCallRegistry pending,
                           Clock clock,
                           OpenCodeGateway gateway, OpenCodeSessionMap sessionMap,
-                          AiUserPrefsRepository userPrefs, Translator translator) {
+                          AiUserPrefsRepository userPrefs, Translator translator,
+                          PendingFileUploadEchoRegistry fileUploadEcho) {
         this.sessions = sessions;
         this.buses = buses;
         this.pending = pending;
@@ -56,6 +58,7 @@ public class ChannelService {
         this.sessionMap = sessionMap;
         this.userPrefs = userPrefs;
         this.translator = translator;
+        this.fileUploadEcho = fileUploadEcho;
     }
 
     /**
@@ -72,6 +75,14 @@ public class ChannelService {
 
         SessionBus bus = buses.getOrCreate(sessionId);
         bus.publish(new DtEvent.SessionStatus("busy", Map.of()));
+
+        List<FileUploadPart> uploadParts = parts.stream()
+            .filter(FileUploadPart.class::isInstance)
+            .map(FileUploadPart.class::cast)
+            .toList();
+        if (!uploadParts.isEmpty()) {
+            fileUploadEcho.enqueue(sessionId, uploadParts);
+        }
 
         // Forward to OpenCode — prefer the persisted opencode_sid so the
         // binding survives backend restarts (otherwise the AI loses context

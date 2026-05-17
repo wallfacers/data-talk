@@ -1,5 +1,7 @@
 package com.datatalk.adapter.config;
 
+import com.datatalk.application.channel.PendingFileUploadEchoRegistry;
+import com.datatalk.application.persistence.UserMessageAttachmentRepository;
 import com.datatalk.application.opencode.OpenCodeBridgeStatus;
 import com.datatalk.application.opencode.OpenCodeEventLoop;
 import com.datatalk.application.opencode.OpenCodeEventTranslator;
@@ -60,6 +62,8 @@ public class OpenCodeGatewayBeans {
                                 OpenCodeMcpProperties mcpProps,
                                 OpenCodeBootstrapReconciler bootstrapReconciler,
                                 OpenCodeBridgeStatus bridgeStatus,
+                                PendingFileUploadEchoRegistry fileUploadEcho,
+                                UserMessageAttachmentRepository userMessageAttachments,
                                 @Value("${datatalk.opencode.required:false}") boolean required,
                                 @Value("${datatalk.opencode.base-url:http://localhost:4096}") String defaultBaseUrl) {
         this.client = client;
@@ -74,7 +78,8 @@ public class OpenCodeGatewayBeans {
         OpenCodeBinaryResolver resolver = new OpenCodeBinaryResolver();
         OpenCodePortAllocator allocator = new OpenCodePortAllocator();
         this.skillSyncer = new SkillResourceSyncer();
-        this.eventLoop = new OpenCodeEventLoop(defaultBaseUrl, om, translator, buses, sessionMap, null);
+        this.eventLoop = new OpenCodeEventLoop(defaultBaseUrl, om, translator, buses, sessionMap, null,
+            fileUploadEcho, userMessageAttachments);
         this.processManager = new OpenCodeProcessManager(
             serveProps,
             resolver,

@@ -34,3 +34,32 @@ export async function uploadFile(file: File, sessionId: string): Promise<FileUpl
 export async function deleteUploadedFile(fileId: string): Promise<void> {
   await http.delete(`files/${fileId}`)
 }
+
+/**
+ * 返回文件内容的 GET URL。供 `<img src>` / `<a href>` 等场景直接使用；
+ * 浏览器原生 HTTP 缓存（后端响应 Cache-Control: private, max-age=300）。
+ */
+export function getFileContentUrl(fileId: string): string {
+  return `/api/files/${encodeURIComponent(fileId)}/content`
+}
+
+/**
+ * 拉取文件原始字节为 Blob。对 404 / 网络异常抛出带友好 message 的 Error，
+ * 供调用方（如 FilePreviewDialog）显示友好错误而非崩溃。
+ */
+export async function fetchFileContent(fileId: string): Promise<Blob> {
+  const url = getFileContentUrl(fileId)
+  let response: Response
+  try {
+    response = await fetch(url)
+  } catch (err) {
+    throw new Error(`Network error: ${err instanceof Error ? err.message : String(err)}`)
+  }
+  if (response.status === 404) {
+    throw new Error('File not found')
+  }
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`)
+  }
+  return response.blob()
+}

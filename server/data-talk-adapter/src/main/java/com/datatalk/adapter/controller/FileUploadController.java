@@ -6,8 +6,15 @@ import com.datatalk.application.upload.UploadedFileRepository;
 import com.datatalk.domain.upload.UploadedFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -15,10 +22,11 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
-import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -33,13 +41,19 @@ public class FileUploadController {
     private final FileAnalysisService analysisService;
     private final UploadedFileRepository uploadedFileRepo;
     private final Clock clock;
+    private final Path uploadBase;
 
     public FileUploadController(FileAnalysisService analysisService,
                                 UploadedFileRepository uploadedFileRepo,
-                                Clock clock) {
+                                Clock clock,
+                                @Value("${datatalk.upload-base:}") String uploadBasePath) {
         this.analysisService = analysisService;
         this.uploadedFileRepo = uploadedFileRepo;
         this.clock = clock;
+        String resolved = (uploadBasePath == null || uploadBasePath.isBlank())
+            ? Path.of(System.getProperty("user.home"), ".data-talk", "uploads").toString()
+            : uploadBasePath;
+        this.uploadBase = Path.of(resolved).toAbsolutePath().normalize();
     }
 
     @PostMapping("/upload")
@@ -74,7 +88,6 @@ public class FileUploadController {
 
         // 4. Generate fileId and store to permanent location
         String fileId = UUID.randomUUID().toString();
-        Path uploadBase = Path.of(System.getProperty("user.home"), ".data-talk", "uploads");
         Path fileDir = uploadBase.resolve(fileId);
         Files.createDirectories(fileDir);
         Path permanentPath = fileDir.resolve(originalFilename);
@@ -126,6 +139,28 @@ public class FileUploadController {
         response.put("analysis", analysisJson);
 
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{fileId}/content")
+    public ResponseEntity<Resource> getContent(@PathVariable String fileId) {
+        UploadedFile uf = uploadedFileRepo.findById(fileId).orElse(null);
+        if (uf == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+
+        Path filePath = Path.of(uf.physicalPath()).toAbsolutePath().normalize();
+        if (!filePath.startsWith(uploadBase) || !Files.exists(filePath)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+
+        Resource resource = new FileSystemResource(filePath);
+        String encodedName = URLEncoder.encode(uf.filename(), StandardCharsets.UTF_8).replace("+", "%20");
+        return ResponseEntity.ok()
+            .contentType(MediaType.parseMediaType(uf.mimeType()))
+            .contentLength(uf.sizeBytes())
+            .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename*=UTF-8''" + encodedName)
+            .header(HttpHeaders.CACHE_CONTROL, "private, max-age=300")
+            .body(resource);
     }
 
     private static ResponseEntity<Map<String, String>> error(HttpStatus status, String message) {

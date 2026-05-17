@@ -24,7 +24,7 @@ class OpenCodeEventLoopParseTest {
     @BeforeEach
     void setUp() {
         ObjectMapper om = new ObjectMapper();
-        loop = new OpenCodeEventLoop("http://test", om, null, null, null, null);
+        loop = new OpenCodeEventLoop("http://test", om, null, null, null, null, null, null);
     }
 
     private String load(String name) throws IOException {

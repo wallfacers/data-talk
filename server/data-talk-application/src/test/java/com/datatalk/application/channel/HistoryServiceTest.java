@@ -6,6 +6,8 @@ import com.datatalk.application.persistence.SyntheticSessionMessageRecord;
 import com.datatalk.application.persistence.SyntheticSessionMessageRepository;
 import com.datatalk.application.persistence.SessionRecord;
 import com.datatalk.application.persistence.SessionRepository;
+import com.datatalk.application.persistence.UserMessageAttachmentRecord;
+import com.datatalk.application.persistence.UserMessageAttachmentRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -35,7 +37,8 @@ class HistoryServiceTest {
             new SessionRecord("dt-1", null, "t", false, null, 0L, 0L, false)));
         when(syntheticMessages.findBySession("dt-1")).thenReturn(List.of());
 
-        HistoryService svc = new HistoryService(sessions, artifacts, syntheticMessages, gateway, om);
+        HistoryService svc = new HistoryService(sessions, artifacts, syntheticMessages,
+            mock(com.datatalk.application.persistence.UserMessageAttachmentRepository.class), gateway, om);
 
         JsonNode result = svc.getMessages("dt-1");
 
@@ -58,7 +61,8 @@ class HistoryServiceTest {
             om.createObjectNode().put("id", "msg_1").put("role", "user")));
         when(gateway.listMessages("ses_oc", null)).thenReturn(fixture);
 
-        HistoryService svc = new HistoryService(sessions, artifacts, syntheticMessages, gateway, om);
+        HistoryService svc = new HistoryService(sessions, artifacts, syntheticMessages,
+            mock(com.datatalk.application.persistence.UserMessageAttachmentRepository.class), gateway, om);
 
         JsonNode result = svc.getMessages("dt-1");
 
@@ -78,7 +82,8 @@ class HistoryServiceTest {
         when(sessions.findById("unknown")).thenReturn(Optional.empty());
         when(syntheticMessages.findBySession("unknown")).thenReturn(List.of());
 
-        HistoryService svc = new HistoryService(sessions, artifacts, syntheticMessages, gateway, om);
+        HistoryService svc = new HistoryService(sessions, artifacts, syntheticMessages,
+            mock(com.datatalk.application.persistence.UserMessageAttachmentRepository.class), gateway, om);
 
         JsonNode result = svc.getMessages("unknown");
 
@@ -110,7 +115,8 @@ class HistoryServiceTest {
         fixture.add(message("msg_1", "assistant", 1713650000000L, "reply", "assistant"));
         when(gateway.listMessages("ses_oc", null)).thenReturn(fixture);
 
-        HistoryService svc = new HistoryService(sessions, artifacts, syntheticMessages, gateway, om);
+        HistoryService svc = new HistoryService(sessions, artifacts, syntheticMessages,
+            mock(com.datatalk.application.persistence.UserMessageAttachmentRepository.class), gateway, om);
 
         JsonNode result = svc.getMessages("dt-1");
 
@@ -151,7 +157,8 @@ class HistoryServiceTest {
         fixture.add(message("msg_d", "system", 1713650000000L, "o", null));
         when(gateway.listMessages("ses_oc", null)).thenReturn(fixture);
 
-        HistoryService svc = new HistoryService(sessions, artifacts, syntheticMessages, gateway, om);
+        HistoryService svc = new HistoryService(sessions, artifacts, syntheticMessages,
+            mock(com.datatalk.application.persistence.UserMessageAttachmentRepository.class), gateway, om);
 
         JsonNode result = svc.getMessages("dt-1");
 
@@ -162,6 +169,44 @@ class HistoryServiceTest {
         assertThat(result.get(2).path("info").path("id").asText()).isEqualTo("msg_b");
         assertThat(result.get(3).path("info").path("id").asText()).isEqualTo("msg_c");
         assertThat(result.get(4).path("info").path("id").asText()).isEqualTo("msg_d");
+    }
+
+    @Test
+    void getMessagesAppendsPersistedFileUploadPartsToUserMessages() throws Exception {
+        SessionRepository sessions = mock(SessionRepository.class);
+        ArtifactRepository artifacts = mock(ArtifactRepository.class);
+        SyntheticSessionMessageRepository syntheticMessages = mock(SyntheticSessionMessageRepository.class);
+        UserMessageAttachmentRepository userAttachments = mock(UserMessageAttachmentRepository.class);
+        OpenCodeGateway gateway = mock(OpenCodeGateway.class);
+
+        when(sessions.findById("dt-1")).thenReturn(Optional.of(
+            new SessionRecord("dt-1", null, "t", true, "ses_oc", 0L, 0L, false)));
+        when(syntheticMessages.findBySession("dt-1")).thenReturn(List.of());
+
+        ArrayNode fixture = om.createArrayNode();
+        fixture.add(message("msg_user_42", "user", 1713650000000L, "这是什么图片", null));
+        when(gateway.listMessages("ses_oc", null)).thenReturn(fixture);
+
+        String partJson = "{\"type\":\"file_upload\",\"id\":\"prt_local_1\",\"sessionID\":\"dt-1\","
+            + "\"messageID\":\"msg_user_42\",\"fileId\":\"file-abc\",\"filename\":\"photo.png\","
+            + "\"mimeType\":\"image/png\",\"sizeBytes\":2048,\"analysis\":{}}";
+        when(userAttachments.findBySession("dt-1")).thenReturn(List.of(new UserMessageAttachmentRecord(
+            "prt_local_1", "dt-1", "msg_user_42", 0, partJson, 1713650000000L)));
+
+        HistoryService svc = new HistoryService(sessions, artifacts, syntheticMessages,
+            userAttachments, gateway, om);
+
+        JsonNode result = svc.getMessages("dt-1");
+
+        assertThat(result.isArray()).isTrue();
+        assertThat(result).hasSize(1);
+        JsonNode parts = result.get(0).path("parts");
+        assertThat(parts.isArray()).isTrue();
+        assertThat(parts).hasSize(2);
+        assertThat(parts.get(0).path("type").asText()).isEqualTo("text");
+        assertThat(parts.get(1).path("type").asText()).isEqualTo("file_upload");
+        assertThat(parts.get(1).path("fileId").asText()).isEqualTo("file-abc");
+        assertThat(parts.get(1).path("filename").asText()).isEqualTo("photo.png");
     }
 
     private ObjectNode message(String id, String role, long createdAt, String text, String metadataKind) {

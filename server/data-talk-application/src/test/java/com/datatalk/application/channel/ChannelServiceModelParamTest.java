@@ -42,7 +42,8 @@ class ChannelServiceModelParamTest {
         sessionMap = mock(OpenCodeSessionMap.class);
         userPrefs = mock(AiUserPrefsRepository.class);
 
-        svc = new ChannelService(sessions, buses, pending, clock, gateway, sessionMap, userPrefs, mock(Translator.class));
+        svc = new ChannelService(sessions, buses, pending, clock, gateway, sessionMap, userPrefs, mock(Translator.class),
+            new PendingFileUploadEchoRegistry());
     }
 
     @Test

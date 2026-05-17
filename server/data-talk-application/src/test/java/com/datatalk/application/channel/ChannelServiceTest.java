@@ -10,6 +10,7 @@ import com.datatalk.application.session.PendingCallRegistry;
 import com.datatalk.application.session.SessionBus;
 import com.datatalk.application.session.SessionBusRegistry;
 import com.datatalk.domain.event.DtEvent;
+import com.datatalk.domain.part.FileUploadPart;
 import com.datatalk.domain.part.TextPart;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,6 +42,7 @@ class ChannelServiceTest {
     PendingCallRegistry pending;
     OpenCodeGateway gateway;
     OpenCodeSessionMap sessionMap;
+    PendingFileUploadEchoRegistry echoRegistry;
     Clock clock = Clock.fixed(Instant.ofEpochMilli(1000L), ZoneOffset.UTC);
     ChannelService svc;
 
@@ -51,8 +53,10 @@ class ChannelServiceTest {
         pending = mock(PendingCallRegistry.class);
         gateway = mock(OpenCodeGateway.class);
         sessionMap = mock(OpenCodeSessionMap.class);
+        echoRegistry = new PendingFileUploadEchoRegistry();
         svc = new ChannelService(sessionRepo, busRegistry, pending, clock, gateway, sessionMap,
-            mock(AiUserPrefsRepository.class), mock(Translator.class));
+            mock(AiUserPrefsRepository.class), mock(Translator.class),
+            echoRegistry);
     }
 
     @Test
@@ -137,6 +141,34 @@ class ChannelServiceTest {
         verify(bus, atLeastOnce()).publish(captor.capture());
         assertThat(captor.getAllValues())
             .anyMatch(e -> e instanceof DtEvent.SessionStatus s && "idle".equals(s.status()));
+    }
+
+    @Test
+    void sendMessage_enqueuesFileUploadPartsForLaterEcho_andStillForwardsToOpenCode() {
+        // Reproduces BUG-0056: file_upload parts must be stashed locally so the
+        // event loop can echo them back to the frontend once OpenCode returns
+        // the user message.created event. The wire body to OpenCode stays
+        // sanitized (no file_upload type — Zod rejects it), but the registry
+        // captures the original FileUploadPart.
+        when(sessionRepo.findById("s-1")).thenReturn(Optional.of(
+            new SessionRecord("s-1", null, "T", true, "ses_persisted", 100L, 100L, false)));
+        SessionBus bus = mock(SessionBus.class);
+        when(busRegistry.getOrCreate("s-1")).thenReturn(bus);
+
+        TextPart text = new TextPart("p-text", "s-1", "", "hi", null, null, null, Map.of());
+        FileUploadPart upload = new FileUploadPart(
+            "p-upload", "s-1", "", "file-abc", "photo.png", "image/png", 2048L, Map.of());
+        svc.sendMessage("s-1", List.of(text, upload));
+
+        // The registry now holds the original file_upload part for the next user MessageCreated.
+        java.util.List<FileUploadPart> drained = echoRegistry.drainNext("s-1");
+        assertThat(drained).hasSize(1);
+        assertThat(drained.get(0).fileId()).isEqualTo("file-abc");
+        assertThat(drained.get(0).filename()).isEqualTo("photo.png");
+
+        // OpenCode still receives the (sanitized) forward — verified separately
+        // by inspecting partForWire, but here we just ensure forwarding happened.
+        verify(gateway).forwardUserMessage(eq("ses_persisted"), any());
     }
 
     @Test

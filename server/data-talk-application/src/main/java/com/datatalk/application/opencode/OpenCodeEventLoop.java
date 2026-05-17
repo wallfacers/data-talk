@@ -1,9 +1,14 @@
 package com.datatalk.application.opencode;
 
+import com.datatalk.application.channel.PendingFileUploadEchoRegistry;
+import com.datatalk.application.persistence.UserMessageAttachmentRecord;
+import com.datatalk.application.persistence.UserMessageAttachmentRepository;
 import com.datatalk.application.session.SessionBus;
 import com.datatalk.application.session.SessionBusRegistry;
 import com.datatalk.domain.event.DtEvent;
+import com.datatalk.domain.part.FileUploadPart;
 import com.datatalk.domain.part.Message;
+import com.datatalk.domain.part.Part;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -46,6 +51,8 @@ public class OpenCodeEventLoop {
     private final SessionBusRegistry buses;
     private final OpenCodeSessionMap sessionMap;
     private final Consumer<OcEvent> tap;
+    private final PendingFileUploadEchoRegistry fileUploadEcho;
+    private final UserMessageAttachmentRepository attachmentRepo;
     private final AtomicBoolean running = new AtomicBoolean(false);
     private volatile Thread worker;
 
@@ -66,8 +73,10 @@ public class OpenCodeEventLoop {
                              OpenCodeEventTranslator translator,
                              SessionBusRegistry buses,
                              OpenCodeSessionMap sessionMap,
-                             Consumer<OcEvent> tap) {
-        this(baseUrl, om, translator, buses, sessionMap, tap,
+                             Consumer<OcEvent> tap,
+                             PendingFileUploadEchoRegistry fileUploadEcho,
+                             UserMessageAttachmentRepository attachmentRepo) {
+        this(baseUrl, om, translator, buses, sessionMap, tap, fileUploadEcho, attachmentRepo,
             DEFAULT_PART_BINDING_TTL, DEFAULT_PART_BINDING_CLEANUP_INTERVAL, System::currentTimeMillis);
     }
 
@@ -76,6 +85,8 @@ public class OpenCodeEventLoop {
                       SessionBusRegistry buses,
                       OpenCodeSessionMap sessionMap,
                       Consumer<OcEvent> tap,
+                      PendingFileUploadEchoRegistry fileUploadEcho,
+                      UserMessageAttachmentRepository attachmentRepo,
                       Duration partBindingTtl,
                       Duration partBindingCleanupInterval,
                       LongSupplier nowMillisSupplier) {
@@ -85,6 +96,8 @@ public class OpenCodeEventLoop {
         this.buses = buses;
         this.sessionMap = sessionMap;
         this.tap = tap == null ? e -> {} : tap;
+        this.fileUploadEcho = fileUploadEcho;
+        this.attachmentRepo = attachmentRepo;
         this.partBindingTtlMillis = requirePositiveMillis(partBindingTtl, "partBindingTtl");
         this.partBindingCleanupIntervalMillis = requirePositiveMillis(partBindingCleanupInterval, "partBindingCleanupInterval");
         this.nowMillisSupplier = nowMillisSupplier;
@@ -214,9 +227,54 @@ public class OpenCodeEventLoop {
         List<DtEvent> events = translator.translate(dataTalkSessionId, oc);
         for (DtEvent dt : events) {
             bus.publish(dt);
+            if (dt instanceof DtEvent.MessageCreated mc
+                && mc.message().role() == Message.Role.USER) {
+                publishPendingFileUploadEcho(bus, dataTalkSessionId, mc.message().id());
+            }
         }
         if (oc instanceof OcEvent.SessionDeleted) {
             translator.forget(dataTalkSessionId);
+            if (fileUploadEcho != null) {
+                fileUploadEcho.forgetSession(dataTalkSessionId);
+            }
+        }
+    }
+
+    /**
+     * After OpenCode echoes a user {@code message.created}, locally publish
+     * the {@link FileUploadPart}s that {@code ChannelService} stashed before
+     * forwarding (OpenCode rejects them due to Zod validation). Each part is
+     * given the OpenCode-assigned {@code messageID} and surfaced as a
+     * {@link DtEvent.MessagePartCreated} on the SessionBus so the frontend's
+     * {@code chat-parts-store} can attach them to the user bubble.
+     */
+    private void publishPendingFileUploadEcho(SessionBus bus, String dataTalkSessionId, String messageId) {
+        if (fileUploadEcho == null || messageId == null || messageId.isBlank()) {
+            return;
+        }
+        List<FileUploadPart> stashed = fileUploadEcho.drainNext(dataTalkSessionId);
+        long now = nowMillisSupplier.getAsLong();
+        int position = 0;
+        for (FileUploadPart raw : stashed) {
+            Part withMid = raw.withMessageId(messageId);
+            JsonNode partJson = om.valueToTree(withMid);
+            bus.publish(new DtEvent.MessagePartCreated(partJson));
+            if (attachmentRepo != null) {
+                try {
+                    attachmentRepo.insert(new UserMessageAttachmentRecord(
+                        raw.id() == null || raw.id().isBlank() ? "prt_" + java.util.UUID.randomUUID() : raw.id(),
+                        dataTalkSessionId,
+                        messageId,
+                        position,
+                        om.writeValueAsString(partJson),
+                        now
+                    ));
+                } catch (Exception e) {
+                    log.warn("[opencode-event-loop] persist user message attachment failed: sid={}, mid={}, err={}",
+                        dataTalkSessionId, messageId, e.toString());
+                }
+            }
+            position++;
         }
     }
 

@@ -8,19 +8,18 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## 当前编号
 
-下一个分配 ID：**BUG-0056**（永不复用，单调递增）
+下一个分配 ID：**BUG-0057**（永不复用，单调递增）
 
 ## Open BUGs（按 priority 倒序，P0 → P2）
 
-| ID | Title | Priority | Source | Modules | Discovered |
-|----|-------|----------|--------|---------|------------|
-| —  | — | — | — | — | — |
+_(无 open BUGs)_
 
 
 ## In Progress（status = investigating | fixed 等待 verify）
 
 | ID | Title | Status | Priority | Owner |
 |----|-------|--------|----------|-------|
+| [BUG-0056](BUG-0056-bubble-attachments-file-upload-part-not-roundtripped.md) | 用户气泡上方/内部附件 chip 不渲染 — file_upload part 被 OpenCode 协议层降级为 text，永不回到前端 | fixed | P1 | — (pending) |
 | [BUG-0055](BUG-0055-bezel-scheduler-no-type-aware-init.md) | bezel polling scheduler 对所有 widget 无差别 echarts.init,且 chart 缺首屏 base option | fixed | P1 | — (562fe466) |
 | [BUG-0054](BUG-0054-composer-restore-on-send-failure-resurrects-draft.md) | AI 发送失败后输入框被回填，且草稿写回 localStorage，CTRL+R 仍能复活已发送内容 | fixed | P1 | — (pending) |
 | [BUG-0053](BUG-0053-bezel-ai-widget-id-too-short-and-zod-error-unhelpful.md) | bezel AI 生成 widget id 后缀过短被前端 Zod 拒，且错误提示无法定位字段 | fixed | P1 | — (d99f008f) |
@@ -97,7 +96,9 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 - **opencode**: [BUG-0036](BUG-0036-skills-extracted-to-wrong-cwd-not-found-by-opencode.md) *(fixed)*, [BUG-0040](BUG-0040-agents-md-skill-path-triggers-llm-hallucination.md) *(fixed)*, [BUG-0049](BUG-0049-bezel-dashboard-html-chinese-garbled.md)
 - **session**: [BUG-0037](BUG-0037-ctrl-r-during-streaming-flips-stop-button-to-send.md) *(fixed)*, [BUG-0038](BUG-0038-replay-idle-on-resubscribe-clears-streaming-flag.md) *(fixed)*, [BUG-0039](BUG-0039-composer-draft-sync-write-wrong-schema.md) *(fixed)*, [BUG-0046](BUG-0046-composer-button-refresh-stream-state-mismatch.md) *(fixed)*, [BUG-0052](BUG-0052-long-session-empty-canvas-streaming-flag-race.md) *(fixed)*
 - **channel**: [BUG-0038](BUG-0038-replay-idle-on-resubscribe-clears-streaming-flag.md) *(fixed)*, [BUG-0046](BUG-0046-composer-button-refresh-stream-state-mismatch.md) *(fixed)*, [BUG-0052](BUG-0052-long-session-empty-canvas-streaming-flag-race.md) *(fixed)*
-- **chat**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md), [BUG-0037](BUG-0037-ctrl-r-during-streaming-flips-stop-button-to-send.md) *(fixed)*, [BUG-0038](BUG-0038-replay-idle-on-resubscribe-clears-streaming-flag.md) *(fixed)*, [BUG-0039](BUG-0039-composer-draft-sync-write-wrong-schema.md) *(fixed)*, [BUG-0041](BUG-0041-sql-code-block-theme-color-mismatch.md) *(fixed)*, [BUG-0044](BUG-0044-user-bubble-markdown-invisible-on-primary-bg.md) *(fixed)*, [BUG-0046](BUG-0046-composer-button-refresh-stream-state-mismatch.md) *(fixed)*, [BUG-0049](BUG-0049-bezel-dashboard-html-chinese-garbled.md), [BUG-0052](BUG-0052-long-session-empty-canvas-streaming-flag-race.md) *(fixed)*
+- **chat**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md), [BUG-0037](BUG-0037-ctrl-r-during-streaming-flips-stop-button-to-send.md) *(fixed)*, [BUG-0038](BUG-0038-replay-idle-on-resubscribe-clears-streaming-flag.md) *(fixed)*, [BUG-0039](BUG-0039-composer-draft-sync-write-wrong-schema.md) *(fixed)*, [BUG-0041](BUG-0041-sql-code-block-theme-color-mismatch.md) *(fixed)*, [BUG-0044](BUG-0044-user-bubble-markdown-invisible-on-primary-bg.md) *(fixed)*, [BUG-0046](BUG-0046-composer-button-refresh-stream-state-mismatch.md) *(fixed)*, [BUG-0049](BUG-0049-bezel-dashboard-html-chinese-garbled.md), [BUG-0052](BUG-0052-long-session-empty-canvas-streaming-flag-race.md) *(fixed)*, [BUG-0056](BUG-0056-bubble-attachments-file-upload-part-not-roundtripped.md) *(fixed)*
+- **file-upload**: [BUG-0056](BUG-0056-bubble-attachments-file-upload-part-not-roundtripped.md) *(fixed)*
+- **channel**: [BUG-0056](BUG-0056-bubble-attachments-file-upload-part-not-roundtripped.md) *(fixed)*
 
 ## By Source（聚合视图，仅列 open + in-progress）
 

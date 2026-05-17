@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback, type JSX } from 'react'
+import { useEffect, useMemo, useState, type JSX } from 'react'
 import { FileText, FileSpreadsheet, FileJson, ImageIcon, Maximize2, Minimize2, XIcon } from 'lucide-react'
 import {
   Dialog,
@@ -7,9 +7,26 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { Markdown } from '@/features/chat/components/markdown/markdown'
-import type { FileAttachment } from '../useFileUpload'
 import { cn } from '@/lib/utils'
 import { useI18n } from '@/i18n/use-i18n'
+import { getFileContentUrl } from '@/services/api/file-upload'
+
+/**
+ * Preview data source for FilePreviewDialog.
+ *
+ * - `local`: an in-memory File (e.g. from PromptComposer before upload)
+ * - `remote`: a server-side uploaded file referenced by fileId; bytes are
+ *   fetched from `/api/files/{fileId}/content`
+ */
+export type PreviewSource =
+  | { kind: 'local'; file: File }
+  | {
+      kind: 'remote'
+      fileId: string
+      filename: string
+      mimeType: string
+      sizeBytes: number
+    }
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -45,31 +62,32 @@ function fileTypeIcon(filename: string): JSX.Element {
   return <FileText className="h-4 w-4" />
 }
 
-function readFileAsText(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as string)
-    reader.onerror = () => reject(reader.error)
-    reader.readAsText(file)
-  })
-}
-
 export function FilePreviewDialog({
-  attachment,
+  source,
   open,
   onOpenChange,
 }: {
-  attachment: FileAttachment | null
+  source: PreviewSource | null
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
   const { t } = useI18n()
   const [textContent, setTextContent] = useState<string | null>(null)
   const [readError, setReadError] = useState<string | null>(null)
+  const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [maximized, setMaximized] = useState(false)
 
-  const file = attachment?.file ?? null
-  const filename = file?.name ?? ''
+  // Pull display fields uniformly from source regardless of kind.
+  const filename = source?.kind === 'local'
+    ? source.file.name
+    : source?.kind === 'remote'
+      ? source.filename
+      : ''
+  const sizeBytes = source?.kind === 'local'
+    ? source.file.size
+    : source?.kind === 'remote'
+      ? source.sizeBytes
+      : 0
 
   const fileTypeLabel = useMemo(() => {
     const ext = getExt(filename)
@@ -79,40 +97,87 @@ export function FilePreviewDialog({
     return t('chat.filePreview.file')
   }, [filename, t])
 
-  const [imageUrl, setImageUrl] = useState<string | null>(null)
-
+  // Unified byte loader: dispatches on source.kind, normalizes cleanup
+  // (revoke any objectURL that was created locally OR from a remote blob).
   useEffect(() => {
-    if (!file || !isImage(filename)) {
+    if (!source || !open) {
+      // Reset state when there is nothing to show or dialog is closed
+      setTextContent(null)
+      setReadError(null)
       setImageUrl(null)
       return
     }
-    const url = URL.createObjectURL(file)
-    setImageUrl(url)
-    return () => URL.revokeObjectURL(url)
-  }, [file, filename])
 
-  const loadText = useCallback(async () => {
-    if (!file || isImage(filename)) return
-    try {
-      const text = await readFileAsText(file)
-      setTextContent(text)
-      setReadError(null)
-    } catch (err) {
-      setReadError(String(err))
-    }
-  }, [file, filename])
+    let cancelled = false
+    let createdObjectUrl: string | null = null
+    const showImage = isImage(filename)
 
-  useEffect(() => {
-    if (open && file && !isImage(filename)) {
-      loadText()
-    }
-    if (!open) {
-      setTextContent(null)
-      setReadError(null)
-    }
-  }, [open, file, filename, loadText])
+    // Reset per-load before kicking off async work
+    setTextContent(null)
+    setReadError(null)
+    setImageUrl(null)
 
-  if (!file) return null
+    const handleError = (err: unknown) => {
+      if (cancelled) return
+      const msg = err instanceof Error ? err.message : String(err)
+      setReadError(msg)
+    }
+
+    if (source.kind === 'local') {
+      if (showImage) {
+        const url = URL.createObjectURL(source.file)
+        createdObjectUrl = url
+        setImageUrl(url)
+      } else {
+        // Prefer File.text() when available (modern browsers + jsdom); fall
+        // back to FileReader for older environments.
+        const readPromise =
+          typeof source.file.text === 'function'
+            ? source.file.text()
+            : new Promise<string>((resolve, reject) => {
+                const reader = new FileReader()
+                reader.onload = () => resolve(reader.result as string)
+                reader.onerror = () => reject(reader.error)
+                reader.readAsText(source.file)
+              })
+        readPromise
+          .then((text) => {
+            if (!cancelled) setTextContent(text)
+          })
+          .catch(handleError)
+      }
+    } else {
+      // remote: fetch /api/files/{fileId}/content
+      const url = getFileContentUrl(source.fileId)
+      fetch(url)
+        .then(async (response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`)
+          }
+          if (showImage) {
+            const blob = await response.blob()
+            if (cancelled) return
+            const objectUrl = URL.createObjectURL(blob)
+            createdObjectUrl = objectUrl
+            setImageUrl(objectUrl)
+          } else {
+            const text = await response.text()
+            if (cancelled) return
+            setTextContent(text)
+          }
+        })
+        .catch(handleError)
+    }
+
+    return () => {
+      cancelled = true
+      if (createdObjectUrl) {
+        URL.revokeObjectURL(createdObjectUrl)
+      }
+    }
+  }, [source, open, filename])
+
+  if (!source) return null
 
   const showImage = isImage(filename)
   const showMarkdown = isMarkdown(filename)
@@ -139,7 +204,7 @@ export function FilePreviewDialog({
             {filename}
           </DialogTitle>
           <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-xs text-text-muted">
-            {fileTypeLabel} · {formatSize(file.size)}
+            {fileTypeLabel} · {formatSize(sizeBytes)}
           </span>
           <div className="ml-auto flex items-center gap-0.5">
             <button

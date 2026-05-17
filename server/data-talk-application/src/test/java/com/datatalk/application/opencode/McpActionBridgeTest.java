@@ -349,7 +349,8 @@ class McpActionBridgeTest {
             mock(OpenCodeGateway.class),
             new OpenCodeSessionMap(),
             mock(com.datatalk.application.ai.AiUserPrefsRepository.class),
-            mock(com.datatalk.application.i18n.Translator.class)
+            mock(com.datatalk.application.i18n.Translator.class),
+            new com.datatalk.application.channel.PendingFileUploadEchoRegistry()
         );
 
         StageTabRepository stageTabRepository = mock(StageTabRepository.class);

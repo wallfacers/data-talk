@@ -11,7 +11,7 @@ import { openDirectSqlQueryEditorTab } from '@/features/stage/utils/open-direct-
 import { shouldAutoRunDirectSql } from '@/features/stage/utils/direct-sql-auto-run-policy'
 import { normalizeError, showErrorToast } from '@/services/http-error'
 import { Markdown } from '@/features/chat/components/markdown/markdown'
-import { FileUploadCard } from '@/features/session/components/file-upload-card'
+import { BubbleAttachmentList } from '@/features/chat/components/turn/bubble-attachment-list'
 
 function extractBangQuerySql(text: string): string | null {
   const trimmed = text.trim()
@@ -81,6 +81,7 @@ export function UserBubble(props: { info: MessageInfo; parts: Part[] }) {
       data-pending-user-motion={pending && !failed ? 'true' : undefined}
       className="my-2 flex flex-col items-end gap-1"
     >
+      {fileParts.length > 0 && <BubbleAttachmentList parts={fileParts} />}
       <div
         className={cn(
           'relative max-w-[85%] rounded-lg px-3 py-2 text-sm',
@@ -89,11 +90,6 @@ export function UserBubble(props: { info: MessageInfo; parts: Part[] }) {
           failed && 'border-2 border-red-500',
         )}
       >
-        {fileParts.length > 0 && (
-          <div className="flex flex-col gap-1.5 mb-2">
-            {fileParts.map(p => <FileUploadCard key={p.id} part={p} />)}
-          </div>
-        )}
         {isBangQueryUser ? (
           <div className="flex items-center gap-1.5">
             <span

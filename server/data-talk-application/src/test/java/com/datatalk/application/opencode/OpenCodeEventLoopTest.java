@@ -1,8 +1,10 @@
 package com.datatalk.application.opencode;
 
+import com.datatalk.application.channel.PendingFileUploadEchoRegistry;
 import com.datatalk.application.session.SessionBus;
 import com.datatalk.application.session.SessionBusRegistry;
 import com.datatalk.domain.event.DtEvent;
+import com.datatalk.domain.part.FileUploadPart;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
@@ -65,7 +67,7 @@ class OpenCodeEventLoopTest {
 
         OpenCodeEventTranslator tr = new OpenCodeEventTranslator(Mockito.mock(SessionTitleSyncer.class));
         OpenCodeEventLoop loop = new OpenCodeEventLoop(
-            "http://localhost:" + wm.port(), new ObjectMapper(), tr, buses, map, received::add);
+            "http://localhost:" + wm.port(), new ObjectMapper(), tr, buses, map, received::add, null, null);
 
         loop.start();
         await().atMost(Duration.ofSeconds(3)).until(() -> received.size() >= 2);
@@ -103,7 +105,7 @@ class OpenCodeEventLoopTest {
         OpenCodeEventTranslator tr = new OpenCodeEventTranslator(Mockito.mock(SessionTitleSyncer.class));
         List<OcEvent> received = new ArrayList<>();
         OpenCodeEventLoop loop = new OpenCodeEventLoop(
-            "http://localhost:" + wm.port(), new ObjectMapper(), tr, buses, map, received::add);
+            "http://localhost:" + wm.port(), new ObjectMapper(), tr, buses, map, received::add, null, null);
 
         loop.start();
         await().atMost(Duration.ofSeconds(3)).until(() -> received.size() >= 3);
@@ -139,7 +141,7 @@ class OpenCodeEventLoopTest {
         OpenCodeEventTranslator tr = new OpenCodeEventTranslator(Mockito.mock(SessionTitleSyncer.class));
         List<OcEvent> received = new ArrayList<>();
         OpenCodeEventLoop loop = new OpenCodeEventLoop(
-            "http://localhost:" + wm.port(), new ObjectMapper(), tr, buses, map, received::add);
+            "http://localhost:" + wm.port(), new ObjectMapper(), tr, buses, map, received::add, null, null);
 
         loop.start();
         await().atMost(Duration.ofSeconds(3)).until(() -> received.size() >= 2);
@@ -168,6 +170,8 @@ class OpenCodeEventLoopTest {
             new OpenCodeEventTranslator(Mockito.mock(SessionTitleSyncer.class)),
             buses,
             sessionMap,
+            null,
+            null,
             null,
             Duration.ofMillis(100),
             Duration.ofMillis(10),
@@ -199,6 +203,8 @@ class OpenCodeEventLoopTest {
             new OpenCodeEventTranslator(Mockito.mock(SessionTitleSyncer.class)),
             Mockito.mock(SessionBusRegistry.class),
             new OpenCodeSessionMap(),
+            null,
+            null,
             null
         );
 
@@ -236,7 +242,7 @@ class OpenCodeEventLoopTest {
         when(syncer.apply("oc-1", "AI 标题")).thenReturn(true);
         OpenCodeEventTranslator tr = new OpenCodeEventTranslator(syncer);
         OpenCodeEventLoop loop = new OpenCodeEventLoop(
-            "http://localhost:" + wm.port(), new ObjectMapper(), tr, buses, map, received::add);
+            "http://localhost:" + wm.port(), new ObjectMapper(), tr, buses, map, received::add, null, null);
 
         loop.start();
         await().atMost(Duration.ofSeconds(3)).until(() -> !received.isEmpty());
@@ -245,6 +251,61 @@ class OpenCodeEventLoopTest {
         assertThat(received.get(0)).isInstanceOf(OcEvent.SessionUpdated.class);
         Mockito.verify(syncer).apply("oc-1", "AI 标题");
         Mockito.verify(mockBus).publish(any(DtEvent.SessionMetaUpdated.class));
+    }
+
+    @Test
+    void userMessageCreatedDrainsAndEchoesPendingFileUploadParts() {
+        // SSE stream: a user message.updated arrives — translator first-seen logic
+        // emits MessageCreated. The event loop must then drain the pending
+        // FileUploadPart enqueued by ChannelService and publish a synthetic
+        // MessagePartCreated carrying that part with the OpenCode messageID.
+        String sse = """
+            data: {"directory":"/tmp","payload":{"type":"message.updated","properties":{"info":{"id":"msg_user_42","sessionID":"oc-1","role":"user","time":{"created":1000}}}}}
+
+            """;
+        wm.stubFor(get(urlEqualTo("/global/event"))
+            .willReturn(aResponse().withHeader("Content-Type", "text/event-stream").withBody(sse)));
+
+        OpenCodeSessionMap map = new OpenCodeSessionMap();
+        map.bind("dt-1", "oc-1");
+
+        SessionBus mockBus = Mockito.mock(SessionBus.class);
+        SessionBusRegistry buses = Mockito.mock(SessionBusRegistry.class);
+        when(buses.getOrCreate("dt-1")).thenReturn(mockBus);
+
+        PendingFileUploadEchoRegistry registry = new PendingFileUploadEchoRegistry();
+        FileUploadPart stashed = new FileUploadPart(
+            "prt_local_1", "dt-1", "", "file-xyz", "photo.png", "image/png", 2048L, Map.of());
+        registry.enqueue("dt-1", List.of(stashed));
+
+        OpenCodeEventTranslator tr = new OpenCodeEventTranslator(Mockito.mock(SessionTitleSyncer.class));
+        OpenCodeEventLoop loop = new OpenCodeEventLoop(
+            "http://localhost:" + wm.port(), new ObjectMapper(), tr, buses, map, null, registry, null);
+
+        loop.start();
+        await().atMost(Duration.ofSeconds(3)).untilAsserted(() -> {
+            ArgumentCaptor<DtEvent> c = ArgumentCaptor.forClass(DtEvent.class);
+            Mockito.verify(mockBus, Mockito.atLeast(2)).publish(c.capture());
+            assertThat(c.getAllValues())
+                .filteredOn(DtEvent.MessagePartCreated.class::isInstance)
+                .isNotEmpty();
+        });
+        loop.stop();
+
+        ArgumentCaptor<DtEvent> captor = ArgumentCaptor.forClass(DtEvent.class);
+        Mockito.verify(mockBus, Mockito.atLeast(2)).publish(captor.capture());
+        DtEvent.MessagePartCreated echoed = captor.getAllValues().stream()
+            .filter(DtEvent.MessagePartCreated.class::isInstance)
+            .map(DtEvent.MessagePartCreated.class::cast)
+            .findFirst()
+            .orElseThrow();
+        assertThat(echoed.part().path("type").asText()).isEqualTo("file_upload");
+        assertThat(echoed.part().path("messageID").asText()).isEqualTo("msg_user_42");
+        assertThat(echoed.part().path("fileId").asText()).isEqualTo("file-xyz");
+        assertThat(echoed.part().path("filename").asText()).isEqualTo("photo.png");
+
+        // Registry must drain to empty after a successful echo.
+        assertThat(registry.drainNext("dt-1")).isEmpty();
     }
 
     @SuppressWarnings("unchecked")
