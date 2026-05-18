@@ -23,10 +23,16 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { useI18n } from '@/i18n/use-i18n'
 import { copyToClipboard } from '@/lib/utils'
-import { Download, Copy, Maximize2Icon, XIcon, SearchIcon, ArrowUpIcon, ArrowDownIcon } from 'lucide-react'
+import { ArrowDownIcon, ArrowUpIcon, ChevronDownIcon, Copy, Download, Maximize2Icon, SearchIcon, XIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   buildSqlResultExportFilename,
@@ -474,26 +480,47 @@ export function SqlResultTable({
             <SelectItem value="result">{t('stage.queryEditor.result.exportResult')}</SelectItem>
           </SelectContent>
         </Select>
-        <Button size="sm" variant="outline" aria-label={t('stage.queryEditor.result.copyCsvAria')} onClick={() => void copyCsv()}>
-          <Copy className="size-3.5" />
-          {copiedAction === 'csv' ? t('stage.queryEditor.result.copied') : t('stage.queryEditor.result.copyCsv')}
-        </Button>
-        <Button size="sm" variant="outline" aria-label={t('stage.queryEditor.result.copyJsonAria')} onClick={() => void copyJson()}>
-          <Copy className="size-3.5" />
-          {copiedAction === 'json' ? t('stage.queryEditor.result.copied') : t('stage.queryEditor.result.copyJson')}
-        </Button>
-        <Button size="sm" variant="outline" aria-label={t('stage.queryEditor.result.downloadCsvAria')} onClick={downloadCsv}>
-          <Download className="size-3.5" />
-          {t('stage.queryEditor.result.downloadCsv')}
-        </Button>
-        <Button size="sm" variant="outline" aria-label={t('stage.queryEditor.result.downloadXlsxAria')} onClick={() => void downloadXlsx()}>
-          <Download className="size-3.5" />
-          {t('stage.queryEditor.result.downloadXlsx')}
-        </Button>
-        <Button size="sm" variant="outline" aria-label={t('stage.queryEditor.result.downloadSqlInsertAria')} onClick={downloadSql}>
-          <Download className="size-3.5" />
-          {t('stage.queryEditor.result.downloadSqlInsert')}
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button size="sm" variant="outline" aria-label={t('stage.queryEditor.result.copyMenuAria')}>
+                <Copy className="size-3.5" />
+                {copiedAction ? t('stage.queryEditor.result.copied') : t('stage.queryEditor.result.copy')}
+                <ChevronDownIcon className="size-3.5 opacity-60" />
+              </Button>
+            }
+          />
+          <DropdownMenuContent align="end" className="min-w-32">
+            <DropdownMenuItem onClick={() => void copyCsv()} aria-label={t('stage.queryEditor.result.copyCsvAria')}>
+              {t('stage.queryEditor.result.copyCsv')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => void copyJson()} aria-label={t('stage.queryEditor.result.copyJsonAria')}>
+              {t('stage.queryEditor.result.copyJson')}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button size="sm" variant="outline" aria-label={t('stage.queryEditor.result.downloadMenuAria')}>
+                <Download className="size-3.5" />
+                {t('stage.queryEditor.result.download')}
+                <ChevronDownIcon className="size-3.5 opacity-60" />
+              </Button>
+            }
+          />
+          <DropdownMenuContent align="end" className="min-w-44">
+            <DropdownMenuItem onClick={downloadCsv} aria-label={t('stage.queryEditor.result.downloadCsvAria')}>
+              {t('stage.queryEditor.result.downloadCsv')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => void downloadXlsx()} aria-label={t('stage.queryEditor.result.downloadXlsxAria')}>
+              {t('stage.queryEditor.result.downloadXlsx')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={downloadSql} aria-label={t('stage.queryEditor.result.downloadSqlInsertAria')}>
+              {t('stage.queryEditor.result.downloadSqlInsert')}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         {showExpand ? (
           <Button size="sm" variant="outline" aria-label={t('stage.queryEditor.result.expandAria')} onClick={() => setIsExpanded(true)}>
             <Maximize2Icon className="size-3.5" />

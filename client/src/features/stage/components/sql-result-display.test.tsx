@@ -33,12 +33,20 @@ vi.mock('@/i18n/use-i18n', () => ({
         'stage.queryEditor.result.exportScope': '导出范围',
         'stage.queryEditor.result.exportPage': '当前页',
         'stage.queryEditor.result.exportResult': '已返回结果',
+        'stage.queryEditor.result.copy': '复制',
+        'stage.queryEditor.result.copyMenuAria': '复制 SQL 结果',
+        'stage.queryEditor.result.download': '下载',
+        'stage.queryEditor.result.downloadMenuAria': '下载 SQL 结果',
         'stage.queryEditor.result.copyCsv': '复制 CSV',
         'stage.queryEditor.result.copyJson': '复制 JSON',
         'stage.queryEditor.result.downloadCsv': '下载 CSV',
+        'stage.queryEditor.result.downloadXlsx': '下载 Excel',
+        'stage.queryEditor.result.downloadSqlInsert': '下载 SQL',
         'stage.queryEditor.result.copyCsvAria': '复制当前 SQL 结果为 CSV',
         'stage.queryEditor.result.copyJsonAria': '复制当前 SQL 结果为 JSON',
         'stage.queryEditor.result.downloadCsvAria': '下载当前 SQL 结果为 CSV',
+        'stage.queryEditor.result.downloadXlsxAria': '下载当前 SQL 结果为 Excel',
+        'stage.queryEditor.result.downloadSqlInsertAria': '下载当前 SQL 结果为 INSERT 语句',
         'stage.queryEditor.result.copied': '已复制',
         'stage.queryEditor.runFailed': 'SQL execution failed',
         'stage.status.error': 'Error',
@@ -56,6 +64,22 @@ vi.mock('@/components/ui/context-menu', () => ({
     disabled,
   }: { children?: ReactNode; onClick?: () => void; disabled?: boolean }) => (
     <button type="button" onClick={disabled ? undefined : onClick} disabled={disabled}>
+      {children}
+    </button>
+  ),
+}))
+
+vi.mock('@/components/ui/dropdown-menu', () => ({
+  DropdownMenu: ({ children }: { children?: ReactNode }) => <>{children}</>,
+  DropdownMenuTrigger: ({ render, children }: { render?: ReactNode; children?: ReactNode }) => <>{render ?? children}</>,
+  DropdownMenuContent: ({ children }: { children?: ReactNode }) => <>{children}</>,
+  DropdownMenuItem: ({
+    children,
+    onClick,
+    disabled,
+    'aria-label': ariaLabel,
+  }: { children?: ReactNode; onClick?: () => void; disabled?: boolean; 'aria-label'?: string }) => (
+    <button type="button" onClick={disabled ? undefined : onClick} disabled={disabled} aria-label={ariaLabel}>
       {children}
     </button>
   ),
