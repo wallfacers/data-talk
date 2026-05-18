@@ -19,7 +19,7 @@
 
 - [x] 3.1 在 `FileUploadController.upload` 的 `Files.move(tempTarget, permanentPath)` 失败 catch 路径补 cleanup（删除 fileDir 整体，避免 permanent 半写入）
 - [x] 3.2 在 `FileAnalysisService.analyze` 抛 Exception 已 catch 但未删 permanent — 加注释说明决定保留（DB row + UNKNOWN-type fallback 仍可用）
-- [ ] 3.3 ~~新增 `FileUploadControllerIT` 用例：模拟 multipart 中途 IOException~~ — **跳过**，理由：可靠触发 `Files.move` IOException 需平台特定权限操作（POSIX chmod vs Windows ACL vs WSL quirks），对 3 行防御性 cleanup 的 IT 会 flaky 且高维护成本。建议改为手测验证（chmod 555 uploadBase dir）
+- [~] 3.3 ~~新增 `FileUploadControllerIT` 用例：模拟 multipart 中途 IOException~~ — **跳过**，理由：可靠触发 `Files.move` IOException 需平台特定权限操作（POSIX chmod vs Windows ACL vs WSL quirks），对 3 行防御性 cleanup 的 IT 会 flaky 且高维护成本。建议改为手测验证（chmod 555 uploadBase dir）
 
 ## 4. Backend — 一致性验证（批次结束）
 
