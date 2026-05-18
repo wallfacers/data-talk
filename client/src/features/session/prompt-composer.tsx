@@ -395,15 +395,18 @@ function InnerComposer() {
         toast.warning(t('chat.image.payloadWarning', { sizeMB }))
       }
 
-      const ok = await sendMessage(parts)
-      if (ok) {
-        clearDone()
-        // Free the cached data URIs — the image already shipped, and OpenCode
-        // echoes the FilePart back so the bubble chip reads from the echoed
-        // part's url field, not the cache.
-        for (const fileId of imageFileIds) evictDataUri(fileId)
-      }
-      // !ok: the failed pending user bubble owns retry; restoring here would also
+      // Clear chips BEFORE awaiting sendMessage — its await spans the entire SSE
+      // stream (AI streaming end), and gating clearDone behind it would keep the
+      // chip on screen for the whole AI response window. The user bubble hydrates
+      // from echoed FileParts (independent of local chip state), and a failed
+      // send is owned by the pending bubble's retry path — neither needs the
+      // chip preserved here. evictDataUri frees the cached base64; parts already
+      // captured `url`, so eviction now is safe.
+      clearDone()
+      for (const fileId of imageFileIds) evictDataUri(fileId)
+
+      await sendMessage(parts)
+      // The failed pending user bubble owns retry; restoring here would also
       // re-persist the draft via setComposerDraft and resurrect on next CTRL+R.
     } finally {
       setIsSendInflight(false)
