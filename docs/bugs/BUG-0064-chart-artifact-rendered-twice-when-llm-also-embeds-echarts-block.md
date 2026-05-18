@@ -1,14 +1,14 @@
 ---
 id: BUG-0064
 title: render_chart artifact 与 markdown echarts 代码块同时渲染，导致同一图被画两次且能力不一致
-status: open
+status: fixed
 priority: P2
 source: manual-report
 modules: [chat, markdown, chart]
 discovered: 2026-05-19
 discoveredBy: human
 testRunId: null
-fixCommit: null
+fixCommit: eb1ef5a8
 fixPlanRef: null
 duplicateOf: null
 regression: false
@@ -73,3 +73,10 @@ LLM 同一回复里既调用 `datatalk_render_chart` 生成 chart artifact，又
 
 - 与 [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md) 同模块（chat + markdown + chart）但根因不同，前者是单图布局，本 BUG 是双路径并发。
 - 关联 prompt 改造：本仓库 `agent-context-priming` change 已落地 Pre-Action Exploration Protocol，prompt 层修改建议放进后续小 change，不阻塞当前 PR archive。
+
+## Fix Summary（commit eb1ef5a8）
+
+- **Prompt 侧**：`skill:charts-and-dashboards` 新增 "Single chart, single render — never emit the same chart twice" 硬约束，明确禁止 `datatalk_render_chart` 与 ```` ```chart``` ```` / ```` ```echarts``` ```` 同时出现。
+- **前端 dedupe**：`ChartBlock` 在 `matched`（同 messageId+partId 已存在 chart artifact）时跳过 `<ChartRenderer>`，渲染 `data-dedup-skipped="true"` 的 "已在上方图表产物中展示" hint，并隐藏 promote/打开到工作台按钮（能力归 `ArtifactCreated` 拥有）。
+- **能力统一**：`ArtifactCreated` 增加 expand + copy 工具栏，保留 EyeIcon "在 Stage 中查看"。
+- **测试**：`AgentsTemplateContractTest.chartsAndDashboardsSkillForbidsDuplicateChartEmission`、`chart-block.test.tsx` BUG-0064 case；后端 308/308 + 前端 chart-block + artifact-created 全过。

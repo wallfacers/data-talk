@@ -1,14 +1,14 @@
 ---
 id: BUG-0065
 title: LLM 用 datatalk_ui_exec 把 SQL 推到编辑器时绕过 Pre-Action Exploration Protocol，从未对不存在表做 schema_search
-status: open
+status: fixed
 priority: P2
 source: e2e-playwright
 modules: [chat, opencode, query-editor]
 discovered: 2026-05-19
 discoveredBy: agent
 testRunId: null
-fixCommit: null
+fixCommit: eb1ef5a8
 fixPlanRef: null
 duplicateOf: null
 regression: false
@@ -76,3 +76,11 @@ Pre-Action Protocol 把硬约束放在 SQL "执行" 边界（execute_sql / DDL �
 
 - 与 [BUG-0064](BUG-0064-chart-artifact-rendered-twice-when-llm-also-embeds-echarts-block.md) 一同来自 `agent-context-priming` change 的 E2E 验证，都不阻塞 PR archive，但应该在 follow-up 小 change 一起收口。
 - 这是"Protocol 漏洞"而非代码 bug — 修复成本主要在 prompt + 一两条契约测试。
+
+## Fix Summary（commit eb1ef5a8）
+
+- **AGENTS.md `## Pre-Action Exploration Protocol`**：新增 "Scope — all SQL-emit paths are covered" 段，明确列出 `datatalk_execute_sql` / `datatalk_ui_exec(object=query_editor)` / `datatalk_ui_patch` / markdown SQL fenced block 四条等价路径；明确"把不确定 SQL 推到编辑器让用户运行"不是合规出路。
+- **AGENTS.md Trigger Gate**：新增一行 — 即将通过 `ui_exec`/`ui_patch`/fenced block 写未确认表 → 必须先 load skill:exploring-data。
+- **`skill:exploring-data`**：Pre-Action Protocol 第 4 步重写为 *Emit SQL*，枚举四条路径；新增 "Scope: all SQL-emit paths" 段把编辑器场景显式吸进 protocol。
+- **`skill:query-editor-workflow`**：在 "Editor lifecycle" 之前插入 "Pre-flight" 段，强制 SQL 写入编辑器前要 schema_search/read_schema。
+- **测试**：`AgentsTemplateContractTest.agentsTemplatePreActionProtocolCoversUiExecAndUiPatchPaths` 和 `exploringDataSkillCoversAllSqlEmitPaths` 两条契约断言守门。后端 308/308 全过。
