@@ -136,7 +136,7 @@ describe('useStageStore (single-flag stage panel)', () => {
   })
 
   describe('tabs / library / workset', () => {
-    it('defaults a blank query editor to follow the current session data context when no explicit context is supplied', () => {
+    it('snapshots the session data context for a user-created blank query editor, independent of session changes', () => {
       useSessionStore.setState({
         activeSessionId: 'sess-1',
         modeBySession: new Map(),
@@ -176,11 +176,15 @@ describe('useStageStore (single-flag stage panel)', () => {
         database: 'warehouse',
         schema: 'analytics',
       })
-      expect(payload.useSessionContext).toBe(true)
-      expect(payload.contextOverride).toBeNull()
+      expect(payload.useSessionContext).toBe(false)
+      expect(payload.contextOverride).toEqual({
+        connectionId: 'conn-session',
+        database: 'warehouse',
+        schema: 'analytics',
+      })
     })
 
-    it('defaults a blank query editor to follow the active session when the open request has no session id', () => {
+    it('snapshots the active session context for a blank query editor when the open request has no session id', () => {
       useSessionStore.setState({
         activeSessionId: 'sess-active',
         modeBySession: new Map(),
@@ -220,8 +224,12 @@ describe('useStageStore (single-flag stage panel)', () => {
         database: 'active_db',
         schema: 'active_schema',
       })
-      expect(payload.useSessionContext).toBe(true)
-      expect(payload.contextOverride).toBeNull()
+      expect(payload.useSessionContext).toBe(false)
+      expect(payload.contextOverride).toEqual({
+        connectionId: 'conn-active',
+        database: 'active_db',
+        schema: 'active_schema',
+      })
     })
 
     it('persists explicit query editor context opens as manual overrides', () => {

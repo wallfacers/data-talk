@@ -269,7 +269,7 @@ function resolveQueryEditorOpenContext(input: QueryEditorOpenInput): ResolvedQue
       connectionName: normalizeContextValue(sessionContext?.connectionNameSnapshot),
       database: projected.database,
       schema: normalizeContextValue(sessionContext?.schema),
-      useSessionContext: true,
+      useSessionContext: input.entryMode !== 'blank',
     }
   }
 
@@ -279,7 +279,7 @@ function resolveQueryEditorOpenContext(input: QueryEditorOpenInput): ResolvedQue
     connectionName: null,
     database: null,
     schema: null,
-    useSessionContext: true,
+    useSessionContext: input.entryMode !== 'blank',
   }
 }
 

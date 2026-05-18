@@ -260,7 +260,7 @@ describe('QueryEditorAdapter', () => {
     expect(state.results[1]).not.toHaveProperty('rows')
   })
 
-  it('read state exposes inherited session context as the effective top-level context', () => {
+  it('read state snapshots session context as override for user-created blank editors', () => {
     useConnectionStore.setState({
       activeConnectionId: null,
       connections: [
@@ -313,9 +313,13 @@ describe('QueryEditorAdapter', () => {
       connectionName: 'Session Warehouse',
       database: 'session-db',
       schema: 'session-schema',
-      useSessionContext: true,
-      contextSource: 'session',
-      contextOverride: null,
+      useSessionContext: false,
+      contextSource: 'override',
+      contextOverride: expect.objectContaining({
+        connectionId: 'session-conn',
+        database: 'session-db',
+        schema: 'session-schema',
+      }),
     }))
   })
 
