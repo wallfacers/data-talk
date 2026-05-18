@@ -27,19 +27,19 @@ function getExt(filename: string): string {
 
 function getFileIcon(filename: string, mimeType: string) {
   if (mimeType.startsWith('image/')) {
-    return <ImageIcon className="h-4 w-4 shrink-0" />
+    return <ImageIcon className="h-6 w-6 shrink-0" />
   }
   const ext = getExt(filename)
   if (IMAGE_EXTENSIONS.has(ext)) {
-    return <ImageIcon className="h-4 w-4 shrink-0" />
+    return <ImageIcon className="h-6 w-6 shrink-0" />
   }
   if (SPREADSHEET_EXTENSIONS.has(ext)) {
-    return <FileSpreadsheet className="h-4 w-4 shrink-0" />
+    return <FileSpreadsheet className="h-6 w-6 shrink-0" />
   }
   if (JSON_EXTENSIONS.has(ext)) {
-    return <FileJson className="h-4 w-4 shrink-0" />
+    return <FileJson className="h-6 w-6 shrink-0" />
   }
-  return <FileText className="h-4 w-4 shrink-0" />
+  return <FileText className="h-6 w-6 shrink-0" />
 }
 
 export function FileChip({
