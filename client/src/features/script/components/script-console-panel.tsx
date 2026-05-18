@@ -1,8 +1,62 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { useScriptWorkbenchStore } from '@/features/script/stores/script-workbench-store'
+import { useThemeStore } from '@/stores/theme-store'
 import '@xterm/xterm/css/xterm.css'
+
+const SYSTEM_MEDIA_QUERY = '(prefers-color-scheme: dark)'
+
+const DARK_TERMINAL_THEME = {
+  background: '#1a1a19',
+  foreground: '#f1f1ef',
+  cursor: '#b9b9b7',
+  selectionBackground: '#34322d',
+  black: '#34322d',
+  red: '#ef4444',
+  green: '#22c55e',
+  yellow: '#f59e0b',
+  blue: '#3b82f6',
+  magenta: '#d946ef',
+  cyan: '#0ea5e9',
+  white: '#f1f1ef',
+  brightBlack: '#5e5e5b',
+  brightRed: '#f87171',
+  brightGreen: '#4ade80',
+  brightYellow: '#fbbf24',
+  brightBlue: '#60a5fa',
+  brightMagenta: '#e879f9',
+  brightCyan: '#38bdf8',
+  brightWhite: '#fcfcfb',
+}
+
+const LIGHT_TERMINAL_THEME = {
+  background: '#fcfcfb',
+  foreground: '#34322d',
+  cursor: '#858481',
+  selectionBackground: '#f1f1ef',
+  black: '#d1d1cd',
+  red: '#b91c1c',
+  green: '#15803d',
+  yellow: '#b45309',
+  blue: '#1d4ed8',
+  magenta: '#a21caf',
+  cyan: '#0369a1',
+  white: '#34322d',
+  brightBlack: '#858481',
+  brightRed: '#dc2626',
+  brightGreen: '#16a34a',
+  brightYellow: '#d97706',
+  brightBlue: '#2563eb',
+  brightMagenta: '#c026d3',
+  brightCyan: '#0284c7',
+  brightWhite: '#1a1a19',
+}
+
+function resolveSystemTheme(): boolean {
+  if (typeof window === 'undefined') return false
+  return window.matchMedia(SYSTEM_MEDIA_QUERY).matches
+}
 
 interface ScriptConsolePanelProps {
   tabId: string
@@ -15,7 +69,26 @@ export function ScriptConsolePanel({ tabId }: ScriptConsolePanelProps) {
   const consoleOutput = useScriptWorkbenchStore((s) => s.tabsById[tabId]?.consoleOutput ?? [])
   const lastLenRef = useRef(0)
 
-  // Initialize terminal
+  const themePreference = useThemeStore((s) => s.theme)
+  const [systemPrefersDark, setSystemPrefersDark] = useState(resolveSystemTheme)
+
+  // Track system theme changes when preference is 'system'
+  useEffect(() => {
+    if (themePreference !== 'system') return
+    const mediaQuery = window.matchMedia(SYSTEM_MEDIA_QUERY)
+    const handleChange = (event: MediaQueryListEvent) => {
+      setSystemPrefersDark(event.matches)
+    }
+    setSystemPrefersDark(mediaQuery.matches)
+    mediaQuery.addEventListener('change', handleChange)
+    return () => mediaQuery.removeEventListener('change', handleChange)
+  }, [themePreference])
+
+  // Resolve effective theme
+  const isDark = themePreference === 'dark' || (themePreference === 'system' && systemPrefersDark)
+  const terminalTheme = isDark ? DARK_TERMINAL_THEME : LIGHT_TERMINAL_THEME
+
+  // Initialize terminal (once)
   useEffect(() => {
     if (!terminalRef.current) return
 
@@ -23,14 +96,10 @@ export function ScriptConsolePanel({ tabId }: ScriptConsolePanelProps) {
       scrollback: 10000,
       fontSize: 13,
       lineHeight: 1.2,
-      theme: {
-        background: '#0f1117',
-        foreground: '#e5e7eb',
-        cursor: '#9ca3af',
-        selectionBackground: '#374151',
-      },
+      theme: terminalTheme,
       allowTransparency: false,
       convertEol: true,
+      fontFamily: "'JetBrains Mono', 'SFMono-Regular', 'Cascadia Mono', monospace",
     })
 
     const fitAddon = new FitAddon()
@@ -46,7 +115,15 @@ export function ScriptConsolePanel({ tabId }: ScriptConsolePanelProps) {
       termInstance.current = null
       fitAddonRef.current = null
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Update theme when it changes (no dispose + recreate, preserves scrollback)
+  useEffect(() => {
+    const term = termInstance.current
+    if (!term) return
+    term.options.theme = terminalTheme
+  }, [terminalTheme])
 
   // Handle resize
   useEffect(() => {

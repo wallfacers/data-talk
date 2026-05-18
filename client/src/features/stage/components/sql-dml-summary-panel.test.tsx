@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { SqlDmlSummaryPanel } from './sql-dml-summary-panel'
 import { useSqlWorkbenchStore } from '@/features/stage/stores/sql-workbench-store'

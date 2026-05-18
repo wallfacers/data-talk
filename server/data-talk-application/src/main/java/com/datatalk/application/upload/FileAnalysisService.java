@@ -1,6 +1,8 @@
 package com.datatalk.application.upload;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.poi.ss.usermodel.Cell;
@@ -38,12 +40,14 @@ import java.util.regex.Pattern;
  * <p>
  * Supports SQL, CSV, Excel, JSON, plain-text, and image files (PNG, JPEG, GIF, WebP, BMP).
  * Files smaller than 4 KB include their full content in the result;
- * larger files only return a type-specific summary.
+ * larger files only return a type-specific summary using streaming analysis
+ * to keep memory usage constant regardless of file size.
  */
 @Service
 public class FileAnalysisService {
 
     private static final long FULL_CONTENT_THRESHOLD = 4096;
+    private static final int CSV_SAMPLE_ROWS = 5;
     private static final Set<String> SQL_TYPES = Set.of("SELECT", "INSERT", "UPDATE", "DELETE", "CREATE", "ALTER", "DROP");
     private static final Pattern TABLE_NAME_PATTERN = Pattern.compile(
             "(?:FROM|INTO|TABLE|JOIN)\\s+([\\w.]+)", Pattern.CASE_INSENSITIVE);
@@ -56,15 +60,6 @@ public class FileAnalysisService {
 
     // ── public API ──────────────────────────────────────────────────────
 
-    /**
-     * Detect MIME type from the file extension, then analyze the file contents.
-     *
-     * @param file              path to the uploaded file on disk
-     * @param detectedMimeType  MIME type detected by the caller (may be null or unreliable)
-     * @param originalFilename  the original filename as uploaded by the client
-     * @return structured analysis result
-     * @throws IllegalArgumentException if the file is empty or has an unsupported type
-     */
     public FileAnalysisResult analyze(Path file, String detectedMimeType, String originalFilename) {
         validateFile(file);
 
@@ -89,11 +84,6 @@ public class FileAnalysisService {
         }
     }
 
-    /**
-     * Detect MIME type from the file extension.
-     *
-     * @return MIME type string, or null if the extension is not in the allowed list
-     */
     public String detectMime(Path file, String originalFilename) {
         String name = originalFilename != null ? originalFilename : file.getFileName().toString();
         int dotIdx = name.lastIndexOf('.');
@@ -150,7 +140,6 @@ public class FileAnalysisService {
         ContentDecision cd = decideContent(file);
         String raw = cd.fullContent ? cd.content : Files.readString(file);
 
-        // Split by semicolons, filter blank
         String[] parts = raw.split(";");
         List<String> statements = new ArrayList<>();
         for (String part : parts) {
@@ -160,7 +149,6 @@ public class FileAnalysisService {
             }
         }
 
-        // Classify each statement
         Map<String, Integer> statementTypes = new LinkedHashMap<>();
         Set<String> targetTables = new LinkedHashSet<>();
         for (String stmt : statements) {
@@ -169,7 +157,6 @@ public class FileAnalysisService {
             extractTableNames(stmt, targetTables);
         }
 
-        // Risk level
         String riskLevel = "L1";
         if (hasDdl(statementTypes)) {
             riskLevel = "L3";
@@ -177,7 +164,6 @@ public class FileAnalysisService {
             riskLevel = "L2";
         }
 
-        // Preview: first 10 statements
         List<String> preview = statements.stream().limit(10).toList();
 
         Map<String, Object> summary = new LinkedHashMap<>();
@@ -219,53 +205,81 @@ public class FileAnalysisService {
 
     private FileAnalysisResult analyzeCsv(Path file) throws IOException {
         ContentDecision cd = decideContent(file);
+        long fileSize = Files.size(file);
 
+        if (cd.fullContent) {
+            return analyzeCsvSmall(cd, file, fileSize);
+        }
+        return analyzeCsvLarge(cd, file, fileSize);
+    }
+
+    private FileAnalysisResult analyzeCsvSmall(ContentDecision cd, Path file, long fileSize) throws IOException {
         byte[] bytes = Files.readAllBytes(file);
         String content = stripBom(bytes);
-
         List<String> lines = content.lines().toList();
         if (lines.isEmpty()) {
-            Map<String, Object> summary = new LinkedHashMap<>();
-            summary.put("headers", List.of());
-            summary.put("estimatedRows", 0);
-            summary.put("sampleRows", List.of());
-            summary.put("detectedTypes", Map.of());
-            summary.put("encoding", detectEncoding(bytes));
-            return new FileAnalysisResult("CSV", cd.fullContent, cd.content, summary);
+            return csvResult(cd, List.of(), List.of(), Map.of(), 0, detectEncoding(bytes));
         }
 
         List<String> headers = parseCsvLine(lines.get(0));
         List<List<String>> sampleRows = new ArrayList<>();
-        long sampleBytes = 0;
-        for (int i = 1; i < Math.min(6, lines.size()); i++) {
-            List<String> row = parseCsvLine(lines.get(i));
-            sampleRows.add(row);
-            sampleBytes += lines.get(i).getBytes().length;
+        for (int i = 1; i < Math.min(CSV_SAMPLE_ROWS + 1, lines.size()); i++) {
+            sampleRows.add(parseCsvLine(lines.get(i)));
         }
 
-        // Estimate rows
-        int estimatedRows;
-        if (!sampleRows.isEmpty() && sampleBytes > 0) {
-            long avgBytesPerRow = sampleBytes / sampleRows.size();
-            if (avgBytesPerRow > 0) {
-                estimatedRows = (int) (Files.size(file) / avgBytesPerRow);
-            } else {
-                estimatedRows = lines.size() - 1;
-            }
-        } else {
-            estimatedRows = lines.size() - 1;
-        }
-
-        // Infer column types from sample rows
         Map<String, String> detectedTypes = inferCsvTypes(headers, sampleRows);
+        return csvResult(cd, headers, sampleRows, detectedTypes, lines.size() - 1, detectEncoding(bytes));
+    }
 
+    private FileAnalysisResult analyzeCsvLarge(ContentDecision cd, Path file, long fileSize) throws IOException {
+        List<String> headers;
+        List<List<String>> sampleRows = new ArrayList<>();
+        String encoding = "UTF-8";
+        long sampleBytes = 0;
+
+        try (BufferedReader reader = Files.newBufferedReader(file)) {
+            String headerLine = reader.readLine();
+            if (headerLine != null && headerLine.startsWith("﻿")) {
+                headerLine = headerLine.substring(1);
+                encoding = "UTF-8-BOM";
+            }
+            if (headerLine == null || headerLine.isBlank()) {
+                return csvResult(cd, List.of(), List.of(), Map.of(), 0, encoding);
+            }
+
+            headers = parseCsvLine(headerLine);
+            sampleBytes += headerLine.getBytes().length + 1;
+
+            String line;
+            while (sampleRows.size() < CSV_SAMPLE_ROWS && (line = reader.readLine()) != null) {
+                if (!line.isBlank()) {
+                    sampleRows.add(parseCsvLine(line));
+                    sampleBytes += line.getBytes().length + 1;
+                }
+            }
+        }
+
+        int estimatedRows = 0;
+        if (!sampleRows.isEmpty() && sampleBytes > 0) {
+            long avgBytesPerRow = sampleBytes / Math.max(1, sampleRows.size());
+            if (avgBytesPerRow > 0) {
+                estimatedRows = (int) (fileSize / avgBytesPerRow);
+            }
+        }
+
+        Map<String, String> detectedTypes = inferCsvTypes(headers, sampleRows);
+        return csvResult(cd, headers, sampleRows, detectedTypes, estimatedRows, encoding);
+    }
+
+    private FileAnalysisResult csvResult(ContentDecision cd, List<String> headers,
+                                          List<List<String>> sampleRows, Map<String, String> detectedTypes,
+                                          int estimatedRows, String encoding) {
         Map<String, Object> summary = new LinkedHashMap<>();
         summary.put("headers", headers);
         summary.put("estimatedRows", Math.max(0, estimatedRows));
         summary.put("sampleRows", sampleRows);
         summary.put("detectedTypes", detectedTypes);
-        summary.put("encoding", detectEncoding(bytes));
-
+        summary.put("encoding", encoding);
         return new FileAnalysisResult("CSV", cd.fullContent, cd.content, summary);
     }
 
@@ -289,9 +303,6 @@ public class FileAnalysisService {
         return "UTF-8";
     }
 
-    /**
-     * Simple CSV line parser that handles basic double-quote quoting.
-     */
     private List<String> parseCsvLine(String line) {
         List<String> fields = new ArrayList<>();
         StringBuilder current = new StringBuilder();
@@ -365,7 +376,6 @@ public class FileAnalysisService {
                 Map<String, Object> sheetInfo = new LinkedHashMap<>();
                 sheetInfo.put("name", sheet.getSheetName());
 
-                // First row as headers
                 Row firstRow = sheet.getRow(0);
                 List<String> headers = new ArrayList<>();
                 if (firstRow != null) {
@@ -403,54 +413,122 @@ public class FileAnalysisService {
 
     private FileAnalysisResult analyzeJson(Path file) throws IOException {
         ContentDecision cd = decideContent(file);
-        String raw = cd.fullContent ? cd.content : Files.readString(file);
 
+        if (cd.fullContent) {
+            return analyzeJsonSmall(cd);
+        }
+        return analyzeJsonLarge(cd, file);
+    }
+
+    private FileAnalysisResult analyzeJsonSmall(ContentDecision cd) {
         Map<String, Object> summary = new LinkedHashMap<>();
         try {
-            JsonNode root = objectMapper.readTree(raw);
-
-            if (root.isArray()) {
-                if (!root.isEmpty() && root.get(0).isObject()) {
-                    // Array of objects
-                    summary.put("structure", "array_of_objects");
-                    Set<String> keys = new LinkedHashSet<>();
-                    root.get(0).fieldNames().forEachRemaining(keys::add);
-                    summary.put("keys", keys);
-                    summary.put("arrayLength", root.size());
-
-                    // Preview: first 2 elements
-                    List<String> preview = new ArrayList<>();
-                    for (int i = 0; i < Math.min(2, root.size()); i++) {
-                        preview.add(objectMapper.writeValueAsString(root.get(i)));
-                    }
-                    summary.put("preview", preview);
-                } else {
-                    // Plain array
-                    summary.put("structure", "array");
-                    summary.put("arrayLength", root.size());
-
-                    List<String> preview = new ArrayList<>();
-                    for (int i = 0; i < Math.min(2, root.size()); i++) {
-                        preview.add(objectMapper.writeValueAsString(root.get(i)));
-                    }
-                    summary.put("preview", preview);
-                }
-                summary.put("nestingDepth", maxDepth(root, 0));
-            } else if (root.isObject()) {
-                Set<String> keys = new LinkedHashSet<>();
-                root.fieldNames().forEachRemaining(keys::add);
-                summary.put("structure", "object");
-                summary.put("keys", keys);
-                summary.put("nestingDepth", maxDepth(root, 0));
-            } else {
-                summary.put("structure", "scalar");
-            }
+            JsonNode root = objectMapper.readTree(cd.content);
+            populateJsonSummary(root, summary);
         } catch (JsonProcessingException e) {
             summary.put("structure", "unparseable");
             summary.put("parseError", true);
         }
-
         return new FileAnalysisResult("JSON", cd.fullContent, cd.content, summary);
+    }
+
+    private FileAnalysisResult analyzeJsonLarge(ContentDecision cd, Path file) {
+        Map<String, Object> summary = new LinkedHashMap<>();
+        try (JsonParser parser = objectMapper.getFactory().createParser(file.toFile())) {
+            JsonToken token = parser.nextToken();
+            if (token == JsonToken.START_ARRAY) {
+                analyzeJsonArrayStreaming(parser, summary, file);
+            } else if (token == JsonToken.START_OBJECT) {
+                JsonNode obj = objectMapper.readTree(parser);
+                summary.put("structure", "object");
+                Set<String> keys = new LinkedHashSet<>();
+                obj.fieldNames().forEachRemaining(keys::add);
+                summary.put("keys", keys);
+                summary.put("nestingDepth", maxDepth(obj, 0));
+            } else {
+                summary.put("structure", "scalar");
+            }
+        } catch (IOException e) {
+            summary.put("structure", "unparseable");
+            summary.put("parseError", true);
+        }
+        return new FileAnalysisResult("JSON", false, null, summary);
+    }
+
+    private void analyzeJsonArrayStreaming(JsonParser parser, Map<String, Object> summary,
+                                            Path file) throws IOException {
+        JsonToken next = parser.nextToken();
+        if (next == JsonToken.START_OBJECT) {
+            summary.put("structure", "array_of_objects");
+            JsonNode firstObj = objectMapper.readTree(parser);
+            Set<String> keys = new LinkedHashSet<>();
+            firstObj.fieldNames().forEachRemaining(keys::add);
+            summary.put("keys", keys);
+            summary.put("nestingDepth", maxDepth(firstObj, 0));
+
+            List<String> preview = new ArrayList<>();
+            preview.add(objectMapper.writeValueAsString(firstObj));
+
+            if (parser.nextToken() == JsonToken.START_OBJECT) {
+                JsonNode secondObj = objectMapper.readTree(parser);
+                preview.add(objectMapper.writeValueAsString(secondObj));
+            }
+            summary.put("preview", preview);
+
+            long fileSize = Files.size(file);
+            if (!preview.isEmpty()) {
+                long firstElemSize = preview.get(0).getBytes().length;
+                if (firstElemSize > 0) {
+                    summary.put("arrayLength", (int) (fileSize / firstElemSize));
+                }
+            }
+        } else if (next != null) {
+            summary.put("structure", "array");
+            List<String> preview = new ArrayList<>();
+            preview.add(parser.getValueAsString());
+            summary.put("preview", preview);
+            summary.put("arrayLength", 0);
+        } else {
+            summary.put("structure", "array");
+            summary.put("arrayLength", 0);
+            summary.put("preview", List.of());
+        }
+    }
+
+    private void populateJsonSummary(JsonNode root, Map<String, Object> summary) throws JsonProcessingException {
+        if (root.isArray()) {
+            if (!root.isEmpty() && root.get(0).isObject()) {
+                summary.put("structure", "array_of_objects");
+                Set<String> keys = new LinkedHashSet<>();
+                root.get(0).fieldNames().forEachRemaining(keys::add);
+                summary.put("keys", keys);
+                summary.put("arrayLength", root.size());
+
+                List<String> preview = new ArrayList<>();
+                for (int i = 0; i < Math.min(2, root.size()); i++) {
+                    preview.add(objectMapper.writeValueAsString(root.get(i)));
+                }
+                summary.put("preview", preview);
+            } else {
+                summary.put("structure", "array");
+                summary.put("arrayLength", root.size());
+
+                List<String> preview = new ArrayList<>();
+                for (int i = 0; i < Math.min(2, root.size()); i++) {
+                    preview.add(objectMapper.writeValueAsString(root.get(i)));
+                }
+                summary.put("preview", preview);
+            }
+            summary.put("nestingDepth", maxDepth(root, 0));
+        } else if (root.isObject()) {
+            Set<String> keys = new LinkedHashSet<>();
+            root.fieldNames().forEachRemaining(keys::add);
+            summary.put("structure", "object");
+            summary.put("keys", keys);
+            summary.put("nestingDepth", maxDepth(root, 0));
+        } else {
+            summary.put("structure", "scalar");
+        }
     }
 
     private int maxDepth(JsonNode node, int current) {
@@ -487,19 +565,17 @@ public class FileAnalysisService {
     private FileAnalysisResult analyzeImage(Path file, String mime) throws IOException {
         long sizeBytes = Files.size(file);
 
-        String format = mime.substring(mime.indexOf('/') + 1); // e.g. "png", "jpeg", "gif", "webp", "bmp"
+        String format = mime.substring(mime.indexOf('/') + 1);
 
         int width = 0;
         int height = 0;
 
-        // Try ImageIO first — works for PNG, JPEG, GIF, BMP
         byte[] bytes = Files.readAllBytes(file);
         BufferedImage image = ImageIO.read(new ByteArrayInputStream(bytes));
         if (image != null) {
             width = image.getWidth();
             height = image.getHeight();
         } else {
-            // Fallback: use ImageReader API which handles more formats (including WebP if a reader is registered)
             try (ImageInputStream iis = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
                 Iterator<ImageReader> readers = ImageIO.getImageReaders(iis);
                 if (readers.hasNext()) {

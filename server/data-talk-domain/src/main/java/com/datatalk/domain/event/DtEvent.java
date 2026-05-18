@@ -123,6 +123,10 @@ public sealed interface DtEvent {
     @JsonTypeName("semantic.verified_query.recorded")
     record VerifiedQueryRecorded(String vqId, String question, String modelRef) implements DtEvent {}
 
+    @JsonTypeName("export.completed")
+    record ExportCompleted(String sessionId, String exportId, String downloadUrl,
+                           int rowCount, String format, long fileSizeBytes) implements DtEvent {}
+
     @JsonTypeName("heartbeat")
     record Heartbeat(long ts) implements DtEvent {}
     @JsonTypeName("ping")
@@ -169,6 +173,7 @@ public sealed interface DtEvent {
             case ScriptRunCompleted src   -> "script.run.completed";
             case SemanticPendingCreated spc -> "semantic.pending.created";
             case VerifiedQueryRecorded vqr -> "semantic.verified_query.recorded";
+            case ExportCompleted ec    -> "export.completed";
             case Heartbeat hb             -> "heartbeat";
             case PingPong pp              -> "ping";
             case StreamError se           -> "error";

@@ -82,4 +82,8 @@ public class ScriptRunRepository {
             durationMs, id
         );
     }
+
+    public void updateTargetTable(String runId, String tableName) {
+        jdbc.update("UPDATE script_run SET target_table = ? WHERE id = ?", tableName, runId);
+    }
 }

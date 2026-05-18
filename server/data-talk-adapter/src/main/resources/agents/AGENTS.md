@@ -82,6 +82,8 @@ Tool catalogue — one-line purpose + owning skill. Required input details, erro
 | `datatalk_semantic_propose_change` | Propose a new/modified semantic model YAML (write to pending/) | skill:semantic-model-usage |
 | `datatalk_literal_mapping_add` | Add natural-language-to-db-value mapping for a dimension | skill:semantic-model-usage |
 | `datatalk_skill_create` | Create a new business domain semantic model (AI self-skill) | skill:skill-creator |
+| `datatalk_import_data` | Import CSV/Excel/JSON file or cross-DB query result into a database table (streaming, data never enters AI context) | skill:file-upload-routing |
+| `datatalk_export_data` | Export query/table results as CSV/JSON/XLSX/SQL_INSERT (sync <10K rows, async + SSE for larger) | skill:sql-execution |
 
 Supported UI object types: `workspace`, `query_editor`, `er_inspector`, `er_designer`, `dashboard`.
 

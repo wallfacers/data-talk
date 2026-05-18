@@ -2,7 +2,7 @@
 
 ### Requirement: 批量写入（单次全量）
 
-脚本 SHALL 能通过后端 REST API 将一组数据一次性写入目标数据库表。
+脚本 SHALL 能通过后端 REST API 将一组数据一次性写入目标数据库表。首次写入时必须回写 `targetTable` 到 `script_run` 记录。
 
 #### Scenario: 自动建表 + 写入
 
@@ -98,3 +98,26 @@ ScriptDataWriteService SHALL 支持所有已注册的数据库类型。
 
 - **WHEN** 脚本向 Oracle/SQLServer/DuckDB/ClickHouse 等连接写入数据
 - **THEN** 使用通用 JDBC INSERT（单条或小批次），确保兼容性
+
+### Requirement: targetTable 回写
+
+ScriptDataWriteService SHALL 在首次成功写入数据后，更新 `script_run.target_table` 字段。
+
+#### Scenario: 首次写入回写 targetTable
+
+- **GIVEN** 一个有效的 ScriptToken，`script_run.target_table` 为 NULL
+- **WHEN** `POST /api/script-data/write` 成功写入 N 行（N>0）
+- **THEN** 后端更新 `script_run.target_table = tableName`
+- **AND** targetTable 字段不再重复更新（仅首次写入时设置）
+
+#### Scenario: 已写入过的 run 不重复回写
+
+- **GIVEN** 一个有效的 ScriptToken，`script_run.target_table` 已设置为 `"my_table"`
+- **WHEN** 同一脚本再次调用 `POST /api/script-data/write` 写入同名表
+- **THEN** 后端不重复更新 `target_table` 字段
+
+#### Scenario: 流式写入回写 targetTable
+
+- **GIVEN** 一个有效的流式写入 session，`script_run.target_table` 为 NULL
+- **WHEN** `POST /api/script-data/batch`（batchIndex=0）成功写入
+- **THEN** 后端更新 `script_run.target_table = tableName`

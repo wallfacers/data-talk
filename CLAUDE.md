@@ -223,16 +223,6 @@ Runtime deviations are centrally tracked in `docs/bugs/`. See [docs/bugs/index.m
 - The `tmp/` directory is git-ignored and **MUST NOT** be committed. Do not add files inside it via `git add`, and never relocate generated artifacts out of `tmp/` just to bypass the ignore rule
 - **Sole exception**: BUG evidence screenshots (`docs/bugs/assets/<BUG-ID>/`, PNG ≤ 500KB each) may be committed to git. Large artifacts (trace, HAR, HTML, etc.) **must remain in `tmp/`** and must not be committed
 
-### Ingestion Artifact Path Convention
-
-- HTTP-fetched payloads are persisted under `~/.data-talk/ingestion/<jobId>/payload.<json|jsonl|csv|html>` (separate from the standard artifact directory). They are registered in `file_artifact` with `kind=ingestion_payload` and `physical_path` set to the absolute filesystem path
-- The 500MB cap is enforced by `IngestionPayloadFetcher` before final atomic rename — partial writes go to `payload.staging` and are deleted on overrun. Do not attempt to short-circuit the staging step
-- `IngestionConfirmedToken` is in-memory only (`ConcurrentHashMap`, 5-min TTL, single-use). It is not persisted across server restarts — clients must re-confirm after a restart
-
-### Ingestion E2E Profile
-
-- Playwright ingestion specs (`tests/e2e/ingestion-*.spec.ts`) require the backend to be launched with `SPRING_PROFILES_ACTIVE=e2e`. This relaxes SSRF deny so the local mock HTTP server on `127.0.0.1` is reachable and lowers `payload-max-bytes` to 1 MB so the "payload too large" path can be exercised within ~1 s
-- Never start the backend with this profile in production, staging, or shared dev environments
 
 ### Branching & Release
 

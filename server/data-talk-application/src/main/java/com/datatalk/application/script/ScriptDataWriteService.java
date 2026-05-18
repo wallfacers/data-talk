@@ -13,7 +13,8 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.Statement;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
@@ -25,6 +26,7 @@ import java.util.Set;
 public class ScriptDataWriteService {
 
     private static final Logger log = LoggerFactory.getLogger(ScriptDataWriteService.class);
+    private static final int BATCH_SIZE = 1000;
 
     private final ConnectionRepository connRepo;
     private final ConnectionService connSvc;
@@ -36,8 +38,19 @@ public class ScriptDataWriteService {
 
     public record WriteResult(int rowsInserted, String tableName, List<String> columnsCreated) {}
 
+    public record ColumnInfo(String name, String ddlType) {}
+
+    public record StreamWriteResult(int rowsInserted, String tableName, List<ColumnInfo> columns) {}
+
+    // ── batch write (List<Map>) ──────────────────────────────────────
+
     public WriteResult write(String connectionId, String tableName, List<Map<String, Object>> rows,
                               boolean createTable) {
+        return write(connectionId, tableName, rows, createTable, null);
+    }
+
+    public WriteResult write(String connectionId, String tableName, List<Map<String, Object>> rows,
+                              boolean createTable, Map<String, String> columnTypes) {
         if (rows == null || rows.isEmpty()) {
             return new WriteResult(0, tableName, List.of());
         }
@@ -46,8 +59,10 @@ public class ScriptDataWriteService {
         List<String> columnsCreated = List.of();
 
         try (Connection c = openConnection(connectionId)) {
+            c.setAutoCommit(false);
             if (createTable && !tableExists(c, tableName)) {
-                String ddl = buildCreateTableSql(tableName, columns, rows.get(0));
+                String ddl = buildCreateTableSql(tableName, columns, rows.get(0), columnTypes);
+                log.info("DDL: {}", ddl);
                 c.createStatement().execute(ddl);
                 columnsCreated = columns;
                 log.info("Created table {} with columns {}", tableName, columns);
@@ -63,6 +78,7 @@ public class ScriptDataWriteService {
                 }
                 int[] counts = ps.executeBatch();
                 int total = Arrays.stream(counts).sum();
+                c.commit();
                 log.info("Inserted {} rows into {}", total, tableName);
                 return new WriteResult(total, tableName, columnsCreated);
             }
@@ -71,7 +87,75 @@ public class ScriptDataWriteService {
         }
     }
 
-    private Connection openConnection(String connectionId) throws Exception {
+    // ── stream write (ResultSet cursor) ──────────────────────────────
+
+    public StreamWriteResult writeStream(String connectionId, String tableName, ResultSet rs,
+                                          boolean createTable, Map<String, String> columnTypes) {
+        try {
+            ResultSetMetaData meta = rs.getMetaData();
+            int colCount = meta.getColumnCount();
+            List<String> colNames = new ArrayList<>();
+            List<ColumnInfo> columns = new ArrayList<>();
+
+            for (int i = 1; i <= colCount; i++) {
+                String colName = meta.getColumnLabel(i);
+                colNames.add(colName);
+                String ddlType = ColumnTypeMapper.mapWithOverride(
+                    meta.getColumnType(i), meta.getPrecision(i), meta.getScale(i),
+                    colName, columnTypes);
+                columns.add(new ColumnInfo(colName, ddlType));
+            }
+
+            try (Connection c = openConnection(connectionId)) {
+                c.setAutoCommit(false);
+
+                if (createTable && !tableExists(c, tableName)) {
+                    String ddl = buildCreateTableFromColumns(tableName, columns);
+                    c.createStatement().execute(ddl);
+                    log.info("Created table {} with columns {}", tableName, columns);
+                }
+
+                String insertSql = buildInsertSql(tableName, colNames);
+                int totalRows = streamFromCursor(c, rs, colCount, insertSql);
+                log.info("Streamed {} rows into {}", totalRows, tableName);
+                return new StreamWriteResult(totalRows, tableName, columns);
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to stream data to " + tableName + ": " + e.getMessage(), e);
+        }
+    }
+
+    private int streamFromCursor(Connection c, ResultSet rs, int colCount,
+                                  String insertSql) throws SQLException {
+        try (PreparedStatement ps = c.prepareStatement(insertSql)) {
+            int batchCount = 0;
+            int totalRows = 0;
+            while (rs.next()) {
+                for (int i = 0; i < colCount; i++) {
+                    ps.setObject(i + 1, rs.getObject(i + 1));
+                }
+                ps.addBatch();
+                batchCount++;
+                if (batchCount >= BATCH_SIZE) {
+                    int[] counts = ps.executeBatch();
+                    totalRows += Arrays.stream(counts).sum();
+                    c.commit();
+                    ps.clearBatch();
+                    batchCount = 0;
+                }
+            }
+            if (batchCount > 0) {
+                int[] counts = ps.executeBatch();
+                totalRows += Arrays.stream(counts).sum();
+                c.commit();
+            }
+            return totalRows;
+        }
+    }
+
+    // ── connection ────────────────────────────────────────────────────
+
+    public Connection openConnection(String connectionId) throws Exception {
         ConnectionRecord cr = connRepo.findById(connectionId)
             .orElseThrow(() -> new IllegalArgumentException("Unknown connection: " + connectionId));
         String password = connSvc.decryptPassword(connectionId);
@@ -84,28 +168,35 @@ public class ScriptDataWriteService {
         return DriverManager.getConnection(url, effectiveUsername, password);
     }
 
-    private List<String> inferColumns(List<Map<String, Object>> rows) {
-        Set<String> cols = new LinkedHashSet<>();
-        for (Map<String, Object> row : rows) {
-            cols.addAll(row.keySet());
-        }
-        return new ArrayList<>(cols);
-    }
+    // ── DDL helpers ──────────────────────────────────────────────────
 
     private boolean tableExists(Connection c, String tableName) throws Exception {
-        try (ResultSet rs = c.getMetaData().getTables(null, null, tableName, new String[]{"TABLE"})) {
+        String schema = c.getSchema();
+        try (ResultSet rs = c.getMetaData().getTables(c.getCatalog(), schema, tableName, new String[]{"TABLE"})) {
             return rs.next();
         }
     }
 
-    private String buildCreateTableSql(String tableName, List<String> columns, Map<String, Object> sampleRow) {
+    private String buildCreateTableSql(String tableName, List<String> columns,
+                                        Map<String, Object> sampleRow, Map<String, String> columnTypes) {
         StringBuilder sb = new StringBuilder("CREATE TABLE ").append(quoteIdentifier(tableName)).append(" (");
         for (int i = 0; i < columns.size(); i++) {
             if (i > 0) sb.append(", ");
             String col = columns.get(i);
-            Object val = sampleRow.get(col);
-            String sqlType = inferSqlType(val);
+            String sqlType = (columnTypes != null && columnTypes.containsKey(col))
+                ? columnTypes.get(col)
+                : inferSqlType(sampleRow.get(col));
             sb.append(quoteIdentifier(col)).append(" ").append(sqlType);
+        }
+        sb.append(")");
+        return sb.toString();
+    }
+
+    private String buildCreateTableFromColumns(String tableName, List<ColumnInfo> columns) {
+        StringBuilder sb = new StringBuilder("CREATE TABLE ").append(quoteIdentifier(tableName)).append(" (");
+        for (int i = 0; i < columns.size(); i++) {
+            if (i > 0) sb.append(", ");
+            sb.append(quoteIdentifier(columns.get(i).name())).append(" ").append(columns.get(i).ddlType());
         }
         sb.append(")");
         return sb.toString();
@@ -124,6 +215,14 @@ public class ScriptDataWriteService {
         }
         sb.append(")");
         return sb.toString();
+    }
+
+    private List<String> inferColumns(List<Map<String, Object>> rows) {
+        Set<String> cols = new LinkedHashSet<>();
+        for (Map<String, Object> row : rows) {
+            cols.addAll(row.keySet());
+        }
+        return new ArrayList<>(cols);
     }
 
     private static String quoteIdentifier(String id) {

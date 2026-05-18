@@ -2,6 +2,7 @@ package com.datatalk.adapter.controller;
 
 import com.datatalk.application.script.ScriptDataBatchService;
 import com.datatalk.application.script.ScriptDataWriteService;
+import com.datatalk.application.script.ScriptRunRepository;
 import com.datatalk.application.script.ScriptRunService;
 import com.datatalk.application.script.ScriptTokenStore;
 import org.springframework.http.ResponseEntity;
@@ -17,12 +18,14 @@ public class ScriptDataController {
     private final ScriptRunService runService;
     private final ScriptDataWriteService writeService;
     private final ScriptDataBatchService batchService;
+    private final ScriptRunRepository runRepository;
 
     public ScriptDataController(ScriptRunService runService, ScriptDataWriteService writeService,
-                                 ScriptDataBatchService batchService) {
+                                 ScriptDataBatchService batchService, ScriptRunRepository runRepository) {
         this.runService = runService;
         this.writeService = writeService;
         this.batchService = batchService;
+        this.runRepository = runRepository;
     }
 
     @PostMapping("/write")
@@ -48,6 +51,17 @@ public class ScriptDataController {
             ScriptDataWriteService.WriteResult result = writeService.write(connectionId, tableName, rows, createTable);
             runService.updateRowsWritten(validated.runId(),
                 runService.findById(validated.runId()).orElseThrow().rowsWritten() + result.rowsInserted());
+
+            // Write back targetTable if this is the first write that created the table
+            if (createTable && !result.columnsCreated().isEmpty()) {
+                var run = runRepository.findById(validated.runId());
+                run.ifPresent(r -> {
+                    if (r.targetTable() == null) {
+                        runRepository.updateTargetTable(validated.runId(), tableName);
+                    }
+                });
+            }
+
             return ResponseEntity.ok(Map.of(
                 "rowsInserted", result.rowsInserted(),
                 "tableName", result.tableName(),
@@ -80,6 +94,17 @@ public class ScriptDataController {
 
         try {
             var result = batchService.writeBatch(sessionId, connectionId, tableName, rows, createTable);
+
+            // Write back targetTable on first batch that creates the table
+            if (createTable && sessionId == null) {
+                var run = runRepository.findById(validated.runId());
+                run.ifPresent(r -> {
+                    if (r.targetTable() == null) {
+                        runRepository.updateTargetTable(validated.runId(), tableName);
+                    }
+                });
+            }
+
             return ResponseEntity.ok(Map.of(
                 "sessionId", result.sessionId(),
                 "rowsInserted", result.rowsInserted(),

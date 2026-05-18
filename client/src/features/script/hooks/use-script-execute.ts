@@ -96,9 +96,26 @@ export function useScriptExecute(tabId: string) {
     try {
       await tauriStopScript(tab.currentRunId)
     } catch {
-      // Ignore stop errors
+      // Ignore Tauri stop errors
     }
-  }, [tab?.currentRunId])
+
+    // Sync CANCELLED status to backend
+    try {
+      const output = useScriptWorkbenchStore.getState().tabsById[tabId]?.consoleOutput
+        .map((e) => e.text)
+        .join('\n') ?? ''
+      await scriptApi.runComplete(tab.currentRunId, {
+        exitCode: -1,
+        stdoutText: output,
+      })
+    } catch {
+      appendConsoleOutput(tabId, {
+        channel: 'stderr',
+        text: 'Failed to notify server of cancellation',
+        timestamp: Date.now(),
+      })
+    }
+  }, [tab?.currentRunId, tabId, appendConsoleOutput])
 
   const cleanupListeners = useCallback(() => {
     unlistenRefs.current.forEach((fn) => fn())

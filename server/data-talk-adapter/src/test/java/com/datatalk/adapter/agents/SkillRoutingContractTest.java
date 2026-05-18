@@ -329,4 +329,44 @@ class SkillRoutingContractTest {
         }
         return body.substring(3, closing).trim();
     }
+
+    // ---------- Import routing: intent-aware file-upload-routing ----------
+
+    @Test
+    void fileUploadRoutingSkillMentionsImportActionAndKeywords() throws IOException {
+        String skillMd = loadSkillMd("file-upload-routing");
+
+        // Must reference datatalk_import_data as the import action
+        assertThat(skillMd)
+            .as("file-upload-routing SKILL.md must reference datatalk_import_data")
+            .contains("datatalk_import_data");
+
+        // Must include intent classification with import keywords
+        assertThat(skillMd)
+            .as("file-upload-routing SKILL.md must contain intent classification for import")
+            .contains("导入");
+
+        // Must reference datatalk_export_data for export
+        assertThat(skillMd)
+            .as("file-upload-routing SKILL.md must reference datatalk_export_data")
+            .contains("datatalk_export_data");
+
+        // Must NOT contain the old TODO(Task 13) marker
+        assertThat(skillMd)
+            .as("file-upload-routing SKILL.md must not contain TODO(Task 13)")
+            .doesNotContain("TODO(Task 13)");
+    }
+
+    @Test
+    void agentsMdRegisteredActionsIncludeImportAndExport() throws IOException {
+        String agentsMd = loadAgentsMd();
+
+        assertThat(agentsMd)
+            .as("AGENTS.md Registered Actions must include datatalk_import_data")
+            .contains("| `datatalk_import_data`");
+
+        assertThat(agentsMd)
+            .as("AGENTS.md Registered Actions must include datatalk_export_data")
+            .contains("| `datatalk_export_data`");
+    }
 }

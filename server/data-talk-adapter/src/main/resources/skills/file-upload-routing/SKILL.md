@@ -1,6 +1,6 @@
 ---
 name: file-upload-routing
-description: Routes uploaded files to appropriate actions based on pre-analysis summary. Activated when user message contains a file_upload part.
+description: Routes uploaded files to appropriate actions based on pre-analysis summary and user intent. Activated when user message contains a file_upload part.
 ---
 
 # File Upload Routing
@@ -14,6 +14,20 @@ This skill activates when a user message contains a `file_upload` part. The part
 - `sizeBytes` — file size
 - `analysis` — pre-processed metadata (type, summary)
 
+The user's accompanying text message determines the **intent**. You MUST classify intent before choosing an action.
+
+## Intent Classification
+
+For CSV, Excel, and JSON (array_of_objects) files, classify the user's intent from their message:
+
+| Intent Signals | Intent | Action |
+|---|---|---|
+| "导入" / "入库" / "建表" / "import" / "load" / "导入到数据库" | **Import** | `datatalk_import_data` |
+| "分析" / "统计" / "看看" / "趋势" / "分布" / "analyze" / "summary" | **Analyze** | `datatalk_file_read` (read sample) + `datatalk_execute_sql` |
+| Unclear / no explicit signal | **Ask** | Ask user: "你想分析这个文件，还是把数据导入到数据库表中？" |
+
+For SQL, Text, Image, and Unknown files, follow the type-specific rules below — no intent classification needed.
+
 ## Routing Rules
 
 ### SQL Files (analysis.type = "SQL")
@@ -25,14 +39,19 @@ This skill activates when a user message contains a `file_upload` part. The part
 - Show `analysis.summary.preview` to user so they can see what statements were detected
 
 ### CSV/Excel Files (analysis.type = "CSV" or "EXCEL")
-- If `analysis.summary.headers` exists, structured data was detected
-- Suggest creating a table and importing the data
-- Propose table name based on filename (without extension)
+
+**Import intent** — use `datatalk_import_data`:
+- Source: `{ type: "file", fileId }`
+- Target: propose `connectionId` (use active session connection), `tableName` (derive from filename without extension)
+- `createTable: true` for first file; `createTable: false` for subsequent files to same table
 - Propose column schema based on `analysis.summary.detectedTypes` (CSV) or sheet headers (Excel)
-- TODO(Task 13): Use `datatalk_import_data` action to execute the import
+- After import, report `rowsImported`, `columns`, and show `sampleRows` (first 3 rows) to user
+- **Multi-file scenario**: user drops multiple CSV files → call `datatalk_import_data` once per file sequentially (first with `createTable: true`, rest with `createTable: false`)
+
+**Analyze intent** — use `datatalk_file_read` to read a sample, then discuss findings with the user. Do NOT import.
 
 ### JSON Files (analysis.type = "JSON")
-- `structure = "array_of_objects"`: Route like CSV, suggest table import
+- `structure = "array_of_objects"`: Apply the same intent classification as CSV/Excel above
 - `structure = "object"`: Summarize keys and ask user intent
 - `parseError = true`: Inform user, ask what to do
 
@@ -64,6 +83,7 @@ Use `datatalk_file_read` action to read specific portions of the file:
 ## Cross-References
 
 - `datatalk_file_read` — on-demand file content reading
-- `datatalk_import_data` (TODO: Task 13) — data import into database
+- `datatalk_import_data` — import file data or cross-DB query into a database table
+- `datatalk_export_data` — export query/table results as CSV/JSON/XLSX/SQL_INSERT
 - SQL guarded execution flow (skill:sql-execution) — for SQL file execution
 - skill:query-editor-workflow — for opening SQL in query editor
