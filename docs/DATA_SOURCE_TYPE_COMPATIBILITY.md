@@ -1030,6 +1030,25 @@ stmt.setFetchSize(500);
 
 File import and cross-DB copy both write data using standard JDBC `PreparedStatement.executeBatch()`. All 19 first-class connection kinds are supported. See the **Script Data Write Compatibility** section above for the full compatibility matrix.
 
+### Schema Search Support Matrix
+
+`datatalk_schema_search` looks up candidate tables by keyword (Chinese / English / pinyin / synonym) using JDBC `DatabaseMetaData.getTables()` + `getColumns()`. Match locations are table name, column name, and column / table `REMARKS`. Score: `3 * table-name + 2 * column-name + 1 * comment`.
+
+| kind | Support level | Comment support | Notes |
+|------|---------------|-----------------|-------|
+| mysql / mariadb / tidb / oceanbase / apache_doris / starrocks | **full** | yes | `REMARKS` exposed via JDBC driver (`useInformationSchema=true` recommended in URL). MySQL-protocol drivers also accept `INFORMATION_SCHEMA` fallback. |
+| postgresql / gaussdb / kingbase | **full** | yes | PG driver exposes `pg_description` via `REMARKS`. |
+| oracle / dameng | **full** | yes | Oracle / DM JDBC `remarksReporting=true` URL flag required for `REMARKS`. Without it, falls back to name-only match. |
+| sqlserver | **full** | yes | SQL Server JDBC exposes `extended_properties.MS_Description` as `REMARKS`. |
+| clickhouse | **full** | yes | ClickHouse JDBC exposes `comment` column on `system.tables` / `system.columns` as `REMARKS`. |
+| trino / presto | **full** | yes | Driver exposes catalog comments when underlying connector supports them. |
+| sqlite | **degraded** | no | SQLite has no native column-comment storage. Match falls back to table-name / column-name only; `commentSnippet = ""`. Action returns success, not an error. |
+| duckdb | **degraded** | partial | DuckDB community extension support; comments may be empty depending on DuckDB version. Falls back to name-only match if `REMARKS` is null. |
+| hive | **degraded** | table-only | Hive `DESCRIBE EXTENDED` is slow; first-version implementation only matches table name. Column-level `REMARKS` deferred to a future iteration. |
+| (unknown kind, fails `ConnectionKind.normalize`) | **error** | n/a | Action returns `errorCode = sql.dialect_unsupported` with the kind name in the message. |
+
+The matrix is informational; the action self-discovers via JDBC metadata and does not branch on `kind` for the happy path. Degraded kinds simply yield no `comment` matches, never a hard error.
+
 ### Known Limitations
 
 - **MySQL cursor**: Requires `useCursorFetch=true` JDBC URL parameter for true server-side cursor. Without it, the MySQL driver fetches the entire result set into memory regardless of `fetchSize`.

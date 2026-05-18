@@ -9,6 +9,7 @@
 - V12 (2026-04-27): added persistent stage tabs, payload storage, and FTS5 content index (`stage_tabs`, `stage_tab_payload`, `stage_tab_index`).
 - V13 (2026-04-28): removed `stage_tabs.scope`, rebuilt FTS rowid mapping, and changed `origin_session_id` FK from `ON DELETE CASCADE` to `ON DELETE SET NULL`.
 - V14 (2026-04-29): added physical file artifact index table `file_artifact` with application-managed `session_id` / `connection_id` references.
+- V3-new (2026-05-19): added `sql_execution_history` table — per-session SQL execution log used by `datatalk_query_history` action and `AgentPromptBuilder` placeholders (`{{RECENT_FAILED_QUERIES_DIGEST}}` / `{{ACTIVE_CONNECTION_SUMMARY}}`).
 
 SQLite 元数据库，由 Flyway 管理迁移。
 
@@ -164,6 +165,32 @@ SQLite 元数据库，由 Flyway 管理迁移。
 | content_text | TEXT | NOT NULL | 供搜索/AI 使用的纯文本内容 |
 | content_version | INTEGER | NOT NULL | 内容版本 |
 | updated_at | INTEGER | NOT NULL | 更新时间 |
+
+## sql_execution_history — SQL 执行历史(V3)
+
+| 列 | 类型 | 约束 | 说明 |
+|----|------|------|------|
+| id | INTEGER | PK AUTOINCREMENT | 自增主键 |
+| session_id | TEXT | NOT NULL | 隶属 session(用于 query_history 隔离) |
+| connection_id | TEXT | NOT NULL | 执行 SQL 的连接 |
+| database_name | TEXT |  | 执行时所在 database |
+| schema_name | TEXT |  | 执行时所在 schema |
+| sql_text | TEXT | NOT NULL | SQL 文本,截断到 4 KB,超长尾部带 `...` |
+| status | TEXT | NOT NULL, CHECK IN ('success','failure') | 执行结果状态 |
+| error_code | TEXT |  | 仅 failure 行有值 |
+| error_message | TEXT |  | 仅 failure 行有值,截断到 1 KB |
+| executed_at | INTEGER | NOT NULL | epoch ms |
+| duration_ms | INTEGER |  | 执行时长 |
+| row_count | INTEGER |  | 仅 success 行有值 |
+
+索引:
+- `idx_sql_history_session_executed` ON (`session_id`, `executed_at` DESC)
+- `idx_sql_history_session_status` ON (`session_id`, `status`, `executed_at` DESC)
+
+说明:
+- 写入路径:`ExecuteSqlAction.executeSql()` 在 JDBC 提交后调用 `SqlExecutionHistoryService.record()`,**仅真正执行 SQL 时写**(DELETE `requires_confirmation` 第一次调用不写)
+- 保留策略:每 session 最近 100 条,超出由 virtual-thread 异步触发裁剪
+- 消费者:`datatalk_query_history` action、`AgentPromptBuilder` 的 `{{RECENT_FAILED_QUERIES_DIGEST}}` / `{{ACTIVE_CONNECTION_SUMMARY}}` 占位符
 
 ## stage_tab_index — Tab 全文索引
 
