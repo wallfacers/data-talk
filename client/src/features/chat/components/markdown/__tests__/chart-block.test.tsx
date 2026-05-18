@@ -110,16 +110,22 @@ describe('ChartBlock', () => {
     expect(screen.getByTestId('chart-canvas-host')).toBeInTheDocument()
   })
 
-  it('shows 已在工作台 when an ontology chart matches origin fields', () => {
+  it('BUG-0064: skips ChartRenderer + hides promote button when a matching chart artifact already exists', () => {
+    // When the LLM emits both `datatalk_render_chart` (which creates an
+    // ontology chart artifact) AND a markdown chart fenced block in the same
+    // reply, the artifact-created tool card already renders the chart above
+    // and owns the "open to workbench" affordance. ChartBlock must dedup the
+    // canvas AND hide its own promote button to avoid two competing entry
+    // points.
     useOntologyStore.setState({
       artifactsBySession: new Map([
         [
           's1',
           new Map([
             [
-              'art-42',
+              'art-dedup',
               {
-                id: 'art-42',
+                id: 'art-dedup',
                 version: 1,
                 kind: 'chart',
                 originMessageId: 'm',
@@ -141,7 +147,17 @@ describe('ChartBlock', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: /已在工作台/ })).toBeInTheDocument()
+    expect(screen.queryByTestId('chart-canvas-host')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('chart-renderer-mock')).not.toBeInTheDocument()
+    const hint = screen.getByTestId('chart-deduped-hint')
+    expect(hint).toHaveAttribute('data-dedup-skipped', 'true')
+    expect(hint).toHaveTextContent(/已在上方图表产物中展示/)
+    // Promote / "open to workbench" must be owned by ArtifactCreated above; ChartBlock hides it on dedup.
+    expect(screen.queryByRole('button', { name: /打开到工作台/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /已在工作台/ })).not.toBeInTheDocument()
+    // Expand / copy stay available on ChartBlock as secondary affordances.
+    expect(screen.getByRole('button', { name: /放大图表/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /复制 JSON/ })).toBeInTheDocument()
   })
 
   it('shows an error toast and resets the promote button when promotion fails', async () => {

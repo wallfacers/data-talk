@@ -24,6 +24,18 @@ description: Use when the user asks for a chart, KPI, trend, report, or multi-wi
 - **Linking to a SQL artifact**: when the chart is derived from a prior `datatalk_execute_sql` artifact, open the fence as `chart:<artifactId>` (e.g. the opening fence becomes ```` ```chart:art-abc123 ````). The frontend uses this prefix to bind the chart to its source rowset and to enable refresh/drill semantics.
 - **Saved chart artifact via `datatalk_render_chart`**: call this tool **only** when a persistent chart artifact is required (sharing, embedding into a dashboard widget that needs an artifact reference, or supersede chains). The tool emits its own artifact link semantics — see `[[artifacts-output]]` for `supersedes` chain rules.
 
+### Single chart, single render — never emit the same chart twice
+
+Pick **exactly one** rendering path per chart. The frontend has two independent renderers (the `artifact-created` tool card from `datatalk_render_chart` and the `ChartBlock` from a markdown ```` ```chart ```` / ```` ```echarts ```` fenced block), and they do **not** deduplicate against each other. Emitting both for the same chart produces two visible copies in the same chat bubble.
+
+Hard rules:
+
+- After calling `datatalk_render_chart`, do **not** also embed the same chart as a ```` ```chart ```` / ```` ```echarts ```` fenced block in the same reply. The artifact is the single source of truth; the tool-card render already shows it.
+- After emitting a ```` ```chart ```` / ```` ```echarts ```` fenced block, do **not** also call `datatalk_render_chart` with the same option in the same reply.
+- ```` ```echarts ```` is treated as an alias of ```` ```chart ```` and is bound by the same rules.
+
+When the user later asks for an action that needs an artifact reference (promote-to-stage, supersede, embed in dashboard), `ChartBlock` exposes the promote button; switch to `datatalk_render_chart` only when the user actually asks for the persistent representation.
+
 ## Dashboards
 
 A dashboard is a persistent multi-widget layout backed by server-side JSON storage. Use dashboards when the user asks for a composed view with multiple charts, KPI tiles, tables, or markdown annotations arranged in a grid.

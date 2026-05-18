@@ -29,7 +29,17 @@ Hard-ordered sequence. Each step MUST complete before the next runs.
 1. `datatalk_get_data_context` — confirm active connection / database / schema. If `<no active session>`, stop and ask the user to bind one.
 2. `datatalk_schema_search` *if you do not yet know the exact table name* — pass the user's keyword (Chinese / English / pinyin). Read the returned candidates' table / column / comment matches and pick the highest-scoring candidate. Do NOT repeatedly call `datatalk_read_schema` to guess a table name; that is exactly the failure mode this skill exists to prevent.
 3. `datatalk_read_schema` — describe every table you plan to reference. For multi-table SQL, read every involved table BEFORE writing the SQL. Repeat reads on already-read tables in the same session are unnecessary.
-4. `datatalk_execute_sql` — write the SQL with all columns matching the schema you just verified. DELETE follows the `requires_confirmation` flow described in `[[sql-execution]]`.
+4. *Emit SQL* — only after the previous steps. The emit step is bound regardless of the path you take:
+   - `datatalk_execute_sql` — direct execution. DELETE follows the `requires_confirmation` flow described in `[[sql-execution]]`.
+   - `datatalk_ui_exec` with `object=query_editor` (`apply_text_edits`, `run_sql`) — writing SQL into a query_editor tab counts as emitting SQL.
+   - `datatalk_ui_patch` on a query_editor `/content` — same as above.
+   - Markdown SQL fenced block in the chat reply (```` ```sql ```` / ```` ```mysql ```` / etc.) — also counts.
+
+## Scope: all SQL-emit paths
+
+Writing `SELECT * FROM <unfamiliar_table>` to the query editor and asking the user to click "run" is **not** an escape from this protocol. The user did not grant you the right to skip exploration by handing the execution decision back. If any of the SQL-emit paths above references a table you have not confirmed via `schema_search` / `read_schema` in this session, you MUST run the exploration steps first; the editor is not a sandbox that absolves the AI of grounding the SQL.
+
+`[[query-editor-workflow]]` describes the editor lifecycle. This skill owns the pre-flight check that gates every step of that lifecycle whenever a referenced table is unfamiliar.
 
 ## Exploration budget
 

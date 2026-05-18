@@ -227,24 +227,26 @@ export const ChartBlock = memo(function ChartBlock({
       <div className="flex items-center justify-between border-b border-[var(--dt-border-subtle)] bg-[var(--dt-bg-subtle)] px-3 py-1.5">
         <span className="font-mono text-[13px] leading-[18px] text-[var(--dt-text-muted)]">{t('chart.label')}</span>
         <div className="flex items-center gap-1 text-[13px] leading-[18px]">
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <button
-                  type="button"
-                  onClick={onPromote}
-                  disabled={!canPromote || promoteState === 'loading'}
-                  aria-label={openLabel}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded text-[var(--dt-text-muted)] transition-colors hover:text-[var(--dt-text-strong)] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {promoteState === 'loading'
-                    ? <Loader2Icon className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-                    : <ExternalLinkIcon className="h-4 w-4" aria-hidden="true" />}
-                </button>
-              }
-            />
-            <TooltipContent>{openLabel}</TooltipContent>
-          </Tooltip>
+          {!matched && (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <button
+                    type="button"
+                    onClick={onPromote}
+                    disabled={!canPromote || promoteState === 'loading'}
+                    aria-label={openLabel}
+                    className="inline-flex h-7 w-7 items-center justify-center rounded text-[var(--dt-text-muted)] transition-colors hover:text-[var(--dt-text-strong)] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {promoteState === 'loading'
+                      ? <Loader2Icon className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                      : <ExternalLinkIcon className="h-4 w-4" aria-hidden="true" />}
+                  </button>
+                }
+              />
+              <TooltipContent>{openLabel}</TooltipContent>
+            </Tooltip>
+          )}
           <Tooltip>
             <TooltipTrigger
               render={
@@ -279,11 +281,21 @@ export const ChartBlock = memo(function ChartBlock({
           </Tooltip>
         </div>
       </div>
-      <div data-testid="chart-canvas-host" className="w-full min-w-0 max-w-full p-3">
-        <ChartErrorBoundary json={json} resetKey={json} title={t('chart.renderError')}>
-          <ChartRenderer option={option} />
-        </ChartErrorBoundary>
-      </div>
+      {matched ? (
+        <div
+          data-testid="chart-deduped-hint"
+          data-dedup-skipped="true"
+          className="w-full min-w-0 max-w-full px-3 py-2 text-[13px] leading-[18px] text-[var(--dt-text-muted)]"
+        >
+          {t('chart.dedupedHint')}
+        </div>
+      ) : (
+        <div data-testid="chart-canvas-host" className="w-full min-w-0 max-w-full p-3">
+          <ChartErrorBoundary json={json} resetKey={json} title={t('chart.renderError')}>
+            <ChartRenderer option={option} />
+          </ChartErrorBoundary>
+        </div>
+      )}
       {expanded ? <ChartExpandModal option={option} onClose={() => setExpanded(false)} /> : null}
     </div>
   )

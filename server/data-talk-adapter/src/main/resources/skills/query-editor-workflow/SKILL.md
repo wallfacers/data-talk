@@ -64,6 +64,14 @@ The `set_context` action (on `object=query_editor`) takes `params.useSessionCont
 
 Editor state and actions use camelCase (`connectionId`, etc.).
 
+## Pre-flight: unfamiliar tables MUST be explored before SQL touches the editor
+
+Before any step in the lifecycle below writes or runs SQL that references a table — `datatalk_ui_patch` on `/content`, `datatalk_ui_exec apply_text_edits`, `datatalk_ui_exec run_sql`, or even composing the SQL into the chat reply — every referenced table MUST have been confirmed in the current session via `datatalk_schema_search` and/or `datatalk_read_schema`.
+
+Pushing a `SELECT * FROM <unfamiliar_table>` into the editor and letting the user click "run" is **not** a permitted escape from `[[exploring-data]]`'s Pre-Action Exploration Protocol. The editor is a UI surface, not a sandbox that absolves the AI of grounding the SQL.
+
+If the table is unfamiliar (Chinese / pinyin / abbreviated keyword, or you have never `read_schema`'d it in this session), route to `[[exploring-data]]` first. The 3-miss budget and `question`-tool escalation rules from `[[exploring-data]]` apply here too — do not silently fall through to the editor when exploration misses.
+
 ## Editor lifecycle
 
 The full chain a query_editor goes through:

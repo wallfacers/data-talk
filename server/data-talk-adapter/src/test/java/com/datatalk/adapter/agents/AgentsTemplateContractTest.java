@@ -118,6 +118,19 @@ class AgentsTemplateContractTest {
     }
 
     @Test
+    void agentsTemplatePreActionProtocolCoversUiExecAndUiPatchPaths() throws IOException {
+        // BUG-0065: Protocol must explicitly bind the SQL-emit paths beyond
+        // execute_sql — otherwise LLM can bypass it by pushing SQL into the
+        // query editor via ui_exec / ui_patch and letting the user click run.
+        String tpl = loadAgentsMd();
+        assertThat(tpl)
+            .as("Pre-Action Protocol must enumerate ui_exec / ui_patch / fenced block as bound SQL-emit paths")
+            .contains("datatalk_ui_exec")
+            .contains("datatalk_ui_patch")
+            .contains("fenced block");
+    }
+
+    @Test
     void agentsTemplateTriggerGateRoutesUnfamiliarTableToExploringData() throws IOException {
         String tpl = loadAgentsMd();
         assertThat(tpl)
@@ -175,5 +188,32 @@ class AgentsTemplateContractTest {
             .contains("[[query-editor-workflow]]")
             .doesNotContainPattern("skills/[a-z0-9-]+/SKILL\\.md")
             .doesNotContain(".opencode/skills/");
+    }
+
+    @Test
+    void exploringDataSkillCoversAllSqlEmitPaths() throws IOException {
+        // BUG-0065: the exploration protocol's scope must explicitly include
+        // ui_exec / ui_patch / fenced block paths so the AI cannot route
+        // around the schema_search → read_schema gate by pushing SQL into the
+        // query editor.
+        String skill = loadSkillMd("exploring-data");
+        assertThat(skill)
+            .as("skills/exploring-data/SKILL.md must enumerate ui_exec / ui_patch / fenced block paths")
+            .contains("datatalk_ui_exec")
+            .contains("datatalk_ui_patch")
+            .contains("fenced block");
+    }
+
+    @Test
+    void chartsAndDashboardsSkillForbidsDuplicateChartEmission() throws IOException {
+        // BUG-0064: charts-and-dashboards must instruct the AI to pick exactly
+        // one rendering path per chart — never emit both datatalk_render_chart
+        // and a ```chart``` / ```echarts``` fenced block for the same chart.
+        String skill = loadSkillMd("charts-and-dashboards");
+        assertThat(skill)
+            .as("skills/charts-and-dashboards/SKILL.md must forbid emitting the same chart twice (render_chart + fenced block)")
+            .contains("datatalk_render_chart")
+            .containsIgnoringCase("never emit the same chart twice")
+            .contains("echarts");
     }
 }

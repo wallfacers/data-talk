@@ -21,6 +21,15 @@ This file is the skeleton: 6 second-level sections that route every task to exac
 
 Before any SQL that touches an unfamiliar table — *regardless of whether the SQL is SELECT, INSERT, UPDATE, or DDL* — you MUST gather enough context first. The protocol is hard, not advisory.
 
+**Scope — all SQL-emit paths are covered.** The protocol applies to every path that emits SQL referencing a table, not only `datatalk_execute_sql`. The following paths are equally bound:
+
+- `datatalk_execute_sql` — direct execution.
+- `datatalk_ui_exec` with `object=query_editor` (any action that writes or runs SQL, including `apply_text_edits` and `run_sql`).
+- `datatalk_ui_patch` on a `query_editor` tab's `/content`.
+- Markdown SQL fenced blocks (```` ```sql ````, ```` ```mysql ````, etc.) emitted to chat.
+
+Pushing SQL into the query editor and letting the user click "run" is **not** a permitted escape hatch: writing `SELECT * FROM <unfamiliar_table>` to the editor without a prior `schema_search` / `read_schema` is a Protocol violation, because the user is being asked to validate SQL the AI never grounded.
+
 **Ordering** (every step MUST complete before the next runs):
 
 1. `datatalk_get_data_context` — confirm active connection / database / schema. If `<no active session>`, ask the user to bind one. Skip steps 2-4 until bound.
@@ -159,6 +168,7 @@ When any row matches the current situation, you **MUST** load the listed skill b
 |---|---|
 | call `datatalk_execute_sql` / `datatalk_read_schema` (any SQL execution or schema read) | skill:sql-execution |
 | about to write SQL that joins multiple tables, aggregates across tables, or operates on a table whose schema you have not yet read, OR you do not yet know the exact table name and need to find it from a keyword | skill:exploring-data |
+| about to emit SQL referencing a table via `datatalk_ui_exec` / `datatalk_ui_patch` (query_editor `/content`, `apply_text_edits`, `run_sql`) or as a markdown SQL fenced block — and that table has not been confirmed via `schema_search` / `read_schema` in this session | skill:exploring-data |
 | receive SQL **execution failure** (syntax / unknown column / no such table / ambiguous target / slow-query investigation / lock blocking) | skill:sql-error-diagnostics |
 | receive a tool response that includes a **saved file path** for large output | skill:artifacts-output |
 | call any `datatalk.ui.find` / `datatalk.ui.read` / `datatalk.ui.patch` / `datatalk.ui.exec` tool | skill:ui-contract |

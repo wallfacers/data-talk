@@ -752,6 +752,7 @@ const MESSAGES = {
     'chart.invalidOption': '图表配置无效',
     'chart.renderError': '图表渲染失败',
     'chart.tooLarge': '图表 JSON 超过 256 KB',
+    'chart.dedupedHint': '已在上方图表产物中展示',
 
     'table.label': '表格',
     'table.copy': '复制表格',
@@ -1629,6 +1630,7 @@ const MESSAGES = {
     'chart.invalidOption': 'Invalid chart option',
     'chart.renderError': 'Chart render failed',
     'chart.tooLarge': 'Chart JSON exceeds 256 KB',
+    'chart.dedupedHint': 'Already shown in the chart artifact above',
 
     'table.label': 'Table',
     'table.copy': 'Copy table',
