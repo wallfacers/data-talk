@@ -7,7 +7,7 @@ import { stream, type Block } from './markdown-stream'
 import { decorateTables, normalizePipeTables } from './markdown-table'
 import { decorateSqlBlocks, SQL_EXPLAIN_EVENT } from './sql-code-block'
 import { extractTableModel } from './table-model'
-import { getDownloadFilename, toCsv, toDownloadableCsv, toJson, toMarkdownTable, toTsv } from './table-serializers'
+import { getDownloadFilename, toCsv, toDownloadableCsv, toDownloadableXlsx, toJson, toMarkdownTable, toSqlInsert, toTsv } from './table-serializers'
 import { ChartBlock } from './chart-block'
 import { DashboardBlock } from './dashboard-block'
 import { copyToClipboard } from '@/lib/utils'
@@ -665,6 +665,50 @@ export function Markdown(props: {
           if (format === 'download-csv') {
             downloadTableCsv(getDownloadFilename(), toDownloadableCsv(model))
             success = true
+          }
+          if (format === 'sql-insert') {
+            const now = new Date()
+            const yyyy = now.getUTCFullYear()
+            const mm = String(now.getUTCMonth() + 1).padStart(2, '0')
+            const dd = String(now.getUTCDate()).padStart(2, '0')
+            const hh = String(now.getUTCHours()).padStart(2, '0')
+            const mi = String(now.getUTCMinutes()).padStart(2, '0')
+            const ss = String(now.getUTCSeconds()).padStart(2, '0')
+            const filename = `table-${yyyy}${mm}${dd}-${hh}${mi}${ss}.sql`
+            const blob = new Blob([toSqlInsert(model)], { type: 'text/sql;charset=utf-8;' })
+            const url = URL.createObjectURL(blob)
+            const link = document.createElement('a')
+            link.href = url
+            link.download = filename
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+            URL.revokeObjectURL(url)
+            success = true
+          }
+          if (format === 'download-xlsx') {
+            try {
+              const xlsxBlob = await toDownloadableXlsx(model)
+              const now = new Date()
+              const yyyy = now.getUTCFullYear()
+              const mm = String(now.getUTCMonth() + 1).padStart(2, '0')
+              const dd = String(now.getUTCDate()).padStart(2, '0')
+              const hh = String(now.getUTCHours()).padStart(2, '0')
+              const mi = String(now.getUTCMinutes()).padStart(2, '0')
+              const ss = String(now.getUTCSeconds()).padStart(2, '0')
+              const filename = `table-${yyyy}${mm}${dd}-${hh}${mi}${ss}.xlsx`
+              const url = URL.createObjectURL(xlsxBlob)
+              const link = document.createElement('a')
+              link.href = url
+              link.download = filename
+              document.body.appendChild(link)
+              link.click()
+              document.body.removeChild(link)
+              URL.revokeObjectURL(url)
+              success = true
+            } catch {
+              success = false
+            }
           }
         }
 

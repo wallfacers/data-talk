@@ -589,6 +589,10 @@ const MESSAGES = {
     'stage.queryEditor.result.copyCsv': '复制 CSV',
     'stage.queryEditor.result.copyJson': '复制 JSON',
     'stage.queryEditor.result.downloadCsv': '下载 CSV',
+    'stage.queryEditor.result.downloadXlsx': '下载 Excel',
+    'stage.queryEditor.result.downloadXlsxAria': '下载当前 SQL 结果为 Excel',
+    'stage.queryEditor.result.downloadSqlInsert': '下载 SQL',
+    'stage.queryEditor.result.downloadSqlInsertAria': '下载当前 SQL 结果为 INSERT 语句',
     'stage.queryEditor.result.copyCsvAria': '复制当前 SQL 结果为 CSV',
     'stage.queryEditor.result.copyJsonAria': '复制当前 SQL 结果为 JSON',
     'stage.queryEditor.result.downloadCsvAria': '下载当前 SQL 结果为 CSV',
@@ -756,6 +760,8 @@ const MESSAGES = {
     'table.csvAria': '复制为 CSV',
     'table.moreAria': '更多表格操作',
     'table.downloadCsv': '下载 CSV',
+    'table.downloadXlsx': '下载 Excel (.xlsx)',
+    'table.downloadSqlInsert': '下载 SQL INSERT',
 
     'dataGrid.noColumns': '无列定义',
     'dataGrid.noData': '无数据',
@@ -866,6 +872,14 @@ const MESSAGES = {
     'providers.baseUrlPlaceholder': 'https://api.example.com',
 
     'settings.credentials': '凭据',
+
+    'export.format.csv': 'CSV',
+    'export.format.json': 'JSON',
+    'export.format.xlsx': 'Excel (.xlsx)',
+    'export.format.sql_insert': 'SQL INSERT',
+    'export.processing': '正在导出...',
+    'export.download': '下载',
+    'export.completed': '导出完成（{count} 行，{format}）',
   },
   'en-US': {
     'common.loading': 'Loading...',
@@ -1451,6 +1465,10 @@ const MESSAGES = {
     'stage.queryEditor.result.copyCsv': 'Copy CSV',
     'stage.queryEditor.result.copyJson': 'Copy JSON',
     'stage.queryEditor.result.downloadCsv': 'Download CSV',
+    'stage.queryEditor.result.downloadXlsx': 'Download Excel',
+    'stage.queryEditor.result.downloadXlsxAria': 'Download current SQL result as Excel',
+    'stage.queryEditor.result.downloadSqlInsert': 'Download SQL',
+    'stage.queryEditor.result.downloadSqlInsertAria': 'Download current SQL result as INSERT statements',
     'stage.queryEditor.result.copyCsvAria': 'Copy current SQL result as CSV',
     'stage.queryEditor.result.copyJsonAria': 'Copy current SQL result as JSON',
     'stage.queryEditor.result.downloadCsvAria': 'Download current SQL result as CSV',
@@ -1618,6 +1636,8 @@ const MESSAGES = {
     'table.csvAria': 'Copy table as CSV',
     'table.moreAria': 'More table actions',
     'table.downloadCsv': 'Download CSV',
+    'table.downloadXlsx': 'Download Excel (.xlsx)',
+    'table.downloadSqlInsert': 'Download SQL INSERT',
 
     'dataGrid.noColumns': 'No columns defined',
     'dataGrid.noData': 'No data',
@@ -1728,6 +1748,14 @@ const MESSAGES = {
     'providers.baseUrlPlaceholder': 'https://api.example.com',
 
     'settings.credentials': 'Credentials',
+
+    'export.format.csv': 'CSV',
+    'export.format.json': 'JSON',
+    'export.format.xlsx': 'Excel (.xlsx)',
+    'export.format.sql_insert': 'SQL INSERT',
+    'export.processing': 'Exporting...',
+    'export.download': 'Download',
+    'export.completed': 'Export completed ({count} rows, {format})',
   },
 } as const
 

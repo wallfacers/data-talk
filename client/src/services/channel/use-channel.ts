@@ -444,6 +444,36 @@ export function buildEventSink(
       toast.info(translateMessage(getCurrentLanguage(), 'session.contextCompacted'))
     } else if (event === 'session.diff') {
       // payload semantics undocumented in OpenCode 1.4.7 — safely ignored
+    } else if (event === 'export.completed') {
+      const d = data as {
+        exportId: string
+        downloadUrl: string
+        rowCount: number
+        format: string
+        fileSizeBytes?: number
+      }
+      const language = getCurrentLanguage()
+      const formatKey = `export.format.${d.format}` as Parameters<typeof translateMessage>[1]
+      const formatLabel = translateMessage(language, formatKey)
+      // translateMessage returns the key itself when the entry is missing; fall back to raw format.
+      const displayFormat = formatLabel === formatKey ? d.format : formatLabel
+      const downloadUrl = d.downloadUrl?.startsWith('http')
+        ? d.downloadUrl
+        : `${getApiBaseUrl()}${d.downloadUrl ?? ''}`
+      toast.success(
+        translateMessage(language, 'export.completed', { count: d.rowCount, format: displayFormat }),
+        {
+          duration: 30_000,
+          action: downloadUrl
+            ? {
+                label: translateMessage(language, 'export.download'),
+                onClick: () => {
+                  window.open(downloadUrl, '_blank', 'noopener,noreferrer')
+                },
+              }
+            : undefined,
+        },
+      )
     } else if (event === 'action.invoke' && client) {
       const { callId, actionId, input } = data as any
       // The backend publishes to a single SessionBus, but a live session has

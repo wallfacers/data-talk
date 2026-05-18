@@ -1,3 +1,4 @@
+import { exportDataFile } from '@/services/api/data-export'
 import type { TableModel } from './table-model'
 
 const UTF8_BOM = '\uFEFF'
@@ -56,6 +57,40 @@ export function toJson(model: TableModel): string {
 
 export function toDownloadableCsv(model: TableModel): string {
   return `${UTF8_BOM}${toCsv(model)}`
+}
+
+export function toSqlInsert(model: TableModel, tableName = 'exported_table'): string {
+  const columns = model.headers.map((h) => `"${h.replace(/"/g, '""')}"`).join(', ')
+  const quotedTable = `"${tableName.replace(/"/g, '""')}"`
+  const batchSize = 100
+  const batches: string[] = []
+
+  for (let i = 0; i < model.rows.length; i += batchSize) {
+    const batch = model.rows.slice(i, i + batchSize)
+    const values = batch
+      .map((row) =>
+        row
+          .map((cell) => {
+            if (cell == null) return 'NULL'
+            return `'${cell.replace(/'/g, "''")}'`
+          })
+          .join(', '),
+      )
+      .map((row) => `(${row})`)
+      .join(',\n')
+    batches.push(`INSERT INTO ${quotedTable} (${columns}) VALUES\n${values};`)
+  }
+
+  return batches.join('\n\n')
+}
+
+export async function toDownloadableXlsx(model: TableModel): Promise<Blob> {
+  return exportDataFile({
+    columns: model.headers,
+    rows: model.rows,
+    format: 'xlsx',
+    tableName: 'exported_table',
+  })
 }
 
 function padNumber(value: number): string {

@@ -72,19 +72,19 @@ Design Inputs (from `client/DESIGN.md`): 使用 semantic tokens、shadcn/ui 组�
 
 **导入前端 UI 决策**：Day-1 不新增导入专用前端组件。AI 通过 chat message 文本汇报 `rowsImported` + `sampleRows`（前 3 行），复用现有 markdown 表格渲染 + warnings 展示。导入结果不需要特殊组件，因为 `datatalk_import_data` 的返回值经 AI 自然语言转述即可。
 
-- [ ] 8.1 在 `sql-result-table.tsx` 导出按钮组新增 Excel (.xlsx) 和 SQL INSERT 选项，调用后端 `datatalk_export_data` action 或直接 `GET /api/exports/{id}/download`
-- [ ] 8.2 在 `markdown-table.ts` 的 chat 表格"更多"菜单中新增 Excel 和 SQL INSERT 下载选项
-- [ ] 8.3 大文件导出进度展示：当后端返回 `status: "processing"` 时，在 UI 中展示导出中状态，监听 SSE `export.completed` 事件后显示下载链接
-- [ ] 8.4 添加 i18n 消息：`export.format.xlsx`、`export.format.sql_insert`、`export.processing`、`export.download`、`export.completed`
-- [ ] 8.5 验证：`cd client && npx tsc --noEmit`
+- [x] 8.1 在 `sql-result-table.tsx` 导出按钮组新增 Excel (.xlsx) 和 SQL INSERT 选项，调用后端 `datatalk_export_data` action 或直接 `GET /api/exports/{id}/download`
+- [x] 8.2 在 `markdown-table.ts` 的 chat 表格"更多"菜单中新增 Excel 和 SQL INSERT 下载选项
+- [x] 8.3 大文件导出进度展示：当后端返回 `status: "processing"` 时，在 UI 中展示导出中状态，监听 SSE `export.completed` 事件后显示下载链接
+- [x] 8.4 添加 i18n 消息：`export.format.xlsx`、`export.format.sql_insert`、`export.processing`、`export.download`、`export.completed`
+- [x] 8.5 验证：`cd client && npx tsc --noEmit`
 
 ## 9. 数据源类型兼容性检查
 
-- [ ] 9.1 验证 4 种核心数据库（MySQL/PG/H2/SQLite）的 `fetchSize` cursor 行为：MySQL `useCursorFetch=true`、PG auto-commit OFF、H2 默认、SQLite 默认
-- [ ] 9.2 更新 `docs/DATA_SOURCE_TYPE_COMPATIBILITY.md`：新增 "Data Import/Export Compatibility" 章节，记录各数据库的 cursor 流式读取、batch INSERT、SXSSF 兼容性状态
+- [x] 9.1 验证 4 种核心数据库（MySQL/PG/H2/SQLite）的 `fetchSize` cursor 行为：MySQL `useCursorFetch=true`、PG auto-commit OFF、H2 默认、SQLite 默认
+- [x] 9.2 更新 `docs/DATA_SOURCE_TYPE_COMPATIBILITY.md`：新增 "Data Import/Export Compatibility" 章节，记录各数据库的 cursor 流式读取、batch INSERT、SXSSF 兼容性状态
 
 ## 10. 集成测试与整体验证
 
 - [x] 10.1 后端整体验证：`cd server && mvn clean verify`（全量测试套件）
-- [ ] 10.2 前端整体验证：`cd client && npx tsc --noEmit && npm run test`
+- [x] 10.2 前端整体验证：`cd client && npx tsc --noEmit && npm run test`
 - [ ] 10.3 端到端冒烟测试（手动）：上传 CSV → AI 对话导入 → 验证数据库表数据；SQL 查询结果 → 导出 Excel → 下载验证。**前置条件**：BUG-0057 (composer attachment stuck uploading) 需已修复合入，否则上传卡住会误判为导入失败

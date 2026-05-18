@@ -13,13 +13,19 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -286,5 +292,129 @@ class DataExportServiceTest {
         // Allow some time for the virtual thread to publish the event
         Thread.sleep(500);
         verify(mockBus).publish(any(DtEvent.ExportCompleted.class));
+    }
+
+    // ── Stream-data export path (`/api/exports/data`) ────────────────────
+
+    @Test
+    void validateStreamExport_acceptsSmallPayload() {
+        assertThat(service.validateStreamExport(100, "csv")).isNull();
+        assertThat(service.validateStreamExport(100, "xlsx")).isNull();
+        assertThat(service.validateStreamExport(100, "json")).isNull();
+        assertThat(service.validateStreamExport(100, "sql_insert")).isNull();
+    }
+
+    @Test
+    void validateStreamExport_rejectsUnsupportedFormat() {
+        DataExportService.StreamExportRejection r = service.validateStreamExport(1, "parquet");
+        assertThat(r).isNotNull();
+        assertThat(r.httpStatus()).isEqualTo(400);
+        assertThat(r.errorCode()).isEqualTo("UNSUPPORTED_FORMAT");
+    }
+
+    @Test
+    void validateStreamExport_rejectsOverInMemoryLimit() {
+        DataExportService.StreamExportRejection r =
+            service.validateStreamExport(DataExportService.STREAM_DATA_MAX_ROWS + 1, "csv");
+        assertThat(r).isNotNull();
+        assertThat(r.httpStatus()).isEqualTo(413);
+        assertThat(r.errorCode()).isEqualTo("ROW_LIMIT_EXCEEDED");
+    }
+
+    @Test
+    void exportToStream_csvWritesBomAndRows() throws Exception {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        service.exportToStream(
+            List.of("id", "name"),
+            Arrays.asList(
+                Arrays.asList("1", "Alice"),
+                Arrays.asList("2", "Bob")
+            ),
+            "csv", "orders", baos);
+
+        String content = baos.toString(StandardCharsets.UTF_8);
+        // UTF-8 BOM
+        assertThat(content.charAt(0)).isEqualTo('﻿');
+        assertThat(content).contains("id,name");
+        assertThat(content).contains("1,Alice");
+        assertThat(content).contains("2,Bob");
+    }
+
+    @Test
+    void exportToStream_jsonEmitsNullForActualNullCells() throws Exception {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        service.exportToStream(
+            List.of("id", "name"),
+            Arrays.asList(Arrays.asList("1", null)),
+            "json", "t", baos);
+
+        String content = baos.toString(StandardCharsets.UTF_8);
+        // Null cell must emit JSON `null`, not the string "null"
+        assertThat(content).contains("\"name\": null");
+    }
+
+    @Test
+    void exportToStream_sqlInsertEmitsNullKeyword() throws Exception {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        service.exportToStream(
+            List.of("id", "name"),
+            Arrays.asList(Arrays.asList("1", null)),
+            "sql_insert", "users", baos);
+
+        String content = baos.toString(StandardCharsets.UTF_8);
+        assertThat(content).startsWith("INSERT INTO \"users\"");
+        assertThat(content).contains("(\'1\', NULL)");
+    }
+
+    @Test
+    void exportToStream_xlsxSkipsNullCells() throws Exception {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        service.exportToStream(
+            List.of("id", "name"),
+            Arrays.asList(
+                Arrays.asList("1", "Alice"),
+                Arrays.asList("2", null)
+            ),
+            "xlsx", "orders", baos);
+
+        byte[] bytes = baos.toByteArray();
+        // XLSX is a ZIP archive — verify PK header
+        assertThat(bytes[0]).isEqualTo((byte) 0x50);
+        assertThat(bytes[1]).isEqualTo((byte) 0x4B);
+
+        // SXSSF writes inline strings into the sheet XML rather than shared strings.
+        // Inspect sheet1.xml directly to assert Alice is present and "NULL" is not (the
+        // regression we are guarding: nulls were rendered as the literal text "NULL").
+        Path tmpXlsx = Files.createTempFile(tempDir, "test", ".xlsx");
+        Files.write(tmpXlsx, bytes);
+        String sheetXml = readZipEntry(tmpXlsx, "xl/worksheets/sheet1.xml");
+        assertThat(sheetXml).contains("Alice");
+        assertThat(sheetXml).doesNotContain(">NULL<");
+    }
+
+    private static String readZipEntry(Path zipFile, String entryName) throws Exception {
+        try (ZipFile zf = new ZipFile(zipFile.toFile())) {
+            ZipEntry entry = zf.getEntry(entryName);
+            if (entry == null) return "";
+            try (var is = zf.getInputStream(entry)) {
+                return new String(is.readAllBytes(), StandardCharsets.UTF_8);
+            }
+        }
+    }
+
+    @Test
+    void exportToStream_unsupportedFormat_throws() {
+        assertThatThrownBy(() -> service.exportToStream(
+            List.of("id"), List.of(List.of("1")), "parquet", "t", new ByteArrayOutputStream()))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported format");
+    }
+
+    @Test
+    void buildStreamExportFilename_appendsCorrectExtension() {
+        assertThat(service.buildStreamExportFilename("orders", "csv")).endsWith(".csv");
+        assertThat(service.buildStreamExportFilename("orders", "xlsx")).endsWith(".xlsx");
+        assertThat(service.buildStreamExportFilename("orders", "json")).endsWith(".json");
+        assertThat(service.buildStreamExportFilename("orders", "sql_insert")).endsWith(".sql");
     }
 }

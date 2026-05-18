@@ -20,6 +20,9 @@ import org.springframework.stereotype.Service;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
@@ -42,6 +45,9 @@ public class DataExportService {
     private static final long MAX_FILE_SIZE_BYTES = 500L * 1024 * 1024;
     private static final int XLSX_MAX_ROWS = 1_048_576;
     private static final int FETCH_SIZE = 500;
+    /** Hard cap for the in-memory `/api/exports/data` path. The whole payload sits in
+     *  request memory before streaming, so we keep it well below DEFAULT_MAX_ROWS. */
+    public static final int STREAM_DATA_MAX_ROWS = 100_000;
     private static final DateTimeFormatter TS_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
 
     private final ScriptDataWriteService writeService;
@@ -450,6 +456,162 @@ public class DataExportService {
             case "sql_insert" -> "sql";
             default -> "csv";
         };
+    }
+
+    /** Validation outcome for the stream-data export path. Returns null when the input is acceptable. */
+    public record StreamExportRejection(int httpStatus, String errorCode, String message) {}
+
+    /**
+     * Validates inputs for the in-memory `/api/exports/data` streaming path.
+     * Returns null when the request is acceptable, or a StreamExportRejection otherwise.
+     * Keeping this server-side guarantees the limit applies even if the frontend forgets to enforce it.
+     */
+    public StreamExportRejection validateStreamExport(int rowCount, String format) {
+        String f = (format != null) ? format.toLowerCase() : "";
+        if (!isSupportedFormat(f)) {
+            return new StreamExportRejection(400, "UNSUPPORTED_FORMAT", "Unsupported format: " + format);
+        }
+        if (rowCount > STREAM_DATA_MAX_ROWS) {
+            return new StreamExportRejection(413, "ROW_LIMIT_EXCEEDED",
+                "Row count " + rowCount + " exceeds the in-memory export limit of " + STREAM_DATA_MAX_ROWS);
+        }
+        if ("xlsx".equals(f) && rowCount > XLSX_MAX_ROWS) {
+            return new StreamExportRejection(413, "XLSX_ROW_LIMIT_EXCEEDED",
+                "Row count " + rowCount + " exceeds the Excel maximum of " + XLSX_MAX_ROWS + ". Use CSV instead.");
+        }
+        return null;
+    }
+
+    /** Build the suggested filename (with extension) for a stream export response. */
+    public String buildStreamExportFilename(String tableName, String format) {
+        String f = (format != null) ? format.toLowerCase() : "csv";
+        return generateFilename(tableName, null, f) + "." + extensionForFormat(f);
+    }
+
+    private boolean isSupportedFormat(String format) {
+        return "csv".equals(format) || "json".equals(format)
+            || "xlsx".equals(format) || "sql_insert".equals(format);
+    }
+
+    /**
+     * Stream raw data (columns + rows) directly to an OutputStream without writing to disk.
+     * Used by the `/api/exports/data` controller endpoint — the data already lives in request memory,
+     * so a round-trip through a temp file would only burn disk I/O and leave orphan files behind.
+     *
+     * Callers MUST invoke {@link #validateStreamExport(int, String)} first.
+     */
+    public void exportToStream(List<String> columns, List<List<String>> rows,
+                               String format, String tableName, OutputStream out) throws IOException {
+        String effectiveFormat = (format != null) ? format.toLowerCase() : "csv";
+        String effectiveTable = (tableName != null && !tableName.isBlank()) ? tableName : "exported_table";
+        switch (effectiveFormat) {
+            case "xlsx" -> writeXlsxToStream(columns, rows, out);
+            case "sql_insert" -> writeSqlInsertToStream(columns, rows, effectiveTable, out);
+            case "csv" -> writeCsvToStream(columns, rows, out);
+            case "json" -> writeJsonToStream(columns, rows, out);
+            default -> throw new IllegalArgumentException("Unsupported format: " + effectiveFormat);
+        }
+    }
+
+    private void writeXlsxToStream(List<String> columns, List<List<String>> rows, OutputStream out) throws IOException {
+        SXSSFWorkbook wb = new SXSSFWorkbook(100);
+        try {
+            Sheet sheet = wb.createSheet("Export");
+            CellStyle headerStyle = wb.createCellStyle();
+            Font headerFont = wb.createFont();
+            headerFont.setBold(true);
+            headerStyle.setFont(headerFont);
+
+            Row headerRow = sheet.createRow(0);
+            for (int i = 0; i < columns.size(); i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(columns.get(i));
+                cell.setCellStyle(headerStyle);
+            }
+
+            int rowNum = 1;
+            for (List<String> row : rows) {
+                Row r = sheet.createRow(rowNum++);
+                for (int i = 0; i < columns.size(); i++) {
+                    String val = (i < row.size()) ? row.get(i) : null;
+                    if (val != null) r.createCell(i).setCellValue(val);
+                }
+            }
+            wb.write(out);
+        } finally {
+            wb.dispose();
+        }
+    }
+
+    private void writeSqlInsertToStream(List<String> columns, List<List<String>> rows,
+                                        String tableName, OutputStream out) throws IOException {
+        String columnsPart = columns.stream().map(this::quoteIdentifier).reduce((a, b) -> a + ", " + b).orElse("");
+        BufferedWriter writer = newStreamWriter(out);
+        List<String> batch = new ArrayList<>(100);
+        for (List<String> row : rows) {
+            String[] vals = new String[columns.size()];
+            for (int i = 0; i < columns.size(); i++) {
+                vals[i] = escapeSqlValue(i < row.size() ? row.get(i) : null);
+            }
+            batch.add("(" + String.join(", ", vals) + ")");
+            if (batch.size() >= 100) {
+                writer.write("INSERT INTO " + quoteIdentifier(tableName) + " (" + columnsPart + ") VALUES ");
+                writer.write(String.join(", ", batch));
+                writer.write(";");
+                writer.newLine();
+                batch.clear();
+            }
+        }
+        if (!batch.isEmpty()) {
+            writer.write("INSERT INTO " + quoteIdentifier(tableName) + " (" + columnsPart + ") VALUES ");
+            writer.write(String.join(", ", batch));
+            writer.write(";");
+            writer.newLine();
+        }
+        writer.flush();
+    }
+
+    private void writeCsvToStream(List<String> columns, List<List<String>> rows, OutputStream out) throws IOException {
+        BufferedWriter writer = newStreamWriter(out);
+        writer.write('﻿');
+        writer.write(csvLine(columns.toArray(String[]::new)));
+        writer.newLine();
+        for (List<String> row : rows) {
+            writer.write(csvLine(row.toArray(String[]::new)));
+            writer.newLine();
+        }
+        writer.flush();
+    }
+
+    private void writeJsonToStream(List<String> columns, List<List<String>> rows, OutputStream out) throws IOException {
+        BufferedWriter writer = newStreamWriter(out);
+        writer.write("[");
+        boolean first = true;
+        for (List<String> row : rows) {
+            if (!first) writer.write(",");
+            writer.newLine();
+            writer.write("  {");
+            for (int i = 0; i < columns.size(); i++) {
+                if (i > 0) writer.write(", ");
+                writer.write("\"" + escapeJson(columns.get(i)) + "\": ");
+                String val = i < row.size() ? row.get(i) : null;
+                writer.write(val == null ? "null" : "\"" + escapeJson(val) + "\"");
+            }
+            writer.write("}");
+            first = false;
+        }
+        if (!first) writer.newLine();
+        writer.write("]");
+        writer.flush();
+    }
+
+    /**
+     * Wraps an OutputStream in a BufferedWriter without taking ownership — the caller (typically
+     * a Servlet ResponseBody) is responsible for closing the underlying stream. We only flush().
+     */
+    private BufferedWriter newStreamWriter(OutputStream out) {
+        Writer osw = new OutputStreamWriter(out, StandardCharsets.UTF_8);
+        return new BufferedWriter(osw);
     }
 
     /**

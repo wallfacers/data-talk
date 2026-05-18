@@ -85,6 +85,8 @@ export function decorateTables(root: HTMLElement, t: TranslationFn) {
       ['markdown', 'Markdown'],
       ['json', 'JSON'],
       ['download-csv', t('table.downloadCsv')],
+      ['sql-insert', t('table.downloadSqlInsert')],
+      ['download-xlsx', t('table.downloadXlsx')],
     ]) {
       const item = document.createElement('button')
       item.setAttribute('type', 'button')

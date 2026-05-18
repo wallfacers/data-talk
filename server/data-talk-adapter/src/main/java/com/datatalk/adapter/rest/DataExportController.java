@@ -7,16 +7,21 @@ import org.slf4j.LoggerFactory;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/exports")
@@ -74,6 +79,64 @@ public class DataExportController {
             .contentLength(contentLength)
             .body(resource);
     }
+
+    /**
+     * Frontend-triggered export: streams the exported file directly from request memory
+     * to the response body without writing a temp file to disk. Used by the SQL result
+     * table and chat markdown tables for Excel/SQL INSERT downloads of already-loaded data.
+     *
+     * The return type must be ResponseEntity<StreamingResponseBody> (not the wildcard) so
+     * Spring's StreamingResponseBodyReturnValueHandler engages the async pipeline. Validation
+     * errors throw {@link StreamExportException}, converted to JSON by the handler below.
+     */
+    @PostMapping("/data")
+    public ResponseEntity<StreamingResponseBody> exportData(@RequestBody ExportDataRequest request) {
+        if (request.columns() == null || request.rows() == null || request.format() == null) {
+            throw new StreamExportException(400, "BAD_REQUEST",
+                "columns, rows and format are required");
+        }
+        DataExportService.StreamExportRejection rejection =
+            exportService.validateStreamExport(request.rows().size(), request.format());
+        if (rejection != null) {
+            throw new StreamExportException(rejection.httpStatus(), rejection.errorCode(), rejection.message());
+        }
+
+        String filename = exportService.buildStreamExportFilename(request.tableName(), request.format());
+        MediaType contentType = contentTypeForFile(filename);
+        StreamingResponseBody body = out -> exportService.exportToStream(
+            request.columns(), request.rows(), request.format(), request.tableName(), out);
+
+        return ResponseEntity.ok()
+            .contentType(contentType)
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+            .body(body);
+    }
+
+    @ExceptionHandler(StreamExportException.class)
+    public ResponseEntity<Map<String, Object>> handleStreamExportException(StreamExportException ex) {
+        return ResponseEntity.status(ex.status())
+            .body(Map.of("errorCode", ex.errorCode(), "message", ex.getMessage()));
+    }
+
+    /** Signals a validation failure on the stream export path. */
+    static class StreamExportException extends RuntimeException {
+        private final int status;
+        private final String errorCode;
+        StreamExportException(int status, String errorCode, String message) {
+            super(message);
+            this.status = status;
+            this.errorCode = errorCode;
+        }
+        int status() { return status; }
+        String errorCode() { return errorCode; }
+    }
+
+    public record ExportDataRequest(
+        List<String> columns,
+        List<List<String>> rows,
+        String format,
+        String tableName
+    ) {}
 
     private MediaType contentTypeForFile(String filename) {
         if (filename.endsWith(".csv")) {

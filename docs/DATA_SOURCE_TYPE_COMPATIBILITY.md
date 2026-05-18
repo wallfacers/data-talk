@@ -953,3 +953,90 @@ The script data write feature enables programmatic batch data insertion into use
 - Trino and Presto write support depends on the underlying connector. Connectors that do not support INSERT will propagate a connector-level error.
 - Hive INSERT performance depends on the storage format and table type (managed vs external). ACID transactions are required for INSERT into transactional tables in Hive 3.x.
 - Type inference uses fixed-width mappings (e.g., `VARCHAR(255)` for strings). Columns requiring longer strings, LOBs, or specialized types must be pre-created manually before running script data write.
+
+## Data Import/Export Compatibility
+
+The data import/export feature supports streaming file import, multi-format export, and cross-database copy via JDBC cursor. All paths are designed for bounded memory usage regardless of dataset size.
+
+### Streaming Import
+
+File import reads source files in streaming mode, accumulates rows in batches of 1000, and writes to the target database via `PreparedStatement.executeBatch()` with `autoCommit=false` and periodic commits.
+
+| Format | Streaming Mechanism | Type Inference | Batch Size |
+|--------|-------------------|----------------|------------|
+| CSV | `BufferedReader` line-by-line, UTF-8 BOM skip, CSV RFC-compliant quoted fields | Long → `BIGINT`, Double → `DOUBLE`, else `VARCHAR(255)` | 1000 rows |
+| JSON | Jackson `JsonParser` streaming, `array_of_objects` shape required | Integer/Long → `BIGINT`, Double/Float → `DOUBLE`, Boolean → `BOOLEAN`, else `VARCHAR(255)` | 1000 rows |
+| XLSX | Apache POI SAX (`XSSFReader` + `SheetContentsHandler`), event-driven row processing, first sheet only | Long → `BIGINT`, Double → `DOUBLE`, Boolean → `BOOLEAN`, else `VARCHAR(255)` | 1000 rows |
+| Cross-DB copy | JDBC cursor (`TYPE_FORWARD_ONLY`, `CONCUR_READ_ONLY`), `fetchSize=500`, `autoCommit=false` | Column types derived from source `ResultSetMetaData` | Via `writeStream` service |
+
+Column type overrides are supported: callers may pass `columnTypes` to force specific DDL types, bypassing inference.
+
+### Streaming Export
+
+Export converts query results to files using streaming writers. The async threshold determines synchronous vs. asynchronous execution mode.
+
+| Format | Streaming Mechanism | Row Limit | Notes |
+|--------|-------------------|-----------|-------|
+| CSV | `BufferedWriter` + UTF-8 BOM (`﻿`) prefix, RFC-compliant escaping | 1,000,000 | Excel-compatible UTF-8 BOM header |
+| JSON | `BufferedWriter`, streaming array output (`[{...}, {...}]`) | 1,000,000 | Null values rendered as JSON `null` |
+| XLSX | `SXSSFWorkbook` (window=100), streaming write | 1,048,576 | Hard cap at Excel specification; auto-truncated |
+| SQL INSERT | `BufferedWriter`, batch INSERT statements (100 rows per `INSERT INTO ... VALUES` block) | 1,000,000 | Double-quote identifier quoting; single-quote value escaping |
+
+| Threshold | Behavior |
+|-----------|----------|
+| < 10,000 rows | Synchronous export; result returned immediately |
+| >= 10,000 rows | Async export on virtual thread; SSE `export.completed` notification via `SessionBus` |
+
+| Limit | Value |
+|-------|-------|
+| Default max rows | 1,000,000 |
+| Export file size cap | 500 MB |
+| XLSX row hard cap | 1,048,576 (Excel specification) |
+
+### Database Cursor Compatibility
+
+Cross-DB copy and export both use JDBC streaming cursors to avoid loading full result sets into memory. The cursor setup pattern is:
+
+```java
+conn.setAutoCommit(false);
+Statement stmt = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+stmt.setFetchSize(500);
+```
+
+| Kind | fetchSize Cursor | autoCommit Required | Notes |
+|------|-----------------|---------------------|-------|
+| mysql | `useCursorFetch=true` in JDBC URL | No | Must set `useCursorFetch=true` in JDBC URL for server-side streaming cursor; without it the driver fetches all rows into memory |
+| postgresql | Default | Yes (OFF) | `autoCommit` must be `false` before `setFetchSize()` or the PG driver fetches all rows into memory |
+| h2 | Default | No | Default cursor behavior sufficient for H2 |
+| sqlite | Default | No | Single-file DB; cursor not tunable |
+| oracle | Default | No | Oracle JDBC supports streaming cursor natively |
+| sqlserver | Default | No | SQL Server JDBC supports adaptive buffering |
+| mariadb | `useCursorFetch=true` in JDBC URL | No | Same MySQL-protocol requirement; inherits MySQL cursor behavior |
+| duckdb | Default | No | Embedded engine; cursor handled internally |
+| clickhouse | Default | No | ClickHouse JDBC streams by default |
+| apache_doris | `useCursorFetch=true` in JDBC URL | No | MySQL-protocol; same cursor requirement as MySQL |
+| starrocks | Default | No | Native StarRocks Connector/J handles streaming |
+| tidb | `useCursorFetch=true` in JDBC URL | No | MySQL-protocol; same cursor requirement as MySQL |
+| oceanbase | Default | No | OceanBase client driver handles cursor natively |
+| trino | Default | No | Trino JDBC streams results by default |
+| presto | Default | No | Presto JDBC streams results by default |
+| hive | Default | No | Hive JDBC fetches in configurable batches |
+| dameng | Default | No | DM JDBC driver supports streaming cursor natively |
+| kingbase | Default | Yes (OFF) | PG-compatible; `autoCommit=false` required for fetchSize to take effect |
+| gaussdb | Default | Yes (OFF) | PG-compatible; `autoCommit=false` required for fetchSize to take effect |
+
+### Batch INSERT Compatibility
+
+File import and cross-DB copy both write data using standard JDBC `PreparedStatement.executeBatch()`. All 19 first-class connection kinds are supported. See the **Script Data Write Compatibility** section above for the full compatibility matrix.
+
+### Known Limitations
+
+- **MySQL cursor**: Requires `useCursorFetch=true` JDBC URL parameter for true server-side cursor. Without it, the MySQL driver fetches the entire result set into memory regardless of `fetchSize`.
+- **PostgreSQL cursor**: Requires `autoCommit=false` before `setFetchSize()`. Without it, the PG driver fetches all rows into memory.
+- **MySQL-protocol kinds** (mariadb, apache_doris, tidb): Inherit the `useCursorFetch=true` requirement from the MySQL wire protocol.
+- **PG-protocol kinds** (kingbase, gaussdb): Inherit the `autoCommit=false` requirement from the PostgreSQL wire protocol.
+- **SQLite concurrent access**: Single-file DB; concurrent write + export may encounter locking.
+- **XLSX row limit**: Export capped at 1,048,576 rows (Excel specification). Rows beyond this are silently truncated.
+- **Export file size cap**: 500 MB. Export stops when this limit is reached.
+- **Default row limit**: 1,000,000 rows per export unless overridden by the caller.
+- **Type inference**: Fixed-width mappings (e.g., `VARCHAR(255)` for strings). Columns requiring longer strings, LOBs, or specialized types must be pre-created manually before import.

@@ -31,11 +31,13 @@ import { toast } from 'sonner'
 import {
   buildSqlResultExportFilename,
   selectSqlResultExportRows,
+  toSqlInsert,
   toSqlResultCsv,
   toSqlResultDownloadCsv,
   toSqlResultJson,
   type SqlResultExportScope,
 } from '../utils/sql-result-export'
+import { exportDataFile } from '@/services/api/data-export'
 import '@/features/chat/components/markdown/markdown.css'
 
 type SqlResultTableProps = {
@@ -247,6 +249,39 @@ export function SqlResultTable({
     URL.revokeObjectURL(url)
   }, [exportRows, result.columns, result.title])
 
+  const downloadXlsx = useCallback(async () => {
+    const serializedRows: (string | null)[][] = exportRows.map((row) =>
+      row.map((v) => (v == null ? null : typeof v === 'object' ? JSON.stringify(v) : String(v))),
+    )
+    const blob = await exportDataFile({
+      columns: result.columns,
+      rows: serializedRows,
+      format: 'xlsx',
+      tableName: result.title,
+    })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = buildSqlResultExportFilename(result.title, new Date(), 'xlsx')
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+    URL.revokeObjectURL(url)
+  }, [exportRows, result.columns, result.title])
+
+  const downloadSql = useCallback(() => {
+    const content = toSqlInsert(result.columns, exportRows, result.title)
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = buildSqlResultExportFilename(result.title, new Date(), 'sql')
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+    URL.revokeObjectURL(url)
+  }, [exportRows, result.columns, result.title])
+
   const summaryLabel = result.truncated
     ? t('stage.queryEditor.summary.truncated', {
         count: result.rowCount,
@@ -450,6 +485,14 @@ export function SqlResultTable({
         <Button size="sm" variant="outline" aria-label={t('stage.queryEditor.result.downloadCsvAria')} onClick={downloadCsv}>
           <Download className="size-3.5" />
           {t('stage.queryEditor.result.downloadCsv')}
+        </Button>
+        <Button size="sm" variant="outline" aria-label={t('stage.queryEditor.result.downloadXlsxAria')} onClick={() => void downloadXlsx()}>
+          <Download className="size-3.5" />
+          {t('stage.queryEditor.result.downloadXlsx')}
+        </Button>
+        <Button size="sm" variant="outline" aria-label={t('stage.queryEditor.result.downloadSqlInsertAria')} onClick={downloadSql}>
+          <Download className="size-3.5" />
+          {t('stage.queryEditor.result.downloadSqlInsert')}
         </Button>
         {showExpand ? (
           <Button size="sm" variant="outline" aria-label={t('stage.queryEditor.result.expandAria')} onClick={() => setIsExpanded(true)}>

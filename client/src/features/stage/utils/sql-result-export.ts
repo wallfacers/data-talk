@@ -65,12 +65,32 @@ export function toSqlResultJson(columns: string[], rows: unknown[][]): string {
   )
 }
 
-export function buildSqlResultExportFilename(title: string, now = new Date()): string {
+export function buildSqlResultExportFilename(title: string, now = new Date(), ext = 'csv'): string {
   const yyyy = now.getUTCFullYear()
   const mm = padNumber(now.getUTCMonth() + 1)
   const dd = padNumber(now.getUTCDate())
   const hh = padNumber(now.getUTCHours())
   const mi = padNumber(now.getUTCMinutes())
   const ss = padNumber(now.getUTCSeconds())
-  return `sql-result-${safeFilenamePart(title)}-${yyyy}${mm}${dd}-${hh}${mi}${ss}.csv`
+  return `sql-result-${safeFilenamePart(title)}-${yyyy}${mm}${dd}-${hh}${mi}${ss}.${ext}`
+}
+
+export function toSqlInsert(columns: string[], rows: unknown[][], tableName = 'table'): string {
+  const quotedColumns = columns.map((c) => `"${c.replace(/"/g, '""')}"`)
+  const batchSize = 100
+  const batches: string[] = []
+  for (let i = 0; i < rows.length; i += batchSize) {
+    const batch = rows.slice(i, i + batchSize)
+    const values = batch.map((row) =>
+      '(' + row.map((v) => {
+        if (v == null) return 'NULL'
+        const s = String(typeof v === 'object' ? JSON.stringify(v) : v)
+        return `'${s.replace(/'/g, "''")}'`
+      }).join(', ') + ')',
+    )
+    batches.push(
+      `INSERT INTO "${tableName.replace(/"/g, '""')}" (${quotedColumns.join(', ')}) VALUES\n${values.join(',\n')};`,
+    )
+  }
+  return batches.join('\n')
 }
