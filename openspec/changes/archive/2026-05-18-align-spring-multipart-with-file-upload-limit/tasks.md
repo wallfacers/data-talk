@@ -17,6 +17,6 @@
 
 ## 4. 收尾
 
-- [ ] 4.1 运行 `openspec validate align-spring-multipart-with-file-upload-limit --strict` 确认 delta 合法
-- [ ] 4.2 提交 commit `fix(config): align spring multipart upload limit with FileUploadController 50MB (close BUG-0062)`，推 develop
+- [x] 4.1 运行 `openspec validate align-spring-multipart-with-file-upload-limit --strict` 确认 delta 合法 — PASS
+- [x] 4.2 提交 commit `fix(infra): close BUG-0061 (V2 migration) + BUG-0062 (multipart 50MB)` (合并 BUG-0061 一并 close), 推 develop @ 730d8b1f
 - [ ] 4.3 合入 develop 后运行 `/opsx:archive align-spring-multipart-with-file-upload-limit`

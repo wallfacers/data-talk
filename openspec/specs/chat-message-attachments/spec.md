@@ -458,3 +458,80 @@ type PreviewSource =
 - **AND** RPC `send_message` MUST NOT 被调用
 - **AND** 发送按钮 SHALL 暂时禁用直到用户移除图片至总量 ≤ 5 MB
 
+### Requirement: user_message_attachments 表通过独立 Flyway 迁移创建
+
+`user_message_attachments` 表的 schema 定义 SHALL 由 `db/migration/V2__user_message_attachments.sql` 单一文件提供，不再由 `V1__init.sql` 包含。
+
+V2 SHALL 使用 `CREATE TABLE IF NOT EXISTS` + `CREATE INDEX IF NOT EXISTS`，对以下三类环境幂等：
+
+1. **Fresh DB**：从无到有创建（V1 仅含其他表）
+2. **历史已应用 V1 含建表语句的环境**：跳过建表（表已存在）
+3. **手工 workaround 已建表的环境**（含 BUG-0061 临时修复用户）：跳过建表
+
+#### Scenario: Fresh DB 启动 user_message_attachments 表可达
+
+- **GIVEN** `~/.data-talk/datatalk.db` 不存在
+- **WHEN** 后端首次启动并执行 Flyway migrate
+- **THEN** `flyway_schema_history` SHALL 含 version=1 和 version=2 两行
+- **AND** `sqlite_master` SHALL 含 name=`user_message_attachments` 的 table
+- **AND** `sqlite_master` SHALL 含 name=`idx_user_message_attachments_session_message` 的 index
+- **AND** `GET /api/sessions/{id}/messages` 对任意 session id 都 SHALL NOT 因缺表返回 500
+
+#### Scenario: 老环境升级到含 V2 的版本
+
+- **GIVEN** 一个曾经应用过含建表语句的 V1 但缺 `user_message_attachments` 表的 DB
+- **WHEN** 后端启动并执行 Flyway migrate
+- **THEN** V2 SHALL 被应用并把 `user_message_attachments` 表 + 索引创建出来
+- **AND** `flyway_schema_history` SHALL 新增 version=2 行
+- **AND** `GET /api/sessions/{id}/messages` 对历史 session SHALL 返回 200 并正常回放消息
+
+#### Scenario: 手工已建表的环境保持幂等
+
+- **GIVEN** 一个开发者运行过 BUG-0061 文档的 sqlite3 workaround 手工建过表的 DB
+- **WHEN** 后端启动并执行 Flyway migrate
+- **THEN** V2 SHALL 因 `IF NOT EXISTS` 跳过实际 CREATE 但仍登记到 `flyway_schema_history`
+- **AND** 不 SHALL 因表已存在抛 `SQLITE_ERROR`
+
+### Requirement: V1__init.sql 不再包含 user_message_attachments 定义
+
+`V1__init.sql` SHALL NOT 包含 `user_message_attachments` 表或对应索引的 DDL。这一职责完全转移到 V2。
+
+#### Scenario: 静态校验 V1 不含 user_message_attachments
+
+- **GIVEN** 仓库 develop 分支 HEAD
+- **WHEN** 检查 `server/data-talk-infrastructure/src/main/resources/db/migration/V1__init.sql` 内容
+- **THEN** 文件 SHALL NOT 包含字面字符串 `user_message_attachments`
+
+### Requirement: multipart 上传上限与 Controller 业务上限对齐
+
+`spring.servlet.multipart.max-file-size` 和 `spring.servlet.multipart.max-request-size` SHALL 在所有 profile 中 ≥ `FileUploadController.MAX_SIZE_BYTES`（当前 50MB）。当代码常量调整时，配置数值 MUST 同步调整。
+
+实际表现：用户上传 ≤ 50MB 单文件时 SHALL NOT 因 Spring multipart 默认 1MB 上限被提前拒（在 multipart 解析层抛 `MaxUploadSizeExceededException`），SHALL 进到 Controller 层走业务校验路径。
+
+#### Scenario: 上传 5MB 图片成功进 Controller
+
+- **GIVEN** 后端使用 default profile 启动，`FileUploadController.MAX_SIZE_BYTES = 50MB`
+- **WHEN** 用户上传一张 5MB 的真实截图
+- **THEN** Spring multipart 解析层 SHALL NOT 抛 `MaxUploadSizeExceededException`
+- **AND** 请求 SHALL 进入 `FileUploadController.upload` 方法
+- **AND** Controller 业务校验 SHALL 通过（5MB < 50MB）
+- **AND** 文件 SHALL 落盘至 `~/.data-talk/uploads/<fileId>/`
+- **AND** 前端 chip SHALL 显示 `done` 状态
+
+#### Scenario: 上传 60MB 文件按业务上限被拒
+
+- **GIVEN** 后端使用 default profile 启动
+- **WHEN** 用户上传一个 60MB 文件
+- **THEN** 请求 SHALL 在 multipart 解析层（max-file-size=50MB）或 Controller 业务校验层被拒
+- **AND** 响应 SHALL 是结构化错误，而非 500 内部错误
+- **AND** 临时文件 SHALL NOT 残留在磁盘上
+
+#### Scenario: batch-image-attachments-via-fileparts 的 5MB hard limit 可达
+
+- **GIVEN** 前端按 `IMAGE_PAYLOAD_HARD_LIMIT_BYTES = 5MB` 阻止大图 payload
+- **AND** 用户上传两张各 3MB 的图片
+- **WHEN** 前端尝试发送
+- **THEN** 单图上传 SHALL 都成功（multipart 上限 50MB ≥ 3MB）
+- **AND** 前端 SHALL 在 send 时按合计 6MB 触发 `chat.image.payloadTooLarge` toast 阻止发送
+- **AND** 该 toast SHALL 来自前端 `classifyImagePayload`，而非 multipart 1MB 提前拒
+

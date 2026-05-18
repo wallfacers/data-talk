@@ -16,7 +16,7 @@
 
 ## 4. 收尾
 
-- [ ] 4.1 运行 `openspec validate fix-missing-user-message-attachments-migration --strict` 确认 delta 合法
-- [ ] 4.2 提交 commit `fix(db): add V2 migration for user_message_attachments (close BUG-0061)`，推 develop
-- [ ] 4.3 在 PR / release notes 提示老用户：若启动报 `FlywayException: Validate failed` 关于 V1 checksum，运行 `flyway repair` 或手工更新 schema_history 一次
+- [x] 4.1 运行 `openspec validate fix-missing-user-message-attachments-migration --strict` 确认 delta 合法 — PASS
+- [x] 4.2 提交 commit `fix(infra): close BUG-0061 (V2 migration) + BUG-0062 (multipart 50MB)` (合并 BUG-0062 一并 close), 推 develop @ 730d8b1f
+- [ ] 4.3 在 PR / release notes 提示老用户：若启动报 `FlywayException: Validate failed` 关于 V1 checksum，运行 `flyway repair` 或手工更新 schema_history 一次 (待 develop → master 发布 PR 时补充)
 - [ ] 4.4 合入 develop 后运行 `/opsx:archive fix-missing-user-message-attachments-migration`
