@@ -27,6 +27,8 @@ description: Use when the user manages saved data source connections or switches
 
 The session data context is a triple `{connectionId, database?, schema?}` describing where the next SQL or schema operation runs. Six tools manage it.
 
+> Note: `datatalk_list_connections` returns the GLOBAL saved-connection list and does NOT indicate which connection is active in the current session. Use `datatalk_get_data_context` to read the active state, and rely on the `activeSessionConnectionId` / `isActiveInSession` fields in `list_connections` responses for cross-checking.
+
 | Tool | Purpose | Required input |
 |------|---------|----------------|
 | `datatalk_get_data_context` | Read the current session data context | none |
@@ -41,6 +43,24 @@ Rules:
 - Never call `datatalk_set_data_context` with only `database` or only `schema` — that is an incomplete context switch. Always include `connectionId` + `selectedLevel`.
 - When a user says `use xxx`, always go through `datatalk_resolve_use_target` first; do not guess the matched target.
 - On `ambiguous`, present candidates to the user. On `not_found`, surface the message / suggestions or fall back to `datatalk_list_connection_targets` / `datatalk_list_connections`.
+
+## Answer-Style Playbook
+
+Three common question shapes have distinct call orders. Pick by **intent**, not by superficial keyword:
+
+1. **Session-attribution question** — user asks which connection / database / schema is currently in use ("现在连了什么"、"用的什么库"、"当前数据源"、"which connection am I on"、"what's selected").
+   - Call `datatalk_get_data_context`.
+   - Answer directly from the returned `connectionId` / `connectionNameSnapshot` / `databaseName` / `schemaName`.
+   - Do NOT call `datatalk_list_connections` for this shape — the global list does not answer "what is active".
+
+2. **Children of the current connection** — user asks which databases / schemas exist under the current connection ("有哪些数据库"、"有哪些 schema"、"what databases can I use").
+   - Call `datatalk_get_data_context` first to confirm a `connectionId` is bound.
+   - Then call `datatalk_list_connection_targets` to list valid databases / schemas under that connection.
+   - If no connection is bound, ask the user to choose one (use `datatalk_list_connections` to present options).
+
+3. **Global saved-connection inventory** — user explicitly asks for the global list of saved data sources ("有哪些连接"、"列出所有数据源"、"list all my saved databases").
+   - Call `datatalk_list_connections`.
+   - Use the response's `activeSessionConnectionId` and per-row `isActiveInSession` to tell the user which one is currently active in the session ("X is what you're using now"). Never assume "no active session" just because the response does not visibly flag one — check `activeSessionConnectionId` explicitly.
 
 ## Connection lifecycle tools
 

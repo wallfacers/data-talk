@@ -31,6 +31,8 @@ If the user explicitly asks to use the SQL editor, current editor, workspace, or
 
 If the user wants to collect/scrape/fetch external data, or write/run a Python/Node.js data collection script, route to `datatalk_script_run` and open a `script_editor` tab.
 
+If the user asks which connection / database / schema is currently in use, what data source is active, or any **session-attribution question** (any language; the question is about "what is selected right now", e.g., "which connection am I on", "what's selected", or the same intent phrased in CJK), you MUST call `datatalk_get_data_context` first to read the active state before any other connection tool. Do NOT infer the answer from `datatalk_list_connections` alone — that tool returns the global saved-connection list, not the active session. If you do call `datatalk_list_connections`, rely on its `activeSessionConnectionId` and per-row `isActiveInSession` fields, not on the mere presence/absence of connections in the list.
+
 ## Context Model
 
 There are two separate contexts:
@@ -45,11 +47,11 @@ Tool catalogue — one-line purpose + owning skill. Required input details, erro
 
 | Tool | Purpose | Skill |
 |---|---|---|
-| `datatalk_get_data_context` | Read current session data context | skill:connection-management |
+| `datatalk_get_data_context` | Read current session data context (active connection / database / schema) — call this first for any session-attribution question | skill:connection-management |
 | `datatalk_set_data_context` | Update current session connection / database / schema | skill:connection-management |
 | `datatalk_resolve_use_target` | Resolve a raw `use xxx` target | skill:connection-management |
 | `datatalk_list_connection_targets` | List valid databases / schemas for a connection | skill:connection-management |
-| `datatalk_list_connections` | List saved data source connections | skill:connection-management |
+| `datatalk_list_connections` | List all saved data source connections (global; does NOT indicate which is active in current session — call `datatalk_get_data_context` first). Response includes `activeSessionConnectionId` and per-row `isActiveInSession` for cross-checking | skill:connection-management |
 | `datatalk_select_connection` | Select a saved connection as current session connection | skill:connection-management |
 | `datatalk_create_connection` | Create a saved connection | skill:connection-management |
 | `datatalk_test_connection` | Test whether a saved connection is reachable | skill:connection-management |
