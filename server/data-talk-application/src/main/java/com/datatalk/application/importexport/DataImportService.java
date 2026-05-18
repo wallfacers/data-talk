@@ -119,6 +119,42 @@ public class DataImportService {
                     sampleRows = sqlResult.sampleRows();
                     columns = sqlResult.columns();
 
+                    // Execute DDL prefix (DROP TABLE / CREATE TABLE) if present
+                    String ddlPrefix = sqlReader.getDdlPrefix();
+                    if (ddlPrefix != null && !ddlPrefix.isEmpty()) {
+                        // Validate DDL target table matches parameter tableName
+                        String ddlTable = sqlReader.getDdlTargetTable();
+                        if (ddlTable != null) {
+                            String paramTable = tableName.toLowerCase();
+                            String ddlTableNorm = ddlTable.toLowerCase();
+                            if (!ddlTableNorm.equals(paramTable)) {
+                                throw new RuntimeException(
+                                    "TABLE_NAME_MISMATCH: DDL targets " + ddlTable
+                                    + " but tableName=" + tableName);
+                            }
+                        }
+
+                        // Execute DDL via JDBC
+                        try (Connection ddlConn = writeService.openConnection(connectionId)) {
+                            for (String ddlStmt : ddlPrefix.split(";\\s*")) {
+                                if (!ddlStmt.isBlank()) {
+                                    try {
+                                        ddlConn.createStatement().execute(ddlStmt);
+                                        log.info("Executed DDL: {}", ddlStmt.substring(0, Math.min(80, ddlStmt.length())));
+                                    } catch (Exception ddlEx) {
+                                        warnings.add("DDL execution warning: " + ddlEx.getMessage());
+                                        log.warn("DDL execution failed (continuing): {}", ddlEx.getMessage());
+                                    }
+                                }
+                            }
+                        } catch (RuntimeException e) {
+                            throw e;
+                        } catch (Exception e) {
+                            warnings.add("DDL connection warning: " + e.getMessage());
+                            log.warn("DDL connection failed (continuing): {}", e.getMessage());
+                        }
+                    }
+
                     if (sqlResult.totalRows() == 0) {
                         throw new RuntimeException(
                             "SQL_PARSE_FAILED: No parseable INSERT statements found in file");

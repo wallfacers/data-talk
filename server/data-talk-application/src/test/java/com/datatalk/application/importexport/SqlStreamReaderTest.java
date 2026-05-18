@@ -1,5 +1,6 @@
 package com.datatalk.application.importexport;
 
+import com.datatalk.domain.error.DataTalkException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -10,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class SqlStreamReaderTest {
 
@@ -440,5 +442,220 @@ class SqlStreamReaderTest {
         reader.stream(file, 100, allRows::addAll, null, null);
 
         assertThat(allRows.get(0).get("active")).isEqualTo(false);
+    }
+
+    // ── DDL prefix extraction ─────────────────────────────────────────
+
+    @Test
+    void ddlPrefix_dropTableIfExists() throws Exception {
+        Path file = writeSql("""
+            DROP TABLE IF EXISTS users;
+            INSERT INTO users (id, name) VALUES (1, 'Alice');
+            """);
+
+        List<Map<String, Object>> allRows = new ArrayList<>();
+        reader.stream(file, 100, allRows::addAll, null, null);
+
+        assertThat(reader.getDdlPrefix()).contains("DROP TABLE IF EXISTS users");
+        assertThat(allRows).hasSize(1);
+    }
+
+    @Test
+    void ddlPrefix_createTable() throws Exception {
+        Path file = writeSql("""
+            CREATE TABLE users (id INT, name VARCHAR(100));
+            INSERT INTO users (id, name) VALUES (1, 'Alice');
+            """);
+
+        List<Map<String, Object>> allRows = new ArrayList<>();
+        reader.stream(file, 100, allRows::addAll, null, null);
+
+        assertThat(reader.getDdlPrefix()).contains("CREATE TABLE users");
+        assertThat(allRows).hasSize(1);
+    }
+
+    @Test
+    void ddlPrefix_dropAndCreate() throws Exception {
+        Path file = writeSql("""
+            DROP TABLE IF EXISTS orders;
+            CREATE TABLE orders (id INT, total DOUBLE);
+            INSERT INTO orders (id, total) VALUES (1, 99.5);
+            INSERT INTO orders (id, total) VALUES (2, 150.0);
+            """);
+
+        List<Map<String, Object>> allRows = new ArrayList<>();
+        reader.stream(file, 100, allRows::addAll, null, null);
+
+        assertThat(reader.getDdlPrefix()).contains("DROP TABLE IF EXISTS orders");
+        assertThat(reader.getDdlPrefix()).contains("CREATE TABLE orders");
+        assertThat(allRows).hasSize(2);
+    }
+
+    @Test
+    void ddlPrefix_separation_ddlNotInInsertStream() throws Exception {
+        Path file = writeSql("""
+            DROP TABLE IF EXISTS t;
+            CREATE TABLE t (id INT, val VARCHAR(50));
+            INSERT INTO t (id, val) VALUES (1, 'a');
+            INSERT INTO t (id, val) VALUES (2, 'b');
+            """);
+
+        List<Map<String, Object>> allRows = new ArrayList<>();
+        reader.stream(file, 100, allRows::addAll, null, null);
+
+        // DDL is in prefix, not in rows
+        assertThat(reader.getDdlPrefix()).isNotEmpty();
+        assertThat(allRows).hasSize(2);
+        assertThat(allRows.get(0).get("val")).isEqualTo("a");
+        assertThat(allRows.get(1).get("val")).isEqualTo("b");
+    }
+
+    @Test
+    void ddlTargetTable_extractedFromCreateTable() throws Exception {
+        Path file = writeSql("""
+            DROP TABLE IF EXISTS my_table;
+            CREATE TABLE my_table (id INT);
+            INSERT INTO my_table (id) VALUES (1);
+            """);
+
+        reader.stream(file, 100, rows -> {}, null, null);
+
+        assertThat(reader.getDdlTargetTable()).isEqualTo("my_table");
+    }
+
+    @Test
+    void ddlTargetTable_nullWhenNoDdl() throws Exception {
+        Path file = writeSql("""
+            INSERT INTO t (id) VALUES (1);
+            """);
+
+        reader.stream(file, 100, rows -> {}, null, null);
+
+        assertThat(reader.getDdlTargetTable()).isNull();
+        assertThat(reader.getDdlPrefix()).isEmpty();
+    }
+
+    @Test
+    void ddlTargetTable_quotedName() throws Exception {
+        Path file = writeSql("""
+            CREATE TABLE "Users" (id INT);
+            INSERT INTO "Users" (id) VALUES (1);
+            """);
+
+        reader.stream(file, 100, rows -> {}, null, null);
+
+        assertThat(reader.getDdlTargetTable()).isEqualTo("Users");
+    }
+
+    @Test
+    void ddlPrefix_commentsBetweenDdlAndInsert() throws Exception {
+        Path file = writeSql("""
+            -- Drop the old table
+            DROP TABLE IF EXISTS data;
+            /* Create new structure */
+            CREATE TABLE data (id INT, name VARCHAR(50));
+            -- Insert data
+            INSERT INTO data (id, name) VALUES (1, 'test');
+            """);
+
+        List<Map<String, Object>> allRows = new ArrayList<>();
+        reader.stream(file, 100, allRows::addAll, null, null);
+
+        assertThat(reader.getDdlPrefix()).contains("DROP TABLE IF EXISTS data");
+        assertThat(reader.getDdlPrefix()).contains("CREATE TABLE data");
+        assertThat(allRows).hasSize(1);
+    }
+
+    @Test
+    void ddlPrefix_onlyDdlNoInsert_streamIsEmpty() throws Exception {
+        Path file = writeSql("""
+            DROP TABLE IF EXISTS empty;
+            CREATE TABLE empty (id INT);
+            """);
+
+        List<Map<String, Object>> allRows = new ArrayList<>();
+        var result = reader.stream(file, 100, allRows::addAll, null, null);
+
+        assertThat(reader.getDdlPrefix()).isNotEmpty();
+        assertThat(result.totalRows()).isEqualTo(0);
+        assertThat(allRows).isEmpty();
+    }
+
+    @Test
+    void ddlPrefix_dropTableWithoutIfExists() throws Exception {
+        Path file = writeSql("""
+            DROP TABLE users;
+            INSERT INTO users (id) VALUES (1);
+            """);
+
+        List<Map<String, Object>> allRows = new ArrayList<>();
+        reader.stream(file, 100, allRows::addAll, null, null);
+
+        assertThat(reader.getDdlPrefix()).contains("DROP TABLE users");
+        assertThat(allRows).hasSize(1);
+    }
+
+    @Test
+    void ddlPrefix_createTableIfNotExists() throws Exception {
+        Path file = writeSql("""
+            CREATE TABLE IF NOT EXISTS logs (id INT, msg VARCHAR(255));
+            INSERT INTO logs (id, msg) VALUES (1, 'hello');
+            """);
+
+        List<Map<String, Object>> allRows = new ArrayList<>();
+        reader.stream(file, 100, allRows::addAll, null, null);
+
+        assertThat(reader.getDdlPrefix()).contains("CREATE TABLE IF NOT EXISTS logs");
+        assertThat(allRows).hasSize(1);
+    }
+
+    // ── Unsupported DDL throws UNSUPPORTED_DDL ────────────────────────
+
+    @Test
+    void unsupportedDdl_alterTable_throws() throws Exception {
+        Path file = writeSql("""
+            ALTER TABLE users ADD COLUMN email VARCHAR(255);
+            INSERT INTO users (id) VALUES (1);
+            """);
+
+        List<Map<String, Object>> allRows = new ArrayList<>();
+        assertThatThrownBy(() -> reader.stream(file, 100, allRows::addAll, null, null))
+            .isInstanceOf(DataTalkException.class)
+            .satisfies(ex -> {
+                DataTalkException dte = (DataTalkException) ex;
+                assertThat(dte.code()).isEqualTo("sql.unsupported_ddl");
+            });
+    }
+
+    @Test
+    void unsupportedDdl_createIndex_throws() throws Exception {
+        Path file = writeSql("""
+            CREATE INDEX idx_name ON users (name);
+            INSERT INTO users (id) VALUES (1);
+            """);
+
+        List<Map<String, Object>> allRows = new ArrayList<>();
+        assertThatThrownBy(() -> reader.stream(file, 100, allRows::addAll, null, null))
+            .isInstanceOf(DataTalkException.class)
+            .satisfies(ex -> {
+                DataTalkException dte = (DataTalkException) ex;
+                assertThat(dte.code()).isEqualTo("sql.unsupported_ddl");
+            });
+    }
+
+    @Test
+    void unsupportedDdl_truncate_throws() throws Exception {
+        Path file = writeSql("""
+            TRUNCATE TABLE users;
+            INSERT INTO users (id) VALUES (1);
+            """);
+
+        List<Map<String, Object>> allRows = new ArrayList<>();
+        assertThatThrownBy(() -> reader.stream(file, 100, allRows::addAll, null, null))
+            .isInstanceOf(DataTalkException.class)
+            .satisfies(ex -> {
+                DataTalkException dte = (DataTalkException) ex;
+                assertThat(dte.code()).isEqualTo("sql.unsupported_ddl");
+            });
     }
 }

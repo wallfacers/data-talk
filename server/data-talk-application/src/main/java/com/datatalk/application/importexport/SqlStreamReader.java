@@ -1,5 +1,7 @@
 package com.datatalk.application.importexport;
 
+import com.datatalk.domain.error.DataTalkErrorCodes;
+import com.datatalk.domain.error.DataTalkException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,6 +30,21 @@ class SqlStreamReader {
         "(?is)\\bINSERT\\s+INTO\\s+(?<table>[\\w.\"'`]+)\\s*\\((?<cols>[^)]+)\\)\\s*VALUES\\s*(?<values>.+)"
     );
 
+    private static final Pattern DROP_TABLE_PATTERN = Pattern.compile(
+        "(?is)^\\s*DROP\\s+TABLE\\s+(IF\\s+EXISTS\\s+)?(?<table>[\\w.\"'`]+)\\s*$"
+    );
+
+    private static final Pattern CREATE_TABLE_PATTERN = Pattern.compile(
+        "(?is)^\\s*CREATE\\s+TABLE\\s+(IF\\s+NOT\\s+EXISTS\\s+)?(?<table>[\\w.\"'`]+)\\s*\\(.*"
+    );
+
+    private static final Pattern UNSUPPORTED_DDL_PATTERN = Pattern.compile(
+        "(?is)^\\s*(ALTER\\s|CREATE\\s+(UNIQUE\\s+)?INDEX\\s|TRUNCATE\\s|GRANT\\s|REVOKE\\s)"
+    );
+
+    /** Accumulated DDL prefix (DROP TABLE / CREATE TABLE) extracted during the last stream() call. */
+    private String ddlPrefix = "";
+
     record StreamReadResult(int totalRows, List<String> columns, List<Map<String, Object>> sampleRows) {}
 
     /**
@@ -48,6 +65,9 @@ class SqlStreamReader {
         int totalRows = 0;
         int warningCount = 0;
 
+        // Reset DDL prefix for each stream call
+        ddlPrefix = "";
+
         SqlStatementSplitter splitter = new SqlStatementSplitter();
         List<String> statements = new ArrayList<>();
 
@@ -57,7 +77,30 @@ class SqlStreamReader {
             throw new RuntimeException("Failed to read SQL file: " + e.getMessage(), e);
         }
 
+        List<String> ddlStatements = new ArrayList<>();
+
         for (String stmt : statements) {
+            // Check for supported DDL: DROP TABLE / CREATE TABLE
+            Matcher dropMatcher = DROP_TABLE_PATTERN.matcher(stmt);
+            if (dropMatcher.matches()) {
+                ddlStatements.add(stmt);
+                continue;
+            }
+
+            Matcher createMatcher = CREATE_TABLE_PATTERN.matcher(stmt);
+            if (createMatcher.matches()) {
+                ddlStatements.add(stmt);
+                continue;
+            }
+
+            // Check for unsupported DDL
+            if (UNSUPPORTED_DDL_PATTERN.matcher(stmt).find()) {
+                throw new DataTalkException(DataTalkErrorCodes.UNSUPPORTED_DDL,
+                    "Unsupported DDL statement in SQL import file: " + stmt.substring(0, Math.min(80, stmt.length())),
+                    false);
+            }
+
+            // Check for INSERT
             Matcher m = INSERT_PATTERN.matcher(stmt);
             if (!m.matches()) {
                 log.debug("Skipping non-INSERT statement: {}...", stmt.substring(0, Math.min(80, stmt.length())));
@@ -115,6 +158,11 @@ class SqlStreamReader {
             batchConsumer.accept(batch);
         }
 
+        // Build ddlPrefix from accumulated DDL statements
+        if (!ddlStatements.isEmpty()) {
+            ddlPrefix = String.join("; ", ddlStatements);
+        }
+
         if (warningCount > 0) {
             log.warn("SQL stream read completed with {} warnings", warningCount);
         }
@@ -144,6 +192,36 @@ class SqlStreamReader {
             throw new RuntimeException("Failed to extract target tables: " + e.getMessage(), e);
         }
         return tables;
+    }
+
+    /**
+     * Returns the accumulated DDL prefix (DROP TABLE / CREATE TABLE) from the last {@link #stream} call.
+     * Statements are joined with "; " separator.
+     */
+    String getDdlPrefix() {
+        return ddlPrefix;
+    }
+
+    /**
+     * Extracts the table name from the CREATE TABLE statement in the DDL prefix.
+     * Returns null if no CREATE TABLE is present.
+     */
+    String getDdlTargetTable() {
+        if (ddlPrefix == null || ddlPrefix.isEmpty()) {
+            return null;
+        }
+        // Search for CREATE TABLE within the concatenated DDL prefix
+        Pattern createTableNoAnchor = Pattern.compile(
+            "(?is)\\bCREATE\\s+TABLE\\s+(IF\\s+NOT\\s+EXISTS\\s+)?(?<table>[\\w.\"'`]+)\\s*\\("
+        );
+        Matcher m = createTableNoAnchor.matcher(ddlPrefix);
+        if (m.find()) {
+            String rawTable = m.group("table");
+            String clean = stripQuotes(rawTable.trim());
+            int dotIdx = clean.lastIndexOf('.');
+            return (dotIdx >= 0) ? clean.substring(dotIdx + 1) : clean;
+        }
+        return null;
     }
 
     /**

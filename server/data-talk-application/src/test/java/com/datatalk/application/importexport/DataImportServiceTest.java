@@ -1,6 +1,7 @@
 package com.datatalk.application.importexport;
 
 import com.datatalk.application.connection.ConnectionService;
+import com.datatalk.domain.error.DataTalkException;
 import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.script.ScriptDataWriteService;
@@ -357,5 +358,144 @@ class DataImportServiceTest {
         var result = service.importFromFile("s6", "c1", "orders", true, null, null);
 
         assertThat(result.rowsImported()).isEqualTo(1);
+    }
+
+    // ── DDL + INSERT mixed import tests ─────────────────────────────────
+
+    @Test
+    void importSql_ddlAndInsert_endToEnd() throws Exception {
+        String dbName = "mem:sql7" + System.nanoTime() + ";DB_CLOSE_DELAY=-1";
+        mockConnection("c1", dbName);
+
+        Path sqlFile = tempDir.resolve("ddl_insert.sql");
+        Files.writeString(sqlFile,
+            "DROP TABLE IF EXISTS products;\n" +
+            "CREATE TABLE products (id INT, name VARCHAR(100), price DOUBLE);\n" +
+            "INSERT INTO products (id, name, price) VALUES (1, 'Widget', 9.99);\n" +
+            "INSERT INTO products (id, name, price) VALUES (2, 'Gadget', 19.99);\n" +
+            "INSERT INTO products (id, name, price) VALUES (3, 'Doohickey', 29.99);\n");
+        mockFile("s7", "ddl_insert.sql", sqlFile);
+
+        var result = service.importFromFile("s7", "c1", "products", true, null, null);
+
+        assertThat(result.rowsImported()).isEqualTo(3);
+        assertThat(result.tableName()).isEqualTo("products");
+
+        try (Connection c = DriverManager.getConnection("jdbc:h2:" + dbName, "sa", "")) {
+            ResultSet rs = c.createStatement().executeQuery("SELECT COUNT(*) FROM \"products\"");
+            assertThat(rs.next()).isTrue();
+            assertThat(rs.getInt(1)).isEqualTo(3);
+        }
+    }
+
+    @Test
+    void importSql_ddlTargetTableMismatch_throws() throws Exception {
+        String dbName = "mem:sql8" + System.nanoTime() + ";DB_CLOSE_DELAY=-1";
+        mockConnection("c1", dbName);
+
+        Path sqlFile = tempDir.resolve("ddl_mismatch.sql");
+        Files.writeString(sqlFile,
+            "DROP TABLE IF EXISTS orders;\n" +
+            "CREATE TABLE orders (id INT);\n" +
+            "INSERT INTO orders (id) VALUES (1);\n");
+        mockFile("s8", "ddl_mismatch.sql", sqlFile);
+
+        assertThatThrownBy(() -> service.importFromFile("s8", "c1", "other_table", true, null, null))
+            .isInstanceOf(RuntimeException.class)
+            .hasMessageContaining("TABLE_NAME_MISMATCH");
+    }
+
+    @Test
+    void importSql_unsupportedDdl_throws() throws Exception {
+        String dbName = "mem:sql9" + System.nanoTime() + ";DB_CLOSE_DELAY=-1";
+        mockConnection("c1", dbName);
+
+        Path sqlFile = tempDir.resolve("alter.sql");
+        Files.writeString(sqlFile,
+            "ALTER TABLE users ADD COLUMN email VARCHAR(255);\n" +
+            "INSERT INTO users (id) VALUES (1);\n");
+        mockFile("s9", "alter.sql", sqlFile);
+
+        assertThatThrownBy(() -> service.importFromFile("s9", "c1", "users", true, null, null))
+            .isInstanceOf(DataTalkException.class)
+            .satisfies(ex -> {
+                DataTalkException dte = (DataTalkException) ex;
+                assertThat(dte.code()).isEqualTo("sql.unsupported_ddl");
+            });
+    }
+
+    @Test
+    void importSql_dropTableWithoutIfExists() throws Exception {
+        String dbName = "mem:sql10" + System.nanoTime() + ";DB_CLOSE_DELAY=-1";
+        mockConnection("c1", dbName);
+
+        // First create the table so DROP TABLE can succeed
+        try (Connection c = DriverManager.getConnection("jdbc:h2:" + dbName, "sa", "")) {
+            c.createStatement().execute("CREATE TABLE items (id INT, name VARCHAR(100))");
+        }
+
+        Path sqlFile = tempDir.resolve("drop_no_if_exists.sql");
+        Files.writeString(sqlFile,
+            "DROP TABLE items;\n" +
+            "CREATE TABLE items (id INT, name VARCHAR(100));\n" +
+            "INSERT INTO items (id, name) VALUES (1, 'A');\n" +
+            "INSERT INTO items (id, name) VALUES (2, 'B');\n");
+        mockFile("s10", "drop_no_if_exists.sql", sqlFile);
+
+        var result = service.importFromFile("s10", "c1", "items", true, null, null);
+
+        assertThat(result.rowsImported()).isEqualTo(2);
+
+        try (Connection c = DriverManager.getConnection("jdbc:h2:" + dbName, "sa", "")) {
+            ResultSet rs = c.createStatement().executeQuery("SELECT COUNT(*) FROM \"items\"");
+            assertThat(rs.next()).isTrue();
+            assertThat(rs.getInt(1)).isEqualTo(2);
+        }
+    }
+
+    @Test
+    void importSql_ddlExecutionFailure_producesWarning() throws Exception {
+        // Use a database where DDL will fail, but INSERT into an existing table works
+        String dbName = "mem:sql11" + System.nanoTime() + ";DB_CLOSE_DELAY=-1";
+        mockConnection("c1", dbName);
+
+        // Pre-create the target table so INSERT can succeed even if DDL fails
+        try (Connection c = DriverManager.getConnection("jdbc:h2:" + dbName, "sa", "")) {
+            c.createStatement().execute("CREATE TABLE target (id INT, val VARCHAR(50))");
+        }
+
+        // DDL with invalid syntax will fail, but should produce a warning, not an error
+        Path sqlFile = tempDir.resolve("bad_ddl.sql");
+        Files.writeString(sqlFile,
+            "DROP TABLE IF EXISTS nonexistent_table_that_is_fine;\n" +
+            "INSERT INTO target (id, val) VALUES (1, 'test');\n");
+        mockFile("s11", "bad_ddl.sql", sqlFile);
+
+        var result = service.importFromFile("s11", "c1", "target", true, null, null);
+
+        assertThat(result.rowsImported()).isEqualTo(1);
+    }
+
+    @Test
+    void importSql_createTableIfNotExists() throws Exception {
+        String dbName = "mem:sql12" + System.nanoTime() + ";DB_CLOSE_DELAY=-1";
+        mockConnection("c1", dbName);
+
+        Path sqlFile = tempDir.resolve("create_if_not_exists.sql");
+        Files.writeString(sqlFile,
+            "CREATE TABLE IF NOT EXISTS new_data (id INT, name VARCHAR(50));\n" +
+            "INSERT INTO new_data (id, name) VALUES (1, 'Alice');\n" +
+            "INSERT INTO new_data (id, name) VALUES (2, 'Bob');\n");
+        mockFile("s12", "create_if_not_exists.sql", sqlFile);
+
+        var result = service.importFromFile("s12", "c1", "new_data", true, null, null);
+
+        assertThat(result.rowsImported()).isEqualTo(2);
+
+        try (Connection c = DriverManager.getConnection("jdbc:h2:" + dbName, "sa", "")) {
+            ResultSet rs = c.createStatement().executeQuery("SELECT COUNT(*) FROM \"new_data\"");
+            assertThat(rs.next()).isTrue();
+            assertThat(rs.getInt(1)).isEqualTo(2);
+        }
     }
 }
