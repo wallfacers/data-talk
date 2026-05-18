@@ -14,6 +14,7 @@ import { copyToClipboard } from '@/lib/utils'
 import { useI18n } from '@/i18n/use-i18n'
 import { I18nProvider } from '@/i18n/provider'
 import { useSessionStore } from '@/stores/session-store'
+import { useConnectionStore } from '@/features/connection/store'
 import { openDirectSqlQueryEditorTab } from '@/features/stage/utils/open-direct-sql-query-editor-tab'
 import { toast } from 'sonner'
 import { getCurrentLanguage } from '@/stores/ui-settings-store'
@@ -667,6 +668,11 @@ export function Markdown(props: {
             success = true
           }
           if (format === 'sql-insert') {
+            const sessionId = useSessionStore.getState().activeSessionId
+            const ctx = sessionId ? useSessionStore.getState().dataContextBySession.get(sessionId) : null
+            const connKind = ctx?.connectionId
+              ? useConnectionStore.getState().connections.find((c) => c.id === ctx.connectionId)?.kind
+              : null
             const now = new Date()
             const yyyy = now.getUTCFullYear()
             const mm = String(now.getUTCMonth() + 1).padStart(2, '0')
@@ -675,7 +681,7 @@ export function Markdown(props: {
             const mi = String(now.getUTCMinutes()).padStart(2, '0')
             const ss = String(now.getUTCSeconds()).padStart(2, '0')
             const filename = `table-${yyyy}${mm}${dd}-${hh}${mi}${ss}.sql`
-            const blob = new Blob([toSqlInsert(model)], { type: 'text/sql;charset=utf-8;' })
+            const blob = new Blob([toSqlInsert(model, 'exported_table', connKind)], { type: 'text/sql;charset=utf-8;' })
             const url = URL.createObjectURL(blob)
             const link = document.createElement('a')
             link.href = url

@@ -50,6 +50,7 @@ type SqlResultTableProps = {
   result: SqlExecuteResultItem
   scrollPosition?: ResultScrollPosition
   onScrollPositionChange?: (position: ResultScrollPosition) => void
+  connectionKind?: string | null
 }
 
 const stickyHeaderCellClass = 'sticky top-0 z-20 h-8 border-b border-border/50 bg-muted px-3'
@@ -131,6 +132,7 @@ export function SqlResultTable({
   result,
   scrollPosition,
   onScrollPositionChange,
+  connectionKind,
 }: SqlResultTableProps) {
   const { t } = useI18n()
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
@@ -276,7 +278,7 @@ export function SqlResultTable({
   }, [exportRows, result.columns, result.title])
 
   const downloadSql = useCallback(() => {
-    const content = toSqlInsert(result.columns, exportRows, result.title)
+    const content = toSqlInsert(result.columns, exportRows, result.title, connectionKind)
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement('a')
@@ -286,7 +288,7 @@ export function SqlResultTable({
     anchor.click()
     anchor.remove()
     URL.revokeObjectURL(url)
-  }, [exportRows, result.columns, result.title])
+  }, [connectionKind, exportRows, result.columns, result.title])
 
   const summaryLabel = result.truncated
     ? t('stage.queryEditor.summary.truncated', {

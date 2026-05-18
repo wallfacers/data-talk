@@ -980,7 +980,7 @@ Export converts query results to files using streaming writers. The async thresh
 | CSV | `BufferedWriter` + UTF-8 BOM (`﻿`) prefix, RFC-compliant escaping | 1,000,000 | Excel-compatible UTF-8 BOM header |
 | JSON | `BufferedWriter`, streaming array output (`[{...}, {...}]`) | 1,000,000 | Null values rendered as JSON `null` |
 | XLSX | `SXSSFWorkbook` (window=100), streaming write | 1,048,576 | Hard cap at Excel specification; auto-truncated |
-| SQL INSERT | `BufferedWriter`, batch INSERT statements (100 rows per `INSERT INTO ... VALUES` block) | 1,000,000 | Double-quote identifier quoting; single-quote value escaping |
+| SQL INSERT | `BufferedWriter`, batch INSERT statements (100 rows per `INSERT INTO ... VALUES` block) | 1,000,000 | Dialect-specific identifier quoting (backtick for MySQL/MariaDB/TiDB/Doris/StarRocks/ClickHouse/OceanBase, brackets for SQL Server, double-quote for PostgreSQL/Oracle/H2/etc.); single-quote value escaping |
 
 | Threshold | Behavior |
 |-----------|----------|

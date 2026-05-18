@@ -1,4 +1,5 @@
 import { exportDataFile } from '@/services/api/data-export'
+import { quoteIdentifier, resolveIdentifierQuoteStyle } from '@/features/stage/utils/sql-result-export'
 import type { TableModel } from './table-model'
 
 const UTF8_BOM = '\uFEFF'
@@ -59,9 +60,10 @@ export function toDownloadableCsv(model: TableModel): string {
   return `${UTF8_BOM}${toCsv(model)}`
 }
 
-export function toSqlInsert(model: TableModel, tableName = 'exported_table'): string {
-  const columns = model.headers.map((h) => `"${h.replace(/"/g, '""')}"`).join(', ')
-  const quotedTable = `"${tableName.replace(/"/g, '""')}"`
+export function toSqlInsert(model: TableModel, tableName = 'exported_table', connectionKind?: string | null): string {
+  const style = resolveIdentifierQuoteStyle(connectionKind)
+  const columns = model.headers.map((h) => quoteIdentifier(h, style)).join(', ')
+  const quotedTable = quoteIdentifier(tableName, style)
   const batchSize = 100
   const batches: string[] = []
 

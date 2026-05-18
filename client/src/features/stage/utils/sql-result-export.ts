@@ -1,5 +1,35 @@
 export type SqlResultExportScope = 'page' | 'result'
 
+type IdentifierQuoteStyle = 'double-quote' | 'backtick' | 'bracket'
+
+export function resolveIdentifierQuoteStyle(connectionKind: string | null | undefined): IdentifierQuoteStyle {
+  switch (connectionKind?.trim().toLowerCase()) {
+    case 'mysql':
+    case 'mariadb':
+    case 'tidb':
+    case 'apache_doris':
+    case 'starrocks':
+    case 'oceanbase':
+    case 'clickhouse':
+      return 'backtick'
+    case 'sqlserver':
+      return 'bracket'
+    default:
+      return 'double-quote'
+  }
+}
+
+export function quoteIdentifier(name: string, style: IdentifierQuoteStyle): string {
+  switch (style) {
+    case 'backtick':
+      return '`' + name.replace(/`/g, '``') + '`'
+    case 'bracket':
+      return '[' + name.replace(/\]/g, ']]') + ']'
+    default:
+      return '"' + name.replace(/"/g, '""') + '"'
+  }
+}
+
 const UTF8_BOM = '﻿'
 
 function stringifyCsvValue(value: unknown): string {
@@ -75,8 +105,10 @@ export function buildSqlResultExportFilename(title: string, now = new Date(), ex
   return `sql-result-${safeFilenamePart(title)}-${yyyy}${mm}${dd}-${hh}${mi}${ss}.${ext}`
 }
 
-export function toSqlInsert(columns: string[], rows: unknown[][], tableName = 'table'): string {
-  const quotedColumns = columns.map((c) => `"${c.replace(/"/g, '""')}"`)
+export function toSqlInsert(columns: string[], rows: unknown[][], tableName = 'table', connectionKind?: string | null): string {
+  const style = resolveIdentifierQuoteStyle(connectionKind)
+  const quotedColumns = columns.map((c) => quoteIdentifier(c, style))
+  const quotedTable = quoteIdentifier(tableName, style)
   const batchSize = 100
   const batches: string[] = []
   for (let i = 0; i < rows.length; i += batchSize) {
@@ -89,7 +121,7 @@ export function toSqlInsert(columns: string[], rows: unknown[][], tableName = 't
       }).join(', ') + ')',
     )
     batches.push(
-      `INSERT INTO "${tableName.replace(/"/g, '""')}" (${quotedColumns.join(', ')}) VALUES\n${values.join(',\n')};`,
+      `INSERT INTO ${quotedTable} (${quotedColumns.join(', ')}) VALUES\n${values.join(',\n')};`,
     )
   }
   return batches.join('\n')

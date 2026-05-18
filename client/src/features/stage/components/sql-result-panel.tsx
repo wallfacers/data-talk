@@ -110,6 +110,7 @@ export function SqlResultPanel({
       result={activeResult}
       scrollPosition={activeScrollPosition}
       onScrollPositionChange={onActiveScrollPositionChange}
+      connectionKind={connectionKind}
     />
   )
 }
