@@ -158,6 +158,11 @@ public class OpenCodeGatewayBeans {
             skillSyncer.syncSkill("skill-creator", opencodeCwd);
             skillSyncer.syncSkill("semantic-model-usage", opencodeCwd);
             skillSyncer.syncSkill("file-upload-routing", opencodeCwd);
+            skillSyncer.syncSkill("brainstorming", opencodeCwd);
+            skillSyncer.syncSkill("writing-plans", opencodeCwd);
+            skillSyncer.syncSkill("executing-plans", opencodeCwd);
+            skillSyncer.syncSkill("using-superpowers", opencodeCwd);
+            skillSyncer.syncSkill("planning-with-files-zh", opencodeCwd);
 
             if (mcpProps.isEnabled()) {
                 bootstrapReconciler.writeManagedConfig(serverPort);
