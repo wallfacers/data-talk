@@ -36,7 +36,13 @@ import { useI18n } from '@/i18n/use-i18n'
 import { useDataSourcePickerStore } from './data-source-picker/data-source-picker-store'
 import { cn } from '@/lib/utils'
 import { shouldAutoRunDirectSql } from '@/features/stage/utils/direct-sql-auto-run-policy'
-import { useFileUpload } from './useFileUpload'
+import { toast } from 'sonner'
+import {
+  IMAGE_DATA_URI_FETCH_TIMEOUT_MS,
+  IMAGE_PAYLOAD_HARD_LIMIT_BYTES,
+} from './constants'
+import { classifyImagePayload, computeImagePayloadSize } from './image-payload'
+import { evictDataUri, getDataUri, useFileUpload } from './useFileUpload'
 import { FileAttachmentChip } from './components/file-attachment-chip'
 import { FileDropZone } from './components/file-drop-zone'
 
@@ -353,15 +359,49 @@ function InnerComposer() {
       // as a fallback for the (rare) race where Enter outpaces the in-flight uploads.
       const responses = attachments.length > 0 ? await uploadAll() : []
 
-      // Build parts array with text + any completed file uploads
+      // Build parts array with text + any completed file uploads. Image
+      // attachments resolve their cached/in-flight base64 data URI here so the
+      // backend can forward them as native OpenCode FileParts in the same
+      // user message (no extra MCP read_file round-trip).
       const parts: unknown[] = [createTextPart(activeSessionId, trimmed)]
+      const imageFileIds: string[] = []
       for (const r of responses) {
-        parts.push(createFileUploadPart(activeSessionId, r.fileId, r.filename, r.mimeType, r.sizeBytes, r.analysis as Record<string, unknown>))
+        let url: string | undefined
+        if (r.mimeType?.startsWith('image/')) {
+          const cached = await getDataUri(r.fileId, IMAGE_DATA_URI_FETCH_TIMEOUT_MS)
+          if (cached) {
+            url = cached
+            imageFileIds.push(r.fileId)
+          }
+        }
+        parts.push(createFileUploadPart(activeSessionId, r.fileId, r.filename, r.mimeType, r.sizeBytes, r.analysis as Record<string, unknown>, url))
+      }
+
+      // Size guard — base64 inflates ~33%, so >5MB combined payload puts the
+      // OpenCode body / SSE frame at risk. Warn at 3MB, hard-reject at 5MB.
+      const verdict = classifyImagePayload(computeImagePayloadSize(parts))
+      if (verdict.kind === 'reject') {
+        const sizeMB = (verdict.bytes / (1024 * 1024)).toFixed(1)
+        const limitMB = (IMAGE_PAYLOAD_HARD_LIMIT_BYTES / (1024 * 1024)).toFixed(0)
+        toast.error(t('chat.image.payloadTooLarge', { sizeMB, limitMB }))
+        // Restore the draft so the user doesn't lose their text; chips stay so
+        // they can remove some and retry. setPendingPrompt(null) is not needed
+        // because we haven't entered the inflight branch yet.
+        updateText(trimmed)
+        return
+      }
+      if (verdict.kind === 'warn') {
+        const sizeMB = (verdict.bytes / (1024 * 1024)).toFixed(1)
+        toast.warning(t('chat.image.payloadWarning', { sizeMB }))
       }
 
       const ok = await sendMessage(parts)
       if (ok) {
         clearDone()
+        // Free the cached data URIs — the image already shipped, and OpenCode
+        // echoes the FilePart back so the bubble chip reads from the echoed
+        // part's url field, not the cache.
+        for (const fileId of imageFileIds) evictDataUri(fileId)
       }
       // !ok: the failed pending user bubble owns retry; restoring here would also
       // re-persist the draft via setComposerDraft and resurrect on next CTRL+R.

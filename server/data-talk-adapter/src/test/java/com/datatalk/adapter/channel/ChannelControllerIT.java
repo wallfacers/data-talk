@@ -242,4 +242,81 @@ class ChannelControllerIT {
         assertThat(response).contains("\"aborted\":true");
         oc.verify(1, postRequestedFor(urlEqualTo("/session/ses_test/abort")));
     }
+
+    @Test
+    void sendMessageWithImageDataUriForwardsAsFilePartToOpenCode() throws Exception {
+        // Verifies the new batch-image path end-to-end through the controller:
+        // a file_upload part carrying a base64 data URI must reach OpenCode's
+        // /session/{id}/message endpoint as {type:"file", url:"data:..."},
+        // with no datatalk_file_read hint text and no DataTalk-specific fields.
+        oc.stubFor(post(urlEqualTo("/session/ses_test/message"))
+            .willReturn(aResponse().withStatus(204)));
+
+        String dataUri = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB";
+        String body = om.writeValueAsString(Map.of(
+            "jsonrpc", "2.0",
+            "id", "img-1",
+            "method", "send_message",
+            "params", Map.of("parts", List.of(
+                Map.of(
+                    "type", "text",
+                    "id", "p-t",
+                    "sessionID", "s-1",
+                    "messageID", "ignored",
+                    "text", "what is this?",
+                    "metadata", Map.of()
+                ),
+                Map.of(
+                    "type", "file_upload",
+                    "id", "p-img",
+                    "sessionID", "s-1",
+                    "messageID", "ignored",
+                    "fileId", "file-img-1",
+                    "filename", "screenshot.png",
+                    "mimeType", "image/png",
+                    "sizeBytes", 12345,
+                    "analysis", Map.of(),
+                    "url", dataUri
+                )
+            ))
+        ));
+
+        // No echo wiring needed — the image path skips the echo registry entirely;
+        // we only need to publish a SessionIdle to terminate the SSE stream cleanly.
+        new Thread(() -> {
+            try { Thread.sleep(150); } catch (InterruptedException ignored) { return; }
+            buses.getOrCreate("s-1").publish(new DtEvent.SessionIdle("s-1"));
+        }).start();
+
+        client.post()
+            .uri("/api/sessions/s-1/channel")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(body)
+            .retrieve()
+            .bodyToFlux(String.class)
+            .take(Duration.ofSeconds(2))
+            .blockLast(Duration.ofSeconds(3));
+
+        // OpenCode must have received exactly one POST with the FilePart in body
+        await().atMost(Duration.ofSeconds(2)).untilAsserted(() ->
+            oc.verify(1, postRequestedFor(urlEqualTo("/session/ses_test/message"))));
+
+        List<com.github.tomakehurst.wiremock.verification.LoggedRequest> reqs =
+            oc.findAll(postRequestedFor(urlEqualTo("/session/ses_test/message")));
+        assertThat(reqs).hasSize(1);
+        String forwarded = reqs.get(0).getBodyAsString();
+        JsonNode parts = om.readTree(forwarded).get("parts");
+        assertThat(parts).isNotNull().hasSize(2);
+        assertThat(parts.get(0).get("type").asText()).isEqualTo("text");
+        assertThat(parts.get(1).get("type").asText()).isEqualTo("file");
+        assertThat(parts.get(1).get("mime").asText()).isEqualTo("image/png");
+        assertThat(parts.get(1).get("filename").asText()).isEqualTo("screenshot.png");
+        assertThat(parts.get(1).get("url").asText()).startsWith("data:image/png;base64,");
+        // No DataTalk-specific fields leak through Zod barrier
+        assertThat(parts.get(1).has("fileId")).isFalse();
+        assertThat(parts.get(1).has("sizeBytes")).isFalse();
+        assertThat(parts.get(1).has("analysis")).isFalse();
+        // Crucially: no datatalk_file_read hint anywhere in the forwarded body
+        assertThat(forwarded).doesNotContain("datatalk_file_read");
+    }
 }

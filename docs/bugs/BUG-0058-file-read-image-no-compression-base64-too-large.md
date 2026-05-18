@@ -1,7 +1,7 @@
 ---
 id: BUG-0058
 title: datatalk_file_read 对图片直接 readAllBytes+base64，截图 ~161KB 即触发"payload 太大"，超出 OpenCode / qwen3-VL 单 tool_result 上限
-status: verified
+status: fixed
 priority: P1
 source: manual-report
 modules: [file-upload, opencode, chat]
@@ -9,7 +9,8 @@ discovered: 2026-05-17
 discoveredBy: human
 testRunId: null
 fixCommit: pending
-fixPlanRef: openspec/changes/optimize-file-upload-image-and-latency/
+fixPlanRef: openspec/changes/batch-image-attachments-via-fileparts/
+fixedAt: 2026-05-18
 duplicateOf: null
 regression: false
 ---

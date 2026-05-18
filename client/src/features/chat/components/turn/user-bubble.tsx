@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { CopyIcon, CheckIcon, PlayIcon, TerminalIcon } from 'lucide-react'
-import type { MessageInfo, Part, TextPart, FileUploadPart } from '@/services/channel/types'
+import type { MessageInfo, Part, TextPart } from '@/services/channel/types'
 import { useChannel } from '@/services/channel/use-channel'
 import { cn, copyToClipboard } from '@/lib/utils'
 import { useI18n } from '@/i18n/use-i18n'
@@ -26,7 +26,12 @@ export function UserBubble(props: { info: MessageInfo; parts: Part[] }) {
   const { t, language } = useI18n()
   const { info, parts } = props
   const textPart = parts.find((p) => p.type === 'text') as TextPart | undefined
-  const fileParts = parts.filter((p): p is FileUploadPart => p.type === 'file_upload')
+  // Include both legacy file_upload parts (CSV/JSON/SQL/image-without-dataUri)
+  // AND image FilePart echoed back by OpenCode on the batch-image path.
+  // BubbleAttachmentList picks the renderable subset.
+  const attachmentParts = parts.filter(
+    (p) => p.type === 'file_upload' || (p.type === 'file' && (p as Part & { mime?: string }).mime?.startsWith('image/')),
+  )
   const text = textPart?.text ?? ''
   const displayKind = (textPart?.metadata as { displayKind?: string } | undefined)?.displayKind
   const isBangQueryUser = displayKind === 'bang_query_user'
@@ -81,7 +86,7 @@ export function UserBubble(props: { info: MessageInfo; parts: Part[] }) {
       data-pending-user-motion={pending && !failed ? 'true' : undefined}
       className="my-2 flex flex-col items-end gap-1"
     >
-      {fileParts.length > 0 && <BubbleAttachmentList parts={fileParts} />}
+      {attachmentParts.length > 0 && <BubbleAttachmentList parts={attachmentParts} />}
       <div
         className={cn(
           'relative max-w-[85%] rounded-lg px-3 py-2 text-sm',

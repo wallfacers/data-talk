@@ -17,12 +17,21 @@ import { getFileContentUrl } from '@/services/api/file-upload'
  * - `local`: an in-memory File (e.g. from PromptComposer before upload)
  * - `remote`: a server-side uploaded file referenced by fileId; bytes are
  *   fetched from `/api/files/{fileId}/content`
+ * - `embedded`: a base64 data URI embedded in a message part (echoed back by
+ *   OpenCode on the new batch-image path); rendered directly, no network I/O
  */
 export type PreviewSource =
   | { kind: 'local'; file: File }
   | {
       kind: 'remote'
       fileId: string
+      filename: string
+      mimeType: string
+      sizeBytes: number
+    }
+  | {
+      kind: 'embedded'
+      dataUri: string
       filename: string
       mimeType: string
       sizeBytes: number
@@ -80,12 +89,12 @@ export function FilePreviewDialog({
   // Pull display fields uniformly from source regardless of kind.
   const filename = source?.kind === 'local'
     ? source.file.name
-    : source?.kind === 'remote'
+    : source && (source.kind === 'remote' || source.kind === 'embedded')
       ? source.filename
       : ''
   const sizeBytes = source?.kind === 'local'
     ? source.file.size
-    : source?.kind === 'remote'
+    : source && (source.kind === 'remote' || source.kind === 'embedded')
       ? source.sizeBytes
       : 0
 
@@ -97,11 +106,12 @@ export function FilePreviewDialog({
     return t('chat.filePreview.file')
   }, [filename, t])
 
-  // Stable identity for useEffect: compare by primitive value (fileId) or
-  // File reference instead of the source object itself, so parent re-renders
+  // Stable identity for useEffect: compare by primitive value (fileId / dataUri)
+  // or File reference instead of the source object itself, so parent re-renders
   // during streaming do not trigger a re-fetch / image flash.
   const sourceKey = source?.kind === 'remote' ? source.fileId
-    : source?.kind === 'local' ? source.file : null
+    : source?.kind === 'local' ? source.file
+    : source?.kind === 'embedded' ? source.dataUri : null
 
   // Unified byte loader: dispatches on source.kind, normalizes cleanup
   // (revoke any objectURL that was created locally OR from a remote blob).
@@ -131,7 +141,20 @@ export function FilePreviewDialog({
       setReadError(msg)
     }
 
-    if (source.kind === 'local') {
+    if (source.kind === 'embedded') {
+      // dataUri can be consumed directly by <img src>; no fetch, no
+      // createObjectURL, no revoke. An empty dataUri means OpenCode lost the
+      // url field for this historical message — surface as a friendly error.
+      if (!source.dataUri) {
+        setReadError('image_unavailable')
+      } else if (showImage) {
+        setImageUrl(source.dataUri)
+      } else {
+        // Non-image embedded payload is not produced by current flows, but
+        // future-proof: try to decode as text if mime suggests it.
+        setReadError('unsupported_embedded_mime')
+      }
+    } else if (source.kind === 'local') {
       if (showImage) {
         const url = URL.createObjectURL(source.file)
         createdObjectUrl = url
@@ -282,7 +305,11 @@ export function FilePreviewDialog({
 
           {readError && (
             <div className="p-4 text-sm text-status-danger">
-              {t('chat.filePreview.readError', { error: readError })}
+              {t('chat.filePreview.readError', {
+                error: readError === 'image_unavailable'
+                  ? t('chat.image.unavailable')
+                  : readError,
+              })}
             </div>
           )}
 

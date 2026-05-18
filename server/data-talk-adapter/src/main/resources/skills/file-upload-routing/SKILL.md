@@ -48,8 +48,8 @@ This skill activates when a user message contains a `file_upload` part. The part
 ### Image Files (analysis.type = "IMAGE")
 - Acknowledge the uploaded image to the user
 - Report dimensions from `analysis.summary.width` × `analysis.summary.height` and `analysis.summary.format`
-- Use `datatalk_file_read` to retrieve the image content (returned as `data:{mimeType};base64,{encoded}`)
-- Provide the image content to the AI context for visual understanding
+- The image content is already attached to the same user message as a native file part — you can see it directly, no extra tool call required
+- For legacy messages where only `fileId` is present (no inline image part), fall back to `datatalk_file_read` to retrieve `data:{mimeType};base64,{encoded}`
 - Do NOT suggest database import
 - Common use cases: screenshot analysis, chart interpretation, diagram explanation
 

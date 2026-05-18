@@ -1,5 +1,5 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react'
-import { uploadFile } from '@/services/api/file-upload'
+import { fetchFileContent, uploadFile } from '@/services/api/file-upload'
 import type { FileUploadResponse } from '@/services/api/file-upload'
 import { useI18n } from '@/i18n/use-i18n'
 
@@ -22,6 +22,78 @@ export interface FileAttachment {
 const ALLOWED_EXTENSIONS = ['.csv', '.xlsx', '.xls', '.json', '.jsonl', '.sql', '.txt', '.md', '.log', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp']
 const MAX_SIZE_BYTES = 50 * 1024 * 1024 // 50MB
 const MAX_CONCURRENT = 3
+
+// Module-level cache keyed by fileId. Holds the in-flight or resolved data URI
+// Promise for image attachments so the composer's send-time call to
+// getDataUri(fileId) can return synchronously when prefetch already finished.
+// Module scope (not React state) is intentional — multiple hook instances or
+// remounts must share the same cache so navigating between sessions doesn't
+// throw away work, and a chip preview can read the same dataUri without
+// re-downloading.
+const imageDataUriCache = new Map<string, Promise<string>>()
+
+function blobToDataUri(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onerror = () => reject(reader.error ?? new Error('FileReader error'))
+    reader.onload = () => {
+      const result = reader.result
+      if (typeof result === 'string') resolve(result)
+      else reject(new Error('FileReader did not return a string'))
+    }
+    reader.readAsDataURL(blob)
+  })
+}
+
+/**
+ * Prefetch the image bytes and convert to a base64 data URI, caching the
+ * Promise so concurrent callers all share the same in-flight request. Resolves
+ * with the data URI on success; on any error the rejection is propagated and
+ * the cache entry is removed so a later retry can re-run the fetch.
+ */
+export function prefetchDataUri(fileId: string): Promise<string> {
+  const cached = imageDataUriCache.get(fileId)
+  if (cached) return cached
+  // Wrap the call so that even a synchronous throw from fetchFileContent
+  // (e.g. undefined in a test environment where the API module is partially
+  // mocked) becomes a rejected Promise instead of a thrown exception.
+  const promise = Promise.resolve()
+    .then(() => fetchFileContent(fileId))
+    .then(blobToDataUri)
+    .catch((err) => {
+      imageDataUriCache.delete(fileId)
+      throw err
+    })
+  imageDataUriCache.set(fileId, promise)
+  return promise
+}
+
+/**
+ * Read the cached data URI for an image fileId, optionally waiting up to
+ * `timeoutMs` for an in-flight prefetch. If no prefetch is running yet, kicks
+ * one off and waits. Returns null on timeout or fetch failure — callers are
+ * expected to fall back to the legacy read_file path in that case.
+ */
+export async function getDataUri(fileId: string, timeoutMs = 5000): Promise<string | null> {
+  const promise = imageDataUriCache.get(fileId) ?? prefetchDataUri(fileId)
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timeout = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), timeoutMs)
+  })
+  try {
+    const result = await Promise.race([promise.then((v) => v as string | null), timeout])
+    return result
+  } catch {
+    return null
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+}
+
+/** Drop a cached data URI — call after a successful send so memory is released. */
+export function evictDataUri(fileId: string): void {
+  imageDataUriCache.delete(fileId)
+}
 
 let attachmentSeq = 0
 function newAttachmentId(): string {
@@ -86,6 +158,18 @@ export function useFileUpload(sessionId: string) {
           ? prev.map(a => a.id === id ? { ...a, status: 'done', progress: 100, response } : a)
           : prev,
       )
+      // Warm the data URI cache in the background for image uploads. The
+      // composer's send-time call to getDataUri(fileId) will then resolve
+      // synchronously without an extra GET round-trip. Best-effort: any
+      // sync or async failure (incl. unstubbed test environments) must not
+      // flip the chip to error — that would mask the upload success.
+      if (response.mimeType?.startsWith('image/')) {
+        try {
+          void prefetchDataUri(response.fileId).catch(() => undefined)
+        } catch {
+          // ignore
+        }
+      }
     } catch (err) {
       if (isAbortError(err)) {
         // removeAttachment already pulled this id; nothing to do.

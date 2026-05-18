@@ -79,6 +79,11 @@ export type FileUploadPart = BasePart & {
   mimeType: string
   sizeBytes: number
   analysis: Record<string, unknown>
+  // Base64 data URI populated for image attachments only, used by the backend's
+  // ChannelService.partForWire to forward the image as a native OpenCode
+  // FilePart instead of a datatalk_file_read prompt. Non-image attachments
+  // (CSV/JSON/SQL) leave this undefined and continue on the legacy path.
+  url?: string
 }
 
 export type Part =
@@ -128,6 +133,7 @@ export function createFileUploadPart(
   mimeType: string,
   sizeBytes: number,
   analysis: Record<string, unknown>,
+  url?: string,
 ): FileUploadPart {
   return {
     type: 'file_upload',
@@ -139,5 +145,6 @@ export function createFileUploadPart(
     mimeType,
     sizeBytes,
     analysis,
+    ...(url ? { url } : {}),
   }
 }

@@ -436,6 +436,10 @@ const MESSAGES = {
     'chat.fileUpload.unsupportedType': '不支持的文件类型：{ext}',
     'chat.fileUpload.emptyFile': '文件为空',
     'chat.fileUpload.exceedsLimit': '文件超过 50MB 限制',
+    'chat.image.payloadHint': '图片附件将随消息一次性发送，体积过大可能影响响应速度。',
+    'chat.image.payloadWarning': '图片附件总体积约 {sizeMB} MB，已超过推荐值，AI 响应可能较慢。',
+    'chat.image.payloadTooLarge': '图片附件总体积约 {sizeMB} MB，超过上限 {limitMB} MB，请减少图片数量或换更小的图。',
+    'chat.image.unavailable': '图片已失效',
 
     'session.heroSubtitle': '用自然语言和你的数据库对话',
     'session.needModel': '请先配置一个 AI 模型才能发送消息。',
@@ -1294,6 +1298,10 @@ const MESSAGES = {
     'chat.fileUpload.unsupportedType': 'Unsupported file type: {ext}',
     'chat.fileUpload.emptyFile': 'File is empty',
     'chat.fileUpload.exceedsLimit': 'File exceeds 50MB limit',
+    'chat.image.payloadHint': 'Image attachments are sent inline with the message; large totals may slow the response.',
+    'chat.image.payloadWarning': 'Image attachments total about {sizeMB} MB, above the recommended threshold; the AI may respond more slowly.',
+    'chat.image.payloadTooLarge': 'Image attachments total about {sizeMB} MB, above the {limitMB} MB limit. Remove some images or attach smaller ones.',
+    'chat.image.unavailable': 'Image unavailable',
 
     'session.heroSubtitle': 'Talk to your database in natural language',
     'session.needModel': 'Configure an AI model before sending messages.',

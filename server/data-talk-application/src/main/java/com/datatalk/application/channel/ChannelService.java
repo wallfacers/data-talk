@@ -76,9 +76,15 @@ public class ChannelService {
         SessionBus bus = buses.getOrCreate(sessionId);
         bus.publish(new DtEvent.SessionStatus("busy", Map.of()));
 
+        // Image FileUploadPart with a non-empty url (data URI) is forwarded as a
+        // native OpenCode FilePart and echoed back by OpenCode itself — we MUST
+        // NOT enqueue it for local replay or it would render twice. CSV/JSON/SQL
+        // and any image missing its dataUri still go through the legacy
+        // text-downgrade + echo registry path.
         List<FileUploadPart> uploadParts = parts.stream()
             .filter(FileUploadPart.class::isInstance)
             .map(FileUploadPart.class::cast)
+            .filter(u -> !isImageWithDataUri(u))
             .toList();
         if (!uploadParts.isEmpty()) {
             fileUploadEcho.enqueue(sessionId, uploadParts);
@@ -147,6 +153,26 @@ public class ChannelService {
             return out;
         }
         if (p instanceof FileUploadPart u) {
+            if (isImageWithDataUri(u)) {
+                // Image path: forward as a native OpenCode FilePart so the model
+                // sees the image directly in the same user message, no MCP
+                // round-trip via datatalk_file_read. OpenCode's strict Zod
+                // accepts {type, mime, filename, url} — no DataTalk-specific
+                // fields like fileId leak through.
+                out.put("type", "file");
+                out.put("mime", u.mimeType());
+                if (u.filename() != null) out.put("filename", u.filename());
+                out.put("url", u.url());
+                return out;
+            }
+            if (isImagePart(u)) {
+                // Image but no dataUri — fall back to the legacy read_file path.
+                // The frontend's prefetch may have failed or timed out; the AI
+                // will still be able to see the image via the MCP tool, just
+                // less efficiently.
+                log.warn("[channel] image part missing dataUri, falling back to read_file path: fileId={} filename={}",
+                    u.fileId(), u.filename());
+            }
             // OpenCode strict Zod validation rejects custom fields (fileId, analysis, sizeBytes).
             // Convert to a text part so the AI sees the metadata and can call datatalk_file_read.
             out.put("type", "text");
@@ -156,6 +182,15 @@ public class ChannelService {
         log.warn("[channel] dropping unsupported outbound part type for OpenCode: {}",
             p.getClass().getSimpleName());
         return null;
+    }
+
+    private static boolean isImagePart(FileUploadPart u) {
+        String mime = u.mimeType();
+        return mime != null && mime.toLowerCase().startsWith("image/");
+    }
+
+    private static boolean isImageWithDataUri(FileUploadPart u) {
+        return isImagePart(u) && Strings.isNotBlank(u.url());
     }
 
     @SuppressWarnings("unchecked")

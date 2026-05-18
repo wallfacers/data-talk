@@ -12,11 +12,19 @@ public record FileUploadPart(
     String filename,
     String mimeType,
     long sizeBytes,
-    Map<String, Object> analysis
+    Map<String, Object> analysis,
+    String url
 ) implements Part {
+
+    public FileUploadPart(
+        String id, String sessionID, String messageID,
+        String fileId, String filename, String mimeType,
+        long sizeBytes, Map<String, Object> analysis) {
+        this(id, sessionID, messageID, fileId, filename, mimeType, sizeBytes, analysis, null);
+    }
 
     @Override
     public Part withMessageId(String mid) {
-        return new FileUploadPart(id, sessionID, mid, fileId, filename, mimeType, sizeBytes, analysis);
+        return new FileUploadPart(id, sessionID, mid, fileId, filename, mimeType, sizeBytes, analysis, url);
     }
 }
