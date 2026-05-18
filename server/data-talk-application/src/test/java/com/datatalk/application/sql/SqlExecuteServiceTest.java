@@ -110,6 +110,7 @@ class SqlExecuteServiceTest {
             userPrefsService,
             translator(),
             undoLogCapture,
+            new SqlPendingConfirmationStore(),
             100
         );
     }

@@ -94,6 +94,7 @@ public class SqlExecuteService {
     private final UserPreferencesService userPrefsService;
     private final Translator translator;
     private final UndoLogCapture undoLogCapture;
+    private final SqlPendingConfirmationStore confirmationStore;
     private final int maxRows;
 
     public SqlExecuteService(SqlRiskAnalyzer riskAnalyzer,
@@ -105,6 +106,7 @@ public class SqlExecuteService {
                              UserPreferencesService userPrefsService,
                              Translator translator,
                              UndoLogCapture undoLogCapture,
+                             SqlPendingConfirmationStore confirmationStore,
                              @Value("${datatalk.sql.max-rows:5000}") int maxRows) {
         this.riskAnalyzer = riskAnalyzer;
         this.connRepo = connRepo;
@@ -115,6 +117,7 @@ public class SqlExecuteService {
         this.userPrefsService = userPrefsService;
         this.translator = translator;
         this.undoLogCapture = undoLogCapture;
+        this.confirmationStore = confirmationStore;
         this.maxRows = maxRows;
     }
 
@@ -189,6 +192,62 @@ public class SqlExecuteService {
 
         List<ResultItem> items = runStatements(context, statements, sessionId);
         return new Executed(resolvedDto, context.contextNotice(), items);
+    }
+
+    /**
+     * Execute a previously confirmed SQL statement using its confirmation ID.
+     * Used by the AI chat path: when the user confirms a DELETE, the frontend
+     * sends back the confirmationId to complete execution.
+     * Skips risk analysis since the confirmation was already created from a prior analysis.
+     *
+     * @return Executed if the confirmation is valid and execution succeeds,
+     *         ConfirmationInvalid if the confirmation ID is expired or not found
+     */
+    public Outcome executeWithConfirmation(String confirmationId, String sessionId) {
+        var pending = confirmationStore.get(confirmationId);
+        if (pending.isEmpty()) {
+            return new ConfirmationInvalid(
+                null, null,
+                "confirmation_expired_or_invalid",
+                null, null,
+                translator.get("sql.confirmation.expired.message")
+            );
+        }
+
+        SqlPendingConfirmationStore.PendingConfirmation conf = pending.get();
+        confirmationStore.remove(confirmationId);
+
+        // Resolve execution context from the stored confirmation
+        ResolvedExecutionContext requestedContext = resolveExecutionContext(
+            conf.sessionId(), conf.connectionId(), conf.database(), conf.schema());
+        List<String> statements = sqlStatementSplitters.split(requestedContext.connection().kind(), conf.sql());
+        if (statements.isEmpty()) {
+            throw new IllegalArgumentException(translator.get("error.sql.required"));
+        }
+
+        ResolvedExecutionContext context = tableContextAutoResolver.resolve(requestedContext, conf.sql());
+        ResolvedDataContextDto resolvedDto = toDto(context);
+
+        List<ResultItem> items = runStatements(context, statements, sessionId != null ? sessionId : conf.sessionId());
+        return new Executed(resolvedDto, context.contextNotice(), items);
+    }
+
+    /**
+     * Detect whether SQL contains a DELETE statement for the AI chat path.
+     * Only DELETE requires conversational confirmation; all other DDL/DML
+     * executes directly on the AI path.
+     */
+    public boolean containsDelete(String sql, String connectionKind) {
+        if (sql == null || sql.isBlank()) return false;
+        List<String> statements = sqlStatementSplitters.split(
+            connectionKind != null ? connectionKind : "generic", sql);
+        for (String stmt : statements) {
+            String trimmed = stmt.trim().toUpperCase();
+            if (trimmed.startsWith("DELETE") || trimmed.startsWith("DELETE\t")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private List<ResultItem> runStatements(ResolvedExecutionContext context, List<String> statements, String sessionId) {

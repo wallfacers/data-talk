@@ -1,5 +1,8 @@
 package com.datatalk.application.stage;
 
+import com.datatalk.application.connection.ActiveConnectionSummaryProvider;
+import com.datatalk.application.history.SqlExecutionHistoryProvider;
+import com.datatalk.application.history.SqlExecutionRecord;
 import com.datatalk.application.semantic.SemanticModelDigester;
 import com.datatalk.domain.stage.StageTab;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,6 +15,8 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -258,5 +263,157 @@ class AgentPromptBuilderTest {
             .doesNotContain("{{STAGE_TAB_DIGEST}}")
             .doesNotContain("{{ACTIVE_SESSION_DIR}}")
             .doesNotContain("{{SEMANTIC_MODEL_DIGEST}}");
+    }
+
+    private AgentPromptBuilder builderWith(ActiveConnectionSummaryProvider connSummary,
+                                            SqlExecutionHistoryProvider history) {
+        return new AgentPromptBuilder(repo, lookup, activeDir, semanticDigester,
+            () -> Optional.empty(), connSummary, history);
+    }
+
+    @Test
+    void renders_active_connection_summary_when_present() {
+        ActiveConnectionSummaryProvider connSummary = () -> Optional.of(
+            new ActiveConnectionSummaryProvider.ConnectionSummary(
+                "conn_42", "mysql", "shop", "public",
+                List.of("SELECT 1", "SELECT count(*) FROM orders")
+            ));
+        SqlExecutionHistoryProvider history = mock(SqlExecutionHistoryProvider.class);
+        AgentPromptBuilder b = builderWith(connSummary, history);
+
+        String result = b.render("Conn:\n{{ACTIVE_CONNECTION_SUMMARY}}");
+
+        assertThat(result)
+            .contains("connection=conn_42")
+            .contains("kind=mysql")
+            .contains("db=shop")
+            .contains("schema=public")
+            .contains("SELECT 1")
+            .contains("SELECT count(*) FROM orders")
+            .doesNotContain("{{ACTIVE_CONNECTION_SUMMARY}}");
+    }
+
+    @Test
+    void renders_active_connection_sentinel_when_absent() {
+        ActiveConnectionSummaryProvider connSummary = Optional::empty;
+        SqlExecutionHistoryProvider history = mock(SqlExecutionHistoryProvider.class);
+        AgentPromptBuilder b = builderWith(connSummary, history);
+
+        String result = b.render("Conn:\n{{ACTIVE_CONNECTION_SUMMARY}}");
+
+        assertThat(result)
+            .contains("<no active connection>")
+            .doesNotContain("{{ACTIVE_CONNECTION_SUMMARY}}");
+    }
+
+    @Test
+    void renders_recent_failed_queries_digest_when_present() {
+        when(activeDir.currentSessionId()).thenReturn(Optional.of("ses_q"));
+        SqlExecutionHistoryProvider history = mock(SqlExecutionHistoryProvider.class);
+        when(history.recentFailures(eq("ses_q"), anyInt())).thenReturn(List.of(
+            SqlExecutionRecord.failure("ses_q", "conn", "shop", null,
+                "SELECT * FROM no_such", "TABLE_NOT_FOUND", "no such table: no_such",
+                1_700_000_000_000L, 12L),
+            SqlExecutionRecord.failure("ses_q", "conn", "shop", null,
+                "SELECT bad_col FROM users", "UNKNOWN_COLUMN", "unknown column: bad_col",
+                1_700_000_001_000L, 5L)
+        ));
+        ActiveConnectionSummaryProvider connSummary = Optional::empty;
+        AgentPromptBuilder b = builderWith(connSummary, history);
+
+        String result = b.render("Fails:\n{{RECENT_FAILED_QUERIES_DIGEST}}");
+
+        assertThat(result)
+            .contains("recent failed queries")
+            .contains("SELECT * FROM no_such")
+            .contains("TABLE_NOT_FOUND")
+            .contains("no such table: no_such")
+            .contains("SELECT bad_col FROM users")
+            .contains("UNKNOWN_COLUMN")
+            .doesNotContain("{{RECENT_FAILED_QUERIES_DIGEST}}");
+    }
+
+    @Test
+    void renders_recent_failed_queries_sentinel_when_empty() {
+        when(activeDir.currentSessionId()).thenReturn(Optional.of("ses_q"));
+        SqlExecutionHistoryProvider history = mock(SqlExecutionHistoryProvider.class);
+        when(history.recentFailures(anyString(), anyInt())).thenReturn(List.of());
+        ActiveConnectionSummaryProvider connSummary = Optional::empty;
+        AgentPromptBuilder b = builderWith(connSummary, history);
+
+        String result = b.render("Fails:\n{{RECENT_FAILED_QUERIES_DIGEST}}");
+
+        assertThat(result)
+            .contains("<no recent failures>")
+            .doesNotContain("{{RECENT_FAILED_QUERIES_DIGEST}}");
+    }
+
+    @Test
+    void renders_recent_failed_queries_sentinel_when_no_active_session() {
+        when(activeDir.currentSessionId()).thenReturn(Optional.empty());
+        SqlExecutionHistoryProvider history = mock(SqlExecutionHistoryProvider.class);
+        ActiveConnectionSummaryProvider connSummary = Optional::empty;
+        AgentPromptBuilder b = builderWith(connSummary, history);
+
+        String result = b.render("{{RECENT_FAILED_QUERIES_DIGEST}}");
+
+        assertThat(result)
+            .contains("<no recent failures>")
+            .doesNotContain("{{RECENT_FAILED_QUERIES_DIGEST}}");
+        // The history provider must not be called when there is no active session.
+        verifyNoInteractions(history);
+    }
+
+    @Test
+    void deprecated_five_arg_constructor_returns_sentinels_for_new_placeholders() {
+        // Existing wiring that still constructs AgentPromptBuilder via the 5-arg
+        // (no Provider) constructor should not break — new placeholders render to
+        // sentinels.
+        AgentPromptBuilder b = new AgentPromptBuilder(repo, lookup, activeDir,
+            semanticDigester, () -> Optional.empty());
+
+        String result = b.render(
+            "{{ACTIVE_CONNECTION_SUMMARY}}|{{RECENT_FAILED_QUERIES_DIGEST}}");
+
+        assertThat(result)
+            .contains("<no active connection>")
+            .contains("<no recent failures>")
+            .doesNotContain("{{ACTIVE_CONNECTION_SUMMARY}}")
+            .doesNotContain("{{RECENT_FAILED_QUERIES_DIGEST}}");
+    }
+
+    @Test
+    void renders_all_five_placeholders_independently() {
+        when(activeDir.currentSessionId()).thenReturn(Optional.of("ses_z"));
+        when(repo.recentByLastTouched(anyInt())).thenReturn(List.of());
+        when(repo.countActive()).thenReturn(0);
+        when(repo.countArchived()).thenReturn(0);
+
+        ActiveConnectionSummaryProvider connSummary = () -> Optional.of(
+            new ActiveConnectionSummaryProvider.ConnectionSummary(
+                "conn_X", "postgresql", "main", null, List.of()));
+        SqlExecutionHistoryProvider history = mock(SqlExecutionHistoryProvider.class);
+        when(history.recentFailures(anyString(), anyInt())).thenReturn(List.of());
+
+        AgentPromptBuilder b = new AgentPromptBuilder(repo, lookup, activeDir,
+            semanticDigester, () -> Optional.of("conn_X"), connSummary, history);
+        when(semanticDigester.digest("conn_X")).thenReturn("SEM_BODY");
+
+        String result = b.render(
+            "Tabs:{{STAGE_TAB_DIGEST}}\nDir={{ACTIVE_SESSION_DIR}}\n"
+            + "Sem={{SEMANTIC_MODEL_DIGEST}}\n"
+            + "Conn={{ACTIVE_CONNECTION_SUMMARY}}\n"
+            + "Fail={{RECENT_FAILED_QUERIES_DIGEST}}");
+
+        assertThat(result)
+            .doesNotContain("{{STAGE_TAB_DIGEST}}")
+            .doesNotContain("{{ACTIVE_SESSION_DIR}}")
+            .doesNotContain("{{SEMANTIC_MODEL_DIGEST}}")
+            .doesNotContain("{{ACTIVE_CONNECTION_SUMMARY}}")
+            .doesNotContain("{{RECENT_FAILED_QUERIES_DIGEST}}")
+            .contains("Dir=./sessions/ses_z/")
+            .contains("Sem=SEM_BODY")
+            .contains("connection=conn_X")
+            .contains("<no recent failures>");
     }
 }

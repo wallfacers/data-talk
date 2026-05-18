@@ -4,6 +4,7 @@ import com.datatalk.application.connection.ConnectionService;
 import com.datatalk.application.persistence.ArtifactRepository;
 import com.datatalk.application.persistence.SessionRecord;
 import com.datatalk.application.persistence.SessionRepository;
+import com.datatalk.application.sql.SqlPendingConfirmationStore;
 import com.datatalk.domain.action.ActionExecutionMetadata;
 import com.datatalk.domain.action.ActionContext;
 import com.datatalk.domain.action.RiskLevel;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 @DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
@@ -31,6 +33,7 @@ class ExecuteSqlActionTest {
     @Autowired ExecuteSqlAction action;
     @Autowired ArtifactRepository artifacts;
     @Autowired @Qualifier("datatalkJdbc") JdbcTemplate datatalkJdbc;
+    @Autowired SqlPendingConfirmationStore confirmationStore;
 
     private String connectionId;
 
@@ -139,48 +142,157 @@ class ExecuteSqlActionTest {
         assertThat(preview.get(0).get("BIG_ID")).isEqualTo("9007199254740993");
     }
 
+    // === New tests for conversational confirmation flow ===
+
     @Test
     @SuppressWarnings("unchecked")
-    void l2_returnsBlockedInChat() throws Exception {
+    void delete_returnsRequiresConfirmation() throws Exception {
         Map<String, Object> out = (Map<String, Object>) action.handle(
-            new ActionContext("s-exec", "c-l2", connectionId, "oc-e"),
+            new ActionContext("s-exec", "c-del", connectionId, "oc-e"),
             Map.of("connectionId", connectionId, "sql", "DELETE FROM t WHERE id = 1")
         ).toCompletableFuture().get();
 
-        assertThat(out).containsEntry("status", "blocked_in_chat");
-        Map<String, Object> risk = (Map<String, Object>) out.get("risk");
-        assertThat(risk).containsEntry("level", "L2");
-        assertThat(risk).containsKey("reason");
-        assertThat(risk).containsKey("affectedObjects");
-        assertThat(out).containsEntry("sqlPreview", "DELETE FROM t WHERE id = 1");
-        // No artifact created — chat path never executes mutating SQL.
+        assertThat(out).containsEntry("status", "requires_confirmation");
+        assertThat(out).containsKey("confirmationId");
+        assertThat(out).containsKey("sqlPreview");
+        assertThat(out).containsKey("affectedObjects");
+        assertThat(out).containsKey("message");
+        // No artifact created — SQL not yet executed
         assertThat(artifacts.findBySession("s-exec")).isEmpty();
+        // Confirmation ID is a valid UUID stored in the confirmation store
+        String confirmationId = (String) out.get("confirmationId");
+        assertThat(confirmationStore.get(confirmationId)).isPresent();
     }
 
     @Test
     @SuppressWarnings("unchecked")
-    void l3_returnsBlockedInChat() throws Exception {
+    void deleteWithoutWhere_returnsRequiresConfirmation() throws Exception {
         Map<String, Object> out = (Map<String, Object>) action.handle(
-            new ActionContext("s-exec", "c-l3", connectionId, "oc-e"),
+            new ActionContext("s-exec", "c-del-all", connectionId, "oc-e"),
             Map.of("connectionId", connectionId, "sql", "DELETE FROM t")
         ).toCompletableFuture().get();
 
-        assertThat(out).containsEntry("status", "blocked_in_chat");
-        Map<String, Object> risk = (Map<String, Object>) out.get("risk");
-        assertThat(risk).containsEntry("level", "L3");
-        assertThat(out).containsEntry("sqlPreview", "DELETE FROM t");
+        assertThat(out).containsEntry("status", "requires_confirmation");
+        assertThat(out).containsKey("confirmationId");
+        assertThat(out).containsKey("sqlPreview");
         assertThat(artifacts.findBySession("s-exec")).isEmpty();
     }
 
-    /**
-     * Security boundary: AI cannot bypass the user-facing confirmation by
-     * setting {@code confirmed=true} + matching {@code riskAck} in tool input.
-     * SERVER executor actions have no pause-resume primitive, so honoring
-     * those flags would let the AI execute L3 SQL with no user signal.
-     */
     @Test
     @SuppressWarnings("unchecked")
-    void aiCannotBypassConfirmationViaToolInput() throws Exception {
+    void confirmationWithValidConfirmationId_executesSuccessfully() throws Exception {
+        // First call: DELETE returns requires_confirmation
+        Map<String, Object> pending = (Map<String, Object>) action.handle(
+            new ActionContext("s-exec", "c-conf-1", connectionId, "oc-e"),
+            Map.of("connectionId", connectionId, "sql", "DELETE FROM t WHERE id = 1")
+        ).toCompletableFuture().get();
+
+        assertThat(pending).containsEntry("status", "requires_confirmation");
+        String confirmationId = (String) pending.get("confirmationId");
+
+        // Second call: confirm with the confirmationId
+        Map<String, Object> out = (Map<String, Object>) action.handle(
+            new ActionContext("s-exec", "c-conf-2", connectionId, "oc-e"),
+            Map.of("confirmationId", confirmationId)
+        ).toCompletableFuture().get();
+
+        assertThat(out).containsKey("artifactId");
+        assertThat(out).containsKey("columns");
+        assertThat(out).containsKey("preview");
+        assertThat(artifacts.findBySession("s-exec")).hasSize(1);
+        // Confirmation should be consumed
+        assertThat(confirmationStore.get(confirmationId)).isEmpty();
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void confirmationWithExpiredConfirmationId_returnsError() throws Exception {
+        // Manually create and then remove a confirmation to simulate expiration
+        String confirmationId = confirmationStore.create(
+            new SqlPendingConfirmationStore.PendingConfirmation(
+                "DELETE FROM t WHERE id = 1",
+                connectionId,
+                "s-exec",
+                "mem:execsql;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
+                null,
+                "ai",
+                List.of("t")
+            )
+        );
+        // Remove it to simulate expiration
+        confirmationStore.remove(confirmationId);
+
+        Map<String, Object> out = (Map<String, Object>) action.handle(
+            new ActionContext("s-exec", "c-expired", connectionId, "oc-e"),
+            Map.of("confirmationId", confirmationId)
+        ).toCompletableFuture().get();
+
+        assertThat(out).containsEntry("status", "confirmation_invalid");
+        assertThat(out).containsKey("message");
+        assertThat(out).doesNotContainKey("artifactId");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void confirmationWithInvalidConfirmationId_returnsError() throws Exception {
+        Map<String, Object> out = (Map<String, Object>) action.handle(
+            new ActionContext("s-exec", "c-invalid", connectionId, "oc-e"),
+            Map.of("confirmationId", "nonexistent-id-12345")
+        ).toCompletableFuture().get();
+
+        assertThat(out).containsEntry("status", "confirmation_invalid");
+        assertThat(out).containsKey("message");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void nonDeleteDml_insertDoesNotRequireConfirmation() throws Exception {
+        // INSERT should NOT require confirmation — it bypasses the DELETE gate.
+        Map<String, Object> out = (Map<String, Object>) action.handle(
+            new ActionContext("s-exec", "c-ins", connectionId, "oc-e"),
+            Map.of("connectionId", connectionId, "sql", "INSERT INTO t VALUES(4,'d')")
+        ).toCompletableFuture().get();
+
+        // INSERT executes directly via executeUpdate, returns affectedRows
+        assertThat(out).containsKey("artifactId");
+        assertThat(out).containsEntry("affectedRows", 1);
+        assertThat(out).doesNotContainEntry("status", "requires_confirmation");
+        assertThat(artifacts.findBySession("s-exec")).hasSize(1);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void nonDeleteDml_updateDoesNotRequireConfirmation() throws Exception {
+        // UPDATE should NOT require confirmation on the AI path.
+        Map<String, Object> out = (Map<String, Object>) action.handle(
+            new ActionContext("s-exec", "c-upd", connectionId, "oc-e"),
+            Map.of("connectionId", connectionId, "sql", "UPDATE t SET name = 'x' WHERE id = 1")
+        ).toCompletableFuture().get();
+
+        // UPDATE executes directly via executeUpdate, returns affectedRows
+        assertThat(out).containsKey("artifactId");
+        assertThat(out).containsEntry("affectedRows", 1);
+        assertThat(out).doesNotContainEntry("status", "requires_confirmation");
+        assertThat(artifacts.findBySession("s-exec")).hasSize(1);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void selectExecutesDirectly_withoutConfirmation() throws Exception {
+        Map<String, Object> out = (Map<String, Object>) action.handle(
+            new ActionContext("s-exec", "c-sel", connectionId, "oc-e"),
+            Map.of("connectionId", connectionId, "sql", "SELECT COUNT(*) FROM t")
+        ).toCompletableFuture().get();
+
+        assertThat(out).containsKey("artifactId");
+        assertThat(out).doesNotContainKey("status");
+        assertThat(artifacts.findBySession("s-exec")).hasSize(1);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void aiCannotBypassConfirmationViaConfirmedFlag() throws Exception {
+        // DELETE should always require confirmation regardless of any confirmed flag
         Map<String, Object> out = (Map<String, Object>) action.handle(
             new ActionContext("s-exec", "c-bypass", connectionId, "oc-e"),
             Map.of(
@@ -191,9 +303,10 @@ class ExecuteSqlActionTest {
             )
         ).toCompletableFuture().get();
 
-        assertThat(out).containsEntry("status", "blocked_in_chat");
+        // DELETE always requires confirmation — confirmed flag is ignored
+        assertThat(out).containsEntry("status", "requires_confirmation");
         assertThat(out).doesNotContainKey("artifactId");
-        // Rows in the user H2 DB are unchanged — DELETE never executed.
+        // Rows in the user H2 DB are unchanged — DELETE never executed
         try (var c = DriverManager.getConnection("jdbc:h2:mem:execsql;MODE=PostgreSQL;DB_CLOSE_DELAY=-1", "sa", "");
              var st = c.createStatement();
              var rs = st.executeQuery("SELECT COUNT(*) FROM t")) {

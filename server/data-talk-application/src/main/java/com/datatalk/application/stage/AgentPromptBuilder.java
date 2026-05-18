@@ -1,5 +1,8 @@
 package com.datatalk.application.stage;
 
+import com.datatalk.application.connection.ActiveConnectionSummaryProvider;
+import com.datatalk.application.history.SqlExecutionHistoryProvider;
+import com.datatalk.application.history.SqlExecutionRecord;
 import com.datatalk.application.semantic.SemanticModelDigester;
 import com.datatalk.domain.stage.StageTab;
 import com.datatalk.domain.stage.StageTabContent;
@@ -15,18 +18,26 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Renders the {@code {{STAGE_TAB_DIGEST}}}, {@code {{ACTIVE_SESSION_DIR}}},
- * and {@code {{SEMANTIC_MODEL_DIGEST}}} placeholders in the AGENTS.md template.
+ * Renders dynamic placeholders in the AGENTS.md template:
+ *   {{STAGE_TAB_DIGEST}}, {{ACTIVE_SESSION_DIR}}, {{SEMANTIC_MODEL_DIGEST}},
+ *   {{ACTIVE_CONNECTION_SUMMARY}}, {{RECENT_FAILED_QUERIES_DIGEST}}.
  */
 @Component
 public class AgentPromptBuilder {
     private static final String PLACEHOLDER_STAGE_DIGEST = "{{STAGE_TAB_DIGEST}}";
     private static final String PLACEHOLDER_ACTIVE_DIR = "{{ACTIVE_SESSION_DIR}}";
     private static final String PLACEHOLDER_SEMANTIC_DIGEST = "{{SEMANTIC_MODEL_DIGEST}}";
+    private static final String PLACEHOLDER_ACTIVE_CONNECTION_SUMMARY = "{{ACTIVE_CONNECTION_SUMMARY}}";
+    private static final String PLACEHOLDER_RECENT_FAILED_QUERIES_DIGEST = "{{RECENT_FAILED_QUERIES_DIGEST}}";
     private static final String NO_ACTIVE_SENTINEL = "<no active session>";
+    private static final String NO_ACTIVE_CONNECTION_SENTINEL = "<no active connection>";
+    private static final String NO_RECENT_FAILURES_SENTINEL = "<no recent failures>";
     private static final int MAX_TABS = 10;
     private static final int MAX_TITLE_CHARS = 80;
     private static final int MAX_RENDERED_CHARS = 1_500;
+    private static final int MAX_FAILED_QUERIES = 3;
+    private static final int MAX_SQL_PREVIEW_CHARS = 200;
+    private static final int MAX_ERROR_MESSAGE_CHARS = 160;
     private static final ObjectMapper OM = new ObjectMapper();
 
     private final StageTabRepository repo;
@@ -34,23 +45,54 @@ public class AgentPromptBuilder {
     private final ActiveSessionDirProvider activeDir;
     private final SemanticModelDigester semanticDigester;
     private final ConnectionIdProvider connectionIdProvider;
+    private final ActiveConnectionSummaryProvider connectionSummaryProvider;
+    private final SqlExecutionHistoryProvider executionHistoryProvider;
 
     @Autowired
     public AgentPromptBuilder(StageTabRepository repo,
                               SessionTitleLookup lookup,
                               ActiveSessionDirProvider activeDir,
                               SemanticModelDigester semanticDigester,
-                              ConnectionIdProvider connectionIdProvider) {
+                              ConnectionIdProvider connectionIdProvider,
+                              ActiveConnectionSummaryProvider connectionSummaryProvider,
+                              SqlExecutionHistoryProvider executionHistoryProvider) {
         this.repo = repo;
         this.lookup = lookup;
         this.activeDir = activeDir;
         this.semanticDigester = semanticDigester;
         this.connectionIdProvider = connectionIdProvider;
+        this.connectionSummaryProvider = connectionSummaryProvider;
+        this.executionHistoryProvider = executionHistoryProvider;
+    }
+
+    /** @deprecated kept for backward compatibility with existing wiring. */
+    @Deprecated
+    public AgentPromptBuilder(StageTabRepository repo,
+                              SessionTitleLookup lookup,
+                              ActiveSessionDirProvider activeDir,
+                              SemanticModelDigester semanticDigester,
+                              ConnectionIdProvider connectionIdProvider) {
+        this(repo, lookup, activeDir, semanticDigester, connectionIdProvider,
+            Optional::empty, EMPTY_HISTORY_PROVIDER);
     }
 
     public AgentPromptBuilder(StageTabRepository repo, SessionTitleLookup lookup) {
-        this(repo, lookup, () -> Optional.empty(), null, () -> Optional.empty());
+        this(repo, lookup, () -> Optional.empty(), null, () -> Optional.empty(),
+            Optional::empty, EMPTY_HISTORY_PROVIDER);
     }
+
+    private static final SqlExecutionHistoryProvider EMPTY_HISTORY_PROVIDER =
+        new SqlExecutionHistoryProvider() {
+            @Override
+            public List<SqlExecutionRecord> recentFailures(String sessionId, int limit) {
+                return List.of();
+            }
+
+            @Override
+            public List<SqlExecutionRecord> recentSuccesses(String sessionId, int limit) {
+                return List.of();
+            }
+        };
 
     public String render(String template) {
         String result = template;
@@ -73,7 +115,67 @@ public class AgentPromptBuilder {
                 .orElse("<no semantic model — please bind a connection>");
             result = result.replace(PLACEHOLDER_SEMANTIC_DIGEST, value);
         }
+        if (result.contains(PLACEHOLDER_ACTIVE_CONNECTION_SUMMARY)) {
+            String value = renderConnectionSummary();
+            if (value.length() > MAX_RENDERED_CHARS) {
+                value = value.substring(0, MAX_RENDERED_CHARS - 3) + "...";
+            }
+            result = result.replace(PLACEHOLDER_ACTIVE_CONNECTION_SUMMARY, value);
+        }
+        if (result.contains(PLACEHOLDER_RECENT_FAILED_QUERIES_DIGEST)) {
+            String value = renderRecentFailures();
+            if (value.length() > MAX_RENDERED_CHARS) {
+                value = value.substring(0, MAX_RENDERED_CHARS - 3) + "...";
+            }
+            result = result.replace(PLACEHOLDER_RECENT_FAILED_QUERIES_DIGEST, value);
+        }
         return result;
+    }
+
+    private String renderConnectionSummary() {
+        Optional<ActiveConnectionSummaryProvider.ConnectionSummary> summary = connectionSummaryProvider.summary();
+        if (summary.isEmpty()) return NO_ACTIVE_CONNECTION_SENTINEL;
+        ActiveConnectionSummaryProvider.ConnectionSummary s = summary.get();
+        StringBuilder sb = new StringBuilder("connection=").append(orDash(s.connectionId()))
+            .append(" kind=").append(orDash(s.kind()))
+            .append(" db=").append(orDash(s.database()))
+            .append(" schema=").append(orDash(s.schema()));
+        List<String> recent = s.recentSuccessfulQueries() == null ? List.of() : s.recentSuccessfulQueries();
+        if (recent.isEmpty()) {
+            sb.append("\nrecent successful queries: (none)");
+        } else {
+            sb.append("\nrecent successful queries:");
+            int i = 1;
+            for (String sql : recent) {
+                sb.append("\n  ").append(i++).append(". ").append(escape(snippet(sql, MAX_SQL_PREVIEW_CHARS)));
+            }
+        }
+        return sb.toString();
+    }
+
+    private String renderRecentFailures() {
+        Optional<String> sessionId = activeDir.currentSessionId();
+        if (sessionId.isEmpty()) return NO_RECENT_FAILURES_SENTINEL;
+        List<SqlExecutionRecord> failures = executionHistoryProvider
+            .recentFailures(sessionId.get(), MAX_FAILED_QUERIES);
+        if (failures.isEmpty()) return NO_RECENT_FAILURES_SENTINEL;
+        StringBuilder sb = new StringBuilder("recent failed queries (most recent first):");
+        int i = 1;
+        for (SqlExecutionRecord r : failures) {
+            sb.append("\n  ").append(i++).append(". sql=").append(escape(snippet(r.sqlText(), MAX_SQL_PREVIEW_CHARS)))
+              .append("\n     error=").append(escape(snippet(
+                  r.errorCode() != null ? r.errorCode() + ": " + (r.errorMessage() == null ? "" : r.errorMessage())
+                                        : (r.errorMessage() == null ? "" : r.errorMessage()),
+                  MAX_ERROR_MESSAGE_CHARS)));
+        }
+        return sb.toString();
+    }
+
+    private static String snippet(String value, int max) {
+        if (value == null) return "";
+        String trimmed = value.strip();
+        if (trimmed.length() <= max) return trimmed;
+        return trimmed.substring(0, max - 3) + "...";
     }
 
     private String renderDigest() {

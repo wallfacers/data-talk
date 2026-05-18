@@ -4,6 +4,8 @@ import com.datatalk.application.channel.IdGenerator;
 import com.datatalk.application.connection.ConnectionKind;
 import com.datatalk.application.connection.ConnectionService;
 import com.datatalk.application.connection.JdbcUrlBuilder;
+import com.datatalk.application.history.SqlExecutionHistoryService;
+import com.datatalk.application.history.SqlExecutionRecord;
 import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.persistence.*;
 import com.datatalk.application.preference.UserPreferencesService;
@@ -11,6 +13,7 @@ import com.datatalk.application.session.SessionDataContextService;
 import com.datatalk.application.sql.JdbcResultValueNormalizer;
 import com.datatalk.application.sql.CalciteSqlRiskAnalyzer;
 import com.datatalk.application.sql.KingbaseUnsupportedReason;
+import com.datatalk.application.sql.SqlPendingConfirmationStore;
 import com.datatalk.application.sql.SqlRiskAnalysis;
 import com.datatalk.application.sql.SqlRiskAnalyzer;
 import com.datatalk.domain.action.*;
@@ -18,6 +21,8 @@ import com.datatalk.domain.error.DataTalkErrorCodes;
 import com.datatalk.domain.error.DataTalkException;
 import com.datatalk.domain.preference.UserPreferences;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.sql.*;
@@ -29,13 +34,11 @@ import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 
 /**
- * Chat-path confirmation policy: SERVER executor actions cannot pause-resume,
- * and {@code actionResult} for an unregistered SERVER call is silently dropped.
- * Honoring {@code confirmed=true} from the AI's tool input would let the AI
- * bypass the user-facing confirmation card. The action therefore refuses every
- * L2 / L3 statement with {@code blocked_in_chat} regardless of input flags.
- * The Workbench REST flow (POST /api/sql/execute with {@code confirmed=true}
- * + {@code riskAck}) is the only trusted execution surface for L2 / L3.
+ * Handles SQL execution from the AI chat path.
+ * Only DELETE statements require conversational confirmation (in-chat);
+ * all other SQL (SELECT, INSERT, UPDATE, DDL) executes directly.
+ * Confirmation flow: DELETE → returns requires_confirmation with confirmationId →
+ * user confirms → re-invoked with confirmationId → executes.
  */
 
 @Component
@@ -51,6 +54,7 @@ import java.util.stream.Collectors;
 )
 public class ExecuteSqlAction implements ActionHandler<Map, Map> {
 
+    private static final Logger log = LoggerFactory.getLogger(ExecuteSqlAction.class);
     private static final int INLINE_LIMIT_BYTES = 256 * 1024;
     private static final int PREVIEW_ROWS = 100;
     private static final int DEFAULT_PAGE_SIZE = 100;
@@ -67,6 +71,8 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
     private final IdGenerator ids;
     private final SessionDataContextService sessionContexts;
     private final Translator translator;
+    private final SqlPendingConfirmationStore confirmationStore;
+    private final SqlExecutionHistoryService historyService;
 
     public ExecuteSqlAction(ConnectionRepository connRepo, ConnectionService connSvc,
                             SqlRiskAnalyzer riskAnalyzer, ArtifactRepository artifacts,
@@ -75,7 +81,9 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
                             ObjectMapper om, Clock clock,
                             IdGenerator ids,
                             SessionDataContextService sessionContexts,
-                            Translator translator) {
+                            Translator translator,
+                            SqlPendingConfirmationStore confirmationStore,
+                            SqlExecutionHistoryService historyService) {
         this.connRepo = connRepo;
         this.connSvc = connSvc;
         this.riskAnalyzer = riskAnalyzer;
@@ -87,6 +95,8 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
         this.ids = ids;
         this.sessionContexts = sessionContexts;
         this.translator = translator;
+        this.confirmationStore = confirmationStore;
+        this.historyService = historyService;
     }
 
     @Override public Map<String, Object> inputSchema() {
@@ -97,30 +107,37 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
                 "database",     Map.of("type", "string"),
                 "schema",       Map.of("type", "string"),
                 "sql",          Map.of("type", "string"),
-                "pageSize",     Map.of("type", "integer", "minimum", 1, "maximum", MAX_PAGE_SIZE)
+                "pageSize",     Map.of("type", "integer", "minimum", 1, "maximum", MAX_PAGE_SIZE),
+                "confirmationId", Map.of("type", "string"),
+                "source",       Map.of("type", "string")
             ));
     }
 
     @Override public Map<String, Object> outputSchema() {
         return Map.of("type", "object",
             "required", List.of("artifactId", "version", "columns", "preview", "rowCount", "durationMs"),
-            "properties", Map.of(
-                "artifactId",  Map.of("type", "string"),
-                "version",     Map.of("type", "integer"),
-                "handle",      Map.of("type", "string"),
-                "columns",     Map.of("type", "array"),
-                "preview",     Map.of("type", "array"),
-                "rowCount",    Map.of("type", "integer"),
-                "truncated",   Map.of("type", "boolean"),
-                "durationMs",  Map.of("type", "integer"),
-                "metadata",    Map.of(
+            "properties", Map.ofEntries(
+                Map.entry("artifactId",  Map.of("type", "string")),
+                Map.entry("version",     Map.of("type", "integer")),
+                Map.entry("handle",      Map.of("type", "string")),
+                Map.entry("columns",     Map.of("type", "array")),
+                Map.entry("preview",     Map.of("type", "array")),
+                Map.entry("rowCount",    Map.of("type", "integer")),
+                Map.entry("truncated",   Map.of("type", "boolean")),
+                Map.entry("durationMs",  Map.of("type", "integer")),
+                Map.entry("status",      Map.of("type", "string")),
+                Map.entry("confirmationId", Map.of("type", "string")),
+                Map.entry("message",     Map.of("type", "string")),
+                Map.entry("sqlPreview",  Map.of("type", "string")),
+                Map.entry("affectedObjects", Map.of("type", "array")),
+                Map.entry("metadata",    Map.of(
                     "type", "object",
                     "properties", Map.of(
                         "riskLevel", Map.of("type", "string"),
                         "riskReason", Map.of("type", "string"),
                         "fallbackUsed", Map.of("type", "boolean")
                     )
-                )
+                ))
             ));
     }
 
@@ -134,6 +151,12 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
     }
 
     private Map<String, Object> execute(ActionContext ctx, Map<String, Object> input) {
+        // Confirmation path: if confirmationId is provided, complete the pending execution
+        String confirmationId = nullableString(input, "confirmationId");
+        if (hasText(confirmationId)) {
+            return executeConfirmation(ctx, confirmationId);
+        }
+
         String sql = String.valueOf(input.get("sql"));
         var resolved = resolveContext(ctx, input);
 
@@ -164,22 +187,71 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
             }
         }
 
-        // L2 / L3 SQL is not executable from the chat tool path. The chat client
-        // surfaces an "Open in SQL Workbench" CTA; the AlertDialog flow there
-        // is the only trusted confirmation surface.
+        // AI chat path: only DELETE requires conversational confirmation.
+        // All other SQL (SELECT, INSERT, UPDATE, DDL) executes directly.
         SqlRiskAnalysis risk = riskAnalyzer.analyze(sql, Category.QUERY, resolved.connection().kind());
-        if (risk.riskLevel() == RiskLevel.L2 || risk.riskLevel() == RiskLevel.L3) {
+        if (containsDelete(sql)) {
+            String pendingId = confirmationStore.create(new SqlPendingConfirmationStore.PendingConfirmation(
+                sql,
+                resolved.connection().id(),
+                ctx.sessionId(),
+                resolved.database(),
+                resolved.schema(),
+                nullableString(input, "source"),
+                risk.affectedObjects()
+            ));
+            String sqlPreview = sql.length() > 200 ? sql.substring(0, 200) + "..." : sql;
             return Map.of(
-                "status", "blocked_in_chat",
-                "risk", Map.of(
-                    "level", risk.riskLevel().name(),
-                    "reason", risk.reason(),
-                    "affectedObjects", risk.affectedObjects()
-                ),
-                "sqlPreview", sql
+                "status", "requires_confirmation",
+                "confirmationId", pendingId,
+                "message", translator.get("sql.confirmation.delete.message"),
+                "sqlPreview", sqlPreview,
+                "affectedObjects", risk.affectedObjects()
             );
         }
 
+        // Non-DELETE SQL: execute directly (no risk gate on AI path)
+        return executeSql(ctx, input, sql, resolved);
+    }
+
+    /**
+     * Complete a pending confirmation. Executes the stored SQL directly,
+     * skipping risk analysis since the user has already confirmed.
+     */
+    private Map<String, Object> executeConfirmation(ActionContext ctx, String confirmationId) {
+        var pending = confirmationStore.get(confirmationId);
+        if (pending.isEmpty()) {
+            return Map.of(
+                "status", "confirmation_invalid",
+                "message", translator.get("sql.confirmation.expired.message")
+            );
+        }
+
+        SqlPendingConfirmationStore.PendingConfirmation conf = pending.get();
+        confirmationStore.remove(confirmationId);
+
+        // Resolve context from the stored confirmation
+        ConnectionRecord connection = connRepo.findById(conf.connectionId())
+            .orElseThrow(() -> new DataTalkException(DataTalkErrorCodes.CONNECTION_MISSING,
+                translator.get("error.connection.unknown_connection", conf.connectionId()), false));
+
+        var resolved = new ResolvedSqlContext(
+            connection,
+            conf.database(),
+            conf.schema()
+        );
+
+        Map<String, Object> input = new LinkedHashMap<>();
+        input.put("sql", conf.sql());
+        input.put("connectionId", conf.connectionId());
+        if (conf.database() != null) input.put("database", conf.database());
+        if (conf.schema() != null) input.put("schema", conf.schema());
+
+        return executeSql(ctx, input, conf.sql(), resolved);
+    }
+
+    private Map<String, Object> executeSql(ActionContext ctx, Map<String, Object> input,
+                                            String sql, ResolvedSqlContext resolved) {
         ConnectionRecord cr = withDatabase(resolved.connection(), resolved.database());
         int pageSize = pageSize(input.get("pageSize"));
 
@@ -192,6 +264,7 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
         List<Integer> columnTypes = new ArrayList<>();
         List<Map<String, Object>> rows = new ArrayList<>();
         boolean truncated = false;
+        Integer affectedRows = null;
 
         String effectiveUsername = ConnectionKind.OCEANBASE.equals(cr.kind())
             ? ConnectionService.composeOceanBaseUsername(cr)
@@ -201,29 +274,39 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
              PreparedStatement ps = c.prepareStatement(sql)) {
             applyExecutionContext(c, cr.kind(), resolved.schema());
             ps.setQueryTimeout(30);
-            ps.setMaxRows(pageSize + 1);
-            try (ResultSet rs = ps.executeQuery()) {
-                var md = rs.getMetaData();
-                for (int i = 1; i <= md.getColumnCount(); i++) {
-                    columns.add(md.getColumnLabel(i));
-                    columnTypes.add(md.getColumnType(i));
-                }
-                while (rs.next()) {
-                    if (rows.size() >= pageSize) {
-                        truncated = true;
-                        break;
-                    }
-                    Map<String, Object> row = new LinkedHashMap<>();
+
+            if (isQuery(sql)) {
+                ps.setMaxRows(pageSize + 1);
+                try (ResultSet rs = ps.executeQuery()) {
+                    var md = rs.getMetaData();
                     for (int i = 1; i <= md.getColumnCount(); i++) {
-                        row.put(columns.get(i - 1), JdbcResultValueNormalizer.normalize(
-                            rs.getObject(i), columnTypes.get(i - 1), userZoneId, dateFormat));
+                        columns.add(md.getColumnLabel(i));
+                        columnTypes.add(md.getColumnType(i));
                     }
-                    rows.add(row);
+                    while (rs.next()) {
+                        if (rows.size() >= pageSize) {
+                            truncated = true;
+                            break;
+                        }
+                        Map<String, Object> row = new LinkedHashMap<>();
+                        for (int i = 1; i <= md.getColumnCount(); i++) {
+                            row.put(columns.get(i - 1), JdbcResultValueNormalizer.normalize(
+                                rs.getObject(i), columnTypes.get(i - 1), userZoneId, dateFormat));
+                        }
+                        rows.add(row);
+                    }
                 }
+            } else {
+                int count = ps.executeUpdate();
+                affectedRows = count;
             }
         } catch (SQLTimeoutException e) {
+            long duration = clock.millis() - started;
+            recordFailureSafely(ctx, sql, resolved, DataTalkErrorCodes.SQL_TIMEOUT, e.getMessage(), started, duration);
             throw new DataTalkException(DataTalkErrorCodes.SQL_TIMEOUT, translator.get("error.sql.query_timeout"), false);
         } catch (SQLException e) {
+            long duration = clock.millis() - started;
+            recordFailureSafely(ctx, sql, resolved, DataTalkErrorCodes.SQL_SYNTAX_ERROR, e.getMessage(), started, duration);
             throw new DataTalkException(DataTalkErrorCodes.SQL_SYNTAX_ERROR, e.getMessage(), true);
         }
 
@@ -257,17 +340,102 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
         List<Map<String, Object>> preview = rows.size() > PREVIEW_ROWS
             ? rows.subList(0, PREVIEW_ROWS) : rows;
 
-        return Map.of(
-            "artifactId", artifactId,
-            "version", version,
-            "handle", handle,
-            "columns", columns,
-            "preview", preview,
-            "rowCount", rows.size(),
-            "truncated", truncated,
-            "durationMs", (int) duration,
-            "metadata", buildMetadata(ctx)
-        );
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("artifactId", artifactId);
+        result.put("version", version);
+        result.put("handle", handle);
+        result.put("columns", columns);
+        result.put("preview", preview);
+        result.put("rowCount", rows.size());
+        result.put("truncated", truncated);
+        result.put("durationMs", (int) duration);
+        result.put("metadata", buildMetadata(ctx));
+        if (affectedRows != null) {
+            result.put("affectedRows", affectedRows);
+        }
+        int recordedRowCount = affectedRows != null ? affectedRows : rows.size();
+        recordSuccessSafely(ctx, sql, resolved, started, duration, recordedRowCount);
+        return result;
+    }
+
+    private void recordSuccessSafely(ActionContext ctx, String sql, ResolvedSqlContext resolved,
+                                      long startedAt, long durationMs, int rowCount) {
+        try {
+            historyService.record(SqlExecutionRecord.success(
+                ctx.sessionId(),
+                resolved.connection().id(),
+                resolved.database(),
+                resolved.schema(),
+                sql,
+                startedAt,
+                durationMs,
+                rowCount
+            ));
+        } catch (Exception e) {
+            log.warn("sql_execution_history record (success) failed for session={}: {}",
+                ctx.sessionId(), e.toString());
+        }
+    }
+
+    private void recordFailureSafely(ActionContext ctx, String sql, ResolvedSqlContext resolved,
+                                      String errorCode, String errorMessage,
+                                      long startedAt, long durationMs) {
+        try {
+            historyService.record(SqlExecutionRecord.failure(
+                ctx.sessionId(),
+                resolved.connection().id(),
+                resolved.database(),
+                resolved.schema(),
+                sql,
+                errorCode,
+                errorMessage,
+                startedAt,
+                durationMs
+            ));
+        } catch (Exception e) {
+            log.warn("sql_execution_history record (failure) failed for session={}: {}",
+                ctx.sessionId(), e.toString());
+        }
+    }
+
+    /**
+     * Detect whether SQL is a query (SELECT/WITH) that produces a result set.
+     */
+    private boolean isQuery(String sql) {
+        if (sql == null || sql.isBlank()) return false;
+        String trimmed = sql.trim().toUpperCase();
+        return trimmed.startsWith("SELECT") || trimmed.startsWith("WITH")
+            || trimmed.startsWith("EXPLAIN") || trimmed.startsWith("SHOW")
+            || trimmed.startsWith("DESCRIBE") || trimmed.startsWith("DESC");
+    }
+
+    /**
+     * Detect whether SQL contains a DELETE statement.
+     */
+    private boolean containsDelete(String sql) {
+        if (sql == null || sql.isBlank()) return false;
+        String trimmed = sql.trim().toUpperCase();
+        if (trimmed.startsWith("DELETE") || trimmed.startsWith("DELETE\t")) {
+            return true;
+        }
+        // Check for multi-statement with semicolon-separated DELETE
+        // Use simple string matching for the chat path
+        String upper = sql.toUpperCase();
+        // Match DELETE at statement boundaries (after ; or at start)
+        if (upper.startsWith("DELETE ") || upper.startsWith("DELETE\t")) {
+            return true;
+        }
+        // Check for ; DELETE patterns
+        int idx;
+        int searchFrom = 0;
+        while ((idx = upper.indexOf(';', searchFrom)) >= 0) {
+            String after = upper.substring(idx + 1).trim();
+            if (after.startsWith("DELETE ") || after.startsWith("DELETE\t")) {
+                return true;
+            }
+            searchFrom = idx + 1;
+        }
+        return false;
     }
 
     private static int pageSize(Object value) {

@@ -18,7 +18,7 @@ The user's accompanying text message determines the **intent**. You MUST classif
 
 ## Intent Classification
 
-For CSV, Excel, JSON (array_of_objects), and SQL files (when `analysis.summary.statementTypes` all = INSERT and `analysis.summary.targetTables` has exactly 1 entry), classify the user's intent from their message:
+For CSV, Excel, JSON (array_of_objects), and SQL files (when `analysis.summary.statementTypes` contains only INSERT, DROP, and/or CREATE, and `analysis.summary.targetTables` has exactly 1 entry), classify the user's intent from their message:
 
 | Intent Signals | Intent | Action |
 |---|---|---|
@@ -33,7 +33,7 @@ For Text, Image, and Unknown files, follow the type-specific rules below — no 
 ### SQL Files (analysis.type = "SQL")
 - Examine `analysis.summary.statementTypes` to understand what's in the file
 - Examine `analysis.summary.targetTables` to identify affected tables
-- **Import intent gate**: If user intent = Import AND `statementTypes` contains only INSERT AND `targetTables` has exactly 1 entry → use `datatalk_import_data` with `source: { type: "file", fileId }` and `target: { connectionId, tableName }` (derive tableName from `targetTables[0]`). Skip riskLevel routing.
+- **Import intent gate**: If user intent = Import AND `statementTypes` contains only INSERT, DROP, and/or CREATE AND `targetTables` has exactly 1 entry AND all DROP/CREATE target the same table as the INSERT statements → use `datatalk_import_data` with `source: { type: "file", fileId }` and `target: { connectionId, tableName }` (derive tableName from `targetTables[0]`). DDL+INSERT mixed SQL files (e.g., mysqldump format with DROP TABLE + CREATE TABLE + INSERT) are supported by `datatalk_import_data`. The service extracts and executes DDL first, then streams INSERT data. Skip riskLevel routing.
 - Otherwise, fall through to riskLevel routing:
   - L1 (SELECT only): Open in query editor, suggest running
   - L2 (DML): Describe impact, require confirmation via guarded DML flow

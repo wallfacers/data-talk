@@ -67,6 +67,7 @@ class SqlExecuteServiceErrorFormattingTest {
             userPrefsService,
             translator(),
             undoLogCapture,
+            new SqlPendingConfirmationStore(),
             100
         );
 

@@ -89,6 +89,7 @@ class SqlExecuteServiceSplitterSelectionTest {
             userPrefsService,
             translator(),
             undoLogCapture,
+            new SqlPendingConfirmationStore(),
             100
         );
     }

@@ -10,11 +10,11 @@
 
 ### Requirement: 对话框 SHALL 仅渲染单层卡片，不嵌套子卡片
 
-SQL 风险确认对话框 SHALL 使用单一的 shadcn `AlertDialogContent` 作为视觉容器。内部内容区域 (`SqlConfirmationCard` 渲染结果) SHALL NOT 包含独立的圆角、外边框或大色块填充背景（即不构成"对话框内的另一张卡片"）。
+SQL 风险确认对话框 SHALL 使用单一的 shadcn `AlertDialogContent` 作为视觉容器。内部内容区域 (`SqlConfirmationCard` 渲染结果) SHALL NOT 包含独立的圆角、外边框或大色块填充背景（即不构成"对话框内的另一张卡片"）。此对话框仅用于**用户在编辑器中手动触发**的 L2/L3 SQL 执行确认。AI 路径的确认已移至对话式机制（见 `conversational-sql-confirmation` spec）。
 
 #### Scenario: dialog 内只有一层圆角边框容器
 
-- **GIVEN** SQL workbench 触发 L2 风险（如 `UPDATE orders SET ... WHERE id = 1`）
+- **GIVEN** 用户在 SQL workbench 手动点击 Run 按钮，SQL 包含 L2 风险（如 `UPDATE orders SET ... WHERE id = 1`）
 - **WHEN** 确认对话框打开
 - **THEN** DOM 中只有 `AlertDialogContent` 一个元素具有 `rounded` + `border` + 阴影类
 - **AND** 其子元素 `[data-testid="sql-risk-panel"]` SHALL NOT 同时具有 `rounded-md`、`border`、整片背景填充类
