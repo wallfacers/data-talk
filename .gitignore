@@ -56,3 +56,4 @@ client/test-results/
 /.opencode/skills/bezel/
 /.opencode/.bezel-installed
 **/.opencode/
+/test-results/
