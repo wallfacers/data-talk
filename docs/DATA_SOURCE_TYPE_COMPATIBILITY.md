@@ -967,6 +967,7 @@ File import reads source files in streaming mode, accumulates rows in batches of
 | CSV | `BufferedReader` line-by-line, UTF-8 BOM skip, CSV RFC-compliant quoted fields | Long → `BIGINT`, Double → `DOUBLE`, else `VARCHAR(255)` | 1000 rows |
 | JSON | Jackson `JsonParser` streaming, `array_of_objects` shape required | Integer/Long → `BIGINT`, Double/Float → `DOUBLE`, Boolean → `BOOLEAN`, else `VARCHAR(255)` | 1000 rows |
 | XLSX | Apache POI SAX (`XSSFReader` + `SheetContentsHandler`), event-driven row processing, first sheet only | Long → `BIGINT`, Double → `DOUBLE`, Boolean → `BOOLEAN`, else `VARCHAR(255)` | 1000 rows |
+| SQL | `SqlStatementSplitter` state machine (quote/comment tracking, semicolon terminator) → `SqlStreamReader` regex INSERT parsing. Supports multi-row VALUES, schema-qualified table names, cross-line statements. Single-statement size limit: 10 MB. | Syntax-token-based: unquoted integer → `BIGINT`, unquoted decimal → `DOUBLE`, quoted string → `VARCHAR(255)`, `TRUE`/`FALSE` → `BOOLEAN`, `NULL` → skip. Column type overrides via `columnTypes` take precedence. | 1000 rows |
 | Cross-DB copy | JDBC cursor (`TYPE_FORWARD_ONLY`, `CONCUR_READ_ONLY`), `fetchSize=500`, `autoCommit=false` | Column types derived from source `ResultSetMetaData` | Via `writeStream` service |
 
 Column type overrides are supported: callers may pass `columnTypes` to force specific DDL types, bypassing inference.
@@ -1040,3 +1041,4 @@ File import and cross-DB copy both write data using standard JDBC `PreparedState
 - **Export file size cap**: 500 MB. Export stops when this limit is reached.
 - **Default row limit**: 1,000,000 rows per export unless overridden by the caller.
 - **Type inference**: Fixed-width mappings (e.g., `VARCHAR(255)` for strings). Columns requiring longer strings, LOBs, or specialized types must be pre-created manually before import.
+- **SQL file import**: Only `INSERT INTO ... VALUES (...)` statements are parsed. DDL, UPDATE, DELETE, and statements with subqueries are skipped. Multi-target-table SQL files and table name mismatches between SQL content and the `target.tableName` parameter are rejected with clear error codes. Mixed DDL+INSERT files should be executed via the query editor's guarded flow instead.

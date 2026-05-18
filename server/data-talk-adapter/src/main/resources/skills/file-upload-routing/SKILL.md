@@ -18,7 +18,7 @@ The user's accompanying text message determines the **intent**. You MUST classif
 
 ## Intent Classification
 
-For CSV, Excel, and JSON (array_of_objects) files, classify the user's intent from their message:
+For CSV, Excel, JSON (array_of_objects), and SQL files (when `analysis.summary.statementTypes` all = INSERT and `analysis.summary.targetTables` has exactly 1 entry), classify the user's intent from their message:
 
 | Intent Signals | Intent | Action |
 |---|---|---|
@@ -26,16 +26,18 @@ For CSV, Excel, and JSON (array_of_objects) files, classify the user's intent fr
 | "分析" / "统计" / "看看" / "趋势" / "分布" / "analyze" / "summary" | **Analyze** | `datatalk_file_read` (read sample) + `datatalk_execute_sql` |
 | Unclear / no explicit signal | **Ask** | Ask user: "你想分析这个文件，还是把数据导入到数据库表中？" |
 
-For SQL, Text, Image, and Unknown files, follow the type-specific rules below — no intent classification needed.
+For Text, Image, and Unknown files, follow the type-specific rules below — no intent classification needed.
 
 ## Routing Rules
 
 ### SQL Files (analysis.type = "SQL")
 - Examine `analysis.summary.statementTypes` to understand what's in the file
 - Examine `analysis.summary.targetTables` to identify affected tables
-- L1 (SELECT only): Open in query editor, suggest running
-- L2 (DML): Describe impact, require confirmation via guarded DML flow
-- L3 (DDL): Warn about schema changes, require confirmation via guarded DDL flow
+- **Import intent gate**: If user intent = Import AND `statementTypes` contains only INSERT AND `targetTables` has exactly 1 entry → use `datatalk_import_data` with `source: { type: "file", fileId }` and `target: { connectionId, tableName }` (derive tableName from `targetTables[0]`). Skip riskLevel routing.
+- Otherwise, fall through to riskLevel routing:
+  - L1 (SELECT only): Open in query editor, suggest running
+  - L2 (DML): Describe impact, require confirmation via guarded DML flow
+  - L3 (DDL): Warn about schema changes, require confirmation via guarded DDL flow
 - Show `analysis.summary.preview` to user so they can see what statements were detected
 
 ### CSV/Excel Files (analysis.type = "CSV" or "EXCEL")

@@ -94,9 +94,11 @@ When a user message contains a `file_upload` part (detected via the `analysis` f
 ### Decision Tree
 
 1. **SQL file** (`analysis.type = "SQL"`):
-   - If `analysis.summary.riskLevel = "L1"` (SELECT only) → Open the SQL in query_editor. Tell the user what queries were detected and suggest running them.
-   - If `analysis.summary.riskLevel = "L2"` (has DML) → Describe the statements (type, count, target tables). Ask the user to confirm before execution. Execute via guarded DML flow.
-   - If `analysis.summary.riskLevel = "L3"` (has DDL) → Warn about schema changes. Require explicit user confirmation. Execute via guarded DDL flow.
+   - **Import intent first**: If user intent = Import AND `analysis.summary.statementTypes` contains only INSERT AND `targetTables` has exactly 1 entry → route to `datatalk_import_data` (see skill:file-upload-routing). Skip riskLevel routing.
+   - Otherwise fall through to riskLevel:
+     - If `analysis.summary.riskLevel = "L1"` (SELECT only) → Open the SQL in query_editor. Tell the user what queries were detected and suggest running them.
+     - If `analysis.summary.riskLevel = "L2"` (has DML) → Describe the statements (type, count, target tables). Ask the user to confirm before execution. Execute via guarded DML flow.
+     - If `analysis.summary.riskLevel = "L3"` (has DDL) → Warn about schema changes. Require explicit user confirmation. Execute via guarded DDL flow.
    - Use `analysis.summary.preview` to show the user what statements were detected.
 
 2. **CSV/Excel file** (`analysis.type = "CSV"` or `"EXCEL"`):

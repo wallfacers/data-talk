@@ -15,8 +15,10 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -107,6 +109,41 @@ public class DataImportService {
                     ddlTypes = excelReader.inferDdlTypes(columns, sampleRows, columnTypes);
                     if (excelResult.totalRows() != allRows.size()) {
                         warnings.add("Partial read: expected " + excelResult.totalRows()
+                            + " rows but collected " + allRows.size());
+                    }
+                }
+                case "sql" -> {
+                    SqlStreamReader sqlReader = new SqlStreamReader();
+                    SqlStreamReader.StreamReadResult sqlResult = sqlReader.stream(
+                        filePath, BATCH_SIZE, allRows::addAll, columnMappings, columnTypes);
+                    sampleRows = sqlResult.sampleRows();
+                    columns = sqlResult.columns();
+
+                    if (sqlResult.totalRows() == 0) {
+                        throw new RuntimeException(
+                            "SQL_PARSE_FAILED: No parseable INSERT statements found in file");
+                    }
+
+                    // Validate table name consistency
+                    Set<String> sqlTables = sqlReader.extractTargetTables(filePath);
+                    if (sqlTables.size() > 1) {
+                        throw new RuntimeException(
+                            "MULTI_TABLE_NOT_SUPPORTED: SQL file targets multiple tables "
+                            + sqlTables + "; use query editor instead");
+                    }
+                    if (!sqlTables.isEmpty()) {
+                        String sqlTable = sqlTables.iterator().next().toLowerCase();
+                        String paramTable = tableName.toLowerCase();
+                        if (!sqlTable.equals(paramTable)) {
+                            throw new RuntimeException(
+                                "TABLE_NAME_MISMATCH: SQL file targets " + sqlTables.iterator().next()
+                                + " but tableName=" + tableName);
+                        }
+                    }
+
+                    ddlTypes = sqlReader.inferDdlTypesFromTokens(columns, sampleRows, columnTypes);
+                    if (sqlResult.totalRows() != allRows.size()) {
+                        warnings.add("Partial read: expected " + sqlResult.totalRows()
                             + " rows but collected " + allRows.size());
                     }
                 }
@@ -246,6 +283,7 @@ public class DataImportService {
         if (filename.endsWith(".csv")) return "csv";
         if (filename.endsWith(".json")) return "json";
         if (filename.endsWith(".xlsx")) return "xlsx";
+        if (filename.endsWith(".sql")) return "sql";
         return null;
     }
 

@@ -247,4 +247,115 @@ class DataImportServiceTest {
         assertThat(result.rowsImported()).isEqualTo(0);
         assertThat(result.columns()).hasSize(3);
     }
+
+    // ── SQL file import tests ─────────────────────────────────────────
+
+    @Test
+    void importSql_pureInsert() throws Exception {
+        String dbName = "mem:sql1" + System.nanoTime() + ";DB_CLOSE_DELAY=-1";
+        mockConnection("c1", dbName);
+
+        Path sqlFile = tempDir.resolve("data.sql");
+        Files.writeString(sqlFile,
+            "INSERT INTO orders (id, name, total) VALUES (1, 'Alice', 99.5);\n" +
+            "INSERT INTO orders (id, name, total) VALUES (2, 'Bob', 150.0);\n" +
+            "INSERT INTO orders (id, name, total) VALUES (3, 'Charlie', 200.75);\n");
+        mockFile("s1", "data.sql", sqlFile);
+
+        var result = service.importFromFile("s1", "c1", "orders", true, null, null);
+
+        assertThat(result.rowsImported()).isEqualTo(3);
+        assertThat(result.tableName()).isEqualTo("orders");
+        assertThat(result.columns()).hasSize(3);
+        assertThat(result.sampleRows()).hasSize(3);
+
+        try (Connection c = DriverManager.getConnection("jdbc:h2:" + dbName, "sa", "")) {
+            ResultSet rs = c.createStatement().executeQuery("SELECT COUNT(*) FROM \"orders\"");
+            assertThat(rs.next()).isTrue();
+            assertThat(rs.getInt(1)).isEqualTo(3);
+        }
+    }
+
+    @Test
+    void importSql_multiRowValues() throws Exception {
+        String dbName = "mem:sql2" + System.nanoTime() + ";DB_CLOSE_DELAY=-1";
+        mockConnection("c1", dbName);
+
+        Path sqlFile = tempDir.resolve("batch.sql");
+        Files.writeString(sqlFile,
+            "INSERT INTO items (id, name) VALUES (1, 'A'), (2, 'B'), (3, 'C');\n");
+        mockFile("s2", "batch.sql", sqlFile);
+
+        var result = service.importFromFile("s2", "c1", "items", true, null, null);
+
+        assertThat(result.rowsImported()).isEqualTo(3);
+
+        try (Connection c = DriverManager.getConnection("jdbc:h2:" + dbName, "sa", "")) {
+            ResultSet rs = c.createStatement().executeQuery("SELECT COUNT(*) FROM \"items\"");
+            assertThat(rs.next()).isTrue();
+            assertThat(rs.getInt(1)).isEqualTo(3);
+        }
+    }
+
+    @Test
+    void importSql_tableNameMismatch_throws() throws Exception {
+        String dbName = "mem:sql3" + System.nanoTime() + ";DB_CLOSE_DELAY=-1";
+        mockConnection("c1", dbName);
+
+        Path sqlFile = tempDir.resolve("mismatch.sql");
+        Files.writeString(sqlFile,
+            "INSERT INTO orders (id, name) VALUES (1, 'A');\n");
+        mockFile("s3", "mismatch.sql", sqlFile);
+
+        assertThatThrownBy(() -> service.importFromFile("s3", "c1", "other_table", true, null, null))
+            .isInstanceOf(RuntimeException.class)
+            .hasMessageContaining("TABLE_NAME_MISMATCH");
+    }
+
+    @Test
+    void importSql_multiTable_throws() throws Exception {
+        String dbName = "mem:sql4" + System.nanoTime() + ";DB_CLOSE_DELAY=-1";
+        mockConnection("c1", dbName);
+
+        Path sqlFile = tempDir.resolve("multi.sql");
+        Files.writeString(sqlFile,
+            "INSERT INTO orders (id) VALUES (1);\n" +
+            "INSERT INTO customers (id) VALUES (1);\n");
+        mockFile("s4", "multi.sql", sqlFile);
+
+        assertThatThrownBy(() -> service.importFromFile("s4", "c1", "orders", true, null, null))
+            .isInstanceOf(RuntimeException.class)
+            .hasMessageContaining("MULTI_TABLE_NOT_SUPPORTED");
+    }
+
+    @Test
+    void importSql_noInsertStatements_throws() throws Exception {
+        String dbName = "mem:sql5" + System.nanoTime() + ";DB_CLOSE_DELAY=-1";
+        mockConnection("c1", dbName);
+
+        Path sqlFile = tempDir.resolve("nodata.sql");
+        Files.writeString(sqlFile,
+            "CREATE TABLE test (id INT);\n" +
+            "SELECT * FROM test;\n");
+        mockFile("s5", "nodata.sql", sqlFile);
+
+        assertThatThrownBy(() -> service.importFromFile("s5", "c1", "test", true, null, null))
+            .isInstanceOf(RuntimeException.class)
+            .hasMessageContaining("SQL_PARSE_FAILED");
+    }
+
+    @Test
+    void importSql_caseInsensitiveTableName() throws Exception {
+        String dbName = "mem:sql6" + System.nanoTime() + ";DB_CLOSE_DELAY=-1";
+        mockConnection("c1", dbName);
+
+        Path sqlFile = tempDir.resolve("case.sql");
+        Files.writeString(sqlFile,
+            "INSERT INTO Orders (id, name) VALUES (1, 'A');\n");
+        mockFile("s6", "case.sql", sqlFile);
+
+        var result = service.importFromFile("s6", "c1", "orders", true, null, null);
+
+        assertThat(result.rowsImported()).isEqualTo(1);
+    }
 }
