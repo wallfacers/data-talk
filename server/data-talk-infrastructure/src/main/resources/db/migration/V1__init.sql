@@ -393,19 +393,8 @@ CREATE TABLE uploaded_file (
 CREATE INDEX idx_uploaded_file_created_at ON uploaded_file(created_at);
 
 -- ─── 17. User Message Attachments ─────────────────────────────
--- V2 merge: stores file_upload parts echoed on top of OpenCode text-only protocol
-
-CREATE TABLE user_message_attachments (
-    id TEXT PRIMARY KEY,
-    session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-    message_id TEXT NOT NULL,
-    position INTEGER NOT NULL,
-    part_json TEXT NOT NULL,
-    created_at INTEGER NOT NULL
-);
-
-CREATE INDEX idx_user_message_attachments_session_message
-    ON user_message_attachments(session_id, message_id, position, id);
+-- Moved to V2__user_message_attachments.sql (BUG-0061 fix) so the
+-- table can be applied independently of V1 checksum state.
 
 -- ─── Seed Data ──────────────────────────────────────────────
 

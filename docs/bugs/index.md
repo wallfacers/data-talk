@@ -8,14 +8,13 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## 当前编号
 
-下一个分配 ID：**BUG-0061**（永不复用，单调递增）
+下一个分配 ID：**BUG-0063**（永不复用，单调递增）
 
 ## Open BUGs（按 priority 倒序，P0 → P2）
 
 | ID | Title | Status | Priority | Discovered |
 |----|-------|--------|----------|------------|
-| [BUG-0061](BUG-0061-missing-flyway-migration-for-user-message-attachments.md) | V1__init.sql 后期追加 user_message_attachments 表却没有独立的 Vxx 迁移，老 DB 缺表 500 | open | P1 | 2026-05-18 |
-| [BUG-0062](BUG-0062-spring-multipart-1mb-limit-blocks-image-uploads.md) | Spring 默认 multipart 1MB 上限阻止 >1MB 图片上传（前后端代码层都是 50MB） | open | P2 | 2026-05-18 |
+| _(no open BUGs at this time)_ | | | | |
 
 
 ## In Progress（status = investigating | fixed 等待 verify）
@@ -69,6 +68,8 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 | [BUG-0057](BUG-0057-composer-attachment-stuck-uploading-button-locked.md) | 输入框附件 chip 卡在 uploading 0% 永不消失，导致发送按钮被永久禁用 | verified | 2026-05-18 | pending |
 | [BUG-0058](BUG-0058-file-read-image-no-compression-base64-too-large.md) | datatalk_file_read 对图片直接 base64，截图触发"payload 太大" | fixed | 2026-05-18 | pending |
 | [BUG-0059](BUG-0059-composer-enter-lag-due-to-lazy-upload-on-submit.md) | 输入框带文件时按回车感知卡顿 — eager upload + 并发修复 | verified | 2026-05-18 | pending |
+| [BUG-0061](BUG-0061-missing-flyway-migration-for-user-message-attachments.md) | V1__init.sql 后期追加 user_message_attachments 表却没有独立的 Vxx 迁移，老 DB 缺表 500 | fixed | 2026-05-18 | pending |
+| [BUG-0062](BUG-0062-spring-multipart-1mb-limit-blocks-image-uploads.md) | Spring 默认 multipart 1MB 上限阻止 >1MB 图片上传（前后端代码层都是 50MB） | fixed | 2026-05-18 | pending |
 | [BUG-0044](BUG-0044-user-bubble-markdown-invisible-on-primary-bg.md) | 用户气泡 Markdown 代码块/表格白字白底（双主题均不可读） | verified | 2026-05-14 | c28058c5 |
 | [BUG-0043](BUG-0043-sql-editor-tab-switch-loses-default-connection.md) | Chat Run SQL 打开多个 SQL 编辑器，切换 tab 导致默认 connection 丢失 | verified | 2026-05-14 | bbbdf015 |
 | [BUG-0042](BUG-0042-sql-editor-session-follow-mode-ignores-connection-default-database.md) | SQL editor session-follow 模式下不应用 connection 默认 database | verified | 2026-05-14 | bbbdf015 |
@@ -103,10 +104,10 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 - **session**: [BUG-0037](BUG-0037-ctrl-r-during-streaming-flips-stop-button-to-send.md) *(fixed)*, [BUG-0038](BUG-0038-replay-idle-on-resubscribe-clears-streaming-flag.md) *(fixed)*, [BUG-0039](BUG-0039-composer-draft-sync-write-wrong-schema.md) *(fixed)*, [BUG-0046](BUG-0046-composer-button-refresh-stream-state-mismatch.md) *(fixed)*, [BUG-0052](BUG-0052-long-session-empty-canvas-streaming-flag-race.md) *(fixed)*, [BUG-0057](BUG-0057-composer-attachment-stuck-uploading-button-locked.md) *(verified)*, [BUG-0059](BUG-0059-composer-enter-lag-due-to-lazy-upload-on-submit.md) *(verified)*
 - **channel**: [BUG-0038](BUG-0038-replay-idle-on-resubscribe-clears-streaming-flag.md) *(fixed)*, [BUG-0046](BUG-0046-composer-button-refresh-stream-state-mismatch.md) *(fixed)*, [BUG-0052](BUG-0052-long-session-empty-canvas-streaming-flag-race.md) *(fixed)*, [BUG-0056](BUG-0056-bubble-attachments-file-upload-part-not-roundtripped.md) *(fixed)*
 - **chat**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md), [BUG-0037](BUG-0037-ctrl-r-during-streaming-flips-stop-button-to-send.md) *(fixed)*, [BUG-0038](BUG-0038-replay-idle-on-resubscribe-clears-streaming-flag.md) *(fixed)*, [BUG-0039](BUG-0039-composer-draft-sync-write-wrong-schema.md) *(fixed)*, [BUG-0041](BUG-0041-sql-code-block-theme-color-mismatch.md) *(fixed)*, [BUG-0044](BUG-0044-user-bubble-markdown-invisible-on-primary-bg.md) *(fixed)*, [BUG-0046](BUG-0046-composer-button-refresh-stream-state-mismatch.md) *(fixed)*, [BUG-0049](BUG-0049-bezel-dashboard-html-chinese-garbled.md), [BUG-0052](BUG-0052-long-session-empty-canvas-streaming-flag-race.md) *(fixed)*, [BUG-0056](BUG-0056-bubble-attachments-file-upload-part-not-roundtripped.md) *(fixed)*, [BUG-0057](BUG-0057-composer-attachment-stuck-uploading-button-locked.md) *(verified)*, [BUG-0058](BUG-0058-file-read-image-no-compression-base64-too-large.md) *(fixed)*, [BUG-0059](BUG-0059-composer-enter-lag-due-to-lazy-upload-on-submit.md) *(verified)*
-- **file-upload**: [BUG-0056](BUG-0056-bubble-attachments-file-upload-part-not-roundtripped.md) *(fixed)*, [BUG-0057](BUG-0057-composer-attachment-stuck-uploading-button-locked.md) *(verified)*, [BUG-0058](BUG-0058-file-read-image-no-compression-base64-too-large.md) *(fixed)*, [BUG-0059](BUG-0059-composer-enter-lag-due-to-lazy-upload-on-submit.md) *(verified)*, [BUG-0062](BUG-0062-spring-multipart-1mb-limit-blocks-image-uploads.md) *(open)*
-- **persistence**: [BUG-0061](BUG-0061-missing-flyway-migration-for-user-message-attachments.md) *(open)*
-- **flyway**: [BUG-0061](BUG-0061-missing-flyway-migration-for-user-message-attachments.md) *(open)*
-- **config**: [BUG-0062](BUG-0062-spring-multipart-1mb-limit-blocks-image-uploads.md) *(open)*
+- **file-upload**: [BUG-0056](BUG-0056-bubble-attachments-file-upload-part-not-roundtripped.md) *(fixed)*, [BUG-0057](BUG-0057-composer-attachment-stuck-uploading-button-locked.md) *(verified)*, [BUG-0058](BUG-0058-file-read-image-no-compression-base64-too-large.md) *(fixed)*, [BUG-0059](BUG-0059-composer-enter-lag-due-to-lazy-upload-on-submit.md) *(verified)*, [BUG-0062](BUG-0062-spring-multipart-1mb-limit-blocks-image-uploads.md) *(fixed)*
+- **persistence**: [BUG-0061](BUG-0061-missing-flyway-migration-for-user-message-attachments.md) *(fixed)*
+- **flyway**: [BUG-0061](BUG-0061-missing-flyway-migration-for-user-message-attachments.md) *(fixed)*
+- **config**: [BUG-0062](BUG-0062-spring-multipart-1mb-limit-blocks-image-uploads.md) *(fixed)*
 
 ## By Source（聚合视图，仅列 open + in-progress）
 

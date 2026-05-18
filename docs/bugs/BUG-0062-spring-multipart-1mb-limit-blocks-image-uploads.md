@@ -1,15 +1,16 @@
 ---
 id: BUG-0062
 title: Spring 默认 multipart 上限 1MB 阻止 >1MB 图片上传，比前端 50MB 限制和 FileUploadController 50MB 检查严
-status: open
+status: fixed
 priority: P2
 source: e2e
 modules: [server, file-upload, config]
 discovered: 2026-05-18
 discoveredBy: agent
 testRunId: openspec/changes/batch-image-attachments-via-fileparts/ (E2E run)
-fixCommit: null
-fixPlanRef: null
+fixCommit: pending
+fixPlanRef: openspec/changes/align-spring-multipart-with-file-upload-limit/
+fixedAt: 2026-05-18
 duplicateOf: null
 regression: false
 ---

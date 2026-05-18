@@ -5,6 +5,13 @@ spring:
   codec:
     max-in-memory-size: 16MB
 
+  servlet:
+    multipart:
+      # MUST stay in sync with FileUploadController.MAX_SIZE_BYTES (50 * 1024 * 1024).
+      # Spring's 1MB default would otherwise pre-empt the Controller's 50MB business limit.
+      max-file-size: 50MB
+      max-request-size: 50MB
+
   # Demo / fallback datasource — in-memory H2 initialized from schema-demo.sql + data-demo.sql.
   # Acts as the @Primary JdbcTemplate when no user-specific connection is active.
   # Not a placeholder: it seeds explorable demo data for development and smoke tests.

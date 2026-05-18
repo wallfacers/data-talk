@@ -1,15 +1,16 @@
 ---
 id: BUG-0061
 title: V1__init.sql 后期追加 user_message_attachments 表却没有独立的 Vxx 迁移，导致老 DB 缺表 500 错误
-status: open
+status: fixed
 priority: P1
 source: e2e
 modules: [server, persistence, flyway]
 discovered: 2026-05-18
 discoveredBy: agent
 testRunId: openspec/changes/batch-image-attachments-via-fileparts/ (E2E run)
-fixCommit: null
-fixPlanRef: null
+fixCommit: pending
+fixPlanRef: openspec/changes/fix-missing-user-message-attachments-migration/
+fixedAt: 2026-05-18
 duplicateOf: null
 regression: false
 ---
