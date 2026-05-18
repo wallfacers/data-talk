@@ -90,4 +90,90 @@ class AgentsTemplateContractTest {
         String tpl = loadAgentsMd();
         assertThat(tpl).contains("{{ACTIVE_SESSION_DIR}}");
     }
+
+    @Test
+    void agentsTemplateContainsAllFivePlaceholders() throws IOException {
+        String tpl = loadAgentsMd();
+        assertThat(tpl)
+            .contains("{{STAGE_TAB_DIGEST}}")
+            .contains("{{ACTIVE_SESSION_DIR}}")
+            .contains("{{SEMANTIC_MODEL_DIGEST}}")
+            .contains("{{ACTIVE_CONNECTION_SUMMARY}}")
+            .contains("{{RECENT_FAILED_QUERIES_DIGEST}}");
+    }
+
+    @Test
+    void agentsTemplateContainsPreActionExplorationProtocolSection() throws IOException {
+        String tpl = loadAgentsMd();
+        assertThat(tpl)
+            .contains("## Pre-Action Exploration Protocol")
+            .contains("get_data_context")
+            .contains("schema_search")
+            .contains("read_schema")
+            .contains("execute_sql")
+            .contains("3 times")
+            .contains("question")
+            .containsIgnoringCase("good")
+            .containsIgnoringCase("bad");
+    }
+
+    @Test
+    void agentsTemplateTriggerGateRoutesUnfamiliarTableToExploringData() throws IOException {
+        String tpl = loadAgentsMd();
+        assertThat(tpl)
+            .contains("skill:exploring-data");
+    }
+
+    @Test
+    void agentsTemplateSkillIndexIncludesExploringData() throws IOException {
+        String tpl = loadAgentsMd();
+        assertThat(tpl)
+            .contains("- skill:exploring-data");
+    }
+
+    @Test
+    void agentsTemplateRegisteredActionsIncludeSchemaSearchAndQueryHistory() throws IOException {
+        String tpl = loadAgentsMd();
+        assertThat(tpl)
+            .contains("`datatalk_schema_search`")
+            .contains("`datatalk_query_history`");
+    }
+
+    @Test
+    void agentsTemplateForbidsSkillFilePathReferences() throws IOException {
+        // BUG-0040: any literal "skills/<name>/SKILL.md" / ".opencode/skills/" / "~/.agents/skills/"
+        // triggers LLM hallucination — must be absent from the skeleton at all times.
+        String tpl = loadAgentsMd();
+        assertThat(tpl)
+            .doesNotContainPattern("skills/[a-z0-9-]+/SKILL\\.md")
+            .doesNotContain(".opencode/skills/")
+            .doesNotContain("~/.agents/skills/");
+    }
+
+    @Test
+    void agentsTemplateBodyStaysWithin350NonBlankLines() throws IOException {
+        String tpl = loadAgentsMd();
+        long nonBlank = tpl.lines().filter(l -> !l.isBlank()).count();
+        assertThat(nonBlank)
+            .as("AGENTS.md skeleton non-blank line budget; expand skills if this grows.")
+            .isLessThanOrEqualTo(350L);
+    }
+
+    @Test
+    void exploringDataSkillIsPresentAndDocumentsProtocol() throws IOException {
+        String skill = loadSkillMd("exploring-data");
+        assertThat(skill)
+            .as("skills/exploring-data/SKILL.md must own the Pre-Action Exploration Protocol")
+            .contains("name: exploring-data")
+            .contains("Pre-Action Exploration Protocol")
+            .contains("datatalk_schema_search")
+            .contains("datatalk_read_schema")
+            .contains("question")
+            .contains("3 times")
+            .contains("[[sql-execution]]")
+            .contains("[[connection-management]]")
+            .contains("[[query-editor-workflow]]")
+            .doesNotContainPattern("skills/[a-z0-9-]+/SKILL\\.md")
+            .doesNotContain(".opencode/skills/");
+    }
 }

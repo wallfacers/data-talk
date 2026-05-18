@@ -22,6 +22,7 @@ description: Use when the user manages saved data source connections or switches
 - `datatalk_lock_info` and other diagnostic tool definitions — see `[[sql-error-diagnostics]]` (this skill only covers how diagnostics hand off into confirmable mutations)
 - Per-tab `set_context` in the query editor (different from session-level `set_data_context`) — see `[[query-editor-workflow]]`
 - Reading schema / executing SQL on an already-selected connection — see `[[sql-execution]]`
+- Discovering which table holds the data a user keyword refers to, or first-time exploration of an unfamiliar schema before writing SQL — see `[[exploring-data]]` for the Pre-Action Exploration Protocol
 
 ## Session data context
 

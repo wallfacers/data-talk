@@ -52,9 +52,11 @@ This `truncated` flag is the schema-result-truncation signal. The distinct "tool
 
 ## "Table doesn't exist" probe path
 
+> Before writing any SQL on an unfamiliar schema (first-time table use, multi-table JOIN, keyword-based table discovery), go through `[[exploring-data]]` first — it defines the Pre-Action Exploration Protocol with ordering, budget, and escalation. The probe below is the fallback *after* a SQL has already failed with table-not-found.
+
 When `datatalk_execute_sql` (or `datatalk_explain_query` / `datatalk_index_hints` / query-editor `run_sql`) returns "table doesn't exist" / "relation does not exist" / "Unknown table", **stop retrying the same SQL** and run this entry probe:
 
-1. `datatalk_read_schema` with `pattern=<missing-name>` against the active connection.
+1. `datatalk_schema_search(keyword=<missing-name>)` for Chinese / English / pinyin / synonym candidates; if empty, fall back to `datatalk_read_schema(pattern=<missing-name>)` against the active connection.
 2. If empty, branch by dialect:
    - **MySQL / MariaDB** — one cross-database probe:
      ```sql

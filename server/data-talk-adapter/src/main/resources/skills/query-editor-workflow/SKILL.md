@@ -108,7 +108,7 @@ Notes: start with `datatalk_ui_find` and `filter.type=query_editor` when the use
 ### Browse table rows or simple counts in query editor
 
 1. Apply Tab Reuse vs New Tab from `[[tab-management]]` to pick or open a target editor.
-2. If table or column names are unclear, follow schema reading rules (see `[[sql-execution]]`).
+2. If the user is exploring an unfamiliar table or the table name is given as a Chinese / pinyin / abbreviated keyword, route via `[[exploring-data]]` first (Pre-Action Exploration Protocol). Otherwise, follow schema reading rules (see `[[sql-execution]]`).
 3. Read the target editor state, then `datatalk_ui_patch` on `/content` with the fresh version — see `[[concurrency-contract]]`.
 4. Execute with `datatalk_ui_exec object=query_editor action=run_sql`.
 5. On candidate-ambiguity errors, follow `[[sql-error-diagnostics]]` — do not claim there is no data.

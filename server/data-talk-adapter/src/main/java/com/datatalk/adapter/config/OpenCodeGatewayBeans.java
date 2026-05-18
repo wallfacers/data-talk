@@ -158,6 +158,7 @@ public class OpenCodeGatewayBeans {
             skillSyncer.syncSkill("skill-creator", opencodeCwd);
             skillSyncer.syncSkill("semantic-model-usage", opencodeCwd);
             skillSyncer.syncSkill("file-upload-routing", opencodeCwd);
+            skillSyncer.syncSkill("exploring-data", opencodeCwd);
             skillSyncer.syncSkill("brainstorming", opencodeCwd);
             skillSyncer.syncSkill("writing-plans", opencodeCwd);
             skillSyncer.syncSkill("executing-plans", opencodeCwd);
