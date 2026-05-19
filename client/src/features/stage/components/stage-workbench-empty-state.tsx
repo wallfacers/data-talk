@@ -15,6 +15,7 @@ import { StageTabBarAddButton } from './stage-tab-bar-add-button'
 type Props = {
   onOpenSqlEditor?: () => void
   onOpenErDesigner?: () => void
+  onOpenReport?: () => void
   onOpenDashboard?: () => void
 }
 
@@ -29,6 +30,7 @@ type StageEmptyAction = {
 export function StageWorkbenchEmptyState({
   onOpenSqlEditor,
   onOpenErDesigner,
+  onOpenReport,
   onOpenDashboard,
 }: Props) {
   const { t } = useI18n()
@@ -70,7 +72,8 @@ export function StageWorkbenchEmptyState({
       id: 'report',
       label: t('stage.toolRow.report'),
       Icon: LineChartIcon,
-      enabled: false,
+      enabled: Boolean(onOpenReport),
+      onClick: onOpenReport,
     },
     {
       id: 'dashboard',

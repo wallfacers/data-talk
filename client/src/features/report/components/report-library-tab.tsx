@@ -9,7 +9,8 @@ export interface ReportLibraryTabProps {
 
 export function ReportLibraryTab({ workspaceId }: ReportLibraryTabProps) {
   const { t } = useI18n()
-  const { data: reports, isLoading } = useReportList(workspaceId)
+  const effectiveWsId = workspaceId || 'default'
+  const { data: reports, isLoading } = useReportList(effectiveWsId)
   const selected = useReportStore((s) => s.selectedReportId)
   const setSelected = useReportStore((s) => s.setSelected)
   const openTab = useStageStore((s) => s.openTab)

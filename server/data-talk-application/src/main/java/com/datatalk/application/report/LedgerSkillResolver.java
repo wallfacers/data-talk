@@ -25,7 +25,7 @@ import java.nio.file.Paths;
 public class LedgerSkillResolver {
 
     private static final Logger log = LoggerFactory.getLogger(LedgerSkillResolver.class);
-    private static final String DEFAULT_OPENCODE_CWD = ".data-talk/opencode-cwd";
+    private static final String DEFAULT_OPENCODE_CWD = ".data-talk/opencode";
 
     private final Path skillRoot;
 

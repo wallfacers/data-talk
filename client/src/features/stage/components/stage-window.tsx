@@ -22,6 +22,7 @@ export function StageWindow() {
   const maximized = useStageStore((s) => s.maximized)
   const toggleMaximized = useStageStore((s) => s.toggleMaximized)
   const tabs = useStageStore(useShallow((s) => s.tabs))
+  const openTab = useStageStore((s) => s.openTab)
   const openTabsOrdered = useStageStore(
     useShallow((s) => s.openTabIdsOrdered.map((id) => s.tabs.find((t) => t.tabId === id)).filter(Boolean) as StageTab[]),
   )
@@ -116,6 +117,17 @@ export function StageWindow() {
   function handleOpenDashboard() {
     setShowStartPage(false)
     void new DashboardAdapter('_pending_', () => null).exec('create')
+  }
+
+  function handleOpenReport() {
+    setShowStartPage(false)
+    openTab({
+      tabId: 'report-library:default',
+      type: 'report_library',
+      title: t('tabType.reportLibrary'),
+      payload: { workspaceId: 'default' },
+      createdAt: Date.now(),
+    })
   }
 
   const activeTab = openTabsOrdered.find((t) => t.tabId === activeTabId)
@@ -228,6 +240,7 @@ export function StageWindow() {
                 <StageWorkbenchEmptyState
                   onOpenSqlEditor={handleOpenSqlEditor}
                   onOpenErDesigner={handleOpenErDesigner}
+                  onOpenReport={handleOpenReport}
                   onOpenDashboard={handleOpenDashboard}
                 />
               </div>

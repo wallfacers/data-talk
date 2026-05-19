@@ -11,6 +11,7 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
+import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -55,7 +56,9 @@ public class ChromiumLifecycle {
             if (browser != null) return;
             systemStatus.setMessage("Chromium installing");
             log.info("Initialising Playwright + Chromium (first-time may download ~300MB)");
-            Playwright pw = Playwright.create();
+            Playwright pw = Playwright.create(
+                    new Playwright.CreateOptions()
+                            .setEnv(Map.of("PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD", "1")));
             Browser br = pw.chromium().launch(
                     new BrowserType.LaunchOptions().setHeadless(true));
             this.playwright = pw;

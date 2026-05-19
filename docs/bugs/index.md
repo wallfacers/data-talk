@@ -14,12 +14,13 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 | ID | Title | Status | Priority | Discovered |
 |----|-------|--------|----------|------------|
+| [BUG-0073](BUG-0073-report-font-cors-blocked-in-iframe.md) | Report Viewer iframe 字体 CORS 加载失败 | open | P1 | 2026-05-19 |
 
 ## E2E 验证记录
 
 | 日期 | Change | 发现 BUG 数 | 备注 |
 |---|---|---|---|
-| 2026-05-19 | report-document-generation | 0 | 仅完成 Group 1-6 编码与单测，端到端验证（playwright-cli + 真实 Chromium 字体 / iframe / 分页 / 大表附录）由用户回家后执行。Group 7 任务 7.1-7.6 待跑。 |
+| 2026-05-19 | report-document-generation | 1 | 发现 BUG-0073（CORS 字体加载）。验证通过：AI chat→promote→Report Library→Report Viewer 完整链路。PDF/MD 状态均为 ready。CORS BUG 不影响 PDF 生成。 |
 
 ## In Progress（status = investigating | fixed 等待 verify）
 
