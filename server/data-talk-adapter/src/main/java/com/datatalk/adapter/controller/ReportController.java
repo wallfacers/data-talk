@@ -180,6 +180,8 @@ public class ReportController {
             Resource cp = new org.springframework.core.io.ClassPathResource("static/bezel/echarts.min.js");
             if (!cp.exists()) return ResponseEntity.notFound().build();
             return ResponseEntity.ok()
+                    .header("Access-Control-Allow-Origin", "*")
+                    .header("Vary", "Origin")
                     .contentType(MediaType.parseMediaType("application/javascript"))
                     .body(cp);
         }
@@ -196,7 +198,13 @@ public class ReportController {
         else if (safe.endsWith(".ttf")) ct = MediaType.parseMediaType("font/ttf");
         else if (safe.endsWith(".js")) ct = MediaType.parseMediaType("application/javascript");
         else ct = MediaType.APPLICATION_OCTET_STREAM;
-        return ResponseEntity.ok().contentType(ct).body(new FileSystemResource(target));
+        // iframe srcdoc origin is "null" — font/CSS/JS must be served with permissive CORS.
+        // Static-asset-only endpoint; no sensitive data leaks through wildcard.
+        return ResponseEntity.ok()
+                .header("Access-Control-Allow-Origin", "*")
+                .header("Vary", "Origin")
+                .contentType(ct)
+                .body(new FileSystemResource(target));
     }
 
     private Path artifactPathForFormat(Report r, String format) {

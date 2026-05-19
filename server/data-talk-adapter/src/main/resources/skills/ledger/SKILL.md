@@ -60,16 +60,32 @@ triggers:
    - **禁止**"先 promote 一个空壳，再分多次 add section / append data"——服务端不支持，会让 status 状态机失控。
    - **禁止**分多次 promote 同一份报告。每次 promote 都是一个**新版本**（version + 1，同 group_id）。
 
-## 重新生成
+## 重新生成（用户驱动）
 
 用户说"按上次的样式重新做一份" / "把数据更新到 5 月" / "重新生成"时：
 - 必须在 `datatalk_promote_report` 调用中显式传 `groupId`（沿用原报告的 groupId，让服务端把新版本归到同一 group）
 - 服务端会自动 `version = max(版本号) + 1`，旧版本保留
 
+## promote 失败的兜底重试（系统驱动）
+
+`datatalk_promote_report` 返回 `{ error, errorCode, errorCodes[], violations[], recoveryHints{} }` 结构时（含 `error` 字段即视为失败）：
+
+1. **一轮修齐**：读 `errorCodes[]` 与 `violations[]` 一次性看到所有违规；按 `violations[i].path` 定位到 report.json 中的具体节点；参考 `recoveryHints[code]` 的中文修复提示，**一轮内**修齐所有违规后重试。
+2. **连续失败 2 次必须停止**：如果第二次重试仍然失败，**MUST NOT** 继续 retry —— 停下，把完整 `violations` 列表汇报给用户，请用户决策（修数据 / 改模板 / 放弃）。盲目重试会浪费 token 并掩盖根因。
+3. **校验失败重试 MUST NOT 带 `groupId`**：首次 promote 失败时服务端没有产生任何 record，沿用旧 groupId 会被服务端拒绝为 `REPORT_GROUP_NOT_FOUND`（孤立 version）。这与"重新生成"语义不同：
+   - **重新生成（用户驱动）**：必带 `groupId` 沿用历史 group。
+   - **promote 失败 retry（系统驱动）**：不带 `groupId`，按全新提交。
+
+错误结构字段含义（详见 `data-contract.md`）：
+- `errorCode`（string）：第一个违规的 code，保留与单错误码 contract 的向后兼容。
+- `errorCodes`（string[]）：全部违规的 code 列表。
+- `violations`（array of `{ code, path, message }`）：每条违规的 JSON path 与说明。
+- `recoveryHints`（map of code → 中文修复提示）：仅对当前响应中出现的 code 给出提示。
+
 ## 模板字段速查
 
 详细 schema 见 `section-patterns.md`。常用 block 类型：
-- `cover`（封面：title, subtitle?, author?, date?, logoUrl?）
+- `cover`（封面：title, subtitle?, author?, date?, logoUrl?；**author 不确定时留空**，禁止写 "DataTalk 自动生成" / "AI 生成" / "自动生成" 等生成器自指词）
 - `executive-summary`（摘要：bullets[]）
 - `toc`（目录：自动生成）
 - `chapter`（章节容器：heading, blocks[]）

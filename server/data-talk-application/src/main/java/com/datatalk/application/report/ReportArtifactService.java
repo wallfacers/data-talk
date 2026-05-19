@@ -88,7 +88,10 @@ public class ReportArtifactService {
         if (workspaceId == null || workspaceId.isBlank()) {
             throw new ReportValidationException("REPORT_WORKSPACE_MISSING", "workspaceId is required");
         }
-        validator.validate(reportJson);
+        java.util.List<Violation> violations = validator.validate(reportJson);
+        if (!violations.isEmpty()) {
+            throw new ReportValidationException(violations);
+        }
 
         // group_id / version 解析
         String effectiveGroupId;

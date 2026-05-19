@@ -163,3 +163,47 @@ datatalk_promote_report(report: {...}, workspaceId: "ws-1")
 - `kind` 必须等于 `"report"`，等于 `"dashboard"` 或其它会被拒绝
 - `meta.userPrompt` 选填但**强烈推荐**带上：用户原始诉求，服务端入库到 `user_prompt` 字段供"重新生成"链路复用
 - `theme.accent` 单一品牌强调色（hex），默认 `#1f4e79`（经典深蓝）。详见 `design-language.md`
+
+## 6. `datatalk_promote_report` 错误返回结构
+
+校验失败或 promote 异常时，服务端返回带 `error` 字段的对象（**含 `error` 字段即视为失败**，不要从 HTTP 状态码判断）。结构：
+
+```json
+{
+  "error": "validation failed: meta.title is required; sections array must be non-empty",
+  "errorCode": "REPORT_META_MISSING",
+  "errorCodes": ["REPORT_META_MISSING", "REPORT_SECTIONS_MISSING"],
+  "violations": [
+    { "code": "REPORT_META_MISSING", "path": "meta.title", "message": "meta.title is required" },
+    { "code": "REPORT_SECTIONS_MISSING", "path": "sections", "message": "sections array must be non-empty" }
+  ],
+  "recoveryHints": {
+    "REPORT_META_MISSING": "把 title / templateId 等必填字段放进顶层 meta 对象",
+    "REPORT_SECTIONS_MISSING": "顶层用非空的 sections 数组而不是 blocks"
+  }
+}
+```
+
+字段含义：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `error` | string | 全部 violation 的 message 拼接，便于人读 |
+| `errorCode` | string | 第一个 violation 的 code，**保留向后兼容**（仍按单错误码消费的客户端用此字段） |
+| `errorCodes` | string[] | 本次响应中**全部**违规 code 的列表，可能重复（如多个字段触发同一 code） |
+| `violations` | array | 每条 violation：`code`（稳定字符串）、`path`（JSON 路径如 `meta.title` / `sections[3].blocks[1]`）、`message`（人读说明） |
+| `recoveryHints` | object | 仅对本次响应出现的 code 给出修复提示文案（中文） |
+
+**AI 处理流程**：
+
+1. 看到 `error` 字段就视为失败；不要按 HTTP 200 / 200 OK 判定为成功。
+2. 一次性遍历 `violations[]`，按 `path` 精确定位 report.json 节点；按 `recoveryHints[code]` 提示**一轮内**修齐所有违规后重试。
+3. 连续失败 2 次后 MUST 停止并把 violations 列表告诉用户（见 `SKILL.md` 兜底段落）。
+4. 校验失败的 retry MUST NOT 带 `groupId`。仅"重新生成"语义才带。
+
+常见 code 与典型修复方向（完整 code 集合见 `ReportSchemaValidator.RECOVERY_HINTS`）：
+
+- `REPORT_META_MISSING` → 把 title / templateId 等必填字段放进顶层 `meta` 对象
+- `REPORT_SECTIONS_MISSING` → 顶层用非空 `sections` 数组而不是 `blocks`
+- `REPORT_BLOCK_TYPE_UNKNOWN` → block 的 `type` 必须是 ALLOWED_BLOCK_TYPES 集合内的值
+- `REPORT_TABLE_OVERSIZE_NO_APPENDIX` → table 超过 200 行：先 `datatalk_export_data` 拿 `fileArtifactId`，写到 `appendixCsvRef`，inline `rows` 截断到前 N 行

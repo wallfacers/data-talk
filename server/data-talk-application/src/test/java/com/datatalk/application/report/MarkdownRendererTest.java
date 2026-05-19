@@ -97,6 +97,65 @@ class MarkdownRendererTest {
     }
 
     @Test
+    void toc_renders_gfm_anchor_links() throws Exception {
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "sections": [
+                {"type":"cover","title":"T"},
+                {"type":"toc"},
+                {"type":"chapter","heading":"业务总览","blocks":[]},
+                {"type":"chapter","heading":"区域分析","blocks":[]}
+              ] }
+        """);
+        String md = renderer.toMarkdown(root, Map.of());
+        assertThat(md).contains("## 目录");
+        assertThat(md).contains("- [业务总览](#业务总览)");
+        assertThat(md).contains("- [区域分析](#区域分析)");
+    }
+
+    @Test
+    void toc_does_not_emit_section_when_no_chapters() throws Exception {
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "sections": [
+                {"type":"cover","title":"T"},
+                {"type":"toc"}
+              ] }
+        """);
+        String md = renderer.toMarkdown(root, Map.of());
+        assertThat(md).doesNotContain("## 目录");
+    }
+
+    @Test
+    void meta_author_watermark_sanitized_in_markdown() throws Exception {
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x",
+                        "author": "DataTalk 自动生成", "generatedAt": "2026-05-19T10:00:00+08:00" },
+              "sections": [ {"type":"cover","title":"T"} ] }
+        """);
+        String md = renderer.toMarkdown(root, Map.of());
+        // 顶部 meta 行不含水印；仅含 generatedAt
+        assertThat(md).doesNotContain("DataTalk 自动生成");
+        assertThat(md).contains("2026-05-19T10:00:00+08:00");
+    }
+
+    @Test
+    void meta_author_legal_value_preserved_in_markdown() throws Exception {
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x",
+                        "author": "数据分析团队", "generatedAt": "2026-05-19T10:00:00+08:00" },
+              "sections": [ {"type":"cover","title":"T"} ] }
+        """);
+        String md = renderer.toMarkdown(root, Map.of());
+        assertThat(md).contains("数据分析团队");
+        assertThat(md).contains("数据分析团队 · 2026-05-19T10:00:00+08:00");
+    }
+
+    @Test
     void renders_risk_list_with_severity_emoji() throws Exception {
         JsonNode root = mapper.readTree("""
             { "schemaVersion": 1, "kind": "report",

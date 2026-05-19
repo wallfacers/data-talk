@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.stereotype.Service;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -30,24 +31,29 @@ public class MarkdownRenderer {
         String title = meta.path("title").asText("");
         String subtitle = meta.path("subtitle").asText("");
 
-        // Top heading + meta
+        // Top heading + meta. meta.author 与 cover.author 共用同一份 sanitize 规则，
+        // 避免一份报告在 HTML 里清洗了水印但 Markdown 里仍残留。
         md.append("# ").append(title).append("\n\n");
         if (!subtitle.isBlank()) {
             md.append("> ").append(subtitle).append("\n\n");
         }
         StringBuilder metaLine = new StringBuilder();
-        if (!meta.path("author").asText("").isBlank()) metaLine.append(meta.path("author").asText(""));
+        String metaAuthor = ReportRenderer.sanitizeAuthor(meta.path("author").asText(""));
+        if (!metaAuthor.isBlank()) metaLine.append(metaAuthor);
         if (!meta.path("generatedAt").asText("").isBlank()) {
             if (metaLine.length() > 0) metaLine.append(" · ");
             metaLine.append(meta.path("generatedAt").asText(""));
         }
         if (metaLine.length() > 0) md.append("_").append(metaLine).append("_\n\n");
 
+        // chapter 预扫描：toc block 需要 chapter heading 列表生成锚点
+        List<String> chapterHeadings = collectChapterHeadings(reportJson);
+
         // sections
         JsonNode sections = reportJson.path("sections");
         if (sections.isArray()) {
             for (JsonNode block : sections) {
-                renderBlock(block, md, chartPngPaths, 2);
+                renderBlock(block, md, chartPngPaths, 2, chapterHeadings);
             }
         }
         // appendix
@@ -55,17 +61,31 @@ public class MarkdownRenderer {
         if (appendix.isArray() && !appendix.isEmpty()) {
             md.append("\n---\n\n## 附录\n\n");
             for (JsonNode b : appendix) {
-                renderBlock(b, md, chartPngPaths, 3);
+                renderBlock(b, md, chartPngPaths, 3, chapterHeadings);
             }
         }
         return md.toString();
     }
 
-    private void renderBlock(JsonNode block, StringBuilder md, Map<String, Path> charts, int depth) {
+    private static List<String> collectChapterHeadings(JsonNode root) {
+        List<String> out = new java.util.ArrayList<>();
+        JsonNode sections = root.path("sections");
+        if (!sections.isArray()) return out;
+        for (JsonNode section : sections) {
+            if ("chapter".equals(section.path("type").asText(""))) {
+                out.add(section.path("heading").asText(""));
+            }
+        }
+        return out;
+    }
+
+    private void renderBlock(JsonNode block, StringBuilder md, Map<String, Path> charts, int depth,
+                             List<String> chapterHeadings) {
         String type = block.path("type").asText("");
         switch (type) {
             case "cover" -> {
-                // top heading already written; skip
+                // top heading already written; cover.author sanitize 在 toMarkdown 顶部
+                // 通过 meta.author 路径已处理 — cover.author 在 Markdown 中不单独渲染。
             }
             case "executive-summary" -> {
                 md.append("## 摘要\n\n");
@@ -78,14 +98,22 @@ public class MarkdownRenderer {
                 md.append("\n");
             }
             case "toc" -> {
-                // 目录在 Markdown 里通常工具自动生成，这里不输出
+                // GFM-style 锚点目录。GitHub/Obsidian/Typora 等阅读器会按 heading 文本自动生成
+                // 小写化、连字符化的 slug；中文 heading 在主流阅读器中按原文生成锚点，可正常跳转。
+                if (!chapterHeadings.isEmpty()) {
+                    md.append("## 目录\n\n");
+                    for (String h : chapterHeadings) {
+                        md.append("- [").append(h).append("](#").append(h).append(")\n");
+                    }
+                    md.append("\n");
+                }
             }
             case "chapter" -> {
                 String heading = block.path("heading").asText("");
                 md.append("#".repeat(Math.max(2, depth))).append(" ").append(heading).append("\n\n");
                 JsonNode blocks = block.path("blocks");
                 if (blocks.isArray()) {
-                    for (JsonNode c : blocks) renderBlock(c, md, charts, depth + 1);
+                    for (JsonNode c : blocks) renderBlock(c, md, charts, depth + 1, chapterHeadings);
                 }
             }
             case "kpi-strip" -> renderKpiStripMd(block, md);

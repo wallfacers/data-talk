@@ -1,12 +1,15 @@
 package com.datatalk.adapter.actions;
 
 import com.datatalk.application.report.ReportArtifactService;
+import com.datatalk.application.report.ReportSchemaValidator;
 import com.datatalk.application.report.ReportValidationException;
+import com.datatalk.application.report.Violation;
 import com.datatalk.domain.action.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +55,10 @@ public class PromoteReportActionHandler implements ActionHandler<Map, Map> {
 
     @Override
     public Map<String, Object> outputSchema() {
+        // Success-path schema. Error responses (on validation failure) carry an
+        // additional shape: { error, errorCode, errorCodes[], violations[], recoveryHints{} }.
+        // The error shape is described in the ledger skill's data-contract.md for AI consumers
+        // and is not enforced here — AI parses it dynamically when `error` field is present.
         return Map.of(
                 "type", "object",
                 "properties", Map.of(
@@ -102,7 +109,7 @@ public class PromoteReportActionHandler implements ActionHandler<Map, Map> {
                 out.put("mdStatus", res.mdStatus().dbValue());
                 return out;
             } catch (ReportValidationException e) {
-                return error(e.getErrorCode(), e.getMessage());
+                return validationError(e);
             } catch (Exception e) {
                 return error("REPORT_PROMOTE_FAILED", "promote failed: " + e.getMessage());
             }
@@ -117,6 +124,40 @@ public class PromoteReportActionHandler implements ActionHandler<Map, Map> {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("error", message);
         m.put("errorCode", code);
+        m.put("errorCodes", List.of(code));
+        m.put("violations", List.of(violationMap(code, "", message)));
+        Map<String, String> hint = new LinkedHashMap<>();
+        String h = ReportSchemaValidator.RECOVERY_HINTS.get(code);
+        if (h != null) hint.put(code, h);
+        m.put("recoveryHints", hint);
         return m;
+    }
+
+    private static Map<String, Object> validationError(ReportValidationException e) {
+        List<Violation> violations = e.getViolations();
+        List<String> codes = new ArrayList<>(violations.size());
+        List<Map<String, Object>> violationList = new ArrayList<>(violations.size());
+        Map<String, String> hints = new LinkedHashMap<>();
+        for (Violation v : violations) {
+            codes.add(v.code());
+            violationList.add(violationMap(v.code(), v.path(), v.message()));
+            String hint = ReportSchemaValidator.RECOVERY_HINTS.get(v.code());
+            if (hint != null) hints.putIfAbsent(v.code(), hint);
+        }
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("error", e.getMessage());
+        m.put("errorCode", codes.get(0));
+        m.put("errorCodes", codes);
+        m.put("violations", violationList);
+        m.put("recoveryHints", hints);
+        return m;
+    }
+
+    private static Map<String, Object> violationMap(String code, String path, String message) {
+        Map<String, Object> v = new LinkedHashMap<>();
+        v.put("code", code);
+        v.put("path", path);
+        v.put("message", message);
+        return v;
     }
 }
