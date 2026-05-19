@@ -99,21 +99,19 @@ export function StageLeftRail() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-1 py-2 flex flex-col gap-2">
-        <StageRailGroup label={t('stage.leftRail.group.active')} count={active.length} defaultOpen>
-          {active.length === 0 ? (
-            <li className="px-2 py-3 text-center text-xs text-text-base whitespace-nowrap">
-              {t('stage.leftRail.empty')}
-            </li>
-          ) : active.map((tab) => (
-            <StageRailRow
-              key={tab.tabId}
-              tab={tab}
-              active={tab.tabId === activeTabId}
-              inWorkset={openTabIds.has(tab.tabId)}
-              onClick={() => handleClick(tab)}
-            />
-          ))}
-        </StageRailGroup>
+        {active.length > 0 && (
+          <StageRailGroup label={t('stage.leftRail.group.active')} count={active.length} defaultOpen>
+            {active.map((tab) => (
+              <StageRailRow
+                key={tab.tabId}
+                tab={tab}
+                active={tab.tabId === activeTabId}
+                inWorkset={openTabIds.has(tab.tabId)}
+                onClick={() => handleClick(tab)}
+              />
+            ))}
+          </StageRailGroup>
+        )}
 
         {archived.length > 0 ? (
           <StageRailGroup label={t('stage.leftRail.group.archived')} count={archived.length} defaultOpen={false}>

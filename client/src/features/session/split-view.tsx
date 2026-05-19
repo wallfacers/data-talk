@@ -205,14 +205,21 @@ export function SplitView() {
                 </TooltipContent>
               </Tooltip>
             </div>
-            <div className="overflow-y-auto px-2 pt-1 pb-4" style={{ scrollbarGutter: 'stable' }}>
+            {/* `overflow-x-hidden` — same CSS Overflow L3 §3 trap as the
+                chat scroller above (see comment around the message list
+                scroller): once `overflow-y` is non-visible the unspecified
+                `overflow-x` resolves to `auto`, so a narrow chat column
+                (stage open or low split ratio) would surface a horizontal
+                scrollbar across the composer the moment its toolbar
+                overflows. Mandatory, not optional. */}
+            <div className="overflow-x-hidden overflow-y-auto px-2 pt-1 pb-4" style={{ scrollbarGutter: 'stable' }}>
               <div id="composer-slot" className="mx-auto w-full min-w-0 max-w-3xl" />
             </div>
           </div>
         ) : (
           <div className="flex h-full flex-col">
             <ChatHeader />
-            <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto px-2" style={{ scrollbarGutter: 'stable' }}>
+            <div className="flex flex-1 flex-col items-center justify-center overflow-x-hidden overflow-y-auto px-2" style={{ scrollbarGutter: 'stable' }}>
               {degradedNotice}
               <div className="flex flex-col items-center gap-3 text-center">
                 <div className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">

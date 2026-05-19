@@ -177,27 +177,29 @@ export function StageWindow() {
       </div>
 
       <div className="flex min-h-0 flex-1 overflow-hidden bg-bg-subtle">
-        {/* Left rail (library) */}
-        <div
-          data-testid="stage-left-rail-shell"
-          style={{ width: leftRailCollapsed ? 36 : leftRailWidth }}
-          className="relative shrink-0 transition-[width] duration-[180ms]"
-        >
-          <StageLeftRail />
-          {!leftRailCollapsed ? (
-            <div
-              data-testid="stage-left-rail-resize-handle"
-              className="group absolute inset-y-0 right-0 z-10 w-2 translate-x-1/2 cursor-col-resize bg-transparent"
-              onPointerDown={handleDividerPointerDown}
-              onPointerMove={handleDividerPointerMove}
-              onPointerUp={handleDividerPointerUp}
-              onPointerCancel={handleDividerPointerCancel}
-              onLostPointerCapture={handleDividerLostCapture}
-            >
-              <div className="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-transparent transition-colors group-hover:bg-accent-primary/50" />
-            </div>
-          ) : null}
-        </div>
+        {/* Left rail (library) — hidden when no tabs exist so empty state is centered */}
+        {tabs.length > 0 && (
+          <div
+            data-testid="stage-left-rail-shell"
+            style={{ width: leftRailCollapsed ? 36 : leftRailWidth }}
+            className="relative shrink-0 transition-[width] duration-[180ms]"
+          >
+            <StageLeftRail />
+            {!leftRailCollapsed ? (
+              <div
+                data-testid="stage-left-rail-resize-handle"
+                className="group absolute inset-y-0 right-0 z-10 w-2 translate-x-1/2 cursor-col-resize bg-transparent"
+                onPointerDown={handleDividerPointerDown}
+                onPointerMove={handleDividerPointerMove}
+                onPointerUp={handleDividerPointerUp}
+                onPointerCancel={handleDividerPointerCancel}
+                onLostPointerCapture={handleDividerLostCapture}
+              >
+                <div className="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-transparent transition-colors group-hover:bg-accent-primary/50" />
+              </div>
+            ) : null}
+          </div>
+        )}
 
         {/* Right pane: top tab bar + content */}
         <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
