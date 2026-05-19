@@ -93,7 +93,7 @@ describe('chat-parts-store', () => {
     unsub()
   })
 
-  it('promotePendingUser renames pendingId → realId and clears parts for SSE hydration', () => {
+  it('promotePendingUser renames pendingId → realId and keeps pending parts visible until SSE swaps them in place', () => {
     const store = useChatPartsStore.getState()
     const pendingId = store.upsertPendingUser('ses_a', 'hello')
     store.promotePendingUser('ses_a', pendingId, 'msg_real_1')
@@ -102,11 +102,15 @@ describe('chat-parts-store', () => {
     expect(byInfo.get(pendingId)).toBeUndefined()
     expect(byInfo.get('msg_real_1')?.__pending).toBeFalsy()
 
-    // Parts are cleared — SSE message.part.created events will fill real parts
-    const parts = useChatPartsStore.getState().partsBySession.get('ses_a')?.get('msg_real_1')
-    expect(parts).toEqual([])
+    // Pending parts are kept under the real messageID so the bubble keeps
+    // rendering text without an empty frame between promote and SSE echo.
+    const promoted = useChatPartsStore.getState().partsBySession.get('ses_a')?.get('msg_real_1')
+    expect(promoted).toHaveLength(1)
+    expect((promoted?.[0] as any).text).toBe('hello')
+    expect(promoted?.[0]?.id).toMatch(/^pending_prt_/)
+    expect(promoted?.[0]?.messageID).toBe('msg_real_1')
 
-    // Simulate SSE upsertPart to verify hydration works
+    // SSE real text part replaces the pending text in place — no duplicate.
     store.upsertPart('ses_a', {
       type: 'text',
       id: 'prt_real_1',
@@ -116,7 +120,122 @@ describe('chat-parts-store', () => {
       metadata: {},
     })
     const hydrated = useChatPartsStore.getState().partsBySession.get('ses_a')?.get('msg_real_1')
+    expect(hydrated).toHaveLength(1)
+    expect(hydrated?.[0]?.id).toBe('prt_real_1')
     expect((hydrated?.[0] as any).text).toBe('hello')
+    // partIndex tracks the real id now, not the stale pending one.
+    expect(useChatPartsStore.getState().findPart('ses_a', 'prt_real_1')).not.toBeNull()
+  })
+
+  it('image-with-dataUri path: pending file_upload (image/*) is replaced by SSE-echoed native FilePart, not duplicated', () => {
+    const store = useChatPartsStore.getState()
+    const pendingFileParts = [
+      {
+        type: 'file_upload',
+        id: 'temp_id_ignored',
+        sessionID: 'ses_a',
+        messageID: '',
+        fileId: 'file_img',
+        filename: 'shot.png',
+        mimeType: 'image/png',
+        sizeBytes: 200,
+        analysis: {},
+        url: 'data:image/png;base64,iVBORw0KGgo=',
+      },
+    ] as Part[]
+
+    const pendingId = store.upsertPendingUser('ses_a', 'see image', pendingFileParts)
+    store.promotePendingUser('ses_a', pendingId, 'msg_real_img')
+
+    // OpenCode echoes the image back as a native FilePart with type='file' +
+    // mime='image/*' (ChannelService.partForWire rewrote it on the way in).
+    store.upsertPart('ses_a', {
+      type: 'file',
+      id: 'prt_real_img',
+      sessionID: 'ses_a',
+      messageID: 'msg_real_img',
+      mime: 'image/png',
+      filename: 'shot.png',
+      url: 'data:image/png;base64,iVBORw0KGgo=',
+    } as unknown as Part)
+
+    const hydrated = useChatPartsStore.getState().partsBySession.get('ses_a')?.get('msg_real_img')
+    // 1 text + 1 image attachment — no duplicate from the cross-type echo.
+    expect(hydrated).toHaveLength(2)
+    const attachmentParts = hydrated?.filter((p) => p.type === 'file_upload' || p.type === 'file') ?? []
+    expect(attachmentParts).toHaveLength(1)
+    expect(attachmentParts[0]?.type).toBe('file')
+    expect(attachmentParts[0]?.id).toBe('prt_real_img')
+  })
+
+  it('promotePendingUser preserves pending file_upload parts; SSE echo replaces by fileId', () => {
+    const store = useChatPartsStore.getState()
+    const pendingFileParts = [
+      {
+        type: 'file_upload',
+        id: 'temp_id_ignored_1',
+        sessionID: 'ses_a',
+        messageID: '',
+        fileId: 'file_a',
+        filename: 'data.csv',
+        mimeType: 'text/csv',
+        sizeBytes: 10,
+        analysis: {},
+      },
+      {
+        type: 'file_upload',
+        id: 'temp_id_ignored_2',
+        sessionID: 'ses_a',
+        messageID: '',
+        fileId: 'file_b',
+        filename: 'pic.png',
+        mimeType: 'image/png',
+        sizeBytes: 20,
+        analysis: {},
+      },
+    ] as Part[]
+
+    const pendingId = store.upsertPendingUser('ses_a', 'see attached', pendingFileParts)
+    store.promotePendingUser('ses_a', pendingId, 'msg_real_2')
+
+    const afterPromote = useChatPartsStore.getState().partsBySession.get('ses_a')?.get('msg_real_2')
+    expect(afterPromote).toHaveLength(3)
+    expect(afterPromote?.every((p) => p.id.startsWith('pending_prt_'))).toBe(true)
+    expect(afterPromote?.every((p) => p.messageID === 'msg_real_2')).toBe(true)
+
+    // SSE echoes the real file_upload parts back — match by fileId, replace
+    // in place, no duplicates.
+    store.upsertPart('ses_a', {
+      type: 'file_upload',
+      id: 'prt_real_file_b',
+      sessionID: 'ses_a',
+      messageID: 'msg_real_2',
+      fileId: 'file_b',
+      filename: 'pic.png',
+      mimeType: 'image/png',
+      sizeBytes: 20,
+      analysis: {},
+    } as Part)
+    store.upsertPart('ses_a', {
+      type: 'file_upload',
+      id: 'prt_real_file_a',
+      sessionID: 'ses_a',
+      messageID: 'msg_real_2',
+      fileId: 'file_a',
+      filename: 'data.csv',
+      mimeType: 'text/csv',
+      sizeBytes: 10,
+      analysis: {},
+    } as Part)
+
+    const hydrated = useChatPartsStore.getState().partsBySession.get('ses_a')?.get('msg_real_2')
+    expect(hydrated).toHaveLength(3)
+    const fileParts = hydrated?.filter((p) => p.type === 'file_upload') ?? []
+    expect(fileParts).toHaveLength(2)
+    expect(fileParts.map((p) => p.id).sort()).toEqual(['prt_real_file_a', 'prt_real_file_b'])
+    // Original insertion order is preserved (file_a in slot 1, file_b in slot 2).
+    expect(fileParts[0]?.id).toBe('prt_real_file_a')
+    expect(fileParts[1]?.id).toBe('prt_real_file_b')
   })
 
   it('markPendingUserFailed sets __failed flag', () => {

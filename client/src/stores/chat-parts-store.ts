@@ -6,6 +6,50 @@ import { generateUuid } from '@/lib/uuid'
 const nextLayoutVersion = (state: Pick<ChatPartsState, 'layoutVersion'>, increment = 1) =>
   (state.layoutVersion ?? 0) + increment
 
+/**
+ * When a real part lands but no id-match exists, see if it should slot into an
+ * optimistic placeholder previously seeded by `upsertPendingUser`. Returns the
+ * index of the matching pending part in `list`, or -1.
+ *
+ * - `text`: a user message carries at most one text part, so we match by type.
+ * - `file_upload`: legacy CSV/JSON/non-image-image-without-dataUri echo path —
+ *   match by `fileId`, the stable identifier shared with the placeholder.
+ * - `file` (image): ChannelService rewrites image uploads with a dataUri into a
+ *   native OpenCode FilePart, so the SSE echo arrives as `type='file'` even
+ *   though the placeholder was seeded as `type='file_upload'`. Match by mime +
+ *   filename across types so the placeholder is replaced rather than producing
+ *   a duplicate chip.
+ */
+function findMatchingPendingPartIdx(list: readonly Part[], incoming: Part): number {
+  if (incoming.type === 'text') {
+    return list.findIndex((p) => p.type === 'text' && p.id.startsWith('pending_prt_'))
+  }
+  if (incoming.type === 'file_upload') {
+    const incomingFileId = (incoming as { fileId?: string }).fileId
+    if (!incomingFileId) return -1
+    return list.findIndex((p) => {
+      if (p.type !== 'file_upload' || !p.id.startsWith('pending_prt_')) return false
+      return (p as { fileId?: string }).fileId === incomingFileId
+    })
+  }
+  if (incoming.type === 'file') {
+    const incomingMime = (incoming as { mime?: string }).mime ?? ''
+    if (!incomingMime.startsWith('image/')) return -1
+    const incomingFilename = (incoming as { filename?: string }).filename ?? ''
+    return list.findIndex((p) => {
+      if (!p.id.startsWith('pending_prt_')) return false
+      if (p.type !== 'file_upload') return false
+      const fp = p as { mimeType?: string; filename?: string }
+      if (!fp.mimeType?.startsWith('image/')) return false
+      if (incomingFilename && fp.filename) return fp.filename === incomingFilename
+      // Fall back to first image placeholder when filename echo is empty —
+      // image FileParts may arrive without filename on some OpenCode versions.
+      return true
+    })
+  }
+  return -1
+}
+
 type ChatPartsState = {
   partsBySession: Map<string, Map<string, Part[]>>
   infoBySession: Map<string, Map<string, MessageInfo>>
@@ -80,10 +124,29 @@ export const useChatPartsStore = create<ChatPartsState>()(
         const byMessage = new Map(bySession.get(sessionId) ?? new Map())
         const index = new Map(s.partIndexBySession.get(sessionId) ?? new Map())
         const list = [...(byMessage.get(merged.messageID) ?? [])]
-        const idx = existing && existingParts ? existingParts.indexOf(existing) : list.findIndex((p) => p.id === merged.id)
+        let idx = existing && existingParts ? existingParts.indexOf(existing) : list.findIndex((p) => p.id === merged.id)
+        // Pending-part replacement: when a real part lands and no id match
+        // exists, look for an optimistic placeholder under the same messageID
+        // (id starts with `pending_prt_`) that this real part should occupy.
+        // Match `text` by type (one text part per user message), `file_upload`
+        // by fileId. Replacing in-place avoids both the empty-bubble flash
+        // that came from clearing parts on promote AND the duplicate parts
+        // that would appear if we just appended the real one.
+        let replacedPendingId: string | null = null
+        if (idx < 0 && !merged.id.startsWith('pending_prt_')) {
+          const matchedPendingIdx = findMatchingPendingPartIdx(list, merged)
+          if (matchedPendingIdx >= 0) {
+            replacedPendingId = list[matchedPendingIdx]!.id
+            idx = matchedPendingIdx
+          }
+        }
         const inserted = idx < 0
         if (idx >= 0) {
           list[idx] = merged
+          if (replacedPendingId) {
+            index.delete(replacedPendingId)
+            index.set(merged.id, { messageId: merged.messageID, idx })
+          }
         } else {
           list.push(merged)
           index.set(merged.id, { messageId: merged.messageID, idx: list.length - 1 })
@@ -406,30 +469,50 @@ export const useChatPartsStore = create<ChatPartsState>()(
         if (!insertedRealInfo) nextInfoMap.set(realId, promotedInfo)
 
         // Rebuild the parts map to preserve insertion order.
-        // Clear the pending parts — SSE message.part.created events will fill
-        // in the real parts. This avoids duplicate pending_prt_ + real parts.
+        // Keep the pending parts in place (re-pointed to realId) so the bubble
+        // keeps rendering without an empty frame. SSE `message.part.created`
+        // events that follow will land via `upsertPart`'s pending-replacement
+        // path, swapping placeholders for real parts in their original slot.
         const oldPartsMap = s.partsBySession.get(sessionId)
         const nextPartsMap = new Map<string, Part[]>()
+        const promotedParts: Part[] =
+          oldPartsMap?.get(pendingId)?.map((p) => ({ ...p, messageID: realId })) ?? []
+        const existingRealParts = oldPartsMap?.get(realId) ?? []
+        const mergedRealParts = [...promotedParts]
+        for (const realPart of existingRealParts) {
+          const matchIdx = findMatchingPendingPartIdx(mergedRealParts, realPart)
+          if (matchIdx >= 0) {
+            mergedRealParts[matchIdx] = realPart
+          } else if (!mergedRealParts.some((p) => p.id === realPart.id)) {
+            mergedRealParts.push(realPart)
+          }
+        }
         if (oldPartsMap) {
           for (const [mid, parts] of oldPartsMap.entries()) {
             if (mid === pendingId) {
-              nextPartsMap.set(realId, [])
+              nextPartsMap.set(realId, mergedRealParts)
               continue
             }
             if (mid === realId) continue
             nextPartsMap.set(mid, parts)
           }
         }
-        if (!nextPartsMap.has(realId)) nextPartsMap.set(realId, [])
+        if (!nextPartsMap.has(realId)) nextPartsMap.set(realId, mergedRealParts)
 
-        // Remove pending part index entries; real parts will be indexed by upsertPart.
+        // Rebuild partIndex for realId from scratch — pending part ids stay
+        // valid until upsertPart swaps them for real ids on the SSE echo.
         const oldIndexMap = s.partIndexBySession.get(sessionId)
         const index = new Map(oldIndexMap)
         if (oldIndexMap) {
           for (const [pid, entry] of oldIndexMap.entries()) {
-            if (entry.messageId === pendingId) index.delete(pid)
+            if (entry.messageId === pendingId || entry.messageId === realId) {
+              index.delete(pid)
+            }
           }
         }
+        mergedRealParts.forEach((p, i) => {
+          index.set(p.id, { messageId: realId, idx: i })
+        })
 
         const infoBySession = new Map(s.infoBySession); infoBySession.set(sessionId, nextInfoMap)
         const partsBySession = new Map(s.partsBySession); partsBySession.set(sessionId, nextPartsMap)
