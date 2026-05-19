@@ -14,8 +14,7 @@ import {
 import { discardFile } from '@/services/api/file-artifacts'
 import { useConnectionStore } from '@/features/connection/store'
 import { useState } from 'react'
-import { RefreshCw, ArrowLeft, Eye, Trash2 } from 'lucide-react'
-import { ResourcePreviewDrawer } from './resource-preview-drawer'
+import { RefreshCw, ArrowLeft, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -399,7 +398,6 @@ export function ResourceDirectoryView({ overview }: { overview: StorageOverviewD
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [confirmDeleteBulkOpen, setConfirmDeleteBulkOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<{ key: string; label: string } | null>(null)
-  const [previewTarget, setPreviewTarget] = useState<{ resourceType: ResourceTab; resourceId: string; resourceName: string; connectionId?: string } | null>(null)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const resourceQuery = useQuery<any[]>({
@@ -829,37 +827,18 @@ export function ResourceDirectoryView({ overview }: { overview: StorageOverviewD
                   </TableCell>
                   {renderExtraCells(item)}
                   <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                        title={t('maintenance.resources.action.preview')}
-                        onClick={() => {
-                          const name = getItemLabel(item)
-                          setPreviewTarget({
-                            resourceType: activeResourceTab,
-                            resourceId: key,
-                            resourceName: name,
-                            connectionId: (item as any).connectionId,
-                          })
-                        }}
-                      >
-                        <Eye className="size-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        title={t('maintenance.resources.action.delete')}
-                        onClick={() => {
-                          setDeleteTarget({ key, label: getItemLabel(item) })
-                          setConfirmDeleteOpen(true)
-                        }}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      title={t('maintenance.resources.action.delete')}
+                      onClick={() => {
+                        setDeleteTarget({ key, label: getItemLabel(item) })
+                        setConfirmDeleteOpen(true)
+                      }}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
                   </TableCell>
                 </TableRow>
               )
@@ -909,16 +888,6 @@ export function ResourceDirectoryView({ overview }: { overview: StorageOverviewD
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      {previewTarget && (
-        <ResourcePreviewDrawer
-          open={!!previewTarget}
-          onOpenChange={(open) => { if (!open) setPreviewTarget(null) }}
-          resourceType={previewTarget.resourceType}
-          resourceId={previewTarget.resourceId}
-          resourceName={previewTarget.resourceName}
-          connectionId={previewTarget.connectionId}
-        />
-      )}
     </div>
   )
 }
