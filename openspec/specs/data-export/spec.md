@@ -137,3 +137,14 @@
 - **WHEN** 导出文件超过 500MB
 - **THEN** 导出停止，返回 `{ warnings: ["Export truncated at 500MB"] }`
 - **AND** 已写入部分仍然可用
+
+### Requirement: export.completed SSE 事件处理
+
+前端 SHALL 在收到 `export.completed` SSE 事件时使用统一下载函数处理下载。
+
+#### Scenario: Toast 下载按钮使用统一下载函数
+
+- **GIVEN** 前端收到 `export.completed` SSE 事件
+- **WHEN** toast 通知展示 "下载" 按钮
+- **THEN** 点击按钮调用 `downloadFromUrl(downloadUrl, filename)` 而非 `window.open(url, '_blank')`
+- **AND** filename 基于 format 推断（`export-{exportId}.{ext}`）

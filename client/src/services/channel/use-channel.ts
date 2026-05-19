@@ -467,8 +467,10 @@ export function buildEventSink(
           action: downloadUrl
             ? {
                 label: translateMessage(language, 'export.download'),
-                onClick: () => {
-                  window.open(downloadUrl, '_blank', 'noopener,noreferrer')
+                onClick: async () => {
+                  const { downloadFromUrl, inferFilename } = await import('@/services/tauri/file-download')
+                  const filename = inferFilename(d.exportId, d.format)
+                  downloadFromUrl(downloadUrl, filename)
                 },
               }
             : undefined,

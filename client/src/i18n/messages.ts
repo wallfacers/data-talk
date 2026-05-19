@@ -882,6 +882,9 @@ const MESSAGES = {
     'export.processing': '正在导出...',
     'export.download': '下载',
     'export.completed': '导出完成（{count} 行，{format}）',
+    'export.toolTitle': '导出数据',
+    'export.statusProcessing': '处理中...',
+    'export.downloadFile': '下载文件',
   },
   'en-US': {
     'common.loading': 'Loading...',
@@ -1760,6 +1763,9 @@ const MESSAGES = {
     'export.processing': 'Exporting...',
     'export.download': 'Download',
     'export.completed': 'Export completed ({count} rows, {format})',
+    'export.toolTitle': 'Export Data',
+    'export.statusProcessing': 'Processing...',
+    'export.downloadFile': 'Download File',
   },
 } as const
 
