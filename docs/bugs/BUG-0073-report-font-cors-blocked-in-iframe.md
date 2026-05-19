@@ -5,7 +5,7 @@
 **Discovered:** 2026-05-19
 **Module:** report
 **Source:** e2e-playwright
-**fixCommit:** 4f7cfffe
+**fixCommit:** 45e9b44e + 6fc75c0b（CorsConfig 加 null-origin 规则 + ReportController 移除重复 ACAO 头）
 **fixPlanRef:** openspec/changes/ledger-report-quality-fixes/
 
 ## Description
@@ -50,15 +50,31 @@ headers.set("Access-Control-Allow-Origin", "*");
 
 ## Fix Verification
 
-- 修改 `ReportController.serveAsset()` 在所有返回路径（fonts/CSS/JS/fallback）显式 set `Access-Control-Allow-Origin: *` + `Vary: Origin`。
-- 新增 `ReportControllerCorsTest`（@WebMvcTest）断言 `.otf` 与 `.css` 端点响应头包含上述两个 header（2/2 pass）。
-- Runtime curl 验证（commit 4f7cfffe 部署后）：
-  ```
-  $ curl -sI http://localhost:8080/api/reports/_assets/fonts/NotoSerifSC-Regular.otf
-  HTTP/1.1 200
-  Vary: Origin
-  Access-Control-Allow-Origin: *
-  Content-Type: font/otf
-  ```
-  同理 `_assets/styles/ledger.css` 与 `_assets/scripts/echarts.min.js` 均返回 `Access-Control-Allow-Origin: *`。
-- 仅 `/_assets/**` 路径打开 CORS，其他 API 端点不受影响（per spec）。
+**修复历经两步**，第一步不完整：
+
+1. **`4f7cfffe`（不完整）**：`ReportController.serveAsset` 在 controller 内手动 set `Access-Control-Allow-Origin: *` + `Vary: Origin`。**这一步在浏览器场景下不生效** —— Spring `CorsFilter`（`CorsConfig`）在 controller 前已拦截 `Origin: null` 请求，全局 `/api/**` 的 `uiConfig` 只 allow `http://localhost:*`，对 null origin 直接返回 403。Controller 设的头根本到不了客户端。
+2. **`45e9b44e`（真正修复）**：在 `CorsConfig` 中新增 `/api/reports/_assets/**` → iframeConfig 规则（GET/POST/OPTIONS，allow `Origin: null`，无 credentials）。CorsFilter 现在 set `Access-Control-Allow-Origin: null` 通过。
+3. **`6fc75c0b`（清理双 ACAO）**：从 `ReportController.serveAsset` 移除 `4f7cfffe` 加的 controller-level ACAO + Vary —— 否则 CorsFilter set `null` 与 controller set `*` 叠加，浏览器报 `multiple values 'null, *'`。
+
+**Runtime curl 验证（`6fc75c0b` 部署后）：**
+
+```
+$ curl -s -o /dev/null -w "%{http_code} %{header_json}" \
+       -H 'Origin: null' \
+       http://localhost:8080/api/reports/_assets/fonts/NotoSerifSC-Regular.otf
+200 {"vary":["Origin","Access-Control-Request-Method","Access-Control-Request-Headers"],
+     "access-control-allow-origin":["null"],
+     "content-type":["font/otf"], ...}
+```
+
+仅一个 `Access-Control-Allow-Origin: null`。CSS 与 JS endpoint 同。
+
+**Playwright E2E 验证**（fixture: `tmp/e2e-bug-0073/host.html`，sandbox iframe srcdoc 加载 `@font-face` 与 `fetch`）：
+
+- 三个 `_assets` endpoint（font / css / js）在 origin=null iframe 中均 `status: 200, ok: true`
+- iframe body `font-family: NotoSerifSC, serif` —— 字体真正加载
+- iframe console 仅 1 个无关 favicon 404 error，0 个 CORS error
+
+**单元测试**（`ReportControllerCorsTest`）：用 @WebMvcTest + `addFilters=false`，不走 CorsFilter，因此只断言 content-type 等 controller 直接行为；CORS 行为由 runtime + Playwright 验证。
+
+**Curl quirk**：`curl -I`（HEAD）会被 iframeConfig 拒（allowed methods 不含 HEAD）。这不影响生产 — 浏览器 fetch font 用 GET，不用 HEAD。

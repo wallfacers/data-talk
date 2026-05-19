@@ -24,7 +24,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 | ID | Title | Status | Priority | Owner |
 |----|-------|--------|----------|-------|
-| [BUG-0073](BUG-0073-report-font-cors-blocked-in-iframe.md) | Report Viewer iframe 字体 CORS 加载失败 | fixed | P1 | — (4f7cfffe) |
+| [BUG-0073](BUG-0073-report-font-cors-blocked-in-iframe.md) | Report Viewer iframe 字体 CORS 加载失败 | fixed | P1 | — (45e9b44e + 6fc75c0b) |
 | [BUG-0072](BUG-0072-import-data-no-database-selected.md) | datatalk_import_data 不解析 session_data_context 的 database，server-level 连接报 "No database selected" | fixed | P1 | — (9d0a8e28) |
 | [BUG-0071](BUG-0071-stage-close-flash-horizontal-scrollbar.md) | 关闭工作台动效中，chat 列 composer 外壳闪过一条水平滚动条 | fixed | P2 | — (c9255ebd) |
 | [BUG-0070](BUG-0070-execute-sql-bulk-bypass-import-data.md) | AI 通过 datatalk_execute_sql 直传大批量 SQL，绕过 datatalk_import_data 引爆 token 与失败重试（BUG-0065/0067/0069 终结性硬契约修法） | fixed | P1 | — (61923d3b) |
