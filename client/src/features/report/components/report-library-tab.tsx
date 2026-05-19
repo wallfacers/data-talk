@@ -2,6 +2,7 @@ import { useReportList } from '../api'
 import { useReportStore } from '../store'
 import { useStageStore } from '@/stores/stage-store'
 import { useI18n } from '@/i18n/use-i18n'
+import { TabContentLoader } from '@/features/stage/components/tab-content-loader'
 
 export interface ReportLibraryTabProps {
   workspaceId: string
@@ -53,7 +54,7 @@ export function ReportLibraryTab({ workspaceId }: ReportLibraryTabProps) {
 
   return (
     <div className="h-full overflow-y-auto bg-bg-canvas">
-      <header className="sticky top-0 z-10 px-4 py-3 border-b border-border-subtle bg-bg-canvas">
+      <header className="sticky top-0 z-10 flex items-center min-h-11 px-3 py-2 border-b border-border/50 bg-bg-soft">
         <div className="text-text-strong font-medium">{t('report.library.title')}</div>
       </header>
       <ul className="divide-y divide-border-subtle">

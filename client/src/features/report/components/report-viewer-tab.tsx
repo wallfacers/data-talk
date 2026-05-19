@@ -79,7 +79,7 @@ export function ReportViewerTab({ tab }: ReportViewerTabProps) {
 
   return (
     <div className="flex flex-col h-full bg-bg-canvas">
-      <header className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border-subtle">
+      <header className="flex items-center justify-between gap-3 min-h-11 px-3 py-2 border-b border-border/50 bg-bg-soft">
         <div className="flex-1 min-w-0">
           <div className="text-text-strong font-medium truncate">
             {report?.title ?? t('report.viewer.loading')}
