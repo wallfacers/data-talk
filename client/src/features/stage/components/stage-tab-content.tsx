@@ -169,12 +169,10 @@ export function StageTabContent() {
   }
 
   if (tab.type === 'report_viewer') {
-    const payload = (tab.payload ?? {}) as { reportId?: string }
-    if (!payload.reportId) return null
     return (
       <div className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <Suspense fallback={<TabContentLoader />}>
-          <ReportViewerTab key={tab.tabId} reportId={payload.reportId} />
+          <ReportViewerTab key={tab.tabId} tab={tab} />
         </Suspense>
       </div>
     )

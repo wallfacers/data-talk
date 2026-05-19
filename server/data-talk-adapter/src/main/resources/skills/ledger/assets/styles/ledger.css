@@ -466,6 +466,37 @@ strong {
   }
 }
 
+/* -------------------------- Scrollbar -------------------------- */
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ledger-text-faint);
+  background-clip: padding-box;
+  border: 3px solid transparent;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ledger-text-muted);
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-button {
+  display: none;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 /* -------------------------- 禁用 -------------------------- */
 /* 任何使用 ledger 样式的页面 MUST NOT 引入：
    - backdrop-filter
