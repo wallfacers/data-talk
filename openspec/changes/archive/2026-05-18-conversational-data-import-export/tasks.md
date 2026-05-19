@@ -87,4 +87,4 @@ Design Inputs (from `client/DESIGN.md`): 使用 semantic tokens、shadcn/ui 组�
 
 - [x] 10.1 后端整体验证：`cd server && mvn clean verify`（全量测试套件）
 - [x] 10.2 前端整体验证：`cd client && npx tsc --noEmit && npm run test`
-- [ ] 10.3 端到端冒烟测试（手动）：上传 CSV → AI 对话导入 → 验证数据库表数据；SQL 查询结果 → 导出 Excel → 下载验证。**前置条件**：BUG-0057 (composer attachment stuck uploading) 需已修复合入，否则上传卡住会误判为导入失败
+- [x] 10.3 端到端冒烟测试（手动）：上传 CSV → AI 对话导入 → 验证数据库表数据；SQL 查询结果 → 导出 Excel → 下载验证。**前置条件**：BUG-0057 (composer attachment stuck uploading) 需已修复合入，否则上传卡住会误判为导入失败
