@@ -8,7 +8,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## 当前编号
 
-下一个分配 ID：**BUG-0073**（永不复用，单调递增）
+下一个分配 ID：**BUG-0078**（永不复用，单调递增）
 
 ## Open BUGs（按 priority 倒序，P0 → P2）
 
@@ -19,11 +19,13 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 | 日期 | Change | 发现 BUG 数 | 备注 |
 |---|---|---|---|
 | 2026-05-19 | report-document-generation | 1 | 发现 BUG-0073（CORS 字体加载）。验证通过：AI chat→promote→Report Library→Report Viewer 完整链路。PDF/MD 状态均为 ready。CORS BUG 不影响 PDF 生成。 |
+| 2026-05-20 | ledger-report-quality-fixes | 1 | §8 E2E（fixture report HTML + sandbox iframe）发现 BUG-0077（TOC 锚点 base-href 冲突）。验证通过：cover sanitize ✓、CORS ✓、TOC HTML 渲染 ✓；TOC 点击跳转 ✗（修复并入本 change）。 |
 
 ## In Progress（status = investigating | fixed 等待 verify）
 
 | ID | Title | Status | Priority | Owner |
 |----|-------|--------|----------|-------|
+| [BUG-0077](BUG-0077-report-toc-anchor-base-href-conflict.md) | 报告 TOC 锚点点击后跳转到 _assets/ 404（`<base href>` 解析冲突） | fixed | P1 | — (pending) |
 | [BUG-0073](BUG-0073-report-font-cors-blocked-in-iframe.md) | Report Viewer iframe 字体 CORS 加载失败 | fixed | P1 | — (45e9b44e + 6fc75c0b) |
 | [BUG-0072](BUG-0072-import-data-no-database-selected.md) | datatalk_import_data 不解析 session_data_context 的 database，server-level 连接报 "No database selected" | fixed | P1 | — (9d0a8e28) |
 | [BUG-0071](BUG-0071-stage-close-flash-horizontal-scrollbar.md) | 关闭工作台动效中，chat 列 composer 外壳闪过一条水平滚动条 | fixed | P2 | — (c9255ebd) |
@@ -106,6 +108,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 - **ingestion**: [BUG-0013](BUG-0013-http-request-null-output-fields.md) *(fixed)*, [BUG-0014](BUG-0014-ssrf-deny-list-not-blocking-169-254.md) *(fixed)*, [BUG-0015](BUG-0015-oversized-payload-not-marked-failed.md) *(fixed)*, [BUG-0017](BUG-0017-http-request-missing-payload-format.md) *(fixed)*, [BUG-0018](BUG-0018-basic-auth-not-base64.md) *(fixed)*, [BUG-0019](BUG-0019-page-pagination-ignores-hasmore.md) *(fixed)*, [BUG-0020](BUG-0020-offset-pagination-ignores-nextoffset.md) *(fixed)*, [BUG-0021](BUG-0021-cursor-pagination-missing-next-key.md) *(fixed)*, [BUG-0022](BUG-0022-csv-html-parsers-no-coercion.md) *(fixed)*, [BUG-0023](BUG-0023-integer-64-promotion-gap.md) *(fixed)*, [BUG-0024](BUG-0024-upstream-401-not-mapped-to-auth-failed.md) *(fixed)*, [BUG-0025](BUG-0025-infer-type-lowercase-mismatch.md) *(fixed)*, [BUG-0026](BUG-0026-html-fetch-throws-unsupported.md) *(fixed)*, [BUG-0027](BUG-0027-pagination-top-level-aliases-ignored.md) *(fixed)*, [BUG-0028](BUG-0028-tabular-source-path-missing-dollar.md) *(fixed)*, [BUG-0029](BUG-0029-confirm-status-violates-check-constraint.md) *(fixed)*, [BUG-0030](BUG-0030-confirm-missing-mapping-gate.md) *(fixed)*, [BUG-0031](BUG-0031-action-output-schema-rejects-null-and-missing-errorcode.md) *(fixed)*, [BUG-0032](BUG-0032-h2-fixture-uses-database-not-databasename.md) *(fixed)*, [BUG-0033](BUG-0033-json-jsonl-nullable-only-on-all-null.md) *(fixed)*, [BUG-0034](BUG-0034-executesql-fixture-missing-source.md) *(fixed)*
 - **testing**: [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md), [BUG-0032](BUG-0032-h2-fixture-uses-database-not-databasename.md) *(fixed)*, [BUG-0034](BUG-0034-executesql-fixture-missing-source.md) *(fixed)*
 - **security**: [BUG-0018](BUG-0018-basic-auth-not-base64.md) *(fixed)*
+- **report**: [BUG-0073](BUG-0073-report-font-cors-blocked-in-iframe.md) *(fixed)*, [BUG-0077](BUG-0077-report-toc-anchor-base-href-conflict.md) *(fixed)*
 - **stage**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md), [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md), [BUG-0042](BUG-0042-sql-editor-session-follow-mode-ignores-connection-default-database.md) *(fixed)*, [BUG-0043](BUG-0043-sql-editor-tab-switch-loses-default-connection.md) *(fixed)*, [BUG-0050](BUG-0050-dashboard-json-widgets-skeleton-only-no-data.md), [BUG-0071](BUG-0071-stage-close-flash-horizontal-scrollbar.md) *(fixed)*
 - **query-editor**: [BUG-0042](BUG-0042-sql-editor-session-follow-mode-ignores-connection-default-database.md) *(fixed)*, [BUG-0043](BUG-0043-sql-editor-tab-switch-loses-default-connection.md) *(fixed)*, [BUG-0065](BUG-0065-pre-action-protocol-bypassed-via-ui-exec-path.md) *(fixed)*
 - **connection**: [BUG-0042](BUG-0042-sql-editor-session-follow-mode-ignores-connection-default-database.md) *(fixed)*

@@ -118,9 +118,30 @@ public class ReportRenderer {
 
         // Chart init + LEDGER_READY signal
         html.append("<script>\n").append(renderChartBootstrapScript(reportJson)).append("\n</script>\n");
+        // BUG-0077: with <base href="…/_assets/"> a bare `<a href="#chap-N">` resolves to an
+        // absolute URL against the base, triggering cross-document navigation on click.
+        // Intercept hash links and use scrollIntoView so TOC anchors stay same-document.
+        html.append("<script>\n").append(ANCHOR_INTERCEPTOR_SCRIPT).append("\n</script>\n");
         html.append("</body>\n</html>\n");
         return html.toString();
     }
+
+    /**
+     * Inline click delegate that prevents {@code <base href>} from turning {@code #chap-N}
+     * links into cross-document navigations. Sits at end of body so it captures every TOC
+     * link rendered above.
+     */
+    static final String ANCHOR_INTERCEPTOR_SCRIPT =
+            "document.addEventListener('click', function(e){\n"
+          + "  var a = e.target && e.target.closest && e.target.closest('a[href^=\"#\"]');\n"
+          + "  if (!a) return;\n"
+          + "  var id = a.getAttribute('href').slice(1);\n"
+          + "  if (!id) return;\n"
+          + "  var t = document.getElementById(id);\n"
+          + "  if (!t) return;\n"
+          + "  e.preventDefault();\n"
+          + "  t.scrollIntoView({behavior:'smooth', block:'start'});\n"
+          + "});";
 
     /** 提取报告中所有 chart block 的 id 与 echartsOption，用于 bootstrap script。 */
     private String renderChartBootstrapScript(JsonNode reportJson) {

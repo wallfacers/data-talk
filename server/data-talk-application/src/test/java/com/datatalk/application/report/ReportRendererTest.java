@@ -139,6 +139,27 @@ class ReportRendererTest {
     }
 
     @Test
+    void toc_anchor_interceptor_script_injected_to_neutralize_base_href() throws Exception {
+        // BUG-0077: with <base href="…/_assets/"> a bare `<a href="#chap-N">` would otherwise
+        // resolve against the base, triggering cross-document navigation. The interceptor
+        // below converts hash links into scrollIntoView calls so TOC stays same-document.
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "sections": [
+                {"type":"toc"},
+                {"type":"chapter","heading":"业务","blocks":[]}
+              ] }
+        """);
+        String html = renderer.toHtml(root);
+        assertThat(html).contains(ReportRenderer.ANCHOR_INTERCEPTOR_SCRIPT);
+        // sanity: key behavior tokens present in the injected script
+        assertThat(html).contains("a[href^=\"#\"]");
+        assertThat(html).contains("preventDefault");
+        assertThat(html).contains("scrollIntoView");
+    }
+
+    @Test
     void toc_renders_empty_ol_when_no_chapters() throws Exception {
         JsonNode root = mapper.readTree("""
             { "schemaVersion": 1, "kind": "report",

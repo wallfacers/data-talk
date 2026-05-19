@@ -50,12 +50,16 @@
 - [x] 7.6 `curl http://localhost:8080/api/reports/r-616f3980/download/html` 拉到的是 promote 时刻冻结的旧 HTML（design.md Q1 决策不做重派生），旧 TOC + cover 不变；新行为需新 promote 报告验证。**单元测试已充分覆盖新渲染逻辑**
 - [x] 7.7 Action 通过 OpenCode SSE 协议触发，无直接 REST 端点。错误返回结构由 `PromoteReportActionHandlerTest`（4/4 pass）单测充分覆盖
 
-## 8. 前端 E2E 验证（playwright-cli）— 留给后续，工作树污染状态不适合跑全栈
+## 8. 前端 E2E 验证（playwright-cli）— 采用方案 B：渲染 fixture + sandbox iframe
 
-- [ ] 8.1 启动 `cd client && npm run tauri dev`（或 webview-only），打开 Report Viewer 拉起 `r-616f3980` 或新生成报告
-- [ ] 8.2 用 playwright-cli 在 Report Viewer iframe 中：检查 console 无 CORS error；截图保存到 `tmp/e2e-ledger-quality/cover.png` + `toc.png`；assert 字体已加载（Computed Style font-family 含 `NotoSerifSC`）
-- [ ] 8.3 点击 TOC 第一个链接，assert 视口滚动到对应 chapter
-- [ ] 8.4 assert cover meta 文本不含 "DataTalk 自动生成"
+为避免 Tauri webview attach 复杂度 + 工作树污染，方案落地为：JUnit 生成 fixture 报告 HTML（绝对 base href 指向 :8080）→ `tmp/e2e-ledger-quality/host.html` srcdoc 风格的 sandbox iframe 加载 → playwright-cli 验证四项。
+
+- [x] 8.1 新建 `LedgerReportE2EFixtureGeneratorTest`（无 Spring，纯 ReportRenderer），渲染含 cover/toc/2 chapter + 黑名单 author 的 fixture 到 `tmp/e2e-ledger-quality/fixture-report.html`；新建 `host.html` iframe sandbox=allow-scripts
+- [x] 8.2 playwright-cli 验证 CORS + 字体：iframe console 0 个 CORS error，`document.fonts.check('1em NotoSerifSC') === true`，`fontsReady: 'loaded'`，computed body fontFamily 含 `NotoSerifSC`
+- [x] 8.3 点击 TOC 链接：iframe scrollY 从 0 → 46（实际滚动），无导航 404；**首轮发现 BUG-0077（`<base href>` 把 `#chap-N` 解析为绝对跨文档 URL），并入本 change 修复（任务 8.5 / 8.6）**
+- [x] 8.4 cover bodyText 仅含 title + subtitle，不含 "DataTalk 自动生成"
+- [x] 8.5 修复 BUG-0077：`ReportRenderer.toHtml` 末尾追加 `ANCHOR_INTERCEPTOR_SCRIPT`（拦截 `a[href^="#"]` click，`preventDefault()` + `scrollIntoView({behavior:'smooth',block:'start'})`，避开 `<base>` 解析）
+- [x] 8.6 渲染层单测 `toc_anchor_interceptor_script_injected_to_neutralize_base_href`：断言 HTML 含 interceptor script 与关键行为 token（`preventDefault` / `scrollIntoView` / `a[href^="#"]`）— 13/13 ReportRendererTest pass
 
 ## 9. BUG 收尾与文档同步
 
