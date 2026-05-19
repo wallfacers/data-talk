@@ -37,7 +37,7 @@ function resolveFormatLabel(format: string | undefined, lang: LanguageOption): s
 
 export function ExportData(props: ToolRendererProps) {
   const { part, descriptor } = props
-  const risk = resolveRisk(part, descriptor)
+  const risk = resolveRisk(part, descriptor) ?? 'L1'
   const lang = getCurrentLanguage()
 
   const rawOutput = part.state.output
