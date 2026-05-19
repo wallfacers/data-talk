@@ -28,7 +28,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 | [BUG-0077](BUG-0077-report-toc-anchor-base-href-conflict.md) | 报告 TOC 锚点点击后跳转到 _assets/ 404（`<base href>` 解析冲突） | fixed | P1 | — (pending) |
 | [BUG-0076](BUG-0076-report-viewer-blank-after-ctrl-r.md) | Ctrl+R 刷新后报告详情 tab 显示空白页 | fixed | P1 | — (pending) |
 | [BUG-0075](BUG-0075-report-viewer-iframe-double-load.md) | Report Viewer iframe 在打开时重复加载 2-3 次 | fixed | P2 | — (pending) |
-| [BUG-0074](BUG-0074-report-iframe-scrollbar-arrow-buttons.md) | 报告 iframe 内滚动条正三角/倒三角按钮未隐藏 | open | P2 | — |
+| [BUG-0074](BUG-0074-report-iframe-scrollbar-arrow-buttons.md) | 报告 iframe 内滚动条正三角/倒三角按钮未隐藏 | fixed | P2 | — (d03b26bd) |
 | [BUG-0073](BUG-0073-report-font-cors-blocked-in-iframe.md) | Report Viewer iframe 字体 CORS 加载失败 | fixed | P1 | — (45e9b44e + 6fc75c0b) |
 | [BUG-0072](BUG-0072-import-data-no-database-selected.md) | datatalk_import_data 不解析 session_data_context 的 database，server-level 连接报 "No database selected" | fixed | P1 | — (9d0a8e28) |
 | [BUG-0071](BUG-0071-stage-close-flash-horizontal-scrollbar.md) | 关闭工作台动效中，chat 列 composer 外壳闪过一条水平滚动条 | fixed | P2 | — (c9255ebd) |

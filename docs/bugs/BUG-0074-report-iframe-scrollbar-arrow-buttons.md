@@ -1,15 +1,15 @@
 ---
 id: BUG-0074
 title: 报告 iframe 内滚动条正三角/倒三角按钮未隐藏
-status: open
+status: fixed
 priority: P2
 source: manual-report
 modules: [report]
 discovered: 2026-05-20
 discoveredBy: agent
 testRunId: null
-fixCommit: null
-fixPlanRef: openspec/changes/fix-report-viewer-issues/
+fixCommit: d03b26bd
+fixPlanRef: openspec/changes/archive/2026-05-20-fix-report-viewer-issues/
 duplicateOf: null
 regression: false
 ---
@@ -75,11 +75,13 @@ regression: false
 ## Verification
 
 1. 编辑 `ledger.css` 后 `mvn compile -pl data-talk-adapter -am`
-2. 重启 Spring Boot 后端
+2. 重启 Spring Boot 后端（`SkillResourceSyncer` 比对 SHA-256 marker，发现源 hash 变化后会重新同步 `~/.data-talk/opencode/.opencode/skills/ledger/` 目录）
 3. 打开报告，确认 iframe 内滚动条无三角按钮
 4. hover 滚动条 thumb 确认颜色变深
+5. 回归契约：`LedgerCssScrollbarContractTest`（`data-talk-adapter`）强制 `ledger.css` 必须保留 `::-webkit-scrollbar-button { display: none }`、`::-webkit-scrollbar-thumb`、`::-webkit-scrollbar-track` 三条规则，防止后续编辑回退
 
 ## Notes
 
 - 滚动条伪元素仅 Webkit/Blink 支持。Tauri（WebKitGTK）无影响。Firefox 需 `scrollbar-width: thin` + `scrollbar-color` 属性，当前无 Firefox 目标可后续补充。
-- 原 change `fix-report-viewer-issues` 中已添加 CSS 至源文件，但编译/重启步骤未完成，故 BUG 仍为 open。
+- 原 change `fix-report-viewer-issues` 中已添加 CSS 至源文件但未确认运行时；本次补齐回归测试 + target/classes 重编译，确保下次后端重启同步生效。
+- 关键链路：`classpath:/skills/ledger/...` → 启动时 `SkillResourceSyncer.syncSkill("ledger", opencodeCwd)` 按 SHA-256 同步到 `~/.data-talk/opencode/.opencode/skills/ledger/` → `ReportController.serveAsset` 直接从硬盘文件返回。CSS 路径并非来自 `target/classes` 直读。
