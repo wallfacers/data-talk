@@ -8,7 +8,7 @@ modules: [data-import, data-export, script-data-write, undo-log]
 discovered: 2026-05-19
 discoveredBy: human
 testRunId: null
-fixCommit: pending
+fixCommit: 2ab9039f
 fixPlanRef: openspec/changes/dialect-aware-import-export-and-friction-fix/
 duplicateOf: null
 regression: false

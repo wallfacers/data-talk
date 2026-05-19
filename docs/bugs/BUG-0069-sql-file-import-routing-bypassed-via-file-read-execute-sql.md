@@ -8,7 +8,7 @@ modules: [agent-skills, file-upload-routing, data-import]
 discovered: 2026-05-19
 discoveredBy: human
 testRunId: null
-fixCommit: null
+fixCommit: 2ab9039f
 fixPlanRef: null
 duplicateOf: null
 regression: false

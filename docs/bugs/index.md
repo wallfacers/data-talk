@@ -20,10 +20,10 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 | ID | Title | Status | Priority | Owner |
 |----|-------|--------|----------|-------|
-| [BUG-0069](BUG-0069-sql-file-import-routing-bypassed-via-file-read-execute-sql.md) | 20KB INSERT-only SQL 文件被 file_read + execute_sql 绕过 datatalk_import_data 路由（BUG-0065/0067 同族：专用合同工具被通用拼装路径绕过） | fixed | P2 | — (pending) |
+| [BUG-0069](BUG-0069-sql-file-import-routing-bypassed-via-file-read-execute-sql.md) | 20KB INSERT-only SQL 文件被 file_read + execute_sql 绕过 datatalk_import_data 路由（BUG-0065/0067 同族：专用合同工具被通用拼装路径绕过） | fixed | P2 | — (2ab9039f) |
 | [BUG-0068](BUG-0068-user-bubble-content-flash-on-promote.md) | 用户气泡内容"展示→消失→再展示"——promotePendingUser 清空 parts 制造空白帧（BUG-0056 修复后回归） | fixed | P1 | — (pending) |
-| [BUG-0067](BUG-0067-script-run-direct-db-connect-misuse.md) | data-collection skill 未禁止脚本直连 DB，LLM 走 pymysql / mysql.connector 错误退路，违反 backend write API 合同 | fixed | P2 | — (pending) |
-| [BUG-0066](BUG-0066-identifier-quoting-not-dialect-aware.md) | 数据移动 4 处 quoteIdentifier 硬编码 ANSI 双引号，MySQL 默认 sql_mode 下 import_data / cross-DB copy / 导出回灌 / undo log 全崩 | fixed | P1 | — (pending) |
+| [BUG-0067](BUG-0067-script-run-direct-db-connect-misuse.md) | data-collection skill 未禁止脚本直连 DB，LLM 走 pymysql / mysql.connector 错误退路，违反 backend write API 合同 | fixed | P2 | — (2ab9039f) |
+| [BUG-0066](BUG-0066-identifier-quoting-not-dialect-aware.md) | 数据移动 4 处 quoteIdentifier 硬编码 ANSI 双引号，MySQL 默认 sql_mode 下 import_data / cross-DB copy / 导出回灌 / undo log 全崩 | fixed | P1 | — (2ab9039f) |
 | [BUG-0065](BUG-0065-pre-action-protocol-bypassed-via-ui-exec-path.md) | LLM 用 datatalk_ui_exec 把 SQL 推到编辑器时绕过 Pre-Action Exploration Protocol，从未对不存在表做 schema_search | fixed | P2 | — (eb1ef5a8) |
 | [BUG-0064](BUG-0064-chart-artifact-rendered-twice-when-llm-also-embeds-echarts-block.md) | render_chart artifact 与 markdown echarts 代码块同时渲染，导致同一图被画两次且能力不一致 | fixed | P2 | — (eb1ef5a8) |
 | [BUG-0060](BUG-0060-mcp-image-served-as-text-content.md) | MCP file_read 把 image data URI 塞进 text content，模型只看到 base64 字符串 | fixed | P0 | — (pending) |

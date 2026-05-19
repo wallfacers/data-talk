@@ -67,7 +67,7 @@
   - 新增 `### Identifier Quoting Per Dialect` 章节（19 种 kind × 三种 style 的完整矩阵 + fallback 规则）
   - 修正 `### Streaming Export` 表第 984 行原"按方言引用"声明 —— 改写为引用新章节而非内嵌
   - 在 `Dynamic SQL Execution Repository` 决策段加 "Identifier quoting follows IdentifierQuoter"
-- [ ] 7.2 把 BUG-0066 / BUG-0067 文档的 `fixCommit` 字段从 `pending` 替换为本 change 实际 commit hash，并在 `index.md` 同步行（commit 后由 8.7 回填）
+- [x] 7.2 把 BUG-0066 / BUG-0067 文档的 `fixCommit` 字段从 `pending` 替换为本 change 实际 commit hash，并在 `index.md` 同步行（commit 后由 8.7 回填）—— 已回填 `2ab9039f`（含 BUG-0069）
 - [x] 7.3 在 proposal.md 的 `D` 段 + design.md `Q1` 记录用户最终决定（DEFERRED，本 change 不动 update_connection schema；A 修复后 AI 已无需绕）
 
 ## 8. 验收 / 端到端
@@ -81,4 +81,4 @@
   - 期望：一次成功，反引号 DDL 执行通过，rowsImported > 0
   - 如失败：按 BUG Tracking Gate 登记新 BUG，回到 task 列表
 - [ ] 8.6 浏览器手测：`ui_exec(query_editor, run_sql)` 在无活跃 tab 时返回 `no_active_query_editor` + nextAction
-- [ ] 8.7 把 commit hash 回填 7.2 步骤的 BUG 文档
+- [x] 8.7 把 commit hash 回填 7.2 步骤的 BUG 文档 —— `2ab9039f` 已写入 BUG-0066 / BUG-0067 / BUG-0069 + index.md
