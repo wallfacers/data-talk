@@ -9,6 +9,8 @@ import java.util.Locale;
  */
 public enum FileArtifactKind {
     REPORT,
+    REPORT_ASSET,
+    REPORT_DATA_CSV,
     ER_DIAGRAM,
     SQL_SCRIPT,
     DATASET,

@@ -15,6 +15,11 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 | ID | Title | Status | Priority | Discovered |
 |----|-------|--------|----------|------------|
 
+## E2E 验证记录
+
+| 日期 | Change | 发现 BUG 数 | 备注 |
+|---|---|---|---|
+| 2026-05-19 | report-document-generation | 0 | 仅完成 Group 1-6 编码与单测，端到端验证（playwright-cli + 真实 Chromium 字体 / iframe / 分页 / 大表附录）由用户回家后执行。Group 7 任务 7.1-7.6 待跑。 |
 
 ## In Progress（status = investigating | fixed 等待 verify）
 

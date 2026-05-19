@@ -1098,3 +1098,9 @@ The matrix is informational; the action self-discovers via JDBC metadata and doe
 - **Default row limit**: 1,000,000 rows per export unless overridden by the caller.
 - **Type inference**: Fixed-width mappings (e.g., `VARCHAR(255)` for strings). Columns requiring longer strings, LOBs, or specialized types must be pre-created manually before import.
 - **SQL file import**: Only `INSERT INTO ... VALUES (...)` statements are parsed. DDL, UPDATE, DELETE, and statements with subqueries are skipped. Multi-target-table SQL files and table name mismatches between SQL content and the `target.tableName` parameter are rejected with clear error codes. Mixed DDL+INSERT files should be executed via the query editor's guarded flow instead.
+
+## Change Log
+
+| Change | Verdict | Reason |
+|---|---|---|
+| report-document-generation | **N/A** | Reuses existing `ExecuteSqlAction` for cross-source data fetch; introduces no new database type, no new JDBC connection logic, no new schema discovery path, no new SQL splitter / risk analyzer, no new diagnostic provider. Only adds `datatalk_promote_report` MCP action and `report` SQLite metadata table (which is DataTalk-internal, not a user data source). |

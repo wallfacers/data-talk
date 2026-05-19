@@ -296,6 +296,27 @@ export const TAB_TYPE_REGISTRY: Record<string, TabTypeDescriptor> = {
       return typeof o?.connectionName === 'string' ? o.connectionName : ''
     },
   },
+  report_library: {
+    type: 'report_library',
+    persistent: true,
+    scope: 'workspace',
+    payloadSource: 'stage_tab',
+    icon: FileTextIcon,
+    labelKey: 'tabType.reportLibrary',
+    extractContent: () => '',
+  },
+  report_viewer: {
+    type: 'report_viewer',
+    persistent: true,
+    scope: 'workspace',
+    payloadSource: 'stage_tab',
+    icon: FileTextIcon,
+    labelKey: 'tabType.reportViewer',
+    extractContent: (p) => {
+      const o = p as { reportId?: unknown } | null | undefined
+      return typeof o?.reportId === 'string' ? o.reportId : ''
+    },
+  },
 }
 
 export function getTabTypeDescriptor(type: string): TabTypeDescriptor {

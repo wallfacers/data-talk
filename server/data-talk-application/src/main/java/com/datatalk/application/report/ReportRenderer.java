@@ -1,0 +1,422 @@
+package com.datatalk.application.report;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.stereotype.Service;
+
+/**
+ * 报告 JSON → 自包含 HTML 派生器。
+ *
+ * <p>输出 HTML 通过 {@code <base href="${baseHref}">} 标签把所有相对资源（ledger.css、
+ * 字体、ECharts JS）的解析根锚定到 {@code /api/reports/_assets/}（默认）—— 加载源
+ * 不论是 HTTP（iframe）还是 Playwright（localhost HTTP）都能解析相对路径。
+ *
+ * <p>每个 chart block 容器加 {@code data-ledger-chart-id="<id>"} 属性，供
+ * {@link ChartCaptureRenderer} 截图定位。
+ *
+ * <p>渲染完成后，所有 ECharts 实例的 {@code chart.on('finished')} 事件触发后会设置
+ * {@code window.__LEDGER_READY__ = true}，{@link PdfRenderer} 通过 {@code page.waitForFunction}
+ * 等待该信号才打印 PDF。
+ */
+@Service
+public class ReportRenderer {
+
+    public static final String DEFAULT_ASSETS_BASE_HREF = "/api/reports/_assets/";
+
+    private final ObjectMapper mapper;
+
+    public ReportRenderer(ObjectMapper mapper) {
+        this.mapper = mapper;
+    }
+
+    public String toHtml(JsonNode reportJson) {
+        return toHtml(reportJson, DEFAULT_ASSETS_BASE_HREF);
+    }
+
+    public String toHtml(JsonNode reportJson, String assetsBaseHref) {
+        JsonNode meta = reportJson.path("meta");
+        String title = meta.path("title").asText("DataTalk Report");
+        String accent = reportJson.path("theme").path("accent").asText("#1f4e79");
+
+        StringBuilder html = new StringBuilder(64 * 1024);
+        html.append("<!doctype html>\n");
+        html.append("<html lang=\"zh\">\n<head>\n");
+        html.append("<meta charset=\"utf-8\">\n");
+        html.append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n");
+        html.append("<title>").append(escapeHtml(title)).append("</title>\n");
+        html.append("<base href=\"").append(escapeAttr(assetsBaseHref)).append("\">\n");
+        html.append("<link rel=\"stylesheet\" href=\"styles/ledger.css\">\n");
+        html.append("<style>:root { --ledger-accent: ").append(escapeAttr(accent)).append("; }</style>\n");
+        html.append("<script src=\"scripts/echarts.min.js\"></script>\n");
+        html.append("</head>\n<body>\n");
+        html.append("<div class=\"ledger-report\">\n");
+
+        // sections
+        JsonNode sections = reportJson.path("sections");
+        if (sections.isArray()) {
+            for (JsonNode section : sections) {
+                renderBlock(section, html);
+            }
+        }
+        // appendix
+        JsonNode appendix = reportJson.path("appendix");
+        if (appendix.isArray() && !appendix.isEmpty()) {
+            html.append("<section class=\"ledger-appendix\">\n");
+            for (JsonNode item : appendix) {
+                renderBlock(item, html);
+            }
+            html.append("</section>\n");
+        }
+
+        html.append("</div>\n");
+
+        // Chart init + LEDGER_READY signal
+        html.append("<script>\n").append(renderChartBootstrapScript(reportJson)).append("\n</script>\n");
+        html.append("</body>\n</html>\n");
+        return html.toString();
+    }
+
+    /** 提取报告中所有 chart block 的 id 与 echartsOption，用于 bootstrap script。 */
+    private String renderChartBootstrapScript(JsonNode reportJson) {
+        StringBuilder s = new StringBuilder(4096);
+        s.append("(function(){\n");
+        s.append("  var charts = [\n");
+        boolean first = true;
+        for (JsonNode block : collectChartBlocks(reportJson)) {
+            if (!first) s.append(",\n");
+            first = false;
+            String id = block.path("id").asText("");
+            JsonNode option = block.path("echartsOption");
+            String optionJson;
+            try {
+                optionJson = mapper.writeValueAsString(option);
+            } catch (JsonProcessingException e) {
+                optionJson = "{}";
+            }
+            s.append("    { id: ").append(jsString(id)).append(", option: ").append(optionJson).append(" }");
+        }
+        s.append("\n  ];\n");
+        s.append("  var pending = charts.length;\n");
+        s.append("  if (pending === 0) { window.__LEDGER_READY__ = true; return; }\n");
+        s.append("  function markFinished(){ pending -= 1; if (pending <= 0) window.__LEDGER_READY__ = true; }\n");
+        s.append("  function initOne(c){\n");
+        s.append("    var el = document.querySelector('[data-ledger-chart-id=\"' + c.id + '\"]');\n");
+        s.append("    if (!el || typeof echarts === 'undefined') { markFinished(); return; }\n");
+        s.append("    try {\n");
+        s.append("      var inst = echarts.init(el);\n");
+        s.append("      inst.on('finished', markFinished);\n");
+        s.append("      inst.setOption(c.option);\n");
+        s.append("    } catch (e) {\n");
+        s.append("      console.error('ledger chart init failed', c.id, e);\n");
+        s.append("      markFinished();\n");
+        s.append("    }\n");
+        s.append("  }\n");
+        s.append("  if (document.readyState === 'complete' || document.readyState === 'interactive') {\n");
+        s.append("    charts.forEach(initOne);\n");
+        s.append("  } else {\n");
+        s.append("    document.addEventListener('DOMContentLoaded', function(){ charts.forEach(initOne); });\n");
+        s.append("  }\n");
+        s.append("})();\n");
+        return s.toString();
+    }
+
+    private static java.util.List<JsonNode> collectChartBlocks(JsonNode root) {
+        java.util.List<JsonNode> result = new java.util.ArrayList<>();
+        walkBlocks(root.path("sections"), result);
+        walkBlocks(root.path("appendix"), result);
+        return result;
+    }
+
+    private static void walkBlocks(JsonNode arr, java.util.List<JsonNode> out) {
+        if (!arr.isArray()) return;
+        for (JsonNode block : arr) {
+            String type = block.path("type").asText("");
+            if ("chart".equals(type)) {
+                out.add(block);
+            } else if ("chapter".equals(type)) {
+                walkBlocks(block.path("blocks"), out);
+            }
+        }
+    }
+
+    private void renderBlock(JsonNode block, StringBuilder out) {
+        String type = block.path("type").asText("");
+        switch (type) {
+            case "cover" -> renderCover(block, out);
+            case "executive-summary" -> renderExecutiveSummary(block, out);
+            case "toc" -> renderToc(block, out);
+            case "chapter" -> renderChapter(block, out);
+            case "kpi-strip" -> renderKpiStrip(block, out);
+            case "narrative" -> renderNarrative(block, out);
+            case "chart" -> renderChart(block, out);
+            case "table" -> renderTable(block, out);
+            case "risk-list" -> renderRiskList(block, out);
+            case "timeline" -> renderTimeline(block, out);
+            case "appendix" -> renderAppendix(block, out);
+            default -> out.append("<!-- unknown block ").append(escapeHtml(type)).append(" -->\n");
+        }
+    }
+
+    private void renderCover(JsonNode b, StringBuilder out) {
+        out.append("<section class=\"ledger-cover\">\n");
+        out.append("  <div class=\"ledger-cover__accent-bar\" style=\"background: var(--ledger-accent)\"></div>\n");
+        out.append("  <h1 class=\"ledger-cover__title\">").append(escapeHtml(b.path("title").asText(""))).append("</h1>\n");
+        String subtitle = b.path("subtitle").asText("");
+        if (!subtitle.isBlank()) {
+            out.append("  <h3 class=\"ledger-cover__subtitle\">").append(escapeHtml(subtitle)).append("</h3>\n");
+        }
+        StringBuilder meta = new StringBuilder();
+        if (!b.path("author").asText("").isBlank()) meta.append(escapeHtml(b.path("author").asText("")));
+        if (!b.path("date").asText("").isBlank()) {
+            if (meta.length() > 0) meta.append(" · ");
+            meta.append(escapeHtml(b.path("date").asText("")));
+        }
+        if (meta.length() > 0) {
+            out.append("  <p class=\"ledger-cover__meta\">").append(meta).append("</p>\n");
+        }
+        out.append("</section>\n");
+    }
+
+    private void renderExecutiveSummary(JsonNode b, StringBuilder out) {
+        out.append("<section class=\"ledger-executive-summary\">\n");
+        out.append("  <h2>摘要</h2>\n");
+        JsonNode bullets = b.path("bullets");
+        if (bullets.isArray()) {
+            out.append("  <ul>\n");
+            for (JsonNode bul : bullets) {
+                out.append("    <li>").append(escapeHtml(bul.asText(""))).append("</li>\n");
+            }
+            out.append("  </ul>\n");
+        }
+        out.append("</section>\n");
+    }
+
+    private void renderToc(JsonNode b, StringBuilder out) {
+        out.append("<section class=\"ledger-toc\"><h2>目录</h2><ol></ol></section>\n");
+    }
+
+    private void renderChapter(JsonNode b, StringBuilder out) {
+        out.append("<section class=\"ledger-chapter\">\n");
+        out.append("  <h2 class=\"ledger-chapter__heading\">").append(escapeHtml(b.path("heading").asText(""))).append("</h2>\n");
+        JsonNode blocks = b.path("blocks");
+        if (blocks.isArray()) {
+            for (JsonNode child : blocks) renderBlock(child, out);
+        }
+        out.append("</section>\n");
+    }
+
+    private void renderKpiStrip(JsonNode b, StringBuilder out) {
+        out.append("<div class=\"ledger-kpi-strip\">\n");
+        JsonNode items = b.path("items");
+        if (items.isArray()) {
+            for (JsonNode it : items) {
+                out.append("  <div class=\"ledger-kpi-card\">\n");
+                out.append("    <div class=\"ledger-kpi-card__label\">").append(escapeHtml(it.path("label").asText(""))).append("</div>\n");
+                out.append("    <div class=\"ledger-kpi-card__value\">").append(escapeHtml(it.path("value").asText(""))).append("</div>\n");
+                String delta = it.path("delta").asText("");
+                if (!delta.isBlank()) {
+                    boolean up = delta.contains("+") || delta.startsWith("↑");
+                    String cls = up ? "ledger-kpi-card__delta ledger-kpi-card__delta--up" : "ledger-kpi-card__delta ledger-kpi-card__delta--down";
+                    String arrow = up ? "↑" : "↓";
+                    out.append("    <div class=\"").append(cls).append("\">").append(arrow).append(" ")
+                            .append(escapeHtml(delta.replace("+", "").replace("-", ""))).append("</div>\n");
+                }
+                out.append("  </div>\n");
+            }
+        }
+        out.append("</div>\n");
+        renderSource(b, out);
+    }
+
+    private void renderNarrative(JsonNode b, StringBuilder out) {
+        out.append("<div class=\"ledger-narrative\">");
+        String md = b.path("markdown").asText("");
+        out.append(simpleMarkdownToHtml(md));
+        out.append("</div>\n");
+    }
+
+    private void renderChart(JsonNode b, StringBuilder out) {
+        String id = b.path("id").asText("");
+        out.append("<figure class=\"ledger-chart\">\n");
+        out.append("  <div data-ledger-chart-id=\"").append(escapeAttr(id)).append("\"></div>\n");
+        String caption = b.path("caption").asText("");
+        if (!caption.isBlank()) {
+            out.append("  <figcaption>").append(escapeHtml(caption)).append("</figcaption>\n");
+        }
+        out.append("</figure>\n");
+        renderSource(b, out);
+    }
+
+    private void renderTable(JsonNode b, StringBuilder out) {
+        JsonNode columns = b.path("columns");
+        JsonNode rows = b.path("rows");
+        boolean paged = rows.isArray() && rows.size() > 30;
+        out.append("<figure class=\"ledger-table").append(paged ? " ledger-table--paged" : "").append("\">\n");
+        String caption = b.path("caption").asText("");
+        if (!caption.isBlank()) {
+            out.append("  <figcaption>").append(escapeHtml(caption)).append("</figcaption>\n");
+        }
+        out.append("  <table>\n");
+        if (columns.isArray()) {
+            out.append("    <thead><tr>");
+            for (JsonNode c : columns) {
+                out.append("<th>").append(escapeHtml(c.asText(""))).append("</th>");
+            }
+            out.append("</tr></thead>\n");
+        }
+        if (rows.isArray()) {
+            out.append("    <tbody>\n");
+            for (JsonNode row : rows) {
+                out.append("      <tr>");
+                if (row.isArray()) {
+                    for (JsonNode cell : row) {
+                        out.append("<td>").append(escapeHtml(cell.asText(""))).append("</td>");
+                    }
+                }
+                out.append("</tr>\n");
+            }
+            out.append("    </tbody>\n");
+        }
+        out.append("  </table>\n");
+        String appendixCsvRef = b.path("appendixCsvRef").asText("");
+        if (!appendixCsvRef.isBlank()) {
+            out.append("  <p class=\"ledger-table__appendix-note\">完整数据见附录 CSV：<a href=\"/api/file-artifacts/")
+                    .append(escapeAttr(appendixCsvRef)).append("/download\">下载</a></p>\n");
+        }
+        out.append("</figure>\n");
+        renderSource(b, out);
+    }
+
+    private void renderRiskList(JsonNode b, StringBuilder out) {
+        out.append("<ul class=\"ledger-risk-list\">\n");
+        JsonNode items = b.path("items");
+        if (items.isArray()) {
+            for (JsonNode it : items) {
+                String severity = it.path("severity").asText("low");
+                String emoji = switch (severity) {
+                    case "critical" -> "🔴";
+                    case "high" -> "🟠";
+                    case "medium" -> "🟡";
+                    default -> "🟢";
+                };
+                out.append("  <li class=\"ledger-risk-item ledger-risk-item--").append(escapeAttr(severity)).append("\">\n");
+                out.append("    <span class=\"ledger-risk-item__severity\">").append(emoji).append("</span>\n");
+                out.append("    <span class=\"ledger-risk-item__desc\">").append(escapeHtml(it.path("description").asText(""))).append("</span>\n");
+                StringBuilder meta = new StringBuilder();
+                if (!it.path("owner").asText("").isBlank()) meta.append(escapeHtml(it.path("owner").asText("")));
+                if (!it.path("dueDate").asText("").isBlank()) {
+                    if (meta.length() > 0) meta.append(" · ");
+                    meta.append(escapeHtml(it.path("dueDate").asText("")));
+                }
+                if (meta.length() > 0) {
+                    out.append("    <span class=\"ledger-risk-item__meta\">").append(meta).append("</span>\n");
+                }
+                out.append("  </li>\n");
+            }
+        }
+        out.append("</ul>\n");
+    }
+
+    private void renderTimeline(JsonNode b, StringBuilder out) {
+        out.append("<ol class=\"ledger-timeline\">\n");
+        JsonNode events = b.path("events");
+        if (events.isArray()) {
+            for (JsonNode ev : events) {
+                out.append("  <li class=\"ledger-timeline__event\">\n");
+                out.append("    <time>").append(escapeHtml(ev.path("at").asText(""))).append("</time>\n");
+                out.append("    <strong>").append(escapeHtml(ev.path("title").asText(""))).append("</strong>\n");
+                out.append("    <p>").append(escapeHtml(ev.path("description").asText(""))).append("</p>\n");
+                out.append("  </li>\n");
+            }
+        }
+        out.append("</ol>\n");
+    }
+
+    private void renderAppendix(JsonNode b, StringBuilder out) {
+        String subType = b.path("subType").asText("");
+        String title = b.path("title").asText("");
+        out.append("<div class=\"ledger-appendix-block\">\n");
+        if (!title.isBlank()) {
+            out.append("  <h3>").append(escapeHtml(title)).append("</h3>\n");
+        }
+        JsonNode items = b.path("items");
+        if (items.isArray()) {
+            switch (subType) {
+                case "sql-listing" -> {
+                    for (JsonNode it : items) {
+                        out.append("  <div class=\"ledger-appendix__sql-purpose\">").append(escapeHtml(it.path("purpose").asText(""))).append("</div>\n");
+                        out.append("  <pre class=\"ledger-appendix__sql\">").append(escapeHtml(it.path("sql").asText(""))).append("</pre>\n");
+                    }
+                }
+                case "glossary" -> {
+                    out.append("  <dl>\n");
+                    for (JsonNode it : items) {
+                        out.append("    <dt>").append(escapeHtml(it.path("term").asText(""))).append("</dt>\n");
+                        out.append("    <dd>").append(escapeHtml(it.path("definition").asText(""))).append("</dd>\n");
+                    }
+                    out.append("  </dl>\n");
+                }
+                case "csv-link" -> {
+                    out.append("  <ul>\n");
+                    for (JsonNode it : items) {
+                        out.append("    <li><a href=\"/api/file-artifacts/")
+                                .append(escapeAttr(it.path("fileArtifactId").asText("")))
+                                .append("/download\">")
+                                .append(escapeHtml(it.path("caption").asText(""))).append("</a></li>\n");
+                    }
+                    out.append("  </ul>\n");
+                }
+                default -> out.append("  <!-- unknown appendix subType: ").append(escapeHtml(subType)).append(" -->\n");
+            }
+        }
+        out.append("</div>\n");
+    }
+
+    private void renderSource(JsonNode b, StringBuilder out) {
+        String source = b.path("source").asText("");
+        if (!source.isBlank()) {
+            out.append("<div class=\"ledger-block-source\">").append(escapeHtml(source)).append("</div>\n");
+        }
+    }
+
+    /** 最小 markdown 渲染：段落分隔 + **bold** + *italic*。复杂语法在 v0 不支持。 */
+    static String simpleMarkdownToHtml(String md) {
+        if (md == null || md.isEmpty()) return "";
+        String escaped = escapeHtml(md);
+        // **bold**
+        escaped = escaped.replaceAll("\\*\\*(.+?)\\*\\*", "<strong>$1</strong>");
+        // *italic* (避开已替换的 strong)
+        escaped = escaped.replaceAll("(?<!\\w)\\*([^*]+)\\*(?!\\w)", "<em>$1</em>");
+        // paragraphs
+        String[] paragraphs = escaped.split("\\n\\s*\\n");
+        StringBuilder sb = new StringBuilder();
+        for (String p : paragraphs) {
+            if (p.isBlank()) continue;
+            sb.append("<p>").append(p.replace("\n", "<br>")).append("</p>");
+        }
+        return sb.toString();
+    }
+
+    static String escapeHtml(String s) {
+        if (s == null) return "";
+        return s
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;");
+    }
+
+    static String escapeAttr(String s) {
+        if (s == null) return "";
+        return s
+                .replace("&", "&amp;")
+                .replace("\"", "&quot;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;");
+    }
+
+    private static String jsString(String s) {
+        if (s == null) return "\"\"";
+        return "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n") + "\"";
+    }
+}

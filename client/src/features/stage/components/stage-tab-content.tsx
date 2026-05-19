@@ -25,6 +25,14 @@ const OperationLogTab = lazy(() =>
   import('@/features/op-log/components/operation-log-tab').then((m) => ({ default: m.OperationLogTab }))
 )
 
+const ReportLibraryTab = lazy(() =>
+  import('@/features/report/components/report-library-tab').then((m) => ({ default: m.ReportLibraryTab }))
+)
+
+const ReportViewerTab = lazy(() =>
+  import('@/features/report/components/report-viewer-tab').then((m) => ({ default: m.ReportViewerTab }))
+)
+
 
 export function StageTabContent() {
   const cleanupTabs = useSqlWorkbenchStore((s) => s.cleanupTabs)
@@ -144,6 +152,29 @@ export function StageTabContent() {
       <div className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <Suspense fallback={<TabContentLoader />}>
           <OperationLogTab key={tab.tabId} tab={tab} />
+        </Suspense>
+      </div>
+    )
+  }
+
+  if (tab.type === 'report_library') {
+    const payload = (tab.payload ?? {}) as { workspaceId?: string }
+    return (
+      <div className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <Suspense fallback={<TabContentLoader />}>
+          <ReportLibraryTab key={tab.tabId} workspaceId={payload.workspaceId ?? ''} />
+        </Suspense>
+      </div>
+    )
+  }
+
+  if (tab.type === 'report_viewer') {
+    const payload = (tab.payload ?? {}) as { reportId?: string }
+    if (!payload.reportId) return null
+    return (
+      <div className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <Suspense fallback={<TabContentLoader />}>
+          <ReportViewerTab key={tab.tabId} reportId={payload.reportId} />
         </Suspense>
       </div>
     )

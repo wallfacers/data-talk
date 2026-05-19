@@ -1,0 +1,470 @@
+# Ledger Section Patterns — 11 种 block 类型
+
+本文档定义 ledger 报告的全部 block 原语。**任何不在此集合内的 block 类型在 promote 时会被服务端拒绝**（`REPORT_BLOCK_TYPE_UNKNOWN`）。
+
+## 目录
+
+1. [cover](#1-cover)
+2. [executive-summary](#2-executive-summary)
+3. [toc](#3-toc)
+4. [chapter](#4-chapter)
+5. [kpi-strip](#5-kpi-strip)
+6. [narrative](#6-narrative)
+7. [chart](#7-chart)
+8. [table](#8-table)
+9. [risk-list](#9-risk-list)
+10. [timeline](#10-timeline)
+11. [appendix](#11-appendix)
+
+---
+
+## 1. cover
+
+**用途**：报告封面页。每份报告**必须**有且仅有一个 cover，且必须是 `sections[0]`。
+
+### JSON schema 示例
+
+```json
+{
+  "type": "cover",
+  "title": "2026 年 4 月销售月报",
+  "subtitle": "全渠道 GMV 与品类表现",
+  "author": "数据分析团队",
+  "date": "2026-05-15",
+  "logoUrl": null
+}
+```
+
+字段：
+- `title`（必填，string）：大标题
+- `subtitle`（可选，string）：副标题
+- `author`（可选，string）：作者 / 团队
+- `date`（可选，ISO date）：报告日期
+- `logoUrl`（可选，string）：v0 不渲染，留接口给 v1+
+
+### HTML 示例
+
+```html
+<section class="ledger-cover">
+  <div class="ledger-cover__accent-bar" style="background: var(--ledger-accent)"></div>
+  <h1 class="ledger-cover__title">2026 年 4 月销售月报</h1>
+  <h3 class="ledger-cover__subtitle">全渠道 GMV 与品类表现</h3>
+  <p class="ledger-cover__meta">数据分析团队 · 2026-05-15 · v1</p>
+</section>
+```
+
+### PDF 分页
+
+cover 占整页一页，下一个 section（executive-summary）前 `break-before: page`。
+
+---
+
+## 2. executive-summary
+
+**用途**：摘要要点。每份报告**应**有 1 个，紧随 cover。
+
+### JSON schema 示例
+
+```json
+{
+  "type": "executive-summary",
+  "bullets": [
+    "总 GMV 3.2M 元，同比 +18%，环比 +9%",
+    "自营渠道贡献 38%，抖音渠道环比增长 28%",
+    "华东区域 GMV 占比 42%，西南区域同比下降 5% 需关注"
+  ]
+}
+```
+
+字段：
+- `bullets`（必填，string[]）：3-7 条要点
+
+### HTML 示例
+
+```html
+<section class="ledger-executive-summary">
+  <h2>摘要</h2>
+  <ul>
+    <li>总 GMV 3.2M 元，同比 +18%，环比 +9%</li>
+    ...
+  </ul>
+</section>
+```
+
+---
+
+## 3. toc
+
+**用途**：自动生成目录。
+
+### JSON schema 示例
+
+```json
+{ "type": "toc" }
+```
+
+字段：无（运行时根据 chapter 列表自动生成）
+
+### PDF 分页
+
+toc 单独成页（`break-before: page` + `break-after: page`）。
+
+---
+
+## 4. chapter
+
+**用途**：章节容器，包含 heading + 嵌套 blocks。
+
+### JSON schema 示例
+
+```json
+{
+  "type": "chapter",
+  "heading": "业务总览",
+  "blocks": [
+    { "type": "kpi-strip", ... },
+    { "type": "narrative", ... },
+    { "type": "chart", ... }
+  ]
+}
+```
+
+字段：
+- `heading`（必填，string）
+- `blocks`（必填，array）：可嵌套除 cover/executive-summary/toc/chapter 之外的所有 block 类型
+
+### HTML 示例
+
+```html
+<section class="ledger-chapter">
+  <h2 class="ledger-chapter__heading">业务总览</h2>
+  <!-- 嵌套 blocks -->
+</section>
+```
+
+### PDF 分页
+
+每个 chapter 前 `break-before: page`（除第一个 chapter 之外）；heading 与首 block 间 `break-after: avoid`。
+
+---
+
+## 5. kpi-strip
+
+**用途**：3-6 个并列 KPI 卡片，用于章节开头的指标概览。
+
+### JSON schema 示例
+
+```json
+{
+  "type": "kpi-strip",
+  "items": [
+    { "label": "总 GMV", "value": "¥3.2M", "delta": "+18%" },
+    { "label": "订单数", "value": "12,345", "delta": "+9%" },
+    { "label": "客单价", "value": "¥259", "delta": "+8%" }
+  ],
+  "source": "mysql-prod · sales_summary as of 2026-04-30"
+}
+```
+
+字段：
+- `items`（必填，array，长度 3-6）
+  - `label`（必填，string）
+  - `value`（必填，string）—— 已格式化的字符串（如 "¥3.2M" / "12,345"）
+  - `delta`（可选，string）—— 含 ± 与 % 的字符串，正向 / 负向自动着色
+- `source`（强烈推荐）：数据来源标注
+
+### HTML 示例
+
+```html
+<div class="ledger-kpi-strip">
+  <div class="ledger-kpi-card">
+    <div class="ledger-kpi-card__label">总 GMV</div>
+    <div class="ledger-kpi-card__value">¥3.2M</div>
+    <div class="ledger-kpi-card__delta ledger-kpi-card__delta--up">↑ 18%</div>
+  </div>
+  ...
+</div>
+<div class="ledger-block-source">▸ mysql-prod · sales_summary as of 2026-04-30</div>
+```
+
+### PDF 分页
+
+`.ledger-kpi-strip { break-inside: avoid; }` 整个 strip 不跨页。
+
+---
+
+## 6. narrative
+
+**用途**：叙事段落，markdown 文本。承担"解读 / 结论 / 建议"的人写部分。
+
+### JSON schema 示例
+
+```json
+{
+  "type": "narrative",
+  "markdown": "本月 GMV 同比 +18%，主要由自营与抖音两个渠道驱动。其中**自营**渠道环比微降 2%，主要受 4 月中旬大促节奏调整影响；**抖音**渠道环比 +28%，源自达人合作覆盖率提升。\n\n建议下月：(1) 自营加强会员复购运营；(2) 抖音持续扩量但控制 ROI 不低于 1.5。"
+}
+```
+
+字段：
+- `markdown`（必填，string）—— GFM markdown 文本，支持 `**bold**` / `*italic*` / `<br>` / 段落分隔（双换行）
+
+### HTML 示例
+
+```html
+<div class="ledger-narrative">
+  <!-- 服务端 markdown → HTML 转换后插入 -->
+</div>
+```
+
+---
+
+## 7. chart
+
+**用途**：图表。所有数据 inline（不引外部 SQL）。
+
+### JSON schema 示例
+
+```json
+{
+  "type": "chart",
+  "id": "ch-channel-gmv",
+  "echartsOption": {
+    "tooltip": { "trigger": "axis" },
+    "xAxis": { "type": "category", "data": ["自营", "抖音", "天猫", "京东"] },
+    "yAxis": { "type": "value" },
+    "series": [
+      { "type": "bar", "data": [1216000, 832000, 712000, 440000] }
+    ]
+  },
+  "caption": "4 月各渠道 GMV（元）",
+  "source": "mysql-prod · sales_summary as of 2026-04-30"
+}
+```
+
+字段：
+- `id`（必填，string）—— 唯一标识，供 ChartCaptureRenderer 关联截图 PNG 文件名
+- `echartsOption`（必填，object）—— 完整 ECharts option，**必须 inline 数据**（不允许 `dataset.source: <ref>`）
+- `caption`（必填，string）—— 图表说明
+- `source`（强烈推荐）—— 数据来源标注
+
+### HTML 示例
+
+```html
+<figure class="ledger-chart">
+  <div data-ledger-chart-id="ch-channel-gmv" style="height: 360px;"></div>
+  <figcaption>4 月各渠道 GMV（元）</figcaption>
+</figure>
+<div class="ledger-block-source">▸ mysql-prod · sales_summary as of 2026-04-30</div>
+<script>
+  // ECharts init code，调 chart.on('finished', ...) 后累积 LEDGER_READY 信号
+</script>
+```
+
+### PDF 分页
+
+`.ledger-chart { break-inside: avoid; }`。chart 渲染完成后会触发 `chart.on('finished')` 事件，全部 chart 完成后置位 `window.__LEDGER_READY__ = true`，PdfRenderer 等到该信号才打印。
+
+---
+
+## 8. table
+
+**用途**：表格。
+
+### JSON schema 示例
+
+```json
+{
+  "type": "table",
+  "columns": ["渠道", "GMV", "同比", "环比"],
+  "rows": [
+    ["自营", "1.2M", "+15%", "-2%"],
+    ["抖音", "0.8M", "+28%", "+28%"]
+  ],
+  "caption": "Top 渠道 GMV 表现",
+  "source": "mysql-prod · sales_summary as of 2026-04-30",
+  "appendixCsvRef": null
+}
+```
+
+字段：
+- `columns`（必填，string[]）
+- `rows`（必填，string[][]）—— 每行 cell 已格式化为字符串
+- `caption`（可选，string）
+- `source`（强烈推荐）
+- `appendixCsvRef`（可选，string）—— rows.length > 200 时**必填**；指向 file artifact `kind='report-data-csv'` 的 fileArtifactId
+
+### HTML 示例
+
+```html
+<figure class="ledger-table">
+  <figcaption>Top 渠道 GMV 表现</figcaption>
+  <table>
+    <thead><tr><th>渠道</th><th>GMV</th><th>同比</th><th>环比</th></tr></thead>
+    <tbody>
+      <tr><td>自营</td><td>1.2M</td><td>+15%</td><td>-2%</td></tr>
+      <tr><td>抖音</td><td>0.8M</td><td>+28%</td><td>+28%</td></tr>
+    </tbody>
+  </table>
+</figure>
+<div class="ledger-block-source">▸ mysql-prod · sales_summary as of 2026-04-30</div>
+```
+
+### PDF 分页
+
+- 行数 ≤ 30：`break-inside: avoid`（整表不跨页）
+- 行数 > 30：自动加 class `ledger-table--paged` 触发 `break-before: page`（强制起新页，避免前面塞半张表）
+- 行数 > 200：必须配 `appendixCsvRef`，inline 仅前 N 行；HTML 表格下方显示"完整 N 行数据见附录 CSV：[下载]"
+
+---
+
+## 9. risk-list
+
+**用途**：风险列表 / 行动项列表。复盘报告主要使用。
+
+### JSON schema 示例
+
+```json
+{
+  "type": "risk-list",
+  "items": [
+    {
+      "severity": "high",
+      "description": "数据库主从同步延迟 > 30s 风险窗口",
+      "owner": "DBA 团队",
+      "dueDate": "2026-05-30"
+    },
+    {
+      "severity": "medium",
+      "description": "缓存击穿监控覆盖率不足",
+      "owner": "SRE 团队",
+      "dueDate": "2026-06-15"
+    }
+  ]
+}
+```
+
+字段：
+- `items`（必填，array）
+  - `severity`（必填）：`critical` / `high` / `medium` / `low`
+  - `description`（必填，string）
+  - `owner`（可选，string）
+  - `dueDate`（可选，ISO date）
+
+### HTML 示例
+
+```html
+<ul class="ledger-risk-list">
+  <li class="ledger-risk-item ledger-risk-item--high">
+    <span class="ledger-risk-item__severity">🟠</span>
+    <span class="ledger-risk-item__desc">数据库主从同步延迟 > 30s 风险窗口</span>
+    <span class="ledger-risk-item__meta">DBA 团队 · 2026-05-30</span>
+  </li>
+  ...
+</ul>
+```
+
+### Severity 着色
+
+| severity | emoji | 文字颜色 |
+|---|---|---|
+| critical | 🔴 | `#B33A3A` |
+| high | 🟠 | `#C76A21` |
+| medium | 🟡 | `#9C7B12` |
+| low | 🟢 | `#1F7A4E` |
+
+---
+
+## 10. timeline
+
+**用途**：事件时间线。**复盘报告专用**。
+
+### JSON schema 示例
+
+```json
+{
+  "type": "timeline",
+  "events": [
+    {
+      "at": "2026-04-15T10:23:00+08:00",
+      "title": "首次报警",
+      "description": "主从延迟从 1s 升至 35s，监控触发 P2 报警"
+    },
+    {
+      "at": "2026-04-15T10:45:00+08:00",
+      "title": "DBA 介入",
+      "description": "确认是大事务导致 binlog 写入堆积"
+    }
+  ]
+}
+```
+
+字段：
+- `events`（必填，array）
+  - `at`（必填，ISO datetime）
+  - `title`（必填，string）
+  - `description`（必填，string）
+
+### HTML 示例
+
+```html
+<ol class="ledger-timeline">
+  <li class="ledger-timeline__event">
+    <time>10:23 04-15</time>
+    <strong>首次报警</strong>
+    <p>主从延迟从 1s 升至 35s，监控触发 P2 报警</p>
+  </li>
+  ...
+</ol>
+```
+
+### Markdown 输出
+
+```markdown
+- **10:23 04-15** — 首次报警：主从延迟从 1s 升至 35s，监控触发 P2 报警
+- **10:45 04-15** — DBA 介入：确认是大事务导致 binlog 写入堆积
+```
+
+---
+
+## 11. appendix
+
+**用途**：附录容器。位于 `report.appendix[]` 数组中（不在 `sections[]`）。
+
+### JSON schema 示例
+
+```json
+{
+  "type": "appendix",
+  "subType": "sql-listing",
+  "title": "SQL 清单",
+  "items": [
+    {
+      "connectionId": "conn-mysql-prod-7d4a",
+      "sql": "SELECT channel, SUM(gmv) FROM sales WHERE date BETWEEN '2026-04-01' AND '2026-04-30' GROUP BY channel",
+      "purpose": "Section 业务总览 - 渠道 GMV"
+    }
+  ]
+}
+```
+
+字段：
+- `subType`（必填）：`sql-listing` / `csv-link` / `glossary`
+- `title`（必填，string）
+- `items`（必填，array）—— schema 取决于 subType
+
+### subType: sql-listing
+
+每项含 `connectionId / sql / purpose`。HTML 渲染为 `<pre><code>` SQL 块，便于审计追溯。
+
+### subType: csv-link
+
+每项含 `caption / fileArtifactId`。HTML 渲染为下载链接列表。
+
+### subType: glossary
+
+每项含 `term / definition`。HTML 渲染为 `<dl>`。
+
+### PDF 分页
+
+整个 appendix 区域单独成页，`break-before: page`。

@@ -118,6 +118,7 @@ This file is the map. Deep knowledge lives in `docs/`:
 | External protocol references | [docs/references/](docs/references/)                         |
 | ER tab protocol              | [docs/references/er-tab-protocol.md](docs/references/er-tab-protocol.md) |
 | Bezel dashboard skill design  | [docs/product-specs/2026-05-11-bezel-skill-design.md](docs/product-specs/2026-05-11-bezel-skill-design.md) |
+| Ledger report skill (汇报文档生成)  | [server/data-talk-adapter/src/main/resources/skills/ledger/SKILL.md](server/data-talk-adapter/src/main/resources/skills/ledger/SKILL.md) + templates/ |
 | Design patterns & conventions| [docs/DESIGN.md](docs/DESIGN.md)                             |
 | Client design contract       | [client/DESIGN.md](client/DESIGN.md)                         |
 | Backend dev guide            | [docs/BACKEND.md](docs/BACKEND.md)                           |

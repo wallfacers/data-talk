@@ -36,7 +36,15 @@ public record SessionWorkdirRoot(Path dataTalkRoot, Path opencodeCwd) {
         return dataTalkRoot.resolve("dashboards");
     }
 
+    public Path reportsRoot() {
+        return dataTalkRoot.resolve("reports");
+    }
+
+    public Path reportDir(String reportId) {
+        return reportsRoot().resolve(reportId);
+    }
+
     public List<Path> externalManagedRoots() {
-        return List.of(dashboardsRoot());
+        return List.of(dashboardsRoot(), reportsRoot());
     }
 }

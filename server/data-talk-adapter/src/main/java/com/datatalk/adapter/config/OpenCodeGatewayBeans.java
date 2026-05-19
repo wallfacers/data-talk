@@ -143,6 +143,7 @@ public class OpenCodeGatewayBeans {
         try {
             Path opencodeCwd = OpenCodeProcessManager.opencodeWorkingDir(Paths.get(System.getProperty("user.home")));
             skillSyncer.syncSkill("bezel", opencodeCwd);
+            skillSyncer.syncSkill("ledger", opencodeCwd);
             skillSyncer.syncSkill("sql-execution", opencodeCwd);
             skillSyncer.syncSkill("query-editor-workflow", opencodeCwd);
             skillSyncer.syncSkill("ui-contract", opencodeCwd);
