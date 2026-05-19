@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { PlayIcon, SquareIcon, SparklesIcon, SearchCodeIcon } from 'lucide-react'
+import { PlayIcon, SquareIcon, SparklesIcon, SearchCodeIcon, FileUpIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useI18n } from '@/i18n/use-i18n'
@@ -13,6 +13,7 @@ type SqlEditorToolbarProps = {
   onFormat: () => void
   canExplain?: boolean
   onExplain?: () => void
+  onImportFile?: () => void
 }
 
 export function SqlEditorToolbar({
@@ -24,6 +25,7 @@ export function SqlEditorToolbar({
   onFormat,
   canExplain,
   onExplain,
+  onImportFile,
 }: SqlEditorToolbarProps) {
   const { t } = useI18n()
 
@@ -75,6 +77,23 @@ export function SqlEditorToolbar({
             } />
             <TooltipContent side="bottom" sideOffset={4}>
               {t('stage.toolbar.explain')}
+            </TooltipContent>
+          </Tooltip>
+        )}
+        {onImportFile && (
+          <Tooltip>
+            <TooltipTrigger render={
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={onImportFile}
+                aria-label={t('stage.toolbar.importFile')}
+              >
+                <FileUpIcon />
+              </Button>
+            } />
+            <TooltipContent side="bottom" sideOffset={4}>
+              {t('stage.toolbar.importFile')}
             </TooltipContent>
           </Tooltip>
         )}

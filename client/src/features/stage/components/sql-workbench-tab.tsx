@@ -202,7 +202,9 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
   const monacoRef = useRef<SqlMonacoEditorHandle | null>(null)
   const splitLayoutRef = useRef<HTMLDivElement | null>(null)
   const resizeCleanupRef = useRef<(() => void) | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [draftLoadedTabId, setDraftLoadedTabId] = useState<string | null>(null)
+  const [importConfirmContent, setImportConfirmContent] = useState<string | null>(null)
   const [resultPanePercent, setResultPanePercent] = useState(RESULT_PANE_DEFAULT_PERCENT)
   const [resultScrollPositionsById, setResultScrollPositionsById] = useState<Record<string, ResultScrollPosition>>({})
   const [connectionTargetsByConnectionId, setConnectionTargetsByConnectionId] = useState<Record<string, SqlContextConnectionTargets>>({})
@@ -606,6 +608,69 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     formatQueryEditorSql(tab.tabId)
   }, [tab.tabId])
 
+  const handleImportFile = useCallback(() => {
+    fileInputRef.current?.click()
+  }, [])
+
+  const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const MAX_SIZE = 1 * 1024 * 1024
+    if (file.size > MAX_SIZE) {
+      toast.error(t('stage.toolbar.importFile.fileTooLarge'))
+      event.target.value = ''
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      const content = typeof reader.result === 'string' ? reader.result : ''
+      if (!content) {
+        event.target.value = ''
+        return
+      }
+
+      // Non-text file detection: check null bytes and replacement characters
+      const nullCount = (content.match(/\0/g) ?? []).length
+      const replacementCount = (content.match(/�/g) ?? []).length
+      const totalChars = content.length
+      if (totalChars > 0 && (nullCount + replacementCount) / totalChars > 0.01) {
+        toast.warning(t('stage.toolbar.importFile.notTextFile'))
+        event.target.value = ''
+        return
+      }
+
+      const trimmed = tabState.sqlText.trim()
+      if (!trimmed) {
+        setSqlText(tab.tabId, content)
+      } else {
+        setImportConfirmContent(content)
+      }
+      event.target.value = ''
+    }
+    reader.onerror = () => {
+      toast.error(t('stage.toolbar.importFile.notTextFile'))
+      event.target.value = ''
+    }
+    reader.readAsText(file)
+  }, [setSqlText, t, tab.tabId, tabState.sqlText])
+
+  const handleConfirmImport = useCallback(() => {
+    if (importConfirmContent == null) return
+    const actions = getSqlWorkbenchTabActions(tab.tabId)
+    if (actions) {
+      actions.insertAtCursor(importConfirmContent)
+    } else {
+      setSqlText(tab.tabId, importConfirmContent)
+    }
+    setImportConfirmContent(null)
+  }, [importConfirmContent, setSqlText, tab.tabId])
+
+  const handleCancelImport = useCallback(() => {
+    setImportConfirmContent(null)
+  }, [])
+
   const handleUseSessionContextChange = useCallback((nextUseSessionContext: boolean) => {
     if (nextUseSessionContext) {
       setQueryEditorContext({
@@ -775,6 +840,7 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
             onRun={() => void handleRun()}
             onCancel={() => abortQueryEditorRun(tab.tabId)}
             onFormat={handleFormat}
+            onImportFile={handleImportFile}
             contextControls={
               <SqlContextToolbarControls
                 useSessionContext={useSessionContext}
@@ -940,6 +1006,32 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
           )
         })()
       ) : null}
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+      {importConfirmContent != null && (
+        <AlertDialog open>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t('stage.toolbar.importFile.confirmTitle')}</AlertDialogTitle>
+              <p className="text-sm text-muted-foreground">
+                {t('stage.toolbar.importFile.confirmMessage')}
+              </p>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={handleCancelImport}>
+                {t('stage.toolbar.importFile.cancel')}
+              </AlertDialogCancel>
+              <AlertDialogAction onClick={handleConfirmImport}>
+                {t('stage.toolbar.importFile.confirm')}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   )
 }

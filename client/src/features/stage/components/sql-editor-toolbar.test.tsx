@@ -39,6 +39,7 @@ describe('SqlEditorToolbar', () => {
     expect(screen.getByRole('button', { name: t('stage.toolbar.run') })).toBeTruthy()
     expect(screen.queryByRole('button', { name: t('stage.toolbar.cancel') })).toBeNull()
     expect(screen.getByRole('button', { name: t('stage.toolbar.format') })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: t('stage.toolbar.importFile') })).toBeNull()
     expect(screen.queryByRole('button', { name: /Save/i })).toBeNull()
     expect(screen.queryByRole('button', { name: /More actions/i })).toBeNull()
     expect(screen.getByTestId('sql-editor-toolbar').textContent).toMatch(
@@ -104,5 +105,42 @@ describe('SqlEditorToolbar', () => {
     )
 
     expect(screen.getByRole('button', { name: t('stage.toolbar.explain') })).toBeDisabled()
+  })
+
+  it('renders Import File button when onImportFile prop is provided', () => {
+    const onImportFile = vi.fn()
+
+    render(
+      <SqlEditorToolbar
+        canRun
+        isRunning={false}
+        onCancel={onCancel}
+        onFormat={onFormat}
+        onRun={onRun}
+        onImportFile={onImportFile}
+        contextControls={<span>context controls</span>}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: t('stage.toolbar.importFile') })).toBeTruthy()
+  })
+
+  it('calls onImportFile when import button is clicked', () => {
+    const onImportFile = vi.fn()
+
+    render(
+      <SqlEditorToolbar
+        canRun
+        isRunning={false}
+        onCancel={onCancel}
+        onFormat={onFormat}
+        onRun={onRun}
+        onImportFile={onImportFile}
+        contextControls={<span>context controls</span>}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: t('stage.toolbar.importFile') }))
+    expect(onImportFile).toHaveBeenCalledTimes(1)
   })
 })
