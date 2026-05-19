@@ -6,6 +6,39 @@ import { mountToolRecorder } from './fixtures/mcp-tool-recorder'
 const CONN_ID = 'cb2d0259-edd5-4091-873b-6cfee09eec1a'
 const DB = 'e2e_sql_gate'
 
+async function ensureDb(client: ReturnType<typeof adapterClient>) {
+  await client.executeSql({
+    connectionId: CONN_ID,
+    sql: `CREATE DATABASE IF NOT EXISTS ${DB}`,
+    source: 'user',
+  })
+  await client.executeSql({
+    connectionId: CONN_ID,
+    database: DB,
+    sql: `CREATE TABLE IF NOT EXISTS e2e_verify (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100), age INT)`,
+    source: 'user',
+  })
+  // Seed at least one row so SELECT tests can pass
+  await client.executeSql({
+    connectionId: CONN_ID,
+    database: DB,
+    sql: `INSERT IGNORE INTO e2e_verify (name, age) VALUES ('seed', 1)`,
+    source: 'user',
+    confirmed: true,
+    riskAck: 'L2',
+  }).catch(() => { /* row may already exist */ })
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Setup: ensure test database and base table exist
+// ═══════════════════════════════════════════════════════════════════════
+test.describe('Setup', () => {
+  test('create e2e test database and tables', async ({ request }) => {
+    const client = adapterClient(request)
+    await ensureDb(client)
+  })
+})
+
 // ═══════════════════════════════════════════════════════════════════════
 // Group 1: REST API Contract Tests (no AI needed)
 // Verifies the SQL execution behavior via /api/sql/execute directly.
@@ -156,18 +189,36 @@ test.describe('SQL Gate Simplification — REST API Contract', () => {
 })
 
 // ═══════════════════════════════════════════════════════════════════════
-// Group 2: AI Chat Flow Tests (requires DATATALK_REAL_OPENCODE_MODEL)
+// Group 2: AI Chat Flow Tests
 // Verifies the full chat → AI → MCP → result flow through the browser.
 // ═══════════════════════════════════════════════════════════════════════
 test.describe('SQL Gate Simplification — AI Chat Flow', () => {
-  test.setTimeout(120_000)
+  test.setTimeout(180_000)
 
   let chat: ChatPanelPage
 
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, request }) => {
+    // Ensure database + base tables exist via REST API
+    await ensureDb(adapterClient(request))
+
     await page.goto('/')
     chat = new ChatPanelPage(page)
     await page.waitForSelector('textarea', { timeout: 15_000 })
+
+    // Pre-configure data context so AI doesn't waste time exploring
+    const sessionId = await page.evaluate(() => {
+      const store = (window as any).__DT_E2E__?.session?.()
+      return store?.activeSessionId as string | null
+    })
+    if (sessionId) {
+      const client = adapterClient(page.context().request)
+      await client.setDataContext(sessionId, {
+        connectionId: CONN_ID,
+        database: DB,
+        schema: null,
+        selectedLevel: 'database',
+      })
+    }
   })
 
   test('AI executes SELECT without any confirmation dialog', async ({ page }) => {
@@ -221,7 +272,15 @@ test.describe('SQL Gate Simplification — AI Chat Flow', () => {
     expect(verifyBody.results[0].rows.length).toBeGreaterThanOrEqual(1)
   })
 
-  test('AI executes INSERT directly without editor popup', async ({ page }) => {
+  test('AI executes INSERT directly without editor popup', async ({ page, request }) => {
+    // Ensure e2e_ai_test table exists for INSERT
+    await adapterClient(request).executeSql({
+      connectionId: CONN_ID,
+      database: DB,
+      sql: `CREATE TABLE IF NOT EXISTS e2e_ai_test (id INT PRIMARY KEY, name VARCHAR(100))`,
+      source: 'user',
+    })
+
     const recorder = await mountToolRecorder(page)
     await chat.sendMessage(`往 ${DB}.e2e_ai_test 表插入一条数据: name='test_insert'`)
     await chat.waitForAiResponse()
@@ -231,7 +290,23 @@ test.describe('SQL Gate Simplification — AI Chat Flow', () => {
     expect(calls[calls.length - 1].status).toBe('completed')
   })
 
-  test('AI handles DELETE with conversational confirmation', async ({ page }) => {
+  test('AI handles DELETE with conversational confirmation', async ({ page, request }) => {
+    // Ensure test data exists
+    await adapterClient(request).executeSql({
+      connectionId: CONN_ID,
+      database: DB,
+      sql: `CREATE TABLE IF NOT EXISTS e2e_ai_test (id INT PRIMARY KEY, name VARCHAR(100))`,
+      source: 'user',
+    })
+    await adapterClient(request).executeSql({
+      connectionId: CONN_ID,
+      database: DB,
+      sql: `INSERT IGNORE INTO e2e_ai_test (id, name) VALUES (1, 'test_insert')`,
+      source: 'user',
+      confirmed: true,
+      riskAck: 'L2',
+    }).catch(() => {})
+
     const recorder = await mountToolRecorder(page)
     await chat.sendMessage(`删除 ${DB}.e2e_ai_test 中 name='test_insert' 的记录`)
     await chat.waitForAiResponse()
@@ -245,7 +320,23 @@ test.describe('SQL Gate Simplification — AI Chat Flow', () => {
     expect(await alertDialog.count()).toBe(0)
   })
 
-  test('AI executes UPDATE directly without editor popup', async ({ page }) => {
+  test('AI executes UPDATE directly without editor popup', async ({ page, request }) => {
+    // Ensure test data exists
+    await adapterClient(request).executeSql({
+      connectionId: CONN_ID,
+      database: DB,
+      sql: `CREATE TABLE IF NOT EXISTS e2e_ai_test (id INT PRIMARY KEY, name VARCHAR(100))`,
+      source: 'user',
+    })
+    await adapterClient(request).executeSql({
+      connectionId: CONN_ID,
+      database: DB,
+      sql: `INSERT IGNORE INTO e2e_ai_test (id, name) VALUES (1, 'test_insert')`,
+      source: 'user',
+      confirmed: true,
+      riskAck: 'L2',
+    }).catch(() => {})
+
     const recorder = await mountToolRecorder(page)
     await chat.sendMessage(`把 ${DB}.e2e_ai_test 中 name='test_insert' 改成 name='test_updated'`)
     await chat.waitForAiResponse()
