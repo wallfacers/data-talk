@@ -36,6 +36,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class DataExportService {
@@ -54,9 +56,11 @@ public class DataExportService {
     private final ScriptDataWriteService writeService;
     private final SessionBusRegistry sessionBusRegistry;
     private final CalciteSqlRiskAnalyzer sqlRiskAnalyzer;
+    private final ConcurrentHashMap<String, String> exportSessionMap = new ConcurrentHashMap<>();
 
     public record ExportResult(String exportId, String downloadUrl, int rowCount, long fileSizeBytes,
-                               String format, String status, List<String> warnings) {}
+                               String format, String status, List<String> warnings,
+                               String originSessionId) {}
 
     public record ExportError(String errorCode, String message) {}
 
@@ -73,6 +77,7 @@ public class DataExportService {
         String effectiveFormat = (format != null) ? format.toLowerCase() : "csv";
         int effectiveMaxRows = (maxRows != null && maxRows > 0) ? maxRows : DEFAULT_MAX_ROWS;
         String exportId = java.util.UUID.randomUUID().toString();
+        exportSessionMap.put(exportId, sessionId);
 
         // Determine effective SQL
         String effectiveSql;
@@ -116,7 +121,7 @@ public class DataExportService {
         if (rowCount < ASYNC_THRESHOLD) {
             // Synchronous export
             ExportResult result = doExport(connectionId, effectiveSql, effectiveFormat, tableName,
-                exportFile, effectiveMaxRows, exportId, effectiveFilename, warnings);
+                exportFile, effectiveMaxRows, exportId, effectiveFilename, warnings, sessionId);
             log.info("Synchronous export completed: exportId={}, format={}, rows={}", exportId, effectiveFormat, result.rowCount);
             return result;
         } else {
@@ -130,15 +135,16 @@ public class DataExportService {
             final List<String> fWarnings = List.copyOf(warnings);
 
             log.info("Starting async export: exportId={}, estimated rows={}", exportId, rowCount);
+            final String fSessionId = sessionId;
             Thread.startVirtualThread(() -> {
                 try {
                     ExportResult result = doExport(connectionId, fSql, fFormat, fTableName,
-                        fExportFile, fMaxRows, exportId, fFilename, fWarnings);
+                        fExportFile, fMaxRows, exportId, fFilename, fWarnings, fSessionId);
                     log.info("Async export completed: exportId={}, rows={}", exportId, result.rowCount);
 
-                    SessionBus bus = sessionBusRegistry.getOrCreate(sessionId);
+                    SessionBus bus = sessionBusRegistry.getOrCreate(fSessionId);
                     bus.publish(new DtEvent.ExportCompleted(
-                        sessionId, exportId, result.downloadUrl,
+                        fSessionId, exportId, result.downloadUrl,
                         result.rowCount, result.format, result.fileSizeBytes
                     ));
                 } catch (Exception e) {
@@ -147,13 +153,13 @@ public class DataExportService {
             });
 
             return new ExportResult(exportId, "/api/exports/" + exportId + "/download",
-                0, 0, effectiveFormat, "processing", fWarnings);
+                0, 0, effectiveFormat, "processing", fWarnings, sessionId);
         }
     }
 
     private ExportResult doExport(String connectionId, String sql, String format, String tableName,
                                   Path exportFile, int maxRows, String exportId, String filename,
-                                  List<String> warnings) {
+                                  List<String> warnings, String sessionId) {
         try {
             Files.createDirectories(exportFile.getParent());
             String kind = writeService.resolveKind(connectionId);
@@ -180,7 +186,7 @@ public class DataExportService {
             int actualRows = countWrittenRows(exportFile, format, maxRows);
 
             return new ExportResult(exportId, "/api/exports/" + exportId + "/download",
-                actualRows, fileSize, format, "completed", warnings);
+                actualRows, fileSize, format, "completed", warnings, sessionId);
         } catch (Exception e) {
             throw new RuntimeException("Export failed: " + e.getMessage(), e);
         }
@@ -648,6 +654,21 @@ public class DataExportService {
     }
 
     /**
+     * Return the origin session ID for a given export, or null if not found.
+     */
+    public String getOriginSessionId(String exportId) {
+        return exportSessionMap.get(exportId);
+    }
+
+    /** Return all export IDs created from the given session. */
+    public List<String> findExportIdsByOriginSession(String sessionId) {
+        return exportSessionMap.entrySet().stream()
+                .filter(e -> sessionId.equals(e.getValue()))
+                .map(Map.Entry::getKey)
+                .toList();
+    }
+
+    /**
      * Clean up old export directories (older than 1 hour).
      */
     public void cleanupOldExports() {
@@ -664,6 +685,7 @@ public class DataExportService {
                                 Files.deleteIfExists(file);
                                 // Try to delete the directory too if empty
                                 Files.deleteIfExists(entry);
+                                exportSessionMap.remove(entry.getFileName().toString());
                                 log.debug("Cleaned up old export: {}", entry);
                             }
                         }

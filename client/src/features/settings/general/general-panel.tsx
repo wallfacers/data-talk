@@ -62,7 +62,7 @@ function clearAllLocalSessionResources() {
     activeBySession: new Map(),
     manualBySession: new Map(),
   })
-  useStageStore.getState().resetSessionResources()
+  useStageStore.getState().closeSessionTabs()
   useSessionStore.setState({
     activeSessionId: null,
     modeBySession: new Map(),

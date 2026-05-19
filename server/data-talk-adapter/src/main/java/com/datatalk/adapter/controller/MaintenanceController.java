@@ -2,6 +2,7 @@ package com.datatalk.adapter.controller;
 
 import com.datatalk.application.fileartifact.FileArtifactRepository;
 import com.datatalk.application.fileartifact.FileArtifactService;
+import com.datatalk.application.fileartifact.ResourceDirectoryService;
 import com.datatalk.application.fileartifact.SessionWorkdirRoot;
 import com.datatalk.application.housekeeping.HousekeepingScheduler;
 import com.datatalk.domain.fileartifact.FileArtifact;
@@ -23,16 +24,19 @@ public class MaintenanceController {
     private final FileArtifactRepository fileArtifacts;
     private final HousekeepingScheduler scheduler;
     private final FileArtifactService fileArtifactService;
+    private final ResourceDirectoryService resourceDirectoryService;
 
     public MaintenanceController(
             SessionWorkdirRoot workdirRoot,
             FileArtifactRepository fileArtifacts,
             HousekeepingScheduler scheduler,
-            FileArtifactService fileArtifactService) {
+            FileArtifactService fileArtifactService,
+            ResourceDirectoryService resourceDirectoryService) {
         this.workdirRoot = workdirRoot;
         this.fileArtifacts = fileArtifacts;
         this.scheduler = scheduler;
         this.fileArtifactService = fileArtifactService;
+        this.resourceDirectoryService = resourceDirectoryService;
     }
 
     @GetMapping("/storage-overview")
@@ -69,11 +73,13 @@ public class MaintenanceController {
         total += legacySize;
         breakdown.put("legacy", new StorageOverviewDto.BreakdownItem(legacySize, "_legacy"));
 
+        Map<String, StorageOverviewDto.ResourceDirSummary> resourceDirectories = resourceDirectoryService.getResourceOverview();
         return ResponseEntity.ok(new StorageOverviewDto(
                 root.toAbsolutePath().normalize().toString(),
                 total,
                 breakdown,
-                null)); // lastHousekeepingRunAt — read from housekeeping.log if exists
+                null, // lastHousekeepingRunAt — read from housekeeping.log if exists
+                resourceDirectories));
     }
 
     @PostMapping("/cleanup-trash")
@@ -124,6 +130,70 @@ public class MaintenanceController {
                     ResponseEntity.status(503).body(Map.of("error", "mv_failed", "detail", mf.detail()));
         };
     }
+
+    // ── Resource directory list endpoints (task 2.3) ──
+
+    @GetMapping("/dashboards")
+    public ResponseEntity<List<DashboardResourceDto>> dashboards() {
+        return ResponseEntity.ok(resourceDirectoryService.getDashboards(200));
+    }
+
+    @GetMapping("/reports")
+    public ResponseEntity<List<ReportResourceDto>> reports() {
+        return ResponseEntity.ok(resourceDirectoryService.getReports(200));
+    }
+
+    @GetMapping("/exports")
+    public ResponseEntity<List<ExportResourceDto>> exports() {
+        return ResponseEntity.ok(resourceDirectoryService.getExports(200));
+    }
+
+    @GetMapping("/semantic")
+    public ResponseEntity<List<SemanticResourceDto>> semantic() {
+        return ResponseEntity.ok(resourceDirectoryService.getSemantic(200));
+    }
+
+    @GetMapping("/uploads")
+    public ResponseEntity<List<UploadResourceDto>> uploads() {
+        return ResponseEntity.ok(resourceDirectoryService.getUploads(200));
+    }
+
+    // ── Resource directory delete endpoints (task 2.4) ──
+
+    @DeleteMapping("/dashboards/{id}")
+    public ResponseEntity<Void> deleteDashboard(@PathVariable String id) {
+        resourceDirectoryService.deleteDashboard(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/reports/{id}")
+    public ResponseEntity<Void> deleteReport(@PathVariable String id) {
+        resourceDirectoryService.deleteReport(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/exports/{exportId}")
+    public ResponseEntity<Void> deleteExport(@PathVariable String exportId) {
+        resourceDirectoryService.deleteExport(exportId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/semantic/{domain}")
+    public ResponseEntity<Void> deleteSemantic(
+            @PathVariable String domain,
+            @RequestParam String connectionId) {
+        resourceDirectoryService.deleteSemantic(domain, connectionId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/uploads/{id}")
+    public ResponseEntity<Void> deleteUpload(@PathVariable String id) {
+        resourceDirectoryService.deleteUpload(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ── Resource directory preview endpoints (task 3.2) ──
+    // TODO: wire up ResourcePreviewService when implemented
 
     private long dirSize(Path dir) {
         if (!Files.isDirectory(dir)) return 0;

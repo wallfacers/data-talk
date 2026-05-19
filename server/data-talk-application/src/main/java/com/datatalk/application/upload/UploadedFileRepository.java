@@ -15,4 +15,7 @@ public interface UploadedFileRepository {
     void deleteById(String id);
 
     List<UploadedFile> findOlderThan(Instant cutoff);
+
+    /** Return IDs of all uploaded files associated with the given session. */
+    List<String> findIdsBySessionId(String sessionId);
 }

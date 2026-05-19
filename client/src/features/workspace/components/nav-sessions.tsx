@@ -43,6 +43,7 @@ import {
 import { useOpenBlankSession } from '@/features/session/hooks/use-open-blank-session'
 import { displaySessionTitle } from '@/features/session/session-title'
 import { useSessionStore } from '@/stores/session-store'
+import { useStageStore } from '@/stores/stage-store'
 import { renameSession, deleteSession, type Session, type BlockedByCandidates } from '@/services/api/session'
 import { useI18n } from '@/i18n/use-i18n'
 import { DeleteSessionModal, type DeleteSessionCandidate } from '@/features/session/components/delete-session-modal'
@@ -152,6 +153,7 @@ export function NavSessions() {
       if (useSessionStore.getState().activeSessionId === id) {
         void openBlankSession(id)
       }
+      useStageStore.getState().closeSessionTabs(id)
       toast.success(t('common.deleted'))
     },
   })

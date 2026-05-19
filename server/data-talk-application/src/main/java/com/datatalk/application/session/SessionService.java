@@ -3,12 +3,14 @@ package com.datatalk.application.session;
 import com.datatalk.application.fileartifact.FileArtifactRepository;
 import com.datatalk.application.fileartifact.SessionWorkdirService;
 import com.datatalk.application.i18n.Translator;
+import com.datatalk.application.importexport.DataExportService;
 import com.datatalk.application.opencode.OpenCodeGateway;
 import com.datatalk.application.opencode.OpenCodeSessionMap;
 import com.datatalk.application.persistence.ConnectionRepository;
 import com.datatalk.application.persistence.SessionRecord;
 import com.datatalk.application.persistence.SessionRepository;
 import com.datatalk.application.stage.ActiveSessionRegistry;
+import com.datatalk.application.upload.UploadedFileRepository;
 import com.datatalk.domain.fileartifact.FileArtifact;
 import com.datatalk.domain.util.Strings;
 import org.slf4j.Logger;
@@ -36,6 +38,8 @@ public class SessionService {
     private final Translator translator;
     private final SessionWorkdirService workdirs;
     private final FileArtifactRepository fileArtifacts;
+    private final UploadedFileRepository uploadedFiles;
+    private final DataExportService dataExportService;
     private final ActiveSessionRegistry activeSessions;
 
     public SessionService(ConnectionRepository connections, SessionRepository repo, Clock clock,
@@ -43,6 +47,8 @@ public class SessionService {
                           SessionBusRegistry buses, Translator translator,
                           SessionWorkdirService workdirs,
                           FileArtifactRepository fileArtifacts,
+                          UploadedFileRepository uploadedFiles,
+                          DataExportService dataExportService,
                           ActiveSessionRegistry activeSessions) {
         this.connections = connections;
         this.repo = repo;
@@ -53,6 +59,8 @@ public class SessionService {
         this.translator = translator;
         this.workdirs = workdirs;
         this.fileArtifacts = fileArtifacts;
+        this.uploadedFiles = uploadedFiles;
+        this.dataExportService = dataExportService;
         this.activeSessions = activeSessions;
     }
 
@@ -122,8 +130,8 @@ public class SessionService {
                 return new DeleteOutcome.BlockedByCandidates(id, candidates);
             }
         }
-        deleteRecord(rec);
-        return new DeleteOutcome.Ok();
+        SessionResourceRefs refs = deleteRecord(rec);
+        return new DeleteOutcome.Ok(refs);
     }
 
     /**
@@ -142,7 +150,9 @@ public class SessionService {
     public void deleteAll() {
         List<SessionRecord> sessions = repo.listAll();
         for (SessionRecord session : sessions) {
-            deleteRecord(session);
+            SessionResourceRefs refs = deleteRecord(session);
+            log.info("[session] deleteAll: session={} uploads={} exports={}",
+                refs.sessionId(), refs.uploadIds().size(), refs.exportIds().size());
         }
     }
 
@@ -157,8 +167,14 @@ public class SessionService {
         return null;
     }
 
-    private void deleteRecord(SessionRecord rec) {
+    private SessionResourceRefs deleteRecord(SessionRecord rec) {
         String id = rec.id();
+
+        // Collect resource refs BEFORE deletion: uploaded_file FK ON DELETE SET NULL
+        // will clear session_id on affected rows, so we must capture the IDs now.
+        List<String> uploadIds = uploadedFiles.findIdsBySessionId(id);
+        List<String> exportIds = dataExportService.findExportIdsByOriginSession(id);
+
         // Order matters: events FK → sessions(id) ON DELETE CASCADE. If we delete
         // the row first, late events on the bus's flusher thread (or new ones
         // pushed by OpenCodeEventLoop) try to INSERT and trip the FK constraint.
@@ -179,6 +195,8 @@ public class SessionService {
         cleanupWorkdir(id);
         activeSessions.clearIfActive(id);
         // FK ON DELETE CASCADE handles artifacts, action_invocations, events, query_results.
+
+        return new SessionResourceRefs(id, exportIds, uploadIds);
     }
 
     private void cleanupFileArtifacts(String sessionId) {

@@ -31,7 +31,7 @@ class ExportDataActionHandlerTest {
     void sqlBasedExport_delegatesCorrectly_andReturnsResultMap() {
         DataExportService.ExportResult serviceResult = new DataExportService.ExportResult(
             "export-123", "/api/exports/export-123/download", 42, 2048L,
-            "csv", "completed", List.of()
+            "csv", "completed", List.of(), null
         );
         when(exportService.export(eq("session-1"), eq("conn-1"), eq("SELECT * FROM users"),
             isNull(), eq("csv"), isNull(), isNull()))
@@ -57,7 +57,7 @@ class ExportDataActionHandlerTest {
     void tableNameExport_delegatesCorrectly() {
         DataExportService.ExportResult serviceResult = new DataExportService.ExportResult(
             "export-456", "/api/exports/export-456/download", 100, 8192L,
-            "json", "completed", List.of("Result set limited to 100 rows")
+            "json", "completed", List.of("Result set limited to 100 rows"), null
         );
         when(exportService.export(eq("session-1"), eq("conn-1"), isNull(),
             eq("orders"), eq("json"), isNull(), isNull()))
@@ -124,7 +124,7 @@ class ExportDataActionHandlerTest {
     void optionsArePassedCorrectly() {
         DataExportService.ExportResult serviceResult = new DataExportService.ExportResult(
             "export-789", "/api/exports/export-789/download", 500, 4096L,
-            "xlsx", "completed", List.of()
+            "xlsx", "completed", List.of(), null
         );
         when(exportService.export(eq("session-1"), eq("conn-1"), eq("SELECT * FROM products"),
             isNull(), eq("xlsx"), eq("my-export"), eq(1000)))
@@ -148,7 +148,7 @@ class ExportDataActionHandlerTest {
     void connectionIdFromSource_takesPrecedenceOverContext() {
         DataExportService.ExportResult serviceResult = new DataExportService.ExportResult(
             "export-override", "/api/exports/export-override/download", 10, 512L,
-            "csv", "completed", List.of()
+            "csv", "completed", List.of(), null
         );
         when(exportService.export(eq("session-1"), eq("other-conn"), eq("SELECT 1"),
             isNull(), eq("csv"), isNull(), isNull()))
@@ -170,7 +170,7 @@ class ExportDataActionHandlerTest {
     void fallbackConnectionId_fromContext_whenSourceOmitsIt() {
         DataExportService.ExportResult serviceResult = new DataExportService.ExportResult(
             "export-fallback", "/api/exports/export-fallback/download", 5, 256L,
-            "csv", "completed", List.of()
+            "csv", "completed", List.of(), null
         );
         when(exportService.export(eq("session-1"), eq("conn-1"), eq("SELECT 1"),
             isNull(), eq("csv"), isNull(), isNull()))
@@ -192,7 +192,7 @@ class ExportDataActionHandlerTest {
     void processingStatus_returnsNullDownloadUrl() {
         DataExportService.ExportResult serviceResult = new DataExportService.ExportResult(
             "export-async", "/api/exports/export-async/download", 0, 0L,
-            "csv", "processing", List.of("Result set has 50000 rows, limited to 1000000")
+            "csv", "processing", List.of("Result set has 50000 rows, limited to 1000000"), null
         );
         when(exportService.export(anyString(), anyString(), anyString(), any(),
             eq("csv"), any(), any()))

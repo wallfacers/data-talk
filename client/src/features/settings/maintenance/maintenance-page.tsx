@@ -4,11 +4,22 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { useI18n } from '@/i18n/use-i18n'
 import { toast } from 'sonner'
-import { getStorageOverview, cleanupTrash, cleanupLegacy, getOrphanedFiles, reattachFile, type OrphanedFileDto } from '@/services/api/maintenance'
+import {
+  getStorageOverview, cleanupTrash, cleanupLegacy, getOrphanedFiles, reattachFile,
+  getDashboards, getReports, getExports, getSemantic, getUploads,
+  deleteDashboard, deleteReport, deleteExport, deleteSemantic, deleteUpload,
+  type OrphanedFileDto, type DashboardResourceDto, type ReportResourceDto, type ExportResourceDto,
+  type SemanticResourceDto, type UploadResourceDto, type StorageOverviewDto,
+} from '@/services/api/maintenance'
 import { discardFile } from '@/services/api/file-artifacts'
 import { useConnectionStore } from '@/features/connection/store'
 import { useState } from 'react'
 import { RefreshCw, ArrowLeft } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +36,9 @@ function fmtBytes(n: number) {
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
   return `${(n / (1024 * 1024)).toFixed(1)} MB`
 }
+
+const RESOURCE_TABS = ['dashboards', 'reports', 'exports', 'semantic', 'uploads'] as const
+type ResourceTab = typeof RESOURCE_TABS[number]
 
 export function MaintenancePage() {
   const { t } = useI18n()
@@ -84,7 +98,7 @@ export function MaintenancePage() {
   const orphanCount = orphans.data?.length ?? 0
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-5xl">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">{t('maintenance.tab.title')}</h1>
         <Button variant="ghost" size="sm" onClick={() => qc.invalidateQueries({ queryKey: ['maintenance'] })}>
@@ -204,6 +218,9 @@ export function MaintenancePage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Resource Directory Section */}
+      <ResourceDirectoryView overview={d} />
     </div>
   )
 }
@@ -365,6 +382,523 @@ function OrphanArchivesView({
           ))}
         </tbody>
       </table>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Resource Directory View
+// ---------------------------------------------------------------------------
+
+export function ResourceDirectoryView({ overview }: { overview: StorageOverviewDto }) {
+  const { t } = useI18n()
+  const qc = useQueryClient()
+  const [activeResourceTab, setActiveResourceTab] = useState<ResourceTab>('dashboards')
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [confirmDeleteBulkOpen, setConfirmDeleteBulkOpen] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<{ key: string; label: string } | null>(null)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const resourceQuery = useQuery<any[]>({
+    queryKey: ['maintenance', 'resources', activeResourceTab],
+    queryFn: () => {
+      switch (activeResourceTab) {
+        case 'dashboards': return getDashboards()
+        case 'reports': return getReports()
+        case 'exports': return getExports()
+        case 'semantic': return getSemantic()
+        case 'uploads': return getUploads()
+      }
+    },
+  })
+
+  // ---- item identity helpers ----
+
+  function getItemKey(item: unknown): string {
+    switch (activeResourceTab) {
+      case 'dashboards': return (item as DashboardResourceDto).id
+      case 'reports': return (item as ReportResourceDto).id
+      case 'exports': return (item as ExportResourceDto).exportId
+      case 'semantic': {
+        const s = item as SemanticResourceDto
+        return `${s.domain}::${s.connectionId}`
+      }
+      case 'uploads': return (item as UploadResourceDto).id
+    }
+  }
+
+  function getItemLabel(item: unknown): string {
+    switch (activeResourceTab) {
+      case 'dashboards': {
+        const d = item as DashboardResourceDto
+        return d.title || d.filename
+      }
+      case 'reports': return (item as ReportResourceDto).title
+      case 'exports': return (item as ExportResourceDto).filename
+      case 'semantic': {
+        const s = item as SemanticResourceDto
+        return `${s.domain} / ${s.connectionName}`
+      }
+      case 'uploads': return (item as UploadResourceDto).filename
+    }
+  }
+
+  async function deleteByKey(key: string): Promise<void> {
+    switch (activeResourceTab) {
+      case 'dashboards': return deleteDashboard(key)
+      case 'reports': return deleteReport(key)
+      case 'exports': return deleteExport(key)
+      case 'semantic': {
+        const idx = key.indexOf('::')
+        return deleteSemantic(key.slice(0, idx), key.slice(idx + 2))
+      }
+      case 'uploads': return deleteUpload(key)
+    }
+  }
+
+  // ---- selection ----
+
+  function toggleItem(key: string) {
+    setSelected(s => { const n = new Set(s); if (n.has(key)) n.delete(key); else n.add(key); return n })
+  }
+
+  // ---- delete handlers ----
+
+  async function handleSingleDelete() {
+    if (!deleteTarget) return
+    try {
+      await deleteByKey(deleteTarget.key)
+      toast.success(t('maintenance.resources.confirmDelete.description'))
+      qc.invalidateQueries({ queryKey: ['maintenance', 'resources', activeResourceTab] })
+      qc.invalidateQueries({ queryKey: ['maintenance', 'storage-overview'] })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err))
+    }
+    setConfirmDeleteOpen(false)
+    setDeleteTarget(null)
+  }
+
+  async function handleBulkDelete() {
+    let ok = 0
+    for (const key of selected) {
+      try { await deleteByKey(key); ok++ } catch { /* skip */ }
+    }
+    toast.success(t('maintenance.resources.confirmDeleteBulk.description', { count: ok }))
+    setSelected(new Set())
+    setConfirmDeleteBulkOpen(false)
+    qc.invalidateQueries({ queryKey: ['maintenance', 'resources', activeResourceTab] })
+    qc.invalidateQueries({ queryKey: ['maintenance', 'storage-overview'] })
+  }
+
+  // ---- formatting helpers ----
+
+  function formatDate(ts: number): string {
+    return new Date(ts).toLocaleDateString()
+  }
+
+  function formatExpiry(ts: number): { text: string; urgent: boolean } {
+    const remaining = ts - Date.now()
+    const mins = Math.floor(remaining / 60000)
+    if (remaining <= 0) return { text: t('maintenance.resources.badge.expired'), urgent: true }
+    if (mins < 10) return { text: t('maintenance.resources.badge.expiringSoon'), urgent: true }
+    return { text: new Date(ts).toLocaleDateString(), urgent: false }
+  }
+
+  function getFormatBadgeVariant(f: string): 'default' | 'secondary' | 'destructive' | 'outline' {
+    const lower = f.toLowerCase()
+    if (lower === 'pdf') return 'destructive'
+    if (lower === 'md' || lower === 'markdown') return 'secondary'
+    return 'outline'
+  }
+
+  function simplifyMime(mime: string): string {
+    const parts = mime.split('/')
+    if (parts.length !== 2) return mime
+    const [type, sub] = parts
+    if (type === 'text' && sub === 'csv') return 'CSV'
+    if (type === 'text' && sub === 'plain') return 'Text'
+    if (type === 'application' && sub === 'json') return 'JSON'
+    if (type === 'application' && (sub.includes('spreadsheet') || sub.includes('excel'))) return 'Excel'
+    if (type === 'image') return `${sub.toUpperCase()} Image`
+    return `${type}/${sub}`
+  }
+
+  // ---- data ----
+
+  const data = resourceQuery.data ?? []
+  const isLoading = resourceQuery.isLoading
+  const allSelected = data.length > 0 && selected.size === data.length
+
+  // ---- conditional column rendering ----
+
+  function renderMainCell(item: unknown) {
+    switch (activeResourceTab) {
+      case 'dashboards': {
+        const d = item as DashboardResourceDto
+        return (
+          <div>
+            <div className="text-sm text-strong">{d.title || d.filename}</div>
+            {d.originSessionId && (
+              <div className="text-xs text-muted-foreground">
+                {t('maintenance.resources.originSession', { name: d.originSessionId })}
+              </div>
+            )}
+          </div>
+        )
+      }
+      case 'reports': {
+        const r = item as ReportResourceDto
+        return (
+          <div>
+            <div className="text-sm text-strong">{r.title}</div>
+            {r.originSessionId && (
+              <div className="text-xs text-muted-foreground">
+                {t('maintenance.resources.originSession', { name: r.originSessionId })}
+              </div>
+            )}
+          </div>
+        )
+      }
+      case 'exports': {
+        const e = item as ExportResourceDto
+        return <span className="text-sm text-strong">{e.filename}</span>
+      }
+      case 'semantic': {
+        const s = item as SemanticResourceDto
+        return (
+          <div>
+            <div className="text-sm text-strong">{s.domain}</div>
+            <div className="text-xs text-muted-foreground">{s.connectionName}</div>
+          </div>
+        )
+      }
+      case 'uploads': {
+        const u = item as UploadResourceDto
+        return <span className="text-sm text-strong">{u.filename}</span>
+      }
+    }
+  }
+
+  function renderExtraCells(item: unknown) {
+    switch (activeResourceTab) {
+      case 'dashboards': {
+        const d = item as DashboardResourceDto
+        return (
+          <>
+            <TableCell className="text-sm text-muted-foreground">{d.widgetCount}</TableCell>
+            <TableCell className="font-mono text-sm text-muted-foreground">{fmtBytes(d.sizeBytes)}</TableCell>
+            <TableCell className="text-sm text-muted-foreground">{formatDate(d.createdAt)}</TableCell>
+          </>
+        )
+      }
+      case 'reports': {
+        const r = item as ReportResourceDto
+        return (
+          <>
+            <TableCell>
+              <div className="flex gap-1 flex-wrap">
+                {r.availableFormats.map(f => (
+                  <Badge key={f} variant={getFormatBadgeVariant(f)} className="text-[11px]">{f.toUpperCase()}</Badge>
+                ))}
+              </div>
+            </TableCell>
+            <TableCell className="font-mono text-sm text-muted-foreground">{fmtBytes(r.sizeBytes)}</TableCell>
+            <TableCell className="text-sm text-muted-foreground">{formatDate(r.createdAt)}</TableCell>
+          </>
+        )
+      }
+      case 'exports': {
+        const e = item as ExportResourceDto
+        const expiry = formatExpiry(e.expiresAt)
+        return (
+          <>
+            <TableCell>
+              <Badge variant={getFormatBadgeVariant(e.format)} className="text-[11px]">{e.format.toUpperCase()}</Badge>
+            </TableCell>
+            <TableCell className="font-mono text-sm text-muted-foreground">{fmtBytes(e.sizeBytes)}</TableCell>
+            <TableCell className="font-mono text-sm text-muted-foreground">{e.rowCount.toLocaleString()}</TableCell>
+            <TableCell>
+              <span className={cn('text-sm', expiry.urgent ? 'text-red-500' : 'text-muted-foreground')}>
+                {expiry.text}
+              </span>
+            </TableCell>
+          </>
+        )
+      }
+      case 'semantic': {
+        const s = item as SemanticResourceDto
+        return (
+          <>
+            <TableCell>
+              <Badge
+                variant={s.status === 'active' ? 'default' : 'secondary'}
+                className="text-[11px]"
+              >
+                {s.status === 'active' ? t('maintenance.resources.badge.active') : t('maintenance.resources.badge.pending')}
+              </Badge>
+            </TableCell>
+            <TableCell className="font-mono text-sm text-muted-foreground">{fmtBytes(s.sizeBytes)}</TableCell>
+            <TableCell className="text-sm text-muted-foreground">{formatDate(s.updatedAt)}</TableCell>
+          </>
+        )
+      }
+      case 'uploads': {
+        const u = item as UploadResourceDto
+        const expiry = formatExpiry(u.expiresAt)
+        return (
+          <>
+            <TableCell className="text-sm text-muted-foreground">{simplifyMime(u.mimeType)}</TableCell>
+            <TableCell className="font-mono text-sm text-muted-foreground">{fmtBytes(u.sizeBytes)}</TableCell>
+            <TableCell>
+              <span className={cn('text-sm', expiry.urgent ? 'text-red-500' : 'text-muted-foreground')}>
+                {expiry.text}
+              </span>
+            </TableCell>
+          </>
+        )
+      }
+    }
+  }
+
+  function renderHeaders() {
+    switch (activeResourceTab) {
+      case 'dashboards':
+        return (
+          <>
+            <TableHead>{t('maintenance.resources.column.name')}</TableHead>
+            <TableHead className="w-20">{t('maintenance.resources.column.widgets')}</TableHead>
+            <TableHead className="w-24">{t('maintenance.resources.column.size')}</TableHead>
+            <TableHead className="w-28">{t('maintenance.resources.column.createdAt')}</TableHead>
+            <TableHead className="w-32">{t('maintenance.resources.column.actions')}</TableHead>
+          </>
+        )
+      case 'reports':
+        return (
+          <>
+            <TableHead>{t('maintenance.resources.column.title')}</TableHead>
+            <TableHead>{t('maintenance.resources.column.formats')}</TableHead>
+            <TableHead className="w-24">{t('maintenance.resources.column.size')}</TableHead>
+            <TableHead className="w-28">{t('maintenance.resources.column.createdAt')}</TableHead>
+            <TableHead className="w-32">{t('maintenance.resources.column.actions')}</TableHead>
+          </>
+        )
+      case 'exports':
+        return (
+          <>
+            <TableHead>{t('maintenance.resources.column.filename')}</TableHead>
+            <TableHead className="w-20">{t('maintenance.resources.column.format')}</TableHead>
+            <TableHead className="w-24">{t('maintenance.resources.column.size')}</TableHead>
+            <TableHead className="w-20">{t('maintenance.resources.column.rows')}</TableHead>
+            <TableHead className="w-28">{t('maintenance.resources.column.expiresAt')}</TableHead>
+            <TableHead className="w-32">{t('maintenance.resources.column.actions')}</TableHead>
+          </>
+        )
+      case 'semantic':
+        return (
+          <>
+            <TableHead>{t('maintenance.resources.column.name')}</TableHead>
+            <TableHead className="w-20">{t('maintenance.resources.column.status')}</TableHead>
+            <TableHead className="w-24">{t('maintenance.resources.column.size')}</TableHead>
+            <TableHead className="w-28">{t('maintenance.resources.column.updatedAt')}</TableHead>
+            <TableHead className="w-32">{t('maintenance.resources.column.actions')}</TableHead>
+          </>
+        )
+      case 'uploads':
+        return (
+          <>
+            <TableHead>{t('maintenance.resources.column.filename')}</TableHead>
+            <TableHead className="w-24">{t('maintenance.resources.column.mimeType')}</TableHead>
+            <TableHead className="w-24">{t('maintenance.resources.column.size')}</TableHead>
+            <TableHead className="w-28">{t('maintenance.resources.column.expiresAt')}</TableHead>
+            <TableHead className="w-32">{t('maintenance.resources.column.actions')}</TableHead>
+          </>
+        )
+    }
+  }
+
+  return (
+    <div className="mt-10">
+      {/* Section header */}
+      <h2 className="text-lg font-semibold text-strong mb-1">
+        {t('maintenance.resources.sectionTitle')}
+      </h2>
+      <p className="text-sm text-muted-foreground mb-6">
+        {t('maintenance.resources.sectionDescription')}
+      </p>
+
+      {/* Resource Directory Cards */}
+      <div className="grid grid-cols-5 gap-3 mb-8">
+        {RESOURCE_TABS.map(key => {
+          const dir = overview.resourceDirectories?.[key]
+          return (
+            <Card key={key} size="sm">
+              <CardHeader>
+                <CardTitle className="text-sm">{t(`maintenance.resources.tab.${key}`)}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-semibold text-strong">{dir?.count ?? 0}</p>
+                <p className="text-xs text-muted-foreground">{fmtBytes(dir?.sizeBytes ?? 0)}</p>
+              </CardContent>
+            </Card>
+          )
+        })}
+      </div>
+
+      {/* Resource Type Tabs */}
+      <div className="flex gap-1 border-b border-subtle mb-4">
+        {RESOURCE_TABS.map(key => (
+          <button
+            key={key}
+            type="button"
+            className={cn(
+              'px-3 py-2 text-sm font-medium border-b-2 transition-colors -mb-px',
+              activeResourceTab === key
+                ? 'border-primary text-strong'
+                : 'border-transparent text-muted-foreground hover:text-strong'
+            )}
+            onClick={() => {
+              setActiveResourceTab(key)
+              setSelected(new Set())
+            }}
+          >
+            {t(`maintenance.resources.tab.${key}`)}
+          </button>
+        ))}
+      </div>
+
+      {/* Batch Delete Bar */}
+      {selected.size > 0 && (
+        <div className="flex items-center gap-3 mb-3">
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setConfirmDeleteBulkOpen(true)}
+          >
+            {t('maintenance.resources.action.deleteSelected')} ({selected.size})
+          </Button>
+        </div>
+      )}
+
+      {/* Loading Skeleton */}
+      {isLoading && (
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-10 w-full" />
+          ))}
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!isLoading && data.length === 0 && (
+        <div className="py-12 text-center text-sm text-muted-foreground">
+          {t(`maintenance.resources.empty.${activeResourceTab}`)}
+        </div>
+      )}
+
+      {/* Data Table */}
+      {!isLoading && data.length > 0 && (
+        <Table scrollContainer>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-8">
+                <Checkbox
+                  checked={allSelected}
+                  onCheckedChange={() => {
+                    if (allSelected) setSelected(new Set())
+                    else setSelected(new Set(data.map(item => getItemKey(item))))
+                  }}
+                />
+              </TableHead>
+              {renderHeaders()}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {data.map(item => {
+              const key = getItemKey(item)
+              const isRowSelected = selected.has(key)
+              return (
+                <TableRow key={key} data-state={isRowSelected ? 'selected' : undefined}>
+                  <TableCell>
+                    <Checkbox checked={isRowSelected} onCheckedChange={() => toggleItem(key)} />
+                  </TableCell>
+                  <TableCell>
+                    {renderMainCell(item)}
+                  </TableCell>
+                  {renderExtraCells(item)}
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs"
+                        onClick={() => {
+                          // Preview placeholder — will be wired in a follow-up
+                        }}
+                      >
+                        {t('maintenance.resources.action.preview')}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs text-red-500 hover:text-red-600"
+                        onClick={() => {
+                          setDeleteTarget({ key, label: getItemLabel(item) })
+                          setConfirmDeleteOpen(true)
+                        }}
+                      >
+                        {t('maintenance.resources.action.delete')}
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )
+            })}
+          </TableBody>
+        </Table>
+      )}
+
+      {/* Single Delete Confirmation */}
+      <AlertDialog
+        open={confirmDeleteOpen}
+        onOpenChange={(open) => { if (!open) { setConfirmDeleteOpen(false); setDeleteTarget(null) } }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('maintenance.resources.confirmDelete.title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('maintenance.resources.confirmDelete.description')}
+              {deleteTarget && (
+                <span className="block mt-1 font-medium text-strong">{deleteTarget.label}</span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('maintenance.resources.confirmDelete.cancel')}</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={(event) => { event.preventDefault(); handleSingleDelete() }}>
+              {t('maintenance.resources.confirmDelete.confirm')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Confirmation */}
+      <AlertDialog open={confirmDeleteBulkOpen} onOpenChange={setConfirmDeleteBulkOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('maintenance.resources.confirmDeleteBulk.title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('maintenance.resources.confirmDeleteBulk.description', { count: selected.size })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('maintenance.resources.confirmDelete.cancel')}</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={(event) => { event.preventDefault(); handleBulkDelete() }}>
+              {t('maintenance.resources.confirmDelete.confirm')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

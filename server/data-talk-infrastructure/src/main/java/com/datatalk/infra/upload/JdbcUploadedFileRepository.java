@@ -51,6 +51,11 @@ public class JdbcUploadedFileRepository implements UploadedFileRepository {
     }
 
     @Override
+    public List<String> findIdsBySessionId(String sessionId) {
+        return jdbc.queryForList("SELECT id FROM uploaded_file WHERE session_id = ?", String.class, sessionId);
+    }
+
+    @Override
     public List<UploadedFile> findOlderThan(Instant cutoff) {
         return jdbc.query("SELECT * FROM uploaded_file WHERE created_at < ?", mapper(), cutoff.toEpochMilli());
     }

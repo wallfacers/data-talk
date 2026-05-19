@@ -18,7 +18,12 @@ public sealed interface DeleteOutcome
                 DeleteOutcome.BlockedByResources,
                 DeleteOutcome.NotFound {
 
-    record Ok() implements DeleteOutcome {}
+    record Ok(SessionResourceRefs resourceRefs) implements DeleteOutcome {
+        /** Backward-compatible constructor when resource refs are not relevant. */
+        public Ok() {
+            this(null);
+        }
+    }
 
     record BlockedByCandidates(String sessionId, List<FileArtifact> candidates) implements DeleteOutcome {}
 

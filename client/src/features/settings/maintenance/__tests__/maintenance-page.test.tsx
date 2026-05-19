@@ -32,6 +32,13 @@ describe('MaintenancePage', () => {
         legacy: { bytes: 2_000_000, label: '_legacy' },
       },
       lastHousekeepingRunAt: null,
+      resourceDirectories: {
+        dashboards: { count: 0, sizeBytes: 0 },
+        reports: { count: 0, sizeBytes: 0 },
+        exports: { count: 0, sizeBytes: 0 },
+        semantic: { count: 0, sizeBytes: 0 },
+        uploads: { count: 0, sizeBytes: 0 },
+      },
     })
     vi.mocked(maintenanceApi.getOrphanedFiles).mockResolvedValue([])
 
@@ -46,6 +53,13 @@ describe('MaintenancePage', () => {
   it('shows refresh button that reloads data', async () => {
     vi.mocked(maintenanceApi.getStorageOverview).mockResolvedValue({
       workdir: '/tmp', totalBytes: 0, breakdown: {}, lastHousekeepingRunAt: null,
+      resourceDirectories: {
+        dashboards: { count: 0, sizeBytes: 0 },
+        reports: { count: 0, sizeBytes: 0 },
+        exports: { count: 0, sizeBytes: 0 },
+        semantic: { count: 0, sizeBytes: 0 },
+        uploads: { count: 0, sizeBytes: 0 },
+      },
     })
     vi.mocked(maintenanceApi.getOrphanedFiles).mockResolvedValue([])
     render(wrap(<MaintenancePage />))

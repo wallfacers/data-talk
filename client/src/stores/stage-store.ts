@@ -8,6 +8,7 @@ import { resolveUniqueTabTitle } from '@/features/stage/utils/unique-tab-title'
 import { applyConnectionDefaultDatabase } from '@/features/stage/utils/apply-connection-default-database'
 import { useConnectionStore } from '@/features/connection/store'
 import { generateUuid } from '@/lib/uuid'
+import { TAB_TYPE_REGISTRY } from '@/features/stage/registry/tab-type-registry'
 import { useSessionStore } from './session-store'
 
 type RevealOrigin = { x: number; y: number }
@@ -107,6 +108,7 @@ export type StageState = {
 
   // Tab CRUD
   resetSessionResources: () => void
+  closeSessionTabs: (sessionId?: string) => void
   ensureOpenInWorkset: (tabId: string) => void
   detachFromWorkset: (tabId: string) => void
   trashTab: (tabId: string) => Promise<void>
@@ -521,6 +523,52 @@ export const useStageStore = create<StageState>((set, get) => ({
       openTabIds: new Set(),
       openTabIdsOrdered: [],
       activeTabId: null,
+    })
+  },
+
+  closeSessionTabs: (sessionId) => {
+    const state = get()
+    const sessionScopedTypes = new Set(
+      Object.entries(TAB_TYPE_REGISTRY)
+        .filter(([, desc]) => desc.scope === 'session')
+        .map(([type]) => type),
+    )
+
+    const tabIdsToClose = new Set<string>()
+    for (const tab of state.tabs) {
+      if (!sessionScopedTypes.has(tab.type)) continue
+      if (sessionId !== undefined && tab.originSessionId !== sessionId) continue
+      tabIdsToClose.add(tab.tabId)
+    }
+
+    if (tabIdsToClose.size === 0) return
+
+    const remainingTabs = state.tabs.filter((t) => !tabIdsToClose.has(t.tabId))
+    const nextOrder = state.openTabIdsOrdered.filter((id) => !tabIdsToClose.has(id))
+    const nextIds = new Set(nextOrder)
+
+    let nextActive = state.activeTabId
+    if (nextActive && tabIdsToClose.has(nextActive)) {
+      nextActive = resolveNextActiveWorksetTabId(nextActive, nextOrder)
+    }
+
+    if (remainingTabs.length === 0) {
+      persistOpen(false)
+      set({
+        open: false,
+        tabs: [],
+        openTabIds: new Set(),
+        openTabIdsOrdered: [],
+        activeTabId: null,
+      })
+      return
+    }
+
+    set({
+      tabs: remainingTabs,
+      openTabIds: nextIds,
+      openTabIdsOrdered: nextOrder,
+      activeTabId: nextActive,
     })
   },
 

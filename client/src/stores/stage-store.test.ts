@@ -562,4 +562,153 @@ describe('useStageStore (single-flag stage panel)', () => {
       deleteSpy.mockRestore()
     })
   })
+
+  describe('closeSessionTabs', () => {
+    beforeEach(reset)
+
+    it('closes all session-scoped tabs (artifact_preview, files)', () => {
+      useStageStore.setState({
+        open: true,
+        tabs: [
+          makeTab({ tabId: 'ws-1', type: 'query_editor' }),
+          makeTab({ tabId: 'sess-a', type: 'artifact_preview', originSessionId: 's1' }),
+          makeTab({ tabId: 'sess-f', type: 'files', originSessionId: 's1' }),
+        ],
+        openTabIds: new Set(['ws-1', 'sess-a', 'sess-f']),
+        openTabIdsOrdered: ['ws-1', 'sess-a', 'sess-f'],
+        activeTabId: 'ws-1',
+      } as never, false)
+
+      useStageStore.getState().closeSessionTabs()
+
+      const s = useStageStore.getState()
+      expect(s.tabs.map((t) => t.tabId)).toEqual(['ws-1'])
+      expect(s.openTabIdsOrdered).toEqual(['ws-1'])
+    })
+
+    it('preserves workspace-scoped tabs (query_editor, dashboard, er_designer, etc.)', () => {
+      useStageStore.setState({
+        open: true,
+        tabs: [
+          makeTab({ tabId: 'qe', type: 'query_editor' }),
+          makeTab({ tabId: 'dash', type: 'dashboard' }),
+          makeTab({ tabId: 'er', type: 'er_designer' }),
+          makeTab({ tabId: 'diag', type: 'diagnostic' }),
+          makeTab({ tabId: 'lib', type: 'files_library' }),
+          makeTab({ tabId: 'rlib', type: 'report_library' }),
+          makeTab({ tabId: 'rv', type: 'report_viewer' }),
+          makeTab({ tabId: 'sme', type: 'semantic_model_editor' }),
+          makeTab({ tabId: 'scr', type: 'script_library' }),
+          makeTab({ tabId: 'scr-e', type: 'script_editor' }),
+          makeTab({ tabId: 'oplog', type: 'operation_log' }),
+          makeTab({ tabId: 'sess-a', type: 'artifact_preview' }),
+          makeTab({ tabId: 'sess-f', type: 'files' }),
+        ],
+        openTabIds: new Set(['qe', 'dash', 'er', 'diag', 'lib', 'rlib', 'rv', 'sme', 'scr', 'scr-e', 'oplog', 'sess-a', 'sess-f']),
+        openTabIdsOrdered: ['qe', 'dash', 'er', 'diag', 'lib', 'rlib', 'rv', 'sme', 'scr', 'scr-e', 'oplog', 'sess-a', 'sess-f'],
+        activeTabId: 'qe',
+      } as never, false)
+
+      useStageStore.getState().closeSessionTabs()
+
+      const s = useStageStore.getState()
+      const remainingIds = s.tabs.map((t) => t.tabId).sort()
+      expect(remainingIds).toEqual(['dash', 'diag', 'er', 'lib', 'oplog', 'qe', 'rlib', 'rv', 'scr', 'scr-e', 'sme'])
+      expect(s.openTabIds.has('sess-a')).toBe(false)
+      expect(s.openTabIds.has('sess-f')).toBe(false)
+      expect(s.openTabIds.has('qe')).toBe(true)
+      expect(s.openTabIds.has('dash')).toBe(true)
+      expect(s.open).toBe(true)
+    })
+
+    it('closeSessionTabs(sessionId) only closes tabs with matching originSessionId', () => {
+      useStageStore.setState({
+        open: true,
+        tabs: [
+          makeTab({ tabId: 'ws-1', type: 'query_editor' }),
+          makeTab({ tabId: 'sess-a1', type: 'artifact_preview', originSessionId: 's1' }),
+          makeTab({ tabId: 'sess-f1', type: 'files', originSessionId: 's1' }),
+          makeTab({ tabId: 'sess-a2', type: 'artifact_preview', originSessionId: 's2' }),
+          makeTab({ tabId: 'sess-f2', type: 'files', originSessionId: 's2' }),
+        ],
+        openTabIds: new Set(['ws-1', 'sess-a1', 'sess-f1', 'sess-a2', 'sess-f2']),
+        openTabIdsOrdered: ['ws-1', 'sess-a1', 'sess-f1', 'sess-a2', 'sess-f2'],
+        activeTabId: 'ws-1',
+      } as never, false)
+
+      useStageStore.getState().closeSessionTabs('s1')
+
+      const s = useStageStore.getState()
+      const remainingIds = s.tabs.map((t) => t.tabId).sort()
+      expect(remainingIds).toEqual(['sess-a2', 'sess-f2', 'ws-1'])
+      expect(s.openTabIds.has('sess-a1')).toBe(false)
+      expect(s.openTabIds.has('sess-f1')).toBe(false)
+      expect(s.openTabIds.has('sess-a2')).toBe(true)
+      expect(s.openTabIds.has('sess-f2')).toBe(true)
+    })
+
+    it('no state changes when no matching session-scoped tabs exist', () => {
+      useStageStore.setState({
+        open: true,
+        tabs: [
+          makeTab({ tabId: 'ws-1', type: 'query_editor' }),
+          makeTab({ tabId: 'ws-2', type: 'dashboard' }),
+        ],
+        openTabIds: new Set(['ws-1', 'ws-2']),
+        openTabIdsOrdered: ['ws-1', 'ws-2'],
+        activeTabId: 'ws-1',
+      } as never, false)
+
+      useStageStore.getState().closeSessionTabs()
+      const after = useStageStore.getState()
+
+      expect(after.tabs.map((t) => t.tabId)).toEqual(['ws-1', 'ws-2'])
+      expect(after.openTabIdsOrdered).toEqual(['ws-1', 'ws-2'])
+      expect(after.activeTabId).toBe('ws-1')
+      expect(after.open).toBe(true)
+    })
+
+    it('when the active tab is closed, the next available tab is selected', () => {
+      useStageStore.setState({
+        open: true,
+        tabs: [
+          makeTab({ tabId: 'ws-1', type: 'query_editor' }),
+          makeTab({ tabId: 'ws-2', type: 'dashboard' }),
+          makeTab({ tabId: 'sess-a', type: 'artifact_preview', originSessionId: 's1' }),
+        ],
+        openTabIds: new Set(['ws-1', 'ws-2', 'sess-a']),
+        openTabIdsOrdered: ['ws-1', 'ws-2', 'sess-a'],
+        activeTabId: 'sess-a',
+      } as never, false)
+
+      useStageStore.getState().closeSessionTabs()
+
+      const s = useStageStore.getState()
+      expect(s.tabs.map((t) => t.tabId)).toEqual(['ws-1', 'ws-2'])
+      // The next in order from ['ws-1', 'ws-2'] is 'ws-2' (last element)
+      expect(s.activeTabId).toBe('ws-2')
+    })
+
+    it('when all tabs are closed, stage panel closes (open: false)', () => {
+      useStageStore.setState({
+        open: true,
+        tabs: [
+          makeTab({ tabId: 'sess-a', type: 'artifact_preview', originSessionId: 's1' }),
+          makeTab({ tabId: 'sess-f', type: 'files', originSessionId: 's1' }),
+        ],
+        openTabIds: new Set(['sess-a', 'sess-f']),
+        openTabIdsOrdered: ['sess-a', 'sess-f'],
+        activeTabId: 'sess-a',
+      } as never, false)
+
+      useStageStore.getState().closeSessionTabs()
+
+      const s = useStageStore.getState()
+      expect(s.tabs).toEqual([])
+      expect(s.openTabIdsOrdered).toEqual([])
+      expect(s.activeTabId).toBe(null)
+      expect(s.open).toBe(false)
+      expect(localStorage.getItem('stage.open')).toBeNull()
+    })
+  })
 })
