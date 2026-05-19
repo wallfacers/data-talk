@@ -8,7 +8,7 @@ modules: [report]
 discovered: 2026-05-20
 discoveredBy: agent
 testRunId: ledger-report-quality-fixes-§8
-fixCommit: pending
+fixCommit: 4c45ea5c
 fixPlanRef: openspec/changes/ledger-report-quality-fixes/
 duplicateOf: null
 regression: true
