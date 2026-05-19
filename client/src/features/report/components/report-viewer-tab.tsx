@@ -1,17 +1,54 @@
-import { useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useReport, useSystemStatus, reportDownloadUrl } from '../api'
 import { useI18n } from '@/i18n/use-i18n'
+import type { StageTab } from '@/stores/stage-store'
+import { coordinator } from '@/features/stage/persistence/stage-persistence-bootstrap'
+import { TabContentLoader } from '@/features/stage/components/tab-content-loader'
 
 export interface ReportViewerTabProps {
-  reportId: string
+  tab: StageTab
 }
 
-export function ReportViewerTab({ reportId }: ReportViewerTabProps) {
+export function ReportViewerTab({ tab }: ReportViewerTabProps) {
   const { t } = useI18n()
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [iframeLoaded, setIframeLoaded] = useState(false)
+
+  const payload = (tab.payload ?? {}) as { reportId?: string }
+  const reportId = payload.reportId
+
+  const [loading, setLoading] = useState(!reportId)
+
   const { data: report, isLoading } = useReport(reportId)
   const { data: systemStatus } = useSystemStatus()
+
+  useEffect(() => {
+    if (reportId) return
+    coordinator.ensureHydrated(tab.tabId).catch(() => {
+      setLoading(false)
+    })
+  }, [tab.tabId, reportId])
+
+  useEffect(() => {
+    if (reportId && loading) setLoading(false)
+  }, [reportId, loading])
+
+  const iframeSrc = useMemo(
+    () => reportId ? `${reportDownloadUrl(reportId, 'html')}?_t=${Date.now()}` : '',
+    [reportId],
+  )
+
+  if (loading) {
+    return <TabContentLoader />
+  }
+
+  if (!reportId) {
+    return (
+      <div className="flex items-center justify-center h-full text-sm text-text-muted">
+        {t('report.viewer.notFound')}
+      </div>
+    )
+  }
 
   const chromiumReady = systemStatus?.chromiumReady ?? false
   const pdfStatus = report?.pdfStatus ?? 'processing'
@@ -95,15 +132,17 @@ export function ReportViewerTab({ reportId }: ReportViewerTabProps) {
             </div>
           </div>
         )}
-        <iframe
-          ref={iframeRef}
-          src={`${reportDownloadUrl(reportId, 'html')}?_t=${Date.now()}`}
-          sandbox="allow-scripts"
-          referrerPolicy="no-referrer"
-          className="w-full h-full border-0"
-          title={`report ${reportId}`}
-          onLoad={() => setIframeLoaded(true)}
-        />
+        {reportId && (
+          <iframe
+            ref={iframeRef}
+            src={iframeSrc}
+            sandbox="allow-scripts"
+            referrerPolicy="no-referrer"
+            className="w-full h-full border-0"
+            title={`report ${reportId}`}
+            onLoad={() => setIframeLoaded(true)}
+          />
+        )}
       </div>
     </div>
   )
