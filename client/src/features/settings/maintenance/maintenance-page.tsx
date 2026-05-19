@@ -754,8 +754,8 @@ export function ResourceDirectoryView({ overview }: { overview: StorageOverviewD
             className={cn(
               'px-3 py-2 text-sm font-medium border-b-2 transition-colors -mb-px',
               activeResourceTab === key
-                ? 'border-primary text-strong'
-                : 'border-transparent text-muted-foreground hover:text-strong'
+                ? 'border-b-foreground text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
             )}
             onClick={() => {
               setActiveResourceTab(key)
