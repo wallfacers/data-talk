@@ -8,7 +8,7 @@ description: Use when the user asks about ER diagrams, schema visualisation, or 
 DataTalk has two ER tab types:
 
 - **er_inspector** — the user-facing ER Diagram Viewer: a read-only view of a real schema with annotation overlay (virtual relations, notes). Use it to *show* relationships.
-- **er_designer** — the user-facing ER Diagram Designer: an independent schema draft that can generate DDL for a target connection. Use it to *design* schemas. Designer verbs are live: bind a target, diff the draft against the DB, generate DDL into a query_editor tab, then have the user review and run it through guarded SQL execution.
+- **er_designer** — the user-facing ER Diagram Designer: an independent schema draft that can generate DDL for a target connection. Use it to *design* schemas. Designer verbs are live: bind a target, diff the draft against the DB, generate DDL into a query_editor tab, then have the user review and click Run (the editor calls `datatalk_execute_sql` under the hood — see `[[sql-execution]]`).
 
 Payload shape, patch paths, exec verbs and error contracts: `docs/references/er-tab-protocol.md`.
 
@@ -27,7 +27,7 @@ This skill owns the keywords `er_inspector` and `er_designer`. General UI tool s
 ## When NOT to use
 
 - Pure SQL authoring or ad-hoc query writing → query_editor flow ([[query-editor-workflow]]).
-- Executing or confirming DDL/DML against a real connection → guarded SQL execution belongs to [[connection-management]].
+- Executing the generated DDL against a real connection → that runs through `datatalk_execute_sql` (see [[sql-execution]]); the editor side of the hand-off (focus / Run) is [[query-editor-workflow]].
 - Optimistic-lock failures (`version_conflict`, `expectedVersion` handling on `ui_patch`) → [[concurrency-contract]].
 - ER on **DuckDB, ClickHouse, Apache Doris, StarRocks, Oracle, SQL Server** — ER does not support these dialects. Use query_editor + `datatalk_read_schema` instead.
 
@@ -40,14 +40,14 @@ This skill owns the keywords `er_inspector` and `er_designer`. General UI tool s
 | "annotate an implicit link between A and B" | (existing er_inspector) | ui_patch /virtualRelations |
 | "design a schema for ..." | er_designer (ER Diagram Designer) | dialect required (mysql/postgresql/h2/mariadb; sqlite CREATE-only) |
 | "fork prod into a draft to edit" | er_inspector → fork_to_designer | preserves table & column shapes |
-| "apply this draft to the test DB" | er_designer + bind_target + diff_against_db + generate_ddl | DDL lands in a query_editor tab; user must confirm via guarded SQL execution ([[connection-management]]) |
+| "apply this draft to the test DB" | er_designer + bind_target + diff_against_db + generate_ddl | DDL lands in a query_editor tab; user reviews and clicks Run, which calls `datatalk_execute_sql` ([[sql-execution]]) |
 | "find the ER tab containing X" | datatalk_ui_find ([[ui-contract]]) | filter.type=er_inspector or er_designer + query.mode=fts pattern=X |
 
 ## Hard rules
 
 1. **Inspectors are read-only views.** Do not patch an inspector to "change a real column type". Structural changes belong in a designer or in a query_editor.
-2. **Designer never executes DDL on its own.** `generate_ddl` produces a query_editor tab; the user runs it under the guarded SQL execution flow defined in [[connection-management]].
-3. **DDL must be user-confirmed.** DDL lands in a query_editor tab and is confirmed through guarded SQL execution ([[connection-management]]). Do **not** claim a designer action applied schema changes — it did not.
+2. **Designer never executes DDL on its own.** `generate_ddl` produces a query_editor tab populated with the DDL text — the user (or AI, on user instruction) must run it via `datatalk_execute_sql` (see [[sql-execution]]) for the change to actually hit the database.
+3. **DDL must be user-acknowledged.** Even though `datatalk_execute_sql` will accept the DDL directly, an er_designer-generated DDL touches schema state — preview the DDL to the user before running. Do **not** claim a designer action applied schema changes until the SQL has actually been executed.
 4. **Unsupported dialects.** DuckDB, ClickHouse, Apache Doris, StarRocks, Oracle and SQL Server are not supported by ER. Use query_editor + `datatalk_read_schema` instead. MariaDB **is** supported by ER (reuses MySQL DDL generation). SQLite is CREATE-only.
 5. **No coordinates.** Do not pass coordinates to ER tabs. Layout is computed client-side; `auto_layout` is one `datatalk_ui_exec` call away if a relayout is wanted.
 
@@ -109,7 +109,7 @@ ui_exec(designer_tab, diff_against_db)
 ui_exec(designer_tab, generate_ddl)
 ```
 
-The `generate_ddl` response includes `queryEditorTabId`, `ddl`, and `skippedOps`. DDL lands in a query_editor tab; hand the `queryEditorTabId` back to the user so they can review, Run, and confirm through guarded SQL execution ([[connection-management]]). The query_editor side of this hand-off (how the tab is opened, focused, and edited) follows [[query-editor-workflow]].
+The `generate_ddl` response includes `queryEditorTabId`, `ddl`, and `skippedOps`. DDL lands in a query_editor tab; hand the `queryEditorTabId` back to the user so they can review and click Run — the Run button calls `datatalk_execute_sql` (see [[sql-execution]]). The query_editor side of this hand-off (how the tab is opened, focused, and edited) follows [[query-editor-workflow]].
 
 ### Add a column via patch
 
@@ -130,6 +130,6 @@ End-to-end flow for "apply a draft schema to a real DB":
 3. **Iterate the draft.** Use `datatalk_ui_patch` against the er_designer for structural paths (`/tables`, `/relations`, `/dialect`, `/targetConnectionId`, `/targetDatabase`, `/targetSchema`); follow the version-guard rules in [[concurrency-contract]]. View paths (`/positions`, `/collapsed`, `/viewport`) are not subject to the structural version guard. Never pass coordinates explicitly — use `auto_layout` instead.
 4. **Diff against the bound DB.** `datatalk_ui_exec object=er_designer target=<tabId> action=diff_against_db`. The response highlights what would change.
 5. **Generate DDL.** `datatalk_ui_exec object=er_designer target=<tabId> action=generate_ddl`. The response includes `queryEditorTabId`, `ddl`, and `skippedOps`. The DDL lands in a query_editor tab — the er_designer itself has **not** applied anything to the real database.
-6. **User confirms via guarded SQL execution.** Hand the `queryEditorTabId` back to the user; the query_editor side of the hand-off (focus / edit / Run) is described in [[query-editor-workflow]], and the actual mutation runs under the guarded SQL execution protocol owned by [[connection-management]]. Do not claim the schema is applied until the user has run and confirmed the DDL.
+6. **User reviews and runs the DDL.** Hand the `queryEditorTabId` back to the user; the query_editor side of the hand-off (focus / edit / Run) is described in [[query-editor-workflow]]. Clicking Run in the editor calls `datatalk_execute_sql` ([[sql-execution]]) — the only chat-path execution gate is the DELETE confirmation flow, which does not apply to pure DDL. Do not claim the schema is applied until the SQL has actually executed.
 
 For "annotate-only" workflows, stay in step 1–3 with an er_inspector (no `bind_target` / `diff_against_db` / `generate_ddl`) and use `ui_patch` against `/virtualRelations` only.

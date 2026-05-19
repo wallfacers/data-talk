@@ -136,8 +136,8 @@ When a user message contains a `file_upload` part (detected via the `analysis` f
    - **Import intent first**: If user intent = Import AND `analysis.summary.statementTypes` contains only INSERT, DROP, and/or CREATE AND `targetTables` has exactly 1 entry AND all DROP/CREATE target the same table as the INSERT statements → route to `datatalk_import_data` (see skill:file-upload-routing). DDL+INSERT mixed files (e.g., mysqldump format) are supported. Skip riskLevel routing.
    - Otherwise fall through to riskLevel:
      - If `analysis.summary.riskLevel = "L1"` (SELECT only) → Open the SQL in query_editor. Tell the user what queries were detected and suggest running them.
-     - If `analysis.summary.riskLevel = "L2"` (has DML) → Describe the statements (type, count, target tables). Ask the user to confirm before execution. Execute via guarded DML flow.
-     - If `analysis.summary.riskLevel = "L3"` (has DDL) → Warn about schema changes. Require explicit user confirmation. Execute via guarded DDL flow.
+     - If `analysis.summary.riskLevel = "L2"` (has DML) → Describe the statements (type, count, target tables). Ask the user to confirm before execution. Execute via `datatalk_execute_sql`; DELETE statements still trigger the in-chat `confirmationId` flow.
+     - If `analysis.summary.riskLevel = "L3"` (has DDL) → Warn about schema changes. Require explicit user confirmation. Execute via `datatalk_execute_sql` — DDL runs directly through the chat path, no separate "guarded DDL flow" exists.
    - Use `analysis.summary.preview` to show the user what statements were detected.
 
 2. **CSV/Excel file** (`analysis.type = "CSV"` or `"EXCEL"`):
@@ -194,7 +194,7 @@ All routable skills (auto-loaded by OpenCode; do not Read their files by path). 
 - skill:query-editor-workflow — Query editor lifecycle (open → set_context → patch → run_sql → focus), editor context model (boundSessionId / source / useSessionContext), Query Editor Rules.
 - skill:ui-contract — Exact UI contract for `datatalk_ui_find` / `datatalk_ui_read` / `datatalk_ui_patch` / `datatalk_ui_exec`; `apply_text_edits` semantics + post-edit `ui_read` verification.
 - skill:tab-management — Library vs Workset, Tab Reuse vs New Task (continuation signals in any language), UI navigation, Tab persistence and search.
-- skill:er-tabs — ER Inspector vs Designer decision table, hard rules, recipe shortcuts, generate_ddl → query_editor → guarded execution chain.
+- skill:er-tabs — ER Inspector vs Designer decision table, hard rules, recipe shortcuts, generate_ddl → query_editor → `datatalk_execute_sql` chain.
 - skill:concurrency-contract — Workbench tab optimistic locking, `baseVersion` / `expectedText` / `expectedVersion`, conflict response shape, 5-step recovery, multi-edit batch semantics.
 - skill:charts-and-dashboards — Inline `chart` fenced block + `chart:<artifactId>` + `datatalk_render_chart`; dashboard schema v1, incremental `ui_patch`, P1 widget types (chart / markdown), error handling.
 - skill:artifacts-output — Output Files & Artifacts lifecycle (Default Temporary / Promote to Archive / Rules), `datatalk_archive_artifact` / `datatalk_supersede_artifact` / `datatalk_pin_artifact`, large-output saved-file-path handling.

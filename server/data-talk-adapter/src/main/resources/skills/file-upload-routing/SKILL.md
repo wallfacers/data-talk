@@ -34,10 +34,11 @@ For Text, Image, and Unknown files, follow the type-specific rules below — no 
 - Examine `analysis.summary.statementTypes` to understand what's in the file
 - Examine `analysis.summary.targetTables` to identify affected tables
 - **Import intent gate**: If user intent = Import AND `statementTypes` contains only INSERT, DROP, and/or CREATE AND `targetTables` has exactly 1 entry AND all DROP/CREATE target the same table as the INSERT statements → use `datatalk_import_data` with `source: { type: "file", fileId }` and `target: { connectionId, tableName }` (derive tableName from `targetTables[0]`). DDL+INSERT mixed SQL files (e.g., mysqldump format with DROP TABLE + CREATE TABLE + INSERT) are supported by `datatalk_import_data`. The service extracts and executes DDL first, then streams INSERT data. Skip riskLevel routing.
+  - **Fallback when `datatalk_import_data` rejects the file** (dialect-incompatible parsing, backtick quoting unrecognized, `unsupported_sql_dialect`, or any non-recoverable validation error from the import service): do NOT silently bounce the file into the query editor. Instead, read `analysis.summary.preview` and call `datatalk_execute_sql` directly with the file contents — the AI chat path accepts arbitrary INSERT / CREATE / DROP SQL (only DELETE triggers the in-chat `confirmationId` flow, see [[sql-execution]]). Tell the user "import_data 不支持该 SQL 方言，直接通过 execute_sql 执行" and run it.
 - Otherwise, fall through to riskLevel routing:
-  - L1 (SELECT only): Open in query editor, suggest running
-  - L2 (DML): Describe impact, require confirmation via guarded DML flow
-  - L3 (DDL): Warn about schema changes, require confirmation via guarded DDL flow
+  - L1 (SELECT only): Open in query editor (the user wants to inspect / tweak before running), or call `datatalk_execute_sql` if the user just wants results in chat.
+  - L2 (DML — INSERT / UPDATE / non-DELETE mutation): Show `analysis.summary.preview` to the user, get acknowledgement, then run via `datatalk_execute_sql`. DELETE statements still trigger the in-chat `confirmationId` flow — see [[sql-execution]].
+  - L3 (DDL — CREATE / ALTER / DROP / TRUNCATE): Show the affected schema objects in the preview, get explicit acknowledgement from the user because of the schema-changing impact, then run via `datatalk_execute_sql`. There is no separate "guarded DDL flow" — `execute_sql` accepts DDL directly.
 - Show `analysis.summary.preview` to user so they can see what statements were detected
 
 ### CSV/Excel Files (analysis.type = "CSV" or "EXCEL")

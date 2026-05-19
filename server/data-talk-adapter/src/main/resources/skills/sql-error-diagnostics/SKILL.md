@@ -130,7 +130,7 @@ Workflow:
 3. Present `explainSummary` + recommendation `rationale` values as natural language to the user.
 4. Do not infer index recommendations from schema alone — always base them on actual EXPLAIN output.
 5. Do not run `datatalk_read_schema` before `datatalk_explain_query` to pre-load context.
-6. Index recommendations are suggestions only. If the user confirms they want to create an index, generate the `CREATE INDEX` SQL and route it through the standard Guarded DDL flow.
+6. Index recommendations are suggestions only. If the user confirms they want to create an index, generate the `CREATE INDEX` SQL, preview it to the user, and run it via `datatalk_execute_sql` (see [[sql-execution]]) — DDL executes directly through the chat path, no separate "guarded DDL flow" exists.
 7. Lock complaint received → call `datatalk_lock_info`.
 8. `datatalk_lock_info` returns a blocking chain with `waitMillis > 5000` and recommends terminating the holder → tell the user "Holder session has been blocking", present holder details, ask confirmation, then start the terminate-session preview via `[[connection-management]]`.
 9. User confirms terminate → complete the confirm phase through `[[connection-management]]`.
