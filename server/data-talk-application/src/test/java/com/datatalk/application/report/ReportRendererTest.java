@@ -57,6 +57,8 @@ class ReportRendererTest {
         """);
         String html = renderer.toHtml(root);
         assertThat(html).contains("data-ledger-chart-id=\"ch1\"");
+        // chart 容器含内联 fallback 高度
+        assertThat(html).contains("style=\"height:360px\"");
         // bootstrap 包含 chart id
         assertThat(html).contains("\"ch1\"");
         assertThat(html).contains("inst.on('finished', markFinished)");

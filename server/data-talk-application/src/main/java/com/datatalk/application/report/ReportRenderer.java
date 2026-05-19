@@ -306,7 +306,7 @@ public class ReportRenderer {
     private void renderChart(JsonNode b, StringBuilder out) {
         String id = b.path("id").asText("");
         out.append("<figure class=\"ledger-chart\">\n");
-        out.append("  <div data-ledger-chart-id=\"").append(escapeAttr(id)).append("\"></div>\n");
+        out.append("  <div data-ledger-chart-id=\"").append(escapeAttr(id)).append("\" style=\"height:360px\"></div>\n");
         String caption = b.path("caption").asText("");
         if (!caption.isBlank()) {
             out.append("  <figcaption>").append(escapeHtml(caption)).append("</figcaption>\n");

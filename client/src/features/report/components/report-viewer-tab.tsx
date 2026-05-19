@@ -41,14 +41,14 @@ export function ReportViewerTab({ reportId }: ReportViewerTabProps) {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[var(--dt-bg)]">
-      <header className="flex items-center justify-between gap-3 px-4 py-3 border-b border-[var(--dt-border)]">
+    <div className="flex flex-col h-full bg-bg-canvas">
+      <header className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border-subtle">
         <div className="flex-1 min-w-0">
-          <div className="text-[var(--dt-fg-strong)] font-medium truncate">
+          <div className="text-text-strong font-medium truncate">
             {report?.title ?? t('report.viewer.loading')}
           </div>
           {report?.subtitle ? (
-            <div className="text-[var(--dt-muted-foreground)] text-xs truncate">{report.subtitle}</div>
+            <div className="text-text-muted text-xs truncate">{report.subtitle}</div>
           ) : null}
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -57,7 +57,14 @@ export function ReportViewerTab({ reportId }: ReportViewerTabProps) {
             title={pdfTooltip}
             disabled={pdfDisabled}
             onClick={() => downloadFile('pdf')}
-            className="px-2 py-1 text-sm rounded-sm border border-[var(--dt-border)] disabled:opacity-50"
+            className={[
+              'px-2.5 py-1 text-sm rounded-md',
+              'border border-border-default text-text-base',
+              'hover:bg-interaction-hover hover:text-text-strong',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing',
+              'disabled:opacity-50 disabled:cursor-not-allowed',
+              'transition-[background,color,opacity] duration-[180ms] ease-[var(--easing-standard)]',
+            ].join(' ')}
           >
             {pdfStatus === 'processing' ? `${t('report.button.exportPdf')}…` : t('report.button.exportPdf')}
           </button>
@@ -66,7 +73,14 @@ export function ReportViewerTab({ reportId }: ReportViewerTabProps) {
             title={mdTooltip}
             disabled={mdDisabled}
             onClick={() => downloadFile('md')}
-            className="px-2 py-1 text-sm rounded-sm border border-[var(--dt-border)] disabled:opacity-50"
+            className={[
+              'px-2.5 py-1 text-sm rounded-md',
+              'border border-border-default text-text-base',
+              'hover:bg-interaction-hover hover:text-text-strong',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing',
+              'disabled:opacity-50 disabled:cursor-not-allowed',
+              'transition-[background,color,opacity] duration-[180ms] ease-[var(--easing-standard)]',
+            ].join(' ')}
           >
             {mdStatus === 'processing' ? `${t('report.button.exportMd')}…` : t('report.button.exportMd')}
           </button>
@@ -75,15 +89,15 @@ export function ReportViewerTab({ reportId }: ReportViewerTabProps) {
 
       <div className="relative flex-1 overflow-hidden">
         {!iframeLoaded && (
-          <div className="absolute inset-0 flex items-center justify-center bg-[var(--dt-bg)] z-10">
-            <div className="text-[var(--dt-muted-foreground)] text-sm">
+          <div className="absolute inset-0 flex items-center justify-center bg-bg-canvas z-10">
+            <div className="text-text-muted text-sm">
               {isLoading ? t('report.viewer.loading') : t('report.viewer.preparing')}
             </div>
           </div>
         )}
         <iframe
           ref={iframeRef}
-          src={reportDownloadUrl(reportId, 'html')}
+          src={`${reportDownloadUrl(reportId, 'html')}?_t=${Date.now()}`}
           sandbox="allow-scripts"
           referrerPolicy="no-referrer"
           className="w-full h-full border-0"
