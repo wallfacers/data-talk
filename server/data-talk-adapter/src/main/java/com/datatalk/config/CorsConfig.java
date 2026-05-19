@@ -25,21 +25,22 @@ public class CorsConfig {
         uiConfig.setAllowedHeaders(List.of("*"));
         uiConfig.setAllowCredentials(true);
 
-        // Bezel dashboard widget data endpoint is fetched by sandboxed iframes
-        // (sandbox="allow-scripts" → Origin: null). Browsers forbid combining
-        // `Access-Control-Allow-Origin: null` with credentials, so this config is
-        // credential-less and only allows the null origin. Registered with higher
-        // precedence than uiConfig so it wins for matching paths.
+        // Sandboxed iframes (sandbox="allow-scripts" → Origin: null) need CORS
+        // clearance. Browsers forbid combining `Access-Control-Allow-Origin: null`
+        // with credentials, so this config is credential-less and only allows the
+        // null origin. Registered with higher precedence than uiConfig so it wins
+        // for matching paths.
         CorsConfiguration iframeConfig = new CorsConfiguration();
         iframeConfig.setAllowedOrigins(List.of("null"));
-        iframeConfig.setAllowedMethods(List.of("POST", "OPTIONS"));
+        iframeConfig.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
         iframeConfig.setAllowedHeaders(List.of("*"));
         iframeConfig.setAllowCredentials(false);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        // Register the iframe rule FIRST — UrlBasedCorsConfigurationSource matches
+        // Register the iframe rules FIRST — UrlBasedCorsConfigurationSource matches
         // in insertion order and the first hit wins.
         source.registerCorsConfiguration("/api/dashboards/*/widgets/*/data", iframeConfig);
+        source.registerCorsConfiguration("/api/reports/_assets/**", iframeConfig);
         source.registerCorsConfiguration("/api/**", uiConfig);
         return new CorsFilter(source);
     }
