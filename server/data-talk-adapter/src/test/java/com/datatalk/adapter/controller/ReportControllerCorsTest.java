@@ -3,6 +3,7 @@ package com.datatalk.adapter.controller;
 import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.report.LedgerSkillResolver;
 import com.datatalk.application.report.ReportSystemStatus;
+import com.datatalk.config.CorsConfig;
 import com.datatalk.repository.ReportRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,14 +25,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Verifies that {@code /api/reports/_assets/**} responses carry the CORS headers
- * required by the Report Viewer iframe (srcdoc; origin = null) — and that
- * unrelated report endpoints are *not* accidentally opened up.
+ * Verifies that {@code /api/reports/_assets/**} static assets are served with
+ * correct content types. CORS headers are handled by {@link CorsFilter}
+ * (see {@code CorsConfig}).
  *
  * <p>Closes BUG-0073.
  */
-@WebMvcTest(ReportController.class)
-@AutoConfigureMockMvc(addFilters = false)
+@WebMvcTest({ReportController.class, CorsConfig.class})
+@AutoConfigureMockMvc(addFilters = true)
 class ReportControllerCorsTest {
 
     @Autowired MockMvc mvc;
@@ -58,20 +59,20 @@ class ReportControllerCorsTest {
     }
 
     @Test
-    void font_response_carries_cors_headers() throws Exception {
-        mvc.perform(get("/api/reports/_assets/fonts/NotoSerifSC-Regular.otf"))
+    void font_response_carries_cors_headers_for_null_origin() throws Exception {
+        mvc.perform(get("/api/reports/_assets/fonts/NotoSerifSC-Regular.otf")
+                        .header("Origin", "null"))
                 .andExpect(status().isOk())
-                .andExpect(header().string("Access-Control-Allow-Origin", "*"))
-                .andExpect(header().string("Vary", "Origin"))
+                .andExpect(header().string("Access-Control-Allow-Origin", "null"))
                 .andExpect(header().string("Content-Type", "font/otf"));
     }
 
     @Test
-    void css_response_carries_cors_headers() throws Exception {
-        mvc.perform(get("/api/reports/_assets/styles/ledger.css"))
+    void css_response_carries_cors_headers_for_null_origin() throws Exception {
+        mvc.perform(get("/api/reports/_assets/styles/ledger.css")
+                        .header("Origin", "null"))
                 .andExpect(status().isOk())
-                .andExpect(header().string("Access-Control-Allow-Origin", "*"))
-                .andExpect(header().string("Vary", "Origin"))
+                .andExpect(header().string("Access-Control-Allow-Origin", "null"))
                 .andExpect(header().string("Content-Type", "text/css"));
     }
 }
