@@ -20,7 +20,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 | ID | Title | Status | Priority | Owner |
 |----|-------|--------|----------|-------|
-| [BUG-0070](BUG-0070-execute-sql-bulk-bypass-import-data.md) | AI 通过 datatalk_execute_sql 直传大批量 SQL，绕过 datatalk_import_data 引爆 token 与失败重试（BUG-0065/0067/0069 终结性硬契约修法） | fixed | P1 | — (pending) |
+| [BUG-0070](BUG-0070-execute-sql-bulk-bypass-import-data.md) | AI 通过 datatalk_execute_sql 直传大批量 SQL，绕过 datatalk_import_data 引爆 token 与失败重试（BUG-0065/0067/0069 终结性硬契约修法） | fixed | P1 | — (61923d3b) |
 | [BUG-0069](BUG-0069-sql-file-import-routing-bypassed-via-file-read-execute-sql.md) | 20KB INSERT-only SQL 文件被 file_read + execute_sql 绕过 datatalk_import_data 路由（BUG-0065/0067 同族：专用合同工具被通用拼装路径绕过） | fixed | P2 | — (2ab9039f) |
 | [BUG-0068](BUG-0068-user-bubble-content-flash-on-promote.md) | 用户气泡内容"展示→消失→再展示"——promotePendingUser 清空 parts 制造空白帧（BUG-0056 修复后回归） | fixed | P1 | — (pending) |
 | [BUG-0067](BUG-0067-script-run-direct-db-connect-misuse.md) | data-collection skill 未禁止脚本直连 DB，LLM 走 pymysql / mysql.connector 错误退路，违反 backend write API 合同 | fixed | P2 | — (2ab9039f) |

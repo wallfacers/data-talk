@@ -95,4 +95,4 @@
   - 期望：正常执行，不返回 rejected
 - [ ] 8.6 浏览器手测：用户编辑器执行 SELECT 10KB 复杂查询
   - 期望：USER 路径放行，与 8.5 行为一致
-- [ ] 8.7 把本 change 实际 commit hash 回填 BUG-0070 文档 `fixCommit` 字段 + `docs/bugs/index.md` 同步行
+- [x] 8.7 把本 change 实际 commit hash 回填 BUG-0070 文档 `fixCommit` 字段 + `docs/bugs/index.md` 同步行（commit `61923d3b`，docs backfill in `<follow-up commit hash>`）

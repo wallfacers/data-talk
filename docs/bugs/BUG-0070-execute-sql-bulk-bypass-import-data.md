@@ -8,7 +8,7 @@ modules: [agent-skills, sql-execution, data-import, token-economy]
 discovered: 2026-05-19
 discoveredBy: human
 testRunId: null
-fixCommit: pending
+fixCommit: 61923d3b
 fixPlanRef: openspec/changes/execute-sql-bulk-redirect-guard
 duplicateOf: null
 regression: false
