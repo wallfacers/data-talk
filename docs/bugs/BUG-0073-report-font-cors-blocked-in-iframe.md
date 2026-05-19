@@ -1,10 +1,12 @@
 # BUG-0073: Report Viewer iframe 字体 CORS 加载失败
 
-**Status:** open
+**Status:** fixed
 **Priority:** P1
 **Discovered:** 2026-05-19
 **Module:** report
 **Source:** e2e-playwright
+**fixCommit:** 4f7cfffe
+**fixPlanRef:** openspec/changes/ledger-report-quality-fixes/
 
 ## Description
 
@@ -45,3 +47,18 @@ headers.set("Access-Control-Allow-Origin", "*");
 ## Regression Risk
 
 与 BUG-0049（bezel 大屏中文乱码）同源风险，均与 iframe + 字体加载有关。
+
+## Fix Verification
+
+- 修改 `ReportController.serveAsset()` 在所有返回路径（fonts/CSS/JS/fallback）显式 set `Access-Control-Allow-Origin: *` + `Vary: Origin`。
+- 新增 `ReportControllerCorsTest`（@WebMvcTest）断言 `.otf` 与 `.css` 端点响应头包含上述两个 header（2/2 pass）。
+- Runtime curl 验证（commit 4f7cfffe 部署后）：
+  ```
+  $ curl -sI http://localhost:8080/api/reports/_assets/fonts/NotoSerifSC-Regular.otf
+  HTTP/1.1 200
+  Vary: Origin
+  Access-Control-Allow-Origin: *
+  Content-Type: font/otf
+  ```
+  同理 `_assets/styles/ledger.css` 与 `_assets/scripts/echarts.min.js` 均返回 `Access-Control-Allow-Origin: *`。
+- 仅 `/_assets/**` 路径打开 CORS，其他 API 端点不受影响（per spec）。

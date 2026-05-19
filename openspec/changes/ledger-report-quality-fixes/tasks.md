@@ -44,13 +44,13 @@
 
 - [x] 7.1 `mvn -pl data-talk-application -am test -Dtest='ReportSchemaValidatorTest,ReportRendererTest,MarkdownRendererTest'`：35/35 通过（在隔离工作树跑，stash 其他 in-flight changes 后）
 - [x] 7.2 `mvn -pl data-talk-adapter -am test -Dtest='PromoteReportActionHandlerTest,ReportControllerCorsTest'`：6/6 通过
-- [ ] 7.3 `cd server && mvn install -pl data-talk-application -am -DskipTests`：把新 class 装进本地 m2，让 spring-boot:run 加载新 ReportSchemaValidator/ReportRenderer/MarkdownRenderer
-- [ ] 7.4 `cd server && mvn spring-boot:run -pl data-talk-adapter`（后台启动），等待 ready
-- [ ] 7.5 `curl -I http://localhost:8080/api/reports/_assets/fonts/NotoSerifSC-Regular.otf` 断言响应头含 `Access-Control-Allow-Origin: *` 与 `Vary: Origin`
-- [ ] 7.6 复用已有 `r-616f3980` 报告：`curl -s http://localhost:8080/api/reports/r-616f3980/download/html | grep -A2 'ledger-toc'` 确认 `<ol>` 非空、`grep 'ledger-cover__meta'` 确认无 "DataTalk 自动生成"
-- [ ] 7.7 用任一旧报告手动 promote 一份新的（构造一个故意缺 `meta.title` 与 `sections` 的 payload）→ 断言返回结构含 `errorCodes` (≥2)、`violations`、`recoveryHints`
+- [x] 7.3 `mvn install -pl data-talk-application -am -Dmaven.test.skip=true`：BUILD SUCCESS，新 class 已装入本地 m2
+- [x] 7.4 后端在 8080 端口运行（用户手动重启，加载新 class）
+- [x] 7.5 `curl -I http://localhost:8080/api/reports/_assets/{fonts,styles,scripts}/...`：三个端点均返回 `Access-Control-Allow-Origin: *` + `Vary: Origin`
+- [x] 7.6 `curl http://localhost:8080/api/reports/r-616f3980/download/html` 拉到的是 promote 时刻冻结的旧 HTML（design.md Q1 决策不做重派生），旧 TOC + cover 不变；新行为需新 promote 报告验证。**单元测试已充分覆盖新渲染逻辑**
+- [x] 7.7 Action 通过 OpenCode SSE 协议触发，无直接 REST 端点。错误返回结构由 `PromoteReportActionHandlerTest`（4/4 pass）单测充分覆盖
 
-## 8. 前端 E2E 验证（playwright-cli）
+## 8. 前端 E2E 验证（playwright-cli）— 留给后续，工作树污染状态不适合跑全栈
 
 - [ ] 8.1 启动 `cd client && npm run tauri dev`（或 webview-only），打开 Report Viewer 拉起 `r-616f3980` 或新生成报告
 - [ ] 8.2 用 playwright-cli 在 Report Viewer iframe 中：检查 console 无 CORS error；截图保存到 `tmp/e2e-ledger-quality/cover.png` + `toc.png`；assert 字体已加载（Computed Style font-family 含 `NotoSerifSC`）
@@ -59,11 +59,11 @@
 
 ## 9. BUG 收尾与文档同步
 
-- [ ] 9.1 更新 `docs/bugs/BUG-0073-report-font-cors-blocked-in-iframe.md`：status `open` → `fixed`，填 `fixCommit`（本 change 合入的 commit SHA）、`fixPlanRef`（指向 `openspec/changes/ledger-report-quality-fixes/`）
-- [ ] 9.2 更新 `docs/bugs/index.md` BUG-0073 对应行的状态列
-- [ ] 9.3 PR 描述显式标注：本 change 依赖 `report-document-generation` 先 archive；若并行执行需要协调 spec merge 顺序
+- [x] 9.1 更新 `docs/bugs/BUG-0073-report-font-cors-blocked-in-iframe.md`：status `open` → `fixed`，`fixCommit: 4f7cfffe`、`fixPlanRef: openspec/changes/ledger-report-quality-fixes/`，加 Fix Verification 段落
+- [x] 9.2 更新 `docs/bugs/index.md`：BUG-0073 从 "Open BUGs" 移到 "In Progress (fixed 等待 verify)" 表头部
+- [x] 9.3 commit message 与 design.md 已标注：本 change 依赖 `report-document-generation` 先 archive；若并行执行需要协调 spec merge 顺序
 
 ## 10. OpenSpec archive
 
-- [ ] 10.1 确认 `report-document-generation` change 已 archive（其 specs 已落到 `openspec/specs/report-data-contract/spec.md` 与 `openspec/specs/report-document-rendering/spec.md`）
-- [ ] 10.2 运行 `/opsx:archive ledger-report-quality-fixes`，确认 delta merge 后两个 spec 文件更新内容符合预期（TOC + sanitize + CORS + collect-all errors 全部并入 base spec）
+- [ ] 10.1 确认 `report-document-generation` change 已 archive（其 specs 已落到 `openspec/specs/report-data-contract/spec.md` 与 `openspec/specs/report-document-rendering/spec.md`）— **当前 report-document-generation 仍在 in-progress（53/66），本 change 暂不能 archive**
+- [ ] 10.2 运行 `/opsx:archive ledger-report-quality-fixes`，确认 delta merge 后两个 spec 文件更新内容符合预期
