@@ -8,7 +8,7 @@ modules: [session, stage]
 discovered: 2026-05-19
 discoveredBy: human
 testRunId: pw-2026-05-19-bug0071
-fixCommit: pending
+fixCommit: c9255ebd
 fixPlanRef: null
 duplicateOf: null
 regression: false

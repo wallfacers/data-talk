@@ -8,7 +8,7 @@ modules: [data-import, action, session-context, mysql]
 discovered: 2026-05-19
 discoveredBy: human
 testRunId: null
-fixCommit: pending
+fixCommit: 9d0a8e28
 fixPlanRef: null
 duplicateOf: null
 regression: false
