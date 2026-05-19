@@ -8,7 +8,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## 当前编号
 
-下一个分配 ID：**BUG-0078**（永不复用，单调递增）
+下一个分配 ID：**BUG-0079**（永不复用，单调递增）
 
 ## Open BUGs（按 priority 倒序，P0 → P2）
 
@@ -25,6 +25,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 | ID | Title | Status | Priority | Owner |
 |----|-------|--------|----------|-------|
+| [BUG-0078](BUG-0078-rail-resize-handle-stale-gap-and-misaligned-divider.md) | 报告库 tab 下 rail 右边出现 4px 米灰条 + hover 分割线瞬时显双线（resize handle 几何错位） | fixed | P2 | — (pending) |
 | [BUG-0077](BUG-0077-report-toc-anchor-base-href-conflict.md) | 报告 TOC 锚点点击后跳转到 _assets/ 404（`<base href>` 解析冲突） | fixed | P1 | — (pending) |
 | [BUG-0076](BUG-0076-report-viewer-blank-after-ctrl-r.md) | Ctrl+R 刷新后报告详情 tab 显示空白页 | fixed | P1 | — (pending) |
 | [BUG-0075](BUG-0075-report-viewer-iframe-double-load.md) | Report Viewer iframe 在打开时重复加载 2-3 次 | fixed | P2 | — (pending) |

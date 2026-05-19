@@ -200,14 +200,14 @@ export function StageWindow() {
             {!leftRailCollapsed ? (
               <div
                 data-testid="stage-left-rail-resize-handle"
-                className="group absolute inset-y-0 right-0 z-10 w-2 translate-x-1/2 cursor-col-resize bg-transparent"
+                className="group absolute inset-y-0 -right-1 w-2 cursor-col-resize bg-transparent"
                 onPointerDown={handleDividerPointerDown}
                 onPointerMove={handleDividerPointerMove}
                 onPointerUp={handleDividerPointerUp}
                 onPointerCancel={handleDividerPointerCancel}
                 onLostPointerCapture={handleDividerLostCapture}
               >
-                <div className="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-transparent transition-colors group-hover:bg-accent-primary/50" />
+                <div className="pointer-events-none absolute inset-y-0 left-[3px] w-px bg-transparent transition-colors group-hover:bg-accent-primary/50" />
               </div>
             ) : null}
           </div>
