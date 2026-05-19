@@ -55,7 +55,7 @@ const editorHarness = vi.hoisted(() => {
     decorations: [] as Array<Record<string, unknown>>,
     fakeMonaco: {
       KeyMod: { CtrlCmd: 1024, Shift: 2048 },
-      KeyCode: { Enter: 13, KeyF: 33 },
+      KeyCode: { Enter: 13, KeyF: 33, Slash: 85 },
       editor: {
         defineTheme: vi.fn(),
         registerCompletionItemProvider: vi.fn(),
@@ -1377,7 +1377,10 @@ delete from sessions;`,
         value="abc"
         onChange={onChange}
         onRun={onRun}
+        onRunCurrentStatement={vi.fn()}
         onFormat={onFormat}
+        onCancel={vi.fn()}
+        isRunning={false}
         onCursorChange={onCursorChange}
         currentStatementRange={{ startLine: 2, endLine: 3 }}
       />,
@@ -1390,6 +1393,16 @@ delete from sessions;`,
     )
     expect(editorHarness.fakeEditor?.addCommand).toHaveBeenNthCalledWith(
       2,
+      editorHarness.fakeMonaco.KeyMod.CtrlCmd | editorHarness.fakeMonaco.KeyMod.Shift | editorHarness.fakeMonaco.KeyCode.Enter,
+      expect.any(Function),
+    )
+    expect(editorHarness.fakeEditor?.addCommand).toHaveBeenNthCalledWith(
+      3,
+      editorHarness.fakeMonaco.KeyMod.CtrlCmd | editorHarness.fakeMonaco.KeyCode.Slash,
+      expect.any(Function),
+    )
+    expect(editorHarness.fakeEditor?.addCommand).toHaveBeenNthCalledWith(
+      4,
       editorHarness.fakeMonaco.KeyMod.CtrlCmd | editorHarness.fakeMonaco.KeyMod.Shift | editorHarness.fakeMonaco.KeyCode.KeyF,
       expect.any(Function),
     )
@@ -1424,7 +1437,7 @@ delete from sessions;`,
     expect(onChange).toHaveBeenCalledWith('aXbc')
 
     const runCommand = editorHarness.fakeEditor?.addCommand.mock.calls[0]?.[1] as (() => void) | undefined
-    const formatCommand = editorHarness.fakeEditor?.addCommand.mock.calls[1]?.[1] as (() => void) | undefined
+    const formatCommand = editorHarness.fakeEditor?.addCommand.mock.calls[3]?.[1] as (() => void) | undefined
     runCommand?.()
     formatCommand?.()
 

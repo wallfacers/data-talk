@@ -572,6 +572,29 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
     }
   }, [contextSessionId, tab.tabId])
 
+  const handleRunCurrentStatement = useCallback(async () => {
+    const currentTabState = useSqlWorkbenchStore.getState().tabsById[tab.tabId]
+    if (!currentTabState) return
+    const stmt = resolveCurrentSqlOutlineStatement(
+      parseSqlOutline(currentTabState.sqlText),
+      currentTabState.cursor.line,
+      Math.max(1, currentTabState.sqlText.split(/\r\n|\r|\n/).length),
+    )
+    if (!stmt) return
+    try {
+      await runQueryEditorSql({
+        tabId: tab.tabId,
+        sessionId: contextSessionId,
+        sqlOverride: stmt.summary,
+      })
+    } catch (error) {
+      if (isAbortError(error)) {
+        return
+      }
+      throw error
+    }
+  }, [contextSessionId, tab.tabId])
+
   useEffect(() => {
     if (!payload.autoRun || autoRunRef.current || !effectiveContext.connectionId) return
     if (!tabState.sqlText.trim()) return
@@ -778,7 +801,10 @@ export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
                 value={tabState.sqlText}
                 onChange={(next) => setSqlText(tab.tabId, next)}
                 onRun={() => void handleRun()}
+                onRunCurrentStatement={() => void handleRunCurrentStatement()}
                 onFormat={handleFormat}
+                onCancel={() => abortQueryEditorRun(tab.tabId)}
+                isRunning={tabState.executeStatus === 'running'}
                 onCursorChange={handleCursorChange}
                 onSelectionChange={handleSelectionChange}
                 currentStatementRange={

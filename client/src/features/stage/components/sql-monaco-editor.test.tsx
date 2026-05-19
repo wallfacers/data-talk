@@ -80,12 +80,26 @@ describe('SqlMonacoEditor external value sync', () => {
     const onChange = vi.fn()
     const onRun = vi.fn()
     const { rerender } = render(
-      <SqlMonacoEditor value="SELECT * FROM users LIMIT 5;" onChange={onChange} onRun={onRun} />,
+      <SqlMonacoEditor
+        value="SELECT * FROM users LIMIT 5;"
+        onChange={onChange}
+        onRun={onRun}
+        onRunCurrentStatement={vi.fn()}
+        onCancel={vi.fn()}
+        isRunning={false}
+      />,
     )
 
     editorHarness.model.pushEditOperations.mockClear()
     rerender(
-      <SqlMonacoEditor value="SELECT * FROM orders LIMIT 50;" onChange={onChange} onRun={onRun} />,
+      <SqlMonacoEditor
+        value="SELECT * FROM orders LIMIT 50;"
+        onChange={onChange}
+        onRun={onRun}
+        onRunCurrentStatement={vi.fn()}
+        onCancel={vi.fn()}
+        isRunning={false}
+      />,
     )
 
     expect(editorHarness.model.pushEditOperations).toHaveBeenCalledTimes(1)
@@ -98,7 +112,16 @@ describe('SqlMonacoEditor external value sync', () => {
     const onChange = vi.fn()
     const onRun = vi.fn()
     editorHarness.model.storedValue = 'SELECT 1;'
-    render(<SqlMonacoEditor value="SELECT 1;" onChange={onChange} onRun={onRun} />)
+    render(
+      <SqlMonacoEditor
+        value="SELECT 1;"
+        onChange={onChange}
+        onRun={onRun}
+        onRunCurrentStatement={vi.fn()}
+        onCancel={vi.fn()}
+        isRunning={false}
+      />,
+    )
 
     expect(editorHarness.model.pushEditOperations).not.toHaveBeenCalled()
   })

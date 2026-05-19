@@ -1,8 +1,17 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import Editor, { type BeforeMount, type OnMount } from '@monaco-editor/react'
 import type * as Monaco from 'monaco-editor'
 import { useThemeStore } from '@/stores/theme-store'
+import { useI18n } from '@/i18n/use-i18n'
 import { cn } from '@/lib/utils'
+import {
+  ContextMenu,
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuShortcut,
+} from '@/components/ui/context-menu'
 import { DARK_MONACO_THEME, LIGHT_MONACO_THEME, registerMonacoThemes } from './monaco-theme'
 const SYSTEM_MEDIA_QUERY = '(prefers-color-scheme: dark)'
 
@@ -23,7 +32,10 @@ type SqlMonacoEditorProps = {
   value: string
   onChange: (value: string) => void
   onRun: () => void
+  onRunCurrentStatement: () => void
   onFormat?: () => void
+  onCancel: () => void
+  isRunning: boolean
   onCursorChange?: (cursor: { line: number; column: number }) => void
   onSelectionChange?: (selection: SqlEditorSelection | null) => void
   currentStatementRange?: { startLine: number; endLine: number } | null
@@ -31,14 +43,16 @@ type SqlMonacoEditorProps = {
 }
 
 export const SqlMonacoEditor = forwardRef<SqlMonacoEditorHandle, SqlMonacoEditorProps>(function SqlMonacoEditor(
-  { value, onChange, onRun, onFormat, onCursorChange, onSelectionChange, currentStatementRange },
+  { value, onChange, onRun, onRunCurrentStatement, onFormat, onCancel, isRunning, onCursorChange, onSelectionChange, currentStatementRange },
   ref,
 ) {
   const themePreference = useThemeStore((state) => state.theme)
+  const { t } = useI18n()
   const [systemPrefersDark, setSystemPrefersDark] = useState(resolveSystemTheme)
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null)
   const decorationIdsRef = useRef<string[]>([])
   const latestValueRef = useRef(value)
+  const [hasSelection, setHasSelection] = useState(false)
 
   useEffect(() => {
     latestValueRef.current = value
@@ -81,6 +95,12 @@ export const SqlMonacoEditor = forwardRef<SqlMonacoEditorHandle, SqlMonacoEditor
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
       onRun()
     })
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Enter, () => {
+      onRunCurrentStatement()
+    })
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Slash, () => {
+      editor.trigger('keyboard', 'editor.action.commentLine', null)
+    })
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyF, () => {
       onFormat?.()
     })
@@ -90,7 +110,9 @@ export const SqlMonacoEditor = forwardRef<SqlMonacoEditorHandle, SqlMonacoEditor
     })
     editor.onDidChangeCursorSelection((event) => {
       const selection = event.selection
-      if (!selection || selection.isEmpty()) {
+      const empty = !selection || selection.isEmpty()
+      setHasSelection(!empty)
+      if (empty) {
         onSelectionChange?.(null)
         return
       }
@@ -150,26 +172,116 @@ export const SqlMonacoEditor = forwardRef<SqlMonacoEditorHandle, SqlMonacoEditor
     ])
   }, [currentStatementRange])
 
+  const triggerMonacoAction = useCallback((actionId: string) => {
+    const editor = editorRef.current
+    if (!editor) return
+    editor.focus()
+    editor.trigger('keyboard', actionId, null)
+  }, [])
+
+  const handlePaste = useCallback(async () => {
+    const editor = editorRef.current
+    if (!editor) return
+    editor.focus()
+    try {
+      const text = await navigator.clipboard.readText()
+      if (text) {
+        const selection = editor.getSelection()
+        if (selection) {
+          editor.executeEdits('paste', [{ range: selection, text }])
+        }
+      }
+    } catch {
+      editor.trigger('keyboard', 'editor.action.clipboardPasteAction', null)
+    }
+  }, [])
+
   return (
-    <div
-      data-testid="sql-monaco-editor"
-      className={cn('h-full min-h-[260px] overflow-hidden rounded-none bg-background')}
-    >
-      <Editor
-        height="100%"
-        defaultLanguage="sql"
-        beforeMount={handleBeforeMount}
-        theme={editorTheme}
-        value={value}
-        onChange={(next) => onChange(next ?? '')}
-        onMount={handleMount}
-        options={monacoOptions}
-      />
-    </div>
+    <ContextMenu>
+      <ContextMenuTrigger
+        data-testid="sql-monaco-editor"
+        className={cn('h-full min-h-[260px] overflow-hidden rounded-none bg-background')}
+      >
+        <Editor
+          height="100%"
+          defaultLanguage="sql"
+          beforeMount={handleBeforeMount}
+          theme={editorTheme}
+          value={value}
+          onChange={(next) => onChange(next ?? '')}
+          onMount={handleMount}
+          options={monacoOptions}
+        />
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-52 font-sans text-xs">
+        {/* Execution group */}
+        {isRunning ? (
+          <ContextMenuItem onClick={onCancel}>
+            {t('stage.queryEditor.contextMenu.cancelExecution')}
+            <ContextMenuShortcut>Esc</ContextMenuShortcut>
+          </ContextMenuItem>
+        ) : (
+          <>
+            <ContextMenuItem onClick={onRun}>
+              {t('stage.queryEditor.contextMenu.runAll')}
+              <ContextMenuShortcut>Ctrl+Enter</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuItem onClick={onRunCurrentStatement}>
+              {t('stage.queryEditor.contextMenu.runCurrentStatement')}
+              <ContextMenuShortcut>Ctrl+Shift+Enter</ContextMenuShortcut>
+            </ContextMenuItem>
+            {hasSelection && (
+              <ContextMenuItem onClick={onRun}>
+                {t('stage.queryEditor.contextMenu.runSelected')}
+              </ContextMenuItem>
+            )}
+          </>
+        )}
+        <ContextMenuSeparator />
+        {/* Formatting group */}
+        <ContextMenuItem onClick={() => onFormat?.()}>
+          {t('stage.queryEditor.contextMenu.formatSql')}
+          <ContextMenuShortcut>Ctrl+Shift+F</ContextMenuShortcut>
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => triggerMonacoAction('editor.action.commentLine')}>
+          {t('stage.queryEditor.contextMenu.toggleComment')}
+          <ContextMenuShortcut>Ctrl+/</ContextMenuShortcut>
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        {/* Clipboard group */}
+        <ContextMenuItem disabled={!hasSelection} onClick={() => triggerMonacoAction('editor.action.clipboardCutAction')}>
+          {t('stage.queryEditor.contextMenu.cut')}
+          <ContextMenuShortcut>Ctrl+X</ContextMenuShortcut>
+        </ContextMenuItem>
+        <ContextMenuItem disabled={!hasSelection} onClick={() => triggerMonacoAction('editor.action.clipboardCopyAction')}>
+          {t('stage.queryEditor.contextMenu.copy')}
+          <ContextMenuShortcut>Ctrl+C</ContextMenuShortcut>
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => void handlePaste()}>
+          {t('stage.queryEditor.contextMenu.paste')}
+          <ContextMenuShortcut>Ctrl+V</ContextMenuShortcut>
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        {/* History group */}
+        <ContextMenuItem onClick={() => triggerMonacoAction('undo')}>
+          {t('stage.queryEditor.contextMenu.undo')}
+          <ContextMenuShortcut>Ctrl+Z</ContextMenuShortcut>
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => triggerMonacoAction('redo')}>
+          {t('stage.queryEditor.contextMenu.redo')}
+          <ContextMenuShortcut>Ctrl+Shift+Z</ContextMenuShortcut>
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => triggerMonacoAction('editor.action.selectAll')}>
+          {t('stage.queryEditor.contextMenu.selectAll')}
+          <ContextMenuShortcut>Ctrl+A</ContextMenuShortcut>
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   )
 })
 
 const monacoOptions: Monaco.editor.IStandaloneEditorConstructionOptions = {
+  contextmenu: false,
   minimap: { enabled: false },
   overviewRulerBorder: false,
   overviewRulerLanes: 0,
