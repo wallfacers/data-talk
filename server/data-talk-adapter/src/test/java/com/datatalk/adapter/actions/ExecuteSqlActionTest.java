@@ -80,7 +80,7 @@ class ExecuteSqlActionTest {
                 "c-1",
                 connectionId,
                 "oc-e",
-                new ActionExecutionMetadata(new SqlExecutionRisk(RiskLevel.L1, "select", false, false))
+                ActionExecutionMetadata.aiInitiated(new SqlExecutionRisk(RiskLevel.L1, "select", false, false))
             ),
             Map.of("connectionId", connectionId, "sql", "SELECT * FROM t ORDER BY id")
         ).toCompletableFuture().get();
@@ -107,7 +107,7 @@ class ExecuteSqlActionTest {
                 "c-2",
                 null,
                 "oc-e",
-                new ActionExecutionMetadata(new SqlExecutionRisk(RiskLevel.L1, "select", false, false))
+                ActionExecutionMetadata.aiInitiated(new SqlExecutionRisk(RiskLevel.L1, "select", false, false))
             ),
             Map.of("sql", "SELECT * FROM t ORDER BY id")
         ).toCompletableFuture().get();

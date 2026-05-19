@@ -5,6 +5,19 @@ description: Use when the user asks to query, mutate, or change schema against a
 
 # SQL Execution Skill
 
+## ❗ DO NOT
+
+**These patterns will be rejected by the backend `BulkSqlGuard` — do not do them (BUG-0070):**
+
+- **DO NOT** call `datatalk_execute_sql` with SQL whose UTF-8 size exceeds **4096 bytes**. The server returns `status="rejected"` + `error.code=use_import_data` + `nextAction` pointing to `datatalk_import_data`. Call `datatalk_import_data` directly — do not retry `execute_sql`.
+- **DO NOT** call `datatalk_execute_sql` when the SQL contains more than **20 INSERT** statements (independent semicolon-separated INSERTs, or multi-VALUES INSERTs that inflate over the byte threshold). Same rejection applies. Route to `datatalk_import_data` for batch import.
+- **DO NOT** call `datatalk_execute_sql` with SQL whose content was assembled from `datatalk_file_read` output — pass the file straight to `datatalk_import_data` with `source={type:'file', fileId}`. Always set `sourceFileId` if you must pass file-derived SQL to `execute_sql` (the guard will reject and tell you to switch tools).
+- **DO NOT** try to bypass the guard by spoofing `input.source="user"`. The backend ignores `input.source` for security decisions; `CallerKind` is injected from the entry path (`McpActionBridge` → `AI`, `SqlExecuteController` → `USER`) and you (the AI) cannot reach the USER path.
+
+**Why this matters**: Inlining bulk SQL into `tool_call.input` burns 20,000+ tokens per failed retry (BUG-0069 measured). `datatalk_import_data` accepts a `fileId` reference (~100 tokens) and does batched streaming write, dialect-correct quoting (BUG-0066 fix), and per-segment error isolation.
+
+**When the user runs SQL from their query editor UI**, this guard does not apply — the user-initiated path bypasses `BulkSqlGuard` entirely. But you (the AI) cannot trigger that path; only the user clicking Run in their editor can.
+
 ## When to use
 
 - "Count orders by region in the last 30 days"

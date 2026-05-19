@@ -164,7 +164,7 @@ public class ActionDispatcher {
                     ctx.callId(),
                     ctx.connectionId(),
                     ctx.openCodeSessionId(),
-                    new ActionExecutionMetadata(risk)
+                    new ActionExecutionMetadata(risk, ctx.metadata().callerKind())
                 );
             })
             .orElse(ctx);

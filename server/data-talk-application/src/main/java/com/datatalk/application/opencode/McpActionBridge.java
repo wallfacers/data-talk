@@ -6,6 +6,7 @@ import com.datatalk.application.session.ActionDispatcher;
 import com.datatalk.application.stage.EditConflictMarkdownFormatter;
 import com.datatalk.application.stage.StageTabRepository;
 import com.datatalk.domain.action.ActionContext;
+import com.datatalk.domain.action.ActionExecutionMetadata;
 import com.datatalk.domain.event.ErrorInfo;
 import com.datatalk.domain.stage.StageTab;
 import org.slf4j.Logger;
@@ -111,7 +112,7 @@ public class McpActionBridge {
                 actionId,
                 strippedArguments,
                 bridgeFields.callId(),
-                new ActionContext(dataTalkSessionId, bridgeFields.callId(), null, bridgeFields.openCodeSessionId())
+                new ActionContext(dataTalkSessionId, bridgeFields.callId(), null, bridgeFields.openCodeSessionId(), ActionExecutionMetadata.aiInitiated())
             );
         } catch (ActionDispatcher.SchemaValidationException e) {
             log.warn("[mcp-bridge] schema validation failed tool={} action={} reason={}",

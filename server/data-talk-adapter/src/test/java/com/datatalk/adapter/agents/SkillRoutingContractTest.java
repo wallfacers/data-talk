@@ -396,6 +396,47 @@ class SkillRoutingContractTest {
             .containsAnyOf("unsupported_statement_type", "unrecoverable_parse_error");
     }
 
+    /**
+     * Closes BUG-0070 (datatalk_execute_sql bulk-bypass of datatalk_import_data).
+     * Asserts that the sql-execution SKILL.md keeps an explicit ❗ DO NOT subsection
+     * teaching the AI to route bulk write SQL through datatalk_import_data instead of
+     * inlining the entire SQL into tool_call.input. Without this section the model
+     * reverts to "just call execute_sql, it accepts anything," which burns tokens and
+     * loses dialect-aware batching.
+     */
+    @Test
+    void sqlExecutionSkill_hasDoNotSectionForBulkSql() throws IOException {
+        String skillMd = loadSkillMd("sql-execution");
+
+        assertThat(skillMd)
+            .as("sql-execution SKILL.md must keep the ❗ DO NOT subsection (BUG-0070)")
+            .contains("❗ DO NOT");
+
+        assertThat(skillMd)
+            .as("sql-execution SKILL.md must redirect bulk SQL to datatalk_import_data")
+            .contains("datatalk_import_data");
+
+        assertThat(skillMd)
+            .as("sql-execution SKILL.md must surface the machine-readable error code so AI can dispatch on it")
+            .contains("use_import_data");
+
+        assertThat(skillMd)
+            .as("sql-execution SKILL.md must state the byte threshold (4096)")
+            .contains("4096");
+
+        assertThat(skillMd)
+            .as("sql-execution SKILL.md must state the INSERT-count threshold (20 INSERT)")
+            .contains("20 INSERT");
+
+        assertThat(skillMd)
+            .as("sql-execution SKILL.md must carve out the user query editor exemption so the AI does not over-rotate to import_data")
+            .contains("query editor");
+
+        assertThat(skillMd)
+            .as("sql-execution SKILL.md must reference BUG-0070 for traceability when this section drifts")
+            .contains("BUG-0070");
+    }
+
     @Test
     void agentsMdRegisteredActionsIncludeImportAndExport() throws IOException {
         String agentsMd = loadAgentsMd();

@@ -10,6 +10,8 @@ import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.persistence.*;
 import com.datatalk.application.preference.UserPreferencesService;
 import com.datatalk.application.session.SessionDataContextService;
+import com.datatalk.application.sql.BulkSqlGuard;
+import com.datatalk.application.sql.BulkSqlVerdict;
 import com.datatalk.application.sql.JdbcResultValueNormalizer;
 import com.datatalk.application.sql.CalciteSqlRiskAnalyzer;
 import com.datatalk.application.sql.KingbaseUnsupportedReason;
@@ -73,6 +75,7 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
     private final Translator translator;
     private final SqlPendingConfirmationStore confirmationStore;
     private final SqlExecutionHistoryService historyService;
+    private final BulkSqlGuard bulkSqlGuard;
 
     public ExecuteSqlAction(ConnectionRepository connRepo, ConnectionService connSvc,
                             SqlRiskAnalyzer riskAnalyzer, ArtifactRepository artifacts,
@@ -83,7 +86,8 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
                             SessionDataContextService sessionContexts,
                             Translator translator,
                             SqlPendingConfirmationStore confirmationStore,
-                            SqlExecutionHistoryService historyService) {
+                            SqlExecutionHistoryService historyService,
+                            BulkSqlGuard bulkSqlGuard) {
         this.connRepo = connRepo;
         this.connSvc = connSvc;
         this.riskAnalyzer = riskAnalyzer;
@@ -97,19 +101,21 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
         this.translator = translator;
         this.confirmationStore = confirmationStore;
         this.historyService = historyService;
+        this.bulkSqlGuard = bulkSqlGuard;
     }
 
     @Override public Map<String, Object> inputSchema() {
         return Map.of("type", "object",
             "required", List.of("sql"),
-            "properties", Map.of(
-                "connectionId", Map.of("type", "string"),
-                "database",     Map.of("type", "string"),
-                "schema",       Map.of("type", "string"),
-                "sql",          Map.of("type", "string"),
-                "pageSize",     Map.of("type", "integer", "minimum", 1, "maximum", MAX_PAGE_SIZE),
-                "confirmationId", Map.of("type", "string"),
-                "source",       Map.of("type", "string")
+            "properties", Map.ofEntries(
+                Map.entry("connectionId", Map.of("type", "string")),
+                Map.entry("database",     Map.of("type", "string")),
+                Map.entry("schema",       Map.of("type", "string")),
+                Map.entry("sql",          Map.of("type", "string")),
+                Map.entry("pageSize",     Map.of("type", "integer", "minimum", 1, "maximum", MAX_PAGE_SIZE)),
+                Map.entry("confirmationId", Map.of("type", "string")),
+                Map.entry("source",       Map.of("type", "string")),
+                Map.entry("sourceFileId", Map.of("type", "string"))
             ));
     }
 
@@ -137,6 +143,21 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
                         "riskReason", Map.of("type", "string"),
                         "fallbackUsed", Map.of("type", "boolean")
                     )
+                )),
+                Map.entry("error", Map.of(
+                    "type", "object",
+                    "properties", Map.of(
+                        "code", Map.of("type", "string"),
+                        "reason", Map.of("type", "string"),
+                        "message", Map.of("type", "string")
+                    )
+                )),
+                Map.entry("nextAction", Map.of(
+                    "type", "object",
+                    "properties", Map.of(
+                        "action", Map.of("type", "string"),
+                        "params", Map.of("type", "object")
+                    )
                 ))
             ));
     }
@@ -159,6 +180,22 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
 
         String sql = String.valueOf(input.get("sql"));
         var resolved = resolveContext(ctx, input);
+
+        // BulkSqlGuard (BUG-0070): on AI path, reject bulk write SQL that should route
+        // through datatalk_import_data. USER path is unconditionally passed.
+        CallerKind callerKind = ctx.metadata() != null && ctx.metadata().callerKind() != null
+            ? ctx.metadata().callerKind()
+            : CallerKind.AI;
+        BulkSqlVerdict verdict = bulkSqlGuard.evaluate(
+            sql,
+            callerKind,
+            nullableString(input, "sourceFileId"),
+            resolved.connection().id(),
+            resolved.connection().kind()
+        );
+        if (verdict.shouldReject()) {
+            return buildRejectionResponse(verdict);
+        }
 
         // Dameng Channel 2 — dialect_unsupported entry gate (chat path, per spec §8.1)
         if ("dameng".equalsIgnoreCase(resolved.connection().kind())) {
@@ -548,6 +585,23 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
         String database,
         String schema
     ) {}
+
+    private Map<String, Object> buildRejectionResponse(BulkSqlVerdict verdict) {
+        Map<String, Object> error = new LinkedHashMap<>();
+        error.put("code", "use_import_data");
+        error.put("reason", verdict.reason());
+        error.put("message", verdict.message());
+
+        Map<String, Object> nextAction = new LinkedHashMap<>();
+        nextAction.put("action", "datatalk_import_data");
+        nextAction.put("params", verdict.nextActionParams());
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("status", "rejected");
+        response.put("error", error);
+        response.put("nextAction", nextAction);
+        return response;
+    }
 
     private Map<String, Object> buildMetadata(ActionContext ctx) {
         if (ctx.metadata() == null || ctx.metadata().sqlRisk() == null) {

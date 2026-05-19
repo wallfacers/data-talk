@@ -72,7 +72,7 @@ class ExecuteSqlActionIT {
                 "c-1",
                 connectionId,
                 "oc-e",
-                new ActionExecutionMetadata(new SqlExecutionRisk(RiskLevel.L1, "select", false, false))
+                ActionExecutionMetadata.aiInitiated(new SqlExecutionRisk(RiskLevel.L1, "select", false, false))
             ),
             Map.of("connectionId", connectionId, "sql", "SELECT * FROM t ORDER BY id")
         ).toCompletableFuture().get();
@@ -123,7 +123,7 @@ class ExecuteSqlActionIT {
                 "c-sqlite-1",
                 sqliteConnectionId,
                 "oc-sqlite",
-                new ActionExecutionMetadata(new SqlExecutionRisk(RiskLevel.L1, "select", false, false))
+                ActionExecutionMetadata.aiInitiated(new SqlExecutionRisk(RiskLevel.L1, "select", false, false))
             ),
             Map.of("connectionId", sqliteConnectionId, "sql", "SELECT id, name FROM items ORDER BY id")
         ).toCompletableFuture().get();
