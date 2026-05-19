@@ -156,6 +156,60 @@ class OpenCodeBootstrapWriterTest {
             .anyMatch(name -> name.startsWith("opencode.json.dt-bak-"))).isTrue();
     }
 
+    @Test
+    void writesPreActionExplorationProtocolAndPlaceholderSubstitutions() throws Exception {
+        // Task 6.7: simulates AgentPromptBuilder.render() output that includes
+        // the Pre-Action Exploration Protocol section and all 5 substituted placeholders.
+        // Asserts the writer faithfully persists this content and registers the file path
+        // in config.instructions so OpenCode picks it up at boot.
+        String stubAgentsMd = """
+            ## Pre-Action Exploration Protocol
+
+            Always: get_data_context → schema_search → read_schema → execute_sql.
+
+            ## Registered Actions
+
+            - datatalk_schema_search
+            - datatalk_query_history
+
+            ## Live Context
+
+            - Active connection: mysql · ledger_db
+            - Backend port: 8080
+            - Workspace id: ws-fixture-001
+            - Recent successful: SELECT 1 FROM dual
+            - Recent failures: <no recent failures>
+            """;
+        OpenCodeBridgeStatus status = new OpenCodeBridgeStatus(clock);
+        OpenCodeMcpProperties properties = props(tempDir);
+        OpenCodeBootstrapWriter writer = new OpenCodeBootstrapWriter(
+            properties,
+            objectMapper,
+            status,
+            clock,
+            () -> stubAgentsMd
+        );
+
+        OpenCodeBootstrapWriter.BootstrapArtifacts artifacts = writer.write(8080);
+
+        String written = Files.readString(artifacts.instructionsFile());
+        assertThat(written)
+            .contains("## Pre-Action Exploration Protocol")
+            .contains("datatalk_schema_search")
+            .contains("datatalk_query_history")
+            .contains("mysql · ledger_db")
+            .contains("8080")
+            .contains("ws-fixture-001")
+            .contains("SELECT 1 FROM dual")
+            .contains("<no recent failures>")
+            .doesNotContain("{{")
+            .doesNotContain("}}");
+
+        JsonNode config = objectMapper.readTree(Files.readString(artifacts.configFile()));
+        assertThat(instructions(config))
+            .contains(artifacts.instructionsFile().toString());
+    }
+
     private static OpenCodeMcpProperties props(Path configDir) {
         OpenCodeMcpProperties properties = new OpenCodeMcpProperties();
         properties.setEnabled(true);

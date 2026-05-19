@@ -51,11 +51,11 @@
 
 - [x] 6.1 [parallel] 扩展 `AgentsTemplateContractTest`(`data-talk-adapter` test):新增断言 - 含 `Pre-Action Exploration Protocol` 二级标题、含 5 个占位符字面、Trigger Gate 含 `skill:exploring-data` 行、Skill Index 含 `skill:exploring-data` 条目、Registered Actions 表含 `datatalk_schema_search` 与 `datatalk_query_history` 行、全文 `doesNotContainPattern("skills/[a-z0-9-]+/SKILL\\.md")`、`doesNotContain(".opencode/skills/")`、`doesNotContain("~/.agents/skills/")`、骨架体积 ≤ 350(沿用现有断言)
 - [x] 6.2 [parallel] 新增 `ExploringDataSkillContractTest`(`data-talk-adapter` test):读 `classpath:/skills/exploring-data/SKILL.md`,断言 frontmatter `name=exploring-data`、description 长度 ∈ [80, 600]、含中英文触发词各 ≥ 1、正文含三个边界引用、含 ≥ 4 个 example 标记、不含 `skills/` 路径、不含 `{{...}}` 占位符
-- [ ] 6.3 [parallel] `SchemaSearchActionIT`(集成测,可用 H2/SQLite 内嵌实例):中文 keyword 命中表名/列名/注释、英文 keyword 同时命中表名与列名、SQLite 降级(无 comment 时 commentSnippet=""), `%`/`_` 转义、空 keyword INVALID_ARGUMENT、超长 keyword、limit 上限保护、UNSUPPORTED_DIALECT
+- [x] 6.3 [parallel] `SchemaSearchActionIT`(集成测,可用 H2/SQLite 内嵌实例):中文 keyword 命中表名/列名/注释、英文 keyword 同时命中表名与列名、SQLite 降级(无 comment 时 commentSnippet=""), `%`/`_` 转义、空 keyword INVALID_ARGUMENT、超长 keyword、limit 上限保护、UNSUPPORTED_DIALECT
 - [x] 6.4 [parallel] `QueryHistoryActionIT`:写入 5 条 success + 3 条 failure 后,默认 status 过滤、status="failure"、status="all"、limit 上限、跨 session 隔离、空历史、connectionId 过滤
 - [x] 6.5 [parallel] `SqlExecutionHistoryRepositoryJdbcTest`:V3 migration 应用成功、INSERT 后能 SELECT、超 100 条触发裁剪、`sql_text` 4 KB 截断、`error_message` 1 KB 截断
 - [x] 6.6 [parallel] `AgentPromptBuilderExtendedTest`(扩展现有):新增 5 个 Scenario:有数据/无数据 sentinel/超长截断/无 session 双 sentinel/既有 2 个构造器签名兼容(反射断言)
-- [ ] 6.7 [parallel] 扩展 `OpenCodeBootstrapWriterTest`:断言 AGENTS.md 内容(写入 OpenCode config dir 的文件)包含 `## Pre-Action Exploration Protocol` 段标题、含 5 个占位符替换后的实际文本(stub 数据)、`config.instructions` JSON 字段含该 AGENTS.md 绝对路径
+- [x] 6.7 [parallel] 扩展 `OpenCodeBootstrapWriterTest`:断言 AGENTS.md 内容(写入 OpenCode config dir 的文件)包含 `## Pre-Action Exploration Protocol` 段标题、含 5 个占位符替换后的实际文本(stub 数据)、`config.instructions` JSON 字段含该 AGENTS.md 绝对路径
 - [x] 6.8 [parallel] `SkillResourceSyncerExploringDataTest`(新增):syncSkill("exploring-data", projectRoot) 后,`<projectRoot>/.opencode/skills/exploring-data/SKILL.md` 存在 + 内容与 classpath 一致 + marker 文件存在
 - [x] 6.9 验证组 6:`cd server && mvn verify` 全量过(JUnit 5 + AssertJ + WireMock)
 

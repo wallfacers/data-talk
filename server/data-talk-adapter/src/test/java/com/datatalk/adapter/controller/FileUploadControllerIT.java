@@ -75,6 +75,14 @@ class FileUploadControllerIT {
     @BeforeEach
     void setUp() {
         jdbc.update("DELETE FROM uploaded_file");
+        // V5 migration added FK uploaded_file.session_id -> sessions(id); ensure the parent
+        // session row exists before any uploaded_file insert in this IT (idempotent INSERT OR IGNORE).
+        long now = System.currentTimeMillis();
+        jdbc.update("""
+            INSERT OR IGNORE INTO sessions(id, connection_id, title, has_ever_sent, opencode_sid,
+                created_at, updated_at, title_locked)
+            VALUES(?, NULL, ?, 0, ?, ?, ?, 0)
+            """, SESSION_ID, "FileUpload IT", "oc-" + SESSION_ID, now, now);
         mvc = MockMvcBuilders.webAppContextSetup(ctx).build();
     }
 
