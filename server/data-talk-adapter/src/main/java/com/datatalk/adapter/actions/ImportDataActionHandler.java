@@ -65,9 +65,14 @@ public class ImportDataActionHandler implements ActionHandler<Map, Map> {
             "properties", targetProps));
         properties.put("createTable", Map.of("type", "boolean", "default", true));
         properties.put("columnMappings", Map.of("type", "object",
-            "description", "Source column name -> target column name"));
+            "description", "Optional rename map: source column name -> target table column name, "
+                + "e.g. {\"oldName\":\"newName\"}. Use when file headers don't match the target schema."));
         properties.put("columnTypes", Map.of("type", "object",
-            "description", "Column name -> DDL type override"));
+            "description", "Optional per-column DDL type override, "
+                + "e.g. {\"id\":\"BIGINT\",\"created_at\":\"DATETIME(6)\"}. "
+                + "Defaults are inferred from sample values (integer->BIGINT, decimal->DOUBLE, "
+                + "otherwise VARCHAR(255)); set only when the user pins specific types or "
+                + "inference is wrong (createTable=true only)."));
 
         return Map.of("type", "object",
             "required", List.of("source", "target"),
