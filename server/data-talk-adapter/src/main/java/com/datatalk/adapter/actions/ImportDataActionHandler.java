@@ -1,6 +1,10 @@
 package com.datatalk.adapter.actions;
 
 import com.datatalk.application.importexport.DataImportService;
+import com.datatalk.application.persistence.ConnectionRecord;
+import com.datatalk.application.persistence.ConnectionRepository;
+import com.datatalk.application.persistence.SessionDataContextRecord;
+import com.datatalk.application.session.SessionDataContextService;
 import com.datatalk.domain.action.*;
 import org.springframework.stereotype.Component;
 
@@ -22,9 +26,15 @@ import java.util.concurrent.CompletionStage;
 public class ImportDataActionHandler implements ActionHandler<Map, Map> {
 
     private final DataImportService importService;
+    private final SessionDataContextService sessionContexts;
+    private final ConnectionRepository connRepo;
 
-    public ImportDataActionHandler(DataImportService importService) {
+    public ImportDataActionHandler(DataImportService importService,
+                                   SessionDataContextService sessionContexts,
+                                   ConnectionRepository connRepo) {
         this.importService = importService;
+        this.sessionContexts = sessionContexts;
+        this.connRepo = connRepo;
     }
 
     @Override
@@ -42,6 +52,9 @@ public class ImportDataActionHandler implements ActionHandler<Map, Map> {
         Map<String, Object> targetProps = new LinkedHashMap<>();
         targetProps.put("connectionId", Map.of("type", "string"));
         targetProps.put("tableName", Map.of("type", "string"));
+        targetProps.put("database", Map.of("type", "string",
+            "description", "Target database name; overrides session_data_context. "
+                + "Required for server-level connections without a default database (BUG-0072)."));
 
         Map<String, Object> properties = new LinkedHashMap<>();
         properties.put("source", Map.of("type", "object",
@@ -108,6 +121,7 @@ public class ImportDataActionHandler implements ActionHandler<Map, Map> {
             Map<String, Object> target = (Map<String, Object>) targetObj;
             String targetConnId = (String) target.get("connectionId");
             String tableName = (String) target.get("tableName");
+            String requestedDatabase = (String) target.get("database");
 
             if (targetConnId == null || targetConnId.isBlank()) {
                 return errorResult("target.connectionId is required");
@@ -115,6 +129,8 @@ public class ImportDataActionHandler implements ActionHandler<Map, Map> {
             if (tableName == null || tableName.isBlank()) {
                 return errorResult("target.tableName is required");
             }
+
+            String targetDatabase = resolveDatabase(ctx, targetConnId, requestedDatabase);
 
             // 3. Parse optional params
             boolean createTable = boolVal(input.get("createTable"), true);
@@ -128,8 +144,8 @@ public class ImportDataActionHandler implements ActionHandler<Map, Map> {
                 if (fileId == null || fileId.isBlank()) {
                     return errorResult("source.fileId is required when source type is file");
                 }
-                result = importService.importFromFile(fileId, targetConnId, tableName,
-                    createTable, columnMappings, columnTypes);
+                result = importService.importFromFile(fileId, targetConnId, targetDatabase,
+                    tableName, createTable, columnMappings, columnTypes);
             } else if ("query".equals(sourceType)) {
                 String sourceConnId = (String) source.get("connectionId");
                 String sql = (String) source.get("sql");
@@ -139,8 +155,10 @@ public class ImportDataActionHandler implements ActionHandler<Map, Map> {
                 if (sql == null || sql.isBlank()) {
                     return errorResult("source.sql is required when source type is query");
                 }
-                result = importService.importFromQuery(sourceConnId, sql, targetConnId,
-                    tableName, createTable);
+                String requestedSourceDatabase = (String) source.get("database");
+                String sourceDatabase = resolveDatabase(ctx, sourceConnId, requestedSourceDatabase);
+                result = importService.importFromQuery(sourceConnId, sourceDatabase, sql,
+                    targetConnId, targetDatabase, tableName, createTable);
             } else {
                 return errorResult("Invalid source type: " + sourceType);
             }
@@ -157,6 +175,31 @@ public class ImportDataActionHandler implements ActionHandler<Map, Map> {
             output.put("importId", result.importId());
             return output;
         });
+    }
+
+    /**
+     * Three-tier database resolution mirroring {@code ExecuteSqlAction.resolveContext}:
+     * explicit input > session_data_context > connection default. Closes BUG-0072 by ensuring
+     * server-level connections (databaseName=null) inherit the database the user set via
+     * {@code datatalk_set_data_context}, rather than producing a URL with no database segment
+     * that fails INSERT with "No database selected".
+     */
+    private String resolveDatabase(ActionContext ctx, String connectionId, String requestedDatabase) {
+        if (requestedDatabase != null && !requestedDatabase.isBlank()) {
+            return requestedDatabase;
+        }
+        if (ctx != null && ctx.sessionId() != null) {
+            SessionDataContextRecord sessionContext = sessionContexts.get(ctx.sessionId());
+            if (sessionContext != null
+                && connectionId.equals(sessionContext.connectionId())
+                && sessionContext.databaseName() != null
+                && !sessionContext.databaseName().isBlank()) {
+                return sessionContext.databaseName();
+            }
+        }
+        return connRepo.findById(connectionId)
+            .map(ConnectionRecord::databaseName)
+            .orElse(null);
     }
 
     private static Map<String, Object> errorResult(String message) {

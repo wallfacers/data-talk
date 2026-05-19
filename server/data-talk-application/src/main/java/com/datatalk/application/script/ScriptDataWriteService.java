@@ -93,6 +93,16 @@ public class ScriptDataWriteService {
 
     public StreamWriteResult writeStream(String connectionId, String tableName, ResultSet rs,
                                           boolean createTable, Map<String, String> columnTypes) {
+        return writeStream(connectionId, null, tableName, rs, createTable, columnTypes);
+    }
+
+    /**
+     * Variant accepting an explicit {@code database} override, plumbed via a derived
+     * {@link ConnectionRecord} so the JDBC URL embeds that database segment — BUG-0072.
+     */
+    public StreamWriteResult writeStream(String connectionId, String database, String tableName,
+                                          ResultSet rs, boolean createTable,
+                                          Map<String, String> columnTypes) {
         try {
             ResultSetMetaData meta = rs.getMetaData();
             int colCount = meta.getColumnCount();
@@ -109,7 +119,7 @@ public class ScriptDataWriteService {
             }
 
             String kind = resolveKind(connectionId);
-            try (Connection c = openConnection(connectionId)) {
+            try (Connection c = openResolvedConnection(connectionId, database)) {
                 c.setAutoCommit(false);
 
                 if (createTable && !tableExists(c, tableName)) {
@@ -161,7 +171,16 @@ public class ScriptDataWriteService {
     public Connection openConnection(String connectionId) throws Exception {
         ConnectionRecord cr = connRepo.findById(connectionId)
             .orElseThrow(() -> new IllegalArgumentException("Unknown connection: " + connectionId));
-        String password = connSvc.decryptPassword(connectionId);
+        return openConnection(cr);
+    }
+
+    /**
+     * Opens a JDBC connection for the supplied {@link ConnectionRecord} as-is, allowing callers
+     * to pass a derived record (e.g. {@code withDatabase(...)} from session_data_context) so the
+     * URL builder receives the resolved database — see BUG-0072.
+     */
+    public Connection openConnection(ConnectionRecord cr) throws Exception {
+        String password = connSvc.decryptPassword(cr.id());
         String url = JdbcUrlBuilder.build(cr);
 
         String effectiveUsername = ConnectionKind.OCEANBASE.equals(cr.kind())
@@ -169,6 +188,34 @@ public class ScriptDataWriteService {
             : cr.username();
 
         return DriverManager.getConnection(url, effectiveUsername, password);
+    }
+
+    /**
+     * Opens a JDBC connection against {@code connectionId}. When {@code database} is non-blank,
+     * the underlying {@link ConnectionRecord} is derived via {@code withDatabase} so the URL
+     * builder embeds that database segment — see BUG-0072. Used by import / cross-DB / stream
+     * paths that resolve the active database from {@code session_data_context}.
+     */
+    public Connection openResolvedConnection(String connectionId, String database) throws Exception {
+        if (database == null || database.isBlank()) {
+            return openConnection(connectionId);
+        }
+        ConnectionRecord cr = connRepo.findById(connectionId)
+            .orElseThrow(() -> new IllegalArgumentException("Unknown connection: " + connectionId));
+        return openConnection(withDatabase(cr, database));
+    }
+
+    private static ConnectionRecord withDatabase(ConnectionRecord cr, String database) {
+        return new ConnectionRecord(
+            cr.id(), cr.name(), cr.kind(), cr.host(), cr.port(),
+            database,
+            cr.username(), cr.passwordEnc(), cr.schemaDigest(), cr.createdAt(),
+            cr.connectTimeout(), cr.lastTestStatus(), cr.lastTestAt(),
+            cr.oracleServiceType(), cr.sqlserverEncrypt(),
+            cr.sqlserverTrustServerCertificate(), cr.sqlserverInstanceName(),
+            cr.readOnly(), cr.compatibilityMode(),
+            cr.oceanbaseTenant(), cr.oceanbaseCluster()
+        );
     }
 
     /**

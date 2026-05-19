@@ -8,7 +8,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## 当前编号
 
-下一个分配 ID：**BUG-0071**（永不复用，单调递增）
+下一个分配 ID：**BUG-0073**（永不复用，单调递增）
 
 ## Open BUGs（按 priority 倒序，P0 → P2）
 
@@ -20,6 +20,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 | ID | Title | Status | Priority | Owner |
 |----|-------|--------|----------|-------|
+| [BUG-0072](BUG-0072-import-data-no-database-selected.md) | datatalk_import_data 不解析 session_data_context 的 database，server-level 连接报 "No database selected" | fixed | P1 | — (pending) |
 | [BUG-0070](BUG-0070-execute-sql-bulk-bypass-import-data.md) | AI 通过 datatalk_execute_sql 直传大批量 SQL，绕过 datatalk_import_data 引爆 token 与失败重试（BUG-0065/0067/0069 终结性硬契约修法） | fixed | P1 | — (61923d3b) |
 | [BUG-0069](BUG-0069-sql-file-import-routing-bypassed-via-file-read-execute-sql.md) | 20KB INSERT-only SQL 文件被 file_read + execute_sql 绕过 datatalk_import_data 路由（BUG-0065/0067 同族：专用合同工具被通用拼装路径绕过） | fixed | P2 | — (2ab9039f) |
 | [BUG-0068](BUG-0068-user-bubble-content-flash-on-promote.md) | 用户气泡内容"展示→消失→再展示"——promotePendingUser 清空 parts 制造空白帧（BUG-0056 修复后回归） | fixed | P1 | — (pending) |

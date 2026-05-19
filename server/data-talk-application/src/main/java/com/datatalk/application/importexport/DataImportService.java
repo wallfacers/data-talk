@@ -52,6 +52,21 @@ public class DataImportService {
                                        boolean createTable,
                                        Map<String, String> columnMappings,
                                        Map<String, String> columnTypes) {
+        return importFromFile(fileId, connectionId, null, tableName, createTable,
+            columnMappings, columnTypes);
+    }
+
+    /**
+     * Variant that accepts an explicit {@code database} override resolved by the caller
+     * (e.g. from {@code session_data_context}). When non-blank, the JDBC connection is opened
+     * against a derived ConnectionRecord so the URL builder embeds that database segment —
+     * see BUG-0072.
+     */
+    public ImportResult importFromFile(String fileId, String connectionId, String database,
+                                       String tableName,
+                                       boolean createTable,
+                                       Map<String, String> columnMappings,
+                                       Map<String, String> columnTypes) {
         UploadedFile file = fileRepo.findById(fileId)
             .orElseThrow(() -> new RuntimeException(
                 "FILE_NOT_FOUND: File not found for id: " + fileId));
@@ -135,8 +150,8 @@ public class DataImportService {
                             }
                         }
 
-                        // Execute DDL via JDBC
-                        try (Connection ddlConn = writeService.openConnection(connectionId)) {
+                        // Execute DDL via JDBC — open against database-resolved record
+                        try (Connection ddlConn = openResolvedConnection(connectionId, database)) {
                             for (String ddlStmt : ddlPrefix.split(";\\s*")) {
                                 if (!ddlStmt.isBlank()) {
                                     try {
@@ -204,7 +219,7 @@ public class DataImportService {
         }
 
         // Write to target database
-        int rowsImported = writeRowsToTable(connectionId, tableName, columns, ddlTypes,
+        int rowsImported = writeRowsToTable(connectionId, database, tableName, columns, ddlTypes,
                                              allRows, createTable, columnTypes, warnings);
 
         List<ColumnInfo> colInfos = new ArrayList<>();
@@ -222,6 +237,18 @@ public class DataImportService {
     public ImportResult importFromQuery(String sourceConnectionId, String sql,
                                          String targetConnectionId, String tableName,
                                          boolean createTable) {
+        return importFromQuery(sourceConnectionId, null, sql, targetConnectionId, null,
+            tableName, createTable);
+    }
+
+    /**
+     * Variant accepting explicit source/target database overrides resolved by the caller (e.g.
+     * from session_data_context). Each is plumbed into a derived ConnectionRecord so the
+     * JDBC URL embeds the right database segment — see BUG-0072.
+     */
+    public ImportResult importFromQuery(String sourceConnectionId, String sourceDatabase, String sql,
+                                         String targetConnectionId, String targetDatabase,
+                                         String tableName, boolean createTable) {
         String importId = UUID.randomUUID().toString();
         log.info("Starting cross-DB copy [{}] from conn={} to conn={} table={}",
                  importId, sourceConnectionId, targetConnectionId, tableName);
@@ -229,7 +256,7 @@ public class DataImportService {
         List<String> warnings = new ArrayList<>();
         List<Map<String, Object>> sampleRows = new ArrayList<>();
 
-        try (Connection srcConn = writeService.openConnection(sourceConnectionId)) {
+        try (Connection srcConn = openResolvedConnection(sourceConnectionId, sourceDatabase)) {
             srcConn.setAutoCommit(false);
             try (Statement stmt = srcConn.createStatement(
                      ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)) {
@@ -238,7 +265,7 @@ public class DataImportService {
                     // Stream the entire ResultSet via writeStream,
                     // which handles cursor-based batch insertion.
                     var streamResult = writeService.writeStream(
-                        targetConnectionId, tableName, rs, createTable, null);
+                        targetConnectionId, targetDatabase, tableName, rs, createTable, null);
 
                     // Collect columns from the stream result
                     List<ColumnInfo> resultColumns = streamResult.columns().stream()
@@ -267,12 +294,13 @@ public class DataImportService {
 
     // ── helpers ────────────────────────────────────────────────────────
 
-    private int writeRowsToTable(String connectionId, String tableName, List<String> columns,
+    private int writeRowsToTable(String connectionId, String database, String tableName,
+                                  List<String> columns,
                                   List<String> ddlTypes, List<Map<String, Object>> rows,
                                   boolean createTable, Map<String, String> columnTypes,
                                   List<String> warnings) {
         String kind = writeService.resolveKind(connectionId);
-        try (Connection c = writeService.openConnection(connectionId)) {
+        try (Connection c = openResolvedConnection(connectionId, database)) {
             c.setAutoCommit(false);
 
             if (createTable && !tableExists(c, tableName)) {
@@ -315,6 +343,10 @@ public class DataImportService {
             throw new RuntimeException(
                 "Failed to write data to " + tableName + ": " + e.getMessage(), e);
         }
+    }
+
+    private Connection openResolvedConnection(String connectionId, String database) throws Exception {
+        return writeService.openResolvedConnection(connectionId, database);
     }
 
     private String detectFileType(String filename) {

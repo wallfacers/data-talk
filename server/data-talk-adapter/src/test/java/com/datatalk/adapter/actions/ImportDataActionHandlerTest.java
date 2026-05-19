@@ -1,12 +1,17 @@
 package com.datatalk.adapter.actions;
 
 import com.datatalk.application.importexport.DataImportService;
+import com.datatalk.application.persistence.ConnectionRecord;
+import com.datatalk.application.persistence.ConnectionRepository;
+import com.datatalk.application.persistence.SessionDataContextRecord;
+import com.datatalk.application.session.SessionDataContextService;
 import com.datatalk.domain.action.ActionContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -16,14 +21,22 @@ import static org.mockito.Mockito.*;
 class ImportDataActionHandlerTest {
 
     private DataImportService importService;
+    private SessionDataContextService sessionContexts;
+    private ConnectionRepository connRepo;
     private ImportDataActionHandler handler;
     private ActionContext ctx;
 
     @BeforeEach
     void setUp() {
         importService = mock(DataImportService.class);
-        handler = new ImportDataActionHandler(importService);
+        sessionContexts = mock(SessionDataContextService.class);
+        connRepo = mock(ConnectionRepository.class);
+        handler = new ImportDataActionHandler(importService, sessionContexts, connRepo);
         ctx = new ActionContext("s1", "call1", null, null);
+        // Default: no session_data_context, no stored connection default — resolveDatabase → null.
+        when(sessionContexts.get(anyString())).thenReturn(
+            new SessionDataContextRecord("s1", null, null, null, null, null, 0L));
+        when(connRepo.findById(anyString())).thenReturn(Optional.empty());
     }
 
     // ── file import ──────────────────────────────────────────────────
@@ -41,8 +54,8 @@ class ImportDataActionHandlerTest {
             "import-123"
         );
 
-        when(importService.importFromFile(eq("file-1"), eq("conn-1"), eq("target_table"),
-            eq(true), isNull(), isNull())).thenReturn(mockResult);
+        when(importService.importFromFile(eq("file-1"), eq("conn-1"), isNull(),
+            eq("target_table"), eq(true), isNull(), isNull())).thenReturn(mockResult);
 
         Map<String, Object> input = Map.of(
             "source", Map.of("type", "file", "fileId", "file-1"),
@@ -66,7 +79,7 @@ class ImportDataActionHandlerTest {
         List<Map<String, Object>> sampleRows = (List<Map<String, Object>>) result.get("sampleRows");
         assertThat(sampleRows).hasSize(2);
 
-        verify(importService).importFromFile("file-1", "conn-1", "target_table",
+        verify(importService).importFromFile("file-1", "conn-1", null, "target_table",
             true, null, null);
     }
 
@@ -78,7 +91,7 @@ class ImportDataActionHandlerTest {
         Map<String, String> mappings = Map.of("old_col", "new_col");
         Map<String, String> types = Map.of("new_col", "TEXT");
 
-        when(importService.importFromFile(eq("f1"), eq("c1"), eq("tbl"),
+        when(importService.importFromFile(eq("f1"), eq("c1"), isNull(), eq("tbl"),
             eq(false), eq(mappings), eq(types))).thenReturn(mockResult);
 
         Map<String, Object> input = Map.of(
@@ -92,7 +105,7 @@ class ImportDataActionHandlerTest {
         Map result = handler.handle(ctx, input).toCompletableFuture().join();
 
         assertThat(result).doesNotContainKey("error");
-        verify(importService).importFromFile("f1", "c1", "tbl", false, mappings, types);
+        verify(importService).importFromFile("f1", "c1", null, "tbl", false, mappings, types);
     }
 
     // ── query import ─────────────────────────────────────────────────
@@ -107,8 +120,8 @@ class ImportDataActionHandlerTest {
             "import-456"
         );
 
-        when(importService.importFromQuery(eq("src-conn"), eq("SELECT * FROM src"),
-            eq("dst-conn"), eq("dest_table"), eq(true))).thenReturn(mockResult);
+        when(importService.importFromQuery(eq("src-conn"), isNull(), eq("SELECT * FROM src"),
+            eq("dst-conn"), isNull(), eq("dest_table"), eq(true))).thenReturn(mockResult);
 
         Map<String, Object> input = Map.of(
             "source", Map.of("type", "query", "connectionId", "src-conn", "sql", "SELECT * FROM src"),
@@ -122,8 +135,8 @@ class ImportDataActionHandlerTest {
         assertThat(result).containsEntry("importId", "import-456");
         assertThat(result).doesNotContainKey("error");
 
-        verify(importService).importFromQuery("src-conn", "SELECT * FROM src",
-            "dst-conn", "dest_table", true);
+        verify(importService).importFromQuery("src-conn", null, "SELECT * FROM src",
+            "dst-conn", null, "dest_table", true);
     }
 
     // ── validation errors ────────────────────────────────────────────
@@ -250,7 +263,7 @@ class ImportDataActionHandlerTest {
             10, "tbl", List.of(), List.of(), manyRows, "id-limit"
         );
 
-        when(importService.importFromFile(eq("f1"), eq("c1"), eq("tbl"),
+        when(importService.importFromFile(eq("f1"), eq("c1"), isNull(), eq("tbl"),
             eq(true), isNull(), isNull())).thenReturn(mockResult);
 
         Map<String, Object> input = Map.of(
@@ -275,7 +288,7 @@ class ImportDataActionHandlerTest {
             5, "tbl", List.of(), List.of(), List.of(), "id-ct"
         );
 
-        when(importService.importFromFile(eq("f1"), eq("c1"), eq("tbl"),
+        when(importService.importFromFile(eq("f1"), eq("c1"), isNull(), eq("tbl"),
             eq(true), isNull(), isNull())).thenReturn(mockResult);
 
         Map<String, Object> input = Map.of(
@@ -286,6 +299,105 @@ class ImportDataActionHandlerTest {
         Map result = handler.handle(ctx, input).toCompletableFuture().join();
 
         assertThat(result).doesNotContainKey("error");
-        verify(importService).importFromFile("f1", "c1", "tbl", true, null, null);
+        verify(importService).importFromFile("f1", "c1", null, "tbl", true, null, null);
+    }
+
+    // ── BUG-0072: three-tier database resolution ──────────────────────
+
+    @Test
+    void resolveDatabase_inputTargetDatabase_takesPriority() {
+        DataImportService.ImportResult mockResult = new DataImportService.ImportResult(
+            5, "tbl", List.of(), List.of(), List.of(), "id-priority"
+        );
+        // Session context has its own database; input.target.database must override it.
+        when(sessionContexts.get("s1")).thenReturn(
+            new SessionDataContextRecord("s1", "c1", null, "session_db", null, null, 0L));
+        when(importService.importFromFile(eq("f1"), eq("c1"), eq("explicit_db"),
+            eq("tbl"), eq(true), isNull(), isNull())).thenReturn(mockResult);
+
+        Map<String, Object> input = Map.of(
+            "source", Map.of("type", "file", "fileId", "f1"),
+            "target", Map.of("connectionId", "c1", "tableName", "tbl",
+                             "database", "explicit_db")
+        );
+
+        Map result = handler.handle(ctx, input).toCompletableFuture().join();
+
+        assertThat(result).doesNotContainKey("error");
+        verify(importService).importFromFile("f1", "c1", "explicit_db", "tbl",
+            true, null, null);
+    }
+
+    @Test
+    void resolveDatabase_fallsBackToSessionDataContext_whenInputAbsent() {
+        DataImportService.ImportResult mockResult = new DataImportService.ImportResult(
+            5, "tbl", List.of(), List.of(), List.of(), "id-session"
+        );
+        // Session is bound to the same connection — its databaseName must be inherited.
+        when(sessionContexts.get("s1")).thenReturn(
+            new SessionDataContextRecord("s1", "c1", null, "datatalk_ctx", null, null, 0L));
+        when(importService.importFromFile(eq("f1"), eq("c1"), eq("datatalk_ctx"),
+            eq("tbl"), eq(true), isNull(), isNull())).thenReturn(mockResult);
+
+        Map<String, Object> input = Map.of(
+            "source", Map.of("type", "file", "fileId", "f1"),
+            "target", Map.of("connectionId", "c1", "tableName", "tbl")
+        );
+
+        Map result = handler.handle(ctx, input).toCompletableFuture().join();
+
+        assertThat(result).doesNotContainKey("error");
+        verify(importService).importFromFile("f1", "c1", "datatalk_ctx", "tbl",
+            true, null, null);
+    }
+
+    @Test
+    void resolveDatabase_doesNotInheritSession_whenConnectionMismatches() {
+        DataImportService.ImportResult mockResult = new DataImportService.ImportResult(
+            5, "tbl", List.of(), List.of(), List.of(), "id-mismatch"
+        );
+        // Session is bound to a different connection — must NOT leak its db into this call.
+        when(sessionContexts.get("s1")).thenReturn(
+            new SessionDataContextRecord("s1", "OTHER_CONN", null, "wrong_db", null, null, 0L));
+        // Falls through to connection's stored default → still null in this test fixture.
+        when(importService.importFromFile(eq("f1"), eq("c1"), isNull(),
+            eq("tbl"), eq(true), isNull(), isNull())).thenReturn(mockResult);
+
+        Map<String, Object> input = Map.of(
+            "source", Map.of("type", "file", "fileId", "f1"),
+            "target", Map.of("connectionId", "c1", "tableName", "tbl")
+        );
+
+        Map result = handler.handle(ctx, input).toCompletableFuture().join();
+
+        assertThat(result).doesNotContainKey("error");
+        verify(importService).importFromFile("f1", "c1", null, "tbl",
+            true, null, null);
+    }
+
+    @Test
+    void resolveDatabase_fallsBackToConnectionDefault_asLastResort() {
+        DataImportService.ImportResult mockResult = new DataImportService.ImportResult(
+            5, "tbl", List.of(), List.of(), List.of(), "id-conn-default"
+        );
+        // No input.database, no session context match — must read connection's stored databaseName.
+        ConnectionRecord cr = new ConnectionRecord(
+            "c1", "MyConn", "mysql", "localhost", 3306, "conn_default_db",
+            "user", new byte[0], "digest", 0L, 5000, "ok", 0L,
+            null, 1, false, null, false, null, null, null);
+        when(connRepo.findById("c1")).thenReturn(Optional.of(cr));
+        when(importService.importFromFile(eq("f1"), eq("c1"), eq("conn_default_db"),
+            eq("tbl"), eq(true), isNull(), isNull())).thenReturn(mockResult);
+
+        Map<String, Object> input = Map.of(
+            "source", Map.of("type", "file", "fileId", "f1"),
+            "target", Map.of("connectionId", "c1", "tableName", "tbl")
+        );
+
+        Map result = handler.handle(ctx, input).toCompletableFuture().join();
+
+        assertThat(result).doesNotContainKey("error");
+        verify(importService).importFromFile("f1", "c1", "conn_default_db", "tbl",
+            true, null, null);
     }
 }
