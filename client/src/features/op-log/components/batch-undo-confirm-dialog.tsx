@@ -45,7 +45,7 @@ export function BatchUndoConfirmDialog({ open, items, loading, onConfirm, onCanc
             onClick={onConfirm}
             disabled={loading}
           >
-            {loading ? 'Undoing...' : 'Confirm Undo'}
+            {loading ? 'Undoing' : 'Confirm Undo'}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

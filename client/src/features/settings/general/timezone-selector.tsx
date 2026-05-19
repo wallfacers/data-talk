@@ -65,7 +65,7 @@ export function TimezoneSelector({ value, onChange }: TimezoneSelectorProps) {
           <SearchIcon className="mr-2 size-3.5 shrink-0 text-muted-foreground" />
           <Input
             ref={inputRef}
-            placeholder="Search timezone..."
+            placeholder="Search timezone"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="h-7 border-0 bg-transparent p-0 text-sm focus-visible:ring-0 focus-visible:ring-offset-0"

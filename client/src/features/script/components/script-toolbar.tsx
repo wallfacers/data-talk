@@ -63,7 +63,7 @@ export function ScriptToolbar({
 
       <Select defaultValue={currentConnectionId || undefined}>
         <SelectTrigger className="h-7 w-40 text-xs">
-          <SelectValue placeholder="Select connection..." />
+          <SelectValue placeholder="Select connection" />
         </SelectTrigger>
         <SelectContent>
           {connections?.map((conn) => (
