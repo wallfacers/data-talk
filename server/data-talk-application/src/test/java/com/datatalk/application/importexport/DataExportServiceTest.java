@@ -30,7 +30,11 @@ import java.util.zip.ZipFile;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -416,5 +420,44 @@ class DataExportServiceTest {
         assertThat(service.buildStreamExportFilename("orders", "xlsx")).endsWith(".xlsx");
         assertThat(service.buildStreamExportFilename("orders", "json")).endsWith(".json");
         assertThat(service.buildStreamExportFilename("orders", "sql_insert")).endsWith(".sql");
+    }
+
+    // ── Dialect-aware identifier quoting (BUG-0066) ──────────────────────
+
+    /**
+     * SQL INSERT export from a MySQL source MUST emit backtick-quoted identifiers so the file can
+     * be reloaded into the same MySQL instance via {@code datatalk_import_data} without hitting
+     * the default sql_mode rejection of ANSI double-quote identifiers. Uses H2 underneath for I/O
+     * but flips the resolved kind to "mysql" to exercise the dispatch.
+     */
+    @Test
+    void sqlInsertExport_mysqlSource_emitsBacktickQuotedIdentifiers() throws Exception {
+        String dbName = "mem:exp_mysql" + System.nanoTime() + ";DB_CLOSE_DELAY=-1";
+        when(connRepo.findById("c_mys")).thenReturn(Optional.of(h2Record("c_mys", dbName)));
+        when(connSvc.decryptPassword("c_mys")).thenReturn("");
+        try (Connection c = DriverManager.getConnection("jdbc:h2:" + dbName, "sa", "")) {
+            c.createStatement().execute("CREATE TABLE TD_ORDERS (ID INT, NAME VARCHAR(100))");
+            c.createStatement().execute("INSERT INTO TD_ORDERS VALUES (1, 'Alice'), (2, 'Bob')");
+        }
+
+        ScriptDataWriteService spied = spy(writeService);
+        doReturn("mysql").when(spied).resolveKind(anyString());
+        doAnswer(inv -> DriverManager.getConnection("jdbc:h2:" + dbName, "sa", ""))
+            .when(spied).openConnection(anyString());
+        DataExportService mysqlService = new DataExportService(spied, sessionBusRegistry, sqlRiskAnalyzer);
+
+        DataExportService.ExportResult result = mysqlService.export(
+            "session1", "c_mys", "SELECT * FROM TD_ORDERS", "TD_ORDERS",
+            "sql_insert", "test-mysql", null);
+
+        Path file = mysqlService.resolveExportFile(result.exportId());
+        assertThat(file).isNotNull();
+        String content = Files.readString(file);
+        assertThat(content)
+            .as("MySQL source export MUST use backtick identifiers, not ANSI double-quote")
+            .contains("INSERT INTO `TD_ORDERS`")
+            .contains("`ID`")
+            .contains("`NAME`")
+            .doesNotContain("\"TD_ORDERS\"");
     }
 }

@@ -143,14 +143,12 @@ The ONLY supported write path is: POST {DT_BACKEND_URL}/api/script-data/write (o
 ## Open Questions
 
 ### Q1 · `update_connection_confirmable` 是否暴露 `extraJdbcParams`？
-本 change 默认 **不做**（走"显式拒绝"分支：当 AI 调用 update 并未实际修改字段时返回 "no-op" 提示，避免 AI 钻牛角尖）。
+**已决（2026-05-19，用户确认）：本 change 不动**。
+理由：A 节 `IdentifierQuoter` 修复后，AI 已无 "改 sql_mode 让 ANSI 双引号在 MySQL 上工作" 的动机 —— 反引号会自动出。原 OPEN QUESTION 的两个分支：
+- 显式拒绝：A 修好后无需主动拒绝，AI 自然不会走到这里
+- 真的透传：独立的更大改动（Flyway 迁移 + 安全白名单 + UI 表单），单独 propose `connection-extra-jdbc-params` 评估
 
-但如果用户希望真的能透传（例：让 MySQL 连接走 `useCursorFetch=true` 不再要求用户手填 URL），需要：
-- ConnectionRecord 加 `extraJdbcParams` 字段（Flyway 迁移）
-- ConnectionUrlBuilder 拼接逻辑
-- 安全审计：白名单参数 vs 自由文本（后者引入 SSRF / 凭据泄露面）
-
-**待用户在 propose review 阶段决定**。本 change 先把 A/B/C 闭环，D 单独发起。
+⇒ 本 change 不变更 `UpdateConnectionConfirmableAction` 的输入 schema 或 `ConnectionRecord` 字段。proposal.md 的 §D 标记为 DEFERRED。
 
 ### Q2 · `Hive / Trino / Presto` 真实生产中应该用什么 quote 字符？
 本 change 选 DOUBLE_QUOTE 保守路线。如有真实用户用 Trino + 反引号 schema，需要 follow-up 加 `BACKTICK_ALTERNATIVE` 标志位。**暂不解，依证据驱动**。

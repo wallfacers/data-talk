@@ -9,6 +9,17 @@ description: |
 
 Execute Python or Node.js scripts locally to fetch, scrape, or process external data, then write results into user database connections.
 
+## ❗ DO NOT
+
+**These patterns will fail or violate the contract — do not do them:**
+
+- **DO NOT** install or import database drivers in scripts (`pip install pymysql`, `pip install psycopg2`, `npm install mysql2`, `import pymysql`, `from sqlalchemy import create_engine`, etc.). Scripts run in the user's local Python/Node env and have **no direct DB access** by design.
+- **DO NOT** construct JDBC URLs, host/port/password literals, or any DB connection string in scripts. The script's only allowed channel to write data is the **HTTP write API** below.
+- **DO NOT** call `cursor.execute(...)`, raw SQL, or any `INSERT` / `CREATE TABLE` SQL from the script. Identifier quoting, schema creation, and dialect handling are owned by `ScriptDataWriteService` server-side (see `IdentifierQuoter` for the dialect dispatch table). Scripts emit rows as JSON via the write API and the server generates dialect-correct DDL/DML.
+- **DO NOT** read `DT_CONNECTION_ID` and try to look it up — pass it through verbatim as the `connectionId` field in the write request body. The token + connectionId pair is verified server-side.
+
+**Why this matters**: Scripts that bypass `POST {DT_BACKEND_URL}/api/script-data/write` get one of: missing-driver error, wrong dialect (MySQL backtick vs ANSI quote) SQL syntax error, identifier-collision crash on reserved keyword columns (`select`, `order`, …), or silent data corruption. The write API is the single contract that handles all of this correctly across the 19 supported `ConnectionKind` values.
+
 ## Tool Surface
 
 | Tool | Purpose |

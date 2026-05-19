@@ -16,7 +16,11 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 class ScriptDataWriteServiceTest {
@@ -205,6 +209,70 @@ class ScriptDataWriteServiceTest {
                 var result = service.writeStream("tgt", "EXISTING", rs, false, null);
                 assertThat(result.rowsInserted()).isEqualTo(1);
             }
+        }
+    }
+
+    // ── Dialect-aware identifier quoting (BUG-0066) ──────────────────────
+
+    /**
+     * Validates the MySQL-protocol path emits backtick-quoted DDL/INSERT. Backs the data-import
+     * roundtrip use case where MySQL's default sql_mode rejects ANSI double-quote identifiers.
+     * Uses H2 MODE=MySQL because it accepts backtick identifiers, allowing the test to verify the
+     * SQL builder dispatch without spinning up a real MySQL instance.
+     */
+    @Test
+    void write_mysqlKind_emitsBacktickQuotedDdlAndInsert_evenForReservedKeyword() throws Exception {
+        String dbName = "mem:wt_mysql" + System.nanoTime() + ";MODE=MySQL;DB_CLOSE_DELAY=-1";
+        ScriptDataWriteService spied = spy(service);
+        doReturn("mysql").when(spied).resolveKind(anyString());
+        doAnswer(inv -> DriverManager.getConnection("jdbc:h2:" + dbName, "sa", ""))
+            .when(spied).openConnection(anyString());
+
+        // Column "select" is a reserved keyword — would explode unquoted, succeeds with backticks.
+        List<Map<String, Object>> rows = List.of(
+            Map.of("id", 1, "select", "alpha"),
+            Map.of("id", 2, "select", "beta")
+        );
+
+        var result = spied.write("c1", "orders", rows, true);
+        assertThat(result.rowsInserted()).isEqualTo(2);
+
+        try (Connection c = DriverManager.getConnection("jdbc:h2:" + dbName, "sa", "")) {
+            ResultSet rs = c.createStatement().executeQuery("SELECT COUNT(*) FROM `orders`");
+            assertThat(rs.next()).isTrue();
+            assertThat(rs.getInt(1)).isEqualTo(2);
+        }
+    }
+
+    /**
+     * MySQL→MySQL roundtrip via the streaming cursor path. Confirms writeStream uses the target
+     * kind (backtick) when building DDL/INSERT regardless of source quoting.
+     */
+    @Test
+    void writeStream_mysqlTarget_usesBacktickDdl() throws Exception {
+        String srcDb = "mem:wst_src" + System.nanoTime() + ";DB_CLOSE_DELAY=-1";
+        String tgtDb = "mem:wst_tgt_mysql" + System.nanoTime() + ";MODE=MySQL;DB_CLOSE_DELAY=-1";
+        mockTarget("src", srcDb);
+
+        ScriptDataWriteService spied = spy(service);
+        doReturn("mysql").when(spied).resolveKind("tgt");
+        doAnswer(inv -> DriverManager.getConnection("jdbc:h2:" + tgtDb, "sa", ""))
+            .when(spied).openConnection("tgt");
+
+        try (Connection src = DriverManager.getConnection("jdbc:h2:" + srcDb, "sa", "")) {
+            src.createStatement().execute("CREATE TABLE SOURCE (ID INT, NAME VARCHAR(100))");
+            src.createStatement().execute("INSERT INTO SOURCE VALUES (10, 'Test')");
+
+            try (ResultSet rs = src.createStatement().executeQuery("SELECT * FROM SOURCE")) {
+                var result = spied.writeStream("tgt", "user data", rs, true, null);
+                assertThat(result.rowsInserted()).isEqualTo(1);
+            }
+        }
+
+        try (Connection c = DriverManager.getConnection("jdbc:h2:" + tgtDb, "sa", "")) {
+            ResultSet rs = c.createStatement().executeQuery("SELECT COUNT(*) FROM `user data`");
+            assertThat(rs.next()).isTrue();
+            assertThat(rs.getInt(1)).isEqualTo(1);
         }
     }
 }

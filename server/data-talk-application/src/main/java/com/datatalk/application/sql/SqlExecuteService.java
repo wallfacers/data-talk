@@ -274,7 +274,7 @@ public class SqlExecuteService {
                         for (String dmlSql : dmlBatch.statementTexts()) {
                             try {
                                 UndoOutcome outcome = undoLogCapture.capture(
-                                    c, dmlSql, sessionId, cr.id(),
+                                    c, dmlSql, sessionId, cr.id(), cr.kind(),
                                     context.database(), context.schema());
                                 undoOutcomes.add(outcome);
                                 if (outcome instanceof UndoOutcome.NotUndoable notUndoable) {
@@ -365,7 +365,7 @@ public class SqlExecuteService {
                     if (isDml) {
                         try {
                             UndoOutcome outcome = undoLogCapture.capture(
-                                c, statementText, sessionId, cr.id(),
+                                c, statementText, sessionId, cr.id(), cr.kind(),
                                 context.database(), context.schema());
                             if (outcome instanceof UndoOutcome.Captured captured) {
                                 singleUndoLogId = captured.capture().undoLogId();
@@ -416,7 +416,7 @@ public class SqlExecuteService {
                             if (isInsert && singleUndoLogId != null && singlePkColumns != null) {
                                 try {
                                     List<Map<String, Object>> generatedKeys = readGeneratedKeys(stmt, singlePkColumns);
-                                    undoLogCapture.completeInsertCapture(singleUndoLogId, affectedRows, generatedKeys, singlePkColumns);
+                                    undoLogCapture.completeInsertCapture(singleUndoLogId, affectedRows, generatedKeys, singlePkColumns, cr.kind());
                                 } catch (Exception e) {
                                     log.warn("Failed to complete INSERT undo capture for {}: {}", singleUndoLogId, e.getMessage());
                                 }

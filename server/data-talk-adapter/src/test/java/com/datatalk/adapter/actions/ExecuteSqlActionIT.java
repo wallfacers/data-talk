@@ -88,14 +88,19 @@ class ExecuteSqlActionIT {
 
     @Test
     @SuppressWarnings("unchecked")
-    void deleteReturnsBlockedInChat() throws Exception {
+    void deleteReturnsRequiresConfirmation() throws Exception {
+        // Contract aligned with sql-execution SKILL.md "DELETE confirmation" flow:
+        // first call returns requires_confirmation + sqlPreview/affectedObjects,
+        // caller must re-invoke with confirmationId to actually execute.
         Map<String, Object> out = (Map<String, Object>) action.handle(
             new ActionContext("s-exec", "c-del", connectionId, "oc-e"),
             Map.of("connectionId", connectionId, "sql", "DELETE FROM t")
         ).toCompletableFuture().get();
 
-        assertThat(out).containsEntry("status", "blocked_in_chat");
-        assertThat((Map<String, Object>) out.get("risk")).containsEntry("level", "L3");
+        assertThat(out)
+            .containsEntry("status", "requires_confirmation")
+            .containsEntry("sqlPreview", "DELETE FROM t")
+            .containsKeys("confirmationId", "message", "affectedObjects");
     }
 
     @Test

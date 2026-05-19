@@ -104,7 +104,8 @@ describe('UIRouter', () => {
 
     const res = await router.handle({ tool: 'ui_read', object: 'query_editor', target: 'b1', payload: { mode: 'state' } })
 
-    expect(res.error).toContain('No query_editor')
+    expect(res.error).toContain("No query_editor found for target 'b1'")
+    expect((res.data as { code?: string }).code).toBe('unknown_target')
   })
 
   it('resolves target=active via provider', async () => {
@@ -121,7 +122,67 @@ describe('UIRouter', () => {
 
     const res = await router.handle({ tool: 'ui_read', object: 'query_editor', target: 'active', payload: { mode: 'state' } })
 
-    expect(res.error).toContain('No query_editor')
+    expect(res.error).toBe('No active query_editor tab')
+    expect((res.data as { code?: string }).code).toBe('no_active_query_editor')
+    expect((res.data as { nextAction?: { object: string; action: string } }).nextAction).toEqual({
+      object: 'workspace',
+      action: 'open',
+      params: { type: 'query_editor', title: 'Untitled SQL' },
+    })
+  })
+
+  it('returns dashboard-specific nextAction for target=active with no active dashboard tab', async () => {
+    const res = await router.handle({ tool: 'ui_read', object: 'dashboard', target: 'active', payload: { mode: 'state' } })
+
+    expect(res.error).toBe('No active dashboard tab')
+    expect((res.data as { code?: string }).code).toBe('no_active_dashboard')
+    expect((res.data as { nextAction?: { object: string; action: string; params?: Record<string, unknown> } }).nextAction).toEqual({
+      object: 'workspace',
+      action: 'open',
+      params: { type: 'dashboard', title: 'Untitled Dashboard' },
+    })
+  })
+
+  it('returns er_inspector-specific nextAction for target=active with no active er_inspector tab', async () => {
+    const res = await router.handle({ tool: 'ui_read', object: 'er_inspector', target: 'active', payload: { mode: 'state' } })
+
+    expect(res.error).toBe('No active er_inspector tab')
+    expect((res.data as { code?: string }).code).toBe('no_active_er_inspector')
+    expect((res.data as { nextAction?: { object: string; action: string } }).nextAction?.action).toBe('open_er_inspector')
+  })
+
+  it('returns er_designer-specific nextAction for target=active with no active er_designer tab', async () => {
+    const res = await router.handle({ tool: 'ui_read', object: 'er_designer', target: 'active', payload: { mode: 'state' } })
+
+    expect(res.error).toBe('No active er_designer tab')
+    expect((res.data as { code?: string }).code).toBe('no_active_er_designer')
+    expect((res.data as { nextAction?: { object: string; action: string } }).nextAction?.action).toBe('open_er_designer')
+  })
+
+  it('returns no_active_query_editor with nextAction when ui_exec run_sql dispatched against missing tab', async () => {
+    // Reproduces the user's reported failure: AI dispatches ui_exec(query_editor, run_sql)
+    // but no query_editor tab has been opened yet. The structured error + nextAction lets
+    // the agent self-heal by calling workspace.open before retrying run_sql.
+    const res = await router.handle({ tool: 'ui_exec', object: 'query_editor', target: 'active',
+      payload: { action: 'run_sql', params: {} } })
+
+    expect(res.error).toBe('No active query_editor tab')
+    expect((res.data as { code?: string }).code).toBe('no_active_query_editor')
+    expect((res.data as { nextAction?: { object: string; action: string; params?: Record<string, unknown> } }).nextAction).toEqual({
+      object: 'workspace',
+      action: 'open',
+      params: { type: 'query_editor', title: 'Untitled SQL' },
+    })
+  })
+
+  it('returns unknown_target without nextAction when ui_exec dispatched against a deleted tab id', async () => {
+    const res = await router.handle({ tool: 'ui_exec', object: 'query_editor', target: 'qe-deleted',
+      payload: { action: 'run_sql', params: {} } })
+
+    expect(res.error).toContain("No query_editor found for target 'qe-deleted'")
+    expect((res.data as { code?: string }).code).toBe('unknown_target')
+    // unknown_target has no nextAction (recovery requires AI to re-list tabs, not one fixed action)
+    expect((res.data as { nextAction?: unknown }).nextAction).toBeUndefined()
   })
 
   it('resolves singleton target=active via objectId===type even when active tab is a different type', async () => {
@@ -144,7 +205,8 @@ describe('UIRouter', () => {
     // singleton substitution — caller must disambiguate via explicit target.
     const res = await router.handle({ tool: 'ui_read', object: 'query_editor', target: 'active', payload: { mode: 'state' } })
 
-    expect(res.error).toContain('No query_editor')
+    expect(res.error).toBe('No active query_editor tab')
+    expect((res.data as { code?: string }).code).toBe('no_active_query_editor')
   })
 
   it('validates patch capability', async () => {

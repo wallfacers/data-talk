@@ -24,7 +24,11 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 class DataImportServiceTest {
@@ -494,6 +498,42 @@ class DataImportServiceTest {
 
         try (Connection c = DriverManager.getConnection("jdbc:h2:" + dbName, "sa", "")) {
             ResultSet rs = c.createStatement().executeQuery("SELECT COUNT(*) FROM \"new_data\"");
+            assertThat(rs.next()).isTrue();
+            assertThat(rs.getInt(1)).isEqualTo(2);
+        }
+    }
+
+    // ── Dialect-aware identifier quoting (BUG-0066) ──────────────────────
+
+    /**
+     * MySQL target connection MUST yield backtick-quoted DDL/INSERT regardless of column names
+     * containing reserved keywords (`select`) or special characters. Uses H2 MODE=MySQL because
+     * it accepts backtick identifiers, letting the test exercise the dispatch logic without
+     * spinning up a real MySQL server.
+     */
+    @Test
+    void importCsv_mysqlTarget_emitsBacktickDdlForReservedKeywordColumns() throws Exception {
+        String dbName = "mem:imp_mysql" + System.nanoTime() + ";MODE=MySQL;DB_CLOSE_DELAY=-1";
+
+        // Build the spied writeService that overrides connection lookup / open to point at H2-MySQL.
+        ScriptDataWriteService spied = spy(writeService);
+        doReturn("mysql").when(spied).resolveKind(anyString());
+        doAnswer(inv -> DriverManager.getConnection("jdbc:h2:" + dbName, "sa", ""))
+            .when(spied).openConnection(anyString());
+
+        // Rebuild service with the spied writeService.
+        service = new DataImportService(fileRepo, spied, objectMapper);
+
+        Path csvFile = tempDir.resolve("reserved.csv");
+        // Reserved keywords `select`, `order`, `group` as column names — would explode unquoted.
+        Files.writeString(csvFile, "id,select,order,group\n1,a,b,c\n2,d,e,f\n");
+        mockFile("frmys", "reserved.csv", csvFile);
+
+        var result = service.importFromFile("frmys", "c1", "orders", true, null, null);
+        assertThat(result.rowsImported()).isEqualTo(2);
+
+        try (Connection c = DriverManager.getConnection("jdbc:h2:" + dbName, "sa", "")) {
+            ResultSet rs = c.createStatement().executeQuery("SELECT COUNT(*) FROM `orders`");
             assertThat(rs.next()).isTrue();
             assertThat(rs.getInt(1)).isEqualTo(2);
         }

@@ -31,10 +31,23 @@ For Text, Image, and Unknown files, follow the type-specific rules below — no 
 ## Routing Rules
 
 ### SQL Files (analysis.type = "SQL")
+
+#### ❗ DO NOT
+
+**Forbidden short-circuit pattern** (closes BUG-0069):
+
+- **DO NOT** read the SQL file with `datatalk_file_read` and then paste its contents into `datatalk_execute_sql` when `datatalk_import_data` would apply. This is the exact bypass the import path was designed to prevent — it loses batch progress, error-segment rollback, and the dialect-aware quoting plumbed through `IdentifierQuoter` (BUG-0066 fix). It also costs 2–4× more tool calls than the contract path.
+- **DO NOT** pre-judge that `datatalk_import_data` will fail based on file size, dialect guess, or past memory. You **MUST** actually call `datatalk_import_data` first and only fall back after the service returns an explicit `error.code` of `unsupported_sql_dialect`, `unsupported_statement_type`, or `unrecoverable_parse_error`. "I think this might fail" is not a valid fallback trigger.
+- **DO NOT** treat the fallback gate below as a free alternative path. It exists for genuinely unsupported dialects only.
+
+**Why this matters**: BUG-0065 (ui_exec bypassed Pre-Action protocol), BUG-0067 (script_run bypassed backend write API), and BUG-0069 (this rule) are the same failure family — LLMs prefer "general tool + assembly" paths because they feel more resilient, but they silently strip away the specialized contract's guarantees. The cost is real (4 tool calls vs 1, no rollback, no progress) but invisible to the user until something breaks.
+
+#### Routing rules
+
 - Examine `analysis.summary.statementTypes` to understand what's in the file
 - Examine `analysis.summary.targetTables` to identify affected tables
-- **Import intent gate**: If user intent = Import AND `statementTypes` contains only INSERT, DROP, and/or CREATE AND `targetTables` has exactly 1 entry AND all DROP/CREATE target the same table as the INSERT statements → use `datatalk_import_data` with `source: { type: "file", fileId }` and `target: { connectionId, tableName }` (derive tableName from `targetTables[0]`). DDL+INSERT mixed SQL files (e.g., mysqldump format with DROP TABLE + CREATE TABLE + INSERT) are supported by `datatalk_import_data`. The service extracts and executes DDL first, then streams INSERT data. Skip riskLevel routing.
-  - **Fallback when `datatalk_import_data` rejects the file** (dialect-incompatible parsing, backtick quoting unrecognized, `unsupported_sql_dialect`, or any non-recoverable validation error from the import service): do NOT silently bounce the file into the query editor. Instead, read `analysis.summary.preview` and call `datatalk_execute_sql` directly with the file contents — the AI chat path accepts arbitrary INSERT / CREATE / DROP SQL (only DELETE triggers the in-chat `confirmationId` flow, see [[sql-execution]]). Tell the user "import_data 不支持该 SQL 方言，直接通过 execute_sql 执行" and run it.
+- **Import intent gate**: If user intent = Import AND `statementTypes` contains only INSERT, DROP, and/or CREATE AND `targetTables` has exactly 1 entry AND all DROP/CREATE target the same table as the INSERT statements → use `datatalk_import_data` with `source: { type: "file", fileId }` and `target: { connectionId, tableName }` (derive tableName from `targetTables[0]`). DDL+INSERT mixed SQL files (e.g., mysqldump format with DROP TABLE + CREATE TABLE + INSERT) are supported by `datatalk_import_data`. The service extracts and executes DDL first, then streams INSERT data. Skip riskLevel routing. **You MUST call import_data first; you cannot skip ahead to execute_sql based on file content inspection.**
+  - **Fallback only when `datatalk_import_data` has already returned an explicit non-recoverable error**: Read the response `error.code` from your `datatalk_import_data` call. Only fall back to `datatalk_execute_sql` if `error.code` ∈ {`unsupported_sql_dialect`, `unsupported_statement_type`, `unrecoverable_parse_error`}. For any other error (network, transient, version conflict, ambiguous), retry `import_data` or surface the error to the user — do not silently re-route to execute_sql. When falling back: read `analysis.summary.preview` and call `datatalk_execute_sql` directly with the file contents (the AI chat path accepts arbitrary INSERT / CREATE / DROP SQL; only DELETE triggers the in-chat `confirmationId` flow, see [[sql-execution]]). Tell the user "import_data 不支持该 SQL 方言（error.code=<code>），直接通过 execute_sql 执行" and run it.
 - Otherwise, fall through to riskLevel routing:
   - L1 (SELECT only): Open in query editor (the user wants to inspect / tweak before running), or call `datatalk_execute_sql` if the user just wants results in chat.
   - L2 (DML — INSERT / UPDATE / non-DELETE mutation): Show `analysis.summary.preview` to the user, get acknowledgement, then run via `datatalk_execute_sql`. DELETE statements still trigger the in-chat `confirmationId` flow — see [[sql-execution]].

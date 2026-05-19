@@ -313,6 +313,45 @@ class UiActionsTest {
     }
 
     @Test
+    void uiExec_outputSchema_acceptsStructuredNoActiveTargetErrorPayload() {
+        Map<String, Object> outputSchema = uiExecAction.outputSchema();
+
+        Map<String, Object> noActiveQueryEditor = Map.of(
+            "error", Map.of(
+                "code", "no_active_query_editor",
+                "message", "No active query_editor tab",
+                "hint", "Open a query_editor tab first via workspace.open before targeting it.",
+                "nextAction", Map.of(
+                    "object", "workspace",
+                    "action", "open",
+                    "params", Map.of("type", "query_editor", "title", "Untitled SQL")
+                )
+            )
+        );
+        Map<String, Object> noActiveDashboard = Map.of(
+            "error", Map.of(
+                "code", "no_active_dashboard",
+                "message", "No active dashboard tab",
+                "nextAction", Map.of(
+                    "object", "workspace",
+                    "action", "open",
+                    "params", Map.of("type", "dashboard", "title", "Untitled Dashboard")
+                )
+            )
+        );
+        Map<String, Object> unknownTarget = Map.of(
+            "error", Map.of(
+                "code", "unknown_target",
+                "message", "No query_editor found for target 'qe-deleted'"
+            )
+        );
+
+        assertValid(outputSchema, noActiveQueryEditor);
+        assertValid(outputSchema, noActiveDashboard);
+        assertValid(outputSchema, unknownTarget);
+    }
+
+    @Test
     void uiExec_workspaceArchive_archivedFlagOptionalDefaultTrue() {
         Map<String, Object> schema = uiExecAction.inputSchema();
         Map<String, Object> wsBranch = findOneOfBranch(schema, "workspace");

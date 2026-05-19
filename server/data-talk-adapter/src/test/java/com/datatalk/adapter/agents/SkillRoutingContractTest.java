@@ -357,6 +357,45 @@ class SkillRoutingContractTest {
             .doesNotContain("TODO(Task 13)");
     }
 
+    /**
+     * Closes BUG-0069 (SQL-file import path bypassed via file_read + execute_sql shortcut).
+     * Asserts that the file-upload-routing SKILL.md keeps an explicit DO NOT subsection
+     * naming the forbidden shortcut, plus a "MUST call import_data first" rule and a
+     * tightened fallback gate that names concrete error codes (not "any non-recoverable
+     * error"). Without these phrases the agent has reverted to the easier-to-rationalize
+     * old wording that the original BUG-0069 trace showed in the wild.
+     */
+    @Test
+    void fileUploadRoutingSqlSection_hasDoNotShortcut_andTightenedFallbackGate() throws IOException {
+        String skillMd = loadSkillMd("file-upload-routing");
+
+        assertThat(skillMd)
+            .as("file-upload-routing SKILL.md must keep the ❗ DO NOT subsection under SQL Files (BUG-0069)")
+            .contains("❗ DO NOT");
+
+        assertThat(skillMd)
+            .as("file-upload-routing SKILL.md must explicitly forbid the file_read + execute_sql shortcut for importable SQL files")
+            .contains("datatalk_file_read")
+            .contains("datatalk_execute_sql")
+            .contains("import_data");
+
+        assertThat(skillMd)
+            .as("file-upload-routing SKILL.md must reference BUG-0069 so the rationale is traceable when the section drifts")
+            .contains("BUG-0069");
+
+        assertThat(skillMd)
+            .as("file-upload-routing SKILL.md must instruct agents to call import_data first, not pre-judge file contents")
+            .containsAnyOf("MUST call import_data first", "MUST actually call `datatalk_import_data` first");
+
+        // Tightened fallback gate: only fall back on these specific error codes,
+        // not the old "any non-recoverable validation error" wording that LLMs
+        // interpreted as "if you think it might fail, skip".
+        assertThat(skillMd)
+            .as("file-upload-routing SKILL.md fallback gate must name concrete error codes that justify the fallback")
+            .contains("unsupported_sql_dialect")
+            .containsAnyOf("unsupported_statement_type", "unrecoverable_parse_error");
+    }
+
     @Test
     void agentsMdRegisteredActionsIncludeImportAndExport() throws IOException {
         String agentsMd = loadAgentsMd();

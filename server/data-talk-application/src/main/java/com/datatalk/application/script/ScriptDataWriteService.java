@@ -3,6 +3,7 @@ package com.datatalk.application.script;
 import com.datatalk.application.connection.ConnectionKind;
 import com.datatalk.application.connection.ConnectionService;
 import com.datatalk.application.connection.JdbcUrlBuilder;
+import com.datatalk.application.dialect.IdentifierQuoter;
 import com.datatalk.application.persistence.ConnectionRecord;
 import com.datatalk.application.persistence.ConnectionRepository;
 import org.slf4j.Logger;
@@ -57,18 +58,19 @@ public class ScriptDataWriteService {
 
         List<String> columns = inferColumns(rows);
         List<String> columnsCreated = List.of();
+        String kind = resolveKind(connectionId);
 
         try (Connection c = openConnection(connectionId)) {
             c.setAutoCommit(false);
             if (createTable && !tableExists(c, tableName)) {
-                String ddl = buildCreateTableSql(tableName, columns, rows.get(0), columnTypes);
+                String ddl = buildCreateTableSql(tableName, columns, rows.get(0), columnTypes, kind);
                 log.info("DDL: {}", ddl);
                 c.createStatement().execute(ddl);
                 columnsCreated = columns;
                 log.info("Created table {} with columns {}", tableName, columns);
             }
 
-            String insertSql = buildInsertSql(tableName, columns);
+            String insertSql = buildInsertSql(tableName, columns, kind);
             try (PreparedStatement ps = c.prepareStatement(insertSql)) {
                 for (Map<String, Object> row : rows) {
                     for (int i = 0; i < columns.size(); i++) {
@@ -106,16 +108,17 @@ public class ScriptDataWriteService {
                 columns.add(new ColumnInfo(colName, ddlType));
             }
 
+            String kind = resolveKind(connectionId);
             try (Connection c = openConnection(connectionId)) {
                 c.setAutoCommit(false);
 
                 if (createTable && !tableExists(c, tableName)) {
-                    String ddl = buildCreateTableFromColumns(tableName, columns);
+                    String ddl = buildCreateTableFromColumns(tableName, columns, kind);
                     c.createStatement().execute(ddl);
                     log.info("Created table {} with columns {}", tableName, columns);
                 }
 
-                String insertSql = buildInsertSql(tableName, colNames);
+                String insertSql = buildInsertSql(tableName, colNames, kind);
                 int totalRows = streamFromCursor(c, rs, colCount, insertSql);
                 log.info("Streamed {} rows into {}", totalRows, tableName);
                 return new StreamWriteResult(totalRows, tableName, columns);
@@ -168,6 +171,17 @@ public class ScriptDataWriteService {
         return DriverManager.getConnection(url, effectiveUsername, password);
     }
 
+    /**
+     * Resolves the connection kind for the given connection ID. Used by data-movement
+     * services (import, export) to dispatch dialect-aware identifier quoting via
+     * {@link IdentifierQuoter}. Returns the raw kind string from {@link ConnectionRecord}.
+     */
+    public String resolveKind(String connectionId) {
+        return connRepo.findById(connectionId)
+            .map(ConnectionRecord::kind)
+            .orElseThrow(() -> new IllegalArgumentException("Unknown connection: " + connectionId));
+    }
+
     // ── DDL helpers ──────────────────────────────────────────────────
 
     private boolean tableExists(Connection c, String tableName) throws Exception {
@@ -178,35 +192,40 @@ public class ScriptDataWriteService {
     }
 
     private String buildCreateTableSql(String tableName, List<String> columns,
-                                        Map<String, Object> sampleRow, Map<String, String> columnTypes) {
-        StringBuilder sb = new StringBuilder("CREATE TABLE ").append(quoteIdentifier(tableName)).append(" (");
+                                        Map<String, Object> sampleRow, Map<String, String> columnTypes,
+                                        String connectionKind) {
+        StringBuilder sb = new StringBuilder("CREATE TABLE ")
+            .append(IdentifierQuoter.quote(tableName, connectionKind)).append(" (");
         for (int i = 0; i < columns.size(); i++) {
             if (i > 0) sb.append(", ");
             String col = columns.get(i);
             String sqlType = (columnTypes != null && columnTypes.containsKey(col))
                 ? columnTypes.get(col)
                 : inferSqlType(sampleRow.get(col));
-            sb.append(quoteIdentifier(col)).append(" ").append(sqlType);
+            sb.append(IdentifierQuoter.quote(col, connectionKind)).append(" ").append(sqlType);
         }
         sb.append(")");
         return sb.toString();
     }
 
-    private String buildCreateTableFromColumns(String tableName, List<ColumnInfo> columns) {
-        StringBuilder sb = new StringBuilder("CREATE TABLE ").append(quoteIdentifier(tableName)).append(" (");
+    private String buildCreateTableFromColumns(String tableName, List<ColumnInfo> columns, String connectionKind) {
+        StringBuilder sb = new StringBuilder("CREATE TABLE ")
+            .append(IdentifierQuoter.quote(tableName, connectionKind)).append(" (");
         for (int i = 0; i < columns.size(); i++) {
             if (i > 0) sb.append(", ");
-            sb.append(quoteIdentifier(columns.get(i).name())).append(" ").append(columns.get(i).ddlType());
+            sb.append(IdentifierQuoter.quote(columns.get(i).name(), connectionKind))
+              .append(" ").append(columns.get(i).ddlType());
         }
         sb.append(")");
         return sb.toString();
     }
 
-    private String buildInsertSql(String tableName, List<String> columns) {
-        StringBuilder sb = new StringBuilder("INSERT INTO ").append(quoteIdentifier(tableName)).append(" (");
+    private String buildInsertSql(String tableName, List<String> columns, String connectionKind) {
+        StringBuilder sb = new StringBuilder("INSERT INTO ")
+            .append(IdentifierQuoter.quote(tableName, connectionKind)).append(" (");
         for (int i = 0; i < columns.size(); i++) {
             if (i > 0) sb.append(", ");
-            sb.append(quoteIdentifier(columns.get(i)));
+            sb.append(IdentifierQuoter.quote(columns.get(i), connectionKind));
         }
         sb.append(") VALUES (");
         for (int i = 0; i < columns.size(); i++) {
@@ -223,10 +242,6 @@ public class ScriptDataWriteService {
             cols.addAll(row.keySet());
         }
         return new ArrayList<>(cols);
-    }
-
-    private static String quoteIdentifier(String id) {
-        return "\"" + id.replace("\"", "\"\"") + "\"";
     }
 
     private static String inferSqlType(Object value) {

@@ -1,5 +1,6 @@
 package com.datatalk.application.importexport;
 
+import com.datatalk.application.dialect.IdentifierQuoter;
 import com.datatalk.application.script.ScriptDataWriteService;
 import com.datatalk.application.upload.UploadedFileRepository;
 import com.datatalk.domain.upload.UploadedFile;
@@ -270,17 +271,18 @@ public class DataImportService {
                                   List<String> ddlTypes, List<Map<String, Object>> rows,
                                   boolean createTable, Map<String, String> columnTypes,
                                   List<String> warnings) {
+        String kind = writeService.resolveKind(connectionId);
         try (Connection c = writeService.openConnection(connectionId)) {
             c.setAutoCommit(false);
 
             if (createTable && !tableExists(c, tableName)) {
-                String ddl = buildCreateTableSql(tableName, columns, ddlTypes);
+                String ddl = buildCreateTableSql(tableName, columns, ddlTypes, kind);
                 log.info("DDL: {}", ddl);
                 c.createStatement().execute(ddl);
                 log.info("Created table {} with {} columns", tableName, columns.size());
             }
 
-            String insertSql = buildInsertSql(tableName, columns);
+            String insertSql = buildInsertSql(tableName, columns, kind);
             try (PreparedStatement ps = c.prepareStatement(insertSql)) {
                 int batchCount = 0;
                 int totalInserted = 0;
@@ -330,24 +332,26 @@ public class DataImportService {
         }
     }
 
-    private String buildCreateTableSql(String tableName, List<String> columns, List<String> ddlTypes) {
+    private String buildCreateTableSql(String tableName, List<String> columns,
+                                        List<String> ddlTypes, String connectionKind) {
         StringBuilder sb = new StringBuilder("CREATE TABLE ")
-            .append(quoteIdentifier(tableName)).append(" (");
+            .append(IdentifierQuoter.quote(tableName, connectionKind)).append(" (");
         for (int i = 0; i < columns.size(); i++) {
             if (i > 0) sb.append(", ");
             String ddlType = i < ddlTypes.size() ? ddlTypes.get(i) : "VARCHAR(255)";
-            sb.append(quoteIdentifier(columns.get(i))).append(" ").append(ddlType);
+            sb.append(IdentifierQuoter.quote(columns.get(i), connectionKind))
+              .append(" ").append(ddlType);
         }
         sb.append(")");
         return sb.toString();
     }
 
-    private String buildInsertSql(String tableName, List<String> columns) {
+    private String buildInsertSql(String tableName, List<String> columns, String connectionKind) {
         StringBuilder sb = new StringBuilder("INSERT INTO ")
-            .append(quoteIdentifier(tableName)).append(" (");
+            .append(IdentifierQuoter.quote(tableName, connectionKind)).append(" (");
         for (int i = 0; i < columns.size(); i++) {
             if (i > 0) sb.append(", ");
-            sb.append(quoteIdentifier(columns.get(i)));
+            sb.append(IdentifierQuoter.quote(columns.get(i), connectionKind));
         }
         sb.append(") VALUES (");
         for (int i = 0; i < columns.size(); i++) {
@@ -356,9 +360,5 @@ public class DataImportService {
         }
         sb.append(")");
         return sb.toString();
-    }
-
-    private static String quoteIdentifier(String id) {
-        return "\"" + id.replace("\"", "\"\"") + "\"";
     }
 }

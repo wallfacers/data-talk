@@ -402,6 +402,12 @@ Required decisions:
   XML, geography, intervals, timestamps with time zones, CLOB/BLOB, unsigned
   integers, decimals, or vendor-specific objects.
 - How connection-level errors should be formatted in markdown diagnostics.
+- Identifier quoting (table / column names emitted in CREATE TABLE / INSERT / undo
+  log) **must** go through `IdentifierQuoter.quote(id, connectionKind)`. See
+  [Identifier Quoting Per Dialect](#identifier-quoting-per-dialect). Direct
+  `"col"` or `` `col` `` literals in `DataImportService`, `DataExportService`,
+  `ScriptDataWriteService`, or `InverseSqlGenerator` are forbidden — call sites
+  must thread `connectionKind` through and delegate to `IdentifierQuoter`.
 
 Tests:
 
@@ -981,7 +987,7 @@ Export converts query results to files using streaming writers. The async thresh
 | CSV | `BufferedWriter` + UTF-8 BOM (`﻿`) prefix, RFC-compliant escaping | 1,000,000 | Excel-compatible UTF-8 BOM header |
 | JSON | `BufferedWriter`, streaming array output (`[{...}, {...}]`) | 1,000,000 | Null values rendered as JSON `null` |
 | XLSX | `SXSSFWorkbook` (window=100), streaming write | 1,048,576 | Hard cap at Excel specification; auto-truncated |
-| SQL INSERT | `BufferedWriter`, batch INSERT statements (100 rows per `INSERT INTO ... VALUES` block) | 1,000,000 | Dialect-specific identifier quoting (backtick for MySQL/MariaDB/TiDB/Doris/StarRocks/ClickHouse/OceanBase, brackets for SQL Server, double-quote for PostgreSQL/Oracle/H2/etc.); single-quote value escaping |
+| SQL INSERT | `BufferedWriter`, batch INSERT statements (100 rows per `INSERT INTO ... VALUES` block) | 1,000,000 | Identifier quoting follows `IdentifierQuoter` — see [Identifier Quoting Per Dialect](#identifier-quoting-per-dialect) for the full 19-kind dispatch matrix; single-quote value escaping |
 
 | Threshold | Behavior |
 |-----------|----------|
@@ -993,6 +999,37 @@ Export converts query results to files using streaming writers. The async thresh
 | Default max rows | 1,000,000 |
 | Export file size cap | 500 MB |
 | XLSX row hard cap | 1,048,576 (Excel specification) |
+
+### Identifier Quoting Per Dialect
+
+Identifier quoting (table names, column names) is dispatched through
+`com.datatalk.application.dialect.IdentifierQuoter` based on the source/target
+`ConnectionKind`. This is the single owner of dialect-aware quoting for **import**
+(`DataImportService`), **export** (`DataExportService`), **script writes**
+(`ScriptDataWriteService`), and **undo log generation** (`InverseSqlGenerator`).
+Direct hard-coded `"..."` or `` `...` `` literals in those services are forbidden.
+
+| Quote Style    | Open / Close   | Escape Rule (embedded delimiter)                 | Connection Kinds                                                                                       |
+|----------------|----------------|--------------------------------------------------|--------------------------------------------------------------------------------------------------------|
+| `BACKTICK`     | `` ` ` ``      | `` ` `` → `` `` ``                               | `mysql`, `mariadb`, `tidb`, `oceanbase`, `apache_doris`, `starrocks`, `clickhouse`                     |
+| `DOUBLE_QUOTE` | `" "`          | `"` → `""`                                       | `postgresql` (`postgres` alias), `h2`, `sqlite`, `oracle`, `duckdb`, `kingbase`, `dameng`, `gaussdb`, `hive` (`apache_hive` alias), `trino`, `presto` |
+| `BRACKET`      | `[ ]`          | `]` → `]]` (right bracket only)                  | `sqlserver` (`mssql` alias)                                                                            |
+
+**Resolution rules:**
+- Case-insensitive matching: `MySQL`, `MYSQL`, `mysql` all dispatch to `BACKTICK`.
+- Unknown / `null` / blank `connectionKind` → fallback to `DOUBLE_QUOTE` + WARN log
+  (preserves the historical pre-`IdentifierQuoter` ANSI behavior for legacy call sites
+  that have not yet plumbed `kind` through).
+- Reserved keywords (`select`, `order`, `group`, `from`, …) and identifiers containing
+  spaces, dots, or quote characters are quoted/escaped identically — no opt-out.
+
+**Why this matters:**
+- BUG-0066: pre-`IdentifierQuoter` code emitted ANSI `"col"` even for MySQL targets.
+  Under default `sql_mode` MySQL parses `"col"` as a string literal, not an identifier,
+  causing import / export / script-write failures with cryptic syntax errors. This
+  table is now the source of truth for the dispatch table — any future dialect (e.g.
+  adding a 20th `ConnectionKind`) must be added here and in `IdentifierQuoter`
+  simultaneously, or the contract test `IdentifierQuoterTest` will fail.
 
 ### Database Cursor Compatibility
 

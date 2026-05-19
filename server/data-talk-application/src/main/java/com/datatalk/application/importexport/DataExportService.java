@@ -1,5 +1,6 @@
 package com.datatalk.application.importexport;
 
+import com.datatalk.application.dialect.IdentifierQuoter;
 import com.datatalk.application.script.ScriptDataWriteService;
 import com.datatalk.application.session.SessionBus;
 import com.datatalk.application.session.SessionBusRegistry;
@@ -155,6 +156,7 @@ public class DataExportService {
                                   List<String> warnings) {
         try {
             Files.createDirectories(exportFile.getParent());
+            String kind = writeService.resolveKind(connectionId);
 
             try (Connection conn = openConnection(connectionId)) {
                 conn.setAutoCommit(false);
@@ -166,7 +168,7 @@ public class DataExportService {
                             case "csv" -> writeCsv(rs, exportFile, maxRows);
                             case "json" -> writeJson(rs, exportFile, maxRows);
                             case "xlsx" -> writeXlsx(rs, exportFile, maxRows);
-                            case "sql_insert" -> writeSqlInsert(rs, exportFile, tableName, maxRows);
+                            case "sql_insert" -> writeSqlInsert(rs, exportFile, tableName, maxRows, kind);
                             default -> throw new IllegalArgumentException("Unsupported export format: " + format);
                         }
                     }
@@ -332,16 +334,18 @@ public class DataExportService {
 
     // ── SQL INSERT writer ────────────────────────────────────────────────
 
-    private void writeSqlInsert(ResultSet rs, Path file, String tableName, int maxRows) throws Exception {
+    private void writeSqlInsert(ResultSet rs, Path file, String tableName, int maxRows,
+                                 String connectionKind) throws Exception {
         ResultSetMetaData meta = rs.getMetaData();
         int colCount = meta.getColumnCount();
         String effectiveTable = (tableName != null && !tableName.isBlank()) ? tableName : "exported_table";
 
         String[] colNames = new String[colCount];
         for (int i = 0; i < colCount; i++) {
-            colNames[i] = quoteIdentifier(meta.getColumnLabel(i + 1));
+            colNames[i] = IdentifierQuoter.quote(meta.getColumnLabel(i + 1), connectionKind);
         }
         String columnsPart = String.join(", ", colNames);
+        String quotedTable = IdentifierQuoter.quote(effectiveTable, connectionKind);
 
         try (BufferedWriter writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
             int rows = 0;
@@ -357,7 +361,7 @@ public class DataExportService {
 
                 if (batchValues.size() >= 100) {
                     writer.write("INSERT INTO ");
-                    writer.write(quoteIdentifier(effectiveTable));
+                    writer.write(quotedTable);
                     writer.write(" (");
                     writer.write(columnsPart);
                     writer.write(") VALUES ");
@@ -370,7 +374,7 @@ public class DataExportService {
 
             if (!batchValues.isEmpty()) {
                 writer.write("INSERT INTO ");
-                writer.write(quoteIdentifier(effectiveTable));
+                writer.write(quotedTable);
                 writer.write(" (");
                 writer.write(columnsPart);
                 writer.write(") VALUES ");
@@ -423,10 +427,6 @@ public class DataExportService {
         Object obj = rs.getObject(index);
         if (obj == null) return null;
         return obj.toString();
-    }
-
-    private String quoteIdentifier(String id) {
-        return "\"" + id.replace("\"", "\"\"") + "\"";
     }
 
     private String escapeSqlValue(String value) {
@@ -502,11 +502,22 @@ public class DataExportService {
      */
     public void exportToStream(List<String> columns, List<List<String>> rows,
                                String format, String tableName, OutputStream out) throws IOException {
+        exportToStream(columns, rows, format, tableName, null, out);
+    }
+
+    /**
+     * Variant of {@link #exportToStream} that accepts an optional connection kind so SQL INSERT
+     * output uses the correct identifier quoting style (backtick / double-quote / bracket).
+     * When {@code connectionKind} is null, falls back to ANSI double-quote with a WARN log.
+     */
+    public void exportToStream(List<String> columns, List<List<String>> rows,
+                               String format, String tableName, String connectionKind,
+                               OutputStream out) throws IOException {
         String effectiveFormat = (format != null) ? format.toLowerCase() : "csv";
         String effectiveTable = (tableName != null && !tableName.isBlank()) ? tableName : "exported_table";
         switch (effectiveFormat) {
             case "xlsx" -> writeXlsxToStream(columns, rows, out);
-            case "sql_insert" -> writeSqlInsertToStream(columns, rows, effectiveTable, out);
+            case "sql_insert" -> writeSqlInsertToStream(columns, rows, effectiveTable, connectionKind, out);
             case "csv" -> writeCsvToStream(columns, rows, out);
             case "json" -> writeJsonToStream(columns, rows, out);
             default -> throw new IllegalArgumentException("Unsupported format: " + effectiveFormat);
@@ -544,8 +555,13 @@ public class DataExportService {
     }
 
     private void writeSqlInsertToStream(List<String> columns, List<List<String>> rows,
-                                        String tableName, OutputStream out) throws IOException {
-        String columnsPart = columns.stream().map(this::quoteIdentifier).reduce((a, b) -> a + ", " + b).orElse("");
+                                        String tableName, String connectionKind,
+                                        OutputStream out) throws IOException {
+        String columnsPart = columns.stream()
+            .map(c -> IdentifierQuoter.quote(c, connectionKind))
+            .reduce((a, b) -> a + ", " + b)
+            .orElse("");
+        String quotedTable = IdentifierQuoter.quote(tableName, connectionKind);
         BufferedWriter writer = newStreamWriter(out);
         List<String> batch = new ArrayList<>(100);
         for (List<String> row : rows) {
@@ -555,7 +571,7 @@ public class DataExportService {
             }
             batch.add("(" + String.join(", ", vals) + ")");
             if (batch.size() >= 100) {
-                writer.write("INSERT INTO " + quoteIdentifier(tableName) + " (" + columnsPart + ") VALUES ");
+                writer.write("INSERT INTO " + quotedTable + " (" + columnsPart + ") VALUES ");
                 writer.write(String.join(", ", batch));
                 writer.write(";");
                 writer.newLine();
@@ -563,7 +579,7 @@ public class DataExportService {
             }
         }
         if (!batch.isEmpty()) {
-            writer.write("INSERT INTO " + quoteIdentifier(tableName) + " (" + columnsPart + ") VALUES ");
+            writer.write("INSERT INTO " + quotedTable + " (" + columnsPart + ") VALUES ");
             writer.write(String.join(", ", batch));
             writer.write(";");
             writer.newLine();

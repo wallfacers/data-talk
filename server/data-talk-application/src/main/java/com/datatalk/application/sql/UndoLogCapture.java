@@ -49,6 +49,7 @@ public class UndoLogCapture {
         String dmlSql,
         String sessionId,
         String connectionId,
+        String connectionKind,
         String database,
         String schema
     ) {
@@ -145,7 +146,7 @@ public class UndoLogCapture {
             return new UndoOutcome.NotUndoable("before_state_failed");
         }
 
-        String inverseSql = InverseSqlGenerator.generate(operation, tableName, pkColumns, beforeState, null);
+        String inverseSql = InverseSqlGenerator.generate(operation, tableName, pkColumns, beforeState, null, connectionKind);
         UndoLogEntry entry = buildEntry(
             sessionId, connectionId, database, schema, tableName,
             operation, dmlSql, inverseSql, toJson(beforeState), count, true
@@ -158,7 +159,7 @@ public class UndoLogCapture {
         ));
     }
 
-    public void completeInsertCapture(String undoLogId, int affectedRows, List<Map<String, Object>> generatedKeys, Set<String> pkColumns) {
+    public void completeInsertCapture(String undoLogId, int affectedRows, List<Map<String, Object>> generatedKeys, Set<String> pkColumns, String connectionKind) {
         undoLogRepo.findById(undoLogId).ifPresentOrElse(entry -> {
             List<Map<String, Object>> keys = generatedKeys;
             if (keys == null || keys.isEmpty()) {
@@ -169,7 +170,7 @@ public class UndoLogCapture {
                 log.warn("Cannot complete INSERT undo capture: no generated keys and failed to extract from SQL (undoLogId={})", undoLogId);
                 return;
             }
-            String inverseSql = InverseSqlGenerator.generate("INSERT", entry.tableName(), pkColumns, null, keys);
+            String inverseSql = InverseSqlGenerator.generate("INSERT", entry.tableName(), pkColumns, null, keys, connectionKind);
             UndoLogEntry updated = new UndoLogEntry(
                 entry.id(), entry.sessionId(), entry.connectionId(), entry.databaseName(),
                 entry.schemaName(), entry.tableName(), entry.operation(), entry.originalSql(),

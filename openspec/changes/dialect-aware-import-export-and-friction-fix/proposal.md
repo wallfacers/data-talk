@@ -22,12 +22,13 @@
 - `data-collection` SKILL.md 顶部加 **DO NOT** 段：禁止脚本直连 DB（`pymysql` / `mysql.connector` / `psycopg2` / `sqlite3` 等），唯一合规出口是 `POST {DT_BACKEND_URL}/api/script-data/write`
 - 新增 `DataCollectionSkillContractTest` 合同测试断言（参照 BUG-0065 的 `AgentsTemplateContractTest` 套路），防止 prompt 文档退化
 
-### D · `update_connection` 死胡同消除（**OPEN QUESTION**）
+### D · `update_connection` 死胡同消除（**DEFERRED**）
 - 当前 `datatalk_update_connection_confirmable` schema 不暴露 `sql_mode` / `sessionVariables` / `extraJdbcParams`，AI 想用它"加 ANSI_QUOTES"必然失败
-- 待决策：
-  1. 显式拒绝 + 错误提示"DataTalk 不暴露 session variables，请使用方言原生标识符"（推荐，A 修复后无需绕）
-  2. 真的加 `extraJdbcParams` 字段透传到 JDBC URL（更大改动，引入安全面）
-- design.md 标记为 OPEN QUESTION，等用户在 propose review 阶段定夺
+- ~~待决策~~ **决策（2026-05-19，用户确认）**：**本 change 不动 `update_connection` schema**
+  - 理由：A 节修复（`IdentifierQuoter` 按方言派发反引号 / 双引号 / 方括号）已**根除 AI 想改 `sql_mode` 的动机**。AI 不再需要为了让 ANSI 双引号在 MySQL 上工作而绕过 schema —— `IdentifierQuoter` 会自动用反引号
+  - `extraJdbcParams` 透传是独立的更大改动（涉及安全审查、白名单、UI 表单），需要另起 change 单独评估
+  - 当前 schema 不暴露 session 变量本身就是正确的默认 —— 在未做 D 节修复前，AI 撞墙是"错误地试图绕过 A 应有的方言感知"，A 修复后这条路径自然消失
+- ⇒ 本 change 不变更 `UpdateConnectionConfirmableAction` 输入 schema；如未来需要 extraJdbcParams，单独 propose `connection-extra-jdbc-params`
 
 ## Capabilities
 

@@ -1,5 +1,12 @@
 import type { UIObject, UIRequest, UIResponse, ActionDef, PatchResult } from './types'
-import { patchError, execError, extractUIErrorDetail, type UIErrorDetail } from './errors'
+import {
+  patchError,
+  execError,
+  extractUIErrorDetail,
+  noActiveTargetError,
+  unknownTargetError,
+  type UIErrorDetail,
+} from './errors'
 import { matchPathPattern } from './pathResolver'
 
 export class UIRouter {
@@ -13,7 +20,14 @@ export class UIRouter {
 
   async handle(req: UIRequest): Promise<UIResponse> {
     const instance = this.resolveTarget(req.object, req.target)
-    if (!instance) return { error: `No ${req.object} found for target '${req.target}'` }
+    if (!instance) {
+      // Distinguish "explicit target id doesn't exist" from "no active <type> tab".
+      // The latter carries a nextAction so the LLM can self-heal without prompt edits.
+      const detail = req.target && req.target !== 'active'
+        ? unknownTargetError(req.object, req.target)
+        : noActiveTargetError(req.object)
+      return { data: detail, error: detail.message }
+    }
 
     try {
       switch (req.tool) {

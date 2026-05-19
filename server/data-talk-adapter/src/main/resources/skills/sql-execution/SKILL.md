@@ -1,6 +1,6 @@
 ---
 name: sql-execution
-description: Use when the user asks to query, mutate, or change schema against a SQL connection — SELECT / INSERT / UPDATE / DDL all execute directly through `datatalk_execute_sql`; only DELETE requires the `confirmationId` confirmation flow. Triggers on phrases like 查询/统计/分析/读表/取数/插入/更新/删除/建表/改表/count/select/insert/update/delete/create/alter/drop/truncate/aggregate/group by/trend/top N/explore schema/describe table. Covers the full-SQL `datatalk_execute_sql` contract, the DELETE confirmation flow, `datatalk_read_schema` discovery vs describe modes, "table doesn't exist" probe path, and the analytical aggregation-first workflow.
+description: Use when the user asks to query, mutate, or change schema against a SQL connection — SELECT / INSERT / UPDATE / DDL all run through `datatalk_execute_sql`; only DELETE goes through `confirmationId` confirm. Triggers on 查询/统计/分析/读表/取数/插入/更新/删除/建表/改表/count/select/insert/update/delete/create/alter/drop/truncate/aggregate/group by/trend/top N/explore schema/describe table. Covers the full-SQL `datatalk_execute_sql` contract, DELETE confirm flow, `datatalk_read_schema` discovery vs describe modes, and the table-not-found probe path.
 ---
 
 # SQL Execution Skill
@@ -34,7 +34,7 @@ description: Use when the user asks to query, mutate, or change schema against a
 
 ## Execution contract
 
-`datatalk_execute_sql` executes **all SQL** end-to-end: `SELECT`, `WITH`, `INSERT`, `UPDATE`, `CREATE`, `ALTER`, `DROP`, `TRUNCATE`, `MERGE`, `REPLACE`, vendor-specific procedural blocks, multi-statement scripts separated by `;` — everything the underlying JDBC driver accepts. There is no read-only gate; do **not** redirect the user to a "SQL workbench" or to the query editor merely because the SQL mutates data or schema. If the user said "create / insert / update / drop / 建表 / 改表 / 改字段 / 导入 / 改这条记录", just run it.
+`datatalk_execute_sql` executes **all SQL** end-to-end: `SELECT`, `WITH`, `INSERT`, `UPDATE`, `CREATE`, `ALTER`, `DROP`, `TRUNCATE`, `MERGE`, `REPLACE`, vendor-specific procedural blocks, multi-statement scripts separated by `;` — everything the underlying JDBC driver accepts. There is **no READ-ONLY gate**: do **not** redirect the user to a "SQL workbench" or to the query editor merely because the SQL mutates data or schema. If the user said "create / insert / update / drop / 建表 / 改表 / 改字段 / 导入 / 改这条记录", just run it.
 
 **Sole exception — DELETE confirmation.** If the SQL contains a `DELETE` statement (top-level or after a `;`), the first call returns `{ status: "requires_confirmation", confirmationId, message, sqlPreview, affectedObjects }` instead of executing. You MUST:
 

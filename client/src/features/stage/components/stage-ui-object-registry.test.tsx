@@ -192,7 +192,8 @@ describe('StageUIObjectRegistry', () => {
       target: 'active',
       payload: { mode: 'state' },
     })
-    expect(wrongQueryEditor.error).toContain('No query_editor')
+    expect(wrongQueryEditor.error).toBe('No active query_editor tab')
+    expect((wrongQueryEditor.data as { code?: string }).code).toBe('no_active_query_editor')
   })
 
   it('registers er_inspector tabs in uiRouter', async () => {

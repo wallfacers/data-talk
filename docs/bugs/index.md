@@ -8,7 +8,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## 当前编号
 
-下一个分配 ID：**BUG-0069**（永不复用，单调递增）
+下一个分配 ID：**BUG-0070**（永不复用，单调递增）
 
 ## Open BUGs（按 priority 倒序，P0 → P2）
 
@@ -20,6 +20,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 | ID | Title | Status | Priority | Owner |
 |----|-------|--------|----------|-------|
+| [BUG-0069](BUG-0069-sql-file-import-routing-bypassed-via-file-read-execute-sql.md) | 20KB INSERT-only SQL 文件被 file_read + execute_sql 绕过 datatalk_import_data 路由（BUG-0065/0067 同族：专用合同工具被通用拼装路径绕过） | fixed | P2 | — (pending) |
 | [BUG-0068](BUG-0068-user-bubble-content-flash-on-promote.md) | 用户气泡内容"展示→消失→再展示"——promotePendingUser 清空 parts 制造空白帧（BUG-0056 修复后回归） | fixed | P1 | — (pending) |
 | [BUG-0067](BUG-0067-script-run-direct-db-connect-misuse.md) | data-collection skill 未禁止脚本直连 DB，LLM 走 pymysql / mysql.connector 错误退路，违反 backend write API 合同 | fixed | P2 | — (pending) |
 | [BUG-0066](BUG-0066-identifier-quoting-not-dialect-aware.md) | 数据移动 4 处 quoteIdentifier 硬编码 ANSI 双引号，MySQL 默认 sql_mode 下 import_data / cross-DB copy / 导出回灌 / undo log 全崩 | fixed | P1 | — (pending) |

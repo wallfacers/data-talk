@@ -44,21 +44,21 @@ class UndoLogCaptureTest {
 
     @Test
     void selectStatement_returnsSkipped() {
-        UndoOutcome outcome = capture.capture(h2, "SELECT * FROM users_with_pk", "s1", "c1", "db", null);
+        UndoOutcome outcome = capture.capture(h2, "SELECT * FROM users_with_pk", "s1", "c1", "h2", "db", null);
         assertThat(outcome).isInstanceOf(UndoOutcome.Skipped.class);
         assertThat(((UndoOutcome.Skipped) outcome).statementType()).isEqualTo("non_dml");
     }
 
     @Test
     void unparseableSql_returnsNotUndoable() {
-        UndoOutcome outcome = capture.capture(h2, "INVALID SQL {{{", "s1", "c1", "db", null);
+        UndoOutcome outcome = capture.capture(h2, "INVALID SQL {{{", "s1", "c1", "h2", "db", null);
         assertThat(outcome).isInstanceOf(UndoOutcome.NotUndoable.class);
         assertThat(((UndoOutcome.NotUndoable) outcome).reason()).isEqualTo("parse_failed");
     }
 
     @Test
     void tableWithoutPrimaryKey_returnsNotUndoableAndInsertsLog() {
-        UndoOutcome outcome = capture.capture(h2, "INSERT INTO users_no_pk (id, name) VALUES (1, 'Alice')", "s1", "c1", "db", null);
+        UndoOutcome outcome = capture.capture(h2, "INSERT INTO users_no_pk (id, name) VALUES (1, 'Alice')", "s1", "c1", "h2", "db", null);
         assertThat(outcome).isInstanceOf(UndoOutcome.NotUndoable.class);
         assertThat(((UndoOutcome.NotUndoable) outcome).reason()).isEqualTo("no_primary_key");
         verify(repo).insert(any());
@@ -66,7 +66,7 @@ class UndoLogCaptureTest {
 
     @Test
     void insertWithPrimaryKey_returnsCaptured() {
-        UndoOutcome outcome = capture.capture(h2, "INSERT INTO users_with_pk (id, name) VALUES (1, 'Alice')", "s1", "c1", "db", null);
+        UndoOutcome outcome = capture.capture(h2, "INSERT INTO users_with_pk (id, name) VALUES (1, 'Alice')", "s1", "c1", "h2", "db", null);
         assertThat(outcome).isInstanceOf(UndoOutcome.Captured.class);
         UndoOutcome.Captured captured = (UndoOutcome.Captured) outcome;
         assertThat(captured.capture().undoable()).isTrue();
@@ -80,7 +80,7 @@ class UndoLogCaptureTest {
         try (Statement stmt = h2.createStatement()) {
             stmt.execute("INSERT INTO users_with_pk (id, name) VALUES (1, 'Alice')");
         }
-        UndoOutcome outcome = capture.capture(h2, "UPDATE users_with_pk SET name = 'Bob' WHERE id = 1", "s1", "c1", "db", null);
+        UndoOutcome outcome = capture.capture(h2, "UPDATE users_with_pk SET name = 'Bob' WHERE id = 1", "s1", "c1", "h2", "db", null);
         assertThat(outcome).isInstanceOf(UndoOutcome.Captured.class);
         UndoOutcome.Captured captured = (UndoOutcome.Captured) outcome;
         assertThat(captured.capture().undoable()).isTrue();
@@ -97,7 +97,7 @@ class UndoLogCaptureTest {
                 stmt.execute("INSERT INTO users_with_pk (id, name) VALUES (" + i + ", 'user" + i + "')");
             }
         }
-        UndoOutcome outcome = capture.capture(h2, "DELETE FROM users_with_pk WHERE id < 150", "s1", "c1", "db", null);
+        UndoOutcome outcome = capture.capture(h2, "DELETE FROM users_with_pk WHERE id < 150", "s1", "c1", "h2", "db", null);
         assertThat(outcome).isInstanceOf(UndoOutcome.NotUndoable.class);
         assertThat(((UndoOutcome.NotUndoable) outcome).reason()).startsWith("too_many_rows");
     }
