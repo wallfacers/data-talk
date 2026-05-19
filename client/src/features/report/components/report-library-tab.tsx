@@ -36,11 +36,7 @@ export function ReportLibraryTab({ workspaceId }: ReportLibraryTabProps) {
   }
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full text-text-muted">
-        {t('report.library.loading')}
-      </div>
-    )
+    return <TabContentLoader />
   }
 
   if (!reports || reports.length === 0) {
