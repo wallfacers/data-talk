@@ -4,6 +4,7 @@ import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.fileartifact.FileArtifactRepository;
 import com.datatalk.application.fileartifact.SessionWorkdirRoot;
 import com.datatalk.application.fileartifact.SessionWorkdirService;
+import com.datatalk.application.importexport.DataExportService;
 import com.datatalk.application.opencode.OpenCodeGateway;
 import com.datatalk.application.opencode.OpenCodeSessionMap;
 import com.datatalk.application.persistence.ConnectionRecord;
@@ -12,6 +13,7 @@ import com.datatalk.application.persistence.SessionRecord;
 import com.datatalk.application.persistence.SessionRepository;
 import com.datatalk.application.session.DeleteOutcome;
 import com.datatalk.application.stage.ActiveSessionRegistry;
+import com.datatalk.application.upload.UploadedFileRepository;
 import com.datatalk.domain.fileartifact.FileArtifact;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,6 +52,8 @@ class SessionServiceTest {
     private SessionService svc;
     private SessionWorkdirService workdirs;
     private FileArtifactRepository fileArtifacts;
+    private UploadedFileRepository uploadedFiles;
+    private DataExportService dataExportService;
     private ActiveSessionRegistry activeSessions;
     private ConnectionRepository connections;
     private OpenCodeGateway gateway;
@@ -97,9 +101,11 @@ class SessionServiceTest {
             new SessionWorkdirRoot(tmp, tmp.resolve("opencode")),
             new com.fasterxml.jackson.databind.ObjectMapper());
         fileArtifacts = mock(FileArtifactRepository.class);
+        uploadedFiles = mock(UploadedFileRepository.class);
+        dataExportService = mock(DataExportService.class);
         activeSessions = new ActiveSessionRegistry();
         svc = new SessionService(connections, repo, Clock.fixed(Instant.ofEpochMilli(500L), ZoneOffset.UTC),
-            gateway, sessionMap, buses, translator, workdirs, fileArtifacts, activeSessions);
+            gateway, sessionMap, buses, translator, workdirs, fileArtifacts, uploadedFiles, dataExportService, activeSessions);
     }
 
     @AfterEach
@@ -249,7 +255,7 @@ class SessionServiceTest {
         SessionRepository repoSpy = org.mockito.Mockito.spy(repo);
         SessionService spied = new SessionService(connections, repoSpy,
             Clock.fixed(Instant.ofEpochMilli(500L), ZoneOffset.UTC),
-            gateway, sessionMap, buses, translator, workdirs, fileArtifacts, activeSessions);
+            gateway, sessionMap, buses, translator, workdirs, fileArtifacts, uploadedFiles, dataExportService, activeSessions);
 
         spied.delete("s1");
 
