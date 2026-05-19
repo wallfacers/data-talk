@@ -567,19 +567,30 @@ export const useStageStore = create<StageState>((set, get) => ({
     const prevOpenIds = before.openTabIds
     const prevOpenOrder = before.openTabIdsOrdered
     const prevActive = before.activeTabId
-    useStageStore.getState().detachFromWorkset(tabId)
+    const prevTabs = before.tabs
+
+    // Optimistic: remove from workset AND tabs synchronously so the UI
+    // updates in one frame (no visible delay between tab-bar emptying and
+    // the left rail disappearing).
+    const workset = buildWorksetAfterRemoval(before, tabId)
+    set({
+      ...workset,
+      tabs: before.tabs.filter((t) => t.tabId !== tabId),
+    })
+
     try {
       const { coordinator } = await import('@/features/stage/persistence/stage-persistence-bootstrap')
       await coordinator.delete(tabId)
     } catch (err) {
+      // Rollback on persistence failure
       set(() => ({
         openTabIds: prevOpenIds,
         openTabIdsOrdered: prevOpenOrder,
         activeTabId: prevActive,
+        tabs: prevTabs,
       }))
       throw err
     }
-    set((s) => ({ tabs: s.tabs.filter((t) => t.tabId !== tabId) }))
   },
 
   // focusTab also reveals the stage panel — calling code (workspace.focus,
