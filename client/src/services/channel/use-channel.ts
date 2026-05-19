@@ -541,7 +541,12 @@ export function useChannel() {
       // 抽取首个 text part 的 text 作为 pending 文本
       const firstText = parts.find((p) => p?.type === 'text') as { text?: string } | undefined
       const pendingText = typeof firstText?.text === 'string' ? firstText.text : ''
-      const pendingId = useChatPartsStore.getState().upsertPendingUser(sessionId, pendingText)
+      // Extract file parts for optimistic rendering — avoids bubble jitter when
+      // attachments arrive later via SSE.
+      const fileParts = parts.filter(
+        (p: any) => p?.type === 'file_upload' || p?.type === 'file',
+      ) as Part[]
+      const pendingId = useChatPartsStore.getState().upsertPendingUser(sessionId, pendingText, fileParts.length > 0 ? fileParts : undefined)
 
       useChatPartsStore.getState().setStreaming(sessionId, true)
       enterSplit(sessionId)

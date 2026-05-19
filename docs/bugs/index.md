@@ -8,7 +8,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## 当前编号
 
-下一个分配 ID：**BUG-0066**（永不复用，单调递增）
+下一个分配 ID：**BUG-0068**（永不复用，单调递增）
 
 ## Open BUGs（按 priority 倒序，P0 → P2）
 
@@ -20,6 +20,8 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 | ID | Title | Status | Priority | Owner |
 |----|-------|--------|----------|-------|
+| [BUG-0067](BUG-0067-script-run-direct-db-connect-misuse.md) | data-collection skill 未禁止脚本直连 DB，LLM 走 pymysql / mysql.connector 错误退路，违反 backend write API 合同 | fixed | P2 | — (pending) |
+| [BUG-0066](BUG-0066-identifier-quoting-not-dialect-aware.md) | 数据移动 4 处 quoteIdentifier 硬编码 ANSI 双引号，MySQL 默认 sql_mode 下 import_data / cross-DB copy / 导出回灌 / undo log 全崩 | fixed | P1 | — (pending) |
 | [BUG-0065](BUG-0065-pre-action-protocol-bypassed-via-ui-exec-path.md) | LLM 用 datatalk_ui_exec 把 SQL 推到编辑器时绕过 Pre-Action Exploration Protocol，从未对不存在表做 schema_search | fixed | P2 | — (eb1ef5a8) |
 | [BUG-0064](BUG-0064-chart-artifact-rendered-twice-when-llm-also-embeds-echarts-block.md) | render_chart artifact 与 markdown echarts 代码块同时渲染，导致同一图被画两次且能力不一致 | fixed | P2 | — (eb1ef5a8) |
 | [BUG-0060](BUG-0060-mcp-image-served-as-text-content.md) | MCP file_read 把 image data URI 塞进 text content，模型只看到 base64 字符串 | fixed | P0 | — (pending) |

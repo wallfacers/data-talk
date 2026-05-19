@@ -1,3 +1,13 @@
 {
-  "tasks": []
+  "tasks": [
+    {
+      "id": "4f132318",
+      "cron": "30 20 18 5 *",
+      "prompt": "[20:30 收尾任务 — 来自 data-talk 项目]\n\n工作目录: /home/wushengzhou/workspace/github/data-talk\n分支: develop (上游 origin/develop)\n\n执行以下步骤:\n\n1. **同步远程**: 先 `git fetch origin`,然后 `git status -sb` 看本地相对 origin/develop 的领先/落后。\n   - 如果 origin/develop 已经领先本地(其他 AI 已经推过),直接 `git pull --rebase origin develop`,跳到步骤 4。\n   - 如果本地领先且远程也领先(分叉),`git pull --rebase origin develop`,有冲突则停下报告,不要硬切。\n\n2. **检查未提交变更**: `git status`(**不要**用 -uall 标志)。重点关注:\n   - `openspec/changes/sql-file-intent-routing/` 目录下任何新增/修改的文件(proposal.md / design.md / tasks.md / specs/*)\n   - 任何其他未提交的工作区变更\n\n3. **如果有未提交变更,做收尾**:\n   - 如果是 openspec/changes/sql-file-intent-routing/,简短扫一下 design.md/tasks.md 内容是否完整(有无明显 TODO/未填),不做大改,只做轻微文档收尾\n   - `git add` 具体文件名(不要 `-A` 或 `.`,避免把无关文件加进来)\n   - 用 Conventional Commits 风格写 commit message,HEREDOC 格式,末尾加:\n     ```\n     Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>\n     ```\n   - commit 后再次 `git status` 确认干净\n\n4. **推送**: `git push origin develop`\n   - **禁止** `--force` / `--force-with-lease` / `--no-verify`\n   - **禁止** 推到 master\n   - 如果 push 被远程拒绝,`git pull --rebase`,有冲突则停下报告,不要二次尝试\n\n5. **报告**: 一段话讲清楚:\n   - 最终 HEAD commit hash\n   - 是否成功 push 到 origin/develop\n   - 如果跳过(远程已被其他 AI 处理),说明跳过原因\n\n约束:\n- 整段任务不超过 5 分钟,如有疑问/冲突立刻停下报告,**不要**自作主张做大改动\n- 任何 destructive 操作(reset --hard / branch -D / clean -f)都禁止",
+      "createdAt": 1779103960453,
+      "createdBySessionId": "4aaa1419-6e33-4b33-9023-45361a296f58",
+      "createdByPid": 1890,
+      "createdByProcStart": "16532"
+    }
+  ]
 }

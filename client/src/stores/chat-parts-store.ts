@@ -37,7 +37,7 @@ type ChatPartsState = {
   setStreaming: (sessionId: string, on: boolean) => void
   appendPartDelta: (sessionId: string, partId: string, field: string, delta: string) => void
 
-  upsertPendingUser: (sessionId: string, text: string) => string
+  upsertPendingUser: (sessionId: string, text: string, pendingFileParts?: Part[]) => string
   promotePendingUser: (sessionId: string, pendingId: string, realId: string) => void
   markPendingUserFailed: (sessionId: string, pendingId: string, reason: string) => void
   removePendingUser: (sessionId: string, pendingId: string) => void
@@ -316,9 +316,9 @@ export const useChatPartsStore = create<ChatPartsState>()(
         return list?.[entry.idx] ?? null
       },
 
-      upsertPendingUser: (sessionId, text) => {
+      upsertPendingUser: (sessionId, text, pendingFileParts) => {
         const pendingId = `pending_${generateUuid()}`
-        const partId = `pending_prt_${generateUuid()}`
+        const textPartId = `pending_prt_${generateUuid()}`
         const createdAt = Date.now()
         set((s) => {
           const infoBySession = new Map(s.infoBySession)
@@ -337,19 +337,28 @@ export const useChatPartsStore = create<ChatPartsState>()(
           infoBySession.set(sessionId, infoMap)
 
           const partsMap = new Map(partsBySession.get(sessionId) ?? new Map())
-          const pendingPart = {
+          const pendingTextPart = {
             type: 'text',
-            id: partId,
+            id: textPartId,
             sessionID: sessionId,
             messageID: pendingId,
             text,
             metadata: {},
           } as Part
-          partsMap.set(pendingId, [pendingPart])
+          const allParts: Part[] = [pendingTextPart]
+          if (pendingFileParts && pendingFileParts.length > 0) {
+            for (const fp of pendingFileParts) {
+              const id = `pending_prt_${generateUuid()}`
+              allParts.push({ ...fp, id, sessionID: sessionId, messageID: pendingId } as Part)
+            }
+          }
+          partsMap.set(pendingId, allParts)
           partsBySession.set(sessionId, partsMap)
 
           const indexMap = new Map(partIndexBySession.get(sessionId) ?? new Map())
-          indexMap.set(partId, { messageId: pendingId, idx: 0 })
+          for (let i = 0; i < allParts.length; i++) {
+            indexMap.set(allParts[i]!.id, { messageId: pendingId, idx: i })
+          }
           partIndexBySession.set(sessionId, indexMap)
 
           return {
@@ -396,29 +405,30 @@ export const useChatPartsStore = create<ChatPartsState>()(
         }
         if (!insertedRealInfo) nextInfoMap.set(realId, promotedInfo)
 
-        // Rebuild the parts map to preserve insertion order
+        // Rebuild the parts map to preserve insertion order.
+        // Clear the pending parts — SSE message.part.created events will fill
+        // in the real parts. This avoids duplicate pending_prt_ + real parts.
         const oldPartsMap = s.partsBySession.get(sessionId)
         const nextPartsMap = new Map<string, Part[]>()
-        let insertedRealParts = false
-        const promotedParts = oldPartsMap?.get(realId)
-          ?? oldPartsMap?.get(pendingId)?.map((p) => ({ ...p, messageID: realId }))
-          ?? []
         if (oldPartsMap) {
           for (const [mid, parts] of oldPartsMap.entries()) {
             if (mid === pendingId) {
-              nextPartsMap.set(realId, promotedParts)
-              insertedRealParts = true
+              nextPartsMap.set(realId, [])
               continue
             }
             if (mid === realId) continue
             nextPartsMap.set(mid, parts)
           }
         }
-        if (!insertedRealParts && promotedParts.length > 0) nextPartsMap.set(realId, promotedParts)
+        if (!nextPartsMap.has(realId)) nextPartsMap.set(realId, [])
 
-        const index = new Map(s.partIndexBySession.get(sessionId) ?? new Map())
-        for (const [pid, entry] of index.entries()) {
-          if (entry.messageId === pendingId) index.set(pid, { ...entry, messageId: realId })
+        // Remove pending part index entries; real parts will be indexed by upsertPart.
+        const oldIndexMap = s.partIndexBySession.get(sessionId)
+        const index = new Map(oldIndexMap)
+        if (oldIndexMap) {
+          for (const [pid, entry] of oldIndexMap.entries()) {
+            if (entry.messageId === pendingId) index.delete(pid)
+          }
         }
 
         const infoBySession = new Map(s.infoBySession); infoBySession.set(sessionId, nextInfoMap)

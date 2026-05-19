@@ -93,7 +93,7 @@ describe('chat-parts-store', () => {
     unsub()
   })
 
-  it('promotePendingUser renames pendingId → realId preserving content', () => {
+  it('promotePendingUser renames pendingId → realId and clears parts for SSE hydration', () => {
     const store = useChatPartsStore.getState()
     const pendingId = store.upsertPendingUser('ses_a', 'hello')
     store.promotePendingUser('ses_a', pendingId, 'msg_real_1')
@@ -102,8 +102,21 @@ describe('chat-parts-store', () => {
     expect(byInfo.get(pendingId)).toBeUndefined()
     expect(byInfo.get('msg_real_1')?.__pending).toBeFalsy()
 
+    // Parts are cleared — SSE message.part.created events will fill real parts
     const parts = useChatPartsStore.getState().partsBySession.get('ses_a')?.get('msg_real_1')
-    expect((parts?.[0] as any).text).toBe('hello')
+    expect(parts).toEqual([])
+
+    // Simulate SSE upsertPart to verify hydration works
+    store.upsertPart('ses_a', {
+      type: 'text',
+      id: 'prt_real_1',
+      sessionID: 'ses_a',
+      messageID: 'msg_real_1',
+      text: 'hello',
+      metadata: {},
+    })
+    const hydrated = useChatPartsStore.getState().partsBySession.get('ses_a')?.get('msg_real_1')
+    expect((hydrated?.[0] as any).text).toBe('hello')
   })
 
   it('markPendingUserFailed sets __failed flag', () => {
