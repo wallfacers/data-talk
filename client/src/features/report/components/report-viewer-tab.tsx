@@ -103,7 +103,7 @@ export function ReportViewerTab({ tab }: ReportViewerTabProps) {
               'transition-[background,color,opacity] duration-[180ms] ease-[var(--easing-standard)]',
             ].join(' ')}
           >
-            {pdfStatus === 'processing' ? `${t('report.button.exportPdf')}…` : t('report.button.exportPdf')}
+            {t('report.button.exportPdf')}
           </button>
           <button
             type="button"
@@ -119,7 +119,7 @@ export function ReportViewerTab({ tab }: ReportViewerTabProps) {
               'transition-[background,color,opacity] duration-[180ms] ease-[var(--easing-standard)]',
             ].join(' ')}
           >
-            {mdStatus === 'processing' ? `${t('report.button.exportMd')}…` : t('report.button.exportMd')}
+            {t('report.button.exportMd')}
           </button>
         </div>
       </header>
