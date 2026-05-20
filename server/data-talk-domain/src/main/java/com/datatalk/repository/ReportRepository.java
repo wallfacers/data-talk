@@ -20,7 +20,7 @@ public interface ReportRepository {
 
     /**
      * 列表查询。
-     * @param workspaceId 必传
+     * @param workspaceId 可选；非空时按 workspace 过滤，为空时返回所有 workspace 的报表
      * @param groupId 可选；非空时返回该 group 内全部版本（version desc）；为空时返回每个 group 的最新版本
      */
     List<Report> findByWorkspaceId(String workspaceId, String groupId);
@@ -29,6 +29,11 @@ public interface ReportRepository {
      * 等价于 {@code findByWorkspaceId(workspaceId, null)}：每个 group 只返最新版本。
      */
     List<Report> findGroupLatest(String workspaceId);
+
+    /**
+     * 返回所有 workspace 的报表，按 group 折叠只返回每组最新版本。
+     */
+    List<Report> findAllGroupLatest();
 
     /**
      * 给定 workspace + groupId 返回该 group 内当前最大 version；不存在时返回 0。

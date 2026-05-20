@@ -10,7 +10,7 @@ export interface ReportLibraryTabProps {
 
 export function ReportLibraryTab({ workspaceId }: ReportLibraryTabProps) {
   const { t } = useI18n()
-  const effectiveWsId = workspaceId || 'default'
+  const effectiveWsId = workspaceId || undefined
   const { data: reports, isLoading } = useReportList(effectiveWsId)
   const selected = useReportStore((s) => s.selectedReportId)
   const setSelected = useReportStore((s) => s.setSelected)

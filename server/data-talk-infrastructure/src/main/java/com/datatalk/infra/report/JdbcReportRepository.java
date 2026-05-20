@@ -66,14 +66,25 @@ public class JdbcReportRepository implements ReportRepository {
 
     @Override
     public List<Report> findByWorkspaceId(String workspaceId, String groupId) {
+        if (workspaceId != null && !workspaceId.isBlank()) {
+            if (groupId != null && !groupId.isBlank()) {
+                return jdbc.query(
+                        "SELECT " + COLS + " FROM report WHERE workspace_id = ? AND group_id = ? "
+                                + "ORDER BY version DESC",
+                        mapper(),
+                        workspaceId, groupId);
+            }
+            return findGroupLatest(workspaceId);
+        }
+        // workspaceId 为空时返回所有报表
         if (groupId != null && !groupId.isBlank()) {
             return jdbc.query(
-                    "SELECT " + COLS + " FROM report WHERE workspace_id = ? AND group_id = ? "
+                    "SELECT " + COLS + " FROM report WHERE group_id = ? "
                             + "ORDER BY version DESC",
                     mapper(),
-                    workspaceId, groupId);
+                    groupId);
         }
-        return findGroupLatest(workspaceId);
+        return findAllGroupLatest();
     }
 
     @Override
@@ -85,6 +96,15 @@ public class JdbcReportRepository implements ReportRepository {
                 + "                  WHERE r2.workspace_id = r.workspace_id AND r2.group_id = r.group_id) "
                 + "ORDER BY generated_at DESC";
         return jdbc.query(sql, mapper(), workspaceId);
+    }
+
+    @Override
+    public List<Report> findAllGroupLatest() {
+        String sql = "SELECT " + COLS + " FROM report r "
+                + "WHERE version = (SELECT MAX(version) FROM report r2 "
+                + "                  WHERE r2.group_id = r.group_id) "
+                + "ORDER BY generated_at DESC";
+        return jdbc.query(sql, mapper());
     }
 
     @Override

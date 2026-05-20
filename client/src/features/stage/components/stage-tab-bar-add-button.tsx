@@ -1,4 +1,4 @@
-import { PlusIcon, DatabaseIcon, NetworkIcon, ScrollText } from 'lucide-react'
+import { PlusIcon, DatabaseIcon, LineChartIcon, NetworkIcon, ScrollText } from 'lucide-react'
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
 } from '@/components/ui/dropdown-menu'
@@ -80,6 +80,18 @@ export function StageTabBarAddButton() {
         <DropdownMenuItem onClick={openOperationLog} className="text-text-base focus:bg-accent focus:text-accent-foreground">
           <ScrollText className="size-4 mr-2 text-text-muted" />
           <span className="whitespace-nowrap">{t('stage.tabBar.addNew.menu.oplog')}</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => {
+          useStageStore.getState().openTab({
+            tabId: 'report-library',
+            type: 'report_library',
+            title: t('tabType.reportLibrary'),
+            payload: {},
+            createdAt: Date.now(),
+          })
+        }} className="text-text-base focus:bg-accent focus:text-accent-foreground">
+          <LineChartIcon className="size-4 mr-2 text-text-muted" />
+          <span className="whitespace-nowrap">{t('stage.tabBar.addNew.menu.report')}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

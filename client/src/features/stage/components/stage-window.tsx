@@ -112,6 +112,17 @@ export function StageWindow() {
     })
   }
 
+  function handleOpenReport() {
+    setShowStartPage(false)
+    useStageStore.getState().openTab({
+      tabId: 'report-library',
+      type: 'report_library',
+      title: t('tabType.reportLibrary'),
+      payload: {},
+      createdAt: Date.now(),
+    })
+  }
+
 
   const activeTab = openTabsOrdered.find((t) => t.tabId === activeTabId)
   const HeaderIcon = activeTab ? getTabTypeDescriptor(activeTab.type).icon : null
@@ -223,6 +234,7 @@ export function StageWindow() {
                 <StageWorkbenchEmptyState
                   onOpenSqlEditor={handleOpenSqlEditor}
                   onOpenErDesigner={handleOpenErDesigner}
+                  onOpenReport={handleOpenReport}
                 />
               </div>
             )}

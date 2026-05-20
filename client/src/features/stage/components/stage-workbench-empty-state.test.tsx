@@ -15,17 +15,20 @@ describe('StageWorkbenchEmptyState', () => {
     expect(erTile).not.toBeDisabled()
   })
 
-  it('keeps the SQL and ER designer tiles interactive', () => {
+  it('keeps the SQL, ER designer, and Report tiles interactive', () => {
     const onOpenSqlEditor = vi.fn()
     const onOpenErDesigner = vi.fn()
+    const onOpenReport = vi.fn()
 
-    render(<StageWorkbenchEmptyState onOpenSqlEditor={onOpenSqlEditor} onOpenErDesigner={onOpenErDesigner} />)
+    render(<StageWorkbenchEmptyState onOpenSqlEditor={onOpenSqlEditor} onOpenErDesigner={onOpenErDesigner} onOpenReport={onOpenReport} />)
 
     fireEvent.click(screen.getByRole('button', { name: /SQL 编辑器/ }))
     fireEvent.click(screen.getByRole('button', { name: /ER 图设计器/ }))
+    fireEvent.click(screen.getByRole('button', { name: /报表/ }))
 
     expect(onOpenSqlEditor).toHaveBeenCalledTimes(1)
     expect(onOpenErDesigner).toHaveBeenCalledTimes(1)
+    expect(onOpenReport).toHaveBeenCalledTimes(1)
   })
 
   it('disables the SQL tile when no open handler is provided', () => {

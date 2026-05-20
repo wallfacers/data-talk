@@ -14,11 +14,11 @@ describe('StageTabBarAddButton', () => {
     expect(screen.getByRole('button')).toBeInTheDocument()
   })
 
-  it('renders all menu items (SQL, ER, OpLog)', () => {
+  it('renders all menu items (SQL, ER, OpLog, Report)', () => {
     render(<StageTabBarAddButton />)
     fireEvent.click(screen.getByRole('button'))
     const menuItems = screen.getAllByRole('menuitem')
-    expect(menuItems).toHaveLength(3)
+    expect(menuItems).toHaveLength(4)
     expect(screen.getByText('stage.tabBar.addNew.menu.er')).toBeInTheDocument()
   })
 

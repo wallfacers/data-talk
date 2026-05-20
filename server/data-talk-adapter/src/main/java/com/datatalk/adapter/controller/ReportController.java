@@ -1,5 +1,6 @@
 package com.datatalk.adapter.controller;
 
+import com.datatalk.application.fileartifact.SessionWorkdirRoot;
 import com.datatalk.application.report.LedgerSkillResolver;
 import com.datatalk.application.report.ReportSystemStatus;
 import com.datatalk.domain.report.Report;
@@ -20,11 +21,13 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 @RestController
 @RequestMapping("/api/reports")
@@ -36,47 +39,84 @@ public class ReportController {
     private final ReportSystemStatus systemStatus;
     private final LedgerSkillResolver ledgerSkill;
     private final ObjectMapper mapper;
+    private final SessionWorkdirRoot workdirRoot;
 
     public ReportController(
             ReportRepository reportRepo,
             ReportSystemStatus systemStatus,
             LedgerSkillResolver ledgerSkill,
-            ObjectMapper mapper) {
+            ObjectMapper mapper,
+            SessionWorkdirRoot workdirRoot) {
         this.reportRepo = reportRepo;
         this.systemStatus = systemStatus;
         this.ledgerSkill = ledgerSkill;
         this.mapper = mapper;
+        this.workdirRoot = workdirRoot;
     }
 
     @GetMapping
     public ResponseEntity<Map<String, Object>> list(
-            @RequestParam("workspaceId") String workspaceId,
+            @RequestParam(value = "workspaceId", required = false) String workspaceId,
             @RequestParam(value = "groupId", required = false) String groupId) {
-        List<Report> rows = reportRepo.findByWorkspaceId(workspaceId, groupId);
-        List<Map<String, Object>> items = new ArrayList<>();
-        for (Report r : rows) {
-            Map<String, Object> dto = toListItem(r);
-            if (groupId == null) {
-                dto.put("groupSize", reportRepo.countInGroup(workspaceId, r.groupId()));
-            } else {
-                dto.put("groupSize", rows.size());
+        String effectiveWs = (workspaceId != null && !workspaceId.isBlank()) ? workspaceId : null;
+        List<Report> rows = reportRepo.findByWorkspaceId(effectiveWs, groupId);
+        if (!rows.isEmpty()) {
+            List<Map<String, Object>> items = new ArrayList<>();
+            for (Report r : rows) {
+                Map<String, Object> dto = toListItem(r);
+                if (groupId == null) {
+                    dto.put("groupSize", reportRepo.countInGroup(
+                            effectiveWs != null ? effectiveWs : r.workspaceId(), r.groupId()));
+                } else {
+                    dto.put("groupSize", rows.size());
+                }
+                items.add(dto);
             }
-            items.add(dto);
+            return ResponseEntity.ok(Map.of("items", items));
         }
-        return ResponseEntity.ok(Map.of("items", items));
+        // Fallback: scan filesystem when report table is empty
+        return ResponseEntity.ok(Map.of("items", scanFilesystemReports()));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<?> detail(@PathVariable("id") String id) {
         Report r = reportRepo.findById(id).orElse(null);
-        if (r == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "report not found"));
+        if (r == null) {
+            // Fallback: try filesystem
+            Path reportDir = workdirRoot.reportDir(id);
+            if (Files.isDirectory(reportDir)) {
+                return ResponseEntity.ok(scanSingleReport(reportDir, id));
+            }
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "report not found"));
+        }
         return ResponseEntity.ok(toDetail(r));
     }
 
     @GetMapping("/{id}/download/{format}")
     public ResponseEntity<?> download(@PathVariable("id") String id, @PathVariable("format") String format) {
         Optional<Report> opt = reportRepo.findById(id);
-        if (opt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "report not found"));
+        if (opt.isEmpty()) {
+            // Fallback: serve directly from filesystem
+            Path reportDir = workdirRoot.reportDir(id);
+            if (!Files.isDirectory(reportDir)) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "report not found"));
+            }
+            Path file = reportDir.resolve("report." + format);
+            if (!Files.isRegularFile(file)) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "artifact missing on disk"));
+            }
+            MediaType contentType = switch (format) {
+                case "html" -> MediaType.TEXT_HTML;
+                case "pdf" -> MediaType.APPLICATION_PDF;
+                case "md" -> MediaType.TEXT_PLAIN;
+                default -> MediaType.APPLICATION_OCTET_STREAM;
+            };
+            return ResponseEntity.ok()
+                    .contentType(contentType)
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "inline; filename=\"report-" + id + "." + format + "\"")
+                    .body(new FileSystemResource(file));
+        }
         Report r = opt.get();
         Path target = artifactPathForFormat(r, format);
         if (target == null) {
@@ -108,7 +148,7 @@ public class ReportController {
             default -> { /* html / json — no status gating */ }
         }
 
-        if (target == null || !Files.exists(target)) {
+        if (!Files.exists(target)) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "artifact missing on disk"));
         }
         MediaType contentType = switch (format) {
@@ -129,23 +169,23 @@ public class ReportController {
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable("id") String id) {
         Optional<Report> opt = reportRepo.findById(id);
-        if (opt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "report not found"));
-        Report r = opt.get();
-        reportRepo.deleteById(id);
-        // best-effort: clean artifact dir
+        if (opt.isPresent()) {
+            reportRepo.deleteById(id);
+        }
+        // Always clean filesystem dir
+        Path reportDir = workdirRoot.reportDir(id);
         try {
-            Path htmlPath = artifactPathForFormat(r, "html");
-            if (htmlPath != null && htmlPath.getParent() != null) {
-                Path dir = htmlPath.getParent();
-                if (Files.exists(dir)) {
-                    try (var stream = Files.walk(dir)) {
-                        stream.sorted((a, b) -> b.getNameCount() - a.getNameCount())
-                                .forEach(p -> { try { Files.deleteIfExists(p); } catch (IOException ignored) {} });
-                    }
+            if (Files.isDirectory(reportDir)) {
+                try (var stream = Files.walk(reportDir)) {
+                    stream.sorted((a, b) -> b.getNameCount() - a.getNameCount())
+                            .forEach(p -> { try { Files.deleteIfExists(p); } catch (IOException ignored) {} });
                 }
             }
         } catch (Exception e) {
             log.warn("Failed to delete report dir for {}: {}", id, e.getMessage());
+        }
+        if (opt.isEmpty() && !Files.isDirectory(reportDir)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "report not found"));
         }
         return ResponseEntity.noContent().build();
     }
@@ -253,5 +293,97 @@ public class ReportController {
         } catch (IOException e) {
             return Map.of();
         }
+    }
+
+    private List<Map<String, Object>> scanFilesystemReports() {
+        Path reportsDir = workdirRoot.reportsRoot();
+        if (!Files.isDirectory(reportsDir)) return List.of();
+
+        List<Map<String, Object>> items = new ArrayList<>();
+        try (Stream<Path> dirs = Files.list(reportsDir)) {
+            List<Path> reportDirs = dirs
+                    .filter(Files::isDirectory)
+                    .sorted((a, b) -> {
+                        try {
+                            return Long.compare(
+                                    Files.getLastModifiedTime(b).toMillis(),
+                                    Files.getLastModifiedTime(a).toMillis());
+                        } catch (IOException e) { return 0; }
+                    })
+                    .toList();
+
+            for (Path reportDir : reportDirs) {
+                String reportId = reportDir.getFileName().toString();
+                boolean hasHtml = Files.isRegularFile(reportDir.resolve("report.html"));
+                boolean hasPdf = Files.isRegularFile(reportDir.resolve("report.pdf"));
+                boolean hasMd = Files.isRegularFile(reportDir.resolve("report.md"));
+                if (!hasHtml && !hasPdf && !hasMd) continue;
+
+                long createdAt;
+                try {
+                    BasicFileAttributes attrs = Files.readAttributes(reportDir, BasicFileAttributes.class);
+                    createdAt = attrs.creationTime().toMillis();
+                } catch (IOException e) {
+                    createdAt = System.currentTimeMillis();
+                }
+
+                Map<String, Object> dto = new LinkedHashMap<>();
+                dto.put("id", reportId);
+                dto.put("workspaceId", "");
+                dto.put("groupId", reportId);
+                dto.put("version", 1);
+                dto.put("title", reportId);
+                dto.put("subtitle", (String) null);
+                dto.put("templateId", "unknown");
+                dto.put("generatedAt", createdAt);
+                dto.put("pdfStatus", hasPdf ? "ready" : "failed");
+                dto.put("mdStatus", hasMd ? "ready" : "failed");
+                dto.put("groupSize", 1);
+                items.add(dto);
+            }
+        } catch (IOException e) {
+            log.warn("Failed to scan filesystem reports: {}", e.getMessage());
+        }
+        return items;
+    }
+
+    private Map<String, Object> scanSingleReport(Path reportDir, String reportId) {
+        boolean hasHtml = Files.isRegularFile(reportDir.resolve("report.html"));
+        boolean hasPdf = Files.isRegularFile(reportDir.resolve("report.pdf"));
+        boolean hasMd = Files.isRegularFile(reportDir.resolve("report.md"));
+
+        long createdAt;
+        try {
+            BasicFileAttributes attrs = Files.readAttributes(reportDir, BasicFileAttributes.class);
+            createdAt = attrs.creationTime().toMillis();
+        } catch (IOException e) {
+            createdAt = System.currentTimeMillis();
+        }
+
+        Map<String, Object> artifactPaths = new LinkedHashMap<>();
+        artifactPaths.put("html", hasHtml ? reportDir.resolve("report.html").toString() : null);
+        artifactPaths.put("pdf", hasPdf ? reportDir.resolve("report.pdf").toString() : null);
+        artifactPaths.put("md", hasMd ? reportDir.resolve("report.md").toString() : null);
+
+        Map<String, Object> dto = new LinkedHashMap<>();
+        dto.put("id", reportId);
+        dto.put("workspaceId", "");
+        dto.put("groupId", reportId);
+        dto.put("version", 1);
+        dto.put("title", reportId);
+        dto.put("subtitle", null);
+        dto.put("templateId", "unknown");
+        dto.put("generatedAt", createdAt);
+        dto.put("pdfStatus", hasPdf ? "ready" : "failed");
+        dto.put("mdStatus", hasMd ? "ready" : "failed");
+        dto.put("groupSize", 1);
+        dto.put("accentColor", "#4F46E5");
+        dto.put("templateVersion", "1");
+        dto.put("generatedBySessionId", null);
+        dto.put("userPrompt", null);
+        dto.put("pdfFailReason", null);
+        dto.put("mdFailReason", null);
+        dto.put("artifactPaths", artifactPaths);
+        return dto;
     }
 }

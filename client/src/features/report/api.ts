@@ -29,9 +29,9 @@ export const reportSystemStatusQueryKey = ['reports', 'system-status'] as const
 export function useReportList(workspaceId: string | undefined, groupId?: string) {
   return useQuery({
     queryKey: reportListQueryKey(workspaceId ?? '', groupId),
-    enabled: Boolean(workspaceId),
     queryFn: async () => {
-      const params = new URLSearchParams({ workspaceId: workspaceId ?? '' })
+      const params = new URLSearchParams()
+      if (workspaceId) params.set('workspaceId', workspaceId)
       if (groupId) params.set('groupId', groupId)
       return getJson(`${BASE}?${params.toString()}`, (raw) => reportListSchema.parse(raw).items)
     },
