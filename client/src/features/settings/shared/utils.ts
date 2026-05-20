@@ -1,6 +1,6 @@
 import type { ProviderDto } from './api'
 
-export const SETTINGS_DIALOG_DIMENSIONS = 'w-[960px] h-[540px] max-w-[960px] max-h-[540px] sm:max-w-[960px]'
+export const SETTINGS_DIALOG_DIMENSIONS = 'w-[960px] h-[640px] max-w-[960px] max-h-[640px] sm:max-w-[960px]'
 
 export function filterProvidersBySearch(
   providers: ProviderDto[],
