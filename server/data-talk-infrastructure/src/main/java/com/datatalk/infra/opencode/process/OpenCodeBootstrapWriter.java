@@ -121,6 +121,16 @@ public class OpenCodeBootstrapWriter {
         instructions.add(instructionsFile.toString());
         config.put("instructions", List.copyOf(instructions));
 
+        // DataTalk embeds OpenCode as a headless process and has no UI to answer its native
+        // `permission.asked` events. OpenCode's built-in external_directory permission defaults
+        // to "ask", so any native read/write touching a path outside the project worktree (e.g.
+        // /tmp) emits permission.asked and blocks the tool call forever — the part stays stuck in
+        // `running`. Pin it to "allow" so external-path tool calls never wait on a prompt nobody
+        // can respond to. User-supplied permission overrides are preserved.
+        Map<String, Object> permission = mutableMap(config.get("permission"));
+        permission.putIfAbsent("external_directory", "allow");
+        config.put("permission", permission);
+
         return config;
     }
 

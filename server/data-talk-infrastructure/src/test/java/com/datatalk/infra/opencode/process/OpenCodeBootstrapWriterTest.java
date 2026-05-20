@@ -54,6 +54,37 @@ class OpenCodeBootstrapWriterTest {
         JsonNode config = objectMapper.readTree(Files.readString(artifacts.configFile()));
         assertThat(config.path("mcp").path("datatalk").path("url").asText()).isEqualTo("http://127.0.0.1:8080/mcp");
         assertThat(instructions(config)).contains(artifacts.instructionsFile().toString());
+        // DataTalk runs OpenCode as a headless embedded process with no permission UI. The
+        // built-in external_directory permission defaults to "ask", which makes any read/write
+        // outside the project worktree (e.g. /tmp) hang forever waiting on a prompt nobody can
+        // answer. The bootstrap config must pin it to "allow" so native tool calls never block.
+        assertThat(config.path("permission").path("external_directory").asText()).isEqualTo("allow");
+    }
+
+    @Test
+    void preservesUserPermissionOverridesWhileEnsuringExternalDirectoryAllow() throws Exception {
+        OpenCodeBridgeStatus status = new OpenCodeBridgeStatus(clock);
+        OpenCodeMcpProperties properties = props(tempDir);
+        Path configFile = tempDir.resolve("opencode.json");
+        Files.writeString(configFile, """
+            {
+              "permission": { "edit": "ask" }
+            }
+            """);
+
+        OpenCodeBootstrapWriter writer = new OpenCodeBootstrapWriter(
+            properties,
+            objectMapper,
+            status,
+            clock,
+            () -> "Use datatalk_execute_sql"
+        );
+
+        OpenCodeBootstrapWriter.BootstrapArtifacts artifacts = writer.write(8080);
+
+        JsonNode config = objectMapper.readTree(Files.readString(artifacts.configFile()));
+        assertThat(config.path("permission").path("edit").asText()).isEqualTo("ask");
+        assertThat(config.path("permission").path("external_directory").asText()).isEqualTo("allow");
     }
 
     @Test
