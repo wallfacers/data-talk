@@ -13,7 +13,7 @@ import {
 } from '@/services/api/maintenance'
 import { discardFile } from '@/services/api/file-artifacts'
 import { useConnectionStore } from '@/features/connection/store'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { RefreshCw, ArrowLeft, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -398,6 +398,7 @@ export function ResourceDirectoryView({ overview }: { overview: StorageOverviewD
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [confirmDeleteBulkOpen, setConfirmDeleteBulkOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<{ key: string; label: string } | null>(null)
+  const sectionRef = useRef<HTMLDivElement>(null)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const resourceQuery = useQuery<any[]>({
@@ -735,7 +736,7 @@ export function ResourceDirectoryView({ overview }: { overview: StorageOverviewD
       </p>
 
       {/* Resource Directory Cards */}
-      <div className="grid grid-cols-5 gap-3 mb-8">
+      <div className="grid grid-cols-5 gap-3 mb-8" ref={sectionRef}>
         {RESOURCE_TABS.map(key => {
           const dir = overview.resourceDirectories?.[key]
           return (
@@ -753,6 +754,7 @@ export function ResourceDirectoryView({ overview }: { overview: StorageOverviewD
               onClick={() => {
                 setActiveResourceTab(key)
                 setSelected(new Set())
+                sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
               }}
             >
               <CardHeader>
@@ -782,6 +784,7 @@ export function ResourceDirectoryView({ overview }: { overview: StorageOverviewD
             onClick={() => {
               setActiveResourceTab(key)
               setSelected(new Set())
+              sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
             }}
           >
             {t(`maintenance.resources.tab.${key}`)}
