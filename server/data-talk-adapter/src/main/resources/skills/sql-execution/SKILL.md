@@ -1,6 +1,6 @@
 ---
 name: sql-execution
-description: Use when the user asks to query, mutate, or change schema against a SQL connection — SELECT / INSERT / UPDATE / CREATE / ALTER...ADD run through `datatalk_execute_sql`; DELETE goes through `confirmationId` confirm; destructive DDL (DROP / TRUNCATE / ALTER...DROP / GRANT / REVOKE) returns `redirect_to_editor` — AI opens a query_editor tab instead of executing directly. Triggers on 查询/统计/分析/读表/取数/插入/更新/删除/建表/改表/删表/删除/截断/清空/count/select/insert/update/delete/create/alter/drop/truncate/aggregate/group by/trend/top N/explore schema/describe table. Covers the full-SQL `datatalk_execute_sql` contract, DELETE confirm flow, destructive DDL redirect flow, `datatalk_read_schema` discovery vs describe modes, and the table-not-found probe path.
+description: Use when the user asks to query, mutate, or change schema against a SQL connection. SELECT/INSERT/UPDATE/CREATE/ALTER...ADD run via `datatalk_execute_sql`; DELETE requires `confirmationId` confirm; destructive DDL (DROP/TRUNCATE/ALTER...DROP/GRANT/REVOKE) returns `redirect_to_editor`. Triggers on 查询/统计/分析/读表/取数/插入/更新/删除/建表/改表/count/select/insert/update/delete/create/alter/drop/aggregate/group by/trend/top N/explore schema/describe table. Covers execute_sql contract, DELETE confirm, DDL redirect, read_schema discovery/describe, and table-not-found probe.
 ---
 
 # SQL Execution Skill
@@ -47,7 +47,7 @@ description: Use when the user asks to query, mutate, or change schema against a
 
 ## Execution contract
 
-`datatalk_execute_sql` executes SQL end-to-end for: `SELECT`, `WITH`, `INSERT INTO`, `UPDATE`, `CREATE` (all variants), `ALTER ... ADD/MODIFY`, `RENAME`, `MERGE`, `OPTIMIZE`, `VACUUM`, `ANALYZE`, and other non-destructive statements. If the user said "create / insert / update / 建表 / 改表 / 改字段 / 导入 / 改这条记录", just run it.
+`datatalk_execute_sql` executes SQL end-to-end for: `SELECT`, `WITH`, `INSERT INTO`, `UPDATE`, `CREATE` (all variants), `ALTER ... ADD/MODIFY`, `RENAME`, `MERGE`, `OPTIMIZE`, `VACUUM`, `ANALYZE`, and other non-destructive statements. `SELECT` / `WITH` queries are **READ-ONLY** — they inspect data without mutation. If the user said "create / insert / update / 建表 / 改表 / 改字段 / 导入 / 改这条记录", just run it.
 
 ### Destructive DDL redirect
 
