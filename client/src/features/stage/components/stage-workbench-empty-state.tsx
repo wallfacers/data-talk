@@ -1,9 +1,7 @@
 import {
   DatabaseIcon,
-  LineChartIcon,
   NetworkIcon,
   ScrollText,
-  Table2Icon,
 } from 'lucide-react'
 import { useI18n } from '@/i18n/use-i18n'
 import { cn } from '@/lib/utils'
@@ -15,12 +13,10 @@ import { StageTabBarAddButton } from './stage-tab-bar-add-button'
 type Props = {
   onOpenSqlEditor?: () => void
   onOpenErDesigner?: () => void
-  onOpenReport?: () => void
-  onOpenDashboard?: () => void
 }
 
 type StageEmptyAction = {
-  id: 'sql' | 'er' | 'oplog' | 'report' | 'dashboard'
+  id: 'sql' | 'er' | 'oplog'
   label: string
   Icon: typeof DatabaseIcon
   enabled: boolean
@@ -30,8 +26,6 @@ type StageEmptyAction = {
 export function StageWorkbenchEmptyState({
   onOpenSqlEditor,
   onOpenErDesigner,
-  onOpenReport,
-  onOpenDashboard,
 }: Props) {
   const { t } = useI18n()
   const requestPick = useDataSourcePickerStore((s) => s.requestPick)
@@ -67,20 +61,6 @@ export function StageWorkbenchEmptyState({
       Icon: ScrollText,
       enabled: true,
       onClick: handleOpenOpLog,
-    },
-    {
-      id: 'report',
-      label: t('stage.toolRow.report'),
-      Icon: LineChartIcon,
-      enabled: Boolean(onOpenReport),
-      onClick: onOpenReport,
-    },
-    {
-      id: 'dashboard',
-      label: t('stage.toolRow.dashboard'),
-      Icon: Table2Icon,
-      enabled: Boolean(onOpenDashboard),
-      onClick: onOpenDashboard,
     },
   ] as const
 

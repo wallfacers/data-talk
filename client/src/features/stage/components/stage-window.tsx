@@ -12,7 +12,6 @@ import { StageWorkbenchEmptyState } from './stage-workbench-empty-state'
 import { StageLeftRail } from './left-rail/stage-left-rail'
 import { useI18n } from '@/i18n/use-i18n'
 import { WorkspaceAdapter } from '../adapters/WorkspaceAdapter'
-import { DashboardAdapter } from '@/features/dashboard/adapters/DashboardAdapter'
 
 export function StageWindow() {
   const { t } = useI18n()
@@ -22,7 +21,6 @@ export function StageWindow() {
   const maximized = useStageStore((s) => s.maximized)
   const toggleMaximized = useStageStore((s) => s.toggleMaximized)
   const tabs = useStageStore(useShallow((s) => s.tabs))
-  const openTab = useStageStore((s) => s.openTab)
   const openTabsOrdered = useStageStore(
     useShallow((s) => s.openTabIdsOrdered.map((id) => s.tabs.find((t) => t.tabId === id)).filter(Boolean) as StageTab[]),
   )
@@ -114,21 +112,6 @@ export function StageWindow() {
     })
   }
 
-  function handleOpenDashboard() {
-    setShowStartPage(false)
-    void new DashboardAdapter('_pending_', () => null).exec('create')
-  }
-
-  function handleOpenReport() {
-    setShowStartPage(false)
-    openTab({
-      tabId: 'report-library:default',
-      type: 'report_library',
-      title: t('tabType.reportLibrary'),
-      payload: { workspaceId: 'default' },
-      createdAt: Date.now(),
-    })
-  }
 
   const activeTab = openTabsOrdered.find((t) => t.tabId === activeTabId)
   const HeaderIcon = activeTab ? getTabTypeDescriptor(activeTab.type).icon : null
@@ -240,8 +223,6 @@ export function StageWindow() {
                 <StageWorkbenchEmptyState
                   onOpenSqlEditor={handleOpenSqlEditor}
                   onOpenErDesigner={handleOpenErDesigner}
-                  onOpenReport={handleOpenReport}
-                  onOpenDashboard={handleOpenDashboard}
                 />
               </div>
             )}

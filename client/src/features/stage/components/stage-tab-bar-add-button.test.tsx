@@ -14,12 +14,11 @@ describe('StageTabBarAddButton', () => {
     expect(screen.getByRole('button')).toBeInTheDocument()
   })
 
-  it('disabled menu items show pending pill text', () => {
+  it('renders all menu items (SQL, ER, OpLog)', () => {
     render(<StageTabBarAddButton />)
     fireEvent.click(screen.getByRole('button'))
-    // ER designer is now available; only Report and Dashboard remain pending.
     const menuItems = screen.getAllByRole('menuitem')
-    expect(menuItems).toHaveLength(5)
+    expect(menuItems).toHaveLength(3)
     expect(screen.getByText('stage.tabBar.addNew.menu.er')).toBeInTheDocument()
   })
 
