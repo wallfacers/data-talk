@@ -1,6 +1,8 @@
 # Compile Rules — JSON to HTML Assembly Algorithm
 
-This document defines the complete algorithm for compiling a `dashboard.json` definition into a self-contained HTML file that renders an ECharts-based dashboard inside a Bezel iframe. Every compiled output **must** conform to the skeleton, required elements, and security constraints described below. The `scripts/validate.py` validator enforces these rules at build time.
+This document defines the complete algorithm for compiling a `dashboard.json` definition into a self-contained HTML file that renders an ECharts-based dashboard inside a Bezel iframe. Every compiled output **must** conform to the skeleton, required elements, and security constraints described below.
+
+> **Runtime vs author-time.** At chat-generation time the model compiles this algorithm **in-context** and emits the result directly inside the `dashboard-html` fenced block — it never writes `dashboard.json` or `dashboard.html` to disk (no `/tmp`, no session dir) and never does a `write`→`read` round-trip. The `scripts/validate.py` validator codifies these same rules for **author-time / local development** of this skill (editing templates, debugging the algorithm); it is **not** a runtime step. The "INPUT: dashboard.json" / "OUTPUT: compiled HTML file" notation below is logical, not a mandate to touch the filesystem.
 
 ---
 

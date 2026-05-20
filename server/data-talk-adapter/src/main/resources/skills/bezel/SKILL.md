@@ -24,7 +24,7 @@ A **single chat-stream deliverable**: a ```` ```dashboard ```` fenced code block
 Two logical artifacts exist internally, but only the JSON is what you "produce" toward the user:
 
 1. **dashboard.json** — schemaVersion 2; declares `id` (`dash_<8+chars>`), `title`, `theme` (`industry-*`), `renderer: "bezel"`, `layout.engine: "free"`, `widgets[]` with `patternId`, `query.sql + connectionId`, `refresh.intervalMs`, `version`, `createdAt`, `updatedAt`. **This is what you emit in the fenced block.**
-2. **dashboard.html** — self-contained HTML; embeds CSP `<meta>`, ECharts CDN, polling scheduler, and `window.__BEZEL_CONFIG__`. Derived from dashboard.json by compile-rules.md. **Server-side / skill-internal compile artifact. Never emit it as a chat deliverable, never write it to disk.**
+2. **dashboard.html** — self-contained HTML; embeds CSP `<meta>`, ECharts CDN, polling scheduler, and `window.__BEZEL_CONFIG__`. Derived from dashboard.json by compile-rules.md. **Compile it in-context and emit it directly inside the `dashboard-html` fenced block. Never write it to disk — not `/tmp`, not the session directory, not anywhere — and never do a `write`-then-`read` round-trip to "produce" or "verify" it.** Both `dashboard.json` and `dashboard.html` are logical, in-context artifacts; the model never needs them as real files at runtime.
 
 ## Delivery contract — MUST follow
 
@@ -105,7 +105,7 @@ This is the only correct delivery path. Any deviation breaks the workbench rende
 7. **Pre-emit checklist for the HTML block** — run this AFTER the JSON is finalized and BEFORE sending the reply:
    1. Did you compile a fresh `dashboard-html` block from the final JSON using `references/compile-rules.md`?
    2. Is the `dashboard-html` block placed immediately after the `dashboard` block (adjacent, no other fenced blocks in between)?
-   3. Did you verify the HTML compiles without errors by running `scripts/validate.py`? (python3 scripts/validate.py --html-only <path-to-html>)
+   3. Did you self-check the HTML **in-context** against `references/compile-rules.md` (required skeleton, placeholder substitution, CSP meta, polling scheduler IIFE, CSS-Grid layout)? **Do NOT write the HTML to a file and shell out to `scripts/validate.py` at runtime.** `validate.py` / `preview.py` are author-time / local-development tools for editing this skill, not steps in the chat-generation flow — invoking them at runtime forces an illegal disk write (the original cause of files escaping to `/tmp`). If you ever run them while *authoring the skill locally*, write the scratch file under the **active session subdirectory inside the worktree** (per AGENTS.md), never `/tmp` and never the parent cwd.
    4. **If ANY of the above is "no", STOP and fix before sending.** A reply with only a `dashboard` block and no `dashboard-html` block is a broken reply.
 
 ## Reference layout
@@ -118,12 +118,12 @@ Read in this order:
 5. `references/compile-rules.md` → JSON → HTML assembly algorithm
 6. `references/data-contract.md` → JSON schema v2 + polling protocol + `window.__BEZEL_CONFIG__` contract
 7. `assets/templates/NN-name.html` → original visual references (read-only inspiration)
-8. `scripts/validate.py` → compile-output self-check; run before promoting
-9. `scripts/preview.py` → local JSON + mock-data → HTML preview for debugging
+8. `scripts/validate.py` → **author-time / local-dev only** compile-output self-check. **NOT a runtime step** — at chat-generation time, self-check the HTML in-context against `compile-rules.md` instead of writing a file and shelling out to this script.
+9. `scripts/preview.py` → **author-time / local-dev only** JSON + mock-data → HTML browser preview for debugging this skill. **Never invoke at runtime.**
 
 ## Key invariants
 
-1. **Delivery is a fenced `dashboard` block in chat — never a file write.** The OpenCode `write` tool, `bash` shell redirection, or any other filesystem materialization of the HTML/JSON breaks the workbench pipeline. See "Delivery contract" above.
+1. **Delivery is a fenced `dashboard` block in chat — never a file write.** The OpenCode `write` tool, `bash` shell redirection, or any other filesystem materialization of the HTML/JSON breaks the workbench pipeline. This includes "scratch" or "verification" writes: do NOT write `dashboard.json` / `dashboard.html` to `/tmp` (or anywhere) and read them back. Compile both in-context and emit them inline. See "Delivery contract" above.
 2. JSON is source-of-truth; HTML is derived. Never hand-edit HTML.
 3. HTML must self-contain — no runtime dependency on bezel after production.
 4. **Refresh path is type-aware**:
