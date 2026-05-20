@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { StageTab } from '@/stores/stage-store'
 import { useDashboardTabsStore } from './stores/dashboard-tabs-store'
-import { DashboardIframeShell } from './iframe-shell'
+import { DashboardFrame } from './dashboard-frame'
 import { coordinator } from '@/features/stage/persistence/stage-persistence-bootstrap'
 import { useI18n } from '@/i18n/use-i18n'
 import { TabContentLoader } from '@/features/stage/components/tab-content-loader'
@@ -43,7 +43,7 @@ export function DashboardTab({ tab }: DashboardTabProps) {
 
   return (
     <div className="flex flex-col h-full bg-[var(--dt-canvas)]">
-      <DashboardIframeShell
+      <DashboardFrame
         dashboardId={dashboardId}
         onError={(e) => console.error('[bezel widget error]', e)}
       />

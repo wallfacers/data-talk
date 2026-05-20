@@ -22,9 +22,10 @@ class SkillResourceSyncerIT {
         Path skillDir = tempDir.resolve(".opencode/skills/bezel");
         assertThat(skillDir).isDirectory();
         assertThat(skillDir.resolve("SKILL.md")).isRegularFile();
-        assertThat(skillDir.resolve("references/design-language.md")).isRegularFile();
-        assertThat(skillDir.resolve("scripts/preview.py")).isRegularFile();
-        assertThat(skillDir.resolve("assets/templates/01-multi-screen-dashboard.html")).isRegularFile();
+        // v3 compiler redesign: AI emits JSON only; reference docs are YAML-generated.
+        // design-language.md / compile-rules.md / scripts/*.py / assets/templates/*.html were removed.
+        assertThat(skillDir.resolve("references/patterns-catalog.md")).isRegularFile();
+        assertThat(skillDir.resolve("references/layout-templates.md")).isRegularFile();
         assertThat(skillDir.resolve("references/industries/01-multi-screen.md")).isRegularFile();
         assertThat(skillDir.resolve("references/styles/horizon.md")).isRegularFile();
 

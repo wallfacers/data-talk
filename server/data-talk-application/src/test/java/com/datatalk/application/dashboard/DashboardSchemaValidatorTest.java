@@ -33,7 +33,7 @@ class DashboardSchemaValidatorTest {
           "title": "Test",
           "parameters": [],
           "widgets": [],
-          "layout": { "engine": "grid", "cols": 12, "rowHeight": 32, "gap": 8 },
+          "layout": { "engine": "free", "template": "grid-equal" },
           "version": 1
         }
         """;
@@ -44,100 +44,55 @@ class DashboardSchemaValidatorTest {
     }
 
     @Test
-    void overlappingWidgetsFails() throws Exception {
+    void wrongSchemaVersionFails() throws Exception {
         String json = """
         {
           "schemaVersion": 2,
           "id": "dash_test1234",
           "title": "Test",
-          "theme": "industry-neutral",
+          "theme": "industry-default",
           "renderer": "bezel",
-          "refresh": { "defaultIntervalMs": 30000, "pauseOnHidden": true },
           "parameters": [],
-          "widgets": [
-            {
-              "id": "chart_w_abc12345",
-              "type": "chart",
-              "position": { "x": 0, "y": 0, "w": 6, "h": 4 },
-              "patternId": "generic.echarts-card",
-              "options": { "title": "A" }
-            },
-            {
-              "id": "chart_w_def67890",
-              "type": "chart",
-              "position": { "x": 3, "y": 0, "w": 6, "h": 4 },
-              "patternId": "generic.echarts-card",
-              "options": { "title": "B" }
-            }
-          ],
-          "layout": { "engine": "grid", "cols": 12, "rowHeight": 32, "gap": 8 },
+          "widgets": [],
+          "layout": { "engine": "free", "template": "grid-equal" },
           "version": 1
         }
         """;
         JsonNode doc = mapper.readTree(json);
         ValidationResult result = validator.validate(doc);
         assertThat(result.ok()).isFalse();
-        assertThat(result.errors().stream().anyMatch(e -> e.code().equals("overlap"))).isTrue();
-    }
-
-    @Test
-    void nonZeroZInGridFails() throws Exception {
-        String json = """
-        {
-          "schemaVersion": 2,
-          "id": "dash_test1234",
-          "title": "Test",
-          "theme": "industry-neutral",
-          "renderer": "bezel",
-          "refresh": { "defaultIntervalMs": 30000, "pauseOnHidden": true },
-          "parameters": [],
-          "widgets": [
-            {
-              "id": "chart_w_abc12345",
-              "type": "chart",
-              "position": { "x": 0, "y": 0, "w": 6, "h": 4, "z": 3 },
-              "patternId": "generic.echarts-card",
-              "options": { "title": "A" }
-            }
-          ],
-          "layout": { "engine": "grid", "cols": 12, "rowHeight": 32, "gap": 8 },
-          "version": 1
-        }
-        """;
-        JsonNode doc = mapper.readTree(json);
-        ValidationResult result = validator.validate(doc);
-        assertThat(result.ok()).isFalse();
-        assertThat(result.errors().stream().anyMatch(e -> e.code().equals("z_must_be_zero_in_grid"))).isTrue();
+        assertThat(result.errors().stream().anyMatch(e -> e.message().contains("schemaVersion"))).isTrue();
     }
 
     @Test
     void duplicateWidgetIdFails() throws Exception {
         String json = """
         {
-          "schemaVersion": 2,
+          "schemaVersion": 3,
           "id": "dash_test1234",
           "title": "Test",
-          "theme": "industry-neutral",
+          "theme": "industry-ecommerce",
           "renderer": "bezel",
-          "refresh": { "defaultIntervalMs": 30000, "pauseOnHidden": true },
           "parameters": [],
           "widgets": [
             {
               "id": "chart_w_abc12345",
               "type": "chart",
-              "position": { "x": 0, "y": 0, "w": 6, "h": 4 },
-              "patternId": "generic.echarts-card",
-              "options": { "title": "A" }
+              "slot": "main",
+              "title": "A",
+              "patternId": "test.pattern",
+              "options": {}
             },
             {
               "id": "chart_w_abc12345",
               "type": "kpi",
-              "position": { "x": 6, "y": 0, "w": 6, "h": 4 },
-              "patternId": "generic.kpi-card",
-              "options": { "title": "B" }
+              "slot": "main",
+              "title": "B",
+              "patternId": "test.pattern",
+              "options": {}
             }
           ],
-          "layout": { "engine": "grid", "cols": 12, "rowHeight": 32, "gap": 8 },
+          "layout": { "engine": "free", "template": "grid-equal" },
           "version": 1
         }
         """;
@@ -147,16 +102,64 @@ class DashboardSchemaValidatorTest {
         assertThat(result.errors().stream().anyMatch(e -> e.code().equals("duplicate_widget_id"))).isTrue();
     }
 
+    @Test
+    void invalidThemeFormatFails() throws Exception {
+        String json = """
+        {
+          "schemaVersion": 3,
+          "id": "dash_test1234",
+          "title": "Test",
+          "theme": "bad-theme",
+          "renderer": "bezel",
+          "parameters": [],
+          "widgets": [],
+          "layout": { "engine": "free", "template": "grid-equal" },
+          "version": 1
+        }
+        """;
+        JsonNode doc = mapper.readTree(json);
+        ValidationResult result = validator.validate(doc);
+        assertThat(result.ok()).isFalse();
+    }
+
+    @Test
+    void widgetWithInvalidIdFails() throws Exception {
+        String json = """
+        {
+          "schemaVersion": 3,
+          "id": "dash_test1234",
+          "title": "Test",
+          "theme": "industry-ecommerce",
+          "renderer": "bezel",
+          "parameters": [],
+          "widgets": [
+            {
+              "id": "bad_id",
+              "type": "chart",
+              "slot": "main",
+              "title": "Bad",
+              "patternId": "test.pattern",
+              "options": {}
+            }
+          ],
+          "layout": { "engine": "free", "template": "grid-equal" },
+          "version": 1
+        }
+        """;
+        JsonNode doc = mapper.readTree(json);
+        ValidationResult result = validator.validate(doc);
+        assertThat(result.ok()).isFalse();
+    }
+
     private static final String CLEAN_DASHBOARD = """
         {
-          "schemaVersion": 2,
+          "schemaVersion": 3,
           "id": "dash_test1234",
           "title": "Sales Dashboard",
           "description": "Monthly overview",
           "defaultConnectionId": "conn_1",
-          "theme": "industry-neutral",
+          "theme": "industry-ecommerce",
           "renderer": "bezel",
-          "refresh": { "defaultIntervalMs": 30000, "pauseOnHidden": true },
           "parameters": [
             {
               "id": "global:date_range",
@@ -171,22 +174,20 @@ class DashboardSchemaValidatorTest {
             {
               "id": "chart_w_abc12345",
               "type": "chart",
-              "position": { "x": 0, "y": 0, "w": 6, "h": 8 },
-              "patternId": "generic.echarts-card",
+              "slot": "grid",
+              "title": "Total Orders",
+              "patternId": "test.pattern",
+              "chartSemantics": { "chartType": "bar" },
               "parameters": [],
               "query": {
                 "connectionId": null,
                 "sql": "SELECT * FROM orders",
                 "paramRefs": {}
               },
-              "options": {
-                "title": "Total Orders",
-                "echartsOption": {},
-                "dataMapping": { "rowsAsDataset": true }
-              }
+              "options": {}
             }
           ],
-          "layout": { "engine": "grid", "cols": 12, "rowHeight": 32, "gap": 8 },
+          "layout": { "engine": "free", "template": "grid-equal" },
           "version": 1,
           "createdAt": 1700000000000,
           "updatedAt": 1700000000000

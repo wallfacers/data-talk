@@ -19,7 +19,7 @@
 
 | ID | 优先级 | 描述 | 关联计划 |
 |----|--------|------|----------|
-| — | — | 当前无已知技术债务 | — |
+| TD-034 | P2 | bezel `map` 图表缺真实地理数据：`server/data-talk-adapter/src/main/resources/static/bezel/geo/{china,world}.json` 仅 223B 单点占位，`scheduler.js` 走 `registerMap` 后无法渲染真实省/国界。当前 map widget 优雅降级（加载失败显示提示），不报错。**TODO：待确定可信 geoJSON 数据源后补齐并启用 map。** chartType 枚举保留 map，先按 7 种可用对待 | bezel-compiler-redesign |
 
 ## Closure Notes
 

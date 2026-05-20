@@ -52,8 +52,8 @@ tmp/
 client/.playwright-cli/
 client/test-results/
 
-# bezel runtime install (extracted at server start)
-/.opencode/skills/bezel/
-/.opencode/.bezel-installed
+# skill sync (extracted at server start)
+/.opencode/skills/
+/.opencode/.*-skill-synced
 **/.opencode/
 /test-results/

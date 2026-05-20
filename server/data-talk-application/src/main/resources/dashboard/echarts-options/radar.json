@@ -1,0 +1,6 @@
+{
+  "tooltip": { "trigger": "item" },
+  "legend": { "show": true, "top": 8 },
+  "radar": { "indicator": [], "radius": "65%" },
+  "series": [{ "type": "radar", "areaStyle": { "opacity": 0.12 }, "data": [] }]
+}

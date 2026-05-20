@@ -12,7 +12,6 @@ import org.junit.jupiter.api.io.TempDir;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -29,23 +28,24 @@ class DashboardArtifactServiceTest {
 
     private static final String VALID_DASHBOARD = """
         {
-          "schemaVersion": 2,
+          "schemaVersion": 3,
           "id": "dash_placeholder",
           "title": "Test Dashboard",
-          "theme": "industry-neutral",
+          "theme": "industry-ecommerce",
           "renderer": "bezel",
           "refresh": { "defaultIntervalMs": 30000, "pauseOnHidden": true },
           "parameters": [],
           "widgets": [
             {
-              "id": "chart_w_abc12345",
+              "id": "chart_w_sales01",
               "type": "chart",
-              "position": { "x": 0, "y": 0, "w": 6, "h": 8 },
+              "slot": "hero",
+              "title": "Chart A",
               "patternId": "generic.echarts-card",
-              "options": { "title": "Chart A" }
+              "options": {}
             }
           ],
-          "layout": { "engine": "grid", "cols": 12, "rowHeight": 32, "gap": 8 },
+          "layout": { "engine": "free", "template": "single-focus" },
           "version": 999
         }
         """;
@@ -66,8 +66,10 @@ class DashboardArtifactServiceTest {
                 mock(com.datatalk.application.persistence.ConnectionRepository.class));
 
         DashboardSchemaValidator validator = new DashboardSchemaValidator(mapper);
-        JsonPatchApplier patchApplier = new JsonPatchApplier(mapper);
-        service = new DashboardArtifactService(fileArtifactService, root, validator, patchApplier, mapper, clock);
+        DashboardCompiler compiler = mock(DashboardCompiler.class);
+        when(compiler.compile(any())).thenReturn(
+            new DashboardCompiler.CompileResult("<html>mock</html>", java.util.List.of()));
+        service = new DashboardArtifactService(fileArtifactService, root, validator, compiler, mapper, clock);
     }
 
     @Test
@@ -77,46 +79,12 @@ class DashboardArtifactServiceTest {
 
         assertThat(result.id()).startsWith("dash_");
         assertThat(result.version()).isEqualTo(1);
+        assertThat(result.html()).isNotNull();
 
-        // Load round-trip
         JsonNode loaded = service.load(result.id());
         assertThat(loaded.get("id").asText()).isEqualTo(result.id());
         assertThat(loaded.get("version").asInt()).isEqualTo(1);
         assertThat(loaded.get("title").asText()).isEqualTo("Test Dashboard");
-    }
-
-    @Test
-    void patchAppliesWithBaseVersionAndBumpsVersion() throws Exception {
-        JsonNode payload = mapper.readTree(VALID_DASHBOARD);
-        DashboardArtifactService.PromoteResult promoted = service.promote(payload);
-
-        List<JsonPatchApplier.PatchOp> ops = List.of(
-            new JsonPatchApplier.PatchOp("replace", "/title", mapper.readValue("\"Updated Title\"", JsonNode.class))
-        );
-
-        DashboardArtifactService.PatchResult patchResult = service.patch(promoted.id(), 1, ops);
-        assertThat(patchResult.version()).isEqualTo(2);
-
-        // Verify persisted
-        JsonNode loaded = service.load(promoted.id());
-        assertThat(loaded.get("title").asText()).isEqualTo("Updated Title");
-        assertThat(loaded.get("version").asInt()).isEqualTo(2);
-    }
-
-    @Test
-    void patchWithStaleBaseVersionThrows() throws Exception {
-        JsonNode payload = mapper.readTree(VALID_DASHBOARD);
-        DashboardArtifactService.PromoteResult promoted = service.promote(payload);
-
-        // Patch once to bump version to 2
-        List<JsonPatchApplier.PatchOp> ops = List.of(
-            new JsonPatchApplier.PatchOp("replace", "/title", mapper.readValue("\"X\"", JsonNode.class))
-        );
-        service.patch(promoted.id(), 1, ops);
-
-        // Try to patch with stale baseVersion=1
-        assertThatThrownBy(() -> service.patch(promoted.id(), 1, ops))
-            .isInstanceOf(JsonPatchApplier.VersionConflictException.class);
     }
 
     @Test
@@ -129,15 +97,15 @@ class DashboardArtifactServiceTest {
     void promoteInvalidDashboardThrows() throws Exception {
         String invalid = """
         {
-          "schemaVersion": 2,
+          "schemaVersion": 3,
           "id": "dash_test",
           "title": "",
-          "theme": "industry-neutral",
+          "theme": "industry-ecommerce",
           "renderer": "bezel",
           "refresh": { "defaultIntervalMs": 30000, "pauseOnHidden": true },
           "parameters": [],
           "widgets": [],
-          "layout": { "engine": "grid", "cols": 12 },
+          "layout": { "engine": "free", "template": "grid-equal" },
           "version": 1
         }
         """;

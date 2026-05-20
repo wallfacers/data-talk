@@ -36,7 +36,7 @@ public class DashboardArtifactService {
     private final FileArtifactService fileArtifactService;
     private final SessionWorkdirRoot workdirRoot;
     private final DashboardSchemaValidator validator;
-    private final JsonPatchApplier patchApplier;
+    private final DashboardCompiler compiler;
     private final ObjectMapper mapper;
     private final Clock clock;
 
@@ -44,23 +44,18 @@ public class DashboardArtifactService {
             FileArtifactService fileArtifactService,
             SessionWorkdirRoot workdirRoot,
             DashboardSchemaValidator validator,
-            JsonPatchApplier patchApplier,
+            DashboardCompiler compiler,
             ObjectMapper mapper,
             Clock clock) {
         this.fileArtifactService = fileArtifactService;
         this.workdirRoot = workdirRoot;
         this.validator = validator;
-        this.patchApplier = patchApplier;
+        this.compiler = compiler;
         this.mapper = mapper;
         this.clock = clock;
     }
 
-    public record PromoteResult(String id, int version) {}
-    public record PatchResult(int version) {}
-
-    public PromoteResult promote(JsonNode dashboard) {
-        return promote(dashboard, null);
-    }
+    public record PromoteResult(String id, int version, String html) {}
 
     public PromoteResult promote(JsonNode dashboard, String originSessionId) {
         int approxSize = dashboard.toString().length();
@@ -69,6 +64,16 @@ public class DashboardArtifactService {
         }
         ValidationResult validation = validator.validate(dashboard);
         if (!validation.ok()) throw new ValidationException(validation);
+
+        // Compile JSON → HTML
+        var compileResult = compiler.compile(dashboard);
+        if (!compileResult.ok()) {
+            throw new ValidationException(new ValidationResult(
+                compileResult.errors().stream()
+                    .map(e -> new ValidationResult.Error(e.path(), "compile", e.getMessage()))
+                    .toList()));
+        }
+        String html = compileResult.html();
 
         String id = DashboardIds.newDashboardId();
         long now = clock.millis();
@@ -109,26 +114,70 @@ public class DashboardArtifactService {
             throw new DashboardPersistenceException("registerExternal failed: " + id, e);
         }
 
-        return new PromoteResult(id, 1);
+        // Store compiled HTML (with __BEZEL_SERVER_ORIGIN__ placeholder)
+        storeHtmlArtifact(id, html.getBytes(StandardCharsets.UTF_8));
+
+        return new PromoteResult(id, 1, html);
     }
 
+    public PromoteResult promote(JsonNode dashboard) {
+        return promote(dashboard, null);
+    }
+
+    public record UpdateResult(int version, String html) {}
+
     /**
-     * Promote with an optional HTML artifact. When htmlBytes is non-null and non-empty,
-     * it is validated via BezelHtmlValidator and stored alongside the dashboard JSON.
+     * Persist an updated dashboard: validate + compile the new JSON, then under the
+     * per-dashboard lock write the new JSON (with bumped version + updatedAt, preserved
+     * id/createdAt) and store the freshly compiled HTML. Returns the authoritative new version.
      */
-    public PromoteResult promote(JsonNode dashboard, String originSessionId, byte[] htmlBytes) {
-        if (htmlBytes != null && htmlBytes.length > 0) {
-            var v = BezelHtmlValidator.validate(new String(htmlBytes, StandardCharsets.UTF_8));
-            if (!v.ok()) {
-                throw new ValidationException(new ValidationResult(
-                    v.errors().stream().map(e -> new ValidationResult.Error("", "bezel_html", e)).toList()));
+    public UpdateResult update(String id, JsonNode newDashboard) {
+        int approxSize = newDashboard.toString().length();
+        if (approxSize > MAX_PAYLOAD_BYTES) {
+            throw new PayloadTooLargeException(approxSize, MAX_PAYLOAD_BYTES);
+        }
+        ValidationResult validation = validator.validate(newDashboard);
+        if (!validation.ok()) throw new ValidationException(validation);
+
+        var compileResult = compiler.compile(newDashboard);
+        if (!compileResult.ok()) {
+            throw new ValidationException(new ValidationResult(
+                compileResult.errors().stream()
+                    .map(e -> new ValidationResult.Error(e.path(), "compile", e.getMessage()))
+                    .toList()));
+        }
+        String html = compileResult.html();
+
+        Object lock = locks.computeIfAbsent(id, k -> new Object());
+        synchronized (lock) {
+            JsonNode current = load(id); // throws DashboardNotFoundException if missing
+            int newVersion = current.path("version").asInt(0) + 1;
+            long now = clock.millis();
+            ObjectNode mutable = newDashboard.deepCopy();
+            mutable.put("id", id);
+            mutable.put("version", newVersion);
+            mutable.put("createdAt", current.path("createdAt").asLong(now));
+            mutable.put("updatedAt", now);
+
+            byte[] bytes;
+            try {
+                bytes = mapper.writeValueAsBytes(mutable);
+            } catch (IOException e) {
+                throw new DashboardPersistenceException("serialize failed: " + id, e);
             }
+            if (bytes.length > MAX_PAYLOAD_BYTES) {
+                throw new PayloadTooLargeException(bytes.length, MAX_PAYLOAD_BYTES);
+            }
+
+            Path target = workdirRoot.dashboardsRoot().resolve(id + ".dashboard.json").toAbsolutePath();
+            try {
+                AtomicFileWriterBridge.write(target, bytes);
+            } catch (IOException e) {
+                throw new DashboardPersistenceException("atomic write failed: " + id, e);
+            }
+            storeHtmlArtifact(id, html.getBytes(StandardCharsets.UTF_8));
+            return new UpdateResult(newVersion, html);
         }
-        var res = promote(dashboard, originSessionId);
-        if (htmlBytes != null && htmlBytes.length > 0) {
-            storeHtmlArtifact(res.id(), htmlBytes);
-        }
-        return res;
     }
 
     public Optional<byte[]> loadHtml(String dashboardId) {
@@ -142,9 +191,6 @@ public class DashboardArtifactService {
     private String htmlArtifactId(String dashboardId) { return dashboardId + ":html"; }
 
     private void storeHtmlArtifact(String dashboardId, byte[] bytes) {
-        // Match the JSON-side absolutification — FileArtifactService.registerExternal rejects
-        // relative paths, which surfaces when the workdir is configured as a relative path
-        // (e.g. `./target/...` in the test profile).
         Path p = workdirRoot.dashboardsRoot().resolve(dashboardId + ".html").toAbsolutePath();
         try {
             Files.createDirectories(p.getParent());
@@ -164,11 +210,7 @@ public class DashboardArtifactService {
     public JsonNode load(String id) {
         try {
             byte[] bytes = fileArtifactService.readBytes(id);
-            JsonNode tree = mapper.readTree(bytes);
-            if (tree.path("schemaVersion").asInt(2) == 1) {
-                tree = migrateV1ToV2(tree, mapper);
-            }
-            return tree;
+            return mapper.readTree(bytes);
         } catch (FileArtifactNotFoundException e) {
             throw new DashboardNotFoundException(id);
         } catch (IOException e) {
@@ -176,113 +218,8 @@ public class DashboardArtifactService {
         }
     }
 
-    public PatchResult patch(String id, int baseVersion, List<JsonPatchApplier.PatchOp> ops) {
-        Object lock = locks.computeIfAbsent(id, k -> new Object());
-        synchronized (lock) {
-            return doPatch(id, baseVersion, ops);
-        }
-    }
-
-    private PatchResult doPatch(String id, int baseVersion, List<JsonPatchApplier.PatchOp> ops) {
-        JsonNode current = load(id);
-        JsonNode patched = patchApplier.apply(current, baseVersion, ops);
-
-        ValidationResult validation = validator.validate(patched);
-        if (!validation.ok()) throw new ValidationException(validation);
-
-        ObjectNode mutable = (ObjectNode) patched;
-        mutable.put("updatedAt", clock.millis());
-
-        byte[] bytes;
-        try {
-            bytes = mapper.writeValueAsBytes(mutable);
-        } catch (IOException e) {
-            throw new DashboardPersistenceException("serialize failed: " + id, e);
-        }
-        if (bytes.length > MAX_PAYLOAD_BYTES) {
-            throw new PayloadTooLargeException(bytes.length, MAX_PAYLOAD_BYTES);
-        }
-        try {
-            fileArtifactService.replaceBytesAtomic(id, bytes);
-        } catch (IOException e) {
-            throw new DashboardPersistenceException("replaceBytesAtomic failed: " + id, e);
-        } catch (FileArtifactNotFoundException e) {
-            throw new DashboardNotFoundException(id);
-        }
-        return new PatchResult(mutable.get("version").asInt());
-    }
-
-    public static JsonNode migrateV1ToV2(JsonNode v1, ObjectMapper mapper) {
-        ObjectNode v2 = v1.deepCopy();
-        v2.put("schemaVersion", 2);
-        v2.put("renderer", "bezel");
-        v2.put("theme", "industry-neutral");
-        v2.set("refresh", mapper.createObjectNode()
-                .put("defaultIntervalMs", 10000)
-                .put("pauseOnHidden", true));
-        if (v2.has("layout") && v2.get("layout").isObject()) {
-            ((ObjectNode) v2.get("layout")).put("engine", "free");
-        }
-        if (v2.has("widgets") && v2.get("widgets").isArray()) {
-            for (JsonNode w : v2.get("widgets")) {
-                ObjectNode wo = (ObjectNode) w;
-                // Step 1: ensure widget has a type. v1 schema sometimes omitted it,
-                // and the runtime scheduler now branches on type to decide whether
-                // to call echarts.init. Missing type -> infer from patternId.
-                if (!wo.has("type") || wo.path("type").asText("").isBlank()) {
-                    String patternId = wo.path("patternId").asText("");
-                    String inferred = inferTypeFromPattern(patternId);
-                    wo.put("type", inferred);
-                }
-                // Step 2: ensure widget has a patternId (existing v1 backfill).
-                if (!wo.has("patternId")) {
-                    wo.put("patternId", inferPatternFromType(wo.path("type").asText("chart")));
-                }
-            }
-        }
-        return v2;
-    }
-
-    private static String inferPatternFromType(String type) {
-        return switch (type) {
-            case "chart"    -> "generic.echarts-card";
-            case "kpi"      -> "generic.kpi-tile";
-            case "table"    -> "generic.table";
-            case "markdown" -> "generic.markdown";
-            case "filter"   -> "generic.filter-bar";
-            case "section"  -> "generic.section-header";
-            case "divider"  -> "generic.divider";
-            case "image"    -> "generic.image";
-            default         -> "generic.echarts-card";
-        };
-    }
-
-    /**
-     * Reverse of inferPatternFromType: derive widget type from patternId for v1 JSON
-     * that omitted the type field. The mapping mirrors patterns-catalog.md.
-     * Unknown patternId falls back to 'chart' (the safest default — chart widgets
-     * tolerate empty baseOption, HTML widgets corrupt without proper compile-time DOM).
-     */
-    private static String inferTypeFromPattern(String patternId) {
-        if (patternId == null || patternId.isBlank()) {
-            log.warn("widget missing both type and patternId, defaulting type='chart'");
-            return "chart";
-        }
-        String type = switch (patternId) {
-            case "generic.kpi-tile"        -> "kpi";
-            case "generic.echarts-card"    -> "chart";
-            case "generic.table"           -> "table";
-            case "generic.markdown"        -> "markdown";
-            case "generic.section-header"  -> "section";
-            case "generic.divider"         -> "divider";
-            case "generic.image"           -> "image";
-            case "generic.filter-bar"      -> "filter";
-            default                        -> null;
-        };
-        if (type != null) return type;
-        // Industry-specific patterns (e.g. ecommerce.funnel-gradient) default to chart.
-        log.warn("widget patternId '{}' not in catalog, defaulting type='chart'", patternId);
-        return "chart";
+    public void storeCompiledHtml(String dashboardId, String html) {
+        storeHtmlArtifact(dashboardId, html.getBytes(StandardCharsets.UTF_8));
     }
 
     public static final class PayloadTooLargeException extends RuntimeException {

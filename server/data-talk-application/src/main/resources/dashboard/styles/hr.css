@@ -1,0 +1,13 @@
+/* === Bezel Theme: HR === */
+
+.bezel[data-theme="industry-hr"] {
+  --accent-primary: #ec407a;
+  --accent-secondary: #f48fb1;
+  --bg-body: #10060c;
+  --bg-card: #1e0e18;
+  --bg-slot: #180a14;
+  --border-color: rgba(236, 64, 122, 0.2);
+  --text-primary: #f0d8e0;
+  --text-secondary: #c8a0b0;
+  --text-muted: #987080;
+}

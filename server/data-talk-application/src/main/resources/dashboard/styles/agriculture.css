@@ -1,0 +1,13 @@
+/* === Bezel Theme: Agriculture === */
+
+.bezel[data-theme="industry-agriculture"] {
+  --accent-primary: #558b2f;
+  --accent-secondary: #9ccc65;
+  --bg-body: #080c06;
+  --bg-card: #141e10;
+  --bg-slot: #101a0e;
+  --border-color: rgba(85, 139, 47, 0.2);
+  --text-primary: #d8e8c8;
+  --text-secondary: #a8c088;
+  --text-muted: #789058;
+}

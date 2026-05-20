@@ -1,5 +1,6 @@
 package com.datatalk.adapter.controller;
 
+import com.datatalk.application.fileartifact.SessionWorkdirRoot;
 import com.datatalk.application.i18n.Translator;
 import com.datatalk.application.report.LedgerSkillResolver;
 import com.datatalk.application.report.ReportSystemStatus;
@@ -40,6 +41,7 @@ class ReportControllerCorsTest {
     @MockBean ReportRepository reportRepo;
     @MockBean ReportSystemStatus systemStatus;
     @MockBean LedgerSkillResolver ledgerSkill;
+    @MockBean SessionWorkdirRoot workdirRoot;
     // No @MockBean ObjectMapper — Spring's auto-configured ObjectMapper is also used
     // by MVC's RouterFunctionMapping; mocking it breaks the test context boot.
     @MockBean Translator translator;     // GlobalExceptionHandler @ControllerAdvice dependency

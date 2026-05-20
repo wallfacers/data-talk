@@ -1,0 +1,13 @@
+/* === Bezel Theme: Energy === */
+
+.bezel[data-theme="industry-energy"] {
+  --accent-primary: #8d6e63;
+  --accent-secondary: #bcaaa4;
+  --bg-body: #0c0a08;
+  --bg-card: #1a1614;
+  --bg-slot: #141210;
+  --border-color: rgba(141, 110, 99, 0.2);
+  --text-primary: #e8e0d8;
+  --text-secondary: #b8a898;
+  --text-muted: #887868;
+}

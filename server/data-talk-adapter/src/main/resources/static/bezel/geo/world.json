@@ -1,0 +1,10 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "China" },
+      "geometry": { "type": "Point", "coordinates": [104.0, 35.0] }
+    }
+  ]
+}

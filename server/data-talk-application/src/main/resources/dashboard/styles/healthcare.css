@@ -1,0 +1,13 @@
+/* === Bezel Theme: Healthcare === */
+
+.bezel[data-theme="industry-healthcare"] {
+  --accent-primary: #66bb6a;
+  --accent-secondary: #a5d6a7;
+  --bg-body: #060e08;
+  --bg-card: #0e1a12;
+  --bg-slot: #0a140e;
+  --border-color: rgba(102, 187, 106, 0.2);
+  --text-primary: #d8f0d0;
+  --text-secondary: #a8c898;
+  --text-muted: #789868;
+}

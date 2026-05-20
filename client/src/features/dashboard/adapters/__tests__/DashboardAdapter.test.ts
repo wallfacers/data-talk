@@ -5,19 +5,19 @@ import { useStageStore } from '@/stores/stage-store'
 
 vi.mock('../../services/dashboard-api', () => ({
   promoteDashboard: vi.fn().mockResolvedValue({ id: 'dash_server1', version: 1 }),
-  patchDashboard: vi.fn().mockResolvedValue({ ok: true, version: 2 }),
+  updateDashboard: vi.fn().mockResolvedValue({ version: 2 }),
   fetchDashboard: vi.fn().mockResolvedValue(null),
 }))
 
 const sampleDashboard = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   id: 'dash_test1',
   title: 'Test Dashboard',
   theme: 'industry-default',
   renderer: 'bezel',
   parameters: [],
   widgets: [],
-  layout: { engine: 'free' },
+  layout: { engine: 'free', template: 'grid-equal' },
   version: 1,
   createdAt: 0,
   updatedAt: 0,
@@ -35,7 +35,7 @@ describe('DashboardAdapter', () => {
     const adapter = new DashboardAdapter('tab-d1', () => null)
 
     const state = adapter.read('state') as Record<string, unknown>
-    expect(state).toMatchObject({ title: 'Test Dashboard', schemaVersion: 2 })
+    expect(state).toMatchObject({ title: 'Test Dashboard', schemaVersion: 3 })
   })
 
   it('read("schema") returns type and patchCapabilities', () => {
@@ -53,7 +53,7 @@ describe('DashboardAdapter', () => {
     expect(actions.map((a) => a.name)).toContain('create')
   })
 
-  it('patch applies ops via dashboard store and calls backend', async () => {
+  it('patch applies ops via dashboard store and calls updateDashboard', async () => {
     useDashboardTabsStore.getState().hydrateTab('tab-d1', sampleDashboard as never)
     const adapter = new DashboardAdapter('tab-d1', () => null)
 
@@ -64,11 +64,8 @@ describe('DashboardAdapter', () => {
     expect(result.status).toBe('applied')
     const tab = useDashboardTabsStore.getState().tabs.get('tab-d1')
     expect(tab!.dashboard.title).toBe('Renamed Dashboard')
-    // Verify backend was called
-    const { patchDashboard } = await import('../../services/dashboard-api')
-    expect(patchDashboard).toHaveBeenCalledWith('dash_test1', 1, [
-      { op: 'replace', path: '/title', value: 'Renamed Dashboard' },
-    ])
+    const { updateDashboard } = await import('../../services/dashboard-api')
+    expect(updateDashboard).toHaveBeenCalledWith('dash_test1', expect.objectContaining({ title: 'Renamed Dashboard' }), 1)
   })
 
   it('patch returns error for missing tab', async () => {
@@ -79,8 +76,8 @@ describe('DashboardAdapter', () => {
   })
 
   it('patch rolls back on backend failure', async () => {
-    const { patchDashboard } = await import('../../services/dashboard-api')
-    vi.mocked(patchDashboard).mockResolvedValueOnce({ ok: false, error: 'conflict' })
+    const { updateDashboard } = await import('../../services/dashboard-api')
+    vi.mocked(updateDashboard).mockResolvedValueOnce(null)
 
     useDashboardTabsStore.getState().hydrateTab('tab-d1', sampleDashboard as never)
     const adapter = new DashboardAdapter('tab-d1', () => null)
@@ -90,8 +87,6 @@ describe('DashboardAdapter', () => {
     ])
 
     expect(result.status).toBe('error')
-    expect(result.message).toBe('conflict')
-    // Verify rollback — title should be unchanged
     const tab = useDashboardTabsStore.getState().tabs.get('tab-d1')
     expect(tab!.dashboard.title).toBe('Test Dashboard')
   })

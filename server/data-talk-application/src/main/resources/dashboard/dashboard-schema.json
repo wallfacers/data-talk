@@ -3,11 +3,13 @@
   "type": "object",
   "required": ["schemaVersion", "id", "title", "parameters", "widgets", "layout", "version", "theme", "renderer"],
   "properties": {
-    "schemaVersion": { "const": 2 },
+    "schemaVersion": { "const": 3 },
     "id": { "type": "string", "pattern": "^dash_[a-zA-Z0-9_]{4,}$" },
     "title": { "type": "string", "minLength": 1, "maxLength": 256 },
     "description": { "type": "string", "maxLength": 32768 },
     "defaultConnectionId": { "type": ["string", "null"] },
+    "defaultDatabase": { "type": ["string", "null"] },
+    "defaultSchema": { "type": ["string", "null"] },
     "theme": { "type": "string", "pattern": "^industry-" },
     "renderer": { "type": "string", "const": "bezel" },
     "refresh": { "$ref": "#/$defs/dashboardRefresh" },
@@ -16,10 +18,7 @@
     "updatedAt": { "type": "integer", "minimum": 0 },
     "parameters": { "type": "array", "items": { "$ref": "#/$defs/parameterDef" } },
     "widgets": { "type": "array", "items": { "$ref": "#/$defs/widget" } },
-    "layout": { "oneOf": [
-      { "$ref": "#/$defs/gridLayout" },
-      { "$ref": "#/$defs/freeLayout" }
-    ]}
+    "layout": { "$ref": "#/$defs/layoutV3" }
   },
   "$defs": {
     "dashboardRefresh": {
@@ -42,14 +41,52 @@
         "default": {}
       }
     },
+    "layoutV3": {
+      "type": "object",
+      "required": ["engine", "template"],
+      "properties": {
+        "engine": { "const": "free" },
+        "template": { "enum": [
+          "single-focus",
+          "two-column-left-heavy",
+          "two-column-right-heavy",
+          "three-column-kpi-center",
+          "top-kpi-bottom-charts",
+          "grid-equal"
+        ]},
+        "viewport": {
+          "type": "object",
+          "properties": {
+            "minWidth": { "type": "integer", "minimum": 1 },
+            "aspect": { "type": "string" }
+          }
+        }
+      }
+    },
+    "chartSemantics": {
+      "type": "object",
+      "properties": {
+        "chartType": { "enum": ["bar", "line", "area", "pie", "funnel", "scatter", "radar", "map"] },
+        "colorScheme": { "enum": ["warm", "cool", "monochrome", "brand"] },
+        "stacked": { "type": "boolean" },
+        "showLegend": { "type": "boolean" },
+        "showTooltip": { "type": "boolean" },
+        "showAreaFill": { "type": "boolean" },
+        "labelPosition": { "enum": ["inside", "outside", "none"] },
+        "gridGap": { "enum": ["compact", "normal", "spacious"] },
+        "rawEchartsOption": { "type": "object" }
+      }
+    },
     "widget": {
       "type": "object",
-      "required": ["id", "type", "position", "options", "patternId"],
+      "required": ["id", "type", "slot", "title", "options", "patternId"],
       "properties": {
         "id": { "type": "string", "pattern": "^[a-z]+_w_[a-zA-Z0-9_]{4,32}$" },
         "type": { "enum": ["chart", "kpi", "table", "markdown", "filter", "section", "divider", "image"] },
-        "position": { "$ref": "#/$defs/gridPosition" },
+        "slot": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 64 },
         "patternId": { "type": "string", "pattern": "^[a-z0-9-]+\\.[a-z0-9-]+$" },
+        "chartSemantics": { "$ref": "#/$defs/chartSemantics" },
         "refresh": { "$ref": "#/$defs/widgetRefresh" },
         "parameters": { "type": "array", "items": { "$ref": "#/$defs/parameterDef" } },
         "query": { "$ref": "#/$defs/widgetQuery" },
@@ -68,43 +105,10 @@
       "required": ["sql", "paramRefs"],
       "properties": {
         "connectionId": { "type": ["string", "null"] },
+        "database": { "type": ["string", "null"] },
+        "schema": { "type": ["string", "null"] },
         "sql": { "type": "string" },
         "paramRefs": { "type": "object", "additionalProperties": { "type": "string" } }
-      }
-    },
-    "gridPosition": {
-      "type": "object",
-      "required": ["x", "y", "w", "h"],
-      "properties": {
-        "x": { "type": "integer", "minimum": 0, "maximum": 11 },
-        "y": { "type": "integer", "minimum": 0 },
-        "w": { "type": "integer", "minimum": 1, "maximum": 12 },
-        "h": { "type": "integer", "minimum": 1 },
-        "z": { "type": ["integer", "null"] }
-      }
-    },
-    "gridLayout": {
-      "type": "object",
-      "required": ["engine", "cols"],
-      "properties": {
-        "engine": { "const": "grid" },
-        "cols": { "const": 12 },
-        "rowHeight": { "type": "integer", "minimum": 8, "maximum": 128 },
-        "gap": { "type": "integer", "minimum": 0, "maximum": 32 }
-      }
-    },
-    "freeLayout": {
-      "type": "object",
-      "required": ["engine"],
-      "properties": {
-        "engine": { "const": "free" },
-        "viewport": {
-          "type": "object",
-          "properties": {
-            "width": { "type": "integer", "minimum": 1 },
-            "height": { "type": "integer", "minimum": 1 }
-          }
-        }
       }
     }
   }

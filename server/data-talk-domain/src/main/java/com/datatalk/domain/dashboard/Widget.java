@@ -6,9 +6,11 @@ import java.util.regex.Pattern;
 
 public record Widget(
     String id,
-    WidgetType type,
-    GridPosition position,
+    String type,
+    String slot,
+    String title,
     String patternId,
+    ChartSemantics chartSemantics,
     WidgetRefresh refresh,
     List<ParameterDef> parameters,
     WidgetQuery query,

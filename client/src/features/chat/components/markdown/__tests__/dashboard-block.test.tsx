@@ -22,40 +22,28 @@ vi.mock('@/features/dashboard/services/dashboard-api', () => ({
 }))
 
 const validDashboardJson = JSON.stringify({
-  schemaVersion: 2,
+  schemaVersion: 3,
   id: 'dash_test',
   title: 'Test Dashboard',
   theme: 'industry-default',
   renderer: 'bezel',
   parameters: [],
   widgets: [],
-  layout: { engine: 'free' },
+  layout: { engine: 'free', template: 'grid-equal' },
   version: 1,
   createdAt: 0,
   updatedAt: 0,
 })
 
 const dashboardWithHyphenatedId = JSON.stringify({
-  schemaVersion: 2,
+  schemaVersion: 3,
   id: 'dash_a11fe047-8a8e-449b-876b-3d4d8ae5db80',
   title: 'Hyphenated ID',
   theme: 'industry-default',
   renderer: 'bezel',
   parameters: [],
   widgets: [],
-  layout: { engine: 'free' },
-  version: 1,
-  createdAt: 0,
-  updatedAt: 0,
-})
-
-const legacyV1DashboardJson = JSON.stringify({
-  schemaVersion: 1,
-  id: 'dash_legacy',
-  title: 'Legacy V1',
-  parameters: [],
-  widgets: [],
-  layout: { engine: 'grid', cols: 12, rowHeight: 32, gap: 8 },
+  layout: { engine: 'free', template: 'grid-equal' },
   version: 1,
   createdAt: 0,
   updatedAt: 0,
@@ -81,19 +69,13 @@ describe('DashboardBlock', () => {
     expect(screen.getByTestId('dashboard-error')).toBeInTheDocument()
   })
 
-  it('shows regenerate hint when HTML is missing', () => {
+  it('shows promote button for valid v3 dashboard', () => {
     render(<DashboardBlock json={validDashboardJson} streaming={false} />)
-    expect(screen.getByText('重新生成视觉')).toBeInTheDocument()
-    expect(screen.getByText('仪表盘缺少视觉文件，请在 chat 中说「重新生成视觉」生成新版 HTML')).toBeInTheDocument()
-  })
-
-  it('shows promote button when HTML is provided', () => {
-    render(<DashboardBlock json={validDashboardJson} streaming={false} html="<div>test</div>" />)
     expect(screen.getByText('打开到工作台')).toBeInTheDocument()
   })
 
   it('sanitizes hyphenated dashboard ID on promote', async () => {
-    render(<DashboardBlock json={dashboardWithHyphenatedId} streaming={false} html="<div>test</div>" />)
+    render(<DashboardBlock json={dashboardWithHyphenatedId} streaming={false} />)
     fireEvent.click(screen.getByText('打开到工作台'))
 
     await vi.waitFor(() => {
@@ -103,22 +85,33 @@ describe('DashboardBlock', () => {
     expect(promotedPayload.id).toBe('dash_a11fe0478a8e449b876b3d4d8ae5db80')
   })
 
-  it('auto-promotes v1 schema to v2 for preview', () => {
-    render(<DashboardBlock json={legacyV1DashboardJson} streaming={false} />)
-    expect(screen.getByTestId('dashboard-preview')).toBeInTheDocument()
+  it('renders error for legacy v1 schema', () => {
+    const legacyV1 = JSON.stringify({
+      schemaVersion: 1,
+      id: 'dash_legacy',
+      title: 'Legacy V1',
+      parameters: [],
+      widgets: [],
+      layout: { engine: 'grid', cols: 12, rowHeight: 32, gap: 8 },
+      version: 1,
+      createdAt: 0,
+      updatedAt: 0,
+    })
+    render(<DashboardBlock json={legacyV1} streaming={false} />)
+    expect(screen.getByTestId('dashboard-error')).toBeInTheDocument()
   })
 
   describe('error humanization', () => {
     function makeDashboard(overrides: Record<string, unknown>): string {
       return JSON.stringify({
-        schemaVersion: 2,
+        schemaVersion: 3,
         id: 'dash_test',
         title: 'Test Dashboard',
         theme: 'industry-default',
         renderer: 'bezel',
         parameters: [],
         widgets: [],
-        layout: { engine: 'free' },
+        layout: { engine: 'free', template: 'grid-equal' },
         version: 1,
         createdAt: 0,
         updatedAt: 0,
@@ -138,8 +131,9 @@ describe('DashboardBlock', () => {
           {
             id: 'kpi_w_gmv',
             type: 'kpi',
+            slot: 'main',
+            title: 'GMV',
             patternId: 'kpi.label',
-            position: { x: 0, y: 0, w: 4, h: 4 },
             options: {},
           },
         ],
@@ -173,8 +167,9 @@ describe('DashboardBlock', () => {
           {
             id: 'kpi_w_gmv',
             type: 'kpi',
+            slot: 'main',
+            title: 'GMV',
             patternId: 'kpi.label',
-            position: { x: 0, y: 0, w: 4, h: 4 },
             options: {},
           },
         ],
@@ -205,8 +200,9 @@ describe('DashboardBlock', () => {
           {
             id: 'kpi_w_gmv',
             type: 'kpi',
+            slot: 'main',
+            title: 'GMV',
             patternId: 'kpi.label',
-            position: { x: 0, y: 0, w: 4, h: 4 },
             options: {},
           },
         ],
@@ -231,8 +227,9 @@ describe('DashboardBlock', () => {
           {
             id: 'kpi_w_gmv',
             type: 'kpi',
+            slot: 'main',
+            title: 'GMV',
             patternId: 'kpi.label',
-            position: { x: 0, y: 0, w: 4, h: 4 },
             options: {},
           },
         ],

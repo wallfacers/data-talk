@@ -19,21 +19,9 @@ type DashboardBlockState = 'streaming' | 'preview' | 'error'
 
 interface DashboardBlockProps {
   json: string
-  html?: string
   streaming: boolean
   messageId?: string
   partId?: string
-}
-
-function normalizeV1toV2(obj: Record<string, unknown>): Record<string, unknown> {
-  if (obj.schemaVersion === 2) return obj
-  return {
-    ...obj,
-    schemaVersion: 2,
-    theme: obj.theme ?? 'industry-default',
-    renderer: 'bezel',
-    layout: { engine: 'free' as const },
-  }
 }
 
 type ParseResult =
@@ -51,16 +39,15 @@ function parseDashboard(json: string, t: TranslationFn): ParseResult {
   if (obj && typeof obj === 'object' && 'id' in obj && typeof obj.id === 'string') {
     obj.id = obj.id.replace(/-/g, '')
   }
-  const normalized = obj ? normalizeV1toV2(obj) : obj
-  const result = dashboardSchema.safeParse(normalized)
+  const result = dashboardSchema.safeParse(obj)
   if (result.success) {
     return { ok: true, dashboard: result.data }
   }
-  const issues = result.error.issues.map((issue) => humanizeZodIssue(issue, normalized, t))
+  const issues = result.error.issues.map((issue) => humanizeZodIssue(issue, obj, t))
   return { ok: false, issues }
 }
 
-async function promoteDashboard(dashboard: Dashboard, html?: string) {
+async function promoteDashboard(dashboard: Dashboard) {
   // AI typically only fills defaultConnectionId, leaving defaultDatabase/Schema blank,
   // which leaves widget SQL like `SELECT ... FROM users` ambiguous when the connection
   // has multiple databases. Fall back to the active session's data context so the
@@ -80,7 +67,7 @@ async function promoteDashboard(dashboard: Dashboard, html?: string) {
   // must mirror it.
   // Also pass sessionId so the server can backstop missing defaultDatabase/Schema
   // from the chat session's data-context if our client-side enrichment didn't fire.
-  const result = await promoteDashboardApi(enriched, html, sessionId)
+  const result = await promoteDashboardApi(enriched, sessionId)
   const tabId = `dashboard_${generateUuid()}`
   const finalDashboard: Dashboard = result
     ? { ...enriched, id: result.id, version: result.version }
@@ -110,7 +97,7 @@ function getWidgetLabel(w: Widget): string {
   return w.type
 }
 
-export function DashboardBlock({ json, html, streaming }: DashboardBlockProps) {
+export function DashboardBlock({ json, streaming }: DashboardBlockProps) {
   const { t } = useI18n()
   const [promoted, setPromoted] = useState(false)
   const [errorOpen, setErrorOpen] = useState(false)
@@ -253,13 +240,12 @@ export function DashboardBlock({ json, html, streaming }: DashboardBlockProps) {
   }
 
   const dashboard = parsedDashboard!
-  const hasHtml = html != null && html.length > 0
 
   return (
     <div
       data-testid="dashboard-preview"
       data-component="basic-tool"
-      data-status={hasHtml ? 'completed' : 'missing-html'}
+      data-status="completed"
       className="my-2 rounded-md border"
     >
       <div className="flex w-full items-start gap-2 px-3 py-2">
@@ -271,21 +257,12 @@ export function DashboardBlock({ json, html, streaming }: DashboardBlockProps) {
               {t('dashboard.widgetCount', { count: dashboard.widgets.length })}
             </span>
           </div>
-          {!hasHtml && (
-            <p className="text-xs text-[var(--dt-status-warning)] leading-relaxed">
-              {t('dashboard.missingHtml')}
-            </p>
-          )}
         </div>
         <div data-slot="markdown-code-actions" className="relative z-10 shrink-0">
-          {!hasHtml ? (
-            <span className="px-2 text-xs text-muted-foreground">
-              {t('dashboard.regenerateVisual')}
-            </span>
-          ) : !promoted ? (
+          {!promoted ? (
             <button
               type="button"
-              onClick={() => { promoteDashboard(dashboard, html); setPromoted(true) }}
+              onClick={() => { promoteDashboard(dashboard); setPromoted(true) }}
             >
               <ExternalLinkIcon className="h-3.5 w-3.5" />
               <span>{t('dashboard.openToWorkbench')}</span>

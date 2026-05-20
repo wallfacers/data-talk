@@ -3,7 +3,7 @@ import { useDashboardTabsStore } from '../stores/dashboard-tabs-store'
 import { useStageStore } from '@/stores/stage-store'
 import { generateUuid } from '@/lib/uuid'
 import type { Dashboard } from '../schema'
-import { promoteDashboard, patchDashboard } from '../services/dashboard-api'
+import { promoteDashboard, updateDashboard } from '../services/dashboard-api'
 import { translateMessage, type MessageKey } from '@/i18n/messages'
 import { getCurrentLanguage } from '@/stores/ui-settings-store'
 
@@ -17,7 +17,6 @@ const PATCH_CAPABILITIES: PatchCapability[] = [
   { pathPattern: '/defaultConnectionId', ops: ['replace'] },
   { pathPattern: '/widgets/-', ops: ['add'] },
   { pathPattern: '/widgets[id=<id>]', ops: ['replace', 'remove'] },
-  { pathPattern: '/widgets[id=<id>]/position', ops: ['replace'] },
   { pathPattern: '/widgets[id=<id>]/options', ops: ['replace'] },
   { pathPattern: '/widgets[id=<id>]/query', ops: ['replace'] },
   { pathPattern: '/parameters/-', ops: ['add'] },
@@ -45,14 +44,14 @@ const ACTIONS: ActionDef[] = [
 
 function buildEmptyDashboard(title: string): Dashboard {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     id: `dash_${generateUuid().replace(/-/g, '')}`,
     title,
     theme: 'industry-default',
     renderer: 'bezel',
     parameters: [],
     widgets: [],
-    layout: { engine: 'free' },
+    layout: { engine: 'free', template: 'grid-equal' },
     version: 1,
     createdAt: Date.now(),
     updatedAt: Date.now(),
@@ -90,17 +89,18 @@ export class DashboardAdapter implements UIObject {
     if (!tab) return { status: 'error', message: t('dashboard.error.tabNotFound') }
 
     const currentVersion = tab.dashboard.version
+    const snapshot = tab.dashboard
 
     try {
-      // Optimistic local apply
       useDashboardTabsStore.getState().applyPatchOps(this.tabId, ops)
 
-      // Persist to backend
-      const result = await patchDashboard(tab.dashboard.id, currentVersion, ops)
-      if (!result.ok) {
-        // Rollback on failure
-        useDashboardTabsStore.getState().hydrateTab(this.tabId, tab.dashboard)
-        return { status: 'error', message: result.error }
+      const updatedTab = useDashboardTabsStore.getState().tabs.get(this.tabId)
+      if (!updatedTab) return { status: 'error', message: t('dashboard.error.tabNotFound') }
+
+      const result = await updateDashboard(updatedTab.dashboard.id, updatedTab.dashboard, currentVersion)
+      if (!result) {
+        useDashboardTabsStore.getState().hydrateTab(this.tabId, snapshot)
+        return { status: 'error', message: 'Update failed' }
       }
 
       return {
@@ -120,14 +120,12 @@ export class DashboardAdapter implements UIObject {
         const title = input.title ?? t('dashboard.untitled')
         const dashboard = buildEmptyDashboard(title)
 
-        // Persist to backend
         const result = await promoteDashboard(dashboard)
         if (!result) {
           return { success: false, error: t('dashboard.error.promotionFailed') }
         }
 
         const tabId = `dashboard_${generateUuid()}`
-        // Update with server-assigned ID
         dashboard.id = result.id
         dashboard.version = result.version
 
@@ -145,7 +143,6 @@ export class DashboardAdapter implements UIObject {
       }
 
       case 'archive': {
-        // P1: archive is deferred — just acknowledge
         return { success: true, data: { status: 'deferred' } }
       }
 

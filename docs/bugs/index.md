@@ -8,14 +8,13 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## 当前编号
 
-下一个分配 ID：**BUG-0082**（永不复用，单调递增）
+下一个分配 ID：**BUG-0083**（永不复用，单调递增）
 
 ## Open BUGs（按 priority 倒序，P0 → P2）
 
 | ID | Title | Status | Priority | Owner |
 |----|-------|--------|----------|-------|
 | [BUG-0079](BUG-0079-attach-file-on-unpersisted-draft-session-500-fk.md) | 开始页草稿会话未持久化时上传附件触发 500（uploaded_file 外键失败），chip 显示 Internal Server Error | fixed | P1 | — (pending) |
-| [BUG-0081](BUG-0081-bezel-csp-blocks-inline-scripts.md) | Bezel CSP 阻止内联脚本（config + scheduler），导致 ECharts 不初始化 | open | P0 | bezel-compiler-redesign |
 
 ## E2E 验证记录
 
@@ -25,11 +24,14 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 | 2026-05-20 | ledger-report-quality-fixes | 1 | §8 E2E（fixture report HTML + sandbox iframe）发现 BUG-0077（TOC 锚点 base-href 冲突）。验证通过：cover sanitize ✓、CORS ✓、TOC HTML 渲染 ✓；TOC 点击跳转 ✗（修复并入本 change）。 |
 | 2026-05-20 | no-extension-file-upload-support | 1 | 无后缀可读文件上传支持。Happy path E2E 通过（持久化会话内上传 `create_test` → 200，`uploaded_file`: text/x-sql 落库，前端 chip 不再报"不支持的文件类型"）。旁路发现 BUG-0079（草稿会话附件上传 500 FK，与本 change 无关）。 |
 | 2026-05-21 | question-tool-bridge | 1 | §8.1 E2E 全链路通过：触发 AI `question` → QuestionDock 取代输入框 → 选「是」即提交 → turn 继续（AI 回复）→ composer 恢复 → CTRL+R 重建会话正常。发现并就地修复 BUG-0080（完成态 question 卡未注册自定义渲染器，回退 GenericTool）。 |
+| 2026-05-21 | bezel-compiler-redesign | 1 | HTTP 级验证（浏览器被并发占用，可视化渲染待补）：scheduler.js / echarts.min.js 均 200，serveHtml origin 替换 0 残留，CSP 正确。发现 BUG-0082（scheduler GET 轮询 vs POST 接口 → 405，数据永不加载），已就地修复源码（待 application jar 重装 + 重启后端到端验证）。map 缺真实 geoJSON 记为 TD-034。 |
 
 ## In Progress（status = investigating | fixed 等待 verify）
 
 | ID | Title | Status | Priority | Owner |
 |----|-------|--------|----------|-------|
+| [BUG-0081](BUG-0081-bezel-csp-blocks-inline-scripts.md) | Bezel CSP 阻止内联脚本（config + scheduler），导致 ECharts 不初始化（含 /bezel/scheduler.js 404 后续修复） | fixed | P0 | bezel-compiler-redesign |
+| [BUG-0082](BUG-0082-bezel-scheduler-polls-get-but-endpoint-is-post.md) | Bezel scheduler 用 GET 轮询，但 widget data 接口是 POST（405，数据永不加载） | fixed | high | bezel-compiler-redesign |
 | [BUG-0080](BUG-0080-question-tool-renderer-not-registered.md) | question 工具完成态卡片回退 GenericTool（自定义 Question 渲染器未注册） | fixed | P2 | — (pending) |
 | [BUG-0078](BUG-0078-rail-resize-handle-stale-gap-and-misaligned-divider.md) | 报告库 tab 下 rail 右边出现 4px 米灰条 + hover 分割线瞬时显双线（resize handle 几何错位） | fixed | P2 | — (pending) |
 | [BUG-0077](BUG-0077-report-toc-anchor-base-href-conflict.md) | 报告 TOC 锚点点击后跳转到 _assets/ 404（`<base href>` 解析冲突） | fixed | P1 | — (pending) |
@@ -127,6 +129,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 - **markdown**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md), [BUG-0041](BUG-0041-sql-code-block-theme-color-mismatch.md) *(fixed)*, [BUG-0044](BUG-0044-user-bubble-markdown-invisible-on-primary-bg.md) *(fixed)*
 - **chart**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md), [BUG-0064](BUG-0064-chart-artifact-rendered-twice-when-llm-also-embeds-echarts-block.md) *(fixed)*
 - **dashboard**: [BUG-0012](BUG-0012-widget-data-endpoint-ignores-default-connection-id.md) *(fixed)*, [BUG-0049](BUG-0049-bezel-dashboard-html-chinese-garbled.md), [BUG-0050](BUG-0050-dashboard-json-widgets-skeleton-only-no-data.md), [BUG-0051](BUG-0051-dashboard-iframe-long-blank-screen.md) *(fixed)*, [BUG-0053](BUG-0053-bezel-ai-widget-id-too-short-and-zod-error-unhelpful.md) *(fixed)*
+- **bezel-compiler**: [BUG-0081](BUG-0081-bezel-csp-blocks-inline-scripts.md) *(fixed)*, [BUG-0082](BUG-0082-bezel-scheduler-polls-get-but-endpoint-is-post.md) *(fixed)*
 - **opencode**: [BUG-0036](BUG-0036-skills-extracted-to-wrong-cwd-not-found-by-opencode.md) *(fixed)*, [BUG-0040](BUG-0040-agents-md-skill-path-triggers-llm-hallucination.md) *(fixed)*, [BUG-0049](BUG-0049-bezel-dashboard-html-chinese-garbled.md), [BUG-0058](BUG-0058-file-read-image-no-compression-base64-too-large.md) *(fixed)*, [BUG-0065](BUG-0065-pre-action-protocol-bypassed-via-ui-exec-path.md) *(fixed)*
 - **session**: [BUG-0037](BUG-0037-ctrl-r-during-streaming-flips-stop-button-to-send.md) *(fixed)*, [BUG-0038](BUG-0038-replay-idle-on-resubscribe-clears-streaming-flag.md) *(fixed)*, [BUG-0039](BUG-0039-composer-draft-sync-write-wrong-schema.md) *(fixed)*, [BUG-0046](BUG-0046-composer-button-refresh-stream-state-mismatch.md) *(fixed)*, [BUG-0052](BUG-0052-long-session-empty-canvas-streaming-flag-race.md) *(fixed)*, [BUG-0057](BUG-0057-composer-attachment-stuck-uploading-button-locked.md) *(verified)*, [BUG-0059](BUG-0059-composer-enter-lag-due-to-lazy-upload-on-submit.md) *(verified)*, [BUG-0063](BUG-0063-composer-chip-not-cleared-until-sse-stream-ends.md) *(verified)*, [BUG-0071](BUG-0071-stage-close-flash-horizontal-scrollbar.md) *(fixed)*, [BUG-0079](BUG-0079-attach-file-on-unpersisted-draft-session-500-fk.md) *(fixed)*
 - **channel**: [BUG-0038](BUG-0038-replay-idle-on-resubscribe-clears-streaming-flag.md) *(fixed)*, [BUG-0046](BUG-0046-composer-button-refresh-stream-state-mismatch.md) *(fixed)*, [BUG-0052](BUG-0052-long-session-empty-canvas-streaming-flag-race.md) *(fixed)*, [BUG-0056](BUG-0056-bubble-attachments-file-upload-part-not-roundtripped.md) *(fixed)*, [BUG-0068](BUG-0068-user-bubble-content-flash-on-promote.md) *(fixed)*

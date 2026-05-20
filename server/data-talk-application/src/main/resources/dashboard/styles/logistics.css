@@ -1,0 +1,13 @@
+/* === Bezel Theme: Logistics === */
+
+.bezel[data-theme="industry-logistics"] {
+  --accent-primary: #00bcd4;
+  --accent-secondary: #4dd0e1;
+  --bg-body: #060e10;
+  --bg-card: #0e1a1e;
+  --bg-slot: #0a1418;
+  --border-color: rgba(0, 188, 212, 0.2);
+  --text-primary: #d0f0f8;
+  --text-secondary: #98c8d8;
+  --text-muted: #6098a8;
+}

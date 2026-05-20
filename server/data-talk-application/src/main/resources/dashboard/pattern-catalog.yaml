@@ -1,0 +1,356 @@
+# bezel pattern-catalog — 单一真源(SINGLE SOURCE OF TRUTH)
+# 运行时由 PatternCatalog 加载并强制执行;构建期由 scripts/generate-bezel-docs.sh 生成 AI 文档。
+# 修改本文件后 MUST 运行生成脚本并提交产物,否则 CI `git diff --exit-code` 会失败。
+
+# ---- 配色方案 ----
+colorSchemes: [warm, cool, monochrome, brand]
+
+# ---- 图表类型(8 种)----
+chartTypes:
+  bar:
+    defaultOptionFile: echarts-options/bar.json
+    semanticFields: [stacked, showLegend, showTooltip, labelPosition, gridGap]
+  line:
+    defaultOptionFile: echarts-options/line.json
+    semanticFields: [stacked, showLegend, showTooltip, showAreaFill, labelPosition, gridGap]
+  area:
+    defaultOptionFile: echarts-options/area.json
+    semanticFields: [stacked, showLegend, showTooltip, labelPosition, gridGap]
+  pie:
+    defaultOptionFile: echarts-options/pie.json
+    semanticFields: [showLegend, showTooltip, labelPosition]
+  funnel:
+    defaultOptionFile: echarts-options/funnel.json
+    semanticFields: [showLegend, showTooltip, labelPosition]
+  scatter:
+    defaultOptionFile: echarts-options/scatter.json
+    semanticFields: [showLegend, showTooltip, gridGap]
+  radar:
+    defaultOptionFile: echarts-options/radar.json
+    semanticFields: [showLegend, showTooltip, showAreaFill]
+  map:
+    defaultOptionFile: echarts-options/map.json
+    semanticFields: [showTooltip]
+    needsGeo: true
+
+# ---- 布局模板(6 个,各声明具名 slot:id/kind/capacity)----
+# kind: kpi | chart | table | any   capacity: 该 slot 容纳 widget 上限
+templates:
+  - id: single-focus
+    description: "大图表居中 + KPI 环绕"
+    style: monument
+    slots:
+      - { id: hero, kind: chart, capacity: 1 }
+      - { id: kpi-ring, kind: kpi, capacity: 4 }
+  - id: two-column-left-heavy
+    description: "左侧 62% 主图 + 右侧 38% 辅助"
+    style: mosaic
+    slots:
+      - { id: main, kind: chart, capacity: 2 }
+      - { id: side, kind: any, capacity: 3 }
+  - id: two-column-right-heavy
+    description: "左侧 38% 辅助 + 右侧 62% 主图"
+    style: mosaic
+    slots:
+      - { id: side, kind: any, capacity: 3 }
+      - { id: main, kind: chart, capacity: 2 }
+  - id: three-column-kpi-center
+    description: "左 KPI + 中主图 + 右明细"
+    style: horizon
+    slots:
+      - { id: kpi-rail, kind: kpi, capacity: 4 }
+      - { id: center-main, kind: chart, capacity: 2 }
+      - { id: right-detail, kind: any, capacity: 3 }
+  - id: top-kpi-bottom-charts
+    description: "顶部 KPI 条 + 下方图表区"
+    style: orbital
+    slots:
+      - { id: kpi-bar, kind: kpi, capacity: 6 }
+      - { id: chart-grid, kind: any, capacity: 6 }
+  - id: grid-equal
+    description: "等分网格 2×3 或 3×2"
+    style: organic
+    slots:
+      - { id: grid, kind: any, capacity: 6 }
+
+# ---- 行业 → 风格 → CSS 主题映射 ----
+themes:
+  - { slug: multi-screen, style: orbital, css: styles/orbital.css }
+  - { slug: ecommerce, style: mosaic, css: styles/ecommerce.css }
+  - { slug: manufacturing, style: horizon, css: styles/manufacturing.css }
+  - { slug: saas, style: mosaic, css: styles/saas.css }
+  - { slug: finance, style: monument, css: styles/finance.css }
+  - { slug: logistics, style: horizon, css: styles/logistics.css }
+  - { slug: healthcare, style: organic, css: styles/healthcare.css }
+  - { slug: hr, style: organic, css: styles/hr.css }
+  - { slug: energy, style: terrain, css: styles/energy.css }
+  - { slug: cybersecurity, style: orbital, css: styles/cybersecurity.css }
+  - { slug: agriculture, style: terrain, css: styles/agriculture.css }
+  - { slug: education, style: organic, css: styles/education.css }
+
+# ---- Widget patterns ----
+# renderKind: chart → 编译器 echarts.init;html → 纯 DOM,禁止 init
+patterns:
+  # generic.* 跨行业通用库
+  generic.kpi-tile:
+    description: "KPI 数值卡片(value/label/delta/trend)"
+    renderKind: html
+    defaultChartType: null
+    supportedChartTypes: []
+    defaultColorScheme: brand
+    supportedColorSchemes: [brand]
+  generic.echarts-card:
+    description: "标准卡片包裹的 ECharts 图表"
+    renderKind: chart
+    defaultChartType: bar
+    supportedChartTypes: [bar, line, area, pie, funnel, scatter, radar, map]
+    defaultColorScheme: brand
+    supportedColorSchemes: [warm, cool, monochrome, brand]
+  generic.table:
+    description: "可滚动数据表"
+    renderKind: html
+    defaultChartType: null
+    supportedChartTypes: []
+    defaultColorScheme: brand
+    supportedColorSchemes: [brand]
+  generic.markdown:
+    description: "Markdown 富文本块"
+    renderKind: html
+    defaultChartType: null
+    supportedChartTypes: []
+    defaultColorScheme: brand
+    supportedColorSchemes: [brand]
+  generic.section-header:
+    description: "分区标题"
+    renderKind: html
+    defaultChartType: null
+    supportedChartTypes: []
+    defaultColorScheme: brand
+    supportedColorSchemes: [brand]
+  generic.divider:
+    description: "细分割线"
+    renderKind: html
+    defaultChartType: null
+    supportedChartTypes: []
+    defaultColorScheme: brand
+    supportedColorSchemes: [brand]
+  generic.image:
+    description: "图片占位卡"
+    renderKind: html
+    defaultChartType: null
+    supportedChartTypes: []
+    defaultColorScheme: brand
+    supportedColorSchemes: [brand]
+  generic.filter-bar:
+    description: "参数输入条(下拉/日期/文本)"
+    renderKind: html
+    defaultChartType: null
+    supportedChartTypes: []
+    defaultColorScheme: brand
+    supportedColorSchemes: [brand]
+
+  # ecommerce 电商
+  ecommerce.gmv-trend:
+    description: "GMV 趋势"
+    industry: ecommerce
+    renderKind: chart
+    defaultChartType: area
+    supportedChartTypes: [bar, line, area]
+    defaultColorScheme: warm
+    supportedColorSchemes: [warm, cool, brand]
+  ecommerce.conversion-funnel:
+    description: "转化漏斗"
+    industry: ecommerce
+    renderKind: chart
+    defaultChartType: funnel
+    supportedChartTypes: [funnel, bar]
+    defaultColorScheme: warm
+    supportedColorSchemes: [warm, brand]
+  ecommerce.region-map:
+    description: "区域销售地图"
+    industry: ecommerce
+    renderKind: chart
+    defaultChartType: map
+    supportedChartTypes: [map]
+    defaultColorScheme: warm
+    supportedColorSchemes: [warm, cool, brand]
+
+  # manufacturing 制造
+  manufacturing.output-trend:
+    description: "产量趋势"
+    industry: manufacturing
+    renderKind: chart
+    defaultChartType: bar
+    supportedChartTypes: [bar, line, area]
+    defaultColorScheme: cool
+    supportedColorSchemes: [cool, monochrome, brand]
+  manufacturing.spc-line:
+    description: "SPC 过程控制线"
+    industry: manufacturing
+    renderKind: chart
+    defaultChartType: line
+    supportedChartTypes: [line, area]
+    defaultColorScheme: cool
+    supportedColorSchemes: [cool, brand]
+
+  # saas
+  saas.retention:
+    description: "留存多线"
+    industry: saas
+    renderKind: chart
+    defaultChartType: line
+    supportedChartTypes: [line, area, bar]
+    defaultColorScheme: cool
+    supportedColorSchemes: [cool, brand]
+  saas.revenue-donut:
+    description: "收入构成环图"
+    industry: saas
+    renderKind: chart
+    defaultChartType: pie
+    supportedChartTypes: [pie]
+    defaultColorScheme: cool
+    supportedColorSchemes: [cool, brand]
+
+  # finance 财务
+  finance.revenue-cost-dual:
+    description: "营收成本双轴"
+    industry: finance
+    renderKind: chart
+    defaultChartType: bar
+    supportedChartTypes: [bar, line]
+    defaultColorScheme: brand
+    supportedColorSchemes: [brand, cool, monochrome]
+  finance.composition-pie:
+    description: "费用构成饼图"
+    industry: finance
+    renderKind: chart
+    defaultChartType: pie
+    supportedChartTypes: [pie]
+    defaultColorScheme: brand
+    supportedColorSchemes: [brand, monochrome]
+
+  # logistics 物流
+  logistics.route-map:
+    description: "线路地图"
+    industry: logistics
+    renderKind: chart
+    defaultChartType: map
+    supportedChartTypes: [map]
+    defaultColorScheme: cool
+    supportedColorSchemes: [cool, brand]
+  logistics.throughput-bar:
+    description: "吞吐量柱图"
+    industry: logistics
+    renderKind: chart
+    defaultChartType: bar
+    supportedChartTypes: [bar, line]
+    defaultColorScheme: cool
+    supportedColorSchemes: [cool, brand]
+
+  # healthcare 医疗
+  healthcare.vital-line:
+    description: "生命体征趋势"
+    industry: healthcare
+    renderKind: chart
+    defaultChartType: line
+    supportedChartTypes: [line, area]
+    defaultColorScheme: cool
+    supportedColorSchemes: [cool, brand]
+  healthcare.department-bar:
+    description: "科室分布条图"
+    industry: healthcare
+    renderKind: chart
+    defaultChartType: bar
+    supportedChartTypes: [bar, pie]
+    defaultColorScheme: cool
+    supportedColorSchemes: [cool, brand]
+
+  # hr 人力
+  hr.headcount-trend:
+    description: "人员趋势"
+    industry: hr
+    renderKind: chart
+    defaultChartType: area
+    supportedChartTypes: [area, line, bar]
+    defaultColorScheme: warm
+    supportedColorSchemes: [warm, brand]
+  hr.ninebox-scatter:
+    description: "九宫格散点"
+    industry: hr
+    renderKind: chart
+    defaultChartType: scatter
+    supportedChartTypes: [scatter]
+    defaultColorScheme: warm
+    supportedColorSchemes: [warm, brand]
+
+  # energy 能源
+  energy.generation-area:
+    description: "发电量堆叠面积"
+    industry: energy
+    renderKind: chart
+    defaultChartType: area
+    supportedChartTypes: [area, line, bar]
+    defaultColorScheme: cool
+    supportedColorSchemes: [cool, brand]
+  energy.mix-pie:
+    description: "能源结构饼图"
+    industry: energy
+    renderKind: chart
+    defaultChartType: pie
+    supportedChartTypes: [pie]
+    defaultColorScheme: cool
+    supportedColorSchemes: [cool, brand]
+
+  # cybersecurity 安全
+  cybersecurity.attack-trend:
+    description: "攻击趋势面积"
+    industry: cybersecurity
+    renderKind: chart
+    defaultChartType: area
+    supportedChartTypes: [area, line]
+    defaultColorScheme: monochrome
+    supportedColorSchemes: [monochrome, cool]
+  cybersecurity.threat-rose:
+    description: "威胁类型玫瑰图"
+    industry: cybersecurity
+    renderKind: chart
+    defaultChartType: pie
+    supportedChartTypes: [pie]
+    defaultColorScheme: monochrome
+    supportedColorSchemes: [monochrome, cool]
+
+  # agriculture 农业
+  agriculture.yield-map:
+    description: "产区地图"
+    industry: agriculture
+    renderKind: chart
+    defaultChartType: map
+    supportedChartTypes: [map]
+    defaultColorScheme: warm
+    supportedColorSchemes: [warm, cool]
+  agriculture.weather-line:
+    description: "气象趋势"
+    industry: agriculture
+    renderKind: chart
+    defaultChartType: line
+    supportedChartTypes: [line, area, bar]
+    defaultColorScheme: warm
+    supportedColorSchemes: [warm, cool]
+
+  # education 教育
+  education.enrollment-trend:
+    description: "招生趋势"
+    industry: education
+    renderKind: chart
+    defaultChartType: area
+    supportedChartTypes: [area, line, bar]
+    defaultColorScheme: warm
+    supportedColorSchemes: [warm, brand]
+  education.course-funnel:
+    description: "课程转化漏斗"
+    industry: education
+    renderKind: chart
+    defaultChartType: funnel
+    supportedChartTypes: [funnel, bar]
+    defaultColorScheme: warm
+    supportedColorSchemes: [warm, brand]

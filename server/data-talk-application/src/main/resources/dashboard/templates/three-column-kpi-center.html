@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="__CSP_POLICY__">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="bezel-json-hash" content="__JSON_HASH__">
+<title>__TITLE__</title>
+<style>__BASE_CSS__</style>
+<style>__THEME_CSS__</style>
+<style>
+.bezel {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1.5fr;
+  gap: var(--gap, 12px);
+  padding: var(--pad, 16px);
+  height: 100vh;
+  box-sizing: border-box;
+  background: var(--bg-body, #0a0a1a);
+  color: var(--text-primary, #e0e0e0);
+}
+.slot-kpi-rail { min-height: 0; overflow: auto; }
+.slot-center-main { min-height: 0; overflow: auto; }
+.slot-right-detail { min-height: 0; overflow: auto; }
+</style>
+</head>
+<body>
+<div class="bezel" data-template="three-column-kpi-center">
+  <div data-slot="kpi-rail" class="slot slot-kpi-rail"><!-- __BEZEL_SLOT_kpi-rail__ --></div>
+  <div data-slot="center-main" class="slot slot-center-main"><!-- __BEZEL_SLOT_center-main__ --></div>
+  <div data-slot="right-detail" class="slot slot-right-detail"><!-- __BEZEL_SLOT_right-detail__ --></div>
+</div>
+<script src="__BEZEL_SERVER_ORIGIN__/bezel/echarts.min.js"></script>
+<script type="application/json" id="__BEZEL_CONFIG__">__BEZEL_CONFIG_JSON__</script>
+<script src="__BEZEL_SERVER_ORIGIN__/bezel/scheduler.js"></script>
+</body>
+</html>

@@ -1,10 +1,13 @@
 package com.datatalk.adapter.controller;
 
-import com.datatalk.adapter.dto.DashboardPatchRequest;
+import com.datatalk.adapter.dto.DashboardPreviewRequest;
 import com.datatalk.adapter.dto.DashboardPromoteRequest;
+import com.datatalk.adapter.dto.DashboardUpdateRequest;
 import com.datatalk.application.dashboard.DashboardArtifactService;
-import com.datatalk.application.dashboard.JsonPatchApplier;
+import com.datatalk.application.dashboard.DashboardCompiler;
+import com.datatalk.application.dashboard.DashboardDiffer;
 import com.datatalk.application.dashboard.WidgetDataService;
+import com.datatalk.application.dashboard.PatternCatalog;
 import com.datatalk.application.persistence.SessionDataContextRecord;
 import com.datatalk.application.session.SessionDataContextService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -16,7 +19,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.regex.Matcher;
@@ -26,40 +28,31 @@ import java.util.regex.Pattern;
 @RequestMapping("/api/dashboards")
 public class DashboardController {
 
-    // AI emits its own dashboardId in widget endpoint URLs and the __BEZEL_CONFIG__ literal;
-    // promote assigns a fresh server-side id, so both must be rewritten before serving.
     private static final Pattern WIDGET_URL_DASHBOARD_ID =
         Pattern.compile("(/api/dashboards/)[A-Za-z0-9_]+(/widgets/)");
     private static final Pattern CONFIG_DASHBOARD_ID =
         Pattern.compile("(\"dashboardId\"\\s*:\\s*\")[^\"]+(\")");
 
-    // Bezel HTML hard-codes echarts from cdn.jsdelivr.net. Sandboxed iframes (opaque
-    // origin) can't reuse the parent's HTTP cache and on slow/offline networks the
-    // CDN load stalls for many seconds, leaving the iframe area white. We ship the
-    // same echarts build at /bezel/echarts.min.js (classpath:/static/bezel/) and
-    // rewrite both the <script src> and the CSP script-src directive at serve time.
-    // AI-emitted HTML keeps the jsdelivr URL (which BezelHtmlValidator still
-    // whitelists), so promote-time validation is unaffected.
     private static final String ECHARTS_CDN_URL =
         "https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js";
     private static final String ECHARTS_LOCAL_PATH = "/bezel/echarts.min.js";
 
-    // Header carrying the chat session id whose data-context should be used as a
-    // server-side fallback when the AI-emitted dashboard JSON omits
-    // defaultConnectionId / defaultDatabase / defaultSchema. Keeps widget data
-    // queries unambiguous on multi-database connections even when the frontend's
-    // optimistic enrichment failed to fire (Vite stale cache, useSessionDataContext
-    // never mounted, React Query race, etc.).
     public static final String SESSION_ID_HEADER = "X-DataTalk-Session-Id";
 
     private final DashboardArtifactService dashboardService;
+    private final DashboardCompiler compiler;
+    private final PatternCatalog catalog;
     private final WidgetDataService widgetDataService;
     private final SessionDataContextService sessionDataContextService;
 
     public DashboardController(DashboardArtifactService dashboardService,
+                               DashboardCompiler compiler,
+                               PatternCatalog catalog,
                                WidgetDataService widgetDataService,
                                SessionDataContextService sessionDataContextService) {
         this.dashboardService = dashboardService;
+        this.compiler = compiler;
+        this.catalog = catalog;
         this.widgetDataService = widgetDataService;
         this.sessionDataContextService = sessionDataContextService;
     }
@@ -77,13 +70,11 @@ public class DashboardController {
         }
         JsonNode dashboard = enrichFromSessionContext(request.dashboard(), sessionId);
         try {
-            byte[] htmlBytes = request.html() != null && !request.html().isEmpty()
-                    ? request.html().getBytes(StandardCharsets.UTF_8)
-                    : null;
-            DashboardArtifactService.PromoteResult result = dashboardService.promote(dashboard, sessionId, htmlBytes);
+            DashboardArtifactService.PromoteResult result = dashboardService.promote(dashboard, sessionId);
             return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
                 "id", result.id(),
-                "version", result.version()
+                "version", result.version(),
+                "html", result.html()
             ));
         } catch (DashboardArtifactService.PayloadTooLargeException e) {
             return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(Map.of(
@@ -100,6 +91,87 @@ public class DashboardController {
         }
     }
 
+    @PostMapping("/{id}/update")
+    public ResponseEntity<?> update(
+        @PathVariable String id,
+        @RequestBody DashboardUpdateRequest request
+    ) {
+        if (request.dashboard() == null) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "code", "invalid_request",
+                "message", "dashboard payload is required"
+            ));
+        }
+        try {
+            JsonNode current = dashboardService.load(id);
+            int currentVersion = current.path("version").asInt(0);
+            if (request.baseVersion() != currentVersion) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                    "code", "version_conflict",
+                    "message", "Dashboard has been modified by another request",
+                    "expected", request.baseVersion(),
+                    "actual", currentVersion
+                ));
+            }
+
+            JsonNode newJson = request.dashboard();
+            boolean fullRebuild = DashboardDiffer.needsFullRebuild(current, newJson);
+
+            // Compute incremental changes (against the pre-update state) before persisting.
+            var changes = fullRebuild ? null
+                : DashboardDiffer.computeIncrementalChanges(current, newJson, id, catalog);
+
+            // Persist new JSON + bumped version + recompiled HTML (both paths) so the stored
+            // dashboard and GET /html stay current; incremental responses still drive hot updates.
+            DashboardArtifactService.UpdateResult result;
+            try {
+                result = dashboardService.update(id, newJson);
+            } catch (DashboardArtifactService.ValidationException e) {
+                return ResponseEntity.unprocessableEntity().body(Map.of(
+                    "code", "compile_error",
+                    "message", "Dashboard compilation failed",
+                    "errors", e.getResult().errors()
+                ));
+            }
+
+            if (fullRebuild) {
+                return ResponseEntity.ok(Map.of(
+                    "version", result.version(),
+                    "html", result.html()
+                ));
+            } else {
+                return ResponseEntity.ok(Map.of(
+                    "version", result.version(),
+                    "changes", changes
+                ));
+            }
+        } catch (DashboardArtifactService.DashboardNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                "code", "not_found",
+                "message", e.getMessage()
+            ));
+        }
+    }
+
+    @PostMapping("/preview")
+    public ResponseEntity<?> preview(@RequestBody DashboardPreviewRequest request) {
+        if (request.dashboard() == null) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "code", "invalid_request",
+                "message", "dashboard payload is required"
+            ));
+        }
+        var result = compiler.compile(request.dashboard());
+        if (!result.ok()) {
+            return ResponseEntity.unprocessableEntity().body(Map.of(
+                "code", "compile_error",
+                "message", "Dashboard compilation failed",
+                "errors", result.errors()
+            ));
+        }
+        return ResponseEntity.ok(Map.of("html", result.html()));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<?> get(@PathVariable String id) {
         try {
@@ -113,52 +185,6 @@ public class DashboardController {
         }
     }
 
-    @PatchMapping("/{id}")
-    public ResponseEntity<?> patch(
-        @PathVariable String id,
-        @RequestBody DashboardPatchRequest request
-    ) {
-        if (request.ops() == null || request.ops().isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of(
-                "code", "invalid_request",
-                "message", "ops is required and must not be empty"
-            ));
-        }
-        List<JsonPatchApplier.PatchOp> ops = request.ops().stream()
-            .map(op -> new JsonPatchApplier.PatchOp(op.op(), op.path(), op.value()))
-            .toList();
-
-        try {
-            DashboardArtifactService.PatchResult result = dashboardService.patch(id, request.baseVersion(), ops);
-            return ResponseEntity.ok(Map.of(
-                "version", result.version()
-            ));
-        } catch (DashboardArtifactService.DashboardNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
-                "code", "not_found",
-                "message", e.getMessage()
-            ));
-        } catch (JsonPatchApplier.VersionConflictException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
-                "code", "version_conflict",
-                "message", e.getMessage(),
-                "expected", e.getExpected(),
-                "actual", e.getActual()
-            ));
-        } catch (JsonPatchApplier.PatchRejectException e) {
-            return ResponseEntity.unprocessableEntity().body(Map.of(
-                "code", "patch_rejected",
-                "message", e.getMessage()
-            ));
-        } catch (DashboardArtifactService.ValidationException e) {
-            return ResponseEntity.unprocessableEntity().body(Map.of(
-                "code", "validation_error",
-                "message", "Patched dashboard validation failed",
-                "errors", e.getResult().errors()
-            ));
-        }
-    }
-
     @GetMapping(value = "/{id}/html", produces = MediaType.TEXT_HTML_VALUE)
     public ResponseEntity<String> serveHtml(@PathVariable String id, HttpServletRequest req) {
         var maybe = dashboardService.loadHtml(id);
@@ -168,9 +194,6 @@ public class DashboardController {
             .replace("__BEZEL_SERVER_ORIGIN__", origin)
             .replace("\"/api/dashboards/", "\"" + origin + "/api/dashboards/")
             .replace("'/api/dashboards/", "'" + origin + "/api/dashboards/")
-            // Localize the echarts CDN: both <script src="https://cdn.jsdelivr.net/..."> and
-            // the matching CSP script-src token get the same string replacement, so the
-            // policy continues to allow the new origin-relative URL.
             .replace(ECHARTS_CDN_URL, origin + ECHARTS_LOCAL_PATH);
         String replacement = Matcher.quoteReplacement(id);
         body = WIDGET_URL_DASHBOARD_ID.matcher(body).replaceAll("$1" + replacement + "$2");
@@ -180,15 +203,6 @@ public class DashboardController {
             .body(body);
     }
 
-    /**
-     * Fill in blank `defaultConnectionId` / `defaultDatabase` / `defaultSchema` from
-     * the chat session's current data context. The AI typically only emits
-     * defaultConnectionId, leaving the database/schema implicit — on a connection
-     * that lacks a configured databaseName *and* exposes multiple databases this
-     * makes widget SQL like `SELECT ... FROM users` ambiguous and the resolver
-     * rejects it with `表 X 命中多个候选`. This step is a backstop that runs even
-     * when client-side enrichment didn't fire.
-     */
     private JsonNode enrichFromSessionContext(JsonNode dashboard, String sessionId) {
         if (sessionId == null || sessionId.isBlank() || !(dashboard instanceof ObjectNode obj)) {
             return dashboard;
@@ -197,7 +211,6 @@ public class DashboardController {
         try {
             ctx = sessionDataContextService.get(sessionId);
         } catch (NoSuchElementException e) {
-            // Session disappeared between client send and server promote — skip enrichment.
             return dashboard;
         }
         if (isBlankField(obj, "defaultConnectionId") && nonBlank(ctx.connectionId())) {

@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
+import java.util.List;
 
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -27,6 +28,21 @@ class DashboardControllerTest {
 
     private MockMvc mvc;
     private final ObjectMapper mapper = new ObjectMapper();
+
+    private static final String V3_DASHBOARD = """
+        {
+          "schemaVersion": 3,
+          "id": "dash_placeholder",
+          "title": "Test Dashboard",
+          "theme": "industry-ecommerce",
+          "renderer": "bezel",
+          "refresh": { "defaultIntervalMs": 10000, "pauseOnHidden": true },
+          "parameters": [],
+          "widgets": [],
+          "layout": { "engine": "free", "template": "grid-equal" },
+          "version": 999
+        }
+        """;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -45,81 +61,39 @@ class DashboardControllerTest {
                 mock(com.datatalk.application.persistence.ConnectionRepository.class));
 
         DashboardSchemaValidator validator = new DashboardSchemaValidator(mapper);
-        JsonPatchApplier patchApplier = new JsonPatchApplier(mapper);
-        DashboardArtifactService service = new DashboardArtifactService(fileArtifactService, root, validator, patchApplier, mapper, clock);
+        DashboardCompiler compiler = mock(DashboardCompiler.class);
+        when(compiler.compile(any())).thenReturn(
+            new DashboardCompiler.CompileResult("<html>mock</html>", List.of()));
+        DashboardArtifactService service = new DashboardArtifactService(
+            fileArtifactService, root, validator, compiler, mapper, clock);
+
+        PatternCatalog catalog = mock(PatternCatalog.class);
         WidgetDataService widgetDataService = mock(WidgetDataService.class);
-        com.datatalk.application.session.SessionDataContextService sessionDataContextService =
-            mock(com.datatalk.application.session.SessionDataContextService.class);
-        mvc = standaloneSetup(new DashboardController(service, widgetDataService, sessionDataContextService)).build();
+        var sessionDataContextService = mock(com.datatalk.application.session.SessionDataContextService.class);
+        mvc = standaloneSetup(new DashboardController(
+            service, compiler, catalog, widgetDataService, sessionDataContextService)).build();
     }
 
     @Test
     void promoteCreatesDashboardAndReturnsId() throws Exception {
         mvc.perform(post("/api/dashboards/promote")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""
-                {
-                  "dashboard": {
-                    "schemaVersion": 2,
-                    "id": "dash_placeholder",
-                    "title": "Test Dashboard",
-                    "theme": "industry-neutral",
-                    "renderer": "bezel",
-                    "refresh": { "defaultIntervalMs": 10000, "pauseOnHidden": true },
-                    "parameters": [],
-                    "widgets": [],
-                    "layout": { "engine": "free" },
-                    "version": 999
-                  }
-                }
-                """))
+                .content("{\"dashboard\": %s}".formatted(V3_DASHBOARD)))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.id").value(org.hamcrest.Matchers.startsWith("dash_")))
             .andExpect(jsonPath("$.version").value(1));
     }
 
     @Test
-    void patchWith409OnStaleVersion() throws Exception {
-        // First promote
-        String response = mvc.perform(post("/api/dashboards/promote")
+    void patchEndpointRemoved() throws Exception {
+        mvc.perform(patch("/api/dashboards/dash_test")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""
-                {
-                  "dashboard": {
-                    "schemaVersion": 2,
-                    "id": "dash_placeholder",
-                    "title": "Test Dashboard",
-                    "theme": "industry-neutral",
-                    "renderer": "bezel",
-                    "refresh": { "defaultIntervalMs": 10000, "pauseOnHidden": true },
-                    "parameters": [],
-                    "widgets": [],
-                    "layout": { "engine": "free" },
-                    "version": 999
-                  }
-                }
-                """))
-            .andExpect(status().isCreated())
-            .andReturn().getResponse().getContentAsString();
-
-        String id = mapper.readTree(response).get("id").asText();
-
-        // Patch with stale version
-        mvc.perform(patch("/api/dashboards/" + id)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("""
-                {
-                  "baseVersion": 0,
-                  "ops": [{ "op": "replace", "path": "/title", "value": "X" }]
-                }
-                """))
-            .andExpect(status().isConflict())
-            .andExpect(jsonPath("$.code").value("version_conflict"));
+                .content("{}"))
+            .andExpect(status().isMethodNotAllowed());
     }
 
     @Test
     void rejectsLargePayload() throws Exception {
-        // Create a dashboard with a very large description
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < 300_000; i++) sb.append("x");
         String largeDesc = sb.toString();
@@ -129,16 +103,16 @@ class DashboardControllerTest {
                 .content("""
                 {
                   "dashboard": {
-                    "schemaVersion": 2,
+                    "schemaVersion": 3,
                     "id": "dash_placeholder",
                     "title": "T",
-                    "theme": "industry-neutral",
+                    "theme": "industry-ecommerce",
                     "renderer": "bezel",
                     "refresh": { "defaultIntervalMs": 10000, "pauseOnHidden": true },
                     "description": "%s",
                     "parameters": [],
                     "widgets": [],
-                    "layout": { "engine": "free" },
+                    "layout": { "engine": "free", "template": "grid-equal" },
                     "version": 999
                   }
                 }
@@ -149,33 +123,73 @@ class DashboardControllerTest {
 
     @Test
     void getReturnsDashboard() throws Exception {
-        // Promote first
         String response = mvc.perform(post("/api/dashboards/promote")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""
-                {
-                  "dashboard": {
-                    "schemaVersion": 2,
-                    "id": "dash_placeholder",
-                    "title": "My Dashboard",
-                    "theme": "industry-neutral",
-                    "renderer": "bezel",
-                    "refresh": { "defaultIntervalMs": 10000, "pauseOnHidden": true },
-                    "parameters": [],
-                    "widgets": [],
-                    "layout": { "engine": "free" },
-                    "version": 999
-                  }
-                }
-                """))
+                .content("{\"dashboard\": %s}".formatted(V3_DASHBOARD.replace("Test Dashboard", "My Dashboard"))))
             .andReturn().getResponse().getContentAsString();
 
         String id = mapper.readTree(response).get("id").asText();
 
-        // GET
         mvc.perform(get("/api/dashboards/" + id))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.title").value("My Dashboard"))
             .andExpect(jsonPath("$.version").value(1));
+    }
+
+    @Test
+    void updateReturnsConflictOnVersionMismatch() throws Exception {
+        String response = mvc.perform(post("/api/dashboards/promote")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"dashboard\": %s}".formatted(V3_DASHBOARD)))
+            .andReturn().getResponse().getContentAsString();
+
+        String id = mapper.readTree(response).get("id").asText();
+
+        mvc.perform(post("/api/dashboards/" + id + "/update")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"dashboard\": %s, \"baseVersion\": 999}".formatted(V3_DASHBOARD)))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.code").value("version_conflict"));
+    }
+
+    @Test
+    void previewCompilesWithoutPersisting() throws Exception {
+        mvc.perform(post("/api/dashboards/preview")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"dashboard\": %s}".formatted(V3_DASHBOARD)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.html").value("<html>mock</html>"));
+    }
+
+    @Test
+    void previewRejectsInvalidCompilation() throws Exception {
+        DashboardCompiler failingCompiler = mock(DashboardCompiler.class);
+        when(failingCompiler.compile(any())).thenReturn(
+            new DashboardCompiler.CompileResult(null, List.of(
+                new DashboardCompiler.CompileError("widget-compile", "/widgets/0", "bad widget"))));
+        DashboardArtifactService svc = new DashboardArtifactService(
+            mock(FileArtifactService.class),
+            mock(SessionWorkdirRoot.class),
+            mock(DashboardSchemaValidator.class),
+            failingCompiler,
+            mapper, Clock.systemUTC());
+        MockMvc previewMvc = standaloneSetup(new DashboardController(
+            svc, failingCompiler, mock(PatternCatalog.class),
+            mock(WidgetDataService.class),
+            mock(com.datatalk.application.session.SessionDataContextService.class))).build();
+
+        previewMvc.perform(post("/api/dashboards/preview")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"dashboard\": %s}".formatted(V3_DASHBOARD)))
+            .andExpect(status().isUnprocessableEntity())
+            .andExpect(jsonPath("$.code").value("compile_error"));
+    }
+
+    @Test
+    void updateReturns404ForUnknownDashboard() throws Exception {
+        mvc.perform(post("/api/dashboards/dash_nonexistent/update")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"dashboard\": %s, \"baseVersion\": 1}".formatted(V3_DASHBOARD)))
+            .andExpect(status().isNotFound());
     }
 }

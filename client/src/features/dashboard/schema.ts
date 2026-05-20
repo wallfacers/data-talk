@@ -1,15 +1,21 @@
 import { z } from 'zod'
 
-const gridPosition = z.object({
-  x: z.number().int().min(0).max(11),
-  y: z.number().int().min(0),
-  w: z.number().int().min(1).max(12),
-  h: z.number().int().min(1),
-  z: z.number().int().nullable().optional(),
+const chartSemantics = z.object({
+  chartType: z.enum(['bar', 'line', 'area', 'pie', 'funnel', 'scatter', 'radar', 'map']).optional(),
+  colorScheme: z.enum(['warm', 'cool', 'monochrome', 'brand']).optional(),
+  stacked: z.boolean().optional(),
+  showLegend: z.boolean().optional(),
+  showTooltip: z.boolean().optional(),
+  showAreaFill: z.boolean().optional(),
+  labelPosition: z.enum(['inside', 'outside', 'none']).optional(),
+  gridGap: z.enum(['compact', 'normal', 'spacious']).optional(),
+  rawEchartsOption: z.record(z.string(), z.unknown()).optional(),
 })
 
 const widgetQuery = z.object({
   connectionId: z.string().nullable().optional(),
+  database: z.string().nullable().optional(),
+  schema: z.string().nullable().optional(),
   sql: z.string(),
   paramRefs: z.record(z.string(), z.string()),
 })
@@ -25,7 +31,7 @@ const parameterDef = z.object({
 
 const refreshPolicy = z.object({
   intervalMs: z.number().int().min(1000).optional(),
-  strategy: z.enum(['data-only', 'full-rerender']).optional(),
+  strategy: z.enum(['DATA_ONLY', 'FULL_RERENDER']).optional(),
 })
 
 const dashboardRefresh = z.object({
@@ -36,24 +42,34 @@ const dashboardRefresh = z.object({
 const widget = z.object({
   id: z.string().regex(/^[a-z]+_w_[a-zA-Z0-9_]{4,32}$/),
   type: z.enum(['chart', 'kpi', 'table', 'markdown', 'filter', 'section', 'divider', 'image']),
+  slot: z.string().min(1),
+  title: z.string().min(1).max(64),
   patternId: z.string().regex(/^[a-z0-9-]+\.[a-z0-9-]+$/),
-  position: gridPosition,
+  chartSemantics: chartSemantics.optional(),
   parameters: z.array(parameterDef).optional(),
   query: widgetQuery.optional(),
   refresh: refreshPolicy.optional(),
   options: z.record(z.string(), z.unknown()),
 })
 
-const freeLayout = z.object({
+const layoutV3 = z.object({
   engine: z.literal('free'),
+  template: z.enum([
+    'single-focus',
+    'two-column-left-heavy',
+    'two-column-right-heavy',
+    'three-column-kpi-center',
+    'top-kpi-bottom-charts',
+    'grid-equal',
+  ]),
   viewport: z.object({
     minWidth: z.number().int().min(640),
-    aspect: z.string().regex(/^\d+:\d+$/),
+    aspect: z.string(),
   }).optional(),
 })
 
 export const dashboardSchema = z.object({
-  schemaVersion: z.literal(2),
+  schemaVersion: z.literal(3),
   id: z.string().regex(/^dash_[a-zA-Z0-9_]{4,}$/),
   title: z.string().min(1).max(256),
   description: z.string().max(32768).optional(),
@@ -65,7 +81,7 @@ export const dashboardSchema = z.object({
   refresh: dashboardRefresh.optional(),
   parameters: z.array(parameterDef),
   widgets: z.array(widget),
-  layout: freeLayout,
+  layout: layoutV3,
   version: z.number().int().min(1),
   createdAt: z.number().int().min(0),
   updatedAt: z.number().int().min(0),
@@ -74,8 +90,8 @@ export const dashboardSchema = z.object({
 export type Dashboard = z.infer<typeof dashboardSchema>
 export type Widget = z.infer<typeof widget>
 export type WidgetQuery = z.infer<typeof widgetQuery>
-export type GridPosition = z.infer<typeof gridPosition>
-export type FreeLayout = z.infer<typeof freeLayout>
+export type ChartSemantics = z.infer<typeof chartSemantics>
+export type LayoutV3 = z.infer<typeof layoutV3>
 export type ParameterDef = z.infer<typeof parameterDef>
 export type DashboardRefresh = z.infer<typeof dashboardRefresh>
 export type WidgetRefresh = z.infer<typeof refreshPolicy>

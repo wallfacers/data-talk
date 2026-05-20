@@ -349,38 +349,26 @@ function decorateDashboardBlocks(
 ) {
   const codes = Array.from(root.querySelectorAll('pre > code')) as HTMLElement[]
   let blockIndex = 0
-  let lastDashboardMount: HTMLElement | null = null
 
   for (const code of codes) {
     const className = code.className ?? ''
     const isDashJson = /(?:^|\s)language-dashboard(?:\s|$)/i.test(className)
-    const isDashHtml = /(?:^|\s)language-dashboard-html(?:\s|$)/i.test(className)
-    if (!isDashJson && !isDashHtml) continue
+    if (!isDashJson) continue
 
     const pre = code.parentElement
     if (!pre) continue
 
-    if (isDashJson) {
-      const mount = document.createElement('div')
-      mount.setAttribute('data-component', 'markdown-dashboard')
-      mount.setAttribute('data-dashboard-key', `${options.cacheKey ?? 'markdown'}:dashboard:${blockIndex}`)
-      mount.setAttribute('data-dashboard-json-b64', encodeUtf8Base64(code.textContent ?? ''))
-      mount.setAttribute('data-dashboard-streaming', String(options.streaming))
-      mount.setAttribute('data-dashboard-block-index', String(blockIndex))
-      mount.setAttribute('data-dashboard-message-id', options.messageId ?? options.cacheKey ?? '')
-      if (options.partId) mount.setAttribute('data-dashboard-part-id', options.partId)
+    const mount = document.createElement('div')
+    mount.setAttribute('data-component', 'markdown-dashboard')
+    mount.setAttribute('data-dashboard-key', `${options.cacheKey ?? 'markdown'}:dashboard:${blockIndex}`)
+    mount.setAttribute('data-dashboard-json-b64', encodeUtf8Base64(code.textContent ?? ''))
+    mount.setAttribute('data-dashboard-streaming', String(options.streaming))
+    mount.setAttribute('data-dashboard-block-index', String(blockIndex))
+    mount.setAttribute('data-dashboard-message-id', options.messageId ?? options.cacheKey ?? '')
+    if (options.partId) mount.setAttribute('data-dashboard-part-id', options.partId)
 
-      pre.parentNode?.replaceChild(mount, pre)
-      lastDashboardMount = mount
-      blockIndex += 1
-    } else {
-      // dashboard-html block attaches to the preceding dashboard mount.
-      // Avoid rendering raw HTML in chat — hide the original <pre>.
-      if (lastDashboardMount) {
-        lastDashboardMount.setAttribute('data-dashboard-html-b64', encodeUtf8Base64(code.textContent ?? ''))
-      }
-      pre.parentNode?.removeChild(pre)
-    }
+    pre.parentNode?.replaceChild(mount, pre)
+    blockIndex += 1
   }
 }
 
@@ -594,12 +582,10 @@ export function Markdown(props: {
       liveDashKeys.add(dashKey)
 
       const encodedJson = mountPoint.dataset.dashboardJsonB64 ?? ''
-      const encodedHtml = mountPoint.dataset.dashboardHtmlB64 ?? ''
       const streaming = mountPoint.dataset.dashboardStreaming === 'true'
       const messageId = mountPoint.dataset.dashboardMessageId ?? ''
       const partId = mountPoint.dataset.dashboardPartId
       const json = decodeUtf8Base64(encodedJson)
-      const html = encodedHtml ? decodeUtf8Base64(encodedHtml) : undefined
 
       let entry = dashboardRoots.get(dashKey)
       if (!entry || entry.host !== mountPoint) {
@@ -612,7 +598,6 @@ export function Markdown(props: {
         <I18nProvider>
           <DashboardBlock
             json={json}
-            html={html}
             streaming={streaming}
             messageId={messageId}
             partId={partId || undefined}

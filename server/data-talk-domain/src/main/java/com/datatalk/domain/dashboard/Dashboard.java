@@ -13,7 +13,7 @@ public record Dashboard(
     DashboardRefresh refresh,
     List<ParameterDef> parameters,
     List<Widget> widgets,
-    GridLayout layout,
+    DashboardLayout layout,
     long version,
     long createdAt,
     long updatedAt
@@ -21,8 +21,8 @@ public record Dashboard(
     public Dashboard {
         parameters = parameters == null ? List.of() : List.copyOf(parameters);
         widgets = widgets == null ? List.of() : List.copyOf(widgets);
-        if (schemaVersion != 2) {
-            throw new IllegalArgumentException("schemaVersion must be 2, got " + schemaVersion);
+        if (schemaVersion != 3) {
+            throw new IllegalArgumentException("schemaVersion must be 3, got " + schemaVersion);
         }
         if (!"bezel".equals(renderer)) {
             throw new IllegalArgumentException("renderer must be 'bezel', got '" + renderer + "'");

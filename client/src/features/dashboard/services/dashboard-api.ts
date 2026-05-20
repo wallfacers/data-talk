@@ -12,47 +12,47 @@ export async function fetchDashboard(id: string): Promise<Dashboard | null> {
 
 export async function promoteDashboard(
   payload: unknown,
-  html?: string,
   sessionId?: string | null,
-): Promise<{ id: string; version: number } | null> {
-  const body: Record<string, unknown> = { dashboard: payload }
-  if (html != null && html.length > 0) body.html = html
+): Promise<{ id: string; version: number; html?: string } | null> {
   const headers: Record<string, string> = { 'content-type': 'application/json' }
-  // Server-side enrichment backstop: when the AI-emitted JSON omits
-  // defaultDatabase/defaultSchema, the backend uses this session's data-context
-  // to fill them in before persisting. Required for multi-database connections
-  // whose connection record has no default databaseName configured.
   if (sessionId) headers['X-DataTalk-Session-Id'] = sessionId
   const response = await fetch('/api/dashboards/promote', {
     method: 'POST',
     headers,
-    body: JSON.stringify(body),
+    body: JSON.stringify({ dashboard: payload }),
   })
   if (!response.ok) return null
   return response.json()
 }
 
-export async function patchDashboard(
+export async function updateDashboard(
   id: string,
+  dashboard: unknown,
   baseVersion: number,
-  ops: unknown[],
-): Promise<{ ok: boolean; version?: number; error?: string }> {
-  if (!id || id === 'undefined' || id === 'null') return { ok: false, error: 'invalid dashboard id' }
-  const response = await fetch(`/api/dashboards/${encodeURIComponent(id)}`, {
-    method: 'PATCH',
+): Promise<{ version: number; html?: string; changes?: unknown[] } | null> {
+  if (!id || id === 'undefined' || id === 'null') return null
+  const response = await fetch(`/api/dashboards/${encodeURIComponent(id)}/update`, {
+    method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ baseVersion, ops }),
+    body: JSON.stringify({ dashboard, baseVersion }),
   })
   if (!response.ok) {
-    if (response.status === 409) {
-      const detail = await response.json().catch(() => ({})) as { message?: string }
-      return { ok: false, error: detail.message ?? 'version conflict' }
-    }
-    const detail = await response.json().catch(() => ({})) as { message?: string }
-    return { ok: false, error: detail.message ?? `patch failed: ${response.status}` }
+    if (response.status === 409) return null
+    return null
   }
-  const result = (await response.json()) as { version?: number }
-  return { ok: true, version: result.version }
+  return response.json()
+}
+
+export async function previewDashboard(
+  dashboard: unknown,
+): Promise<{ html: string } | null> {
+  const response = await fetch('/api/dashboards/preview', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ dashboard }),
+  })
+  if (!response.ok) return null
+  return response.json()
 }
 
 export async function fetchDashboardHtml(id: string): Promise<string | null> {
