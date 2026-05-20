@@ -8,11 +8,13 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 ## 当前编号
 
-下一个分配 ID：**BUG-0079**（永不复用，单调递增）
+下一个分配 ID：**BUG-0080**（永不复用，单调递增）
 
 ## Open BUGs（按 priority 倒序，P0 → P2）
 
-（暂无）
+| ID | Title | Status | Priority | Owner |
+|----|-------|--------|----------|-------|
+| [BUG-0079](BUG-0079-attach-file-on-unpersisted-draft-session-500-fk.md) | 开始页草稿会话未持久化时上传附件触发 500（uploaded_file 外键失败），chip 显示 Internal Server Error | open | P1 | — (pending) |
 
 ## E2E 验证记录
 
@@ -20,6 +22,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 |---|---|---|---|
 | 2026-05-19 | report-document-generation | 1 | 发现 BUG-0073（CORS 字体加载）。验证通过：AI chat→promote→Report Library→Report Viewer 完整链路。PDF/MD 状态均为 ready。CORS BUG 不影响 PDF 生成。 |
 | 2026-05-20 | ledger-report-quality-fixes | 1 | §8 E2E（fixture report HTML + sandbox iframe）发现 BUG-0077（TOC 锚点 base-href 冲突）。验证通过：cover sanitize ✓、CORS ✓、TOC HTML 渲染 ✓；TOC 点击跳转 ✗（修复并入本 change）。 |
+| 2026-05-20 | no-extension-file-upload-support | 1 | 无后缀可读文件上传支持。Happy path E2E 通过（持久化会话内上传 `create_test` → 200，`uploaded_file`: text/x-sql 落库，前端 chip 不再报"不支持的文件类型"）。旁路发现 BUG-0079（草稿会话附件上传 500 FK，与本 change 无关）。 |
 
 ## In Progress（status = investigating | fixed 等待 verify）
 
@@ -122,10 +125,10 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 - **chart**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md), [BUG-0064](BUG-0064-chart-artifact-rendered-twice-when-llm-also-embeds-echarts-block.md) *(fixed)*
 - **dashboard**: [BUG-0012](BUG-0012-widget-data-endpoint-ignores-default-connection-id.md) *(fixed)*, [BUG-0049](BUG-0049-bezel-dashboard-html-chinese-garbled.md), [BUG-0050](BUG-0050-dashboard-json-widgets-skeleton-only-no-data.md), [BUG-0051](BUG-0051-dashboard-iframe-long-blank-screen.md) *(fixed)*, [BUG-0053](BUG-0053-bezel-ai-widget-id-too-short-and-zod-error-unhelpful.md) *(fixed)*
 - **opencode**: [BUG-0036](BUG-0036-skills-extracted-to-wrong-cwd-not-found-by-opencode.md) *(fixed)*, [BUG-0040](BUG-0040-agents-md-skill-path-triggers-llm-hallucination.md) *(fixed)*, [BUG-0049](BUG-0049-bezel-dashboard-html-chinese-garbled.md), [BUG-0058](BUG-0058-file-read-image-no-compression-base64-too-large.md) *(fixed)*, [BUG-0065](BUG-0065-pre-action-protocol-bypassed-via-ui-exec-path.md) *(fixed)*
-- **session**: [BUG-0037](BUG-0037-ctrl-r-during-streaming-flips-stop-button-to-send.md) *(fixed)*, [BUG-0038](BUG-0038-replay-idle-on-resubscribe-clears-streaming-flag.md) *(fixed)*, [BUG-0039](BUG-0039-composer-draft-sync-write-wrong-schema.md) *(fixed)*, [BUG-0046](BUG-0046-composer-button-refresh-stream-state-mismatch.md) *(fixed)*, [BUG-0052](BUG-0052-long-session-empty-canvas-streaming-flag-race.md) *(fixed)*, [BUG-0057](BUG-0057-composer-attachment-stuck-uploading-button-locked.md) *(verified)*, [BUG-0059](BUG-0059-composer-enter-lag-due-to-lazy-upload-on-submit.md) *(verified)*, [BUG-0063](BUG-0063-composer-chip-not-cleared-until-sse-stream-ends.md) *(verified)*, [BUG-0071](BUG-0071-stage-close-flash-horizontal-scrollbar.md) *(fixed)*
+- **session**: [BUG-0037](BUG-0037-ctrl-r-during-streaming-flips-stop-button-to-send.md) *(fixed)*, [BUG-0038](BUG-0038-replay-idle-on-resubscribe-clears-streaming-flag.md) *(fixed)*, [BUG-0039](BUG-0039-composer-draft-sync-write-wrong-schema.md) *(fixed)*, [BUG-0046](BUG-0046-composer-button-refresh-stream-state-mismatch.md) *(fixed)*, [BUG-0052](BUG-0052-long-session-empty-canvas-streaming-flag-race.md) *(fixed)*, [BUG-0057](BUG-0057-composer-attachment-stuck-uploading-button-locked.md) *(verified)*, [BUG-0059](BUG-0059-composer-enter-lag-due-to-lazy-upload-on-submit.md) *(verified)*, [BUG-0063](BUG-0063-composer-chip-not-cleared-until-sse-stream-ends.md) *(verified)*, [BUG-0071](BUG-0071-stage-close-flash-horizontal-scrollbar.md) *(fixed)*, [BUG-0079](BUG-0079-attach-file-on-unpersisted-draft-session-500-fk.md) *(open)*
 - **channel**: [BUG-0038](BUG-0038-replay-idle-on-resubscribe-clears-streaming-flag.md) *(fixed)*, [BUG-0046](BUG-0046-composer-button-refresh-stream-state-mismatch.md) *(fixed)*, [BUG-0052](BUG-0052-long-session-empty-canvas-streaming-flag-race.md) *(fixed)*, [BUG-0056](BUG-0056-bubble-attachments-file-upload-part-not-roundtripped.md) *(fixed)*, [BUG-0068](BUG-0068-user-bubble-content-flash-on-promote.md) *(fixed)*
 - **chat**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md), [BUG-0037](BUG-0037-ctrl-r-during-streaming-flips-stop-button-to-send.md) *(fixed)*, [BUG-0038](BUG-0038-replay-idle-on-resubscribe-clears-streaming-flag.md) *(fixed)*, [BUG-0039](BUG-0039-composer-draft-sync-write-wrong-schema.md) *(fixed)*, [BUG-0041](BUG-0041-sql-code-block-theme-color-mismatch.md) *(fixed)*, [BUG-0044](BUG-0044-user-bubble-markdown-invisible-on-primary-bg.md) *(fixed)*, [BUG-0046](BUG-0046-composer-button-refresh-stream-state-mismatch.md) *(fixed)*, [BUG-0049](BUG-0049-bezel-dashboard-html-chinese-garbled.md), [BUG-0052](BUG-0052-long-session-empty-canvas-streaming-flag-race.md) *(fixed)*, [BUG-0056](BUG-0056-bubble-attachments-file-upload-part-not-roundtripped.md) *(fixed)*, [BUG-0057](BUG-0057-composer-attachment-stuck-uploading-button-locked.md) *(verified)*, [BUG-0058](BUG-0058-file-read-image-no-compression-base64-too-large.md) *(fixed)*, [BUG-0059](BUG-0059-composer-enter-lag-due-to-lazy-upload-on-submit.md) *(verified)*, [BUG-0063](BUG-0063-composer-chip-not-cleared-until-sse-stream-ends.md) *(verified)*, [BUG-0068](BUG-0068-user-bubble-content-flash-on-promote.md) *(fixed)*
-- **file-upload**: [BUG-0056](BUG-0056-bubble-attachments-file-upload-part-not-roundtripped.md) *(fixed)*, [BUG-0057](BUG-0057-composer-attachment-stuck-uploading-button-locked.md) *(verified)*, [BUG-0058](BUG-0058-file-read-image-no-compression-base64-too-large.md) *(fixed)*, [BUG-0059](BUG-0059-composer-enter-lag-due-to-lazy-upload-on-submit.md) *(verified)*, [BUG-0062](BUG-0062-spring-multipart-1mb-limit-blocks-image-uploads.md) *(fixed)*, [BUG-0063](BUG-0063-composer-chip-not-cleared-until-sse-stream-ends.md) *(verified)*, [BUG-0068](BUG-0068-user-bubble-content-flash-on-promote.md) *(fixed)*
+- **file-upload**: [BUG-0056](BUG-0056-bubble-attachments-file-upload-part-not-roundtripped.md) *(fixed)*, [BUG-0057](BUG-0057-composer-attachment-stuck-uploading-button-locked.md) *(verified)*, [BUG-0058](BUG-0058-file-read-image-no-compression-base64-too-large.md) *(fixed)*, [BUG-0059](BUG-0059-composer-enter-lag-due-to-lazy-upload-on-submit.md) *(verified)*, [BUG-0062](BUG-0062-spring-multipart-1mb-limit-blocks-image-uploads.md) *(fixed)*, [BUG-0063](BUG-0063-composer-chip-not-cleared-until-sse-stream-ends.md) *(verified)*, [BUG-0068](BUG-0068-user-bubble-content-flash-on-promote.md) *(fixed)*, [BUG-0079](BUG-0079-attach-file-on-unpersisted-draft-session-500-fk.md) *(open)*
 - **persistence**: [BUG-0061](BUG-0061-missing-flyway-migration-for-user-message-attachments.md) *(fixed)*
 - **flyway**: [BUG-0061](BUG-0061-missing-flyway-migration-for-user-message-attachments.md) *(fixed)*
 - **config**: [BUG-0062](BUG-0062-spring-multipart-1mb-limit-blocks-image-uploads.md) *(fixed)*

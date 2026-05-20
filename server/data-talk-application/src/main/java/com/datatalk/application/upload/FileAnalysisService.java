@@ -20,6 +20,12 @@ import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -88,7 +94,10 @@ public class FileAnalysisService {
         String name = originalFilename != null ? originalFilename : file.getFileName().toString();
         int dotIdx = name.lastIndexOf('.');
         if (dotIdx < 0 || dotIdx == name.length() - 1) {
-            return null;
+            // No usable extension. Fall back to content sniffing so that readable
+            // text files (e.g. a SQL script saved without a .sql suffix) are accepted
+            // and classified by content; binary files still return null (rejected).
+            return sniffTextMime(file);
         }
         String ext = name.substring(dotIdx + 1).toLowerCase();
         return switch (ext) {
@@ -108,6 +117,83 @@ public class FileAnalysisService {
             case "bmp" -> "image/bmp";
             default -> null;
         };
+    }
+
+    // ── content sniffing for extension-less files ───────────────────────
+
+    private static final int SNIFF_LIMIT = 8192;
+
+    /**
+     * Sniff an extension-less file's leading bytes to decide whether it is readable
+     * UTF-8 text. Returns a content-derived MIME type (text/x-sql, application/json,
+     * or text/plain) for text, or null for empty/binary/undecodable content so the
+     * caller rejects it as an unsupported type.
+     */
+    private String sniffTextMime(Path file) {
+        byte[] head;
+        try (InputStream in = Files.newInputStream(file)) {
+            head = in.readNBytes(SNIFF_LIMIT);
+        } catch (IOException e) {
+            return null;
+        }
+        if (head.length == 0) {
+            return null;
+        }
+        // A NUL byte is a strong binary signal — text files never contain it.
+        for (byte b : head) {
+            if (b == 0x00) {
+                return null;
+            }
+        }
+        // Decode as UTF-8 with REPLACE so a multi-byte char split at the sniff
+        // boundary doesn't trip us up; count replacement chars to catch real binary.
+        CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder()
+                .onMalformedInput(CodingErrorAction.REPLACE)
+                .onUnmappableCharacter(CodingErrorAction.REPLACE);
+        String text;
+        try {
+            text = decoder.decode(ByteBuffer.wrap(head)).toString();
+        } catch (CharacterCodingException e) {
+            return null;
+        }
+        // Allow common text control chars (tab/newline/CR/form-feed); other control
+        // chars, or more than a couple of replacement chars, indicate binary.
+        long replacements = text.chars().filter(c -> c == 0xFFFD).count();
+        if (replacements > 2) {
+            return null;
+        }
+        boolean hasBinaryControl = text.chars().anyMatch(c ->
+                (c < 0x09) || (c > 0x0D && c < 0x20) || c == 0x7F);
+        if (hasBinaryControl) {
+            return null;
+        }
+        return classifyTextContent(text);
+    }
+
+    private String classifyTextContent(String text) {
+        String trimmed = text.stripLeading();
+        if (trimmed.isEmpty()) {
+            return "text/plain";
+        }
+        char first = trimmed.charAt(0);
+        if (first == '{' || first == '[') {
+            try {
+                objectMapper.readTree(trimmed);
+                return "application/json";
+            } catch (JsonProcessingException ignored) {
+                // Not valid JSON (or a truncated head) — fall through to other checks.
+            }
+        }
+        String upper = trimmed.toUpperCase();
+        for (String type : SQL_TYPES) {
+            if (upper.startsWith(type)) {
+                return "text/x-sql";
+            }
+        }
+        if (upper.startsWith("WITH")) {
+            return "text/x-sql";
+        }
+        return "text/plain";
     }
 
     // ── validation ──────────────────────────────────────────────────────

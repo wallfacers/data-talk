@@ -127,8 +127,16 @@ export function useFileUpload(sessionId: string) {
   }, [sessionId])
 
   const validateFile = (file: File): string | null => {
-    const ext = '.' + file.name.split('.').pop()?.toLowerCase()
-    if (!ALLOWED_EXTENSIONS.includes(ext)) return t('chat.fileUpload.unsupportedType', { ext })
+    // Only enforce the extension whitelist when the filename actually carries a
+    // usable extension. Extension-less files (no dot, or a trailing dot) are
+    // allowed through — the backend sniffs their content and accepts readable
+    // text while rejecting binaries.
+    const dotIdx = file.name.lastIndexOf('.')
+    const hasExt = dotIdx >= 0 && dotIdx < file.name.length - 1
+    if (hasExt) {
+      const ext = file.name.slice(dotIdx).toLowerCase()
+      if (!ALLOWED_EXTENSIONS.includes(ext)) return t('chat.fileUpload.unsupportedType', { ext })
+    }
     if (file.size === 0) return t('chat.fileUpload.emptyFile')
     if (file.size > MAX_SIZE_BYTES) return t('chat.fileUpload.exceedsLimit')
     return null

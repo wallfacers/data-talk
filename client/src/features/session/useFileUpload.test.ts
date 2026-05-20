@@ -97,6 +97,18 @@ describe('useFileUpload', () => {
     expect(result.current.attachments[0].error).toContain('chat.fileUpload.unsupportedType')
   })
 
+  it('accepts extension-less files (defers type judgment to backend sniffing)', () => {
+    const { result } = renderHook(() => useFileUpload('session-1'))
+
+    act(() => {
+      result.current.addFiles([makeFile('create_test', 27)])
+    })
+
+    expect(result.current.attachments).toHaveLength(1)
+    expect(['pending', 'uploading', 'done']).toContain(result.current.attachments[0].status)
+    expect(result.current.attachments[0].error).toBeUndefined()
+  })
+
   it('rejects empty files', () => {
     const { result } = renderHook(() => useFileUpload('session-1'))
 

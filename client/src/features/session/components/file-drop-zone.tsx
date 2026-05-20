@@ -7,8 +7,15 @@ const MAX_SIZE_BYTES = 50 * 1024 * 1024 // 50 MB
 
 function filterFiles(fileList: FileList): File[] {
   return Array.from(fileList).filter((file) => {
-    const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
-    if (!ALLOWED_EXTENSIONS.has(ext)) return false
+    // Extension-less files (no dot, or a trailing dot) pass the type gate here —
+    // the backend content-sniffs them on upload. Only enforce the whitelist when
+    // a usable extension is present.
+    const dotIdx = file.name.lastIndexOf('.')
+    const hasExt = dotIdx >= 0 && dotIdx < file.name.length - 1
+    if (hasExt) {
+      const ext = file.name.slice(dotIdx + 1).toLowerCase()
+      if (!ALLOWED_EXTENSIONS.has(ext)) return false
+    }
     if (file.size === 0) return false
     if (file.size > MAX_SIZE_BYTES) return false
     return true

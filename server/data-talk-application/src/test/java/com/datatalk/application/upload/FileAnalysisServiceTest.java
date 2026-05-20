@@ -61,6 +61,53 @@ class FileAnalysisServiceTest {
         assertThat(service.detectMime(Path.of("x"), "logo.svg")).isNull();
     }
 
+    // ── extension-less files: content sniffing ────────────────────────
+
+    @Test
+    void detectMime_noExtension_sqlContent_returnsSqlMime() throws IOException {
+        Path file = writeTemp("create_test", "CREATE TABLE test (id INT);");
+        assertThat(service.detectMime(file, "create_test")).isEqualTo("text/x-sql");
+    }
+
+    @Test
+    void detectMime_noExtension_jsonContent_returnsJsonMime() throws IOException {
+        Path file = writeTemp("config", "{\"name\": \"datatalk\", \"version\": 1}");
+        assertThat(service.detectMime(file, "config")).isEqualTo("application/json");
+    }
+
+    @Test
+    void detectMime_noExtension_plainText_returnsTextMime() throws IOException {
+        Path file = writeTemp("notes", "just some readable notes\nsecond line");
+        assertThat(service.detectMime(file, "notes")).isEqualTo("text/plain");
+    }
+
+    @Test
+    void detectMime_noExtension_binaryContent_returnsNull() throws IOException {
+        Path file = tempDir.resolve("blob");
+        Files.write(file, new byte[] {0x00, 0x01, 0x02, (byte) 0xFF, 0x00, 0x10});
+        assertThat(service.detectMime(file, "blob")).isNull();
+    }
+
+    @Test
+    void detectMime_trailingDot_sniffsContent() throws IOException {
+        Path file = writeTemp("dump.", "SELECT * FROM users;");
+        assertThat(service.detectMime(file, "dump.")).isEqualTo("text/x-sql");
+    }
+
+    @Test
+    void analyze_noExtension_sqlContent_returnsSqlAnalysis() throws IOException {
+        Path file = writeTemp("create_test", "CREATE TABLE test (id INT);");
+        FileAnalysisResult result = service.analyze(file, null, "create_test");
+        assertThat(result.type()).isEqualTo("SQL");
+        assertThat(result.summary()).containsKey("statementTypes");
+    }
+
+    private Path writeTemp(String name, String content) throws IOException {
+        Path file = tempDir.resolve(name);
+        Files.writeString(file, content);
+        return file;
+    }
+
     // ── Image analysis ────────────────────────────────────────────────
 
     @Test
