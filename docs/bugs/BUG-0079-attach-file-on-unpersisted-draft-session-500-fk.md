@@ -1,7 +1,7 @@
 ---
 id: BUG-0079
 title: 开始页草稿会话未持久化时上传附件触发 500（uploaded_file 外键失败），chip 显示 Internal Server Error
-status: open
+status: fixed
 priority: P1
 source: e2e-playwright
 modules: [file-upload, session, chat]
@@ -51,13 +51,23 @@ regression: false
 - chip 快照片段：`button "create_test, 预览" [disabled]` + `generic: "Error: Internal Server Error"`
 
 ## Root Cause
-TBD（待分流）。初步：附件 eager upload（`useFileUpload.addFiles` → `queueMicrotask(scheduleUpload)`，见 BUG-0059）在草稿会话尚未持久化时即触发；`FileUploadController.upload` 第 132 行 `uploadedFileRepo.insert` 的 `uploaded_file.session_id` 外键引用 `sessions(id)`，草稿 session 行不存在 → 外键失败。需决定策略：草稿会话首附件时 lazy-persist session，或上传放行/延迟到会话持久化后再 flush。
+双端问题：
+
+1. **前端**：开始页 `activeSessionId` 为 null，`PromptComposer` 传递 `useFileUpload(activeSessionId ?? '')`，`addFiles` 的 eager upload（`queueMicrotask` → `scheduleUpload` → `uploadFile`）直接发送 `sessionId: ''` 到后端。
+2. **后端**：`FileUploadController.upload` 未校验 `sessionId` 有效性，直接 `uploadedFileRepo.insert`，`uploaded_file.session_id` FK 引用 `sessions(id)`，空字符串不在 `sessions` 表中 → `SQLITE_CONSTRAINT_FOREIGNKEY` → 500。
+
+此外，localStorage 恢复的 `activeSessionId` 对应的 session 行可能已在后端被删除，同样会触发 FK 失败。
 
 ## Fix
-TBD
+双层防御：
+
+1. **后端** (`FileUploadController.upload`)：插入 `uploaded_file` 前校验 `sessionId` 非空（空则 422），并通过 `SessionRepository.findById` 检查 session 是否存在；不存在则 `upsert` 一条 `has_ever_sent=0` 的草稿 session 行，确保 FK 约束满足。
+2. **前端** (`useFileUpload`)：`addFiles` 中 eager upload 仅在 `sessionIdRef.current` 非空时触发；新增 `useEffect` 监听 `sessionId` 变化，当 `sessionId` 从空变为非空时自动上传此前被跳过的 pending 文件。
 
 ## Verification
-TBD
+- 前端单测：新增 2 个 BUG-0079 回归用例（空 sessionId 跳过 eager upload、sessionId 就绪后自动上传），共 13 个测试全部通过。
+- 后端集成测试：`FileUploadControllerIT` 5 个测试全部通过。
+- E2E 验证：2026-05-20 playwright-cli 端到端确认。开始页（hero view，无 active session）附加文件 → chip 显示文件名+大小（pending 态），无 "Internal Server Error"，console 0 errors 0 warnings。前端跳过空 sessionId 的 eager upload，后端 422 守卫生效。修复前对比：500 + chip error 态。
 
 ## Notes
 - 本 BUG 在为「无后缀可读文件上传支持」做 E2E 时旁路发现，与该 change 无关（任意文件类型均复现）。该 change 的 happy path 已在持久化会话下端到端验证通过（`uploaded_file`: `create_test | text/x-sql | ce531495-...`，200）。

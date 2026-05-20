@@ -338,4 +338,56 @@ describe('useFileUpload', () => {
     expect(responses).toHaveLength(1)
     expect(responses[0].fileId).toBe('beta')
   })
+
+  // BUG-0079 regression: eager upload must NOT fire when sessionId is empty.
+  // The backend needs a valid session row for the uploaded_file FK constraint;
+  // uploading with an empty sessionId would cause a 500.
+  it('does not trigger eager upload when sessionId is empty', async () => {
+    const { result } = renderHook(() => useFileUpload(''))
+
+    act(() => {
+      result.current.addFiles([makeFile('a.png', 100, 'image/png')])
+    })
+
+    await act(async () => {
+      await flushMicrotasks()
+    })
+
+    // Attachment should be pending (not uploading/done) and uploadFile must not be called.
+    expect(result.current.attachments).toHaveLength(1)
+    expect(result.current.attachments[0].status).toBe('pending')
+    expect(mockUploadFile).not.toHaveBeenCalled()
+  })
+
+  // BUG-0079 regression: when sessionId transitions from empty to non-empty,
+  // pending attachments that were skipped by eager upload should be picked up.
+  it('uploads pending files when sessionId becomes available', async () => {
+    const { result, rerender } = renderHook<ReturnType<typeof useFileUpload>, { sessionId: string }>(
+      ({ sessionId }) => useFileUpload(sessionId),
+      { initialProps: { sessionId: '' } },
+    )
+
+    // Attach files while sessionId is empty → stays pending.
+    act(() => {
+      result.current.addFiles([makeFile('a.png', 100, 'image/png')])
+    })
+
+    await act(async () => {
+      await flushMicrotasks()
+    })
+
+    expect(result.current.attachments[0].status).toBe('pending')
+    expect(mockUploadFile).not.toHaveBeenCalled()
+
+    // Session becomes available (e.g. user clicked "New Session").
+    rerender({ sessionId: 'session-1' })
+
+    await waitFor(() => {
+      expect(mockUploadFile).toHaveBeenCalledTimes(1)
+    })
+
+    await waitFor(() => {
+      expect(result.current.attachments[0].status).toBe('done')
+    })
+  })
 })

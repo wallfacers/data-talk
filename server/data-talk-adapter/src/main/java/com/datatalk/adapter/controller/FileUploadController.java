@@ -1,5 +1,7 @@
 package com.datatalk.adapter.controller;
 
+import com.datatalk.application.persistence.SessionRecord;
+import com.datatalk.application.persistence.SessionRepository;
 import com.datatalk.application.upload.FileAnalysisResult;
 import com.datatalk.application.upload.FileAnalysisService;
 import com.datatalk.application.upload.UploadedFileRepository;
@@ -40,15 +42,18 @@ public class FileUploadController {
 
     private final FileAnalysisService analysisService;
     private final UploadedFileRepository uploadedFileRepo;
+    private final SessionRepository sessionRepo;
     private final Clock clock;
     private final Path uploadBase;
 
     public FileUploadController(FileAnalysisService analysisService,
                                 UploadedFileRepository uploadedFileRepo,
+                                SessionRepository sessionRepo,
                                 Clock clock,
                                 @Value("${datatalk.upload-base:}") String uploadBasePath) {
         this.analysisService = analysisService;
         this.uploadedFileRepo = uploadedFileRepo;
+        this.sessionRepo = sessionRepo;
         this.clock = clock;
         String resolved = (uploadBasePath == null || uploadBasePath.isBlank())
             ? Path.of(System.getProperty("user.home"), ".data-talk", "uploads").toString()
@@ -118,7 +123,22 @@ public class FileUploadController {
             analysis = new FileAnalysisResult("UNKNOWN", false, null, Map.of());
         }
 
-        // 6. Create domain record and persist
+        // 6. Ensure session row exists before inserting uploaded_file (FK constraint).
+        // The frontend may send an upload request before the draft session is persisted
+        // (e.g. start-page hero view where activeSessionId is still null, or
+        // localStorage-restored sessionId whose backend row was deleted).
+        // Lazy-create a draft session row so the FK on uploaded_file.session_id succeeds.
+        if (sessionId == null || sessionId.isBlank()) {
+            return error(HttpStatus.UNPROCESSABLE_ENTITY, "sessionId is required");
+        }
+        if (sessionRepo.findById(sessionId).isEmpty()) {
+            long nowMs = clock.instant().toEpochMilli();
+            sessionRepo.upsert(new SessionRecord(
+                sessionId, null, "", false, null, nowMs, nowMs, false
+            ));
+        }
+
+        // 7. Create domain record and persist
         UploadedFile uploaded = new UploadedFile(
             fileId,
             sessionId,
@@ -131,7 +151,7 @@ public class FileUploadController {
         );
         uploadedFileRepo.insert(uploaded);
 
-        // 7. Build response
+        // 8. Build response
         Map<String, Object> analysisJson = new LinkedHashMap<>();
         analysisJson.put("type", analysis.type());
         analysisJson.put("fullContent", analysis.fullContent());

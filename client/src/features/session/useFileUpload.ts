@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { fetchFileContent, uploadFile } from '@/services/api/file-upload'
 import type { FileUploadResponse } from '@/services/api/file-upload'
 import { useI18n } from '@/i18n/use-i18n'
@@ -207,6 +207,19 @@ export function useFileUpload(sessionId: string) {
     }
   }, [uploadOne])
 
+  // When sessionId transitions from empty to non-empty (e.g. start-page hero view
+  // where the user attached files before a session was created), trigger eager upload
+  // for any pending attachments that were skipped by addFiles. See BUG-0079.
+  useEffect(() => {
+    if (!sessionId) return
+    const pendingIds = attachmentsRef.current
+      .filter(a => a.status === 'pending')
+      .map(a => a.id)
+    if (pendingIds.length > 0) {
+      scheduleUpload(pendingIds)
+    }
+  }, [sessionId, scheduleUpload])
+
   const addFiles = useCallback((files: FileList | File[]) => {
     const newAttachments: FileAttachment[] = []
     for (const file of Array.from(files)) {
@@ -230,7 +243,7 @@ export function useFileUpload(sessionId: string) {
     const idsToUpload = newAttachments
       .filter(a => a.status === 'pending')
       .map(a => a.id)
-    if (idsToUpload.length > 0) {
+    if (idsToUpload.length > 0 && sessionIdRef.current) {
       queueMicrotask(() => { void scheduleUpload(idsToUpload) })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
