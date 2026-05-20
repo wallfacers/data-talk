@@ -788,8 +788,11 @@ public class ResourceDirectoryService {
         try (Stream<Path> entries = Files.list(dir)) {
             for (Path entry : entries.toList()) {
                 if (Files.isDirectory(entry)) {
-                    count++;
-                    size += dirSize(entry);
+                    long subSize = dirSize(entry);
+                    if (subSize > 0) {
+                        count++;
+                        size += subSize;
+                    }
                 } else if (Files.isRegularFile(entry)) {
                     count++;
                     size += Files.size(entry);
