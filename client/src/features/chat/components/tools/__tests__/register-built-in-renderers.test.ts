@@ -11,12 +11,14 @@ describe('registerBuiltInRenderers', () => {
     const { ExecuteSql } = await import('../renderers/execute-sql')
     const { ShowSchema } = await import('../renderers/metadata-renderers')
     const { ArtifactCreated } = await import('../renderers/artifact-created')
+    const { Question } = await import('../renderers/question')
 
     registerBuiltInRenderers()
 
     expect(ToolRegistry.get('datatalk_execute_sql')).toBe(ExecuteSql)
     expect(ToolRegistry.get('datatalk_read_schema')).toBe(ShowSchema)
     expect(ToolRegistry.get('datatalk_render_chart')).toBe(ArtifactCreated)
+    expect(ToolRegistry.get('question')).toBe(Question)
 
     for (const legacyKey of ['execute_sql', 'show_schema', 'artifact_created', 'read']) {
       expect(ToolRegistry.get(legacyKey)).toBeUndefined()

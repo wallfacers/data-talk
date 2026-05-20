@@ -166,4 +166,50 @@ class OpenCodeEventLoopParseTest {
         assertThat(e).isInstanceOf(OcEvent.MessagePartRemoved.class);
         assertThat(((OcEvent.MessagePartRemoved) e).partId()).isEqualTo("p1");
     }
+
+    @Test
+    void questionAskedReadsIdSessionAndQuestions() {
+        // Trap: asked carries the requestId under `id` (replied/rejected use `requestID`).
+        String json = """
+            {"type":"question.asked","properties":{
+                "id":"qst_1","sessionID":"ses_abc",
+                "questions":[{"question":"Continue?","header":"Confirm",
+                              "options":[{"label":"Yes","description":"go"}]}],
+                "tool":{"messageID":"msg_9","callID":"call_9"}}}
+            """;
+        OcEvent e = loop.parseOcEvent("question.asked", json);
+        assertThat(e).isInstanceOf(OcEvent.QuestionAsked.class);
+        OcEvent.QuestionAsked q = (OcEvent.QuestionAsked) e;
+        assertThat(q.requestId()).isEqualTo("qst_1");
+        assertThat(q.sessionId()).isEqualTo("ses_abc");
+        assertThat(q.questions().get(0).path("header").asText()).isEqualTo("Confirm");
+        assertThat(q.messageId()).isEqualTo("msg_9");
+        assertThat(q.callId()).isEqualTo("call_9");
+    }
+
+    @Test
+    void questionRepliedReadsRequestIdAndSession() {
+        String json = """
+            {"type":"question.replied","properties":{
+                "sessionID":"ses_abc","requestID":"qst_1","answers":[["Yes"]]}}
+            """;
+        OcEvent e = loop.parseOcEvent("question.replied", json);
+        assertThat(e).isInstanceOf(OcEvent.QuestionReplied.class);
+        OcEvent.QuestionReplied q = (OcEvent.QuestionReplied) e;
+        assertThat(q.requestId()).isEqualTo("qst_1");
+        assertThat(q.sessionId()).isEqualTo("ses_abc");
+    }
+
+    @Test
+    void questionRejectedReadsRequestIdAndSession() {
+        String json = """
+            {"type":"question.rejected","properties":{
+                "sessionID":"ses_abc","requestID":"qst_1"}}
+            """;
+        OcEvent e = loop.parseOcEvent("question.rejected", json);
+        assertThat(e).isInstanceOf(OcEvent.QuestionRejected.class);
+        OcEvent.QuestionRejected q = (OcEvent.QuestionRejected) e;
+        assertThat(q.requestId()).isEqualTo("qst_1");
+        assertThat(q.sessionId()).isEqualTo("ses_abc");
+    }
 }

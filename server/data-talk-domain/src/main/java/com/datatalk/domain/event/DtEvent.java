@@ -63,6 +63,14 @@ public sealed interface DtEvent {
     @JsonTypeName("message.part.removed")
     record MessagePartRemoved(String partId) implements DtEvent {}
 
+    @JsonTypeName("question.asked")
+    record QuestionAsked(String sessionId, String requestId, JsonNode questions,
+                         String messageId, String callId) implements DtEvent {}
+    @JsonTypeName("question.replied")
+    record QuestionReplied(String sessionId, String requestId) implements DtEvent {}
+    @JsonTypeName("question.rejected")
+    record QuestionRejected(String sessionId, String requestId) implements DtEvent {}
+
     @JsonTypeName("action.invoke")
     record ActionInvoke(String callId, String actionId, Map<String, Object> input, int timeoutMs) implements DtEvent {}
     @JsonTypeName("action.cancel")
@@ -158,6 +166,9 @@ public sealed interface DtEvent {
             case MessagePartUpdated pu    -> "message.part.updated";
             case MessagePartDelta pd      -> "message.part.delta";
             case MessagePartRemoved pr    -> "message.part.removed";
+            case QuestionAsked qa         -> "question.asked";
+            case QuestionReplied qr       -> "question.replied";
+            case QuestionRejected qj      -> "question.rejected";
             case ActionInvoke ai          -> "action.invoke";
             case ActionCancel ac          -> "action.cancel";
             case ActionResponse ar        -> "action.response";

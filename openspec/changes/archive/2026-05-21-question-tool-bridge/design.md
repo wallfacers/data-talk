@@ -45,8 +45,11 @@ DataTalk 现状：`question.asked` 落到 `OcEvent.Unknown` 被丢弃；无 repl
 ### D5. 刷新 / 重连恢复
 前端在订阅 session（或挂载 composer）时调 `GET …/questions` 重建 store。OpenCode 的 `Deferred` 跨 DataTalk 前端刷新存活（只要 OpenCode 进程与 turn 在），无需 DataTalk 落库。
 
-### D6. DtEvent sealed 同步
-`DtEvent` 新增 3 record 后，编译期会强制所有 exhaustive switch 补齐。已知落点 `OpenCodeEventTranslator`；实施时 grep 全部 `switch` over `DtEvent` / JSON-RPC 序列化处补齐。
+### D6. DtEvent sealed 同步（三类义务，并非都编译期强制）
+`DtEvent` 新增 3 record 后有三处必须同步，**只有第一处编译期强制**，另两处漏了会在运行期/逻辑上静默出错：
+1. **`typeName()` exhaustive switch**（无 default）—— 编译期强制，必补。
+2. **`@JsonTypeName` 注解**（每个 record）—— `DtEventTypeIdResolver.init` 遍历 permitted subclasses，缺注解抛 `IllegalStateException`；**编译期不报错**，启动/序列化时才炸。
+3. **`extractSessionId`（`OpenCodeEventLoop`）与 `OpenCodeEventTranslator` 映射** —— 前者带 `default` 兜底（漏补则事件路由不到 session、dock 不显示），后者需新增 `case`。均非编译期强制（或仅 translator 强制），实施时 grep 逐一补。
 
 ## Risks / Trade-offs
 
@@ -59,7 +62,22 @@ DataTalk 现状：`question.asked` 落到 `OcEvent.Unknown` 被丢弃；无 repl
 
 纯增量、无数据迁移。后端先上（事件 + 端点），前端后上（store + dock）。回滚：移除前端 dock 分支即可退回「问题被隐藏」的旧行为（功能缺失但不破坏）；后端新增事件/端点对旧前端无副作用（未消费）。
 
+## Resolved Decisions
+
+- **Dismiss（reject）语义**：沿用 OpenCode 的 reject —— 模型收到「用户略过」，dock 文案按 i18n 规范定（tasks 8.2）。
+- **单问题捷径**：`questions.length === 1` 且非多选时沿用 OpenCode「选中即提交、无 Confirm」捷径以减少点击（已落入 tasks 5.2）。
+
+## Contract Findings（已对 OpenCode 源码核实 — `packages/opencode/src/question/{index,schema}.ts` + `server/routes/question.ts`）
+
+tasks 0.1 / 0.2 的核实结论（权威来源为 OpenCode 源码本身，优于抓帧）：
+
+- **`question.asked` 直接携带 `sessionID`**（事件 payload = `Question.Request`，含 `id` / `sessionID` / `questions[]` / 可选 `tool:{messageID,callID}`）。故 `extractSessionId` 对 `QuestionAsked` 直接 `props.path("sessionID")` 取值，**无需** `partId/callId→session` 反查映射。`replied` / `rejected` payload 仅含 `sessionID` + `requestID`（+ replied 的 `answers`）。
+- **requestId 字段名不一致（陷阱）**：`question.asked` 里该字段叫 **`id`**；`question.replied` / `question.rejected` 里叫 **`requestID`**（值相同）。解码时 asked 取 `props.path("id")`，replied/rejected 取 `props.path("requestID")`。
+- **REST 端点**（base `/question`）：`GET /question` 列**所有 session** 的 pending（**无 session 过滤参数**，返回 `Request[]`）；`POST /question/{requestID}/reply`（body `{answers: string[][]}`，返回 `boolean`）；`POST /question/{requestID}/reject`（无 body，返回 `boolean`）。
+- **reply 形状确认**：`answers: string[][]`，按 `questions` 顺序，每项为该问题被选中的 label 数组——与 D4 一致，无需调整。
+- **子问题结构**：`{ question, header(≤30 chars), options:[{label, description}], multiple?, custom?(默认 true) }`。
+- **影响 listQuestions 签名**：OpenCode 端不支持按 session 过滤，故 `listQuestions()` 拉全量后由 DataTalk（application 层或前端）按 `sessionID` 过滤。
+
 ## Open Questions
 
-- dock 的 Dismiss（reject）文案与是否对用户暴露「略过」语义 —— 默认沿用 OpenCode 的 reject（模型收到「用户略过」），实施时按 i18n 规范定文案。
-- 单问题（`questions.length === 1` 且非多选）是否沿用 OpenCode 的「选中即提交、无 Confirm 标签页」捷径 —— 倾向沿用以减少点击。
+- 无（阻塞项已由源码核实关闭）。

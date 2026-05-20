@@ -24,5 +24,17 @@ public sealed interface OcEvent {
     record MessagePartUpdated(JsonNode part) implements OcEvent {}
     record MessagePartDelta(String partId, String field, String delta) implements OcEvent {}
     record MessagePartRemoved(String partId) implements OcEvent {}
+
+    /**
+     * OpenCode {@code question.asked}: the {@code requestId} is carried under
+     * {@code id} (replied/rejected use {@code requestID}); {@code questions} is
+     * the raw sub-question array; {@code messageId}/{@code callId} (optional)
+     * link the originating tool part.
+     */
+    record QuestionAsked(String requestId, String sessionId, JsonNode questions,
+                         String messageId, String callId) implements OcEvent {}
+    record QuestionReplied(String sessionId, String requestId) implements OcEvent {}
+    record QuestionRejected(String sessionId, String requestId) implements OcEvent {}
+
     record Unknown(String type, Map<String, Object> payload) implements OcEvent {}
 }

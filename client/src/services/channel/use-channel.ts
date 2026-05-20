@@ -11,6 +11,8 @@ import { useSessionStore } from '@/stores/session-store'
 import { useConnectionStore } from '@/features/connection/store'
 import { useFileArtifactsStore } from '@/features/stage/stores/file-artifacts-store'
 import { useChannelStore } from '@/stores/channel-store'
+import { useQuestionStore } from '@/stores/question-store'
+import type { QuestionInfo } from '@/services/api/question'
 import { getClientHandler } from '@/features/actions/registry'
 import { normalizeError, showErrorToast } from '@/services/http-error'
 import { toast } from 'sonner'
@@ -499,6 +501,14 @@ export function buildEventSink(
       handler(input, { sessionId })
         .then((output) => client.actionResult(callId, true, output))
         .catch((err) => client.actionResult(callId, false, undefined, normalizeActionInvokeError(err)))
+    } else if (event === 'question.asked') {
+      const { requestId, questions } = data as { requestId: string; questions: QuestionInfo[] }
+      if (requestId) {
+        useQuestionStore.getState().upsert(sessionId, { id: requestId, questions: questions ?? [] })
+      }
+    } else if (event === 'question.replied' || event === 'question.rejected') {
+      const { requestId } = data as { requestId: string }
+      if (requestId) useQuestionStore.getState().removeByRequestId(sessionId, requestId)
     } else if (
       event === 'file_artifact.detected' ||
       event === 'file_artifact.archive_requested' ||

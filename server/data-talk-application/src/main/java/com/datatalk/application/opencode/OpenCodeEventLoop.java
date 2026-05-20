@@ -376,6 +376,18 @@ public class OpenCodeEventLoop {
                     props.path("delta").asText());
                 case "message.part.removed" -> new OcEvent.MessagePartRemoved(
                     props.path("partID").asText());
+                case "question.asked"   -> new OcEvent.QuestionAsked(
+                    props.path("id").asText(),
+                    props.path("sessionID").asText(null),
+                    props.path("questions"),
+                    props.path("tool").path("messageID").asText(null),
+                    props.path("tool").path("callID").asText(null));
+                case "question.replied" -> new OcEvent.QuestionReplied(
+                    props.path("sessionID").asText(null),
+                    props.path("requestID").asText());
+                case "question.rejected" -> new OcEvent.QuestionRejected(
+                    props.path("sessionID").asText(null),
+                    props.path("requestID").asText());
                 default -> new OcEvent.Unknown(name, om.convertValue(props, Map.class));
             };
         } catch (Exception e) {
@@ -465,6 +477,9 @@ public class OpenCodeEventLoop {
             case OcEvent.SessionError s      -> s.info().id();
             case OcEvent.SessionCompacted s  -> s.info().id();
             case OcEvent.SessionDiff s       -> s.info().id();
+            case OcEvent.QuestionAsked q     -> q.sessionId();
+            case OcEvent.QuestionReplied q   -> q.sessionId();
+            case OcEvent.QuestionRejected q  -> q.sessionId();
             case OcEvent.SessionStatus s     -> null;
             default                          -> null;
         };

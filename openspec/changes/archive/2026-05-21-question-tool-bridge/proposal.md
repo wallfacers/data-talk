@@ -20,9 +20,9 @@ OpenCode 的内置 `question` 工具（人机交互确认）目前在 DataTalk �
 
 ## Impact
 
-- **domain**：`DtEvent` sealed interface 新增 3 个 question 事件 record —— 必须同步所有 exhaustive switch（已知落点：`OpenCodeEventTranslator`；需排查任何 `DtEvent` → JSON-RPC 序列化 switch）。
-- **application**：`OcEvent` 新增 3 个 variant；`OpenCodeEventLoop` 解码 switch（`switch(name)` 及 sessionId 解析）与 `OpenCodeEventTranslator` 映射新增分支。
-- **infrastructure**：`OpenCodeHttpClient` 新增 `listQuestions` / `questionReply` / `questionReject`；新增 question REST controller（adapter 层）。
+- **domain**：`DtEvent` sealed interface 新增 3 个 question 事件 record —— 每个 record **必须同时**标注 `@JsonTypeName`（否则 `DtEventTypeIdResolver.init` 运行期抛 `IllegalStateException`，**编译期不报错**）并补进 `typeName()` exhaustive switch（编译期强制）；并排查 `OpenCodeEventTranslator` 的映射 switch。
+- **application**：`OcEvent` 新增 3 个 variant；`OpenCodeEventLoop` 解码 `switch(name)` 与 `extractSessionId`（带 `default`、非 exhaustive，须手动补 case，sessionId 来源待 0.1 核实）；`OpenCodeEventTranslator` 映射新增分支；`OpenCodeGateway` 新增 question 端口（functional interface，对齐 abort/sendMessage 既有模式）。
+- **infrastructure / adapter**：`OpenCodeHttpClient` 新增 `listQuestions` / `questionReply` / `questionReject`；`OpenCodeGatewayBeans` 接线新端口；新增 question REST controller（adapter 经 gateway 端口调用，**不直连 infra 具体类**）。
 - **client**：新增 question store + `event-reducer` 处理；`prompt-composer.tsx` 新增「挂起问题→渲染 dock」分支；新增 `QuestionDock` 组件；`assistant-stream.tsx` 维持隐藏 running question part。
 - **协议**：复用现有 Streamable HTTP + SSE 通道下发事件；reply/reject 为新的 REST 往返（不经 action.invoke）。
 - **不涉及**数据库 / 数据源类型变更（`docs/DATA_SOURCE_TYPE_COMPATIBILITY.md` 各项 **N/A**：无连接 UI、JDBC、schema、SQL 执行/拆分、诊断、MCP schema、runtime prompt 改动）。
@@ -41,3 +41,4 @@ OpenCode 的内置 `question` 工具（人机交互确认）目前在 DataTalk �
 - **composer streaming 状态历史脆弱**：composer 与 streaming flag 的交互有多起历史 BUG（BUG-0037/0038/0046/0052，刷新/replay 时 stop↔send 翻转、streaming flag race）。本change 在「挂起问题」期间改变 composer 呈现（dock 接管），必须确保刷新（CTRL+R）/ 重连 replay 时 dock 能从 `GET 列挂起问题` 正确重建，且不与 streaming flag 判定打架。
 - **多子问题 + 自定义文本** 的 `answers: string[][]` 映射需与 OpenCode 端格式严格一致（每子问题一个 label 数组，自定义文本作为 label 进入对应数组），否则 reply 被 OpenCode 拒绝或模型误读。
 - 当前 composer 仍有未关闭 BUG（BUG-0057/0059/0063，文件 chip / eager upload），与本change 正交，但改 `prompt-composer.tsx` 时需避免回归这些路径。
+- ~~**`question.asked` 的 sessionId 来源未坐实**~~ **已核实关闭**：OpenCode 源码确认三个 question 事件 payload 均直接含 `sessionID`，`extractSessionId` 直接取字段即可，无需反查映射（详见 design.md「Contract Findings」）。注意 requestId 字段名陷阱：`asked`=`id`、`replied`/`rejected`=`requestID`。

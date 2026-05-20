@@ -83,6 +83,30 @@ class OpenCodeEventTranslatorTest {
     }
 
     @Test
+    void questionAskedTranslatesWithDataTalkSessionId() {
+        JsonNode questions = om.valueToTree(List.of(Map.of("header", "Confirm", "question", "Continue?")));
+        List<DtEvent> out = tr.translate("dt-1",
+            new OcEvent.QuestionAsked("qst_1", "oc-1", questions, "msg_9", "call_9"));
+        assertThat(out).hasSize(1);
+        assertThat(out.get(0)).isInstanceOf(DtEvent.QuestionAsked.class);
+        DtEvent.QuestionAsked qa = (DtEvent.QuestionAsked) out.get(0);
+        assertThat(qa.sessionId()).isEqualTo("dt-1");
+        assertThat(qa.requestId()).isEqualTo("qst_1");
+        assertThat(qa.callId()).isEqualTo("call_9");
+    }
+
+    @Test
+    void questionRepliedAndRejectedTranslate() {
+        List<DtEvent> replied = tr.translate("dt-1", new OcEvent.QuestionReplied("oc-1", "qst_1"));
+        assertThat(replied.get(0)).isInstanceOf(DtEvent.QuestionReplied.class);
+        assertThat(((DtEvent.QuestionReplied) replied.get(0)).requestId()).isEqualTo("qst_1");
+
+        List<DtEvent> rejected = tr.translate("dt-1", new OcEvent.QuestionRejected("oc-1", "qst_1"));
+        assertThat(rejected.get(0)).isInstanceOf(DtEvent.QuestionRejected.class);
+        assertThat(((DtEvent.QuestionRejected) rejected.get(0)).sessionId()).isEqualTo("dt-1");
+    }
+
+    @Test
     void partIsolatedBySessionId() {
         JsonNode p = textPartJson("p1", "s-a", "m1", "hi");
         tr.translate("s-a", new OcEvent.MessagePartUpdated(p));

@@ -45,6 +45,9 @@ import { classifyImagePayload, computeImagePayloadSize } from './image-payload'
 import { evictDataUri, getDataUri, useFileUpload } from './useFileUpload'
 import { FileAttachmentChip } from './components/file-attachment-chip'
 import { FileDropZone } from './components/file-drop-zone'
+import { useQuestionStore } from '@/stores/question-store'
+import { listQuestions } from '@/services/api/question'
+import { QuestionDock } from './question-dock/question-dock'
 
 function useComposerSlot(): HTMLElement | null {
   const [slot, setSlot] = useState<HTMLElement | null>(null)
@@ -105,6 +108,20 @@ function InnerComposer() {
   const hasActiveModel = useHasActiveModel()
   const sessionDataContext = useSessionDataContext(activeSessionId)
   const qc = useQueryClient()
+
+  // 挂起问题：本 session 有 AI question 时由 dock 接管 composer（镜像 OpenCode web 的 showComposer = !blocked）
+  const pendingQuestion = useQuestionStore((s) =>
+    activeSessionId ? s.bySession.get(activeSessionId)?.[0] : undefined,
+  )
+  // 刷新（CTRL+R）/ 重连 / 切 session 时从服务端重建挂起集合（list 与 asked 事件按 requestId 去重）
+  useEffect(() => {
+    if (!activeSessionId) return
+    let cancelled = false
+    listQuestions(activeSessionId)
+      .then((qs) => { if (!cancelled) useQuestionStore.getState().setForSession(activeSessionId, qs) })
+      .catch(() => { /* best-effort rebuild; live events still drive the store */ })
+    return () => { cancelled = true }
+  }, [activeSessionId])
 
   const {
     attachments,
@@ -473,6 +490,10 @@ function InnerComposer() {
       : hasInflight
         ? 'uploading'
         : 'idle'
+
+  if (pendingQuestion && activeSessionId) {
+    return <QuestionDock sessionId={activeSessionId} request={pendingQuestion} />
+  }
 
   return (
     <form onSubmit={onSubmit} className="w-full">

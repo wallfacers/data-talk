@@ -81,6 +81,15 @@ public class OpenCodeEventTranslator {
             case OcEvent.MessagePartRemoved r ->
                 List.of(new DtEvent.MessagePartRemoved(r.partId()));
 
+            case OcEvent.QuestionAsked q ->
+                List.of(new DtEvent.QuestionAsked(sessionId, q.requestId(), q.questions(), q.messageId(), q.callId()));
+
+            case OcEvent.QuestionReplied q ->
+                List.of(new DtEvent.QuestionReplied(sessionId, q.requestId()));
+
+            case OcEvent.QuestionRejected q ->
+                List.of(new DtEvent.QuestionRejected(sessionId, q.requestId()));
+
             case OcEvent.Unknown u -> Collections.emptyList();
         };
     }

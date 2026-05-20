@@ -260,4 +260,50 @@ class OpenCodeHttpClientTest {
         assertThat(node.isObject()).isTrue();
         assertThat(node.size()).isZero();
     }
+
+    @Test
+    void listQuestions_returns_pending_request_array() {
+        wm.stubFor(get(urlEqualTo("/question"))
+            .willReturn(okJson("""
+                [
+                  {"id":"qst_1","sessionID":"ses_abc",
+                   "questions":[{"question":"Continue?","header":"Confirm",
+                                 "options":[{"label":"Yes","description":"go"}],
+                                 "multiple":false,"custom":true}]}
+                ]
+                """)));
+
+        JsonNode node = client.listQuestions();
+
+        assertThat(node.isArray()).isTrue();
+        assertThat(node.get(0).path("id").asText()).isEqualTo("qst_1");
+        assertThat(node.get(0).path("sessionID").asText()).isEqualTo("ses_abc");
+        wm.verify(getRequestedFor(urlEqualTo("/question")));
+    }
+
+    @Test
+    void questionReply_posts_answers_as_string_array_of_arrays() {
+        wm.stubFor(post(urlEqualTo("/question/qst_1/reply"))
+            .willReturn(okJson("true")));
+
+        boolean ok = client.replyQuestion("qst_1",
+            java.util.List.of(java.util.List.of("Yes"), java.util.List.of("A", "B")));
+
+        assertThat(ok).isTrue();
+        wm.verify(postRequestedFor(urlEqualTo("/question/qst_1/reply"))
+            .withRequestBody(equalToJson("""
+                {"answers":[["Yes"],["A","B"]]}
+                """, true, true)));
+    }
+
+    @Test
+    void questionReject_posts_to_reject_endpoint() {
+        wm.stubFor(post(urlEqualTo("/question/qst_2/reject"))
+            .willReturn(okJson("true")));
+
+        boolean ok = client.rejectQuestion("qst_2");
+
+        assertThat(ok).isTrue();
+        wm.verify(postRequestedFor(urlEqualTo("/question/qst_2/reject")));
+    }
 }

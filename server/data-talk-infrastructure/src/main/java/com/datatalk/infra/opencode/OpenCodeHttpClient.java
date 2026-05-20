@@ -1,6 +1,7 @@
 package com.datatalk.infra.opencode;
 
 import com.datatalk.application.ai.OpenCodeProviderClient;
+import com.datatalk.application.opencode.OpenCodeQuestionClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -10,13 +11,14 @@ import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 
 /**
  * Thin HTTP wrapper around the OpenCode server. Session messaging remains the
  * core path, while MCP bootstrap/reconcile uses /config and /mcp helpers.
  */
-public class OpenCodeHttpClient implements OpenCodeProviderClient {
+public class OpenCodeHttpClient implements OpenCodeProviderClient, OpenCodeQuestionClient {
 
     private static final Logger log = LoggerFactory.getLogger(OpenCodeHttpClient.class);
     private static final Duration STATUS_TIMEOUT = Duration.ofSeconds(2);
@@ -112,6 +114,58 @@ public class OpenCodeHttpClient implements OpenCodeProviderClient {
             throw new IllegalStateException("cannot parse OpenCode /session/"
                 + openCodeSessionId + "/message response", e);
         }
+    }
+
+    @Override
+    public JsonNode listQuestions() {
+        String body = wc.get().uri("/question")
+            .retrieve()
+            .bodyToMono(String.class)
+            .block();
+        try {
+            return body == null || body.isBlank() ? om.createArrayNode() : om.readTree(body);
+        } catch (Exception e) {
+            throw new IllegalStateException("cannot parse OpenCode /question response", e);
+        }
+    }
+
+    @Override
+    public boolean replyQuestion(String requestId, List<List<String>> answers) {
+        String body = wc.post().uri("/question/{id}/reply", requestId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(Map.of("answers", answers))
+            .retrieve()
+            .bodyToMono(String.class)
+            .block();
+        return parseBooleanResult(body);
+    }
+
+    @Override
+    public boolean rejectQuestion(String requestId) {
+        String body = wc.post().uri("/question/{id}/reject", requestId)
+            .retrieve()
+            .bodyToMono(String.class)
+            .block();
+        return parseBooleanResult(body);
+    }
+
+    private boolean parseBooleanResult(String body) {
+        if (body == null || body.isBlank()) {
+            return true;
+        }
+        String trimmed = body.trim();
+        if ("true".equalsIgnoreCase(trimmed)) return true;
+        if ("false".equalsIgnoreCase(trimmed)) return false;
+        try {
+            JsonNode node = om.readTree(trimmed);
+            if (node.isBoolean()) return node.booleanValue();
+            if (node.has("result") && node.get("result").isBoolean()) {
+                return node.get("result").booleanValue();
+            }
+        } catch (Exception ignored) {
+            // Unknown payload — treat as success for compatibility.
+        }
+        return true;
     }
 
     public JsonNode listProviders() {

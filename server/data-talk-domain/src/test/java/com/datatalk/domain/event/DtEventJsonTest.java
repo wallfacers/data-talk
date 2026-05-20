@@ -51,6 +51,24 @@ class DtEventJsonTest {
     }
 
     @Test
+    void questionEvents_roundTrip() throws Exception {
+        // Guards the @JsonTypeName runtime trap: missing annotation would throw at resolver init.
+        com.fasterxml.jackson.databind.JsonNode questions = om.readTree(
+            "[{\"question\":\"Continue?\",\"header\":\"Confirm\","
+            + "\"options\":[{\"label\":\"Yes\",\"description\":\"go\"}],\"multiple\":false,\"custom\":true}]");
+        DtEvent[] events = {
+            new DtEvent.QuestionAsked("s1", "qst_1", questions, "msg_9", "call_9"),
+            new DtEvent.QuestionReplied("s1", "qst_1"),
+            new DtEvent.QuestionRejected("s1", "qst_1")
+        };
+        for (DtEvent event : events) {
+            String json = om.writeValueAsString(event);
+            assertThat(json).contains("\"type\":\"" + event.typeName() + "\"");
+            assertThat(om.readValue(json, DtEvent.class)).isEqualTo(event);
+        }
+    }
+
+    @Test
     void fileArtifactEvents_roundTrip() throws Exception {
         DtEvent[] events = {
             new DtEvent.FileArtifactDetected("fa1", "s1", "report.md", "report", "temporary", 42L),
