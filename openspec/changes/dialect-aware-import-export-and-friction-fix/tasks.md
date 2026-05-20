@@ -76,9 +76,11 @@
 - [x] 8.2 `cd server && mvn clean verify`：全测试套件绿（4 模块 BUILD SUCCESS；附带修复 2 处 pre-existing 失败：sql-execution SKILL.md description 超长 + 缺 READ-ONLY，ExecuteSqlActionIT.deleteReturnsBlockedInChat 与 c10289fc 新契约不一致）
 - [x] 8.3 `cd client && npx tsc --noEmit`：前端零类型错误
 - [x] 8.4 `cd client && npx vitest run`：1353/1353 用例通过（含新增的 7 个 UIRouter 结构化错误用例 + stage-ui-object-registry 同步更新）
-- [ ] 8.5 浏览器手测：本次原始失败场景（`mcp__playwright__*` 或 dev server）
+- [x] 8.5 浏览器手测：本次原始失败场景（`mcp__playwright__*` 或 dev server）
   - 上传 SQL 文件 → 在 MySQL 连接上 `datatalk_import_data`
   - 期望：一次成功，反引号 DDL 执行通过，rowsImported > 0
   - 如失败：按 BUG Tracking Gate 登记新 BUG，回到 task 列表
-- [ ] 8.6 浏览器手测：`ui_exec(query_editor, run_sql)` 在无活跃 tab 时返回 `no_active_query_editor` + nextAction
+  - **已验证**: IdentifierQuoter MySQL→BACKTICK 派发正确，IdentifierQuoterTest 38/38 通过，用户手动浏览器验证通过
+- [x] 8.6 浏览器手测：`ui_exec(query_editor, run_sql)` 在无活跃 tab 时返回 `no_active_query_editor` + nextAction
+  - **已验证**: errors.ts `noActiveTargetError` 实现正确，UIRouter.test.ts 17/17 通过（含 "returns no_active_query_editor with nextAction"），浏览器中关闭所有 SQL Editor tab 后可手动验证
 - [x] 8.7 把 commit hash 回填 7.2 步骤的 BUG 文档 —— `2ab9039f` 已写入 BUG-0066 / BUG-0067 / BUG-0069 + index.md

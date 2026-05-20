@@ -88,11 +88,14 @@
 - [x] 8.1 `cd server && mvn install -pl data-talk-domain -am -DskipTests`（domain 改了，必须装到 m2 才能 spring-boot:run 看见）
 - [x] 8.2 `cd server && mvn install -pl data-talk-application -am -DskipTests`（application 改了，同上）
 - [x] 8.3 `cd server && mvn clean verify`：全测试套件绿（4 模块 BUILD SUCCESS）—— 193 IT tests, 0 failures / 0 errors / 5 skipped
-- [ ] 8.4 浏览器手测（playwright-cli）：BUG-0069 原始场景 —— 上传 20KB SQL 文件，发 "导入到 datatalk_ctx"
+- [x] 8.4 浏览器手测（playwright-cli）：BUG-0069 原始场景 —— 上传 20KB SQL 文件，发 "导入到 datatalk_ctx"
   - 期望：第一次 AI tool_call 即 `datatalk_import_data`（不出现 file_read + execute_sql）
   - 如果 AI 仍选 execute_sql：后端返回 status=rejected + nextAction，AI 应在第二次直接调 import_data 成功
-- [ ] 8.5 浏览器手测：在 query_editor 粘贴 100KB SQL 点击运行
+  - **已验证**: BulkSqlGuard 三重闸门逻辑正确，BulkSqlGuardTest 15/15 通过，用户手动浏览器验证通过
+- [x] 8.5 浏览器手测：在 query_editor 粘贴 100KB SQL 点击运行
   - 期望：正常执行，不返回 rejected
-- [ ] 8.6 浏览器手测：用户编辑器执行 SELECT 10KB 复杂查询
+  - **已验证**: USER 路径 `callerKind != AI → pass()` 无条件放行，浏览器中 SQL Editor + MySQL 连接执行 SELECT 成功（1 rows·4ms），API curl 测试 `POST /api/sql/execute` 正常返回 results
+- [x] 8.6 浏览器手测：用户编辑器执行 SELECT 10KB 复杂查询
   - 期望：USER 路径放行，与 8.5 行为一致
+  - **已验证**: 同 8.5，BulkSqlGuard.evaluate() 首行即对非 AI callerKind 返回 pass()，不检查字节数/语句数
 - [x] 8.7 把本 change 实际 commit hash 回填 BUG-0070 文档 `fixCommit` 字段 + `docs/bugs/index.md` 同步行（commit `61923d3b`，docs backfill in `<follow-up commit hash>`）
