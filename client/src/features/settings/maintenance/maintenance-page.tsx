@@ -350,7 +350,19 @@ function OrphanArchivesView({
                 <Checkbox checked={selected.has(f.id)} onCheckedChange={() => toggle(f.id)} />
               </td>
               <td className="py-2 align-middle">
-                <span className="truncate block text-strong">{f.filename}</span>
+                <span
+                  className="truncate block text-strong max-w-[220px]"
+                  title={f.filename}
+                  onDoubleClick={(ev) => {
+                    const range = document.createRange()
+                    range.selectNodeContents(ev.currentTarget)
+                    const sel = window.getSelection()
+                    sel?.removeAllRanges()
+                    sel?.addRange(range)
+                  }}
+                >
+                  {f.filename}
+                </span>
                 {f.orphanedFromConnection && (
                   <div className="text-xs text-muted-foreground mt-0.5">{t('maintenance.orphans.drawer.originalConnection', { name: f.orphanedFromConnection })}</div>
                 )}
@@ -540,13 +552,28 @@ export function ResourceDirectoryView({ overview }: { overview: StorageOverviewD
 
   // ---- conditional column rendering ----
 
+  function selectCellText(el: HTMLElement) {
+    const range = document.createRange()
+    range.selectNodeContents(el)
+    const sel = window.getSelection()
+    sel?.removeAllRanges()
+    sel?.addRange(range)
+  }
+
   function renderMainCell(item: unknown) {
     switch (activeResourceTab) {
       case 'dashboards': {
         const d = item as DashboardResourceDto
+        const label = d.title || d.filename
         return (
           <div>
-            <div className="text-sm text-strong">{d.title || d.filename}</div>
+            <div
+              className="text-sm text-strong truncate max-w-[220px]"
+              title={label}
+              onDoubleClick={(ev) => selectCellText(ev.currentTarget)}
+            >
+              {label}
+            </div>
             {d.originSessionId && (
               <div className="text-xs text-muted-foreground">
                 {t('maintenance.resources.originSession', { name: d.originSessionId })}
@@ -559,7 +586,13 @@ export function ResourceDirectoryView({ overview }: { overview: StorageOverviewD
         const r = item as ReportResourceDto
         return (
           <div>
-            <div className="text-sm text-strong">{r.title}</div>
+            <div
+              className="text-sm text-strong truncate max-w-[220px]"
+              title={r.title}
+              onDoubleClick={(ev) => selectCellText(ev.currentTarget)}
+            >
+              {r.title}
+            </div>
             {r.originSessionId && (
               <div className="text-xs text-muted-foreground">
                 {t('maintenance.resources.originSession', { name: r.originSessionId })}
@@ -570,20 +603,42 @@ export function ResourceDirectoryView({ overview }: { overview: StorageOverviewD
       }
       case 'exports': {
         const e = item as ExportResourceDto
-        return <span className="text-sm text-strong">{e.filename}</span>
+        return (
+          <span
+            className="text-sm text-strong block truncate max-w-[220px]"
+            title={e.filename}
+            onDoubleClick={(ev) => selectCellText(ev.currentTarget)}
+          >
+            {e.filename}
+          </span>
+        )
       }
       case 'semantic': {
         const s = item as SemanticResourceDto
         return (
           <div>
-            <div className="text-sm text-strong">{s.domain}</div>
+            <div
+              className="text-sm text-strong truncate max-w-[220px]"
+              title={s.domain}
+              onDoubleClick={(ev) => selectCellText(ev.currentTarget)}
+            >
+              {s.domain}
+            </div>
             <div className="text-xs text-muted-foreground">{s.connectionName}</div>
           </div>
         )
       }
       case 'uploads': {
         const u = item as UploadResourceDto
-        return <span className="text-sm text-strong">{u.filename}</span>
+        return (
+          <span
+            className="text-sm text-strong block truncate max-w-[220px]"
+            title={u.filename}
+            onDoubleClick={(ev) => selectCellText(ev.currentTarget)}
+          >
+            {u.filename}
+          </span>
+        )
       }
     }
   }
