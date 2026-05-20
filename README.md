@@ -59,14 +59,15 @@ cd client && npx vitest run
 
 ## 内置技能（Skills）
 
-DataTalk 服务端内置了 16 个 AI 技能，定义了 AI 如何操作用户数据库、工作台和产出物。每个技能对应一个 SKILL.md 文件，OpenCode 在运行时加载。
+DataTalk 服务端内置了 18 个 AI 技能，定义了 AI 如何操作用户数据库、工作台和产出物。每个技能对应一个 SKILL.md 文件，OpenCode 在运行时加载。
 
 ### 数据查询与分析
 
 | 技能 | 说明 | 文件 |
 |------|------|------|
-| **sql-execution** | 只读 SQL 查询与 schema 读取，AI 生成 SQL 的契约入口 | [SKILL.md](server/data-talk-adapter/src/main/resources/skills/sql-execution/SKILL.md) |
+| **sql-execution** | 全 SQL 执行契约入口（SELECT/INSERT/UPDATE/CREATE/ALTER…ADD 直接执行）：DELETE 触发对话式 `confirmationId` 确认，破坏性 DDL（DROP/TRUNCATE/ALTER…DROP/GRANT/REVOKE 等）拦截并 `redirect_to_editor` 由用户手动执行 | [SKILL.md](server/data-talk-adapter/src/main/resources/skills/sql-execution/SKILL.md) |
 | **sql-error-diagnostics** | SQL 报错自动诊断：语法错误、对象不存在、歧义候选、锁等待、慢查询、连接池/表空间 | [SKILL.md](server/data-talk-adapter/src/main/resources/skills/sql-error-diagnostics/SKILL.md) |
+| **exploring-data** | 写表前探索协议（Pre-Action Exploration）：get_data_context → schema_search → read_schema → execute_sql 的探查顺序与命中预算 | [SKILL.md](server/data-talk-adapter/src/main/resources/skills/exploring-data/SKILL.md) |
 
 ### 连接与方言
 
@@ -82,6 +83,7 @@ DataTalk 服务端内置了 16 个 AI 技能，定义了 AI 如何操作用户�
 | **bezel** | 工业级仪表盘，从 JSON 描述生成自包含 HTML（含内嵌轮询），可作为 iframe 嵌入 DataTalk | [SKILL.md](server/data-talk-adapter/src/main/resources/skills/bezel/SKILL.md) |
 | **charts-and-dashboards** | 图表/趋势图/KPI/多组件仪表盘，支持内联 chart 代码块和持久化 dashboard schema | [SKILL.md](server/data-talk-adapter/src/main/resources/skills/charts-and-dashboards/SKILL.md) |
 | **artifacts-output** | 产出物生命周期管理：临时文件 vs 归档候选，超大响应落盘续传协议 | [SKILL.md](server/data-talk-adapter/src/main/resources/skills/artifacts-output/SKILL.md) |
+| **ledger** | 企业级汇报文档生成（业务月报、问题复盘、季度总结、事件 postmortem），含模板渲染 | [SKILL.md](server/data-talk-adapter/src/main/resources/skills/ledger/SKILL.md) |
 
 ### 工作台交互
 

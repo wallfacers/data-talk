@@ -54,7 +54,7 @@ description: Use when the user mentions a specific database product, asks about 
 - Diagnostics reuse MySQL EXPLAIN.
 - ER Designer: supported. Reuses MySQL DDL generation. `kind=mariadb` connections bind to `mariadb` dialect designers; `kind=mysql` connections also bind to `mariadb` designers. ER details — see `[[er-tabs]]`.
 - Schema visibility: database selector visible, schema hidden (same as MySQL).
-- Chat-path execution: SELECT / INSERT / UPDATE / DDL all run via `datatalk_execute_sql`; only DELETE triggers the in-chat `confirmationId` flow — see `[[sql-execution]]`.
+- Chat-path execution: SELECT / INSERT / UPDATE / CREATE / ALTER…ADD run directly via `datatalk_execute_sql`; DELETE triggers the in-chat `confirmationId` flow; destructive DDL (DROP / TRUNCATE / ALTER…DROP / GRANT / REVOKE / DENY / KILL / SHUTDOWN / PURGE / SET GLOBAL / INSERT OVERWRITE) returns `redirect_to_editor` — AI opens a query_editor tab for manual execution. See `[[sql-execution]]`.
 
 ## TiDB
 
@@ -67,7 +67,7 @@ description: Use when the user mentions a specific database product, asks about 
 - Diagnostics (lock / pool / table_space / EXPLAIN-real / index-hints / terminate / optimize) are `dialect_unsupported` on TiDB Day-1. Suggest the user run `EXPLAIN ANALYZE` or the L1 introspection statements above manually in the Query Editor when execution plans, region distribution, or statistics are needed.
 - ER Inspector and Designer are `dialect_unsupported` on TiDB Day-1 — see `[[er-tabs]]`.
 - User may type "TiDB", "tidb", "PingCAP TiDB". Map to canonical `tidb` only. Do not invent aliases.
-- Chat-path execution: SELECT / INSERT / UPDATE / DDL all run via `datatalk_execute_sql`; only DELETE triggers the in-chat `confirmationId` flow. For TiDB-only L3 statements, explicitly preview the SQL to the user before running — see `[[sql-execution]]`.
+- Chat-path execution: SELECT / INSERT / UPDATE / CREATE / ALTER…ADD run directly via `datatalk_execute_sql`; DELETE triggers the in-chat `confirmationId` flow; destructive DDL (DROP / TRUNCATE / ALTER…DROP / GRANT / REVOKE / KILL / SHUTDOWN / SET GLOBAL etc.) returns `redirect_to_editor` (AI opens a query_editor for manual execution). The TiDB-only L3 statements not caught by the keyword gate (e.g. `BACKUP/RESTORE DATABASE`, `IMPORT INTO`, `LOAD DATA INFILE`, `FLASHBACK`, `ALTER PLACEMENT POLICY`) execute directly — explicitly preview them to the user before running. See `[[sql-execution]]`.
 
 ## Oracle
 
@@ -78,7 +78,7 @@ description: Use when the user mentions a specific database product, asks about 
 - ER Designer: unsupported. Use query_editor + read_schema instead — see `[[er-tabs]]`.
 - Diagnostics: structured execution plan unsupported. Use raw `EXPLAIN PLAN FOR` + `DBMS_XPLAN` — error-side reasoning lives in `[[sql-error-diagnostics]]`.
 - Schema visibility: schema / owner visible, no independent catalog selector.
-- Chat-path execution: SELECT / INSERT / UPDATE / DDL all run via `datatalk_execute_sql`; only DELETE triggers the in-chat `confirmationId` flow — see `[[sql-execution]]`.
+- Chat-path execution: SELECT / INSERT / UPDATE / CREATE / ALTER…ADD run directly via `datatalk_execute_sql`; DELETE triggers the in-chat `confirmationId` flow; destructive DDL (DROP / TRUNCATE / ALTER…DROP / GRANT / REVOKE / DENY / KILL / SHUTDOWN / PURGE / SET GLOBAL / INSERT OVERWRITE) returns `redirect_to_editor` — AI opens a query_editor tab for manual execution. See `[[sql-execution]]`.
 
 ## SQL Server
 
@@ -91,13 +91,13 @@ description: Use when the user mentions a specific database product, asks about 
 - ER Designer: unsupported. Use query_editor + read_schema instead — see `[[er-tabs]]`.
 - Diagnostics: structured execution plan unsupported. Use `SET SHOWPLAN_TEXT ON` or SSMS — error-side reasoning lives in `[[sql-error-diagnostics]]`.
 - Schema visibility: both database and schema visible (like PostgreSQL).
-- Chat-path execution: SELECT / INSERT / UPDATE / DDL all run via `datatalk_execute_sql`; only DELETE triggers the in-chat `confirmationId` flow — see `[[sql-execution]]`.
+- Chat-path execution: SELECT / INSERT / UPDATE / CREATE / ALTER…ADD run directly via `datatalk_execute_sql`; DELETE triggers the in-chat `confirmationId` flow; destructive DDL (DROP / TRUNCATE / ALTER…DROP / GRANT / REVOKE / DENY / KILL / SHUTDOWN / PURGE / SET GLOBAL / INSERT OVERWRITE) returns `redirect_to_editor` — AI opens a query_editor tab for manual execution. See `[[sql-execution]]`.
 
 ## DuckDB
 
 - Connection kind: `duckdb`. Embedded analytical SQL engine — no host / port.
 - Fields: `databaseName` (file path or `:memory:`), `readOnly` (boolean, defaults to false). No host, port, username, or password.
-- Chat-path execution: SELECT / INSERT / UPDATE / DDL all run via `datatalk_execute_sql`; only DELETE triggers the in-chat `confirmationId` flow — see `[[sql-execution]]`.
+- Chat-path execution: SELECT / INSERT / UPDATE / CREATE / ALTER…ADD run directly via `datatalk_execute_sql`; DELETE triggers the in-chat `confirmationId` flow; destructive DDL (DROP / TRUNCATE / ALTER…DROP / GRANT / REVOKE / DENY / KILL / SHUTDOWN / PURGE / SET GLOBAL / INSERT OVERWRITE) returns `redirect_to_editor` — AI opens a query_editor tab for manual execution. See `[[sql-execution]]`.
 - File operations (`COPY`, `EXPORT DATABASE`, `IMPORT DATABASE`), extension commands (`INSTALL`, `LOAD`, `CREATE SECRET`), and external file / network access (`read_csv`, `read_parquet`, `read_json`, `glob`, `httpfs`, S3 paths) are not supported by the DuckDB embedded engine in DataTalk's deployment.
 - `ATTACH` and `DETACH` are not supported.
 - DuckDB file paths are backend-local only.
@@ -112,7 +112,7 @@ description: Use when the user mentions a specific database product, asks about 
 
 - Connection kind: `clickhouse`. Analytical column-store database over HTTP protocol.
 - Fields: `host` (hostname or IP), `port` (default 8123), `username`, `password`, `databaseName`. Protocol defaults to HTTP; set port to 8443 for HTTPS.
-- Chat-path execution: SELECT / INSERT / UPDATE / DDL all run via `datatalk_execute_sql`; only DELETE triggers the in-chat `confirmationId` flow — see `[[sql-execution]]`.
+- Chat-path execution: SELECT / INSERT / UPDATE / CREATE / ALTER…ADD run directly via `datatalk_execute_sql`; DELETE triggers the in-chat `confirmationId` flow; destructive DDL (DROP / TRUNCATE / ALTER…DROP / GRANT / REVOKE / DENY / KILL / SHUTDOWN / PURGE / SET GLOBAL / INSERT OVERWRITE) returns `redirect_to_editor` — AI opens a query_editor tab for manual execution. See `[[sql-execution]]`.
 - ClickHouse mutations (`INSERT`, `ALTER`, `DELETE`) are async at the engine level; results may not be immediately visible after `datatalk_execute_sql` returns. The chat-path DELETE confirmation flow still applies — see `[[sql-execution]]`.
 - File and network access functions (`file`, `s3`, `url`, `remote`, `hdfs`, `odbc`, `jdbc`, `mysql`, `postgresql`) are not supported.
 - Cluster and system operations (`SYSTEM`, `KILL QUERY`, `OPTIMIZE`, `ATTACH`, `DETACH`) are not supported.
@@ -127,7 +127,7 @@ description: Use when the user mentions a specific database product, asks about 
 
 - Connection kind: `apache_doris` (alias `doris` is normalized to `apache_doris`). OLAP database with MySQL-compatible network protocol.
 - Fields: `host` (FE hostname or IP), `port` (default 9030 for FE MySQL protocol), `username`, `password`, `databaseName`. Uses MySQL Connector/J driver.
-- Chat-path execution: SELECT / INSERT / UPDATE / DDL all run via `datatalk_execute_sql`; only DELETE triggers the in-chat `confirmationId` flow — see `[[sql-execution]]`.
+- Chat-path execution: SELECT / INSERT / UPDATE / CREATE / ALTER…ADD run directly via `datatalk_execute_sql`; DELETE triggers the in-chat `confirmationId` flow; destructive DDL (DROP / TRUNCATE / ALTER…DROP / GRANT / REVOKE / DENY / KILL / SHUTDOWN / PURGE / SET GLOBAL / INSERT OVERWRITE) returns `redirect_to_editor` — AI opens a query_editor tab for manual execution. See `[[sql-execution]]`.
 - Doris DML may be async for some operations; results from `datatalk_execute_sql` may not be immediately visible. The standard DELETE confirmation flow still applies — see `[[sql-execution]]`.
 - Bulk load operations (`LOAD LABEL`, `ROUTINE LOAD`, `STREAM LOAD`, `EXPORT`) and cluster management (`ADMIN`, `ALTER SYSTEM`, `SHUTDOWN`, `DECOMMISSION`) are not supported through the chat path.
 - SQL splitter: reuses MySQL splitter (DELIMITER, backtick identifiers, comment handling).
@@ -146,7 +146,7 @@ description: Use when the user mentions a specific database product, asks about 
 - Username form `<user>@<tenant>` or `<user>@<tenant>#<cluster>` is composed by ConnectionService; AI must NOT fabricate this; structured fields in MCP.
 - Chinese aliases (Ant OceanBase, Woqu OceanBase) are recognized in user natural-language input only; they map to canonical kind `oceanbase`, NOT to `mysql`.
 - Day-1 unsupported: PROCEDURE / FUNCTION / TENANT / OUTLINE / RESOURCE POOL / ALTER SYSTEM / MAJOR-MINOR FREEZE / BACKUP-RESTORE — all classified L3 or `dialect_unsupported`.
-- Chat-path execution: SELECT / INSERT / UPDATE / DDL all run via `datatalk_execute_sql`; only DELETE triggers the in-chat `confirmationId` flow — see `[[sql-execution]]`.
+- Chat-path execution: SELECT / INSERT / UPDATE / CREATE / ALTER…ADD run directly via `datatalk_execute_sql`; DELETE triggers the in-chat `confirmationId` flow; destructive DDL (DROP / TRUNCATE / ALTER…DROP / GRANT / REVOKE / DENY / KILL / SHUTDOWN / PURGE / SET GLOBAL / INSERT OVERWRITE) returns `redirect_to_editor` — AI opens a query_editor tab for manual execution. See `[[sql-execution]]`.
 - SQL splitter: reuses MySQL splitter (backtick identifier support, DELIMITER handling).
 - Risk guard: `SHOW`, `DESCRIBE`, `EXPLAIN` are L1; `INSERT`, `CREATE TABLE`, `CREATE INDEX` are L2; `DROP`, `TRUNCATE`, `ALTER`, `GRANT`, `REVOKE`, `CREATE OUTLINE`, `ALTER OUTLINE`, `CREATE TENANT`, `ALTER TENANT`, `DROP TENANT`, `CREATE RESOURCE POOL/UNIT`, `ALTER RESOURCE POOL/UNIT`, `DROP RESOURCE POOL/UNIT`, `ALTER SYSTEM`, `MAJOR FREEZE`, `MINOR FREEZE`, `BACKUP`, `RESTORE` are L3.
 - Schema context: database selector visible (OceanBase databases). System schemas (`oceanbase`, `information_schema`, `mysql`, `SYS`, `LBACSYS`) are filtered from target discovery.
@@ -159,7 +159,7 @@ description: Use when the user mentions a specific database product, asks about 
 - Connection kind: `starrocks`. OLAP database with native StarRocks JDBC driver.
 - Fields: `host` (FE hostname or IP), `port` (default 9030 for FE query port), `username`, `password`, `databaseName` (required, StarRocks database within `default_catalog`).
 - Catalog: Day-1 uses `default_catalog` hardcoded in the JDBC URL (`jdbc:starrocks://host:9030/default_catalog.database`).
-- Chat-path execution: SELECT / INSERT / UPDATE / DDL all run via `datatalk_execute_sql`; only DELETE triggers the in-chat `confirmationId` flow — see `[[sql-execution]]`.
+- Chat-path execution: SELECT / INSERT / UPDATE / CREATE / ALTER…ADD run directly via `datatalk_execute_sql`; DELETE triggers the in-chat `confirmationId` flow; destructive DDL (DROP / TRUNCATE / ALTER…DROP / GRANT / REVOKE / DENY / KILL / SHUTDOWN / PURGE / SET GLOBAL / INSERT OVERWRITE) returns `redirect_to_editor` — AI opens a query_editor tab for manual execution. See `[[sql-execution]]`.
 - Catalog operations (`CREATE/DROP CATALOG`), load operations (`LOAD LABEL`, `ROUTINE LOAD`, `STREAM LOAD`, `BROKER LOAD`), export, cluster management (`ADMIN`, `ALTER SYSTEM`), and global variable changes (`SET GLOBAL`) are not supported through the chat path.
 - SQL splitter: reuses MySQL splitter (backtick identifier support, DELIMITER handling).
 - Risk guard: `SHOW`, `DESCRIBE`, `EXPLAIN` are L1; `INSERT`, `CREATE TABLE`, `CREATE INDEX`, `ANALYZE` are L2; `DROP`, `TRUNCATE`, `ALTER`, `GRANT`, `REVOKE`, `CREATE USER/ROLE/CATALOG`, `DROP CATALOG`, `LOAD`, `ROUTINE LOAD`, `STREAM LOAD`, `BROKER LOAD`, `CANCEL LOAD`, `EXPORT`, `ADMIN`, `SET GLOBAL`, `SET PASSWORD`, `KILL`, `SUBMIT TASK`, `CANCEL TASK`, `RENAME`, `INSERT OVERWRITE` are L3.
@@ -173,7 +173,7 @@ description: Use when the user mentions a specific database product, asks about 
 - Connection kind: `trino`. Federated SQL query engine with official Trino JDBC driver.
 - Fields: `host` (Trino coordinator hostname or IP), `port` (default 8080), `username`, `password` (optional), `databaseName` (Trino catalog, optional).
 - Catalog / schema: two-level context model — `databaseName` maps to Trino catalog, schema maps to Trino schema. Both catalog and schema selectors are visible in the Query Editor. System catalogs (`system`, `memory`, `jmx`) are filtered from target discovery.
-- Chat-path execution: SELECT / INSERT / UPDATE / DDL all run via `datatalk_execute_sql`; only DELETE triggers the in-chat `confirmationId` flow — see `[[sql-execution]]`.
+- Chat-path execution: SELECT / INSERT / UPDATE / CREATE / ALTER…ADD run directly via `datatalk_execute_sql`; DELETE triggers the in-chat `confirmationId` flow; destructive DDL (DROP / TRUNCATE / ALTER…DROP / GRANT / REVOKE / DENY / KILL / SHUTDOWN / PURGE / SET GLOBAL / INSERT OVERWRITE) returns `redirect_to_editor` — AI opens a query_editor tab for manual execution. See `[[sql-execution]]`.
 - Write support is connector-dependent — `INSERT`, `CREATE TABLE AS`, `UPDATE`, `DELETE`, and DDL may or may not be available depending on the underlying federation connector. Successful execution through `datatalk_execute_sql` is not a guarantee that other connectors of the same engine accept the same statement.
 - Connector caveat: different Trino connectors have different capabilities. Do not claim generic write, ER, or diagnostics support without connector-specific verification.
 - SQL splitter: generic (no DELIMITER, no PL/SQL, no GO).
@@ -190,7 +190,7 @@ description: Use when the user mentions a specific database product, asks about 
 - Connection kind: `presto`. Federated SQL query engine separate from Trino; uses Presto JDBC driver.
 - Fields: `host` (Presto coordinator hostname or IP), `port` (default 8080), `username`, `password`, `databaseName` (Presto catalog, optional), and schema (via session data context).
 - Catalog / schema: two-level context model — `databaseName` maps to Presto catalog, schema maps to Presto schema. Both catalog and schema selectors are visible in the Query Editor.
-- Chat-path execution: SELECT / INSERT / UPDATE / DDL all run via `datatalk_execute_sql`; only DELETE triggers the in-chat `confirmationId` flow — see `[[sql-execution]]`.
+- Chat-path execution: SELECT / INSERT / UPDATE / CREATE / ALTER…ADD run directly via `datatalk_execute_sql`; DELETE triggers the in-chat `confirmationId` flow; destructive DDL (DROP / TRUNCATE / ALTER…DROP / GRANT / REVOKE / DENY / KILL / SHUTDOWN / PURGE / SET GLOBAL / INSERT OVERWRITE) returns `redirect_to_editor` — AI opens a query_editor tab for manual execution. See `[[sql-execution]]`.
 - Write support is connector-dependent — `INSERT`, `CREATE TABLE AS`, `UPDATE`, `DELETE`, and DDL may or may not be available depending on the underlying federation connector. Successful execution through `datatalk_execute_sql` is not a guarantee that other connectors of the same engine accept the same statement.
 - Connector caveat: different Presto connectors have different capabilities. Do not claim generic write, ER, or diagnostics support without connector-specific verification.
 - SQL splitter: generic (no DELIMITER, no PL/SQL, no GO).
@@ -224,7 +224,7 @@ description: Use when the user mentions a specific database product, asks about 
 - Transport / auth: Day-1 supports binary transport only (port 10000) with username/password or username-only authentication. HTTP transport, SSL, Kerberos, ZooKeeper service discovery, custom headers / cookies, and Knox-style deployments are NOT supported.
 - Catalog / schema: database-only context — `databaseName` maps to Hive database. Schema selector is hidden in the Query Editor.
 - `datatalk_resolve_use_target` is required before changing database context via `USE` — see `[[connection-management]]`.
-- Chat-path execution: SELECT / INSERT / UPDATE / DDL all run via `datatalk_execute_sql`; only DELETE triggers the in-chat `confirmationId` flow — see `[[sql-execution]]`.
+- Chat-path execution: SELECT / INSERT / UPDATE / CREATE / ALTER…ADD run directly via `datatalk_execute_sql`; DELETE triggers the in-chat `confirmationId` flow; destructive DDL (DROP / TRUNCATE / ALTER…DROP / GRANT / REVOKE / DENY / KILL / SHUTDOWN / PURGE / SET GLOBAL / INSERT OVERWRITE) returns `redirect_to_editor` — AI opens a query_editor tab for manual execution. See `[[sql-execution]]`.
 - SQL splitter: generic (no DELIMITER, no PL/SQL, no GO).
 - Risk guard: `SHOW`, `DESCRIBE`, `EXPLAIN` are L1; `INSERT`, `CREATE TABLE`, `CREATE VIEW`, `ANALYZE` are L2; `DROP`, `TRUNCATE`, `ALTER`, `GRANT`, `REVOKE`, `CREATE USER/ROLE/FUNCTION`, `LOAD DATA`, `ADD JAR`, `TRANSFORM`, `MSCK`, `SET`, `IMPORT`, `EXPORT` are L3.
 - Diagnostics: Day-1 structured unsupported. EXPLAIN, lock info, pool status, table space, index hints, terminate session, and optimize table are all unsupported.
@@ -244,4 +244,4 @@ description: Use when the user mentions a specific database product, asks about 
 - **ER:** Unsupported (Day-1) — see `[[er-tabs]]`
 - **Day-2:** EXPLAIN diagnostics, ER DDL, SSL / TLS
 - **Day-3:** Distributed / DWS mode, Kerberos
-- Chat-path execution: SELECT / INSERT / UPDATE / DDL all run via `datatalk_execute_sql`; only DELETE triggers the in-chat `confirmationId` flow — see `[[sql-execution]]`.
+- Chat-path execution: SELECT / INSERT / UPDATE / CREATE / ALTER…ADD run directly via `datatalk_execute_sql`; DELETE triggers the in-chat `confirmationId` flow; destructive DDL (DROP / TRUNCATE / ALTER…DROP / GRANT / REVOKE / DENY / KILL / SHUTDOWN / PURGE / SET GLOBAL / INSERT OVERWRITE) returns `redirect_to_editor` — AI opens a query_editor tab for manual execution. See `[[sql-execution]]`.

@@ -22,6 +22,8 @@ DataTalk 作为桌面应用，主要威胁面：
 - OpenCode 作为纯推理层，不直接连接数据库
 - 所有 SQL 由后端 `SqlExecutionRepository` 代理执行
 - 查询超时限制：`spring.jdbc.template.query-timeout=30`
+- **DELETE 对话式确认**：AI 路径下 `datatalk_execute_sql` 检测到 `DELETE` 时不立即执行，返回 `requires_confirmation` + `confirmationId`，需用户在对话中明确确认后携 `confirmationId` 二次调用才执行（`ExecuteSqlAction`）
+- **破坏性 DDL 拦截**：AI 路径下基于原始 SQL 关键词扫描拦截 `DROP` / `TRUNCATE` / `ALTER…DROP` / `GRANT` / `REVOKE` / `DENY` / `KILL` / `SHUTDOWN` / `PURGE` / `SET GLOBAL` / `INSERT OVERWRITE`，返回 `redirect_to_editor`，由用户在 query_editor 中手动确认执行（不依赖 `CalciteSqlRiskAnalyzer` 的 riskLevel，对 MySQL/PG/H2 的 DDL 其返回 null）
 
 ### 通信安全
 
@@ -32,9 +34,7 @@ DataTalk 作为桌面应用，主要威胁面：
 
 | 措施 | 优先级 | 关联 Plan |
 |------|--------|----------|
-| SQL 预演模式：非查询类 SQL 需用户二次确认 | P0 | Plan B |
 | 参数化查询优先：AI Prompt 中要求优先使用参数化 SQL | P0 | Plan B |
-| SQL 白名单/黑名单：拦截 DROP/TRUNCATE 等危险操作 | P1 | Plan B |
 | OpenCode TLS 通信 | P1 | 部署配置 |
 | CSP 头配置（Tauri WebView） | P2 | Plan C |
 | 连接权限最小化提示：建议用户使用只读账号连接 | P2 | Plan C |
