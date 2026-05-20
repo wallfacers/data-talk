@@ -739,7 +739,22 @@ export function ResourceDirectoryView({ overview }: { overview: StorageOverviewD
         {RESOURCE_TABS.map(key => {
           const dir = overview.resourceDirectories?.[key]
           return (
-            <Card key={key} size="sm">
+            <Card
+              key={key}
+              size="sm"
+              role="tab"
+              aria-selected={activeResourceTab === key}
+              className={cn(
+                'cursor-pointer transition-colors',
+                activeResourceTab === key
+                  ? 'ring-primary bg-primary/5'
+                  : 'hover:bg-primary/5'
+              )}
+              onClick={() => {
+                setActiveResourceTab(key)
+                setSelected(new Set())
+              }}
+            >
               <CardHeader>
                 <CardTitle className="text-sm">{t(`maintenance.resources.tab.${key}`)}</CardTitle>
               </CardHeader>
