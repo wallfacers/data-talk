@@ -314,4 +314,145 @@ class ExecuteSqlActionTest {
             assertThat(rs.getInt(1)).isEqualTo(3);
         }
     }
+
+    // === Destructive DDL redirect_to_editor tests ===
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void dropTable_returnsRedirectToEditor() throws Exception {
+        Map<String, Object> out = (Map<String, Object>) action.handle(
+            new ActionContext("s-exec", "c-drop", connectionId, "oc-e"),
+            Map.of("connectionId", connectionId, "sql", "DROP TABLE t")
+        ).toCompletableFuture().join();
+
+        assertThat(out).containsEntry("status", "redirect_to_editor");
+        assertThat(out).containsEntry("reason", "destructive_ddl");
+        assertThat(out).containsKey("sql");
+        assertThat(out).containsEntry("suggestion", "use_query_editor");
+        assertThat(out).containsKey("affectedObjects");
+        assertThat(out).doesNotContainKey("artifactId");
+        // Table still exists — DROP never executed
+        try (var c = DriverManager.getConnection("jdbc:h2:mem:execsql;MODE=PostgreSQL;DB_CLOSE_DELAY=-1", "sa", "");
+             var st = c.createStatement();
+             var rs = st.executeQuery("SELECT COUNT(*) FROM t")) {
+            assertThat(rs.next()).isTrue();
+            assertThat(rs.getInt(1)).isEqualTo(3);
+        }
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void truncateTable_returnsRedirectToEditor() throws Exception {
+        Map<String, Object> out = (Map<String, Object>) action.handle(
+            new ActionContext("s-exec", "c-trunc", connectionId, "oc-e"),
+            Map.of("connectionId", connectionId, "sql", "TRUNCATE TABLE t")
+        ).toCompletableFuture().join();
+
+        assertThat(out).containsEntry("status", "redirect_to_editor");
+        assertThat(out).containsEntry("reason", "destructive_ddl");
+        assertThat(out).doesNotContainKey("artifactId");
+        // Rows still exist — TRUNCATE never executed
+        try (var c = DriverManager.getConnection("jdbc:h2:mem:execsql;MODE=PostgreSQL;DB_CLOSE_DELAY=-1", "sa", "");
+             var st = c.createStatement();
+             var rs = st.executeQuery("SELECT COUNT(*) FROM t")) {
+            assertThat(rs.next()).isTrue();
+            assertThat(rs.getInt(1)).isEqualTo(3);
+        }
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void alterTableDropColumn_returnsRedirectToEditor() {
+        Map<String, Object> out = (Map<String, Object>) action.handle(
+            new ActionContext("s-exec", "c-alter-drop", connectionId, "oc-e"),
+            Map.of("connectionId", connectionId, "sql", "ALTER TABLE t DROP COLUMN name")
+        ).toCompletableFuture().join();
+
+        assertThat(out).containsEntry("status", "redirect_to_editor");
+        assertThat(out).containsEntry("reason", "destructive_ddl");
+        assertThat(out).doesNotContainKey("artifactId");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void grant_returnsRedirectToEditor() {
+        Map<String, Object> out = (Map<String, Object>) action.handle(
+            new ActionContext("s-exec", "c-grant", connectionId, "oc-e"),
+            Map.of("connectionId", connectionId, "sql", "GRANT SELECT ON t TO readonly")
+        ).toCompletableFuture().join();
+
+        assertThat(out).containsEntry("status", "redirect_to_editor");
+        assertThat(out).containsEntry("reason", "destructive_ddl");
+        assertThat(out).doesNotContainKey("artifactId");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void revoke_returnsRedirectToEditor() {
+        Map<String, Object> out = (Map<String, Object>) action.handle(
+            new ActionContext("s-exec", "c-revoke", connectionId, "oc-e"),
+            Map.of("connectionId", connectionId, "sql", "REVOKE SELECT ON t FROM readonly")
+        ).toCompletableFuture().join();
+
+        assertThat(out).containsEntry("status", "redirect_to_editor");
+        assertThat(out).containsEntry("reason", "destructive_ddl");
+        assertThat(out).doesNotContainKey("artifactId");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void createTable_executesDirectly() throws Exception {
+        Map<String, Object> out = (Map<String, Object>) action.handle(
+            new ActionContext("s-exec", "c-create", connectionId, "oc-e"),
+            Map.of("connectionId", connectionId, "sql", "CREATE TABLE t2(id INT)")
+        ).toCompletableFuture().get();
+
+        // CREATE TABLE is constructive — executes directly, not redirected
+        assertThat(out).containsKey("artifactId");
+        assertThat(out).doesNotContainEntry("status", "redirect_to_editor");
+        assertThat(artifacts.findBySession("s-exec")).hasSize(1);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void alterTableAddColumn_executesDirectly() throws Exception {
+        Map<String, Object> out = (Map<String, Object>) action.handle(
+            new ActionContext("s-exec", "c-alter-add", connectionId, "oc-e"),
+            Map.of("connectionId", connectionId, "sql", "ALTER TABLE t ADD COLUMN email VARCHAR(100)")
+        ).toCompletableFuture().get();
+
+        // ALTER TABLE ADD is constructive — executes directly
+        assertThat(out).containsKey("artifactId");
+        assertThat(out).doesNotContainEntry("status", "redirect_to_editor");
+        assertThat(artifacts.findBySession("s-exec")).hasSize(1);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void multiStatementWithDrop_returnsRedirectToEditor() {
+        Map<String, Object> out = (Map<String, Object>) action.handle(
+            new ActionContext("s-exec", "c-multi-drop", connectionId, "oc-e"),
+            Map.of("connectionId", connectionId, "sql", "DROP TABLE IF EXISTS t; CREATE TABLE t2(id INT)")
+        ).toCompletableFuture().join();
+
+        assertThat(out).containsEntry("status", "redirect_to_editor");
+        assertThat(out).containsEntry("reason", "destructive_ddl");
+        assertThat(out).doesNotContainKey("artifactId");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void mixedDeleteAndDrop_returnsRedirectToEditor_notRequiresConfirmation() {
+        // DELETE + DROP in one batch: DDL gate fires first, not DELETE confirmation
+        Map<String, Object> out = (Map<String, Object>) action.handle(
+            new ActionContext("s-exec", "c-mixed", connectionId, "oc-e"),
+            Map.of("connectionId", connectionId, "sql", "DELETE FROM t; DROP TABLE t")
+        ).toCompletableFuture().join();
+
+        // DDL gate fires BEFORE DELETE gate — returns redirect_to_editor
+        assertThat(out).containsEntry("status", "redirect_to_editor");
+        assertThat(out).doesNotContainEntry("status", "requires_confirmation");
+        assertThat(out).doesNotContainKey("artifactId");
+        assertThat(out).doesNotContainKey("confirmationId");
+    }
 }

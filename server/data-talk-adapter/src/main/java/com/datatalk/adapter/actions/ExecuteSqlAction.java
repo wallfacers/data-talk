@@ -37,10 +37,11 @@ import java.util.stream.Collectors;
 
 /**
  * Handles SQL execution from the AI chat path.
- * Only DELETE statements require conversational confirmation (in-chat);
- * all other SQL (SELECT, INSERT, UPDATE, DDL) executes directly.
- * Confirmation flow: DELETE → returns requires_confirmation with confirmationId →
- * user confirms → re-invoked with confirmationId → executes.
+ * Destructive DDL (DROP, TRUNCATE, ALTER...DROP, GRANT, REVOKE, etc.) is blocked
+ * and returns redirect_to_editor — AI opens a query_editor for user confirmation.
+ * DELETE statements require conversational confirmation (requires_confirmation flow).
+ * All other SQL (SELECT, INSERT, UPDATE, CREATE, ALTER...ADD) executes directly.
+ * Gate order: destructive DDL → DELETE confirmation → execute.
  */
 
 @Component
@@ -224,9 +225,25 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
             }
         }
 
-        // AI chat path: only DELETE requires conversational confirmation.
-        // All other SQL (SELECT, INSERT, UPDATE, DDL) executes directly.
+        // AI chat path risk gates — order matters: DDL gate → DELETE gate → execute.
         SqlRiskAnalysis risk = riskAnalyzer.analyze(sql, Category.QUERY, resolved.connection().kind());
+
+        // Gate 1: Destructive DDL (DROP, TRUNCATE, ALTER...DROP, GRANT, REVOKE, etc.)
+        // Must run before DELETE gate: "DELETE FROM t; DROP TABLE t" must be caught
+        // by DDL gate, not silently pass through DELETE confirmation + replay.
+        if (containsDestructiveDdl(sql)) {
+            String sqlPreview = sql.length() > 200 ? sql.substring(0, 200) + "..." : sql;
+            return Map.of(
+                "status", "redirect_to_editor",
+                "reason", "destructive_ddl",
+                "sql", sqlPreview,
+                "affectedObjects", risk.affectedObjects(),
+                "message", translator.get("sql.confirmation.destructive_ddl.message"),
+                "suggestion", "use_query_editor"
+            );
+        }
+
+        // Gate 2: DELETE — conversational confirmation flow
         if (containsDelete(sql)) {
             String pendingId = confirmationStore.create(new SqlPendingConfirmationStore.PendingConfirmation(
                 sql,
@@ -247,7 +264,7 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
             );
         }
 
-        // Non-DELETE SQL: execute directly (no risk gate on AI path)
+        // Non-DELETE, non-destructive SQL: execute directly
         return executeSql(ctx, input, sql, resolved);
     }
 
@@ -472,6 +489,53 @@ public class ExecuteSqlAction implements ActionHandler<Map, Map> {
             }
             searchFrom = idx + 1;
         }
+        return false;
+    }
+
+    private static final Set<String> DESTRUCTIVE_DDL_KEYWORDS = Set.of(
+        "DROP", "TRUNCATE", "GRANT", "REVOKE", "DENY",
+        "KILL", "SHUTDOWN", "PURGE"
+    );
+
+    private static final java.util.regex.Pattern ALTER_DROP_PATTERN =
+        java.util.regex.Pattern.compile("(?i)ALTER\\s+\\w+\\s+.*\\bDROP\\b");
+    private static final java.util.regex.Pattern INSERT_OVERWRITE_PATTERN =
+        java.util.regex.Pattern.compile("(?i)^\\s*INSERT\\s+OVERWRITE\\b");
+    private static final java.util.regex.Pattern SET_GLOBAL_PATTERN =
+        java.util.regex.Pattern.compile("(?i)^\\s*SET\\s+GLOBAL\\b");
+
+    /**
+     * Detect whether SQL contains destructive DDL (DROP, TRUNCATE, ALTER...DROP, etc.).
+     * Dialect-agnostic: scans raw SQL text keywords, does not rely on Calcite parsing.
+     */
+    private boolean containsDestructiveDdl(String sql) {
+        if (sql == null || sql.isBlank()) return false;
+        String upper = sql.toUpperCase();
+
+        // Check for multi-statement — inspect each statement independently
+        int searchFrom = 0;
+        int idx;
+        while ((idx = upper.indexOf(';', searchFrom)) >= 0) {
+            String stmt = upper.substring(searchFrom, idx).trim();
+            if (isStatementDestructive(stmt)) return true;
+            searchFrom = idx + 1;
+        }
+        // Check the last (or only) statement
+        String lastStmt = upper.substring(searchFrom).trim();
+        return isStatementDestructive(lastStmt);
+    }
+
+    private boolean isStatementDestructive(String stmt) {
+        if (stmt.isEmpty()) return false;
+        // Check first keyword against denylist
+        String firstWord = stmt.split("\\s+", 2)[0];
+        if (DESTRUCTIVE_DDL_KEYWORDS.contains(firstWord)) return true;
+        // Check ALTER...DROP pattern
+        if (firstWord.equals("ALTER") && ALTER_DROP_PATTERN.matcher(stmt).find()) return true;
+        // Check INSERT OVERWRITE
+        if (firstWord.equals("INSERT") && INSERT_OVERWRITE_PATTERN.matcher(stmt).find()) return true;
+        // Check SET GLOBAL
+        if (firstWord.equals("SET") && SET_GLOBAL_PATTERN.matcher(stmt).find()) return true;
         return false;
     }
 

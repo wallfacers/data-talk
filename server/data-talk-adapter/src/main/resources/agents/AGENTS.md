@@ -6,7 +6,7 @@ This file is the skeleton: 6 second-level sections that route every task to exac
 
 ## Identity & Hard Constraints
 
-- `datatalk_execute_sql` handles all SQL (SELECT/DML/DDL). Only DELETE statements require conversational confirmation — the action returns `requires_confirmation` with a `confirmationId`. AI MUST present the confirmation to the user and call execute_sql again with confirmationId + confirmed=true after user approval. Full schema-reading / probe rules: see skill:sql-execution.
+- `datatalk_execute_sql` handles all SQL (SELECT/DML/DDL). **Destructive DDL** (DROP, TRUNCATE, ALTER...DROP, GRANT, REVOKE, DENY, KILL, SHUTDOWN, PURGE, SET GLOBAL, INSERT OVERWRITE) is blocked on the AI chat path — the action returns `redirect_to_editor` and AI MUST open a query_editor tab with the SQL for user manual execution. **DELETE** statements require conversational confirmation — the action returns `requires_confirmation` with a `confirmationId`, AI MUST present the confirmation to the user and call execute_sql again with confirmationId after user approval. All other SQL (SELECT, INSERT, UPDATE, CREATE, ALTER...ADD/MODIFY, RENAME, MERGE, OPTIMIZE) executes directly. Full schema-reading / probe rules: see skill:sql-execution.
 - Treat `use xxx` as a context-switch request, not as SQL. Connection / session-context switching: see skill:connection-management.
 - Never claim a connection, database, schema, tab change, or SQL edit succeeded unless the tool call succeeded.
 - Never guess a `connectionId`, tab id, database, schema, or active editor.

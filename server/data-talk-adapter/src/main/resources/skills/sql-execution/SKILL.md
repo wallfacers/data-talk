@@ -1,6 +1,6 @@
 ---
 name: sql-execution
-description: Use when the user asks to query, mutate, or change schema against a SQL connection — SELECT / INSERT / UPDATE / DDL all run through `datatalk_execute_sql`; only DELETE goes through `confirmationId` confirm. Triggers on 查询/统计/分析/读表/取数/插入/更新/删除/建表/改表/count/select/insert/update/delete/create/alter/drop/truncate/aggregate/group by/trend/top N/explore schema/describe table. Covers the full-SQL `datatalk_execute_sql` contract, DELETE confirm flow, `datatalk_read_schema` discovery vs describe modes, and the table-not-found probe path.
+description: Use when the user asks to query, mutate, or change schema against a SQL connection — SELECT / INSERT / UPDATE / CREATE / ALTER...ADD run through `datatalk_execute_sql`; DELETE goes through `confirmationId` confirm; destructive DDL (DROP / TRUNCATE / ALTER...DROP / GRANT / REVOKE) returns `redirect_to_editor` — AI opens a query_editor tab instead of executing directly. Triggers on 查询/统计/分析/读表/取数/插入/更新/删除/建表/改表/删表/删除/截断/清空/count/select/insert/update/delete/create/alter/drop/truncate/aggregate/group by/trend/top N/explore schema/describe table. Covers the full-SQL `datatalk_execute_sql` contract, DELETE confirm flow, destructive DDL redirect flow, `datatalk_read_schema` discovery vs describe modes, and the table-not-found probe path.
 ---
 
 # SQL Execution Skill
@@ -47,9 +47,30 @@ description: Use when the user asks to query, mutate, or change schema against a
 
 ## Execution contract
 
-`datatalk_execute_sql` executes **all SQL** end-to-end: `SELECT`, `WITH`, `INSERT`, `UPDATE`, `CREATE`, `ALTER`, `DROP`, `TRUNCATE`, `MERGE`, `REPLACE`, vendor-specific procedural blocks, multi-statement scripts separated by `;` — everything the underlying JDBC driver accepts. There is **no READ-ONLY gate**: do **not** redirect the user to a "SQL workbench" or to the query editor merely because the SQL mutates data or schema. If the user said "create / insert / update / drop / 建表 / 改表 / 改字段 / 导入 / 改这条记录", just run it.
+`datatalk_execute_sql` executes SQL end-to-end for: `SELECT`, `WITH`, `INSERT INTO`, `UPDATE`, `CREATE` (all variants), `ALTER ... ADD/MODIFY`, `RENAME`, `MERGE`, `OPTIMIZE`, `VACUUM`, `ANALYZE`, and other non-destructive statements. If the user said "create / insert / update / 建表 / 改表 / 改字段 / 导入 / 改这条记录", just run it.
 
-**Sole exception — DELETE confirmation.** If the SQL contains a `DELETE` statement (top-level or after a `;`), the first call returns `{ status: "requires_confirmation", confirmationId, message, sqlPreview, affectedObjects }` instead of executing. You MUST:
+### Destructive DDL redirect
+
+**Destructive DDL is blocked on the AI chat path.** If the SQL contains any of the following, `datatalk_execute_sql` returns `{ status: "redirect_to_editor" }` instead of executing:
+
+- `DROP` (TABLE, VIEW, INDEX, DATABASE, SCHEMA, SEQUENCE, etc.)
+- `TRUNCATE`
+- `ALTER ... DROP` (DROP COLUMN, DROP CONSTRAINT, DROP PARTITION, etc.)
+- `GRANT` / `REVOKE` / `DENY`
+- `KILL` / `SHUTDOWN` / `PURGE`
+- `SET GLOBAL`
+- `INSERT OVERWRITE`
+
+When you receive `redirect_to_editor`, you MUST:
+
+1. Call `datatalk_ui_exec(object="workspace", action="open", params={type: "query_editor", title: "<descriptive title>", payload: {initialSql: "<the SQL>", autoRun: false}})`. The `title` field is required by the schema. `autoRun` MUST be `false` — the user must manually confirm execution.
+2. Tell the user the SQL has been written to the editor and they should review and execute it there.
+
+Do NOT retry the SQL via `datatalk_execute_sql`. Do NOT attempt to bypass the redirect.
+
+### DELETE confirmation
+
+If the SQL contains a `DELETE` statement (top-level or after a `;`), the first call returns `{ status: "requires_confirmation", confirmationId, message, sqlPreview, affectedObjects }` instead of executing. You MUST:
 
 1. Show the user `sqlPreview` and `affectedObjects` in the chat reply and ask for explicit confirmation.
 2. Wait for the user's "yes / 确认 / go ahead" reply (or equivalent in any language). A vague "ok continue" is not enough — confirm what they are agreeing to.
