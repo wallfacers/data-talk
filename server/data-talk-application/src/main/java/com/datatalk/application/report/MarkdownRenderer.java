@@ -126,6 +126,11 @@ public class MarkdownRenderer {
             case "risk-list" -> renderRiskListMd(block, md);
             case "timeline" -> renderTimelineMd(block, md);
             case "appendix" -> renderAppendixMd(block, md);
+            case "callout" -> renderCalloutMd(block, md);
+            case "stat-highlight" -> renderStatHighlightMd(block, md);
+            case "comparison" -> renderComparisonMd(block, md);
+            case "quote" -> renderQuoteMd(block, md);
+            case "divider" -> md.append("---\n\n");
             default -> md.append("<!-- unknown block: ").append(type).append(" -->\n");
         }
     }
@@ -260,6 +265,84 @@ public class MarkdownRenderer {
                 }
             }
         }
+    }
+
+    /**
+     * callout → blockquote + emoji + 加粗中文标签前缀。emoji 在 GitHub/Obsidian/Typora/Notion/飞书
+     * 均能渲染为字形；即便 emoji 字体缺失，加粗中文标签仍承载语义，优雅降级。
+     */
+    private void renderCalloutMd(JsonNode b, StringBuilder md) {
+        String variant = b.path("variant").asText("note");
+        String prefix = switch (variant) {
+            case "insight" -> "> 💡 **洞察**：";
+            case "warning" -> "> ⚠️ **警告**：";
+            case "success" -> "> ✅ **成功**：";
+            default -> "> 📝 **提示**：";
+        };
+        String title = b.path("title").asText("");
+        String content = b.path("markdown").asText("");
+        // markdown 多行内容逐行加 blockquote 前缀；首行带标签前缀
+        String[] lines = content.split("\n", -1);
+        boolean firstLineWritten = false;
+        StringBuilder head = new StringBuilder(prefix);
+        if (!title.isBlank()) head.append(title).append(" — ");
+        for (String line : lines) {
+            if (!firstLineWritten) {
+                md.append(head).append(line).append("\n");
+                firstLineWritten = true;
+            } else {
+                md.append("> ").append(line).append("\n");
+            }
+        }
+        md.append("\n");
+        renderSourceMd(b, md);
+    }
+
+    /** stat-highlight → 加粗数字行。 */
+    private void renderStatHighlightMd(JsonNode b, StringBuilder md) {
+        md.append("**").append(b.path("value").asText("")).append("**");
+        String label = b.path("label").asText("");
+        if (!label.isBlank()) md.append(" ").append(label);
+        StringBuilder paren = new StringBuilder();
+        String context = b.path("context").asText("");
+        if (!context.isBlank()) paren.append(context);
+        String delta = b.path("delta").asText("");
+        if (!delta.isBlank()) {
+            if (paren.length() > 0) paren.append("，");
+            paren.append(delta);
+        }
+        if (paren.length() > 0) md.append("（").append(paren).append("）");
+        md.append("\n\n");
+        renderSourceMd(b, md);
+    }
+
+    /** comparison → GFM 表（label 行 + value 行）。 */
+    private void renderComparisonMd(JsonNode b, StringBuilder md) {
+        JsonNode items = b.path("items");
+        if (!items.isArray() || items.isEmpty()) return;
+        StringBuilder header = new StringBuilder("|");
+        StringBuilder divider = new StringBuilder("|");
+        StringBuilder value = new StringBuilder("|");
+        for (JsonNode it : items) {
+            header.append(" ").append(escapePipe(it.path("label").asText(""))).append(" |");
+            divider.append(" --- |");
+            String v = it.path("value").asText("");
+            String caption = it.path("caption").asText("");
+            if (!caption.isBlank()) v = v + " (" + caption + ")";
+            value.append(" ").append(escapePipe(v)).append(" |");
+        }
+        md.append(header).append("\n").append(divider).append("\n").append(value).append("\n\n");
+        renderSourceMd(b, md);
+    }
+
+    /** quote → blockquote（可选 attribution）。 */
+    private void renderQuoteMd(JsonNode b, StringBuilder md) {
+        md.append("> ").append(b.path("text").asText("")).append("\n");
+        String attribution = b.path("attribution").asText("");
+        if (!attribution.isBlank()) {
+            md.append(">\n> — ").append(attribution).append("\n");
+        }
+        md.append("\n");
     }
 
     private void renderSourceMd(JsonNode b, StringBuilder md) {

@@ -197,7 +197,9 @@ class ReportSchemaValidatorTest {
                 "REPORT_BLOCK_TYPE_MISSING",
                 "REPORT_BLOCK_TYPE_UNKNOWN",
                 "REPORT_TABLE_ROWS_MISSING",
-                "REPORT_TABLE_OVERSIZE_NO_APPENDIX"
+                "REPORT_TABLE_OVERSIZE_NO_APPENDIX",
+                "REPORT_TABLE_CELLFORMAT_INVALID",
+                "REPORT_BLOCK_FIELD_INVALID"
         );
         for (String code : emittedCodes) {
             assertThat(ReportSchemaValidator.RECOVERY_HINTS).containsKey(code);
@@ -223,6 +225,148 @@ class ReportSchemaValidatorTest {
                 .filter(x -> "REPORT_BLOCK_TYPE_UNKNOWN".equals(x.code()))
                 .findFirst().orElseThrow();
         assertThat(v.path()).isEqualTo("sections[0].blocks[1]");
+    }
+
+    @Test
+    void accepts_new_rich_visual_blocks() throws Exception {
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "sections": [ { "type": "chapter", "heading": "H", "blocks": [
+                { "type": "callout", "variant": "insight", "markdown": "核心洞察" },
+                { "type": "stat-highlight", "value": "¥3.2M", "label": "GMV" },
+                { "type": "comparison", "items": [
+                  {"label":"A","value":"1"}, {"label":"B","value":"2"} ] },
+                { "type": "quote", "text": "引用" },
+                { "type": "divider", "label": "分隔" }
+              ] } ] }
+        """);
+        assertThat(ReportSchemaValidator.ALLOWED_BLOCK_TYPES).contains(
+                "callout", "stat-highlight", "comparison", "quote", "divider");
+        assertThat(validator.validate(root)).isEmpty();
+    }
+
+    @Test
+    void rejects_callout_with_bad_variant_and_missing_markdown_collect_all() throws Exception {
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "sections": [ { "type": "callout", "variant": "neon" } ] }
+        """);
+        List<Violation> violations = validator.validate(root);
+        assertThat(violations).extracting(Violation::code)
+                .filteredOn("REPORT_BLOCK_FIELD_INVALID"::equals).hasSize(2);
+        assertThat(violations).extracting(Violation::path)
+                .contains("sections[0].variant", "sections[0].markdown");
+    }
+
+    @Test
+    void rejects_comparison_items_out_of_range() throws Exception {
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "sections": [ { "type": "comparison", "items": [ {"label":"A","value":"1"} ] } ] }
+        """);
+        assertThat(validator.validate(root)).extracting(Violation::code)
+                .contains("REPORT_BLOCK_FIELD_INVALID");
+    }
+
+    @Test
+    void rejects_stat_highlight_missing_value_and_quote_missing_text() throws Exception {
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "sections": [
+                { "type": "stat-highlight", "label": "x" },
+                { "type": "quote", "attribution": "a" } ] }
+        """);
+        assertThat(validator.validate(root)).extracting(Violation::path)
+                .contains("sections[0].value", "sections[1].text");
+    }
+
+    @Test
+    void rejects_cellformats_length_mismatch_and_invalid_value() throws Exception {
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "sections": [ { "type": "table", "columns": ["a","b"],
+                "rows": [["1","2"]], "cellFormats": ["bar"] } ] }
+        """);
+        // 长度不符（1≠2）
+        assertThat(validator.validate(root)).extracting(Violation::code)
+                .contains("REPORT_TABLE_CELLFORMAT_INVALID");
+
+        JsonNode root2 = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "sections": [ { "type": "table", "columns": ["a","b"],
+                "rows": [["1","2"]], "cellFormats": ["bar","neon"] } ] }
+        """);
+        // 非法取值 neon
+        Violation v = validator.validate(root2).stream()
+                .filter(x -> "REPORT_TABLE_CELLFORMAT_INVALID".equals(x.code()))
+                .findFirst().orElseThrow();
+        assertThat(v.path()).isEqualTo("sections[0].cellFormats[1]");
+    }
+
+    @Test
+    void accepts_table_with_valid_cellformats() throws Exception {
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "sections": [ { "type": "table", "columns": ["a","b","c"],
+                "rows": [["1","2","3"]], "cellFormats": ["text","bar","heat"] } ] }
+        """);
+        assertThat(validator.validate(root)).isEmpty();
+    }
+
+    @Test
+    void accepts_palette_theme_and_old_accent_only_theme() throws Exception {
+        JsonNode paletteTheme = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "theme": { "primary": "#0F2A4A", "accent": "#2F6FBF",
+                         "surface": "#F4F7FB", "tints": ["#E0E9F5","#C1D4EC"] },
+              "sections": [ {"type":"cover","title":"T"} ] }
+        """);
+        assertThat(validator.validate(paletteTheme)).isEmpty();
+
+        JsonNode legacyTheme = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "theme": { "accent": "#1f4e79" },
+              "sections": [ {"type":"cover","title":"T"} ] }
+        """);
+        assertThat(validator.validate(legacyTheme)).isEmpty();
+    }
+
+    @Test
+    void rejects_invalid_palette_role_and_tint_hex() throws Exception {
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "theme": { "primary": "navy", "tints": ["#E0E9F5", "bad"] },
+              "sections": [ {"type":"cover","title":"T"} ] }
+        """);
+        assertThat(validator.validate(root)).extracting(Violation::path)
+                .contains("theme.primary", "theme.tints[1]");
+    }
+
+    @Test
+    void tints_over_soft_cap_warns_but_does_not_reject() throws Exception {
+        StringBuilder tints = new StringBuilder();
+        for (int i = 0; i < 10; i++) {
+            if (i > 0) tints.append(",");
+            tints.append("\"#E0E9F5\"");
+        }
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "theme": { "accent": "#2F6FBF", "tints": [%s] },
+              "sections": [ {"type":"cover","title":"T"} ] }
+        """.formatted(tints));
+        // 10 个全合法 hex，超软上限 8 → 仅 warn 不 reject
+        assertThat(validator.validate(root)).isEmpty();
     }
 
     @Test

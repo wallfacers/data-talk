@@ -74,11 +74,18 @@ function decodeUtf8Base64(text: string): string {
   }
 }
 
-function scheduleRootUnmount(root: Root) {
-  try {
-    root.unmount()
-  } catch {
-    // Root may already be unmounted.
+function scheduleRootUnmount(root: Root, immediate?: boolean) {
+  const doUnmount = () => {
+    try {
+      root.unmount()
+    } catch {
+      // Root may already be unmounted.
+    }
+  }
+  if (immediate) {
+    doUnmount()
+  } else {
+    queueMicrotask(doUnmount)
   }
 }
 
@@ -549,7 +556,7 @@ export function Markdown(props: {
 
       let entry = chartRoots.get(chartKey)
       if (!entry || entry.host !== mountPoint) {
-        if (entry) scheduleRootUnmount(entry.root)
+        if (entry) scheduleRootUnmount(entry.root, true)
         entry = { root: createRoot(mountPoint), host: mountPoint }
         chartRoots.set(chartKey, entry)
       }
@@ -596,7 +603,7 @@ export function Markdown(props: {
 
       let entry = dashboardRoots.get(dashKey)
       if (!entry || entry.host !== mountPoint) {
-        if (entry) scheduleRootUnmount(entry.root)
+        if (entry) scheduleRootUnmount(entry.root, true)
         entry = { root: createRoot(mountPoint), host: mountPoint }
         dashboardRoots.set(dashKey, entry)
       }

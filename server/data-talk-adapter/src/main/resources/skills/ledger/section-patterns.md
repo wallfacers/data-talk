@@ -1,4 +1,4 @@
-# Ledger Section Patterns — 11 种 block 类型
+# Ledger Section Patterns — 16 种 block 类型
 
 本文档定义 ledger 报告的全部 block 原语。**任何不在此集合内的 block 类型在 promote 时会被服务端拒绝**（`REPORT_BLOCK_TYPE_UNKNOWN`）。
 
@@ -11,10 +11,18 @@
 5. [kpi-strip](#5-kpi-strip)
 6. [narrative](#6-narrative)
 7. [chart](#7-chart)
-8. [table](#8-table)
+8. [table](#8-table)（含富单元格 cellFormats）
 9. [risk-list](#9-risk-list)
 10. [timeline](#10-timeline)
 11. [appendix](#11-appendix)
+
+富视觉原语（现代报告设计语言）：
+
+12. [callout](#12-callout)
+13. [stat-highlight](#13-stat-highlight)
+14. [comparison](#14-comparison)
+15. [quote](#15-quote)
+16. [divider](#16-divider)
 
 ---
 
@@ -315,6 +323,30 @@ toc 单独成页（`break-before: page` + `break-after: page`）。
 - `caption`（可选，string）
 - `source`（强烈推荐）
 - `appendixCsvRef`（可选，string）—— rows.length > 200 时**必填**；指向 file artifact `kind='report-data-csv'` 的 fileArtifactId
+- `cellFormats`（可选，string[]）—— **列级**单元格修饰，长度**必须等于** `columns.length`，每项 ∈ `text`(默认) / `bar` / `delta` / `heat`：
+  - `text`：纯文本（默认；不声明 `cellFormats` 时全部列按此渲染）
+  - `bar`：cell 内迷你条形，宽度正比该列数值，`tint-3` 填充 + 数值标签
+  - `delta`：对 +/- 数值着语义色（正向 `positive` / 负向 `negative`）+ ↑↓
+  - `heat`：按该列数值映射 `tint-1..4` 底色深浅
+  - 数值解析失败的 cell **安全回退纯文本**，不报错
+  - **Markdown 输出忽略 cellFormats**，始终纯文本 GFM 表（保持可移植）
+
+### 富单元格 JSON 示例（cellFormats）
+
+```json
+{
+  "type": "table",
+  "columns": ["渠道", "GMV", "同比", "占比"],
+  "cellFormats": ["text", "bar", "delta", "heat"],
+  "rows": [
+    ["自营", "1216000", "+15%", "38"],
+    ["抖音", "832000", "+28%", "26"],
+    ["天猫", "712000", "-3%", "22"]
+  ],
+  "caption": "Top 渠道 GMV（富单元格）",
+  "source": "mysql-prod · sales_summary as of 2026-04-30"
+}
+```
 
 ### HTML 示例
 
@@ -388,12 +420,12 @@ toc 单独成页（`break-before: page` + `break-after: page`）。
 
 ### Severity 着色
 
-| severity | emoji | 文字颜色 |
+| severity | emoji | 角色色 token |
 |---|---|---|
-| critical | 🔴 | `#B33A3A` |
-| high | 🟠 | `#C76A21` |
-| medium | 🟡 | `#9C7B12` |
-| low | 🟢 | `#1F7A4E` |
+| critical | 🔴 | `negative`（`#B33A3A`） |
+| high | 🟠 | `warning`（`#C76A21`） |
+| medium | 🟡 | `caution`（`#9C7B12`） |
+| low | 🟢 | `positive`（`#1F7A4E`） |
 
 ---
 
@@ -490,3 +522,242 @@ toc 单独成页（`break-before: page` + `break-after: page`）。
 ### PDF 分页
 
 整个 appendix 区域单独成页，`break-before: page`。
+
+---
+
+## 12. callout
+
+**用途**：key-insight 高亮块——强调一条结论性洞察 / 风险 / 提示。**禁止纯装饰**（见 SKILL.md 数据叙事规则）。
+
+### JSON schema 示例
+
+```json
+{
+  "type": "callout",
+  "variant": "insight",
+  "title": "核心洞察",
+  "markdown": "抖音渠道环比 **+28%** 是本月增长主引擎，贡献了总增量的 62%。",
+  "source": "mysql-prod · sales_summary as of 2026-04-30"
+}
+```
+
+字段：
+- `variant`（必填）：`insight` / `warning` / `note` / `success`
+- `title`（可选，string）：加粗小标题
+- `markdown`（必填，string）：正文，支持 `**bold**` / `*italic*`
+- `source`（可选，string）：数据来源
+
+variant → 色彩 + 图标映射：
+
+| variant | 图标 | 角色色 |
+|---|---|---|
+| insight | 💡 | `accent` |
+| warning | ⚠️ | `negative` |
+| success | ✅ | `positive` |
+| note | 📝 | `neutral` |
+
+### HTML 示例
+
+```html
+<aside class="ledger-callout ledger-callout--insight">
+  <div class="ledger-callout__icon" aria-hidden="true">💡</div>
+  <div class="ledger-callout__body">
+    <div class="ledger-callout__title">核心洞察</div>
+    <div class="ledger-callout__content"><p>抖音渠道环比 <strong>+28%</strong> 是本月增长主引擎…</p></div>
+  </div>
+</aside>
+```
+
+### Markdown 输出
+
+```markdown
+> 💡 **洞察**：核心洞察 — 抖音渠道环比 **+28%** 是本月增长主引擎，贡献了总增量的 62%。
+```
+
+（warning→`> ⚠️ **警告**：…`、note→`> 📝 **提示**：…`、success→`> ✅ **成功**：…）
+
+### PDF 分页
+
+`.ledger-callout { break-inside: avoid; }`。
+
+---
+
+## 13. stat-highlight
+
+**用途**：hero 关键指标——单个最重要指标的视觉锚点（如月度总 GMV）。
+
+### JSON schema 示例
+
+```json
+{
+  "type": "stat-highlight",
+  "value": "¥3.2M",
+  "label": "本月总 GMV",
+  "context": "目标完成率 107%",
+  "delta": "+18%",
+  "source": "mysql-prod · sales_summary as of 2026-04-30"
+}
+```
+
+字段：
+- `value`（必填，string）：已格式化的主数字，超大字号 + `primary` 色
+- `label`（可选，string）：指标名
+- `context`（可选，string）：补充说明
+- `delta`（可选，string）：含 ± 的变化，正负着语义色
+- `source`（可选，string）
+
+### HTML 示例
+
+```html
+<div class="ledger-stat-highlight">
+  <div class="ledger-stat-highlight__value ledger-num">¥3.2M</div>
+  <div class="ledger-stat-highlight__label">本月总 GMV</div>
+  <div class="ledger-stat-highlight__context">目标完成率 107%</div>
+  <div class="ledger-stat-highlight__delta ledger-stat-highlight__delta--up">↑ 18%</div>
+</div>
+```
+
+### Markdown 输出
+
+```markdown
+**¥3.2M** 本月总 GMV（目标完成率 107%，+18%）
+```
+
+### PDF 分页
+
+`.ledger-stat-highlight { break-inside: avoid; }`。
+
+---
+
+## 14. comparison
+
+**用途**：并列对比卡——2-4 个同维度指标横向对比（如各渠道 GMV、各区域占比）。
+
+### JSON schema 示例
+
+```json
+{
+  "type": "comparison",
+  "items": [
+    { "label": "自营", "value": "¥1.2M", "caption": "占比 38%" },
+    { "label": "抖音", "value": "¥0.8M", "caption": "占比 26%" },
+    { "label": "天猫", "value": "¥0.7M", "caption": "占比 22%" }
+  ],
+  "source": "mysql-prod · sales_summary as of 2026-04-30"
+}
+```
+
+字段：
+- `items`（必填，array，长度 **2-4**）
+  - `label`（必填，string）
+  - `value`（必填，string）：`primary` 色数值
+  - `caption`（可选，string）
+- `source`（可选，string）
+
+### HTML 示例
+
+```html
+<div class="ledger-comparison">
+  <div class="ledger-comparison__item">
+    <div class="ledger-comparison__label">自营</div>
+    <div class="ledger-comparison__value ledger-num">¥1.2M</div>
+    <div class="ledger-comparison__caption">占比 38%</div>
+  </div>
+  ...
+</div>
+```
+
+### Markdown 输出
+
+GFM 表（label 行 + value 行）：
+
+```markdown
+| 自营 | 抖音 | 天猫 |
+| --- | --- | --- |
+| ¥1.2M (占比 38%) | ¥0.8M (占比 26%) | ¥0.7M (占比 22%) |
+```
+
+### PDF 分页
+
+`.ledger-comparison { break-inside: avoid; }`。
+
+---
+
+## 15. quote
+
+**用途**：pull-quote——引用关键论断 / 用户原话 / 方法论结论。
+
+### JSON schema 示例
+
+```json
+{
+  "type": "quote",
+  "text": "如果不能用一句话说清楚增长来源，说明分析还没做完。",
+  "attribution": "增长复盘会议纪要"
+}
+```
+
+字段：
+- `text`（必填，string）：引用正文
+- `attribution`（可选，string）：出处
+
+### HTML 示例
+
+```html
+<blockquote class="ledger-quote">
+  <p class="ledger-quote__text">如果不能用一句话说清楚增长来源，说明分析还没做完。</p>
+  <cite class="ledger-quote__attribution">增长复盘会议纪要</cite>
+</blockquote>
+```
+
+### Markdown 输出
+
+```markdown
+> 如果不能用一句话说清楚增长来源，说明分析还没做完。
+>
+> — 增长复盘会议纪要
+```
+
+### PDF 分页
+
+`.ledger-quote { break-inside: avoid; }`。
+
+---
+
+## 16. divider
+
+**用途**：章节视觉分隔——章节内逻辑段落之间的细分隔。
+
+### JSON schema 示例
+
+```json
+{ "type": "divider", "label": "下半月趋势" }
+```
+
+或无标签：
+
+```json
+{ "type": "divider" }
+```
+
+字段：
+- `label`（可选，string）：居中标签；省略则为纯 hairline
+
+### HTML 示例
+
+```html
+<!-- 无标签 -->
+<hr class="ledger-divider">
+<!-- 带标签 -->
+<div class="ledger-divider ledger-divider--labeled"><span class="ledger-divider__label">下半月趋势</span></div>
+```
+
+### Markdown 输出
+
+```markdown
+---
+```
+
+### PDF 分页
+
+`.ledger-divider { break-inside: avoid; }`。

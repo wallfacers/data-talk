@@ -99,6 +99,13 @@
       "heading": "影响范围",
       "blocks": [
         {
+          "type": "stat-highlight",
+          "value": "2h 25min",
+          "label": "P2 事件持续时长",
+          "context": "峰值主从延迟 35s，影响 4 个下游业务",
+          "source": "internal · incident_log as of 2026-04-15"
+        },
+        {
           "type": "kpi-strip",
           "items": [
             { "label": "持续时长", "value": "2h 25min" },
@@ -128,6 +135,12 @@
         {
           "type": "narrative",
           "markdown": "**直接原因**：促销配置变更脚本直接 `UPDATE sku SET promo_id = X WHERE category_id IN (...)`，影响 800w 行，未分批。\n\n**深层原因**：(1) 缺乏大事务拆分规范，开发可以随手提交全表更新；(2) 从库 SQL 线程单线程复制（5.7 默认配置），无法并行追赶；(3) 监控阈值 60s 过于宽松，错过早期介入窗口。"
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "title": "根因定性",
+          "markdown": "本质是**流程缺失**而非个人失误：缺大事务拆分规范 + 从库单线程复制 + 监控阈值过宽，三者叠加放大了一次常规配置变更的影响。"
         },
         {
           "type": "chart",
@@ -171,6 +184,11 @@
               "dueDate": "2026-05-25"
             }
           ]
+        },
+        {
+          "type": "quote",
+          "text": "事故从来不是单点失误，而是多个薄弱环节在同一时刻对齐。修流程，比追责个人更重要。",
+          "attribution": "复盘会议结论"
         }
       ]
     }

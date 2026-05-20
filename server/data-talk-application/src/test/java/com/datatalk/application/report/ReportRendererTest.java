@@ -27,8 +27,127 @@ class ReportRendererTest {
         // 不含外网 URL
         assertThat(html).doesNotContain("http://");
         assertThat(html).doesNotContain("https://");
-        // 含 accent token
-        assertThat(html).contains("--ledger-accent: #1f4e79");
+        // 显式 accent 被尊重（hex 归一化为大写），并注入完整角色色调色板
+        assertThat(html).contains("--ledger-accent:#1F4E79");
+        assertThat(html).contains("--ledger-primary:");
+        assertThat(html).contains("--ledger-surface:");
+        assertThat(html).contains("--ledger-tint-1:");
+    }
+
+    @Test
+    void injects_full_default_palette_when_no_theme() throws Exception {
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "sections": [{"type":"cover","title":"T"}] }
+        """);
+        String html = renderer.toHtml(root);
+        // 无 theme → 整套默认设计 token
+        assertThat(html).contains("--ledger-primary:#0F2A4A");
+        assertThat(html).contains("--ledger-accent:#2F6FBF");
+        assertThat(html).contains("--ledger-surface:#F4F7FB");
+        assertThat(html).contains("--ledger-tint-1:#E0E9F5");
+        assertThat(html).contains("--ledger-positive:#1F7A4E");
+    }
+
+    @Test
+    void injects_echarts_palette_before_report_option() throws Exception {
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "sections": [ {"type":"chapter","heading":"C","blocks":[
+                {"type":"chart","id":"c1","echartsOption":{"series":[]},"caption":""} ]} ] }
+        """);
+        String html = renderer.toHtml(root);
+        // PALETTE 注入，且 setOption({color:PALETTE},false) 先于 setOption(c.option)
+        assertThat(html).contains("var PALETTE = [");
+        assertThat(html).contains("inst.setOption({ color: PALETTE }, false);");
+        int paletteSet = html.indexOf("inst.setOption({ color: PALETTE }, false);");
+        int optionSet = html.indexOf("inst.setOption(c.option);");
+        assertThat(paletteSet).isLessThan(optionSet);
+    }
+
+    @Test
+    void renders_five_new_rich_visual_blocks() throws Exception {
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "sections": [ {"type":"chapter","heading":"C","blocks":[
+                {"type":"callout","variant":"insight","title":"标题","markdown":"**核心**洞察"},
+                {"type":"stat-highlight","value":"¥3.2M","label":"GMV","delta":"+18%"},
+                {"type":"comparison","items":[
+                  {"label":"自营","value":"1.2M"},{"label":"抖音","value":"0.8M"}]},
+                {"type":"quote","text":"引用文本","attribution":"张三"},
+                {"type":"divider","label":"小结"}
+              ]} ] }
+        """);
+        String html = renderer.toHtml(root);
+        assertThat(html).contains("ledger-callout ledger-callout--insight");
+        assertThat(html).contains("💡");
+        assertThat(html).contains("<strong>核心</strong>洞察");
+        assertThat(html).contains("ledger-stat-highlight__value");
+        assertThat(html).contains("ledger-stat-highlight__delta--up");
+        assertThat(html).contains("ledger-comparison__item");
+        assertThat(html).contains("ledger-quote__text");
+        assertThat(html).contains("ledger-divider--labeled");
+        assertThat(html).contains("小结");
+    }
+
+    @Test
+    void renders_table_cell_formats() throws Exception {
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "sections": [ {"type":"chapter","heading":"C","blocks":[
+                {"type":"table","columns":["渠道","GMV","同比","占比"],
+                 "cellFormats":["text","bar","delta","heat"],
+                 "rows":[["自营","100","+15%","80"],["抖音","50","-3%","20"]]}
+              ]} ] }
+        """);
+        String html = renderer.toHtml(root);
+        assertThat(html).contains("ledger-cell--bar");
+        assertThat(html).contains("ledger-cell-bar__fill");
+        assertThat(html).contains("ledger-cell--delta-up");
+        assertThat(html).contains("ledger-cell--delta-down");
+        assertThat(html).contains("ledger-cell--heat");
+    }
+
+    @Test
+    void cell_format_falls_back_to_text_for_non_numeric() throws Exception {
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "sections": [ {"type":"chapter","heading":"C","blocks":[
+                {"type":"table","columns":["a","b"],
+                 "cellFormats":["text","bar"],
+                 "rows":[["x","N/A"]]}
+              ]} ] }
+        """);
+        // bar 列遇非数值 → 安全回退纯 <td>，不抛异常、不产出 bar 结构
+        String html = renderer.toHtml(root);
+        assertThat(html).contains("<td>N/A</td>");
+    }
+
+    @Test
+    void mixed_form_old_theme_old_blocks_plus_one_callout() throws Exception {
+        // 向后兼容：旧 theme.accent + 旧块 + 新增一个 callout，互不影响
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "theme": { "accent": "#1f4e79" },
+              "sections": [
+                {"type":"cover","title":"T"},
+                {"type":"chapter","heading":"C","blocks":[
+                  {"type":"kpi-strip","items":[{"label":"x","value":"1","delta":"+5%"}]},
+                  {"type":"callout","variant":"warning","markdown":"注意风险"},
+                  {"type":"narrative","markdown":"段落"}
+                ]} ] }
+        """);
+        String html = renderer.toHtml(root);
+        assertThat(html).contains("--ledger-accent:#1F4E79");      // 显式 accent 尊重
+        assertThat(html).contains("ledger-kpi-card__value");       // 旧块正常
+        assertThat(html).contains("ledger-callout--warning");      // 新块正常
+        assertThat(html).contains("⚠️");
     }
 
     @Test

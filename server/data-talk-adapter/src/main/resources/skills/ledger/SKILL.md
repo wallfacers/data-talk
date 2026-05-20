@@ -60,6 +60,19 @@ triggers:
    - **禁止**"先 promote 一个空壳，再分多次 add section / append data"——服务端不支持，会让 status 状态机失控。
    - **禁止**分多次 promote 同一份报告。每次 promote 都是一个**新版本**（version + 1，同 group_id）。
 
+## 数据叙事撰写规则（有理有据）
+
+ledger 报告的价值在于**有理有据、视觉服务于结论**，而非把查询结果整表丢给读者。组织报告时**必须**遵循：
+
+1. **论点 → 证据 → 来源链条**：每个关键结论 **MUST** 由具体数据支撑，并通过 block 的 `source` 字段挂到数据来源 / 口径（格式 `<connection-name> · <table-or-summary> as of <date>`）。没有 source 的结论性数字视为未完成。
+2. **一图一观点**：单个 `chart` **MUST** 只表达一个核心观点。禁止一张图叠加多个互不相关的对比 / callout；需要多观点就拆成多张图，每张配一句结论 narrative。
+3. **视觉服务于结论，禁数据倾倒**：富视觉原语（`callout` / `stat-highlight` / `comparison`）**MUST** 用于**强调结论性洞察**，禁止纯装饰。
+   - 用 `stat-highlight` 锚定本章最重要的一个数字；用 `callout(insight)` 点出"这意味着什么"；用 `comparison` 做同维度横向对比；用 `quote` 引用关键论断。
+   - **禁止"数据倾倒"**：不要把原始查询结果整表丢给读者而不给解读。大表放附录 CSV，正文只留前 N 行预览 + 一段 narrative 解读。
+4. **渐进披露**：复杂分析 **MUST** 按"概述 → 分项 → 结论 → 建议"顺序组织——先给基线（kpi-strip / stat-highlight），再给关键对比（comparison / chart），最后给结论与行动（callout / narrative / risk-list）。
+
+> 反问自己：读者读完这一章，能不能用一句话说清楚"发生了什么、为什么、接下来怎么办"？如果不能，说明叙事还没做完。
+
 ## 重新生成（用户驱动）
 
 用户说"按上次的样式重新做一份" / "把数据更新到 5 月" / "重新生成"时：
@@ -97,13 +110,22 @@ triggers:
 - `timeline`（事件时间线，复盘专用）
 - `appendix`（附录容器）
 
+富视觉原语（用于强调结论，**非装饰**——见"数据叙事撰写规则"）：
+- `callout`（key-insight 高亮块：variant ∈ insight/warning/note/success, title?, markdown）—— 点出"这意味着什么"
+- `stat-highlight`（hero 关键指标：value, label?, context?, delta?）—— 锚定本章最重要的一个数字
+- `comparison`（并列对比卡：items[2-4]{label,value,caption?}）—— 同维度横向对比
+- `quote`（pull-quote：text, attribution?）—— 引用关键论断 / 方法论
+- `divider`（章节视觉分隔：label?）
+
+`table` 支持可选列级 `cellFormats`（`text`/`bar`/`delta`/`heat`），长度须等于 columns。
+
 任何不在此集合内的 block 类型在 promote 时会被服务端拒绝（`REPORT_BLOCK_TYPE_UNKNOWN`）。
 
 ## 与 bezel 的边界（再次强调）
 
 | 维度 | bezel（dashboard） | ledger（report） |
 |---|---|---|
-| 视觉气质 | 深色科技大屏、玻璃拟态、霓虹 | 白底衬线印刷品、黑灰、单一品牌色 |
+| 视觉气质 | 深色科技大屏、玻璃拟态、霓虹 | 白底衬线、现代色彩角色系统（primary/accent/surface + tint 梯度）、富视觉原语 |
 | 数据冻结 | 实时 polling，活的 | 一次性 inline 冻结，死的 |
 | 跨数据源 | 单 widget 单 endpoint | 一份报告跨多个 connection 取数 |
 | 派生产物 | 仅 HTML（iframe 内自渲染） | HTML + PDF + Markdown |
@@ -116,7 +138,7 @@ triggers:
 ## 详细参考
 
 - `data-contract.md` — promote 数据契约（跨连接 connectionId 强制、source 字段格式、大表附录 CSV）
-- `design-language.md` — 印刷品排版规范（字体、字号、配色、禁用项）
-- `section-patterns.md` — 11 种 block 类型详细 schema + HTML 示例 + PDF 分页注意
+- `design-language.md` — 现代报告设计语言（色彩角色系统、字号阶、富视觉原语、bezel 边界）
+- `section-patterns.md` — 16 种 block 类型详细 schema + HTML 示例 + PDF 分页注意
 - `templates/monthly-business-review.md` — 业务月报模板含完整示例 JSON
 - `templates/incident-postmortem.md` — 问题复盘模板含完整示例 JSON

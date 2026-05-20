@@ -33,6 +33,48 @@ class MarkdownRendererTest {
     }
 
     @Test
+    void renders_new_blocks_as_gfm_downgrade() throws Exception {
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "sections": [ {"type":"chapter","heading":"C","blocks":[
+                {"type":"callout","variant":"insight","markdown":"核心洞察"},
+                {"type":"callout","variant":"warning","markdown":"风险提示"},
+                {"type":"stat-highlight","value":"¥3.2M","label":"总 GMV","delta":"+18%"},
+                {"type":"comparison","items":[
+                  {"label":"自营","value":"1.2M"},{"label":"抖音","value":"0.8M"}]},
+                {"type":"quote","text":"数据说话","attribution":"CEO"},
+                {"type":"divider","label":"小结"}
+              ]} ] }
+        """);
+        String md = renderer.toMarkdown(root, Map.of());
+        assertThat(md).contains("> 💡 **洞察**：核心洞察");
+        assertThat(md).contains("> ⚠️ **警告**：风险提示");
+        assertThat(md).contains("**¥3.2M** 总 GMV（+18%）");
+        assertThat(md).contains("| 自营 | 抖音 |");
+        assertThat(md).contains("> 数据说话");
+        assertThat(md).contains("> — CEO");
+        assertThat(md).contains("---");
+    }
+
+    @Test
+    void table_markdown_ignores_cell_formats_outputs_plain_gfm() throws Exception {
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "sections": [ {"type":"chapter","heading":"C","blocks":[
+                {"type":"table","columns":["渠道","GMV"],
+                 "cellFormats":["text","bar"],
+                 "rows":[["自营","100"]]}
+              ]} ] }
+        """);
+        String md = renderer.toMarkdown(root, Map.of());
+        // 富单元格修饰被忽略，纯文本 GFM
+        assertThat(md).contains("| 自营 | 100 |");
+        assertThat(md).doesNotContain("ledger-cell");
+    }
+
+    @Test
     void renders_kpi_strip_as_single_row_gfm() throws Exception {
         JsonNode root = mapper.readTree("""
             { "schemaVersion": 1, "kind": "report",

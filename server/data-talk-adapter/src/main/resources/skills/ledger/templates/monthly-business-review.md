@@ -35,7 +35,9 @@
     "userPrompt": "做一份 2026 年 4 月的销售月报，覆盖渠道、区域、品类三个维度"
   },
   "theme": {
-    "accent": "#1f4e79"
+    "primary": "#0F2A4A",
+    "accent": "#2F6FBF",
+    "surface": "#F4F7FB"
   },
   "sections": [
     {
@@ -59,6 +61,14 @@
       "type": "chapter",
       "heading": "业务总览",
       "blocks": [
+        {
+          "type": "stat-highlight",
+          "value": "¥3.2M",
+          "label": "本月总 GMV",
+          "context": "目标完成率 107%",
+          "delta": "+18%",
+          "source": "mysql-prod · sales_summary as of 2026-04-30"
+        },
         {
           "type": "kpi-strip",
           "items": [
@@ -86,6 +96,13 @@
           },
           "caption": "近 4 个月 GMV 趋势（百万元）",
           "source": "mysql-prod · sales_summary as of 2026-04-30"
+        },
+        {
+          "type": "callout",
+          "variant": "insight",
+          "title": "核心洞察",
+          "markdown": "抖音渠道环比 **+28%** 是本月增长主引擎，单渠道贡献了总增量的 62%。",
+          "source": "mysql-prod · channel_summary as of 2026-04-30"
         }
       ]
     },
@@ -96,13 +113,14 @@
         {
           "type": "table",
           "columns": ["渠道", "GMV (万元)", "占比", "同比", "环比"],
+          "cellFormats": ["text", "bar", "heat", "delta", "delta"],
           "rows": [
-            ["自营", "121.6", "38%", "+15%", "-2%"],
-            ["抖音", "83.2", "26%", "+28%", "+28%"],
-            ["天猫", "71.2", "22%", "+12%", "+5%"],
-            ["京东", "44.0", "14%", "+8%", "+3%"]
+            ["自营", "121.6", "38", "+15%", "-2%"],
+            ["抖音", "83.2", "26", "+28%", "+28%"],
+            ["天猫", "71.2", "22", "+12%", "+5%"],
+            ["京东", "44.0", "14", "+8%", "+3%"]
           ],
-          "caption": "Top 渠道 GMV 表现",
+          "caption": "Top 渠道 GMV 表现（条形=GMV，热力=占比，delta=同/环比）",
           "source": "mysql-prod · channel_summary as of 2026-04-30"
         },
         {
@@ -135,6 +153,14 @@
             ]
           },
           "caption": "4 月 GMV 区域占比（%）",
+          "source": "mysql-prod · region_summary as of 2026-04-30"
+        },
+        {
+          "type": "comparison",
+          "items": [
+            { "label": "华东（增长引擎）", "value": "¥134.4万", "caption": "占比 42% · 同比 +22%" },
+            { "label": "西南（需关注）", "value": "¥22.4万", "caption": "占比 7% · 同比 -5%" }
+          ],
           "source": "mysql-prod · region_summary as of 2026-04-30"
         },
         {

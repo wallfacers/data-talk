@@ -75,7 +75,7 @@ public class ReportRenderer {
     public String toHtml(JsonNode reportJson, String assetsBaseHref) {
         JsonNode meta = reportJson.path("meta");
         String title = meta.path("title").asText("DataTalk Report");
-        String accent = reportJson.path("theme").path("accent").asText("#1f4e79");
+        LedgerThemePalette palette = LedgerThemePalette.from(reportJson.path("theme"));
 
         StringBuilder html = new StringBuilder(64 * 1024);
         html.append("<!doctype html>\n");
@@ -85,7 +85,7 @@ public class ReportRenderer {
         html.append("<title>").append(escapeHtml(title)).append("</title>\n");
         html.append("<base href=\"").append(escapeAttr(assetsBaseHref)).append("\">\n");
         html.append("<link rel=\"stylesheet\" href=\"styles/ledger.css\">\n");
-        html.append("<style>:root { --ledger-accent: ").append(escapeAttr(accent)).append("; }</style>\n");
+        html.append(injectThemeVars(palette));
         html.append("<script src=\"scripts/echarts.min.js\"></script>\n");
         html.append("</head>\n<body>\n");
         html.append("<div class=\"ledger-report\">\n");
@@ -117,7 +117,7 @@ public class ReportRenderer {
         html.append("</div>\n");
 
         // Chart init + LEDGER_READY signal
-        html.append("<script>\n").append(renderChartBootstrapScript(reportJson)).append("\n</script>\n");
+        html.append("<script>\n").append(renderChartBootstrapScript(reportJson, palette)).append("\n</script>\n");
         // BUG-0077: with <base href="…/_assets/"> a bare `<a href="#chap-N">` resolves to an
         // absolute URL against the base, triggering cross-document navigation on click.
         // Intercept hash links and use scrollIntoView so TOC anchors stay same-document.
@@ -143,10 +143,25 @@ public class ReportRenderer {
           + "  t.scrollIntoView({behavior:'smooth', block:'start'});\n"
           + "});";
 
-    /** 提取报告中所有 chart block 的 id 与 echartsOption，用于 bootstrap script。 */
-    private String renderChartBootstrapScript(JsonNode reportJson) {
+    /**
+     * 注入 {@code :root} CSS 变量，覆盖 ledger.css 的同名默认值。由 {@link LedgerThemePalette}
+     * 解析 theme 调色板（缺省派生补齐），保证 primary/accent/surface/tint-1..4/语义色全部就位。
+     */
+    static String injectThemeVars(LedgerThemePalette palette) {
+        return "<style>:root { " + palette.toCssVars() + " }</style>\n";
+    }
+
+    /**
+     * 提取报告中所有 chart block 的 id 与 echartsOption，用于 bootstrap script。
+     *
+     * <p>在 {@code initOne} 中 setOption 前先注入由 theme 解析出的 8 色 PALETTE：
+     * {@code inst.setOption({color:PALETTE}, false)} 先于 {@code inst.setOption(c.option)} ——
+     * 两次 merge，报告自己在 echartsOption 里显式指定的 series 色仍胜出。
+     */
+    private String renderChartBootstrapScript(JsonNode reportJson, LedgerThemePalette palette) {
         StringBuilder s = new StringBuilder(4096);
         s.append("(function(){\n");
+        s.append("  var PALETTE = ").append(paletteJsArray(palette)).append(";\n");
         s.append("  var charts = [\n");
         boolean first = true;
         for (JsonNode block : collectChartBlocks(reportJson)) {
@@ -172,6 +187,7 @@ public class ReportRenderer {
         s.append("    try {\n");
         s.append("      var inst = echarts.init(el);\n");
         s.append("      inst.on('finished', markFinished);\n");
+        s.append("      inst.setOption({ color: PALETTE }, false);\n");
         s.append("      inst.setOption(c.option);\n");
         s.append("    } catch (e) {\n");
         s.append("      console.error('ledger chart init failed', c.id, e);\n");
@@ -221,6 +237,11 @@ public class ReportRenderer {
             case "risk-list" -> renderRiskList(block, out);
             case "timeline" -> renderTimeline(block, out);
             case "appendix" -> renderAppendix(block, out);
+            case "callout" -> renderCallout(block, out);
+            case "stat-highlight" -> renderStatHighlight(block, out);
+            case "comparison" -> renderComparison(block, out);
+            case "quote" -> renderQuote(block, out);
+            case "divider" -> renderDivider(block, out);
             default -> out.append("<!-- unknown block ").append(escapeHtml(type)).append(" -->\n");
         }
     }
@@ -339,6 +360,36 @@ public class ReportRenderer {
     private void renderTable(JsonNode b, StringBuilder out) {
         JsonNode columns = b.path("columns");
         JsonNode rows = b.path("rows");
+        int colCount = columns.isArray() ? columns.size() : 0;
+
+        // 列级 cellFormats（可选）：长度对齐 columns；未声明的列退化为纯文本
+        java.util.List<String> formats = new java.util.ArrayList<>();
+        JsonNode cellFormats = b.path("cellFormats");
+        if (cellFormats.isArray()) {
+            for (JsonNode f : cellFormats) formats.add(f.asText("text"));
+        }
+        // bar/heat 需列内数值区间做归一化，先做一次预扫描
+        double[] colMin = new double[colCount];
+        double[] colMax = new double[colCount];
+        boolean[] colHasNum = new boolean[colCount];
+        java.util.Arrays.fill(colMin, Double.POSITIVE_INFINITY);
+        java.util.Arrays.fill(colMax, Double.NEGATIVE_INFINITY);
+        if (rows.isArray() && !formats.isEmpty()) {
+            for (JsonNode row : rows) {
+                if (!row.isArray()) continue;
+                for (int c = 0; c < colCount && c < row.size(); c++) {
+                    String fmt = c < formats.size() ? formats.get(c) : "text";
+                    if (!"bar".equals(fmt) && !"heat".equals(fmt)) continue;
+                    Double v = parseNumeric(row.get(c).asText(""));
+                    if (v != null) {
+                        colHasNum[c] = true;
+                        colMin[c] = Math.min(colMin[c], v);
+                        colMax[c] = Math.max(colMax[c], v);
+                    }
+                }
+            }
+        }
+
         boolean paged = rows.isArray() && rows.size() > 30;
         out.append("<figure class=\"ledger-table").append(paged ? " ledger-table--paged" : "").append("\">\n");
         String caption = b.path("caption").asText("");
@@ -358,8 +409,10 @@ public class ReportRenderer {
             for (JsonNode row : rows) {
                 out.append("      <tr>");
                 if (row.isArray()) {
-                    for (JsonNode cell : row) {
-                        out.append("<td>").append(escapeHtml(cell.asText(""))).append("</td>");
+                    for (int c = 0; c < row.size(); c++) {
+                        String raw = row.get(c).asText("");
+                        String fmt = (c < formats.size()) ? formats.get(c) : "text";
+                        renderCell(raw, fmt, c, colMin, colMax, colHasNum, colCount, out);
                     }
                 }
                 out.append("</tr>\n");
@@ -374,6 +427,88 @@ public class ReportRenderer {
         }
         out.append("</figure>\n");
         renderSource(b, out);
+    }
+
+    /** 单元格渲染：按列级 format 修饰。数值解析失败一律安全回退纯文本，不抛异常。 */
+    private void renderCell(String raw, String fmt, int col,
+                            double[] colMin, double[] colMax, boolean[] colHasNum,
+                            int colCount, StringBuilder out) {
+        boolean inRange = col >= 0 && col < colCount;
+        switch (fmt) {
+            case "bar" -> {
+                Double v = parseNumeric(raw);
+                if (v == null || !inRange || !colHasNum[col]) {
+                    out.append("<td>").append(escapeHtml(raw)).append("</td>");
+                    return;
+                }
+                double pct = barWidthPct(v, colMin[col], colMax[col]);
+                out.append("<td class=\"ledger-cell--bar\">")
+                        .append("<span class=\"ledger-cell-bar\"><span class=\"ledger-cell-bar__fill\" style=\"width:")
+                        .append(formatPct(pct)).append("%\"></span></span>")
+                        .append("<span class=\"ledger-cell-bar__label\">").append(escapeHtml(raw)).append("</span>")
+                        .append("</td>");
+            }
+            case "delta" -> {
+                Double v = parseNumeric(raw);
+                if (v == null) {
+                    out.append("<td>").append(escapeHtml(raw)).append("</td>");
+                    return;
+                }
+                boolean up = v >= 0 && !raw.trim().startsWith("-");
+                String cls = up ? "ledger-cell--delta ledger-cell--delta-up"
+                        : "ledger-cell--delta ledger-cell--delta-down";
+                String arrow = up ? "↑" : "↓";
+                out.append("<td class=\"").append(cls).append("\">").append(arrow).append(" ")
+                        .append(escapeHtml(raw)).append("</td>");
+            }
+            case "heat" -> {
+                Double v = parseNumeric(raw);
+                if (v == null || !inRange || !colHasNum[col]) {
+                    out.append("<td>").append(escapeHtml(raw)).append("</td>");
+                    return;
+                }
+                int level = heatLevel(v, colMin[col], colMax[col]);
+                out.append("<td class=\"ledger-cell--heat ledger-cell--heat-").append(level).append("\">")
+                        .append(escapeHtml(raw)).append("</td>");
+            }
+            default -> out.append("<td>").append(escapeHtml(raw)).append("</td>");
+        }
+    }
+
+    private static double barWidthPct(double v, double min, double max) {
+        if (max <= min) return v > 0 ? 100.0 : 0.0;
+        double base = Math.min(min, 0.0);
+        double pct = (v - base) / (max - base) * 100.0;
+        return Math.max(0.0, Math.min(100.0, pct));
+    }
+
+    /** 数值映射到 1-4 档热力等级（4 最深）。 */
+    private static int heatLevel(double v, double min, double max) {
+        if (max <= min) return 1;
+        double norm = (v - min) / (max - min);
+        int level = (int) Math.floor(norm * 4) + 1;
+        return Math.max(1, Math.min(4, level));
+    }
+
+    private static String formatPct(double pct) {
+        return String.format(java.util.Locale.ROOT, "%.1f", pct);
+    }
+
+    private static final Pattern NUMERIC_TOKEN =
+            Pattern.compile("-?\\d[\\d,]*\\.?\\d*");
+
+    /** 从文本中抽取首个数值（容忍千分位逗号、货币/百分号等前后缀）。无数值返回 null。 */
+    static Double parseNumeric(String s) {
+        if (s == null || s.isBlank()) return null;
+        java.util.regex.Matcher m = NUMERIC_TOKEN.matcher(s.trim());
+        if (!m.find()) return null;
+        String token = m.group().replace(",", "");
+        if (token.isEmpty() || "-".equals(token) || ".".equals(token)) return null;
+        try {
+            return Double.parseDouble(token);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private void renderRiskList(JsonNode b, StringBuilder out) {
@@ -461,6 +596,98 @@ public class ReportRenderer {
         out.append("</div>\n");
     }
 
+    /** key-insight 高亮块。色彩由 variant 经 CSS class 映射到角色色，渲染层不写裸 hex。 */
+    private void renderCallout(JsonNode b, StringBuilder out) {
+        String variant = b.path("variant").asText("note");
+        if (!java.util.Set.of("insight", "warning", "note", "success").contains(variant)) {
+            variant = "note";
+        }
+        String icon = switch (variant) {
+            case "insight" -> "💡";
+            case "warning" -> "⚠️";
+            case "success" -> "✅";
+            default -> "📝";
+        };
+        out.append("<aside class=\"ledger-callout ledger-callout--").append(variant).append("\">\n");
+        out.append("  <div class=\"ledger-callout__icon\" aria-hidden=\"true\">").append(icon).append("</div>\n");
+        out.append("  <div class=\"ledger-callout__body\">\n");
+        String title = b.path("title").asText("");
+        if (!title.isBlank()) {
+            out.append("    <div class=\"ledger-callout__title\">").append(escapeHtml(title)).append("</div>\n");
+        }
+        out.append("    <div class=\"ledger-callout__content\">").append(simpleMarkdownToHtml(b.path("markdown").asText(""))).append("</div>\n");
+        out.append("  </div>\n");
+        out.append("</aside>\n");
+        renderSource(b, out);
+    }
+
+    /** hero 关键指标。value 用最大字号 + primary 色（由 CSS 定义）。 */
+    private void renderStatHighlight(JsonNode b, StringBuilder out) {
+        out.append("<div class=\"ledger-stat-highlight\">\n");
+        out.append("  <div class=\"ledger-stat-highlight__value ledger-num\">").append(escapeHtml(b.path("value").asText(""))).append("</div>\n");
+        String label = b.path("label").asText("");
+        if (!label.isBlank()) {
+            out.append("  <div class=\"ledger-stat-highlight__label\">").append(escapeHtml(label)).append("</div>\n");
+        }
+        String context = b.path("context").asText("");
+        if (!context.isBlank()) {
+            out.append("  <div class=\"ledger-stat-highlight__context\">").append(escapeHtml(context)).append("</div>\n");
+        }
+        String delta = b.path("delta").asText("");
+        if (!delta.isBlank()) {
+            boolean up = delta.contains("+") || delta.startsWith("↑");
+            String cls = up ? "ledger-stat-highlight__delta ledger-stat-highlight__delta--up"
+                    : "ledger-stat-highlight__delta ledger-stat-highlight__delta--down";
+            String arrow = up ? "↑" : "↓";
+            out.append("  <div class=\"").append(cls).append("\">").append(arrow).append(" ")
+                    .append(escapeHtml(delta.replace("+", "").replace("-", ""))).append("</div>\n");
+        }
+        out.append("</div>\n");
+        renderSource(b, out);
+    }
+
+    /** 并列对比卡（2-4 等宽卡片）。 */
+    private void renderComparison(JsonNode b, StringBuilder out) {
+        out.append("<div class=\"ledger-comparison\">\n");
+        JsonNode items = b.path("items");
+        if (items.isArray()) {
+            for (JsonNode it : items) {
+                out.append("  <div class=\"ledger-comparison__item\">\n");
+                out.append("    <div class=\"ledger-comparison__label\">").append(escapeHtml(it.path("label").asText(""))).append("</div>\n");
+                out.append("    <div class=\"ledger-comparison__value ledger-num\">").append(escapeHtml(it.path("value").asText(""))).append("</div>\n");
+                String caption = it.path("caption").asText("");
+                if (!caption.isBlank()) {
+                    out.append("    <div class=\"ledger-comparison__caption\">").append(escapeHtml(caption)).append("</div>\n");
+                }
+                out.append("  </div>\n");
+            }
+        }
+        out.append("</div>\n");
+        renderSource(b, out);
+    }
+
+    /** pull-quote。 */
+    private void renderQuote(JsonNode b, StringBuilder out) {
+        out.append("<blockquote class=\"ledger-quote\">\n");
+        out.append("  <p class=\"ledger-quote__text\">").append(escapeHtml(b.path("text").asText(""))).append("</p>\n");
+        String attribution = b.path("attribution").asText("");
+        if (!attribution.isBlank()) {
+            out.append("  <cite class=\"ledger-quote__attribution\">").append(escapeHtml(attribution)).append("</cite>\n");
+        }
+        out.append("</blockquote>\n");
+    }
+
+    /** 章节视觉分隔（细 hairline + 可选居中标签）。 */
+    private void renderDivider(JsonNode b, StringBuilder out) {
+        String label = b.path("label").asText("");
+        if (label.isBlank()) {
+            out.append("<hr class=\"ledger-divider\">\n");
+        } else {
+            out.append("<div class=\"ledger-divider ledger-divider--labeled\">")
+                    .append("<span class=\"ledger-divider__label\">").append(escapeHtml(label)).append("</span></div>\n");
+        }
+    }
+
     private void renderSource(JsonNode b, StringBuilder out) {
         String source = b.path("source").asText("");
         if (!source.isBlank()) {
@@ -506,5 +733,16 @@ public class ReportRenderer {
     private static String jsString(String s) {
         if (s == null) return "\"\"";
         return "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n") + "\"";
+    }
+
+    /** 把调色板 8 色解析为 JS 字面字符串数组（已是合法 hex，无需转义）。 */
+    private static String paletteJsArray(LedgerThemePalette palette) {
+        StringBuilder sb = new StringBuilder("[");
+        String[] colors = palette.echartsPalette();
+        for (int i = 0; i < colors.length; i++) {
+            if (i > 0) sb.append(", ");
+            sb.append(jsString(colors[i]));
+        }
+        return sb.append("]").toString();
     }
 }
