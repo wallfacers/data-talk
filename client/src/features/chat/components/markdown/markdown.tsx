@@ -75,13 +75,11 @@ function decodeUtf8Base64(text: string): string {
 }
 
 function scheduleRootUnmount(root: Root) {
-  queueMicrotask(() => {
-    try {
-      root.unmount()
-    } catch {
-      // Root may already be unmounted.
-    }
-  })
+  try {
+    root.unmount()
+  } catch {
+    // Root may already be unmounted.
+  }
 }
 
 async function copyTableHtmlAndText(html: string, text: string): Promise<boolean> {
