@@ -502,7 +502,14 @@ export function ResourceDirectoryView({ overview }: { overview: StorageOverviewD
     const mins = Math.floor(remaining / 60000)
     if (remaining <= 0) return { text: t('maintenance.resources.badge.expired'), urgent: true }
     if (mins < 10) return { text: t('maintenance.resources.badge.expiringSoon'), urgent: true }
-    return { text: new Date(ts).toLocaleDateString(), urgent: false }
+    const d = new Date(ts)
+    const yyyy = d.getFullYear()
+    const MM = String(d.getMonth() + 1).padStart(2, '0')
+    const dd = String(d.getDate()).padStart(2, '0')
+    const HH = String(d.getHours()).padStart(2, '0')
+    const mm = String(d.getMinutes()).padStart(2, '0')
+    const ss = String(d.getSeconds()).padStart(2, '0')
+    return { text: `${yyyy}-${MM}-${dd} ${HH}:${mm}:${ss}`, urgent: false }
   }
 
   function getFormatBadgeVariant(f: string): 'default' | 'secondary' | 'destructive' | 'outline' {
