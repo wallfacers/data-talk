@@ -41,6 +41,7 @@ openspec/                          # OpenSpec SDD: changes, specs, archive (spec
 ```bash
 # Backend
 export JAVA_HOME=/path/to/jdk-21                              # or ensure `java -version` is 21.x
+cd server && ./install-playwright.sh                          # one-time: download Playwright Chromium (for Ledger PDF export)
 cd server && mvn clean verify                                # compile + full test suite
 cd server && mvn spring-boot:run -pl data-talk-adapter       # start (port 8080)
 
