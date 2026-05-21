@@ -24,6 +24,7 @@ import {
 } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import {
+  adjustYAxisNameGapToClearLabels,
   CHART_THEME_DARK,
   CHART_THEME_LIGHT,
   ensureChartThemesRegistered,
@@ -77,6 +78,18 @@ export function ChartRenderer({ option, height = DEFAULT_HEIGHT }: ChartRenderer
     [option],
   )
 
+  // Once ECharts has laid the chart out we know the real tick-label band width,
+  // so we push the rotated yAxis name just past it. Re-run on every 'finished'
+  // (data/resize/theme changes) — adjustYAxisNameGapToClearLabels is idempotent.
+  const handleChartReady = (chart: {
+    getOption: () => Record<string, unknown>
+    setOption: (option: Record<string, unknown>) => void
+    on: (event: string, handler: () => void) => void
+  }) => {
+    adjustYAxisNameGapToClearLabels(chart)
+    chart.on('finished', () => adjustYAxisNameGapToClearLabels(chart))
+  }
+
   useEffect(() => {
     const root = globalThis.document?.documentElement ?? null
     if (!root) {
@@ -124,6 +137,7 @@ export function ChartRenderer({ option, height = DEFAULT_HEIGHT }: ChartRenderer
       <ReactECharts
         key={themeName}
         notMerge={true}
+        onChartReady={handleChartReady}
         option={fixedOption}
         opts={{ renderer: 'canvas' }}
         style={{ width: '100%', height }}

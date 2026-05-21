@@ -256,8 +256,15 @@ function hasPieSeries(series: unknown): boolean {
 // We move the name to nameLocation:'middle' so echarts always paints it
 // inside the grid — same product-contract approach as withContainLabel and
 // withCenteredPie. We only touch entries that have a non-empty `name`.
+//
+// The rotated yAxis name sits in the left gutter (grid.left = GRID_LEFT_FOR_Y_NAME),
+// to the LEFT of the numeric tick-label band. containLabel reserves the label
+// band but NOT the name, and the band width grows with the data ('800 万' vs
+// '1,200 万元'), so a static nameGap cannot reliably clear it. Y_AXIS_NAME_GAP
+// is only the pre-layout fallback; adjustYAxisNameGapToClearLabels() measures
+// the real band after render and pushes nameGap just past it.
 const X_AXIS_NAME_GAP = 16
-const Y_AXIS_NAME_GAP = 40
+const Y_AXIS_NAME_GAP = 56
 
 function withInsetAxisName(axis: unknown, dim: 'x' | 'y'): unknown {
   const inset = (entry: unknown): unknown => {
@@ -317,4 +324,64 @@ export function injectOptionFix(option: Record<string, unknown>): Record<string,
   }
 
   return fixed
+}
+
+// Clearance between the right edge of the tick-label band and the rotated
+// yAxis name, so the vertical title sits cleanly in the left gutter.
+const Y_NAME_CLEARANCE = 12
+
+type GridRect = { x: number; y: number; width: number; height: number }
+type MinimalChart = {
+  getOption: () => Record<string, unknown>
+  setOption: (option: Record<string, unknown>) => void
+  getModel?: () =>
+    | {
+        getComponent?: (
+          name: string,
+          idx: number,
+        ) => { coordinateSystem?: { getRect?: () => GridRect | undefined } } | undefined
+      }
+    | undefined
+}
+
+function isLeftNamedYAxis(axis: unknown): boolean {
+  if (!axis || typeof axis !== 'object') return false
+  const record = axis as Record<string, unknown>
+  return (
+    typeof record.name === 'string' &&
+    record.name.length > 0 &&
+    record.position !== 'right'
+  )
+}
+
+// Pin the rotated yAxis name to the far-left gutter, just left of the numeric
+// tick labels, regardless of how wide those labels are. ECharts' containLabel
+// reserves the label band but not the axis name, and the band widens with the
+// data, so we measure the laid-out cartesian rect and set nameGap = band + gap.
+// Idempotent: a no-op once nameGap already matches, so it is safe to call from
+// the 'finished' event (which our own setOption re-triggers). Degrades to the
+// static Y_AXIS_NAME_GAP if the layout APIs are unavailable.
+export function adjustYAxisNameGapToClearLabels(chart: MinimalChart): void {
+  let rect: GridRect | undefined
+  try {
+    rect = chart.getModel?.()?.getComponent?.('grid', 0)?.coordinateSystem?.getRect?.()
+  } catch {
+    return
+  }
+  if (!rect) return
+
+  const rawY = chart.getOption().yAxis
+  const yAxes = Array.isArray(rawY) ? rawY : rawY ? [rawY] : []
+  if (!yAxes.some(isLeftNamedYAxis)) return
+
+  const labelBand = Math.max(0, rect.x - GRID_LEFT_FOR_Y_NAME)
+  const nameGap = Math.round(labelBand + Y_NAME_CLEARANCE)
+
+  const current = (yAxes.find(isLeftNamedYAxis) as Record<string, unknown>).nameGap
+  if (current === nameGap) return
+
+  const nextY = yAxes.map((axis) =>
+    isLeftNamedYAxis(axis) ? { ...(axis as Record<string, unknown>), nameGap } : axis,
+  )
+  chart.setOption({ yAxis: nextY })
 }

@@ -273,6 +273,55 @@ describe('chart-theme', () => {
     expect(xAxis[1]).toEqual({ type: 'category' })
   })
 
+  // jsdom does no layout, so the rotated-name-vs-tick-label overlap itself is
+  // verified in a real browser (tmp/chart-verify.html). Here we only assert the
+  // pure arithmetic: given a laid-out cartesian rect, nameGap is pushed just
+  // past the measured tick-label band so the title clears the values.
+  function fakeChart(rectX: number, yAxis: unknown) {
+    const setOption = vi.fn()
+    return {
+      setOption,
+      getOption: () => ({ yAxis }),
+      getModel: () => ({
+        getComponent: () => ({ coordinateSystem: { getRect: () => ({ x: rectX, y: 0, width: 100, height: 100 }) } }),
+      }),
+    }
+  }
+
+  it('adjustYAxisNameGapToClearLabels sets nameGap to the measured label band plus clearance', async () => {
+    const { adjustYAxisNameGapToClearLabels } = await loadChartTheme()
+    // grid.left baseline is 24, so rect.x=94 ⇒ label band = 70 ⇒ nameGap = 70 + 12.
+    const chart = fakeChart(94, [{ type: 'value', name: 'GVA（万元）', nameGap: 56, position: 'left' }])
+
+    adjustYAxisNameGapToClearLabels(chart)
+
+    expect(chart.setOption).toHaveBeenCalledTimes(1)
+    const next = (chart.setOption.mock.calls[0][0] as { yAxis: Array<Record<string, unknown>> }).yAxis
+    expect(next[0].nameGap).toBe(82)
+    expect(next[0].name).toBe('GVA（万元）')
+  })
+
+  it('adjustYAxisNameGapToClearLabels is idempotent (no setOption when nameGap already matches)', async () => {
+    const { adjustYAxisNameGapToClearLabels } = await loadChartTheme()
+    const chart = fakeChart(94, [{ type: 'value', name: '订单量', nameGap: 82, position: 'left' }])
+
+    adjustYAxisNameGapToClearLabels(chart)
+
+    expect(chart.setOption).not.toHaveBeenCalled()
+  })
+
+  it('adjustYAxisNameGapToClearLabels leaves a nameless or right-side yAxis alone', async () => {
+    const { adjustYAxisNameGapToClearLabels } = await loadChartTheme()
+    const nameless = fakeChart(94, [{ type: 'value' }])
+    const rightSide = fakeChart(94, [{ type: 'value', name: '占比', position: 'right' }])
+
+    adjustYAxisNameGapToClearLabels(nameless)
+    adjustYAxisNameGapToClearLabels(rightSide)
+
+    expect(nameless.setOption).not.toHaveBeenCalled()
+    expect(rightSide.setOption).not.toHaveBeenCalled()
+  })
+
   it('registerChartThemes registers both datatalk-light and datatalk-dark', async () => {
     const registerTheme = vi.fn()
     vi.doMock('echarts/core', async () => {
