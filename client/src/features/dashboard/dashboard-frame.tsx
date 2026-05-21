@@ -6,17 +6,20 @@ import { TabContentLoader } from '@/features/stage/components/tab-content-loader
 export interface DashboardFrameProps {
   dashboardId: string
   version?: number
+  reloadKey?: number
+  pendingChanges?: Array<{ widgetId: string; baseOption: Record<string, unknown>; html?: string }>
   params?: Record<string, unknown>
   onError?: (e: { widgetId: string; message: string }) => void
+  onChangesApplied?: () => void
 }
 
-export function DashboardFrame({ dashboardId, version, params, onError }: DashboardFrameProps) {
+export function DashboardFrame({ dashboardId, version, reloadKey, pendingChanges, params, onError, onChangesApplied }: DashboardFrameProps) {
   const ref = useRef<HTMLIFrameElement>(null)
   const [html, setHtml] = useState<string | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'missing' | 'error'>('loading')
   const loadedVersionRef = useRef<number | undefined>(undefined)
 
-  // Full reload when dashboardId or version changes
+  // Full reload when dashboardId, version, or reloadKey changes
   useEffect(() => {
     let active = true
     setStatus('loading')
@@ -32,7 +35,17 @@ export function DashboardFrame({ dashboardId, version, params, onError }: Dashbo
       }
     })
     return () => { active = false }
-  }, [dashboardId, version])
+  }, [dashboardId, version, reloadKey])
+
+  // Apply incremental widget updates when pendingChanges arrive
+  useEffect(() => {
+    if (!pendingChanges || pendingChanges.length === 0) return
+    if (status !== 'ready' || !ref.current) return
+    for (const change of pendingChanges) {
+      sendWidgetUpdate(ref.current, change)
+    }
+    onChangesApplied?.()
+  }, [pendingChanges, status])
 
   const handleMessage = useCallback((ev: MessageEvent) => {
     if (!isIframeToHost(ev.data)) return

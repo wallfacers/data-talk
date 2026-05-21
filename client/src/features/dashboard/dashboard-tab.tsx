@@ -13,6 +13,9 @@ interface DashboardTabProps {
 export function DashboardTab({ tab }: DashboardTabProps) {
   const { t } = useI18n()
   const tabState = useDashboardTabsStore((s) => s.tabs.get(tab.tabId))
+  const pendingChanges = useDashboardTabsStore((s) => s.pendingChanges.get(tab.tabId))
+  const reloadKey = useDashboardTabsStore((s) => s.reloadKeys.get(tab.tabId) ?? 0)
+  const consumePendingChanges = useDashboardTabsStore((s) => s.consumePendingChanges)
   const [loading, setLoading] = useState(!tabState)
 
   useEffect(() => {
@@ -45,6 +48,9 @@ export function DashboardTab({ tab }: DashboardTabProps) {
     <div className="flex flex-col h-full bg-[var(--dt-canvas)]">
       <DashboardFrame
         dashboardId={dashboardId}
+        reloadKey={reloadKey}
+        pendingChanges={pendingChanges}
+        onChangesApplied={() => consumePendingChanges(tab.tabId)}
         onError={(e) => console.error('[bezel widget error]', e)}
       />
     </div>

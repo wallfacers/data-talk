@@ -103,6 +103,14 @@ export class DashboardAdapter implements UIObject {
         return { status: 'error', message: 'Update failed' }
       }
 
+      const store = useDashboardTabsStore.getState()
+      if (result.changes && Array.isArray(result.changes) && result.changes.length > 0) {
+        store.setPendingChanges(this.tabId, result.changes as Array<{ widgetId: string; baseOption: Record<string, unknown>; html?: string }>)
+      } else if (result.html) {
+        store.consumePendingChanges(this.tabId)
+        store.bumpReloadKey(this.tabId)
+      }
+
       return {
         status: 'applied',
         message: t('dashboard.patch.applied', { count: ops.length }),

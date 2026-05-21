@@ -1,6 +1,7 @@
 package com.datatalk.application.dashboard;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 
 import java.util.ArrayList;
@@ -16,6 +17,7 @@ import java.util.Map;
 public final class DashboardDiffer {
 
     private static final int INCREMENTAL_THRESHOLD = 3;
+    private static final ObjectMapper SHARED_MAPPER = new ObjectMapper();
 
     public sealed interface DiffResult {
         record FullRebuild(String html) implements DiffResult {}
@@ -108,15 +110,7 @@ public final class DashboardDiffer {
     }
 
     private static com.datatalk.domain.dashboard.Widget toWidget(JsonNode wn) {
-        return new com.datatalk.domain.dashboard.Widget(
-            wn.path("id").asText(""),
-            wn.path("type").asText(""),
-            wn.path("slot").asText(""),
-            wn.path("title").asText(""),
-            wn.path("patternId").asText(""),
-            null, // chartSemantics - extracted separately
-            null, null, null, Map.of()
-        );
+        return DashboardCompiler.toWidget(wn, SHARED_MAPPER);
     }
 
     private DashboardDiffer() {}

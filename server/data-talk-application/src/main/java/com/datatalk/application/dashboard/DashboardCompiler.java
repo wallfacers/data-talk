@@ -210,21 +210,25 @@ public class DashboardCompiler {
     }
 
     private Widget toWidget(JsonNode wn) {
+        return toWidget(wn, mapper);
+    }
+
+    static Widget toWidget(JsonNode wn, ObjectMapper mapper) {
         return new Widget(
             wn.path("id").asText(""),
             wn.path("type").asText(""),
             wn.path("slot").asText(""),
             wn.path("title").asText(""),
             wn.path("patternId").asText(""),
-            toChartSemantics(wn.path("chartSemantics")),
+            toChartSemantics(wn.path("chartSemantics"), mapper),
             toRefresh(wn.path("refresh")),
             List.of(), // parameters
-            toQuery(wn.path("query")),
-            toOptions(wn.path("options"))
+            toQuery(wn.path("query"), mapper),
+            toOptions(wn.path("options"), mapper)
         );
     }
 
-    private com.datatalk.domain.dashboard.WidgetRefresh toRefresh(JsonNode rn) {
+    static com.datatalk.domain.dashboard.WidgetRefresh toRefresh(JsonNode rn) {
         if (rn == null || rn.isMissingNode() || rn.isNull()) return null;
         Integer intervalMs = rn.hasNonNull("intervalMs") ? rn.get("intervalMs").asInt() : null;
         Widget.RefreshStrategy strategy = rn.hasNonNull("strategy")
@@ -232,7 +236,7 @@ public class DashboardCompiler {
         return new com.datatalk.domain.dashboard.WidgetRefresh(intervalMs, strategy);
     }
 
-    private com.datatalk.domain.dashboard.WidgetQuery toQuery(JsonNode qn) {
+    static com.datatalk.domain.dashboard.WidgetQuery toQuery(JsonNode qn, ObjectMapper mapper) {
         if (qn == null || qn.isMissingNode() || qn.isNull()) return null;
         java.util.Map<String, String> paramRefs = qn.path("paramRefs").isObject()
             ? mapper.convertValue(qn.get("paramRefs"), new com.fasterxml.jackson.core.type.TypeReference<>() {})
@@ -246,7 +250,7 @@ public class DashboardCompiler {
         );
     }
 
-    private com.datatalk.domain.dashboard.ChartSemantics toChartSemantics(JsonNode cs) {
+    static com.datatalk.domain.dashboard.ChartSemantics toChartSemantics(JsonNode cs, ObjectMapper mapper) {
         if (cs == null || cs.isMissingNode() || cs.isNull()) return null;
         java.util.Map<String, Object> raw = cs.has("rawEchartsOption") && cs.get("rawEchartsOption").isObject()
             ? mapper.convertValue(cs.get("rawEchartsOption"), new com.fasterxml.jackson.core.type.TypeReference<>() {})
@@ -264,7 +268,7 @@ public class DashboardCompiler {
         );
     }
 
-    private Map<String, Object> toOptions(JsonNode opts) {
+    static Map<String, Object> toOptions(JsonNode opts, ObjectMapper mapper) {
         if (opts == null || opts.isMissingNode() || opts.isNull()) return Map.of();
         return mapper.convertValue(opts, new com.fasterxml.jackson.core.type.TypeReference<>() {});
     }
