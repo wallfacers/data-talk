@@ -1,8 +1,21 @@
-import { useReportList } from '../api'
+import { useState } from 'react'
+import { useReportList, useDeleteReportMutation } from '../api'
 import { useReportStore } from '../store'
 import { useStageStore } from '@/stores/stage-store'
 import { useI18n } from '@/i18n/use-i18n'
 import { TabContentLoader } from '@/features/stage/components/tab-content-loader'
+import { Trash2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 export interface ReportLibraryTabProps {
   workspaceId: string
@@ -17,6 +30,8 @@ export function ReportLibraryTab({ workspaceId }: ReportLibraryTabProps) {
   const openTab = useStageStore((s) => s.openTab)
   const focusTab = useStageStore((s) => s.focusTab)
   const tabs = useStageStore((s) => s.tabs)
+  const deleteMut = useDeleteReportMutation()
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null)
 
   const onOpen = (reportId: string, title: string) => {
     setSelected(reportId)
@@ -33,6 +48,17 @@ export function ReportLibraryTab({ workspaceId }: ReportLibraryTabProps) {
         createdAt: Date.now(),
       })
     }
+  }
+
+  const onConfirmDelete = (e: React.MouseEvent) => {
+    e.preventDefault()
+    if (!deleteTarget) return
+    deleteMut.mutate(deleteTarget.id, {
+      onSuccess: () => {
+        if (selected === deleteTarget.id) setSelected(null)
+        setDeleteTarget(null)
+      },
+    })
   }
 
   if (isLoading) {
@@ -82,6 +108,18 @@ export function ReportLibraryTab({ workspaceId }: ReportLibraryTabProps) {
                     </span>
                   ) : null}
                 </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
+                  title={t('report.delete.confirmTitle')}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setDeleteTarget({ id: r.id, title: r.title })
+                  }}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
               </div>
               {r.subtitle ? (
                 <div className="text-text-muted text-xs truncate mt-0.5">{r.subtitle}</div>
@@ -98,6 +136,24 @@ export function ReportLibraryTab({ workspaceId }: ReportLibraryTabProps) {
           )
         })}
       </ul>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('report.delete.confirmTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('report.delete.confirmBody')}
+              {deleteTarget && <span className="block mt-1 font-medium text-text-strong">{deleteTarget.title}</span>}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={onConfirmDelete} disabled={deleteMut.isPending}>
+              {t('report.delete.confirmTitle')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
