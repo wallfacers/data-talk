@@ -73,7 +73,22 @@ export function useDeleteReportMutation() {
       const resp = await fetch(`${BASE}/${id}`, { method: 'DELETE' })
       if (!resp.ok) throw new Error(`Delete failed: ${resp.status}`)
     },
-    onSuccess: () => {
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: ['reports', 'list'] })
+      const previous = qc.getQueriesData<ReportListItem[]>({ queryKey: ['reports', 'list'] })
+      previous.forEach(([key, data]) => {
+        if (data) qc.setQueryData(key, data.filter((r) => r.id !== id))
+      })
+      return { previous }
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previous) {
+        context.previous.forEach(([key, data]) => {
+          qc.setQueryData(key, data)
+        })
+      }
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: ['reports', 'list'] })
     },
   })
