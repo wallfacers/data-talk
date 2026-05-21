@@ -180,28 +180,21 @@ public class ResourceDirectoryService {
 
         // Load DB rows keyed by report ID (parent dir name)
         Map<String, FileArtifact> dbByReportId = loadReportArtifacts(reportsDir);
+        // Load report table rows for deduplication by group_id
+        Map<String, ReportGroupVersion> groupVersionByReportId = loadReportGroupVersions();
 
-        List<ReportResourceDto> results = new ArrayList<>();
+        // First pass: build all DTOs from filesystem
+        List<ReportResourceDto> allDtos = new ArrayList<>();
         try (Stream<Path> dirs = Files.list(reportsDir)) {
             List<Path> reportDirs = dirs
                     .filter(Files::isDirectory)
-                    .sorted((a, b) -> {
-                        try {
-                            return Long.compare(
-                                    Files.getLastModifiedTime(b).toMillis(),
-                                    Files.getLastModifiedTime(a).toMillis());
-                        } catch (IOException e) {
-                            return 0;
-                        }
-                    })
                     .toList();
 
             for (Path reportDir : reportDirs) {
-                if (results.size() >= effectiveLimit) break;
                 try {
                     ReportResourceDto dto = buildReportDto(reportDir, dbByReportId);
                     if (dto != null) {
-                        results.add(dto);
+                        allDtos.add(dto);
                     }
                 } catch (Exception e) {
                     log.warn("Skipping report dir {}: {}", reportDir, e.getMessage());
@@ -209,6 +202,38 @@ public class ResourceDirectoryService {
             }
         } catch (IOException e) {
             log.warn("Failed to list reports: {}", e.getMessage());
+            return List.of();
+        }
+
+        // Deduplicate by group_id: keep only the highest version per group
+        Map<String, ReportResourceDto> bestByGroupId = new LinkedHashMap<>();
+        List<ReportResourceDto> noGroup = new ArrayList<>();
+
+        for (ReportResourceDto dto : allDtos) {
+            ReportGroupVersion gv = groupVersionByReportId.get(dto.id());
+            if (gv != null) {
+                ReportResourceDto existing = bestByGroupId.get(gv.groupId());
+                if (existing == null) {
+                    bestByGroupId.put(gv.groupId(), dto);
+                } else {
+                    ReportGroupVersion existingGv = groupVersionByReportId.get(existing.id());
+                    if (existingGv != null && gv.version() > existingGv.version()) {
+                        bestByGroupId.put(gv.groupId(), dto);
+                    }
+                }
+            } else {
+                noGroup.add(dto);
+            }
+        }
+
+        // Merge, sort by updatedAt desc, apply limit
+        List<ReportResourceDto> results = new ArrayList<>();
+        results.addAll(bestByGroupId.values());
+        results.addAll(noGroup);
+        results.sort((a, b) -> Long.compare(b.updatedAt(), a.updatedAt()));
+
+        if (results.size() > effectiveLimit) {
+            results = results.subList(0, effectiveLimit);
         }
         return results;
     }
@@ -229,6 +254,27 @@ public class ResourceDirectoryService {
             }
         } catch (Exception e) {
             log.warn("Failed to load report file_artifact rows: {}", e.getMessage());
+        }
+        return map;
+    }
+
+    private record ReportGroupVersion(String groupId, int version) {}
+
+    private Map<String, ReportGroupVersion> loadReportGroupVersions() {
+        Map<String, ReportGroupVersion> map = new LinkedHashMap<>();
+        try {
+            List<Map<String, Object>> rows = jdbc.queryForList(
+                    "SELECT id, group_id, version FROM report");
+            for (Map<String, Object> row : rows) {
+                String id = (String) row.get("id");
+                String groupId = (String) row.get("group_id");
+                int version = toInt(row.get("version"));
+                if (id != null && groupId != null) {
+                    map.put(id, new ReportGroupVersion(groupId, version));
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to load report group versions: {}", e.getMessage());
         }
         return map;
     }
@@ -747,9 +793,8 @@ public class ResourceDirectoryService {
         Path dashDir = workdirRoot.dashboardsRoot();
         overview.put("dashboards", summarizeDir(dashDir));
 
-        // Reports
-        Path reportsDir = workdirRoot.reportsRoot();
-        overview.put("reports", summarizeDir(reportsDir));
+        // Reports (deduplicate by group_id, keep only latest version)
+        overview.put("reports", summarizeReportsDeduped());
 
         // Exports
         Path exportsDir = workdirRoot.dataTalkRoot().resolve("exports");
@@ -805,6 +850,58 @@ public class ResourceDirectoryService {
     }
 
     /**
+     * Summarize reports directory deduplicated by group_id.
+     * Only counts the latest version per group; orphaned dirs (no report table row)
+     * are included as-is.
+     */
+    private StorageOverviewDto.ResourceDirSummary summarizeReportsDeduped() {
+        Path reportsDir = workdirRoot.reportsRoot();
+        if (!Files.isDirectory(reportsDir)) {
+            return new StorageOverviewDto.ResourceDirSummary(0, 0);
+        }
+
+        Map<String, ReportGroupVersion> groupVersionByReportId = loadReportGroupVersions();
+
+        // Determine which report dirs to keep: latest version per group + orphaned
+        Map<String, String> bestReportIdByGroup = new LinkedHashMap<>(); // groupId -> best reportId
+        Map<String, Integer> bestVersionByGroup = new HashMap<>();
+
+        for (var entry : groupVersionByReportId.entrySet()) {
+            String reportId = entry.getKey();
+            ReportGroupVersion gv = entry.getValue();
+            Integer currentBest = bestVersionByGroup.get(gv.groupId());
+            if (currentBest == null || gv.version() > currentBest) {
+                bestVersionByGroup.put(gv.groupId(), gv.version());
+                bestReportIdByGroup.put(gv.groupId(), reportId);
+            }
+        }
+
+        // Collect report dirs that exist on disk and should be counted
+        Set<String> keepReportIds = new HashSet<>(bestReportIdByGroup.values());
+
+        // Also include orphaned dirs (exist on disk, no report table row)
+        long count = 0;
+        long size = 0;
+        try (Stream<Path> entries = Files.list(reportsDir)) {
+            for (Path entry : entries.toList()) {
+                if (!Files.isDirectory(entry)) continue;
+                String dirName = entry.getFileName().toString();
+                if (keepReportIds.contains(dirName) || !groupVersionByReportId.containsKey(dirName)) {
+                    long dirSize = dirSize(entry);
+                    if (dirSize > 0) {
+                        count++;
+                        size += dirSize;
+                    }
+                }
+            }
+        } catch (IOException e) {
+            log.warn("Failed to list reports dir: {}", e.getMessage());
+        }
+
+        return new StorageOverviewDto.ResourceDirSummary(count, size);
+    }
+
+    /**
      * Recursively compute the total size of a directory tree.
      * Returns 0 if the directory does not exist or is unreadable.
      */
@@ -842,6 +939,14 @@ public class ResourceDirectoryService {
         if (value instanceof Number n) return n.longValue();
         if (value instanceof String s) {
             try { return Long.parseLong(s); } catch (NumberFormatException e) { return 0; }
+        }
+        return 0;
+    }
+
+    private int toInt(Object value) {
+        if (value instanceof Number n) return n.intValue();
+        if (value instanceof String s) {
+            try { return Integer.parseInt(s); } catch (NumberFormatException e) { return 0; }
         }
         return 0;
     }
