@@ -157,6 +157,18 @@ public class JdbcReportRepository implements ReportRepository {
         jdbc.update("DELETE FROM report WHERE id = ?", id);
     }
 
+    @Override
+    public List<String> deleteByGroupId(String workspaceId, String groupId) {
+        List<String> ids = jdbc.queryForList(
+                "SELECT id FROM report WHERE workspace_id = ? AND group_id = ?",
+                String.class, workspaceId, groupId);
+        if (!ids.isEmpty()) {
+            jdbc.update("DELETE FROM report WHERE workspace_id = ? AND group_id = ?",
+                    workspaceId, groupId);
+        }
+        return ids;
+    }
+
     private RowMapper<Report> mapper() {
         return (ResultSet rs, int idx) -> new Report(
                 rs.getString("id"),

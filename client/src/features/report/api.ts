@@ -76,8 +76,21 @@ export function useDeleteReportMutation() {
     onMutate: async (id) => {
       await qc.cancelQueries({ queryKey: ['reports', 'list'] })
       const previous = qc.getQueriesData<ReportListItem[]>({ queryKey: ['reports', 'list'] })
+      // Backend deletes entire group; find groupId and remove all matching rows
+      let groupIdToRemove: string | undefined
+      previous.forEach(([_, data]) => {
+        if (data && !groupIdToRemove) {
+          const target = data.find((r) => r.id === id)
+          if (target) groupIdToRemove = target.groupId
+        }
+      })
       previous.forEach(([key, data]) => {
-        if (data) qc.setQueryData(key, data.filter((r) => r.id !== id))
+        if (data) {
+          const filtered = groupIdToRemove
+            ? data.filter((r) => r.groupId !== groupIdToRemove)
+            : data.filter((r) => r.id !== id)
+          qc.setQueryData(key, filtered)
+        }
       })
       return { previous }
     },

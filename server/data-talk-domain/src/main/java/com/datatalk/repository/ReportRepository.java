@@ -57,7 +57,13 @@ public interface ReportRepository {
     void updateArtifactPaths(String reportId, String artifactPathsJson);
 
     /**
-     * 物理删除。级联清理 file artifact 由调用方负责（report 表不直接依赖 FileArtifactRepository）。
+     * 物理删除单条。级联清理 file artifact 由调用方负责。
      */
     void deleteById(String id);
+
+    /**
+     * 按 group 删除该 workspace 下同一 group 的全部版本。
+     * 返回被删除的 report id 列表（供调用方清理文件系统）。
+     */
+    List<String> deleteByGroupId(String workspaceId, String groupId);
 }

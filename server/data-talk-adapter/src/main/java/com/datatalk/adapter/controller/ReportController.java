@@ -171,23 +171,33 @@ public class ReportController {
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable("id") String id) {
         Optional<Report> opt = reportRepo.findById(id);
+        List<String> deletedIds;
         if (opt.isPresent()) {
-            reportRepo.deleteById(id);
+            Report r = opt.get();
+            // Delete entire group so remaining versions don't resurface
+            deletedIds = reportRepo.deleteByGroupId(r.workspaceId(), r.groupId());
+        } else {
+            deletedIds = List.of(id);
         }
-        // Always clean filesystem dir
-        Path reportDir = workdirRoot.reportDir(id);
-        try {
-            if (Files.isDirectory(reportDir)) {
-                try (var stream = Files.walk(reportDir)) {
-                    stream.sorted((a, b) -> b.getNameCount() - a.getNameCount())
-                            .forEach(p -> { try { Files.deleteIfExists(p); } catch (IOException ignored) {} });
+        // Clean filesystem dirs for all deleted versions
+        for (String rid : deletedIds) {
+            Path reportDir = workdirRoot.reportDir(rid);
+            try {
+                if (Files.isDirectory(reportDir)) {
+                    try (var stream = Files.walk(reportDir)) {
+                        stream.sorted((a, b) -> b.getNameCount() - a.getNameCount())
+                                .forEach(p -> { try { Files.deleteIfExists(p); } catch (IOException ignored) {} });
+                    }
                 }
+            } catch (Exception e) {
+                log.warn("Failed to delete report dir for {}: {}", rid, e.getMessage());
             }
-        } catch (Exception e) {
-            log.warn("Failed to delete report dir for {}: {}", id, e.getMessage());
         }
-        if (opt.isEmpty() && !Files.isDirectory(reportDir)) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "report not found"));
+        if (opt.isEmpty()) {
+            Path reportDir = workdirRoot.reportDir(id);
+            if (!Files.isDirectory(reportDir)) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "report not found"));
+            }
         }
         return ResponseEntity.noContent().build();
     }
