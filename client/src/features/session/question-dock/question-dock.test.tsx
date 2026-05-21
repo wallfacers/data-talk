@@ -39,9 +39,12 @@ describe('QuestionDock', () => {
     useQuestionStore.setState({ bySession: new Map([['sess', [single]]]) })
   })
 
-  it('single non-multi question submits immediately on option pick', async () => {
+  it('single question picks an option then submits via Submit', async () => {
     render(<QuestionDock sessionId="sess" request={single} />)
+    // Picking an option selects it but never auto-submits — submission goes through Submit.
     fireEvent.click(screen.getByRole('radio', { name: /是/ }))
+    expect(replyQuestion).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByText('提交'))
     await waitFor(() => expect(replyQuestion).toHaveBeenCalledWith('q1', [['是']]))
     // resolved() optimistically clears the store → composer would restore
     await waitFor(() => expect(useQuestionStore.getState().bySession.has('sess')).toBe(false))
@@ -76,5 +79,12 @@ describe('QuestionDock', () => {
     render(<QuestionDock sessionId="sess" request={single} />)
     fireEvent.keyDown(screen.getByRole('radio', { name: /是/ }), { key: 'Escape' })
     await waitFor(() => expect(rejectQuestion).toHaveBeenCalledWith('q1'))
+  })
+
+  it('custom answer row is selectable across its full width, not just the mark', async () => {
+    render(<QuestionDock sessionId="sess" request={single} />)
+    // The whole row (label text included) is the radio control — clicking it selects custom.
+    fireEvent.click(screen.getByRole('radio', { name: '输入自定义答案' }))
+    expect(await screen.findByPlaceholderText('输入你的答案…')).toBeInTheDocument()
   })
 })

@@ -276,7 +276,7 @@ export function QuestionDock({
         {allowCustom && (
           <div
             className={cn(
-              'flex items-start gap-2.5 rounded-lg border px-3 py-2 transition-colors motion-reduce:transition-none',
+              'rounded-lg border transition-colors motion-reduce:transition-none',
               customSelected ? 'border-primary bg-primary/5' : 'border-border',
             )}
           >
@@ -287,13 +287,17 @@ export function QuestionDock({
               aria-label={t('ui.messagePart.option.typeOwnAnswer')}
               disabled={sending}
               onClick={toggleCustom}
-              className="outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+              className={cn(
+                'flex w-full items-start gap-2.5 rounded-lg px-3 py-2 text-left transition-colors motion-reduce:transition-none',
+                'outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50',
+                customSelected ? '' : 'hover:bg-accent',
+              )}
             >
               <Mark multi={multi} picked={customSelected} />
-            </button>
-            <div className="flex flex-1 flex-col gap-1">
               <span className="text-sm text-foreground">{t('ui.messagePart.option.typeOwnAnswer')}</span>
-              {(customSelected || editing) ? (
+            </button>
+            {(customSelected || editing) && (
+              <div className="pb-2 pl-[2.375rem] pr-3">
                 <textarea
                   autoFocus
                   rows={1}
@@ -309,17 +313,8 @@ export function QuestionDock({
                   }}
                   className="w-full resize-none rounded-md border border-border bg-bg-canvas px-2 py-1 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
-              ) : (
-                <button
-                  type="button"
-                  disabled={sending}
-                  onClick={toggleCustom}
-                  className="text-left text-xs text-text-muted"
-                >
-                  {custom[tab]?.trim() || t('ui.question.custom.placeholder')}
-                </button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         )}
       </div>
