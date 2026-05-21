@@ -21,8 +21,8 @@
 | `widgets` | `Widget[]` | yes | widget list |
 | `layout` | `LayoutV3` | yes | layout configuration |
 | `version` | `integer` | yes | >= 1, increments on promote |
-| `createdAt` | `integer` | no | epoch ms |
-| `updatedAt` | `integer` | no | epoch ms |
+| `createdAt` | `integer` | no | epoch ms — system-assigned, do NOT emit |
+| `updatedAt` | `integer` | no | epoch ms — system-assigned, do NOT emit |
 
 ## 2. DashboardRefresh
 
@@ -88,7 +88,7 @@
 | `database` | `string \| null` | no | overrides defaultDatabase |
 | `schema` | `string \| null` | no | overrides defaultSchema |
 | `sql` | `string` | yes | single SELECT only |
-| `paramRefs` | `object` | yes | `{ sqlParam: parameterDefId }` |
+| `paramRefs` | `object` | no | `{ sqlParam: parameterDefId }` — omit when the SQL has no params; defaults to `{}` |
 
 ## 8. WidgetRefresh
 

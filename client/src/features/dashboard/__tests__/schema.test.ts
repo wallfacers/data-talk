@@ -71,4 +71,38 @@ describe('dashboardSchema', () => {
     })
     expect(result.success).toBe(true)
   })
+
+  it('defaults createdAt/updatedAt when system metadata is omitted', () => {
+    const result = dashboardSchema.safeParse({
+      schemaVersion: 3, id: 'dash_aaaa', title: 'x',
+      theme: 'industry-default', renderer: 'bezel',
+      parameters: [], widgets: [],
+      layout: { engine: 'free', template: 'grid-equal' },
+      version: 1,
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(typeof result.data.createdAt).toBe('number')
+      expect(typeof result.data.updatedAt).toBe('number')
+    }
+  })
+
+  it('defaults widget query paramRefs to {} when omitted', () => {
+    const result = dashboardSchema.safeParse({
+      schemaVersion: 3, id: 'dash_aaaa', title: 'x',
+      theme: 'industry-default', renderer: 'bezel',
+      parameters: [],
+      widgets: [{
+        id: 'kpi_w_gmv00001', type: 'kpi', slot: 'kpi-bar', title: 'GMV',
+        patternId: 'kpi.single', options: {},
+        query: { sql: 'SELECT 1' },
+      }],
+      layout: { engine: 'free', template: 'top-kpi-bottom-charts' },
+      version: 1, createdAt: 0, updatedAt: 0,
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.widgets[0].query?.paramRefs).toEqual({})
+    }
+  })
 })

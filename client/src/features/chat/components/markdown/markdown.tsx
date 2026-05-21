@@ -74,10 +74,36 @@ function decodeUtf8Base64(text: string): string {
   }
 }
 
-function scheduleRootUnmount(root: Root, immediate?: boolean) {
+// React roots mount into DOM nodes that morphdom preserves across re-renders
+// (onBeforeElUpdated returns false for chart/dashboard mounts). Keying roots by
+// the node itself — rather than a per-component map that StrictMode's
+// mount/cleanup/mount cycle clears — guarantees createRoot is never called twice
+// on the same node. The deferred unmount is cancelable so a node re-adopted
+// before the microtask fires keeps its root instead of being torn down.
+const nodeRoots = new WeakMap<HTMLElement, { root: Root; pendingUnmount: boolean }>()
+
+// Exported for regression testing of the StrictMode remount race.
+export function acquireNodeRoot(node: HTMLElement): Root {
+  const existing = nodeRoots.get(node)
+  if (existing) {
+    existing.pendingUnmount = false
+    return existing.root
+  }
+  const root = createRoot(node)
+  nodeRoots.set(node, { root, pendingUnmount: false })
+  return root
+}
+
+export function scheduleRootUnmount(node: HTMLElement, immediate?: boolean) {
+  const entry = nodeRoots.get(node)
+  if (!entry) return
+  entry.pendingUnmount = true
   const doUnmount = () => {
+    const current = nodeRoots.get(node)
+    if (!current || !current.pendingUnmount) return
+    nodeRoots.delete(node)
     try {
-      root.unmount()
+      current.root.unmount()
     } catch {
       // Root may already be unmounted.
     }
@@ -432,9 +458,9 @@ export function Markdown(props: {
     const roots = chartRootsRef.current
     const dashRoots = dashboardRootsRef.current
     return () => {
-      for (const { root } of roots.values()) scheduleRootUnmount(root)
+      for (const { host } of roots.values()) scheduleRootUnmount(host)
       roots.clear()
-      for (const { root } of dashRoots.values()) scheduleRootUnmount(root)
+      for (const { host } of dashRoots.values()) scheduleRootUnmount(host)
       dashRoots.clear()
     }
   }, [])
@@ -446,11 +472,11 @@ export function Markdown(props: {
     const chartRoots = chartRootsRef.current
     const dashboardRoots = dashboardRootsRef.current
     const clearChartRoots = () => {
-      for (const { root } of chartRoots.values()) scheduleRootUnmount(root)
+      for (const { host } of chartRoots.values()) scheduleRootUnmount(host)
       chartRoots.clear()
     }
     const clearDashboardRoots = () => {
-      for (const { root } of dashboardRoots.values()) scheduleRootUnmount(root)
+      for (const { host } of dashboardRoots.values()) scheduleRootUnmount(host)
       dashboardRoots.clear()
     }
 
@@ -544,8 +570,8 @@ export function Markdown(props: {
 
       let entry = chartRoots.get(chartKey)
       if (!entry || entry.host !== mountPoint) {
-        if (entry) scheduleRootUnmount(entry.root, true)
-        entry = { root: createRoot(mountPoint), host: mountPoint }
+        if (entry) scheduleRootUnmount(entry.host, true)
+        entry = { root: acquireNodeRoot(mountPoint), host: mountPoint }
         chartRoots.set(chartKey, entry)
       }
 
@@ -565,7 +591,7 @@ export function Markdown(props: {
 
     for (const [key, entry] of chartRoots) {
       if (!liveKeys.has(key)) {
-        scheduleRootUnmount(entry.root)
+        scheduleRootUnmount(entry.host)
         chartRoots.delete(key)
       }
     }
@@ -589,8 +615,8 @@ export function Markdown(props: {
 
       let entry = dashboardRoots.get(dashKey)
       if (!entry || entry.host !== mountPoint) {
-        if (entry) scheduleRootUnmount(entry.root, true)
-        entry = { root: createRoot(mountPoint), host: mountPoint }
+        if (entry) scheduleRootUnmount(entry.host, true)
+        entry = { root: acquireNodeRoot(mountPoint), host: mountPoint }
         dashboardRoots.set(dashKey, entry)
       }
 
@@ -608,7 +634,7 @@ export function Markdown(props: {
 
     for (const [key, entry] of dashboardRoots) {
       if (!liveDashKeys.has(key)) {
-        scheduleRootUnmount(entry.root)
+        scheduleRootUnmount(entry.host)
         dashboardRoots.delete(key)
       }
     }

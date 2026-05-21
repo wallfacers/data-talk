@@ -17,7 +17,7 @@ const widgetQuery = z.object({
   database: z.string().nullable().optional(),
   schema: z.string().nullable().optional(),
   sql: z.string(),
-  paramRefs: z.record(z.string(), z.string()),
+  paramRefs: z.record(z.string(), z.string()).default({}),
 })
 
 const parameterDef = z.object({
@@ -83,8 +83,8 @@ export const dashboardSchema = z.object({
   widgets: z.array(widget),
   layout: layoutV3,
   version: z.number().int().min(1),
-  createdAt: z.number().int().min(0),
-  updatedAt: z.number().int().min(0),
+  createdAt: z.number().int().min(0).default(() => Date.now()),
+  updatedAt: z.number().int().min(0).default(() => Date.now()),
 })
 
 export type Dashboard = z.infer<typeof dashboardSchema>
