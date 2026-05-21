@@ -46,19 +46,31 @@ export type SqlWorkbenchSelection = {
 }
 
 export type SqlWorkbenchTextEdit = {
-  range: SqlWorkbenchSelection
-  text: string
-  expectedText: string
+  oldText: string
+  newText: string
+  hint?: { line: number }
 }
 
 export type SqlWorkbenchEditResult =
-  | { ok: true; version: number; content: string }
+  | { ok: true; version: number; content: string; rebased?: boolean }
   | { ok: false; code: 'version_conflict'; currentState: { version: number; content: string } }
   | {
       ok: false
-      code: 'expected_text_mismatch'
+      code: 'anchor_not_found'
       currentState: { version: number; content: string }
-      details: { editIndex: number; expected: string; actual: string }
+      details: { editIndex: number; oldText: string }
+    }
+  | {
+      ok: false
+      code: 'anchor_ambiguous'
+      currentState: { version: number; content: string }
+      details: { editIndex: number; matchCount: number }
+    }
+  | {
+      ok: false
+      code: 'invalid_params'
+      currentState: { version: number; content: string }
+      details: { editIndex: number; reason: string }
     }
 
 export type SqlWorkbenchTabState = {
@@ -104,7 +116,7 @@ type SqlWorkbenchState = {
   hydrateTab: (tabId: string, snapshot: HydrateTabInput) => void
   setSqlText: (tabId: string, sqlText: string) => void
   replaceSqlText: (tabId: string, sqlText: string, baseVersion: number) => SqlWorkbenchEditResult
-  applyTextEdits: (tabId: string, params: { baseVersion: number; edits: SqlWorkbenchTextEdit[] }) => SqlWorkbenchEditResult
+  applyTextEdits: (tabId: string, params: { baseVersion?: number; edits: SqlWorkbenchTextEdit[] }) => SqlWorkbenchEditResult
   setSelection: (tabId: string, selection: SqlWorkbenchSelection | null) => void
   setActiveResult: (tabId: string, resultId: string | null) => void
   closeResult: (tabId: string, resultId: string) => void
@@ -202,47 +214,157 @@ function promoteActiveResultId(results: SqlExecuteResultItem[], preferredId: str
   return results[0]?.resultId ?? null
 }
 
-function resolveOffset(content: string, line: number, column: number) {
-  const lines = [] as Array<{ start: number; end: number }>
-  let lineStart = 0
-
-  for (let index = 0; index < content.length; index += 1) {
+/**
+ * Build a CRLF/CR-normalized projection of `content` plus a map from each
+ * normalized character index to its original offset. `map` has length
+ * `normalized.length + 1`; the final entry is the original content length so a
+ * normalized range `[start, end)` maps to the original range `[map[start], map[end])`.
+ */
+function buildNormalizedProjection(content: string): { normalized: string; map: number[] } {
+  let normalized = ''
+  const map: number[] = []
+  let index = 0
+  while (index < content.length) {
     const char = content[index]
-    if (char !== '\n' && char !== '\r') continue
-
-    lines.push({ start: lineStart, end: index })
-    if (char === '\r' && content[index + 1] === '\n') {
+    if (char === '\r') {
+      normalized += '\n'
+      map.push(index)
+      index += content[index + 1] === '\n' ? 2 : 1
+    } else {
+      normalized += char
+      map.push(index)
       index += 1
     }
-    lineStart = index + 1
   }
-  lines.push({ start: lineStart, end: content.length })
-
-  const lineIndex = Math.min(Math.max(line, 1), lines.length) - 1
-  const currentLine = lines[lineIndex] ?? { start: 0, end: 0 }
-  const lineLength = currentLine.end - currentLine.start
-  const columnOffset = Math.min(Math.max(0, column - 1), lineLength)
-  return currentLine.start + columnOffset
+  map.push(content.length)
+  return { normalized, map }
 }
 
-type ResolvedSqlWorkbenchTextEdit = SqlWorkbenchTextEdit & {
-  startOffset: number
-  endOffset: number
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-function normalizeLineEndings(content: string) {
-  return content.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+/**
+ * Compile a whitespace-flexible matcher from a normalized anchor: non-whitespace
+ * tokens match literally and in order; internal whitespace runs match `\s+` (so a
+ * cross-line anchor tolerates differing newlines); leading/trailing whitespace is
+ * treated as indentation and matches only horizontal whitespace `[ \t]*` so the
+ * match never swallows a preceding/following line break.
+ */
+function compileAnchor(normalizedOldText: string): RegExp {
+  const segments = normalizedOldText.match(/\s+|\S+/g) ?? []
+  const lastIndex = segments.length - 1
+  const pattern = segments
+    .map((segment, segmentIndex) => {
+      if (!/\s/.test(segment)) {
+        return escapeRegExp(segment)
+      }
+      const isEdge = segmentIndex === 0 || segmentIndex === lastIndex
+      return isEdge ? '[ \\t]*' : '\\s+'
+    })
+    .join('')
+  return new RegExp(pattern, 'g')
 }
 
-function resolveTextEdits(content: string, edits: SqlWorkbenchTextEdit[]): ResolvedSqlWorkbenchTextEdit[] {
-  return edits.map((edit) => ({
-    ...edit,
-    startOffset: resolveOffset(content, edit.range.startLine, edit.range.startColumn),
-    endOffset: resolveOffset(content, edit.range.endLine, edit.range.endColumn),
-  }))
+type AnchorMatch = { normStart: number; normEnd: number }
+
+function findAnchorMatches(normalized: string, anchor: RegExp): AnchorMatch[] {
+  const matches: AnchorMatch[] = []
+  anchor.lastIndex = 0
+  let match: RegExpExecArray | null = anchor.exec(normalized)
+  while (match !== null) {
+    matches.push({ normStart: match.index, normEnd: match.index + match[0].length })
+    // Guard against zero-width matches looping forever.
+    anchor.lastIndex = match[0].length === 0 ? match.index + 1 : anchor.lastIndex
+    match = anchor.exec(normalized)
+  }
+  return matches
 }
 
-function applyResolvedTextEditsToContent(content: string, edits: ResolvedSqlWorkbenchTextEdit[]) {
+function lineOfOffset(normalized: string, offset: number): number {
+  let line = 1
+  for (let index = 0; index < offset && index < normalized.length; index += 1) {
+    if (normalized[index] === '\n') line += 1
+  }
+  return line
+}
+
+type ResolvedAnchorEdit = { startOffset: number; endOffset: number; text: string }
+
+type AnchorResolution =
+  | { ok: true; resolved: ResolvedAnchorEdit[] }
+  | { ok: false; code: 'anchor_not_found'; details: { editIndex: number; oldText: string } }
+  | { ok: false; code: 'anchor_ambiguous'; details: { editIndex: number; matchCount: number } }
+  | { ok: false; code: 'invalid_params'; details: { editIndex: number; reason: string } }
+
+/**
+ * Resolve every edit against the same original snapshot using content anchoring.
+ * Returns original-offset ranges, or the first blocking failure.
+ */
+function resolveAnchoredEdits(content: string, edits: SqlWorkbenchTextEdit[]): AnchorResolution {
+  const { normalized, map } = buildNormalizedProjection(content)
+  const resolved: ResolvedAnchorEdit[] = []
+
+  for (const [editIndex, edit] of edits.entries()) {
+    const normalizedOldText = edit.oldText.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+    if (normalizedOldText.length === 0) {
+      return { ok: false, code: 'invalid_params', details: { editIndex, reason: 'empty_oldText' } }
+    }
+
+    const matches = findAnchorMatches(normalized, compileAnchor(normalizedOldText))
+    if (matches.length === 0) {
+      return { ok: false, code: 'anchor_not_found', details: { editIndex, oldText: edit.oldText } }
+    }
+
+    let chosen: AnchorMatch
+    if (matches.length === 1) {
+      chosen = matches[0]
+    } else {
+      const hintLine = edit.hint?.line
+      if (typeof hintLine !== 'number') {
+        return { ok: false, code: 'anchor_ambiguous', details: { editIndex, matchCount: matches.length } }
+      }
+      const scored = matches.map((candidate) => ({
+        candidate,
+        distance: Math.abs(lineOfOffset(normalized, candidate.normStart) - hintLine),
+      }))
+      const minDistance = Math.min(...scored.map((entry) => entry.distance))
+      const closest = scored.filter((entry) => entry.distance === minDistance)
+      if (closest.length !== 1) {
+        return { ok: false, code: 'anchor_ambiguous', details: { editIndex, matchCount: matches.length } }
+      }
+      chosen = closest[0].candidate
+    }
+
+    resolved.push({
+      startOffset: map[chosen.normStart],
+      endOffset: map[chosen.normEnd],
+      text: edit.newText,
+    })
+  }
+
+  const overlap = findOverlap(resolved)
+  if (overlap !== null) {
+    return { ok: false, code: 'invalid_params', details: { editIndex: overlap, reason: 'overlapping_edits' } }
+  }
+
+  return { ok: true, resolved }
+}
+
+/** Returns the editIndex (in original order) whose resolved range overlaps a prior one, else null. */
+function findOverlap(resolved: ResolvedAnchorEdit[]): number | null {
+  const ordered = resolved
+    .map((edit, index) => ({ ...edit, index }))
+    .sort((left, right) => left.startOffset - right.startOffset)
+  for (let i = 1; i < ordered.length; i += 1) {
+    if (ordered[i].startOffset < ordered[i - 1].endOffset) {
+      return Math.max(ordered[i].index, ordered[i - 1].index)
+    }
+  }
+  return null
+}
+
+function applyResolvedTextEditsToContent(content: string, edits: ResolvedAnchorEdit[]) {
   const resolvedEdits = [...edits].sort((left, right) => right.startOffset - left.startOffset)
 
   let nextContent = content
@@ -350,39 +472,16 @@ export const useSqlWorkbenchStore = create<SqlWorkbenchState>((set, get) => ({
 
   applyTextEdits: (tabId, params) => {
     const current = requireTabState(get().tabsById, tabId)
-    if (params.baseVersion !== current.version) {
-      return {
-        ok: false,
-        code: 'version_conflict',
-        currentState: {
-          version: current.version,
-          content: current.sqlText,
-        },
-      }
+    const currentState = { version: current.version, content: current.sqlText }
+    // baseVersion is advisory: anchors locate the edit regardless of version drift.
+    const rebased = typeof params.baseVersion === 'number' && params.baseVersion !== current.version
+
+    const resolution = resolveAnchoredEdits(current.sqlText, params.edits)
+    if (!resolution.ok) {
+      return { ok: false, code: resolution.code, currentState, details: resolution.details } as SqlWorkbenchEditResult
     }
 
-    const resolvedEdits = resolveTextEdits(current.sqlText, params.edits)
-    for (const [editIndex, edit] of resolvedEdits.entries()) {
-      const actual = normalizeLineEndings(current.sqlText.slice(edit.startOffset, edit.endOffset))
-      const expected = normalizeLineEndings(edit.expectedText)
-      if (actual !== expected) {
-        return {
-          ok: false,
-          code: 'expected_text_mismatch',
-          currentState: {
-            version: current.version,
-            content: current.sqlText,
-          },
-          details: {
-            editIndex,
-            expected,
-            actual,
-          },
-        }
-      }
-    }
-
-    const content = applyResolvedTextEditsToContent(current.sqlText, resolvedEdits)
+    const content = applyResolvedTextEditsToContent(current.sqlText, resolution.resolved)
     const next = applySqlTextChange(current, content)
     set((state) => ({
       tabsById: {
@@ -395,6 +494,7 @@ export const useSqlWorkbenchStore = create<SqlWorkbenchState>((set, get) => ({
       ok: true,
       version: next.version,
       content: next.sqlText,
+      rebased,
     }
   },
 

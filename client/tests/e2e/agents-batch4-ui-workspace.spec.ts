@@ -530,31 +530,23 @@ test.describe('workspace.open_er_designer', () => {
   })
 })
 
-// ── 8. apply_text_edits: editIndex on expected_text_mismatch ───────────────
+// ── 8. apply_text_edits: editIndex on anchor_not_found ─────────────────────
 
-test.describe('apply_text_edits: editIndex reported on expected_text_mismatch', () => {
+test.describe('apply_text_edits: editIndex reported on anchor_not_found', () => {
   test('multi-edit failure reports editIndex and is transactional', async ({ page, request }) => {
     await ensureHybridSession(page)
     const c = adapterClient(request)
     const tabId = await createQueryEditorTab(request, 'EditIndex Test', 'SELECT 1\nFROM users\nWHERE id = 1')
 
-    // Get baseVersion via payload
+    // baseVersion is advisory but we pass it to exercise the path
     const payloadRes = await c.stageGetPayload(tabId)
     const payloadBody = await payloadRes.json()
     const baseVersion = payloadBody.contentVersion as number
 
-    // Submit multi-edit with wrong expectedText on first edit
+    // Submit multi-edit where the first edit's oldText is absent from the content
     const edits = [
-      {
-        range: { startLine: 1, startColumn: 1, endLine: 1, endColumn: 8 },
-        text: 'INSERT',
-        expectedText: 'WRONG TEXT', // mismatch
-      },
-      {
-        range: { startLine: 2, startColumn: 1, endLine: 2, endColumn: 5 },
-        text: 'UPDATE',
-        expectedText: 'FROM',
-      },
+      { oldText: 'WRONG TEXT', newText: 'INSERT' }, // anchor not found
+      { oldText: 'FROM users', newText: 'UPDATE users' },
     ]
 
     const res = await c.mcpCall('datatalk_ui_exec', {
@@ -566,7 +558,7 @@ test.describe('apply_text_edits: editIndex reported on expected_text_mismatch', 
 
     expect(res.error).toBeDefined()
     const err = res.error as any
-    expect(err.message?.toLowerCase()).toContain('expected text')
+    expect(err.message?.toLowerCase()).toContain('no match for the oldtext of edit 0')
 
     // Assert content unchanged (transactional)
     const afterPayloadRes = await c.stageGetPayload(tabId)
@@ -605,38 +597,26 @@ test.describe('set_context: useSessionContext=true rejects connectionId', () => 
   })
 })
 
-// ── 10. apply_text_edits: CRLF expectedText normalized to LF ───────────────
+// ── 10. apply_text_edits: CRLF oldText anchor normalized to LF ─────────────
 
-test.describe('apply_text_edits: CRLF expectedText normalized to LF', () => {
-  test('edit with \\r\\n expectedText matches content with \\n', async ({ page, request }) => {
+test.describe('apply_text_edits: CRLF oldText anchor normalized to LF', () => {
+  test('edit with \\r\\n in oldText matches content with \\n', async ({ page, request }) => {
     await ensureHybridSession(page)
     const c = adapterClient(request)
     // Content uses LF
     const content = 'SELECT 1\nFROM users'
     const tabId = await createQueryEditorTab(request, 'CRLF Test', content)
 
-    const payloadRes = await c.stageGetPayload(tabId)
-    const payloadBody = await payloadRes.json()
-    const baseVersion = payloadBody.contentVersion as number
-
-    // Edit with CRLF expectedText
-    const edits = [
-      {
-        range: { startLine: 1, startColumn: 1, endLine: 1, endColumn: 7 },
-        text: 'INSERT',
-        expectedText: 'SELECT', // no CRLF here, but let's test with CRLF in multi-line
-      },
-    ]
-
+    // Single-line anchor
     const res = await c.mcpCall('datatalk_ui_exec', {
       object: 'query_editor',
       target: tabId,
       action: 'apply_text_edits',
-      params: { baseVersion, edits },
+      params: { edits: [{ oldText: 'SELECT', newText: 'INSERT' }] },
     })
     mcpToolResult(res)
 
-    // Now verify multi-line CRLF normalization
+    // Cross-line anchor: oldText carries CRLF but live content has LF — must still match
     const content2 = 'SELECT 1\nFROM users'
     const r2 = await c.mcpCall('datatalk_ui_exec', {
       object: 'workspace',
@@ -651,24 +631,15 @@ test.describe('apply_text_edits: CRLF expectedText normalized to LF', () => {
     const tabId2 = (data2 as any).tabId ?? (data2 as any).data?.tabId
     expect(tabId2).toBeTruthy()
 
-    const payloadRes2 = await c.stageGetPayload(tabId2)
-    const payloadBody2 = await payloadRes2.json()
-    const baseVersion2 = payloadBody2.contentVersion as number
-
-    // expectedText contains CRLF but actual content has LF
     const edits2 = [
-      {
-        range: { startLine: 1, startColumn: 1, endLine: 2, endColumn: 5 },
-        text: 'INSERT\nINTO',
-        expectedText: 'SELECT 1\r\nFROM', // CRLF should normalize to LF and match
-      },
+      { oldText: 'SELECT 1\r\nFROM', newText: 'INSERT\nINTO' }, // CRLF normalizes to LF and matches
     ]
 
     const res2 = await c.mcpCall('datatalk_ui_exec', {
       object: 'query_editor',
       target: tabId2,
       action: 'apply_text_edits',
-      params: { baseVersion: baseVersion2, edits: edits2 },
+      params: { edits: edits2 },
     })
     mcpToolResult(res2)
 

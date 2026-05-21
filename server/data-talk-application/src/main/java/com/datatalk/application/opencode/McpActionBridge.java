@@ -267,17 +267,26 @@ private static Throwable unwrap(Throwable error) {
                 yield Optional.of(EditConflictMarkdownFormatter.versionConflict(
                     tab, requestedBase, actualVersion, deltaMs));
             }
-            case "expected_text_mismatch" -> {
+            case "anchor_not_found" -> {
                 Map<String, Object> mismatch = detailsMap(detail.get("details"));
                 Integer editIndex = extractInteger(mismatch.get("editIndex"));
-                String expected = extractString(mismatch.get("expected"));
-                String actual = extractString(mismatch.get("actual"));
-                if (editIndex == null || actualVersion == null || expected == null || actual == null) {
+                String oldText = extractString(mismatch.get("oldText"));
+                if (editIndex == null || actualVersion == null || oldText == null) {
                     yield Optional.empty();
                 }
                 Integer requestedBase = extractRequestedBase(actionId, input);
-                yield Optional.of(EditConflictMarkdownFormatter.expectedTextMismatch(
-                    tab, editIndex, expected, actual, requestedBase, actualVersion, deltaMs));
+                yield Optional.of(EditConflictMarkdownFormatter.anchorNotFound(
+                    tab, editIndex, oldText, requestedBase, actualVersion, deltaMs));
+            }
+            case "anchor_ambiguous" -> {
+                Map<String, Object> mismatch = detailsMap(detail.get("details"));
+                Integer editIndex = extractInteger(mismatch.get("editIndex"));
+                Integer matchCount = extractInteger(mismatch.get("matchCount"));
+                if (editIndex == null || actualVersion == null || matchCount == null) {
+                    yield Optional.empty();
+                }
+                yield Optional.of(EditConflictMarkdownFormatter.anchorAmbiguous(
+                    tab, editIndex, matchCount, actualVersion));
             }
             case "tab_archived" -> Optional.of(EditConflictMarkdownFormatter.tabArchived(tab));
             default -> Optional.empty();

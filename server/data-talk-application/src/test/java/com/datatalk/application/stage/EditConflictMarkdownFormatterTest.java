@@ -30,77 +30,81 @@ class EditConflictMarkdownFormatterTest {
     }
 
     @Test
-    void expectedTextMismatch_includesExpectedAndActualCodeBlocks() {
+    void anchorNotFound_includesOldTextCodeBlock() {
         StageTab tab = tab("qe-2", "orders trend", 7, false, "session-1");
 
-        String markdown = EditConflictMarkdownFormatter.expectedTextMismatch(
+        String markdown = EditConflictMarkdownFormatter.anchorNotFound(
             tab,
             0,
             "WHERE created_at > '2026-01-01';\n",
-            "WHERE u.created_at > '2026-01-01';\n",
             7,
             7,
             3_000L);
 
-        assertThat(markdown).contains("Reason: expected_text_mismatch");
-        assertThat(markdown).contains("edit#0");
-        assertThat(markdown).contains("**Expected (your edit#0):**");
-        assertThat(markdown).contains("**Current (now):**");
+        assertThat(markdown).contains("Reason: anchor_not_found");
+        assertThat(markdown).contains("## Edit failed: no matching text");
+        assertThat(markdown).contains("`oldText` of your edit#0 was not found");
         assertThat(markdown).contains("```sql");
         assertThat(markdown).contains("WHERE created_at");
-        assertThat(markdown).contains("WHERE u.created_at");
     }
 
     @Test
-    void expectedTextMismatch_whenVersionUnchanged_blamesPositioningNotConcurrency() {
+    void anchorNotFound_whenVersionUnchanged_blamesContentNotConcurrency() {
         StageTab tab = tab("qe-2b", "orders trend", 6, false, "session-1");
 
-        String markdown = EditConflictMarkdownFormatter.expectedTextMismatch(
+        String markdown = EditConflictMarkdownFormatter.anchorNotFound(
             tab,
             0,
             "  HOUR(created_at)",
-            "ROUP BY",
             6,
             6,
             49_000L);
 
-        assertThat(markdown).contains("## Edit failed: edit location did not match");
-        assertThat(markdown).contains("baseVersion=6");
-        assertThat(markdown).contains("no other session changed this tab");
-        assertThat(markdown).contains("positioning error");
-        assertThat(markdown).contains("1-based line/column");
-        assertThat(markdown).doesNotContain("another session edited this tab");
-        assertThat(markdown).doesNotContain("content drifted");
+        assertThat(markdown).contains("does not appear in the editor");
+        assertThat(markdown).contains("non-whitespace tokens must match");
+        assertThat(markdown).doesNotContain("Another session changed this tab");
+        assertThat(markdown).doesNotContain("1-based");
     }
 
     @Test
-    void expectedTextMismatch_whenVersionDrifted_keepsConcurrencyHint() {
+    void anchorNotFound_whenVersionDrifted_keepsConcurrencyHint() {
         StageTab tab = tab("qe-2c", "orders trend", 9, false, "session-1");
 
-        String markdown = EditConflictMarkdownFormatter.expectedTextMismatch(
+        String markdown = EditConflictMarkdownFormatter.anchorNotFound(
             tab,
             0,
             "old text",
-            "new text",
             6,
             9,
             12_000L);
 
-        assertThat(markdown).contains("## Edit failed: content drifted");
-        assertThat(markdown).contains("another session edited this tab");
+        assertThat(markdown).contains("Another session changed this tab");
         assertThat(markdown).contains("version is now 9");
+    }
+
+    @Test
+    void anchorAmbiguous_explainsMatchCountAndContextAdvice() {
+        StageTab tab = tab("qe-2d", "orders trend", 4, false, "session-1");
+
+        String markdown = EditConflictMarkdownFormatter.anchorAmbiguous(tab, 1, 3, 4);
+
+        assertThat(markdown).contains("## Edit failed: ambiguous match");
+        assertThat(markdown).contains("Reason: anchor_ambiguous");
+        assertThat(markdown).contains("edit#1 matches 3 locations");
+        assertThat(markdown).contains("more surrounding context");
+        assertThat(markdown).contains("hint.line");
+        assertThat(markdown).contains("Suggested next step:");
     }
 
     @Test
     void truncatesLongCodeBlocksToHead8Tail8() {
         StageTab tab = tab("qe-3", "long", 1, false, "session-1");
-        String longExpected = lines(30);
+        String longOldText = lines(30);
 
-        String markdown = EditConflictMarkdownFormatter.expectedTextMismatch(
+        String markdown = EditConflictMarkdownFormatter.anchorNotFound(
             tab,
             0,
-            longExpected,
-            longExpected,
+            longOldText,
             1,
             1,
             0L);
@@ -134,26 +138,13 @@ class EditConflictMarkdownFormatterTest {
     }
 
     @Test
-    void outOfRangeLines_explainsLineCountMismatch() {
-        StageTab tab = tab("qe-5", "short tab", 3, false, "session-1");
-        EditRange range = new EditRange(20, 1, 22, 1);
-
-        String markdown = EditConflictMarkdownFormatter.outOfRangeLines(tab, range, 5);
-
-        assertThat(markdown).contains("Reason: out_of_range_lines");
-        assertThat(markdown).contains("range startLine=20");
-        assertThat(markdown).contains("actual lineCount=5");
-    }
-
-    @Test
     void crlfNormalization_doesNotShowRawCarriageReturns() {
         StageTab tab = tab("qe-6", "crlf", 1, false, null);
 
-        String markdown = EditConflictMarkdownFormatter.expectedTextMismatch(
+        String markdown = EditConflictMarkdownFormatter.anchorNotFound(
             tab,
             0,
             "line1\r\nline2\n",
-            "line1\nline2\n",
             1,
             1,
             0L);
@@ -166,11 +157,10 @@ class EditConflictMarkdownFormatterTest {
     void usesSafeFenceAndEscapesInlineTitleWhenDynamicContentContainsBackticks() {
         StageTab tab = tab("qe-8", "bad```\ntitle", 2, false, null);
 
-        String markdown = EditConflictMarkdownFormatter.expectedTextMismatch(
+        String markdown = EditConflictMarkdownFormatter.anchorNotFound(
             tab,
             0,
             "```\nselect 1\n```\n",
-            "```\nselect 2\n```\n",
             2,
             2,
             0L);
@@ -182,13 +172,12 @@ class EditConflictMarkdownFormatterTest {
 
     @Test
     void totalCapTruncatesVeryLargeMarkdown() {
-        StageTab tab = tab("qe-9", "huge ".repeat(200), 3, false, null);
+        StageTab tab = tab("qe-9", "huge ".repeat(700), 3, false, null);
         String huge = "0123456789abcdef".repeat(500);
 
-        String markdown = EditConflictMarkdownFormatter.expectedTextMismatch(
+        String markdown = EditConflictMarkdownFormatter.anchorNotFound(
             tab,
             1,
-            huge,
             huge,
             3,
             3,
@@ -196,13 +185,6 @@ class EditConflictMarkdownFormatterTest {
 
         assertThat(markdown.length()).isLessThanOrEqualTo(3_000);
         assertThat(markdown).contains("...(truncated)...");
-    }
-
-    @Test
-    void editRangeRejectsInvalidCoordinates() {
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> new EditRange(0, 1, 1, 1))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("startLine");
     }
 
     @Test

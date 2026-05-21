@@ -31,41 +31,41 @@ public final class EditConflictMarkdownFormatter {
         return capTotal(markdown.toString());
     }
 
-    public static String expectedTextMismatch(StageTab tab, int editIndex, String expected, String actual,
-                                              Integer requestedBase, int actualVersion, long lastTouchedDeltaMs) {
+    public static String anchorNotFound(StageTab tab, int editIndex, String oldText,
+                                        Integer requestedBase, int actualVersion, long lastTouchedDeltaMs) {
         boolean versionDrifted = requestedBase != null && requestedBase != actualVersion;
         StringBuilder markdown = new StringBuilder();
-        markdown.append("## Edit failed: ")
-            .append(versionDrifted ? "content drifted" : "edit location did not match")
-            .append(" on tab `").append(tab.id()).append("`\n");
+        markdown.append("## Edit failed: no matching text on tab `").append(tab.id()).append("`\n");
         markdown.append(tabLine(tab)).append('\n');
-        markdown.append("Reason: expected_text_mismatch\n\n");
-        markdown.append("**Expected (your edit#").append(editIndex).append("):**\n");
-        markdown.append(codeBlock(languageFor(tab.type()), truncateCodeBlock(normalize(expected), HEAD_LINES, TAIL_LINES)));
-        markdown.append('\n');
-        markdown.append("**Current (now):**\n");
-        markdown.append(codeBlock(languageFor(tab.type()), truncateCodeBlock(normalize(actual), HEAD_LINES, TAIL_LINES)));
+        markdown.append("Reason: anchor_not_found\n\n");
+        markdown.append("The `oldText` of your edit#").append(editIndex)
+            .append(" was not found in the current content:\n");
+        markdown.append(codeBlock(languageFor(tab.type()), truncateCodeBlock(normalize(oldText), HEAD_LINES, TAIL_LINES)));
         markdown.append('\n');
         markdown.append("Current version=").append(actualVersion).append(".\n\n");
         markdown.append(versionDrifted
-            ? hint(lastTouchedDeltaMs, actualVersion)
-            : mislocatedHint(requestedBase, actualVersion));
+            ? "Another session changed this tab " + humanizeDelta(lastTouchedDeltaMs)
+                + " (version is now " + actualVersion + "); the text you anchored to may no longer exist. "
+                + "Re-read the live content and base `oldText` on it."
+            : "The snippet you provided does not appear in the editor — most likely whitespace or wording "
+                + "that does not match the live text. Re-read the content and copy `oldText` from it verbatim "
+                + "(indentation may differ; non-whitespace tokens must match).");
         markdown.append('\n');
         markdown.append(suggestedReadStep(tab.id()));
         return capTotal(markdown.toString());
     }
 
-    public static String outOfRangeLines(StageTab tab, EditRange range, int actualLineCount) {
+    public static String anchorAmbiguous(StageTab tab, int editIndex, int matchCount, int actualVersion) {
         StringBuilder markdown = new StringBuilder();
-        markdown.append("## Edit failed: range out of bounds on tab `").append(tab.id()).append("`\n");
+        markdown.append("## Edit failed: ambiguous match on tab `").append(tab.id()).append("`\n");
         markdown.append(tabLine(tab)).append('\n');
-        markdown.append("Reason: out_of_range_lines\n\n");
-        markdown.append("Requested range startLine=").append(range.startLine())
-            .append(", startColumn=").append(range.startColumn())
-            .append(", endLine=").append(range.endLine())
-            .append(", endColumn=").append(range.endColumn())
-            .append("; actual lineCount=").append(actualLineCount).append(".\n\n");
-        markdown.append("This edit was computed against line numbers that no longer exist in the current tab state.\n\n");
+        markdown.append("Reason: anchor_ambiguous\n\n");
+        markdown.append("The `oldText` of your edit#").append(editIndex)
+            .append(" matches ").append(matchCount).append(" locations in the current content.\n\n");
+        markdown.append("Include more surrounding context in `oldText` so it identifies exactly one location, "
+            + "or pass `hint.line` with the 1-based line of the intended match.");
+        markdown.append('\n');
+        markdown.append("Current version=").append(actualVersion).append(".\n\n");
         markdown.append(suggestedReadStep(tab.id()));
         return capTotal(markdown.toString());
     }
@@ -155,18 +155,6 @@ public final class EditConflictMarkdownFormatter {
     private static String hint(long deltaMs, int actualVersion) {
         return "Likely cause: another session edited this tab " + humanizeDelta(deltaMs)
             + "; version is now " + actualVersion + ".";
-    }
-
-    private static String mislocatedHint(Integer requestedBase, int actualVersion) {
-        String prefix = requestedBase != null
-            ? "Your `baseVersion=" + requestedBase + "` still matches the current version=" + actualVersion
-                + ", so no other session changed this tab. "
-            : "The version did not change. ";
-        return prefix
-            + "This is a positioning error, not a concurrent edit: the `range` (1-based line/column) "
-            + "or `expectedText` of your edit does not line up with the live content — most often a wrong "
-            + "line/column number, or a whitespace / line-ending difference. Recount the exact line and column "
-            + "against the current content above before retrying; do not attribute this to another session.";
     }
 
     private static String suggestedReadStep(String tabId) {

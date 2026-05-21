@@ -226,29 +226,27 @@ public class UiExecAction implements ActionHandler<Map, Map> {
                                 "properties", Map.ofEntries(
                                         Map.entry("baseVersion", Map.of(
                                                 "type", "number",
-                                                "description", "Required for action=apply_text_edits: tab payloadVersion read just before the edit; rejected with `error.code='version_conflict'` if it has drifted."
+                                                "description", "Optional/advisory for action=apply_text_edits: anchors locate edits regardless of version. If the tab advanced underneath you the edit still applies (result reports `rebased: true`) as long as every `oldText` uniquely matches."
                                         )),
                                         Map.entry("edits", Map.of(
                                                 "type", "array",
                                                 "items", Map.of(
                                                         "type", "object",
-                                                        "required", List.of("range", "text", "expectedText"),
+                                                        "required", List.of("oldText", "newText"),
                                                         "properties", Map.ofEntries(
-                                                                Map.entry("range", Map.of(
-                                                                        "type", "object",
-                                                                        "required", List.of("startLine", "startColumn", "endLine", "endColumn"),
-                                                                        "properties", Map.ofEntries(
-                                                                                Map.entry("startLine", Map.of("type", "number")),
-                                                                                Map.entry("startColumn", Map.of("type", "number")),
-                                                                                Map.entry("endLine", Map.of("type", "number")),
-                                                                                Map.entry("endColumn", Map.of("type", "number"))
-                                                                        )
-                                                                )),
-                                                                Map.entry("expectedText", Map.of(
+                                                                Map.entry("oldText", Map.of(
                                                                         "type", "string",
-                                                                        "description", "Required: exact current text in the range, normalized (\\r\\n -> \\n). Rejected with `error.code='expected_text_mismatch'` if it doesn't match."
+                                                                        "description", "Required: a snippet of the current content to replace. Must match exactly once (whitespace matched flexibly, non-whitespace tokens exactly). Zero matches -> `error.code='anchor_not_found'`; multiple -> `anchor_ambiguous`."
                                                                 )),
-                                                                Map.entry("text", Map.of("type", "string"))
+                                                                Map.entry("newText", Map.of(
+                                                                        "type", "string",
+                                                                        "description", "Required: the replacement text for the located span."
+                                                                )),
+                                                                Map.entry("hint", Map.of(
+                                                                        "type", "object",
+                                                                        "description", "Optional disambiguation when oldText matches multiple locations.",
+                                                                        "properties", Map.of("line", Map.of("type", "number"))
+                                                                ))
                                                         )
                                                 )
                                         )),
@@ -264,7 +262,7 @@ public class UiExecAction implements ActionHandler<Map, Map> {
                         ))
                 )),
                 Map.entry("allOf", List.of(
-                        actionRequiresParams("query_editor", "apply_text_edits", List.of("baseVersion", "edits")),
+                        actionRequiresParams("query_editor", "apply_text_edits", List.of("edits")),
                         actionRequiresAnyParam("query_editor", "set_context",
                                 List.of("useSessionContext", "connectionId", "database", "schema", "limit"))
                 ))

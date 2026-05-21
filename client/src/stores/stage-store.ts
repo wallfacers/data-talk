@@ -133,7 +133,7 @@ export type StageState = {
   replaceQueryEditorContent: (tabId: string, content: string, baseVersion: number) => QueryEditorEditResult
   applyQueryEditorTextEdits: (
     tabId: string,
-    params: { baseVersion: number; edits: QueryEditorTextEdit[] },
+    params: { baseVersion?: number; edits: QueryEditorTextEdit[] },
   ) => QueryEditorEditResult
   setQueryEditorCursor: (tabId: string, cursor: { line: number; column: number }) => void
 

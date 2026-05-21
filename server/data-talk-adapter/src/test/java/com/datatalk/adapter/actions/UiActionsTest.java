@@ -149,14 +149,14 @@ class UiActionsTest {
     }
 
     @Test
-    void uiExec_applyTextEdits_eachEditRequiresExpectedText() {
+    void uiExec_applyTextEdits_eachEditRequiresOldAndNewText() {
         Map<String, Object> schema = uiExecAction.inputSchema();
         Map<String, Object> qeBranch = findOneOfBranch(schema, "query_editor");
         Map<String, Object> editsParam = navigate(qeBranch, "properties", "params", "properties", "edits");
         Map<String, Object> editItem = map(editsParam.get("items"), "items");
 
         assertThat(list(editItem.get("required"), "required"))
-            .containsExactlyInAnyOrder("range", "text", "expectedText");
+            .containsExactlyInAnyOrder("oldText", "newText");
     }
 
     @Test

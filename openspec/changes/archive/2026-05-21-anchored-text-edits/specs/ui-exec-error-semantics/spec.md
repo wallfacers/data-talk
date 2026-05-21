@@ -1,4 +1,4 @@
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: `datatalk_ui_exec` 失败 SHALL 返回结构化错误
 
@@ -54,13 +54,3 @@
 - **WHEN** 返回 `anchor_ambiguous` 错误
 - **THEN** `error.nextAction` SHALL 缺省或为 `null`
 - **AND** `error.message` SHALL 提示在 `oldText` 中加入更多周边上下文使锚点唯一
-
-### Requirement: 错误结构 SHALL 向下兼容旧客户端
-
-旧客户端忽略未识别字段。`error.code` 与 `error.message` SHALL 总是存在；`error.nextAction` 是新增可选字段。
-
-#### Scenario: 旧客户端只读 error.message 也能正常显示
-
-- **GIVEN** 调用方仅读取 `error.message` 字段
-- **WHEN** 收到任意 ui_exec 错误
-- **THEN** `error.message` 是非空人类可读字符串

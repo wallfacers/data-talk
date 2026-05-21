@@ -14,21 +14,24 @@ type ContentPatchOp = JsonPatchOp
 const ACTIONS: ActionDef[] = [
   {
     name: 'apply_text_edits',
-    description: 'Apply versioned text edits to the SQL content',
+    description: 'Apply anchored search/replace edits to the SQL content. Each edit locates `oldText` in the current content and replaces it with `newText`; no line/column coordinates are used.',
     paramsSchema: {
       type: 'object',
-      required: ['baseVersion', 'edits'],
+      required: ['edits'],
       properties: {
         baseVersion: { type: 'number' },
         edits: {
           type: 'array',
           items: {
             type: 'object',
-            required: ['range', 'text', 'expectedText'],
+            required: ['oldText', 'newText'],
             properties: {
-              range: { type: 'object' },
-              text: { type: 'string' },
-              expectedText: { type: 'string' },
+              oldText: { type: 'string' },
+              newText: { type: 'string' },
+              hint: {
+                type: 'object',
+                properties: { line: { type: 'number' } },
+              },
             },
           },
         },
@@ -429,14 +432,9 @@ export class QueryEditorAdapter implements UIObject {
     const p = (params ?? {}) as {
       baseVersion?: number
       edits?: Array<{
-        range: {
-          startLine: number
-          startColumn: number
-          endLine: number
-          endColumn: number
-        }
-        text: string
-        expectedText: string
+        oldText: string
+        newText: string
+        hint?: { line: number }
       }>
       connectionId?: string | null
       database?: string | null
@@ -448,9 +446,9 @@ export class QueryEditorAdapter implements UIObject {
     switch (action) {
       case 'apply_text_edits': {
         if (
-          typeof p.baseVersion !== 'number'
+          (p.baseVersion !== undefined && typeof p.baseVersion !== 'number')
           || !Array.isArray(p.edits)
-          || p.edits.some((edit) => typeof edit?.expectedText !== 'string')
+          || p.edits.some((edit) => typeof edit?.oldText !== 'string' || typeof edit?.newText !== 'string')
         ) {
           return execError('Invalid params for apply_text_edits')
         }
@@ -459,26 +457,38 @@ export class QueryEditorAdapter implements UIObject {
           edits: p.edits,
         })
         if (!result.ok) {
-          if (result.code === 'expected_text_mismatch') {
+          const currentState = { tabId: this.objectId, ...result.currentState }
+          if (result.code === 'anchor_not_found') {
             return execError({
               code: result.code,
-              message: `The expected text for edit ${result.details.editIndex} no longer matches the current content`,
-              hint: "Re-read with `ui_read(mode='state')` to get the latest content and version, then recompute the edit against the current text.",
-              currentState: {
-                tabId: this.objectId,
-                ...result.currentState,
-              },
+              message: `No match for the oldText of edit ${result.details.editIndex} in the current content`,
+              hint: "Re-read with `ui_read(mode='state')` to get the latest content, then base your `oldText` on the live text.",
+              currentState,
+              details: result.details,
+            } as Parameters<typeof execError>[0])
+          }
+          if (result.code === 'anchor_ambiguous') {
+            return execError({
+              code: result.code,
+              message: `The oldText of edit ${result.details.editIndex} matches ${result.details.matchCount} locations`,
+              hint: 'Include more surrounding context in `oldText` so it uniquely identifies one location, or pass `hint.line`.',
+              currentState,
+              details: result.details,
+            } as Parameters<typeof execError>[0])
+          }
+          if (result.code === 'invalid_params') {
+            return execError({
+              code: result.code,
+              message: `Invalid edit ${result.details.editIndex}: ${result.details.reason}`,
+              currentState,
               details: result.details,
             } as Parameters<typeof execError>[0])
           }
           return execError({
             code: result.code,
             message: `Editor content has advanced to version ${result.currentState.version}`,
-            hint: "Re-read with `ui_read(mode='state')` to get the latest content and version, then retry with a fresh baseVersion.",
-            currentState: {
-              tabId: this.objectId,
-              ...result.currentState,
-            },
+            hint: "Re-read with `ui_read(mode='state')` to get the latest content and version, then retry.",
+            currentState,
           })
         }
         return { success: true, data: result }

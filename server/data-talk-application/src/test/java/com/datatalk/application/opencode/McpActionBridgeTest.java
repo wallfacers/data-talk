@@ -394,15 +394,14 @@ class McpActionBridgeTest {
 
         channel.completeActionResult(okInvoke.callId(), true, Map.of("success", true), null);
         channel.completeActionResult(staleInvoke.callId(), false, null, new ErrorInfo(
-            "expected_text_mismatch",
-            "stale expected text",
+            "anchor_not_found",
+            "no anchor match",
             false,
             Map.of(
                 "currentState", Map.of("tabId", "qe-1", "version", 7),
                 "details", Map.of(
                     "editIndex", 0,
-                    "expected", "select 1",
-                    "actual", "select 2"
+                    "oldText", "select 1"
                 )
             )
         ));
@@ -412,11 +411,11 @@ class McpActionBridgeTest {
         assertThat(staleCall.get().output())
             .isInstanceOf(Map.class)
             .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
-            .containsEntry("code", "expected_text_mismatch")
-            .containsEntry("message", "stale expected text")
+            .containsEntry("code", "anchor_not_found")
+            .containsEntry("message", "no anchor match")
             .extractingByKey("markdown")
             .asString()
-            .contains("Reason: expected_text_mismatch")
+            .contains("Reason: anchor_not_found")
             .contains("Tab: `qe-1` (Shared SQL)");
 
         CompletableFuture<McpActionBridge.ToolCallOutcome> versionCall = bridge.handle("ui_exec", uiExecArgs(
@@ -503,9 +502,8 @@ class McpActionBridgeTest {
             "params", Map.of(
                 "baseVersion", baseVersion,
                 "edits", List.of(Map.of(
-                    "range", Map.of("startLine", 1, "endLine", 1),
-                    "text", "select 2",
-                    "expectedText", "select 1"
+                    "oldText", "select 1",
+                    "newText", "select 2"
                 ))
             ),
             "__dtOpenCodeSessionId", ocSid,

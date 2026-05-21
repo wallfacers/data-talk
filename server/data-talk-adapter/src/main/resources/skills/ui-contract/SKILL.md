@@ -105,7 +105,7 @@ Query editor actions: `apply_text_edits`, `set_context`, `run_sql`, `format_sql`
 | `workspace/choose_connection` | (optional `preferredConnectionId`) |
 | `workspace/open_er_inspector` | `connectionId`, `tables`, `title` |
 | `workspace/open_er_designer` | `dialect`, `title` |
-| `query_editor/apply_text_edits` | `baseVersion`, `edits[]`; each edit requires `range`, `text`, `expectedText` |
+| `query_editor/apply_text_edits` | `edits[]`; each edit requires `oldText`, `newText` (optional `hint.line`; optional advisory `baseVersion`) |
 | `query_editor/set_context` | at least one of `useSessionContext`, `connectionId`, `database`, `schema`, `limit` |
 | `er_inspector/add_neighbors` | `table` |
 | `er_designer/bind_target` | `connectionId` |
@@ -124,9 +124,10 @@ Query editor actions: `apply_text_edits`, `set_context`, `run_sql`, `format_sql`
 
 ### Query editor verbs
 
-- `apply_text_edits` — first-class targeted SQL edits. Requires `params.baseVersion` plus an `edits[]` array; **every** edit entry must carry `range`, `text`, **and** `expectedText`. The server compares `expectedText` against the live text at `range`; mismatches surface as a dedicated error class handled in [[concurrency-contract]].
-  - **`range` coordinate system**: `{ startLine, startColumn, endLine, endColumn }` are **1-based** — the first line is `1` and the first column is `1`. `column = N` is the caret position *before* the Nth character on that line, so `startColumn: 1` is the line start and to select a whole line `L` you use `startLine: L, startColumn: 1, endLine: L+1, endColumn: 1` (or end at `column = lineLength + 1`). There is **no** 0-based mode; never guess or alternate between 0- and 1-based.
-  - **Derive coordinates from the freshly-read content, do not estimate.** Take the `content` from `datatalk_ui_read mode=state`, count lines from `1`, and copy the exact target line's text verbatim (including leading whitespace) into `expectedText`. If your first attempt fails with `expected_text_mismatch` while `version` is unchanged, your line/column number is off — re-read and recount; see [[concurrency-contract]].
+- `apply_text_edits` — first-class targeted SQL edits via **anchored search/replace**. Provide an `edits[]` array; **every** edit entry carries `oldText` (the snippet to find in the current content) and `newText` (its replacement). **No line/column coordinates.** The server locates `oldText` in the live content and replaces that span — you never compute or count line numbers.
+  - **Make `oldText` uniquely identify one location.** Copy it from the `content` returned by `datatalk_ui_read mode=state`, including enough surrounding context that it appears exactly once. Indentation/whitespace may differ from the live text (leading indent and internal spacing are matched flexibly), but **non-whitespace tokens must match exactly**.
+  - If `oldText` matches **more than one** place, the edit fails with `anchor_ambiguous` — add more surrounding context, or pass `hint.line` (1-based line of the intended match) to disambiguate. If it matches **nothing**, it fails with `anchor_not_found` — re-read and base `oldText` on the live content. See [[concurrency-contract]].
+  - **`baseVersion` is optional and advisory.** If you pass it and the tab has since advanced, the edit still applies as long as every `oldText` still uniquely matches (the result reports `rebased: true`). You do **not** need to re-read just because the version changed.
 - `set_context` — patch one or more of `useSessionContext`, `connectionId`, `database`, `schema`, `limit`.
   - `set_context({ useSessionContext: true })` re-binds an editor to follow the currently active session. On `source='ai'` editors this rebinds `boundSessionId` and clears any prior `contextOverride`. On `source='user'` editors this is a no-op and returns `{ success: true, data: { noop: true, reason: 'source=user editor cannot follow session' } }` — user editors are pinned to their originating session.
   - `useSessionContext=true` cannot be combined with `connectionId`, `database`, or `schema`.
@@ -146,13 +147,12 @@ Full SQL replacement uses `datatalk_ui_patch` on `/content` with `baseVersion`. 
 
 ## Post-edit verification
 
-After every successful `apply_text_edits` (or any `ui_patch` on `/content`), the agent **MUST** re-read the editor with `datatalk_ui_read object=query_editor mode=state` before issuing the next edit. This re-read serves three purposes:
+After a successful `ui_patch` on `/content`, the agent **MUST** re-read the editor with `datatalk_ui_read object=query_editor mode=state` before the next `/content` patch, to pick up the new `version` required as `baseVersion`. After `apply_text_edits` a re-read is **recommended but not required for versioning** (anchors locate edits regardless of version, and `baseVersion` is advisory). Re-read in these cases:
 
-1. **Pick up the new `version`** — required as `baseVersion` for the next patch / exec on the same editor.
-2. **Confirm the resulting text** — compare the returned `content` against the intent. If it diverges, do not chain another edit; surface the divergence to the user.
-3. **Refresh `boundSessionId` / `contextSource` / `isMismatched`** — context may have shifted (e.g. session switch) between the patch and the read.
+1. **Confirm the resulting text** — compare the returned `content` (echoed in the success result) against the intent. If it diverges, do not chain another edit; surface the divergence to the user.
+2. **Refresh `boundSessionId` / `contextSource` / `isMismatched`** — context may have shifted (e.g. session switch) between edits.
 
-Skipping this re-read is a contract violation; the next edit will either fail with a stale-version error (see [[concurrency-contract]]) or silently overwrite text the user did not see. The same rule applies after structural `ui_patch` ops on `er_designer` — re-read with `object=er_designer mode=state` to refresh its `version` before the next structural patch.
+The same `/content` versioning rule applies after structural `ui_patch` ops on `er_designer` — re-read with `object=er_designer mode=state` to refresh its `version` before the next structural patch.
 
 ## Object types
 

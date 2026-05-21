@@ -83,59 +83,20 @@ describe('useSqlWorkbenchStore', () => {
     })
   })
 
-  it('rejects stale baseVersion when applying text edits', () => {
-    const store = useSqlWorkbenchStore.getState()
-    store.ensureTab('tab-1', { sqlText: 'select 1' })
-    store.replaceSqlText('tab-1', 'select 11', 1)
-
-    const result = store.applyTextEdits('tab-1', {
-      baseVersion: 1,
-      edits: [
-        {
-          range: {
-            startLine: 1,
-            startColumn: 8,
-            endLine: 1,
-            endColumn: 9,
-          },
-          text: '2',
-          expectedText: '1',
-        },
-      ],
-    })
-
-    expect(result.ok).toBe(false)
-    if (result.ok) {
-      throw new Error('expected version_conflict')
-    }
-    expect(result.code).toBe('version_conflict')
-    expect(result.currentState.version).toBe(2)
-  })
-
-  it('applies text edits to the requested range and increments version', () => {
+  it('applies an anchored edit on unique match and ignores an incorrect hint', () => {
     const store = useSqlWorkbenchStore.getState()
     store.ensureTab('tab-1', { sqlText: 'select 1\r\nfrom dual' })
 
     const result = store.applyTextEdits('tab-1', {
       baseVersion: 1,
-      edits: [
-        {
-          range: {
-            startLine: 2,
-            startColumn: 6,
-            endLine: 2,
-            endColumn: 10,
-          },
-          text: 'table',
-          expectedText: 'dual',
-        },
-      ],
+      edits: [{ oldText: 'dual', newText: 'table', hint: { line: 99 } }],
     })
 
     expect(result).toEqual({
       ok: true,
       version: 2,
       content: 'select 1\r\nfrom table',
+      rebased: false,
     })
     expect(useSqlWorkbenchStore.getState().tabsById['tab-1']).toMatchObject({
       sqlText: 'select 1\r\nfrom table',
@@ -143,62 +104,205 @@ describe('useSqlWorkbenchStore', () => {
     })
   })
 
-  it('preserves line endings and version when applyTextEdits is a no-op', () => {
+  it('applies an anchored edit with only oldText and newText', () => {
+    const store = useSqlWorkbenchStore.getState()
+    store.ensureTab('tab-1', { sqlText: 'select 1 from dual' })
+
+    const result = store.applyTextEdits('tab-1', {
+      edits: [{ oldText: 'select 1', newText: 'select 2' }],
+    })
+
+    expect(result).toMatchObject({ ok: true, version: 2, content: 'select 2 from dual' })
+  })
+
+  it('disambiguates multiple matches with hint.line', () => {
+    const store = useSqlWorkbenchStore.getState()
+    store.ensureTab('tab-1', { sqlText: 'id\nname\nid\nemail' })
+
+    const result = store.applyTextEdits('tab-1', {
+      baseVersion: 1,
+      edits: [{ oldText: 'id', newText: 'pk', hint: { line: 3 } }],
+    })
+
+    expect(result).toMatchObject({ ok: true, content: 'id\nname\npk\nemail' })
+  })
+
+  it('returns anchor_ambiguous when multiple matches and no hint', () => {
+    const store = useSqlWorkbenchStore.getState()
+    store.ensureTab('tab-1', { sqlText: 'id\nname\nid\nemail' })
+
+    const result = store.applyTextEdits('tab-1', {
+      baseVersion: 1,
+      edits: [{ oldText: 'id', newText: 'pk' }],
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      code: 'anchor_ambiguous',
+      currentState: { version: 1, content: 'id\nname\nid\nemail' },
+      details: { editIndex: 0, matchCount: 2 },
+    })
+    expect(useSqlWorkbenchStore.getState().tabsById['tab-1']).toMatchObject({ version: 1 })
+  })
+
+  it('returns anchor_not_found and current content when oldText is absent', () => {
     const store = useSqlWorkbenchStore.getState()
     store.ensureTab('tab-1', { sqlText: 'select 1\r\nfrom dual' })
 
     const result = store.applyTextEdits('tab-1', {
       baseVersion: 1,
-      edits: [],
+      edits: [{ oldText: 'WHERE x = 1', newText: 'WHERE x = 2' }],
     })
+
+    expect(result).toEqual({
+      ok: false,
+      code: 'anchor_not_found',
+      currentState: { version: 1, content: 'select 1\r\nfrom dual' },
+      details: { editIndex: 0, oldText: 'WHERE x = 1' },
+    })
+  })
+
+  it('tolerates indentation differences but keeps non-whitespace tokens strict', () => {
+    const store = useSqlWorkbenchStore.getState()
+    store.ensureTab('tab-1', { sqlText: 'SELECT\n    COUNT(*)\nFROM t' })
+
+    const tolerant = store.applyTextEdits('tab-1', {
+      baseVersion: 1,
+      edits: [{ oldText: '  COUNT(*)', newText: '  SUM(x)' }],
+    })
+    expect(tolerant).toMatchObject({ ok: true, content: 'SELECT\n  SUM(x)\nFROM t' })
+
+    store.replaceSqlText('tab-1', 'SELECT COUNT(*)', 2)
+    const strict = store.applyTextEdits('tab-1', {
+      baseVersion: 3,
+      edits: [{ oldText: 'SELECT SUM(*)', newText: 'SELECT 1' }],
+    })
+    expect(strict).toMatchObject({ ok: false, code: 'anchor_not_found' })
+  })
+
+  it('preserves CRLF outside the matched span', () => {
+    const store = useSqlWorkbenchStore.getState()
+    store.ensureTab('tab-1', { sqlText: 'a\r\nb\r\nc' })
+
+    const result = store.applyTextEdits('tab-1', {
+      baseVersion: 1,
+      edits: [{ oldText: 'b', newText: 'X' }],
+    })
+
+    expect(result).toMatchObject({ ok: true, content: 'a\r\nX\r\nc' })
+  })
+
+  it('matches a cross-line anchor through normalized newlines', () => {
+    const store = useSqlWorkbenchStore.getState()
+    store.ensureTab('tab-1', { sqlText: 'SELECT 1\r\nFROM dual' })
+
+    const result = store.applyTextEdits('tab-1', {
+      baseVersion: 1,
+      edits: [{ oldText: '1\nFROM', newText: '2\nFROM' }],
+    })
+
+    expect(result).toMatchObject({ ok: true, content: 'SELECT 2\nFROM dual' })
+  })
+
+  it('rejects an empty oldText with invalid_params', () => {
+    const store = useSqlWorkbenchStore.getState()
+    store.ensureTab('tab-1', { sqlText: 'select 1' })
+
+    const result = store.applyTextEdits('tab-1', {
+      baseVersion: 1,
+      edits: [{ oldText: '', newText: 'x' }],
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      code: 'invalid_params',
+      currentState: { version: 1, content: 'select 1' },
+      details: { editIndex: 0, reason: 'empty_oldText' },
+    })
+  })
+
+  it('applies multiple non-overlapping edits against the same snapshot', () => {
+    const store = useSqlWorkbenchStore.getState()
+    store.ensureTab('tab-1', { sqlText: 'select a, b from t' })
+
+    const result = store.applyTextEdits('tab-1', {
+      baseVersion: 1,
+      edits: [
+        { oldText: 'a,', newText: 'x,' },
+        { oldText: 'from t', newText: 'from u' },
+      ],
+    })
+
+    expect(result).toMatchObject({ ok: true, content: 'select x, b from u' })
+  })
+
+  it('rejects overlapping edits with invalid_params and applies nothing', () => {
+    const store = useSqlWorkbenchStore.getState()
+    store.ensureTab('tab-1', { sqlText: 'select alpha from t' })
+
+    const result = store.applyTextEdits('tab-1', {
+      baseVersion: 1,
+      edits: [
+        { oldText: 'select alpha', newText: 'select beta' },
+        { oldText: 'alpha from', newText: 'gamma from' },
+      ],
+    })
+
+    expect(result).toMatchObject({ ok: false, code: 'invalid_params' })
+    if (result.ok || result.code !== 'invalid_params') throw new Error('expected invalid_params')
+    expect(result.details.reason).toBe('overlapping_edits')
+    expect(useSqlWorkbenchStore.getState().tabsById['tab-1']).toMatchObject({
+      sqlText: 'select alpha from t',
+      version: 1,
+    })
+  })
+
+  it('auto-rebases when baseVersion drifted but the anchor is still unique', () => {
+    const store = useSqlWorkbenchStore.getState()
+    store.ensureTab('tab-1', { sqlText: 'select 1 from dual' })
+    store.replaceSqlText('tab-1', 'select 1 from dual where x = 1', 1)
+
+    const result = store.applyTextEdits('tab-1', {
+      baseVersion: 1,
+      edits: [{ oldText: 'select 1', newText: 'select 2' }],
+    })
+
+    expect(result).toMatchObject({
+      ok: true,
+      version: 3,
+      content: 'select 2 from dual where x = 1',
+      rebased: true,
+    })
+  })
+
+  it('fails with anchor_not_found when drifted and the anchor no longer exists', () => {
+    const store = useSqlWorkbenchStore.getState()
+    store.ensureTab('tab-1', { sqlText: 'select 1 from dual' })
+    store.replaceSqlText('tab-1', 'select 99 from other', 1)
+
+    const result = store.applyTextEdits('tab-1', {
+      baseVersion: 1,
+      edits: [{ oldText: 'from dual', newText: 'from t' }],
+    })
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'anchor_not_found',
+      currentState: { version: 2, content: 'select 99 from other' },
+    })
+  })
+
+  it('preserves content and version when applyTextEdits is a no-op', () => {
+    const store = useSqlWorkbenchStore.getState()
+    store.ensureTab('tab-1', { sqlText: 'select 1\r\nfrom dual' })
+
+    const result = store.applyTextEdits('tab-1', { baseVersion: 1, edits: [] })
 
     expect(result).toEqual({
       ok: true,
       version: 1,
       content: 'select 1\r\nfrom dual',
-    })
-    expect(useSqlWorkbenchStore.getState().tabsById['tab-1']).toMatchObject({
-      sqlText: 'select 1\r\nfrom dual',
-      version: 1,
-    })
-  })
-
-  it('rejects applyTextEdits when expectedText does not match after CRLF normalization', () => {
-    const store = useSqlWorkbenchStore.getState()
-    store.ensureTab('tab-1', { sqlText: 'select 1\r\nfrom dual' })
-
-    const result = store.applyTextEdits('tab-1', {
-      baseVersion: 1,
-      edits: [
-        {
-          range: {
-            startLine: 1,
-            startColumn: 8,
-            endLine: 2,
-            endColumn: 5,
-          },
-          text: 'x',
-          expectedText: '1\nFORM',
-        },
-      ],
-    })
-
-    expect(result).toEqual({
-      ok: false,
-      code: 'expected_text_mismatch',
-      currentState: {
-        version: 1,
-        content: 'select 1\r\nfrom dual',
-      },
-      details: {
-        editIndex: 0,
-        expected: '1\nFORM',
-        actual: '1\nfrom',
-      },
-    })
-    expect(useSqlWorkbenchStore.getState().tabsById['tab-1']).toMatchObject({
-      sqlText: 'select 1\r\nfrom dual',
-      version: 1,
+      rebased: false,
     })
   })
 

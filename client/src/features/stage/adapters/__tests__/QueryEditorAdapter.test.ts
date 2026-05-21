@@ -722,46 +722,32 @@ describe('QueryEditorAdapter', () => {
     expect(result.message).toContain('/title')
   })
 
-  it('exec apply_text_edits returns a version-conflict style failure when baseVersion is stale', async () => {
+  it('exec apply_text_edits auto-rebases when baseVersion is stale but the anchor is unique', async () => {
     const { tabId } = useStageStore.getState().openQueryEditor({
       sessionId: 's1',
       baseTitle: 'SQL',
       openMode: 'always_new',
       entryMode: 'blank',
-      initialContent: 'select 1',
+      initialContent: 'select 1 from dual',
     })
-    useStageStore.getState().replaceQueryEditorContent(tabId, 'select 11', 1)
+    useStageStore.getState().replaceQueryEditorContent(tabId, 'select 1 from dual where x = 1', 1)
 
     const adapter = new QueryEditorAdapter(tabId)
     const result = await adapter.exec('apply_text_edits', {
       baseVersion: 1,
-      edits: [
-        {
-          range: {
-            startLine: 1,
-            startColumn: 8,
-          endLine: 1,
-          endColumn: 9,
-        },
-        text: '2',
-        expectedText: '1',
-      },
-    ],
-  })
+      edits: [{ oldText: 'select 1', newText: 'select 2' }],
+    })
 
-    expect(result.success).toBe(false)
-    expect(result.error).toContain('version 2')
+    expect(result.success).toBe(true)
     expect(result.data).toEqual(expect.objectContaining({
-      code: 'version_conflict',
-      currentState: {
-        tabId,
-        version: 2,
-        content: 'select 11',
-      },
+      ok: true,
+      version: 3,
+      content: 'select 2 from dual where x = 1',
+      rebased: true,
     }))
   })
 
-  it('exec apply_text_edits returns expected_text_mismatch details and keeps the batch unapplied', async () => {
+  it('exec apply_text_edits returns anchor_not_found details and keeps the batch unapplied', async () => {
     const { tabId } = useStageStore.getState().openQueryEditor({
       sessionId: 's1',
       baseTitle: 'SQL',
@@ -773,26 +759,15 @@ describe('QueryEditorAdapter', () => {
     const adapter = new QueryEditorAdapter(tabId)
     const result = await adapter.exec('apply_text_edits', {
       baseVersion: 1,
-      edits: [
-        {
-          range: {
-            startLine: 1,
-            startColumn: 8,
-            endLine: 2,
-            endColumn: 5,
-          },
-          text: 'x',
-          expectedText: '1\nFORM',
-        },
-      ],
+      edits: [{ oldText: 'WHERE x = 1', newText: 'WHERE x = 2' }],
     })
 
     expect(result.success).toBe(false)
-    expect(result.error).toContain('expected text for edit 0')
+    expect(result.error).toContain('No match for the oldText of edit 0')
     expect(result.data).toEqual({
-      code: 'expected_text_mismatch',
-      message: 'The expected text for edit 0 no longer matches the current content',
-      hint: "Re-read with `ui_read(mode='state')` to get the latest content and version, then recompute the edit against the current text.",
+      code: 'anchor_not_found',
+      message: 'No match for the oldText of edit 0 in the current content',
+      hint: "Re-read with `ui_read(mode='state')` to get the latest content, then base your `oldText` on the live text.",
       currentState: {
         tabId,
         version: 1,
@@ -800,14 +775,37 @@ describe('QueryEditorAdapter', () => {
       },
       details: {
         editIndex: 0,
-        expected: '1\nFORM',
-        actual: '1\nfrom',
+        oldText: 'WHERE x = 1',
       },
     })
     expect(useSqlWorkbenchStore.getState().tabsById[tabId]).toMatchObject({
       sqlText: 'select 1\r\nfrom dual',
       version: 1,
     })
+  })
+
+  it('exec apply_text_edits returns anchor_ambiguous with matchCount when oldText is not unique', async () => {
+    const { tabId } = useStageStore.getState().openQueryEditor({
+      sessionId: 's1',
+      baseTitle: 'SQL',
+      openMode: 'always_new',
+      entryMode: 'blank',
+      initialContent: 'id\nname\nid\nemail',
+    })
+
+    const adapter = new QueryEditorAdapter(tabId)
+    const result = await adapter.exec('apply_text_edits', {
+      baseVersion: 1,
+      edits: [{ oldText: 'id', newText: 'pk' }],
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('matches 2 locations')
+    expect(result.data).toEqual(expect.objectContaining({
+      code: 'anchor_ambiguous',
+      details: { editIndex: 0, matchCount: 2 },
+    }))
+    expect(useSqlWorkbenchStore.getState().tabsById[tabId]).toMatchObject({ version: 1 })
   })
 
   it('exec set_context rejects empty params', async () => {
