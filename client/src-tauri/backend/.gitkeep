@@ -1,0 +1,2 @@
+# Assembled at build time by scripts/bundle-backend.sh (jar + jlink runtime).
+# Placeholder keeps the Tauri resources glob valid before assembly.

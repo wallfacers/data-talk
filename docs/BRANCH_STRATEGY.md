@@ -235,7 +235,7 @@ git push origin --delete hotfix/critical-bug
 
 | 触发条件 | CI 行为 |
 |----------|---------|
-| push 到 `master` | 读取 `client/src-tauri/tauri.conf.json` 中的版本号，构建 Windows/macOS/Linux 三平台安装包，打 tag `v{version}`，创建 GitHub Release 并上传安装包 |
+| push 到 `master` | 读取 `client/src-tauri/tauri.conf.json` 中的版本号，**构建后端 sidecar**（`scripts/bundle-backend.sh`：fat jar + jlink 全模块 JRE 注入 `client/src-tauri/backend/`），构建 Windows/macOS/Linux 三平台安装包（含内嵌后端），打 tag `v{version}`，创建 GitHub Release 并上传安装包 |
 | push 到 `develop` | 执行前端 lint/test + 后端 `mvn verify` |
 | PR 到 `develop` / `master` | 执行前端 lint/test + 后端 `mvn verify` |
 

@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "data-talk",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "identifier": "com.datatalk.app",
   "build": {
     "devUrl": "http://localhost:1420",
@@ -18,7 +18,8 @@
         "minWidth": 1024,
         "minHeight": 600,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "visible": false
       }
     ],
     "security": {
@@ -28,6 +29,9 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "resources": [
+      "backend/**/*"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

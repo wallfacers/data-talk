@@ -19,7 +19,11 @@ public class CorsConfig {
                 "http://localhost:*",
                 "http://127.0.0.1:*",
                 "http://192.168.1.3:*",
-                "http://172.17.220.222:*"
+                "http://172.17.220.222:*",
+                // Packaged Tauri webview origins (scheme/host differ per platform).
+                "tauri://localhost",
+                "http://tauri.localhost",
+                "https://tauri.localhost"
         ));
         uiConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         uiConfig.setAllowedHeaders(List.of("*"));

@@ -1,3 +1,5 @@
+mod backend;
+
 use std::collections::HashMap;
 use std::fs;
 use std::io::{BufRead, BufReader};
@@ -173,14 +175,35 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
         .manage(RunningPids(Mutex::new(HashMap::new())))
+        .manage(backend::BackendProcess(Mutex::new(None)))
         .invoke_handler(tauri::generate_handler![
             greet,
             detect_script_env,
             run_script,
             stop_script
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .setup(|app| {
+            // Dev runs the backend separately; just reveal the window.
+            // Release manages the bundled sidecar and reveals once it is healthy.
+            #[cfg(debug_assertions)]
+            {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.show();
+                }
+            }
+            #[cfg(not(debug_assertions))]
+            {
+                backend::start_async(app.handle().clone());
+            }
+            Ok(())
+        })
+        .build(tauri::generate_context!())
+        .expect("error while running tauri application")
+        .run(|app_handle, event| {
+            if let tauri::RunEvent::ExitRequested { .. } = event {
+                backend::stop(app_handle);
+            }
+        });
 }
 
 #[tauri::command]
