@@ -139,3 +139,14 @@ DataTalk ships with 18 AI skills that define how AI operates on user databases, 
 | [docs/SECURITY.md](docs/SECURITY.md) | Security guide |
 | [docs/I18N.md](docs/I18N.md) | Internationalization guide |
 | [client/DESIGN.md](client/DESIGN.md) | Frontend design contract |
+
+## Acknowledgements
+
+DataTalk is built on top of [**OpenCode**](https://github.com/anomalyco/opencode),
+the open-source coding agent, which powers the AI agent runtime behind every
+conversation, SQL generation, and skill in this project. Huge thanks to the
+OpenCode maintainers and community for their work. OpenCode is distributed under
+the MIT License.
+
+See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) for full license notices
+of bundled third-party software.

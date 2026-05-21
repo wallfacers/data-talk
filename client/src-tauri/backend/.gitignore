@@ -1,3 +1,4 @@
 # Backend bundle artifacts are assembled at build time, never committed.
 app.jar
 runtime/
+opencode/

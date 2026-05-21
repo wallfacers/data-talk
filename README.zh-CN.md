@@ -137,3 +137,11 @@ DataTalk 服务端内置了 18 个 AI 技能，定义了 AI 如何操作用户�
 | [docs/SECURITY.md](docs/SECURITY.md) | 安全指南 |
 | [docs/I18N.md](docs/I18N.md) | 国际化指南 |
 | [client/DESIGN.md](client/DESIGN.md) | 前端设计契约 |
+
+## 致谢
+
+DataTalk 基于开源编码智能体 [**OpenCode**](https://github.com/anomalyco/opencode)
+构建——它驱动了本项目中每一次对话、SQL 生成与技能（Skill）背后的 AI agent 运行时。
+衷心感谢 OpenCode 的维护者与社区。OpenCode 以 MIT 许可证分发。
+
+完整的第三方软件许可声明见 [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)。

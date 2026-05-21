@@ -9,7 +9,9 @@ import org.springframework.context.SmartLifecycle;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -171,6 +173,9 @@ public class OpenCodeProcessManager implements SmartLifecycle {
     }
 
     private Path resolveBinary() {
+        Path explicit = resolveConfiguredBinary(serveProps.getBinaryPath());
+        if (explicit != null) return explicit;
+
         Path local = binaryResolver.resolveLocal(homeDir);
         if (local != null) return local;
 
@@ -178,6 +183,26 @@ public class OpenCodeProcessManager implements SmartLifecycle {
         if (classpath != null) return classpath;
 
         return binaryResolver.downloadFromGitHub(homeDir, serveProps.getVersion());
+    }
+
+    /**
+     * Highest-priority binary source: an explicit path configured via
+     * datatalk.opencode.serve.binary-path (env DATATALK_OPENCODE_SERVE_BINARY_PATH).
+     * The packaged desktop app points this at its bundled backend/opencode/ binary so
+     * first launch never downloads. Falls back to auto-resolution if the file is absent,
+     * which keeps dev (where the property is unset) on the original chain.
+     */
+    static Path resolveConfiguredBinary(String configured) {
+        if (configured == null || configured.isBlank()) return null;
+
+        Path binary = Paths.get(configured);
+        if (!Files.isRegularFile(binary)) {
+            log.warn("Configured OpenCode binary {} does not exist; falling back to auto-resolution", configured);
+            return null;
+        }
+        binary.toFile().setExecutable(true);
+        log.info("Using configured OpenCode binary: {}", binary);
+        return binary;
     }
 
     private void streamOutput(Process proc) {

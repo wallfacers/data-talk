@@ -12,6 +12,10 @@ public class OpenCodeServeProperties {
     private boolean enabled = true;
     private boolean autoUpgrade = false;
     private String version = "1.4.7";
+    /** Absolute path to a pre-bundled OpenCode binary. When set and the file exists,
+     *  it takes precedence over local cache / classpath / GitHub download. The packaged
+     *  desktop app points this at backend/opencode/ so first launch never hits the network. */
+    private String binaryPath;
     private int basePort = 4096;
     private int portRetries = 100;
     private String hostname = "127.0.0.1";
@@ -26,6 +30,9 @@ public class OpenCodeServeProperties {
 
     public String getVersion() { return version; }
     public void setVersion(String version) { this.version = version; }
+
+    public String getBinaryPath() { return binaryPath; }
+    public void setBinaryPath(String binaryPath) { this.binaryPath = binaryPath; }
 
     public int getBasePort() { return basePort; }
     public void setBasePort(int basePort) { this.basePort = basePort; }
