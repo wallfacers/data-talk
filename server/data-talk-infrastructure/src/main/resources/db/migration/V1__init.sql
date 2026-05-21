@@ -1,6 +1,7 @@
 -- ============================================================
 -- DataTalk v0.0.1 — Complete Initial Schema
--- SQLite, Flyway-style migration V1 (folded from V1-V28)
+-- SQLite, single Flyway baseline (folds the entire pre-release
+-- migration history V1-V28 plus the post-fold V2-V5 follow-ups).
 -- ============================================================
 
 -- ─── 1. Data Source Connections ─────────────────────────────
@@ -378,23 +379,92 @@ CREATE TABLE script_run (
 CREATE INDEX idx_script_run_started_at ON script_run(started_at);
 
 -- ─── 16. Uploaded Files ─────────────────────────────────────
+-- session_id nullable + FK ON DELETE SET NULL (folded from V5).
 
 CREATE TABLE uploaded_file (
     id TEXT PRIMARY KEY,
-    session_id TEXT NOT NULL,
+    session_id TEXT,
     filename TEXT NOT NULL,
     mime_type TEXT NOT NULL,
     size_bytes INTEGER NOT NULL,
     physical_path TEXT NOT NULL,
     analysis_json TEXT,
-    created_at INTEGER NOT NULL
+    created_at INTEGER NOT NULL,
+    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE SET NULL
 );
 
 CREATE INDEX idx_uploaded_file_created_at ON uploaded_file(created_at);
 
--- ─── 17. User Message Attachments ─────────────────────────────
--- Moved to V2__user_message_attachments.sql (BUG-0061 fix) so the
--- table can be applied independently of V1 checksum state.
+-- ─── 17. User Message Attachments ───────────────────────────
+-- Folded from V2.
+
+CREATE TABLE user_message_attachments (
+    id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    message_id TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    part_json TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+);
+
+CREATE INDEX idx_user_message_attachments_session_message
+    ON user_message_attachments(session_id, message_id, position, id);
+
+-- ─── 18. SQL Execution History ──────────────────────────────
+-- Folded from V3. Per-session SQL execution log powering the
+-- datatalk_query_history MCP action and the recent-failures digest.
+
+CREATE TABLE sql_execution_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL,
+    connection_id TEXT NOT NULL,
+    database_name TEXT,
+    schema_name TEXT,
+    sql_text TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('success', 'failure')),
+    error_code TEXT,
+    error_message TEXT,
+    executed_at INTEGER NOT NULL,
+    duration_ms INTEGER,
+    row_count INTEGER
+);
+
+CREATE INDEX idx_sql_history_session_executed
+    ON sql_execution_history(session_id, executed_at DESC);
+
+CREATE INDEX idx_sql_history_session_status
+    ON sql_execution_history(session_id, status, executed_at DESC);
+
+-- ─── 19. Report Library ─────────────────────────────────────
+-- Folded from V4. Workspace-scoped report library for the ledger skill.
+
+CREATE TABLE report (
+    id TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL,
+    group_id TEXT NOT NULL,
+    version INTEGER NOT NULL DEFAULT 1,
+    title TEXT NOT NULL,
+    subtitle TEXT,
+    template_id TEXT NOT NULL,
+    template_version TEXT NOT NULL,
+    accent_color TEXT NOT NULL,
+    generated_at INTEGER NOT NULL,
+    generated_by_session_id TEXT,
+    user_prompt TEXT,
+    artifact_paths_json TEXT NOT NULL,
+    pdf_status TEXT NOT NULL DEFAULT 'processing'
+        CHECK (pdf_status IN ('processing', 'ready', 'failed')),
+    md_status TEXT NOT NULL DEFAULT 'processing'
+        CHECK (md_status IN ('processing', 'ready', 'failed')),
+    pdf_fail_reason TEXT,
+    md_fail_reason TEXT
+);
+
+CREATE INDEX idx_report_workspace
+    ON report(workspace_id, generated_at DESC);
+
+CREATE INDEX idx_report_group
+    ON report(group_id, version DESC);
 
 -- ─── Seed Data ──────────────────────────────────────────────
 

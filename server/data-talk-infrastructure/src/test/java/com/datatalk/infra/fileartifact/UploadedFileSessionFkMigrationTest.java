@@ -15,27 +15,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Verifies the V5__uploaded_file_session_fk.sql migration:
+ * Verifies the uploaded_file foreign key folded into the V1 baseline:
  * FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE SET NULL.
  */
 class UploadedFileSessionFkMigrationTest {
 
     /**
-     * Apply the initial schema (V1) and then the V5 FK migration.
+     * Apply the V1 baseline, which now creates uploaded_file with the FK.
      */
     private void applyMigrations(Statement s) throws Exception {
-        // V1: creates sessions and uploaded_file (without FK)
         String v1 = new String(
                 new ClassPathResource("db/migration/V1__init.sql").getInputStream().readAllBytes());
         for (String stmt : SqlScriptSplitter.split(v1)) {
-            s.executeUpdate(stmt);
-        }
-
-        // V5: rebuilds uploaded_file with FK ON DELETE SET NULL
-        String v5 = new String(
-                new ClassPathResource("db/migration/V5__uploaded_file_session_fk.sql")
-                        .getInputStream().readAllBytes());
-        for (String stmt : SqlScriptSplitter.split(v5)) {
             s.executeUpdate(stmt);
         }
     }
@@ -141,41 +132,6 @@ class UploadedFileSessionFkMigrationTest {
                 assertThat(rs.next()).isTrue();
                 assertThat(rs.getString("id")).isEqualTo("upl-1");
                 assertThat(rs.getString("filename")).isEqualTo("data.csv");
-            }
-        }
-    }
-
-    @Test
-    void migrationOrphanCleanupDeletesRowsWithInvalidSessionId(@TempDir Path tmp) throws Exception {
-        String url = "jdbc:sqlite:" + tmp.resolve("dt.db");
-
-        try (Connection c = DriverManager.getConnection(url);
-             Statement s = c.createStatement()) {
-            // Apply V1 (no FK), insert a row with non-existent session_id
-            String v1 = new String(
-                    new ClassPathResource("db/migration/V1__init.sql").getInputStream().readAllBytes());
-            for (String stmt : SqlScriptSplitter.split(v1)) {
-                s.executeUpdate(stmt);
-            }
-
-            // Insert orphan row directly before V5
-            s.executeUpdate(
-                    "INSERT INTO uploaded_file (id, session_id, filename, mime_type, size_bytes, physical_path, created_at) " +
-                    "VALUES ('orphan-1', 'nonexistent-session', 'orphan.csv', 'text/csv', 50, '/tmp/orphan.csv', 1700000000000)");
-
-            // Apply V5 migration
-            String v5 = new String(
-                    new ClassPathResource("db/migration/V5__uploaded_file_session_fk.sql")
-                            .getInputStream().readAllBytes());
-            for (String stmt : SqlScriptSplitter.split(v5)) {
-                s.executeUpdate(stmt);
-            }
-
-            // Verify the orphan row was cleaned up by the DELETE step in V5
-            try (ResultSet rs = s.executeQuery(
-                    "SELECT COUNT(*) FROM uploaded_file WHERE id='orphan-1'")) {
-                assertThat(rs.next()).isTrue();
-                assertThat(rs.getInt(1)).isEqualTo(0);
             }
         }
     }
