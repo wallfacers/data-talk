@@ -12,58 +12,76 @@
     </parent>
 
     <groupId>com.datatalk</groupId>
-    <artifactId>chat-database-tool-server</artifactId>
+    <artifactId>data-talk</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>chat-database-tool-server</name>
-    <description>Chat Database Tool Backend</description>
+    <packaging>pom</packaging>
+    <name>data-talk</name>
+    <description>Data Talk - Intelligent Database Collaboration Platform</description>
+
+    <modules>
+        <module>data-talk-domain</module>
+        <module>data-talk-application</module>
+        <module>data-talk-infrastructure</module>
+        <module>data-talk-adapter</module>
+    </modules>
 
     <properties>
         <java.version>21</java.version>
     </properties>
 
-    <dependencies>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jdbc</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-validation</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.xerial</groupId>
-            <artifactId>sqlite-jdbc</artifactId>
-            <version>3.49.1.0</version>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-properties-migrator</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
-
     <build>
         <plugins>
             <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <id>require-java-21</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireJavaVersion>
+                                    <version>[21,22)</version>
+                                    <message>DataTalk server build requires Java 21. Set JAVA_HOME to a JDK 21 installation before running Maven.</message>
+                                </requireJavaVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.datatalk</groupId>
+                <artifactId>data-talk-domain</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.datatalk</groupId>
+                <artifactId>data-talk-application</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.datatalk</groupId>
+                <artifactId>data-talk-infrastructure</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.datatalk</groupId>
+                <artifactId>data-talk-adapter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.methvin</groupId>
+                <artifactId>directory-watcher</artifactId>
+                <version>0.18.0</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 </project>

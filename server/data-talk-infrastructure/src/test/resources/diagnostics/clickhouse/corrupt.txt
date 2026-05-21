@@ -1,0 +1,4 @@
+Expression ((Projection + Before ORDER BY))
+  UnknownOperator
+    Some invalid
+    structure here

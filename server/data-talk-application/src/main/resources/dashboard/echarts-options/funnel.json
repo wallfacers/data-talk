@@ -1,0 +1,16 @@
+{
+  "tooltip": { "trigger": "item", "formatter": "{b}: {c}" },
+  "legend": { "show": true, "top": 8 },
+  "dataset": { "source": [] },
+  "series": [{
+    "type": "funnel",
+    "left": "10%",
+    "right": "10%",
+    "top": 48,
+    "bottom": 16,
+    "sort": "descending",
+    "gap": 2,
+    "label": { "show": true, "position": "inside" },
+    "itemStyle": { "borderColor": "#fff", "borderWidth": 1 }
+  }]
+}

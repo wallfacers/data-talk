@@ -1,0 +1,13 @@
+/* === Bezel Theme: Cybersecurity === */
+
+.bezel[data-theme="industry-cybersecurity"] {
+  --accent-primary: #00e676;
+  --accent-secondary: #76ff03;
+  --bg-body: #040806;
+  --bg-card: #0a1410;
+  --bg-slot: #080e0c;
+  --border-color: rgba(0, 230, 118, 0.2);
+  --text-primary: #c8f0d0;
+  --text-secondary: #88c890;
+  --text-muted: #509858;
+}

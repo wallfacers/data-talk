@@ -1,0 +1,13 @@
+/* === Bezel Theme: Finance === */
+
+.bezel[data-theme="industry-finance"] {
+  --accent-primary: #00bfa5;
+  --accent-secondary: #69f0ae;
+  --bg-body: #060e0c;
+  --bg-card: #0e1a16;
+  --bg-slot: #0a1410;
+  --border-color: rgba(0, 191, 165, 0.2);
+  --text-primary: #d0f0e8;
+  --text-secondary: #98c8b8;
+  --text-muted: #609888;
+}

@@ -1,0 +1,5 @@
+[
+  {"id": "TableReader_7", "estRows": "3323", "task": "root", "access object": "", "operator info": "data:Selection_6"},
+  {"id": "└─Selection_6", "estRows": "3323", "task": "cop[tikv]", "access object": "", "operator info": "lt(test.t.a, 1)"},
+  {"id": "  └─TableFullScan_5", "estRows": "10000", "task": "cop[tikv]", "access object": "table:t", "operator info": "keep order:false"}
+]

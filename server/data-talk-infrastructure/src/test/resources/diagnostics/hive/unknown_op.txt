@@ -1,0 +1,15 @@
+STAGE DEPENDENCIES:
+  Stage-0 is a root stage
+
+STAGE PLANS:
+  Stage: Stage-0
+    Map Reduce
+      Map Operator Tree:
+        TableScan
+          alias: events
+          Statistics: Num rows: 1000000
+        Unknown Operator Type
+          someParam: value
+          Statistics: Num rows: 1000000
+        CustomAggregate Operator
+          Statistics: Num rows: 500

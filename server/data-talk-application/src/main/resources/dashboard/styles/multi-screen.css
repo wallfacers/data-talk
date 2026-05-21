@@ -1,0 +1,13 @@
+/* === Bezel Theme: Multi-Screen === */
+
+.bezel[data-theme="industry-multi-screen"] {
+  --accent-primary: #7c4dff;
+  --accent-secondary: #448aff;
+  --bg-body: #06061a;
+  --bg-card: #10102a;
+  --bg-slot: #0c0c22;
+  --border-color: rgba(124, 77, 255, 0.2);
+  --text-primary: #d8d8f0;
+  --text-secondary: #9898c8;
+  --text-muted: #6868a0;
+}

@@ -1,0 +1,10 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "北京", "cp": [116.4, 39.9] },
+      "geometry": { "type": "Point", "coordinates": [116.4, 39.9] }
+    }
+  ]
+}

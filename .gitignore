@@ -15,8 +15,16 @@ client/dist/
 client/src-tauri/target/
 client/src-tauri/gen/
 
+# TS composite build artifacts — must not leak into source dirs (Vite
+# picks up vite.config.js over vite.config.ts, causing bogus reloads)
+client/vite.config.js
+client/vite.config.d.ts
+client/*.tsbuildinfo
+
 # Node
+node_modules/
 client/node_modules/
+package-lock.json
 
 # Java
 *.class
@@ -27,6 +35,25 @@ client/node_modules/
 server/data/*.db
 server/data/*.db-shm
 server/data/*.db-wal
+server/data-talk-adapter/data/
 
 # Logs
+logs/
 *.log
+server/*/target/
+
+# Worktrees
+.worktrees/
+
+# MCP / Skill scratch (Playwright traces, brainstorming dumps, etc.)
+tmp/
+.playwright-mcp/
+.playwright-cli/
+client/.playwright-cli/
+client/test-results/
+
+# skill sync (extracted at server start)
+/.opencode/skills/
+/.opencode/.*-skill-synced
+**/.opencode/
+/test-results/

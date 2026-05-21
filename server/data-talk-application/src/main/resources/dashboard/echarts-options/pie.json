@@ -1,0 +1,13 @@
+{
+  "tooltip": { "trigger": "item" },
+  "legend": { "show": true, "bottom": 8 },
+  "dataset": { "source": [] },
+  "series": [{
+    "type": "pie",
+    "radius": ["45%", "70%"],
+    "avoidLabelOverlap": true,
+    "itemStyle": { "borderRadius": 6, "borderWidth": 2 },
+    "label": { "show": false },
+    "labelLine": { "show": false }
+  }]
+}

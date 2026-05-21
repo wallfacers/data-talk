@@ -1,0 +1,13 @@
+/* === Bezel Theme: Manufacturing === */
+
+.bezel[data-theme="industry-manufacturing"] {
+  --accent-primary: #2196f3;
+  --accent-secondary: #64b5f6;
+  --bg-body: #080c18;
+  --bg-card: #0f1528;
+  --bg-slot: #0b1020;
+  --border-color: rgba(33, 150, 243, 0.2);
+  --text-primary: #dce4f0;
+  --text-secondary: #a0aec8;
+  --text-muted: #6878a0;
+}

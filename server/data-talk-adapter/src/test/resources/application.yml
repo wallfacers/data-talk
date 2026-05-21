@@ -1,0 +1,43 @@
+spring:
+  datasource:
+    url: "jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1"
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+  jdbc:
+    template:
+      query-timeout: 30
+  sqlite-datasource:
+    url: "jdbc:sqlite::memory:"
+    driver-class-name: org.sqlite.JDBC
+
+datatalk:
+  diagnostics:
+    lock:
+      long-wait-ms: 5000
+    pool:
+      warn-ratio: 0.80
+      critical-ratio: 0.95
+    space:
+      reclaim-ratio: 0.30
+      min-data-size-bytes: 104857600
+  persistence:
+    sqlite-path: ":memory:"
+  workdir:
+    data-talk-root: ./target/test-data-talk-workdir
+  master-key-hex: "0000000000000000000000000000000000000000000000000000000000000000"
+  mcp:
+    enabled: false
+    config-dir: ./target/test-opencode
+  opencode:
+    base-url: http://127.0.0.1:1
+    serve:
+      enabled: false
+
+app:
+  sse:
+    heartbeat-interval-ms: 200

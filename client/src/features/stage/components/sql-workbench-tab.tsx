@@ -1,0 +1,1037 @@
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
+import { useShallow } from 'zustand/react/shallow'
+import { toast } from 'sonner'
+import type { StageTab } from '@/stores/stage-store'
+import { useSessionStore } from '@/stores/session-store'
+import { useConnectionStore } from '@/features/connection/store'
+import { useSessionDataContext } from '@/features/session/hooks/use-session-data-context'
+import { useSessions } from '@/features/session/hooks/use-sessions'
+import { cn } from '@/lib/utils'
+import { listConnections, getConnectionTargets } from '@/services/api/connection'
+import { resolveTabDataContext } from '@/features/stage/utils/resolve-tab-data-context'
+import { parseSqlOutline, resolveCurrentSqlOutlineStatement } from '../utils/parse-sql-outline'
+import { isNormalizedQueryEditorPayload, normalizeQueryEditorPayload } from '../utils/normalize-query-editor-payload'
+import {
+  formatQueryEditorSql,
+  runQueryEditorSql,
+  setQueryEditorContext,
+  confirmQueryEditorSql,
+  cancelQueryEditorConfirmation,
+} from '../utils/query-editor-actions'
+import { useSqlWorkbenchStore } from '../stores/sql-workbench-store'
+import type { SqlMonacoEditorHandle } from './sql-monaco-editor'
+import {
+  SqlContextToolbarControls,
+  type SqlContextConnectionTargets,
+} from './sql-context-toolbar-controls'
+import { SqlEditorToolbar } from './sql-editor-toolbar'
+import { SqlMonacoEditor } from './sql-monaco-editor'
+import { SqlResultTabs } from './sql-result-tabs'
+import { SqlResultPanel } from './sql-result-panel'
+import type { ResultScrollPosition } from './sql-result-table'
+import { StageActivityRail } from './activity-rail/stage-activity-rail'
+import { useI18n } from '@/i18n/use-i18n'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Badge } from '@/components/ui/badge'
+import { SqlConfirmationCard } from '@/features/sql-confirmation/sql-confirmation-card'
+import { coordinator } from '../persistence/stage-persistence-bootstrap'
+
+export type SqlWorkbenchTabActions = {
+  insertAtCursor: (text: string) => void
+  replaceSelection: (text: string) => void
+}
+
+const tabActionsById = new Map<string, SqlWorkbenchTabActions>()
+
+const EMPTY_WORKBENCH_STATE = {
+  sqlText: '',
+  source: 'user' as const,
+  executeStatus: 'idle' as const,
+  results: [],
+  activeResultId: null,
+  selection: null,
+  resolvedContext: null,
+  contextNotice: null,
+  risk: null,
+  errorMessage: null,
+  override: null,
+  savedSqlText: '',
+  limit: 100 as const,
+  cursor: { line: 1, column: 1 },
+}
+
+const DRAFT_STORAGE_PREFIX = 'data-talk:sql-workbench:draft:'
+const RESULT_PANE_MIN_PERCENT = 22
+const RESULT_PANE_MAX_PERCENT = 64
+const RESULT_PANE_DEFAULT_PERCENT = 38
+const QUERY_EDITOR_RUN_CONTROLLERS_KEY = '__data_talk_query_editor_run_controllers__'
+const DEFAULT_RESULT_SCROLL_POSITION: ResultScrollPosition = { scrollTop: 0, scrollLeft: 0 }
+
+export function getSqlWorkbenchTabActions(tabId: string) {
+  return tabActionsById.get(tabId) ?? null
+}
+
+export function registerSqlWorkbenchTabActions(tabId: string, actions: SqlWorkbenchTabActions) {
+  tabActionsById.set(tabId, actions)
+}
+
+export function unregisterSqlWorkbenchTabActions(tabId: string) {
+  tabActionsById.delete(tabId)
+}
+
+function isAbortError(error: unknown) {
+  return (error instanceof DOMException && error.name === 'AbortError') || (error instanceof Error && error.name === 'AbortError')
+}
+
+function getQueryEditorRunControllers() {
+  const globalState = globalThis as typeof globalThis & {
+    [QUERY_EDITOR_RUN_CONTROLLERS_KEY]?: Map<string, AbortController>
+  }
+  if (!globalState[QUERY_EDITOR_RUN_CONTROLLERS_KEY]) {
+    globalState[QUERY_EDITOR_RUN_CONTROLLERS_KEY] = new Map<string, AbortController>()
+  }
+  return globalState[QUERY_EDITOR_RUN_CONTROLLERS_KEY]
+}
+
+function abortQueryEditorRun(tabId: string) {
+  getQueryEditorRunControllers().get(tabId)?.abort()
+}
+
+function insertTextAtPosition(value: string, insertedText: string, lineNumber: number, column: number) {
+  const lines = value.split(/\r\n|\r|\n/)
+  while (lines.length < lineNumber) {
+    lines.push('')
+  }
+
+  const lineIndex = Math.max(0, lineNumber - 1)
+  const line = lines[lineIndex] ?? ''
+  const before = line.slice(0, Math.max(0, column - 1))
+  const after = line.slice(Math.max(0, column - 1))
+  const insertedLines = insertedText.split(/\r\n|\r|\n/)
+
+  if (insertedLines.length === 1) {
+    lines[lineIndex] = `${before}${insertedText}${after}`
+    return lines.join('\n')
+  }
+
+  const firstLine = `${before}${insertedLines[0]}`
+  const lastLine = `${insertedLines[insertedLines.length - 1]}${after}`
+  const middleLines = insertedLines.slice(1, -1)
+
+  lines.splice(lineIndex, 1, firstLine, ...middleLines, lastLine)
+  return lines.join('\n')
+}
+
+function replaceSqlStatementRange(value: string, startLine: number, endLine: number, insertedText: string) {
+  const lines = value.split(/\r\n|\r|\n/)
+  while (lines.length < endLine) {
+    lines.push('')
+  }
+
+  const insertedLines = insertedText.split(/\r\n|\r|\n/)
+  const next = [
+    ...lines.slice(0, Math.max(0, startLine - 1)),
+    ...insertedLines,
+    ...lines.slice(Math.max(0, endLine)),
+  ]
+  return next.join('\n')
+}
+
+function resolveTextOffset(value: string, line: number, column: number) {
+  let currentLine = 1
+  let lineStart = 0
+
+  for (let index = 0; index < value.length; index += 1) {
+    const char = value[index]
+    if (char !== '\n' && char !== '\r') continue
+
+    if (currentLine === line) {
+      const lineLength = index - lineStart
+      return lineStart + Math.min(Math.max(0, column - 1), lineLength)
+    }
+
+    if (char === '\r' && value[index + 1] === '\n') {
+      index += 1
+    }
+    currentLine += 1
+    lineStart = index + 1
+  }
+
+  if (currentLine === line) {
+    return lineStart + Math.min(Math.max(0, column - 1), value.length - lineStart)
+  }
+  return value.length
+}
+
+function getSelectedSqlText(
+  value: string,
+  selection: { startLine: number; startColumn: number; endLine: number; endColumn: number } | null,
+) {
+  if (!selection) return null
+  const startOffset = resolveTextOffset(value, selection.startLine, selection.startColumn)
+  const endOffset = resolveTextOffset(value, selection.endLine, selection.endColumn)
+  if (startOffset === endOffset) return null
+
+  const selectedText = value.slice(Math.min(startOffset, endOffset), Math.max(startOffset, endOffset))
+  return selectedText.trim().length > 0 ? selectedText : null
+}
+
+function toContextValue(
+  connectionId: string | null,
+  connectionName: string | null,
+  database: string | null,
+  schema: string | null,
+) {
+  if (!connectionId) return null
+  return { connectionId, connectionName, database, schema }
+}
+
+export function SqlWorkbenchTab({ tab }: { tab: StageTab }) {
+  const { t } = useI18n()
+  const payload = normalizeQueryEditorPayload(tab.payload)
+  const shouldHydratePersistedPayload = tab.payloadVersion != null && !isNormalizedQueryEditorPayload(tab.payload)
+  const autoRunRef = useRef(false)
+  const monacoRef = useRef<SqlMonacoEditorHandle | null>(null)
+  const splitLayoutRef = useRef<HTMLDivElement | null>(null)
+  const resizeCleanupRef = useRef<(() => void) | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const [draftLoadedTabId, setDraftLoadedTabId] = useState<string | null>(null)
+  const [importConfirmContent, setImportConfirmContent] = useState<string | null>(null)
+  const [resultPanePercent, setResultPanePercent] = useState(RESULT_PANE_DEFAULT_PERCENT)
+  const [resultScrollPositionsById, setResultScrollPositionsById] = useState<Record<string, ResultScrollPosition>>({})
+  const [connectionTargetsByConnectionId, setConnectionTargetsByConnectionId] = useState<Record<string, SqlContextConnectionTargets>>({})
+  const pendingConnectionTargetsRef = useRef<Set<string>>(new Set())
+  const { activeConnectionId, connections, setConnections } = useConnectionStore(
+    useShallow((state) => ({
+      activeConnectionId: state.activeConnectionId,
+      connections: state.connections,
+      setConnections: state.setConnections,
+    })),
+  )
+  const activeSessionId = useSessionStore((state) => state.activeSessionId)
+  // boundSessionId is the session this editor tracks for context resolution.
+  // Both AI and user editors read from bound; only AI editors permit re-binding via the toggle.
+  // Fallback chain: runtime store override → payload → originSessionId (set at creation) → active.
+  const effectiveBoundSessionId = useSqlWorkbenchStore((state) =>
+    state.tabsById[tab.tabId]?.boundSessionId,
+  ) ?? payload.boundSessionId ?? tab.originSessionId ?? null
+  // Sessions list (cached by React Query) drives orphan detection and badge title lookup.
+  // We don't need it to be perfectly fresh; if the cache is empty, orphan check is deferred.
+  const sessionsQuery = useSessions('all')
+  const boundSession = useMemo(() => {
+    if (effectiveBoundSessionId == null) return null
+    return sessionsQuery.data?.find((session) => session.id === effectiveBoundSessionId) ?? null
+  }, [sessionsQuery.data, effectiveBoundSessionId])
+  // Orphan: we have a bound id but the session is known not to exist in the cache.
+  // Guard against the unloaded state (sessionsQuery.data == null) so we don't false-positive on initial render.
+  const isOrphanedBoundSession = effectiveBoundSessionId != null
+    && sessionsQuery.data != null
+    && boundSession == null
+  const contextSessionId = isOrphanedBoundSession
+    ? activeSessionId
+    : (effectiveBoundSessionId ?? activeSessionId ?? null)
+  const sessionDataContext = useSessionDataContext(contextSessionId)
+  // Show a one-time toast when the bound session disappears (Group 6 orphan handling).
+  const orphanToastedRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!isOrphanedBoundSession || effectiveBoundSessionId == null) return
+    if (orphanToastedRef.current === effectiveBoundSessionId) return
+    orphanToastedRef.current = effectiveBoundSessionId
+    toast.info(t('stage.queryEditor.boundSessionMissing'))
+  }, [isOrphanedBoundSession, effectiveBoundSessionId, t])
+
+  const {
+    ensureTab,
+    setSqlText,
+    setActiveResult,
+    setLimit,
+    setCursor,
+    setSelection,
+    closeResult,
+    closeOtherResults,
+    closeAllResults,
+  } = useSqlWorkbenchStore(
+    useShallow((state) => ({
+      ensureTab: state.ensureTab,
+      setSqlText: state.setSqlText,
+      setActiveResult: state.setActiveResult,
+      setLimit: state.setLimit,
+      setCursor: state.setCursor,
+      setSelection: state.setSelection,
+      closeResult: state.closeResult,
+      closeOtherResults: state.closeOtherResults,
+      closeAllResults: state.closeAllResults,
+    })),
+  )
+
+  const actualTabState = useSqlWorkbenchStore((state) => state.tabsById[tab.tabId])
+  const tabState = actualTabState ?? EMPTY_WORKBENCH_STATE
+  const runtimeContextOverride = tabState.override
+    ? {
+        connectionId: tabState.override.connectionId,
+        database: tabState.override.database ?? null,
+        schema: tabState.override.schema ?? null,
+      }
+    : payload.contextOverride
+  // Derived toggle state: ON iff bound session matches active and no override is configured.
+  // Stored useSessionContext is kept readable on legacy payloads but no longer the source of truth.
+  const hasOverride = runtimeContextOverride != null
+  const useSessionContext = effectiveBoundSessionId != null
+    && effectiveBoundSessionId === activeSessionId
+    && !hasOverride
+  // Resolver semantic: "use the bound session's live data context"; true whenever no override pins the tab.
+  // This is independent of whether bound === active (we always read from the bound session when unpinned).
+  const followSessionForResolution = !hasOverride
+  // Mismatch badge: shown only for AI editors when bound !== active and the bound session still exists.
+  // For orphaned bound sessions, the toast (above) handles the user notification instead.
+  const mismatchBoundSessionTitle = payload.source === 'ai'
+    && effectiveBoundSessionId != null
+    && effectiveBoundSessionId !== activeSessionId
+    && !isOrphanedBoundSession
+    ? boundSession?.title ?? null
+    : null
+  const resolvedContext = resolveTabDataContext(
+    {
+      originSessionId: contextSessionId,
+      connectionId: payload.connectionId ?? tab.connectionId ?? null,
+      connectionName: payload.connectionName ?? tab.connectionName ?? null,
+      database: payload.database ?? tab.database ?? null,
+      schema: payload.schema ?? tab.schema ?? null,
+      payload: {
+        connectionId: payload.connectionId ?? tab.connectionId ?? null,
+        connectionName: payload.connectionName ?? tab.connectionName ?? null,
+        database: payload.database ?? tab.database ?? null,
+        schema: payload.schema ?? tab.schema ?? null,
+        contextOverride: runtimeContextOverride,
+        useSessionContext: followSessionForResolution,
+      },
+    },
+    sessionDataContext.context,
+    {
+      inheritSessionContext: true,
+      preferSessionContext: followSessionForResolution,
+      fallbackConnectionId: activeConnectionId ?? null,
+      connectionNameLookup: (connectionId) =>
+        connections.find((connection) => connection.id === connectionId)?.name ?? null,
+    },
+  )
+
+  const draftStorageKey = `${DRAFT_STORAGE_PREFIX}${tab.tabId}`
+  const outline = useMemo(() => parseSqlOutline(tabState.sqlText), [tabState.sqlText])
+  const totalLines = useMemo(() => Math.max(1, tabState.sqlText.split(/\r\n|\r|\n/).length), [tabState.sqlText])
+  const currentStatement = useMemo(
+    () => resolveCurrentSqlOutlineStatement(outline, tabState.cursor.line, totalLines),
+    [outline, tabState.cursor.line, totalLines],
+  )
+  const displayResults = tabState.results
+  const activeResult = useMemo(
+    () => displayResults.find((item) => item.resultId === tabState.activeResultId) ?? displayResults[0] ?? null,
+    [displayResults, tabState.activeResultId],
+  )
+  const showResultPane = displayResults.length > 0
+  const activeResultId = activeResult?.resultId ?? null
+  const activeResultScrollPosition = activeResultId
+    ? resultScrollPositionsById[activeResultId] ?? DEFAULT_RESULT_SCROLL_POSITION
+    : DEFAULT_RESULT_SCROLL_POSITION
+
+  useEffect(() => {
+    const resultIds = new Set(displayResults.map((result) => result.resultId))
+    setResultScrollPositionsById((previous) => {
+      let changed = false
+      const next: Record<string, ResultScrollPosition> = {}
+      for (const [resultId, position] of Object.entries(previous)) {
+        if (!resultIds.has(resultId)) {
+          changed = true
+          continue
+        }
+        next[resultId] = position
+      }
+      return changed ? next : previous
+    })
+  }, [displayResults])
+
+  useEffect(() => {
+    ensureTab(tab.tabId, {
+      sqlText: payload.initialSql,
+      source: payload.source,
+      useSessionContext: payload.useSessionContext,
+    })
+  }, [ensureTab, payload.initialSql, payload.source, payload.useSessionContext, tab.tabId])
+
+  useEffect(() => {
+    if (!shouldHydratePersistedPayload) return
+    void coordinator.ensureHydrated(tab.tabId)
+  }, [shouldHydratePersistedPayload, tab.tabId])
+
+  useEffect(() => {
+    autoRunRef.current = false
+  }, [tab.tabId])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const draftSql = window.localStorage.getItem(draftStorageKey)
+    if (draftSql != null) {
+      setSqlText(tab.tabId, draftSql)
+    }
+    setDraftLoadedTabId(tab.tabId)
+  }, [draftStorageKey, setSqlText, tab.tabId])
+
+  useEffect(() => {
+    if (draftLoadedTabId !== tab.tabId || typeof window === 'undefined') return
+    try {
+      window.localStorage.setItem(draftStorageKey, tabState.sqlText)
+    } catch {
+      // ignore storage failures
+    }
+  }, [draftLoadedTabId, draftStorageKey, tab.tabId, tabState.sqlText])
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && tabState.executeStatus === 'running') {
+        abortQueryEditorRun(tab.tabId)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [tab.tabId, tabState.executeStatus])
+
+  const effectiveContext = {
+    sessionId: resolvedContext.sessionId ?? contextSessionId,
+    connectionId: resolvedContext.connectionId,
+    connectionName: resolvedContext.connectionName,
+    database: resolvedContext.database,
+    schema: resolvedContext.schema,
+  }
+
+  const refreshConnections = useCallback(async () => {
+    const nextConnections = await listConnections()
+    setConnections(nextConnections)
+    return nextConnections
+  }, [setConnections])
+
+  useEffect(() => {
+    const connectionId = effectiveContext.connectionId
+    const hasResolvedName = connectionId
+      ? connections.some((connection) => connection.id === connectionId && connection.name.trim().length > 0)
+      : false
+    const shouldHydrateSelectedConnection = Boolean(connectionId) && !hasResolvedName
+    const isAiSessionLocked = payload.source === 'ai' && useSessionContext
+    const shouldHydrateSelectableOptions = !isAiSessionLocked && connections.length === 0
+    if (!shouldHydrateSelectedConnection && !shouldHydrateSelectableOptions) return
+
+    void refreshConnections()
+      .catch(() => {
+        // best-effort hydration for connection name display
+      })
+  }, [connections, useSessionContext, payload.source, effectiveContext.connectionId, refreshConnections])
+
+  useEffect(() => {
+    pendingConnectionTargetsRef.current.clear()
+    setConnectionTargetsByConnectionId({})
+  }, [contextSessionId])
+
+  const fetchConnectionTargets = useCallback(async (
+    connectionId: string | null | undefined,
+    options?: { force?: boolean },
+  ) => {
+    const normalizedConnectionId = connectionId?.trim()
+    if (!normalizedConnectionId) return
+    if (!options?.force && connectionTargetsByConnectionId[normalizedConnectionId]) return
+    if (pendingConnectionTargetsRef.current.has(normalizedConnectionId)) return
+
+    pendingConnectionTargetsRef.current.add(normalizedConnectionId)
+    try {
+      const targets = contextSessionId
+        ? await sessionDataContext.listConnectionTargets(normalizedConnectionId)
+        : await getConnectionTargets(normalizedConnectionId)
+      if (!targets) return
+      setConnectionTargetsByConnectionId((previous) => {
+        if (!options?.force && previous[normalizedConnectionId]) return previous
+        return {
+          ...previous,
+          [normalizedConnectionId]: { databases: targets.databases, schemas: targets.schemas },
+        }
+      })
+    } catch (error) {
+      if (options?.force) {
+        throw error
+      }
+      // Best-effort prefetch. Leave uncached so later UI interactions can retry.
+    } finally {
+      pendingConnectionTargetsRef.current.delete(normalizedConnectionId)
+    }
+  }, [
+    connectionTargetsByConnectionId,
+    contextSessionId,
+    sessionDataContext,
+  ])
+
+  useEffect(() => {
+    const isAiSessionLocked = payload.source === 'ai' && useSessionContext
+    if (isAiSessionLocked) return
+
+    const connectionIds = Array.from(new Set([
+      effectiveContext.connectionId,
+      ...connections.map((connection) => connection.id),
+    ].filter((value): value is string => Boolean(value))))
+
+    if (connectionIds.length === 0) return
+
+    connectionIds.forEach((connectionId) => {
+      void fetchConnectionTargets(connectionId)
+    })
+  }, [
+    connections,
+    payload.source,
+    useSessionContext,
+    effectiveContext.connectionId,
+    fetchConnectionTargets,
+  ])
+
+  const canRun = Boolean(effectiveContext.connectionId) && tabState.sqlText.trim().length > 0
+  const contextToolbarContext = toContextValue(
+    effectiveContext.connectionId,
+    effectiveContext.connectionName,
+    effectiveContext.database,
+    effectiveContext.schema,
+  )
+  const contextConnectionOptions = useMemo(
+    () => connections.map((connection) => ({
+      id: connection.id,
+      name: connection.name,
+      kind: connection.kind ?? null,
+      databaseName: connection.databaseName ?? null,
+    })),
+    [connections],
+  )
+
+  const stopResize = useCallback(() => {
+    resizeCleanupRef.current?.()
+    resizeCleanupRef.current = null
+  }, [])
+
+  const updateResultPanePercent = useCallback((clientY: number) => {
+    const layout = splitLayoutRef.current
+    if (!layout) return
+
+    const rect = layout.getBoundingClientRect()
+    if (rect.height <= 0) return
+
+    const nextPercent = ((rect.bottom - clientY) / rect.height) * 100
+    const clampedPercent = Math.min(
+      RESULT_PANE_MAX_PERCENT,
+      Math.max(RESULT_PANE_MIN_PERCENT, nextPercent),
+    )
+    setResultPanePercent(clampedPercent)
+  }, [])
+
+  const handleSplitterMouseDown = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    stopResize()
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      updateResultPanePercent(moveEvent.clientY)
+    }
+    const onMouseUp = () => {
+      stopResize()
+    }
+
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp, { once: true })
+
+    resizeCleanupRef.current = () => {
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
+  }, [stopResize, updateResultPanePercent])
+
+  useEffect(() => stopResize, [stopResize])
+
+  const handleRun = useCallback(async () => {
+    const currentTabState = useSqlWorkbenchStore.getState().tabsById[tab.tabId]
+    const selectedSqlText = currentTabState
+      ? getSelectedSqlText(currentTabState.sqlText, currentTabState.selection)
+      : null
+    try {
+      await runQueryEditorSql({
+        tabId: tab.tabId,
+        sessionId: contextSessionId,
+        sqlOverride: selectedSqlText,
+      })
+    } catch (error) {
+      if (isAbortError(error)) {
+        return
+      }
+      throw error
+    }
+  }, [contextSessionId, tab.tabId])
+
+  const handleRunCurrentStatement = useCallback(async () => {
+    const currentTabState = useSqlWorkbenchStore.getState().tabsById[tab.tabId]
+    if (!currentTabState) return
+    const stmt = resolveCurrentSqlOutlineStatement(
+      parseSqlOutline(currentTabState.sqlText),
+      currentTabState.cursor.line,
+      Math.max(1, currentTabState.sqlText.split(/\r\n|\r|\n/).length),
+    )
+    if (!stmt) return
+    try {
+      await runQueryEditorSql({
+        tabId: tab.tabId,
+        sessionId: contextSessionId,
+        sqlOverride: stmt.summary,
+      })
+    } catch (error) {
+      if (isAbortError(error)) {
+        return
+      }
+      throw error
+    }
+  }, [contextSessionId, tab.tabId])
+
+  useEffect(() => {
+    if (!payload.autoRun || autoRunRef.current || !effectiveContext.connectionId) return
+    if (!tabState.sqlText.trim()) return
+    autoRunRef.current = true
+    void handleRun()
+  }, [effectiveContext.connectionId, handleRun, payload.autoRun, tabState.sqlText])
+
+  const handleFormat = useCallback(() => {
+    formatQueryEditorSql(tab.tabId)
+  }, [tab.tabId])
+
+  const handleImportFile = useCallback(() => {
+    fileInputRef.current?.click()
+  }, [])
+
+  const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const MAX_SIZE = 1 * 1024 * 1024
+    if (file.size > MAX_SIZE) {
+      toast.error(t('stage.toolbar.importFile.fileTooLarge'))
+      event.target.value = ''
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      const content = typeof reader.result === 'string' ? reader.result : ''
+      if (!content) {
+        event.target.value = ''
+        return
+      }
+
+      // Non-text file detection: check null bytes and replacement characters
+      const nullCount = (content.match(/\0/g) ?? []).length
+      const replacementCount = (content.match(/�/g) ?? []).length
+      const totalChars = content.length
+      if (totalChars > 0 && (nullCount + replacementCount) / totalChars > 0.01) {
+        toast.warning(t('stage.toolbar.importFile.notTextFile'))
+        event.target.value = ''
+        return
+      }
+
+      const trimmed = tabState.sqlText.trim()
+      if (!trimmed) {
+        setSqlText(tab.tabId, content)
+      } else {
+        setImportConfirmContent(content)
+      }
+      event.target.value = ''
+    }
+    reader.onerror = () => {
+      toast.error(t('stage.toolbar.importFile.notTextFile'))
+      event.target.value = ''
+    }
+    reader.readAsText(file)
+  }, [setSqlText, t, tab.tabId, tabState.sqlText])
+
+  const handleConfirmImport = useCallback(() => {
+    if (importConfirmContent == null) return
+    const actions = getSqlWorkbenchTabActions(tab.tabId)
+    if (actions) {
+      actions.insertAtCursor(importConfirmContent)
+    } else {
+      setSqlText(tab.tabId, importConfirmContent)
+    }
+    setImportConfirmContent(null)
+  }, [importConfirmContent, setSqlText, tab.tabId])
+
+  const handleCancelImport = useCallback(() => {
+    setImportConfirmContent(null)
+  }, [])
+
+  const handleUseSessionContextChange = useCallback((nextUseSessionContext: boolean) => {
+    if (nextUseSessionContext) {
+      setQueryEditorContext({
+        tabId: tab.tabId,
+        useSessionContext: true,
+      })
+      return
+    }
+    const contextToPin = contextToolbarContext
+    if (!contextToPin) return
+    setQueryEditorContext({
+      tabId: tab.tabId,
+      connectionId: contextToPin.connectionId,
+      database: contextToPin.database,
+      schema: contextToPin.schema,
+    })
+  }, [contextToolbarContext, tab.tabId])
+
+  const handleConnectionChange = useCallback((connectionId: string) => {
+    setQueryEditorContext({
+      tabId: tab.tabId,
+      connectionId,
+      database: null,
+      schema: null,
+    })
+  }, [tab.tabId])
+
+  const handleDatabaseChange = useCallback((database: string | null) => {
+    if (!effectiveContext.connectionId) return
+    setQueryEditorContext({
+      tabId: tab.tabId,
+      connectionId: effectiveContext.connectionId,
+      database,
+      schema: null,
+    })
+  }, [effectiveContext.connectionId, tab.tabId])
+
+  const handleSchemaChange = useCallback((schema: string | null) => {
+    if (!effectiveContext.connectionId) return
+    setQueryEditorContext({
+      tabId: tab.tabId,
+      connectionId: effectiveContext.connectionId,
+      database: effectiveContext.database,
+      schema,
+    })
+  }, [effectiveContext.connectionId, effectiveContext.database, tab.tabId])
+
+  const handleOpenTargets = useCallback(async () => {
+    await fetchConnectionTargets(effectiveContext.connectionId, { force: true })
+  }, [effectiveContext.connectionId, fetchConnectionTargets])
+
+  const handleOpenConnections = useCallback(async () => {
+    await refreshConnections()
+  }, [refreshConnections])
+
+  const handleCursorChange = useCallback(
+    (cursor: { line: number; column: number }) => {
+      setCursor(tab.tabId, cursor.line, cursor.column)
+    },
+    [setCursor, tab.tabId],
+  )
+
+  const handleSelectionChange = useCallback(
+    (selection: { startLine: number; startColumn: number; endLine: number; endColumn: number } | null) => {
+      setSelection(tab.tabId, selection)
+    },
+    [setSelection, tab.tabId],
+  )
+
+  const handleSelectResult = useCallback((resultId: string) => {
+    setActiveResult(tab.tabId, resultId)
+  }, [setActiveResult, tab.tabId])
+
+  const handleActiveResultScrollPositionChange = useCallback((position: ResultScrollPosition) => {
+    if (!activeResultId) return
+    setResultScrollPositionsById((previous) => {
+      const current = previous[activeResultId]
+      if (current?.scrollTop === position.scrollTop && current.scrollLeft === position.scrollLeft) {
+        return previous
+      }
+      return {
+        ...previous,
+        [activeResultId]: position,
+      }
+    })
+  }, [activeResultId])
+
+  const handleCloseResult = useCallback((resultId: string) => {
+    closeResult(tab.tabId, resultId)
+  }, [closeResult, tab.tabId])
+
+  const handleCloseOtherResults = useCallback((resultId: string) => {
+    closeOtherResults(tab.tabId, resultId)
+  }, [closeOtherResults, tab.tabId])
+
+  const handleCloseAllResults = useCallback(() => {
+    closeAllResults(tab.tabId)
+  }, [closeAllResults, tab.tabId])
+
+  const isPending = tabState.executeStatus === 'requires_confirmation'
+    || tabState.executeStatus === 'confirmation_invalid'
+    || tabState.executeStatus === 'confirming'
+
+  const handleConfirmExecute = useCallback(async () => {
+    if (!tabState.confirmation) return
+    try {
+      await confirmQueryEditorSql({
+        tabId: tab.tabId,
+        sessionId: contextSessionId,
+        level: tabState.confirmation.level,
+      })
+    } catch (error) {
+      if (isAbortError(error)) return
+      throw error
+    }
+  }, [tab.tabId, contextSessionId, tabState.confirmation])
+
+  const handleCancelConfirmation = useCallback(() => {
+    cancelQueryEditorConfirmation(tab.tabId)
+  }, [tab.tabId])
+
+  useEffect(() => {
+    registerSqlWorkbenchTabActions(tab.tabId, {
+      insertAtCursor: (text: string) => {
+        if (monacoRef.current) {
+          monacoRef.current.insertAtCursor(text)
+          return
+        }
+        setSqlText(tab.tabId, insertTextAtPosition(tabState.sqlText, text, tabState.cursor.line, tabState.cursor.column))
+      },
+      replaceSelection: (text: string) => {
+        if (currentStatement) {
+          setSqlText(tab.tabId, replaceSqlStatementRange(tabState.sqlText, currentStatement.line, currentStatement.endLine, text))
+          return
+        }
+        if (monacoRef.current) {
+          monacoRef.current.insertAtCursor(text)
+          return
+        }
+        setSqlText(tab.tabId, insertTextAtPosition(tabState.sqlText, text, tabState.cursor.line, tabState.cursor.column))
+      },
+    })
+
+    return () => unregisterSqlWorkbenchTabActions(tab.tabId)
+  }, [
+    currentStatement,
+    setSqlText,
+    tab.tabId,
+    tabState.cursor.column,
+    tabState.cursor.line,
+    tabState.sqlText,
+  ])
+
+  return (
+    <div data-testid="sql-workbench-tab" className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-row bg-background">
+      <div ref={splitLayoutRef} data-testid="sql-workbench-layout" className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <section
+          className={cn(
+            'flex min-h-0 flex-col',
+            showResultPane ? 'flex-none' : 'flex-1',
+          )}
+          style={showResultPane ? { flexBasis: `${100 - resultPanePercent}%` } : undefined}
+        >
+          <SqlEditorToolbar
+            canRun={canRun}
+            isRunning={tabState.executeStatus === 'running'}
+            onRun={() => void handleRun()}
+            onCancel={() => abortQueryEditorRun(tab.tabId)}
+            onFormat={handleFormat}
+            onImportFile={handleImportFile}
+            contextControls={
+              <SqlContextToolbarControls
+                useSessionContext={useSessionContext}
+                context={contextToolbarContext}
+                connections={contextConnectionOptions}
+                targets={effectiveContext.connectionId ? connectionTargetsByConnectionId[effectiveContext.connectionId] ?? null : null}
+                limit={tabState.limit}
+                showSessionToggle={payload.source === 'ai'}
+                mismatchBoundSessionTitle={mismatchBoundSessionTitle}
+                onUseSessionContextChange={handleUseSessionContextChange}
+                onConnectionChange={handleConnectionChange}
+                onDatabaseChange={handleDatabaseChange}
+                onSchemaChange={handleSchemaChange}
+                onLimitChange={(value) => setLimit(tab.tabId, value)}
+                onOpenConnections={handleOpenConnections}
+                onOpenTargets={handleOpenTargets}
+              />
+            }
+          />
+          <div data-testid="sql-editor-frame" className="min-h-0 flex-1 bg-background">
+            <div className="flex h-full min-h-0 flex-col">
+              <SqlMonacoEditor
+                ref={monacoRef}
+                value={tabState.sqlText}
+                onChange={(next) => setSqlText(tab.tabId, next)}
+                onRun={() => void handleRun()}
+                onRunCurrentStatement={() => void handleRunCurrentStatement()}
+                onFormat={handleFormat}
+                onCancel={() => abortQueryEditorRun(tab.tabId)}
+                isRunning={tabState.executeStatus === 'running'}
+                onCursorChange={handleCursorChange}
+                onSelectionChange={handleSelectionChange}
+                currentStatementRange={
+                  currentStatement
+                    ? {
+                        startLine: currentStatement.line,
+                        endLine: currentStatement.endLine,
+                      }
+                    : null
+                }
+                shellMode={showResultPane ? 'connected' : 'standalone'}
+              />
+              {showResultPane ? (
+                <div
+                  className="relative -mt-px h-0 shrink-0 overflow-visible"
+                >
+                  <div
+                    data-testid="sql-workbench-result-splitter"
+                    role="separator"
+                    aria-orientation="horizontal"
+                    aria-label={t('stage.queryEditor.result.resizePanel')}
+                    className="group absolute inset-x-0 -top-1 h-2 cursor-row-resize bg-transparent"
+                    onMouseDown={handleSplitterMouseDown}
+                  >
+                    <div className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2">
+                      <div className="h-px w-full bg-border/65 transition-all duration-150 group-hover:h-1 group-hover:bg-primary/50 group-active:h-1 group-active:bg-primary/50" />
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </section>
+
+        {showResultPane ? (
+          <section
+            data-testid="sql-result-pane"
+            className="flex min-h-0 flex-none flex-col"
+            style={{ flexBasis: `${resultPanePercent}%` }}
+          >
+            <div className="flex min-h-0 flex-1 flex-col bg-background">
+              <div
+                data-testid="sql-result-shell"
+                className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-none bg-background"
+              >
+                <SqlResultTabs
+                  results={displayResults}
+                  activeResultId={activeResult?.resultId ?? tabState.activeResultId}
+                  onSelect={handleSelectResult}
+                  onClose={handleCloseResult}
+                  onCloseOthers={handleCloseOtherResults}
+                  onCloseAll={handleCloseAllResults}
+                />
+                <div className="min-h-0 flex-1 overflow-hidden">
+                  <SqlResultPanel
+                    executeStatus={tabState.executeStatus}
+                    activeResult={activeResult}
+                    errorMessage={tabState.errorMessage}
+                    tabId={tab.tabId}
+                    activeScrollPosition={activeResultScrollPosition}
+                    onActiveScrollPositionChange={handleActiveResultScrollPositionChange}
+                    connectionName={resolvedContext.connectionName}
+                    connectionKind={resolvedContext.connectionId ? connections.find((c) => c.id === resolvedContext.connectionId)?.kind ?? null : null}
+                    database={resolvedContext.database}
+                    schema={resolvedContext.schema}
+                    connectionId={resolvedContext.connectionId}
+                    tabTitle={tab.title}
+                    availableDatabases={effectiveContext.connectionId ? connectionTargetsByConnectionId[effectiveContext.connectionId]?.databases ?? null : null}
+                    availableSchemas={effectiveContext.connectionId ? connectionTargetsByConnectionId[effectiveContext.connectionId]?.schemas ?? null : null}
+                  />
+                </div>
+              </div>
+            </div>
+          </section>
+        ) : null}
+      </div>
+      <StageActivityRail />
+      {isPending && tabState.confirmation ? (
+        (() => {
+          const confirmation = tabState.confirmation
+          const isL3 = confirmation.level === 'L3'
+          const pending = tabState.executeStatus === 'confirming'
+          return (
+            <AlertDialog open>
+              <AlertDialogContent
+                data-testid="sql-confirmation-dialog"
+                className="max-h-[85vh] overflow-hidden"
+              >
+                <AlertDialogHeader>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <AlertDialogTitle>{t('stage.queryEditor.confirmation.title')}</AlertDialogTitle>
+                    <Badge
+                      variant={isL3 ? 'destructive' : 'secondary'}
+                      className={cn(
+                        !isL3
+                          && 'bg-[var(--dt-accent-warn-surface)] text-[var(--dt-accent-warn)] border-[color-mix(in_srgb,var(--dt-accent-warn)_30%,transparent)]',
+                      )}
+                    >
+                      {isL3 ? t('sqlConfirmation.l3.title') : t('sqlConfirmation.l2.title')}
+                    </Badge>
+                  </div>
+                </AlertDialogHeader>
+                <SqlConfirmationCard
+                  risk={{
+                    level: confirmation.level,
+                    reason: confirmation.reason,
+                    affectedObjects: confirmation.affectedObjects,
+                  }}
+                  sqlPreview={confirmation.sqlPreview}
+                />
+                {tabState.confirmationInvalid && (
+                  <p data-testid="sql-confirmation-invalid-message" className="text-sm text-[var(--dt-status-danger)]">
+                    {tabState.confirmationInvalid.message}
+                  </p>
+                )}
+                <AlertDialogFooter>
+                  <AlertDialogCancel
+                    disabled={pending}
+                    onClick={handleCancelConfirmation}
+                  >
+                    {t('sqlConfirmation.cancel')}
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    variant={isL3 ? 'destructive' : 'warning'}
+                    disabled={pending}
+                    onClick={() => void handleConfirmExecute()}
+                  >
+                    {pending ? t('sqlConfirmation.executing') : t('sqlConfirmation.execute')}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )
+        })()
+      ) : null}
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+      {importConfirmContent != null && (
+        <AlertDialog open>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t('stage.toolbar.importFile.confirmTitle')}</AlertDialogTitle>
+              <p className="text-sm text-muted-foreground">
+                {t('stage.toolbar.importFile.confirmMessage')}
+              </p>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={handleCancelImport}>
+                {t('stage.toolbar.importFile.cancel')}
+              </AlertDialogCancel>
+              <AlertDialogAction onClick={handleConfirmImport}>
+                {t('stage.toolbar.importFile.confirm')}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+    </div>
+  )
+}

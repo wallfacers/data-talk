@@ -1,0 +1,8 @@
+Expression ((Projection + Before ORDER BY))
+  ReadFromMergeTree (default.orders)
+  Indexes:
+    PrimaryKey
+      Keys: user_id
+      Condition: true
+      Parts: 3/3
+      Granules: 100/100

@@ -1,0 +1,322 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: 0.5rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 1.75rem;
+  --radius-4xl: 2rem;
+
+  /* DataTalk semantic tokens — expose --dt-* under Tailwind's --color-* so that
+     bg-bg-subtle / text-text-muted / bg-interaction-hover / bg-accent-primary
+     / bg-status-danger etc. resolve to real utilities. */
+  --color-bg-app: var(--dt-bg-app);
+  --color-bg-canvas: var(--dt-bg-canvas);
+  --color-bg-panel: var(--dt-bg-panel);
+  --color-bg-soft: var(--dt-bg-soft);
+  --color-bg-subtle: var(--dt-bg-subtle);
+  --color-bg-elevated: var(--dt-bg-elevated);
+  --color-bg-overlay: var(--dt-bg-overlay);
+  --color-text-strong: var(--dt-text-strong);
+  --color-text-base: var(--dt-text-base);
+  --color-text-muted: var(--dt-text-muted);
+  --color-text-soft: var(--dt-text-soft);
+  --color-text-inverse: var(--dt-text-inverse);
+  --color-border-subtle: var(--dt-border-subtle);
+  --color-border-default: var(--dt-border-default);
+  --color-border-strong: var(--dt-border-strong);
+  --color-accent-primary: var(--dt-accent-primary);
+  --color-accent-primary-hover: var(--dt-accent-primary-hover);
+  --color-accent-primary-surface: var(--dt-accent-primary-surface);
+  --color-accent-primary-border: var(--dt-accent-primary-border);
+  --color-accent-warn: var(--dt-accent-warn);
+  --color-accent-warn-surface: var(--dt-accent-warn-surface);
+  --color-status-success: var(--dt-status-success);
+  --color-status-success-surface: var(--dt-status-success-surface);
+  --color-status-warning: var(--dt-status-warning);
+  --color-status-warning-surface: var(--dt-status-warning-surface);
+  --color-status-danger: var(--dt-status-danger);
+  --color-status-dangerSurface: var(--dt-status-danger-surface);
+  --color-status-info: var(--dt-status-info);
+  --color-status-infoSurface: var(--dt-status-info-surface);
+  --color-interaction-focusRing: var(--dt-interaction-focus-ring);
+  --color-interaction-hover: var(--dt-interaction-hover);
+  --color-interaction-active: var(--dt-interaction-active);
+  --color-interaction-selected: var(--dt-interaction-selected);
+  --color-interaction-disabled: var(--dt-interaction-disabled);
+
+  /* Standard easing — used by `transition-[...] ease-[var(--easing-standard)]`
+     in left-rail rows so motion matches DESIGN.md motion.easing.standard. */
+  --easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --dt-shadow-stage: 0 24px 56px color-mix(in srgb, var(--dt-text-strong) 18%, transparent);
+}
+
+:root {
+  /* Light theme — warm-neutral spine (hue ≈ 80°) inspired by manus.im paper-like surface.
+     bg.app off-white #F8F8F7 → bg.subtle #F1F1EF → bg.canvas/panel/elevated #FFFFFF gives ΔL ≈ 3% / 5%
+     so cards visually float without depending on borders. Text uses warm-dark #34322D / #4A4A47 /
+     #5E5E5B / #858481 (neutral.800 / 700 / 600 / 500). Borders & interaction overlays use
+     α-warm-dark rgba(55, 53, 47, ...) so they self-adapt across white panels and warm app bg. */
+  --dt-bg-app: oklch(0.97 0.004 80);
+  --dt-bg-canvas: oklch(0.995 0.002 80);
+  --dt-bg-panel: oklch(0.995 0.002 80);
+  --dt-bg-soft: oklch(0.965 0.005 80);
+  --dt-bg-subtle: oklch(0.945 0.005 80);
+  --dt-bg-elevated: oklch(0.995 0.002 80);
+  --dt-bg-overlay: oklch(0.29 0.008 80 / 0.4);
+  --dt-text-strong: oklch(0.29 0.008 80);
+  --dt-text-base: oklch(0.375 0.007 80);
+  --dt-text-muted: oklch(0.45 0.006 80);
+  --dt-text-soft: oklch(0.585 0.006 80);
+  --dt-text-inverse: oklch(0.985 0 0);
+  --dt-border-subtle: oklch(0.29 0.008 80 / 0.06);
+  --dt-border-default: oklch(0.29 0.008 80 / 0.09);
+  --dt-border-strong: oklch(0.29 0.008 80 / 0.14);
+  --dt-accent-primary: oklch(0.53 0.2 262);
+  --dt-accent-primary-hover: oklch(0.45 0.19 262);
+  --dt-accent-primary-surface: oklch(0.96 0.025 258);
+  --dt-accent-primary-border: oklch(0.9 0.03 258);
+  --dt-accent-warn: oklch(0.72 0.16 75);
+  --dt-accent-warn-surface: oklch(0.98 0.02 90);
+  --dt-status-success: oklch(0.72 0.19 145);
+  --dt-status-success-surface: oklch(0.96 0.03 145);
+  --dt-status-warning: oklch(0.72 0.16 75);
+  --dt-status-warning-surface: oklch(0.98 0.02 90);
+  --dt-status-danger: oklch(0.64 0.23 28);
+  --dt-status-danger-surface: oklch(0.96 0.025 25);
+  --dt-status-info: oklch(0.74 0.14 235);
+  --dt-status-info-surface: oklch(0.96 0.025 230);
+  --dt-interaction-focus-ring: oklch(0.67 0.15 258 / 0.35);
+  --dt-interaction-hover: oklch(0.29 0.008 80 / 0.04);
+  --dt-interaction-active: oklch(0.29 0.008 80 / 0.08);
+  --dt-interaction-selected: oklch(0.96 0.025 258);
+  --dt-interaction-disabled: oklch(0.29 0.008 80 / 0.38);
+  --dt-chart-focus: var(--dt-accent-primary);
+  --dt-chart-compare: #F59E0B;
+  --dt-chart-grid: var(--dt-border-subtle);
+  --background: var(--dt-bg-canvas);
+  --foreground: var(--dt-text-strong);
+  --card: var(--dt-bg-panel);
+  --card-foreground: var(--dt-text-strong);
+  --popover: var(--dt-bg-elevated);
+  --popover-foreground: var(--dt-text-strong);
+  --primary: var(--dt-accent-primary);
+  --primary-foreground: var(--dt-text-inverse);
+  --secondary: var(--dt-bg-subtle);
+  --secondary-foreground: var(--dt-text-base);
+  --muted: var(--dt-bg-subtle);
+  --muted-foreground: var(--dt-text-muted);
+  --accent: var(--dt-accent-primary-surface);
+  --accent-foreground: var(--dt-accent-primary);
+  --destructive: var(--dt-status-danger);
+  --border: var(--dt-border-subtle);
+  --input: var(--dt-border-default);
+  --ring: var(--dt-accent-primary);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: var(--dt-bg-subtle);
+  --sidebar-foreground: var(--dt-text-strong);
+  --sidebar-primary: var(--dt-accent-primary);
+  --sidebar-primary-foreground: var(--dt-text-inverse);
+  --sidebar-accent: var(--dt-interaction-selected);
+  --sidebar-accent-foreground: var(--dt-text-strong);
+  --sidebar-border: var(--dt-border-subtle);
+  --sidebar-ring: var(--dt-accent-primary);
+}
+
+.dark {
+  --dt-bg-app: oklch(0.16 0.008 255);
+  --dt-bg-canvas: oklch(0.21 0.01 255);
+  --dt-bg-panel: oklch(0.21 0.01 255);
+  --dt-bg-soft: oklch(0.245 0.011 255);
+  --dt-bg-subtle: oklch(0.27 0.012 255);
+  --dt-bg-elevated: oklch(0.27 0.012 255);
+  --dt-bg-overlay: oklch(0.15 0.01 255 / 0.72);
+  --dt-shadow-stage: 0 16px 40px color-mix(in srgb, #000 25%, transparent);
+  --dt-text-strong: oklch(0.985 0 0);
+  --dt-text-base: oklch(0.93 0.01 255);
+  --dt-text-muted: oklch(0.72 0.015 255);
+  --dt-text-soft: oklch(0.62 0.012 255);
+  --dt-text-inverse: oklch(0.16 0.008 255);
+  --dt-border-subtle: oklch(1 0 0 / 0.08);
+  --dt-border-default: oklch(1 0 0 / 0.12);
+  --dt-border-strong: oklch(1 0 0 / 0.18);
+  --dt-accent-primary: oklch(0.72 0.14 258);
+  --dt-accent-primary-hover: oklch(0.78 0.1 255);
+  --dt-accent-primary-surface: oklch(0.43 0.08 258 / 0.18);
+  --dt-accent-primary-border: oklch(0.72 0.14 258 / 0.32);
+  --dt-accent-warn: oklch(0.8 0.13 82);
+  --dt-accent-warn-surface: oklch(0.72 0.08 82 / 0.14);
+  --dt-status-success: oklch(0.72 0.19 145);
+  --dt-status-success-surface: oklch(0.72 0.1 145 / 0.14);
+  --dt-status-warning: oklch(0.8 0.13 82);
+  --dt-status-warning-surface: oklch(0.72 0.08 82 / 0.14);
+  --dt-status-danger: oklch(0.68 0.2 28);
+  --dt-status-danger-surface: oklch(0.66 0.11 28 / 0.16);
+  --dt-status-info: oklch(0.74 0.14 235);
+  --dt-status-info-surface: oklch(0.7 0.09 235 / 0.16);
+  --dt-interaction-focus-ring: oklch(0.76 0.1 255 / 0.38);
+  --dt-interaction-hover: oklch(1 0 0 / 0.06);
+  --dt-interaction-active: oklch(1 0 0 / 0.1);
+  --dt-interaction-selected: oklch(0.43 0.08 258 / 0.18);
+  --dt-interaction-disabled: oklch(1 0 0 / 0.34);
+  --dt-chart-focus: var(--dt-accent-primary);
+  --dt-chart-compare: #FBBF24;
+  --dt-chart-grid: var(--dt-border-subtle);
+  --background: var(--dt-bg-canvas);
+  --foreground: var(--dt-text-strong);
+  --card: var(--dt-bg-panel);
+  --card-foreground: var(--dt-text-strong);
+  --popover: var(--dt-bg-elevated);
+  --popover-foreground: var(--dt-text-strong);
+  --primary: var(--dt-accent-primary);
+  --primary-foreground: var(--dt-text-inverse);
+  --secondary: var(--dt-bg-subtle);
+  --secondary-foreground: var(--dt-text-base);
+  --muted: var(--dt-bg-subtle);
+  --muted-foreground: var(--dt-text-muted);
+  --accent: var(--dt-accent-primary-surface);
+  --accent-foreground: var(--dt-text-strong);
+  --destructive: var(--dt-status-danger);
+  --border: var(--dt-border-subtle);
+  --input: var(--dt-border-default);
+  --ring: var(--dt-accent-primary);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: var(--dt-bg-subtle);
+  --sidebar-foreground: var(--dt-text-strong);
+  --sidebar-primary: var(--dt-accent-primary);
+  --sidebar-primary-foreground: var(--dt-text-inverse);
+  --sidebar-accent: var(--dt-interaction-selected);
+  --sidebar-accent-foreground: var(--dt-text-strong);
+  --sidebar-border: var(--dt-border-subtle);
+  --sidebar-ring: var(--dt-accent-primary);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring;
+  }
+  body {
+    background-color: var(--dt-bg-app);
+    color: var(--foreground);
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+/* Custom scrollbar — border-colored pill thumb, inset from container edge */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  /* 3px transparent border + padding-box clip => thumb visually 4px wide,
+     leaving a 3px gap on each side so it never kisses the container border */
+  background: var(--muted-foreground);
+  background-clip: padding-box;
+  border: 3px solid transparent;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--foreground);
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-button {
+  display: none;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+[data-result-scrollbar="header-offset"]::-webkit-scrollbar:vertical {
+  background: linear-gradient(to bottom, var(--muted) 0 2rem, transparent 2rem);
+}
+
+[data-result-scrollbar="header-offset"]::-webkit-scrollbar-track:vertical {
+  margin-top: 2rem;
+}
+
+/* React Flow Controls — override default white background for dark theme */
+.react-flow__controls {
+  background-color: var(--dt-bg-elevated);
+  border-color: var(--dt-border-default);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--dt-text-strong) 12%, transparent);
+}
+
+.react-flow__controls-button {
+  background-color: var(--dt-bg-elevated);
+  border-color: var(--dt-border-subtle);
+  color: var(--dt-text-base);
+}
+
+.react-flow__controls-button:hover {
+  background-color: var(--dt-interaction-hover);
+}
+
+.react-flow__controls-button:active {
+  background-color: var(--dt-interaction-active);
+}
+
+.react-flow__controls-button svg {
+  fill: var(--dt-text-base);
+}
+
+/* Reduced motion: all stage / chat / drag-handle transitions degrade to instant */
+@media (prefers-reduced-motion: reduce) {
+  [data-stage-panel],
+  [data-stage-panel] *,
+  #composer-slot {
+    transition: none !important;
+  }
+}

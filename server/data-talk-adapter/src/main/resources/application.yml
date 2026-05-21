@@ -1,0 +1,83 @@
+spring:
+  application:
+    name: data-talk
+
+  codec:
+    max-in-memory-size: 16MB
+
+  servlet:
+    multipart:
+      # MUST stay in sync with FileUploadController.MAX_SIZE_BYTES (50 * 1024 * 1024).
+      # Spring's 1MB default would otherwise pre-empt the Controller's 50MB business limit.
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+  # Demo / fallback datasource — in-memory H2 initialized from schema-demo.sql + data-demo.sql.
+  # Acts as the @Primary JdbcTemplate when no user-specific connection is active.
+  # Not a placeholder: it seeds explorable demo data for development and smoke tests.
+  datasource:
+    url: jdbc:h2:mem:demodb;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  sqlite-datasource:
+    url: jdbc:sqlite:./data/metadata.db
+    driver-class-name: org.sqlite.JDBC
+
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema-demo.sql
+      data-locations: classpath:data-demo.sql
+      continue-on-error: false
+
+  jdbc:
+    template:
+      query-timeout: 30
+
+  lifecycle:
+    timeout-per-shutdown-phase: 3s
+
+server:
+  port: 8080
+  shutdown: graceful
+
+datatalk:
+  diagnostics:
+    lock:
+      long-wait-ms: 5000
+    pool:
+      warn-ratio: 0.80
+      critical-ratio: 0.95
+    space:
+      reclaim-ratio: 0.30
+      min-data-size-bytes: 104857600
+  persistence:
+    sqlite-path: ./data/datatalk.db
+  channel:
+    post-stream-timeout-ms: 600000   # POST SSE 单 turn 最长存活（毫秒），默认 10 分钟
+  sql:
+    max-rows: 5000
+  mcp:
+    enabled: true
+    config-dir: ~/.data-talk/opencode
+    allowed-origins: ""
+  opencode:
+    base-url: http://localhost:4096
+    required: false
+    serve:
+      enabled: true
+      auto-upgrade: false
+      version: 1.14.41
+      base-port: 4096
+      port-retries: 100
+      hostname: 127.0.0.1
+      cors: http://localhost:8080
+      strip-proxy-env: false
+
+app:
+  logging:
+    slow-request-threshold-ms: 1000
+  sse:
+    heartbeat-interval-ms: 30000

@@ -1,0 +1,319 @@
+import type { ReactNode } from 'react'
+import { toast } from 'sonner'
+import { Switch } from '@/components/ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from '@/components/ui/select'
+import { useI18n } from '@/i18n/use-i18n'
+import { SqlLimitSelect, type SqlLimitValue } from './sql-limit-select'
+
+export type SqlContextValue = {
+  connectionId: string
+  connectionName: string | null
+  database: string | null
+  schema: string | null
+}
+
+export type SqlContextConnectionOption = {
+  id: string
+  name: string
+  kind?: string | null
+  databaseName?: string | null
+}
+
+export type SqlContextConnectionTargets = {
+  databases: string[]
+  schemas: string[]
+}
+
+export type SqlContextToolbarControlsProps = {
+  useSessionContext: boolean
+  context: SqlContextValue | null
+  connections: SqlContextConnectionOption[]
+  targets: SqlContextConnectionTargets | null
+  limit: SqlLimitValue
+  /**
+   * Whether to render the "follow session" toggle widget.
+   * `true` for AI editors (source='ai'); `false` for user editors (source='user') which
+   * never re-bind and use the toolbar purely as direct connection/db/schema selection.
+   */
+  showSessionToggle?: boolean
+  /**
+   * When set, renders an inline mismatch badge "来自会话: <title>" next to the toggle,
+   * indicating the editor is tracking a different session than the active one.
+   * Only shown for AI editors when bound !== active and no orphan fallback is in effect.
+   */
+  mismatchBoundSessionTitle?: string | null
+  onUseSessionContextChange: (value: boolean) => void
+  onConnectionChange: (connectionId: string) => void
+  onDatabaseChange: (database: string | null) => void
+  onSchemaChange: (schema: string | null) => void
+  onLimitChange: (value: SqlLimitValue) => void
+  onOpenConnections: () => Promise<void>
+  onOpenTargets: () => Promise<void>
+}
+
+const EMPTY_SELECT_VALUE = '__empty__'
+
+function normalizeValue(value: string | null | undefined) {
+  if (value == null) return null
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
+}
+
+function toSelectValue(value: string | null | undefined) {
+  return normalizeValue(value) ?? EMPTY_SELECT_VALUE
+}
+
+function fromSelectValue(value: string | null) {
+  return value == null || value === EMPTY_SELECT_VALUE ? null : value
+}
+
+function dedupeValues(values: Array<string | null | undefined>) {
+  const normalizedValues = new Set<string>()
+  for (const value of values) {
+    const normalized = normalizeValue(value)
+    if (normalized) {
+      normalizedValues.add(normalized)
+    }
+  }
+  return Array.from(normalizedValues)
+}
+
+function hasIndependentSchemaNamespace(kind: string | null | undefined) {
+  const normalizedKind = kind?.trim().toLowerCase()
+  if (!normalizedKind) return true
+  return normalizedKind !== 'mysql'
+    && normalizedKind !== 'sqlite'
+    && normalizedKind !== 'mariadb'
+    && normalizedKind !== 'tidb'
+    && normalizedKind !== 'apache_doris'
+    && normalizedKind !== 'starrocks'
+    && normalizedKind !== 'hive'
+}
+
+export function SqlContextToolbarControls({
+  useSessionContext,
+  context,
+  connections,
+  targets,
+  limit,
+  showSessionToggle = true,
+  mismatchBoundSessionTitle = null,
+  onUseSessionContextChange,
+  onConnectionChange,
+  onDatabaseChange,
+  onSchemaChange,
+  onLimitChange,
+  onOpenConnections,
+  onOpenTargets,
+}: SqlContextToolbarControlsProps) {
+  const { t } = useI18n()
+  const selectedConnection = context?.connectionId
+    ? connections.find((connection) => connection.id === context.connectionId) ?? null
+    : null
+  const connectionValue = context?.connectionId ?? EMPTY_SELECT_VALUE
+  const connectionLabel = context?.connectionName
+    ?? selectedConnection?.name
+    ?? normalizeValue(context?.connectionId)
+    ?? t('stage.context.value.empty')
+  const databaseOptions = dedupeValues([
+    selectedConnection?.databaseName,
+    ...(targets?.databases ?? []),
+    context?.database,
+  ])
+  const schemaOptions = dedupeValues([
+    ...(targets?.schemas ?? []),
+    context?.schema,
+  ])
+  const databaseLabel = normalizeValue(context?.database) ?? t('stage.context.value.empty')
+  const schemaLabel = normalizeValue(context?.schema) ?? t('stage.context.value.empty')
+  const showSchemaSelect = hasIndependentSchemaNamespace(selectedConnection?.kind)
+
+  function refreshConnectionsOnOpen(open: boolean) {
+    if (!open) return
+    void onOpenConnections().catch(() => {
+      toast.error(t('stage.context.toast.connectionsRefreshFailed'))
+    })
+  }
+
+  function refreshTargetsOnOpen(open: boolean) {
+    if (!open) return
+    if (!context?.connectionId) return
+    void onOpenTargets().catch(() => {
+      toast.error(t('stage.context.toast.targetsRefreshFailed'))
+    })
+  }
+
+  // Selects are disabled only when (a) the toggle is visible and currently ON.
+  // For user editors (showSessionToggle=false), selects are always enabled because the editor
+  // operates purely on its own overrides — there is no "follow session" mode to gate against.
+  const selectsDisabled = showSessionToggle && useSessionContext
+
+  return (
+    <div
+      data-testid="sql-context-toolbar-controls"
+      className="flex flex-wrap items-center justify-end gap-2"
+    >
+      {showSessionToggle ? (
+        <Tooltip>
+          <TooltipTrigger render={
+            <div className="flex h-7 items-center rounded-md border border-border/60 px-2">
+              <span className="sr-only">{t('stage.context.toolbar.useSession')}</span>
+              <Switch
+                size="sm"
+                data-testid="sql-context-session-toggle"
+                checked={useSessionContext}
+                onCheckedChange={(value) => onUseSessionContextChange(value)}
+                aria-label={t('stage.context.toolbar.useSession')}
+              />
+            </div>
+          } />
+          <TooltipContent side="bottom" sideOffset={4}>
+            {t('stage.context.toolbar.useSession')}
+          </TooltipContent>
+        </Tooltip>
+      ) : null}
+
+      {mismatchBoundSessionTitle ? (
+        <span
+          data-testid="sql-context-mismatch-badge"
+          className="flex h-7 max-w-[14rem] items-center gap-1 px-1 text-xs"
+        >
+          <span className="text-muted-foreground">
+            {t('stage.queryEditor.fromSession')}
+          </span>
+          <Tooltip>
+            <TooltipTrigger render={<span className="truncate text-foreground" />}>
+              {mismatchBoundSessionTitle}
+            </TooltipTrigger>
+            <TooltipContent side="bottom" sideOffset={4}>{mismatchBoundSessionTitle}</TooltipContent>
+          </Tooltip>
+        </span>
+      ) : null}
+
+      <ToolbarSelectFrame label={t('stage.context.field.connection')}>
+        <Select
+          value={connectionValue}
+          disabled={selectsDisabled}
+          onOpenChange={refreshConnectionsOnOpen}
+          onValueChange={(value) => {
+            const connectionId = normalizeValue(value)
+            if (connectionId && connectionId !== EMPTY_SELECT_VALUE) {
+              onConnectionChange(connectionId)
+            }
+          }}
+        >
+          <SelectTrigger
+            size="sm"
+            aria-label={t('stage.context.field.connection')}
+            className="w-36"
+          >
+            <span className="min-w-0 flex-1 truncate text-left">{connectionLabel}</span>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={EMPTY_SELECT_VALUE}>
+              {t('stage.context.value.empty')}
+            </SelectItem>
+            {connections.map((connection) => (
+              <SelectItem key={connection.id} value={connection.id}>
+                {connection.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </ToolbarSelectFrame>
+
+      <ToolbarSelectFrame label={t('stage.context.field.database')}>
+        <Select
+          value={toSelectValue(context?.database)}
+          disabled={selectsDisabled}
+          onOpenChange={refreshTargetsOnOpen}
+          onValueChange={(value) => onDatabaseChange(fromSelectValue(value))}
+        >
+          <SelectTrigger
+            size="sm"
+            aria-label={t('stage.context.field.database')}
+            className="w-32"
+          >
+            <span className="min-w-0 flex-1 truncate text-left">{databaseLabel}</span>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={EMPTY_SELECT_VALUE}>
+              {t('stage.context.value.empty')}
+            </SelectItem>
+            {databaseOptions.map((database) => (
+              <SelectItem key={database} value={database}>
+                {database}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </ToolbarSelectFrame>
+
+      {showSchemaSelect ? (
+        <ToolbarSelectFrame label={t('stage.context.field.schema')}>
+          <Select
+            value={toSelectValue(context?.schema)}
+            disabled={useSessionContext}
+            onOpenChange={refreshTargetsOnOpen}
+            onValueChange={(value) => onSchemaChange(fromSelectValue(value))}
+          >
+            <SelectTrigger
+              size="sm"
+              aria-label={t('stage.context.field.schema')}
+              className="w-28"
+            >
+              <span className="min-w-0 flex-1 truncate text-left">{schemaLabel}</span>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={EMPTY_SELECT_VALUE}>
+                {t('stage.context.value.empty')}
+              </SelectItem>
+              {schemaOptions.map((schema) => (
+                <SelectItem key={schema} value={schema}>
+                  {schema}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </ToolbarSelectFrame>
+      ) : null}
+
+      <ToolbarSelectFrame label={t('stage.limit.toolbarLabel')}>
+        <SqlLimitSelect
+          value={limit}
+          onValueChange={onLimitChange}
+          ariaLabel={t('stage.limit.toolbarLabel')}
+          triggerClassName="w-28"
+        />
+      </ToolbarSelectFrame>
+    </div>
+  )
+}
+
+function ToolbarSelectFrame({
+  label,
+  children,
+}: {
+  label: string
+  children: ReactNode
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger render={
+        <div className="flex h-7 items-center gap-1.5">
+          <span className="sr-only">{label}</span>
+          {children}
+        </div>
+      } />
+      <TooltipContent side="bottom" sideOffset={4}>
+        {label}
+      </TooltipContent>
+    </Tooltip>
+  )
+}

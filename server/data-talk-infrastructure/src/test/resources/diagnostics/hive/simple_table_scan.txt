@@ -1,0 +1,18 @@
+STAGE DEPENDENCIES:
+  Stage-0 is a root stage
+
+STAGE PLANS:
+  Stage: Stage-0
+    Map Reduce
+      Map Operator Tree:
+        TableScan
+          alias: orders
+          Statistics: Num rows: 10000, Data size: 500000
+          Select Operator
+            expressions: order_id (type: int), customer_id (type: int), amount (type: decimal(10,2))
+            outputColumnNames: order_id, customer_id, amount
+            Statistics: Num rows: 10000
+            File Output Operator
+              compressed: false
+              Statistics: Num rows: 10000
+              table: output

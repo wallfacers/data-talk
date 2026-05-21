@@ -1,0 +1,279 @@
+# Implementation Roadmap Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** 用一个总排期把当前活跃计划、已经完成的 Stage / `query_editor` 里程碑，以及接下来的文档与 backlog 治理串成连续执行批次，避免实现状态、文档状态和实际优先级继续漂移。
+
+**Architecture:** 本计划不替代现有单项执行计划，而是作为上层编排文档：`Stage UI Object Protocol Phase 1`、`Stage Window Layout Refactor`、`Query Editor Object Actions`、`SQL Context Popover Schema Visibility`、`SQL Tab Internal Activity Rail` 与 `Composer Data Source Picker` 已作为近期里程碑收口；当前剩余活跃项聚焦 Batch E 文档/backlog 治理。执行时遵守现有子计划的文件边界与验证命令；本计划只定义顺序、依赖、收尾标准与批次目标。
+
+**Tech Stack:** React 19、TypeScript、Zustand、Vitest、Spring Boot 3.5、Java 21、JUnit 5、Maven、现有 `docs/exec-plans/*` 与 `docs/design-docs/index.md` 治理流程
+
+---
+
+> **2026-04-23 Status Update**
+>
+> - `Stage Window Layout Refactor` 已在 [docs/exec-plans/index.md](./index.md) 转入 Completed，本计划中原 Batch D 只保留为已完成里程碑。
+> - `Stage UI Object Protocol Phase 1` 已于 2026-04-23 完成收口并转入 Completed，不再计入待收尾活跃计划。
+> - `Query Editor Object Actions` 已于 2026-04-23 完成实现、验证与索引回写，不再属于“下一主线”，而是已完成里程碑。
+> - `SQL Risk Classification & IT CI Gate` 已于 2026-04-23 完成复验并转入 Completed：`mvn compile -q`、application 定向单测与 adapter `verify` 均通过，`*IT.java` 门禁生效。
+> - `SQL Tab Internal Activity Rail` 已于 2026-04-23 完成最终收口并转入 Completed：布局改造、`src/features/stage` 与 `npm test` 回归、手动视觉 smoke checklist 均已完成（此前 `stage-ui-object-registry.test.tsx` 的 `sql`→`content` 断言漂移已修复）。
+> - `SQL Context Popover Schema Visibility` 已完成并转入 Completed，说明当前路线图上的小范围 SQL workbench 交互修正也已开始被及时回写索引。
+> - `Composer Data Source Picker` 已于 2026-04-23 完成收口并转入 Completed：自动化验证已通过，手动 smoke 的 6 个场景均已通过，执行计划与设计状态已同步。
+> - 本文的 Batch E 收尾已于 2026-04-23 完成，计划已转入 Completed；后续二期能力按单能力 spec/plan 继续立项。
+
+## Context
+
+- 截至 2026-04-23，本轮收尾后的活跃计划清单已清空（等待二期能力新计划立项）
+- `Composer Data Source Picker`、`SQL Context Popover Schema Visibility`、`Stage UI Object Protocol Phase 1`、`Stage Window Layout Refactor` 与 `Query Editor Object Actions` 已完成，不再属于“下一实现主线”
+- `SQL Tab Internal Activity Rail` 与 `SQL Risk Classification & IT CI Gate` 已完成收口并转入 Completed
+- 文档治理仍需处理 design status、过时 roadmap 与历史 debt 文档漂移
+
+## Inputs
+
+- [docs/exec-plans/index.md](./index.md)
+- [docs/design-docs/index.md](../design-docs/index.md)
+- [docs/product-specs/index.md](../product-specs/index.md)
+- [docs/exec-plans/2026-04-20-composer-data-source-picker-plan.md](./2026-04-20-composer-data-source-picker-plan.md)
+- [docs/exec-plans/2026-04-20-stage-ui-object-protocol-plan.md](./2026-04-20-stage-ui-object-protocol-plan.md)
+- [docs/exec-plans/2026-04-20-sql-risk-classification-it-ci-gate-plan.md](./2026-04-20-sql-risk-classification-it-ci-gate-plan.md)
+- [docs/exec-plans/2026-04-21-stage-window-layout-refactor-plan.md](./2026-04-21-stage-window-layout-refactor-plan.md)
+- [docs/exec-plans/2026-04-23-query-editor-object-actions-plan.md](./2026-04-23-query-editor-object-actions-plan.md)
+- [docs/exec-plans/2026-04-23-sql-tab-internal-rail-plan.md](./2026-04-23-sql-tab-internal-rail-plan.md)
+
+## Non-Goals
+
+- 不在本计划中重写现有 4 份子计划
+- 不在本计划中直接新增二期/三期功能 spec
+- 不把 `TD-SINGLE-EMPTY-SESSION-MULTINODE` 强行前提化为当前迭代目标
+- 不在没有明确新 spec 的前提下，提前展开 ER / Report / Dashboard / 审计日志等后续大功能实现
+
+## Spec Mapping
+
+- 产品路线图 `MVP / 二期 / 三期`：来自 [docs/product-specs/index.md](../product-specs/index.md)
+- 当前活跃计划状态：来自 [docs/exec-plans/index.md](./index.md)
+- 当前设计文档状态：来自 [docs/design-docs/index.md](../design-docs/index.md)
+- 具体实现细节与验收要求：分别引用各子计划与对应 design doc
+
+## File Structure Map
+
+### Coordination Docs
+
+| 文件 | 责任 |
+|------|------|
+| `docs/exec-plans/2026-04-21-implementation-roadmap-plan.md` | 作为总排期文档，定义批次顺序、依赖与收尾标准 |
+| `docs/exec-plans/index.md` | 跟踪本总排期与各子计划的 Active / Completed 状态 |
+| `docs/design-docs/index.md` | 跟踪 design doc 的 `approved / shipped` 状态，避免计划状态漂移 |
+
+### Batch A — 收尾 Composer Data Source Picker
+
+| 文件 / 区域 | 责任 |
+|-------------|------|
+| `docs/exec-plans/2026-04-20-composer-data-source-picker-plan.md` | 勾完剩余手工冒烟与文档回写步骤 |
+| `client/src/features/session/data-source-picker/**` | 如联调发现问题，修 chooser / trigger / recent 排序 |
+| `client/src/features/session/prompt-composer.tsx` | 验证缺库自动恢复原动作链路 |
+| `client/src/features/actions/ui-handlers.ts` | 验证 `workspace.choose_connection` 结果透传 |
+| `client/src/features/stage/**` | 验证来源数据源显示与“用此数据源继续”行为 |
+
+### Batch B — 收尾 Stage UI Object Protocol Phase 1
+
+| 文件 / 区域 | 责任 |
+|-------------|------|
+| `docs/exec-plans/2026-04-20-stage-ui-object-protocol-plan.md` | 根据真实进度补 checklist、记录联调结果与完成状态 |
+| `client/src/services/ui-router/**` | 验证 `ui_read / patch / exec / list` 主链路 |
+| `client/src/features/stage/adapters/**` | 验证 `WorkspaceAdapter` / `BangQueryAdapter` 行为 |
+| `client/src/features/stage/utils/open-bang-query-tab.ts` | 验证 `!sql` 直查到 Stage 的打开链路 |
+| `server/data-talk-application/src/main/java/com/datatalk/service/QueryApplicationService.java` | 验证 `/api/query` guard 行为仍符合预期 |
+
+### Batch C — 已完成里程碑：SQL Risk Classification & IT CI Gate
+
+| 文件 / 区域 | 责任 |
+|-------------|------|
+| `docs/exec-plans/2026-04-20-sql-risk-classification-it-ci-gate-plan.md` | 记录验证结果、判断是 completed 还是拆出 follow-up plan |
+| `server/data-talk-adapter/pom.xml` | 核对 failsafe 已纳入 `*IT.java` |
+| `server/data-talk-application/src/main/java/com/datatalk/application/session/ActionDispatcher.java` | 验证动态风险预处理链路 |
+| `server/data-talk-adapter/src/main/java/com/datatalk/adapter/actions/ExecuteSqlAction.java` | 验证风险 metadata 回写 |
+| `server/data-talk-adapter/src/test/java/**` | 区分环境依赖失败与真实回归失败 |
+
+### Batch D — 已完成里程碑：Stage Window Layout Refactor
+
+| 文件 / 区域 | 责任 |
+|-------------|------|
+| `docs/exec-plans/2026-04-21-stage-window-layout-refactor-plan.md` | 记录已完成的 Stage 两栏工作台重构，作为后续 `query_editor` / rail 调整前提 |
+| `client/src/stores/stage-store.ts` | sidebar 导航态、selection、expanded state |
+| `client/src/features/stage/components/stage-window.tsx` | Stage 两栏 workbench 重构 |
+| `client/src/features/stage/components/stage-tab-bar.tsx` | Chrome-inspired 顶部 tabs |
+| `client/src/features/stage/components/stage-sidebar.tsx` | 新建左侧侧栏总入口 |
+| `client/src/features/stage/components/stage-tool-row.tsx` | 顶部轻量工具入口 |
+| `client/src/features/stage/components/stage-resource-browser.tsx` | 连接资源树与工具动作项 |
+| `client/src/features/stage/utils/open-or-focus-stage-tool-tab.ts` | tab identity / open-or-focus 规则 |
+
+### Batch E — 文档与 Backlog 治理
+
+| 文件 | 责任 |
+|------|------|
+| `docs/exec-plans/index.md` | 移动已完成计划、更新活跃列表 |
+| `docs/design-docs/index.md` | 将已交付设计文档从 `approved` 更新为 `shipped` |
+| `docs/exec-plans/ui-demo-stage-animation-debt.md` | 判断归档、清理或拆分剩余仍有效项 |
+| `docs/product-specs/index.md` | 若二期 backlog 有实际进入执行的新 spec，再做登记 |
+
+## Batch Plan
+
+### Task 1: 本周 Batch A — 收尾 Composer Data Source Picker
+
+**Files:**
+- Modify: `docs/exec-plans/2026-04-20-composer-data-source-picker-plan.md`
+- Verify: `client/src/features/session/data-source-picker/**`
+- Verify: `client/src/features/session/prompt-composer.tsx`
+- Verify: `client/src/features/actions/ui-handlers.ts`
+- Verify: `client/src/features/stage/**`
+
+- [x] **Step 1.1: 执行手工冒烟清单**
+  - 验证未选数据源时发送普通消息会直接拉起 chooser
+  - 验证未选数据源时输入 `!select 1` 会直接拉起 chooser 并自动恢复执行
+  - 验证手动点击数据源 trigger 支持搜索、切换与最近使用排序
+  - 验证 Stage 历史卡片来源展示与“用此数据源继续”行为
+  - 验证 `ui_exec(workspace, choose_connection)` 可返回用户选择结果
+  - 2026-04-23 已完成：6 个手动 smoke 场景均通过。
+
+- [x] **Step 1.2: 修掉联调发现的问题**
+  - 只修与 chooser / pending resume / stage source binding 直接相关的问题
+  - 不在本批次顺手展开新的 Stage 布局重构
+  - 2026-04-23 结果：本轮手动 smoke 未发现新增问题，无需额外修复。
+
+- [x] **Step 1.3: 运行前端验证**
+  - `cd client && npx vitest run src/features/session/data-source-picker src/features/session/hooks src/features/actions src/services/ui-router src/features/stage`
+  - `cd client && npx tsc --noEmit`
+  - 2026-04-23 复跑结果：`npx tsc --noEmit` 通过；vitest 全绿（`stage-ui-object-registry.test.tsx` 断言漂移已修复）
+
+- [x] **Step 1.4: 完成计划 housekeeping**
+  - 勾完 `2026-04-20-composer-data-source-picker-plan.md` 剩余 checkbox
+  - 在 `docs/exec-plans/index.md` 中将该计划移到 Completed
+  - 如无偏差，将对应 design doc 状态从 `approved` 更新到 `shipped`
+  - 2026-04-23 已完成：计划转入 Completed，`composer-data-source-picker-design` 状态转为 `shipped`。
+
+### Task 2: 本周 Batch B — 收尾 Stage UI Object Protocol Phase 1
+
+**Files:**
+- Modify: `docs/exec-plans/2026-04-20-stage-ui-object-protocol-plan.md`
+- Verify: `client/src/services/ui-router/**`
+- Verify: `client/src/features/stage/adapters/**`
+- Verify: `client/src/features/stage/utils/open-bang-query-tab.ts`
+- Verify: `server/data-talk-application/src/main/java/com/datatalk/service/QueryApplicationService.java`
+
+- [x] **Step 2.1: 对照索引摘要核实真实已完成范围**
+  - 确认 `UIRouter`、4 个 CLIENT Action 桥接、`StageStore` 多 Tab、`BangQueryTab`、Composer `!` 拦截已在代码中存在
+  - 只把真正未做的部分留在 checklist 中
+  - 2026-04-23 已完成：范围与索引摘要一致，无新增遗漏项。
+
+- [x] **Step 2.2: 执行端到端联调**
+  - 验证 `!sql -> /api/query -> bang_query tab`
+  - 验证 `workspace.open / focus / close` 主链路
+  - 验证 `workspace.choose_connection` 通过 UI Router 返回结果
+  - 验证 bang query 与 Query Editor 共存时的 tab 行为不冲突
+  - 2026-04-23 已完成：端到端链路联调结论记录于子计划与索引摘要。
+
+- [x] **Step 2.3: 运行前后端验证**
+  - `cd client && npx vitest run src/services/ui-router src/features/actions src/features/stage`
+  - `cd client && npx tsc --noEmit`
+  - `cd server && mvn compile -q`
+  - 2026-04-23 已完成：相关验证均通过，结果已写回子计划。
+
+- [x] **Step 2.4: 完成计划与索引收尾**
+  - 把 `2026-04-20-stage-ui-object-protocol-plan.md` 的 checklist 与实际状态同步
+  - 在 `docs/exec-plans/index.md` 中移动到 Completed
+  - 在 `docs/design-docs/index.md` 中将 `stage-ui-object-protocol-design` 从 `approved` 更新到 `shipped`
+  - 2026-04-23 已完成：计划与设计状态均已收口。
+
+### Task 3: 已完成里程碑 — SQL Risk Classification & IT CI Gate
+
+**Files:**
+- Modify: `docs/exec-plans/2026-04-20-sql-risk-classification-it-ci-gate-plan.md`
+- Verify: `server/data-talk-adapter/pom.xml`
+- Verify: `server/data-talk-application/src/main/java/com/datatalk/application/session/ActionDispatcher.java`
+- Verify: `server/data-talk-adapter/src/main/java/com/datatalk/adapter/actions/ExecuteSqlAction.java`
+- Verify: `server/data-talk-adapter/src/test/java/**`
+
+- [x] **Step 3.1: 复跑计划列出的验证命令**
+  - `cd server && mvn compile -q`
+  - `cd server && mvn -q -pl data-talk-application test -Dtest=CalciteSqlRiskAnalyzerTest,ActionDispatcherTest`
+  - `cd server && mvn -q -pl data-talk-adapter -am verify`
+  - 2026-04-23 三条命令均执行并返回 exit code 0
+
+- [x] **Step 3.2: 对验证结果做分类**
+  - 本轮未出现阻塞性的环境失败或真实回归失败
+  - 无 Docker 场景仅体现在用例内预期 skip（`SqlExecuteControllerIT` 的 1 条 skip）
+
+- [x] **Step 3.3: 判断收尾路径**
+  - 验证闭环成立，按 completed 路径收口
+
+- [x] **Step 3.4: 同步更新索引与设计状态**
+  - `docs/exec-plans/index.md` 已更新：计划转入 Completed
+  - `docs/design-docs/index.md` 已更新：`sql-risk-classification-and-it-ci-gate-design` 从 `approved` 转为 `shipped`
+
+### Task 4: 已完成里程碑 — Stage Window Layout Refactor
+
+**Files:**
+- Modify: `docs/exec-plans/2026-04-21-stage-window-layout-refactor-plan.md`
+- Implement: `client/src/stores/stage-store.ts`
+- Implement: `client/src/features/stage/components/stage-window.tsx`
+- Implement: `client/src/features/stage/components/stage-tab-bar.tsx`
+- Create: `client/src/features/stage/components/stage-sidebar.tsx`
+- Create: `client/src/features/stage/components/stage-tool-row.tsx`
+- Create: `client/src/features/stage/components/stage-resource-browser.tsx`
+- Create: `client/src/features/stage/utils/open-or-focus-stage-tool-tab.ts`
+
+- [x] **Step 4.1: 按现有子计划拆成并行批次**
+  - 已由 `2026-04-21-stage-window-layout-refactor-plan.md` 完成：`StageStore` 导航态、两栏骨架、`StageSidebar` / `ToolRow` / `ResourceBrowser`、`StageTabBar` 视觉重构均已交付。
+
+- [x] **Step 4.2: 严格按子计划执行**
+  - 子计划内记录的 Stage 专项 vitest、`npx tsc --noEmit` 与文档回写均已完成；本计划在此仅保留里程碑状态。
+
+- [x] **Step 4.3: 将 Stage 作为下一个唯一主实现面**
+  - Stage 承载工作台的基础布局已经稳定落地；后续主线从“做出两栏布局”切换为“收紧 `query_editor` 对象契约与 rail 归位”。
+
+### Task 5: 后续 Batch E — 文档与 Backlog 治理
+
+**Files:**
+- Modify: `docs/exec-plans/index.md`
+- Modify: `docs/design-docs/index.md`
+- Modify: `docs/exec-plans/ui-demo-stage-animation-debt.md`
+- Review: `docs/product-specs/index.md`
+
+- [x] **Step 5.1: 统一 active/completed 状态**
+  - 清掉“代码已完成但计划还在 in_progress”的失真状态
+  - 清掉“计划已完成但 design 仍停在 approved”的失真状态
+  - 2026-04-23 已完成：`SQL Risk Classification & IT CI Gate` 从 Active 移到 Completed，`sql-risk-classification-and-it-ci-gate-design` 从 `approved` 转为 `shipped`
+  - 2026-04-23 已完成：`Composer Data Source Picker` 与本 `Implementation Roadmap` 已从 Active 转入 Completed，执行计划索引已同步。
+
+- [x] **Step 5.2: 治理历史债务文档**
+  - 审核 `ui-demo-stage-animation-debt.md` 中哪些项已过时
+  - 仍有效的项迁回主技术债台账或拆成新的明确计划
+  - 失效项归档或标注 stale，避免继续误导
+  - 2026-04-23 已完成：`ui-demo-stage-animation-debt.md` 已标注 `stale`，live residue 已迁移到 `tech-debt-tracker.md` 的 `TD-026`。
+
+- [x] **Step 5.3: 为二期 backlog 准备进入条件**
+  - `Query Editor Object Actions`、`SQL Tab Internal Activity Rail` 与 `Composer Data Source Picker` 已完成收口，二期开工前置条件已满足
+  - 只有在以上主线稳定后，再评估是否启动以下能力的 spec / plan：
+    - ER 图设计器
+    - Report / Dashboard
+    - 查询分页 / 虚拟滚动 / 查询历史 / 导出
+    - DDL / DML 分级执行闭环
+  - 2026-04-23 评估结论：前置条件成立；二期能力暂不立即开工，待产品优先级确认后按能力单独立项。
+
+## Ordering
+
+1. `SQL Risk Classification & IT CI Gate`、`SQL Tab Internal Activity Rail` 与 `Composer Data Source Picker` 已完成，当前进入 Batch E 文档/backlog 治理收尾
+2. `Query Editor Object Actions` 与 `SQL Context Popover Schema Visibility` 已完成；工作台主线状态稳定
+3. 二期 backlog 扩展继续以 Stage workbench 稳定为前提，按单能力 spec/plan 立项推进
+
+## Exit Criteria
+
+- 当前活跃计划中的主要收尾项已完成，或明确拆出 follow-up plan 后从原计划退出
+- `docs/exec-plans/index.md` 与 `docs/design-docs/index.md` 状态一致
+- `Query Editor Object Actions`、`SQL Tab Internal Activity Rail` 与 `Composer Data Source Picker` 已明确反映为已完成里程碑；活跃面聚焦 Batch E 文档治理与二期立项评估
+- backlog 重新按“立即收尾 / 下一个主线 / 后续二期能力”三层结构整理完毕
+
+## Notes
+
+- 当前唯一仍开放的主技术债 `TD-SINGLE-EMPTY-SESSION-MULTINODE` 保持观察，不纳入本轮桌面单机迭代阻塞项
+- `SQL Risk Classification & IT CI Gate` 已完成并转入 Completed，不再作为当前 Stage 前端主线的阻塞项

@@ -1,0 +1,285 @@
+package com.datatalk.application.channel;
+
+import com.datatalk.application.ai.AiUserPrefsRepository;
+import com.datatalk.application.i18n.Translator;
+import com.datatalk.application.opencode.OpenCodeGateway;
+import com.datatalk.application.opencode.OpenCodeSessionMap;
+import com.datatalk.application.persistence.SessionRecord;
+import com.datatalk.application.persistence.SessionRepository;
+import com.datatalk.application.session.PendingCallRegistry;
+import com.datatalk.application.session.SessionBus;
+import com.datatalk.application.session.SessionBusRegistry;
+import com.datatalk.domain.event.DtEvent;
+import com.datatalk.domain.event.ErrorInfo;
+import com.datatalk.domain.part.FilePart;
+import com.datatalk.domain.part.FileUploadPart;
+import com.datatalk.domain.part.Part;
+import com.datatalk.domain.part.TextPart;
+import com.datatalk.domain.util.Strings;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
+import java.time.Clock;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
+/**
+ * Business layer behind Streamable HTTP. Pure Java; knows nothing about HTTP.
+ */
+@Service
+public class ChannelService {
+
+    private static final Logger log = LoggerFactory.getLogger(ChannelService.class);
+
+    private final SessionRepository sessions;
+    private final SessionBusRegistry buses;
+    private final PendingCallRegistry pending;
+    private final Clock clock;
+    private final OpenCodeGateway gateway;
+    private final OpenCodeSessionMap sessionMap;
+    private final AiUserPrefsRepository userPrefs;
+    private final Translator translator;
+    private final PendingFileUploadEchoRegistry fileUploadEcho;
+
+    public ChannelService(SessionRepository sessions,
+                          SessionBusRegistry buses, PendingCallRegistry pending,
+                          Clock clock,
+                          OpenCodeGateway gateway, OpenCodeSessionMap sessionMap,
+                          AiUserPrefsRepository userPrefs, Translator translator,
+                          PendingFileUploadEchoRegistry fileUploadEcho) {
+        this.sessions = sessions;
+        this.buses = buses;
+        this.pending = pending;
+        this.clock = clock;
+        this.gateway = gateway;
+        this.sessionMap = sessionMap;
+        this.userPrefs = userPrefs;
+        this.translator = translator;
+        this.fileUploadEcho = fileUploadEcho;
+    }
+
+    /**
+     * Forward a user message to OpenCode, emit session.status:busy, and flip the
+     * session's {@code has_ever_sent} flag. The USER message is NOT persisted locally
+     * — OpenCode echoes it back via message.created / message.part.created events,
+     * which the frontend renders.
+     */
+    public void sendMessage(String sessionId, List<Part> parts) {
+        SessionRecord session = sessions.findById(sessionId)
+            .orElseThrow(() -> new IllegalArgumentException(translator.get("error.session.unknown", sessionId)));
+        long now = clock.millis();
+        sessions.markHasEverSent(sessionId, now);
+
+        SessionBus bus = buses.getOrCreate(sessionId);
+        bus.publish(new DtEvent.SessionStatus("busy", Map.of()));
+
+        // Image FileUploadPart with a non-empty url (data URI) is forwarded as a
+        // native OpenCode FilePart and echoed back by OpenCode itself — we MUST
+        // NOT enqueue it for local replay or it would render twice. CSV/JSON/SQL
+        // and any image missing its dataUri still go through the legacy
+        // text-downgrade + echo registry path.
+        List<FileUploadPart> uploadParts = parts.stream()
+            .filter(FileUploadPart.class::isInstance)
+            .map(FileUploadPart.class::cast)
+            .filter(u -> !isImageWithDataUri(u))
+            .toList();
+        if (!uploadParts.isEmpty()) {
+            fileUploadEcho.enqueue(sessionId, uploadParts);
+        }
+
+        // Forward to OpenCode — prefer the persisted opencode_sid so the
+        // binding survives backend restarts (otherwise the AI loses context
+        // on restart because a fresh OpenCode session gets created).
+        String ocSid = session.openCodeSid();
+        if (Strings.isNotBlank(ocSid) && !ocSid.startsWith("ses_")) {
+            log.warn("[channel] discarding malformed opencode_sid for {}: {} (must start with ses_)",
+                sessionId, ocSid);
+            sessionMap.unbind(sessionId);
+            ocSid = null;
+        }
+        if (Strings.isBlank(ocSid)) {
+            ocSid = sessionMap.openCodeFor(sessionId);
+        }
+        if (Strings.isBlank(ocSid)) {
+            ocSid = gateway.createOpenCodeSession();
+            sessions.updateOpenCodeSid(sessionId, ocSid, now);
+        }
+        // Keep the in-memory map in sync (idempotent) so OpenCodeEventLoop's
+        // reverse lookup ocSid→dtSid works for the incoming event stream.
+        sessionMap.bind(sessionId, ocSid);
+        Map<String, Object> body = new LinkedHashMap<>();
+        List<Map<String, Object>> wireParts = parts.stream()
+            .map(this::partForWire)
+            .filter(Objects::nonNull)
+            .toList();
+        body.put("parts", wireParts);
+        String model = userPrefs.getCurrentModel();
+        if (Strings.isNotBlank(model)) {
+            body.put("model", normalizeModel(model));
+        }
+        gateway.forwardUserMessage(ocSid, body);
+    }
+
+    /**
+     * OpenCode 1.4.7's {@code POST /session/:id/message} applies strict Zod
+     * validation to <em>every</em> field the client sends: if {@code id}
+     * doesn't start with {@code "prt_"} it rejects the whole request. The
+     * server generates its own ids / timestamps / flags when you omit them.
+     *
+     * <p>So we forward only the minimum that OpenCode actually needs from the
+     * client (matches the open-db-studio Rust reference client). DataTalk's
+     * internal persisted Part keeps its UUID id / domain-specific fields —
+     * they're for our own SSE fan-out, not OpenCode.</p>
+     *
+     * <p>Returns {@code null} for part types we haven't mapped yet, so the
+     * caller can filter them out rather than crash the whole send.</p>
+     */
+    private Map<String, Object> partForWire(Part p) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        if (p instanceof TextPart t) {
+            out.put("type", "text");
+            out.put("text", t.text() == null ? "" : t.text());
+            return out;
+        }
+        if (p instanceof FilePart f) {
+            out.put("type", "file");
+            if (f.mime() != null) out.put("mime", f.mime());
+            if (f.filename() != null) out.put("filename", f.filename());
+            if (f.url() != null) out.put("url", f.url());
+            if (f.source() != null) out.put("source", f.source());
+            return out;
+        }
+        if (p instanceof FileUploadPart u) {
+            if (isImageWithDataUri(u)) {
+                // Image path: forward as a native OpenCode FilePart so the model
+                // sees the image directly in the same user message, no MCP
+                // round-trip via datatalk_file_read. OpenCode's strict Zod
+                // accepts {type, mime, filename, url} — no DataTalk-specific
+                // fields like fileId leak through.
+                out.put("type", "file");
+                out.put("mime", u.mimeType());
+                if (u.filename() != null) out.put("filename", u.filename());
+                out.put("url", u.url());
+                return out;
+            }
+            if (isImagePart(u)) {
+                // Image but no dataUri — fall back to the legacy read_file path.
+                // The frontend's prefetch may have failed or timed out; the AI
+                // will still be able to see the image via the MCP tool, just
+                // less efficiently.
+                log.warn("[channel] image part missing dataUri, falling back to read_file path: fileId={} filename={}",
+                    u.fileId(), u.filename());
+            }
+            // OpenCode strict Zod validation rejects custom fields (fileId, analysis, sizeBytes).
+            // Convert to a text part so the AI sees the metadata and can call datatalk_file_read.
+            out.put("type", "text");
+            out.put("text", buildFileUploadContext(u));
+            return out;
+        }
+        log.warn("[channel] dropping unsupported outbound part type for OpenCode: {}",
+            p.getClass().getSimpleName());
+        return null;
+    }
+
+    private static boolean isImagePart(FileUploadPart u) {
+        String mime = u.mimeType();
+        return mime != null && mime.toLowerCase().startsWith("image/");
+    }
+
+    private static boolean isImageWithDataUri(FileUploadPart u) {
+        return isImagePart(u) && Strings.isNotBlank(u.url());
+    }
+
+    @SuppressWarnings("unchecked")
+    private String buildFileUploadContext(FileUploadPart u) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("[Uploaded file: ").append(u.filename());
+        sb.append(" | fileId: ").append(u.fileId());
+        sb.append(" | mimeType: ").append(u.mimeType());
+        sb.append(" | sizeBytes: ").append(u.sizeBytes());
+
+        if (u.analysis() != null) {
+            Map<String, Object> analysis = u.analysis();
+            Object type = analysis.get("type");
+            if (type != null) sb.append(" | type: ").append(type);
+
+            Object summary = analysis.get("summary");
+            if (summary instanceof Map<?, ?> s) {
+                Object headers = s.get("headers");
+                if (headers != null) sb.append(" | headers: ").append(headers);
+                Object estimatedRows = s.get("estimatedRows");
+                if (estimatedRows != null) sb.append(" | estimatedRows: ").append(estimatedRows);
+                Object detectedTypes = s.get("detectedTypes");
+                if (detectedTypes != null) sb.append(" | detectedTypes: ").append(detectedTypes);
+            }
+
+            // For small files, include full content so the AI can work without a second round-trip
+            Boolean fullContent = analysis.get("fullContent") instanceof Boolean b && b;
+            Object content = analysis.get("content");
+            if (fullContent && content instanceof String c && !c.isEmpty()) {
+                sb.append("]\n\n").append(c);
+            } else {
+                sb.append("]");
+            }
+        } else {
+            sb.append("]");
+        }
+
+        sb.append("\n\nUse `datatalk_file_read` with fileId `").append(u.fileId())
+          .append("` if you need the full file content.");
+        return sb.toString();
+    }
+
+    /**
+     * Splits a DataTalk preference string like {@code "openai/gpt-5"} into
+     * OpenCode 1.4.7's {@code {providerID, modelID}} object. A missing provider
+     * ({@code "gpt-5"}) falls back to an empty providerID — OpenCode resolves
+     * via its own defaults in that case.
+     */
+    private Map<String, String> normalizeModel(String model) {
+        int slash = model.indexOf('/');
+        if (slash < 0) {
+            return Map.of("providerID", "", "modelID", model);
+        }
+        return Map.of(
+            "providerID", model.substring(0, slash),
+            "modelID", model.substring(slash + 1));
+    }
+
+    public boolean completeActionResult(String callId, boolean ok, Object output, ErrorInfo error) {
+        if (ok) {
+            return pending.complete(callId, output);
+        }
+        return pending.fail(callId, new ActionResultError(error));
+    }
+
+    public boolean abort(String sessionId) {
+        String ocSid = sessions.findById(sessionId)
+            .map(SessionRecord::openCodeSid)
+            .filter(Strings::isNotBlank)
+            .orElseGet(() -> sessionMap.openCodeFor(sessionId));
+        boolean aborted = false;
+        if (Strings.isNotBlank(ocSid)) {
+            try {
+                aborted = gateway.abortOpenCodeSession(ocSid);
+            } catch (Exception e) {
+                log.warn("[channel] OpenCode abort failed for sessionId={}, ocSid={}: {}",
+                    sessionId, ocSid, e.toString());
+            }
+        }
+        SessionBus bus = buses.getOrCreate(sessionId);
+        bus.publish(new DtEvent.SessionStatus("idle", Map.of()));
+        return aborted;
+    }
+
+    public static class ActionResultError extends RuntimeException {
+        public final ErrorInfo info;
+        public ActionResultError(ErrorInfo info) {
+            super(info == null ? null : info.message());
+            this.info = info;
+        }
+    }
+}

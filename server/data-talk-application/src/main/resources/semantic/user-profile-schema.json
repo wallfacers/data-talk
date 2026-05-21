@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://datatalk.local/semantic/user-profile-schema.json",
+  "title": "User Profile Schema",
+  "description": "JSON Schema for _user_profile.json — per-connection user preferences",
+  "type": "object",
+  "properties": {
+    "default_time_range": {
+      "type": "string",
+      "description": "Default time range for queries, e.g. 'last_7d', 'last_30d', 'ytd'"
+    },
+    "default_limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10000,
+      "default": 100,
+      "description": "Default row limit for queries"
+    },
+    "preferred_tables": {
+      "type": "array",
+      "items": { "type": "string" },
+      "maxItems": 20,
+      "description": "User's frequently used tables, ordered by preference"
+    },
+    "frequent_filters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["dimension", "value"],
+        "properties": {
+          "dimension": { "type": "string" },
+          "value": { "type": "string" },
+          "label": { "type": "string" }
+        }
+      },
+      "maxItems": 30,
+      "description": "Frequently applied filters"
+    },
+    "question_templates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["template"],
+        "properties": {
+          "template": { "type": "string", "minLength": 1 },
+          "category": { "type": "string" },
+          "hitCount": { "type": "integer", "minimum": 0, "default": 0 }
+        }
+      },
+      "maxItems": 50,
+      "description": "Saved question templates"
+    }
+  }
+}

@@ -1,0 +1,98 @@
+package com.datatalk.adapter.rest;
+
+import com.datatalk.application.chart.ChartArtifactService;
+import com.datatalk.application.i18n.Translator;
+import com.datatalk.application.persistence.SessionRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/sessions/{sessionId}/artifacts/chart")
+public class ChartArtifactController {
+
+    static final int MAX_ECHARTS_OPTION_BYTES = 256 * 1024;
+
+    private final ChartArtifactService chartArtifactService;
+    private final SessionRepository sessionRepository;
+    private final ObjectMapper objectMapper;
+    private final Translator translator;
+
+    public ChartArtifactController(
+        ChartArtifactService chartArtifactService,
+        SessionRepository sessionRepository,
+        ObjectMapper objectMapper,
+        Translator translator
+    ) {
+        this.chartArtifactService = chartArtifactService;
+        this.sessionRepository = sessionRepository;
+        this.objectMapper = objectMapper;
+        this.translator = translator;
+    }
+
+    @PostMapping
+    public ResponseEntity<?> createChartArtifact(
+        @PathVariable String sessionId,
+        @RequestBody(required = false) CreateChartArtifactRequest request
+    ) {
+        if (request == null || request.echartsOption() == null) {
+            return ResponseEntity.badRequest().body(messageBody("error.chart.echarts_option_required"));
+        }
+
+        if (serializedSize(request.echartsOption()) > MAX_ECHARTS_OPTION_BYTES) {
+            return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+                .body(messageBody("error.chart.echarts_option_too_large"));
+        }
+
+        if (sessionRepository.findById(sessionId).isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        ChartArtifactService.Result result = chartArtifactService.createChartArtifact(
+            new ChartArtifactService.Request(
+                sessionId,
+                request.echartsOption(),
+                request.sourceArtifactId(),
+                null,
+                request.originMessageId(),
+                request.originPartId(),
+                null
+            )
+        );
+
+        return ResponseEntity.ok(new CreateChartArtifactResponse(result.artifactId(), result.version()));
+    }
+
+    private int serializedSize(Map<String, Object> echartsOption) {
+        try {
+            return objectMapper.writeValueAsBytes(echartsOption).length;
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException(translator.get("error.chart.echarts_option_not_serializable"), e);
+        }
+    }
+
+    private Map<String, Object> messageBody(String code) {
+        String message = translator.get(code);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("message", message);
+        return body;
+    }
+
+    public record CreateChartArtifactRequest(
+        Map<String, Object> echartsOption,
+        String sourceArtifactId,
+        String originMessageId,
+        String originPartId
+    ) {}
+
+    public record CreateChartArtifactResponse(String artifactId, int version) {}
+}

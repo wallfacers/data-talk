@@ -3,7 +3,12 @@
     "allow": [
       "Bash(git rm *)",
       "Bash(rm -rf client/.git)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(rm -rf ~/.claude/skills/ui)",
+      "Read(//home/wallfacers/.claude/skills/**)",
+      "Bash(rm -rf ~/.claude/skills/shadcn)",
+      "Bash(cp -r ~/.claude/skills/temp-ui/skills/shadcn ~/.claude/skills/shadcn)",
+      "Bash(rm -rf ~/.claude/skills/temp-ui)"
     ]
   }
 }

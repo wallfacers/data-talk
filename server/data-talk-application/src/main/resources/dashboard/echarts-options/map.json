@@ -1,0 +1,12 @@
+{
+  "__needsMap": "china",
+  "tooltip": { "trigger": "item" },
+  "visualMap": { "show": true, "left": 16, "bottom": 16, "min": 0, "max": 100, "calculable": true },
+  "dataset": { "source": [] },
+  "series": [{
+    "type": "map",
+    "map": "china",
+    "roam": false,
+    "emphasis": { "label": { "show": true } }
+  }]
+}

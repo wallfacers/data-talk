@@ -1,0 +1,5 @@
+[
+  {"id": "IndexLookUp_10", "estRows": "10", "task": "root", "access object": "", "operator info": ""},
+  {"id": "├─IndexRangeScan_8", "estRows": "10", "task": "cop[tikv]", "access object": "table:t, index:idx_user(user_id)", "operator info": "range:[42,42]"},
+  {"id": "└─TableRowIDScan_9", "estRows": "10", "task": "cop[tikv]", "access object": "table:t", "operator info": "keep order:false"}
+]

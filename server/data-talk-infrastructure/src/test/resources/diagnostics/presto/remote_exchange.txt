@@ -1,0 +1,3 @@
+- Output[region_id]
+  - RemoteExchange[SINGLE]
+    - ScanProject[catalog:analytics schema:sales]

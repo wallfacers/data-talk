@@ -1,0 +1,1 @@
+{"type":"session.error","properties":{"sessionID":"ses_25fabb782ffeZPB4zWXBff62AS","error":{"name":"UnknownError","data":{"message":"Model not found: openai/gpt-4o-mini."}}}}

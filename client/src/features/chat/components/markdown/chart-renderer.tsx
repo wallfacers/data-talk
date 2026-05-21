@@ -1,0 +1,148 @@
+import { useEffect, useMemo, useState } from 'react'
+import ReactECharts from 'echarts-for-react'
+import * as echarts from 'echarts/core'
+import type { EChartsCoreOption } from 'echarts/core'
+import {
+  BarChart,
+  CandlestickChart,
+  LineChart,
+  PieChart,
+  RadarChart,
+  ScatterChart,
+} from 'echarts/charts'
+import {
+  DataZoomComponent,
+  GridComponent,
+  LegendComponent,
+  MarkAreaComponent,
+  MarkLineComponent,
+  MarkPointComponent,
+  TitleComponent,
+  ToolboxComponent,
+  TooltipComponent,
+  VisualMapComponent,
+} from 'echarts/components'
+import { CanvasRenderer } from 'echarts/renderers'
+import {
+  adjustYAxisNameGapToClearLabels,
+  CHART_THEME_DARK,
+  CHART_THEME_LIGHT,
+  ensureChartThemesRegistered,
+  injectOptionFix,
+  refreshChartThemesForCurrentMode,
+} from './chart-theme'
+
+echarts.use([
+  BarChart,
+  LineChart,
+  PieChart,
+  ScatterChart,
+  RadarChart,
+  CandlestickChart,
+  GridComponent,
+  TooltipComponent,
+  LegendComponent,
+  TitleComponent,
+  DataZoomComponent,
+  VisualMapComponent,
+  ToolboxComponent,
+  MarkLineComponent,
+  MarkPointComponent,
+  MarkAreaComponent,
+  CanvasRenderer,
+])
+
+// Chat-bubble charts must host title + legend + plot area + axisLabel + axis.name.
+// 320 left no margin below the grid for a centred X-axis name (BUG-0010 v1–v3
+// chased grid.bottom but kept getting clipped at the canvas edge), so the v4
+// fix grows the default canvas itself. Modal / dashboard / artifact callers
+// pass their own height and are unaffected.
+const DEFAULT_HEIGHT = 360
+
+type ChartRendererProps = {
+  option: Record<string, unknown>
+  height?: number
+}
+
+function readThemeName(root: HTMLElement | null = globalThis.document?.documentElement ?? null) {
+  return root?.classList.contains('dark') ? CHART_THEME_DARK : CHART_THEME_LIGHT
+}
+
+export function ChartRenderer({ option, height = DEFAULT_HEIGHT }: ChartRendererProps) {
+  const [themeName, setThemeName] = useState(() => readThemeName())
+
+  ensureChartThemesRegistered()
+
+  const fixedOption = useMemo(
+    () => injectOptionFix(option) as EChartsCoreOption,
+    [option],
+  )
+
+  // Once ECharts has laid the chart out we know the real tick-label band width,
+  // so we push the rotated yAxis name just past it. Re-run on every 'finished'
+  // (data/resize/theme changes) — adjustYAxisNameGapToClearLabels is idempotent.
+  const handleChartReady = (chart: {
+    getOption: () => Record<string, unknown>
+    setOption: (option: Record<string, unknown>) => void
+    on: (event: string, handler: () => void) => void
+  }) => {
+    adjustYAxisNameGapToClearLabels(chart)
+    chart.on('finished', () => adjustYAxisNameGapToClearLabels(chart))
+  }
+
+  useEffect(() => {
+    const root = globalThis.document?.documentElement ?? null
+    if (!root) {
+      return
+    }
+
+    const syncTheme = () => {
+      refreshChartThemesForCurrentMode()
+      setThemeName(readThemeName(root))
+    }
+
+    syncTheme()
+
+    const observer = new MutationObserver((records) => {
+      if (!records.some((record) => record.attributeName === 'class')) {
+        return
+      }
+      syncTheme()
+    })
+
+    observer.observe(root, {
+      attributes: true,
+      attributeFilter: ['class'],
+    })
+
+    return () => observer.disconnect()
+  }, [])
+
+  // The ECharts wrapper MUST keep `width: 100%` here. Previously we measured
+  // the container with a `ResizeObserver` and fed the px width back as
+  // `style={size}`, but the wrapper is a `block` element and its px width
+  // lagged the parent's `width: 100%` by one frame on every resize. A pie
+  // chart, whose centre is anchored at the canvas mid-point, immediately
+  // reveals that one-frame offset: the canvas sits left- or right-of-centre
+  // inside the parent and gets clipped by the parent's `overflow-hidden`,
+  // so the pie visually drifts off-centre. echarts-for-react ships with
+  // `autoResize: true` (`size_sensor`) — letting both the wrapper div and
+  // the echarts canvas track the parent at `100%` keeps the pie centred
+  // through every split-pane resize.
+  return (
+    <div
+      className="w-full min-w-0 max-w-full overflow-hidden"
+      style={{ height }}
+    >
+      <ReactECharts
+        key={themeName}
+        notMerge={true}
+        onChartReady={handleChartReady}
+        option={fixedOption}
+        opts={{ renderer: 'canvas' }}
+        style={{ width: '100%', height }}
+        theme={themeName}
+      />
+    </div>
+  )
+}

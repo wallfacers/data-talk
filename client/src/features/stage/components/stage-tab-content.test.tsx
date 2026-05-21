@@ -1,0 +1,118 @@
+import type { ReactNode } from 'react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { StageTabContent } from './stage-tab-content'
+import { useStageStore } from '@/stores/stage-store'
+
+vi.mock('./sql-workbench-tab', () => ({
+  SqlWorkbenchTab: () => <div data-testid="sql-workbench-tab">sql workbench tab</div>,
+}))
+
+vi.mock('./file-preview-tab', () => ({
+  FilePreviewTab: () => <div data-testid="file-preview-tab">file preview tab</div>,
+}))
+
+vi.mock('./er-inspector-tab', () => ({
+  ErInspectorTab: () => <div data-testid="er-inspector-tab">er inspector tab</div>,
+}))
+
+vi.mock('./er-designer-tab', () => ({
+  ErDesignerTab: () => <div data-testid="er-designer-tab">er designer tab</div>,
+}))
+
+vi.mock('@/components/ui/context-menu', () => ({
+  ContextMenu: ({ children }: { children?: ReactNode }) => <>{children}</>,
+  ContextMenuTrigger: ({ render, children }: { render?: ReactNode; children?: ReactNode }) => <>{render ?? children}</>,
+  ContextMenuContent: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  ContextMenuItem: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  ContextMenuSeparator: () => null,
+}))
+
+describe('StageTabContent', () => {
+  beforeEach(() => {
+    useStageStore.setState({
+      tabs: [],
+      openTabIds: new Set(),
+      openTabIdsOrdered: [],
+      activeTabId: null,
+    } as never)
+  })
+
+  it('renders SqlWorkbenchTab when the active tab is query_editor', () => {
+    useStageStore.setState({
+      tabs: [{
+        tabId: 'sql-1',
+        type: 'query_editor',
+        title: 'SQL',
+        originSessionId: 's1',
+        createdAt: 0,
+        payload: {},
+      }],
+      activeTabId: 'sql-1',
+      openTabIds: new Set(['sql-1']),
+      openTabIdsOrdered: ['sql-1'],
+    } as never)
+
+    render(<StageTabContent />)
+
+    expect(screen.getByTestId('sql-workbench-tab')).toBeTruthy()
+  })
+
+  it('renders FilePreviewTab when the active tab is file_preview', () => {
+    useStageStore.setState({
+      tabs: [{
+        tabId: 'preview-1',
+        type: 'file_preview',
+        title: 'README.md',
+        originSessionId: 's1',
+        createdAt: 0,
+        payload: { sourceKey: 'readme' },
+      }],
+      activeTabId: 'preview-1',
+      openTabIds: new Set(['preview-1']),
+      openTabIdsOrdered: ['preview-1'],
+    } as never)
+
+    render(<StageTabContent />)
+
+    expect(screen.getByTestId('file-preview-tab')).toBeTruthy()
+  })
+
+  it('renders ErInspectorTab when the active tab is er_inspector', () => {
+    useStageStore.setState({
+      tabs: [{
+        tabId: 'er-1',
+        type: 'er_inspector',
+        title: 'ER',
+        createdAt: 0,
+        payload: {},
+      }],
+      activeTabId: 'er-1',
+      openTabIds: new Set(['er-1']),
+      openTabIdsOrdered: ['er-1'],
+    } as never)
+
+    render(<StageTabContent />)
+
+    expect(screen.getByTestId('er-inspector-tab')).toBeTruthy()
+  })
+
+  it('renders ErDesignerTab when the active tab is er_designer', () => {
+    useStageStore.setState({
+      tabs: [{
+        tabId: 'designer-1',
+        type: 'er_designer',
+        title: 'ER Diagram Designer',
+        createdAt: 0,
+        payload: {},
+      }],
+      activeTabId: 'designer-1',
+      openTabIds: new Set(['designer-1']),
+      openTabIdsOrdered: ['designer-1'],
+    } as never)
+
+    render(<StageTabContent />)
+
+    expect(screen.getByTestId('er-designer-tab')).toBeTruthy()
+  })
+})

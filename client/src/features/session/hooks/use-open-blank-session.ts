@@ -1,0 +1,37 @@
+import { useCallback } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { createSession, type Session } from '@/services/api/session'
+import { useConnectionStore } from '@/features/connection/store'
+import { useSessionStore } from '@/stores/session-store'
+import { getSessionsQueryKey, invalidateSessionLists } from './use-sessions'
+
+// 复用「创建会话」按钮的语义：优先选缓存里已有的空白会话，否则新建一个。
+// excludeId 用于排除刚被删除但仍残留在 query cache 中的条目。
+export function useOpenBlankSession() {
+  const qc = useQueryClient()
+  const connectionId = useConnectionStore((s) => s.activeConnectionId)
+  const openSession = useSessionStore((s) => s.openSession)
+
+  return useCallback(
+    async (excludeId?: string) => {
+      const key = getSessionsQueryKey(connectionId)
+      const cached = qc.getQueryData<Session[]>(key) ?? []
+      const empty = cached.find((s) => {
+        if (s.id === excludeId) return false
+        if (s.hasEverSent) return false
+        // 检查本地 store，防止后端状态未同步时误判为空白会话
+        const locallySent = useSessionStore.getState().hasEverSentBySession.get(s.id)
+        if (locallySent) return false
+        return true
+      })
+      if (empty) {
+        openSession(empty.id, empty.hasEverSent)
+        return
+      }
+      const sess = await createSession(connectionId ?? undefined)
+      openSession(sess.id, sess.hasEverSent)
+      invalidateSessionLists(qc)
+    },
+    [qc, connectionId, openSession],
+  )
+}

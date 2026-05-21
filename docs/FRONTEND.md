@@ -1,0 +1,118 @@
+# 前端开发指南
+
+## 技术栈
+
+| 技术 | 用途 |
+|------|------|
+| Tauri v2 | 桌面应用容器 |
+| React 19 | UI 框架 |
+| Vite 5 | 构建工具 |
+| TanStack Router | 文件式路由 |
+| TanStack Query | 服务端状态管理 |
+| Zustand | 客户端状态管理 |
+| shadcn/ui | UI 组件库 |
+| Tailwind CSS v4 | 样式方案 |
+| Recharts | 数据可视化 |
+| Zod v4 | 运行时类型校验 |
+
+## 项目结构
+
+```
+client/
+├── src/
+│   ├── features/              # 按功能模块组织
+│   │   ├── chat/              # 聊天界面
+│   │   │   ├── components/    # chat-panel, chat-input, message-list, message-item
+│   │   │   ├── hooks/         # use-chat
+│   │   │   ├── store.ts       # Zustand store
+│   │   │   └── types.ts       # 类型定义
+│   │   ├── session/           # 会话管理
+│   │   ├── connection/        # 数据库连接
+│   │   ├── workspace/         # 右侧工作区 (tab bar + 内容区)
+│   │   ├── data-grid/         # 数据表格
+│   │   └── dashboard/         # 仪表盘 (示例页面)
+│   ├── components/ui/         # shadcn/ui 基础组件
+│   ├── types/api.ts           # API 类型定义
+│   ├── lib/                   # 工具函数
+│   └── main.tsx               # 入口
+├── src-tauri/                 # Tauri Rust 后端
+└── package.json
+```
+
+## 命令
+
+```bash
+npm install              # 安装依赖
+npm run dev              # Vite 开发服务器
+npm run tauri dev        # Tauri 开发模式（含热重载）
+npm run build            # 生产构建
+npm run typecheck        # TypeScript 类型检查
+npm run lint             # ESLint 检查
+npm run format           # Prettier 格式化
+npm run gen:routes       # 重新生成 TanStack Router 路由树
+```
+
+## 开发约定
+
+### Feature 模块结构
+
+每个 feature 是一个自包含目录：
+
+```
+features/xxx/
+├── components/        # React 组件（kebab-case 文件名）
+├── hooks/             # 自定义 hooks（use-xxx.ts）
+├── store.ts           # Zustand store（客户端状态）
+└── types.ts           # 类型定义
+```
+
+### 状态管理原则
+
+- **服务端状态**（API 数据）→ TanStack Query（自动缓存、重试、失效）
+- **客户端状态**（UI 状态、临时状态）→ Zustand store
+- 不混用：Zustand store 不缓存 API 响应
+
+### 组件约定
+
+- 组件文件名 kebab-case：`chat-input.tsx`
+- 组件导出名 PascalCase：`export function ChatInput()`
+- 使用 shadcn/ui 组件，避免重新造轮子
+- 响应式布局使用 `react-resizable-panels`
+
+### 设计契约
+
+- `client/DESIGN.md` 是客户端视觉规则的唯一真源
+- 新 UI 开发前先读取 `client/DESIGN.md`
+- 组件与页面优先复用 semantic token，不直接写裸色值
+- `designmd` 当前对 DataTalk 的 component alias 子键只做到零错误解析，相关 warning 作为已知工具边界处理
+
+### Stage Workbench 约定
+
+- Stage 使用 `左侧 sidebar + 右侧 workspace` 的 workbench 结构，底部 Dock 已移除；新入口统一放在顶部工具行或资源浏览器里。
+- 顶部工具行用于全局工具入口；连接 / database / schema 节点只负责同步 `SessionDataContext` 与选中态，真正打开 tab 的动作发生在工具入口或资源节点下的工具 action 上。
+- Stage 的顶部页签使用浏览器式连续 tab strip；workspace tab 与 session-scoped tab 共用同一条 tab bar，并继续复用 `StageStore` 的 open / focus / close 规则。
+- Stage 的通用控件必须使用 `shadcn/ui`；例外仅限 SQL 编辑器（Monaco）与未来 ER 画布（ReactFlow）。
+- `query_editor` 是 Stage 内唯一 SQL 工作页；顶部工具行、资源树 SQL 动作和 `!select` / `!with` 直查都打开它。
+- `query_editor` 内部使用独立的 SQL workbench 结构：上方 Monaco 编辑区、下方结果集 tab 条，结果集不再占用 Stage 顶部主 tab。
+- Stage SQL 执行链路统一走 `/api/sql/execute` 的 `results[]` 契约；前端多结果状态放在 `sql-workbench-store`，不要再把执行结果塞回 `StageTab.payload`。
+- `bang_query_user` 仍是聊天消息语义，但不再对应独立 Stage tab 类型。
+
+### 与后端通信
+
+- HTTP 客户端：`ky`（轻量 fetch 封装）
+- SSE 流：通过 `EventSource` 或 fetch streaming 接收 `DtEvent`
+- API 类型定义集中在 `src/types/api.ts`
+
+### 国际化约定
+
+- 全局国际化入口位于 `src/i18n/`，通过 `I18nProvider` + `useI18n()` 提供 `t()`。
+- 当前支持 `zh-CN` 和 `en-US`；语言状态持久化在 `ui-settings-store`。
+- 用户可见文案优先写成 message key；provider 名、model 名、数据库对象名保持原样，不做翻译。
+- HTTP 请求统一附带 `Accept-Language`，用于驱动后端返回同语言错误和默认文案。
+
+### 样式调试经验
+
+- **"整体发灰"先查 `opacity`，不是 `color`**：若一组元素（文字、图标、开关、按钮）**同时**显灰且对比度一致降低，大概率是父级被 `opacity` 降调，不是文字颜色继承。`opacity` 作为合成层属性会让所有后代一起半透明，伪装成"颜色都变了"
+- **警惕 `has-*` 的连锁效应**：shadcn 基础组件（`InputGroup`、`Form` 等）常带 `has-disabled:opacity-50`、`has-[...]:...` 这类 `&:has()` 选择器规则——**容器内任意子元素带 `disabled` 属性，整个容器被拖累**。排查时先看容器的完整 class 串，再排查内部谁带了 `disabled`
+- **按钮禁用优先用 `aria-disabled` + `aria-disabled:*` class**，而不是 HTML `disabled` 属性。`disabled` 会触发父级 `has-disabled` 连锁；`aria-disabled` 保留无障碍语义和视觉（配合 `aria-disabled:opacity-50 aria-disabled:cursor-not-allowed`）但不污染父级。点击行为在 handler 里手动早退即可
+- **视觉症状对不上单一变量解释时，先开 DevTools 看 Computed**：不要凭代码推理反复改 class。例如 Switch 的 thumb 位置（右=checked）和底色（灰=unchecked）互相矛盾 → 立刻查父级 `opacity`，比猜 10 次快

@@ -1,0 +1,13 @@
+/* === Bezel Theme: Education === */
+
+.bezel[data-theme="industry-education"] {
+  --accent-primary: #ff7043;
+  --accent-secondary: #ffab91;
+  --bg-body: #100a06;
+  --bg-card: #1e140e;
+  --bg-slot: #180f0c;
+  --border-color: rgba(255, 112, 67, 0.2);
+  --text-primary: #f0e0d0;
+  --text-secondary: #c8a888;
+  --text-muted: #987860;
+}

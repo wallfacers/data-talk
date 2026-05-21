@@ -1,0 +1,54 @@
+# 技术债务跟踪器
+
+已知技术债务的集中记录。每项标注优先级和关联计划。
+
+## 判定口径
+
+- 产品能力尚未实现、但已在 roadmap 中作为明确 feature slice 跟踪的项目，不登记为技术债。ER placeholder 已由 [ER Inspector Plan A](./2026-04-29-er-inspector-plan.md) 关闭并替换为 `er_inspector` Stage Tab；report / dashboard 的 placeholder / disabled UI 仍属于 [Next Implementation Roadmap](./2026-04-25-next-implementation-roadmap-plan.md) Task 8 Visualization Expansion 的产品待实现范围。
+- 已评估延期的增强项不自动登记为技术债。当前 query history persistence 归类为后续 result/history management 产品增强，重新立项时优先复用已落地的持久 Tab / `ui_find` 底座；只有发现具体可靠性、数据丢失或维护性缺陷时才登记为技术债。
+
+## 优先级说明
+
+| 级别 | 含义 |
+|------|------|
+| P0   | 阻塞当前开发，需立即处理 |
+| P1   | 影响质量或性能，在下一个 Plan 中处理 |
+| P2   | 改善可维护性，在合适时机处理 |
+
+## 当前债务
+
+| ID | 优先级 | 描述 | 关联计划 |
+|----|--------|------|----------|
+| TD-034 | P2 | bezel `map` 图表缺真实地理数据：`server/data-talk-adapter/src/main/resources/static/bezel/geo/{china,world}.json` 仅 223B 单点占位，`scheduler.js` 走 `registerMap` 后无法渲染真实省/国界。当前 map widget 优雅降级（加载失败显示提示），不报错。**TODO：待确定可信 geoJSON 数据源后补齐并启用 map。** chartType 枚举保留 map，先按 7 种可用对待 | bezel-compiler-redesign |
+
+## Closure Notes
+
+- 2026-04-29: ER Designer Plan B implementation did not introduce known technical debt during automated verification. Remaining Plan B work is manual product smoke in a running Tauri app with a writable real database, tracked in the active plan rather than as technical debt.
+
+## 已清除债务
+
+| ID | 清除日期 | 原描述 | 清除方式 |
+|----|----------|--------|----------|
+| TD-033 | 2026-04-29 | `workspace.close` / `query_editor.close` 仍作为 deprecated alias 保留为 `archive(archived=true)`；协议文档要求三版兼容期后删除，当前不能立即移除以免破坏旧 Agent prompt / 历史工具调用 | 按用户指令提前删除 alias：后端 `UiExecAction` schema 移除 `close`，前端 `WorkspaceAdapter` / `QueryEditorAdapter` 移除 `close` actions 和分支，运行时 `AGENTS.md` 与 `ui-objects-reference.md` 删除 deprecation 文案，兼容测试改为断言 `unknown_action` |
+| TD-032 | 2026-04-28 | 前端残留 deprecated 空 shim（`StageSidebar` / `StageResourceBrowser` / `StageToolRow`）和废弃 `useStageFind` hook，仅剩测试引用，继续保留会误导后续 Stage 布局维护 | 删除 `client/src/features/stage/components/stage-sidebar.tsx`、`stage-resource-browser.tsx`、`stage-tool-row.tsx`、`client/src/services/find/use-stage-find.ts` 及对应 shim/hook 测试；同步移除 `stage-window.test.tsx` 中对旧 test id 的断言 |
+| TD-031 | 2026-04-28 | `datatalk_ui_exec` 后端 schema / prompt 已暴露 `workspace.detach/archive/trash/focus` 和全局 query editor，但前端 `WorkspaceAdapter` 只接受旧 `open/close/focus/choose_connection`，且 `datatalk.ui.exec` handler 用 top-level `target` 而不是 `params.target` 做 hydrate/flush，导致 AI 调新协议会在客户端被 `unknown_action` 拒绝或落盘目标不准 | `WorkspaceAdapter` actions 与 exec 分支补齐 `detach/archive/trash`；`archive(archived=false)` 解归档；`focus` 对 archived tab 返回结构化 `tab_archived`；`query_editor` open 支持 `sessionId=null` 的全局 Stage；`ui-handlers` 对 workspace action 使用 `params.target` 做 hydrate/flush，并将 `detach/trash` 纳入 mutating exec；新增 `WorkspaceAdapter.test.ts` 和 `ui-handlers.test.ts` 回归 |
+| TD-029 | 2026-04-28 | 端到端"两个 OpenCode session 通过 `ui_exec` 竞争同一 tab"集成测试缺失。P1 用 `McpActionBridgeTest` 替代原计划 `StageTabConcurrencyIT`，只覆盖错误封装语义，不穿透 `ChannelService → ActionDispatcher → Client → 回程`，`version_conflict` / `expected_text_mismatch` 自动化不足 | 在 `McpActionBridgeTest` 新增真实 round-trip 覆盖：两个 DataTalk/OpenCode session 绑定到同一 tab，真实 `ActionDispatcher` 发布 `action.invoke` 到各自 `SessionBus`，模拟客户端经 `ChannelService.completeActionResult` 回传成功、`expected_text_mismatch`、`version_conflict`，断言 OpenCode tool outcome 保留结构化 code/message 并生成 conflict markdown。未引入 WireMock full HTTP fixture，但覆盖了原缺失的 application-layer 回程链路 |
+| TD-030 | 2026-04-28 | P1 让 session-scoped 持久化恢复后，前端运行态 `StageTab.scope` 仍存在，hydrate 路径在 `stage-persistence-bootstrap.ts` 强制写回 `scope: 'workspace'`，可能造成 P2 布局位置漂移 | P3 commit `0a6d21f` 完成 `tabsBySession` / `workspaceTabs` 合并为单一 `tabs[]`；P3.5 cleanup commit 端到端删除前端 `StageTab.scope` 字段、`QueryEditorOpenInput.scope` 与所有 ~10 处生产写入位、~60 处测试 fixture；hydrate 路径不再写入 scope；type-level scope 由 `tab-type-registry.ts` 提供，与实例字段彻底解耦 |
+| TD-SINGLE-EMPTY-SESSION-MULTINODE | 2026-04-27 | `SessionService.create` 的 `synchronized (createLock)` 仅在单 JVM 内有效，多节点部署需改为 DB 唯一约束 | 移除 `synchronized (createLock)` 及 `createLock` 字段。当前为单机桌面应用，无需多节点并发保护；若未来扩展多节点，应配合数据库切换到 PG 并添加 partial unique index |
+| TD-026 | 2026-04-27 | `client/src/features/session/hero-view.tsx` 为无引用孤立文件，和 `SplitView` 空态内容重复 | 删除 `hero-view.tsx`。`SplitView` 已有完整的空态实现（含 `composer-slot`），`HeroView` 无任何引用 |
+| TD-028 | 2026-04-27 | `EndToEndSmokeIT` 用 `bridgeArgs()` 手工构造带 `__dt*` 的 `/mcp` 请求，只覆盖 backend endpoint，不跑真实 OpenCode→plugin→bridge 链路。曾导致 plugin 里 `output.args = args` 整体替换失效的 bug 一路漏到生产（-32602 missing session context） | 2026-04-27 代码审查确认：`RealOpenCodeMcpBridgeIT` 已存在并提供 opt-in 真实 E2E 夹具（`DATATALK_REAL_OPENCODE_E2E=true` + `DATATALK_REAL_OPENCODE_MODEL`），启动真实 `opencode serve` 验证 plugin→bridge 全链路；`EndToEndSmokeIT` 头部注释已正确指向该测试作为补充。风险已闭环 |
+| TD-027 | 2026-04-24 | OpenCode 仍走 legacy plugin tool 注册/HTTP callback 链路，未来与 MCP 并存会导致同名 tool 重复暴露与维护双轨入口 | OpenCode MCP Tool Migration 已切到单一路径：后端新增 `/mcp` + `McpNameMapper` + nonce/session bridge + bootstrap/reconcile/health，前端切到 `datatalk_*` renderer/prompt naming，并删除 `/plugin/register-tool` / `/api/opencode-tool/*` / `shared-secret` callback 运行时与 smoke 基线 |
+| TD-008 | 2026-04-17 | `ChatHeader` 的重命名/删除仅 toast 占位，`services/api/session.ts` 缺 `renameSession` / `deleteSession` 端点 | `SessionController` 加 `PATCH`/`DELETE`，`session.ts` 加对应客户端方法，`chat-header.tsx` 用 `useMutation` 接通 |
+| TD-002 | 2026-04-18 | `OpenCodeHttpClient` 仅有 WireMock 测试，缺少对真实 OpenCode 服务端的集成验证 | 项目已可启动运行，真实集成验证已在日常开发中覆盖 |
+| TD-004 | 2026-04-18 | `SessionBus` 的 16ms flush 窗口硬编码 | 已通过 `datatalk.channel.flush-interval` 配置项实现可配置，默认 PT0.016S |
+| TD-006 | 2026-04-18 | 前端 `features/*/types.ts` 与后端 DTO 缺乏自动同步机制 | 后端 DTO 提取到统一 `dto` 包 + SpringDoc OpenAPI + 前端 `generated/api.ts` 类型定义 + 字段名统一（kind/databaseName） |
+| TD-009 | 2026-04-18 | `HeroView` / `ConnectionOverlay` 孤立组件 | 当时清理目标已落地到主流程；2026-04-23 复核确认 `ConnectionOverlay` 已退出代码路径，但 `HeroView` 仍作为无引用残留文件存在，后续已迁移为 `TD-026` 单独跟踪 |
+| TD-018 | 2026-04-18 | commit 2bbeb41 启用 `PRAGMA foreign_keys=ON` 后，`SessionControllerIT` / `SupersedeArtifactActionTest` 触发 `SQLITE_CONSTRAINT_FOREIGNKEY` | `SessionControllerIT` 加 `@BeforeEach` 用 `INSERT OR IGNORE` seed 所有连接 id 并清理 sessions/messages；`SupersedeArtifactActionTest` 在 `clean()` seed `c-default` connection + `s-1` session，并给 `datatalkJdbc` 字段补上 `@Qualifier("datatalkJdbc")`（之前被 `@Primary demoJdbcTemplate` 拦截，写到了错误的 H2 库）|
+| TD-019 | 2026-04-18 | commit fc8a450 后 `ConnectionService.create` 不再接受客户端 id，`ConnectionControllerIT` / `LayoutErdActionIT` / `ReadSchemaActionIT` 硬编码 id 失效 | `ConnectionService.create(...)` 改为返回生成的 `String id`；`ConnectionController.POST` 返回新 DTO `ConnectionCreatedDto(id)`；5 处测试调用方（含 `ExecuteSqlActionIT` / `TypicalQueryE2EIT`）消费返回值，不再使用硬编码 id |
+| TD-020 | 2026-04-20 | `preview_sql` 等 SQL-bearing action 的风险判级依赖前端正则粗判，未闭环“后端强制判级”规格 | 在 `ActionDispatcher` 统一预处理层接入 `SqlBearingActionInspector` + `CalciteSqlRiskAnalyzer`；动态风险通过 `ActionContext.metadata().sqlRisk()` 传入 handler，`ExecuteSqlAction` 已把 `riskLevel` / `riskReason` / `fallbackUsed` 回写到输出 metadata；前端正则仅保留为兼容旧数据 fallback。OpenCode `action_result → tool part state.metadata` 的端到端烟测仍待人工联调确认 |
+| TD-021 | 2026-04-20 | `*IT.java` 未纳入 Maven/CI，`ChannelControllerIT` / `TypicalQueryE2EIT` 等默认不执行 | `data-talk-adapter/pom.xml` 接入 `maven-failsafe-plugin` 并显式纳入 `**/*IT.java`，`mvn clean verify` 现为后端完整回归入口 |
+| TD-003 | 2026-04-21 | `DtEvent` 的 Jackson `@JsonSubTypes` 硬编码了 22 个子类型，新增事件需修改两处（枚举 + 注解） | 移除中央 `@JsonSubTypes` 列表，改为每个子类型 `@JsonTypeName` + 基于 sealed `permittedSubclasses` 的 `DtEventTypeIdResolver` 自动发现，新增事件无需再维护中央注册表 |
+| TD-024 | 2026-04-21 | `OpenCodeEventLoop` 的 `partToOpenCodeSession` ConcurrentHashMap 依赖 `message.part.removed` 事件清理；若事件丢失或乱序，映射表持续积累，存在内存泄漏风险 | `partToOpenCodeSession` 升级为带时间戳的临时索引，事件入口按固定周期惰性回收过期绑定；同时保留 `message.part.removed` / `session.deleted` 的即时清理 |
+| TD-025 | 2026-04-21 | `OpenCodeEventLoop` 对孤儿 session 的 global 事件仅静默丢弃，无 WARN 日志，排查困难 | 孤儿 session 事件改为 `WARN` 日志，并在丢弃时同步清理该 OpenCode session 对应的残留 part 绑定 |
+| TD-022 | 2026-04-21 | `stage-window.tsx` `mockTabs` 硬编码三个 tab，切换逻辑用 `useState` 本地状态而非 `useStageStore`；SQL/ER tab 内容仅为 i18n 占位文本，Stage 功能尚未真正接通后端 | Stage Query Editor 计划：删除 mockTabs/useState，改由 `useStageStore` + `useShallow` 驱动 tab 列表与激活态；`StageTabContent` 路由至 `QueryEditorTab` |
+| TD-023 | 2026-04-21 | `stage-dock.tsx` 四个工具按钮（SQL/ER/Report/Dashboard）无 `onClick` 实现，纯 UI 占位；`stage-tab-bar.tsx` 右键菜单（关闭此选项卡/关闭其他/全部关闭）无实现 | Stage Query Editor 计划：SQL 按钮接通 `openTab({type:'query_editor',...})`；tab-bar X 按钮与右键菜单全部接回调（onClose/onCloseOthers/onCloseAll/onCloseLeft/onCloseRight）|

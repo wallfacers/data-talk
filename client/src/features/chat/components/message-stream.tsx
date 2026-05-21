@@ -1,0 +1,47 @@
+import { useMemo } from 'react'
+import { useChatPartsStore } from '@/stores/chat-parts-store'
+import { useSessionStore } from '@/stores/session-store'
+import { PartRenderer } from './part-renderer'
+import { cn } from '@/lib/utils'
+
+export function MessageStream() {
+  const sessionId = useSessionStore((s) => s.activeSessionId)
+  const partsByMessage = useChatPartsStore((s) => sessionId ? s.partsBySession.get(sessionId) : undefined)
+  const infoMap = useChatPartsStore((s) => sessionId ? s.infoBySession.get(sessionId) : undefined)
+
+  const groups = useMemo(() => {
+    if (!sessionId || !partsByMessage) return []
+
+    const entries = Array.from(partsByMessage.entries()).map(([messageId, parts]) => ({
+      messageId,
+      parts,
+      meta: infoMap?.get(messageId),
+    }))
+    entries.sort((a, b) => (a.meta?.time?.created ?? 0) - (b.meta?.time?.created ?? 0))
+    return entries
+  }, [sessionId, partsByMessage, infoMap])
+
+  if (groups.length === 0) return null
+
+  return (
+    <div className="flex flex-col gap-4">
+      {groups.map((g) => {
+        // Wait for message.created meta before rendering — without it we'd
+        // paint user messages as assistant bubbles (role defaults would lie).
+        if (!g.meta) return null
+        const role = g.meta.role
+        const align = role === 'user' ? 'items-end' : 'items-start'
+        const bubble = role === 'user'
+          ? 'bg-primary text-primary-foreground'
+          : 'bg-muted'
+        return (
+          <div key={g.messageId} className={cn('flex flex-col gap-1', align)}>
+            <div className={cn('max-w-[85%] rounded-lg px-3 py-2 text-sm', bubble)}>
+              {g.parts.map((p) => <PartRenderer key={p.id} part={p} />)}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}

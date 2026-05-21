@@ -1,0 +1,719 @@
+/* ============================================================
+   Ledger Report CSS
+   印刷品商务排版规范 — 完整规则见 design-language.md
+   严禁玻璃拟态 / 暗色背景 / 霓虹色 / 装饰动画 / bezel 风格
+   ============================================================ */
+
+@font-face {
+  font-family: 'NotoSerifSC';
+  src: url('../fonts/NotoSerifSC-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'NotoSansSC';
+  src: url('../fonts/NotoSansSC-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-display: swap;
+}
+
+:root {
+  /* 文字色阶 */
+  --ledger-text-strong: #1A1A19;
+  --ledger-text-base: #34322D;
+  --ledger-text-muted: #5E5E5B;
+  --ledger-text-faint: #858481;
+
+  /* 背景与边界 */
+  --ledger-bg-page: #FFFFFF;
+  --ledger-bg-soft: #F7F6F2;
+  --ledger-bg-card: #FAFAF8;
+  --ledger-border-default: #E5E3DC;
+  --ledger-border-strong: #34322D;
+
+  /* 色彩角色系统 — 默认值 = 设计 token（深蓝系）；report.json theme 经 LedgerThemePalette
+     解析后在 inline <style> 中覆盖同名变量。仅内联了 --ledger-accent 的存量 HTML 在新变量上
+     回退到这里的协调默认。 */
+  --ledger-primary: #0F2A4A;
+  --ledger-accent: #2F6FBF;
+  --ledger-surface: #F4F7FB;
+
+  /* accent 同色阶 tint 梯度（由浅到深）— 用于 heat / bar / divider / 卡片浅底 */
+  --ledger-tint-1: #E0E9F5;
+  --ledger-tint-2: #C1D4EC;
+  --ledger-tint-3: #8DB0DC;
+  --ledger-tint-4: #4E85C9;
+
+  /* 语义数据色 */
+  --ledger-positive: #1F7A4E;
+  --ledger-negative: #B33A3A;
+  --ledger-neutral: #5E5E5B;
+
+  /* 风险等级语义色（risk-list severity） */
+  --ledger-warning: #C76A21;
+  --ledger-caution: #9C7B12;
+
+  /* 字号阶 */
+  --ledger-fs-h1: 36px;
+  --ledger-fs-h2: 24px;
+  --ledger-fs-h3: 18px;
+  --ledger-fs-body: 14px;
+  --ledger-fs-caption: 12px;
+  --ledger-fs-micro: 11px;
+
+  /* 行高 */
+  --ledger-lh-h1: 1.25;
+  --ledger-lh-h2: 1.3;
+  --ledger-lh-h3: 1.4;
+  --ledger-lh-body: 1.7;
+  --ledger-lh-caption: 1.5;
+  --ledger-lh-micro: 1.4;
+}
+
+/* -------------------------- Base -------------------------- */
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--ledger-bg-page);
+  color: var(--ledger-text-base);
+  font-family: 'NotoSerifSC', 'Songti SC', 'STSong', serif;
+  font-size: var(--ledger-fs-body);
+  line-height: var(--ledger-lh-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 西文与数字使用 sans-serif */
+body {
+  font-feature-settings: 'tnum' 1; /* tabular numerals */
+}
+
+.ledger-num,
+.ledger-kpi-card__value,
+.ledger-kpi-card__delta {
+  font-family: 'NotoSansSC', system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+  font-feature-settings: 'tnum' 1;
+}
+
+.ledger-report {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 40px 32px;
+}
+
+/* -------------------------- Headings -------------------------- */
+
+h1, h2, h3 {
+  color: var(--ledger-text-strong);
+  margin: 0 0 12px;
+  break-after: avoid;
+}
+
+h1 {
+  font-size: var(--ledger-fs-h1);
+  line-height: var(--ledger-lh-h1);
+  font-weight: 400;
+}
+
+h2 {
+  font-size: var(--ledger-fs-h2);
+  line-height: var(--ledger-lh-h2);
+  font-weight: 600;
+  padding-left: 10px;
+  border-left: 3px solid var(--ledger-accent);
+  margin-top: 32px;
+}
+
+h3 {
+  font-size: var(--ledger-fs-h3);
+  line-height: var(--ledger-lh-h3);
+  font-weight: 600;
+  color: var(--ledger-text-muted);
+  margin-top: 24px;
+}
+
+p {
+  margin: 0 0 12px;
+}
+
+strong {
+  color: var(--ledger-text-strong);
+  font-weight: 600;
+}
+
+/* -------------------------- Cover -------------------------- */
+
+.ledger-cover {
+  page-break-after: always;
+  break-after: page;
+  padding: 80px 0 60px;
+}
+
+.ledger-cover__accent-bar {
+  height: 4mm;
+  width: 60mm;
+  background: var(--ledger-accent);
+  margin-bottom: 40px;
+}
+
+.ledger-cover__title {
+  font-size: var(--ledger-fs-h1);
+  line-height: var(--ledger-lh-h1);
+  margin-bottom: 12px;
+}
+
+.ledger-cover__subtitle {
+  font-size: var(--ledger-fs-h3);
+  line-height: var(--ledger-lh-h3);
+  color: var(--ledger-text-muted);
+  font-weight: 400;
+  margin-bottom: 80px;
+}
+
+.ledger-cover__meta {
+  font-size: var(--ledger-fs-micro);
+  color: var(--ledger-text-faint);
+}
+
+/* -------------------------- Executive summary -------------------------- */
+
+.ledger-executive-summary ul {
+  padding-left: 20px;
+  margin: 0;
+}
+
+.ledger-executive-summary li {
+  margin-bottom: 8px;
+}
+
+/* -------------------------- TOC -------------------------- */
+
+.ledger-toc {
+  page-break-before: always;
+  break-before: page;
+  page-break-after: always;
+  break-after: page;
+}
+
+.ledger-toc ol {
+  padding-left: 20px;
+}
+
+.ledger-toc li {
+  margin-bottom: 6px;
+  color: var(--ledger-text-base);
+}
+
+/* -------------------------- Chapter -------------------------- */
+
+.ledger-chapter {
+  page-break-before: always;
+  break-before: page;
+  margin-bottom: 24px;
+}
+
+.ledger-chapter:first-of-type {
+  page-break-before: auto;
+  break-before: auto;
+}
+
+/* -------------------------- KPI strip -------------------------- */
+
+.ledger-kpi-strip {
+  display: flex;
+  gap: 12px;
+  margin: 16px 0;
+  break-inside: avoid;
+}
+
+.ledger-kpi-card {
+  flex: 1;
+  background: var(--ledger-bg-card);
+  border: 1px solid var(--ledger-border-default);
+  border-radius: 4px;
+  padding: 16px 14px;
+}
+
+.ledger-kpi-card__label {
+  font-size: var(--ledger-fs-caption);
+  line-height: var(--ledger-lh-caption);
+  color: var(--ledger-text-muted);
+  margin-bottom: 6px;
+}
+
+.ledger-kpi-card__value {
+  font-size: var(--ledger-fs-h2);
+  line-height: 1.2;
+  color: var(--ledger-text-strong);
+  font-weight: 600;
+}
+
+.ledger-kpi-card__delta {
+  font-size: var(--ledger-fs-caption);
+  line-height: var(--ledger-lh-caption);
+  margin-top: 4px;
+}
+
+.ledger-kpi-card__delta--up { color: var(--ledger-positive); }
+.ledger-kpi-card__delta--down { color: var(--ledger-negative); }
+
+/* -------------------------- Narrative -------------------------- */
+
+.ledger-narrative {
+  margin: 12px 0;
+}
+
+.ledger-narrative p {
+  text-indent: 0;
+}
+
+/* -------------------------- Chart -------------------------- */
+
+.ledger-chart {
+  margin: 20px 0;
+  break-inside: avoid;
+}
+
+.ledger-chart figcaption {
+  font-size: var(--ledger-fs-caption);
+  color: var(--ledger-text-muted);
+  margin-top: 8px;
+  text-align: center;
+}
+
+.ledger-chart [data-ledger-chart-id] {
+  width: 100%;
+  height: 360px;
+}
+
+/* -------------------------- Table -------------------------- */
+
+.ledger-table {
+  margin: 20px 0;
+  break-inside: avoid;
+}
+
+.ledger-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--ledger-fs-body);
+}
+
+.ledger-table th,
+.ledger-table td {
+  padding: 8px 10px;
+  border: 1px solid var(--ledger-border-default);
+  text-align: left;
+  vertical-align: top;
+}
+
+.ledger-table th {
+  background: var(--ledger-bg-soft);
+  color: var(--ledger-text-strong);
+  font-weight: 600;
+}
+
+.ledger-table tbody tr:nth-child(even) {
+  background: var(--ledger-bg-card);
+}
+
+.ledger-table figcaption {
+  font-size: var(--ledger-fs-caption);
+  color: var(--ledger-text-muted);
+  margin-bottom: 6px;
+}
+
+/* 长表强制起新页 */
+.ledger-table--paged {
+  page-break-before: always;
+  break-before: page;
+}
+
+/* -------------------------- Risk list -------------------------- */
+
+.ledger-risk-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+}
+
+.ledger-risk-item {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 8px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--ledger-border-default);
+  margin-bottom: 8px;
+  background: var(--ledger-bg-card);
+  align-items: start;
+}
+
+.ledger-risk-item--critical { border-left-color: var(--ledger-negative); }
+.ledger-risk-item--critical .ledger-risk-item__desc { color: var(--ledger-negative); }
+.ledger-risk-item--high { border-left-color: var(--ledger-warning); }
+.ledger-risk-item--high .ledger-risk-item__desc { color: var(--ledger-warning); }
+.ledger-risk-item--medium { border-left-color: var(--ledger-caution); }
+.ledger-risk-item--medium .ledger-risk-item__desc { color: var(--ledger-caution); }
+.ledger-risk-item--low { border-left-color: var(--ledger-positive); }
+.ledger-risk-item--low .ledger-risk-item__desc { color: var(--ledger-positive); }
+
+.ledger-risk-item__severity {
+  font-size: 16px;
+}
+
+.ledger-risk-item__desc {
+  color: var(--ledger-text-base);
+}
+
+.ledger-risk-item__meta {
+  font-size: var(--ledger-fs-micro);
+  color: var(--ledger-text-faint);
+}
+
+/* -------------------------- Timeline -------------------------- */
+
+.ledger-timeline {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+  border-left: 2px solid var(--ledger-border-default);
+  padding-left: 16px;
+}
+
+.ledger-timeline__event {
+  margin-bottom: 14px;
+  position: relative;
+}
+
+.ledger-timeline__event::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: var(--ledger-accent);
+  border-radius: 50%;
+  position: absolute;
+  left: -21px;
+  top: 6px;
+}
+
+.ledger-timeline__event time {
+  display: block;
+  font-size: var(--ledger-fs-micro);
+  color: var(--ledger-text-faint);
+  margin-bottom: 2px;
+}
+
+.ledger-timeline__event strong {
+  display: inline-block;
+  margin-bottom: 4px;
+}
+
+.ledger-timeline__event p {
+  margin: 0;
+  font-size: var(--ledger-fs-body);
+  color: var(--ledger-text-base);
+}
+
+/* -------------------------- Appendix -------------------------- */
+
+.ledger-appendix {
+  page-break-before: always;
+  break-before: page;
+  margin-top: 40px;
+}
+
+.ledger-appendix__sql {
+  background: var(--ledger-bg-soft);
+  border: 1px solid var(--ledger-border-default);
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 12px;
+  font-family: 'SF Mono', Menlo, monospace;
+  font-size: var(--ledger-fs-caption);
+  line-height: var(--ledger-lh-caption);
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+.ledger-appendix__sql-purpose {
+  font-size: var(--ledger-fs-micro);
+  color: var(--ledger-text-muted);
+  margin-bottom: 4px;
+}
+
+/* -------------------------- Callout 高亮块 -------------------------- */
+
+.ledger-callout {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 10px;
+  padding: 14px 16px;
+  margin: 16px 0;
+  background: var(--ledger-surface);
+  border-left: 3px solid var(--ledger-accent);
+  border-radius: 4px;
+  break-inside: avoid;
+}
+
+.ledger-callout__icon {
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+.ledger-callout__title {
+  font-weight: 600;
+  color: var(--ledger-text-strong);
+  margin-bottom: 4px;
+}
+
+.ledger-callout__content p:last-child {
+  margin-bottom: 0;
+}
+
+.ledger-callout--insight { border-left-color: var(--ledger-accent); }
+.ledger-callout--warning { border-left-color: var(--ledger-negative); }
+.ledger-callout--success { border-left-color: var(--ledger-positive); }
+.ledger-callout--note { border-left-color: var(--ledger-neutral); }
+
+/* -------------------------- Stat highlight hero 指标 -------------------------- */
+
+.ledger-stat-highlight {
+  margin: 20px 0;
+  padding: 18px 20px;
+  background: var(--ledger-surface);
+  border-radius: 4px;
+  break-inside: avoid;
+}
+
+.ledger-stat-highlight__value {
+  font-size: 44px;
+  line-height: 1.1;
+  font-weight: 700;
+  color: var(--ledger-primary);
+}
+
+.ledger-stat-highlight__label {
+  font-size: var(--ledger-fs-body);
+  color: var(--ledger-text-muted);
+  margin-top: 4px;
+}
+
+.ledger-stat-highlight__context {
+  font-size: var(--ledger-fs-caption);
+  color: var(--ledger-text-faint);
+  margin-top: 2px;
+}
+
+.ledger-stat-highlight__delta {
+  font-size: var(--ledger-fs-caption);
+  margin-top: 6px;
+}
+
+.ledger-stat-highlight__delta--up { color: var(--ledger-positive); }
+.ledger-stat-highlight__delta--down { color: var(--ledger-negative); }
+
+/* -------------------------- Comparison 并列对比卡 -------------------------- */
+
+.ledger-comparison {
+  display: flex;
+  gap: 12px;
+  margin: 16px 0;
+  break-inside: avoid;
+}
+
+.ledger-comparison__item {
+  flex: 1;
+  padding: 14px;
+  background: var(--ledger-bg-card);
+  border: 1px solid var(--ledger-border-default);
+  border-top: 3px solid var(--ledger-accent);
+  border-radius: 4px;
+  text-align: center;
+}
+
+.ledger-comparison__label {
+  font-size: var(--ledger-fs-caption);
+  color: var(--ledger-text-muted);
+  margin-bottom: 6px;
+}
+
+.ledger-comparison__value {
+  font-size: var(--ledger-fs-h2);
+  font-weight: 600;
+  color: var(--ledger-primary);
+}
+
+.ledger-comparison__caption {
+  font-size: var(--ledger-fs-micro);
+  color: var(--ledger-text-faint);
+  margin-top: 4px;
+}
+
+/* -------------------------- Quote pull-quote -------------------------- */
+
+.ledger-quote {
+  margin: 20px 0;
+  padding: 8px 0 8px 20px;
+  border-left: 4px solid var(--ledger-tint-2);
+  break-inside: avoid;
+}
+
+.ledger-quote__text {
+  font-size: var(--ledger-fs-h3);
+  line-height: var(--ledger-lh-h3);
+  color: var(--ledger-text-base);
+  font-style: italic;
+  margin: 0 0 6px;
+}
+
+.ledger-quote__attribution {
+  font-size: var(--ledger-fs-caption);
+  color: var(--ledger-text-muted);
+  font-style: normal;
+}
+
+.ledger-quote__attribution::before {
+  content: '— ';
+}
+
+/* -------------------------- Divider 章节分隔 -------------------------- */
+
+.ledger-divider {
+  border: none;
+  border-top: 1px solid var(--ledger-border-default);
+  margin: 28px 0;
+  break-inside: avoid;
+}
+
+.ledger-divider--labeled {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  border-top: none;
+  gap: 12px;
+}
+
+.ledger-divider--labeled::before,
+.ledger-divider--labeled::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--ledger-border-default);
+}
+
+.ledger-divider__label {
+  font-size: var(--ledger-fs-caption);
+  color: var(--ledger-text-muted);
+  letter-spacing: 0.05em;
+}
+
+/* -------------------------- Table 富单元格 -------------------------- */
+
+.ledger-table td.ledger-cell--bar {
+  position: relative;
+}
+
+.ledger-cell-bar {
+  display: inline-block;
+  width: 60px;
+  height: 8px;
+  background: var(--ledger-bg-soft);
+  border-radius: 2px;
+  overflow: hidden;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+.ledger-cell-bar__fill {
+  display: block;
+  height: 100%;
+  background: var(--ledger-tint-3);
+}
+
+.ledger-cell-bar__label {
+  vertical-align: middle;
+  font-size: var(--ledger-fs-caption);
+  color: var(--ledger-text-base);
+}
+
+.ledger-cell--delta-up { color: var(--ledger-positive); }
+.ledger-cell--delta-down { color: var(--ledger-negative); }
+
+.ledger-cell--heat-1 { background: var(--ledger-tint-1); }
+.ledger-cell--heat-2 { background: var(--ledger-tint-2); }
+.ledger-cell--heat-3 { background: var(--ledger-tint-3); }
+.ledger-cell--heat-4 { background: var(--ledger-tint-4); color: var(--ledger-bg-page); }
+
+/* -------------------------- PDF print rules -------------------------- */
+
+@media print {
+  body {
+    background: white;
+  }
+
+  .ledger-report {
+    max-width: none;
+    padding: 0;
+  }
+
+  h2, h3 {
+    break-after: avoid;
+  }
+
+  .ledger-chart,
+  .ledger-table,
+  .ledger-kpi-strip,
+  .ledger-callout,
+  .ledger-stat-highlight,
+  .ledger-comparison,
+  .ledger-quote {
+    break-inside: avoid;
+  }
+
+  .ledger-table--paged {
+    break-before: page;
+  }
+}
+
+/* -------------------------- Scrollbar -------------------------- */
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ledger-text-faint);
+  background-clip: padding-box;
+  border: 3px solid transparent;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ledger-text-muted);
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-button {
+  display: none;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* -------------------------- 禁用 -------------------------- */
+/* 任何使用 ledger 样式的页面 MUST NOT 引入：
+   - backdrop-filter
+   - rgba 暗色叠层
+   - 高饱和霓虹色
+   - keyframes 装饰动画
+   - border-radius > 4px
+   - bezel 风格 grid 布局
+   违反将导致设计语言失效 — 见 design-language.md 第 9 章
+*/

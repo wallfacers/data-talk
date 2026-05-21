@@ -1,0 +1,463 @@
+package com.datatalk.application.importexport;
+
+import com.datatalk.application.connection.ConnectionService;
+import com.datatalk.application.persistence.ConnectionRecord;
+import com.datatalk.application.persistence.ConnectionRepository;
+import com.datatalk.application.script.ScriptDataWriteService;
+import com.datatalk.application.session.SessionBus;
+import com.datatalk.application.session.SessionBusRegistry;
+import com.datatalk.application.sql.CalciteSqlRiskAnalyzer;
+import com.datatalk.application.sql.SqlStatementSplitters;
+import com.datatalk.domain.event.DtEvent;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+class DataExportServiceTest {
+
+    private DataExportService service;
+    private ScriptDataWriteService writeService;
+    private SessionBusRegistry sessionBusRegistry;
+    private CalciteSqlRiskAnalyzer sqlRiskAnalyzer;
+    private ConnectionRepository connRepo;
+    private ConnectionService connSvc;
+
+    @TempDir
+    Path tempDir;
+
+    @BeforeEach
+    void setUp() {
+        connRepo = mock(ConnectionRepository.class);
+        connSvc = mock(ConnectionService.class);
+        writeService = new ScriptDataWriteService(connRepo, connSvc);
+        sessionBusRegistry = mock(SessionBusRegistry.class);
+        SqlStatementSplitters splitters = (kind, sql) -> List.of(sql);
+        sqlRiskAnalyzer = new CalciteSqlRiskAnalyzer(splitters);
+
+        service = new DataExportService(writeService, sessionBusRegistry, sqlRiskAnalyzer);
+    }
+
+    private ConnectionRecord h2Record(String id, String dbName) {
+        return new ConnectionRecord(id, "Test", "h2", "", 0,
+            dbName, "sa", new byte[0], null, 0, 0, null, null,
+            null, 1, true, null, false, null, null, null);
+    }
+
+    private String setupTestDb(String prefix) throws Exception {
+        String dbName = "mem:" + prefix + System.nanoTime() + ";DB_CLOSE_DELAY=-1";
+        String connId = prefix + "_conn";
+        when(connRepo.findById(connId)).thenReturn(Optional.of(h2Record(connId, dbName)));
+        when(connSvc.decryptPassword(connId)).thenReturn("");
+
+        try (Connection c = DriverManager.getConnection("jdbc:h2:" + dbName, "sa", "")) {
+            c.createStatement().execute("CREATE TABLE TEST_DATA (ID INT, NAME VARCHAR(100), SCORE DOUBLE)");
+            c.createStatement().execute("INSERT INTO TEST_DATA VALUES (1, 'Alice', 95.5), (2, 'Bob', 87.3), (3, 'Charlie', 72.1)");
+        }
+        return connId;
+    }
+
+    @Test
+    void csvSyncExport() throws Exception {
+        String connId = setupTestDb("csv");
+        DataExportService.ExportResult result = service.export(
+            "session1", connId, "SELECT * FROM TEST_DATA", null,
+            "csv", "test-export", null);
+
+        assertThat(result.status()).isEqualTo("completed");
+        assertThat(result.format()).isEqualTo("csv");
+        assertThat(result.exportId()).isNotBlank();
+        assertThat(result.downloadUrl()).contains(result.exportId());
+
+        // Verify file content
+        Path file = service.resolveExportFile(result.exportId());
+        assertThat(file).isNotNull();
+        assertThat(Files.exists(file)).isTrue();
+
+        String content = Files.readString(file);
+        assertThat(content).contains("ID");
+        assertThat(content).contains("NAME");
+        assertThat(content).contains("Alice");
+        assertThat(content).contains("Bob");
+        assertThat(content).contains("Charlie");
+    }
+
+    @Test
+    void jsonSyncExport() throws Exception {
+        String connId = setupTestDb("json");
+        DataExportService.ExportResult result = service.export(
+            "session1", connId, "SELECT * FROM TEST_DATA", null,
+            "json", "test-export", null);
+
+        assertThat(result.status()).isEqualTo("completed");
+        assertThat(result.format()).isEqualTo("json");
+
+        Path file = service.resolveExportFile(result.exportId());
+        assertThat(file).isNotNull();
+        String content = Files.readString(file);
+        assertThat(content).startsWith("[");
+        assertThat(content).contains("\"ID\"");
+        assertThat(content).contains("\"Alice\"");
+        assertThat(content).endsWith("]");
+    }
+
+    @Test
+    void sqlInsertSyncExport() throws Exception {
+        String connId = setupTestDb("sqlins");
+        DataExportService.ExportResult result = service.export(
+            "session1", connId, "SELECT * FROM TEST_DATA", "TEST_DATA",
+            "sql_insert", "test-export", null);
+
+        assertThat(result.status()).isEqualTo("completed");
+        assertThat(result.format()).isEqualTo("sql_insert");
+
+        Path file = service.resolveExportFile(result.exportId());
+        assertThat(file).isNotNull();
+        String content = Files.readString(file);
+        assertThat(content).contains("INSERT INTO");
+        assertThat(content).contains("TEST_DATA");
+        assertThat(content).contains("Alice");
+        // Verify single quotes are escaped
+        assertThat(content).doesNotContain("Alice''");  // Alice has no quotes to escape
+    }
+
+    @Test
+    void sqlInsertEscapesSingleQuotes() throws Exception {
+        String connId = setupTestDb("sqlq");
+        // Insert a row with a single quote
+        try (Connection c = DriverManager.getConnection("jdbc:h2:mem:sqlq" + System.nanoTime() + ";DB_CLOSE_DELAY=-1", "sa", "")) {
+            // Re-setup for this test
+        }
+
+        String dbName = "mem:sqlq" + System.nanoTime() + ";DB_CLOSE_DELAY=-1";
+        when(connRepo.findById("sqlq_conn")).thenReturn(Optional.of(h2Record("sqlq_conn", dbName)));
+        when(connSvc.decryptPassword("sqlq_conn")).thenReturn("");
+
+        try (Connection c = DriverManager.getConnection("jdbc:h2:" + dbName, "sa", "")) {
+            c.createStatement().execute("CREATE TABLE QUOTED_DATA (ID INT, NAME VARCHAR(100))");
+            c.createStatement().execute("INSERT INTO QUOTED_DATA VALUES (1, 'O''Brien')");
+        }
+
+        DataExportService.ExportResult result = service.export(
+            "session1", "sqlq_conn", "SELECT * FROM QUOTED_DATA", "QUOTED_DATA",
+            "sql_insert", "test-quoted", null);
+
+        Path file = service.resolveExportFile(result.exportId());
+        String content = Files.readString(file);
+        assertThat(content).contains("O''Brien");
+    }
+
+    @Test
+    void xlsxSyncExport() throws Exception {
+        String connId = setupTestDb("xlsx");
+        DataExportService.ExportResult result = service.export(
+            "session1", connId, "SELECT * FROM TEST_DATA", null,
+            "xlsx", "test-export", null);
+
+        assertThat(result.status()).isEqualTo("completed");
+        assertThat(result.format()).isEqualTo("xlsx");
+
+        Path file = service.resolveExportFile(result.exportId());
+        assertThat(file).isNotNull();
+        assertThat(Files.exists(file)).isTrue();
+        assertThat(Files.size(file)).isGreaterThan(0);
+        assertThat(file.toString()).endsWith(".xlsx");
+    }
+
+    @Test
+    void nonSelectQueryRejected() {
+        assertThatThrownBy(() -> service.export(
+            "session1", "conn1",
+            "INSERT INTO test_table VALUES (1, 'test')", null,
+            "csv", "test", null))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("QUERY_NOT_READ_ONLY");
+
+        assertThatThrownBy(() -> service.export(
+            "session1", "conn1",
+            "UPDATE test_table SET name='x'", null,
+            "csv", "test", null))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("QUERY_NOT_READ_ONLY");
+
+        assertThatThrownBy(() -> service.export(
+            "session1", "conn1",
+            "DELETE FROM test_table", null,
+            "csv", "test", null))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("QUERY_NOT_READ_ONLY");
+    }
+
+    @Test
+    void tableNameExport() throws Exception {
+        String connId = setupTestDb("tbl");
+        DataExportService.ExportResult result = service.export(
+            "session1", connId, null, "TEST_DATA",
+            "csv", null, null);
+
+        assertThat(result.status()).isEqualTo("completed");
+
+        Path file = service.resolveExportFile(result.exportId());
+        assertThat(file).isNotNull();
+        String content = Files.readString(file);
+        assertThat(content).contains("Alice");
+    }
+
+    @Test
+    void neitherSqlNorTableName_throwsError() {
+        assertThatThrownBy(() -> service.export(
+            "session1", "conn1", null, null, "csv", "test", null))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Either sql or tableName must be provided");
+    }
+
+    @Test
+    void rowLimitWarning() throws Exception {
+        String dbName = "mem:lim" + System.nanoTime() + ";DB_CLOSE_DELAY=-1";
+        String connId = "lim_conn";
+        when(connRepo.findById(connId)).thenReturn(Optional.of(h2Record(connId, dbName)));
+        when(connSvc.decryptPassword(connId)).thenReturn("");
+
+        try (Connection c = DriverManager.getConnection("jdbc:h2:" + dbName, "sa", "")) {
+            c.createStatement().execute("CREATE TABLE BIG_DATA (ID INT)");
+            Statement stmt = c.createStatement();
+            for (int i = 0; i < 20; i++) {
+                stmt.addBatch("INSERT INTO BIG_DATA VALUES (" + i + ")");
+            }
+            stmt.executeBatch();
+        }
+
+        DataExportService.ExportResult result = service.export(
+            "session1", connId, "SELECT * FROM BIG_DATA", null,
+            "csv", "limited", 5);
+
+        assertThat(result.warnings()).isNotEmpty();
+        assertThat(result.warnings().get(0)).contains("limited to 5");
+    }
+
+    @Test
+    void asyncExport_publishesEvent() throws Exception {
+        String dbName = "mem:async" + System.nanoTime() + ";DB_CLOSE_DELAY=-1";
+        String connId = "async_conn";
+        when(connRepo.findById(connId)).thenReturn(Optional.of(h2Record(connId, dbName)));
+        when(connSvc.decryptPassword(connId)).thenReturn("");
+
+        try (Connection c = DriverManager.getConnection("jdbc:h2:" + dbName, "sa", "")) {
+            c.createStatement().execute("CREATE TABLE ASYNC_DATA (ID INT, NAME VARCHAR(100))");
+            Statement stmt = c.createStatement();
+            for (int i = 0; i < 15_000; i++) {
+                stmt.addBatch("INSERT INTO ASYNC_DATA VALUES (" + i + ", 'name" + i + "')");
+            }
+            stmt.executeBatch();
+        }
+
+        SessionBus mockBus = mock(SessionBus.class);
+        when(sessionBusRegistry.getOrCreate("session1")).thenReturn(mockBus);
+
+        DataExportService.ExportResult result = service.export(
+            "session1", connId, "SELECT * FROM ASYNC_DATA", null,
+            "csv", "async-export", 15000);
+
+        assertThat(result.status()).isEqualTo("processing");
+
+        // Wait for async export to complete (up to 10s)
+        Path file = null;
+        for (int i = 0; i < 100; i++) {
+            file = service.resolveExportFile(result.exportId());
+            if (file != null && Files.exists(file) && Files.size(file) > 0) break;
+            Thread.sleep(100);
+        }
+        assertThat(file).isNotNull();
+
+        // Allow some time for the virtual thread to publish the event
+        Thread.sleep(500);
+        verify(mockBus).publish(any(DtEvent.ExportCompleted.class));
+    }
+
+    // ── Stream-data export path (`/api/exports/data`) ────────────────────
+
+    @Test
+    void validateStreamExport_acceptsSmallPayload() {
+        assertThat(service.validateStreamExport(100, "csv")).isNull();
+        assertThat(service.validateStreamExport(100, "xlsx")).isNull();
+        assertThat(service.validateStreamExport(100, "json")).isNull();
+        assertThat(service.validateStreamExport(100, "sql_insert")).isNull();
+    }
+
+    @Test
+    void validateStreamExport_rejectsUnsupportedFormat() {
+        DataExportService.StreamExportRejection r = service.validateStreamExport(1, "parquet");
+        assertThat(r).isNotNull();
+        assertThat(r.httpStatus()).isEqualTo(400);
+        assertThat(r.errorCode()).isEqualTo("UNSUPPORTED_FORMAT");
+    }
+
+    @Test
+    void validateStreamExport_rejectsOverInMemoryLimit() {
+        DataExportService.StreamExportRejection r =
+            service.validateStreamExport(DataExportService.STREAM_DATA_MAX_ROWS + 1, "csv");
+        assertThat(r).isNotNull();
+        assertThat(r.httpStatus()).isEqualTo(413);
+        assertThat(r.errorCode()).isEqualTo("ROW_LIMIT_EXCEEDED");
+    }
+
+    @Test
+    void exportToStream_csvWritesBomAndRows() throws Exception {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        service.exportToStream(
+            List.of("id", "name"),
+            Arrays.asList(
+                Arrays.asList("1", "Alice"),
+                Arrays.asList("2", "Bob")
+            ),
+            "csv", "orders", baos);
+
+        String content = baos.toString(StandardCharsets.UTF_8);
+        // UTF-8 BOM
+        assertThat(content.charAt(0)).isEqualTo('﻿');
+        assertThat(content).contains("id,name");
+        assertThat(content).contains("1,Alice");
+        assertThat(content).contains("2,Bob");
+    }
+
+    @Test
+    void exportToStream_jsonEmitsNullForActualNullCells() throws Exception {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        service.exportToStream(
+            List.of("id", "name"),
+            Arrays.asList(Arrays.asList("1", null)),
+            "json", "t", baos);
+
+        String content = baos.toString(StandardCharsets.UTF_8);
+        // Null cell must emit JSON `null`, not the string "null"
+        assertThat(content).contains("\"name\": null");
+    }
+
+    @Test
+    void exportToStream_sqlInsertEmitsNullKeyword() throws Exception {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        service.exportToStream(
+            List.of("id", "name"),
+            Arrays.asList(Arrays.asList("1", null)),
+            "sql_insert", "users", baos);
+
+        String content = baos.toString(StandardCharsets.UTF_8);
+        assertThat(content).startsWith("INSERT INTO \"users\"");
+        assertThat(content).contains("(\'1\', NULL)");
+    }
+
+    @Test
+    void exportToStream_xlsxSkipsNullCells() throws Exception {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        service.exportToStream(
+            List.of("id", "name"),
+            Arrays.asList(
+                Arrays.asList("1", "Alice"),
+                Arrays.asList("2", null)
+            ),
+            "xlsx", "orders", baos);
+
+        byte[] bytes = baos.toByteArray();
+        // XLSX is a ZIP archive — verify PK header
+        assertThat(bytes[0]).isEqualTo((byte) 0x50);
+        assertThat(bytes[1]).isEqualTo((byte) 0x4B);
+
+        // SXSSF writes inline strings into the sheet XML rather than shared strings.
+        // Inspect sheet1.xml directly to assert Alice is present and "NULL" is not (the
+        // regression we are guarding: nulls were rendered as the literal text "NULL").
+        Path tmpXlsx = Files.createTempFile(tempDir, "test", ".xlsx");
+        Files.write(tmpXlsx, bytes);
+        String sheetXml = readZipEntry(tmpXlsx, "xl/worksheets/sheet1.xml");
+        assertThat(sheetXml).contains("Alice");
+        assertThat(sheetXml).doesNotContain(">NULL<");
+    }
+
+    private static String readZipEntry(Path zipFile, String entryName) throws Exception {
+        try (ZipFile zf = new ZipFile(zipFile.toFile())) {
+            ZipEntry entry = zf.getEntry(entryName);
+            if (entry == null) return "";
+            try (var is = zf.getInputStream(entry)) {
+                return new String(is.readAllBytes(), StandardCharsets.UTF_8);
+            }
+        }
+    }
+
+    @Test
+    void exportToStream_unsupportedFormat_throws() {
+        assertThatThrownBy(() -> service.exportToStream(
+            List.of("id"), List.of(List.of("1")), "parquet", "t", new ByteArrayOutputStream()))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported format");
+    }
+
+    @Test
+    void buildStreamExportFilename_appendsCorrectExtension() {
+        assertThat(service.buildStreamExportFilename("orders", "csv")).endsWith(".csv");
+        assertThat(service.buildStreamExportFilename("orders", "xlsx")).endsWith(".xlsx");
+        assertThat(service.buildStreamExportFilename("orders", "json")).endsWith(".json");
+        assertThat(service.buildStreamExportFilename("orders", "sql_insert")).endsWith(".sql");
+    }
+
+    // ── Dialect-aware identifier quoting (BUG-0066) ──────────────────────
+
+    /**
+     * SQL INSERT export from a MySQL source MUST emit backtick-quoted identifiers so the file can
+     * be reloaded into the same MySQL instance via {@code datatalk_import_data} without hitting
+     * the default sql_mode rejection of ANSI double-quote identifiers. Uses H2 underneath for I/O
+     * but flips the resolved kind to "mysql" to exercise the dispatch.
+     */
+    @Test
+    void sqlInsertExport_mysqlSource_emitsBacktickQuotedIdentifiers() throws Exception {
+        String dbName = "mem:exp_mysql" + System.nanoTime() + ";DB_CLOSE_DELAY=-1";
+        when(connRepo.findById("c_mys")).thenReturn(Optional.of(h2Record("c_mys", dbName)));
+        when(connSvc.decryptPassword("c_mys")).thenReturn("");
+        try (Connection c = DriverManager.getConnection("jdbc:h2:" + dbName, "sa", "")) {
+            c.createStatement().execute("CREATE TABLE TD_ORDERS (ID INT, NAME VARCHAR(100))");
+            c.createStatement().execute("INSERT INTO TD_ORDERS VALUES (1, 'Alice'), (2, 'Bob')");
+        }
+
+        ScriptDataWriteService spied = spy(writeService);
+        doReturn("mysql").when(spied).resolveKind(anyString());
+        doAnswer(inv -> DriverManager.getConnection("jdbc:h2:" + dbName, "sa", ""))
+            .when(spied).openConnection(anyString());
+        DataExportService mysqlService = new DataExportService(spied, sessionBusRegistry, sqlRiskAnalyzer);
+
+        DataExportService.ExportResult result = mysqlService.export(
+            "session1", "c_mys", "SELECT * FROM TD_ORDERS", "TD_ORDERS",
+            "sql_insert", "test-mysql", null);
+
+        Path file = mysqlService.resolveExportFile(result.exportId());
+        assertThat(file).isNotNull();
+        String content = Files.readString(file);
+        assertThat(content)
+            .as("MySQL source export MUST use backtick identifiers, not ANSI double-quote")
+            .contains("INSERT INTO `TD_ORDERS`")
+            .contains("`ID`")
+            .contains("`NAME`")
+            .doesNotContain("\"TD_ORDERS\"");
+    }
+}

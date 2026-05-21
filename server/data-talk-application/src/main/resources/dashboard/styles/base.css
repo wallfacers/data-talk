@@ -1,0 +1,228 @@
+/* === Bezel Dashboard Base Styles === */
+/* Dark theme defaults + layout utilities */
+
+:root {
+  --bg-body: #0a0a1a;
+  --bg-card: #12122a;
+  --bg-slot: #0e0e22;
+  --text-primary: #e0e0e0;
+  --text-secondary: #a0a0b8;
+  --text-muted: #6a6a80;
+  --accent-primary: #7c4dff;
+  --accent-secondary: #b388ff;
+  --border-color: rgba(124, 77, 255, 0.2);
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", Menlo, Monaco, Consolas, monospace;
+}
+
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: var(--bg-body);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* --- Container --- */
+
+.bezel {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* --- Slot --- */
+
+.slot {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.slot:empty {
+  display: none;
+  margin: 0;
+  padding: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+/* --- Widget --- */
+
+.widget {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 16px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.widget-title {
+  font-size: 11px;
+  font-variant: small-caps;
+  letter-spacing: 0.08em;
+  text-transform: lowercase;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.widget-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* --- ECharts Container --- */
+
+.echarts-container,
+.chart-container,
+[id^="chart-"] {
+  width: 100%;
+  height: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* --- Data Table (polled into table widgets) --- */
+
+.widget-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.widget-table th,
+.widget-table td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.widget-table th {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+/* --- Utility Classes --- */
+
+.text-primary   { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+.text-muted     { color: var(--text-muted); }
+.text-accent    { color: var(--accent-primary); }
+
+.bg-card { background: var(--bg-card); }
+.bg-slot { background: var(--bg-slot); }
+
+.flex-row    { display: flex; flex-direction: row; }
+.flex-col    { display: flex; flex-direction: column; }
+.flex-center { display: flex; align-items: center; justify-content: center; }
+.flex-1      { flex: 1 1 auto; min-width: 0; min-height: 0; }
+
+.gap-sm  { gap: 8px; }
+.gap-md  { gap: 16px; }
+.gap-lg  { gap: 24px; }
+
+.p-sm  { padding: 8px; }
+.p-md  { padding: 16px; }
+.p-lg  { padding: 24px; }
+
+.overflow-hidden { overflow: hidden; }
+.overflow-auto   { overflow: auto; }
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- Degradation Message --- */
+
+.degradation-msg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* --- KPI Value --- */
+
+.kpi-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.kpi-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.kpi-change-up {
+  color: var(--accent-secondary);
+}
+
+.kpi-change-down {
+  color: #ef5350;
+}
+
+/* --- Responsive --- */
+
+@media (max-width: 768px) {
+  .bezel {
+    flex-direction: column;
+  }
+
+  .widget {
+    padding: 12px;
+  }
+
+  .kpi-value {
+    font-size: 22px;
+  }
+}
+
+@media (max-width: 480px) {
+  .widget {
+    padding: 8px;
+    border-radius: 4px;
+  }
+
+  .widget-title {
+    font-size: 10px;
+    margin-bottom: 8px;
+  }
+
+  .kpi-value {
+    font-size: 18px;
+  }
+}

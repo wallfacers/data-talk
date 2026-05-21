@@ -1,0 +1,17 @@
+[
+  "SELECT",
+  "INSERT",
+  "UPDATE",
+  "DELETE",
+  "WITH",
+  "CREATE",
+  "ALTER",
+  "DROP",
+  "TRUNCATE",
+  "MERGE",
+  "EXPLAIN",
+  "CALL",
+  "BEGIN",
+  "COMMIT",
+  "ROLLBACK"
+]

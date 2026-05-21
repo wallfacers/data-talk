@@ -1,0 +1,121 @@
+name: ecommerce
+version: 1
+description: "通用电商语义模型 — orders / users / products 三域，覆盖 GMV / AOV / 复购率 / 留存等核心指标"
+last_modified: "2026-05-15T00:00:00Z"
+authored_by: user_authored
+
+entities:
+  - name: order
+    type: primary
+    physical:
+      table: orders
+    primary_key: ["id"]
+    description: "订单主实体"
+  - name: user
+    type: primary
+    physical:
+      table: users
+    primary_key: ["id"]
+    description: "用户主实体"
+  - name: product
+    type: primary
+    physical:
+      table: products
+    primary_key: ["id"]
+    description: "商品主实体"
+
+dimensions:
+  - name: order_status
+    entity: order
+    expr: status
+    type: categorical
+    label_zh: "订单状态"
+    label_en: "Order Status"
+  - name: order_date
+    entity: order
+    expr: created_at
+    type: time
+    time_granularity: day
+    label_zh: "下单日期"
+    label_en: "Order Date"
+  - name: order_month
+    entity: order
+    expr: "DATE_TRUNC('month', created_at)"
+    type: time
+    time_granularity: month
+    label_zh: "下单月份"
+    label_en: "Order Month"
+  - name: user_registration_date
+    entity: user
+    expr: registered_at
+    type: time
+    time_granularity: day
+    label_zh: "注册日期"
+    label_en: "Registration Date"
+  - name: product_category
+    entity: product
+    expr: category
+    type: categorical
+    label_zh: "商品类目"
+    label_en: "Product Category"
+
+measures:
+  - name: order_amount
+    entity: order
+    agg: sum
+    expr: amount
+    filter: "status != 'REFUNDED'"
+    label_zh: "订单金额"
+    label_en: "Order Amount"
+  - name: order_count
+    entity: order
+    agg: count
+    expr: id
+    label_zh: "订单数"
+    label_en: "Order Count"
+  - name: paid_order_count
+    entity: order
+    agg: count
+    expr: id
+    filter: "status = 'PAID'"
+    label_zh: "已支付订单数"
+    label_en: "Paid Order Count"
+  - name: user_count
+    entity: user
+    agg: count_distinct
+    expr: id
+    label_zh: "用户数"
+    label_en: "User Count"
+  - name: product_count
+    entity: product
+    agg: count_distinct
+    expr: id
+    label_zh: "商品SKU数"
+    label_en: "Product SKU Count"
+
+metrics:
+  - name: gmv
+    type: derived
+    base: order_amount
+    label_zh: "销售额(GMV)"
+    label_en: "GMV"
+  - name: aov
+    type: ratio
+    numerator: order_amount
+    denominator: order_count
+    label_zh: "客单价"
+    label_en: "AOV"
+  - name: repurchase_rate
+    type: ratio
+    numerator: paid_order_count
+    denominator: user_count
+    label_zh: "复购率"
+    label_en: "Repurchase Rate"
+
+literal_mappings:
+  order_status:
+    已支付: PAID
+    已完成: COMPLETED
+    已退款: REFUNDED
+    待支付: PENDING
+    已取消: CANCELLED

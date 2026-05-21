@@ -1,0 +1,13 @@
+/* === Bezel Theme: E-Commerce === */
+
+.bezel[data-theme="industry-ecommerce"] {
+  --accent-primary: #ff6b35;
+  --accent-secondary: #ffa726;
+  --bg-body: #0f0c14;
+  --bg-card: #1a1520;
+  --bg-slot: #14101a;
+  --border-color: rgba(255, 107, 53, 0.2);
+  --text-primary: #f0e6d8;
+  --text-secondary: #c4b8a8;
+  --text-muted: #8a7e70;
+}

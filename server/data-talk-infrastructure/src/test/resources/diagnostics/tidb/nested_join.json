@@ -1,0 +1,9 @@
+[
+  {"id": "HashJoin_12", "estRows": "1000", "task": "root", "access object": "", "operator info": "inner join, equal:[eq(test.orders.user_id, test.users.id)]"},
+  {"id": "├─TableReader_7(Build)", "estRows": "50", "task": "root", "access object": "", "operator info": "data:Selection_6"},
+  {"id": "│ └─Selection_6", "estRows": "50", "task": "cop[tikv]", "access object": "", "operator info": "eq(test.users.status, \"active\")"},
+  {"id": "│   └─TableFullScan_5", "estRows": "100", "task": "cop[tikv]", "access object": "table:users", "operator info": "keep order:false"},
+  {"id": "└─TableReader_11(Probe)", "estRows": "500", "task": "root", "access object": "", "operator info": "data:Selection_10"},
+  {"id": "  └─Selection_10", "estRows": "500", "task": "cop[tikv]", "access object": "", "operator info": "gt(test.orders.amount, 100)"},
+  {"id": "    └─TableFullScan_9", "estRows": "2000", "task": "cop[tikv]", "access object": "table:orders", "operator info": "keep order:false"}
+]

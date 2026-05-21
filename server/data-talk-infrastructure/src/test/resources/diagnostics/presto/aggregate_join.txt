@@ -1,0 +1,7 @@
+- Output[region_id, sum_sales]
+  - Aggregate(FINAL)
+    - RemoteExchange[FULL]
+  - Aggregate(PARTIAL)
+    - Join[INNER]
+      - TableScan[hive:default.orders]
+      - TableScan[hive:default.customers]

@@ -1,0 +1,21 @@
+STAGE DEPENDENCIES:
+  Stage-0 is a root stage
+
+STAGE PLANS:
+  Stage: Stage-0
+    Map Reduce
+      Map Operator Tree:
+        TableScan
+          alias: users
+          Statistics: Num rows: 50000, Data size: 2000000
+          Filter Operator
+            predicate: age > 18 (type: boolean)
+            Statistics: Num rows: 30000
+            Select Operator
+              expressions: id (type: int), name (type: string), email (type: string)
+              outputColumnNames: id, name, email
+              Statistics: Num rows: 30000
+              File Output Operator
+                compressed: false
+                Statistics: Num rows: 30000
+                table: output

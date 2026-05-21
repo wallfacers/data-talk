@@ -1,9 +1,68 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
-import App from "./App";
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import { RouterProvider, createRouter } from '@tanstack/react-router'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { routeTree } from './routeTree.gen'
+import { queryClient } from './lib/query-client'
+import { registerBuiltInRenderers } from '@/features/chat/components/tools/renderers'
+import { installMonacoLocaleSync } from '@/features/stage/components/monaco-locale'
+import { startStagePersistence } from '@/features/stage/persistence/stage-persistence-bootstrap'
+import { I18nProvider } from '@/i18n/provider'
+import { useStageStore } from '@/stores/stage-store'
+import { useErTabsStore } from '@/features/stage/stores/er-tabs-store'
+import { useSessionStore } from '@/stores/session-store'
+import { coordinator } from '@/features/stage/persistence/stage-persistence-bootstrap'
+import './styles/globals.css'
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-);
+registerBuiltInRenderers()
+installMonacoLocaleSync()
+
+// Start stage tab persistence hydration (non-blocking)
+startStagePersistence().catch(() => {
+  // Hydration failure is non-fatal — the coordinator enters degraded mode
+  // and the app continues with in-memory-only tab state.
+})
+
+import { useDashboardTabsStore } from '@/features/dashboard/stores/dashboard-tabs-store'
+import { DashboardBlock } from '@/features/chat/components/markdown/dashboard-block'
+import * as React from 'react'
+import * as ReactDOM from 'react-dom/client'
+
+// Dev-only: expose Zustand stores to Playwright E2E tests
+if (import.meta.env.DEV || import.meta.env.MODE === 'test') {
+  ;(window as any).__DT_E2E__ = {
+    stage: () => useStageStore.getState(),
+    er: () => useErTabsStore.getState(),
+    session: () => useSessionStore.getState(),
+    coordinator: () => coordinator,
+    dashboard: () => useDashboardTabsStore.getState(),
+  }
+  // Expose React, ReactDOM, DashboardBlock, and I18nProvider for inline component mounting in E2E tests
+  ;(window as any).reactForE2E = React
+  ;(window as any).reactDOMForE2E = ReactDOM
+  ;(window as any).dashboardBlockForE2E = { DashboardBlock }
+  ;(window as any).i18nForE2E = { I18nProvider }
+}
+
+const router = createRouter({ routeTree })
+
+declare module '@tanstack/react-router' {
+  interface Register {
+    router: typeof router
+  }
+}
+
+const rootElement = document.getElementById('root')
+if (!rootElement) {
+  throw new Error('Root element #root not found')
+}
+
+createRoot(rootElement).render(
+  <StrictMode>
+    <I18nProvider>
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    </I18nProvider>
+  </StrictMode>,
+)

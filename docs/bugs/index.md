@@ -1,0 +1,171 @@
+# BUG 索引
+
+DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看。
+
+## 写作协议
+
+新建 / 修改 BUG 文档前，**MUST** 先读 [README.md](README.md)（模板、字段语义、状态流转、index.md 同步清单）。
+
+## 当前编号
+
+下一个分配 ID：**BUG-0087**（永不复用，单调递增）
+
+## Open BUGs（按 priority 倒序，P0 → P2）
+
+| ID | Title | Status | Priority | Owner |
+|----|-------|--------|----------|-------|
+| [BUG-0084](BUG-0084-bezel-incremental-hot-update-unwired.md) | Bezel 增量热更新链路未接通（客户端忽略 changes + Differ 丢 chartSemantics/query），靠整页重载兜底 | fixed | P2 | bezel-compiler-redesign |
+| [BUG-0079](BUG-0079-attach-file-on-unpersisted-draft-session-500-fk.md) | 开始页草稿会话未持久化时上传附件触发 500（uploaded_file 外键失败），chip 显示 Internal Server Error | fixed | P1 | — (pending) |
+
+## E2E 验证记录
+
+| 日期 | Change | 发现 BUG 数 | 备注 |
+|---|---|---|---|
+| 2026-05-19 | report-document-generation | 1 | 发现 BUG-0073（CORS 字体加载）。验证通过：AI chat→promote→Report Library→Report Viewer 完整链路。PDF/MD 状态均为 ready。CORS BUG 不影响 PDF 生成。 |
+| 2026-05-20 | ledger-report-quality-fixes | 1 | §8 E2E（fixture report HTML + sandbox iframe）发现 BUG-0077（TOC 锚点 base-href 冲突）。验证通过：cover sanitize ✓、CORS ✓、TOC HTML 渲染 ✓；TOC 点击跳转 ✗（修复并入本 change）。 |
+| 2026-05-20 | no-extension-file-upload-support | 1 | 无后缀可读文件上传支持。Happy path E2E 通过（持久化会话内上传 `create_test` → 200，`uploaded_file`: text/x-sql 落库，前端 chip 不再报"不支持的文件类型"）。旁路发现 BUG-0079（草稿会话附件上传 500 FK，与本 change 无关）。 |
+| 2026-05-21 | question-tool-bridge | 1 | §8.1 E2E 全链路通过：触发 AI `question` → QuestionDock 取代输入框 → 选「是」即提交 → turn 继续（AI 回复）→ composer 恢复 → CTRL+R 重建会话正常。发现并就地修复 BUG-0080（完成态 question 卡未注册自定义渲染器，回退 GenericTool）。 |
+| 2026-05-21 | 独立复验 BUG-0080/0081/0082/0083 | 1 | 后端 `mvn install -pl data-talk-adapter -am` 重建 + 重启（运行进程原为重设计前旧 jar）。新 promote 大屏 `dash_eaj4eeze`（KPI+chart+table，H2 常量 SELECT）：console 0 错误（0081 ✓）、3 widget data 全 POST→200 无 405（0082 ✓）、首次取数 + KPI=1248/表格 2 行/chart canvas 渲染（0083 ✓）；question 工具触发→作答→完成卡片标题=问题文本、内容=label「继续生成」、CTRL+R 后保持（0080 ✓）。4 个 BUG 推进 verified。旁路发现 BUG-0085（存量模板大屏走遗留内联脚本，数据形状不匹配，KPI 停在 ---）。 |
+| 2026-05-21 | QuestionDock 对齐 OpenCode（方案 B） | 1 | 发现并修复 BUG-0086（单问题单选走自定义输入无提交入口卡死）。E2E：触发 AI `question` 单问题 5 选项+自定义 → Submit 按钮常驻可见（修复前隐藏）→ 选「自定义输入」输入「年度复盘报告，覆盖2026全年」→ 点 Submit → QuestionDock 消失、console 0 错误 → turn 继续（AI 回复「好的，年度复盘报告…接下来请告诉我…」）。 |
+| 2026-05-21 | bezel-compiler-redesign | 2 | 全链路 E2E 通过（浏览器实跑，重装 jar + 重启后）：promote 4-widget 大屏（kpi/bar/pie/table，H2 常量 SELECT），/html 渲染——KPI=1280+trend、柱状(Mon-Fri)、饼图(App/Web/Store)、表格 3 行全部带数据；无 CSP 错误（仅 favicon 404）；POST /update 改 KPI→2000，version 升 2，重载反映 2000+down（多轮更新经整页重载）。发现并修复 BUG-0082（GET vs POST 405）、BUG-0083（toWidget 丢 query/refresh + defaultIntervalMs 不下传 + 无首次取数 → 数据永不加载）。map 缺 geoJSON 记 TD-034；客户端 widget/update postMessage 热更新链路未接通（BUG-0083 内记，靠整页重载兜底）。 |
+
+## In Progress（status = investigating | fixed 等待 verify）
+
+| ID | Title | Status | Priority | Owner |
+|----|-------|--------|----------|-------|
+| [BUG-0086](BUG-0086-question-dock-custom-input-no-submit-in-single-question.md) | QuestionDock 单问题单选场景走自定义输入无提交入口（流程卡死） | fixed | P1 | — (pending) |
+| [BUG-0078](BUG-0078-rail-resize-handle-stale-gap-and-misaligned-divider.md) | 报告库 tab 下 rail 右边出现 4px 米灰条 + hover 分割线瞬时显双线（resize handle 几何错位） | fixed | P2 | — (pending) |
+| [BUG-0077](BUG-0077-report-toc-anchor-base-href-conflict.md) | 报告 TOC 锚点点击后跳转到 _assets/ 404（`<base href>` 解析冲突） | fixed | P1 | — (pending) |
+| [BUG-0076](BUG-0076-report-viewer-blank-after-ctrl-r.md) | Ctrl+R 刷新后报告详情 tab 显示空白页 | fixed | P1 | — (pending) |
+| [BUG-0075](BUG-0075-report-viewer-iframe-double-load.md) | Report Viewer iframe 在打开时重复加载 2-3 次 | fixed | P2 | — (pending) |
+| [BUG-0074](BUG-0074-report-iframe-scrollbar-arrow-buttons.md) | 报告 iframe 内滚动条正三角/倒三角按钮未隐藏 | fixed | P2 | — (d03b26bd) |
+| [BUG-0073](BUG-0073-report-font-cors-blocked-in-iframe.md) | Report Viewer iframe 字体 CORS 加载失败 | fixed | P1 | — (45e9b44e + 6fc75c0b) |
+| [BUG-0072](BUG-0072-import-data-no-database-selected.md) | datatalk_import_data 不解析 session_data_context 的 database，server-level 连接报 "No database selected" | fixed | P1 | — (9d0a8e28) |
+| [BUG-0071](BUG-0071-stage-close-flash-horizontal-scrollbar.md) | 关闭工作台动效中，chat 列 composer 外壳闪过一条水平滚动条 | fixed | P2 | — (c9255ebd) |
+| [BUG-0070](BUG-0070-execute-sql-bulk-bypass-import-data.md) | AI 通过 datatalk_execute_sql 直传大批量 SQL，绕过 datatalk_import_data 引爆 token 与失败重试（BUG-0065/0067/0069 终结性硬契约修法） | fixed | P1 | — (61923d3b) |
+| [BUG-0069](BUG-0069-sql-file-import-routing-bypassed-via-file-read-execute-sql.md) | 20KB INSERT-only SQL 文件被 file_read + execute_sql 绕过 datatalk_import_data 路由（BUG-0065/0067 同族：专用合同工具被通用拼装路径绕过） | fixed | P2 | — (2ab9039f) |
+| [BUG-0068](BUG-0068-user-bubble-content-flash-on-promote.md) | 用户气泡内容"展示→消失→再展示"——promotePendingUser 清空 parts 制造空白帧（BUG-0056 修复后回归） | fixed | P1 | — (pending) |
+| [BUG-0067](BUG-0067-script-run-direct-db-connect-misuse.md) | data-collection skill 未禁止脚本直连 DB，LLM 走 pymysql / mysql.connector 错误退路，违反 backend write API 合同 | fixed | P2 | — (2ab9039f) |
+| [BUG-0066](BUG-0066-identifier-quoting-not-dialect-aware.md) | 数据移动 4 处 quoteIdentifier 硬编码 ANSI 双引号，MySQL 默认 sql_mode 下 import_data / cross-DB copy / 导出回灌 / undo log 全崩 | fixed | P1 | — (2ab9039f) |
+| [BUG-0065](BUG-0065-pre-action-protocol-bypassed-via-ui-exec-path.md) | LLM 用 datatalk_ui_exec 把 SQL 推到编辑器时绕过 Pre-Action Exploration Protocol，从未对不存在表做 schema_search | fixed | P2 | — (eb1ef5a8) |
+| [BUG-0064](BUG-0064-chart-artifact-rendered-twice-when-llm-also-embeds-echarts-block.md) | render_chart artifact 与 markdown echarts 代码块同时渲染，导致同一图被画两次且能力不一致 | fixed | P2 | — (eb1ef5a8) |
+| [BUG-0060](BUG-0060-mcp-image-served-as-text-content.md) | MCP file_read 把 image data URI 塞进 text content，模型只看到 base64 字符串 | fixed | P0 | — (pending) |
+| [BUG-0055](BUG-0055-bezel-scheduler-no-type-aware-init.md) | bezel polling scheduler 对所有 widget 无差别 echarts.init,且 chart 缺首屏 base option | fixed | P1 | — (562fe466) |
+| [BUG-0054](BUG-0054-composer-restore-on-send-failure-resurrects-draft.md) | AI 发送失败后输入框被回填，且草稿写回 localStorage，CTRL+R 仍能复活已发送内容 | fixed | P1 | — (pending) |
+| [BUG-0053](BUG-0053-bezel-ai-widget-id-too-short-and-zod-error-unhelpful.md) | bezel AI 生成 widget id 后缀过短被前端 Zod 拒，且错误提示无法定位字段 | fixed | P1 | — (d99f008f) |
+| [BUG-0052](BUG-0052-long-session-empty-canvas-streaming-flag-race.md) | 重新打开 streaming=busy 的会话时历史消息全空，根因是 streaming flag 与 history fetch 的并发竞争 | fixed | P1 | — (ad7c6a2b) |
+| [BUG-0051](BUG-0051-dashboard-iframe-long-blank-screen.md) | Dashboard tab iframe 加载长时间白屏（loader 早卸 + 外网 CDN） | fixed | P1 | — (pending) |
+| [BUG-0050](BUG-0050-dashboard-json-widgets-skeleton-only-no-data.md) | 大屏 JSON 模式 widget 仅渲染骨架，未调接口取数 + 文本乱码 | fixed | P1 | — (pending) |
+| [BUG-0049](BUG-0049-bezel-dashboard-html-chinese-garbled.md) | bezel 大屏 HTML iframe 内中文字符显示乱码 | fixed | P2 | — (pending) |
+| [BUG-0035](BUG-0035-dialog-bg-canvas-typo-causes-transparent-background.md) | 数据源/凭据管理设置页删除弹框背景半透明，bg-canvas 类拼写错误 | fixed | P2 | — |
+| [BUG-0013](BUG-0013-http-request-null-output-fields.md) | http_request action returns null for required output fields causing schema validation failure | fixed | P1 | — |
+| [BUG-0014](BUG-0014-ssrf-deny-list-not-blocking-169-254.md) | SSRF deny list not blocking 169.254.169.254 with e2e profile | fixed | P1 | — |
+| [BUG-0015](BUG-0015-oversized-payload-not-marked-failed.md) | Oversized payload not marked as failed with INGESTION_PAYLOAD_TOO_LARGE | fixed | P1 | — |
+| [BUG-0017](BUG-0017-http-request-missing-payload-format.md) | http_request action output missing `payloadFormat` field | fixed | P1 | — |
+| [BUG-0018](BUG-0018-basic-auth-not-base64.md) | Basic auth header sent cleartext instead of Base64-encoded | fixed | P0 | — |
+| [BUG-0019](BUG-0019-page-pagination-ignores-hasmore.md) | PAGE pagination ignores `hasMore` termination signal | fixed | P1 | — |
+| [BUG-0020](BUG-0020-offset-pagination-ignores-nextoffset.md) | OFFSET pagination ignores `nextOffset=null` termination | fixed | P1 | — |
+| [BUG-0021](BUG-0021-cursor-pagination-missing-next-key.md) | CURSOR pagination misses top-level `next` key | fixed | P1 | — |
+| [BUG-0022](BUG-0022-csv-html-parsers-no-coercion.md) | CSV / HTML parsers emit raw strings — no numeric / boolean coercion | fixed | P1 | — |
+| [BUG-0023](BUG-0023-integer-64-promotion-gap.md) | `INTEGER_64` promotion gap for values > 2^31 | fixed | P2 | — |
+| [BUG-0024](BUG-0024-upstream-401-not-mapped-to-auth-failed.md) | Upstream 401 → `INGESTION_FETCH_FAILED` instead of `INGESTION_AUTH_FAILED` | fixed | P1 | — |
+| [BUG-0025](BUG-0025-infer-type-lowercase-mismatch.md) | `infer_ingestion_schema` emits lowercase `type` instead of canonical enum name | fixed | P1 | — |
+| [BUG-0026](BUG-0026-html-fetch-throws-unsupported.md) | `http_request` with `payloadFormat=html` throws `UnsupportedOperationException` | fixed | P1 | — |
+| [BUG-0027](BUG-0027-pagination-top-level-aliases-ignored.md) | `http_request` ignores top-level pagination shortcuts (`param`/`initial`/`pageSize`) | fixed | P1 | — |
+| [BUG-0028](BUG-0028-tabular-source-path-missing-dollar.md) | CSV / HTML parsers emit `sourcePath = <header>` instead of `$.<header>` | fixed | P2 | — |
+| [BUG-0029](BUG-0029-confirm-status-violates-check-constraint.md) | `POST /jobs/{id}/confirm` HTTP 500 — `status='confirmed'` violates CHECK constraint | fixed | P0 | — |
+| [BUG-0030](BUG-0030-confirm-missing-mapping-gate.md) | `confirm` 缺 mapping / terminal-state 校验，可对未 infer 或已 cancelled job 发 token | fixed | P1 | — |
+| [BUG-0031](BUG-0031-action-output-schema-rejects-null-and-missing-errorcode.md) | `create_ingestion_table` / `ingest_payload` 输出 schema 拒 null + 缺顶层 `errorCode`，吞掉根因 | fixed | P1 | — |
+| [BUG-0032](BUG-0032-h2-fixture-uses-database-not-databasename.md) | `seedH2Connection` fixture 字段名笔误 → H2 fallback `mem:test` 全测试共享 | fixed | P1 | — |
+| [BUG-0033](BUG-0033-json-jsonl-nullable-only-on-all-null.md) | JSON/JSONL parser 只在全 null 时标 nullable，单元素 null 触发 DDL NOT NULL → INSERT 失败 | fixed | P1 | — |
+| [BUG-0034](BUG-0034-executesql-fixture-missing-source.md) | `executeSql` fixture 缺 `source` → 后端 `validateSource` 抛 400 | fixed | P2 | — |
+| [BUG-0036](BUG-0036-skills-extracted-to-wrong-cwd-not-found-by-opencode.md) | bezel / data-ingestion skill 解压到 JVM cwd 而非 OpenCode 进程 cwd，OpenCode 找不到 skill | fixed | P1 | — |
+| [BUG-0037](BUG-0037-ctrl-r-during-streaming-flips-stop-button-to-send.md) | AI streaming 期间 CTRL+R 让转圈停止按钮误回"待发送"态 | fixed | P1 | — |
+| [BUG-0038](BUG-0038-replay-idle-on-resubscribe-clears-streaming-flag.md) | CTRL+R 后 GET /subscribe 重放历史 session.idle 立刻清空 streamingBySession（BUG-0037 残留路径） | fixed | P1 | — |
+| [BUG-0039](BUG-0039-composer-draft-sync-write-wrong-schema.md) | setComposerDraft 同步写入 schema 错位，CTRL+R 后已发送内容回填到输入框 | fixed | P1 | — |
+| [BUG-0040](BUG-0040-agents-md-skill-path-triggers-llm-hallucination.md) | AGENTS.md 引用 `skills/data-ingestion/SKILL.md` 触发 LLM 幻觉绝对路径 Read 卡住 | fixed | P1 | — |
+| [BUG-0041](BUG-0041-sql-code-block-theme-color-mismatch.md) | 聊天 SQL 代码块 Shiki 高亮在 dark 主题下串成 light 色板，identifier 几乎不可见 | fixed | P2 | — |
+| [BUG-0046](BUG-0046-composer-button-refresh-stream-state-mismatch.md) | CTRL+R 刷新 streaming 中 → composer 按钮回退到"待发送"（首次刷新场景，regression） | fixed | P1 | — (2bc199f1) |
+| [BUG-0047](BUG-0047-bezel-dashboard-unreachable-from-ai-and-block-render-fails.md) | bezel 大屏 skill 从 AI 端不可触达，且 chat 中 DashboardBlock 渲染抛 i18n 错误 | fixed | P1 | — |
+| [BUG-0048](BUG-0048-dashboard-promote-v1-misses-html.md) | v1 dashboard promote 不透传 HTML，stage iframe 永远显示 missing 占位 | fixed | P1 | — |
+
+## Recently Closed（最近 30 天，status = verified | closed）
+
+| ID | Title | Status | Closed Date | FixCommit |
+|----|-------|--------|-------------|-----------|
+| [BUG-0083](BUG-0083-bezel-dashboard-data-never-loads-no-initial-fetch.md) | Bezel 大屏数据永不加载（defaultIntervalMs 不下传 + 无首次取数） | verified | 2026-05-21 | 0544893a |
+| [BUG-0082](BUG-0082-bezel-scheduler-polls-get-but-endpoint-is-post.md) | Bezel scheduler 用 GET 轮询，但 widget data 接口是 POST（405，数据永不加载） | verified | 2026-05-21 | c149569b |
+| [BUG-0081](BUG-0081-bezel-csp-blocks-inline-scripts.md) | Bezel CSP 阻止内联脚本（config + scheduler），导致 ECharts 不初始化（含 /bezel/scheduler.js 404 后续修复） | verified | 2026-05-21 | c149569b |
+| [BUG-0080](BUG-0080-question-tool-renderer-not-registered.md) | question 工具完成态卡片回退 GenericTool（自定义 Question 渲染器未注册） | verified | 2026-05-21 | 9dd96714 |
+| [BUG-0063](BUG-0063-composer-chip-not-cleared-until-sse-stream-ends.md) | 输入框文件 chip 在发送后不消失，要等 AI 全部流式回复结束才清除 | verified | 2026-05-18 | pending |
+| [BUG-0057](BUG-0057-composer-attachment-stuck-uploading-button-locked.md) | 输入框附件 chip 卡在 uploading 0% 永不消失，导致发送按钮被永久禁用 | verified | 2026-05-18 | pending |
+| [BUG-0058](BUG-0058-file-read-image-no-compression-base64-too-large.md) | datatalk_file_read 对图片直接 base64，截图触发"payload 太大" | fixed | 2026-05-18 | pending |
+| [BUG-0059](BUG-0059-composer-enter-lag-due-to-lazy-upload-on-submit.md) | 输入框带文件时按回车感知卡顿 — eager upload + 并发修复 | verified | 2026-05-18 | pending |
+| [BUG-0061](BUG-0061-missing-flyway-migration-for-user-message-attachments.md) | V1__init.sql 后期追加 user_message_attachments 表却没有独立的 Vxx 迁移，老 DB 缺表 500 | fixed | 2026-05-18 | pending |
+| [BUG-0062](BUG-0062-spring-multipart-1mb-limit-blocks-image-uploads.md) | Spring 默认 multipart 1MB 上限阻止 >1MB 图片上传（前后端代码层都是 50MB） | fixed | 2026-05-18 | pending |
+| [BUG-0044](BUG-0044-user-bubble-markdown-invisible-on-primary-bg.md) | 用户气泡 Markdown 代码块/表格白字白底（双主题均不可读） | verified | 2026-05-14 | c28058c5 |
+| [BUG-0043](BUG-0043-sql-editor-tab-switch-loses-default-connection.md) | Chat Run SQL 打开多个 SQL 编辑器，切换 tab 导致默认 connection 丢失 | verified | 2026-05-14 | bbbdf015 |
+| [BUG-0042](BUG-0042-sql-editor-session-follow-mode-ignores-connection-default-database.md) | SQL editor session-follow 模式下不应用 connection 默认 database | verified | 2026-05-14 | bbbdf015 |
+| [BUG-0045](BUG-0045-ingestion-sweeper-it-missing-schema.md) | IngestionHeartbeatSweeperIT / IngestionStartupSweeperIT 测试库无 ingestion_job 表 | verified | 2026-05-14 | 6403fa9c |
+| [BUG-0012](BUG-0012-widget-data-endpoint-ignores-default-connection-id.md) | Widget data endpoint 缺少 dashboard 级 database / schema 解析回路 | verified | 2026-05-14 | b8060d9 |
+| [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md) | sql-result-display 测试缺少 DialogClose mock 导致 10 个用例失败 | verified | 2026-05-14 | 49f2e85 |
+| [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md) | 聊天气泡内 ECharts X 轴标题（xAxis.name）右侧被裁 | verified | 2026-05-14 | 6bb1c93 |
+| [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md) | Stage 永久删除最后一个 tab 后右侧工作区空白 | verified | 2026-05-14 | — |
+| [BUG-0016](BUG-0016-credentials-section-missing-from-settings-dropdown.md) | Settings 下拉菜单缺少 Credentials 入口，无法通过 UI 导航到凭据页面 | verified | 2026-05-12 | 434d1ae9 |
+| BUG-0001 | ER Inspector "Add virtual relation" 按钮无效 | verified | 2026-05-06 | — |
+| BUG-0002 | ER Designer bind_target 成功但 diff_against_db / generate_ddl 仍拒绝 | verified | 2026-05-06 | — |
+| BUG-0004 | Fork to Designer 不创建 er_designer tab | verified | 2026-05-07 | 9d67946 |
+| BUG-0005 | 页面刷新后 ER Inspector Tab 不恢复 | verified | 2026-05-07 | 9d67946 |
+| BUG-0006 | 页面刷新后 ER Designer Tab targetConnectionId 丢失 | verified | 2026-05-07 | 9d67946 |
+| BUG-0007 | 后端重启后 MCP bridge nonce 漂移导致 datatalk_* 工具全部 -32001 | verified | 2026-05-08 | 4168e3f9 |
+| BUG-0009 | Files Library Tab 渲染 dashboard kind 文件时崩溃 | fixed | 2026-05-09 | — |
+
+## By Module（聚合视图，仅列 open + in-progress）
+
+- **ingestion**: [BUG-0013](BUG-0013-http-request-null-output-fields.md) *(fixed)*, [BUG-0014](BUG-0014-ssrf-deny-list-not-blocking-169-254.md) *(fixed)*, [BUG-0015](BUG-0015-oversized-payload-not-marked-failed.md) *(fixed)*, [BUG-0017](BUG-0017-http-request-missing-payload-format.md) *(fixed)*, [BUG-0018](BUG-0018-basic-auth-not-base64.md) *(fixed)*, [BUG-0019](BUG-0019-page-pagination-ignores-hasmore.md) *(fixed)*, [BUG-0020](BUG-0020-offset-pagination-ignores-nextoffset.md) *(fixed)*, [BUG-0021](BUG-0021-cursor-pagination-missing-next-key.md) *(fixed)*, [BUG-0022](BUG-0022-csv-html-parsers-no-coercion.md) *(fixed)*, [BUG-0023](BUG-0023-integer-64-promotion-gap.md) *(fixed)*, [BUG-0024](BUG-0024-upstream-401-not-mapped-to-auth-failed.md) *(fixed)*, [BUG-0025](BUG-0025-infer-type-lowercase-mismatch.md) *(fixed)*, [BUG-0026](BUG-0026-html-fetch-throws-unsupported.md) *(fixed)*, [BUG-0027](BUG-0027-pagination-top-level-aliases-ignored.md) *(fixed)*, [BUG-0028](BUG-0028-tabular-source-path-missing-dollar.md) *(fixed)*, [BUG-0029](BUG-0029-confirm-status-violates-check-constraint.md) *(fixed)*, [BUG-0030](BUG-0030-confirm-missing-mapping-gate.md) *(fixed)*, [BUG-0031](BUG-0031-action-output-schema-rejects-null-and-missing-errorcode.md) *(fixed)*, [BUG-0032](BUG-0032-h2-fixture-uses-database-not-databasename.md) *(fixed)*, [BUG-0033](BUG-0033-json-jsonl-nullable-only-on-all-null.md) *(fixed)*, [BUG-0034](BUG-0034-executesql-fixture-missing-source.md) *(fixed)*
+- **testing**: [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md), [BUG-0032](BUG-0032-h2-fixture-uses-database-not-databasename.md) *(fixed)*, [BUG-0034](BUG-0034-executesql-fixture-missing-source.md) *(fixed)*
+- **security**: [BUG-0018](BUG-0018-basic-auth-not-base64.md) *(fixed)*
+- **report**: [BUG-0073](BUG-0073-report-font-cors-blocked-in-iframe.md) *(fixed)*, [BUG-0074](BUG-0074-report-iframe-scrollbar-arrow-buttons.md), [BUG-0075](BUG-0075-report-viewer-iframe-double-load.md), [BUG-0076](BUG-0076-report-viewer-blank-after-ctrl-r.md), [BUG-0077](BUG-0077-report-toc-anchor-base-href-conflict.md) *(fixed)*
+- **stage**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md), [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md), [BUG-0042](BUG-0042-sql-editor-session-follow-mode-ignores-connection-default-database.md) *(fixed)*, [BUG-0043](BUG-0043-sql-editor-tab-switch-loses-default-connection.md) *(fixed)*, [BUG-0050](BUG-0050-dashboard-json-widgets-skeleton-only-no-data.md), [BUG-0071](BUG-0071-stage-close-flash-horizontal-scrollbar.md) *(fixed)*, [BUG-0075](BUG-0075-report-viewer-iframe-double-load.md), [BUG-0076](BUG-0076-report-viewer-blank-after-ctrl-r.md)
+- **query-editor**: [BUG-0042](BUG-0042-sql-editor-session-follow-mode-ignores-connection-default-database.md) *(fixed)*, [BUG-0043](BUG-0043-sql-editor-tab-switch-loses-default-connection.md) *(fixed)*, [BUG-0065](BUG-0065-pre-action-protocol-bypassed-via-ui-exec-path.md) *(fixed)*
+- **connection**: [BUG-0042](BUG-0042-sql-editor-session-follow-mode-ignores-connection-default-database.md) *(fixed)*
+- **chat**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md)
+- **testing**: [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md)
+- **markdown**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md), [BUG-0041](BUG-0041-sql-code-block-theme-color-mismatch.md) *(fixed)*, [BUG-0044](BUG-0044-user-bubble-markdown-invisible-on-primary-bg.md) *(fixed)*
+- **chart**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md), [BUG-0064](BUG-0064-chart-artifact-rendered-twice-when-llm-also-embeds-echarts-block.md) *(fixed)*
+- **dashboard**: [BUG-0012](BUG-0012-widget-data-endpoint-ignores-default-connection-id.md) *(fixed)*, [BUG-0049](BUG-0049-bezel-dashboard-html-chinese-garbled.md), [BUG-0050](BUG-0050-dashboard-json-widgets-skeleton-only-no-data.md), [BUG-0051](BUG-0051-dashboard-iframe-long-blank-screen.md) *(fixed)*, [BUG-0053](BUG-0053-bezel-ai-widget-id-too-short-and-zod-error-unhelpful.md) *(fixed)*, [BUG-0085](BUG-0085-stale-template-dashboards-kpi-table-never-load-data.md) *(wontfix)*
+- **bezel-compiler**: [BUG-0081](BUG-0081-bezel-csp-blocks-inline-scripts.md) *(verified)*, [BUG-0082](BUG-0082-bezel-scheduler-polls-get-but-endpoint-is-post.md) *(verified)*, [BUG-0083](BUG-0083-bezel-dashboard-data-never-loads-no-initial-fetch.md) *(verified)*, [BUG-0084](BUG-0084-bezel-incremental-hot-update-unwired.md) *(fixed)*, [BUG-0085](BUG-0085-stale-template-dashboards-kpi-table-never-load-data.md) *(wontfix)*
+- **opencode**: [BUG-0036](BUG-0036-skills-extracted-to-wrong-cwd-not-found-by-opencode.md) *(fixed)*, [BUG-0040](BUG-0040-agents-md-skill-path-triggers-llm-hallucination.md) *(fixed)*, [BUG-0049](BUG-0049-bezel-dashboard-html-chinese-garbled.md), [BUG-0058](BUG-0058-file-read-image-no-compression-base64-too-large.md) *(fixed)*, [BUG-0065](BUG-0065-pre-action-protocol-bypassed-via-ui-exec-path.md) *(fixed)*
+- **session**: [BUG-0037](BUG-0037-ctrl-r-during-streaming-flips-stop-button-to-send.md) *(fixed)*, [BUG-0038](BUG-0038-replay-idle-on-resubscribe-clears-streaming-flag.md) *(fixed)*, [BUG-0039](BUG-0039-composer-draft-sync-write-wrong-schema.md) *(fixed)*, [BUG-0046](BUG-0046-composer-button-refresh-stream-state-mismatch.md) *(fixed)*, [BUG-0052](BUG-0052-long-session-empty-canvas-streaming-flag-race.md) *(fixed)*, [BUG-0057](BUG-0057-composer-attachment-stuck-uploading-button-locked.md) *(verified)*, [BUG-0059](BUG-0059-composer-enter-lag-due-to-lazy-upload-on-submit.md) *(verified)*, [BUG-0063](BUG-0063-composer-chip-not-cleared-until-sse-stream-ends.md) *(verified)*, [BUG-0071](BUG-0071-stage-close-flash-horizontal-scrollbar.md) *(fixed)*, [BUG-0079](BUG-0079-attach-file-on-unpersisted-draft-session-500-fk.md) *(fixed)*
+- **channel**: [BUG-0038](BUG-0038-replay-idle-on-resubscribe-clears-streaming-flag.md) *(fixed)*, [BUG-0046](BUG-0046-composer-button-refresh-stream-state-mismatch.md) *(fixed)*, [BUG-0052](BUG-0052-long-session-empty-canvas-streaming-flag-race.md) *(fixed)*, [BUG-0056](BUG-0056-bubble-attachments-file-upload-part-not-roundtripped.md) *(fixed)*, [BUG-0068](BUG-0068-user-bubble-content-flash-on-promote.md) *(fixed)*
+- **chat**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md), [BUG-0037](BUG-0037-ctrl-r-during-streaming-flips-stop-button-to-send.md) *(fixed)*, [BUG-0038](BUG-0038-replay-idle-on-resubscribe-clears-streaming-flag.md) *(fixed)*, [BUG-0039](BUG-0039-composer-draft-sync-write-wrong-schema.md) *(fixed)*, [BUG-0041](BUG-0041-sql-code-block-theme-color-mismatch.md) *(fixed)*, [BUG-0044](BUG-0044-user-bubble-markdown-invisible-on-primary-bg.md) *(fixed)*, [BUG-0046](BUG-0046-composer-button-refresh-stream-state-mismatch.md) *(fixed)*, [BUG-0049](BUG-0049-bezel-dashboard-html-chinese-garbled.md), [BUG-0052](BUG-0052-long-session-empty-canvas-streaming-flag-race.md) *(fixed)*, [BUG-0056](BUG-0056-bubble-attachments-file-upload-part-not-roundtripped.md) *(fixed)*, [BUG-0057](BUG-0057-composer-attachment-stuck-uploading-button-locked.md) *(verified)*, [BUG-0058](BUG-0058-file-read-image-no-compression-base64-too-large.md) *(fixed)*, [BUG-0059](BUG-0059-composer-enter-lag-due-to-lazy-upload-on-submit.md) *(verified)*, [BUG-0063](BUG-0063-composer-chip-not-cleared-until-sse-stream-ends.md) *(verified)*, [BUG-0068](BUG-0068-user-bubble-content-flash-on-promote.md) *(fixed)*, [BUG-0080](BUG-0080-question-tool-renderer-not-registered.md) *(verified)*, [BUG-0086](BUG-0086-question-dock-custom-input-no-submit-in-single-question.md) *(fixed)*
+- **file-upload**: [BUG-0056](BUG-0056-bubble-attachments-file-upload-part-not-roundtripped.md) *(fixed)*, [BUG-0057](BUG-0057-composer-attachment-stuck-uploading-button-locked.md) *(verified)*, [BUG-0058](BUG-0058-file-read-image-no-compression-base64-too-large.md) *(fixed)*, [BUG-0059](BUG-0059-composer-enter-lag-due-to-lazy-upload-on-submit.md) *(verified)*, [BUG-0062](BUG-0062-spring-multipart-1mb-limit-blocks-image-uploads.md) *(fixed)*, [BUG-0063](BUG-0063-composer-chip-not-cleared-until-sse-stream-ends.md) *(verified)*, [BUG-0068](BUG-0068-user-bubble-content-flash-on-promote.md) *(fixed)*, [BUG-0079](BUG-0079-attach-file-on-unpersisted-draft-session-500-fk.md) *(fixed)*
+- **persistence**: [BUG-0061](BUG-0061-missing-flyway-migration-for-user-message-attachments.md) *(fixed)*
+- **flyway**: [BUG-0061](BUG-0061-missing-flyway-migration-for-user-message-attachments.md) *(fixed)*
+- **config**: [BUG-0062](BUG-0062-spring-multipart-1mb-limit-blocks-image-uploads.md) *(fixed)*
+
+## By Source（聚合视图，仅列 open + in-progress）
+
+- **e2e-playwright**: [BUG-0008](BUG-0008-stage-trash-last-tab-blank-pane.md), [BUG-0012](BUG-0012-widget-data-endpoint-ignores-default-connection-id.md) *(fixed)*, [BUG-0013](BUG-0013-http-request-null-output-fields.md) *(fixed)*, [BUG-0014](BUG-0014-ssrf-deny-list-not-blocking-169-254.md) *(fixed)*, [BUG-0015](BUG-0015-oversized-payload-not-marked-failed.md) *(fixed)*, [BUG-0017](BUG-0017-http-request-missing-payload-format.md) *(fixed)*, [BUG-0018](BUG-0018-basic-auth-not-base64.md) *(fixed)*, [BUG-0019](BUG-0019-page-pagination-ignores-hasmore.md) *(fixed)*, [BUG-0020](BUG-0020-offset-pagination-ignores-nextoffset.md) *(fixed)*, [BUG-0021](BUG-0021-cursor-pagination-missing-next-key.md) *(fixed)*, [BUG-0022](BUG-0022-csv-html-parsers-no-coercion.md) *(fixed)*, [BUG-0023](BUG-0023-integer-64-promotion-gap.md) *(fixed)*, [BUG-0024](BUG-0024-upstream-401-not-mapped-to-auth-failed.md) *(fixed)*
+- **e2e-playwright (question-tool-bridge)**: [BUG-0080](BUG-0080-question-tool-renderer-not-registered.md) *(verified)*
+- **e2e-playwright (bezel-verify-reverify)**: [BUG-0085](BUG-0085-stale-template-dashboards-kpi-table-never-load-data.md) *(wontfix)*
+- **e2e-mcp**: [BUG-0011](BUG-0011-sql-result-display-test-dialogclose-mock-missing.md)
+- **e2e-playwright (open)**: [BUG-0065](BUG-0065-pre-action-protocol-bypassed-via-ui-exec-path.md) *(fixed)*
+- **manual-report**: [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md), [BUG-0064](BUG-0064-chart-artifact-rendered-twice-when-llm-also-embeds-echarts-block.md) *(fixed)*, [BUG-0036](BUG-0036-skills-extracted-to-wrong-cwd-not-found-by-opencode.md) *(fixed)*, [BUG-0037](BUG-0037-ctrl-r-during-streaming-flips-stop-button-to-send.md) *(fixed)*, [BUG-0038](BUG-0038-replay-idle-on-resubscribe-clears-streaming-flag.md) *(fixed)*, [BUG-0039](BUG-0039-composer-draft-sync-write-wrong-schema.md) *(fixed)*, [BUG-0040](BUG-0040-agents-md-skill-path-triggers-llm-hallucination.md) *(fixed)*, [BUG-0041](BUG-0041-sql-code-block-theme-color-mismatch.md) *(fixed)*, [BUG-0042](BUG-0042-sql-editor-session-follow-mode-ignores-connection-default-database.md) *(fixed)*, [BUG-0043](BUG-0043-sql-editor-tab-switch-loses-default-connection.md) *(fixed)*, [BUG-0044](BUG-0044-user-bubble-markdown-invisible-on-primary-bg.md) *(fixed)*, [BUG-0049](BUG-0049-bezel-dashboard-html-chinese-garbled.md), [BUG-0050](BUG-0050-dashboard-json-widgets-skeleton-only-no-data.md), [BUG-0051](BUG-0051-dashboard-iframe-long-blank-screen.md) *(fixed)*, [BUG-0052](BUG-0052-long-session-empty-canvas-streaming-flag-race.md) *(fixed)*, [BUG-0053](BUG-0053-bezel-ai-widget-id-too-short-and-zod-error-unhelpful.md) *(fixed)*, [BUG-0057](BUG-0057-composer-attachment-stuck-uploading-button-locked.md) *(verified)*, [BUG-0058](BUG-0058-file-read-image-no-compression-base64-too-large.md) *(fixed)*, [BUG-0059](BUG-0059-composer-enter-lag-due-to-lazy-upload-on-submit.md) *(verified)*, [BUG-0063](BUG-0063-composer-chip-not-cleared-until-sse-stream-ends.md) *(verified)*, [BUG-0071](BUG-0071-stage-close-flash-horizontal-scrollbar.md) *(fixed)*, [BUG-0074](BUG-0074-report-iframe-scrollbar-arrow-buttons.md), [BUG-0075](BUG-0075-report-viewer-iframe-double-load.md), [BUG-0076](BUG-0076-report-viewer-blank-after-ctrl-r.md), [BUG-0086](BUG-0086-question-dock-custom-input-no-submit-in-single-question.md) *(fixed)*
+
+## Wontfix / Duplicate（终态归档，无时间限制）
+
+| ID | Resolution | Reason / DuplicateOf |
+|----|------------|----------------------|
+| [BUG-0085](BUG-0085-stale-template-dashboards-kpi-table-never-load-data.md) | wontfix | v2(position)被 v3 重设计断代废弃且无迁移；6 个受影响大屏均为开发期测试数据，已删除（用户确认无需保留）。v2 promote 已被拒，场景不可复现。 |
+
+## Closure History
+
+30 天前的 closed/verified 折叠归档。详见 `git log -- docs/bugs/`，本节不维护。
+
+## 相关文档
+
+- 写作协议：[README.md](README.md)
+- 设计 spec：[../product-specs/2026-05-05-bug-tracking-system-design.md](../product-specs/2026-05-05-bug-tracking-system-design.md)
+- 技术债跟踪（互补）：[../exec-plans/tech-debt-tracker.md](../exec-plans/tech-debt-tracker.md)
+- 手测脚本（互补）：[../testing/](../testing/)
