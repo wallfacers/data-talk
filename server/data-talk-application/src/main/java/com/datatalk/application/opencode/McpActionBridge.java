@@ -275,8 +275,9 @@ private static Throwable unwrap(Throwable error) {
                 if (editIndex == null || actualVersion == null || expected == null || actual == null) {
                     yield Optional.empty();
                 }
+                Integer requestedBase = extractRequestedBase(actionId, input);
                 yield Optional.of(EditConflictMarkdownFormatter.expectedTextMismatch(
-                    tab, editIndex, expected, actual, actualVersion, deltaMs));
+                    tab, editIndex, expected, actual, requestedBase, actualVersion, deltaMs));
             }
             case "tab_archived" -> Optional.of(EditConflictMarkdownFormatter.tabArchived(tab));
             default -> Optional.empty();

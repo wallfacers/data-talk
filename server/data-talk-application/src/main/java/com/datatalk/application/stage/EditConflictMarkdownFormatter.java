@@ -32,9 +32,12 @@ public final class EditConflictMarkdownFormatter {
     }
 
     public static String expectedTextMismatch(StageTab tab, int editIndex, String expected, String actual,
-                                              int actualVersion, long lastTouchedDeltaMs) {
+                                              Integer requestedBase, int actualVersion, long lastTouchedDeltaMs) {
+        boolean versionDrifted = requestedBase != null && requestedBase != actualVersion;
         StringBuilder markdown = new StringBuilder();
-        markdown.append("## Edit failed: content drifted on tab `").append(tab.id()).append("`\n");
+        markdown.append("## Edit failed: ")
+            .append(versionDrifted ? "content drifted" : "edit location did not match")
+            .append(" on tab `").append(tab.id()).append("`\n");
         markdown.append(tabLine(tab)).append('\n');
         markdown.append("Reason: expected_text_mismatch\n\n");
         markdown.append("**Expected (your edit#").append(editIndex).append("):**\n");
@@ -44,7 +47,9 @@ public final class EditConflictMarkdownFormatter {
         markdown.append(codeBlock(languageFor(tab.type()), truncateCodeBlock(normalize(actual), HEAD_LINES, TAIL_LINES)));
         markdown.append('\n');
         markdown.append("Current version=").append(actualVersion).append(".\n\n");
-        markdown.append(hint(lastTouchedDeltaMs, actualVersion));
+        markdown.append(versionDrifted
+            ? hint(lastTouchedDeltaMs, actualVersion)
+            : mislocatedHint(requestedBase, actualVersion));
         markdown.append('\n');
         markdown.append(suggestedReadStep(tab.id()));
         return capTotal(markdown.toString());
@@ -150,6 +155,18 @@ public final class EditConflictMarkdownFormatter {
     private static String hint(long deltaMs, int actualVersion) {
         return "Likely cause: another session edited this tab " + humanizeDelta(deltaMs)
             + "; version is now " + actualVersion + ".";
+    }
+
+    private static String mislocatedHint(Integer requestedBase, int actualVersion) {
+        String prefix = requestedBase != null
+            ? "Your `baseVersion=" + requestedBase + "` still matches the current version=" + actualVersion
+                + ", so no other session changed this tab. "
+            : "The version did not change. ";
+        return prefix
+            + "This is a positioning error, not a concurrent edit: the `range` (1-based line/column) "
+            + "or `expectedText` of your edit does not line up with the live content — most often a wrong "
+            + "line/column number, or a whitespace / line-ending difference. Recount the exact line and column "
+            + "against the current content above before retrying; do not attribute this to another session.";
     }
 
     private static String suggestedReadStep(String tabId) {

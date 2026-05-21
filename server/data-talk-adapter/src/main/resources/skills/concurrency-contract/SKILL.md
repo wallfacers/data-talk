@@ -52,7 +52,7 @@ For tool-call shape and parameter schema, see `[[ui-contract]]` — this skill i
 ```
 
 - `version_conflict` — the `baseVersion` you sent is stale; another writer advanced the tab.
-- `expected_text_mismatch` — your `baseVersion` may be current but the `expectedText` of at least one edit no longer matches the actual range content (e.g. line endings, whitespace, or a sibling edit).
+- `expected_text_mismatch` — your `baseVersion` may be current but the `expectedText` of at least one edit no longer matches the actual range content (e.g. line endings, whitespace, or a sibling edit). **Check `currentState.version` against the `baseVersion` you sent: if they are equal, no other session changed the tab — this is a positioning error on your side (a wrong 1-based `range` line/column, or a whitespace / line-ending difference in `expectedText`), not a concurrent edit.** Only treat it as a concurrent edit when `currentState.version` is strictly greater than the `baseVersion` you sent.
 - `out_of_range_lines` — the requested `range` exceeds the document line count at `baseVersion`.
 - `tab_not_found` / `tab_archived` — the target tab has been removed from the active workspace; do not auto-recreate it.
 
