@@ -39,7 +39,7 @@ triggers:
 
 | templateId | 适用场景 | 必备 section | 说明 |
 |---|---|---|---|
-| `ledger.monthly-business-review.v1` | 业务月报 / 周报 / 季报 | `cover`, `executive-summary`, `toc`, `chapter(业务总览)`, `chapter(渠道表现)`, `chapter(区域分析)`, `chapter(风险与建议)`, `appendix(sql-listing)` | KPI 概览 + 趋势章节 + 对比表 + 结论建议；正向汇报 |
+| `ledger.monthly-business-review.v1` | 业务月报 / 周报 / 季报 | `cover`, `executive-summary`, `toc`, `chapter(业务总览)`, `chapter(渠道表现)`, `chapter(区域分析)`, `chapter(风险与建议)` | KPI 概览 + 趋势章节 + 对比表 + 结论建议；正向汇报 |
 | `ledger.incident-postmortem.v1` | 问题复盘 / 事故 postmortem | `cover`, `executive-summary`, `chapter(事件概况)`, `chapter(影响范围)`, `chapter(根因分析)`, `chapter(行动项)`, `appendix(glossary)` | 时间线 + 影响范围 + 根因 + 行动项；事件性归因汇报 |
 
 模板详情见 `templates/monthly-business-review.md` 与 `templates/incident-postmortem.md`。
@@ -50,7 +50,7 @@ triggers:
 
 1. **确认报告目的与时间窗口**：跟用户对齐"是月报还是季报？时间窗口是几月几日到几月几日？给谁看？关注哪个业务线？"。
 2. **根据用户意图选定 templateId**：从模板索引表选择最贴合的 templateId；不确定时优先选 `ledger.monthly-business-review.v1`。
-3. **列出该模板所需的全部数据查询清单**：把整份报告需要的所有 SQL 一次性列出，每条标注 `connectionId` + SQL 草稿 + 预期返回的列。不要边写章节边发现需要新数据。
+3. **（内部规划，不写入报告）列出该模板所需的全部数据查询清单**：在动手取数前，先自行把整份报告需要的所有 SQL 一次性想清楚，每条标注 `connectionId` + SQL 草稿 + 预期返回的列，避免边写章节边发现需要新数据。**这一步只是你的内部规划草稿，绝不能出现在最终 report.json 中**（不写成 section、不写成 appendix、不写进 narrative）。
 4. **跨连接逐项 `datatalk_query_data` 取数并把结果 inline 写进 report.json**：每个查询调用 `datatalk_query_data` 时**必须显式传 `connectionId`**，不依赖 session 默认 connection。把返回的 rows / columns 直接写进对应 block 的 inline 数据字段。
 5. **对超过 200 行的 table block：先 export CSV，再 inline 前 N 行 + 引用 appendixCsvRef**：
    - 先调用 `datatalk_export_data(format='csv', sql=<完整 SQL>)` 得到 `{ fileArtifactId }`
@@ -71,6 +71,7 @@ ledger 报告的价值在于**有理有据、视觉服务于结论**，而非把
    - 用 `stat-highlight` 锚定本章最重要的一个数字；用 `callout(insight)` 点出"这意味着什么"；用 `comparison` 做同维度横向对比；用 `quote` 引用关键论断。
    - **禁止"数据倾倒"**：不要把原始查询结果整表丢给读者而不给解读。大表放附录 CSV，正文只留前 N 行预览 + 一段 narrative 解读。
 4. **渐进披露**：复杂分析 **MUST** 按"概述 → 分项 → 结论 → 建议"顺序组织——先给基线（kpi-strip / stat-highlight），再给关键对比（comparison / chart），最后给结论与行动（callout / narrative / risk-list）。
+5. **报告中禁止出现 SQL**：最终 report.json 的任何位置 **MUST NOT** 包含 SQL 语句或"SQL 清单 / 查询清单 / SQL 附录"——不写 `appendix(sql-listing)`、不在 `narrative` 里贴 ```sql 代码块、不建任何以 SQL 为内容的 section/chapter。读者要的是结论与数据，不是查询语句。SQL 仅用于第 3-5 步取数，取完即弃。
 
 > 反问自己：读者读完这一章，能不能用一句话说清楚"发生了什么、为什么、接下来怎么办"？如果不能，说明叙事还没做完。
 

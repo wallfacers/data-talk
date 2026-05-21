@@ -411,4 +411,73 @@ class ReportRendererTest {
         assertThat(html).contains("完整数据见附录 CSV");
         assertThat(html).contains("/api/file-artifacts/fa-csv-9e3d4/download");
     }
+
+    @Test
+    void drops_sql_listing_appendix_and_emits_no_empty_appendix_section() throws Exception {
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "sections": [ { "type": "chapter", "heading": "C", "blocks": [] } ],
+              "appendix": [
+                { "type": "appendix", "subType": "sql-listing", "title": "SQL 清单",
+                  "items": [{ "connectionId": "c1", "sql": "SELECT 1", "purpose": "p" }] }
+              ] }
+        """);
+        String html = renderer.toHtml(root);
+        assertThat(html).doesNotContain("SQL 清单");
+        assertThat(html).doesNotContain("SELECT 1");
+        assertThat(html).doesNotContain("ledger-appendix");
+    }
+
+    @Test
+    void keeps_glossary_appendix_while_dropping_sql_listing() throws Exception {
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "sections": [ { "type": "chapter", "heading": "C", "blocks": [] } ],
+              "appendix": [
+                { "type": "appendix", "subType": "sql-listing", "title": "SQL 清单",
+                  "items": [{ "connectionId": "c1", "sql": "SELECT 1", "purpose": "p" }] },
+                { "type": "appendix", "subType": "glossary", "title": "术语表",
+                  "items": [{ "term": "GMV", "definition": "成交总额" }] }
+              ] }
+        """);
+        String html = renderer.toHtml(root);
+        assertThat(html).doesNotContain("SQL 清单");
+        assertThat(html).doesNotContain("SELECT 1");
+        assertThat(html).contains("术语表");
+        assertThat(html).contains("GMV");
+    }
+
+    @Test
+    void drops_sql_bearing_appendix_even_when_subtype_mislabeled() throws Exception {
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "sections": [ { "type": "chapter", "heading": "C", "blocks": [] } ],
+              "appendix": [
+                { "type": "appendix", "subType": "glossary", "title": "查询",
+                  "items": [{ "sql": "SELECT 42", "purpose": "p" }] }
+              ] }
+        """);
+        String html = renderer.toHtml(root);
+        assertThat(html).doesNotContain("SELECT 42");
+        assertThat(html).doesNotContain("ledger-appendix");
+    }
+
+    @Test
+    void drops_appendix_titled_sql_listing_regardless_of_subtype() throws Exception {
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "sections": [ { "type": "chapter", "heading": "C", "blocks": [] } ],
+              "appendix": [
+                { "type": "appendix", "subType": "glossary", "title": "SQL清单",
+                  "items": [{ "term": "x", "definition": "y" }] }
+              ] }
+        """);
+        String html = renderer.toHtml(root);
+        assertThat(html).doesNotContain("SQL清单");
+        assertThat(html).doesNotContain("ledger-appendix");
+    }
 }

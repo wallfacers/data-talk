@@ -17,7 +17,6 @@
 | 5 | `chapter` | 渠道表现 | `table` + `narrative` |
 | 6 | `chapter` | 区域分析 | `chart` + `table` + `narrative` |
 | 7 | `chapter` | 风险与建议 | `risk-list` + `narrative` |
-| 8 | `appendix(sql-listing)` | SQL 清单 | 所有 query 列表 |
 
 ## 完整示例 JSON
 
@@ -207,30 +206,6 @@
         }
       ]
     }
-  ],
-  "appendix": [
-    {
-      "type": "appendix",
-      "subType": "sql-listing",
-      "title": "SQL 清单",
-      "items": [
-        {
-          "connectionId": "conn-mysql-prod-7d4a",
-          "sql": "SELECT SUM(gmv) gmv, COUNT(DISTINCT order_id) orders, AVG(amount) aov FROM sales WHERE date BETWEEN '2026-04-01' AND '2026-04-30'",
-          "purpose": "Section 业务总览 - KPI 概览"
-        },
-        {
-          "connectionId": "conn-mysql-prod-7d4a",
-          "sql": "SELECT channel, SUM(gmv) FROM sales WHERE date BETWEEN '2026-04-01' AND '2026-04-30' GROUP BY channel",
-          "purpose": "Section 渠道表现 - 渠道 GMV"
-        },
-        {
-          "connectionId": "conn-mysql-prod-7d4a",
-          "sql": "SELECT region, SUM(gmv) FROM sales WHERE date BETWEEN '2026-04-01' AND '2026-04-30' GROUP BY region",
-          "purpose": "Section 区域分析 - 区域 GMV"
-        }
-      ]
-    }
   ]
 }
 ```
@@ -240,4 +215,3 @@
 - **数据先于叙事**：每个 chapter 的 `narrative` 必须紧贴前面的 `kpi-strip` / `chart` / `table` 数据，不能写脱离数据的笼统话术
 - **结论可执行**：每章节末的建议必须含 owner 与可衡量目标
 - **环比 + 同比**：业务月报的核心对比维度，缺一不可
-- **附录 SQL**：每个数据 block 的 SQL 必须在 `appendix(sql-listing)` 里 1:1 列出，便于审计与复现

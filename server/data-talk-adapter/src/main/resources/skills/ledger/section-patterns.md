@@ -480,26 +480,21 @@ toc 单独成页（`break-before: page` + `break-after: page`）。
 ```json
 {
   "type": "appendix",
-  "subType": "sql-listing",
-  "title": "SQL 清单",
+  "subType": "glossary",
+  "title": "术语表",
   "items": [
     {
-      "connectionId": "conn-mysql-prod-7d4a",
-      "sql": "SELECT channel, SUM(gmv) FROM sales WHERE date BETWEEN '2026-04-01' AND '2026-04-30' GROUP BY channel",
-      "purpose": "Section 业务总览 - 渠道 GMV"
+      "term": "GMV",
+      "definition": "Gross Merchandise Volume，成交总额"
     }
   ]
 }
 ```
 
 字段：
-- `subType`（必填）：`sql-listing` / `csv-link` / `glossary`
+- `subType`（必填）：`csv-link` / `glossary`
 - `title`（必填，string）
 - `items`（必填，array）—— schema 取决于 subType
-
-### subType: sql-listing
-
-每项含 `connectionId / sql / purpose`。HTML 渲染为 `<pre><code>` SQL 块，便于审计追溯。
 
 ### subType: csv-link
 

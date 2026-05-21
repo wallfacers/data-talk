@@ -164,9 +164,12 @@ export function ChatHeader() {
           </AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
+            disabled={del.isPending}
             onClick={() => {
-              if (sid) del.mutate(sid)
-              setDeleteConfirmOpen(false)
+              if (sid && !del.isPending) {
+                del.mutate(sid)
+                setDeleteConfirmOpen(false)
+              }
             }}
           >
             {t('common.delete')}

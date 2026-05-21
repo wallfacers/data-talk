@@ -355,6 +355,7 @@ function SessionGroupView({
                 }
                 setDeleteTarget(null)
               }}
+              disabled={!deleteTarget}
             >
               {t('common.delete')}
             </AlertDialogAction>

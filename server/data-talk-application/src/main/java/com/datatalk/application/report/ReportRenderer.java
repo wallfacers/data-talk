@@ -154,9 +154,9 @@ public class ReportRenderer {
                 }
             }
         }
-        // appendix
+        // appendix（sql-listing 已被丢弃，若无其它附录块则不输出空容器）
         JsonNode appendix = reportJson.path("appendix");
-        if (appendix.isArray() && !appendix.isEmpty()) {
+        if (hasRenderableAppendix(appendix)) {
             html.append("<section class=\"ledger-appendix\">\n");
             for (JsonNode item : appendix) {
                 renderBlock(item, chapters, html);
@@ -600,8 +600,49 @@ public class ReportRenderer {
         out.append("</ol>\n");
     }
 
+    /** appendix 中是否存在「SQL 清单」以外的可渲染块。 */
+    private boolean hasRenderableAppendix(JsonNode appendix) {
+        if (!appendix.isArray()) {
+            return false;
+        }
+        for (JsonNode item : appendix) {
+            if (!isSqlListingBlock(item)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 判断附录块是否为「SQL 清单」。报告对外不呈现 SQL，故凡满足任一即丢弃：
+     * {@code subType == "sql-listing"}、标题含「SQL 清单」、或任一 item 带非空 {@code sql} 字段
+     * （兜底模型把 SQL 塞进其它 subType）。glossary/csv-link 的 item 均无 {@code sql} 字段，不会误伤。
+     */
+    static boolean isSqlListingBlock(JsonNode b) {
+        if ("sql-listing".equals(b.path("subType").asText(""))) {
+            return true;
+        }
+        String title = b.path("title").asText("");
+        if (title.replace(" ", "").contains("SQL清单")) {
+            return true;
+        }
+        JsonNode items = b.path("items");
+        if (items.isArray()) {
+            for (JsonNode it : items) {
+                if (!it.path("sql").asText("").isBlank()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     private void renderAppendix(JsonNode b, StringBuilder out) {
         String subType = b.path("subType").asText("");
+        // SQL 清单不对外呈现：即使模型仍生成也直接丢弃，不渲染标题与内容
+        if (isSqlListingBlock(b)) {
+            return;
+        }
         String title = b.path("title").asText("");
         out.append("<div class=\"ledger-appendix-block\">\n");
         if (!title.isBlank()) {
@@ -610,12 +651,6 @@ public class ReportRenderer {
         JsonNode items = b.path("items");
         if (items.isArray()) {
             switch (subType) {
-                case "sql-listing" -> {
-                    for (JsonNode it : items) {
-                        out.append("  <div class=\"ledger-appendix__sql-purpose\">").append(escapeHtml(it.path("purpose").asText(""))).append("</div>\n");
-                        out.append("  <pre class=\"ledger-appendix__sql\">").append(escapeHtml(it.path("sql").asText(""))).append("</pre>\n");
-                    }
-                }
                 case "glossary" -> {
                     out.append("  <dl>\n");
                     for (JsonNode it : items) {

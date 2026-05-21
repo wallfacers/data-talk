@@ -410,6 +410,7 @@ export function ResourceDirectoryView({ overview }: { overview: StorageOverviewD
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [confirmDeleteBulkOpen, setConfirmDeleteBulkOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<{ key: string; label: string } | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const sectionRef = useRef<HTMLDivElement>(null)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -479,7 +480,8 @@ export function ResourceDirectoryView({ overview }: { overview: StorageOverviewD
   // ---- delete handlers ----
 
   async function handleSingleDelete() {
-    if (!deleteTarget) return
+    if (!deleteTarget || deleting) return
+    setDeleting(true)
     try {
       await deleteByKey(deleteTarget.key)
       toast.success(t('maintenance.resources.confirmDelete.description'))
@@ -490,9 +492,12 @@ export function ResourceDirectoryView({ overview }: { overview: StorageOverviewD
     }
     setConfirmDeleteOpen(false)
     setDeleteTarget(null)
+    setDeleting(false)
   }
 
   async function handleBulkDelete() {
+    if (deleting) return
+    setDeleting(true)
     let ok = 0
     for (const key of selected) {
       try { await deleteByKey(key); ok++ } catch { /* skip */ }
@@ -500,6 +505,7 @@ export function ResourceDirectoryView({ overview }: { overview: StorageOverviewD
     toast.success(t('maintenance.resources.confirmDeleteBulk.description', { count: ok }))
     setSelected(new Set())
     setConfirmDeleteBulkOpen(false)
+    setDeleting(false)
     qc.invalidateQueries({ queryKey: ['maintenance', 'resources', activeResourceTab] })
     qc.invalidateQueries({ queryKey: ['maintenance', 'storage-overview'] })
   }
@@ -944,7 +950,7 @@ export function ResourceDirectoryView({ overview }: { overview: StorageOverviewD
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t('maintenance.resources.confirmDelete.cancel')}</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={(event) => { event.preventDefault(); handleSingleDelete() }}>
+            <AlertDialogAction variant="destructive" onClick={(event) => { event.preventDefault(); handleSingleDelete() }} disabled={deleting}>
               {t('maintenance.resources.confirmDelete.confirm')}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -962,7 +968,7 @@ export function ResourceDirectoryView({ overview }: { overview: StorageOverviewD
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t('maintenance.resources.confirmDelete.cancel')}</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={(event) => { event.preventDefault(); handleBulkDelete() }}>
+            <AlertDialogAction variant="destructive" onClick={(event) => { event.preventDefault(); handleBulkDelete() }} disabled={deleting}>
               {t('maintenance.resources.confirmDelete.confirm')}
             </AlertDialogAction>
           </AlertDialogFooter>

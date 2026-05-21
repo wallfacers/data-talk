@@ -56,9 +56,9 @@ public class MarkdownRenderer {
                 renderBlock(block, md, chartPngPaths, 2, chapterHeadings);
             }
         }
-        // appendix
+        // appendix（sql-listing 已被丢弃，若无其它附录块则不输出空标题）
         JsonNode appendix = reportJson.path("appendix");
-        if (appendix.isArray() && !appendix.isEmpty()) {
+        if (hasRenderableAppendix(appendix)) {
             md.append("\n---\n\n## 附录\n\n");
             for (JsonNode b : appendix) {
                 renderBlock(b, md, chartPngPaths, 3, chapterHeadings);
@@ -231,19 +231,30 @@ public class MarkdownRenderer {
         md.append("\n");
     }
 
+    /** appendix 中是否存在「SQL 清单」以外的可渲染块。 */
+    private boolean hasRenderableAppendix(JsonNode appendix) {
+        if (!appendix.isArray()) {
+            return false;
+        }
+        for (JsonNode b : appendix) {
+            if (!ReportRenderer.isSqlListingBlock(b)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void renderAppendixMd(JsonNode b, StringBuilder md) {
         String subType = b.path("subType").asText("");
+        // SQL 清单不对外呈现：即使模型仍生成也直接丢弃，不渲染标题与内容
+        if (ReportRenderer.isSqlListingBlock(b)) {
+            return;
+        }
         String title = b.path("title").asText("");
         if (!title.isBlank()) md.append("### ").append(title).append("\n\n");
         JsonNode items = b.path("items");
         if (items.isArray()) {
             switch (subType) {
-                case "sql-listing" -> {
-                    for (JsonNode it : items) {
-                        md.append("_").append(it.path("purpose").asText("")).append("_\n\n");
-                        md.append("```sql\n").append(it.path("sql").asText("")).append("\n```\n\n");
-                    }
-                }
                 case "glossary" -> {
                     for (JsonNode it : items) {
                         md.append("**").append(it.path("term").asText("")).append("** — ")

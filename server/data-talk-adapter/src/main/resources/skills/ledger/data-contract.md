@@ -137,7 +137,7 @@ datatalk_promote_report(report: {...}, workspaceId: "ws-1")
     ...
   ],
   "appendix": [
-    { "type": "appendix", "subType": "sql-listing", ... }
+    { "type": "appendix", "subType": "glossary", ... }
   ]
 }
 ```
