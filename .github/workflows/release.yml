@@ -67,11 +67,49 @@ jobs:
           fi
 
   # ─────────────────────────────────────────────
-  # Job 2: 三平台并行构建 + 上传 Release 产物
+  # Job 2: 构建平台无关的后端 fat jar（仅 Linux，跨平台共享）
+  # opencode-deps 的 maven 步骤依赖 Unix shell，无法在 Windows runner 运行，
+  # 故 jar 只在此构建一次，供三平台 build 下载使用。
+  # ─────────────────────────────────────────────
+  backend-jar:
+    name: Build backend jar
+    needs: check
+    if: needs.check.outputs.skip == 'false'
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+          cache: maven
+
+      - name: Build backend fat jar
+        run: |
+          cd server
+          mvn -q -pl data-talk-adapter -am package -DskipTests
+          JAR=$(find data-talk-adapter/target -maxdepth 1 -name 'data-talk-adapter-*.jar' ! -name '*.original' | head -n1)
+          echo "Built jar: $JAR"
+          mkdir -p "$GITHUB_WORKSPACE/backend-jar"
+          cp "$JAR" "$GITHUB_WORKSPACE/backend-jar/app.jar"
+
+      - name: Upload backend jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jar
+          path: backend-jar/app.jar
+          retention-days: 1
+
+  # ─────────────────────────────────────────────
+  # Job 3: 三平台并行构建 + 上传 Release 产物
   # ─────────────────────────────────────────────
   build:
     name: Build (${{ matrix.platform }})
-    needs: check
+    needs: [check, backend-jar]
     if: needs.check.outputs.skip == 'false'
     runs-on: ${{ matrix.platform }}
 
@@ -150,9 +188,20 @@ jobs:
       - name: Install pnpm dependencies
         run: pnpm install --frozen-lockfile
 
-      # ── 打包后端 sidecar（fat jar + 全模块 JRE）到 Tauri resources ──
+      # ── 下载平台无关的后端 jar（由 backend-jar job 构建，路径相对 workspace）──
+      - name: Download backend jar
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-jar
+          path: backend-jar
+
+      # ── 打包后端 sidecar（平台 JRE via jlink + 预构建 jar）到 Tauri resources ──
+      # DATATALK_PREBUILT_JAR is relative to the step's working-directory (client),
+      # so it resolves cross-platform under git-bash on the Windows runner too.
       - name: Bundle backend sidecar
         shell: bash
+        env:
+          DATATALK_PREBUILT_JAR: ../backend-jar/app.jar
         run: bash ../scripts/bundle-backend.sh
 
       # ── macOS 签名（可选，secrets 未设置或无效时自动跳过）──

@@ -29,13 +29,24 @@ if [ ! -x "$JLINK" ] && [ ! -x "$JLINK.exe" ]; then
   exit 1
 fi
 
-echo "==> Building backend fat jar"
-( cd "$SERVER_DIR" && mvn -q -pl data-talk-adapter -am package -DskipTests )
-
-JAR_SRC="$(find "$SERVER_DIR/data-talk-adapter/target" -maxdepth 1 -name 'data-talk-adapter-*.jar' ! -name '*.original' | head -n1)"
-if [ -z "$JAR_SRC" ]; then
-  echo "ERROR: built fat jar not found under data-talk-adapter/target" >&2
-  exit 1
+# The fat jar is platform-independent. CI builds it once on Linux and passes it
+# via DATATALK_PREBUILT_JAR so Windows/macOS runners skip the Unix-only
+# opencode-deps maven step and only build their platform JRE below.
+if [ -n "${DATATALK_PREBUILT_JAR:-}" ]; then
+  echo "==> Using prebuilt backend jar: $DATATALK_PREBUILT_JAR"
+  if [ ! -f "$DATATALK_PREBUILT_JAR" ]; then
+    echo "ERROR: DATATALK_PREBUILT_JAR does not exist: $DATATALK_PREBUILT_JAR" >&2
+    exit 1
+  fi
+  JAR_SRC="$DATATALK_PREBUILT_JAR"
+else
+  echo "==> Building backend fat jar"
+  ( cd "$SERVER_DIR" && mvn -q -pl data-talk-adapter -am package -DskipTests )
+  JAR_SRC="$(find "$SERVER_DIR/data-talk-adapter/target" -maxdepth 1 -name 'data-talk-adapter-*.jar' ! -name '*.original' | head -n1)"
+  if [ -z "$JAR_SRC" ]; then
+    echo "ERROR: built fat jar not found under data-talk-adapter/target" >&2
+    exit 1
+  fi
 fi
 echo "    jar: $JAR_SRC"
 
