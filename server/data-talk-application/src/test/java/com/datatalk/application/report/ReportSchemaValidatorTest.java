@@ -199,6 +199,12 @@ class ReportSchemaValidatorTest {
                 "REPORT_TABLE_ROWS_MISSING",
                 "REPORT_TABLE_OVERSIZE_NO_APPENDIX",
                 "REPORT_TABLE_CELLFORMAT_INVALID",
+                "REPORT_TABLE_SHAPE_INVALID",
+                "REPORT_CHART_INVALID",
+                "REPORT_NARRATIVE_INVALID",
+                "REPORT_EXECSUMMARY_INVALID",
+                "REPORT_KPISTRIP_INVALID",
+                "REPORT_RISKLIST_INVALID",
                 "REPORT_BLOCK_FIELD_INVALID"
         );
         for (String code : emittedCodes) {
@@ -367,6 +373,101 @@ class ReportSchemaValidatorTest {
         """.formatted(tints));
         // 10 个全合法 hex，超软上限 8 → 仅 warn 不 reject
         assertThat(validator.validate(root)).isEmpty();
+    }
+
+    // --- 静默白渲染防护：以下字段错误过去会通过校验、渲染成空白（见 BUG 复盘） ---
+
+    @Test
+    void rejects_table_with_object_array_columns_and_rows() throws Exception {
+        // columns 为对象数组、rows 为对象数组 —— 渲染器会读出空表头并整行跳过
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "sections": [ { "type": "table",
+                "columns": [ {"name":"渠道"}, {"name":"GMV"} ],
+                "rows": [ {"渠道":"自营","GMV":"1.2M"} ] } ] }
+        """);
+        List<Violation> violations = validator.validate(root);
+        assertThat(violations).extracting(Violation::code).contains("REPORT_TABLE_SHAPE_INVALID");
+        assertThat(violations).extracting(Violation::path)
+                .contains("sections[0].columns[0]", "sections[0].rows[0]");
+    }
+
+    @Test
+    void rejects_table_without_columns() throws Exception {
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "sections": [ { "type": "table", "rows": [["a"]] } ] }
+        """);
+        Violation v = validator.validate(root).stream()
+                .filter(x -> "REPORT_TABLE_SHAPE_INVALID".equals(x.code()))
+                .findFirst().orElseThrow();
+        assertThat(v.path()).isEqualTo("sections[0].columns");
+    }
+
+    @Test
+    void rejects_chart_missing_echarts_option() throws Exception {
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "sections": [ { "type": "chart", "id": "c1", "caption": "无 option" } ] }
+        """);
+        Violation v = validator.validate(root).stream()
+                .filter(x -> "REPORT_CHART_INVALID".equals(x.code()))
+                .findFirst().orElseThrow();
+        assertThat(v.path()).isEqualTo("sections[0].echartsOption");
+    }
+
+    @Test
+    void rejects_narrative_using_content_instead_of_markdown() throws Exception {
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "sections": [ { "type": "narrative", "content": "正文写错了字段名" } ] }
+        """);
+        Violation v = validator.validate(root).stream()
+                .filter(x -> "REPORT_NARRATIVE_INVALID".equals(x.code()))
+                .findFirst().orElseThrow();
+        assertThat(v.path()).isEqualTo("sections[0].markdown");
+    }
+
+    @Test
+    void rejects_executive_summary_using_blocks_instead_of_bullets() throws Exception {
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "sections": [ { "type": "executive-summary", "blocks": ["a","b"] } ] }
+        """);
+        Violation v = validator.validate(root).stream()
+                .filter(x -> "REPORT_EXECSUMMARY_INVALID".equals(x.code()))
+                .findFirst().orElseThrow();
+        assertThat(v.path()).isEqualTo("sections[0].bullets");
+    }
+
+    @Test
+    void rejects_kpi_strip_without_items() throws Exception {
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "sections": [ { "type": "kpi-strip", "items": [] } ] }
+        """);
+        assertThat(validator.validate(root)).extracting(Violation::code)
+                .contains("REPORT_KPISTRIP_INVALID");
+    }
+
+    @Test
+    void rejects_risk_list_using_risks_instead_of_items() throws Exception {
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "sections": [ { "type": "risk-list",
+                "risks": [ {"level":"high","desc":"x"} ] } ] }
+        """);
+        Violation v = validator.validate(root).stream()
+                .filter(x -> "REPORT_RISKLIST_INVALID".equals(x.code()))
+                .findFirst().orElseThrow();
+        assertThat(v.path()).isEqualTo("sections[0].items");
     }
 
     @Test

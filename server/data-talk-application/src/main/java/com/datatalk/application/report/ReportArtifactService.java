@@ -88,6 +88,9 @@ public class ReportArtifactService {
         if (workspaceId == null || workspaceId.isBlank()) {
             throw new ReportValidationException("REPORT_WORKSPACE_MISSING", "workspaceId is required");
         }
+        // 为缺 id 的 chart block 补全确定性 id —— 让持久化的 report.json、同步 HTML、
+        // 异步 PDF/Markdown 派生看到一致的 id，避免图表因 id 为空而无法渲染。
+        ReportRenderer.normalizeChartIds(reportJson);
         java.util.List<Violation> violations = validator.validate(reportJson);
         if (!violations.isEmpty()) {
             throw new ReportValidationException(violations);

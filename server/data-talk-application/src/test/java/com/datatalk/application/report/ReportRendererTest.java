@@ -12,6 +12,47 @@ class ReportRendererTest {
     private final ReportRenderer renderer = new ReportRenderer(mapper);
 
     @Test
+    void auto_fills_missing_chart_ids_uniquely_including_nested_and_preserving_existing() throws Exception {
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "sections": [
+                { "type": "chart", "echartsOption": {} },
+                { "type": "chapter", "heading": "H", "blocks": [
+                  { "type": "chart", "id": "ch-auto-1", "echartsOption": {} },
+                  { "type": "chart", "echartsOption": {} }
+                ] }
+              ] }
+        """);
+        ReportRenderer.normalizeChartIds(root);
+
+        String topId = root.path("sections").get(0).path("id").asText("");
+        String keptId = root.path("sections").get(1).path("blocks").get(0).path("id").asText("");
+        String nestedId = root.path("sections").get(1).path("blocks").get(1).path("id").asText("");
+
+        assertThat(keptId).isEqualTo("ch-auto-1"); // 既有 id 保留
+        assertThat(topId).isNotBlank();
+        assertThat(nestedId).isNotBlank();
+        // 三个 id 互不相同（补全时跳过已占用的 ch-auto-1）
+        assertThat(java.util.Set.of(topId, keptId, nestedId)).hasSize(3);
+    }
+
+    @Test
+    void chart_without_id_renders_with_usable_id_in_html() throws Exception {
+        JsonNode root = mapper.readTree("""
+            { "schemaVersion": 1, "kind": "report",
+              "meta": { "title": "T", "templateId": "x" },
+              "sections": [ { "type": "chapter", "heading": "H", "blocks": [
+                { "type": "chart", "echartsOption": { "series": [] }, "caption": "无 id 图表" }
+              ] } ] }
+        """);
+        String html = renderer.toHtml(root);
+        // 不再出现空 id 的容器（会导致 querySelector 匹配失败 → 图表不初始化）
+        assertThat(html).doesNotContain("data-ledger-chart-id=\"\"");
+        assertThat(html).contains("data-ledger-chart-id=\"ch-auto-1\"");
+    }
+
+    @Test
     void emits_self_contained_html_with_base_href() throws Exception {
         JsonNode root = mapper.readTree("""
             { "schemaVersion": 1, "kind": "report",

@@ -77,7 +77,31 @@ datatalk_promote_report(report: {...}, workspaceId: "ws-1")
 }
 ```
 
-## 3. 数据冻结时刻（重要语义）
+## 3. 渲染必填字段（promote 会硬校验，错填即拒绝）
+
+**规则**：以下字段名 / 形状写错会让 block 渲染成**空白**（不报错、静默丢失），因此 promote 时会被**直接拒绝**并返回对应 `errorCode` + `recoveryHint`。这些是最容易写错的点，**生成前逐条核对字段名**：
+
+| block | 必填字段（正确写法） | 常见错误（会被拒） | errorCode |
+|---|---|---|---|
+| `narrative` | `markdown`（非空字符串） | 写成 `content` / `text` | `REPORT_NARRATIVE_INVALID` |
+| `executive-summary` | `bullets`（非空 string[]） | 写成 `blocks` | `REPORT_EXECSUMMARY_INVALID` |
+| `kpi-strip` | `items`（非空数组，每项 `label`+`value`） | items 为空 / 字段名错 | `REPORT_KPISTRIP_INVALID` |
+| `risk-list` | `items`（数组，每项 `severity`∈{critical,high,medium,low}+`description`） | 写成 `risks` + `level` | `REPORT_RISKLIST_INVALID` |
+| `chart` | `echartsOption`（对象，含 inline 数据） | 缺 `echartsOption` | `REPORT_CHART_INVALID` |
+| `table` | `columns`: `string[]`、`rows`: `string[][]` | 写成对象数组（`[{...}]`） | `REPORT_TABLE_SHAPE_INVALID` |
+
+**`chart.id` 例外**：可以不写，服务端会自动补全唯一 id（`ch-auto-N`）。写了则保留。
+
+### ✗ 反面例子（每条都会被拒）
+
+```json
+{ "type": "narrative", "content": "..." }                         // 应为 markdown
+{ "type": "executive-summary", "blocks": ["..."] }                // 应为 bullets
+{ "type": "risk-list", "risks": [{"level":"high","desc":"..."}] } // 应为 items + severity + description
+{ "type": "table", "columns": [{"name":"渠道"}], "rows": [{"渠道":"自营"}] } // columns/rows 应为 string[] / string[][]
+```
+
+## 4. 数据冻结时刻（重要语义）
 
 **规则**：promote 是"冻结快照"动作。一旦 promote，报告中的数据不再变化——即使源数据库下一秒更新，报告里的数字也保持不变。
 
@@ -87,7 +111,7 @@ datatalk_promote_report(report: {...}, workspaceId: "ws-1")
 - 不允许 `chart` block 只放 `sql` 引用而不放 `echartsOption.dataset`——HTML 渲染时不会去数据库取数
 - "重新生成"是新建一份报告（新 version），不是在原报告上更新数据
 
-## 4. `report.json` 顶层字段
+## 5. `report.json` 顶层字段
 
 ```json
 {
@@ -123,7 +147,7 @@ datatalk_promote_report(report: {...}, workspaceId: "ws-1")
 - `meta.userPrompt` 选填但**强烈推荐**带上：用户原始诉求，服务端入库到 `user_prompt` 字段供"重新生成"链路复用
 - `theme.accent` 单一品牌强调色（hex），默认 `#1f4e79`（经典深蓝）。详见 `design-language.md`
 
-## 5. `datatalk_promote_report` 错误返回结构
+## 6. `datatalk_promote_report` 错误返回结构
 
 校验失败或 promote 异常时，服务端返回带 `error` 字段的对象（**含 `error` 字段即视为失败**，不要从 HTTP 状态码判断）。结构：
 

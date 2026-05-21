@@ -95,6 +95,18 @@ public class ReportSchemaValidator {
         m.put("REPORT_BLOCK_FIELD_INVALID",
                 "富视觉原语字段不合法：callout.variant ∈ {insight,warning,note,success} 且 markdown 必填、"
                         + "stat-highlight.value 必填、comparison.items 长度 2-4、quote.text 必填");
+        m.put("REPORT_TABLE_SHAPE_INVALID",
+                "table.columns 必须是非空字符串数组 string[]；rows 必须是字符串数组的数组 string[][]（每行一个数组，不能是对象数组）");
+        m.put("REPORT_CHART_INVALID",
+                "chart block 必须有 echartsOption 对象（含 inline 数据）；id 可省略，服务端会自动补全");
+        m.put("REPORT_NARRATIVE_INVALID",
+                "narrative block 必须有非空的 markdown 字段（字段名是 markdown，不是 content / text）");
+        m.put("REPORT_EXECSUMMARY_INVALID",
+                "executive-summary block 必须有非空的 bullets 字符串数组（字段名是 bullets，不是 blocks / items）");
+        m.put("REPORT_KPISTRIP_INVALID",
+                "kpi-strip block 必须有非空 items 数组，每项含 label 与 value");
+        m.put("REPORT_RISKLIST_INVALID",
+                "risk-list block 必须有 items 数组，每项含 severity ∈ {critical,high,medium,low} 与 description（字段名是 items / severity，不是 risks / level）");
         RECOVERY_HINTS = Map.copyOf(m);
     }
 
@@ -206,6 +218,11 @@ public class ReportSchemaValidator {
         }
         switch (type) {
             case "table" -> validateTableBlock(block, path, violations);
+            case "chart" -> validateChartBlock(block, path, violations);
+            case "narrative" -> validateNarrativeBlock(block, path, violations);
+            case "executive-summary" -> validateExecutiveSummaryBlock(block, path, violations);
+            case "kpi-strip" -> validateKpiStripBlock(block, path, violations);
+            case "risk-list" -> validateRiskListBlock(block, path, violations);
             case "callout" -> validateCalloutBlock(block, path, violations);
             case "stat-highlight" -> validateStatHighlightBlock(block, path, violations);
             case "comparison" -> validateComparisonBlock(block, path, violations);
@@ -258,12 +275,70 @@ public class ReportSchemaValidator {
         }
     }
 
+    private void validateChartBlock(JsonNode block, String path, List<Violation> violations) {
+        if (!block.path("echartsOption").isObject()) {
+            violations.add(new Violation("REPORT_CHART_INVALID", path + ".echartsOption",
+                    "chart.echartsOption must be a JSON object"));
+        }
+    }
+
+    private void validateNarrativeBlock(JsonNode block, String path, List<Violation> violations) {
+        if (block.path("markdown").asText("").isBlank()) {
+            violations.add(new Violation("REPORT_NARRATIVE_INVALID", path + ".markdown",
+                    "narrative.markdown is required and must be non-blank"));
+        }
+    }
+
+    private void validateExecutiveSummaryBlock(JsonNode block, String path, List<Violation> violations) {
+        JsonNode bullets = block.path("bullets");
+        if (!bullets.isArray() || bullets.isEmpty()) {
+            violations.add(new Violation("REPORT_EXECSUMMARY_INVALID", path + ".bullets",
+                    "executive-summary.bullets must be a non-empty array"));
+        }
+    }
+
+    private void validateKpiStripBlock(JsonNode block, String path, List<Violation> violations) {
+        JsonNode items = block.path("items");
+        if (!items.isArray() || items.isEmpty()) {
+            violations.add(new Violation("REPORT_KPISTRIP_INVALID", path + ".items",
+                    "kpi-strip.items must be a non-empty array"));
+        }
+    }
+
+    private void validateRiskListBlock(JsonNode block, String path, List<Violation> violations) {
+        if (!block.path("items").isArray()) {
+            violations.add(new Violation("REPORT_RISKLIST_INVALID", path + ".items",
+                    "risk-list.items must be an array"));
+        }
+    }
+
     private void validateTableBlock(JsonNode block, String path, List<Violation> violations) {
+        // columns 必须是非空的标量数组（string[]）——对象数组会让渲染器读出空表头
+        JsonNode columns = block.path("columns");
+        if (!columns.isArray() || columns.isEmpty()) {
+            violations.add(new Violation("REPORT_TABLE_SHAPE_INVALID", path + ".columns",
+                    "table.columns must be a non-empty string[]"));
+        } else {
+            for (int i = 0; i < columns.size(); i++) {
+                if (columns.get(i).isContainerNode()) {
+                    violations.add(new Violation("REPORT_TABLE_SHAPE_INVALID", path + ".columns[" + i + "]",
+                            "table.columns[" + i + "] must be a string, not an object/array"));
+                }
+            }
+        }
+
         JsonNode rows = block.path("rows");
         if (!rows.isArray()) {
             violations.add(new Violation("REPORT_TABLE_ROWS_MISSING", path + ".rows",
                     "table.rows must be an array"));
             return;
+        }
+        // 每行必须是标量数组（string[]）——对象数组（{col: val}）会被渲染器整行跳过
+        for (int i = 0; i < rows.size(); i++) {
+            if (!rows.get(i).isArray()) {
+                violations.add(new Violation("REPORT_TABLE_SHAPE_INVALID", path + ".rows[" + i + "]",
+                        "table.rows[" + i + "] must be an array of cell strings (string[]), not an object"));
+            }
         }
         int rowCount = rows.size();
         if (rowCount > MAX_INLINE_TABLE_ROWS) {
@@ -278,7 +353,6 @@ public class ReportSchemaValidator {
         // cellFormats 可选：若存在，长度必须 = columns.length，每项 ∈ {text,bar,delta,heat}
         JsonNode cellFormats = block.path("cellFormats");
         if (cellFormats.isArray()) {
-            JsonNode columns = block.path("columns");
             int colCount = columns.isArray() ? columns.size() : 0;
             if (cellFormats.size() != colCount) {
                 violations.add(new Violation("REPORT_TABLE_CELLFORMAT_INVALID", path + ".cellFormats",

@@ -57,6 +57,7 @@ triggers:
    - 写 table block 时设 `appendixCsvRef: <fileArtifactId>`，inline `rows` 只保留前 N 行（N ≤ 200，建议 50-100 行做预览）
    - **不可**直接 inline 超过 200 行的数据，否则 promote 会被拒（`REPORT_TABLE_OVERSIZE_NO_APPENDIX`）
 6. **一次性 `datatalk_promote_report`（含完整 report.json，包括各 appendixCsvRef 引用）**：在所有数据取齐、所有 narrative 写完之后，**一次性 single call** 提交完整 `report.json`。服务端原子写入、同步派生 HTML、异步派生 PDF + Markdown。
+   - **promote 前逐 block 自检字段名**（写错会被校验拒绝、且渲染成空白）：`narrative`→`markdown`（不是 content/text）、`executive-summary`→`bullets`（不是 blocks）、`kpi-strip`/`risk-list`→`items`（risk-list 每项用 `severity`+`description`，不是 risks/level）、`chart`→必有 `echartsOption`（`id` 可省略，服务端自动补）、`table`→`columns` 为 `string[]`、`rows` 为 `string[][]`（不是对象数组）。完整清单见 `data-contract.md` §3。
    - **禁止**"先 promote 一个空壳，再分多次 add section / append data"——服务端不支持，会让 status 状态机失控。
    - **禁止**分多次 promote 同一份报告。每次 promote 都是一个**新版本**（version + 1，同 group_id）。
 

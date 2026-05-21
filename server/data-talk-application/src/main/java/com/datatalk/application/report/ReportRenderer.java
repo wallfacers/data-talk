@@ -3,10 +3,14 @@ package com.datatalk.application.report;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.util.HashSet;
+import java.util.Set;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
 /**
@@ -72,7 +76,53 @@ public class ReportRenderer {
         return toHtml(reportJson, DEFAULT_ASSETS_BASE_HREF);
     }
 
+    /**
+     * 为缺少 / 留空 {@code id} 的 chart block 就地补上确定性的唯一 id（{@code ch-auto-N}）。
+     * id 仅用于关联 {@code data-ledger-chart-id} 与 ECharts 初始化脚本、PDF 截图定位，
+     * 不承载用户数据；模型漏写时由服务端补全，避免图表因 id 为空而无法初始化（白图）。
+     * 已有的非空 id 保持不变并参与去重。
+     */
+    static void normalizeChartIds(JsonNode root) {
+        if (root == null || !root.isObject()) return;
+        Set<String> used = new HashSet<>();
+        Consumer<ObjectNode> collect = chart -> {
+            String id = chart.path("id").asText("");
+            if (!id.isBlank()) used.add(id);
+        };
+        forEachChart(root.path("sections"), collect);
+        forEachChart(root.path("appendix"), collect);
+
+        int[] counter = {0};
+        Consumer<ObjectNode> assign = chart -> {
+            if (chart.path("id").asText("").isBlank()) {
+                String fresh;
+                do {
+                    fresh = "ch-auto-" + (++counter[0]);
+                } while (used.contains(fresh));
+                used.add(fresh);
+                chart.put("id", fresh);
+            }
+        };
+        forEachChart(root.path("sections"), assign);
+        forEachChart(root.path("appendix"), assign);
+    }
+
+    /** 遍历 block 数组中所有 chart block（递归下降进 chapter.blocks），对每个 chart ObjectNode 执行 fn。 */
+    private static void forEachChart(JsonNode blocks, Consumer<ObjectNode> fn) {
+        if (!blocks.isArray()) return;
+        for (JsonNode block : blocks) {
+            if (!block.isObject()) continue;
+            String type = block.path("type").asText("");
+            if ("chart".equals(type)) {
+                fn.accept((ObjectNode) block);
+            } else if ("chapter".equals(type)) {
+                forEachChart(block.path("blocks"), fn);
+            }
+        }
+    }
+
     public String toHtml(JsonNode reportJson, String assetsBaseHref) {
+        normalizeChartIds(reportJson);
         JsonNode meta = reportJson.path("meta");
         String title = meta.path("title").asText("DataTalk Report");
         LedgerThemePalette palette = LedgerThemePalette.from(reportJson.path("theme"));

@@ -58,6 +58,33 @@ ledger 报告渲染 SHALL NOT 输出数据来源脚注。即便 `report.json` �
 - **THEN** 输出 MUST NOT 含 CSS class `ledger-block-source`
 - **AND** 输出 MUST NOT 含字符串 `mysql-prod · sales_summary`
 
+### Requirement: 渲染必填字段校验（promote 成功 ⟺ 能正常渲染）
+
+`ReportSchemaValidator` SHALL 拒绝任何会导致 block 渲染成空白的字段错误，使 “promote 返回成功” 与 “报告能正常渲染” 成为不变量。校验 MUST 覆盖以下字段错误，每条返回携带稳定 `errorCode`、JSON path 与对应的中文 `recoveryHint`，喂入既有的 promote 失败重试闭环：
+
+- `narrative` 缺少非空 `markdown`（如误用 `content` / `text`）→ `REPORT_NARRATIVE_INVALID`
+- `executive-summary` 缺少非空 `bullets` 数组（如误用 `blocks`）→ `REPORT_EXECSUMMARY_INVALID`
+- `kpi-strip` 缺少非空 `items` 数组 → `REPORT_KPISTRIP_INVALID`
+- `risk-list` 缺少 `items` 数组（如误用 `risks` + `level`）→ `REPORT_RISKLIST_INVALID`
+- `chart` 缺少 `echartsOption` 对象 → `REPORT_CHART_INVALID`
+- `table.columns` 非非空 `string[]` 或 `rows` 非 `string[][]`（如误用对象数组）→ `REPORT_TABLE_SHAPE_INVALID`
+
+`chart.id` 不在校验范围内：缺失时由服务端在 promote 与渲染入口自动补全为确定性唯一 id（`ch-auto-N`），既有非空 id 保留并参与去重；不依赖模型填写。
+
+#### Scenario: 字段名/形状错误被拒绝并给出修复提示
+
+- **GIVEN** report 含 `narrative` 用 `content`、`executive-summary` 用 `blocks`、`risk-list` 用 `risks`、或 `table` 用对象数组 `columns`/`rows`
+- **WHEN** 调用 `datatalk_promote_report`
+- **THEN** promote MUST 失败并返回对应 `errorCode` 与该 code 的 `recoveryHint`
+- **AND** report MUST NOT 被写入（避免“成功但白渲染”）
+
+#### Scenario: chart 缺 id 自动补全而非拒绝
+
+- **GIVEN** report 中 chart block 未写 `id`
+- **WHEN** promote / 渲染
+- **THEN** 服务端 MUST 为其补上唯一 `id`，渲染输出 MUST NOT 含 `data-ledger-chart-id=""`
+- **AND** 既有非空 chart `id` MUST 保持不变
+
 ### Requirement: `SKILL.md` 入口与模板索引
 
 ledger `SKILL.md` SHALL 含：1 段触发场景描述、模板索引表（含 templateId / 适用场景 / 必备 section 列表）、报告写作 5 步流程（确认目的 → 选模板 → 列查询清单 → 跨连接逐项取数 → 一次性 promote）、与 bezel skill 的边界说明（dashboard ≠ report）。
