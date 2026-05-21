@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useReport, useSystemStatus, reportDownloadUrl } from '../api'
+import { useQueryClient } from '@tanstack/react-query'
+import { useReport, useSystemStatus, reportDownloadUrl, reportDetailQueryKey } from '../api'
 import { useI18n } from '@/i18n/use-i18n'
 import type { StageTab } from '@/stores/stage-store'
 import { coordinator } from '@/features/stage/persistence/stage-persistence-bootstrap'
 import { TabContentLoader } from '@/features/stage/components/tab-content-loader'
+import { RefreshCw } from 'lucide-react'
 
 export interface ReportViewerTabProps {
   tab: StageTab
@@ -11,6 +13,7 @@ export interface ReportViewerTabProps {
 
 export function ReportViewerTab({ tab }: ReportViewerTabProps) {
   const { t } = useI18n()
+  const qc = useQueryClient()
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [iframeLoaded, setIframeLoaded] = useState(false)
 
@@ -19,7 +22,7 @@ export function ReportViewerTab({ tab }: ReportViewerTabProps) {
 
   const [loading, setLoading] = useState(!reportId)
 
-  const { data: report, isLoading } = useReport(reportId)
+  const { data: report, isLoading, isFetching } = useReport(reportId)
   const { data: systemStatus } = useSystemStatus()
 
   useEffect(() => {
@@ -74,7 +77,13 @@ export function ReportViewerTab({ tab }: ReportViewerTabProps) {
         : ''
 
   const downloadFile = (format: 'pdf' | 'md' | 'html') => {
-    window.open(reportDownloadUrl(reportId, format), '_blank')
+    const url = reportDownloadUrl(reportId, format)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `report-${reportId}.${format}`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
   }
 
   return (
@@ -89,6 +98,21 @@ export function ReportViewerTab({ tab }: ReportViewerTabProps) {
           ) : null}
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            title={t('report.button.refresh')}
+            disabled={isFetching}
+            onClick={() => qc.invalidateQueries({ queryKey: reportDetailQueryKey(reportId ?? '') })}
+            className={[
+              'h-7 w-7 p-0 inline-flex items-center justify-center rounded-md',
+              'text-text-base hover:bg-interaction-hover hover:text-text-strong',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interaction-focusRing',
+              'disabled:opacity-50 disabled:cursor-not-allowed',
+              'transition-[background,color,opacity] duration-[180ms] ease-[var(--easing-standard)]',
+            ].join(' ')}
+          >
+            <RefreshCw className={`size-4 ${isFetching ? 'animate-spin' : ''}`} />
+          </button>
           <button
             type="button"
             title={pdfTooltip}

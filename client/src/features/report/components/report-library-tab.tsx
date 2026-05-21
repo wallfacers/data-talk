@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { useReportList, useDeleteReportMutation } from '../api'
+import { useQueryClient } from '@tanstack/react-query'
+import { useReportList, useDeleteReportMutation, reportListQueryKey } from '../api'
 import { useReportStore } from '../store'
 import { useStageStore } from '@/stores/stage-store'
 import { useI18n } from '@/i18n/use-i18n'
 import { TabContentLoader } from '@/features/stage/components/tab-content-loader'
-import { Trash2 } from 'lucide-react'
+import { RefreshCw, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   AlertDialog,
@@ -23,8 +24,9 @@ export interface ReportLibraryTabProps {
 
 export function ReportLibraryTab({ workspaceId }: ReportLibraryTabProps) {
   const { t } = useI18n()
+  const qc = useQueryClient()
   const effectiveWsId = workspaceId || undefined
-  const { data: reports, isLoading } = useReportList(effectiveWsId)
+  const { data: reports, isLoading, isFetching } = useReportList(effectiveWsId)
   const selected = useReportStore((s) => s.selectedReportId)
   const setSelected = useReportStore((s) => s.setSelected)
   const openTab = useStageStore((s) => s.openTab)
@@ -78,6 +80,15 @@ export function ReportLibraryTab({ workspaceId }: ReportLibraryTabProps) {
     <div className="h-full overflow-y-auto bg-bg-canvas">
       <header className="sticky top-0 z-10 flex items-center min-h-11 px-3 py-2 border-b border-border/50 bg-bg-soft">
         <div className="text-text-strong font-medium">{t('report.library.title')}</div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="ml-auto h-7 w-7 p-0"
+          disabled={isFetching}
+          onClick={() => qc.invalidateQueries({ queryKey: reportListQueryKey(effectiveWsId ?? '') })}
+        >
+          <RefreshCw className={`size-4 ${isFetching ? 'animate-spin' : ''}`} />
+        </Button>
       </header>
       <ul className="divide-y divide-border-subtle">
         {reports.map((r) => {

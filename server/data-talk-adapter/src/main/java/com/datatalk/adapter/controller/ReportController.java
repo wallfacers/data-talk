@@ -111,10 +111,11 @@ public class ReportController {
                 case "md" -> MediaType.TEXT_PLAIN;
                 default -> MediaType.APPLICATION_OCTET_STREAM;
             };
+            String disposition = ("html".equals(format)) ? "inline" : "attachment";
             return ResponseEntity.ok()
                     .contentType(contentType)
                     .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "inline; filename=\"report-" + id + "." + format + "\"")
+                            disposition + "; filename=\"report-" + id + "." + format + "\"")
                     .body(new FileSystemResource(file));
         }
         Report r = opt.get();
@@ -158,11 +159,12 @@ public class ReportController {
             case "json" -> MediaType.APPLICATION_JSON;
             default -> MediaType.APPLICATION_OCTET_STREAM;
         };
+        String disposition = ("html".equals(format)) ? "inline" : "attachment";
         Resource resource = new FileSystemResource(target);
         return ResponseEntity.ok()
                 .contentType(contentType)
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "inline; filename=\"report-" + r.id() + "." + format + "\"")
+                        disposition + "; filename=\"report-" + r.id() + "." + format + "\"")
                 .body(resource);
     }
 
