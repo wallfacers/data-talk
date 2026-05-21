@@ -1,7 +1,9 @@
 package com.datatalk.infra.opencode.process;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -84,6 +86,28 @@ class OpenCodeProcessManagerTest {
             .containsEntry("HTTPS_PROXY", "http://localhost:7897");
         assertLoopbackNoProxyEntries(environment, "NO_PROXY");
         assertLoopbackNoProxyEntries(environment, "no_proxy");
+    }
+
+    @Test
+    void configuredBinaryIsUsedWhenFileExists(@TempDir Path dir) throws Exception {
+        Path binary = Files.createFile(dir.resolve("opencode"));
+
+        Path resolved = OpenCodeProcessManager.resolveConfiguredBinary(binary.toString());
+
+        assertThat(resolved).isEqualTo(binary);
+    }
+
+    @Test
+    void configuredBinaryFallsBackWhenFileMissing(@TempDir Path dir) {
+        Path missing = dir.resolve("does-not-exist");
+
+        assertThat(OpenCodeProcessManager.resolveConfiguredBinary(missing.toString())).isNull();
+    }
+
+    @Test
+    void configuredBinaryFallsBackWhenUnset() {
+        assertThat(OpenCodeProcessManager.resolveConfiguredBinary(null)).isNull();
+        assertThat(OpenCodeProcessManager.resolveConfiguredBinary("  ")).isNull();
     }
 
     private static Map<String, String> proxyEnvironment() {

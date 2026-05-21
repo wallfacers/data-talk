@@ -63,7 +63,59 @@ echo "==> Building full-module runtime with jlink"
   --no-man-pages \
   --output "$BACKEND_DIR/runtime"
 
+# ── Bundle the platform OpenCode binary ──────────────────────────────────────
+# Embeds opencode into backend/opencode/ so the packaged app never downloads it on
+# first launch (backend reads DATATALK_OPENCODE_SERVE_BINARY_PATH set by backend.rs).
+# Version is the single source of truth in application.yml; override via OPENCODE_VERSION.
+APP_YML="$SERVER_DIR/data-talk-adapter/src/main/resources/application.yml"
+OPENCODE_VERSION="${OPENCODE_VERSION:-$(grep -E '^\s+version:\s*[0-9]' "$APP_YML" | head -n1 | sed -E 's/.*version:[[:space:]]*//' | tr -d '[:space:]')}"
+if [ -z "$OPENCODE_VERSION" ]; then
+  echo "ERROR: could not determine OpenCode version (set OPENCODE_VERSION or check $APP_YML)" >&2
+  exit 1
+fi
+
+case "$(uname -s)" in
+  Linux*)               OC_OS=linux;   OC_EXT=tar.gz; OC_BIN=opencode ;;
+  Darwin*)              OC_OS=darwin;  OC_EXT=zip;    OC_BIN=opencode ;;
+  MINGW*|MSYS*|CYGWIN*) OC_OS=windows; OC_EXT=zip;    OC_BIN=opencode.exe ;;
+  *) echo "ERROR: unsupported OS for OpenCode bundling: $(uname -s)" >&2; exit 1 ;;
+esac
+case "$(uname -m)" in
+  x86_64|amd64)  OC_ARCH=x64 ;;
+  arm64|aarch64) OC_ARCH=arm64 ;;
+  *) echo "ERROR: unsupported arch for OpenCode bundling: $(uname -m)" >&2; exit 1 ;;
+esac
+
+OC_PLATFORM="$OC_OS-$OC_ARCH"
+OC_ASSET="opencode-$OC_PLATFORM.$OC_EXT"
+OC_URL="https://github.com/anomalyco/opencode/releases/download/v$OPENCODE_VERSION/$OC_ASSET"
+OC_DIR="$BACKEND_DIR/opencode"
+
+echo "==> Bundling OpenCode v$OPENCODE_VERSION ($OC_PLATFORM)"
+echo "    url: $OC_URL"
+rm -rf "$OC_DIR"
+mkdir -p "$OC_DIR"
+
+OC_TMP="$(mktemp -d)"
+trap 'rm -rf "$OC_TMP"' EXIT
+curl -fsSL "$OC_URL" -o "$OC_TMP/$OC_ASSET"
+
+if [ "$OC_EXT" = "tar.gz" ]; then
+  tar -xzf "$OC_TMP/$OC_ASSET" -C "$OC_TMP"
+else
+  ( cd "$OC_TMP" && { unzip -oq "$OC_ASSET" || tar -xf "$OC_ASSET"; } )
+fi
+
+EXTRACTED="$(find "$OC_TMP" -type f -name "$OC_BIN" | head -n1)"
+if [ -z "$EXTRACTED" ]; then
+  echo "ERROR: '$OC_BIN' not found in extracted archive $OC_ASSET" >&2
+  exit 1
+fi
+cp "$EXTRACTED" "$OC_DIR/$OC_BIN"
+chmod +x "$OC_DIR/$OC_BIN" 2>/dev/null || true
+
 echo "==> Done"
 echo "    app.jar  : $BACKEND_DIR/app.jar"
 echo "    runtime  : $BACKEND_DIR/runtime"
-du -sh "$BACKEND_DIR/runtime" "$BACKEND_DIR/app.jar" 2>/dev/null || true
+echo "    opencode : $OC_DIR/$OC_BIN"
+du -sh "$BACKEND_DIR/runtime" "$BACKEND_DIR/app.jar" "$OC_DIR/$OC_BIN" 2>/dev/null || true

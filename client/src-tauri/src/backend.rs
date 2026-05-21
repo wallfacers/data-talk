@@ -77,11 +77,23 @@ fn ensure_started(app: &AppHandle) -> Result<(), String> {
     let work_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     std::fs::create_dir_all(&work_dir).map_err(|e| e.to_string())?;
 
+    // Point the backend at the bundled OpenCode binary so it never downloads on first
+    // launch. Users can swap this file to switch versions. If absent, the backend falls
+    // back to its own resolution chain (local cache → classpath → GitHub download).
+    let opencode_bin = backend_dir
+        .join("opencode")
+        .join(if cfg!(windows) { "opencode.exe" } else { "opencode" });
+
     log::info!("Spawning backend: {java:?} -jar {jar:?} (cwd {work_dir:?})");
-    let child = Command::new(&java)
-        .arg("-jar")
-        .arg(&jar)
-        .current_dir(&work_dir)
+    let mut command = Command::new(&java);
+    command.arg("-jar").arg(&jar).current_dir(&work_dir);
+    if opencode_bin.exists() {
+        log::info!("Using bundled OpenCode binary: {opencode_bin:?}");
+        command.env("DATATALK_OPENCODE_SERVE_BINARY_PATH", &opencode_bin);
+    } else {
+        log::warn!("Bundled OpenCode binary not found at {opencode_bin:?}; backend will auto-resolve");
+    }
+    let child = command
         .spawn()
         .map_err(|e| format!("Failed to spawn backend: {e}"))?;
 
