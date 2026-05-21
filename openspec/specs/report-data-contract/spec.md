@@ -47,22 +47,16 @@ ledger skill `data-contract.md` SHALL 明确要求 AI 在每次调用 `datatalk_
 - **THEN** MUST 含 `errorCodes` 与 `violations` 与 `recoveryHints` 三个字段的说明
 - **AND** MUST 给出至少 1 个错误返回的 JSON 示例
 
-### Requirement: `data-contract.md` 数据来源标注约束
+### Requirement: block `source` 字段不渲染
 
-ledger skill `data-contract.md` SHALL 要求 AI 在每个 `table` / `chart` / `kpi-strip` block 旁的 `source` 字段标注数据来源：格式 `<connection-name> · <table-or-summary-name>`，可选附 `as of <ISO-date>`；该字段在 HTML 渲染时呈现于 block 下方小字脚注。
+ledger 报告渲染 SHALL NOT 输出数据来源脚注。即便 `report.json` 的 block 含 `source` 字段，HTML 与 Markdown 渲染均 MUST 忽略它，不产生任何可见节点。
 
-#### Scenario: data-contract.md 含 source 格式要求
-
-- **WHEN** 读取 ledger `data-contract.md`
-- **THEN** MUST 给出 `source` 字段格式说明（含 `<connection-name>` 与 `<table-name>` 占位符）
-- **AND** MUST 含正面例子 `mysql-prod · sales_summary as of 2026-04-30`
-
-#### Scenario: HTML 渲染显示 source
+#### Scenario: HTML 渲染忽略 source
 
 - **GIVEN** report 中 chart block `source: "mysql-prod · sales_summary as of 2026-04-30"`
 - **WHEN** 渲染 HTML
-- **THEN** chart 容器下方 DOM 节点 MUST 含 CSS class `ledger-block-source`
-- **AND** 该节点文本 MUST 含字符串 `mysql-prod · sales_summary`
+- **THEN** 输出 MUST NOT 含 CSS class `ledger-block-source`
+- **AND** 输出 MUST NOT 含字符串 `mysql-prod · sales_summary`
 
 ### Requirement: `SKILL.md` 入口与模板索引
 
@@ -233,7 +227,7 @@ ledger skill SHALL 在 `SKILL.md` 中明确 AI 生成报告时遵循的六步流
 
 ledger `SKILL.md` SHALL 含一段"数据叙事撰写规则"，要求 AI 在组织报告时遵循证据驱动与视觉层次原则：
 
-1. **论点→证据→来源链条**：每个关键结论 MUST 由具体数据支撑，并经 `source` 字段挂到数据来源/口径。
+1. **论点→证据链条**：每个关键结论 MUST 由具体数据支撑。
 2. **一图一观点**：单个 `chart` MUST 只表达一个核心观点，禁止一张图叠加多个互不相关的 callout/对比。
 3. **视觉服务于结论**：富视觉原语（`callout` / `stat-highlight` / `comparison`）MUST 用于强调结论性洞察，禁止纯装饰；禁止"数据倾倒"（把原始查询结果整表丢给读者而不给解读）。
 4. **渐进披露**：复杂分析 MUST 按"概述 → 分项 → 结论 → 建议"顺序组织，先给基线再给关键对比。
@@ -248,8 +242,7 @@ ledger `SKILL.md` SHALL 含一段"数据叙事撰写规则"，要求 AI 在组�
 #### Scenario: SKILL.md 要求论点挂证据
 
 - **WHEN** 读取 ledger `SKILL.md`
-- **THEN** MUST 含"关键结论需有数据/来源支撑"或语义等价表达
-- **AND** MUST 关联 `source` 字段的使用
+- **THEN** MUST 含"关键结论需有数据支撑"或语义等价表达
 
 #### Scenario: SKILL.md 引导使用新富视觉原语
 

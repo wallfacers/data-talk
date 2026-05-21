@@ -51,12 +51,12 @@ triggers:
 1. **确认报告目的与时间窗口**：跟用户对齐"是月报还是季报？时间窗口是几月几日到几月几日？给谁看？关注哪个业务线？"。
 2. **根据用户意图选定 templateId**：从模板索引表选择最贴合的 templateId；不确定时优先选 `ledger.monthly-business-review.v1`。
 3. **列出该模板所需的全部数据查询清单**：把整份报告需要的所有 SQL 一次性列出，每条标注 `connectionId` + SQL 草稿 + 预期返回的列。不要边写章节边发现需要新数据。
-4. **跨连接逐项 `datatalk_query_data` 取数并把结果 inline 写进 report.json**：每个查询调用 `datatalk_query_data` 时**必须显式传 `connectionId`**，不依赖 session 默认 connection。把返回的 rows / columns 直接写进对应 block 的 inline 数据字段。在每个 `table` / `chart` / `kpi-strip` block 旁标注 `source` 字段：格式 `<connection-name> · <table-or-summary-name>`，可选附 ` as of <ISO-date>`。
+4. **跨连接逐项 `datatalk_query_data` 取数并把结果 inline 写进 report.json**：每个查询调用 `datatalk_query_data` 时**必须显式传 `connectionId`**，不依赖 session 默认 connection。把返回的 rows / columns 直接写进对应 block 的 inline 数据字段。
 5. **对超过 200 行的 table block：先 export CSV，再 inline 前 N 行 + 引用 appendixCsvRef**：
    - 先调用 `datatalk_export_data(format='csv', sql=<完整 SQL>)` 得到 `{ fileArtifactId }`
    - 写 table block 时设 `appendixCsvRef: <fileArtifactId>`，inline `rows` 只保留前 N 行（N ≤ 200，建议 50-100 行做预览）
    - **不可**直接 inline 超过 200 行的数据，否则 promote 会被拒（`REPORT_TABLE_OVERSIZE_NO_APPENDIX`）
-6. **一次性 `datatalk_promote_report`（含完整 report.json，包括各 appendixCsvRef 引用）**：在所有数据取齐、所有 narrative 写完、所有 source 标注完整之后，**一次性 single call** 提交完整 `report.json`。服务端原子写入、同步派生 HTML、异步派生 PDF + Markdown。
+6. **一次性 `datatalk_promote_report`（含完整 report.json，包括各 appendixCsvRef 引用）**：在所有数据取齐、所有 narrative 写完之后，**一次性 single call** 提交完整 `report.json`。服务端原子写入、同步派生 HTML、异步派生 PDF + Markdown。
    - **禁止**"先 promote 一个空壳，再分多次 add section / append data"——服务端不支持，会让 status 状态机失控。
    - **禁止**分多次 promote 同一份报告。每次 promote 都是一个**新版本**（version + 1，同 group_id）。
 
@@ -64,7 +64,7 @@ triggers:
 
 ledger 报告的价值在于**有理有据、视觉服务于结论**，而非把查询结果整表丢给读者。组织报告时**必须**遵循：
 
-1. **论点 → 证据 → 来源链条**：每个关键结论 **MUST** 由具体数据支撑，并通过 block 的 `source` 字段挂到数据来源 / 口径（格式 `<connection-name> · <table-or-summary> as of <date>`）。没有 source 的结论性数字视为未完成。
+1. **论点 → 证据链条**：每个关键结论 **MUST** 由具体数据支撑。没有数据支撑的结论性数字视为未完成。
 2. **一图一观点**：单个 `chart` **MUST** 只表达一个核心观点。禁止一张图叠加多个互不相关的对比 / callout；需要多观点就拆成多张图，每张配一句结论 narrative。
 3. **视觉服务于结论，禁数据倾倒**：富视觉原语（`callout` / `stat-highlight` / `comparison`）**MUST** 用于**强调结论性洞察**，禁止纯装饰。
    - 用 `stat-highlight` 锚定本章最重要的一个数字；用 `callout(insight)` 点出"这意味着什么"；用 `comparison` 做同维度横向对比；用 `quote` 引用关键论断。
@@ -104,8 +104,8 @@ ledger 报告的价值在于**有理有据、视觉服务于结论**，而非把
 - `chapter`（章节容器：heading, blocks[]）
 - `kpi-strip`（KPI 条带，3-6 项）
 - `narrative`（叙事段落，markdown 文本）
-- `chart`（图表：echartsOption, caption, source）
-- `table`（表格：columns[], rows[], caption?, source?, appendixCsvRef?）
+- `chart`（图表：echartsOption, caption）
+- `table`（表格：columns[], rows[], caption?, appendixCsvRef?）
 - `risk-list`（风险/行动项列表）
 - `timeline`（事件时间线，复盘专用）
 - `appendix`（附录容器）
@@ -137,7 +137,7 @@ ledger 报告的价值在于**有理有据、视觉服务于结论**，而非把
 
 ## 详细参考
 
-- `data-contract.md` — promote 数据契约（跨连接 connectionId 强制、source 字段格式、大表附录 CSV）
+- `data-contract.md` — promote 数据契约（跨连接 connectionId 强制、大表附录 CSV）
 - `design-language.md` — 现代报告设计语言（色彩角色系统、字号阶、富视觉原语、bezel 边界）
 - `section-patterns.md` — 16 种 block 类型详细 schema + HTML 示例 + PDF 分页注意
 - `templates/monthly-business-review.md` — 业务月报模板含完整示例 JSON

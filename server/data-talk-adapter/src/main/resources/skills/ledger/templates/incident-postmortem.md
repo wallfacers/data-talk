@@ -102,8 +102,7 @@
           "type": "stat-highlight",
           "value": "2h 25min",
           "label": "P2 事件持续时长",
-          "context": "峰值主从延迟 35s，影响 4 个下游业务",
-          "source": "internal · incident_log as of 2026-04-15"
+          "context": "峰值主从延迟 35s，影响 4 个下游业务"
         },
         {
           "type": "kpi-strip",
@@ -123,8 +122,7 @@
             ["风控规则", "无影响（独立 OLAP）", "无", "—"],
             ["运营看板", "实时大盘卡顿", "中", "暂停 30 分钟"]
           ],
-          "caption": "下游业务影响清单",
-          "source": "internal · incident_log as of 2026-04-15"
+          "caption": "下游业务影响清单"
         }
       ]
     },
@@ -153,8 +151,7 @@
               { "type": "line", "data": [1, 35, 28, 32, 25, 18, 12, 6, 2, 1], "smooth": true }
             ]
           },
-          "caption": "主从延迟曲线（事件期间）",
-          "source": "internal · mysql_replication_metrics as of 2026-04-15"
+          "caption": "主从延迟曲线（事件期间）"
         }
       ]
     },

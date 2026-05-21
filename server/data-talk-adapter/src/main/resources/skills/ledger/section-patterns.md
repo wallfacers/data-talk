@@ -191,8 +191,7 @@ toc 单独成页（`break-before: page` + `break-after: page`）。
     { "label": "总 GMV", "value": "¥3.2M", "delta": "+18%" },
     { "label": "订单数", "value": "12,345", "delta": "+9%" },
     { "label": "客单价", "value": "¥259", "delta": "+8%" }
-  ],
-  "source": "mysql-prod · sales_summary as of 2026-04-30"
+  ]
 }
 ```
 
@@ -201,7 +200,6 @@ toc 单独成页（`break-before: page` + `break-after: page`）。
   - `label`（必填，string）
   - `value`（必填，string）—— 已格式化的字符串（如 "¥3.2M" / "12,345"）
   - `delta`（可选，string）—— 含 ± 与 % 的字符串，正向 / 负向自动着色
-- `source`（强烈推荐）：数据来源标注
 
 ### HTML 示例
 
@@ -214,7 +212,6 @@ toc 单独成页（`break-before: page` + `break-after: page`）。
   </div>
   ...
 </div>
-<div class="ledger-block-source">▸ mysql-prod · sales_summary as of 2026-04-30</div>
 ```
 
 ### PDF 分页
@@ -267,8 +264,7 @@ toc 单独成页（`break-before: page` + `break-after: page`）。
       { "type": "bar", "data": [1216000, 832000, 712000, 440000] }
     ]
   },
-  "caption": "4 月各渠道 GMV（元）",
-  "source": "mysql-prod · sales_summary as of 2026-04-30"
+  "caption": "4 月各渠道 GMV（元）"
 }
 ```
 
@@ -276,7 +272,6 @@ toc 单独成页（`break-before: page` + `break-after: page`）。
 - `id`（必填，string）—— 唯一标识，供 ChartCaptureRenderer 关联截图 PNG 文件名
 - `echartsOption`（必填，object）—— 完整 ECharts option，**必须 inline 数据**（不允许 `dataset.source: <ref>`）
 - `caption`（必填，string）—— 图表说明
-- `source`（强烈推荐）—— 数据来源标注
 
 ### HTML 示例
 
@@ -285,7 +280,6 @@ toc 单独成页（`break-before: page` + `break-after: page`）。
   <div data-ledger-chart-id="ch-channel-gmv" style="height: 360px;"></div>
   <figcaption>4 月各渠道 GMV（元）</figcaption>
 </figure>
-<div class="ledger-block-source">▸ mysql-prod · sales_summary as of 2026-04-30</div>
 <script>
   // ECharts init code，调 chart.on('finished', ...) 后累积 LEDGER_READY 信号
 </script>
@@ -312,7 +306,6 @@ toc 单独成页（`break-before: page` + `break-after: page`）。
     ["抖音", "0.8M", "+28%", "+28%"]
   ],
   "caption": "Top 渠道 GMV 表现",
-  "source": "mysql-prod · sales_summary as of 2026-04-30",
   "appendixCsvRef": null
 }
 ```
@@ -321,7 +314,6 @@ toc 单独成页（`break-before: page` + `break-after: page`）。
 - `columns`（必填，string[]）
 - `rows`（必填，string[][]）—— 每行 cell 已格式化为字符串
 - `caption`（可选，string）
-- `source`（强烈推荐）
 - `appendixCsvRef`（可选，string）—— rows.length > 200 时**必填**；指向 file artifact `kind='report-data-csv'` 的 fileArtifactId
 - `cellFormats`（可选，string[]）—— **列级**单元格修饰，长度**必须等于** `columns.length`，每项 ∈ `text`(默认) / `bar` / `delta` / `heat`：
   - `text`：纯文本（默认；不声明 `cellFormats` 时全部列按此渲染）
@@ -343,8 +335,7 @@ toc 单独成页（`break-before: page` + `break-after: page`）。
     ["抖音", "832000", "+28%", "26"],
     ["天猫", "712000", "-3%", "22"]
   ],
-  "caption": "Top 渠道 GMV（富单元格）",
-  "source": "mysql-prod · sales_summary as of 2026-04-30"
+  "caption": "Top 渠道 GMV（富单元格）"
 }
 ```
 
@@ -361,7 +352,6 @@ toc 单独成页（`break-before: page` + `break-after: page`）。
     </tbody>
   </table>
 </figure>
-<div class="ledger-block-source">▸ mysql-prod · sales_summary as of 2026-04-30</div>
 ```
 
 ### PDF 分页
@@ -536,8 +526,7 @@ toc 单独成页（`break-before: page` + `break-after: page`）。
   "type": "callout",
   "variant": "insight",
   "title": "核心洞察",
-  "markdown": "抖音渠道环比 **+28%** 是本月增长主引擎，贡献了总增量的 62%。",
-  "source": "mysql-prod · sales_summary as of 2026-04-30"
+  "markdown": "抖音渠道环比 **+28%** 是本月增长主引擎，贡献了总增量的 62%。"
 }
 ```
 
@@ -545,7 +534,6 @@ toc 单独成页（`break-before: page` + `break-after: page`）。
 - `variant`（必填）：`insight` / `warning` / `note` / `success`
 - `title`（可选，string）：加粗小标题
 - `markdown`（必填，string）：正文，支持 `**bold**` / `*italic*`
-- `source`（可选，string）：数据来源
 
 variant → 色彩 + 图标映射：
 
@@ -594,8 +582,7 @@ variant → 色彩 + 图标映射：
   "value": "¥3.2M",
   "label": "本月总 GMV",
   "context": "目标完成率 107%",
-  "delta": "+18%",
-  "source": "mysql-prod · sales_summary as of 2026-04-30"
+  "delta": "+18%"
 }
 ```
 
@@ -604,7 +591,6 @@ variant → 色彩 + 图标映射：
 - `label`（可选，string）：指标名
 - `context`（可选，string）：补充说明
 - `delta`（可选，string）：含 ± 的变化，正负着语义色
-- `source`（可选，string）
 
 ### HTML 示例
 
@@ -642,8 +628,7 @@ variant → 色彩 + 图标映射：
     { "label": "自营", "value": "¥1.2M", "caption": "占比 38%" },
     { "label": "抖音", "value": "¥0.8M", "caption": "占比 26%" },
     { "label": "天猫", "value": "¥0.7M", "caption": "占比 22%" }
-  ],
-  "source": "mysql-prod · sales_summary as of 2026-04-30"
+  ]
 }
 ```
 
@@ -652,7 +637,6 @@ variant → 色彩 + 图标映射：
   - `label`（必填，string）
   - `value`（必填，string）：`primary` 色数值
   - `caption`（可选，string）
-- `source`（可选，string）
 
 ### HTML 示例
 

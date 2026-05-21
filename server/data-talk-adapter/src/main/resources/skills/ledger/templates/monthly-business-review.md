@@ -66,8 +66,7 @@
           "value": "¥3.2M",
           "label": "本月总 GMV",
           "context": "目标完成率 107%",
-          "delta": "+18%",
-          "source": "mysql-prod · sales_summary as of 2026-04-30"
+          "delta": "+18%"
         },
         {
           "type": "kpi-strip",
@@ -76,8 +75,7 @@
             { "label": "订单数", "value": "12,345", "delta": "+9%" },
             { "label": "客单价", "value": "¥259", "delta": "+8%" },
             { "label": "毛利率", "value": "23.5%", "delta": "+1.2pp" }
-          ],
-          "source": "mysql-prod · sales_summary as of 2026-04-30"
+          ]
         },
         {
           "type": "narrative",
@@ -94,15 +92,13 @@
               { "type": "line", "data": [2.4, 2.6, 2.9, 3.2], "smooth": true }
             ]
           },
-          "caption": "近 4 个月 GMV 趋势（百万元）",
-          "source": "mysql-prod · sales_summary as of 2026-04-30"
+          "caption": "近 4 个月 GMV 趋势（百万元）"
         },
         {
           "type": "callout",
           "variant": "insight",
           "title": "核心洞察",
-          "markdown": "抖音渠道环比 **+28%** 是本月增长主引擎，单渠道贡献了总增量的 62%。",
-          "source": "mysql-prod · channel_summary as of 2026-04-30"
+          "markdown": "抖音渠道环比 **+28%** 是本月增长主引擎，单渠道贡献了总增量的 62%。"
         }
       ]
     },
@@ -120,8 +116,7 @@
             ["天猫", "71.2", "22", "+12%", "+5%"],
             ["京东", "44.0", "14", "+8%", "+3%"]
           ],
-          "caption": "Top 渠道 GMV 表现（条形=GMV，热力=占比，delta=同/环比）",
-          "source": "mysql-prod · channel_summary as of 2026-04-30"
+          "caption": "Top 渠道 GMV 表现（条形=GMV，热力=占比，delta=同/环比）"
         },
         {
           "type": "narrative",
@@ -152,16 +147,14 @@
               }
             ]
           },
-          "caption": "4 月 GMV 区域占比（%）",
-          "source": "mysql-prod · region_summary as of 2026-04-30"
+          "caption": "4 月 GMV 区域占比（%）"
         },
         {
           "type": "comparison",
           "items": [
             { "label": "华东（增长引擎）", "value": "¥134.4万", "caption": "占比 42% · 同比 +22%" },
             { "label": "西南（需关注）", "value": "¥22.4万", "caption": "占比 7% · 同比 -5%" }
-          ],
-          "source": "mysql-prod · region_summary as of 2026-04-30"
+          ]
         },
         {
           "type": "table",
@@ -173,8 +166,7 @@
             ["华中", "32.0", "+9%", "+5%"],
             ["西南", "22.4", "-5%", "-3%"]
           ],
-          "caption": "区域 GMV 同环比",
-          "source": "mysql-prod · region_summary as of 2026-04-30"
+          "caption": "区域 GMV 同环比"
         },
         {
           "type": "narrative",

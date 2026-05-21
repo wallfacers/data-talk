@@ -54,7 +54,7 @@ ledger 用**色彩角色系统**而非单一强调色。每个角色承担明确
 | `text-strong` | `#1A1A19` | 主标题、强调文字 |
 | `text-base` | `#34322D` | 正文、表格数据 |
 | `text-muted` | `#5E5E5B` | 次要信息（副标题、caption、label） |
-| `text-faint` | `#858481` | 弱化（数据来源脚注、页码） |
+| `text-faint` | `#858481` | 弱化（页码、元数据） |
 
 ### 2.5 theme 来源与覆盖
 
@@ -85,7 +85,7 @@ ledger 用**色彩角色系统**而非单一强调色。每个角色承担明确
 | h3 | 子章节 / 大表格 caption / quote 文本 | 18px | 1.4 |
 | body | 正文段落 | 14px | 1.7 |
 | caption | 表格/图表说明、KPI/comparison label | 12px | 1.5 |
-| micro | source 数据来源脚注、页码 | 11px | 1.4 |
+| micro | 页码、封面元数据 | 11px | 1.4 |
 
 > stat-highlight 主数字使用超大字号（44px）作为 hero 视觉锚点，是字号阶之上的专用例外。
 
@@ -107,11 +107,6 @@ ledger 用**色彩角色系统**而非单一强调色。每个角色承担明确
 ### KPI 条带（kpi-strip）
 
 - 3-6 个并列 KPI 卡片：label（caption）/ value（h2、text-strong）/ delta（正向 `positive` / 负向 `negative`，含 ↑↓）
-
-### 数据来源脚注（source）
-
-- block 下方 `<div class="ledger-block-source">`，micro 字号 text-faint，前缀 "▸"
-- 内容例：`mysql-prod · sales_summary as of 2026-04-30`
 
 ## 5. 富视觉原语规范
 

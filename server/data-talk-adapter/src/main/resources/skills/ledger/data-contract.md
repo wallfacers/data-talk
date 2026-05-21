@@ -32,47 +32,7 @@ datatalk_query_data(
 
 发现自己在生成的 tool call 里省略了 `connectionId`，**必须撤回并重新生成带 connectionId 的版本**。
 
-## 2. `source` 字段标注（强制）
-
-**规则**：每个 `table` / `chart` / `kpi-strip` block 旁的 `source` 字段必须标注数据来源。
-
-**格式**：`<connection-name> · <table-or-summary-name>`，可选附 ` as of <ISO-date>`。
-
-### ✓ 正面例子
-
-```json
-{
-  "type": "chart",
-  "echartsOption": { ... },
-  "caption": "2026 年 4 月 GMV 渠道分布",
-  "source": "mysql-prod · sales_summary as of 2026-04-30"
-}
-```
-
-```json
-{
-  "type": "kpi-strip",
-  "items": [
-    { "label": "总 GMV", "value": "¥3.2M", "delta": "+18%" }
-  ],
-  "source": "mysql-prod · sales_summary as of 2026-04-30"
-}
-```
-
-### ✗ 反面例子
-
-```json
-{
-  "type": "table",
-  "columns": ["渠道", "GMV"],
-  "rows": [["自营", "1.2M"]]
-  // 缺 source — 数据来源不明，审计不可追溯
-}
-```
-
-HTML 渲染时，`source` 字段会出现在 block 下方小字脚注（CSS class `ledger-block-source`），供阅读者快速核对数据出处。
-
-## 3. 大表附录 CSV 两步交互（强制）
+## 2. 大表附录 CSV 两步交互（强制）
 
 **规则**：单个 `table` block 的 `rows` 数组**不得超过 200 行**。超过时**必须**使用两步交互：
 
@@ -96,7 +56,6 @@ result = datatalk_export_data(
   "columns": ["sku_id", "name", "gmv", "qty"],
   "rows": [/* 前 50 行 */],
   "caption": "Top 50 SKU 销售明细（完整 800 行见附录）",
-  "source": "mysql-prod · sku_sales as of 2026-04-30",
   "appendixCsvRef": "fa-csv-9e3d4..."
 }
 
@@ -118,7 +77,7 @@ datatalk_promote_report(report: {...}, workspaceId: "ws-1")
 }
 ```
 
-## 4. 数据冻结时刻（重要语义）
+## 3. 数据冻结时刻（重要语义）
 
 **规则**：promote 是"冻结快照"动作。一旦 promote，报告中的数据不再变化——即使源数据库下一秒更新，报告里的数字也保持不变。
 
@@ -128,7 +87,7 @@ datatalk_promote_report(report: {...}, workspaceId: "ws-1")
 - 不允许 `chart` block 只放 `sql` 引用而不放 `echartsOption.dataset`——HTML 渲染时不会去数据库取数
 - "重新生成"是新建一份报告（新 version），不是在原报告上更新数据
 
-## 5. `report.json` 顶层字段
+## 4. `report.json` 顶层字段
 
 ```json
 {
@@ -164,7 +123,7 @@ datatalk_promote_report(report: {...}, workspaceId: "ws-1")
 - `meta.userPrompt` 选填但**强烈推荐**带上：用户原始诉求，服务端入库到 `user_prompt` 字段供"重新生成"链路复用
 - `theme.accent` 单一品牌强调色（hex），默认 `#1f4e79`（经典深蓝）。详见 `design-language.md`
 
-## 6. `datatalk_promote_report` 错误返回结构
+## 5. `datatalk_promote_report` 错误返回结构
 
 校验失败或 promote 异常时，服务端返回带 `error` 字段的对象（**含 `error` 字段即视为失败**，不要从 HTTP 状态码判断）。结构：
 

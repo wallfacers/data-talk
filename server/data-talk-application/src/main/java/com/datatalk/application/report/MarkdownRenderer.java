@@ -152,9 +152,7 @@ public class MarkdownRenderer {
             }
             value.append(" ").append(escapePipe(v)).append(" |");
         }
-        md.append(header).append("\n").append(divider).append("\n").append(value).append("\n");
-        renderSourceMd(b, md);
-        md.append("\n");
+        md.append(header).append("\n").append(divider).append("\n").append(value).append("\n");        md.append("\n");
     }
 
     private void renderChartMd(JsonNode b, StringBuilder md, Map<String, Path> charts) {
@@ -165,9 +163,7 @@ public class MarkdownRenderer {
             md.append("![").append(escapeAlt(caption)).append("](./assets/chart-").append(id).append(".png)\n\n");
         } else {
             md.append("> ⚠️ 图表渲染失败：").append(caption).append("\n\n");
-        }
-        renderSourceMd(b, md);
-    }
+        }    }
 
     private void renderTableMd(JsonNode b, StringBuilder md) {
         JsonNode columns = b.path("columns");
@@ -197,9 +193,7 @@ public class MarkdownRenderer {
         String appendixCsvRef = b.path("appendixCsvRef").asText("");
         if (!appendixCsvRef.isBlank()) {
             md.append("\n_完整数据见附录 CSV：[下载](./assets/appendix-").append(appendixCsvRef).append(".csv)_\n");
-        }
-        renderSourceMd(b, md);
-        md.append("\n");
+        }        md.append("\n");
     }
 
     private void renderRiskListMd(JsonNode b, StringBuilder md) {
@@ -294,9 +288,7 @@ public class MarkdownRenderer {
                 md.append("> ").append(line).append("\n");
             }
         }
-        md.append("\n");
-        renderSourceMd(b, md);
-    }
+        md.append("\n");    }
 
     /** stat-highlight → 加粗数字行。 */
     private void renderStatHighlightMd(JsonNode b, StringBuilder md) {
@@ -312,9 +304,7 @@ public class MarkdownRenderer {
             paren.append(delta);
         }
         if (paren.length() > 0) md.append("（").append(paren).append("）");
-        md.append("\n\n");
-        renderSourceMd(b, md);
-    }
+        md.append("\n\n");    }
 
     /** comparison → GFM 表（label 行 + value 行）。 */
     private void renderComparisonMd(JsonNode b, StringBuilder md) {
@@ -331,9 +321,7 @@ public class MarkdownRenderer {
             if (!caption.isBlank()) v = v + " (" + caption + ")";
             value.append(" ").append(escapePipe(v)).append(" |");
         }
-        md.append(header).append("\n").append(divider).append("\n").append(value).append("\n\n");
-        renderSourceMd(b, md);
-    }
+        md.append(header).append("\n").append(divider).append("\n").append(value).append("\n\n");    }
 
     /** quote → blockquote（可选 attribution）。 */
     private void renderQuoteMd(JsonNode b, StringBuilder md) {
@@ -343,13 +331,6 @@ public class MarkdownRenderer {
             md.append(">\n> — ").append(attribution).append("\n");
         }
         md.append("\n");
-    }
-
-    private void renderSourceMd(JsonNode b, StringBuilder md) {
-        String source = b.path("source").asText("");
-        if (!source.isBlank()) {
-            md.append("_▸ ").append(source).append("_\n");
-        }
     }
 
     private static String escapePipe(String s) {

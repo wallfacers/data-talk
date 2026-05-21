@@ -416,21 +416,6 @@ strong {
   color: var(--ledger-text-base);
 }
 
-/* -------------------------- Block source 数据来源脚注 -------------------------- */
-
-.ledger-block-source {
-  font-size: var(--ledger-fs-micro);
-  line-height: var(--ledger-lh-micro);
-  color: var(--ledger-text-faint);
-  margin-top: 6px;
-  margin-bottom: 16px;
-}
-
-.ledger-block-source::before {
-  content: '▸ ';
-  color: var(--ledger-text-faint);
-}
-
 /* -------------------------- Appendix -------------------------- */
 
 .ledger-appendix {

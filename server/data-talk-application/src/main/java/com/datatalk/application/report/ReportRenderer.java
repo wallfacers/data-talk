@@ -334,9 +334,7 @@ public class ReportRenderer {
                 out.append("  </div>\n");
             }
         }
-        out.append("</div>\n");
-        renderSource(b, out);
-    }
+        out.append("</div>\n");    }
 
     private void renderNarrative(JsonNode b, StringBuilder out) {
         out.append("<div class=\"ledger-narrative\">");
@@ -353,9 +351,7 @@ public class ReportRenderer {
         if (!caption.isBlank()) {
             out.append("  <figcaption>").append(escapeHtml(caption)).append("</figcaption>\n");
         }
-        out.append("</figure>\n");
-        renderSource(b, out);
-    }
+        out.append("</figure>\n");    }
 
     private void renderTable(JsonNode b, StringBuilder out) {
         JsonNode columns = b.path("columns");
@@ -425,9 +421,7 @@ public class ReportRenderer {
             out.append("  <p class=\"ledger-table__appendix-note\">完整数据见附录 CSV：<a href=\"/api/file-artifacts/")
                     .append(escapeAttr(appendixCsvRef)).append("/download\">下载</a></p>\n");
         }
-        out.append("</figure>\n");
-        renderSource(b, out);
-    }
+        out.append("</figure>\n");    }
 
     /** 单元格渲染：按列级 format 修饰。数值解析失败一律安全回退纯文本，不抛异常。 */
     private void renderCell(String raw, String fmt, int col,
@@ -617,9 +611,7 @@ public class ReportRenderer {
         }
         out.append("    <div class=\"ledger-callout__content\">").append(simpleMarkdownToHtml(b.path("markdown").asText(""))).append("</div>\n");
         out.append("  </div>\n");
-        out.append("</aside>\n");
-        renderSource(b, out);
-    }
+        out.append("</aside>\n");    }
 
     /** hero 关键指标。value 用最大字号 + primary 色（由 CSS 定义）。 */
     private void renderStatHighlight(JsonNode b, StringBuilder out) {
@@ -642,9 +634,7 @@ public class ReportRenderer {
             out.append("  <div class=\"").append(cls).append("\">").append(arrow).append(" ")
                     .append(escapeHtml(delta.replace("+", "").replace("-", ""))).append("</div>\n");
         }
-        out.append("</div>\n");
-        renderSource(b, out);
-    }
+        out.append("</div>\n");    }
 
     /** 并列对比卡（2-4 等宽卡片）。 */
     private void renderComparison(JsonNode b, StringBuilder out) {
@@ -662,9 +652,7 @@ public class ReportRenderer {
                 out.append("  </div>\n");
             }
         }
-        out.append("</div>\n");
-        renderSource(b, out);
-    }
+        out.append("</div>\n");    }
 
     /** pull-quote。 */
     private void renderQuote(JsonNode b, StringBuilder out) {
@@ -685,13 +673,6 @@ public class ReportRenderer {
         } else {
             out.append("<div class=\"ledger-divider ledger-divider--labeled\">")
                     .append("<span class=\"ledger-divider__label\">").append(escapeHtml(label)).append("</span></div>\n");
-        }
-    }
-
-    private void renderSource(JsonNode b, StringBuilder out) {
-        String source = b.path("source").asText("");
-        if (!source.isBlank()) {
-            out.append("<div class=\"ledger-block-source\">").append(escapeHtml(source)).append("</div>\n");
         }
     }
 

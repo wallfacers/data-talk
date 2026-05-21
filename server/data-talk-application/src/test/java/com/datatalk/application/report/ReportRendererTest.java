@@ -216,7 +216,7 @@ class ReportRendererTest {
     }
 
     @Test
-    void renders_source_footnote_when_source_field_present() throws Exception {
+    void source_footnote_is_not_rendered_even_when_source_field_present() throws Exception {
         JsonNode root = mapper.readTree("""
             { "schemaVersion": 1, "kind": "report",
               "meta": { "title": "T", "templateId": "x" },
@@ -227,8 +227,8 @@ class ReportRendererTest {
               ] }
         """);
         String html = renderer.toHtml(root);
-        assertThat(html).contains("ledger-block-source");
-        assertThat(html).contains("mysql-prod · sales_summary");
+        assertThat(html).doesNotContain("ledger-block-source");
+        assertThat(html).doesNotContain("mysql-prod · sales_summary");
     }
 
     @Test
