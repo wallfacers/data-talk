@@ -56,7 +56,6 @@ export function QuestionDock({
   const multi = question?.multiple === true
   const allowCustom = question?.custom !== false
   const isLast = tab >= total - 1
-  const singleShortcut = total === 1 && !multi
 
   const rootRef = useRef<HTMLDivElement | null>(null)
 
@@ -153,11 +152,8 @@ export function QuestionDock({
         : [...current, label])
       return
     }
-    // single-select
-    if (singleShortcut) {
-      void submitAnswers([[label]])
-      return
-    }
+    // single-select: set the answer; submission always goes through the Submit button
+    // (or Cmd/Ctrl+Enter), matching OpenCode — never auto-submit on pick.
     setAnswerAt(tab, [label])
   }
 
@@ -345,18 +341,16 @@ export function QuestionDock({
               {t('ui.common.back')}
             </Button>
           )}
-          {!singleShortcut && (
-            <Button
-              type="button"
-              variant={isLast ? 'default' : 'secondary'}
-              size="sm"
-              disabled={sending}
-              onClick={next}
-              aria-keyshortcuts="Meta+Enter Control+Enter"
-            >
-              {isLast ? t('ui.common.submit') : t('ui.common.next')}
-            </Button>
-          )}
+          <Button
+            type="button"
+            variant={isLast ? 'default' : 'secondary'}
+            size="sm"
+            disabled={sending}
+            onClick={next}
+            aria-keyshortcuts="Meta+Enter Control+Enter"
+          >
+            {isLast ? t('ui.common.submit') : t('ui.common.next')}
+          </Button>
         </div>
       </div>
     </div>
