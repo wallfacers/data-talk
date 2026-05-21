@@ -68,7 +68,8 @@ public class HousekeepingScheduler {
         try { cleanupExpiredPending(); logHousekeepingTask("cleanupExpiredPending", "ok", started); } catch (Exception e) { failed++; logHousekeepingTask("cleanupExpiredPending", "failed", started); log.warn("[housekeeping] cleanupExpiredPending failed: {}", e.toString()); }
         try { cleanupSemanticTrash(); logHousekeepingTask("cleanupSemanticTrash", "ok", started); } catch (Exception e) { failed++; logHousekeepingTask("cleanupSemanticTrash", "failed", started); log.warn("[housekeeping] cleanupSemanticTrash failed: {}", e.toString()); }
         try { cleanupUploadedFiles(); logHousekeepingTask("cleanupUploadedFiles", "ok", started); } catch (Exception e) { failed++; logHousekeepingTask("cleanupUploadedFiles", "failed", started); log.warn("[housekeeping] cleanupUploadedFiles failed: {}", e.toString()); }
-        writeHousekeepingLog(started, 8 - failed, failed);
+        try { cleanupOrphanUploadFiles(); logHousekeepingTask("cleanupOrphanUploadFiles", "ok", started); } catch (Exception e) { failed++; logHousekeepingTask("cleanupOrphanUploadFiles", "failed", started); log.warn("[housekeeping] cleanupOrphanUploadFiles failed: {}", e.toString()); }
+        writeHousekeepingLog(started, 9 - failed, failed);
         log.info("[housekeeping] completed in {} ms", clock.instant().toEpochMilli() - started.toEpochMilli());
     }
 
@@ -249,6 +250,31 @@ public class HousekeepingScheduler {
             cleaned++;
         }
         if (cleaned > 0) log.info("[housekeeping] cleanupUploadedFiles removed {} uploads older than {}", cleaned, cutoff);
+        return cleaned;
+    }
+
+    /** Delete orphan upload directories on disk that have no matching DB row. */
+    synchronized int cleanupOrphanUploadFiles() {
+        Path uploadsDir = workdir.resolve("uploads");
+        if (!Files.isDirectory(uploadsDir)) return 0;
+        int cleaned = 0;
+        try (Stream<Path> entries = Files.list(uploadsDir)) {
+            for (Path entry : entries.toList()) {
+                if (!Files.isDirectory(entry)) continue;
+                String dirName = entry.getFileName().toString();
+                if (uploadedFileRepo.findById(dirName).isPresent()) continue;
+                // Orphan directory — no matching uploaded_file row
+                try (Stream<Path> files = Files.walk(entry)) {
+                    files.sorted(Comparator.reverseOrder())
+                         .forEach(p -> { try { Files.deleteIfExists(p); } catch (IOException ignored) {} });
+                }
+                cleaned++;
+                log.info("[housekeeping] removed orphan upload dir: {}", entry);
+            }
+        } catch (IOException e) {
+            log.warn("[housekeeping] failed to scan uploads dir: {}", e.getMessage());
+        }
+        if (cleaned > 0) log.info("[housekeeping] cleanupOrphanUploadFiles removed {} orphan directories", cleaned);
         return cleaned;
     }
 

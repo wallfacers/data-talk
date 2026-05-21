@@ -804,17 +804,19 @@ public class ResourceDirectoryService {
         Path semanticDir = workdirRoot.dataTalkRoot().resolve("semantic");
         overview.put("semantic", summarizeDir(semanticDir));
 
-        // Uploads (file count from DB, size from disk)
-        Path uploadsDir = workdirRoot.dataTalkRoot().resolve("uploads");
+        // Uploads (both count and size from DB for consistency)
         long uploadFileCount = 0;
+        long uploadSize = 0;
         try {
             Integer count = jdbc.queryForObject(
                     "SELECT COUNT(*) FROM uploaded_file", Integer.class);
             uploadFileCount = count != null ? count : 0;
+            Long size = jdbc.queryForObject(
+                    "SELECT COALESCE(SUM(size_bytes), 0) FROM uploaded_file", Long.class);
+            uploadSize = size != null ? size : 0;
         } catch (Exception e) {
-            log.warn("Failed to count uploaded_file rows: {}", e.getMessage());
+            log.warn("Failed to query uploaded_file stats: {}", e.getMessage());
         }
-        long uploadSize = dirSize(uploadsDir);
         overview.put("uploads", new StorageOverviewDto.ResourceDirSummary(uploadFileCount, uploadSize));
 
         return overview;
