@@ -102,31 +102,35 @@
     return clone;
   }
 
+  // The widget data endpoint is POST with body { params } (CSP/CORS contract
+  // covered by the null-origin preflight); a GET would 405 and never load data.
+  function fetchWidget(widget) {
+    if (!widget.endpoint) return;
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', widget.endpoint, true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState === 4 && xhr.status >= 200 && xhr.status < 300) {
+        try {
+          applyWidgetData(widget, JSON.parse(xhr.responseText));
+        } catch (e) {
+          post('error', { widgetId: widget.id, message: 'poll parse error: ' + e.message });
+        }
+      } else if (xhr.readyState === 4) {
+        post('error', { widgetId: widget.id, message: 'poll failed (' + xhr.status + ')' });
+      }
+    };
+    xhr.send(JSON.stringify({ params: widget.params || {} }));
+  }
+
   function startPolling(widget) {
+    if (!widget.hasData) return;
     if (!widget.intervalMs || widget.intervalMs <= 0) return;
     if (!widget.endpoint) return;
 
     var intervalId = setInterval(function() {
       if (paused) return;
-
-      // The widget data endpoint is POST with body { params } (CSP/CORS contract
-      // covered by the null-origin preflight); a GET would 405 and never load data.
-      var xhr = new XMLHttpRequest();
-      xhr.open('POST', widget.endpoint, true);
-      xhr.setRequestHeader('Content-Type', 'application/json');
-      xhr.onreadystatechange = function() {
-        if (xhr.readyState === 4 && xhr.status >= 200 && xhr.status < 300) {
-          try {
-            var data = JSON.parse(xhr.responseText);
-            applyWidgetData(widget, data);
-          } catch (e) {
-            post('error', { widgetId: widget.id, message: 'poll parse error: ' + e.message });
-          }
-        } else if (xhr.readyState === 4) {
-          post('error', { widgetId: widget.id, message: 'poll failed (' + xhr.status + ')' });
-        }
-      };
-      xhr.send(JSON.stringify({ params: widget.params || {} }));
+      fetchWidget(widget);
     }, widget.intervalMs);
 
     intervals.push(intervalId);
@@ -253,6 +257,11 @@
       try {
         if (widget.type === 'chart') {
           initChart(widget);
+        }
+        // Fetch once immediately so the first paint shows data instead of a
+        // skeleton until the first poll interval elapses.
+        if (widget.hasData) {
+          fetchWidget(widget);
         }
         startPolling(widget);
       } catch (err) {

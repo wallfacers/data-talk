@@ -61,6 +61,8 @@ public final class DashboardDiffer {
         ArrayNode oldWidgets = (ArrayNode) oldJson.path("widgets");
         ArrayNode newWidgets = (ArrayNode) newJson.path("widgets");
 
+        int defaultIntervalMs = newJson.path("refresh").path("defaultIntervalMs").asInt(0);
+
         List<WidgetChange> changes = new ArrayList<>();
         for (JsonNode nw : newWidgets) {
             String id = nw.path("id").asText("");
@@ -69,7 +71,7 @@ public final class DashboardDiffer {
 
             if (widgetAttributesChanged(ow, nw)) {
                 var widget = toWidget(nw);
-                var compile = WidgetCompiler.compile(widget, dashboardId, catalog);
+                var compile = WidgetCompiler.compile(widget, dashboardId, defaultIntervalMs, catalog);
                 Object baseOption = compile.configEntry().get("baseOption");
                 changes.add(new WidgetChange(id, baseOption, compile.htmlFragment()));
             }

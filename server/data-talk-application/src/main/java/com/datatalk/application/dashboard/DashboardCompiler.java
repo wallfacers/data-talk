@@ -114,6 +114,8 @@ public class DashboardCompiler {
         List<Map<String, Object>> configWidgets = new ArrayList<>();
         Map<String, String> widgetIdToSlot = new LinkedHashMap<>();
 
+        int defaultIntervalMs = dashboard.path("refresh").path("defaultIntervalMs").asInt(0);
+
         ArrayNode widgets = (ArrayNode) dashboard.path("widgets");
         for (JsonNode wn : widgets) {
             String widgetId = wn.path("id").asText("");
@@ -133,7 +135,7 @@ public class DashboardCompiler {
 
             // Compile
             try {
-                var result = WidgetCompiler.compile(widget, dashboardId, catalog);
+                var result = WidgetCompiler.compile(widget, dashboardId, defaultIntervalMs, catalog);
                 slotWidgets.computeIfAbsent(slot, k -> new ArrayList<>()).add(result.htmlFragment());
                 configWidgets.add(result.configEntry());
                 widgetIdToSlot.put(widgetId, slot);
@@ -215,10 +217,32 @@ public class DashboardCompiler {
             wn.path("title").asText(""),
             wn.path("patternId").asText(""),
             toChartSemantics(wn.path("chartSemantics")),
-            null, // refresh - not needed for compile
+            toRefresh(wn.path("refresh")),
             List.of(), // parameters
-            null, // query
+            toQuery(wn.path("query")),
             toOptions(wn.path("options"))
+        );
+    }
+
+    private com.datatalk.domain.dashboard.WidgetRefresh toRefresh(JsonNode rn) {
+        if (rn == null || rn.isMissingNode() || rn.isNull()) return null;
+        Integer intervalMs = rn.hasNonNull("intervalMs") ? rn.get("intervalMs").asInt() : null;
+        Widget.RefreshStrategy strategy = rn.hasNonNull("strategy")
+            ? Widget.RefreshStrategy.valueOf(rn.get("strategy").asText()) : null;
+        return new com.datatalk.domain.dashboard.WidgetRefresh(intervalMs, strategy);
+    }
+
+    private com.datatalk.domain.dashboard.WidgetQuery toQuery(JsonNode qn) {
+        if (qn == null || qn.isMissingNode() || qn.isNull()) return null;
+        java.util.Map<String, String> paramRefs = qn.path("paramRefs").isObject()
+            ? mapper.convertValue(qn.get("paramRefs"), new com.fasterxml.jackson.core.type.TypeReference<>() {})
+            : Map.of();
+        return new com.datatalk.domain.dashboard.WidgetQuery(
+            qn.path("connectionId").asText(null),
+            qn.path("database").asText(null),
+            qn.path("schema").asText(null),
+            qn.path("sql").asText(null),
+            paramRefs
         );
     }
 

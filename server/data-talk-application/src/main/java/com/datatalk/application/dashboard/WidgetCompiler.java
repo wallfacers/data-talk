@@ -13,7 +13,8 @@ public final class WidgetCompiler {
 
     public record WidgetCompileResult(String htmlFragment, Map<String, Object> configEntry) {}
 
-    public static WidgetCompileResult compile(Widget widget, String dashboardId, PatternCatalog catalog) {
+    public static WidgetCompileResult compile(Widget widget, String dashboardId,
+                                              int defaultIntervalMs, PatternCatalog catalog) {
         var pattern = catalog.getPattern(widget.patternId());
         if (pattern == null) {
             throw new DashboardCompiler.CompileError("widget-compile",
@@ -25,7 +26,7 @@ public final class WidgetCompiler {
         boolean isChart = "chart".equals(renderKind);
 
         String htmlFragment = buildHtmlFragment(widget, isChart);
-        Map<String, Object> configEntry = buildConfigEntry(widget, dashboardId, isChart, catalog);
+        Map<String, Object> configEntry = buildConfigEntry(widget, dashboardId, defaultIntervalMs, isChart, catalog);
 
         return new WidgetCompileResult(htmlFragment, configEntry);
     }
@@ -66,16 +67,30 @@ public final class WidgetCompiler {
     }
 
     private static Map<String, Object> buildConfigEntry(Widget widget, String dashboardId,
+                                                         int defaultIntervalMs,
                                                          boolean isChart, PatternCatalog catalog) {
         Map<String, Object> entry = new LinkedHashMap<>();
         entry.put("id", widget.id());
         entry.put("type", widget.type());
 
+        // A widget fetches data only when it carries a SQL query. Without one
+        // (static markdown/divider/section/image/filter) polling would hammer the
+        // data endpoint with 400s, so leave it dormant.
+        boolean hasData = widget.query() != null
+            && widget.query().sql() != null && !widget.query().sql().isBlank();
+
+        // Per-widget refresh wins; otherwise inherit the dashboard default so a
+        // data-bearing widget actually auto-refreshes instead of staying at 0.
         int intervalMs = 0;
-        if (widget.refresh() != null && widget.refresh().intervalMs() != null) {
-            intervalMs = widget.refresh().intervalMs();
+        if (hasData) {
+            if (widget.refresh() != null && widget.refresh().intervalMs() != null) {
+                intervalMs = widget.refresh().intervalMs();
+            } else if (defaultIntervalMs > 0) {
+                intervalMs = defaultIntervalMs;
+            }
         }
         entry.put("intervalMs", intervalMs);
+        entry.put("hasData", hasData);
         entry.put("endpoint", "__BEZEL_SERVER_ORIGIN__/api/dashboards/" + dashboardId
             + "/widgets/" + widget.id() + "/data");
         entry.put("params", widget.query() != null && widget.query().paramRefs() != null
