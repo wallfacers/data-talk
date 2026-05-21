@@ -3,11 +3,12 @@
 | Field | Value |
 |-------|-------|
 | ID | BUG-0081 |
-| Status | fixed |
+| Status | verified |
 | Severity | high |
 | Module | bezel-compiler |
 | Discovered | 2026-05-21 |
 | Discoverer | E2E test (Playwright) |
+| FixCommit | c149569b |
 
 ## Summary
 
@@ -53,3 +54,7 @@ Both violate the CSP.
 - After fix: zero console errors, zero CSP violations
 - Dashboard renders correctly: ecommerce dark theme, KPI cards, ECharts charts
 - CSP header: `script-src 'self' http://localhost:8080` (no `'unsafe-inline'`)
+
+## Verification
+
+**独立复验（2026-05-21，playwright-cli，后端重建 `mvn install -pl data-talk-adapter -am` + 重启后）**：经当前编译器 promote 一个 KPI+chart+table 大屏（`dash_eaj4eeze`，三列模板，H2 常量 SELECT），浏览器加载 `GET /{id}/html`。`playwright-cli console` 断言 **0 errors / 0 warnings**——外置 `scheduler.js` 正常执行（发起了 widget data 轮询请求），`__BEZEL_CONFIG__` JSON 数据块未被 CSP 拦截，无任何 CSP 违规。截图 `tmp/bezel-verify/dash_eaj4eeze-verified.png`。

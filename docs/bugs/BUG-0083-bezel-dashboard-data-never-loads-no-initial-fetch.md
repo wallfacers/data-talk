@@ -3,13 +3,14 @@
 | Field | Value |
 |-------|-------|
 | ID | BUG-0083 |
-| Status | fixed |
+| Status | verified |
 | Severity | high |
 | Module | bezel-compiler |
 | Discovered | 2026-05-21 |
 | Discoverer | code review（E2E 数据流排查） |
 | Source | code-review |
 | FixPlanRef | bezel-compiler-redesign |
+| FixCommit | 0544893a |
 
 ## Summary
 
@@ -43,3 +44,13 @@ golden/单元测试只编译 HTML、不在浏览器执行 scheduler，故未捕�
 - `WidgetCompiler.java` 原 `buildConfigEntry`：`intervalMs` 仅 `widget.refresh().intervalMs()`。
 - `scheduler.js` 原 `init()` 无 immediate fetch。
 - E2E：promote 的大屏所有 widget config `intervalMs=0`。
+
+## Verification
+
+**独立复验（2026-05-21，playwright-cli，后端重建+重启后）**：经当前编译器 promote 大屏 `dash_eaj4eeze`（dashboard `refresh.defaultIntervalMs=5000`，3 个带 `query.sql` 的 widget）。浏览器加载后：
+
+- **首次取数发生**：页面加载即触发 3 个 widget data POST 请求（无需等待轮询周期），全部 200。
+- **数据真渲染到 DOM**（非骨架）：KPI `.kpi-value` = `1248`（断言 `document.body` 含 "1248"）、table `tbody` 2 行且含数据、chart 容器渲染出 `<canvas>`。
+- **defaultIntervalMs 下传**：data-bearing widget 的 config `intervalMs` 继承 dashboard 默认值 5000（而非旧的 0），轮询正常启动。
+
+旁注：本次同时暴露——**重设计前 promote 的存量大屏（如 `dash_g2t35tkk` 等 6 个模板产物）仍用旧内联脚本（`.kpi-block > .value` + `rows[0].value` 对象取数假设），与当前 `columns/rows[][]` 接口契约不匹配，KPI 永远停在 `---`**。这些是 forward-only 的 stale 工件，需重新 promote 才会走新编译器；不影响本 BUG 在当前编译器路径上的修复结论。已记录于下方 Notes，如需清理存量大屏可另开 BUG。

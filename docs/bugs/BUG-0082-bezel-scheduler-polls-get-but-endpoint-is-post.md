@@ -3,13 +3,14 @@
 | Field | Value |
 |-------|-------|
 | ID | BUG-0082 |
-| Status | fixed |
+| Status | verified |
 | Severity | high |
 | Module | bezel-compiler |
 | Discovered | 2026-05-21 |
 | Discoverer | code review（E2E 前对照接口契约） |
 | Source | code-review |
 | FixPlanRef | bezel-compiler-redesign |
+| FixCommit | c149569b |
 
 ## Summary
 
@@ -52,3 +53,7 @@ golden/单元测试只编译 HTML、不在浏览器执行 `scheduler.js`，故 4
 
 - `DashboardController.java:240` 为 `@PostMapping`，body 取 `params`。
 - `scheduler.js` `startPolling` 原为 `xhr.open('GET', ...)`。
+
+## Verification
+
+**独立复验（2026-05-21，playwright-cli，后端重建+重启后）**：经当前编译器 promote 大屏 `dash_eaj4eeze`，浏览器加载后 `playwright-cli requests` 显示 3 个 widget data 请求全部为 `[POST] /api/dashboards/dash_eaj4eeze/widgets/{wid}/data => [200]`（kpi/chart/table），**无 405**。直接 `curl -X POST` 同接口亦返回 200 + 数据（`{"rows":[["总订单数",1248]],"columns":["label","value"]}`）。scheduler.js 用 POST 命中 `@PostMapping`，方法契约一致。

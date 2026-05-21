@@ -1,14 +1,14 @@
 ---
 id: BUG-0080
 title: question 工具完成态卡片回退 GenericTool（自定义 Question 渲染器未注册）
-status: fixed
+status: verified
 priority: P2
 source: e2e-playwright
 modules: [chat]
 discovered: 2026-05-21
 discoveredBy: agent
 testRunId: null
-fixCommit: pending
+fixCommit: 9dd96714
 fixPlanRef: null
 duplicateOf: null
 regression: false
@@ -43,6 +43,8 @@ regression: false
 
 ## Verification
 E2E 重新触发 question → 作答 → 重载（CTRL+R 重建）后，已完成卡片标题正确显示问题文本、内容显示所选 label「是」。`npx tsc --noEmit` 零错误。
+
+**独立复验（2026-05-21，playwright-cli，后端重建+重启后）**：新建会话发送「请直接调用 question 工具向我确认：是否继续生成报告？」→ AI 调用 question 工具 → QuestionDock 显示「是否继续生成报告？」选项「继续生成/取消」→ 选「继续生成」自动提交 → turn 继续（AI 回复「收到，继续生成报告。」）。完成态卡片 DOM 断言：`customTitleFound=true`（标题=问题文本「是否继续生成报告？」）、`bareQuestionTitle=false`（非 GenericTool 裸 "question"）、`answerLabelRendered=true`（卡片体含所选 label「继续生成」）。CTRL+R 重载后三项断言保持不变。证据：`tmp/bezel-verify/bug0080-question-card.png`。
 
 ## Notes
 本缺陷在 `question-tool-bridge`（未归档）的 §8.1 E2E 验证中发现并就地修复。归档前 tasks.md 6.2 接线已补齐。
