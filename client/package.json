@@ -89,5 +89,11 @@
     "typescript-eslint": "^8.18.1",
     "vite": "^5.4.11",
     "vitest": "^2.1.9"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@swc/core",
+      "esbuild"
+    ]
   }
 }
