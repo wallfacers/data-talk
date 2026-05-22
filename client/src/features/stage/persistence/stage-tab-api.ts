@@ -1,4 +1,6 @@
-const BASE = '/api/stage/tabs'
+import { getApiBaseUrl } from '@/services/api-prefix'
+
+const base = () => `${getApiBaseUrl()}/api/stage/tabs`
 
 export interface UpsertRequest {
   id: string
@@ -51,7 +53,7 @@ export const stageTabApi: StageTabApi = {
       params.set('originSessionId', opts.originSessionId)
     }
     const query = params.size > 0 ? `?${params.toString()}` : ''
-    const r = await fetch(`${BASE}${query}`)
+    const r = await fetch(`${base()}${query}`)
     if (!r.ok) throw httpError(r)
     return r.json()
   },
@@ -62,16 +64,16 @@ export const stageTabApi: StageTabApi = {
     return doPut(req)
   },
   async delete(id) {
-    const r = await fetch(`${BASE}/${encodeURIComponent(id)}`, { method: 'DELETE' })
+    const r = await fetch(`${base()}/${encodeURIComponent(id)}`, { method: 'DELETE' })
     if (!r.ok && r.status !== 404) throw httpError(r)
   },
   async getPayload(id) {
-    const r = await fetch(`${BASE}/${encodeURIComponent(id)}/payload`)
+    const r = await fetch(`${base()}/${encodeURIComponent(id)}/payload`)
     if (!r.ok) throw httpError(r)
     return r.json()
   },
   async setArchived(id, archived) {
-    const r = await fetch(`${BASE}/${encodeURIComponent(id)}/archive`, {
+    const r = await fetch(`${base()}/${encodeURIComponent(id)}/archive`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ archived }),
@@ -83,7 +85,7 @@ export const stageTabApi: StageTabApi = {
 async function doPut(req: UpsertRequest): Promise<UpsertResponse> {
   const headers: Record<string, string> = { 'content-type': 'application/json' }
   if (req.ifMatch !== undefined) headers['If-Match'] = String(req.ifMatch)
-  const r = await fetch(`${BASE}/${encodeURIComponent(req.id)}`, {
+  const r = await fetch(`${base()}/${encodeURIComponent(req.id)}`, {
     method: 'PUT',
     headers,
     body: JSON.stringify(req),

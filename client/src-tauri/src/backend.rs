@@ -3,7 +3,7 @@
 #![cfg_attr(debug_assertions, allow(dead_code))]
 
 use std::io::{Read, Write};
-use std::net::{SocketAddr, TcpStream};
+use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::process::{Child, Command};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
@@ -14,13 +14,22 @@ use tauri::{AppHandle, Manager};
 /// `None` means we reused an already-running backend (dev / external).
 pub struct BackendProcess(pub Mutex<Option<Child>>);
 
+/// The port the backend is listening on. Set by `ensure_started`.
+pub struct BackendPort(pub Mutex<u16>);
+
 const HEALTH_HOST: &str = "127.0.0.1";
-const HEALTH_PORT: u16 = 8080;
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(90);
 
+/// Bind to port 0 on localhost, read the assigned port, close the socket.
+fn find_free_port() -> u16 {
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .expect("Failed to bind to a random port");
+    listener.local_addr().unwrap().port()
+}
+
 /// Probe `GET /api/health` over a raw socket (avoids pulling in an HTTP client crate).
-fn health_ok() -> bool {
-    let addr: SocketAddr = match format!("{HEALTH_HOST}:{HEALTH_PORT}").parse() {
+fn health_ok(port: u16) -> bool {
+    let addr: SocketAddr = match format!("{HEALTH_HOST}:{port}").parse() {
         Ok(a) => a,
         Err(_) => return false,
     };
@@ -41,8 +50,18 @@ fn health_ok() -> bool {
 }
 
 fn ensure_started(app: &AppHandle) -> Result<(), String> {
-    if health_ok() {
-        log::info!("Backend already healthy on {HEALTH_HOST}:{HEALTH_PORT}, reusing.");
+    let port = find_free_port();
+
+    // Store port so the frontend can read it via get_backend_url
+    {
+        let state = app.state::<BackendPort>();
+        *state.0.lock().unwrap() = port;
+    }
+
+    // Check if something is already healthy on this port (extremely unlikely
+    // for a freshly-allocated port, but cheap to verify).
+    if health_ok(port) {
+        log::info!("Backend already healthy on {HEALTH_HOST}:{port}, reusing.");
         return Ok(());
     }
 
@@ -84,9 +103,13 @@ fn ensure_started(app: &AppHandle) -> Result<(), String> {
         .join("opencode")
         .join(if cfg!(windows) { "opencode.exe" } else { "opencode" });
 
-    log::info!("Spawning backend: {java:?} -jar {jar:?} (cwd {work_dir:?})");
+    log::info!("Spawning backend: {java:?} -jar {jar:?} --server.port={port} (cwd {work_dir:?})");
     let mut command = Command::new(&java);
-    command.arg("-jar").arg(&jar).current_dir(&work_dir);
+    command
+        .arg("-jar")
+        .arg(&jar)
+        .arg(format!("--server.port={}", port))
+        .current_dir(&work_dir);
     if opencode_bin.exists() {
         log::info!("Using bundled OpenCode binary: {opencode_bin:?}");
         command.env("DATATALK_OPENCODE_SERVE_BINARY_PATH", &opencode_bin);
@@ -105,7 +128,7 @@ fn ensure_started(app: &AppHandle) -> Result<(), String> {
 
     let deadline = Instant::now() + STARTUP_TIMEOUT;
     while Instant::now() < deadline {
-        if health_ok() {
+        if health_ok(port) {
             return Ok(());
         }
         std::thread::sleep(Duration::from_millis(500));
@@ -161,4 +184,16 @@ pub fn stop(app: &AppHandle) {
         std::thread::sleep(Duration::from_millis(1500));
         let _ = child.kill();
     }
+}
+
+/// Tauri command: returns the backend URL for the frontend to use.
+#[tauri::command]
+pub fn get_backend_url(app: AppHandle) -> String {
+    let state = app.state::<BackendPort>();
+    let port = *state.0.lock().unwrap();
+    if port == 0 {
+        // Backend hasn't started yet — fallback to 8080
+        return "http://127.0.0.1:8080".to_string();
+    }
+    format!("http://127.0.0.1:{}", port)
 }

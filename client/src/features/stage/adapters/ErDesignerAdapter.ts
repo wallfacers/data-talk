@@ -2,6 +2,7 @@ import type { ActionDef, ExecResult, JsonPatchOp, PatchCapability, PatchResult, 
 import { useErTabsStore } from '@/features/stage/stores/er-tabs-store'
 import type { ErDesignerPayload } from '@/features/stage/stores/er-tabs-payload-types'
 import { useStageStore } from '@/stores/stage-store'
+import { getApiBaseUrl } from '@/services/api-prefix'
 
 type DesignerTable = {
   id: string
@@ -204,7 +205,7 @@ export class ErDesignerAdapter implements UIObject {
 
       case 'diff_against_db': {
         if (!payload.targetConnectionId) return targetRequired()
-        const response = await fetch('/api/er/diff', {
+        const response = await fetch(`${getApiBaseUrl()}/api/er/diff`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ payload, connectionId: payload.targetConnectionId }),
@@ -216,7 +217,7 @@ export class ErDesignerAdapter implements UIObject {
       case 'sync_from_db': {
         if (!payload.targetConnectionId) return targetRequired()
         const input = (params ?? {}) as { tables?: string[] }
-        const response = await fetch('/api/er/sync-from-db', {
+        const response = await fetch(`${getApiBaseUrl()}/api/er/sync-from-db`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
@@ -252,7 +253,7 @@ export class ErDesignerAdapter implements UIObject {
       case 'generate_ddl': {
         if (!payload.targetConnectionId) return targetRequired()
         const input = (params ?? {}) as { includeDrops?: boolean }
-        const response = await fetch('/api/er/generate-ddl', {
+        const response = await fetch(`${getApiBaseUrl()}/api/er/generate-ddl`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({

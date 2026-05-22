@@ -1,9 +1,10 @@
 import type { Dashboard } from '../schema'
 import { dashboardSchema } from '../schema'
+import { getApiBaseUrl } from '@/services/api-prefix'
 
 export async function fetchDashboard(id: string): Promise<Dashboard | null> {
   if (!id || id === 'undefined' || id === 'null') return null
-  const response = await fetch(`/api/dashboards/${encodeURIComponent(id)}`)
+  const response = await fetch(`${getApiBaseUrl()}/api/dashboards/${encodeURIComponent(id)}`)
   if (!response.ok) return null
   const data = await response.json()
   const parsed = dashboardSchema.safeParse(data)
@@ -16,7 +17,7 @@ export async function promoteDashboard(
 ): Promise<{ id: string; version: number; html?: string } | null> {
   const headers: Record<string, string> = { 'content-type': 'application/json' }
   if (sessionId) headers['X-DataTalk-Session-Id'] = sessionId
-  const response = await fetch('/api/dashboards/promote', {
+  const response = await fetch(`${getApiBaseUrl()}/api/dashboards/promote`, {
     method: 'POST',
     headers,
     body: JSON.stringify({ dashboard: payload }),
@@ -31,7 +32,7 @@ export async function updateDashboard(
   baseVersion: number,
 ): Promise<{ version: number; html?: string; changes?: unknown[] } | null> {
   if (!id || id === 'undefined' || id === 'null') return null
-  const response = await fetch(`/api/dashboards/${encodeURIComponent(id)}/update`, {
+  const response = await fetch(`${getApiBaseUrl()}/api/dashboards/${encodeURIComponent(id)}/update`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ dashboard, baseVersion }),
@@ -46,7 +47,7 @@ export async function updateDashboard(
 export async function previewDashboard(
   dashboard: unknown,
 ): Promise<{ html: string } | null> {
-  const response = await fetch('/api/dashboards/preview', {
+  const response = await fetch(`${getApiBaseUrl()}/api/dashboards/preview`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ dashboard }),
@@ -57,7 +58,7 @@ export async function previewDashboard(
 
 export async function fetchDashboardHtml(id: string): Promise<string | null> {
   if (!id || id === 'undefined' || id === 'null') return null
-  const response = await fetch(`/api/dashboards/${encodeURIComponent(id)}/html`)
+  const response = await fetch(`${getApiBaseUrl()}/api/dashboards/${encodeURIComponent(id)}/html`)
   if (!response.ok) return null
   return await response.text()
 }

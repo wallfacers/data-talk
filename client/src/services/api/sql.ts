@@ -1,7 +1,4 @@
-const BASE = (() => {
-  const env = (import.meta as any).env?.VITE_API_BASE_URL
-  return typeof env === 'string' && env.length > 0 ? env.replace(/\/$/, '') : ''
-})()
+import { getApiBaseUrl } from '../api-prefix'
 
 export interface SqlExecuteRequest {
   connectionId: string
@@ -67,7 +64,7 @@ export async function executeSql(req: SqlExecuteRequest, signal?: AbortSignal): 
   if (req.schema != null) json.schema = req.schema
   if (req.confirmed != null) json.confirmed = req.confirmed
   if (req.riskAck != null) json.riskAck = req.riskAck
-  const res = await fetch(`${BASE}/api/sql/execute`, {
+  const res = await fetch(`${getApiBaseUrl()}/api/sql/execute`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(json),
@@ -94,7 +91,7 @@ export type UndoDmlResponse =
   | { status: 'not_found'; message: string }
 
 export async function undoDml(req: UndoDmlRequest, signal?: AbortSignal): Promise<UndoDmlResponse> {
-  const res = await fetch(`${BASE}/api/sql/undo`, {
+  const res = await fetch(`${getApiBaseUrl()}/api/sql/undo`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(req),

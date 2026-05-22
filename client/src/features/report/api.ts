@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { getApiBaseUrl } from '@/services/api-prefix'
 import {
   reportDetailSchema,
   reportListSchema,
@@ -8,7 +9,7 @@ import {
   type ReportSystemStatus,
 } from './schema'
 
-const BASE = '/api/reports'
+const reportsBase = () => `${getApiBaseUrl()}/api/reports`
 
 async function getJson<T>(url: string, parse: (raw: unknown) => T): Promise<T> {
   const resp = await fetch(url, { credentials: 'same-origin' })
@@ -33,7 +34,7 @@ export function useReportList(workspaceId: string | undefined, groupId?: string)
       const params = new URLSearchParams()
       if (workspaceId) params.set('workspaceId', workspaceId)
       if (groupId) params.set('groupId', groupId)
-      return getJson(`${BASE}?${params.toString()}`, (raw) => reportListSchema.parse(raw).items)
+      return getJson(`${reportsBase()}?${params.toString()}`, (raw) => reportListSchema.parse(raw).items)
     },
   })
 }
@@ -43,7 +44,7 @@ export function useReport(id: string | undefined) {
     queryKey: reportDetailQueryKey(id ?? ''),
     enabled: Boolean(id),
     queryFn: async () =>
-      getJson(`${BASE}/${id}`, (raw) => reportDetailSchema.parse(raw)),
+      getJson(`${reportsBase()}/${id}`, (raw) => reportDetailSchema.parse(raw)),
     refetchInterval: (query) => {
       const data = query.state.data as ReportDetail | undefined
       if (!data) return false
@@ -57,7 +58,7 @@ export function useSystemStatus() {
   return useQuery<ReportSystemStatus>({
     queryKey: reportSystemStatusQueryKey,
     queryFn: async () =>
-      getJson(`${BASE}/system-status`, (raw) => reportSystemStatusSchema.parse(raw)),
+      getJson(`${reportsBase()}/system-status`, (raw) => reportSystemStatusSchema.parse(raw)),
     refetchInterval: (query) => {
       const data = query.state.data as ReportSystemStatus | undefined
       if (!data) return 5000
@@ -70,7 +71,7 @@ export function useDeleteReportMutation() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (id: string) => {
-      const resp = await fetch(`${BASE}/${id}`, { method: 'DELETE' })
+      const resp = await fetch(`${reportsBase()}/${id}`, { method: 'DELETE' })
       if (!resp.ok) throw new Error(`Delete failed: ${resp.status}`)
     },
     onMutate: async (id) => {
@@ -108,7 +109,7 @@ export function useDeleteReportMutation() {
 }
 
 export function reportDownloadUrl(id: string, format: 'html' | 'pdf' | 'md' | 'json') {
-  return `${BASE}/${id}/download/${format}`
+  return `${reportsBase()}/${id}/download/${format}`
 }
 
 export type { ReportListItem, ReportDetail, ReportSystemStatus }

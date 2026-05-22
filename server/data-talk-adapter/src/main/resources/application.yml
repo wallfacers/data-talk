@@ -44,6 +44,9 @@ server:
   shutdown: graceful
 
 datatalk:
+  report:
+    chromium:
+      enabled: false
   diagnostics:
     lock:
       long-wait-ms: 5000
@@ -73,7 +76,7 @@ datatalk:
       base-port: 4096
       port-retries: 100
       hostname: 127.0.0.1
-      cors: http://localhost:8080
+      cors: http://localhost:${server.port:8080}
       strip-proxy-env: false
 
 app:

@@ -1,5 +1,5 @@
 import { createParser, type EventSourceMessage } from 'eventsource-parser'
-import { API_PREFIX } from '@/services/api-prefix'
+import { API_PREFIX, getApiBaseUrl } from '@/services/api-prefix'
 
 export interface OpLogSseEvent {
   event: string
@@ -19,7 +19,7 @@ export function subscribeOpLogStream(
   onEvent: (e: OpLogSseEvent) => void,
 ): OpLogSseSubscription {
   const ctrl = new AbortController()
-  const url = `${API_PREFIX}/connections/${connectionId}/op-logs/stream`
+  const url = `${getApiBaseUrl()}${API_PREFIX}/connections/${connectionId}/op-logs/stream`
 
   void (async () => {
     try {

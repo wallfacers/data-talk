@@ -1,4 +1,5 @@
 import { http } from '@/services/http'
+import { getApiBaseUrl } from '@/services/api-prefix'
 
 export interface FileUploadResponse {
   fileId: string
@@ -24,7 +25,7 @@ export async function uploadFile(
 
   let response: Response
   try {
-    response = await fetch('/api/files/upload', {
+    response = await fetch(`${getApiBaseUrl()}/api/files/upload`, {
       method: 'POST',
       body: formData,
       signal,
@@ -54,7 +55,7 @@ export async function deleteUploadedFile(fileId: string): Promise<void> {
  * 浏览器原生 HTTP 缓存（后端响应 Cache-Control: private, max-age=300）。
  */
 export function getFileContentUrl(fileId: string): string {
-  return `/api/files/${encodeURIComponent(fileId)}/content`
+  return `${getApiBaseUrl()}/api/files/${encodeURIComponent(fileId)}/content`
 }
 
 /**

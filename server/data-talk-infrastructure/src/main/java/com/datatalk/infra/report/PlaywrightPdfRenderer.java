@@ -34,9 +34,9 @@ public class PlaywrightPdfRenderer implements PdfRenderer {
 
     public PlaywrightPdfRenderer(
             ChromiumLifecycle chromium,
-            @Value("${datatalk.report.backend-base-url:http://localhost:8080}") String backendBaseUrl) {
+            @Value("${server.port:8080}") int serverPort) {
         this.chromium = chromium;
-        this.backendBaseUrl = backendBaseUrl;
+        this.backendBaseUrl = "http://127.0.0.1:" + serverPort;
     }
 
     @Override

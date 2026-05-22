@@ -1,6 +1,7 @@
 import type { ActionDef, ExecResult, JsonPatchOp, PatchCapability, PatchResult, UIObject } from '@/services/ui-router'
 import { useErTabsStore } from '@/features/stage/stores/er-tabs-store'
 import type { ErDesignerPayload, ErInspectorPayload, ErTableSnapshot } from '@/features/stage/stores/er-tabs-payload-types'
+import { getApiBaseUrl } from '@/services/api-prefix'
 
 interface SeedInspectorResponse {
   nodes: ErTableSnapshot[]
@@ -60,7 +61,7 @@ async function fetchSeedInspector(request: {
   tables: string[]
   neighborDepth: number
 }): Promise<SeedInspectorResponse> {
-  const response = await fetch('/api/er/seed-inspector', {
+  const response = await fetch(`${getApiBaseUrl()}/api/er/seed-inspector`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(request),
